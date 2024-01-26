@@ -22,36 +22,24 @@ public:
 
   enum
   {
-    AMBIENT = VLO_DATA_CHANNEL_AMBIENT,
-    DISTANCES = VLO_DATA_CHANNEL_DISTANCES,
-    DEPTH = VLO_DATA_CHANNEL_DEPTH,
-    HEIGHT = VLO_DATA_CHANNEL_HEIGHT,
-    AREA = VLO_DATA_CHANNEL_AREA,
-    PEAK = VLO_DATA_CHANNEL_PEAK,
-    WIDTH = VLO_DATA_CHANNEL_WIDTH,
-    SELECTION_MASK = 1000,
-  };
-
-  enum
-  {
     ECHO0 = 0x1,
     ECHO1 = 0x2,
     ECHO2 = 0x4,
   };
 
-
   c_vlo_frame();
 
-  bool get_display_data(DataViewType * selectedViewType, int selectedDisplayId,
+  bool get_display_data(DataViewType * selectedViewType,
+      const std::string & channelName,
       cv::OutputArray image,
       cv::OutputArray data,
       cv::OutputArray mask) override;
-
-  bool get_image(int id, cv::OutputArray image,
-      cv::OutputArray mask = cv::noArray()) override;
-
-  bool get_point_cloud(int id, cv::OutputArray points,
-      cv::OutputArray colors) override;
+//
+//  bool get_image(int id, cv::OutputArray image,
+//      cv::OutputArray mask = cv::noArray()) override;
+//
+//  bool get_point_cloud(int id, cv::OutputArray points,
+//      cv::OutputArray colors) override;
 
   void update_selection(cv::InputArray mask,
       SELECTION_MASK_MODE mode);

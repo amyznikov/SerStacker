@@ -10,7 +10,7 @@
 
 #include "debayer.h" // for COLORID
 
-#if HAVE_CFITSIO
+#ifdef HAVE_CFITSIO
 
 #include <fitsio2.h>
 

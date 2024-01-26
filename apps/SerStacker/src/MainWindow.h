@@ -21,15 +21,11 @@
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipeline/QPipelineOptionsView.h>
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
-#include <gui/qinputsequenceview/QInputSequenceView.h>
 #include <gui/qinputoptions/QInputOptions.h>
-//#include "QAppSettings.h"
 
 #include "QPipelineProgressView.h"
 #include "QInputSourceView.h"
 #include "QProgressImageViewer.h"
-
-//#include "QSerStackerImageEditor.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -55,7 +51,6 @@ private:
   void setupStackOptionsView();
   void setupInputSequenceView();
   void setupPipelineProgressView();
-  void setupDisplayImageVideoWriter();
   void setupStatusbar();
   void showImageViewOptions(bool show);
 

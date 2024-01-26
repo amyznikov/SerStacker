@@ -614,7 +614,8 @@ void MainWindow::onCurrentViewVisibilityChanged()
       inputSourceView->currentView();
 
   if ( currentView == imageView ) {
-    if ( !imageView->isVisible() ) {
+
+    if ( !currentView->isVisible() ) {
       saveImageAsAction->setEnabled(false);
       saveDisplayImageAsAction->setEnabled(false);
       copyDisplayImageAction->setEnabled(false);
@@ -644,11 +645,12 @@ void MainWindow::onCurrentViewVisibilityChanged()
 
   }
   else  if ( currentView == cloudView ) {
+
     saveImageAsAction->setEnabled(false);
     saveImageMaskAction->setEnabled(false);
     loadImageMaskAction->setEnabled(false);
 
-    if ( !cloudView->isVisible() ) {
+    if ( !currentView->isVisible() ) {
       saveDisplayImageAsAction->setEnabled(false);
       copyDisplayImageAction->setEnabled(false);
       copyDisplayViewportAction->setEnabled(false);
@@ -662,6 +664,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
     }
   }
   else {
+
     saveImageAsAction->setEnabled(false);
     saveDisplayImageAsAction->setEnabled(false);
     copyDisplayImageAction->setEnabled(false);
@@ -970,8 +973,7 @@ void MainWindow::onThumbnailsViewCustomContextMenuRequested(const QPoint & pos)
 void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
 {
   if ( source ) {
-    centralStackedWidget->setCurrentWidget(inputSourceView);
-    inputSourceView->openFile(source->cfilename());
+    openImage(source->cfilename());
   }
   else if ( sequence ) {
     if ( centralStackedWidget->currentWidget() == thumbnailsView ) {
@@ -994,13 +996,12 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
     if ( source ) {
 
-      if( currentCentralWidget == inputSourceView ) {
-        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
-        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      if( currentCentralWidget != inputSourceView ) {
+        openImage(source->cfilename());
       }
       else {
-        inputSourceView->openFile(source->cfilename());
-        centralStackedWidget->setCurrentWidget(inputSourceView);
+        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
       }
     }
 
@@ -1023,13 +1024,12 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
       pipelineProgressView->setImageViewer(nullptr);
 
-      if ( currentCentralWidget == inputSourceView ) {
-        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
-        centralStackedWidget->setCurrentWidget(thumbnailsView);
+      if ( currentCentralWidget != inputSourceView ) {
+        openImage(source->cfilename());
       }
       else {
-        inputSourceView->openFile(source->cfilename());
-        centralStackedWidget->setCurrentWidget(inputSourceView);
+        thumbnailsView->setCurrentPath(QFileInfo(source->cfilename()).absolutePath(), false);
+        centralStackedWidget->setCurrentWidget(thumbnailsView);
       }
 
     }

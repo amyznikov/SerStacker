@@ -629,7 +629,7 @@ void QLivePipelineThread::run()
     COLORID colorid = COLORID_UNKNOWN;
 
     c_camera_input_source(QLivePipelineThread * thread, const QImagingCamera::sptr & camera) :
-        base(c_input_source::CAMERA, ""),
+        base(/*c_input_source::CAMERA, */""),
         thread_(thread),
         camera_(camera)
     {

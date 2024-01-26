@@ -149,9 +149,7 @@ protected:
   virtual void cleanupGL();
 
 protected:
-
-protected:
-  QColor backgroundColor_ = QColor(32, 32, 32);
+  QColor backgroundColor_ = QColor(0x5a, 0x76, 0x64); // QColor(32, 32, 32);
   QColor foregroundColor_ = QColor(232, 232, 232);
 
   ViewParams viewParams_;

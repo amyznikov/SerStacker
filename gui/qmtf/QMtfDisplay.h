@@ -28,17 +28,17 @@ public:
     bool invert_colormap = false;
   };
 
-  typedef std::map<int /*display_type*/, DisplayParams> DisplayMap;
+  typedef std::map<QString, DisplayParams> DisplayMap;
 
   IMtfDisplay(const QString & prefix = "");
 
   virtual ~IMtfDisplay() = default;
 
 
-  virtual const c_enum_member * displayChannels() const = 0;
+  virtual QStringList displayChannels() const;
 
-  virtual void setDisplayChannel(int v);
-  virtual int displayChannel() const;
+  virtual void setDisplayChannel(const QString & v);
+  virtual const QString & displayChannel() const;
 
   virtual void setMtfInputRange(double min, double max);
   virtual void getMtfInputRange(double * min, double * max) const;
@@ -78,7 +78,7 @@ public:
   virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
 
   static DisplayParams & addDisplay(DisplayMap & map,
-      int type, double input_min, double input_max);
+      const QString & displayChannelName, double input_min, double input_max);
 
 public: // events
   virtual void displayTypeChanged() = 0;
@@ -86,7 +86,7 @@ public: // events
   virtual void displayImageChanged() = 0;
 
 protected:
-  void addDisplay(int type, double input_min, double input_max);
+  void addDisplay(const QString & displayChannelName, double input_min, double input_max);
   static void createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap);
 
   struct c_mtf_adjustment {
@@ -109,8 +109,9 @@ protected:
 
 
 protected:
-  int displayChannel_ = -1;
-  DisplayMap displayParams_;
+  QString displayChannel_;
+  //int displayChannel_ = -1;
+  DisplayMap displays_;
   bool autoClip_ = false;
   QString prefix_;
 };

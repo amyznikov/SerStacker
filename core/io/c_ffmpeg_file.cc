@@ -418,7 +418,7 @@ static void ensure_ffmpeg_initialized()
     while ( (iformat = av_iformat_next(iformat)) ) {
       if ( iformat->name ) {
         if ( !iformat->extensions ) {
-          g_supported_input_formats.emplace_back(iformat->name);
+          g_supported_input_formats.emplace_back(ssprintf(".%s", iformat->name));
         }
         else {
 
@@ -426,25 +426,25 @@ static void ensure_ffmpeg_initialized()
 
           tok = strtok(strcpy(buf, iformat->extensions), delims);
           while ( tok ) {
-            g_supported_input_formats.emplace_back(tok);
+            g_supported_input_formats.emplace_back(ssprintf(".%s", tok));
             tok = strtok(NULL, delims);
           }
         }
       }
     }
     // for unclear reason the 'ogv' suffix is missing in archlinux version of ffmpeg
-    g_supported_input_formats.emplace_back("ogv");
+    g_supported_input_formats.emplace_back(".ogv");
 #else
     opaque = nullptr;
     while ( (iformat = av_demuxer_iterate(&opaque)) ) {
       if ( iformat->name ) {
 
-        //        CF_DEBUG("iformat: '%s' mime_type='%s' extensions ='%s'", iformat->name,
-        //            iformat->mime_type ? iformat->mime_type : "(null)",
-        //            iformat->extensions ? iformat->extensions : "(null)");
+      //        CF_DEBUG("iformat: '%s' mime_type='%s' extensions ='%s'", iformat->name,
+      //            iformat->mime_type ? iformat->mime_type : "(null)",
+      //            iformat->extensions ? iformat->extensions : "(null)");
 
         if ( !iformat->extensions ) {
-          g_supported_input_formats.emplace_back(iformat->name);
+          g_supported_input_formats.emplace_back(ssprintf(".%s", iformat->name));
         }
         else {
 
@@ -452,7 +452,7 @@ static void ensure_ffmpeg_initialized()
 
           tok = strtok(strcpy(buf, iformat->extensions), delims);
           while ( tok ) {
-            g_supported_input_formats.emplace_back(tok);
+            g_supported_input_formats.emplace_back(ssprintf(".%s", tok));
             tok = strtok(NULL, delims);
           }
         }
@@ -460,7 +460,7 @@ static void ensure_ffmpeg_initialized()
     }
 
     // for unclear reason the 'ogv' suffix is missing in archlinux version of ffmpeg
-    g_supported_input_formats.emplace_back("ogv");
+    g_supported_input_formats.emplace_back(".ogv");
 
 #endif
 

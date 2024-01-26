@@ -621,7 +621,7 @@ void QThumbnailsView::extractMissingThumbiails()
           item->whatsThis();
 
       const QString suffix =
-          QFileInfo(filename).suffix();
+          QString(".%1").arg(QFileInfo(filename).suffix());
 
       bool is_textfle = false;
       bool is_plyfile = false;
@@ -632,6 +632,8 @@ void QThumbnailsView::extractMissingThumbiails()
       else if ( isPlyFileSuffix(suffix) ) {
         is_plyfile = true;
       }
+
+      // CF_DEBUG("is_plyfile=%d", is_plyfile);
 
 
       if ( is_textfle ) {

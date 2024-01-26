@@ -12,7 +12,7 @@
 
 c_video_frame::c_video_frame()
 {
-  add_display_channel(PIXEL_VALUE, "PIXEL_VALUE",
+  add_display_channel("PIXEL_VALUE",
       "PIXEL_VALUE",
       -1, -1);
 
@@ -32,7 +32,8 @@ void c_video_frame::get_output_mask(cv::OutputArray output_mask)
   }
 }
 
-bool c_video_frame::get_display_data(DataViewType * selectedViewType, int selectedDisplayId,
+bool c_video_frame::get_display_data(DataViewType * selectedViewType,
+    const std::string & channelName,
     cv::OutputArray output_image,
     cv::OutputArray output_data,
     cv::OutputArray output_mask)

@@ -9,22 +9,22 @@
 #include <core/proc/histogram.h>
 #include <core/proc/minmax.h>
 
-namespace  {
-  enum DISPLAY_TYPE {
-    DISPLAY_PIXEL_VALUE
-  };
-}  // namespace
+//namespace  {
+//  enum DISPLAY_TYPE {
+//    DISPLAY_PIXEL_VALUE
+//  };
+//}  // namespace
+////
+//template<>
+//const c_enum_member* members_of<DISPLAY_TYPE>()
+//{
+//  static const c_enum_member members[] = {
+//      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
+//      { DISPLAY_PIXEL_VALUE }
+//  };
 //
-template<>
-const c_enum_member* members_of<DISPLAY_TYPE>()
-{
-  static const c_enum_member members[] = {
-      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
-      { DISPLAY_PIXEL_VALUE }
-  };
-
-  return members;
-}
+//  return members;
+//}
 
 
 QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr & processor, QObject * parent) :
@@ -75,24 +75,30 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
       });
 
 
-  QMtfDisplay::displayChannel_ =
-      DISPLAY_PIXEL_VALUE;
-
-  addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
+  QMtfDisplay::displayChannel_ = "PIXEL_VALUE";
+  addDisplay("PIXEL_VALUE", -1, -1);
 }
 
-const c_enum_member * QMtfRoutineDisplaySettings::displayChannels() const
+QStringList QMtfRoutineDisplaySettings::displayChannels() const
 {
-  return members_of<DISPLAY_TYPE>();
+  QStringList sl;
+
+  for ( const auto & p : displays_ ) {
+    sl.append(p.first);
+  }
+
+  return sl;
+
+  //return members_of<DISPLAY_TYPE>();
 }
 
-void QMtfRoutineDisplaySettings::setDisplayChannel(int /*v*/)
+void QMtfRoutineDisplaySettings::setDisplayChannel(const QString & /*v*/)
 {
 }
 
-int QMtfRoutineDisplaySettings::displayChannel() const
+const QString & QMtfRoutineDisplaySettings::displayChannel() const
 {
-  return DISPLAY_PIXEL_VALUE;
+  return displayChannel_;
 }
 
 void QMtfRoutineDisplaySettings::setColormap(COLORMAP /*v*/)

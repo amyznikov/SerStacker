@@ -8,7 +8,7 @@
 #include "c_vlo_input_source.h"
 
 c_vlo_input_source::c_vlo_input_source(const std::string & filename) :
-    base(c_input_source::VLO, filename)
+    base(/*c_input_source::VLO, */filename)
 {
 }
 
@@ -127,6 +127,8 @@ bool c_vlo_input_source::read(c_data_frame::sptr & output_frame)
   if( !vlo ) {
     output_frame.reset(vlo = new c_vlo_frame());
   }
+
+  vlo->cleanup();
 
   return vlo_.read(&vlo->current_scan_);
 }

@@ -350,6 +350,8 @@ bool QInputSourceView::openFile(const QString & abspath)
       return false;
     }
 
+    // CF_DEBUG("typeid(currentSource_)=%s",  typeid(*currentSource_.get()).name());
+
     currentSource_->set_input_options(&input_options_);
 
     startDisplay();
@@ -472,7 +474,6 @@ void QInputSourceView::closeCurrentSource()
   currentFrame_.reset();
 }
 
-
 void QInputSourceView::setViewType(DataViewType viewType)
 {
   if ( viewType != selectedViewType_ ) {
@@ -481,38 +482,32 @@ void QInputSourceView::setViewType(DataViewType viewType)
 
   if( currentFrame_ ) {
 
-    const std::map<int, DataDisplayChannel> & displayChannels =
-        currentFrame_->get_display_channels(selectedViewType_);
+    const auto & new_displays =
+        currentFrame_->displays();
 
+    auto & existing_displays =
+        this->displays_;
 
-    for( auto ii = displayParams_.begin(); ii != displayParams_.end(); ) {
-      if( displayChannels.find(ii->first) != displayChannels.end() ) {
+    for( auto ii = existing_displays.begin(); ii != existing_displays.end(); ) {
+      if( new_displays.find(ii->first.toStdString()) != new_displays.end() ) {
         ++ii;
       }
       else {
-        ii = displayParams_.erase(ii);
+        ii = existing_displays.erase(ii);
       }
     }
 
-    displayChannels_.clear();
+    for( auto ii = new_displays.begin(); ii != new_displays.end(); ++ii ) {
+      if( existing_displays.find(ii->first.c_str()) == existing_displays.end() ) {
 
-    for( auto ii = displayChannels.begin(); ii != displayChannels.end(); ++ii ) {
+        const auto & c =
+            ii->second;
 
-      const int displayId =
-          ii->first;
+        addDisplay(existing_displays, ii->first.c_str(),
+            c.minval,
+            c.maxval);
 
-      const DataDisplayChannel & c =
-          ii->second;
-
-      addDisplay(displayParams_, displayId,
-          c.minval,
-          c.maxval);
-
-      displayChannels_.add(
-          displayId,
-          c.name,
-          c.tooltip);
-
+      }
     }
 
     displayCurrentFrame();
@@ -522,32 +517,48 @@ void QInputSourceView::setViewType(DataViewType viewType)
 
 void QInputSourceView::displayCurrentFrame()
 {
+  // CF_DEBUG("displayCurrentFrame()");
+
   cv::Mat image, data, mask;
 
-  if ( displayChannels_.size() > 1 && !enum_member(displayChannel_, displayChannels_.data())  ) {
-    displayChannel_ = displayChannels_[0].value;
+  if( !displays_.empty() && displays_.find(displayChannel_) == displays_.end() ) {
+    displayChannel_ = displays_.begin()->first;
   }
 
   if( currentFrame_ ) {
 
-    currentFrame_->get_display_data(&selectedViewType_,
-        displayChannel(),
-        image, data, mask);
-  }
+    switch (selectedViewType_) {
 
-  switch (selectedViewType_) {
-    case DataViewType_Image:
-      setCurrentView(imageView_);
-      imageView_->inputImage() = image;
-      imageView_->inputMask() = mask;
-      imageView_->updateImage();
-      break;
-    case DataViewType_PointCloud:
-      setCurrentView(cloudView_);
-      cloudView_->setPoints(image, data, mask, false);
-      break;
-    default:
-      break;
+      case DataViewType_Image:
+
+        currentFrame_->get_display_data(&selectedViewType_,
+            displayChannel_.toStdString(),
+            image, data, mask);
+
+        setCurrentView(imageView_);
+        imageView_->inputImage() = image;
+        imageView_->inputMask() = mask;
+        imageView_->updateImage();
+        break;
+
+      case DataViewType_PointCloud:
+
+        currentFrame_->get_display_data(&selectedViewType_,
+            displayChannel_.toStdString(),
+            image, data, mask);
+
+        setCurrentView(cloudView_);
+        cloudView_->setPoints(image, data, mask, false);
+        break;
+
+      case DataViewType_TextFile:
+        setCurrentView(textView_);
+        textView_->showTextFile(currentFrame_->get_filename());
+        break;
+
+      default:
+        break;
+    }
   }
 
 }
@@ -607,10 +618,18 @@ bool QInputSourceView::applyColorMap(cv::InputArray displayImage, cv::InputArray
   return true;
 }
 
-const c_enum_member * QInputSourceView::displayChannels() const
-{
-  return displayChannels_.data();
-}
+//QStringList QInputSourceView::displayChannels() const
+//{
+//  QStringList sl;
+//
+//  for ( const auto & p : displays_ ) {
+//    sl.append(p.first);
+//  }
+//
+//  return sl;
+//
+//  //return displayChannels_.data();
+//}
 
 void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 {

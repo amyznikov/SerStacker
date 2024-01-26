@@ -28,7 +28,7 @@ public:
   bool read(c_data_frame::sptr & output_frame) override;
 
 protected:
-  c_video_input_source(enum source_type type, const std::string & filename);
+  c_video_input_source(/*enum source_type type, */const std::string & filename);
 };
 
 
@@ -168,7 +168,7 @@ protected:
   int curpos_ = -1;
 };
 
-#if HAVE_LIBRAW
+#ifdef HAVE_LIBRAW
 class c_raw_image_input_source :
     public c_video_input_source
 {

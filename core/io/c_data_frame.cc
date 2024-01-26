@@ -14,6 +14,7 @@ const c_enum_member* members_of<DataViewType>()
   static const c_enum_member members[] = {
       { DataViewType_Image, "Image", "Image" },
       { DataViewType_PointCloud, "PointCloud", "PointCloud" },
+      { DataViewType_TextFile, "TextFile", "TextFile" },
       { DataViewType_Image },
   };
 
@@ -35,17 +36,16 @@ const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
   return members;
 }
 
-void c_data_frame::add_display_channel(int id, const std::string & name,
+void c_data_frame::add_display_channel(const std::string & name,
     const std::string & tooltip,
     double minval,
     double maxval)
 {
   const DataDisplayChannel c = {
-      .name = name,
       .tooltip = tooltip,
       .minval = minval,
       .maxval = maxval
   };
 
-  displayChanenls_.emplace(id, c);
+  displays_.emplace(name, c);
 }

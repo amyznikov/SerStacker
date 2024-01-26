@@ -27,10 +27,10 @@ public:
   QMtfRoutineDisplaySettings(const c_mtf_routine::ptr & processor,
       QObject * parent = nullptr);
 
-  const c_enum_member * displayChannels() const override;
+  QStringList displayChannels() const override;
 
-  void setDisplayChannel(int v) override;
-  virtual int displayChannel() const override;
+  void setDisplayChannel(const QString & v) override;
+  const QString & displayChannel() const override;
 
   void setMtfInputRange(double min, double max) override;
   void getMtfInputRange(double * min, double * max) const override;

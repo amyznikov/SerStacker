@@ -13,7 +13,7 @@ QSearchImageFiles::QSearchImageFiles()
 {
   supported_suffixes_ = getSupportedThumbnailsExtensions();
   for ( QString & s : supported_suffixes_ ) {
-    s = QString("*.%1").arg(s);
+    s = QString("*%1").arg(s);
   }
 }
 

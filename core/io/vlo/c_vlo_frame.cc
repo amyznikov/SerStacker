@@ -112,36 +112,36 @@ static bool dup_channels(const cv::Mat & src, cv::Mat & dst, int cn)
 
 c_vlo_frame::c_vlo_frame()
 {
-  add_display_channel(AMBIENT, "AMBIENT",
+  add_display_channel("AMBIENT",
       "AMBIENT",
       0,
       65535);
 
-  add_display_channel(DISTANCES, "DISTANCES",
+  add_display_channel("DISTANCES",
       "3-channel 2D Image with distances to points",
       0, 30000);
 
-  add_display_channel(DEPTH, "DEPTH",
+  add_display_channel("DEPTH",
       "3-channel 2D Image with depths (horizontal distances) to points",
       0, 30000);
 
-  add_display_channel(HEIGHT, "HEIGHT",
+  add_display_channel("HEIGHT",
       "3-channel 2D Image with height (vertical 3D coordinate) of points",
       -100, 1000);
 
-  add_display_channel(AREA, "AREA",
+  add_display_channel("AREA",
       "3-channel 2D Image with pixel intensities measured as AREA",
       0, 10000);
 
-  add_display_channel(PEAK, "PEAK",
+  add_display_channel("PEAK",
       "3-channel 2D Image with pixel intensities measured as PEAK",
       0, 135);
 
-  add_display_channel(WIDTH, "WIDTH",
+  add_display_channel("WIDTH",
       "3-channel 2D Image with pixel intensities measured as WIDTH",
       0, 100);
 
-  add_display_channel(SELECTION_MASK, "SELECTION_MASK",
+  add_display_channel("SELECTION_MASK",
       "1- or 3-channel binary 2D Image representing current selection mask",
       0, 255);
 
@@ -149,9 +149,10 @@ c_vlo_frame::c_vlo_frame()
   viewTypes_.emplace(DataViewType_PointCloud);
 }
 
-bool c_vlo_frame::get_display_data(DataViewType * viewType, int displayId,
+bool c_vlo_frame::get_display_data(DataViewType * viewType,
+    const std::string & channelName,
     cv::OutputArray output_image,
-    cv::OutputArray output_colors3d,
+    cv::OutputArray output_colors,
     cv::OutputArray output_mask)
 {
   switch (*viewType) {
@@ -165,130 +166,144 @@ bool c_vlo_frame::get_display_data(DataViewType * viewType, int displayId,
 
   if( output_image.needed() ) {
 
-    switch (displayId) {
+    /////////////////////////////////////////////////////////////////////////////////////////////
+    if( channelName == "SELECTION_MASK" ) {
 
-      /////////////////////////////////////////////////////////////////////////////////////////////
-      case SELECTION_MASK:
+      switch (*viewType) {
+        case DataViewType_Image:
+          selection_mask_.copyTo(output_image);
+          break;
 
-        switch (*viewType) {
-          case DataViewType_Image:
-            selection_mask_.copyTo(output_image);
-            break;
+        case DataViewType_PointCloud:
+          if( selection_mask_.empty() ) {
+            output_image.release();
+          }
+          else {
 
-          case DataViewType_PointCloud:
-            if( selection_mask_.empty() ) {
-              output_image.release();
-            }
-            else {
+            std::vector<cv::Vec3f> points;
+            std::vector<cv::Vec3b> colors;
 
-              std::vector<cv::Vec3f> points;
-              std::vector<cv::Vec3b> colors;
+            points.reserve(vlo_scan_size(current_scan_).area());
+            colors.reserve(vlo_scan_size(current_scan_).area());
 
-              points.reserve(vlo_scan_size(current_scan_).area());
-              colors.reserve(vlo_scan_size(current_scan_).area());
+            get_vlo_points3d(current_scan_, selection_mask_,
+                [&points, &colors](int l, int s, int e, double x, double y, double z, const auto & echo) {
+                  points.emplace_back((float)x, (float)y, (float)z);
+                  colors.emplace_back(255 * (e == 0), 255 * (e == 1), 255 * (e == 2));
+                });
 
-              get_vlo_points3d(current_scan_, selection_mask_,
-                  [&points, &colors](int l, int s, int e, double x, double y, double z, const auto & echo) {
-                    points.emplace_back((float)x, (float)y, (float)z);
-                    colors.emplace_back(255 * (e == 0), 255 * (e == 1), 255 * (e == 2));
-                  });
-
-              cv::Mat(points).copyTo(output_image);
-              cv::Mat(colors).copyTo(output_colors3d);
-            }
-            break;
-        }
-
-        break;
-
-        /////////////////////////////////////////////////////////////////////////////////////////////
-      case AMBIENT:
-        case DISTANCES:
-        case DEPTH:
-        case HEIGHT:
-        case AREA:
-        case PEAK:
-        case WIDTH: {
-
-        cv::Mat image =
-            get_vlo_image(current_scan_,
-                (VLO_DATA_CHANNEL) displayId,
-                selection_mask_);
-
-        if( *viewType == DataViewType_Image ) {
-          output_image.move(image);
-        }
-        else if( *viewType == DataViewType_PointCloud ) {
-
-          get_vlo_point_cloud(current_scan_, image,
-              output_image,
-              output_colors3d,
-              selection_mask_);
-
-        }
-
-        break;
+            cv::Mat(points).copyTo(output_image);
+            cv::Mat(colors).copyTo(output_colors);
+          }
+          break;
       }
 
-      default:
-        break;
-    }
-
-  }
-
-  return true;
-}
-
-bool c_vlo_frame::get_image(int id, cv::OutputArray output_image, cv::OutputArray output_mask)
-{
-  DataViewType viewType =
-      DataViewType_Image;
-
-  bool fOk =
-      get_display_data(&viewType, id,
-          output_image,
-          cv::noArray(),
-          output_mask);
-
-  if ( !fOk ) {
-    CF_ERROR("get_display_data() fails");
-  }
-
-  if ( output_mask.needed() ) {
-
-    if ( selection_mask_.empty() ) {
-      output_mask.release();
-    }
-    else if ( selection_mask_.channels() == 1 ) {
-      selection_mask_.copyTo(output_mask);
     }
     else {
-      reduce_color_channels(selection_mask_, output_mask,
-          cv::REDUCE_MAX);
+
+      VLO_DATA_CHANNEL vloChannel;
+
+      if( channelName == "AMBIENT" ) {
+        vloChannel = VLO_DATA_CHANNEL_AMBIENT;
+      }
+      else if( channelName == "DISTANCES" ) {
+        vloChannel = VLO_DATA_CHANNEL_DISTANCES;
+      }
+      else if( channelName == "DEPTH" ) {
+        vloChannel = VLO_DATA_CHANNEL_DEPTH;
+      }
+      else if( channelName == "HEIGHT" ) {
+        vloChannel = VLO_DATA_CHANNEL_HEIGHT;
+      }
+      else if( channelName == "AREA" ) {
+        vloChannel = VLO_DATA_CHANNEL_AREA;
+      }
+      else if( channelName == "PEAK" ) {
+        vloChannel = VLO_DATA_CHANNEL_PEAK;
+      }
+      else if( channelName == "WIDTH" ) {
+        vloChannel = VLO_DATA_CHANNEL_WIDTH;
+      }
+      else {
+        vloChannel = VLO_DATA_CHANNEL_AMBIENT;
+      }
+
+      /////////////////////////////////////////////////////////////////////////////////////////////
+
+      cv::Mat image =
+          get_vlo_image(current_scan_,
+              vloChannel,
+              selection_mask_);
+
+      if( *viewType == DataViewType_Image ) {
+        output_image.move(image);
+      }
+      else if( *viewType == DataViewType_PointCloud ) {
+
+        get_vlo_point_cloud(current_scan_, image,
+            output_image,
+            output_colors,
+            selection_mask_);
+
+      }
+
     }
 
   }
 
   return true;
 }
-
-bool c_vlo_frame::get_point_cloud(int id, cv::OutputArray output_points, cv::OutputArray output_colors)
-{
-  DataViewType viewType =
-      DataViewType_PointCloud;
-
-  bool fOk =
-      get_display_data(&viewType, id,
-          output_points,
-          output_colors,
-          cv::noArray());
-
-  if ( !fOk ) {
-    CF_ERROR("get_display_data() fails");
-  }
-
-  return true;
-}
+//
+//bool c_vlo_frame::get_image(int id, cv::OutputArray output_image, cv::OutputArray output_mask)
+//{
+//  DataViewType viewType =
+//      DataViewType_Image;
+//
+//  bool fOk =
+//      get_display_data(&viewType, id,
+//          output_image,
+//          cv::noArray(),
+//          output_mask);
+//
+//  if ( !fOk ) {
+//    CF_ERROR("get_display_data() fails");
+//  }
+//
+//  if ( output_mask.needed() ) {
+//
+//    if ( selection_mask_.empty() ) {
+//      output_mask.release();
+//    }
+//    else if ( selection_mask_.channels() == 1 ) {
+//      selection_mask_.copyTo(output_mask);
+//    }
+//    else {
+//      reduce_color_channels(selection_mask_, output_mask,
+//          cv::REDUCE_MAX);
+//    }
+//
+//  }
+//
+//  return true;
+//}
+//
+//bool c_vlo_frame::get_point_cloud(int id, cv::OutputArray output_points, cv::OutputArray output_colors)
+//{
+//  DataViewType viewType =
+//      DataViewType_PointCloud;
+//
+//  bool fOk =
+//      get_display_data(&viewType, id,
+//          output_points,
+//          output_colors,
+//          cv::noArray());
+//
+//  if ( !fOk ) {
+//    CF_ERROR("get_display_data() fails");
+//  }
+//
+//  return true;
+//}
 
 void c_vlo_frame::update_selection(cv::InputArray mask,
     SELECTION_MASK_MODE mode)

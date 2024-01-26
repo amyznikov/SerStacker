@@ -279,8 +279,8 @@ QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
     Base("", cloudView),
     cloudView_(cloudView)
 {
-  QMtfDisplay::displayChannel_ = DISPLAY_PIXEL_VALUE;
-  QMtfDisplay::addDisplay(DISPLAY_PIXEL_VALUE, 0, 255);
+  QMtfDisplay::displayChannel_ = "PIXEL_VALUE";
+  QMtfDisplay::addDisplay(QMtfDisplay::displayChannel_, 0, 255);
 }
 
 QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
@@ -288,9 +288,17 @@ QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
   return cloudView_;
 }
 
-const c_enum_member * QCloudViewMtfDisplay::displayChannels() const
+QStringList QCloudViewMtfDisplay::displayChannels() const
 {
-  return members_of<DISPLAY_TYPE>();
+  QStringList sl;
+
+  for ( const auto & p : displays_ ) {
+    sl.append(p.first);
+  }
+
+  return sl;
+
+  //return members_of<DISPLAY_TYPE>();
 }
 
 void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) const

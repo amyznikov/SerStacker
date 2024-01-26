@@ -93,12 +93,12 @@ QMtfControl::QMtfControl(QWidget * parent) :
   topToolbar_ctl->setIconSize(QSize(16, 16));
 
 
-  displayType_ctl = new QComboBox(this);
-  displayType_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-  displayType_ctl->setToolTip("Select data to visualize");
-  topToolbar_ctl->addWidget(displayType_ctl);
+  displayChannel_ctl = new QComboBox(this);
+  displayChannel_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  displayChannel_ctl->setToolTip("Select data to visualize");
+  topToolbar_ctl->addWidget(displayChannel_ctl);
 
-  connect(displayType_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+  connect(displayChannel_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
       this, &ThisClass::onDisplayTypeCurrentItemChanged);
 
   inputDataRange_ctl = new QNumericBox(this);
@@ -279,32 +279,19 @@ void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
   }
 
   displaySettings_ = displaySettings;
-  displayType_ctl->clear();
+  displayChannel_ctl->clear();
 
   if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
 
-    const c_enum_member * displayType =
-        displaySettings_->displayChannels();
-
-    for ( ; !displayType->name.empty(); ++ displayType ) {
-
-      displayType_ctl->addItem(displayType->name.c_str(),
-          displayType->value);
-
-    }
+    displayChannel_ctl->addItems(displaySettings_->displayChannels());
 
     connect(qobj, SIGNAL(displayImageChanged()),
         this, SLOT(updateHistogramLevels()),
         Qt::QueuedConnection);
-
-    //    connect(displaySettings_, &QMtfDisplay::displayImageChanged,
-    //        this, &ThisClass::updateHistogramLevels,
-    //        Qt::QueuedConnection);
-
-    updateHistogramLevels();
   }
 
   updateControls();
+  updateHistogramLevels();
 }
 
 IMtfDisplay * QMtfControl::displaySettings() const
@@ -469,9 +456,13 @@ void QMtfControl::onColormapCtlClicked()
 void QMtfControl::onDisplayTypeCurrentItemChanged()
 {
   if( displaySettings_ && !updatingControls() ) {
-    displaySettings_->setDisplayChannel(displayType_ctl->currentData().toInt());
+
+    c_update_controls_lock lock(this);
+
+    // CF_DEBUG("C displaySettings_->setDisplayChannel()");
+    displaySettings_->setDisplayChannel(displayChannel_ctl->currentText());
     displaySettings_->saveParameters();
-    updateControls();
+    //updateControls();
   }
 }
 
@@ -643,8 +634,12 @@ void QMtfControl::onupdatecontrols()
 
     double imin=-1, imax=-1, shadows, highlights, midtones;
 
-    displayType_ctl->setCurrentIndex(displayType_ctl->findData(
-        displaySettings_->displayChannel()));
+    const QString & displayChannel = displaySettings_->displayChannel();
+    int idx = displayChannel_ctl->findText(displayChannel);
+
+    // CF_DEBUG("displayChannel='%s' idx=%d", displayChannel.toUtf8().constData(), idx);
+
+    displayChannel_ctl->setCurrentIndex(idx);
 
     displaySettings_->getMtfInputRange(&imin, &imax);
 

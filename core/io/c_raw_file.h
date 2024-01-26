@@ -10,7 +10,7 @@
 
 #include "debayer.h"
 
-#if HAVE_LIBRAW
+#ifdef HAVE_LIBRAW
 
 #include <libraw/libraw.h>
 

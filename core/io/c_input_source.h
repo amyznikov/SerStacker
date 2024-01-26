@@ -20,33 +20,13 @@ public:
   typedef c_input_source this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  enum source_type
-  {
-    UNKNOWN = 0,
-    SER = 1,
-#if HAVE_CFITSIO
-    FITS = 2,
-#endif
-    MOVIE = 3,
-    REGULAR_IMAGE = 4,
-#if HAVE_LIBRAW
-    RAW_IMAGE = 5,
-#endif
-    CAMERA = 6,
-    VLO = 7,
-  };
-
   enum OUTPUT_TYPE {
     OUTPUT_TYPE_IMAGE,
     OUTPUT_TYPE_CLOUD3D
   };
 
   static sptr create(const std::string & filename);
-  static sptr create(source_type type, const std::string & filename);
   static sptr open(const std::string & filename);
-
-  static enum source_type suggest_source_type(
-      const std::string & filename);
 
   const std::string & filename() const
   {
@@ -56,11 +36,6 @@ public:
   const char * cfilename() const
   {
     return filename_.c_str();
-  }
-
-  enum source_type type() const
-  {
-    return type_;
   }
 
   int size() const
@@ -144,10 +119,9 @@ public:
 
 
 protected:
-  c_input_source(enum source_type type, const std::string & filename);
+  c_input_source(const std::string & filename);
 
   std::string filename_;
-  enum source_type type_;
   int size_ = 0;
   int global_pos_ = 0;
   bool enabled_ = true;

@@ -18,20 +18,22 @@ enum DataViewType
 {
   DataViewType_Image,
   DataViewType_PointCloud,
+  DataViewType_TextFile,
 };
 
 struct DataDisplayChannel
 {
-  std::string name;
   std::string tooltip;
   double minval, maxval;
 };
+
 
 class c_data_frame
 {
 public:
   typedef c_data_frame this_class;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::map<std::string, DataDisplayChannel> DisplayMap;
 
   enum SELECTION_MASK_MODE
   {
@@ -50,12 +52,13 @@ public:
     return viewTypes_;
   }
 
-  const std::map<int, DataDisplayChannel> & get_display_channels(DataViewType selectedViewType)
+  const DisplayMap & displays() const
   {
-    return displayChanenls_;
+    return displays_;
   }
 
-  virtual bool get_display_data(DataViewType * selectedViewType, int selectedDisplayId,
+  virtual bool get_display_data(DataViewType * selectedViewType,
+      const std::string & channelName,
       cv::OutputArray image,
       cv::OutputArray data,
       cv::OutputArray mask)
@@ -68,42 +71,42 @@ public:
     return "";
   }
 
-  virtual bool get_text(int id, std::string & text)
-  {
-    return false;
-  }
-
-  virtual bool get_image(int id, cv::OutputArray image,
-      cv::OutputArray mask = cv::noArray())
-  {
-    return false;
-  }
-
-  virtual bool get_point_cloud(int id, cv::OutputArray points,
-      cv::OutputArray colors)
-  {
-    return false;
-  }
-
-  virtual bool get_structured_point_cloud(int id, cv::OutputArray points,
-      cv::OutputArray colors)
-  {
-    return false;
-  }
+//  virtual bool get_text(int id, std::string & text)
+//  {
+//    return false;
+//  }
+//
+//  virtual bool get_image(int id, cv::OutputArray image,
+//      cv::OutputArray mask = cv::noArray())
+//  {
+//    return false;
+//  }
+//
+//  virtual bool get_point_cloud(int id, cv::OutputArray points,
+//      cv::OutputArray colors)
+//  {
+//    return false;
+//  }
+//
+//  virtual bool get_structured_point_cloud(int id, cv::OutputArray points,
+//      cv::OutputArray colors)
+//  {
+//    return false;
+//  }
 
   virtual void cleanup()
   {
   }
 
 protected:
-  void add_display_channel(int id, const std::string & name,
+  void add_display_channel(const std::string & name,
       const std::string & tooltip,
       double minval,
       double maxval);
 
 protected:
   std::set<DataViewType> viewTypes_;
-  std::map<int, DataDisplayChannel> displayChanenls_;
+  DisplayMap displays_;
 };
 
 #endif /* __c_cloudview_data_frame_h__ */

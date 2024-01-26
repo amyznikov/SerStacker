@@ -22,7 +22,7 @@ QProgressImageViewer::QProgressImageViewer(QWidget * parent) :
 {
   scene()->setBackgroundBrush(Qt::darkGray);
 
-  addDisplay(displayChannel_ = 0, -1, -1);
+  addDisplay(displayChannel_ = "0", -1, -1);
 
   setDisplayFunction(this);
 
@@ -125,15 +125,15 @@ bool QProgressImageViewer::applyColorMap(cv::InputArray displayImage, cv::InputA
 }
 
 
-const c_enum_member * QProgressImageViewer::displayChannels() const
-{
-  static const c_enum_member members[] = {
-      {0, "VALUE", "PIXEL VALUE"},
-      {0}
-  };
-
-  return members;
-}
+//const QStringList QProgressImageViewer::displayChannels() const
+//{
+//  static const c_enum_member members[] = {
+//      {0, "VALUE", "PIXEL VALUE"},
+//      {0}
+//  };
+//
+//  return members;
+//}
 
 void QProgressImageViewer::getInputDataRange(double * minval, double * maxval) const
 {

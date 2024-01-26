@@ -9,6 +9,8 @@
 //#include "load_image.h"
 #include "video/c_video_input_source.h"
 #include "vlo/c_vlo_input_source.h"
+#include "text/c_textfile_input_source.h"
+#include "ply/c_ply_input_source.h"
 #include <core/ssprintf.h>
 #include <core/readdir.h>
 #include <mutex>
@@ -31,8 +33,8 @@ const c_enum_member* members_of<c_input_source::OUTPUT_TYPE>()
 
 
 
-c_input_source::c_input_source(enum source_type type, const std::string & filename)
-  : type_(type), filename_(filename)
+c_input_source::c_input_source(const std::string & filename) :
+    filename_(filename)
 {
 }
 
@@ -67,13 +69,12 @@ int c_input_source::suggest_bbp(int ddepth)
   return 0;
 }
 
-enum c_input_source::source_type c_input_source::suggest_source_type(
-    const std::string & filename)
+c_input_source::sptr c_input_source::create(const std::string & filename)
 {
-  enum source_type type = c_input_source::UNKNOWN;
+  const std::string suffix =
+      get_file_suffix(filename);
 
-  const std::string suffix = get_file_suffix(filename);
-  if ( !suffix.empty() ) {
+  if( !suffix.empty() ) {
 
     static const auto contains =
         [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {
@@ -87,87 +88,44 @@ enum c_input_source::source_type c_input_source::suggest_source_type(
           return false;
         };
 
-    if ( contains(c_ser_input_source::suffixes(), suffix) ) {
-      type = c_input_source::SER;
+
+    c_input_source::sptr obj;
+
+    if( contains(c_ser_input_source::suffixes(), suffix) && (obj = c_ser_input_source::create(filename)) ) {
+      return obj;
     }
-    else if ( contains(c_vlo_input_source::suffixes(), suffix) ) {
-      type = c_input_source::VLO;
+
+    if( contains(c_vlo_input_source::suffixes(), suffix) && (obj = c_vlo_input_source::create(filename)) ) {
+      return obj;
     }
+
+    if( contains(c_textfile_input_source::suffixes(), suffix) && (obj = c_textfile_input_source::create(filename)) ) {
+      return obj;
+    }
+
+    if( contains(c_ply_input_source::suffixes(), suffix) && (obj = c_ply_input_source::create(filename)) ) {
+      return obj;
+    }
+
 #if HAVE_CFITSIO
-    else if ( contains(c_fits_input_source::suffixes(), suffix) ) {
-      type = c_input_source::FITS;
+    if( contains(c_fits_input_source::suffixes(), suffix) && (obj = c_fits_input_source::create(filename)) ) {
+      return obj;
     }
 #endif // HAVE_CFITSIO
-    else if ( contains(c_movie_input_source::suffixes(), suffix) ) {
-      type = c_input_source::MOVIE;
+
+    if( contains(c_movie_input_source::suffixes(), suffix) && (obj = c_movie_input_source::create(filename)) ) {
+      return obj;
     }
-    else if ( contains(c_regular_image_input_source::suffixes(), suffix) ) {
-      type = c_input_source::REGULAR_IMAGE;
+
+    if( contains(c_regular_image_input_source::suffixes(), suffix) && (obj = c_regular_image_input_source::create(filename)) ) {
+      return obj;
     }
+
 #if HAVE_LIBRAW
-    else if ( contains(c_raw_image_input_source::suffixes(), suffix) ) {
-      type = c_input_source::RAW_IMAGE;
+    if( contains(c_raw_image_input_source::suffixes(), suffix) && (obj = c_raw_image_input_source::create(filename)) ) {
+      return obj;
     }
 #endif // HAVE_LIBRAW
-  }
-
-  return type;
-}
-
-c_input_source::sptr c_input_source::create(source_type type, const std::string & filename)
-{
-  c_input_source::sptr obj;
-
-  if ( !filename.empty() ) {
-
-    switch ( type ) {
-    case c_input_source::SER :
-      obj = c_ser_input_source::create(filename);
-      break;
-#if HAVE_CFITSIO
-    case c_input_source::FITS :
-      obj = c_fits_input_source::create(filename);
-      break;
-#endif // HAVE_CFITSIO
-    case c_input_source::MOVIE :
-      obj = c_movie_input_source::create(filename);
-      break;
-    case c_input_source::REGULAR_IMAGE :
-      obj = c_regular_image_input_source::create(filename);
-      break;
-#if HAVE_LIBRAW
-    case c_input_source::RAW_IMAGE :
-      obj = c_raw_image_input_source::create(filename);
-      break;
-#endif // HAVE_LIBRAW
-    case c_input_source::VLO :
-      obj = c_vlo_input_source::create(filename);
-      break;
-
-    default :
-      CF_ERROR("c_input_source: invalid source type = %d requested", type);
-      break;
-    }
-
-  }
-  return obj;
-}
-
-c_input_source::sptr c_input_source::create(const std::string & filename)
-{
-  enum source_type type =
-      suggest_source_type(filename);
-
-  if( type != c_input_source::UNKNOWN ) {
-
-    c_input_source::sptr source =
-        c_input_source::create(type, filename);
-
-    if( source ) {
-      source->load_badframes();
-    }
-
-    return source;
   }
 
   return nullptr;
@@ -176,7 +134,7 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
 c_input_source::sptr c_input_source::open(const std::string & filename)
 {
-  c_input_source::sptr obj = this_class::create(filename);
+  c_input_source::sptr obj = create(filename);
   if( obj && !obj->is_open() && !obj->open() ) {
     CF_ERROR("obj->open(filename='%s') fails", filename.c_str());
     obj.reset();

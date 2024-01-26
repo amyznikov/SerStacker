@@ -13,32 +13,30 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-namespace {
-  enum DISPLAY_TYPE {
-    DISPLAY_PIXEL_VALUE,
-  };
-}
-
-template<>
-const c_enum_member* members_of<DISPLAY_TYPE>()
-{
-  static const c_enum_member members[] = {
-      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
-      { DISPLAY_PIXEL_VALUE }
-  };
-
-  return members;
-}
+//namespace {
+//  enum DISPLAY_TYPE {
+//    DISPLAY_PIXEL_VALUE,
+//  };
+//}
+//
+//template<>
+//const c_enum_member* members_of<DISPLAY_TYPE>()
+//{
+//  static const c_enum_member members[] = {
+//      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
+//      { DISPLAY_PIXEL_VALUE }
+//  };
+//
+//  return members;
+//}
 
 
 QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageViewer, const QString & prefix) :
   QMtfDisplay(prefix, imageViewer),
   imageViewer_(imageViewer)
 {
-  QMtfDisplay::displayChannel_ =
-      DISPLAY_PIXEL_VALUE;
-
-  QMtfDisplay::addDisplay(DISPLAY_PIXEL_VALUE, -1, -1);
+  QMtfDisplay::displayChannel_ = "PIXEL_VALUE";
+  QMtfDisplay::addDisplay(QMtfDisplay::displayChannel_, -1, -1);
 }
 
 QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
@@ -46,10 +44,18 @@ QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
   return imageViewer_;
 }
 
-const c_enum_member * QImageViewMtfDisplayFunction::displayChannels() const
-{
-  return members_of<DISPLAY_TYPE>();
-}
+//QStringList QImageViewMtfDisplayFunction::displayChannels() const
+//{
+//  QStringList sl;
+//
+//  for ( const auto & p : displays_ ) {
+//    sl.append(p.first);
+//  }
+//
+//  return sl;
+//
+//  //return members_of<DISPLAY_TYPE>();
+//}
 
 void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {

@@ -32,7 +32,7 @@ void c_video_frame::get_output_mask(cv::OutputArray output_mask)
   }
 }
 
-bool c_video_frame::get_display_data(DataViewType * selectedViewType,
+bool c_video_frame::get_data(DataViewType * selectedViewType,
     const std::string & channelName,
     cv::OutputArray output_image,
     cv::OutputArray output_data,

@@ -47,6 +47,7 @@ protected Q_SLOTS:
   void onColormapCtlClicked();
   void onDisplayTypeCurrentItemChanged();
   void onInputDataRangeChanged();
+  void onDisplayChannelCustomContextMenuRequested(const QPoint &pos);
 
 protected:
   void onupdatecontrols() override;

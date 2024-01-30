@@ -149,7 +149,7 @@ c_vlo_frame::c_vlo_frame()
   viewTypes_.emplace(DataViewType_PointCloud);
 }
 
-bool c_vlo_frame::get_display_data(DataViewType * viewType,
+bool c_vlo_frame::get_data(DataViewType * viewType,
     const std::string & channelName,
     cv::OutputArray output_image,
     cv::OutputArray output_colors,
@@ -201,50 +201,81 @@ bool c_vlo_frame::get_display_data(DataViewType * viewType,
     }
     else {
 
-      VLO_DATA_CHANNEL vloChannel;
+      cv::Mat image, data, mask;
 
-      if( channelName == "AMBIENT" ) {
-        vloChannel = VLO_DATA_CHANNEL_AMBIENT;
-      }
-      else if( channelName == "DISTANCES" ) {
-        vloChannel = VLO_DATA_CHANNEL_DISTANCES;
-      }
-      else if( channelName == "DEPTH" ) {
-        vloChannel = VLO_DATA_CHANNEL_DEPTH;
-      }
-      else if( channelName == "HEIGHT" ) {
-        vloChannel = VLO_DATA_CHANNEL_HEIGHT;
-      }
-      else if( channelName == "AREA" ) {
-        vloChannel = VLO_DATA_CHANNEL_AREA;
-      }
-      else if( channelName == "PEAK" ) {
-        vloChannel = VLO_DATA_CHANNEL_PEAK;
-      }
-      else if( channelName == "WIDTH" ) {
-        vloChannel = VLO_DATA_CHANNEL_WIDTH;
-      }
-      else {
-        vloChannel = VLO_DATA_CHANNEL_AMBIENT;
+      if( !channelName.empty() ) {
+
+        const auto pos =
+            displayChannels_.find(channelName);
+
+        if( pos != displayChannels_.end() ) {
+          image = pos->second.image;
+          data = pos->second.data;
+        }
       }
 
-      /////////////////////////////////////////////////////////////////////////////////////////////
+      if( image.empty() ) {
 
-      cv::Mat image =
-          get_vlo_image(current_scan_,
-              vloChannel,
+        VLO_DATA_CHANNEL vloChannel;
+
+        if( channelName == "AMBIENT" ) {
+          vloChannel = VLO_DATA_CHANNEL_AMBIENT;
+        }
+        else if( channelName == "DISTANCES" ) {
+          vloChannel = VLO_DATA_CHANNEL_DISTANCES;
+        }
+        else if( channelName == "DEPTH" ) {
+          vloChannel = VLO_DATA_CHANNEL_DEPTH;
+        }
+        else if( channelName == "HEIGHT" ) {
+          vloChannel = VLO_DATA_CHANNEL_HEIGHT;
+        }
+        else if( channelName == "AREA" ) {
+          vloChannel = VLO_DATA_CHANNEL_AREA;
+        }
+        else if( channelName == "PEAK" ) {
+          vloChannel = VLO_DATA_CHANNEL_PEAK;
+        }
+        else if( channelName == "WIDTH" ) {
+          vloChannel = VLO_DATA_CHANNEL_WIDTH;
+        }
+        else if( channelName.empty() ) {
+          vloChannel = VLO_DATA_CHANNEL_AMBIENT;
+        }
+        else {
+          CF_ERROR("No such display channel : '%s'", channelName.c_str());
+          return false;
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        if( *viewType == DataViewType_Image ) {
+          image =
+              get_vlo_image(current_scan_,
+                  vloChannel,
+                  selection_mask_);
+        }
+        else if( *viewType == DataViewType_PointCloud ) {
+
+          get_vlo_point_cloud(current_scan_,
+              get_vlo_image(current_scan_,
+                  vloChannel,
+                  selection_mask_),
+              image,
+              data,
               selection_mask_);
+
+        }
+      }
 
       if( *viewType == DataViewType_Image ) {
         output_image.move(image);
       }
       else if( *viewType == DataViewType_PointCloud ) {
 
-        get_vlo_point_cloud(current_scan_, image,
-            output_image,
-            output_colors,
-            selection_mask_);
-
+        output_image.move(image);
+        output_colors.move(data);
       }
 
     }

@@ -483,7 +483,7 @@ void QInputSourceView::setViewType(DataViewType viewType)
   if( currentFrame_ ) {
 
     const auto & new_displays =
-        currentFrame_->displays();
+        currentFrame_->displayChannels();
 
     auto & existing_displays =
         this->displays_;
@@ -531,7 +531,7 @@ void QInputSourceView::displayCurrentFrame()
 
       case DataViewType_Image:
 
-        currentFrame_->get_display_data(&selectedViewType_,
+        currentFrame_->get_data(&selectedViewType_,
             displayChannel_.toStdString(),
             image, data, mask);
 
@@ -543,7 +543,7 @@ void QInputSourceView::displayCurrentFrame()
 
       case DataViewType_PointCloud:
 
-        currentFrame_->get_display_data(&selectedViewType_,
+        currentFrame_->get_data(&selectedViewType_,
             displayChannel_.toStdString(),
             image, data, mask);
 

@@ -58,7 +58,6 @@ public:
   void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-  ~c_math_expression_routine() override;
 
 
 protected:

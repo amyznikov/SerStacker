@@ -47,5 +47,39 @@ void c_data_frame::add_display_channel(const std::string & name,
       .maxval = maxval
   };
 
-  displays_.emplace(name, c);
+  displayChannels_.emplace(name, c);
+}
+
+bool c_data_frame::set_data(DataViewType viewType,
+    const std::string & channelName,
+    cv::InputArray image,
+    cv::InputArray data,
+    cv::InputArray mask)
+{
+  const auto pos =
+      displayChannels_.find(channelName);
+
+  if ( pos != displayChannels_.end() ) {
+
+    image.copyTo(pos->second.image);
+    data.copyTo(pos->second.data);
+    mask.copyTo(pos->second.mask);
+
+  }
+  else {
+
+    DataDisplayChannel c = {
+        .tooltip = "",
+        .minval = -1,
+        .maxval = -1
+    };
+
+    image.copyTo(c.image);
+    data.copyTo(c.data);
+    mask.copyTo(c.mask);
+
+    displayChannels_.emplace(channelName, c);
+  }
+
+  return true;
 }

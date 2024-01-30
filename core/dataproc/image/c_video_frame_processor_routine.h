@@ -50,10 +50,10 @@ protected:
       static c_class_factory class_factory_instance_; \
       return &class_factory_instance_; \
     } \
-    class_name(bool enabled = true) : \
+    class_name(bool enabled = false) : \
       base(class_factory_instance(), enabled) { \
     } \
-    static sptr create(bool enabled = true) { \
+    static sptr create(bool enabled = false) { \
         return sptr(new this_class(enabled)); \
     } \
 

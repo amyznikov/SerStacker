@@ -259,10 +259,10 @@ struct c_data_processor_routine_ctrl
       static c_class_factory class_factory_instance_; \
       return &class_factory_instance_; \
     } \
-    class_name(bool enabled = true) : \
+    class_name(bool enabled = false) : \
       base(class_factory_instance(), enabled) { \
     } \
-    static sptr create(bool enabled = true) { \
+    static sptr create(bool enabled = false) { \
         return sptr(new this_class(enabled)); \
     } \
 
@@ -369,7 +369,7 @@ protected:
   }
 
 protected:
-  c_data_frame_processor_routine(const class_factory * _class_factory, bool enabled = true) :
+  c_data_frame_processor_routine(const class_factory * _class_factory, bool enabled = false) :
     class_factory_(_class_factory), enabled_(enabled)
   {
   }

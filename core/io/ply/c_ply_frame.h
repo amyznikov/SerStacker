@@ -23,7 +23,7 @@ public:
 
   std::string get_filename() override;
 
-  bool get_display_data(DataViewType * selectedViewType,
+  bool get_data(DataViewType * selectedViewType,
       const std::string & channelName,
       cv::OutputArray image,
       cv::OutputArray data,

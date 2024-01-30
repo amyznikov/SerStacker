@@ -286,10 +286,6 @@ static void process_image(const cv::Mat & src, cv::Mat & dst, const c_math_expre
   }
 }
 
-c_math_expression_routine::~c_math_expression_routine()
-{
-}
-
 void c_math_expression_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
 {
   ADD_IMAGE_PROCESSOR_CTRL2(ctls, input_channel, "input from:", "");

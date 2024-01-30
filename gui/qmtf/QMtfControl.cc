@@ -267,6 +267,14 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
+
+  displayChannel_ctl->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+  connect(displayChannel_ctl, &QWidget::customContextMenuRequested,
+      this, &ThisClass::onDisplayChannelCustomContextMenuRequested);
+
+
+  //displayChannel_ctl->customContextMenuRequested(pos)
+
   updateControls();
 }
 
@@ -480,6 +488,34 @@ void QMtfControl::onInputDataRangeChanged()
   }
 }
 
+void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
+{
+  if( displayChannel_ctl->count() > 0 ) {
+
+    QMenu menu;
+
+    menu.addAction("Copy",
+        [this]() {
+          QApplication::clipboard()->setText(displayChannel_ctl->currentText());
+        });
+
+    menu.addAction("Copy All",
+        [this]() {
+
+          QString text;
+
+          for ( int i = 0, n = displayChannel_ctl->count(); i < n; ++i ) {
+            text.append(displayChannel_ctl->itemText(i));
+            text.append('\n');
+          }
+
+          QApplication::clipboard()->setText(text);
+        });
+
+    menu.exec(displayChannel_ctl->mapToGlobal(QPoint(pos.x() - 4, pos.y() - 4)));
+
+  }
+}
 
 
 void QMtfControl::findAutoHistogramClips()

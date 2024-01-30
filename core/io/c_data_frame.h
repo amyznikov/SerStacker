@@ -25,6 +25,7 @@ struct DataDisplayChannel
 {
   std::string tooltip;
   double minval, maxval;
+  cv::Mat image, data, mask;
 };
 
 
@@ -52,12 +53,12 @@ public:
     return viewTypes_;
   }
 
-  const DisplayMap & displays() const
+  const DisplayMap & displayChannels() const
   {
-    return displays_;
+    return displayChannels_;
   }
 
-  virtual bool get_display_data(DataViewType * selectedViewType,
+  virtual bool get_data(DataViewType * viewType,
       const std::string & channelName,
       cv::OutputArray image,
       cv::OutputArray data,
@@ -66,33 +67,16 @@ public:
     return false;
   }
 
+  virtual bool set_data(DataViewType viewType,
+      const std::string & channelName,
+      cv::InputArray image,
+      cv::InputArray data,
+      cv::InputArray mask);
+
   virtual std::string get_filename()
   {
     return "";
   }
-
-//  virtual bool get_text(int id, std::string & text)
-//  {
-//    return false;
-//  }
-//
-//  virtual bool get_image(int id, cv::OutputArray image,
-//      cv::OutputArray mask = cv::noArray())
-//  {
-//    return false;
-//  }
-//
-//  virtual bool get_point_cloud(int id, cv::OutputArray points,
-//      cv::OutputArray colors)
-//  {
-//    return false;
-//  }
-//
-//  virtual bool get_structured_point_cloud(int id, cv::OutputArray points,
-//      cv::OutputArray colors)
-//  {
-//    return false;
-//  }
 
   virtual void cleanup()
   {
@@ -106,7 +90,7 @@ protected:
 
 protected:
   std::set<DataViewType> viewTypes_;
-  DisplayMap displays_;
+  DisplayMap displayChannels_;
 };
 
 #endif /* __c_cloudview_data_frame_h__ */

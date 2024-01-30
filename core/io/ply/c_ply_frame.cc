@@ -38,7 +38,7 @@ std::string c_ply_frame::get_filename()
   return filename_;
 }
 
-bool c_ply_frame::get_display_data(DataViewType * selectedViewType,
+bool c_ply_frame::get_data(DataViewType * selectedViewType,
     const std::string & channelName,
     cv::OutputArray image,
     cv::OutputArray data,

@@ -136,6 +136,14 @@ void QGLView::onLoadParameters(QSettings & settings)
       settings.value("QGLView/foregroundColor_",
           foregroundColor_).value<QColor>();
 
+  showMainAxes_ =
+      settings.value("QGLView/showMainAxes",
+          showMainAxes_).toBool();
+
+  mainAxesLength_ =
+      settings.value("QGLView/mainAxesLength",
+          mainAxesLength_).toDouble();
+
   fromString(settings.value("QGLView/projection",
       toQString(viewParams_.projection)).toString().toStdString(),
       &viewParams_.projection);
@@ -164,6 +172,12 @@ void QGLView::onSaveParameters(QSettings & settings)
   settings.setValue("QGLView/foregroundColor_",
       foregroundColor_);
 
+  settings.setValue("QGLView/showMainAxes",
+      showMainAxes_);
+
+  settings.setValue("QGLView/mainAxesLength",
+      mainAxesLength_);
+
   settings.setValue("QGLView/projection",
       toQString(viewParams_.projection));
 
@@ -175,6 +189,8 @@ void QGLView::onSaveParameters(QSettings & settings)
 
   settings.setValue("QGLView/farPlane",
       viewParams_.farPlane);
+
+
 }
 
 
@@ -257,6 +273,17 @@ double QGLView::farPlane() const
   return viewParams_.farPlane;
 }
 
+void QGLView::setShowMainAxes(bool v)
+{
+  showMainAxes_ = v;
+  update();
+}
+
+bool QGLView::showMainAxes() const
+{
+  return showMainAxes_;
+}
+
 void QGLView::setMainAxesLength(double v)
 {
   mainAxesLength_ = v;
@@ -267,7 +294,6 @@ double QGLView::mainAxesLength() const
 {
   return mainAxesLength_;
 }
-
 
 void QGLView::setViewPoint(const QVector3D & eye)
 {
@@ -679,6 +705,8 @@ void QGLView::drawMainAxes()
   const qreal length =
       mainAxesLength_ > 0 ? mainAxesLength_ :
           0.005 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
+
+  CF_DEBUG("length=%g", length);
 
   drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 4);
   drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 4);

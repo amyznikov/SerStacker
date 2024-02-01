@@ -73,6 +73,9 @@ public:
   void setFarPlane(double v);
   double farPlane() const;
 
+  void setShowMainAxes(bool v);
+  bool showMainAxes() const;
+
   void setMainAxesLength(double v);
   double mainAxesLength() const;
 
@@ -158,6 +161,7 @@ protected:
   QVector3D viewTarget_ = QVector3D(0, 0, 0);
   QVector3D viewUpDirection_ = QVector3D(0, 0, 1);
   double mainAxesLength_ = 0; // auto
+  bool showMainAxes_ = true;
 
   QMatrix4x4 mview_;
   QMatrix4x4 mprojection_;

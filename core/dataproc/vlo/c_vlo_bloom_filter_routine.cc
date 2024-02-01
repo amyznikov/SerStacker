@@ -12,7 +12,9 @@ void c_vlo_bloom_filter_routine::get_parameters(std::vector<struct c_data_proces
 {
   ADD_DATA_PROCESSOR_CTRL(ctls, intensity_measure, "intensity_measure", "intensity measure");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, saturation_level, "saturation_level", "saturation level for 'peak' intensity");
+  ADD_DATA_PROCESSOR_CTRL(ctls, saturation_level, "saturation_level", "saturation level for selected intensity measure");
+  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_tolerance, "intensity_tolerance", "intensity tolerance for selected intensity measure");
+
   ADD_DATA_PROCESSOR_CTRL(ctls, min_distance, "min_distance", "min distance [cm]");
   ADD_DATA_PROCESSOR_CTRL(ctls, max_distance, "max_distance", "max distance [cm]");
   ADD_DATA_PROCESSOR_CTRL(ctls, distance_tolerance, "distance_tolerance", "distance tolerance [cm]");
@@ -34,6 +36,7 @@ bool c_vlo_bloom_filter_routine::serialize(c_config_setting settings, bool save)
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, intensity_measure);
     SERIALIZE_PROPERTY(settings, save, *this, saturation_level);
+    SERIALIZE_PROPERTY(settings, save, *this, intensity_tolerance);
 
     SERIALIZE_PROPERTY(settings, save, *this, min_distance);
     SERIALIZE_PROPERTY(settings, save, *this, max_distance);

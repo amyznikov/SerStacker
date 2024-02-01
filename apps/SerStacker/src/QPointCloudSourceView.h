@@ -142,6 +142,7 @@ protected:
   QNumericBox * nearPlane_ctl = nullptr;
   QNumericBox * farPlane_ctl = nullptr;
   QNumericBox * fov_ctl = nullptr;
+  QCheckBox *  showMainAxes_ctl = nullptr;
   QNumericBox * mainAxesLength_ctl = nullptr;
   QNumericBox * sceneTarget_ctl = nullptr;
   QNumericBox * upDirection_ctl = nullptr;

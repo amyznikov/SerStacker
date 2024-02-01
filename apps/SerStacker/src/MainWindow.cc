@@ -46,6 +46,7 @@
 
 #define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
 #define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
+#define ICON_cloud_view_XYZ     ":/serstacker/icons/XYZ.png"
 
 
 namespace serstacker {
@@ -1801,6 +1802,17 @@ void MainWindow::setupInputSequenceView()
                     cloudView->rotateToShowCloud();
                   }
                 }));
+
+        menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_XYZ),
+                "Show/Hide Main coordinate axes",
+                "Show/Hide Main coordinate axes",
+                cloudView->showMainAxes(),
+                [this](bool checked) {
+                  if ( is_visible(cloudView) ) {
+                    cloudView->setShowMainAxes(checked);
+                  }
+                }));
+
 
         menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_target),
                 "Auto Show Target point",

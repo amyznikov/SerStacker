@@ -519,7 +519,7 @@ void QGLCloudViewer::glPreDraw()
 
 void QGLCloudViewer::glPostDraw()
 {
-  if ( mainAxesLength_ >= 0 ) {
+  if ( showMainAxes_ ) {
     glColor3ub(200, 200, 200);
     drawMainAxes();
   }

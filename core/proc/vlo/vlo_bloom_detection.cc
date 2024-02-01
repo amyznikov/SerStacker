@@ -325,6 +325,9 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
    * analyze vertical intensity profile
    * */
 
+  const float IT =
+      opts.intensity_saturation_level - opts.intensity_tolerance;
+
   for( int s = 0; s < R.cols; ++s ) {
 
     // Check if this vertical column (slot index s) has at least one reflector
@@ -354,44 +357,35 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
     // Analyze each of extracted vertical wall
     for ( const c_wall_segment & w : walls ) {
 
-      for ( const cv::Point & sp : w.pts ) {
+      int rstart = -1, rend = -1;
 
+      for ( int p = 0, np = w.pts.size(); p < np; ++p ) {
+
+        const cv::Point & sp = w.pts[p];
         const int & l = sp.x; // image row (layer index)
         const int & e = sp.y; // image channel (echo index)
-        B[l][s][e] = 255;
 
+        if( I[l][s][e] >= IT ) {
+
+          if( rstart < 0 ) {
+            rstart = rend = p;
+          }
+          else {
+            rend = p;
+          }
+        }
       }
 
-//      std::vector<int> prepts;
-//      std::vector<int> refpts;
-//      std::vector<int> postpts;
-//
-//      ///
-//      const int np = w.pts.size();
-//      int p = 0;
-//
-//      // get pre-reflector part
-//      while (p < np && I[w.pts[p].x][s][w.pts[p].y] < opts.intensity_saturation_level - 1) {
-//        prepts.emplace_back(p);
-//      }
-//
-////      // get reflector part
-////        while (p < np && I[seg.pts[p].x][s][seg.pts[p].y] >= opts.intensity_saturation_level - 1) {
-////          ptsref.emplace_back(seg.pts[p]);
-////      }
-//
-//
-////      int nr = 0;
-////      int p = 0;
-////
-////
-////      // get reflector part
-////      while (p < np && I[seg.pts[p].x][s][seg.pts[p].y] >= opts.intensity_saturation_level - 1) {
-////        ptsref.emplace_back(seg.pts[p]);
-////      }
-
-
-
+      if( rend >= rstart ) {
+        for( int p = 0, np = w.pts.size(); p < np; ++p ) {
+          if( p < rstart || p > rend ) {
+            const cv::Point & sp = w.pts[p];
+            const int & l = sp.x; // image row (layer index)
+            const int & e = sp.y; // image channel (echo index)
+            B[l][s][e] = 255;
+          }
+        }
+      }
     }
   }
 

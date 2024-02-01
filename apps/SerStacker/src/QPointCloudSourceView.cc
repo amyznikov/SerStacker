@@ -163,7 +163,7 @@ void QGLPointCloudView::glPreDraw()
 
 void QGLPointCloudView::glPostDraw()
 {
-  if ( mainAxesLength_ >= 0 ) {
+  if ( showMainAxes_ ) {
     glColor3ub(200, 200, 200);
     drawMainAxes();
   }
@@ -486,6 +486,22 @@ QPointCloudViewSettings::QPointCloudViewSettings(QWidget * parent) :
             }
             return false;
           });
+
+  showMainAxes_ctl =
+       add_checkbox("Show Main Axes",
+           "Set true to show main XYZ coordinate axes",
+           [this](bool checked) {
+             if ( cloudView_ && cloudView_->showMainAxes() != checked ) {
+               cloudView_->setShowMainAxes(checked);
+             }
+           },
+           [this](bool * v) {
+             if ( cloudView_ ) {
+               * v = cloudView_->showMainAxes();
+               return true;
+             }
+             return false;
+           });
 
   mainAxesLength_ctl =
       add_numeric_box<double>("Main Axes size:",

@@ -100,6 +100,22 @@ QCloudViewSettings::QCloudViewSettings(QWidget * parent) :
             return false;
           });
 
+  showMainAxes_ctl =
+      add_checkbox("Show Main Axes",
+          "Set true to show main XYZ coordinate axes",
+          [this](bool checked) {
+            if ( cloudViewer_ && cloudViewer_->cloudView()->showMainAxes() != checked ) {
+              cloudViewer_->cloudView()->setShowMainAxes(checked);
+            }
+          },
+          [this](bool * v) {
+            if ( cloudViewer_ ) {
+              * v = cloudViewer_->cloudView()->showMainAxes();
+              return true;
+            }
+            return false;
+          });
+
   mainAxesLength_ctl =
       add_numeric_box<double>("Main Axes size:",
           "Set to 0 for auto, -1 for disable",

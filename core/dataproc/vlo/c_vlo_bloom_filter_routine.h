@@ -31,6 +31,16 @@ public:
     return opts_.intensity_saturation_level;
   }
 
+  void set_intensity_tolerance(double v)
+  {
+    opts_.intensity_tolerance = v;
+  }
+
+  double intensity_tolerance() const
+  {
+    return opts_.intensity_tolerance;
+  }
+
   void set_mask_mode(c_vlo_frame::SELECTION_MASK_MODE v)
   {
     mask_mode_ = v;

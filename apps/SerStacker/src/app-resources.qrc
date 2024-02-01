@@ -29,6 +29,8 @@
 	<file>icons/dark/cloud_view_target.png</file>
 	<file>icons/light/cloud_view_target.png</file>
 	
+	<file>icons/dark/XYZ.png</file>
+	<file>icons/light/XYZ.png</file>
 	
 </qresource>
 </RCC>

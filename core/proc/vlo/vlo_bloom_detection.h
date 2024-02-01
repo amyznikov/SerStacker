@@ -20,7 +20,8 @@ enum VLO_BLOOM_INTENSITY_MEASURE
 
 struct c_vlo_bloom_detection_options
 {
-  double intensity_saturation_level = 135; // for 'peak' intensity measure
+  double intensity_saturation_level = 132; // for 'peak' intensity measure
+  double intensity_tolerance = 10; // for 'peak' intensity measure
 
   double min_distance = 100; // [cm]
   double max_distance = 30000;// [cm]

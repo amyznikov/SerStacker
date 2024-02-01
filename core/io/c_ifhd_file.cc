@@ -173,8 +173,7 @@ bool c_ifhd_reader::open(const std::string & filename)
 
     file_streams_.emplace_back(stream);
 
-   // CF_DEBUG("stream[%zd]: name='%s' stream_index_count=%llu", i, stream.header.stream_name, (unsigned long long) stream.header.stream_index_count);
-
+    // CF_DEBUG("stream[%zd]: name='%s' stream_index_count=%llu", i, stream.header.stream_name, (unsigned long long) stream.header.stream_index_count);
   }
 
   if( fd_.seek(0, SEEK_SET) != 0 ) {

@@ -884,7 +884,7 @@ bool c_vlo_reader::open(const std::string & filename)
 
   ////////////
 
-  if( ifhd_.open(filename) && ifhd_.select_stream("ScaLa 3-PointCloud") ) {
+  if( ifhd_.open(filename) && ( ifhd_.select_stream("ScaLa 3-PointCloud") ) ) { // || ifhd_.select_stream("ScaLa 3 Cruise-PointCloud")
 
     const size_t payload_size =
         ifhd_.current_payload_size();

@@ -451,11 +451,13 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 
 
   ///////////////////////////////////////////////////////////////
+#if HAVE_LIBRAW
   if( match_suffix(suffix, c_raw_image_input_source::suffixes()) ) {
     if ( !(qimage = loadThumbnailImageFromRaw(pathFileName, thumb_size)).isNull() ) {
       return qimage;
     }
   }
+#endif
 
   ///////////////////////////////////////////////////////////////
 

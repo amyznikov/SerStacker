@@ -31,6 +31,8 @@ struct c_vlo_bloom_detection_options
   int min_segment_size = 15; // [points]
   int counts_threshold = 500; // normalized counter value
 
+  int rr_max_hole_size = 25; // max hole size between two consecutive reflectors
+
   VLO_BLOOM_INTENSITY_MEASURE intensity_measure = VLO_BLOOM_INTENSITY_PEAK;
 };
 

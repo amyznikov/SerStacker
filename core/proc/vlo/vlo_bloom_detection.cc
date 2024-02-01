@@ -294,7 +294,7 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 {
   cv::Mat3f I, D;
   cv::Mat3b R, B;
-  std::vector<c_wall_segment> segments;
+  std::vector<c_wall_segment> walls;
 
   /*
    * Create empty output bloom mask B
@@ -345,23 +345,53 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
     // If there are least one reflective point on this column then
     // extract all vertical walls having at least one reflective point
-    extract_vertical_walls(D, R, s, segments, opts);
-    if( segments.empty() ) {
+    extract_vertical_walls(D, R, s, walls, opts);
+    if( walls.empty() ) {
       continue; // strange ?
     }
 
 
     // Analyze each of extracted vertical wall
-    for ( const c_wall_segment & seg : segments ) {
+    for ( const c_wall_segment & w : walls ) {
 
+      for ( const cv::Point & sp : w.pts ) {
 
-      for ( const cv::Point & p : seg.pts ) {
-
-        const int & l = p.x; // image row (layer index)
-        const int & e = p.y; // image channel (echo index)
+        const int & l = sp.x; // image row (layer index)
+        const int & e = sp.y; // image channel (echo index)
         B[l][s][e] = 255;
 
       }
+
+//      std::vector<int> prepts;
+//      std::vector<int> refpts;
+//      std::vector<int> postpts;
+//
+//      ///
+//      const int np = w.pts.size();
+//      int p = 0;
+//
+//      // get pre-reflector part
+//      while (p < np && I[w.pts[p].x][s][w.pts[p].y] < opts.intensity_saturation_level - 1) {
+//        prepts.emplace_back(p);
+//      }
+//
+////      // get reflector part
+////        while (p < np && I[seg.pts[p].x][s][seg.pts[p].y] >= opts.intensity_saturation_level - 1) {
+////          ptsref.emplace_back(seg.pts[p]);
+////      }
+//
+//
+////      int nr = 0;
+////      int p = 0;
+////
+////
+////      // get reflector part
+////      while (p < np && I[seg.pts[p].x][s][seg.pts[p].y] >= opts.intensity_saturation_level - 1) {
+////        ptsref.emplace_back(seg.pts[p]);
+////      }
+
+
+
     }
   }
 

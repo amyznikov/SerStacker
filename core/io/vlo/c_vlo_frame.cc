@@ -274,8 +274,15 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
       }
       else if( *viewType == DataViewType_PointCloud ) {
 
-        output_image.move(image);
-        output_colors.move(data);
+
+        if ( image.size() == data.size() ) {
+          output_image.move(image);
+          output_colors.move(data);
+        }
+        else {
+          output_image.release();
+          output_colors.release();
+        }
       }
 
     }

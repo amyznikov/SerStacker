@@ -173,7 +173,8 @@ bool c_output_frame_writer::open(const std::string & filename,
     ffmpeg_suffixes.reserve(ffmpeg_formats.size());
 
     for (const std::string & fmt : ffmpeg_formats ) {
-      ffmpeg_suffixes.emplace_back("." + fmt);
+      // ffmpeg_suffixes.emplace_back("." + fmt);
+      ffmpeg_suffixes.emplace_back(fmt);
     }
   }
 

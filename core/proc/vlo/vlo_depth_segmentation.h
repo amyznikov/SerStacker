@@ -19,7 +19,7 @@ struct c_vlo_depth_segmentation_options
   double min_slope = -0.3; // [tan = m / pix]
   double max_slope = +0.3; // [tan = m / pix]
   double min_height = 0.4; // [m]
-  int counts_threshold= 500;
+  int counts_threshold = 500;
   int min_segment_size = 15;
 };
 

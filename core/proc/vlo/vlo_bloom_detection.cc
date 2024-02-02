@@ -28,16 +28,17 @@ namespace {
 struct c_wall_segment
 {
   std::vector<cv::Point> pts;
-  double d = 0;
-  double dd = 0;
+//  double d = 0;
+//  double dd = 0;
   int nhr = 0;
 };
 
-bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, std::vector<c_wall_segment> & segments,
+bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv::Mat4f & histogram,
+    std::vector<c_wall_segment> & segments,
     const c_vlo_bloom_detection_options & opts)
 {
-  //  const int src_rows = D.rows;
-  //  const int src_cols = D.cols;
+
+//  INSTRUMENT_REGION("");
 
   const double min_distance = opts.min_distance >= 0 ? opts.min_distance : 100; // [cm]
   const double max_distance = opts.max_distance > 0 ? opts.max_distance : 30000; // [cm]
@@ -50,7 +51,9 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, std
    * Build histogram of distances
    */
 
-  cv::Mat4f histogram(num_bins, 1, cv::Vec4f::all(0));
+  //cv::Mat4f histogram(num_bins, 1, cv::Vec4f::all(0));
+  histogram.create(num_bins, 1);
+  histogram.setTo(cv::Vec4f::all(0));
 
   for( int y = 0; y < D.rows; ++y ) {
 
@@ -241,8 +244,8 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, std
 
             wall.pts.emplace_back(y, e);
 
-            wall.d += d;
-            wall.dd += d * d;
+//            wall.d += d;
+//            wall.dd += d * d;
 
             if ( R[y][s][e] ) {
               ++wall.nhr;
@@ -252,8 +255,8 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, std
       }
 
       if( wall.nhr ) {
-        wall.d /= wall.pts.size();
-        wall.dd = sqrt(wall.dd / wall.pts.size() - wall.d * wall.d);
+//        wall.d /= wall.pts.size();
+//        wall.dd = sqrt(wall.dd / wall.pts.size() - wall.d * wall.d);
         segments.emplace_back(wall);
       }
 
@@ -269,6 +272,8 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, std
 static bool extract_intensity_image(const c_vlo_scan & scan, VLO_BLOOM_INTENSITY_MEASURE intensity_measure,
     cv::Mat3f & output_intensity_image)
 {
+  INSTRUMENT_REGION("");
+
   VLO_DATA_CHANNEL intensity_channel;
 
   if ( intensity_measure == VLO_BLOOM_INTENSITY_AREA || scan.version == VLO_VERSION_6_SLM )  {
@@ -292,6 +297,9 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
     cv::Mat & output_bloom_mask,
     cv::Mat & output_reflectors_mask)
 {
+
+  INSTRUMENT_REGION("");
+
   cv::Mat3f I, D;
   cv::Mat3b R, B;
   std::vector<c_wall_segment> walls;
@@ -328,6 +336,8 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
   const float IT =
       opts.intensity_saturation_level - opts.intensity_tolerance;
 
+  cv::Mat4f H;
+
   for( int s = 0; s < R.cols; ++s ) {
 
     // Check if this vertical column (slot index s) has at least one reflector
@@ -348,7 +358,7 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
     // If there are least one reflective point on this column then
     // extract all vertical walls having at least one reflective point
-    extract_vertical_walls(D, R, s, walls, opts);
+    extract_vertical_walls(D, R, s, H, walls, opts);
     if( walls.empty() ) {
       continue; // strange ?
     }

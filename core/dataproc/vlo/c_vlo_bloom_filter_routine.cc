@@ -71,7 +71,7 @@ bool c_vlo_bloom_filter_routine::process(c_vlo_frame * vlo)
   }
 
   if ( display_reflectors_ && display_bloom_ ) {
-    cv::bitwise_and(bloom, reflectors, selection);
+    cv::bitwise_or(bloom, reflectors, selection);
   }
   else if (display_reflectors_) {
     selection = reflectors;

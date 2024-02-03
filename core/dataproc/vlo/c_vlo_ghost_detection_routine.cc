@@ -6,7 +6,7 @@
  */
 
 #include "c_vlo_ghost_detection_routine.h"
-#include <core/proc/vlo/vlo_ghost_detection.h>
+//#include <core/proc/vlo/vlo_ghost_detection.h>
 #include <core/debug.h>
 
 void c_vlo_ghost_detection_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)

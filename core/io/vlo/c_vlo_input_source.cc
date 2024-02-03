@@ -98,11 +98,11 @@ VLO_DATA_CHANNEL c_vlo_input_source::read_channel() const
   return read_channel_;
 }
 
-
-c_vlo_processing_options * c_vlo_input_source::processing_options()
-{
-  return vlo_.processing_options();
-}
+//
+//c_vlo_processing_options * c_vlo_input_source::processing_options()
+//{
+//  return vlo_.processing_options();
+//}
 
 VLO_VERSION c_vlo_input_source::version() const
 {

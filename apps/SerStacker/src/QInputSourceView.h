@@ -91,7 +91,7 @@ public:
   void setVloDataChannel(VLO_DATA_CHANNEL channel);
   VLO_DATA_CHANNEL vloDataChannel() const;
 
-  c_vlo_processing_options * vlo_processing_options();
+//  c_vlo_processing_options * vlo_processing_options();
 
   void update_as_vlo_processing_options_chaned();
   //////////////////////////////////////////
@@ -184,7 +184,7 @@ protected:
   bool filterBadPixels_ = false;
   double badPixelsVariationThreshold_ = 5;
 
-  c_vlo_processing_options vlo_processing_options_;
+  //c_vlo_processing_options vlo_processing_options_;
   VLO_DATA_CHANNEL vlo_data_channel_ = VLO_DATA_CHANNEL_AMBIENT;
   //////////////////////////////////////////
 

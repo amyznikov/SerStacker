@@ -9,7 +9,8 @@
 #ifndef __vlo_ghost_detection_h__
 #define __vlo_ghost_detection_h__
 
-#include <core/io/vlo/c_vlo_frame.h>
+//#include <core/io/vlo/c_vlo_frame.h>
+#include <core/io/vlo/c_vlo_scan.h>
 
 
 struct c_vlo_ghost_detection_options

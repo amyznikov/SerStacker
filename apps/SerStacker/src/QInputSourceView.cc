@@ -1082,10 +1082,10 @@ VLO_DATA_CHANNEL QInputSourceView::vloDataChannel() const
   return vlo_data_channel_;
 }
 
-c_vlo_processing_options * QInputSourceView::vlo_processing_options()
-{
-  return &vlo_processing_options_;
-}
+//c_vlo_processing_options * QInputSourceView::vlo_processing_options()
+//{
+//  return &vlo_processing_options_;
+//}
 
 
 void QInputSourceView::update_as_vlo_processing_options_chaned()

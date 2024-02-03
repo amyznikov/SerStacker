@@ -38,7 +38,7 @@ typedef std::vector<c_vlo_lookup_table_item>
 struct c_vlo_pipeline_input_options :
     c_image_processing_pipeline_input_options
 {
-  bool sort_echos_by_distance = false;
+  // bool sort_echos_by_distance = false;
 };
 
 

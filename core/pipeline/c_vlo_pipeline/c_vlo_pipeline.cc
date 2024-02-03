@@ -33,122 +33,124 @@ const c_enum_member* members_of<VLO_INTENSITY_CHANNEL>()
   return members;
 }
 
-template<class ScanType>
-static bool update_vlo_lookup_table_statistics_(const ScanType & scan,
-    c_vlo_lookup_table_statistics & statistics)
-{
-
-  typedef typename ScanType::Echo echo_type;
-
-  typedef decltype(ScanType::Echo::area) area_type;
-  constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
-
-  typedef decltype(ScanType::Echo::peak) peak_type;
-  constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
-
-  typedef decltype(ScanType::Echo::dist) dist_type;
-  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
-
-  constexpr double max_distance_meters  = 500;
-  constexpr double bin_size_in_meters = 1.0;
-  constexpr int num_bins = (int) (max_distance_meters / bin_size_in_meters) + 1;
-
-
-  if ( statistics.empty() ) { // Initialize new statistics table;
-    statistics.resize(num_bins);
-  }
-
-  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-      if ( s >= 296 && s <= 325 ) {
-        continue;
-      }
-
-
-      echo_type echos[3] = {0};
-      int num_echos = 0;
-
-      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-
-        const auto & echo =
-            scan.slot[s].echo[l][e];
-
-        const auto &distance =
-            echo.dist;
-
-        if( distance <= 0 || distance > max_dist_value ) {
-          continue;
-        }
-
-        const auto &peak =
-            echo.peak;
-
-        if( peak <= 0 || peak > max_peak_value ) {
-          continue;
-        }
-
-        const auto &area =
-            echo.area;
-
-        if( area <= 0 || peak > max_area_value ) {
-          continue;
-        }
-
-
-        // all data are valid
-        echos[num_echos++] = echo;
-      }
-
-
-      if ( num_echos > 0 ) {
-
-        if ( num_echos > 1 ) {
-
-          std::sort(echos, echos + num_echos,
-              [](const auto & prev, const auto & next) {
-                return next.peak < prev.peak;
-              });
-
-        }
-
-        const auto & echo =
-            echos[0];
-
-        const int bin_index =
-            std::min(num_bins-1, (int)( echo.dist * 0.01 / bin_size_in_meters ));
-
-
-        c_vlo_lookup_table_item & item =
-            statistics[bin_index];
-
-        item.distance += echo.dist * 0.01;
-        item.area += echo.area;
-        item.peak += echo.peak;
-        item.area2 += ((double)echo.area) * ((double)echo.area);
-        item.peak2 += ((double)echo.peak) * ((double)echo.peak);
-        item.num_measurements += 1;
-      }
-    }
-  }
-
-  return true;
-}
-
 static bool update_vlo_lookup_table_statistics(const c_vlo_scan & scan,
     c_vlo_lookup_table_statistics & statistics)
 {
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return update_vlo_lookup_table_statistics_(scan.scan1, statistics);
-    case VLO_VERSION_3:
-      return update_vlo_lookup_table_statistics_(scan.scan3, statistics);
-    case VLO_VERSION_5:
-      return update_vlo_lookup_table_statistics_(scan.scan5, statistics);
-  }
-  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+
+  CF_ERROR("Implementation disabled");
   return false;
+//
+//  typedef typename ScanType::Echo echo_type;
+//
+//  typedef decltype(ScanType::Echo::area) area_type;
+//  constexpr auto max_area_value = std::numeric_limits<area_type>::max() - 2;
+//
+//  typedef decltype(ScanType::Echo::peak) peak_type;
+//  constexpr auto max_peak_value = std::numeric_limits<peak_type>::max() - 2;
+//
+//  typedef decltype(ScanType::Echo::dist) dist_type;
+//  constexpr auto max_dist_value = std::numeric_limits<dist_type>::max() - 2;
+//
+//  constexpr double max_distance_meters  = 500;
+//  constexpr double bin_size_in_meters = 1.0;
+//  constexpr int num_bins = (int) (max_distance_meters / bin_size_in_meters) + 1;
+//
+//
+//  if ( statistics.empty() ) { // Initialize new statistics table;
+//    statistics.resize(num_bins);
+//  }
+//
+//  for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+//    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
+//
+//      if ( s >= 296 && s <= 325 ) {
+//        continue;
+//      }
+//
+//
+//      echo_type echos[3] = {0};
+//      int num_echos = 0;
+//
+//      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
+//
+//        const auto & echo =
+//            scan.slot[s].echo[l][e];
+//
+//        const auto &distance =
+//            echo.dist;
+//
+//        if( distance <= 0 || distance > max_dist_value ) {
+//          continue;
+//        }
+//
+//        const auto &peak =
+//            echo.peak;
+//
+//        if( peak <= 0 || peak > max_peak_value ) {
+//          continue;
+//        }
+//
+//        const auto &area =
+//            echo.area;
+//
+//        if( area <= 0 || peak > max_area_value ) {
+//          continue;
+//        }
+//
+//
+//        // all data are valid
+//        echos[num_echos++] = echo;
+//      }
+//
+//
+//      if ( num_echos > 0 ) {
+//
+//        if ( num_echos > 1 ) {
+//
+//          std::sort(echos, echos + num_echos,
+//              [](const auto & prev, const auto & next) {
+//                return next.peak < prev.peak;
+//              });
+//
+//        }
+//
+//        const auto & echo =
+//            echos[0];
+//
+//        const int bin_index =
+//            std::min(num_bins-1, (int)( echo.dist * 0.01 / bin_size_in_meters ));
+//
+//
+//        c_vlo_lookup_table_item & item =
+//            statistics[bin_index];
+//
+//        item.distance += echo.dist * 0.01;
+//        item.area += echo.area;
+//        item.peak += echo.peak;
+//        item.area2 += ((double)echo.area) * ((double)echo.area);
+//        item.peak2 += ((double)echo.peak) * ((double)echo.peak);
+//        item.num_measurements += 1;
+//      }
+//    }
+//  }
+//
+//  return true;
 }
+
+//static bool update_vlo_lookup_table_statistics(const c_vlo_scan & scan,
+//    c_vlo_lookup_table_statistics & statistics)
+//{
+//  switch (scan.version) {
+//    case VLO_VERSION_1:
+//      return update_vlo_lookup_table_statistics_(scan.scan1, statistics);
+//    case VLO_VERSION_3:
+//      return update_vlo_lookup_table_statistics_(scan.scan3, statistics);
+//    case VLO_VERSION_5:
+//      return update_vlo_lookup_table_statistics_(scan.scan5, statistics);
+//  }
+//  CF_DEBUG("Unsupported scan version %d specified", scan.version);
+//  return false;
+//}
 
 static bool save_vlo_lookup_table_statistics(const std::string & filename,
     const c_vlo_lookup_table_statistics & table)
@@ -226,7 +228,7 @@ bool c_vlo_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
     serialize_base_input_options(section, save, input_options_);
-    SERIALIZE_OPTION(section, save, input_options_, sort_echos_by_distance);
+    // SERIALIZE_OPTION(section, save, input_options_, sort_echos_by_distance);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "processing_options")) ) {
@@ -296,7 +298,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_vlo_pipeline::get_control
 
     PIPELINE_CTL_GROUP(ctrls, "Input options", "");
       POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-      PIPELINE_CTL(ctrls, input_options_.sort_echos_by_distance, "sort_echos_by_distance", "");
+      // PIPELINE_CTL(ctrls, input_options_.sort_echos_by_distance, "sort_echos_by_distance", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 
@@ -602,10 +604,10 @@ bool c_vlo_pipeline::run_pipeline()
 
 bool c_vlo_pipeline::process_current_frame()
 {
-  if( input_options_.sort_echos_by_distance && !sort_vlo_echos_by_distance(current_scan_) ) {
-    CF_ERROR("vlo_sort_echos_by_distance() fails");
-    return false;
-  }
+//  if( input_options_.sort_echos_by_distance && !sort_vlo_echos_by_distance(current_scan_) ) {
+//    CF_ERROR("vlo_sort_echos_by_distance() fails");
+//    return false;
+//  }
 
   if ( !run_blom_detection2() ) {
     CF_ERROR("run_bloom_detection2() fails");
@@ -641,22 +643,22 @@ bool c_vlo_pipeline::run_blom_detection2()
     return true; // silently ignore
   }
 
-  cv::Mat3f clouds[3];
+  //cv::Mat3f clouds[3];
   cv::Mat4f histogram;
   cv::Mat3w segments;
 
+//  bool fOk =
+//      get_vlo_clouds3d(current_scan_,
+//          clouds);
+//
+//  if ( !fOk ) {
+//    CF_ERROR("c_vlo_file::get_clouds3d() fails");
+//    return false;
+//  }
+
+
   bool fOk =
-      get_vlo_clouds3d(current_scan_,
-          clouds);
-
-  if ( !fOk ) {
-    CF_ERROR("c_vlo_file::get_clouds3d() fails");
-    return false;
-  }
-
-
-  fOk =
-      vlo_depth_segmentation(clouds,
+      vlo_depth_segmentation(current_scan_.clouds,
           histogram,
           segments,
           processing_options_.depth_segmentation_);
@@ -851,7 +853,7 @@ bool c_vlo_pipeline::run_blom_detection2()
             CV_32F);
 
 
-    cv::Mat1f intensity(clouds[0].size());
+    cv::Mat1f intensity(current_scan_.clouds[0].size());
 
     for( uint16_t segment_id = 1;; ++segment_id ) {
 
@@ -1034,13 +1036,13 @@ bool c_vlo_pipeline::run_blom_detection2()
 
 
     const cv::Size display_size =
-        cv::Size(std::max(std::max(clouds[0].cols, segments.cols), histogram_channels[0].cols),
-            clouds[0].rows + segments.rows + histogram_channels[0].rows);
+        cv::Size(std::max(std::max(current_scan_.clouds[0].cols, segments.cols), histogram_channels[0].cols),
+            current_scan_.clouds[0].rows + segments.rows + histogram_channels[0].rows);
 
     const cv::Rect roi[3] = {
-        cv::Rect(0, 0, clouds[0].cols, clouds[0].rows), // depths
-        cv::Rect(0, clouds[0].rows, segments.cols, segments.rows), // segments
-        cv::Rect(0, clouds[0].rows + segments.rows, histogram_channels[0].cols, histogram_channels[0].rows), // counts
+        cv::Rect(0, 0, current_scan_.clouds[0].cols, current_scan_.clouds[0].rows), // depths
+        cv::Rect(0, current_scan_.clouds[0].rows, segments.cols, segments.rows), // segments
+        cv::Rect(0, current_scan_.clouds[0].rows + segments.rows, histogram_channels[0].cols, histogram_channels[0].rows), // counts
     };
 
     cv::Mat3f display_image(display_size,

@@ -12,13 +12,20 @@
 
 namespace {
 
-template<class ScanType, class PixelType>
-bool get_vlo_point_cloud_(const ScanType & scan,
+static constexpr float distance_scale = 0.01; // [cm] -> [m]
+
+template<class PixelType>
+bool get_vlo_point_cloud_(const c_vlo_scan & scan,
     cv::InputArray _colors_image,
     cv::OutputArray output_points,
     cv::OutputArray output_colors,
     cv::InputArray selection_mask = cv::noArray())
 {
+
+  if ( _colors_image.empty() ) {
+    return false;
+  }
+
 
   std::vector<cv::Vec3f> points;
   std::vector<PixelType> colors;
@@ -29,18 +36,19 @@ bool get_vlo_point_cloud_(const ScanType & scan,
   const cv::Mat_<PixelType> colors_image =
       _colors_image.getMat();
 
-  points.reserve(scan.NUM_LAYERS * scan.NUM_SLOTS);
-  colors.reserve(scan.NUM_LAYERS * scan.NUM_SLOTS);
+  points.reserve(scan.size.area());
+  colors.reserve(scan.size.area());
 
-  get_vlo_points3d(scan, selection_mask,
-      [&](int l, int s, int e, double x, double y, double z, const auto & echo) {
+  vlo_points_callback(scan, selection_mask,
+      [&](int l, int s, int e) {
 
         const PixelType * srcp =
             colors_image[l];
 
-        points.emplace_back((float)x, (float)y, (float)z);
+        points.emplace_back(scan.clouds[e][l][s] * distance_scale);
         colors.emplace_back(cn == 1 ? srcp[s * cn] : srcp[s * cn + e]);
       });
+
 
 
   cv::Mat(colors).copyTo(output_colors);
@@ -50,8 +58,7 @@ bool get_vlo_point_cloud_(const ScanType & scan,
 }
 
 
-template<class ScanType>
-bool get_vlo_point_cloud(const ScanType & scan,
+bool get_vlo_point_cloud(const c_vlo_scan & scan,
     cv::InputArray colors_image,
     cv::OutputArray points,
     cv::OutputArray colors,
@@ -59,42 +66,23 @@ bool get_vlo_point_cloud(const ScanType & scan,
 {
   switch (colors_image.depth()) {
     case CV_8U:
-      return get_vlo_point_cloud_<ScanType, uint8_t>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<uint8_t>(scan, colors_image, points, colors, selection_mask);
     case CV_8S:
-      return get_vlo_point_cloud_<ScanType, int8_t>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<int8_t>(scan, colors_image, points, colors, selection_mask);
     case CV_16U:
-      return get_vlo_point_cloud_<ScanType, uint16_t>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<uint16_t>(scan, colors_image, points, colors, selection_mask);
     case CV_16S:
-      return get_vlo_point_cloud_<ScanType, int16_t>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<int16_t>(scan, colors_image, points, colors, selection_mask);
     case CV_32S:
-      return get_vlo_point_cloud_<ScanType, int32_t>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<int32_t>(scan, colors_image, points, colors, selection_mask);
     case CV_32F:
-      return get_vlo_point_cloud_<ScanType, float>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<float>(scan, colors_image, points, colors, selection_mask);
     case CV_64F:
-      return get_vlo_point_cloud_<ScanType, double>(scan, colors_image, points, colors, selection_mask);
+      return get_vlo_point_cloud_<double>(scan, colors_image, points, colors, selection_mask);
   }
   return false;
 }
 
-bool get_vlo_point_cloud(const c_vlo_scan & scan,
-    cv::InputArray colors_image,
-    cv::OutputArray points,
-    cv::OutputArray colors,
-    cv::InputArray selection_mask = cv::noArray())
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return get_vlo_point_cloud(scan.scan1, colors_image, points, colors, selection_mask);
-    case VLO_VERSION_3:
-      return get_vlo_point_cloud(scan.scan3, colors_image, points, colors, selection_mask);
-    case VLO_VERSION_5:
-      return get_vlo_point_cloud(scan.scan5, colors_image, points, colors, selection_mask);
-    case VLO_VERSION_6_SLM:
-      return get_vlo_point_cloud(scan.scan6_slm, colors_image, points, colors, selection_mask);
-  }
-
-  return false;
-}
 
 static bool dup_channels(const cv::Mat & src, cv::Mat & dst, int cn)
 {
@@ -183,12 +171,12 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
             std::vector<cv::Vec3f> points;
             std::vector<cv::Vec3b> colors;
 
-            points.reserve(vlo_scan_size(current_scan_).area());
-            colors.reserve(vlo_scan_size(current_scan_).area());
+            points.reserve(current_scan_.size.area());
+            colors.reserve(current_scan_.size.area());
 
-            get_vlo_points3d(current_scan_, selection_mask_,
-                [&points, &colors](int l, int s, int e, double x, double y, double z, const auto & echo) {
-                  points.emplace_back((float)x, (float)y, (float)z);
+            vlo_points_callback(current_scan_, selection_mask_,
+                [&](int l, int s, int e) {
+                  points.emplace_back(current_scan_.clouds[e][l][s] * distance_scale);
                   colors.emplace_back(255 * (e == 0), 255 * (e == 1), 255 * (e == 2));
                 });
 
@@ -291,60 +279,9 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
 
   return true;
 }
-//
-//bool c_vlo_frame::get_image(int id, cv::OutputArray output_image, cv::OutputArray output_mask)
-//{
-//  DataViewType viewType =
-//      DataViewType_Image;
-//
-//  bool fOk =
-//      get_display_data(&viewType, id,
-//          output_image,
-//          cv::noArray(),
-//          output_mask);
-//
-//  if ( !fOk ) {
-//    CF_ERROR("get_display_data() fails");
-//  }
-//
-//  if ( output_mask.needed() ) {
-//
-//    if ( selection_mask_.empty() ) {
-//      output_mask.release();
-//    }
-//    else if ( selection_mask_.channels() == 1 ) {
-//      selection_mask_.copyTo(output_mask);
-//    }
-//    else {
-//      reduce_color_channels(selection_mask_, output_mask,
-//          cv::REDUCE_MAX);
-//    }
-//
-//  }
-//
-//  return true;
-//}
-//
-//bool c_vlo_frame::get_point_cloud(int id, cv::OutputArray output_points, cv::OutputArray output_colors)
-//{
-//  DataViewType viewType =
-//      DataViewType_PointCloud;
-//
-//  bool fOk =
-//      get_display_data(&viewType, id,
-//          output_points,
-//          output_colors,
-//          cv::noArray());
-//
-//  if ( !fOk ) {
-//    CF_ERROR("get_display_data() fails");
-//  }
-//
-//  return true;
-//}
 
-void c_vlo_frame::update_selection(cv::InputArray mask,
-    SELECTION_MASK_MODE mode)
+
+void c_vlo_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mode)
 {
   if( selection_mask_.empty() || mode == SELECTION_MASK_REPLACE ) {
     mask.getMat().copyTo(selection_mask_);

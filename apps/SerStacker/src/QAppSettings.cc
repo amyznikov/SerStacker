@@ -178,10 +178,10 @@ QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
       add_checkbox("Apply Ghost Filter",
           "Set TRUE to apply Ghost Filter based on doubled echos",
           [this](bool checked) {
-            if ( sequenceView_ && sequenceView_->vlo_processing_options()->ghost_filter.enabled != checked) {
-              sequenceView_->vlo_processing_options()->ghost_filter.enabled = checked;
-              sequenceView_->update_as_vlo_processing_options_chaned();
-            }
+//            if ( sequenceView_ && sequenceView_->vlo_processing_options()->ghost_filter.enabled != checked) {
+//              sequenceView_->vlo_processing_options()->ghost_filter.enabled = checked;
+//              sequenceView_->update_as_vlo_processing_options_chaned();
+//            }
           });
 
   saturation_level_ctl  =
@@ -189,10 +189,10 @@ QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
           "",
           [this](double v) {
             if ( sequenceView_ ) {
-              if ( sequenceView_->vlo_processing_options()->ghost_filter.saturation_level != v) {
-                sequenceView_->vlo_processing_options()->ghost_filter.saturation_level = v;
-                sequenceView_->update_as_vlo_processing_options_chaned();
-              }
+//              if ( sequenceView_->vlo_processing_options()->ghost_filter.saturation_level != v) {
+//                sequenceView_->vlo_processing_options()->ghost_filter.saturation_level = v;
+//                sequenceView_->update_as_vlo_processing_options_chaned();
+//              }
             }
           });
 
@@ -202,10 +202,10 @@ QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
           "",
           [this](double v) {
             if ( sequenceView_ ) {
-              if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction != v) {
-                sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction = v;
-                sequenceView_->update_as_vlo_processing_options_chaned();
-              }
+//              if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction != v) {
+//                sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction = v;
+//                sequenceView_->update_as_vlo_processing_options_chaned();
+//              }
             }
           });
 
@@ -214,10 +214,10 @@ QVLOGhostFilterSettings::QVLOGhostFilterSettings(QWidget * parent) :
             "",
             [this](double v) {
               if ( sequenceView_ ) {
-                if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance != v) {
-                  sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance = v;
-                  sequenceView_->update_as_vlo_processing_options_chaned();
-                }
+//                if ( sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance != v) {
+//                  sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance = v;
+//                  sequenceView_->update_as_vlo_processing_options_chaned();
+//                }
               }
             });
 
@@ -252,10 +252,10 @@ void QVLOGhostFilterSettings::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->ghost_filter.enabled);
-    saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.saturation_level);
-    doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction);
-    doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance);
+//    enableGhostFilter_ctl->setChecked(sequenceView_->vlo_processing_options()->ghost_filter.enabled);
+//    saturation_level_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.saturation_level);
+//    doubled_distanse_systematic_correction_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_systematic_correction);
+//    doubled_distanse_depth_tolerance_ctl ->setValue(sequenceView_->vlo_processing_options()->ghost_filter.doubled_distanse_depth_tolerance);
 
     setEnabled(true);
   }
@@ -272,14 +272,14 @@ QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent)
       add_checkbox("Ebable Low intensity filter",
           "",
           [this](bool checked) {
-            if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.enabled != checked ) {
-              sequenceView_->vlo_processing_options()->low_intensity_filter.enabled = checked;
-              sequenceView_->update_as_vlo_processing_options_chaned();
-            }
+//            if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.enabled != checked ) {
+//              sequenceView_->vlo_processing_options()->low_intensity_filter.enabled = checked;
+//              sequenceView_->update_as_vlo_processing_options_chaned();
+//            }
           },
           [this](bool * checked) {
             if ( sequenceView_ ) {
-              * checked = sequenceView_->vlo_processing_options()->low_intensity_filter.enabled;
+//              * checked = sequenceView_->vlo_processing_options()->low_intensity_filter.enabled;
               return true;
             }
             return false;
@@ -290,15 +290,15 @@ QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent)
           "",
           [this](
               double v) {
-                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level != v ) {
-                  sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level = v;
-                  sequenceView_->update_as_vlo_processing_options_chaned();
-                }
+//                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level != v ) {
+//                  sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level = v;
+//                  sequenceView_->update_as_vlo_processing_options_chaned();
+//                }
 
               },
           [this](double * v) {
             if ( sequenceView_ ) {
-              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level;
+//              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.low_intensity_level;
               return true;
             }
             return false;
@@ -310,15 +310,15 @@ QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent)
           "",
           [this](
               double v) {
-                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.u != v ) {
-                  sequenceView_->vlo_processing_options()->low_intensity_filter.u = v;
-                  sequenceView_->update_as_vlo_processing_options_chaned();
-                }
+//                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.u != v ) {
+//                  sequenceView_->vlo_processing_options()->low_intensity_filter.u = v;
+//                  sequenceView_->update_as_vlo_processing_options_chaned();
+//                }
 
               },
           [this](double * v) {
             if ( sequenceView_ ) {
-              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.u;
+//              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.u;
               return true;
             }
             return false;
@@ -330,15 +330,15 @@ QVLOLowIntensityFilterSettings::QVLOLowIntensityFilterSettings(QWidget * parent)
           "",
           [this](
               double v) {
-                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.v != v ) {
-                  sequenceView_->vlo_processing_options()->low_intensity_filter.v = v;
-                  sequenceView_->update_as_vlo_processing_options_chaned();
-                }
+//                if ( sequenceView_ && sequenceView_->vlo_processing_options()->low_intensity_filter.v != v ) {
+//                  sequenceView_->vlo_processing_options()->low_intensity_filter.v = v;
+//                  sequenceView_->update_as_vlo_processing_options_chaned();
+//                }
 
               },
           [this](double * v) {
             if ( sequenceView_ ) {
-              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.v;
+//              * v = sequenceView_->vlo_processing_options()->low_intensity_filter.v;
               return true;
             }
             return false;

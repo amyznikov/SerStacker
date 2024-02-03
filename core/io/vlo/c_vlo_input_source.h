@@ -51,7 +51,7 @@ public:
   void set_read_channel(VLO_DATA_CHANNEL v);
   VLO_DATA_CHANNEL read_channel() const;
 
-  c_vlo_processing_options * processing_options();
+  // c_vlo_processing_options * processing_options();
 
   VLO_VERSION version() const;
 

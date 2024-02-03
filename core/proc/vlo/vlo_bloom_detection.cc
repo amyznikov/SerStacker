@@ -33,6 +33,32 @@ struct c_wall_segment
   int nhr = 0;
 };
 
+
+struct c_bloom_detection_input_data
+{
+  cv::Mat3f distance;
+  cv::Mat3f height;
+  cv::Mat3f intensity;
+};
+
+static void extract_bloom_detection_input_data(const c_vlo_scan & scan,
+    const c_vlo_bloom_detection_options & opts,
+    c_bloom_detection_input_data & output_data)
+{
+//  get_vlo_points3d(scan, cv::noArray(),
+//      [](int l, int s, int e, double x, double y, double z, const auto & echo) {
+//        if constexpr ( has_peak_member(echo) ) {
+//          echo.peak;
+//
+//        }
+//        else {
+//          echo.area;
+//        }
+//      });
+
+}
+
+
 bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv::Mat4f & histogram,
     std::vector<c_wall_segment> & segments,
     const c_vlo_bloom_detection_options & opts)
@@ -305,9 +331,15 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
   std::vector<c_wall_segment> walls;
 
   /*
+   * XXX
+   */
+  c_bloom_detection_input_data data;
+  extract_bloom_detection_input_data(scan, opts, data);
+
+  /*
    * Create empty output bloom mask B
    * */
-  B.create(vlo_scan_size(scan));
+  B.create(scan.size);
   B.setTo(0);
   output_bloom_mask = B;
 

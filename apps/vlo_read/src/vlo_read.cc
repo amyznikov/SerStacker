@@ -103,20 +103,22 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if( !get_vlo_ray_inclinations_table(scan, table) ) {
-    CF_ERROR("c_vlo_file::get_ray_inclinations_table() fails");
-    return 1;
-  }
+  table = scan.elevation;
+//  if( !get_vlo_ray_inclinations_table(scan, table) ) {
+//    CF_ERROR("c_vlo_file::get_ray_inclinations_table() fails");
+//    return 1;
+//  }
 
   if ( !dump_table(table, output_inclinations_filename) ) {
     CF_ERROR("dump_table('%s') fails", output_inclinations_filename.c_str());
     return 1;
   }
 
-  if( !get_vlo_ray_azimuths_table(scan, table) ) {
-    CF_ERROR("c_vlo_file::get_ray_azimuths_table() fails");
-    return 1;
-  }
+  table = scan.azimuth;
+//  if( !get_vlo_ray_azimuths_table(scan, table) ) {
+//    CF_ERROR("c_vlo_file::get_ray_azimuths_table() fails");
+//    return 1;
+//  }
 
   if ( !dump_table(table, output_azimuths_filename) ) {
     CF_ERROR("dump_table('%s') fails", output_azimuths_filename.c_str());

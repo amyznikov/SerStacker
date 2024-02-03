@@ -27,6 +27,9 @@ enum VLO_VERSION
   VLO_VERSION_6_IMX449 = 600,
   VLO_VERSION_6_IMX479 = 601,
   VLO_VERSION_6_SLM = 602,
+
+  VLO_VERSION_CRUISE = 17993,
+
 };
 
 enum VLO_IMAGER_TYPE
@@ -686,6 +689,45 @@ struct c_vlo_scan6_slm
 
 ////////////
 
+#pragma pack(push, 1)
+struct c_vlo_scan_cruise
+{
+  static constexpr uint32_t NUM_SLOTS = 800;
+  static constexpr uint32_t NUM_LAYERS = 360;
+  static constexpr uint32_t NUM_ECHOS = 3;
+
+  struct Echo
+  {
+    uint16_t dist;
+    uint16_t area;
+    uint8_t peak;
+    uint8_t width;
+  };
+
+  struct Slot
+  {
+    int32_t angleTicks;
+    Echo echo[NUM_LAYERS][NUM_ECHOS];
+    uint16_t ambient[NUM_LAYERS];
+  };
+
+  uint8_t interfaceVersion;
+  uint8_t mirrorSide;
+  uint32_t timeStampNanoseconds;
+  uint32_t timeStampSeconds;
+  uint32_t timeStampSecondsHi;
+  uint16_t scanNumber;
+
+  int32_t verticalAngles[NUM_LAYERS];// = {2147483647};
+
+  Slot slot[NUM_SLOTS];
+
+  uint32_t reservedCRC;
+};
+#pragma pack(pop)
+
+////////////
+
 enum VLO_DATA_CHANNEL {
   VLO_DATA_CHANNEL_AMBIENT,
   VLO_DATA_CHANNEL_DISTANCES,
@@ -699,17 +741,21 @@ enum VLO_DATA_CHANNEL {
 struct c_vlo_scan
 {
   VLO_VERSION version;
+  cv::Size size;
 
-  union
-  {
-    c_vlo_scan1 scan1;
-    c_vlo_scan3 scan3;
-    c_vlo_scan5 scan5;
-    c_vlo_scan6_imx449 scan6_imx449;
-    c_vlo_scan6_imx479 scan6_imx479;
-    c_vlo_scan6_slm scan6_slm;
-  };
+  cv::Mat1w ambient;
+  cv::Mat3w distance;
+  cv::Mat3w area;
+  cv::Mat3b peak;
+  cv::Mat3b width;
+  cv::Mat3f clouds[3];
+
+  cv::Mat1f azimuth; // [NUM_SLOTS]
+  cv::Mat1f elevation; // [NUM_LAYERS]
 };
+
+
+
 
 /**
  * Compile-tie Mapping from VLO scan type to VLO scan version number
@@ -720,7 +766,6 @@ struct c_vlo_scan_type_traits;
 template<> struct c_vlo_scan_type_traits<c_vlo_scan1> {
   static constexpr VLO_VERSION VERSION = VLO_VERSION_1;
 };
-
 template<> struct c_vlo_scan_type_traits<c_vlo_scan3> {
   static constexpr VLO_VERSION VERSION = VLO_VERSION_3;
 };
@@ -729,6 +774,9 @@ template<> struct c_vlo_scan_type_traits<c_vlo_scan5> {
 };
 template<> struct c_vlo_scan_type_traits<c_vlo_scan6_slm> {
   static constexpr VLO_VERSION VERSION = VLO_VERSION_6_SLM;
+};
+template<> struct c_vlo_scan_type_traits<c_vlo_scan_cruise> {
+  static constexpr VLO_VERSION VERSION = VLO_VERSION_CRUISE;
 };
 template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx449> {
   static constexpr VLO_VERSION VERSION = VLO_VERSION_6_IMX449;
@@ -741,781 +789,105 @@ template<> struct c_vlo_scan_type_traits<c_vlo_scan6_imx479> {
  * Simple compile-time check if a struct 'EchoType' has field named 'peak'
  * */
 template <class EchoType>
-static inline constexpr auto vlo_scan_has_peak_member(const EchoType & e) ->
+static inline constexpr auto has_peak_member(const EchoType & e) ->
   decltype(EchoType::peak, bool())
 {
   return true;
 }
 
-static inline constexpr bool vlo_scan_has_peak_member(...)
+static inline constexpr bool has_peak_member(...)
 {
   return false;
 }
 
-
-inline cv::Size vlo_scan_size(const c_vlo_scan & scan)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return cv::Size(scan.scan1.NUM_SLOTS, scan.scan1.NUM_LAYERS);
-    case VLO_VERSION_3:
-      return cv::Size(scan.scan3.NUM_SLOTS, scan.scan3.NUM_LAYERS);
-    case VLO_VERSION_5:
-      return cv::Size(scan.scan5.NUM_SLOTS, scan.scan5.NUM_LAYERS);
-    case VLO_VERSION_6_SLM:
-      return cv::Size(scan.scan6_slm.NUM_SLOTS, scan.scan6_slm.NUM_LAYERS);
-  }
-  return cv::Size();
-}
-
-
-/**
- * Sort VLO echoes by distance with version tag auto-selection
- */
-bool sort_vlo_echos_by_distance(c_vlo_scan & scan);
-
-/**
- * Get Ray Inclinations Table
- */
-bool get_vlo_ray_inclinations_table(const c_vlo_scan & scan,
-    cv::Mat1f & table);
-
-/**
- * Get Ray Azimuths Table
- */
-bool get_vlo_ray_azimuths_table(const c_vlo_scan & scan,
-    cv::Mat1f & table);
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Visit each VLO echo in scan and call user-provided callback.
- * Appropriate for scans of type 1, 3, and 5
- */
-
-template<class ScanType, class _Cb>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-void> inline get_vlo_echos(const ScanType & scan, const _Cb & callback)
-{
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      callback(l, s, scan.slot[s].echo[l]);
-    }
-  }
-}
-
-/**
- * Visit each VLO echo in scan and call user-provided callback
- * Appropriate for scans of type slim
- */
 template<class _Cb>
-inline void get_vlo_echos(const c_vlo_scan6_slm & scan, const _Cb & callback)
+inline void vlo_pixels_callback(const c_vlo_scan & scan, cv::InputArray selection, const _Cb & callback)
 {
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      callback(scan.NUM_LAYERS - l - 1, s, scan.echo[s][l]);
+  if ( selection.empty() ) {
+
+    for ( int l = 0; l < scan.size.height; ++l ) {
+      for ( int s = 0; s < scan.size.width; ++s ) {
+        for ( int e = 0; e < 3; ++e ) {
+          callback(l, s);
+        }
+      }
     }
+
+  }
+  else if ( selection.type() == CV_8UC1 )  {
+
+    const cv::Mat1b mask =
+        selection.getMat();
+
+    for ( int l = 0; l < scan.size.height; ++l ) {
+      for ( int s = 0; s < scan.size.width; ++s ) {
+        if ( mask[l][s]  ) {
+          callback(l, s);
+        }
+      }
+    }
+
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-/**
- * Visit each VLO echo point in scan and call user-provided callback.
- * Appropriate for scans of type 1, 3, and 5
- */
-
-template<class ScanType, class _Cb>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-void> inline get_vlo_points2d(const ScanType & scan, const _Cb & callback)
+template<class _Cb>
+inline void vlo_points_callback(const c_vlo_scan & scan, cv::InputArray selection, const _Cb & callback)
 {
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
+  if ( selection.empty() ) {
+
+    for ( int l = 0; l < scan.size.height; ++l ) {
+      for ( int s = 0; s < scan.size.width; ++s ) {
+        for ( int e = 0; e < 3; ++e ) {
+          if ( scan.distance[l][s][e] ) {
+            callback(l, s, e);
+          }
+        }
+      }
+    }
+
+  }
+  else if ( selection.type() == CV_8UC1 )  {
+
+    const cv::Mat1b mask =
+        selection.getMat();
+
+    for ( int l = 0; l < scan.size.height; ++l ) {
+      for ( int s = 0; s < scan.size.width; ++s ) {
+        if ( mask[l][s]  ) {
+          for ( int e = 0; e < 3; ++e ) {
+            if ( scan.distance[l][s][e] ) {
+              callback(l, s, e);
+            }
+          }
+        }
+      }
+    }
+
+  }
+
+  else if( selection.type() == CV_8UC3 ) {
+
+    const cv::Mat3b mask =
+        selection.getMat();
+
+    for( int l = 0; l < scan.size.height; ++l ) {
+      for( int s = 0; s < scan.size.width; ++s ) {
         for( int e = 0; e < 3; ++e ) {
-          if( scan.slot[s].echo[l][e].dist ) {
-            callback(l, s, e, scan.slot[s].echo[l][e]);
-          }
-        }
-      }
-    }
-}
-
-template<class ScanType, class _Cb>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-void> inline get_vlo_points2d(const ScanType & scan, cv::InputArray selectionMask, const _Cb & callback)
-{
-  if ( selectionMask.empty() ) {
-      for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-        for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( scan.slot[s].echo[l][e].dist ) {
-              callback(l, s, e, scan.slot[s].echo[l][e]);
-            }
-          }
-        }
-      }
-  }
-  else if ( selectionMask.channels() == 1 ) {
-
-    const cv::Mat1b M =
-        selectionMask.getMat();
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        if ( M[l][s] ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( scan.slot[s].echo[l][e].dist ) {
-              callback(l, s, e, scan.slot[s].echo[l][e]);
-            }
-          }
-        }
-      }
-    }
-
-  }
-  else if( selectionMask.channels() == 3 ) {
-
-    const cv::Mat3b M =
-        selectionMask.getMat();
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int e = 0; e < 3; ++e ) {
-          if( M[l][s][e] && scan.slot[s].echo[l][e].dist ) {
-            callback(l, s, e, scan.slot[s].echo[l][e]);
-          }
-        }
-      }
-    }
-
-  }
-}
-
-/**
- * Visit each VLO echo point in scan and call user-provided callback.
- * Appropriate for scans of type slim
- */
-template<class _Cb>
-void inline get_vlo_points2d(const c_vlo_scan6_slm & scan, const _Cb & callback)
-{
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-      for( int e = 0; e < 3; ++e ) {
-        if( scan.echo[s][l][e].dist && scan.echo[s][l][e].area ) {
-          callback(scan.NUM_LAYERS - l - 1, s, e, scan.echo[s][l][e]);
-        }
-      }
-    }
-  }
-}
-
-template<class _Cb>
-void inline get_vlo_points2d(const c_vlo_scan6_slm & scan, cv::InputArray selectionMask, const _Cb & callback)
-{
-  if ( selectionMask.empty() ) {
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int e = 0; e < 3; ++e ) {
-          if( scan.echo[s][l][e].dist && scan.echo[s][l][e].area ) {
-            callback(scan.NUM_LAYERS - l - 1, s, e, scan.echo[s][l][e]);
-          }
-        }
-      }
-    }
-  }
-  else if ( selectionMask.type() == CV_8UC1 ) {
-
-    const cv::Mat1b M =
-        selectionMask.getMat();
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        if( M[scan.NUM_LAYERS - l - 1][s] ) {
-          for( int e = 0; e < 3; ++e ) {
-            if( scan.echo[s][l][e].dist && scan.echo[s][l][e].area ) {
-              callback(scan.NUM_LAYERS - l - 1, s, e, scan.echo[s][l][e]);
+          if( mask[l][s][e] ) {
+            if( scan.distance[l][s][e] ) {
+              callback(l, s, e);
             }
           }
         }
       }
     }
   }
-  else if ( selectionMask.type() == CV_8UC3 ) {
-
-    const cv::Mat3b M =
-        selectionMask.getMat();
-
-    for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-      for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-        for( int e = 0; e < 3; ++e ) {
-          if( M[scan.NUM_LAYERS - l - 1][s][e] && scan.echo[s][l][e].dist && scan.echo[s][l][e].area ) {
-            callback(scan.NUM_LAYERS - l - 1, s, e, scan.echo[s][l][e]);
-          }
-        }
-      }
-    }
-  }
 }
 
+cv::Mat get_vlo_image(const c_vlo_scan & scan, VLO_DATA_CHANNEL channel,
+    cv::InputArray selectionMask = cv::noArray());
 
-
-/**
- * Visit each VLO echo point in scan and call user-provided callback.
- */
-template<class _Cb>
-inline bool get_vlo_points2d(const c_vlo_scan & scan, const _Cb & callback )
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      get_vlo_points2d(scan.scan1, callback);
-      break;
-    case VLO_VERSION_3:
-      get_vlo_points2d(scan.scan3, callback);
-      break;
-    case VLO_VERSION_5:
-      get_vlo_points2d(scan.scan5, callback);
-      break;
-    case VLO_VERSION_6_SLM:
-      get_vlo_points2d(scan.scan6_slm, callback);
-      break;
-    default:
-      return false;
-  }
-  return true;
-}
-
-/**
- * Visit each VLO echo point in scan and call user-provided callback.
- */
-template<class _Cb>
-inline bool get_vlo_points2d(const c_vlo_scan & scan, cv::InputArray selectionMask,
-    const _Cb & callback )
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      get_vlo_points2d(scan.scan1, selectionMask, callback);
-      break;
-    case VLO_VERSION_3:
-      get_vlo_points2d(scan.scan3, selectionMask, callback);
-      break;
-    case VLO_VERSION_5:
-      get_vlo_points2d(scan.scan5, selectionMask, callback);
-      break;
-    case VLO_VERSION_6_SLM:
-      get_vlo_points2d(scan.scan6_slm, selectionMask, callback);
-      break;
-    default:
-      return false;
-  }
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Visit each VLO point in scan and call user-provided callback for its 3D coordinates.
- */
-
-template<class ScanType, class _Cb>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-void> inline get_vlo_points3d(const ScanType & scan, cv::InputArray selectionMask, const _Cb & callback)
-{
-  const double firstVertAngle =
-      0.5 * 0.05 * scan.NUM_LAYERS;
-
-  const double tick2radian =
-      0.00000008381903173490870551553291862726 * CV_PI / 180;
-
-  const double yawCorrection = 0;
-
-  cv::Mat1b M1;
-  cv::Mat3b M3;
-
-  if( !selectionMask.empty() ) {
-    if ( selectionMask.type() == CV_8UC1 ) {
-      M1 = selectionMask.getMat();
-    }
-    else if ( selectionMask.type() == CV_8UC3  ) {
-      M3 = selectionMask.getMat();
-    }
-  }
-
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const auto &slot =
-        scan.slot[s];
-
-    const double horizontalAngle =
-        slot.angleTicks * tick2radian + yawCorrection;
-
-    for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-
-      if( !M1.empty() && !M1[l][s] ) {
-        continue;
-      }
-
-      const double verticalAngle =
-          firstVertAngle * CV_PI / 180 - 0.05 * l * CV_PI / 180;
-
-      const double cos_vert = std::cos(verticalAngle);
-      const double sin_vert = std::sin(verticalAngle);
-      const double cos_hor_cos_vert = std::cos(horizontalAngle) * cos_vert;
-      const double sin_hor_cos_vert = std::sin(horizontalAngle) * cos_vert;
-
-      for( int e = 0; e < std::min(3, (int)scan.NUM_ECHOS); ++e ) {
-
-        if( !M3.empty() && !M3[l][s][e] ) {
-          continue;
-        }
-
-        const auto &echo =
-            slot.echo[l][e];
-
-        const auto & distance =
-            echo.dist;
-
-        if( distance ) {
-
-          const double scale = 0.01;
-          const double x = scale * distance * cos_hor_cos_vert;
-          const double y = scale * distance * sin_hor_cos_vert;
-          const double z = scale * distance * sin_vert;
-
-          callback(l, s, e, x, y, z, echo);
-        }
-      }
-    }
-  }
-}
-
-/**
- * Visit each VLO point in scan and call user-provided callback for its 3D coordinates.
- */
-
-template<class _Cb>
-void inline get_vlo_points3d(const c_vlo_scan6_slm & scan, cv::InputArray selectionMask, const _Cb & callback)
-{
-  typedef c_vlo_scan6_slm ScanType;
-  typedef decltype(ScanType::Echo::dist) distance_type;
-  typedef decltype(ScanType::Echo::area) area_type;
-
-  cv::Mat1b M1;
-  cv::Mat3b M3;
-
-  if( !selectionMask.empty() ) {
-    if ( selectionMask.type() == CV_8UC1 ) {
-      M1 = selectionMask.getMat();
-    }
-    else if ( selectionMask.type() == CV_8UC3  ) {
-      M3 = selectionMask.getMat();
-    }
-  }
-
-  for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-    const double sin_azimuth =
-        std::sin(scan.horizontalAngles[s]);
-
-    const double cos_azimuth =
-        std::cos(scan.horizontalAngles[s]);
-
-    for( int l = 0; l < std::min(scan.START_BAD_LAYERS, scan.NUM_LAYERS); ++l ) {
-
-      if( !M1.empty() && !M1[scan.NUM_LAYERS - l - 1][s] ) {
-        continue;
-      }
-
-      const double inclination =
-          CV_PI / 2 - scan.verticalAngles[l];
-
-      const double sin_inclination =
-          std::sin(inclination);
-
-      const double cos_inclination =
-          std::cos(inclination);
-
-      for( int e = 0; e < scan.NUM_ECHOS; ++e ) {
-
-        if( !M3.empty() && !M3[scan.NUM_LAYERS - l - 1][s][e] ) {
-          continue;
-        }
-
-        const auto & echo =
-            scan.echo[s][l][e];
-
-        const auto & dist =
-            echo.dist;
-
-        if( !dist ) {
-          continue;
-        }
-
-        const auto & area =
-            scan.echo[s][l][e].area;
-
-        if( !area ) {
-          continue;
-        }
-
-        // mirrorSide = scan.mirrorSide;
-        const double distance = 0.01 * dist;
-        const double x = distance * sin_inclination * cos_azimuth;
-        const double y = -distance * sin_inclination * sin_azimuth;
-        const double z = -distance * cos_inclination;
-
-        callback(scan.NUM_LAYERS - l - 1, s, e, x, y, z, echo);
-
-      }
-    }
-  }
-}
-
-template<class _Cb>
-inline bool get_vlo_points3d(const c_vlo_scan & scan, cv::InputArray selectionMask, const _Cb & callback)
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      get_vlo_points3d(scan.scan1, selectionMask, callback);
-      break;
-    case VLO_VERSION_3:
-      get_vlo_points3d(scan.scan3, selectionMask, callback);
-      break;
-    case VLO_VERSION_5:
-      get_vlo_points3d(scan.scan5, selectionMask, callback);
-      break;
-    case VLO_VERSION_6_SLM:
-      get_vlo_points3d(scan.scan6_slm, selectionMask, callback);
-      break;
-    default:
-      return false;
-  }
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-template<class ScanType>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-cv::Mat> inline get_vlo_image(const ScanType & scan, VLO_DATA_CHANNEL channel,
-    cv::InputArray selectionMask = cv::noArray() )
-{
-  switch (channel) {
-
-    case VLO_DATA_CHANNEL_AMBIENT: {
-
-      typedef typename std::remove_reference_t<decltype(ScanType::Slot::ambient[0])> value_type;
-      static constexpr auto max_value = std::numeric_limits<value_type>::max() - 2;
-
-      if( selectionMask.empty() || selectionMask.type() == CV_8UC1 ) {
-
-        cv::Mat_<value_type> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-            (value_type) 0);
-
-        if( selectionMask.empty() ) {
-
-          for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-            for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-
-              const auto & value =
-                  scan.slot[s].ambient[l];
-
-              if( value < max_value ) {
-                image[l][s] = value;
-              }
-            }
-          }
-        }
-        else {
-          const cv::Mat1b M1 =
-              selectionMask.getMat();
-
-          for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-            for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-              if( M1[l][s] ) {
-
-                const auto & value =
-                    scan.slot[s].ambient[l];
-
-                if( value < max_value ) {
-                  image[l][s] = value;
-                }
-              }
-            }
-          }
-        }
-
-        return image;
-      }
-      else if( selectionMask.type() == CV_8UC3 ) {
-
-        const cv::Mat3b M3 =
-            selectionMask.getMat();
-
-        cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-            cv::Vec<value_type, 3>::all(0));
-
-        for( int l = 0; l < scan.NUM_LAYERS; ++l ) {
-          for( int s = 0; s < scan.NUM_SLOTS; ++s ) {
-            for( int e = 0; e < 3; ++e ) {
-              if( M3[l][s][e] ) {
-
-                const auto & value =
-                    scan.slot[s].ambient[l];
-
-                if( value < max_value ) {
-                  image[l][s][e] = value;
-                }
-              }
-            }
-          }
-        }
-
-        return image;
-      }
-
-      return cv::Mat();
-    }
-
-    case VLO_DATA_CHANNEL_DISTANCES: {
-
-      typedef decltype(ScanType::Echo::dist) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.dist;
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_DEPTH: {
-
-      typedef float value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points3d(scan, selectionMask,
-          [&](int l, int s, int e, double x, double y, double z, const auto & echo) {
-            image[l][s][e] = (value_type)(100. * x);
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_HEIGHT : {
-
-      typedef float value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points3d(scan, selectionMask,
-          [&](int l, int s, int e, double x, double y, double z, const auto & echo) {
-            image[l][s][e] = (value_type)(100. * z);
-          });
-
-      return image;
-    }
-
-
-    case VLO_DATA_CHANNEL_AREA: {
-
-      typedef decltype(ScanType::Echo::area) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.area;
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_PEAK: {
-
-      typedef decltype(ScanType::Echo::peak) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.peak;
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_WIDTH: {
-
-      typedef decltype(ScanType::Echo::width) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.width;
-          });
-
-      return image;
-    }
-
-    default:
-      break;
-  }
-
-  return cv::Mat();
-}
-
-
-inline cv::Mat get_vlo_image(const c_vlo_scan6_slm & scan, VLO_DATA_CHANNEL channel,
-    cv::InputArray selectionMask = cv::noArray())
-{
-  typedef c_vlo_scan6_slm ScanType;
-
-  switch (channel) {
-
-    case VLO_DATA_CHANNEL_DISTANCES: {
-
-      typedef decltype(ScanType::Echo::dist) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.dist;
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_DEPTH: {
-
-      typedef float value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points3d(scan, selectionMask,
-          [&](int l, int s, int e, double x, double y, double z, const auto & echo) {
-            image[l][s][e] = (value_type)(100. * x);
-          });
-
-      return image;
-    }
-
-    case VLO_DATA_CHANNEL_HEIGHT : {
-
-      typedef float value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points3d(scan, selectionMask,
-          [&](int l, int s, int e, double x, double y, double z, const auto & echo) {
-            image[l][s][e] = (value_type)(100. * z);
-          });
-
-      return image;
-    }
-
-
-    case VLO_DATA_CHANNEL_AMBIENT:
-    case VLO_DATA_CHANNEL_AREA: {
-
-      typedef decltype(ScanType::Echo::area) value_type;
-
-      cv::Mat_<cv::Vec<value_type, 3>> image(scan.NUM_LAYERS, scan.NUM_SLOTS,
-          cv::Vec<value_type, 3>::all(0));
-
-      get_vlo_points2d(scan, selectionMask,
-          [&](int l, int s, int e, const auto & echo) {
-            image[l][s][e] = echo.area;
-          });
-
-      return image;
-    }
-
-    default:
-      break;
-  }
-
-  return cv::Mat();
-}
-
-inline cv::Mat get_vlo_image(const c_vlo_scan & scan, VLO_DATA_CHANNEL channel,
-    cv::InputArray selectionMask = cv::noArray())
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return get_vlo_image(scan.scan1, channel, selectionMask);
-    case VLO_VERSION_3:
-      return get_vlo_image(scan.scan3, channel, selectionMask);
-    case VLO_VERSION_5:
-      return get_vlo_image(scan.scan5, channel, selectionMask);
-    case VLO_VERSION_6_SLM:
-      return get_vlo_image(scan.scan6_slm, channel, selectionMask);
-  }
-  return cv::Mat();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-template<class ScanType>
-inline bool get_vlo_clouds3d(const ScanType & scan, cv::Mat3f clouds[3])
-{
-  for( int i = 0; i < 3; ++i ) {
-    clouds[i] = cv::Mat3f(scan.NUM_LAYERS, scan.NUM_SLOTS,
-        cv::Vec3f::all(0));
-  }
-
-  get_vlo_points3d(scan, cv::noArray(),
-      [&](int l, int s, int e, double x, double y, double z, const auto & ) {
-        clouds[e][l][s][0] = (float) x;
-        clouds[e][l][s][1] = (float) y;
-        clouds[e][l][s][2] = (float) z;
-      });
-
-  return true;
-}
-
-inline bool get_vlo_clouds3d(const c_vlo_scan & scan, cv::Mat3f clouds[3])
-{
-  switch (scan.version) {
-    case VLO_VERSION_1:
-      return get_vlo_clouds3d(scan.scan1, clouds);
-    case VLO_VERSION_3:
-      return get_vlo_clouds3d(scan.scan3, clouds);
-    case VLO_VERSION_5:
-      return get_vlo_clouds3d(scan.scan5, clouds);
-    case VLO_VERSION_6_SLM:
-      return get_vlo_clouds3d(scan.scan6_slm, clouds);
-  }
-  return false;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 #endif /* __c_vlo_scan_h__ */

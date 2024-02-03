@@ -38,80 +38,52 @@ static constexpr int arg_w_index = 6;
 static constexpr const char * arg_w_name = "w";
 static constexpr const char * arg_w_desc = "echo width";
 
-static constexpr int num_args = 7;
+static constexpr int arg_x_index = 7;
+static constexpr const char * arg_x_name = "x";
+static constexpr const char * arg_x_desc = "X coordinate of 3D point in [cm]";
 
-template<class ScanType>
-std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_3 ||
-    c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
-bool> process_data_(const ScanType & scan, const c_math_expression & math, cv::Mat3b & output_selection)
-{
-  get_vlo_points2d(scan, cv::noArray(),
-      [&](int l, int s, int e, const auto & echo) {
+static constexpr int arg_y_index = 8;
+static constexpr const char * arg_y_name = "y";
+static constexpr const char * arg_y_desc = "Y coordinate of 3D point in [cm]";
 
-        double args[num_args];
+static constexpr int arg_z_index = 9;
+static constexpr const char * arg_z_name = "z";
+static constexpr const char * arg_z_desc = "Z coordinate of 3D point in [cm]";
 
-        args[arg_l_index] = l;
-        args[arg_s_index] = s;
-        args[arg_e_index] = e;
-        args[arg_d_index] = echo.dist;
-        args[arg_a_index] = echo.area;
-        args[arg_p_index] = echo.peak;
-        args[arg_w_index] = echo.width;
-
-        if ( math.eval(args) ) {
-          output_selection[l][s][e] = 255;
-        }
-
-      });
-
-
-  return true;
-}
-
-bool process_data_(const c_vlo_scan6_slm & scan, const c_math_expression & math, cv::Mat3b & output_selection)
-{
-  get_vlo_points2d(scan, cv::noArray(),
-      [&](int l, int s, int e, const auto & echo) {
-
-        double args[num_args];
-
-        args[arg_l_index] = l;
-        args[arg_s_index] = s;
-        args[arg_e_index] = e;
-        args[arg_d_index] = echo.dist;
-        args[arg_a_index] = echo.area;
-
-        if ( math.eval(args) ) {
-          output_selection[l][s][e] = 255;
-        }
-
-      });
-
-  return true;
-}
+static constexpr int num_args = 10;
 
 static bool process_data(c_vlo_scan & scan, const c_math_expression & math, cv::Mat3b & output_selection)
 {
-  output_selection.create(vlo_scan_size(scan));
+  output_selection.create(scan.size);
   output_selection.setTo(cv::Scalar::all(0));
 
-  switch (scan.version)
-  {
-    case VLO_VERSION_1:
-      return process_data_(scan.scan1, math, output_selection);
-    case VLO_VERSION_3:
-      return process_data_(scan.scan3, math, output_selection);
-    case VLO_VERSION_5:
-      return process_data_(scan.scan5, math, output_selection);
-    case VLO_VERSION_6_SLM:
-      return process_data_(scan.scan6_slm, math, output_selection);
-    default:
-      break;
+  for ( int l = 0; l < scan.size.height; ++l ) {
+    for ( int s = 0; s < scan.size.width; ++s ) {
+      for ( int e = 0; e < 3; ++e ) {
+
+        double args[num_args];
+
+        args[arg_l_index] = l;
+        args[arg_s_index] = s;
+        args[arg_e_index] = e;
+        args[arg_d_index] = scan.distance.empty() ? 0 : scan.distance[l][s][e];
+        args[arg_a_index] = scan.area.empty() ? 0 : scan.area[l][s][e];
+        args[arg_p_index] = scan.peak.empty() ? 0 : scan.peak[l][s][e]; ;
+        args[arg_w_index] = scan.width.empty() ? 0 : scan.width[l][s][e];
+        args[arg_x_index] = scan.clouds[e][l][s][0];
+        args[arg_y_index] = scan.clouds[e][l][s][1];
+        args[arg_z_index] = scan.clouds[e][l][s][2];
+
+        if( math.eval(args) ) {
+          output_selection[l][s][e] = 255;
+        }
+
+      }
+
+    }
   }
 
-  CF_ERROR("Unsupported VLO scan version encountered: %d", scan.version);
-  return false;
+  return true;
 }
 
 } // namespace
@@ -131,6 +103,9 @@ std::string c_vlo_pixel_selection_routine::helpstring() const
     _helpstring.append(ssprintf("%s : %s\n", arg_a_name, arg_a_desc));
     _helpstring.append(ssprintf("%s : %s\n", arg_p_name, arg_p_desc));
     _helpstring.append(ssprintf("%s : %s\n", arg_w_name, arg_w_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_x_name, arg_x_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_y_name, arg_y_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_z_name, arg_z_desc));
 
     _helpstring.append("\nConstants:\n");
     for ( const auto & func: math_.constants() ) {
@@ -194,11 +169,11 @@ bool c_vlo_pixel_selection_routine::process(c_vlo_frame * vlo)
     math_.add_argument(arg_e_index, arg_e_name, arg_e_desc);
     math_.add_argument(arg_d_index, arg_d_name, arg_d_desc);
     math_.add_argument(arg_a_index, arg_a_name, arg_a_desc);
-
-    if( (previous_vlo_scan_version_ = vlo->current_scan_.version) != VLO_VERSION_6_SLM ) {
-      math_.add_argument(arg_p_index, arg_p_name, arg_p_desc);
-      math_.add_argument(arg_w_index, arg_w_name, arg_w_desc);
-    }
+    math_.add_argument(arg_p_index, arg_p_name, arg_p_desc);
+    math_.add_argument(arg_w_index, arg_w_name, arg_w_desc);
+    math_.add_argument(arg_x_index, arg_x_name, arg_x_desc);
+    math_.add_argument(arg_y_index, arg_y_name, arg_y_desc);
+    math_.add_argument(arg_z_index, arg_z_name, arg_z_desc);
 
     if ( !math_.parse(expression_.c_str()) ) {
 

@@ -34,12 +34,6 @@ public:
       cv::OutputArray image,
       cv::OutputArray data,
       cv::OutputArray mask) override;
-//
-//  bool get_image(int id, cv::OutputArray image,
-//      cv::OutputArray mask = cv::noArray()) override;
-//
-//  bool get_point_cloud(int id, cv::OutputArray points,
-//      cv::OutputArray colors) override;
 
   void update_selection(cv::InputArray mask,
       SELECTION_MASK_MODE mode);

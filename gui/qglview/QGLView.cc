@@ -706,7 +706,7 @@ void QGLView::drawMainAxes()
       mainAxesLength_ > 0 ? mainAxesLength_ :
           0.005 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
 
-  CF_DEBUG("length=%g", length);
+//  CF_DEBUG("length=%g", length);
 
   drawArrow(QVector3D(0, 0, 0), QVector3D(length, 0, 0), length / 100, 4);
   drawArrow(QVector3D(0, 0, 0), QVector3D(0, length, 0), length / 100, 4);

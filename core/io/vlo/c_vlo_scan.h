@@ -744,9 +744,9 @@ struct c_vlo_scan
   cv::Size size;
 
   cv::Mat1w ambient;
-  cv::Mat3w distance;
+  cv::Mat3w distances;
   cv::Mat3w area;
-  cv::Mat3b peak;
+  cv::Mat3w peak;
   cv::Mat3b width;
   cv::Mat3f clouds[3];
 
@@ -839,7 +839,7 @@ inline void vlo_points_callback(const c_vlo_scan & scan, cv::InputArray selectio
     for ( int l = 0; l < scan.size.height; ++l ) {
       for ( int s = 0; s < scan.size.width; ++s ) {
         for ( int e = 0; e < 3; ++e ) {
-          if ( scan.distance[l][s][e] ) {
+          if ( scan.distances[l][s][e] ) {
             callback(l, s, e);
           }
         }
@@ -856,7 +856,7 @@ inline void vlo_points_callback(const c_vlo_scan & scan, cv::InputArray selectio
       for ( int s = 0; s < scan.size.width; ++s ) {
         if ( mask[l][s]  ) {
           for ( int e = 0; e < 3; ++e ) {
-            if ( scan.distance[l][s][e] ) {
+            if ( scan.distances[l][s][e] ) {
               callback(l, s, e);
             }
           }
@@ -875,7 +875,7 @@ inline void vlo_points_callback(const c_vlo_scan & scan, cv::InputArray selectio
       for( int s = 0; s < scan.size.width; ++s ) {
         for( int e = 0; e < 3; ++e ) {
           if( mask[l][s][e] ) {
-            if( scan.distance[l][s][e] ) {
+            if( scan.distances[l][s][e] ) {
               callback(l, s, e);
             }
           }

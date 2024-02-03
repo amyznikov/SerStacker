@@ -96,9 +96,9 @@ bool vlo_ghost_detection(const c_vlo_scan & scan,
     vlo_pixels_callback(scan, cv::noArray(),
         [&](int l, int s) {
 
-          const auto &D0 = scan.distance[l][s][0];
-          const auto &D1 = scan.distance[l][s][1];
-          const auto &D2 = scan.distance[l][s][2];
+          const auto &D0 = scan.distances[l][s][0];
+          const auto &D1 = scan.distances[l][s][1];
+          const auto &D2 = scan.distances[l][s][2];
 
           const auto &I0 = scan.peak[l][s][0];
           const auto &I1 = scan.peak[l][s][1];
@@ -123,9 +123,9 @@ bool vlo_ghost_detection(const c_vlo_scan & scan,
     vlo_pixels_callback(scan, cv::noArray(),
         [&](int l, int s) {
 
-          const auto &D0 = scan.distance[l][s][0];
-          const auto &D1 = scan.distance[l][s][1];
-          const auto &D2 = scan.distance[l][s][2];
+          const auto &D0 = scan.distances[l][s][0];
+          const auto &D1 = scan.distances[l][s][1];
+          const auto &D2 = scan.distances[l][s][2];
 
           const auto &I0 = scan.area[l][s][0];
           const auto &I1 = scan.area[l][s][1];

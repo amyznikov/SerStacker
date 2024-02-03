@@ -28,44 +28,28 @@ namespace {
 struct c_wall_segment
 {
   std::vector<cv::Point> pts;
-//  double d = 0;
-//  double dd = 0;
   int nhr = 0;
 };
 
 
-struct c_bloom_detection_input_data
+static const cv::Mat3w & get_intensity_image(const c_vlo_scan & scan,
+    const c_vlo_bloom_detection_options & opts)
 {
-  cv::Mat3f distance;
-  cv::Mat3f height;
-  cv::Mat3f intensity;
-};
-
-static void extract_bloom_detection_input_data(const c_vlo_scan & scan,
-    const c_vlo_bloom_detection_options & opts,
-    c_bloom_detection_input_data & output_data)
-{
-//  get_vlo_points3d(scan, cv::noArray(),
-//      [](int l, int s, int e, double x, double y, double z, const auto & echo) {
-//        if constexpr ( has_peak_member(echo) ) {
-//          echo.peak;
-//
-//        }
-//        else {
-//          echo.area;
-//        }
-//      });
-
+  if ( opts.intensity_measure == VLO_BLOOM_INTENSITY_PEAK && !scan.peak.empty() ) {
+    return scan.peak;
+  }
+  return scan.area;
 }
 
 
-bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv::Mat4f & histogram,
+bool extract_vertical_walls(const c_vlo_scan & scan,const cv::Mat3b & R, int s, cv::Mat4f & histogram,
     std::vector<c_wall_segment> & segments,
     const c_vlo_bloom_detection_options & opts)
 {
 
 //  INSTRUMENT_REGION("");
 
+  const auto & D = scan.distances;
   const double min_distance = opts.min_distance >= 0 ? opts.min_distance : 100; // [cm]
   const double max_distance = opts.max_distance > 0 ? opts.max_distance : 30000; // [cm]
   const double distance_step = opts.distance_tolerance > 0 ? opts.distance_tolerance : 100; // [cm]
@@ -77,7 +61,7 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
    * Build histogram of distances
    */
 
-  //cv::Mat4f histogram(num_bins, 1, cv::Vec4f::all(0));
+
   histogram.create(num_bins, 1);
   histogram.setTo(cv::Vec4f::all(0));
 
@@ -85,7 +69,7 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
 
     for( int e = 0; e < 3; ++e ) {
 
-      const float & d =
+      const auto & d =
           D[y][s][e];
 
       if( d > 0 ) {
@@ -221,7 +205,7 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
       for( int y = 0; y < D.rows; ++y ) {
         for( int e = 0; e < 3; ++e ) {
 
-          const float & d =
+          const auto & d =
               D[y][s][e];
 
           if( d > dmin && d < dmax ) {
@@ -263,15 +247,12 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
 
         for( int e = 0; e < 3; ++e ) {
 
-          const float & d =
+          const auto & d =
               D[y][s][e];
 
           if( d > dmin && d < dmax ) {
 
             wall.pts.emplace_back(y, e);
-
-//            wall.d += d;
-//            wall.dd += d * d;
 
             if ( R[y][s][e] ) {
               ++wall.nhr;
@@ -281,8 +262,6 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
       }
 
       if( wall.nhr ) {
-//        wall.d /= wall.pts.size();
-//        wall.dd = sqrt(wall.dd / wall.pts.size() - wall.d * wall.d);
         segments.emplace_back(wall);
       }
 
@@ -294,26 +273,26 @@ bool extract_vertical_walls(const cv::Mat3f & D, const cv::Mat3b & R, int s, cv:
   return true;
 }
 
-
-static bool extract_intensity_image(const c_vlo_scan & scan, VLO_BLOOM_INTENSITY_MEASURE intensity_measure,
-    cv::Mat3f & output_intensity_image)
-{
-  INSTRUMENT_REGION("");
-
-  VLO_DATA_CHANNEL intensity_channel;
-
-  if ( intensity_measure == VLO_BLOOM_INTENSITY_AREA || scan.version == VLO_VERSION_6_SLM )  {
-    intensity_channel = VLO_DATA_CHANNEL_AREA;
-  }
-  else {
-    intensity_channel = VLO_DATA_CHANNEL_PEAK;
-  }
-
-  get_vlo_image(scan, intensity_channel).convertTo(output_intensity_image,
-      output_intensity_image.depth());
-
-  return true;
-}
+//
+//static bool extract_intensity_image(const c_vlo_scan & scan, VLO_BLOOM_INTENSITY_MEASURE intensity_measure,
+//    cv::Mat3f & output_intensity_image)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  VLO_DATA_CHANNEL intensity_channel;
+//
+//  if ( intensity_measure == VLO_BLOOM_INTENSITY_AREA || scan.version == VLO_VERSION_6_SLM )  {
+//    intensity_channel = VLO_DATA_CHANNEL_AREA;
+//  }
+//  else {
+//    intensity_channel = VLO_DATA_CHANNEL_PEAK;
+//  }
+//
+//  get_vlo_image(scan, intensity_channel).convertTo(output_intensity_image,
+//      output_intensity_image.depth());
+//
+//  return true;
+//}
 
 }
 
@@ -326,37 +305,29 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
   INSTRUMENT_REGION("");
 
-  cv::Mat3f I, D;
-  cv::Mat3b R, B;
   std::vector<c_wall_segment> walls;
 
-  /*
-   * XXX
-   */
-  c_bloom_detection_input_data data;
-  extract_bloom_detection_input_data(scan, opts, data);
+  // Get intensity image
+  const cv::Mat3w & I =
+      get_intensity_image(scan,
+          opts);
 
   /*
-   * Create empty output bloom mask B
-   * */
-  B.create(scan.size);
-  B.setTo(0);
-  output_bloom_mask = B;
-
-
-  /*
-   *  Extract intensity image I and threshold it to get high-reflectors mask R
+   * Create output masks
    * */
 
-  extract_intensity_image(scan, opts.intensity_measure, I);
-  cv::compare(I, cv::Scalar::all(opts.intensity_saturation_level), R, cv::CMP_GE);
-  output_reflectors_mask = R;
+  output_bloom_mask.create(scan.size, CV_8UC3);
+  output_bloom_mask.setTo(0);
 
+  cv::compare(I, cv::Scalar::all(opts.intensity_saturation_level),
+      output_reflectors_mask,
+      cv::CMP_GE);
 
-  /*
-   * Get point distances D
-   * */
-  get_vlo_image(scan, VLO_DATA_CHANNEL_DISTANCES).convertTo(D, D.depth());
+  cv::Mat3b B =
+      output_bloom_mask;
+
+  cv::Mat3b R =
+      output_reflectors_mask;
 
 
   /*
@@ -390,7 +361,7 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
     // If there are least one reflective point on this column then
     // extract all vertical walls having at least one reflective point
-    extract_vertical_walls(D, R, s, H, walls, opts);
+    extract_vertical_walls(scan, R, s, H, walls, opts);
     if( walls.empty() ) {
       continue; // strange ?
     }

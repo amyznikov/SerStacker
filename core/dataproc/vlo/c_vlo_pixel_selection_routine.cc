@@ -66,7 +66,7 @@ static bool process_data(c_vlo_scan & scan, const c_math_expression & math, cv::
         args[arg_l_index] = l;
         args[arg_s_index] = s;
         args[arg_e_index] = e;
-        args[arg_d_index] = scan.distance.empty() ? 0 : scan.distance[l][s][e];
+        args[arg_d_index] = scan.distances.empty() ? 0 : scan.distances[l][s][e];
         args[arg_a_index] = scan.area.empty() ? 0 : scan.area[l][s][e];
         args[arg_p_index] = scan.peak.empty() ? 0 : scan.peak[l][s][e]; ;
         args[arg_w_index] = scan.width.empty() ? 0 : scan.width[l][s][e];

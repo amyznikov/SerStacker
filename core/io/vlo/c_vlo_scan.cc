@@ -123,7 +123,7 @@ cv::Mat get_vlo_image(const c_vlo_scan & scan, VLO_DATA_CHANNEL channel,
   switch (channel) {
     case VLO_DATA_CHANNEL_AMBIENT:
       if( selection.empty() ) {
-        image = scan.ambient.empty() ? (cv::Mat) scan.distance : (cv::Mat) scan.ambient;
+        image = scan.ambient.empty() ? (cv::Mat) scan.distances : (cv::Mat) scan.ambient;
       }
       else if( !scan.ambient.empty() ) {
 
@@ -136,25 +136,25 @@ cv::Mat get_vlo_image(const c_vlo_scan & scan, VLO_DATA_CHANNEL channel,
           scan.ambient.copyTo(image, m);
         }
       }
-      else if( !scan.distance.empty() ) {
+      else if( !scan.distances.empty() ) {
 
         if ( selection.channels() == 1 ) {
-          scan.distance.copyTo(image, selection);
+          scan.distances.copyTo(image, selection);
         }
         else {
           cv::Mat m;
           reduce_color_channels(selection, m, cv::REDUCE_MAX);
-          scan.distance.copyTo(image, m);
+          scan.distances.copyTo(image, m);
         }
       }
       break;
 
     case VLO_DATA_CHANNEL_DISTANCES:
       if( selection.empty() ) {
-        image = scan.distance;
+        image = scan.distances;
       }
-      else if( !scan.distance.empty() ) {
-        scan.distance.copyTo(image, selection);
+      else if( !scan.distances.empty() ) {
+        scan.distances.copyTo(image, selection);
       }
       break;
 

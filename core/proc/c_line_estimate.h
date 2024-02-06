@@ -16,16 +16,17 @@
  *  y  = slope * x + shift
  *
  * */
+template<class T = double>
 class c_line_estimate
 {
 public:
 
-  double slope() const
+  T slope() const
   {
     return (sn * sxy - sx * sy) / (sn * sx2 - sx * sx);
   }
 
-  double shift() const
+  T shift() const
   {
     return (sy - slope() * sx) / sn;
   }
@@ -35,7 +36,7 @@ public:
     return sn;
   }
 
-  void update(double x, double y )
+  void update(T x, T y )
   {
     sx += x;
     sy += y;
@@ -51,7 +52,7 @@ public:
   }
 
 protected:
-  double sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  T sx = 0, sy = 0, sxy = 0, sx2 = 0;
   int sn = 0;
 };
 

@@ -129,6 +129,10 @@ c_vlo_frame::c_vlo_frame()
       "3-channel 2D Image with pixel intensities measured as WIDTH",
       0, 100);
 
+  add_display_channel("ECHO",
+      "Echo index colored as R, G, B",
+      0, 255);
+
   add_display_channel("SELECTION_MASK",
       "1- or 3-channel binary 2D Image representing current selection mask",
       0, 255);
@@ -186,6 +190,42 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
           break;
       }
 
+    }
+    else if( channelName == "ECHO" ) {
+      switch (*viewType) {
+        case DataViewType_Image: {
+
+          cv::Mat3b image(current_scan_.size, cv::Vec3b(0, 0, 0));
+
+          vlo_points_callback(current_scan_, selection_mask_,
+              [&](int l, int s, int e) {
+                image[l][s][e] = 255;
+              });
+
+          output_image.move(image);
+
+          break;
+        }
+
+        case DataViewType_PointCloud: {
+
+            std::vector<cv::Vec3f> points;
+            std::vector<cv::Vec3b> colors;
+
+            points.reserve(current_scan_.size.area());
+            colors.reserve(current_scan_.size.area());
+
+            vlo_points_callback(current_scan_, selection_mask_,
+                [&](int l, int s, int e) {
+                  points.emplace_back(current_scan_.clouds[e][l][s] * distance_scale);
+                  colors.emplace_back(255 * (e == 0), 255 * (e == 1), 255 * (e == 2));
+                });
+
+            cv::Mat(points).copyTo(output_image);
+            cv::Mat(colors).copyTo(output_colors);
+          }
+          break;
+      }
     }
     else {
 

@@ -297,6 +297,10 @@ void> convert(ScanType & src, c_vlo_scan * dst)
   constexpr double yawCorrection = 0;
 
   for( int s = 0; s < src.NUM_SLOTS; ++s ) {
+
+    const int ss =
+        src.NUM_SLOTS - s - 1;
+
     dst->azimuth[s][0] =
         (float) (src.slot[s].angleTicks * tick2radian + yawCorrection);
   }
@@ -315,6 +319,9 @@ void> convert(ScanType & src, c_vlo_scan * dst)
     const double horizontalAngle =
         slot.angleTicks * tick2radian + yawCorrection;
 
+    const int ss =
+        src.NUM_SLOTS - s - 1;
+
     for( int l = 0; l < src.NUM_LAYERS; ++l ) {
 
       const double verticalAngle =
@@ -332,7 +339,7 @@ void> convert(ScanType & src, c_vlo_scan * dst)
       const double sin_hor_cos_vert =
           sin(horizontalAngle) * cos_vert;
 
-      dst->ambient[l][s] =
+      dst->ambient[l][ss] =
           slot.ambient[l] < 65535 - 2 ? slot.ambient[l] : 0;
 
       for( int e = 0; e < std::min(3, (int) src.NUM_ECHOS); ++e ) {
@@ -340,25 +347,25 @@ void> convert(ScanType & src, c_vlo_scan * dst)
         const auto & echo =
             slot.echo[l][e];
 
-        dst->distances[l][s][e] = echo.dist;
-        dst->area[l][s][e] = echo.area ;
-        dst->peak[l][s][e] = echo.peak;
-        dst->width[l][s][e] = echo.width;
+        dst->distances[l][ss][e] = echo.dist;
+        dst->area[l][ss][e] = echo.area ;
+        dst->peak[l][ss][e] = echo.peak;
+        dst->width[l][ss][e] = echo.width;
 
         const auto & distance = echo.dist;
         if( !distance ) {
-          dst->clouds[e][l][s][0] = 0;
-          dst->clouds[e][l][s][1] = 0;
-          dst->clouds[e][l][s][2] = 0;
+          dst->clouds[e][l][ss][0] = 0;
+          dst->clouds[e][l][ss][1] = 0;
+          dst->clouds[e][l][ss][2] = 0;
         }
         else {
           const float x = distance * cos_hor_cos_vert;
-          const float y = distance * sin_hor_cos_vert;
+          const float y = -distance * sin_hor_cos_vert;
           const float z = distance * sin_vert;
 
-          dst->clouds[e][l][s][0] = x;
-          dst->clouds[e][l][s][1] = y;
-          dst->clouds[e][l][s][2] = z;
+          dst->clouds[e][l][ss][0] = x;
+          dst->clouds[e][l][ss][1] = y;
+          dst->clouds[e][l][ss][2] = z;
         }
       }
     }
@@ -368,6 +375,7 @@ void> convert(ScanType & src, c_vlo_scan * dst)
 static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
 {
   sort_vlo_echos_by_distance(src);
+
 
   dst->size.width = src.NUM_SLOTS;
   dst->size.height = src.NUM_LAYERS;
@@ -385,7 +393,11 @@ static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
   }
 
   for( int s = 0; s < src.NUM_SLOTS; ++s ) {
-    dst->azimuth[s][0] =
+
+    const int ss =
+        src.NUM_SLOTS - s - 1;
+
+    dst->azimuth[ss][0] =
         (float) (((src.slot[s].angleTicks) * 0.000000083819031734908705515532918627265) * 0.0174533);
   }
 
@@ -402,12 +414,15 @@ static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
     const double azimuth =
         ((slot.angleTicks) * 0.000000083819031734908705515532918627265) * 0.0174533;
 
+    const int ss =
+        src.NUM_SLOTS - s - 1;
+
     for( int l = 0; l < src.NUM_LAYERS; ++l ) {
 
       const double inclination =
           ((25.0 / src.NUM_LAYERS * l - 25.0 / 2.0) + 90) * 0.0174533;
 
-      dst->ambient[l][s] =
+      dst->ambient[l][ss] =
           slot.ambient[l] < 65535 - 2 ? slot.ambient[l] : 0;
 
       for( int e = 0; e < std::min(3, (int) src.NUM_ECHOS); ++e ) {
@@ -415,25 +430,26 @@ static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
         const auto & echo =
             slot.echo[l][e];
 
-        dst->distances[l][s][e] = echo.dist;
-        dst->area[l][s][e] = echo.area ;
-        dst->peak[l][s][e] = echo.peak;
-        dst->width[l][s][e] = echo.width;
+
+        dst->distances[l][ss][e] = echo.dist;
+        dst->area[l][ss][e] = echo.area ;
+        dst->peak[l][ss][e] = echo.peak;
+        dst->width[l][ss][e] = echo.width;
 
         const auto & distance = echo.dist;
         if( !distance ) {
-          dst->clouds[e][l][s][0] = 0;
-          dst->clouds[e][l][s][1] = 0;
-          dst->clouds[e][l][s][2] = 0;
+          dst->clouds[e][l][ss][0] = 0;
+          dst->clouds[e][l][ss][1] = 0;
+          dst->clouds[e][l][ss][2] = 0;
         }
         else {
           const float x = distance * sin(inclination) * cos(azimuth);
-          const float y = distance * sin(inclination) * sin(azimuth);
+          const float y = -distance * sin(inclination) * sin(azimuth);
           const float z = distance * cos(inclination);
 
-          dst->clouds[e][l][s][0] = x;
-          dst->clouds[e][l][s][1] = y;
-          dst->clouds[e][l][s][2] = z;
+          dst->clouds[e][l][ss][0] = x;
+          dst->clouds[e][l][ss][1] = y;
+          dst->clouds[e][l][ss][2] = z;
         }
       }
     }
@@ -461,12 +477,20 @@ static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
   }
 
   for( int s = 0; s < src.NUM_SLOTS; ++s ) {
-    dst->azimuth[s][0] =
+
+    const int ss =
+        src.NUM_SLOTS - s - 1;
+
+    dst->azimuth[ss][0] =
         src.horizontalAngles[s];
   }
 
   for( int l = 0; l < src.NUM_LAYERS; ++l ) {
-    dst->elevation[src.NUM_LAYERS - l - 1][0] =
+
+    const int ll =
+        src.NUM_LAYERS - l - 1;
+
+    dst->elevation[ll][0] =
         (float) (CV_PI / 2 - src.verticalAngles[l]);
   }
 
@@ -477,6 +501,9 @@ static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
 
     const double cos_azimuth =
         cos(src.horizontalAngles[s]);
+
+    const int ss =
+        src.NUM_SLOTS - s - 1;
 
     for( int l = 0; l < src.NUM_LAYERS; ++l ) {
 
@@ -489,19 +516,22 @@ static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
       const double cos_inclination =
           cos(inclination);
 
+      const int ll =
+          src.NUM_LAYERS - l - 1;
+
       for( int e = 0; e < std::min(3, (int) src.NUM_ECHOS); ++e ) {
 
         const auto & echo =
             src.echo[s][l][e];
 
-        dst->distances[src.NUM_LAYERS - l - 1][s][e] = echo.dist;
-        dst->area[src.NUM_LAYERS - l - 1][s][e] = echo.area;
+        dst->distances[ll][ss][e] = echo.dist;
+        dst->area[ll][ss][e] = echo.area;
 
         const auto & distance = echo.dist;
         if ( !distance ) {
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][0] = 0;
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][1] = 0;
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][2] = 0;
+          dst->clouds[e][ll][ss][0] = 0;
+          dst->clouds[e][ll][ss][1] = 0;
+          dst->clouds[e][ll][ss][2] = 0;
         }
         else {
 
@@ -509,9 +539,9 @@ static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
           const float y = -distance * sin_inclination * sin_azimuth;
           const float z = -distance * cos_inclination;
 
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][0] = x;
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][1] = y;
-          dst->clouds[e][src.NUM_LAYERS - l - 1][s][2] = z;
+          dst->clouds[e][ll][ss][0] = x;
+          dst->clouds[e][ll][ss][1] = y;
+          dst->clouds[e][ll][ss][2] = z;
         }
       }
     }

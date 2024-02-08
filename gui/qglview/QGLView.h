@@ -47,6 +47,17 @@ public:
     double farPlane = 1000.;
   };
 
+  struct PlanarGridOptions
+  {
+    QString name;
+    float max_distance = 1000;
+    float step = 100;
+    QColor color = QColor(128, 128,128);
+    int opaqueness = 128;
+    bool visible = false;
+
+  };
+
   explicit QGLView(QWidget * parent = nullptr);
   ~QGLView();
 
@@ -60,6 +71,9 @@ public:
   const QColor & foregroundColor() const;
 
   const ViewParams & viewParams() const;
+
+  const std::vector<PlanarGridOptions> & grids() const;
+  std::vector<PlanarGridOptions> & grids();
 
   Projection projection() const;
   void setProjection(Projection v);
@@ -117,12 +131,22 @@ public:
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
 
+  // void drawLine(const QVector3D & start, const QVector3D & end);
+
   bool copyViewportToClipboard();
   void showKeyBindings();
+
+
 
 Q_SIGNALS:
   void viewPointChanged();
   void displayImageChanged();
+
+public Q_SLOTS:
+  void redraw()
+  {
+    ThisClass::update();
+  }
 
 protected:
   virtual void glInit();
@@ -135,6 +159,7 @@ protected:
 
 protected:
   void showViewTarget(bool v);
+  void drawPlanarGrids();
   void timerEvent(QTimerEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
@@ -156,6 +181,7 @@ protected:
   QColor foregroundColor_ = QColor(232, 232, 232);
 
   ViewParams viewParams_;
+  std::vector<PlanarGridOptions> grids_;
 
   QVector3D viewPoint_ = QVector3D(40, 30, 30);
   QVector3D viewTarget_ = QVector3D(0, 0, 0);

@@ -32,5 +32,8 @@
 	<file>icons/dark/XYZ.png</file>
 	<file>icons/light/XYZ.png</file>
 	
+	<file>icons/dark/grid.png</file>
+	<file>icons/light/grid.png</file>
+	
 </qresource>
 </RCC>

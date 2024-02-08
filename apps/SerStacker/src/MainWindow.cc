@@ -18,6 +18,7 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qpipeline/QPipelineThread.h>
+
 #include <core/io/load_image.h>
 #include <core/debug.h>
 
@@ -47,6 +48,7 @@
 #define ICON_cloud_rotate       ":/serstacker/icons/cloud_rotate.png"
 #define ICON_cloud_view_target  ":/serstacker/icons/cloud_view_target.png"
 #define ICON_cloud_view_XYZ     ":/serstacker/icons/XYZ.png"
+#define ICON_cloud_view_grid    ":/serstacker/icons/grid.png"
 
 
 namespace serstacker {
@@ -130,7 +132,6 @@ MainWindow::MainWindow()
   setupPipelineProgressView();
 
 
-
   tabifyDockWidget(fileSystemTreeDock, sequencesTreeViewDock);
   //tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
   tabifyDockWidget(sequencesTreeViewDock, imageProcessorDock_);
@@ -182,7 +183,24 @@ void MainWindow::onRestoreState(QSettings & settings)
   }
 
   if ( cloudView ) {
+
     cloudView->loadParameters();
+
+    std::vector<QGLView::PlanarGridOptions> & grids =
+        cloudView->grids();
+
+    if ( grids.empty() ) {
+
+      grids.emplace_back();
+
+      QGLView::PlanarGridOptions & grid =
+          grids.back();
+
+      grid.visible = false;
+      grid.step = 2;
+      grid.max_distance = 600;
+    }
+
   }
 }
 
@@ -600,8 +618,16 @@ void MainWindow::onWriteDisplayVideo()
 
 void MainWindow::onCurrentViewVisibilityChanged()
 {
-  if( is_visible(cloudViewSettingsDialogBox) && !is_visible(cloudView) ) {
-    cloudViewSettingsDialogBox->hide();
+  if ( !is_visible(cloudView)  ) {
+
+    if( is_visible(cloudViewSettingsDialogBox) ) {
+      cloudViewSettingsDialogBox->hide();
+    }
+
+    if( is_visible(glGridSettingsDialog_) ) {
+      glGridSettingsDialog_->setOptions(nullptr);
+      glGridSettingsDialog_->hide();
+    }
   }
 
   if( is_visible(mtfControl_) ) { // force update MTF histogram
@@ -1824,6 +1850,41 @@ void MainWindow::setupInputSequenceView()
                   }
                 }));
 
+
+        if ( !cloudView->grids().empty() ) {
+
+            menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_grid),
+                  "Planar grid options...",
+                  "Open Planar grid options modal dialog box",
+                  is_visible(glGridSettingsDialog_),
+                  [this]() {
+
+                    if ( !glGridSettingsDialog_ ) {
+
+                      glGridSettingsDialog_ =
+                          new QGLViewPlanarGridSettingsDialogBox("Planar grid options...",
+                              this);
+
+                      connect(glGridSettingsDialog_, &QGLViewPlanarGridSettingsDialogBox::parameterChanged,
+                          [this]() {
+                            cloudView->update();
+                            cloudView->saveParameters();
+                          });
+                    }
+
+                    if ( !glGridSettingsDialog_->isVisible() ) {
+                      glGridSettingsDialog_->setOptions(&cloudView->grids().front());
+                      glGridSettingsDialog_->show();
+                      glGridSettingsDialog_->raise();
+                    }
+                    else {
+                      glGridSettingsDialog_->setOptions(nullptr);
+                      glGridSettingsDialog_->hide();
+                    }
+                  }));
+        }
+
+
         menu.addSeparator();
 
         if ( !showCloudViewSettingsDialogBoxAction ) {
@@ -1921,6 +1982,7 @@ void MainWindow::setupPipelineProgressView()
       });
 
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace serstacker

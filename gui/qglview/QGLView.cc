@@ -156,6 +156,50 @@ void QGLView::onLoadParameters(QSettings & settings)
 
   viewParams_.farPlane = settings.value("QGLView/farPlane",
       viewParams_.farPlane).value<decltype(viewParams_.farPlane)>();
+
+  const int numGrids =
+      settings.value("QGLView/numGrids",
+          0).value<int>();
+
+  grids_.clear();
+
+  for( int i = 0; i < numGrids; ++i ) {
+
+    const QString keyPrefix =
+        QString("QGLView/grid%1").arg(i);
+
+    grids_.emplace_back();
+
+    PlanarGridOptions & grid =
+        grids_.back();
+
+    grid.name =
+        settings.value(QString("%1/name").arg(keyPrefix),
+            grid.name).value<decltype(grid.name)>();
+
+    grid.max_distance =
+        settings.value(QString("%1/max_distance").arg(keyPrefix),
+            grid.max_distance).value<decltype(grid.max_distance)>();
+
+    grid.step =
+        settings.value(QString("%1/step").arg(keyPrefix),
+            grid.step).value<decltype(grid.step)>();
+
+    grid.color =
+        settings.value(QString("%1/color").arg(keyPrefix),
+            grid.color).value<decltype(grid.color)>();
+
+    grid.opaqueness =
+        settings.value(QString("%1/opaqueness").arg(keyPrefix),
+            grid.opaqueness).value<decltype(grid.opaqueness)>();
+
+    grid.visible =
+        settings.value(QString("%1/visible").arg(keyPrefix),
+            grid.visible).value<decltype(grid.visible)>();
+
+
+  }
+
 }
 
 void QGLView::saveParameters()
@@ -190,6 +234,36 @@ void QGLView::onSaveParameters(QSettings & settings)
   settings.setValue("QGLView/farPlane",
       viewParams_.farPlane);
 
+  settings.setValue("QGLView/numGrids",
+      (int) (grids_.size()));
+
+  for( int i = 0, n = grids_.size(); i < n; ++i ) {
+
+    const PlanarGridOptions & grid =
+        grids_[i];
+
+    const QString keyPrefix =
+        QString("QGLView/grid%1").arg(i);
+
+    settings.setValue(QString("%1/name").arg(keyPrefix),
+        grid.name);
+
+    settings.setValue(QString("%1/max_distance").arg(keyPrefix),
+        grid.max_distance);
+
+    settings.setValue(QString("%1/step").arg(keyPrefix),
+        grid.step);
+
+    settings.setValue(QString("%1/color").arg(keyPrefix),
+        grid.color);
+
+    settings.setValue(QString("%1/opaqueness").arg(keyPrefix),
+        grid.opaqueness);
+
+    settings.setValue(QString("%1/visible").arg(keyPrefix),
+        grid.visible);
+
+  }
 
 }
 
@@ -222,6 +296,17 @@ const QGLView::ViewParams & QGLView::viewParams() const
 {
   return viewParams_;
 }
+
+const std::vector<QGLView::PlanarGridOptions> & QGLView::grids() const
+{
+  return grids_;
+}
+
+std::vector<QGLView::PlanarGridOptions> & QGLView::grids()
+{
+  return grids_;
+}
+
 
 QGLView::Projection QGLView::projection() const
 {
@@ -501,6 +586,25 @@ void QGLView::glPreDraw()
       backgroundColor_.blueF(),
       backgroundColor_.alphaF());
 
+
+  /*
+    // In derived class set also optionally:
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_COLOR_MATERIAL);
+
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_DEPTH_TEST);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable( GL_BLEND);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
+
+    drawPlanarGrids();
+
+   */
+
 }
 
 void QGLView::glDraw()
@@ -716,6 +820,15 @@ void QGLView::drawMainAxes()
   drawText(QVector3D(0, length, 0), font, "Y");
   drawText(QVector3D(0, 0, length), font, "Z");
 }
+
+
+//void QGLView::drawLine(const QVector3D & start, const QVector3D & end)
+//{
+//
+//  glBegin(GL_LINES);
+//  glEnd(/*GL_LINE*/);
+//
+//}
 
 void QGLView::mousePressEvent(QMouseEvent *e)
 {
@@ -1027,4 +1140,56 @@ bool QGLView::copyViewportToClipboard()
   clipboard->setPixmap(Base::grab());
 
   return true;
+}
+
+void QGLView::drawPlanarGrids()
+{
+
+  for ( const PlanarGridOptions & grid : grids_ ) {
+
+    if( grid.visible ) {
+
+      //glColor3ub(200, 200, 200);
+      glColor4ub(grid.color.red(), grid.color.green(), grid.color.blue(), grid.opaqueness);
+      glLineWidth(1);
+
+
+      const float max_distance =
+          grid.max_distance > 0 ? std::min(grid.max_distance, (float) viewParams_.farPlane) :
+              viewParams_.farPlane;
+
+      const float step =
+          grid.step > 0 ? grid.step :
+              max_distance / 20;
+
+      glBegin(GL_LINES);
+
+      const float z = 0;
+
+      for( int i = 1;; ++i ) {
+
+        const float s = i * step;
+        if( s > max_distance ) {
+          break;
+        }
+
+        // X
+        //CF_DEBUG("s=%g ymin=%g ymax=%g", s, ymin, ymax);
+        glVertex3f(s, -max_distance, z);
+        glVertex3f(s, max_distance, z);
+
+        glVertex3f(-s, -max_distance, z);
+        glVertex3f(-s, max_distance, z);
+
+        // Y
+        glVertex3f(-max_distance, s, z);
+        glVertex3f(max_distance, s, z);
+        glVertex3f(-max_distance, -s, z);
+        glVertex3f(max_distance, -s, z);
+
+      }
+
+      glEnd(/*GL_LINES*/);
+    }
+  }
 }

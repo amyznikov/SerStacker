@@ -14,6 +14,7 @@
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qcloudview/QCloudViewer.h>
 #include <gui/qcloudview/QCloudViewSettings.h>
+#include <gui/qglview/QGLViewPlanarGridSettings.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
@@ -157,6 +158,9 @@ private:
   ///
   QDisplayVideoWriter diplayImageWriter_;
   QToolButton* displayImageVideoWriterToolButton_ = nullptr;
+
+  ///
+  QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog_ = nullptr;
 };
 
 

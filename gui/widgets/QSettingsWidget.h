@@ -1196,14 +1196,14 @@ private:
 };
 
 
-template<class OptionsType>
+template<class OptionsTypeT>
 class QSettingsWidgetTemplate :
     public QSettingsWidget
 {
 public:
   typedef QSettingsWidgetTemplate ThisClass;
   typedef QSettingsWidget Base;
-  typedef OptionsType c_options_type;
+  typedef OptionsTypeT OptionsType;
 
 
   QSettingsWidgetTemplate(QWidget * parent = nullptr) :
@@ -1216,13 +1216,13 @@ public:
   {
   }
 
-  virtual void set_options(c_options_type * options)
+  virtual void set_options(OptionsType * options)
   {
     this->options_ = options;
     updateControls();
   }
 
-  c_options_type * options() const
+  OptionsType * options() const
   {
     return options_;
   }
@@ -1246,7 +1246,94 @@ protected:
   }
 
 protected:
-  c_options_type * options_ = nullptr;
+  OptionsType * options_ = nullptr;
 };
+
+
+class QSettingsDialogBox :
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QSettingsDialogBox(QWidget * parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags()) :
+    Base(parent, flags)
+  {
+  }
+
+  QSettingsDialogBox(const QString & title, QWidget * parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags()) :
+    Base(parent, flags)
+  {
+    setWindowTitle(title);
+  }
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+  void parameterChanged();
+
+protected:
+  void showEvent(QShowEvent *event) override
+  {
+    Base::showEvent(event);
+    Q_EMIT visibilityChanged(isVisible());
+  }
+
+  void hideEvent(QHideEvent *event) override
+  {
+    Base::hideEvent(event);
+    Q_EMIT visibilityChanged(isVisible());
+  }
+};
+
+template<class SettingsWidgetTypeT>
+class QSettingsDialogBoxTemplate :
+    public QSettingsDialogBox
+{
+public:
+  typedef QSettingsDialogBoxTemplate ThisClass;
+  typedef QSettingsDialogBox Base;
+  typedef SettingsWidgetTypeT SettingsWidgetType;
+  typedef typename SettingsWidgetType::OptionsType OptionsType;
+
+  QSettingsDialogBoxTemplate(QWidget * parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags()) :
+      ThisClass("", parent, flags)
+  {
+  }
+
+  QSettingsDialogBoxTemplate(const QString & title, QWidget * parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags()) :
+    Base(title, parent, flags)
+  {
+    layout_ =
+        new QVBoxLayout(this);
+
+    layout_->addWidget(settings_ctl =
+        new SettingsWidgetType(this));
+
+    connect(settings_ctl, &QSettingsWidget::parameterChanged,
+        this, &ThisClass::parameterChanged);
+  }
+
+  SettingsWidgetType * settingsWidget() const
+  {
+    return settings_ctl;
+  }
+
+  void setOptions(OptionsType * options)
+  {
+    settings_ctl->set_options(options);
+  }
+
+  OptionsType * options() const
+  {
+    return settings_ctl->options();
+  }
+
+protected:
+  QVBoxLayout * layout_;
+  SettingsWidgetType * settings_ctl = nullptr;
+};
+
 
 #endif /* __QSettingsWidget_h__ */

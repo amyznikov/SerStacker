@@ -25,13 +25,6 @@ const c_enum_member* members_of<VLO_BLOOM_INTENSITY_MEASURE>()
 
 namespace {
 
-struct c_wall_segment
-{
-  std::vector<cv::Point> pts;
-  int nrp = 0;
-};
-
-
 static const cv::Mat3w & get_intensity_image(const c_vlo_scan & scan,
     const c_vlo_bloom_detection_options & opts)
 {
@@ -136,24 +129,35 @@ static void create_histogram_of_distances(const c_vlo_scan & scan, const cv::Mat
 }
 
 #if 1
+
+struct c_wall_segment
+{
+  std::vector<cv::Point> pts;
+  int nrp = 0;
+};
+
+struct c_distance_segment
+{
+  float dmin, dmax;
+  float h, sh;
+  c_line_estimate<float> line;
+  c_wall_segment wall;
+};
+
 static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & H, const cv::Mat3b & R, int s,
     const c_vlo_bloom_detection_options & opts,
-    std::vector<c_wall_segment> & output_segments)
+    std::vector<c_distance_segment> & dsegs,
+    std::vector<const c_wall_segment*> & output_segments)
 {
  // INSTRUMENT_REGION("");
-
-  struct c_distance_segment
-  {
-    float dmin, dmax;
-    float h, sh;
-    c_line_estimate<float> line;
-    c_wall_segment wall;
-  };
 
   const auto & D = scan.distances;
   const double distance_step = opts.distance_tolerance > 0 ? opts.distance_tolerance : 100; // [cm]
 
-  std::vector<c_distance_segment> dsegs(H.rows - 2);
+  if ( (int)dsegs.size() < H.rows - 2 ) {
+    dsegs.resize(H.rows - 2);
+  }
+
   int dsegs_count = 0;
 
   //c_wall_segment wall;
@@ -241,7 +245,11 @@ static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & 
     dseg.dmax = dmax;
     dseg.h = 0;
     dseg.sh = 0;
+    dseg.line.reset();
+    dseg.wall.pts.clear();
+    dseg.wall.nrp = 0;
   }
+
 
   //////////////////////////////////////////////////////////////
   // estimate slope and vertical dispersion of the walls
@@ -309,7 +317,7 @@ static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & 
           continue;
         }
 
-        output_segments.emplace_back(dseg.wall);
+        output_segments.emplace_back(&dseg.wall);
       }
     }
   }
@@ -490,7 +498,6 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
   INSTRUMENT_REGION("");
 
-  std::vector<c_wall_segment> segments;
 
   // Get intensity image
   const cv::Mat3w & I =
@@ -527,23 +534,26 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
   cv::Mat4f H;
 
+  std::vector<c_distance_segment> dsegs;
+  std::vector<const c_wall_segment*> wsegs;
+
   create_histogram_of_distances(scan, R, opts, H);
 
   for( int s = 0; s < R.cols; ++s ) {
 
-    segment_distances(scan, H, R, s, opts, segments);
-    if( segments.empty() ) {
+    segment_distances(scan, H, R, s, opts, dsegs, wsegs);
+    if( wsegs.empty() ) {
       continue;
     }
 
     // Analyze each of extracted vertical wall
-    for ( const c_wall_segment & w : segments ) {
+    for ( const c_wall_segment * w : wsegs ) {
 
       int rstart = -1, rend = -1;
 
-      for ( int p = 0, np = w.pts.size(); p < np; ++p ) {
+      for ( int p = 0, np = w->pts.size(); p < np; ++p ) {
 
-        const cv::Point & sp = w.pts[p];
+        const cv::Point & sp = w->pts[p];
         const int & l = sp.x; // image row (layer index)
         const int & e = sp.y; // image channel (echo index)
 
@@ -559,9 +569,9 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
       }
 
       if( rend >= rstart ) {
-        for( int p = 0, np = w.pts.size(); p < np; ++p ) {
+        for( int p = 0, np = w->pts.size(); p < np; ++p ) {
           if( p < rstart || p > rend ) {
-            const cv::Point & sp = w.pts[p];
+            const cv::Point & sp = w->pts[p];
             const int & l = sp.x; // image row (layer index)
             const int & e = sp.y; // image channel (echo index)
             B[l][s][e] = 255;

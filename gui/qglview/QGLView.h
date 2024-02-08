@@ -52,8 +52,10 @@ public:
     QString name;
     float max_distance = 1000;
     float step = 100;
-    QColor color = QColor(128, 128,128);
-    int opaqueness = 128;
+    QColor gridColor = QColor(255, 255, 255);
+    QColor fillColor = QColor(158, 172, 148);
+    int gridOpaqueness = 128;
+    int fillOpaqueness = 64;
     bool visible = false;
 
   };
@@ -159,7 +161,7 @@ protected:
 
 protected:
   void showViewTarget(bool v);
-  void drawPlanarGrids();
+  //void drawPlanarGrids();
   void timerEvent(QTimerEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
@@ -177,7 +179,7 @@ protected:
   virtual void cleanupGL();
 
 protected:
-  QColor backgroundColor_ = QColor(0x5a, 0x76, 0x64); // QColor(32, 32, 32);
+  QColor backgroundColor_ = QColor(180, 180, 180); // QColor(32, 32, 32);
   QColor foregroundColor_ = QColor(232, 232, 232);
 
   ViewParams viewParams_;

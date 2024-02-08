@@ -87,43 +87,80 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
           });
 
 
-  bgColor_ctl =
+  gridColor_ctl =
       add_widget<QColorPickerButton>("Grid Color");
 
-  connect(this, &ThisClass::populatecontrols,
+  connect(gridColor_ctl, &QColorPickerButton::colorSelected,
       [this]() {
         if ( options_ ) {
-          bgColor_ctl->setColor(options_->color);
-        }
-      });
-  connect(bgColor_ctl, &QColorPickerButton::colorSelected,
-      [this]() {
-        if ( options_ ) {
-          options_->color = bgColor_ctl->color();
+          options_->gridColor = gridColor_ctl->color();
           Q_EMIT parameterChanged();
         }
       });
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( options_ ) {
+          gridColor_ctl->setColor(options_->gridColor);
+        }
+      });
 
 
-  opaqueness_ctl =
-      add_sliderspinbox<int>("Opaqueness",
+  gridOpaqueness_ctl =
+      add_sliderspinbox<int>("Grid Opaqueness",
           "Opaqueness (alpha-channel) the grid in range 0..255",
           [this](const int v) {
-            if ( options_ && options_->opaqueness != v ) {
-              options_->opaqueness = v;
+            if ( options_ && options_->gridOpaqueness != v ) {
+              options_->gridOpaqueness = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
             if ( options_ ) {
-              *v = options_->opaqueness;
+              *v = options_->gridOpaqueness;
               return true;
             }
             return false;
           });
 
-  opaqueness_ctl->setRange(0, 255);
+  gridOpaqueness_ctl->setRange(0, 255);
 
+
+  fillColor_ctl =
+      add_widget<QColorPickerButton>("Fill Color");
+
+  connect(fillColor_ctl, &QColorPickerButton::colorSelected,
+      [this]() {
+        if ( options_ ) {
+          options_->fillColor = fillColor_ctl->color();
+          Q_EMIT parameterChanged();
+        }
+      });
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( options_ ) {
+          fillColor_ctl->setColor(options_->fillColor);
+        }
+      });
+
+
+  fillOpaqueness_ctl =
+      add_sliderspinbox<int>("Fill Opaqueness",
+          "Opaqueness (alpha-channel) the grid fill in range 0..255",
+          [this](const int v) {
+            if ( options_ && options_->fillOpaqueness != v ) {
+              options_->fillOpaqueness = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->fillOpaqueness;
+              return true;
+            }
+            return false;
+          });
+
+  fillOpaqueness_ctl->setRange(0, 255);
 
   updateControls();
 }

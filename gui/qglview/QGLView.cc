@@ -8,6 +8,8 @@
  *  https://stackoverflow.com/questions/8491247/c-opengl-convert-world-coords-to-screen2d-coords
  *  https://www.khronos.org/opengl/wiki/Object_Mouse_Trackball
  *
+ *  https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGet.xhtml
+ *
  */
 
 #include "QGLView.h"
@@ -185,18 +187,25 @@ void QGLView::onLoadParameters(QSettings & settings)
         settings.value(QString("%1/step").arg(keyPrefix),
             grid.step).value<decltype(grid.step)>();
 
-    grid.color =
-        settings.value(QString("%1/color").arg(keyPrefix),
-            grid.color).value<decltype(grid.color)>();
+    grid.gridColor =
+        settings.value(QString("%1/gridColor").arg(keyPrefix),
+            grid.gridColor).value<decltype(grid.gridColor)>();
 
-    grid.opaqueness =
-        settings.value(QString("%1/opaqueness").arg(keyPrefix),
-            grid.opaqueness).value<decltype(grid.opaqueness)>();
+    grid.fillColor =
+        settings.value(QString("%1/fillColor").arg(keyPrefix),
+            grid.fillColor).value<decltype(grid.fillColor)>();
+
+    grid.gridOpaqueness =
+        settings.value(QString("%1/gridOpaqueness").arg(keyPrefix),
+            grid.gridOpaqueness).value<decltype(grid.gridOpaqueness)>();
+
+    grid.fillOpaqueness =
+        settings.value(QString("%1/fillOpaqueness").arg(keyPrefix),
+            grid.fillOpaqueness).value<decltype(grid.fillOpaqueness)>();
 
     grid.visible =
         settings.value(QString("%1/visible").arg(keyPrefix),
             grid.visible).value<decltype(grid.visible)>();
-
 
   }
 
@@ -254,11 +263,17 @@ void QGLView::onSaveParameters(QSettings & settings)
     settings.setValue(QString("%1/step").arg(keyPrefix),
         grid.step);
 
-    settings.setValue(QString("%1/color").arg(keyPrefix),
-        grid.color);
+    settings.setValue(QString("%1/gridColor").arg(keyPrefix),
+        grid.gridColor);
 
-    settings.setValue(QString("%1/opaqueness").arg(keyPrefix),
-        grid.opaqueness);
+    settings.setValue(QString("%1/fillColor").arg(keyPrefix),
+        grid.fillColor);
+
+    settings.setValue(QString("%1/gridOpaqueness").arg(keyPrefix),
+        grid.gridOpaqueness);
+
+    settings.setValue(QString("%1/fillOpaqueness").arg(keyPrefix),
+        grid.fillOpaqueness);
 
     settings.setValue(QString("%1/visible").arg(keyPrefix),
         grid.visible);
@@ -601,8 +616,6 @@ void QGLView::glPreDraw()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
 
-    drawPlanarGrids();
-
    */
 
 }
@@ -617,8 +630,6 @@ void QGLView::glPostDraw()
       hideViewTargetTimerId_ > 0;
 
   if ( showViewTarget ) {
-
-    //const qreal length = 0.1 * (viewTarget_ - viewPoint_).length();
 
     const qreal length =
         mainAxesLength_ > 0 ? mainAxesLength_ :
@@ -641,6 +652,83 @@ void QGLView::glPostDraw()
     for ( int i = 0; i < 3; ++i ) {
       drawArrow(arrow_start[i], arrow_end[i], length / 64, 4);
     }
+  }
+
+  // For transparency (blend) to work it is important to draw the solid things first,
+  // so the grids are drawn here in glPostDraw()
+  if( !grids_.empty() ) {
+
+    GLboolean gl_depth_writemask = GL_TRUE;
+    int numGridsDrawn = 0;
+
+    for( const PlanarGridOptions & grid : grids_ ) {
+
+      if( grid.visible ) {
+
+        if( !numGridsDrawn++ ) {
+          glGetBooleanv(GL_DEPTH_WRITEMASK, &gl_depth_writemask);
+          glDepthMask(GL_FALSE);
+        }
+
+        const float max_distance =
+            grid.max_distance > 0 ? std::min(grid.max_distance, (float) viewParams_.farPlane) :
+                viewParams_.farPlane;
+
+        if( grid.fillOpaqueness > 0 ) {
+          glBegin(GL_QUADS);
+          glColor4ub(grid.fillColor.red(), grid.fillColor.green(), grid.fillColor.blue(), grid.fillOpaqueness);
+          glVertex3f(-max_distance, -max_distance, 0);
+          glVertex3f(max_distance, -max_distance, 0);
+          glVertex3f(max_distance, max_distance, 0);
+          glVertex3f(-max_distance, max_distance, 0);
+          glEnd();
+        }
+
+        if( grid.gridOpaqueness > 0 ) {
+
+          const float step =
+              grid.step > 0 ? grid.step :
+                  max_distance / 20;
+
+          const float z = 0;
+
+          glColor4ub(grid.gridColor.red(), grid.gridColor.green(), grid.gridColor.blue(), grid.gridOpaqueness);
+          glLineWidth(1);
+
+
+          glBegin(GL_LINES);
+
+          for( int i = 1;; ++i ) {
+
+            const float s = i * step;
+            if( s > max_distance ) {
+              break;
+            }
+
+            // X
+            glVertex3f(s, -max_distance, z);
+            glVertex3f(s, max_distance, z);
+
+            glVertex3f(-s, -max_distance, z);
+            glVertex3f(-s, max_distance, z);
+
+            // Y
+            glVertex3f(-max_distance, s, z);
+            glVertex3f(max_distance, s, z);
+            glVertex3f(-max_distance, -s, z);
+            glVertex3f(max_distance, -s, z);
+          }
+
+          glEnd(/*GL_LINES*/);
+        }
+      }
+    }
+
+    if ( numGridsDrawn  ) {
+      glDepthMask(gl_depth_writemask);
+    }
+
+    /////////
   }
 
   glFlush();
@@ -1142,54 +1230,3 @@ bool QGLView::copyViewportToClipboard()
   return true;
 }
 
-void QGLView::drawPlanarGrids()
-{
-
-  for ( const PlanarGridOptions & grid : grids_ ) {
-
-    if( grid.visible ) {
-
-      //glColor3ub(200, 200, 200);
-      glColor4ub(grid.color.red(), grid.color.green(), grid.color.blue(), grid.opaqueness);
-      glLineWidth(1);
-
-
-      const float max_distance =
-          grid.max_distance > 0 ? std::min(grid.max_distance, (float) viewParams_.farPlane) :
-              viewParams_.farPlane;
-
-      const float step =
-          grid.step > 0 ? grid.step :
-              max_distance / 20;
-
-      glBegin(GL_LINES);
-
-      const float z = 0;
-
-      for( int i = 1;; ++i ) {
-
-        const float s = i * step;
-        if( s > max_distance ) {
-          break;
-        }
-
-        // X
-        //CF_DEBUG("s=%g ymin=%g ymax=%g", s, ymin, ymax);
-        glVertex3f(s, -max_distance, z);
-        glVertex3f(s, max_distance, z);
-
-        glVertex3f(-s, -max_distance, z);
-        glVertex3f(-s, max_distance, z);
-
-        // Y
-        glVertex3f(-max_distance, s, z);
-        glVertex3f(max_distance, s, z);
-        glVertex3f(-max_distance, -s, z);
-        glVertex3f(max_distance, -s, z);
-
-      }
-
-      glEnd(/*GL_LINES*/);
-    }
-  }
-}

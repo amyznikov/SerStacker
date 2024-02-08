@@ -27,8 +27,10 @@ protected:
   QLineEditBox * name_ctl = nullptr;
   QNumericBox * step_ctl = nullptr;
   QNumericBox * max_distance_ctl = nullptr;
-  QColorPickerButton * bgColor_ctl = nullptr;
-  QIntegerSliderSpinBox * opaqueness_ctl = nullptr;
+  QColorPickerButton * gridColor_ctl = nullptr;
+  QIntegerSliderSpinBox * gridOpaqueness_ctl = nullptr;
+  QColorPickerButton * fillColor_ctl = nullptr;
+  QIntegerSliderSpinBox * fillOpaqueness_ctl = nullptr;
 };
 
 class QGLViewPlanarGridSettingsDialogBox :

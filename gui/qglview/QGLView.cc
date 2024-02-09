@@ -179,13 +179,21 @@ void QGLView::onLoadParameters(QSettings & settings)
         settings.value(QString("%1/name").arg(keyPrefix),
             grid.name).value<decltype(grid.name)>();
 
-    grid.max_distance =
+    grid.maxDistance =
         settings.value(QString("%1/max_distance").arg(keyPrefix),
-            grid.max_distance).value<decltype(grid.max_distance)>();
+            grid.maxDistance).value<decltype(grid.maxDistance)>();
 
     grid.step =
         settings.value(QString("%1/step").arg(keyPrefix),
             grid.step).value<decltype(grid.step)>();
+
+    grid.Rotation =
+        settings.value(QString("%1/Rotation").arg(keyPrefix),
+            grid.Rotation).value<decltype(grid.Rotation)>();
+
+    grid.Translation =
+        settings.value(QString("%1/Translation").arg(keyPrefix),
+            grid.Translation).value<decltype(grid.Translation)>();
 
     grid.gridColor =
         settings.value(QString("%1/gridColor").arg(keyPrefix),
@@ -258,10 +266,16 @@ void QGLView::onSaveParameters(QSettings & settings)
         grid.name);
 
     settings.setValue(QString("%1/max_distance").arg(keyPrefix),
-        grid.max_distance);
+        grid.maxDistance);
 
     settings.setValue(QString("%1/step").arg(keyPrefix),
         grid.step);
+
+    settings.setValue(QString("%1/Rotation").arg(keyPrefix),
+        grid.Rotation);
+
+    settings.setValue(QString("%1/Translation").arg(keyPrefix),
+        grid.Translation);
 
     settings.setValue(QString("%1/gridColor").arg(keyPrefix),
         grid.gridColor);
@@ -277,6 +291,7 @@ void QGLView::onSaveParameters(QSettings & settings)
 
     settings.setValue(QString("%1/visible").arg(keyPrefix),
         grid.visible);
+
 
   }
 
@@ -626,6 +641,11 @@ void QGLView::glDraw()
 
 void QGLView::glPostDraw()
 {
+  if ( showMainAxes_ ) {
+    glColor3ub(200, 200, 200);
+    drawMainAxes();
+  }
+
   const bool showViewTarget =
       hideViewTargetTimerId_ > 0;
 
@@ -671,16 +691,23 @@ void QGLView::glPostDraw()
         }
 
         const float max_distance =
-            grid.max_distance > 0 ? std::min(grid.max_distance, (float) viewParams_.farPlane) :
+            grid.maxDistance > 0 ? std::min(grid.maxDistance, (float) viewParams_.farPlane) :
                 viewParams_.farPlane;
 
+        const QQuaternion R =
+            QQuaternion::fromEulerAngles(grid.Rotation.x(),
+                grid.Rotation.y(),
+                grid.Rotation.z());
+
         if( grid.fillOpaqueness > 0 ) {
-          glBegin(GL_QUADS);
+
           glColor4ub(grid.fillColor.red(), grid.fillColor.green(), grid.fillColor.blue(), grid.fillOpaqueness);
-          glVertex3f(-max_distance, -max_distance, 0);
-          glVertex3f(max_distance, -max_distance, 0);
-          glVertex3f(max_distance, max_distance, 0);
-          glVertex3f(-max_distance, max_distance, 0);
+
+          glBegin(GL_QUADS);
+            glVertex(R.rotatedVector(QVector3D(-max_distance, -max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(max_distance, -max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(max_distance, max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(-max_distance, max_distance, 0)) + grid.Translation);
           glEnd();
         }
 
@@ -689,8 +716,6 @@ void QGLView::glPostDraw()
           const float step =
               grid.step > 0 ? grid.step :
                   max_distance / 20;
-
-          const float z = 0;
 
           glColor4ub(grid.gridColor.red(), grid.gridColor.green(), grid.gridColor.blue(), grid.gridOpaqueness);
           glLineWidth(1);
@@ -706,17 +731,16 @@ void QGLView::glPostDraw()
             }
 
             // X
-            glVertex3f(s, -max_distance, z);
-            glVertex3f(s, max_distance, z);
-
-            glVertex3f(-s, -max_distance, z);
-            glVertex3f(-s, max_distance, z);
+            glVertex(R.rotatedVector(QVector3D(s, -max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(s, max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(-s, -max_distance, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(-s, max_distance, 0)) + grid.Translation);
 
             // Y
-            glVertex3f(-max_distance, s, z);
-            glVertex3f(max_distance, s, z);
-            glVertex3f(-max_distance, -s, z);
-            glVertex3f(max_distance, -s, z);
+            glVertex(R.rotatedVector(QVector3D(-max_distance, s, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(max_distance, s, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(-max_distance, -s, 0)) + grid.Translation);
+            glVertex(R.rotatedVector(QVector3D(max_distance, -s, 0)) + grid.Translation);
           }
 
           glEnd(/*GL_LINES*/);
@@ -751,12 +775,16 @@ void QGLView::drawText(const QPointF & pos, const QFont & font, const QString & 
   QColor fontColor(255 * glColor[0], 255 * glColor[1],
       255 * glColor[2], 255 * glColor[3]);
 
+  glPushAttrib(GL_ALL_ATTRIB_BITS);
+
   // Render text
   QPainter painter(this);
   painter.setPen(fontColor);
   painter.setFont(font);
   painter.drawText(pos, text);
   painter.end();
+
+  glPopAttrib();
 }
 
 void QGLView::drawText(double x, double y, const QFont & font, const QString & text)

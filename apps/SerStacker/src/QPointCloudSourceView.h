@@ -74,7 +74,6 @@ protected:
   void glInit() override;
   void glPreDraw() override;
   void glDraw() override;
-  void glPostDraw() override;
   void computeDisplayPoints();
   void onLoadParameters(QSettings & settings) override;
   void onSaveParameters(QSettings & settings) override;

@@ -6,6 +6,7 @@
  */
 
 #include "QGLViewPlanarGridSettings.h"
+#include <core/debug.h>
 
 QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
   Base(parent)
@@ -65,7 +66,7 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
             return false;
           });
 
-  typedef decltype(OptionsType::max_distance)
+  typedef decltype(OptionsType::maxDistance)
       max_distance_type;
 
   max_distance_ctl =
@@ -73,14 +74,56 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
           "Max distance for the grid.\n"
           "Set <= 0 for auto selection based on far plane setting",
           [this](const max_distance_type v) {
-            if ( options_ && options_->max_distance != v ) {
-              options_->max_distance = v;
+            if ( options_ && options_->maxDistance != v ) {
+              options_->maxDistance = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](max_distance_type * v) {
             if ( options_ ) {
-              *v = options_->max_distance;
+              *v = options_->maxDistance;
+              return true;
+            }
+            return false;
+          });
+
+  typedef decltype(OptionsType::Rotation)
+      Rotation_type;
+
+  rotation_ctl =
+      add_numeric_box<Rotation_type>("Rotation",
+          "Rotation Euler Angles in degrees [pitch;yaw;roll]",
+          [this](const Rotation_type v) {
+            if ( options_  ) {
+              options_->Rotation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](Rotation_type * v) {
+            if ( options_ ) {
+              *v = options_->Rotation;
+              return true;
+            }
+            return false;
+          });
+
+
+
+  typedef decltype(OptionsType::Translation)
+      Translation_type;
+
+  translation_ctl =
+      add_numeric_box<Translation_type>("Translation",
+          "Translation [Tx;Ty;Tz].",
+          [this](const Translation_type v) {
+            if ( options_ ) {
+              options_->Translation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](Translation_type * v) {
+            if ( options_ ) {
+              *v = options_->Translation;
               return true;
             }
             return false;

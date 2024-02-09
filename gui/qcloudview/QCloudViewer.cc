@@ -9,21 +9,21 @@
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
-
-bool fromString(const QString & s, QVector3D * vec)
-{
-  double v[3];
-
-  if( sscanf(s.toUtf8().data(), "%lf ; %lf ; %lf", &v[0], &v[1], &v[2]) == 3 ) {
-
-    vec->setX(v[0]);
-    vec->setY(v[1]);
-    vec->setZ(v[2]);
-
-    return true;
-  }
-  return false;
-}
+//
+//bool fromString(const QString & s, QVector3D * vec)
+//{
+//  double v[3];
+//
+//  if( sscanf(s.toUtf8().data(), "%lf ; %lf ; %lf", &v[0], &v[1], &v[2]) == 3 ) {
+//
+//    vec->setX(v[0]);
+//    vec->setY(v[1]);
+//    vec->setZ(v[2]);
+//
+//    return true;
+//  }
+//  return false;
+//}
 
 QString toQString(const QVector3D & v)
 {

@@ -165,16 +165,6 @@ void QGLPointCloudView::glPreDraw()
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void QGLPointCloudView::glPostDraw()
-{
-  if ( showMainAxes_ ) {
-    glColor3ub(200, 200, 200);
-    drawMainAxes();
-  }
-
-  Base::glPostDraw();
-}
-
 void QGLPointCloudView::glDraw()
 {
   computeDisplayPoints();

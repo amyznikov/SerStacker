@@ -530,13 +530,13 @@ inline bool fromString(const QString & text, QVector3D * v)
     return false;
   }
 
-  if( sscanf(tokens[1].c_str(), "%lf", &z) != 1 ) {
+  if( sscanf(tokens[2].c_str(), "%lf", &z) != 1 ) {
     return false;
   }
 
   v->setX(x);
   v->setY(y);
-  v->setY(z);
+  v->setZ(z);
 
   return true;
 }

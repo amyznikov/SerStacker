@@ -27,6 +27,8 @@ protected:
   QLineEditBox * name_ctl = nullptr;
   QNumericBox * step_ctl = nullptr;
   QNumericBox * max_distance_ctl = nullptr;
+  QNumericBox * rotation_ctl = nullptr;
+  QNumericBox * translation_ctl = nullptr;
   QColorPickerButton * gridColor_ctl = nullptr;
   QIntegerSliderSpinBox * gridOpaqueness_ctl = nullptr;
   QColorPickerButton * fillColor_ctl = nullptr;

@@ -198,7 +198,7 @@ void MainWindow::onRestoreState(QSettings & settings)
 
       grid.visible = false;
       grid.step = 2;
-      grid.max_distance = 600;
+      grid.maxDistance = 600;
     }
 
   }

@@ -50,8 +50,10 @@ public:
   struct PlanarGridOptions
   {
     QString name;
-    float max_distance = 1000;
+    float maxDistance = 1000;
     float step = 100;
+    QVector3D Rotation = QVector3D(0, 0, 0); // angles [Rx;Ry;Rz]
+    QVector3D Translation = QVector3D(0, 0, 0);
     QColor gridColor = QColor(255, 255, 255);
     QColor fillColor = QColor(158, 172, 148);
     int gridOpaqueness = 128;
@@ -129,6 +131,7 @@ public:
   void glprintf(const QVector3D & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
   void glprintf(double x, double y, double z, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(6, 7);
 
+
   void drawArrow(qreal length, qreal radius, int nbSubdivisions);
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
@@ -138,6 +141,10 @@ public:
   bool copyViewportToClipboard();
   void showKeyBindings();
 
+  static inline void glVertex(const QVector3D & v)
+  {
+    glVertex3f(v.x(), v.y(), v.z());
+  }
 
 
 Q_SIGNALS:

@@ -50,6 +50,16 @@ public:
     return options_.doubled_distanse_depth_tolerance;
   }
 
+  void set_drop_noise_behind_reflector(bool v)
+  {
+    options_.drop_noise_behind_reflector = v;
+  }
+
+  bool drop_noise_behind_reflector() const
+  {
+    return options_.drop_noise_behind_reflector;
+  }
+
   void set_mask_mode(c_vlo_frame::SELECTION_MASK_MODE v)
   {
     mask_mode_ = v;

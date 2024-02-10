@@ -39,46 +39,6 @@ static inline bool is_ghost(const DistanceType & DR, const DistanceType & DG,
   return false;
 }
 
-///**
-// * Prefer 'peak' intensity measure if available
-// *  */
-//template<class _Cb>
-//static inline void check_ghosts_by_peak_intensity(const c_vlo_scan & scan,
-//    int l, int s,
-//    const c_vlo_ghost_detection_options & opts,
-//    const _Cb & callback)
-//{
-//}
-//
-///**
-// * Fallback to 'area' intensity measure if 'peak' is not available
-// *  */
-//template<class _Cb> std::enable_if_t<!has_peak_member(EchoType()),
-//void> static inline get_ghosts(const EchoType echos[3],
-//    const c_vlo_ghost_detection_options & opts,
-//    const _Cb & callback)
-//{
-//  const auto &D0 = echos[0].dist;
-//  const auto &D1 = echos[1].dist;
-//  const auto &D2 = echos[2].dist;
-//
-//  const auto &I0 = echos[0].area;
-//  const auto &I1 = echos[1].area;
-//  const auto &I2 = echos[2].area;
-//
-//  if( is_ghost(D0, D1, I0, I1, opts) ) {
-//    callback(0, 1);
-//  }
-//
-//  if( is_ghost(D0, D2, I0, I2, opts) ) {
-//    callback(0, 2);
-//  }
-//
-//  if( is_ghost(D1, D2, I1, I2, opts) ) {
-//    callback(1, 2);
-//  }
-//
-//}
 }
 
 bool vlo_ghost_detection(const c_vlo_scan & scan,
@@ -91,59 +51,60 @@ bool vlo_ghost_detection(const c_vlo_scan & scan,
   cv::Mat3b image =
       output_ghsosts_mask;
 
-  if ( !scan.peak.empty() )  {
+  if( !scan.peak.empty() ) {
 
     vlo_pixels_callback(scan, cv::noArray(),
         [&](int l, int s) {
 
-          const auto &D0 = scan.distances[l][s][0];
-          const auto &D1 = scan.distances[l][s][1];
-          const auto &D2 = scan.distances[l][s][2];
+        const auto & D = scan.distances[l][s];
+        const auto &I = scan.peak[l][s];
 
-          const auto &I0 = scan.peak[l][s][0];
-          const auto &I1 = scan.peak[l][s][1];
-          const auto &I2 = scan.peak[l][s][2];
+        static constexpr double Dmin = 100;
+        const double & saturation_level = opts.saturation_level;
+        const double & depth_tolerance = opts.doubled_distanse_depth_tolerance;
 
-          if( is_ghost(D0, D1, I0, I1, opts) ) {
-            image[l][s][1] = 255;
+        for ( int e = 0; e < 2; ++e ) {
+          if ( I[e] >= saturation_level ) {
+            for ( int ee = e + 1; ee < 3; ++ee ) {
+              if ( opts.drop_noise_behind_reflector && (D[ee] > D[e] + depth_tolerance && I[ee] < saturation_level) ) {
+                image[l][s][ee] = 255;
+              }
+              else if( is_ghost(D[e], D[ee], I[e], I[ee], opts) ) {
+                image[l][s][ee] = 255;
+              }
+            }
           }
+        }
 
-          if( is_ghost(D0, D2, I0, I2, opts) ) {
-            image[l][s][2] = 255;
-          }
+      });
 
-          if( is_ghost(D1, D2, I1, I2, opts) ) {
-            image[l][s][2] = 255;
-          }
-
-        });
   }
   else if( !scan.area.empty() ) {
 
     vlo_pixels_callback(scan, cv::noArray(),
         [&](int l, int s) {
 
-          const auto &D0 = scan.distances[l][s][0];
-          const auto &D1 = scan.distances[l][s][1];
-          const auto &D2 = scan.distances[l][s][2];
+        const auto & D = scan.distances[l][s];
+        const auto &I = scan.area[l][s];
 
-          const auto &I0 = scan.area[l][s][0];
-          const auto &I1 = scan.area[l][s][1];
-          const auto &I2 = scan.area[l][s][2];
+        static constexpr double Dmin = 100;
+        const double & saturation_level = opts.saturation_level;
+        const double & depth_tolerance = opts.doubled_distanse_depth_tolerance;
 
-          if( is_ghost(D0, D1, I0, I1, opts) ) {
-            image[l][s][1] = 255;
+        for ( int e = 0; e < 2; ++e ) {
+          if ( I[e] >= saturation_level ) {
+            for ( int ee = e + 1; ee < 3; ++ee ) {
+              if ( opts.drop_noise_behind_reflector && (D[ee] > D[e] + depth_tolerance && I[ee] < saturation_level) ) {
+                image[l][s][ee] = 255;
+              }
+              else if( is_ghost(D[e], D[ee], I[e], I[ee], opts) ) {
+                image[l][s][ee] = 255;
+              }
+            }
           }
+        }
 
-          if( is_ghost(D0, D2, I0, I2, opts) ) {
-            image[l][s][2] = 255;
-          }
-
-          if( is_ghost(D1, D2, I1, I2, opts) ) {
-            image[l][s][2] = 255;
-          }
-
-        });
+      });
   }
 
   return true;

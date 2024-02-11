@@ -69,7 +69,7 @@ bool c_data_frame::set_data(DataViewType viewType,
   else {
 
     DataDisplayChannel c = {
-        .tooltip = "",
+        .tooltip = channelName,
         .minval = -1,
         .maxval = -1
     };

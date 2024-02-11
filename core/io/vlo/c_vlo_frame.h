@@ -40,6 +40,8 @@ public:
 
   void cleanup() override;
 
+protected:
+  void setup_default_channels();
 
 public:
   c_vlo_scan current_scan_;

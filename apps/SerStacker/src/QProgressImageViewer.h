@@ -33,7 +33,7 @@ public:
   const IMtfDisplay * mtfDisplay() const;
 
 Q_SIGNALS:
-  void displayTypeChanged();
+  void displayChannelsChanged();
   void parameterChanged();
   void displayImageChanged();
 

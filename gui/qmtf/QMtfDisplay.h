@@ -81,7 +81,7 @@ public:
       const QString & displayChannelName, double input_min, double input_max);
 
 public: // events
-  virtual void displayTypeChanged() = 0;
+  virtual void displayChannelsChanged() = 0;
   virtual void parameterChanged() = 0;
   virtual void displayImageChanged() = 0;
 
@@ -132,7 +132,7 @@ public:
   QMtfDisplay(const QString & prefix, QObject * parent = nullptr);
 
 Q_SIGNALS:
-  void displayTypeChanged();
+  void displayChannelsChanged();
   void parameterChanged();
   void displayImageChanged();
 };

@@ -820,10 +820,7 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
-  if( !visible ) {
-    mtfControl_->setMtfDisplaySettings(nullptr);
-  }
-  else if ( is_visible(inputSourceView) ) {
+  if ( is_visible(inputSourceView) ) {
     mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
   }
   else if ( is_visible(pipelineProgressImageView) ) {

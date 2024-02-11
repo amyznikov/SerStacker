@@ -99,7 +99,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   topToolbar_ctl->addWidget(displayChannel_ctl);
 
   connect(displayChannel_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-      this, &ThisClass::onDisplayTypeCurrentItemChanged);
+      this, &ThisClass::onDisplayChannelCurrentItemChanged);
 
   inputDataRange_ctl = new QNumericBox(this);
   inputDataRange_ctl->setToolTip("Set input data range (min/max clips)");
@@ -280,26 +280,32 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
 void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 {
-  c_update_controls_lock lock(this);
+  if( displaySettings != this->displaySettings_ ) {
 
-  if( QObject * qobj = dynamic_cast<QObject*>(this->displaySettings_) ) {
-    qobj->disconnect(this);
+    c_update_controls_lock lock(this);
+
+    if( QObject * qobj = dynamic_cast<QObject*>(this->displaySettings_) ) {
+      qobj->disconnect(this);
+    }
+
+    displaySettings_ = displaySettings;
+    displayChannel_ctl->clear();
+
+    if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
+
+      displayChannel_ctl->addItems(displaySettings_->displayChannels());
+
+      connect(qobj, SIGNAL(displayImageChanged()),
+          this, SLOT(onDisplayImageChanged()));
+
+      connect(qobj, SIGNAL(displayChannelsChanged()),
+          this, SLOT(onDisplayChannelsChanged()));
+
+    }
+
+    updateControls();
+    updateHistogramLevels();
   }
-
-  displaySettings_ = displaySettings;
-  displayChannel_ctl->clear();
-
-  if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
-
-    displayChannel_ctl->addItems(displaySettings_->displayChannels());
-
-    connect(qobj, SIGNAL(displayImageChanged()),
-        this, SLOT(updateHistogramLevels()),
-        Qt::QueuedConnection);
-  }
-
-  updateControls();
-  updateHistogramLevels();
 }
 
 IMtfDisplay * QMtfControl::displaySettings() const
@@ -461,16 +467,14 @@ void QMtfControl::onColormapCtlClicked()
   }
 }
 
-void QMtfControl::onDisplayTypeCurrentItemChanged()
+void QMtfControl::onDisplayChannelCurrentItemChanged()
 {
   if( displaySettings_ && !updatingControls() ) {
 
     c_update_controls_lock lock(this);
 
-    // CF_DEBUG("C displaySettings_->setDisplayChannel()");
     displaySettings_->setDisplayChannel(displayChannel_ctl->currentText());
     displaySettings_->saveParameters();
-    //updateControls();
   }
 }
 
@@ -660,6 +664,25 @@ void QMtfControl::hideEvent(QHideEvent *e)
 {
   Base::hideEvent(e);
 }
+
+
+void QMtfControl::onDisplayChannelsChanged()
+{
+  if ( displaySettings_ ) {
+
+    c_update_controls_lock lock(this);
+
+    displayChannel_ctl->clear();
+    displayChannel_ctl->addItems(displaySettings_->displayChannels());
+    displayChannel_ctl->setCurrentIndex(std::max(0, displayChannel_ctl->findText(displaySettings_->displayChannel())));
+  }
+}
+
+void QMtfControl::onDisplayImageChanged()
+{
+  updateHistogramLevels();
+}
+
 
 void QMtfControl::onupdatecontrols()
 {

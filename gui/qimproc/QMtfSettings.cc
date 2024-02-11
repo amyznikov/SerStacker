@@ -225,7 +225,7 @@ void QMtfSettings::setupControls()
 
   updateControls();
 
-  connect(&displaySettings_, &QMtfDisplay::displayTypeChanged,
+  connect(&displaySettings_, &QMtfDisplay::displayChannelsChanged,
       &displaySettings_, &QMtfDisplay::parameterChanged);
 
   connect(&displaySettings_, &QMtfRoutineDisplaySettings::parameterChanged,

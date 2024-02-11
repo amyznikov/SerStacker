@@ -21,6 +21,16 @@ public:
   typedef c_data_frame_processor_routine base;
   typedef std::shared_ptr<this_class> sptr;
 
+  void set_output_name(const std::string & v)
+  {
+    output_name_ = v;
+  }
+
+  const std::string& output_name() const
+  {
+    return output_name_;
+  }
+
   bool process(c_data_frame::sptr & dataframe) override;
   virtual bool process(c_vlo_frame * vlo) = 0;
 
@@ -29,6 +39,9 @@ protected:
     base(_class_factory, enabled)
   {
   }
+
+protected:
+  std::string output_name_;
 };
 
 #define DECLARE_VLO_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip) \

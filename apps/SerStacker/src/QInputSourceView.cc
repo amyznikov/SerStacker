@@ -201,7 +201,7 @@ void QInputSourceView::setupMtfDisplayFunction()
   connect(imageView_, &QImageViewer::displayImageChanged,
       this, &ThisClass::displayImageChanged);
 
-  connect(this, &ThisClass::displayTypeChanged,
+  connect(this, &ThisClass::displayChannelsChanged,
       this, &ThisClass::displayCurrentFrame);
 
   connect(this, &ThisClass::parameterChanged,
@@ -488,12 +488,15 @@ void QInputSourceView::setViewType(DataViewType viewType)
     auto & existing_displays =
         this->displays_;
 
+    bool haschages = false;
+
     for( auto ii = existing_displays.begin(); ii != existing_displays.end(); ) {
       if( new_displays.find(ii->first.toStdString()) != new_displays.end() ) {
         ++ii;
       }
       else {
         ii = existing_displays.erase(ii);
+        haschages = true;
       }
     }
 
@@ -507,7 +510,12 @@ void QInputSourceView::setViewType(DataViewType viewType)
             c.minval,
             c.maxval);
 
+        haschages = true;
       }
+    }
+
+    if ( haschages ) {
+      Q_EMIT displayChannelsChanged();
     }
 
     displayCurrentFrame();

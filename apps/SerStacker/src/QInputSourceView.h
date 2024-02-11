@@ -99,7 +99,7 @@ public:
 Q_SIGNALS:
   void visibilityChanged(bool visible);
   void currentViewChanged();
-  void displayTypeChanged();
+  void displayChannelsChanged();
   void parameterChanged();
   void displayImageChanged();
   void currentFileNameChanged();

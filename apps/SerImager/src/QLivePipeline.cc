@@ -161,7 +161,7 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
       this, &ThisClass::onPixmapChanged,
       Qt::QueuedConnection);
 
-  connect(&mtfDisplayFunction_, &QMtfDisplay::displayTypeChanged,
+  connect(&mtfDisplayFunction_, &QMtfDisplay::displayChannelsChanged,
       &mtfDisplayFunction_, &QMtfDisplay::parameterChanged);
 
   connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,

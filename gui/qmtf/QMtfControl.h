@@ -45,9 +45,11 @@ protected Q_SLOTS:
   void onResetMtfClicked();
   void onAutoMtfCtrlClicked();
   void onColormapCtlClicked();
-  void onDisplayTypeCurrentItemChanged();
+  void onDisplayChannelCurrentItemChanged();
   void onInputDataRangeChanged();
   void onDisplayChannelCustomContextMenuRequested(const QPoint &pos);
+  void onDisplayChannelsChanged();
+  void onDisplayImageChanged();
 
 protected:
   void onupdatecontrols() override;

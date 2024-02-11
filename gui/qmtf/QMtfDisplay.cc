@@ -170,13 +170,10 @@ QStringList IMtfDisplay::displayChannels() const
 
 void IMtfDisplay::setDisplayChannel(const QString & v)
 {
-  displayChannel_ = v;
-  Q_EMIT displayTypeChanged();
-
-//  if ( displayParams_.find(v) != displayParams_.end() ) {
-//    displayChannel_ = v;
-//    Q_EMIT displayTypeChanged();
-//  }
+  if ( displayChannel_ != v ) {
+    displayChannel_ = v;
+    Q_EMIT displayChannelsChanged();
+  }
 }
 
 const QString & IMtfDisplay::displayChannel() const

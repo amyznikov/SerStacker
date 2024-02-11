@@ -8,8 +8,9 @@
 #include "c_data_frame_processor.h"
 #include "vlo/c_vlo_echo_mask_routine.h"
 #include "vlo/c_vlo_ghost_detection_routine.h"
-#include "vlo/c_vlo_pixel_selection_routine.h"
 #include "vlo/c_vlo_bloom_filter_routine.h"
+#include "vlo/c_vlo_pixel_selection_routine.h"
+#include "vlo/c_vlo_pixel_math_routine.h"
 
 #include "image/c_image_pixels_selection_routine.h"
 #include "image/c_image_gradient_routine.h"
@@ -75,9 +76,9 @@ void c_data_frame_processor_routine::register_all()
 
     register_class_factory(c_vlo_echo_mask_routine::class_factory_instance());
     register_class_factory(c_vlo_ghost_detection_routine::class_factory_instance());
-    register_class_factory(c_vlo_pixel_selection_routine::class_factory_instance());
     register_class_factory(c_vlo_bloom_filter_routine::class_factory_instance());
-
+    register_class_factory(c_vlo_pixel_selection_routine::class_factory_instance());
+    register_class_factory(c_vlo_pixel_math_routine::class_factory_instance());
 
     register_class_factory(c_image_pixels_selection_routine::class_factory_instance());
     register_class_factory(c_image_gradient_routine::class_factory_instance());

@@ -403,7 +403,7 @@ QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
   Base(parent),
   mtfDisplay_(this)
 {
-  connect(&mtfDisplay_, &QMtfDisplay::displayTypeChanged,
+  connect(&mtfDisplay_, &QMtfDisplay::displayChannelsChanged,
       &mtfDisplay_, &QMtfDisplay::parameterChanged);
 
   connect(&mtfDisplay_, &QCloudViewMtfDisplay::parameterChanged,

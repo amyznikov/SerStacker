@@ -100,6 +100,13 @@ static bool dup_channels(const cv::Mat & src, cv::Mat & dst, int cn)
 
 c_vlo_frame::c_vlo_frame()
 {
+  setup_default_channels();
+}
+
+void c_vlo_frame::setup_default_channels()
+{
+  displayChannels_.clear();
+
   add_display_channel("AMBIENT",
       "AMBIENT",
       0,
@@ -137,8 +144,10 @@ c_vlo_frame::c_vlo_frame()
       "1- or 3-channel binary 2D Image representing current selection mask",
       0, 255);
 
+  viewTypes_.clear();
   viewTypes_.emplace(DataViewType_Image);
   viewTypes_.emplace(DataViewType_PointCloud);
+
 }
 
 bool c_vlo_frame::get_data(DataViewType * viewType,
@@ -302,10 +311,18 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
       }
       else if( *viewType == DataViewType_PointCloud ) {
 
-
         if ( image.size() == data.size() ) {
           output_image.move(image);
           output_colors.move(data);
+        }
+        else if (data.empty() && image.size() == current_scan_.size ) {
+
+          get_vlo_point_cloud(current_scan_,
+              image,
+              output_image,
+              output_colors,
+              selection_mask_);
+
         }
         else {
           output_image.release();
@@ -372,6 +389,7 @@ void c_vlo_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mode
 void c_vlo_frame::cleanup()
 {
   selection_mask_.release();
+  setup_default_channels();
 }
 
 

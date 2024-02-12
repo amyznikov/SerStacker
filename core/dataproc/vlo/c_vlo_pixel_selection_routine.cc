@@ -121,7 +121,6 @@ static bool process_data(c_vlo_scan & scan, const c_math_expression & math, cv::
         args[arg_e_index] = e;
         args[arg_d_index] = scan.distances[l][s][e];
         args[arg_a_index] = scan.area[l][s][e];
-        args[arg_p_index] = scan.peak.empty() ? 0 : scan.peak[l][s][e]; ;
         args[arg_w_index] = scan.width[l][s][e];
         args[arg_x_index] = scan.clouds[e][l][s][0];
         args[arg_y_index] = scan.clouds[e][l][s][1];
@@ -132,6 +131,7 @@ static bool process_data(c_vlo_scan & scan, const c_math_expression & math, cv::
         args[arg_d2_index] = scan.distances[l][s][2];
 
         if ( !scan.peak.empty() ) {
+          args[arg_p_index] =  scan.peak[l][s][e];
           args[arg_p0_index] = scan.peak[l][s][0];
           args[arg_p1_index] = scan.peak[l][s][1];
           args[arg_p2_index] = scan.peak[l][s][2];

@@ -50,29 +50,100 @@ static constexpr int arg_z_index = 9;
 static constexpr const char * arg_z_name = "z";
 static constexpr const char * arg_z_desc = "Z coordinate of 3D point in [cm]";
 
-static constexpr int num_args = 10;
+//
+static constexpr int arg_d0_index = 10;
+static constexpr const char * arg_d0_name = "d0";
+static constexpr const char * arg_d0_desc = "echo0 distance";
+
+static constexpr int arg_d1_index = 11;
+static constexpr const char * arg_d1_name = "d1";
+static constexpr const char * arg_d1_desc = "echo1 distance";
+
+static constexpr int arg_d2_index = 12;
+static constexpr const char * arg_d2_name = "d2";
+static constexpr const char * arg_d2_desc = "echo2 distance";
+
+//
+static constexpr int arg_p0_index = 13;
+static constexpr const char * arg_p0_name = "p0";
+static constexpr const char * arg_p0_desc = "echo0 peak";
+
+static constexpr int arg_p1_index = 14;
+static constexpr const char * arg_p1_name = "p1";
+static constexpr const char * arg_p1_desc = "echo1 peak";
+
+static constexpr int arg_p2_index = 15;
+static constexpr const char * arg_p2_name = "p2";
+static constexpr const char * arg_p2_desc = "echo2 peak";
+
+//
+static constexpr int arg_a0_index = 16;
+static constexpr const char * arg_a0_name = "a0";
+static constexpr const char * arg_a0_desc = "echo0 area";
+
+static constexpr int arg_a1_index = 17;
+static constexpr const char * arg_a1_name = "p1";
+static constexpr const char * arg_a1_desc = "echo1 area";
+
+static constexpr int arg_a2_index = 18;
+static constexpr const char * arg_a2_name = "p2";
+static constexpr const char * arg_a2_desc = "echo2 area";
+
+//
+static constexpr int arg_w0_index = 19;
+static constexpr const char * arg_w0_name = "w0";
+static constexpr const char * arg_w0_desc = "echo0 width";
+
+static constexpr int arg_w1_index = 20;
+static constexpr const char * arg_w1_name = "w1";
+static constexpr const char * arg_w1_desc = "echo1 width";
+
+static constexpr int arg_w2_index = 21;
+static constexpr const char * arg_w2_name = "w2";
+static constexpr const char * arg_w2_desc = "echo2 width";
+
+
+static constexpr int num_args = 22;
 
 static bool process_data(c_vlo_scan & scan, const c_math_expression & math, cv::Mat3b & output_selection)
 {
   output_selection.create(scan.size);
   output_selection.setTo(cv::Scalar::all(0));
 
+  double args[num_args] = { 0 };
+
   for ( int l = 0; l < scan.size.height; ++l ) {
     for ( int s = 0; s < scan.size.width; ++s ) {
       for ( int e = 0; e < 3; ++e ) {
 
-        double args[num_args];
-
         args[arg_l_index] = l;
         args[arg_s_index] = s;
         args[arg_e_index] = e;
-        args[arg_d_index] = scan.distances.empty() ? 0 : scan.distances[l][s][e];
-        args[arg_a_index] = scan.area.empty() ? 0 : scan.area[l][s][e];
+        args[arg_d_index] = scan.distances[l][s][e];
+        args[arg_a_index] = scan.area[l][s][e];
         args[arg_p_index] = scan.peak.empty() ? 0 : scan.peak[l][s][e]; ;
-        args[arg_w_index] = scan.width.empty() ? 0 : scan.width[l][s][e];
+        args[arg_w_index] = scan.width[l][s][e];
         args[arg_x_index] = scan.clouds[e][l][s][0];
         args[arg_y_index] = scan.clouds[e][l][s][1];
         args[arg_z_index] = scan.clouds[e][l][s][2];
+
+        args[arg_d0_index] = scan.distances[l][s][0];
+        args[arg_d1_index] = scan.distances[l][s][1];
+        args[arg_d2_index] = scan.distances[l][s][2];
+
+        if ( !scan.peak.empty() ) {
+          args[arg_p0_index] = scan.peak[l][s][0];
+          args[arg_p1_index] = scan.peak[l][s][1];
+          args[arg_p2_index] = scan.peak[l][s][2];
+        }
+
+        args[arg_a0_index] = scan.area[l][s][0];
+        args[arg_a1_index] = scan.area[l][s][1];
+        args[arg_a2_index] = scan.area[l][s][2];
+
+        args[arg_w0_index] = scan.width[l][s][0];
+        args[arg_w1_index] = scan.width[l][s][1];
+        args[arg_w2_index] = scan.width[l][s][2];
 
         if( math.eval(args) ) {
           output_selection[l][s][e] = 255;
@@ -106,6 +177,19 @@ std::string c_vlo_pixel_selection_routine::helpstring() const
     _helpstring.append(ssprintf("%s : %s\n", arg_x_name, arg_x_desc));
     _helpstring.append(ssprintf("%s : %s\n", arg_y_name, arg_y_desc));
     _helpstring.append(ssprintf("%s : %s\n", arg_z_name, arg_z_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_d0_name, arg_d0_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_d1_name, arg_d1_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_d2_name, arg_d2_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_p0_name, arg_p0_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_p1_name, arg_p1_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_p2_name, arg_p2_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_a0_name, arg_a0_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_a1_name, arg_a1_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_a2_name, arg_a2_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_w0_name, arg_w0_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_w1_name, arg_w1_desc));
+    _helpstring.append(ssprintf("%s : %s\n", arg_w2_name, arg_w2_desc));
+
 
     _helpstring.append("\nConstants:\n");
     for ( const auto & func: math_.constants() ) {
@@ -174,6 +258,18 @@ bool c_vlo_pixel_selection_routine::process(c_vlo_frame * vlo)
     math_.add_argument(arg_x_index, arg_x_name, arg_x_desc);
     math_.add_argument(arg_y_index, arg_y_name, arg_y_desc);
     math_.add_argument(arg_z_index, arg_z_name, arg_z_desc);
+    math_.add_argument(arg_d0_index, arg_d0_name, arg_d0_desc);
+    math_.add_argument(arg_d1_index, arg_d1_name, arg_d1_desc);
+    math_.add_argument(arg_d2_index, arg_d2_name, arg_d2_desc);
+    math_.add_argument(arg_p0_index, arg_p0_name, arg_p0_desc);
+    math_.add_argument(arg_p1_index, arg_p1_name, arg_p1_desc);
+    math_.add_argument(arg_p2_index, arg_p2_name, arg_p2_desc);
+    math_.add_argument(arg_a0_index, arg_a0_name, arg_a0_desc);
+    math_.add_argument(arg_a1_index, arg_a1_name, arg_a1_desc);
+    math_.add_argument(arg_a2_index, arg_a2_name, arg_a2_desc);
+    math_.add_argument(arg_w0_index, arg_w0_name, arg_w0_desc);
+    math_.add_argument(arg_w1_index, arg_w1_name, arg_w1_desc);
+    math_.add_argument(arg_w2_index, arg_w2_name, arg_w2_desc);
 
     if ( !math_.parse(expression_.c_str()) ) {
 

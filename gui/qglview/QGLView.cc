@@ -1087,10 +1087,10 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
         else { // Rotate camera around of the Up / Right axes
 
           if ( true ) {
-            QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
-            QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
-            QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
-            QVector3D Up = (TU - T0).normalized();
+
+            const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+            const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            const QVector3D Up = (TU - T0).normalized();
 
             double dx = delta.x();
             double dy = delta.y();
@@ -1105,8 +1105,12 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             }
 
             const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
-            viewPoint_  = fromSpherical(toSpherical(viewPoint_ - viewTarget_) + viewRotation) + viewTarget_;
-            viewUpDirection_ = fromSpherical(toSpherical(Up) + viewRotation);
+
+            viewPoint_  =
+                fromSpherical(toSpherical(viewPoint_ - viewTarget_) + viewRotation) + viewTarget_;
+
+            viewUpDirection_ =
+                fromSpherical(toSpherical(Up) + viewRotation);
 
           }
           else {

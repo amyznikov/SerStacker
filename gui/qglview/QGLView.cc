@@ -40,12 +40,29 @@ namespace {
 void toSpherical(const QVector3D & v, double * r, double * phi, double * theta)
 {
   *r = v.length();
-  *phi = acos(v.z() / *r);
-  *theta = atan2(v.y(), v.x());
+  *phi = std::acos(v.z() / *r);
+  *theta = std::atan2(v.y(), v.x());
+}
+
+QVector3D toSpherical(const QVector3D & v)
+{
+  const auto r = v.length();
+  return QVector3D(r, std::acos(v.z() / r), std::atan2(v.y(), v.x()));
 }
 
 QVector3D fromSpherical(double r, double phi, double theta)
 {
+  return QVector3D(r * cos(theta) * sin(phi),
+      r * sin(theta) * sin(phi),
+      r * cos(phi));
+}
+
+QVector3D fromSpherical(const QVector3D & v)
+{
+  const auto & r = v[0];
+  const auto & phi = v[1];
+  const auto & theta = v[2];
+
   return QVector3D(r * cos(theta) * sin(phi),
       r * sin(theta) * sin(phi),
       r * cos(phi));
@@ -1069,24 +1086,62 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         else { // Rotate camera around of the Up / Right axes
 
-          QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
-          QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
-          QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
-          QVector3D Up = (TU - T0).normalized();
-          QVector3D Right = (TR - T0).normalized();
+          if ( true ) {
+            QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+            QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
+            QVector3D Up = (TU - T0).normalized();
 
-          QVector3D newForward =
-              QQuaternion::fromAxisAndAngle(-Up * delta.x() - Right * delta.y(), 0.2 * hypot(delta.x(), delta.y()))
-                  .rotatedVector(forward);
+            double dx = delta.x();
+            double dy = delta.y();
 
-          T0 = minv.map(QVector3D(0, 0, newForward.length()));
-          TU = minv.map(QVector3D(0, 0.5, newForward.length()));
-          Up = (TU - T0).normalized();
+            if( e->modifiers() == Qt::ControlModifier ) {
+              if( std::abs(dx) >= std::abs(dy) ) {
+                dy = 0;
+              }
+              else {
+                dx = 0;
+              }
+            }
 
-          viewPoint_ = newForward + viewTarget_;
-          viewUpDirection_ = Up;
+            const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
+            viewPoint_  = fromSpherical(toSpherical(viewPoint_ - viewTarget_) + viewRotation) + viewTarget_;
+            viewUpDirection_ = fromSpherical(toSpherical(Up) + viewRotation);
+
+          }
+          else {
+
+            QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+            QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
+            QVector3D Up = (TU - T0).normalized();
+            QVector3D Right = (TR - T0).normalized();
+
+            double dx = delta.x();
+            double dy = delta.y();
+
+            if( e->modifiers() == Qt::ControlModifier ) {
+              if( std::abs(dx) >= std::abs(dy) ) {
+                dy = 0;
+              }
+              else {
+                dx = 0;
+              }
+            }
+
+            QVector3D newForward =
+                QQuaternion::fromAxisAndAngle(-Up * dx - Right * dy, 0.2 * hypot(dx, dy))
+                    .rotatedVector(forward);
+
+            T0 = minv.map(QVector3D(0, 0, newForward.length()));
+            TU = minv.map(QVector3D(0, 0.5, newForward.length()));
+            Up = (TU - T0).normalized();
+
+            viewPoint_ = newForward + viewTarget_;
+            viewUpDirection_ = Up;
+          }
+
           dirty_ = true;
-
           showViewTarget(true);
           update();
           Q_EMIT viewPointChanged();

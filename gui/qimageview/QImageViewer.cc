@@ -294,7 +294,6 @@ void QImageViewer::setMask(cv::InputArray mask, bool make_copy /*= true*/)
 
 void QImageViewer::updateDisplay()
 {
-  INSTRUMENT_REGION("");
   if ( isVisible() ) {
     createDisplayImage();
     showCurrentDisplayImage();
@@ -385,7 +384,6 @@ void QImageViewer::createDisplayImage()
 
 void QImageViewer::showCurrentDisplayImage()
 {
-  INSTRUMENT_REGION("");
   if( displayImage_.empty() ) {
     scene()->setImage(QPixmap());
   }

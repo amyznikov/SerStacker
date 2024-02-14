@@ -105,8 +105,6 @@ static bool apply_mtf__(const cv::Mat & src, cv::Mat & dst,
     double shadows, double highlights, double midtones)
 {
 
-  INSTRUMENT_REGION("");
-
   using tbb_range = tbb::blocked_range<int>;
 
   const int ny = src.rows;

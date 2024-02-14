@@ -38,6 +38,7 @@ std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5),
 void> sort_vlo_echos_by_distance(ScanType & scan)
 {
+  INSTRUMENT_REGION("");
 //  force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
   {
 
@@ -93,6 +94,8 @@ void> sort_vlo_echos_by_distance(ScanType & scan)
  * */
 void sort_vlo_echos_by_distance(c_vlo_scan6_base & scan)
 {
+  INSTRUMENT_REGION("");
+
   typedef c_vlo_scan6_base ScanType;
 
   // force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
@@ -146,6 +149,8 @@ void sort_vlo_echos_by_distance(c_vlo_scan6_base & scan)
  * */
 void sort_vlo_echos_by_distance(c_vlo_scan6_slm & scan)
 {
+  INSTRUMENT_REGION("");
+
   // force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
   {
 
@@ -207,6 +212,8 @@ void sort_vlo_echos_by_distance(c_vlo_scan6_slm & scan)
  * */
 void sort_vlo_echos_by_distance(c_vlo_scan_cruise & scan)
 {
+  INSTRUMENT_REGION("");
+
   // force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
   {
 
@@ -275,6 +282,8 @@ std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_1 ||
     c_vlo_scan_type_traits<ScanType>::VERSION == VLO_VERSION_5 ),
 void> convert(ScanType & src, c_vlo_scan * dst)
 {
+  INSTRUMENT_REGION("");
+
   sort_vlo_echos_by_distance(src);
 
   dst->size.width = src.NUM_SLOTS;
@@ -374,6 +383,8 @@ void> convert(ScanType & src, c_vlo_scan * dst)
 
 static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
 {
+  INSTRUMENT_REGION("");
+
   sort_vlo_echos_by_distance(src);
 
 
@@ -459,6 +470,8 @@ static void convert(c_vlo_scan_cruise & src, c_vlo_scan * dst)
 
 static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
 {
+  INSTRUMENT_REGION("");
+
   sort_vlo_echos_by_distance(src);
 
   dst->size.width = src.NUM_SLOTS;
@@ -930,6 +943,8 @@ template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VER
 
 bool c_vlo_reader::read(c_vlo_scan * scan)
 {
+  INSTRUMENT_REGION("");
+
   union
   {
     c_vlo_scan1 scan1;

@@ -100,11 +100,6 @@ MainWindow::MainWindow()
   connect(imageView, &QImageEditor::displayImageChanged,
       this, &ThisClass::onCurrentViewDisplayImageChanged);
 
-  connect(cloudView, &QPointCloudSourceView::displayImageChanged,
-      this, &ThisClass::onCurrentViewDisplayImageChanged);
-
-
-
   ///////////////////////////////////
   // Setup docking views
 
@@ -1915,6 +1910,20 @@ void MainWindow::setupInputSequenceView()
   diplayImageWriter_.loadParameters();
   toolbar->addWidget(displayImageVideoWriterToolButton_ =
       createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
+
+  connect(&diplayImageWriter_, &QDisplayVideoWriter::stateChanged,
+      [this]() {
+        if ( diplayImageWriter_.started() ) {
+          connect(cloudView, &QGLView::displayImageChanged,
+              this, &ThisClass::onCurrentViewDisplayImageChanged);
+        }
+        else {
+          disconnect(cloudView, &QGLView::displayImageChanged,
+              this, &ThisClass::onCurrentViewDisplayImageChanged);
+        }
+      });
+
+
 
   toolbar->addAction(createAction(getIcon(ICON_close),
       "Close",

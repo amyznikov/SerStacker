@@ -29,8 +29,6 @@
 
 namespace {
 
-// static constexpr int MAX_ARGS = 10;
-
 typedef c_math_expression::abstract_node
     c_abstract_node;
 

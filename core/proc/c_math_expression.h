@@ -148,6 +148,11 @@ public:
     return binops_;
   }
 
+  const std::vector<arg_desc> & arguments() const
+  {
+    return args_;
+  }
+
 protected:
   void clear_errmsg();
   void set_errmsgv(const char * format, va_list arglist);

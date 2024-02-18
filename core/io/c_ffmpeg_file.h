@@ -89,6 +89,7 @@ public:
 
   static const std::vector<std::string> & supported_input_formats();
   static const std::vector<std::string> & supported_decoders();
+  static const std::vector<std::string> & supported_pixel_formats();
 
   void set_stream_name(const std::string & v);
   const std::string & stream_name() const;
@@ -159,6 +160,7 @@ public:
   ///@brief access to lists of supported formats
   static const std::vector<std::string> & supported_output_formats();
   static const std::vector<std::string> & supported_encoders();
+  static const std::vector<std::string> & supported_pixel_formats();
   static const AVPixelFormat * supported_codec_pix_formats(AVCodecID codec_id);
 
   int frames_written() const

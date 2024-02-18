@@ -28,21 +28,21 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
           });
 
   output_ffmpeg_opts_ctl =
-      add_textbox("ffmpeg opts:",
-      "Optional ffmpeg options for ffmpeg writers",
-      [this](const QString & v) {
-        if ( options_ ) {
-          options_->ffmpeg_opts = v.toStdString();
-          Q_EMIT parameterChanged();
-        }
-      },
-      [this](QString * v) {
-        if ( options_ ) {
-          *v = options_->ffmpeg_opts.c_str();
-          return true;
-        }
-        return false;
-      });
+      add_ffmpeg_options_control("ffmpeg opts:",
+          "Optional ffmpeg options for ffmpeg writers",
+          [this](const QString & v) {
+            if ( options_ ) {
+              options_->ffmpeg_opts = v.toStdString();
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](QString * v) {
+            if ( options_ ) {
+              *v = options_->ffmpeg_opts.c_str();
+              return true;
+            }
+            return false;
+          });
 
   output_image_processor_ctl =
       add_combobox<QImageProcessorSelectionCombo>("Image processor:",

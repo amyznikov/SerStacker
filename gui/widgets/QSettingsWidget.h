@@ -17,6 +17,7 @@
 #include <gui/widgets/QExpandableGroupBox.h>
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
+#include <gui/widgets/QFFmpegOptionsControl.h>
 #include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/qsprintf.h>
 #include <type_traits>
@@ -1086,6 +1087,78 @@ public:
 
   /////////////////////////////////////////////////////////////////////
 
+  QFFmpegOptionsControl* add_ffmpeg_options_control(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QString&)> & setfn)
+  {
+    QFFmpegOptionsControl * ctl =
+        new QFFmpegOptionsControl(this);
+
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QFFmpegOptionsControl::textChanged,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->text());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QFFmpegOptionsControl * add_ffmpeg_options_control(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    QFFmpegOptionsControl *ctl =
+        add_ffmpeg_options_control(form, name, tooltip, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                QString v;
+                if ( getfn(&v) ) {
+                  ctl->setText(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QFFmpegOptionsControl * add_ffmpeg_options_control(const QString & name, const QString & tooltip,
+      const std::function<void(const QString &)> & setfn)
+  {
+    return add_ffmpeg_options_control(form, name, tooltip, setfn);
+  }
+
+  QFFmpegOptionsControl * add_ffmpeg_options_control(const QString & name, const QString & tooltip,
+      const std::function<void(const QString &)> & setfn,
+      const std::function<bool(QString*)> & getfn)
+  {
+    return add_ffmpeg_options_control(form, name, tooltip, setfn, getfn);
+  }
+
+  /////////////////////////////////////////////////////////////////////
+
   template<class T, class S, class G>
   typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value,
   QNumericBox*>::type add_ctl(const QString & name, const QString & tooltip, const S & setfn, const G & getfn)
@@ -1162,6 +1235,7 @@ public:
   {
     return add_tool_button(form, name, QIcon(), onclick);
   }
+
 
   /////////////////////////////////////////////////////////////////////
 

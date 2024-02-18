@@ -31,6 +31,7 @@ static std::vector<std::string> g_supported_input_formats;
 static std::vector<std::string> g_supported_output_formats;
 static std::vector<std::string> g_supported_video_decoders;
 static std::vector<std::string> g_supported_video_encoders;
+static std::vector<std::string> g_supported_pix_fmts;
 
 static int64_t ffmpeg_gettime_us()
 {
@@ -555,6 +556,54 @@ static void ensure_ffmpeg_initialized()
               desc->long_name ? desc->long_name : ""));
     }
 
+    ////////
+    // from opt_common.c :
+    // int show_pix_fmts(void *optctx, const char *opt, const char *arg)
+
+    if ( true ) {
+
+      const AVPixFmtDescriptor *pix_desc =
+          nullptr;
+
+      //        printf("Pixel formats:\n"
+      //               "I.... = Supported Input  format for conversion\n"
+      //               ".O... = Supported Output format for conversion\n"
+      //               "..H.. = Hardware accelerated format\n"
+      //               "...P. = Paletted format\n"
+      //               "....B = Bitstream format\n"
+      //               "FLAGS NAME            NB_COMPONENTS BITS_PER_PIXEL BIT_DEPTHS\n"
+      //               "-----\n");
+
+      //    #if !CONFIG_SWSCALE
+      //    #   define sws_isSupportedInput(x)  0
+      //    #   define sws_isSupportedOutput(x) 0
+      //    #endif
+
+      while ((pix_desc = av_pix_fmt_desc_next(pix_desc))) {
+
+        enum AVPixelFormat av_unused pix_fmt =
+            av_pix_fmt_desc_get_id(pix_desc);
+
+        std::string s =
+            ssprintf("%c%c%c%c%c %-16s       %d            %3d      %d",
+                sws_isSupportedInput(pix_fmt) ? 'I' : '.',
+                sws_isSupportedOutput(pix_fmt) ? 'O' : '.',
+                pix_desc->flags & AV_PIX_FMT_FLAG_HWACCEL ? 'H' : '.',
+                pix_desc->flags & AV_PIX_FMT_FLAG_PAL ? 'P' : '.',
+                pix_desc->flags & AV_PIX_FMT_FLAG_BITSTREAM ? 'B' : '.',
+                pix_desc->name,
+                pix_desc->nb_components,
+                av_get_bits_per_pixel(pix_desc),
+                pix_desc->comp[0].depth);
+
+        for( unsigned i = 1; i < pix_desc->nb_components; i++ ) {
+          s += ssprintf("-%d", pix_desc->comp[i].depth);
+        }
+
+        g_supported_pix_fmts.emplace_back(s);
+      }
+    }
+    ////////
 
     already_initialized = true;
   }
@@ -573,6 +622,12 @@ const std::vector<std::string> & c_ffmpeg_reader::supported_decoders()
 {
   ensure_ffmpeg_initialized();
   return g_supported_video_decoders;
+}
+
+const std::vector<std::string> & c_ffmpeg_reader::supported_pixel_formats()
+{
+  ensure_ffmpeg_initialized();
+  return g_supported_pix_fmts;
 }
 
 c_ffmpeg_reader::~c_ffmpeg_reader()
@@ -977,6 +1032,12 @@ const std::vector<std::string> & c_ffmpeg_writer::supported_encoders()
 {
   ensure_ffmpeg_initialized();
   return g_supported_video_encoders;
+}
+
+const std::vector<std::string> & c_ffmpeg_writer::supported_pixel_formats()
+{
+  ensure_ffmpeg_initialized();
+  return g_supported_pix_fmts;
 }
 
 c_ffmpeg_writer::~c_ffmpeg_writer()

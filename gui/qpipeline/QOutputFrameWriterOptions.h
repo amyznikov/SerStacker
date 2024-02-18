@@ -26,7 +26,7 @@ public:
 
 protected:
   QLineEditBox * output_filename_ctl =  nullptr;
-  QLineEditBox * output_ffmpeg_opts_ctl = nullptr;
+  QFFmpegOptionsControl * output_ffmpeg_opts_ctl = nullptr;
   QImageProcessorSelectionCombo * output_image_processor_ctl = nullptr;
   QEnumComboBox<PIXEL_DEPTH> * output_pixel_depth_ctl = nullptr;
   QCheckBox * save_frame_mapping_ctl = nullptr;

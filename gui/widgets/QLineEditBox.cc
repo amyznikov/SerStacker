@@ -75,6 +75,9 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
         }
       });
 
+  connect(custom_edit, &QLineEdit::returnPressed,
+      this, &ThisClass::returnPressed);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////

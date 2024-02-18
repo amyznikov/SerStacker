@@ -111,8 +111,8 @@ protected:
   QSpinBox *interval_between_rounds_ctl = nullptr;
   QBrowsePathCombo * outpuPath_ctl = nullptr;
   QEnumComboBox<QCameraWriter::FORMAT> * output_format_ctl = nullptr;
-  QLineEditBox * avi_options_ctl = nullptr;
-  QToolButton * avi_options_menubutton_ctl = nullptr;
+  QFFmpegOptionsControl * avi_options_ctl = nullptr;
+  //QToolButton * avi_options_menubutton_ctl = nullptr;
   QStereoStreamCaptureOptions * stereo_stream_ctl = nullptr;
   QLineEditBox * filenamePrefix_ctl = nullptr;
   QLineEditBox * filenameSuffix_ctl = nullptr;

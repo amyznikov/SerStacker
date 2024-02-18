@@ -40,7 +40,7 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
           });
 
   ffoptions_ctl =
-      add_textbox("ffmpeg opts:", "Options for ffmpeg AVI writer",
+      add_ffmpeg_options_control("ffmpeg opts:", "Options for ffmpeg AVI writer",
           [this](const QString & s) {
             if ( videoWriter_ ) {
               videoWriter_->setFfoptions(s);

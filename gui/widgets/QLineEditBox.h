@@ -138,6 +138,7 @@ public:
 
 Q_SIGNALS:
   void textChanged();
+  void returnPressed();
 
 protected:
   QHBoxLayout * layout_ = nullptr;

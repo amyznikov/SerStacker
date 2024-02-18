@@ -500,7 +500,7 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
           });
 
   avi_options_ctl =
-      add_textbox("ffmpeg options:",
+      add_ffmpeg_options_control("ffmpeg options:",
           "",
           [this](const QString & value) {
             if ( writer_ ) {
@@ -509,12 +509,6 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
                   writer_->ffmpegOptions());
             }
           });
-
-  avi_options_menubutton_ctl = new QToolButton();
-  avi_options_menubutton_ctl->setText("...");
-  avi_options_ctl->layout()->addWidget(avi_options_menubutton_ctl);
-  connect(avi_options_menubutton_ctl, &QToolButton::clicked,
-      this, &ThisClass::onAviOptionsMenuButtonClicked);
 
   filenamePrefix_ctl =
       add_textbox("Prefix:",
@@ -542,58 +536,6 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
       stereo_stream_ctl = new QStereoStreamCaptureOptions());
 
   updateControls();
-}
-
-
-void QCaptureSettingsWidget::onAviOptionsMenuButtonClicked()
-{
-  QMenu menu;
-  QAction * action = nullptr;
-
-
-  menu.addAction(action = new QAction("List available encoders..."));
-  connect(action, &QAction::triggered,
-      []() {
-
-        static QPlainTextEdit * codecListTextBox = nullptr;
-
-        if ( !codecListTextBox ) {
-
-          const std::vector<std::string> & supported_encoders =
-              c_ffmpeg_writer::supported_encoders();
-
-          QString text = "Tags:\n"
-              "I - AV_CODEC_PROP_INTRA_ONLY, Codec uses only intra compression.\n"
-              "L - AV_CODEC_PROP_LOSSY, Codec supports lossy compression. A codec may support both lossy and lossless compression modes\n"
-              "S - AV_CODEC_PROP_LOSSLESS, Codec supports lossless compression. \n"
-              "\n"
-              "";
-
-          for ( const auto & s : supported_encoders ) {
-            text.append(s.c_str());
-            text.append("\n");
-          }
-
-
-          codecListTextBox = new QPlainTextEdit(text, QApplication::activeWindow());
-          codecListTextBox->setWindowFlag(Qt::WindowType::Dialog);
-          codecListTextBox->setFont(QFont("Monospace", 14));
-          codecListTextBox->setWordWrapMode(QTextOption::WrapMode::NoWrap);
-          codecListTextBox->setWindowTitle("Supported ffmpeg video encoders");
-        }
-
-
-        codecListTextBox->show();
-        codecListTextBox->raise();
-        codecListTextBox->setFocus();
-      });
-
-
-  menu.exec(avi_options_menubutton_ctl->mapToGlobal(
-      QPoint(avi_options_menubutton_ctl->width() / 2,
-          avi_options_menubutton_ctl->height() / 2)));
-
-
 }
 
 

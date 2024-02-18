@@ -12,6 +12,7 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include "QDisplayVideoWriter.h"
 
+
 class QDisplayVideoWriterOptions:
     public QSettingsWidget
 {
@@ -31,7 +32,8 @@ protected:
 protected:
   QDisplayVideoWriter * videoWriter_ = nullptr;
   QBrowsePathCombo * outputPath_ctl = nullptr;
-  QLineEditBox * ffoptions_ctl = nullptr;
+  QFFmpegOptionsControl * ffoptions_ctl = nullptr;
+  //QLineEditBox * ffoptions_ctl = nullptr;
   QLineEditBox * outputFilenamePrefix_ctl = nullptr;
   QLineEditBox * outputFilenameSuffix_ctl = nullptr;
   QCheckBox * writeViewPort_ctl = nullptr;

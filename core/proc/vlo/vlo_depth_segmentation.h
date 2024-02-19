@@ -9,7 +9,7 @@
 #ifndef __vlo_h__
 #define __vlo_h__
 
-#include <core/io/c_vlo_file.h>
+#include <core/io/vlo/c_vlo_file.h>
 
 struct c_vlo_depth_segmentation_options
 {

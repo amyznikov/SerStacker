@@ -9,8 +9,8 @@
 #ifndef __c_vlo_file_h__
 #define __c_vlo_file_h__
 
-#include "c_ifhd_file.h"
-#include "vlo/c_vlo_scan.h"
+#include <core/io/c_ifhd_file.h>
+#include "c_vlo_scan.h"
 
 
 class c_vlo_file

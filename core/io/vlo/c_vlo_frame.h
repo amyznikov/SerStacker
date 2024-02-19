@@ -9,7 +9,7 @@
 #ifndef __c_vlo_frame_h__
 #define __c_vlo_frame_h__
 
-#include <core/io/c_vlo_file.h>
+#include <core/io/vlo/c_vlo_file.h>
 #include <core/io/c_data_frame.h>
 
 class c_vlo_frame :

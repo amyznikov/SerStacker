@@ -261,9 +261,9 @@ message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
 # pcap
 #
 
+unset(PCAP_INCLUDE_DIR)
+unset(PCAP_LIBRARY)
 if ( TRUE )
-	unset(PCAP_INCLUDE_DIR)
-	unset(PCAP_LIBRARY)
 	find_path(PCAP_INCLUDE_DIR pcap/pcap.h)
 	find_library(PCAP_LIBRARY pcap)
 		    
@@ -281,6 +281,31 @@ if ( TRUE )
 		            
 	endif()
 endif() # pcap
+
+
+# ----------------------------------------------------------------------------
+# tinyxml2
+#
+
+if ( TRUE )
+    find_package(tinyxml2 QUIET)
+    if ( tinyxml2_FOUND )
+        get_target_property(TINYXML2_INCLUDE_DIR tinyxml2::tinyxml2 INTERFACE_INCLUDE_DIRECTORIES)
+        set(TINYXML2_LIBRARIES tinyxml2::tinyxml2)
+ 		add_definitions(-DHAVE_TINYXML2=1)
+    else()
+        find_path(TINYXML2_INCLUDE_DIR tinyxml2.h)
+        find_library(TINYXML2_LIBRARIES tinyxml2)
+        if ( NOT TINYXML2_LIBRARIES ) 
+          message( FATAL_ERROR "tinyxml2 package is mandatory but is not found in your system. Install tinyxml2 package please.")
+        else()
+ 		  add_definitions(-DHAVE_TINYXML2=1)
+        endif()
+    endif()
+    
+    
+    message(STATUS "tinyxml2: ${tinyxml2_VERSION} ${TINYXML2_INCLUDE_DIR} ${TINYXML2_LIBRARIES}")
+endif() # tinyxml2
 
 
 # ----------------------------------------------------------------------------

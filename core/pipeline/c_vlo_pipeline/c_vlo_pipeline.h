@@ -10,7 +10,7 @@
 #define __c_vlo_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/io/c_vlo_file.h>
+#include <core/io/vlo/c_vlo_file.h>
 #include <core/proc/vlo/vlo_depth_segmentation.h>
 #include <core/proc/threshold.h>
 

@@ -24,6 +24,7 @@ struct c_live_stacking_input_options:
 struct c_live_stacking_registration_options
 {
   bool enabled = false;
+  bool accumulated_reference = false;
   int minimum_image_size = 32;
   double min_rho = 0.7;
 };
@@ -52,8 +53,30 @@ struct c_live_stacking_output_options:
 {
   double display_scale = -1;
 
-  bool save_accumuated_file = true;
+  bool save_accumulated_file = true;
   std::string output_accumuated_file_name;
+
+  bool save_accumulated_video = false;
+  c_output_frame_writer_options output_accumulated_video_options;
+
+};
+
+class c_warped_accumulation
+{
+public:
+
+  int accumulated_frames() const;
+
+  void reset();
+
+  void add(const cv::Mat & current_image, const cv::Mat & current_mask, const cv::Mat2f * rmap = nullptr);
+
+  bool compute(cv::Mat & accimage, cv::Mat & accmask);
+
+protected:
+  cv::Mat image_;
+  cv::Mat counter_;
+  int accumulated_frames_ = 0;
 };
 
 
@@ -117,6 +140,8 @@ protected:
   static c_frame_accumulation::ptr create_frame_accumulation(const cv::Size & image_size, int cn,
       live_stacking_accumulation_type type);
 
+  bool accumulate_image(const cv::Mat & current_image, const cv::Mat & current_mask);
+
 protected:
   c_live_stacking_input_options input_options_;
   c_live_stacking_registration_options registration_options_;
@@ -138,6 +163,14 @@ protected:
   cv::Mat aligned_image_;
   cv::Mat aligned_mask_;
   double input_display_scale_ = -1;
+
+
+  c_output_frame_writer accumulated_video_writer_;
+
+  c_warped_accumulation wacc_;
+
+
+
 };
 
 

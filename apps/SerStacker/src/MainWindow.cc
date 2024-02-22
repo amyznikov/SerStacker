@@ -793,10 +793,10 @@ void MainWindow::onImageProcessorParameterChanged()
   Base::onImageProcessorParameterChanged();
 
   if( imageProcessor_ctl ) {
-    if( is_visible(imageView) ) {
+    if( imageView ) {
       imageView->set_current_processor(imageProcessor_ctl->current_processor());
     }
-    else if( is_visible(pipelineProgressImageView) ) {
+    if( pipelineProgressImageView ) {
       pipelineProgressImageView->set_current_processor(imageProcessor_ctl->current_processor());
     }
   }

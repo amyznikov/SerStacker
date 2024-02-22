@@ -6,6 +6,7 @@
  */
 
 #include "c_live_stacking_pipeline.h"
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -27,6 +28,64 @@ const c_enum_member* members_of<live_stacking_accumulation_type>()
   };
 
   return members;
+}
+
+namespace {
+} // namespace
+
+
+int c_warped_accumulation::accumulated_frames() const
+{
+  return accumulated_frames_;
+}
+
+void c_warped_accumulation::reset()
+{
+  image_.release();
+  counter_.release();
+  accumulated_frames_ = 0;
+}
+
+
+void c_warped_accumulation::add(const cv::Mat & current_image, const cv::Mat & current_mask, const cv::Mat2f * rmap)
+{
+  if( image_.empty() ) {
+    current_image.copyTo(image_);
+    counter_ = cv::Mat::zeros(image_.size(), CV_MAKETYPE(CV_32F, image_.channels()));
+    counter_.setTo(cv::Scalar::all(1), current_mask);
+  }
+  else {
+
+    if( rmap )  {
+      cv::remap(image_, image_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::remap(counter_, counter_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    }
+
+    cv::add(image_, current_image, image_, current_mask);
+    cv::add(counter_, cv::Scalar::all(1), counter_, current_mask);
+  }
+
+  ++accumulated_frames_;
+}
+
+bool c_warped_accumulation::compute(cv::Mat & accimage, cv::Mat & accmask)
+{
+  if ( accumulated_frames_ < 1 ) {
+    return false;
+  }
+
+  if( counter_.channels() == 1 ) {
+    cv::compare(counter_, cv::Scalar::all(1), accmask, cv::CMP_GE);
+  }
+  else {
+    reduce_color_channels(counter_, accmask, cv::REDUCE_MAX);
+    cv::compare(accmask, cv::Scalar::all(1), accmask, cv::CMP_GE);
+  }
+
+  cv::divide(image_, counter_, accimage);
+  accimage.setTo(0, ~accmask);
+
+  return true;
 }
 
 
@@ -78,7 +137,13 @@ c_live_stacking_output_options & c_live_stacking_pipeline::output_options()
 
 bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 {
-  c_config_setting section;
+  static const auto get_group =
+      [](c_config_setting setting, bool save, const std::string & name) {
+        return save ? setting.add_group(name) : setting[name];
+      };
+
+
+  c_config_setting section, subsection;
 
   if( !base::serialize(settings, save) ) {
     return false;
@@ -90,6 +155,7 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
     SERIALIZE_OPTION(section, save, registration_options_, enabled);
+    SERIALIZE_OPTION(section, save, registration_options_, accumulated_reference);
     SERIALIZE_OPTION(section, save, registration_options_, minimum_image_size);
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
   }
@@ -102,8 +168,14 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, output_options_, default_display_type);
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
-    SERIALIZE_OPTION(section, save, output_options_, save_accumuated_file);
+    SERIALIZE_OPTION(section, save, output_options_, save_accumulated_file);
     SERIALIZE_OPTION(section, save, output_options_, output_accumuated_file_name);
+
+    SERIALIZE_OPTION(section, save, output_options_, save_accumulated_video);
+    if( (subsection = get_group(section, save, "output_incremental_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_accumulated_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, output_options_, display_scale);
   }
 
@@ -122,6 +194,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_live_stacking_pipeline::g
 
     PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
     PIPELINE_CTL(ctrls, registration_options_.enabled, "enabled", "");
+    PIPELINE_CTL(ctrls, registration_options_.accumulated_reference, "accumulated_reference", "");
     PIPELINE_CTL(ctrls, registration_options_.minimum_image_size, "minimum_image_size", "");
     PIPELINE_CTL(ctrls, registration_options_.min_rho, "min_rho", "");
     PIPELINE_CTL_END_GROUP(ctrls);
@@ -135,8 +208,16 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_live_stacking_pipeline::g
     PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
     PIPELINE_CTL(ctrls, output_options_.display_scale, "display_scale", "");
     PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
-    PIPELINE_CTL(ctrls, output_options_.save_accumuated_file, "save_accumuated_file", "");
-    PIPELINE_CTLC(ctrls, output_options_.output_accumuated_file_name, "accumuated_file_name", "", _this->output_options_.save_accumuated_file);
+    PIPELINE_CTL(ctrls, output_options_.save_accumulated_file, "save_accumuated_file", "");
+    PIPELINE_CTLC(ctrls, output_options_.output_accumuated_file_name, "accumuated_file_name", "", _this->output_options_.save_accumulated_file);
+
+
+    PIPELINE_CTL_GROUP(ctrls, "Save accumulated video", "");
+      PIPELINE_CTL(ctrls, output_options_.save_accumulated_video, "save_accumulated_video", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_accumulated_video_options,
+          (_this->output_options_.save_accumulated_video));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
@@ -159,8 +240,17 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
     return frame_accumulation_->compute(display_frame, display_mask, display_scale);
   }
 
-
   cv::Mat image, mask;
+
+  if( registration_options_.accumulated_reference ) {
+
+    if ( !wacc_.compute(image, mask) ) {
+      return false;
+    }
+
+    aligned_image_ = image;
+    aligned_mask_ = mask;
+  }
 
   if( aligned_image_.empty() ) {
     image = current_image_;
@@ -201,6 +291,7 @@ bool c_live_stacking_pipeline::initialize_pipeline()
   output_path_ =
       create_output_path(output_options_.output_directory);
 
+  wacc_.reset();
   frame_accumulation_.reset();
   ecch_.set_method(nullptr);
 
@@ -215,11 +306,11 @@ bool c_live_stacking_pipeline::initialize_pipeline()
 
 void c_live_stacking_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
+  base::cleanup_pipeline();
 
-  if( output_options_.save_accumuated_file ) {
+  wacc_.reset();
+
+  if( output_options_.save_accumulated_file ) {
 
     cv::Mat image, mask;
 
@@ -346,8 +437,49 @@ bool c_live_stacking_pipeline::run_pipeline()
   return true;
 }
 
+bool c_live_stacking_pipeline::accumulate_image(const cv::Mat & current_image, const cv::Mat & current_mask)
+{
+  if( !frame_accumulation_ ) {
+
+    frame_accumulation_ =
+        create_frame_accumulation(current_image_.size(),
+            current_image_.channels(),
+            accumulation_options_.accumulation_type);
+
+    if( !frame_accumulation_ ) {
+      CF_ERROR("create_frame_accumulation(current_image_.size = %dx%d) fails",
+          current_image_.cols, current_image_.rows);
+      return false;
+    }
+  }
+
+  if( accumulation_options_.ignore_input_mask ) {
+
+    if( !frame_accumulation_->add(current_image_, cv::noArray()) ) {
+      CF_ERROR("frame_accumulation_->add(image.size = %dx%d) fails",
+          current_image_.cols, current_image_.rows);
+      return false;
+    }
+
+  }
+  else {
+
+    if( !frame_accumulation_->add(current_image_, current_mask_) ) {
+      CF_ERROR("frame_accumulation_->add(image.size = %dx%d channels=%d mask.size=%dx%d channels=%d) fails",
+          current_image_.cols, current_image_.rows, current_image_.channels(),
+          current_mask_.cols, current_mask_.rows, current_mask_.channels());
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool c_live_stacking_pipeline::process_current_frame()
 {
+
+  cv::Mat image, mask;
+
   if( registration_options_.enabled ) {
 
     if( !ecch_.method() ) {
@@ -371,54 +503,114 @@ bool c_live_stacking_pipeline::process_current_frame()
       ecch_.set_minimum_pyramid_level(1);
     }
 
-    if ( reference_image_.empty() ) {
+    if( registration_options_.accumulated_reference  )  {
 
-      if ( current_image_.channels() ==  3 ) {
-        cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
+      if ( wacc_.accumulated_frames() < 1 ) {
+        wacc_.add(current_image_, current_mask_);
       }
       else {
-        current_image_.copyTo(reference_image_);
+
+        wacc_.compute(image, mask);
+
+        if ( image.channels() != 1 ) {
+          cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+        }
+
+        if ( current_image_.channels() != 1 ) {
+          cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
+        }
+        else {
+          reference_image_ = current_image_;
+        }
+
+        ecch_.set_reference_image(reference_image_, reference_mask_);
+
+        if ( ecch_.align(image, mask) ) {
+          wacc_.add(current_image_, current_mask_, &ecc_.current_remap());
+        }
+
       }
 
-      current_mask_.copyTo(reference_mask_);
-      ecch_.set_reference_image(reference_image_, reference_mask_);
     }
     else {
 
-      if ( current_image_.channels() ==  1 ) {
-        ecch_.align(current_image_, current_mask_);
-      }
-      else {
-        cv::Mat gray;
-        cv::cvtColor(current_image_, gray, cv::COLOR_BGR2GRAY);
-        ecch_.align(gray, current_mask_);
-      }
+      if( reference_image_.empty() ) {
 
-      if ( ecc_.rho() < registration_options_.min_rho ) {
-        CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
-      }
-      else {
-
-        lock_guard lock(mutex());
-
-        cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
-            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-        if ( current_mask_.empty() ) {
-          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
-              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        if( current_image_.channels() == 3 ) {
+          cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
         }
         else {
-          cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
-              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+          current_image_.copyTo(reference_image_);
         }
 
-        cv::compare(aligned_mask_, 254, current_mask_, cv::CMP_GE);
+        current_mask_.copyTo(reference_mask_);
+        ecch_.set_reference_image(reference_image_, reference_mask_);
+      }
+
+      else {
+
+        if( current_image_.channels() == 1 ) {
+          ecch_.align(current_image_, current_mask_);
+        }
+        else {
+          cv::Mat gray;
+          cv::cvtColor(current_image_, gray, cv::COLOR_BGR2GRAY);
+          ecch_.align(gray, current_mask_);
+        }
+
+        if( ecc_.rho() < registration_options_.min_rho ) {
+          CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
+        }
+        else {
+
+          lock_guard lock(mutex());
+
+          cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
+              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+          if( current_mask_.empty() ) {
+            cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
+                cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+          }
+          else {
+            cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
+                cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+          }
+
+          cv::compare(aligned_mask_, 254, current_mask_, cv::CMP_GE);
+        }
       }
     }
   }
 
-  if( accumulation_options_.accumulation_type != live_stacking_accumulation_disable ) {
+
+  if( registration_options_.accumulated_reference  )  {
+
+    if ( output_options_.save_accumulated_video ) {
+
+      const bool fOK =
+          add_output_writer(accumulated_video_writer_,
+              output_options_.output_accumulated_video_options,
+              "accw",
+              ".ser");
+
+      if( !fOK ) {
+        CF_ERROR("Can not open output writer '%s'",
+            accumulated_video_writer_.filename().c_str());
+        return false;
+      }
+
+    }
+
+    wacc_.compute(image, mask);
+
+    if ( !accumulated_video_writer_.write(image, mask) ) {
+      CF_ERROR("accumulated_video_writer_.write() fails");
+      return false;
+    }
+
+  }
+  else if( accumulation_options_.accumulation_type != live_stacking_accumulation_disable ) {
 
     lock_guard lock(mutex());
 
@@ -437,7 +629,6 @@ bool c_live_stacking_pipeline::process_current_frame()
     }
 
 
-    cv::Mat image, mask;
 
     if( !registration_options_.enabled || frame_accumulation_->accumulated_frames() < 1 ) {
       image = current_image_;
@@ -450,25 +641,34 @@ bool c_live_stacking_pipeline::process_current_frame()
 
     if( !image.empty() ) {
 
-      if( accumulation_options_.ignore_input_mask ) {
+      if( !accumulate_image(current_image_, current_mask_) ) {
+        CF_ERROR("accumulate_image() fails");
+        return false;
+      }
 
-        if( !frame_accumulation_->add(image, cv::noArray()) ) {
-          CF_ERROR("frame_accumulation_->add(image.size = %dx%d) fails",
-              image.cols, image.rows);
+      if ( output_options_.save_accumulated_video ) {
+
+        const bool fOK =
+            add_output_writer(accumulated_video_writer_,
+                output_options_.output_accumulated_video_options,
+                "acc",
+                ".ser");
+
+        if( !fOK ) {
+          CF_ERROR("Can not open output writer '%s'",
+              accumulated_video_writer_.filename().c_str());
           return false;
         }
 
       }
-      else {
 
-        if( !frame_accumulation_->add(image, mask) ) {
-          CF_ERROR("frame_accumulation_->add(image.size = %dx%d channels=%d mask.size=%dx%d channels=%d) fails",
-              image.cols, image.rows, image.channels(),
-              mask.cols, mask.rows, mask.channels());
-          return false;
-        }
+      frame_accumulation_->compute(image, mask);
 
+      if ( !accumulated_video_writer_.write(image, mask) ) {
+        CF_ERROR("accumulated_video_writer_.write() fails");
+        return false;
       }
+
     }
   }
 

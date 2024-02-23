@@ -606,8 +606,6 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
   registration_options.jovian_derotation.enabled = false;
   registration_options.eccflow.enabled = false;
 
-  CF_DEBUG("call create_reference_frame()");
-
   if( !create_reference_frame(registration_options, master_frame, master_mask) ) {
     CF_FATAL("create_reference_frame() fails");
     return false;
@@ -1972,18 +1970,18 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
         else {
 
-          if( flow_accumulation_->accumulated_frames() < 1 ) {
-
-            const bool fOk =
-                flow_accumulation_->initialze(turbulence.size(),
-                    turbulence.type(),
-                    CV_8UC1);
-
-            if( !fOk ) {
-              CF_ERROR("flow_accumulation_->initialze() fails");
-              break;
-            }
-          }
+//          if( flow_accumulation_->accumulated_frames() < 1 ) {
+//
+//            const bool fOk =
+//                flow_accumulation_->initialze(turbulence.size(),
+//                    turbulence.type(),
+//                    CV_8UC1);
+//
+//            if( !fOk ) {
+//              CF_ERROR("flow_accumulation_->initialze() fails");
+//              break;
+//            }
+//          }
 
           if( !flow_accumulation_->add(turbulence) ) {
             CF_ERROR("flow_accumulation_->add(turbulence) fails");
@@ -2118,7 +2116,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
         if( bayer_average->accumulated_frames() < 1 ) {
           bayer_average->set_bayer_pattern(raw_bayer_colorid_);
-          bayer_average->initialze(raw_bayer_image_.size());
+          // bayer_average->initialze(raw_bayer_image_.size());
         }
 
 
@@ -2131,19 +2129,19 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
         lock_guard lock(mutex());
 
-        if( frame_accumulation_->accumulated_frames() < 1 ) {
-
-          const bool fok =
-              frame_accumulation_->initialze(current_frame.size(),
-                  current_frame.type(),
-                  current_mask.empty() ? CV_8UC1 :
-                      current_mask.type());
-
-          if( !fok ) {
-            CF_ERROR("frame_accumulation_->initialze() fails");
-            return false;
-          }
-        }
+//        if( frame_accumulation_->accumulated_frames() < 1 ) {
+//
+//          const bool fok =
+//              frame_accumulation_->initialze(current_frame.size(),
+//                  current_frame.type(),
+//                  current_mask.empty() ? CV_8UC1 :
+//                      current_mask.type());
+//
+//          if( !fok ) {
+//            CF_ERROR("frame_accumulation_->initialze() fails");
+//            return false;
+//          }
+//        }
 
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");

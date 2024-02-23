@@ -925,44 +925,76 @@ c_frame_weigthed_average::c_frame_weigthed_average()
 
 }
 
-c_frame_weigthed_average::c_frame_weigthed_average(const cv::Size & image_size, int acctype, int weightstype)
+//c_frame_weigthed_average::c_frame_weigthed_average(const cv::Size & image_size)
+//{
+//  // initialze(image_size);
+//}
+
+//bool c_frame_weigthed_average::initialze(const cv::Size & image_size)
+//{
+//  const int accdepth =
+//      CV_32F;
+//
+//  const int cntdepth =
+//      CV_32F;
+//
+//  const int acn =
+//      (acctype >> CV_CN_SHIFT) + 1;
+//
+//  const int ccn =
+//      (weightstype >> CV_CN_SHIFT) + 1;
+//
+//  if( ccn != 1 && ccn != acn ) {
+//    CF_ERROR("Invalid combination of acc (%d) and weights (%d) channels", acn, ccn);
+//    return false;
+//  }
+//
+//  accumulator_.create(image_size, acctype);
+//  counter_.create(image_size, CV_MAKETYPE(std::max(CV_32F, CV_MAT_DEPTH(weightstype)), ccn));
+//
+//  accumulator_.setTo(0);
+//  counter_.setTo(0);
+//  accumulated_frames_ = 0;
+//
+//  return true;
+//}
+
+void c_frame_weigthed_average::clear()
 {
-  initialze(image_size, acctype, weightstype);
+  accumulator_.release();
+  counter_.release();
+  accumulated_frames_ = 0;
 }
 
-bool c_frame_weigthed_average::initialze(const cv::Size & image_size, int acctype, int weightstype)
+cv::Size c_frame_weigthed_average::accumulator_size() const
 {
+  return accumulator_.size();
+}
 
-  const int accdepth =
-      CV_MAT_DEPTH(acctype);
+const cv::Mat & c_frame_weigthed_average::accumulator() const
+{
+  return accumulator_;
+}
 
-  const int cntdepth =
-      CV_MAT_DEPTH(weightstype);
-
-  const int acn =
-      (acctype >> CV_CN_SHIFT) + 1;
-
-  const int ccn =
-      (weightstype >> CV_CN_SHIFT) + 1;
-
-  if( ccn != 1 && ccn != acn ) {
-    CF_ERROR("Invalid combination of acc (%d) and weights (%d) channels", acn, ccn);
-    return false;
-  }
-
-  accumulator_.create(image_size, acctype);
-  counter_.create(image_size, CV_MAKETYPE(std::max(CV_32F, CV_MAT_DEPTH(weightstype)), ccn));
-
-  accumulator_.setTo(0);
-  counter_.setTo(0);
-  accumulated_frames_ = 0;
-
-  return true;
+const cv::Mat & c_frame_weigthed_average::counter() const
+{
+  return counter_;
 }
 
 bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 {
   INSTRUMENT_REGION("");
+
+  if ( accumulated_frames_ < 1 ) {
+
+    accumulator_.create(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
+    counter_.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
+
+    accumulator_.setTo(0);
+    counter_.setTo(0);
+
+    accumulated_frames_ = 0;
+  }
 
   if ( src.size() != accumulator_.size() ) {
     CF_ERROR("ERROR in weigthed_frame_average: current frame (%dx%d) and accumulator (%dx%d) sizes not match",
@@ -1044,27 +1076,6 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
   return true;
 }
 
-void c_frame_weigthed_average::clear()
-{
-  accumulator_.release();
-  counter_.release();
-  accumulated_frames_ = 0;
-}
-
-cv::Size c_frame_weigthed_average::accumulator_size() const
-{
-  return accumulator_.size();
-}
-
-const cv::Mat & c_frame_weigthed_average::accumulator() const
-{
-  return accumulator_;
-}
-
-const cv::Mat & c_frame_weigthed_average::counter() const
-{
-  return counter_;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1098,15 +1109,29 @@ cv::Mat c_laplacian_pyramid_focus_stacking::duplicate_channels(const cv::Mat & s
   return m;
 }
 
-bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, int acctype, int weightstype)
+//bool c_laplacian_pyramid_focus_stacking::initialze(const cv::Size & image_size, int acctype, int weightstype)
+//{
+//  acc.clear();
+//  G.release();
+//  image_size_ = image_size;
+//  acctype_ = acctype;
+//  weightstype_ = weightstype;
+//  accumulated_frames_ = 0;
+//  return true;
+//}
+
+void c_laplacian_pyramid_focus_stacking::clear()
 {
   acc.clear();
   G.release();
-  image_size_ = image_size;
-  acctype_ = acctype;
-  weightstype_ = weightstype;
   accumulated_frames_ = 0;
-  return true;
+  image_size_ =  cv::Size(-1,-1);
+
+//  image_size_ = image_size;
+//  acctype_ = acctype;
+//  weightstype_ = weightstype;
+//  accumulated_frames_ = 0;
+
 }
 
 
@@ -1169,7 +1194,10 @@ bool c_laplacian_pyramid_focus_stacking::add(cv::InputArray src, cv::InputArray 
   const cv::Mat image =
       src.getMat();
 
-  if( image.size() != image_size_ ) {
+  if ( image_size_.empty() ) {
+    image_size_ = image.size();
+  }
+  else if( image.size() != image_size_ ) {
 
     CF_ERROR("Input image size %dx%d not match: expected %dx%d",
         image.cols, image.rows,
@@ -1306,12 +1334,6 @@ bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::Output
   return true;
 }
 
-void c_laplacian_pyramid_focus_stacking::clear()
-{
-  acc.clear();
-  G.release();
-  accumulated_frames_ = 0;
-}
 
 cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
 {
@@ -1321,11 +1343,24 @@ cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool c_frame_accumulation_with_fft::initialze(const cv::Size & /*image_size*/, int /*acctype*/, int /*weightstype*/)
+//bool c_frame_accumulation_with_fft::initialze(const cv::Size & /*image_size*/, int /*acctype*/, int /*weightstype*/)
+//{
+//  accumulators_.clear();
+//  weights_.clear();
+//  return true;
+//}
+
+void c_frame_accumulation_with_fft::clear()
 {
+  accumulated_frames_ = 0;
   accumulators_.clear();
   weights_.clear();
-  return true;
+  rc_.x = rc_.y = rc_.width = rc_.height = 0;
+  fftSize_.width =  fftSize_.height = 0;
+  border_top_ = 0;
+  border_bottom_ = 0;
+  border_left_ = 0;
+  border_right_ = 0;
 }
 
 bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
@@ -1513,19 +1548,6 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
   return true;
 }
 
-void c_frame_accumulation_with_fft::clear()
-{
-  accumulated_frames_ = 0;
-  accumulators_.clear();
-  weights_.clear();
-  rc_.x = rc_.y = rc_.width = rc_.height = 0;
-  fftSize_.width =  fftSize_.height = 0;
-  border_top_ = 0;
-  border_bottom_ = 0;
-  border_left_ = 0;
-  border_right_ = 0;
-}
-
 cv::Size c_frame_accumulation_with_fft::accumulator_size() const
 {
   return accumulators_.empty() ? cv::Size(0,0) : accumulators_[0].size();
@@ -1617,46 +1639,6 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-void c_bayer_average::set_bayer_pattern(COLORID colorid)
-{
-  colorid_ = colorid;
-  if ( !accumulator_.size().empty() ) {
-    generate_bayer_pattern_mask();
-  }
-}
-
-COLORID c_bayer_average::bayer_pattern() const
-{
-  return colorid_;
-}
-
-void c_bayer_average::set_remap(const cv::Mat2f & rmap)
-{
-  rmap_ = rmap;
-}
-
-const cv::Mat2f & c_bayer_average::remap() const
-{
-  return rmap_ ;
-}
-
-bool c_bayer_average::initialze(const cv::Size & image_size, int /*acctype*/, int /*weightstype*/)
-{
-  accumulator_.create(image_size);
-  counter_.create(image_size);
-
-  accumulator_.setTo(0);
-  counter_.setTo(0);
-
-  accumulated_frames_ = 0;
-
-  generate_bayer_pattern_mask();
-
-  return true;
-}
-
 
 
 template<class BT>
@@ -1825,6 +1807,56 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
 
 }
 
+void c_bayer_average::set_bayer_pattern(COLORID colorid)
+{
+  colorid_ = colorid;
+  if ( !accumulator_.size().empty() ) {
+    generate_bayer_pattern_mask();
+  }
+}
+
+COLORID c_bayer_average::bayer_pattern() const
+{
+  return colorid_;
+}
+
+void c_bayer_average::set_remap(const cv::Mat2f & rmap)
+{
+  rmap_ = rmap;
+}
+
+const cv::Mat2f & c_bayer_average::remap() const
+{
+  return rmap_ ;
+}
+
+//bool c_bayer_average::initialze(const cv::Size & image_size, int /*acctype*/, int /*weightstype*/)
+//{
+//  accumulator_.create(image_size);
+//  counter_.create(image_size);
+//
+//  accumulator_.setTo(0);
+//  counter_.setTo(0);
+//
+//  accumulated_frames_ = 0;
+//
+//  generate_bayer_pattern_mask();
+//
+//  return true;
+//}
+
+
+void c_bayer_average::clear()
+{
+  accumulator_.release();
+  counter_.release();
+  rmap_.release();
+  bayer_pattern_.release();
+  accumulated_frames_ = 0;
+}
+
+
+
 bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
 {
   const cv::Mat src_bayer =
@@ -1832,6 +1864,21 @@ bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
 
   const cv::Mat w =
       weights.getMat();
+
+  if( accumulated_frames_ < 1 ) {
+
+    const cv::Size image_size = src.size();
+
+    accumulator_.create(image_size);
+    counter_.create(image_size);
+
+    accumulator_.setTo(0);
+    counter_.setTo(0);
+
+    accumulated_frames_ = 0;
+
+    generate_bayer_pattern_mask();
+  }
 
   switch (src_bayer.type()) {
     case CV_8UC1:
@@ -1897,15 +1944,6 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
   }
 
   return true;
-}
-
-void c_bayer_average::clear()
-{
-  accumulator_.release();
-  counter_.release();
-  rmap_.release();
-  bayer_pattern_.release();
-  accumulated_frames_ = 0;
 }
 
 

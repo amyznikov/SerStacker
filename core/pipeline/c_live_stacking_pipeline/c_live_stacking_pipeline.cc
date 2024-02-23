@@ -34,6 +34,16 @@ namespace {
 } // namespace
 
 
+void c_warped_accumulation::set_avgw(float v)
+{
+  avgw_ = v;
+}
+
+float c_warped_accumulation::avgw() const
+{
+  return avgw_;
+}
+
 int c_warped_accumulation::accumulated_frames() const
 {
   return accumulated_frames_;
@@ -41,28 +51,103 @@ int c_warped_accumulation::accumulated_frames() const
 
 void c_warped_accumulation::reset()
 {
-  image_.release();
-  counter_.release();
+  acc_.release();
+  cnt_.release();
   accumulated_frames_ = 0;
+}
+
+static void wadd(const cv::Mat & _src, const cv::Mat & _srcmask,
+    cv::Mat & _dst, cv::Mat1f & cnt,
+    float avgw)
+{
+  const int rows =
+      _src.rows;
+
+  const int cols =
+      _src.cols;
+
+  const int cn =
+      _src.channels();
+
+  const cv::Mat_<float> src =
+      _src;
+
+  const cv::Mat1b srcmask =
+      _srcmask;
+
+  cv::Mat_<float> dst =
+      _dst;
+
+
+  if ( srcmask.empty() ) {
+
+    for( int y = 0; y < rows; ++y ) {
+
+      const float * srcp = src[y];
+      float * dstp = dst[y];
+      float * cntp = cnt[y];
+
+      for( int x = 0; x < cols; ++x ) {
+
+        const float w =
+            std::min(avgw, cntp[x]);
+
+        for( int c = 0; c < cn; ++c ) {
+
+          dstp[x * cn + c] =
+              (dstp[x * cn + c] * w + srcp[x * cn + c]) / (w + 1);
+        }
+
+        cntp[x] += 1;
+      }
+    }
+
+  }
+  else {
+
+    for( int y = 0; y < rows; ++y ) {
+
+      const uint8_t * mskp = srcmask[y];
+      const float * srcp = src[y];
+      float * dstp = dst[y];
+      float * cntp = cnt[y];
+
+      for( int x = 0; x < cols; ++x ) {
+        if( mskp[x] ) {
+
+          const float w =
+              std::min(avgw, cntp[x]);
+
+          for( int c = 0; c < cn; ++c ) {
+            dstp[x * cn + c] = (dstp[x * cn + c] * w + srcp[x * cn + c]) / (w + 1);
+          }
+
+          cntp[x] += 1;
+        }
+      }
+    }
+  }
 }
 
 
 void c_warped_accumulation::add(const cv::Mat & current_image, const cv::Mat & current_mask, const cv::Mat2f * rmap)
 {
-  if( image_.empty() ) {
-    current_image.copyTo(image_);
-    counter_ = cv::Mat::zeros(image_.size(), CV_MAKETYPE(CV_32F, image_.channels()));
-    counter_.setTo(cv::Scalar::all(1), current_mask);
+  if( acc_.empty() ) {
+    acc_ = cv::Mat::zeros(current_image.size(), current_image.type());
+    cnt_ = cv::Mat1f::zeros(current_image.size());
+    current_image.copyTo(acc_, current_mask);
+    cnt_.setTo(cv::Scalar::all(1), current_mask);
   }
   else {
 
     if( rmap )  {
-      cv::remap(image_, image_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      cv::remap(counter_, counter_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::remap(acc_, acc_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::remap(cnt_, cnt_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
     }
 
-    cv::add(image_, current_image, image_, current_mask);
-    cv::add(counter_, cv::Scalar::all(1), counter_, current_mask);
+    wadd(current_image, current_mask,
+        acc_, cnt_,
+        avgw_);
   }
 
   ++accumulated_frames_;
@@ -74,20 +159,21 @@ bool c_warped_accumulation::compute(cv::Mat & accimage, cv::Mat & accmask)
     return false;
   }
 
-  if( counter_.channels() == 1 ) {
-    cv::compare(counter_, cv::Scalar::all(1), accmask, cv::CMP_GE);
-  }
-  else {
-    reduce_color_channels(counter_, accmask, cv::REDUCE_MAX);
-    cv::compare(accmask, cv::Scalar::all(1), accmask, cv::CMP_GE);
-  }
-
-  cv::divide(image_, counter_, accimage);
-  accimage.setTo(0, ~accmask);
+  cv::compare(cnt_, cv::Scalar::all(1), accmask, cv::CMP_GE);
+  acc_.copyTo(accimage, accmask);
 
   return true;
 }
 
+void c_live_stacking_pipeline::set_avgw(float v)
+{
+  wacc_.set_avgw(v);
+}
+
+float c_live_stacking_pipeline::avgw() const
+{
+  return wacc_.avgw();
+}
 
 c_live_stacking_pipeline::c_live_stacking_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -155,9 +241,10 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
     SERIALIZE_OPTION(section, save, registration_options_, enabled);
-    SERIALIZE_OPTION(section, save, registration_options_, accumulated_reference);
     SERIALIZE_OPTION(section, save, registration_options_, minimum_image_size);
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
+    SERIALIZE_OPTION(section, save, registration_options_, running_reference);
+    SERIALIZE_PROPERTY(section, save, wacc_, avgw);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "accumulation_options")) ) {
@@ -194,9 +281,12 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_live_stacking_pipeline::g
 
     PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
     PIPELINE_CTL(ctrls, registration_options_.enabled, "enabled", "");
-    PIPELINE_CTL(ctrls, registration_options_.accumulated_reference, "accumulated_reference", "");
     PIPELINE_CTL(ctrls, registration_options_.minimum_image_size, "minimum_image_size", "");
     PIPELINE_CTL(ctrls, registration_options_.min_rho, "min_rho", "");
+
+    PIPELINE_CTL(ctrls, registration_options_.running_reference, "running_reference", "");
+    PIPELINE_CTLP(ctrls, avgw, "avgw", "");
+
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Accumulation options", "");
@@ -242,7 +332,7 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
 
   cv::Mat image, mask;
 
-  if( registration_options_.accumulated_reference ) {
+  if( registration_options_.running_reference ) {
 
     if ( !wacc_.compute(image, mask) ) {
       return false;
@@ -501,11 +591,16 @@ bool c_live_stacking_pipeline::process_current_frame()
       ecch_.set_method(&ecc_);
       ecch_.set_minimum_image_size(std::max(8, registration_options_.minimum_image_size));
       ecch_.set_minimum_pyramid_level(1);
+
     }
 
-    if( registration_options_.accumulated_reference  )  {
+    if( registration_options_.running_reference  )  {
 
       if ( wacc_.accumulated_frames() < 1 ) {
+
+        eccflow_.set_support_scale(5);
+       // eccflow_.set_normalization_scale(6);
+
         wacc_.add(current_image_, current_mask_);
       }
       else {
@@ -523,12 +618,12 @@ bool c_live_stacking_pipeline::process_current_frame()
           reference_image_ = current_image_;
         }
 
-        ecch_.set_reference_image(reference_image_, reference_mask_);
+        cv::Mat2f rmap;
 
-        if ( ecch_.align(image, mask) ) {
-          wacc_.add(current_image_, current_mask_, &ecc_.current_remap());
+        eccflow_.set_reference_image(reference_image_, reference_mask_);
+        if( eccflow_.compute(image, rmap, mask) ) {
+          wacc_.add(current_image_, current_mask_, &rmap);
         }
-
       }
 
     }
@@ -584,9 +679,9 @@ bool c_live_stacking_pipeline::process_current_frame()
   }
 
 
-  if( registration_options_.accumulated_reference  )  {
+  if( registration_options_.running_reference  )  {
 
-    if ( output_options_.save_accumulated_video ) {
+    if( output_options_.save_accumulated_video ) {
 
       const bool fOK =
           add_output_writer(accumulated_video_writer_,
@@ -600,13 +695,12 @@ bool c_live_stacking_pipeline::process_current_frame()
         return false;
       }
 
-    }
+      wacc_.compute(image, mask);
 
-    wacc_.compute(image, mask);
-
-    if ( !accumulated_video_writer_.write(image, mask) ) {
-      CF_ERROR("accumulated_video_writer_.write() fails");
-      return false;
+      if( !accumulated_video_writer_.write(image, mask) ) {
+        CF_ERROR("accumulated_video_writer_.write() fails");
+        return false;
+      }
     }
 
   }
@@ -690,7 +784,8 @@ c_frame_accumulation::ptr c_live_stacking_pipeline::create_frame_accumulation(co
 {
   switch (type) {
     case live_stacking_accumulation_average: {
-      return c_frame_weigthed_average::ptr(new c_frame_weigthed_average(image_size, CV_MAKETYPE(CV_32F, cn) , CV_32F));
+      //return c_frame_weigthed_average::ptr(new c_frame_weigthed_average(image_size, CV_MAKETYPE(CV_32F, cn) , CV_32F));
+      return c_frame_weigthed_average::ptr(new c_frame_weigthed_average());
     }
     default:
       CF_ERROR("Unsupported live_stacking_accumulation_type %d requested", type);

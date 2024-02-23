@@ -24,7 +24,7 @@ struct c_live_stacking_input_options:
 struct c_live_stacking_registration_options
 {
   bool enabled = false;
-  bool accumulated_reference = false;
+  bool running_reference = false;
   int minimum_image_size = 32;
   double min_rho = 0.7;
 };
@@ -65,7 +65,11 @@ class c_warped_accumulation
 {
 public:
 
+  void set_avgw(float v);
+  float avgw() const;
+
   int accumulated_frames() const;
+
 
   void reset();
 
@@ -74,9 +78,12 @@ public:
   bool compute(cv::Mat & accimage, cv::Mat & accmask);
 
 protected:
-  cv::Mat image_;
-  cv::Mat counter_;
+  cv::Mat acc_;
+  cv::Mat1f cnt_;
   int accumulated_frames_ = 0;
+  float avgw_ = 20;
+
+
 };
 
 
@@ -127,6 +134,10 @@ public:
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+
+
+  void set_avgw(float v);
+  float avgw() const;
 
 protected:
   bool initialize_pipeline() override;

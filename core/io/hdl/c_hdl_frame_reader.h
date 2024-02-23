@@ -10,6 +10,8 @@
 #define __c_hdl_frame_reader_h__
 
 #include <core/io/c_pcap_file.h>
+
+#if HAVE_PCAP
 //#include <core/c_notification.h>
 #include "c_hdl_packet_parser.h"
 #include <netinet/in.h>
@@ -348,6 +350,7 @@ protected:
   volatile bool stop_ = false;
 };
 
+#endif // HAVE_PCAP
 
 
 #endif /* __c_hdl_frame_reader_h__ */

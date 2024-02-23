@@ -8,14 +8,17 @@
 #ifndef __c_hdl_packet_parser_h__
 #define __c_hdl_packet_parser_h__
 
+#include "c_hdl_frame.h"
+#include "c_hdl_specification.h"
+
+#if HAVE_PCAP
+
 #include <inttypes.h>
 #include <string>
 #include <vector>
 #include <memory>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include "c_hdl_frame.h"
-#include "c_hdl_specification.h"
 
 constexpr int HDL_DATA_BLOCKS_PER_PKT = 12;
 constexpr int HDL_LASERS_PER_DATA_BLOCK = 32;
@@ -222,5 +225,8 @@ inline bool is_single_return_mode(HDLReturnMode return_mode)
   }
   return false;
 }
+
+#endif // HAVE_PCAP
+
 
 #endif /* __c_hdl_packet_parser_h__ */

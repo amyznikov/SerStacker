@@ -9,6 +9,9 @@
 #define __c_hdl_frame_h__
 
 #include <opencv2/opencv.hpp>
+
+#if HAVE_PCAP
+
 #include <netinet/in.h>
 #include <vector>
 #include <memory>
@@ -182,5 +185,7 @@ inline double compute_tstamp(const c_hdl_point & p)
 {
   return p.timestamp;
 }
+
+#endif // HAVE_PCAP
 
 #endif /* __c_hdl_frame_h__ */

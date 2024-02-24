@@ -6,7 +6,6 @@
  */
 
 #include "c_frame_accumulation.h"
-#include <tbb/tbb.h>
 #include <core/proc/fft.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/laplacian_pyramid.h>
@@ -14,6 +13,14 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+// #define HAVE_TBB 0
+
+#if HAVE_TBB
+ # include <tbb/tbb.h>
+
+  typedef tbb::blocked_range<int> tbb_range;
+  static constexpr int tbb_grain_size = 256;
+#endif
 
 template<class T1, class T2>
 static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
@@ -32,9 +39,6 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
     rmask.create(acc.size(), CV_8UC1);
   }
 
-  typedef tbb::blocked_range<int> range;
-  const int grain_size = 512;
-
   if ( rdata.needed() && rmask.needed() ) {
 
     cv::Mat & D = rdata.getMatRef();
@@ -42,9 +46,13 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
 
     if( acc.channels() == 1 && weights.channels() == 1 ) {
 
-      tbb::parallel_for(range(0, acc.rows, grain_size),
-          [&acc, &weights, &D, &M, cn](const range & r) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&acc, &weights, &D, &M, cn](const tbb_range & r) {
             for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+            for ( int y = 0, ymax = acc.rows; y < ymax; ++y ) {
+#endif
 
               const T1 * accp =
                   acc.ptr<const T1>(y);
@@ -69,15 +77,21 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
                 }
               }
             }
+#if HAVE_TBB
           });
+#endif
 
     }
 
     else if ( acc.channels() == weights.channels() ) {
 
-      tbb::parallel_for(range(0, acc.rows, grain_size),
-          [&acc, &weights, &D, &M, cn](const range & r) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&acc, &weights, &D, &M, cn](const tbb_range & r) {
             for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+            for ( int y = 0, ymax = acc.rows; y < ymax; ++y ) {
+#endif
 
               const T1 * accp =
                   acc.ptr<const T1>(y);
@@ -104,18 +118,20 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
                 }
               }
             }
+#if HAVE_TBB
           });
+#endif
 
     }
     else if (weights.channels() == 1) {
 
-      double wmin, wmax;
-      cv::minMaxLoc(weights, &wmin, &wmax);
-      CF_DEBUG("weights: min=%g max=%g", wmin, wmax);
-
-      tbb::parallel_for(range(0, acc.rows, grain_size),
-          [&acc, &weights, &D, &M, cn](const range & r ) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&acc, &weights, &D, &M, cn](const tbb_range & r ) {
             for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+            for ( int y = 0, ymax = acc.rows; y < ymax; ++y ) {
+#endif
 
               const T1 * accp = acc.ptr<const T1>(y);
               const T1 * weightsp = weights.ptr<const T1>(y);
@@ -139,7 +155,9 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
                 }
               }
             }
+#if HAVE_TBB
           });
+#endif
 
     }
     else {
@@ -151,13 +169,18 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
   }
   else if ( rdata.needed() ) {
 
-    cv::Mat & D = rdata.getMatRef();
+    cv::Mat & D =
+        rdata.getMatRef();
 
     if ( acc.channels() == weights.channels() ) {
 
-      tbb::parallel_for(range(0, acc.rows, grain_size),
-          [&acc, &weights, &D, cn](const range & r) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&acc, &weights, &D, cn](const tbb_range & r) {
             for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+            for ( int y = 0, ymax = acc.rows; y < ymax; ++y ) {
+#endif
 
               const T1 * accp =
                   acc.ptr<const T1>(y);
@@ -179,18 +202,20 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
                 }
               }
             }
+#if HAVE_TBB
           });
+#endif
 
     }
     else if (weights.channels() == 1) {
 
-      double wmin, wmax;
-      cv::minMaxLoc(weights, &wmin, &wmax);
-      CF_DEBUG("weights: min=%g max=%g", wmin, wmax);
-
-      tbb::parallel_for(range(0, acc.rows, grain_size),
-          [&acc, &weights, &D, cn](const range & r ) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&acc, &weights, &D, cn](const tbb_range & r ) {
             for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+            for ( int y = 0, ymax = acc.rows; y < ymax; ++y ) {
+#endif
 
               const T1 * accp = acc.ptr<const T1>(y);
               const T1 * weightsp = weights.ptr<const T1>(y);
@@ -211,7 +236,9 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
                 }
               }
             }
+#if HAVE_TBB
           });
+#endif
 
     }
     else {
@@ -235,150 +262,150 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
   return true;
 }
 
-static bool divide_accumulator(const cv::Mat & acc, const cv::Mat & weights,
-    cv::OutputArray rdata, cv::OutputArray rmask,
-    double scale, int ddepth)
-{
-  if ( rdata.needed() && rdata.fixedType()) {
-    ddepth = rdata.depth();
-  }
-
-  if ( ddepth < 0 || ddepth > CV_64F ) {
-    ddepth = acc.depth();
-  }
-
-  switch ( acc.depth() ) {
-  case CV_32F :
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<float, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<float, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<float, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<float, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<float, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<float, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<float, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_64F:
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<double, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<double, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<double, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<double, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<double, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<double, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<double, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_8U :
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<uint8_t, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<uint8_t, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<uint8_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<uint8_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<uint8_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<uint8_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<uint8_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_8S :
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<int8_t, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<int8_t, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<int8_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<int8_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<int8_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<int8_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<int8_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_16U:
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<uint16_t, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<uint16_t, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<uint16_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<uint16_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<uint16_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      divide_accumulator_<uint16_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-      break;
-    case CV_32S :
-      return divide_accumulator_<uint16_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_16S:
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<int16_t, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<int16_t, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<int16_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<int16_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<int16_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<int16_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<int16_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  case CV_32S:
-    switch ( ddepth ) {
-    case CV_32F :
-      return divide_accumulator_<int32_t, float>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_64F :
-      return divide_accumulator_<int32_t, double>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8U :
-      return divide_accumulator_<int32_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_8S :
-      return divide_accumulator_<int32_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16U :
-      return divide_accumulator_<int32_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_16S :
-      return divide_accumulator_<int32_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
-    case CV_32S :
-      return divide_accumulator_<int32_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
-    }
-    break;
-  }
-
-  return false;
-}
+//static bool divide_accumulator(const cv::Mat & acc, const cv::Mat & weights,
+//    cv::OutputArray rdata, cv::OutputArray rmask,
+//    double scale, int ddepth)
+//{
+//  if ( rdata.needed() && rdata.fixedType()) {
+//    ddepth = rdata.depth();
+//  }
+//
+//  if ( ddepth < 0 || ddepth > CV_64F ) {
+//    ddepth = acc.depth();
+//  }
+//
+//  switch ( acc.depth() ) {
+//  case CV_32F :
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<float, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<float, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<float, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<float, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<float, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<float, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<float, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_64F:
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<double, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<double, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<double, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<double, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<double, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<double, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<double, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_8U :
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<uint8_t, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<uint8_t, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<uint8_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<uint8_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<uint8_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<uint8_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<uint8_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_8S :
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<int8_t, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<int8_t, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<int8_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<int8_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<int8_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<int8_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<int8_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_16U:
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<uint16_t, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<uint16_t, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<uint16_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<uint16_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<uint16_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      divide_accumulator_<uint16_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//      break;
+//    case CV_32S :
+//      return divide_accumulator_<uint16_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_16S:
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<int16_t, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<int16_t, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<int16_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<int16_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<int16_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<int16_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<int16_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  case CV_32S:
+//    switch ( ddepth ) {
+//    case CV_32F :
+//      return divide_accumulator_<int32_t, float>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_64F :
+//      return divide_accumulator_<int32_t, double>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8U :
+//      return divide_accumulator_<int32_t, uint8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_8S :
+//      return divide_accumulator_<int32_t, int8_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16U :
+//      return divide_accumulator_<int32_t, uint16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_16S :
+//      return divide_accumulator_<int32_t, int16_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    case CV_32S :
+//      return divide_accumulator_<int32_t, int32_t>(acc, weights, rdata, rmask, scale, ddepth);
+//    }
+//    break;
+//  }
+//
+//  return false;
+//}
 
 
 template<class T1, class T2, class T3>
@@ -402,18 +429,18 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
   }
 
 
-  typedef tbb::blocked_range<int> range;
-  const int grain_size = 512;
-
   const cv::Mat S = src.getMat();
   const cv::Mat W = weights.getMat();
 
   if( src.channels() == 1 && weights.channels() == 1 ) {
 
-    tbb::parallel_for(range(0, S.rows, grain_size),
-        [&S, &W, &acc, &counter](const range & r) {
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
+        [&S, &W, &acc, &counter](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
-
+#else
+          for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
+#endif
             const T1 * sp = S.ptr<const T1>(y);
             const T2 * wp = W.ptr<const T2>(y);
 
@@ -425,14 +452,20 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
               accp[x] += sp[x] * wp[x];
             }
           }
+#if HAVE_TBB
         });
+#endif
 
   }
   else if( src.channels() == weights.channels() ) {
 
-    tbb::parallel_for(range(0, S.rows, grain_size),
-        [&S, &W, &acc, &counter, cn](const range & r) {
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
+        [&S, &W, &acc, &counter, cn](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+          for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
+#endif
 
             const T1 * sp = S.ptr<const T1>(y);
             const T2 * wp = W.ptr<const T2>(y);
@@ -447,13 +480,19 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
               }
             }
           }
+#if HAVE_TBB
         });
+#endif
   }
   else if( weights.channels() == 1 ) {
 
-    tbb::parallel_for(range(0, S.rows, grain_size),
-        [&S, &W, &acc, &counter, cn](const range & r) {
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
+        [&S, &W, &acc, &counter, cn](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
+#else
+          for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
+#endif
 
             const T1 * sp = S.ptr<const T1>(y);
             const T2 * wp = W.ptr<const T2>(y);
@@ -468,7 +507,9 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
               }
             }
           }
+#if HAVE_TBB
         });
+#endif
   }
   else {
     CF_ERROR("Unsupported combination of image (%d) and weights (%d) channels",
@@ -1076,8 +1117,6 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
   return true;
 }
 
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<>
@@ -1431,9 +1470,12 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
   }
   else {
 
+#if HAVE_TBB
     tbb::parallel_for(0, nc,
         [this, src_size, &channels, &weights](int i ) {
-
+#else
+      for ( int i = 0; i < nc; ++i ) {
+#endif
           if ( src_size == fftSize_ ) {
             cv::dft(channels[i], channels[i],
                 cv::DFT_COMPLEX_OUTPUT);
@@ -1455,7 +1497,10 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
           }
 
           fftPower(channels[i], weights[i], false);
-        });
+        }
+#if HAVE_TBB
+      );
+#endif
   }
 
   if ( accumulators_.empty() ) {
@@ -1621,15 +1666,22 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
   }
   else {
 
+#if HAVE_TBB
     tbb::parallel_for(0, csrc.rows,
         [&csrc, &cmag, scale](int y) {
+#else
+      for ( int y = 0; y < csrc.rows; ++y ) {
+#endif
           for ( int x = 0; x < csrc.cols; ++x ) {
             const double a = csrc[y][x][0];
             const double b = csrc[y][x][1];
             const double p = power((a * a + b * b) * scale);
             cmag[y][x][0] = cmag[y][x][1] = std::max(scale, p);
           }
-        });
+        }
+#if HAVE_TBB
+    );
+#endif
   }
 
   dst = std::move(cmag);
@@ -1647,19 +1699,21 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
     const cv::Mat1b & bayer_pattern,
     const cv::Mat & weigths)
 {
-  typedef tbb::blocked_range<int> range;
-  constexpr int tbb_grain_size = 128;
-
-  const cv::Mat_<BT> src = bayer_image.getMat();
+  const cv::Mat_<BT> src =
+      bayer_image.getMat();
 
   if( rmap.empty() ) {
 
     if( weigths.empty() ) {
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
-
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
+
               for( int x = 0; x < acc.cols; ++x ) {
                 // color channel for update
                 const int cc = bayer_pattern[y][x];
@@ -1667,17 +1721,23 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
                 cntr[y][x][cc] += 1;
             }
           }
+#if HAVE_TBB
         });
+#endif
 
     }
     else if( weigths.type() == CV_8UC1 ) {
 
       const cv::Mat1b &w = weigths;
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
-
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
+
               for( int x = 0; x < acc.cols; ++x ) {
                 if ( w[y][x] ) {
                   // color channel for update
@@ -1687,17 +1747,22 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
             }
           }
         }
-      });
+#if HAVE_TBB
+        });
+#endif
 
     }
     else if( weigths.type() == CV_32FC1 ) {
 
       const cv::Mat1f &w = weigths;
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
-
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
               for( int x = 0; x < acc.cols; ++x ) {
                 // color channel for update
                 const int cc = bayer_pattern[y][x];
@@ -1705,7 +1770,9 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
                 cntr[y][x][cc] += w[y][x];
             }
           }
+#if HAVE_TBB
         });
+#endif
 
     }
 
@@ -1756,10 +1823,13 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
 
     if( weigths.empty() ) {
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
-
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
 
               const cv::Vec2f *rmp = rmap[y];
 
@@ -1767,15 +1837,22 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
                 interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, 1);
               }
             }
-          });
+#if HAVE_TBB
+        });
+#endif
     }
     else if( weigths.type() == CV_8UC1 ) {
 
-      const cv::Mat1b w = weigths;
+      const cv::Mat1b w =
+          weigths;
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
               const cv::Vec2f *rmp = rmap[y];
               for( int x = 0; x < acc.cols; ++x ) {
                 if ( w[y][x] ) {
@@ -1783,26 +1860,32 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
                 }
               }
             }
-          });
-
+#if HAVE_TBB
+        });
+#endif
     }
     else if( weigths.type() == CV_32FC1 ) {
 
-      const cv::Mat1f w = weigths;
+      const cv::Mat1f w =
+          weigths;
 
-      tbb::parallel_for(range(0, acc.rows, tbb_grain_size),
-          [&](const range & r) {
+#if HAVE_TBB
+      tbb::parallel_for(tbb_range(0, acc.rows, tbb_grain_size),
+          [&](const tbb_range & r) {
             for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+            for ( int y = 0; y < acc.rows; ++y ) {
+#endif
               const cv::Vec2f *rmp = rmap[y];
               for( int x = 0; x < acc.cols; ++x ) {
                 interpolate(x, y, rmp[x], src, acc, cntr, bayer_pattern, w[y][x]);
               }
             }
-          });
+#if HAVE_TBB
+        });
+#endif
 
     }
-
-
   }
 
 }
@@ -2031,5 +2114,254 @@ void c_bayer_average::generate_bayer_pattern_mask()
 
 
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template<class T>
+static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask,
+    cv::Mat & _dst, cv::Mat1f & cnt,
+    double _avgw)
+{
+  const int rows =
+      _src.rows();
+
+  const int cols =
+      _src.cols();
+
+  const int cn =
+      _src.channels();
+
+  const cv::Mat_<T> src =
+      _src.getMat();
+
+  cv::Mat_<float> dst =
+      _dst;
+
+  const float avgw =
+      static_cast<float>(_avgw);
+
+
+  if ( _srcmask.empty() ) {
+
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, rows, tbb_grain_size),
+    [&](const tbb_range & r) {
+    for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+    for( int y = 0; y < rows; ++y ) {
+#endif // HAVE_TBB
+
+      const T * srcp = src[y];
+      float * dstp = dst[y];
+      float * cntp = cnt[y];
+
+      for( int x = 0; x < cols; ++x ) {
+
+        const float w =
+            std::min(avgw, cntp[x]);
+
+        for( int c = 0; c < cn; ++c ) {
+
+          float & dstv =
+              dstp[x * cn + c];
+
+          const T & srcv =
+              srcp[x * cn + c];
+
+          dstv =
+              (dstv * w + srcv) / (w + 1);
+        }
+
+        cntp[x] += 1;
+      }
+    }
+#if HAVE_TBB
+    });
+#endif // HAVE_TBB
+
+  }
+  else if( _srcmask.size() != _src.size() ) {
+
+    CF_ERROR("Invalid mask size: %dx%d depth=%d channels=%d",
+        _srcmask.cols(), _srcmask.rows(), _srcmask.depth(), _srcmask.channels());
+    return false;
+
+  }
+  else if( _srcmask.type() == CV_8UC1 ) {
+
+    const cv::Mat1b msk =
+        _srcmask.getMat();
+
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, rows, tbb_grain_size),
+    [&](const tbb_range & r) {
+    for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+    for( int y = 0; y < rows; ++y ) {
+#endif // HAVE_TBB
+
+      const uint8_t * mskp = msk[y];
+      const T * srcp = src[y];
+      float * dstp = dst[y];
+      float * cntp = cnt[y];
+
+      for( int x = 0; x < cols; ++x ) {
+        if( mskp[x] ) {
+
+          const float w =
+              std::min(avgw, cntp[x]);
+
+          for( int c = 0; c < cn; ++c ) {
+
+            const T & srcv =
+                srcp[x * cn + c];
+
+            float & dstv =
+                dstp[x * cn + c];
+
+            dstv = (dstv * w + srcv) / (w + 1);
+          }
+
+          cntp[x] += 1;
+        }
+      }
+    }
+#if HAVE_TBB
+    });
+#endif // HAVE_TBB
+  }
+  else if( _srcmask.type() == CV_32FC1 ) {
+
+    const cv::Mat1f msk =
+        _srcmask.getMat();
+
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, rows, tbb_grain_size),
+    [&](const tbb_range & r) {
+    for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+    for( int y = 0; y < rows; ++y ) {
+#endif // HAVE_TBB
+
+      const float * mskp = msk[y];
+      const T * srcp = src[y];
+      float * dstp = dst[y];
+      float * cntp = cnt[y];
+
+      for( int x = 0; x < cols; ++x ) {
+
+        const float w =
+            std::min(avgw, cntp[x]);
+
+        const float & mskv =
+            mskp[x];
+
+        for( int c = 0; c < cn; ++c ) {
+
+          const T & srcv =
+              srcp[x * cn + c];
+
+          float & dstv =
+              dstp[x * cn + c];
+
+          dstv = (dstv * w + srcv * mskv) / (w + mskv);
+        }
+
+        cntp[x] += mskv;
+      }
+    }
+#if HAVE_TBB
+    });
+#endif // HAVE_TBB
+  }
+  else {
+    CF_ERROR("Unsupported mask type encountered: depth=%d channels=%d",
+        _srcmask.depth(), _srcmask.channels());
+    return false;
+  }
+
+  return true;
+}
+
+static bool running_average_update(cv::InputArray _src, cv::InputArray _srcmask,
+    cv::Mat & _dst, cv::Mat1f & cnt,
+    double _avgw)
+{
+  switch (_src.depth()) {
+    case CV_8U:
+      return running_average_update_<uint8_t>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_8S:
+      return running_average_update_<int8_t>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_16U:
+      return running_average_update_<uint16_t>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_16S:
+      return running_average_update_<int16_t>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_32S:
+      return running_average_update_<int32_t>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_32F:
+      return running_average_update_<float>(_src, _srcmask, _dst, cnt, _avgw);
+    case CV_64F:
+      return running_average_update_<double>(_src, _srcmask, _dst, cnt, _avgw);
+  }
+
+  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", _src.depth());
+
+  return false;
+}
+
+void c_running_frame_average::clear()
+{
+  accumulator_.release();
+  counter_.release();
+  accumulated_frames_ = 0;
+}
+
+
+bool c_running_frame_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap)
+{
+  if( accumulator_.empty() ) {
+    accumulator_ = cv::Mat::zeros(current_image.size(), current_image.type());
+    counter_ = cv::Mat1f::zeros(current_image.size());
+    current_image.copyTo(accumulator_, current_mask);
+    counter_.setTo(cv::Scalar::all(1), current_mask);
+  }
+  else if( accumulator_.size() == current_image.size() ) {
+
+    if( rmap ) {
+      cv::remap(accumulator_, accumulator_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+      cv::remap(counter_, counter_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    }
+
+    running_average_update(current_image, current_mask,
+        accumulator_, counter_,
+        w);
+  }
+  else {
+    CF_ERROR("current_image.size=%dx%d not match to accumulator_.size=%dx%d",
+        current_image.cols(), current_image.rows(),
+        accumulator_.cols, accumulator_.rows);
+
+    return false;
+  }
+
+  ++accumulated_frames_;
+
+  return true;
+}
+
+bool c_running_frame_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+{
+  if ( accumulated_frames_ < 1 ) {
+    return false;
+  }
+
+  cv::compare(counter_, cv::Scalar::all(0), mask, cv::CMP_GT);
+  accumulator_.copyTo(avg, mask);
+
+  return true;
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -19,7 +19,6 @@ public:
 
   virtual ~c_frame_accumulation() = default;
 
-  //virtual bool initialze(const cv::Size & image_size) = 0;
   virtual bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) = 0;
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
   virtual void clear() = 0;
@@ -44,9 +43,7 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   c_frame_weigthed_average();
-  // c_frame_weigthed_average(const cv::Size & image_size);
 
-  //bool initialze(const cv::Size & image_size) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void clear() override;
@@ -58,35 +55,6 @@ public:
 protected:
   cv::Mat accumulator_, counter_;
 };
-
-
-class c_warped_weigthed_average :
-    public c_frame_accumulation
-{
-public:
-  typedef c_frame_weigthed_average this_class;
-  typedef c_frame_accumulation base;
-  typedef std::shared_ptr<this_class> ptr;
-
-  static constexpr int accdepth = CV_32F;
-
-  c_warped_weigthed_average();
-  c_warped_weigthed_average(const cv::Size & image_size);
-
-  // bool initialze(const cv::Size & image_size) override;
-  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void clear() override;
-  cv::Size accumulator_size() const override;
-
-  const cv::Mat & accumulator() const;
-  const cv::Mat & counter() const;
-
-protected:
-  cv::Mat accumulator_, counter_;
-};
-
-
 
 class c_laplacian_pyramid_focus_stacking :
     public c_frame_accumulation
@@ -111,7 +79,6 @@ public:
 
   c_laplacian_pyramid_focus_stacking(const options & opts);
 
-  //bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void clear() override;
@@ -139,7 +106,6 @@ public:
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
-  //bool initialze(const cv::Size & image_size, int acctype, int weightstype) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void clear() override;
@@ -187,7 +153,6 @@ public:
   void set_remap(const cv::Mat2f & rmap);
   const cv::Mat2f & remap() const;
 
-  //bool initialze(const cv::Size & image_size, int acctype = -1, int weightstype = 1) override;
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
   void clear() override;
@@ -205,8 +170,45 @@ protected:
   cv::Mat3f counter_;
   cv::Mat2f rmap_;
   COLORID colorid_ = COLORID_UNKNOWN;
-
-
 };
+
+
+class c_running_frame_average
+{
+public:
+  typedef c_running_frame_average this_class;
+  typedef std::shared_ptr<this_class> ptr;
+
+  int accumulated_frames() const
+  {
+    return accumulated_frames_;
+  }
+
+  cv::Size accumulator_size() const
+  {
+    return accumulator_.size();
+  }
+
+  const cv::Mat & accumulator() const
+  {
+    return accumulator_;
+  }
+
+  const cv::Mat1f & counter() const
+  {
+    return counter_;
+  }
+
+  bool add(cv::InputArray current_image, cv::InputArray current_mask,  double w, const cv::Mat2f * rmap = nullptr);
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const;
+  void clear();
+
+
+protected:
+  cv::Mat accumulator_;
+  cv::Mat1f counter_;
+  int accumulated_frames_ = 0;
+};
+
 
 #endif /* __c_frame_stacking_h__ */

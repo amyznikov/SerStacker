@@ -13,6 +13,7 @@
 #include "QRegularStereoMatcherPipeline/QRegularStereoMatcherPipeline.h"
 #include "QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h"
 #include "QLveStackingPipeline/QLveStackingPipeline.h"
+#include "QRunningAveragePipeline/QRunningAveragePipeline.h"
 #include "QVirtualStereoPipeline/QVirtualStereoPipeline.h"
 #include "QRoiTrackerPipeline/QRoiTrackerPipeline.h"
 #include "QVLOPipeline/QVLOPipeline.h"
@@ -42,10 +43,12 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(QRegularStereoMatcherPipeline);
   REGISTER_PIPELINE_CLASS(QGenericImageProcessingPipeline);
   REGISTER_PIPELINE_CLASS(QLveStackingPipeline);
+  REGISTER_PIPELINE_CLASS(QRunningAveragePipeline);
   REGISTER_PIPELINE_CLASS(QVirtualStereoPipeline);
   REGISTER_PIPELINE_CLASS(QRoiTrackerPipeline);
   REGISTER_PIPELINE_CLASS(QVLOPipeline);
   REGISTER_PIPELINE_CLASS(QEpipolarAlignmentPipeline);
+
 
 #undef REGISTER_PIPELINE_CLASS
 }

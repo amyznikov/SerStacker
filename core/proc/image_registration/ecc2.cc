@@ -1540,11 +1540,11 @@ bool c_eccflow::compute_uv(pyramid_entry & e,
 
   outuv.create(e.D.size());
 
-  CF_DEBUG("e.D.size=%dx%d Itx: %dx%d e.current_image: %dx%d e.current_mask: %dx%d",
-      e.D.cols, e.D.rows,
-      Itx.cols, Itx.rows,
-      e.current_image.cols, e.current_image.rows,
-      e.current_mask.cols, e.current_mask.rows);
+//  CF_DEBUG("e.D.size=%dx%d Itx: %dx%d e.current_image: %dx%d e.current_mask: %dx%d",
+//      e.D.cols, e.D.rows,
+//      Itx.cols, Itx.rows,
+//      e.current_image.cols, e.current_image.rows,
+//      e.current_mask.cols, e.current_mask.rows);
 
 
   typedef tbb::blocked_range<int> range;
@@ -1642,7 +1642,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
           3 * (1 << (support_scale_)));
 
-  CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
+  // CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
 
   pyramid_.emplace_back();
   pyramid_.back().reference_mask = M;
@@ -1735,9 +1735,9 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
     const cv::Size nextSize((currentSize.width + 1) / 2, (currentSize.height + 1) / 2);
 
     if ( nextSize.width < min_image_size || nextSize.height < min_image_size ) {
-      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
-          currentSize.width, currentSize.height,
-          nextSize.width, nextSize.height);
+//      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
+//          currentSize.width, currentSize.height,
+//          nextSize.width, nextSize.height);
       break;
     }
 
@@ -1767,9 +1767,9 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
     }
   }
 
-  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
-      pyramid_.back().reference_image.cols,
-      pyramid_.back().reference_image.rows);
+//  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
+//      pyramid_.back().reference_image.cols,
+//      pyramid_.back().reference_image.rows);
 
   return true;
 }
@@ -1848,9 +1848,9 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
   pyramid_.front().current_mask = M;
   pnormalize(I, M, pyramid_.front().current_image);
 
-  CF_DEBUG("min_image_size: %dx%d",
-      pyramid_.back().rmap.cols,
-      pyramid_.back().rmap.rows);
+//  CF_DEBUG("min_image_size: %dx%d",
+//      pyramid_.back().rmap.cols,
+//      pyramid_.back().rmap.rows);
 
   for ( int i = 1, n = pyramid_.size(); i < n; ++i ) {
 
@@ -2121,7 +2121,7 @@ bool c_epipolar_flow::set_reference_image(cv::InputArray referenceImage, cv::Inp
       std::min(std::max(referenceImage.cols(), referenceImage.rows()),
           1 * (1 << (support_scale_)));
 
-  CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
+//  CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
 
   pyramid_.emplace_back();
   pyramid_.back().reference_mask = M;
@@ -2180,9 +2180,9 @@ bool c_epipolar_flow::set_reference_image(cv::InputArray referenceImage, cv::Inp
     const cv::Size nextSize((currentSize.width + 1) / 2, (currentSize.height + 1) / 2);
 
     if ( nextSize.width < min_image_size || nextSize.height < min_image_size ) {
-      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
-          currentSize.width, currentSize.height,
-          nextSize.width, nextSize.height);
+//      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
+//          currentSize.width, currentSize.height,
+//          nextSize.width, nextSize.height);
       break;
     }
 
@@ -2212,9 +2212,9 @@ bool c_epipolar_flow::set_reference_image(cv::InputArray referenceImage, cv::Inp
     }
   }
 
-  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
-      pyramid_.back().reference_image.cols,
-      pyramid_.back().reference_image.rows);
+//  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
+//      pyramid_.back().reference_image.cols,
+//      pyramid_.back().reference_image.rows);
 
   return true;
 }
@@ -2292,9 +2292,9 @@ bool c_epipolar_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::I
   //pnormalize(I, M, pyramid_.front().current_image);
   I.copyTo(pyramid_.front().current_image);
 
-  CF_DEBUG("min_image_size: %dx%d",
-      pyramid_.back().rmap.cols,
-      pyramid_.back().rmap.rows);
+//  CF_DEBUG("min_image_size: %dx%d",
+//      pyramid_.back().rmap.cols,
+//      pyramid_.back().rmap.rows);
 
   for ( int i = 1, n = pyramid_.size(); i < n; ++i ) {
 

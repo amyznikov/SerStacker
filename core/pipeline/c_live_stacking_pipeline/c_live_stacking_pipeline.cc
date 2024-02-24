@@ -30,150 +30,6 @@ const c_enum_member* members_of<live_stacking_accumulation_type>()
   return members;
 }
 
-namespace {
-} // namespace
-
-
-void c_warped_accumulation::set_avgw(float v)
-{
-  avgw_ = v;
-}
-
-float c_warped_accumulation::avgw() const
-{
-  return avgw_;
-}
-
-int c_warped_accumulation::accumulated_frames() const
-{
-  return accumulated_frames_;
-}
-
-void c_warped_accumulation::reset()
-{
-  acc_.release();
-  cnt_.release();
-  accumulated_frames_ = 0;
-}
-
-static void wadd(const cv::Mat & _src, const cv::Mat & _srcmask,
-    cv::Mat & _dst, cv::Mat1f & cnt,
-    float avgw)
-{
-  const int rows =
-      _src.rows;
-
-  const int cols =
-      _src.cols;
-
-  const int cn =
-      _src.channels();
-
-  const cv::Mat_<float> src =
-      _src;
-
-  const cv::Mat1b srcmask =
-      _srcmask;
-
-  cv::Mat_<float> dst =
-      _dst;
-
-
-  if ( srcmask.empty() ) {
-
-    for( int y = 0; y < rows; ++y ) {
-
-      const float * srcp = src[y];
-      float * dstp = dst[y];
-      float * cntp = cnt[y];
-
-      for( int x = 0; x < cols; ++x ) {
-
-        const float w =
-            std::min(avgw, cntp[x]);
-
-        for( int c = 0; c < cn; ++c ) {
-
-          dstp[x * cn + c] =
-              (dstp[x * cn + c] * w + srcp[x * cn + c]) / (w + 1);
-        }
-
-        cntp[x] += 1;
-      }
-    }
-
-  }
-  else {
-
-    for( int y = 0; y < rows; ++y ) {
-
-      const uint8_t * mskp = srcmask[y];
-      const float * srcp = src[y];
-      float * dstp = dst[y];
-      float * cntp = cnt[y];
-
-      for( int x = 0; x < cols; ++x ) {
-        if( mskp[x] ) {
-
-          const float w =
-              std::min(avgw, cntp[x]);
-
-          for( int c = 0; c < cn; ++c ) {
-            dstp[x * cn + c] = (dstp[x * cn + c] * w + srcp[x * cn + c]) / (w + 1);
-          }
-
-          cntp[x] += 1;
-        }
-      }
-    }
-  }
-}
-
-
-void c_warped_accumulation::add(const cv::Mat & current_image, const cv::Mat & current_mask, const cv::Mat2f * rmap)
-{
-  if( acc_.empty() ) {
-    acc_ = cv::Mat::zeros(current_image.size(), current_image.type());
-    cnt_ = cv::Mat1f::zeros(current_image.size());
-    current_image.copyTo(acc_, current_mask);
-    cnt_.setTo(cv::Scalar::all(1), current_mask);
-  }
-  else {
-
-    if( rmap )  {
-      cv::remap(acc_, acc_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      cv::remap(cnt_, cnt_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    }
-
-    wadd(current_image, current_mask,
-        acc_, cnt_,
-        avgw_);
-  }
-
-  ++accumulated_frames_;
-}
-
-bool c_warped_accumulation::compute(cv::Mat & accimage, cv::Mat & accmask)
-{
-  if ( accumulated_frames_ < 1 ) {
-    return false;
-  }
-
-  cv::compare(cnt_, cv::Scalar::all(1), accmask, cv::CMP_GE);
-  acc_.copyTo(accimage, accmask);
-
-  return true;
-}
-
-void c_live_stacking_pipeline::set_avgw(float v)
-{
-  wacc_.set_avgw(v);
-}
-
-float c_live_stacking_pipeline::avgw() const
-{
-  return wacc_.avgw();
-}
 
 c_live_stacking_pipeline::c_live_stacking_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -243,8 +99,6 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, registration_options_, enabled);
     SERIALIZE_OPTION(section, save, registration_options_, minimum_image_size);
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
-    SERIALIZE_OPTION(section, save, registration_options_, running_reference);
-    SERIALIZE_PROPERTY(section, save, wacc_, avgw);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "accumulation_options")) ) {
@@ -283,9 +137,6 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_live_stacking_pipeline::g
     PIPELINE_CTL(ctrls, registration_options_.enabled, "enabled", "");
     PIPELINE_CTL(ctrls, registration_options_.minimum_image_size, "minimum_image_size", "");
     PIPELINE_CTL(ctrls, registration_options_.min_rho, "min_rho", "");
-
-    PIPELINE_CTL(ctrls, registration_options_.running_reference, "running_reference", "");
-    PIPELINE_CTLP(ctrls, avgw, "avgw", "");
 
     PIPELINE_CTL_END_GROUP(ctrls);
 
@@ -332,16 +183,6 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
 
   cv::Mat image, mask;
 
-  if( registration_options_.running_reference ) {
-
-    if ( !wacc_.compute(image, mask) ) {
-      return false;
-    }
-
-    aligned_image_ = image;
-    aligned_mask_ = mask;
-  }
-
   if( aligned_image_.empty() ) {
     image = current_image_;
     mask = current_mask_;
@@ -381,7 +222,6 @@ bool c_live_stacking_pipeline::initialize_pipeline()
   output_path_ =
       create_output_path(output_options_.output_directory);
 
-  wacc_.reset();
   frame_accumulation_.reset();
   ecch_.set_method(nullptr);
 
@@ -397,8 +237,6 @@ bool c_live_stacking_pipeline::initialize_pipeline()
 void c_live_stacking_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
-
-  wacc_.reset();
 
   if( output_options_.save_accumulated_file ) {
 
@@ -594,117 +432,57 @@ bool c_live_stacking_pipeline::process_current_frame()
 
     }
 
-    if( registration_options_.running_reference  )  {
+    if( reference_image_.empty() ) {
 
-      if ( wacc_.accumulated_frames() < 1 ) {
-
-        eccflow_.set_support_scale(5);
-       // eccflow_.set_normalization_scale(6);
-
-        wacc_.add(current_image_, current_mask_);
+      if( current_image_.channels() == 3 ) {
+        cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
       }
       else {
-
-        wacc_.compute(image, mask);
-
-        if ( image.channels() != 1 ) {
-          cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-        }
-
-        if ( current_image_.channels() != 1 ) {
-          cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
-        }
-        else {
-          reference_image_ = current_image_;
-        }
-
-        cv::Mat2f rmap;
-
-        eccflow_.set_reference_image(reference_image_, reference_mask_);
-        if( eccflow_.compute(image, rmap, mask) ) {
-          wacc_.add(current_image_, current_mask_, &rmap);
-        }
+        current_image_.copyTo(reference_image_);
       }
 
+      current_mask_.copyTo(reference_mask_);
+      ecch_.set_reference_image(reference_image_, reference_mask_);
     }
+
     else {
 
-      if( reference_image_.empty() ) {
-
-        if( current_image_.channels() == 3 ) {
-          cv::cvtColor(current_image_, reference_image_, cv::COLOR_BGR2GRAY);
-        }
-        else {
-          current_image_.copyTo(reference_image_);
-        }
-
-        current_mask_.copyTo(reference_mask_);
-        ecch_.set_reference_image(reference_image_, reference_mask_);
+      if( current_image_.channels() == 1 ) {
+        ecch_.align(current_image_, current_mask_);
+      }
+      else {
+        cv::Mat gray;
+        cv::cvtColor(current_image_, gray, cv::COLOR_BGR2GRAY);
+        ecch_.align(gray, current_mask_);
       }
 
+      if( ecc_.rho() < registration_options_.min_rho ) {
+        CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
+      }
       else {
 
-        if( current_image_.channels() == 1 ) {
-          ecch_.align(current_image_, current_mask_);
-        }
-        else {
-          cv::Mat gray;
-          cv::cvtColor(current_image_, gray, cv::COLOR_BGR2GRAY);
-          ecch_.align(gray, current_mask_);
-        }
+        lock_guard lock(mutex());
 
-        if( ecc_.rho() < registration_options_.min_rho ) {
-          CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
-        }
-        else {
+        cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
+            cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
-          lock_guard lock(mutex());
-
-          cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
+        if( current_mask_.empty() ) {
+          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
               cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-          if( current_mask_.empty() ) {
-            cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
-                cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-          }
-          else {
-            cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
-                cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-          }
-
-          cv::compare(aligned_mask_, 254, current_mask_, cv::CMP_GE);
         }
-      }
-    }
-  }
+        else {
+          cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
+              cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        }
 
-
-  if( registration_options_.running_reference  )  {
-
-    if( output_options_.save_accumulated_video ) {
-
-      const bool fOK =
-          add_output_writer(accumulated_video_writer_,
-              output_options_.output_accumulated_video_options,
-              "accw",
-              ".ser");
-
-      if( !fOK ) {
-        CF_ERROR("Can not open output writer '%s'",
-            accumulated_video_writer_.filename().c_str());
-        return false;
-      }
-
-      wacc_.compute(image, mask);
-
-      if( !accumulated_video_writer_.write(image, mask) ) {
-        CF_ERROR("accumulated_video_writer_.write() fails");
-        return false;
+        cv::compare(aligned_mask_, 254, current_mask_, cv::CMP_GE);
       }
     }
 
   }
-  else if( accumulation_options_.accumulation_type != live_stacking_accumulation_disable ) {
+
+
+  if( accumulation_options_.accumulation_type != live_stacking_accumulation_disable ) {
 
     lock_guard lock(mutex());
 

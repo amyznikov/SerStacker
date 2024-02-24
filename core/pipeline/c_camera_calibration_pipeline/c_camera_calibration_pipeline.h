@@ -32,9 +32,6 @@ struct c_calibrate_camera_options
 
   int max_iterations = 30;
   double solver_eps = 1e-6;
-//  cv::TermCriteria solverTerm =
-//      cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-//          50, 1e-7);
 
   double filter_alpha = 0.5;
 };
@@ -50,7 +47,6 @@ struct c_camera_calibration_output_options :
 
   c_output_frame_writer_options output_chessboard_video_options;
   c_output_frame_writer_options output_rectified_video_options;
-  // c_output_frame_writer_options output_progress_video_options;
 };
 
 

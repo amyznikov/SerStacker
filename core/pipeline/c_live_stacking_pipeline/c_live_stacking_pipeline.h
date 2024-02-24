@@ -24,7 +24,6 @@ struct c_live_stacking_input_options:
 struct c_live_stacking_registration_options
 {
   bool enabled = false;
-  bool running_reference = false;
   int minimum_image_size = 32;
   double min_rho = 0.7;
 };
@@ -60,33 +59,6 @@ struct c_live_stacking_output_options:
   c_output_frame_writer_options output_accumulated_video_options;
 
 };
-
-class c_warped_accumulation
-{
-public:
-
-  void set_avgw(float v);
-  float avgw() const;
-
-  int accumulated_frames() const;
-
-
-  void reset();
-
-  void add(const cv::Mat & current_image, const cv::Mat & current_mask, const cv::Mat2f * rmap = nullptr);
-
-  bool compute(cv::Mat & accimage, cv::Mat & accmask);
-
-protected:
-  cv::Mat acc_;
-  cv::Mat1f cnt_;
-  int accumulated_frames_ = 0;
-  float avgw_ = 20;
-
-
-};
-
-
 
 class c_live_stacking_pipeline :
     public c_image_processing_pipeline
@@ -135,10 +107,6 @@ public:
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
 
-
-  void set_avgw(float v);
-  float avgw() const;
-
 protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
@@ -161,7 +129,7 @@ protected:
 
   c_ecch ecch_;
   c_ecc_forward_additive ecc_;
-  c_eccflow eccflow_;
+  // c_eccflow eccflow_;
   c_ecc_motion_model::sptr ecc_motion_model_;
   c_image_transform::sptr image_transform_;
 
@@ -177,8 +145,6 @@ protected:
 
 
   c_output_frame_writer accumulated_video_writer_;
-
-  c_warped_accumulation wacc_;
 
 
 

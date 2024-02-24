@@ -37,7 +37,7 @@ static const XMLElement* findElement(const XMLElement * root, const std::string 
 
   const XMLElement * child = nullptr;
 
-  for( uint i = 0, n = tokens.size(); i < n; ++i, root = child ) {
+  for( size_t i = 0, n = tokens.size(); i < n; ++i, root = child ) {
     if( !(child = root->FirstChildElement(tokens[i].c_str())) ) {
       break;
     }
@@ -233,8 +233,8 @@ bool load_hdl_lidar_specifcation_db_xml(const std::string & xmlfilename,
       });
 
   static const auto all_zeros_after =
-      [](const c_hdl_specification * spec, uint start_index) -> bool {
-        for ( uint i = start_index, n = spec->lasers.size(); i < n; ++i ) {
+      [](const c_hdl_specification * spec, size_t start_index) -> bool {
+        for ( size_t i = start_index, n = spec->lasers.size(); i < n; ++i ) {
           if ( spec->lasers[i].vert_correction != 0 ) {
             return false;
           }
@@ -242,7 +242,7 @@ bool load_hdl_lidar_specifcation_db_xml(const std::string & xmlfilename,
         return true;
       };
 
-  const uint n = spec->lasers.size();
+  const size_t n = spec->lasers.size();
   int dropfrom = -1;
 
   if( sensor_type != HDLSensor_unknown ) {

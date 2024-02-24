@@ -7,6 +7,9 @@
 
 #include "c_hdl_packet_parser.h"
 #include "hdl_lidar_specifcation_db_xml.h"
+
+#if HAVE_PCAP
+
 #include <algorithm>
 #include <cmath>
 #include <core/ssprintf.h>
@@ -1452,4 +1455,5 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket)
 //}
 //
 
+#endif // HAVE_PCAP
 

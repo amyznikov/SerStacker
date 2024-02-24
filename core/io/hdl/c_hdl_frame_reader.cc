@@ -6,6 +6,9 @@
  */
 
 #include "c_hdl_frame_reader.h"
+
+#if HAVE_PCAP
+
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
@@ -1589,4 +1592,6 @@ c_hdl_frame::sptr c_hdl_udp_reader::recv()
 
   return frame;
 }
+
+#endif // HAVE_PCAP
 

@@ -13,6 +13,7 @@
 #include <core/io/c_fits_file.h>
 
 #include <core/io/vlo/c_vlo_input_source.h>
+#include <core/io/hdl/c_hdl_input_source.h>
 #include <core/io/video/c_video_input_source.h>
 #include <core/io/text/c_textfile_input_source.h>
 #include <core/io/ply/c_ply_input_source.h>
@@ -85,6 +86,13 @@ QStringList getSupportedThumbnailsExtensions()
   for ( const std::string & s : c_vlo_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
+
+#if HAVE_PCAP
+  for ( const std::string & s : c_hdl_input_source::suffixes() ) {
+    suffixes.append(s.c_str());
+  }
+#endif // HAVE_PCAP
+
 
   for ( const std::string & s : c_textfile_input_source::suffixes() ) {
     suffixes.append(s.c_str());

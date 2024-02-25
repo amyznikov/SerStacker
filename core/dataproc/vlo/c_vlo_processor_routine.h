@@ -10,7 +10,7 @@
 #define __c_vlo_processor_routine_h__
 
 #include <core/dataproc/c_data_frame_processor.h>
-#include <core/io/vlo/c_vlo_frame.h>
+#include "../../io/vlo/c_vlo_data_frame.h"
 
 
 class c_vlo_processor_routine :
@@ -32,7 +32,7 @@ public:
   }
 
   bool process(c_data_frame::sptr & dataframe) override;
-  virtual bool process(c_vlo_frame * vlo) = 0;
+  virtual bool process(c_vlo_data_frame * vlo) = 0;
 
 protected:
   c_vlo_processor_routine(const class_factory * _class_factory, bool enabled = true) :

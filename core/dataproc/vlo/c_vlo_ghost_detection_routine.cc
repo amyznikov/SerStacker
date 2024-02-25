@@ -33,7 +33,7 @@ bool c_vlo_ghost_detection_routine::serialize(c_config_setting settings, bool sa
   return false;
 }
 
-bool c_vlo_ghost_detection_routine::process(c_vlo_frame * vlo)
+bool c_vlo_ghost_detection_routine::process(c_vlo_data_frame * vlo)
 {
   cv::Mat ghost_mask;
 

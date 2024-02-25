@@ -1,11 +1,11 @@
 /*
- * c_vlo_frame.cc
+ * c_vlo_data_frame.cc
  *
  *  Created on: Dec 15, 2023
  *      Author: amyznikov
  */
 
-#include "c_vlo_frame.h"
+#include "c_vlo_data_frame.h"
 #include <functional>
 #include <core/proc/reduce_channels.h>
 #include <core/debug.h>
@@ -83,27 +83,27 @@ bool get_vlo_point_cloud(const c_vlo_scan & scan,
   return false;
 }
 
+//
+//static bool dup_channels(const cv::Mat & src, cv::Mat & dst, int cn)
+//{
+//  std::vector<cv::Mat> channels(cn);
+//
+//  for( int i = 0; i < cn; ++i ) {
+//    channels[i] = src;
+//  }
+//
+//  cv::merge(channels, dst);
+//  return true;
+//}
 
-static bool dup_channels(const cv::Mat & src, cv::Mat & dst, int cn)
-{
-  std::vector<cv::Mat> channels(cn);
-
-  for( int i = 0; i < cn; ++i ) {
-    channels[i] = src;
-  }
-
-  cv::merge(channels, dst);
-  return true;
 }
 
-}
-
-c_vlo_frame::c_vlo_frame()
+c_vlo_data_frame::c_vlo_data_frame()
 {
   setup_default_channels();
 }
 
-void c_vlo_frame::setup_default_channels()
+void c_vlo_data_frame::setup_default_channels()
 {
   displayChannels_.clear();
 
@@ -150,7 +150,7 @@ void c_vlo_frame::setup_default_channels()
 
 }
 
-bool c_vlo_frame::get_data(DataViewType * viewType,
+bool c_vlo_data_frame::get_data(DataViewType * viewType,
     const std::string & channelName,
     cv::OutputArray output_image,
     cv::OutputArray output_colors,
@@ -338,55 +338,7 @@ bool c_vlo_frame::get_data(DataViewType * viewType,
 }
 
 
-void c_vlo_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mode)
-{
-  if( selection_mask_.empty() || mode == SELECTION_MASK_REPLACE ) {
-    mask.getMat().copyTo(selection_mask_);
-  }
-  else if ( !mask.empty() ) {
-
-    cv::Mat cmask;
-
-    if ( selection_mask_.channels() == mask.channels() ) {
-      cmask = mask.getMat();
-    }
-    else if ( selection_mask_.channels() == 1 ) {
-      dup_channels(selection_mask_, selection_mask_, mask.channels());
-      cmask = mask.getMat();
-    }
-    else if ( mask.channels() == 1 ) {
-      dup_channels(mask.getMat(), cmask, selection_mask_.channels());
-    }
-    else {
-
-      CF_ERROR("Unsupported combination of mask channels:\n"
-          "selection_mask: %dx%d channels=%d\n"
-          "mask: %dx%d channels=%d\n"
-          "",
-          selection_mask_.cols, selection_mask_.rows, selection_mask_.channels(),
-          mask.cols(), mask.rows(), mask.channels());
-
-      return;
-    }
-
-    switch (mode) {
-      case SELECTION_MASK_AND:
-        cv::bitwise_and(cmask, selection_mask_, selection_mask_);
-        break;
-      case SELECTION_MASK_OR:
-        cv::bitwise_or(cmask, selection_mask_, selection_mask_);
-        break;
-      case SELECTION_MASK_XOR:
-        cv::bitwise_xor(cmask, selection_mask_, selection_mask_);
-        break;
-      default:
-        CF_ERROR("Not implemented mask operation detected: mode=%d", mode);
-        break;
-    }
-  }
-}
-
-void c_vlo_frame::cleanup()
+void c_vlo_data_frame::cleanup()
 {
   selection_mask_.release();
   setup_default_channels();

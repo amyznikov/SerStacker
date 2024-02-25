@@ -28,11 +28,11 @@ bool c_vlo_echo_mask_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-bool c_vlo_echo_mask_routine::process(c_vlo_frame * vlo)
+bool c_vlo_echo_mask_routine::process(c_vlo_data_frame * vlo)
 {
-  const uint8_t e0 = ((echo_mask_ & c_vlo_frame::ECHO0));
-  const uint8_t e1 = ((echo_mask_ & c_vlo_frame::ECHO1));
-  const uint8_t e2 = ((echo_mask_ & c_vlo_frame::ECHO2));
+  const uint8_t e0 = ((echo_mask_ & c_vlo_data_frame::ECHO0));
+  const uint8_t e1 = ((echo_mask_ & c_vlo_data_frame::ECHO1));
+  const uint8_t e2 = ((echo_mask_ & c_vlo_data_frame::ECHO2));
 
   const cv::Mat3b echo_mask(vlo->current_scan_.size,
       invert_selection_ ? cv::Vec3b(255 * (e0 == 0), 255 * (e1 == 0), 255 * (e2 == 0)) :

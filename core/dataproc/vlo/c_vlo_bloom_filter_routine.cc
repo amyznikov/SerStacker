@@ -59,7 +59,7 @@ bool c_vlo_bloom_filter_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-bool c_vlo_bloom_filter_routine::process(c_vlo_frame * vlo)
+bool c_vlo_bloom_filter_routine::process(c_vlo_data_frame * vlo)
 {
   cv::Mat bloom;
   cv::Mat reflectors;

@@ -78,9 +78,13 @@ public:
     return "";
   }
 
+
   virtual void cleanup()
   {
   }
+
+  void update_selection(cv::InputArray mask,
+      SELECTION_MASK_MODE mode);
 
 protected:
   void add_display_channel(const std::string & name,
@@ -91,6 +95,7 @@ protected:
 protected:
   std::set<DataViewType> viewTypes_;
   DisplayMap displayChannels_;
+  cv::Mat selection_mask_;
 };
 
 #endif /* __c_cloudview_data_frame_h__ */

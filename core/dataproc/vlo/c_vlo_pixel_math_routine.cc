@@ -173,7 +173,7 @@ bool c_vlo_pixel_math_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-bool c_vlo_pixel_math_routine::process(c_vlo_frame * vlo)
+bool c_vlo_pixel_math_routine::process(c_vlo_data_frame * vlo)
 {
   if( expression_.empty() ) {
     expression_changed_ = false;

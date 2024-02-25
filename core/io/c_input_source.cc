@@ -9,6 +9,7 @@
 //#include "load_image.h"
 #include "video/c_video_input_source.h"
 #include "vlo/c_vlo_input_source.h"
+#include "hdl/c_hdl_input_source.h"
 #include "text/c_textfile_input_source.h"
 #include "ply/c_ply_input_source.h"
 #include <core/ssprintf.h>
@@ -98,6 +99,12 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
     if( contains(c_vlo_input_source::suffixes(), suffix) && (obj = c_vlo_input_source::create(filename)) ) {
       return obj;
     }
+
+#if HAVE_PCAP
+    if( contains(c_hdl_input_source::suffixes(), suffix) && (obj = c_hdl_input_source::create(filename)) ) {
+      return obj;
+    }
+#endif
 
     if( contains(c_textfile_input_source::suffixes(), suffix) && (obj = c_textfile_input_source::create(filename)) ) {
       return obj;

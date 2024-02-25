@@ -237,7 +237,7 @@ bool c_vlo_pixel_selection_routine::serialize(c_config_setting settings, bool sa
   return false;
 }
 
-bool c_vlo_pixel_selection_routine::process(c_vlo_frame * vlo)
+bool c_vlo_pixel_selection_routine::process(c_vlo_data_frame * vlo)
 {
   if( expression_.empty() ) {
     expression_changed_ = false;

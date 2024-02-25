@@ -263,7 +263,7 @@ message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
 
 unset(PCAP_INCLUDE_DIR)
 unset(PCAP_LIBRARY)
-if ( TRUE )
+if ( FALSE )
 	find_path(PCAP_INCLUDE_DIR pcap/pcap.h)
 	find_library(PCAP_LIBRARY pcap)
 		    
@@ -287,7 +287,9 @@ endif() # pcap
 # tinyxml2
 #
 
-if ( TRUE )
+unset(TINYXML2_INCLUDE_DIR)
+unset(TINYXML2_LIBRARIES)
+if ( FALSE )
     find_package(tinyxml2 QUIET)
     if ( tinyxml2_FOUND )
         get_target_property(TINYXML2_INCLUDE_DIR tinyxml2::tinyxml2 INTERFACE_INCLUDE_DIRECTORIES)
@@ -395,6 +397,7 @@ set(CORE_LIBRARIES
 	${CFITSIO_LIBRARY}
 	${OPENRAW_LIBS}
 	${PCAP_LIBRARY}
+	${TINYXML2_LIBRARIES}
     ${TBB_LIBRARIES}
     ${Shlwapi_LIB}
 	pthread)

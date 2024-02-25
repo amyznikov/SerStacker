@@ -1,5 +1,5 @@
 /*
- * c_lidar_frame.h
+ * c_hdl_frame.h
  *
  *  Created on: Mar 15, 2022
  *      Author: amyznikov
@@ -9,10 +9,6 @@
 #define __c_hdl_frame_h__
 
 #include <opencv2/opencv.hpp>
-
-#if HAVE_PCAP
-
-#include <netinet/in.h>
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -92,6 +88,35 @@ void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, std::ve
           p.distance * std::cos(p.elevation) * std::sin(p.azimuth),
           p.distance * std::cos(p.elevation) * std::cos(p.azimuth),
           p.distance * std::sin(p.elevation));
+    }
+  }
+}
+
+/**
+ * convert spherical (raw) lidar points to Cartesian coordinates
+ */
+inline void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, cv::OutputArray output_positions)
+{
+  output_positions.create(lidar_points.size(), 1,
+      CV_32FC3);
+
+  cv::Mat3f positions =
+      output_positions.getMatRef();
+
+  for( int i = 0, n = lidar_points.size(); i < n; ++i ) {
+
+    const c_hdl_point & p =
+        lidar_points[i];
+
+    if( p.distance <= 0 ) {
+      positions[i][0][0] = 0;
+      positions[i][0][1] = 0;
+      positions[i][0][2] = 0;
+    }
+    else {
+      positions[i][0][0] = p.distance * std::cos(p.elevation) * std::sin(p.azimuth);
+      positions[i][0][1] = p.distance * std::cos(p.elevation) * std::cos(p.azimuth);
+      positions[i][0][2] = p.distance * std::sin(p.elevation);
     }
   }
 }
@@ -186,6 +211,7 @@ inline double compute_tstamp(const c_hdl_point & p)
   return p.timestamp;
 }
 
+#if HAVE_PCAP
 #endif // HAVE_PCAP
 
 #endif /* __c_hdl_frame_h__ */

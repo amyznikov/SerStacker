@@ -18,6 +18,7 @@
 #include <core/io/c_input_source.h>
 #include <core/io/c_input_options.h>
 #include <core/dataproc/c_data_frame_processor.h>
+#include <core/io/vlo/c_vlo_file.h>
 
 #include "QImageSourceView.h"
 #include "QPointCloudSourceView.h"

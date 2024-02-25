@@ -10,7 +10,7 @@
 
 #include "debayer.h"
 #include "c_data_frame.h"
-#include "vlo/c_vlo_file.h"
+
 
 struct c_input_options;
 

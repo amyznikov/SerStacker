@@ -31,12 +31,12 @@ public:
     return expression_;
   }
 
-  void set_mask_mode(c_vlo_frame::SELECTION_MASK_MODE v)
+  void set_mask_mode(c_vlo_data_frame::SELECTION_MASK_MODE v)
   {
     mask_mode_ = v;
   }
 
-  c_vlo_frame::SELECTION_MASK_MODE mask_mode() const
+  c_vlo_data_frame::SELECTION_MASK_MODE mask_mode() const
   {
     return mask_mode_;
   }
@@ -53,14 +53,14 @@ public:
 
   void get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_vlo_frame * vlo) override;
+  bool process(c_vlo_data_frame * vlo) override;
   std::string helpstring() const;
 
 protected:
   std::string expression_;
   c_math_expression math_;
   cv::Mat3b selection_mask;
-  c_data_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_frame::SELECTION_MASK_AND;
+  c_data_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_data_frame::SELECTION_MASK_AND;
   int previous_vlo_scan_version_ = -1;
   bool invert_selection_ = false;
   bool expression_changed_ = true;

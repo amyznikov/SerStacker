@@ -96,8 +96,9 @@ struct HDLDataPacket
 class c_hdl_packet_parser
 {
 public:
-  bool parse(const uint8_t * data, uint size);
+  bool parse(const uint8_t * data, uint size, int start_block = 0);
   void reset();
+  void clear();
   bool sensor_changed() const;
 
   void set_hdl_framing_mode(enum HDLFramingMode v);
@@ -122,11 +123,11 @@ public:
 protected:
   bool setup(HDLSensorType sensor_type, HDLReturnMode return_mode);
   bool precompute_correction_tables();
-  bool parse_vlp16(const HDLDataPacket *dataPacket);
-  bool parse_vlp32(const HDLDataPacket *dataPacket);
-  bool parse_hdl32(const HDLDataPacket *dataPacket);
-  bool parse_hdl64(const HDLDataPacket *dataPacket);
-  bool parse_vls128(const HDLDataPacket *dataPacket);
+  bool parse_vlp16(const HDLDataPacket *dataPacket, int start_block = 0);
+  bool parse_vlp32(const HDLDataPacket *dataPacket, int start_block = 0);
+  bool parse_hdl32(const HDLDataPacket *dataPacket, int start_block = 0);
+  bool parse_hdl64(const HDLDataPacket *dataPacket, int start_block = 0);
+  bool parse_vls128(const HDLDataPacket *dataPacket, int start_block = 0);
   bool is_hdl_frame_seam(int current_packet_azimuth, int previous_packet_azimuth) const;
   void set_sensor_changed(bool v);
 

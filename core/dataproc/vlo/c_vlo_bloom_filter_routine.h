@@ -41,12 +41,12 @@ public:
     return opts_.intensity_tolerance;
   }
 
-  void set_mask_mode(c_vlo_frame::SELECTION_MASK_MODE v)
+  void set_mask_mode(c_vlo_data_frame::SELECTION_MASK_MODE v)
   {
     mask_mode_ = v;
   }
 
-  c_vlo_frame::SELECTION_MASK_MODE mask_mode() const
+  c_vlo_data_frame::SELECTION_MASK_MODE mask_mode() const
   {
     return mask_mode_;
   }
@@ -173,12 +173,12 @@ public:
 
   void get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_vlo_frame * vlo) override;
+  bool process(c_vlo_data_frame * vlo) override;
 
 
 protected:
   c_vlo_bloom_detection_options opts_;
-  c_vlo_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_frame::SELECTION_MASK_REPLACE;
+  c_vlo_data_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_data_frame::SELECTION_MASK_REPLACE;
   bool invert_selection_ = true;
   // bool create_bloom_picture_ = false;
   bool display_reflectors_ = false;

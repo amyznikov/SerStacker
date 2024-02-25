@@ -167,9 +167,7 @@ protected:
       uint32_t * src_address,
       uint16_t * src_port) = 0;
 
-  void set_state(State state,
-      const char * reasonmsg = nullptr,
-      ...);
+  void set_state(State state,const char * reasonmsg = nullptr, ...);
 
 protected:
 
@@ -213,7 +211,6 @@ public:
 
   const std::string & filename() const;
 
-
 protected:
   bool open_file() override;
   void close_file() override;
@@ -222,9 +219,7 @@ protected:
 protected:
   std::string filename_;
   std::string options_;
-#if HAVE_PCAP
   c_pcap_reader pcap_;
-#endif
 };
 
 
@@ -295,6 +290,7 @@ public:
 
   virtual bool open(const std::string & device, const std::string & options = "") = 0;
   virtual void close() = 0;
+  virtual bool is_open() const = 0;
   virtual c_hdl_frame::sptr recv() = 0;
 
 protected:
@@ -319,12 +315,11 @@ public:
 
   bool open(const std::string & pcapfile, const std::string & options = "") override;
   void close() override;
+  bool is_open() const override;
   c_hdl_frame::sptr recv() override;
 
 protected:
-#if HAVE_PCAP
   c_pcap_reader pcap_;
-#endif
 };
 
 class c_hdl_udp_reader :
@@ -339,8 +334,9 @@ public:
   ~c_hdl_udp_reader();
 
   bool open(const std::string & address, const std::string & options = "") override;
-  c_hdl_frame::sptr recv() override;
   void close() override;
+  bool is_open() const override;
+  c_hdl_frame::sptr recv() override;
   void stop();
 
 protected:
@@ -349,6 +345,53 @@ protected:
   uint16_t bind_port_ = 2368; // host byte order
   volatile bool stop_ = false;
 };
+
+///////////////////////////////////////////////////////////////
+// Static pcap file reader
+
+class c_hdl_pcap_static_reader
+{
+public:
+  typedef c_hdl_pcap_static_reader this_class;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::shared_ptr<this_class> sptr;
+
+  struct HDLFrame
+  {
+    ssize_t filepos;
+    int start_block;
+  };
+
+  struct HDLStream
+  {
+    in_addr_t addrs;
+    uint16_t  seam_azimuth;
+    std::vector<HDLFrame> frames;
+  };
+
+  ~c_hdl_pcap_static_reader();
+
+  bool open(const std::string & address, const std::string & options = "");
+  void close();
+  bool is_open() const;
+  c_hdl_frame::sptr read();
+
+  const std::vector<HDLStream> streams() const;
+  bool select_stream(int index);
+  int current_stream() const;
+  ssize_t num_frames() const; // number of frames in current stream
+  bool seek(int32_t frame_index_in_current_stream);
+  int curpos() const;
+
+protected:
+  c_pcap_reader pcap_;
+  c_hdl_packet_parser hdl_parser_;
+  std::vector<HDLStream> streams_;
+  int current_stream_ = -1;
+  int current_pos_ = -1;
+};
+
+
 
 #endif // HAVE_PCAP
 

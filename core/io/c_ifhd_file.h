@@ -249,14 +249,17 @@ public:
   typedef c_ifhd_reader this_class;
   typedef c_ifhd_file base;
 
-  struct ChunkHeader : public base::ChunkHeader {
+  struct ChunkHeader :
+      public base::ChunkHeader
+  {
     // size of actual payload data in file
     ssize_t payload_size;
     // offset of actual payload data in file
     ssize_t payload_offset;
   };
 
-  struct IfhdStream {
+  struct IfhdStream
+  {
     FileExtension extension;
     StreamInfoHeader header;
     std::vector<ChunkHeader> chunks;

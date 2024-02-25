@@ -10,7 +10,7 @@
 #define __c_vlo_input_source_h__
 
 #include <core/io/c_input_source.h>
-#include "c_vlo_frame.h"
+#include "c_vlo_data_frame.h"
 
 class c_vlo_input_source :
     public c_input_source

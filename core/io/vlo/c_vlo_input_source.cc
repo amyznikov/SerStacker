@@ -8,7 +8,7 @@
 #include "c_vlo_input_source.h"
 
 c_vlo_input_source::c_vlo_input_source(const std::string & filename) :
-    base(/*c_input_source::VLO, */filename)
+    base(filename)
 {
 }
 
@@ -121,11 +121,11 @@ bool c_vlo_input_source::read(c_data_frame::sptr & output_frame)
     return false;
   }
 
-  c_vlo_frame * vlo =
-      dynamic_cast<c_vlo_frame*>(output_frame.get());
+  c_vlo_data_frame * vlo =
+      dynamic_cast<c_vlo_data_frame*>(output_frame.get());
 
   if( !vlo ) {
-    output_frame.reset(vlo = new c_vlo_frame());
+    output_frame.reset(vlo = new c_vlo_data_frame());
   }
 
   vlo->cleanup();

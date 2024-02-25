@@ -65,8 +65,8 @@ protected:
   bool filterBadPixels_ = false;
   double badPixelsVariationThreshold_ = 5;
 
-  VLO_DATA_CHANNEL vlo_data_channel_ =
-      VLO_DATA_CHANNEL_AMBIENT;
+//  VLO_DATA_CHANNEL vlo_data_channel_ =
+//      VLO_DATA_CHANNEL_AMBIENT;
 
 
 };

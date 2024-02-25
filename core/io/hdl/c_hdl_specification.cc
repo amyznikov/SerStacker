@@ -21,7 +21,7 @@ const c_enum_member * members_of<HDLSensorType>()
       { HDLSensor_VLP32C, "VLP32C", "" },
       { HDLSensor_HDL64, "HDL64", "" },
       { HDLSensor_VLS128, "VLS128", "" },
-      { HDLSensor_unknown, nullptr, nullptr },
+      { HDLSensor_unknown,},
   };
 
   return members;
@@ -37,7 +37,7 @@ const c_enum_member* members_of<HDLReturnMode>()
       { HDL_DUAL_RETURN, "DUAL_RETURN", "" },
       { HDL_TRIPLE_RETURN, "TRIPLE_RETURN", "" },
       { HDL_DUAL_RETURN_WITH_CONFIDENCE, "DUAL_RETURN_WITH_CONFIDENCE", "" },
-      { HDLReturnMode_unknown, nullptr, nullptr },
+      { HDLReturnMode_unknown },
   };
 
   return members;
@@ -49,7 +49,7 @@ const c_enum_member * members_of<HDLFramingMode>()
       { HDLFraming_Rotation, "Rotation", "" },
       { HDLFraming_Packet, "Packet", "" },
       { HDLFraming_DataBlock, "Block", "" },
-      { HDLFraming_Rotation, nullptr },
+      { HDLFraming_Rotation },
   };
 
   return members;

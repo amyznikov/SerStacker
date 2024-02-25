@@ -33,7 +33,7 @@ public:
 
   void get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_vlo_frame * vlo) override;
+  bool process(c_vlo_data_frame * vlo) override;
   std::string helpstring() const;
 
 protected:

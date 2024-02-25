@@ -33,54 +33,54 @@ public:
   void set_enable_echo0(bool v)
   {
     if ( v ) {
-      echo_mask_ |= c_vlo_frame::ECHO0;
+      echo_mask_ |= c_vlo_data_frame::ECHO0;
     }
     else {
-      echo_mask_ &= ~c_vlo_frame::ECHO0;
+      echo_mask_ &= ~c_vlo_data_frame::ECHO0;
     }
   }
 
   bool enable_echo0() const
   {
-    return echo_mask_ & c_vlo_frame::ECHO0;
+    return echo_mask_ & c_vlo_data_frame::ECHO0;
   }
 
   void set_enable_echo1(bool v)
   {
     if ( v ) {
-      echo_mask_ |= c_vlo_frame::ECHO1;
+      echo_mask_ |= c_vlo_data_frame::ECHO1;
     }
     else {
-      echo_mask_ &= ~c_vlo_frame::ECHO1;
+      echo_mask_ &= ~c_vlo_data_frame::ECHO1;
     }
   }
 
   bool enable_echo1() const
   {
-    return echo_mask_ & c_vlo_frame::ECHO1;
+    return echo_mask_ & c_vlo_data_frame::ECHO1;
   }
 
   void set_enable_echo2(bool v)
   {
     if ( v ) {
-      echo_mask_ |= c_vlo_frame::ECHO2;
+      echo_mask_ |= c_vlo_data_frame::ECHO2;
     }
     else {
-      echo_mask_ &= ~c_vlo_frame::ECHO2;
+      echo_mask_ &= ~c_vlo_data_frame::ECHO2;
     }
   }
 
   bool enable_echo2() const
   {
-    return echo_mask_ & c_vlo_frame::ECHO2;
+    return echo_mask_ & c_vlo_data_frame::ECHO2;
   }
 
-  void set_mask_mode(c_vlo_frame::SELECTION_MASK_MODE v)
+  void set_mask_mode(c_vlo_data_frame::SELECTION_MASK_MODE v)
   {
     mask_mode_ = v;
   }
 
-  c_vlo_frame::SELECTION_MASK_MODE mask_mode() const
+  c_vlo_data_frame::SELECTION_MASK_MODE mask_mode() const
   {
     return mask_mode_;
   }
@@ -97,11 +97,11 @@ public:
 
   void get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_vlo_frame * vlo) override;
+  bool process(c_vlo_data_frame * vlo) override;
 
 protected:
   int echo_mask_ = 0xFF;
-  c_vlo_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_frame::SELECTION_MASK_AND;
+  c_vlo_data_frame::SELECTION_MASK_MODE mask_mode_ = c_vlo_data_frame::SELECTION_MASK_AND;
   bool invert_selection_ = false;
 };
 

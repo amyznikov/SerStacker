@@ -9,7 +9,7 @@
 #ifndef __vlo_bloom_detection_h__
 #define __vlo_bloom_detection_h__
 
-#include <core/io/vlo/c_vlo_frame.h>
+#include "../../io/vlo/c_vlo_data_frame.h"
 
 
 enum VLO_BLOOM_INTENSITY_MEASURE

@@ -35,7 +35,7 @@
 #include <core/debug.h>
 #include <core/proc/bfgs.h>
 
-#include <core/io/hdl/c_parsed_frame_reader.h>
+#include "../../../core/io/hdl/c_hdl_frame_reader.h"
 
 
 int main(int argc, char *argv[])

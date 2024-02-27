@@ -10,7 +10,7 @@
 #define __c_hdl_input_source_h__
 
 #include <core/io/c_input_source.h>
-#include "c_parsed_frame_reader.h"
+#include "c_hdl_frame_reader.h"
 
 #if HAVE_PCAP
 

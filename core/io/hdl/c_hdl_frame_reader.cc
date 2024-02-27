@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 
-#include "c_parsed_frame_reader.h"
+#include "c_hdl_frame_reader.h"
 
 #if HAVE_PCAP
 

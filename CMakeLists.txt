@@ -263,7 +263,7 @@ message (STATUS "TBB: ${TBB_INCLUDES} ${TBB_LIBRARIES}")
 
 unset(PCAP_INCLUDE_DIR)
 unset(PCAP_LIBRARY)
-if ( FALSE )
+if ( TRUE )
 	find_path(PCAP_INCLUDE_DIR pcap/pcap.h)
 	find_library(PCAP_LIBRARY pcap)
 		    
@@ -276,7 +276,7 @@ if ( FALSE )
 		set(PCAP_LIBRARY "")
 		        
 		message(WARNING "Can not locate pcap library under search path. 
-			pcap file reading functionalitymay not work.
+			pcap file reading functionality may not work.
 		    Install please pcap package if you need pcap read functionality")
 		            
 	endif()
@@ -289,7 +289,7 @@ endif() # pcap
 
 unset(TINYXML2_INCLUDE_DIR)
 unset(TINYXML2_LIBRARIES)
-if ( FALSE )
+if ( TRUE )
     find_package(tinyxml2 QUIET)
     if ( tinyxml2_FOUND )
         get_target_property(TINYXML2_INCLUDE_DIR tinyxml2::tinyxml2 INTERFACE_INCLUDE_DIRECTORIES)
@@ -300,6 +300,7 @@ if ( FALSE )
         find_library(TINYXML2_LIBRARIES tinyxml2)
         if ( NOT TINYXML2_LIBRARIES ) 
           message( WARNING "tinyxml2 package is not found in your system. Install tinyxml2 package please.")
+          unset(TINYXML2_LIBRARIES)
         else()
  		  add_definitions(-DHAVE_TINYXML2=1)
         endif()

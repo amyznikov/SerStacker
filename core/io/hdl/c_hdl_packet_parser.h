@@ -96,10 +96,63 @@ struct HDLDataPacket
 class c_hdl_packet_parser
 {
 public:
+
+  typedef std::function<void(const c_hdl_packet_parser &, const c_hdl_frame::sptr & frame)>
+    on_frame_callback;
+
+  struct State
+  {
+    HDLReturnMode return_mode_ = HDLReturnMode_unknown;
+    HDLFramingMode hdl_framing_mode_ = HDLFraming_Rotation;
+    int start_block = 0;
+    int last_known_azimuth_ = 0;
+    int pktcounter_ = 0;
+    double hdl_frame_seam_azimuth_ = 0;
+    bool sensor_changed_ = false;
+    uint32_t previousTohTimestamp_ = 0;
+    uint32_t hours_counter_ = 0;
+    size_t frame_counter_ = 0;
+  };
+
+
   bool parse(const uint8_t * data, uint size, int start_block = 0);
   void reset();
-  void clear();
+  void clear(const struct State * state = nullptr);
+
+  const State & state() const;
+
+  void set_frame_created_callback(const on_frame_callback & cb)
+  {
+    frame_created_callback_ = cb;
+  }
+
+  void set_frame_created_callback(on_frame_callback && cb)
+  {
+    frame_created_callback_ = std::move(cb);
+  }
+
+  const on_frame_callback & frame_created_callback() const
+  {
+    return frame_created_callback_;
+  }
+
+  void set_frame_populated_callback(const on_frame_callback & cb)
+  {
+    frame_populated_callback_ = cb;
+  }
+
+  void set_frame_populated_callback(on_frame_callback && cb)
+  {
+    frame_populated_callback_ = std::move(cb);
+  }
+
+  const on_frame_callback & frame_populated_callback() const
+  {
+    return frame_populated_callback_;
+  }
+
   bool sensor_changed() const;
+
 
   void set_hdl_framing_mode(enum HDLFramingMode v);
   enum HDLFramingMode hdl_framing_mode() const;
@@ -110,15 +163,32 @@ public:
   void set_lidar_config_xml(const std::string & v);
   const std::string & lidar_config_xml() const;
 
+  void set_only_extract_frame_seams(bool v);
+  bool only_extract_frame_seams() const;
+
   HDLSensorType sensor_type() const;
   HDLReturnMode return_mode() const;
   const c_hdl_specification * lidar_specification() const;
 
 
   int last_known_azimuth() const;
-  int pktcounter() const;
+  void set_last_known_azimuth(int );
 
-  std::vector<c_hdl_frame::sptr> frames;
+  int pktcounter() const;
+  void set_pktcounter(int );
+
+  uint32_t previousTohTimestamp() const;
+  void set_previousTohTimestamp(uint32_t );
+
+  uint32_t hours_counter() const;
+  void set_hours_counter(uint32_t );
+
+  size_t frame_counter() const;
+  void set_frame_counter(size_t );
+
+  const c_hdl_frame::sptr & current_frame() const;
+
+  // std::vector<c_hdl_frame::sptr> frames;
 
 protected:
   bool setup(HDLSensorType sensor_type, HDLReturnMode return_mode);
@@ -130,21 +200,21 @@ protected:
   bool parse_vls128(const HDLDataPacket *dataPacket, int start_block = 0);
   bool is_hdl_frame_seam(int current_packet_azimuth, int previous_packet_azimuth) const;
   void set_sensor_changed(bool v);
-
+  //c_hdl_frame * new_hdl_frame(int block);
+  void new_current_frame(int block);
+  void on_frame_creaated(const c_hdl_frame::sptr & f);
+  void on_frame_populated(const c_hdl_frame::sptr & f);
 
 protected:
-  HDLReturnMode return_mode_ = HDLReturnMode_unknown;
-  HDLFramingMode hdl_framing_mode_ = HDLFraming_Rotation;
-  int last_known_azimuth_ = 0;
-  int pktcounter_ = 0;
-  double hdl_frame_seam_azimuth_ = 0;
-  //bool unexpected_sensor_change_reported_ = false;
-  bool sensor_changed_ = false;
+  struct State state_;
+  bool only_extract_frame_seams_ = false;
 
-  c_hdl_frame::sptr currently_populated_frame_;
-  uint32_t previousTohTimestamp_ = 0;
-  uint32_t hours_counter_ = 0;
-  size_t frame_counter_ = 0;
+  //bool unexpected_sensor_change_reported_ = false;
+
+  c_hdl_frame::sptr current_frame_;
+
+  on_frame_callback frame_created_callback_;
+  on_frame_callback frame_populated_callback_;
 
   // current lidar specification table
   std::string lidar_config_xml_;

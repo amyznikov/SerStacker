@@ -38,28 +38,41 @@ void c_hdl_packet_parser::reset()
   clear();
   lidar_specification_.lasers.clear();
   lidar_specification_.sensor = HDLSensor_unknown;
-  return_mode_ = HDLReturnMode_unknown;
 }
 
-void c_hdl_packet_parser::clear()
+void c_hdl_packet_parser::clear(const struct State * state)
 {
-  frames.clear();
-  last_known_azimuth_ = 0;
-  pktcounter_ = 0;
-  hours_counter_ = 0;
-  previousTohTimestamp_ = 0;
-  currently_populated_frame_.reset();
-  frame_counter_ = 0;
+  if ( state ) {
+    state_ = *state;
+  }
+  else {
+
+    state_.return_mode_ = HDLReturnMode_unknown;
+    state_.last_known_azimuth_ = 0;
+    state_.start_block = 0;
+    state_.pktcounter_ = 0;
+    state_.hours_counter_ = 0;
+    state_.previousTohTimestamp_ = 0;
+    state_.frame_counter_ = 0;
+  }
+
+  //frames.clear();
+  current_frame_.reset();
+}
+
+const c_hdl_packet_parser::State & c_hdl_packet_parser::state() const
+{
+  return state_;
 }
 
 bool c_hdl_packet_parser::sensor_changed() const
 {
-  return sensor_changed_;
+  return state_.sensor_changed_;
 }
 
 void c_hdl_packet_parser::set_sensor_changed(bool v)
 {
-  if ( (sensor_changed_ = v) ) {
+  if ( (state_.sensor_changed_ = v) ) {
     reset();
   }
 }
@@ -71,7 +84,7 @@ HDLSensorType c_hdl_packet_parser::sensor_type() const
 
 HDLReturnMode c_hdl_packet_parser::return_mode() const
 {
-  return return_mode_;
+  return state_.return_mode_;
 }
 
 const c_hdl_specification * c_hdl_packet_parser::lidar_specification() const
@@ -82,27 +95,27 @@ const c_hdl_specification * c_hdl_packet_parser::lidar_specification() const
 
 void c_hdl_packet_parser::set_hdl_framing_mode(enum HDLFramingMode v)
 {
-  hdl_framing_mode_ = v;
+  state_.hdl_framing_mode_ = v;
 }
 
 enum HDLFramingMode c_hdl_packet_parser::hdl_framing_mode() const
 {
-  return hdl_framing_mode_;
+  return state_.hdl_framing_mode_;
 }
 
 void c_hdl_packet_parser::set_hdl_frame_seam_azimuth(double azimuth_in_degrees)
 {
   if ( azimuth_in_degrees < 0 ) {
-    hdl_frame_seam_azimuth_ = 0;
+    state_.hdl_frame_seam_azimuth_ = 0;
   }
   else {
-    hdl_frame_seam_azimuth_ = fmod(azimuth_in_degrees, 360) * 1e2;
+    state_.hdl_frame_seam_azimuth_ = fmod(azimuth_in_degrees, 360) * 1e2;
   }
 }
 
 double c_hdl_packet_parser::hdl_frame_seam_azimuth() const
 {
-  return hdl_frame_seam_azimuth_ * 1e-2;
+  return state_.hdl_frame_seam_azimuth_ * 1e-2;
 }
 
 void c_hdl_packet_parser::set_lidar_config_xml(const std::string & v)
@@ -115,27 +128,82 @@ const std::string & c_hdl_packet_parser::lidar_config_xml() const
   return lidar_config_xml_;
 }
 
+void c_hdl_packet_parser::set_only_extract_frame_seams(bool v)
+{
+  only_extract_frame_seams_ = v;
+}
+
+bool c_hdl_packet_parser::only_extract_frame_seams() const
+{
+  return only_extract_frame_seams_;
+}
+
 bool c_hdl_packet_parser::is_hdl_frame_seam(int current_packet_azimuth, int previous_packet_azimuth) const
 {
-  return (hdl_framing_mode_ == HDLFraming_Rotation) &&
-      ((hdl_frame_seam_azimuth_ <= 0) ?
+  return (state_.hdl_framing_mode_ == HDLFraming_Rotation) &&
+      ((state_.hdl_frame_seam_azimuth_ <= 0) ?
           current_packet_azimuth < previous_packet_azimuth :
-          previous_packet_azimuth < hdl_frame_seam_azimuth_ && current_packet_azimuth >= hdl_frame_seam_azimuth_);
+          previous_packet_azimuth < state_.hdl_frame_seam_azimuth_ && current_packet_azimuth >= state_.hdl_frame_seam_azimuth_);
 }
 
 int c_hdl_packet_parser::last_known_azimuth() const
 {
-  return last_known_azimuth_;
+  return state_.last_known_azimuth_;
+}
+
+void c_hdl_packet_parser::set_last_known_azimuth(int v)
+{
+  state_.last_known_azimuth_ = v;
 }
 
 int c_hdl_packet_parser::pktcounter() const
 {
-  return pktcounter_;
+  return state_.pktcounter_;
+}
+
+void c_hdl_packet_parser::set_pktcounter(int v)
+{
+  state_.pktcounter_ = v;
+}
+
+uint32_t c_hdl_packet_parser::previousTohTimestamp() const
+{
+  return state_.previousTohTimestamp_;
+}
+
+void c_hdl_packet_parser::set_previousTohTimestamp(uint32_t v)
+{
+  state_.previousTohTimestamp_ = v;
+}
+
+uint32_t c_hdl_packet_parser::hours_counter() const
+{
+  return state_.hours_counter_;
+}
+
+void c_hdl_packet_parser::set_hours_counter(uint32_t v)
+{
+  state_.hours_counter_ = v;
+}
+
+size_t c_hdl_packet_parser::frame_counter() const
+{
+  return state_.frame_counter_;
+}
+
+void c_hdl_packet_parser::set_frame_counter(size_t v)
+{
+  state_.frame_counter_ = v;
+}
+
+const c_hdl_frame::sptr & c_hdl_packet_parser::current_frame() const
+{
+  return current_frame_;
 }
 
 bool c_hdl_packet_parser::setup(HDLSensorType sensor_type, HDLReturnMode return_mode)
 {
-  this->return_mode_ = return_mode;
+  state_.return_mode_ = return_mode;
 
   bool use_default_lidar_specification = false;
 
@@ -197,7 +265,7 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
     return true;
   }
 
-  ++pktcounter_;
+  ++state_.pktcounter_;
 
   const HDLDataPacket *dataPacket =
       reinterpret_cast<const HDLDataPacket*>(data);
@@ -236,10 +304,10 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
     }
 
   }
-  else if( return_mode != this->return_mode_ ) {
+  else if( return_mode != state_.return_mode_ ) {
 
     CF_ERROR("Unexpected return mode change: %s -> %s",
-        toString(this->return_mode_).c_str(),
+        toString(state_.return_mode_).c_str(),
         toString(return_mode).c_str());
 
     set_sensor_changed(true);
@@ -249,7 +317,7 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
     }
 
   }
-  else if ( sensor_changed_ ) {
+  else if ( state_.sensor_changed_ ) {
     set_sensor_changed(false);
   }
 
@@ -325,7 +393,7 @@ bool c_hdl_packet_parser::precompute_correction_tables()
         };
 
     const bool dual_mode =
-        !is_single_return_mode(return_mode_);
+        !is_single_return_mode(state_.return_mode_);
 
     precomputed_timing_offsets_.resize(
         HDL_DATA_BLOCKS_PER_PKT + 2);
@@ -337,13 +405,11 @@ bool c_hdl_packet_parser::precompute_correction_tables()
 
       for( int K = 0; K < HDL_LASERS_PER_DATA_BLOCK; ++K ) {
 
-        const int channelNumber = K < 16 ?
-            K :
-            K - 16;
+        const int channelNumber =
+            K < 16 ? K : K - 16;
 
-        const int firingWithinBlock = K < 16 ?
-            0 :
-            1;
+        const int firingWithinBlock =
+            K < 16 ? 0 : 1;
 
         precomputed_timing_offsets_[block][K] =
             VLP16AdjustTimeStamp(block,
@@ -371,7 +437,7 @@ bool c_hdl_packet_parser::precompute_correction_tables()
             };
 
     const bool dual_mode =
-        !is_single_return_mode(return_mode_);
+        !is_single_return_mode(state_.return_mode_);
 
     precomputed_timing_offsets_.resize(
         HDL_DATA_BLOCKS_PER_PKT + 2);
@@ -403,7 +469,7 @@ bool c_hdl_packet_parser::precompute_correction_tables()
         };
 
     const bool dual_mode =
-        !is_single_return_mode(return_mode_);
+        !is_single_return_mode(state_.return_mode_);
 
     precomputed_timing_offsets_.resize(
         HDL_DATA_BLOCKS_PER_PKT + 2);
@@ -448,7 +514,7 @@ bool c_hdl_packet_parser::precompute_correction_tables()
 
 
     const bool dual_mode =
-        !is_single_return_mode(return_mode_);
+        !is_single_return_mode(state_.return_mode_);
 
     precomputed_timing_offsets_.resize(
         HDL_DATA_BLOCKS_PER_PKT + 4);
@@ -525,6 +591,37 @@ bool c_hdl_packet_parser::precompute_correction_tables()
   return true;
 }
 
+void c_hdl_packet_parser::on_frame_creaated(const c_hdl_frame::sptr & f)
+{
+  if ( frame_created_callback_ ) {
+    frame_created_callback_(*this, f);
+  }
+}
+
+void c_hdl_packet_parser::on_frame_populated(const c_hdl_frame::sptr & f)
+{
+  //frames.emplace_back(f);
+  if ( frame_populated_callback_ ) {
+    frame_populated_callback_(*this, f);
+  }
+}
+
+
+void c_hdl_packet_parser::new_current_frame(int block)
+{
+  if ( current_frame_ ) {
+    on_frame_populated(current_frame_);
+  }
+
+  current_frame_.reset(new c_hdl_frame());
+  current_frame_->index = block;
+  current_frame_->index = state_.frame_counter_++;
+  state_.start_block = block;
+
+  on_frame_creaated(current_frame_);
+
+}
+
 bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start_block)
 {
   if( lidar_specification_.lasers.size() != 16 ) {
@@ -545,28 +642,34 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
       1e-6 * dataPacket->TohTimestamp; // [s]
 
   const bool dual_mode =
-      !is_single_return_mode(return_mode_);
+      !is_single_return_mode(state_.return_mode_);
 
   int azimuth_gap = 0;
 
-  if ( dataPacket->TohTimestamp < previousTohTimestamp_ ) {
-    ++hours_counter_;
+  if ( dataPacket->TohTimestamp < state_.previousTohTimestamp_ ) {
+    ++state_.hours_counter_;
   }
-  previousTohTimestamp_ =
+  state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
-
-  if( hdl_framing_mode_ == HDLFraming_Packet ) {
-    frames.emplace_back(std::make_shared<c_hdl_frame>());
-  }
 
   if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
     start_block = 0;
   }
 
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
+    new_current_frame(0);
+    if( only_extract_frame_seams_ ) {
+      return true;
+    }
+  }
+
   for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(std::make_shared<c_hdl_frame>());
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
+      new_current_frame(block);
+      if( only_extract_frame_seams_ ) {
+        continue;
+      }
     }
 
     const HDLDataBlock &current_block =
@@ -592,13 +695,19 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
       }
     }
 
-    if( is_hdl_frame_seam(current_azimuth, last_known_azimuth_) && currently_populated_frame_ ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_Rotation && is_hdl_frame_seam(current_azimuth, state_.last_known_azimuth_) ) {
+      new_current_frame(block);
     }
 
-    last_known_azimuth_ =
+    state_.last_known_azimuth_ =
         current_azimuth;
+
+    if ( !current_frame_ ) {
+      new_current_frame(block);
+    }
+    if ( only_extract_frame_seams_ ) {
+      continue;
+    }
 
     const double blockdsr0 =
         precomputed_timing_offsets_[block][0];
@@ -636,7 +745,7 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
           azimuth_gap * ((timestamp_adjustment - blockdsr0) / (nextblockdsr0 - blockdsr0));
 
       const double timestamp =
-          3600. * hours_counter_ +
+          3600. * state_.hours_counter_ +
             packet_timestamp + 1e-6 * timestamp_adjustment;
 
       double azimuth =
@@ -653,7 +762,7 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
       c_hdl_point p = {
           .laser_id = laser_index,
           .laser_ring = lasers_table[laser_index].laser_ring,
-          .pkt = pktcounter_,
+          .pkt = state_.pktcounter_,
           .datablock = block,
           .flags = 0,
           .azimuth = (double) (azimuth * M_PI / 180),
@@ -663,27 +772,26 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
           .timestamp = timestamp,
       };
 
-      if ( !currently_populated_frame_ ) {
-
-        currently_populated_frame_ =
-            std::make_shared<c_hdl_frame>();
-
-        currently_populated_frame_->index =
-            frame_counter_++;
+      if ( !current_frame_ ) {
+        CF_FATAL("APP BUG: currently_populated_frame_ is null");
       }
-
-      currently_populated_frame_->points.emplace_back(p);
+      else {
+        current_frame_->points.emplace_back(p);
+      }
     }
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
+      //frames.emplace_back(currently_populated_frame_);
+      // currently_populated_frame_.reset();
+      on_frame_populated(current_frame_);
+      current_frame_.reset();
     }
   }
 
-  if( hdl_framing_mode_ == HDLFraming_Packet && currently_populated_frame_ ) {
-    frames.emplace_back(currently_populated_frame_);
-    currently_populated_frame_.reset();
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
+    // frames.emplace_back(currently_populated_frame_);
+    on_frame_populated(current_frame_);
+    current_frame_.reset();
   }
 
   return true;
@@ -724,21 +832,35 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
       1e-6 * dataPacket->TohTimestamp; // [s]
 
   const bool dual_mode =
-      !is_single_return_mode(return_mode_);
+      !is_single_return_mode(state_.return_mode_);
 
   int azimuth_gap = 0;
 
-  if ( dataPacket->TohTimestamp < previousTohTimestamp_ ) {
-    ++hours_counter_;
+  if ( dataPacket->TohTimestamp < state_.previousTohTimestamp_ ) {
+    ++state_.hours_counter_;
   }
-  previousTohTimestamp_ =
+  state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
   if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
     start_block = 0;
   }
 
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
+    new_current_frame(0);
+    if( only_extract_frame_seams_ ) {
+      return true;
+    }
+  }
+
   for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
+
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
+      new_current_frame(block);
+      if( only_extract_frame_seams_ ) {
+        continue;
+      }
+    }
 
     const HDLDataBlock &current_block =
         dataPacket->dataBlocks[block];
@@ -763,13 +885,19 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
       }
     }
 
-    if( is_hdl_frame_seam(current_azimuth, last_known_azimuth_) && currently_populated_frame_ ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_Rotation && is_hdl_frame_seam(current_azimuth, state_.last_known_azimuth_) ) {
+      new_current_frame(block);
     }
 
-    last_known_azimuth_ =
+    state_.last_known_azimuth_ =
         current_azimuth;
+
+    if ( !current_frame_ ) {
+      new_current_frame(block);
+    }
+    if ( only_extract_frame_seams_ ) {
+      continue;
+    }
 
     const double blockdsr0 =
         precomputed_timing_offsets_[block][0];
@@ -800,7 +928,7 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
           azimuth_gap * ((timestamp_adjustment - blockdsr0) / (nextblockdsr0 - blockdsr0));
 
       const double timestamp =
-          3600. * hours_counter_ +
+          3600. * state_.hours_counter_ +
             packet_timestamp + 1e-6 * timestamp_adjustment;
 
       double azimuth =
@@ -817,7 +945,7 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
       c_hdl_point p = {
           .laser_id = laser_index,
           .laser_ring = lasers_table[laser_index].laser_ring,
-          .pkt = pktcounter_,
+          .pkt = state_.pktcounter_,
           .datablock = block,
           .flags = 0,
           .azimuth = (double) (azimuth * M_PI / 180),
@@ -827,33 +955,25 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
           .timestamp = timestamp,
       };
 
-      if ( !currently_populated_frame_ ) {
-
-        currently_populated_frame_ =
-            std::make_shared<c_hdl_frame>();
-
-        if ( !currently_populated_frame_ ) {
-          CF_FATAL("UNEXPECTED ERROR: currently_populated_frame_=%p", currently_populated_frame_.get());
-          exit (1);
-        }
-
-
-        currently_populated_frame_->index =
-            frame_counter_++;
+      if ( !current_frame_ ) {
+        CF_FATAL("APP BUG: currently_populated_frame_ is null");
       }
-
-      currently_populated_frame_->points.emplace_back(p);
+      else {
+        current_frame_->points.emplace_back(p);
+      }
     }
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
+      //frames.emplace_back(currently_populated_frame_);
+      on_frame_populated(current_frame_);
+      current_frame_.reset();
     }
   }
 
-  if( hdl_framing_mode_ == HDLFraming_Packet && currently_populated_frame_ ) {
-    frames.emplace_back(currently_populated_frame_);
-    currently_populated_frame_.reset();
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
+    //frames.emplace_back(currently_populated_frame_);
+    on_frame_populated(current_frame_);
+    current_frame_.reset();
   }
 
   return true;
@@ -879,28 +999,34 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
       1e-6 * dataPacket->TohTimestamp; // [s]
 
   const bool dual_mode =
-      !is_single_return_mode(return_mode_);
+      !is_single_return_mode(state_.return_mode_);
 
   int azimuth_gap = 0;
 
-  if ( dataPacket->TohTimestamp < previousTohTimestamp_ ) {
-    ++hours_counter_;
+  if ( dataPacket->TohTimestamp < state_.previousTohTimestamp_ ) {
+    ++state_.hours_counter_;
   }
-  previousTohTimestamp_ =
+  state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
-
-  if( hdl_framing_mode_ == HDLFraming_Packet ) {
-    frames.emplace_back(std::make_shared<c_hdl_frame>());
-  }
 
   if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
     start_block = 0;
   }
 
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
+    new_current_frame(0);
+    if( only_extract_frame_seams_ ) {
+      return true;
+    }
+  }
+
   for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(std::make_shared<c_hdl_frame>());
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
+      new_current_frame(block);
+      if( only_extract_frame_seams_ ) {
+        continue;
+      }
     }
 
     const HDLDataBlock &current_block =
@@ -926,13 +1052,19 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
       }
     }
 
-    if( is_hdl_frame_seam(current_azimuth, last_known_azimuth_) && currently_populated_frame_ ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_Rotation && is_hdl_frame_seam(current_azimuth, state_.last_known_azimuth_) ) {
+      new_current_frame(block);
     }
 
-    last_known_azimuth_ =
+    state_.last_known_azimuth_ =
         current_azimuth;
+
+    if ( !current_frame_ ) {
+      new_current_frame(block);
+    }
+    if ( only_extract_frame_seams_ ) {
+      continue;
+    }
 
     const double blockdsr0 =
         precomputed_timing_offsets_[block][0];
@@ -963,7 +1095,7 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
           azimuth_gap * ((timestamp_adjustment - blockdsr0) / (nextblockdsr0 - blockdsr0));
 
       const double timestamp =
-          3600. * hours_counter_ +
+          3600. * state_.hours_counter_ +
             packet_timestamp + 1e-6 * timestamp_adjustment;
 
       double azimuth =
@@ -980,7 +1112,7 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
       c_hdl_point p = {
           .laser_id = laser_index,
           .laser_ring = lasers_table[laser_index].laser_ring,
-          .pkt = pktcounter_,
+          .pkt = state_.pktcounter_,
           .datablock = block,
           .flags = 0,
           .azimuth = azimuth * M_PI / 180,
@@ -990,27 +1122,25 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
           .timestamp = timestamp,
       };
 
-      if ( !currently_populated_frame_ ) {
-
-        currently_populated_frame_ =
-            std::make_shared<c_hdl_frame>();
-
-        currently_populated_frame_->index =
-            frame_counter_++;
+      if ( !current_frame_ ) {
+        CF_FATAL("APP BUG: currently_populated_frame_ is null");
       }
-
-      currently_populated_frame_->points.emplace_back(p);
+      else {
+        current_frame_->points.emplace_back(p);
+      }
     }
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
+      //frames.emplace_back(currently_populated_frame_);
+      on_frame_populated(current_frame_);
+      current_frame_.reset();
     }
   }
 
-  if( hdl_framing_mode_ == HDLFraming_Packet && currently_populated_frame_ ) {
-    frames.emplace_back(currently_populated_frame_);
-    currently_populated_frame_.reset();
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
+    //frames.emplace_back(currently_populated_frame_);
+    on_frame_populated(current_frame_);
+    current_frame_.reset();
   }
 
   return true;
@@ -1040,28 +1170,34 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
       1e-6 * dataPacket->TohTimestamp; // [s]
 
   const bool dual_mode =
-      !is_single_return_mode(return_mode_);
+      !is_single_return_mode(state_.return_mode_);
 
   int azimuth_gap = 0;
 
-  if ( dataPacket->TohTimestamp < previousTohTimestamp_ ) {
-    ++hours_counter_;
+  if ( dataPacket->TohTimestamp < state_.previousTohTimestamp_ ) {
+    ++state_.hours_counter_;
   }
-  previousTohTimestamp_ =
+  state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
-
-  if( hdl_framing_mode_ == HDLFraming_Packet ) {
-    frames.emplace_back(std::make_shared<c_hdl_frame>());
-  }
 
   if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
     start_block = 0;
   }
 
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
+    new_current_frame(0);
+    if( only_extract_frame_seams_ ) {
+      return true;
+    }
+  }
+
   for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(std::make_shared<c_hdl_frame>());
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
+      new_current_frame(block);
+      if( only_extract_frame_seams_ ) {
+        continue;
+      }
     }
 
     const HDLDataBlock &current_block =
@@ -1087,14 +1223,19 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
       }
     }
 
-    if( is_hdl_frame_seam(current_azimuth, last_known_azimuth_) && currently_populated_frame_ ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_Rotation && is_hdl_frame_seam(current_azimuth, state_.last_known_azimuth_) ) {
+      new_current_frame(block);
     }
 
-    last_known_azimuth_ =
+    state_.last_known_azimuth_ =
         current_azimuth;
 
+    if ( !current_frame_ ) {
+      new_current_frame(block);
+    }
+    if ( only_extract_frame_seams_ ) {
+      continue;
+    }
 
     int bank_origin = 0;
     if( current_block.blockId == HDL_BLOCK_32_63 ) {
@@ -1128,7 +1269,7 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
           azimuth_gap * ((timestamp_adjustment - blockdsr0) / (nextblockdsr0 - blockdsr0));
 
       const double timestamp =
-          3600. * hours_counter_ +
+          3600. * state_.hours_counter_ +
             packet_timestamp + 1e-6 * timestamp_adjustment;
 
 
@@ -1240,7 +1381,7 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
       c_hdl_point p = {
           .laser_id = laser_index,
           .laser_ring = lasers_table[laser_index].laser_ring,
-          .pkt = pktcounter_,
+          .pkt = state_.pktcounter_,
           .datablock = block,
           .flags = 0,
           .azimuth = corrected_azimuth,
@@ -1250,34 +1391,29 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
           .timestamp = timestamp,
       };
 
-      if ( !currently_populated_frame_ ) {
-
-        currently_populated_frame_ =
-            std::make_shared<c_hdl_frame>();
-
-        currently_populated_frame_->index =
-            frame_counter_++;
+      if ( !current_frame_ ) {
+        CF_FATAL("APP BUG: currently_populated_frame_ is null");
       }
-
-      currently_populated_frame_->points.emplace_back(p);
+      else {
+        current_frame_->points.emplace_back(p);
+      }
     }
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
+      //frames.emplace_back(currently_populated_frame_);
+      on_frame_populated(current_frame_);
+      current_frame_.reset();
     }
   }
 
-  if( hdl_framing_mode_ == HDLFraming_Packet && currently_populated_frame_ ) {
-    frames.emplace_back(currently_populated_frame_);
-    currently_populated_frame_.reset();
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
+    //frames.emplace_back(currently_populated_frame_);
+    on_frame_populated(current_frame_);
+    current_frame_.reset();
   }
 
   return true;
 }
-
-
-
 
 /** VLS-128 User Manual
  *  9.5 Precision Azimuth Calculation
@@ -1299,33 +1435,40 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
       spec.lasers;
 
   const bool dual_mode =
-      !is_single_return_mode(return_mode_);
+      !is_single_return_mode(state_.return_mode_);
 
   const double packet_timestamp =
       1e-6 * dataPacket->TohTimestamp; // [s]
 
   int azimuth_gap = 0;
 
-  if ( dataPacket->TohTimestamp < previousTohTimestamp_ ) {
-    ++hours_counter_;
+  if ( dataPacket->TohTimestamp < state_.previousTohTimestamp_ ) {
+    ++state_.hours_counter_;
   }
-  previousTohTimestamp_ =
+  state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
-
-  if( hdl_framing_mode_ == HDLFraming_Packet ) {
-    frames.emplace_back(std::make_shared<c_hdl_frame>());
-  }
 
   if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
     start_block = 0;
   }
+
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
+    new_current_frame(0);
+    if( only_extract_frame_seams_ ) {
+      return true;
+    }
+  }
+
   for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT - (4 * dual_mode); ++block ) {
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(std::make_shared<c_hdl_frame>());
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
+      new_current_frame(block);
+      if( only_extract_frame_seams_ ) {
+        continue;
+      }
     }
 
-    const HDLDataBlock & current_block =
+    const HDLDataBlock &current_block =
         dataPacket->dataBlocks[block];
 
     const int current_azimuth =
@@ -1334,7 +1477,7 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
     // warning: this azimuth_gap calculation is incorrect,
     // actually we need future minus current azimuth
     if ( dual_mode ) {
-      azimuth_gap = current_azimuth - last_known_azimuth_;
+      azimuth_gap = current_azimuth - state_.last_known_azimuth_;
     }
     else if( block < HDL_DATA_BLOCKS_PER_PKT - 4 ) {
       azimuth_gap = (int)dataPacket->dataBlocks[block + 4].azimuth - current_azimuth;
@@ -1363,13 +1506,19 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
       return false;
     }
 
-    if( is_hdl_frame_seam(current_azimuth, last_known_azimuth_) && currently_populated_frame_ ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_Rotation && is_hdl_frame_seam(current_azimuth, state_.last_known_azimuth_) ) {
+      new_current_frame(block);
     }
 
-    last_known_azimuth_ =
+    state_.last_known_azimuth_ =
         current_azimuth;
+
+    if ( !current_frame_ ) {
+      new_current_frame(block);
+    }
+    if ( only_extract_frame_seams_ ) {
+      continue;
+    }
 
     for( int K = 0; K < HDL_LASERS_PER_DATA_BLOCK; ++K ) {
 
@@ -1391,7 +1540,7 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
               0;
 
       const double timestamp =
-          3600. * hours_counter_ +
+          3600. * state_.hours_counter_ +
               packet_timestamp +
               precomputed_timing_offsets_[block / 4][firing_order + laser_index / 64];
 
@@ -1409,7 +1558,7 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
       c_hdl_point p = {
           .laser_id = laser_index,
           .laser_ring = lasers_table[laser_index].laser_ring,
-          .pkt = pktcounter_,
+          .pkt = state_.pktcounter_,
           .datablock = block,
           .flags = 0,
           .azimuth = (double) (interpolated_azimuth * M_PI / 180),
@@ -1419,66 +1568,30 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
           .timestamp = timestamp,
       };
 
-      if ( !currently_populated_frame_ ) {
-
-        currently_populated_frame_ =
-            std::make_shared<c_hdl_frame>();
-
-        currently_populated_frame_->index =
-            frame_counter_++;
+      if ( !current_frame_ ) {
+        CF_FATAL("APP BUG: currently_populated_frame_ is null");
       }
-
-      currently_populated_frame_->points.emplace_back(p);
+      else {
+        current_frame_->points.emplace_back(p);
+      }
     }
 
-    if( hdl_framing_mode_ == HDLFraming_DataBlock ) {
-      frames.emplace_back(currently_populated_frame_);
-      currently_populated_frame_.reset();
+    if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
+      //frames.emplace_back(currently_populated_frame_);
+      on_frame_populated(current_frame_);
+      current_frame_.reset();
     }
   }
 
-  if( hdl_framing_mode_ == HDLFraming_Packet && currently_populated_frame_ ) {
-    frames.emplace_back(currently_populated_frame_);
-    currently_populated_frame_.reset();
+  if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
+    //frames.emplace_back(currently_populated_frame_);
+    on_frame_populated(current_frame_);
+    current_frame_.reset();
   }
 
   return true;
 }
 
-
-
-//
-//static double VLS128AdjustTimeStamp(int firingDataBlockIdx, int dsrBase32, const bool isDualReturnMode,
-//    int extDataPacketType)
-//{
-//  constexpr static double dt = 2.665;
-//  constexpr static double firingsequence_num_cycles = 20;
-//  constexpr static double firingsequence_duration = (dt * firingsequence_num_cycles);
-//  constexpr static int n_datablocks_per_firingsequence = 4;
-//  constexpr static int n_simultaneous_firing = 8;
-//
-//  //dsr >= 64 needs an additional two cycles of delay to account for interleaved maintenance cycles
-//  if( !isDualReturnMode ) {
-//    //convert dsr from 0->31 to 0->127
-//    int dsr = (dsrBase32 + 32 * (firingDataBlockIdx % n_datablocks_per_firingsequence));
-//
-//    return (firingsequence_duration * static_cast<int>(firingDataBlockIdx / n_datablocks_per_firingsequence)) +
-//        (static_cast<int>(dsr / n_simultaneous_firing) + (static_cast<int>(dsr / 64) * 2)) * dt;
-//  }
-//
-//  if( extDataPacketType > HDL_EXT_MODE_NONE ) {
-//    //convert dsr from 0->31 to 0->127
-//    int dsr = (dsrBase32 + 32 * static_cast<int>(firingDataBlockIdx / 3));
-//
-//    return (static_cast<int>(dsr / n_simultaneous_firing) + (static_cast<int>(dsr / 64) * 2)) * dt;
-//  }
-//
-//  //convert dsr from 0->31 to 0->127
-//  int dsr = (dsrBase32 + 32 * static_cast<int>(firingDataBlockIdx / 2));
-//
-//  return (static_cast<int>(dsr / n_simultaneous_firing) + (static_cast<int>(dsr / 64) * 2)) * dt;
-//}
-//
 
 #endif // HAVE_PCAP
 

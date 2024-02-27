@@ -1,22 +1,305 @@
 /*
  * c_hdl_frame_reader.cc
  *
- *  Created on: Aug 27, 2022
+ *  Created on: Feb 27, 2024
  *      Author: amyznikov
  */
 
-#include "c_hdl_frame_reader.h"
+#include "c_parsed_frame_reader.h"
 
 #if HAVE_PCAP
 
+#include <core/debug.h>
+
+///////////////////////////////////////////////////////////////
+// Static pcap file reader
+
+static int read_next_hdl_frame(c_pcap_reader & pcap, uint32_t * src_addrs, const uint8_t ** payload)
+{
+  int status;
+
+  const pcap_pkthdr * pkt_header = nullptr;
+  const c_pcap_data_header * data_header = nullptr;
+
+  while ((status = pcap.read(&pkt_header, &data_header, payload)) >= 0) {
+
+    if( !payload ) {
+      continue;
+    }
+
+    const uint payload_size =
+        pkt_header->len - pcap.data_header_size();
+
+    if( payload_size != hdl_lidar_packet_size() ) {
+      continue;
+    }
+
+    *src_addrs = 0;
+
+    switch (pcap.datalinktype()) {
+      case DLT_NULL:
+        *src_addrs = data_header->loopbak.ip.ip_src.s_addr;
+        break;
+      case DLT_EN10MB:
+        *src_addrs = data_header->en10mb.ip.ip_src.s_addr;
+        //port = data_header->en10mb.udp.dest;
+        break;
+      case DLT_LINUX_SLL:
+        *src_addrs = data_header->sll.ip.ip_src.s_addr;
+        break;
+      case DLT_LINUX_SLL2:
+        *src_addrs = data_header->sll2.ip.ip_src.s_addr;
+        break;
+      case DLT_USER1:
+        *src_addrs = data_header->user1.ip.ip_src.s_addr;
+        break;
+      default:
+        break;
+    }
+
+    if( *src_addrs ) {
+      break;
+    }
+  }
+
+  return status;
+}
+
+c_hdl_offline_pcap_reader::~c_hdl_offline_pcap_reader()
+{
+  close();
+}
+
+void c_hdl_offline_pcap_reader::close()
+{
+  pcap_.close();
+  hdl_parser_.reset();
+}
+
+bool c_hdl_offline_pcap_reader::is_open() const
+{
+  return pcap_.is_open();
+}
+
+bool c_hdl_offline_pcap_reader::open(const std::string & filename, const std::string & options )
+{
+  close();
+
+  if( !pcap_.open(filename, options) ) {
+    CF_ERROR("pcap_.open('%s') fals", filename.c_str());
+    return false;
+  }
+
+  struct c_hdl_stream
+  {
+    c_hdl_packet_parser parser;
+    std::vector<parsed_frame> frames;
+    uint32_t addrs;
+  };
+
+  std::vector<c_hdl_stream> hdl_streams;
+
+  const uint8_t * payload = nullptr;
+  uint32_t addrs;
+
+  int status;
+
+  for( long filepos = pcap_.tell(); (status = read_next_hdl_frame(pcap_, &addrs, &payload)) >= 0;
+      filepos = pcap_.tell() ) {
+
+    auto current_hdl_stream =
+        std::find_if(hdl_streams.begin(), hdl_streams.end(),
+            [addrs](const auto & s) {
+              return s.addrs == addrs;
+            });
+
+    if( current_hdl_stream == hdl_streams.end() ) {
+
+      hdl_streams.emplace_back();
+      current_hdl_stream = hdl_streams.end() - 1;
+
+      current_hdl_stream->addrs = addrs;
+      current_hdl_stream->parser.set_hdl_framing_mode(HDLFraming_Rotation);
+      current_hdl_stream->parser.set_only_extract_frame_seams(true);
+
+      current_hdl_stream->parser.set_frame_created_callback(
+          [&](const c_hdl_packet_parser & p, const c_hdl_frame::sptr & f) {
+
+            const c_hdl_packet_parser::State & state = p.state();
+
+            current_hdl_stream->frames.emplace_back();
+
+            auto & frame =
+                current_hdl_stream->frames.back();
+
+            frame.filepos = filepos;
+            frame.parser_state = state;
+          });
+    }
+
+    if( !current_hdl_stream->parser.parse(payload, hdl_lidar_packet_size()) ) {
+      CF_ERROR("packet_parser_.parse() fails");
+      continue;
+    }
+  }
+
+  CF_DEBUG("streams.size=%d", hdl_streams.size());
+
+  parsed_streams_.clear();
+  parsed_streams_.resize(hdl_streams.size());
+
+  for( int i = 0, n = hdl_streams.size(); i < n; ++i ) {
+    parsed_streams_[i].addrs = hdl_streams[i].addrs;
+    parsed_streams_[i].frames = std::move(hdl_streams[i].frames);
+  }
+
+  return true;
+}
+
+c_hdl_frame::sptr c_hdl_offline_pcap_reader::read()
+{
+  const pcap_pkthdr * pkt_header = nullptr;
+  const c_pcap_data_header * data_header =  nullptr;
+  const uint8_t * payload = nullptr;
+
+
+  if ( !pcap_.is_open() ) {
+    CF_ERROR("pcap file is not open");
+    return nullptr;
+  }
+
+  if ( current_stream_index_ < 0 || current_stream_index_ >= (int)parsed_streams_.size() ) {
+    CF_ERROR("current_stream_=%d is invalid", current_stream_index_);
+    return nullptr;
+  }
+
+  const parsed_stream & stream =
+      parsed_streams_[current_stream_index_];
+
+  if ( current_pos_ < 0 || current_pos_ >= (int)stream.frames.size() ) {
+    CF_ERROR("current_pos_=%d is invalid", current_pos_);
+    return nullptr;
+  }
+
+  const parsed_frame & f =
+      stream.frames[current_pos_];
+
+  hdl_parser_.clear(&f.parser_state);
+
+  c_hdl_frame::sptr frame;
+
+  hdl_parser_.set_frame_populated_callback(
+      [&](const c_hdl_packet_parser&, const c_hdl_frame::sptr & populated_frame) {
+        frame = populated_frame;
+      });
+
+  pcap_.seek(f.filepos);
+
+  int start_block =
+      f.parser_state.start_block;
+
+  uint32_t addrs = 0;
+
+  int status;
+
+  while ((status = read_next_hdl_frame(pcap_, &addrs, &payload)) >= 0) {
+
+    if( addrs != stream.addrs ) {
+      continue;
+    }
+
+    if( !hdl_parser_.parse(payload, hdl_lidar_packet_size(), start_block) ) {
+      CF_ERROR("hdl_parser_.parse() fails");
+      break;
+    }
+
+    if( frame ) {
+      break;
+    }
+
+    start_block = 0;
+  }
+
+  if( !frame ) {
+    frame = hdl_parser_.current_frame();
+  }
+
+  ++current_pos_;
+
+  return frame;
+}
+
+const std::vector<c_hdl_offline_pcap_reader::parsed_stream> & c_hdl_offline_pcap_reader::streams() const
+{
+  return parsed_streams_;
+}
+
+ssize_t c_hdl_offline_pcap_reader::num_frames() const
+{
+  return ((current_stream_index_ >= 0) && (current_stream_index_ < (int) parsed_streams_.size())) ?
+      parsed_streams_[current_stream_index_].frames.size() : -1;
+}
+
+int c_hdl_offline_pcap_reader::current_stream() const
+{
+  return current_stream_index_;
+}
+
+bool c_hdl_offline_pcap_reader::select_stream(int index)
+{
+  if( index != current_stream_index_ ) {
+
+    if( (index < 0) || (index > (int) parsed_streams_.size()) ) {
+      return false;
+    }
+
+    current_stream_index_ = index;
+    current_pos_ = 0;
+    hdl_parser_.reset();
+    hdl_parser_.set_hdl_framing_mode(HDLFraming_Rotation);
+    hdl_parser_.set_only_extract_frame_seams(false);
+  }
+
+  return true;
+}
+
+bool c_hdl_offline_pcap_reader::seek(int32_t pos)
+{
+  if( (current_stream_index_ >= 0) && (current_stream_index_ < (int) parsed_streams_.size()) ) {
+
+    const parsed_stream & s =
+        parsed_streams_[current_stream_index_];
+
+    if( (pos >= 0) && (pos < (int) (s.frames.size())) ) {
+      current_pos_ = pos;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+int c_hdl_offline_pcap_reader::curpos() const
+{
+  return current_pos_;
+}
+
+
+
+
+#if 0
+// Old code kept here for some time
+
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 //#include <core/get_time.h>
-#include <core/readdir.h>
-#include <core/ssprintf.h>
-#include <core/get_time.h>
-#include <core/debug.h>
+//#include <core/readdir.h>
+//#include <core/ssprintf.h>
+//#include <core/get_time.h>
+
+
 
 #define INET_ADDR(a,b,c,d) \
   (uint32_t)((((uint32_t)(a))<<24)|(((uint32_t)(b))<<16)|(((uint32_t)(c))<<8)|(d))
@@ -1608,302 +1891,6 @@ c_hdl_frame::sptr c_hdl_udp_reader::recv()
   return frame;
 }
 
-
-
-///////////////////////////////////////////////////////////////
-// Static pcap file reader
-
-c_hdl_pcap_static_reader::~c_hdl_pcap_static_reader()
-{
-  close();
-}
-
-bool c_hdl_pcap_static_reader::open(const std::string & filename, const std::string & options )
-{
-  close();
-
-  if( !pcap_.open(filename, options) ) {
-    CF_ERROR("pcap_.open('%s') fals", filename.c_str());
-    return false;
-  }
-
-  const pcap_pkthdr * pkt_header = nullptr;
-  const c_pcap_data_header * data_header =  nullptr;
-  const uint8_t * payload = nullptr;
-
-  int status;
-
-  for( long filepos = pcap_.tell();
-      (status = pcap_.read(&pkt_header, &data_header, &payload)) >= 0;
-      filepos = pcap_.tell() ) {
-
-    if ( !payload ) {
-      continue;
-    }
-
-    const uint payload_size =
-        pkt_header->len - pcap_.data_header_size();
-
-    if( payload_size != hdl_lidar_packet_size() ) {
-      continue;
-    }
-
-    in_addr_t ipsrc = 0;
-
-    switch (pcap_.datalinktype()) {
-    case DLT_NULL:
-      ipsrc = data_header->loopbak.ip.ip_src.s_addr;
-      break;
-    case DLT_EN10MB:
-      ipsrc = data_header->en10mb.ip.ip_src.s_addr;
-      //port = data_header->en10mb.udp.dest;
-      break;
-    case DLT_LINUX_SLL:
-      ipsrc = data_header->sll.ip.ip_src.s_addr;
-      break;
-    case DLT_LINUX_SLL2:
-      ipsrc = data_header->sll2.ip.ip_src.s_addr;
-      break;
-    case DLT_USER1:
-      ipsrc = data_header->user1.ip.ip_src.s_addr;
-      break;
-    default:
-      break;
-    }
-
-    if ( !ipsrc ) {
-      continue;
-    }
-
-    const HDLDataPacket *dataPacket =
-        reinterpret_cast<const HDLDataPacket*>(payload);
-
-    auto stream =
-        std::find_if(streams_.begin(), streams_.end(),
-            [ipsrc](const auto & s) {
-              return s.addrs == ipsrc;
-            });
-
-    if ( stream == streams_.end() ) {
-      streams_.emplace_back();
-      stream = streams_.end() - 1;
-      stream->addrs = ipsrc;
-      stream->seam_azimuth = dataPacket->dataBlocks[0].azimuth;
-      stream->frames.emplace_back();
-      stream->frames.back().filepos = filepos;
-      stream->frames.back().start_block = 0;
-    }
-
-
-    for( int block = 0; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
-
-      const HDLDataBlock &current_block =
-          dataPacket->dataBlocks[block];
-
-      if ( current_block.azimuth <= stream->seam_azimuth ) {
-        stream->seam_azimuth = current_block.azimuth;
-        stream->frames.emplace_back();
-        stream->frames.back().filepos = filepos;
-        stream->frames.back().start_block = block;
-        break;
-      }
-
-    }
-  }
-
-  CF_DEBUG("streams.size=%d", streams_.size());
-  for( int i = 0, n = streams_.size(); i < n; ++i ) {
-    CF_DEBUG("streams[%d].size=%d", i, streams_[i].frames.size());
-  }
-
-  return true;
-}
-
-void c_hdl_pcap_static_reader::close()
-{
-  hdl_parser_.reset();
-}
-
-bool c_hdl_pcap_static_reader::is_open() const
-{
-  return pcap_.is_open();
-}
-
-c_hdl_frame::sptr c_hdl_pcap_static_reader::read()
-{
-  static const auto pop_frame =
-      [](c_hdl_packet_parser & hdl_parser) -> c_hdl_frame::sptr {
-        c_hdl_frame::sptr frame = hdl_parser.frames.front();
-        hdl_parser.frames.erase(hdl_parser.frames.begin());
-        return frame;
-      };
-
-  const pcap_pkthdr * pkt_header = nullptr;
-  const c_pcap_data_header * data_header =  nullptr;
-  const uint8_t * payload = nullptr;
-
-  c_hdl_frame::sptr frame;
-
-
-  if ( !pcap_.is_open() ) {
-    CF_ERROR("pcap file is not open");
-    return nullptr;
-  }
-
-  if ( current_stream_ < 0 || current_stream_ >= (int)streams_.size() ) {
-    CF_ERROR("current_stream_=%d is invalid", current_stream_);
-    return nullptr;
-  }
-
-  const HDLStream & stream =
-      streams_[current_stream_];
-
-  if ( current_pos_ < 0 || current_pos_ >= (int)stream.frames.size() ) {
-    CF_ERROR("current_pos_=%d is invalid", current_pos_);
-    return nullptr;
-  }
-
-  const HDLFrame & f =
-      stream.frames[current_pos_];
-
-
-  //  const HDLFramingMode framing_mode =
-  //      hdl_parser_.hdl_framing_mode();
-
-//  if( hdl_parser_.frames.size() > 0 ) {
-//    if( hdl_parser_.frames.size() > 1 ) {
-//      return pop_frame(hdl_parser_);
-//    }
-//    if( framing_mode != HDLFraming_Rotation ) {
-//      return pop_frame(hdl_parser_);
-//    }
-//  }
-
-  int status;
-
-  hdl_parser_.clear();
-
-  pcap_.seek(f.filepos);
-
-  int start_block =
-      f.start_block;
-
-  while ((status = pcap_.read(&pkt_header, &data_header, &payload)) >= 0) {
-
-    if ( !payload ) {
-      continue;
-    }
-
-    const uint payload_size =
-        pkt_header->len - pcap_.data_header_size();
-
-    if( payload_size != hdl_lidar_packet_size() ) {
-      continue;
-    }
-
-
-    in_addr_t ipsrc = 0;
-
-    //CF_DEBUG("pcap_.datalinktype()=%d", pcap_.datalinktype());
-    switch (pcap_.datalinktype()) {
-    case DLT_NULL:
-      ipsrc = data_header->loopbak.ip.ip_src.s_addr;
-      break;
-    case DLT_EN10MB:
-      ipsrc = data_header->en10mb.ip.ip_src.s_addr;
-      //port = data_header->en10mb.udp.dest;
-      break;
-    case DLT_LINUX_SLL:
-      ipsrc = data_header->sll.ip.ip_src.s_addr;
-      break;
-    case DLT_LINUX_SLL2:
-      ipsrc = data_header->sll2.ip.ip_src.s_addr;
-      break;
-    case DLT_USER1:
-      ipsrc = data_header->user1.ip.ip_src.s_addr;
-      break;
-    default:
-      break;
-    }
-
-    if ( ipsrc != stream.addrs ) {
-      continue;
-    }
-
-    if( !hdl_parser_.parse(payload, payload_size, start_block) ) {
-      CF_ERROR("packet_parser_.parse() fails");
-      break;
-    }
-
-    start_block = 0;
-
-    if( hdl_parser_.frames.size() > 1 ) {
-      frame = pop_frame(hdl_parser_);
-      break;
-    }
-  }
-
-  if ( status <= 0 ) {
-    CF_ERROR("pcap_.read() fails");
-  }
-
-  if( !frame && hdl_parser_.frames.size() > 0 ) {
-    frame = pop_frame(hdl_parser_);
-  }
-
-  return frame;
-}
-
-const std::vector<c_hdl_pcap_static_reader::HDLStream> c_hdl_pcap_static_reader::streams() const
-{
-  return streams_;
-}
-
-bool c_hdl_pcap_static_reader::select_stream(int index)
-{
-  if( index != current_stream_ ) {
-    if( (index < 0) || (index > (int) streams_.size()) ) {
-      return false;
-    }
-    current_stream_ = index;
-    current_pos_ = 0;
-  }
-  return true;
-}
-
-int c_hdl_pcap_static_reader::current_stream() const
-{
-  return current_stream_;
-}
-
-ssize_t c_hdl_pcap_static_reader::num_frames() const
-{
-  return ((current_stream_ >= 0) && (current_stream_ < (int) streams_.size())) ?
-      streams_[current_stream_].frames.size() : -1;
-}
-
-bool c_hdl_pcap_static_reader::seek(int32_t pos)
-{
-  if( (current_stream_ >= 0) && (current_stream_ < (int) streams_.size()) ) {
-
-    const HDLStream & s =
-        streams_[current_stream_];
-
-    if( (pos >= 0) && (pos < (int) (s.frames.size())) ) {
-      current_pos_ = pos;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-int c_hdl_pcap_static_reader::curpos() const
-{
-  return current_pos_;
-}
-
-
-
+#endif
 #endif // HAVE_PCAP
 

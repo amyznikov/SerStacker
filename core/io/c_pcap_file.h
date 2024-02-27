@@ -37,7 +37,8 @@
  *
  * BSD loopback encapsulation header
  **/
-struct c_bsd_loopback_header {
+struct c_bsd_loopback_header
+{
   uint32_t protocol; // AF_INET etc
   struct ip ip;
   struct udphdr udp;
@@ -62,7 +63,8 @@ struct c_en10mb_header
  * DLT_LINUX_SLL
  * Linux cooked capture encapsulation
  */
-struct c_sll_header {
+struct c_sll_header
+{
   struct sll_header sll;
   struct ip ip;
   struct udphdr udp;
@@ -73,7 +75,8 @@ struct c_sll_header {
  * DLT_LINUX_SLL2
  * Linux cooked sockets v2
  */
-struct c_sll2_header {
+struct c_sll2_header
+{
   struct sll2_header sll2;
   struct ip ip;
   struct udphdr udp;
@@ -90,14 +93,16 @@ struct c_sll2_header {
  * 56 198 8 0 VLP16 2
  */
 
-enum c_zlidar_id {
+enum c_zlidar_id
+{
   c_zlidar_id_any = -1,
   c_zlidar_id_vlp16_1 = (56 + (184<<8) + (8 << 16)),
   c_zlidar_id_vlp16_2 = (56 + (198<<8) + (8 << 16)),
   c_zlidar_id_vls128 = (69 + (106<<8) + (8 << 16)),
 };
 
-struct c_dltuser1_header {
+struct c_dltuser1_header
+{
   uint8_t unknown_bytes[54 - sizeof(struct ip) - sizeof(struct udphdr) - 4];
   uint32_t zlidarid;
   struct ip ip;

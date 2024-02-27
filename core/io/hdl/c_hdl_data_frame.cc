@@ -21,34 +21,51 @@ void c_hdl_data_frame::setup_default_channels()
 {
   displayChannels_.clear();
 
-  add_display_channel("AMBIENT",
-      "AMBIENT",
-      0,
-      65535);
+  add_display_channel("DEPTH",
+      "3D Point depth",
+      0, 300);
+
+
+  add_display_channel("INTENSITY",
+      "3D Point intensity",
+      0, 1);
 
   add_display_channel("DISTANCES",
-      "3-channel 2D Image with distances to points",
-      0, 30000);
-
-  add_display_channel("DEPTH",
-      "3-channel 2D Image with depths (horizontal distances) to points",
-      0, 30000);
+      "3D Point distance",
+      0, 300);
 
   add_display_channel("HEIGHT",
-      "3-channel 2D Image with height (vertical 3D coordinate) of points",
-      -100, 1000);
+      "3D Point height",
+      -5, 15);
 
-  add_display_channel("AREA",
-      "3-channel 2D Image with pixel intensities measured as AREA",
-      0, 10000);
+  add_display_channel("AZIMUTH",
+      "3D Point azimuth angle",
+      0, 2 * M_PI);
 
-  add_display_channel("PEAK",
-      "3-channel 2D Image with pixel intensities measured as PEAK",
-      0, 135);
+  add_display_channel("ELEVATION",
+      "3D Point elevation angle",
+      -25 * M_PI, 25 * M_PI);
 
-  add_display_channel("SELECTION_MASK",
-      "1- or 3-channel binary 2D Image representing current selection mask",
-      0, 255);
+  add_display_channel("LASER_ID",
+      "3D Point laser_id",
+      0, 128);
+
+  add_display_channel("LASER_RING",
+      "3D Point laser ring",
+      0, 128);
+
+  add_display_channel("DATABLOCK",
+      "3D Point Lidar Data block id",
+      0, 12);
+
+  add_display_channel("TIMESTAMP",
+      "3D Point time stamp relative to start of rotation",
+      0, 100);
+
+
+//  add_display_channel("SELECTION_MASK",
+//      "1- or 3-channel binary 2D Image representing current selection mask",
+//      0, 255);
 
   viewTypes_.clear();
 //  viewTypes_.emplace(DataViewType_Image);
@@ -79,12 +96,94 @@ bool c_hdl_data_frame::get_data(DataViewType * selectedViewType,
     cv::Mat1f colors =
         data.getMatRef();
 
-    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+    if ( channelName == "INTENSITY" ) {
 
-      const c_hdl_point & p =
-          current_frame_->points[i];
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].intensity;
+      }
 
-      colors[i][0] = p.intensity;
+    }
+    else if( channelName == "DISTANCES" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].distance;
+      }
+
+    }
+    else if( channelName == "HEIGHT" ) {
+
+      const cv::Mat3f pts =
+          image.getMatRef();
+
+      for ( int i = 0, n = pts.rows; i < n; ++i ) {
+        colors[i][0] = pts[i][0][2];
+      }
+
+    }
+    else if( channelName == "AZIMUTH" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].azimuth;
+      }
+
+    }
+    else if( channelName == "ELEVATION" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].elevation;
+      }
+
+    }
+    else if( channelName == "LASER_ID" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].laser_id;
+      }
+
+    }
+    else if( channelName == "LASER_RING" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].laser_ring;
+      }
+
+    }
+    else if( channelName == "DATABLOCK" ) {
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].datablock;
+      }
+
+    }
+    else if( channelName == "TIMESTAMP" ) {
+
+      double tsmin = DBL_MAX;
+      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        const double ts = current_frame_->points[i].timestamp;
+        if( ts < tsmin ) {
+          tsmin = ts;
+        }
+      }
+
+      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = current_frame_->points[i].timestamp - tsmin;
+      }
+    }
+
+//    else if( channelName == "SELECTION_MASK" ) {
+//
+//      if( selection_mask_.size() != colors.size() ) {
+//
+//        colors.setTo(cv::Scalar::all(255));
+//
+//      }
+//
+//    }
+    else { // DEPTH
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        colors[i][0] = compute_depth(current_frame_->points[i]);
+      }
     }
 
   }

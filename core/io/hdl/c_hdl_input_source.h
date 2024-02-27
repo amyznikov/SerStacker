@@ -10,7 +10,7 @@
 #define __c_hdl_input_source_h__
 
 #include <core/io/c_input_source.h>
-#include "c_hdl_frame_reader.h"
+#include "c_parsed_frame_reader.h"
 
 #if HAVE_PCAP
 
@@ -47,7 +47,7 @@ public:
       int * output_bpc) override;
 
 protected:
-  c_hdl_pcap_static_reader reader_;
+  c_hdl_offline_pcap_reader reader_;
 };
 
 #endif // HAVE_PCAP

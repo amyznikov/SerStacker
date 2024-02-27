@@ -1,7 +1,7 @@
 /*
  * c_hdl_frame_reader.h
  *
- *  Created on: Aug 27, 2022
+ *  Created on: Feb 27, 2024
  *      Author: amyznikov
  */
 
@@ -11,16 +11,73 @@
 
 #include <core/io/c_pcap_file.h>
 
+#define HAVE_PCAP 1
+
 #if HAVE_PCAP
-//#include <core/c_notification.h>
+
 #include "c_hdl_packet_parser.h"
-#include <netinet/in.h>
 #include <memory>
 #include <vector>
 #include <functional>
 #include <thread>
 #include <mutex>
-#include <core/debug.h>
+
+
+
+///////////////////////////////////////////////////////////////
+
+/**
+ * Offline pcap file reader and HDL parser
+ * */
+class c_hdl_offline_pcap_reader
+{
+public:
+  typedef c_hdl_offline_pcap_reader this_class;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::shared_ptr<this_class> sptr;
+
+  struct parsed_frame
+  {
+    c_hdl_packet_parser::State parser_state;
+    ssize_t filepos;
+  };
+
+  struct parsed_stream
+  {
+    std::vector<parsed_frame> frames;
+    uint32_t addrs;
+  };
+
+  ~c_hdl_offline_pcap_reader();
+
+  bool open(const std::string & filename, const std::string & options = "");
+  void close();
+  bool is_open() const;
+  c_hdl_frame::sptr read();
+
+  const std::vector<parsed_stream> & streams() const;
+
+  bool select_stream(int index);
+  int current_stream() const;
+
+  ssize_t num_frames() const; // number of frames in current stream
+
+  bool seek(int32_t frame_index_in_current_stream);
+  int curpos() const;
+
+protected:
+  c_pcap_reader pcap_;
+  c_hdl_packet_parser hdl_parser_;
+  std::vector<parsed_stream> parsed_streams_;
+  int32_t current_stream_index_ = -1;
+  int32_t current_pos_ = -1;
+};
+
+
+
+#if 0
+
+// Old code kept here for some time
 
 ///////////////////////////////////////////////////////////////
 // New (multi-lidar) API
@@ -346,52 +403,7 @@ protected:
   volatile bool stop_ = false;
 };
 
-///////////////////////////////////////////////////////////////
-// Static pcap file reader
-
-class c_hdl_pcap_static_reader
-{
-public:
-  typedef c_hdl_pcap_static_reader this_class;
-  typedef std::unique_ptr<this_class> uptr;
-  typedef std::shared_ptr<this_class> sptr;
-
-  struct HDLFrame
-  {
-    ssize_t filepos;
-    int start_block;
-  };
-
-  struct HDLStream
-  {
-    in_addr_t addrs;
-    uint16_t  seam_azimuth;
-    std::vector<HDLFrame> frames;
-  };
-
-  ~c_hdl_pcap_static_reader();
-
-  bool open(const std::string & address, const std::string & options = "");
-  void close();
-  bool is_open() const;
-  c_hdl_frame::sptr read();
-
-  const std::vector<HDLStream> streams() const;
-  bool select_stream(int index);
-  int current_stream() const;
-  ssize_t num_frames() const; // number of frames in current stream
-  bool seek(int32_t frame_index_in_current_stream);
-  int curpos() const;
-
-protected:
-  c_pcap_reader pcap_;
-  c_hdl_packet_parser hdl_parser_;
-  std::vector<HDLStream> streams_;
-  int current_stream_ = -1;
-  int current_pos_ = -1;
-};
-
-
+#endif // 0
 
 #endif // HAVE_PCAP
 

@@ -35,60 +35,79 @@
 #include <core/debug.h>
 #include <core/proc/bfgs.h>
 
-#include <core/io/c_las_file.h>
-#include <core/proc/c_minmaxacc.h>
-#include <core/proc/c_math_expression.h>
+#include <core/io/hdl/c_parsed_frame_reader.h>
 
 
 int main(int argc, char *argv[])
 {
-  std::string s;
+  std::string address;
+  std::string options;
 
   for ( int i = 1; i < argc; ++i ) {
     if ( strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0 ) {
-      fprintf(stdout, "Usage: alpha 'expression'\n");
+      fprintf(stdout, "Usage: alpha path_to_pcap_file.pcap\n");
       return 0;
 
     }
 
-    if ( s.empty() ) {
-      s = argv[i];
+    if ( address.empty() ) {
+      address = argv[i];
       continue;
     }
 
     fprintf(stderr, "Invalid arg: '%s'\n", argv[i]);
     return 1;
-
   }
 
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  c_math_expression m;
-
-  m.add_argument(0, "x", "x");
-
-  if( !m.parse(s) ) {
-
-    CF_ERROR("m.parse() fails: %s err=%s",
-        m.error_message().c_str(),
-        m.pointer_to_syntax_error());
-
+  if ( address.empty() ) {
+    CF_ERROR("No pcap file specified");
     return 1;
   }
-
-  for ( double x = -10; x <= 10; x += 1 ) {
-
-    double args[] = {x};
-
-    double f = m.eval(args);
-
-    fprintf(stdout, "%g\t%g\n", x, f);
-
-  }
-
-  CF_DEBUG("H");
+//
+//
+//  c_hdl_offline_pcap_reader reader;
+//
+//
+//  if( !reader.open(address, options) ) {
+//    CF_ERROR("reader.open('%s') fails", address.c_str());
+//    return 1;
+//  }
+//
+////  return 0;
+//
+//  CF_DEBUG("reader.streams=%zu", reader.streams().size());
+//
+//  if ( !reader.select_stream(0) ) {
+//    CF_ERROR("reader.select_stream(0) fails");
+//    return 1;
+//  }
+//
+//  const int n =
+//      reader.num_frames();
+//
+//  CF_DEBUG("num_frames=%d", n);
+//
+//  for ( int i = 0; i < 10; ++i ) {
+//
+//    reader.seek(i);
+//
+//    c_hdl_frame::sptr frame =
+//        reader.read();
+//
+//    if ( !frame ) {
+//      CF_ERROR("reader.read() fails");
+//      break;
+//    }
+//
+//    CF_DEBUG("frame[%d].pts=%zu", i, frame->points.size());
+//
+//  }
+//
+//
 
 
   return 0;

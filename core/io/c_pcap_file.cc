@@ -64,7 +64,7 @@ const std::string & c_pcap_reader::options() const
   return options_;
 }
 
-uint c_pcap_reader::precision() const
+uint32_t c_pcap_reader::precision() const
 {
   return precision_;
 }
@@ -85,7 +85,7 @@ pcap_t * c_pcap_reader::pcap() const
   return pcap_;
 }
 
-bool c_pcap_reader::open(const std::string & filename, const std::string & filter_arg, uint precision)
+bool c_pcap_reader::open(const std::string & filename, const std::string & filter_arg, uint32_t precision)
 {
   close();
 
@@ -96,8 +96,8 @@ bool c_pcap_reader::open(const std::string & filename, const std::string & filte
 
   char errbuf[PCAP_ERRBUF_SIZE];
 
-  constexpr uint loopback_header_size = 4;
-  constexpr uint ethernet_header_size = 14;
+  constexpr uint32_t loopback_header_size = 4;
+  constexpr uint32_t ethernet_header_size = 14;
 
   bool fOk = false;
 

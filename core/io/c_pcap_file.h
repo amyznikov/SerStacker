@@ -15,19 +15,26 @@
 #ifndef __c_pcap_file_h__
 #define __c_pcap_file_h__
 
-#define HAVE_PCAP 1
-#if HAVE_PCAP
+// #define HAVE_PCAP 1
+#if HAVE_PCAP // Must be wet from CMakeList.txt
 
 #include <string>
-#include <netinet/ip.h>
-#include <netinet/udp.h>
+#include <inttypes.h>
 #include <pcap/pcap.h>
 #include <pcap/dlt.h>
 #include <pcap/sll.h>
-#include <inttypes.h>
 
 
-#if _WIN32
+#if !_WIN32
+#include <net/ethernet.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#else
+
+/**
+ * This stuff is copied from linux headers to support MSYS2 build
+ */
+
 /*
  *  IEEE 802.3 Ethernet magic constants.  The frame sizes omit the preamble
  *  and FCS/CRC (frame check sequence).
@@ -58,11 +65,60 @@ struct ether_header
   uint8_t  ether_shost[ETH_ALEN]; /* source ether addr  */
   uint16_t ether_type;            /* packet type ID field */
 };
-#pragma pack(pop)
 
+
+/*
+ * Definitions for internet protocol version 4.
+ * Per RFC 791, September 1981.
+ */
+#define IPVERSION 4
+
+/*
+ * Structure of an internet header, naked of options.
+ */
+struct ip {
+#ifdef _IP_VHL
+  uint8_t  ip_vhl;   /* version << 4 | header length >> 2 */
 #else
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+  unsigned int ip_hl:4,   /* header length */
+         ip_v:4;    /* version */
+#elif __BYTE_ORDER == __BIG_ENDIAN
+  unsigned int ip_v:4,    /* version */
+         ip_hl:4;   /* header length */
+#endif
+#endif /* not _IP_VHL */
+  uint8_t  ip_tos;    /* type of service */
+  uint16_t ip_len;   /* total length */
+  uint16_t ip_id;    /* identification */
+  uint16_t ip_off;   /* fragment offset field */
+#define IP_RF 0x8000      /* reserved fragment flag */
+#define IP_DF 0x4000      /* dont fragment flag */
+#define IP_MF 0x2000      /* more fragments flag */
+#define IP_OFFMASK 0x1fff   /* mask for fragmenting bits */
+  uint8_t  ip_ttl;   /* time to live */
+  uint8_t  ip_p;     /* protocol */
+  uint16_t ip_sum;   /* checksum */
+  struct  in_addr ip_src,ip_dst;  /* source and dest address */
+};
 
-# include <net/ethernet.h>
+#define UDP_SEGMENT  2  /* WinSock UDP_SEND_MSG_SIZE */
+#define UDP_GRO    3  /* WinSock UDP_RECV_MAX_COALESCED_SIZE,
+           also == UDP_COALESCED_INFO */
+
+/*
+ * Udp protocol header.
+ * Per RFC 768, September, 1981.
+ */
+struct udphdr {
+  uint16_t uh_sport;   /* source port */
+  uint16_t uh_dport;   /* destination port */
+  uint16_t uh_ulen;    /* udp length */
+  uint16_t uh_sum;   /* udp checksum */
+};
+
+
+#pragma pack(pop)
 
 #endif
 
@@ -192,7 +248,7 @@ public:
   /* Get time stamp precison, one of
    * PCAP_TSTAMP_PRECISION_MICRO or PCAP_TSTAMP_PRECISION_NANO
    * */
-  uint precision() const;
+  uint32_t precision() const;
 
   int data_header_size() const;
 
@@ -200,7 +256,7 @@ public:
 
   /* Open pcap file for read */
   bool open(const std::string & filename, const std::string & filter = "",
-      uint precision = PCAP_TSTAMP_PRECISION_MICRO);
+      uint32_t precision = PCAP_TSTAMP_PRECISION_MICRO);
 
   /* Check if file is open */
   bool is_open() const;
@@ -232,7 +288,7 @@ protected:
   pcap_t * pcap_ = nullptr;
   std::string filename_;
   std::string options_;
-  uint precision_ = PCAP_TSTAMP_PRECISION_MICRO;
+  uint32_t precision_ = PCAP_TSTAMP_PRECISION_MICRO;
   int datalinktype_ = 0;
   int data_header_size_ = -1;
 };

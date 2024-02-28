@@ -19,7 +19,8 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-#if HAVE_TINYXML2 // Must be set
+// Must be set from CMakeLists.txt
+#if HAVE_TINYXML2
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
@@ -70,6 +71,9 @@ static bool getValue(const XMLElement * root, const std::string & path, T * valu
 }
 
 #endif // HAVE_TINYXML2
+
+
+
 
 /**
  * load_hdl_lidar_specifcation_db_xml()

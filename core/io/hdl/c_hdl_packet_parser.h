@@ -11,8 +11,6 @@
 #include "c_hdl_frame.h"
 #include "c_hdl_specification.h"
 
-#if HAVE_PCAP
-
 #include <inttypes.h>
 #include <string>
 #include <vector>
@@ -102,22 +100,20 @@ public:
   {
     HDLReturnMode return_mode_ = HDLReturnMode_unknown;
     HDLFramingMode hdl_framing_mode_ = HDLFraming_Rotation;
-    int start_block = 0;
-    int last_known_azimuth_ = 0;
-    int pktcounter_ = 0;
     double hdl_frame_seam_azimuth_ = 0;
-    bool sensor_changed_ = false;
+    size_t frame_counter_ = 0;
+    int32_t start_block = 0;
+    int32_t last_known_azimuth_ = 0;
+    int32_t pktcounter_ = 0;
     uint32_t previousTohTimestamp_ = 0;
     uint32_t hours_counter_ = 0;
-    size_t frame_counter_ = 0;
+    bool sensor_changed_ = false;
   };
 
-
-  bool parse(const uint8_t * data, uint32_t size, int start_block = 0);
-  void reset();
-  void clear(const struct State * state = nullptr);
-
-  const State & state() const;
+  const State & state() const
+  {
+    return state_;
+  }
 
   void set_frame_created_callback(const on_frame_callback & cb)
   {
@@ -149,8 +145,8 @@ public:
     return frame_populated_callback_;
   }
 
-  bool sensor_changed() const;
-
+  bool parse(const uint8_t * data, uint32_t size);
+  void reset(const struct State * state = nullptr);
 
   void set_hdl_framing_mode(enum HDLFramingMode v);
   enum HDLFramingMode hdl_framing_mode() const;
@@ -167,47 +163,25 @@ public:
   HDLSensorType sensor_type() const;
   HDLReturnMode return_mode() const;
   const c_hdl_specification * lidar_specification() const;
-
-
-  int last_known_azimuth() const;
-  void set_last_known_azimuth(int );
-
-  int pktcounter() const;
-  void set_pktcounter(int );
-
-  uint32_t previousTohTimestamp() const;
-  void set_previousTohTimestamp(uint32_t );
-
-  uint32_t hours_counter() const;
-  void set_hours_counter(uint32_t );
-
-  size_t frame_counter() const;
-  void set_frame_counter(size_t );
-
   const c_hdl_frame::sptr & current_frame() const;
-
-  // std::vector<c_hdl_frame::sptr> frames;
 
 protected:
   bool setup(HDLSensorType sensor_type, HDLReturnMode return_mode);
   bool precompute_correction_tables();
-  bool parse_vlp16(const HDLDataPacket *dataPacket, int start_block = 0);
-  bool parse_vlp32(const HDLDataPacket *dataPacket, int start_block = 0);
-  bool parse_hdl32(const HDLDataPacket *dataPacket, int start_block = 0);
-  bool parse_hdl64(const HDLDataPacket *dataPacket, int start_block = 0);
-  bool parse_vls128(const HDLDataPacket *dataPacket, int start_block = 0);
+  bool parse_vlp16(const HDLDataPacket *dataPacket);
+  bool parse_vlp32(const HDLDataPacket *dataPacket);
+  bool parse_hdl32(const HDLDataPacket *dataPacket);
+  bool parse_hdl64(const HDLDataPacket *dataPacket);
+  bool parse_vls128(const HDLDataPacket *dataPacket);
   bool is_hdl_frame_seam(int current_packet_azimuth, int previous_packet_azimuth) const;
   void set_sensor_changed(bool v);
-  //c_hdl_frame * new_hdl_frame(int block);
   void new_current_frame(int block);
-  void on_frame_creaated(const c_hdl_frame::sptr & f);
+  void on_frame_creaated(const c_hdl_frame::sptr & f, int current_block);
   void on_frame_populated(const c_hdl_frame::sptr & f);
 
 protected:
   struct State state_;
   bool only_extract_frame_seams_ = false;
-
-  //bool unexpected_sensor_change_reported_ = false;
 
   c_hdl_frame::sptr current_frame_;
 
@@ -294,8 +268,5 @@ inline bool is_single_return_mode(HDLReturnMode return_mode)
   }
   return false;
 }
-
-#endif // HAVE_PCAP
-
 
 #endif /* __c_hdl_packet_parser_h__ */

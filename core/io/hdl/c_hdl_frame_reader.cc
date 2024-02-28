@@ -186,7 +186,7 @@ c_hdl_frame::sptr c_hdl_offline_pcap_reader::read()
   const parsed_frame & f =
       stream.frames[current_pos_];
 
-  hdl_parser_.clear(&f.parser_state);
+  hdl_parser_.reset(&f.parser_state);
 
   c_hdl_frame::sptr frame;
 
@@ -196,9 +196,6 @@ c_hdl_frame::sptr c_hdl_offline_pcap_reader::read()
       });
 
   pcap_.seek(f.filepos);
-
-  int start_block =
-      f.parser_state.start_block;
 
   uint32_t addrs = 0;
 
@@ -210,7 +207,7 @@ c_hdl_frame::sptr c_hdl_offline_pcap_reader::read()
       continue;
     }
 
-    if( !hdl_parser_.parse(payload, hdl_lidar_packet_size(), start_block) ) {
+    if( !hdl_parser_.parse(payload, hdl_lidar_packet_size()) ) {
       CF_ERROR("hdl_parser_.parse() fails");
       break;
     }
@@ -218,8 +215,6 @@ c_hdl_frame::sptr c_hdl_offline_pcap_reader::read()
     if( frame ) {
       break;
     }
-
-    start_block = 0;
   }
 
   if( !frame ) {

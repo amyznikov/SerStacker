@@ -8,8 +8,6 @@
 #include "c_hdl_packet_parser.h"
 #include "hdl_lidar_specifcation_db_xml.h"
 
-#if HAVE_PCAP
-
 #include <algorithm>
 #include <cmath>
 #include <core/ssprintf.h>
@@ -33,19 +31,17 @@ static inline double SQR(double val)
   return val * val;
 }
 
-void c_hdl_packet_parser::reset()
+void c_hdl_packet_parser::reset(const struct State * state)
 {
-  clear();
-  lidar_specification_.lasers.clear();
-  lidar_specification_.sensor = HDLSensor_unknown;
-}
+  current_frame_.reset();
 
-void c_hdl_packet_parser::clear(const struct State * state)
-{
   if ( state ) {
     state_ = *state;
   }
   else {
+
+    lidar_specification_.lasers.clear();
+    lidar_specification_.sensor = HDLSensor_unknown;
 
     state_.return_mode_ = HDLReturnMode_unknown;
     state_.last_known_azimuth_ = 0;
@@ -55,19 +51,6 @@ void c_hdl_packet_parser::clear(const struct State * state)
     state_.previousTohTimestamp_ = 0;
     state_.frame_counter_ = 0;
   }
-
-  //frames.clear();
-  current_frame_.reset();
-}
-
-const c_hdl_packet_parser::State & c_hdl_packet_parser::state() const
-{
-  return state_;
-}
-
-bool c_hdl_packet_parser::sensor_changed() const
-{
-  return state_.sensor_changed_;
 }
 
 void c_hdl_packet_parser::set_sensor_changed(bool v)
@@ -146,56 +129,6 @@ bool c_hdl_packet_parser::is_hdl_frame_seam(int current_packet_azimuth, int prev
           previous_packet_azimuth < state_.hdl_frame_seam_azimuth_ && current_packet_azimuth >= state_.hdl_frame_seam_azimuth_);
 }
 
-int c_hdl_packet_parser::last_known_azimuth() const
-{
-  return state_.last_known_azimuth_;
-}
-
-void c_hdl_packet_parser::set_last_known_azimuth(int v)
-{
-  state_.last_known_azimuth_ = v;
-}
-
-int c_hdl_packet_parser::pktcounter() const
-{
-  return state_.pktcounter_;
-}
-
-void c_hdl_packet_parser::set_pktcounter(int v)
-{
-  state_.pktcounter_ = v;
-}
-
-uint32_t c_hdl_packet_parser::previousTohTimestamp() const
-{
-  return state_.previousTohTimestamp_;
-}
-
-void c_hdl_packet_parser::set_previousTohTimestamp(uint32_t v)
-{
-  state_.previousTohTimestamp_ = v;
-}
-
-uint32_t c_hdl_packet_parser::hours_counter() const
-{
-  return state_.hours_counter_;
-}
-
-void c_hdl_packet_parser::set_hours_counter(uint32_t v)
-{
-  state_.hours_counter_ = v;
-}
-
-size_t c_hdl_packet_parser::frame_counter() const
-{
-  return state_.frame_counter_;
-}
-
-void c_hdl_packet_parser::set_frame_counter(size_t v)
-{
-  state_.frame_counter_ = v;
-}
-
 const c_hdl_frame::sptr & c_hdl_packet_parser::current_frame() const
 {
   return current_frame_;
@@ -258,7 +191,7 @@ bool c_hdl_packet_parser::setup(HDLSensorType sensor_type, HDLReturnMode return_
   return true;
 }
 
-bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block)
+bool c_hdl_packet_parser::parse(const uint8_t * data, uint size)
 {
   if( size != hdl_lidar_packet_size() ) {
     // CF_ERROR("IGNORE PACKET: invalid size = %u", size);
@@ -266,6 +199,9 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
   }
 
   ++state_.pktcounter_;
+  if( state_.start_block < 0 || state_.start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
+    state_.start_block = 0;
+  }
 
   const HDLDataPacket *dataPacket =
       reinterpret_cast<const HDLDataPacket*>(data);
@@ -324,7 +260,7 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
   switch (sensor_type) {
 
   case HDLSensor_VLP16:
-    if( !parse_vlp16(dataPacket, start_block) ) {
+    if( !parse_vlp16(dataPacket) ) {
       return false;
     }
     break;
@@ -334,25 +270,25 @@ bool c_hdl_packet_parser::parse(const uint8_t * data, uint size, int start_block
 
   case HDLSensor_VLP32AB:
     case HDLSensor_VLP32C:
-    if( !parse_vlp32(dataPacket, start_block) ) {
+    if( !parse_vlp32(dataPacket) ) {
       return false;
     }
     break;
 
   case HDLSensor_HDL32E:
-    if( !parse_hdl32(dataPacket, start_block) ) {
+    if( !parse_hdl32(dataPacket) ) {
       return false;
     }
     break;
 
   case HDLSensor_HDL64:
-    if( !parse_hdl64(dataPacket, start_block) ) {
+    if( !parse_hdl64(dataPacket) ) {
       return false;
     }
     break;
 
   case HDLSensor_VLS128:
-    if( !parse_vls128(dataPacket, start_block) ) {
+    if( !parse_vls128(dataPacket) ) {
       return false;
     }
     break;
@@ -591,38 +527,36 @@ bool c_hdl_packet_parser::precompute_correction_tables()
   return true;
 }
 
-void c_hdl_packet_parser::on_frame_creaated(const c_hdl_frame::sptr & f)
+void c_hdl_packet_parser::on_frame_creaated(const c_hdl_frame::sptr & f, int current_block)
 {
   if ( frame_created_callback_ ) {
+    state_.start_block = current_block;
     frame_created_callback_(*this, f);
   }
+  state_.start_block = 0;
 }
 
 void c_hdl_packet_parser::on_frame_populated(const c_hdl_frame::sptr & f)
 {
-  //frames.emplace_back(f);
   if ( frame_populated_callback_ ) {
     frame_populated_callback_(*this, f);
   }
 }
 
 
-void c_hdl_packet_parser::new_current_frame(int block)
+void c_hdl_packet_parser::new_current_frame(int current_block)
 {
   if ( current_frame_ ) {
     on_frame_populated(current_frame_);
   }
 
   current_frame_.reset(new c_hdl_frame());
-  current_frame_->index = block;
   current_frame_->index = state_.frame_counter_++;
-  state_.start_block = block;
 
-  on_frame_creaated(current_frame_);
-
+  on_frame_creaated(current_frame_, current_block);
 }
 
-bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start_block)
+bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket)
 {
   if( lidar_specification_.lasers.size() != 16 ) {
     CF_ERROR("Invalid call: lasers_table was not correctly initialized for sensor '%s'. "
@@ -652,10 +586,6 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
   state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
-  if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
-    start_block = 0;
-  }
-
   if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
     new_current_frame(0);
     if( only_extract_frame_seams_ ) {
@@ -663,7 +593,7 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
     }
   }
 
-  for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
+  for( int block = state_.start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
       new_current_frame(block);
@@ -781,15 +711,12 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
     }
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
-      //frames.emplace_back(currently_populated_frame_);
-      // currently_populated_frame_.reset();
       on_frame_populated(current_frame_);
       current_frame_.reset();
     }
   }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
-    // frames.emplace_back(currently_populated_frame_);
     on_frame_populated(current_frame_);
     current_frame_.reset();
   }
@@ -812,7 +739,7 @@ bool c_hdl_packet_parser::parse_vlp16(const HDLDataPacket *dataPacket, int start
  *  See Table 9-5.
  */
 
-bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int start_block)
+bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket)
 {
   if( lidar_specification_.lasers.size() != 32 ) {
     CF_ERROR("Invalid call: lasers_table was not correctly initialized for sensor '%s'. "
@@ -842,10 +769,6 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
   state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
-  if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
-    start_block = 0;
-  }
-
   if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
     new_current_frame(0);
     if( only_extract_frame_seams_ ) {
@@ -853,7 +776,7 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
     }
   }
 
-  for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
+  for( int block = state_.start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
       new_current_frame(block);
@@ -964,14 +887,12 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
     }
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
-      //frames.emplace_back(currently_populated_frame_);
       on_frame_populated(current_frame_);
       current_frame_.reset();
     }
   }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
-    //frames.emplace_back(currently_populated_frame_);
     on_frame_populated(current_frame_);
     current_frame_.reset();
   }
@@ -979,7 +900,7 @@ bool c_hdl_packet_parser::parse_vlp32(const HDLDataPacket * dataPacket, int star
   return true;
 }
 
-bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int start_block)
+bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket)
 {
   if( lidar_specification_.lasers.size() != 32 ) {
     CF_ERROR("Invalid call: lasers_table was not correctly initialized for sensor '%s'. "
@@ -1009,9 +930,6 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
   state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
-  if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
-    start_block = 0;
-  }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
     new_current_frame(0);
@@ -1020,7 +938,7 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
     }
   }
 
-  for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
+  for( int block = state_.start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
       new_current_frame(block);
@@ -1131,14 +1049,12 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
     }
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
-      //frames.emplace_back(currently_populated_frame_);
       on_frame_populated(current_frame_);
       current_frame_.reset();
     }
   }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
-    //frames.emplace_back(currently_populated_frame_);
     on_frame_populated(current_frame_);
     current_frame_.reset();
   }
@@ -1147,7 +1063,7 @@ bool c_hdl_packet_parser::parse_hdl32(const HDLDataPacket * dataPacket, int star
 }
 
 // HDL-64E_S3.pdf
-bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int start_block)
+bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket)
 {
   if( lidar_specification_.lasers.size() != 64 ) {
     CF_ERROR("Invalid call: lasers_table was not correctly initialized for sensor '%s'. "
@@ -1180,9 +1096,6 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
   state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
-  if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
-    start_block = 0;
-  }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
     new_current_frame(0);
@@ -1191,7 +1104,7 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
     }
   }
 
-  for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
+  for( int block = state_.start_block; block < HDL_DATA_BLOCKS_PER_PKT; ++block ) {
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
       new_current_frame(block);
@@ -1400,14 +1313,12 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
     }
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
-      //frames.emplace_back(currently_populated_frame_);
       on_frame_populated(current_frame_);
       current_frame_.reset();
     }
   }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
-    //frames.emplace_back(currently_populated_frame_);
     on_frame_populated(current_frame_);
     current_frame_.reset();
   }
@@ -1418,7 +1329,7 @@ bool c_hdl_packet_parser::parse_hdl64(const HDLDataPacket * dataPacket, int star
 /** VLS-128 User Manual
  *  9.5 Precision Azimuth Calculation
  */
-bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int start_block)
+bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket)
 {
   if( lidar_specification_.lasers.size() != 128 ) {
     CF_ERROR("Invalid call: lasers_table was not correctly initialized for sensor '%s'. "
@@ -1448,10 +1359,6 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
   state_.previousTohTimestamp_ =
       dataPacket->TohTimestamp;
 
-  if( start_block < 0 || start_block >= HDL_DATA_BLOCKS_PER_PKT ) {
-    start_block = 0;
-  }
-
   if( state_.hdl_framing_mode_ == HDLFraming_Packet ) {
     new_current_frame(0);
     if( only_extract_frame_seams_ ) {
@@ -1459,7 +1366,7 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
     }
   }
 
-  for( int block = start_block; block < HDL_DATA_BLOCKS_PER_PKT - (4 * dual_mode); ++block ) {
+  for( int block = state_.start_block; block < HDL_DATA_BLOCKS_PER_PKT - (4 * dual_mode); ++block ) {
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock ) {
       new_current_frame(block);
@@ -1577,21 +1484,15 @@ bool c_hdl_packet_parser::parse_vls128(const HDLDataPacket * dataPacket, int sta
     }
 
     if( state_.hdl_framing_mode_ == HDLFraming_DataBlock && current_frame_ ) {
-      //frames.emplace_back(currently_populated_frame_);
       on_frame_populated(current_frame_);
       current_frame_.reset();
     }
   }
 
   if( state_.hdl_framing_mode_ == HDLFraming_Packet && current_frame_ ) {
-    //frames.emplace_back(currently_populated_frame_);
     on_frame_populated(current_frame_);
     current_frame_.reset();
   }
 
   return true;
 }
-
-
-#endif // HAVE_PCAP
-

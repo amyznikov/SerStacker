@@ -9,18 +9,15 @@
 #ifndef __c_hdl_frame_reader_h__
 #define __c_hdl_frame_reader_h__
 
-#include <core/io/c_pcap_file.h>
-
-#define HAVE_PCAP 1
-
+// Must be set from CMakeList.txt
+// #define HAVE_PCAP 1
 #if HAVE_PCAP
 
+#include <core/io/c_pcap_file.h>
 #include "c_hdl_packet_parser.h"
 #include <memory>
 #include <vector>
 #include <functional>
-#include <thread>
-#include <mutex>
 
 
 

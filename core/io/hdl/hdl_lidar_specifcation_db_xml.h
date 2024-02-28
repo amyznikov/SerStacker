@@ -19,7 +19,6 @@
 #define __hdl_lidar_specifcation_db_xml_h__
 
 #include <string>
-
 #include "c_hdl_specification.h"
 
 /**

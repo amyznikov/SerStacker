@@ -6,7 +6,6 @@
  */
 
 #include "c_hdl_specification.h"
-
 #include <core/ssprintf.h>
 #include <core/debug.h>
 

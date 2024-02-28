@@ -6,6 +6,8 @@
  */
 
 #include "c_hdl_data_frame.h"
+#include <core/io/hdl/c_hdl_range_image.h>
+
 
 c_hdl_data_frame::c_hdl_data_frame()
 {
@@ -68,7 +70,7 @@ void c_hdl_data_frame::setup_default_channels()
 //      0, 255);
 
   viewTypes_.clear();
-//  viewTypes_.emplace(DataViewType_Image);
+  viewTypes_.emplace(DataViewType_Image);
   viewTypes_.emplace(DataViewType_PointCloud);
 }
 
@@ -80,14 +82,64 @@ bool c_hdl_data_frame::get_data(DataViewType * selectedViewType,
     cv::OutputArray mask)
 {
 
-  * selectedViewType =
-      DataViewType_PointCloud;
+//  * selectedViewType =
+//      DataViewType_PointCloud;
 
   if ( !current_frame_ ) {
     return false;
   }
 
-  if ( * selectedViewType == DataViewType_PointCloud ) {
+  if ( * selectedViewType == DataViewType_Image ) {
+
+    c_hdl_range_image range_image(&current_lidar_);
+
+    cv::Mat1f im1;
+    cv::Mat1b im2;
+
+    if ( channelName == "INTENSITY" ) {
+      range_image.build_intensity(current_frame_->points, im1);
+    }
+    else if( channelName == "DISTANCES" ) {
+      range_image.build_distances(current_frame_->points, im1);
+    }
+    else if( channelName == "HEIGHT" ) {
+      range_image.build_heights(current_frame_->points, im1);
+    }
+    else if( channelName == "AZIMUTH" ) {
+      range_image.build_azimuths(current_frame_->points, im1);
+    }
+    else if( channelName == "ELEVATION" ) {
+      range_image.build_elevations(current_frame_->points, im1);
+    }
+    else if( channelName == "LASER_ID" ) {
+      range_image.build_lazerids(current_frame_->points, im2);
+    }
+    else if( channelName == "LASER_RING" ) {
+      range_image.build_lazer_rings(current_frame_->points, im2);
+    }
+    else if( channelName == "DATABLOCK" ) {
+      range_image.build_datablocks(current_frame_->points, im2);
+    }
+    else if( channelName == "TIMESTAMP" ) {
+      range_image.build_timestamps(current_frame_->points, im1);
+    }
+    else { // DEPTH
+      range_image.build_depths(current_frame_->points, im1);
+    }
+
+    if( !im1.empty() ) {
+      image.move(im1);
+    }
+    else if( !im2.empty() ) {
+      image.move(im2);
+    }
+
+    if ( !image.empty() ) {
+      cv::rotate(image.getMat(), image, cv::ROTATE_90_COUNTERCLOCKWISE);
+    }
+
+  }
+  else if ( * selectedViewType == DataViewType_PointCloud ) {
 
     convert_to_cartesian(current_frame_->points, image);
 

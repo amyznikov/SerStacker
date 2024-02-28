@@ -686,6 +686,63 @@ bool c_hdl_range_image::build_lazerids(const std::vector<c_hdl_point> & points,
 }
 
 
+/** build range image where each pixel is the laser_ring of HDL point */
+bool c_hdl_range_image::build_lazer_rings(const std::vector<c_hdl_point> & points,
+    /* out*/ cv::Mat1b & rings,
+    /* out, opt */ cv::Mat1b * mask,
+    const std::vector<uint8_t> * filter) const
+{
+  if( filter && !filter->empty() && filter->size() != points.size() ) {
+    CF_ERROR("Invalid filter size=%zu, expected %zu", filter->size(), points.size());
+    return false;
+  }
+
+  if( !create_output_images(rings, mask) ) {
+    CF_ERROR("create_output_images() fails");
+    return false;
+  }
+
+  cv::Mat1f distances;
+  int r, c;
+
+  distances.create(rings.size());
+  distances.setTo(0);
+
+  if ( !filter || filter->empty() ) {
+    for( const c_hdl_point &p : points ) {
+      if( p.distance > 0 && project(p, &r, &c) ) {
+        if( !distances[r][c] || p.distance < distances[r][c] ) {
+          distances[r][c] = p.distance;
+          rings[r][c] = p.laser_ring;
+          if( mask ) {
+            (*mask)[r][c] = 255;
+          }
+        }
+      }
+    }
+  }
+  else {
+    for( uint i = 0, n = points.size(); i < n; ++i ) {
+      if( (*filter)[i] ) {
+        const c_hdl_point &p = points[i];
+        if( p.distance > 0 && project(p, &r, &c) ) {
+          if( !distances[r][c] || p.distance < distances[r][c] ) {
+            distances[r][c] = p.distance;
+            rings[r][c] = p.laser_ring;
+            if( mask ) {
+              (*mask)[r][c] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+
+}
+
+
 /** build range image where each pixel is the data block index of HDL point */
 bool c_hdl_range_image::build_datablocks(const std::vector<c_hdl_point> & points,
     /* out*/ cv::Mat1b & datablocks,

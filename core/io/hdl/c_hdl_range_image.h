@@ -108,6 +108,12 @@ public:
       /* out, opt */ cv::Mat1b * mask = nullptr,
       const std::vector<uint8_t> * filter = nullptr) const;
 
+  /** build range image where each pixel is the laser_ring of HDL point */
+  bool build_lazer_rings(const std::vector<c_hdl_point> & points,
+      /* out*/ cv::Mat1b & rings,
+      /* out, opt */ cv::Mat1b * mask = nullptr,
+      const std::vector<uint8_t> * filter = nullptr) const;
+
   /** build range image where each pixel is the data block index of HDL point */
   bool build_datablocks(const std::vector<c_hdl_point> & points,
       /* out*/ cv::Mat1b & datablocks,

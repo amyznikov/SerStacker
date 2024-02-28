@@ -234,6 +234,16 @@ public:
     return tan_elevation_table_[laser_ring];
   }
 
+  static constexpr double default_azimuthal_resolution()
+  {
+    return 0.2101 * CV_PI / 180;
+  }
+
+  static constexpr double default_start_azimuth()
+  {
+    return CV_PI;
+  }
+
 protected:
   void update_image_size();
 
@@ -243,8 +253,8 @@ protected:
 
 protected:
   const c_hdl_specification * hdl_ = nullptr;
-  double azimuthal_resolution_ = 0.2101 * CV_PI / 180;
-  double start_azimuth_ = 0;
+  double azimuthal_resolution_ = default_azimuthal_resolution();
+  double start_azimuth_ = default_start_azimuth();
   cv::Size image_size_;
   std::vector<float> sin_elevation_table_;
   std::vector<float> cos_elevation_table_;

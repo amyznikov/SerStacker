@@ -31,7 +31,7 @@ public:
   }
 
   bool process(c_data_frame::sptr & dataframe) override;
-  virtual bool process(c_hdl_data_frame * vlo) = 0;
+  virtual bool process(c_hdl_data_frame * hdl) = 0;
 
 protected:
   c_hdl_processor_routine(const class_factory * _class_factory, bool enabled = true) :

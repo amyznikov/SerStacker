@@ -11,6 +11,7 @@
 
 #include <core/io/hdl/c_hdl_frame.h>
 #include <core/io/hdl/c_hdl_specification.h>
+#include <core/io/hdl/c_hdl_range_image.h>
 #include <core/io/c_data_frame.h>
 
 class c_hdl_data_frame :
@@ -31,6 +32,16 @@ public:
 
   void cleanup() override;
 
+  c_hdl_range_image & range_image()
+  {
+    return range_image_;
+  }
+
+  const c_hdl_range_image & range_image() const
+  {
+    return range_image_;
+  }
+
 protected:
   void setup_default_channels();
 
@@ -38,6 +49,7 @@ protected:
   friend class c_hdl_input_source;
   c_hdl_frame::sptr current_frame_;
   c_hdl_specification current_lidar_;
+  c_hdl_range_image range_image_;
   cv::Mat selection_mask_;
 };
 

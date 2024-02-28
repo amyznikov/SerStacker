@@ -44,6 +44,7 @@ public:
   bool process(c_hdl_data_frame * hdl) override;
 
 protected:
+
   double azimuthal_resolution_ =
       c_hdl_range_image::default_azimuthal_resolution() * 180 / CV_PI; // deg
 

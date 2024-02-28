@@ -7,15 +7,31 @@
 
 #include "QInputOptions.h"
 #include <gui/widgets/style.h>
+#include <core/io/hdl/c_hdl_specification.h>
 
 
-#define BAYER_ICON ":/gui/icons/bayer.png"
+
+#define ICON_bayer          ":/gui/icons/bayer.png"
+#define ICON_settings       ":/qinputoptions/icons/settings.png"
+#define ICON_gps            ":/qinputoptions/icons/gps3.png"
+#define ICON_lidar          ":/qinputoptions/icons/lidar64.png"
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void init_resources()
+{
+  Q_INIT_RESOURCE(gui_resources);
+  Q_INIT_RESOURCE(qinputoptions_resources);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
     Base(parent)
 {
+  init_resources();
+
   debayer_ctl =
       add_enum_combobox<DEBAYER_ALGORITHM>("Default debayer:",
           "Select debayer algorithm for bayer patterns",
@@ -88,16 +104,177 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
   updateControls();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
+    Base("", parent)
+{
+  init_resources();
+
+  QWidget *groupBox =
+      add_widget<QWidget>("");
+
+  QVBoxLayout * groupBoxLayout =
+      new QVBoxLayout(groupBox);
+
+  QHBoxLayout * tooltipLayout =
+      new QHBoxLayout();
+
+  QLabel * iconLabel =
+      new QLabel(this);
+
+  QPixmap pxmap =
+      getPixmap(ICON_lidar);
+
+  CF_DEBUG("pxmap: isNull=%d %dx%d", pxmap.isNull(), pxmap.width(), pxmap.height());
+
+  iconLabel->setPixmap(pxmap);
+
+  QLabel *tooltipLabel =
+      new QLabel("This page will associate specific sensor type with specific lidar settings xml file. "
+          "If not explicitly associated then the builtin (hard coded in application) default settings will used.");
+  tooltipLabel->setWordWrap(true);
+
+  tooltipLayout->addWidget(iconLabel, 1, Qt::AlignLeft);
+  tooltipLayout->addWidget(tooltipLabel, 4);
+  groupBoxLayout->addLayout(tooltipLayout, 1);
+
+  ///
+
+  QHBoxLayout * ctrlLayout =
+      new QHBoxLayout();
+
+  ctrlLayout->setAlignment(Qt::AlignTop);
+
+  ctrlLayout->addWidget(sensorType_ctl =
+      new QEnumComboBox<HDLSensorType>(this), 1, Qt::AlignLeft);
+  sensorType_ctl->setToolTip("Select sensor type to associate with config file");
+
+  ctrlLayout->addWidget(configFilePathName_ctl =
+      new QBrowsePathCombo("", QFileDialog::AcceptOpen), 100);
+
+  configFilePathName_ctl->setToolTip("Specify path and file name to lidar config file \n"
+      "associated with selected sensor type");
+
+  groupBoxLayout->addLayout(ctrlLayout, 100);
+
+  ///
+
+  connect(sensorType_ctl, &QEnumComboBoxBase::currentItemChanged,
+      [this]() {
+        configFilePathName_ctl->setCurrentPath(
+            get_hdl_lidar_specification_config_file(
+                sensorType_ctl->currentItem()).c_str(),
+            false);
+      });
+
+  connect(configFilePathName_ctl, &QBrowsePathCombo::pathChanged,
+      [this]() {
+
+        set_hdl_lidar_specification_config_file(
+            sensorType_ctl->currentItem(),
+            configFilePathName_ctl->currentPath().toStdString());
+
+        saveHDLSensorTypeToConfigFileMapping();
+      });
+
+  configFilePathName_ctl->setCurrentPath(
+      get_hdl_lidar_specification_config_file(
+          sensorType_ctl->currentItem()).c_str(),
+      false);
+
+  ///
+
+//
+//  nonlive_streams_delay_ctl =
+//      add_numeric_box<int>("Nonlive streams delay [usec]",
+//          "",
+//          [this](int v ) {
+//
+//            c_hdl_source::set_nonlive_stream_delay_us(v);
+//            nonlive_streams_delay_ctl->setValue(c_hdl_source::nonlive_stream_delay_us());
+//
+//            saveHDLStreamsGlobalOptions();
+//          });
+//
+//  nonlive_streams_delay_ctl->setToolTip(
+//      "Use this parameter to setup the read rate of \n"
+//          "pre-recorded non-live streams (PCAP files etc).\n"
+//          "This interval specifies usleep() time in [us] between reading packets from pcap sources.\n"
+//          "This parameter is ignored for live (UDP) streams");
+
+  updateControls();
+}
+
+
+
+void loadHDLSensorTypeToConfigFileMapping()
+{
+  QSettings settings;
+
+  const c_enum_member *sensor_type =
+      members_of<HDLSensorType>();
+
+  for( ; !sensor_type->name.empty(); ++sensor_type ) {
+    set_hdl_lidar_specification_config_file((HDLSensorType) sensor_type->value,
+        settings.value(QString("HDLSensorTypeToConfigFileMapping/%1").arg(sensor_type->name.c_str())).toString().toStdString());
+  }
+}
+
+void saveHDLSensorTypeToConfigFileMapping()
+{
+  QSettings settings;
+
+  const c_enum_member *sensor_type =
+      members_of<HDLSensorType>();
+
+  for( ; !sensor_type->name.empty(); ++sensor_type ) {
+    settings.setValue(QString("HDLSensorTypeToConfigFileMapping/%1").arg(sensor_type->name.c_str()),
+        get_hdl_lidar_specification_config_file((HDLSensorType) sensor_type->value).c_str());
+  }
+}
+
+
+void loadHDLStreamsGlobalOptions()
+{
+//  QSettings settings;
+//
+//  const int delay_us =
+//      settings.value("HDLStreamsGlobalOptions/nonlive_streams_delay_us",
+//          c_hdl_source::nonlive_stream_delay_us()).toInt();
+//
+//  c_hdl_source::set_nonlive_stream_delay_us(
+//      std::max(10, std::min(delay_us, 100 * 1000)));
+}
+
+void saveHDLStreamsGlobalOptions()
+{
+//  QSettings settings;
+//  settings.setValue("HDLStreamsGlobalOptions/nonlive_streams_delay_us",
+//      c_hdl_source::nonlive_stream_delay_us());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 QInputOptions::QInputOptions(QWidget * parent) :
     Base(parent)
 {
+  init_resources();
+
   addRow(tab_ctl = new QTabWidget(this));
 
   tab_ctl->addTab(videoOptions_ctl = new QVideoInputOptions(this),
       QIcon(), "Video");
 
+  tab_ctl->addTab(hdlconfigOptions_ctl = new QHDLConfigOptions(this),
+      QIcon(), "HDL");
+
+
+
   connect(videoOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
+
+
 
   updateControls();
 }
@@ -119,8 +296,10 @@ void QInputOptions::set_options(c_input_options * options)
 QInputOptionsDialogBox::QInputOptionsDialogBox(QWidget * parent) :
     Base(parent)
 {
+  init_resources();
+
   setWindowTitle("Input Options...");
-  setWindowIcon(getIcon(BAYER_ICON));
+  setWindowIcon(getIcon(ICON_bayer));
 
   QVBoxLayout * vbox =
       new QVBoxLayout(this);

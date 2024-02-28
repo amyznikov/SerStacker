@@ -10,7 +10,8 @@
 
 bool c_video_frame_processor_routine::process(c_data_frame::sptr & dataframe)
 {
-  c_video_frame * frame = dynamic_cast<c_video_frame*>(dataframe.get());
+  c_video_frame * frame =
+      dynamic_cast<c_video_frame*>(dataframe.get());
 
   if( !frame ) {
     CF_ERROR("c_video_frame_processor_routine: \n"

@@ -1,23 +1,22 @@
 /*
- * c_vlo_processor_routine.h
+ * c_hdl_processor_routine.h
  *
- *  Created on: Dec 16, 2023
+ *  Created on: Feb 28, 2024
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_vlo_processor_routine_h__
-#define __c_vlo_processor_routine_h__
+#ifndef __c_hdl_processor_routine_h__
+#define __c_hdl_processor_routine_h__
 
 #include <core/dataproc/c_data_frame_processor.h>
-#include <core/io/vlo/c_vlo_data_frame.h>
+#include <core/io/hdl/c_hdl_data_frame.h>
 
-
-class c_vlo_processor_routine :
+class c_hdl_processor_routine :
     public c_data_frame_processor_routine
 {
 public:
-  typedef c_vlo_processor_routine this_class;
+  typedef c_hdl_processor_routine this_class;
   typedef c_data_frame_processor_routine base;
   typedef std::shared_ptr<this_class> sptr;
 
@@ -32,10 +31,10 @@ public:
   }
 
   bool process(c_data_frame::sptr & dataframe) override;
-  virtual bool process(c_vlo_data_frame * vlo) = 0;
+  virtual bool process(c_hdl_data_frame * vlo) = 0;
 
 protected:
-  c_vlo_processor_routine(const class_factory * _class_factory, bool enabled = true) :
+  c_hdl_processor_routine(const class_factory * _class_factory, bool enabled = true) :
     base(_class_factory, enabled)
   {
   }
@@ -44,10 +43,11 @@ protected:
   std::string output_name_;
 };
 
-#define DECLARE_VLO_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip) \
+
+#define DECLARE_HDL_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip) \
     typedef class_name this_class; \
     typedef std::shared_ptr<this_class> sptr; \
-    typedef c_vlo_processor_routine base; \
+    typedef c_hdl_processor_routine base; \
     struct c_class_factory : public base::class_factory { \
       c_class_factory() : \
         base::class_factory(#class_name, \
@@ -69,4 +69,4 @@ protected:
         return sptr(new this_class(enabled)); \
     } \
 
-#endif /* __c_vlo_processor_routine_h__ */
+#endif /* __c_hdl_processor_routine_h__ */

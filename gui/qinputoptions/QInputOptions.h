@@ -10,7 +10,11 @@
 #define __QInputOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QBrowsePathCombo.h>
 #include <core/io/c_input_options.h>
+#include <core/io/hdl/c_hdl_specification.h>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class QVideoInputOptions :
     public QSettingsWidgetTemplate<c_video_input_options>
@@ -27,10 +31,30 @@ protected:
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
   QCheckBox * filter_bad_pixels_ctl = nullptr;
   QNumericBox * bad_pixels_variation_threshold_ctl = nullptr;
-
   //  QBrowsePathCombo * darkframe_ctl = nullptr;
   //  QNumericBox * darkFrameScale_ctl  = nullptr;
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class QHDLConfigOptions :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QHDLConfigOptions ThisClass;
+  typedef QSettingsWidget Base;
+
+  QHDLConfigOptions(QWidget * parent = nullptr);
+
+protected:
+  QEnumComboBox<HDLSensorType> * sensorType_ctl = nullptr;
+  QBrowsePathCombo * configFilePathName_ctl = nullptr;
+  // QNumericBox * nonlive_streams_delay_ctl = nullptr;
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class QInputOptions :
     public QSettingsWidgetTemplate<c_input_options>
@@ -47,8 +71,10 @@ public:
 protected:
   QTabWidget * tab_ctl = nullptr;
   QVideoInputOptions * videoOptions_ctl = nullptr;
+  QHDLConfigOptions * hdlconfigOptions_ctl = nullptr;
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class QInputOptionsDialogBox :
     public QDialog
@@ -75,5 +101,14 @@ protected:
   QInputOptions * inputOptions_ctl = nullptr;
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void loadHDLSensorTypeToConfigFileMapping();
+void saveHDLSensorTypeToConfigFileMapping();
+
+void loadHDLStreamsGlobalOptions();
+void saveHDLStreamsGlobalOptions();
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif /* __QInputOptions_h__ */

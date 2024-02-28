@@ -64,6 +64,10 @@ void c_hdl_data_frame::setup_default_channels()
       "3D Point time stamp relative to start of rotation",
       0, 100);
 
+  add_display_channel("GSLOPES",
+      "Local surface horizontal slope",
+      -M_PI, +M_PI);
+
 
 //  add_display_channel("SELECTION_MASK",
 //      "1- or 3-channel binary 2D Image representing current selection mask",
@@ -95,36 +99,40 @@ bool c_hdl_data_frame::get_data(DataViewType * selectedViewType,
 
     cv::Mat1f im1;
     cv::Mat1b im2;
+    cv::Mat1b m;
 
     if ( channelName == "INTENSITY" ) {
-      range_image.build_intensity(current_frame_->points, im1);
+      range_image.build_intensity(current_frame_->points, im1, &m);
     }
     else if( channelName == "DISTANCES" ) {
-      range_image.build_distances(current_frame_->points, im1);
+      range_image.build_distances(current_frame_->points, im1, &m);
     }
     else if( channelName == "HEIGHT" ) {
-      range_image.build_heights(current_frame_->points, im1);
+      range_image.build_heights(current_frame_->points, im1, &m);
     }
     else if( channelName == "AZIMUTH" ) {
-      range_image.build_azimuths(current_frame_->points, im1);
+      range_image.build_azimuths(current_frame_->points, im1, &m);
     }
     else if( channelName == "ELEVATION" ) {
-      range_image.build_elevations(current_frame_->points, im1);
+      range_image.build_elevations(current_frame_->points, im1, &m);
     }
     else if( channelName == "LASER_ID" ) {
-      range_image.build_lazerids(current_frame_->points, im2);
+      range_image.build_lazerids(current_frame_->points, im2, &m);
     }
     else if( channelName == "LASER_RING" ) {
-      range_image.build_lazer_rings(current_frame_->points, im2);
+      range_image.build_lazer_rings(current_frame_->points, im2, &m);
     }
     else if( channelName == "DATABLOCK" ) {
-      range_image.build_datablocks(current_frame_->points, im2);
+      range_image.build_datablocks(current_frame_->points, im2, &m);
     }
     else if( channelName == "TIMESTAMP" ) {
-      range_image.build_timestamps(current_frame_->points, im1);
+      range_image.build_timestamps(current_frame_->points, im1, &m);
+    }
+    else if( channelName == "GSLOPES" ) {
+      range_image.build_gslopes(current_frame_->points, im1, &m);
     }
     else { // DEPTH
-      range_image.build_depths(current_frame_->points, im1);
+      range_image.build_depths(current_frame_->points, im1, &m);
     }
 
     if( !im1.empty() ) {
@@ -137,6 +145,8 @@ bool c_hdl_data_frame::get_data(DataViewType * selectedViewType,
     if ( !image.empty() ) {
       cv::rotate(image.getMat(), image, cv::ROTATE_90_COUNTERCLOCKWISE);
     }
+
+    cv::rotate(m, mask, cv::ROTATE_90_COUNTERCLOCKWISE);
 
   }
   else if ( * selectedViewType == DataViewType_PointCloud ) {
@@ -220,6 +230,23 @@ bool c_hdl_data_frame::get_data(DataViewType * selectedViewType,
       for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
         colors[i][0] = current_frame_->points[i].timestamp - tsmin;
       }
+    }
+    else if( channelName == "GSLOPES" ) {
+
+      c_hdl_range_image range_image(&current_lidar_);
+      cv::Mat1f im1;
+      cv::Mat1b m;
+      int r, c;
+
+
+      range_image.build_gslopes(current_frame_->points, im1, &m);
+
+      for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+        if( range_image.project(current_frame_->points[i], &r, &c) ) {
+          colors[i][0] = im1[r][c];
+        }
+      }
+
     }
 
 //    else if( channelName == "SELECTION_MASK" ) {

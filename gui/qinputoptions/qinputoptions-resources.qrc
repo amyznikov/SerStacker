@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qinputoptions">
+	<file>icons/settings.png</file>
+	<file>icons/light/gps3.png</file>
+	<file>icons/dark/gps3.png</file>
+	<file>icons/light/lidar64.png</file>
+	<file>icons/dark/lidar64.png</file>
+</qresource>
+</RCC>

@@ -172,6 +172,8 @@ void MainWindow::onRestoreState(QSettings & settings)
 {
   Base::onRestoreState(settings);
 
+  loadHDLSensorTypeToConfigFileMapping();
+
   if ( fileSystemTreeDock ) {
     fileSystemTreeDock->displayPath(settings.value(
         "fileSystemTree/absoluteFilePath").toString());

@@ -10,7 +10,8 @@
 
 bool c_vlo_processor_routine::process(c_data_frame::sptr & dataframe)
 {
-  c_vlo_data_frame * vlo = dynamic_cast<c_vlo_data_frame*>(dataframe.get());
+  c_vlo_data_frame * vlo =
+      dynamic_cast<c_vlo_data_frame*>(dataframe.get());
 
   if( !vlo ) {
     CF_ERROR("c_vlo_processor_routine: \n"

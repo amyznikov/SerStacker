@@ -113,7 +113,7 @@ public:
   };
 
 
-  bool parse(const uint8_t * data, uint size, int start_block = 0);
+  bool parse(const uint8_t * data, uint32_t size, int start_block = 0);
   void reset();
   void clear(const struct State * state = nullptr);
 
@@ -241,9 +241,9 @@ protected:
  *  That is : (2+2+(2+1)*32)*12 + 4 + 1 + 1
  *                #lasers^   ^#firingPerPkt
  **/
-inline constexpr uint hdl_lidar_packet_size()
+inline constexpr uint32_t hdl_lidar_packet_size()
 {
-  return 1206;
+  return 1206U;
 }
 
 /**

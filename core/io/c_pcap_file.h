@@ -81,10 +81,10 @@ struct ip {
   uint8_t  ip_vhl;   /* version << 4 | header length >> 2 */
 #else
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-  unsigned int ip_hl:4,   /* header length */
+  uint8_t ip_hl:4,   /* header length */
          ip_v:4;    /* version */
 #elif __BYTE_ORDER == __BIG_ENDIAN
-  unsigned int ip_v:4,    /* version */
+  uint8_t ip_v:4,    /* version */
          ip_hl:4;   /* header length */
 #endif
 #endif /* not _IP_VHL */

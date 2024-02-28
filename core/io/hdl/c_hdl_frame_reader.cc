@@ -1,6 +1,7 @@
 /*
  * c_hdl_frame_reader.cc
  *
+ *
  *  Created on: Feb 27, 2024
  *      Author: amyznikov
  */
@@ -12,7 +13,8 @@
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////
-// Static pcap file reader
+// Offline pcap file reader
+
 
 static int read_next_hdl_frame(c_pcap_reader & pcap, uint32_t * src_addrs, const uint8_t ** payload)
 {
@@ -23,11 +25,11 @@ static int read_next_hdl_frame(c_pcap_reader & pcap, uint32_t * src_addrs, const
 
   while ((status = pcap.read(&pkt_header, &data_header, payload)) >= 0) {
 
-    if( !payload ) {
+    if( !*payload ) {
       continue;
     }
 
-    const uint payload_size =
+    const uint32_t payload_size =
         pkt_header->len - pcap.data_header_size();
 
     if( payload_size != hdl_lidar_packet_size() ) {

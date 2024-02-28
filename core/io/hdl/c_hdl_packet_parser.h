@@ -17,8 +17,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 
 constexpr int HDL_DATA_BLOCKS_PER_PKT = 12;
 constexpr int HDL_LASERS_PER_DATA_BLOCK = 32;

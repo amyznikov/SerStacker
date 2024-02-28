@@ -81,7 +81,17 @@ bool c_hdl_input_source::read(c_data_frame::sptr & output_frame)
 
   hdl->cleanup();
 
-  return (hdl->current_frame_ = reader_.read()) != nullptr;
+  //c_hdl_specification lidar_specification_;
+  //;
+  if( (hdl->current_frame_ = reader_.read()) ) {
+
+    hdl->current_lidar_ =
+        *reader_.hdl_parser().lidar_specification();
+
+    return true;
+  }
+
+  return false;
 }
 
 c_hdl_frame::sptr c_hdl_input_source::read()

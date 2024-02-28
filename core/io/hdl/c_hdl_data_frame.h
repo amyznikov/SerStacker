@@ -10,6 +10,7 @@
 #define __c_hdl_data_frame_h__
 
 #include <core/io/hdl/c_hdl_frame.h>
+#include <core/io/hdl/c_hdl_specification.h>
 #include <core/io/c_data_frame.h>
 
 class c_hdl_data_frame :
@@ -33,8 +34,10 @@ public:
 protected:
   void setup_default_channels();
 
-public:
+protected:
+  friend class c_hdl_input_source;
   c_hdl_frame::sptr current_frame_;
+  c_hdl_specification current_lidar_;
   cv::Mat selection_mask_;
 };
 

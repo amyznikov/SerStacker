@@ -72,6 +72,11 @@ c_hdl_offline_pcap_reader::~c_hdl_offline_pcap_reader()
   close();
 }
 
+const c_hdl_packet_parser & c_hdl_offline_pcap_reader::hdl_parser() const
+{
+  return hdl_parser_;
+}
+
 void c_hdl_offline_pcap_reader::close()
 {
   pcap_.close();

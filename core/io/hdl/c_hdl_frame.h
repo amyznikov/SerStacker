@@ -95,18 +95,18 @@ void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, std::ve
 /**
  * convert spherical (raw) lidar points to Cartesian coordinates
  */
-inline void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, cv::OutputArray output_positions)
+inline void convert_to_cartesian(const std::vector<c_hdl_point> & hdl_points, cv::OutputArray output_positions)
 {
-  output_positions.create(lidar_points.size(), 1,
+  output_positions.create(hdl_points.size(), 1,
       CV_32FC3);
 
   cv::Mat3f positions =
       output_positions.getMatRef();
 
-  for( int i = 0, n = lidar_points.size(); i < n; ++i ) {
+  for( int i = 0, n = hdl_points.size(); i < n; ++i ) {
 
     const c_hdl_point & p =
-        lidar_points[i];
+        hdl_points[i];
 
     if( p.distance <= 0 ) {
       positions[i][0][0] = 0;
@@ -125,11 +125,11 @@ inline void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, 
  * convert spherical (raw) lidar points to Cartesian coordinates with time stamps in sec
  */
 template<class T>
-void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points,
+void convert_to_cartesian(const std::vector<c_hdl_point> & hdl_points,
     std::vector<cv::Vec<T, 4>> & positions_with_timestamps)
 {
   positions_with_timestamps.clear();
-  for( const c_hdl_point & p : lidar_points ) {
+  for( const c_hdl_point & p : hdl_points ) {
     if( p.distance <= 0 ) {
       positions_with_timestamps.emplace_back(0, 0, p.timestamp * 1e-6);
     }
@@ -211,7 +211,6 @@ inline double compute_tstamp(const c_hdl_point & p)
   return p.timestamp;
 }
 
-#if HAVE_PCAP
-#endif // HAVE_PCAP
+
 
 #endif /* __c_hdl_frame_h__ */

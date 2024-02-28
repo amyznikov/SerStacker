@@ -47,6 +47,8 @@ public:
 
   ~c_hdl_offline_pcap_reader();
 
+  const c_hdl_packet_parser & hdl_parser() const;
+
   bool open(const std::string & filename, const std::string & options = "");
   void close();
   bool is_open() const;
@@ -61,6 +63,7 @@ public:
 
   bool seek(int32_t frame_index_in_current_stream);
   int curpos() const;
+
 
 protected:
   c_pcap_reader pcap_;

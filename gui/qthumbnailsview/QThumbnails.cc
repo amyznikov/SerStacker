@@ -26,6 +26,8 @@
 
 #include <core/debug.h>
 
+#define HDL_image   ":/qthumbnailsview/icons/lidar1.png"
+
 QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
 {
   if ( !srcSize.isEmpty() ) {
@@ -429,6 +431,13 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
     //      return QImage(":/qthumbnailsview/icons/lidar1.png");
     //    }
   }
+
+  ///////////////////////////////////////////////////////////////
+#if HAVE_PCAP
+  if( match_suffix(suffix, c_hdl_input_source::suffixes()) ) {
+    return QImage(HDL_image);
+  }
+#endif // HAVE_PCAP
 
   ///////////////////////////////////////////////////////////////
 

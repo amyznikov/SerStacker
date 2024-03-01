@@ -1,5 +1,5 @@
 /*
- * c_hdl_mog2_filter.cc
+ * c_hdl_motion_filter.cc
  *
  *  Created on: Dec 4, 2022
  *      Author: amyznikov
@@ -231,7 +231,7 @@ void c_hdl_motion_filter::insert_mode(struct GM & gm, int insert_pos)
 
 bool c_hdl_motion_filter::update(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask)
 {
-  INSTRUMENT_REGION("c_hdl_mog2_filter");
+  INSTRUMENT_REGION("c_hdl_motion_filter");
 
   if( histogram_.empty() || range_image.size() != histogram_size_ ) {
 
@@ -459,7 +459,7 @@ bool c_hdl_motion_filter::update(const cv::Mat1f & range_image, cv::OutputArray 
 
 void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask) const
 {
-  INSTRUMENT_REGION("c_hdl_mog2_filter");
+  INSTRUMENT_REGION("c_hdl_motion_filter");
 
   if( denoise_filter_depth_ <= 0 || denoise_filter_threshold_ < 2 ) {
     return;
@@ -548,7 +548,7 @@ void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv:
 bool c_hdl_motion_filter::apply(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask)
 {
   if( !update(range_image, output_foreground_mask) ) {
-    CF_ERROR("c_hdl_mog2_filter::update() fails");
+    CF_ERROR("c_hdl_motion_filter::update() fails");
     return false;
   }
 

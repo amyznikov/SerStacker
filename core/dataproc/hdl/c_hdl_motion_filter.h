@@ -1,5 +1,5 @@
 /*
- * c_hdl_mog2_filter.h
+ * c_hdl_motion_filter.h
  *
  *  Created on: Dec 4, 2022
  *      Author: amyznikov
@@ -11,6 +11,10 @@
 
 #include <opencv2/opencv.hpp>
 
+/**
+ * Motion detection for HDL point cloud captured from
+ * stationary installed LiDAR
+ */
 class c_hdl_motion_filter
 {
 public:
@@ -70,9 +74,8 @@ public:
   void set_denoise_filter_threshold(int v);
   int denoise_filter_threshold() const;
 
-
   bool apply(const cv::Mat1f & range_image,
-      cv::OutputArray output_goreground_mask );
+      cv::OutputArray output_foreground_mask );
 
   int nb_frames_processed() const;
 
@@ -97,7 +100,6 @@ public:
       const cv::Size & histogram_size,
       cv::OutputArray background_image);
 
-
   void clear();
   void reset();
 
@@ -111,7 +113,6 @@ protected:
 
   void reduce_motion_noise(const cv::Mat1f & range_image,
       cv::OutputArray output_foreground_mask) const;
-
 
 protected:
   // 2D array of mixtures
@@ -149,7 +150,6 @@ protected:
 
   bool enabeld_ = true;
   bool enable_noise_reduction_ = true;
-
 };
 
 typedef std::vector<c_hdl_motion_filter::GM>

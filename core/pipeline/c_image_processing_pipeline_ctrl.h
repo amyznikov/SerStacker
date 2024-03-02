@@ -117,6 +117,44 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
+
+#define PIPELINE_CTLC(ctrls, c, _name, _tooltip, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.name = _name; \
+      ctl.tooltip = _tooltip; \
+      if( std::is_enum_v<decltype(this_class::c)> ) { \
+        ctl.type = c_image_processor_pipeline_ctl_enum_combobox; \
+        ctl.get_enum_members = get_members_of<decltype(this_class::c)>(); \
+      } \
+      else if( std::is_same_v<decltype(this_class::c), bool> ) { \
+        ctl.type = c_image_processor_pipeline_ctl_check_box; \
+      } \
+      else { \
+        ctl.type = c_image_processor_pipeline_ctl_numeric_box; \
+      } \
+      ctl.get_value = \
+          [](const c_image_processing_pipeline * p, std::string * v) { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            if ( _this ) { \
+              *v = toString(_this->c); \
+              return true; \
+            } \
+            return false; \
+          }; \
+      ctl.set_value = \
+          [](c_image_processing_pipeline * p, const std::string & v) { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? fromString(v, &_this->c) : false; \
+          }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
 #define PIPELINE_CTLP(ctrls, c, _name, _tooltip ) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
@@ -156,16 +194,16 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-#define PIPELINE_CTLC(ctrls, c, _name, _tooltip, _cond) \
+#define PIPELINE_CTLPC(ctrls, c, _name, _tooltip, _cond) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.name = _name; \
       ctl.tooltip = _tooltip; \
-      if( std::is_enum_v<decltype(this_class::c)> ) { \
+      if( std::is_enum_v<decltype(((this_class*)(nullptr))->c())> ) { \
         ctl.type = c_image_processor_pipeline_ctl_enum_combobox; \
-        ctl.get_enum_members = get_members_of<decltype(this_class::c)>(); \
+        ctl.get_enum_members = get_members_of<decltype(((this_class*)(nullptr))->c())>(); \
       } \
-      else if( std::is_same_v<decltype(this_class::c), bool> ) { \
+      else if( std::is_same_v<decltype(((this_class*)(nullptr))->c()), bool> ) { \
         ctl.type = c_image_processor_pipeline_ctl_check_box; \
       } \
       else { \
@@ -175,7 +213,7 @@ struct c_image_processing_pipeline_ctrl
           [](const c_image_processing_pipeline * p, std::string * v) { \
             const this_class * _this = dynamic_cast<const this_class * >(p); \
             if ( _this ) { \
-              *v = toString(_this->c); \
+              *v = toString(_this->c()); \
               return true; \
             } \
             return false; \
@@ -183,7 +221,14 @@ struct c_image_processing_pipeline_ctrl
       ctl.set_value = \
           [](c_image_processing_pipeline * p, const std::string & v) { \
             this_class * _this = dynamic_cast<this_class * >(p); \
-            return _this ? fromString(v, &_this->c) : false; \
+            if ( _this ) { \
+              decltype (_this->c()) cval; \
+              if ( fromString(v, &cval) ) { \
+                _this->set_##c(cval); \
+                return true; \
+              } \
+            } \
+            return false; \
           }; \
       ctl.is_enabled = \
           [](const c_image_processing_pipeline * p) -> bool { \
@@ -192,7 +237,6 @@ struct c_image_processing_pipeline_ctrl
           }; \
       ctrls.emplace_back(ctl); \
     }
-
 
 #define PIPELINE_CTL_BITFLAGS(ctrls, c, enum_type, _name, _tooltip ) \
     if ( true ) { \

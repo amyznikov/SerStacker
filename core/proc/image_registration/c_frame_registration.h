@@ -51,7 +51,7 @@ struct c_eccflow_registration_options
   double noise_level = -1;
   int max_iterations = 1;
   int support_scale = 4;
-  int max_pyramid_level = -1;
+  int min_image_size = -1;
   int normalization_scale = -1;
   bool enable_debug = false;
 };
@@ -93,7 +93,7 @@ struct c_master_frame_options
   double feature_scale = 0.5;
   double ecc_scale = 0.5;
   int eccflow_scale = 0;
-  int eccflow_max_pyramid_level = -1;
+  int eccflow_min_image_size = -1;
 };
 
 struct c_image_registration_options

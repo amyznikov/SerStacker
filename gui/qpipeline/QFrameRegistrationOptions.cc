@@ -941,11 +941,11 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           }));
 
   controls.append(max_pyramid_level_ctl =
-      add_numeric_box<int>("max_pyramid_level",
+      add_numeric_box<int>("min_image_size",
           "",
           [this](int value) {
-            if ( options_ && options_->max_pyramid_level != value ) {
-              options_->max_pyramid_level = value;
+            if ( options_ && options_->min_image_size != value ) {
+              options_->min_image_size = value;
               Q_EMIT parameterChanged();
             }
           }));
@@ -1051,7 +1051,7 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
     max_iterations_ctl->setValue(options_->max_iterations);
     support_scale_ctl->setValue(options_->support_scale);
-    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
+    max_pyramid_level_ctl->setValue(options_->min_image_size);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     noise_level_ctl->setValue(options_->noise_level);
     enable_debug_ctl->setChecked(options_->enable_debug);
@@ -1674,17 +1674,17 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
 
 
   eccflowMaxPyramidLevel_ctl =
-      add_numeric_box<int>("ECC MaxPyramidLevel:",
+      add_numeric_box<int>("ECC Min image size:",
           "",
           [this](int v) {
-            if ( options_ && options_->eccflow_max_pyramid_level != v ) {
-              options_->eccflow_max_pyramid_level = v;
+            if ( options_ && options_->eccflow_min_image_size != v ) {
+              options_->eccflow_min_image_size = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
             if ( options_ ) {
-              *v = options_->eccflow_max_pyramid_level;
+              *v = options_->eccflow_min_image_size;
               return true;
             }
             return false;

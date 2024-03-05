@@ -331,8 +331,8 @@ public:
   void set_reference_smooth_sigma(double v);
   double reference_smooth_sigma() const;
 
-  void set_max_pyramid_level(int v);
-  int max_pyramid_level() const;
+  void set_min_image_size(int v);
+  int min_image_size() const;
 
   void set_noise_level(double v);
   double noise_level() const;
@@ -376,7 +376,8 @@ protected:
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
-  int max_pyramid_level_ = -1; // to allow force limit max pyramid size
+  //int max_pyramid_level_ = -1; // to allow force limit max pyramid size
+  int min_image_size_ = 4;
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;

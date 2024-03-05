@@ -399,7 +399,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       eccflow_.set_update_multiplier(options_.eccflow.update_multiplier);
       eccflow_.set_max_iterations(options_.eccflow.max_iterations);
       eccflow_.set_support_scale(options_.eccflow.support_scale);
-      eccflow_.set_max_pyramid_level(options_.eccflow.max_pyramid_level);
+      eccflow_.set_min_image_size(options_.eccflow.min_image_size);
       eccflow_.set_normalization_scale(options_.eccflow.normalization_scale);
       eccflow_.set_input_smooth_sigma(options_.eccflow.input_smooth_sigma);
       eccflow_.set_reference_smooth_sigma(options_.eccflow.reference_smooth_sigma);

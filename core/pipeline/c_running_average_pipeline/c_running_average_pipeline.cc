@@ -52,7 +52,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(section, save, *this, ecc_update_step_scale);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_eccflow);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_max_pyramid_level);
+    SERIALIZE_PROPERTY(section, save, *this, eccflow_min_image_size);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_noise_level);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_support_scale);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_normalization_scale);
@@ -106,21 +106,21 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
         PIPELINE_CTLPC(ctrls, ecc_max_eps, "ecc_max_eps", "", (_this->registration_options_.enable_ecc));
         PIPELINE_CTLPC(ctrls, ecc_min_rho, "ecc_min_rho", "", (_this->registration_options_.enable_ecc));
         PIPELINE_CTLPC(ctrls, ecc_interpolation, "ecc_interpolation", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_input_smooth_sigma, "ecc_input_smooth_sigma", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_reference_smooth_sigma, "ecc_reference_smooth_sigma", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_update_step_scale, "ecc_update_step_scale", "", (_this->registration_options_.enable_ecc));
+        PIPELINE_CTLPC(ctrls, ecc_input_smooth_sigma, "input_smooth_sigma", "", (_this->registration_options_.enable_ecc));
+        PIPELINE_CTLPC(ctrls, ecc_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->registration_options_.enable_ecc));
+        PIPELINE_CTLPC(ctrls, ecc_update_step_scale, "update_step_scale", "", (_this->registration_options_.enable_ecc));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
         PIPELINE_CTL(ctrls, registration_options_.enable_eccflow, "enabled", "");
 
-        PIPELINE_CTLPC(ctrls, eccflow_support_scale, "ecc_support_scale", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_max_pyramid_level, "ecc_max_pyramid_level", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_noise_level, "ecc_noise_level", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "ecc_normalization_scale", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "ecc_input_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_reference_smooth_sigma, "ecc_reference_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_update_multiplier, "ecc_update_multiplier", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "normalization_scale", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "input_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_update_multiplier, "update_multiplier", "", (_this->registration_options_.enable_eccflow));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTLC(ctrls, registration_options_.min_rho, "min_rho", "",
@@ -297,14 +297,14 @@ double c_running_average_pipeline::eccflow_update_multiplier() const
 }
 
 
-void c_running_average_pipeline::set_eccflow_max_pyramid_level(int v)
+void c_running_average_pipeline::set_eccflow_min_image_size(int v)
 {
-  eccflow_.set_max_pyramid_level(v);
+  eccflow_.set_min_image_size(v);
 }
 
-int c_running_average_pipeline::eccflow_max_pyramid_level() const
+int c_running_average_pipeline::eccflow_min_image_size() const
 {
-  return eccflow_.max_pyramid_level();
+  return eccflow_.min_image_size();
 }
 
 void c_running_average_pipeline::set_eccflow_min_rho(double v)

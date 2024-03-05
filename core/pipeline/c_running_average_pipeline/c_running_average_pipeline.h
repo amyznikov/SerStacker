@@ -112,8 +112,8 @@ public:
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
 
-  void set_eccflow_max_pyramid_level(int v);
-  int eccflow_max_pyramid_level() const;
+  void set_eccflow_min_image_size(int v);
+  int eccflow_min_image_size() const;
 
   void set_eccflow_normalization_scale(int v);
   int eccflow_normalization_scale() const;

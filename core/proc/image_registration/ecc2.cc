@@ -1305,14 +1305,14 @@ double c_eccflow::reference_smooth_sigma() const
   return reference_smooth_sigma_;
 }
 
-void c_eccflow::set_max_pyramid_level(int v)
+void c_eccflow::set_min_image_size(int v)
 {
-  max_pyramid_level_ = v;
+  min_image_size_ = v;
 }
 
-int c_eccflow::max_pyramid_level() const
+int c_eccflow::min_image_size() const
 {
-  return max_pyramid_level_;
+  return min_image_size_;
 }
 
 void c_eccflow::set_noise_level(double v)
@@ -1411,13 +1411,14 @@ void c_eccflow::pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputAr
 
 bool c_eccflow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
 {
-  const int level = support_scale_;
+  cv::Size size =
+      src.size();
 
-  cv::Size size = src.size();
-  for ( int i = 0; i < level; ++i ) {
+  for ( int i = 0; i < support_scale_; ++i ) {
     size.width = (size.width + 1) / 2;
     size.height = (size.height + 1) / 2;
   }
+
   cv::resize(src, dst, size, 0, 0, cv::INTER_AREA);
 
   if ( ismask ) {
@@ -1639,10 +1640,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
   }
 
   const int min_image_size =
-      std::min(std::max(referenceImage.cols(), referenceImage.rows()),
-          3 * (1 << (support_scale_)));
-
-  // CF_DEBUG("min_image_size=%d noise_level=%g", min_image_size, noise_level);
+      std::max(3, min_image_size_);
 
   pyramid_.emplace_back();
   pyramid_.back().reference_mask = M;
@@ -1660,7 +1658,9 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
         current_scale.Ix, current_scale.Iy);
 
     if( !debug_path_.empty() ) {
+
       std::string debug_filename;
+
       if( !save_image(current_scale.reference_image,
           debug_filename = ssprintf("%s/set_reference_image/reference_image.%03d.tiff", debug_path_.c_str(), current_level)) ) {
         CF_ERROR("save_image('%s') fails", debug_filename.c_str());
@@ -1713,7 +1713,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
     }
 
 
-    // FIXME: this regularization therm estimation seems crazy
+    // FIXME: this regularization term estimation seems crazy
     const double RegularizationTerm = noise_level > 0 ?
         pow(1e-5 * noise_level / (1 << current_level), 4) :
         0;
@@ -1735,15 +1735,15 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage,
     const cv::Size nextSize((currentSize.width + 1) / 2, (currentSize.height + 1) / 2);
 
     if ( nextSize.width < min_image_size || nextSize.height < min_image_size ) {
-//      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
-//          currentSize.width, currentSize.height,
-//          nextSize.width, nextSize.height);
+      //      CF_DEBUG("currentSize: %dx%d nextSize: %dx%d",
+      //          currentSize.width, currentSize.height,
+      //          nextSize.width, nextSize.height);
       break;
     }
 
-    if ( max_pyramid_level_ >= 0 && current_level >= max_pyramid_level_ ) {
-      break;
-    }
+    //    if ( max_pyramid_level_ >= 0 && current_level >= max_pyramid_level_ ) {
+    //      break;
+    //    }
 
     pyramid_.emplace_back();
 

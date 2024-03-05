@@ -1529,7 +1529,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     if( master_options.eccflow_scale > 1 ) {
       master_registration_options.eccflow.enabled = true;
       master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
-      master_registration_options.eccflow.max_pyramid_level = master_options.eccflow_max_pyramid_level;
+      master_registration_options.eccflow.min_image_size = master_options.eccflow_min_image_size;
     }
     else {
       master_registration_options.eccflow.enabled = false;
@@ -3165,7 +3165,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, feature_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, ecc_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_scale);
-      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_max_pyramid_level);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_min_image_size);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, accumulated_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, save_master_frame);
@@ -3235,7 +3235,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
         SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, enable_debug);

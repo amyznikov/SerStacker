@@ -189,6 +189,9 @@ protected:
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
   QSparseFeatureMatcherOptions * sparseFeatureMatcherOptions_ctl = nullptr;
 
+  QExpandableGroupBox * transformOptionsGroup_ctl = nullptr;
+  QSettingsWidget * transformOptionsSettings_ctl = nullptr;
+
   QEstimateTranslationImageTransformOptions *estimateTranslation_ctl = nullptr;
   QEstimateEuclideanImageTransformOptions *estimateEuclidean_ctl = nullptr;
   QEstimateScaledEuclideanImageTransformOptions *estimateScaledEuclidean_ctl = nullptr;

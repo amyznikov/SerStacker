@@ -567,58 +567,63 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
   controls.append(sparseFeatureMatcherOptions_ctl);
 
 
+  transformOptionsGroup_ctl =
+      add_expandable_groupbox("Transform Estimation ...",
+          transformOptionsSettings_ctl = new QSettingsWidget("", this));
+
+
 
   ///
-  add_expandable_groupbox("EstimateTranslation Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate Translation",
       estimateTranslation_ctl = new QEstimateTranslationImageTransformOptions());
   connect(estimateTranslation_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateTranslation_ctl);
 
 
-  add_expandable_groupbox("EstimateEuclidean Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate Euclidean ",
       estimateEuclidean_ctl = new QEstimateEuclideanImageTransformOptions());
   connect(estimateEuclidean_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateEuclidean_ctl);
 
 
-  add_expandable_groupbox("EstimateScaledEuclidean Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate ScaledEuclidean",
       estimateScaledEuclidean_ctl = new QEstimateScaledEuclideanImageTransformOptions());
   connect(estimateScaledEuclidean_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateScaledEuclidean_ctl);
 
 
-  add_expandable_groupbox("EstimateAffine Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate Affine",
       estimateAffine_ctl = new QEstimateAffineImageTransformOptions());
   connect(estimateAffine_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateAffine_ctl);
 
 
-  add_expandable_groupbox("EstimateHomography Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate Homography",
       estimateHomography_ctl = new QEstimateHomographyImageTransformOptions());
   connect(estimateHomography_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateHomography_ctl);
 
 
-  add_expandable_groupbox("EstimateSemiQuadratic Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate SemiQuadratic",
       estimateSemiQuadratic_ctl = new QEstimateSemiQuadraticImageTransformOptions());
   connect(estimateSemiQuadratic_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateSemiQuadratic_ctl);
 
 
-  add_expandable_groupbox("EstimateQuadratic Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate Quadratic",
       estimateQuadratic_ctl = new QEstimateQuadraticImageTransformOptions());
   connect(estimateQuadratic_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
   controls.append(estimateQuadratic_ctl);
 
 
-  add_expandable_groupbox("EstimateEpipolarDerotation Options",
+  transformOptionsSettings_ctl->add_expandable_groupbox("Estimate EpipolarDerotation",
       estimateEpipolarDerotation_ctl = new QEstimateEpipolarDerotationImageTransformOptions());
   connect(estimateEpipolarDerotation_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);

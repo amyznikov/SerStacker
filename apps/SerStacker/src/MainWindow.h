@@ -79,12 +79,14 @@ private Q_SLOTS:
 
   void updateMeasurements();
   void updateProfileGraph(QGraphicsItem * lineItem = nullptr) override;
+  void onShowProfileGraphActionTriggered(bool checked) override;
 
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onPipelineThreadStarted();
   void onPipelineThreadFinished();
 
   void onShowCloudViewSettingsDialogBoxActionClicked(bool checked);
+
 
   void saveCurrentWork();
 

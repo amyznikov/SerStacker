@@ -166,6 +166,11 @@ void MainWindow::onSaveState(QSettings & settings)
   if ( cloudView ) {
     cloudView->saveParameters();
   }
+
+  if ( profileGraph_ctl_ ) {
+    profileGraph_ctl_->saveParameters("profileGraph");
+  }
+
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -915,6 +920,17 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
   }
 }
 
+void MainWindow::onShowProfileGraphActionTriggered(bool checked)
+{
+  bool profileGraphAlreadyCreated =
+      profileGraph_ctl_ != nullptr;
+
+  Base::onShowProfileGraphActionTriggered(checked);
+
+  if ( !profileGraphAlreadyCreated && profileGraph_ctl_ != nullptr ) {
+    profileGraph_ctl_->loadParameters("profileGraph");
+  }
+}
 
 void MainWindow::onMeasureRightNowRequested()
 {

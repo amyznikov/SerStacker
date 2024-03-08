@@ -297,24 +297,44 @@ QCPGraph::LineStyle QProfileGraph::lineStyle() const
   return lineStyle_;
 }
 
-void QProfileGraph::setFixXRange(bool v)
+void QProfileGraph::setFixXMin(bool v)
 {
-  fixXRange_ = v;
+  fixXMin_ = v;
 }
 
-bool QProfileGraph::fixXRange() const
+bool QProfileGraph::fixXMin() const
 {
-  return fixXRange_;
+  return fixXMin_;
 }
 
-void QProfileGraph::setFixYRange(bool v)
+void QProfileGraph::setFixXMax(bool v)
 {
-  fixYRange_ = v;
+  fixXMax_ = v;
 }
 
-bool QProfileGraph::fixYRange() const
+bool QProfileGraph::fixXMax() const
 {
-  return fixYRange_;
+  return fixXMax_;
+}
+
+void QProfileGraph::setFixYMin(bool v)
+{
+  fixYMin_ = v;
+}
+
+bool QProfileGraph::fixYMin() const
+{
+  return fixYMin_;
+}
+
+void QProfileGraph::setFixYMax(bool v)
+{
+  fixYMax_ = v;
+}
+
+bool QProfileGraph::fixYMax() const
+{
+  return fixYMax_;
 }
 
 void QProfileGraph::setSkipZeroPixels(bool v)
@@ -388,6 +408,50 @@ double QProfileGraph::yRangeMax() const
 {
   return plot_->yAxis->range().upper;
 }
+
+
+void QProfileGraph::saveParameters(const QString & profileName)
+{
+  const QString profile =
+      profileName.isEmpty() ? QString("QProfileGraph") :
+          profileName;
+
+  QSettings settings;
+
+  settings.setValue(QString("%1/lineStyle").arg(profile), (int)lineStyle());
+  settings.setValue(QString("%1/fixXMin").arg(profile), fixXMin());
+  settings.setValue(QString("%1/fixXMax").arg(profile), fixXMax());
+  settings.setValue(QString("%1/fixYMin").arg(profile), fixYMin());
+  settings.setValue(QString("%1/fixYMax").arg(profile), fixYMax());
+  settings.setValue(QString("%1/skipZeroPixels").arg(profile), skipZeroPixels());
+  settings.setValue(QString("%1/skipMaskedPixels").arg(profile), skipMaskedPixels());
+  settings.setValue(QString("%1/xRangeMin").arg(profile), xRangeMin());
+  settings.setValue(QString("%1/xRangeMax").arg(profile), xRangeMax());
+  settings.setValue(QString("%1/yRangeMin").arg(profile), yRangeMin());
+  settings.setValue(QString("%1/yRangeMax").arg(profile), yRangeMax());
+}
+
+void QProfileGraph::loadParameters(const QString & profileName)
+{
+  const QString profile =
+      profileName.isEmpty() ? QString("QProfileGraph") :
+          profileName;
+
+  QSettings settings;
+
+  setLineStyle((QCPGraph::LineStyle)settings.value(QString("%1/lineStyle").arg(profile), lineStyle()).toInt());
+  setFixXMin(settings.value(QString("%1/fixXMin").arg(profile), fixXMin()).toBool());
+  setFixXMax (settings.value(QString("%1/fixXMax").arg(profile), fixXMax()).toBool());
+  setFixYMin (settings.value(QString("%1/fixYMin").arg(profile), fixYMin()).toBool());
+  setFixYMax (settings.value(QString("%1/fixYMax").arg(profile), fixYMax()).toBool());
+  setSkipZeroPixels (settings.value(QString("%1/skipZeroPixels").arg(profile), skipZeroPixels()).toBool());
+  setSkipMaskedPixels (settings.value(QString("%1/skipMaskedPixels").arg(profile), skipMaskedPixels()).toBool());
+  setXRangeMin (settings.value(QString("%1/xRangeMin").arg(profile), xRangeMin()).toDouble());
+  setXRangeMax (settings.value(QString("%1/xRangeMax").arg(profile), xRangeMax()).toDouble());
+  setYRangeMin (settings.value(QString("%1/yRangeMin").arg(profile), yRangeMin()).toDouble());
+  setYRangeMax (settings.value(QString("%1/yRangeMax").arg(profile), yRangeMax()).toDouble());
+}
+
 
 void QProfileGraph::showProfilePlot(const QLineF & line, const cv::Mat & image, const cv::Mat & mask)
 {
@@ -507,13 +571,40 @@ void QProfileGraph::replot()
 
   }
 
-  if( !fixXRange_ ) {
-    plot_->xAxis->setRange(0, current_keys_.size());
+  if( !(fixXMin_ && fixXMax_) ) {
+
+    const double xmin =
+        fixXMin_ ? plot_->xAxis->range().lower :
+            0;
+
+    const double xmax =
+        fixXMax_ ? plot_->xAxis->range().upper :
+            current_keys_.size();
+
+    plot_->xAxis->setRange(xmin, xmax);
     Q_EMIT xRangeRescaled();
   }
 
-  if( !fixYRange_ ) {
+  if( !(fixYMin_ && fixXMax_) ) {
+
+    double ymin =
+        plot_->yAxis->range().lower;
+
+    double ymax =
+        plot_->yAxis->range().upper;
+
     plot_->yAxis->rescale();
+
+    if ( !fixYMin_ ) {
+      ymin = plot_->yAxis->range().lower;
+    }
+
+    if ( !fixYMax_ ) {
+      ymax = plot_->yAxis->range().upper;
+    }
+
+    plot_->yAxis->setRange(ymin, ymax);
+
     Q_EMIT yRangeRescaled();
   }
 
@@ -651,22 +742,21 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
             return false;
           });
 
-  fixXRange_ctl =
-      add_checkbox("Fix X range:",
-          "Set checked to fix X range of the plot",
+  fixXMin_ctl =
+      add_checkbox("Fix X min:",
+          "Set checked to fix X min range of the plot",
           [this](bool checked) {
             if ( options_ ) {
-              options_->setFixXRange(checked);
+              options_->setFixXMin(checked);
             }
           },
           [this](bool * checked) {
             if ( options_ ) {
-              *checked = options_->fixXRange();
+              *checked = options_->fixXMin();
               return true;
             }
             return false;
           });
-
 
   xRangeMin_ctl =
       add_numeric_box<double>("Xmin:",
@@ -684,6 +774,22 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
             return false;
           });
 
+
+  fixXMax_ctl =
+      add_checkbox("Fix X max:",
+          "Set checked to fix X maxx range of the plot",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->setFixXMax(checked);
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->fixXMax();
+              return true;
+            }
+            return false;
+          });
 
   xRangeMax_ctl =
       add_numeric_box<double>("Xmax:",
@@ -703,17 +809,17 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
 
   ///
 
-  fixYRange_ctl =
-      add_checkbox("Fix Y range:",
-          "Set checked to fix Y range of the plot",
+  fixYMin_ctl =
+      add_checkbox("Fix Y min:",
+          "Set checked to fix Y min range of the plot",
           [this](bool checked) {
             if ( options_ ) {
-              options_->setFixYRange(checked);
+              options_->setFixYMin(checked);
             }
           },
           [this](bool * checked) {
             if ( options_ ) {
-              *checked = options_->fixYRange();
+              *checked = options_->fixYMin();
               return true;
             }
             return false;
@@ -736,6 +842,22 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
             return false;
           });
 
+
+  fixYMax_ctl =
+      add_checkbox("Fix Y Max:",
+          "Set checked to fix Y max range of the plot",
+          [this](bool checked) {
+            if ( options_ ) {
+              options_->setFixYMax(checked);
+            }
+          },
+          [this](bool * checked) {
+            if ( options_ ) {
+              *checked = options_->fixYMax();
+              return true;
+            }
+            return false;
+          });
 
   yRangeMax_ctl =
       add_numeric_box<double>("Ymax:",

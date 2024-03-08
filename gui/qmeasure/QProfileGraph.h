@@ -33,11 +33,17 @@ public:
   void setLineStyle(QCPGraph::LineStyle v);
   QCPGraph::LineStyle lineStyle() const;
 
-  void setFixXRange(bool v);
-  bool fixXRange() const;
+  void setFixXMin(bool v);
+  bool fixXMin() const;
 
-  void setFixYRange(bool v);
-  bool fixYRange() const;
+  void setFixXMax(bool v);
+  bool fixXMax() const;
+
+  void setFixYMin(bool v);
+  bool fixYMin() const;
+
+  void setFixYMax(bool v);
+  bool fixYMax() const;
 
   void setSkipZeroPixels(bool v);
   bool skipZeroPixels() const;
@@ -56,6 +62,9 @@ public:
 
   void setYRangeMax(double v);
   double yRangeMax() const;
+
+  void saveParameters(const QString & profileName);
+  void loadParameters(const QString & profileName);
 
 Q_SIGNALS:
   void visibilityChanged(bool visble);
@@ -88,8 +97,10 @@ protected:
   QVector<uint8_t> current_ptmasks_;
 
   QLine currentLine_;
-  bool fixXRange_ = false;
-  bool fixYRange_ = false;
+  bool fixXMin_ = false;
+  bool fixXMax_ = false;
+  bool fixYMin_ = false;
+  bool fixYMax_ = false;
 
   bool skipZeroPixels_ = false;
   bool skipMaskedPixels_ = false;
@@ -117,12 +128,14 @@ protected:
 protected:
   QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
 
-  QCheckBox * fixXRange_ctl = nullptr;
+  QCheckBox * fixXMin_ctl = nullptr;
   QNumericBox * xRangeMin_ctl = nullptr;
+  QCheckBox * fixXMax_ctl = nullptr;
   QNumericBox * xRangeMax_ctl = nullptr;
 
-  QCheckBox * fixYRange_ctl = nullptr;
+  QCheckBox * fixYMin_ctl = nullptr;
   QNumericBox * yRangeMin_ctl = nullptr;
+  QCheckBox * fixYMax_ctl = nullptr;
   QNumericBox * yRangeMax_ctl = nullptr;
 
   QCheckBox * skipZeroPixels_ctl = nullptr;

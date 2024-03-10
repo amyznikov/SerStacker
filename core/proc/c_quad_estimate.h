@@ -49,10 +49,24 @@ public:
 
     ++n;
 
-    Z = n * sx3 * sx3
-        - 2 * sx3 * sx2 * sx
-        + sx2 * sx2 * sx2
-        - (n * sx2 - sx * sx) * sx4;
+    updatez();
+  }
+
+  void remove(T x, T y)
+  {
+    sx -= x;
+    sy -= y;
+
+    sx2 -= x * x;
+    sx3 -= x * x * x;
+    sx4 -= x * x * x * x;
+
+    sxy -= x * y;
+    sx2y -= x * x * y;
+
+    --n;
+
+    updatez();
   }
 
   int pts() const
@@ -89,6 +103,17 @@ public:
   {
     return Z;
   }
+
+
+protected:
+  void updatez()
+  {
+    Z = n * sx3 * sx3
+        - 2 * sx3 * sx2 * sx
+        + sx2 * sx2 * sx2
+        - (n * sx2 - sx * sx) * sx4;
+  }
+
 
 protected:
   T sx, sy, sx2, sx3, sx4;

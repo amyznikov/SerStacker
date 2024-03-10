@@ -37,36 +37,68 @@
 
 #include <core/io/hdl/c_hdl_frame_reader.h>
 
+#include <core/proc/c_quad_estimate.h>
+
 
 int main(int argc, char *argv[])
 {
-  std::string address;
-  std::string options;
-
-  for ( int i = 1; i < argc; ++i ) {
-    if ( strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0 ) {
-      fprintf(stdout, "Usage: alpha path_to_pcap_file.pcap\n");
-      return 0;
-
-    }
-
-    if ( address.empty() ) {
-      address = argv[i];
-      continue;
-    }
-
-    fprintf(stderr, "Invalid arg: '%s'\n", argv[i]);
-    return 1;
-  }
+//  std::string address;
+//  std::string options;
+//
+//  for ( int i = 1; i < argc; ++i ) {
+//    if ( strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0 ) {
+//      fprintf(stdout, "Usage: alpha path_to_pcap_file.pcap\n");
+//      return 0;
+//
+//    }
+//
+//    if ( address.empty() ) {
+//      address = argv[i];
+//      continue;
+//    }
+//
+//    fprintf(stderr, "Invalid arg: '%s'\n", argv[i]);
+//    return 1;
+//  }
 
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  if ( address.empty() ) {
-    CF_ERROR("No pcap file specified");
-    return 1;
+//  if ( address.empty() ) {
+//    CF_ERROR("No pcap file specified");
+//    return 1;
+//  }
+
+
+  c_quad0_estimate<double> quad2;
+
+  const double a0 = 1.7;
+  const double a1 = -3;
+  const double a2 = +0.25;
+
+  quad2.set_a0(a0);
+
+  for( int x = -10; x <= 10; ++x ) {
+
+    double y = a0 + a1 * x + a2 * x * x;
+    quad2.update(x, y);
   }
+
+  CF_DEBUG("QUAD2: a0=%g a1=%g a2=%g Z=%g n=%d",
+      quad2.a0(), quad2.a1(), quad2.a2(),
+      quad2.z(), quad2.pts());
+
+  for( int x = -10; x <= 10; x+=3 ) {
+
+    double y = a0 + a1 * x + a2 * x * x;
+    quad2.remove(x, y);
+  }
+
+  CF_DEBUG("QUAD2R: a0=%g a1=%g a2=%g Z=%g n=%d",
+      quad2.a0(), quad2.a1(), quad2.a2(),
+      quad2.z(), quad2.pts());
+
 //
 //
 //  c_hdl_offline_pcap_reader reader;

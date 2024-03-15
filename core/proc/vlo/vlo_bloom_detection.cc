@@ -7,6 +7,7 @@
 
 #include "vlo_bloom_detection.h"
 #include <core/proc/c_line_estimate.h>
+#include <core/proc/c_quad_estimate.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -25,13 +26,37 @@ const c_enum_member* members_of<VLO_BLOOM_INTENSITY_MEASURE>()
 
 namespace {
 
-static const cv::Mat3w & get_intensity_image(const c_vlo_scan & scan,
-    const c_vlo_bloom_detection_options & opts)
+static bool get_intensity_image(const c_vlo_scan & scan,
+    const c_vlo_bloom_detection_options & opts,
+    cv::Mat3w & intensity)
 {
-  if ( opts.intensity_measure == VLO_BLOOM_INTENSITY_PEAK && !scan.peak.empty() ) {
-    return scan.peak;
+  switch (opts.intensity_measure) {
+
+    case VLO_BLOOM_INTENSITY_PEAK:
+      if( scan.peak.empty() ) {
+        CF_ERROR("Scan has no peak values");
+        return false;
+      }
+
+      intensity = scan.peak;
+      break;
+
+    case VLO_BLOOM_INTENSITY_AREA:
+      if( scan.area.empty() ) {
+        CF_ERROR("Scan has no area values");
+        return false;
+      }
+
+      intensity = scan.area;
+      break;
+
+    default:
+      CF_DEBUG("invalid intensity_measure=%d requested",
+          opts.intensity_measure);
+      return false;
   }
-  return scan.area;
+
+  return true;
 }
 
 
@@ -58,7 +83,7 @@ static void create_histogram_of_distances(const c_vlo_scan & scan, const cv::Mat
 
   for( int s = 0; s < num_slots; ++s ) {
 
-    // check if this slot (column) contains reflectors
+    // check if this slot (column) has reflectors
     bool have_reflectors = false;
     for( int l = 0; l < num_layers; ++l ) {
       for( int e = 0; e < 3; ++e ) {
@@ -128,11 +153,17 @@ static void create_histogram_of_distances(const c_vlo_scan & scan, const cv::Mat
   }
 }
 
-#if 1
 
-//struct c_bloom_segment
-//{
-//};
+struct c_point
+{
+  int l; // image row (layer index)
+  int e;// image channel (echo index)
+
+  c_point(int _l, int _e) :
+    l(_l), e(_e)
+  {
+  }
+};
 
 struct c_distance_segment
 {
@@ -140,13 +171,13 @@ struct c_distance_segment
   float h, sh;
   c_line_estimate<float> line;
 
-  std::vector<cv::Point> pts;
+  std::vector<c_point> pts;
   int nrp = 0;
 
   //c_bloom_segment wall;
 };
 
-static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & H, const cv::Mat3b & R, int s,
+static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & H, cv::Mat3b & R, int s,
     const c_vlo_bloom_detection_options & opts,
     std::vector<c_distance_segment> & dsegs,
     std::vector<const c_distance_segment*> & output_segments)
@@ -246,7 +277,7 @@ static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & 
     c_distance_segment & dseg =
         dsegs[dsegs_count++];
 
-    // The data must become sorted by the 'dmax' by the definition of this distance histogram
+    // The data must become sorted by the 'dmax' by the definition of the distance histogram
     dseg.dmin = dmin;
     dseg.dmax = dmax;
     dseg.h = 0;
@@ -259,181 +290,18 @@ static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & 
 
   //////////////////////////////////////////////////////////////
   // estimate slope and vertical dispersion of the walls
-  if( dsegs_count > 0 ) {
+  if( dsegs_count < 1 ) {
 
-    if ( true ) {
-     //  INSTRUMENT_REGION("comppts");
-
-      for( int l = 0; l < D.rows; ++l ) {
+    if( opts.rreset ) {
+      for( int l = 0; l < R.rows; ++l ) {
         for( int e = 0; e < 3; ++e ) {
-
-          const auto & point_distance =
-              D[l][s][e];
-
-          if( point_distance ) {
-
-            const auto ii =
-                std::lower_bound(dsegs.begin(), dsegs.begin() + dsegs_count,
-                    point_distance,
-                    [](const c_distance_segment & dseg, const auto & distance) {
-                      return dseg.dmax < distance;
-                    });
-
-            if( ii == dsegs.end() || point_distance < ii->dmin ) {
-              continue;
-            }
-
-            ii->pts.emplace_back(l, e);
-
-            if( R[l][s][e] ) {
-              ++ii->nrp;
-            }
-
-            ii->h += l;
-            ii->sh += l * l;
-
-            const auto & point_height =
-                scan.clouds[e][l][s][2]; // Z-coordinate of the point
-
-            ii->line.update(point_height,
-                point_distance);
-          }
+          R[l][s][e] = 0;
         }
       }
     }
 
-    if( true ) {
-      // INSTRUMENT_REGION("checkpts");
-
-      for( int i = 0; i < dsegs_count; ++i ) {
-
-        const c_distance_segment & dseg =
-            dsegs[i];
-
-        const int npts =
-            dseg.line.pts();
-
-        if( !dseg.nrp || npts < opts.min_segment_size || std::abs(dseg.line.slope()) > max_slope ) {
-          continue;
-        }
-
-        const auto h = dseg.h / npts; // mean height
-        const auto sh = dseg.sh / npts - h * h; // compute variation (dispersion) of heights
-        if( (sh < hdisp) ) { // too short vertically
-          continue;
-        }
-
-        output_segments.emplace_back(&dseg);
-      }
-    }
   }
-
-
-}
-#else
-
-static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & H, const cv::Mat3b & R, int s,
-    const c_vlo_bloom_detection_options & opts,
-    std::vector<c_bloom_segment> & output_segments)
-{
-  INSTRUMENT_REGION("");
-
-  const auto & D = scan.distances;
-  const double distance_step = opts.distance_tolerance > 0 ? opts.distance_tolerance : 100; // [cm]
-
-  c_bloom_segment wall;
-
-  output_segments.clear();
-
-  /*
-   * Search local maximums over depth histogram
-   * */
-
-  const float ratio_threshold =
-      1.3f; // Relative height of a local maximum
-
-  const float hdisp =
-      opts.min_segment_height * opts.min_segment_height;
-
-  const float max_slope =
-      std::tan(opts.max_segment_slope * CV_PI / 180);
-
-  c_line_estimate<float> line;
-
-  float dmin, dmax; // depth bounds
-  float h, sh;
-
-  for( int y = 1; y < H.rows - 1; ++y ) {
-
-    const auto & cp0 = // previous point from first histogram
-        H[y - 1][s][0];
-
-    const auto & cc0 = // current point from first histogram
-        H[y][s][0];
-
-    const auto & cn0 = // next point from first histogram
-        H[y + 1][s][0];
-
-    const auto & cp1 = // previous point from second histogram
-        H[y - 1][s][2];
-
-    const auto & cc1 = // current point from second histogram
-        H[y][s][2];
-
-    const auto & cn1 = // next point from second histogram
-        H[y + 1][s][2];
-
-    const bool c0_extreme = // check if current point from first histogram is local maximum
-        cc0 > opts.counts_threshold &&
-            cc0 > ratio_threshold * std::max(cp0, cn0);
-
-    const bool c1_extreme = // check if current point from second histogram is local maximum
-        cc1 > opts.counts_threshold &&
-            cc1 > ratio_threshold * std::max(cp1, cn1);
-
-    if( c0_extreme && c1_extreme ) {
-      // if current point is local maximum on both histograms the select max of them
-
-      if( cc0 > cc1 ) {
-        dmin = H[y][s][1] - distance_step;
-        dmax = H[y][s][1] + distance_step;
-      }
-      else {
-        dmin = H[y][s][3] - distance_step;
-        dmax = H[y][s][3] + distance_step;
-      }
-
-    }
-
-    else if( c0_extreme ) {
-      // if current point is local maximum on first histograms
-      dmin = H[y][s][1] - distance_step;
-      dmax = H[y][s][1] + distance_step;
-    }
-
-    else if( c1_extreme ) {
-      // if current point is local maximum on second histograms
-      dmin = H[y][s][3] - distance_step;
-      dmax = H[y][s][3] + distance_step;
-    }
-
-    else { // not an appropriate local maximum
-      continue;
-    }
-
-
-    //////////////////////////////////////////////////////////////
-    // estimate slope and vertical dispersion of the wall
-    {
-      INSTRUMENT_REGION("checkpts");
-
-    line.reset();
-
-    wall.pts.clear();
-    wall.nrp = 0;
-
-    h = 0;
-    sh = 0;
+  else {
 
     for( int l = 0; l < D.rows; ++l ) {
       for( int e = 0; e < 3; ++e ) {
@@ -441,109 +309,411 @@ static inline void segment_distances(const c_vlo_scan & scan, const cv::Mat4f & 
         const auto & point_distance =
             D[l][s][e];
 
-        if( point_distance > dmin && point_distance < dmax ) {
+        if( point_distance ) {
 
-          wall.pts.emplace_back(l, e);
+          const auto beg =
+              dsegs.begin();
+
+          const auto end =
+              dsegs.begin() + dsegs_count;
+
+          const auto ii =
+              std::lower_bound(beg, end,
+                  point_distance,
+                  [](const c_distance_segment & dseg, const auto & distance) {
+                    return dseg.dmax < distance;
+                  });
+
+          if( ii == end || point_distance < ii->dmin ) {
+
+            if( opts.rreset ) {
+              R[l][s][e] = 0;
+            }
+
+            continue;
+          }
+
+          ii->pts.emplace_back(l, e);
 
           if( R[l][s][e] ) {
-            ++wall.nrp;
+            ++ii->nrp;
           }
+
+          ii->h += l;
+          ii->sh += l * l;
 
           const auto & point_height =
               scan.clouds[e][l][s][2]; // Z-coordinate of the point
 
-          line.update(point_height,
+          ii->line.update(point_height,
               point_distance);
-
-          h += l;
-          sh += l * l;
         }
       }
     }
 
-    if( !wall.nrp ) {
-      continue;
+    for( int i = 0; i < dsegs_count; ++i ) {
+
+      const c_distance_segment & dseg =
+          dsegs[i];
+
+      if( !dseg.nrp ) {
+        continue;
+      }
+
+      const int npts =
+          dseg.line.pts();
+
+      if( npts < opts.min_segment_size || std::abs(dseg.line.slope()) > max_slope ) {
+
+        if( opts.rreset ) {
+          for( const auto & p : dseg.pts ) {
+            R[p.l][s][p.e] = 0;
+          }
+        }
+
+        continue;
+      }
+
+      const auto h = dseg.h / npts; // mean height
+      const auto sh = dseg.sh / npts - h * h; // compute variation (dispersion) of heights
+      if( (sh < hdisp) ) { // too short vertically
+
+        if( opts.rreset ) {
+          for( const auto & p : dseg.pts ) {
+            R[p.l][s][p.e] = 0;
+          }
+        }
+
+        continue;
+      }
+
+      output_segments.emplace_back(&dseg);
     }
 
-    //////////////////////////////////////////////////////////////
-    // label segment if vertical enough
-    //CF_DEBUG("H line.pts()=%d / %d", line.pts(), opts.min_segment_size);
-    if( line.pts() < opts.min_segment_size ) {
-      continue;
+  }
+}
+
+} // namespace
+
+
+/**
+ * Begin is first point inside of reflector.
+ * End is first point outside of reflector.
+ */
+static bool find_reflector(const std::vector<c_point> & pts, const cv::Mat3b & R, int p, int s,
+    int * pbeg, int * pend)
+{
+  const int npts =
+      pts.size();
+
+  // search for begin of reflector
+  for( ; p < npts; ++p ) {
+    if( R[pts[p].l][s][pts[p].e] ) {
+      *pbeg = p;
+      break;
+    }
+  }
+
+  if( p >= npts ) {
+    return false;
+  }
+
+  // search for the end of reflector
+  for( ++p; p < npts; ++p ) {
+    if( !R[pts[p].l][s][pts[p].e] ) {
+      break;
+    }
+  }
+
+  *pend = p;
+
+//  for( p = npts-1; p > *pbeg; --p ) {
+//    if( R[pts[p].l][s][pts[p].e] ) {
+//      ++p;
+//      break;
+//    }
+//  }
+//
+//  *pend = p;
+
+  return true;
+}
+
+
+static void analyze_profile(const std::vector<c_point> & pts, const cv::Mat3w & I, const cv::Mat3b & R,
+    cv::Mat3b & B, cv::Mat3f & Q,
+    const c_vlo_bloom_detection_options & opts,
+    int rbeg, int rend, int s)
+{
+
+  struct c_profile_point
+  {
+    int l, e, I;
+  };
+
+  struct c_itensity_profle
+  {
+    std::vector<c_profile_point> pts;
+    std::vector<c_profile_point> mpts;
+    std::vector<c_profile_point> epts;
+
+    int min_value, max_value;
+  };
+
+  static const auto create_profile =
+      [](c_itensity_profle & P, int beg, int end, int inc, int s,
+          const std::vector<c_point> & pts, const cv::Mat3w & I) {
+
+
+        const uint16_t T = inc > 0 ? 25 : 50;
+
+        P.min_value = P.max_value =
+            I[pts[beg].l][s][pts[beg].e];
+
+        for( int p = beg; p != end; p += inc ) {
+
+          const int & l = pts[p].l;
+          const int & e = pts[p].e;
+
+          P.pts.emplace_back((c_profile_point){l, e, I[l][s][e]});
+
+          //if ( I[l][s][e] > 300 /*&& std::abs(l - pts[beg].l) < 100*/ )
+          {
+            if( I[l][s][e] < P.min_value ) {
+              P.min_value = I[l][s][e];
+              P.mpts.emplace_back((c_profile_point) {l, e, I[l][s][e]});
+              if( std::abs(l - pts[beg].l) < 100 && I[l][s][e] > T ) {
+                P.epts.emplace_back((c_profile_point) {l, e, I[l][s][e]});
+              }
+
+            }
+          }
+        }
+
+      };
+
+  const int npts =
+      pts.size();
+
+  c_itensity_profle PP[2];
+
+  if ( rbeg > 5 ) {
+    create_profile(PP[0], rbeg - 1, -1, -1, s, pts, I);
+  }
+
+  if( rend < npts - 5 ) {
+    create_profile(PP[1], rend, npts, +1, s, pts, I);
+  }
+
+
+  // analyze profiles
+  for ( int i = 0; i < 2; ++i ) {
+
+    c_itensity_profle & P =
+        PP[i];
+
+    if( P.epts.size() > 5 && ((P.epts.back().l < 15) || (P.epts.back().I < opts.bloom_min_intensity)) ) {
+
+      const double BLT =
+          opts.bloom_intensity_tolerance;
+
+      c_line_estimate<float> estimate;
+
+      for( const auto & p : P.epts ) {
+        estimate.update(p.l, log(p.I));
+      }
+
+
+#if 1
+      if ( true ) {
+        for( int pass = 0; pass < 3 && P.epts.size() > 5; ++pass ) {
+
+          const float a0 = estimate.a0();
+          const float a1 = estimate.a1();
+          //const float a2 = estimate.a2();
+
+          int ipmax = -1;
+          float dfmax = BLT;
+
+          for( int ip = 1; ip < P.epts.size(); ++ip ) {
+
+            const auto & p =
+                P.epts[ip];
+
+            const float fm =
+                p.I;
+
+            const float fp =
+                exp(a0 + a1 * p.l /*+ a2 * p.l * p.l*/ );
+
+            const float df =
+                fm - fp;
+
+            if ( df > dfmax ) {
+              dfmax = df;
+              ipmax = ip;
+            }
+          }
+
+          if ( ipmax < 0 ) {
+            break;
+          }
+
+          estimate.remove(P.epts[ipmax].l, log(P.epts[ipmax].I));
+          P.epts.erase(P.epts.begin() + ipmax);
+        }
+      }
+#endif
+
+//      estimate.update(P.mpts.front().l, log(P.mpts.front().I));
+//      estimate.update(P.mpts.back().l, log(P.mpts.back().I));
+//      for( const auto & p : P.mpts ) {
+//        estimate.update(p.l, log(p.I));
+//      }
+
+      const float a0 = estimate.a0();
+      const float a1 = estimate.a1();
+      const float slope = std::abs(a1);
+
+      if( slope >= opts.min_bloom_slope && slope <= opts.max_bloom_slope ) {
+
+//          for( const auto & p : P.epts ) {
+//            if( !R[p.l][s][p.e] ) {
+//
+//              const double fp = exp(a0 + a1 * p.l /*+ a2 * p.l * p.l*/);
+//
+//              if( !Q[p.l][s][p.e] || fp > Q[p.l][s][p.e] ) {
+//                Q[p.l][s][p.e] = fp;
+//              }
+//            }
+//          }
+
+        for( const auto & p : P.pts ) {
+          if( !R[p.l][s][p.e] ) {
+
+            const double fp = exp(a0 + a1 * p.l /*+ a2 * p.l * p.l*/);
+
+            if( !Q[p.l][s][p.e] || fp > Q[p.l][s][p.e] ) {
+              Q[p.l][s][p.e] = fp;
+            }
+          }
+        }
+
+        //
+
+//        for( const auto & p : P.mpts ) {
+//
+//          const double fm = p.I;
+//          const double fp = exp(a0 + a1 * p.l /*+ a2 * p.l * p.l*/);
+//          Q[p.l][s][p.e] = fp; // std::abs(a1);
+//          B[p.l][s][p.e] = 255;
+//        }
+
+
+
+      }
+
     }
 
-    const auto slope = std::abs(line.slope());
-    if( slope > max_slope ) { // not enough vertical
-      continue;
-    }
-
-    h /= line.pts(); // compute mean height
-    sh = sh / line.pts() - h * h; // compute variation (dispersion) of heights
-    if( (sh < hdisp) ) { // too short vertically
-      continue;
-    }
-
-
-    output_segments.emplace_back(wall);
-
-    }
-    //////////////////////////////////////////////////////////////
   }
 
 }
 
-#endif
-}
+static void detect_saturated_pixels(const cv::Mat3w & I, const cv::Mat3w & D,
+    const c_vlo_bloom_detection_options & opts,
+    cv::Mat3b & output_mask)
+{
+  //  cv::compare(I, cv::Scalar::all(opts.intensity_saturation_level),
+  //      output_reflectors_mask,
+  //      cv::CMP_GE);
 
+  output_mask.create(I.size());
+
+  for ( int l = 0; l < I.rows; ++l ) {
+    for ( int s = 0; s < I.cols; ++s ) {
+      for ( int e = 0; e < 3; ++e ) {
+
+        if ( D[l][s][e] < 100 ) {
+          output_mask[l][s][e] = 0;
+        }
+        else {
+
+          const double D020 = 2000;
+          const double D100 = 10000;
+          const double I020 = opts.intensity_saturation_level_020m;
+          const double I100 = opts.intensity_saturation_level_100m;
+          const double d = D[l][s][e];
+          const double T = I020 + (d - D020) * (I100 - I020) / (D100 - D020);
+
+          if ( I[l][s][e] >= T ) {
+            output_mask[l][s][e] = 255;
+          }
+          else {
+            output_mask[l][s][e] = 0;
+          }
+        }
+      }
+    }
+  }
+
+}
 
 bool vlo_bloom_detection(const c_vlo_scan & scan,
     const c_vlo_bloom_detection_options & opts,
     cv::Mat & output_bloom_mask,
-    cv::Mat & output_reflectors_mask)
+    cv::Mat & output_reflectors_mask,
+    cv::Mat & output_debug_image)
 {
 
   INSTRUMENT_REGION("");
 
 
-  // Get intensity image
-  const cv::Mat3w & I =
-      get_intensity_image(scan,
-          opts);
+  /*
+   * Create point intensity image
+   * */
+
+  cv::Mat3w I;
+
+  if( !get_intensity_image(scan, opts, I) ) {
+    CF_DEBUG("get_intensity_image() fails");
+    return false;
+  }
+
 
   /*
    * Create output masks
    * */
 
-  output_bloom_mask.create(scan.size, CV_8UC3);
-  output_bloom_mask.setTo(0);
+  cv::Mat3b R;
+  detect_saturated_pixels(I, scan.distances, opts, R);
+  output_reflectors_mask = R;
 
-  cv::compare(I, cv::Scalar::all(opts.intensity_saturation_level),
-      output_reflectors_mask,
-      cv::CMP_GE);
-
-  cv::Mat3b B =
-      output_bloom_mask;
-
-  cv::Mat3b R =
-      output_reflectors_mask;
+  cv::Mat3b B(scan.size, cv::Vec3b::all(0));
+  output_bloom_mask = B;
 
 
   /*
-   * Scan pints by columns (slot index),
+   * Scan points by columns (slot index),
    * for each of reflectors extract corresponding vertical wall and
    * analyze vertical intensity profile
    * */
 
-  const float IT =
-      opts.intensity_saturation_level -
-          opts.intensity_tolerance;
-
   cv::Mat4f H;
+
 
   std::vector<c_distance_segment> dsegs;
   std::vector<const c_distance_segment*> selected_segments;
 
   create_histogram_of_distances(scan, R, opts, H);
+
+  cv::Mat3f Q =
+      cv::Mat3f::zeros(B.size());
+
+  struct c_retro_reflector
+  {
+    int beg, end;
+  };
+  std::vector<c_retro_reflector> reflectors;
 
   for( int s = 0; s < R.cols; ++s ) {
 
@@ -552,57 +722,131 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
     segment_distances(scan, H, R, s, opts,  dsegs,
         selected_segments);
 
-    for ( const c_distance_segment * ss : selected_segments ) {
+    for( const c_distance_segment * ss : selected_segments ) {
 
-      int rstart = -1, rend = -1;
+      reflectors.clear();
 
-      for ( int p = 0, np = ss->pts.size(); p < np; ++p ) {
+      const auto & pts = ss->pts;
+      const int npts = pts.size();
 
-        const cv::Point & sp = ss->pts[p];
-        const int & l = sp.x; // image row (layer index)
-        const int & e = sp.y; // image channel (echo index)
+      for( int p = 0; p < npts; ) {
 
-        if( I[l][s][e] >= IT ) {
+        int rbeg, rend;
 
-          if( rstart < 0 ) {
-            rstart = rend = p;
-          }
-          else {
-            rend = p;
+        if( !find_reflector(pts, R, p, s, &rbeg, &rend) ) {
+          break;
+        }
+
+        if( !reflectors.empty() ) {
+
+          auto & reflector =
+              reflectors.back();
+
+          if( pts[rbeg].l < pts[reflector.end].l + opts.max_reflector_hole_size ) {
+
+            for( int pp = reflector.end; pp < rbeg; ++pp ) {
+              const auto & pt = pts[pp];
+              R[pt.l][s][pt.e] = 255;
+            }
+
+            p = reflector.end = rend; // fuse two consecutive reflectors into single one
+            continue;
           }
         }
+
+        reflectors.emplace_back((c_retro_reflector){rbeg, rend});
+        p = rend;
       }
 
-      if( rend >= rstart ) {
+//      int rbeg, rend;
+//
+//      if( find_reflector(ss->pts, R, 0, s, &rbeg, &rend) ) {
+//        analyze_profile(ss->pts, I, B, Q, opts, rbeg, rend, s);
+//      }
 
-        for( int p = 0; p < rstart; ++p ) {
-          const cv::Point & sp = ss->pts[p];
-          const int & l = sp.x; // image row (layer index)
-          const int & e = sp.y; // image channel (echo index)
-          B[l][s][e] = 255;
+
+      /* analyze intensity profile for each of extractor high-reflective objects */
+      for( const auto & reflector : reflectors ) {
+        analyze_profile(ss->pts, I, R, B, Q, opts, reflector.beg, reflector.end, s);
+      }
+
+      for( int l = 0; l < R.rows; ++l ) {
+        for( int e = 0; e < 3; ++e ) {
+          if( !R[l][s][e] && Q[l][s][e] ) {
+            if ( I[l][s][e] < Q[l][s][e] + opts.intensity_tolerance ) {
+              B[l][s][e] = 255;
+            }
+          }
         }
-
-        for( int p = rend, np = ss->pts.size(); p < np; ++p ) {
-          const cv::Point & sp = ss->pts[p];
-          const int & l = sp.x; // image row (layer index)
-          const int & e = sp.y; // image channel (echo index)
-          B[l][s][e] = 255;
-        }
-
-//        for( int p = 0, np = ss->pts.size(); p < np; ++p ) {
-//          if( p < rstart || p > rend ) {
-//            const cv::Point & sp = ss->pts[p];
-//            const int & l = sp.x; // image row (layer index)
-//            const int & e = sp.y; // image channel (echo index)
-//            B[l][s][e] = 255;
-//          }
-//        }
       }
     }
+
   }
+
+  output_debug_image = Q;
 
   return true;
 }
+
+
+#if 0
+  if( end >= rstart ) {
+
+//        for( int p = 0; p < rstart; ++p ) {
+//          const cv::Point & sp = ss->pts[p];
+//          const int & l = sp.x; // image row (layer index)
+//          const int & e = sp.y; // image channel (echo index)
+//          B[l][s][e] = 255;
+//        }
+
+#if 0
+    for( int p = end, np = ss->pts.size(); p < np; ++p ) {
+      const cv::Point & sp = ss->pts[p];
+      const int & l = sp.x; // image row (layer index)
+      const int & e = sp.y; // image channel (echo index)
+      B[l][s][e] = 255;
+    }
+#else
+    int min_intensity =
+        I[ss->pts[end].l][s][ss->pts[end].e];
+
+    static constexpr int XX = 321;
+    static constexpr int YY1 = 77;
+    static constexpr int YY2 = 155;
+
+    for( int p = end, np = ss->pts.size(); p < np; ++p ) {
+
+      const auto & sp = ss->pts[p];
+      const int & l = sp.l; // image row (layer index)
+      const int & e = sp.e; // image channel (echo index)
+
+      // 767
+//          const auto threshold =
+//              std::min(min_intensity + opts.object_intensity_tolerance,
+//                  opts.intensity_saturation_level);
+
+      const auto threshold =
+          min_intensity + opts.object_intensity_tolerance;
+
+//          if ( s == XX && l >= YY1 && l <= YY2 ) {
+//            CF_DEBUG("l=%d e=%d I=%g min_intensity=%g threshold=%g", l, e, (double )(I[l][s][e]),
+//                (double )min_intensity, (double )threshold);
+//          }
+
+
+      if( I[l][s][e] <= threshold ) {
+        B[l][s][e] = 255;
+      }
+
+      if ( I[l][s][e] < min_intensity ) {
+        min_intensity = I[l][s][e];
+      }
+
+    }
+#endif
+
+  }
+#endif
 
 #if 0
 
@@ -1089,7 +1333,7 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
     // Analyze each of extracted vertical wall
     for ( const c_bloom_segment & w : segments ) {
 
-      int rstart = -1, rend = -1;
+      int rstart = -1, end = -1;
 
       for ( int p = 0, np = w.pts.size(); p < np; ++p ) {
 
@@ -1100,17 +1344,17 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
         if( I[l][s][e] >= IT ) {
 
           if( rstart < 0 ) {
-            rstart = rend = p;
+            rstart = end = p;
           }
           else {
-            rend = p;
+            end = p;
           }
         }
       }
 
-      if( rend >= rstart ) {
+      if( end >= rstart ) {
         for( int p = 0, np = w.pts.size(); p < np; ++p ) {
-          if( p < rstart || p > rend ) {
+          if( p < rstart || p > end ) {
             const cv::Point & sp = w.pts[p];
             const int & l = sp.x; // image row (layer index)
             const int & e = sp.y; // image channel (echo index)

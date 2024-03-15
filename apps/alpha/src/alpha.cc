@@ -32,12 +32,13 @@
 #include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/pyrscale.h>
-#include <core/debug.h>
 #include <core/proc/bfgs.h>
-
 #include <core/io/hdl/c_hdl_frame_reader.h>
 
+#include <core/proc/c_line_estimate.h>
 #include <core/proc/c_quad_estimate.h>
+
+#include <core/debug.h>
 
 
 int main(int argc, char *argv[])
@@ -69,7 +70,6 @@ int main(int argc, char *argv[])
 //    CF_ERROR("No pcap file specified");
 //    return 1;
 //  }
-
 
   c_quad0_estimate<double> quad2;
 

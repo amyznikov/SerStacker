@@ -248,6 +248,7 @@ bool c_vlo_data_frame::get_data(DataViewType * viewType,
         if( pos != displayChannels_.end() ) {
           image = pos->second.image;
           data = pos->second.data;
+          mask = pos->second.mask;
         }
       }
 
@@ -307,7 +308,44 @@ bool c_vlo_data_frame::get_data(DataViewType * viewType,
       }
 
       if( *viewType == DataViewType_Image ) {
+
         output_image.move(image);
+
+        if( mask.empty() ) {
+
+          if( !selection_mask_.empty() && selection_mask_.size() == output_image.size() ) {
+            if( selection_mask_.channels() == 1 ) {
+              selection_mask_.copyTo(output_mask);
+            }
+            else {
+              reduce_color_channels(selection_mask_, output_mask, cv::REDUCE_MAX);
+            }
+          }
+        }
+        else if (selection_mask_.empty() ) {
+
+          if( !mask.empty() && mask.size() == output_image.size() ) {
+            if( mask.channels() == 1 ) {
+              mask.copyTo(output_mask);
+            }
+            else {
+              reduce_color_channels(mask, output_mask, cv::REDUCE_MAX);
+            }
+          }
+        }
+        else if ( mask.channels() == selection_mask_.channels() && mask.size() == selection_mask_.size() ) {
+          cv::bitwise_and(selection_mask_, mask, output_mask);
+          if ( output_mask.channels() != 1 ) {
+            reduce_color_channels(output_mask, output_mask, cv::REDUCE_MAX);
+          }
+        }
+        else {
+          CF_DEBUG("masks not match: selection_mask_: %dx%d %d channels  mask: %dx%d %d channels",
+              selection_mask_.cols, selection_mask_.rows, selection_mask_.channels(),
+              mask.cols, mask.rows, mask.channels()
+          );
+        }
+
       }
       else if( *viewType == DataViewType_PointCloud ) {
 

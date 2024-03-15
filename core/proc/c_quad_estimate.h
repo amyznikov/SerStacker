@@ -49,6 +49,7 @@ public:
     sx2y += x * x * y;
 
     ++n;
+
     zchanged = true;
   }
 
@@ -65,6 +66,8 @@ public:
     sx2y -= x * x * y;
 
     --n;
+
+    zchanged = true;
   }
 
   int pts() const

@@ -12,8 +12,22 @@ void c_vlo_bloom_filter_routine::get_parameters(std::vector<struct c_data_proces
 {
   ADD_DATA_PROCESSOR_CTRL(ctls, intensity_measure, "intensity_measure", "intensity measure");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, saturation_level, "saturation_level", "saturation level for selected intensity measure");
+  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_saturation_level_020m, "SAT 020m", "intensity saturation level at 20 m distance");
+  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_saturation_level_100m, "SAT 100m", "intensity saturation level at 100 m distance");
+  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_min_intensity, "bloom_min_inten", "bloom_min_intensity");
+
+  ADD_DATA_PROCESSOR_CTRL(ctls, max_reflector_hole_size, "max_refl_hole", "max size of hole inside of single in pixels");
+  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_log_intensity_tolerance, "bloom_log_intensity_tolerance", "bloom_log_intensity_tolerance");
   ADD_DATA_PROCESSOR_CTRL(ctls, intensity_tolerance, "intensity_tolerance", "intensity tolerance for selected intensity measure");
+
+  ADD_DATA_PROCESSOR_CTRL(ctls, min_bloom_slope, "min_bloom_slope", "min profile slope");
+  ADD_DATA_PROCESSOR_CTRL(ctls, max_bloom_slope, "max_bloom_slope", "max profile slope");
+
+  ADD_DATA_PROCESSOR_CTRL(ctls, rreset, "rreset", "rreset");
+
+
+
+
 
   ADD_DATA_PROCESSOR_CTRL(ctls, min_distance, "min_distance", "min distance [cm]");
   ADD_DATA_PROCESSOR_CTRL(ctls, max_distance, "max_distance", "max distance [cm]");
@@ -35,8 +49,19 @@ bool c_vlo_bloom_filter_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, intensity_measure);
-    SERIALIZE_PROPERTY(settings, save, *this, saturation_level);
+    SERIALIZE_PROPERTY(settings, save, *this, intensity_saturation_level_020m);
+    SERIALIZE_PROPERTY(settings, save, *this, intensity_saturation_level_100m);
+    SERIALIZE_PROPERTY(settings, save, *this, bloom_min_intensity);
+
+    SERIALIZE_PROPERTY(settings, save, *this, max_reflector_hole_size);
+
     SERIALIZE_PROPERTY(settings, save, *this, intensity_tolerance);
+    SERIALIZE_PROPERTY(settings, save, *this, bloom_log_intensity_tolerance);
+    SERIALIZE_PROPERTY(settings, save, *this, rreset);
+
+    SERIALIZE_PROPERTY(settings, save, *this, min_bloom_slope);
+    SERIALIZE_PROPERTY(settings, save, *this, max_bloom_slope);
+
 
     SERIALIZE_PROPERTY(settings, save, *this, min_distance);
     SERIALIZE_PROPERTY(settings, save, *this, max_distance);
@@ -64,8 +89,9 @@ bool c_vlo_bloom_filter_routine::process(c_vlo_data_frame * vlo)
   cv::Mat bloom;
   cv::Mat reflectors;
   cv::Mat selection;
+  cv::Mat debug_image;
 
-  if( !vlo_bloom_detection(vlo->current_scan_, opts_, bloom, reflectors) ) {
+  if( !vlo_bloom_detection(vlo->current_scan_, opts_, bloom, reflectors, debug_image) ) {
     CF_ERROR("vlo_bloom_detection() fails");
     return false;
   }
@@ -87,9 +113,13 @@ bool c_vlo_bloom_filter_routine::process(c_vlo_data_frame * vlo)
     }
   }
 
-
   vlo->update_selection(selection,
       mask_mode_);
+
+  vlo->set_data(DataViewType_Image, "BDEBUG",
+      debug_image,
+      cv::noArray(),
+      cv::noArray());
 
   return true;
 }

@@ -21,14 +21,34 @@ public:
       "vlo_bloom_detection",
       "Detect bloom on VLO scans");
 
-  void set_saturation_level(double v)
+  void set_intensity_saturation_level_020m(double v)
   {
-    opts_.intensity_saturation_level = v;
+    opts_.intensity_saturation_level_020m = v;
   }
 
-  double saturation_level() const
+  double intensity_saturation_level_020m() const
   {
-    return opts_.intensity_saturation_level;
+    return opts_.intensity_saturation_level_020m;
+  }
+
+  void set_intensity_saturation_level_100m(double v)
+  {
+    opts_.intensity_saturation_level_100m = v;
+  }
+
+  double intensity_saturation_level_100m() const
+  {
+    return opts_.intensity_saturation_level_100m;
+  }
+
+  void set_bloom_min_intensity(double v)
+  {
+    opts_.bloom_min_intensity = v;
+  }
+
+  double bloom_min_intensity() const
+  {
+    return opts_.bloom_min_intensity;
   }
 
   void set_intensity_tolerance(double v)
@@ -40,6 +60,58 @@ public:
   {
     return opts_.intensity_tolerance;
   }
+
+
+  void set_bloom_log_intensity_tolerance(double v)
+  {
+    opts_.bloom_intensity_tolerance = v;
+  }
+
+  double bloom_log_intensity_tolerance() const
+  {
+    return opts_.bloom_intensity_tolerance;
+  }
+
+  void set_max_reflector_hole_size(int v)
+  {
+    opts_.max_reflector_hole_size = v;
+  }
+
+  int max_reflector_hole_size() const
+  {
+    return opts_.max_reflector_hole_size;
+  }
+
+  void set_rreset(bool v)
+  {
+    opts_.rreset = v;
+  }
+
+  bool rreset() const
+  {
+    return opts_.rreset;
+  }
+
+  void set_min_bloom_slope(double v)
+  {
+    opts_.min_bloom_slope = v;
+  }
+
+  double min_bloom_slope() const
+  {
+    return opts_.min_bloom_slope;
+  }
+
+  void set_max_bloom_slope(double v)
+  {
+    opts_.max_bloom_slope = v;
+  }
+
+  double max_bloom_slope() const
+  {
+    return opts_.max_bloom_slope;
+  }
+
 
   void set_mask_mode(c_vlo_data_frame::SELECTION_MASK_MODE v)
   {

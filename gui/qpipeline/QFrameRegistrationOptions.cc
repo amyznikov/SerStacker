@@ -525,7 +525,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
     Base("QFeatureBasedRegistrationOptions", parent)
 {
   enableFeatureBasedRegistration_ctl =
-      add_checkbox("Enable feature based registration",
+      add_checkbox("Enable feature registration",
           "",
           [this](bool checked) {
             if ( options_ && options_->enabled != checked ) {
@@ -2106,7 +2106,7 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
   connect(masterFrameOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-  add_expandable_groupbox("Feature Based Registration Options",
+  add_expandable_groupbox("Feature Registration Options",
       featureRegistrationOptions_ctl = new QFeatureBasedRegistrationOptions(this));
   connect(featureRegistrationOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);

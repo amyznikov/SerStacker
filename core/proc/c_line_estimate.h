@@ -74,5 +74,4 @@ protected:
   int n = 0;
 };
 
-
 #endif /* __c_running_line_estimate_h__ */

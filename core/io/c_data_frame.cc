@@ -6,6 +6,7 @@
  */
 
 #include "c_data_frame.h"
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -64,7 +65,14 @@ bool c_data_frame::set_data(DataViewType viewType,
 
     image.copyTo(pos->second.image);
     data.copyTo(pos->second.data);
-    mask.copyTo(pos->second.mask);
+
+    if( mask.empty() || mask.channels() == 1 ) {
+      mask.copyTo(pos->second.mask);
+    }
+    else {
+      reduce_color_channels(mask, pos->second.mask,
+          cv::REDUCE_MAX);
+    }
 
   }
   else {
@@ -77,7 +85,16 @@ bool c_data_frame::set_data(DataViewType viewType,
 
     image.copyTo(c.image);
     data.copyTo(c.data);
-    mask.copyTo(c.mask);
+
+    if ( !mask.empty() ) {
+      if ( mask.channels() == 1 ) {
+        mask.copyTo(c.mask);
+      }
+      else {
+        reduce_color_channels(mask, c.mask,
+            cv::REDUCE_MAX);
+      }
+    }
 
     displayChannels_.emplace(channelName, c);
   }

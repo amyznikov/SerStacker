@@ -461,11 +461,14 @@ static void analyze_profile(const std::vector<c_point> & pts, const cv::Mat3w & 
   };
 
   static const auto create_profile =
-      [](c_itensity_profle & P, int beg, int end, int inc, int s,
-          const std::vector<c_point> & pts, const cv::Mat3w & I) {
+      [](const c_vlo_bloom_detection_options & opts, c_itensity_profle & P,
+          int beg, int end, int inc, int s,
+          const std::vector<c_point> & pts,
+          const cv::Mat3w & I) {
 
-
-        const uint16_t T = inc > 0 ? 25 : 50;
+        const uint16_t T =
+            (opts.intensity_measure == VLO_BLOOM_INTENSITY_PEAK) ? (inc > 0 ? 25 : 50) :
+                (inc > 0 ? 500 : 900);
 
         P.min_value = P.max_value =
             I[pts[beg].l][s][pts[beg].e];
@@ -498,13 +501,12 @@ static void analyze_profile(const std::vector<c_point> & pts, const cv::Mat3w & 
   c_itensity_profle PP[2];
 
   if ( rbeg > 5 ) {
-    create_profile(PP[0], rbeg - 1, -1, -1, s, pts, I);
+    create_profile(opts, PP[0], rbeg - 1, -1, -1, s, pts, I);
   }
 
   if( rend < npts - 5 ) {
-    create_profile(PP[1], rend, npts, +1, s, pts, I);
+    create_profile(opts, PP[1], rend, npts, +1, s, pts, I);
   }
-
 
   // analyze profiles
   for ( int i = 0; i < 2; ++i ) {

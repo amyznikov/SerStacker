@@ -157,6 +157,22 @@ c_image_processor::sptr QImageProcessorSelector::current_processor() const
   return enable_ctl->isChecked() ? current_processor_ : nullptr;
 }
 
+QString QImageProcessorSelector::selected_processor() const
+{
+  return selector_ctl->currentText();
+}
+
+void QImageProcessorSelector::set_selected_processor(const QString & name)
+{
+  const int index =
+      selector_ctl->findText(name);
+
+  if ( index >= 0 ) {
+    selector_ctl->setCurrentIndex(index);
+  }
+}
+
+
 bool QImageProcessorSelector::imageProcessingEnabled() const
 {
   return enable_ctl->isChecked();

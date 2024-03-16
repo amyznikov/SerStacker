@@ -171,7 +171,14 @@ void MainWindow::onSaveState(QSettings & settings)
     profileGraph_ctl_->saveParameters("profileGraph");
   }
 
+  if ( imageProcessor_ctl ) {
+
+    settings.setValue(QString("imageProcessor/selected_processor"),
+        imageProcessor_ctl->selected_processor());
+  }
+
   saveShapes(settings);
+
 
 }
 
@@ -203,6 +210,17 @@ void MainWindow::onRestoreState(QSettings & settings)
       grid.visible = false;
       grid.step = 2;
       grid.maxDistance = 600;
+    }
+
+  }
+
+  if ( imageProcessor_ctl ) {
+
+    const QString selected_processor =
+        settings.value(QString("imageProcessor/selected_processor")).toString();
+
+    if ( !selected_processor.isEmpty() ) {
+      imageProcessor_ctl->set_selected_processor(selected_processor);
     }
 
   }

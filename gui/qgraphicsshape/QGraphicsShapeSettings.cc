@@ -9,22 +9,16 @@
 #include "QGraphicsLineShape.h"
 #include "QGraphicsRectShape.h"
 #include "QGraphicsTargetShape.h"
-#include <core/debug.h>
+// #include <core/debug.h>
 
 QGraphicsShape * QGraphicsShape::load(const QSettings & settings, const QString & sectionName)
 {
   const QString shapeType =
       settings.value(QString("%1/type").arg(sectionName)).toString();
 
-  CF_DEBUG("sectionName=%s shapeType='%s'",
-      sectionName.toUtf8().constData(),
-      shapeType.toUtf8().constData());
-
   if ( !shapeType.isEmpty() ) {
 
     if ( shapeType == "line" ) {
-
-      CF_DEBUG(" LOAD LINE");
 
       QGraphicsLineShape * line =
           new QGraphicsLineShape();
@@ -42,8 +36,6 @@ QGraphicsShape * QGraphicsShape::load(const QSettings & settings, const QString 
 
     if ( shapeType == "rect" ) {
 
-      CF_DEBUG(" LOAD rect");
-
       QGraphicsRectShape * rect =
           new QGraphicsRectShape();
 
@@ -59,8 +51,6 @@ QGraphicsShape * QGraphicsShape::load(const QSettings & settings, const QString 
     }
 
     if ( shapeType == "target" ) {
-
-      CF_DEBUG(" LOAD target");
 
       QGraphicsTargetShape * target =
           new QGraphicsTargetShape();
@@ -88,11 +78,7 @@ void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, co
 {
   if ( shape ) {
 
-    CF_DEBUG("sectionName=%s", sectionName.toUtf8().constData());
-
     if( const QGraphicsLineShape * line = dynamic_cast<const QGraphicsLineShape*>(shape) ) {
-
-      CF_DEBUG("   SAVE LINE");
 
       settings.setValue(QString("%1/type").arg(sectionName), QString("line"));
       settings.setValue(QString("%1/line").arg(sectionName), line->line());
@@ -107,8 +93,6 @@ void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, co
     }
     else if( const QGraphicsRectShape * rect = dynamic_cast<const QGraphicsRectShape*>(shape) ) {
 
-      CF_DEBUG("   SAVE RECT");
-
       settings.setValue(QString("%1/type").arg(sectionName), QString("rect"));
       settings.setValue(QString("%1/rect").arg(sectionName), rect->rect());
       settings.setValue(QString("%1/pen").arg(sectionName), rect->pen());
@@ -120,8 +104,6 @@ void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, co
 
     }
     else if( const QGraphicsTargetShape * target = dynamic_cast<const QGraphicsTargetShape*>(shape) ) {
-
-      CF_DEBUG("   SAVE TARGET");
 
       settings.setValue(QString("%1/type").arg(sectionName), QString("target"));
       settings.setValue(QString("%1/center").arg(sectionName), target->center());
@@ -135,9 +117,7 @@ void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, co
       settings.setValue(QString("%1/pos").arg(sectionName), target->pos());
     }
     else {
-      CF_DEBUG("   SAVE UNKNOWN");
     }
-
 
   }
 

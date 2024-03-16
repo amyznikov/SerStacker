@@ -25,6 +25,10 @@ public:
 
   c_image_processor::sptr current_processor() const;
 
+  QString selected_processor() const;
+  void set_selected_processor(const QString & name);
+
+
   bool imageProcessingEnabled() const;
 
 Q_SIGNALS:

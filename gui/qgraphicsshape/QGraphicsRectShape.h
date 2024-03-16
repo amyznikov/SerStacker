@@ -87,7 +87,7 @@ protected:
   QPainterPath shape_;
   QPen pen_;
   QBrush brush_;
-  int handleSize_ = 0;
+  //int handleSize_ = 0;
   int hitDstance_ = 15;
   MouseAction currentMouseAction_ = MouseAction_None;
   QPointF mdelta_;

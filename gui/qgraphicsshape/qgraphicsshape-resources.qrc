@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/qgraphicsshape">
+
+
 	<file>icons/dark/shapes.png</file>
 	<file>icons/light/shapes.png</file>
 	
@@ -14,5 +16,8 @@
 	
 	<file>icons/dark/circle.png</file>
 	<file>icons/light/circle.png</file>
+	
+	<file>icons/target.png</file>
+	
 </qresource>
 </RCC>

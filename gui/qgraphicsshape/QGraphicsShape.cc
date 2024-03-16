@@ -410,6 +410,8 @@ double QGraphicsShape::distance_from_point_to_line(const QPointF & p, const QLin
 }
 
 
+/////////////////////////
+
 //
 //
 /////////////////////////

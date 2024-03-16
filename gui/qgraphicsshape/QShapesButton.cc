@@ -8,6 +8,7 @@
 #include "QShapesButton.h"
 #include "QGraphicsRectShape.h"
 #include "QGraphicsLineShape.h"
+#include "QGraphicsTargetShape.h"
 #include <gui/widgets/style.h>
 #include <gui/qimageview/QImageScene.h>
 #include <core/debug.h>
@@ -16,12 +17,14 @@
 #define ICON_shapes     ":/qgraphicsshape/icons/shapes.png"
 #define ICON_line       ":/qgraphicsshape/icons/line.png"
 #define ICON_rectangle  ":/qgraphicsshape/icons/rectangle.png"
+#define ICON_target     ":/qgraphicsshape/icons/target.png"
 #define ICON_delete     ":/qgraphicsshape/icons/delete.png"
 
 
 static QIcon shapes_icon;
 static QIcon line_icon;
 static QIcon rectangle_icon;
+static QIcon target_icon;
 static QIcon delete_icon;
 
 
@@ -61,6 +64,9 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
   }
   if ( rectangle_icon.isNull() ) {
     rectangle_icon = getIcon(ICON_rectangle);
+  }
+  if ( target_icon.isNull() ) {
+    target_icon = getIcon(ICON_target);
   }
   if ( delete_icon.isNull() ) {
     delete_icon = getIcon(ICON_delete);
@@ -124,24 +130,6 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
 
             connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
-//            if ( imageScene ) {
-//
-//              connect(shape, &QGraphicsShape::itemChanged,
-//                  imageScene, &QImageScene::graphicsItemChanged,
-//                  Qt::QueuedConnection);
-//
-//              connect(shape, &QGraphicsShape::visibleChanged,
-//                  [imageScene, shape] () {
-//                    Q_EMIT imageScene->graphicsItemVisibleChanged(shape);
-//                  });
-//
-//              connect(shape, &QObject::destroyed,
-//                  [imageScene, shape] () {
-//                    Q_EMIT imageScene->graphicsItemDestroyed(shape);
-//                  });
-//
-//            }
-
             setChecked(true);
           }
         }
@@ -190,15 +178,44 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
 
             connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
+            setChecked(true);
+          }
+        }
+    });
 
-//            QImageScene * imageScene =
-//                dynamic_cast<QImageScene * >(scene);
+  popup_.addAction(target_icon,
+      "Add target ...",
+      [this]() {
+        if ( sceneView_ ) {
 
-//            if ( imageScene ) {
-//              connect(shape, &QGraphicsShape::itemChanged,
-//                  imageScene, &QImageScene::graphicsItemChanged,
-//                  Qt::QueuedConnection);
-//            }
+          QGraphicsScene * scene =
+              sceneView_->scene();
+
+          if ( scene ) {
+
+            const QRectF rc1 =
+                sceneView_->sceneRect();
+
+            const QPointF center(rc1.width()/2,
+                rc1.height()/2);
+
+            QGraphicsTargetShape *shape =
+                new QGraphicsTargetShape();
+
+            shape->setCenter(center);
+
+            shape->setVisible(true);
+            shape->setFlag(QGraphicsItem::ItemIsMovable, true);
+            shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+            shape->setPen(pen_);
+
+            connect(shape, &QGraphicsShape::populateContextMenuReuested,
+                this, &ThisClass::onPopulateGraphicsShapeContextMenu);
+
+            scene->addItem(shape);
+            shapes_.append(shape);
+
+            connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
             setChecked(true);
           }
@@ -250,6 +267,31 @@ void QShapesButton::setSceneView(QGraphicsView * sceneView)
 QGraphicsView * QShapesButton::sceneView() const
 {
   return sceneView_;
+}
+
+
+const QList<QGraphicsShape*>& QShapesButton::shapes() const
+{
+  return shapes_;
+}
+
+void QShapesButton::addShape(QGraphicsShape * shape)
+{
+  if ( shapes_.indexOf(shape) < 0 ) {
+
+    shapes_.append(shape);
+    connect(shape, &QGraphicsShape::populateContextMenuReuested,
+        this, &ThisClass::onPopulateGraphicsShapeContextMenu);
+
+
+    QGraphicsScene * scene =
+        sceneView_->scene();
+
+    if ( scene && scene->items().indexOf(shape) < 0 ) {
+      scene->addItem(shape);
+      connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
+    }
+  }
 }
 
 void QShapesButton::onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape, const QGraphicsSceneContextMenuEvent * event, QMenu * menu)

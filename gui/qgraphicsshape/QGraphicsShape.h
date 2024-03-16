@@ -44,6 +44,12 @@ public:
   void setUpdatingPos(bool v);
   bool inUpdatingPos() const;
 
+  static QGraphicsShape * load(const QSettings & settings,
+      const QString & sectionName);
+
+  static void save(const QGraphicsShape * shape, QSettings & settings,
+      const QString & sectionName);
+
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
   void populateContextMenuReuested(QGraphicsShape* _this,

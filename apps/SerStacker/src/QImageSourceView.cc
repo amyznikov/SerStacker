@@ -86,5 +86,4 @@ void QImageSourceView::createRoiShape()
 }
 
 
-
 } /* namespace serstacker */

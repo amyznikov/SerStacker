@@ -171,6 +171,8 @@ void MainWindow::onSaveState(QSettings & settings)
     profileGraph_ctl_->saveParameters("profileGraph");
   }
 
+  saveShapes(settings);
+
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -204,8 +206,48 @@ void MainWindow::onRestoreState(QSettings & settings)
     }
 
   }
+
+  loadShapes(settings);
+
 }
 
+void MainWindow::saveShapes(QSettings & settings)
+{
+  const QString sectionName =
+      "ImageViewShapes";
+
+  const QList<QGraphicsShape *> & shapes =
+      shapes_ctl->shapes();
+
+  settings.setValue(QString("%1/numShapes").arg(sectionName),
+      shapes.size());
+
+  for( int i = 0, n = shapes.size(); i < n; ++i ) {
+    QGraphicsShape::save(shapes[i], settings,
+        QString("%1/shape%2").arg(sectionName).arg(i));
+  }
+
+}
+
+void MainWindow::loadShapes(const QSettings & settings)
+{
+  const QString sectionName =
+      "ImageViewShapes";
+
+  const int numShapes =
+      settings.value(QString("%1/numShapes").arg(sectionName), 0).toInt();
+
+  for ( int i = 0; i < numShapes; ++i ) {
+
+    QGraphicsShape * shape =
+        QGraphicsShape::load(settings,
+            QString("%1/shape%2").arg(sectionName).arg(i));
+
+    if ( shape ) {
+      shapes_ctl->addShape(shape);
+    }
+  }
+}
 
 void MainWindow::setupPipelines()
 {

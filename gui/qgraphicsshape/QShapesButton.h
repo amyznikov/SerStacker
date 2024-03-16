@@ -26,6 +26,9 @@ public:
   void setSceneView(QGraphicsView * view);
   QGraphicsView * sceneView() const;
 
+  const QList<QGraphicsShape *> & shapes() const;
+  void addShape(QGraphicsShape * shape);
+
 protected Q_SLOTS:
   void onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape,
       const QGraphicsSceneContextMenuEvent * event,

@@ -585,7 +585,7 @@ void QProfileGraph::replot()
     Q_EMIT xRangeRescaled();
   }
 
-  if( !(fixYMin_ && fixXMax_) ) {
+  if( !(fixYMin_ && fixYMax_) ) {
 
     double ymin =
         plot_->yAxis->range().lower;

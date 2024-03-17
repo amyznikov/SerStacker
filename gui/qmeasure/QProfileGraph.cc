@@ -8,6 +8,7 @@
 #include "QProfileGraph.h"
 #include <gui/widgets/QToolBarStretch.h>
 #include <gui/widgets/style.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -15,6 +16,8 @@
 #define ICON_plot       ":/qmeasure/icons/plot.png"
 #define ICON_settings   ":/qmeasure/icons/settings.png"
 #define ICON_copy       ":/qmeasure/icons/copy.png"
+#define ICON_numberbox  ":/qmeasure/icons/numberbox.png"
+
 
 
 template<>
@@ -153,6 +156,7 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
 
   toolbar_->addWidget(new QToolBarStretch(toolbar_));
 
+  //
 
   toolbar_->addAction(copyToClipboardAction_ =
       new QAction(getIcon(ICON_copy),
@@ -163,7 +167,7 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
 
   toolbar_->addSeparator();
 
-  //addStretch(toolbar_);
+  //
 
   toolbar_->addAction(showSettingsAction_ =
       new QAction(getIcon(ICON_settings),
@@ -175,11 +179,21 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
       this, &ThisClass::onShowSettingsActionTriggered);
 
 
+  //
+  toolbar_->addAction(showStatusbarAction_ =
+      new QAction(getIcon(ICON_numberbox),
+          "Statusbar"));
+
+  showStatusbarAction_->setCheckable(true);
+
+  connect(showStatusbarAction_, &QAction::triggered,
+      this, &ThisClass::onShowStatusbarActionTriggered);
+
 
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  vl_->addWidget(plot_ = new QCustomPlot(this));
+  vl_->addWidget(plot_ = new QCustomPlot(this), 1000);
 
   static const QColor colors[4] = {
       Qt::blue,
@@ -718,6 +732,50 @@ void QProfileGraph::onCopyToClipboardActionTriggered()
 
 
   clipboard->setText(text);
+}
+
+
+void QProfileGraph::onShowStatusbarActionTriggered(bool checked)
+{
+  if( checked ) {
+
+    if( !statusBar_ ) {
+      vl_->addWidget(statusBar_ = new QStatusBar(this), 0, Qt::AlignBottom);
+      statusBar_->setSizeGripEnabled(true);
+    }
+
+    statusBar_->show();
+    statusBar_->showMessage("");
+
+    connect(plot_, &QCustomPlot::mouseMove,
+        this, &ThisClass::onCustomPlotMouseMove);
+
+  }
+  else if( statusBar_ ) {
+
+    statusBar_->hide();
+
+    disconnect(plot_, &QCustomPlot::mouseMove,
+        this, &ThisClass::onCustomPlotMouseMove);
+
+  }
+
+}
+
+
+void QProfileGraph::onCustomPlotMouseMove(QMouseEvent * e)
+{
+  if ( statusBar_ && statusBar_->isVisible() ) {
+
+    const double x =
+        plot_->xAxis->pixelToCoord(e->pos().x());
+
+    const double y =
+        plot_->yAxis->pixelToCoord(e->pos().y());
+
+    statusBar_->showMessage(qsprintf("x=%g y=%g", x, y));
+  }
+
 }
 
 

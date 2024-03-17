@@ -30,6 +30,9 @@
 
 	<file>icons/light/settings.png</file>
 	<file>icons/dark/settings.png</file>
+	
+	<file>icons/light/numberbox.png</file>
+	<file>icons/dark/numberbox.png</file>
 
 	<file>icons/measure.png</file>
 	<file>icons/options.png</file>

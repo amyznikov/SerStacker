@@ -73,8 +73,10 @@ Q_SIGNALS:
   // void parameterChanged();
 
 protected Q_SLOTS:
-  void onShowSettingsActionTriggered(bool checked);
   void onCopyToClipboardActionTriggered();
+  void onShowSettingsActionTriggered(bool checked);
+  void onShowStatusbarActionTriggered(bool checked);
+  void onCustomPlotMouseMove(QMouseEvent * e);
 
 protected:
   void showEvent(QShowEvent * event) override;
@@ -84,8 +86,10 @@ protected:
 protected:
   QVBoxLayout * vl_ = nullptr;
   QToolBar * toolbar_ = nullptr;
+  QStatusBar * statusBar_ = nullptr;
   QAction * copyToClipboardAction_ = nullptr;
   QAction * showSettingsAction_ = nullptr;
+  QAction * showStatusbarAction_ = nullptr;
   QProfileGraphSettingsDialogBox * plotSettings_ctl = nullptr;
 
   QCustomPlot *plot_ = nullptr;

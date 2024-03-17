@@ -234,6 +234,16 @@ void MainWindow::saveShapes(QSettings & settings)
   const QString sectionName =
       "ImageViewShapes";
 
+  if ( imageView ) {
+
+    settings.setValue(QString("%1/ROI/visible").arg(sectionName),
+        imageView->roiShape()->isVisible());
+
+    QGraphicsShape::save(imageView->roiShape(), settings,
+        QString("%1/ROI").arg(sectionName));
+  }
+
+
   const QList<QGraphicsShape *> & shapes =
       shapes_ctl->shapes();
 
@@ -251,6 +261,18 @@ void MainWindow::loadShapes(const QSettings & settings)
 {
   const QString sectionName =
       "ImageViewShapes";
+
+
+  if ( imageView ) {
+
+    QGraphicsShape::load(imageView->roiShape(), settings,
+        QString("%1/ROI").arg(sectionName));
+
+    imageView->roiShape()->setVisible(settings.value(QString("%1/ROI/visible").arg(sectionName),
+        imageView->roiShape()->isVisible()).toBool());
+
+  }
+
 
   const int numShapes =
       settings.value(QString("%1/numShapes").arg(sectionName), 0).toInt();

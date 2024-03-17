@@ -11,68 +11,62 @@
 #include "QGraphicsTargetShape.h"
 // #include <core/debug.h>
 
-QGraphicsShape * QGraphicsShape::load(const QSettings & settings, const QString & sectionName)
+void QGraphicsShape::load(QGraphicsShape * shape, const QSettings & settings,
+    const QString & sectionName)
 {
-  const QString shapeType =
-      settings.value(QString("%1/type").arg(sectionName)).toString();
+  if( shape ) {
 
-  if ( !shapeType.isEmpty() ) {
-
-    if ( shapeType == "line" ) {
-
-      QGraphicsLineShape * line =
-          new QGraphicsLineShape();
+    if( QGraphicsLineShape * line = dynamic_cast<QGraphicsLineShape*>(shape) ) {
 
       line->setLine(settings.value(QString("%1/line").arg(sectionName), line->line()).toLineF());
       line->setArrowSize(settings.value(QString("%1/arrowSize").arg(sectionName), line->arrowSize()).toDouble());
       line->setLockP1(settings.value(QString("%1/lockP1").arg(sectionName), line->lockP1()).toBool());
       line->setLockP2(settings.value(QString("%1/lockP2").arg(sectionName), line->lockP2()).toBool());
       line->setPen(settings.value(QString("%1/pen").arg(sectionName), line->pen()).value<QPen>());
-      line->setFlags((QGraphicsItem::GraphicsItemFlags)settings.value(QString("%1/flags").arg(sectionName), (int)line->flags()).value<int>());
+      line->setFlags(
+          (QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(sectionName), (int) line->flags()).value<
+              int>());
       line->setPos(settings.value(QString("%1/pos").arg(sectionName), line->pos()).toPointF());
 
-      return line;
     }
-
-    if ( shapeType == "rect" ) {
-
-      QGraphicsRectShape * rect =
-          new QGraphicsRectShape();
+    else if( QGraphicsRectShape * rect = dynamic_cast<QGraphicsRectShape*>(shape) ) {
 
       rect->setRect(settings.value(QString("%1/rect").arg(sectionName), rect->rect()).toRectF());
-      rect->setPen( settings.value(QString("%1/pen").arg(sectionName), rect->pen()).value<QPen>());
+      rect->setPen(settings.value(QString("%1/pen").arg(sectionName), rect->pen()).value<QPen>());
       rect->setBrush(settings.value(QString("%1/brush").arg(sectionName), rect->brush()).value<QBrush>());
       rect->setResizable(settings.value(QString("%1/resizable").arg(sectionName), rect->resizable()).toBool());
-      rect->setFixOnSceneCenter(settings.value(QString("%1/fixOnSceneCenter").arg(sectionName), rect->fixOnSceneCenter()).toBool());
-      rect->setFlags((QGraphicsItem::GraphicsItemFlags)settings.value(QString("%1/flags").arg(sectionName), (int)rect->flags()).value<int>());
+      rect->setFixOnSceneCenter(
+          settings.value(QString("%1/fixOnSceneCenter").arg(sectionName), rect->fixOnSceneCenter()).toBool());
+      rect->setFlags(
+          (QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(sectionName), (int) rect->flags()).value<
+              int>());
       rect->setPos(settings.value(QString("%1/pos").arg(sectionName), rect->pos()).toPointF());
 
-      return rect;
     }
-
-    if ( shapeType == "target" ) {
-
-      QGraphicsTargetShape * target =
-          new QGraphicsTargetShape();
+    else if( QGraphicsTargetShape * target = dynamic_cast<QGraphicsTargetShape*>(shape) ) {
 
       target->setCenter(settings.value(QString("%1/center").arg(sectionName), target->center()).toPointF());
       target->setBaseRadius(settings.value(QString("%1/baseRadius").arg(sectionName), target->baseRadius()).toDouble());
       target->setNumRings(settings.value(QString("%1/numRings").arg(sectionName), target->numRings()).toInt());
-      target->setShowDiagonalRays(settings.value(QString("%1/showDiagonalRays").arg(sectionName), target->showDiagonalRays()).toBool());
-      target->setFixOnSceneCenter(settings.value(QString("%1/fixOnSceneCenter").arg(sectionName), target->fixOnSceneCenter()).toBool());
-      target->setLockPosition(settings.value(QString("%1/lockPosition").arg(sectionName), target->lockPosition()).toBool());
-      target->setPen( settings.value(QString("%1/pen").arg(sectionName), target->pen()).value<QPen>());
-      target->setFlags((QGraphicsItem::GraphicsItemFlags)settings.value(QString("%1/flags").arg(sectionName), (int)target->flags()).value<int>());
+      target->setShowDiagonalRays(
+          settings.value(QString("%1/showDiagonalRays").arg(sectionName), target->showDiagonalRays()).toBool());
+      target->setFixOnSceneCenter(
+          settings.value(QString("%1/fixOnSceneCenter").arg(sectionName), target->fixOnSceneCenter()).toBool());
+      target->setLockPosition(
+          settings.value(QString("%1/lockPosition").arg(sectionName), target->lockPosition()).toBool());
+      target->setPen(settings.value(QString("%1/pen").arg(sectionName), target->pen()).value<QPen>());
+      target->setFlags(
+          (QGraphicsItem::GraphicsItemFlags) settings.value(QString("%1/flags").arg(sectionName), (int) target->flags()).value<
+              int>());
       target->setPos(settings.value(QString("%1/pos").arg(sectionName), target->pos()).toPointF());
 
-      return target;
+    }
+    else {
     }
 
   }
-
-
-  return nullptr;
 }
+
 
 void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, const QString & sectionName)
 {
@@ -121,6 +115,49 @@ void QGraphicsShape::save(const QGraphicsShape * shape, QSettings & settings, co
 
   }
 
+}
+
+QGraphicsShape * QGraphicsShape::load(const QSettings & settings, const QString & sectionName)
+{
+  const QString shapeType =
+      settings.value(QString("%1/type").arg(sectionName)).toString();
+
+  if ( !shapeType.isEmpty() ) {
+
+    if ( shapeType == "line" ) {
+
+      QGraphicsLineShape * line =
+          new QGraphicsLineShape();
+
+      load(line, settings, sectionName);
+
+      return line;
+    }
+
+    if ( shapeType == "rect" ) {
+
+      QGraphicsRectShape * rect =
+          new QGraphicsRectShape();
+
+      load(rect, settings, sectionName);
+
+      return rect;
+    }
+
+    if ( shapeType == "target" ) {
+
+      QGraphicsTargetShape * target =
+          new QGraphicsTargetShape();
+
+      load(target, settings, sectionName);
+
+      return target;
+    }
+
+  }
+
+
+  return nullptr;
 }
 
 

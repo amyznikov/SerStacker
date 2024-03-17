@@ -146,7 +146,7 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
   setContentsMargins(0, 0, 0, 0);
 
   vl_ = new QVBoxLayout(this);
-  vl_->setContentsMargins(0,0,0,0);
+  vl_->setContentsMargins(0, 0, 0, 0);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -189,10 +189,7 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
   connect(showStatusbarAction_, &QAction::triggered,
       this, &ThisClass::onShowStatusbarActionTriggered);
 
-
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
   vl_->addWidget(plot_ = new QCustomPlot(this), 1000);
 
   static const QColor colors[4] = {

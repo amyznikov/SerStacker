@@ -44,10 +44,13 @@ public:
   void setUpdatingPos(bool v);
   bool inUpdatingPos() const;
 
-  static QGraphicsShape * load(const QSettings & settings,
+  static void load(QGraphicsShape * shape, const QSettings & settings,
       const QString & sectionName);
 
   static void save(const QGraphicsShape * shape, QSettings & settings,
+      const QString & sectionName);
+
+  static QGraphicsShape * load(const QSettings & settings,
       const QString & sectionName);
 
 Q_SIGNALS:

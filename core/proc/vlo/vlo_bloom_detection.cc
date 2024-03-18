@@ -774,7 +774,7 @@ bool vlo_bloom_detection(const c_vlo_scan & scan,
 
       for( int l = 0; l < R.rows; ++l ) {
         for( int e = 0; e < 3; ++e ) {
-          if( !R[l][s][e] && Q[l][s][e] ) {
+          if( !R[l][s][e] && Q[l][s][e] && Q[l][s][e] < opts.intensity_saturation_level_100m ) {
             if ( I[l][s][e] < Q[l][s][e] + opts.intensity_tolerance ) {
               B[l][s][e] = 255;
             }

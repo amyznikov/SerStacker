@@ -35,9 +35,6 @@ public:
   void setHistoramViewSizeHint(const QSize & s);
   QSize historamViewSizeHint() const;
 
-  //  bool updatingControls() const;
-  //  void setUpdatingControls(bool v) ;
-
 protected Q_SLOTS:
   //void updateControls();
   void updateHistogramLevels();

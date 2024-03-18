@@ -60,6 +60,8 @@ protected:
   void findAutoMidtonesBalance();
   void updateColormapStrip();
   void updateColormapPixmap();
+  bool getInputDataRangeCtl(double range[2]) const;
+  void setInputDataRangeCtl(const double range[2]);
 
 protected:
   IMtfDisplay * displaySettings_ = nullptr;

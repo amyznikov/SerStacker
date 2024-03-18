@@ -473,24 +473,57 @@ void QMtfControl::onDisplayChannelCurrentItemChanged()
 
     c_update_controls_lock lock(this);
 
+    double shadows =
+        mtfSlider_ctl->shadows();
+
+    double highlights =
+        mtfSlider_ctl->highlights();
+
+    double midtones =
+        mtfSlider_ctl->midtones();
+
+    double input_range[2] = { -1, -1 };
+
+    getInputDataRangeCtl(input_range);
+
     displaySettings_->setDisplayChannel(displayChannel_ctl->currentText());
     displaySettings_->saveParameters();
+
+    displaySettings_->getMtf(&shadows, &highlights, &midtones);
+    displaySettings_->getMtfInputRange(&input_range[0], &input_range[1]);
+
+    mtfSlider_ctl->setup(shadows, highlights, midtones);
+    setInputDataRangeCtl(input_range);
+
   }
 }
+
+bool QMtfControl::getInputDataRangeCtl(double range[2]) const
+{
+  return fromString(inputDataRange_ctl->text(), range, 2) == 2;
+}
+
+void QMtfControl::setInputDataRangeCtl(const double range[2])
+{
+  inputDataRange_ctl->setText(QString("%1;%2").arg(range[0]).arg(range[1]));
+}
+
 
 void QMtfControl::onInputDataRangeChanged()
 {
   if( displaySettings_ && !updatingControls() ) {
 
-    double range[2];
+    double range[2] = {-1, -1};
 
-    if( fromString(inputDataRange_ctl->text(), range, 2) == 2 ) {
+    if( getInputDataRangeCtl(range) ) {
 
       displaySettings_->setMtfInputRange(range[0], range[1]);
       displaySettings_->saveParameters();
     }
   }
 }
+
+
 
 void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
 {
@@ -553,7 +586,7 @@ void QMtfControl::findAutoHistogramClips()
 //    mtf.set_midtones(0.5);
 //
 //    if( !updatingControls() ) {
-//      emit displaySettings_->updateDisplay();
+//      Q_EMIT displaySettings_->updateDisplay();
 //    }
   }
 }
@@ -579,7 +612,7 @@ void QMtfControl::findAutoMidtonesBalance()
 //      updateControls();
 //
 //      if( !updatingControls() ) {
-//        emit displaySettings_->updateDisplay();
+//        Q_EMIT displaySettings_->updateDisplay();
 //      }
 //    }
   }
@@ -691,7 +724,8 @@ void QMtfControl::onupdatecontrols()
   }
   else {
 
-    double imin=-1, imax=-1, shadows, highlights, midtones;
+    double input_range[2] = {-1, -1};
+    double shadows, highlights, midtones;
 
     const QString & displayChannel = displaySettings_->displayChannel();
     int idx = displayChannel_ctl->findText(displayChannel);
@@ -700,9 +734,8 @@ void QMtfControl::onupdatecontrols()
 
     displayChannel_ctl->setCurrentIndex(idx);
 
-    displaySettings_->getMtfInputRange(&imin, &imax);
-
-    inputDataRange_ctl->setText(QString("%1;%2").arg(imin).arg(imax));
+    displaySettings_->getMtfInputRange(&input_range[0], &input_range[1]);
+    setInputDataRangeCtl(input_range);
 
     displaySettings_->getMtf(&shadows, &highlights, &midtones);
     mtfSlider_ctl->setup(shadows, highlights, midtones);
@@ -774,7 +807,7 @@ void QMtfControlDialogBox::showEvent(QShowEvent *event)
   }
 
   Base::showEvent(event);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 void QMtfControlDialogBox::hideEvent(QHideEvent *event)
@@ -783,5 +816,5 @@ void QMtfControlDialogBox::hideEvent(QHideEvent *event)
   lastWidnowPos_ = this->pos();
 
   Base::hideEvent(event);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }

@@ -10,15 +10,15 @@
 
 #include <QtWidgets/QtWidgets>
 
-class QMtfSlider
-    : public QWidget
+class QMtfSlider :
+    public QWidget
 {
   Q_OBJECT;
 public:
   typedef QMtfSlider ThisClass;
   typedef QWidget Base;
 
-  QMtfSlider(QWidget * parent = Q_NULLPTR);
+  QMtfSlider(QWidget * parent = nullptr);
 
   void setup(double shadows, double highlights, double midtones);
 
@@ -32,7 +32,7 @@ public:
   double highlights() const;
 
 
-signals:
+Q_SIGNALS:
   void mtfChanged();
 
 protected:

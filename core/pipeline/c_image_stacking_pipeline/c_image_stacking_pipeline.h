@@ -148,12 +148,14 @@ struct c_image_stacking_output_options  :
   bool save_ecc_frames = false;
   bool save_accumulation_masks = false;
   bool save_incremental_frames = false;
+  bool save_eccflow_frames = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_aligned_video_options;
   c_output_frame_writer_options output_ecc_video_options;
   c_output_frame_writer_options output_acc_masks_video_options;
   c_output_frame_writer_options output_incremental_video_options;
+  c_output_frame_writer_options output_eccflow_options;
 
 };
 
@@ -291,6 +293,9 @@ protected:
       c_output_frame_writer & output_writer, int seqindex) const;
 
   bool save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
+      c_output_frame_writer & output_writer, int seqindex ) const;
+
+  bool save_eccflow_frame(const cv::Mat2f & uv, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex ) const;
 
   bool save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,

@@ -1740,6 +1740,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   c_output_frame_writer output_postprocessed_frames_writer;
   c_output_frame_writer output_accumulation_masks_writer;
   c_output_frame_writer output_incremental_frame_writer;
+  c_output_frame_writer output_eccflow_writer;
 
   if ( !input_sequence->seek(startpos) ) {
     CF_ERROR("input_sequence->seek(startpos=%d) fails", startpos);
@@ -2056,6 +2057,31 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
           set_status_msg("canceled");
           break;
         }
+
+        if ( output_options_.save_eccflow_frames ) {
+
+          const cv::Mat2f & uv =
+              frame_registration_->eccflow().current_uv();
+
+          const cv::Mat & mask =
+              frame_registration_->current_ecc_mask();
+
+          if( !uv.empty() ) {
+
+            if( !save_eccflow_frame(uv, mask, output_eccflow_writer, input_sequence->current_pos() - 1) ) {
+              CF_ERROR("save_eccflow_frame() fails");
+              return false;
+            }
+
+            if( canceled() ) {
+              set_status_msg("canceled");
+              break;
+            }
+
+          }
+
+        }
+
       }
 
 
@@ -2157,6 +2183,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         set_status_msg("canceled");
         break;
       }
+
 
       if( !generating_master_frame && output_options_.save_incremental_frames ) {
 
@@ -2913,7 +2940,7 @@ bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
     int seqindex) const
 {
   if ( !output_options_.save_accumulation_masks ) {
-    return false;
+    return true;
   }
 
   if ( !output_writer.is_open() ) {
@@ -2946,6 +2973,40 @@ bool c_image_stacking_pipeline::save_accumulation_mask(const cv::Mat & current_f
 
   return true;
 }
+
+bool c_image_stacking_pipeline::save_eccflow_frame(const cv::Mat2f & uv, const cv::Mat & mask,
+    c_output_frame_writer & output_writer, int seqindex ) const
+{
+
+  if ( !output_options_.save_eccflow_frames ) {
+    return true;
+  }
+
+  if( !output_writer.is_open() ) {
+
+    const bool fOK =
+        open_output_writer(output_writer,
+            output_options_.output_eccflow_options,
+            "uv",
+            ".flo");
+
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          output_writer.filename().c_str());
+      return false;
+    }
+  }
+
+
+  CF_DEBUG("SAVE UV");
+
+  return output_writer.write(uv, mask,
+      output_options_.write_image_mask_as_alpha_channel,
+      seqindex);
+
+  return true;
+}
+
 
 int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr & input_sequence)
 {
@@ -3321,6 +3382,11 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, output_options_, output_incremental_video_options);
     }
 
+    SERIALIZE_OPTION(section, save, output_options_, save_eccflow_frames);
+    if( (subsection = get_group(section, save, "output_eccflow_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_eccflow_options);
+    }
+
     SERIALIZE_OPTION(section, save, output_options_, dump_reference_data_for_debug);
     SERIALIZE_OPTION(section, save, output_options_, write_image_mask_as_alpha_channel);
   }
@@ -3480,6 +3546,13 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_incremental_video_options,
           (_this->output_options_.save_incremental_frames));
     PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save eccflow maps", "");
+      PIPELINE_CTL(ctrls, output_options_.save_eccflow_frames, "save_eccflow_maps", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_eccflow_options,
+          (_this->output_options_.save_eccflow_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////

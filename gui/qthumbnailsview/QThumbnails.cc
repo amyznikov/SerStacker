@@ -58,6 +58,10 @@ QStringList getSupportedThumbnailsExtensions()
     suffixes.append(QString("*.%1").arg(s.constData()));
   }
 
+  for ( const std::string & s : c_regular_image_input_source::suffixes()  ) {
+    suffixes.append(s.c_str());
+  }
+
 #if HAVE_LIBRAW
   for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
     suffixes.append(s.c_str());
@@ -341,6 +345,40 @@ static QImage loadThumbnailImageFromRaw(const QString & pathFileName, int thumb_
   return qimage;
 }
 
+static QImage loadThumbnailImageOpenCV(const QString & pathFileName, int thumb_size)
+{
+  cv::Mat cvimage;
+  QImage qimage;
+
+  CF_DEBUG("pathFileName='%s'", pathFileName.toUtf8().constData());
+
+  if ( load_image(pathFileName.toStdString(), cvimage) ) {
+
+    if ( cvimage.channels() ==  2 ) {
+      // interpret second channel as mask and ignore for preview,
+      // because 2-channel image is interpreted by cv2qimage() as optical flow
+      cv::extractChannel(cvimage, cvimage, 0);
+    }
+
+    const QSize thumbSize =
+        compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
+            thumb_size);
+
+    if ( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
+
+      cv::resize(cvimage, cvimage,
+          cv::Size(thumbSize.width(), thumbSize.height()),
+          0, 0,
+          cv::INTER_AREA);
+
+    }
+
+    cv2qimage(cvimage, &qimage, true);
+  }
+
+  return qimage;
+}
+
 QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 {
   QImage qimage;
@@ -533,32 +571,11 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       }
     }
 
-    if ( load_image(pathFileName.toStdString(), cvimage) ) {
-
-      if ( cvimage.channels() ==  2 ) {
-        // interpret second channel as mask and ignore for preview,
-        // because 2-channel image is interpreted by cv2qimage() as optical flow
-        cv::extractChannel(cvimage, cvimage, 0);
-      }
-
-      const QSize thumbSize =
-          compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
-              thumb_size);
-
-      if ( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
-
-        cv::resize(cvimage, cvimage,
-            cv::Size(thumbSize.width(), thumbSize.height()),
-            0, 0,
-            cv::INTER_AREA);
-
-      }
-
-      cv2qimage(cvimage, &qimage, true);
+    if( !(qimage = loadThumbnailImageOpenCV(pathFileName, thumb_size)).isNull() ) {
+      return qimage;
     }
-
-    return qimage;
   }
+
 
   ///////////////////////////////////////////////////////////////
 

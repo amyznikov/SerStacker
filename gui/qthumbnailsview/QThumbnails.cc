@@ -350,8 +350,6 @@ static QImage loadThumbnailImageOpenCV(const QString & pathFileName, int thumb_s
   cv::Mat cvimage;
   QImage qimage;
 
-  CF_DEBUG("pathFileName='%s'", pathFileName.toUtf8().constData());
-
   if ( load_image(pathFileName.toStdString(), cvimage) ) {
 
     if ( cvimage.channels() ==  2 ) {

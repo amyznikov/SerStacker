@@ -66,7 +66,7 @@ bool c_vlo_input_source::read(cv::Mat & output_frame,
     }
 
     if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
+      *output_bpc = suggest_bpp(
           output_frame.depth());
     }
 

@@ -17,19 +17,6 @@
 #include <mutex>
 #include <core/debug.h>
 
-
-template<>
-const c_enum_member* members_of<c_input_source::OUTPUT_TYPE>()
-{
-  static const c_enum_member members[] = {
-      { c_input_source::OUTPUT_TYPE_IMAGE, "IMAGE", "" },
-      { c_input_source::OUTPUT_TYPE_CLOUD3D, "Cloud3D", "" },
-      { c_input_source::OUTPUT_TYPE_IMAGE },
-  };
-
-  return members;
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -53,7 +40,7 @@ enum COLORID c_input_source::suggest_colorid(int cn)
   return COLORID_UNKNOWN;
 }
 
-int c_input_source::suggest_bbp(int ddepth)
+int c_input_source::suggest_bpp(int ddepth)
 {
   switch ( ddepth ) {
   case CV_8U :

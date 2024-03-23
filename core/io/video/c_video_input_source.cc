@@ -230,7 +230,7 @@ bool c_fits_input_source::read(cv::Mat & output_frame,
   }
 
   if ( output_bpc ) {
-    *output_bpc = suggest_bbp(
+    *output_bpc = suggest_bpp(
         output_frame.depth());
   }
 
@@ -303,7 +303,7 @@ bool c_movie_input_source::read(cv::Mat & output_frame,
     }
 
     if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
+      *output_bpc = suggest_bpp(
           output_frame.depth());
     }
 
@@ -406,7 +406,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     }
 
     if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
+      *output_bpc = suggest_bpp(
           output_frame.depth());
     }
 
@@ -426,7 +426,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     }
 
     if ( output_bpc ) {
-      *output_bpc = suggest_bbp(
+      *output_bpc = suggest_bpp(
           output_frame.depth());
     }
 

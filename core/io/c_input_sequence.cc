@@ -549,11 +549,6 @@ enum COLORID c_input_sequence::colorid() const
   return last_colorid_;
 }
 
-c_input_source::OUTPUT_TYPE c_input_sequence::output_type() const
-{
-  return last_output_type_;
-}
-
 int c_input_sequence::bpp() const
 {
   return last_bpp_;

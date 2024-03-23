@@ -20,11 +20,6 @@ public:
   typedef c_input_source this_class;
   typedef std::shared_ptr<this_class> sptr;
 
-  enum OUTPUT_TYPE {
-    OUTPUT_TYPE_IMAGE,
-    OUTPUT_TYPE_CLOUD3D
-  };
-
   static sptr create(const std::string & filename);
   static sptr open(const std::string & filename);
 
@@ -115,7 +110,7 @@ public:
 
 
   static enum COLORID suggest_colorid(int cn);
-  static int suggest_bbp(int ddepth);
+  static int suggest_bpp(int ddepth);
 
 
 protected:

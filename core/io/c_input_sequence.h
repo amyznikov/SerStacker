@@ -71,7 +71,6 @@ public:
 
   int bpp() const;
   enum COLORID colorid() const;
-  c_input_source::OUTPUT_TYPE output_type() const;
   const cv::Matx33f & color_matrix() const;
   bool has_color_matrix() const;
 
@@ -99,7 +98,6 @@ protected:
   int current_global_pos_ = -1; // in enabled_sources_
 
 
-  c_input_source::OUTPUT_TYPE last_output_type_ = c_input_source::OUTPUT_TYPE_IMAGE ;
   enum COLORID last_colorid_ = COLORID_UNKNOWN;
   int last_bpp_ = 0;
   cv::Matx33f last_color_matrix_ = cv::Matx33f::eye() ;

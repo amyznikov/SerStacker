@@ -40,9 +40,11 @@ Q_SIGNALS:
 
 protected: // QImageDisplayFunction
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
-      cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U);
+      cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
+
   bool applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::OutputArray displayImage, int ddepth = CV_8U);
+
   bool applyColorMap(cv::InputArray displayImage, cv::InputArray displayMask,
       cv::OutputArray colormapImage);
 

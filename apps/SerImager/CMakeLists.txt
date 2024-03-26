@@ -48,6 +48,8 @@ add_subdirectory(src/focus)
 # add_subdirectory(src/pipeline)
 
 
+
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   gui
   Qt${QT_VERSION}::Core

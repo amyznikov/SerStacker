@@ -92,11 +92,11 @@ void> sort_vlo_echos_by_distance(ScanType & scan)
 /**
  * Sort VLO echoes by distance appropriate for scans of type 6
  * */
-void sort_vlo_echos_by_distance(c_vlo_scan6_base & scan)
+void sort_vlo_echos_by_distance(c_vlo_scan6_slim_imx479 & scan)
 {
   INSTRUMENT_REGION("");
 
-  typedef c_vlo_scan6_base ScanType;
+  typedef c_vlo_scan6_slim_imx479 ScanType;
 
   // force if ( scan.config.echoOrdering != VLO_ECHO_ORDER_DISTANCE_NEAR_TO_FAR )
   {
@@ -561,6 +561,122 @@ static void convert(c_vlo_scan6_slm & src, c_vlo_scan * dst)
   }
 }
 
+static void convert(c_vlo_scan6_slim_imx479 & src, c_vlo_scan * dst)
+{
+  INSTRUMENT_REGION("");
+
+  sort_vlo_echos_by_distance(src);
+
+  constexpr uint16_t NUM_SLOTS = src.NUM_SLOTS;
+  constexpr uint16_t NUM_LAYERS = src.NUM_LAYERS;
+  constexpr uint16_t NUM_ECHOS = src.NUM_ECHOS;
+
+  dst->size.width = NUM_SLOTS;
+  dst->size.height = NUM_LAYERS;
+
+  dst->ambient.create(dst->size);
+  dst->distances.create(dst->size);
+  dst->area.create(dst->size);
+  dst->peak.create(dst->size);
+  dst->width.create(dst->size);
+  dst->azimuth.create(src.NUM_SLOTS, 1);
+  dst->elevation.create(src.NUM_LAYERS, 1);
+
+  for ( int e = 0; e < 3; ++e ) {
+    dst->clouds[e].create(dst->size);
+  }
+
+
+  float verticalAngleSin[NUM_LAYERS];
+  float verticalAngleCos[NUM_LAYERS];
+  float horizontalAngleSin[NUM_SLOTS];
+  float horizontalAngleCos[NUM_SLOTS];
+
+  for( uint16_t s = 0; s < NUM_SLOTS; ++s ) {
+    dst->azimuth[s][0] = src.horizontalAngles[s];
+    horizontalAngleSin[s] = std::sin(src.horizontalAngles[s]);
+    horizontalAngleCos[s] = std::cos(src.horizontalAngles[s]);
+  }
+
+  for( uint16_t l = 0; l < NUM_LAYERS; ++l ) {
+    dst->elevation[NUM_LAYERS - l - 1][0] = src.verticalAngles[l];
+    verticalAngleSin[l] = std::sin(src.verticalAngles[l]);
+    verticalAngleCos[l] = std::cos(src.verticalAngles[l]);
+  }
+
+  cv::Matx33f projH;
+  cv::Matx33f rotMid;
+  cv::Matx33f projV;
+  cv::Matx33f rotTransform;
+  cv::Vec3f radialVec;
+  cv::Vec3f result;
+
+  for( uint16_t e = 0U; e < NUM_ECHOS; ++e ) {
+
+    for( uint16_t s = 0; s < NUM_SLOTS; ++s ) {
+
+      projH = cv::Matx33f::eye();
+      projH(0U, 0U) = horizontalAngleCos[s];
+      projH(0U, 1U) = -horizontalAngleSin[s];
+      projH(1U, 0U) = horizontalAngleSin[s];
+      projH(1U, 1U) = horizontalAngleCos[s];
+      rotMid = projH;
+
+      for( uint16_t l = 0; l < NUM_LAYERS; ++l ) {
+
+        const uint16_t ll =
+            NUM_LAYERS - l - 1;
+
+        const auto & echo =
+            src.echo[s][l][e];
+
+        const auto & distance =
+            echo.dist;
+
+        if( !distance ) {
+          dst->ambient[ll][s] = 0;
+          dst->distances[ll][s][e] = 0;
+          dst->area[ll][s][e] = 0;
+          dst->peak[ll][s][e] = 0;
+          dst->width[ll][s][e] = 0;
+
+          dst->clouds[e][ll][s][0] = 0;
+          dst->clouds[e][ll][s][1] = 0;
+          dst->clouds[e][ll][s][2] = 0;
+        }
+        else {
+
+          projV = cv::Matx33f::eye();
+          projV(0U, 0U) = verticalAngleCos[l];
+          projV(0U, 2U) = -verticalAngleSin[l];
+          projV(2U, 0U) = verticalAngleSin[l];
+          projV(2U, 2U) = verticalAngleCos[l];
+
+          radialVec(0U) = distance;
+          radialVec(1U) = 0.F;
+          radialVec(2U) = 0.F;
+
+          rotTransform = rotMid * projV;
+
+          result = rotTransform * radialVec;
+
+
+          dst->ambient[ll][s] = src.ambientLight[s][l];
+          dst->distances[ll][s][e] = distance;
+          dst->area[ll][s][e] = echo.area;
+          dst->peak[ll][s][e] = echo.peak;
+          dst->width[ll][s][e] = echo.width;
+
+          dst->clouds[e][ll][s][0] = result(0);
+          dst->clouds[e][ll][s][1] = result(1);
+          dst->clouds[e][ll][s][2] = result(2);
+        }
+      }
+    }
+  }
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace
 
@@ -594,12 +710,13 @@ cv::Mat c_vlo_file::get_thumbnail_image(const c_vlo_scan & scan)
 
 //////////////////////////////////////////
 
-c_vlo_reader::c_vlo_reader()
+c_vlo_reader::c_vlo_reader() :
+    this_class("")
 {
 }
 
 c_vlo_reader::c_vlo_reader(const std::string & filename) :
-    base(filename)
+    base(filename), u_(new U())
 {
   if ( !filename_.empty() && !open() ) {
     CF_ERROR("open('%s') fails: %s", filename_.c_str(),
@@ -651,26 +768,25 @@ bool c_vlo_reader::open(const std::string & filename)
       static constexpr uint32_t scanV6SLMExtra = 1;
 
 //        CF_DEBUG("\n"
+//            "ScaLa 3-PointCloud\n"
 //            "format_version = %u\n"
 //            "payload_size=%zu \n"
 //            "sizeof(c_vlo_scan6_slm)=%zu\n"
-//            "sizeof(c_vlo_scan6_imx449)=%zu\n"
-//            "sizeof(c_vlo_scan6_imx479)=%zu\n"
-//            "sizeof(c_vlo_scan6_base)=%zu\n"
+//            "sizeof(c_vlo_scan_6_slim_imx479)=%zu\n"
 //            "sizeof(c_vlo_scan5)=%zu\n"
 //            "sizeof(c_vlo_scan3)=%zu\n"
 //            "sizeof(c_vlo_scan1)=%zu\n"
+//            "sizeof(c_vlo_scan_cruise)=%zu\n"
 //            "\n",
 //            format_version,
 //            payload_size,
 //            sizeof(c_vlo_scan6_slm),
-//            sizeof(c_vlo_scan6_imx449),
-//            sizeof(c_vlo_scan6_imx449),
-//            sizeof(c_vlo_scan6_imx479),
-//            sizeof(c_vlo_scan6_base),
+//            sizeof(c_vlo_scan6_slim_imx479),
 //            sizeof(c_vlo_scan5),
 //            sizeof(c_vlo_scan3),
-//            sizeof(c_vlo_scan1));
+//            sizeof(c_vlo_scan1),
+//            sizeof(c_vlo_scan_cruise)
+//            );
 
       if( format_version == 18 && payload_size == sizeof(c_vlo_scan1) + scanV1Extra ) {
         version_ = VLO_VERSION_1;
@@ -692,6 +808,14 @@ bool c_vlo_reader::open(const std::string & filename)
         version_ = VLO_VERSION_6_SLM;
         frame_size_ = sizeof(c_vlo_scan6_slm);
       }
+      else if( format_version == 6 && payload_size == sizeof(c_vlo_scan6_slim_imx479) ) {
+        version_ = VLO_VERSION_6_SLM_IMX479;
+        frame_size_ = sizeof(c_vlo_scan6_slim_imx479);
+      }
+//      else if (format_version == 6/*VLO_VERSION_CRUISE*/ ) {
+//        version_ = VLO_VERSION_CRUISE;
+//        frame_size_ = sizeof(c_vlo_scan_cruise);
+//      }
 
       CF_DEBUG("format_version: %d -> %d frame_size_ = %zd",
           format_version, version_, frame_size_);
@@ -704,6 +828,8 @@ bool c_vlo_reader::open(const std::string & filename)
     }
   }
   else if ( ifhd_.select_stream("ScaLa 3 Cruise-PointCloud") ) {
+
+    // CF_DEBUG("ScaLa 3 Cruise-PointCloud");
 
     const size_t payload_size =
         ifhd_.current_payload_size();
@@ -940,61 +1066,43 @@ template<class ScanType> std::enable_if_t<(c_vlo_scan_type_traits<ScanType>::VER
   return false;
 }
 
-
 bool c_vlo_reader::read(c_vlo_scan * scan)
 {
   INSTRUMENT_REGION("");
-
-  union
-  {
-    c_vlo_scan1 scan1;
-    c_vlo_scan3 scan3;
-    c_vlo_scan5 scan5;
-    c_vlo_scan6_imx449 scan6_imx449;
-    c_vlo_scan6_imx479 scan6_imx479;
-    c_vlo_scan6_slm scan6_slm;
-    c_vlo_scan_cruise cruise;
-  } us;
 
   bool fOk = false;
 
   switch (scan->version = this->version_) {
     case VLO_VERSION_1:
-      if( (fOk = read(&us.scan1)) ) {
-        convert(us.scan1, scan);
+      if( (fOk = read(&u_->scan1)) ) {
+        convert(u_->scan1, scan);
       }
       break;
     case VLO_VERSION_3:
-      if( (fOk = read(&us.scan3)) ) {
-        convert(us.scan3, scan);
+      if( (fOk = read(&u_->scan3)) ) {
+        convert(u_->scan3, scan);
       }
       break;
     case VLO_VERSION_5:
-      if( (fOk = read(&us.scan5)) ) {
-        convert(us.scan5, scan);
+      if( (fOk = read(&u_->scan5)) ) {
+        convert(u_->scan5, scan);
       }
       break;
     case VLO_VERSION_6_SLM:
-      if( (fOk = read(&us.scan6_slm)) ) {
-        convert(us.scan6_slm, scan);
+      if( (fOk = read(&u_->scan6_slm)) ) {
+        convert(u_->scan6_slm, scan);
       }
       break;
     case VLO_VERSION_CRUISE:
-      if( (fOk = read(&us.cruise)) ) {
-        convert(us.cruise, scan);
+      if( (fOk = read(&u_->cruise)) ) {
+        convert(u_->cruise, scan);
       }
       break;
-//    case VLO_VERSION_6_IMX449:
-//      if( (fOk = read(&us.scan6_imx449)) ) {
-//        convert(us.scan6_imx449, scan);
-//      }
-//      break;
-//    case VLO_VERSION_6_IMX479:
-//      if( (fOk = read(&us.scan6_imx479)) ) {
-//        convert(us.scan6_imx479, scan);
-//      }
-//      break;
-
+    case VLO_VERSION_6_SLM_IMX479:
+      if( (fOk = read(&u_->slim_imx479)) ) {
+        convert(u_->slim_imx479, scan);
+      }
+      break;
     default:
       errno = EBADF;
       return false;

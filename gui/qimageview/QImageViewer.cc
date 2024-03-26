@@ -41,7 +41,7 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
   layout_ = new QVBoxLayout(this);
   layout_->setAlignment(Qt::AlignTop);
   layout_->setContentsMargins(0,0,0,0);
-  layout_->setMargin(0);
+  //layout_->setMargin(0);
   layout_->setSpacing(0);
   layout_->addWidget(view_ = new QImageSceneView(this), 1000);
   view_->setScene(scene_);

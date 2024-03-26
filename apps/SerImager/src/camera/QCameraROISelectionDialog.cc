@@ -38,6 +38,16 @@ static QToolButton * createToolButton(QWidget * parent,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool QCameraROI::registerMetatype()
+{
+  if( !metatype_registered_ ) {
+    qRegisterMetaTypeStreamOperators<QCameraROI>("QCameraROI");
+    qRegisterMetaTypeStreamOperators<QList<QCameraROI>>("QList<QCameraROI>");
+    metatype_registered_ = true;
+  }
+  return metatype_registered_;
+}
+
 QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
   Base(parent)
 {

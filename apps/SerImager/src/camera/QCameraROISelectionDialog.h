@@ -41,15 +41,15 @@ struct QCameraROI
     return text;
   }
 
-  static bool registerMetatype()
-  {
-    if( !metatype_registered_ ) {
-      qRegisterMetaTypeStreamOperators<QCameraROI>("QCameraROI");
-      qRegisterMetaTypeStreamOperators<QList<QCameraROI>>("QList<QCameraROI>");
-      metatype_registered_ = true;
-    }
-    return metatype_registered_;
-  }
+  static bool registerMetatype();
+//  {
+//    if( !metatype_registered_ ) {
+//      qRegisterMetaTypeStreamOperators<QCameraROI>("QCameraROI");
+//      qRegisterMetaTypeStreamOperators<QList<QCameraROI>>("QList<QCameraROI>");
+//      metatype_registered_ = true;
+//    }
+//    return metatype_registered_;
+//  }
 
 protected:
   static bool metatype_registered_;

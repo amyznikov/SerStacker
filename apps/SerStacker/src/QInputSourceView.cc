@@ -48,12 +48,12 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
   mainLayout_ = new QVBoxLayout(this);
   mainLayout_->setAlignment(Qt::AlignTop);
   mainLayout_->setContentsMargins(0,0,0,0);
-  mainLayout_->setMargin(0);
+  //mainLayout_->setMargin(0);
   mainLayout_->setSpacing(0);
 
   mainLayout_->addLayout(toolbarLayout_ = new QHBoxLayout());
   toolbarLayout_->setContentsMargins(0,0,0,0);
-  toolbarLayout_->setMargin(0);
+  //toolbarLayout_->setMargin(0);
   toolbarLayout_->addWidget(mainToolbar_ = createToolbar(this), 10, Qt::AlignLeft);
   toolbarLayout_->addWidget(imageViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
   toolbarLayout_->addWidget(cloudViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);

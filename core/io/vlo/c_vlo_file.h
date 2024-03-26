@@ -69,6 +69,16 @@ protected:
   c_ifhd_reader ifhd_;
   ssize_t num_frames_ = -1;
   ssize_t frame_size_ = -1;
+
+  union U {
+    c_vlo_scan1 scan1;
+    c_vlo_scan3 scan3;
+    c_vlo_scan5 scan5;
+    c_vlo_scan6_slm scan6_slm;
+    c_vlo_scan_cruise cruise;
+    c_vlo_scan6_slim_imx479 slim_imx479;
+  };
+  std::unique_ptr<U> u_;
 };
 
 

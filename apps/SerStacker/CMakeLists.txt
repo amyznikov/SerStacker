@@ -10,9 +10,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_LINK_WHAT_YOU_USE OFF)
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
+#set(CMAKE_LINK_WHAT_YOU_USE OFF)
+#set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTOMOC ON)
 
 file(GLOB_RECURSE CURRENT_SOURCES src/*.c src/*.cc src/*.cpp)
 file(GLOB_RECURSE CURRENT_HEADERS src/*.h src/*.hpp)
@@ -30,7 +30,34 @@ endforeach()
 include_directories(src/dataset 
 	src/dataset/vlo)
 
-add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
+#############################################################################################
+# AUTOMOC problem is that it merges all mocs into single file
+# Single automoc file prevents later dependency-only linking.
+# It is why I schedule the moc-ing manually here.
+set(CMAKE_AUTOMOC OFF)
+foreach(_header ${CURRENT_HEADERS})
+
+	file(STRINGS "${_header}" _strings REGEX "Q_OBJECT")
+
+	if( NOT "${_strings}" STREQUAL "" )
+    	file(RELATIVE_PATH _relpath ${CMAKE_CURRENT_SOURCE_DIR} "${_header}")
+		set(_mocfile "${CMAKE_CURRENT_BINARY_DIR}/${_relpath}.moc.cc")
+		
+if ( "${QT_VERSION}" STREQUAL "6" )
+		qt6_generate_moc("${_header}" "${_mocfile}")
+else()
+		qt5_generate_moc("${_header}" "${_mocfile}")
+endif()
+		
+    	list(APPEND CURRENT_SOURCES "${_mocfile}")
+
+		# include(AddFileDependencies)
+    	# add_file_dependencies("${_impl}" "${_mocfile}")
+    endif()
+endforeach()
+#############################################################################################
+
+add_executable(${PROJECT_NAME} ${CURRENT_HEADERS} ${CURRENT_SOURCES})
 
 if (WIN32)
 set(OpenGL_LIBS GLU32 opengl32)

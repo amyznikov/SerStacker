@@ -17,7 +17,7 @@ void c_vlo_bloom_filter_routine::get_parameters(std::vector<struct c_data_proces
   ADD_DATA_PROCESSOR_CTRL(ctls, bloom_min_intensity, "bloom_min_inten", "bloom_min_intensity");
 
   ADD_DATA_PROCESSOR_CTRL(ctls, max_reflector_hole_size, "max_refl_hole", "max size of hole inside of single in pixels");
-  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_log_intensity_tolerance, "bloom_log_intensity_tolerance", "bloom_log_intensity_tolerance");
+  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_log_intensity_tolerance, "refine_tolerance", "bloom_log_intensity_tolerance");
   ADD_DATA_PROCESSOR_CTRL(ctls, intensity_tolerance, "intensity_tolerance", "intensity tolerance for selected intensity measure");
 
   ADD_DATA_PROCESSOR_CTRL(ctls, min_bloom_slope, "min_bloom_slope", "min profile slope");

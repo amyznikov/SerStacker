@@ -593,7 +593,7 @@ static void convert(c_vlo_scan6_slim_imx479 & src, c_vlo_scan * dst)
   float horizontalAngleCos[NUM_SLOTS];
 
   for( uint16_t s = 0; s < NUM_SLOTS; ++s ) {
-    dst->azimuth[s][0] = src.horizontalAngles[s];
+    dst->azimuth[NUM_SLOTS - s - 1][0] = src.horizontalAngles[s];
     horizontalAngleSin[s] = std::sin(src.horizontalAngles[s]);
     horizontalAngleCos[s] = std::cos(src.horizontalAngles[s]);
   }
@@ -604,23 +604,18 @@ static void convert(c_vlo_scan6_slim_imx479 & src, c_vlo_scan * dst)
     verticalAngleCos[l] = std::cos(src.verticalAngles[l]);
   }
 
-  cv::Matx33f projH;
-  cv::Matx33f rotMid;
-  cv::Matx33f projV;
-  cv::Matx33f rotTransform;
-  cv::Vec3f radialVec;
-  cv::Vec3f result;
-
   for( uint16_t e = 0U; e < NUM_ECHOS; ++e ) {
 
     for( uint16_t s = 0; s < NUM_SLOTS; ++s ) {
 
-      projH = cv::Matx33f::eye();
-      projH(0U, 0U) = horizontalAngleCos[s];
-      projH(0U, 1U) = -horizontalAngleSin[s];
-      projH(1U, 0U) = horizontalAngleSin[s];
-      projH(1U, 1U) = horizontalAngleCos[s];
-      rotMid = projH;
+      const int ss =
+          NUM_SLOTS - s - 1;
+
+      const cv::Matx33f projH(
+          horizontalAngleCos[s], -horizontalAngleSin[s], 0,
+          horizontalAngleSin[s], horizontalAngleCos[s], 0,
+          0, 0, 1);
+
 
       for( uint16_t l = 0; l < NUM_LAYERS; ++l ) {
 
@@ -634,42 +629,35 @@ static void convert(c_vlo_scan6_slim_imx479 & src, c_vlo_scan * dst)
             echo.dist;
 
         if( !distance ) {
-          dst->ambient[ll][s] = 0;
-          dst->distances[ll][s][e] = 0;
-          dst->area[ll][s][e] = 0;
-          dst->peak[ll][s][e] = 0;
-          dst->width[ll][s][e] = 0;
+          dst->ambient[ll][ss] = 0;
+          dst->distances[ll][ss][e] = 0;
+          dst->area[ll][ss][e] = 0;
+          dst->peak[ll][ss][e] = 0;
+          dst->width[ll][ss][e] = 0;
 
-          dst->clouds[e][ll][s][0] = 0;
-          dst->clouds[e][ll][s][1] = 0;
-          dst->clouds[e][ll][s][2] = 0;
+          dst->clouds[e][ll][ss][0] = 0;
+          dst->clouds[e][ll][ss][1] = 0;
+          dst->clouds[e][ll][ss][2] = 0;
         }
         else {
 
-          projV = cv::Matx33f::eye();
-          projV(0U, 0U) = verticalAngleCos[l];
-          projV(0U, 2U) = -verticalAngleSin[l];
-          projV(2U, 0U) = verticalAngleSin[l];
-          projV(2U, 2U) = verticalAngleCos[l];
+          dst->ambient[ll][ss] = src.ambientLight[s][l];
+          dst->distances[ll][ss][e] = distance;
+          dst->area[ll][ss][e] = echo.area;
+          dst->peak[ll][ss][e] = echo.peak;
+          dst->width[ll][ss][e] = echo.width;
 
-          radialVec(0U) = distance;
-          radialVec(1U) = 0.F;
-          radialVec(2U) = 0.F;
+          const cv::Matx33f projV(
+              verticalAngleCos[l], 0, -verticalAngleSin[l],
+              0, 1, 0,
+              verticalAngleSin[l], 0, verticalAngleCos[l]);
 
-          rotTransform = rotMid * projV;
+          const cv::Vec3f pos =
+              projH * projV * cv::Vec3f(distance, 0, 0);
 
-          result = rotTransform * radialVec;
-
-
-          dst->ambient[ll][s] = src.ambientLight[s][l];
-          dst->distances[ll][s][e] = distance;
-          dst->area[ll][s][e] = echo.area;
-          dst->peak[ll][s][e] = echo.peak;
-          dst->width[ll][s][e] = echo.width;
-
-          dst->clouds[e][ll][s][0] = result(0);
-          dst->clouds[e][ll][s][1] = result(1);
-          dst->clouds[e][ll][s][2] = result(2);
+          dst->clouds[e][ll][ss][0] = pos(0);
+          dst->clouds[e][ll][ss][1] = -pos(1);
+          dst->clouds[e][ll][ss][2] = pos(2);
         }
       }
     }

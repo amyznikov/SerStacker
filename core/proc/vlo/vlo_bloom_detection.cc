@@ -21,12 +21,6 @@ const c_enum_member* members_of<VLO_BLOOM_INTENSITY_MEASURE>()
       { VLO_BLOOM_INTENSITY_PEAK }
   };
 
-
-  CF_DEBUG("INITIALIZED: members=%p", (void*)members);
-  CF_DEBUG("members[0]: value=%d name='%s' comm='%s'", members[0].value, members[0].name.c_str(), members[0].comment.c_str());
-  CF_DEBUG("members[1]: value=%d name='%s' comm='%s'", members[1].value, members[1].name.c_str(), members[1].comment.c_str());
-  CF_DEBUG("members[2]: value=%d name='%s' comm='%s'", members[2].value, members[2].name.c_str(), members[2].comment.c_str());
-
   return members;
 }
 

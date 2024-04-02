@@ -6,7 +6,11 @@
  */
 
 #include "QFrameRegistrationOptions.h"
-#include <core/io/video/c_video_input_source.h>
+
+#include <core/io/image/c_fits_input_source.h>
+#include <core/io/image/c_fits_input_source.h>
+#include <core/io/image/c_raw_image_input_source.h>
+#include <core/io/image/c_regular_image_input_source.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1320,13 +1324,15 @@ void QMasterSourceSelectionCombo::onBrowseButtonClicked()
 
   if( filter.isEmpty() ) {
 
+#if have_regular_image_input_source
     filter.append("Regular images (");
     for( const std::string &s : c_regular_image_input_source::suffixes() ) {
       filter.append(QString("*%1 ").arg(QString(s.c_str())));
     }
     filter.append(");;");
+#endif
 
-#if HAVE_LIBRAW
+#if have_raw_image_input_source
       filter.append("RAW/DSLR images (");
       for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
@@ -1334,13 +1340,13 @@ void QMasterSourceSelectionCombo::onBrowseButtonClicked()
       filter.append(");;");
   #endif
 
-#if HAVE_CFITSIO
+#if have_fits_input_source
       filter.append("FITS files (");
       for ( const std::string & s : c_fits_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
-  #endif
+#endif
 
     filter.append("All Files (*.*);;");
   }

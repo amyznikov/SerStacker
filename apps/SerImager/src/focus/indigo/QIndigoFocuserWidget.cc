@@ -39,6 +39,7 @@
 #define ICON_down_arrow         "down_b_arrow_icon.png"
 #define ICON_up_arrow           "up_b_arrow_icon.png"
 #define ICON_apply              "apply_icon.png"
+#define ICON_center             "center.png"
 #define ICON_mc                 ":/qindigo/icons/mc-light.png"
 
 static QIcon icon_apply;
@@ -50,6 +51,7 @@ static QIcon icon_down_arrow;
 static QIcon icon_up_arrow;
 static QIcon icon_goto_position;
 static QIcon icon_stop;
+static QIcon icon_center;
 //static QIcon icon_mc;
 
 static QIcon getIcon(const QString & name)
@@ -88,6 +90,10 @@ static void init_resources()
   if( icon_up_arrow.isNull() ) {
     icon_up_arrow = getIcon(ICON_up_arrow);
   }
+  if( icon_center.isNull() ) {
+    icon_center = getIcon(ICON_center);
+  }
+
 //  if( icon_mc.isNull() ) {
 //    icon_mc = getIcon(ICON_mc);
 //  }
@@ -163,7 +169,8 @@ static QWidget * createFocuserPositionControl(QWidget * parent,
     QSpinBox * focusAbsolutePosition_ctl,
     QToolButton * moveFocusToAbsolutePosition_ctl,
     QToolButton * moveFocusToMinAbsolutePosition_ctl,
-    QToolButton * moveFocusToMaxAbsolutePosition_ctl)
+    QToolButton * moveFocusToMaxAbsolutePosition_ctl,
+    QToolButton * moveFocusToMiddlePosition_ctl)
 {
   QWidget * w =
       new QWidget(parent);
@@ -177,6 +184,12 @@ static QWidget * createFocuserPositionControl(QWidget * parent,
   focusAbsolutePosition_ctl->setKeyboardTracking(false);
   focusAbsolutePosition_ctl->setRange(-1000000, 1000000);
   focusAbsolutePosition_ctl->setValue(0);
+
+
+  moveFocusToMiddlePosition_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  moveFocusToMiddlePosition_ctl->setIcon(icon_center);
+  moveFocusToMiddlePosition_ctl->setText("Middle");
+  moveFocusToMiddlePosition_ctl->setToolTip("Move focus to middle position");
 
   moveFocusToAbsolutePosition_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
   moveFocusToAbsolutePosition_ctl->setIcon(icon_goto_position);
@@ -193,7 +206,9 @@ static QWidget * createFocuserPositionControl(QWidget * parent,
   moveFocusToMaxAbsolutePosition_ctl->setText("Max");
   moveFocusToMaxAbsolutePosition_ctl->setToolTip("Move focus to max absolute position");
 
+
   hbox->addWidget(focusAbsolutePosition_ctl, 100);
+  hbox->addWidget(moveFocusToMiddlePosition_ctl, 0, Qt::AlignRight);
   hbox->addWidget(moveFocusToMinAbsolutePosition_ctl, 0, Qt::AlignRight);
   hbox->addWidget(moveFocusToMaxAbsolutePosition_ctl, 0, Qt::AlignRight);
   hbox->addWidget(moveFocusToAbsolutePosition_ctl, 0, Qt::AlignRight);
@@ -301,7 +316,8 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
           focuserPosition_ctl = new QSpinBox(this),
           focuserPositionMoveToAbsolutePosition_ctl = new QToolButton(this),
           focuserPositionMoveToMinPosition_ctl = new QToolButton(this),
-          focuserPositionMoveToMaxPosition_ctl = new QToolButton(this)));
+          focuserPositionMoveToMaxPosition_ctl = new QToolButton(this),
+          focuserPositionMoveToMiddlePosition_ctl = new QToolButton(this)));
 
   form->addRow("Relative steps:",
       createRelativeMoveControl( this,
@@ -393,6 +409,10 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
 
   connect(focuserPositionMoveToMaxPosition_ctl, &QToolButton::clicked,
       this, &ThisClass::onFocuserPositionMoveToMaxPositionClicked);
+
+  connect(focuserPositionMoveToMiddlePosition_ctl, &QToolButton::clicked,
+      this, &ThisClass::onFocuserPositionMoveToMiddlePositionClicked);
+
 
   connect(focuserSpeed_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onFocuserSpeedControlValueChanged(int)));
@@ -1238,6 +1258,22 @@ void QIndigoFocuserWidget::onFocuserPositionMoveToMaxPositionClicked()
   }
 }
 
+void QIndigoFocuserWidget::onFocuserPositionMoveToMiddlePositionClicked()
+{
+  if( isMovingFocusNow() ) {
+    abortCurrentMotion();
+  }
+  else if( canMoveFocusNow() ) {
+
+    focuserPosition_ctl->setValue((focuserPosition_ctl->maximum() +
+        focuserPosition_ctl->minimum()) / 2);
+
+    const int target_pos =
+        focuserPosition_ctl->value();
+
+    moveFocusToPosition(target_pos);
+  }
+}
 
 
 // FOCUSER RELATIVE MOTION

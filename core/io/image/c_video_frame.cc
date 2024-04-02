@@ -7,7 +7,6 @@
 
 #include "c_video_frame.h"
 #include <core/proc/reduce_channels.h>
-//#include <core/ssprintf.h>
 #include <core/debug.h>
 
 c_video_frame::c_video_frame()

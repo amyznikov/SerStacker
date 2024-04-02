@@ -53,7 +53,7 @@ public:
   void get_output_mask(cv::OutputArray output_mask);
 
 protected:
-  friend class c_video_input_source;
+  friend class c_image_input_source;
   cv::Mat input_image_, current_image_;
   cv::Mat1b input_mask_, current_mask_;
   std::map<std::string, cv::Mat> computed_images_;

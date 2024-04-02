@@ -78,6 +78,7 @@ protected:
     c_vlo_scan_cruise cruise;
     c_vlo_scan6_slim_imx479 slim_imx479;
   };
+
   std::unique_ptr<U> u_;
 };
 

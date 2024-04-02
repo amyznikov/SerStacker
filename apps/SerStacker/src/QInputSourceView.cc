@@ -12,8 +12,8 @@
 #include <gui/widgets/style.h>
 #include <core/proc/minmax.h>
 #include <core/io/vlo/c_vlo_input_source.h>
-#include <core/io/video/c_video_input_source.h>
 #include <core/debug.h>
+#include "../../../core/io/image/c_image_input_source.h"
 
 
 #define ICON_eye  ":/serstacker/icons/eye"
@@ -106,6 +106,11 @@ QToolBar * QInputSourceView::textViewToolbar() const
 QToolBar * QInputSourceView::rightToolbar() const
 {
   return rightToolbar_;
+}
+
+QStackedWidget * QInputSourceView::stackWidget() const
+{
+  return stackWidget_;
 }
 
 QImageSourceView * QInputSourceView::imageView() const
@@ -1008,7 +1013,7 @@ void QInputSourceView::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
 {
   debayerAlgorithm_ = algo;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_video_input_source*>(currentSource_.get()) ) {
+  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
 
     if( currentSource_->curpos() > 0 ) {
       currentSource_->seek(currentSource_->curpos() - 1);
@@ -1029,7 +1034,7 @@ void QInputSourceView::setDropBadPixels(bool v)
 {
   filterBadPixels_ = v;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_video_input_source*>(currentSource_.get()) ) {
+  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
 
     if( currentSource_->curpos() > 0 ) {
       currentSource_->seek(currentSource_->curpos() - 1);
@@ -1051,7 +1056,7 @@ void QInputSourceView::setBadPixelsVariationThreshold(double v)
 {
   badPixelsVariationThreshold_ = v;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_video_input_source*>(currentSource_.get()) ) {
+  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
 
     if( currentSource_->curpos() > 0 ) {
       currentSource_->seek(currentSource_->curpos() - 1);

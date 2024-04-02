@@ -8,10 +8,9 @@
 #ifndef __c_raw_file_h__
 #define __c_raw_file_h__
 
+#if HAVE_LIBRAW
+
 #include "debayer.h"
-
-#ifdef HAVE_LIBRAW
-
 #include <libraw/libraw.h>
 
 class c_raw_file_reader

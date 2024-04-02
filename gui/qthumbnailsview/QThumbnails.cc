@@ -9,12 +9,14 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/autoclip.h>
 #include <core/io/load_image.h>
-#include <core/io/c_ser_file.h>
-#include <core/io/c_fits_file.h>
 
+#include <core/io/image/c_ser_input_source.h>
+#include <core/io/image/c_regular_image_input_source.h>
+#include <core/io/image/c_raw_image_input_source.h>
+#include <core/io/image/c_ffmpeg_input_source.h>
+#include <core/io/image/c_fits_input_source.h>
 #include <core/io/vlo/c_vlo_input_source.h>
 #include <core/io/hdl/c_hdl_input_source.h>
-#include <core/io/video/c_video_input_source.h>
 #include <core/io/text/c_textfile_input_source.h>
 #include <core/io/ply/c_ply_input_source.h>
 
@@ -58,11 +60,19 @@ QStringList getSupportedThumbnailsExtensions()
     suffixes.append(QString("*.%1").arg(s.constData()));
   }
 
+#if have_regular_image_input_source
   for ( const std::string & s : c_regular_image_input_source::suffixes()  ) {
     suffixes.append(s.c_str());
   }
+#endif
 
-#if HAVE_LIBRAW
+#if have_ffmpeg_input_source
+  for ( const std::string & s : c_ffmpeg_reader::supported_input_formats() ) {
+    suffixes.append(s.c_str());
+  }
+#endif
+
+#if have_raw_image_input_source
   for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
@@ -79,34 +89,35 @@ QStringList getSupportedThumbnailsExtensions()
   }
 #endif
 
-#if HAVE_CFITSIO
+#if have_fits_input_source
   for ( const std::string & s : c_fits_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
 #endif
 
-  for ( const std::string & s : c_ffmpeg_reader::supported_input_formats() ) {
-    suffixes.append(s.c_str());
-  }
-
+#if have_vlo_input_source
   for ( const std::string & s : c_vlo_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
+#endif
 
-#if HAVE_PCAP
+#if have_hdl_input_source
   for ( const std::string & s : c_hdl_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
-#endif // HAVE_PCAP
+#endif
 
-
+#if have_textfile_input_source
   for ( const std::string & s : c_textfile_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
+#endif
 
+#if have_ply_input_source
   for ( const std::string & s : c_ply_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
+#endif
 
   std::sort(suffixes.begin(), suffixes.end());
   QStringList::iterator ii = std::unique(suffixes.begin(), suffixes.end());
@@ -312,6 +323,7 @@ static QImage loadThumbnailImageFromRaw(const QString & pathFileName, int thumb_
   }
 #endif
 
+#ifdef __c_video_input_source_h__
 #if HAVE_LIBRAW
   if( qimage.isNull() ) {
 
@@ -340,6 +352,7 @@ static QImage loadThumbnailImageFromRaw(const QString & pathFileName, int thumb_
       RawProcessor.recycle();
     }
   }
+#endif
 #endif
 
   return qimage;
@@ -402,6 +415,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
   ///////////////////////////////////////////////////////////////
 
 
+#if have_ser_input_source
   if( match_suffix(suffix, c_ser_input_source::suffixes()) ) {
 
     c_ser_reader ser(pathFileName.toStdString());
@@ -424,10 +438,12 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
       return qimage;
     }
   }
-
+#endif
 
   ///////////////////////////////////////////////////////////////
 
+
+#if have_vlo_input_source
   if( match_suffix(suffix, c_vlo_input_source::suffixes()) ) {
 
     c_vlo_reader vlo;
@@ -462,22 +478,19 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
         }
       }
     }
-
-    //    if( suffix.compare("vsb", Qt::CaseInsensitive) == 0 ) {
-    //      return QImage(":/qthumbnailsview/icons/lidar1.png");
-    //    }
   }
+#endif
 
   ///////////////////////////////////////////////////////////////
-#if HAVE_PCAP
+#if have_hdl_input_source
   if( match_suffix(suffix, c_hdl_input_source::suffixes()) ) {
     return QImage(HDL_image);
   }
-#endif // HAVE_PCAP
+#endif
 
   ///////////////////////////////////////////////////////////////
 
-#if HAVE_CFITSIO
+#if have_fits_input_source
   if( match_suffix(suffix, c_fits_input_source::suffixes()) ) {
 
     c_fits_reader fits(pathFileName.toStdString());
@@ -504,7 +517,7 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 
 
   ///////////////////////////////////////////////////////////////
-#if HAVE_LIBRAW
+#if have_raw_image_input_source
   if( match_suffix(suffix, c_raw_image_input_source::suffixes()) ) {
     if ( !(qimage = loadThumbnailImageFromRaw(pathFileName, thumb_size)).isNull() ) {
       return qimage;
@@ -577,14 +590,18 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 
   ///////////////////////////////////////////////////////////////
 
+#if have_ffmpeg_input_source
   const bool is_video =
       mime.name().contains("video/", Qt::CaseInsensitive) ||
-          match_suffix(suffix, c_movie_input_source::suffixes());
+          match_suffix(suffix, c_ffmpeg_input_source::suffixes());
+#else
+  const bool is_video =
+      mime.name().contains("video/", Qt::CaseInsensitive);
+#endif
 
   if ( is_video ) {
 
-#define HAVE_FFMPEG_READER 1
-#if HAVE_FFMPEG_READER
+#if have_ffmpeg_input_source
     c_ffmpeg_reader ffmpeg;
 
     if ( ffmpeg.open(pathFileName.toStdString()) ) {
@@ -651,30 +668,42 @@ QIcon loadThumbnailIcon(const QString & pathFileName, int maxSize)
 
 bool isTextFileSuffix(const QString & suffix)
 {
+#if have_textfile_input_source
+
   const std::string csuffix =
       suffix.toStdString();
 
-  const char * cs = csuffix.c_str();
+  const char * cs =
+      csuffix.c_str();
+
   for( const std::string & s : c_textfile_input_source::suffixes() ) {
     if( strcasecmp(cs, s.c_str()) == 0 ) {
       return true;
     }
   }
 
+#endif
+
   return false;
 }
 
 bool isPlyFileSuffix(const QString & suffix)
 {
+#if have_ply_input_source
+
   const std::string csuffix =
       suffix.toStdString();
 
-  const char * cs = csuffix.c_str();
+  const char * cs =
+      csuffix.c_str();
+
   for( const std::string & s : c_ply_input_source::suffixes() ) {
     if( strcasecmp(cs, s.c_str()) == 0 ) {
       return true;
     }
   }
+
+#endif
 
   return false;
 }

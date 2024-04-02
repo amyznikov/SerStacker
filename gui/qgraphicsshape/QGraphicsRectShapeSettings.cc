@@ -83,6 +83,23 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
             return false;
           });
 
+  rect_ctl =
+      add_numeric_box<QRectF>("RECT:",
+          "Set Rectangle",
+          [this](const QRectF & v) {
+            if ( shape_ ) {
+              shape_->setRect(v);
+              save_parameter(PREFIX, "rect", shape_->rect());
+            }
+          },
+          [this](QRectF * v) {
+            if ( shape_ ) {
+              *v = shape_->rect();
+              return true;
+            }
+            return false;
+          });
+
   updateControls();
 }
 

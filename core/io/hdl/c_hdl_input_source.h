@@ -9,10 +9,12 @@
 #ifndef __c_hdl_input_source_h__
 #define __c_hdl_input_source_h__
 
+#if HAVE_PCAP
+
 #include <core/io/c_input_source.h>
 #include "c_hdl_frame_reader.h"
 
-#if HAVE_PCAP
+#define have_hdl_input_source 1
 
 class c_hdl_input_source :
     public c_input_source

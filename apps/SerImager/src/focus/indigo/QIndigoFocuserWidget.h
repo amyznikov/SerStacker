@@ -123,11 +123,13 @@ protected:
   QToolButton * focuserPositionMoveToAbsolutePosition_ctl = nullptr;
   QToolButton * focuserPositionMoveToMinPosition_ctl = nullptr;
   QToolButton * focuserPositionMoveToMaxPosition_ctl = nullptr;
+  QToolButton * focuserPositionMoveToMiddlePosition_ctl = nullptr;
 
 protected Q_SLOTS:
   void onFocuserPositionMoveToAbsolutePositionClicked();
   void onFocuserPositionMoveToMinPositionClicked();
   void onFocuserPositionMoveToMaxPositionClicked();
+  void onFocuserPositionMoveToMiddlePositionClicked();
 
   // FOCUSER RELATIVE MOTION
 protected:

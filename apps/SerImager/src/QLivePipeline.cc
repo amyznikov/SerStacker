@@ -14,10 +14,10 @@
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
 #include <core/io/load_image.h>
-#include <core/io/video/c_video_input_source.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
+#include "../../../core/io/image/c_image_input_source.h"
 
 namespace serimager {
 
@@ -616,10 +616,10 @@ const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
 void QLivePipelineThread::run()
 {
   struct c_camera_input_source :
-      public c_video_input_source
+      public c_image_input_source
   {
     typedef c_camera_input_source this_class;
-    typedef c_video_input_source base;
+    typedef c_image_input_source base;
     typedef std::shared_ptr<this_class> sptr;
 
     QLivePipelineThread * thread_;

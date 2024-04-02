@@ -12,6 +12,8 @@
 #include <core/io/c_input_source.h>
 #include "c_vlo_data_frame.h"
 
+#define have_vlo_input_source 1
+
 class c_vlo_input_source :
     public c_input_source
 {

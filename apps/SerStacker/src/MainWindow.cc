@@ -411,8 +411,11 @@ void MainWindow::setupMainMenu()
             }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
-              this, nullptr, nullptr,
-              Qt::WindowShortcut)));
+              inputSourceView->stackWidget(), nullptr, nullptr,
+              Qt::WidgetWithChildrenShortcut)));
+
+
+
 
   menuEdit_->addAction(copyDisplayViewportAction =
       createAction(QIcon(),
@@ -423,15 +426,15 @@ void MainWindow::setupMainMenu()
               cloudView->copyViewportToClipboard();
             }
             else if ( is_visible(imageView) ) {
-              QPixmap pxmap = imageView->sceneView()->grab();
+              const QPixmap pxmap = imageView->sceneView()->grab();
               if ( !pxmap.isNull() ) {
                 QApplication::clipboard()->setPixmap(pxmap);
               }
             }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
-              this, nullptr, nullptr,
-              Qt::WindowShortcut)));
+              inputSourceView->stackWidget(), nullptr, nullptr,
+              Qt::WidgetWithChildrenShortcut)));
 
 
   //
@@ -631,6 +634,7 @@ void MainWindow::setupStackOptionsView()
 
 void MainWindow::checkIfBadFrameSelected()
 {
+
   bool isBadFrameSelected = false;
 
   if( is_visible(inputSourceView) ) {
@@ -1504,6 +1508,7 @@ void MainWindow::onViewInputOptions()
 void MainWindow::setupInputSequenceView()
 {
   QToolBar * toolbar;
+  QShortcut * shortcut;
 
   ///////////////////////////////////////////////////////////////////////
 
@@ -1534,23 +1539,18 @@ void MainWindow::setupInputSequenceView()
   toolbar->addAction(badframeAction =
       createCheckableAction(badframeIcon,
           "Bad Frame",
-          "Mark / Unmark current frame as bad (Ctrl+A)",
+          "Mark / Unmark current frame as bad (Ctrl+W)",
           false,
           [this](bool checked) {
-            if ( is_visible(inputSourceView) ) {
 
-              const c_input_source::sptr & currentSource =
-                  inputSourceView->inputSource();
-
-              if ( currentSource ) {
-                currentSource->set_badframe(std::max(0, currentSource->curpos() - 1), checked);
-                currentSource->save_badframes();
-              }
+            const c_input_source::sptr & currentSource = inputSourceView->inputSource();
+            if ( currentSource ) {
+              currentSource->set_badframe(std::max(0, currentSource->curpos() - 1), checked);
+              currentSource->save_badframes();
             }
+
           },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_A),
-              imageView, nullptr, nullptr,
-              Qt::WindowShortcut)));
+          QKeySequence(Qt::CTRL | Qt::Key_W)));
 
 
   toolbar->addAction(setReferenceFrameAction =
@@ -1620,15 +1620,41 @@ void MainWindow::setupInputSequenceView()
 
   toolbar->addWidget(currentFileNameLabel_ctl = new QLabel(""));
   currentFileNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
+
   connect(inputSourceView, &QInputSourceView::currentFileNameChanged,
-      [this]() {
+      [this, toolbar]() {
         const QString abspath = inputSourceView->currentFileName();
         currentFileNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
+        toolbar->adjustSize();
+
         if ( is_visible(mtfControl_) ) {
           onMtfControlVisibilityChanged(true);
         }
       });
 
+
+//  shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+//      currentFileNameLabel_ctl,
+//      [this]() {
+//
+//    CF_DEBUG("H Qt::CTRL | Qt::Key_C");
+//
+//        if (currentFileNameLabel_ctl->hasFocus() ) {
+//
+//
+//          const QString text =
+//            currentFileNameLabel_ctl->hasSelectedText() ?
+//                currentFileNameLabel_ctl->selectedText() :
+//                currentFileNameLabel_ctl->text();
+//
+//          if ( !text.isEmpty() ) {
+//            QApplication::clipboard()->setText(text);
+//          }
+//
+//        }
+//
+//      },
+//      Qt::WidgetShortcut);
 
   // toolbar->addSeparator();
 

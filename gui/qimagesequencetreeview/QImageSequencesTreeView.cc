@@ -8,7 +8,11 @@
 #include "QImageSequencesTreeView.h"
 #include <gui/qpipeline/QPipelineThread.h>
 #include <gui/widgets/style.h>
-#include <core/io/video/c_video_input_source.h>
+
+#include <core/io/image/c_ffmpeg_input_source.h>
+#include <core/io/image/c_fits_input_source.h>
+#include <core/io/image/c_regular_image_input_source.h>
+#include <core/io/image/c_ser_input_source.h>
 #include <core/io/vlo/c_vlo_input_source.h>
 #include <core/readdir.h>
 #include <core/debug.h>
@@ -475,27 +479,31 @@ void QImageSequencesTreeView::onAddSourcesToCurrentImageSequence()
 
     if( filter.isEmpty() ) {
 
+#if have_ser_input_source
       filter.append("SER files (");
       for( const std::string &s : c_ser_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
+#endif
 
+#if have_regular_image_input_source
       filter.append("Regular images (");
       for( const std::string &s : c_regular_image_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
+#endif
 
-#if HAVE_CFITSIO
+#if have_fits_input_source
       filter.append("FITS files (");
       for ( const std::string & s : c_fits_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
-#endif // HAVE_CFITSIO
+#endif
 
-#if HAVE_LIBRAW
+#if have_raw_image_input_source
       filter.append("RAW/DSLR images (");
       for ( const std::string & s : c_raw_image_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
@@ -503,11 +511,13 @@ void QImageSequencesTreeView::onAddSourcesToCurrentImageSequence()
       filter.append(");;");
 #endif // HAVE_LIBRAW
 
+#if have_ffmpeg_input_source
       filter.append("Movies (");
-      for( const std::string &s : c_movie_input_source::suffixes() ) {
+      for( const std::string &s : c_ffmpeg_input_source::suffixes() ) {
         filter.append(QString("*%1 ").arg(s.c_str()));
       }
       filter.append(");;");
+#endif
 
       filter.append("All Files (*.*);;");
     }

@@ -6,6 +6,9 @@
  */
 
 #include "c_ffmpeg_file.h"
+
+#if HAVE_FFMPEG
+
 #include <mutex>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
@@ -1679,4 +1682,4 @@ bool c_ffmpeg_writer::write_frame(const uint8_t * data, int step, int width, int
 }
 
 
-
+#endif // HAVE_FFMPEG

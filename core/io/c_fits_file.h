@@ -10,7 +10,7 @@
 
 #include "debayer.h" // for COLORID
 
-#ifdef HAVE_CFITSIO
+#if HAVE_CFITSIO
 
 #include <fitsio2.h>
 
@@ -88,8 +88,8 @@ protected:
 };
 
 /** @brief Very basic FITS image reader from primary HDU */
-class c_fits_reader
-    : public c_fits_file
+class c_fits_reader :
+    public c_fits_file
 {
 public:
   c_fits_reader() = default;
@@ -111,8 +111,8 @@ public:
 };
 
 /** @brief FITS image writer, had no time to implement yet */
-class c_fits_writer
-    : public c_fits_file
+class c_fits_writer :
+    public c_fits_file
 {
 public:
   c_fits_writer() = default;

@@ -81,12 +81,32 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   QObject::connect(action, &QAction::triggered, slot);
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+
+      QObject::connect(shortcut, &QShortcut::activated,
+          action, &QAction::trigger);
   }
 
   return action;
 }
+
+template<typename Slot>
+QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
+    bool checked,
+    Slot && slot,
+    const QKeySequence &shortcut)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+  action->setChecked(checked);
+  action->setShortcut(shortcut);
+
+  QObject::connect(action, &QAction::triggered, slot);
+
+  return action;
+}
+
+//;
 
 
 template<class Obj, typename Fn>

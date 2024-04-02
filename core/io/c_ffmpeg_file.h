@@ -10,6 +10,16 @@
 
 #include <opencv2/opencv.hpp>
 
+// Must be set from CMakeLists.txt
+// #define HAVE_AVCODEC  1
+// #define HAVE_AVFORMAT 1
+// #define HAVE_AVUTIL 1
+// #define HAVE_SWSCALE  1
+// #define HAVE_AVDEVICE 1
+#define HAVE_FFMPEG ((HAVE_AVCODEC) && (HAVE_AVFORMAT) && (HAVE_AVUTIL) && (HAVE_SWSCALE))
+#if HAVE_FFMPEG
+
+
 extern "C" {
   #include <libavformat/avformat.h>
   #include <libavcodec/avcodec.h>
@@ -194,5 +204,7 @@ protected:
   SwsContext * sws_ctx = nullptr;
 
 };
+
+#endif // HAVE_FFMPEG
 
 #endif /* __c_ffmpeg_file_h__ */

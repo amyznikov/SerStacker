@@ -49,6 +49,7 @@ public:
   QToolBar * textViewToolbar() const;
   QToolBar * rightToolbar() const;
 
+  QStackedWidget * stackWidget() const;
   QImageSourceView * imageView() const;
   QPointCloudSourceView * cloudView() const;
   QTextSourceView * textView() const;

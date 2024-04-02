@@ -6,8 +6,12 @@
  */
 
 #include "c_input_source.h"
-//#include "load_image.h"
-#include "video/c_video_input_source.h"
+#include "image/c_ffmpeg_input_source.h"
+#include "image/c_fits_input_source.h"
+#include "image/c_image_input_source.h"
+#include "image/c_raw_image_input_source.h"
+#include "image/c_regular_image_input_source.h"
+#include "image/c_ser_input_source.h"
 #include "vlo/c_vlo_input_source.h"
 #include "hdl/c_hdl_input_source.h"
 #include "text/c_textfile_input_source.h"
@@ -79,47 +83,59 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
     c_input_source::sptr obj;
 
+#if have_ser_input_source
     if( contains(c_ser_input_source::suffixes(), suffix) && (obj = c_ser_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
+#if have_vlo_input_source
     if( contains(c_vlo_input_source::suffixes(), suffix) && (obj = c_vlo_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
-#if HAVE_PCAP
+#if have_hdl_input_source
     if( contains(c_hdl_input_source::suffixes(), suffix) && (obj = c_hdl_input_source::create(filename)) ) {
       return obj;
     }
 #endif
 
+#if have_textfile_input_source
     if( contains(c_textfile_input_source::suffixes(), suffix) && (obj = c_textfile_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
+#if have_ply_input_source
     if( contains(c_ply_input_source::suffixes(), suffix) && (obj = c_ply_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
-#if HAVE_CFITSIO
+#if have_fits_input_source
     if( contains(c_fits_input_source::suffixes(), suffix) && (obj = c_fits_input_source::create(filename)) ) {
       return obj;
     }
-#endif // HAVE_CFITSIO
+#endif
 
-    if( contains(c_movie_input_source::suffixes(), suffix) && (obj = c_movie_input_source::create(filename)) ) {
+#if have_ffmpeg_input_source
+    if( contains(c_ffmpeg_input_source::suffixes(), suffix) && (obj = c_ffmpeg_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
+#if have_regular_image_input_source
     if( contains(c_regular_image_input_source::suffixes(), suffix) && (obj = c_regular_image_input_source::create(filename)) ) {
       return obj;
     }
+#endif
 
-#if HAVE_LIBRAW
+#if have_raw_image_input_source
     if( contains(c_raw_image_input_source::suffixes(), suffix) && (obj = c_raw_image_input_source::create(filename)) ) {
       return obj;
     }
-#endif // HAVE_LIBRAW
+#endif
   }
 
   return nullptr;

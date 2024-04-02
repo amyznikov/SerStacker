@@ -11,6 +11,8 @@
 
 #include <core/io/c_input_source.h>
 
+#define have_textfile_input_source  1
+
 class c_textfile_input_source :
     public c_input_source
 {

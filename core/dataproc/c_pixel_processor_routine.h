@@ -82,7 +82,7 @@ public:
 
 
   bool process(c_data_frame::sptr & dataframe) override;
-  void get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   std::string helpstring() const;
 

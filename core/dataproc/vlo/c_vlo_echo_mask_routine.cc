@@ -7,13 +7,13 @@
 
 #include "c_vlo_echo_mask_routine.h"
 
-void c_vlo_echo_mask_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_vlo_echo_mask_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, enable_echo0, "echo0",  "Enable Echo0");
-  ADD_DATA_PROCESSOR_CTRL(ctls, enable_echo1, "echo1",  "Enable Echo0");
-  ADD_DATA_PROCESSOR_CTRL(ctls, enable_echo2, "echo2",  "Enable Echo0");
-  ADD_DATA_PROCESSOR_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
-  ADD_DATA_PROCESSOR_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
+  BIND_CTRL(ctls, enable_echo0, "echo0",  "Enable Echo0");
+  BIND_CTRL(ctls, enable_echo1, "echo1",  "Enable Echo0");
+  BIND_CTRL(ctls, enable_echo2, "echo2",  "Enable Echo0");
+  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
+  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
 }
 
 bool c_vlo_echo_mask_routine::serialize(c_config_setting settings, bool save)

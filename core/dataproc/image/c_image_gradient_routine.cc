@@ -29,10 +29,10 @@ void c_image_gradient_routine::set_output_image_name(const std::string & v)
   output_image_name_ = v;
 }
 
-void c_image_gradient_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_image_gradient_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, input_image_name, "input_image", "input image name");
-  ADD_DATA_PROCESSOR_CTRL(ctls, output_image_name, "output_image", "output image name");
+  BIND_CTRL(ctls, input_image_name, "input_image", "input image name");
+  BIND_CTRL(ctls, output_image_name, "output_image", "output image name");
 }
 
 bool c_image_gradient_routine::serialize(c_config_setting settings, bool save)

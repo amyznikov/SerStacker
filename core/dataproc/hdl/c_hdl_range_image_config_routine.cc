@@ -7,10 +7,10 @@
 
 #include "c_hdl_range_image_config_routine.h"
 
-void c_hdl_range_image_config_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_hdl_range_image_config_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, azimuthal_resolution, "azimuthal_resolution", "Range image azimuthal resolution in [deg/pix]");
-  ADD_DATA_PROCESSOR_CTRL(ctls, start_azimuth, "start_azimuth", "Range image start azimuth in [deg]");
+  BIND_CTRL(ctls, azimuthal_resolution, "azimuthal_resolution", "Range image azimuthal resolution in [deg/pix]");
+  BIND_CTRL(ctls, start_azimuth, "start_azimuth", "Range image start azimuth in [deg]");
 }
 
 bool c_hdl_range_image_config_routine::serialize(c_config_setting settings, bool save)

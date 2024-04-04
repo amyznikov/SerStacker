@@ -625,13 +625,13 @@ std::string c_pixel_processor_routine::helpstring() const
   return _helpstring;
 }
 
-void c_pixel_processor_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_pixel_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, input_type, "input_type", "input view type");
-  ADD_DATA_PROCESSOR_CTRL(ctls, input, "input", "input image name");
-  ADD_DATA_PROCESSOR_CTRL(ctls, output, "output", "output image name");
-  ADD_DATA_PROCESSOR_CTRL(ctls, output_depth, "output_depth", "output image depth");
-  ADD_DATA_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, expression, "", "formula for math expression", helpstring);
+  BIND_CTRL(ctls, input_type, "input_type", "input view type");
+  BIND_CTRL(ctls, input, "input", "input image name");
+  BIND_CTRL(ctls, output, "output", "output image name");
+  BIND_CTRL(ctls, output_depth, "output_depth", "output image depth");
+  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
 }
 
 bool c_pixel_processor_routine::serialize(c_config_setting settings, bool save)

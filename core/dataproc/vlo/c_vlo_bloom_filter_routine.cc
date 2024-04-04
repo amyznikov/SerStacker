@@ -8,41 +8,41 @@
 #include "c_vlo_bloom_filter_routine.h"
 #include <core/io/vlo/c_vlo_scan.h>
 
-void c_vlo_bloom_filter_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_vlo_bloom_filter_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_measure, "intensity_measure", "intensity measure");
+  BIND_CTRL(ctls, intensity_measure, "intensity_measure", "intensity measure");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_saturation_level_020m, "SAT 020m", "intensity saturation level at 20 m distance");
-  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_saturation_level_100m, "SAT 100m", "intensity saturation level at 100 m distance");
-  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_min_intensity, "bloom_min_inten", "bloom_min_intensity");
+  BIND_CTRL(ctls, intensity_saturation_level_020m, "SAT 020m", "intensity saturation level at 20 m distance");
+  BIND_CTRL(ctls, intensity_saturation_level_100m, "SAT 100m", "intensity saturation level at 100 m distance");
+  BIND_CTRL(ctls, bloom_min_intensity, "bloom_min_inten", "bloom_min_intensity");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, max_reflector_hole_size, "max_refl_hole", "max size of hole inside of single in pixels");
-  ADD_DATA_PROCESSOR_CTRL(ctls, bloom_log_intensity_tolerance, "refine_tolerance", "bloom_log_intensity_tolerance");
-  ADD_DATA_PROCESSOR_CTRL(ctls, intensity_tolerance, "intensity_tolerance", "intensity tolerance for selected intensity measure");
+  BIND_CTRL(ctls, max_reflector_hole_size, "max_refl_hole", "max size of hole inside of single in pixels");
+  BIND_CTRL(ctls, bloom_log_intensity_tolerance, "refine_tolerance", "bloom_log_intensity_tolerance");
+  BIND_CTRL(ctls, intensity_tolerance, "intensity_tolerance", "intensity tolerance for selected intensity measure");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, min_bloom_slope, "min_bloom_slope", "min profile slope");
-  ADD_DATA_PROCESSOR_CTRL(ctls, max_bloom_slope, "max_bloom_slope", "max profile slope");
+  BIND_CTRL(ctls, min_bloom_slope, "min_bloom_slope", "min profile slope");
+  BIND_CTRL(ctls, max_bloom_slope, "max_bloom_slope", "max profile slope");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, rreset, "rreset", "rreset");
-
-
+  BIND_CTRL(ctls, rreset, "rreset", "rreset");
 
 
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, min_distance, "min_distance", "min distance [cm]");
-  ADD_DATA_PROCESSOR_CTRL(ctls, max_distance, "max_distance", "max distance [cm]");
-  ADD_DATA_PROCESSOR_CTRL(ctls, distance_tolerance, "distance_tolerance", "distance tolerance [cm]");
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, min_segment_height, "min_segment_height", "[px], minimally acceptable vertical dispersion of a wall in pixels");
-  ADD_DATA_PROCESSOR_CTRL(ctls, min_segment_size, "min_segment_size", "[points]");
-  ADD_DATA_PROCESSOR_CTRL(ctls, max_segment_slope, "max_segment_slope", "max segment slope [deg]"); //
-  ADD_DATA_PROCESSOR_CTRL(ctls, counts_threshold, "counts_threshold", "normalized counter value"); //
 
-  ADD_DATA_PROCESSOR_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
-  ADD_DATA_PROCESSOR_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
-  //ADD_DATA_PROCESSOR_CTRL(ctls, create_bloom_picture, "create_bloom_picture", "create_bloom_picture");
-  ADD_DATA_PROCESSOR_CTRL(ctls, display_reflectors, "display_reflectors", "display_reflectors");
-  ADD_DATA_PROCESSOR_CTRL(ctls, display_bloom, "display_bloom", "display_bloom");
+  BIND_CTRL(ctls, min_distance, "min_distance", "min distance [cm]");
+  BIND_CTRL(ctls, max_distance, "max_distance", "max distance [cm]");
+  BIND_CTRL(ctls, distance_tolerance, "distance_tolerance", "distance tolerance [cm]");
+
+  BIND_CTRL(ctls, min_segment_height, "min_segment_height", "[px], minimally acceptable vertical dispersion of a wall in pixels");
+  BIND_CTRL(ctls, min_segment_size, "min_segment_size", "[points]");
+  BIND_CTRL(ctls, max_segment_slope, "max_segment_slope", "max segment slope [deg]"); //
+  BIND_CTRL(ctls, counts_threshold, "counts_threshold", "normalized counter value"); //
+
+  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
+  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
+  //BIND_CTRL(ctls, create_bloom_picture, "create_bloom_picture", "create_bloom_picture");
+  BIND_CTRL(ctls, display_reflectors, "display_reflectors", "display_reflectors");
+  BIND_CTRL(ctls, display_bloom, "display_bloom", "display_bloom");
 }
 
 bool c_vlo_bloom_filter_routine::serialize(c_config_setting settings, bool save)

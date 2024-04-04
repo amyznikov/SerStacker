@@ -20,6 +20,7 @@
 #include <gui/widgets/QFFmpegOptionsControl.h>
 #include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/qsprintf.h>
+#include <core/ctrlbind/ctrlbind.h>
 #include <type_traits>
 #include <functional>
 #include <mutex>
@@ -1259,6 +1260,10 @@ public:
   }
 
   /////////////////////////////////////////////////////////////////////
+#ifdef __ctrlbind_h__
+  void setup_controls(const std::vector<c_ctrl_bind> & ctls);
+#endif
+  /////////////////////////////////////////////////////////////////////
 
 protected:
   QString PREFIX;
@@ -1267,6 +1272,10 @@ protected:
 private:
   std::mutex *mtx_ = nullptr;
   int updatingControls_ = 0;
+
+#ifdef __ctrlbind_h__
+  std::map<QWidget*, std::function<bool()>> bound_state_ctls_;
+#endif
 };
 
 

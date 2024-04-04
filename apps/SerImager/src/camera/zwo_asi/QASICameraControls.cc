@@ -549,7 +549,7 @@ bool QASIROIControlWidget::setup_camera_capture_format()
 void QASIROIControlWidget::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
 {
   if( camera_ ) {
-    CF_DEBUG("%s -> %s", toString(oldState), toString(newState));
+    CF_DEBUG("%s -> %s", toString(oldState).c_str(), toString(newState).c_str());
     if( oldState < QImagingCamera::State_connected && newState == QImagingCamera::State_connected ) {
       populate_supported_frame_formats();
     }

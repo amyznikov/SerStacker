@@ -10,7 +10,7 @@
 #define __c_video_frame_processor_routine_h__
 
 #include <core/dataproc/c_data_frame_processor.h>
-#include "../../io/image/c_video_frame.h"
+#include <core/io/image/c_video_frame.h>
 
 class c_video_frame_processor_routine :
     public c_data_frame_processor_routine

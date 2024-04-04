@@ -218,11 +218,11 @@ std::string c_vlo_pixel_selection_routine::helpstring() const
   return _helpstring;
 }
 
-void c_vlo_pixel_selection_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_vlo_pixel_selection_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, expression, "", "formula for math expression", helpstring);
-  ADD_DATA_PROCESSOR_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
-  ADD_DATA_PROCESSOR_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
+  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
+  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
+  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
 }
 
 bool c_vlo_pixel_selection_routine::serialize(c_config_setting settings, bool save)

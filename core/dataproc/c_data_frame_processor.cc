@@ -145,9 +145,9 @@ c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(cons
   return nullptr;
 }
 
-void c_data_frame_processor_routine::get_parameters(std::vector<struct c_data_processor_routine_ctrl> * ctls)
+void c_data_frame_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_DATA_PROCESSOR_CTRL(ctls, ignore_mask, "Ignore mask", "");
+  BIND_CTRL(ctls, ignore_mask, "Ignore mask", "");
 }
 
 bool c_data_frame_processor_routine::serialize(c_config_setting settings, bool save)

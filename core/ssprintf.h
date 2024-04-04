@@ -225,6 +225,24 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
   return empty_string;
 }
 
+template<class enum_type>
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  const char *> toCString(const enum_type & v)
+{
+  const c_enum_member * members =
+      members_of<enum_type>();
+
+  if ( members ) {
+    for ( int i = 0; !members[i].name.empty(); ++i ) {
+      if ( members[i].value == (int)(v) ) {
+        return members[i].name.c_str();
+      }
+    }
+  }
+
+  return "";
+}
+
 
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,

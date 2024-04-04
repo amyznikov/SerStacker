@@ -918,7 +918,7 @@ bool save_settings(c_config_setting section, const c_feature2d::sptr & obj)
 
   default :
     CF_ERROR("Unknown or not supported feature2d object type=%d (%s)",
-        (int )(p->type()), toString(p->type()));
+        (int )(p->type()), toCString(p->type()));
     break;
   }
 

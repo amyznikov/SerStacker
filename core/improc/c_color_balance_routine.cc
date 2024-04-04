@@ -27,10 +27,10 @@ double c_color_balance_routine::alpha() const
   return alpha_;
 }
 
-void c_color_balance_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_color_balance_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_DOUBLE_SLIDER_CTRL(ctls, alpha, -1, +1, 1e-4, "");
-  ADD_IMAGE_PROCESSOR_DOUBLE_SLIDER_CTRL(ctls, gscale, 0, +2, 1e-4, "");
+  BIND_DOUBLE_SLIDER_CTRL(ctls, alpha, -1, +1, 1e-4, "alpha", "");
+  BIND_DOUBLE_SLIDER_CTRL(ctls, gscale, 0, +2, 1e-4, "gscale", "");
 }
 
 bool c_color_balance_routine::serialize(c_config_setting settings, bool save)

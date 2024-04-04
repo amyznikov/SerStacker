@@ -113,16 +113,16 @@ public:
     return outmax_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, channel, "Color channel for sharpenning");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, target_sharpness, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha_factor, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, norm_type, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, blur_color_channels, "Gaussian blur sigma for color channels");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, outmin, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, outmax, "");
+    BIND_PCTRL(ctls, channel, "Color channel for sharpenning");
+    BIND_PCTRL(ctls, sigma, "");
+    BIND_PCTRL(ctls, target_sharpness, "");
+    BIND_PCTRL(ctls, alpha_factor, "");
+    BIND_PCTRL(ctls, norm_type, "");
+    BIND_PCTRL(ctls, blur_color_channels, "Gaussian blur sigma for color channels");
+    BIND_PCTRL(ctls, outmin, "");
+    BIND_PCTRL(ctls, outmax, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

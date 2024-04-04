@@ -59,11 +59,11 @@ public:
     return mtf_.midtones();
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, shadows, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, highlights, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, midtones, "");
+    BIND_PCTRL(ctls, shadows, "");
+    BIND_PCTRL(ctls, highlights, "");
+    BIND_PCTRL(ctls, midtones, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -254,27 +254,27 @@ public:
     edgeboxes_->setKappa(value);
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, gradient_type, "Method for computing image gradients");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, gradient_pscale, "Gradient pyramid scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, gradient_threshold, "Gradient threshold method");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "Display image");
+    BIND_PCTRL(ctls, gradient_type, "Method for computing image gradients");
+    BIND_PCTRL(ctls, gradient_pscale, "Gradient pyramid scale");
+    BIND_PCTRL(ctls, gradient_threshold, "Gradient threshold method");
+    BIND_PCTRL(ctls, display, "Display image");
 
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, model,
+    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, model, "model",
         "Model file for createStructuredEdgeDetection()\n"
             "https://github.com/opencv/opencv_extra/blob/master/testdata/cv/ximgproc/model.yml.gz\n");
 
-    ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "EdgeBoxes", "Options for cv::ximgproc::EdgeBoxes");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, MaxBoxes, "max number of boxes to detect");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, EdgeMinMag, "the edge min magnitude");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, EdgeMergeThr, "Sets the edge merge threshold");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, ClusterMinMag, "the cluster min magnitude");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, MaxAspectRatio, "the max aspect ratio of boxes");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, MinBoxArea, "the minimum area of boxes");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, Gamma, "the affinity sensitivity");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, Kappa, "the scale sensitivity");
-    END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
+    BIND_CTRL_BEGIN_GROUP(ctls, "EdgeBoxes", "Options for cv::ximgproc::EdgeBoxes");
+      BIND_PCTRL(ctls, MaxBoxes, "max number of boxes to detect");
+      BIND_PCTRL(ctls, EdgeMinMag, "the edge min magnitude");
+      BIND_PCTRL(ctls, EdgeMergeThr, "Sets the edge merge threshold");
+      BIND_PCTRL(ctls, ClusterMinMag, "the cluster min magnitude");
+      BIND_PCTRL(ctls, MaxAspectRatio, "the max aspect ratio of boxes");
+      BIND_PCTRL(ctls, MinBoxArea, "the minimum area of boxes");
+      BIND_PCTRL(ctls, Gamma, "the affinity sensitivity");
+      BIND_PCTRL(ctls, Kappa, "the scale sensitivity");
+    BIND_CTRL_END_GROUP(ctls);
   }
 
   bool serialize(c_config_setting settings, bool save) override

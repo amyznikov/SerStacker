@@ -7,16 +7,16 @@
 
 #include "c_neighbourhood_average_routine.h"
 
-void c_neighbourhood_average_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_neighbourhood_average_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, se_shape, "se_shape");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, se_size, "se_size");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, anchor, "anchor");
+  BIND_PCTRL(ctls, se_shape, "se_shape");
+  BIND_PCTRL(ctls, se_size, "se_size");
+  BIND_PCTRL(ctls, anchor, "anchor");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, border_type, "border_type");
-//  ADD_IMAGE_PROCESSOR_CTRL(ctls, border_value, "border_value");
+  BIND_PCTRL(ctls, border_type, "border_type");
+//  BIND_PCTRL(ctls, border_value, "border_value");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "ignore_mask");
+  BIND_PCTRL(ctls, ignore_mask, "ignore_mask");
 }
 
 bool c_neighbourhood_average_routine::serialize(c_config_setting settings, bool save)

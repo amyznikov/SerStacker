@@ -84,12 +84,12 @@ const c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector() const
   return &detector_;
 }
 
-void c_fit_jovian_ellipse_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_fit_jovian_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "stdev_factor");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, pca_blur, "pca_blur");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "display image type");
+  BIND_PCTRL(ctls, stdev_factor, "stdev_factor");
+  BIND_PCTRL(ctls, pca_blur, "pca_blur");
+  BIND_PCTRL(ctls, offset, "offset");
+  BIND_PCTRL(ctls, display, "display image type");
 }
 
 bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)

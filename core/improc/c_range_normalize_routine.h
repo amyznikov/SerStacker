@@ -69,13 +69,13 @@ public:
     return output_max_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, auto_input_range, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, input_min, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, input_max, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_min, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_max, "");
+    BIND_PCTRL(ctls, auto_input_range, "");
+    BIND_PCTRL(ctls, input_min, "");
+    BIND_PCTRL(ctls, input_max, "");
+    BIND_PCTRL(ctls, output_min, "");
+    BIND_PCTRL(ctls, output_max, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

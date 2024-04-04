@@ -93,16 +93,16 @@ static bool project_to_radius_vector_(const cv::Mat & _gx, const cv::Mat & _gy, 
 }
 
 
-void c_radial_gradient_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_radial_gradient_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "Output type");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, reference_point, "Reference point location X,Y [px]");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, kradius, "kernel radius in pixels");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, magnitude, "Output gradient magnitude");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, squared, "Square output");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, erode_mask, "Update image mask if not empty");
+  BIND_PCTRL(ctls, output_type, "Output type");
+  BIND_PCTRL(ctls, reference_point, "Reference point location X,Y [px]");
+  BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
+  BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
+  BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
+  BIND_PCTRL(ctls, magnitude, "Output gradient magnitude");
+  BIND_PCTRL(ctls, squared, "Square output");
+  BIND_PCTRL(ctls, erode_mask, "Update image mask if not empty");
 }
 
 bool c_radial_gradient_routine::serialize(c_config_setting settings, bool save)

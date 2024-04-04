@@ -59,12 +59,12 @@ public:
     return usharp_alpha_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, count, "count of times for pyDown (negative value for pyrUp instead)");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, borderType, "enum cv::BorderTypes");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_sigma, "Optional unsharp mask sigma before downscaling (set 0 to disable)");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_alpha, "Optional unsharp mask alpha before downscaling (set 0 to disable)");
+    BIND_PCTRL(ctls, count, "count of times for pyDown (negative value for pyrUp instead)");
+    BIND_PCTRL(ctls, borderType, "enum cv::BorderTypes");
+    BIND_PCTRL(ctls, usharp_sigma, "Optional unsharp mask sigma before downscaling (set 0 to disable)");
+    BIND_PCTRL(ctls, usharp_alpha, "Optional unsharp mask alpha before downscaling (set 0 to disable)");
   }
 
   bool serialize(c_config_setting settings, bool save) override

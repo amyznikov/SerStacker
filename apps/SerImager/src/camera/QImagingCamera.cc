@@ -180,7 +180,7 @@ bool QImagingCamera::connect()
 
   if( current_state_ != State_disconnected ) {
     CF_ERROR("QImagingCamera: inappropriate state: %s",
-        toString(current_state_));
+        toCString(current_state_));
     return false;
   }
 
@@ -221,7 +221,7 @@ bool QImagingCamera::start()
 
   if( current_state_ != State_connected ) {
     CF_ERROR("Inappropriate state: %s",
-        toString(current_state_));
+        toCString(current_state_));
     return false;
   }
 
@@ -252,7 +252,7 @@ bool QImagingCamera::start()
         break;
 
         case State_connecting:
-        CF_ERROR("FATAL APP BUG: Unexpected state '%s'", toString(current_state_));
+        CF_ERROR("FATAL APP BUG: Unexpected state '%s'", toCString(current_state_));
         device_disconnect();
         setState(State_disconnected);
         break;
@@ -260,7 +260,7 @@ bool QImagingCamera::start()
         case State_connected:
         if ( !device_is_connected() ) {
           CF_ERROR("FATAL APP BUG: Device is not connected but current state state is '%s'",
-              toString(current_state_));
+              toCString(current_state_));
         }
         break;
 

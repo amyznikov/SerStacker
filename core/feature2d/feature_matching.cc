@@ -48,7 +48,7 @@ c_feature2d_matcher::sptr create_sparse_feature_matcher(
   }
 
   CF_ERROR("ERROR: Unknown or not supported sparse feature matcher type=%d (%s) requested",
-      options.type, toString(options.type));
+      options.type, toCString(options.type));
   return nullptr;
 }
 
@@ -61,23 +61,23 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
 
   fprintf(fp, "%s: GLDDM matcher based on Hamming distance\n"
       "double max_acceptable_distance = -1;\n"
-      "\n", toString(FEATURE2D_MATCHER_HAMMING));
+      "\n", toCString(FEATURE2D_MATCHER_HAMMING));
 
   fprintf(fp, "%s: GLDDM matcher based on sorted L1 norm (NOT recommended, prefer FLANN_INDEX_KDTREE for SIFT/SURF matching) \n"
       "double max_acceptable_distance = -1;\n"
       "double lowe_ratio = -1;\n"
-      "\n", toString(FEATURE2D_MATCHER_SNORM));
+      "\n", toCString(FEATURE2D_MATCHER_SNORM));
 
   fprintf(fp, "%s:index=%s Based on cv::flann::LinearIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
       "double lowe_ratio = -1;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_linear));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_linear));
 
   fprintf(fp, "%s:index=%s Based on  cv::flann::KDTreeIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
       "double lowe_ratio = -1;\n"
       "int trees = 1;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_kdtree));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_kdtree));
 
   fprintf(fp, "%s:index=%s Based on  cv::flann::KMeansIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
@@ -86,7 +86,7 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
       "int iterations = 11;\n"
       "cvflann::flann_centers_init_t centers_init = RANDOM (RANDOM, GONZALES, KMEANSPP, GROUPWISE);\n"
       "float cb_index = 0.2f;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_kmeans));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_kmeans));
 
   fprintf(fp, "%s:index=%s Based on cv::flann::CompositeIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
@@ -96,7 +96,7 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
       "int iterations = 11;\n"
       "cvflann::flann_centers_init_t centers_init = RANDOM (RANDOM, GONZALES, KMEANSPP, GROUPWISE);\n"
       "float cb_index = 0.2f;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_composite));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_composite));
 
   fprintf(fp, "%s:index=%s Based on cv::flann::HierarchicalClusteringIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
@@ -105,7 +105,7 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
       "cvflann::flann_centers_init_t centers_init = RANDOM (RANDOM, GONZALES, KMEANSPP, GROUPWISE);\n"
       "int trees = 4;\n"
       "int leaf_size = 100;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_hierarchical));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_hierarchical));
 
   fprintf(fp, "%s:index=%s Based on cv::flann::LshIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
@@ -113,7 +113,7 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
       "int table_number = 8;\n"
       "int key_size = 12;\n"
       "int multi_probe_level = 1;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_lsh));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_lsh));
 
   fprintf(fp, "%s:index=%s Based on cv::flann::AutotunedIndexParams\n"
       "cvflann::flann_distance_t distance_type = L2 (L1, L2, MINKOWSKI, MAX, INTERSECT, HELLINGER, CS, KL, HAMMING, DNAMMING);\n"
@@ -122,7 +122,7 @@ void dump_supported_feature2d_matchers(FILE * fp /*= stdout*/)
       "float build_weight = 0.01f;\n"
       "float memory_weight = 0;\n"
       "float sample_fraction = 0.1f;\n"
-      "\n", toString(FEATURE2D_MATCHER_FLANN), toString(FlannIndex_autotuned));
+      "\n", toCString(FEATURE2D_MATCHER_FLANN), toCString(FlannIndex_autotuned));
 
   fprintf(fp, "\n");
 }

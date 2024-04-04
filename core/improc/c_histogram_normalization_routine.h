@@ -60,12 +60,12 @@ public:
     return offset_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, normalization_type, "normalization_type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, colorid, "colorid");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch, "stretch");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, offset, "offset");
+    BIND_PCTRL(ctls, normalization_type, "normalization_type");
+    BIND_PCTRL(ctls, colorid, "colorid");
+    BIND_PCTRL(ctls, stretch, "stretch");
+    BIND_PCTRL(ctls, offset, "offset");
   }
 
   bool serialize(c_config_setting settings, bool save) override

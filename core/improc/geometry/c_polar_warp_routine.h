@@ -94,13 +94,13 @@ public:
 //    rmap_.release();
 //  }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, center, "");
-//    ADD_IMAGE_PROCESSOR_CTRL(ctls, dsize, "");
-//    ADD_IMAGE_PROCESSOR_CTRL(ctls, maxRadius, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, interpolation_mode, "");
-//    ADD_IMAGE_PROCESSOR_CTRL(ctls, warp_mode, "");
+    BIND_PCTRL(ctls, center, "");
+//    BIND_PCTRL(ctls, dsize, "");
+//    BIND_PCTRL(ctls, maxRadius, "");
+    BIND_PCTRL(ctls, interpolation_mode, "");
+//    BIND_PCTRL(ctls, warp_mode, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

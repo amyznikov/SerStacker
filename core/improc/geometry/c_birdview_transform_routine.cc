@@ -8,12 +8,12 @@
 #include "c_birdview_transform_routine.h"
 
 
-void c_birdview_transform_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_birdview_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, src_line, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch, "");
+  BIND_PCTRL(ctls, src_line, "");
+  BIND_PCTRL(ctls, stretch, "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, output_image_size, "");
+  BIND_PCTRL(ctls, output_image_size, "");
 }
 
 bool c_birdview_transform_routine::serialize(c_config_setting settings, bool save)

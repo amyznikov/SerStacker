@@ -114,6 +114,8 @@ struct c_ctrl_bind
     (ctls)->emplace_back(tmp); \
   }
 
+#define BIND_PCTRL(ctls, param, cdesc) \
+    BIND_CTRL(ctls, param, #param, cdesc )
 
 #define BIND_FLAGS_CTRL(ctls, param, enumtype, cname, cdesc) \
   if ( true ) { \

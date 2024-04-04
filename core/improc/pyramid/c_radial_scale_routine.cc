@@ -9,10 +9,10 @@
 #include <core/proc/stereo/scale_sweep.h>
 #include <core/debug.h>
 
-void c_radial_scale_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_radial_scale_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, reference_point, "Reference point location X,Y [px]");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, disparity, "disparity for image scale calculation");
+  BIND_PCTRL(ctls, reference_point, "Reference point location X,Y [px]");
+  BIND_PCTRL(ctls, disparity, "disparity for image scale calculation");
 }
 
 bool c_radial_scale_routine::serialize(c_config_setting settings, bool save)

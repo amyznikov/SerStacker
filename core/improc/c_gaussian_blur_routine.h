@@ -94,16 +94,16 @@ public:
     stereo_mode_ = v;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigmax, "Gaussian kernel sigma along x direction");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigmay, "Gaussian kernel sigma along y direction");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ksizex, "Kernel size along x direction");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ksizey, "Kernel size along y direction");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, border_type, "Border mode");
-//    ADD_IMAGE_PROCESSOR_CTRL(ctls, border_value, "border value for cv::BORDER_CONSTANT");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "Ignore alpha mask");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stereo_mode, "stereo frame layout");
+    BIND_PCTRL(ctls, sigmax, "Gaussian kernel sigma along x direction");
+    BIND_PCTRL(ctls, sigmay, "Gaussian kernel sigma along y direction");
+    BIND_PCTRL(ctls, ksizex, "Kernel size along x direction");
+    BIND_PCTRL(ctls, ksizey, "Kernel size along y direction");
+    BIND_PCTRL(ctls, border_type, "Border mode");
+//    BIND_PCTRL(ctls, border_value, "border value for cv::BORDER_CONSTANT");
+    BIND_PCTRL(ctls, ignore_mask, "Ignore alpha mask");
+    BIND_PCTRL(ctls, stereo_mode, "stereo frame layout");
   }
 
   bool serialize(c_config_setting settings, bool save) override

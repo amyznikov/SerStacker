@@ -59,26 +59,26 @@ public:
   }
 
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, d,
+    BIND_PCTRL(ctls, d,
         "Diameter of each pixel neighborhood that is used during filtering."
         "If it is non-positive, it is computed from sigmaSpace");
 
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigmaColor,
+    BIND_PCTRL(ctls, sigmaColor,
         "Filter sigma in the color space."
         "A larger value of the parameter means that farther colors within the "
         "pixel neighborhood (see sigmaSpace) will be mixed together, resulting in larger "
         "areas of semi-equal color");
 
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, sigmaSpace,
+    BIND_PCTRL(ctls, sigmaSpace,
         "Filter sigma in the coordinate space. "
         "A larger value of the parameter means that farther pixels will "
         "influence each other as long as their colors are close enough (see sigmaColor). "
         "When d>0, it specifies the neighborhood size regardless of sigmaSpace. "
         "Otherwise, d is proportional to sigmaSpace");
 
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, borderType,
+    BIND_PCTRL(ctls, borderType,
         "Border mode used to extrapolate pixels outside of the image");
   }
 

@@ -314,10 +314,10 @@ QString QASICamera::parameters() const
             camInfo_.MaxHeight,
             camInfo_.MaxWidth,
             camInfo_.IsColorCam,
-            toString(camInfo_.BayerPattern),
+            toCString(camInfo_.BayerPattern),
             camInfo_.PixelSize,
 
-            toString(asiType),
+            toCString(asiType),
             iBin,
             iX, iY,
             iWidth, iHeight,
@@ -386,7 +386,7 @@ int QASICamera::drops() const
 
     if ( status != ASI_SUCCESS ) {
       CF_ERROR("ASIGetDroppedFrames(CameraID=%d) fails: %d (%s)",
-          camInfo_.CameraID, status, toString(status));
+          camInfo_.CameraID, status, toCString(status));
     }
   }
 
@@ -518,7 +518,7 @@ bool QASICamera::device_connect()
           "Status=%d (%s)",
           camInfo_.CameraID,
           status,
-          toString(status));
+          toCString(status));
     }
     else if( (status = ASIInitCamera(camInfo_.CameraID)) != ASI_SUCCESS ) {
 
@@ -527,7 +527,7 @@ bool QASICamera::device_connect()
           "Status=%d (%s)",
           camInfo_.CameraID,
           status,
-          toString(status));
+          toCString(status));
 
       CF_DEBUG("ASICloseCamera(CameraID=%d)", camInfo_.CameraID);
       ASICloseCamera(camInfo_.CameraID);
@@ -574,7 +574,7 @@ bool QASICamera::device_start()
         "Status=%d (%s)",
         camInfo_.CameraID,
         status,
-        toString(status));
+        toCString(status));
 
     if( status == ASI_ERROR_CAMERA_CLOSED ) {
       asi_close();
@@ -661,7 +661,7 @@ bool QASICamera::device_start()
         "Status=%d (%s)",
         camInfo_.CameraID,
         status,
-        toString(status));
+        toCString(status));
 
     return false;
   }
@@ -685,7 +685,7 @@ void QASICamera::device_stop()
         "Status=%d (%s)",
         camInfo_.CameraID,
         status,
-        toString(status));
+        toCString(status));
   }
 
   Q_EMIT exposureStatusUpdate(Exposure_idle, 0, 0);
@@ -713,7 +713,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
 
     if( status ) {
       CF_ERROR("ASIGetControlValue(ASI_EXPOSURE) fails: status=%d (%s)",
-          status, toString(status));
+          status, toCString(status));
     }
 
     const bool is_long_exposure =
@@ -759,7 +759,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
                 &expStatus);
 
         if( status || expStatus != ASI_EXP_WORKING ) {
-          CF_DEBUG("ASIGetExpStatus: %s, expStatus=%d", toString(status), expStatus);
+          CF_DEBUG("ASIGetExpStatus: %s, expStatus=%d", toCString(status), expStatus);
           break;
         }
 
@@ -772,7 +772,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
         continue;
       }
 
-      CF_DEBUG("ASIGetVideoData: status=%d (%s) is_open_=%d data: %p size=%d ", status, toString(status), is_asi_open_,
+      CF_DEBUG("ASIGetVideoData: status=%d (%s) is_open_=%d data: %p size=%d ", status, toCString(status), is_asi_open_,
           frm->data(), frm->size());
 
       if( is_long_exposure ) {

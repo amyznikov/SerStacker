@@ -209,7 +209,7 @@ bool nomalize_image_histogramm(cv::InputArray _src, cv::InputArray mask, cv::Out
 
   if( is_bayer && src.channels() != 1 ) {
     CF_ERROR("Invalid number of image channels %d for bayer pattern %s. Must be 1",
-        src.channels(), toString(src_colorid));
+        src.channels(), toCString(src_colorid));
     return false;
   }
 

@@ -32,10 +32,10 @@ const c_enum_member * members_of<c_upject_routine::FillMode>()
   return members;
 }
 
-void c_upject_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_upject_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, mode, "Which rows and columns to reject");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, fill_mode, "How to fill empty pixels");
+  BIND_PCTRL(ctls, mode, "Which rows and columns to reject");
+  BIND_PCTRL(ctls, fill_mode, "How to fill empty pixels");
 }
 
 bool c_upject_routine::serialize(c_config_setting settings, bool save)

@@ -60,12 +60,12 @@ public:
     return auto_scale_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ddepth, "OpenCV pixel depth");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, auto_scale, "auto_scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, beta, "offset");
+    BIND_PCTRL(ctls, ddepth, "OpenCV pixel depth");
+    BIND_PCTRL(ctls, auto_scale, "auto_scale");
+    BIND_PCTRL(ctls, alpha, "scale");
+    BIND_PCTRL(ctls, beta, "offset");
   }
 
   bool serialize(c_config_setting settings, bool save) override

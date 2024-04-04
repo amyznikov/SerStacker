@@ -779,7 +779,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
     if( reference_frame.channels() != 1 ) {
       if( !extract_channel(reference_frame, reference_frame, reference_mask, reference_mask, master_channel) ) {
-        CF_ERROR("extract_channel(pos=%d, master_channel='%s') fails", cpos, toString(master_channel));
+        CF_ERROR("extract_channel(pos=%d, master_channel='%s') fails", cpos, toCString(master_channel));
         return false;
       }
     }
@@ -2429,7 +2429,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
 
       default:
         CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toString(algo));
+            algo, toCString(algo));
         return false;
     }
   }

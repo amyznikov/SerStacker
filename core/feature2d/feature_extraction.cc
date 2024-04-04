@@ -351,7 +351,7 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
         break;
       default:
         CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
-            toString(detector_->type()));
+            toCString(detector_->type()));
         return false;
     }
   }

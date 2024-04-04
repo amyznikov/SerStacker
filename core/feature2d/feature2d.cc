@@ -119,7 +119,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
   //////////////
 
   if( !(obj->detector_ = create_sparse_feature_detector(obj->options_.detector)) ) {
-    CF_ERROR("create_sparse_feature_detector(type=%s) fails", toString(obj->options_.detector.type));
+    CF_ERROR("create_sparse_feature_detector(type=%s) fails", toCString(obj->options_.detector.type));
     return nullptr;
   }
 
@@ -145,7 +145,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
     if( (int)obj->options_.descriptor.type != (int)obj->detector_->type() ) {
 
       if( !(obj->descriptor_ = create_sparse_descriptor_extractor(obj->options_.descriptor)) ) {
-        CF_ERROR("create_sparse_descriptor_extractor(type=%s) fails", toString(obj->options_.descriptor.type));
+        CF_ERROR("create_sparse_descriptor_extractor(type=%s) fails", toCString(obj->options_.descriptor.type));
         return nullptr;
       }
 
@@ -347,7 +347,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
       break;
     default:
       if( !(obj->matcher_ = create_sparse_feature_matcher(obj->options_.matcher)) ) {
-        CF_ERROR("create_sparse_feature_matcher(type='%s') fails", toString(obj->options_.matcher.type));
+        CF_ERROR("create_sparse_feature_matcher(type='%s') fails", toCString(obj->options_.matcher.type));
         return nullptr;
       }
       break;
@@ -356,8 +356,8 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
   CF_DEBUG("c_sparse_feature_extractor_and_matcher: \n"
       "detector='%s' descriptor='%s' matcher='%s'",
       toString(obj->detector_->type()),
-      obj->descriptor_ ? toString(obj->descriptor_->type()) : "null",
-      obj->matcher_ ? toString(obj->options_.matcher.type) : "null");
+      obj->descriptor_ ? toCString(obj->descriptor_->type()) : "null",
+      obj->matcher_ ? toCString(obj->options_.matcher.type) : "null");
 
   return obj;
 }

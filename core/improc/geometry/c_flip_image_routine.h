@@ -38,7 +38,7 @@ public:
     return vflip_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 

@@ -64,12 +64,12 @@ public:
     return minimum_image_size_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_type, "Specify display type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_level, "Specify display pyramid layer");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, absdiff, "Set true to show laplacian absolute value");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, min_image_size, "Specify minimum image size");
+    BIND_PCTRL(ctls, display_type, "Specify display type");
+    BIND_PCTRL(ctls, display_level, "Specify display pyramid layer");
+    BIND_PCTRL(ctls, absdiff, "Set true to show laplacian absolute value");
+    BIND_PCTRL(ctls, min_image_size, "Specify minimum image size");
   }
 
   bool serialize(c_config_setting settings, bool save) override

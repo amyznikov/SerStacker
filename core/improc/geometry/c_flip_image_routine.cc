@@ -7,10 +7,10 @@
 
 #include "c_flip_image_routine.h"
 
-void c_flip_image_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_flip_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, hflip, "flip around the Y-axis");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, vflip, "flip around the X-axis");
+  BIND_PCTRL(ctls, hflip, "flip around the Y-axis");
+  BIND_PCTRL(ctls, vflip, "flip around the X-axis");
 }
 
 bool c_flip_image_routine::serialize(c_config_setting settings, bool save)

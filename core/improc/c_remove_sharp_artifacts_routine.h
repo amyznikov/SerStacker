@@ -41,15 +41,15 @@ public:
   bool show_blured_image() const;
 
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, erode_radius, "SE radius for erode");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, mask_blur_radius, "GaussianBlur sigma");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, edge_blur_radius, "GaussianBlur sigma");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, fill_holes, "Fill holes inide mask (jovian satellite shadows etc)");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, noise_scale, "noise scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, show_mask, "show objects mask instead of processing");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, show_blured_image, "show blured image instead of processing");
+    BIND_PCTRL(ctls, erode_radius, "SE radius for erode");
+    BIND_PCTRL(ctls, mask_blur_radius, "GaussianBlur sigma");
+    BIND_PCTRL(ctls, edge_blur_radius, "GaussianBlur sigma");
+    BIND_PCTRL(ctls, fill_holes, "Fill holes inide mask (jovian satellite shadows etc)");
+    BIND_PCTRL(ctls, noise_scale, "noise scale");
+    BIND_PCTRL(ctls, show_mask, "show objects mask instead of processing");
+    BIND_PCTRL(ctls, show_blured_image, "show blured image instead of processing");
   }
 
   bool serialize(c_config_setting settings, bool save) override

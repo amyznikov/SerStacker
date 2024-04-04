@@ -40,9 +40,9 @@ public:
     return intrinsics_filename_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Camera intrinsics YML file");
+    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, intrinsics_filename, "intrinsics", "Camera intrinsics YML file");
   }
 
   bool serialize(c_config_setting settings, bool save) override

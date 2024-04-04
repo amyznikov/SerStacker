@@ -7,7 +7,7 @@
 
 #include "c_transpose_image_routine.h"
 
-void c_transpose_image_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * /*ctls*/)
+void c_transpose_image_routine::get_parameters(std::vector<c_ctrl_bind> * /*ctls*/)
 {
 }
 

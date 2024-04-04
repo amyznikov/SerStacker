@@ -141,17 +141,17 @@ public:
     return ss_maxlvl_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_rectification, "Enable image rectification");
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, intrinsics_filename, "Stereo intrinsics YML file");
-    ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, extrinsics_filename, "Stereo extrinsics YML file");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, swap_frames, "Swap Left and Right frames");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_mode, "Overlay two stereo frames into one frame");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_sigma, "ss_sigma");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_radius, "ss_radius");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ss_maxlvl, "ss_maxlvl");
-    ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
+    BIND_PCTRL(ctls, enable_rectification, "Enable image rectification");
+    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, intrinsics_filename, "intrinsics_filename", "Stereo intrinsics YML file");
+    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, extrinsics_filename, "extrinsics_filename",  "Stereo extrinsics YML file");
+    BIND_PCTRL(ctls, swap_frames, "Swap Left and Right frames");
+    BIND_PCTRL(ctls, display_mode, "Overlay two stereo frames into one frame");
+    BIND_PCTRL(ctls, ss_sigma, "ss_sigma");
+    BIND_PCTRL(ctls, ss_radius, "ss_radius");
+    BIND_PCTRL(ctls, ss_maxlvl, "ss_maxlvl");
+    BIND_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "overlay_offset", "Shift left image before overlay");
   }
 
   bool serialize(c_config_setting settings, bool save) override

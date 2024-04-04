@@ -1027,7 +1027,7 @@ void QV4L2CameraControls::onFrameRateChanged(int index)
         }
         else if( frmival.type != V4L2_FRMIVAL_TYPE_DISCRETE ) {
           CF_ERROR("frmival.type = %d (%s) is not V4L2_FRMIVAL_TYPE_DISCRETE",
-              frmival.type, toString((enum v4l2_frmivaltypes )frmival.type));
+              frmival.type, toCString((enum v4l2_frmivaltypes )frmival.type));
         }
         else if( (status = device.set_interval(frmival.discrete, type)) ) {
 

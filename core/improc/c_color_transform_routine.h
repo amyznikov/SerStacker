@@ -48,11 +48,11 @@ public:
     return rr_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, rb, "Rotation about B axis, deg");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, rg, "Rotation about G axis, deg");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, rr, "Rotation about R axis, deg");
+    BIND_PCTRL(ctls, rb, "Rotation about B axis, deg");
+    BIND_PCTRL(ctls, rg, "Rotation about G axis, deg");
+    BIND_PCTRL(ctls, rr, "Rotation about R axis, deg");
   }
 
   bool serialize(c_config_setting settings, bool save) override

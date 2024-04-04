@@ -79,15 +79,15 @@ const std::vector<cv::Point>& c_sweepscan_routine::debug_points() const
   return sm_.debug_points();
 }
 
-void c_sweepscan_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_sweepscan_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "output_type");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, max_disparity, "max_disparity");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, texture_threshold, "texture_threshold");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, disp12maxDiff, "disp12maxDiff");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, max_scale, "max_scale");
-  ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_DIRECTORY(ctls, debug_directory, "debug_directory");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, debug_points, "debug_points");
+  BIND_PCTRL(ctls, output_type, "output_type");
+  BIND_PCTRL(ctls, max_disparity, "max_disparity");
+  BIND_PCTRL(ctls, texture_threshold, "texture_threshold");
+  BIND_PCTRL(ctls, disp12maxDiff, "disp12maxDiff");
+  BIND_PCTRL(ctls, max_scale, "max_scale");
+  BIND_BROWSE_FOR_DIRECTORY_CTRL(ctls, debug_directory, "debug_directory", "debug_directory");
+  BIND_PCTRL(ctls, debug_points, "debug_points");
 }
 
 bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)

@@ -90,7 +90,7 @@ static bool read_input_frame(const c_input_source::sptr & source,
 
       default:
         CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toString(algo));
+            algo, toCString(algo));
         return false;
     }
   }

@@ -45,7 +45,7 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
   if( f->colorid_ != COLORID_OPTFLOW && (f->input_image_.channels() == 4 || f->input_image_.channels() == 2) ) {
     if( !splitbgra(f->input_image_, f->input_image_, &f->input_mask_) ) {
       CF_WARNING("c_video_input_source: splitbgra() fails for colorid=%s image.channels=%d",
-          toString(f->colorid_), f->input_image_.channels());
+          toCString(f->colorid_), f->input_image_.channels());
     }
   }
 

@@ -8,10 +8,10 @@
 #include "c_melp_pyramid_routine.h"
 #include <core/ssprintf.h>
 
-void c_melp_pyramid_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_melp_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, min_image_size, "Specify minimum image size");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, display_pos, "Specify display node position");
+  BIND_PCTRL(ctls, min_image_size, "Specify minimum image size");
+  BIND_PCTRL(ctls, display_pos, "Specify display node position");
 }
 
 bool c_melp_pyramid_routine::serialize(c_config_setting settings, bool save)

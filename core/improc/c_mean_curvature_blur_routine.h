@@ -30,9 +30,9 @@ public:
     return iterations_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, iterations, "number of iterations");
+    BIND_PCTRL(ctls, iterations, "number of iterations");
   }
 
   bool serialize(c_config_setting settings, bool save) override

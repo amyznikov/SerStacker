@@ -9,21 +9,21 @@
 //#include <core/proc/birds-eye-view.h>
 #include <core/proc/pose.h>
 
-void c_perspective_transform_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_perspective_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, src_point0, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, dst_point0, "");
+  BIND_PCTRL(ctls, src_point0, "");
+  BIND_PCTRL(ctls, dst_point0, "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, src_point1, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, dst_point1, "");
+  BIND_PCTRL(ctls, src_point1, "");
+  BIND_PCTRL(ctls, dst_point1, "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, src_point2, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, dst_point2, "");
+  BIND_PCTRL(ctls, src_point2, "");
+  BIND_PCTRL(ctls, dst_point2, "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, src_point3, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, dst_point3, "");
+  BIND_PCTRL(ctls, src_point3, "");
+  BIND_PCTRL(ctls, dst_point3, "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, output_image_size, "");
+  BIND_PCTRL(ctls, output_image_size, "");
 }
 
 bool c_perspective_transform_routine::serialize(c_config_setting settings, bool save)

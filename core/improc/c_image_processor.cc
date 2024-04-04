@@ -662,22 +662,22 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
 std::string c_image_processor_collection::default_processor_collection_path_ =
     "~/.config/SerStacker/image_processors";
 
-c_image_processor_collection::ptr c_image_processor_collection::default_instance_ =
+c_image_processor_collection::sptr c_image_processor_collection::default_instance_ =
     c_image_processor_collection::create();
 
-c_image_processor_collection::ptr c_image_processor_collection::default_instance()
+c_image_processor_collection::sptr c_image_processor_collection::default_instance()
 {
   return default_instance_;
 }
 
-c_image_processor_collection::ptr c_image_processor_collection::create()
+c_image_processor_collection::sptr c_image_processor_collection::create()
 {
-  return ptr(new this_class());
+  return sptr(new this_class());
 }
 
-c_image_processor_collection::ptr c_image_processor_collection::create(c_config_setting settings)
+c_image_processor_collection::sptr c_image_processor_collection::create(c_config_setting settings)
 {
-  ptr obj(new this_class());
+  sptr obj(new this_class());
   if ( obj->deserialize(settings) ) {
     return obj;
   }

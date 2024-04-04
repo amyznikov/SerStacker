@@ -39,10 +39,10 @@ public:
     return m_.se_size();
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, dscale, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, se_size, "");
+    BIND_PCTRL(ctls, dscale, "");
+    BIND_PCTRL(ctls, se_size, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

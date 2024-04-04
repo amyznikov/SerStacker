@@ -119,17 +119,17 @@ public:
     return squared_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_type, "Output type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, order_x, "Order of x derivative");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, order_y, "Order of y derivative");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, kradius, "kernel radius in pixels");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ddepth, "Destination image depth");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, squared, "Square output");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, erode_mask, "Update image mask if not empty");
+    BIND_PCTRL(ctls, output_type, "Output type");
+    BIND_PCTRL(ctls, order_x, "Order of x derivative");
+    BIND_PCTRL(ctls, order_y, "Order of y derivative");
+    BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
+    BIND_PCTRL(ctls, ddepth, "Destination image depth");
+    BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
+    BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
+    BIND_PCTRL(ctls, squared, "Square output");
+    BIND_PCTRL(ctls, erode_mask, "Update image mask if not empty");
   }
 
   bool serialize(c_config_setting settings, bool save) override

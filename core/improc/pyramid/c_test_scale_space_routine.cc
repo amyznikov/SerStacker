@@ -17,9 +17,9 @@ int c_test_scale_space_routine::minimum_image_size() const
   return minimum_image_size_;
 }
 
-void c_test_scale_space_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_test_scale_space_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, minimum_image_size, "minimum_image_size");
+  BIND_PCTRL(ctls, minimum_image_size, "minimum_image_size");
 }
 
 bool c_test_scale_space_routine::serialize(c_config_setting settings, bool save)

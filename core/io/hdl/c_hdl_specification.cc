@@ -590,7 +590,7 @@ std::string get_hdl_lidar_specification_config_file(HDLSensorType sensor_type)
   }
 
   CF_ERROR("lidar_specification_db entry not found for sensor_type %s (%d)",
-      toString(sensor_type).c_str(), (int )sensor_type);
+      toCString(sensor_type), (int )sensor_type);
 
   return "";
 }
@@ -620,7 +620,7 @@ bool set_hdl_lidar_specification_config_file(HDLSensorType sensor_type,
   case HDLSensor_VLP16HiRes:
     default:
     CF_ERROR("lidar_specification_db entry not found for sensor_type %s (%d)",
-        toString(sensor_type).c_str(), (int )sensor_type);
+        toCString(sensor_type), (int )sensor_type);
     return false;
   }
 

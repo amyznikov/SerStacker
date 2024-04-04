@@ -961,7 +961,7 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
       default:
         CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toString(algo));
+            algo, toCString(algo));
         return false;
     }
   }

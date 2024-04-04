@@ -28,9 +28,9 @@ public:
     return code_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, conversion, "enum cv::ColorConversionCodes");
+    BIND_PCTRL(ctls, conversion, "enum cv::ColorConversionCodes");
   }
 
   bool serialize(c_config_setting settings, bool save) override

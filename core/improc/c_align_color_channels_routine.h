@@ -139,19 +139,19 @@ public:
     return algorithm_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, reference_channel, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, enable_threshold, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, motion_type, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, interpolation, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, border_mode, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, border_value, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, eps, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, max_iterations, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, smooth_sigma, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, update_step_scale, "");
+    BIND_PCTRL(ctls, reference_channel, "");
+    BIND_PCTRL(ctls, enable_threshold, "");
+    BIND_PCTRL(ctls, threshold, "");
+    BIND_PCTRL(ctls, motion_type, "");
+    BIND_PCTRL(ctls, interpolation, "");
+    BIND_PCTRL(ctls, border_mode, "");
+    BIND_PCTRL(ctls, border_value, "");
+    BIND_PCTRL(ctls, eps, "");
+    BIND_PCTRL(ctls, max_iterations, "");
+    BIND_PCTRL(ctls, smooth_sigma, "");
+    BIND_PCTRL(ctls, update_step_scale, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

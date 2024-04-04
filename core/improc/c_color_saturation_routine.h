@@ -32,9 +32,9 @@ public:
     return scales_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, scales, "");
+    BIND_PCTRL(ctls, scales, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

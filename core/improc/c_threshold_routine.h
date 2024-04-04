@@ -106,15 +106,15 @@ public:
     return modify_mask_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, compare, "Compare operation");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_type, "Threshold type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_value, "Threshold value");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, threshold_scale, "Threshold scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, fill_holes, "fill_holes");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, invert, "invert");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, modify_mask, "Modify mask instead of image");
+    BIND_PCTRL(ctls, compare, "Compare operation");
+    BIND_PCTRL(ctls, threshold_type, "Threshold type");
+    BIND_PCTRL(ctls, threshold_value, "Threshold value");
+    BIND_PCTRL(ctls, threshold_scale, "Threshold scale");
+    BIND_PCTRL(ctls, fill_holes, "fill_holes");
+    BIND_PCTRL(ctls, invert, "invert");
+    BIND_PCTRL(ctls, modify_mask, "Modify mask instead of image");
   }
 
   bool serialize(c_config_setting settings, bool save) override

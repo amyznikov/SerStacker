@@ -286,12 +286,12 @@ static void process_image(const cv::Mat & src, cv::Mat & dst, const c_math_expre
   }
 }
 
-void c_math_expression_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_math_expression_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL2(ctls, input_channel, "input from:", "");
-  ADD_IMAGE_PROCESSOR_CTRL2(ctls, output_channel, "output to:", "");
-  ADD_IMAGE_PROCESSOR_CTRL2(ctls, ignore_mask, "ignore mask:", "");
-  ADD_IMAGE_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, expression, "", "formula for math expression");
+  BIND_CTRL(ctls, input_channel, "input from:", "");
+  BIND_CTRL(ctls, output_channel, "output to:", "");
+  BIND_CTRL(ctls, ignore_mask, "ignore mask:", "");
+  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "expression", "formula for math expression");
 }
 
 bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
@@ -303,6 +303,11 @@ bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
     return true;
   }
   return false;
+}
+
+std::string c_math_expression_routine::helpstring()
+{
+  return "";
 }
 
 bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

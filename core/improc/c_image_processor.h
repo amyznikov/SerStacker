@@ -10,221 +10,9 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/settings/opencv_settings.h>
-#include <core/feature2d/feature2d.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 ///////////////////////////////////////////////////////////////////////////////
-
-class c_image_processor_routine;
-
-enum c_image_processor_ctl_type {
-  c_image_processor_ctl_numeric_box = 0,
-  c_image_processor_ctl_check_box,
-  c_image_processor_ctl_enum_combobox,
-  c_image_processor_ctl_flags_chkbox,
-  c_image_processor_ctl_browse_for_existing_file,
-  c_image_processor_ctl_browse_for_directory,
-  c_image_processor_ctl_begin_group,
-  c_image_processor_ctl_end_group,
-  c_image_processor_ctl_spinbox,
-  c_image_processor_ctl_sparse_feature_detector,
-  c_image_processor_ctl_double_slider,
-  c_image_processor_ctl_math_expression,
-};
-
-struct c_image_processor_routine_ctrl {
-  std::string name;
-  std::string tooltip;
-  c_image_processor_ctl_type ctl_type;
-  double min = 0, max = 100, step = 1;
-  const c_enum_member * (*get_enum_members)() = nullptr;
-  std::function<std::string(void)> get_value;
-  std::function<void (const std::string &)> set_value;
-  std::function<c_sparse_feature_detector_options *()> sparse_feature_detector;
-};
-
-#define ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, cname, desc) \
-  if ( true ) { \
-    c_image_processor_ctl_type ctype; \
-    if( std::is_enum<decltype(param())>::value ) { \
-      ctype = c_image_processor_ctl_enum_combobox; \
-    } \
-    else if( std::is_same<decltype(param()), bool>::value ) { \
-      ctype = c_image_processor_ctl_check_box; \
-    } \
-    else { \
-      ctype = c_image_processor_ctl_numeric_box; \
-    } \
-    c_image_processor_routine_ctrl tmp; \
-      tmp.name = cname; \
-      tmp.tooltip = desc; \
-      tmp.ctl_type = ctype; \
-      tmp.get_enum_members = get_members_of<decltype(param())>(); \
-      tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
-      tmp.set_value = [this](const std::string & s) { \
-        std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
-        if( fromString(s, &v) ) { \
-          std::lock_guard<std::mutex> lock(this->mutex()); \
-          set_##param(v); \
-        } \
-      }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, param, cname, enumtype, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp; \
-    tmp.name = cname, \
-    tmp.tooltip = desc; \
-    tmp.ctl_type = c_image_processor_ctl_flags_chkbox, \
-    tmp.get_enum_members = get_members_of<enumtype>(), \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
-      if( fromString(s, &v) ) { \
-        std::lock_guard<std::mutex> lock(this->mutex()); \
-        set_##param(v); \
-      } \
-    }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, param, minvalue, maxvalue, stepvalue, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = #param, \
-        .tooltip = desc, \
-        .ctl_type = c_image_processor_ctl_spinbox, \
-        .min = minvalue, \
-        .max = maxvalue, \
-        .step = stepvalue, \
-    }; \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
-      if( fromString(s, &v) ) { \
-        std::lock_guard<std::mutex> lock(this->mutex()); \
-        set_##param(v); \
-      } \
-    }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_DOUBLE_SLIDER_CTRL(ctls, param, minvalue, maxvalue, stepvalue, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = #param, \
-        .tooltip = desc, \
-        .ctl_type = c_image_processor_ctl_double_slider, \
-        .min = minvalue, \
-        .max = maxvalue, \
-        .step = stepvalue, \
-    }; \
-    tmp.get_value = [this](void) { \
-        return toString(param()); \
-      }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
-      if( fromString(s, &v) ) { \
-        std::lock_guard<std::mutex> lock(this->mutex()); \
-        set_##param(v); \
-      } \
-    }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_EXISTING_FILE(ctls, param, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-      .name = #param, \
-      .tooltip = desc, \
-      .ctl_type = c_image_processor_ctl_browse_for_existing_file, \
-    }; \
-    tmp.get_value = [this](void) { \
-        return param(); \
-    }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::lock_guard<std::mutex> lock(this->mutex()); \
-      set_##param(s); \
-    }; \
-   (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_CTRL_BROWSE_FOR_DIRECTORY(ctls, param, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-      .name = #param, \
-      .tooltip = desc, \
-      .ctl_type = c_image_processor_ctl_browse_for_directory, \
-    }; \
-    tmp.get_value = [this](void) { \
-        return param(); \
-    }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::lock_guard<std::mutex> lock(this->mutex()); \
-      set_##param(s); \
-    }; \
-   (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_CTRL_SPARSE_FEATURE_DETECTOR(ctls, _param, _name, _desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-      .name = _name, \
-      .tooltip = _desc, \
-      .ctl_type = c_image_processor_ctl_sparse_feature_detector, \
-    }; \
-    tmp.sparse_feature_detector = [this]() -> c_sparse_feature_detector_options * { \
-        return _param; \
-    }; \
-   (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_CTRL(ctls, param, desc) \
-    ADD_IMAGE_PROCESSOR_CTRL2(ctls, param, #param, desc)
-
-#define ADD_IMAGE_PROCESSOR_CTRL_MATH_EXPRESSION(ctls, param, _name, _desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-      .name = _name, \
-      .tooltip = _desc, \
-      .ctl_type = c_image_processor_ctl_math_expression, \
-    }; \
-    tmp.get_value = [this](void) { \
-        return param(); \
-    }; \
-    tmp.set_value = [this](const std::string & s) { \
-      std::lock_guard<std::mutex> lock(this->mutex()); \
-      set_##param(s); \
-    }; \
-   (ctls)->emplace_back(tmp); \
-  }
-
-#define ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, cname, desc) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = cname, \
-        .tooltip = desc, \
-        .ctl_type = c_image_processor_ctl_begin_group, \
-    }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
-#define END_IMAGE_PROCESSOR_CTRL_GROUP(ctls) \
-  if ( true ) { \
-    c_image_processor_routine_ctrl tmp = { \
-        .name = "", \
-        .tooltip = "", \
-        .ctl_type = c_image_processor_ctl_end_group, \
-    }; \
-    (ctls)->emplace_back(tmp); \
-  }
-
 
 class c_image_processor_routine
 {
@@ -359,9 +147,9 @@ public:
       cv::InputOutputArray mask = cv::noArray()) = 0;
 
 
-  virtual void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+  virtual void get_parameters(std::vector<c_ctrl_bind> * ctls)
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ignore_mask, "ignore_mask");
+    BIND_PCTRL(ctls, ignore_mask, "ignore_mask");
   }
 
 protected:
@@ -501,10 +289,10 @@ class c_image_processor_collection :
 public:
   typedef c_image_processor_collection this_class;
   typedef std::vector<c_image_processor::sptr> base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
-  static ptr create();
-  static ptr create(c_config_setting settings);
+  static sptr create();
+  static sptr create(c_config_setting settings);
 
   bool load(const std::string & input_directrory);
   bool deserialize(c_config_setting settings);
@@ -524,11 +312,11 @@ public:
   static const std::string & default_processor_collection_path();
   static void set_default_processor_collection_path(const std::string & );
 
-  static c_image_processor_collection::ptr default_instance();
+  static c_image_processor_collection::sptr default_instance();
 
 protected:
   static std::string default_processor_collection_path_;
-  static c_image_processor_collection::ptr default_instance_;
+  static c_image_processor_collection::sptr default_instance_;
 };
 
 

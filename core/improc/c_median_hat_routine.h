@@ -54,11 +54,11 @@ public:
     return absdiff_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, radius, "Filter radius [px]");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_type, "Output image");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, absdiff, "Use cv::absdiff() instead of cv::subtract()");
+    BIND_PCTRL(ctls, radius, "Filter radius [px]");
+    BIND_PCTRL(ctls, display_type, "Output image");
+    BIND_PCTRL(ctls, absdiff, "Use cv::absdiff() instead of cv::subtract()");
 
   }
 

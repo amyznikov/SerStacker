@@ -46,10 +46,10 @@ public:
     return dft_scale_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display, "Specify output type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, dft_scale, "Set cv::DFT_SCALE flag");
+    BIND_PCTRL(ctls, display, "Specify output type");
+    BIND_PCTRL(ctls, dft_scale, "Set cv::DFT_SCALE flag");
   }
 
   bool serialize(c_config_setting settings, bool save) override

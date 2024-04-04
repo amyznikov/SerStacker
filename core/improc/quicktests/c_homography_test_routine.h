@@ -48,11 +48,11 @@ public:
     return rz_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, rx, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ry, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, rz, "");
+    BIND_PCTRL(ctls, rx, "");
+    BIND_PCTRL(ctls, ry, "");
+    BIND_PCTRL(ctls, rz, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

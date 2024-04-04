@@ -33,10 +33,10 @@ const c_enum_member* members_of<c_edge_test_routine::DisplayID>()
   return members;
 }
 
-void c_edge_test_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_edge_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, display_id, "display");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, kradius, "kradius");
+  BIND_PCTRL(ctls, display_id, "display");
+  BIND_PCTRL(ctls, kradius, "kradius");
 }
 
 bool c_edge_test_routine::serialize(c_config_setting settings, bool save)

@@ -25,29 +25,29 @@ const c_enum_member * members_of<c_set_luminance_channel_routine::Colorspace>()
   return members;
 }
 
-void c_set_luminance_channel_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_set_luminance_channel_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, luminance_channel,
+  BIND_PCTRL(ctls, luminance_channel,
       "Select which channel must become luminance (brightness)\n"
       "Normally it should be modt detailed channel ([infra] red for moon/planetary imaging)");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, colorspace,
+  BIND_PCTRL(ctls, colorspace,
       "Operation colorspace\n"
       "For non-linear color spaces like Lab/Luv the input image must be normalized to standard range");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_sigma,
+  BIND_PCTRL(ctls, usharp_sigma,
       "Unsharp mask sigma\n"
       "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_alpha,
+  BIND_PCTRL(ctls, usharp_alpha,
       "Unsharp mask alpha\n"
       "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_outmin,
+  BIND_PCTRL(ctls, usharp_outmin,
       "Unsharp mask outmin\n"
       "");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, usharp_outmax,
+  BIND_PCTRL(ctls, usharp_outmax,
       "Unsharp mask outmax\n"
       "");
 }

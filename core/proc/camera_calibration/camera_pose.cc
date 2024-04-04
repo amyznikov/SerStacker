@@ -1835,7 +1835,7 @@ static bool bfgs_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     c_bfgs::STATUS status =
         bfgs.run(cb, p);
 
-    CF_DEBUG("bfgs: status='%s' %d iterations", toString(status) , bfgs.iterations() );
+    CF_DEBUG("bfgs: status='%s' %d iterations", toCString(status) , bfgs.iterations() );
 
     //    if ( status < 0 ) {
     //      CF_ERROR("bfgs.run() fails");

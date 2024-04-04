@@ -49,10 +49,10 @@ public:
     return kernel_size_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, type, "census type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, kernel_size, "kernel size");
+    BIND_PCTRL(ctls, type, "census type");
+    BIND_PCTRL(ctls, kernel_size, "kernel size");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -29,13 +29,13 @@ const c_enum_member* members_of<c_melp_stereo_matcher_routine::DisplayType>()
   return members;
 }
 
-void c_melp_stereo_matcher_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_melp_stereo_matcher_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, displayType, "displayType");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, minimum_image_size, "minimum_image_size");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, texture_threshold, "texture_threshold");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, displaypos, "displaypos");
-  ADD_IMAGE_PROCESSOR_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "Shift left image before overlay");
+  BIND_PCTRL(ctls, displayType, "displayType");
+  BIND_PCTRL(ctls, minimum_image_size, "minimum_image_size");
+  BIND_PCTRL(ctls, texture_threshold, "texture_threshold");
+  BIND_PCTRL(ctls, displaypos, "displaypos");
+  BIND_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "overlay_offset", "Shift left image before overlay");
 }
 
 bool c_melp_stereo_matcher_routine::serialize(c_config_setting settings, bool save)

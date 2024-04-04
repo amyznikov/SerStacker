@@ -118,16 +118,16 @@ public:
     stretch_[3] = v;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch_r, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, bias_r, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch_g, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, bias_g, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch_b, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, bias_b, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stretch_a, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, bias_a, "");
+    BIND_PCTRL(ctls, stretch_r, "");
+    BIND_PCTRL(ctls, bias_r, "");
+    BIND_PCTRL(ctls, stretch_g, "");
+    BIND_PCTRL(ctls, bias_g, "");
+    BIND_PCTRL(ctls, stretch_b, "");
+    BIND_PCTRL(ctls, bias_b, "");
+    BIND_PCTRL(ctls, stretch_a, "");
+    BIND_PCTRL(ctls, bias_a, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

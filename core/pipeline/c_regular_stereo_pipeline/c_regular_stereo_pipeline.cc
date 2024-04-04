@@ -458,7 +458,7 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
 
       default:
         CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toString(algo));
+            algo, toCString(algo));
         return false;
     }
   }

@@ -31,9 +31,9 @@ const cv::Rect & c_crop_image_routine::rect() const
   return rect_;
 }
 
-void c_crop_image_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_crop_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, rect, "crop rectangle in format X;Y;WxH");
+  BIND_PCTRL(ctls, rect, "crop rectangle in format X;Y;WxH");
 }
 
 bool c_crop_image_routine::serialize(c_config_setting settings, bool save)

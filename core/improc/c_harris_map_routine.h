@@ -59,12 +59,12 @@ public:
     return m_.avgchannel();
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, k, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, dscale, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, uscale, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, avgchannel, "");
+    BIND_PCTRL(ctls, k, "");
+    BIND_PCTRL(ctls, dscale, "");
+    BIND_PCTRL(ctls, uscale, "");
+    BIND_PCTRL(ctls, avgchannel, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

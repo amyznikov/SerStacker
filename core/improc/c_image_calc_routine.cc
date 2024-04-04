@@ -31,12 +31,12 @@ const c_enum_member * members_of<c_image_calc_routine::Function>()
 }
 
 
-void c_image_calc_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_image_calc_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, function,
+  BIND_PCTRL(ctls, function,
       "Select function to apply\n");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, filename, "filename");
+  BIND_PCTRL(ctls, filename, "filename");
 }
 
 bool c_image_calc_routine::serialize(c_config_setting settings, bool save)

@@ -191,39 +191,40 @@ public:
     return display_type_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stereo, "Set to true for horizontal layout stereo frame");
+    BIND_PCTRL(ctls, stereo, "Set to true for horizontal layout stereo frame");
 
-    ADD_IMAGE_PROCESSOR_CTRL2(ctls, display_type, "Display", "");
+    BIND_CTRL(ctls, display_type, "Display", "");
 
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, boardSize, "Set chessboard size width x height");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, method, "Set chessboard corners detection method");
+    BIND_PCTRL(ctls, boardSize, "Set chessboard size width x height");
+    BIND_PCTRL(ctls, method, "Set chessboard corners detection method");
 
-    ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCorners", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_max_scales, "max_scales", "");
-      //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCorners_flags, flags, "");
-      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCorners_flags, "flags", FindChessboardCornersFlags, "")
-    END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
+    BIND_CTRL_BEGIN_GROUP(ctls, "findChessboardCorners", "");
+      BIND_CTRL(ctls, findChessboardCorners_max_scales, "max_scales", "");
+      //BIND_CTRL(ctls, findChessboardCorners_flags, flags, "");
+      BIND_FLAGS_CTRL(ctls, findChessboardCorners_flags, FindChessboardCornersFlags, "flags", "");
+    BIND_CTRL_END_GROUP(ctls);
 
-    ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "findChessboardCornersSB", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_max_scales, "max_scales", "");
-      //ADD_IMAGE_PROCESSOR_CTRL2(ctls, findChessboardCornersSB_flags, flags, "");
-      ADD_IMAGE_PROCESSOR_FLAGS_CTRL(ctls, findChessboardCornersSB_flags, "flags", FindChessboardCornersSBFlags, "")
-    END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
 
-    ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "cornerSubPix", "");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, winSize, "");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, zeroZone, "");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, max_iterations, "");
-      ADD_IMAGE_PROCESSOR_CTRL(ctls, eps, "");
-    END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
+    BIND_CTRL_BEGIN_GROUP(ctls, "findChessboardCornersSB", "");
+      BIND_CTRL(ctls, findChessboardCornersSB_max_scales, "max_scales", "");
+      //BIND_CTRL(ctls, findChessboardCornersSB_flags, flags, "");
+      BIND_FLAGS_CTRL(ctls, findChessboardCornersSB_flags, FindChessboardCornersSBFlags, "flags",  "")
+    BIND_CTRL_END_GROUP(ctls);
 
-    ADD_IMAGE_PROCESSOR_CTRL_GROUP(ctls, "bilateralFilter", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_d, "d", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaColor, "sigmaColor", "");
-      ADD_IMAGE_PROCESSOR_CTRL2(ctls, bilateralFilter_sigmaSpace, "sigmaSpace", "");
-    END_IMAGE_PROCESSOR_CTRL_GROUP(ctls);
+    BIND_CTRL_BEGIN_GROUP(ctls, "cornerSubPix", "");
+      BIND_PCTRL(ctls, winSize, "");
+      BIND_PCTRL(ctls, zeroZone, "");
+      BIND_PCTRL(ctls, max_iterations, "");
+      BIND_PCTRL(ctls, eps, "");
+    BIND_CTRL_END_GROUP(ctls);
+
+    BIND_CTRL_BEGIN_GROUP(ctls, "bilateralFilter", "");
+      BIND_CTRL(ctls, bilateralFilter_d, "d", "");
+      BIND_CTRL(ctls, bilateralFilter_sigmaColor, "sigmaColor", "");
+      BIND_CTRL(ctls, bilateralFilter_sigmaSpace, "sigmaSpace", "");
+    BIND_CTRL_END_GROUP(ctls);
 
   }
 

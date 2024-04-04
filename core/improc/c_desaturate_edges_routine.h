@@ -36,14 +36,14 @@ public:
   void set_show_weights(bool v);
   bool show_weights() const;
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, alpha, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, gbsigma, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, stdev_factor, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, blur_radius, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, l1norm, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, show_weights, "");
+    BIND_PCTRL(ctls, alpha, "");
+    BIND_PCTRL(ctls, gbsigma, "");
+    BIND_PCTRL(ctls, stdev_factor, "");
+    BIND_PCTRL(ctls, blur_radius, "");
+    BIND_PCTRL(ctls, l1norm, "");
+    BIND_PCTRL(ctls, show_weights, "");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -646,7 +646,7 @@ void QCaptureSettingsWidget::saveCaptureLimits()
         writer_->captureLimits();
 
     settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_type"),
-        QString(toString(limits.type).c_str()));
+        QString(toCString(limits.type)));
 
     settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_value"),
         limits.value);

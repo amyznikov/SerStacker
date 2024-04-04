@@ -149,7 +149,7 @@ bool c_frame_registration::create_image_transfrom()
     if( !(image_transform_ = ::create_image_transform(options_.motion_type)) ) {
 
       CF_ERROR("create_image_transform(type=%s (%d)) fails",
-          toString(options_.motion_type),
+          toCString(options_.motion_type),
           options_.motion_type);
 
       return false;

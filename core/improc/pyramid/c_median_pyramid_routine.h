@@ -75,13 +75,13 @@ public:
   }
 
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_type, "Specify display type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, display_level, "Specify display pyramid layer");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, ksize, "Specify Median blur kernel size");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, median_iterations, "Specify Median iterations");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, downstrike_mode, "Specify downstrike mode");
+    BIND_PCTRL(ctls, display_type, "Specify display type");
+    BIND_PCTRL(ctls, display_level, "Specify display pyramid layer");
+    BIND_PCTRL(ctls, ksize, "Specify Median blur kernel size");
+    BIND_PCTRL(ctls, median_iterations, "Specify Median iterations");
+    BIND_PCTRL(ctls, downstrike_mode, "Specify downstrike mode");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -8,9 +8,9 @@
 #include "c_keypoins_detector_routine.h"
 #include <core/feature2d/feature2d_settings.h>
 
-void c_keypoins_detector_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_keypoins_detector_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL_SPARSE_FEATURE_DETECTOR(ctls, &options_, "Options", "Options for feature2D detector");
+  BIND_SPARSE_FEATURE_DETECTOR_CTRL(ctls, options, "Options", "Options for feature2D detector");
 }
 
 bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save)

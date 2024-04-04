@@ -87,14 +87,14 @@ public:
     remap_.release();
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, image_size, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, focal_length_x, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, focal_length_y, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, principal_point_x, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, principal_point_y, "");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, distortion_coefficients, "");
+    BIND_PCTRL(ctls, image_size, "");
+    BIND_PCTRL(ctls, focal_length_x, "");
+    BIND_PCTRL(ctls, focal_length_y, "");
+    BIND_PCTRL(ctls, principal_point_x, "");
+    BIND_PCTRL(ctls, principal_point_y, "");
+    BIND_PCTRL(ctls, distortion_coefficients, "");
   }
 
   bool serialize(c_config_setting settings, bool save)

@@ -60,12 +60,12 @@ public:
     return output_depth_scale_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_channel, "channel index or enum color_channel_type");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_depth, "depth");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_scale, "optional output image scale");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, output_depth_scale, "optional output depth scale");
+    BIND_PCTRL(ctls, output_channel, "channel index or enum color_channel_type");
+    BIND_PCTRL(ctls, output_depth, "depth");
+    BIND_PCTRL(ctls, output_scale, "optional output image scale");
+    BIND_PCTRL(ctls, output_depth_scale, "optional output depth scale");
   }
 
   bool serialize(c_config_setting settings, bool save) override

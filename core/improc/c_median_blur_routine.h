@@ -41,10 +41,10 @@ public:
   }
 
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, radius, "Filter radius [px]");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, iterations, "Number of iterations");
+    BIND_PCTRL(ctls, radius, "Filter radius [px]");
+    BIND_PCTRL(ctls, iterations, "Number of iterations");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -113,16 +113,16 @@ static void forEachPixel(cv::Mat & image, const Op & op)
 
 
 
-void c_pixel_func_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_pixel_func_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, function,
+  BIND_PCTRL(ctls, function,
       "Select function to apply to pixel values\n");
 
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, c1, "c1");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, c2, "c2");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, c3, "c3");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, c4, "c4");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, params, "params");
+  BIND_PCTRL(ctls, c1, "c1");
+  BIND_PCTRL(ctls, c2, "c2");
+  BIND_PCTRL(ctls, c3, "c3");
+  BIND_PCTRL(ctls, c4, "c4");
+  BIND_PCTRL(ctls, params, "params");
 }
 
 bool c_pixel_func_routine::serialize(c_config_setting settings, bool save)

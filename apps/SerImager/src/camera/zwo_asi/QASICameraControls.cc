@@ -305,7 +305,7 @@ void QASIControlWidget::onExpScaleCtlChanged(int)
             newValue,
             isAuto,
             status,
-            toString(status));
+            toCString(status));
       }
 
       onupdatecontrols();
@@ -372,7 +372,7 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
         lValue,
         isAuto,
         status,
-        toString(status));
+        toCString(status));
 
     onupdatecontrols();
   }
@@ -392,7 +392,7 @@ bool QASIControlWidget::getASIControlValue(long * lValue, ASI_BOOL * isAuto)
         iCameraID,
         controlCaps_.Name,
         status,
-        toString(status));
+        toCString(status));
 
     setEnabled(false);
     return false;
@@ -549,7 +549,7 @@ bool QASIROIControlWidget::setup_camera_capture_format()
 void QASIROIControlWidget::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
 {
   if( camera_ ) {
-    CF_DEBUG("%s -> %s", toString(oldState).c_str(), toString(newState).c_str());
+    CF_DEBUG("%s -> %s", toCString(oldState), toCString(newState));
     if( oldState < QImagingCamera::State_connected && newState == QImagingCamera::State_connected ) {
       populate_supported_frame_formats();
     }
@@ -696,7 +696,7 @@ bool QASIROIControlWidget::set_capture_format(int iX, int iY, int iWidth, int iH
     CF_ERROR("ASISetROIFormat(CameraID=%d) fails: %d (%s)",
         c.CameraID,
         status,
-        toString(status));
+        toCString(status));
     return false;
   }
 
@@ -705,7 +705,7 @@ bool QASIROIControlWidget::set_capture_format(int iX, int iY, int iWidth, int iH
       CF_ERROR("ASISetStartPos(CameraID=%d) fails: %d (%s)",
           c.CameraID,
           status,
-          toString(status));
+          toCString(status));
       return false;
     }
   }
@@ -730,7 +730,7 @@ bool QASIROIControlWidget::get_capture_format(int * iX, int * iY, int * iWidth, 
     CF_ERROR("ASIGetROIFormat(CameraID=%d) fails: %d (%s)",
         c.CameraID,
         status,
-        toString(status));
+        toCString(status));
     return false;
   }
 
@@ -738,7 +738,7 @@ bool QASIROIControlWidget::get_capture_format(int * iX, int * iY, int * iWidth, 
     CF_ERROR("ASIGetStartPos(CameraID=%d) fails: %d (%s)",
         c.CameraID,
         status,
-        toString(status));
+        toCString(status));
     return false;
   }
 
@@ -883,7 +883,7 @@ void QASICameraExtraContolsWidget::createControls()
     CF_ERROR("ASIGetNumOfControls(CameraID=%d) fails: %d (%s)",
         iCameraID,
         status,
-        toString(status));
+        toCString(status));
     return;
   }
 
@@ -901,7 +901,7 @@ void QASICameraExtraContolsWidget::createControls()
           iCameraID,
           iControlIndex,
           status,
-          toString(status));
+          toCString(status));
       continue;
     }
 
@@ -1045,7 +1045,7 @@ void QASICameraControls::create_controls()
       CF_ERROR("ASIGetNumOfControls(CameraID=%d) fails: %d (%s)",
           iCameraID,
           status,
-          toString(status));
+          toCString(status));
       return;
     }
 
@@ -1067,12 +1067,12 @@ void QASICameraControls::create_controls()
             iCameraID,
             iControlIndex,
             status,
-            toString(status));
+            toCString(status));
         continue;
       }
 
       if( !ControlCaps.IsWritable ) {
-        CF_DEBUG("QASICameraControls: NOT Writable '%s' (id=%s)", ControlCaps.Name, toString(ControlCaps.ControlType)); // case ASI_GAMMA:
+        CF_DEBUG("QASICameraControls: NOT Writable '%s' (id=%s)", ControlCaps.Name, toCString(ControlCaps.ControlType)); // case ASI_GAMMA:
         continue;
       }
 

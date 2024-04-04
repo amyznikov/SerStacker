@@ -20,13 +20,13 @@ const c_enum_member* members_of<c_selective_search_segmentation_routine::Strateg
   return members;
 }
 
-void c_selective_search_segmentation_routine::get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls)
+void c_selective_search_segmentation_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, strategy, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, base_k, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, inc_k, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, sigma, "");
-  ADD_IMAGE_PROCESSOR_CTRL(ctls, max_display_rects, "");
+  BIND_PCTRL(ctls, strategy, "");
+  BIND_PCTRL(ctls, base_k, "");
+  BIND_PCTRL(ctls, inc_k, "");
+  BIND_PCTRL(ctls, sigma, "");
+  BIND_PCTRL(ctls, max_display_rects, "");
 }
 
 bool c_selective_search_segmentation_routine::serialize(c_config_setting settings, bool save)

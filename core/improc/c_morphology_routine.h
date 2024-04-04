@@ -114,15 +114,15 @@ public:
     return borderValue_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, operation, "Type of a morphological operation");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, se_shape, "Shape of structuring element");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, se_size, "Size of structuring element");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, anchor, "Anchor position with the kernel. Negative values mean that the anchor is at the kernel center");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, iterations, "Number of times erosion and dilation are applied");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, borderType, "Pixel extrapolation method, see #BorderTypes. BORDER_WRAP is not supported");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, borderValue, "Border value in case of a constant border");
+    BIND_PCTRL(ctls, operation, "Type of a morphological operation");
+    BIND_PCTRL(ctls, se_shape, "Shape of structuring element");
+    BIND_PCTRL(ctls, se_size, "Size of structuring element");
+    BIND_PCTRL(ctls, anchor, "Anchor position with the kernel. Negative values mean that the anchor is at the kernel center");
+    BIND_PCTRL(ctls, iterations, "Number of times erosion and dilation are applied");
+    BIND_PCTRL(ctls, borderType, "Pixel extrapolation method, see #BorderTypes. BORDER_WRAP is not supported");
+    BIND_PCTRL(ctls, borderValue, "Border value in case of a constant border");
   }
 
   bool serialize(c_config_setting settings, bool save) override

@@ -40,10 +40,10 @@ public:
     return center_;
   }
 
-  void get_parameters(std::vector<struct c_image_processor_routine_ctrl> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, focus, "focal distance in pixels");
-    ADD_IMAGE_PROCESSOR_CTRL(ctls, center, "optical center in pixels");
+    BIND_PCTRL(ctls, focus, "focal distance in pixels");
+    BIND_PCTRL(ctls, center, "optical center in pixels");
   }
 
   bool serialize(c_config_setting settings, bool save)

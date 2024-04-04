@@ -675,13 +675,13 @@ c_bfgs::STATUS c_bfgs::run(const callback & cb, std::vector<double> & x)
     /* Search for an optimal step. */
     if( orthantwise_c_ == 0 ) {
       if( (status_ = (this->*linesearch)(cb, x, &fx, g, d, &step, xp, gp, w)) < 0 ) {
-        CF_ERROR("linesearch() fails: status_=%s", toString(status_));
+        CF_ERROR("linesearch() fails: status_=%s", toCString(status_));
         return (status_);
       }
     }
     else {
       if( (status_ = (this->*linesearch)(cb, x, &fx, g, d, &step, xp, pg, w)) < 0 ) {
-        CF_ERROR("linesearch() fails: status_=%s", toString(status_));
+        CF_ERROR("linesearch() fails: status_=%s", toCString(status_));
         return (status_);
       }
       owlqn_pseudo_gradient(pg, x, g, n, orthantwise_c_, orthantwise_start_, orthantwise_end_);

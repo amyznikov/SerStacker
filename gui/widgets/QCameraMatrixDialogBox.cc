@@ -12,10 +12,6 @@
 #include <core/readdir.h>
 #include <core/debug.h>
 
-namespace {
-} // namespace
-
-
 static const std::string config_path =
     expand_path("~/.config/SerStacker/saved_cameras.cfg");
 

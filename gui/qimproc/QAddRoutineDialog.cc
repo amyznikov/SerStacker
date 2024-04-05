@@ -68,7 +68,7 @@ QAddRoutineDialog::QAddRoutineDialog(QWidget * parent)
 void QAddRoutineDialog::populateClassList()
 {
   classlist_ctl->clear();
-  selectedClassFactory_ = Q_NULLPTR;
+  selectedClassFactory_ = nullptr;
 
   for ( const c_image_processor_routine::class_factory * c : c_image_processor_routine::class_list() ) {
     QListWidgetItem * item = new QListWidgetItem(c->class_name.c_str(), classlist_ctl);

@@ -21,7 +21,7 @@ public:
   typedef QThumbnailsListWidget ThisClass;
   typedef QListWidget Base;
 
-  QThumbnailsListWidget(QWidget * parent = Q_NULLPTR);
+  QThumbnailsListWidget(QWidget * parent = nullptr);
 
   int zoom(void) const;
   void setZoom(int z);
@@ -71,15 +71,15 @@ private:
 };
 
 
-class QThumbnailsView
-    : public QWidget
+class QThumbnailsView :
+    public QWidget
 {
   Q_OBJECT;
 public:
   typedef QThumbnailsView ThisClass;
   typedef QWidget Base;
 
-  QThumbnailsView(QWidget * parent = Q_NULLPTR);
+  QThumbnailsView(QWidget * parent = nullptr);
 
   bool setCurrentPath(const QString & path, bool refreshNow = true);
   const QString & currentPath() const;
@@ -146,18 +146,18 @@ private:
   QThumbnailExtractor thumbnailExtractor_;
   int lastSearchImageFilesRID_ = -1;
 
-  QVBoxLayout * layout_ = Q_NULLPTR;
-  QToolBar * toolbar_ = Q_NULLPTR;
-  QStackedWidget * stack_ = Q_NULLPTR;
-  QLabel * whiteSheet_ = Q_NULLPTR;
-  QThumbnailsListWidget * listWidget_ = Q_NULLPTR;
+  QVBoxLayout * layout_ = nullptr;
+  QToolBar * toolbar_ = nullptr;
+  QStackedWidget * stack_ = nullptr;
+  QLabel * whiteSheet_ = nullptr;
+  QThumbnailsListWidget * listWidget_ = nullptr;
 
-  QAction * showInDirTreeAction_ = Q_NULLPTR;
-  QAction * refreshAction_ = Q_NULLPTR;
-  QLabel * currentPathLabel_ = Q_NULLPTR;
-  QAction * quickFilterAction_ = Q_NULLPTR;
-  //QAction * clearFilterAction_ = Q_NULLPTR;
-  QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = Q_NULLPTR;
+  QAction * showInDirTreeAction_ = nullptr;
+  QAction * refreshAction_ = nullptr;
+  QLabel * currentPathLabel_ = nullptr;
+  QAction * quickFilterAction_ = nullptr;
+  //QAction * clearFilterAction_ = nullptr;
+  QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = nullptr;
   bool ignoreQuickFilterAction_ = false;
 };
 

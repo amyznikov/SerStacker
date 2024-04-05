@@ -534,10 +534,10 @@ QDataFrameProcessorSelector::QDataFrameProcessorSelector(QWidget * parent) :
       [this] () {
 
         QMenu menu;
-        QAction * add_processor_action = Q_NULLPTR;
-        QAction * rename_processor_action = Q_NULLPTR;
-        QAction * copy_processor_action = Q_NULLPTR;
-        QAction * delete_processor_action = Q_NULLPTR;
+        QAction * add_processor_action = nullptr;
+        QAction * rename_processor_action = nullptr;
+        QAction * copy_processor_action = nullptr;
+        QAction * delete_processor_action = nullptr;
 
         menu.addAction(add_processor_action =
             new QAction(getIcon(ICON_add),

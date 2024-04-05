@@ -15,14 +15,14 @@
 //  return QIcon(QString(":/gui/icons/%1").arg(name));
 //}
 
-class QScaleSelectionButton::QPopupSlider
-  : public QDialog
+class QScaleSelectionButton::QPopupSlider:
+    public QDialog
 {
 public:
   typedef QPopupSlider ThisClass;
   typedef QDialog Base;
 
-  QPopupSlider(QScaleSelectionButton * parent = Q_NULLPTR);
+  QPopupSlider(QScaleSelectionButton * parent = nullptr);
 
   void setRange(int min, int max);
 
@@ -36,9 +36,9 @@ protected:
   void onValueChanged(int v);
 
 protected:
-  QVBoxLayout * vbox_ = Q_NULLPTR;
-  QSlider * slider_ = Q_NULLPTR;
-  QLabel * lb_ = Q_NULLPTR;
+  QVBoxLayout * vbox_ = nullptr;
+  QSlider * slider_ = nullptr;
+  QLabel * lb_ = nullptr;
   bool enableFeedback_ = true;
 };
 

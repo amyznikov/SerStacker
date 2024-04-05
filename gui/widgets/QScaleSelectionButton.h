@@ -18,7 +18,7 @@ public:
   typedef QScaleSelectionButton ThisClass;
   typedef QToolButton Base;
 
-  QScaleSelectionButton(QWidget * parent = Q_NULLPTR);
+  QScaleSelectionButton(QWidget * parent = nullptr);
 
   int currentScale() const;
 
@@ -31,7 +31,7 @@ Q_SIGNALS:
 
 protected:
   class QPopupSlider;
-  QPopupSlider * popup_ = Q_NULLPTR;
+  QPopupSlider * popup_ = nullptr;
 };
 
 #endif /* __QScaleSelectionButton_h__ */

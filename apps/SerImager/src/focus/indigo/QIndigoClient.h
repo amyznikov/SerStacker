@@ -22,7 +22,7 @@ public:
   typedef QIndigoClient ThisClass;
   typedef QObject Base;
 
-  QIndigoClient(const QString & name, QObject * parent = Q_NULLPTR);
+  QIndigoClient(const QString & name, QObject * parent = nullptr);
   ~QIndigoClient();
 
   void setEnableBlobs(bool v);

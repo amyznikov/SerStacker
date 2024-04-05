@@ -13,7 +13,8 @@
 
 namespace {
 
-struct c_named_camera {
+struct c_named_camera
+{
   std::string name;
   c_camera_intrinsics intrinsics;
 };

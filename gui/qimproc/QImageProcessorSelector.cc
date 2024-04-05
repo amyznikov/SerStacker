@@ -31,7 +31,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   setFrameShape(QFrame::Shape::NoFrame);
 
 //  static const auto createScrollableWrap =
-//      [](QWidget * w, QWidget * parent = Q_NULLPTR) -> QScrollArea* {
+//      [](QWidget * w, QWidget * parent = nullptr) -> QScrollArea* {
 //        QScrollArea * scrollArea = new QScrollArea(parent ? parent : w->parentWidget());
 //        scrollArea->setWidgetResizable(true);
 //        scrollArea->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
@@ -75,10 +75,10 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
       [this] () {
 
         QMenu menu;
-        QAction * add_processor_action = Q_NULLPTR;
-        QAction * rename_processor_action = Q_NULLPTR;
-        QAction * copy_processor_action = Q_NULLPTR;
-        QAction * delete_processor_action = Q_NULLPTR;
+        QAction * add_processor_action = nullptr;
+        QAction * rename_processor_action = nullptr;
+        QAction * copy_processor_action = nullptr;
+        QAction * delete_processor_action = nullptr;
 
         menu.addAction(add_processor_action =
             new QAction(getIcon(ICON_add),

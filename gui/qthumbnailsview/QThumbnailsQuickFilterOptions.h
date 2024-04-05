@@ -10,7 +10,7 @@
 #define __QThumbnailsQuickFilterOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/addctrl.h>
+//#include <gui/widgets/addctrl.h>
 
 QString toQString(Qt::MatchFlags m);
 
@@ -24,8 +24,8 @@ bool matchQuickFilter(const QString & text,
 
 typedef QEnumComboBox<Qt::MatchFlag> QThumbnailsQuickFilterMatchingFlagsCombo;
 
-class QThumbnailsQuickFilterOptions
-    : public QSettingsWidget
+class QThumbnailsQuickFilterOptions :
+    public QSettingsWidget
 {
   Q_OBJECT;
 public:

@@ -345,10 +345,10 @@ void QFileSystemCustomTreeView::dropEvent(QDropEvent * e)
 
     QMenu menu(this);
 
-    QAction * copyAction = Q_NULLPTR;
-    QAction * moveAction = Q_NULLPTR;
-    QAction * linkAction = Q_NULLPTR;
-    QAction * act = Q_NULLPTR;
+    QAction * copyAction = nullptr;
+    QAction * moveAction = nullptr;
+    QAction * linkAction = nullptr;
+    QAction * act = nullptr;
 
     if ( possibleActsions & Qt::CopyAction ) {
       menu.addAction(copyAction = new QAction("Copy here", this));

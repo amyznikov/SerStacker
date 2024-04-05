@@ -17,7 +17,7 @@ public:
   typedef QToolbarSpacer ThisClass;
   typedef QWidget Base;
 
-  QToolbarSpacer(QWidget * parent = Q_NULLPTR);
+  QToolbarSpacer(QWidget * parent = nullptr);
 };
 
 #endif /* __QToolbarSpacer_h__ */

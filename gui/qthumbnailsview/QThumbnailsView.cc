@@ -197,7 +197,7 @@ void QThumbnailsListWidget::addIcon(const QIcon & icon, const QString & fullPath
 
 void QThumbnailsListWidget::updateIcon(const QIcon & icon, const QString & fullPathName, const QVariant & data)
 {
-  QListWidgetItem * foundItem = Q_NULLPTR;
+  QListWidgetItem * foundItem = nullptr;
   for ( int i = 0, n = count(); i < n; ++i ) {
     QListWidgetItem * currentItem = this->item(i);
     if ( currentItem->whatsThis() == fullPathName ) {
@@ -571,7 +571,7 @@ void QThumbnailsView::updateProgressIndicator()
 
 void QThumbnailsView::updateCurrentStackWidget()
 {
-  QWidget * w = Q_NULLPTR;
+  QWidget * w = nullptr;
 
   if ( listWidget_->count() > 0 ) {
     w = listWidget_;

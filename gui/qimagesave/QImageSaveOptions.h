@@ -20,13 +20,13 @@ public:
   typedef QImageSavePNGOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QImageSavePNGOptions(QWidget * parent = Q_NULLPTR);
+  QImageSavePNGOptions(QWidget * parent = nullptr);
 
   void setPixelDepth(PIXEL_DEPTH v);
   PIXEL_DEPTH pixelDepth() const;
 
 protected:
-  QComboBox * pixtype_ctl = Q_NULLPTR;
+  QComboBox * pixtype_ctl = nullptr;
 };
 
 class QImageSaveTIFFOptions :
@@ -38,7 +38,7 @@ public:
   typedef QEnumComboBox<PIXEL_DEPTH> QPixelDepthCombo;
 
 
-  QImageSaveTIFFOptions(QWidget * parent = Q_NULLPTR);
+  QImageSaveTIFFOptions(QWidget * parent = nullptr);
 
   void setPixelDepth(PIXEL_DEPTH v);
   PIXEL_DEPTH pixelDepth() const;
@@ -52,9 +52,9 @@ public:
   QCheckBox * embedAlphaMaskCtl() const;
 
 protected:
-  QPixelDepthCombo * pixelDepth_ctl = Q_NULLPTR;
-  QCheckBox * embedAlphaMask_ctl = Q_NULLPTR;
-  QComboBox * compression_ctl = Q_NULLPTR;
+  QPixelDepthCombo * pixelDepth_ctl = nullptr;
+  QCheckBox * embedAlphaMask_ctl = nullptr;
+  QComboBox * compression_ctl = nullptr;
 };
 
 class QImageSaveJPEGOptions :
@@ -64,13 +64,13 @@ public:
   typedef QImageSaveJPEGOptions ThisClass;
   typedef QSettingsWidget Base;
 
-  QImageSaveJPEGOptions(QWidget * parent = Q_NULLPTR);
+  QImageSaveJPEGOptions(QWidget * parent = nullptr);
 
   void setJpegQuality(double v);
   double jpegQuality() const;
 
 protected:
-  QNumericBox * quality_ctl = Q_NULLPTR;
+  QNumericBox * quality_ctl = nullptr;
 };
 
 
@@ -103,7 +103,7 @@ public:
   typedef QEnumComboBox<QImageSaveFormat> QImageSaveFormatCombo;
 
 
-  QImageSaveOptions(QWidget * parent = Q_NULLPTR);
+  QImageSaveOptions(QWidget * parent = nullptr);
 
   QImageSaveFormat format() const;
   void set_format(QImageSaveFormat v);
@@ -117,12 +117,12 @@ public:
 protected:
   std::vector<int> imwrite_params_;
 
-  QImageSaveFormatCombo * format_ctl = Q_NULLPTR;
-  QStackedWidget * stack_ctl = Q_NULLPTR;
-  QImageSaveTIFFOptions * tiffOptions_ctl = Q_NULLPTR;
-  QImageSavePNGOptions * pngOptions_ctl = Q_NULLPTR;
-  QImageSaveJPEGOptions * jpegOptions_ctl = Q_NULLPTR;
-  QCheckBox * save_also_processor_config_ctl = Q_NULLPTR;
+  QImageSaveFormatCombo * format_ctl = nullptr;
+  QStackedWidget * stack_ctl = nullptr;
+  QImageSaveTIFFOptions * tiffOptions_ctl = nullptr;
+  QImageSavePNGOptions * pngOptions_ctl = nullptr;
+  QImageSaveJPEGOptions * jpegOptions_ctl = nullptr;
+  QCheckBox * save_also_processor_config_ctl = nullptr;
 };
 
 
@@ -134,7 +134,7 @@ public:
   typedef QImageSaveOptionsDialog ThisClass;
   typedef QDialog Base;
 
-  QImageSaveOptionsDialog(QWidget * parent = Q_NULLPTR);
+  QImageSaveOptionsDialog(QWidget * parent = nullptr);
 
   QImageSaveFormat format() const;
   void set_format(QImageSaveFormat v);
@@ -145,9 +145,9 @@ public:
   QCheckBox * saveProcessorConfigCtl() const;
 
 protected:
-  QImageSaveOptions * options_ctl = Q_NULLPTR;
-  QPushButton * ok_ctl = Q_NULLPTR;
-  QPushButton * cancel_ctl = Q_NULLPTR;
+  QImageSaveOptions * options_ctl = nullptr;
+  QPushButton * ok_ctl = nullptr;
+  QPushButton * cancel_ctl = nullptr;
 };
 
 QString saveImageFileAs(QWidget * parent,

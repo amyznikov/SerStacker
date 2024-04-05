@@ -64,8 +64,8 @@ private Q_SLOTS:
   void onItemPressed(const QModelIndex &index);
 
 private:
-  QFileSystemModel * model = Q_NULLPTR;
-  QFileSystemCustomTreeView * treeView = Q_NULLPTR;
+  QFileSystemModel * model = nullptr;
+  QFileSystemCustomTreeView * treeView = nullptr;
 };
 
 
@@ -74,7 +74,7 @@ class QFileSystemCustomTreeView
 {
 public:
   typedef QTreeView Base;
-  QFileSystemCustomTreeView(QWidget * parent = Q_NULLPTR);
+  QFileSystemCustomTreeView(QWidget * parent = nullptr);
 
 protected:
   void dropEvent(QDropEvent *event) override;

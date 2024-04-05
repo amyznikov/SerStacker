@@ -20,7 +20,7 @@ public:
   typedef QCustomDockWidget Base;
 
   QFileSystemTreeDock(const QString &title,
-      QWidget * parent = Q_NULLPTR);
+      QWidget * parent = nullptr);
 
   QFileSystemTreeView * treeView() const;
 
@@ -55,17 +55,17 @@ protected:
   void onShowHistoryClicked();
 
 protected:
-  QFileSystemTreeView * fileSystemTreeView_ = Q_NULLPTR;
-  QToolButton * refreshButton_ = Q_NULLPTR;
-  QToolButton * historyButton_ = Q_NULLPTR;
-  QToolButton * fileFilterButton_ = Q_NULLPTR;
-  QToolButton * jumpButton_ = Q_NULLPTR;
+  QFileSystemTreeView * fileSystemTreeView_ = nullptr;
+  QToolButton * refreshButton_ = nullptr;
+  QToolButton * historyButton_ = nullptr;
+  QToolButton * fileFilterButton_ = nullptr;
+  QToolButton * jumpButton_ = nullptr;
 };
 
 QFileSystemTreeDock * addFileSystemTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
-    QMenu * viewMenu = Q_NULLPTR);
+    QMenu * viewMenu = nullptr);
 
 #endif /* __QFileSystemTreeViewDock_h__ */

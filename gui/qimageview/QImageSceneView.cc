@@ -129,7 +129,7 @@ void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
 
 void QImageSceneView::zoom(int delta)
 {
-  setViewScale(viewScale() + (delta > 0 ? +1 : -1), Q_NULLPTR);
+  setViewScale(viewScale() + (delta > 0 ? +1 : -1), nullptr);
 }
 
 void QImageSceneView::zoom(int delta, QPoint mousePos)

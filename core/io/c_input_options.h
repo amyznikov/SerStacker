@@ -9,7 +9,6 @@
 #ifndef __c_input_options_h__
 #define __c_input_options_h__
 
-#include <opencv2/opencv.hpp>
 #include "c_data_frame.h"
 #include <core/proc/white_balance/histogram_normalization.h>
 #include <core/improc/c_image_processor.h>

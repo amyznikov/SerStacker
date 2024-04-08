@@ -439,6 +439,52 @@ const c_image_processing_options & c_image_stacking_pipeline::image_processing_o
   return image_processing_options_;
 }
 
+std::string c_image_stacking_pipeline::generate_output_file_name() const
+{
+  std::string output_file_name =
+      output_options_.output_file_name;
+
+  if( output_file_name.empty() ) {
+
+    output_file_name =
+        ssprintf("%s/%s%s.32F.tiff",
+            output_path_.c_str(),
+            csequence_name(),
+            output_file_name_postfix_.c_str());
+  }
+  else {
+
+    std::string path, name, suffix;
+
+    split_pathfilename(output_options_.output_file_name, &path, &name, &suffix);
+
+    if( path.empty() ) {
+      path = output_path_;
+    }
+    else if( !is_absolute_path(path) ) {
+      path = ssprintf("%s/%s", output_path_.c_str(), path.c_str());
+    }
+
+    if( name.empty() ) {
+      name = ssprintf("%s%s", csequence_name(),
+          output_file_name_postfix_.c_str());
+    }
+
+    if( suffix.empty() || suffix.back() == '.' ) {
+      suffix = ".tiff";
+    }
+
+    output_file_name =
+        ssprintf("%s/%s%s",
+            path.c_str(),
+            name.c_str(),
+            suffix.c_str());
+  }
+
+
+  return output_file_name;
+}
+
 bool c_image_stacking_pipeline::initialize_pipeline()
 {
   set_pipeline_stage(stacking_stage_initialize);
@@ -990,6 +1036,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
           std::min(input_sequence_->size(),
               input_options_.start_frame_index + input_options_.max_input_frames);
 
+
   if ( !(fOk = process_input_sequence(input_sequence_, start_pos, end_pos, false)) ) {
     CF_ERROR("process_input_sequence() fails");
     return false;
@@ -1117,17 +1164,8 @@ bool c_image_stacking_pipeline::run_image_stacking()
     }
 
 
-    if ( output_file_name.empty() ) {
-
-      output_file_name =
-          ssprintf("%s/%s%s.32F.tiff",
-              output_path_.c_str(),
-              csequence_name(),
-              output_file_name_postfix_.c_str());
-    }
-
-
-
+    output_file_name =
+        generate_output_file_name();
 
     CF_DEBUG("Saving '%s'", output_file_name.c_str());
     if ( !write_image(output_file_name_ = output_file_name, output_options_, accumulated_image, accumulated_mask) ) {
@@ -1747,13 +1785,16 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     return false;
   }
 
-  total_frames_ = endpos - startpos;
-
-  if ( total_frames_ < 1 ) {
-    CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1", total_frames_);
-    return false;
+  if ( input_sequence->is_live() ) {
+    total_frames_ = INT_MAX;
   }
-
+  else {
+    total_frames_ = endpos - startpos;
+    if ( total_frames_ < 1 ) {
+      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1", total_frames_);
+      return false;
+    }
+  }
 
   processed_frames_ = 0;
   accumulated_frames_ = 0;
@@ -1815,15 +1856,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       break;
     }
 
-//    if( image_processing_options_.input_image_processor ) {
-//      if( !generating_master_frame || image_registration_options_.master_frame_options.apply_input_image_processor ) {
-//        if( !image_processing_options_.input_image_processor->process(current_frame, current_mask) ) {
-//          CF_ERROR("input_image_processor->process(current_frame) fails");
-//          continue;
-//        }
-//      }
-//    }
-
     if( input_options_.input_image_processor ) {
       if( !generating_master_frame || image_registration_options_.master_frame_options.apply_input_image_processor ) {
         // lock_guard lock(mutex());
@@ -1854,7 +1886,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       }
     }
 
-    // generated master frame msut be always single-channel (grayscale)
+    // generated master frame must be always single-channel (grayscale)
     if ( generating_master_frame && current_frame.channels() > 1 ) {
 
       bool fOk =
@@ -3356,6 +3388,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = get_group(settings, save, "output")) ) {
 
     SERIALIZE_OPTION(section, save, output_options_, output_directory);
+    SERIALIZE_OPTION(section, save, output_options_, output_file_name);
 
     SERIALIZE_OPTION(section, save, output_options_, save_preprocessed_frames);
     if( (subsection = get_group(section, save, "output_preprocessed_video_options")) ) {
@@ -3510,6 +3543,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
     PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
     PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+    PIPELINE_CTL(ctrls, output_options_.output_file_name, "output_file_name", "");
 
     PIPELINE_CTL(ctrls, output_options_.write_image_mask_as_alpha_channel, "write_image_mask_as_alpha_channel", "");
     PIPELINE_CTL(ctrls, output_options_.dump_reference_data_for_debug, "dump_reference_data_for_debug", "");

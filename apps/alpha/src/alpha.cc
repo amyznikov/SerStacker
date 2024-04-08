@@ -40,7 +40,6 @@
 
 #include <core/debug.h>
 
-
 int main(int argc, char *argv[])
 {
 //  std::string address;
@@ -65,82 +64,6 @@ int main(int argc, char *argv[])
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
-
-//  if ( address.empty() ) {
-//    CF_ERROR("No pcap file specified");
-//    return 1;
-//  }
-
-  c_quad0_estimate<double> quad2;
-
-  const double a0 = 1.7;
-  const double a1 = -3;
-  const double a2 = +0.25;
-
-  quad2.set_a0(a0);
-
-  for( int x = -10; x <= 10; ++x ) {
-
-    double y = a0 + a1 * x + a2 * x * x;
-    quad2.update(x, y);
-  }
-
-  CF_DEBUG("QUAD2: a0=%g a1=%g a2=%g Z=%g n=%d",
-      quad2.a0(), quad2.a1(), quad2.a2(),
-      quad2.z(), quad2.pts());
-
-  for( int x = -10; x <= 10; x+=3 ) {
-
-    double y = a0 + a1 * x + a2 * x * x;
-    quad2.remove(x, y);
-  }
-
-  CF_DEBUG("QUAD2R: a0=%g a1=%g a2=%g Z=%g n=%d",
-      quad2.a0(), quad2.a1(), quad2.a2(),
-      quad2.z(), quad2.pts());
-
-//
-//
-//  c_hdl_offline_pcap_reader reader;
-//
-//
-//  if( !reader.open(address, options) ) {
-//    CF_ERROR("reader.open('%s') fails", address.c_str());
-//    return 1;
-//  }
-//
-////  return 0;
-//
-//  CF_DEBUG("reader.streams=%zu", reader.streams().size());
-//
-//  if ( !reader.select_stream(0) ) {
-//    CF_ERROR("reader.select_stream(0) fails");
-//    return 1;
-//  }
-//
-//  const int n =
-//      reader.num_frames();
-//
-//  CF_DEBUG("num_frames=%d", n);
-//
-//  for ( int i = 0; i < 10; ++i ) {
-//
-//    reader.seek(i);
-//
-//    c_hdl_frame::sptr frame =
-//        reader.read();
-//
-//    if ( !frame ) {
-//      CF_ERROR("reader.read() fails");
-//      break;
-//    }
-//
-//    CF_DEBUG("frame[%d].pts=%zu", i, frame->points.size());
-//
-//  }
-//
-//
-
 
   return 0;
 }

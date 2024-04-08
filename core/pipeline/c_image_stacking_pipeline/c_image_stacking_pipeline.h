@@ -137,6 +137,8 @@ struct c_image_processing_options
 struct c_image_stacking_output_options  :
     c_image_processing_pipeline_output_options
 {
+  std::string output_file_name;
+
   bool dump_reference_data_for_debug = false;
   bool write_image_mask_as_alpha_channel = true;
 
@@ -303,6 +305,8 @@ protected:
 
   bool save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
       c_output_frame_writer & output_writer, int seqindex) const;
+
+  std::string generate_output_file_name() const;
 
   static void remove_bad_pixels(cv::Mat & image,
       const c_image_stacking_input_options & input_optons,

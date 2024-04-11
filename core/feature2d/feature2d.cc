@@ -355,7 +355,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
 
   CF_DEBUG("c_sparse_feature_extractor_and_matcher: \n"
       "detector='%s' descriptor='%s' matcher='%s'",
-      toString(obj->detector_->type()),
+      toCString(obj->detector_->type()),
       obj->descriptor_ ? toCString(obj->descriptor_->type()) : "null",
       obj->matcher_ ? toCString(obj->options_.matcher.type) : "null");
 

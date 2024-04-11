@@ -401,6 +401,7 @@ void QLiveDisplay::onPixmapChanged()
 void QLiveDisplay::updateCurrentImage()
 {
   if( !current_processor_ || current_processor_->empty() ) {
+
     current_image_lock lock(this);
     inputImage_.copyTo(currentImage_);
     inputMask_.copyTo(currentMask_);
@@ -418,19 +419,23 @@ void QLiveDisplay::updateCurrentImage()
     currentMask_ = tmp_mask;
   }
 
-  mtfDisplayFunction_.createDisplayImage(
-      currentImage_,
-      currentMask_,
-      mtfImage_,
-      displayImage_,
-      CV_8U);
+  if ( true ) {
+    mtfDisplayFunction_.createDisplayImage(
+        currentImage_,
+        currentMask_,
+        mtfImage_,
+        displayImage_,
+        CV_8U);
+  }
 
-  pixmap_ =
-      createPixmap(displayImage_, true,
-          Qt::NoFormatConversion |
-              Qt::ThresholdDither |
-              Qt::ThresholdAlphaDither |
-              Qt::NoOpaqueDetection);
+  if ( true ) {
+    pixmap_ =
+        createPixmap(displayImage_, true,
+            Qt::NoFormatConversion |
+                Qt::ThresholdDither |
+                Qt::ThresholdAlphaDither |
+                Qt::NoOpaqueDetection);
+  }
 
   Q_EMIT pixmapChanged();
 
@@ -659,13 +664,9 @@ void QLivePipelineThread::run()
       return camera_->state() == QImagingCamera::State_started;
     }
 
-    bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpc) override
+    bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpp) override
     {
-      cv::Mat inputImage;
-
       while (camera_->state() == QImagingCamera::State_started) {
-
-        QThread::msleep(30);
 
         bool haveInputImage = false;
 
@@ -687,47 +688,16 @@ void QLivePipelineThread::run()
             if( index > last_frame_index ) {
 
               last_frame_index = index;
-              bpp = frame->bpp();
-              colorid = frame->colorid();
-              frame->image().copyTo(inputImage);
+              * output_bpp = bpp = frame->bpp();
+              * output_colorid = colorid = frame->colorid();
+              frame->image().copyTo(output_frame);
 
-              haveInputImage = true;
+              return true;
             }
           }
         }
 
-        if( haveInputImage ) {
-
-          thread_->darkFrameLock_.lock();
-          if( thread_->darkFrame_.size() == inputImage.size()
-              && thread_->darkFrame_.channels() == inputImage.channels() ) {
-
-            inputImage.convertTo(inputImage, thread_->darkFrame_.depth());
-
-            if( thread_->darkFrameScale_ != 0 ) {
-              cv::subtract(inputImage, thread_->darkFrame_, inputImage);
-            }
-          }
-          thread_->darkFrameLock_.unlock();
-
-          if( thread_->debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
-
-            const DEBAYER_ALGORITHM method =
-                inputImage.depth() == CV_32F ?
-                    DEBAYER_NN2 :
-                    (DEBAYER_ALGORITHM) thread_->debayer_;
-
-            if( ::debayer(inputImage, inputImage, colorid, method) ) {
-              colorid = COLORID_BGR;
-            }
-          }
-
-          output_frame = inputImage;
-          *output_colorid = colorid;
-          *output_bpc = bpp;
-
-          return true;
-        }
+        QThread::msleep(20);
       }
 
       return false;
@@ -834,19 +804,40 @@ void QLivePipelineThread::run()
         }
         else {
 
-          //cv::Mat image;
+          cv::Mat inputImage;
           COLORID colorid;
           int bpp;
 
           display_->inputMask().release();
 
-          while (input_sequence->camera_source->read(display_->inputImage(), &colorid, &bpp)) {
+          while ( input_sequence->camera_source->read(inputImage, &colorid, &bpp)  ) {
+
+            if ( true ) {
+              c_unique_lock lock(darkFrameLock_);
+
+              if( darkFrameScale_ != 0 && darkFrame_.size() == inputImage.size() &&
+                  darkFrame_.channels() == inputImage.channels() ) {
+                inputImage.convertTo(inputImage, darkFrame_.depth());
+                cv::subtract(inputImage, darkFrame_, inputImage);
+              }
+            }
+
+            if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+
+              const DEBAYER_ALGORITHM method =
+                  inputImage.depth() == CV_32F ? DEBAYER_NN2 :
+                      (DEBAYER_ALGORITHM) debayer_;
+
+              if( ::debayer(inputImage, inputImage, colorid, method) ) {
+                colorid = COLORID_BGR;
+              }
+            }
 
             if( true ) {
               c_unique_lock mtflock(display_->mtfDisplayFunction()->mutex());
-              if( !display_->mtfDisplayFunction()->isBusy() ) {
-                display_->updateCurrentImage();
-              }
+              inputImage.copyTo(display_->inputImage());
+              display_->updateCurrentImage();
+              QThread::msleep(10);
             }
 
             if( true ) {
@@ -1614,5 +1605,81 @@ void QLiveThreadSettingsDialogBox::hideEvent(QHideEvent *e)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpc) override
+{
+  cv::Mat inputImage;
+
+  while (camera_->state() == QImagingCamera::State_started) {
+
+    QThread::msleep(20);
+
+    bool haveInputImage = false;
+
+    if( 42 ) {
+
+      QImagingCamera::shared_lock lock(camera_->mutex());
+
+      const std::deque<QCameraFrame::sptr> &deque =
+          camera_->deque();
+
+      if( !deque.empty() ) {
+
+        const QCameraFrame::sptr &frame =
+            deque.back();
+
+        const int index =
+            frame->index();
+
+        if( index > last_frame_index ) {
+
+          last_frame_index = index;
+          bpp = frame->bpp();
+          colorid = frame->colorid();
+          frame->image().copyTo(inputImage);
+
+          haveInputImage = true;
+        }
+      }
+    }
+
+    if( haveInputImage ) {
+
+      thread_->darkFrameLock_.lock();
+      if( thread_->darkFrame_.size() == inputImage.size()
+          && thread_->darkFrame_.channels() == inputImage.channels() ) {
+
+        inputImage.convertTo(inputImage, thread_->darkFrame_.depth());
+
+        if( thread_->darkFrameScale_ != 0 ) {
+          cv::subtract(inputImage, thread_->darkFrame_, inputImage);
+        }
+      }
+      thread_->darkFrameLock_.unlock();
+
+      if( thread_->debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+
+        const DEBAYER_ALGORITHM method =
+            inputImage.depth() == CV_32F ?
+                DEBAYER_NN2 :
+                (DEBAYER_ALGORITHM) thread_->debayer_;
+
+        if( ::debayer(inputImage, inputImage, colorid, method) ) {
+          colorid = COLORID_BGR;
+        }
+      }
+
+      output_frame = inputImage;
+      *output_colorid = colorid;
+      *output_bpc = bpp;
+
+      return true;
+    }
+  }
+
+  return false;
+}
+#endif
 
 } /* namespace serimager */

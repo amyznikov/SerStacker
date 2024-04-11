@@ -16,12 +16,16 @@ int main(int argc, char *argv[])
   std::string output_file_name;
   std::string output_path;
 
+  int start_frame = 0;
+  int end_frame = -1;
+
+
   for ( int i = 1; i < argc; ++i ) {
 
     if ( strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0 ) {
       fprintf(stdout,
           "Usage:\n"
-          "   ser_copy [OPTIONS] input_file.ser -o output_file.ser\n"
+          "   ser_copy [OPTIONS] input_file.ser -o output_file.ser [-f start[:end]]\n"
           "\n"
           "OPTIONS:\n"
           "\n"
@@ -35,17 +39,37 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Output file name expected: %s\n", argv[i - 1]);
         return 1;
       }
-      output_file_name = argv[i];
+
+      output_file_name =
+          argv[i];
+
+      continue;
     }
 
-    else if ( input_file_name.empty() && is_regular_file(argv[i]) ) {
-      input_file_name = argv[i];
+    if ( strcmp(argv[i], "-f") == 0 ) {
+      if ( (++i >= argc) ) {
+        fprintf(stderr, "frame range start[:end] is expected after %s option\n", argv[i - 1]);
+        return 1;
+      }
+
+      if ( sscanf(argv[i], "%d:%d", &start_frame, &end_frame) < 1 ) {
+        fprintf(stderr, "frame range start[:end] is expected after %s option\n", argv[i - 1]);
+        return 1;
+      }
+
+      continue;
     }
 
-    else {
-      fprintf(stderr, "Invalid argument or not existimng input file specified: %s\n", argv[i]);
-      return 1;
+    if ( input_file_name.empty() && is_regular_file(argv[i]) ) {
+
+      input_file_name =
+          argv[i];
+
+      continue;
     }
+
+    fprintf(stderr, "Invalid argument or not existimng input file specified: %s\n", argv[i]);
+    return 1;
   }
 
   if ( input_file_name.empty() ) {
@@ -67,6 +91,13 @@ int main(int argc, char *argv[])
   cf_set_loglevel(CF_LOG_DEBUG);
 
 
+  if( end_frame > 0 && end_frame < start_frame ) {
+    fprintf(stderr, "Invalid end frame specified: %d less tnah start frame %d\n",
+        end_frame, start_frame);
+    return 1;
+  }
+
+
   c_ser_reader ser_reader;
   c_ser_writer ser_writer;
 
@@ -77,6 +108,27 @@ int main(int argc, char *argv[])
         strerror(errno));
     return 1;
   }
+
+  if ( start_frame < 0 ) {
+    start_frame = 0;
+  }
+  else if( start_frame >= ser_reader.num_frames() ) {
+    fprintf(stderr, "Invalid start frame specified: %d. num_frames=%d\n",
+        start_frame, ser_reader.num_frames());
+    return 1;
+  }
+
+  if( end_frame < 0 || end_frame >= ser_reader.num_frames() ) {
+    end_frame = ser_reader.num_frames() - 1;
+  }
+
+  if( start_frame > 0 && !ser_reader.seek(start_frame) ) {
+    fprintf(stderr, "ser_reader.seek(start_frame=%d) fails: %s\n",
+        start_frame,
+        strerror(errno));
+    return 1;
+  }
+
 
   if ( !(output_path = get_parent_directory(output_file_name)).empty() && !create_path(output_path) ) {
     fprintf(stderr, "create_path(%s) fails: %s\n",
@@ -103,7 +155,8 @@ int main(int argc, char *argv[])
   cv::Mat current_frame;
   int num_frames = 0;
 
-  while ( ser_reader.read(current_frame) ) {
+
+  for ( int i = start_frame ; i <= end_frame && ser_reader.read(current_frame); ++i ) {
 
     if ( !ser_writer.write(current_frame) ) {
       fprintf(stderr, "ser_writer.write() fails: %s\n", strerror(errno));

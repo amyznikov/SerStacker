@@ -12,7 +12,6 @@
 #include "image/c_raw_image_input_source.h"
 #include "image/c_regular_image_input_source.h"
 #include "image/c_ser_input_source.h"
-#include "vlo/c_vlo_input_source.h"
 #include "hdl/c_hdl_input_source.h"
 #include "text/c_textfile_input_source.h"
 #include "ply/c_ply_input_source.h"

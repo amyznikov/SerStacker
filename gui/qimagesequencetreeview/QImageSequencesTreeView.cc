@@ -13,7 +13,6 @@
 #include <core/io/image/c_fits_input_source.h>
 #include <core/io/image/c_regular_image_input_source.h>
 #include <core/io/image/c_ser_input_source.h>
-#include <core/io/vlo/c_vlo_input_source.h>
 #include <core/readdir.h>
 #include <core/debug.h>
 

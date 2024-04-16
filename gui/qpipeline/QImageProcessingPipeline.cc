@@ -16,7 +16,6 @@
 #include "QRunningAveragePipeline/QRunningAveragePipeline.h"
 #include "QVirtualStereoPipeline/QVirtualStereoPipeline.h"
 #include "QRoiTrackerPipeline/QRoiTrackerPipeline.h"
-#include "QVLOPipeline/QVLOPipeline.h"
 #include "QEpipolarAlignmentPipeline/QEpipolarAlignmentPipeline.h"
 
 #include <gui/widgets/QMatrixEdit.h>
@@ -46,7 +45,6 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(QRunningAveragePipeline);
   REGISTER_PIPELINE_CLASS(QVirtualStereoPipeline);
   REGISTER_PIPELINE_CLASS(QRoiTrackerPipeline);
-  REGISTER_PIPELINE_CLASS(QVLOPipeline);
   REGISTER_PIPELINE_CLASS(QEpipolarAlignmentPipeline);
 
 

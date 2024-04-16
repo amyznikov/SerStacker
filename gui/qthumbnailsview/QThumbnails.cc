@@ -15,7 +15,6 @@
 #include <core/io/image/c_raw_image_input_source.h>
 #include <core/io/image/c_ffmpeg_input_source.h>
 #include <core/io/image/c_fits_input_source.h>
-#include <core/io/vlo/c_vlo_input_source.h>
 #include <core/io/hdl/c_hdl_input_source.h>
 #include <core/io/text/c_textfile_input_source.h>
 #include <core/io/ply/c_ply_input_source.h>

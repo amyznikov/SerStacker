@@ -18,7 +18,6 @@
 #include <core/io/c_input_source.h>
 #include <core/io/c_input_options.h>
 #include <core/dataproc/c_data_frame_processor.h>
-#include <core/io/vlo/c_vlo_file.h>
 
 #include "QImageSourceView.h"
 #include "QPointCloudSourceView.h"
@@ -90,12 +89,6 @@ public:
   void setBadPixelsVariationThreshold(double v);
   double badPixelsVariationThreshold() const;
 
-  void setVloDataChannel(VLO_DATA_CHANNEL channel);
-  VLO_DATA_CHANNEL vloDataChannel() const;
-
-//  c_vlo_processing_options * vlo_processing_options();
-
-  void update_as_vlo_processing_options_chaned();
   //////////////////////////////////////////
 
 Q_SIGNALS:
@@ -186,8 +179,6 @@ protected:
   bool filterBadPixels_ = false;
   double badPixelsVariationThreshold_ = 5;
 
-  //c_vlo_processing_options vlo_processing_options_;
-  VLO_DATA_CHANNEL vlo_data_channel_ = VLO_DATA_CHANNEL_AMBIENT;
   //////////////////////////////////////////
 
 

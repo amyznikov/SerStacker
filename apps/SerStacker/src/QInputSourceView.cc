@@ -11,9 +11,8 @@
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 #include <core/proc/minmax.h>
-#include <core/io/vlo/c_vlo_input_source.h>
+#include <core/io/image/c_image_input_source.h>
 #include <core/debug.h>
-#include "../../../core/io/image/c_image_input_source.h"
 
 
 #define ICON_eye  ":/serstacker/icons/eye"
@@ -1071,52 +1070,6 @@ void QInputSourceView::setBadPixelsVariationThreshold(double v)
 double QInputSourceView::badPixelsVariationThreshold() const
 {
   return badPixelsVariationThreshold_;
-}
-
-
-void QInputSourceView::setVloDataChannel(VLO_DATA_CHANNEL channel)
-{
-  vlo_data_channel_ = channel;
-
-  if( isOpen(currentSource_) ) {
-
-    if( currentSource_->curpos() > 0 ) {
-      currentSource_->seek(currentSource_->curpos() - 1);
-    }
-
-    loadNextFrame();
-  }
-
-  Q_EMIT vloDataChannelChanged();
-}
-
-VLO_DATA_CHANNEL QInputSourceView::vloDataChannel() const
-{
-  return vlo_data_channel_;
-}
-
-//c_vlo_processing_options * QInputSourceView::vlo_processing_options()
-//{
-//  return &vlo_processing_options_;
-//}
-
-
-void QInputSourceView::update_as_vlo_processing_options_chaned()
-{
-  if(  isOpen(currentSource_) ) {
-
-    if( c_vlo_input_source * vlo = dynamic_cast<c_vlo_input_source*>(currentSource_.get()) ) {
-
-      if( currentSource_->curpos() > 0 ) {
-        currentSource_->seek(currentSource_->curpos() - 1);
-      }
-
-      loadNextFrame();
-    }
-
-    // Q_EMIT vloDataChannelChanged();
-  }
-
 }
 
 

@@ -143,7 +143,28 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
       this, &ThisClass::onCurrentTreeItemChanged);
 
   ///////////////////////////////////////////////////////////////////
+  connect(tree_ctl, &QTreeWidget::itemExpanded,
+      [this](QTreeWidgetItem * item) {
 
+        QTreeWidgetItem * subitem = item->child(0);
+        if ( subitem ) {
+
+          QScrollArea * sa = dynamic_cast<QScrollArea * >( tree_ctl->itemWidget(subitem, 0) );
+          if ( sa ) {
+
+            QWidget * w = sa->widget();
+            if ( w ) {
+              const QSize s = w->sizeHint();
+              subitem->setSizeHint(0, QSize(s.width(), std::min(s.height(), 8 * tree_ctl->viewport()->height() / 10)));
+            }
+
+          }
+
+        }
+
+      });
+
+  ///////////////////////////////////////////////////////////////////
   updateControls();
 }
 

@@ -36,7 +36,8 @@ protected Q_SLOTS:
   void onMoveCurrentProcessorDown();
   void onMoveCurrentProcessorUp();
   void onAddImageProcessor();
-  void onRemoveCurrentImageProcessor();
+  void onRemoveCurrentProcessor();
+  void updateItemSizeHint(QTreeWidgetItem * item);
 
 protected:
   void onupdatecontrols() override;

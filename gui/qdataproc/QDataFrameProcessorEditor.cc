@@ -127,7 +127,7 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
           "Remove selected processor",
           "Remove selected image processor",
           this,
-          &ThisClass::onRemoveCurrentImageProcessor));
+          &ThisClass::onRemoveCurrentProcessor));
 
   ///////////////////////////////////////////////////////////////////
   lv_->addWidget(tree_ctl = new QTreeWidget(this));
@@ -142,32 +142,44 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
   connect(tree_ctl, &QTreeWidget::currentItemChanged,
       this, &ThisClass::onCurrentTreeItemChanged);
 
-  ///////////////////////////////////////////////////////////////////
   connect(tree_ctl, &QTreeWidget::itemExpanded,
-      [this](QTreeWidgetItem * item) {
-
-        QTreeWidgetItem * subitem = item->child(0);
-        if ( subitem ) {
-
-          QScrollArea * sa = dynamic_cast<QScrollArea * >( tree_ctl->itemWidget(subitem, 0) );
-          if ( sa ) {
-
-            QWidget * w = sa->widget();
-            if ( w ) {
-              const QSize s = w->sizeHint();
-              subitem->setSizeHint(0, QSize(s.width(), std::min(s.height(), 8 * tree_ctl->viewport()->height() / 10)));
-            }
-
-          }
-
-        }
-
-      });
+      this, &ThisClass::updateItemSizeHint);
 
   ///////////////////////////////////////////////////////////////////
   updateControls();
 }
 
+void QDataFrameProcessorEditor::updateItemSizeHint(QTreeWidgetItem * item)
+{
+  if ( item ) {
+
+    QTreeWidgetItem * subitem =
+        item->child(0);
+
+    if ( subitem ) {
+
+      QScrollArea * sa =
+          dynamic_cast<QScrollArea * >(tree_ctl->itemWidget(subitem, 0));
+
+      if ( sa ) {
+
+        QWidget * w =
+            sa->widget();
+
+        if ( w ) {
+
+          const QSize s =
+              w->sizeHint();
+
+          subitem->setSizeHint(0, QSize(s.width(), std::min(s.height(),
+              8 * tree_ctl->viewport()->height() / 10)));
+        }
+
+      }
+
+    }
+  }
+}
 
 void QDataFrameProcessorEditor::setCurrentProcessor(const c_data_frame_processor::sptr & p)
 {
@@ -433,7 +445,7 @@ void QDataFrameProcessorEditor::onAddImageProcessor()
   Q_EMIT parameterChanged();
 }
 
-void QDataFrameProcessorEditor::onRemoveCurrentImageProcessor()
+void QDataFrameProcessorEditor::onRemoveCurrentProcessor()
 {
   if ( currentProcessor_ ) {
 

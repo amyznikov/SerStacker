@@ -165,7 +165,7 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
           "Remove selected processor",
           "Remove selected image processor",
           this,
-          &ThisClass::onRemoveCurrentImageProcessor));
+          &ThisClass::onRemoveCurrentProcessor));
 
   ///////////////////////////////////////////////////////////////////
   lv_->addWidget(tree_ctl = new QTreeWidget(this));
@@ -180,10 +180,44 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
   connect(tree_ctl, &QTreeWidget::currentItemChanged,
       this, &ThisClass::onCurrentTreeItemChanged);
 
+  connect(tree_ctl, &QTreeWidget::itemExpanded,
+      this, &ThisClass::updateItemSizeHint);
 
   ///////////////////////////////////////////////////////////////////
 
   updateControls();
+}
+
+void QImageProcessorChainEditor::updateItemSizeHint(QTreeWidgetItem * item)
+{
+  if ( item ) {
+
+    QTreeWidgetItem * subitem =
+        item->child(0);
+
+    if ( subitem ) {
+
+      QScrollArea * sa =
+          dynamic_cast<QScrollArea * >(tree_ctl->itemWidget(subitem, 0));
+
+      if ( sa ) {
+
+        QWidget * w =
+            sa->widget();
+
+        if ( w ) {
+
+          const QSize s =
+              w->sizeHint();
+
+          subitem->setSizeHint(0, QSize(s.width(), std::min(s.height(),
+              8 * tree_ctl->viewport()->height() / 10)));
+        }
+
+      }
+
+    }
+  }
 }
 
 void QImageProcessorChainEditor::set_current_processor(const c_image_processor::sptr & p)
@@ -450,7 +484,7 @@ void QImageProcessorChainEditor::onAddImageProcessor()
   Q_EMIT parameterChanged();
 }
 
-void QImageProcessorChainEditor::onRemoveCurrentImageProcessor()
+void QImageProcessorChainEditor::onRemoveCurrentProcessor()
 {
   if ( current_processor_ ) {
 

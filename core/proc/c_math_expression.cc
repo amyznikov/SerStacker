@@ -586,17 +586,17 @@ c_math_expression::c_math_expression()
 
   add_binary_operation(0, operator_logical_or, "||", "logical OR");
   add_binary_operation(1, operator_logical_and, "&&", "logical AND");
+  add_binary_operation(6, pow, "**", "Fortran-style power");
+  add_binary_operation(3, operator_le,"<=", "Less or equal");
+  add_binary_operation(3, operator_ge,">=", "Greater or equal");
   add_binary_operation(2, operator_eq,"==", "Equality");
   add_binary_operation(2, operator_not_eq,"!=", "Not Equality");
   add_binary_operation(3, operator_lt,"<" , "Less than");
-  add_binary_operation(3, operator_le,"<=", "Less or equal");
   add_binary_operation(3, operator_gt,">" , "Greater than");
-  add_binary_operation(3, operator_ge,">=", "Greater or equal");
   add_binary_operation(4, operator_add, "+", "binary plus");
   add_binary_operation(4, operator_sub, "-", "binary minus");
   add_binary_operation(5, operator_mul, "*", "multiply");
   add_binary_operation(5, operator_div, "/",  "divide");
-  add_binary_operation(6, pow, "**", "Fortran-style power");
   add_binary_operation(6, pow, "^",  "Pascal-style power");
 
   add_constant(M_PI, "PI", nullptr);
@@ -756,37 +756,61 @@ double c_math_expression::eval(const double args[]) const
 
 const c_math_expression::unary_operation * c_math_expression::lookup_unary_operator(const char *curpos) const
 {
-  for ( int i = 0, n = unops_.size(); i < n; ++i ) {
-    if ( strncmp(unops_[i].name.c_str(), curpos, strlen(unops_[i].name.c_str())) == 0 ) {
-      return &unops_[i];
+  const unary_operation * best_match =
+      nullptr;
+
+  size_t maxlen = 0;
+
+  for ( size_t i = 0, n = unops_.size(); i < n; ++i ) {
+
+    const unary_operation * op =
+        &unops_[i];
+
+    const size_t oplen =
+        strlen(op->name.c_str());
+
+    if ( oplen > maxlen && strncmp(op->name.c_str(), curpos, oplen) == 0 ) {
+      maxlen = oplen;
+      best_match = op;
     }
   }
-  return nullptr;
+
+  return best_match;
 }
 
 const c_math_expression::binary_operation* c_math_expression::lookup_binary_operator(int priority_level, const char * curpos) const
 {
+  const binary_operation * best_match =
+      nullptr;
+
   if( priority_level >= 0 && priority_level < (int) binops_.size() ) {
 
-    for( int i = 0, n = (int)binops_[priority_level].size(); i < n; ++i ) {
+    size_t maxlen = 0;
+
+    for ( size_t i = 0, n = binops_[priority_level].size(); i < n; ++i ) {
 
       const binary_operation * op =
           &binops_[priority_level][i];
 
-      if( strncmp(op->name.c_str(), curpos, strlen(op->name.c_str())) == 0 ) {
-        return op;
+      const size_t oplen =
+          strlen(op->name.c_str());
+
+      if( oplen > maxlen && strncmp(op->name.c_str(), curpos, oplen) == 0 ) {
+        maxlen = oplen;
+        best_match = op;
       }
     }
   }
 
-  return nullptr;
+  return best_match;
 }
 
 const c_math_expression::arg_desc* c_math_expression::lookup_argument(const char * name) const
 {
-  for( int i = 0, n = (int)args_.size(); i < n; ++i ) {
-    if( strcmp(args_[i].name.c_str(), name) == 0 ) {
-      return &args_[i];
+  for( size_t i = 0, n = args_.size(); i < n; ++i) {
+    const arg_desc * arg = &args_[i];
+    if( strcmp(arg->name.c_str(), name) == 0 ) {
+      return arg;
     }
   }
   return nullptr;
@@ -794,9 +818,10 @@ const c_math_expression::arg_desc* c_math_expression::lookup_argument(const char
 
 const c_math_expression::binding_desc* c_math_expression::lookup_bindings(const char * name) const
 {
-  for( int i = 0, n = (int) bindings_.size(); i < n; ++i ) {
-    if( strcmp(bindings_[i].name.c_str(), name) == 0 ) {
-      return &bindings_[i];
+  for( size_t i = 0, n = bindings_.size(); i < n; ++i) {
+    const binding_desc * binding = &bindings_[i];
+    if( strcmp(binding->name.c_str(), name) == 0 ) {
+      return binding;
     }
   }
   return nullptr;
@@ -804,9 +829,10 @@ const c_math_expression::binding_desc* c_math_expression::lookup_bindings(const 
 
 const c_math_expression::const_desc* c_math_expression::lookup_constant(const char * name) const
 {
-  for( int i = 0, n = (int)constants_.size(); i < n; ++i ) {
-    if( strcmp(constants_[i].name.c_str(), name) == 0 ) {
-      return &constants_[i];
+  for( size_t i = 0, n = constants_.size(); i < n; ++i) {
+    const const_desc * c = &constants_[i];
+    if( strcmp(c->name.c_str(), name) == 0 ) {
+      return c;
     }
   }
   return nullptr;
@@ -814,9 +840,10 @@ const c_math_expression::const_desc* c_math_expression::lookup_constant(const ch
 
 const c_math_expression::function_desc* c_math_expression::lookup_function(const char * name) const
 {
-  for( int i = 0, n = (int) functions_.size(); i < n; ++i ) {
-    if( strcmp(functions_[i].name.c_str(), name) == 0 ) {
-      return &functions_[i];
+  for( size_t i = 0, n = functions_.size(); i < n; ++i) {
+    const function_desc * f = &functions_[i];
+    if( strcmp(f->name.c_str(), name) == 0 ) {
+      return f;
     }
   }
   return nullptr;

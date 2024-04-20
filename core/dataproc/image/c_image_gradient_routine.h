@@ -9,13 +9,13 @@
 #ifndef __c_image_gradient_routine_h__
 #define __c_image_gradient_routine_h__
 
-#include "c_video_frame_processor_routine.h"
+#include <core/dataproc/c_data_frame_processor.h>
 
 class c_image_gradient_routine :
-    public c_video_frame_processor_routine
+    public c_data_frame_processor_routine
 {
 public:
-  DECLARE_VIDEO_FRAME_PROCESSOR_CLASS_FACTORY(c_image_gradient_routine,
+  DECLARE_DATA_PROCESSOR_CLASS_FACTORY(c_image_gradient_routine,
       "gradient",
       "compute image gradient");
 
@@ -27,7 +27,7 @@ public:
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_video_frame * vlo) override;
+  bool process(c_data_frame::sptr & dataframe) override;
 
 protected:
   std::string input_image_name_;

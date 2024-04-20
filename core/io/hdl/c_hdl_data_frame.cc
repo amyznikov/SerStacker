@@ -149,14 +149,11 @@ bool c_hdl_data_frame::get_image(const std::string & display_name,
 
   if ( output_mask.needed() ) {
 
-    if ( m.empty() ) {
-      output_mask.release();
-    }
-    else {
-      cv::rotate(m, output_mask,
-          cv::ROTATE_90_COUNTERCLOCKWISE);
+    if( !m.empty() ) {
+      cv::rotate(m, m, cv::ROTATE_90_COUNTERCLOCKWISE);
     }
 
+    copy_output_mask(m, output_mask);
   }
 
   return fOk;

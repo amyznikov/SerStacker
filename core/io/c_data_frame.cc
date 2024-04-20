@@ -57,6 +57,20 @@ static void reduce_color_channels(cv::InputArray src, cv::OutputArray dst, enum 
 
 } // namespace
 
+void c_data_frame::copy_output_mask(cv::InputArray src, cv::OutputArray dst)
+{
+  if ( src.empty() ) {
+    dst.release();
+  }
+  else if ( src.channels() == 1 ) {
+    src.copyTo(dst);
+  }
+  else {
+    reduce_color_channels(src, dst, cv::
+        REDUCE_MAX);
+  }
+}
+
 c_data_frame::DisplayMap::iterator c_data_frame::add_display_channel(const std::string & display_name,
     const std::string & tooltip,
     double minval,
@@ -67,13 +81,14 @@ c_data_frame::DisplayMap::iterator c_data_frame::add_display_channel(const std::
 
   if ( pos == data_displays_.end() ) {
 
-    const DisplayData c = {
-        .tooltip = tooltip,
-        .minval = minval,
-        .maxval = maxval
-    };
+    DisplayData c;
+    c.tooltip = tooltip;
+    c.minval = minval;
+    c.maxval = maxval;
 
-    pos = data_displays_.emplace(display_name, c).first;
+    pos =
+        data_displays_.emplace(display_name,
+            std::move(c)).first;
   }
 
   pos->second.images.clear();
@@ -182,7 +197,7 @@ bool c_data_frame::get_image(const std::string &display_name,
       fOk = true;
     }
     if (output_mask.needed() && !display.masks.empty()) {
-      display.masks[0].copyTo(output_mask);
+      copy_output_mask(display.masks[0], output_mask);
       fOk = true;
     }
     if (output_data.needed() && !display.data.empty()) {

@@ -688,7 +688,7 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
       cv::Mat input_image, input_data, input_mask;
       cv::Mat output_image;
 
-      if ( !dataframe->get_image(input_, input_image, input_data, input_mask) ) {
+      if ( !dataframe->get_image(input_, input_image, input_mask, input_data) ) {
         CF_ERROR("dataframe->get_image('%s') fails", input_.c_str());
         return false;
       }

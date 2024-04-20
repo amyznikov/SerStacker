@@ -98,6 +98,9 @@ public:
   void update_selection(cv::InputArray mask,
       SELECTION_MASK_MODE mode);
 
+  static void copy_output_mask(cv::InputArray src,
+      cv::OutputArray dst);
+
 protected:
   DisplayMap::iterator add_display_channel(const std::string & name,
       const std::string & tooltip = "",

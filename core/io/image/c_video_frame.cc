@@ -43,11 +43,11 @@ bool c_video_frame::get_image(const std::string & display_name,
   if ( display_name == "PIXEL_VALUE" ) {
 
     if ( output_image.needed() ) {
-      this->current_image_.copyTo(output_image);
+      current_image_.copyTo(output_image);
     }
 
     if( output_mask.needed() ) {
-      this->current_mask_.copyTo(output_mask);
+      copy_output_mask(current_mask_, output_mask);
     }
 
     if ( output_data.needed() ) {

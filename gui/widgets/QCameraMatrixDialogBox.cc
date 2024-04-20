@@ -13,7 +13,7 @@
 #include <core/debug.h>
 
 static const std::string config_path =
-    expand_path("~/.config/SerStacker/saved_cameras.cfg");
+    "~/.config/SerStacker/saved_cameras.cfg";
 
 
 
@@ -163,7 +163,11 @@ QCameraMatrixDialogBox::QCameraMatrixDialogBox(QWidget * parent) :
 
 void QCameraMatrixDialogBox::load_cameras()
 {
-  if( !file_readable(config_path) ) {
+  const std::string path =
+      expand_path(config_path);
+
+
+  if( !file_readable(path) ) {
     return;
   }
 

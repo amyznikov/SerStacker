@@ -22,19 +22,23 @@ struct c_named_camera
 static std::vector<c_named_camera> known_cameras;
 
 static const std::string config_path =
-    expand_path("~/.config/SerStacker/known_cameras.cfg");
+    "~/.config/SerStacker/known_cameras.cfg";
 
 
 void load_known_cameras()
 {
-  if( !file_readable(config_path) ) {
+
+  const std::string path =
+      expand_path(config_path);
+
+  if( !file_readable(path) ) {
     return;
   }
 
   c_config config;
 
-  if( !config.read(config_path) ) {
-    CF_ERROR("config.read('%s') fails", config_path.c_str());
+  if( !config.read(path) ) {
+    CF_ERROR("config.read('%s') fails", path.c_str());
     return;
   }
 
@@ -103,9 +107,12 @@ void save_known_cameras()
     save_settings(item, "dist_coeffs", known_cameras[i].intrinsics.dist_coeffs);
   }
 
-  if( !config.write(config_path) ) {
+  const std::string path =
+      expand_path(config_path);
+
+  if( !config.write(path) ) {
     CF_ERROR("config.write('%s') fails",
-        config_path.c_str());
+        path.c_str());
   }
 
 }

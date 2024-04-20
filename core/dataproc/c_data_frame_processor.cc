@@ -545,9 +545,10 @@ c_data_frame_processor::sptr c_data_frame_processor_collection::get(const std::s
 
 bool c_data_frame_processor_collection::save(const std::string & output_path) const
 {
-  const std::string &output_directory = output_path.empty() ?
-      default_processor_collection_path_ :
-      output_path;
+  const std::string output_directory =
+      expand_path(output_path.empty() ?
+          default_processor_collection_path_ :
+          output_path);
 
   if ( !create_path(output_directory) ) {
     CF_ERROR("create_path(output_directory=%s) fails: %s",

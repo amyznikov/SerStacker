@@ -47,7 +47,7 @@
 
 # include <windows.h>
 # include <sys/stat.h>
-# include <Shlwapi.h>
+# include <shlwapi.h>
 # include <io.h>
 
 # if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
@@ -541,9 +541,14 @@ std::string get_home_directory()
   }
 
 #if __WIN32 || __WIN64
-  if ( !home ) {
-    errno = ENOENT;
+
+  char buf[MAX_PATH + 1] = "";
+  if (SUCCEEDED(SHGetFolderPathA(HWND_DESKTOP, CSIDL_LOCAL_APPDATA, NULL, 0, buf))) {
+    return buf;
   }
+
+  errno = ENOENT;
+
 #else
 
   struct passwd pwd;
@@ -563,7 +568,9 @@ std::string get_home_directory()
   else {
     errno = status;
   }
+
 #endif
+
   return "";
 }
 
@@ -572,7 +579,7 @@ std::string get_home_directory()
  */
 std::string expand_path(const std::string & path)
 {
-  if ( ~path.empty() && path[0] == '~' ) {
+  if ( !path.empty() && path[0] == '~' ) {
     std::string abspath = path;
     abspath.replace(0, 1, get_home_directory());
     return abspath;
@@ -600,7 +607,8 @@ int readdir(std::vector<std::string> * list, const std::string & _path,
   struct dirent * e = NULL;
   std::vector<std::string> masks;
 
-  const std::string path = _path.empty() ? "." : expand_path(_path);
+  const std::string path =
+      _path.empty() ? "." : expand_path(_path);
 
   split(filemask, &masks, '|');
 
@@ -937,11 +945,16 @@ static void copy_convert_slashes_to_unix(const char * src, char dst[])
   *dst = 0;
 }
 
-bool create_path(const std::string & path, mode_t mode)
+bool create_path(const std::string & _path, mode_t mode)
 {
   (void)(mode);
 
-  size_t size = path.size();
+  const std::string path =
+      expand_path(_path);
+
+  size_t size =
+      path.size();
+
 #ifndef  _MSC_VER
   char tmp[size + 1];
 #else

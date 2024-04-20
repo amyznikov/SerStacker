@@ -16,8 +16,8 @@ c_config::c_config()
   construct();
 }
 
-c_config::c_config(const std::string & filename)
-  : defaultFilename_(filename)
+c_config::c_config(const std::string & filename) :
+    defaultFilename_(filename)
 {
   construct();
 }
@@ -133,18 +133,28 @@ bool c_config::write(const std::string & filename)
 {
   errno = 0;
 
-  const std::string & fname = filename.empty() ? defaultFilename_ : filename;
+  const std::string fname =
+      expand_path(filename.empty() ?
+          defaultFilename_ :
+          filename);
+
   if ( fname.empty() ) {
-    CF_FATAL("ERROR: c_config::write(): No config file name specified, can not write config file");
+    CF_FATAL("ERROR: c_config::write(): No config file name specified, "
+        "can not write config file");
     errno = EINVAL;
     return false;
   }
 
 
   if ( !file_exists(fname) ) {
-    const std::string path = get_parent_directory(fname);
+
+    const std::string path =
+        get_parent_directory(fname);
+
     if ( !path.empty() && !create_path(path) ) {
-      CF_FATAL("ERROR: c_config::write(): create_path('%s') fails: %s", fname.c_str(), strerror(errno));
+      CF_FATAL("ERROR: c_config::write(): create_path('%s') fails: %s",
+          fname.c_str(),
+          strerror(errno));
       return false;
     }
   }

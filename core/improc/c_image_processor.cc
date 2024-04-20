@@ -385,10 +385,8 @@ bool c_image_processor::save(const std::string & path_or_filename,
   }
 
   if ( filename[0] == '~' ) {
-    filename.replace(0, 1, get_home_directory());
+    filename = expand_path(filename);
   }
-
-  //  CF_DEBUG("Saving '%s' ...", filename.c_str());
 
   c_config cfg(filename);
 
@@ -602,9 +600,10 @@ bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
 
 bool c_image_processor_collection::save(const std::string & output_path) const
 {
-  const std::string &output_directory = output_path.empty() ?
-      default_processor_collection_path_ :
-      output_path;
+  const std::string output_directory =
+      expand_path(output_path.empty() ?
+        default_processor_collection_path_ :
+        output_path);
 
   if ( !create_path(output_directory) ) {
     CF_ERROR("create_path(output_directory=%s) fails: %s",

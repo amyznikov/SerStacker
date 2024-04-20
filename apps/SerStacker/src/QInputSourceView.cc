@@ -46,7 +46,8 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
 
   mainLayout_ = new QVBoxLayout(this);
   mainLayout_->setAlignment(Qt::AlignTop);
-  mainLayout_->setContentsMargins(0,0,0,0);
+  setContentsMargins(0, 0, 0, 0);
+  //mainLayout_->setContentsMargins(0,0,0,0);
   //mainLayout_->setMargin(0);
   mainLayout_->setSpacing(0);
 
@@ -166,8 +167,8 @@ void QInputSourceView::setupMainToolbar()
 
             if ( currentFrame_ ) {
 
-              const std::set<DataViewType> & viewTypwes =
-                  currentFrame_->get_supported_view_types();
+              const auto & viewTypwes =
+                  currentFrame_->get_available_display_types();
 
               if ( viewTypwes.size() > 1 ) {
 
@@ -445,7 +446,7 @@ void QInputSourceView::loadNextFrame()
 void QInputSourceView::processCurrentFrame()
 {
   if( !currentFrame_ ) {
-    selectedViewType_ = DataViewType_Image;
+    selectedViewType_ = DisplayType_Image;
     viewSelectionToolbutton_ctl->setEnabled(false);
   }
   else {
@@ -454,11 +455,11 @@ void QInputSourceView::processCurrentFrame()
       CF_ERROR("currentProcessor_->process(currentFrame_) fails");
     }
 
-    const std::set<DataViewType> & viewTypes =
-        currentFrame_->get_supported_view_types();
+    const auto & viewTypes =
+        currentFrame_->get_available_display_types();
 
     if( viewTypes.empty() ) {
-      selectedViewType_ = DataViewType_Image;
+      selectedViewType_ = DisplayType_Image;
     }
     else if( viewTypes.find(selectedViewType_) == viewTypes.end() ) {
       selectedViewType_ = *viewTypes.begin();
@@ -478,7 +479,7 @@ void QInputSourceView::closeCurrentSource()
   currentFrame_.reset();
 }
 
-void QInputSourceView::setViewType(DataViewType viewType)
+void QInputSourceView::setViewType(DisplayType viewType)
 {
   if ( viewType != selectedViewType_ ) {
     selectedViewType_ = viewType;
@@ -487,7 +488,7 @@ void QInputSourceView::setViewType(DataViewType viewType)
   if( currentFrame_ ) {
 
     const auto & new_displays =
-        currentFrame_->displayChannels();
+        currentFrame_->get_available_data_displays();
 
     auto & existing_displays =
         this->displays_;
@@ -541,10 +542,11 @@ void QInputSourceView::displayCurrentFrame()
 
     switch (selectedViewType_) {
 
-      case DataViewType_Image:
+      case DisplayType_Image: {
 
-        currentFrame_->get_data(&selectedViewType_,
-            displayChannel_.toStdString(),
+        cv::Mat image, data, mask;
+
+        currentFrame_->get_image(displayChannel_.toStdString(),
             image, data, mask);
 
         setCurrentView(imageView_);
@@ -552,18 +554,21 @@ void QInputSourceView::displayCurrentFrame()
         imageView_->inputMask() = mask;
         imageView_->updateImage();
         break;
+      }
 
-      case DataViewType_PointCloud:
+      case DisplayType_PointCloud: {
 
-        currentFrame_->get_data(&selectedViewType_,
-            displayChannel_.toStdString(),
-            image, data, mask);
+        cv::Mat points, colors, mask;
+
+        currentFrame_->get_point_cloud(displayChannel_.toStdString(),
+            points, colors, mask);
 
         setCurrentView(cloudView_);
-        cloudView_->setPoints(image, data, mask, false);
+        cloudView_->setPoints(points, colors, mask, false);
         break;
+      }
 
-      case DataViewType_TextFile:
+      case DisplayType_TextFile:
         setCurrentView(textView_);
         textView_->showTextFile(currentFrame_->get_filename());
         break;
@@ -648,10 +653,10 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
   *minval = *maxval = 0;
 
   switch (selectedViewType_) {
-    case DataViewType_Image:
+    case DisplayType_Image:
       getminmax(imageView_->currentImage(), minval, maxval, imageView_->currentMask());
       break;
-    case DataViewType_PointCloud:
+    case DisplayType_PointCloud:
       getminmax(cloudView_->currentColors(), minval, maxval, cloudView_->currentMask());
       break;
     default:
@@ -663,7 +668,7 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   switch (selectedViewType_) {
-    case DataViewType_Image:
+    case DisplayType_Image:
 
       create_histogram(imageView_->currentImage(),
           imageView_->currentMask(),
@@ -676,7 +681,7 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
 
       break;
 
-    case DataViewType_PointCloud:
+    case DisplayType_PointCloud:
 
       create_histogram(cloudView_->currentColors(),
           cloudView_->currentMask(),
@@ -700,7 +705,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
 {
 
   switch (selectedViewType_) {
-    case DataViewType_Image:
+    case DisplayType_Image:
 
       create_histogram(imageView_->mtfImage(),
           imageView_->currentMask(),
@@ -712,7 +717,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
 
       break;
 
-    case DataViewType_PointCloud:
+    case DisplayType_PointCloud:
 
       create_histogram(cloudView_->mtfColors(),
           cloudView_->currentMask(),

@@ -38,6 +38,14 @@ foreach(QRC_FILE ${QRC_FILES})
 	endif()
 endforeach()
 
+unset(WIN32_RESOURCES)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/app-resources.rc)
+	    enable_language("RC")
+	    set (WIN32_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/app-resources.rc)
+	endif()
+endif()
+
 add_executable(${PROJECT_NAME} ${CURRENT_SOURCES} ${CURRENT_HEADERS})
 
 include_directories(src)

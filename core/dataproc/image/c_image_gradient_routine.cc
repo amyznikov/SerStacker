@@ -48,19 +48,23 @@ bool c_image_gradient_routine::serialize(c_config_setting settings, bool save)
 
 bool c_image_gradient_routine::process(c_video_frame * frame)
 {
-  cv::Mat input_image, output_image;
-  cv::Mat input_mask, output_mask;
 
-  if ( !frame->get_image(input_image_name_, input_image, input_mask) ) {
-    CF_ERROR("frame->get_image('%s') fails", input_image_name_.c_str());
-    return false;
-  }
+  CF_ERROR("ERROR: the code of c_image_gradient_routine is broken now. Fix it and try again");
+  return false;
 
-  compute_gradient(input_image, output_image,
-      1, 0,
-      2);
-
-  frame->set_image(output_image_name_, output_image, output_mask);
-
-  return true;
+//  cv::Mat input_image, output_image;
+//  cv::Mat input_mask, output_mask;
+//
+//  if ( !frame->get_image(input_image_name_, input_image, input_mask) ) {
+//    CF_ERROR("frame->get_image('%s') fails", input_image_name_.c_str());
+//    return false;
+//  }
+//
+//  compute_gradient(input_image, output_image,
+//      1, 0,
+//      2);
+//
+//  frame->set_image(output_image_name_, output_image, output_mask);
+//
+//  return true;
 }

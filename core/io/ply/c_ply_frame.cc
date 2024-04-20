@@ -9,8 +9,8 @@
 
 c_ply_frame::c_ply_frame()
 {
-  viewTypes_.emplace(DataViewType_TextFile);
-  viewTypes_.emplace(DataViewType_PointCloud);
+  display_types_.emplace(DisplayType_TextFile);
+  display_types_.emplace(DisplayType_PointCloud);
 
   add_display_channel("COLORS",
       "Point Color",
@@ -38,22 +38,18 @@ std::string c_ply_frame::get_filename()
   return filename_;
 }
 
-bool c_ply_frame::get_data(DataViewType * selectedViewType,
-    const std::string & channelName,
-    cv::OutputArray image,
-    cv::OutputArray data,
-    cv::OutputArray mask)
+bool c_ply_frame::get_point_cloud(const std::string & display_name,
+      cv::OutputArray output_points,
+      cv::OutputArray output_colors,
+      cv::OutputArray output_mask)
 {
-  *selectedViewType =
-      DataViewType_PointCloud;
-
-  if( image.needed() ) {
-    cv::Mat(points_).copyTo(image);
+  if( output_points.needed() ) {
+    cv::Mat(points_).copyTo(output_points);
   }
 
-  if( data.needed() ) {
+  if( output_colors.needed() ) {
 
-    if( channelName == "DISTANCES" ) {
+    if( display_name == "DISTANCES" ) {
 
       cv::Mat1f distances(points_.size(), 1);
 
@@ -63,24 +59,24 @@ bool c_ply_frame::get_data(DataViewType * selectedViewType,
             points_[i][2] * points_[i][2]);
       }
 
-      data.move(distances);
+      output_colors.move(distances);
     }
-    else if( channelName == "X" ) {
-      cv::extractChannel(cv::Mat(points_), data, 0);
+    else if( display_name == "X" ) {
+      cv::extractChannel(cv::Mat(points_), output_colors, 0);
     }
-    else if( channelName == "Y" ) {
-      cv::extractChannel(cv::Mat(points_), data, 1);
+    else if( display_name == "Y" ) {
+      cv::extractChannel(cv::Mat(points_), output_colors, 1);
     }
-    else if( channelName == "Z" ) {
-      cv::extractChannel(cv::Mat(points_), data, 2);
+    else if( display_name == "Z" ) {
+      cv::extractChannel(cv::Mat(points_), output_colors, 2);
     }
     else  {
-      cv::Mat(colors_).copyTo(data);
+      cv::Mat(colors_).copyTo(output_colors);
     }
   }
 
-  if( mask.needed() ) {
-    mask.release();
+  if( output_mask.needed() ) {
+    output_mask.release();
   }
 
   return true;

@@ -6,18 +6,17 @@
  */
 
 #include "c_data_frame.h"
-#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
 template<>
-const c_enum_member* members_of<DataViewType>()
+const c_enum_member* members_of<DisplayType>()
 {
   static const c_enum_member members[] = {
-      { DataViewType_Image, "Image", "Image" },
-      { DataViewType_PointCloud, "PointCloud", "PointCloud" },
-      { DataViewType_TextFile, "TextFile", "TextFile" },
-      { DataViewType_Image },
+      { DisplayType_Image, "Image", "Image" },
+      { DisplayType_PointCloud, "PointCloud", "PointCloud" },
+      { DisplayType_TextFile, "TextFile", "TextFile" },
+      { DisplayType_Image },
   };
 
   return members;
@@ -38,68 +37,175 @@ const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
   return members;
 }
 
-void c_data_frame::add_display_channel(const std::string & name,
+namespace {
+
+static void reduce_color_channels(cv::InputArray src, cv::OutputArray dst, enum cv::ReduceTypes rtype, int dtype = -1)
+{
+  cv::Mat s, tmp;
+
+  if (src.isContinuous()) {
+    s = src.getMat();
+  }
+  else {
+    src.copyTo(s);
+  }
+
+  const int src_rows = s.rows;
+  cv::reduce(s.reshape(1, s.total()), tmp, 1, rtype, dtype);
+  tmp.reshape(0, src_rows).copyTo(dst);
+}
+
+} // namespace
+
+c_data_frame::DisplayMap::iterator c_data_frame::add_display_channel(const std::string & display_name,
     const std::string & tooltip,
     double minval,
     double maxval)
 {
-  const DataDisplayChannel c = {
-      .tooltip = tooltip,
-      .minval = minval,
-      .maxval = maxval
-  };
+  auto pos =
+      data_displays_.find(display_name);
 
-  displayChannels_.emplace(name, c);
-}
+  if ( pos == data_displays_.end() ) {
 
-bool c_data_frame::set_data(DataViewType viewType,
-    const std::string & channelName,
-    cv::InputArray image,
-    cv::InputArray data,
-    cv::InputArray mask)
-{
-  const auto pos =
-      displayChannels_.find(channelName);
-
-  if ( pos != displayChannels_.end() ) {
-
-    image.copyTo(pos->second.image);
-    data.copyTo(pos->second.data);
-
-    if( mask.empty() || mask.channels() == 1 ) {
-      mask.copyTo(pos->second.mask);
-    }
-    else {
-      reduce_color_channels(mask, pos->second.mask,
-          cv::REDUCE_MAX);
-    }
-
-  }
-  else {
-
-    DataDisplayChannel c = {
-        .tooltip = channelName,
-        .minval = -1,
-        .maxval = -1
+    const DisplayData c = {
+        .tooltip = tooltip,
+        .minval = minval,
+        .maxval = maxval
     };
 
-    image.copyTo(c.image);
-    data.copyTo(c.data);
-
-    if ( !mask.empty() ) {
-      if ( mask.channels() == 1 ) {
-        mask.copyTo(c.mask);
-      }
-      else {
-        reduce_color_channels(mask, c.mask,
-            cv::REDUCE_MAX);
-      }
-    }
-
-    displayChannels_.emplace(channelName, c);
+    pos = data_displays_.emplace(display_name, c).first;
   }
 
-  return true;
+  pos->second.images.clear();
+  pos->second.data.clear();
+  pos->second.masks.clear();
+
+  return pos;
+}
+
+void c_data_frame::add_image(const std::string &display_name,
+    cv::InputArray image,
+    cv::InputArray mask,
+    cv::InputArray data)
+{
+
+  auto &display =
+      add_display_channel(display_name)->second;
+
+  if (!image.empty()) {
+    display.images.emplace_back(image.getMat().clone());
+  }
+  if (!data.empty()) {
+    display.data.emplace_back(data.getMat().clone());
+  }
+  if (!mask.empty()) {
+    display.masks.emplace_back(mask.getMat().clone());
+  }
+
+  display_types_.emplace(DisplayType_Image);
+}
+
+
+void c_data_frame::add_images(const std::string & display_name,
+    const std::vector<cv::Mat> & images,
+    const std::vector<cv::Mat> & masks,
+    const std::vector<cv::Mat> & data)
+{
+  auto &display =
+      add_display_channel(display_name)->second;
+
+  if (!images.empty()) {
+    display.images = images;
+  }
+  if (!data.empty()) {
+    display.data = data;
+  }
+  if (!masks.empty()) {
+    display.masks = masks;
+  }
+
+  display_types_.emplace(DisplayType_Image);
+}
+
+void c_data_frame::add_images(const std::string &display_name,
+    size_t count,
+    const cv::Mat images[/*count*/],
+    const cv::Mat masks[/*count*/],
+    const cv::Mat data[/*count*/])
+{
+  auto &display =
+      add_display_channel(display_name)->second;
+
+  for ( size_t i = 0; i < count; ++i ) {
+
+    if ( images ) {
+      display.images.emplace_back(images[i]);
+    }
+
+    if ( masks ) {
+      display.masks.emplace_back(masks[i]);
+    }
+
+    if ( data ) {
+      display.data.emplace_back(data[i]);
+    }
+  }
+
+  display_types_.emplace(DisplayType_Image);
+}
+
+void c_data_frame::add_point_cloud(const std::string & display_name,
+    cv::InputArray points,
+    cv::InputArray colors,
+    cv::InputArray mask)
+{
+  CF_ERROR("FIXME: c_data_frame::add_point_cloud() not implemented");
+}
+
+bool c_data_frame::get_image(const std::string &display_name,
+    cv::OutputArray output_image,
+    cv::OutputArray output_mask,
+    cv::OutputArray output_data)
+{
+  const auto pos =
+      data_displays_.find(display_name);
+
+  bool fOk = false;
+
+  if (pos != data_displays_.end()) {
+
+    const auto &display =
+        pos->second;
+
+    if (output_image.needed() && !display.images.empty()) {
+      display.images[0].copyTo(output_image);
+      fOk = true;
+    }
+    if (output_mask.needed() && !display.masks.empty()) {
+      display.masks[0].copyTo(output_mask);
+      fOk = true;
+    }
+    if (output_data.needed() && !display.data.empty()) {
+      display.data[0].copyTo(output_data);
+      fOk = true;
+    }
+  }
+
+  return fOk;
+}
+
+
+bool c_data_frame::get_point_cloud(const std::string & display_name,
+    cv::OutputArray points,
+    cv::OutputArray colors,
+    cv::OutputArray mask)
+{
+  return false;
+}
+
+std::string c_data_frame::get_filename()
+{
+  return "";
 }
 
 

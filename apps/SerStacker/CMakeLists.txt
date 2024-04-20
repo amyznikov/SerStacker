@@ -26,6 +26,13 @@ foreach(QRC_FILE ${QRC_FILES})
 	endif()
 endforeach()
 
+unset(WIN32_RESOURCES)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/app-resources.rc)
+	    enable_language("RC")
+	    set (WIN32_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/app-resources.rc)
+	endif()
+endif()
 
 include_directories(src/dataset 
 	src/dataset/vlo)
@@ -57,7 +64,7 @@ endif()
 endforeach()
 #############################################################################################
 
-add_executable(${PROJECT_NAME} ${CURRENT_HEADERS} ${CURRENT_SOURCES})
+add_executable(${PROJECT_NAME} ${CURRENT_HEADERS} ${CURRENT_SOURCES} ${WIN32_RESOURCES})
 
 if (WIN32)
 set(OpenGL_LIBS GLU32 opengl32)

@@ -114,7 +114,7 @@ protected:
   void processCurrentFrame();
   void onSeek(int pos);
   void onStackedWidgetCurrentIndexChanged();
-  void setViewType(DataViewType viewType);
+  void setViewType(DisplayType viewType);
   void displayCurrentFrame();
 
   bool applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
@@ -171,7 +171,7 @@ protected:
   //std::set<DataViewType> supportedViewTypes_;
   //std::vector<c_enum_member> displayTypes_;
   // c_enum_members displayChannels_;
-  DataViewType selectedViewType_ = DataViewType_Image;
+  DisplayType selectedViewType_ = DisplayType_Image;
 
   //////////////////////////////////////////
   // TEMPORARY HACK SUUFF

@@ -23,11 +23,10 @@ public:
 
   std::string get_filename() override;
 
-  bool get_data(DataViewType * selectedViewType,
-      const std::string & channelName,
-      cv::OutputArray image,
-      cv::OutputArray data,
-      cv::OutputArray mask) override;
+  bool get_point_cloud(const std::string & display_name,
+      cv::OutputArray output_points,
+      cv::OutputArray output_colors,
+      cv::OutputArray output_mask) override;
 
 protected:
   friend class c_ply_input_source;

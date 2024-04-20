@@ -24,8 +24,8 @@ public:
 
   enum InputType
   {
-    InputType_Image = DataViewType_Image,
-    InputType_PointCloud = DataViewType_PointCloud,
+    InputType_Image = DisplayType_Image,
+    InputType_PointCloud = DisplayType_PointCloud,
   };
 
   InputType input_type() const

@@ -13,28 +13,28 @@
 #include <memory>
 #include <vector>
 #include <set>
+#include <map>
 
-enum DataViewType
+enum DisplayType
 {
-  DataViewType_Image,
-  DataViewType_PointCloud,
-  DataViewType_TextFile,
+  DisplayType_Image,
+  DisplayType_PointCloud,
+  DisplayType_TextFile,
 };
 
-struct DataDisplayChannel
+struct DisplayData
 {
   std::string tooltip;
+  std::vector<cv::Mat> images, data, masks;
   double minval, maxval;
-  cv::Mat image, data, mask;
 };
-
 
 class c_data_frame
 {
 public:
   typedef c_data_frame this_class;
   typedef std::shared_ptr<this_class> sptr;
-  typedef std::map<std::string, DataDisplayChannel> DisplayMap;
+  typedef std::map<std::string, DisplayData, std::less<std::string>> DisplayMap;
 
   enum SELECTION_MASK_MODE
   {
@@ -48,36 +48,48 @@ public:
   c_data_frame() = default;
   virtual ~c_data_frame() = default;
 
-  const std::set<DataViewType> & get_supported_view_types() const
+  const std::set<DisplayType, std::less<DisplayType>> & get_available_display_types() const
   {
-    return viewTypes_;
+    return display_types_;
   }
 
-  const DisplayMap & displayChannels() const
+  const DisplayMap & get_available_data_displays() const
   {
-    return displayChannels_;
+    return data_displays_;
   }
 
-  virtual bool get_data(DataViewType * viewType,
-      const std::string & channelName,
-      cv::OutputArray image,
-      cv::OutputArray data,
-      cv::OutputArray mask)
-  {
-    return false;
-  }
+  virtual bool get_image(const std::string & display_name,
+      cv::OutputArray output_image,
+      cv::OutputArray output_mask,
+      cv::OutputArray output_data);
 
-  virtual bool set_data(DataViewType viewType,
-      const std::string & channelName,
+  virtual bool get_point_cloud(const std::string & display_name,
+      cv::OutputArray output_points,
+      cv::OutputArray output_colors,
+      cv::OutputArray output_mask);
+
+  virtual std::string get_filename();
+
+  virtual void add_image(const std::string & display_name,
       cv::InputArray image,
-      cv::InputArray data,
+      cv::InputArray mask,
+      cv::InputArray data);
+
+  virtual void add_images(const std::string & display_name,
+      const std::vector<cv::Mat> & images,
+      const std::vector<cv::Mat> & masks = std::vector<cv::Mat>(),
+      const std::vector<cv::Mat> & data = std::vector<cv::Mat>());
+
+  virtual void add_images(const std::string & display_name,
+      size_t count,
+      const cv::Mat images[/*count*/],
+      const cv::Mat masks[/*count*/],
+      const cv::Mat data[/*count*/]);
+
+  virtual void add_point_cloud(const std::string & display_name,
+      cv::InputArray points,
+      cv::InputArray colors,
       cv::InputArray mask);
-
-  virtual std::string get_filename()
-  {
-    return "";
-  }
-
 
   virtual void cleanup()
   {
@@ -87,14 +99,14 @@ public:
       SELECTION_MASK_MODE mode);
 
 protected:
-  void add_display_channel(const std::string & name,
-      const std::string & tooltip,
-      double minval,
-      double maxval);
+  DisplayMap::iterator add_display_channel(const std::string & name,
+      const std::string & tooltip = "",
+      double minval = -1,
+      double maxval = -1 );
 
 protected:
-  std::set<DataViewType> viewTypes_;
-  DisplayMap displayChannels_;
+  std::set<DisplayType, std::less<DisplayType>> display_types_;
+  DisplayMap data_displays_;
   cv::Mat selection_mask_;
 };
 

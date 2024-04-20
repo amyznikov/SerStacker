@@ -15,7 +15,7 @@ c_video_frame::c_video_frame()
       "PIXEL_VALUE",
       -1, -1);
 
-  viewTypes_.emplace(DataViewType_Image);
+  display_types_.emplace(DisplayType_Image);
 }
 
 void c_video_frame::cleanup()
@@ -31,52 +31,59 @@ void c_video_frame::get_output_mask(cv::OutputArray output_mask)
   }
 }
 
-bool c_video_frame::get_data(DataViewType * selectedViewType,
-    const std::string & channelName,
+bool c_video_frame::get_image(const std::string & display_name,
     cv::OutputArray output_image,
-    cv::OutputArray output_data,
-    cv::OutputArray output_mask)
+    cv::OutputArray output_mask,
+    cv::OutputArray output_data )
 {
-  * selectedViewType = DataViewType_Image;
-
-  if ( output_image.needed() ) {
-    this->current_image_.copyTo(output_image);
+  if (base::get_image(display_name, output_image, output_mask, output_data)) {
+    return true;
   }
 
-  if( output_mask.needed() ) {
-    this->current_mask_.copyTo(output_mask);
+  if ( display_name == "PIXEL_VALUE" ) {
+
+    if ( output_image.needed() ) {
+      this->current_image_.copyTo(output_image);
+    }
+
+    if( output_mask.needed() ) {
+      this->current_mask_.copyTo(output_mask);
+    }
+
+    if ( output_data.needed() ) {
+      output_data.release();
+    }
+
+    return true;
   }
 
-  if ( output_data.needed() ) {
-    output_data.release();
-  }
-
-  return true;
+  return false;
 }
 
-bool c_video_frame::get_image(int id, cv::OutputArray output_image,
-    cv::OutputArray output_mask)
-{
-  switch (id) {
-    case PIXEL_VALUE:
-
-      if( output_image.needed() ) {
-        this->current_image_.copyTo(output_image);
-      }
-
-      if( output_mask.needed() ) {
-        this->current_mask_.copyTo(output_mask);
-      }
-
-      break;
-
-    default:
-      CF_ERROR("Invalid data item id=%d requested", id);
-      return false;
-  }
-
-  return true;
-}
+//
+//bool c_video_frame::get_image(int id, cv::OutputArray output_image,
+//    cv::OutputArray output_mask)
+//{
+//  switch (id) {
+//    case PIXEL_VALUE:
+//
+//      if( output_image.needed() ) {
+//        this->current_image_.copyTo(output_image);
+//      }
+//
+//      if( output_mask.needed() ) {
+//        this->current_mask_.copyTo(output_mask);
+//      }
+//
+//      break;
+//
+//    default:
+//      CF_ERROR("Invalid data item id=%d requested", id);
+//      return false;
+//  }
+//
+//  return true;
+//}
 
 void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode)
 {
@@ -119,50 +126,50 @@ void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode
   }
 
 }
+//
+//bool c_video_frame::get_image(const std::string & name, cv::OutputArray output_image, cv::OutputArray output_mask)
+//{
+//  if( name.empty() ) {
+//
+//    if( output_image.needed() ) {
+//      this->current_image_.copyTo(output_image);
+//    }
+//
+//    if( output_mask.needed() ) {
+//      this->current_mask_.copyTo(output_mask);
+//    }
+//
+//    return true;
+//  }
+//
+//  const auto pos =
+//      computed_images_.find(name);
+//
+//  if( pos == computed_images_.end() ) {
+//    CF_ERROR("computed_images_.find(name='%s') fails",
+//        name.c_str());
+//    return false;
+//  }
+//
+//  if( output_image.needed() ) {
+//    pos->second.copyTo(output_image);
+//  }
+//
+//  if( output_mask.needed() ) {
+//    this->current_mask_.copyTo(output_mask);
+//  }
+//
+//  return true;
+//}
 
-bool c_video_frame::get_image(const std::string & name, cv::OutputArray output_image, cv::OutputArray output_mask)
-{
-  if( name.empty() ) {
-
-    if( output_image.needed() ) {
-      this->current_image_.copyTo(output_image);
-    }
-
-    if( output_mask.needed() ) {
-      this->current_mask_.copyTo(output_mask);
-    }
-
-    return true;
-  }
-
-  const auto pos =
-      computed_images_.find(name);
-
-  if( pos == computed_images_.end() ) {
-    CF_ERROR("computed_images_.find(name='%s') fails",
-        name.c_str());
-    return false;
-  }
-
-  if( output_image.needed() ) {
-    pos->second.copyTo(output_image);
-  }
-
-  if( output_mask.needed() ) {
-    this->current_mask_.copyTo(output_mask);
-  }
-
-  return true;
-}
-
-
-void c_video_frame::set_image(const std::string & name, cv::InputArray image, cv::InputArray mask)
-{
-  if( name.empty() ) {
-    image.copyTo(this->current_image_);
-  }
-  else {
-    image.copyTo(computed_images_[name]);
-  }
-}
+//
+//void c_video_frame::set_image(const std::string & name, cv::InputArray image, cv::InputArray mask)
+//{
+//  if( name.empty() ) {
+//    image.copyTo(this->current_image_);
+//  }
+//  else {
+//    image.copyTo(computed_images_[name]);
+//  }
+//}
 

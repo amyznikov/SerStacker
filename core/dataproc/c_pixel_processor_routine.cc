@@ -660,16 +660,6 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
     return false;
   }
 
-
-  DataViewType v = (DataViewType)input_type_;
-
-  cv::Mat input_image, input_data, input_mask;
-
-  if ( !dataframe->get_data(&v, input_, input_image, input_data, input_mask) ) {
-    CF_ERROR("dataframe->get_data('%s') fails", input_);
-    return false;
-  }
-
   if( expression_changed_ ) {
 
     setup_math_parser(math_);
@@ -686,47 +676,53 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
     expression_changed_ = false;
   }
 
+//  cv::Mat input_image, input_data, input_mask;
+//
+//  DisplayType v = (DisplayType)input_type_;
 
-  switch (v) {
-    case DataViewType_Image: {
+
+
+  switch (input_type_) {
+
+    case DisplayType_Image: {
+      cv::Mat input_image, input_data, input_mask;
       cv::Mat output_image;
+
+      if ( !dataframe->get_image(input_, input_image, input_data, input_mask) ) {
+        CF_ERROR("dataframe->get_image('%s') fails", input_.c_str());
+        return false;
+      }
 
       if ( !process_image(math_, input_image, output_image, output_depth_) ) {
         CF_ERROR("process_image() fails");
         return false;
       }
 
-      dataframe->set_data(v, output_,
-          output_image,
-          cv::noArray(),
-          cv::noArray());
+      dataframe->add_image(output_, output_image, cv::noArray(), cv::noArray());
 
       break;
     }
-    case DataViewType_PointCloud: {
+    case DisplayType_PointCloud: {
 
+      cv::Mat input_points, input_colors, input_mask;
       cv::Mat output_colors;
 
-//      CF_DEBUG("\n"
-//          "input_image: %dx%d channels=%d depth=%d\n"
-//          "input_data: %dx%d channels=%d depth=%d\n"
-//          "input_mask: %dx%d channels=%d depth=%d\n"
-//          ,
-//          input_image.rows, input_image.cols, input_image.channels(), input_image.depth(),
-//          input_data.rows, input_data.cols, input_data.channels(), input_data.depth(),
-//          input_mask.rows, input_mask.cols, input_mask.channels(), input_mask.depth());
+      if ( !dataframe->get_point_cloud(input_, input_points, input_colors, input_mask) ) {
+        CF_ERROR("dataframe->get_point_cloud('%s') fails", input_.c_str());
+        return false;
+      }
 
-      if ( !process_point_cloud(math_, input_image, input_data, input_mask, output_colors, output_depth_) ) {
+      if ( !process_point_cloud(math_, input_points, input_colors, input_mask, output_colors, output_depth_) ) {
         CF_ERROR("process_point_cloud() fails");
         return false;
       }
 
-      dataframe->set_data(v, output_, input_image, output_colors, cv::noArray());
+      dataframe->add_point_cloud(output_, input_points, output_colors, input_mask);
 
       break;
     }
     default:
-      CF_ERROR("Unsupported view type %d", v);
+      CF_ERROR("Unsupported view type %d", input_type_);
       return false;
   }
 

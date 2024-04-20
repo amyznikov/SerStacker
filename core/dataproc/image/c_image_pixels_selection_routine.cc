@@ -195,7 +195,7 @@ bool c_image_pixels_selection_routine::process(c_video_frame * frame)
   }
 
 
-  frame->get_image("", current_image_);
+  frame->get_image("PIXEL_VALUE", current_image_, cv::noArray(), cv::noArray());
   process_image(current_image_, current_mask_, math_);
 
   if ( invert_selection_ ) {

@@ -47,9 +47,10 @@ bool c_crop_image_routine::serialize(c_config_setting settings, bool save)
 
 bool c_crop_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::Size size = image.size();
+  const cv::Size size =
+      image.size();
 
-  CF_DEBUG("rect_: x=%d y=%d w=%d h=%d", rect_.x, rect_.y, rect_.width, rect_.height);
+  //CF_DEBUG("rect_: x=%d y=%d w=%d h=%d", rect_.x, rect_.y, rect_.width, rect_.height);
 
   cv::Rect rc;
   adjust_rect(rect_, rc, size);
@@ -59,11 +60,11 @@ bool c_crop_image_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   }
   else {
 
-    if( !image.empty() ) {
+    if( image.needed() && !image.empty() ) {
       image.getMat()(rc).copyTo(image);
     }
 
-    if( !mask.empty() ) {
+    if( mask.needed() && !mask.empty() ) {
       mask.getMat()(rc).copyTo(mask);
     }
   }

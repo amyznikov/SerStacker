@@ -29,21 +29,19 @@ public:
 
   c_video_frame();
 
+  bool get_image(const std::string & display_name,
+      cv::OutputArray output_image,
+      cv::OutputArray output_mask,
+      cv::OutputArray output_data ) override;
 
-  bool get_data(DataViewType * selectedViewType,
-      const std::string & channelName,
-      cv::OutputArray image,
-      cv::OutputArray data,
-      cv::OutputArray mask) override;
+//  void set_image(const std::string & name, cv::InputArray image,
+//      cv::InputArray mask = cv::noArray());
+//
+//  bool get_image(int id, cv::OutputArray image,
+//      cv::OutputArray mask = cv::noArray()) ;
 
-  void set_image(const std::string & name, cv::InputArray image,
-      cv::InputArray mask = cv::noArray());
-
-  bool get_image(int id, cv::OutputArray image,
-      cv::OutputArray mask = cv::noArray()) ;
-
-  bool get_image(const std::string & name, cv::OutputArray image,
-      cv::OutputArray mask = cv::noArray());
+//  bool get_image(const std::string & name, cv::OutputArray image,
+//      cv::OutputArray mask = cv::noArray());
 
   void update_selection(cv::InputArray seletion_mask,
       SELECTION_MASK_MODE mode);
@@ -56,7 +54,7 @@ protected:
   friend class c_image_input_source;
   cv::Mat input_image_, current_image_;
   cv::Mat1b input_mask_, current_mask_;
-  std::map<std::string, cv::Mat> computed_images_;
+  //std::map<std::string, cv::Mat> computed_images_;
 
   cv::Matx33f color_matrix_ = cv::Matx33f::eye();
   COLORID colorid_ = COLORID_UNKNOWN;

@@ -24,11 +24,15 @@ public:
 
   c_hdl_data_frame();
 
-  bool get_data(DataViewType * selectedViewType,
-      const std::string & channelName,
-      cv::OutputArray image,
-      cv::OutputArray data,
-      cv::OutputArray mask) override;
+  bool get_image(const std::string & display_name,
+      cv::OutputArray output_image,
+      cv::OutputArray output_mask,
+      cv::OutputArray output_data ) override;
+
+  bool get_point_cloud(const std::string & display_name,
+      cv::OutputArray output_points,
+      cv::OutputArray output_colors,
+      cv::OutputArray output_mask) override;
 
   void cleanup() override;
 

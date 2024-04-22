@@ -1671,14 +1671,46 @@ void MainWindow::setupInputSequenceView()
   toolbar->addSeparator();
   toolbar->addWidget(new QToolbarSpacer());
 
-
-  toolbar->addAction(editMaskAction =
-      createCheckableAction(getIcon(ICON_mask),
-          "Mask",
-          "View / Edit image mask",
+  toolbar->addWidget(editMaskAction =
+      createCheckableToolButtonWithContextMenu(getIcon(ICON_mask), "tb1",
+          "test",
           false,
-          [this](bool checked) {
-            showImageViewOptions(is_visible(imageView) && checked);
+          [this](QToolButton * tb) {
+            showImageViewOptions(is_visible(imageView) && tb->isChecked());
+          },
+          [this](QToolButton * tb, const QPoint & pos) {
+
+            if ( is_visible(imageView) && !is_visible(imageViewOptionsDlgBox) ) {
+
+              QMenu menu;
+              QAction * action;
+
+              menu.addAction(createCheckableAction(QIcon(), "Transparent mask",
+                      "",
+                      imageView->transparentMask(),
+                      [this](bool checked) {
+                        imageView->setTransparentMask(checked);
+                      }));
+
+              menu.addSeparator();
+
+              for ( const auto * m = members_of<QImageViewer ::DisplayType>(); !m->name.empty(); ++m ) {
+
+                const QImageViewer ::DisplayType value = (QImageViewer ::DisplayType )m->value;
+
+                menu.addAction(createCheckableAction(QIcon(), m->name.c_str(),
+                        "",
+                        imageView->displayType() == value,
+                        [this, value](bool checked) {
+                          imageView->setDisplayType(value);
+                        }));
+
+              }
+
+              menu.exec(tb->mapToGlobal(QPoint(pos.x()-2, pos.y()-2)));
+
+            }
+
           }));
 
 

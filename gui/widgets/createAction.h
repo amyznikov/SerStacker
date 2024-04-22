@@ -148,6 +148,52 @@ QToolButton* createToolButton(const QIcon & icon, const QString & text, const QS
   return tb;
 }
 
+template<class Fn>
+QToolButton* createCheckableToolButton(const QIcon & icon, const QString & text, const QString & tooltip,
+    bool checked, Fn && onclicked)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+  tb->setCheckable(true);
+  tb->setChecked(checked);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      [tb, onclicked]() {
+        onclicked(tb);
+      });
+
+  return tb;
+}
+
+template<class Fn1, class Fn2>
+QToolButton* createCheckableToolButtonWithContextMenu(const QIcon & icon, const QString & text, const QString & tooltip,
+    bool checked, Fn1 && onclicked, Fn2 && oncontextmenu)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+  tb->setCheckable(true);
+  tb->setChecked(checked);
+  tb->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      [tb, onclicked]() {
+        onclicked(tb);
+      });
+
+  QObject::connect(tb, &QToolButton::customContextMenuRequested,
+      [tb, oncontextmenu](const QPoint & pos) {
+        oncontextmenu(tb, pos);
+      });
+
+  return tb;
+}
+
 inline QWidget* addStretch(QToolBar * toolbar)
 {
   QWidget *stretch = new QWidget();

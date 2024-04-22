@@ -137,7 +137,8 @@ private:
   QAction * setReferenceFrameAction = nullptr;
   QAction * copyDisplayImageAction = nullptr;
   QAction * copyDisplayViewportAction = nullptr;
-  QAction * editMaskAction = nullptr;
+  //QAction * editMaskAction = nullptr;
+  QToolButton * editMaskAction = nullptr;
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
   QAction * viewInputOptionsAction = nullptr;

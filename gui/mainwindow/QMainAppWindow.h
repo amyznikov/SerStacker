@@ -95,42 +95,40 @@ protected:
 
 protected:
   /// Main menu
-  QMenu * menuFile_ = nullptr;
-  QMenu * menuEdit_ = nullptr;
-  QMenu * menuView_ = nullptr;
+  QMenu * menuFile = nullptr;
+  QMenu * menuEdit = nullptr;
+  QMenu * menuView = nullptr;
 
   /// Log Widget
-  QAction * showLogWidgetAction_ = nullptr;
+  QAction * showLogWidgetAction = nullptr;
   QLogWidget * logWidget_ctl = nullptr;
-  QLogWidgetDock * logWidgetDock_ = nullptr;
+  QLogWidgetDock * logWidgetDock = nullptr;
 
   /// Display Options /  MTF
-  QMtfControlDialogBox * mtfControl_ = nullptr;
-  QAction * showMtfControlAction_ = nullptr;
+  QMtfControlDialogBox * mtfControl = nullptr;
+  QAction * showMtfControlAction = nullptr;
 
   /// Current dataframe processor
   QDataFrameProcessorSelector * dataframeProcessor_ctl = nullptr;
-  QCustomDockWidget * dataframeProcessorDock_ = nullptr;
-  QAction * showDataframeProcessorAction_ = nullptr;
+  QCustomDockWidget * dataframeProcessorDock = nullptr;
+  QAction * showDataframeProcessorAction = nullptr;
 
   /// Current image processor
   QImageProcessorSelector * imageProcessor_ctl = nullptr;
-  QCustomDockWidget * imageProcessorDock_ = nullptr;
-  QAction * showImageProcessorAction_ = nullptr;
+  QCustomDockWidget * imageProcessorDock = nullptr;
+  QAction * showImageProcessorAction = nullptr;
 
 
   /// Measures
-  QMeasureSettingsDialogBox * measureSettingsDisplay_ = nullptr;
-  QMeasureDisplayDialogBox * measureDisplay_ = nullptr;
-  QMeasureGraph * measuresGraph_ = nullptr;
-  QMeasureGraphDock * measuresGraphDock_ = nullptr;
-  QAction * showMeasuresSettingsAction_ = nullptr;
-  QAction * showMeasuresDisplayAction_ = nullptr;
-  QAction * showMeasuresGraphAction_ = nullptr;
-  QAction * measuresMenuAction_ = nullptr;
-  QMenu measuresMenu_;
-  // QToolButton * measureActionsToolButton_ = nullptr;
-
+  QMeasureSettingsDialogBox * measureSettingsDisplay = nullptr;
+  QMeasureDisplayDialogBox * measureDisplay = nullptr;
+  QMeasureGraph * measuresGraph = nullptr;
+  QMeasureGraphDock * measuresGraphDock = nullptr;
+  QAction * showMeasuresSettingsAction = nullptr;
+  QAction * showMeasuresDisplayAction = nullptr;
+  QAction * showMeasuresGraphAction = nullptr;
+  QAction * measuresMenuAction = nullptr;
+  QMenu measuresMenu;
 
   QProfileGraph * profileGraph_ctl_ = nullptr;
   QProfileGraphDialogBox * plotProfileDialogBox_ = nullptr;

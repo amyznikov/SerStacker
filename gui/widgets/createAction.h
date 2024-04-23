@@ -186,6 +186,11 @@ QToolButton* createCheckableToolButtonWithContextMenu(const QIcon & icon, const 
         onclicked(tb);
       });
 
+//  QObject::connect(tb, &QToolButton::toggled,
+//      [tb, onclicked]() {
+//        onclicked(tb);
+//      });
+
   QObject::connect(tb, &QToolButton::customContextMenuRequested,
       [tb, oncontextmenu](const QPoint & pos) {
         oncontextmenu(tb, pos);

@@ -115,15 +115,15 @@ void MainWindow::setupMainMenu()
 
   ///////////////////////////////////////////////////////////////////
 
-  menuFile_->addSeparator();
-  menuFile_->addAction("Quit", [this]() {
+  menuFile->addSeparator();
+  menuFile->addAction("Quit", [this]() {
     close();
   });
 
 
   ///////////////////////////////////////////////////////////////////
 
-  menuEdit_->addAction(copyDisplayImageAction =
+  menuEdit->addAction(copyDisplayImageAction =
       createAction(getIcon(ICON_copy),
           "Copy display image to clipboard (Ctrl+c)",
           "Copy display image to clipboard (Ctrl+c)",
@@ -140,7 +140,7 @@ void MainWindow::setupMainMenu()
               Qt::WindowShortcut)));
 
 
-  menuEdit_->addAction(copyDisplayViewportAction =
+  menuEdit->addAction(copyDisplayViewportAction =
       createAction(QIcon(),
           "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
           "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
@@ -159,7 +159,7 @@ void MainWindow::setupMainMenu()
   ///////////////////////////////////////////////////////////////////
 
   menuViewShapes_ =
-      menuView_->addMenu(getIcon(ICON_shapes),
+      menuView->addMenu(getIcon(ICON_shapes),
           "Shapes");
 
   menuViewShapes_->addAction(showRectShapeAction_ =
@@ -199,11 +199,11 @@ void MainWindow::setupMainMenu()
 
   /////////////////////////////////////
 
-  menuView_->addAction(showMtfControlAction_ =
+  menuView->addAction(showMtfControlAction =
       createCheckableAction(getIcon(ICON_histogram),
           "Display Options...",
           "Show / Hide Display Options",
-          is_visible(mtfControl_),
+          is_visible(mtfControl),
           this,
           &ThisClass::onShowMtfControlActionTriggered));
 
@@ -459,8 +459,8 @@ void MainWindow::setupMainToolbar()
   ///////////////////////////////////////////////////////////////////
 
 
-  mainToolbar_->addAction(showImageProcessorAction_);
-  mainToolbar_->addAction(showMtfControlAction_);
+  mainToolbar_->addAction(showImageProcessorAction);
+  mainToolbar_->addAction(showMtfControlAction);
 
   ///////////////////////////////////////////////////////////////////
 
@@ -490,7 +490,7 @@ void MainWindow::setupMainToolbar()
       createToolButtonWithMenu(getIcon(ICON_measures),
           "Measures",
           "Measures menu",
-          &measuresMenu_));
+          &measuresMenu));
 
   ///////////////////////////////////////////////////////////////////
 }
@@ -505,7 +505,7 @@ void MainWindow::setupStatusbar()
   sb->addPermanentWidget(exposure_status_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
 
-  show_log_ctl->setDefaultAction(showLogWidgetAction_);
+  show_log_ctl->setDefaultAction(showLogWidgetAction);
 }
 
 void MainWindow::setupCameraControls()
@@ -518,7 +518,7 @@ void MainWindow::setupCameraControls()
   cameraControlsDock_->setObjectName("imagerSettingsDock_");
   cameraControlsDock_->titleBar()->setWindowIcon(getIcon(ICON_camera));
 
-  menuView_->addAction(showCameraControlsAction_ =
+  menuView->addAction(showCameraControlsAction_ =
       cameraControlsDock_->toggleViewAction());
 
   showCameraControlsAction_->setIcon(getIcon(ICON_camera));
@@ -557,7 +557,7 @@ void MainWindow::setupPipelines()
           "pipelineSelectorDock_",
           "Live Pipelines",
           pipelineSelector_ctl = new QLivePipelineSelectionWidget(this),
-          menuView_);
+          menuView);
 
   pipelineSelectorDock_->titleBar()->setWindowIcon(getIcon(ICON_process));
 
@@ -584,7 +584,7 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
   Base::onMtfControlVisibilityChanged(visible);
 
   if( visible ) {
-    mtfControl_->setMtfDisplaySettings(getCurrentMtfDisplay());
+    mtfControl->setMtfDisplaySettings(getCurrentMtfDisplay());
   }
 }
 
@@ -691,7 +691,7 @@ void MainWindow::setupIndigoFocuser()
             "indigoFocuserDock",
             "Indigo focuser",
             indigoFocuser_ = new QIndigoFocuserWidget(this),
-            menuView_);
+            menuView);
 
     indigoFocuser_->setIndigoClient(indigoClient_);
     indigoFocuserDock_->hide();

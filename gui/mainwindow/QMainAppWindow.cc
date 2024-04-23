@@ -97,9 +97,9 @@ void QMainAppWindow::setupMainMenu()
   mbar->setNativeMenuBar(false);
 
 
-  menuFile_ = mbar->addMenu("&File");
-  menuEdit_ = mbar->addMenu("&Edit");
-  menuView_ = mbar->addMenu("&View");
+  menuFile = mbar->addMenu("&File");
+  menuEdit = mbar->addMenu("&Edit");
+  menuView = mbar->addMenu("&View");
 
 }
 
@@ -116,29 +116,29 @@ void QMainAppWindow::setupStatusbar()
 
 void QMainAppWindow::setupLogWidget()
 {
-  logWidgetDock_ =
+  logWidgetDock =
       addDock<QLogWidgetDock>(this,
           Qt::BottomDockWidgetArea,
           "logwidgetDock_",
           "Debug log",
           logWidget_ctl = new QLogWidget(this),
-          menuView_);
+          menuView);
 
   //logWidgetDock_->titleBar()->setWindowIcon(getIcon(ICON_log));
 
-  showLogWidgetAction_ = logWidgetDock_->toggleViewAction();
+  showLogWidgetAction = logWidgetDock->toggleViewAction();
   //showLogWidgetAction_->setIcon(getIcon(ICON_log));
 
-  connect(logWidgetDock_, &QDockWidget::visibilityChanged,
+  connect(logWidgetDock, &QDockWidget::visibilityChanged,
       this, &ThisClass::onLogWidgetVisibilityChanged);
 
-  logWidgetDock_->hide();
+  logWidgetDock->hide();
 }
 
 void QMainAppWindow::onLogWidgetVisibilityChanged(bool visible)
 {
-  if( showLogWidgetAction_ ) {
-    showLogWidgetAction_->setChecked(visible);
+  if( showLogWidgetAction ) {
+    showLogWidgetAction->setChecked(visible);
   }
 }
 
@@ -146,29 +146,29 @@ void QMainAppWindow::onLogWidgetVisibilityChanged(bool visible)
 
 void QMainAppWindow::setupImageProcessingControls()
 {
-  imageProcessorDock_ =
+  imageProcessorDock =
       addCustomDock(this,
           Qt::RightDockWidgetArea,
           "imageProcessorDock_",
           "Image Processing",
           imageProcessor_ctl = new QImageProcessorSelector(this),
-          menuView_);
+          menuView);
 
-  imageProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_display));
-  showImageProcessorAction_ = imageProcessorDock_->toggleViewAction();
-  showImageProcessorAction_->setIcon(getIcon(ICON_display));
-  showImageProcessorAction_->setToolTip("Show / Hide display image processing controls");
+  imageProcessorDock->titleBar()->setWindowIcon(getIcon(ICON_display));
+  showImageProcessorAction = imageProcessorDock->toggleViewAction();
+  showImageProcessorAction->setIcon(getIcon(ICON_display));
+  showImageProcessorAction->setToolTip("Show / Hide display image processing controls");
 
-  connect(showImageProcessorAction_, &QAction::triggered,
+  connect(showImageProcessorAction, &QAction::triggered,
       this, &ThisClass::onShowImageProcessorControlActionTriggered);
 
-  connect(imageProcessorDock_, &QDockWidget::visibilityChanged,
+  connect(imageProcessorDock, &QDockWidget::visibilityChanged,
       this, &ThisClass::onImageProcessorControlVisibilityChanged);
 
   connect(imageProcessor_ctl, &QImageProcessorSelector::parameterChanged,
       this, &ThisClass::onImageProcessorParameterChanged);
 
-  imageProcessorDock_->hide();
+  imageProcessorDock->hide();
 
 }
 
@@ -189,29 +189,29 @@ void QMainAppWindow::onImageProcessorParameterChanged()
 void QMainAppWindow::setupDataProcessingControls()
 {
 
-  dataframeProcessorDock_ =
+  dataframeProcessorDock =
       addCustomDock(this,
           Qt::RightDockWidgetArea,
           "dataframeProcessorDock_",
           "Data Processing",
           dataframeProcessor_ctl = new QDataFrameProcessorSelector(this),
-          menuView_);
+          menuView);
 
-  dataframeProcessorDock_->titleBar()->setWindowIcon(getIcon(ICON_display));
-  showDataframeProcessorAction_ = dataframeProcessorDock_->toggleViewAction();
-  showDataframeProcessorAction_->setIcon(getIcon(ICON_display));
-  showDataframeProcessorAction_->setToolTip("Show / Hide data frame processing controls");
+  dataframeProcessorDock->titleBar()->setWindowIcon(getIcon(ICON_display));
+  showDataframeProcessorAction = dataframeProcessorDock->toggleViewAction();
+  showDataframeProcessorAction->setIcon(getIcon(ICON_display));
+  showDataframeProcessorAction->setToolTip("Show / Hide data frame processing controls");
 
-  connect(showDataframeProcessorAction_, &QAction::triggered,
+  connect(showDataframeProcessorAction, &QAction::triggered,
       this, &ThisClass::onShowDataframeProcessorControlActionTriggered);
 
-  connect(dataframeProcessorDock_, &QDockWidget::visibilityChanged,
+  connect(dataframeProcessorDock, &QDockWidget::visibilityChanged,
       this, &ThisClass::onDataframeProcessorControlVisibilityChanged);
 
   connect(dataframeProcessor_ctl, &QDataFrameProcessorSelector::parameterChanged,
       this, &ThisClass::onDataframeProcessorParameterChanged);
 
-  dataframeProcessorDock_->hide();
+  dataframeProcessorDock->hide();
 }
 
 void QMainAppWindow::onShowDataframeProcessorControlActionTriggered(bool checked)
@@ -235,126 +235,126 @@ void QMainAppWindow::setupMeasures()
 {
   /////////
 
-  measuresGraphDock_ =
+  measuresGraphDock =
       addDock<QMeasureGraphDock>(this,
           Qt::RightDockWidgetArea,
           "measureGraphDock_",
           "Measure Graph",
-          measuresGraph_ = new QMeasureGraph(this));
+          measuresGraph = new QMeasureGraph(this));
 
-  measuresGraphDock_->titleBar()->setWindowIcon(getIcon(ICON_measure_chart));
+  measuresGraphDock->titleBar()->setWindowIcon(getIcon(ICON_measure_chart));
 
   /////////
 
-  showMeasuresSettingsAction_ =
+  showMeasuresSettingsAction =
       createCheckableAction(getIcon(ICON_measure_options),
           "Measure Options",
           "Show / Hide measure options",
-          is_visible(measureSettingsDisplay_),
+          is_visible(measureSettingsDisplay),
           this,
           &ThisClass::onShowMeasureSettingsActionTriggered);
 
-  showMeasuresDisplayAction_ =
+  showMeasuresDisplayAction =
       createCheckableAction(getIcon(ICON_measures_table),
           "Measures",
           "Show / Hide measures display",
-          is_visible(measureDisplay_),
+          is_visible(measureDisplay),
           this,
           &ThisClass::onShowMeasureDisplayActionTriggered);
 
-  showMeasuresGraphAction_ = measuresGraphDock_->toggleViewAction();
-  showMeasuresGraphAction_->setIcon(getIcon(ICON_measure_chart));
+  showMeasuresGraphAction = measuresGraphDock->toggleViewAction();
+  showMeasuresGraphAction->setIcon(getIcon(ICON_measure_chart));
 
   /////////
 
-  measuresMenu_.addAction(showMeasuresSettingsAction_);
-  measuresMenu_.addAction(showMeasuresDisplayAction_);
-  measuresMenu_.addAction(showMeasuresGraphAction_);
-  measuresMenu_.addSeparator();
+  measuresMenu.addAction(showMeasuresSettingsAction);
+  measuresMenu.addAction(showMeasuresDisplayAction);
+  measuresMenu.addAction(showMeasuresGraphAction);
+  measuresMenu.addSeparator();
 
-  if( menuView_ ) {
-    measuresMenuAction_ = menuView_->addMenu(&measuresMenu_);
-    measuresMenuAction_->setText("Measure");
-    measuresMenuAction_->setIcon(getIcon(ICON_measures));
+  if( menuView ) {
+    measuresMenuAction = menuView->addMenu(&measuresMenu);
+    measuresMenuAction->setText("Measure");
+    measuresMenuAction->setIcon(getIcon(ICON_measures));
   }
 
 
   /////////
 
-  connect(measuresGraphDock_, &QDockWidget::visibilityChanged,
+  connect(measuresGraphDock, &QDockWidget::visibilityChanged,
       this, &ThisClass::onMeasuresGraphVisibilityChanged);
 
-  measuresGraphDock_->hide();
+  measuresGraphDock->hide();
 }
 
 
 void QMainAppWindow::onShowMeasureSettingsActionTriggered(bool checked)
 {
   if ( !checked ) {
-    if ( measureSettingsDisplay_ ) {
-      measureSettingsDisplay_->hide();
+    if ( measureSettingsDisplay ) {
+      measureSettingsDisplay->hide();
     }
   }
   else {
-    if ( !measureSettingsDisplay_ ) {
+    if ( !measureSettingsDisplay ) {
 
-      measureSettingsDisplay_ = new QMeasureSettingsDialogBox(this);
+      measureSettingsDisplay = new QMeasureSettingsDialogBox(this);
       // measureSettingsDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
 
-      connect(measureSettingsDisplay_, &QMeasureSettingsDialogBox::visibilityChanged,
+      connect(measureSettingsDisplay, &QMeasureSettingsDialogBox::visibilityChanged,
           this, &ThisClass::onMeasureSettingsVisibilityChanged);
     }
 
-    measureSettingsDisplay_->show();
-    measureSettingsDisplay_->raise();
-    measureSettingsDisplay_->setFocus();
+    measureSettingsDisplay->show();
+    measureSettingsDisplay->raise();
+    measureSettingsDisplay->setFocus();
   }
 }
 
 void QMainAppWindow::onShowMeasureDisplayActionTriggered(bool checked)
 {
   if ( !checked ) {
-    if ( measureDisplay_ ) {
-      measureDisplay_->hide();
+    if ( measureDisplay ) {
+      measureDisplay->hide();
     }
   }
   else {
-    if ( !measureDisplay_ ) {
+    if ( !measureDisplay ) {
 
-      measureDisplay_ = new QMeasureDisplayDialogBox(this);
-      measureDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
+      measureDisplay = new QMeasureDisplayDialogBox(this);
+      measureDisplay->resize(QApplication::primaryScreen()->geometry().size() / 2);
 
-      connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
+      connect(measureDisplay, &QMeasureDisplayDialogBox::visibilityChanged,
           this, &ThisClass::onMeasuresDisplayVisibilityChanged);
 
-      connect(measureDisplay_, &QMeasureDisplayDialogBox::measureRightNowRequested,
+      connect(measureDisplay, &QMeasureDisplayDialogBox::measureRightNowRequested,
           this, &ThisClass::onMeasureRightNowRequested);
     }
 
-    measureDisplay_->show();
-    measureDisplay_->raise();
-    measureDisplay_->setFocus();
+    measureDisplay->show();
+    measureDisplay->raise();
+    measureDisplay->setFocus();
   }
 }
 
 void QMainAppWindow::onMeasureSettingsVisibilityChanged(bool visible)
 {
-  if ( measureSettingsDisplay_ ) {
-    showMeasuresSettingsAction_->setChecked(visible);
+  if ( measureSettingsDisplay ) {
+    showMeasuresSettingsAction->setChecked(visible);
   }
 }
 
 void QMainAppWindow::onMeasuresDisplayVisibilityChanged(bool visible)
 {
-  if ( showMeasuresDisplayAction_ ) {
-    showMeasuresDisplayAction_->setChecked(visible);
+  if ( showMeasuresDisplayAction ) {
+    showMeasuresDisplayAction->setChecked(visible);
   }
 }
 
 void QMainAppWindow::onMeasuresGraphVisibilityChanged(bool visible)
 {
-  if( measuresGraphDock_ ) {
-    measuresGraphDock_->toggleViewAction()->setChecked(visible);
+  if( measuresGraphDock ) {
+    measuresGraphDock->toggleViewAction()->setChecked(visible);
   }
 }
 
@@ -372,10 +372,10 @@ QToolButton* QMainAppWindow::createMtfControlButton()
       createCheckableToolButtonWithContextMenu(getIcon(ICON_histogram),
           "Display Options...",
           "Show / Hide Display Options",
-          is_visible(mtfControl_),
-          [this](QToolButton * ) {
-            if ( showMtfControlAction_ ) {
-              showMtfControlAction_->trigger();
+          is_visible(mtfControl),
+          [this](QToolButton * tb) {
+            if ( showMtfControlAction ) {
+              showMtfControlAction->trigger();
             }
           },
           [this](QToolButton * t, const QPoint & pos) {
@@ -383,23 +383,34 @@ QToolButton* QMainAppWindow::createMtfControlButton()
           });
 
 
+  if( showMtfControlAction ) {
+    connect(showMtfControlAction, &QAction::changed,
+        [this, tb]() {
+          if ( showMtfControlAction ) {
+            tb->blockSignals(true);
+            tb->setChecked(showMtfControlAction->isChecked());
+            tb->blockSignals(false);
+          }
+        });
+  }
+
   return tb;
 }
 
 void QMainAppWindow::setupMtfControls()
 {
-  if ( !showMtfControlAction_ ) {
-    showMtfControlAction_ =
+  if ( !showMtfControlAction ) {
+    showMtfControlAction =
         createCheckableAction(getIcon(ICON_histogram),
             "Display Options...",
             "Show / Hide Display Options",
-            is_visible(mtfControl_),
+            is_visible(mtfControl),
             this,
             &ThisClass::onShowMtfControlActionTriggered);
 
 
-    if( menuView_ ) {
-      menuView_->addAction(showMtfControlAction_);
+    if( menuView ) {
+      menuView->addAction(showMtfControlAction);
     }
   }
 }
@@ -407,28 +418,28 @@ void QMainAppWindow::setupMtfControls()
 void QMainAppWindow::onShowMtfControlActionTriggered(bool checked)
 {
   if( !checked ) {
-    if( mtfControl_ ) {
-      mtfControl_->hide();
+    if( mtfControl ) {
+      mtfControl->hide();
     }
   }
   else {
-    if( !mtfControl_ ) {
+    if( !mtfControl ) {
 
-      mtfControl_ = new QMtfControlDialogBox(this);
+      mtfControl = new QMtfControlDialogBox(this);
 
-      connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
+      connect(mtfControl, &QMtfControlDialogBox::visibilityChanged,
           this, &ThisClass::onMtfControlVisibilityChanged);
     }
 
-    mtfControl_->show();
-    mtfControl_->raise();
-    mtfControl_->setFocus();
+    mtfControl->show();
+    mtfControl->raise();
+    mtfControl->setFocus();
   }
 }
 
 void QMainAppWindow::onShowMtfControlActionContextMenuRequested(QToolButton * tb, const QPoint & pos)
 {
-  if( !is_visible(mtfControl_) ) {
+  if( !is_visible(mtfControl) ) {
 
     IMtfDisplay * mtfDisplay =
         getCurrentMtfDisplay();
@@ -467,8 +478,8 @@ void QMainAppWindow::onShowMtfControlActionContextMenuRequested(QToolButton * tb
 
 void QMainAppWindow::onMtfControlVisibilityChanged(bool visible)
 {
-  if( showMtfControlAction_ ) {
-    showMtfControlAction_->setChecked(visible);
+  if( showMtfControlAction ) {
+    showMtfControlAction->setChecked(visible);
   }
 }
 
@@ -492,12 +503,12 @@ void QMainAppWindow::setupProfileGraph()
             &ThisClass::onShowProfileGraphActionTriggered);
 
 
-    measuresMenu_.addAction(showProfileGraphAction_);
+    measuresMenu.addAction(showProfileGraphAction_);
 
-    if( menuView_ && !measuresMenuAction_ ) {
-      measuresMenuAction_ = menuView_->addMenu(&measuresMenu_);
-      measuresMenuAction_->setText("Measure");
-      measuresMenuAction_->setIcon(getIcon(ICON_measures));
+    if( menuView && !measuresMenuAction ) {
+      measuresMenuAction = menuView->addMenu(&measuresMenu);
+      measuresMenuAction->setText("Measure");
+      measuresMenuAction->setIcon(getIcon(ICON_measures));
     }
 
   }

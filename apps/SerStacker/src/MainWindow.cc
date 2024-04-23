@@ -80,7 +80,7 @@ MainWindow::MainWindow()
           }
         }
 
-        if ( is_visible(mtfControl_) ) {
+        if ( is_visible(mtfControl) ) {
           // force update MTF histogram
           onMtfControlVisibilityChanged(true);
         }
@@ -129,7 +129,7 @@ MainWindow::MainWindow()
 
   tabifyDockWidget(fileSystemTreeDock, sequencesTreeViewDock);
   //tabifyDockWidget(sequencesTreeDock, imageProcessorSelectorDock);
-  tabifyDockWidget(sequencesTreeViewDock, imageProcessorDock_);
+  tabifyDockWidget(sequencesTreeViewDock, imageProcessorDock);
 
 
   connect(QPipelineThread::instance(), &QPipelineThread::started,
@@ -302,7 +302,7 @@ void MainWindow::setupMainMenu()
   // File
   //
 
-  menuFile_->addAction(reloadCurrentFileAction =
+  menuFile->addAction(reloadCurrentFileAction =
       createAction(getIcon(ICON_reload),
           "Reload",
           "Reload current file from disk (Ctrl+R)",
@@ -322,7 +322,7 @@ void MainWindow::setupMainMenu()
               this, nullptr, nullptr,
               Qt::WindowShortcut)));
 
-  menuFile_->addAction(selectPreviousFileAction_ =
+  menuFile->addAction(selectPreviousFileAction_ =
       createAction(getIcon(ICON_prev),
           "Previous (Ctrl+PgUp)",
           "Select previous file (Ctrl+PgUp)",
@@ -333,7 +333,7 @@ void MainWindow::setupMainMenu()
               this, nullptr, nullptr,
               Qt::WindowShortcut)));
 
-  menuFile_->addAction(selectNextFileAction =
+  menuFile->addAction(selectNextFileAction =
       createAction(getIcon(ICON_next),
           "Next (Ctrl+PgDown)",
           "Select next file (Ctrl+PgDown)",
@@ -344,47 +344,47 @@ void MainWindow::setupMainMenu()
               this, nullptr, nullptr,
               Qt::WindowShortcut)));
 
-  menuFile_->addSeparator();
+  menuFile->addSeparator();
 
   saveImageAsAction =
-      menuFile_->addAction("Save current image as...",
+      menuFile->addAction("Save current image as...",
           this, &ThisClass::onSaveCurrentImageAs);
 
   saveImageAsAction->setEnabled(is_visible(imageView) &&
       !imageView->currentImage().empty());
 
   saveDisplayImageAsAction =
-      menuFile_->addAction("Save current display image as...",
+      menuFile->addAction("Save current display image as...",
           this, &ThisClass::onSaveCurrentDisplayImageAs);
 
   saveDisplayImageAsAction->setEnabled(is_visible(imageView) &&
       !imageView->displayImage().empty());
 
   saveImageMaskAction =
-      menuFile_->addAction("Save current image mask...",
+      menuFile->addAction("Save current image mask...",
           this, &ThisClass::onSaveCurrentImageMask);
 
   saveImageMaskAction->setEnabled(is_visible(imageView) &&
       !imageView->currentMask().empty());
 
   loadImageMaskAction =
-      menuFile_->addAction("Set current image mask from file...",
+      menuFile->addAction("Set current image mask from file...",
           this, &ThisClass::onLoadCurrentImageMask);
 
   loadImageMaskAction->setEnabled(is_visible(imageView) &&
       !imageView->currentImage().empty());
 
-  menuFile_->addSeparator();
+  menuFile->addSeparator();
 
   loadStackAction =
-      menuFile_->addAction("Load stack config...",
+      menuFile->addAction("Load stack config...",
           this, &ThisClass::onLoadStackConfig);
 
 
-  menuFile_->addSeparator();
+  menuFile->addSeparator();
 
   quitAppAction =
-      menuFile_->addAction("Quit",
+      menuFile->addAction("Quit",
           this, &ThisClass::close);
 
 
@@ -392,7 +392,7 @@ void MainWindow::setupMainMenu()
   // Edit
   //
 
-  menuEdit_->addAction(copyDisplayImageAction =
+  menuEdit->addAction(copyDisplayImageAction =
       createAction(QIcon(),
           "Copy display image to clipboard (Ctrl+c)",
           "Copy display image to clipboard (Ctrl+c)",
@@ -417,7 +417,7 @@ void MainWindow::setupMainMenu()
 
 
 
-  menuEdit_->addAction(copyDisplayViewportAction =
+  menuEdit->addAction(copyDisplayViewportAction =
       createAction(QIcon(),
           "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
           "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
@@ -440,7 +440,7 @@ void MainWindow::setupMainMenu()
   //
   // View
   //
-  menuView_->addAction(viewInputOptionsAction =
+  menuView->addAction(viewInputOptionsAction =
       createCheckableAction(QIcon(ICON_bayer),
           "Input Options...",
           "Configure input options",
@@ -466,7 +466,7 @@ void MainWindow::setupStatusbar()
   sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
   sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
   sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
-  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction_);
+  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
 }
 
 
@@ -488,7 +488,7 @@ void MainWindow::setupFileSystemTreeView()
       addFileSystemTreeDock(this, Qt::LeftDockWidgetArea,
           "fileSystemTreeDock",
           "Directory Tree",
-          menuView_);
+          menuView);
 
   fileSystemTreeDock->raise();
 
@@ -565,7 +565,7 @@ void MainWindow::setupStackTreeView()
           Qt::LeftDockWidgetArea,
           "sequencesTreeDock",
           "Sequences",
-          menuView_);
+          menuView);
 
   sequencesTreeView =
       sequencesTreeViewDock->treeView();
@@ -718,7 +718,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
     }
   }
 
-  if( is_visible(mtfControl_) ) { // force update MTF histogram
+  if( is_visible(mtfControl) ) { // force update MTF histogram
     onMtfControlVisibilityChanged(true);
   }
 
@@ -874,7 +874,7 @@ void MainWindow::onImageViewCurrentImageChanged()
     // checkIfBadFrameSelected();
   }
 
-  if( is_visible(mtfControl_) ) {
+  if( is_visible(mtfControl) ) {
     onMtfControlVisibilityChanged(true);
   }
 
@@ -923,7 +923,7 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
   IMtfDisplay * currentMtfDisplay =
       getCurrentMtfDisplay();
 
-  mtfControl_->setMtfDisplaySettings(currentMtfDisplay);
+  mtfControl->setMtfDisplaySettings(currentMtfDisplay);
 
 //  if ( is_visible(inputSourceView) ) {
 //    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
@@ -936,15 +936,15 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 //  }
 
   const QString currentFileName =
-      mtfControl_->mtfDisplaySettings() ?
+      mtfControl->mtfDisplaySettings() ?
           QFileInfo(inputSourceView->currentFileName()).fileName() :
           "";
 
   if( currentFileName.isEmpty() ) {
-    mtfControl_->setWindowTitle("Adjust Display Levels ...");
+    mtfControl->setWindowTitle("Adjust Display Levels ...");
   }
   else {
-    mtfControl_->setWindowTitle(qsprintf("Adjust Display Levels: %s",
+    mtfControl->setWindowTitle(qsprintf("Adjust Display Levels: %s",
         currentFileName.toUtf8().constData()));
   }
 
@@ -1644,7 +1644,7 @@ void MainWindow::setupInputSequenceView()
         currentFileNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
         toolbar->adjustSize();
 
-        if ( is_visible(mtfControl_) ) {
+        if ( is_visible(mtfControl) ) {
           onMtfControlVisibilityChanged(true);
         }
       });
@@ -1777,9 +1777,9 @@ void MainWindow::setupInputSequenceView()
           }));
 
 
-  roiActionsMenu_.addAction(showMeasuresSettingsAction_);
-  roiActionsMenu_.addAction(showMeasuresDisplayAction_);
-  roiActionsMenu_.addAction(showMeasuresGraphAction_);
+  roiActionsMenu_.addAction(showMeasuresSettingsAction);
+  roiActionsMenu_.addAction(showMeasuresDisplayAction);
+  roiActionsMenu_.addAction(showMeasuresGraphAction);
 
 
   toolbar->addWidget(createToolButtonWithPopupMenu(showRoiRectangleAction =

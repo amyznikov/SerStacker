@@ -431,25 +431,25 @@ void MainWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
 
 void MainWindow::setupMainToolbar()
 {
-  menuBar()->setCornerWidget(manToolbar_ =
+  menuBar()->setCornerWidget(mainToolbar_ =
       new QToolBar(this),
       Qt::TopRightCorner);
 
-  manToolbar_->setContentsMargins(0, 0, 0, 0);
-  manToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  manToolbar_->setIconSize(QSize(32, 18));
+  mainToolbar_->setContentsMargins(0, 0, 0, 0);
+  mainToolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  mainToolbar_->setIconSize(QSize(32, 18));
 
   ///////////////////////////////////////////////////////////////////
 
-  manToolbar_->addWidget(rectShapeActionsButton_ =
+  mainToolbar_->addWidget(rectShapeActionsButton_ =
       createToolButtonWithPopupMenu(showRectShapeAction_,
           &rectShapeActionsMenu_));
 
-  manToolbar_->addWidget(lineShapeActionsButton_ =
+  mainToolbar_->addWidget(lineShapeActionsButton_ =
       createToolButtonWithPopupMenu(showLineShapeAction_,
           &lineShapeActionsMenu_));
 
-  manToolbar_->addWidget(targetShapeActionsButton_ =
+  mainToolbar_->addWidget(targetShapeActionsButton_ =
       createToolButtonWithPopupMenu(showTargetShapeAction_,
           &targetShapeActionsMenu_));
 
@@ -459,12 +459,12 @@ void MainWindow::setupMainToolbar()
   ///////////////////////////////////////////////////////////////////
 
 
-  manToolbar_->addAction(showImageProcessorAction_);
-  manToolbar_->addAction(showMtfControlAction_);
+  mainToolbar_->addAction(showImageProcessorAction_);
+  mainToolbar_->addAction(showMtfControlAction_);
 
   ///////////////////////////////////////////////////////////////////
 
-  manToolbar_->addWidget(displayScaleControl_ = new QScaleSelectionButton());
+  mainToolbar_->addWidget(displayScaleControl_ = new QScaleSelectionButton());
   displayScaleControl_->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
   connect(displayScaleControl_, &QScaleSelectionButton::scaleChanged,
       [this](int currentScale) {
@@ -474,7 +474,7 @@ void MainWindow::setupMainToolbar()
 
   ///////////////////////////////////////////////////////////////////
 
-  manToolbar_->addAction(showLiveThreadSettingsAction_ =
+  mainToolbar_->addAction(showLiveThreadSettingsAction_ =
       createCheckableAction(getIcon(ICON_bayer),
           "Bayer",
           "Configure debayer options",
@@ -486,7 +486,7 @@ void MainWindow::setupMainToolbar()
 
   //manToolbar_->addAction(showMeasureDisplayDialogBoxAction_);
 
-  manToolbar_->addWidget(measureActionsToolButton_ =
+  mainToolbar_->addWidget(measureActionsToolButton_ =
       createToolButtonWithMenu(getIcon(ICON_measures),
           "Measures",
           "Measures menu",
@@ -584,9 +584,15 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
   Base::onMtfControlVisibilityChanged(visible);
 
   if( visible ) {
-    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
+    mtfControl_->setMtfDisplaySettings(getCurrentMtfDisplay());
   }
 }
+
+IMtfDisplay * MainWindow::getCurrentMtfDisplay()
+{
+  return centralDisplay_->mtfDisplayFunction();
+}
+
 
 void MainWindow::onCameraWriterStatusUpdate()
 {
@@ -697,7 +703,7 @@ void MainWindow::setupIndigoFocuser()
 void MainWindow::setupDisplayImageVideoWriter()
 {
   diplayImageWriter_.loadParameters();
-  manToolbar_->addWidget(displayImageVideoWriterToolButton_ =
+  mainToolbar_->addWidget(displayImageVideoWriterToolButton_ =
       createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
 }
 

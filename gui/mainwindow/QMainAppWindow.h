@@ -64,6 +64,7 @@ protected:
   virtual void onLogWidgetVisibilityChanged(bool visible);
 
   virtual void onShowMtfControlActionTriggered(bool checked);
+  virtual void onShowMtfControlActionContextMenuRequested(QToolButton * tb, const QPoint & pos);
   virtual void onMtfControlVisibilityChanged(bool visible);
 
   virtual void onShowMeasureSettingsActionTriggered(bool checked);
@@ -78,7 +79,10 @@ protected:
   virtual void onPlotProfileDialogBoxVisibilityChanged(bool visible);
   virtual void updateProfileGraph(QGraphicsItem * lineItem = nullptr);
 
+  virtual IMtfDisplay * getCurrentMtfDisplay();
+
 protected:
+  QToolButton * createMtfControlButton();
   static QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu);
   static QToolButton* createToolButtonWithMenu(const QIcon & icon, const QString & text, const QString & tooltip, QMenu * menu);
   static QWidget* addStretch(QToolBar * toolbar);

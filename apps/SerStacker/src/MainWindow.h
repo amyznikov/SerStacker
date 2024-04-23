@@ -99,6 +99,7 @@ private :
   void onMeasureRightNowRequested() override;
   void saveShapes(QSettings & settings);
   void loadShapes(const QSettings & settings);
+  IMtfDisplay * getCurrentMtfDisplay() override;
 
 private:
   QStackedWidget * centralStackedWidget = nullptr;

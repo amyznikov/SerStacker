@@ -903,20 +903,37 @@ void MainWindow::onDataframeProcessorParameterChanged()
   }
 }
 
+IMtfDisplay * MainWindow::getCurrentMtfDisplay()
+{
+  if ( is_visible(inputSourceView) ) {
+    return inputSourceView->mtfDisplay();
+  }
+
+  if ( is_visible(pipelineProgressImageView) ) {
+    return pipelineProgressImageView->mtfDisplay();
+  }
+
+  return nullptr;
+}
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)
 {
   Base::onMtfControlVisibilityChanged(visible);
 
-  if ( is_visible(inputSourceView) ) {
-    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
-  }
-  else if ( is_visible(pipelineProgressImageView) ) {
-    mtfControl_->setMtfDisplaySettings(pipelineProgressImageView->mtfDisplay());
-  }
-  else {
-    mtfControl_->setMtfDisplaySettings(nullptr);
-  }
+  IMtfDisplay * currentMtfDisplay =
+      getCurrentMtfDisplay();
+
+  mtfControl_->setMtfDisplaySettings(currentMtfDisplay);
+
+//  if ( is_visible(inputSourceView) ) {
+//    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
+//  }
+//  else if ( is_visible(pipelineProgressImageView) ) {
+//    mtfControl_->setMtfDisplaySettings(pipelineProgressImageView->mtfDisplay());
+//  }
+//  else {
+//    mtfControl_->setMtfDisplaySettings(nullptr);
+//  }
 
   const QString currentFileName =
       mtfControl_->mtfDisplaySettings() ?
@@ -1718,8 +1735,8 @@ void MainWindow::setupInputSequenceView()
       new QShapesButton(imageView->sceneView(),
           this));
 
-  toolbar->addAction(showMtfControlAction_);
-
+  //toolbar->addAction(showMtfControlAction_);
+  toolbar->addWidget(createMtfControlButton());
 
   ///
 
@@ -1917,7 +1934,8 @@ void MainWindow::setupInputSequenceView()
 
   toolbar = inputSourceView->cloudViewToolbar();
 
-  toolbar->addAction(showMtfControlAction_);
+//  toolbar->addAction(showMtfControlAction_);
+  toolbar->addWidget(createMtfControlButton());
 
   toolbar->addWidget(createToolButton(getIcon(ICON_options),
       "Options",
@@ -2124,7 +2142,8 @@ void MainWindow::setupPipelineProgressView()
       });
 
 
-  toolbar->addAction(showMtfControlAction_);
+//  toolbar->addAction(showMtfControlAction_);
+  toolbar->addWidget(createMtfControlButton());
 
 
   toolbar->addSeparator();

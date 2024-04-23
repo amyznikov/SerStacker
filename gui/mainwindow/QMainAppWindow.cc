@@ -366,6 +366,26 @@ void QMainAppWindow::onMeasureRightNowRequested()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+QToolButton* QMainAppWindow::createMtfControlButton()
+{
+  QToolButton * tb =
+      createCheckableToolButtonWithContextMenu(getIcon(ICON_histogram),
+          "Display Options...",
+          "Show / Hide Display Options",
+          is_visible(mtfControl_),
+          [this](QToolButton * ) {
+            if ( showMtfControlAction_ ) {
+              showMtfControlAction_->trigger();
+            }
+          },
+          [this](QToolButton * t, const QPoint & pos) {
+            onShowMtfControlActionContextMenuRequested(t, pos);
+          });
+
+
+  return tb;
+}
+
 void QMainAppWindow::setupMtfControls()
 {
   if ( !showMtfControlAction_ ) {
@@ -406,11 +426,55 @@ void QMainAppWindow::onShowMtfControlActionTriggered(bool checked)
   }
 }
 
+void QMainAppWindow::onShowMtfControlActionContextMenuRequested(QToolButton * tb, const QPoint & pos)
+{
+  if( !is_visible(mtfControl_) ) {
+
+    IMtfDisplay * mtfDisplay =
+        getCurrentMtfDisplay();
+
+    if( mtfDisplay ) {
+
+      const QStringList availableDisplayChannels =
+          mtfDisplay->displayChannels();
+
+      if( availableDisplayChannels.size() > 1 ) {
+
+        QMenu menu;
+
+        const QString & currentDisplayChannel =
+            mtfDisplay->displayChannel();
+
+        for( const QString & s : availableDisplayChannels ) {
+
+          menu.addAction(createCheckableAction(QIcon(), s, "",
+              s == currentDisplayChannel,
+              [s, mtfDisplay](bool checked) {
+                if ( checked ) {
+                  mtfDisplay->setDisplayChannel(s);
+                }
+              }));
+        }
+
+        if( !menu.isEmpty() ) {
+          menu.exec(tb->mapToGlobal(QPoint(pos.x() - 2, pos.y() - 2)));
+        }
+
+      }
+    }
+  }
+}
+
 void QMainAppWindow::onMtfControlVisibilityChanged(bool visible)
 {
   if( showMtfControlAction_ ) {
     showMtfControlAction_->setChecked(visible);
   }
+}
+
+IMtfDisplay * QMainAppWindow::getCurrentMtfDisplay()
+{
+  return nullptr;
 }
 
 

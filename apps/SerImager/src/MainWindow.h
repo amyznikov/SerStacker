@@ -66,6 +66,7 @@ protected:
   void onPlotProfileDialogBoxVisibilityChanged(bool visible) override;
   void onImageProcessorParameterChanged() override;
   void onMeasureRightNowRequested() override;
+  IMtfDisplay * getCurrentMtfDisplay() override;
 
 protected:
   QLivePipelineThread * liveView_ = nullptr;
@@ -93,7 +94,7 @@ protected:
   QMenu displayOptionsMenu_;
 
 
-  QToolBar * manToolbar_ = nullptr;
+  QToolBar * mainToolbar_ = nullptr;
   QMenu * menuViewShapes_ = nullptr;
 
   QAction * showRectShapeAction_ = nullptr;

@@ -525,7 +525,7 @@ void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
     if( !plotProfileDialogBox_ ) {
 
       plotProfileDialogBox_ = new QProfileGraphDialogBox(this);
-      profileGraph_ctl_ = plotProfileDialogBox_->profileGraph();
+      profileGraph_ctl = plotProfileDialogBox_->profileGraph();
 
       connect(plotProfileDialogBox_, &QProfileGraphDialogBox::visibilityChanged,
           this, &ThisClass::onPlotProfileDialogBoxVisibilityChanged);

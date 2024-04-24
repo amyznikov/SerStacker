@@ -130,7 +130,7 @@ protected:
   QAction * measuresMenuAction = nullptr;
   QMenu measuresMenu;
 
-  QProfileGraph * profileGraph_ctl_ = nullptr;
+  QProfileGraph * profileGraph_ctl = nullptr;
   QProfileGraphDialogBox * plotProfileDialogBox_ = nullptr;
   QAction * showProfileGraphAction_ = nullptr;
 

@@ -102,11 +102,46 @@ MainWindow::~MainWindow()
 void MainWindow::onSaveState(QSettings & settings)
 {
   Base::onSaveState(settings);
+
+  if ( imageProcessor_ctl ) {
+
+    settings.setValue(QString("imageProcessor/selected_processor"),
+        imageProcessor_ctl->selected_processor());
+  }
+
+  if ( dataframeProcessor_ctl ) {
+
+    settings.setValue(QString("dataframeProcessor/selected_processor"),
+        dataframeProcessor_ctl->selected_processor());
+  }
+
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
 {
   Base::onRestoreState(settings);
+
+  if ( imageProcessor_ctl ) {
+
+    const QString selected_processor =
+        settings.value(QString("imageProcessor/selected_processor")).toString();
+
+    if ( !selected_processor.isEmpty() ) {
+      imageProcessor_ctl->set_selected_processor(selected_processor);
+    }
+
+  }
+
+  if ( dataframeProcessor_ctl ) {
+
+    const QString selected_processor =
+        settings.value(QString("dataframeProcessor/selected_processor")).toString();
+
+    if ( !selected_processor.isEmpty() ) {
+      dataframeProcessor_ctl->set_selected_processor(selected_processor);
+    }
+
+  }
 }
 
 void MainWindow::setupMainMenu()
@@ -387,11 +422,11 @@ void MainWindow::onCentralDisplayLineShapeChanged()
       shape_status_ctl->show();
       showLineShapeAction_->setChecked(true);
 
-      if( is_visible(profileGraph_ctl_) ) {
+      if( is_visible(profileGraph_ctl) ) {
 
         QImageViewer::current_image_lock lock(centralDisplay_);
 
-        profileGraph_ctl_->showProfilePlot(line,
+        profileGraph_ctl->showProfilePlot(line,
             centralDisplay_->currentImage(),
             centralDisplay_->currentMask());
       }
@@ -418,7 +453,7 @@ void MainWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
 {
   Base::onPlotProfileDialogBoxVisibilityChanged(visible);
 
-  if( is_visible(profileGraph_ctl_) ) {
+  if( is_visible(profileGraph_ctl) ) {
 
     QGraphicsLineShape *shape =
         centralDisplay_->lineShape();
@@ -619,11 +654,11 @@ void MainWindow::onCurrentImageChanged()
 
 void MainWindow::updateMeasurements()
 {
-  if( is_visible(profileGraph_ctl_) ) {
+  if( is_visible(profileGraph_ctl) ) {
 
     QImageViewer::current_image_lock lock(centralDisplay_);
 
-    profileGraph_ctl_->showProfilePlot(profileGraph_ctl_->currentLine(),
+    profileGraph_ctl->showProfilePlot(profileGraph_ctl->currentLine(),
         centralDisplay_->currentImage(),
         centralDisplay_->currentMask());
   }
@@ -731,66 +766,6 @@ void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
   }
 
 }
-
-//void MainWindow::onShowMtfControlActionTriggered(bool checked)
-//{
-//  if( checked && !mtfControl_ ) {
-//
-//    mtfControl_ = new QMtfControlDialogBox(this);
-//    mtfControl_->setMtfDisplaySettings(centralDisplay_->mtfDisplayFunction());
-//
-//    connect(mtfControl_, &QMtfControlDialogBox::visibilityChanged,
-//        showMtfControlAction_, &QAction::setChecked);
-//  }
-//
-//  mtfControl_->setVisible(checked);
-//}
-//
-//void MainWindow::onShowMeasureSettingsActionTriggered(bool checked)
-//{
-//  if ( !checked ) {
-//    if ( measureSettingsDisplay_ ) {
-//      measureSettingsDisplay_->hide();
-//    }
-//  }
-//  else {
-//    if ( !measureSettingsDisplay_ ) {
-//
-//      measureSettingsDisplay_ = new QMeasureSettingsDialogBox(this);
-//      // measureSettingsDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
-//
-//      connect(measureSettingsDisplay_, &QMeasureSettingsDialogBox::visibilityChanged,
-//          showMeasureSettingsAction_, &QAction::setChecked);
-//    }
-//
-//    measureSettingsDisplay_->show();
-//    measureSettingsDisplay_->raise();
-//    measureSettingsDisplay_->setFocus();
-//  }
-//}
-//
-//void MainWindow::onShowMeasureDisplayActionTriggered(bool checked)
-//{
-//  if ( !checked ) {
-//    if ( measureDisplay_ ) {
-//      measureDisplay_->hide();
-//    }
-//  }
-//  else {
-//    if ( !measureDisplay_ ) {
-//
-//      measureDisplay_ = new QMeasureDisplayDialogBox(this);
-//      measureDisplay_->resize(QApplication::primaryScreen()->geometry().size() / 2);
-//
-//      connect(measureDisplay_, &QMeasureDisplayDialogBox::visibilityChanged,
-//          showMeasureDisplayAction_, &QAction::setChecked);
-//    }
-//
-//    measureDisplay_->show();
-//    measureDisplay_->raise();
-//    measureDisplay_->setFocus();
-//  }
-//}
 
 void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed)
 {

@@ -649,6 +649,21 @@ c_data_frame_processor::sptr QDataFrameProcessorSelector::currentProcessor() con
   return enabled_ctl->isChecked() ? currentProcessor_ : nullptr;
 }
 
+QString QDataFrameProcessorSelector::selected_processor() const
+{
+  return selector_ctl->currentText();
+}
+
+void QDataFrameProcessorSelector::set_selected_processor(const QString & name)
+{
+  const int index =
+      selector_ctl->findText(name);
+
+  if ( index >= 0 ) {
+    selector_ctl->setCurrentIndex(index);
+  }
+}
+
 bool QDataFrameProcessorSelector::imageProcessingEnabled() const
 {
   return enabled_ctl->isChecked();

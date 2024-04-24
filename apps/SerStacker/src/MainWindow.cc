@@ -167,14 +167,20 @@ void MainWindow::onSaveState(QSettings & settings)
     cloudView->saveParameters();
   }
 
-  if ( profileGraph_ctl_ ) {
-    profileGraph_ctl_->saveParameters("profileGraph");
+  if ( profileGraph_ctl ) {
+    profileGraph_ctl->saveParameters("profileGraph");
   }
 
   if ( imageProcessor_ctl ) {
 
     settings.setValue(QString("imageProcessor/selected_processor"),
         imageProcessor_ctl->selected_processor());
+  }
+
+  if ( dataframeProcessor_ctl ) {
+
+    settings.setValue(QString("dataframeProcessor/selected_processor"),
+        dataframeProcessor_ctl->selected_processor());
   }
 
   saveShapes(settings);
@@ -221,6 +227,17 @@ void MainWindow::onRestoreState(QSettings & settings)
 
     if ( !selected_processor.isEmpty() ) {
       imageProcessor_ctl->set_selected_processor(selected_processor);
+    }
+
+  }
+
+  if ( dataframeProcessor_ctl ) {
+
+    const QString selected_processor =
+        settings.value(QString("dataframeProcessor/selected_processor")).toString();
+
+    if ( !selected_processor.isEmpty() ) {
+      dataframeProcessor_ctl->set_selected_processor(selected_processor);
     }
 
   }
@@ -925,16 +942,6 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 
   mtfControl->setMtfDisplaySettings(currentMtfDisplay);
 
-//  if ( is_visible(inputSourceView) ) {
-//    mtfControl_->setMtfDisplaySettings(inputSourceView->mtfDisplay());
-//  }
-//  else if ( is_visible(pipelineProgressImageView) ) {
-//    mtfControl_->setMtfDisplaySettings(pipelineProgressImageView->mtfDisplay());
-//  }
-//  else {
-//    mtfControl_->setMtfDisplaySettings(nullptr);
-//  }
-
   const QString currentFileName =
       mtfControl->mtfDisplaySettings() ?
           QFileInfo(inputSourceView->currentFileName()).fileName() :
@@ -988,11 +995,11 @@ void MainWindow::updateMeasurements()
 
 void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
 {
-  if( is_visible(profileGraph_ctl_) && is_visible(imageView) ) {
+  if( is_visible(profileGraph_ctl) && is_visible(imageView) ) {
 
     if( QGraphicsLineShape *lineShape = dynamic_cast<QGraphicsLineShape*>(lineItem) ) {
 
-      profileGraph_ctl_->showProfilePlot(lineShape->sceneLine(),
+      profileGraph_ctl->showProfilePlot(lineShape->sceneLine(),
           imageView->currentImage(),
           imageView->currentMask());
 
@@ -1000,7 +1007,7 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
     else {
 
       QLine line =
-          profileGraph_ctl_->currentLine();
+          profileGraph_ctl->currentLine();
 
       if ( line.isNull() && is_visible(imageView) ) {
 
@@ -1015,7 +1022,7 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
         }
       }
 
-      profileGraph_ctl_->showProfilePlot(line,
+      profileGraph_ctl->showProfilePlot(line,
           imageView->currentImage(),
           imageView->currentMask());
 
@@ -1026,12 +1033,12 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
 void MainWindow::onShowProfileGraphActionTriggered(bool checked)
 {
   bool profileGraphAlreadyCreated =
-      profileGraph_ctl_ != nullptr;
+      profileGraph_ctl != nullptr;
 
   Base::onShowProfileGraphActionTriggered(checked);
 
-  if ( !profileGraphAlreadyCreated && profileGraph_ctl_ != nullptr ) {
-    profileGraph_ctl_->loadParameters("profileGraph");
+  if ( !profileGraphAlreadyCreated && profileGraph_ctl != nullptr ) {
+    profileGraph_ctl->loadParameters("profileGraph");
   }
 }
 

@@ -2317,6 +2317,17 @@ void c_running_frame_average::clear()
   accumulated_frames_ = 0;
 }
 
+bool c_running_frame_average::remap(const cv::Mat2f & rmap)
+{
+  if( !accumulator_.empty() && accumulator_.size() == rmap.size() ) {
+    cv::remap(accumulator_, accumulator_, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    cv::remap(counter_, counter_, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    return true;
+  }
+
+  return false;
+}
+
 
 bool c_running_frame_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap)
 {

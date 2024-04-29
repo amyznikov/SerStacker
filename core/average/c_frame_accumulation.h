@@ -199,6 +199,7 @@ public:
     return counter_;
   }
 
+  bool remap(const cv::Mat2f & rmap);
   bool add(cv::InputArray current_image, cv::InputArray current_mask,  double w, const cv::Mat2f * rmap = nullptr);
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const;
   void clear();

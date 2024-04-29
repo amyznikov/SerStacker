@@ -218,7 +218,8 @@ const cv::Mat & QImageViewer::displayImage() const
 
 QPixmap QImageViewer::grabViewportPixmap()
 {
-  return view_->grab();
+  QWidget * w = view_->viewport();
+  return w ? w->grab(w->rect()) : view_->grab(view_->rect());
 }
 
 QString QImageViewer::currentFileName() const

@@ -680,7 +680,9 @@ void MainWindow::onMeasureRightNowRequested()
 
 void MainWindow::onCurrentDisplayImageChanged()
 {
-  if ( diplayImageWriter_.started() ) {
+  if ( !lockDiplayImageWriter_ && diplayImageWriter_.started() ) {
+
+    lockDiplayImageWriter_ = true;
 
     if ( !centralDisplay_->isVisible() ) {
       diplayImageWriter_.stop();
@@ -688,6 +690,8 @@ void MainWindow::onCurrentDisplayImageChanged()
     else if ( !centralDisplay_->displayImage().empty() ) {
       diplayImageWriter_.write(centralDisplay_->displayImage());
     }
+
+    lockDiplayImageWriter_ = false;
   }
 }
 

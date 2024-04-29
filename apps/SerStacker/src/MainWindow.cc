@@ -673,9 +673,13 @@ void MainWindow::checkIfBadFrameSelected()
 
 void MainWindow::onWriteDisplayVideo()
 {
-  if( !diplayImageWriter_.started() || diplayImageWriter_.paused() ) {
+  // In rare cases for some reason this call may become recursive
+
+  if( lockDiplayImageWriter_ || !diplayImageWriter_.started() || diplayImageWriter_.paused() ) {
     return;
   }
+
+  lockDiplayImageWriter_ = true;
 
   QWidget * currentView =
       inputSourceView->currentView();
@@ -719,6 +723,8 @@ void MainWindow::onWriteDisplayVideo()
           image.bytesPerLine()));
     }
   }
+
+  lockDiplayImageWriter_ = false;
 }
 
 void MainWindow::onCurrentViewVisibilityChanged()

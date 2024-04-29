@@ -163,6 +163,7 @@ private:
   ///
   QDisplayVideoWriter diplayImageWriter_;
   QToolButton* displayImageVideoWriterToolButton_ = nullptr;
+  bool lockDiplayImageWriter_ = false;
 
   ///
   QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog_ = nullptr;

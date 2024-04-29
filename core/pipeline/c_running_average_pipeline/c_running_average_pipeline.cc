@@ -6,6 +6,7 @@
  */
 
 #include "c_running_average_pipeline.h"
+#include <core/proc/unsharp_mask.h>
 #include <core/io/load_image.h>
 
 c_running_average_pipeline::c_running_average_pipeline(const std::string & name,
@@ -32,6 +33,10 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
+    SERIALIZE_OPTION(section, save, registration_options_, double_align_moode);
+    SERIALIZE_OPTION(section, save, registration_options_, reference_unsharp_sigma_);
+    SERIALIZE_OPTION(section, save, registration_options_, reference_unsharp_alpha_);
+
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
 
     SERIALIZE_PROPERTY(section, save, *this, ecch_minimum_image_size);
@@ -65,6 +70,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
     SERIALIZE_OPTION(section, save, average_options_, running_weight);
+    SERIALIZE_OPTION(section, save, average_options_, reference_running_weight);
   }
 
 
@@ -77,10 +83,26 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, output_options_, output_accumulated_video_options);
     }
 
+    SERIALIZE_OPTION(section, save, output_options_, save_reference_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_reference_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_reference_video_options);
+    }
+
+
     SERIALIZE_OPTION(section, save, output_options_, display_scale);
   }
 
   return true;
+}
+
+bool c_running_average_pipeline::ecc_ctls_enabled() const
+{
+  return (registration_options_.enable_ecc || registration_options_.double_align_moode);
+}
+
+bool c_running_average_pipeline::eccflow_ctls_enabled() const
+{
+  return (registration_options_.enable_eccflow || registration_options_.double_align_moode);
 }
 
 const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline::get_controls()
@@ -95,40 +117,44 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
 
     PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
 
+      PIPELINE_CTL(ctrls, registration_options_.double_align_moode, "double_align_moode", "");
+      PIPELINE_CTLC(ctrls, registration_options_.reference_unsharp_sigma_, "ref_unsharp_sigma", "", _this->registration_options_.double_align_moode);
+      PIPELINE_CTLC(ctrls,  registration_options_.reference_unsharp_alpha_, "ref_unsharp_alpha", "", _this->registration_options_.double_align_moode);
+
       PIPELINE_CTL_GROUP(ctrls, "ECC", "");
         PIPELINE_CTL(ctrls, registration_options_.enable_ecc, "enabled", "");
 
-        PIPELINE_CTLC(ctrls, registration_options_.ecc_motion_type, "motion_type", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecch_minimum_image_size, "ecch_minimum_image_size", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecch_minimum_pyramid_level, "ecch_minimum_pyramid_level", "", (_this->registration_options_.enable_ecc));
+        PIPELINE_CTLC(ctrls, registration_options_.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecch_minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecch_minimum_pyramid_level, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
 
-        PIPELINE_CTLPC(ctrls, ecc_max_iterations, "ecc_max_iterations", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_max_eps, "ecc_max_eps", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_min_rho, "ecc_min_rho", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_interpolation, "ecc_interpolation", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_input_smooth_sigma, "input_smooth_sigma", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->registration_options_.enable_ecc));
-        PIPELINE_CTLPC(ctrls, ecc_update_step_scale, "update_step_scale", "", (_this->registration_options_.enable_ecc));
+        PIPELINE_CTLPC(ctrls, ecc_input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, ecc_update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
         PIPELINE_CTL(ctrls, registration_options_.enable_eccflow, "enabled", "");
 
-        PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "normalization_scale", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "input_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->registration_options_.enable_eccflow));
-        PIPELINE_CTLPC(ctrls, eccflow_update_multiplier, "update_multiplier", "", (_this->registration_options_.enable_eccflow));
+        PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "normalization_scale", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
       PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTLC(ctrls, registration_options_.min_rho, "min_rho", "",
-          (_this->registration_options_.enable_ecc || _this->registration_options_.enable_eccflow));
+      PIPELINE_CTLC(ctrls, registration_options_.min_rho, "min_rho", "", (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
 
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Average options", "");
+    PIPELINE_CTLC(ctrls, average_options_.reference_running_weight, "reference running_weight", "", (_this->registration_options_.double_align_moode));
     PIPELINE_CTL(ctrls, average_options_.running_weight, "running_weight", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
@@ -144,10 +170,29 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
           (_this->output_options_.save_accumulated_video));
     PIPELINE_CTL_END_GROUP(ctrls);
 
+    PIPELINE_CTL_GROUP(ctrls, "save_reference_video", "");
+      PIPELINE_CTL(ctrls, output_options_.save_reference_video, "save_reference_video", "");
+      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_reference_video_options,
+          (_this->output_options_.save_reference_video));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
   return ctrls;
+}
+
+///
+
+void c_running_average_pipeline::set_double_align_moode(bool v)
+{
+  registration_options_.double_align_moode = v;
+}
+
+bool c_running_average_pipeline::double_align_moode() const
+{
+  return registration_options_.double_align_moode;
 }
 
 ///
@@ -331,9 +376,20 @@ bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame
 {
   lock_guard lock(mutex());
 
-  if ( average_.compute(display_frame, display_mask) ) {
+  if ( average1_.compute(display_frame, display_mask) ) {
     return true;
   }
+
+//  if ( registration_options_.double_align_moode ) {
+//    if ( average2_.compute(display_frame, display_mask) ) {
+//      return true;
+//    }
+//  }
+//  else {
+//    if ( average1_.compute(display_frame, display_mask) ) {
+//      return true;
+//    }
+//  }
   return false;
 }
 
@@ -357,6 +413,9 @@ bool c_running_average_pipeline::copyParameters(const base::sptr & dst) const
   p->registration_options_ = this->registration_options_;
   p->average_options_ = this->average_options_;
   p->output_options_ = this->output_options_;
+  p->ecch_.copy_parameters(ecch_);
+  p->ecc_.copy_parameters(ecc_);
+  p->eccflow_.copy_parameters(eccflow_);
 
   return true;
 }
@@ -372,7 +431,8 @@ bool c_running_average_pipeline::initialize_pipeline()
   output_path_ =
       create_output_path(output_options_.output_directory);
 
-  average_.clear();
+  average1_.clear();
+  average2_.clear();
   current_image_.release();
   current_mask_.release();
 
@@ -536,9 +596,20 @@ bool c_running_average_pipeline::run_pipeline()
       }
     }
 
-    if( !process_current_frame() ) {
-      CF_ERROR("process_current_frame() fails");
-      return false;
+    if ( registration_options_.double_align_moode ) {
+
+      if( !process_current_frame2() ) {
+        CF_ERROR("process_current_frame2() fails");
+        return false;
+      }
+
+    }
+    else {
+
+      if( !process_current_frame1() ) {
+        CF_ERROR("process_current_frame1() fails");
+        return false;
+      }
     }
 
   }
@@ -546,53 +617,52 @@ bool c_running_average_pipeline::run_pipeline()
   return true;
 }
 
-bool c_running_average_pipeline::process_current_frame()
+bool c_running_average_pipeline::process_current_frame1()
 {
   cv::Mat image1, mask1, image2, mask2;
   cv::Mat2f rmap;
 
-  bool has_updates = true;
 
-  //c_ecc_forward_additive ecc_;
+
+  bool has_updates = true;
 
   const bool enable_registration =
       registration_options_.enable_ecc ||
       registration_options_.enable_eccflow;
 
+  static const auto mkgrayscale =
+      [](const cv::Mat & src, cv::Mat & dst) {
+        if( src.channels() != 1 ) {
+          cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+        }
+        else if ( &src != &dst ) {
+          dst = src;
+        }
+  };
 
-  if( !enable_registration || average_.accumulated_frames() < 1 ) {
+
+  if( !enable_registration || average1_.accumulated_frames() < 1 ) {
 
     lock_guard lock(mutex());
 
-    average_.add(current_image_, current_mask_,
+    average1_.add(current_image_, current_mask_,
         average_options_.running_weight);
   }
   else {
 
-    average_.compute(image1, mask1);
-
-    if( image1.channels() != 1 ) {
-      cv::cvtColor(image1, image1, cv::COLOR_BGR2GRAY);
-    }
-
-    if( current_image_.channels() != 1 ) {
-      cv::cvtColor(current_image_, image2, cv::COLOR_BGR2GRAY);
-    }
-    else {
-      image2 = current_image_;
-    }
-
-
     rmap.release();
+
+    if( enable_registration ) {
+      average1_.compute(image1, mask1);
+      mkgrayscale(image1, image1);
+      mkgrayscale(current_image_, image2);
+    }
 
     if ( registration_options_.enable_ecc ) {
 
       ecch_.set_reference_image(image2, mask2);
 
-      if( !ecch_.align(image1, mask1) ) {
-        has_updates = false;
-      }
-      else {
+      if( (has_updates = ecch_.align(image1, mask1)) ) {
         rmap = ecc_.current_remap();
       }
     }
@@ -601,16 +671,13 @@ bool c_running_average_pipeline::process_current_frame()
 
       eccflow_.set_reference_image(image2, mask2);
 
-      if( !eccflow_.compute(image1, rmap, mask1) ) {
-        has_updates = false;
-      }
+      has_updates = eccflow_.compute(image1, rmap, mask1);
     }
 
     if ( has_updates ) {
       lock_guard lock(mutex());
-      average_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
+      average1_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
     }
-
   }
 
   if ( has_updates && output_options_.save_accumulated_video  ) {
@@ -627,7 +694,7 @@ bool c_running_average_pipeline::process_current_frame()
       return false;
     }
 
-    average_.compute(image1, mask1);
+    average1_.compute(image1, mask1);
 
     if( !accumulated_video_writer_.write(image1, mask1) ) {
       CF_ERROR("accumulated_video_writer_.write() fails");
@@ -638,4 +705,162 @@ bool c_running_average_pipeline::process_current_frame()
   return true;
 }
 
+bool c_running_average_pipeline::process_current_frame2()
+{
+  cv::Mat image1, mask1, image2, mask2;
+  cv::Mat2f rmap;
+
+  bool has_updates = true;
+
+  const double W2 =
+      average_options_.reference_running_weight;
+
+  static const auto mkgrayscale =
+      [](const cv::Mat & src, const cv::Mat & src_mask, cv::Mat & dst, cv::Mat & dst_mask) {
+        if( src.channels() != 1 ) {
+          cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+        }
+        else if ( &src != &dst ) {
+          dst = src;
+        }
+        if ( &src_mask != &dst_mask) {
+          dst_mask = src_mask;
+        }
+  };
+
+
+  ////
+  mkgrayscale(current_image_, current_mask_, image2, mask2);
+
+  if( average1_.accumulated_frames() < 1 ) {
+
+    lock_guard lock(mutex());
+    average1_.add(image2, mask2, W2);
+  }
+  else {
+    average1_.compute(image1, mask1);
+
+    ecch_.set_reference_image(image2, mask2);
+    if( !ecch_.align(image1, mask1) ) {
+      has_updates = false;
+    }
+    else {
+      lock_guard lock(mutex());
+      average1_.add(image2, mask2, W2,
+          &(rmap = ecc_.current_remap()));
+    }
+  }
+
+  ////
+
+  if ( has_updates && average1_.accumulated_frames() > W2 )  {
+
+    cv::Mat2f rmap2;
+
+    if( registration_options_.enable_eccflow ) {
+
+      average1_.compute(image1, mask1);
+
+      mkgrayscale(image1, mask1,
+          image1, mask1);
+
+      if( registration_options_.reference_unsharp_sigma_ > 0 && registration_options_.reference_unsharp_alpha_ > 0 ) {
+
+        unsharp_mask(image1, mask1, image1, registration_options_.reference_unsharp_sigma_,
+            registration_options_.reference_unsharp_alpha_,
+            0, 1);
+      }
+
+
+      if ( image2.empty() ) {
+        mkgrayscale(current_image_, current_mask_,
+            image2, mask2);
+      }
+
+
+      rmap2 = rmap.clone();
+      eccflow_.set_reference_image(image1, mask1);
+      if( !eccflow_.compute(image2, rmap2, mask2) ) {
+        has_updates = false;
+      }
+    }
+
+    if ( has_updates ) {
+
+      if ( rmap2.empty() ) {
+        lock_guard lock(mutex());
+        average2_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
+      }
+      else {
+
+        cv::remap(current_image_, image2, rmap2, cv::noArray(), cv::INTER_LINEAR,
+            cv::BORDER_REPLICATE);
+
+        if ( current_mask_.empty() ) {
+          mask2.release();
+        }
+        else {
+
+          cv::remap(current_mask_, mask2, rmap2, cv::noArray(), cv::INTER_LINEAR,
+              cv::BORDER_CONSTANT);
+
+          cv::compare(mask2,  254, mask2, cv::CMP_GE);
+        }
+
+        lock_guard lock(mutex());
+        average2_.add(image2, mask2, average_options_.running_weight, &rmap);
+      }
+    }
+  }
+
+  if ( has_updates ) {
+
+    if ( output_options_.save_reference_video && average1_.accumulated_frames() > 0 ) {
+
+      const bool fOK =
+          add_output_writer(reference_video_writer_,
+              output_options_.output_reference_video_options,
+              "accr",
+              ".ser");
+
+      if( !fOK ) {
+        CF_ERROR("Can not open output writer '%s'",
+            reference_video_writer_.filename().c_str());
+        return false;
+      }
+
+      average1_.compute(image1, mask1);
+
+      if( !reference_video_writer_.write(image1, mask1) ) {
+        CF_ERROR("reference_video_writer_.write() fails");
+        return false;
+      }
+    }
+
+    if ( output_options_.save_accumulated_video && average2_.accumulated_frames() > 0 ) {
+
+      const bool fOK =
+          add_output_writer(accumulated_video_writer_,
+              output_options_.output_accumulated_video_options,
+              "accw",
+              ".ser");
+
+      if( !fOK ) {
+        CF_ERROR("Can not open output writer '%s'",
+            accumulated_video_writer_.filename().c_str());
+        return false;
+      }
+
+      average2_.compute(image1, mask1);
+
+      if( !accumulated_video_writer_.write(image1, mask1) ) {
+        CF_ERROR("accumulated_video_writer_.write() fails");
+        return false;
+      }
+    }
+
+  }
+
+  return true;
+}
 

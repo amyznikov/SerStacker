@@ -163,11 +163,20 @@ int QDisplayVideoWriter::nbframes() const
   return nbframes_;
 }
 
-bool QDisplayVideoWriter::write(const cv::Mat & frame)
+bool QDisplayVideoWriter::write(const cv::Mat & _frame)
 {
   if( !started_ ) {
     CF_ERROR("ERROR: Video record was not stared");
     return false;
+  }
+
+  cv::Mat frame;
+
+  if( nbframes_ > 0 && _frame.cols >= frameSize_.width && _frame.rows >= frameSize_.height ) {
+    frame = _frame(cv::Rect(0, 0, frameSize_.width, frameSize_.height));
+  }
+  else {
+    frame = _frame;
   }
 
   if( nbframes_ > 0 && (frameSize_ != frame.size() || channels_ != frame.channels()) ) {

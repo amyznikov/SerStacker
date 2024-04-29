@@ -22,16 +22,22 @@ struct c_running_average_input_options:
 
 struct c_running_average_registration_options
 {
+  bool double_align_moode = false;
+  double reference_unsharp_sigma_ = 1;
+  double reference_unsharp_alpha_ = 0.95;
+
   bool enable_ecc = false;
   bool enable_eccflow = false;
 
-  IMAGE_MOTION_TYPE ecc_motion_type = IMAGE_MOTION_TRANSLATION;
+  IMAGE_MOTION_TYPE ecc_motion_type =
+      IMAGE_MOTION_TRANSLATION;
 
   double min_rho = 0.7;
 };
 
 struct c_running_average_update_options
 {
+  double reference_running_weight = 10;
   double running_weight = 15;
 };
 
@@ -41,7 +47,9 @@ struct c_running_average_output_options:
   double display_scale = -1;
 
   bool save_accumulated_video = false;
+  bool save_reference_video = false;
   c_output_frame_writer_options output_accumulated_video_options;
+  c_output_frame_writer_options output_reference_video_options;
 
 };
 
@@ -75,6 +83,11 @@ public:
             "test for running average registered frames<br>";
     return tooltip_;
   }
+
+  ///
+
+  void set_double_align_moode(bool v);
+  bool double_align_moode() const;
 
   ///
 
@@ -138,12 +151,18 @@ public:
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool copyParameters(const base::sptr & dst) const override;
 
+  //////
+  bool ecc_ctls_enabled() const;
+  bool eccflow_ctls_enabled() const;
+  /////
+
 protected:
   bool initialize_pipeline() override;
   bool start_pipeline();
   bool run_pipeline() override;
   void cleanup_pipeline() override;
-  bool process_current_frame();
+  bool process_current_frame1();
+  bool process_current_frame2();
 
 protected:
   c_running_average_input_options input_options_;
@@ -155,14 +174,16 @@ protected:
   c_ecc_forward_additive ecc_;
   c_ecc_motion_model::sptr ecc_model_;
   c_image_transform::sptr ecc_tramsform_;
-
   c_eccflow eccflow_;
-  c_running_frame_average average_;
+
+  c_running_frame_average average1_;
+  c_running_frame_average average2_;
 
   cv::Mat current_image_;
   cv::Mat current_mask_;
 
   c_output_frame_writer accumulated_video_writer_;
+  c_output_frame_writer reference_video_writer_;
 
 };
 

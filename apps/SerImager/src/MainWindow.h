@@ -133,6 +133,7 @@ protected:
 
   QDisplayVideoWriter diplayImageWriter_;
   QToolButton* displayImageVideoWriterToolButton_ = nullptr;
+  bool lockDiplayImageWriter_ = false;
 
 };
 

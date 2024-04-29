@@ -470,6 +470,19 @@ double c_ecc_align::update_step_scale() const
   return update_step_scale_;
 }
 
+void c_ecc_align::copy_parameters(const this_class & rhs)
+{
+  interpolation_ = rhs.interpolation_;
+  num_iterations_  = rhs.num_iterations_;
+  max_iterations_ = rhs.max_iterations_;
+  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
+  input_smooth_sigma_ = rhs.input_smooth_sigma_;
+  update_step_scale_ = rhs.update_step_scale_;
+  max_eps_ = rhs.max_eps_;
+  min_rho_ = rhs.min_rho_;
+}
+
+
 bool c_ecc_align::failed() const
 {
   return this->failed_;
@@ -1043,6 +1056,12 @@ const std::vector<cv::Mat1f> & c_ecch::transform_pyramid() const
   return transform_pyramid_;
 }
 
+void c_ecch::copy_parameters(const this_class & rhs)
+{
+  minimum_image_size_ = rhs.minimum_image_size_;
+  minimum_pyramid_level_ = rhs.minimum_pyramid_level_;
+}
+
 bool c_ecch::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   INSTRUMENT_REGION("");
@@ -1333,6 +1352,18 @@ void c_eccflow::set_debug_path(const std::string & v)
 const std::string & c_eccflow::debug_path() const
 {
   return debug_path_;
+}
+
+void c_eccflow::copy_parameters(const this_class & rhs)
+{
+  input_smooth_sigma_ = rhs.input_smooth_sigma_;
+  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
+  update_multiplier_ = rhs.update_multiplier_;
+  noise_level_ = rhs.noise_level_;
+  max_iterations_ = rhs.max_iterations_; //
+  support_scale_ = rhs.support_scale_;
+  normalization_scale_ = rhs.normalization_scale_;
+  min_image_size_ = rhs.min_image_size_;
 }
 
 const cv::Mat1f & c_eccflow::reference_image() const

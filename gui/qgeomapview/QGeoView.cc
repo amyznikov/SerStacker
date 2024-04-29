@@ -81,7 +81,7 @@ QGeoRect QGeoView::geoViewRect() const
 QPixmap QGeoView::grabViewPixmap() const
 {
   QWidget * w = viewport();
-  return w->grab(w->rect());
+  return w ? w->grab(w->rect()) : QPixmap();
 }
 
 QGeoViewCameraState QGeoView::getCameraState() const

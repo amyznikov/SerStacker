@@ -114,6 +114,8 @@ public:
   void set_update_step_scale(double v);
   double update_step_scale() const;
 
+  virtual void copy_parameters(const this_class & rhs);
+
   virtual bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray()) = 0;
 
@@ -274,6 +276,8 @@ public:
   const std::vector<cv::Mat> & mask_pyramid(int index) const;
   const std::vector<cv::Mat1f> & transform_pyramid() const;
 
+  void copy_parameters(const this_class & rhs);
+
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask);
 
@@ -339,6 +343,8 @@ public:
 
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
+
+  void copy_parameters(const this_class & rhs);
 
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray());

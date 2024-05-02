@@ -9,6 +9,7 @@
 
 
 #include "c_gradient_routine.h"
+#include "c_ridgeness_routine.h"
 #include "c_laplacian_routine.h"
 #include "c_radial_gradient_routine.h"
 #include "c_noisemap_routine.h"
@@ -17,6 +18,7 @@
 #include "c_lpg_map_routine.h"
 #include "c_laplacian_map_routine.h"
 #include "c_harris_map_routine.h"
+#include "c_gabor_filter_routine.h"
 #include "c_absdiff_routine.h"
 #include "c_anscombe_routine.h"
 #include "c_mtf_routine.h"
@@ -154,6 +156,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_laplacian_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_radial_gradient_routine::class_factory_instance());
+    register_class_factory(c_ridgeness_routine::class_factory_instance());
 
     register_class_factory(c_align_color_channels_routine::class_factory_instance());
     register_class_factory(c_anscombe_routine::class_factory_instance());
@@ -225,6 +228,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_lpg_map_routine::class_factory_instance());
     register_class_factory(c_laplacian_map_routine::class_factory_instance());
     register_class_factory(c_harris_map_routine::class_factory_instance());
+    register_class_factory(c_gabor_filter_routine::class_factory_instance());
 
     register_class_factory(c_cvtcolor_routine::class_factory_instance());
     register_class_factory(c_equalize_hist_routine::class_factory_instance());

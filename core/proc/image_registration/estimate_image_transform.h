@@ -10,6 +10,7 @@
 #define __estimate_image_transform_h__
 
 #include "c_image_transform.h"
+#include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/settings/opencv_settings.h>
 
@@ -74,13 +75,14 @@ struct c_estimate_image_transform_options
 
   struct {
     // parameters for estimate_epipolar_derotation()
+    c_camera_intrinsics camera_intrinsics;
     c_lm_camera_pose_options camera_pose;
 
-    cv::Matx33d camera_matrix = // Dummy stub from KITTI
-        cv::Matx33d(
-            7.215377e+02, 0.000000e+00, 6.095593e+02,
-            0.000000e+00, 7.215377e+02, 1.728540e+02,
-            0.000000e+00, 0.000000e+00, 1.000000e+00);
+//    cv::Matx33d camera_matrix = // Dummy stub from KITTI
+//        cv::Matx33d(
+//            7.215377e+02, 0.000000e+00, 6.095593e+02,
+//            0.000000e+00, 7.215377e+02, 1.728540e+02,
+//            0.000000e+00, 0.000000e+00, 1.000000e+00);
 
   } epipolar_derotation;
 

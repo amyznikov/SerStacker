@@ -200,10 +200,8 @@ bool locate_extremes(cv::InputArray image, cv::InputArray input_mask, cv::Output
 
       cv::Mat E;
 
-      if( opts.filter_type == c_locate_extremes_options::filter_morph ) {
-        cv::erode(image, E, SE, anchor, 1, opts.border_type,
+      cv::erode(image, E, SE, anchor, 1, opts.border_type,
             opts.border_value);
-      }
 
       if( opts.minimums_alpha == 1 && opts.minimums_beta == 0 ) {
         cv::compare(image, E, EM, cv::CMP_LT);

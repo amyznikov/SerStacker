@@ -99,34 +99,86 @@ static void pixdup(cv::Mat & image, DOWNSTRIKE_MODE downstrike_mode)
 bool build_median_pyramid(cv::InputArray _src,
     int median_ksize,
     int median_iterations,
-    DOWNSTRIKE_MODE downstrike_mode,
+    std::vector<cv::Mat> & scaled_images,
     std::vector<cv::Mat> & median_blurs,
     std::vector<cv::Mat> & median_hats)
 {
 
+  scaled_images.clear();
+  scaled_images.reserve(16);
+
   median_blurs.clear();
-  median_blurs.reserve(12);
+  median_blurs.reserve(16);
 
   median_hats.clear();
-  median_hats.reserve(12);
+  median_hats.reserve(16);
 
-  cv::Mat s = _src.getMat();
+  const double scale = 0.5;
 
-  while (std::min(s.cols, s.rows) > 3) {
+  cv::Size size =
+      _src.size();
 
+  for( double f = 1; std::min(size.width, size.height) > 4; f *= scale ) {
+
+    scaled_images.emplace_back();
     median_blurs.emplace_back();
     median_hats.emplace_back();
 
-    cv::medianBlur(s, median_blurs.back(), median_ksize);
-    for ( int ii = 1; ii < median_iterations; ++ii ) {
-      cv::medianBlur(median_blurs.back(), median_blurs.back(), median_ksize);
+    cv::Mat & s =
+        scaled_images.back();
+
+    cv::resize(_src, s, cv::Size(), f, f,
+        cv::INTER_AREA);
+
+    size =
+        s.size();
+
+    cv::medianBlur(s, median_blurs.back(),
+        median_ksize);
+
+    for( int ii = 1; ii < median_iterations; ++ii ) {
+      cv::medianBlur(median_blurs.back(), median_blurs.back(),
+          median_ksize);
     }
 
-    pixdup(median_blurs.back(), downstrike_mode);
-    cv::absdiff(s, median_blurs.back(), median_hats.back());
-    downstrike_pixels(median_blurs.back(), s, downstrike_mode);
+    cv::absdiff(s, median_blurs.back(),
+        median_hats.back());
   }
 
   return true;
 }
 
+//bool build_median_pyramid(cv::InputArray _src,
+//    int median_ksize,
+//    int median_iterations,
+//    DOWNSTRIKE_MODE downstrike_mode,
+//    std::vector<cv::Mat> & median_blurs,
+//    std::vector<cv::Mat> & median_hats)
+//{
+//
+//  median_blurs.clear();
+//  median_blurs.reserve(12);
+//
+//  median_hats.clear();
+//  median_hats.reserve(12);
+//
+//  cv::Mat s = _src.getMat();
+//
+//  while (std::min(s.cols, s.rows) > 3) {
+//
+//    median_blurs.emplace_back();
+//    median_hats.emplace_back();
+//
+//    cv::medianBlur(s, median_blurs.back(), median_ksize);
+//    for ( int ii = 1; ii < median_iterations; ++ii ) {
+//      cv::medianBlur(median_blurs.back(), median_blurs.back(), median_ksize);
+//    }
+//
+//    cv::Mat & img = median_blurs.back();
+//    cv::absdiff(s, img, median_hats.back());
+//    cv::resize(img, s, cv::Size((img.cols + 1) / 2, (img.rows + 1) / 2), 0, 0, cv::INTER_AREA);
+//    //cv::resize(img, s, cv::Size(3 * (img.cols + 3) / 4, 3 * (img.rows + 3) / 4), 0, 0, cv::INTER_AREA);
+//  }
+//
+//  return true;
+//}

@@ -87,5 +87,4 @@ bool write_stereo_camera_extrinsics_yml(const c_stereo_camera_extrinsics & extri
 bool read_stereo_camera_extrinsics_yml(c_stereo_camera_extrinsics * extrinsics,
     const std::string & ymlfile);
 
-
 #endif /* __camera_calibration_h__ */

@@ -15,7 +15,7 @@
 bool build_median_pyramid(cv::InputArray src,
     int median_ksize,
     int median_iterations,
-    DOWNSTRIKE_MODE downstrike_mode,
+    std::vector<cv::Mat> & scaled_images,
     std::vector<cv::Mat> & median_blurs,
     std::vector<cv::Mat> & median_hats);
 

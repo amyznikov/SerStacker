@@ -11,7 +11,8 @@
 #include <gui/widgets/UpdateControls.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qpipeline/QInputSourceSelectionControl.h>
-#include <gui/widgets/QMatrixEdit.h>
+//#include <gui/widgets/QMatrixEdit.h>
+#include <gui/widgets/QCameraIntrinsicsEditBox.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 
@@ -452,7 +453,7 @@ protected:
   QEccBorderModeCombo * border_mode_ctl = nullptr;
   QNumericBox * border_value_ctl = nullptr;
   QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = nullptr;
-  QMatrixEdit * camera_matrix_ctl = nullptr;
+  QCameraIntrinsicsEditBox * camera_matrix_ctl = nullptr;
   QExpandableGroupBox * camera_matrix_groupbox_ctl = nullptr;
 
   QMasterFrameOptions * masterFrameOptions_ctl = nullptr;

@@ -47,13 +47,11 @@ protected slots:
 protected:
   QAbstractButton * playButton_ctl = nullptr;
   QSpinBox * curposSpin_ctl = nullptr;
-  QAbstractSlider * curposSlider_ctl = nullptr;
+  QSlider * curposSlider_ctl = nullptr;
   QLabel * curposLabel_ctl = nullptr;
   QComboBox * rateBox_ctl = nullptr;
   State currentState = Stopped;
   int timerId = 0;
-  bool disableEmitSignals = false;
-  bool updatingControls = false;
 };
 
 #endif /* __QPlaySequenceControl_h__ */

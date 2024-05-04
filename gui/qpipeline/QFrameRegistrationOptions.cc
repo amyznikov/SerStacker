@@ -2095,15 +2095,24 @@ QImageRegistrationOptions::QImageRegistrationOptions(QWidget * parent) :
 
   camera_matrix_groupbox_ctl =
       add_expandable_groupbox("Camera Matrix",
-          camera_matrix_ctl = new QMatrixEdit(3, 3, this));
-  connect(camera_matrix_ctl, &QMatrixEdit::matrixChanged,
-      [this]() {
-        if ( options_ && !updatingControls() ) {
-          if ( camera_matrix_ctl->getMatrix(&options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix) ) {
-            Q_EMIT parameterChanged();
-          }
-        }
-      });
+          camera_matrix_ctl = new QCameraIntrinsicsEditBox(this));
+
+  //set_options
+//  connect(camera_matrix_ctl, &QCameraIntrinsicsEditBox::parameterChanged,
+//      [this]() {
+//        if ( options_ && !updatingControls() ) {
+////          if ( camera_matrix_ctl->getMatrix(&options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix) ) {
+////            Q_EMIT parameterChanged();
+////          }
+//
+//          options_->feature_registration.estimate_options.epipolar_derotation.camera_intrinsics =
+//              camera_matrix_ctl->options();
+//
+//          if (  (&) ) {
+//            Q_EMIT parameterChanged();
+//          }
+//        }
+//      });
 
   camera_matrix_groupbox_ctl->setVisible(false);
   add_expandable_groupbox("Master Frame Options",
@@ -2171,6 +2180,7 @@ void QImageRegistrationOptions::onupdatecontrols()
     eccOptions_ctl->set_registration_options(nullptr);
     eccFlowOptions_ctl->set_registration_options(nullptr);
     jovianDerotationOptions_ctl->set_derotation_options(nullptr);
+    camera_matrix_ctl->set_options(nullptr);
     camera_matrix_groupbox_ctl->setVisible(false);
   }
   else {
@@ -2180,7 +2190,8 @@ void QImageRegistrationOptions::onupdatecontrols()
     interpolation_method_ctl->setValue(options_->interpolation);
     border_mode_ctl->setValue(options_->border_mode);
     border_value_ctl->setValue(options_->border_value);
-    camera_matrix_ctl->setMatrix(cv::Mat(options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix));
+    camera_matrix_ctl->set_options(&options_->feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
+    //camera_matrix_ctl->setMatrix(cv::Mat(options_->feature_registration.estimate_options.epipolar_derotation.camera_matrix));
     camera_matrix_groupbox_ctl->setVisible(options_->motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION);
     accumulateAndCompensateTurbulentFlow_ctl->setChecked(options_->accumulate_and_compensate_turbulent_flow);
 

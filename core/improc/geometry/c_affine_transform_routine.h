@@ -22,7 +22,7 @@ public:
   };
 
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_affine_transform_routine,
-      "affine_transform", "Apply affine transform to image");
+      "c_affine_transform", "Apply affine transform to image");
 
   void set_rotation(double v);
   double rotation() const;

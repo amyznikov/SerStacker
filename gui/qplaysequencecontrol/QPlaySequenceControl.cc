@@ -6,6 +6,8 @@
  */
 
 #include "QPlaySequenceControl.h"
+#include <gui/widgets/QSignalsBock.h>
+#include <core/debug.h>
 
 QPlaySequenceControl::QPlaySequenceControl(QWidget * parent) :
   Base(parent)
@@ -26,6 +28,7 @@ QPlaySequenceControl::QPlaySequenceControl(QWidget * parent) :
   curposSpin_ctl->setButtonSymbols(QSpinBox::ButtonSymbols::UpDownArrows);
   connect(curposSpin_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onSpinValueChanged(int)));
+
 
   curposSlider_ctl = new QSlider(Qt::Horizontal, this);
   curposSlider_ctl->setRange(0, 0);
@@ -57,7 +60,7 @@ void QPlaySequenceControl::setState(State state)
     case Stopped :  // stopped -> stopped
       break;
     case Playing :  // stopped -> playing
-      timerId = startTimer(100, Qt::CoarseTimer);
+      timerId = startTimer(75, Qt::CoarseTimer);
       playButton_ctl->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
       break;
     }
@@ -79,18 +82,16 @@ void QPlaySequenceControl::setState(State state)
 
 void QPlaySequenceControl::setSeekRange(int min,  int max)
 {
-  disableEmitSignals = true;
+  QSignalsBock block(curposSlider_ctl);
   curposSlider_ctl->setRange(min, max);
   curposSpin_ctl->setRange(min, max);
-  disableEmitSignals = false;
   updateCurposLabel();
 }
 
 void QPlaySequenceControl::setCurpos(int pos)
 {
-  disableEmitSignals = true;
+  QSignalsBock block(curposSlider_ctl);
   curposSlider_ctl->setValue(pos);
-  disableEmitSignals = false;
 }
 
 
@@ -109,31 +110,18 @@ void QPlaySequenceControl::onPlayClicked()
 
 void QPlaySequenceControl::onSpinValueChanged(int newpos)
 {
-  if ( !updatingControls ) {
-
-    updatingControls = true;
-    curposSlider_ctl->setValue(newpos);
-    updatingControls = false;
-
-    if ( !disableEmitSignals ) {
-      Q_EMIT onSeek(newpos);
-    }
-  }
-
+  QSignalBlocker block(curposSlider_ctl);
+  curposSlider_ctl->setValue(newpos);
+  Q_EMIT onSeek(newpos);
+  QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 }
 
 void QPlaySequenceControl::onSliderValueChanged(int newpos)
 {
-  if ( !updatingControls ) {
-
-    updatingControls = true;
-    curposSpin_ctl->setValue(newpos);
-    updatingControls = false;
-
-    if ( !disableEmitSignals ) {
-      Q_EMIT onSeek(newpos);
-    }
-  }
+  QSignalBlocker block(curposSpin_ctl);
+  curposSpin_ctl->setValue(newpos);
+  Q_EMIT onSeek(newpos);
+  QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 }
 
 

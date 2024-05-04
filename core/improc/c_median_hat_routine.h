@@ -34,6 +34,16 @@ public:
     return radius_;
   }
 
+  void set_iterations(int v)
+  {
+    iterations_ = v;
+  }
+
+  int iterations() const
+  {
+    return iterations_;
+  }
+
   void set_display_type(DisplayType v)
   {
     display_type_ = v;
@@ -57,6 +67,7 @@ public:
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
     BIND_PCTRL(ctls, radius, "Filter radius [px]");
+    BIND_PCTRL(ctls, iterations, "Number of medianBlur iterations");
     BIND_PCTRL(ctls, display_type, "Output image");
     BIND_PCTRL(ctls, absdiff, "Use cv::absdiff() instead of cv::subtract()");
 
@@ -66,6 +77,7 @@ public:
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, radius);
+      SERIALIZE_PROPERTY(settings, save, *this, iterations);
       SERIALIZE_PROPERTY(settings, save, *this, display_type);
       SERIALIZE_PROPERTY(settings, save, *this, absdiff);
       return true;
@@ -80,7 +92,16 @@ public:
 
     cv::Mat m;
 
-    cv::medianBlur(image, m, ksize);
+    for( int i = 0; i < iterations_; ++i ) {
+
+      if( m.empty() ) {
+        cv::medianBlur(image, m, ksize);
+      }
+      else {
+        cv::medianBlur(m, m, ksize);
+      }
+    }
+
     if ( display_type_ == DisplayMedianBlur ) {
       image.move(m);
     }
@@ -110,6 +131,7 @@ public:
 
 protected:
   int radius_ = 2;
+  int iterations_ = 1;
   DisplayType display_type_ = DisplayMedianHat;
   bool absdiff_ = false;
 };

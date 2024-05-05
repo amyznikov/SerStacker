@@ -12,8 +12,8 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/c_anscombe_transform.h>
 
-class c_anscombe_routine
-: public c_image_processor_routine
+class c_anscombe_routine :
+    public c_image_processor_routine
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_anscombe_routine,

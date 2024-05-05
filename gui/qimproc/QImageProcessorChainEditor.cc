@@ -559,6 +559,13 @@ void QImageProcessorSettingsControl::setupControls()
   processor_->get_parameters(&params);
   Base::setup_controls(params);
 
+  connect(this, &ThisClass::parameterChanged,
+      [this]() {
+        if ( processor_ ) {
+          processor_->parameter_changed();
+        }
+      });
+
   updateControls();
 }
 

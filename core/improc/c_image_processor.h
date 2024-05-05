@@ -11,8 +11,17 @@
 #include <opencv2/opencv.hpp>
 #include <core/settings/opencv_settings.h>
 #include <core/ctrlbind/ctrlbind.h>
-
+#include <map>
 ///////////////////////////////////////////////////////////////////////////////
+
+struct c_image_processor_artifact
+{
+  cv::Mat image;
+  cv::Mat mask;
+};
+
+typedef std::map<std::string, c_image_processor_artifact, std::less<std::string>>
+  c_image_processor_artifacts;
 
 class c_image_processor_routine
 {
@@ -151,6 +160,85 @@ public:
   {
     BIND_PCTRL(ctls, ignore_mask, "ignore_mask");
   }
+
+  /////////////////////////////////////////////////////////////////////////////
+  static c_image_processor_artifacts & artifacts()
+  {
+    static c_image_processor_artifacts artifacts_;
+    return artifacts_;
+  }
+
+  static void clear_artifacts()
+  {
+    artifacts().clear();
+  }
+
+  static void add_artifact(const std::string & name, cv::InputArray image, cv::InputArray mask = cv::noArray())
+  {
+    auto ii =
+        artifacts().find(name);
+
+    if( ii == artifacts().end() ) {
+      ii = artifacts().emplace(name, std::move(c_image_processor_artifact())).first;
+    }
+
+    image.getMat().copyTo(ii->second.image);
+    mask.getMat().copyTo(ii->second.mask);
+  }
+
+  static bool get_artifact(const std::string & name, cv::OutputArray image, cv::OutputArray mask)
+  {
+    const auto ii =
+        artifacts().find(name);
+
+    if ( ii != artifacts().end() ) {
+      ii->second.image.copyTo(image);
+      ii->second.mask.copyTo(mask);
+      return true;
+    }
+
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  static c_image_processor_artifacts & globals()
+  {
+    static c_image_processor_artifacts artifacts_;
+    return artifacts_;
+  }
+
+  static void clear_globals()
+  {
+    globals().clear();
+  }
+
+  static void add_global(const std::string & name, cv::InputArray image, cv::InputArray mask = cv::noArray())
+  {
+    auto ii =
+        globals().find(name);
+
+    if( ii == artifacts().end() ) {
+      ii = globals().emplace(name, std::move(c_image_processor_artifact())).first;
+    }
+
+    image.getMat().copyTo(ii->second.image);
+    mask.getMat().copyTo(ii->second.mask);
+  }
+
+  static bool get_global(const std::string & name, cv::OutputArray image, cv::OutputArray mask)
+  {
+    const auto ii =
+        globals().find(name);
+
+    if ( ii != globals().end() ) {
+      ii->second.image.copyTo(image);
+      ii->second.mask.copyTo(mask);
+      return true;
+    }
+
+    return false;
+  }
+  /////////////////////////////////////////////////////////////////////////////
 
 protected:
   c_image_processor_routine(const class_factory * _class_factory, bool enabled = true) :

@@ -82,7 +82,8 @@ void QPlaySequenceControl::setState(State state)
 
 void QPlaySequenceControl::setSeekRange(int min,  int max)
 {
-  QSignalsBock block(curposSlider_ctl);
+  QSignalsBock block1(curposSlider_ctl);
+  QSignalsBock block2(curposSpin_ctl);
   curposSlider_ctl->setRange(min, max);
   curposSpin_ctl->setRange(min, max);
   updateCurposLabel();
@@ -90,8 +91,10 @@ void QPlaySequenceControl::setSeekRange(int min,  int max)
 
 void QPlaySequenceControl::setCurpos(int pos)
 {
-  QSignalsBock block(curposSlider_ctl);
-  curposSlider_ctl->setValue(pos);
+  QSignalsBock block1(curposSlider_ctl);
+  QSignalsBock block2(curposSpin_ctl);
+  curposSpin_ctl->setValue(pos);
+  curposSlider_ctl->setValue(curposSpin_ctl->value());
 }
 
 

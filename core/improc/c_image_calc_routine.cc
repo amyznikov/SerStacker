@@ -33,17 +33,15 @@ const c_enum_member * members_of<c_image_calc_routine::Function>()
 
 void c_image_calc_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  BIND_PCTRL(ctls, function,
-      "Select function to apply\n");
-
-  BIND_PCTRL(ctls, filename, "filename");
+  BIND_PCTRL(ctls, function, "Select function to apply\n");
+  BIND_PCTRL(ctls, argname, "Saved artifact name");
 }
 
 bool c_image_calc_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, function);
-    SERIALIZE_PROPERTY(settings, save, *this, filename);
+    SERIALIZE_PROPERTY(settings, save, *this, argname);
     return true;
   }
   return false;
@@ -53,29 +51,31 @@ bool c_image_calc_routine::serialize(c_config_setting settings, bool save)
 bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( function_ == Function_None ) {
-    second_image_.release();
     return true;
   }
 
-  if( filename_.empty() ) {
-    CF_ERROR("No second image filename specified");
+  if( argname_.empty() ) {
+    CF_ERROR("No second image name specified");
     return false;
   }
 
-  if( second_image_.empty() && !load_image(filename_, second_image_, second_image_mask_) ) {
-    CF_ERROR("load_image('%s') fails", filename_.c_str());
+  cv::Mat second_image;
+  cv::Mat second_mask;
+
+  if ( !base::get_artifact(argname_, second_image, second_mask)) {
+    CF_ERROR("get_artifact('%s') fails", argname_.c_str());
     return false;
   }
 
-  if( image.size() != second_image_.size() ) {
+  if( image.size() != second_image.size() ) {
     CF_ERROR("Current image (%dx%d) and argument image (%dx%d) sizes not match",
-        image.cols(), image.rows(), second_image_.cols, second_image_.rows);
+        image.cols(), image.rows(), second_image.cols, second_image.rows);
     return false;
   }
 
-  if( image.channels() != second_image_.channels() ) {
+  if( image.channels() != second_image.channels() ) {
     CF_ERROR("Current image channels (%dd) and argument image channels (%d) not equal",
-        image.channels(), second_image_.channels());
+        image.channels(), second_image.channels());
     return false;
   }
 
@@ -83,41 +83,41 @@ bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     case Function_None:
       break;
     case Function_add:
-      cv::add(image.getMat(), second_image_, image, cv::noArray(),
-          std::max(image.depth(), second_image_.depth()));
+      cv::add(image.getMat(), second_image, image, cv::noArray(),
+          std::max(image.depth(), second_image.depth()));
       break;
     case Function_subtract:
-      cv::subtract(image.getMat(), second_image_, image, cv::noArray(),
-          std::max(image.depth(), second_image_.depth()));
+      cv::subtract(image.getMat(), second_image, image, cv::noArray(),
+          std::max(image.depth(), second_image.depth()));
       break;
     case Function_absdiff:
-      if ( image.depth() == second_image_.depth() ) {
-        cv::absdiff(image.getMat(), second_image_, image);
+      if ( image.depth() == second_image.depth() ) {
+        cv::absdiff(image.getMat(), second_image, image);
       }
-      else if (image.depth() > second_image_.depth()) {
+      else if (image.depth() > second_image.depth()) {
         cv::Mat tmp;
-        image.getMat().convertTo(tmp, second_image_.depth());
-        cv::absdiff(tmp, second_image_, image);
+        image.getMat().convertTo(tmp, second_image.depth());
+        cv::absdiff(tmp, second_image, image);
       }
       else {
         cv::Mat tmp;
-        second_image_.convertTo(tmp, image.depth());
+        second_image.convertTo(tmp, image.depth());
         cv::absdiff(image.getMat(), tmp, image);
       }
       break;
     case Function_multiply:
-      cv::multiply(image.getMat(), second_image_, image, 1,
-          std::max(image.depth(), second_image_.depth()));
+      cv::multiply(image.getMat(), second_image, image, 1,
+          std::max(image.depth(), second_image.depth()));
       break;
     case Function_divide:
-      cv::divide(image.getMat(), second_image_, image, 1,
-          std::max(image.depth(), second_image_.depth()));
+      cv::divide(image.getMat(), second_image, image, 1,
+          std::max(image.depth(), second_image.depth()));
       break;
     case Function_max:
-      cv::max(image.getMat(), second_image_, image.getMatRef());
+      cv::max(image.getMat(), second_image, image.getMatRef());
       break;
     case Function_min:
-      cv::min(image.getMat(), second_image_, image.getMatRef());
+      cv::min(image.getMat(), second_image, image.getMatRef());
       break;
     default:
       CF_ERROR("Unhandled function %d requested", function_);

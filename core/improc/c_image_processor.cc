@@ -7,6 +7,11 @@
 
 #include "c_image_processor.h"
 
+#include "c_push_image_routine.h"
+#include "c_pop_image_routine.h"
+#include "c_push_global_routine.h"
+#include "c_pop_global_routine.h"
+#include "c_clear_globals_routine.h"
 
 #include "c_gradient_routine.h"
 #include "c_ridgeness_routine.h"
@@ -52,7 +57,6 @@
 #include "c_wmf_routine.h"
 #include "c_remove_sharp_artifacts_routine.h"
 #include "c_mean_curvature_blur_routine.h"
-#include "feature2d/c_fit_jovian_ellipse_routine.h"
 #include "c_equalize_hist_routine.h"
 #include "c_linear_interpolation_inpaint_routine.h"
 #include "c_bilateral_filter_routine.h"
@@ -83,6 +87,7 @@
 #include "feature2d/c_keypoins_detector_routine.h"
 #include "feature2d/c_edgebox_routine.h"
 #include "feature2d/c_selective_search_segmentation_routine.h"
+#include "feature2d/c_fit_jovian_ellipse_routine.h"
 
 
 #include "geometry/c_crop_image_routine.h"
@@ -153,6 +158,12 @@ void c_image_processor_routine::register_all()
   if ( !registered ) {
 
     registered = true;
+
+    register_class_factory(c_push_image_routine::class_factory_instance());
+    register_class_factory(c_pop_image_routine::class_factory_instance());
+    register_class_factory(c_push_global_routine::class_factory_instance());
+    register_class_factory(c_pop_global_routine::class_factory_instance());
+    register_class_factory(c_clear_globals_routine::class_factory_instance());
 
     register_class_factory(c_laplacian_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
@@ -465,6 +476,8 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
 {
   c_image_processor::edit_lock lock(this);
 
+  c_image_processor_routine::clear_artifacts();
+
   for ( const c_image_processor_routine::ptr & routine : *this ) {
     if ( routine && routine->enabled() ) {
 
@@ -499,6 +512,7 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
       }
 
       catch( const std::exception &e ) {
+
         CF_ERROR("std::exception in '%s': %s\n",
             routine->class_name().c_str(),
             e.what());
@@ -510,6 +524,8 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
       }
     }
   }
+
+  c_image_processor_routine::clear_artifacts();
 
   return true;
 }

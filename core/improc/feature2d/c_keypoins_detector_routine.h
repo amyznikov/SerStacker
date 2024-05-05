@@ -19,10 +19,19 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_keypoins_detector_routine,
       "keypoins_detector", "Extract and draw feature2d keypoints on image");
 
-
   c_sparse_feature_detector_options * options()
   {
     return &options_;
+  }
+
+  void set_black_background(bool v)
+  {
+    black_background_ = v;
+  }
+
+  bool black_background() const
+  {
+    return black_background_;
   }
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
@@ -35,6 +44,7 @@ protected:
   c_sparse_feature_detector_options options_;
   std::vector<cv::KeyPoint> keypoints_;
   cv::Mat display_;
+  bool black_background_ = false;
 };
 
 #endif /* __c_keypoins_detector_routine_h__ */

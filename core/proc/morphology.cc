@@ -199,7 +199,7 @@ void build_morph_gradient_pyramid(cv::InputArray image, cv::InputArray mask,
        cv::pyrDown(tmp, tmp, pyramid[l].size(),
            cv::BORDER_REPLICATE);
 
-      cv::max(layers[l], tmp,
+      cv::add(layers[l], tmp,
           layers[l]);
     }
   }

@@ -16,7 +16,7 @@ class c_image_calc_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_image_calc_routine,
-      "imcalc", "Arithmetic operation for current image Ic with argument image Ia<br>"
+      "c_image_calc", "Arithmetic operation for current image Ic with argument image Ia<br>"
           "Ic' = func(Ic, Ia)");
 
   enum Function {
@@ -40,15 +40,14 @@ public:
     return function_;
   }
 
-  void set_filename(const std::string & v)
+  void set_argname(const std::string & v)
   {
-    filename_ = v;
-    second_image_.release();
+    argname_ = v;
   }
 
-  const std::string & filename() const
+  const std::string & argname() const
   {
-    return filename_;
+    return argname_;
   }
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
@@ -57,9 +56,7 @@ public:
 
 protected:
   enum Function function_ = Function_None;
-  std::string filename_;
-  cv::Mat second_image_;
-  cv::Mat second_image_mask_;
+  std::string argname_;
 
 };
 

@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
   c_mgpflow f;
 
   f.set_support_scale(3);
-  f.set_min_image_size(6);
-  f.set_noise_level(1e-2);
+  f.set_min_image_size(8);
+  f.set_noise_level(5e-3);
 
   f.set_reference_image(images[0], cv::noArray());
 

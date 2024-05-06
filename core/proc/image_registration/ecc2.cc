@@ -2314,7 +2314,7 @@ bool c_mgpflow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
   }
   else {
     static thread_local const cv::Mat G = cv::getGaussianKernel(3, 0, CV_32F);
-    cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+    cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0, cv::BORDER_CONSTANT);
   }
 
   return true;

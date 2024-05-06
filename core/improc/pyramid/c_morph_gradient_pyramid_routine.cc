@@ -9,12 +9,11 @@
 #include <core/proc/morphology.h>
 
 
-
 void c_morph_gradient_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   base::get_parameters(ctls);
-  BIND_PCTRL(ctls, max_level, "Specify minimum image size");
-  BIND_PCTRL(ctls, display_pos, "Specify display node position");
+  BIND_SPINBOX_CTRL(ctls, max_level, 0, 32, 1,  "max_level", "Specify max pyramid level");
+  BIND_SPINBOX_CTRL(ctls, display_pos, 0, 32, 1, "display level", "Specify display pyramid level");
 }
 
 bool c_morph_gradient_pyramid_routine::serialize(c_config_setting settings, bool save)

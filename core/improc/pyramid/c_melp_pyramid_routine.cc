@@ -10,6 +10,10 @@
 
 void c_melp_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
+  //base::get_parameters(ctls);
+  BIND_CTRL(ctls, min_image_size, "min_image_size", "Specify max pyramid level");
+  BIND_SPINBOX_CTRL(ctls, display_pos, 0, 32, 1, "display level", "Specify display pyramid level");
+
   BIND_PCTRL(ctls, min_image_size, "Specify minimum image size");
   BIND_PCTRL(ctls, display_pos, "Specify display node position");
 }
@@ -51,8 +55,6 @@ bool c_melp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutput
   for( int i = 0, n = display_pos_.size(); i < n && p; i += 2 ) {
     const int h = display_pos_[i];
     const int v = i < n - 1 ? display_pos_[i + 1] : 0;
-
-    CF_DEBUG("recurse to h=%d v=%d", h, v);
 
     p = recurse(p, h, v);
   }

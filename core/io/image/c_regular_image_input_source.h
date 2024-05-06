@@ -36,8 +36,8 @@ public:
   int curpos() override;
 
   bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid,
-      int * output_bpc) override;
+      enum COLORID * output_colorid = nullptr,
+      int * output_bpc = nullptr) override;
 
   bool is_open() const override;
 

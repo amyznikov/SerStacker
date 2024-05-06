@@ -180,27 +180,14 @@ bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
   return true;
 }
 
-//
-//static void ecc_downscale_remap(const cv::Mat2f & src, cv::Mat2f & dst, const cv::Size & dstSize)
-//{
-//  dst.create(src.size());
-//
-//  for ( int y = 0; y < dst.rows; ++y ) {
-//    for ( int x = 0; x < dst.cols; ++x ) {
-//      dst[y][x][0] = src[y][x][0] - x;
-//      dst[y][x][1] = src[y][x][1] - y;
-//    }
-//  }
-//
-//  cv::pyrDown(dst, dst, dstSize, cv::BORDER_REPLICATE);
-//
-//  for ( int y = 0; y < dst.rows; ++y ) {
-//    for ( int x = 0; x < dst.cols; ++x ) {
-//      dst[y][x][0] = 0.5f * dst[y][x][0] + x;
-//      dst[y][x][1] = 0.5f * dst[y][x][1] + y;
-//    }
-//  }
-//}
+void gaussian_average(const cv::Mat & src, cv::Mat & dst, double delta)
+{
+  static constexpr double sigma = 2;
+  static constexpr int ksize = 2 * ((int) (sigma * 4)) + 1;
+  static const thread_local cv::Mat1f G = cv::getGaussianKernel(ksize, sigma, CV_32F);
+  cv::sepFilter2D(src, dst, -1, G, G.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+}
+
 
 
 /*
@@ -331,7 +318,7 @@ void ecc_project_error_image(const cv::Mat1f & jac, const cv::Mat & error_image,
 
 /* Remap to Flow
  * */
-void ecc_remap_to_flow(const cv::Mat2f & rmap, cv::Mat2f & flow)
+void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow)
 {
   cv::Mat2f tmp;
 
@@ -1862,7 +1849,7 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
 
 #define RRTEST 1
 #if RRTEST
-  ecc_remap_to_flow(rmap, pyramid_.front().rmap);
+  ecc_remap_to_optflow(rmap, pyramid_.front().rmap);
 
   if( !debug_path_.empty() ) {
     std::string debug_filename;
@@ -1999,16 +1986,817 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
   return true;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void gaussian_average(const cv::Mat & src, cv::Mat & dst, double delta)
+void c_mgpflow::set_support_scale(int v)
 {
-  static constexpr double sigma = 2;
-  static constexpr int ksize = 2 * ((int) (sigma * 4)) + 1;
-  static const thread_local cv::Mat1f G = cv::getGaussianKernel(ksize, sigma, CV_32F);
-  cv::sepFilter2D(src, dst, -1, G, G.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  support_scale_ = v;
 }
+
+int c_mgpflow::support_scale() const
+{
+  return support_scale_;
+}
+
+
+void c_mgpflow::set_max_iterations(int v)
+{
+  max_iterations_ = v;
+}
+
+int c_mgpflow::max_iterations() const
+{
+  return max_iterations_;
+}
+
+void c_mgpflow::set_update_multiplier(double v)
+{
+  update_multiplier_ = v;
+}
+
+double c_mgpflow::update_multiplier() const
+{
+  return update_multiplier_;
+}
+
+//
+// Use for images which violate brightness constancy assumption,
+// for example on strong vignetting or planetary disk derotation
+void c_mgpflow::set_normalization_scale(int v)
+{
+  normalization_scale_ = v;
+}
+
+int c_mgpflow::normalization_scale() const
+{
+  return normalization_scale_;
+}
+
+void c_mgpflow::set_input_smooth_sigma(double v)
+{
+  input_smooth_sigma_ = v;
+}
+
+double c_mgpflow::input_smooth_sigma() const
+{
+  return input_smooth_sigma_;
+}
+
+
+void c_mgpflow::set_reference_smooth_sigma(double v)
+{
+  reference_smooth_sigma_ = v;
+}
+
+double c_mgpflow::reference_smooth_sigma() const
+{
+  return reference_smooth_sigma_;
+}
+
+void c_mgpflow::set_min_image_size(int v)
+{
+  min_image_size_ = v;
+}
+
+int c_mgpflow::min_image_size() const
+{
+  return min_image_size_;
+}
+
+
+void c_mgpflow::set_noise_level(double v)
+{
+  noise_level_ = v;
+}
+
+double c_mgpflow::noise_level() const
+{
+  return noise_level_;
+}
+
+void c_mgpflow::set_debug_path(const std::string & v)
+{
+  debug_path_ = v;
+}
+
+const std::string& c_mgpflow::debug_path() const
+{
+  return debug_path_;
+}
+
+void c_mgpflow::set_use_melp(bool v)
+{
+  use_melp_ = v;
+}
+
+bool c_mgpflow::use_melp() const
+{
+  return use_melp_;
+}
+
+void c_mgpflow::copy_parameters(const this_class & rhs)
+{
+  input_smooth_sigma_ = rhs.input_smooth_sigma_;
+  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
+  update_multiplier_ = rhs.update_multiplier_;
+  noise_level_ = rhs.noise_level_;
+  max_iterations_ = rhs.max_iterations_; //
+  support_scale_ = rhs.support_scale_;
+  normalization_scale_ = rhs.normalization_scale_;
+  min_image_size_ = rhs.min_image_size_;
+}
+
+const cv::Mat2f& c_mgpflow::current_uv() const
+{
+  return cuv;
+}
+
+const std::vector<c_mgpflow::pyramid_entry>& c_mgpflow::current_pyramid() const
+{
+  return pyramid_;
+}
+
+bool c_mgpflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
+    cv::Mat1f & dst, cv::Mat1b & dst_mask) const
+{
+  if ( src.depth() == dst.depth() ) {
+    dst = src.getMat();
+  }
+  else {
+    src.getMat().convertTo(dst, dst.depth());
+  }
+
+  if ( src_mask.empty() || cv::countNonZero(src_mask) == src_mask.size().area() ) {
+    dst_mask.release();
+  }
+  else {
+    dst_mask = src_mask.getMat();
+  }
+
+  return true;
+}
+
+
+bool c_mgpflow::compute_uv(pyramid_entry & e, cv::Mat2f & outuv) const
+{
+  cv::Mat1f worker_mg;
+  cv::Mat1f It, Itx, Ity;
+  cv::Mat1b M;
+
+  tbb::parallel_invoke(
+    [&e, &worker_mg]() {
+      //e.reference_image.copyTo(worker_image);
+      cv::remap(e.current_mg, worker_mg,
+          e.rmap, cv::noArray(),
+          cv::INTER_AREA,
+          cv::BORDER_REPLICATE/*cv::BORDER_TRANSPARENT*/);
+    },
+
+    [&e, &M]() {
+      if ( !e.current_mask.empty() ) {
+        cv::remap(e.current_mask, M,
+            e.rmap, cv::noArray(),
+            cv::INTER_NEAREST,
+            cv::BORDER_CONSTANT);
+      }
+    });
+
+
+  if ( !e.reference_mask.empty() ) {
+    if ( M.empty() ) {
+      e.reference_mask.copyTo(M);
+    }
+    else {
+      cv::bitwise_and(e.reference_mask, M, M);
+    }
+  }
+
+
+  const cv::Mat1f & I1 = worker_mg;
+  const cv::Mat1f & I2 = e.reference_mg;
+
+  cv::subtract(I2, I1, It, M);
+
+
+#if 0
+  cv::multiply(e.Ix, e.It, Itx);
+  pscale(Itx, Itx);
+
+  cv::multiply(e.Iy, e.It, Ity);
+  pscale(Ity, Ity);
+
+#else
+
+  tbb::parallel_invoke(
+
+    [this, &e, &It, &Itx]() {
+      cv::multiply(e.Ix, It, Itx);
+      pscale(Itx, Itx);
+    },
+
+    [this, &e, &It, &Ity]() {
+      cv::multiply(e.Iy, It, Ity);
+      pscale(Ity, Ity);
+    }
+  );
+#endif
+
+  if( !debug_path_.empty() ) {
+
+    std::string debug_filename;
+
+    if( !save_image(e.rmap,
+        debug_filename = ssprintf("%s/compute_uv/rmap.%03d.flo", debug_path_.c_str(), e.lvl)) ) {
+      CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      return false;
+    }
+
+    if( !save_image(It,
+        debug_filename = ssprintf("%s/compute_uv/It.%03d.tiff", debug_path_.c_str(), e.lvl)) ) {
+      CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      return false;
+    }
+
+    if( !save_image(e.current_mg,
+        debug_filename = ssprintf("%s/compute_uv/current_image.%03d.tiff", debug_path_.c_str(), e.lvl)) ) {
+      CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      return false;
+    }
+
+    if( !save_image(worker_mg,
+        debug_filename = ssprintf("%s/compute_uv/worker_image.%03d.tiff", debug_path_.c_str(), e.lvl)) ) {
+      CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      return false;
+    }
+
+  }
+
+
+  //  a00 = Ixx;
+  //  a01 = Ixy;
+  //  a10 = Ixy;
+  //  a11 = Iyy;
+  //  b0  = 2 * Itx;
+  //  b1  = 2 * Ity;
+  //  D = a00 * a11 - a10 * a01
+  //  u = 1/D * (a11 * b0 - a01 * b1);
+  //  v = 1/D * (a00 * b1 - a10 * b0);
+
+  outuv.create(e.D.size());
+
+//  CF_DEBUG("e.D.size=%dx%d Itx: %dx%d e.current_image: %dx%d e.current_mask: %dx%d",
+//      e.D.cols, e.D.rows,
+//      Itx.cols, Itx.rows,
+//      e.current_image.cols, e.current_image.rows,
+//      e.current_mask.cols, e.current_mask.rows);
+
+
+  typedef tbb::blocked_range<int> range;
+
+  tbb::parallel_for(range(0, outuv.rows, 256),
+      [&Itx, &e, &Ity, &outuv](const range & r) {
+
+        const cv::Mat4f & D = e.D;
+
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+          for ( int x = 0, nx = outuv.cols; x < nx; ++x ) {
+            const float & a00 = D[y][x][0];
+            const float & a01 = D[y][x][1];
+            const float & a10 = D[y][x][1];
+            const float & a11 = D[y][x][2];
+            const float & det = D[y][x][3];
+
+            const float & b0 = Itx[y][x];
+            const float & b1 = Ity[y][x];
+            outuv[y][x][0] = det * (a11 * b0 - a01 * b1);
+            outuv[y][x][1] = det * (a00 * b1 - a10 * b0);
+          }
+        }
+      });
+
+
+  if ( update_multiplier_ != 1 ) {
+    cv::multiply(outuv,  cv::Scalar::all(update_multiplier_), outuv);
+  }
+
+  upscale(outuv, cv::noArray(), outuv, cv::noArray(), I1.size());
+  if ( outuv.size() != I1.size() ) {
+    CF_ERROR("Invalid outuv size: %dx%d must be %dx%d", outuv.cols, outuv.rows, I1.cols, I1.rows);
+    return false;
+  }
+
+  if( !debug_path_.empty() ) {
+    std::string debug_filename;
+    if( !save_image(outuv,
+        debug_filename = ssprintf("%s/compute_uv/outuv.%03d.flo", debug_path_.c_str(), e.lvl)) ) {
+      CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool c_mgpflow::pscale(cv::InputArray src, cv::Mat & dst, bool ismask) const
+{
+  cv::Size size =
+      src.size();
+
+  for ( int i = 0; i < support_scale_; ++i ) {
+    size.width = (size.width + 1) / 2;
+    size.height = (size.height + 1) / 2;
+  }
+
+  cv::resize(src, dst, size, 0, 0, cv::INTER_AREA);
+
+  if ( ismask ) {
+    cv::compare(dst, 255, dst, cv::CMP_EQ);
+  }
+  else {
+    static thread_local const cv::Mat G = cv::getGaussianKernel(3, 0, CV_32F);
+    cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+  }
+
+  return true;
+}
+
+
+void c_mgpflow::downscale(cv::InputArray src, cv::InputArray src_mask,
+    cv::OutputArray dst, cv::OutputArray dst_mask,
+    const cv::Size & dst_size) const
+{
+  cv::resize(src, dst, dst_size, 0, 0, cv::INTER_AREA);
+
+  if ( dst_mask.needed() ) {
+
+    if( src_mask.empty() ) {
+      dst_mask.release();
+    }
+    else {
+      cv::resize(src, dst, dst_size, 0, 0, cv::INTER_AREA);
+      cv::compare(dst_mask.getMat(), cv::Scalar::all(250), dst_mask, cv::CMP_GE);
+    }
+  }
+
+}
+
+void c_mgpflow::upscale(cv::InputArray src, cv::InputArray src_mask,
+    cv::OutputArray dst, cv::OutputArray dst_mask,
+    const cv::Size & dst_size) const
+{
+  //cv::pyrUp(src, dst, dst_size);
+  cv::resize(src, dst, dst_size, 0, 0, cv::INTER_CUBIC);
+
+  if ( dst_mask.needed() ) {
+
+    if ( src_mask.empty() ) {
+      dst_mask.release();
+    }
+    else {
+      //cv::pyrUp(src_mask, dst_mask, dst_size);
+      cv::resize(src, dst, dst_size, 0, 0, cv::INTER_AREA);
+      cv::compare(dst_mask.getMat(), cv::Scalar::all(250), dst_mask, cv::CMP_GE);
+    }
+  }
+}
+
+
+const cv::Mat1f & c_mgpflow::reference_image() const
+{
+  static const cv::Mat1f empty_stub;
+  return pyramid_.empty() ?  empty_stub : pyramid_.front().reference_image;
+}
+
+const cv::Mat1b & c_mgpflow::reference_mask() const
+{
+  static const cv::Mat1b empty_stub;
+  return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
+}
+
+const cv::Mat1b c_mgpflow::SE =
+    cv::Mat1b(3, 3, (uint8_t) (255));
+
+void c_mgpflow::compute_mg(bool reference, pyramid_entry & current_scale, const pyramid_entry * previous_scale)
+{
+  cv::Mat & current_src_image =
+      reference ? current_scale.reference_image :
+          current_scale.current_image;
+
+  cv::Mat & current_mg_image =
+      reference ? current_scale.reference_mg:
+          current_scale.current_mg;
+
+//  cv::morphologyEx(current_src_image, current_mg_image,
+//      cv::MORPH_GRADIENT,
+//      SE,
+//      cv::Point(1, 1),
+//      1,
+//      cv::BORDER_REPLICATE);
+
+  cv::Mat gx, gy;
+  ecc_differentiate(current_src_image, gx, gy);
+  cv::magnitude(gx, gy, current_mg_image);
+
+  if ( previous_scale  ) {
+
+    cv::Mat tmp;
+
+    const cv::Mat & previous_src_image =
+        reference ? previous_scale->reference_image :
+            previous_scale->current_image;
+
+    const cv::Mat & previous_mg_image =
+        reference ? previous_scale->reference_mg:
+            previous_scale->current_mg;
+
+    cv::morphologyEx(previous_mg_image, tmp,
+        cv::MORPH_DILATE,
+        SE,
+        cv::Point(1, 1),
+        1,
+        cv::BORDER_REPLICATE);
+
+    downscale(previous_mg_image, cv::noArray(),
+        tmp, cv::noArray(),
+        current_mg_image.size());
+
+    cv::add(tmp, current_mg_image,
+        current_mg_image);
+  }
+
+}
+
+
+
+
+
+
+bool c_mgpflow::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+{
+  if ( !referenceMask.empty() ) {
+
+    if ( referenceMask.size() != referenceImage.size() ) {
+      CF_ERROR("Invalid reference mask size: %dx%d. Must be is %dx%d",
+          referenceMask.cols(), referenceMask.rows(),
+          referenceImage.cols(), referenceImage.rows());
+
+      return false;
+    }
+
+    if ( referenceMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid reference mask type: %d. Must be CV_8UC1",
+          referenceMask.type());
+      return false;
+    }
+  }
+
+  const double noise_level =
+      noise_level_ >= 0 ? noise_level_ : 1e-3;
+
+  cv::Mat1f Ixx, Iyy, Ixy, DD;
+
+  pyramid_.clear();
+  pyramid_.reserve(16);
+
+  const int min_image_size =
+      std::max(4, min_image_size_);
+
+  for ( int current_level = 0; ; ++current_level ) {
+
+    pyramid_.emplace_back();
+
+    pyramid_entry & current_scale =
+        pyramid_.back();
+
+    current_scale.lvl =
+        current_level;
+
+    if ( current_level == 0 ) {
+      convert_input_images(referenceImage, referenceMask,
+          current_scale.reference_image,
+          current_scale.reference_mask);
+    }
+    else {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+#if 0
+      downscale(previous_scale.reference_image, previous_scale.reference_mask,
+          current_scale.reference_image, current_scale.reference_mask);
+#else
+      const cv::Size previous_size =
+          previous_scale.reference_image.size();
+
+      const cv::Size next_size(std::max(min_image_size_, 2 * (previous_size.width + 1) / 3),
+          std::max(min_image_size_, 2 * (previous_size.height + 1) / 3));
+
+      downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
+          current_scale.reference_image, current_scale.reference_mask,
+          next_size);
+
+#endif
+
+    }
+
+    compute_mg(true, current_scale);
+
+    if( current_level > 0 ) {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+      compute_mg(true, current_scale,
+          &previous_scale);
+    }
+
+    ecc_differentiate(current_scale.reference_mg,
+        current_scale.Ix, current_scale.Iy);
+
+    if( !debug_path_.empty() ) {
+
+      std::string debug_filename;
+
+      if( !save_image(current_scale.reference_image,
+          debug_filename = ssprintf("%s/set_reference_image/reference_image.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+
+      if( !save_image(current_scale.reference_mg,
+          debug_filename = ssprintf("%s/set_reference_image/reference_mg.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+
+      if( !save_image(current_scale.Ix,
+          debug_filename = ssprintf("%s/set_reference_image/Ix.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+      if( !save_image(current_scale.Iy,
+          debug_filename = ssprintf("%s/set_reference_image/Iy.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+    }
+
+    tbb::parallel_invoke(
+        [this, &current_scale, &Ixx]() {
+          cv::multiply(current_scale.Ix, current_scale.Ix, Ixx);
+          pscale(Ixx, Ixx);
+        },
+        [this, &current_scale, &Ixy]() {
+          cv::multiply(current_scale.Ix, current_scale.Iy, Ixy);
+          pscale(Ixy, Ixy);
+        },
+        [this, &current_scale, &Iyy]() {
+          cv::multiply(current_scale.Iy, current_scale.Iy, Iyy);
+          pscale(Iyy, Iyy);
+        }
+    );
+
+    if( !debug_path_.empty() ) {
+      std::string debug_filename;
+      if( !save_image(Ixx,
+          debug_filename = ssprintf("%s/set_reference_image/Ixx.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+      if( !save_image(Ixy,
+          debug_filename = ssprintf("%s/set_reference_image/Ixy.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+      if( !save_image(Iyy,
+          debug_filename = ssprintf("%s/set_reference_image/Iyy.%03d.tiff", debug_path_.c_str(), current_level)) ) {
+        CF_ERROR("save_image('%s') fails", debug_filename.c_str());
+        return false;
+      }
+    }
+
+
+    // FIXME: this regularization term estimation seems crazy
+    const double RegularizationTerm = noise_level > 0 ?
+        pow(1e-5 * noise_level / (1 << current_level), 4) :
+        0;
+
+    cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
+    cv::add(DD, RegularizationTerm, DD);
+    cv::divide(1, DD, DD);
+
+    cv::Mat D_channels[4] = {
+        Ixx,
+        Ixy,
+        Iyy,
+        DD
+      };
+
+    cv::merge(D_channels, 4, current_scale.D);
+
+
+    const cv::Size current_size =
+        current_scale.reference_image.size();
+
+    CF_DEBUG("current_size: %dx%d", current_size.width, current_size.height);
+    if( std::max(current_size.width, current_size.height) <= min_image_size ) {
+      break;
+    }
+  }
+
+  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
+      pyramid_.back().reference_image.cols,
+      pyramid_.back().reference_image.rows);
+
+  return true;
+}
+
+
+bool c_mgpflow::setup_input_image(cv::InputArray inputImage, cv::InputArray inputMask)
+{
+  if( pyramid_.empty() ) {
+    CF_ERROR("Reference pyramid is empty: set_reference_image() must be called first");
+    return false;
+  }
+
+  if( !inputMask.empty() ) {
+
+    if( inputMask.size() != inputImage.size() ) {
+      CF_ERROR("Invalid input mask size: %dx%d. Must be is %dx%d",
+          inputMask.cols(), inputMask.rows(),
+          inputImage.cols(), inputImage.rows());
+
+      return false;
+    }
+
+    if( inputMask.type() != CV_8UC1 ) {
+      CF_ERROR("Invalid input mask type: %d. Must be CV_8UC1",
+          inputMask.type());
+      return false;
+    }
+  }
+
+  const int num_levels =
+      (int)(pyramid_.size());
+
+  for( int current_level = 0; current_level < num_levels; ++current_level ) {
+
+    pyramid_entry & current_scale =
+        pyramid_[current_level];
+
+    if ( current_level == 0 ) {
+      convert_input_images(inputImage, inputMask,
+          current_scale.current_image,
+          current_scale.current_mask);
+    }
+    else {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+#if 0
+      downscale(previous_scale.current_image, previous_scale.current_mask,
+          current_scale.current_image, current_scale.current_mask,
+          current_scale.reference_image.size());
+#else
+      downscale(pyramid_.front().current_image, pyramid_.front().current_mask,
+          current_scale.current_image, current_scale.current_mask,
+          current_scale.reference_image.size());
+#endif
+    }
+
+    compute_mg(false, current_scale);
+
+    if( current_level > 0 ) {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+      compute_mg(false, current_scale,
+          &previous_scale);
+    }
+
+  }
+
+
+  return true;
+}
+
+
+
+bool c_mgpflow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
+    cv::InputArray inputMask, cv::InputArray referenceMask)
+{
+  set_reference_image(referenceImage, referenceMask);
+  return compute(inputImage, rmap, inputMask);
+}
+
+bool c_mgpflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
+{
+  cv::Mat1f I;
+  cv::Mat1b M;
+  cv::Mat2f uv;
+
+  if ( !setup_input_image(inputImage, inputMask) ) {
+    CF_ERROR("setup_input_image() fails");
+    return false;
+  }
+
+  const int num_levels =
+      (int) (pyramid_.size());
+
+  if( rmap.empty() ) {
+
+    ecc_create_identity_remap(rmap, pyramid_.front().reference_image.size());
+
+    for( int current_level = 0; current_level < num_levels; ++current_level ) {
+
+      pyramid_entry & current_scale =
+          pyramid_[current_level];
+
+      ecc_create_identity_remap(current_scale.rmap,
+          current_scale.reference_image.size());
+    }
+
+  }
+  else if( rmap.size() == pyramid_.front().reference_image.size() ) {
+
+    ecc_remap_to_optflow(rmap, pyramid_.front().rmap);
+
+    for( int current_level = 1; current_level < num_levels; ++current_level ) {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+      pyramid_entry & current_scale =
+          pyramid_[current_level];
+
+      downscale(previous_scale.rmap, cv::noArray(),
+          current_scale.rmap, cv::noArray(),
+          current_scale.reference_image.size());
+
+      const cv::Scalar size_ratio((double) current_scale.rmap.cols / (double) previous_scale.rmap.cols,
+          (double) current_scale.rmap.rows / (double) previous_scale.rmap.rows);
+
+      cv::multiply(current_scale.rmap, size_ratio,
+          current_scale.rmap);
+
+    }
+  }
+  else {
+    CF_ERROR("Invalid args to c_mgpflow::compute(): reference image and rmap sizes not match");
+    return false;
+  }
+
+  compute_uv(pyramid_.back(), cuv);
+
+  if ( pyramid_.size() == 1 ) {
+    cv::add(rmap, cuv, rmap);
+  }
+  else {
+
+    for ( int i = pyramid_.size() - 2; i >= 0; --i ) {
+
+      pyramid_entry & current_scale =
+          pyramid_[i];
+
+      const pyramid_entry & prev_scale =
+          pyramid_[i + 1];
+
+      const cv::Size current_image_size =
+          current_scale.current_image.size();
+
+      const cv::Size prev_image_size =
+          prev_scale.current_image.size();
+
+      const cv::Size current_rmap_size =
+          current_scale.rmap.size();
+
+      const cv::Size prev_rmap_size =
+          prev_scale.rmap.size();
+
+      const cv::Scalar size_ratio((double) current_image_size.width / (double) prev_image_size.width,
+          (double) current_image_size.height / (double) prev_image_size.height);
+
+      cv::multiply(cuv, size_ratio, cuv);
+      upscale(cuv, cv::noArray(), cuv, cv::noArray(), current_rmap_size);
+      cv::add(current_scale.rmap, cuv, current_scale.rmap);
+
+      compute_uv(current_scale, uv);
+      if ( i == 0 ) {
+        cv::add(current_scale.rmap, uv, rmap);
+      }
+      else {
+        cv::add(uv, cuv, cuv);
+      }
+    }
+  }
+
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void c_epipolar_flow::set_epipole(const cv::Point2f & v)
 {
@@ -2309,7 +3097,7 @@ bool c_epipolar_flow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::I
     return false;
   }
 
-  ecc_remap_to_flow(rmap, pyramid_.front().rmap);
+  ecc_remap_to_optflow(rmap, pyramid_.front().rmap);
 
   if( !debug_path_.empty() ) {
     std::string debug_filename;

@@ -83,6 +83,7 @@
 #include "pyramid/c_median_pyramid_routine.h"
 #include "pyramid/c_radial_scale_routine.h"
 #include "pyramid/c_resize_pyramid_routine.h"
+#include "pyramid/c_amelp_pyramid_routine.h"
 
 #include "feature2d/c_keypoins_detector_routine.h"
 #include "feature2d/c_edgebox_routine.h"
@@ -224,6 +225,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_median_pyramid_routine::class_factory_instance());
     register_class_factory(c_radial_scale_routine::class_factory_instance());
     register_class_factory(c_resize_pyramid_routine::class_factory_instance());
+    register_class_factory(c_amelp_pyramid_routine::class_factory_instance());
 
     register_class_factory(c_downstrike_routine::class_factory_instance());
     register_class_factory(c_upject_routine::class_factory_instance());

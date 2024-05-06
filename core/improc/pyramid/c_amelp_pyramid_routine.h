@@ -1,32 +1,22 @@
 /*
- * c_morph_gradient_pyramid_routine.h
+ * c_amelp_pyramid_routine.h
  *
- *  Created on: Sep 3, 2023
+ *  Created on: May 6, 2024
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_morph_gradient_pyramid_routine_h__
-#define __c_morph_gradient_pyramid_routine_h__
+#ifndef __c_amelp_pyramid_routine_h__
+#define __c_amelp_pyramid_routine_h__
 
 #include <core/improc/c_image_processor.h>
 
-class c_morph_gradient_pyramid_routine :
+class c_amelp_pyramid_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_morph_gradient_pyramid_routine,
-      "morph_gradient_pyramid", "Display morphological gradient Pyramid layers");
-
-  void set_max_level(int v)
-  {
-    max_level_ = v;
-  }
-
-  int max_level() const
-  {
-    return max_level_;
-  }
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_amelp_pyramid_routine,
+      "amelp_pyramid", "Display amelp pyramid layers");
 
   void set_scale_factor(double v)
   {
@@ -36,6 +26,16 @@ public:
   double scale_factor() const
   {
     return scale_factor_;
+  }
+
+  void set_max_level(int v)
+  {
+    max_level_ = v;
+  }
+
+  int max_level() const
+  {
+    return max_level_;
   }
 
   void set_display_pos(int v)
@@ -59,4 +59,4 @@ protected:
   int max_level_ = 3;
 };
 
-#endif /* __c_morph_gradient_pyramid_routine_h__ */
+#endif /* __c_amelp_pyramid_routine_h__ */

@@ -41,8 +41,10 @@ static QToolButton * createToolButton(QWidget * parent,
 bool QCameraROI::registerMetatype()
 {
   if( !metatype_registered_ ) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qRegisterMetaTypeStreamOperators<QCameraROI>("QCameraROI");
     qRegisterMetaTypeStreamOperators<QList<QCameraROI>>("QList<QCameraROI>");
+#endif
     metatype_registered_ = true;
   }
   return metatype_registered_;

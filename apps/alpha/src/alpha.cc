@@ -64,28 +64,23 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  source->seek(0);
+  source->seek(321);
 
+  cv::Mat src_images[2];
   cv::Mat images[2];
 
-
-  if ( !source->read(images[0], nullptr, nullptr) ) {
-    CF_ERROR("source->read(images[0]) fails for '%s'", input_file_name.c_str());
-    return 1;
-  }
-
-  if ( !source->read(images[1], nullptr, nullptr) ) {
-    CF_ERROR("source->read(images[1]) fails for '%s'", input_file_name.c_str());
-    return 1;
-  }
-
-  source->close();
-
   for ( int i = 0; i < 2; ++i ) {
-    cv::cvtColor(images[i], images[i], cv::COLOR_BGR2GRAY);
+
+    if ( !source->read(src_images[i], nullptr, nullptr) ) {
+      CF_ERROR("source->read(images[%d]) fails for '%s'", i, input_file_name.c_str());
+      return 1;
+    }
+
+    cv::cvtColor(src_images[i], images[i], cv::COLOR_BGR2GRAY);
     images[i].convertTo(images[i], CV_32F, 1./255, 0);
   }
 
+  source->close();
 
   c_mgpflow f;
 
@@ -117,12 +112,28 @@ int main(int argc, char *argv[])
   ecc_remap_to_optflow(rmap, optflow);
   save_image(optflow, ssprintf("alpha-debug/pyramid/optflow.final.flo"));
 
-
   save_image(images[0], ssprintf("alpha-debug/pyramid/reference_image.tiff"));
   save_image(images[1], ssprintf("alpha-debug/pyramid/current_image.tiff"));
-
   cv::remap(images[1], images[1], rmap, cv::noArray(), cv::INTER_LINEAR);
   save_image(images[1], ssprintf("alpha-debug/pyramid/remapped_image.tiff"));
+
+  cv::Mat absdiff_image, mask1, mask2, mask;
+
+  cv::compare(pyramid.front().reference_mg, cv::Scalar::all(0.1), mask1, cv::CMP_GT);
+  save_image(pyramid.front().reference_mg, mask1, ssprintf("alpha-debug/pyramid/reference_mg.tiff"));
+
+  cv::remap(pyramid.front().current_mg, pyramid.front().current_mg, rmap, cv::noArray(), cv::INTER_LINEAR);
+  cv::compare(pyramid.front().current_mg, cv::Scalar::all(0.1), mask2, cv::CMP_GT);
+  save_image(pyramid.front().current_mg, mask2, ssprintf("alpha-debug/pyramid/remapped_current_mg.tiff"));
+
+  cv::bitwise_and(mask1, mask2, mask);
+  morphological_smooth_close(mask, mask, cv::Mat1b(3, 3, 255));
+
+  cv::remap(src_images[1], src_images[1], rmap, cv::noArray(), cv::INTER_LINEAR);
+  save_image(src_images[0], mask, ssprintf("alpha-debug/pyramid/masked_src_image0.tiff"));
+  save_image(src_images[1], mask, ssprintf("alpha-debug/pyramid/masked_src_image1.tiff"));
+
+
 
 //  std::string options;
 //

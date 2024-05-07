@@ -99,7 +99,10 @@ QRoutineItem* currentRoutineItem(QTreeWidget * tree_ctl)
 QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
   Base(parent)
 {
+  setContentsMargins(0, 0, 0, 0);
+
   lv_ = new QVBoxLayout(this);
+  lv_->setContentsMargins(0, 0, 0, 0);
 
   addAction(moveDownAction_ =
       createAction(getIcon(ICON_move_down),

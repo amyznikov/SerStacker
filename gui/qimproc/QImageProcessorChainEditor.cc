@@ -130,7 +130,10 @@ QScrollArea* createScrollableWrap(QWidget * w, QWidget * parent = nullptr)
 QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
     Base(parent)
 {
+  setContentsMargins(0, 0, 0, 0);
+
   lv_ = new QVBoxLayout(this);
+  lv_->setContentsMargins(0, 0, 0, 0);
 
   ///////////////////////////////////////////////////////////////////
 //  lv_->addWidget(toolbar_ctl = new QToolBar(this));

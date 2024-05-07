@@ -2376,9 +2376,12 @@ const cv::Mat1b & c_mgpflow::reference_mask() const
 const cv::Mat1b c_mgpflow::SE =
     cv::Mat1b(3, 3, (uint8_t) (255));
 
+
+// TODO: compute matches for different feature scales in separate pyramids, then join;
+
 void c_mgpflow::compute_mg(bool reference, pyramid_entry & current_scale, const pyramid_entry * previous_scale)
 {
-  cv::Mat & current_src_image =
+  const cv::Mat & current_src_image =
       reference ? current_scale.reference_image :
           current_scale.current_image;
 
@@ -2386,16 +2389,16 @@ void c_mgpflow::compute_mg(bool reference, pyramid_entry & current_scale, const 
       reference ? current_scale.reference_mg:
           current_scale.current_mg;
 
-//  cv::morphologyEx(current_src_image, current_mg_image,
-//      cv::MORPH_GRADIENT,
-//      SE,
-//      cv::Point(1, 1),
-//      1,
-//      cv::BORDER_REPLICATE);
+  cv::morphologyEx(current_src_image, current_mg_image,
+      cv::MORPH_GRADIENT,
+      SE,
+      cv::Point(1, 1),
+      1,
+      cv::BORDER_REPLICATE);
 
-  cv::Mat gx, gy;
-  ecc_differentiate(current_src_image, gx, gy);
-  cv::magnitude(gx, gy, current_mg_image);
+//  cv::Mat gx, gy;
+//  ecc_differentiate(current_src_image, gx, gy);
+//  cv::magnitude(gx, gy, current_mg_image);
 
   if ( previous_scale  ) {
 
@@ -2422,6 +2425,9 @@ void c_mgpflow::compute_mg(bool reference, pyramid_entry & current_scale, const 
 
     cv::add(tmp, current_mg_image,
         current_mg_image);
+
+//    cv::max(tmp, current_mg_image,
+//        current_mg_image);
   }
 
 }

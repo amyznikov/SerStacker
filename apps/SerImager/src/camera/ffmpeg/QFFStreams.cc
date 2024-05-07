@@ -13,10 +13,12 @@ QFFStreams * QFFStreams::instance()
 {
   static bool initialized = false;
   if ( !initialized ) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qRegisterMetaTypeStreamOperators<QFFMPEGCameraParameters>("QFFMPEGCameraParameters");
     qRegisterMetaTypeStreamOperators<serimager::QFFMPEGCameraParameters>("serimager::QFFMPEGCameraParameters");
     qRegisterMetaTypeStreamOperators<QList<QFFMPEGCameraParameters>>("QList<QFFMPEGCameraParameters>");
     qRegisterMetaTypeStreamOperators<QList<serimager::QFFMPEGCameraParameters>>("QList<serimager::QFFMPEGCameraParameters>");
+#endif
     initialized = true;
   }
 

@@ -85,8 +85,10 @@ int main(int argc, char *argv[])
   c_mgpflow f;
 
   f.set_support_scale(3);
-  f.set_min_image_size(8);
-  f.set_noise_level(5e-3);
+  f.set_min_image_size(4);
+  f.set_noise_level(1e-3);
+  f.set_use_melp(false);
+  f.set_scale_factor(0.75);
 
   f.set_reference_image(images[0], cv::noArray());
 
@@ -119,15 +121,21 @@ int main(int argc, char *argv[])
 
   cv::Mat absdiff_image, mask1, mask2, mask;
 
-  cv::compare(pyramid.front().reference_mg, cv::Scalar::all(0.1), mask1, cv::CMP_GT);
+  if ( f.use_melp() ) {
+    cv::compare(pyramid.front().reference_mg, cv::Scalar::all(0.1), mask1, cv::CMP_GT);
+  }
   save_image(pyramid.front().reference_mg, mask1, ssprintf("alpha-debug/pyramid/reference_mg.tiff"));
 
   cv::remap(pyramid.front().current_mg, pyramid.front().current_mg, rmap, cv::noArray(), cv::INTER_LINEAR);
-  cv::compare(pyramid.front().current_mg, cv::Scalar::all(0.1), mask2, cv::CMP_GT);
+  if ( f.use_melp() ) {
+    cv::compare(pyramid.front().current_mg, cv::Scalar::all(0.1), mask2, cv::CMP_GT);
+  }
   save_image(pyramid.front().current_mg, mask2, ssprintf("alpha-debug/pyramid/remapped_current_mg.tiff"));
 
-  cv::bitwise_and(mask1, mask2, mask);
-  morphological_smooth_close(mask, mask, cv::Mat1b(3, 3, 255));
+  if ( f.use_melp() ) {
+    cv::bitwise_and(mask1, mask2, mask);
+    morphological_smooth_close(mask, mask, cv::Mat1b(3, 3, 255));
+  }
 
   cv::remap(src_images[1], src_images[1], rmap, cv::noArray(), cv::INTER_LINEAR);
   save_image(src_images[0], mask, ssprintf("alpha-debug/pyramid/masked_src_image0.tiff"));

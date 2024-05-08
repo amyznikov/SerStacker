@@ -19,6 +19,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_pyramid_routine, "gaussian_pyramid",
       "Calls <strong>cv::pyrDown()</strong> or <strong>cv::pyrUp()</strong> on image");
 
+  enum UnsharpMaskOrder {
+    UnsharpMaskNone,
+    UnsharpMaskBefore,
+    UnsharpMaskAfter,
+    UnsharpMaskEachIteration,
+  };
+
   void set_count(int v)
   {
     count_ = v;
@@ -39,24 +46,54 @@ public:
     return borderType_;
   }
 
-  void set_usharp_sigma(double v)
+  void set_unsharp_sigma(double v)
   {
-    usharp_sigma_ = v;
+    unsharp_sigma_ = v;
   }
 
-  double usharp_sigma() const
+  double unsharp_sigma() const
   {
-    return usharp_sigma_;
+    return unsharp_sigma_;
   }
 
-  void set_usharp_alpha(double v)
+  void set_unsharp_alpha(double v)
   {
-    usharp_alpha_ = v;
+    unsharp_alpha_ = v;
   }
 
-  double usharp_alpha() const
+  double unsharp_alpha() const
   {
-    return usharp_alpha_;
+    return unsharp_alpha_;
+  }
+
+  void set_unsharp_outmin(double v)
+  {
+    unsharp_outmin_ = v;
+  }
+
+  double unsharp_outmin() const
+  {
+    return unsharp_outmin_;
+  }
+
+  void set_unsharp_outmax(double v)
+  {
+    unsharp_outmax_ = v;
+  }
+
+  double unsharp_outmax() const
+  {
+    return unsharp_outmax_;
+  }
+
+  void set_unsharp_mask_order(UnsharpMaskOrder v)
+  {
+    unsharp_mask_order_ = v;
+  }
+
+  UnsharpMaskOrder unsharp_mask_order() const
+  {
+    return unsharp_mask_order_;
   }
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
@@ -66,8 +103,11 @@ public:
 protected:
   int count_ = 1;
   cv::BorderTypes borderType_ = cv::BORDER_DEFAULT;
-  double usharp_sigma_ = 1.5;
-  double usharp_alpha_ = 0.0;
+  UnsharpMaskOrder unsharp_mask_order_ = UnsharpMaskNone;
+  double unsharp_sigma_ = 1.5;
+  double unsharp_alpha_ = 0.0;
+  double unsharp_outmin_ = -1;
+  double unsharp_outmax_ = -1;
 };
 
 #endif /* __c_pyrdown_routine_h__ */

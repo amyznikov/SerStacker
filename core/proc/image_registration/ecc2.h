@@ -435,6 +435,9 @@ public:
   void set_noise_level(double v);
   double noise_level() const;
 
+  void set_scale_factor(double v);
+  double scale_factor() const;
+
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
 
@@ -479,8 +482,8 @@ protected:
       cv::OutputArray dst, cv::OutputArray dst_mask,
       const cv::Size & dst_size) const;
 
-  bool pscale(cv::InputArray src, cv::Mat & dst,
-      bool ismask = false) const;
+  void pscale(cv::InputArray src, cv::Mat & dst) const;
+  void puscale(cv::InputArray src, cv::Mat & dst, const cv::Size & dst_size) const;
 
   void pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const;
 
@@ -493,6 +496,7 @@ protected:
   double reference_smooth_sigma_ = 0;
   double update_multiplier_ = 1.5;
   double noise_level_ = -1;
+  double scale_factor_ = 0.5;
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;

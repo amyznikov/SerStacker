@@ -82,12 +82,12 @@ int main(int argc, char *argv[])
 
   source->close();
 
-  c_mgpflow f;
+  c_eccflow f;
 
   f.set_support_scale(3);
   f.set_min_image_size(4);
   f.set_noise_level(1e-3);
-  f.set_scale_factor(0.9);
+  f.set_scale_factor(0.75);
 
   f.set_reference_image(images[0], cv::noArray());
 

@@ -269,9 +269,10 @@ protected:
   QNumericBox * reference_smooth_sigma_ctl = nullptr;
   QNumericBox * max_iterations_ctl = nullptr;
   QNumericBox * support_scale_ctl = nullptr;
-  QNumericBox * max_pyramid_level_ctl = nullptr;
+  QNumericBox * min_image_size_ctl = nullptr;
   QNumericBox * normalization_scale_ctl = nullptr;
   QNumericBox * noise_level_ctl = nullptr;
+  QNumericBox * scale_factor_ctl = nullptr;
   QCheckBox * enable_debug_ctl = nullptr;
 
   QWidgetList controls;

@@ -64,7 +64,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(section, save, *this, eccflow_input_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_reference_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_update_multiplier);
-
+    SERIALIZE_PROPERTY(section, save, *this, eccflow_scale_factor);
 
   }
 
@@ -142,6 +142,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
 
         PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "normalization_scale", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
@@ -350,6 +351,16 @@ void c_running_average_pipeline::set_eccflow_min_image_size(int v)
 int c_running_average_pipeline::eccflow_min_image_size() const
 {
   return eccflow_.min_image_size();
+}
+
+void c_running_average_pipeline::set_eccflow_scale_factor(double v)
+{
+  eccflow_.set_scale_factor(v);
+}
+
+double c_running_average_pipeline::eccflow_scale_factor() const
+{
+  return eccflow_.scale_factor();
 }
 
 void c_running_average_pipeline::set_eccflow_min_rho(double v)
@@ -729,8 +740,14 @@ bool c_running_average_pipeline::process_current_frame2()
   };
 
 
+  if ( !registration_options_.enable_ecc ) {
+    CF_ERROR("ECC must be enabled for double align mode");
+    return false;
+  }
+
   ////
-  mkgrayscale(current_image_, current_mask_, image2, mask2);
+  mkgrayscale(current_image_, current_mask_,
+      image2, mask2);
 
   if( average1_.accumulated_frames() < 1 ) {
 

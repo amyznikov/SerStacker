@@ -949,7 +949,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             }
           }));
 
-  controls.append(max_pyramid_level_ctl =
+  controls.append(min_image_size_ctl =
       add_numeric_box<int>("min_image_size",
           "",
           [this](int value) {
@@ -959,6 +959,16 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             }
           }));
 
+
+  controls.append(scale_factor_ctl =
+      add_numeric_box<double>("scale_factor",
+          "",
+          [this](double value) {
+            if ( options_ && options_->scale_factor != value ) {
+              options_->scale_factor = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
 
   controls.append(input_smooth_sigma_ctl =
       add_numeric_box<double>("input_smooth_sigma",
@@ -1021,6 +1031,7 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
           }));
 
 
+
   enable_debug_ctl =
       add_checkbox("enable debug",
           "",
@@ -1060,7 +1071,8 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
     max_iterations_ctl->setValue(options_->max_iterations);
     support_scale_ctl->setValue(options_->support_scale);
-    max_pyramid_level_ctl->setValue(options_->min_image_size);
+    min_image_size_ctl->setValue(options_->min_image_size);
+    scale_factor_ctl->setValue(options_->scale_factor);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     noise_level_ctl->setValue(options_->noise_level);
     enable_debug_ctl->setChecked(options_->enable_debug);

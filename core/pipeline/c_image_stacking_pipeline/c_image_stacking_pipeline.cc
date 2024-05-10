@@ -3331,6 +3331,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
         SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);
         SERIALIZE_OPTION(subsubsection, save, eccflow, enable_debug);
       }
 

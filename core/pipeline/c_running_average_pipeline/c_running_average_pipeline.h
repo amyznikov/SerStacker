@@ -128,6 +128,9 @@ public:
   void set_eccflow_min_image_size(int v);
   int eccflow_min_image_size() const;
 
+  void set_eccflow_scale_factor(double v);
+  double eccflow_scale_factor() const;
+
   void set_eccflow_normalization_scale(int v);
   int eccflow_normalization_scale() const;
 

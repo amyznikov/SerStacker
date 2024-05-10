@@ -22,7 +22,8 @@ static void compute_laplacian(cv::InputArray src, cv::OutputArray l, double delt
   static const thread_local cv::Mat1f K =
       cv::Mat1f(5, 5, k) / 16.;
 
-  cv::filter2D(src, l, -1, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::filter2D(src, l, -1, K, cv::Point(-1, -1), delta,
+      cv::BORDER_REPLICATE);
 }
 
 

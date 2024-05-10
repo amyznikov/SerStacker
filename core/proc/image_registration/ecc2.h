@@ -310,7 +310,7 @@ public:
     cv::Mat1f current_image, reference_image;
     cv::Mat1b current_mask, reference_mask;
     cv::Mat2f rmap;
-    cv::Mat1f Ix, Iy;//, It;
+    cv::Mat1f Ix, Iy;
     cv::Mat4f D;
     int lvl = 0;
   };
@@ -382,7 +382,6 @@ protected:
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
-  //int max_pyramid_level_ = -1; // to allow force limit max pyramid size
   int min_image_size_ = 4;
 
   std::vector<pyramid_entry> pyramid_;
@@ -402,7 +401,6 @@ public:
   struct pyramid_entry {
     cv::Mat1f current_image, reference_image;
     cv::Mat1b current_mask, reference_mask;
-    cv::Mat1f current_mg, reference_mg;
     cv::Mat2f rmap;
     cv::Mat1f Ix, Iy;//, It;
     cv::Mat4f D;
@@ -429,20 +427,18 @@ public:
   void set_reference_smooth_sigma(double v);
   double reference_smooth_sigma() const;
 
+  void set_scale_factor(double v);
+  double scale_factor() const;
+
   void set_min_image_size(int v);
   int min_image_size() const;
+
 
   void set_noise_level(double v);
   double noise_level() const;
 
-  void set_scale_factor(double v);
-  double scale_factor() const;
-
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;
-
-  void set_use_melp(bool v);
-  bool use_melp() const;
 
   void copy_parameters(const this_class & rhs);
 
@@ -470,7 +466,6 @@ protected:
   bool convert_input_images(cv::InputArray src, cv::InputArray src_mask,
       cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
 
-
   bool compute_uv(pyramid_entry & e,
       cv::Mat2f & outuv) const;
 
@@ -483,32 +478,26 @@ protected:
       const cv::Size & dst_size) const;
 
   void pscale(cv::InputArray src, cv::Mat & dst) const;
-  void puscale(cv::InputArray src, cv::Mat & dst, const cv::Size & dst_size) const;
+  void puscale(cv::Mat & image, const cv::Size & dstSize) const;
 
   void pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const;
 
-  void compute_mg(bool reference, pyramid_entry & current_scale, const pyramid_entry * previos_scale = nullptr);
-
 
 protected:
-  static const cv::Mat1b SE;
   double input_smooth_sigma_ = 0;
   double reference_smooth_sigma_ = 0;
   double update_multiplier_ = 1.5;
-  double noise_level_ = -1;
   double scale_factor_ = 0.5;
+  double noise_level_ = -1;
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
   int min_image_size_ = 8;
-  bool use_melp_ = false;
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f cuv;
 
   std::string debug_path_;
-
-
 };
 
 // experimental test

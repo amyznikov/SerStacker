@@ -87,8 +87,7 @@ int main(int argc, char *argv[])
   f.set_support_scale(3);
   f.set_min_image_size(4);
   f.set_noise_level(1e-3);
-  f.set_use_melp(false);
-  f.set_scale_factor(0.75);
+  f.set_scale_factor(0.9);
 
   f.set_reference_image(images[0], cv::noArray());
 
@@ -97,7 +96,7 @@ int main(int argc, char *argv[])
 
   CF_DEBUG("H: pyramid.size()=%zu", pyramid.size());
   for( int i = 0, n = pyramid.size(); i < n; ++i ) {
-    save_image(pyramid[i].reference_mg, ssprintf("alpha-debug/pyramid/L%03d.reference_mg.tiff", i));
+    save_image(pyramid[i].reference_image, ssprintf("alpha-debug/pyramid/L%03d.reference_mg.tiff", i));
   }
 
   cv::Mat2f rmap;
@@ -105,7 +104,7 @@ int main(int argc, char *argv[])
 
   f.compute(images[1], rmap,  cv::noArray());
   for( int i = 0, n = pyramid.size(); i < n; ++i ) {
-    save_image(pyramid[i].current_mg, ssprintf("alpha-debug/pyramid/L%03d.current_mg.tiff", i));
+    save_image(pyramid[i].current_image, ssprintf("alpha-debug/pyramid/L%03d.current_mg.tiff", i));
 
     ecc_remap_to_optflow(pyramid[i].rmap, optflow);
     save_image(optflow, ssprintf("alpha-debug/pyramid/optflow.L%03d.flo", i));
@@ -121,21 +120,21 @@ int main(int argc, char *argv[])
 
   cv::Mat absdiff_image, mask1, mask2, mask;
 
-  if ( f.use_melp() ) {
-    cv::compare(pyramid.front().reference_mg, cv::Scalar::all(0.1), mask1, cv::CMP_GT);
-  }
-  save_image(pyramid.front().reference_mg, mask1, ssprintf("alpha-debug/pyramid/reference_mg.tiff"));
-
-  cv::remap(pyramid.front().current_mg, pyramid.front().current_mg, rmap, cv::noArray(), cv::INTER_LINEAR);
-  if ( f.use_melp() ) {
-    cv::compare(pyramid.front().current_mg, cv::Scalar::all(0.1), mask2, cv::CMP_GT);
-  }
-  save_image(pyramid.front().current_mg, mask2, ssprintf("alpha-debug/pyramid/remapped_current_mg.tiff"));
-
-  if ( f.use_melp() ) {
-    cv::bitwise_and(mask1, mask2, mask);
-    morphological_smooth_close(mask, mask, cv::Mat1b(3, 3, 255));
-  }
+//  if ( f.use_usharp() ) {
+//    cv::compare(pyramid.front().reference_mg, cv::Scalar::all(0.1), mask1, cv::CMP_GT);
+//  }
+//  save_image(pyramid.front().reference_mg, mask1, ssprintf("alpha-debug/pyramid/reference_mg.tiff"));
+//
+//  cv::remap(pyramid.front().current_mg, pyramid.front().current_mg, rmap, cv::noArray(), cv::INTER_LINEAR);
+//  if ( f.use_usharp() ) {
+//    cv::compare(pyramid.front().current_mg, cv::Scalar::all(0.1), mask2, cv::CMP_GT);
+//  }
+//  save_image(pyramid.front().current_mg, mask2, ssprintf("alpha-debug/pyramid/remapped_current_mg.tiff"));
+//
+//  if ( f.use_usharp() ) {
+//    cv::bitwise_and(mask1, mask2, mask);
+//    morphological_smooth_close(mask, mask, cv::Mat1b(3, 3, 255));
+//  }
 
   cv::remap(src_images[1], src_images[1], rmap, cv::noArray(), cv::INTER_LINEAR);
   save_image(src_images[0], mask, ssprintf("alpha-debug/pyramid/masked_src_image0.tiff"));

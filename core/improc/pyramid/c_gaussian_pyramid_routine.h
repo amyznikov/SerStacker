@@ -19,11 +19,11 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_pyramid_routine, "gaussian_pyramid",
       "Calls <strong>cv::pyrDown()</strong> or <strong>cv::pyrUp()</strong> on image");
 
-  enum UnsharpMaskOrder {
-    UnsharpMaskNone,
-    UnsharpMaskBefore,
-    UnsharpMaskAfter,
-    UnsharpMaskEachIteration,
+  enum SharpenOrder {
+    SharpenNone,
+    SharpenBefore,
+    SharpenAfter,
+    SharpenEachIteration,
   };
 
   void set_count(int v)
@@ -46,54 +46,44 @@ public:
     return borderType_;
   }
 
-  void set_unsharp_sigma(double v)
+  void set_sharpen_amount(double v)
   {
-    unsharp_sigma_ = v;
+    sharpen_amount_ = v;
   }
 
-  double unsharp_sigma() const
+  double sharpen_amount() const
   {
-    return unsharp_sigma_;
+    return sharpen_amount_;
   }
 
-  void set_unsharp_alpha(double v)
+  void set_sharpen_outmin(double v)
   {
-    unsharp_alpha_ = v;
+    sharpen_outmin_ = v;
   }
 
-  double unsharp_alpha() const
+  double sharpen_outmin() const
   {
-    return unsharp_alpha_;
+    return sharpen_outmin_;
   }
 
-  void set_unsharp_outmin(double v)
+  void set_sharpen_outmax(double v)
   {
-    unsharp_outmin_ = v;
+    sharpen_outmax_ = v;
   }
 
-  double unsharp_outmin() const
+  double sharpen_outmax() const
   {
-    return unsharp_outmin_;
+    return sharpen_outmax_;
   }
 
-  void set_unsharp_outmax(double v)
+  void set_sharpen_order(SharpenOrder v)
   {
-    unsharp_outmax_ = v;
+    sharpen_order_ = v;
   }
 
-  double unsharp_outmax() const
+  SharpenOrder sharpen_order() const
   {
-    return unsharp_outmax_;
-  }
-
-  void set_unsharp_mask_order(UnsharpMaskOrder v)
-  {
-    unsharp_mask_order_ = v;
-  }
-
-  UnsharpMaskOrder unsharp_mask_order() const
-  {
-    return unsharp_mask_order_;
+    return sharpen_order_;
   }
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
@@ -103,11 +93,10 @@ public:
 protected:
   int count_ = 1;
   cv::BorderTypes borderType_ = cv::BORDER_DEFAULT;
-  UnsharpMaskOrder unsharp_mask_order_ = UnsharpMaskNone;
-  double unsharp_sigma_ = 1.5;
-  double unsharp_alpha_ = 0.0;
-  double unsharp_outmin_ = -1;
-  double unsharp_outmax_ = -1;
+  SharpenOrder sharpen_order_ = SharpenNone;
+  double sharpen_amount_ = 0.7;
+  double sharpen_outmin_ = 0;
+  double sharpen_outmax_ = 1e6;
 };
 
 #endif /* __c_pyrdown_routine_h__ */

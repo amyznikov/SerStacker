@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
     }
 
     cv::cvtColor(src_images[i], images[i], cv::COLOR_BGR2GRAY);
+    cv::morphologyEx(images[i], images[i], cv::MORPH_GRADIENT, cv::Mat1b(3,3,255));
     images[i].convertTo(images[i], CV_32F, 1./255, 0);
   }
 
@@ -88,6 +89,7 @@ int main(int argc, char *argv[])
   f.set_min_image_size(4);
   f.set_noise_level(1e-3);
   f.set_scale_factor(0.75);
+  f.set_update_multiplier(2);
 
   f.set_reference_image(images[0], cv::noArray());
 

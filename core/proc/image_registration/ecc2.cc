@@ -346,25 +346,38 @@ void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow)
  * */
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap)
 {
-  cv::Mat2f tmp;
+  if( &flow == &rmap ) {
 
-  if( rmap.data == flow.data ) {
-    tmp.create(flow.size());
+    for( int y = 0; y < rmap.rows; ++y ) {
+      for( int x = 0; x < rmap.cols; ++x ) {
+        rmap[y][x][0] += x;
+        rmap[y][x][1] += y;
+      }
+    }
+
   }
   else {
-    rmap.create(flow.size());
-    tmp = rmap;
-  }
 
-  for( int y = 0; y < tmp.rows; ++y ) {
-    for( int x = 0; x < tmp.cols; ++x ) {
-      tmp[y][x][0] = flow[y][x][0] + x;
-      tmp[y][x][1] = flow[y][x][1] + y;
+    cv::Mat2f tmp;
+
+    if( rmap.data == flow.data ) {
+      tmp.create(flow.size());
     }
-  }
+    else {
+      rmap.create(flow.size());
+      tmp = rmap;
+    }
 
-  if( tmp.data != rmap.data ) {
-    rmap = std::move(tmp);
+    for( int y = 0; y < tmp.rows; ++y ) {
+      for( int x = 0; x < tmp.cols; ++x ) {
+        tmp[y][x][0] = flow[y][x][0] + x;
+        tmp[y][x][1] = flow[y][x][1] + y;
+      }
+    }
+
+    if( tmp.data != rmap.data ) {
+      rmap = std::move(tmp);
+    }
   }
 }
 
@@ -2634,6 +2647,9 @@ bool c_mgpflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
           (double) current_scale.rmap.rows / (double) previous_scale.rmap.rows);
 
       cv::multiply(current_scale.rmap, size_ratio,
+          current_scale.rmap);
+
+      ecc_flow_to_remap(current_scale.rmap,
           current_scale.rmap);
 
     }

@@ -12,6 +12,7 @@
 #include "c_push_global_routine.h"
 #include "c_pop_global_routine.h"
 #include "c_clear_globals_routine.h"
+#include "c_load_image_routine.h"
 
 #include "c_gradient_routine.h"
 #include "c_ridgeness_routine.h"
@@ -165,6 +166,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_push_global_routine::class_factory_instance());
     register_class_factory(c_pop_global_routine::class_factory_instance());
     register_class_factory(c_clear_globals_routine::class_factory_instance());
+    register_class_factory(c_load_image_routine::class_factory_instance());
 
     register_class_factory(c_laplacian_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());

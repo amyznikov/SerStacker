@@ -67,19 +67,17 @@ inline T square(T x)
  * */
 void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth = CV_32F)
 {
-  static thread_local const cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
+  static thread_local cv::Mat Kx, Ky;
+  if( Kx.empty() ) {
+    cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+  }
 
   if( ddepth < 0 ) {
     ddepth = std::max(src.depth(), CV_32F);
   }
 
-  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gx, -1, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gy, -1, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 }
 
 /**

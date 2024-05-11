@@ -9,6 +9,9 @@
  *
  *  Very similar to cv::Sobel() except kernel size is always 1 x (2 * kradius + 1)
  *
+ *
+ *  TODO: <https://bartwronski.com/2021/02/28/computing-gradients-on-grids-forward-central-and-diagonal-differences>
+ *
  */
 
 #include "gradient.h"

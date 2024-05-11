@@ -258,3 +258,62 @@ bool compute_gradient(cv::InputArray src, cv::OutputArray dst,
 
   return true;
 }
+
+
+bool compute_sobel_gradients(cv::InputArray src,
+    cv::OutputArray gx,
+    cv::OutputArray gy,
+    int ddepth,
+    int borderType)
+{
+
+  static thread_local cv::Mat Kx, Ky;
+  if( Kx.empty() ) {
+    cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+    Kx *= M_SQRT2;
+    Ky *= M_SQRT2;
+  }
+
+  if( ddepth < 0 ) {
+    ddepth = std::max(src.depth(), CV_32F);
+  }
+
+  cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
+  cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
+
+  return true;
+}
+
+// Image gradient estimate using Diagonal differences in 3x3 window
+// https://bartwronski.com/2021/02/28/computing-gradients-on-grids-forward-central-and-diagonal-differences/
+bool compute_diagonal_gradients(cv::InputArray src, cv::OutputArray gx, cv::OutputArray gy, int ddepth, int borderType)
+{
+  static const float S = M_SQRT1_2 / 2;
+
+  static const thread_local cv::Matx33f K1(
+      -S,  -S,   0,
+      -S,   0,  +S,
+       0,  +S,  +S);
+
+  static const thread_local cv::Matx33f K2(
+       0,   +S,   +S,
+      -S,    0,   +S,
+      -S,   -S,    0);
+
+  cv::Mat g1, g2;
+
+  cv::filter2D(src, g1, ddepth, K1, cv::Point(1, 1), 0, borderType);
+  cv::filter2D(src, g2, ddepth, K2, cv::Point(1, 1), 0, borderType);
+
+//  [gx] = [ca -sa]  [g1]
+//  [gy]   [sa  ca]  [g2]
+
+  static const float sa = sin(-M_PI_4);
+  static const float ca = cos(-M_PI_4);
+
+  cv::addWeighted(g1, ca, g2, -sa, 0, gx); // gx = ca * g1 - sa * g2
+  cv::addWeighted(g1, -sa, g2, -ca, 0, gy); //  gy = -(sa * g1 + ca * g2)
+
+
+  return true;
+}

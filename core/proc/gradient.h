@@ -18,8 +18,17 @@ bool compute_gradient(cv::InputArray src, cv::OutputArray dst,
     double delta = 0,
     double scale = 1);
 
+bool compute_sobel_gradients(cv::InputArray src,
+    cv::OutputArray gx,
+    cv::OutputArray gy,
+    int ddepth = -1,
+    int borderType = cv::BORDER_DEFAULT);
 
-
+bool compute_diagonal_gradients(cv::InputArray src,
+    cv::OutputArray gx,
+    cv::OutputArray gy,
+    int ddepth = -1,
+    int borderType = cv::BORDER_DEFAULT);
 
 
 #endif /* __gradient_h__ */

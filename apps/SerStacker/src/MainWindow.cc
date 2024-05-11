@@ -154,6 +154,19 @@ void MainWindow::updateWindowTittle()
   setWindowTitle("SerStacker");
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+  Base::closeEvent(event);
+
+  if ( event->isAccepted() ) {
+
+    if ( imageView && imageView->scene() ) {
+      imageView->scene()->disconnect();
+    }
+  }
+
+}
+
 void MainWindow::onSaveState(QSettings & settings)
 {
   Base::onSaveState(settings);

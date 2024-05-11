@@ -99,6 +99,16 @@ MainWindow::~MainWindow()
   saveState();
 }
 
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+  Base::closeEvent(event);
+
+  if ( event->isAccepted() ) {
+  }
+
+}
+
 void MainWindow::onSaveState(QSettings & settings)
 {
   Base::onSaveState(settings);

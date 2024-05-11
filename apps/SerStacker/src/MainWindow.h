@@ -91,6 +91,7 @@ private Q_SLOTS:
   void saveCurrentWork();
 
 private :
+  void closeEvent(QCloseEvent *event) override;
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
   void onMtfControlVisibilityChanged(bool visible) override;

@@ -60,6 +60,7 @@ protected Q_SLOTS:
 
 
 protected:
+  void closeEvent(QCloseEvent *event) override;
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
   void onMtfControlVisibilityChanged(bool visible) override;

@@ -19,14 +19,44 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gradient_routine,
       "gradient", "compute image gradient");
 
+  enum ComputeMethod
+  {
+    ComputeMethodFilter1D,
+    ComputeMethodSobel,
+    ComputeMethodDiagonalGradient,
+  };
+
   enum OutputType {
     OutputGradient,
+    OutputGradientX,
+    OutputGradientY,
     OutputGradientMagnitude,
     OutputGradientPhase,
+    OutputGradientPhaseW,
     OutputGradientPhase90,
     OutputGradientPhase90W,
-    OutputTextureFromGradients,
+    // OutputTextureFromGradients,
   };
+
+  void set_compute_method(ComputeMethod v)
+  {
+    compute_method_ = v;
+  }
+
+  ComputeMethod compute_method() const
+  {
+    return compute_method_;
+  }
+
+  void set_border_type(cv::BorderTypes v)
+  {
+    border_type_ = v;
+  }
+
+  cv::BorderTypes border_type() const
+  {
+    return border_type_;
+  }
 
   void set_output_type(OutputType v)
   {
@@ -38,35 +68,35 @@ public:
     return output_type_;
   }
 
-  void set_order_x(int  v)
-  {
-    order_x_ = v;
-  }
+//  void set_order_x(int  v)
+//  {
+//    order_x_ = v;
+//  }
+//
+//  int order_x() const
+//  {
+//    return order_x_;
+//  }
+//
+//  void set_order_y(int  v)
+//  {
+//    order_y_ = v;
+//  }
+//
+//  int order_y() const
+//  {
+//    return order_y_;
+//  }
 
-  int order_x() const
-  {
-    return order_x_;
-  }
-
-  void set_order_y(int  v)
-  {
-    order_y_ = v;
-  }
-
-  int order_y() const
-  {
-    return order_y_;
-  }
-
-  void set_kradius(int  v)
-  {
-    kradius_ = v;
-  }
-
-  int kradius() const
-  {
-    return kradius_;
-  }
+//  void set_kradius(int  v)
+//  {
+//    kradius_ = v;
+//  }
+//
+//  int kradius() const
+//  {
+//    return kradius_;
+//  }
 
   void set_ddepth(PIXEL_DEPTH v)
   {
@@ -119,44 +149,18 @@ public:
     return squared_;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, output_type, "Output type");
-    BIND_PCTRL(ctls, order_x, "Order of x derivative");
-    BIND_PCTRL(ctls, order_y, "Order of y derivative");
-    BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
-    BIND_PCTRL(ctls, ddepth, "Destination image depth");
-    BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
-    BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
-    BIND_PCTRL(ctls, squared, "Square output");
-    BIND_PCTRL(ctls, erode_mask, "Update image mask if not empty");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, output_type);
-      SERIALIZE_PROPERTY(settings, save, *this, order_x);
-      SERIALIZE_PROPERTY(settings, save, *this, order_y);
-      SERIALIZE_PROPERTY(settings, save, *this, kradius);
-      SERIALIZE_PROPERTY(settings, save, *this, scale);
-      SERIALIZE_PROPERTY(settings, save, *this, ddepth);
-      SERIALIZE_PROPERTY(settings, save, *this, delta);
-      SERIALIZE_PROPERTY(settings, save, *this, squared);
-      SERIALIZE_PROPERTY(settings, save, *this, erode_mask);
-      return true;
-    }
-    return false;
-  }
-
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
+  bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
+  ComputeMethod compute_method_ = ComputeMethodFilter1D;
   OutputType output_type_ = OutputGradientMagnitude;
   PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_NO_CHANGE;
-  int order_x_ = 1;
-  int order_y_ = 0;
-  int kradius_ = 3;
+  cv::BorderTypes border_type_  = cv::BORDER_DEFAULT;
+//  int order_x_ = 1;
+//  int order_y_ = 0;
+ // int kradius_ = 3;
   double scale_ = 1;
   double delta_ = 0;
   bool squared_ = false;

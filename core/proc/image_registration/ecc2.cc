@@ -70,6 +70,8 @@ void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddept
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
     cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+    Kx *= M_SQRT2;
+    Ky *= M_SQRT2;
   }
 
   if( ddepth < 0 ) {

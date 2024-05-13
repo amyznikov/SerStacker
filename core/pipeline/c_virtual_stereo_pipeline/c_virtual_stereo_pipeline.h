@@ -182,7 +182,7 @@ protected:
 
   // bugged experimental stuff, don't call it !
   bool run_epipolar_stereo();
-  bool run_epipolar_flow();
+  // bool run_epipolar_flow();
   bool run_morph_gradient_flow();
 
   bool create_homography_display(cv::OutputArray display_frame, cv::OutputArray display_mask);
@@ -211,7 +211,7 @@ protected:
   c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
   c_regular_stereo_matcher stereo_matcher_;
   c_epipolar_matcher epipolar_matcher_;
-  c_epipolar_flow epipolar_flow_;
+  //c_epipolar_flow epipolar_flow_;
   c_feature2d::sptr pyrflowlk_keypoints_detector_;
 
   cv::Mat current_image_;

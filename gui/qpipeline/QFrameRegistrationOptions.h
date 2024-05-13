@@ -273,7 +273,7 @@ protected:
   QNumericBox * normalization_scale_ctl = nullptr;
   QNumericBox * noise_level_ctl = nullptr;
   QNumericBox * scale_factor_ctl = nullptr;
-  QCheckBox * enable_debug_ctl = nullptr;
+  //QCheckBox * enable_debug_ctl = nullptr;
 
   QWidgetList controls;
 };

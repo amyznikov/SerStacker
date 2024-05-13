@@ -54,7 +54,7 @@ struct c_eccflow_registration_options
   int support_scale = 4;
   int min_image_size = -1;
   int normalization_scale = -1;
-  bool enable_debug = false;
+//  bool enable_debug = false;
 };
 
 struct c_jovian_derotation_options

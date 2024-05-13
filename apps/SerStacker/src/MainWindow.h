@@ -5,8 +5,8 @@
  *      Author: amyznikov
  */
 #pragma once
-#ifndef __qskystacker_main_window_h__
-#define __qskystacker_main_window_h__
+#ifndef __qserstacker_main_window_h__
+#define __qserstacker_main_window_h__
 
 #include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
@@ -173,4 +173,4 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace serstacker
-#endif /* __qskystacker_main_window_h__ */
+#endif /* __qserstacker_main_window_h__ */

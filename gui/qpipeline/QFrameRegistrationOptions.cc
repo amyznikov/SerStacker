@@ -1032,16 +1032,16 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
 
 
-  enable_debug_ctl =
-      add_checkbox("enable debug",
-          "",
-          [this](bool checked) {
-            if ( options_ && options_->enable_debug != checked ) {
-              options_->enable_debug = checked;
-              update_controls_state();
-              Q_EMIT parameterChanged();
-            }
-          });
+//  enable_debug_ctl =
+//      add_checkbox("enable debug",
+//          "",
+//          [this](bool checked) {
+//            if ( options_ && options_->enable_debug != checked ) {
+//              options_->enable_debug = checked;
+//              update_controls_state();
+//              Q_EMIT parameterChanged();
+//            }
+//          });
 
 
   updateControls();
@@ -1075,7 +1075,7 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     scale_factor_ctl->setValue(options_->scale_factor);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     noise_level_ctl->setValue(options_->noise_level);
-    enable_debug_ctl->setChecked(options_->enable_debug);
+    //enable_debug_ctl->setChecked(options_->enable_debug);
     update_controls_state();
     setEnabled(true);
   }

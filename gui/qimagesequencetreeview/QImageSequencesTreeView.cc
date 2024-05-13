@@ -848,11 +848,8 @@ void QImageSequencesTreeView::dropEvent(QDropEvent * e)
 
   c_update_controls_lock lock(this);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-  const Qt::KeyboardModifiers keyboardModifiers = e->modifiers();
-#else
-  const Qt::KeyboardModifiers keyboardModifiers = e->keyboardModifiers();
-#endif
+  const Qt::KeyboardModifiers keyboardModifiers =
+      QGuiApplication::queryKeyboardModifiers();
 
   if( imageSequenceItem || (keyboardModifiers & Qt::ControlModifier) ) {
     //
@@ -903,6 +900,8 @@ void QImageSequencesTreeView::dropEvent(QDropEvent * e)
     const QList<QUrl> urls = e->mimeData()->urls();
     bool drop_confirmed = false;
 
+    CF_DEBUG("urls.size=%d", urls.size());
+
     for( const QUrl &url : urls ) {
 
       if( !drop_confirmed && url.scheme() == "cinputsource" ) {
@@ -929,8 +928,8 @@ void QImageSequencesTreeView::dropEvent(QDropEvent * e)
 
           action = Qt::CopyAction;
 
-          const QFileInfo fileInfo(
-              imageSequenceItem->input_sequence()->source(0)->filename().c_str());
+          const QFileInfo fileInfo(imageSequenceItem->input_sequence()->
+              source(0)->filename().c_str());
 
           const QString name =
               fileInfo.completeBaseName();

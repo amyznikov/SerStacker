@@ -420,14 +420,14 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   if( epipolar_flow_options_.enabled ) {
-    epipolar_flow_.set_support_scale(epipolar_flow_options_.support_scale);
-    epipolar_flow_.set_max_iterations(epipolar_flow_options_.max_iterations);
-    epipolar_flow_.set_update_multiplier(epipolar_flow_options_.update_multiplier);
-    epipolar_flow_.set_normalization_scale(epipolar_flow_options_.normalization_scale);
-    epipolar_flow_.set_input_smooth_sigma(epipolar_flow_options_.input_smooth_sigma);
-    epipolar_flow_.set_reference_smooth_sigma(epipolar_flow_options_.reference_smooth_sigma);
-    epipolar_flow_.set_max_pyramid_level(epipolar_flow_options_.max_pyramid_level);
-    epipolar_flow_.set_noise_level(epipolar_flow_options_.noise_level);
+//    epipolar_flow_.set_support_scale(epipolar_flow_options_.support_scale);
+//    epipolar_flow_.set_max_iterations(epipolar_flow_options_.max_iterations);
+//    epipolar_flow_.set_update_multiplier(epipolar_flow_options_.update_multiplier);
+//    epipolar_flow_.set_normalization_scale(epipolar_flow_options_.normalization_scale);
+//    epipolar_flow_.set_input_smooth_sigma(epipolar_flow_options_.input_smooth_sigma);
+//    epipolar_flow_.set_reference_smooth_sigma(epipolar_flow_options_.reference_smooth_sigma);
+//    epipolar_flow_.set_max_pyramid_level(epipolar_flow_options_.max_pyramid_level);
+//    epipolar_flow_.set_noise_level(epipolar_flow_options_.noise_level);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -674,10 +674,10 @@ bool c_virtual_stereo_pipeline::process_current_frame()
     return false;
   }
 
-  if ( !run_epipolar_flow() ) {
-    CF_ERROR("run_epipolar_flow() fails");
-    return false;
-  }
+//  if ( !run_epipolar_flow() ) {
+//    CF_ERROR("run_epipolar_flow() fails");
+//    return false;
+//  }
 
   if ( !run_morph_gradient_flow() ) {
     CF_ERROR("run_pyrflowlk2() fails");
@@ -1065,97 +1065,97 @@ bool c_virtual_stereo_pipeline::run_epipolar_stereo()
 
   return true;
 }
-
-bool c_virtual_stereo_pipeline::run_epipolar_flow()
-{
-  if ( !epipolar_flow_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
-    return true; // ignore
-  }
-
-  if( !epipolar_flow_options_.enable_debug ) {
-    epipolar_flow_.set_debug_path("");
-  }
-  else {
-    epipolar_flow_.set_debug_path(ssprintf("%s/epipolar_flow/frame%05d", output_path_.c_str(),
-        input_sequence_->current_pos() - 1));
-  }
-
-
-
-
-  cv::Mat current_image = current_image_;
-  cv::Mat reference_image = previous_image_;
-  cv::Mat input_mask = current_mask_;
-  cv::Mat reference_mask = previous_mask_;
-  cv::Mat2f rmap;
-  cv::Mat current_derotated_image;
-
-  c_homography_image_transform image_transform;
-  image_transform.set_homography_matrix(currentDerotationHomography_.inv());
-  image_transform.create_remap(rmap, reference_image.size());
-
-  cv::remap(current_image_, current_derotated_image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-  if ( output_options_.save_epipolar_flow_debug_images ) {
-
-    const std::string outputpath =
-        ssprintf("%s/epipolar_flow/remaps%03d",
-            output_path_.c_str(),
-            input_sequence_->current_pos() - 1);
-
-    std::string filename;
-
-    if( !save_image(current_image, filename = ssprintf("%s/current_image.png", outputpath.c_str())) ) {
-      CF_ERROR("save_image('%s') fails", filename.c_str());
-      return false;
-    }
-
-    if( !save_image(reference_image, filename = ssprintf("%s/reference_image.png", outputpath.c_str())) ) {
-      CF_ERROR("save_image('%s') fails", filename.c_str());
-      return false;
-    }
-
-    if( !save_image(current_derotated_image, filename = ssprintf("%s/current_derotated_image.png", outputpath.c_str())) ) {
-      CF_ERROR("save_image('%s') fails", filename.c_str());
-      return false;
-    }
-
-  }
-
-  epipolar_flow_.set_epipole(currentEpipole_);
-  rmap.release();
-
-  bool fOK =
-    epipolar_flow_.compute(current_derotated_image, reference_image, rmap,
-        input_mask, reference_mask);
-
-  if( !fOK ) {
-    CF_ERROR("epipolar_flow_.compute() fails");
-    return false;
-  }
-
-  if ( output_options_.save_epipolar_flow_debug_images ) {
-
-    const std::string outputpath =
-        ssprintf("%s/epipolar_flow/remaps%03d",
-            output_path_.c_str(),
-            input_sequence_->current_pos() - 1);
-
-    std::string filename;
-
-    cv::Mat current_derotated_image_remapped_to_reference;
-    cv::remap(current_derotated_image, current_derotated_image_remapped_to_reference, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-    if( !save_image(current_derotated_image_remapped_to_reference,
-        filename = ssprintf("%s/current_derotated_image_remapped_to_reference.png", outputpath.c_str())) ) {
-      CF_ERROR("save_image('%s') fails", filename.c_str());
-      return false;
-    }
-
-  }
-
-  return true;
-}
+//
+//bool c_virtual_stereo_pipeline::run_epipolar_flow()
+//{
+//  if ( !epipolar_flow_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
+//    return true; // ignore
+//  }
+//
+//  if( !epipolar_flow_options_.enable_debug ) {
+//    epipolar_flow_.set_debug_path("");
+//  }
+//  else {
+//    epipolar_flow_.set_debug_path(ssprintf("%s/epipolar_flow/frame%05d", output_path_.c_str(),
+//        input_sequence_->current_pos() - 1));
+//  }
+//
+//
+//
+//
+//  cv::Mat current_image = current_image_;
+//  cv::Mat reference_image = previous_image_;
+//  cv::Mat input_mask = current_mask_;
+//  cv::Mat reference_mask = previous_mask_;
+//  cv::Mat2f rmap;
+//  cv::Mat current_derotated_image;
+//
+//  c_homography_image_transform image_transform;
+//  image_transform.set_homography_matrix(currentDerotationHomography_.inv());
+//  image_transform.create_remap(rmap, reference_image.size());
+//
+//  cv::remap(current_image_, current_derotated_image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+//
+//  if ( output_options_.save_epipolar_flow_debug_images ) {
+//
+//    const std::string outputpath =
+//        ssprintf("%s/epipolar_flow/remaps%03d",
+//            output_path_.c_str(),
+//            input_sequence_->current_pos() - 1);
+//
+//    std::string filename;
+//
+//    if( !save_image(current_image, filename = ssprintf("%s/current_image.png", outputpath.c_str())) ) {
+//      CF_ERROR("save_image('%s') fails", filename.c_str());
+//      return false;
+//    }
+//
+//    if( !save_image(reference_image, filename = ssprintf("%s/reference_image.png", outputpath.c_str())) ) {
+//      CF_ERROR("save_image('%s') fails", filename.c_str());
+//      return false;
+//    }
+//
+//    if( !save_image(current_derotated_image, filename = ssprintf("%s/current_derotated_image.png", outputpath.c_str())) ) {
+//      CF_ERROR("save_image('%s') fails", filename.c_str());
+//      return false;
+//    }
+//
+//  }
+//
+//  epipolar_flow_.set_epipole(currentEpipole_);
+//  rmap.release();
+//
+//  bool fOK =
+//    epipolar_flow_.compute(current_derotated_image, reference_image, rmap,
+//        input_mask, reference_mask);
+//
+//  if( !fOK ) {
+//    CF_ERROR("epipolar_flow_.compute() fails");
+//    return false;
+//  }
+//
+//  if ( output_options_.save_epipolar_flow_debug_images ) {
+//
+//    const std::string outputpath =
+//        ssprintf("%s/epipolar_flow/remaps%03d",
+//            output_path_.c_str(),
+//            input_sequence_->current_pos() - 1);
+//
+//    std::string filename;
+//
+//    cv::Mat current_derotated_image_remapped_to_reference;
+//    cv::remap(current_derotated_image, current_derotated_image_remapped_to_reference, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+//
+//    if( !save_image(current_derotated_image_remapped_to_reference,
+//        filename = ssprintf("%s/current_derotated_image_remapped_to_reference.png", outputpath.c_str())) ) {
+//      CF_ERROR("save_image('%s') fails", filename.c_str());
+//      return false;
+//    }
+//
+//  }
+//
+//  return true;
+//}
 
 bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 {

@@ -301,12 +301,12 @@ const c_frame_registration::ecc_image_preprocessor_function & c_frame_registrati
 void c_frame_registration::set_debug_path(const std::string & v)
 {
   debug_path_ = v;
-  if ( !debug_path_.empty() && options_.eccflow.enable_debug ) {
-    eccflow_.set_debug_path(ssprintf("%s/eccflow", debug_path_.c_str()));
-  }
-  else {
-    eccflow_.set_debug_path("");
-  }
+//  if ( !debug_path_.empty() && options_.eccflow.enable_debug ) {
+//    eccflow_.set_debug_path(ssprintf("%s/eccflow", debug_path_.c_str()));
+//  }
+//  else {
+//    eccflow_.set_debug_path("");
+//  }
 }
 
 const std::string& c_frame_registration::debug_path() const

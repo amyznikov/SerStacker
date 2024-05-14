@@ -1423,18 +1423,13 @@ const std::vector<c_eccflow::pyramid_entry>& c_eccflow::current_pyramid() const
 bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
     cv::Mat1f & dst, cv::Mat1b & dst_mask) const
 {
-  if ( src.depth() == dst.depth() ) {
-    dst = src.getMat();
-  }
-  else {
-    src.getMat().convertTo(dst, dst.depth());
-  }
+  src.getMat().convertTo(dst, dst.depth());
 
   if ( src_mask.empty() || cv::countNonZero(src_mask) == src_mask.size().area() ) {
     dst_mask.release();
   }
   else {
-    dst_mask = src_mask.getMat();
+    src_mask.getMat().copyTo(dst_mask);
   }
 
   return true;
@@ -1639,21 +1634,27 @@ const cv::Mat1b & c_eccflow::reference_mask() const
 
 
 
-bool c_eccflow::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
+bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  if ( !referenceMask.empty() ) {
+  if ( reference_image.channels() != 1 ) {
+    CF_ERROR("Single channel input image is expected on input. reference_image.channels=%d",
+        reference_image.channels());
+    return false;
+  }
 
-    if ( referenceMask.size() != referenceImage.size() ) {
+  if ( !reference_mask.empty() ) {
+
+    if ( reference_mask.size() != reference_image.size() ) {
       CF_ERROR("Invalid reference mask size: %dx%d. Must be is %dx%d",
-          referenceMask.cols(), referenceMask.rows(),
-          referenceImage.cols(), referenceImage.rows());
+          reference_mask.cols(), reference_mask.rows(),
+          reference_image.cols(), reference_image.rows());
 
       return false;
     }
 
-    if ( referenceMask.type() != CV_8UC1 ) {
+    if ( reference_mask.type() != CV_8UC1 ) {
       CF_ERROR("Invalid reference mask type: %d. Must be CV_8UC1",
-          referenceMask.type());
+          reference_mask.type());
       return false;
     }
   }
@@ -1663,6 +1664,7 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage, cv::InputArra
 
   cv::Mat1f Ixx, Iyy, Ixy, DD;
 
+
   pyramid_.clear();
   pyramid_.reserve(32);
 
@@ -1671,45 +1673,32 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage, cv::InputArra
 
   for( int current_level = 0;; ++current_level ) {
 
-    pyramid_.emplace_back();
-
-    pyramid_entry & current_scale =
-        pyramid_.back();
-
-    current_scale.lvl =
-        current_level;
-
     if ( current_level == 0 ) {
-      convert_input_images(referenceImage, referenceMask,
-          current_scale.reference_image,
-          current_scale.reference_mask);
+      pyramid_.emplace_back();
+      convert_input_images(reference_image, reference_mask,
+          pyramid_.back().reference_image,
+          pyramid_.back().reference_mask);
     }
     else {
 
-      const pyramid_entry & base_scale =
-          pyramid_.front();
-
-      const cv::Size base_size =
-          base_scale.reference_image.size();
-
-      const pyramid_entry & previous_scale =
-          pyramid_[current_level - 1];
-
       const cv::Size previous_size =
-          previous_scale.reference_image.size();
+          pyramid_.back().reference_image.size();
 
       const cv::Size next_size(std::max(min_image_size_, (int)((previous_size.width + 1) * scale_factor_)),
           std::max(min_image_size_, (int)((previous_size.height + 1) * scale_factor_)) );
 
       if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
-        pyramid_.pop_back();
         break;
       }
 
-      downscale(base_scale.reference_image, base_scale.reference_mask,
-          current_scale.reference_image, current_scale.reference_mask,
+      pyramid_.emplace_back();
+      downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
+          pyramid_.back().reference_image, pyramid_.back().reference_mask,
           next_size);
     }
+
+    pyramid_entry & current_scale =
+        pyramid_.back();
 
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
@@ -1748,34 +1737,36 @@ bool c_eccflow::set_reference_image(cv::InputArray referenceImage, cv::InputArra
     cv::merge(D_channels, 4, current_scale.D);
   }
 
-  //  CF_DEBUG("reference_pyramid_.size=%zu min:%dx%d", pyramid_.size(),
-  //      pyramid_.back().reference_image.cols,
-  //      pyramid_.back().reference_image.rows);
-
   return true;
 }
 
 
-bool c_eccflow::setup_input_image(cv::InputArray inputImage, cv::InputArray inputMask)
+bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray input_mask)
 {
   if( pyramid_.empty() ) {
     CF_ERROR("Reference pyramid is empty: set_reference_image() must be called first");
     return false;
   }
 
-  if( !inputMask.empty() ) {
+  if ( input_image.channels() != 1 ) {
+    CF_ERROR("Singe channel input image is expected. input_image.channels=%d",
+        input_image.channels());
+    return false;
+  }
 
-    if( inputMask.size() != inputImage.size() ) {
+  if( !input_mask.empty() ) {
+
+    if( input_mask.size() != input_image.size() ) {
       CF_ERROR("Invalid input mask size: %dx%d. Must be is %dx%d",
-          inputMask.cols(), inputMask.rows(),
-          inputImage.cols(), inputImage.rows());
+          input_mask.cols(), input_mask.rows(),
+          input_image.cols(), input_image.rows());
 
       return false;
     }
 
-    if( inputMask.type() != CV_8UC1 ) {
+    if( input_mask.type() != CV_8UC1 ) {
       CF_ERROR("Invalid input mask type: %d. Must be CV_8UC1",
-          inputMask.type());
+          input_mask.type());
       return false;
     }
   }
@@ -1789,7 +1780,7 @@ bool c_eccflow::setup_input_image(cv::InputArray inputImage, cv::InputArray inpu
         pyramid_[current_level];
 
     if ( current_level == 0 ) {
-      convert_input_images(inputImage, inputMask,
+      convert_input_images(input_image, input_mask,
           current_scale.current_image,
           current_scale.current_mask);
     }

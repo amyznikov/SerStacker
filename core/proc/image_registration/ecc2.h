@@ -311,7 +311,6 @@ public:
     cv::Mat1b current_mask, reference_mask;
     cv::Mat1f Ix, Iy;//, It;
     cv::Mat4f D;
-    int lvl = 0;
   };
 
   void set_support_scale(int v);

@@ -1543,7 +1543,7 @@ bool lm_camera_pose_and_derotation_homography(/* in */ const cv::Matx33d & camer
           opts);
 
   if ( !fOk ) {
-    CF_ERROR("lm_refine_camera_pose() fails");
+    CF_ERROR("lm_refine_camera_pose2() fails");
   }
 
 

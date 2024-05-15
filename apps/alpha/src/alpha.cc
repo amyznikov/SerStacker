@@ -25,7 +25,7 @@
 #include <tbb/tbb.h>
 #include <core/proc/lpg.h>
 #include <core/proc/stereo/c_sweepscan_stereo_matcher.h>
-
+#include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/laplacian_pyramid.h>
 #include <core/proc/image_registration/ecc2.h>
 #include <core/proc/image_registration/ecc_motion_model.h>
@@ -42,6 +42,50 @@
 #include <core/debug.h>
 
 namespace {
+
+static void correlate(const cv::Mat & src1, const cv::Mat & src2, cv::Mat & dst)
+{
+  cv::Mat m1, m2;
+  cv::Mat s1, s2, cov, norm;
+
+
+  static const cv::Mat1f G =
+      cv::getGaussianKernel(7, 0, CV_32F);
+
+  cv::sepFilter2D(src1, m1, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src2, m2, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+
+  cv::subtract(src1, m1, s1, cv::noArray(), CV_32F);
+  cv::subtract(src2, m2, s2, cv::noArray(), CV_32F);
+  cv::sepFilter2D(s1.mul(s2), cov, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+
+  cv::sepFilter2D(s1.mul(s1), s1, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(s2.mul(s2), s2, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sqrt(s1.mul(s2), norm);
+  cv::add(norm, cv::Scalar::all(1e-4), norm);
+
+  cv::divide(cov, norm, dst);
+  //norm.copyTo(dst);
+  // dst.setTo(cv::Scalar::all(0), dst < 0.75);
+
+}
+
+
+static void extract_pixel_matches(const cv::Mat2f & rmap, const cv::Mat1b & mask,
+    std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts)
+{
+
+  for ( int y = 0; y < mask.rows; ++y ) {
+    for ( int x = 0; x < mask.cols; ++x ) {
+      if ( mask[y][x] ) {
+        rpts.emplace_back(x,y);
+        cpts.emplace_back(rmap[y][x]);
+      }
+    }
+  }
+
+}
+
 
 }
 
@@ -68,7 +112,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  source->seek(215); // 321
+  source->seek(321); // 218
 
   cv::Mat images[3];
 
@@ -84,6 +128,13 @@ int main(int argc, char *argv[])
           cv::COLOR_BGR2GRAY);
     }
 
+    cv::morphologyEx(images[i], images[i], cv::MORPH_GRADIENT,
+        cv::Mat1b(3, 3, (uint8_t)255),
+        cv::Point(-1, -1), 1,
+        cv::BORDER_REPLICATE);
+
+    images[i].convertTo(images[i], CV_32F, 1./255);
+
   }
 
   source->close();
@@ -91,6 +142,8 @@ int main(int argc, char *argv[])
   c_eccflow f;
   cv::Mat2f rmap;
   cv::Mat2f flow;
+  cv::Mat corr;
+  cv::Mat1b mask;
 
   f.set_support_scale(3);
   f.set_min_image_size(4);
@@ -104,25 +157,91 @@ int main(int argc, char *argv[])
   cv::remap(images[1], images[2],
       rmap, cv::noArray(),
       cv::INTER_AREA,
-      cv::BORDER_REPLICATE);
+      cv::BORDER_CONSTANT);
+
+  correlate(images[0], images[2], corr);
+
+  cv::compare(corr, cv::Scalar::all(0.7), mask, cv::CMP_GE );
 
   ecc_remap_to_optflow(rmap, flow);
 
-  save_image(images[0], ssprintf("alpha-debug/pyramid/reference_image.tiff"));
+  save_image(images[0], mask, ssprintf("alpha-debug/pyramid/reference_image.tiff"));
   save_image(images[1], ssprintf("alpha-debug/pyramid/current_image.tiff"));
-  save_image(images[2], ssprintf("alpha-debug/pyramid/remapped_image.tiff"));
+  save_image(images[2], mask, ssprintf("alpha-debug/pyramid/remapped_image.tiff"));
+  save_image(corr, mask, ssprintf("alpha-debug/pyramid/corr.tiff"));
   save_image(flow, ssprintf("alpha-debug/pyramid/optflow.flo"));
 
 
+  cv::subtract(flow, cv::mean(flow), flow);
+  save_image(flow, ssprintf("alpha-debug/pyramid/optflow2.flo"));
+
   cv::Mat fchannels[2], fmag;
   cv::split(flow, fchannels);
-  save_image(fchannels[0], ssprintf("alpha-debug/pyramid/optflow_x.tiff"));
-  save_image(fchannels[1], ssprintf("alpha-debug/pyramid/optflow_y.tiff"));
+  save_image(fchannels[0], mask, ssprintf("alpha-debug/pyramid/optflow_x.tiff"));
+  save_image(fchannels[1], mask, ssprintf("alpha-debug/pyramid/optflow_y.tiff"));
   cv::magnitude(fchannels[0], fchannels[1], fmag);
-  save_image(fmag, ssprintf("alpha-debug/pyramid/optflow_mag.tiff"));
+  save_image(fmag, mask, ssprintf("alpha-debug/pyramid/optflow_mag.tiff"));
 
   cv::phase(fchannels[0], fchannels[1], fmag);
-  save_image(fmag, ssprintf("alpha-debug/pyramid/optflow_phase.tiff"));
+  save_image(fmag, mask, ssprintf("alpha-debug/pyramid/optflow_phase.tiff"));
+
+
+  std::vector<cv::Point2f> cpts, rpts;
+  cv::Vec3d A(0, 0, 0);
+  cv::Vec3d T(0, 0, 1);
+
+  extract_pixel_matches(rmap, mask, cpts, rpts);
+
+  const c_lm_camera_pose_options lm_opts = {
+      .robust_threshold = 5.0,
+      .epsf = 1e-5,
+      .epsx = 1e-5,
+      .max_iterations = 3,
+      .max_levmar_iterations = 100,
+      .direction = EPIPOLAR_MOTION_FORWARD,
+  };
+
+  const cv::Matx33d camera_matrix(
+      7.215377e+02, 0.000000e+00, 6.095593e+02,
+      0.000000e+00, 7.215377e+02, 1.728540e+02,
+      0.000000e+00, 0.000000e+00, 1.000000e+00);
+
+  cv::Mat1b inliers((int) cpts.size(), 1, (uint8_t) (255));
+
+  bool fOk =
+      lm_refine_camera_pose2(A, T,
+      camera_matrix,
+      cpts,
+      rpts,
+      inliers,
+      &lm_opts);
+
+  if ( !fOk ) {
+    CF_ERROR("lm_refine_camera_pose2() fails");
+  }
+
+  const cv::Matx33d R =
+      build_rotation(A);
+
+  const cv::Matx33d H =
+      camera_matrix * R * camera_matrix.inv();
+
+  const cv::Matx33d E =
+      compose_essential_matrix(R, T);
+
+  const cv::Matx33d F =
+      compose_fundamental_matrix(E, camera_matrix) * H.inv() ;
+
+  cv::Point2d e[2];
+
+  compute_epipoles(F, e);
+
+  CF_DEBUG("INLIERS: %d / %d", cv::countNonZero(inliers), inliers.size().area());
+  CF_DEBUG("A: (%g %g %g)", A(0)* 180 / CV_PI, A(1)* 180 / CV_PI, A(2)* 180 / CV_PI);
+  CF_DEBUG("T: (%g %g %g)", T(0), T(1), T(2));
+  CF_DEBUG("e: (%g %g)  (%g %g)", e[0].x, e[0].y, e[1].x, e[1].y);
+
+
 
   return 0;
 }

@@ -28,6 +28,26 @@ public:
     return artifact_name_;
   }
 
+  void set_push_image(bool v)
+  {
+    push_image_ = v;
+  }
+
+  bool push_image() const
+  {
+    return push_image_;
+  }
+
+  void set_push_mask(bool v)
+  {
+    push_mask_ = v;
+  }
+
+  bool push_mask() const
+  {
+    return push_mask_;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
@@ -35,6 +55,9 @@ public:
 protected:
   std::string artifact_name_  =
       "saved_image";
+
+  bool push_image_ = true;
+  bool push_mask_ = true;
 
 };
 

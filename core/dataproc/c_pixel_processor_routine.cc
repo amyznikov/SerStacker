@@ -67,17 +67,10 @@ static constexpr int num_args =
 
 static void setup_math_parser(c_math_expression & math)
 {
-  static bool initialized = false;
-
-  if( !initialized ) {
-
-    math.clear_args();
-
-    for( int i = 0; i < num_args; ++i ) {
+   if( math.arguments().empty() ) {
+     for( int i = 0; i < num_args; ++i ) {
       math.add_argument(i, math_args[i].arg_name, math_args[i].arg_desc);
     }
-
-    initialized = true;
   }
 }
 

@@ -21,7 +21,7 @@ struct c_epipolar_alignment_input_options:
 {
 };
 
-struct c_epipolar_alignment_stereo_camera_options
+struct c_epipolar_alignment_camera_options
 {
   c_camera_intrinsics camera_intrinsics = {
       // defaults to kitti
@@ -34,14 +34,9 @@ struct c_epipolar_alignment_stereo_camera_options
   };
 };
 
-struct c_epipolar_alignment_feature2d_options :
-    public c_sparse_feature_extractor_and_matcher_options
+struct c_epipolar_alignment_ecc_options
 {
-};
-
-struct c_epipolar_stereo_output_options:
-    c_output_frame_writer_options
-{
+  bool enable_ecc_ = false;
 };
 
 struct c_epipolar_stereo_scale_compression_output_options:
@@ -52,10 +47,8 @@ struct c_epipolar_stereo_scale_compression_output_options:
 struct c_epipolar_alignment_output_options:
     c_image_processing_pipeline_output_options
 {
-  bool save_epipolar_stereo_frames = false;
-  bool save_scale_compression_remaps = false;
-  c_epipolar_stereo_output_options epipolar_stereo_output_options;
-  c_epipolar_stereo_scale_compression_output_options scale_compression_output_options;
+    bool save_progress_video = false;
+    c_output_frame_writer_options progress_video_output_options;
 };
 
 class c_epipolar_alignment_pipeline :
@@ -95,36 +88,42 @@ public:
   bool copyParameters(const base::sptr & dst) const override;
 
 protected:
-  c_sparse_feature_extractor_and_matcher::sptr create_keypoints_extractor() const;
+  bool initialize() override;
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frame();
-  bool extract_keypoints();
-  bool match_keypoints();
+  bool extract_and_match_keypoints();
   bool estmate_camera_pose();
-  bool save_epipolar_stereo_frames();
-  bool save_scale_compression_remaps();
+  bool save_progess_video();
 
 protected:
   c_epipolar_alignment_input_options input_options_;
-  c_epipolar_alignment_stereo_camera_options camera_options_;
+  c_epipolar_alignment_ecc_options ecc_options_;
+  c_epipolar_alignment_camera_options camera_options_;
   c_lm_camera_pose_options camera_pose_options_;
-  c_epipolar_alignment_feature2d_options feature2d_options_;
   c_epipolar_alignment_output_options output_options_;
+
+  cv::Mat1f G;
+  double correlation_threshold_ = 0.7;
+  double correlation_eps_ = 1e-4;
+  int correlation_kernel_radius_ = 5;
+
+
+  c_ecch ecch_;
+  c_ecc_forward_additive ecc_;
+  c_eccflow eccflow_;
 
   cv::Mat current_frame_, current_mask_;
   cv::Mat previous_frame_, previous_mask_;
-
-  c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
-
-  std::vector<cv::KeyPoint> current_keypoints_;
-  std::vector<cv::KeyPoint> previous_keypoints_;
-
-  cv::Mat current_descriptors_;
-  cv::Mat previous_descriptors_;
-
+  cv::Mat cimg, rimg, mimg;
+  cv::Mat2f current_remap_;
+  cv::Mat1f current_correlation_;
+  cv::Mat1b current_correlation_mask_;
+  std::vector<cv::Point2f> matched_current_positions_;
+  std::vector<cv::Point2f> matched_previous_positions_;
   cv::Mat1b current_inliers_;
+
   cv::Vec3d current_euler_anges_;
   cv::Vec3d current_translation_vector_;
   cv::Matx33d currentRotationMatrix_;
@@ -134,12 +133,7 @@ protected:
   cv::Point2d currentEpipoles_[2];
   cv::Point2d currentEpipole_;
 
-  std::vector<cv::Point2f> matched_current_positions_;
-  std::vector<cv::Point2f> matched_previous_positions_;
-
-
-
-  c_output_frame_writer epipolar_stereo_writer_;
+  c_output_frame_writer progress_writer_;
 };
 
 #endif /* __c_epipolar_alignment_pipeline_h__ */

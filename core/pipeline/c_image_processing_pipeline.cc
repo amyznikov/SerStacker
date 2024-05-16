@@ -30,9 +30,9 @@ const std::vector<c_image_processing_pipeline::factory_item>& c_image_processing
 
 const c_image_processing_pipeline::factory_item* c_image_processing_pipeline::find_class(const std::string & class_name)
 {
-  for( const auto &item : registered_classes_ ) {
-    if( item.class_name == class_name ) {
-      return &item;
+  for( size_t i = 0, n = registered_classes_.size(); i < n; ++i ) {
+    if( registered_classes_[i].class_name == class_name ) {
+      return &registered_classes_[i];
     }
   }
 
@@ -60,19 +60,28 @@ bool c_image_processing_pipeline::register_class(const std::string & class_name,
 c_image_processing_pipeline::sptr c_image_processing_pipeline::create_instance(const std::string & class_name,
     const std::string & name, const c_input_sequence::sptr & input_sequence)
 {
-  const auto *item = find_class(class_name);
+  const auto * item = find_class(class_name);
   if( !item ) {
     CF_ERROR("c_image_processing_pipeline::class_factory: class '%s' not registered", class_name.c_str());
     return nullptr;
   }
 
-  return item->create_instance(name, input_sequence);
+  c_image_processing_pipeline::sptr instance = item->create_instance(name, input_sequence);
+  if( !instance ) {
+    CF_ERROR("create_instance() fails for pipeline class  '%s'", class_name.c_str());
+    return nullptr;
+  }
+
+  if( !instance->initialize() ) {
+    CF_ERROR("instance->initialize() fails for pipeline class  '%s'", class_name.c_str());
+    return nullptr;
+  }
+
+  return instance;
 }
 
 
-static void remove_bad_pixels(cv::Mat & image,
-    double hot_pixels_variation_threshold,
-    bool isbayer)
+static void remove_bad_pixels(cv::Mat & image, double hot_pixels_variation_threshold, bool isbayer)
 {
   INSTRUMENT_REGION("");
 
@@ -118,6 +127,10 @@ c_image_processing_pipeline::~c_image_processing_pipeline()
 {
 }
 
+bool c_image_processing_pipeline::initialize()
+{
+  return true;
+}
 
 std::mutex & c_image_processing_pipeline::mutex()
 {

@@ -80,6 +80,7 @@ public:
 public: // pipeline methods
   c_image_processing_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   virtual ~c_image_processing_pipeline();
+  virtual bool initialize();
 
   void set_name(const std::string & name);
   const std::string & name() const;

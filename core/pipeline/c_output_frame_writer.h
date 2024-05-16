@@ -18,7 +18,7 @@
 struct c_output_frame_writer_options
 {
   std::string output_filename;
-  std::string ffmpeg_opts = "-r 10 -c rawvideo -pix_fmt rgb24"; // // "-r 10 -c huffyuv"
+  std::string ffmpeg_opts = "-r 10 -c huffyuv -f avi" ; // "-r 10 -c rawvideo -pix_fmt rgb24";
   c_image_processor::sptr output_image_processor;
   PIXEL_DEPTH output_pixel_depth = PIXEL_DEPTH_NO_CHANGE;
   bool save_frame_mapping = false;

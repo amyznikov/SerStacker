@@ -49,6 +49,8 @@ static inline bool IS_INSIDE_IMAGE(const cv::Point_<T> & point, const cv::Mat & 
 
 static void correlate(const cv::Mat & src1, const cv::Mat & src2, cv::Mat & dst, const cv::Mat1f & G, double eps = 255)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat s1, s2, cov, norm;
 
   cv::sepFilter2D(src1, s1, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
@@ -71,6 +73,7 @@ static void correlate(const cv::Mat & src1, const cv::Mat & src2, cv::Mat & dst,
 static void extract_pixel_matches(const cv::Mat2f & rmap, const cv::Mat1b & mask,
     std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts)
 {
+  INSTRUMENT_REGION("");
 
   for ( int y = 0; y < mask.rows; ++y ) {
     for ( int x = 0; x < mask.cols; ++x ) {
@@ -381,7 +384,6 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
     }
   }
 
-
   return true;
 }
 
@@ -490,7 +492,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
     if( true ) {
       lock_guard lock(mutex());
       if( !input_sequence_->read(current_frame_, &current_mask_) ) {
-        CF_DEBUG("input_sequence_->read() fails");
+        CF_ERROR("input_sequence_->read() fails");
         return false;
       }
     }
@@ -561,14 +563,14 @@ bool c_epipolar_alignment_pipeline::process_current_frame()
 
 bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
 {
-  INSTRUMENT_REGION("");
-
   if ( previous_frame_.empty() ) {
     // silently ignore if still wait for next frame
     return true;
   }
 
   lock_guard lock(mutex());
+
+  INSTRUMENT_REGION("");
 
   if( current_frame_.channels() == 1 ) {
     cv::morphologyEx(current_frame_, cimg, cv::MORPH_GRADIENT,
@@ -633,13 +635,13 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
 
 bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 {
-  INSTRUMENT_REGION("");
-
   if( matched_current_positions_.size() < 6 || matched_previous_positions_.size() < 6 ) {
     return true; // ignore
   }
 
   lock_guard lock(mutex());
+
+  INSTRUMENT_REGION("");
 
   current_inliers_.create(matched_current_positions_.size(), 1);
   current_inliers_.setTo(255);
@@ -665,10 +667,10 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
-  CF_DEBUG("current_inliers_.size=%dx%d nz=%d matched_previous_positions_.size=%zu",
-      current_inliers_.rows, current_inliers_.cols,
-      cv::countNonZero(current_inliers_),
-      matched_previous_positions_.size());
+//  CF_DEBUG("current_inliers_.size=%dx%d nz=%d matched_previous_positions_.size=%zu",
+//      current_inliers_.rows, current_inliers_.cols,
+//      cv::countNonZero(current_inliers_),
+//      matched_previous_positions_.size());
 
   compute_epipoles(currentFundamentalMatrix_,
       currentEpipoles_);
@@ -676,10 +678,10 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   currentEpipole_ =
       0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
-    CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
-    CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
-    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
-        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
+//    CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
+//    CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
+//    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
+//        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
 
   if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
     CF_WARNING("\nWARNING!\n"

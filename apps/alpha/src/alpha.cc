@@ -43,6 +43,63 @@
 
 namespace {
 
+//
+//void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth = CV_32F)
+//{
+//  static thread_local cv::Mat Kx, Ky;
+//  if( Kx.empty() ) {
+//    cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+//    Kx *= M_SQRT2;
+//    Ky *= M_SQRT2;
+//  }
+//
+//  if( ddepth < 0 ) {
+//    ddepth = std::max(src.depth(), CV_32F);
+//  }
+//
+//  cv::sepFilter2D(src, gx, -1, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  cv::sepFilter2D(src, gy, -1, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//}
+//
+//
+//bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
+//{
+//  const cv::Size inputSize = image.size();
+//
+//  if( inputSize != dstSize ) {
+//
+//    std::vector<cv::Size> sizes;
+//
+//    sizes.emplace_back(dstSize);
+//
+//    while (42) {
+//
+//      const cv::Size nextSize((sizes.back().width + 1) / 2,
+//          (sizes.back().height + 1) / 2);
+//
+//      if( nextSize == inputSize ) {
+//        break;
+//      }
+//
+//      if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+//        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+//            nextSize.width, nextSize.height,
+//            inputSize.width, inputSize.height);
+//        return false;
+//      }
+//
+//      sizes.emplace_back(nextSize);
+//    }
+//
+//    for( int i = sizes.size() - 1; i >= 0; --i ) {
+//      cv::pyrUp(image, image, sizes[i]);
+//    }
+//  }
+//
+//  return true;
+//}
+//
+
 static void correlate(const cv::Mat & src1, const cv::Mat & src2, cv::Mat & dst)
 {
   cv::Mat m1, m2;
@@ -85,7 +142,6 @@ static void extract_pixel_matches(const cv::Mat2f & rmap, const cv::Mat1b & mask
   }
 
 }
-
 
 }
 
@@ -291,7 +347,7 @@ int main(int argc, char *argv[])
 
   source->close();
 
-  c_eccflow f;
+  c_eccflow2 f;
 
   f.set_support_scale(3);
   f.set_min_image_size(4);

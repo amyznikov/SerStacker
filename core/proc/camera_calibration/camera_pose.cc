@@ -14,6 +14,8 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#include <signal.h>
+
 #if HAVE_TBB
 # include <tbb/tbb.h>
 #endif
@@ -1251,8 +1253,12 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       const cv::Matx33d H = camera_matrix * R * camera_matrix_inv;
       const cv::Point2d E = compute_epipole(camera_matrix, unpack_T(p, Tfix, iTfix));
 
-      rhs.resize(current_keypoints.size());
+      if ( current_keypoints.size() < 5 ) {
+        CF_ERROR("current_keypoints.size()=%zu < 5", current_keypoints.size());
+        return false;
+      }
 
+      rhs.resize(current_keypoints.size());
 
       // compute projection error and apply robust function
 
@@ -1391,18 +1397,18 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     /*
      * Run levmar solver
      * */
-    int iterations =
-        lm.run(callback, p);
 
-    if ( iterations < 0 ) {
-      CF_ERROR("lm.run() fails");
-      return false;
-    }
+      int iterations =
+          lm.run(callback, p);
 
-    if( num_inliers < 8 ) {
-      break;
-    }
+      if ( iterations < 0 ) {
+        CF_ERROR("lm.run() fails");
+        return false;
+      }
 
+      if( num_inliers < 8 ) {
+        break;
+      }
 
     /*
      * Check for outliers
@@ -1525,9 +1531,9 @@ bool lm_camera_pose_and_derotation_homography(/* in */ const cv::Matx33d & camer
   if ( !M.empty() ) {
     mask = M.getMatRef();
 
-    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
-        cv::countNonZero(mask),
-        mask.rows);
+//    CF_DEBUG("estimate_essential_matrix: initial inliers = %d / %d",
+//        cv::countNonZero(mask),
+//        mask.rows);
 
   }
 
@@ -1558,6 +1564,7 @@ bool lm_camera_pose_and_derotation_homography(/* in */ const cv::Matx33d & camer
       mask.copyTo(M);
     }
   }
+
 
   if ( outputRotationMatrix || outputEssentialMatrix || outputDerotationHomography || outputFundamentalMatrix ) {
     R = build_rotation(A);

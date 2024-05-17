@@ -213,12 +213,20 @@ bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & p
     return false;
   }
 
+  if( rhs.size() < params.size() ) {
+    CF_ERROR("c_levmar_solver: "
+        "cb.compute() returns invalid rhs.size=%zu < params.size=%zu",
+        rhs.size(), params.size());
+    return false;
+  }
+
   if( jac ) {
 
     // check if J was compute by callback
     if( have_jac ) {
       if( jac->rows != rhs.size() || jac->cols != params.size() ) {
-        CF_ERROR("Invalid Jac size %dx%d. Expected size is %zu rows x %zu columns",
+        CF_ERROR("c_levmar_solver: "
+            "Invalid Jac size %dx%d. Expected size is %zu rows x %zu columns",
             jac->rows, jac->cols, rhs.size(), params.size());
         return false;
       }

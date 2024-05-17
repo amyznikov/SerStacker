@@ -1438,20 +1438,16 @@ bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask
 
 bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f & uv) const
 {
-  cv::Mat1f worker_image;
-  cv::Mat1f It, Itx, Ity;
-  cv::Mat1b M;
-
   tbb::parallel_invoke(
-    [&e, &rmap, &worker_image]() {
-      //e.reference_image.copyTo(worker_image);
-      cv::remap(e.current_image, worker_image,
+    [this, &e, &rmap]() {
+      //e.reference_image.copyTo(W);
+      cv::remap(e.current_image, W,
           rmap, cv::noArray(),
           cv::INTER_AREA,
           cv::BORDER_REPLICATE/*cv::BORDER_TRANSPARENT*/);
     },
 
-    [&e, &rmap, &M]() {
+    [this, &e, &rmap]() {
       if ( !e.current_mask.empty() ) {
         cv::remap(e.current_mask, M,
             rmap, cv::noArray(),
@@ -1471,34 +1467,24 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
   }
 
 
-  const cv::Mat1f & I1 = worker_image;
-  const cv::Mat1f & I2 = e.reference_image;
+  const cv::Mat1f & I1 =
+      W;
+
+  const cv::Mat1f & I2 =
+      e.reference_image;
 
   cv::subtract(I2, I1, It, M);
 
-
-#if 0
-  cv::multiply(e.Ix, e.It, Itx);
-  avgdown(Itx, Itx);
-
-  cv::multiply(e.Iy, e.It, Ity);
-  avgdown(Ity, Ity);
-
-#else
-
   tbb::parallel_invoke(
 
-    [this, &e, &It, &Itx]() {
-      cv::multiply(e.Ix, It, Itx);
-      avgdown(Itx, Itx);
+    [this, &e]() {
+      avgp(e.Ix, It, Itx);
     },
 
-    [this, &e, &It, &Ity]() {
-      cv::multiply(e.Iy, It, Ity);
-      avgdown(Ity, Ity);
+    [this, &e]() {
+      avgp(e.Iy, It, Ity);
     }
   );
-#endif
 
   //  a00 = Ixx;
   //  a01 = Ixy;
@@ -1515,7 +1501,7 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
   typedef tbb::blocked_range<int> range;
 
   tbb::parallel_for(range(0, uv.rows, 256),
-      [&e, &uv, &Itx, &Ity](const range & r) {
+      [this, &e, &uv](const range & r) {
 
         const cv::Mat4f & D =
             e.D;
@@ -1567,6 +1553,12 @@ void c_eccflow::avgdown(cv::InputArray src, cv::Mat & dst) const
 void c_eccflow::avgup(cv::Mat & image, const cv::Size & dstSize) const
 {
   ecc_upscale(image, dstSize);
+}
+
+void c_eccflow::avgp(cv::InputArray src1, cv::InputArray src2, cv::Mat & dst) const
+{
+  cv::multiply(src1, src2, dst);
+  avgdown(dst, dst);
 }
 
 
@@ -1632,10 +1624,12 @@ const cv::Mat1b & c_eccflow::reference_mask() const
   return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
 }
 
-
+#define TEST_DOWNSCALE  1
 
 bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
+  INSTRUMENT_REGION("");
+
   if ( reference_image.channels() != 1 ) {
     CF_ERROR("Single channel input image is expected on input. reference_image.channels=%d",
         reference_image.channels());
@@ -1662,7 +1656,18 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   const double noise_level =
       noise_level_ >= 0 ? noise_level_ : 1e-3;
 
-  cv::Mat1f Ixx, Iyy, Ixy, DD;
+//  cv::Mat1f DC[4];
+//  = {
+//      Ixx,
+//      Ixy,
+//      Iyy,
+//      DD
+//  };
+//
+  cv::Mat1f & Ixx = DC[0];
+  cv::Mat1f & Ixy = DC[1];
+  cv::Mat1f & Iyy = DC[2];
+  cv::Mat1f & DD = DC[3];
 
 
   pyramid_.clear();
@@ -1692,64 +1697,79 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
       }
 
       pyramid_.emplace_back();
+
+#if TEST_DOWNSCALE
+      downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
+          pyramid_.back().reference_image, pyramid_.back().reference_mask,
+          next_size);
+#else
       downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
           pyramid_.back().reference_image, pyramid_.back().reference_mask,
           next_size);
+#endif
     }
 
     pyramid_entry & current_scale =
         pyramid_.back();
 
-    ecc_differentiate(current_scale.reference_image,
-        current_scale.Ix, current_scale.Iy);
+    if ( true ) {
+      INSTRUMENT_REGION("ecc_differentiate");
+      ecc_differentiate(current_scale.reference_image,
+          current_scale.Ix, current_scale.Iy);
+    }
 
-    tbb::parallel_invoke(
-        [this, &current_scale, &Ixx]() {
-          cv::multiply(current_scale.Ix, current_scale.Ix, Ixx);
-          avgdown(Ixx, Ixx);
-        },
-        [this, &current_scale, &Ixy]() {
-          cv::multiply(current_scale.Ix, current_scale.Iy, Ixy);
-          avgdown(Ixy, Ixy);
-        },
-        [this, &current_scale, &Iyy]() {
-          cv::multiply(current_scale.Iy, current_scale.Iy, Iyy);
-          avgdown(Iyy, Iyy);
-        }
-    );
+    if( true ) {
+      INSTRUMENT_REGION("avgp");
 
+      if( false ) {
+        avgp(current_scale.Ix, current_scale.Ix, Ixx);
+        avgp(current_scale.Ix, current_scale.Iy, Ixy);
+        avgp(current_scale.Iy, current_scale.Iy, Iyy);
+      }
+      else {
+        tbb::parallel_invoke(
+            [this, &current_scale, &Ixx]() {
+              avgp(current_scale.Ix, current_scale.Ix, Ixx);
+            },
+            [this, &current_scale, &Ixy]() {
+              avgp(current_scale.Ix, current_scale.Iy, Ixy);
+            },
+            [this, &current_scale, &Iyy]() {
+              avgp(current_scale.Iy, current_scale.Iy, Iyy);
+            }
+         );
+      }
+    }
 
-    // FIXME: this regularization term estimation seems crazy
-    const double RegularizationTerm =
-        noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
+    if( true ) {
+      INSTRUMENT_REGION("merge_D");
 
-    cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
-    cv::add(DD, RegularizationTerm, DD);
-    cv::divide(update_multiplier_, DD, DD);
+      // FIXME: this regularization term estimation seems crazy
+      const double RegularizationTerm =
+          noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
 
-    cv::Mat D_channels[4] = {
-        Ixx,
-        Ixy,
-        Iyy,
-        DD
-      };
+      cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
+      cv::add(DD, RegularizationTerm, DD);
+      cv::divide(update_multiplier_, DD, DD);
 
-    cv::merge(D_channels, 4, current_scale.D);
+      cv::merge(DC, 4, current_scale.D);
+    }
   }
 
   return true;
 }
 
-
 bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray input_mask)
 {
+  INSTRUMENT_REGION("");
+
   if( pyramid_.empty() ) {
     CF_ERROR("Reference pyramid is empty: set_reference_image() must be called first");
     return false;
   }
 
   if ( input_image.channels() != 1 ) {
-    CF_ERROR("Singe channel input image is expected. input_image.channels=%d",
+    CF_ERROR("Single channel input image is expected. input_image.channels=%d",
         input_image.channels());
     return false;
   }
@@ -1792,9 +1812,15 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
        const pyramid_entry & previous_scale =
            pyramid_[current_level - 1];
 
+#if TEST_DOWNSCALE
+      downscale(previous_scale.current_image, previous_scale.current_mask,
+          current_scale.current_image, current_scale.current_mask,
+          current_scale.reference_image.size());
+#else
       downscale(base_scale.current_image, base_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
           current_scale.reference_image.size());
+#endif
     }
   }
 
@@ -1806,6 +1832,8 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
 bool c_eccflow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
     cv::InputArray inputMask, cv::InputArray referenceMask)
 {
+  INSTRUMENT_REGION("");
+
   set_reference_image(referenceImage, referenceMask);
   return compute(inputImage, rmap, inputMask);
 }
@@ -1818,6 +1846,8 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
     CF_ERROR("setup_input_image() fails");
     return false;
   }
+
+  INSTRUMENT_REGION("");
 
   const int num_levels =
       (int) (pyramid_.size());
@@ -1893,4 +1923,4 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
   return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+

@@ -298,8 +298,10 @@ protected:
   int minimum_pyramid_level_ = 0;
 };
 
+/**
+ * Coarse-to-fine SMOOTH optical flow on image pyramids
+ */
 
-// experimental test
 class c_eccflow
 {
 public:
@@ -380,9 +382,7 @@ protected:
 
   void avgdown(cv::InputArray src, cv::Mat & dst) const;
   void avgup(cv::Mat & image, const cv::Size & dstSize) const;
-
-  void pnormalize(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst) const;
-
+  void avgp(cv::InputArray src1, cv::InputArray src2, cv::Mat & dst) const;
 
 protected:
   double input_smooth_sigma_ = 0;
@@ -397,7 +397,14 @@ protected:
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f uv;
+
+  // work arrays
+  mutable cv::Mat1f W, It, Itx, Ity;
+  mutable cv::Mat1b M;
+  mutable cv::Mat1f DC[4];
+
 };
+
 
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);

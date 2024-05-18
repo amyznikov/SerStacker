@@ -768,8 +768,6 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage, cv::I
 
   for( num_iterations_ = 0; num_iterations_ <= max_iterations_; ++num_iterations_ ) {
 
-    INSTRUMENT_REGION("iterate");
-
   // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
     if( !create_current_remap(f.size()) ) {
       CF_ERROR("[i %d] create_current_remap() fails", num_iterations_);
@@ -1302,6 +1300,19 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+template<>
+const c_enum_member* members_of<c_eccflow::DownscaleMethod>()
+{
+  static const c_enum_member members[] = {
+      { c_eccflow::DownscaleRecursiveResize, "RecursiveResize", "Recursive cv::resize() with scale factor" },
+      { c_eccflow::DownscaleFullResize, "FullResize", "Direct cv::resize() from full to target resolution" },
+      { c_eccflow::DownscalePyramid, "Pyramid", "Recursive resize using cv::pyrDown()" },
+      { c_eccflow::DownscaleRecursiveResize },
+  };
+
+  return members;
+}
+
 void c_eccflow::set_support_scale(int v)
 {
   support_scale_ = v;
@@ -1367,6 +1378,16 @@ double c_eccflow::reference_smooth_sigma() const
   return reference_smooth_sigma_;
 }
 
+void c_eccflow::set_downscale_method(DownscaleMethod v)
+{
+  downscale_method_ = v;
+}
+
+c_eccflow::DownscaleMethod c_eccflow::downscale_method() const
+{
+  return downscale_method_;
+}
+
 void c_eccflow::set_scale_factor(double v)
 {
   scale_factor_ = v;
@@ -1408,6 +1429,7 @@ void c_eccflow::copy_parameters(const this_class & rhs)
   normalization_scale_ = rhs.normalization_scale_;
   min_image_size_ = rhs.min_image_size_;
   scale_factor_ = rhs.scale_factor_;
+  downscale_method_ = rhs.downscale_method_;
 }
 
 const cv::Mat2f& c_eccflow::current_uv() const
@@ -1569,8 +1591,16 @@ void c_eccflow::downscale(cv::InputArray src, cv::InputArray src_mask,
     cv::OutputArray dst, cv::OutputArray dst_mask,
     const cv::Size & dst_size) const
 {
-  cv::resize(src, dst, dst_size, 0, 0,
-      cv::INTER_AREA);
+
+  switch (downscale_method_) {
+    case DownscalePyramid:
+      cv::pyrDown(src, dst, dst_size);
+      break;
+    default:
+      cv::resize(src, dst, dst_size, 0, 0,
+          cv::INTER_AREA);
+      break;
+  }
 
   if( dst_mask.needed() ) {
 
@@ -1610,7 +1640,6 @@ void c_eccflow::upscale(cv::InputArray src, cv::InputArray src_mask,
     }
   }
 }
-
 
 const cv::Mat1f & c_eccflow::reference_image() const
 {
@@ -1656,14 +1685,6 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   const double noise_level =
       noise_level_ >= 0 ? noise_level_ : 1e-3;
 
-//  cv::Mat1f DC[4];
-//  = {
-//      Ixx,
-//      Ixy,
-//      Iyy,
-//      DD
-//  };
-//
   cv::Mat1f & Ixx = DC[0];
   cv::Mat1f & Ixy = DC[1];
   cv::Mat1f & Iyy = DC[2];
@@ -1676,10 +1697,18 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   const int min_image_size =
       std::max(4, min_image_size_);
 
+  const cv::Size image_size =
+      reference_image.size();
+
+  const bool big_aspect_ratio =
+      std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
+
   for( int current_level = 0;; ++current_level ) {
 
     if ( current_level == 0 ) {
+
       pyramid_.emplace_back();
+
       convert_input_images(reference_image, reference_mask,
           pyramid_.back().reference_image,
           pyramid_.back().reference_mask);
@@ -1689,71 +1718,98 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
       const cv::Size previous_size =
           pyramid_.back().reference_image.size();
 
-      const cv::Size next_size(std::max(min_image_size_, (int)((previous_size.width + 1) * scale_factor_)),
-          std::max(min_image_size_, (int)((previous_size.height + 1) * scale_factor_)) );
+      if( downscale_method_ == DownscaleRecursiveResize ) {
 
-      if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
-        break;
+        const cv::Size next_size(std::max(min_image_size_, (int) ((previous_size.width + 1) * scale_factor_)),
+            std::max(min_image_size_, (int) ((previous_size.height + 1) * scale_factor_)));
+
+        if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
+          break;
+        }
+
+        pyramid_.emplace_back();
+
+        if( big_aspect_ratio && std::min(next_size.width, next_size.height) <= min_image_size + 1 ) {
+          downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
+              pyramid_.back().reference_image, pyramid_.back().reference_mask,
+              next_size);
+        }
+        else {
+          downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
+              pyramid_.back().reference_image, pyramid_.back().reference_mask,
+              next_size);
+        }
+
+      }
+      else if( downscale_method_ == DownscaleFullResize ) {
+
+        const cv::Size next_size(std::max(min_image_size_, (int) ((previous_size.width + 1) * scale_factor_)),
+            std::max(min_image_size_, (int) ((previous_size.height + 1) * scale_factor_)));
+
+        if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
+          break;
+        }
+
+        pyramid_.emplace_back();
+
+        downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
+            pyramid_.back().reference_image, pyramid_.back().reference_mask,
+            next_size);
+
+      }
+      else {  // DownscalePyramid
+
+        const cv::Size next_size(std::max(min_image_size_, (previous_size.width + 1) / 2),
+            std::max(min_image_size_, (previous_size.height + 1) / 2));
+
+        if( previous_size == next_size || std::min(next_size.width, next_size.height) <= min_image_size ) {
+          break;
+        }
+
+        pyramid_.emplace_back();
+
+        downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
+            pyramid_.back().reference_image, pyramid_.back().reference_mask,
+            next_size);
+
       }
 
-      pyramid_.emplace_back();
-
-#if TEST_DOWNSCALE
-      downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
-          pyramid_.back().reference_image, pyramid_.back().reference_mask,
-          next_size);
-#else
-      downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
-          pyramid_.back().reference_image, pyramid_.back().reference_mask,
-          next_size);
-#endif
     }
 
     pyramid_entry & current_scale =
         pyramid_.back();
 
-    if ( true ) {
-      INSTRUMENT_REGION("ecc_differentiate");
-      ecc_differentiate(current_scale.reference_image,
-          current_scale.Ix, current_scale.Iy);
+    ecc_differentiate(current_scale.reference_image,
+        current_scale.Ix, current_scale.Iy);
+
+    if( false ) {
+      avgp(current_scale.Ix, current_scale.Ix, Ixx);
+      avgp(current_scale.Ix, current_scale.Iy, Ixy);
+      avgp(current_scale.Iy, current_scale.Iy, Iyy);
+    }
+    else {
+      tbb::parallel_invoke(
+          [this, &current_scale, &Ixx]() {
+            avgp(current_scale.Ix, current_scale.Ix, Ixx);
+          },
+          [this, &current_scale, &Ixy]() {
+            avgp(current_scale.Ix, current_scale.Iy, Ixy);
+          },
+          [this, &current_scale, &Iyy]() {
+            avgp(current_scale.Iy, current_scale.Iy, Iyy);
+          }
+       );
     }
 
-    if( true ) {
-      INSTRUMENT_REGION("avgp");
+    // FIXME: this regularization term estimation looks crazy
+    const double RegularizationTerm =
+        noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
 
-      if( false ) {
-        avgp(current_scale.Ix, current_scale.Ix, Ixx);
-        avgp(current_scale.Ix, current_scale.Iy, Ixy);
-        avgp(current_scale.Iy, current_scale.Iy, Iyy);
-      }
-      else {
-        tbb::parallel_invoke(
-            [this, &current_scale, &Ixx]() {
-              avgp(current_scale.Ix, current_scale.Ix, Ixx);
-            },
-            [this, &current_scale, &Ixy]() {
-              avgp(current_scale.Ix, current_scale.Iy, Ixy);
-            },
-            [this, &current_scale, &Iyy]() {
-              avgp(current_scale.Iy, current_scale.Iy, Iyy);
-            }
-         );
-      }
-    }
+    cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
+    cv::add(DD, RegularizationTerm, DD);
+    cv::divide(update_multiplier_, DD, DD);
 
-    if( true ) {
-      INSTRUMENT_REGION("merge_D");
-
-      // FIXME: this regularization term estimation seems crazy
-      const double RegularizationTerm =
-          noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
-
-      cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
-      cv::add(DD, RegularizationTerm, DD);
-      cv::divide(update_multiplier_, DD, DD);
-
-      cv::merge(DC, 4, current_scale.D);
-    }
+    cv::merge(DC, 4, current_scale.D);
   }
 
   return true;
@@ -1791,6 +1847,12 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     }
   }
 
+  const cv::Size image_size =
+      input_image.size();
+
+  const bool big_aspect_ratio =
+      std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
+
   const int num_levels =
       (int)(pyramid_.size());
 
@@ -1804,24 +1866,53 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
           current_scale.current_image,
           current_scale.current_mask);
     }
-    else {
+    else if( downscale_method_ == DownscaleFullResize ) {
 
       const pyramid_entry & base_scale =
           pyramid_.front();
 
-       const pyramid_entry & previous_scale =
-           pyramid_[current_level - 1];
-
-#if TEST_DOWNSCALE
-      downscale(previous_scale.current_image, previous_scale.current_mask,
-          current_scale.current_image, current_scale.current_mask,
-          current_scale.reference_image.size());
-#else
       downscale(base_scale.current_image, base_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
           current_scale.reference_image.size());
-#endif
     }
+    else if( downscale_method_ == DownscaleRecursiveResize ) {
+
+      const cv::Size next_size =
+          current_scale.reference_image.size();
+
+      const int min_image_size =
+          std::max(4, min_image_size_);
+
+        if( big_aspect_ratio && std::min(next_size.width, next_size.height) <= min_image_size + 1 ) {
+
+          const pyramid_entry & base_scale =
+              pyramid_.front();
+
+          downscale(base_scale.current_image, base_scale.current_mask,
+              current_scale.current_image, current_scale.current_mask,
+              current_scale.reference_image.size());
+        }
+        else {
+
+          const pyramid_entry & previous_scale =
+              pyramid_[current_level - 1];
+
+          downscale(previous_scale.current_image, previous_scale.current_mask,
+              current_scale.current_image, current_scale.current_mask,
+              current_scale.reference_image.size());
+
+        }
+    }
+    else {
+
+      const pyramid_entry & previous_scale =
+          pyramid_[current_level - 1];
+
+      downscale(previous_scale.current_image, previous_scale.current_mask,
+          current_scale.current_image, current_scale.current_mask,
+          current_scale.reference_image.size());
+    }
+
   }
 
   return true;
@@ -1876,7 +1967,7 @@ bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputAr
         (double) last_size.height / (double) first_size.height);
 
     ecc_remap_to_optflow(rmap, uv);
-    downscale(uv, cv::noArray(), uv, cv::noArray(), last_size);
+    cv::resize(uv, uv, last_size, 0, 0, cv::INTER_AREA);
     cv::multiply(uv, size_ratio, uv);
 
   }

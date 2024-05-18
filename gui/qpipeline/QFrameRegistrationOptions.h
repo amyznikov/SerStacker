@@ -264,6 +264,7 @@ protected:
 protected:
   c_eccflow_registration_options * options_ = nullptr;
   QCheckBox * enableEccFlow_ctl = nullptr;
+  QEnumComboBox<c_eccflow::DownscaleMethod> * downscale_method_ctl = nullptr;
   QNumericBox * update_multiplier_ctl = nullptr;
   QNumericBox * input_smooth_sigma_ctl = nullptr;
   QNumericBox * reference_smooth_sigma_ctl = nullptr;

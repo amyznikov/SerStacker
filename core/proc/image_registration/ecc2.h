@@ -307,6 +307,12 @@ class c_eccflow
 public:
   typedef c_eccflow this_class;
 
+  enum DownscaleMethod {
+    DownscaleRecursiveResize,
+    DownscaleFullResize,
+    DownscalePyramid
+  };
+
   // made public for debug purposes
   struct pyramid_entry {
     cv::Mat1f current_image, reference_image;
@@ -334,6 +340,9 @@ public:
 
   void set_reference_smooth_sigma(double v);
   double reference_smooth_sigma() const;
+
+  void set_downscale_method(DownscaleMethod v);
+  DownscaleMethod downscale_method() const;
 
   void set_scale_factor(double v);
   double scale_factor() const;
@@ -394,6 +403,9 @@ protected:
   int support_scale_ = 5;
   int normalization_scale_ = -1;
   int min_image_size_ = 8;
+
+  DownscaleMethod downscale_method_ =
+      DownscaleRecursiveResize;
 
   std::vector<pyramid_entry> pyramid_;
   cv::Mat2f uv;

@@ -949,6 +949,16 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(downscale_method_ctl =
+      add_enum_combobox<c_eccflow::DownscaleMethod>("downscale_method",
+          "",
+          [this](c_eccflow::DownscaleMethod value) {
+            if ( options_ && options_->downscale_method != value ) {
+              options_->downscale_method = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
   controls.append(min_image_size_ctl =
       add_numeric_box<int>("min_image_size",
           "",
@@ -1070,6 +1080,7 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
     reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
     max_iterations_ctl->setValue(options_->max_iterations);
+    downscale_method_ctl->setValue(options_->downscale_method);
     support_scale_ctl->setValue(options_->support_scale);
     min_image_size_ctl->setValue(options_->min_image_size);
     scale_factor_ctl->setValue(options_->scale_factor);

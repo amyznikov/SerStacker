@@ -54,6 +54,7 @@ struct c_eccflow_registration_options
   int support_scale = 4;
   int min_image_size = -1;
   int normalization_scale = -1;
+  c_eccflow::DownscaleMethod downscale_method = c_eccflow::DownscaleRecursiveResize;
 //  bool enable_debug = false;
 };
 

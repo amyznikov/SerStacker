@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  source->seek(321); // 218
+  source->seek(258); // 218 321
 
   cv::Mat images[3];
 
@@ -206,6 +206,7 @@ int main(int argc, char *argv[])
   f.set_noise_level(1e-3);
   f.set_scale_factor(0.75);
   f.set_max_iterations(3);
+  f.set_downscale_method(c_eccflow::DownscaleRecursiveResize);
 
   f.compute(images[1], images[0], rmap,
       cv::noArray(), cv::noArray());

@@ -125,6 +125,9 @@ public:
   void set_eccflow_support_scale(int v);
   int eccflow_support_scale() const;
 
+  void set_eccflow_downscale_method(c_eccflow::DownscaleMethod v);
+  c_eccflow::DownscaleMethod eccflow_downscale_method() const;
+
   void set_eccflow_min_image_size(int v);
   int eccflow_min_image_size() const;
 

@@ -57,6 +57,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(section, save, *this, ecc_update_step_scale);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_eccflow);
+    SERIALIZE_PROPERTY(section, save, *this, eccflow_downscale_method);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_min_image_size);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_noise_level);
     SERIALIZE_PROPERTY(section, save, *this, eccflow_support_scale);
@@ -141,6 +142,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
         PIPELINE_CTL(ctrls, registration_options_.enable_eccflow, "enabled", "");
 
         PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC(ctrls, eccflow_downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
@@ -340,6 +342,16 @@ void c_running_average_pipeline::set_eccflow_update_multiplier(double v)
 double c_running_average_pipeline::eccflow_update_multiplier() const
 {
   return eccflow_.update_multiplier();
+}
+
+void c_running_average_pipeline::set_eccflow_downscale_method(c_eccflow::DownscaleMethod v)
+{
+  eccflow_.set_downscale_method(v);
+}
+
+c_eccflow::DownscaleMethod c_running_average_pipeline::eccflow_downscale_method() const
+{
+  return eccflow_.downscale_method();
 }
 
 

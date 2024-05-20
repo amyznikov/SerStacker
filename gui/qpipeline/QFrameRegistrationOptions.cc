@@ -969,6 +969,17 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
             }
           }));
 
+  controls.append(max_pyramid_level_ctl =
+      add_numeric_box<int>("max_pyramid_level",
+          "",
+          [this](int value) {
+            if ( options_ && options_->max_pyramid_level != value ) {
+              options_->max_pyramid_level = value;
+              Q_EMIT parameterChanged();
+            }
+          }));
+
+
 
   controls.append(scale_factor_ctl =
       add_numeric_box<double>("scale_factor",
@@ -1083,6 +1094,7 @@ void QEccFlowRegistrationOptions::onupdatecontrols()
     downscale_method_ctl->setValue(options_->downscale_method);
     support_scale_ctl->setValue(options_->support_scale);
     min_image_size_ctl->setValue(options_->min_image_size);
+    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     scale_factor_ctl->setValue(options_->scale_factor);
     normalization_scale_ctl->setValue(options_->normalization_scale);
     noise_level_ctl->setValue(options_->noise_level);
@@ -1707,7 +1719,7 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
           });
 
 
-  eccflowMaxPyramidLevel_ctl =
+  eccflowMinImageSize_ctl =
       add_numeric_box<int>("ECC Min image size:",
           "",
           [this](int v) {
@@ -1719,6 +1731,23 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
           [this](int * v) {
             if ( options_ ) {
               *v = options_->eccflow_min_image_size;
+              return true;
+            }
+            return false;
+          });
+
+  eccflowMaxPyramidLevel_ctl =
+      add_numeric_box<int>("ECC Max Pyr. Level:",
+          "",
+          [this](int v) {
+            if ( options_ && options_->eccflow_max_pyramid_level != v ) {
+              options_->eccflow_max_pyramid_level = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( options_ ) {
+              *v = options_->eccflow_max_pyramid_level;
               return true;
             }
             return false;

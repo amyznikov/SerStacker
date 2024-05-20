@@ -53,6 +53,7 @@ struct c_eccflow_registration_options
   int max_iterations = 1;
   int support_scale = 4;
   int min_image_size = -1;
+  int max_pyramid_level = -1;
   int normalization_scale = -1;
   c_eccflow::DownscaleMethod downscale_method = c_eccflow::DownscaleRecursiveResize;
 //  bool enable_debug = false;
@@ -96,6 +97,7 @@ struct c_master_frame_options
   double ecc_scale = 0.5;
   int eccflow_scale = 0;
   int eccflow_min_image_size = -1;
+  int eccflow_max_pyramid_level = -1;
 };
 
 struct c_image_registration_options

@@ -39,33 +39,35 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
 
-    SERIALIZE_PROPERTY(section, save, *this, ecch_minimum_image_size);
-    SERIALIZE_PROPERTY(section, save, *this, ecch_minimum_pyramid_level);
+    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
+    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_ecc);
     SERIALIZE_OPTION(section, save, registration_options_, ecc_motion_type);
 
-    SERIALIZE_PROPERTY(section, save, *this, ecch_minimum_image_size);
-    SERIALIZE_PROPERTY(section, save, *this, ecch_minimum_pyramid_level);
+    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
+    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
 
-    SERIALIZE_PROPERTY(section, save, *this, ecc_max_iterations);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_max_eps);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_min_rho);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_interpolation);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, *this, ecc_update_step_scale);
+    SERIALIZE_PROPERTY(section, save, ecc_, max_iterations);
+    SERIALIZE_PROPERTY(section, save, ecc_, max_eps);
+    SERIALIZE_PROPERTY(section, save, ecc_, min_rho);
+    SERIALIZE_PROPERTY(section, save, ecc_, interpolation);
+    SERIALIZE_PROPERTY(section, save, ecc_, input_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, ecc_, reference_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, ecc_, update_step_scale);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_eccflow);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_downscale_method);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_min_image_size);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_noise_level);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_support_scale);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_normalization_scale);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_update_multiplier);
-    SERIALIZE_PROPERTY(section, save, *this, eccflow_scale_factor);
+    SERIALIZE_PROPERTY(section, save, eccflow_, downscale_method);
+    SERIALIZE_PROPERTY(section, save, eccflow_, min_image_size);
+    SERIALIZE_PROPERTY(section, save, eccflow_, max_pyramid_level);
+    SERIALIZE_PROPERTY(section, save, eccflow_, noise_level);
+    SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
+    SERIALIZE_PROPERTY(section, save, eccflow_, max_iterations);
+    SERIALIZE_PROPERTY(section, save, eccflow_, normalization_scale);
+    SERIALIZE_PROPERTY(section, save, eccflow_, input_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, eccflow_, reference_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, eccflow_, update_multiplier);
+    SERIALIZE_PROPERTY(section, save, eccflow_, scale_factor);
 
   }
 
@@ -126,30 +128,31 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
         PIPELINE_CTL(ctrls, registration_options_.enable_ecc, "enabled", "");
 
         PIPELINE_CTLC(ctrls, registration_options_.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecch_minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecch_minimum_pyramid_level, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, minimum_pyramid_level, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
 
-        PIPELINE_CTLPC(ctrls, ecc_input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, ecc_update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecc_, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
         PIPELINE_CTL(ctrls, registration_options_.enable_eccflow, "enabled", "");
-
-        PIPELINE_CTLPC(ctrls, eccflow_support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_normalization_scale, "normalization_scale", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC(ctrls, eccflow_update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, max_pyramid_level, "max_pyramid_level", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, max_iterations, "max_iterations", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, normalization_scale, "normalization_scale", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, eccflow_, update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTLC(ctrls, registration_options_.min_rho, "min_rho", "", (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
@@ -200,219 +203,25 @@ bool c_running_average_pipeline::double_align_moode() const
 
 ///
 
-void c_running_average_pipeline::set_ecch_minimum_image_size(int v)
-{
-  ecch_.set_minimum_image_size(v);
-}
-
-int c_running_average_pipeline::ecch_minimum_image_size() const
-{
-  return ecch_.minimum_image_size();
-}
-
-void c_running_average_pipeline::set_ecch_minimum_pyramid_level(int v)
-{
-  ecch_.set_minimum_pyramid_level(v);
-}
-
-int c_running_average_pipeline::ecch_minimum_pyramid_level() const
-{
-  return ecch_.minimum_pyramid_level();
-}
-
-///
-void c_running_average_pipeline::set_ecc_max_iterations(int v)
-{
-  ecc_.set_max_iterations(v);
-}
-
-int c_running_average_pipeline::ecc_max_iterations() const
-{
-  return ecc_.max_iterations();
-}
-
-void c_running_average_pipeline::set_ecc_max_eps(double v)
-{
-  ecc_.set_max_eps(v);
-}
-
-double c_running_average_pipeline::ecc_max_eps() const
-{
-  return ecc_.max_eps();
-}
-
-void c_running_average_pipeline::set_ecc_min_rho(double v)
-{
-  ecc_.set_min_rho(v);
-}
-
-double c_running_average_pipeline::ecc_min_rho() const
-{
-  return ecc_.min_rho();
-}
-
-void c_running_average_pipeline::set_ecc_interpolation(enum ECC_INTERPOLATION_METHOD v)
-{
-  ecc_.set_interpolation(v);
-}
-
-enum ECC_INTERPOLATION_METHOD c_running_average_pipeline::ecc_interpolation() const
-{
-  return ecc_.interpolation();
-}
-
-
-void c_running_average_pipeline::set_ecc_input_smooth_sigma(double v)
-{
-  ecc_.set_input_smooth_sigma(v);
-}
-
-double c_running_average_pipeline::ecc_input_smooth_sigma() const
-{
-  return ecc_.input_smooth_sigma();
-}
-
-void c_running_average_pipeline::set_ecc_reference_smooth_sigma(double v)
-{
-  ecc_.set_reference_smooth_sigma(v);
-}
-
-double c_running_average_pipeline::ecc_reference_smooth_sigma() const
-{
-  return ecc_.reference_smooth_sigma();
-}
-
-void c_running_average_pipeline::set_ecc_update_step_scale(double v)
-{
-  ecc_.set_update_step_scale(v);
-}
-
-double c_running_average_pipeline::ecc_update_step_scale() const
-{
-  return ecc_.update_step_scale();
-}
-
-
-///
-void c_running_average_pipeline::set_eccflow_support_scale(int v)
-{
-  eccflow_.set_support_scale(v);
-}
-
-int c_running_average_pipeline::eccflow_support_scale() const
-{
-  return eccflow_.support_scale();
-}
-
-void c_running_average_pipeline::set_eccflow_normalization_scale(int v)
-{
-  eccflow_.set_normalization_scale(v);
-}
-
-int c_running_average_pipeline::eccflow_normalization_scale() const
-{
-  return eccflow_.normalization_scale();
-}
-
-void c_running_average_pipeline::set_eccflow_input_smooth_sigma(double v)
-{
-  eccflow_.set_input_smooth_sigma(v);
-}
-
-double c_running_average_pipeline::eccflow_input_smooth_sigma() const
-{
-  return eccflow_.input_smooth_sigma();
-}
-
-void c_running_average_pipeline::set_eccflow_reference_smooth_sigma(double v)
-{
-  eccflow_.set_reference_smooth_sigma(v);
-}
-
-double c_running_average_pipeline::eccflow_reference_smooth_sigma() const
-{
-  return eccflow_.reference_smooth_sigma();
-}
-
-void c_running_average_pipeline::set_eccflow_update_multiplier(double v)
-{
-  eccflow_.set_update_multiplier(v);
-}
-
-double c_running_average_pipeline::eccflow_update_multiplier() const
-{
-  return eccflow_.update_multiplier();
-}
-
-void c_running_average_pipeline::set_eccflow_downscale_method(c_eccflow::DownscaleMethod v)
-{
-  eccflow_.set_downscale_method(v);
-}
-
-c_eccflow::DownscaleMethod c_running_average_pipeline::eccflow_downscale_method() const
-{
-  return eccflow_.downscale_method();
-}
-
-
-void c_running_average_pipeline::set_eccflow_min_image_size(int v)
-{
-  eccflow_.set_min_image_size(v);
-}
-
-int c_running_average_pipeline::eccflow_min_image_size() const
-{
-  return eccflow_.min_image_size();
-}
-
-void c_running_average_pipeline::set_eccflow_scale_factor(double v)
-{
-  eccflow_.set_scale_factor(v);
-}
-
-double c_running_average_pipeline::eccflow_scale_factor() const
-{
-  return eccflow_.scale_factor();
-}
-
-void c_running_average_pipeline::set_eccflow_min_rho(double v)
-{
-  registration_options_.min_rho = v;
-}
-
-double c_running_average_pipeline::eccflow_min_rho() const
-{
-  return registration_options_.min_rho;
-}
-
-void c_running_average_pipeline::set_eccflow_noise_level(double v)
-{
-  eccflow_.set_noise_level(v);
-}
-
-double c_running_average_pipeline::eccflow_noise_level() const
-{
-  return eccflow_.noise_level();
-}
-
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   lock_guard lock(mutex());
 
-  if ( average1_.compute(display_frame, display_mask) ) {
-    return true;
+//  if ( average1_.compute(display_frame, display_mask) ) {
+//    return true;
+//  }
+
+  if ( registration_options_.double_align_moode ) {
+    if ( average2_.compute(display_frame, display_mask) ) {
+      return true;
+    }
+  }
+  else {
+    if ( average1_.compute(display_frame, display_mask) ) {
+      return true;
+    }
   }
 
-//  if ( registration_options_.double_align_moode ) {
-//    if ( average2_.compute(display_frame, display_mask) ) {
-//      return true;
-//    }
-//  }
-//  else {
-//    if ( average1_.compute(display_frame, display_mask) ) {
-//      return true;
-//    }
-//  }
   return false;
 }
 

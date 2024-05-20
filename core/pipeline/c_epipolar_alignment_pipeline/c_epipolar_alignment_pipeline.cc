@@ -113,7 +113,6 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
 
   if( (section = SERIALIZE_GROUP(settings, save, "eccflow")) ) {
     SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
-    SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
     SERIALIZE_PROPERTY(section, save, eccflow_, max_iterations);
     SERIALIZE_PROPERTY(section, save, eccflow_, update_multiplier);
     SERIALIZE_PROPERTY(section, save, eccflow_, normalization_scale);
@@ -122,6 +121,7 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_PROPERTY(section, save, eccflow_, downscale_method);
     SERIALIZE_PROPERTY(section, save, eccflow_, scale_factor);
     SERIALIZE_PROPERTY(section, save, eccflow_, min_image_size);
+    SERIALIZE_PROPERTY(section, save, eccflow_, max_pyramid_level);
     SERIALIZE_PROPERTY(section, save, eccflow_, noise_level);
   }
 
@@ -189,6 +189,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
       PIPELINE_CTLP2(ctrls, eccflow_, downscale_method, "downscale_method", "");
       PIPELINE_CTLP2(ctrls, eccflow_, scale_factor, "scale_factor", "");
       PIPELINE_CTLP2(ctrls, eccflow_, min_image_size, "min_image_size", "");
+      PIPELINE_CTLP2(ctrls, eccflow_, max_pyramid_level, "max_pyramid_level", "");
       PIPELINE_CTLP2(ctrls, eccflow_, noise_level, "noise_level", "");
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////

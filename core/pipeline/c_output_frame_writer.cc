@@ -22,8 +22,8 @@ c_output_frame_writer_options::c_output_frame_writer_options() :
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::string c_output_frame_writer::default_ffmpeg_opts_ =
-    "-r 10 -c rawvideo -pix_fmt rgb24";
-    // "-r 10 -c huffyuv";
+    "-r 30 -c huffyuv -f avi";
+    // "-r 10 -c rawvideo -pix_fmt rgb24";
 
 c_output_frame_writer::c_output_frame_writer()
 {

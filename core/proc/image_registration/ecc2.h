@@ -350,6 +350,9 @@ public:
   void set_min_image_size(int v);
   int min_image_size() const;
 
+  void set_max_pyramid_level(int v);
+  int max_pyramid_level() const;
+
   void set_noise_level(double v);
   double noise_level() const;
 
@@ -402,7 +405,8 @@ protected:
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
   int normalization_scale_ = -1;
-  int min_image_size_ = 8;
+  int min_image_size_ = 4;
+  int max_pyramid_level_ = -1;
 
   DownscaleMethod downscale_method_ =
       DownscaleRecursiveResize;

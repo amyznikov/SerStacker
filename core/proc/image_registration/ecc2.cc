@@ -1408,6 +1408,16 @@ int c_eccflow::min_image_size() const
   return min_image_size_;
 }
 
+void c_eccflow::set_max_pyramid_level(int v)
+{
+  max_pyramid_level_ = v;
+}
+
+int c_eccflow::max_pyramid_level() const
+{
+  return max_pyramid_level_;
+}
+
 void c_eccflow::set_noise_level(double v)
 {
   noise_level_ = v;
@@ -1653,8 +1663,6 @@ const cv::Mat1b & c_eccflow::reference_mask() const
   return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
 }
 
-#define TEST_DOWNSCALE  1
-
 bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
@@ -1703,7 +1711,7 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   const bool big_aspect_ratio =
       std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
 
-  for( int current_level = 0;; ++current_level ) {
+  for( int current_level = 0; ; ++current_level ) {
 
     if ( current_level == 0 ) {
 
@@ -1810,6 +1818,11 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
     cv::divide(update_multiplier_, DD, DD);
 
     cv::merge(DC, 4, current_scale.D);
+
+    if ( max_pyramid_level_ >= 0 && current_level >= max_pyramid_level_ ) {
+      break;
+    }
+
   }
 
   return true;

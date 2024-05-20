@@ -91,67 +91,6 @@ public:
 
   ///
 
-  void set_ecch_minimum_image_size(int v);
-  int ecch_minimum_image_size() const;
-
-  void set_ecch_minimum_pyramid_level(int v);
-  int ecch_minimum_pyramid_level() const;
-
-  ///
-
-  void set_ecc_max_iterations(int v);
-  int ecc_max_iterations() const;
-
-  void set_ecc_max_eps(double v);
-  double ecc_max_eps() const;
-
-  void set_ecc_min_rho(double v);
-  double ecc_min_rho() const;
-
-  void set_ecc_interpolation(enum ECC_INTERPOLATION_METHOD v);
-  enum ECC_INTERPOLATION_METHOD ecc_interpolation() const;
-
-  void set_ecc_input_smooth_sigma(double v);
-  double ecc_input_smooth_sigma() const;
-
-  void set_ecc_reference_smooth_sigma(double v);
-  double ecc_reference_smooth_sigma() const;
-
-  void set_ecc_update_step_scale(double v);
-  double ecc_update_step_scale() const;
-
-  ///
-
-  void set_eccflow_support_scale(int v);
-  int eccflow_support_scale() const;
-
-  void set_eccflow_downscale_method(c_eccflow::DownscaleMethod v);
-  c_eccflow::DownscaleMethod eccflow_downscale_method() const;
-
-  void set_eccflow_min_image_size(int v);
-  int eccflow_min_image_size() const;
-
-  void set_eccflow_scale_factor(double v);
-  double eccflow_scale_factor() const;
-
-  void set_eccflow_normalization_scale(int v);
-  int eccflow_normalization_scale() const;
-
-  void set_eccflow_noise_level(double v);
-  double eccflow_noise_level() const;
-
-  void set_eccflow_input_smooth_sigma(double v);
-  double eccflow_input_smooth_sigma() const;
-
-  void set_eccflow_reference_smooth_sigma(double v);
-  double eccflow_reference_smooth_sigma() const;
-
-  void set_eccflow_min_rho(double v);
-  double eccflow_min_rho() const;
-
-  void set_eccflow_update_multiplier(double v);
-  double eccflow_update_multiplier() const;
-
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;

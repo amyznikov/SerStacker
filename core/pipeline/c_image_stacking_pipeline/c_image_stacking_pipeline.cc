@@ -1006,6 +1006,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   /////////////////////////////////////////////////////////////////////////////
 
+
   if ( !setup_frame_accumulation() ) {
     CF_ERROR("setup_frame_accumulation()() fails");
     return false;
@@ -1015,6 +1016,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
   /////////////////////////////////////////////////////////////////////////////
 
   set_pipeline_stage(stacking_stage_in_progress);
+
 
   if ( !input_sequence_->open() ) {
     set_status_msg("ERROR: input_sequence->open() fails");
@@ -1568,6 +1570,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
       master_registration_options.eccflow.enabled = true;
       master_registration_options.eccflow.support_scale = master_options.eccflow_scale;
       master_registration_options.eccflow.min_image_size = master_options.eccflow_min_image_size;
+      master_registration_options.eccflow.max_pyramid_level = master_options.eccflow_max_pyramid_level;
+
     }
     else {
       master_registration_options.eccflow.enabled = false;
@@ -1705,10 +1709,10 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
         const double alpha =
             1 - master_options.master_sharpen_factor * current_sharpeness / reference_sharpness_;
 
-        //        CF_DEBUG("XX MASTER: current sharpeness = %g averaged sharpeness = %g alpha=%g",
-        //            current_sharpeness,
-        //            reference_sharpness_,
-        //            alpha);
+                CF_DEBUG("XX MASTER: current sharpeness = %g averaged sharpeness = %g alpha=%g",
+                    current_sharpeness,
+                    reference_sharpness_,
+                    alpha);
 
         if ( output_options().dump_reference_data_for_debug ) {
 
@@ -2016,6 +2020,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 //            }
 //          }
 
+//          CF_DEBUG("H: turbulence=%dx%d", turbulence.cols, turbulence.rows);
           if( !flow_accumulation_->add(turbulence) ) {
             CF_ERROR("flow_accumulation_->add(turbulence) fails");
             break;
@@ -3259,6 +3264,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, ecc_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_min_image_size);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_max_pyramid_level);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, accumulated_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, save_master_frame);
@@ -3329,6 +3335,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
+        SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);

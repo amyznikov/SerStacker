@@ -50,14 +50,14 @@ public:
     return m_.uscale();
   }
 
-  void set_squared(bool v)
+  void set_p(double v)
   {
-    m_.set_squared(v);
+    m_.set_p(v);
   }
 
-  bool squared() const
+  bool p() const
   {
-    return m_.squared();
+    return m_.p();
   }
 
   void set_avgchannel(bool v)
@@ -73,9 +73,9 @@ public:
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
     BIND_PCTRL(ctls, k, "");
+    BIND_PCTRL(ctls, p, "");
     BIND_PCTRL(ctls, dscale, "");
     BIND_PCTRL(ctls, uscale, "");
-    BIND_PCTRL(ctls, squared, "");
     BIND_PCTRL(ctls, avgchannel, "");
   }
 
@@ -83,9 +83,9 @@ public:
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, k);
+      SERIALIZE_PROPERTY(settings, save, *this, p);
       SERIALIZE_PROPERTY(settings, save, *this, dscale);
       SERIALIZE_PROPERTY(settings, save, *this, uscale);
-      SERIALIZE_PROPERTY(settings, save, *this, squared);
       SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
       return true;
     }

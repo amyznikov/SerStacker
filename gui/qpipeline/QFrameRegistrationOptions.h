@@ -414,7 +414,8 @@ protected:
   QNumericBox * eccflowMinImageSize_ctl = nullptr;
   QNumericBox * eccflowMaxPyramidLevel_ctl = nullptr;
 
-  QNumericBox * master_sharpen_factor_ctl = nullptr;
+  QNumericBox * master_unsharp_sigma_ctl = nullptr;
+  QNumericBox * master_unsharp_alpha_ctl = nullptr;
   QNumericBox * accumulated_sharpen_factor_ctl = nullptr;
 
   //QCheckBox * compensateMasterFlow_ctl = nullptr;

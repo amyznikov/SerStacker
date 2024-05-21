@@ -578,11 +578,11 @@ void c_image_stacking_pipeline::cleanup_pipeline()
     flow_accumulation_.reset();
   }
 
-  if ( true ) {
-    lock_guard lock(mutex());
-    frame_accumulation_.reset();
-    sharpness_norm_accumulation_.reset();
-  }
+//  if ( true ) {
+//    lock_guard lock(mutex());
+//    frame_accumulation_.reset();
+//    sharpness_norm_accumulation_.reset();
+//  }
 
   missing_pixel_mask_.release();
   darkbayer_.release();
@@ -1433,12 +1433,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
       compute_image_noise(reference_frame, reference_mask,
           registration_options.registration_channel);
 
-  if ( master_options.save_master_frame ) {
-    write_image(ssprintf("%s/%s-master.tiff", output_path_.c_str(), csequence_name()),
-        output_options_,
-        reference_frame,
-        reference_mask);
-  }
+//  if ( master_options.save_master_frame ) {
+//    write_image(ssprintf("%s/%s-master.tiff", output_path_.c_str(), csequence_name()),
+//        output_options_,
+//        reference_frame,
+//        reference_mask);
+//  }
 
   return true;
 }
@@ -1454,12 +1454,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
   const c_master_frame_options & master_options =
       registration_options.master_frame_options;
 
-  if ( !input_sequence->seek(master_frame_pos) ) {
+  if( !input_sequence->seek(master_frame_pos) ) {
     CF_ERROR("ERROR: input_sequence->seek(master_frame_pos=%d) fails", master_frame_pos);
     return false;
   }
 
-  if ( canceled() ) {
+  if( canceled() ) {
     return false;
   }
 
@@ -1468,28 +1468,28 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
       master_frame_pos,
       input_sequence->current_pos());
 
-  if ( !read_input_frame(input_sequence, reference_frame, reference_mask, is_external_master_file) ) {
+  if( !read_input_frame(input_sequence, reference_frame, reference_mask, is_external_master_file) ) {
     CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
         master_frame_pos);
     return false;
   }
 
-  if ( canceled() ) {
+  if( canceled() ) {
     return false;
   }
 
-  if ( reference_frame.empty() ) {
+  if( reference_frame.empty() ) {
     CF_ERROR("read_input_frame(reference_frame) returns empty frame for master_frame_pos=%d",
         master_frame_pos);
     return false;
   }
 
-  if ( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
+  if( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
     CF_FATAL("select_image_roi(reference_frame) fails");
     return false;
   }
 
-  if ( canceled() ) {
+  if( canceled() ) {
     return false;
   }
 
@@ -1501,7 +1501,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
 //      }
 //    }
 //  }
-  if( input_options_.input_image_processor && master_options.apply_input_image_processor ) {
+  if( master_options.apply_input_image_processor && input_options_.input_image_processor ) {
     // lock_guard lock(mutex());
     if( !input_options_.input_image_processor->process(reference_frame, reference_mask) ) {
       CF_ERROR("input_image_processor->process(reference_frame) fails");
@@ -1509,36 +1509,36 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     }
   }
 
-  if ( canceled() ) {
+  if( canceled() ) {
     return false;
   }
 
-  if ( reference_frame.channels() > 1 ) {
+  if( reference_frame.channels() > 1 ) {
 
     const color_channel_type master_channel =
         image_registration_options_.registration_channel;
 
-    if ( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), master_channel) ) {
-      CF_ERROR("extract_channel(master_channel=%d) fails",master_channel);
+    if( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), master_channel) ) {
+      CF_ERROR("extract_channel(master_channel=%d) fails", master_channel);
       return false;
     }
 
-    if ( canceled() ) {
+    if( canceled() ) {
       return false;
     }
   }
 
   // setup master index indicator
- //this->master_frame_index_ = master_frame_index;
+  //this->master_frame_index_ = master_frame_index;
 
- if ( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
+  if( max_frames_to_stack < 2 || input_sequence->size() < 2 ) {
 
     // Use single frame as reference
 
-    reference_sharpness_ =
-        c_sharpness_norm_measure().measure(
-            reference_frame,
-            reference_mask);
+//    reference_sharpness_ =
+//        c_sharpness_norm_measure().measure(
+//            reference_frame,
+//            reference_mask);
 
   }
   else {
@@ -1583,7 +1583,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
         master_registration_options.ecc.enabled,
         master_registration_options.feature_registration.enabled);
 
-    if ( !(frame_registration_ = create_frame_registration(master_registration_options)) ) {
+    if( !(frame_registration_ = create_frame_registration(master_registration_options)) ) {
       CF_FATAL("create_frame_registration(master_registration_options) fails");
       return false;
     }
@@ -1591,16 +1591,16 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
     // disable jovian derotation for master frame generator
     frame_registration_->options().jovian_derotation.enabled = false;
 
-    if( image_processing_options_.ecc_image_processor && master_options.apply_input_image_processor  ) {
+    if( image_processing_options_.ecc_image_processor && master_options.apply_input_image_processor ) {
       frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
     }
 
-    if ( !frame_registration_->setup_reference_frame(reference_frame, reference_mask) ) {
+    if( !frame_registration_->setup_reference_frame(reference_frame, reference_mask) ) {
       CF_FATAL("frame_registration_->setup_referece_frame() fails");
       return false;
     }
 
-    if( image_processing_options_.ecc_image_processor && !master_options.apply_input_image_processor  ) {
+    if( image_processing_options_.ecc_image_processor && !master_options.apply_input_image_processor ) {
       frame_registration_->set_ecc_image_preprocessor(create_ecc_image_preprocessor(image_processing_options_));
     }
 
@@ -1609,17 +1609,17 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
 //          reference_weights_);
 //    }
 
-    if ( true ) {
+    if( true ) {
       lock_guard lock(mutex());
 
       frame_accumulation_.reset(new c_frame_weigthed_average());
 
-      if ( master_options.master_sharpen_factor > 0 ) {
-        sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
-      }
+//      if ( master_options.master_sharpen_factor > 0 ) {
+//        sharpness_norm_accumulation_.reset(new c_sharpness_norm_measure());
+//      }
     }
 
-    if ( canceled() ) {
+    if( canceled() ) {
       return false;
     }
 
@@ -1644,8 +1644,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
       }
     }
 
-
-    if ( max_frames_to_stack > input_sequence->size() ) {
+    if( max_frames_to_stack > input_sequence->size() ) {
       max_frames_to_stack = input_sequence->size();
     }
 
@@ -1662,106 +1661,116 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_image_registratio
         startpos,
         endpos);
 
-    if ( !process_input_sequence(input_sequence, startpos, endpos, true) ) {
+    if( !process_input_sequence(input_sequence, startpos, endpos, true) ) {
       CF_ERROR("process_input_sequence() fails");
       return false;
     }
 
     // Reset master index indicator because master frame was generated from a sequence, not just a single frame
 
-    if ( canceled() ) {
+    if( canceled() ) {
       return false;
     }
 
     // Read accumulators back
-    if ( true ) {
+    if( true ) {
       lock_guard lock(mutex());
 
-      if ( frame_accumulation_->accumulated_frames() < 1 ) {
+      if( frame_accumulation_->accumulated_frames() < 1 ) {
         CF_ERROR("ERROR: No frames accumulated for reference frame");
         return false;
       }
 
-      if ( !frame_accumulation_->compute(reference_frame, reference_mask) ) {
+      if( !frame_accumulation_->compute(reference_frame, reference_mask) ) {
         CF_ERROR("ERROR: frame_accumulation_->compute() fails");
         return false;
       }
-#if 1
+
       linear_interpolation_inpaint(reference_frame,
           reference_mask,
           reference_frame);
-#else
-      average_pyramid_inpaint(reference_frame,
-          reference_mask,
-          reference_frame);
-#endif
 
       // sharpen reference image
-      if ( sharpness_norm_accumulation_ ) {
-
-        reference_sharpness_ =
-            sharpness_norm_accumulation_->average();
-
-        const double current_sharpeness =
-            sharpness_norm_accumulation_->measure(reference_frame,
-                reference_mask);
-
-        const double alpha =
-            1 - master_options.master_sharpen_factor * current_sharpeness / reference_sharpness_;
-
-                CF_DEBUG("XX MASTER: current sharpeness = %g averaged sharpeness = %g alpha=%g",
-                    current_sharpeness,
-                    reference_sharpness_,
-                    alpha);
-
-        if ( output_options().dump_reference_data_for_debug ) {
-
-          save_image(reference_frame,
-              ssprintf("%s/%s-initial_reference_frame.tiff",
-                  output_path_.c_str(),
-                  csequence_name()));
-        }
-
-        if ( alpha > 0 && alpha < 1 ) {
-
-          unsharp_mask(reference_frame, reference_frame,
-              sharpness_norm_accumulation_->sigma(),
-              alpha, 0, 1);
-
-          if ( output_options().dump_reference_data_for_debug ) {
-
-            const double current_sharpeness =
-                sharpness_norm_accumulation_->measure(reference_frame,
-                    reference_mask);
-
-//            CF_DEBUG("AFTER UNSHARP: sharpeness = %g",
-//                current_sharpeness);
-
-            if ( !master_options.save_master_frame ) {
-
-              save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
-                  output_path_.c_str(),
-                  csequence_name()));
-
-            }
-          }
-        }
-      }
+//      if ( sharpness_norm_accumulation_ ) {
+//
+//        reference_sharpness_ =
+//            sharpness_norm_accumulation_->average();
+//
+//        const double current_sharpeness =
+//            sharpness_norm_accumulation_->measure(reference_frame,
+//                reference_mask);
+//
+//        const double alpha =
+//            1 - master_options.master_sharpen_factor * current_sharpeness / reference_sharpness_;
+//
+//                CF_DEBUG("XX MASTER: current sharpeness = %g averaged sharpeness = %g alpha=%g",
+//                    current_sharpeness,
+//                    reference_sharpness_,
+//                    alpha);
+//
+//        if ( output_options().dump_reference_data_for_debug ) {
+//
+//          save_image(reference_frame,
+//              ssprintf("%s/%s-initial_reference_frame.tiff",
+//                  output_path_.c_str(),
+//                  csequence_name()));
+//        }
+//
+//        if ( alpha > 0 && alpha < 1 ) {
+//
+//          unsharp_mask(reference_frame, reference_frame,
+//              sharpness_norm_accumulation_->sigma(),
+//              alpha, 0, 1);
+//
+//          if ( output_options().dump_reference_data_for_debug ) {
+//
+//            const double current_sharpeness =
+//                sharpness_norm_accumulation_->measure(reference_frame,
+//                    reference_mask);
+//
+////            CF_DEBUG("AFTER UNSHARP: sharpeness = %g",
+////                current_sharpeness);
+//
+//            if ( !master_options.save_master_frame ) {
+//
+//              save_image(reference_frame, ssprintf("%s/%s-reference_frame_after_sharpenning.tiff",
+//                  output_path_.c_str(),
+//                  csequence_name()));
+//
+//            }
+//          }
+//        }
+//      }
 
     }
 
-    if ( canceled() ) {
+    if( canceled() ) {
       return false;
     }
   }
 
+  if( master_options.generate_master_frame && master_options.save_master_frame ) {
+    write_image(ssprintf("%s/%s-master.tiff", output_path_.c_str(), csequence_name()),
+        output_options_,
+        reference_frame,
+        reference_mask);
+  }
 
-  if ( true ) {
+  if( true ) {
     lock_guard lock(mutex());
-    sharpness_norm_accumulation_.reset();
+
+    //sharpness_norm_accumulation_.reset();
     flow_accumulation_.reset();
     frame_accumulation_.reset();
     frame_registration_.reset();
+
+    if( master_options.unsharp_sigma > 0 && master_options.unsharp_alpha > 0 ) {
+
+      unsharp_mask(reference_frame, reference_frame,
+          master_options.unsharp_sigma,
+          master_options.unsharp_alpha);
+    }
+
   }
 
   return true;
@@ -1950,10 +1959,10 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     /////////////////////////////////////
 
-    if ( sharpness_norm_accumulation_ ) {
-      sharpness_norm_accumulation_-> add(current_frame,
-          current_mask);
-    }
+//    if ( sharpness_norm_accumulation_ ) {
+//      sharpness_norm_accumulation_-> add(current_frame,
+//          current_mask);
+//    }
 
     /////////////////////////////////////
     if ( frame_registration_ ) {
@@ -3265,7 +3274,9 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_scale);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_min_image_size);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, eccflow_max_pyramid_level);
-      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
+      //SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, master_sharpen_factor);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, unsharp_sigma);
+      SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, unsharp_alpha);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, accumulated_sharpen_factor);
       SERIALIZE_OPTION(subsection, save, image_registration_options_.master_frame_options, save_master_frame);
     }
@@ -3375,9 +3386,9 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
           accumulation_options_.lpg;
 
       SERIALIZE_OPTION(subsection, save, m, k);
+      SERIALIZE_OPTION(subsection, save, m, p);
       SERIALIZE_OPTION(subsection, save, m, dscale);
       SERIALIZE_OPTION(subsection, save, m, uscale);
-      SERIALIZE_OPTION(subsection, save, m, squared);
       SERIALIZE_OPTION(subsection, save, m, avgchannel);
     }
 
@@ -3524,10 +3535,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
 
       PIPELINE_CTL_GROUP(ctrls, "weighted_average", "");
       PIPELINE_CTLC(ctrls, accumulation_options_.lpg.k, "K", "", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
+      PIPELINE_CTLC(ctrls, accumulation_options_.lpg.p, "p", "power", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
       PIPELINE_CTLC(ctrls, accumulation_options_.lpg.dscale, "dscale", "", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
       PIPELINE_CTLC(ctrls, accumulation_options_.lpg.uscale, "uscale", "", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
       PIPELINE_CTLC(ctrls, accumulation_options_.lpg.avgchannel, "avgchannel", "", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
-      PIPELINE_CTLC(ctrls, accumulation_options_.lpg.squared, "squared", "", (_this->accumulation_options_.accumulation_method == frame_accumulation_weighted_average));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "focus_stack", "");

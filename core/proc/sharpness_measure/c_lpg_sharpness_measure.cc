@@ -169,14 +169,14 @@ int c_lpg_sharpness_measure::uscale() const
   return options_.uscale;
 }
 
-void c_lpg_sharpness_measure::set_squared(bool v)
+void c_lpg_sharpness_measure::set_p(double v)
 {
-  options_.squared = v;
+  options_.p = v;
 }
 
-bool c_lpg_sharpness_measure::squared() const
+double c_lpg_sharpness_measure::p() const
 {
-  return options_.squared;
+  return options_.p;
 }
 
 void c_lpg_sharpness_measure::set_avgchannel(bool v)
@@ -195,9 +195,9 @@ cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray
   compute(image, mask,
       cv::noArray(),
       options_.k,
+      options_.p,
       options_.dscale,
       options_.uscale,
-      options_.squared,
       options_.avgchannel,
       &rv);
   return rv;
@@ -208,9 +208,9 @@ bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray o
   return compute(image, cv::noArray(),
       output_map,
       options_.k,
+      options_.p,
       options_.dscale,
       options_.uscale,
-      options_.squared,
       options_.avgchannel,
       nullptr);
 }
@@ -221,19 +221,19 @@ bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray o
   return compute(image, cv::noArray(),
       output_map,
       opts.k,
+      opts.p,
       opts.dscale,
       opts.uscale,
-      opts.squared,
       opts.avgchannel,
       nullptr);
 }
 
 bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
-    double k, int dscale, int uscale, bool squared, bool avgchannel,
+    double k, double p, int dscale, int uscale, bool avgchannel,
     cv::Scalar * output_sharpness_metric)
 {
   return lpg(image, mask, output_map,
-    k, dscale, uscale, squared, avgchannel,
+    k, p, dscale, uscale, avgchannel,
     output_sharpness_metric);
 }
 
@@ -242,6 +242,6 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask,
     cv::Scalar * output_sharpness_metric)
 {
   return lpg(image, mask, output_map,
-      opts.k, opts.dscale, opts.uscale, opts.squared, opts.avgchannel,
+      opts.k, opts.p, opts.dscale, opts.uscale, opts.avgchannel,
       output_sharpness_metric);
 }

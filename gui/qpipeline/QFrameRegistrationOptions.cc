@@ -1754,18 +1754,35 @@ QMasterFrameOptions::QMasterFrameOptions(QWidget * parent) :
           });
 
 
-  master_sharpen_factor_ctl =
-      add_numeric_box<double>("Master Sharpen Factor:",
+  master_unsharp_sigma_ctl =
+      add_numeric_box<double>("Master unsharp sigma:",
           "",
           [this](double v) {
-            if ( options_ && options_->master_sharpen_factor != v ) {
-              options_->master_sharpen_factor = v;
+            if ( options_ && options_->unsharp_sigma != v ) {
+              options_->unsharp_sigma = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
             if ( options_ ) {
-              *v = options_->master_sharpen_factor;
+              *v = options_->unsharp_sigma;
+              return true;
+            }
+            return false;
+          });
+
+  master_unsharp_alpha_ctl =
+      add_numeric_box<double>("Master unsharp alpha:",
+          "",
+          [this](double v) {
+            if ( options_ && options_->unsharp_alpha != v ) {
+              options_->unsharp_alpha = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * v) {
+            if ( options_ ) {
+              *v = options_->unsharp_alpha;
               return true;
             }
             return false;
@@ -2072,7 +2089,8 @@ void QMasterFrameOptions::updateGenerateMasterFrameControlStates()
 //    featureScale_ctl->setEnabled(options_->generate_master_frame);
 //    eccScale_ctl->setEnabled(options_->generate_master_frame);
     eccFlowScale_ctl->setEnabled(options_->generate_master_frame);
-    master_sharpen_factor_ctl->setEnabled(options_->generate_master_frame);
+    //    master_unsharp_sigma_ctl->setEnabled(options_->generate_master_frame);
+    //    master_unsharp_alpha_ctl->setEnabled(options_->generate_master_frame);
   }
 }
 

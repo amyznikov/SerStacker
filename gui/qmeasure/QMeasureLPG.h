@@ -43,9 +43,9 @@ public:
 protected:
   QNumericBox * lw_ctl = nullptr;
   QNumericBox * k_ctl = nullptr;
+  QNumericBox * p_ctl = nullptr;
   QNumericBox * dscale_ctl = nullptr;
   QNumericBox * uscale_ctl = nullptr;
-  QCheckBox * square_ctl = nullptr;
 };
 
 #endif /* __QLPGMeasure_h__ */

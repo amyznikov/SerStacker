@@ -45,7 +45,7 @@
  */
 
 bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
-    double k, int dscale, int uscale, bool squared, bool average_color_channels,
+    double k, double p, int dscale, int uscale, bool average_color_channels,
     cv::Scalar * optional_output_sharpness_metric = nullptr);
 
 

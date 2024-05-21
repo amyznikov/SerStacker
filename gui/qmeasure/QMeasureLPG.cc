@@ -54,6 +54,23 @@ QLPGMeasureSettingsWidget::QLPGMeasureSettingsWidget(QWidget * parent) :
             return false;
           });
 
+  p_ctl =
+      add_numeric_box<double>("p:",
+          "power",
+          [this](double v) {
+            if ( measure_ && measure_->p() != v ) {
+              measure_->set_p(v);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](double * checked) {
+            if ( measure_ ) {
+              * checked = measure_->p();
+              return true;
+            }
+            return false;
+          });
+
   dscale_ctl =
       add_numeric_box<int>("dscale:",
           "",
@@ -88,22 +105,6 @@ QLPGMeasureSettingsWidget::QLPGMeasureSettingsWidget(QWidget * parent) :
             return false;
           });
 
-  square_ctl =
-      add_checkbox("squared:",
-          "",
-          [this](bool checked) {
-            if ( measure_ && measure_->squared() != checked ) {
-              measure_->set_squared(checked);
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](bool * checked) {
-            if ( measure_ ) {
-              * checked = measure_->squared();
-              return true;
-            }
-            return false;
-          });
 
   updateControls();
 }

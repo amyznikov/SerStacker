@@ -147,7 +147,7 @@ static double maxval(int ddepth)
  *
  */
 bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
-    double k, int dscale, int uscale, bool squared, bool average_color_channels,
+    double k, double p, int dscale, int uscale, bool average_color_channels,
     cv::Scalar * optional_output_sharpness_metric)
 {
 
@@ -174,14 +174,14 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 
     cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
 
-    if( squared ) {
-      cv::multiply(m, m, m);
+    if( p > 1  ) {
+      cv::pow(m, p, m);
     }
 
   }
-  else if( squared ) {
+  else if( p > 1 ) {
 
-    cv::multiply(g, g, m);
+    cv::pow(g, p, m);
 
   }
   else {

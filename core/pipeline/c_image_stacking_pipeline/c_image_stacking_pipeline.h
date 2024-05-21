@@ -344,7 +344,7 @@ protected:
   std::string output_file_name_;
 
   double ecc_normalization_noise_ = 0;
-  double reference_sharpness_ = 0;
+  //double reference_sharpness_ = 0;
 
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
@@ -356,7 +356,7 @@ protected:
   // mutable std::mutex registration_lock_;
 
   c_frame_accumulation::ptr frame_accumulation_;
-  c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
+  // c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
   // mutable std::mutex accumulator_lock_;
 
   mutable std::string output_file_name_postfix_;

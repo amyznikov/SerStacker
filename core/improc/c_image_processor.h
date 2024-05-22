@@ -246,6 +246,11 @@ protected:
   {
   }
 
+  virtual bool initialize()
+  {
+    return true;
+  }
+
 protected:
   const class_factory * const class_factory_;
   notify_callback preprocess_notify_;

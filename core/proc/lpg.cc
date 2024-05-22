@@ -11,45 +11,72 @@
 
 static void compute_gradient(const cv::Mat & src, cv::Mat & g)
 {
-  static const thread_local cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
+//  static const thread_local cv::Matx<float, 1, 5> K(
+//      (+1.f / 12),
+//      (-8.f / 12),
+//      0.f,
+//      (+8.f / 12),
+//      (-1.f / 12));
+//
+//  constexpr int ddepth = CV_32F;
 
-  constexpr int ddepth = CV_32F;
+
+//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0,
+//      cv::BORDER_DEFAULT);
+//
+//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0,
+//      cv::BORDER_DEFAULT);
+
+  static thread_local cv::Mat Kx, Ky;
+  if( Kx.empty() ) {
+    cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+    Kx *= M_SQRT2;
+    Ky *= M_SQRT2;
+  }
 
   cv::Mat gx, gy;
 
-  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0,
-      cv::BORDER_DEFAULT);
+  cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 
-  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0,
-      cv::BORDER_DEFAULT);
-
-  cv::add(gx.mul(gx), gy.mul(gy), g);
+  cv::magnitude(gx, gy, g);
+  //cv::add(gx.mul(gx), gy.mul(gy), g);
 }
 
 // https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
 static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
 {
-  static float k[5 * 5] = {
-      0, 0, -1, 0, 0,
-      0, -1, -2, -1, 0,
-      -1, -2, 16, -2, -1,
-      0, -1, -2, -1, 0,
-      0, 0, -1, 0, 0,
-  };
+//  static float k[5 * 5] = {
+//      0, 0, -1, 0, 0,
+//      0, -1, -2, -1, 0,
+//      -1, -2, 16, -2, -1,
+//      0, -1, -2, -1, 0,
+//      0, 0, -1, 0, 0,
+//  };
+//
+//  static const thread_local cv::Mat1f K =
+//      cv::Mat1f(5, 5, k) / 16.;
+//
+//  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0,
+//      cv::BORDER_REPLICATE);
+//
+//
+//  cv::multiply(l, l, l);
 
-  static const thread_local cv::Mat1f K =
-      cv::Mat1f(5, 5, k) / 16.;
+  static thread_local cv::Mat Kx, Ky;
+  if( Kx.empty() ) {
+    cv::getDerivKernels(Kx, Ky, 2, 0, 3, true, CV_32F);
+    Kx *= M_SQRT2;
+    Ky *= M_SQRT2;
+  }
 
-  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0,
-      cv::BORDER_REPLICATE);
+  cv::Mat gx, gy;
 
+  cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 
-  cv::multiply(l, l, l);
+  cv::magnitude(gx, gy, l);
+
 }
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
@@ -156,7 +183,12 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 
   cv::Mat s, l, g, m;
 
-  src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
+  if ( src.depth() == CV_32F ) {
+    src.copyTo(s);
+  }
+  else {
+    src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
+  }
 
   if( average_color_channels && s.channels() > 1 ) {
     reduce_color_channels(s, s, cv::REDUCE_AVG);
@@ -179,7 +211,7 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     }
 
   }
-  else if( p > 1 ) {
+  else if( p != 1 && p != 0 ) {
 
     cv::pow(g, p, m);
 

@@ -297,167 +297,163 @@ bool c_hdl_motion_filter::update(const cv::Mat1f & range_image, cv::OutputArray 
 
             int update_mode_index = -1;
 
-            const float depth =
-            range_image[y][x];
+            const float depth = range_image[y][x];
 
-            if( depth > 0 && depth < 1 ) {
-              // ignore parasitic noise points in range 0..1 [m]
-          continue;
-        }
-
-        bool fg = false;
-
-        if( depth > 0 ) {
-
-          if( !gm.nmodes ) { // just initialize initial mode
-            gm.modes[0].w = w_initial;
-            gm.modes[0].m = depth;
-            gm.modes[0].s = square(var_init_);
-            gm.nmodes = 1;
-            fg = true;
-          }
-          else {
-
-            // Search closest mode, data are sorted in decreasing depth order
-
-            int closest_mode = 0;
-            double s = square(depth - gm.modes[0].m);
-
-            for( int i = 1; i < gm.nmodes; ++i ) {
-
-              const double dist =
-              square(depth - gm.modes[i].m);
-
-              if( dist > s ) {
-                break;
-              }
-
-              s = dist;
-              closest_mode = i;
-            }
-
-            // Select position for update
-            // Modes are sorted in decreasing distance order - most distant mode is first
-
-            if( s < T * gm.modes[closest_mode].s ) { // Update existing mode
-
-              //  INSTRUMENT_REGION("UPDATE");
-
-              GMM &g =
-              gm.modes[update_mode_index =
-              closest_mode];
-
-              g.m = (1 - eps) * g.m + eps * depth;
-              g.s = (std::max)((1 - eps) * g.s + eps * s, smin);
-              g.w = (1 - eps) * g.w + eps;
-
-              if( g.w < motion_threshold_ ) {
-                fg = true;
-              }
-
-            }
-            else {
-
-              fg = true;
-
-              // INSTRUMENT_REGION("INSERT");
-
-              if( gm.nmodes == MAX_MODES ) {
-
-                //INSTRUMENT_REGION("OVERFOW");
-
-                // have no space to insert new mode - will replace oldest mode with new
-
-                int oldest_mode_index = 0;
-                double oldest_mode_weight = gm.modes[0].w;
-
-                for( int i = 1; i < gm.nmodes; ++i ) {
-                  if( gm.modes[i].w < oldest_mode_weight ) {
-                    oldest_mode_index = i;
-                    oldest_mode_weight = gm.modes[i].w;
-                  }
-                }
-
-                remove_mode(gm, oldest_mode_index);
-
-                if( closest_mode > oldest_mode_index ) {
-                  --closest_mode;
-                }
-              }
-
-              // search position to insert new mode, data are sorted in decreasing depth order
-              const int insert_pos =
-              std::min(gm.nmodes,
-                  (depth > gm.modes[closest_mode].m ? closest_mode :
-                      closest_mode + 1));
-
-              insert_mode(gm, insert_pos);
-
-              gm.modes[insert_pos].w = w_initial;
-              gm.modes[insert_pos].m = depth;
-              gm.modes[insert_pos].s = square(var_init_);
-
-              update_mode_index =
-              insert_pos;
-            }
-          }
-        }
-
-        // update all modes except already updated one
-        if( gm.nmodes ) {
-
-          //INSTRUMENT_REGION("CLEANUP");
-
-          const double E =
-          N / (1. + N);
-
-          for( int i = gm.nmodes - 1; i > update_mode_index; --i ) {
-
-            if( (gm.modes[i].w *= E) < 1. / N ) {
-              // remove obsolete mode
-              remove_mode(gm, i);
-            }
-          }
-        }
-
-        // fuse near modes into one
-        if( gm.nmodes > 1 ) {
-
-          for( int i = gm.nmodes - 1; i > 0; --i ) {
-
-            const double dist =
-            square(gm.modes[i].m - gm.modes[i - 1].m);
-
-            if( dist > 25 * (gm.modes[i].s + gm.modes[i - 1].s) ) {
+            if( depth > 0 && depth < 1 ) { // ignore parasitic noise points in range 0..1 [m]
               continue;
             }
 
-            const double w1 = gm.modes[i].w;
-            const double w2 = gm.modes[i - 1].w;
-            const double w = 1. / (w1 + w2);
+            bool fg = false;
 
-            gm.modes[i - 1].m = (gm.modes[i].m * w1 + gm.modes[i - 1].m * w2) * w;
-            gm.modes[i - 1].s = (gm.modes[i].s * w1 + gm.modes[i - 1].s * w2) * w;
-            gm.modes[i - 1].w = (w1 * w1 + w2 * w2) * w;
+            if( depth > 0 ) {
 
-            remove_mode(gm, i);
+              if( !gm.nmodes ) { // just initialize initial mode
+                gm.modes[0].w = w_initial;
+                gm.modes[0].m = depth;
+                gm.modes[0].s = square(var_init_);
+                gm.nmodes = 1;
+                fg = true;
+              }
+              else {
+
+                // Search closest mode, data are sorted in decreasing depth order
+
+                int closest_mode = 0;
+                double s = square(depth - gm.modes[0].m);
+
+                for( int i = 1; i < gm.nmodes; ++i ) {
+
+                  const double dist = square(depth - gm.modes[i].m);
+                  if( dist > s ) {
+                    break;
+                  }
+
+                  s = dist;
+                  closest_mode = i;
+                }
+
+                // Select position for update
+                // Modes are sorted in decreasing distance order - most distant mode is first
+
+                if( s < T * gm.modes[closest_mode].s ) { // Update existing mode
+
+                  //  INSTRUMENT_REGION("UPDATE");
+
+                  GMM &g =
+                  gm.modes[update_mode_index =
+                  closest_mode];
+
+                  g.m = (1 - eps) * g.m + eps * depth;
+                  g.s = (std::max)((1 - eps) * g.s + eps * s, smin);
+                  g.w = (1 - eps) * g.w + eps;
+
+                  if( g.w < motion_threshold_ ) {
+                    fg = true;
+                  }
+
+                }
+                else {
+
+                  fg = true;
+
+                  // INSTRUMENT_REGION("INSERT");
+
+                  if( gm.nmodes == MAX_MODES ) {
+
+                    //INSTRUMENT_REGION("OVERFOW");
+
+                    // have no space to insert new mode - will replace oldest mode with new
+
+                    int oldest_mode_index = 0;
+                    double oldest_mode_weight = gm.modes[0].w;
+
+                    for( int i = 1; i < gm.nmodes; ++i ) {
+                      if( gm.modes[i].w < oldest_mode_weight ) {
+                        oldest_mode_index = i;
+                        oldest_mode_weight = gm.modes[i].w;
+                      }
+                    }
+
+                    remove_mode(gm, oldest_mode_index);
+
+                    if( closest_mode > oldest_mode_index ) {
+                      --closest_mode;
+                    }
+                  }
+
+                  // search position to insert new mode, data are sorted in decreasing depth order
+                  const int insert_pos =
+                  std::min(gm.nmodes,
+                      (depth > gm.modes[closest_mode].m ? closest_mode :
+                          closest_mode + 1));
+
+                  insert_mode(gm, insert_pos);
+
+                  gm.modes[insert_pos].w = w_initial;
+                  gm.modes[insert_pos].m = depth;
+                  gm.modes[insert_pos].s = square(var_init_);
+
+                  update_mode_index =
+                  insert_pos;
+                }
+              }
+            }
+
+            // update all modes except already updated one
+            if( gm.nmodes ) {
+
+              //INSTRUMENT_REGION("CLEANUP");
+
+              const double E = N / (1. + N);
+
+              for( int i = gm.nmodes - 1; i > update_mode_index; --i ) {
+
+                if( (gm.modes[i].w *= E) < 1. / N ) {
+                  // remove obsolete mode
+                  remove_mode(gm, i);
+                }
+              }
+            }
+
+            // fuse near modes into one
+            if( gm.nmodes > 1 ) {
+
+              for( int i = gm.nmodes - 1; i > 0; --i ) {
+
+                const double dist =
+                square(gm.modes[i].m - gm.modes[i - 1].m);
+
+                if( dist > 25 * (gm.modes[i].s + gm.modes[i - 1].s) ) {
+                  continue;
+                }
+
+                const double w1 = gm.modes[i].w;
+                const double w2 = gm.modes[i - 1].w;
+                const double w = 1. / (w1 + w2);
+
+                gm.modes[i - 1].m = (gm.modes[i].m * w1 + gm.modes[i - 1].m * w2) * w;
+                gm.modes[i - 1].s = (gm.modes[i].s * w1 + gm.modes[i - 1].s * w2) * w;
+                gm.modes[i - 1].w = (w1 * w1 + w2 * w2) * w;
+
+                remove_mode(gm, i);
+              }
+            }
+
+            if( fg && !fgm.empty() ) {
+              fgm[y][x] = 255;
+            }
+
           }
         }
-
-        if( fg && !fgm.empty() ) {
-          fgm[y][x] = 255;
-        }
-
-      }
-    }
 #if HAVE_TBB && !defined(Q_MOC_RUN)
-    });
+        });
 #endif
 
-  return true;
-}
+          return true;
+        }
 
-void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask) const
+        void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask)
+const
 {
   INSTRUMENT_REGION("c_hdl_motion_filter");
 
@@ -497,7 +493,7 @@ void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv:
         for( int y = r.begin(); y != r.end(); ++y ) {
 
 #else
-        for( int y = 0; y < ny; ++y ) {
+          for( int y = 0; y < ny; ++y ) {
 #endif
 
           const int yymin = std::max(y - dy, 0);
@@ -540,12 +536,12 @@ void c_hdl_motion_filter::reduce_motion_noise(const cv::Mat1f & range_image, cv:
           }
         }
 #if HAVE_TBB && !defined(Q_MOC_RUN)
-     });
+        });
 #endif
 
-}
+        }
 
-bool c_hdl_motion_filter::apply(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask)
+        bool c_hdl_motion_filter::apply(const cv::Mat1f & range_image, cv::OutputArray output_foreground_mask)
 {
   if( !update(range_image, output_foreground_mask) ) {
     CF_ERROR("c_hdl_motion_filter::update() fails");

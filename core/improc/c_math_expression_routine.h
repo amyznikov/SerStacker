@@ -60,12 +60,13 @@ public:
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
+protected:
+  bool initialize() override;
 
 protected:
   c_math_expression math_;
   std::string expression_;
   bool expression_changed_ = true;
-  bool initialized_ = false;
   CHANNEL input_channel_ = IMAGE;
   CHANNEL output_channel_ = IMAGE;
 };

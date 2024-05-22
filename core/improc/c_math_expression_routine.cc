@@ -305,9 +305,54 @@ bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
+bool c_math_expression_routine::initialize()
+{
+  if ( math_.arguments().empty() ) {
+    for( int i = 0; i < (int) (sizeof(processor_args) / sizeof(processor_args[0])); ++i ) {
+      if( !math_.add_argument(i, processor_args[i].name, processor_args[i].tooldip) ) {
+        CF_ERROR("math_.add_argument('%s') fails", processor_args[i].name);
+      }
+    }
+  }
+  return true;
+}
+
 std::string c_math_expression_routine::helpstring()
 {
-  return "";
+  std::string s =
+      "Apply math formula to pixel values\n";
+
+  s += "\nArguments:\n";
+  for ( const auto & c : math_.arguments() ) {
+    s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
+  }
+
+  s += "\nUnary Operations:\n";
+  for ( const auto & c : math_.unary_operations() ) {
+    s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
+  }
+
+
+  s += "\nBinary Operations:\n";
+  for( const auto & c : math_.binary_operations() ) {
+    s += "-------------------------\n";
+    for( const auto & op : c ) {
+      s += ssprintf("%s  : %s\n", op.name.c_str(), op.desc.c_str());
+    }
+  }
+
+  s += "\nConstants:\n";
+  for ( const auto & c : math_.constants() ) {
+    s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
+  }
+
+  s += "\nFunctions:\n";
+  for ( const auto & c : math_.functions() ) {
+    s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
+  }
+
+
+  return s;
 }
 
 bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -315,17 +360,6 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
   if( expression_.empty() ) {
     expression_changed_ = false;
     return true;
-  }
-
-  if( !initialized_ ) {
-
-    initialized_ = true;
-
-    for( int i = 0; i < (int) (sizeof(processor_args) / sizeof(processor_args[0])); ++i ) {
-      if( !math_.add_argument(i, processor_args[i].name, processor_args[i].tooldip) ) {
-        CF_ERROR("math_.add_argument('%s') fails", processor_args[i].name);
-      }
-    }
   }
 
   if( expression_changed_ ) {

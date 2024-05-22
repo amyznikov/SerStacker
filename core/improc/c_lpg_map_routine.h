@@ -30,6 +30,16 @@ public:
     return m_.k();
   }
 
+  void set_p(double v)
+  {
+    m_.set_p(v);
+  }
+
+  double p() const
+  {
+    return m_.p();
+  }
+
   void set_dscale(int v)
   {
     m_.set_dscale(v);
@@ -50,15 +60,6 @@ public:
     return m_.uscale();
   }
 
-  void set_p(double v)
-  {
-    m_.set_p(v);
-  }
-
-  bool p() const
-  {
-    return m_.p();
-  }
 
   void set_avgchannel(bool v)
   {
@@ -72,11 +73,11 @@ public:
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override
   {
-    BIND_PCTRL(ctls, k, "");
-    BIND_PCTRL(ctls, p, "");
-    BIND_PCTRL(ctls, dscale, "");
-    BIND_PCTRL(ctls, uscale, "");
-    BIND_PCTRL(ctls, avgchannel, "");
+    BIND_PCTRL(ctls, k, "laplacian/gradient ratio");
+    BIND_PCTRL(ctls, p, "power");
+    BIND_PCTRL(ctls, dscale, "downscale");
+    BIND_PCTRL(ctls, uscale, "upscale");
+    BIND_PCTRL(ctls, avgchannel, "average color channels");
   }
 
   bool serialize(c_config_setting settings, bool save) override

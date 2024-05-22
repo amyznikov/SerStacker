@@ -2159,7 +2159,7 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
       for( int x = 0; x < cols; ++x ) {
 
         const float w =
-            std::min(avgw, cntp[x]);
+            cntp[x];
 
         for( int c = 0; c < cn; ++c ) {
 
@@ -2173,7 +2173,9 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
               (dstv * w + srcv) / (w + 1);
         }
 
-        cntp[x] += 1;
+        if( cntp[x] < avgw ) {
+          cntp[x] += 1;
+        }
       }
     }
 #if HAVE_TBB
@@ -2223,7 +2225,9 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
             dstv = (dstv * w + srcv) / (w + 1);
           }
 
-          cntp[x] += 1;
+          if( cntp[x] < avgw ) {
+            cntp[x] += 1;
+          }
         }
       }
     }
@@ -2233,8 +2237,10 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
   }
   else if( _srcmask.type() == CV_32FC1 ) {
 
-    const cv::Mat1f msk =
+    const cv::Mat1f weights =
         _srcmask.getMat();
+
+    // CF_DEBUG("CV_32FC1");
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, rows, tbb_grain_size),
@@ -2244,31 +2250,25 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
     for( int y = 0; y < rows; ++y ) {
 #endif // HAVE_TBB
 
-      const float * mskp = msk[y];
+      const float * wp = weights[y];
       const T * srcp = src[y];
       float * dstp = dst[y];
       float * cntp = cnt[y];
 
       for( int x = 0; x < cols; ++x ) {
 
-        const float w =
-            std::min(avgw, cntp[x]);
-
-        const float & mskv =
-            mskp[x];
+        const float & ww = wp[x];
+        float & w = cntp[x];
 
         for( int c = 0; c < cn; ++c ) {
 
-          const T & srcv =
-              srcp[x * cn + c];
+          const T & srcv = srcp[x * cn + c];
+          float & dstv = dstp[x * cn + c];
 
-          float & dstv =
-              dstp[x * cn + c];
-
-          dstv = (dstv * w + srcv * mskv) / (w + mskv);
+          dstv = (dstv * w * avgw + srcv * ww) / (w * avgw + ww);
         }
 
-        cntp[x] += mskv;
+        w = (w * w * avgw + ww * ww) / (w * avgw + ww);
       }
     }
 #if HAVE_TBB
@@ -2334,27 +2334,25 @@ bool c_running_frame_average::add(cv::InputArray current_image, cv::InputArray c
   if( accumulator_.empty() ) {
     accumulator_ = cv::Mat::zeros(current_image.size(), current_image.type());
     counter_ = cv::Mat1f::zeros(current_image.size());
-    current_image.copyTo(accumulator_, current_mask);
-    counter_.setTo(cv::Scalar::all(1), current_mask);
   }
-  else if( accumulator_.size() == current_image.size() ) {
 
-    if( rmap ) {
-      cv::remap(accumulator_, accumulator_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-      cv::remap(counter_, counter_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    }
-
-    running_average_update(current_image, current_mask,
-        accumulator_, counter_,
-        w);
-  }
-  else {
+  if( accumulator_.size() != current_image.size() ) {
     CF_ERROR("current_image.size=%dx%d not match to accumulator_.size=%dx%d",
         current_image.cols(), current_image.rows(),
         accumulator_.cols, accumulator_.rows);
 
     return false;
   }
+
+
+  if( rmap ) {
+    cv::remap(accumulator_, accumulator_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+    cv::remap(counter_, counter_, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  }
+
+  running_average_update(current_image, current_mask,
+      accumulator_, counter_,
+      w);
 
   ++accumulated_frames_;
 

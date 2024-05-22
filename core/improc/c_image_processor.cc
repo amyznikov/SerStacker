@@ -579,7 +579,19 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
   const char * cname = processor_name.c_str();
   for ( const class_factory * f : c_image_processor_routine_class_list_ ) {
     if ( strcasecmp(cname, f->class_name.c_str()) == 0 ) {
-      return f->create_instance();
+
+      c_image_processor_routine::ptr p =
+          f->create_instance();
+
+      if ( !p ) {
+        CF_ERROR("factory->create_instance(class_name='%s') fails", cname);
+      }
+      else if ( !p->initialize() ) {
+        CF_ERROR("p->initialize() fails for object class '%s'", cname);
+        p.reset();
+      }
+
+      return p;
     }
   }
 

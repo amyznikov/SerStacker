@@ -72,8 +72,16 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
+
     SERIALIZE_OPTION(section, save, average_options_, running_weight);
     SERIALIZE_OPTION(section, save, average_options_, reference_running_weight);
+
+    if( (subsection = SERIALIZE_GROUP(section, save, "lpg")) ) {
+      SERIALIZE_OPTION(subsection, save, average_options_.lpg, k);
+      SERIALIZE_OPTION(subsection, save, average_options_.lpg, p);
+      SERIALIZE_OPTION(subsection, save, average_options_.lpg, dscale);
+      SERIALIZE_OPTION(subsection, save, average_options_.lpg, uscale);
+    }
   }
 
 
@@ -162,6 +170,12 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
     PIPELINE_CTL_GROUP(ctrls, "Average options", "");
     PIPELINE_CTLC(ctrls, average_options_.reference_running_weight, "reference running_weight", "", (_this->registration_options_.double_align_moode));
     PIPELINE_CTL(ctrls, average_options_.running_weight, "running_weight", "");
+      PIPELINE_CTL_GROUP(ctrls, "Shapness measure", "");
+        PIPELINE_CTL(ctrls, average_options_.lpg.k, "k", "");
+        PIPELINE_CTL(ctrls, average_options_.lpg.p, "p", "power");
+        PIPELINE_CTL(ctrls, average_options_.lpg.dscale, "dscale", "");
+        PIPELINE_CTL(ctrls, average_options_.lpg.uscale, "uscale", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
@@ -449,12 +463,36 @@ bool c_running_average_pipeline::run_pipeline()
   return true;
 }
 
+bool c_running_average_pipeline::average_add(c_running_frame_average & average, const cv::Mat & src, const cv::Mat & srcmask,
+    double avgw, const cv::Mat2f * rmap)
+{
+  if( average_options_.lpg.k < 0 ) {
+    lock_guard lock(mutex());
+
+    if( !average.add(src, srcmask, avgw, rmap) ) {
+      CF_ERROR("average.add() fails");
+      return false;
+    }
+  }
+  else {
+    cv::Mat1f w;
+
+    compute_weights(src, srcmask, w);
+
+    lock_guard lock(mutex());
+    if( !average.add(src, w, avgw, rmap) ) {
+      CF_ERROR("average.add() fails");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool c_running_average_pipeline::process_current_frame1()
 {
   cv::Mat image1, mask1, image2, mask2;
   cv::Mat2f rmap;
-
-
 
   bool has_updates = true;
 
@@ -475,12 +513,13 @@ bool c_running_average_pipeline::process_current_frame1()
 
   if( !enable_registration || average1_.accumulated_frames() < 1 ) {
 
-    lock_guard lock(mutex());
-
-    average1_.add(current_image_, current_mask_,
-        average_options_.running_weight);
+    if( !average_add(average1_, current_image_, current_mask_, average_options_.running_weight) ) {
+      CF_ERROR("average_add() fails");
+      return false;
+    }
   }
   else {
+
 
     rmap.release();
 
@@ -489,6 +528,7 @@ bool c_running_average_pipeline::process_current_frame1()
       mkgrayscale(image1, image1);
       mkgrayscale(current_image_, image2);
     }
+
 
     if ( registration_options_.enable_ecc ) {
 
@@ -499,16 +539,17 @@ bool c_running_average_pipeline::process_current_frame1()
       }
     }
 
-    if ( registration_options_.enable_eccflow ) {
 
+    if( registration_options_.enable_eccflow ) {
       eccflow_.set_reference_image(image2, mask2);
-
       has_updates = eccflow_.compute(image1, rmap, mask1);
     }
 
-    if ( has_updates ) {
-      lock_guard lock(mutex());
-      average1_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
+    if( has_updates ) {
+      if( !average_add(average1_, current_image_, current_mask_, average_options_.running_weight, &rmap) ) {
+        CF_ERROR("average_add() fails");
+        return false;
+      }
     }
   }
 
@@ -572,8 +613,11 @@ bool c_running_average_pipeline::process_current_frame2()
 
   if( average1_.accumulated_frames() < 1 ) {
 
-    lock_guard lock(mutex());
-    average1_.add(image2, mask2, W2);
+    if( !average_add(average1_, image2, mask2, W2) ) {
+      CF_ERROR("average_add() fails");
+      return false;
+    }
+
   }
   else {
     average1_.compute(image1, mask1);
@@ -583,9 +627,16 @@ bool c_running_average_pipeline::process_current_frame2()
       has_updates = false;
     }
     else {
-      lock_guard lock(mutex());
-      average1_.add(image2, mask2, W2,
-          &(rmap = ecc_.current_remap()));
+
+      //      lock_guard lock(mutex());
+      //      average1_.add(image2, mask2, W2,
+      //          &(rmap = ecc_.current_remap()));
+
+      if( !average_add(average1_, image2, mask2, W2, &(rmap = ecc_.current_remap())) ) {
+        CF_ERROR("average_add() fails");
+        return false;
+      }
+
     }
   }
 
@@ -626,8 +677,12 @@ bool c_running_average_pipeline::process_current_frame2()
     if ( has_updates ) {
 
       if ( rmap2.empty() ) {
-        lock_guard lock(mutex());
-        average2_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
+        //        lock_guard lock(mutex());
+        //        average2_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
+        if ( !average_add(average2_, current_image_, current_mask_, average_options_.running_weight, &rmap) ) {
+          CF_ERROR("average_add() fails");
+          return false;
+        }
       }
       else {
 
@@ -645,8 +700,14 @@ bool c_running_average_pipeline::process_current_frame2()
           cv::compare(mask2,  254, mask2, cv::CMP_GE);
         }
 
-        lock_guard lock(mutex());
-        average2_.add(image2, mask2, average_options_.running_weight, &rmap);
+//        lock_guard lock(mutex());
+//        average2_.add(image2, mask2, average_options_.running_weight, &rmap);
+
+        if ( !average_add(average2_, image2, mask2, average_options_.running_weight, &rmap) ) {
+          CF_ERROR("average_add() fails");
+          return false;
+        }
+
       }
     }
   }
@@ -668,6 +729,13 @@ bool c_running_average_pipeline::process_current_frame2()
       }
 
       average1_.compute(image1, mask1);
+
+      if( registration_options_.reference_unsharp_sigma_ > 0 && registration_options_.reference_unsharp_alpha_ > 0 ) {
+
+        unsharp_mask(image1, mask1, image1, registration_options_.reference_unsharp_sigma_,
+            registration_options_.reference_unsharp_alpha_,
+            0, 1);
+      }
 
       if( !reference_video_writer_.write(image1, mask1) ) {
         CF_ERROR("reference_video_writer_.write() fails");
@@ -701,4 +769,13 @@ bool c_running_average_pipeline::process_current_frame2()
 
   return true;
 }
+
+void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
+{
+  c_lpg_sharpness_measure::create_map(src, dst, average_options_.lpg);
+  if( !srcmask.empty() ) {
+    dst.setTo(0, ~srcmask);
+  }
+}
+
 

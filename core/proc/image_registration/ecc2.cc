@@ -1498,7 +1498,6 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
     }
   }
 
-
   const cv::Mat1f & I1 =
       W;
 
@@ -1933,25 +1932,27 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
 
 
 
-bool c_eccflow::compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
-    cv::InputArray inputMask, cv::InputArray referenceMask)
+bool c_eccflow::compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
+    cv::InputArray input_mask, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
 
-  set_reference_image(referenceImage, referenceMask);
-  return compute(inputImage, rmap, inputMask);
+  set_reference_image(reference_image, reference_mask);
+  return compute(input_image, rmap, input_mask);
 }
 
-bool c_eccflow::compute(cv::InputArray inputImage, cv::Mat2f & rmap, cv::InputArray inputMask)
+bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
 {
   cv::Mat2f cuv, crmap;
 
-  if ( !setup_input_image(inputImage, inputMask) ) {
+  if ( !setup_input_image(input_image, input_mask) ) {
     CF_ERROR("setup_input_image() fails");
     return false;
   }
 
   INSTRUMENT_REGION("");
+
+  M.release();
 
   const int num_levels =
       (int) (pyramid_.size());

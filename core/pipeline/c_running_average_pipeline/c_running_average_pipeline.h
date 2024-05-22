@@ -39,6 +39,16 @@ struct c_running_average_update_options
 {
   double reference_running_weight = 10;
   double running_weight = 15;
+
+  c_lpg_options lpg;
+
+  c_running_average_update_options()
+  {
+    lpg.dscale = 2;
+    lpg.uscale = 7;
+    lpg.avgchannel = true;
+  }
+
 };
 
 struct c_running_average_output_options:
@@ -108,6 +118,9 @@ protected:
   void cleanup_pipeline() override;
   bool process_current_frame1();
   bool process_current_frame2();
+  void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
+  bool average_add(c_running_frame_average & average, const cv::Mat & src, const cv::Mat & srcmask,
+      double avgw, const cv::Mat2f * rmap = nullptr);
 
 protected:
   c_running_average_input_options input_options_;

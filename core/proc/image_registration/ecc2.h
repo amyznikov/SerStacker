@@ -415,8 +415,8 @@ protected:
   cv::Mat2f uv;
 
   // work arrays
-  mutable cv::Mat1f W, It, Itx, Ity;
   mutable cv::Mat1b M;
+  mutable cv::Mat1f W, It, Itx, Ity;
   mutable cv::Mat1f DC[4];
 
 };

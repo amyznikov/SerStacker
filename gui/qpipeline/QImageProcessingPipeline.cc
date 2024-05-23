@@ -23,6 +23,7 @@
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QFrameRegistrationOptions.h>
+#include <gui/qpipeline/QMasterFrameSelectionControl.h>
 #include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
 
 #include <core/debug.h>
@@ -117,6 +118,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
         connect(this, &QSettingsWidget::populatecontrols,
             currentsettings, &QSettingsWidget::populatecontrols);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(currentsettings, ctrl.is_enabled);
+        }
 
         break;
       }
@@ -341,14 +346,14 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.tooltip.c_str(),
                 [this, ctrl](int index,
                     QImageProcessorSelectionCombo * combo) {
-                      if( !updatingControls() && ctrl.set_processor && ctrl.set_processor(pipeline_, combo->processor(index)) ) {
+                      if( !updatingControls() && ctrl.set_image_processor && ctrl.set_image_processor(pipeline_, combo->processor(index)) ) {
                         Q_EMIT parameterChanged();
                       }
                     },
                 [this, ctrl](int * index, QImageProcessorSelectionCombo * combo) -> bool {
-                  if ( !ctrl.get_processor || !combo->setCurrentProcessor(ctrl.get_processor(pipeline_)) ) {
-                    if( ctrl.set_processor ) {
-                      ctrl.set_processor(pipeline_, nullptr);
+                  if ( !ctrl.get_image_processor || !combo->setCurrentProcessor(ctrl.get_image_processor(pipeline_)) ) {
+                    if( ctrl.set_image_processor ) {
+                      ctrl.set_image_processor(pipeline_, nullptr);
                     }
                   }
                   return false;
@@ -391,34 +396,34 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         break;
       }
 
-      case c_image_processor_pipeline_ctl_image_registration_options: {
-
-        QFrameRegistrationOptions *w =
-            new QFrameRegistrationOptions(this);
-
-        if( ctrl.get_image_registration_options ) {
-          connect(this, &Base::populatecontrols,
-              [this, w, ctrl]() {
-                w->set_registration_options(ctrl.get_image_registration_options(pipeline_));
-              });
-        }
-
-        connect(w, &QSettingsWidget::parameterChanged,
-            [this]() {
-              if ( !updatingControls() ) {
-                Q_EMIT parameterChanged();
-              }
-            });
-
-        currentsettings->addRow(w);
-        inputSourceCombos_.append(w);
-
-        if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
-        }
-
-        break;
-      }
+//      case c_image_processor_pipeline_ctl_image_registration_options: {
+//
+//        QFrameRegistrationOptions *w =
+//            new QFrameRegistrationOptions(this);
+//
+//        if( ctrl.get_image_registration_options ) {
+//          connect(this, &Base::populatecontrols,
+//              [this, w, ctrl]() {
+//                w->set_registration_options(ctrl.get_image_registration_options(pipeline_));
+//              });
+//        }
+//
+//        connect(w, &QSettingsWidget::parameterChanged,
+//            [this]() {
+//              if ( !updatingControls() ) {
+//                Q_EMIT parameterChanged();
+//              }
+//            });
+//
+//        currentsettings->addRow(w);
+//        inputSourceCombos_.append(w);
+//
+//        if( ctrl.is_enabled ) {
+//          state_ctls_.emplace(w, ctrl.is_enabled);
+//        }
+//
+//        break;
+//      }
 
       case c_image_processor_pipeline_ctl_feature2d_detector_options: {
 
@@ -589,8 +594,156 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
         break;
       }
+      /////////////////////
+
+      case c_image_processor_pipeline_ctl_master_frame_selection: {
+
+        QMasterFrameSelectionControl * w =
+            new QMasterFrameSelectionControl(this);
+
+        if( ctrl.get_master_frame_selection_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_master_frame_selection_options(pipeline_));
+              });
+        }
+
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+        inputSourceCombos_.append(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+        /////////////////////
+      case c_image_processor_pipeline_ctl_feature_registration_options: {
+
+        QFeatureBasedRegistrationOptions * w =
+            new QFeatureBasedRegistrationOptions(this);
+
+        if( ctrl.get_feature_registration_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_feature_registration_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
 
       /////////////////////
+      case c_image_processor_pipeline_ctl_ecc_registration_options: {
+
+        QEccRegistrationOptions * w =
+            new QEccRegistrationOptions(this);
+
+        if( ctrl.get_ecc_registration_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_ecc_registration_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+      /////////////////////
+      case c_image_processor_pipeline_ctl_eccflow_registration_options : {
+
+        QEccFlowRegistrationOptions * w =
+            new QEccFlowRegistrationOptions(this);
+
+        if( ctrl.get_eccflow_registration_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_eccflow_registration_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+      /////////////////////
+      case c_image_processor_pipeline_ctl_jovian_derotation_options : {
+
+        QJovianDerotationOptions * w =
+            new QJovianDerotationOptions(this);
+
+        if( ctrl.get_jovian_derotation_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_jovian_derotation_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+      /////////////////////
+
       default:
         break;
     }

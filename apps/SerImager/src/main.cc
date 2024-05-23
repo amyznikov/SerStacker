@@ -6,6 +6,7 @@
  */
 #include <opencv2/core/ocl.hpp>
 #include <gui/widgets/style.h>
+//#include <QtGui/5.15.13/QtGui/qpa/qplatformnativeinterface.h>
 #include "MainWindow.h"
 #include <core/debug.h>
 
@@ -18,7 +19,7 @@ int main(int argc, char * argv[])
 {
   // My OpenCV build has problems with OCL.
   // Comment out this line if you want to allow OCL in OpenCV
-  cv::ocl::setUseOpenCL(false);
+  // cv::ocl::setUseOpenCL(false);
 
   QApplication app(argc, argv);
   app.setOrganizationName(MY_COMPANY);
@@ -62,11 +63,14 @@ int main(int argc, char * argv[])
 
     QFile f(qss_resource);
     f.open(QFile::ReadOnly | QFile::Text);
+
     QTextStream ts(&f);
     app.setStyleSheet(ts.readAll());
+
     f.close();
   }
 
+  // CF_DEBUG("PLATFORM=%s", QApplication::platformName().toUtf8().data());
 
   MainWindow mainWindow;
 

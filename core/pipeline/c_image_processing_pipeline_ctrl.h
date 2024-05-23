@@ -18,6 +18,9 @@
 #include "c_output_frame_writer.h"
 
 class c_image_processing_pipeline;
+struct c_feature_registration_options;
+struct c_master_frame_selection_options;
+
 
 enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_begin_group,
@@ -33,12 +36,17 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_input_source_selection_combo,
   c_image_processor_pipeline_ctl_cv_matx,
   c_image_processor_pipeline_ctl_camera_intrinsicts,
-  c_image_processor_pipeline_ctl_image_registration_options,
+  //c_image_processor_pipeline_ctl_image_registration_options,
   c_image_processor_pipeline_ctl_feature2d_detector_options,
   c_image_processor_pipeline_ctl_feature2d_descriptor_options,
   c_image_processor_pipeline_ctl_feature2d_matcher_options,
   c_image_processor_pipeline_ctl_stereo_matcher_options,
   c_image_processor_pipeline_ctl_output_writer,
+  c_image_processor_pipeline_ctl_master_frame_selection,
+  c_image_processor_pipeline_ctl_feature_registration_options,
+  c_image_processor_pipeline_ctl_ecc_registration_options,
+  c_image_processor_pipeline_ctl_eccflow_registration_options,
+  c_image_processor_pipeline_ctl_jovian_derotation_options,
 };
 
 
@@ -56,8 +64,8 @@ struct c_image_processing_pipeline_ctrl
   } matx;
   std::function<bool (const c_image_processing_pipeline*, std::string *)> get_value;
   std::function<bool(c_image_processing_pipeline * p, const std::string&)> set_value;
-  std::function<const c_image_processor::sptr & (const c_image_processing_pipeline*)> get_processor;
-  std::function< bool (c_image_processing_pipeline*, const c_image_processor::sptr & )> set_processor;
+  std::function<const c_image_processor::sptr & (const c_image_processing_pipeline*)> get_image_processor;
+  std::function< bool (c_image_processing_pipeline*, const c_image_processor::sptr & )> set_image_processor;
   std::function<c_image_registration_options* (c_image_processing_pipeline*)> get_image_registration_options;
   std::function<c_sparse_feature_detector_options* (c_image_processing_pipeline*)> get_feature2d_detector_options;
   std::function<c_sparse_feature_descriptor_options* (c_image_processing_pipeline*)> get_feature2d_descriptor_options;
@@ -65,6 +73,12 @@ struct c_image_processing_pipeline_ctrl
   std::function<c_camera_intrinsics *(c_image_processing_pipeline *)> get_camera_intrinsicts;
   std::function<c_regular_stereo_matcher *(c_image_processing_pipeline *)> get_stereo_matcher;
   std::function<c_output_frame_writer_options *(c_image_processing_pipeline *)> get_output_writer_options;
+  std::function<c_master_frame_selection_options *(c_image_processing_pipeline *)> get_master_frame_selection_options;
+  std::function<c_feature_registration_options *(c_image_processing_pipeline *)> get_feature_registration_options;
+  std::function<c_ecc_registration_options *(c_image_processing_pipeline *)> get_ecc_registration_options;
+  std::function<c_eccflow_registration_options *(c_image_processing_pipeline *)> get_eccflow_registration_options;
+  std::function<c_jovian_derotation_options *(c_image_processing_pipeline *)> get_jovian_derotation_options;
+
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
 
@@ -75,6 +89,20 @@ struct c_image_processing_pipeline_ctrl
     ctl.type = c_image_processor_pipeline_ctl_begin_group; \
     ctl.name = _name; \
     ctl.tooltip = _tooltip; \
+    ctrls.emplace_back(ctl);\
+  }
+
+#define PIPELINE_CTL_GROUPC(ctrls, _name, _tooltip, _cond ) \
+  if ( true ) { \
+    c_image_processing_pipeline_ctrl ctl; \
+    ctl.type = c_image_processor_pipeline_ctl_begin_group; \
+    ctl.name = _name; \
+    ctl.tooltip = _tooltip; \
+    ctl.is_enabled = \
+        [](const c_image_processing_pipeline * p) -> bool { \
+          const this_class * _this = dynamic_cast<const this_class * >(p); \
+          return (_this) && (_cond); \
+        }; \
     ctrls.emplace_back(ctl);\
   }
 
@@ -414,13 +442,13 @@ struct c_image_processing_pipeline_ctrl
       ctl.name = _name; \
       ctl.tooltip = _tooltip; \
       ctl.type = c_image_processor_pipeline_ctl_image_processor_selection_combo; \
-      ctl.get_processor = \
+      ctl.get_image_processor = \
           [](const c_image_processing_pipeline * p) -> const c_image_processor::sptr & { \
             static const c_image_processor::sptr null_processor; \
             const this_class * _this = dynamic_cast<const this_class * >(p); \
             return  (_this ? _this->c :  null_processor); \
           }; \
-      ctl.set_processor = \
+      ctl.set_image_processor = \
           [](c_image_processing_pipeline * p, const c_image_processor::sptr & v) { \
             this_class * _this = dynamic_cast<this_class * >(p); \
             return _this ? _this->c = v, true : false; \
@@ -526,17 +554,17 @@ struct c_image_processing_pipeline_ctrl
     }
 
 
-#define PIPELINE_CTL_IMAGE_REGISTRATION_OPTIONS(ctrls, c) \
-    if ( true ) { \
-      c_image_processing_pipeline_ctrl ctl; \
-      ctl.type = c_image_processor_pipeline_ctl_image_registration_options; \
-      ctl.get_image_registration_options = \
-          [](c_image_processing_pipeline * p) -> c_image_registration_options * { \
-          this_class * _this = dynamic_cast<this_class * >(p); \
-          return _this ? &(_this->c) : (nullptr); \
-      }; \
-      ctrls.emplace_back(ctl); \
-    }
+//#define PIPELINE_CTL_IMAGE_REGISTRATION_OPTIONS(ctrls, c) \
+//    if ( true ) { \
+//      c_image_processing_pipeline_ctrl ctl; \
+//      ctl.type = c_image_processor_pipeline_ctl_image_registration_options; \
+//      ctl.get_image_registration_options = \
+//          [](c_image_processing_pipeline * p) -> c_image_registration_options * { \
+//          this_class * _this = dynamic_cast<this_class * >(p); \
+//          return _this ? &(_this->c) : (nullptr); \
+//      }; \
+//      ctrls.emplace_back(ctl); \
+//    }
 
 #define PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, c) \
     if ( true ) { \
@@ -604,7 +632,99 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
-//
+
+#define PIPELINE_CTL_MASTER_FRAME_SELECTION(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_master_frame_selection; \
+      ctl.get_master_frame_selection_options = \
+          [](c_image_processing_pipeline * p) -> c_master_frame_selection_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+#define PIPELINE_CTL_FEATURE_REGISTRATION_OPTIONS(ctrls, c, _cond) \
+  if ( true ) { \
+    c_image_processing_pipeline_ctrl ctl; \
+    ctl.type = c_image_processor_pipeline_ctl_feature_registration_options; \
+    ctl.get_feature_registration_options = \
+        [](c_image_processing_pipeline * p) -> c_feature_registration_options * { \
+        this_class * _this = dynamic_cast<this_class * >(p); \
+        return _this ? &(_this->c) : (nullptr); \
+    }; \
+    ctl.is_enabled = \
+        [](const c_image_processing_pipeline * p) -> bool { \
+          const this_class * _this = dynamic_cast<const this_class * >(p); \
+          return (_this) && (_cond); \
+        }; \
+    ctrls.emplace_back(ctl); \
+  }
+
+
+//c_image_processor_pipeline_ctl_ecc_registration_options,
+#define PIPELINE_CTL_ECC_REGISTRATION_OPTIONS(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_ecc_registration_options; \
+      ctl.get_ecc_registration_options = \
+          [](c_image_processing_pipeline * p) -> c_ecc_registration_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+
+//c_image_processor_pipeline_ctl_eccflow_registration_options,
+#define PIPELINE_CTL_ECCFLOW_REGISTRATION_OPTIONS(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_eccflow_registration_options; \
+      ctl.get_eccflow_registration_options = \
+          [](c_image_processing_pipeline * p) -> c_eccflow_registration_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+// c_jovian_derotation_options
+#define PIPELINE_CTL_JOVIAN_DEROTATION_OPTIONS(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_jovian_derotation_options; \
+      ctl.get_jovian_derotation_options = \
+          [](c_image_processing_pipeline * p) -> c_jovian_derotation_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+
+
 
 
 #endif /* __c_image_processing_pipeline_ctrl_h__ */

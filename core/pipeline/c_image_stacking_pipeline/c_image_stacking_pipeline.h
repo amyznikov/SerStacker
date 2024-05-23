@@ -161,6 +161,46 @@ struct c_image_stacking_output_options  :
 
 };
 
+//struct c_image_stacking_frame_registration_options
+//{
+//  bool enable_frame_registration = true;
+//
+//  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
+//  bool accumulate_and_compensate_turbulent_flow = false;
+//
+//  color_channel_type registration_channel = color_channel_gray;
+//  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+//  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
+//  cv::Scalar border_value = cv::Scalar(0, 0, 0);
+//
+//  struct c_feature_registration_options feature_registration;
+//  struct c_ecc_registration_options ecc;
+//  struct c_eccflow_registration_options eccflow;
+//  struct c_jovian_derotation_options jovian_derotation;
+//};
+
+struct c_image_stacking_master_frame_options
+{
+  c_master_frame_selection_options master_frame_selection;
+  c_image_registration_options registration;
+
+  bool apply_input_image_processor = true;
+  bool generate_master_frame = true;
+  bool save_master_frame = true;
+  int max_frames_to_generate_master_frame = 3000;
+
+  double unsharp_sigma = 3;
+  double unsharp_alpha = 0.6;
+
+};
+
+struct c_image_stacking_options
+{
+  c_image_registration_options registration;
+
+  double unsharp_sigma = 0;
+  double unsharp_alpha = 0;
+};
 
 
 class c_image_stacking_pipeline :
@@ -206,23 +246,7 @@ public:
   c_frame_upscale_options& upscale_options();
   const c_frame_upscale_options& upscale_options() const;
 
-//  c_sparse_feature_extractor_options& sparse_feature_extractor_options();
-//  const c_sparse_feature_extractor_options& sparse_feature_extractor_options() const;
-
-  c_sparse_feature_detector_options& sparse_feature_detector_options();
-  const c_sparse_feature_detector_options& sparse_feature_detector_options() const;
-
-  c_sparse_feature_descriptor_options& sparse_feature_descriptor_options();
-  const c_sparse_feature_descriptor_options& sparse_feature_descriptor_options() const;
-
-  c_master_frame_options& master_frame_options();
-  const c_master_frame_options& master_frame_options() const;
-
-  c_image_registration_options& registration_options();
-  const c_image_registration_options& registration_options() const;
-
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
-  c_frame_registration::sptr create_frame_registration() const;
 
   c_frame_accumulation_options& accumulation_options();
   const c_frame_accumulation_options& accumulation_options() const;
@@ -256,11 +280,9 @@ protected:
 
   bool run_jovian_derotation();
 
-  bool create_reference_frame(const c_image_registration_options & image_registration_options,
-      cv::Mat & reference_frame, cv::Mat & reference_mask);
+  bool create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask);
 
-  bool create_reference_frame(const c_image_registration_options & registration_options,
-      const c_input_sequence::sptr & input_sequence, bool is_external_file,
+  bool create_reference_frame(const c_input_sequence::sptr & input_sequence, bool is_external_file,
       int master_frame_pos, int max_frames_to_stack,
       cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
 
@@ -336,14 +358,16 @@ protected:
   c_image_stacking_input_options input_options_;
   c_roi_selection_options roi_selection_options_;
   c_frame_upscale_options upscale_options_;
-  c_image_registration_options image_registration_options_;
+  c_image_stacking_master_frame_options master_frame_options_;
+  c_image_stacking_options stacking_options_;
   c_frame_accumulation_options accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
 
+
   std::string output_file_name_;
 
-  double ecc_normalization_noise_ = 0;
+  //double ecc_normalization_noise_ = 0;
   //double reference_sharpness_ = 0;
 
   cv::Mat selected_master_frame_;

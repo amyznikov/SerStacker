@@ -56,7 +56,6 @@ namespace serstacker {
 
 MainWindow::MainWindow()
 {
-
   setWindowIcon(QIcon(":/serstacker/icons/app-icon.png"));
   updateWindowTittle();
   QImageProcessorsCollection::load();

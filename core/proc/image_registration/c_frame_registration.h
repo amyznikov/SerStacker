@@ -15,7 +15,7 @@
 #include "ecc_motion_model.h"
 
 
-struct c_feature_based_registration_options
+struct c_feature_registration_options
 {
   bool enabled = false;
   double scale = 0.5;
@@ -79,34 +79,43 @@ enum master_frame_selection_method
 };
 
 
-struct c_master_frame_options
+struct c_master_frame_selection_options
 {
-  master_frame_selection_method master_selection_method =
-      master_frame_specific_index;
-
+  master_frame_selection_method master_selection_method = master_frame_specific_index;
   std::string master_fiename;
   int master_frame_index = 0;
-
-  bool apply_input_image_processor = true;
-  bool generate_master_frame = true;
-  int max_frames_to_generate_master_frame = 3000;
-
-  double accumulated_sharpen_factor = 1;
-  //double master_sharpen_factor = 0.5;
-  double unsharp_sigma = 3;
-  double unsharp_alpha = 0.6;
-
-  bool save_master_frame = true;
-  double feature_scale = 0.5;
-  double ecc_scale = 0.5;
-  int eccflow_scale = 0;
-  int eccflow_min_image_size = -1;
-  int eccflow_max_pyramid_level = -1;
 };
+//
+//struct c_master_frame_options
+//{
+////  master_frame_selection_method master_selection_method =
+////      master_frame_specific_index;
+////
+////  std::string master_fiename;
+////  int master_frame_index = 0;
+//
+//  c_master_frame_selection_options master_frame_selection;
+//
+//  bool apply_input_image_processor = true;
+//  bool generate_master_frame = true;
+//  int max_frames_to_generate_master_frame = 3000;
+//
+//  double accumulated_sharpen_factor = 1;
+//  //double master_sharpen_factor = 0.5;
+//  double unsharp_sigma = 3;
+//  double unsharp_alpha = 0.6;
+//
+//  bool save_master_frame = true;
+//  double feature_scale = 0.5;
+//  double ecc_scale = 0.5;
+//  int eccflow_scale = 0;
+//  int eccflow_min_image_size = -1;
+//  int eccflow_max_pyramid_level = -1;
+//};
 
 struct c_image_registration_options
 {
-  bool enable_frame_registration = true;
+  bool enabled = true;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
   bool accumulate_and_compensate_turbulent_flow = false;
@@ -116,8 +125,8 @@ struct c_image_registration_options
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
-  c_master_frame_options master_frame_options;
-  struct c_feature_based_registration_options feature_registration;
+  // c_master_frame_options master_frame_options;
+  struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
   struct c_jovian_derotation_options jovian_derotation;
@@ -164,7 +173,7 @@ public:
   typedef std::function<void(cv::InputOutputArray image, cv::InputOutputArray mask)> ecc_image_preprocessor_function;
 
   c_frame_registration();
-  c_frame_registration(const c_image_registration_options & optsions);
+  c_frame_registration(const c_image_registration_options & options);
 
   void set_debug_path(const std::string & v);
   const std::string & debug_path() const;

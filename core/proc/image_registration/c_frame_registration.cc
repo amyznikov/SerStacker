@@ -403,7 +403,6 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       eccflow_.set_max_pyramid_level(options_.eccflow.max_pyramid_level);
       eccflow_.set_downscale_method(options_.eccflow.downscale_method);
       eccflow_.set_scale_factor(options_.eccflow.scale_factor);
-      eccflow_.set_normalization_scale(options_.eccflow.normalization_scale);
       eccflow_.set_input_smooth_sigma(options_.eccflow.input_smooth_sigma);
       eccflow_.set_reference_smooth_sigma(options_.eccflow.reference_smooth_sigma);
       eccflow_.set_noise_level(options_.eccflow.noise_level);
@@ -588,7 +587,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
     else {
 
-      if( options_.ecc.ecch_estimate_translation_first ) {
+      if( options_.ecc.ecch_estimate_translation_first  && options_.motion_type != IMAGE_MOTION_TRANSLATION ) {
 
         c_translation_image_transform transform (image_transform_->translation());
         c_translation_ecc_motion_model model(&transform);
@@ -654,7 +653,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   /////////////////////////////////////////////////////////////////////////////
 
-  CF_DEBUG("current_remap_: %dx%d", current_remap_.cols, current_remap_.rows);
+  // CF_DEBUG("current_remap_: %dx%d", current_remap_.cols, current_remap_.rows);
 
   t0 = get_realtime_ms();
 
@@ -848,24 +847,24 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
     ecc_image_preprocessor_(dst.getMatRef(), dstmsk.getMatRef());
   }
 
-  if( options_.ecc.normalization_scale > 0 ) {
-
-    cv::Mat1f &m = (cv::Mat1f&) dst.getMatRef();
-    cv::Mat mean, stdev;
-    cv::Mat mask;
-
-    ecc_downscale(m, mean, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-    ecc_downscale(m.mul(m), stdev, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-    cv::absdiff(stdev, mean.mul(mean), stdev);
-    cv::sqrt(stdev, stdev);
-
-    ecc_upscale(mean, m.size());
-    ecc_upscale(stdev, m.size());
-
-    cv::add(stdev, options_.ecc.normalization_noise, stdev);
-    cv::subtract(m, mean, m);
-    cv::divide(m, stdev, m);
-  }
+//  if( options_.ecc.normalization_scale > 0 ) {
+//
+//    cv::Mat1f &m = (cv::Mat1f&) dst.getMatRef();
+//    cv::Mat mean, stdev;
+//    cv::Mat mask;
+//
+//    ecc_downscale(m, mean, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
+//    ecc_downscale(m.mul(m), stdev, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
+//    cv::absdiff(stdev, mean.mul(mean), stdev);
+//    cv::sqrt(stdev, stdev);
+//
+//    ecc_upscale(mean, m.size());
+//    ecc_upscale(stdev, m.size());
+//
+//    cv::add(stdev, options_.ecc.normalization_noise, stdev);
+//    cv::subtract(m, mean, m);
+//    cv::divide(m, stdev, m);
+//  }
 
 //  {
 //    double min, max;
@@ -1108,14 +1107,6 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
       return false;
     }
 
-//
-//        detect_and_match_keypoints(current_feature_image, current_feature_mask,
-//            matched_current_positions_, matched_reference_positions_,
-//            &current_keypoints_, &current_descriptors_,
-//            &current_matches_/*, &current_matches12_*/);
-
-
-
     fOk =
         estimate_image_transform(current_transform,
             sparse_feature_extractor_and_matcher_->matched_current_positions(),
@@ -1128,7 +1119,6 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
 
     if( options_.feature_registration.scale != 1 ) {
-
       if( !current_transform->scale_transfrom(1. / options_.feature_registration.scale) ) {
         CF_ERROR("scale_transfrom() fails");
         return false;
@@ -1138,96 +1128,6 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
   return true;
 }
-
-//bool c_frame_registration::detect_and_match_keypoints(cv::InputArray current_feature_image,
-//    cv::InputArray current_feature_mask,
-//    std::vector<cv::Point2f> & output_matched_current_positions,
-//    std::vector<cv::Point2f> & output_matched_reference_positions,
-//    std::vector<cv::KeyPoint> * _current_keypoints,
-//    cv::Mat * _current_descriptors,
-//    std::vector<cv::DMatch> * _current_matches/*,
-//    std::vector<std::vector<cv::DMatch> > * _current_matches12*/) const
-//{
-//
-//  std::vector<cv::KeyPoint> local_current_keypoints;
-//  cv::Mat local_current_descriptors;
-//
-//  std::vector<cv::KeyPoint> & current_keypoints =
-//      _current_keypoints ?
-//          *_current_keypoints :
-//          local_current_keypoints;
-//
-//  if( !keypoints_matcher_ ) { // Use OptFlowPyrLK for match
-//
-//    keypoints_extractor_->detect(current_feature_image,
-//        current_keypoints,
-//        current_feature_mask);
-//
-//    CF_DEBUG("current_keypoints.size()=%zu",
-//        current_keypoints.size());
-//
-//    if ( current_keypoints.size() < 1 ) {
-//      CF_ERROR("No key points detected : %zu", current_keypoints.size());
-//      return false;
-//    }
-//
-//    match_optflowpyrlk(reference_feature_image_, current_feature_image, reference_keypoints_,
-//        options_.feature_registration.sparse_feature_matcher.optflowpyrlk,
-//        output_matched_reference_positions, output_matched_current_positions);
-//
-//  }
-//  else {
-//
-//    std::vector<cv::DMatch> local_current_matches;
-//    std::vector<std::vector<cv::DMatch> > local_current_matches12;
-//
-//    cv::Mat & current_descriptors =
-//        _current_descriptors ?
-//            *_current_descriptors :
-//            local_current_descriptors;
-//
-//    std::vector<cv::DMatch> & current_matches =
-//        _current_matches ?
-//            *_current_matches :
-//            local_current_matches;
-//
-//    //    std::vector<std::vector<cv::DMatch> > & current_matches12 =
-//    //        _current_matches12 ?
-//    //            *_current_matches12 :
-//    //            local_current_matches12;
-//
-//    keypoints_extractor_->detectAndCompute(current_feature_image,
-//        current_feature_mask,
-//        current_keypoints,
-//        current_descriptors);
-//
-//    CF_DEBUG("current_keypoints.size()=%zu",
-//        current_keypoints.size());
-//
-//    if ( current_keypoints.size() < 1 ) {
-//      CF_ERROR("No key points detected : %zu", current_keypoints.size());
-//      return false;
-//    }
-//
-//    keypoints_matcher_->match(&current_keypoints, current_descriptors,
-//        current_matches);
-//
-//    extract_matched_positions(current_keypoints, reference_keypoints_, current_matches,
-//        &output_matched_current_positions, &output_matched_reference_positions);
-//
-//  }
-//
-//
-//  CF_DEBUG("matched_current_positions.size()=%zu",
-//      output_matched_current_positions.size());
-//
-//  if ( output_matched_current_positions.size() < 1 ) {
-//    CF_ERROR("No key point matches found");
-//    return false;
-//  }
-//
-//  return true;
-//}
 
 bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     cv::InputArray _src, cv::OutputArray dst,
@@ -1358,124 +1258,6 @@ bool c_frame_registration::custom_remap(const cv::Mat2f & rmap,
       border_mode,
       border_value);
 
-//  INSTRUMENT_REGION("");
-//
-//  bool enable_jovian_derotation =
-//      options_.jovian_derotation.enabled;
-//
-//  if( enable_jovian_derotation && rmap.size() != current_remap_.size() ) {
-//    CF_ERROR("ERROR: Sorry, scaled remaps are not supported for jovian derotations yet.");
-//    enable_jovian_derotation = false;
-//  }
-//
-//  if( !enable_jovian_derotation ) {
-//
-//    return base_remap(rmap,
-//        _src, dst,
-//        _src_mask, dst_mask,
-//        interpolation_flags,
-//        border_mode,
-//        border_value);
-//  }
-//
-//  if( dst_mask.needed() ) {
-//
-//    bool fOk =
-//        base_remap(rmap,
-//            cv::noArray(), cv::noArray(),
-//            _src_mask, dst_mask,
-//            interpolation_flags,
-//            border_mode,
-//            border_value);
-//
-//    if( !fOk ) {
-//      CF_ERROR(" c_jovian_rotation_registration:  base::custom_remap() fails");
-//      return false;
-//    }
-//  }
-
-//  if( dst.needed() ) {
-//
-//    // size must be reference_image.size()
-//    cv::Mat2f current_total_remap =
-//        rmap.clone();
-//
-//    const cv::Mat2f & derotation_remap =
-//        jovian_derotation_.current_derotation_remap();
-//
-//    const cv::Mat1f & current_wmask =
-//        jovian_derotation_.current_wmask();
-//
-//    for( int y = 0; y < current_total_remap.rows; ++y ) {
-//      for( int x = 0; x < current_total_remap.cols; ++x ) {
-//        if( current_wmask[y][x] > 0 ) {
-//          current_total_remap[y][x][0] += derotation_remap[y][x][0] - x;
-//          current_total_remap[y][x][1] += derotation_remap[y][x][1] - y;
-//        }
-//      }
-//    }
-//
-//    if ( !debug_path_.empty() ) {
-//      save_image(current_total_remap, ssprintf("%s/remap_debug/current_total_remap.flo", debug_path_.c_str()));
-//    }
-//
-//    bool fOk =
-//        base_remap(current_total_remap,
-//            _src, dst,
-//            cv::noArray(), cv::noArray(),
-//            interpolation_flags,
-//            border_mode,
-//            border_value);
-//
-//    if( !fOk ) {
-//      CF_ERROR(" c_jovian_rotation_registration:  "
-//          "base::custom_remap() fails fails");
-//      return false;
-//    }
-//  }
-
-
-//  if( dst_mask.needed() ) {
-//
-//    // size must be referece_image.size()
-//    const cv::Mat orig_mask =
-//        dst_mask.getMat();
-//
-//    cv::Mat new_mask;
-//
-//    if ( orig_mask.depth() == CV_32F ) {
-//      orig_mask.copyTo(new_mask);
-//    }
-//    else {
-//      orig_mask.convertTo(new_mask, CV_32F, 1./255);
-//    }
-//
-//    const cv::Mat1f & current_wmask =
-//        jovian_derotation_.current_wmask();
-//
-//    current_wmask.copyTo(new_mask,
-//        jovian_derotation_.jovian_ellipse_mask());
-//
-//    static int iitest = 0;
-//
-//    if ( !debug_path_.empty() ) {
-//      save_image(orig_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", debug_path_.c_str(), iitest));
-//      save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", debug_path_.c_str(), iitest));
-//    }
-//
-//    cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
-//    new_mask.setTo(0, ~orig_mask);
-//    if ( !debug_path_.empty() ) {
-//      save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", debug_path_.c_str(), iitest));
-//    }
-//
-//    dst_mask.move(new_mask);
-//
-//
-//    ++iitest;
-//  }
-
-//  return true;
 }
 
 

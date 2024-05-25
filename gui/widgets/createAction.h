@@ -90,6 +90,30 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
 }
 
 template<typename Slot>
+QAction* createCheckableAction2(const QIcon & icon, const QString & text, const QString & tooltip,
+    bool checked,
+    Slot && slot,
+    QShortcut * shortcut = nullptr)
+{
+  QAction *action = new QAction(icon, text);
+  action->setToolTip(tooltip);
+  action->setCheckable(true);
+  action->setChecked(checked);
+
+  QObject::connect(action, &QAction::triggered,
+      [slot, action](bool) {
+        slot(action);
+      });
+
+  if( shortcut ) {
+    QObject::connect(shortcut, &QShortcut::activated,
+        action, &QAction::trigger);
+  }
+
+  return action;
+}
+
+template<typename Slot>
 QAction* createCheckableAction(const QIcon & icon, const QString & text, const QString & tooltip,
     bool checked,
     Slot && slot,

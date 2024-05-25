@@ -330,11 +330,6 @@ public:
   void set_update_multiplier(double v);
   double update_multiplier() const;
 
-  // Use for images which violate brightness constancy assumption,
-  // for example on strong vignetting or planetary disk derotation
-  void set_normalization_scale(int v);
-  int normalization_scale() const;
-
   void set_input_smooth_sigma(double v);
   double input_smooth_sigma() const;
 
@@ -404,7 +399,6 @@ protected:
   double noise_level_ = -1;
   int max_iterations_ = 1; // not used at this time
   int support_scale_ = 5;
-  int normalization_scale_ = -1;
   int min_image_size_ = 4;
   int max_pyramid_level_ = -1;
 

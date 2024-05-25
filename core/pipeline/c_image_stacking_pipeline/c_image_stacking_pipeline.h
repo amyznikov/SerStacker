@@ -161,24 +161,6 @@ struct c_image_stacking_output_options  :
 
 };
 
-//struct c_image_stacking_frame_registration_options
-//{
-//  bool enable_frame_registration = true;
-//
-//  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
-//  bool accumulate_and_compensate_turbulent_flow = false;
-//
-//  color_channel_type registration_channel = color_channel_gray;
-//  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
-//  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
-//  cv::Scalar border_value = cv::Scalar(0, 0, 0);
-//
-//  struct c_feature_registration_options feature_registration;
-//  struct c_ecc_registration_options ecc;
-//  struct c_eccflow_registration_options eccflow;
-//  struct c_jovian_derotation_options jovian_derotation;
-//};
-
 struct c_image_stacking_master_frame_options
 {
   c_master_frame_selection_options master_frame_selection;
@@ -367,9 +349,6 @@ protected:
 
   std::string output_file_name_;
 
-  //double ecc_normalization_noise_ = 0;
-  //double reference_sharpness_ = 0;
-
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
 
@@ -377,11 +356,7 @@ protected:
   c_roi_selection::ptr roi_selection_;
   c_frame_registration::sptr frame_registration_;
   c_frame_weigthed_average::ptr flow_accumulation_;
-  // mutable std::mutex registration_lock_;
-
   c_frame_accumulation::ptr frame_accumulation_;
-  // c_sharpness_norm_measure::ptr sharpness_norm_accumulation_;
-  // mutable std::mutex accumulator_lock_;
 
   mutable std::string output_file_name_postfix_;
 };

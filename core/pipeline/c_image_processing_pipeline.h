@@ -208,9 +208,6 @@ protected:
   mutable cv::Mat raw_bayer_image_;
   mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
 
-  //  std::string master_source_;
-  //  int master_frame_index_ = 0; // relative, in master source
-
   int display_type_ = 0;
 
   int total_frames_ = 0;

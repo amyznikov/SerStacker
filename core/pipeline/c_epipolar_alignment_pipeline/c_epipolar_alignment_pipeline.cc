@@ -115,7 +115,6 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
     SERIALIZE_PROPERTY(section, save, eccflow_, max_iterations);
     SERIALIZE_PROPERTY(section, save, eccflow_, update_multiplier);
-    SERIALIZE_PROPERTY(section, save, eccflow_, normalization_scale);
     SERIALIZE_PROPERTY(section, save, eccflow_, input_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, eccflow_, reference_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, eccflow_, downscale_method);
@@ -183,7 +182,6 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
       PIPELINE_CTLP2(ctrls, eccflow_, support_scale, "support_scale", "");
       PIPELINE_CTLP2(ctrls, eccflow_, max_iterations, "max_iterations", "");
       PIPELINE_CTLP2(ctrls, eccflow_, update_multiplier, "update_multiplier", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, normalization_scale, "normalization_scale", "");
       PIPELINE_CTLP2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "");
       PIPELINE_CTLP2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "");
       PIPELINE_CTLP2(ctrls, eccflow_, downscale_method, "downscale_method", "");

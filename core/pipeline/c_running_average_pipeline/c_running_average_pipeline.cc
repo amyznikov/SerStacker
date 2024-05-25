@@ -63,7 +63,6 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(section, save, eccflow_, noise_level);
     SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
     SERIALIZE_PROPERTY(section, save, eccflow_, max_iterations);
-    SERIALIZE_PROPERTY(section, save, eccflow_, normalization_scale);
     SERIALIZE_PROPERTY(section, save, eccflow_, input_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, eccflow_, reference_smooth_sigma);
     SERIALIZE_PROPERTY(section, save, eccflow_, update_multiplier);
@@ -74,7 +73,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
 
     SERIALIZE_OPTION(section, save, average_options_, running_weight);
-    SERIALIZE_OPTION(section, save, average_options_, reference_running_weight);
+    SERIALIZE_OPTION(section, save, average_options_, reference_weight);
 
     if( (subsection = SERIALIZE_GROUP(section, save, "lpg")) ) {
       SERIALIZE_OPTION(subsection, save, average_options_.lpg, k);
@@ -157,7 +156,6 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
         PIPELINE_CTLPC2(ctrls, eccflow_, scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, eccflow_, max_iterations, "max_iterations", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, eccflow_, noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, eccflow_, normalization_scale, "normalization_scale", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, eccflow_, update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
@@ -168,7 +166,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
     PIPELINE_CTL_END_GROUP(ctrls);
 
     PIPELINE_CTL_GROUP(ctrls, "Average options", "");
-    PIPELINE_CTLC(ctrls, average_options_.reference_running_weight, "reference running_weight", "", (_this->registration_options_.double_align_moode));
+    PIPELINE_CTLC(ctrls, average_options_.reference_weight, "reference running_weight", "", (_this->registration_options_.double_align_moode));
     PIPELINE_CTL(ctrls, average_options_.running_weight, "running_weight", "");
       PIPELINE_CTL_GROUP(ctrls, "Shapness measure", "");
         PIPELINE_CTL(ctrls, average_options_.lpg.k, "k", "");
@@ -580,13 +578,17 @@ bool c_running_average_pipeline::process_current_frame1()
 
 bool c_running_average_pipeline::process_current_frame2()
 {
+
   cv::Mat image1, mask1, image2, mask2;
   cv::Mat2f rmap;
 
   bool has_updates = true;
 
+  const double W1 =
+      average_options_.reference_weight;
+
   const double W2 =
-      average_options_.reference_running_weight;
+      average_options_.running_weight;
 
   static const auto mkgrayscale =
       [](const cv::Mat & src, const cv::Mat & src_mask, cv::Mat & dst, cv::Mat & dst_mask) {
@@ -613,7 +615,7 @@ bool c_running_average_pipeline::process_current_frame2()
 
   if( average1_.accumulated_frames() < 1 ) {
 
-    if( !average_add(average1_, image2, mask2, W2) ) {
+    if( !average_add(average1_, image2, mask2, W1) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
@@ -628,11 +630,7 @@ bool c_running_average_pipeline::process_current_frame2()
     }
     else {
 
-      //      lock_guard lock(mutex());
-      //      average1_.add(image2, mask2, W2,
-      //          &(rmap = ecc_.current_remap()));
-
-      if( !average_add(average1_, image2, mask2, W2, &(rmap = ecc_.current_remap())) ) {
+      if( !average_add(average1_, image2, mask2, W1, &(rmap = ecc_.current_remap())) ) {
         CF_ERROR("average_add() fails");
         return false;
       }
@@ -642,7 +640,7 @@ bool c_running_average_pipeline::process_current_frame2()
 
   ////
 
-  if ( has_updates && average1_.accumulated_frames() > W2 )  {
+  if ( has_updates && average1_.accumulated_frames() > W1 )  {
 
     cv::Mat2f rmap2;
 
@@ -668,19 +666,20 @@ bool c_running_average_pipeline::process_current_frame2()
 
 
       rmap2 = rmap.clone();
+
       eccflow_.set_reference_image(image1, mask1);
+
       if( !eccflow_.compute(image2, rmap2, mask2) ) {
         has_updates = false;
       }
+
     }
 
     if ( has_updates ) {
 
       if ( rmap2.empty() ) {
-        //        lock_guard lock(mutex());
-        //        average2_.add(current_image_, current_mask_, average_options_.running_weight, &rmap);
-        if ( !average_add(average2_, current_image_, current_mask_, average_options_.running_weight, &rmap) ) {
-          CF_ERROR("average_add() fails");
+       if ( !average_add(average2_, current_image_, current_mask_, W2, &rmap) ) {
+          CF_ERROR("average_add(average2_) fails");
           return false;
         }
       }
@@ -700,10 +699,7 @@ bool c_running_average_pipeline::process_current_frame2()
           cv::compare(mask2,  254, mask2, cv::CMP_GE);
         }
 
-//        lock_guard lock(mutex());
-//        average2_.add(image2, mask2, average_options_.running_weight, &rmap);
-
-        if ( !average_add(average2_, image2, mask2, average_options_.running_weight, &rmap) ) {
+        if ( !average_add(average2_, image2, mask2, W2, &rmap) ) {
           CF_ERROR("average_add() fails");
           return false;
         }

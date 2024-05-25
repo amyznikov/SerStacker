@@ -23,7 +23,6 @@
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QFrameRegistrationOptions.h>
-#include <gui/qpipeline/QMasterFrameSelectionControl.h>
 #include <gui/qpipeline/stereo/QStereoMatcherOptions.h>
 
 #include <core/debug.h>

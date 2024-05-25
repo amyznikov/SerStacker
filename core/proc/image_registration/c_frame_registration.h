@@ -25,21 +25,22 @@ struct c_feature_registration_options
 
 struct c_ecc_registration_options
 {
-  bool enabled = true;
   double scale = 0.5;
   double eps = 0.2;
   double min_rho = 0.8;
   double input_smooth_sigma = 1.0;
   double reference_smooth_sigma = 1.0;
   double update_step_scale = 1.5;
-  double normalization_noise = 0.01;
-  int normalization_scale = 0;
+  double planetary_disk_mask_stdev_factor = 0.5;
   int max_iterations = 15;
   int ecch_minimum_image_size = 16;
+  //  double normalization_noise = 0.01;
+  //  int normalization_scale = 0;
+
+  bool enabled = true;
   bool enable_ecch = true;
   bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;
-  double planetary_disk_mask_stdev_factor = 0.5;
 };
 
 struct c_eccflow_registration_options
@@ -54,9 +55,7 @@ struct c_eccflow_registration_options
   int support_scale = 4;
   int min_image_size = -1;
   int max_pyramid_level = -1;
-  int normalization_scale = -1;
   c_eccflow::DownscaleMethod downscale_method = c_eccflow::DownscaleRecursiveResize;
-//  bool enable_debug = false;
 };
 
 struct c_jovian_derotation_options
@@ -85,33 +84,8 @@ struct c_master_frame_selection_options
   std::string master_fiename;
   int master_frame_index = 0;
 };
-//
-//struct c_master_frame_options
-//{
-////  master_frame_selection_method master_selection_method =
-////      master_frame_specific_index;
-////
-////  std::string master_fiename;
-////  int master_frame_index = 0;
-//
-//  c_master_frame_selection_options master_frame_selection;
-//
-//  bool apply_input_image_processor = true;
-//  bool generate_master_frame = true;
-//  int max_frames_to_generate_master_frame = 3000;
-//
-//  double accumulated_sharpen_factor = 1;
-//  //double master_sharpen_factor = 0.5;
-//  double unsharp_sigma = 3;
-//  double unsharp_alpha = 0.6;
-//
-//  bool save_master_frame = true;
-//  double feature_scale = 0.5;
-//  double ecc_scale = 0.5;
-//  int eccflow_scale = 0;
-//  int eccflow_min_image_size = -1;
-//  int eccflow_max_pyramid_level = -1;
-//};
+
+
 
 struct c_image_registration_options
 {
@@ -125,7 +99,6 @@ struct c_image_registration_options
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
   cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
-  // c_master_frame_options master_frame_options;
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;

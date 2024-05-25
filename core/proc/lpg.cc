@@ -200,26 +200,24 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 
   compute_gradient(s, g);
 
-  if( k > 0 ) {
-
-    compute_laplacian(s, l);
-
-    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
-
-    if( p > 1  ) {
-      cv::pow(m, p, m);
-    }
-
-  }
-  else if( p != 1 && p != 0 ) {
-
-    cv::pow(g, p, m);
-
+  if( k <= 0 ) {
+    m = g;
   }
   else {
+    compute_laplacian(s, l);
+    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
+  }
 
-    m = g;
+  if( uscale > 0 && uscale > dscale ) {
+    downscale(m, m, uscale - std::max(0, dscale));
+  }
 
+  if( m.size() != src.size() ) {
+    upscale(m, src.size());
+  }
+
+  if( p != 0 && p != 1  ) {
+    cv::pow(m, p, m);
   }
 
   if( optional_output_sharpness_metric ) {
@@ -232,21 +230,89 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
       cv::resize(mask, msk, m.size(), 0, 0, cv::INTER_NEAREST);
       *optional_output_sharpness_metric = cv::mean(m, msk);
     }
-
   }
 
   if( optional_output_map.needed() ) {
-
-    if( uscale > 0 && uscale > dscale ) {
-      downscale(m, m, uscale - std::max(0, dscale));
-    }
-
-    if( m.size() != src.size() ) {
-      upscale(m, src.size());
-    }
-
     optional_output_map.move(m);
   }
 
   return true;
 }
+
+//bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
+//    double k, double p, int dscale, int uscale, bool average_color_channels,
+//    cv::Scalar * optional_output_sharpness_metric)
+//{
+//
+//  const cv::Mat src =
+//      image.getMat();
+//
+//  cv::Mat s, l, g, m;
+//
+//  if ( src.depth() == CV_32F ) {
+//    src.copyTo(s);
+//  }
+//  else {
+//    src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
+//  }
+//
+//  if( average_color_channels && s.channels() > 1 ) {
+//    reduce_color_channels(s, s, cv::REDUCE_AVG);
+//  }
+//
+//  if( dscale > 0 ) {
+//    downscale(s, s, dscale);
+//  }
+//
+//  compute_gradient(s, g);
+//
+//  if( k > 0 ) {
+//
+//    compute_laplacian(s, l);
+//
+//    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
+//
+//    if( p > 1  ) {
+//      cv::pow(m, p, m);
+//    }
+//
+//  }
+//  else if( p != 1 && p != 0 ) {
+//
+//    cv::pow(g, p, m);
+//
+//  }
+//  else {
+//
+//    m = g;
+//
+//  }
+//
+//  if( optional_output_sharpness_metric ) {
+//
+//    if( mask.empty() ) {
+//      *optional_output_sharpness_metric = cv::mean(m);
+//    }
+//    else {
+//      cv::Mat1b msk;
+//      cv::resize(mask, msk, m.size(), 0, 0, cv::INTER_NEAREST);
+//      *optional_output_sharpness_metric = cv::mean(m, msk);
+//    }
+//
+//  }
+//
+//  if( optional_output_map.needed() ) {
+//
+//    if( uscale > 0 && uscale > dscale ) {
+//      downscale(m, m, uscale - std::max(0, dscale));
+//    }
+//
+//    if( m.size() != src.size() ) {
+//      upscale(m, src.size());
+//    }
+//
+//    optional_output_map.move(m);
+//  }
+//
+//  return true;
+//}

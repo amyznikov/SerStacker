@@ -42,10 +42,10 @@ public:
 
   bool start();
   void stop();
-  void pause();
 
   bool started() const;
   bool paused() const;
+  void set_paused(bool v);
 
   bool write(const cv::Mat & frame);
   int nbframes() const;

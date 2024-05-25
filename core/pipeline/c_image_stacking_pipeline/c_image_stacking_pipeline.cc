@@ -302,46 +302,6 @@ const c_frame_upscale_options & c_image_stacking_pipeline::upscale_options() con
   return upscale_options_;
 }
 
-//c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options()
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor;
-//}
-//
-//const c_sparse_feature_extractor_options & c_image_stacking_pipeline::sparse_feature_extractor_options() const
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor;
-//}
-//
-//c_sparse_feature_detector_options & c_image_stacking_pipeline::sparse_feature_detector_options()
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.detector;
-//}
-//
-//const c_sparse_feature_detector_options & c_image_stacking_pipeline::sparse_feature_detector_options() const
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.detector;
-//}
-//
-//c_sparse_feature_descriptor_options & c_image_stacking_pipeline::sparse_feature_descriptor_options()
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.descriptor;
-//}
-//
-//const c_sparse_feature_descriptor_options & c_image_stacking_pipeline::sparse_feature_descriptor_options() const
-//{
-//  return image_registration_options_.feature_registration.sparse_feature_extractor_and_matcher.descriptor;
-//}
-//
-//c_master_frame_options & c_image_stacking_pipeline::master_frame_options()
-//{
-//  return image_registration_options_.master_frame_options;
-//}
-//
-//const c_master_frame_options & c_image_stacking_pipeline::master_frame_options() const
-//{
-//  return image_registration_options_.master_frame_options;
-//}
-
 c_roi_selection_options & c_image_stacking_pipeline::roi_selection_options()
 {
   return roi_selection_options_;
@@ -368,27 +328,10 @@ c_roi_selection::ptr c_image_stacking_pipeline::create_roi_selection() const
   return nullptr;
 }
 
-
-//
-//c_image_registration_options & c_image_stacking_pipeline::registration_options()
-//{
-//  return image_registration_options_;
-//}
-//
-//const c_image_registration_options & c_image_stacking_pipeline::registration_options() const
-//{
-//  return image_registration_options_;
-//}
-
 c_frame_registration::sptr c_image_stacking_pipeline::create_frame_registration(const c_image_registration_options & options) const
 {
   return c_frame_registration::sptr(new c_frame_registration(options));
 }
-
-//c_frame_registration::sptr c_image_stacking_pipeline::create_frame_registration() const
-//{
-//  return create_frame_registration(image_registration_options_);
-//}
 
 c_frame_accumulation_options & c_image_stacking_pipeline::accumulation_options()
 {
@@ -3219,8 +3162,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
+//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
         SERIALIZE_OPTION(subsubsection, save, ecc, enable_ecch);
@@ -3242,7 +3185,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);
         SERIALIZE_OPTION(subsubsection, save, eccflow, downscale_method);
@@ -3303,8 +3245,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
+//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
         SERIALIZE_OPTION(subsubsection, save, ecc, enable_ecch);
@@ -3326,7 +3268,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
         SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
         SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);
         SERIALIZE_OPTION(subsubsection, save, eccflow, downscale_method);
@@ -3697,6 +3638,7 @@ bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
   p->accumulation_options_ = this->accumulation_options_;
   p->output_options_ = this->output_options_;
   p->image_processing_options_ = this->image_processing_options_;
+  p->stacking_options_ = this->stacking_options_ ;
 
   const std::string backup_master_source_fiename =
       p->master_frame_options_.master_frame_selection.master_fiename;

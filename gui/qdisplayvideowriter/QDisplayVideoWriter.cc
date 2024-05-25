@@ -105,17 +105,14 @@ const QString & QDisplayVideoWriter::outputPathFileName() const
 
 bool QDisplayVideoWriter::start()
 {
-  if ( paused_ ) {
-    paused_ = false;
-  }
-  else {
+  started_ = true;
+
+  if ( !paused_ ) {
 
     if( ffmpeg_.is_open() ) {
       stop();
     }
 
-    started_ = true;
-    paused_ = false;
     nbframes_ = 0;
     frameSize_ = cv::Size(-1, -1);
     channels_ = 0;
@@ -134,17 +131,15 @@ void QDisplayVideoWriter::stop()
   }
 
   started_ = false;
-  paused_ = false;
 
   Q_EMIT stateChanged();
 }
 
-void QDisplayVideoWriter::pause()
+
+void QDisplayVideoWriter::set_paused(bool v)
 {
-  if( started_ ) {
-    paused_ = true;
-    Q_EMIT stateChanged();
-  }
+  paused_ = v;
+  Q_EMIT stateChanged();
 }
 
 bool QDisplayVideoWriter::started() const

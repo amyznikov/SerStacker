@@ -37,8 +37,8 @@ struct c_running_average_registration_options
 
 struct c_running_average_update_options
 {
-  double reference_running_weight = 10;
-  double running_weight = 15;
+  double reference_weight = 15;
+  double running_weight = 2;
 
   c_lpg_options lpg;
 

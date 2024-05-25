@@ -2260,15 +2260,30 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
         const float & ww = wp[x];
         float & w = cntp[x];
 
-        for( int c = 0; c < cn; ++c ) {
+//        if ( ww >= w ) { // * avgw
+//
+//          for( int c = 0; c < cn; ++c ) {
+//
+//            const T & srcv = srcp[x * cn + c];
+//            float & dstv = dstp[x * cn + c];
+//
+//            dstv = (dstv * w + srcv * ww) / (w + ww);
+//          }
+//
+//          w = (w * w + ww * ww) / (w + ww);
+//        }
+//        else {
 
-          const T & srcv = srcp[x * cn + c];
-          float & dstv = dstp[x * cn + c];
+          for( int c = 0; c < cn; ++c ) {
 
-          dstv = (dstv * w * avgw + srcv * ww) / (w * avgw + ww);
-        }
+            const T & srcv = srcp[x * cn + c];
+            float & dstv = dstp[x * cn + c];
 
-        w = (w * w * avgw + ww * ww) / (w * avgw + ww);
+            dstv = (dstv * w * avgw + srcv * ww) / (w * avgw + ww);
+          }
+
+          w = (w * w * avgw + ww * ww) / (w * avgw + ww);
+//        }
       }
     }
 #if HAVE_TBB

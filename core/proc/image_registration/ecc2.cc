@@ -1344,19 +1344,6 @@ double c_eccflow::update_multiplier() const
   return update_multiplier_;
 }
 
-//
-// Use for images which violate brightness constancy assumption,
-// for example on strong vignetting or planetary disk derotation
-void c_eccflow::set_normalization_scale(int v)
-{
-  normalization_scale_ = v;
-}
-
-int c_eccflow::normalization_scale() const
-{
-  return normalization_scale_;
-}
-
 void c_eccflow::set_input_smooth_sigma(double v)
 {
   input_smooth_sigma_ = v;
@@ -1436,7 +1423,6 @@ void c_eccflow::copy_parameters(const this_class & rhs)
   noise_level_ = rhs.noise_level_;
   max_iterations_ = rhs.max_iterations_;
   support_scale_ = rhs.support_scale_;
-  normalization_scale_ = rhs.normalization_scale_;
   min_image_size_ = rhs.min_image_size_;
   scale_factor_ = rhs.scale_factor_;
   downscale_method_ = rhs.downscale_method_;
@@ -1480,7 +1466,10 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
     },
 
     [this, &e, &rmap]() {
-      if ( !e.current_mask.empty() ) {
+      if ( e.current_mask.empty() ) {
+        M.release();
+      }
+      else {
         cv::remap(e.current_mask, M,
             rmap, cv::noArray(),
             cv::INTER_NEAREST,
@@ -2016,8 +2005,11 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
     }
 
     for( int j = 0; j < max_iterations_; ++j ) {
+
       ecc_flow_to_remap(uv, crmap);
+
       compute_uv(current_scale, crmap, cuv);
+
       cv::add(uv, cuv, uv);
     }
 

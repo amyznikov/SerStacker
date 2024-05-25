@@ -7,6 +7,7 @@
 
 #include "QDisplayVideoWriterOptions.h"
 #include <gui/widgets/style.h>
+#include <gui/widgets/createAction.h>
 #include <core/debug.h>
 
 #define ICON_video_start    ":/qdisplayvideowriter/icons/video-start.png"
@@ -220,19 +221,31 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
 
   QMenu *menu = new QMenu(tb);
 
-  QAction *action =
-      menu->addAction(getIcon(ICON_video_options),
-          "Video record options...");
+  //menu->addAction(createCheckableAction2(getIcon(ICON_video_options),
 
-  action->setCheckable(true);
-  tb->setMenu(menu);
+  menu->addAction(createCheckableAction(QIcon(),
+      "Pause",
+      "Pause / Resume video recording",
+      writer->paused(),
+      [writer](bool checked) {
+        writer->set_paused(checked);
+      }));
 
-  QObject::connect(action, &QAction::triggered,
-      [writer, tb, parent, action](bool checked) {
 
-        static QDisplayVideoWriterOptionsDialogBox * dlgbox = nullptr;
+  menu->addAction(createCheckableAction2(getIcon(ICON_video_options),
+      "Video record options...",
+      "Show / Hide video record options dialog box",
+      false,
+      [writer, tb, parent](QAction * action) {
+
+        static QDisplayVideoWriterOptionsDialogBox * dlgbox =
+            nullptr;
+
+        const bool checked =
+            action->isChecked();
 
         if ( !checked ) {
+
           if ( dlgbox ) {
             dlgbox->hide();
           }
@@ -252,7 +265,44 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
           dlgbox->setVideoWriter(writer);
           dlgbox->show();
         }
-      });
+
+      }));
+
+//  QAction *action =
+//      menu->addAction(getIcon(ICON_video_options),
+//          "Video record options...");
+//
+//  action->setCheckable(true);
+
+
+  tb->setMenu(menu);
+
+//  QObject::connect(action, &QAction::triggered,
+//      [writer, tb, parent, action](bool checked) {
+//
+//        static QDisplayVideoWriterOptionsDialogBox * dlgbox = nullptr;
+//
+//        if ( !checked ) {
+//          if ( dlgbox ) {
+//            dlgbox->hide();
+//          }
+//        }
+//        else {
+//
+//          if ( dlgbox ) {
+//            dlgbox->setParent(parent ? parent : tb);
+//          }
+//          else {
+//            dlgbox = new QDisplayVideoWriterOptionsDialogBox(parent? parent : tb);
+//
+//            QObject::connect(dlgbox, &QDisplayVideoWriterOptionsDialogBox::visibilityChanged,
+//                action, &QAction::setChecked);
+//          }
+//
+//          dlgbox->setVideoWriter(writer);
+//          dlgbox->show();
+//        }
+//      });
 
   QObject::connect(tb, &QToolButton::clicked,
       [writer, tb](bool checked) {
@@ -263,6 +313,7 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
         else if ( !writer->start() ) {
           CF_ERROR("writer->start() fails");
         }
+
         tb->setChecked(writer->started());
       });
 

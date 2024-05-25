@@ -45,17 +45,7 @@ public:
   void set_border_value(const cv::Scalar & v);
   const cv::Scalar & border_value() const;
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, translation, "image translation in pixels before rotation/scale");
-    BIND_PCTRL(ctls, rotation, "rotation angle in degrees");
-    BIND_PCTRL(ctls, scale, "image scale");
-    BIND_PCTRL(ctls, resize_mode, "resize mode");
-    BIND_PCTRL(ctls, interpolation, "interpolation");
-    BIND_PCTRL(ctls, border_type, "border_type");
-    BIND_PCTRL(ctls, border_value, "border_value");
-  }
-
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 

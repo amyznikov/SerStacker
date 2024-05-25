@@ -97,6 +97,18 @@ const cv::Size2f c_affine_transform_routine::scale() const
   return scale_;
 }
 
+void c_affine_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+{
+  BIND_PCTRL(ctls, translation, "image translation in pixels before rotation/scale");
+  BIND_DOUBLE_SLIDER_CTRL(ctls, rotation, -180, 180, 10, "rotation", "rotation angle in degrees");
+  //BIND_PCTRL(ctls, rotation, "rotation angle in degrees");
+  BIND_PCTRL(ctls, scale, "image scale");
+  BIND_PCTRL(ctls, resize_mode, "resize mode");
+  BIND_PCTRL(ctls, interpolation, "interpolation");
+  BIND_PCTRL(ctls, border_type, "border_type");
+  BIND_PCTRL(ctls, border_value, "border_value");
+}
+
 bool c_affine_transform_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {

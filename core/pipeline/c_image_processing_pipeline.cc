@@ -318,21 +318,23 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
               file_directory.c_str());
     }
 
-    if( file_name.empty() ) {
+    if( file_name.empty() || file_name.front() == '.' ) {
 
       if ( live_stream ) {
 
         file_name =
-            ssprintf("%s.%s.%s",
+            ssprintf("%s.%s.%s%s",
                 csequence_name(),
                 postfix.c_str(),
-                get_current_date_time_string().c_str());
+                get_current_date_time_string().c_str(),
+                file_name.c_str());
       }
       else {
         file_name =
-            ssprintf("%s.%s",
+            ssprintf("%s.%s%s",
                 csequence_name(),
-                postfix.c_str());
+                postfix.c_str(),
+                file_name.c_str());
       }
     }
 

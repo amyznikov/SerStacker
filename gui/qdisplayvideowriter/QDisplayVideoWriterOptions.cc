@@ -221,8 +221,6 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
 
   QMenu *menu = new QMenu(tb);
 
-  //menu->addAction(createCheckableAction2(getIcon(ICON_video_options),
-
   menu->addAction(createCheckableAction(QIcon(),
       "Pause",
       "Pause / Resume video recording",
@@ -268,41 +266,7 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
 
       }));
 
-//  QAction *action =
-//      menu->addAction(getIcon(ICON_video_options),
-//          "Video record options...");
-//
-//  action->setCheckable(true);
-
-
   tb->setMenu(menu);
-
-//  QObject::connect(action, &QAction::triggered,
-//      [writer, tb, parent, action](bool checked) {
-//
-//        static QDisplayVideoWriterOptionsDialogBox * dlgbox = nullptr;
-//
-//        if ( !checked ) {
-//          if ( dlgbox ) {
-//            dlgbox->hide();
-//          }
-//        }
-//        else {
-//
-//          if ( dlgbox ) {
-//            dlgbox->setParent(parent ? parent : tb);
-//          }
-//          else {
-//            dlgbox = new QDisplayVideoWriterOptionsDialogBox(parent? parent : tb);
-//
-//            QObject::connect(dlgbox, &QDisplayVideoWriterOptionsDialogBox::visibilityChanged,
-//                action, &QAction::setChecked);
-//          }
-//
-//          dlgbox->setVideoWriter(writer);
-//          dlgbox->show();
-//        }
-//      });
 
   QObject::connect(tb, &QToolButton::clicked,
       [writer, tb](bool checked) {

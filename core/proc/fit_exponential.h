@@ -1,5 +1,5 @@
 /*
- * fit_exponent.h
+ * fit_exponential.h
  *
  *  Created on: May 25, 2024
  *      Author: amyznikov
@@ -26,7 +26,7 @@
 #include <cmath>
 
 /**
- * fit_exponent()
+ * fit_exponential()
  *
  * This routine uses direct (no guessed initial values required, no iterative process) method
  * of fitting exponential function
@@ -43,8 +43,8 @@
  *
  */
 
-template<class T>
-bool fit_exponent(const std::vector<T> & x, const std::vector<T> & y, T * a, T * b, T * c)
+template<class VectorType, class T>
+bool fit_exponential(const VectorType & x, const VectorType & y, T * a, T * b, T * c)
 {
   const size_t n =
       x.size();

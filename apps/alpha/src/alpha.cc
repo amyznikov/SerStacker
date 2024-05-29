@@ -38,7 +38,7 @@
 
 #include <core/proc/c_line_estimate.h>
 #include <core/proc/c_quad_estimate.h>
-#include <core/proc/fit_exponent.h>
+#include <core/proc/fit_exponential.h>
 
 #include <core/debug.h>
 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
 
   float a, b, c;
-  fit_exponent(vx, vy, &a, &b, &c);
+  fit_exponential(vx, vy, &a, &b, &c);
 
   CF_DEBUG("a=%g b=%g c=%g", a, b, c);
 

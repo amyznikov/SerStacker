@@ -43,6 +43,8 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   c_frame_weigthed_average();
+  c_frame_weigthed_average(double max_weights_ratio);
+
 
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
@@ -51,9 +53,14 @@ public:
 
   const cv::Mat & accumulator() const;
   const cv::Mat & counter() const;
+  const cv::Mat & max_weights() const;
+
+  void set_max_weights_ratio(double v);
+  double max_weights_ratio() const;
 
 protected:
-  cv::Mat accumulator_, counter_;
+  cv::Mat accumulator_, counter_, max_weights_;
+  double max_weights_ratio_ = 0;
 };
 
 class c_laplacian_pyramid_focus_stacking :

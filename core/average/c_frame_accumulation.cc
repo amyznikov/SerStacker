@@ -410,7 +410,7 @@ static bool divide_accumulator_(const cv::Mat & acc, const cv::Mat & weights,
 
 template<class T1, class T2, class T3>
 static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
-    cv::Mat & acc, cv::Mat & counter, int accdepth)
+    cv::Mat & acc, cv::Mat & counter, cv::Mat & maxw, float maxwr, int accdepth)
 {
   if( acc.empty() || counter.empty() ) {
     acc.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
@@ -436,7 +436,7 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
-        [&S, &W, &acc, &counter](const tbb_range & r) {
+        [&S, &W, &acc, &counter, &maxw, maxwr](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 #else
           for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
@@ -447,10 +447,27 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
             T3 * accp = acc.ptr<T3>(y);
             T3 * cntp = counter.ptr<T3>(y);
 
-            for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              cntp[x] += wp[x];
-              accp[x] += sp[x] * wp[x];
+            if ( maxw.empty() ) {
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                cntp[x] += wp[x];
+                accp[x] += sp[x] * wp[x];
+              }
             }
+            else {
+              float * mwp = maxw.ptr<float>(y);
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                if ( wp[x] > mwp[x] * maxwr ) {
+                  cntp[x] += wp[x];
+                  accp[x] += sp[x] * wp[x];
+                }
+                if ( wp[x] > mwp[x] ) {
+                  mwp[x] = wp[x];
+                }
+              }
+
+            }
+
+
           }
 #if HAVE_TBB
         });
@@ -461,7 +478,7 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
-        [&S, &W, &acc, &counter, cn](const tbb_range & r) {
+        [&S, &W, &acc, &counter, &maxw, maxwr, cn](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 #else
           for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
@@ -473,10 +490,30 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
             T3 * accp = acc.ptr<T3>(y);
             T3 * cntp = counter.ptr<T3>(y);
 
-            for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              for ( int c = 0; c < cn; ++c ) {
-                cntp[x * cn + c] += wp[x * cn + c];
-                accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
+            if ( maxw.empty() ) {
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                for ( int c = 0; c < cn; ++c ) {
+                  cntp[x * cn + c] += wp[x * cn + c];
+                  accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
+                }
+              }
+
+            }
+            else {
+
+              float * mwp = maxw.ptr<float>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                for ( int c = 0; c < cn; ++c ) {
+                  if ( wp[x * cn + c] > mwp[x * cn + c] * maxwr ) {
+                    cntp[x * cn + c] += wp[x * cn + c];
+                    accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
+                  }
+                  if ( wp[x * cn + c] > mwp[x * cn + c] ) {
+                    mwp[x * cn + c] = wp[x * cn + c];
+                  }
+                }
               }
             }
           }
@@ -488,7 +525,7 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, S.rows, tbb_grain_size),
-        [&S, &W, &acc, &counter, cn](const tbb_range & r) {
+        [&S, &W, &acc, &counter, &maxw, maxwr, cn](const tbb_range & r) {
           for ( int y = r.begin(), ymax = r.end(); y < ymax; ++y ) {
 #else
           for ( int y = 0, ymax = S.rows; y < ymax; ++y ) {
@@ -500,11 +537,30 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
             T3 * accp = acc.ptr<T3>(y);
             T3 * cntp = counter.ptr<T3>(y);
 
-            for ( int x = 0, n = acc.cols; x < n; ++x ) {
-              cntp[x] += wp[x];
-              for ( int c = 0; c < cn; ++c ) {
-                accp[x * cn + c] += sp[x * cn + c] * wp[x];
+            if ( maxw.empty() ) {
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                cntp[x] += wp[x];
+                for ( int c = 0; c < cn; ++c ) {
+                  accp[x * cn + c] += sp[x * cn + c] * wp[x];
+                }
               }
+            }
+            else {
+              float * mwp = maxw.ptr<float>(y);
+
+              for ( int x = 0, n = acc.cols; x < n; ++x ) {
+                if ( wp[x] > mwp[x] * maxwr ) {
+                  cntp[x] += wp[x];
+                  for ( int c = 0; c < cn; ++c ) {
+                    accp[x * cn + c] += sp[x * cn + c] * wp[x];
+                  }
+                }
+                if ( wp[x] > mwp[x] ) {
+                  mwp[x] = wp[x];
+                }
+              }
+
             }
           }
 #if HAVE_TBB
@@ -522,10 +578,8 @@ static bool accumulate_weighted_(cv::InputArray src, cv::InputArray weights,
 }
 
 static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
-    cv::Mat & acc, cv::Mat & accw)
+    cv::Mat & acc, cv::Mat & accw, cv::Mat & maxw, float maxwr)
 {
-  CF_DEBUG("weights.empty()=%d weights.type()=%d", weights.empty(), weights.type());
-
   const int accdepth = acc.depth();
 
   switch ( src.depth() ) {
@@ -534,57 +588,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint8_t, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint8_t, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint8_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -595,57 +649,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int8_t, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int8_t, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int8_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -656,57 +710,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<uint16_t, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<uint16_t, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<uint16_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -717,57 +771,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int16_t, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int16_t, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int16_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -778,57 +832,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<int32_t, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<int32_t, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<int32_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -838,57 +892,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<float, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<float, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<float, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -898,57 +952,57 @@ static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
     case CV_32F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, float, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, float, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_64F :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, double, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, double, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, uint8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, uint8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_8S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, int8_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, int8_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16U :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, uint16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, uint16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_16S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, int16_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, int16_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     case CV_32S :
       switch ( accdepth ) {
       case CV_32F :
-        return accumulate_weighted_<double, int32_t, float>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
       case CV_64F :
-        return accumulate_weighted_<double, int32_t, double>(src, weights, acc, accw, accdepth);
+        return accumulate_weighted_<double, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
       }
       break;
     }
@@ -965,6 +1019,12 @@ c_frame_weigthed_average::c_frame_weigthed_average()
 {
 
 }
+
+c_frame_weigthed_average::c_frame_weigthed_average(double max_weights_ratio) :
+    max_weights_ratio_(max_weights_ratio)
+{
+}
+
 
 //c_frame_weigthed_average::c_frame_weigthed_average(const cv::Size & image_size)
 //{
@@ -1004,6 +1064,7 @@ void c_frame_weigthed_average::clear()
 {
   accumulator_.release();
   counter_.release();
+  max_weights_.release();
   accumulated_frames_ = 0;
 }
 
@@ -1020,6 +1081,21 @@ const cv::Mat & c_frame_weigthed_average::accumulator() const
 const cv::Mat & c_frame_weigthed_average::counter() const
 {
   return counter_;
+}
+
+const cv::Mat & c_frame_weigthed_average::max_weights() const
+{
+  return max_weights_;
+}
+
+void c_frame_weigthed_average::set_max_weights_ratio(double v)
+{
+  max_weights_ratio_ = v;
+}
+
+double c_frame_weigthed_average::max_weights_ratio() const
+{
+  return max_weights_ratio_;
 }
 
 bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
@@ -1061,9 +1137,17 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
     cv::add(accumulator_, src, accumulator_, weights, accumulator_.type());
     cv::add(counter_, cv::Scalar::all(1), counter_, weights, counter_.type());
   }
-  else if ( !accumulate_weighted(src, weights, accumulator_, counter_) ) {
-    CF_ERROR("ERROR in weigthed_frame_average: accumulate_weighted() fails");
-    return false;
+  else {
+
+    if( max_weights_ratio_ > 0 && max_weights_.empty() ) {
+      max_weights_.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
+      max_weights_.setTo(0);
+    }
+
+    if ( !accumulate_weighted(src, weights, accumulator_, counter_, max_weights_, max_weights_ratio_) ) {
+      CF_ERROR("ERROR in weigthed_frame_average: accumulate_weighted() fails");
+      return false;
+    }
   }
 
   ++accumulated_frames_;
@@ -1077,13 +1161,6 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
     CF_ERROR("No frames was accumulated");
     return false;
   }
-
-//  CF_DEBUG("accumulator_: %dx%d channels=%d depth=%d counter_: %dx%d channels=%d depth=%d",
-//      accumulator_.cols, accumulator_.rows,
-//      accumulator_.channels(), accumulator_.depth(),
-//      counter_.cols, counter_.rows,
-//      counter_.channels(), counter_.depth());
-
 
   INSTRUMENT_REGION("");
 
@@ -1522,10 +1599,6 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
 
   for ( int i = 0; i < nc; ++i ) {
 
-    //double min, max;
-    //cv::minMaxLoc(weights[i], &min, &max);
-    //CF_DEBUG("weights      [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(weights[i]), min, max);
-
     cv::accumulateProduct(channels[i], weights[i], accumulators_[i]);
     cv::accumulate(weights[i], weights_[i]);
   }
@@ -1553,16 +1626,8 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
   }
 
   for ( int i = 0; i < nc; ++i ) {
-    //double min, max;
-
     cv::divide(accumulators_[i], weights_[i], channels[i], dscale, ddepth);
-
-    //cv::minMaxLoc(channels[i], &min, &max);
-    //CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
-
     cv::idft(channels[i], channels[i], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-    //cv::minMaxLoc(channels[i], &min, &max);
-    //CF_DEBUG("channels     [i=%d]: countNaNs=%d min=%g max=%g", i, countNaNs(channels[i]), min, max);
   }
 
   if ( rc_.empty() ) {
@@ -1650,8 +1715,8 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
 
   cmag.create(src.size());
 
-  double scale = square(1. / src.size().area());
-  CF_DEBUG("scale=%g", scale);
+  double scale =
+      square(1. / src.size().area());
 
 
   if ( !mc ) {
@@ -2239,8 +2304,6 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
 
     const cv::Mat1f weights =
         _srcmask.getMat();
-
-    // CF_DEBUG("CV_32FC1");
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, rows, tbb_grain_size),

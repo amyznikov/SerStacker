@@ -58,6 +58,26 @@ public:
     interpolation_ = v;
   }
 
+  cv::InterpolationFlags mask_interpolation() const
+  {
+    return mask_interpolation_;
+  }
+
+  void set_mask_interpolation(cv::InterpolationFlags v)
+  {
+    mask_interpolation_ = v;
+  }
+
+  int mask_threshold() const
+  {
+    return mask_threshold_;
+  }
+
+  void set_mask_threshold(int v)
+  {
+    mask_threshold_ = v;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
@@ -67,6 +87,8 @@ protected:
   double fx_ = 0;
   double fy_ = 0;
   cv::InterpolationFlags interpolation_ = cv::INTER_AREA;
+  cv::InterpolationFlags mask_interpolation_ = cv::INTER_NEAREST;
+  int mask_threshold_ = 250;
 };
 
 #endif /* __c_resize_image_routine_h__ */

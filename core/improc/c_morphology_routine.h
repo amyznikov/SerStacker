@@ -47,6 +47,7 @@ public:
   void set_se_shape(cv::MorphShapes v)
   {
     se_shape_ = v;
+    SE.release();
   }
 
   cv::MorphShapes se_shape() const
@@ -57,6 +58,7 @@ public:
   void set_se_size(const cv::Size & v)
   {
     se_size_ = v;
+    SE.release();
   }
 
   const cv::Size& se_size() const
@@ -67,6 +69,7 @@ public:
   void set_anchor(const cv::Point & v)
   {
     anchor_ = v;
+    SE.release();
   }
 
   const cv::Point & anchor() const
@@ -114,113 +117,10 @@ public:
     return borderValue_;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, operation, "Type of a morphological operation");
-    BIND_PCTRL(ctls, se_shape, "Shape of structuring element");
-    BIND_PCTRL(ctls, se_size, "Size of structuring element");
-    BIND_PCTRL(ctls, anchor, "Anchor position with the kernel. Negative values mean that the anchor is at the kernel center");
-    BIND_PCTRL(ctls, iterations, "Number of times erosion and dilation are applied");
-    BIND_PCTRL(ctls, borderType, "Pixel extrapolation method, see #BorderTypes. BORDER_WRAP is not supported");
-    BIND_PCTRL(ctls, borderValue, "Border value in case of a constant border");
-  }
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
+  bool serialize(c_config_setting settings, bool save) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override;
 
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, operation);
-      SERIALIZE_PROPERTY(settings, save, *this, se_shape);
-      SERIALIZE_PROPERTY(settings, save, *this, se_size);
-      SERIALIZE_PROPERTY(settings, save, *this, anchor);
-      SERIALIZE_PROPERTY(settings, save, *this, iterations);
-      SERIALIZE_PROPERTY(settings, save, *this, borderType);
-      SERIALIZE_PROPERTY(settings, save, *this, borderValue);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
-  {
-    switch (operation_) {
-
-      case MORPH_SMOOTH_OPEN:
-        morphological_smooth_open(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_SMOOTH_CLOSE:
-        morphological_smooth_close(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_INTERNAL_GRADIENT:
-        morphological_internal_gradient(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_EXTERNAL_GRADIENT:
-        morphological_external_gradient(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_LAPLACIAN:
-        morphological_laplacian(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_LAPLACIAN_ABS:
-        morphological_laplacian_abs(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_RAMPLEE:
-        rampLee(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_TEXLEE:
-        texLee(image.getMat(), image,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            borderType_,
-            borderValue_);
-        break;
-
-      case MORPH_GEO_FILL_HOLES4:
-        geo_fill_holes(image.getMat(), image, 4);
-        break;
-
-      case MORPH_GEO_FILL_HOLES8:
-        geo_fill_holes(image.getMat(), image, 8);
-        break;
-
-      default:
-        cv::morphologyEx(image.getMat(), image,
-            operation_,
-            cv::getStructuringElement(se_shape_, se_size_, anchor_),
-            anchor_,
-            iterations_,
-            borderType_,
-            borderValue_);
-        break;
-    }
-
-    return true;
-  }
 
 protected:
   cv::MorphShapes se_shape_ = cv::MORPH_RECT;
@@ -230,6 +130,7 @@ protected:
   int iterations_ = 1;
   cv::BorderTypes borderType_ = cv::BORDER_CONSTANT;
   cv::Scalar borderValue_ = cv::Scalar::all(0);
+  cv::Mat SE;
 };
 
 #endif /* CORE_IMPROC_C_MORPHOLOGY_ROUTINE_H_ */

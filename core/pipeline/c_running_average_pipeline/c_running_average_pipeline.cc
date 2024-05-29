@@ -433,7 +433,7 @@ bool c_running_average_pipeline::run_pipeline()
       break;
     }
 
-    if( input_options_.input_image_processor ) {
+    if( input_options_.input_image_processor && !input_options_.input_image_processor->empty() ) {
       if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
@@ -506,7 +506,7 @@ bool c_running_average_pipeline::process_current_frame1()
         else if ( &src != &dst ) {
           dst = src;
         }
-  };
+      };
 
 
   if( !enable_registration || average1_.accumulated_frames() < 1 ) {
@@ -654,8 +654,7 @@ bool c_running_average_pipeline::process_current_frame2()
       if( registration_options_.reference_unsharp_sigma_ > 0 && registration_options_.reference_unsharp_alpha_ > 0 ) {
 
         unsharp_mask(image1, mask1, image1, registration_options_.reference_unsharp_sigma_,
-            registration_options_.reference_unsharp_alpha_,
-            0, 1);
+            registration_options_.reference_unsharp_alpha_);
       }
 
 
@@ -729,8 +728,7 @@ bool c_running_average_pipeline::process_current_frame2()
       if( registration_options_.reference_unsharp_sigma_ > 0 && registration_options_.reference_unsharp_alpha_ > 0 ) {
 
         unsharp_mask(image1, mask1, image1, registration_options_.reference_unsharp_sigma_,
-            registration_options_.reference_unsharp_alpha_,
-            0, 1);
+            registration_options_.reference_unsharp_alpha_);
       }
 
       if( !reference_video_writer_.write(image1, mask1) ) {

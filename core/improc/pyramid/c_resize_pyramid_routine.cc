@@ -24,7 +24,7 @@ const c_enum_member* members_of<c_resize_pyramid_routine::DisplayType>()
 void c_resize_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   BIND_PCTRL(ctls, scale_factor, "Scale factor");
-  BIND_PCTRL(ctls, level, "");
+  BIND_SPINBOX_CTRL(ctls, level, 0, 127, 1, "level", "Display level");
   BIND_PCTRL(ctls, interpolation, "interpolation method, see cv::InterpolationFlags");
   BIND_PCTRL(ctls, display_type, "");
 }

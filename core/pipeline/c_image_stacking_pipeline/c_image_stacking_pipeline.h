@@ -116,10 +116,11 @@ struct c_frame_accumulation_options
 
   c_lpg_options lpg;
   c_laplacian_pyramid_focus_stacking::options fs;
+  double max_weights_ratio = 0;
 
   c_frame_accumulation_options()
   {
-    lpg.dscale = (-1); // disable this feature by default
+    lpg.dscale = 2;
   }
 };
 
@@ -230,9 +231,9 @@ public:
 
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
 
-  c_frame_accumulation_options& accumulation_options();
-  const c_frame_accumulation_options& accumulation_options() const;
-  c_frame_accumulation::ptr create_frame_accumulation() const;
+//  c_frame_accumulation_options& accumulation_options();
+//  const c_frame_accumulation_options& accumulation_options() const;
+  c_frame_accumulation::ptr create_frame_accumulation(const c_frame_accumulation_options & opts) const;
 
   c_image_stacking_output_options& output_options();
   const c_image_stacking_output_options& output_options() const;
@@ -271,7 +272,7 @@ protected:
   bool setup_frame_registration(const c_frame_registration::sptr & frame_registration,
       cv::Mat & reference_frame, cv::Mat & reference_mask);
 
-  bool setup_frame_accumulation();
+  // bool setup_frame_accumulation();
 
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
       int startpos, int endpos,
@@ -281,7 +282,8 @@ protected:
 
   bool read_input_frame(const c_input_sequence::sptr & input_sequence,
       cv::Mat & output_image, cv::Mat & output_mask,
-      bool is_external_master_frame) const;
+      bool is_external_master_frame,
+      bool save_raw_bayer_image) const;
 
   static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
@@ -328,8 +330,8 @@ protected:
       cv::InputArray srcmap,
       cv::OutputArray dstmap);
 
-  bool weights_required() const;
-  void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
+  bool weights_required(const c_frame_accumulation_options & opts) const;
+  void compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   static void compute_relative_weights(const cv::Mat & wc, const cv::Mat & mc, const cv::Mat & wref, cv::Mat & wrel);
   static double compute_image_noise(const cv::Mat & image, const cv::Mat & mask, color_channel_type channel);
 
@@ -341,8 +343,9 @@ protected:
   c_roi_selection_options roi_selection_options_;
   c_frame_upscale_options upscale_options_;
   c_image_stacking_master_frame_options master_frame_options_;
-  c_image_stacking_options stacking_options_;
-  c_frame_accumulation_options accumulation_options_;
+  c_frame_accumulation_options master_accumulation_options_;
+  c_image_stacking_options stack_options_;
+  c_frame_accumulation_options stack_accumulation_options_;
   c_image_stacking_output_options output_options_;
   c_image_processing_options image_processing_options_;
 

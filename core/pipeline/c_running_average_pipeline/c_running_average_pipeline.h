@@ -18,6 +18,7 @@
 struct c_running_average_input_options:
     c_image_processing_pipeline_input_options
 {
+      c_image_processor::sptr ecc_image_processor;
 };
 
 struct c_running_average_registration_options

@@ -15,8 +15,9 @@
 #include "c_load_image_routine.h"
 
 #include "c_gradient_routine.h"
-#include "c_ridgeness_routine.h"
 #include "c_laplacian_routine.h"
+#include "c_hessian_routine.h"
+#include "c_ridgeness_routine.h"
 #include "c_radial_gradient_routine.h"
 #include "c_noisemap_routine.h"
 #include "c_auto_correlation_routine.h"
@@ -169,6 +170,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_load_image_routine::class_factory_instance());
 
     register_class_factory(c_laplacian_routine::class_factory_instance());
+    register_class_factory(c_hessian_routine::class_factory_instance());
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_radial_gradient_routine::class_factory_instance());
     register_class_factory(c_ridgeness_routine::class_factory_instance());

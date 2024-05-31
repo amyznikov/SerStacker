@@ -7,6 +7,7 @@
 
 #include "QFileSystemTreeView.h"
 #include <gui/widgets/QWaitCursor.h>
+#include <core/debug.h>
 
 #define ICON_copy   "copy"
 #define ICON_delete "delete"

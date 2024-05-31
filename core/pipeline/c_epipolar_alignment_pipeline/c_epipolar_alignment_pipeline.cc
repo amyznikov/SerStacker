@@ -312,6 +312,8 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
     cv::Mat & display =
         display_frame.getMatRef();
 
+    display.setTo(cv::Scalar::all(0));
+
     previous_frame.copyTo(display(roi[0]));
     current_frame.copyTo(display(roi[1]));
 

@@ -490,7 +490,8 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
 
   refreshAction_ = toolbar_->addAction(getIcon(ICON_file_reload),
       "Refresh",
-      [this] () {reload();
+      [this] () {
+        reload();
       });
 
   showInDirTreeAction_ = toolbar_->addAction(getIcon(ICON_dirtree),
@@ -546,7 +547,6 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
       Qt::QueuedConnection);
 
 
-
   connect(&thumbnailExtractor_, &QThumbnailExtractor::started,
       this, &ThisClass::onThumbnailExtractorStarted,
       Qt::QueuedConnection);
@@ -597,7 +597,14 @@ void QThumbnailsView::onSearchImageFilesStarted()
 void QThumbnailsView::onImageFileFound(int rid, const QString fullPathName)
 {
   if ( rid == lastSearchImageFilesRID_ ) {
+
     listWidget_->addIcon(hourglass_icon, fullPathName, QVariant(false));
+
+    if ( stack_->currentWidget() != listWidget_ ) {
+      stack_->setCurrentWidget(listWidget_);
+    }
+
+    QCoreApplication::processEvents(); // QEventLoop::ExcludeUserInputEvents
   }
 }
 
@@ -723,7 +730,7 @@ void QThumbnailsView::reload()
 
 void QThumbnailsView::cancelPendingUpdates()
 {
-  QWaitCursor wait(this);
+//  QWaitCursor wait(this);
 
   searchImageFiles_.cancel();
   thumbnailExtractor_.cancel();

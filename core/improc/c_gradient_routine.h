@@ -158,9 +158,6 @@ protected:
   OutputType output_type_ = OutputGradientMagnitude;
   PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_NO_CHANGE;
   cv::BorderTypes border_type_  = cv::BORDER_DEFAULT;
-//  int order_x_ = 1;
-//  int order_y_ = 0;
- // int kradius_ = 3;
   double scale_ = 1;
   double delta_ = 0;
   bool squared_ = false;

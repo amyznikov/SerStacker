@@ -7,7 +7,7 @@
 
 #include "QSearchImageFiles.h"
 #include "QThumbnails.h"
-#include <core/debug.h>
+// #include <core/debug.h>
 
 QSearchImageFiles::QSearchImageFiles()
 {
@@ -39,11 +39,12 @@ int QSearchImageFiles::start(const QString & directory)
 
 void QSearchImageFiles::cancel()
 {
-  while ( isRunning() ) {
+  while ( isRunning() )
+  {
     mtx_.lock();
     cancel_requested_ = true;
     mtx_.unlock();
-    wait();
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
   }
 }
 
@@ -62,9 +63,7 @@ void QSearchImageFiles::run()
       QDirIterator::FollowSymlinks);
 
   while ( !cancel_requested_ && iterator.hasNext() ) {
-
     Q_EMIT imageFound(rid, iterator.next());
-
     QThread::yieldCurrentThread();
   }
 }

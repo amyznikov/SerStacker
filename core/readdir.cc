@@ -48,6 +48,8 @@
 # include <windows.h>
 # include <sys/stat.h>
 # include <shlwapi.h>
+# include <shfolder.h>
+# include <userenv.h>
 # include <io.h>
 
 # if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)

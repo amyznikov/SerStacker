@@ -37,7 +37,7 @@ private:
   QString current_path_;
   QStringList supported_suffixes_;
   int req_id_ = -1;
-  bool cancel_requested_ = false;
+  volatile bool cancel_requested_ = false;
 };
 
 #endif /* __QSearchImageFiles_h__ */

@@ -49,8 +49,6 @@ public:
   {
     if( base::serialize(settings, save) ) {
 
-      c_config_setting section;
-
       SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
 
       return true;
@@ -59,7 +57,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
   {
     if ( !camera_intrinsics_initialized_ ) {
 

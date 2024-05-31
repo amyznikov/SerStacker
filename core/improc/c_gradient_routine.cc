@@ -48,6 +48,8 @@ void c_gradient_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 //  BIND_PCTRL(ctls, order_x, "Order of x derivative");
 //  BIND_PCTRL(ctls, order_y, "Order of y derivative");
 //  BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
+  BIND_PCTRL(ctls, border_type, "Border type");
+
   BIND_PCTRL(ctls, ddepth, "Destination image depth");
   BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
   BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
@@ -60,9 +62,7 @@ bool c_gradient_routine::serialize(c_config_setting settings, bool save)
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, compute_method);
     SERIALIZE_PROPERTY(settings, save, *this, output_type);
-//    SERIALIZE_PROPERTY(settings, save, *this, order_x);
-//    SERIALIZE_PROPERTY(settings, save, *this, order_y);
-//    SERIALIZE_PROPERTY(settings, save, *this, kradius);
+    SERIALIZE_PROPERTY(settings, save, *this, border_type);
     SERIALIZE_PROPERTY(settings, save, *this, scale);
     SERIALIZE_PROPERTY(settings, save, *this, ddepth);
     SERIALIZE_PROPERTY(settings, save, *this, delta);

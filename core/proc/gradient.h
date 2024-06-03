@@ -30,5 +30,14 @@ bool compute_diagonal_gradients(cv::InputArray src,
     int ddepth = -1,
     int borderType = cv::BORDER_DEFAULT);
 
+bool compute_second_sobel_derivatives(cv::InputArray src,
+    cv::OutputArray gxx,
+    cv::OutputArray gxy,
+    cv::OutputArray gyy,
+    int ddepth,
+    int borderType = cv::BORDER_REPLICATE);
+
+bool compute_hessian_eigenvalues(cv::InputArray gxx, cv::InputArray gxy, cv::InputArray gyy,
+    cv::OutputArray mu1, cv::OutputArray mu2);
 
 #endif /* __gradient_h__ */

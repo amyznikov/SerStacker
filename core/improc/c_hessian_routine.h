@@ -11,7 +11,6 @@
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
-//#include <core/proc/gradient.h>
 
 class c_hessian_routine :
     public c_image_processor_routine

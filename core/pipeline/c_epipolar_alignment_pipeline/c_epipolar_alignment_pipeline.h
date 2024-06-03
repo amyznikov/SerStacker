@@ -34,20 +34,24 @@ struct c_epipolar_alignment_camera_options
   };
 };
 
-struct c_epipolar_alignment_ecc_options
+enum c_epipolar_alignment_feature2d_type
 {
-  bool enable_ecc_ = false;
+  c_epipolar_alignment_feature2d_sparse,
+  c_epipolar_alignment_feature2d_dense,
 };
 
-struct c_epipolar_stereo_scale_compression_output_options:
-    c_output_frame_writer_options
+struct c_epipolar_alignment_feature2d_options
 {
+  c_epipolar_alignment_feature2d_type feature2d_type = c_epipolar_alignment_feature2d_sparse;
+  c_sparse_feature_detector_options sparse_detector_options;
+  c_optflowpyrlk_feature2d_matcher_options optflowpyrlk_options;
 };
 
 struct c_epipolar_alignment_output_options:
     c_image_processing_pipeline_output_options
 {
     bool save_progress_video = false;
+    bool save_matches_csv = false;
     c_output_frame_writer_options progress_video_output_options;
 };
 
@@ -94,13 +98,16 @@ protected:
   void cleanup_pipeline() override;
   bool process_current_frame();
   bool extract_and_match_keypoints();
+  bool extract_and_match_keypoints_sparse();
+  bool extract_and_match_keypoints_dense();
   bool estmate_camera_pose();
   bool save_progess_video();
+  bool save_matches_csv();
 
 protected:
   c_epipolar_alignment_input_options input_options_;
-  c_epipolar_alignment_ecc_options ecc_options_;
   c_epipolar_alignment_camera_options camera_options_;
+  c_epipolar_alignment_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;
   c_epipolar_alignment_output_options output_options_;
 
@@ -109,10 +116,13 @@ protected:
   double correlation_eps_ = 1e-4;
   int correlation_kernel_radius_ = 5;
 
-
-  c_ecch ecch_;
-  c_ecc_forward_additive ecc_;
   c_eccflow eccflow_;
+  c_feature2d::sptr sparse_feature_detector_;
+
+  std::vector<cv::KeyPoint> current_keypoints_;
+  std::vector<cv::KeyPoint> previous_keypoints_;
+  std::vector<cv::Point2f> matched_current_positions_;
+  std::vector<cv::Point2f> matched_previous_positions_;
 
   cv::Mat current_frame_, current_mask_;
   cv::Mat previous_frame_, previous_mask_;
@@ -120,8 +130,6 @@ protected:
   cv::Mat2f current_remap_;
   cv::Mat1f current_correlation_;
   cv::Mat1b current_correlation_mask_;
-  std::vector<cv::Point2f> matched_current_positions_;
-  std::vector<cv::Point2f> matched_previous_positions_;
   cv::Mat1b current_inliers_;
 
   cv::Vec3d current_euler_anges_;

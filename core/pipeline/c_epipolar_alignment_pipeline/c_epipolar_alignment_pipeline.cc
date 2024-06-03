@@ -6,13 +6,26 @@
  */
 
 #include "c_epipolar_alignment_pipeline.h"
+#include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/proc/morphology.h>
 #include <core/proc/stereo/scale_sweep.h>
+#include <core/proc/colormap.h>
 #include <type_traits>
 #include <chrono>
 #include <thread>
 #include <core/debug.h>
+
+template<>
+const c_enum_member * members_of<c_epipolar_alignment_feature2d_type>()
+{
+  static const c_enum_member members[] = {
+      { c_epipolar_alignment_feature2d_sparse, "sparse", },
+      { c_epipolar_alignment_feature2d_dense, "dense", },
+      { c_epipolar_alignment_feature2d_sparse},
+  };
+  return members;
+}
 
 namespace {
 
@@ -86,6 +99,35 @@ static void extract_pixel_matches(const cv::Mat2f & rmap, const cv::Mat1b & mask
 
 }
 
+
+static void draw_matched_positions(cv::Mat & image,
+    const std::vector<cv::Point2f> & current_positions,
+    const std::vector<cv::Point2f> & previous_positions,
+    const cv::Mat1b & inliers)
+{
+
+  const int N = current_positions.size();
+  const cv::Scalar inlierColor = CV_RGB(220, 220, 0);
+  const cv::Scalar outlierColor = CV_RGB(220, 0, 0);
+
+  for( int i = 0; i < N; ++i ) {
+
+    const cv::Point2f &cp =
+        current_positions[i];
+
+    const cv::Point2f &pp =
+        previous_positions[i];
+
+    const cv::Scalar color =
+        inliers.empty() || inliers[i][0] ?
+            inlierColor :
+            outlierColor;
+
+    cv::line(image, pp, cp, color, 1, cv::LINE_4);
+    //cv::rectangle(image, cv::Point(cp.x - 1, cp.y - 1), cv::Point(cp.x + 1, cp.y + 1), color, 1, cv::LINE_4);
+  }
+}
+
 }
 
 c_epipolar_alignment_pipeline::c_epipolar_alignment_pipeline(const std::string & name,
@@ -110,6 +152,20 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
   if( (section = SERIALIZE_GROUP(settings, save, "camera_options")) ) {
     SERIALIZE_OPTION(section, save, camera_options_, camera_intrinsics);
   }
+
+  if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
+
+    SERIALIZE_OPTION(section, save, feature2d_options_, feature2d_type);
+
+    if( (subsection = SERIALIZE_GROUP(section, save, "detector")) ) {
+      SERIALIZE_OPTION(section, save, feature2d_options_, sparse_detector_options);
+    }
+
+    if( (subsection = SERIALIZE_GROUP(section, save, "optflowpyrlk")) ) {
+      SERIALIZE_OPTION(section, save, feature2d_options_, optflowpyrlk_options);
+    }
+  }
+
 
   if( (section = SERIALIZE_GROUP(settings, save, "eccflow")) ) {
     SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
@@ -147,6 +203,8 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
       SERIALIZE_OPTION(subsection, save, output_options_, progress_video_output_options);
     }
 
+    SERIALIZE_OPTION(section, save, output_options_, save_matches_csv);
+
   }
 
   return true;
@@ -168,28 +226,48 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
       PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, camera_options_.camera_intrinsics);
     PIPELINE_CTL_END_GROUP(ctrls);
 
-    PIPELINE_CTL_GROUP(ctrls, "Ecc Options", "");
-    //    int max_iterations() const;
-    //    double max_eps() const;
-    //    double min_rho() const;
-    //    enum ECC_INTERPOLATION_METHOD interpolation() const;
-    //    double input_smooth_sigma() const;
-    //    double reference_smooth_sigma() const;
-    //    double update_step_scale() const;
+    PIPELINE_CTL_GROUP(ctrls, "Odometry", "");
+
+      PIPELINE_CTL(ctrls, feature2d_options_.feature2d_type, "type",
+        "Select feature2d type used for odometry estimation");
+
+      PIPELINE_CTL_GROUPC(ctrls, "Sparse feature2d Options", "", (_this->feature2d_options_.feature2d_type == c_epipolar_alignment_feature2d_sparse));
+
+        PIPELINE_CTL_GROUP(ctrls, "feature2d detector", "");
+          PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, feature2d_options_.sparse_detector_options);
+        PIPELINE_CTL_END_GROUP(ctrls);
+
+        PIPELINE_CTL_GROUP(ctrls, "optflowpyrlk", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxLevel, "maxLevel", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.winSize, "winSize", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxIterations, "maxIterations", "");
+          // PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.flags, "flags", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.eps, "eps", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.minEigThreshold, "minEigThreshold", "");
+          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxErr, "maxErr", "");
+        PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUPC(ctrls, "EccFlow Options", "", (_this->feature2d_options_.feature2d_type == c_epipolar_alignment_feature2d_dense));
+        PIPELINE_CTLP2(ctrls, eccflow_, support_scale, "support_scale", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, max_iterations, "max_iterations", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, update_multiplier, "update_multiplier", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, downscale_method, "downscale_method", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, scale_factor, "scale_factor", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, min_image_size, "min_image_size", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, max_pyramid_level, "max_pyramid_level", "");
+        PIPELINE_CTLP2(ctrls, eccflow_, noise_level, "noise_level", "");
+      PIPELINE_CTL_END_GROUP(ctrls);
+
     PIPELINE_CTL_END_GROUP(ctrls);
 
-    PIPELINE_CTL_GROUP(ctrls, "EccFlow Options", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, support_scale, "support_scale", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, max_iterations, "max_iterations", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, update_multiplier, "update_multiplier", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, downscale_method, "downscale_method", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, scale_factor, "scale_factor", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, min_image_size, "min_image_size", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, max_pyramid_level, "max_pyramid_level", "");
-      PIPELINE_CTLP2(ctrls, eccflow_, noise_level, "noise_level", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+
+    //    c_sparse_feature_detector_options sparse_detector_options;
+    //    c_optflowpyrlk_feature2d_matcher_options optflowpyrlk_options;
+
     ////////
     PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
 
@@ -215,6 +293,8 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
         PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_video_output_options,
             _this->output_options_.save_progress_video);
       PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL(ctrls, output_options_.save_matches_csv, "save_matches_csv", "");
 
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////
@@ -252,13 +332,16 @@ bool c_epipolar_alignment_pipeline::copyParameters(const base::sptr & dst) const
 
 bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  std::vector<cv::Point2f> warped_current_positions;
+
   lock_guard lock(mutex());
+
 
   //  if( current_frame_.empty() || previous_frame_.empty() || current_remap_.empty() ) {
   //    return false;
   //  }
 
-  if( cimg.empty() || rimg.empty() || mimg.empty() || current_remap_.empty() ) {
+  if( cimg.empty() || rimg.empty() ) {
     return false;
   }
 
@@ -278,26 +361,30 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
     cv::cvtColor(rimg, previous_frame, cv::COLOR_GRAY2BGR);
   }
 
-  if ( mimg.channels() == 3 ) {
-    remapped_frame = rimg;
-  }
-  else {
-    cv::cvtColor(mimg, remapped_frame, cv::COLOR_GRAY2BGR);
+  if ( !mimg.empty() ) {
+    if ( mimg.channels() == 3 ) {
+      remapped_frame = rimg;
+    }
+    else {
+      cv::cvtColor(mimg, remapped_frame, cv::COLOR_GRAY2BGR);
+    }
   }
 
 
   const cv::Size size =
       current_frame.size();
 
-  const cv::Size display_size(2 * size.width, 3 * size.height);
+  const cv::Size display_size(3 * size.width, 3 * size.height);
 
-  const cv::Rect roi[6] = {
-      cv::Rect(0, 0, size.width, size.height),
-      cv::Rect(size.width, 0, size.width, size.height),
-      cv::Rect(0, size.height, size.width, size.height),
-      cv::Rect(size.width, size.height, size.width, size.height),
-      cv::Rect(0, 2 * size.height, size.width, size.height),
-      cv::Rect(size.width, 2 * size.height, size.width, size.height),
+  const cv::Rect roi[3][3] = {
+      { cv::Rect(0, 0, size.width, size.height), cv::Rect(1 * size.width, 0, size.width, size.height), cv::Rect(
+          2 * size.width, 0, size.width, size.height) },
+
+      { cv::Rect(0, 1 * size.height, size.width, size.height), cv::Rect(1 * size.width, 1 * size.height, size.width,
+          size.height), cv::Rect(2 * size.width, 1 * size.height, size.width, size.height) },
+
+      { cv::Rect(0, 2 * size.height, size.width, size.height), cv::Rect(1 * size.width, 2 * size.height, size.width,
+          size.height), cv::Rect(2 * size.width, 2 * size.height, size.width, size.height) },
   };
 
   if ( display_mask.needed() ) {
@@ -307,42 +394,120 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
   if( display_frame.needed() ) {
 
     display_frame.create(display_size,
-        current_frame.type());
+       current_frame.type());
 
     cv::Mat & display =
         display_frame.getMatRef();
 
     display.setTo(cv::Scalar::all(0));
 
-    previous_frame.copyTo(display(roi[0]));
-    current_frame.copyTo(display(roi[1]));
+    previous_frame.copyTo(display(roi[0][0]));
+    current_frame.copyTo(display(roi[0][1]));
 
-    cv::warpPerspective(current_frame, display(roi[2]),
+    cv::warpPerspective(current_frame, display(roi[1][0]),
         currentDerotationHomography_,
         size,
         cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
         cv::BORDER_CONSTANT);
 
-    cv::addWeighted(previous_frame, 0.7, display(roi[2]), 0.7, 0,
-        display(roi[2]));
+    cv::addWeighted(previous_frame, 0.5, display(roi[1][0]), 0.5, 0,
+        display(roi[1][0]));
 
-    cv::addWeighted(remapped_frame, 0.7, previous_frame, 0.7, 0,
-        display(roi[3]));
-
-    if( display.channels() == 1 ) {
-      current_correlation_.convertTo(display(roi[4]), display.depth(), 100);
+    if( !remapped_frame.empty() ) {
+      cv::addWeighted(remapped_frame, 0.5, previous_frame, 0.5, 0,
+          display(roi[1][1]));
     }
     else {
-      cv::Mat tmp;
-      current_correlation_.convertTo(tmp, display.depth(), 100);
-      cv::cvtColor(tmp, display(roi[4]),
-          cv::COLOR_GRAY2BGR);
+      cv::addWeighted(current_frame, 0.5, previous_frame, 0.5, 0,
+          display(roi[1][1]));
+
+      cv::Mat m(display(roi[1][1]));
+
+      draw_matched_positions(m,  matched_current_positions_,
+          matched_previous_positions_,
+          current_inliers_);
     }
+
+    cv::perspectiveTransform(matched_current_positions_, warped_current_positions,
+        currentDerotationHomography_);
+
+    if ( !current_correlation_.empty() ) {
+      if( display.channels() == 1 ) {
+        current_correlation_.convertTo(display(roi[2][0]), display.depth(), 100);
+      }
+      else {
+        cv::Mat tmp;
+        current_correlation_.convertTo(tmp, display.depth(), 100);
+        cv::cvtColor(tmp, display(roi[2][0]),
+            cv::COLOR_GRAY2BGR);
+      }
+    }
+    else {
+
+      cv::addWeighted(previous_frame, 0.5, display(roi[1][0]), 0.5, 0,
+          display(roi[2][0]));
+
+      cv::Mat m(display(roi[2][0]));
+
+      draw_matched_positions(m,  warped_current_positions,
+          matched_previous_positions_,
+          current_inliers_);
+
+    }
+
+    if ( !warped_current_positions.empty() ) {
+
+      cv::Mat1f radial(size, 0.0f);
+      cv::Mat1f tangential(current_remap_.size(), 0.0f);
+      cv::Mat1b mask(size, (uint8_t)(255));
+
+      for ( int i = 0, n = warped_current_positions.size(); i < n; ++i ) {
+
+        const float x1 = matched_previous_positions_[i].x;
+        const float y1 = matched_previous_positions_[i].y;
+
+        const float x2 = warped_current_positions[i].x;
+        const float y2 = warped_current_positions[i].y;
+
+        const int ix = (int)(x1);
+        const int iy = (int)(y1);
+
+        if( ix >= 0 && ix < size.width && iy >= 0 && iy < size.height ) {
+
+          const float dX = x1 - currentEpipole_.x;
+          const float dY = y1 - currentEpipole_.y;
+          const float L = cv::norm(cv::Vec2f(dX, dY));
+
+          const cv::Vec2f radius_vector( dX / L, dY / L);
+          const cv::Vec2f tangential_vector( -dY / L, dX / L);
+
+          const cv::Vec2f flow(x2 - x1, y2 - y1);
+
+          radial[iy][ix] = flow.dot(radius_vector);
+          tangential[iy][ix] = std::abs(flow.dot(tangential_vector));
+          mask[iy][ix] = 0;
+        }
+      }
+
+      cv::Mat tmp;
+      radial.convertTo(tmp, CV_8U, 15, 0);
+      //cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
+      apply_colormap(tmp, tmp, COLORMAP_TURBO);
+      tmp.setTo(cv::Scalar::all(0), mask);
+      tmp.convertTo(display(roi[0][2]), display.depth());
+
+      tangential.convertTo(tmp, CV_8U, 15, 0);
+      apply_colormap(tmp, tmp, COLORMAP_TURBO);
+      //cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
+      tmp.setTo(cv::Scalar::all(0), mask);
+      tmp.convertTo(display(roi[1][2]), display.depth());
+
+    }
+
 
     if ( current_inliers_.rows == matched_previous_positions_.size() ) {
 
-      cv::Mat3b m = display(roi[5]);
-      m.setTo(cv::Vec3b::all(0));
+      cv::Mat3b m(roi[2][1].size(), cv::Vec3b::all(0));
 
       for ( int i = 0, n = matched_previous_positions_.size(); i < n; ++i ) {
 
@@ -364,25 +529,29 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
         }
       }
 
+
+      m.convertTo(display(roi[2][1]), display.depth());
     }
 
+    if( IS_INSIDE_IMAGE(currentEpipole_, size) ) {
+      for( int i = 0; i < 3; ++i ) {
+        for( int j = 0; j < 3; ++j ) {
 
-    for( int i = 0; i < 6; ++i ) {
+          cv::Mat pane =
+              display(roi[i][j]);
 
-      cv::Mat pane =
-          display(roi[i]);
+          cv::rectangle(pane, cv::Point(0, 0), cv::Point(pane.cols - 1, pane.rows - 1),
+              CV_RGB(140, 128, 64), 1,
+              cv::LINE_4);
 
-      cv::rectangle(pane, cv::Point(0, 0), cv::Point(pane.cols - 1, pane.rows - 1),
-          CV_RGB(140, 128, 64), 1,
-          cv::LINE_4);
+          const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
 
-      if( IS_INSIDE_IMAGE(currentEpipole_, size) ) {
-
-        const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
-
-        cv::ellipse(pane, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
-        cv::line(pane, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
-        cv::line(pane, cv::Point2f(E.x + 9, E.y - 9), cv::Point2f(E.x - 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
+          cv::ellipse(pane, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
+          cv::line(pane, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1,
+              cv::LINE_8);
+          cv::line(pane, cv::Point2f(E.x + 9, E.y - 9), cv::Point2f(E.x - 9, E.y + 9), CV_RGB(0, 255, 0), 1,
+              cv::LINE_8);
+        }
       }
     }
   }
@@ -392,11 +561,15 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
 bool c_epipolar_alignment_pipeline::initialize()
 {
+  feature2d_options_.sparse_detector_options.type =
+      SPARSE_FEATURE_DETECTOR_FAST;
+
   eccflow_.set_support_scale(3);
   eccflow_.set_noise_level(1e-3);
   eccflow_.set_min_image_size(4);
   eccflow_.set_scale_factor(0.75);
   eccflow_.set_max_iterations(3);
+
 
   return true;
 }
@@ -413,17 +586,38 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
   current_mask_.release();
   previous_frame_.release();
   previous_mask_.release();
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
   current_remap_.release();
   current_inliers_.release();
+  current_correlation_mask_.release();;
+  cimg.release();
+  rimg.release();
+  mimg.release();;
+
+  matched_current_positions_.clear();
+  matched_previous_positions_.clear();
+  current_keypoints_.clear();
+  previous_keypoints_.clear();
+  matched_current_positions_.clear();
+  matched_previous_positions_.clear();
+
 
   output_path_ =
       create_output_path(output_options_.output_directory);
 
+  if( feature2d_options_.feature2d_type != c_epipolar_alignment_feature2d_sparse ) {
+    sparse_feature_detector_.reset();
+  }
+  else if( !(sparse_feature_detector_ = create_sparse_feature_detector(feature2d_options_.sparse_detector_options)) ) {
+    CF_ERROR("create_sparse_feature_detector() fails");
+    return false;
+  }
+
   G =
       cv::getGaussianKernel(2 * std::max(correlation_kernel_radius_, 1) + 1,
           0, CV_32F);
+
+  current_euler_anges_ = cv::Vec3d(0, 0, 0);
+  current_translation_vector_ = cv::Vec3d(0, 0, 1);
 
   return true;
 }
@@ -431,6 +625,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
 void c_epipolar_alignment_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
+  sparse_feature_detector_.reset();
 }
 
 bool c_epipolar_alignment_pipeline::run_pipeline()
@@ -504,6 +699,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
       break;
     }
 
+
     if( input_options_.input_image_processor ) {
 
       lock_guard lock(mutex());
@@ -516,6 +712,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
       if( canceled() ) {
         break;
       }
+
     }
 
     if( !process_current_frame() ) {
@@ -530,6 +727,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
       std::swap(current_frame_, previous_frame_);
       std::swap(current_mask_, previous_mask_);
+      std::swap(current_keypoints_, previous_keypoints_);
     }
 
     if( !is_live_sequence ) {
@@ -560,11 +758,59 @@ bool c_epipolar_alignment_pipeline::process_current_frame()
     return false;
   }
 
+  if ( !save_matches_csv() ) {
+    CF_ERROR("save_matches_csv() fails");
+    return false;
+  }
+
+  // output_options_.save_matches_csv
+
   return true;
 }
 
 
-bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
+bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_sparse()
+{
+  lock_guard lock(mutex());
+
+  INSTRUMENT_REGION("");
+
+  if ( current_frame_.empty() ) {
+    // silently ignore if still wait for next frame
+    return true;
+  }
+
+  current_keypoints_.clear();
+  sparse_feature_detector_->detect(current_frame_, current_keypoints_, current_mask_);
+  if ( current_keypoints_.size() < 10 ) { // ignore if fail
+    CF_ERROR("sparse_feature_detector_->detect(current_frame_) detects only %zu key points, skip frame", current_keypoints_.size());
+    return true;
+  }
+
+  if ( previous_frame_.empty() || previous_keypoints_.empty() ) {
+    // silently ignore if still wait for next frame
+    return true;
+  }
+
+  const bool fOK =
+      match_optflowpyrlk(previous_frame_, current_frame_,
+          previous_keypoints_,
+          feature2d_options_.optflowpyrlk_options,
+          matched_previous_positions_,
+          matched_current_positions_);
+
+  if( !fOK ) {
+    CF_ERROR("match_optflowpyrlk() fails");
+    return false;
+  }
+
+  cimg = current_frame_;
+  rimg = previous_frame_;
+
+  return true;
+}
+
+bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
 {
   if ( previous_frame_.empty() ) {
     // silently ignore if still wait for next frame
@@ -635,6 +881,18 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
   return true;
 }
 
+bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
+{
+  switch (feature2d_options_.feature2d_type) {
+    case c_epipolar_alignment_feature2d_sparse:
+      return extract_and_match_keypoints_sparse();
+    case c_epipolar_alignment_feature2d_dense:
+      return extract_and_match_keypoints_dense();
+  }
+  CF_ERROR("APP BUG: Invalid feature2d_type=%d requested", feature2d_options_.feature2d_type);
+  return false;
+}
+
 
 bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 {
@@ -649,8 +907,8 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   current_inliers_.create(matched_current_positions_.size(), 1);
   current_inliers_.setTo(255);
 
-  current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  current_translation_vector_ = cv::Vec3d(0, 0, 1);
+  //  current_euler_anges_ = cv::Vec3d(0, 0, 0);
+  //  current_translation_vector_ = cv::Vec3d(0, 0, 1);
 
   bool fOk =
       lm_camera_pose_and_derotation_homography(
@@ -681,10 +939,10 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   currentEpipole_ =
       0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
-//    CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
-//    CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
-//    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
-//        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
+    CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
+    CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
+    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
+        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
 
   if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
     CF_WARNING("\nWARNING!\n"
@@ -731,5 +989,57 @@ bool c_epipolar_alignment_pipeline::save_progess_video()
 
   return true;
 }
+
+bool c_epipolar_alignment_pipeline::save_matches_csv()
+{
+  if( !output_options_.save_matches_csv ) {
+    return true;
+  }
+
+  if ( matched_current_positions_.empty() || matched_previous_positions_.empty() ) {
+    return true;
+  }
+
+  std::string output_directory =
+      ssprintf("%s/matches_csv",
+          output_path_.c_str());
+
+  if ( !create_path(output_directory) ) {
+    CF_ERROR("create_path('%s') fails.",
+        output_directory.c_str());
+    return false;
+  }
+
+  std::string output_filename =
+      ssprintf("%s/matches.%06d.txt",
+          output_directory.c_str(),
+          input_sequence_->current_pos()-1);
+
+  FILE * fp = fopen(output_filename.c_str(), "w");
+  if ( !fp ) {
+    CF_ERROR("fopen('%s') fails.",
+        output_filename.c_str());
+    return false;
+  }
+
+  fprintf(fp, "x1\ty1\tx2\ty2\n");
+  for ( int i = 0, n = matched_current_positions_.size(); i < n; ++i ) {
+
+    const cv::Point2f & cp =
+        matched_current_positions_[i];
+
+    const cv::Point2f & pp =
+        matched_previous_positions_[i];
+
+    fprintf(fp, "%+12.1f\t%+12.1f\t%+12.1f\t%+12.1f\n",
+        pp.x, pp.y, cp.x, cp.y);
+
+  }
+
+  fclose(fp);
+
+  return true;
+}
+
 
 

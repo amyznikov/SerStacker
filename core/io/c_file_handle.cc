@@ -121,7 +121,7 @@ ssize_t c_file_handle::read(void * buf, size_t nbytes)
 
   DWORD numberOfBytesRead = 0;
 
-  ReadFile(fd, buf, (DWORD) nbytes, &numberOfBytesRead, nullptr);
+  ReadFile(fd_, buf, (DWORD) nbytes, &numberOfBytesRead, nullptr);
 
   return (ssize_t)(numberOfBytesRead);
 #else
@@ -152,7 +152,7 @@ ssize_t c_file_handle::write(const void * buf, size_t nbytes)
 
   DWORD numberOfBytesWritten = 0;
 
-  WriteFile(fd, buf, (DWORD) nbytes, &numberOfBytesWritten, nullptr);
+  WriteFile(fd_, buf, (DWORD) nbytes, &numberOfBytesWritten, nullptr);
 
   return (ssize_t)(numberOfBytesWritten);
 #else
@@ -232,8 +232,8 @@ bool c_file_handle::flush()
     fdatasync(fd_);
 #endif
     return true;
-  }
 #endif
+  }
   return false;
 }
 

@@ -17,7 +17,7 @@
 # define _CRT_DECLARE_NONSTDC_NAMES  1
 # include <windows.h>
 
-typedef SSIZE_T size_t;
+typedef SSIZE_T ssize_t;
 
 #else
 # include <unistd.h>
@@ -30,7 +30,7 @@ public:
 
 #if _MSC_VER
   typedef HANDLE FILE_DESCRIPTOR;
-  static const HANDLE INVALID_FILE_DESCRIPTOR =
+  static inline const HANDLE INVALID_FILE_DESCRIPTOR =
       INVALID_HANDLE_VALUE;
 #else
   typedef int FILE_DESCRIPTOR;

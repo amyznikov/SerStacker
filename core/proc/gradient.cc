@@ -317,3 +317,262 @@ bool compute_diagonal_gradients(cv::InputArray src, cv::OutputArray gx, cv::Outp
 
   return true;
 }
+
+bool compute_second_sobel_derivatives(cv::InputArray src,
+    cv::OutputArray gxx,
+    cv::OutputArray gxy,
+    cv::OutputArray gyy,
+    int ddepth,
+    int borderType)
+{
+  static thread_local cv::Mat Kx1, Ky1, Kx2, Ky2;
+  if( Kx1.empty() ) {
+
+    cv::getDerivKernels(Kx1, Ky1, 1, 1, 3, true, CV_32F);
+    cv::getDerivKernels(Kx2, Ky2, 2, 0, 3, true, CV_32F);
+    //    Kx1 *= M_SQRT2;
+    //    Ky1 *= M_SQRT2;
+  }
+
+  if( ddepth < 0 ) {
+    ddepth = std::max(src.depth(), CV_32F);
+  }
+
+  cv::sepFilter2D(src, gxx, ddepth, Kx2, Ky2, cv::Point(-1, -1), 0, borderType);
+  cv::sepFilter2D(src, gyy, ddepth, Ky2, Kx2, cv::Point(-1, -1), 0, borderType);
+  cv::sepFilter2D(src, gxy, ddepth, Kx1, Ky1, cv::Point(-1, -1), 0, borderType);
+
+  return true;
+}
+
+
+static inline void compute_eigen_values(const float a, const float b, const float d, float & mu1, float & mu2)
+{
+  // @see <Eigenvectors and eigenvalues of real symmetric matrices.pdf>
+  // A = | a b |
+  //     | b d |
+  //
+  const float T =
+      a + d;
+
+  const float D =
+       std::sqrt((a - d) * (a - d) + 4 * b * b);
+
+  mu1 =
+      (T + D) * 0.5f;
+
+  mu2 =
+      (T - D) * 0.5f;
+}
+
+template<class _Tp>
+static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gxy, cv::InputArray _gyy,
+    cv::OutputArray _mu1, cv::OutputArray _mu2)
+{
+  const cv::Size image_size =
+      _gxx.size();
+
+  const int cn =
+      _gxx.channels();
+
+  const cv::Mat_<_Tp> gxx =
+      _gxx.getMat();
+
+  const cv::Mat_<_Tp> gxy =
+      _gxy.getMat();
+
+  const cv::Mat_<_Tp> gyy =
+      _gyy.getMat();
+
+  if( _mu1.needed() && _mu2.needed() ) {
+
+    _mu1.create(image_size,
+        CV_MAKETYPE(CV_32F, cn));
+
+    _mu2.create(image_size,
+        CV_MAKETYPE(CV_32F, cn));
+
+    cv::Mat_<float> mu1 =
+        _mu1.getMatRef();
+
+    cv::Mat_<float> mu2 =
+        _mu2.getMatRef();
+
+    for( int y = 0; y < image_size.height; ++y ) {
+
+      const _Tp * gxxp = gxx[y];
+      const _Tp * gxyp = gxy[y];
+      const _Tp * gyyp = gyy[y];
+      float * mu1p = mu1[y];
+      float * mu2p = mu2[y];
+
+      for( int x = 0; x < image_size.width; ++x ) {
+
+        for( int c = 0; c < cn; ++c ) {
+
+          const int i =
+              x * cn + c;
+
+          const float a =
+              gxxp[i];
+
+          const float b =
+              gxyp[i];
+
+          const float d =
+              gyyp[i];
+
+          float mu1, mu2;
+
+          compute_eigen_values(a, b, d, mu1, mu2);
+
+          if( std::abs(mu1) > std::abs(mu2) ) {
+            mu1p[i] = mu1;
+            mu2p[i] = mu2;
+          }
+          else {
+            mu1p[i] = mu2;
+            mu2p[i] = mu1;
+          }
+        }
+      }
+    }
+
+  }
+  else if( _mu1.needed() ) {
+
+    _mu1.create(image_size,
+        CV_MAKETYPE(CV_32F, cn));
+
+    cv::Mat_<float> mu1 =
+        _mu1.getMatRef();
+
+    for( int y = 0; y < image_size.height; ++y ) {
+
+      const _Tp * gxxp = gxx[y];
+      const _Tp * gxyp = gxy[y];
+      const _Tp * gyyp = gyy[y];
+      float * mu1p = mu1[y];
+
+      for( int x = 0; x < image_size.width; ++x ) {
+
+        for( int c = 0; c < cn; ++c ) {
+
+          const int i =
+              x * cn + c;
+
+          const float a =
+              gxxp[i];
+
+          const float b =
+              gxyp[i];
+
+          const float d =
+              gyyp[i];
+
+          float mu1, mu2;
+
+          compute_eigen_values(a, b, d, mu1, mu2);
+
+          if( std::abs(mu1) > std::abs(mu2) ) {
+            mu1p[i] = mu1;
+          }
+          else {
+            mu1p[i] = mu2;
+          }
+        }
+      }
+    }
+
+  }
+  else if( _mu2.needed() ) {
+
+    _mu2.create(image_size,
+        CV_MAKETYPE(CV_32F, cn));
+
+    cv::Mat_<float> mu2 =
+        _mu2.getMatRef();
+
+    for( int y = 0; y < image_size.height; ++y ) {
+
+      const _Tp * gxxp = gxx[y];
+      const _Tp * gxyp = gxy[y];
+      const _Tp * gyyp = gyy[y];
+      float * mu2p = mu2[y];
+
+      for( int x = 0; x < image_size.width; ++x ) {
+
+        for( int c = 0; c < cn; ++c ) {
+
+          const int i =
+              x * cn + c;
+
+          const float a =
+              gxxp[i];
+
+          const float b =
+              gxyp[i];
+
+          const float d =
+              gyyp[i];
+
+          float mu1, mu2;
+
+          compute_eigen_values(a, b, d, mu1, mu2);
+
+          if( std::abs(mu1) > std::abs(mu2) ) {
+            mu2p[i] = mu2;
+          }
+          else {
+            mu2p[i] = mu1;
+          }
+        }
+      }
+    }
+
+  }
+}
+
+
+bool compute_hessian_eigenvalues(cv::InputArray gxx, cv::InputArray gxy, cv::InputArray gyy,
+    cv::OutputArray mu1, cv::OutputArray mu2)
+{
+  if ( gxx.type() != gxy.type() || gxx.type() != gyy.type() ) {
+    CF_ERROR("INPUT ERROR: derivative images have different types");
+    return false;
+  }
+
+  if ( gxx.size() != gxy.size() || gxx.size() != gyy.size() ) {
+    CF_ERROR("INPUT ERROR: derivative images have different sizes");
+    return false;
+  }
+
+  switch (gxx.depth()) {
+    case CV_8U:
+      compute_hessian_eigenvalues_<uint8_t>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_8S:
+      compute_hessian_eigenvalues_<int8_t>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_16U:
+      compute_hessian_eigenvalues_<uint16_t>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_16S:
+      compute_hessian_eigenvalues_<int16_t>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_32S:
+      compute_hessian_eigenvalues_<int32_t>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_32F:
+      compute_hessian_eigenvalues_<float>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    case CV_64F:
+      compute_hessian_eigenvalues_<double>(gxx, gxy, gyy, mu1, mu2);
+      break;
+    default:
+      CF_ERROR("Invalid or not supported input image depth=%d", gxx.depth());
+      return false;
+  }
+
+  return true;
+}

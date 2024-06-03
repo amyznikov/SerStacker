@@ -34,6 +34,7 @@
 
 
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 #ifndef CV_VERSION_INT
 # define CV_VERSION_INT(a,b,c) \

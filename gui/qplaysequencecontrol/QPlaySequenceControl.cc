@@ -116,25 +116,26 @@ void QPlaySequenceControl::onSpinValueChanged(int newpos)
   QSignalBlocker block(curposSlider_ctl);
   curposSlider_ctl->setValue(newpos);
   Q_EMIT onSeek(newpos);
-  QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+  //QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 }
 
 void QPlaySequenceControl::onSliderValueChanged(int newpos)
 {
+  curposSlider_ctl->setMouseTracking(false);
+
   QSignalBlocker block(curposSpin_ctl);
   curposSpin_ctl->setValue(newpos);
   Q_EMIT onSeek(newpos);
-  QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+  //QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+  curposSlider_ctl->setMouseTracking(true);
 }
 
 
 
 void QPlaySequenceControl::updateCurposLabel()
 {
-  //  curposLabel->setText(QString("%1/%2").
-  //      arg(curposSlider_ctl->value()).
-  //      arg(curposSlider_ctl->maximum() + 1));
-
   curposLabel_ctl->setText(QString("%1").
       arg(curposSlider_ctl->maximum() + 1));
 }

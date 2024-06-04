@@ -51,8 +51,10 @@ struct c_epipolar_alignment_output_options:
     c_image_processing_pipeline_output_options
 {
     bool save_progress_video = false;
+    bool save_optflow_video = false;
     bool save_matches_csv = false;
-    c_output_frame_writer_options progress_video_output_options;
+    c_output_frame_writer_options progress_output_options;
+    c_output_frame_writer_options optflow_output_options;
 };
 
 class c_epipolar_alignment_pipeline :
@@ -101,7 +103,8 @@ protected:
   bool extract_and_match_keypoints_sparse();
   bool extract_and_match_keypoints_dense();
   bool estmate_camera_pose();
-  bool save_progess_video();
+  bool fuse_matches();
+  bool save_progess_videos();
   bool save_matches_csv();
 
 protected:
@@ -123,10 +126,13 @@ protected:
   std::vector<cv::KeyPoint> previous_keypoints_;
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_previous_positions_;
+  std::vector<cv::Point2f> warped_previous_positions_;
+
+  std::vector<cv::Point2f> matched_fused_positions_;
 
   cv::Mat current_frame_, current_mask_;
   cv::Mat previous_frame_, previous_mask_;
-  cv::Mat cimg, rimg, mimg;
+  cv::Mat current_mp, previous_mp, remapped_previous_mp;
   cv::Mat2f current_remap_;
   cv::Mat1f current_correlation_;
   cv::Mat1b current_correlation_mask_;
@@ -142,6 +148,7 @@ protected:
   cv::Point2d currentEpipole_;
 
   c_output_frame_writer progress_writer_;
+  c_output_frame_writer optflow_writer_;
 };
 
 #endif /* __c_epipolar_alignment_pipeline_h__ */

@@ -8,9 +8,11 @@
 #include "c_epipolar_alignment_pipeline.h"
 #include <core/readdir.h>
 #include <core/ssprintf.h>
+#include <core/proc/image_registration/ecc2.h>
 #include <core/proc/morphology.h>
 #include <core/proc/stereo/scale_sweep.h>
 #include <core/proc/colormap.h>
+#include <core/proc/camera_calibration/camera_pose.h>
 #include <type_traits>
 #include <chrono>
 #include <thread>
@@ -84,15 +86,15 @@ static void correlate(const cv::Mat & src1, const cv::Mat & src2, cv::Mat & dst,
 
 
 static void extract_pixel_matches(const cv::Mat2f & rmap, const cv::Mat1b & mask,
-    std::vector<cv::Point2f> & cpts, std::vector<cv::Point2f> & rpts)
+    std::vector<cv::Point2f> & dstpts, std::vector<cv::Point2f> & srcpts)
 {
   INSTRUMENT_REGION("");
 
   for ( int y = 0; y < mask.rows; ++y ) {
     for ( int x = 0; x < mask.cols; ++x ) {
       if ( mask[y][x] ) {
-        rpts.emplace_back(x,y);
-        cpts.emplace_back(rmap[y][x]);
+        dstpts.emplace_back(x,y);
+        srcpts.emplace_back(rmap[y][x]);
       }
     }
   }
@@ -200,8 +202,14 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
 
     SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "progress_video_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, progress_video_output_options);
+      SERIALIZE_OPTION(subsection, save, output_options_, progress_output_options);
     }
+
+    SERIALIZE_OPTION(section, save, output_options_, save_optflow_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "save_optflow_video")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, optflow_output_options);
+    }
+
 
     SERIALIZE_OPTION(section, save, output_options_, save_matches_csv);
 
@@ -288,13 +296,20 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
     PIPELINE_CTL_GROUP(ctrls, "Output options", "");
       PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
 
+      PIPELINE_CTL(ctrls, output_options_.save_matches_csv, "save_matches_csv", "");
+
       PIPELINE_CTL_GROUP(ctrls, "Save Progress video", "");
         PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_video_output_options,
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_output_options,
             _this->output_options_.save_progress_video);
       PIPELINE_CTL_END_GROUP(ctrls);
 
-      PIPELINE_CTL(ctrls, output_options_.save_matches_csv, "save_matches_csv", "");
+      PIPELINE_CTL_GROUP(ctrls, "Save Optflow video", "");
+        PIPELINE_CTL(ctrls, output_options_.save_optflow_video, "save_optflow_video", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.optflow_output_options,
+            _this->output_options_.save_optflow_video);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
 
     PIPELINE_CTL_END_GROUP(ctrls);
     ////////
@@ -332,41 +347,34 @@ bool c_epipolar_alignment_pipeline::copyParameters(const base::sptr & dst) const
 
 bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  std::vector<cv::Point2f> warped_current_positions;
-
   lock_guard lock(mutex());
 
-
-  //  if( current_frame_.empty() || previous_frame_.empty() || current_remap_.empty() ) {
-  //    return false;
-  //  }
-
-  if( cimg.empty() || rimg.empty() ) {
+  if( current_mp.empty() || previous_mp.empty() ) {
     return false;
   }
 
-  cv::Mat current_frame, previous_frame, remapped_frame;
+  cv::Mat current_frame, previous_frame, remapped_previous_frame;
 
-  if ( cimg.channels() == 3 ) {
-    current_frame = cimg;
+  if ( current_mp.channels() == 3 ) {
+    current_frame = current_mp;
   }
   else {
-    cv::cvtColor(cimg, current_frame, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(current_mp, current_frame, cv::COLOR_GRAY2BGR);
   }
 
-  if ( rimg.channels() == 3 ) {
-    previous_frame = rimg;
+  if ( previous_mp.channels() == 3 ) {
+    previous_frame = previous_mp;
   }
   else {
-    cv::cvtColor(rimg, previous_frame, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(previous_mp, previous_frame, cv::COLOR_GRAY2BGR);
   }
 
-  if ( !mimg.empty() ) {
-    if ( mimg.channels() == 3 ) {
-      remapped_frame = rimg;
+  if( !remapped_previous_mp.empty() ) {
+    if( remapped_previous_mp.channels() == 3 ) {
+      remapped_previous_frame = remapped_previous_mp;
     }
     else {
-      cv::cvtColor(mimg, remapped_frame, cv::COLOR_GRAY2BGR);
+      cv::cvtColor(remapped_previous_mp, remapped_previous_frame, cv::COLOR_GRAY2BGR);
     }
   }
 
@@ -393,6 +401,8 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
   if( display_frame.needed() ) {
 
+    cv::Mat tmp;
+
     display_frame.create(display_size,
        current_frame.type());
 
@@ -401,73 +411,61 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
     display.setTo(cv::Scalar::all(0));
 
-    previous_frame.copyTo(display(roi[0][0]));
-    current_frame.copyTo(display(roi[0][1]));
+    // [0][0]
+    current_frame.copyTo(display(roi[0][0]));
+    // [0][1]
+    previous_frame.copyTo(display(roi[0][1]));
+    // [0][2]
+    if( !remapped_previous_frame.empty() ) {
+      remapped_previous_frame.copyTo(display(roi[0][2]));
+    }
 
-    cv::warpPerspective(current_frame, display(roi[1][0]),
+    // [1][0]
+    cv::warpPerspective(previous_frame, tmp,
         currentDerotationHomography_,
         size,
         cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
         cv::BORDER_CONSTANT);
 
-    cv::addWeighted(previous_frame, 0.5, display(roi[1][0]), 0.5, 0,
+    cv::addWeighted(current_frame, 0.5, tmp, 0.5, 0,
         display(roi[1][0]));
 
-    if( !remapped_frame.empty() ) {
-      cv::addWeighted(remapped_frame, 0.5, previous_frame, 0.5, 0,
+    // [1][1]
+    if( !remapped_previous_frame.empty() ) {
+      cv::addWeighted(remapped_previous_frame, 0.5, current_frame, 0.5, 0,
           display(roi[1][1]));
     }
     else {
-      cv::addWeighted(current_frame, 0.5, previous_frame, 0.5, 0,
-          display(roi[1][1]));
-
-      cv::Mat m(display(roi[1][1]));
-
-      draw_matched_positions(m,  matched_current_positions_,
-          matched_previous_positions_,
-          current_inliers_);
     }
 
-    cv::perspectiveTransform(matched_current_positions_, warped_current_positions,
-        currentDerotationHomography_);
-
+    // [1][2]
     if ( !current_correlation_.empty() ) {
       if( display.channels() == 1 ) {
-        current_correlation_.convertTo(display(roi[2][0]), display.depth(), 100);
+        current_correlation_.convertTo(display(roi[1][2]), display.depth(), 100);
       }
       else {
         cv::Mat tmp;
         current_correlation_.convertTo(tmp, display.depth(), 100);
-        cv::cvtColor(tmp, display(roi[2][0]),
+        cv::cvtColor(tmp, display(roi[1][2]),
             cv::COLOR_GRAY2BGR);
       }
     }
     else {
-
-      cv::addWeighted(previous_frame, 0.5, display(roi[1][0]), 0.5, 0,
-          display(roi[2][0]));
-
-      cv::Mat m(display(roi[2][0]));
-
-      draw_matched_positions(m,  warped_current_positions,
-          matched_previous_positions_,
-          current_inliers_);
-
     }
 
-    if ( !warped_current_positions.empty() ) {
+    if ( !warped_previous_positions_.empty() ) {
 
       cv::Mat1f radial(size, 0.0f);
       cv::Mat1f tangential(current_remap_.size(), 0.0f);
       cv::Mat1b mask(size, (uint8_t)(255));
 
-      for ( int i = 0, n = warped_current_positions.size(); i < n; ++i ) {
+      for ( int i = 0, n = warped_previous_positions_.size(); i < n; ++i ) {
 
-        const float x1 = matched_previous_positions_[i].x;
-        const float y1 = matched_previous_positions_[i].y;
+        const float x1 = matched_current_positions_[i].x;
+        const float y1 = matched_current_positions_[i].y;
 
-        const float x2 = warped_current_positions[i].x;
-        const float y2 = warped_current_positions[i].y;
+        const float x2 = warped_previous_positions_[i].x;
+        const float y2 = warped_previous_positions_[i].y;
 
         const int ix = (int)(x1);
         const int iy = (int)(y1);
@@ -481,7 +479,7 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
           const cv::Vec2f radius_vector( dX / L, dY / L);
           const cv::Vec2f tangential_vector( -dY / L, dX / L);
 
-          const cv::Vec2f flow(x2 - x1, y2 - y1);
+          const cv::Vec2f flow(x1 - x2, y1 - y2);
 
           radial[iy][ix] = flow.dot(radius_vector);
           tangential[iy][ix] = std::abs(flow.dot(tangential_vector));
@@ -489,30 +487,41 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
         }
       }
 
-      cv::Mat tmp;
-      radial.convertTo(tmp, CV_8U, 15, 0);
-      //cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
-      apply_colormap(tmp, tmp, COLORMAP_TURBO);
-      tmp.setTo(cv::Scalar::all(0), mask);
-      tmp.convertTo(display(roi[0][2]), display.depth());
+      // [2][0]
+      radial.convertTo(tmp, CV_8U, 10, 0);
+      if ( false ) {
+        cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
+      }
+      else {
+        apply_colormap(tmp, tmp, COLORMAP_TURBO);
+      }
 
-      tangential.convertTo(tmp, CV_8U, 15, 0);
-      apply_colormap(tmp, tmp, COLORMAP_TURBO);
-      //cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
       tmp.setTo(cv::Scalar::all(0), mask);
-      tmp.convertTo(display(roi[1][2]), display.depth());
+      tmp.convertTo(display(roi[2][0]), display.depth());
+
+      // [2][1]
+      tangential.convertTo(tmp, CV_8U, 10, 0);
+      if ( false ) {
+        cv::cvtColor(tmp, tmp, cv::COLOR_GRAY2BGR);
+      }
+      else {
+        apply_colormap(tmp, tmp, COLORMAP_TURBO);
+      }
+      tmp.setTo(cv::Scalar::all(0), mask);
+      tmp.convertTo(display(roi[2][1]), display.depth());
 
     }
 
 
-    if ( current_inliers_.rows == matched_previous_positions_.size() ) {
+    // [2][2]
+    if ( current_inliers_.rows == matched_current_positions_.size() ) {
 
-      cv::Mat3b m(roi[2][1].size(), cv::Vec3b::all(0));
+      cv::Mat3b m(roi[2][2].size(), cv::Vec3b::all(0));
 
-      for ( int i = 0, n = matched_previous_positions_.size(); i < n; ++i ) {
+      for ( int i = 0, n = matched_current_positions_.size(); i < n; ++i ) {
 
         const cv::Point2f & p =
-            matched_previous_positions_[i];
+            matched_current_positions_[i];
 
         const int x = (int)(p.x);
         const int y = (int)(p.y);
@@ -530,7 +539,7 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
       }
 
 
-      m.convertTo(display(roi[2][1]), display.depth());
+      m.convertTo(display(roi[2][2]), display.depth());
     }
 
     if( IS_INSIDE_IMAGE(currentEpipole_, size) ) {
@@ -589,9 +598,9 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
   current_remap_.release();
   current_inliers_.release();
   current_correlation_mask_.release();;
-  cimg.release();
-  rimg.release();
-  mimg.release();;
+  current_mp.release();
+  previous_mp.release();
+  remapped_previous_mp.release();;
 
   matched_current_positions_.clear();
   matched_previous_positions_.clear();
@@ -599,7 +608,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
   previous_keypoints_.clear();
   matched_current_positions_.clear();
   matched_previous_positions_.clear();
-
+  matched_fused_positions_.clear();
 
   output_path_ =
       create_output_path(output_options_.output_directory);
@@ -617,7 +626,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
           0, CV_32F);
 
   current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  current_translation_vector_ = cv::Vec3d(0, 0, 1);
+  current_translation_vector_ = cv::Vec3d(0, 0, camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1);
 
   return true;
 }
@@ -753,7 +762,12 @@ bool c_epipolar_alignment_pipeline::process_current_frame()
     return false;
   }
 
-  if ( !save_progess_video() ) {
+  if( !fuse_matches() ) {
+    CF_ERROR("fuse_matches() fails");
+    return false;
+  }
+
+  if ( !save_progess_videos() ) {
     CF_ERROR("save_epipolar_stereo_frames() fails");
     return false;
   }
@@ -804,8 +818,8 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_sparse()
     return false;
   }
 
-  cimg = current_frame_;
-  rimg = previous_frame_;
+  current_mp = current_frame_;
+  previous_mp = previous_frame_;
 
   return true;
 }
@@ -817,52 +831,54 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
     return true;
   }
 
+  static const cv::Mat1b SE(3, 3, (uint8_t) 255);
+
   lock_guard lock(mutex());
 
   INSTRUMENT_REGION("");
 
   if( current_frame_.channels() == 1 ) {
-    cv::morphologyEx(current_frame_, cimg, cv::MORPH_GRADIENT,
-        cv::Mat1b(3, 3, (uint8_t) 255),
+    cv::morphologyEx(current_frame_, current_mp, cv::MORPH_GRADIENT,
+        SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
   else {
-    cv::cvtColor(current_frame_, cimg,
+    cv::cvtColor(current_frame_, current_mp,
         cv::COLOR_BGR2GRAY);
-    cv::morphologyEx(cimg, cimg, cv::MORPH_GRADIENT,
-        cv::Mat1b(3, 3, (uint8_t) 255),
+    cv::morphologyEx(current_mp, current_mp, cv::MORPH_GRADIENT,
+        SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
 
   if( previous_frame_.channels() == 1 ) {
-    cv::morphologyEx(previous_frame_, rimg, cv::MORPH_GRADIENT,
-        cv::Mat1b(3, 3, (uint8_t) 255),
+    cv::morphologyEx(previous_frame_, previous_mp, cv::MORPH_GRADIENT,
+        SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
   else {
-    cv::cvtColor(previous_frame_, rimg,
+    cv::cvtColor(previous_frame_, previous_mp,
         cv::COLOR_BGR2GRAY);
-    cv::morphologyEx(rimg, rimg, cv::MORPH_GRADIENT,
-        cv::Mat1b(3, 3, (uint8_t) 255),
+    cv::morphologyEx(previous_mp, previous_mp, cv::MORPH_GRADIENT,
+        SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
 
 
   current_remap_.release();
-  if( !eccflow_.compute(cimg, rimg, current_remap_, current_mask_, previous_mask_) ) {
+  if( !eccflow_.compute(previous_mp, current_mp, current_remap_, current_mask_, previous_mask_) ) {
     CF_ERROR("eccflow_.compute() fails");
     return false;
   }
 
-  cv::remap(cimg, mimg, current_remap_, cv::noArray(),
+  cv::remap(previous_mp, remapped_previous_mp, current_remap_, cv::noArray(),
       cv::INTER_AREA,
       cv::BORDER_CONSTANT);
 
-  correlate(rimg, mimg, current_correlation_, G,
+  correlate(current_mp, remapped_previous_mp, current_correlation_, G,
       correlation_eps_);
 
   cv::compare(current_correlation_,
@@ -908,7 +924,7 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   current_inliers_.setTo(255);
 
   //  current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  //  current_translation_vector_ = cv::Vec3d(0, 0, 1);
+  //  current_translation_vector_ = cv::Vec3d(0, 0, camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1);
 
   bool fOk =
       lm_camera_pose_and_derotation_homography(
@@ -917,10 +933,10 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
           matched_previous_positions_,
           current_euler_anges_,
           current_translation_vector_,
-          &currentRotationMatrix_,
-          &currentEssentialMatrix_,
-          &currentFundamentalMatrix_,
-          &currentDerotationHomography_,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
           current_inliers_,
           &camera_pose_options_);
 
@@ -928,10 +944,23 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
-//  CF_DEBUG("current_inliers_.size=%dx%d nz=%d matched_previous_positions_.size=%zu",
-//      current_inliers_.rows, current_inliers_.cols,
-//      cv::countNonZero(current_inliers_),
-//      matched_previous_positions_.size());
+  const cv::Matx33d & camera_matrix = camera_options_.camera_intrinsics.camera_matrix;
+
+  const cv::Vec3d A = -current_euler_anges_;
+  const cv::Vec3d T = -current_translation_vector_;
+
+  currentRotationMatrix_ =
+      build_rotation(A);
+
+  currentDerotationHomography_ =
+      camera_matrix * currentRotationMatrix_ * camera_matrix.inv();
+
+  currentEssentialMatrix_ =
+      compose_essential_matrix(currentRotationMatrix_, T);
+
+  currentFundamentalMatrix_ =
+      compose_fundamental_matrix(currentEssentialMatrix_, camera_matrix) * currentDerotationHomography_.inv();
+
 
   compute_epipoles(currentFundamentalMatrix_,
       currentEpipoles_);
@@ -953,38 +982,92 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
         currentEpipoles_[1].x, currentEpipoles_[1].y);
   }
 
+  cv::perspectiveTransform(matched_previous_positions_, warped_previous_positions_,
+      currentDerotationHomography_);
+
   return true;
 }
 
-bool c_epipolar_alignment_pipeline::save_progess_video()
+bool c_epipolar_alignment_pipeline::fuse_matches()
 {
-  if( !output_options_.save_progress_video ) {
-    return true;
+//  if ( !matched_fused_positions_.empty() ) {
+//    //matched_fused_positions_ = matched_p
+//  }
+//
+//  for ( int i = 0, n = warped_previous_positions_.size(); i < n; ++i ) {
+//
+//    const float x1 = matched_current_positions_[i].x;
+//    const float y1 = matched_current_positions_[i].y;
+//
+//    const float x2 = warped_previous_positions_[i].x;
+//    const float y2 = warped_previous_positions_[i].y;
+//
+//  }
+
+//  //matched_fused_positions_
+
+  return true;
+}
+
+
+bool c_epipolar_alignment_pipeline::save_progess_videos()
+{
+  if( output_options_.save_progress_video ) {
+
+    cv::Mat display;
+
+    if ( !get_display_image(display, cv::noArray()) ) {
+      CF_WARNING("get_display_image() fails");
+      return true;
+    }
+
+    bool fOk =
+        add_output_writer(progress_writer_,
+              output_options_.progress_output_options,
+              "progress",
+              ".avi");
+
+    if( !fOk ) {
+      CF_ERROR("add_output_writer('%s') fails",
+          progress_writer_.filename().c_str());
+      return false;
+    }
+
+    if( !progress_writer_.write(display) ) {
+      CF_ERROR("progress_writer_.write('%s') fails.",
+          progress_writer_.filename().c_str());
+      return false;
+    }
   }
 
-  cv::Mat display;
+  if( output_options_.save_optflow_video && !current_remap_.empty() ) {
 
-  if ( !get_display_image(display, cv::noArray()) ) {
-    CF_WARNING("get_display_image() fails");
-    return true;
-  }
+    bool fOk =
+        add_output_writer(optflow_writer_,
+              output_options_.optflow_output_options,
+              "optflow",
+              ".ser");
 
-  bool fOk =
-      add_output_writer(progress_writer_,
-            output_options_.progress_video_output_options,
-            "progress",
-            ".avi");
+    if( !fOk ) {
+      CF_ERROR("add_output_writer('%s') fails",
+          optflow_writer_.filename().c_str());
+      return false;
+    }
 
-  if( !fOk ) {
-    CF_ERROR("add_output_writer('%s') fails",
-        progress_writer_.filename().c_str());
-    return false;
-  }
 
-  if( !progress_writer_.write(display) ) {
-    CF_ERROR("progress_writer_.write('%s') fails.",
-        progress_writer_.filename().c_str());
-    return false;
+    cv::Mat channels[2], mag;
+    cv::Mat2f flow;
+
+    ecc_remap_to_optflow(current_remap_, flow);
+    cv::split(flow, channels);
+    cv::magnitude(channels[0], channels[1], mag);
+
+    if( !optflow_writer_.write(mag) ) {
+      CF_ERROR("optflow_writer_.write('%s') fails.",
+          optflow_writer_.filename().c_str());
+      return false;
+    }
+
   }
 
   return true;
@@ -1032,7 +1115,7 @@ bool c_epipolar_alignment_pipeline::save_matches_csv()
         matched_previous_positions_[i];
 
     fprintf(fp, "%+12.1f\t%+12.1f\t%+12.1f\t%+12.1f\n",
-        pp.x, pp.y, cp.x, cp.y);
+        cp.x, cp.y, pp.x, pp.y);
 
   }
 

@@ -18,7 +18,7 @@ class c_median_blur_routine:
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_median_blur_routine,
       "medianBlur",
-      "Calls <strong>cv::medianBlur()</strong>");
+      "calls cv::medianBlur()");
 
   void set_radius(int v)
   {

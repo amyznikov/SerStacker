@@ -52,7 +52,7 @@ protected:
       c_class_factory() : \
         base::class_factory(#class_name, \
             display_name, \
-            tooltip , \
+            "<strong>" #class_name "</strong>: " tooltip , \
             factory([]() {\
                 return sptr(new this_class());\
          })) {} \

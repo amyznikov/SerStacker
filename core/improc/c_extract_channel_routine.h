@@ -18,7 +18,7 @@ class c_extract_channel_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_extract_channel_routine, "extract_channel",
-      "Calls <strong>extract_channel()</strong> to extract single color channel from image");
+      "calls extract_channel() to extract single color channel from image");
 
   void set_output_channel(enum color_channel_type v)
   {

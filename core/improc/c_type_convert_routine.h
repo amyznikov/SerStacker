@@ -17,7 +17,7 @@ class c_type_convert_routine :
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_type_convert_routine,
       "convertTo",
-      "Calls <strong>image.convertTo(ddepth, alpha, beta)</strong>")  ;
+      "calls image.convertTo(ddepth, alpha, beta)")  ;
 
 
   void set_ddepth(enum PIXEL_DEPTH v)

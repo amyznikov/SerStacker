@@ -16,7 +16,7 @@ class c_flip_image_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_flip_image_routine,
-       "flip", "Call <strong>cv::flip()</strong> on image");
+       "flip", "calls cv::flip() on image");
 
   void set_hflip(bool v)
   {

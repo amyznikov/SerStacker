@@ -16,7 +16,7 @@ class c_rotate_image_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_rotate_image_routine,
-       "rotate", "Call <strong>cv::rotate()</strong> on image");
+       "rotate", "call cv::rotate() on image");
 
   void set_rotation_angle(double degrees)
   {

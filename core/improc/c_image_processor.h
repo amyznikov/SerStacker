@@ -266,7 +266,7 @@ protected:
     typedef std::shared_ptr<this_class> ptr; \
     struct c_class_factory : public base::class_factory { \
       c_class_factory() : \
-        base::class_factory(#class_name, display_name, tooltip , factory([]() {return ptr(new this_class());})) {} \
+        base::class_factory(#class_name, display_name, "<strong>" #class_name "</strong>: " tooltip , factory([]() {return ptr(new this_class());})) {} \
     }; \
     \
     static const c_class_factory* class_factory_instance() { \

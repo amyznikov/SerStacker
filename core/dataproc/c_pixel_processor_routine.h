@@ -19,7 +19,7 @@ class c_pixel_processor_routine :
 public:
   DECLARE_DATA_PROCESSOR_CLASS_FACTORY(c_pixel_processor_routine,
       "pixel_processor",
-      "c_pixel_processor_routine");
+      "");
 
 
   enum InputType

@@ -16,7 +16,7 @@ class c_absdiff_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_absdiff_routine,
-      "absdiff", "Calls cv::absdiff(image, value)");
+      "absdiff", "calls cv::absdiff(image, value)");
 
   void set_value(const cv::Scalar & v)
   {

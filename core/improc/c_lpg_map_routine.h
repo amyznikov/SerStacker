@@ -18,7 +18,7 @@ class c_lpg_map_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_lpg_map_routine,
-      "lpg_map", "<strong>lap * k + grad</strong><br>Weighted sum of laplacian and gradient modules ");
+      "lpg_map", "lap * k + grad<br>Weighted sum of laplacian and gradient modules ");
 
   void set_k(double v)
   {

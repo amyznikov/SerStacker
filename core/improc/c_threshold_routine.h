@@ -18,7 +18,7 @@ class c_threshold_routine:
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_threshold_routine,
       "threshold",
-      "Uses <strong>cv::compare()</strong> to threshold image. "
+      "use of cv::compare() to threshold image. "
       "Each color channel is processed independently");
 
   enum THRESHOLD_TYPE {

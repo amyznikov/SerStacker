@@ -18,7 +18,7 @@ class c_wmf_routine :
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_wmf_routine,
       "wmf",
-      "Calls <strong>cv::ximgproc::weightedMedianFilter()</strong>");
+      "calls cv::ximgproc::weightedMedianFilter()");
 
   void set_radius(int v)
   {

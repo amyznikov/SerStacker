@@ -17,7 +17,7 @@ class c_gaussian_pyramid_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_pyramid_routine, "gaussian_pyramid",
-      "Calls <strong>cv::pyrDown()</strong> or <strong>cv::pyrUp()</strong> on image");
+      "calls cv::pyrDown() or cv::pyrUp() on image");
 
   enum SharpenOrder {
     SharpenNone,

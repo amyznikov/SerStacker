@@ -16,7 +16,7 @@ class c_transpose_image_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_transpose_image_routine,
-       "transpose", "Call <strong>cv::transpose()</strong> on image");
+       "transpose", "call cv::transpose() on image");
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
   bool serialize(c_config_setting settings, bool save) override;

@@ -77,6 +77,8 @@ struct c_estimate_image_transform_options
     // parameters for estimate_epipolar_derotation()
     c_camera_intrinsics camera_intrinsics;
     c_lm_camera_pose_options camera_pose;
+    cv::Vec3f initial_translation = cv::Vec3f(0, 0, 1);
+    cv::Vec3f initial_rotation = cv::Vec3f(0, 0, 0); // euler angles in degrees
 
 //    cv::Matx33d camera_matrix = // Dummy stub from KITTI
 //        cv::Matx33d(

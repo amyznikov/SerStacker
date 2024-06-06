@@ -135,6 +135,12 @@ struct c_image_processing_options
   bool deserialize(c_config_setting settings);
 };
 
+struct c_eccflow_output_frame_writer_options :
+    c_output_frame_writer_options
+{
+  double hsv_max_motion = 0;
+};
+
 struct c_image_stacking_output_options  :
     c_image_processing_pipeline_output_options
 {
@@ -152,13 +158,15 @@ struct c_image_stacking_output_options  :
   bool save_accumulation_masks = false;
   bool save_incremental_frames = false;
   bool save_eccflow_frames = false;
+  bool save_sparse_match_blend_frames = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_aligned_video_options;
   c_output_frame_writer_options output_ecc_video_options;
   c_output_frame_writer_options output_acc_masks_video_options;
   c_output_frame_writer_options output_incremental_video_options;
-  c_output_frame_writer_options output_eccflow_options;
+  c_eccflow_output_frame_writer_options output_eccflow_options;
+  c_output_frame_writer_options output_sparse_match_blend_options;
 
 };
 
@@ -231,8 +239,6 @@ public:
 
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
 
-//  c_frame_accumulation_options& accumulation_options();
-//  const c_frame_accumulation_options& accumulation_options() const;
   c_frame_accumulation::ptr create_frame_accumulation(const c_frame_accumulation_options & opts) const;
 
   c_image_stacking_output_options& output_options();
@@ -272,8 +278,6 @@ protected:
   bool setup_frame_registration(const c_frame_registration::sptr & frame_registration,
       cv::Mat & reference_frame, cv::Mat & reference_mask);
 
-  // bool setup_frame_accumulation();
-
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
       int startpos, int endpos,
       bool generating_master_frame);
@@ -294,23 +298,13 @@ protected:
       const cv::Mat & output_image,
       const cv::Mat & output_mask);
 
-  bool save_preprocessed_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex) const;
-
-  bool save_ecc_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex) const;
-
-  bool save_aligned_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex ) const;
-
-  bool save_eccflow_frame(const cv::Mat2f & uv, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex ) const;
-
-  bool save_incremental_frame(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex) const;
-
-  bool save_accumulation_mask(const cv::Mat & current_frame, const cv::Mat & curren_mask,
-      c_output_frame_writer & output_writer, int seqindex) const;
+  bool save_preprocessed_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
+  bool save_sparse_matches_video(int seqindex);
+  bool save_ecc_video(int seqindex);
+  bool save_eccflow_video(int seqindex);
+  bool save_aligned_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
+  bool save_incremental_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
+  bool save_accumulation_masks_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
 
   std::string generate_output_file_name() const;
 
@@ -362,6 +356,15 @@ protected:
   c_frame_accumulation::ptr frame_accumulation_;
 
   mutable std::string output_file_name_postfix_;
+
+  c_output_frame_writer preprocessed_video_writer_;
+  c_output_frame_writer sparse_match_blend_writer_;
+  c_output_frame_writer ecc_writer_;
+  c_output_frame_writer eccflow_writer_;
+  c_output_frame_writer aligned_video_writer_;
+  c_output_frame_writer incremental_video_writer_;
+  c_output_frame_writer accumulation_masks_writer_;
+
 };
 
 #endif /* __c_stacking_pipeline_h__ */

@@ -816,6 +816,41 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
             return false;
           });
 
+  initial_translation_ctl =
+      add_numeric_box<cv::Vec3f>("initial_translation",
+          "",
+          [this](const cv::Vec3f & v) {
+            if ( options_ && options_->epipolar_derotation.initial_translation != v ) {
+              options_->epipolar_derotation.initial_translation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3f * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.initial_translation;
+              return true;
+            }
+            return false;
+          });
+
+  initial_rotation_ctl =
+      add_numeric_box<cv::Vec3f>("initial_rotation [deg]",
+          "",
+          [this](const cv::Vec3f & v) {
+            if ( options_ && options_->epipolar_derotation.initial_rotation != v ) {
+              options_->epipolar_derotation.initial_rotation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3f * v) {
+            if ( options_ ) {
+              *v = options_->epipolar_derotation.initial_rotation;
+              return true;
+            }
+            return false;
+          });
+
+
   updateControls();
 }
 

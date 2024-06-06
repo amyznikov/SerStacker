@@ -237,6 +237,11 @@ const c_sparse_feature_extractor_and_matcher::sptr & c_frame_registration::creat
   return sparse_feature_extractor_and_matcher_;
 }
 
+const c_sparse_feature_extractor_and_matcher::sptr & c_frame_registration::sparse_feature_extractor_and_matcher() const
+{
+  return sparse_feature_extractor_and_matcher_;
+}
+
 //c_sparse_feature_extractor::sptr c_frame_registration::create_keypoints_extractor() const
 //{
 //  return create_sparse_feature_extractor(options_.feature_registration.sparse_feature_extractor);

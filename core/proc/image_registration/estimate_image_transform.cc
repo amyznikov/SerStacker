@@ -726,8 +726,8 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
   }
 
 
-  cv::Vec3d A(0, 0, 0);
-  cv::Vec3d T(0,0, 1);
+  cv::Vec3d A = options->epipolar_derotation.initial_rotation * CV_PI / 180; //(0, 0, 0);
+  cv::Vec3d T = options->epipolar_derotation.initial_translation; // (0,0, 1);
   cv::Mat1b inliers;
 
   const cv::Matx33d & camera_matrix =
@@ -856,6 +856,9 @@ bool save_settings(c_config_setting settings, const c_estimate_image_transform_o
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_iterations);
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, max_levmar_iterations);
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, direction);
+    SAVE_OPTION(subsection, opts.epipolar_derotation, initial_translation);
+    SAVE_OPTION(subsection, opts.epipolar_derotation, initial_rotation);
+
   }
 
   return true;

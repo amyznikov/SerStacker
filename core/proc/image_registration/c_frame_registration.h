@@ -158,6 +158,7 @@ public:
   const c_image_transform::sptr & image_transform() const;
 
   const c_sparse_feature_extractor_and_matcher::sptr & create_sparse_feature_extractor_and_matcher();
+  const c_sparse_feature_extractor_and_matcher::sptr & sparse_feature_extractor_and_matcher() const;
 
   const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;

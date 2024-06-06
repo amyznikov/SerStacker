@@ -1957,11 +1957,11 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
     const pyramid_entry & first_scale =
         pyramid_.front();
 
-    const pyramid_entry & last_scale =
-        pyramid_.back();
-
     const cv::Size first_size =
         first_scale.reference_image.size();
+
+    const pyramid_entry & last_scale =
+        pyramid_.back();
 
     const cv::Size last_size =
         last_scale.reference_image.size();
@@ -1970,7 +1970,7 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
         (double) last_size.height / (double) first_size.height);
 
     ecc_remap_to_optflow(rmap, uv);
-    cv::resize(uv, uv, last_size, 0, 0, cv::INTER_AREA);
+    cv::resize(uv, uv, last_size, 0, 0, cv::INTER_AREA/*cv::INTER_CUBIC*/);
     cv::multiply(uv, size_ratio, uv);
 
   }

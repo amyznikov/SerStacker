@@ -222,7 +222,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline:
 
       ////////
     PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
-      PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, camera_options_.camera_intrinsics);
+      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, camera_options_.camera_intrinsics);
     PIPELINE_CTL_END_GROUP(ctrls);
 
     ////////

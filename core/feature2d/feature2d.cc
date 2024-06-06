@@ -46,15 +46,15 @@ FEATURE2D_MATCHER_TYPE c_sparse_feature_extractor_and_matcher::matcher_type() co
   return options_.matcher.type;
 }
 
-const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_image() const
-{
-  return reference_image_;
-}
-
-const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_mask() const
-{
-  return reference_mask_;
-}
+//const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_image() const
+//{
+//  return reference_image_;
+//}
+//
+//const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_mask() const
+//{
+//  return reference_mask_;
+//}
 
 const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_descriptors() const
 {
@@ -71,15 +71,15 @@ const std::vector<cv::Point2f> & c_sparse_feature_extractor_and_matcher::matched
   return matched_reference_positions_;
 }
 
-const cv::Mat & c_sparse_feature_extractor_and_matcher::current_image() const
-{
-  return current_image_;
-}
-
-const cv::Mat & c_sparse_feature_extractor_and_matcher::current_mask() const
-{
-  return current_mask_;
-}
+//const cv::Mat & c_sparse_feature_extractor_and_matcher::current_image() const
+//{
+//  return current_image_;
+//}
+//
+//const cv::Mat & c_sparse_feature_extractor_and_matcher::current_mask() const
+//{
+//  return current_mask_;
+//}
 
 const cv::Mat & c_sparse_feature_extractor_and_matcher::current_descriptors() const
 {

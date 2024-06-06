@@ -50,14 +50,14 @@ public:
   bool match_current_frame(cv::InputArray image,
       cv::InputArray mask = cv::noArray());
 
-  const cv::Mat & referece_image() const;
-  const cv::Mat & referece_mask() const;
+//  const cv::Mat & referece_image() const;
+//  const cv::Mat & referece_mask() const;
   const cv::Mat & referece_descriptors() const;
   const std::vector<cv::KeyPoint> & referece_keypoints() const;
   const std::vector<cv::Point2f> & matched_reference_positions() const;
 
-  const cv::Mat & current_image() const;
-  const cv::Mat & current_mask() const;
+//  const cv::Mat & current_image() const;
+//  const cv::Mat & current_mask() const;
   const cv::Mat & current_descriptors() const;
   const std::vector<cv::KeyPoint> & current_keypoints() const;
   const std::vector<cv::Point2f> & matched_current_positions() const;
@@ -87,8 +87,8 @@ protected:
   std::vector<cv::Point2f> reference_positions_;
   std::vector<cv::Point2f> matched_reference_positions_;
 
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
+//  cv::Mat current_image_;
+//  cv::Mat current_mask_;
   cv::Mat current_descriptors_;
   std::vector<cv::KeyPoint> current_keypoints_;
   std::vector<cv::Point2f> current_positions_;

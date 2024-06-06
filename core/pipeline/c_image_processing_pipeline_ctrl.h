@@ -540,7 +540,7 @@ struct c_image_processing_pipeline_ctrl
     }
 
 
-#define PIPELINE_CTL_CAMERA_INTRINSICTS(ctrls, c) \
+#define PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, c) \
     if ( true ) { \
       c_image_processing_pipeline_ctrl ctl; \
       ctl.type = c_image_processor_pipeline_ctl_camera_intrinsicts; \
@@ -548,6 +548,23 @@ struct c_image_processing_pipeline_ctrl
           [](c_image_processing_pipeline * p) -> c_camera_intrinsics * { \
             this_class * _this = dynamic_cast<this_class * >(p); \
             return _this ? &(_this->c) : nullptr; \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
+
+#define PIPELINE_CTL_CAMERA_INTRINSICSC(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_camera_intrinsicts; \
+      ctl.get_camera_intrinsicts = \
+          [](c_image_processing_pipeline * p) -> c_camera_intrinsics * { \
+            this_class * _this = dynamic_cast<this_class * >(p); \
+            return _this ? &(_this->c) : nullptr; \
+          }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
           }; \
       ctrls.emplace_back(ctl); \
     }

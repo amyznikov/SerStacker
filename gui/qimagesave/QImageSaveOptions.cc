@@ -9,6 +9,7 @@
 #include <gui/qimageview/cv2qt.h>
 #include <gui/widgets/QWaitCursor.h>
 #include <core/proc/normalize.h>
+#include <core/proc/flow2HSV.h>
 #include <core/io/save_image.h>
 #include <tiff.h>
 #include <tiffio.h>

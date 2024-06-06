@@ -223,6 +223,8 @@ protected:
   QNumericBox * robust_threshold_ctl = nullptr;
   QNumericBox * epsf_ctl = nullptr;
   QNumericBox * epsx_ctl = nullptr;
+  QNumericBox * initial_translation_ctl = nullptr;
+  QNumericBox * initial_rotation_ctl = nullptr;
 };
 
 

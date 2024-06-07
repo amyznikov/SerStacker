@@ -126,13 +126,13 @@ protected:
   std::vector<cv::KeyPoint> previous_keypoints_;
   std::vector<cv::Point2f> matched_current_positions_;
   std::vector<cv::Point2f> matched_previous_positions_;
-  std::vector<cv::Point2f> warped_previous_positions_;
+  std::vector<cv::Point2f> warped_current_positions_;
 
   std::vector<cv::Point2f> matched_fused_positions_;
 
   cv::Mat current_frame_, current_mask_;
   cv::Mat previous_frame_, previous_mask_;
-  cv::Mat current_mp, previous_mp, remapped_previous_mp;
+  cv::Mat current_mg, previous_mg, remapped_current_mg;
   cv::Mat2f current_remap_;
   cv::Mat1f current_correlation_;
   cv::Mat1b current_correlation_mask_;

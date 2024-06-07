@@ -180,8 +180,8 @@ struct c_image_stacking_master_frame_options
   bool save_master_frame = true;
   int max_frames_to_generate_master_frame = 3000;
 
-  double unsharp_sigma = 3;
-  double unsharp_alpha = 0.6;
+  double unsharp_sigma = 0;
+  double unsharp_alpha = 0.8;
 
 };
 

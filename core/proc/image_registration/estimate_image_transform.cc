@@ -734,7 +734,7 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
       options->epipolar_derotation.camera_intrinsics.camera_matrix;
 
   bool fOk =
-      lm_refine_camera_pose2(A, T,
+      lm_refine_camera_pose(A, T,
           camera_matrix,
           matched_current_positions_,
           matched_reference_positions_,

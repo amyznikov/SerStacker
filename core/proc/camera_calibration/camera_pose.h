@@ -452,7 +452,7 @@ struct c_lm_camera_pose_options
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
-bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
+bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     const cv::Matx33d & camera_matrix,
     const std::vector<cv::Point2f> & current_keypoints,
     const std::vector<cv::Point2f> & reference_keypoints,

@@ -436,13 +436,17 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
       cv::Mat dsp = display(roi[1][0]);
 
-      for ( int i = 0, n = warped_current_positions_.size(); i < n; ++i ) {
+      for( int i = 0, n = warped_current_positions_.size(); i < n; ++i ) {
 
         const auto & p1 = matched_previous_positions_[i];
 
         const auto & p2 = warped_current_positions_[i];
 
-        cv::line(dsp, p1, p2, CV_RGB(128,255,32), 1, cv::LINE_8);
+        const cv::Scalar c =
+            current_inliers_[i][0] ? CV_RGB(255, 255, 16) :
+                CV_RGB(255, 16, 16);
+
+        cv::line(dsp, p1, p2, c, 1, cv::LINE_8);
 
       }
     }

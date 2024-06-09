@@ -133,8 +133,6 @@ public:
     rmse_ =
         (_Tp)cv::norm(rhs_, cv::NORM_L2SQR);
 
-//    int nfJ = 2;
-
     cv::mulTransposed(J, A, true);
 
     cv::gemm(J, cv::Mat_<_Tp>(rhs_), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
@@ -165,8 +163,6 @@ public:
         CF_ERROR("compute() fails");
         return -1;
       }
-
-//      nfJ++;
 
       _Tp Sd =
           cv::norm(rd, cv::NORM_L2SQR);
@@ -206,7 +202,7 @@ public:
             maxval = (std::max)(maxval, std::abs(Ap[i][i]));
           }
 
-          lambda = lc = 1. / maxval;
+          lambda = lc = 1 / maxval;
 
           nu /= 2;
         }
@@ -216,7 +212,6 @@ public:
 
       if( Sd < rmse_ ) {
 
-//        nfJ++;
         rmse_ = Sd;
         std::swap(x, xd);
 

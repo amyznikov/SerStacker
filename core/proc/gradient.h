@@ -30,6 +30,9 @@ bool compute_diagonal_gradients(cv::InputArray src,
     int ddepth = -1,
     int borderType = cv::BORDER_DEFAULT);
 
+// To compute Determinant:
+//  cv::subtract(gxx.mul(gyy), gxy.mul(gxy), det);
+//  cv::absdiff(gx.mul(gy), gxy.mul(gxy), det_abs);
 bool compute_second_sobel_derivatives(cv::InputArray src,
     cv::OutputArray gxx,
     cv::OutputArray gxy,

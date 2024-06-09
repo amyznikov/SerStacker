@@ -775,16 +775,26 @@ bool c_ecc_forward_additive::align_to_reference(cv::InputArray inputImage, cv::I
       break;
     }
 
-    cv::remap(g, gw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-    cv::remap(gx, gxw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-    cv::remap(gy, gyw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-    cv::remap(gmask, wmask, current_remap_, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT, 0);
+    tbb::parallel_invoke(
+        [this]() {
+          cv::remap(g, gw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        },
+        [this]() {
+          cv::remap(gx, gxw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        },
+        [this]() {
+          cv::remap(gy, gyw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        },
+        [this]() {
+          cv::remap(gmask, wmask, current_remap_, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT, 0);
+          cv::compare(wmask, 253, wmask, cv::CMP_GE);
+          if( !fmask.empty() ) {
+            bitwise_and(wmask, fmask, wmask);
+          }
+          cv::bitwise_not(wmask, iwmask);
+        }
+    );
 
-    if( !fmask.empty() ) {
-      bitwise_and(wmask, fmask, wmask);
-    }
-
-    cv::bitwise_not(wmask, iwmask);
     gxw.setTo(0, iwmask);
     gyw.setTo(0, iwmask);
 
@@ -1461,7 +1471,7 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
       //e.reference_image.copyTo(W);
       cv::remap(e.current_image, W,
           rmap, cv::noArray(),
-          cv::INTER_AREA,
+          cv::INTER_CUBIC,
           cv::BORDER_REPLICATE/*cv::BORDER_TRANSPARENT*/);
     },
 

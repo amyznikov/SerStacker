@@ -565,4 +565,7 @@ bool libconfig_parse_flags(c_config_setting settings,
 #define SERIALIZE_GROUP(settings, save, name) \
       ((save) ? settings.add_group(name) : settings[name].isGroup()? settings[name] : c_config_setting())
 
+#define GET_SETTINGS_SECTION(settings, name) \
+    (settings[name].isGroup()? settings[name] : c_config_setting())
+
 #endif /* __libconfig_settings__h__ */

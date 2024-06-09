@@ -208,8 +208,8 @@ bool c_euclidean_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, 
   }
 
   if( e ) {
-    const float sa = sin(da);
-    *e = sqrt(square(dx) + square(dy) +
+    const float sa = std::sin(da);
+    *e = std::sqrt(square(dx) + square(dy) +
         square(size.width * sa) + square(size.height * sa) +
         square(std::max(size.width, size.height) * ds));
   }

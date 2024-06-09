@@ -25,10 +25,6 @@
 #pragma once
 #define MAX_ACTIVE_FRAMES 100
 
-//#include <iostream>
-//#include <fstream>
-//#include <iomanip>
-
 #include <deque>
 #include <vector>
 #include <cmath>

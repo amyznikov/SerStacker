@@ -24,6 +24,7 @@
 
 #pragma once
 //#include <iostream>
+#include <Eigen/Core>
 #include <cstring>
 
 

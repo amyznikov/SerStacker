@@ -11,15 +11,12 @@
 #include "dso/FullSystem.h"
 #include "dso/IOWrapper/Output3DWrapper.h"
 #include "dso/IOWrapper/ImageDisplay.h"
-#include "DatasetReader.h"
+#include "c_dso_dataset_reader.h"
 #include <core/settings.h>
 #include <core/debug.h>
 
 
 using namespace dso;
-
-typedef std::unique_ptr<ImageFolderReader>
-  ImageFolderReaderPtr;
 
 class c_FullSystem :
     public FullSystem
@@ -205,10 +202,12 @@ int main(int argc, char *argv[])
   }
 
 
-  ImageFolderReaderPtr reader(new ImageFolderReader(cfg.files,
-      cfg.calib,
-      cfg.gamma,
-      cfg.vignette));
+  c_dso_dataset_reader::uptr reader(new c_dso_dataset_reader());
+
+  if( !reader->open(cfg.files, cfg.calib, cfg.gamma, cfg.vignette) ) {
+    CF_ERROR("c_dso_dataset_reader::open() fails");
+    return 1;
+  }
 
   reader->setGlobalCalibration();
 
@@ -229,9 +228,8 @@ int main(int argc, char *argv[])
     CF_DEBUG("H [i=%d]", i);
 
     ImageAndExposure* img =
-        reader->getImage(i, false);
+        reader->getImage(i);
 
-    CF_DEBUG("H [i=%d]", i);
     if ( !img ) {
       CF_ERROR("getImage(%d) fails", i);
       break;
@@ -250,9 +248,7 @@ int main(int argc, char *argv[])
 //    }
 //
 //    CF_DEBUG("fullSystem->addActiveFrame");
-    CF_DEBUG("H [i=%d]", i);
     fullSystem->addActiveFrame(img, i);
-    CF_DEBUG("H [i=%d]", i);
   }
 
   CF_DEBUG("OK");

@@ -274,8 +274,7 @@ struct FrameHessian
   inline Vec10 getPrior()
   {
     Vec10 p = Vec10::Zero();
-    if( frameID == 0 )
-        {
+    if( frameID == 0 ) {
       p.head<3>() = Vec3::Constant(setting_initialTransPrior);
       p.segment<3>(3) = Vec3::Constant(setting_initialRotPrior);
       if( setting_solverMode & SOLVER_REMOVE_POSEPRIOR ) {

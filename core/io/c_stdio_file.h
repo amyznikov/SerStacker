@@ -29,6 +29,8 @@ public:
   bool open(const std::string & filename = "", const std::string & mode = "");
   void close();
 
+  bool eof() const;
+
   int vfprintf(const char * format, va_list arglist);
 
 #ifdef _MSC_VER
@@ -36,6 +38,8 @@ public:
 #else
   int fprintf(const char * format, ...) __attribute__ ((__format__ (printf, 2, 3)));
 #endif
+
+  char *fgets(char buff[], int max_size);
 
 protected:
   FILE * fp_;

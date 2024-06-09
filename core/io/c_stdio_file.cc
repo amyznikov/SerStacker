@@ -96,6 +96,11 @@ void c_stdio_file::close()
   }
 }
 
+bool c_stdio_file::eof() const
+{
+  return fp_ ? ::feof(fp_) : true;
+}
+
 int c_stdio_file::vfprintf(const char * format, va_list arglist)
 {
   return fp_ ? ::vfprintf(fp_, format, arglist) : errno = EINVAL, -1;
@@ -111,5 +116,15 @@ int c_stdio_file::fprintf(const char * format, ...)
   va_end(arglist);
 
   return status;
+}
+
+char * c_stdio_file::fgets(char buff[], int max_size)
+{
+  if ( !fp_ ) {
+    errno = EINVAL;
+    return nullptr;
+  }
+
+  return ::fgets(buff, max_size, fp_);
 }
 

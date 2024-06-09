@@ -219,36 +219,18 @@ int main(int argc, char *argv[])
   c_FullSystem::uptr fullSystem(new c_FullSystem());
   fullSystem->setGammaFunction(reader->getPhotometricGamma());
 
-
-  //  cv::Mat1b cvimg;
-  //  char filename[PATH_MAX] = "";
+  c_image_and_exposure image;
 
   for ( int i = 0; i < numImages; ++i ) {
 
-    CF_DEBUG("H [i=%d]", i);
-
-    ImageAndExposure* img =
-        reader->getImage(i);
-
-    if ( !img ) {
+    if ( !reader->getImage(i, &image) ) {
       CF_ERROR("getImage(%d) fails", i);
       break;
     }
 
-    CF_DEBUG("img[%d]   exposure_time=%g", i, img->exposure_time);
+    CF_DEBUG("img[%d]   exposure=%g", i, image.exposure());
 
-//    cv::Mat1f cvimg(img->h, img->w, img->image);
-
-//    cv::Mat1f(img->h, img->w, img->image).convertTo(cvimg, CV_8U);
-//
-//    sprintf(filename, "../mono-dataset/sequence_46/rectified_png/image.%06d.png", i);
-//    if ( !cv::imwrite(filename, cvimg) ) {
-//      CF_ERROR("cv::imwrite('%s') fails", filename);
-//      break;
-//    }
-//
-//    CF_DEBUG("fullSystem->addActiveFrame");
-    fullSystem->addActiveFrame(img, i);
+    fullSystem->addActiveFrame(image, i);
   }
 
   CF_DEBUG("OK");

@@ -28,7 +28,7 @@ public:
   typedef std::unique_ptr<this_class> uptr;
 
   using MinimalImageB = dso::MinimalImageB;
-  using ImageAndExposure = dso::ImageAndExposure;
+  using c_image_and_exposure = dso::c_image_and_exposure;
 
   c_dso_dataset_reader();
   ~c_dso_dataset_reader();
@@ -48,20 +48,22 @@ public:
 
   void prepImage(int id, bool as8U = false);
 
-  ImageAndExposure* getImage(int id);
+  bool getImage(int id, c_image_and_exposure * image);
+
   MinimalImageB* getRawImage(int id);
   double getTimestamp(int id) const;
 
 protected:
+  bool getImage_internal(int id, c_image_and_exposure * image);
+
   MinimalImageB * getRawImage_internal(int id);
-  ImageAndExposure* getImage_internal(int id);
   void loadTimestamps();
 
 protected:
   std::string path;
   std::string calibfile;
 
-  std::vector<ImageAndExposure*> preloadedImages;
+  std::vector<c_image_and_exposure*> preloadedImages;
   std::vector<std::string> files;
   std::vector<double> timestamps;
   std::vector<float> exposures;

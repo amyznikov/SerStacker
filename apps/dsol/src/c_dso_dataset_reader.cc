@@ -6,15 +6,15 @@
  */
 
 #include "c_dso_dataset_reader.h"
+#include <core/io/c_stdio_file.h>
 #include <dirent.h>
 #include <algorithm>
-#include <core/io/c_stdio_file.h>
 #include <core/debug.h>
 
 namespace {
 
 using MinimalImageB = c_dso_dataset_reader::MinimalImageB;
-using ImageAndExposure = c_dso_dataset_reader::ImageAndExposure;
+using c_image_and_exposure = c_dso_dataset_reader::c_image_and_exposure;
 using Undistort = dso::Undistort;
 
 static int getdir(std::string dir, std::vector<std::string> & files)
@@ -88,10 +88,11 @@ int c_dso_dataset_reader::getNumImages() const
   return files.size();
 }
 
-ImageAndExposure* c_dso_dataset_reader::getImage(int id)
+bool c_dso_dataset_reader::getImage(int id, c_image_and_exposure * image)
 {
-  return getImage_internal(id);
+  return getImage_internal(id, image);
 }
+
 
 MinimalImageB* c_dso_dataset_reader::getRawImage(int id)
 {
@@ -390,24 +391,22 @@ MinimalImageB* c_dso_dataset_reader::getRawImage_internal(int id)
 #endif
 }
 
-ImageAndExposure* c_dso_dataset_reader::getImage_internal(int id)
+bool c_dso_dataset_reader::getImage_internal(int id, c_image_and_exposure * output_image)
 {
   MinimalImageB * minimg =
       getRawImage_internal(id);
 
   if ( !minimg ) {
     CF_ERROR("getRawImage_internal(id=%d) fails", id);
-    return nullptr;
+    return false;
   }
 
-  ImageAndExposure * ret2 =
-      undistort->undistort<unsigned char>(minimg,
-          (exposures.size() == 0 ? 1.0f : exposures[id]),
-          (timestamps.size() == 0 ? 0.0 : timestamps[id]));
+  undistort->undistort<unsigned char>(minimg, output_image,
+      (exposures.size() == 0 ? 1.0f : exposures[id]),
+      (timestamps.size() == 0 ? 0.0 : timestamps[id]));
 
   delete minimg;
 
-  return ret2;
+  return true;
 }
-
 

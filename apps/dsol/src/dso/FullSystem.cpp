@@ -39,8 +39,6 @@
 
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
-#include "util/ImageAndExposure.h"
-
 #include "PixelSelector.h"
 #include "PixelSelector2.h"
 #include "ResidualProjections.h"
@@ -56,6 +54,7 @@
 #include "IOWrapper/Output3DWrapper.h"
 
 #include <core/debug.h>
+#include "util/c_image_and_exposure.h"
 
 namespace dso
 {
@@ -820,7 +819,7 @@ void FullSystem::flagPointsForRemoval()
 
 }
 
-void FullSystem::addActiveFrame(ImageAndExposure * image, int id)
+void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
 {
 
   if( isLost ) {
@@ -835,14 +834,14 @@ void FullSystem::addActiveFrame(ImageAndExposure * image, int id)
   shell->camToWorld = SE3(); 		// no lock required, as fh is not used anywhere yet.
   shell->aff_g2l = AffLight(0, 0);
   shell->marginalizedAt = shell->id = allFrameHistory.size();
-  shell->timestamp = image->timestamp;
+  shell->timestamp = image.timestamp();
   shell->incoming_id = id;
   fh->shell = shell;
   allFrameHistory.push_back(shell);
 
   // =========================== make Images / derivatives etc. =========================
-  fh->ab_exposure = image->exposure_time;
-  fh->makeImages(image->image, &Hcalib);
+  fh->ab_exposure = image.exposure();
+  fh->makeImages(image.data(), &Hcalib);
 
 //  onFrameHessianMakeImages(fh);
 

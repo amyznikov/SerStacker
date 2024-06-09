@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #define MAX_ACTIVE_FRAMES 100
 
 //#include <iostream>
@@ -30,7 +31,7 @@
 #include <vector>
 #include "Residuals.h"
 #include "util/NumType.h"
-#include "util/ImageAndExposure.h"
+#include "util/c_image_and_exposure.h"
 #include "util/globalCalib.h"
 
 namespace dso
@@ -269,7 +270,7 @@ struct FrameHessian
   }
   ;
 
-  void makeImages(float * color, CalibHessian * HCalib);
+  void makeImages(const float * color, CalibHessian * HCalib);
 
   inline Vec10 getPrior()
   {

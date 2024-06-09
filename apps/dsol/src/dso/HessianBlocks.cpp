@@ -127,7 +127,7 @@ void FrameHessian::release()
   immaturePoints.clear();
 }
 
-void FrameHessian::makeImages(float * color, CalibHessian * HCalib)
+void FrameHessian::makeImages(const float * color, CalibHessian * HCalib)
 {
 
   for( int i = 0; i < pyrLevelsUsed; i++ ) {

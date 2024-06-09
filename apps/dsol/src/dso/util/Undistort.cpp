@@ -35,6 +35,7 @@
 #include "IOWrapper/ImageRW.h"
 #include <Eigen/Core>
 #include <iterator>
+#include <core/debug.h>
 
 
 namespace dso
@@ -58,7 +59,7 @@ PhotometricUndistorter::PhotometricUndistorter(
 	vignetteMapInv=0;
 	w = w_;
 	h = h_;
-	output = new ImageAndExposure(w,h);
+	output = new c_image_and_exposure(w,h);
 	if(file=="" || vignetteImage=="")
 	{
 		printf("NO PHOTOMETRIC Calibration!\n");
@@ -213,9 +214,9 @@ void PhotometricUndistorter::unMapFloatImage(float* image)
 template<typename T>
 void PhotometricUndistorter::processFrame(T* image_in, float exposure_time, float factor)
 {
-	int wh=w*h;
-    float* data = output->image;
-	assert(output->w == w && output->h == h);
+  int wh = w * h;
+  float * data = output->data();
+	assert(output->cols() == w && output->rows() == h);
 	assert(data != 0);
 
 
@@ -225,8 +226,8 @@ void PhotometricUndistorter::processFrame(T* image_in, float exposure_time, floa
 		{
 			data[i] = factor*image_in[i];
 		}
-		output->exposure_time = exposure_time;
-		output->timestamp = 0;
+		output->set_exposure(exposure_time);
+		output->set_timestamp(0);
 	}
 	else
 	{
@@ -241,15 +242,16 @@ void PhotometricUndistorter::processFrame(T* image_in, float exposure_time, floa
 				data[i] *= vignetteMapInv[i];
 		}
 
-		output->exposure_time = exposure_time;
-		output->timestamp = 0;
+		output->set_exposure (exposure_time);
+		output->set_timestamp(0);
 	}
 
 
-	if(!setting_useExposure)
-		output->exposure_time = 1;
-
+	if(!setting_useExposure) {
+		output->set_exposure(1);
+	}
 }
+
 template void PhotometricUndistorter::processFrame<unsigned char>(unsigned char* image_in, float exposure_time, float factor);
 template void PhotometricUndistorter::processFrame<unsigned short>(unsigned short* image_in, float exposure_time, float factor);
 
@@ -385,106 +387,117 @@ void Undistort::loadPhotometricCalibration(std::string file, std::string noiseIm
 }
 
 template<typename T>
-ImageAndExposure* Undistort::undistort(const MinimalImage<T>* image_raw, float exposure, double timestamp, float factor) const
+bool Undistort::undistort(const MinimalImage<T>* image_raw, c_image_and_exposure * output_image, float exposure, double timestamp, float factor) const
 {
-	if(image_raw->w != wOrg || image_raw->h != hOrg)
-	{
-		printf("Undistort::undistort: wrong image size (%d %d instead of %d %d) \n", image_raw->w, image_raw->h, w, h);
-		exit(1);
-	}
+  if( image_raw->w != wOrg || image_raw->h != hOrg ) {
+    CF_ERROR("Undistort::undistort: wrong image size (%d %d instead of %d %d) \n", image_raw->w, image_raw->h, w, h);
+    exit(1);
+  }
 
-	photometricUndist->processFrame<T>(image_raw->data, exposure, factor);
-	ImageAndExposure* result = new ImageAndExposure(w, h, timestamp);
-	photometricUndist->output->copyMetaTo(*result);
+  output_image->create(image_raw->h, image_raw->w, timestamp);
+  photometricUndist->processFrame<T>(image_raw->data, exposure, factor);
+  photometricUndist->output->copyMetaTo(*output_image);
 
-	if (!passthrough)
-	{
-		float* out_data = result->image;
-		float* in_data = photometricUndist->output->image;
+  if (!passthrough) {
+    float* out_data = output_image->data();
+    float* in_data = photometricUndist->output->data();
 
-		float* noiseMapX=0;
-		float* noiseMapY=0;
-		if(benchmark_varNoise>0)
-		{
-			int numnoise=(benchmark_noiseGridsize+8)*(benchmark_noiseGridsize+8);
-			noiseMapX=new float[numnoise];
-			noiseMapY=new float[numnoise];
-			memset(noiseMapX,0,sizeof(float)*numnoise);
-			memset(noiseMapY,0,sizeof(float)*numnoise);
+    float* noiseMapX=0;
+    float* noiseMapY=0;
+    if(benchmark_varNoise>0)
+    {
+      int numnoise=(benchmark_noiseGridsize+8)*(benchmark_noiseGridsize+8);
+      noiseMapX=new float[numnoise];
+      noiseMapY=new float[numnoise];
+      memset(noiseMapX,0,sizeof(float)*numnoise);
+      memset(noiseMapY,0,sizeof(float)*numnoise);
 
-			for(int i=0;i<numnoise;i++)
-			{
-				noiseMapX[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
-				noiseMapY[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
-			}
-		}
+      for(int i=0;i<numnoise;i++)
+      {
+        noiseMapX[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
+        noiseMapY[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
+      }
+    }
 
 
-		for(int idx = w*h-1;idx>=0;idx--)
-		{
-			// get interp. values
-			float xx = remapX[idx];
-			float yy = remapY[idx];
+    for(int idx = w*h-1;idx>=0;idx--)
+    {
+      // get interp. values
+      float xx = remapX[idx];
+      float yy = remapY[idx];
 
 
 
-			if(benchmark_varNoise>0)
-			{
-				float deltax = getInterpolatedElement11BiCub(noiseMapX, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
-				float deltay = getInterpolatedElement11BiCub(noiseMapY, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
-				float x = idx%w + deltax;
-				float y = idx/w + deltay;
-				if(x < 0.01) x = 0.01;
-				if(y < 0.01) y = 0.01;
-				if(x > w-1.01) x = w-1.01;
-				if(y > h-1.01) y = h-1.01;
+      if(benchmark_varNoise>0)
+      {
+        float deltax = getInterpolatedElement11BiCub(noiseMapX, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
+        float deltay = getInterpolatedElement11BiCub(noiseMapY, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
+        float x = idx%w + deltax;
+        float y = idx/w + deltay;
+        if(x < 0.01) x = 0.01;
+        if(y < 0.01) y = 0.01;
+        if(x > w-1.01) x = w-1.01;
+        if(y > h-1.01) y = h-1.01;
 
-				xx = getInterpolatedElement(remapX, x, y, w);
-				yy = getInterpolatedElement(remapY, x, y, w);
-			}
+        xx = getInterpolatedElement(remapX, x, y, w);
+        yy = getInterpolatedElement(remapY, x, y, w);
+      }
 
 
-			if(xx<0)
-				out_data[idx] = 0;
-			else
-			{
-				// get integer and rational parts
-				int xxi = xx;
-				int yyi = yy;
-				xx -= xxi;
-				yy -= yyi;
-				float xxyy = xx*yy;
+      if(xx<0)
+        out_data[idx] = 0;
+      else
+      {
+        // get integer and rational parts
+        int xxi = xx;
+        int yyi = yy;
+        xx -= xxi;
+        yy -= yyi;
+        float xxyy = xx*yy;
 
-				// get array base pointer
-				const float* src = in_data + xxi + yyi * wOrg;
+        // get array base pointer
+        const float* src = in_data + xxi + yyi * wOrg;
 
-				// interpolate (bilinear)
-				out_data[idx] =  xxyy * src[1+wOrg]
-									+ (yy-xxyy) * src[wOrg]
-									+ (xx-xxyy) * src[1]
-									+ (1-xx-yy+xxyy) * src[0];
-			}
-		}
+        // interpolate (bilinear)
+        out_data[idx] =  xxyy * src[1+wOrg]
+                  + (yy-xxyy) * src[wOrg]
+                  + (xx-xxyy) * src[1]
+                  + (1-xx-yy+xxyy) * src[0];
+      }
+    }
 
-		if(benchmark_varNoise>0)
-		{
-			delete[] noiseMapX;
-			delete[] noiseMapY;
-		}
+    if(benchmark_varNoise>0)
+    {
+      delete[] noiseMapX;
+      delete[] noiseMapY;
+    }
 
-	}
-	else
-	{
-		memcpy(result->image, photometricUndist->output->image, sizeof(float)*w*h);
-	}
+  }
+  else
+  {
+    output_image->copy_from(photometricUndist->output->image());
+    //memcpy(result->image, photometricUndist->output->image, sizeof(float)*w*h);
+  }
 
-	applyBlurNoise(result->image);
+  applyBlurNoise(output_image->data());
 
-	return result;
+  return true;
+
 }
-template ImageAndExposure* Undistort::undistort<unsigned char>(const MinimalImage<unsigned char>* image_raw, float exposure, double timestamp, float factor) const;
-template ImageAndExposure* Undistort::undistort<unsigned short>(const MinimalImage<unsigned short>* image_raw, float exposure, double timestamp, float factor) const;
 
+template<typename T>
+c_image_and_exposure* Undistort::undistort(const MinimalImage<T>* image_raw, float exposure, double timestamp, float factor) const
+{
+  c_image_and_exposure* output_image = new c_image_and_exposure(); // w, h, timestamp
+  undistort(image_raw, output_image, exposure, timestamp, factor);
+  return output_image;
+}
+
+template c_image_and_exposure* Undistort::undistort<unsigned char>(const MinimalImage<unsigned char>* image_raw, float exposure, double timestamp, float factor) const;
+template c_image_and_exposure* Undistort::undistort<unsigned short>(const MinimalImage<unsigned short>* image_raw, float exposure, double timestamp, float factor) const;
+
+template bool Undistort::undistort<unsigned char>(const MinimalImage<unsigned char>* image_raw, c_image_and_exposure* , float exposure, double timestamp, float factor) const;
+template bool Undistort::undistort<unsigned short>(const MinimalImage<unsigned short>* image_raw, c_image_and_exposure* , float exposure, double timestamp, float factor) const;
 
 void Undistort::applyBlurNoise(float* img) const
 {

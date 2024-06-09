@@ -24,10 +24,10 @@
 
 #pragma once
 
-#include "util/ImageAndExposure.h"
+#include <Eigen/Core>
+#include "c_image_and_exposure.h"
 #include "util/MinimalImage.h"
 #include "util/NumType.h"
-#include "Eigen/Core"
 
 
 
@@ -51,7 +51,7 @@ public:
 	template<typename T> void processFrame(T* image_in, float exposure_time, float factor=1);
 	void unMapFloatImage(float* image);
 
-	ImageAndExposure* output;
+	c_image_and_exposure* output;
 
 	float* getG() {if(!valid) return 0; else return G;};
 private:
@@ -79,8 +79,15 @@ public:
 	inline const Eigen::Vector2i getOriginalSize() {return Eigen::Vector2i(wOrg,hOrg);};
 	inline bool isValid() {return valid;};
 
+  template<typename T>
+  bool undistort(const MinimalImage<T>* image_raw, c_image_and_exposure * output_image,
+      float exposure=0, double timestamp=0, float factor=1) const;
+
 	template<typename T>
-	ImageAndExposure* undistort(const MinimalImage<T>* image_raw, float exposure=0, double timestamp=0, float factor=1) const;
+	c_image_and_exposure* undistort(const MinimalImage<T>* image_raw,
+	    float exposure=0, double timestamp=0, float factor=1) const;
+
+
 	static Undistort* getUndistorterForFile(std::string configFilename, std::string gammaFilename, std::string vignetteFilename);
 
 	void loadPhotometricCalibration(std::string file, std::string noiseImage, std::string vignetteImage);

@@ -48,7 +48,7 @@ public:
 	// affine normalizes values to 0 <= I < 256.
 	// raw irradiance = a*I + b.
 	// output will be written in [output].
-	template<typename T> void processFrame(T* image_in, float exposure_time, float factor=1);
+	template<typename T> void processFrame(const T * image_in, float exposure_time, float factor=1);
 	void unMapFloatImage(float* image);
 
 	c_image_and_exposure* output;
@@ -79,14 +79,8 @@ public:
 	inline const Eigen::Vector2i getOriginalSize() {return Eigen::Vector2i(wOrg,hOrg);};
 	inline bool isValid() {return valid;};
 
-  template<typename T>
-  bool undistort(const MinimalImage<T>* image_raw, c_image_and_exposure * output_image,
+  bool undistort(const cv::Mat & image_raw, c_image_and_exposure * output_image,
       float exposure=0, double timestamp=0, float factor=1) const;
-
-	template<typename T>
-	c_image_and_exposure* undistort(const MinimalImage<T>* image_raw,
-	    float exposure=0, double timestamp=0, float factor=1) const;
-
 
 	static Undistort* getUndistorterForFile(std::string configFilename, std::string gammaFilename, std::string vignetteFilename);
 
@@ -95,12 +89,16 @@ public:
 	PhotometricUndistorter* photometricUndist;
 
 protected:
+  void undistort_impl(const float in_data[], float out_data[]) const;
+
+
+protected:
     int w, h, wOrg, hOrg, wUp, hUp;
     int upsampleUndistFactor;
 	Mat33 K;
 	VecX parsOrg;
 	bool valid;
-	bool passthrough;
+	bool passthrough = false;
 
 	float* remapX;
 	float* remapY;

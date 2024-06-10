@@ -9,6 +9,7 @@
 #include <core/io/c_stdio_file.h>
 #include <dirent.h>
 #include <algorithm>
+#include <core/io/load_image.h>
 #include <core/debug.h>
 
 namespace {
@@ -319,6 +320,90 @@ void c_dso_dataset_reader::loadTimestamps()
 }
 
 
+bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
+{
+#if HAS_ZIPLIB
+  const bool isZipped =
+      ziparchive != nullptr;
+#else
+  const bool isZipped = false;
+#endif
+
+  if( !isZipped ) {
+    // return dso::IOWrap::readImageBW_8U(files[id]);
+
+    if ( !load_image(files[id], *image) ) {
+      CF_ERROR("load_image('%s') fails", files[id].c_str());
+      return false;
+    }
+
+    return true;
+  }
+
+#if !HAS_ZIPLIB
+  CF_ERROR("ERROR: cannot read .zip archive, as compiled without ziplib!\n");
+  return false;
+#else
+
+  zip_file_t * fle =
+      zip_fopen(ziparchive, files[id].c_str(), 0);
+
+  if( !fle ) {
+    CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
+    return false;
+  }
+
+  if( !zip_databuffer ) {
+    zip_databuffer = new char[widthOrg * heightOrg * 6 + 10000];
+  }
+
+  long readbytes =
+      zip_fread(fle, zip_databuffer,
+          (long) widthOrg * heightOrg * 6 + 10000);
+
+  zip_fclose(fle);
+
+  if( readbytes > (long) widthOrg * heightOrg * 6 ) {
+
+    CF_ERROR("read %ld/%ld bytes for file %s. increase buffer!!\n", readbytes,
+        (long ) widthOrg * heightOrg * 6 + 10000, files[id].c_str());
+
+    delete[] zip_databuffer;
+    zip_databuffer = nullptr;
+
+    if( !(fle = zip_fopen(ziparchive, files[id].c_str(), 0)) ) {
+      CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
+      return false;
+    }
+
+    zip_databuffer = new char[(long) widthOrg * heightOrg * 30];
+    readbytes = zip_fread(fle, zip_databuffer, (long) widthOrg * heightOrg * 30 + 10000);
+    zip_fclose(fle);
+
+    if( readbytes > (long) widthOrg * heightOrg * 30 ) {
+
+      CF_ERROR("buffer still to small (read %ld/%ld). abort.\n", readbytes,
+          (long ) widthOrg * heightOrg * 30 + 10000);
+
+      delete zip_databuffer;
+      zip_databuffer = nullptr;
+      return false;
+    }
+  }
+
+  if( (*image = cv::imdecode(cv::Mat(readbytes, 1, CV_8U, (void* )zip_databuffer), cv::IMREAD_GRAYSCALE)).empty() ) {
+    CF_ERROR("cv::imdecode(zip_databuffer) fails");
+    return false;
+  }
+
+  return true;
+
+  //return dso::IOWrap::readStreamBW_8U(zip_databuffer, readbytes);
+
+#endif
+
+}
+
 
   // undistorter. [0] always exists, [1-2] only when MT is enabled.
 MinimalImageB* c_dso_dataset_reader::getRawImage_internal(int id)
@@ -393,20 +478,24 @@ MinimalImageB* c_dso_dataset_reader::getRawImage_internal(int id)
 
 bool c_dso_dataset_reader::getImage_internal(int id, c_image_and_exposure * output_image)
 {
-  MinimalImageB * minimg =
-      getRawImage_internal(id);
+  cv::Mat image;
 
-  if ( !minimg ) {
+  if ( !getRawImage_internal(id, &image) ) {
     CF_ERROR("getRawImage_internal(id=%d) fails", id);
     return false;
   }
 
-  undistort->undistort<unsigned char>(minimg, output_image,
+  if ( image.depth() != CV_8U ) {
+    image.convertTo(image, CV_8U);
+  }
+
+  if ( image.channels() != 1 ) {
+    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+  }
+
+  return undistort->undistort(image, output_image,
       (exposures.size() == 0 ? 1.0f : exposures[id]),
       (timestamps.size() == 0 ? 0.0 : timestamps[id]));
 
-  delete minimg;
-
-  return true;
 }
 

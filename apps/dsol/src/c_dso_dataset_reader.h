@@ -56,6 +56,7 @@ public:
 protected:
   bool getImage_internal(int id, c_image_and_exposure * image);
 
+  bool getRawImage_internal(int id, cv::Mat * image);
   MinimalImageB * getRawImage_internal(int id);
   void loadTimestamps();
 

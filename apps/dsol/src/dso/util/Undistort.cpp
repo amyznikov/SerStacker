@@ -212,7 +212,7 @@ void PhotometricUndistorter::unMapFloatImage(float* image)
 }
 
 template<typename T>
-void PhotometricUndistorter::processFrame(T* image_in, float exposure_time, float factor)
+void PhotometricUndistorter::processFrame(const T* image_in, float exposure_time, float factor)
 {
   int wh = w * h;
   float * data = output->data();
@@ -252,8 +252,8 @@ void PhotometricUndistorter::processFrame(T* image_in, float exposure_time, floa
 	}
 }
 
-template void PhotometricUndistorter::processFrame<unsigned char>(unsigned char* image_in, float exposure_time, float factor);
-template void PhotometricUndistorter::processFrame<unsigned short>(unsigned short* image_in, float exposure_time, float factor);
+template void PhotometricUndistorter::processFrame<uint8_t>(const uint8_t* image_in, float exposure_time, float factor);
+template void PhotometricUndistorter::processFrame<uint16_t>(const uint16_t* image_in, float exposure_time, float factor);
 
 
 
@@ -386,118 +386,118 @@ void Undistort::loadPhotometricCalibration(std::string file, std::string noiseIm
 	photometricUndist = new PhotometricUndistorter(file, noiseImage, vignetteImage,getOriginalSize()[0], getOriginalSize()[1]);
 }
 
-template<typename T>
-bool Undistort::undistort(const MinimalImage<T>* image_raw, c_image_and_exposure * output_image, float exposure, double timestamp, float factor) const
+void Undistort::undistort_impl(const float in_data[], float out_data[]) const
 {
-  if( image_raw->w != wOrg || image_raw->h != hOrg ) {
-    CF_ERROR("Undistort::undistort: wrong image size (%d %d instead of %d %d) \n", image_raw->w, image_raw->h, w, h);
-    exit(1);
+  float * noiseMapX = 0;
+  float * noiseMapY = 0;
+
+  if( benchmark_varNoise > 0 ) {
+
+    int numnoise = (benchmark_noiseGridsize + 8) * (benchmark_noiseGridsize + 8);
+    noiseMapX = new float[numnoise];
+    noiseMapY = new float[numnoise];
+    memset(noiseMapX, 0, sizeof(float) * numnoise);
+    memset(noiseMapY, 0, sizeof(float) * numnoise);
+
+    for( int i = 0; i < numnoise; i++ ) {
+      noiseMapX[i] = 2 * benchmark_varNoise * (rand() / (float) RAND_MAX - 0.5f);
+      noiseMapY[i] = 2 * benchmark_varNoise * (rand() / (float) RAND_MAX - 0.5f);
+    }
   }
 
-  output_image->create(image_raw->h, image_raw->w, timestamp);
-  photometricUndist->processFrame<T>(image_raw->data, exposure, factor);
+  for( int idx = w * h - 1; idx >= 0; idx-- ) {
+    // get interp. values
+    float xx = remapX[idx];
+    float yy = remapY[idx];
+
+    if( benchmark_varNoise > 0 ) {
+      float deltax = getInterpolatedElement11BiCub(noiseMapX, 4 + (xx / (float) wOrg) * benchmark_noiseGridsize,
+          4 + (yy / (float) hOrg) * benchmark_noiseGridsize, benchmark_noiseGridsize + 8);
+      float deltay = getInterpolatedElement11BiCub(noiseMapY, 4 + (xx / (float) wOrg) * benchmark_noiseGridsize,
+          4 + (yy / (float) hOrg) * benchmark_noiseGridsize, benchmark_noiseGridsize + 8);
+      float x = idx % w + deltax;
+      float y = idx / w + deltay;
+      if( x < 0.01 )
+        x = 0.01;
+      if( y < 0.01 )
+        y = 0.01;
+      if( x > w - 1.01 )
+        x = w - 1.01;
+      if( y > h - 1.01 )
+        y = h - 1.01;
+
+      xx = getInterpolatedElement(remapX, x, y, w);
+      yy = getInterpolatedElement(remapY, x, y, w);
+    }
+
+    if( xx < 0 ) {
+      out_data[idx] = 0;
+    }
+    else {
+
+      // get integer and rational parts
+      int xxi = xx;
+      int yyi = yy;
+      xx -= xxi;
+      yy -= yyi;
+      float xxyy = xx * yy;
+
+      // get array base pointer
+      const float * src = in_data + xxi + yyi * wOrg;
+
+      // interpolate (bilinear)
+      out_data[idx] = xxyy * src[1 + wOrg]
+          + (yy - xxyy) * src[wOrg]
+          + (xx - xxyy) * src[1]
+          + (1 - xx - yy + xxyy) * src[0];
+    }
+  }
+
+  if( benchmark_varNoise > 0 ) {
+    delete[] noiseMapX;
+    delete[] noiseMapY;
+  }
+
+}
+
+bool Undistort::undistort(const cv::Mat & image_raw, c_image_and_exposure * output_image, float exposure, double timestamp, float factor) const
+{
+  if( image_raw.cols != wOrg || image_raw.rows != hOrg ) {
+    CF_ERROR("Undistort::undistort: wrong image size (%d %d instead of %d %d) \n", image_raw.cols, image_raw.rows, wOrg, hOrg);
+    return false;
+  }
+
+  if( image_raw.type() != CV_8UC1 && image_raw.type() != CV_16UC1 ) {
+    CF_ERROR("Undistort::undistort: wrong image type %d ,  must be CV_8UC1 or CV_16UC1\n", image_raw.type());
+    return false;
+  }
+
+  output_image->create(image_raw.size(),
+      timestamp);
+
+  switch (image_raw.type()) {
+    case CV_8UC1:
+      photometricUndist->processFrame((const uint8_t*) image_raw.data, exposure, factor);
+      break;
+    case CV_16UC1:
+      photometricUndist->processFrame((const uint16_t*) image_raw.data, exposure, factor);
+      break;
+  }
+
   photometricUndist->output->copyMetaTo(*output_image);
 
-  if (!passthrough) {
-    float* out_data = output_image->data();
-    float* in_data = photometricUndist->output->data();
-
-    float* noiseMapX=0;
-    float* noiseMapY=0;
-    if(benchmark_varNoise>0)
-    {
-      int numnoise=(benchmark_noiseGridsize+8)*(benchmark_noiseGridsize+8);
-      noiseMapX=new float[numnoise];
-      noiseMapY=new float[numnoise];
-      memset(noiseMapX,0,sizeof(float)*numnoise);
-      memset(noiseMapY,0,sizeof(float)*numnoise);
-
-      for(int i=0;i<numnoise;i++)
-      {
-        noiseMapX[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
-        noiseMapY[i] =  2*benchmark_varNoise * (rand()/(float)RAND_MAX - 0.5f);
-      }
-    }
-
-
-    for(int idx = w*h-1;idx>=0;idx--)
-    {
-      // get interp. values
-      float xx = remapX[idx];
-      float yy = remapY[idx];
-
-
-
-      if(benchmark_varNoise>0)
-      {
-        float deltax = getInterpolatedElement11BiCub(noiseMapX, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
-        float deltay = getInterpolatedElement11BiCub(noiseMapY, 4+(xx/(float)wOrg)*benchmark_noiseGridsize, 4+(yy/(float)hOrg)*benchmark_noiseGridsize, benchmark_noiseGridsize+8 );
-        float x = idx%w + deltax;
-        float y = idx/w + deltay;
-        if(x < 0.01) x = 0.01;
-        if(y < 0.01) y = 0.01;
-        if(x > w-1.01) x = w-1.01;
-        if(y > h-1.01) y = h-1.01;
-
-        xx = getInterpolatedElement(remapX, x, y, w);
-        yy = getInterpolatedElement(remapY, x, y, w);
-      }
-
-
-      if(xx<0)
-        out_data[idx] = 0;
-      else
-      {
-        // get integer and rational parts
-        int xxi = xx;
-        int yyi = yy;
-        xx -= xxi;
-        yy -= yyi;
-        float xxyy = xx*yy;
-
-        // get array base pointer
-        const float* src = in_data + xxi + yyi * wOrg;
-
-        // interpolate (bilinear)
-        out_data[idx] =  xxyy * src[1+wOrg]
-                  + (yy-xxyy) * src[wOrg]
-                  + (xx-xxyy) * src[1]
-                  + (1-xx-yy+xxyy) * src[0];
-      }
-    }
-
-    if(benchmark_varNoise>0)
-    {
-      delete[] noiseMapX;
-      delete[] noiseMapY;
-    }
-
-  }
-  else
-  {
+  if( passthrough ) {
     output_image->copy_from(photometricUndist->output->image());
-    //memcpy(result->image, photometricUndist->output->image, sizeof(float)*w*h);
+  }
+  else {
+    undistort_impl(photometricUndist->output->data(), output_image->data());
   }
 
   applyBlurNoise(output_image->data());
 
   return true;
-
 }
 
-template<typename T>
-c_image_and_exposure* Undistort::undistort(const MinimalImage<T>* image_raw, float exposure, double timestamp, float factor) const
-{
-  c_image_and_exposure* output_image = new c_image_and_exposure(); // w, h, timestamp
-  undistort(image_raw, output_image, exposure, timestamp, factor);
-  return output_image;
-}
-
-template c_image_and_exposure* Undistort::undistort<unsigned char>(const MinimalImage<unsigned char>* image_raw, float exposure, double timestamp, float factor) const;
-template c_image_and_exposure* Undistort::undistort<unsigned short>(const MinimalImage<unsigned short>* image_raw, float exposure, double timestamp, float factor) const;
-
-template bool Undistort::undistort<unsigned char>(const MinimalImage<unsigned char>* image_raw, c_image_and_exposure* , float exposure, double timestamp, float factor) const;
-template bool Undistort::undistort<unsigned short>(const MinimalImage<unsigned short>* image_raw, c_image_and_exposure* , float exposure, double timestamp, float factor) const;
 
 void Undistort::applyBlurNoise(float* img) const
 {
@@ -524,33 +524,32 @@ void Undistort::applyBlurNoise(float* img) const
 
 	// x-blur.
 	for(int y=0;y<h;y++)
-		for(int x=0;x<w;x++)
-		{
+		for(int x=0;x<w;x++) {
 			float xBlur = getInterpolatedElement11BiCub(noiseMapX,
 					4+(x/(float)w)*benchmark_noiseGridsize,
 					4+(y/(float)h)*benchmark_noiseGridsize,
 					benchmark_noiseGridsize+8 );
 
-			if(xBlur < 0.01) xBlur=0.01;
+			if(xBlur < 0.01) {
+			  xBlur=0.01;
+			}
 
 
 			int kernelSize = 1 + (int)(1.0f+xBlur*1.5);
 			float sumW=0;
 			float sumCW=0;
-			for(int dx=0; dx <= kernelSize; dx++)
-			{
-				int gmid = 100.0f*dx/xBlur + 0.5f;
+			for(int dx=0; dx <= kernelSize; dx++) {
+
+			  int gmid = 100.0f*dx/xBlur + 0.5f;
 				if(gmid > 900 ) gmid = 900;
 				float gw = gaussMap[gmid];
 
-				if(x+dx>0 && x+dx<w)
-				{
+				if(x+dx>0 && x+dx<w) {
 					sumW += gw;
 					sumCW += gw * img[x+dx+y*this->w];
 				}
 
-				if(x-dx>0 && x-dx<w && dx!=0)
-				{
+				if(x-dx>0 && x-dx<w && dx!=0) {
 					sumW += gw;
 					sumCW += gw * img[x-dx+y*this->w];
 				}
@@ -561,8 +560,7 @@ void Undistort::applyBlurNoise(float* img) const
 
 	// y-blur.
 	for(int x=0;x<w;x++)
-		for(int y=0;y<h;y++)
-		{
+		for(int y=0;y<h;y++) {
 			float yBlur = getInterpolatedElement11BiCub(noiseMapY,
 					4+(x/(float)w)*benchmark_noiseGridsize,
 					4+(y/(float)h)*benchmark_noiseGridsize,
@@ -573,20 +571,17 @@ void Undistort::applyBlurNoise(float* img) const
 			int kernelSize = 1 + (int)(0.9f+yBlur*2.5);
 			float sumW=0;
 			float sumCW=0;
-			for(int dy=0; dy <= kernelSize; dy++)
-			{
+			for(int dy=0; dy <= kernelSize; dy++) {
 				int gmid = 100.0f*dy/yBlur + 0.5f;
 				if(gmid > 900 ) gmid = 900;
 				float gw = gaussMap[gmid];
 
-				if(y+dy>0 && y+dy<h)
-				{
+				if(y+dy>0 && y+dy<h) {
 					sumW += gw;
 					sumCW += gw * blutTmp[x+(y+dy)*this->w];
 				}
 
-				if(y-dy>0 && y-dy<h && dy!=0)
-				{
+				if(y-dy>0 && y-dy<h && dy!=0) {
 					sumW += gw;
 					sumCW += gw * blutTmp[x+(y-dy)*this->w];
 				}

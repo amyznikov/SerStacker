@@ -30,6 +30,7 @@
 
 #include <vector>
 #include "Residuals.h"
+#include "c_frame_shell.h"
 #include "util/NumType.h"
 #include "util/c_image_and_exposure.h"
 #include "util/globalCalib.h"
@@ -46,7 +47,7 @@ struct FrameHessian;
 struct PointHessian;
 
 class ImmaturePoint;
-class FrameShell;
+//class c_frame_shell;
 
 class EFFrame;
 class EFPoint;
@@ -113,7 +114,7 @@ struct FrameHessian
 
   // constant info & pre-calculated values
   //DepthImageWrap* frame;
-  FrameShell * shell = nullptr;
+  c_frame_shell * shell = nullptr;
 
   Eigen::Vector3f * dI = nullptr;	// trace, fine tracking. Used for direction select (not for gradient histograms etc.)
   Eigen::Vector3f * dIp[PYR_LEVELS] = { nullptr };	 // coarse tracking / coarse initializer. NAN in [0] only.
@@ -171,7 +172,7 @@ struct FrameHessian
   SE3 PRE_worldToCam;
   SE3 PRE_camToWorld;
   std::vector<FrameFramePrecalc, Eigen::aligned_allocator<FrameFramePrecalc>> targetPrecalc;
-  MinimalImageB3 * debugImage = nullptr;
+  cv::Mat3b debugImage;
 
   inline Vec6 w2c_leftEps() const
   {
@@ -253,11 +254,8 @@ struct FrameHessian
       delete[] absSquaredGrad[i];
     }
 
-    if( debugImage != 0 ) {
-      delete debugImage;
-    }
   }
-  ;
+
   inline FrameHessian()
   {
     instanceCounter++;
@@ -265,10 +263,8 @@ struct FrameHessian
     frameID = -1;
     efFrame = 0;
     frameEnergyTH = 8 * 8 * patternNum;
-
-    debugImage = 0;
   }
-  ;
+
 
   void makeImages(const float * color, CalibHessian * HCalib);
 

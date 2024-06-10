@@ -24,7 +24,6 @@
 
 
 #pragma once
-//#include <fstream>
 #include "usettings.h"
 #include "NumType.h"
 #include "IOWrapper/ImageDisplay.h"
@@ -314,65 +313,122 @@ EIGEN_ALWAYS_INLINE Eigen::Vector2f getInterpolatedElement42(const Eigen::Vector
 
 
 
-inline Vec3f makeRainbowf3F(float id)
+inline cv::Vec3f makeRainbowf3F(float id)
 {
-	id *= freeDebugParam3;
-	if(id < 0)
-		return Vec3f(1,1,1);
+  id *= freeDebugParam3;
+  if( id < 0 ) {
+    return cv::Vec3f(1, 1, 1);
+  }
 
-	int icP = id;
-	float ifP = id-icP;
-	icP = icP%3;
+  int icP = id;
+  float ifP = id - icP;
+  icP = icP % 3;
 
-	if(icP == 0) return Vec3f((1-ifP), ifP,     0);
-	if(icP == 1) return Vec3f(0,           (1-ifP), ifP);
-	if(icP == 2) return Vec3f(ifP,     0,           (1-ifP));
-	assert(false);
-	return Vec3f(1,1,1);
+  if( icP == 0 ) {
+    return cv::Vec3f((1 - ifP), ifP, 0);
+  }
+
+  if( icP == 1 ) {
+    return cv::Vec3f(0, (1 - ifP), ifP);
+  }
+
+  if( icP == 2 ) {
+    return cv::Vec3f(ifP, 0, (1 - ifP));
+  }
+
+  //assert(false);
+
+  return cv::Vec3f(1, 1, 1);
 }
 
-inline Vec3b makeRainbow3B(float id)
+inline cv::Vec3b makeRainbow3B(float id)
 {
-	id *= freeDebugParam3;
-	if(!(id > 0))
-		return Vec3b(255,255,255);
+  id *= freeDebugParam3;
+  if( !(id > 0) ) {
+    return cv::Vec3b(255, 255, 255);
+  }
 
-	int icP = id;
-	float ifP = id-icP;
-	icP = icP%3;
+  int icP = id;
+  float ifP = id - icP;
+  icP = icP % 3;
 
-	if(icP == 0) return Vec3b(255*(1-ifP), 255*ifP,     0);
-	if(icP == 1) return Vec3b(0,           255*(1-ifP), 255*ifP);
-	if(icP == 2) return Vec3b(255*ifP,     0,           255*(1-ifP));
-	return Vec3b(255,255,255);
+  if( icP == 0 ) {
+    return cv::Vec3b(255 * (1 - ifP), 255 * ifP, 0);
+  }
+
+  if( icP == 1 ) {
+    return cv::Vec3b(0, 255 * (1 - ifP), 255 * ifP);
+  }
+
+  if( icP == 2 ) {
+    return cv::Vec3b(255 * ifP, 0, 255 * (1 - ifP));
+  }
+
+  return cv::Vec3b(255, 255, 255);
 }
 
-inline Vec3b makeJet3B(float id)
+inline cv::Vec3b makeJet3B(float id)
 {
-	if(id <= 0) return Vec3b(128,0,0);
-	if(id >= 1) return Vec3b(0,0,128);
+  if( id <= 0 ) {
+    return cv::Vec3b(128, 0, 0);
+  }
 
-	int icP = (id*8);
-	float ifP = (id*8)-icP;
+  if( id >= 1 ) {
+    return cv::Vec3b(0, 0, 128);
+  }
 
-	if(icP == 0) return Vec3b(255*(0.5+0.5*ifP), 		    		  0,     					0);
-	if(icP == 1) return Vec3b(255, 					  255*(0.5*ifP),     					0);
-	if(icP == 2) return Vec3b(255, 				  255*(0.5+0.5*ifP),     					0);
-	if(icP == 3) return Vec3b(255*(1-0.5*ifP), 					255,     					255*(0.5*ifP));
-	if(icP == 4) return Vec3b(255*(0.5-0.5*ifP), 					255,     					255*(0.5+0.5*ifP));
-	if(icP == 5) return Vec3b(0, 						255*(1-0.5*ifP),     					255);
-	if(icP == 6) return Vec3b(0, 						255*(0.5-0.5*ifP),     					255);
-	if(icP == 7) return Vec3b(0, 					  				  0,     					255*(1-0.5*ifP));
-	return Vec3b(255,255,255);
+  int icP = (id * 8);
+  float ifP = (id * 8) - icP;
+
+  if( icP == 0 ) {
+    return cv::Vec3b(255 * (0.5 + 0.5 * ifP), 0, 0);
+  }
+
+  if( icP == 1 ) {
+    return cv::Vec3b(255, 255 * (0.5 * ifP), 0);
+  }
+
+  if( icP == 2 ) {
+    return cv::Vec3b(255, 255 * (0.5 + 0.5 * ifP), 0);
+  }
+
+  if( icP == 3 ) {
+    return cv::Vec3b(255 * (1 - 0.5 * ifP), 255, 255 * (0.5 * ifP));
+  }
+
+  if( icP == 4 ) {
+    return cv::Vec3b(255 * (0.5 - 0.5 * ifP), 255, 255 * (0.5 + 0.5 * ifP));
+  }
+
+  if( icP == 5 ) {
+    return cv::Vec3b(0, 255 * (1 - 0.5 * ifP), 255);
+  }
+
+  if( icP == 6 ) {
+    return cv::Vec3b(0, 255 * (0.5 - 0.5 * ifP), 255);
+  }
+
+  if( icP == 7 ) {
+    return cv::Vec3b(0, 0, 255 * (1 - 0.5 * ifP));
+  }
+
+  return cv::Vec3b(255, 255, 255);
 }
 
-inline Vec3b makeRedGreen3B(float val)	// 0 = red, 1=green, 0.5=yellow.
+inline cv::Vec3b makeRedGreen3B(float val)	// 0 = red, 1=green, 0.5=yellow.
 {
-	if(val < 0) return Vec3b(0,0,255);
-	else if(val < 0.5) return Vec3b(0,255*2*val,255);
-	else if(val < 1) return Vec3b(0,255,255-255*2*(val-0.5));
-	else return Vec3b(0,255,0);
+  if( val < 0 ) {
+    return cv::Vec3b(0, 0, 255);
+  }
 
+  else if( val < 0.5 ) {
+    return cv::Vec3b(0, 255 * 2 * val, 255);
+  }
+  else if( val < 1 ) {
+    return cv::Vec3b(0, 255, 255 - 255 * 2 * (val - 0.5));
+  }
+
+  return cv::Vec3b(0, 255, 0);
 }
 
 

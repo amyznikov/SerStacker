@@ -58,10 +58,10 @@
 
 namespace dso
 {
-using std::placeholders::_1;
-using std::placeholders::_2;
-using std::placeholders::_3;
-using std::placeholders::_4;
+//using std::placeholders::_1;
+//using std::placeholders::_2;
+//using std::placeholders::_3;
+//using std::placeholders::_4;
 
 int FrameHessian::instanceCounter = 0;
 int PointHessian::instanceCounter = 0;
@@ -198,9 +198,11 @@ FullSystem::~FullSystem()
 
   delete[] selectionMap;
 
-  for( FrameShell * s : allFrameHistory ) {
-    delete s;
-  }
+  allFrameHistory.clear();
+//  for( c_frame_shell * s : allFrameHistory ) {
+//    delete s;
+//  }
+
   for( FrameHessian * fh : unmappedTrackedFrames ) {
     delete fh;
   }
@@ -255,7 +257,7 @@ void FullSystem::printResult(std::string file)
   }
   else {
 
-    for( FrameShell * s : allFrameHistory ) {
+    for( const auto & s : allFrameHistory ) {
       if( !s->poseValid ) {
         continue;
       }
@@ -308,10 +310,10 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
       lastF_2_fh_tries.push_back(SE3());
     }
   }
-  else
-  {
-    FrameShell * slast = allFrameHistory[allFrameHistory.size() - 2];
-    FrameShell * sprelast = allFrameHistory[allFrameHistory.size() - 3];
+  else {
+    const auto & slast = allFrameHistory[allFrameHistory.size() - 2];
+    const auto & sprelast = allFrameHistory[allFrameHistory.size() - 3];
+
     SE3 slast_2_sprelast;
     SE3 lastF_2_slast;
     {	// lock on global pose consistency!
@@ -332,8 +334,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
     // just try a TON of different initializations (all rotations). In the end,
     // if they don't work they will only be tried on the coarsest level, which is super fast anyway.
     // also, if tracking rails here we loose, so we really, really want to avoid that.
-    for( float rotDelta = 0.02; rotDelta < 0.05; rotDelta++ )
-        {
+    for( float rotDelta = 0.02; rotDelta < 0.05; rotDelta++ ) {
       lastF_2_fh_tries.push_back(
           fh_2_slast.inverse() * lastF_2_slast * SE3(Eigen::Quaterniond(1, rotDelta, 0, 0), Vec3(0, 0, 0)));	// assume constant motion.
       lastF_2_fh_tries.push_back(
@@ -522,8 +523,9 @@ void FullSystem::traceNewCoarse(FrameHessian * fh)
     Mat33f KRKi = K * hostToNew.rotationMatrix().cast<float>() * K.inverse();
     Vec3f Kt = K * hostToNew.translation().cast<float>();
 
-    Vec2f aff = AffLight::fromToVecExposure(host->ab_exposure, fh->ab_exposure, host->aff_g2l(), fh->aff_g2l()).cast<
-        float>();
+    Vec2f aff =
+        AffLight::fromToVecExposure(host->ab_exposure, fh->ab_exposure,
+            host->aff_g2l(), fh->aff_g2l()).cast<float>();
 
     for( ImmaturePoint * ph : host->immaturePoints ) {
 
@@ -830,15 +832,17 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
   std::unique_lock<std::mutex> lock(trackMutex);
 
   // =========================== add into allFrameHistory =========================
+
+  allFrameHistory.emplace_back(new c_frame_shell(
+      allFrameHistory.size(),
+      image.timestamp()));
+
+//  c_frame_shell * shell =
+//      allFrameHistory.back().get();
+
   FrameHessian * fh = new FrameHessian();
-  FrameShell * shell = new FrameShell();
-  shell->camToWorld = SE3(); 		// no lock required, as fh is not used anywhere yet.
-  shell->aff_g2l = AffLight(0, 0);
-  shell->marginalizedAt = shell->id = allFrameHistory.size();
-  shell->timestamp = image.timestamp();
-  shell->incoming_id = id;
-  fh->shell = shell;
-  allFrameHistory.push_back(shell);
+  fh->shell = allFrameHistory.back().get();
+
 
   // =========================== make Images / derivatives etc. =========================
   fh->ab_exposure = image.exposure();
@@ -923,8 +927,8 @@ void FullSystem::deliverTrackedFrame(FrameHessian * fh, bool needKF)
 
     if( goStepByStep && lastRefStopID != coarseTracker->refFrameID ) {
 
-      MinimalImageF3 img(wG[0], hG[0], fh->dI);
-      IOWrap::displayImage("frameToTrack", &img);
+      cv::Mat3f img(hG[0], wG[0], (cv::Vec3f*)fh->dI);
+      IOWrap::displayImage("frameToTrack", img);
 
       while (true) {
         char k = IOWrap::waitKey(0);

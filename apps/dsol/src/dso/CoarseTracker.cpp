@@ -36,8 +36,10 @@
 #include "HessianBlocks.h"
 #include "Residuals.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
-#include "IOWrapper/ImageRW.h"
 #include <algorithm>
+#include <core/io/save_image.h>
+#include <core/ssprintf.h>
+#include <core/debug.h>
 
 #if !defined(__SSE3__) && !defined(__SSE2__) && !defined(__SSE1__)
 #include "SSE2NEON.h"
@@ -394,11 +396,11 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
 
   float maxEnergy = 2 * setting_huberTH * cutoffTH - setting_huberTH * setting_huberTH;	// energy for r=setting_coarseCutoffTH.
 
-  MinimalImageB3 * resImage = 0;
+  cv::Mat3b resImage;
 
   if( debugPlot ) {
-    resImage = new MinimalImageB3(wl, hl);
-    resImage->setConst(Vec3b(255, 255, 255));
+    resImage.create(hl, wl);
+    resImage.setTo(cv::Scalar::all(255));
   }
 
   int nl = pc_n[lvl];
@@ -468,16 +470,24 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
     if( fabs(residual) > cutoffTH ) {
 
       if( debugPlot ) {
-        resImage->setPixel4(lpc_u[i], lpc_v[i], Vec3b(0, 0, 255));
+        const int x = lpc_u[i];
+        const int y = lpc_v[i];
+        cv::rectangle(resImage, cv::Point(x-1,y-1), cv::Point(x+1,y+1), cv::Scalar(0, 0, 255) );
+        //setPixel4(resImage, lpc_u[i], lpc_v[i], cv::Vec3b(0, 0, 255));
       }
+
       E += maxEnergy;
       numTermsInE++;
       numSaturated++;
     }
-    else
-    {
+    else {
+
       if( debugPlot ) {
-        resImage->setPixel4(lpc_u[i], lpc_v[i], Vec3b(residual + 128, residual + 128, residual + 128));
+        const int x = lpc_u[i];
+        const int y = lpc_v[i];
+        cv::rectangle(resImage, cv::Point(x-1,y-1), cv::Point(x+1,y+1), cv::Scalar(residual + 128, residual + 128, residual + 128) );
+
+        // setPixel4(resImage, lpc_u[i], lpc_v[i], cv::Vec3b(residual + 128, residual + 128, residual + 128));
       }
 
       E += hw * residual * residual * (2 - hw);
@@ -512,7 +522,6 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
   if( debugPlot ) {
     IOWrap::displayImage("RES", resImage, false);
     IOWrap::waitKey(0);
-    delete resImage;
   }
 
   Vec6 rs;
@@ -795,15 +804,15 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt,
       }
     }
 
-    MinimalImageB3 mf(w[lvl], h[lvl]);
-    mf.setBlack();
+    cv::Mat3b mf(h[lvl], w[lvl], cv::Vec3b(0, 0, 0));
+    cv::Vec3b * mfp = (cv::Vec3b*) mf.data;
 
     for( int i = 0; i < h[lvl] * w[lvl]; i++ ) {
       int c = lastRef->dIp[lvl][i][0] * 0.9f;
       if( c > 255 ) {
         c = 255;
       }
-      mf.at(i) = Vec3b(c, c, c);
+      mfp[i] = cv::Vec3b(c, c, c);
     }
 
     int wl = w[lvl];
@@ -836,21 +845,29 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt,
         }
 
         if( bp[0] > 0 || nid >= 3 ) {
+
           float id = ((sid / nid) - minID) / ((maxID - minID));
-          mf.setPixelCirc(x, y, makeJet3B(id));
-          //mf.at(idx) = makeJet3B(id);
+
+          cv::circle(mf, cv::Point2f(x, y), keypoint_display_radius, makeJet3B(id));
+          // mf.setPixelCirc(x, y, makeJet3B(id));
         }
       }
     }
 
     for( IOWrap::Output3DWrapper * ow : wraps ) {
-      ow->pushDepthImage(&mf);
+      ow->pushDepthImage(mf);
     }
 
     if( debugSaveImages ) {
-      char buf[1000];
-      snprintf(buf, 1000, "images_out/predicted_%05d_%05d.png", lastRef->shell->id, refFrameID);
-      IOWrap::writeImage(buf, &mf);
+
+      const std::string filename =
+          ssprintf("images_out/predicted_%05d_%05d.png",
+              lastRef->shell->id,
+              refFrameID);
+
+      if( !save_image(mf, filename) ) {
+        CF_ERROR("save_image('%s') fails", filename.c_str());
+      }
     }
 
   }
@@ -863,10 +880,10 @@ void CoarseTracker::debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*
   }
 
   int lvl = 0;
-  MinimalImageF mim(w[lvl], h[lvl], idepth[lvl]);
+  cv::Mat1f mim(h[lvl], w[lvl], idepth[lvl]);
 
   for( IOWrap::Output3DWrapper * ow : wraps ) {
-    ow->pushDepthImageFloat(&mim, lastRef);
+    ow->pushDepthImageFloat(mim, lastRef);
   }
 }
 

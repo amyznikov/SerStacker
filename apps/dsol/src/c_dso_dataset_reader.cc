@@ -14,7 +14,6 @@
 
 namespace {
 
-using MinimalImageB = c_dso_dataset_reader::MinimalImageB;
 using c_image_and_exposure = c_dso_dataset_reader::c_image_and_exposure;
 using Undistort = dso::c_image_undistort;
 

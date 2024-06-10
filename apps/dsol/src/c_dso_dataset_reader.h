@@ -13,7 +13,6 @@
 #include "dso/util/usettings.h"
 #include "dso/util/globalFuncs.h"
 #include "dso/util/globalCalib.h"
-#include "IOWrapper/ImageRW.h"
 
 #if HAS_ZIPLIB
 # include <zip.h>
@@ -27,7 +26,6 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
 
-  using MinimalImageB = dso::MinimalImageB;
   using c_image_and_exposure = dso::c_image_and_exposure;
 
   c_dso_dataset_reader();

@@ -23,7 +23,6 @@
 
 #include "ImmaturePoint.h"
 #include "ResidualProjections.h"
-#include "util/FrameShell.h"
 
 namespace dso
 {

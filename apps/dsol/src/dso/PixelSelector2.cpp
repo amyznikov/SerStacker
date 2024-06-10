@@ -277,32 +277,40 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
     int w = wG[0];
     int h = hG[0];
 
-    MinimalImageB3 img(w, h);
+    cv::Mat3b img(h, w);
+    cv::Vec3b * imgp = (cv::Vec3b * )img.data;
 
     for( int i = 0; i < w * h; i++ ) {
+
       float c = fh->dI[i][0] * 0.7;
-      if( c > 255 )
+      if( c > 255 ) {
         c = 255;
-      img.at(i) = Vec3b(c, c, c);
+      }
+
+      imgp[i] = cv::Vec3b(c, c, c);
     }
 
-    IOWrap::displayImage("Selector Image", &img);
+    IOWrap::displayImage("Selector Image", img);
 
     for( int y = 0; y < h; y++ ) {
       for( int x = 0; x < w; x++ ) {
         int i = x + y * w;
         if( map_out[i] == 1 ) {
-          img.setPixelCirc(x, y, Vec3b(0, 255, 0));
+          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(0, 255, 0));
+          //img.setPixelCirc(x, y, Vec3b(0, 255, 0));
         }
         else if( map_out[i] == 2 ) {
-          img.setPixelCirc(x, y, Vec3b(255, 0, 0));
+          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(255, 0, 0));
+          //img.setPixelCirc(x, y, Vec3b(255, 0, 0));
         }
         else if( map_out[i] == 4 ) {
-          img.setPixelCirc(x, y, Vec3b(0, 0, 255));
+          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(0, 0, 255));
+          //img.setPixelCirc(x, y, Vec3b(0, 0, 255));
         }
       }
     }
-    IOWrap::displayImage("Selector Pixels", &img);
+
+    IOWrap::displayImage("Selector Pixels", img);
   }
 
   return numHaveSub;

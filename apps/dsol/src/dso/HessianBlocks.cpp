@@ -23,7 +23,6 @@
 
 #include "HessianBlocks.h"
 #include "ImmaturePoint.h"
-#include "util/FrameShell.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
 
 namespace dso

@@ -41,7 +41,10 @@
 #include "util/globalCalib.h"
 
 #include "IOWrapper/ImageDisplay.h"
-#include "IOWrapper/ImageRW.h"
+
+#include <core/io/save_image.h>
+#include <core/ssprintf.h>
+#include <core/debug.h>
 
 namespace dso
 {
@@ -61,19 +64,19 @@ void FullSystem::debugPlotTracking()
   int idx = 0;
   for( FrameHessian * f : frameHessians ) {
 
-    std::vector<MinimalImageB3*> images;
+    std::vector<cv::Mat> images;
 
     // make images for all frames. will be deleted by the FrameHessian's destructor.
     for( FrameHessian * f2 : frameHessians ) {
-      if( f2->debugImage == 0 ) {
-        f2->debugImage = new MinimalImageB3(wG[0], hG[0]);
+      if( f2->debugImage.empty() ) {
+        f2->debugImage.create(hG[0], wG[0]);
       }
     }
 
     for( FrameHessian * f2 : frameHessians ) {
 
-      MinimalImageB3 * debugImage = f2->debugImage;
-      images.push_back(debugImage);
+      cv::Mat3b & debugImage = f2->debugImage;
+      images.emplace_back(debugImage);
 
       Eigen::Vector3f * fd = f2->dI;
 
@@ -82,14 +85,21 @@ void FullSystem::debugPlotTracking()
               f2->aff_g2l(),
               f->aff_g2l());
 
+      cv::Vec3b * debugImagep =
+          (cv::Vec3b * )debugImage.data;
+
       for( int i = 0; i < wh; i++ ) {
         // BRIGHTNESS TRANSFER
         float colL = affL[0] * fd[i][0] + affL[1];
-        if( colL < 0 )
+        if( colL < 0 ) {
           colL = 0;
-        if( colL > 255 )
+        }
+        if( colL > 255 ) {
           colL = 255;
-        debugImage->at(i) = Vec3b(colL, colL, colL);
+        }
+
+        debugImagep[i] =
+            cv::Vec3b(colL, colL, colL);
       }
     }
 
@@ -99,7 +109,15 @@ void FullSystem::debugPlotTracking()
         for( PointFrameResidual * r : ph->residuals ) {
           r->debugPlot();
         }
-        f->debugImage->setPixel9(ph->u + 0.5, ph->v + 0.5, makeRainbow3B(ph->idepth_scaled));
+
+
+        const float x = ph->u + 0.5f;
+        const float y = ph->v + 0.5f;
+        const auto c = makeRainbow3B(ph->idepth_scaled);
+        const cv::Scalar clr(c[0], c[1], c[2]);
+
+        cv::rectangle(f->debugImage, cv::Point2f(x-1, y-1), cv::Point2f(x+1, y+1), clr, 1, cv::LINE_4);
+        //f->debugImage->setPixel9(ph->u + 0.5, ph->v + 0.5, makeRainbow3B(ph->idepth_scaled));
       }
     }
 
@@ -123,7 +141,7 @@ void FullSystem::debugPlot(std::string name)
     return;
   }
 
-  std::vector<MinimalImageB3*> images;
+  std::vector<cv::Mat> images;
 
   float minID = 0, maxID = 0;
 
@@ -186,17 +204,22 @@ void FullSystem::debugPlot(std::string name)
   }
 
   int wh = hG[0] * wG[0];
-  for( unsigned int f = 0; f < frameHessians.size(); f++ ) {
-    MinimalImageB3 * img = new MinimalImageB3(wG[0], hG[0]);
+  for( size_t f = 0; f < frameHessians.size(); f++ ) {
+
+    cv::Mat3b img(hG[0], wG[0]);
+    cv::Vec3b * imgp = (cv::Vec3b * )img.data;
+
     images.push_back(img);
+
     //float* fd = frameHessians[f]->I;
     Eigen::Vector3f * fd = frameHessians[f]->dI;
 
     for( int i = 0; i < wh; i++ ) {
       int c = fd[i][0] * 0.9f;
-      if( c > 255 )
+      if( c > 255 ) {
         c = 255;
-      img->at(i) = Vec3b(c, c, c);
+      }
+      imgp[i] = cv::Vec3b(c, c, c);
     }
 
     if( (int) (freeDebugParam5 + 0.5f) == 0 ) {
@@ -205,18 +228,37 @@ void FullSystem::debugPlot(std::string name)
           continue;
         }
 
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
+        const auto c =
+            makeRainbow3B(ph->idepth_scaled);
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(c[0], c[1], c[2]));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansMarginalized ) {
         if( ph == 0 ) {
           continue;
         }
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
+
+        const auto c =
+            makeRainbow3B(ph->idepth_scaled);
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(c[0], c[1], c[2]));
+
+        // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
       }
+
       for( PointHessian * ph : frameHessians[f]->pointHessiansOut ) {
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar::all(255));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
       }
+
     }
     else if( (int) (freeDebugParam5 + 0.5f) == 1 ) {
 
@@ -224,15 +266,32 @@ void FullSystem::debugPlot(std::string name)
         if( ph == 0 ) {
           continue;
         }
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
+
+        const auto c =
+            makeRainbow3B(ph->idepth_scaled);
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(c[0], c[1], c[2]),
+            1, cv::LINE_8);
+
+        // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B(ph->idepth_scaled));
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansMarginalized ) {
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar::all(0));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansOut ) {
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar::all(255));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
       }
     }
     else if( (int) (freeDebugParam5 + 0.5f) == 2 ) {
@@ -251,10 +310,21 @@ void FullSystem::debugPlot(std::string name)
             ph->lastTraceStatus == ImmaturePointStatus::IPS_BADCONDITION ) {
 
           if( !std::isfinite(ph->idepth_max) ) {
-            img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+            cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), 2,
+                cv::Scalar::all(0),
+                1, cv::LINE_8);
+
+            //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
           }
           else {
-            img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B((ph->idepth_min + ph->idepth_max) * 0.5f));
+
+            const auto c =
+                makeRainbow3B((ph->idepth_min + ph->idepth_max) * 0.5f);
+
+            cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+                cv::Scalar(c[0], c[1], c[2]));
+
+            // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeRainbow3B((ph->idepth_min + ph->idepth_max) * 0.5f));
           }
         }
       }
@@ -267,18 +337,53 @@ void FullSystem::debugPlot(std::string name)
           continue;
         }
 
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_GOOD )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 0));
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_OOB )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_OUTLIER )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_SKIPPED )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 0));
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_BADCONDITION )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
-        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_UNINITIALIZED )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_GOOD ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 255, 0));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 0));
+        }
+
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_OOB ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 0, 0));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
+        }
+
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_OUTLIER ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 0, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
+        }
+
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_SKIPPED ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 255, 0));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 0));
+        }
+
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_BADCONDITION ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 255, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 255, 255));
+        }
+
+        if( ph->lastTraceStatus == ImmaturePointStatus::IPS_UNINITIALIZED ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 0, 0));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+        }
       }
     }
     else if( (int) (freeDebugParam5 + 0.5f) == 5 ) {
@@ -293,11 +398,18 @@ void FullSystem::debugPlot(std::string name)
         }
 
         float d = freeDebugParam1 * (sqrtf(ph->quality) - 1);
-        if( d < 0 )
+        if( d < 0 ) {
           d = 0;
-        if( d > 1 )
+        }
+
+        if( d > 1 ) {
           d = 1;
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, d * 255, (1 - d) * 255));
+        }
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(0, d * 255, (1 - d) * 255));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, d * 255, (1 - d) * 255));
       }
 
     }
@@ -309,14 +421,37 @@ void FullSystem::debugPlot(std::string name)
           continue;
         }
 
-        if( ph->my_type == 0 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 255));
-        if( ph->my_type == 1 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
-        if( ph->my_type == 2 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
-        if( ph->my_type == 3 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 255));
+        if( ph->my_type == 0 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 0, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 255));
+        }
+
+        if( ph->my_type == 1 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 0, 0));
+
+          // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
+        }
+
+        if( ph->my_type == 2 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 0, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
+        }
+
+        if( ph->my_type == 3 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 255, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 255));
+        }
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansMarginalized ) {
@@ -325,43 +460,79 @@ void FullSystem::debugPlot(std::string name)
           continue;
         }
 
-        if( ph->my_type == 0 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 255));
-        if( ph->my_type == 1 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
-        if( ph->my_type == 2 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
-        if( ph->my_type == 3 )
-          img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 255));
+        if( ph->my_type == 0 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 0, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 255));
+        }
+
+        if( ph->my_type == 1 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(255, 0, 0));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(255, 0, 0));
+        }
+
+        if( ph->my_type == 2 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 0, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 255));
+        }
+
+        if( ph->my_type == 3 ) {
+
+          cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+              cv::Scalar(0, 255, 255));
+
+          //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 255, 255));
+        }
       }
 
     }
     if( (int) (freeDebugParam5 + 0.5f) == 7 ) {
 
       for( PointHessian * ph : frameHessians[f]->pointHessians ) {
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID))));
+
+        const auto c =
+            makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID)));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(c[0], c[1], c[2]));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID))));
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansMarginalized ) {
+
         if( ph == 0 ) {
           continue;
         }
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(0, 0, 0));
+
+        // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
       }
     }
   }
   IOWrap::displayImageStitch(name.c_str(), images);
   IOWrap::waitKey(5);
 
-  for( unsigned int i = 0; i < images.size(); i++ ) {
-    delete images[i];
-  }
+//  for( unsigned int i = 0; i < images.size(); i++ ) {
+//    delete images[i];
+//  }
 
   if( (debugSaveImages && false) ) {
 
-    for( unsigned int f = 0; f < frameHessians.size(); f++ ) {
+    for( size_t f = 0; f < frameHessians.size(); f++ ) {
 
-      MinimalImageB3 * img = new MinimalImageB3(wG[0], hG[0]);
+      cv::Mat3b img(hG[0], wG[0]);
+      cv::Vec3b * imgp = (cv::Vec3b * )img.data;
       Eigen::Vector3f * fd = frameHessians[f]->dI;
 
       for( int i = 0; i < wh; i++ ) {
@@ -369,26 +540,42 @@ void FullSystem::debugPlot(std::string name)
         if( c > 255 ) {
           c = 255;
         }
-        img->at(i) = Vec3b(c, c, c);
+        imgp[i] = cv::Vec3b(c, c, c);
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessians ) {
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID))));
+
+        const auto c =
+            makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID)));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(0, 0, 0));
+
+        //img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, makeJet3B((ph->idepth_scaled - minID) / ((maxID - minID))));
+
       }
 
       for( PointHessian * ph : frameHessians[f]->pointHessiansMarginalized ) {
         if( ph == 0 ) {
           continue;
         }
-        img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
+
+        cv::circle(img, cv::Point2f(ph->u + 0.5f, ph->v + 0.5f), keypoint_display_radius,
+            cv::Scalar(0, 0, 0));
+
+        // img->setPixelCirc(ph->u + 0.5f, ph->v + 0.5f, Vec3b(0, 0, 0));
       }
 
-      char buf[1000];
-      snprintf(buf, 1000, "images_out/kf_%05d_%05d_%02d.png",
-          frameHessians.back()->shell->id, frameHessians.back()->frameID, f);
-      IOWrap::writeImage(buf, img);
+      const std::string filename =
+          ssprintf("images_out/kf_%05d_%05d_%02d.png",
+              frameHessians.back()->shell->id,
+              frameHessians.back()->frameID,
+              f);
 
-      delete img;
+      if ( !save_image(img, filename) ) {
+        CF_ERROR("save_image('%s') fails", filename.c_str());
+      }
+
     }
   }
 

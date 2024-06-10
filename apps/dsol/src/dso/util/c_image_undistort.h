@@ -8,7 +8,6 @@
 #define __c_image_undistort_h__
 
 #include "c_image_and_exposure.h"
-#include "util/MinimalImage.h"
 #include "util/NumType.h"
 
 namespace dso

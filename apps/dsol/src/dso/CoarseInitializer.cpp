@@ -290,10 +290,11 @@ void CoarseInitializer::debugPlot(int lvl, std::vector<IOWrap::Output3DWrapper*>
 
   Eigen::Vector3f * colorRef = firstFrame->dIp[lvl];
 
-  MinimalImageB3 iRImg(wl, hl);
+  cv::Mat3b iRImg(hl, wl);
 
+  cv::Vec3b * iRImgp = (cv::Vec3b*) iRImg.data;
   for( int i = 0; i < wl * hl; i++ ) {
-    iRImg.at(i) = Vec3b(colorRef[i][0], colorRef[i][0], colorRef[i][0]);
+    iRImgp[i] = cv::Vec3b(colorRef[i][0], colorRef[i][0], colorRef[i][0]);
   }
 
   int npts = numPoints[lvl];
@@ -316,18 +317,25 @@ void CoarseInitializer::debugPlot(int lvl, std::vector<IOWrap::Output3DWrapper*>
 
     Pnt * point = points[lvl] + i;
 
-    if( !point->isGood ) {
-      iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, Vec3b(0, 0, 0));
+    const float x = point->u + 0.5f;
+    const float y = point->v + 0.5f;
+
+    cv::Scalar color(0, 0, 0);
+
+    if( point->isGood ) {
+      const auto c = makeRainbow3B(point->iR * fac);
+      color[0] = c[0];
+      color[1] = c[1];
+      color[2] = c[2];
     }
 
-    else {
-      iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, makeRainbow3B(point->iR * fac));
-    }
+    cv::rectangle(iRImg, cv::Point2f(x-1, y-1), cv::Point2f(x+1, y+1), color, 1, cv::LINE_4);
+    // iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, Vec3b(0, 0, 0));
   }
 
   //IOWrap::displayImage("idepth-R", &iRImg, false);
   for( IOWrap::Output3DWrapper * ow : wraps ) {
-    ow->pushDepthImage(&iRImg);
+    ow->pushDepthImage(iRImg);
   }
 }
 

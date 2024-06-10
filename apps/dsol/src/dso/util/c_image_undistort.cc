@@ -27,7 +27,6 @@
 #include "usettings.h"
 #include "globalFuncs.h"
 #include "IOWrapper/ImageDisplay.h"
-#include "IOWrapper/ImageRW.h"
 #include <Eigen/Core>
 #include <iterator>
 #include <core/io/load_image.h>

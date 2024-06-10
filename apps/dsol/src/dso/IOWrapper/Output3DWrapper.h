@@ -29,21 +29,14 @@
 #include <map>
 
 #include "util/NumType.h"
-#include "util/MinimalImage.h"
 
-namespace cv {
-        class Mat;
-}
-
-namespace dso
-{
+namespace dso {
 
 class FrameHessian;
 class CalibHessian;
-class FrameShell;
+class c_frame_shell;
 
-namespace IOWrap
-{
+namespace IOWrap {
 
 /* ======================= Some typical usecases: ===============
  *
@@ -158,7 +151,7 @@ public:
          * Calling:
          * Always called, no overhead if not used.
          */
-        virtual void publishCamPose(FrameShell* frame, CalibHessian* HCalib) {}
+        virtual void publishCamPose(c_frame_shell* frame, CalibHessian* HCalib) {}
 
 
 
@@ -181,7 +174,7 @@ public:
          * Calling:
          * Needs to prepare the depth image, so it is only called if [needPushDepthImage()] returned true.
          */
-        virtual void pushDepthImage(MinimalImageB3* image) {}
+        virtual void pushDepthImage(const cv::Mat & image) {}
         virtual bool needPushDepthImage() {return false;}
 
 
@@ -193,7 +186,7 @@ public:
          * Calling:
          * Always called, almost no overhead if not used.
          */
-        virtual void pushDepthImageFloat(MinimalImageF* image, FrameHessian* KF ) {}
+        virtual void pushDepthImageFloat(const cv::Mat & , FrameHessian* KF ) {}
 
 
 

@@ -23,6 +23,7 @@
 
 
 #pragma once
+
 #define MAX_ACTIVE_FRAMES 100
 
 #include <deque>
@@ -35,7 +36,6 @@
 #include "PixelSelector2.h"
 #include "util/NumType.h"
 #include "util/globalCalib.h"
-#include "util/FrameShell.h"
 #include "util/IndexThreadReduce.h"
 #include "OptimizationBackend/EnergyFunctional.h"
 
@@ -132,7 +132,6 @@ inline bool eigenTestNan(const MatXX &m, std::string msg)
 
 class FullSystem {
 public:
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	FullSystem();
 	virtual ~FullSystem();
 
@@ -152,7 +151,7 @@ public:
 	void printFrameLifetimes();
 	// contains pointers to active frames
 
-    std::vector<IOWrap::Output3DWrapper*> outputWrapper;
+  std::vector<IOWrap::Output3DWrapper*> outputWrapper;
 
 	bool isLost;
 	bool initFailed;
@@ -163,7 +162,7 @@ public:
 	void setPhotometricGamma(const float BInv[256]);
 	void setOriginalCalib(const VecXf &originalCalib, int originalW, int originalH);
 
-  const std::vector<FrameShell*> getAllFrameHistory() const
+  const std::vector<c_frame_shell::uptr> & getAllFrameHistory() const
   {
     return allFrameHistory;
   }
@@ -265,14 +264,14 @@ private:
 
 	// =================== changed by tracker-thread. protected by trackMutex ============
 	std::mutex trackMutex;
-	std::vector<FrameShell*> allFrameHistory;
+	std::vector<c_frame_shell::uptr> allFrameHistory;
 	CoarseInitializer* coarseInitializer = nullptr;
 	Vec5 lastCoarseRMSE;
 
 
 	// ================== changed by mapper-thread. protected by mapMutex ===============
 	std::mutex mapMutex;
-	std::vector<FrameShell*> allKeyFramesHistory;
+	std::vector<c_frame_shell*> allKeyFramesHistory;
 
 	EnergyFunctional* ef = nullptr;
 	// IndexThreadReduce<Vec10> treadReduce;

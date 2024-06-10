@@ -26,6 +26,7 @@
 
 #define FMT_HEADER_ONLY 1
 
+#include <opencv2/opencv.hpp>
 #include <Eigen/Core>
 #include <sophus/sim3.hpp>
 #include <sophus/se3.hpp>

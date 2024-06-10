@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
   CF_DEBUG("NumImages=%d", numImages);
 
   c_FullSystem::uptr fullSystem(new c_FullSystem());
-  fullSystem->setGammaFunction(reader->getPhotometricGamma());
+  fullSystem->setPhotometricGamma(reader->photometricGamma());
 
   c_image_and_exposure image;
 

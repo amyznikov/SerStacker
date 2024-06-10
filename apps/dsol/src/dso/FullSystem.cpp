@@ -218,10 +218,11 @@ void FullSystem::setOriginalCalib(const VecXf & originalCalib, int originalW, in
 
 }
 
-void FullSystem::setGammaFunction(float * BInv)
+void FullSystem::setPhotometricGamma(const float BInv[256])
 {
-  if( BInv == 0 )
+  if( !BInv ) {
     return;
+  }
 
   // copy BInv.
   memcpy(Hcalib.Binv, BInv, sizeof(float) * 256);
@@ -269,7 +270,7 @@ void FullSystem::printResult(std::string file)
       const auto unit_quaternion =
           s->camToWorld.so3().unit_quaternion();
 
-      myfile.fprintf("%.15f"
+      fprintf(myfile, "%.15f"
           " %+.15f %+.15f %+.15f"
           " %+.15f %+.15f %+.15f %+.15f"
           "\n",

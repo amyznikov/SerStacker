@@ -9,10 +9,10 @@
 #ifndef __c_dso_dataset_reader_h__
 #define __c_dso_dataset_reader_h__
 
+#include "dso/util/c_image_undistort.h"
 #include "dso/util/usettings.h"
 #include "dso/util/globalFuncs.h"
 #include "dso/util/globalCalib.h"
-#include "dso/util/Undistort.h"
 #include "IOWrapper/ImageRW.h"
 
 #if HAS_ZIPLIB
@@ -33,14 +33,17 @@ public:
   c_dso_dataset_reader();
   ~c_dso_dataset_reader();
 
-  bool open(const std::string & path, const std::string & calibFile, const std::string & gammaFile, const std::string & vignetteFile);
+  bool open(const std::string & path, const std::string & calibFile,
+      const std::string & gammaFile,
+      const std::string & vignetteFile);
+
   void close();
 
   int getNumImages() const;
 
   void setGlobalCalibration();
 
-  float * getPhotometricGamma() const;
+  const float * photometricGamma() const;
   void getCalibMono(Eigen::Matrix3f & K, int & w, int & h) const;
 
   Eigen::VectorXf getOriginalCalib() const;
@@ -49,22 +52,17 @@ public:
   void prepImage(int id, bool as8U = false);
 
   bool getImage(int id, c_image_and_exposure * image);
-
-  MinimalImageB* getRawImage(int id);
   double getTimestamp(int id) const;
 
 protected:
-  bool getImage_internal(int id, c_image_and_exposure * image);
-
   bool getRawImage_internal(int id, cv::Mat * image);
-  MinimalImageB * getRawImage_internal(int id);
+  bool getImage_internal(int id, c_image_and_exposure * image);
   void loadTimestamps();
 
 protected:
   std::string path;
   std::string calibfile;
 
-  std::vector<c_image_and_exposure*> preloadedImages;
   std::vector<std::string> files;
   std::vector<double> timestamps;
   std::vector<float> exposures;
@@ -75,7 +73,7 @@ protected:
   int heightOrg = 0;
 
   // undistorter. [0] always exists, [1-2] only when MT is enabled.
-  dso::Undistort * undistort = nullptr;
+  dso::c_image_undistort * undistort = nullptr;
 
 #if HAS_ZIPLIB
   zip_t* ziparchive = nullptr;

@@ -10,36 +10,94 @@
 #define __c_stdio_file_h__
 
 #include <cstdio>
-#include <cstdarg>
 #include <string>
 #include <cerrno>
 
 class c_stdio_file
 {
 public:
-  c_stdio_file();
-  c_stdio_file(const std::string & filename, const std::string & mode);
-  ~c_stdio_file();
 
-  const std::string & filename() const;
-  const std::string & mode() const;
-  bool is_open() const;
-  FILE * fp() const;
+  c_stdio_file() :
+    fp_(nullptr)
+  {
+  }
 
-  bool open(const std::string & filename = "", const std::string & mode = "");
-  void close();
+  c_stdio_file(const std::string & filename, const std::string & mode) :
+      fp_(nullptr),
+      filename_(filename),
+      mode_(mode)
+  {
+    if( !filename.empty() && !mode.empty() ) {
+      open();
+    }
+  }
 
-  bool eof() const;
+  ~c_stdio_file()
+  {
+    close();
+  }
 
-  int vfprintf(const char * format, va_list arglist);
+  const std::string & filename() const
+  {
+    return filename_;
+  }
 
-#ifdef _MSC_VER
-  int fprintf(const char * format, ...);
-#else
-  int fprintf(const char * format, ...) __attribute__ ((__format__ (printf, 2, 3)));
-#endif
+  const std::string & mode() const
+  {
+    return mode_;
+  }
 
-  char *fgets(char buff[], int max_size);
+  bool is_open() const
+  {
+    return fp_ != nullptr;
+  }
+
+  FILE * fp() const
+  {
+    return fp_;
+  }
+
+  operator FILE * () const
+  {
+    return fp_;
+  }
+
+  bool open(const std::string & filename = "", const std::string & mode = "")
+  {
+    close();
+
+    if ( !filename.empty() ) {
+      filename_ = filename;
+    }
+
+    if ( !mode.empty() ) {
+      mode_ = mode;
+    }
+
+    if ( filename_.empty() ) {
+      errno = EINVAL;
+      return false;
+    }
+
+    if ( mode_.empty() ) {
+      errno = EINVAL;
+      return false;
+    }
+
+    if( !(fp_ = fopen(filename_.c_str(), mode_.c_str())) ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  void close()
+  {
+    if( fp_ ) {
+      fclose(fp_);
+      fp_ = nullptr;
+    }
+  }
 
 protected:
   FILE * fp_;

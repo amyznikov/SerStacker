@@ -16,7 +16,7 @@ namespace {
 
 using MinimalImageB = c_dso_dataset_reader::MinimalImageB;
 using c_image_and_exposure = c_dso_dataset_reader::c_image_and_exposure;
-using Undistort = dso::Undistort;
+using Undistort = dso::c_image_undistort;
 
 static int getdir(std::string dir, std::vector<std::string> & files)
 {
@@ -94,19 +94,10 @@ bool c_dso_dataset_reader::getImage(int id, c_image_and_exposure * image)
   return getImage_internal(id, image);
 }
 
-
-MinimalImageB* c_dso_dataset_reader::getRawImage(int id)
+const float* c_dso_dataset_reader::photometricGamma() const
 {
-  return getRawImage_internal(id);
+  return undistort ? undistort->photometricGamma() : nullptr;
 }
-
-float* c_dso_dataset_reader::getPhotometricGamma() const
-{
-  if( !undistort || !undistort->photometricUndist )
-    return nullptr;
-  return undistort->photometricUndist->getG();
-}
-
 
 double c_dso_dataset_reader::getTimestamp(int id) const
 {
@@ -212,7 +203,7 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
   }
 
   undistort =
-      Undistort::getUndistorterForFile(calibFile, gammaFile,
+      Undistort::load(calibFile, gammaFile,
           vignetteFile);
 
   if( !undistort ) {
@@ -250,7 +241,7 @@ void c_dso_dataset_reader::loadTimestamps()
 
   char buf[1000];
 
-  while (file.fgets(buf, sizeof(buf))) {
+  while (fgets(buf, sizeof(buf), file)) {
 
     int id;
     double stamp;
@@ -345,10 +336,10 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
   return false;
 #else
 
-  zip_file_t * fle =
+  zip_file_t * zipfp =
       zip_fopen(ziparchive, files[id].c_str(), 0);
 
-  if( !fle ) {
+  if( !zipfp ) {
     CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
     return false;
   }
@@ -358,10 +349,10 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
   }
 
   long readbytes =
-      zip_fread(fle, zip_databuffer,
+      zip_fread(zipfp, zip_databuffer,
           (long) widthOrg * heightOrg * 6 + 10000);
 
-  zip_fclose(fle);
+  zip_fclose(zipfp);
 
   if( readbytes > (long) widthOrg * heightOrg * 6 ) {
 
@@ -371,14 +362,14 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
     delete[] zip_databuffer;
     zip_databuffer = nullptr;
 
-    if( !(fle = zip_fopen(ziparchive, files[id].c_str(), 0)) ) {
+    if( !(zipfp = zip_fopen(ziparchive, files[id].c_str(), 0)) ) {
       CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
       return false;
     }
 
     zip_databuffer = new char[(long) widthOrg * heightOrg * 30];
-    readbytes = zip_fread(fle, zip_databuffer, (long) widthOrg * heightOrg * 30 + 10000);
-    zip_fclose(fle);
+    readbytes = zip_fread(zipfp, zip_databuffer, (long) widthOrg * heightOrg * 30 + 10000);
+    zip_fclose(zipfp);
 
     if( readbytes > (long) widthOrg * heightOrg * 30 ) {
 
@@ -397,83 +388,8 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
   }
 
   return true;
-
-  //return dso::IOWrap::readStreamBW_8U(zip_databuffer, readbytes);
-
 #endif
 
-}
-
-
-  // undistorter. [0] always exists, [1-2] only when MT is enabled.
-MinimalImageB* c_dso_dataset_reader::getRawImage_internal(int id)
-{
-#if HAS_ZIPLIB
-  const bool isZipped =
-      ziparchive != nullptr;
-#else
-  const bool isZipped = false;
-#endif
-
-  if( !isZipped ) {
-    // CHANGE FOR ZIP FILE
-    return dso::IOWrap::readImageBW_8U(files[id]);
-  }
-
-#if !HAS_ZIPLIB
-  CF_ERROR("ERROR: cannot read .zip archive, as compiled without ziplib!\n");
-  return false;
-#else
-
-  zip_file_t * fle =
-      zip_fopen(ziparchive, files[id].c_str(), 0);
-
-  if( !fle ) {
-    CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
-    return nullptr;
-  }
-
-  if( !zip_databuffer ) {
-    zip_databuffer = new char[widthOrg * heightOrg * 6 + 10000];
-  }
-
-  long readbytes =
-      zip_fread(fle, zip_databuffer,
-          (long) widthOrg * heightOrg * 6 + 10000);
-
-  zip_fclose(fle);
-
-  if( readbytes > (long) widthOrg * heightOrg * 6 ) {
-
-    CF_ERROR("read %ld/%ld bytes for file %s. increase buffer!!\n", readbytes,
-        (long ) widthOrg * heightOrg * 6 + 10000, files[id].c_str());
-
-    delete[] zip_databuffer;
-    zip_databuffer = nullptr;
-
-    if( !(fle = zip_fopen(ziparchive, files[id].c_str(), 0)) ) {
-      CF_ERROR("zip_fopen('%z') fails", files[id].c_str());
-      return nullptr;
-    }
-
-    zip_databuffer = new char[(long) widthOrg * heightOrg * 30];
-    readbytes = zip_fread(fle, zip_databuffer, (long) widthOrg * heightOrg * 30 + 10000);
-    zip_fclose(fle);
-
-    if( readbytes > (long) widthOrg * heightOrg * 30 ) {
-
-      CF_ERROR("buffer still to small (read %ld/%ld). abort.\n", readbytes,
-          (long ) widthOrg * heightOrg * 30 + 10000);
-
-      delete zip_databuffer;
-      zip_databuffer = nullptr;
-      return nullptr;
-    }
-  }
-
-  return dso::IOWrap::readStreamBW_8U(zip_databuffer, readbytes);
-
-#endif
 }
 
 bool c_dso_dataset_reader::getImage_internal(int id, c_image_and_exposure * output_image)

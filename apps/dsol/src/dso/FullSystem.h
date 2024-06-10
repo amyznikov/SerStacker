@@ -160,7 +160,7 @@ public:
 	bool linearizeOperation;
 
 
-	void setGammaFunction(float* BInv);
+	void setPhotometricGamma(const float BInv[256]);
 	void setOriginalCalib(const VecXf &originalCalib, int originalW, int originalH);
 
   const std::vector<FrameShell*> getAllFrameHistory() const

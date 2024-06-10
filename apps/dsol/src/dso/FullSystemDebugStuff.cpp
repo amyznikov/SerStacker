@@ -40,8 +40,6 @@
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
 
-#include "IOWrapper/ImageDisplay.h"
-
 #include <core/io/save_image.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -121,13 +119,11 @@ void FullSystem::debugPlotTracking()
       }
     }
 
-    char buf[100];
-    snprintf(buf, 100, "IMG %d", idx);
-    IOWrap::displayImageStitch(buf, images);
+
+    display.displayImageStitch(ssprintf("IMG %d", idx), images);
+
     idx++;
   }
-
-  IOWrap::waitKey(0);
 
 }
 
@@ -520,8 +516,9 @@ void FullSystem::debugPlot(std::string name)
       }
     }
   }
-  IOWrap::displayImageStitch(name.c_str(), images);
-  IOWrap::waitKey(5);
+
+  display.displayImageStitch(name, images);
+  // display.waitKey(5);
 
 //  for( unsigned int i = 0; i < images.size(); i++ ) {
 //    delete images[i];

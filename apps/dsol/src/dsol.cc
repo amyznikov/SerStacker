@@ -9,9 +9,10 @@
 //#include "extra.h"
 
 #include "dso/FullSystem.h"
-#include "dso/IOWrapper/Output3DWrapper.h"
-#include "dso/IOWrapper/ImageDisplay.h"
 #include "c_dso_dataset_reader.h"
+//#include "dso/IOWrapper/ImageDisplay.h"
+#include "c_dso_display_opencv.h"
+//#include "dso/IOWrapper/c_output_wrapper_3d.h"
 #include <core/settings.h>
 #include <core/debug.h>
 
@@ -218,6 +219,9 @@ int main(int argc, char *argv[])
 
   c_FullSystem::uptr fullSystem(new c_FullSystem());
   fullSystem->setPhotometricGamma(reader->photometricGamma());
+
+  c_dso_display_opencv::uptr opencv_display(new c_dso_display_opencv());
+  fullSystem->display.emplace_back(opencv_display.get());
 
   c_image_and_exposure image;
 

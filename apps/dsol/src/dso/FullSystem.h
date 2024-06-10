@@ -38,14 +38,10 @@
 #include "util/globalCalib.h"
 #include "util/IndexThreadReduce.h"
 #include "OptimizationBackend/EnergyFunctional.h"
+#include "c_dso_display.h"
 
 
-namespace dso
-{
-namespace IOWrap
-{
-class Output3DWrapper;
-}
+namespace dso {
 
 class PixelSelector;
 class PCSyntheticPoint;
@@ -151,7 +147,8 @@ public:
 	void printFrameLifetimes();
 	// contains pointers to active frames
 
-  std::vector<IOWrap::Output3DWrapper*> outputWrapper;
+	c_dso_display display;
+
 
 	bool isLost;
 	bool initFailed;

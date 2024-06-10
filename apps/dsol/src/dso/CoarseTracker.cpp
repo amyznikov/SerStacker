@@ -367,7 +367,7 @@ void CoarseTracker::calcGSSSE(int lvl, Mat88 & H_out, Vec8 & b_out, const SE3 & 
   b_out.segment<1>(7) *= SCALE_B;
 }
 
-Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH)
+Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH, const c_dso_display & display)
 {
   float E = 0;
   int numTermsInE = 0;
@@ -520,8 +520,7 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
   buf_warped_n = numTermsInWarped;
 
   if( debugPlot ) {
-    IOWrap::displayImage("RES", resImage, false);
-    IOWrap::waitKey(0);
+    display.displayImage("RES", resImage, false);
   }
 
   Vec6 rs;
@@ -547,12 +546,11 @@ void CoarseTracker::setCoarseTrackingRef(const std::vector<FrameHessian*> & fram
   firstCoarseRMSE = -1;
 
 }
-bool CoarseTracker::trackNewestCoarse(
-    FrameHessian * newFrameHessian,
+bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
     SE3 & lastToNew_out, AffLight & aff_g2l_out,
     int coarsestLvl,
     Vec5 minResForAbort,
-    IOWrap::Output3DWrapper * wrap)
+    const c_dso_display & display)
 {
   debugPlot = setting_render_displayCoarseTrackingFull;
   debugPrint = false;
@@ -576,11 +574,20 @@ bool CoarseTracker::trackNewestCoarse(
     Mat88 H;
     Vec8 b;
     float levelCutoffRepeat = 1;
-    Vec6 resOld = calcRes(lvl, refToNew_current, aff_g2l_current, setting_coarseCutoffTH * levelCutoffRepeat);
+
+    Vec6 resOld =
+        calcRes(lvl, refToNew_current, aff_g2l_current,
+            setting_coarseCutoffTH * levelCutoffRepeat,
+            display);
 
     while (resOld[5] > 0.6 && levelCutoffRepeat < 50) {
+
       levelCutoffRepeat *= 2;
-      resOld = calcRes(lvl, refToNew_current, aff_g2l_current, setting_coarseCutoffTH * levelCutoffRepeat);
+
+      resOld =
+          calcRes(lvl, refToNew_current, aff_g2l_current,
+              setting_coarseCutoffTH * levelCutoffRepeat,
+              display);
 
       if( !setting_debugout_runquiet ) {
         printf("INCREASING cutoff to %f (ratio is %f)!\n", setting_coarseCutoffTH * levelCutoffRepeat, resOld[5]);
@@ -661,7 +668,10 @@ bool CoarseTracker::trackNewestCoarse(
       aff_g2l_new.a += incScaled[6];
       aff_g2l_new.b += incScaled[7];
 
-      Vec6 resNew = calcRes(lvl, refToNew_new, aff_g2l_new, setting_coarseCutoffTH * levelCutoffRepeat);
+      Vec6 resNew =
+          calcRes(lvl, refToNew_new, aff_g2l_new,
+              setting_coarseCutoffTH * levelCutoffRepeat,
+              display);
 
       bool accept = (resNew[0] / resNew[1]) < (resOld[0] / resOld[1]);
 
@@ -747,10 +757,9 @@ bool CoarseTracker::trackNewestCoarse(
   return true;
 }
 
-void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt,
-    std::vector<IOWrap::Output3DWrapper*> & wraps)
+void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, const c_dso_display & display)
 {
-  if( w[1] == 0 ) {
+  if( w[1] == 0 || !display.needPushDepthImage() ) {
     return;
   }
 
@@ -854,9 +863,7 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt,
       }
     }
 
-    for( IOWrap::Output3DWrapper * ow : wraps ) {
-      ow->pushDepthImage(mf);
-    }
+    display.pushDepthImage(mf);
 
     if( debugSaveImages ) {
 
@@ -873,7 +880,7 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt,
   }
 }
 
-void CoarseTracker::debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*> & wraps)
+void CoarseTracker::debugPlotIDepthMapFloat(const c_dso_display & display)
 {
   if( w[1] == 0 ) {
     return;
@@ -882,9 +889,7 @@ void CoarseTracker::debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*
   int lvl = 0;
   cv::Mat1f mim(h[lvl], w[lvl], idepth[lvl]);
 
-  for( IOWrap::Output3DWrapper * ow : wraps ) {
-    ow->pushDepthImageFloat(mim, lastRef);
-  }
+  display.pushDepthImageFloat(mim, lastRef);
 }
 
 CoarseDistanceMap::CoarseDistanceMap(int ww, int hh)

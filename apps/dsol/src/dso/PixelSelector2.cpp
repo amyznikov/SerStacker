@@ -25,7 +25,6 @@
 #include "HessianBlocks.h"
 
 #include "util/NumType.h"
-#include "IOWrapper/ImageDisplay.h"
 #include "util/globalCalib.h"
 #include "util/globalFuncs.h"
 
@@ -162,8 +161,9 @@ void PixelSelector::makeHists(const FrameHessian * const fh)
 
 }
 
-int PixelSelector::makeMaps(const FrameHessian * const fh,
-    float * map_out, float density, int recursionsLeft, bool plot, float thFactor)
+int PixelSelector::makeMaps(const FrameHessian * const fh, float * map_out,
+    float density, int recursionsLeft, bool plot, float thFactor,
+    const c_dso_display & display)
 {
   float numHave = 0;
   float numWant = density;
@@ -204,7 +204,8 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
     }
 
     // select!
-    Eigen::Vector3i n = this->select(fh, map_out, currentPotential, thFactor);
+    Eigen::Vector3i n =
+        this->select(fh, map_out, currentPotential, thFactor);
 
     // sub-select!
     numHave = n[0] + n[1] + n[2];
@@ -229,7 +230,7 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
       //				currentPotential,
       //				idealPotential);
       currentPotential = idealPotential;
-      return makeMaps(fh, map_out, density, recursionsLeft - 1, plot, thFactor);
+      return makeMaps(fh, map_out, density, recursionsLeft - 1, plot, thFactor, display);
     }
     else if( recursionsLeft > 0 && quotia < 0.25 ) {
       // re-sample to get less points!
@@ -243,7 +244,7 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
       //				currentPotential,
       //				idealPotential);
       currentPotential = idealPotential;
-      return makeMaps(fh, map_out, density, recursionsLeft - 1, plot, thFactor);
+      return makeMaps(fh, map_out, density, recursionsLeft - 1, plot, thFactor, display);
 
     }
   }
@@ -290,7 +291,7 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
       imgp[i] = cv::Vec3b(c, c, c);
     }
 
-    IOWrap::displayImage("Selector Image", img);
+    display.displayImage("Selector Image", img);
 
     for( int y = 0; y < h; y++ ) {
       for( int x = 0; x < w; x++ ) {
@@ -310,7 +311,7 @@ int PixelSelector::makeMaps(const FrameHessian * const fh,
       }
     }
 
-    IOWrap::displayImage("Selector Pixels", img);
+    display.displayImage("Selector Pixels", img);
   }
 
   return numHaveSub;

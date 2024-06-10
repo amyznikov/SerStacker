@@ -76,13 +76,12 @@ CoarseInitializer::~CoarseInitializer()
   delete[] JbBuffer_new;
 }
 
-bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, std::vector<IOWrap::Output3DWrapper*> & wraps)
+bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, const c_dso_display & display)
 {
   newFrame = newFrameHessian;
 
-  for( IOWrap::Output3DWrapper * ow : wraps ) {
-    ow->pushLiveFrame(newFrameHessian);
-  }
+  display.pushLiveFrame(newFrameHessian);
+
 
   int maxIterations[] = { 5, 5, 10, 30, 50 };
 
@@ -270,19 +269,14 @@ bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, std::vector<I
     snappedAt = frameID;
   }
 
-  debugPlot(0, wraps);
+  debugPlot(0, display);
 
   return snapped && frameID > snappedAt + 5;
 }
 
-void CoarseInitializer::debugPlot(int lvl, std::vector<IOWrap::Output3DWrapper*> & wraps)
+void CoarseInitializer::debugPlot(int lvl, const c_dso_display & display)
 {
-  bool needCall = false;
-  for( IOWrap::Output3DWrapper * ow : wraps ) {
-    needCall = needCall || ow->needPushDepthImage();
-  }
-
-  if( !needCall ) {
+  if ( !display.needPushDepthImage() ) {
     return;
   }
 
@@ -333,10 +327,7 @@ void CoarseInitializer::debugPlot(int lvl, std::vector<IOWrap::Output3DWrapper*>
     // iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, Vec3b(0, 0, 0));
   }
 
-  //IOWrap::displayImage("idepth-R", &iRImg, false);
-  for( IOWrap::Output3DWrapper * ow : wraps ) {
-    ow->pushDepthImage(iRImg);
-  }
+  display.pushDepthImage(iRImg);
 }
 
 // calculates residual, Hessian and Hessian-block neede for re-substituting depth.
@@ -783,7 +774,8 @@ void CoarseInitializer::makeGradients(Eigen::Vector3f ** data)
     }
   }
 }
-void CoarseInitializer::setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian)
+void CoarseInitializer::setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian,
+    const c_dso_display & display)
 {
 
   makeK(HCalib);
@@ -802,7 +794,7 @@ void CoarseInitializer::setFirst(CalibHessian * HCalib, FrameHessian * newFrameH
     int npts;
 
     if( lvl == 0 ) {
-      npts = sel.makeMaps(firstFrame, statusMap, densities[lvl] * w[0] * h[0], 1, false, 2);
+      npts = sel.makeMaps(firstFrame, statusMap, densities[lvl] * w[0] * h[0], 1, false, 2, display);
     }
     else {
       npts = makePixelStatus(firstFrame->dIp[lvl], statusMapB, w[lvl], h[lvl], densities[lvl] * w[0] * h[0]);

@@ -28,7 +28,7 @@
 #include "util/usettings.h"
 #include "util/NumType.h"
 #include "OptimizationBackend/MatrixAccumulators.h"
-#include "IOWrapper/Output3DWrapper.h"
+#include "c_dso_display.h"
 
 namespace dso
 {
@@ -44,11 +44,10 @@ public:
   CoarseTracker(int w, int h);
   ~CoarseTracker();
 
-  bool trackNewestCoarse(
-      FrameHessian * newFrameHessian,
+  bool trackNewestCoarse(FrameHessian * newFrameHessian,
       SE3 & lastToNew_out, AffLight & aff_g2l_out,
       int coarsestLvl, Vec5 minResForAbort,
-      IOWrap::Output3DWrapper * wrap = 0);
+      const c_dso_display & display);
 
   void setCoarseTrackingRef(const std::vector<FrameHessian*> & frameHessians);
 
@@ -70,8 +69,8 @@ public:
   int w[PYR_LEVELS] = { 0 };
   int h[PYR_LEVELS] = { 0 };
 
-  void debugPlotIDepthMap(float * minID, float * maxID, std::vector<IOWrap::Output3DWrapper*> & wraps);
-  void debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*> & wraps);
+  void debugPlotIDepthMap(float * minID, float * maxID, const c_dso_display & display);
+  void debugPlotIDepthMapFloat(const c_dso_display & display);
 
   FrameHessian * lastRef = nullptr;
   AffLight lastRef_aff_g2l;
@@ -91,7 +90,7 @@ private:
   float * weightSums_bak[PYR_LEVELS] = { nullptr };
 
   Vec6 calcResAndGS(int lvl, Mat88 & H_out, Vec8 & b_out, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH);
-  Vec6 calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH);
+  Vec6 calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH, const c_dso_display & display);
   void calcGSSSE(int lvl, Mat88 & H_out, Vec8 & b_out, const SE3 & refToNew, AffLight aff_g2l);
   void calcGS(int lvl, Mat88 & H_out, Vec8 & b_out, const SE3 & refToNew, AffLight aff_g2l);
 

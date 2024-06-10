@@ -38,7 +38,6 @@
 #include "ResidualProjections.h"
 #include "util/globalCalib.h"
 #include "util/globalFuncs.h"
-#include "IOWrapper/ImageDisplay.h"
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
 

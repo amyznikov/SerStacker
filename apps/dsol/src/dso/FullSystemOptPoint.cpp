@@ -39,7 +39,6 @@
 #include "ImmaturePoint.h"
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
-#include "IOWrapper/ImageDisplay.h"
 
 namespace dso
 {

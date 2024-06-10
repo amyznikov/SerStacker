@@ -24,15 +24,11 @@
 
 
 
-#include "usettings.h"
+#include "c_image_undistort.h"
 #include "globalFuncs.h"
-#include "IOWrapper/ImageDisplay.h"
-#include <Eigen/Core>
-#include <iterator>
 #include <core/io/load_image.h>
 #include <core/io/c_stdio_file.h>
 #include <core/debug.h>
-#include "c_image_undistort.h"
 
 
 namespace dso

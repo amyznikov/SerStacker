@@ -35,26 +35,21 @@
 #include <Eigen/Eigenvalues>
 #include <cmath>
 #include <algorithm>
-#include <core/io/c_stdio_file.h>
 
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
+#include "util/c_image_and_exposure.h"
 #include "PixelSelector.h"
 #include "PixelSelector2.h"
 #include "ResidualProjections.h"
 #include "ImmaturePoint.h"
 #include "CoarseTracker.h"
 #include "CoarseInitializer.h"
-
-#include "IOWrapper/ImageDisplay.h"
-
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
-
-#include "IOWrapper/Output3DWrapper.h"
-
+#include "c_dso_display.h"
+#include <core/io/c_stdio_file.h>
 #include <core/debug.h>
-#include "util/c_image_and_exposure.h"
 
 namespace dso
 {
@@ -292,16 +287,17 @@ void FullSystem::printResult(std::string file)
 
 Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
 {
-
-  assert(allFrameHistory.size() > 0);
   // set pose initialization.
 
-  for( IOWrap::Output3DWrapper * ow : outputWrapper )
-    ow->pushLiveFrame(fh);
+  assert(allFrameHistory.size() > 0);
 
-  FrameHessian * lastF = coarseTracker->lastRef;
+  display.pushLiveFrame(fh);
 
-  AffLight aff_last_2_l = AffLight(0, 0);
+  FrameHessian * lastF =
+      coarseTracker->lastRef;
+
+  AffLight aff_last_2_l =
+      AffLight(0, 0);
 
   std::vector<SE3, Eigen::aligned_allocator<SE3>> lastF_2_fh_tries;
 
@@ -415,12 +411,21 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
   bool haveOneGood = false;
   int tryIterations = 0;
   for( unsigned int i = 0; i < lastF_2_fh_tries.size(); i++ ) {
-    AffLight aff_g2l_this = aff_last_2_l;
-    SE3 lastF_2_fh_this = lastF_2_fh_tries[i];
-    bool trackingIsGood = coarseTracker->trackNewestCoarse(
-        fh, lastF_2_fh_this, aff_g2l_this,
-        pyrLevelsUsed - 1,
-        achievedRes);	// in each level has to be at least as good as the last try.
+
+    AffLight aff_g2l_this =
+        aff_last_2_l;
+
+    SE3 lastF_2_fh_this =
+        lastF_2_fh_tries[i];
+
+    // in each level has to be at least as good as the last try.
+    bool trackingIsGood =
+        coarseTracker->trackNewestCoarse(
+            fh, lastF_2_fh_this, aff_g2l_this,
+            pyrLevelsUsed - 1,
+            achievedRes,
+            display);
+
     tryIterations++;
 
     if( i != 0 ) {
@@ -854,10 +859,10 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
     // use initializer!
     if( coarseInitializer->frameID < 0 ) {	// first frame set. fh is kept by coarseInitializer.
 
-      coarseInitializer->setFirst(&Hcalib, fh);
+      coarseInitializer->setFirst(&Hcalib, fh, display);
       onFrameHessianMakeImages(fh);
     }
-    else if( coarseInitializer->trackFrame(fh, outputWrapper) ) { // if SNAPPED
+    else if( coarseInitializer->trackFrame(fh, display) ) { // if SNAPPED
 
       initializeFromInitializer(fh);
       lock.unlock();
@@ -896,8 +901,9 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
     }
     else {
 
-      Vec2 refToFh = AffLight::fromToVecExposure(coarseTracker->lastRef->ab_exposure, fh->ab_exposure,
-          coarseTracker->lastRef_aff_g2l, fh->shell->aff_g2l);
+      Vec2 refToFh =
+          AffLight::fromToVecExposure(coarseTracker->lastRef->ab_exposure, fh->ab_exposure,
+              coarseTracker->lastRef_aff_g2l, fh->shell->aff_g2l);
 
       // BRIGHTNESS CHECK
       needToMakeKF = allFrameHistory.size() == 1 ||
@@ -909,9 +915,7 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
 
     }
 
-    for( IOWrap::Output3DWrapper * ow : outputWrapper ) {
-      ow->publishCamPose(fh->shell, &Hcalib);
-    }
+    display.publishCamPose(fh->shell, &Hcalib);
 
     lock.unlock();
     deliverTrackedFrame(fh, needToMakeKF);
@@ -928,10 +932,11 @@ void FullSystem::deliverTrackedFrame(FrameHessian * fh, bool needKF)
     if( goStepByStep && lastRefStopID != coarseTracker->refFrameID ) {
 
       cv::Mat3f img(hG[0], wG[0], (cv::Vec3f*)fh->dI);
-      IOWrap::displayImage("frameToTrack", img);
+
+      display.displayImage("frameToTrack", img);
 
       while (true) {
-        char k = IOWrap::waitKey(0);
+        int k = display.waitKey(0);
         if( k == ' ' ) {
           break;
         }
@@ -940,7 +945,7 @@ void FullSystem::deliverTrackedFrame(FrameHessian * fh, bool needKF)
       lastRefStopID = coarseTracker->refFrameID;
     }
     else {
-      handleKey(IOWrap::waitKey(1));
+      handleKey(display.waitKey(1));
     }
 
     if( needKF ) {
@@ -1147,8 +1152,8 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
     coarseTracker_forNewKF->makeK(&Hcalib);
     coarseTracker_forNewKF->setCoarseTrackingRef(frameHessians);
 
-    coarseTracker_forNewKF->debugPlotIDepthMap(&minIdJetVisTracker, &maxIdJetVisTracker, outputWrapper);
-    coarseTracker_forNewKF->debugPlotIDepthMapFloat(outputWrapper);
+    coarseTracker_forNewKF->debugPlotIDepthMap(&minIdJetVisTracker, &maxIdJetVisTracker, display);
+    coarseTracker_forNewKF->debugPlotIDepthMapFloat(display);
   }
 
   debugPlot("post Optimize");
@@ -1166,10 +1171,8 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
   // =========================== add new Immature points & new residuals =========================
   makeNewTraces(fh, 0);
 
-  for( IOWrap::Output3DWrapper * ow : outputWrapper ) {
-    ow->publishGraph(ef->connectivityMap);
-    ow->publishKeyframes(frameHessians, false, &Hcalib);
-  }
+  display.publishGraph(ef->connectivityMap);
+  display.publishKeyframes(frameHessians, false, &Hcalib);
 
   // =========================== Marginalize Frames =========================
 
@@ -1282,7 +1285,9 @@ void FullSystem::makeNewTraces(FrameHessian * newFrame, float * gtDepth)
 {
   pixelSelector->allowFast = true;
   //int numPointsTotal = makePixelStatus(newFrame->dI, selectionMap, wG[0], hG[0], setting_desiredDensity);
-  int numPointsTotal = pixelSelector->makeMaps(newFrame, selectionMap, setting_desiredImmatureDensity);
+  int numPointsTotal =
+      pixelSelector->makeMaps(newFrame, selectionMap, setting_desiredImmatureDensity, 1, false, 1,
+          display);
 
   newFrame->pointHessians.reserve(numPointsTotal * 1.2f);
   //fh->pointHessiansInactive.reserve(numPointsTotal*1.2f);

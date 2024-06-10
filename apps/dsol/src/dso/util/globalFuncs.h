@@ -26,7 +26,7 @@
 #pragma once
 #include "usettings.h"
 #include "NumType.h"
-#include "IOWrapper/ImageDisplay.h"
+//#include "IOWrapper/ImageDisplay.h"
 
 namespace dso
 {

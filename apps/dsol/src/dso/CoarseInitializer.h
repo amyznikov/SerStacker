@@ -25,10 +25,11 @@
 
 #include <vector>
 #include <math.h>
+
 #include "util/usettings.h"
 #include "util/NumType.h"
 #include "OptimizationBackend/MatrixAccumulators.h"
-#include "IOWrapper/Output3DWrapper.h"
+#include "c_dso_display.h"
 
 namespace dso
 {
@@ -78,8 +79,8 @@ public:
   CoarseInitializer(int w, int h);
   ~CoarseInitializer();
 
-  void setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian);
-  bool trackFrame(FrameHessian * newFrameHessian, std::vector<IOWrap::Output3DWrapper*> & wraps);
+  void setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian, const c_dso_display & display);
+  bool trackFrame(FrameHessian * newFrameHessian, const c_dso_display & display);
   void calcTGrads(FrameHessian * newFrameHessian);
 
   int frameID = 0;
@@ -150,7 +151,7 @@ public:
 
   void makeGradients(Eigen::Vector3f ** data);
 
-  void debugPlot(int lvl, std::vector<IOWrap::Output3DWrapper*> & wraps);
+  void debugPlot(int lvl, const c_dso_display & display);
   void makeNN();
 };
 

@@ -32,7 +32,6 @@
 #include "ResidualProjections.h"
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
-#include "IOWrapper/ImageDisplay.h"
 
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"

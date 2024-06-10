@@ -42,9 +42,6 @@
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
 
-#include "IOWrapper/ImageDisplay.h"
-#include "IOWrapper/Output3DWrapper.h"
-
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
 
@@ -182,9 +179,7 @@ void FullSystem::marginalizeFrame(FrameHessian * frame)
   {
     std::vector<FrameHessian*> v;
     v.push_back(frame);
-    for( IOWrap::Output3DWrapper * ow : outputWrapper ) {
-      ow->publishKeyframes(v, true, &Hcalib);
-    }
+    display.publishKeyframes(v, true, &Hcalib);
   }
 
   frame->shell->marginalizedAt = frameHessians.back()->shell->id;

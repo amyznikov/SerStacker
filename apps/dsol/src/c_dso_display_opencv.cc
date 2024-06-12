@@ -56,10 +56,10 @@ void c_dso_display_opencv::displayImage(const std::string & windowName, const cv
     image.convertTo(display, CV_8U);
   }
 
-  CF_DEBUG("display: %dx%d", display.cols, display.rows);
+  // CF_DEBUG("display: %dx%d", display.cols, display.rows);
 
   cv::imshow(windowName, display);
-  cv::waitKey(20);
+  cv::waitKey(10);
 
 }
 

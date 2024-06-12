@@ -7,7 +7,7 @@
 #ifndef __c_image_undistort_h__
 #define __c_image_undistort_h__
 
-#include "c_image_and_exposure.h"
+#include "../c_image_and_exposure.h"
 #include "util/NumType.h"
 
 namespace dso

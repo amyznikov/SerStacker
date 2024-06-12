@@ -10,9 +10,7 @@
 
 #include "dso/FullSystem.h"
 #include "c_dso_dataset_reader.h"
-//#include "dso/IOWrapper/ImageDisplay.h"
 #include "c_dso_display_opencv.h"
-//#include "dso/IOWrapper/c_output_wrapper_3d.h"
 #include <core/settings.h>
 #include <core/debug.h>
 

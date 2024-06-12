@@ -127,7 +127,7 @@ c_photometric_undistort * c_photometric_undistort::load(const std::string & cali
 
 
   this_class * obj = new this_class();
-  obj->output_.reset(new c_image_and_exposure(w_, h_));
+  obj->output_.reset(new c_image_and_exposure(h_, w_));
   obj->G_ = std::move(Gvec);
   obj->vignetteMapInv_ = std::move(vmimage);
   obj->w = w_;
@@ -445,7 +445,7 @@ bool c_image_undistort::undistort(const cv::Mat & image_raw, c_image_and_exposur
     return false;
   }
 
-  output_image->create(image_raw.size(),
+  output_image->create(h, w,
       timestamp);
 
   switch (image_raw.type()) {

@@ -25,12 +25,12 @@ public:
   {
   }
 
-  c_image_and_exposure(int w, int h, double timestamp = 0) :
+  c_image_and_exposure(int rows, int cols, double timestamp = 0) :
       timestamp_(timestamp),
       exposure_(1)
   {
-    if( w > 0 && h > 0 ) {
-      image_.create(h, w);
+    if( rows > 0 && cols > 0 ) {
+      image_.create(rows, cols);
     }
   }
 

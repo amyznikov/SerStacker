@@ -28,6 +28,7 @@
 #include <dso/c_dso_dataset_reader.h>
 
 #include "QDSOCloudView.h"
+#include "QDSOImageView.h"
 
 //#include "QPipelineProgressView.h"
 //#include "QInputSourceView.h"
@@ -53,6 +54,7 @@ private:
   void setupPipelines();
   void setupMainMenu();
   void setupMainToolbar();
+  void setupDSOImageViews();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
   void setupStackTreeView();
@@ -127,6 +129,13 @@ private:
 //
 
   QToolBar * mainToolbar_ = nullptr;
+  QMenu * menuViewDsoImages = nullptr;
+
+  QDSOImageView * dsoInputFrameView = nullptr;
+  QDSOImageViewDock * dsoInputFrameViewDock = nullptr;
+  QDSOImageView * dsoKeyframeView = nullptr;
+  QDSOImageViewDock * dsoKeyframeViewDock = nullptr;
+
 
 
   QAction * openDsoDatasetAction = nullptr;

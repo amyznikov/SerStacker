@@ -116,6 +116,7 @@ MainWindow::MainWindow()
   setupMainToolbar();
   setupLogWidget();
   setupStatusbar();
+  setupDSOImageViews();
   setupMtfControls();
   setupFileSystemTreeView();
   setupThumbnailsView();
@@ -460,6 +461,12 @@ void MainWindow::setupMainMenu()
 //  //
 //  // View
 //  //
+
+  menuViewDsoImages =
+      menuView->addMenu("DSO");
+
+
+
 //  menuView->addAction(viewInputOptionsAction =
 //      createCheckableAction(QIcon(ICON_bayer),
 //          "Input Options...",
@@ -686,6 +693,30 @@ void MainWindow::setupStatusbar()
 //  sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
 //  sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
 //  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
+}
+
+
+void MainWindow::setupDSOImageViews()
+{
+  dsoInputFrameViewDock =
+      addDock<QDSOImageViewDock>(this,
+          Qt::BottomDockWidgetArea,
+          "dsoInputFrameViewDock",
+          "InputFrame",
+          dsoInputFrameView = new QDSOImageView(this),
+          menuViewDsoImages);
+
+  dsoInputFrameViewDock->hide();
+
+  dsoKeyframeViewDock =
+      addDock<QDSOImageViewDock>(this,
+          Qt::BottomDockWidgetArea,
+          "dsoKeyframeViewDock",
+          "KeyFrame",
+          dsoKeyframeView = new QDSOImageView(this),
+          menuViewDsoImages);
+
+  dsoKeyframeViewDock->hide();
 }
 
 

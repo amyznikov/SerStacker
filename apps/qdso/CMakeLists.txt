@@ -83,7 +83,8 @@ target_include_directories( ${PROJECT_NAME} PUBLIC
    ${DSO_INCLUDES})
 
 set(LIBRARIES  
-  gui
+  dso
+  gui  
   Qt${QT_VERSION}::Core
   Qt${QT_VERSION}::Gui
   Qt${QT_VERSION}::Widgets

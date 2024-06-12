@@ -5,8 +5,8 @@
  *      Author: amyznikov
  */
 #pragma once
-#ifndef __qserstacker_main_window_h__
-#define __qserstacker_main_window_h__
+#ifndef __qdso_main_window_h__
+#define __qdso_main_window_h__
 
 #include <gui/mainwindow/QMainAppWindow.h>
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
@@ -24,16 +24,22 @@
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include <gui/qinputoptions/QInputOptions.h>
 
-#include "QPipelineProgressView.h"
-#include "QInputSourceView.h"
-#include "QProgressImageViewer.h"
+#include <dso/c_dso_display.h>
+#include <dso/c_dso_dataset_reader.h>
 
-namespace serstacker {
+#include "QDSOCloudView.h"
+
+//#include "QPipelineProgressView.h"
+//#include "QInputSourceView.h"
+//#include "QProgressImageViewer.h"
+
+namespace qdso {
 ///////////////////////////////////////////////////////////////////////////////
 
 
 class MainWindow :
-    public QMainAppWindow
+    public QMainAppWindow,
+    public dso::c_dso_display
 {
   Q_OBJECT;
 public:
@@ -46,6 +52,7 @@ public:
 private:
   void setupPipelines();
   void setupMainMenu();
+  void setupMainToolbar();
   void setupFileSystemTreeView();
   void setupThumbnailsView();
   void setupStackTreeView();
@@ -57,6 +64,9 @@ private:
 
 private Q_SLOTS:
   void updateWindowTittle();
+  void onOpenDatasetConfig();
+  bool openDatasetConfig(const QString & configPathFileName);
+
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
   void onSaveCurrentImageMask();
@@ -103,74 +113,85 @@ private :
   IMtfDisplay * getCurrentMtfDisplay() override;
 
 private:
+  c_dso_dataset_reader::uptr dataset_;
+
   QStackedWidget * centralStackedWidget = nullptr;
-  QThumbnailsView * thumbnailsView = nullptr;
-
-  QInputSourceView * inputSourceView = nullptr;
-  QImageSourceView * imageView = nullptr;
-  QPointCloudSourceView * cloudView = nullptr;
-  QTextSourceView * textView = nullptr;
-
-  QPipelineProgressView * pipelineProgressView = nullptr;
-  QProgressImageViewer * pipelineProgressImageView = nullptr;
-
-  QInputOptionsDialogBox * inputOptionsDlgBox = nullptr;
-
-  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
-  QGlPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
-  QPipelineOptionsView * pipelineOptionsView = nullptr;
-
-  QFileSystemTreeDock * fileSystemTreeDock = nullptr;
-  QImageSequencesTree * sequencesTreeView = nullptr;
-  QImageSequenceTreeDock * sequencesTreeViewDock = nullptr;
+  QDSOCloudView * cloudView = nullptr;
 
 
-  QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
-  QAction * showRoiOptionsAction = nullptr;
-  QAction * showRoiRectangleAction = nullptr;
-  QMenu roiActionsMenu_;
+//  QThumbnailsView * thumbnailsView = nullptr;
+//  QInputSourceView * inputSourceView = nullptr;
+//  QImageSourceView * imageView = nullptr;
+//  QPointCloudSourceView * cloudView = nullptr;
+//  QTextSourceView * textView = nullptr;
+//
+
+  QToolBar * mainToolbar_ = nullptr;
 
 
-  QAction * quitAppAction = nullptr;
-  QAction * saveImageAsAction = nullptr;
-  QAction * saveDisplayImageAsAction = nullptr;
-  QAction * saveImageMaskAction = nullptr;
-  QAction * loadStackAction = nullptr;
-  QAction * setReferenceFrameAction = nullptr;
-  QAction * copyDisplayImageAction = nullptr;
-  QAction * copyDisplayViewportAction = nullptr;
-  QToolButton * editMaskAction = nullptr;
-  QAction * loadImageMaskAction = nullptr;
-  QAction * badframeAction = nullptr;
-  QAction * viewInputOptionsAction = nullptr;
+  QAction * openDsoDatasetAction = nullptr;
 
+//  QPipelineProgressView * pipelineProgressView = nullptr;
+//  QProgressImageViewer * pipelineProgressImageView = nullptr;
 
-
-  QAction * selectPreviousFileAction_ = nullptr;
-  QAction * selectNextFileAction = nullptr;
-  QAction * reloadCurrentFileAction = nullptr;
-  QAction * showImageProcessorSettingsAction = nullptr;
+//  QInputOptionsDialogBox * inputOptionsDlgBox = nullptr;
+//
+//  QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
+//  QPipelineOptionsView * pipelineOptionsView = nullptr;
+//
+//  QFileSystemTreeDock * fileSystemTreeDock = nullptr;
+//  QImageSequencesTree * sequencesTreeView = nullptr;
+//  QImageSequenceTreeDock * sequencesTreeViewDock = nullptr;
+//
+//
+//  QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
+//  QAction * showRoiOptionsAction = nullptr;
+//  QAction * showRoiRectangleAction = nullptr;
+//  QMenu roiActionsMenu_;
+//
+//
+//  QAction * quitAppAction = nullptr;
+//  QAction * saveImageAsAction = nullptr;
+//  QAction * saveDisplayImageAsAction = nullptr;
+//  QAction * saveImageMaskAction = nullptr;
+//  QAction * loadStackAction = nullptr;
+//  QAction * setReferenceFrameAction = nullptr;
+//  QAction * copyDisplayImageAction = nullptr;
+//  QAction * copyDisplayViewportAction = nullptr;
+//  QToolButton * editMaskAction = nullptr;
+//  QAction * loadImageMaskAction = nullptr;
+//  QAction * badframeAction = nullptr;
+//  QAction * viewInputOptionsAction = nullptr;
+//
+//
+//
+//  QAction * selectPreviousFileAction_ = nullptr;
+//  QAction * selectNextFileAction = nullptr;
+//  QAction * reloadCurrentFileAction = nullptr;
+//  QAction * showImageProcessorSettingsAction = nullptr;
   QAction * showCloudViewSettingsDialogBoxAction = nullptr;
+  QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog = nullptr;
+  QGlPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
 
-  QLabel * currentFileNameLabel_ctl = nullptr;
-  QLabel * imageSizeLabel_ctl = nullptr;
-  QScaleSelectionButton * scaleSelection_ctl = nullptr;
-  QShapesButton * shapes_ctl = nullptr;
-
-  QLabel * statusbarMousePosLabel_ctl = nullptr;
-  QLabel * statusbarShapesLabel_ctl = nullptr;
-  QToolButton * statusbarShowLog_ctl = nullptr;
-
-  ///
-  QDisplayVideoWriter diplayImageWriter_;
-  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
-  bool lockDiplayImageWriter_ = false;
-
-  ///
-  QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog_ = nullptr;
+//
+//  QLabel * currentFileNameLabel_ctl = nullptr;
+//  QLabel * imageSizeLabel_ctl = nullptr;
+//  QScaleSelectionButton * scaleSelection_ctl = nullptr;
+//  QShapesButton * shapes_ctl = nullptr;
+//
+//  QLabel * statusbarMousePosLabel_ctl = nullptr;
+//  QLabel * statusbarShapesLabel_ctl = nullptr;
+//  QToolButton * statusbarShowLog_ctl = nullptr;
+//
+//  ///
+//  QDisplayVideoWriter diplayImageWriter_;
+//  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
+//  bool lockDiplayImageWriter_ = false;
+//
+//  ///
 };
 
 
 ///////////////////////////////////////////////////////////////////////////////
-}  // namespace serstacker
-#endif /* __qserstacker_main_window_h__ */
+}  // namespace qdso
+#endif /* __qdso_main_window_h__ */

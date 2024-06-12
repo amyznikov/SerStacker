@@ -35,9 +35,11 @@ public:
       const std::string & gammaFile,
       const std::string & vignetteFile);
 
+  static this_class * load(const std::string & config_filename);
+
   void close();
 
-  int getNumImages() const;
+  int numImages() const;
 
   void setGlobalCalibration();
 

@@ -24,8 +24,8 @@
 
 
 #pragma once
-#include "usettings.h"
-#include "util/NumType.h"
+#include <dso/util/usettings.h>
+#include <dso/util/NumType.h>
 
 namespace dso
 {

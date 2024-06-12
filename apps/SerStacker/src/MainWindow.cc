@@ -979,9 +979,9 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
 {
   if ( checked && !cloudViewSettingsDialogBox ) {
 
-    cloudViewSettingsDialogBox = new QPointCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox = new QGlPointCloudViewSettingsDialogBox(this);
     cloudViewSettingsDialogBox->setCloudViewer(cloudView);
-    connect(cloudViewSettingsDialogBox, &QPointCloudViewSettingsDialogBox::visibilityChanged,
+    connect(cloudViewSettingsDialogBox, &QGlPointCloudViewSettingsDialogBox::visibilityChanged,
         showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
   }
 

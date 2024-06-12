@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
   reader->setGlobalCalibration();
 
   int numImages =
-      reader->getNumImages();
+      reader->numImages();
 
   CF_DEBUG("NumImages=%d", numImages);
 

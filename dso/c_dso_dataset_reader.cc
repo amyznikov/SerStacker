@@ -10,12 +10,46 @@
 #include <dirent.h>
 #include <algorithm>
 #include <core/io/load_image.h>
+#include <core/settings.h>
 #include <core/debug.h>
 
 namespace {
 
 using c_image_and_exposure = c_dso_dataset_reader::c_image_and_exposure;
 using Undistort = dso::c_image_undistort;
+
+
+struct c_dso_dataset_settings
+{
+  std::string files; // "/home/projects/dso/mono-dataset/sequence_46/images.zip"
+  std::string calib; // "/home/projects/dso/mono-dataset/sequence_46/camera.txt"
+  std::string gamma; // " /home/projects/dso/mono-dataset/sequence_46/pcalib.txt"
+  std::string vignette;
+};
+
+bool load_settings(c_config_setting settings, c_dso_dataset_settings * cfg)
+{
+  LOAD_OPTION(settings, *cfg, files);
+  LOAD_OPTION(settings, *cfg, calib);
+  LOAD_OPTION(settings, *cfg, gamma);
+  LOAD_OPTION(settings, *cfg, vignette);
+
+  return true;
+}
+
+static bool load_settings(const std::string & filename, c_dso_dataset_settings * cfg)
+{
+  c_config config_file(filename);
+
+  if ( !config_file.read() ) {
+    CF_ERROR("config_file.read('%s') fails", filename.c_str());
+    return false;
+  }
+
+  return load_settings(config_file.root(), cfg);
+}
+
+
 
 static int getdir(std::string dir, std::vector<std::string> & files)
 {
@@ -63,6 +97,26 @@ c_dso_dataset_reader::~c_dso_dataset_reader()
   close();
 }
 
+c_dso_dataset_reader * c_dso_dataset_reader::load(const std::string & config_filename)
+{
+  c_dso_dataset_settings cfg;
+  if ( !load_settings(config_filename, &cfg) ) {
+    CF_ERROR("load_settings('%s') fails", config_filename.c_str());
+    return nullptr;
+  }
+
+  this_class * dataset =
+      new this_class();
+
+  if ( !dataset->open(cfg.files, cfg.calib, cfg.gamma, cfg.vignette) ) {
+    CF_ERROR("dataset->open() fails for config file '%s'", config_filename.c_str());
+    delete dataset;
+    return nullptr;
+  }
+
+  return dataset;
+}
+
 void c_dso_dataset_reader::close()
 {
 #if HAS_ZIPLIB
@@ -83,7 +137,7 @@ void c_dso_dataset_reader::close()
   }
 }
 
-int c_dso_dataset_reader::getNumImages() const
+int c_dso_dataset_reader::numImages() const
 {
   return files.size();
 }
@@ -160,7 +214,7 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
 
     if( !(ziparchive = zip_open(path.c_str(), ZIP_RDONLY, &ziperror)) || ziperror ) {
 
-      CF_ERROR("ZIPERROR=%d reading zip archive '%s'\n", ziperror, path.c_str());
+      CF_ERROR("ZIPERROR=%d reading zip archive '%s'", ziperror, path.c_str());
 
       if( ziparchive ) {
         zip_close(ziparchive);
@@ -191,7 +245,7 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
       files.push_back(name);
     }
 
-    CF_DEBUG("got %d entries and %zu files!\n", numEntries, files.size());
+    CF_DEBUG("got %d entries and %zu files!", numEntries, files.size());
 
     std::sort(files.begin(), files.end());
 
@@ -262,7 +316,7 @@ void c_dso_dataset_reader::loadTimestamps()
 
   // check if exposures are correct, (possibly skip)
   bool exposuresGood =
-      ((int) exposures.size() == (int) getNumImages());
+      ((int) exposures.size() == (int) numImages());
 
   for( size_t i = 0, n = exposures.size(); i < n; ++i ) {
 
@@ -291,19 +345,19 @@ void c_dso_dataset_reader::loadTimestamps()
     }
   }
 
-  if( (int) getNumImages() != (int) timestamps.size() ) {
+  if( (int) numImages() != (int) timestamps.size() ) {
     CF_ERROR(" Number of images and timestamps not equal: set timestamps and exposures to zero!");
     exposures.clear();
     timestamps.clear();
   }
 
-  if( (int) getNumImages() != (int) exposures.size() || !exposuresGood ) {
+  if( (int) numImages() != (int) exposures.size() || !exposuresGood ) {
     CF_ERROR(" Number of images and exposures not equal: set exposures to zero!");
     exposures.clear();
   }
 
-  CF_DEBUG("got %d images and %d timestamps and %d exposures.!\n",
-      (int) getNumImages(),
+  CF_DEBUG("got %d images and %d timestamps and %d exposures.!",
+      (int) numImages(),
       (int) timestamps.size(),
       (int) exposures.size());
 
@@ -331,7 +385,7 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
   }
 
 #if !HAS_ZIPLIB
-  CF_ERROR("ERROR: cannot read .zip archive, as compiled without ziplib!\n");
+  CF_ERROR("ERROR: cannot read .zip archive, as compiled without ziplib!");
   return false;
 #else
 
@@ -355,7 +409,7 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
 
   if( readbytes > (long) widthOrg * heightOrg * 6 ) {
 
-    CF_ERROR("read %ld/%ld bytes for file %s. increase buffer!!\n", readbytes,
+    CF_ERROR("read %ld/%ld bytes for file %s. increase buffer!!", readbytes,
         (long ) widthOrg * heightOrg * 6 + 10000, files[id].c_str());
 
     delete[] zip_databuffer;
@@ -372,7 +426,7 @@ bool c_dso_dataset_reader::getRawImage_internal(int id, cv::Mat * image)
 
     if( readbytes > (long) widthOrg * heightOrg * 30 ) {
 
-      CF_ERROR("buffer still to small (read %ld/%ld). abort.\n", readbytes,
+      CF_ERROR("buffer still to small (read %ld/%ld). abort.", readbytes,
           (long ) widthOrg * heightOrg * 30 + 10000);
 
       delete zip_databuffer;

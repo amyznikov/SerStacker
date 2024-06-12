@@ -279,14 +279,14 @@ c_image_undistort * c_image_undistort::load(const std::string & configFilename, 
   // for backwards-compatibility: Use Pinhole / FoV model for 5 parameter.
   else if( std::sscanf(l1, "%f %f %f %f %f", &ic[0], &ic[1], &ic[2], &ic[3], &ic[4]) == 5 ) {
     if( ic[4] == 0 ) {
-      CF_DEBUG("found PINHOLE camera model, building rectifier.\n");
+      CF_DEBUG("found PINHOLE camera model, building rectifier.");
       if( !(u = c_image_undistort_pinhole::load(configFilename.c_str(), true)) ) {
         CF_ERROR("c_image_undistort_pinhole::load() fails");
         return nullptr;
       }
     }
     else {
-      CF_DEBUG("found ATAN camera model, building rectifier.\n");
+      CF_DEBUG("found ATAN camera model, building rectifier.");
       if( !(u = c_image_undistort_fov::load(configFilename.c_str(), true)) ) {
         CF_ERROR("c_image_undistort_fov::load() fails");
         return nullptr;
@@ -436,12 +436,12 @@ void c_image_undistort::undistort_impl(const float in_data[], float out_data[]) 
 bool c_image_undistort::undistort(const cv::Mat & image_raw, c_image_and_exposure * output_image, float exposure, double timestamp, float factor) const
 {
   if( image_raw.cols != wOrg || image_raw.rows != hOrg ) {
-    CF_ERROR("Undistort::undistort: wrong image size (%d %d instead of %d %d) \n", image_raw.cols, image_raw.rows, wOrg, hOrg);
+    CF_ERROR("Undistort::undistort: wrong image size (%d %d instead of %d %d) ", image_raw.cols, image_raw.rows, wOrg, hOrg);
     return false;
   }
 
   if( image_raw.type() != CV_8UC1 && image_raw.type() != CV_16UC1 ) {
-    CF_ERROR("Undistort::undistort: wrong image type %d ,  must be CV_8UC1 or CV_16UC1\n", image_raw.type());
+    CF_ERROR("Undistort::undistort: wrong image type %d ,  must be CV_8UC1 or CV_16UC1", image_raw.type());
     return false;
   }
 
@@ -570,7 +570,7 @@ void c_image_undistort::applyBlurNoise(float* img) const
 
 bool c_image_undistort::makeOptimalK_crop()
 {
-	CF_DEBUG("finding CROP optimal new model!\n");
+	CF_DEBUG("finding CROP optimal new model!");
 	K.setIdentity();
 
 	// 1. stretch the center lines as far as possible, to get initial coarse quess.
@@ -621,7 +621,7 @@ bool c_image_undistort::makeOptimalK_crop()
 	minY *= 1.01;
 	maxY *= 1.01;
 
-	CF_DEBUG("initial range: x: %.4f - %.4f; y: %.4f - %.4f!\n",
+	CF_DEBUG("initial range: x: %.4f - %.4f; y: %.4f - %.4f!",
 	    minX, maxX, minY, maxY);
 
 
@@ -705,9 +705,9 @@ bool c_image_undistort::makeOptimalK_crop()
 
     iteration++;
 
-    CF_DEBUG("iteration %05d: range: x: %.4f - %.4f; y: %.4f - %.4f!\n", iteration, minX, maxX, minY, maxY);
+    CF_DEBUG("iteration %05d: range: x: %.4f - %.4f; y: %.4f - %.4f!", iteration, minX, maxX, minY, maxY);
     if( iteration > 500 ) {
-      CF_ERROR("FAILED TO COMPUTE GOOD CAMERA MATRIX - SOMETHING IS SERIOUSLY WRONG. ABORTING \n");
+      CF_ERROR("FAILED TO COMPUTE GOOD CAMERA MATRIX - SOMETHING IS SERIOUSLY WRONG. ABORTING ");
       return false;
     }
   }
@@ -774,7 +774,7 @@ bool c_image_undistort::load_parameters(const std::string & configFileName, int 
           parsOrg[0], parsOrg[1], parsOrg[2], parsOrg[3], parsOrg[4]);
     }
     else {
-      CF_ERROR("Failed to read camera calibration (invalid format?)\nCalibration file: %s\n", configFileName.c_str());
+      CF_ERROR("Failed to read camera calibration (invalid format?)\nCalibration file: %s", configFileName.c_str());
       return false;
     }
   }
@@ -785,22 +785,22 @@ bool c_image_undistort::load_parameters(const std::string & configFileName, int 
 
     if( std::sscanf(lines[0], buf, &parsOrg[0], &parsOrg[1], &parsOrg[2], &parsOrg[3], &parsOrg[4], &parsOrg[5],
         &parsOrg[6], &parsOrg[7]) == 8 && std::sscanf(lines[1], "%d %d", &wOrg, &hOrg) == 2 ) {
-      CF_DEBUG("Input resolution: %d %d\nIn: %s%f %f %f %f %f %f %f %f\n", wOrg, hOrg, prefix.c_str(),
+      CF_DEBUG("Input resolution: %d %d\nIn: %s%f %f %f %f %f %f %f %f", wOrg, hOrg, prefix.c_str(),
           parsOrg[0], parsOrg[1], parsOrg[2], parsOrg[3], parsOrg[4], parsOrg[5], parsOrg[6], parsOrg[7]);
     }
     else {
-      CF_ERROR("Failed to read camera calibration (invalid format?)\nCalibration file: %s\n", configFileName.c_str());
+      CF_ERROR("Failed to read camera calibration (invalid format?)\nCalibration file: %s", configFileName.c_str());
       return false;
     }
   }
   else {
-    CF_ERROR("called with invalid number of parameters.... forgot to implement me?\n");
+    CF_ERROR("called with invalid number of parameters.... forgot to implement me?");
     return false;
   }
 
   if( parsOrg[2] < 1 && parsOrg[3] < 1 ) {
     CF_DEBUG("\n\nFound fx=%f, fy=%f, cx=%f, cy=%f.\n I'm assuming this is the \"relative\" calibration file format,"
-        "and will rescale this by image width / height to fx=%f, fy=%f, cx=%f, cy=%f.\n\n",
+        "and will rescale this by image width / height to fx=%f, fy=%f, cx=%f, cy=%f.\n",
         parsOrg[0], parsOrg[1], parsOrg[2], parsOrg[3],
         parsOrg[0] * wOrg, parsOrg[1] * hOrg, parsOrg[2] * wOrg - 0.5, parsOrg[3] * hOrg - 0.5);
 
@@ -828,10 +828,10 @@ bool c_image_undistort::load_parameters(const std::string & configFileName, int 
   }
   else if( strncasecmp(lines[2], "none", 4) == 0 ) {
     outputCalibration[0] = -3;
-    CF_DEBUG("Out: No Rectification\n");
+    CF_DEBUG("Out: No Rectification");
   }
   else if(std::sscanf(lines[2], "%f %f %f %f %f", &outputCalibration[0], &outputCalibration[1], &outputCalibration[2], &outputCalibration[3], &outputCalibration[4]) == 5) {
-    CF_DEBUG("Out: %f %f %f %f %f\n",
+    CF_DEBUG("Out: %f %f %f %f %f",
         outputCalibration[0], outputCalibration[1],
         outputCalibration[2], outputCalibration[3],
         outputCalibration[4]);

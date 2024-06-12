@@ -5,15 +5,11 @@
  *      Author: amyznikov
  */
 //
-//#include "odom.h"
-//#include "extra.h"
-
 #include "dso/FullSystem.h"
 #include "dso/c_dso_dataset_reader.h"
 #include "c_dso_display_opencv.h"
 #include <core/settings.h>
 #include <core/debug.h>
-
 
 using namespace dso;
 

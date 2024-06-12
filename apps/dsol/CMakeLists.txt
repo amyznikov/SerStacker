@@ -1,38 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
-
-find_package(Eigen3) # REQUIRED
-if ( NOT Eigen3_FOUND ) 
-	message(WARNING "Eigen3 Not found. skip dsol")
-	return()
+get_property(DSO_ENABLED GLOBAL PROPERTY BUILD_DSO)
+if ( NOT  DSO_ENABLED ) 
+   message(WARNING "DSO is not enabled. Skip dsol")
+   return()
 endif()
-
-get_target_property(Eigen3_INCLUDES Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
-#get_target_property(Eigen3_LIBS Eigen3::Eigen INTERFACE_LINK_LIBRARIES)
-set(Eigen3_LIBS Eigen3::Eigen)
-message(STATUS "Eigen3: ${Eigen3_INCLUDES} ${Eigen3_LIBS}")
-
-
-find_package(Sophus) # REQUIRED
-if ( NOT Sophus_FOUND ) 
-	message(WARNING "Sophus Not found. skip dsol")
-	return()
-endif()
-get_target_property(Sophus_INCLUDES Sophus::Sophus INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(Sophus_LIBS Sophus::Sophus INTERFACE_LINK_LIBRARIES)
-message(STATUS "Sophus: ${Sophus_INCLUDES} ${Sophus_LIBS}")
-
-
-find_package(LibZip) # REQUIRED
-if ( NOT LibZip_FOUND ) 
-	message(WARNING "LibZip Not found")
-else()
-	get_target_property(LibZip_INCLUDES libzip::zip INTERFACE_INCLUDE_DIRECTORIES)
-	# get_target_property(LibZip_LIBS libzip::zip INTERFACE_LINK_LIBRARIES)
-	set(LibZip_LIBS libzip::zip)
-	message(STATUS "LibZip: ${LibZip_INCLUDES} ${LibZip_LIBS}")
-endif()
-
 
 project(dsol CXX)
 

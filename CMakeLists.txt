@@ -425,6 +425,7 @@ set(CORE_LIBRARIES
 # Walk over subdirs
 add_subdirectory(core)
 add_subdirectory(gui)
+add_subdirectory(dso)
 add_subdirectory(apps)
 
 # pseudo-target for building libraries only

@@ -64,24 +64,14 @@ add_executable(${PROJECT_NAME}
 	${HEADER_FILES}
 	${RESOURCE_FILES})
 
-if ( LibZip_FOUND ) 
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-     HAS_ZIPLIB=1)
-endif()
 
 target_include_directories( ${PROJECT_NAME} PUBLIC
     ${SRC}
-	${SRC}/dso
-    ${CORE_INCLUDES}
-    ${Eigen3_INCLUDES}
-    ${Sophus_INCLUDES}
-    ${LibZip_INCLUDES})
-
+    ${CORE_INCLUDES})
+    
 target_link_libraries(${PROJECT_NAME} PUBLIC
-    ${CORE_LIBRARIES}
-    ${Sophus_LIBS}
-    ${Eigen3_LIBS}
-    ${LibZip_LIBS})
+	dso
+    ${CORE_LIBRARIES})
 
 add_custom_target(uninstall-${PROJECT_NAME}
 	xargs rm -vf < ${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt)

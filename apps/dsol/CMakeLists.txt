@@ -36,9 +36,10 @@ add_executable(${PROJECT_NAME}
 	${HEADER_FILES}
 	${RESOURCE_FILES})
 
-
+get_property(DSO_INCLUDES GLOBAL PROPERTY DSO_INCLUDE_DIRS)
 target_include_directories( ${PROJECT_NAME} PUBLIC
     ${SRC}
+    ${DSO_INCLUDES}
     ${CORE_INCLUDES})
     
 target_link_libraries(${PROJECT_NAME} PUBLIC

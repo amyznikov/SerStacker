@@ -1,8 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
 get_property(DSO_ENABLED GLOBAL PROPERTY BUILD_DSO)
-if ( NOT  DSO_ENABLED ) 
-   message(WARNING "DSO is not enabled. Skip dsol")
+if ( NOT DSO_ENABLED ) 
+   message(WARNING "DSO is not enabled. Skip qdso")
    return()
 endif()
 
@@ -41,8 +41,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	endif()
 endif()
 
-include_directories(src/dataset 
-	src/dataset/vlo)
 
 #############################################################################################
 # AUTOMOC problem is that it merges all mocs into single file
@@ -78,6 +76,11 @@ set(OpenGL_LIBS GLU32 opengl32)
 else()
 set(OpenGL_LIBS GLU GL)
 endif()
+
+get_property(DSO_INCLUDES GLOBAL PROPERTY DSO_INCLUDE_DIRS)
+target_include_directories( ${PROJECT_NAME} PUBLIC
+   src/dataset 
+   ${DSO_INCLUDES})
 
 set(LIBRARIES  
   gui

@@ -72,12 +72,15 @@ endif()
 
 set(SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_include_directories( ${PROJECT_NAME} PUBLIC
-    ${SRC}
-    ${CORE_INCLUDES}
+set(DSO_INCLUDES 
     ${Eigen3_INCLUDES}
     ${Sophus_INCLUDES}
     ${LibZip_INCLUDES})
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${SRC}
+    ${CORE_INCLUDES}
+    ${DSO_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     ${CORE_LIBRARIES}
@@ -86,6 +89,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ${LibZip_LIBS})
 
 set_property(GLOBAL PROPERTY BUILD_DSO TRUE)
+set_property(GLOBAL PROPERTY DSO_INCLUDE_DIRS ${DSO_INCLUDES})
+
 
 add_custom_target(uninstall-${PROJECT_NAME}
 	xargs rm -vf < ${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt

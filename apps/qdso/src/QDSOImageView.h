@@ -24,7 +24,14 @@ public:
 
   QDSOImageView(QWidget * parent = nullptr);
 
+  void showImage(const cv::Mat & image, bool make_copy = true);
+
+Q_SIGNALS:
+  void redrawImage(QPrivateSignal sig = QPrivateSignal());
+
 protected:
+
+
 };
 
 class QDSOImageViewDock:

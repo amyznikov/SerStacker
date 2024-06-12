@@ -93,6 +93,11 @@ protected:
     return w && w->isVisible();
   }
 
+  static inline bool is_really_visible(QWidget * w)
+  {
+    return is_visible(w) && !w->visibleRegion().isEmpty();
+  }
+
 protected:
   /// Main menu
   QMenu * menuFile = nullptr;

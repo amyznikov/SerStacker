@@ -591,7 +591,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
               display);
 
       if( !setting_debugout_runquiet ) {
-        printf("INCREASING cutoff to %f (ratio is %f)!\n", setting_coarseCutoffTH * levelCutoffRepeat, resOld[5]);
+        CF_DEBUG("INCREASING cutoff to %f (ratio is %f)!", setting_coarseCutoffTH * levelCutoffRepeat, resOld[5]);
       }
     }
 
@@ -604,7 +604,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
       Vec2f relAff = AffLight::fromToVecExposure(lastRef->ab_exposure, newFrame->ab_exposure, lastRef_aff_g2l,
           aff_g2l_current).cast<float>();
 
-      printf("lvl%d, it %d (l=%f / %f) %s: %.3f->%.3f (%d -> %d) (|inc| = %f)! \t",
+      CF_DEBUG("lvl%d, it %d (l=%f / %f) %s: %.3f->%.3f (%d -> %d) (|inc| = %f)! \t",
           lvl, -1, lambda, 1.0f,
           "INITIA",
           0.0f,
@@ -681,7 +681,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
         Vec2f relAff = AffLight::fromToVecExposure(lastRef->ab_exposure, newFrame->ab_exposure, lastRef_aff_g2l,
             aff_g2l_new).cast<float>();
 
-        printf("lvl %d, it %d (l=%f / %f) %s: %.3f->%.3f (%d -> %d) (|inc| = %f)! \t",
+        CF_DEBUG("lvl %d, it %d (l=%f / %f) %s: %.3f->%.3f (%d -> %d) (|inc| = %f)! \t",
             lvl, iteration, lambda,
             extrapFac,
             (accept ? "ACCEPT" : "REJECT"),
@@ -709,7 +709,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
       if( !(inc.norm() > 1e-3) ) {
 
         if( debugPrint ) {
-          printf("inc too small, break!\n");
+          CF_DEBUG("inc too small, break!");
         }
 
         break;
@@ -726,7 +726,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
     if( levelCutoffRepeat > 1 && !haveRepeated ) {
       lvl++;
       haveRepeated = true;
-      printf("REPEAT LEVEL!\n");
+      CF_DEBUG("REPEAT LEVEL!");
     }
   }
 

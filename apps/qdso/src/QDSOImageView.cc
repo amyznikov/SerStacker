@@ -12,8 +12,23 @@ namespace qdso {
 QDSOImageView::QDSOImageView(QWidget * parent) :
     Base(parent)
 {
+  connect(this, &ThisClass::redrawImage,
+      this, &ThisClass::updateImage,
+      Qt::QueuedConnection);
 }
 
+
+void QDSOImageView::showImage(const cv::Mat & image, bool make_copy)
+{
+  if ( make_copy)  {
+    image.copyTo(Base::inputImage_);
+  }
+  else {
+    Base::inputImage_ = image;
+  }
+
+  Q_EMIT redrawImage();
+}
 
 QDSOImageViewDock::QDSOImageViewDock(const QString & title, QWidget * parent, QDSOImageView * view, Qt::WindowFlags flags) :
     Base(title, parent, view, flags)

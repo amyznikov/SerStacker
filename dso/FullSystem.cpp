@@ -430,7 +430,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
     tryIterations++;
 
     if( i != 0 ) {
-      printf("RE-TRACK ATTEMPT %d with initOption %d and start-lvl %d (ab %f %f): %f %f %f %f %f -> %f %f %f %f %f \n",
+      CF_DEBUG("RE-TRACK ATTEMPT %d with initOption %d and start-lvl %d (ab %f %f): %f %f %f %f %f -> %f %f %f %f %f ",
           i,
           i, pyrLevelsUsed - 1,
           aff_g2l_this.a, aff_g2l_this.b,
@@ -449,7 +449,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
     // do we have a new winner?
     if( trackingIsGood && std::isfinite((float) coarseTracker->lastResiduals[0])
         && !(coarseTracker->lastResiduals[0] >= achievedRes[0]) ) {
-      //printf("take over. minRes %f -> %f!\n", achievedRes[0], coarseTracker->lastResiduals[0]);
+      //CF_DEBUG("take over. minRes %f -> %f!", achievedRes[0], coarseTracker->lastResiduals[0]);
       flowVecs = coarseTracker->lastFlowIndicators;
       aff_g2l = aff_g2l_this;
       lastF_2_fh = lastF_2_fh_this;
@@ -472,7 +472,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
   }
 
   if( !haveOneGood ) {
-    printf("BIG ERROR! tracking failed entirely. Take predictred pose and hope we may somehow recover.\n");
+    CF_DEBUG("BIG ERROR! tracking failed entirely. Take predictred pose and hope we may somehow recover.");
     flowVecs = Vec3(0, 0, 0);
     aff_g2l = aff_last_2_l;
     lastF_2_fh = lastF_2_fh_tries[0];
@@ -490,7 +490,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
     coarseTracker->firstCoarseRMSE = achievedRes[0];
 
   if( !setting_debugout_runquiet ) {
-    printf("Coarse Tracker tracked ab = %f %f (exp %f). Res %f!\n", aff_g2l.a, aff_g2l.b, fh->ab_exposure,
+    CF_DEBUG("Coarse Tracker tracked ab = %f %f (exp %f). Res %f!", aff_g2l.a, aff_g2l.b, fh->ab_exposure,
         achievedRes[0]);
   }
 
@@ -552,7 +552,7 @@ void FullSystem::traceNewCoarse(FrameHessian * fh)
       trace_total++;
     }
   }
-//	printf("ADD: TRACE: %'d points. %'d (%.0f%%) good. %'d (%.0f%%) skip. %'d (%.0f%%) badcond. %'d (%.0f%%) oob. %'d (%.0f%%) out. %'d (%.0f%%) uninit.\n",
+//	CF_DEBUG("ADD: TRACE: %'d points. %'d (%.0f%%) good. %'d (%.0f%%) skip. %'d (%.0f%%) badcond. %'d (%.0f%%) oob. %'d (%.0f%%) out. %'d (%.0f%%) uninit.",
 //			trace_total,
 //			trace_good, 100*trace_good/(float)trace_total,
 //			trace_skip, 100*trace_skip/(float)trace_total,
@@ -601,7 +601,7 @@ void FullSystem::activatePointsMT()
     currentMinActDist = 4;
 
   if( !setting_debugout_runquiet )
-    printf("SPARSITY:  MinActDist %f (need %d points, have %d points)!\n",
+    CF_DEBUG("SPARSITY:  MinActDist %f (need %d points, have %d points)!",
         currentMinActDist, (int) (setting_desiredPointDensity), ef->nPoints);
 
   FrameHessian * newestHs = frameHessians.back();
@@ -682,7 +682,7 @@ void FullSystem::activatePointsMT()
     }
   }
 
-//	printf("ACTIVATE: %d. (del %d, notReady %d, marg %d, good %d, marg-skip %d)\n",
+//	CF_DEBUG("ACTIVATE: %d. (del %d, notReady %d, marg %d, good %d, marg-skip %d)",
 //			(int)toOptimize.size(), immature_deleted, immature_notReady, immature_needMarg, immature_want, immature_margskip);
 
   std::vector<PointHessian*> optimized;
@@ -810,7 +810,7 @@ void FullSystem::flagPointsForRemoval()
           host->pointHessiansOut.push_back(ph);
           ph->efPoint->stateFlag = EFPointStatus::PS_DROP;
 
-          //printf("drop point in frame %d (%d goodRes, %d activeRes)\n", ph->host->idx, ph->numGoodResiduals, (int)ph->residuals.size());
+          //CF_DEBUG("drop point in frame %d (%d goodRes, %d activeRes)", ph->host->idx, ph->numGoodResiduals, (int)ph->residuals.size());
         }
 
         host->pointHessians[i] = 0;
@@ -891,7 +891,7 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
     Vec4 tres = trackNewCoarse(fh);
     if( !std::isfinite((double) tres[0]) || !std::isfinite((double) tres[1]) || !std::isfinite((double) tres[2])
         || !std::isfinite((double) tres[3]) ) {
-      printf("Initial Tracking failed: LOST!\n");
+      CF_DEBUG("Initial Tracking failed: LOST!");
       isLost = true;
       return;
     }
@@ -1048,7 +1048,7 @@ void FullSystem::mappingLoop()
     mappedFrameSignal.notify_all();
   }
 
-  printf("MAPPING FINISHED!\n");
+  CF_DEBUG("MAPPING FINISHED!");
 }
 
 void FullSystem::blockUntilMappingIsFinished()
@@ -1134,15 +1134,15 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
   if( allKeyFramesHistory.size() <= 4 ) {
 
     if( allKeyFramesHistory.size() == 2 && rmse > 20 * benchmark_initializerSlackFactor ) {
-      printf("I THINK INITIALIZATINO FAILED! Resetting.\n");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
       initFailed = true;
     }
     if( allKeyFramesHistory.size() == 3 && rmse > 13 * benchmark_initializerSlackFactor ) {
-      printf("I THINK INITIALIZATINO FAILED! Resetting.\n");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
       initFailed = true;
     }
     if( allKeyFramesHistory.size() == 4 && rmse > 9 * benchmark_initializerSlackFactor ) {
-      printf("I THINK INITIALIZATINO FAILED! Resetting.\n");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
       initFailed = true;
     }
   }
@@ -1234,7 +1234,7 @@ void FullSystem::initializeFromInitializer(FrameHessian * newFrame)
   float keepPercentage = setting_desiredPointDensity / coarseInitializer->numPoints[0];
 
   if( !setting_debugout_runquiet ) {
-    printf("Initialization: keep %.1f%% (need %d, have %d)!\n", 100 * keepPercentage,
+    CF_DEBUG("Initialization: keep %.1f%% (need %d, have %d)!", 100 * keepPercentage,
         (int) (setting_desiredPointDensity), coarseInitializer->numPoints[0]);
   }
 
@@ -1292,7 +1292,7 @@ void FullSystem::initializeFromInitializer(FrameHessian * newFrame)
   }
 
   initialized = true;
-  printf("INITIALIZE FROM INITIALIZER (%d pts)!\n", (int) firstFrame->pointHessians.size());
+  CF_DEBUG("INITIALIZE FROM INITIALIZER (%d pts)!", (int) firstFrame->pointHessians.size());
 }
 
 void FullSystem::makeNewTraces(FrameHessian * newFrame, float * gtDepth)
@@ -1324,7 +1324,7 @@ void FullSystem::makeNewTraces(FrameHessian * newFrame, float * gtDepth)
       }
     }
   }
-  //printf("MADE %d IMMATURE POINTS!\n", (int)newFrame->immaturePoints.size());
+  //CF_DEBUG("MADE %d IMMATURE POINTS!", (int)newFrame->immaturePoints.size());
 
 }
 
@@ -1346,7 +1346,7 @@ void FullSystem::printLogLine()
   }
 
   if( !setting_debugout_runquiet ) {
-    printf("LOG %d: %.3f fine. Res: %d A, %d L, %d M; (%'d / %'d) forceDrop. a=%f, b=%f. Window %d (%d)\n",
+    CF_DEBUG("LOG %d: %.3f fine. Res: %d A, %d L, %d M; (%'d / %'d) forceDrop. a=%f, b=%f. Window %d (%d)",
         allKeyFramesHistory.back()->id,
         statistics_lastFineTrackRMSE,
         ef->resInA,

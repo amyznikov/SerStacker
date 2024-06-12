@@ -24,11 +24,9 @@
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include <gui/qinputoptions/QInputOptions.h>
 
-#include <dso/c_dso_display.h>
-#include <dso/c_dso_dataset_reader.h>
-
 #include "QDSOCloudView.h"
 #include "QDSOImageView.h"
+#include "QDSOThread.h"
 
 //#include "QPipelineProgressView.h"
 //#include "QInputSourceView.h"
@@ -63,11 +61,13 @@ private:
   void setupPipelineProgressView();
   void setupStatusbar();
   void showImageViewOptions(bool show);
+  void setupDSOThread();
 
 private Q_SLOTS:
   void updateWindowTittle();
   void onOpenDatasetConfig();
   bool openDatasetConfig(const QString & configPathFileName);
+  void onStartStopDSOThread();
 
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
@@ -102,6 +102,12 @@ private Q_SLOTS:
 
   void saveCurrentWork();
 
+protected:
+  bool needDisplayInputFrame() const override;
+  void displayInputFrame(const dso::c_image_and_exposure & image, int id) override;
+  bool needDisplayKeyframe() const override;
+  void displayKeyframe(const dso::FrameHessian* frame, bool _final, const dso::CalibHessian * HCalib) override;
+
 private :
   void closeEvent(QCloseEvent *event) override;
   void onSaveState(QSettings & settings) override;
@@ -116,6 +122,7 @@ private :
 
 private:
   c_dso_dataset_reader::uptr dataset_;
+  QDSOThread dsoThread;
 
   QStackedWidget * centralStackedWidget = nullptr;
   QDSOCloudView * cloudView = nullptr;
@@ -139,6 +146,8 @@ private:
 
 
   QAction * openDsoDatasetAction = nullptr;
+  QAction * startStopDSOThreadAction = nullptr;
+  QAction * quitAppAction = nullptr;
 
 //  QPipelineProgressView * pipelineProgressView = nullptr;
 //  QProgressImageViewer * pipelineProgressImageView = nullptr;
@@ -159,7 +168,6 @@ private:
 //  QMenu roiActionsMenu_;
 //
 //
-//  QAction * quitAppAction = nullptr;
 //  QAction * saveImageAsAction = nullptr;
 //  QAction * saveDisplayImageAsAction = nullptr;
 //  QAction * saveImageMaskAction = nullptr;
@@ -188,9 +196,9 @@ private:
 //  QScaleSelectionButton * scaleSelection_ctl = nullptr;
 //  QShapesButton * shapes_ctl = nullptr;
 //
-//  QLabel * statusbarMousePosLabel_ctl = nullptr;
-//  QLabel * statusbarShapesLabel_ctl = nullptr;
-//  QToolButton * statusbarShowLog_ctl = nullptr;
+  QLabel * statusbarMousePosLabel_ctl = nullptr;
+  QLabel * statusbarShapesLabel_ctl = nullptr;
+  QToolButton * statusbarShowLog_ctl = nullptr;
 //
 //  ///
 //  QDisplayVideoWriter diplayImageWriter_;

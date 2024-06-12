@@ -56,7 +56,8 @@
 namespace qdso {
 ///////////////////////////////////////////////////////////////////////////////
 
-MainWindow::MainWindow()
+MainWindow::MainWindow() :
+    dsoThread(this)
 {
   setWindowIcon(QIcon(":/qdso/icons/app-icon.png"));
   updateWindowTittle();
@@ -128,6 +129,7 @@ MainWindow::MainWindow()
   setupProfileGraph();
   setupInputSequenceView();
   setupPipelineProgressView();
+  setupDSOThread();
 
 
 //  tabifyDockWidget(fileSystemTreeDock, sequencesTreeViewDock);
@@ -342,7 +344,17 @@ void MainWindow::setupMainMenu()
           this,
           &ThisClass::onOpenDatasetConfig
           ));
-//
+
+  menuFile->addSeparator();
+
+  menuFile->addAction(startStopDSOThreadAction =
+      createAction(QIcon(),
+          "Start DSO Thread",
+          "Start / Stop DSO Thread",
+          this,
+          &ThisClass::onStartStopDSOThread));
+  startStopDSOThreadAction->setEnabled(false);
+
 //  menuFile->addAction(selectPreviousFileAction_ =
 //      createAction(getIcon(ICON_prev),
 //          "Previous (Ctrl+PgUp)",
@@ -402,11 +414,11 @@ void MainWindow::setupMainMenu()
 //          this, &ThisClass::onLoadStackConfig);
 //
 //
-//  menuFile->addSeparator();
-//
-//  quitAppAction =
-//      menuFile->addAction("Quit",
-//          this, &ThisClass::close);
+  menuFile->addSeparator();
+
+  quitAppAction =
+      menuFile->addAction("Quit",
+          this, &ThisClass::close);
 //
 //
 //  //
@@ -687,12 +699,12 @@ void MainWindow::setupMainToolbar()
 
 void MainWindow::setupStatusbar()
 {
-//  QStatusBar *sb = statusBar();
-//
-//  sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
-//  sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
-//  sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
-//  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
+  QStatusBar *sb = statusBar();
+
+  sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
+  sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
+  sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
+  statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
 }
 
 
@@ -2444,15 +2456,75 @@ bool MainWindow::openDatasetConfig(const QString & configPathFileName)
 {
   dataset_.reset(c_dso_dataset_reader::load(configPathFileName.toStdString()));
   if ( !dataset_ ) {
+    startStopDSOThreadAction->setEnabled(false);
     QMessageBox::critical(this, "ERROR", "c_dso_dataset_reader::load() fails");
     return false;
   }
 
+
   CF_DEBUG("numImages=%d", dataset_->numImages());
+  dataset_->setGlobalCalibration();
+  startStopDSOThreadAction->setEnabled(true);
 
   return true;
 }
 
+
+void MainWindow::setupDSOThread()
+{
+  QObject::connect(&dsoThread, &QThread::started,
+      [this]() {
+        openDsoDatasetAction->setEnabled(false);
+        startStopDSOThreadAction->setText("Stop DSO Thread");
+      });
+
+  QObject::connect(&dsoThread, &QThread::finished,
+      [this]() {
+        openDsoDatasetAction->setEnabled(dataset_ != nullptr);
+        startStopDSOThreadAction->setText("Start DSO Thread");
+      });
+
+}
+
+void MainWindow::onStartStopDSOThread()
+{
+  if ( dsoThread.isRunning() ) {
+    dsoThread.stop();
+  }
+  else if ( dataset_ ) {
+    dsoThread.start(dataset_.get(), this);
+  }
+}
+
+
+bool MainWindow::needDisplayInputFrame() const
+{
+  return is_really_visible(dsoInputFrameView);
+}
+
+void MainWindow::displayInputFrame(const dso::c_image_and_exposure & f, int id)
+{
+  dsoInputFrameView->showImage(f.image());
+}
+
+bool MainWindow::needDisplayKeyframe() const
+{
+  return is_really_visible(dsoKeyframeView);
+}
+
+void MainWindow::displayKeyframe(const dso::FrameHessian* frame, bool _final, const dso::CalibHessian * HCalib)
+{
+  if ( _final ) {
+    using namespace dso;
+
+    const cv::Size size(wG[0], hG[0]);
+
+    cv::Mat I;
+    cv::extractChannel(cv::Mat3f(size.height, size.width, (cv::Vec3f*) frame->dI), I, 0);
+
+    dsoKeyframeView->showImage(I, false);
+  }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////

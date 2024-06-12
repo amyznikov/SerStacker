@@ -31,14 +31,14 @@
 #include <cmath>
 #include <cstdio>
 
-#include "Residuals.h"
-#include "HessianBlocks.h"
-#include "PixelSelector2.h"
-#include "util/NumType.h"
-#include "util/globalCalib.h"
-#include "util/IndexThreadReduce.h"
-#include "OptimizationBackend/EnergyFunctional.h"
-#include "c_dso_display.h"
+#include <dso/Residuals.h>
+#include <dso/HessianBlocks.h>
+#include <dso/PixelSelector2.h>
+#include <dso/util/NumType.h>
+#include <dso/util/globalCalib.h>
+#include <dso/util/IndexThreadReduce.h>
+#include <dso/OptimizationBackend/EnergyFunctional.h>
+#include <dso/c_dso_display.h>
 
 
 namespace dso {
@@ -126,8 +126,14 @@ inline bool eigenTestNan(const MatXX &m, std::string msg)
 
 
 
-class FullSystem {
+class FullSystem
+{
 public:
+  typedef FullSystem this_class;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+
+
 	FullSystem();
 	virtual ~FullSystem();
 

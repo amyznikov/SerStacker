@@ -49,6 +49,7 @@ namespace dso
 
 void FullSystem::debugPlotTracking()
 {
+#if 0
   if( disableAllDisplay ) {
     return;
   }
@@ -124,11 +125,12 @@ void FullSystem::debugPlotTracking()
 
     idx++;
   }
-
+#endif
 }
 
 void FullSystem::debugPlot(std::string name)
 {
+#if 0
   if( disableAllDisplay ) {
     return;
   }
@@ -575,7 +577,7 @@ void FullSystem::debugPlot(std::string name)
 
     }
   }
-
+#endif
 }
 
 }

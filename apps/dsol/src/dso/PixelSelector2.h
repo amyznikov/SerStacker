@@ -42,7 +42,7 @@ public:
   // int recursionsLeft=1, bool plot=false, float thFactor=1
 	int makeMaps(const FrameHessian* const fh,
 	    float* map_out, float density, int recursionsLeft, bool plot, float thFactor,
-			const c_dso_display & display);
+			c_dso_display * display);
 
 	PixelSelector(int w, int h);
 	~PixelSelector();

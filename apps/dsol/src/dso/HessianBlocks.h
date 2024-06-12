@@ -30,9 +30,9 @@
 
 #include <vector>
 #include "Residuals.h"
+#include "c_image_and_exposure.h"
 #include "c_frame_shell.h"
 #include "util/NumType.h"
-#include "util/c_image_and_exposure.h"
 #include "util/globalCalib.h"
 
 namespace dso

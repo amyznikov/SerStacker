@@ -176,10 +176,8 @@ void FullSystem::marginalizeFrame(FrameHessian * frame)
     }
   }
 
-  {
-    std::vector<FrameHessian*> v;
-    v.push_back(frame);
-    display.publishKeyframes(v, true, &Hcalib);
+  if ( display && display->needDisplayKeyframe() )  {
+    display->displayKeyframe(frame, true, &Hcalib);
   }
 
   frame->shell->marginalizedAt = frameHessians.back()->shell->id;

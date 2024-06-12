@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
   fullSystem->setPhotometricGamma(reader->photometricGamma());
 
   c_dso_display_opencv::uptr opencv_display(new c_dso_display_opencv());
-  fullSystem->display.emplace_back(opencv_display.get());
+  fullSystem->display = opencv_display.get();
 
   c_image_and_exposure image;
 

@@ -400,9 +400,9 @@ bool c_dso_dataset_reader::getImage_internal(int id, c_image_and_exposure * outp
     return false;
   }
 
-  if ( image.depth() != CV_8U ) {
-    image.convertTo(image, CV_8U);
-  }
+  //  if ( image.depth() != CV_8U ) {
+  //    image.convertTo(image, CV_8U);
+  //  }
 
   if ( image.channels() != 1 ) {
     cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);

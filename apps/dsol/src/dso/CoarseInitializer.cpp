@@ -76,12 +76,13 @@ CoarseInitializer::~CoarseInitializer()
   delete[] JbBuffer_new;
 }
 
-bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, const c_dso_display & display)
+bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, c_dso_display * display)
 {
   newFrame = newFrameHessian;
 
-  display.pushLiveFrame(newFrameHessian);
-
+  if ( display ) {
+    display->pushLiveFrame(newFrameHessian);
+  }
 
   int maxIterations[] = { 5, 5, 10, 30, 50 };
 
@@ -115,8 +116,7 @@ bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, const c_dso_d
     refToNew_aff_current = AffLight(logf(newFrame->ab_exposure / firstFrame->ab_exposure), 0); // coarse approximation.
 
   Vec3f latestRes = Vec3f::Zero();
-  for( int lvl = pyrLevelsUsed - 1; lvl >= 0; lvl-- )
-      {
+  for( int lvl = pyrLevelsUsed - 1; lvl >= 0; lvl-- ) {
 
     if( lvl < pyrLevelsUsed - 1 ) {
       propagateDown(lvl + 1);
@@ -274,21 +274,23 @@ bool CoarseInitializer::trackFrame(FrameHessian * newFrameHessian, const c_dso_d
   return snapped && frameID > snappedAt + 5;
 }
 
-void CoarseInitializer::debugPlot(int lvl, const c_dso_display & display)
+void CoarseInitializer::debugPlot(int lvl, c_dso_display * display)
 {
-  if ( !display.needPushDepthImage() ) {
+  if ( !display || !display->needPushDepthImage() ) {
     return;
   }
 
   int wl = w[lvl], hl = h[lvl];
 
-  Eigen::Vector3f * colorRef = firstFrame->dIp[lvl];
+  Eigen::Vector3f * colorRef =
+      firstFrame->dIp[lvl];
 
   cv::Mat3b iRImg(hl, wl);
 
   cv::Vec3b * iRImgp = (cv::Vec3b*) iRImg.data;
   for( int i = 0; i < wl * hl; i++ ) {
-    iRImgp[i] = cv::Vec3b(colorRef[i][0], colorRef[i][0], colorRef[i][0]);
+    iRImgp[i] =
+        cv::Vec3b(colorRef[i][0], colorRef[i][0], colorRef[i][0]);
   }
 
   int npts = numPoints[lvl];
@@ -327,7 +329,7 @@ void CoarseInitializer::debugPlot(int lvl, const c_dso_display & display)
     // iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, Vec3b(0, 0, 0));
   }
 
-  display.pushDepthImage(iRImg);
+  display->pushDepthImage(iRImg);
 }
 
 // calculates residual, Hessian and Hessian-block neede for re-substituting depth.
@@ -775,7 +777,7 @@ void CoarseInitializer::makeGradients(Eigen::Vector3f ** data)
   }
 }
 void CoarseInitializer::setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian,
-    const c_dso_display & display)
+    c_dso_display * display)
 {
 
   makeK(HCalib);

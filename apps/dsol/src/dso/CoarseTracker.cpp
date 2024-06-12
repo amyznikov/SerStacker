@@ -367,7 +367,7 @@ void CoarseTracker::calcGSSSE(int lvl, Mat88 & H_out, Vec8 & b_out, const SE3 & 
   b_out.segment<1>(7) *= SCALE_B;
 }
 
-Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH, const c_dso_display & display)
+Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, float cutoffTH, c_dso_display * display)
 {
   float E = 0;
   int numTermsInE = 0;
@@ -398,7 +398,7 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
 
   cv::Mat3b resImage;
 
-  if( debugPlot ) {
+  if( debugPlot && display && display->needDisplayResImage() ) {
     resImage.create(hl, wl);
     resImage.setTo(cv::Scalar::all(255));
   }
@@ -469,7 +469,7 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
 
     if( fabs(residual) > cutoffTH ) {
 
-      if( debugPlot ) {
+      if( !resImage.empty() ) {
         const int x = lpc_u[i];
         const int y = lpc_v[i];
         cv::rectangle(resImage, cv::Point(x-1,y-1), cv::Point(x+1,y+1), cv::Scalar(0, 0, 255) );
@@ -482,7 +482,8 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
     }
     else {
 
-      if( debugPlot ) {
+      if( !resImage.empty() ) {
+
         const int x = lpc_u[i];
         const int y = lpc_v[i];
         cv::rectangle(resImage, cv::Point(x-1,y-1), cv::Point(x+1,y+1), cv::Scalar(residual + 128, residual + 128, residual + 128) );
@@ -519,8 +520,8 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 & refToNew, AffLight aff_g2l, flo
   }
   buf_warped_n = numTermsInWarped;
 
-  if( debugPlot ) {
-    display.displayImage("RES", resImage, false);
+  if( debugPlot && display && display->needDisplayResImage() ) {
+    display->displayResImage(resImage);
   }
 
   Vec6 rs;
@@ -550,7 +551,7 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
     SE3 & lastToNew_out, AffLight & aff_g2l_out,
     int coarsestLvl,
     Vec5 minResForAbort,
-    const c_dso_display & display)
+    c_dso_display * display)
 {
   debugPlot = setting_render_displayCoarseTrackingFull;
   debugPrint = false;
@@ -757,9 +758,9 @@ bool CoarseTracker::trackNewestCoarse(FrameHessian * newFrameHessian,
   return true;
 }
 
-void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, const c_dso_display & display)
+void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, c_dso_display * display)
 {
-  if( w[1] == 0 || !display.needPushDepthImage() ) {
+  if( w[1] == 0 || !display || !display->needPushDepthImage() ) {
     return;
   }
 
@@ -863,7 +864,7 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, const
       }
     }
 
-    display.pushDepthImage(mf);
+    display->pushDepthImage(mf);
 
     if( debugSaveImages ) {
 
@@ -880,16 +881,16 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, const
   }
 }
 
-void CoarseTracker::debugPlotIDepthMapFloat(const c_dso_display & display)
+void CoarseTracker::debugPlotIDepthMapFloat(c_dso_display * display)
 {
-  if( w[1] == 0 ) {
+  if( w[1] == 0 || !display || !display->needDisplayDepthImageFloat()) {
     return;
   }
 
   int lvl = 0;
   cv::Mat1f mim(h[lvl], w[lvl], idepth[lvl]);
 
-  display.pushDepthImageFloat(mim, lastRef);
+  display->displayDepthImageFloat(mim, lastRef);
 }
 
 CoarseDistanceMap::CoarseDistanceMap(int ww, int hh)

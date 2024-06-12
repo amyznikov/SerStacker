@@ -79,8 +79,8 @@ public:
   CoarseInitializer(int w, int h);
   ~CoarseInitializer();
 
-  void setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian, const c_dso_display & display);
-  bool trackFrame(FrameHessian * newFrameHessian, const c_dso_display & display);
+  void setFirst(CalibHessian * HCalib, FrameHessian * newFrameHessian, c_dso_display * display);
+  bool trackFrame(FrameHessian * newFrameHessian, c_dso_display * display);
   void calcTGrads(FrameHessian * newFrameHessian);
 
   int frameID = 0;
@@ -151,7 +151,7 @@ public:
 
   void makeGradients(Eigen::Vector3f ** data);
 
-  void debugPlot(int lvl, const c_dso_display & display);
+  void debugPlot(int lvl, c_dso_display * display);
   void makeNN();
 };
 

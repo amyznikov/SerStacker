@@ -38,7 +38,7 @@
 
 #include "util/globalFuncs.h"
 #include "util/globalCalib.h"
-#include "util/c_image_and_exposure.h"
+#include "c_image_and_exposure.h"
 #include "PixelSelector.h"
 #include "PixelSelector2.h"
 #include "ResidualProjections.h"
@@ -47,7 +47,6 @@
 #include "CoarseInitializer.h"
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
-#include "c_dso_display.h"
 #include <core/io/c_stdio_file.h>
 #include <core/debug.h>
 
@@ -291,7 +290,9 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian * fh)
 
   assert(allFrameHistory.size() > 0);
 
-  display.pushLiveFrame(fh);
+  if ( display ) {
+    display->pushLiveFrame(fh);
+  }
 
   FrameHessian * lastF =
       coarseTracker->lastRef;
@@ -829,6 +830,11 @@ void FullSystem::flagPointsForRemoval()
 
 void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
 {
+  if ( display && display->needDisplayInputFrame() ) {
+    display->displayInputFrame(image, id);
+  }
+
+
 
   if( isLost ) {
     return;
@@ -915,7 +921,9 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
 
     }
 
-    display.publishCamPose(fh->shell, &Hcalib);
+    if ( display && display->needDisplayCameraPose() ) {
+      display->displayCameraPose(fh->shell, &Hcalib);
+    }
 
     lock.unlock();
     deliverTrackedFrame(fh, needToMakeKF);
@@ -926,27 +934,30 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
 }
 void FullSystem::deliverTrackedFrame(FrameHessian * fh, bool needKF)
 {
+  if( display && display->needDisplayTrackedFrame()) {
+    display->displayTrackedFrame(fh);
+  }
 
   if( linearizeOperation ) {
 
-    if( goStepByStep && lastRefStopID != coarseTracker->refFrameID ) {
-
-      cv::Mat3f img(hG[0], wG[0], (cv::Vec3f*)fh->dI);
-
-      display.displayImage("frameToTrack", img);
-
-      while (true) {
-        int k = display.waitKey(0);
-        if( k == ' ' ) {
-          break;
-        }
-        handleKey(k);
-      }
-      lastRefStopID = coarseTracker->refFrameID;
-    }
-    else {
-      handleKey(display.waitKey(1));
-    }
+//    if( goStepByStep && lastRefStopID != coarseTracker->refFrameID ) {
+//
+//      cv::Mat3f img(hG[0], wG[0], (cv::Vec3f*)fh->dI);
+//
+//      display.displayImage("frameToTrack", img);
+//
+//      while (true) {
+//        int k = display.waitKey(0);
+//        if( k == ' ' ) {
+//          break;
+//        }
+//        handleKey(k);
+//      }
+//      lastRefStopID = coarseTracker->refFrameID;
+//    }
+//    else {
+//      handleKey(display.waitKey(1));
+//    }
 
     if( needKF ) {
       makeKeyFrame(fh);
@@ -955,8 +966,8 @@ void FullSystem::deliverTrackedFrame(FrameHessian * fh, bool needKF)
       makeNonKeyFrame(fh);
     }
   }
-  else
-  {
+  else {
+
     std::unique_lock<std::mutex> lock(trackMapSyncMutex);
     unmappedTrackedFrames.push_back(fh);
     if( needKF ) {
@@ -1171,9 +1182,16 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
   // =========================== add new Immature points & new residuals =========================
   makeNewTraces(fh, 0);
 
-  display.publishGraph(ef->connectivityMap);
-  display.publishKeyframes(frameHessians, false, &Hcalib);
+  if ( display ) {
 
+    if ( display->needDisplayGraph() ) {
+      display->displayGraph(ef->connectivityMap);
+    }
+
+    if ( display->needDisplayKeyframe() ) {
+      display->displayKeyframe(fh, false, &Hcalib);
+    }
+  }
   // =========================== Marginalize Frames =========================
 
   for( unsigned int i = 0; i < frameHessians.size(); i++ ) {

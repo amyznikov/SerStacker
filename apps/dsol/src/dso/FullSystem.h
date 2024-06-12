@@ -147,7 +147,7 @@ public:
 	void printFrameLifetimes();
 	// contains pointers to active frames
 
-	c_dso_display display;
+	c_dso_display * display = nullptr;
 
 
 	bool isLost;

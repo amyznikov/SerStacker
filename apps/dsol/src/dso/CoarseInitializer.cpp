@@ -796,7 +796,7 @@ void CoarseInitializer::setFirst(CalibHessian * HCalib, FrameHessian * newFrameH
     int npts;
 
     if( lvl == 0 ) {
-      npts = sel.makeMaps(firstFrame, statusMap, densities[lvl] * w[0] * h[0], 1, false, 2, display);
+      npts = sel.makeMaps(firstFrame, statusMap, densities[lvl] * w[0] * h[0], 1, true, 2, display);
     }
     else {
       npts = makePixelStatus(firstFrame->dIp[lvl], statusMapB, w[lvl], h[lvl], densities[lvl] * w[0] * h[0]);

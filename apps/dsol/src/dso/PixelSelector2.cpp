@@ -274,44 +274,7 @@ int PixelSelector::makeMaps(const FrameHessian * const fh, float * map_out,
   currentPotential = idealPotential;
 
   if( plot && display && display->needDisplaySelectorImage() ) {
-
-//    int w = wG[0];
-//    int h = hG[0];
-//
-//    cv::Mat3b img(h, w);
-//    cv::Vec3b * imgp = (cv::Vec3b * )img.data;
-//
-//    for( int i = 0; i < w * h; i++ ) {
-//
-//      float c = fh->dI[i][0] * 0.7;
-//      if( c > 255 ) {
-//        c = 255;
-//      }
-//
-//      imgp[i] = cv::Vec3b(c, c, c);
-//    }
-
-
-//    for( int y = 0; y < h; y++ ) {
-//      for( int x = 0; x < w; x++ ) {
-//        int i = x + y * w;
-//        if( map_out[i] == 1 ) {
-//          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(0, 255, 0));
-//          //img.setPixelCirc(x, y, Vec3b(0, 255, 0));
-//        }
-//        else if( map_out[i] == 2 ) {
-//          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(255, 0, 0));
-//          //img.setPixelCirc(x, y, Vec3b(255, 0, 0));
-//        }
-//        else if( map_out[i] == 4 ) {
-//          cv::circle(img, cv::Point(x, y), keypoint_display_radius, cv::Scalar(0, 0, 255));
-//          //img.setPixelCirc(x, y, Vec3b(0, 0, 255));
-//        }
-//      }
-//    }
-//
-    display->displaySelectorImage(fh);
-    //display.displayImage("Selector Pixels", img);
+    display->displaySelectorImage(fh, map_out);
   }
 
   return numHaveSub;

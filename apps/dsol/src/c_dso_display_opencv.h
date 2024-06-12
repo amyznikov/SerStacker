@@ -29,18 +29,16 @@ public:
   void set_enable_display(bool v);
   bool enable_display() const;
 
-  // max frames in window.
-  void set_max_frames(int v);
-  int max_frames() const;
-
   bool needDisplayInputFrame() const override;
   void displayInputFrame(const c_image_and_exposure & image, int id) override;
+
+  bool needDisplaySelectorImage() const override;
+  void displaySelectorImage(const FrameHessian * fh, const float * map_out) override;
 
   bool needDisplayTrackedFrame() const override;
   void displayTrackedFrame(const FrameHessian * /*fh*/) override;
 
-  bool needDisplaySelectorImage() const override;
-  void displaySelectorImage(const FrameHessian * /*fh*/) override;
+
   bool needDisplayResImage() const override;
   void displayResImage(const cv::Mat & image) override;
   bool needDisplayDepthImageFloat() const override;
@@ -59,14 +57,25 @@ public:
 
 protected:
 
-  void displayImage(const std::string & windowName, const cv::Mat & img, bool autoSize = false);
-  void displayImageStitch(const std::string & windowName, const std::vector<cv::Mat> & images, int cc = 0, int rc = 0);
+//  void displayImage(const std::string & windowName, const cv::Mat & img, bool autoSize = false);
+//  void displayImageStitch(const std::string & windowName, const std::vector<cv::Mat> & images, int cc = 0, int rc = 0);
+  void createStitch();
+  void displayFrame(const cv::Mat & image, cv::Mat3b & target_pane);
+  void displayStitch();
   int waitKey(int milliseconds) ;
 
 protected:
-  std::unordered_set<std::string> open_windows_;
-  int max_frames_ = 7; // max frames in window.
+  cv::Mat3b stitch_image;
+  cv::Mat3b InputFrameDisplay;
+  cv::Mat3b SelectorImageDisplay;
+  cv::Mat3b KeyframeDisplay;
+
+
+
+
+
   bool enable_display_ = true;
+
 };
 
 #endif /* __c_output_wrapper_opencv_h__ */

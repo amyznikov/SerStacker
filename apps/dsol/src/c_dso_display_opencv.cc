@@ -7,6 +7,8 @@
 
 #include "c_dso_display_opencv.h"
 #include <opencv2/highgui/highgui.hpp>
+#include "dso/util/globalCalib.h"
+#include "dso/HessianBlocks.h"
 #include <core/debug.h>
 
 using namespace dso;
@@ -21,122 +23,21 @@ bool c_dso_display_opencv::enable_display() const
   return enable_display_;
 }
 
-void c_dso_display_opencv::set_max_frames(int v)
+void c_dso_display_opencv::createStitch()
 {
-  max_frames_ = v;
-}
+  const cv::Size size(wG[0], hG[0]);
+  const cv::Size stitch_size(3 * wG[0], 3 * hG[0]);
 
-int c_dso_display_opencv::max_frames() const
-{
-  return max_frames_;
-}
+  if ( stitch_image.size() != size ) {
 
+    stitch_image.create(stitch_size);
 
-void c_dso_display_opencv::displayImage(const std::string & windowName, const cv::Mat & image, bool autoSize)
-{
-  if( !enable_display_ ) {
-    return;
+    InputFrameDisplay = stitch_image(cv::Rect(0,0, size.width, size.height));
+    SelectorImageDisplay = stitch_image(cv::Rect(size.width,0, size.width, size.height));
+    KeyframeDisplay = stitch_image(cv::Rect(2 * size.width, 0, size.width, size.height));
   }
-
-  if( !autoSize ) {
-
-    if( open_windows_.find(windowName) == open_windows_.end() ) {
-      cv::namedWindow(windowName, cv::WINDOW_NORMAL);
-      cv::resizeWindow(windowName, image.cols, image.rows);
-      open_windows_.insert(windowName);
-    }
-  }
-
-  cv::Mat display;
-
-  if ( image.depth() == CV_8U ) {
-      display = image;
-  }
-  else {
-    image.convertTo(display, CV_8U);
-  }
-
-  // CF_DEBUG("display: %dx%d", display.cols, display.rows);
-
-  cv::imshow(windowName, display);
-  cv::waitKey(10);
 
 }
-
-void c_dso_display_opencv::displayImageStitch(const std::string & windowName, const std::vector<cv::Mat> & images, int cc, int rc)
-{
-  if( images.empty() || !enable_display_ ) {
-    return;
-  }
-
-  // get dimensions.
-  const int w =
-      images[0].cols;
-
-  const int h =
-      images[0].rows;
-
-  const int num =
-      std::max((int) max_frames_,
-          (int) images.size());
-
-  // get optimal dimensions.
-  int bestCC = 0;
-  float bestLoss = 1e10;
-
-  for( int cc = 1; cc < 10; cc++ ) {
-
-    const int ww =
-        w * cc;
-
-    const int hh =
-        h * ((num + cc - 1) / cc);
-
-    const float wLoss =
-        ww / 16.0f;
-
-    const float hLoss =
-        hh / 10.0f;
-
-    float loss =
-        std::max(wLoss, hLoss);
-
-    if( loss < bestLoss ) {
-      bestLoss = loss;
-      bestCC = cc;
-    }
-  }
-
-  int bestRC =
-      ((num + bestCC - 1) / bestCC);
-
-  if( cc != 0 ) {
-    bestCC = cc;
-    bestRC = rc;
-  }
-
-  cv::Mat stitch(bestRC * h, bestCC * w,
-      images[0].type(),
-      cv::Scalar::all(0));
-
-  for( int i = 0, n = (int)images.size(); i < n && i < bestCC * bestRC; ++i ) {
-
-    const int r =
-        i / bestCC;
-
-    const int c =
-        i % bestCC;
-
-    cv::Mat roi =
-        stitch(cv::Rect(c * w, r * h, w, h));
-
-    images[i].copyTo(roi);
-  }
-
-  displayImage(windowName, stitch,
-      false);
-}
-
 
 int c_dso_display_opencv::waitKey(int milliseconds)
 {
@@ -147,17 +48,39 @@ int c_dso_display_opencv::waitKey(int milliseconds)
   return cv::waitKey(milliseconds);
 }
 
+void c_dso_display_opencv::displayFrame(const cv::Mat & image, cv::Mat3b & target_pane)
+{
+  if ( image.type() == CV_8UC3 ) {
+    image.copyTo(target_pane);
+  }
+  else if ( image.channels() == 3 ) {
+    image.convertTo(target_pane, CV_8U);
+  }
+  else {
+    cv::Mat tmp;
+    image.convertTo(tmp, CV_8U);
+    cv::cvtColor(tmp, target_pane, cv::COLOR_GRAY2BGR);
+  }
+
+  displayStitch();
+}
+
+void c_dso_display_opencv::displayStitch()
+{
+  cv::imshow("dso", stitch_image);
+  cv::waitKey(10);
+}
 
 bool c_dso_display_opencv::needDisplayInputFrame() const
 {
   return true;
 }
 
-void c_dso_display_opencv::displayInputFrame(const c_image_and_exposure & image, int id)
-{
-  CF_DEBUG("c_dso_display_opencv: id=%d", id);
 
-  displayImage("input frame", image.image(), false);
+void c_dso_display_opencv::displayInputFrame(const c_image_and_exposure & frame, int id)
+{
+  createStitch();
+  displayFrame(frame.image(), InputFrameDisplay);
 }
 
 bool c_dso_display_opencv::needDisplayTrackedFrame() const
@@ -176,9 +99,52 @@ bool c_dso_display_opencv::needDisplaySelectorImage() const
 }
 
 
-void c_dso_display_opencv::displaySelectorImage(const FrameHessian * /*fh*/)
+void c_dso_display_opencv::displaySelectorImage(const FrameHessian * fh, const float * map_out)
 {
-  CF_DEBUG("c_dso_display_opencv: ");
+  createStitch();
+
+  const cv::Size size =
+      SelectorImageDisplay.size();
+
+  for( int y = 0; y < size.height; ++y ) {
+    for( int x = 0; x < size.width; ++x ) {
+
+      const int i =
+          x + y * size.width;
+
+      const float c =
+          std::min(255.f, fh->dI[i][0] * 0.7f);
+
+      SelectorImageDisplay[y][x] =
+          cv::Vec3b(c, c, c);
+
+    }
+  }
+
+  for( int y = 0; y < size.height; ++y ) {
+    for( int x = 0; x < size.width; ++x ) {
+
+      const int i =
+          x + y * size.width;
+
+      switch ((int) map_out[i]) {
+        case 1:
+          cv::rectangle(SelectorImageDisplay, cv::Point(x - 1, y - 1), cv::Point(x + 1, y + 1),
+              cv::Scalar(0, 255, 0));
+          break;
+        case 2:
+          cv::rectangle(SelectorImageDisplay, cv::Point(x - 1, y - 1), cv::Point(x + 1, y + 1),
+              cv::Scalar(255, 0, 0));
+          break;
+        case 4:
+          cv::rectangle(SelectorImageDisplay, cv::Point(x - 1, y - 1), cv::Point(x + 1, y + 1),
+              cv::Scalar(0, 0, 255));
+          break;
+      }
+    }
+  }
+
+  displayStitch();
 }
 
 bool c_dso_display_opencv::needDisplayResImage() const
@@ -233,7 +199,10 @@ bool c_dso_display_opencv::needDisplayKeyframe() const
 
 void c_dso_display_opencv::displayKeyframe(const FrameHessian* frame, bool _final, const CalibHessian * HCalib)
 {
-  CF_DEBUG("c_dso_display_opencv: ");
+  if ( _final ) {
+    const cv::Size size(wG[0], hG[0]);
+    displayFrame(cv::Mat3f(size.height, size.width, (cv::Vec3f*) frame->dI), KeyframeDisplay);
+  }
 }
 
 void c_dso_display_opencv::pushLiveFrame(const FrameHessian * image)

@@ -56,7 +56,7 @@ public:
     return false;
   }
 
-  virtual void displaySelectorImage(const FrameHessian * /*fh*/)
+  virtual void displaySelectorImage(const FrameHessian * /*fh*/, const float * /*map_out*/ )
   {
   }
 

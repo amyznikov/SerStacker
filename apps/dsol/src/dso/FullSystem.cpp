@@ -835,7 +835,6 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
   }
 
 
-
   if( isLost ) {
     return;
   }
@@ -847,9 +846,6 @@ void FullSystem::addActiveFrame(const c_image_and_exposure & image, int id)
   allFrameHistory.emplace_back(new c_frame_shell(
       allFrameHistory.size(),
       image.timestamp()));
-
-//  c_frame_shell * shell =
-//      allFrameHistory.back().get();
 
   FrameHessian * fh = new FrameHessian();
   fh->shell = allFrameHistory.back().get();
@@ -1304,7 +1300,7 @@ void FullSystem::makeNewTraces(FrameHessian * newFrame, float * gtDepth)
   pixelSelector->allowFast = true;
   //int numPointsTotal = makePixelStatus(newFrame->dI, selectionMap, wG[0], hG[0], setting_desiredDensity);
   int numPointsTotal =
-      pixelSelector->makeMaps(newFrame, selectionMap, setting_desiredImmatureDensity, 1, false, 1,
+      pixelSelector->makeMaps(newFrame, selectionMap, setting_desiredImmatureDensity, 1, true, 1,
           display);
 
   newFrame->pointHessians.reserve(numPointsTotal * 1.2f);

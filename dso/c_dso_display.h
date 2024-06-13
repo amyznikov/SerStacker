@@ -51,6 +51,15 @@ public:
   {
   }
 
+  virtual bool needDisplayKeyframe() const
+  {
+    return false;
+  }
+
+  virtual void displayKeyframe(const FrameHessian* frame, bool _final, const CalibHessian * HCalib)
+  {
+  }
+
   virtual bool needDisplaySelectorImage() const
   {
     return false;
@@ -78,6 +87,7 @@ public:
   {
   }
 
+
   virtual bool needDisplayCameraPose() const
   {
     return false;
@@ -94,15 +104,6 @@ public:
 
   virtual void displayGraph(const std::map<uint64_t, Eigen::Vector2i, std::less<uint64_t>,
       Eigen::aligned_allocator<std::pair<const uint64_t, Eigen::Vector2i> > > & connectivity)
-  {
-  }
-
-  virtual bool needDisplayKeyframe() const
-  {
-    return false;
-  }
-
-  virtual void displayKeyframe(const FrameHessian* frame, bool _final, const CalibHessian * HCalib)
   {
   }
 

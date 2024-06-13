@@ -85,6 +85,7 @@ protected:
 
   std::vector<cv::Vec3f> displayPoints_;
   std::vector<cv::Vec3b> displayColors_;
+  std::mutex display_lock_;
 
   QCloudViewDisplayFunction * displayFunction_ = nullptr;
 

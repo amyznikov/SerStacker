@@ -349,7 +349,15 @@ struct CalibHessian
   {
     return value_scaledf[0];
   }
+  inline const float& fxl()const
+  {
+    return value_scaledf[0];
+  }
   inline float& fyl()
+  {
+    return value_scaledf[1];
+  }
+  inline const float& fyl()const
   {
     return value_scaledf[1];
   }
@@ -357,7 +365,15 @@ struct CalibHessian
   {
     return value_scaledf[2];
   }
+  inline const float& cxl()const
+  {
+    return value_scaledf[2];
+  }
   inline float& cyl()
+  {
+    return value_scaledf[3];
+  }
+  inline const float& cyl()const
   {
     return value_scaledf[3];
   }
@@ -365,7 +381,15 @@ struct CalibHessian
   {
     return value_scaledi[0];
   }
+  inline const float& fxli()const
+  {
+    return value_scaledi[0];
+  }
   inline float& fyli()
+  {
+    return value_scaledi[1];
+  }
+  inline const float& fyli()const
   {
     return value_scaledi[1];
   }
@@ -373,7 +397,15 @@ struct CalibHessian
   {
     return value_scaledi[2];
   }
+  inline const float& cxli()const
+  {
+    return value_scaledi[2];
+  }
   inline float& cyli()
+  {
+    return value_scaledi[3];
+  }
+  inline const float& cyli()const
   {
     return value_scaledi[3];
   }

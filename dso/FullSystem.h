@@ -33,6 +33,7 @@
 
 #include <dso/Residuals.h>
 #include <dso/HessianBlocks.h>
+#include <dso/ImmaturePoint.h>
 #include <dso/PixelSelector2.h>
 #include <dso/util/NumType.h>
 #include <dso/util/globalCalib.h>

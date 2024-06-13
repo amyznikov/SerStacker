@@ -444,6 +444,8 @@ void QMainAppWindow::onShowMtfControlActionContextMenuRequested(QToolButton * tb
     IMtfDisplay * mtfDisplay =
         getCurrentMtfDisplay();
 
+    CF_DEBUG("mtfDisplay=%p", (void*)mtfDisplay);
+
     if( mtfDisplay ) {
 
       const QStringList availableDisplayChannels =

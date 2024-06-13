@@ -190,21 +190,25 @@ void QGLPointCloudView::glDraw()
 
 void QGLPointCloudView::computeDisplayPoints()
 {
-  if( update_display_points_ || update_display_colors_ ) {
+  if( display_lock_.try_lock() ) {
 
+    if( update_display_points_ || update_display_colors_ ) {
 
-    if ( displayFunction_ ) {
+      if( displayFunction_ ) {
 
-      displayFunction_->createDisplayPoints(currentPoints_,
-          currentColors_,
-          currentMask_,
-          displayPoints_,
-          mtfColors_,
-          displayColors_);
+        displayFunction_->createDisplayPoints(currentPoints_,
+            currentColors_,
+            currentMask_,
+            displayPoints_,
+            mtfColors_,
+            displayColors_);
+      }
+
+      update_display_points_ = false;
+      update_display_colors_ = false;
     }
 
-    update_display_points_ = false;
-    update_display_colors_ = false;
+    display_lock_.unlock();
   }
 
 

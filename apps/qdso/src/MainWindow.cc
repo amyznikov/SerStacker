@@ -629,7 +629,7 @@ void MainWindow::setupMainToolbar()
         if ( !showCloudViewSettingsDialogBoxAction ) {
 
           showCloudViewSettingsDialogBoxAction =
-          createCheckableAction(getIcon(ICON_options),
+              createCheckableAction(getIcon(ICON_options),
               "Advanced ...",
               "Show advanced options",
               is_visible(cloudViewSettingsDialogBox),
@@ -732,6 +732,17 @@ void MainWindow::setupDSOImageViews()
           menuViewDsoImages);
 
   dsoKeyframeViewDock->hide();
+
+
+  dsoDepthImageViewDock =
+      addDock<QDSOImageViewDock>(this,
+          Qt::BottomDockWidgetArea,
+          "dsoDepthImageViewDock",
+          "DepthImage",
+          dsoDepthImageView = new QDSOImageView(this),
+          menuViewDsoImages);
+
+  dsoDepthImageViewDock->hide();
 }
 
 
@@ -1218,23 +1229,23 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 
 void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
 {
-//  if ( checked && !cloudViewSettingsDialogBox ) {
-//
-//    cloudViewSettingsDialogBox = new QPointCloudViewSettingsDialogBox(this);
-//    cloudViewSettingsDialogBox->setCloudViewer(cloudView);
-//    connect(cloudViewSettingsDialogBox, &QPointCloudViewSettingsDialogBox::visibilityChanged,
-//        showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
-//  }
-//
-//  if ( cloudViewSettingsDialogBox ) {
-//    if ( !checked ) {
-//      cloudViewSettingsDialogBox->hide();
-//    }
-//    else {
-//      cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
-//      cloudViewSettingsDialogBox->showNormal();
-//    }
-//  }
+  if ( checked && !cloudViewSettingsDialogBox ) {
+
+    cloudViewSettingsDialogBox = new QGlPointCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox->setCloudViewer(cloudView);
+    connect(cloudViewSettingsDialogBox, &QGlPointCloudViewSettingsDialogBox::visibilityChanged,
+        showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
+  }
+
+  if ( cloudViewSettingsDialogBox ) {
+    if ( !checked ) {
+      cloudViewSettingsDialogBox->hide();
+    }
+    else {
+      // cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
+      cloudViewSettingsDialogBox->showNormal();
+    }
+  }
 }
 
 void MainWindow::updateMeasurements()
@@ -2515,41 +2526,19 @@ void MainWindow::displayInputFrame(const dso::c_image_and_exposure & f, int id)
   dsoInputFrameView->showImage(f.image());
 }
 
-bool MainWindow::needDisplayKeyframe() const
+bool MainWindow::needPushDepthImage() const
 {
-  return true ;// is_really_visible(dsoKeyframeView);
+  return is_really_visible(dsoDepthImageView);
 }
 
-
-template<class PointType>
-static inline cv::Vec3f compute_point_pos(const PointType * p, const cv::Matx44f & m, float fxi, float fyi, float cxi, float cyi)
+void MainWindow::pushDepthImage(const cv::Mat & image)
 {
-  const float u = p->u;
-  const float v = p->v;
-  const float idpeth = p->idepth_scaled;
-  const float relObsBaseline = p->maxRelBaseline;
-  const float idepth_hessian = p->idepth_hessian;
-  const float depth = 10.0f / idpeth;
-  const float dx = 0;
-  const float dy = 0;
+  dsoDepthImageView->showImage(image);
+}
 
-  cv::Vec4f cp = m * cv::Vec4f(depth * ((u + dx) * fxi + cxi),
-      depth * ((v + dy) * fyi + cyi),
-      depth * (1 + 2 * fxi),
-      1);
-
-//  cv::Vec4f cp =
-//      m * cv::Vec4f(+depth * (1 + 2 * fxi),
-//      -depth * ((u + dx) * fxi + cxi),
-//      -depth * ((v + dy) * fyi + cyi),
-//      1);
-
-  // xnew = z
-  // ynew = -x
-  // znew = -y
-
-  return cv::Vec3f(cp[2], -cp[0], -cp[1] );
-
+bool MainWindow::needDisplayKeyframe() const
+{
+  return is_really_visible(dsoKeyframeView);
 }
 
 void MainWindow::displayKeyframe(const dso::FrameHessian * fh, bool _final, const dso::CalibHessian * HCalib)
@@ -2566,64 +2555,20 @@ void MainWindow::displayKeyframe(const dso::FrameHessian * fh, bool _final, cons
 
       dsoKeyframeView->showImage(I, false);
     }
-
-    if( is_visible(cloudView) ) {
-
-      const int npoints =
-          fh->immaturePoints.size() +
-              fh->pointHessians.size() +
-              fh->pointHessiansMarginalized.size() +
-              fh->pointHessiansOut.size();
-
-      const SE3 & camToWorld =
-          fh->PRE_camToWorld;
-
-      Sophus::Matrix4f m =
-          camToWorld.matrix().inverse().cast<float>();
-
-      const cv::Matx44f mm(m.data());
-
-
-      const float fx = HCalib->fxl();
-      const float fy = HCalib->fyl();
-      const float cx = HCalib->cxl();
-      const float cy = HCalib->cyl();
-//      width = wG[0];
-//      height = hG[0];
-      const float fxi = 1/fx;
-      const float fyi = 1/fy;
-      const float cxi = -cx / fx;
-      const float cyi = -cy / fy;
-
-      std::vector<cv::Vec3f> points;
-      std::vector<cv::Vec3b> colors;
-
-      points.reserve(npoints);
-      colors.reserve(npoints);
-
-
-//      for( const auto * p : fh->immaturePoints ) {
-//        points.emplace_back(compute_point_pos(p, mm, fxi, fyi, cxi, cyi));
-//      }
-
-      for( const auto * p : fh->pointHessians ) {
-        points.emplace_back(compute_point_pos(p, mm,  fxi, fyi, cxi, cyi));
-      }
-
-      for( const auto * p : fh->pointHessiansMarginalized ) {
-        points.emplace_back(compute_point_pos(p, mm, fxi, fyi, cxi, cyi));
-      }
-
-//      for( const PointHessian * p : fh->pointHessiansOut ) {
-//        points.emplace_back(compute_point_pos(p, mm, fxi, fyi, cxi, cyi));
-//      }
-
-     CF_DEBUG("\n\n\npoints:%zu\n\n\n", points.size());
-      cloudView->showPoints(points);
-    }
-
-
   }
+}
+
+bool MainWindow::needDisplayKeyframes() const
+{
+  return is_really_visible(cloudView);
+}
+
+void MainWindow::displayKeyframes(const std::vector<dso::FrameHessian*>  & frames, const dso::CalibHessian * HCalib)
+{
+  if( is_really_visible(cloudView) ) {
+    cloudView->displayKeyframes(frames, HCalib);
+  }
+
 }
 
 

@@ -858,8 +858,11 @@ void CoarseTracker::debugPlotIDepthMap(float * minID_pt, float * maxID_pt, c_dso
 
           float id = ((sid / nid) - minID) / ((maxID - minID));
 
-          cv::circle(mf, cv::Point2f(x, y), keypoint_display_radius, makeJet3B(id));
-          // mf.setPixelCirc(x, y, makeJet3B(id));
+          if( x >= 0 && x < mf.cols && y >= 0 && y < mf.rows ) {
+            mf[y][x] = makeJet3B(id);
+            //cv::circle(mf, cv::Point2f(x, y), keypoint_display_radius, makeJet3B(id));
+            // mf.setPixelCirc(x, y, makeJet3B(id));
+          }
         }
       }
     }

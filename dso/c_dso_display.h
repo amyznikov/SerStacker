@@ -51,6 +51,17 @@ public:
   {
   }
 
+  virtual bool needDisplayKeyframes() const
+  {
+    return false;
+  }
+
+  virtual void displayKeyframes(const std::vector<FrameHessian*>  & frames, const CalibHessian * HCalib)
+  {
+  }
+
+
+
   virtual bool needDisplayKeyframe() const
   {
     return false;
@@ -112,14 +123,15 @@ public:
   {
   }
 
+  virtual bool needPushDepthImage() const
+  {
+    return false;
+  }
+
   virtual void pushDepthImage(const cv::Mat & image)
   {
   }
 
-  virtual bool needPushDepthImage()
-  {
-    return false;
-  }
 
 
 };

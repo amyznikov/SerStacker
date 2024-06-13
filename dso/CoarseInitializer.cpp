@@ -325,7 +325,7 @@ void CoarseInitializer::debugPlot(int lvl, c_dso_display * display)
       color[2] = c[2];
     }
 
-    cv::rectangle(iRImg, cv::Point2f(x-1, y-1), cv::Point2f(x+1, y+1), color, 1, cv::LINE_4);
+    cv::rectangle(iRImg, cv::Point2f(x-1, y-1), cv::Point2f(x+1, y+1), color, -1, cv::LINE_4);
     // iRImg.setPixel9(point->u + 0.5f, point->v + 0.5f, Vec3b(0, 0, 0));
   }
 

@@ -1184,8 +1184,8 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
       display->displayGraph(ef->connectivityMap);
     }
 
-    if ( display->needDisplayKeyframe() ) {
-      display->displayKeyframe(fh, false, &Hcalib);
+    if ( display->needDisplayKeyframes() ) {
+      display->displayKeyframes(frameHessians, &Hcalib);
     }
   }
   // =========================== Marginalize Frames =========================

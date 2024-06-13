@@ -105,8 +105,16 @@ private Q_SLOTS:
 protected:
   bool needDisplayInputFrame() const override;
   void displayInputFrame(const dso::c_image_and_exposure & image, int id) override;
+
+  bool needPushDepthImage() const override;
+  void pushDepthImage(const cv::Mat & image) override;
+
+
   bool needDisplayKeyframe() const override;
   void displayKeyframe(const dso::FrameHessian* frame, bool _final, const dso::CalibHessian * HCalib) override;
+
+  bool needDisplayKeyframes() const override;
+  void displayKeyframes(const std::vector<dso::FrameHessian*>  & frames, const dso::CalibHessian * HCalib) override;
 
 private :
   void closeEvent(QCloseEvent *event) override;
@@ -140,6 +148,10 @@ private:
 
   QDSOImageView * dsoInputFrameView = nullptr;
   QDSOImageViewDock * dsoInputFrameViewDock = nullptr;
+
+  QDSOImageView * dsoDepthImageView = nullptr;
+  QDSOImageViewDock * dsoDepthImageViewDock = nullptr;
+
   QDSOImageView * dsoKeyframeView = nullptr;
   QDSOImageViewDock * dsoKeyframeViewDock = nullptr;
 

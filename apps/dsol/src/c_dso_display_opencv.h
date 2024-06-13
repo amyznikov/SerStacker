@@ -51,7 +51,7 @@ public:
   void displayKeyframe(const FrameHessian* frame, bool _final, const CalibHessian * HCalib) override;
   void pushLiveFrame(const FrameHessian * image) override;
   void pushDepthImage(const cv::Mat & image) override;
-  bool needPushDepthImage() override;
+  bool needPushDepthImage() const override;
 
   //void pushLiveFrame(const dso::FrameHessian * fh) override;
 

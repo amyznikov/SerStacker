@@ -216,7 +216,7 @@ void c_dso_display_opencv::pushDepthImage(const cv::Mat & image)
   CF_DEBUG("c_dso_display_opencv: ");
 }
 
-bool c_dso_display_opencv::needPushDepthImage()
+bool c_dso_display_opencv::needPushDepthImage() const
 {
   return true;
 }

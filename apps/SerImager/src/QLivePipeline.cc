@@ -9,6 +9,7 @@
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <gui/qimageview/cv2qt.h>
+#include <core/io/image/c_image_input_source.h>
 #include <core/mtf/mtf-histogram.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
@@ -17,7 +18,6 @@
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
-#include "../../../core/io/image/c_image_input_source.h"
 
 namespace serimager {
 

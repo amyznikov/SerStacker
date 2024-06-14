@@ -8,45 +8,121 @@
 #include "c_homography_test_routine.h"
 #include <core/proc/camera_calibration/camera_pose.h>
 
+
+static cv::Mat2f create_perspective_remap(const cv::Size & output_size,
+    const cv::Matx33f & input_camera_matrix,
+    const cv::Matx33f & output_camera_matrix,
+    const cv::Vec3f & A,
+    const cv::Vec3f & T)
+{
+
+  const cv::Matx33f R =
+      build_rotation(A);
+
+  const cv::Matx33f output_camera_matrix_inv =
+      output_camera_matrix.inv();
+
+  cv::Mat2f m(output_size);
+
+  cv::Vec3f T0 =
+      R * cv::Vec3f(0, 0, 1);
+
+  CF_DEBUG("T0: %g %g %g", T0[0], T0[1], T0[2]);
+
+  T0[2] -= 1;
+
+  for ( int y = 0; y < output_size.height; ++y ) {
+    for ( int x = 0; x < output_size.width; ++x ) {
+
+      const cv::Vec3f pos =
+          input_camera_matrix * (R * output_camera_matrix_inv * cv::Vec3f(x, y, 1) - T0 + cv::Vec3f(0, 0, T[2]));
+
+      m[y][x][0] = pos[0] / pos[2] + T[0];
+      m[y][x][1] = pos[1] / pos[2] + T[1];
+    }
+  }
+
+  return m;
+
+}
+
+void c_homography_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+{
+  BIND_PCTRL(ctls, rotation, "rotation angles in [deg]");
+  BIND_PCTRL(ctls, translation, "translation vector");
+  BIND_PCTRL(ctls, focus, "focus distance in pixels");
+  BIND_PCTRL(ctls, output_size, "output image size");
+
+}
+
+bool c_homography_test_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, rotation);
+    SERIALIZE_PROPERTY(settings, save, *this, translation);
+    SERIALIZE_PROPERTY(settings, save, *this, focus);
+    SERIALIZE_PROPERTY(settings, save, *this, output_size);
+    return true;
+  }
+  return false;
+}
+
 bool c_homography_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  // FIXME: Hardcoded Camera Matrix
-  // Extracted from P_rect_00 of KITTI calib_cam_to_cam.txt
-  // .image_size = cv::Size(1242, 375),
-  static const cv::Matx33d camera_matrix =
-      cv::Matx33d(
-          7.215377e+02, 0.000000e+00, 6.095593e+02,
-          0.000000e+00, 7.215377e+02, 1.728540e+02,
-          0.000000e+00, 0.000000e+00, 1.000000e+00);
+  const cv::Size input_size =
+      image.size();
 
+  const cv::Size output_size =
+      output_size_.empty() ? input_size : output_size_;
 
-  static const cv::Matx33d camera_matrix_inv =
-      camera_matrix.inv();
+  const cv::Matx33f input_camera_matrix(
+      F, 0, input_size.width / 2.,
+      0, F, input_size.height / 2.,
+      0, 0, 1
+      );
 
-  const cv::Matx33d R =
-      build_rotation(rx_ * CV_PI / 180,
-          ry_ * CV_PI / 180,
-          rz_ * CV_PI / 180);
+  const cv::Matx33f output_camera_matrix(
+      F, 0, output_size.width / 2.,
+      0, F, output_size.height / 2.,
+      0, 0, 1
+      );
 
-  const cv::Matx33d H =
-      camera_matrix * R * camera_matrix_inv;
+  const cv::Mat2f H =
+      create_perspective_remap(output_size,
+          input_camera_matrix,
+          output_camera_matrix,
+          A * CV_PI / 180,
+          T);
 
-  cv::warpPerspective(image, image,
-      H,
-      image.size(),
-      cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
-      cv::BORDER_CONSTANT);
+  cv::remap(image.getMat(), image, H, cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT,
+      cv::Scalar::all(0));
 
-  if( !mask.empty() ) {
+  if( mask.empty() ) {
+
+    cv::remap(cv::Mat1b(image.size(), (uint8_t) 255), mask, H, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT,
+        cv::Scalar::all(0));
+
+  }
+  else {
+
+    cv::remap(mask.getMat(), mask, H, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT,
+        cv::Scalar::all(0));
 
     cv::warpPerspective(mask, mask,
-        H,
+        F,
         image.size(),
         cv::INTER_LINEAR, // Note that cv::INTER_LINEAR can introduce some blur on kitti images
         cv::BORDER_CONSTANT);
 
-    cv::compare(mask, 255, mask, cv::CMP_GE);
   }
+
+  cv::compare(mask, 252, mask, cv::CMP_GE);
 
   return true;
 }

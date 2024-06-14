@@ -18,60 +18,55 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_homography_test_routine,
       "homography_test", "homography_test");
 
-  void set_rx(double v)
+  void set_rotation(const cv::Vec3f & v)
   {
-    rx_ = v;
+    A = v;
   }
 
-  double rx() const
+  const cv::Vec3f& rotation() const
   {
-    return rx_;
+    return A;
   }
 
-  void set_ry(double v)
+  void set_translation(const cv::Vec3f & v)
   {
-    ry_ = v;
+    T = v;
   }
 
-  double ry() const
+  const cv::Vec3f& translation() const
   {
-    return ry_;
+    return T;
   }
 
-  void set_rz(double v)
+  void set_focus(float v)
   {
-    rz_ = v;
+    F = v;
   }
 
-  double rz() const
+  void set_output_size(const cv::Size & v)
   {
-    return rz_;
+    output_size_ = v;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
+  const cv::Size & output_size() const
   {
-    BIND_PCTRL(ctls, rx, "");
-    BIND_PCTRL(ctls, ry, "");
-    BIND_PCTRL(ctls, rz, "");
+    return output_size_;
   }
 
-  bool serialize(c_config_setting settings, bool save) override
+  float focus() const
   {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, rx);
-      SERIALIZE_PROPERTY(settings, save, *this, ry);
-      SERIALIZE_PROPERTY(settings, save, *this, rz);
-      return true;
-    }
-    return false;
+    return F;
   }
 
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
+  bool serialize(c_config_setting settings, bool save) override;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
-  double rx_ = 0;
-  double ry_ = 0;
-  double rz_ = 0;
+  cv::Vec3f A;
+  cv::Vec3f T;
+  cv::Size output_size_;
+  float F = 1000;
 };
 
 #endif /* __c_homography_test_routine_h__ */

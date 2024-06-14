@@ -73,7 +73,7 @@ protected:
   int heightOrg = 0;
 
   // undistorter. [0] always exists, [1-2] only when MT is enabled.
-  dso::c_image_undistort * undistort = nullptr;
+  dso::c_image_undistort::uptr undistort;
 
 #if HAS_ZIPLIB
   zip_t* ziparchive = nullptr;

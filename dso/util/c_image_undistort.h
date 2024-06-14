@@ -128,6 +128,23 @@ protected:
 
 };
 
+class c_image_undistort_kitti:
+    public c_image_undistort
+{
+public:
+  typedef c_image_undistort_kitti this_class;
+  typedef c_image_undistort base;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+
+  c_image_undistort_kitti();
+
+protected:
+  void distort(float * in_x, float * in_y,
+      float * out_x, float * out_y,
+      int n) const override;
+};
+
 class c_image_undistort_fov:
     public c_image_undistort
 {

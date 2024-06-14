@@ -158,8 +158,7 @@ void c_dso_dataset_reader::close()
 #endif
 
   if ( undistort ) {
-    delete undistort;
-    undistort = nullptr;
+    undistort.reset();
   }
 }
 
@@ -281,9 +280,8 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
 #endif
   }
 
-  undistort =
-      Undistort::load(calibFile, gammaFile,
-          vignetteFile);
+  undistort.reset(Undistort::load(calibFile, gammaFile,
+      vignetteFile));
 
   if( !undistort ) {
     CF_ERROR("Undistort::getUndistorterForFile() fails");

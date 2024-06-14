@@ -523,6 +523,9 @@ void FullSystem::traceNewCoarse(FrameHessian * fh)
   K(0, 2) = Hcalib.cxl();
   K(1, 2) = Hcalib.cyl();
 
+
+
+
   for( FrameHessian * host : frameHessians ) {		// go through all active frames
 
     SE3 hostToNew = fh->PRE_worldToCam * host->PRE_camToWorld;
@@ -1134,15 +1137,15 @@ void FullSystem::makeKeyFrame(FrameHessian * fh)
   if( allKeyFramesHistory.size() <= 4 ) {
 
     if( allKeyFramesHistory.size() == 2 && rmse > 20 * benchmark_initializerSlackFactor ) {
-      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting. rmse=%g", rmse);
       initFailed = true;
     }
     if( allKeyFramesHistory.size() == 3 && rmse > 13 * benchmark_initializerSlackFactor ) {
-      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting. rmse=%g", rmse);
       initFailed = true;
     }
     if( allKeyFramesHistory.size() == 4 && rmse > 9 * benchmark_initializerSlackFactor ) {
-      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting.");
+      CF_DEBUG("I THINK INITIALIZATINO FAILED! Resetting. rmse=%g", rmse);
       initFailed = true;
     }
   }

@@ -26,6 +26,7 @@
 //#include <iostream>
 #include <stdio.h>
 #include "util/globalCalib.h"
+#include <core/debug.h>
 
 namespace dso
 {
@@ -47,14 +48,31 @@ namespace dso
 		int wlvl=w;
 		int hlvl=h;
 		pyrLevelsUsed=1;
-		while(wlvl%2==0 && hlvl%2==0 && wlvl*hlvl > 5000 && pyrLevelsUsed < PYR_LEVELS)
-		{
-			wlvl /=2;
-			hlvl /=2;
-			pyrLevelsUsed++;
-		}
-		printf("using pyramid levels 0 to %d. coarsest resolution: %d x %d!\n",
+
+//		while(wlvl%2==0 && hlvl%2==0 && wlvl*hlvl > 5000 && pyrLevelsUsed < PYR_LEVELS)
+//		{
+//			wlvl /=2;
+//			hlvl /=2;
+//			pyrLevelsUsed++;
+//		}
+
+    while (pyrLevelsUsed < 4/*PYR_LEVELS*/) {
+
+//      wlvl = (((wlvl + 1) / 2) & ~0x1);
+//      hlvl = (((hlvl + 1) / 2) & ~0x1);
+      wlvl /= 2;
+      hlvl /= 2;
+
+      if ( wlvl < 8 || hlvl < 8 ) {
+        break;
+      }
+
+      pyrLevelsUsed++;
+    }
+
+		CF_DEBUG("using pyramid levels 0 to %d. coarsest resolution: %d x %d!",
 				pyrLevelsUsed-1, wlvl, hlvl);
+
 		if(wlvl>100 && hlvl > 100)
 		{
 			printf("\n\n===============WARNING!===================\n "
@@ -84,10 +102,12 @@ namespace dso
 		cxiG[0] = KiG[0](0,2);
 		cyiG[0] = KiG[0](1,2);
 
-		for (int level = 1; level < pyrLevelsUsed; ++ level)
-		{
-			wG[level] = w >> level;
-			hG[level] = h >> level;
+		CF_DEBUG("H");
+		for (int level = 1; level < pyrLevelsUsed; ++ level) {
+
+		  wG[level] = w >> level;
+		  hG[level] = h >> level;
+
 
 			fxG[level] = fxG[level-1] * 0.5;
 			fyG[level] = fyG[level-1] * 0.5;
@@ -102,6 +122,7 @@ namespace dso
 			cxiG[level] = KiG[level](0,2);
 			cyiG[level] = KiG[level](1,2);
 		}
+    CF_DEBUG("H");
 	}
 
 

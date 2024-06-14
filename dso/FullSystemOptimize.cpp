@@ -36,6 +36,8 @@
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
 
+#include <core/debug.h>
+
 namespace dso
 {
 
@@ -123,7 +125,7 @@ void FullSystem::setNewFrameEnergyTH()
 //
 //	int good=0,bad=0;
 //	for(float f : allResVec) if(f<newFrame->frameEnergyTH) good++; else bad++;
-//	printf("EnergyTH: mean %f, median %f, result %f (in %d, out %d)! \n",
+//	CF_DEBUG("EnergyTH: mean %f, median %f, result %f (in %d, out %d)! \n",
 //			meanElement, nthElement, sqrtf(newFrame->frameEnergyTH),
 //			good, bad);
 }
@@ -188,7 +190,7 @@ Vec3 FullSystem::linearizeAll(bool fixLinearization)
         }
       }
     }
-    //printf("FINAL LINEARIZATION: removed %d / %d residuals!\n", nResRemoved, (int)activeResiduals.size());
+    //CF_DEBUG("FINAL LINEARIZATION: removed %d / %d residuals!\n", nResRemoved, (int)activeResiduals.size());
 
   }
 
@@ -263,7 +265,7 @@ bool FullSystem::doStepFromBackup(float stepfacC, float stepfacT, float stepfacR
   sumNID /= numID;
 
   if( !setting_debugout_runquiet ) {
-    printf("STEPS: A %.1f; B %.1f; R %.1f; T %.1f. \t",
+    CF_DEBUG("STEPS: A %.1f; B %.1f; R %.1f; T %.1f. \t",
         sqrtf(sumA) / (0.0005 * setting_thOptIterations),
         sqrtf(sumB) / (0.00005 * setting_thOptIterations),
         sqrtf(sumR) / (0.00005 * setting_thOptIterations),
@@ -278,7 +280,7 @@ bool FullSystem::doStepFromBackup(float stepfacC, float stepfacT, float stepfacR
       sqrtf(sumR) < 0.00005 * setting_thOptIterations &&
       sqrtf(sumT) * sumNID < 0.00005 * setting_thOptIterations;
 //
-//	printf("mean steps: %f %f %f!\n",
+//	CF_DEBUG("mean steps: %f %f %f!\n",
 //			meanStepC, meanStepP, meanStepD);
 }
 
@@ -355,7 +357,7 @@ double FullSystem::calcMEnergy()
 void FullSystem::printOptRes(const Vec3 & res, double resL, double resM, double resPrior, double LExact, float a,
     float b)
 {
-  printf("A(%f)=(AV %.3f). Num: A(%'d) + M(%'d); ab %f %f!\n",
+  CF_DEBUG("A(%f)=(AV %.3f). Num: A(%'d) + M(%'d); ab %f %f!",
       res[0],
       sqrtf((float) (res[0] / (patternNum * ef->resInA))),
       ef->resInA,
@@ -398,7 +400,7 @@ float FullSystem::optimize(int mnumOptIts)
   }
 
   if( !setting_debugout_runquiet ) {
-    printf("OPTIMIZE %d pts, %d active res, %d lin res!\n", ef->nPoints, (int) activeResiduals.size(), numLRes);
+    CF_DEBUG("OPTIMIZE %d pts, %d active res, %d lin res!", ef->nPoints, (int) activeResiduals.size(), numLRes);
   }
 
   Vec3 lastEnergy = linearizeAll(false);
@@ -415,7 +417,7 @@ float FullSystem::optimize(int mnumOptIts)
   }
 
   if( !setting_debugout_runquiet ) {
-    printf("Initial Error       \t");
+    CF_DEBUG("Initial Error       \t");
     printOptRes(lastEnergy, lastEnergyL, lastEnergyM, 0, 0, frameHessians.back()->aff_g2l().a,
         frameHessians.back()->aff_g2l().b);
   }
@@ -454,7 +456,7 @@ float FullSystem::optimize(int mnumOptIts)
     double newEnergyM = calcMEnergy();
 
     if( !setting_debugout_runquiet ) {
-      printf("%s %d (L %.2f, dir %.2f, ss %.1f): \t",
+      CF_DEBUG("%s %d (L %.2f, dir %.2f, ss %.1f): \t",
           (newEnergy[0] + newEnergy[1] + newEnergyL + newEnergyM <
               lastEnergy[0] + lastEnergy[1] + lastEnergyL + lastEnergyM) ? "ACCEPT" : "REJECT",
           iteration,
@@ -510,7 +512,7 @@ float FullSystem::optimize(int mnumOptIts)
 
   if( !std::isfinite((double) lastEnergy[0]) || !std::isfinite((double) lastEnergy[1])
       || !std::isfinite((double) lastEnergy[2]) ) {
-    printf("KF Tracking failed: LOST!\n");
+    CF_DEBUG("KF Tracking failed: LOST!\n");
     isLost = true;
   }
 

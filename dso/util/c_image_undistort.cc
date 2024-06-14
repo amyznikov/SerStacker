@@ -232,6 +232,7 @@ c_image_undistort * c_image_undistort::load(const std::string & configFilename, 
 {
   static const auto read_first_line =
       [] (const std::string & fname, char buf[], int bufsize) -> bool {
+
     c_stdio_file fp;
 
     if ( fname.empty() ) {
@@ -253,9 +254,6 @@ c_image_undistort * c_image_undistort::load(const std::string & configFilename, 
   };
 
   char l1[2048] = "";
-  float ic[10] = {0};
-
-  this_class * u = nullptr;
 
   if ( !read_first_line(configFilename, l1, sizeof(l1)) )  {
     CF_ERROR("Can not read text line from calibration file '%s': %s",
@@ -266,6 +264,14 @@ c_image_undistort * c_image_undistort::load(const std::string & configFilename, 
   CF_DEBUG("Reading calibration from '%s'",
       configFilename.c_str());
 
+
+  if( strncasecmp(l1, "kitti", 5) == 0 ) {
+    return new c_image_undistort_kitti();
+  }
+
+
+  float ic[10] = {0};
+  this_class * u = nullptr;
 
   // for backwards-compatibility: Use RadTan model for 8 parameters.
   if( std::sscanf(l1, "%f %f %f %f %f %f %f %f", &ic[0], &ic[1], &ic[2], &ic[3], &ic[4], &ic[5], &ic[6], &ic[7]) == 8 ) {
@@ -440,10 +446,33 @@ bool c_image_undistort::undistort(const cv::Mat & image_raw, c_image_and_exposur
     return false;
   }
 
+  if ( dynamic_cast<const c_image_undistort_kitti * >(this) ) {
+
+    output_image->create(h, w,
+        timestamp);
+
+    if ( image_raw.channels() == 1 ) {
+      image_raw.convertTo(output_image->image(), CV_32F);
+    }
+    else {
+      cv::Mat tmp;
+      cv::cvtColor(image_raw, tmp, cv::COLOR_BGR2GRAY);
+      tmp.convertTo(output_image->image(), CV_32F);
+    }
+
+    return true;
+  }
+
+
+
+
   if( image_raw.type() != CV_8UC1 && image_raw.type() != CV_16UC1 ) {
     CF_ERROR("Undistort::undistort: wrong image type %d ,  must be CV_8UC1 or CV_16UC1", image_raw.type());
     return false;
   }
+
+
+
 
   output_image->create(h, w,
       timestamp);
@@ -1210,6 +1239,28 @@ bool c_image_undistort::load_parameters(const std::string & configFileName, int 
 //	// std::cout << K << "\n\n";
 //
 //}
+
+c_image_undistort_kitti::c_image_undistort_kitti()
+{
+  passthrough = true;
+  w = wOrg = wUp = 1242;
+  h = hOrg = hUp = 375;
+  upsampleUndistFactor = 1;
+
+  const Mat33 m {
+    {7.215377e+02, 0.000000e+00, 6.095593e+02},
+    {0.000000e+00, 7.215377e+02, 1.728540e+02},
+    {0.000000e+00, 0.000000e+00, 1.000000e+00}
+  };
+
+  K = m;
+}
+
+
+void c_image_undistort_kitti::distort(float * in_x, float * in_y, float * out_x, float * out_y, int n) const
+{
+
+}
 
 
 c_image_undistort_fov* c_image_undistort_fov::load(const std::string & configFileName, bool noprefix)

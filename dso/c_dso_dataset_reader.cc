@@ -227,7 +227,7 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
   this->calibfile = calibFile;
 
   const bool isZipped =
-      (path.length() > 4 && path.substr(path.length() - 4) == ".zip");
+      strcasecmp(get_file_suffix(path).c_str(), ".zip") == 0;
 
   if( !isZipped ) {
     getdir(path, files);
@@ -306,34 +306,68 @@ bool c_dso_dataset_reader::open(const std::string & path, const std::string & ca
   // load timestamps if possible.
   loadTimestamps();
 
-  CF_DEBUG("got %zu files from %s", files.size(), path.c_str());
-
   return true;
 }
 
 void c_dso_dataset_reader::loadTimestamps()
 {
-  const std::string timestaps_path_filename =
-      path.substr(0, path.find_last_of('/')) + "/times.txt";
+#if HAS_ZIPLIB
+  const bool isZipped =
+      ziparchive != nullptr;
+#else
+  const bool isZipped = false;
+#endif
 
-  c_stdio_file file (timestaps_path_filename, "rt");
+  c_stdio_file file;
 
-  char buf[1000];
+  std::string parent_directory =
+      get_parent_directory(path);
 
-  while (fgets(buf, sizeof(buf), file)) {
+  std::string timestaps_filename =
+      ssprintf("%s/times.txt", parent_directory.c_str());
 
-    int id;
-    double stamp;
-    float exposure = 0;
+  if( !file.open(timestaps_filename, "rt") ) {
 
-    if( sscanf(buf, "%d %lf %f", &id, &stamp, &exposure) == 3 ) {
-      timestamps.push_back(stamp);
-      exposures.push_back(exposure);
-    }
+    CF_ERROR("Can not read timestaps from '%s' : %s",
+        timestaps_filename.c_str(),
+        strerror(errno));
 
-    else if( 2 == sscanf(buf, "%d %lf", &id, &stamp) ) {
-      timestamps.push_back(stamp);
-      exposures.push_back(exposure);
+    parent_directory =
+        get_parent_directory(parent_directory);
+
+    timestaps_filename =
+          ssprintf("%s/times.txt", parent_directory.c_str());
+
+    file.open(timestaps_filename, "rt");
+  }
+
+  if( !file.is_open() ) {
+    CF_ERROR("Can not read timestaps from '%s': %s",
+        timestaps_filename.c_str(),
+        strerror(errno));
+  }
+  else {
+
+    CF_ERROR("read timestaps from '%s'",
+        timestaps_filename.c_str());
+
+    char buf[1000];
+
+    while (fgets(buf, sizeof(buf), file)) {
+
+      int id;
+      double stamp;
+      float exposure = 0;
+
+      if( sscanf(buf, "%d %lf %f", &id, &stamp, &exposure) == 3 ) {
+        timestamps.push_back(stamp);
+        exposures.push_back(exposure);
+      }
+
+      else if( 2 == sscanf(buf, "%d %lf", &id, &stamp) ) {
+        timestamps.push_back(stamp);
+        exposures.push_back(exposure);
+      }
     }
   }
 

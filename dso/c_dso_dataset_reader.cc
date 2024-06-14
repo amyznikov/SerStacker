@@ -9,8 +9,10 @@
 #include <core/io/c_stdio_file.h>
 #include <dirent.h>
 #include <algorithm>
+#include <core/readdir.h>
 #include <core/io/load_image.h>
 #include <core/settings.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 namespace {
@@ -100,6 +102,7 @@ c_dso_dataset_reader::~c_dso_dataset_reader()
 c_dso_dataset_reader * c_dso_dataset_reader::load(const std::string & config_filename)
 {
   c_dso_dataset_settings cfg;
+
   if ( !load_settings(config_filename, &cfg) ) {
     CF_ERROR("load_settings('%s') fails", config_filename.c_str());
     return nullptr;
@@ -107,6 +110,29 @@ c_dso_dataset_reader * c_dso_dataset_reader::load(const std::string & config_fil
 
   this_class * dataset =
       new this_class();
+
+
+  const std::string directory =
+      get_parent_directory(config_filename);
+
+  if ( !directory.empty() ) {
+
+    if ( !cfg.files.empty() && !is_absolute_path(cfg.files) ) {
+      cfg.files = ssprintf("%s/%s", directory.c_str(), cfg.files.c_str());
+    }
+
+    if ( !cfg.calib.empty() && !is_absolute_path(cfg.calib) ) {
+      cfg.calib = ssprintf("%s/%s", directory.c_str(), cfg.calib.c_str());
+    }
+
+    if ( !cfg.gamma.empty() && !is_absolute_path(cfg.gamma) ) {
+      cfg.gamma = ssprintf("%s/%s", directory.c_str(), cfg.gamma.c_str());
+    }
+
+    if ( !cfg.vignette.empty() && !is_absolute_path(cfg.vignette) ) {
+      cfg.vignette = ssprintf("%s/%s", directory.c_str(), cfg.vignette.c_str());
+    }
+  }
 
   if ( !dataset->open(cfg.files, cfg.calib, cfg.gamma, cfg.vignette) ) {
     CF_ERROR("dataset->open() fails for config file '%s'", config_filename.c_str());

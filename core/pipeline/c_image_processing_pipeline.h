@@ -138,6 +138,7 @@ protected:
   virtual void on_status_update();
 
 protected:
+  virtual bool start_pipeline(int start_frame_index, int max_input_frames);
   virtual void set_running(bool v);
   void set_pipeline_stage(int stage);
   void set_status_msg(const std::string & msg);

@@ -352,59 +352,9 @@ void c_running_average_pipeline::cleanup_pipeline()
 
 }
 
-bool c_running_average_pipeline::start_pipeline()
-{
-  if( !input_sequence_ ) {
-    CF_ERROR("No input_sequence provided, can not run");
-    return false;
-  }
-
-  if ( !input_sequence_->open() ) {
-    CF_ERROR("input_sequence_->open() fails");
-    return false;
-  }
-
-  const bool is_live_sequence =
-      input_sequence_->is_live();
-
-  if( is_live_sequence ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
-  }
-  else {
-
-    const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
-
-    const int end_pos =
-        input_options_.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
-
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
-
-    if( total_frames_ < 1 ) {
-      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
-          total_frames_, input_sequence_->size());
-      return false;
-    }
-
-    if( !input_sequence_->seek(start_pos) ) {
-      CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool c_running_average_pipeline::run_pipeline()
 {
-  if ( !start_pipeline() ) {
+  if ( !start_pipeline(input_options_.start_frame_index, input_options_.max_input_frames) ) {
     CF_ERROR("ERROR: start_pipeline() fails");
     return false;
   }

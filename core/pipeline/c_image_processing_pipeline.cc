@@ -813,6 +813,57 @@ bool c_image_processing_pipeline::run_pipeline()
   return false;
 }
 
+
+bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_input_frames)
+{
+  if( !input_sequence_ ) {
+    CF_ERROR("No input_sequence provided, can not run");
+    return false;
+  }
+
+  if ( !input_sequence_->open() ) {
+    CF_ERROR("input_sequence_->open() fails");
+    return false;
+  }
+
+  const bool is_live_sequence =
+      input_sequence_->is_live();
+
+  if( is_live_sequence ) {
+    total_frames_ = INT_MAX;
+    processed_frames_ = 0;
+    accumulated_frames_ = 0;
+  }
+  else {
+
+    const int start_pos =
+        std::max(start_frame_index, 0);
+
+    const int end_pos =
+        max_input_frames < 1 ?
+            input_sequence_->size() :
+            std::min(input_sequence_->size(),
+                start_frame_index + max_input_frames);
+
+    total_frames_ = end_pos - start_pos;
+    processed_frames_ = 0;
+    accumulated_frames_ = 0;
+
+    if( total_frames_ < 1 ) {
+      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
+          total_frames_, input_sequence_->size());
+      return false;
+    }
+
+    if( !input_sequence_->seek(start_pos) ) {
+      CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     const c_image_processing_pipeline_input_options & input_options,
     cv::Mat & output_image, cv::Mat & output_mask,

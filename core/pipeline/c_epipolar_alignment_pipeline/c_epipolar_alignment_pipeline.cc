@@ -558,16 +558,24 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
       m.convertTo(display(roi[2][2]), display.depth());
     }
 
+    for( int i = 0; i < 3; ++i ) {
+      for( int j = 0; j < 3; ++j ) {
+
+        cv::Mat pane =
+            display(roi[i][j]);
+
+        cv::rectangle(pane, cv::Point(0, 0), cv::Point(pane.cols - 1, pane.rows - 1),
+            CV_RGB(140, 128, 64), 1,
+            cv::LINE_4);
+      }
+    }
+
     if( IS_INSIDE_IMAGE(currentEpipole_, size) ) {
       for( int i = 0; i < 3; ++i ) {
         for( int j = 0; j < 3; ++j ) {
 
           cv::Mat pane =
               display(roi[i][j]);
-
-          cv::rectangle(pane, cv::Point(0, 0), cv::Point(pane.cols - 1, pane.rows - 1),
-              CV_RGB(140, 128, 64), 1,
-              cv::LINE_4);
 
           const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
 
@@ -640,7 +648,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
           0, CV_32F);
 
   current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  current_translation_vector_ = cv::Vec3d(0, 0, camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1);
+  current_translation_vector_ = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1
 
   return true;
 }
@@ -653,51 +661,10 @@ void c_epipolar_alignment_pipeline::cleanup_pipeline()
 
 bool c_epipolar_alignment_pipeline::run_pipeline()
 {
-  if( !input_sequence_ ) {
-    CF_ERROR("No input_sequence provided, can not run");
+
+  if ( !start_pipeline(input_options_.start_frame_index, input_options_.max_input_frames) ) {
+    CF_ERROR("ERROR: start_pipeline() fails");
     return false;
-  }
-
-  if ( !input_sequence_->open() ) {
-    CF_ERROR("input_sequence_->open() fails");
-    return false;
-  }
-
-  const bool is_live_sequence =
-      input_sequence_->is_live();
-
-  if( is_live_sequence ) {
-    total_frames_ = INT_MAX;
-  }
-  else {
-
-    const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
-
-    const int end_pos =
-        input_options_.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
-
-    total_frames_ = end_pos - start_pos;
-
-    if( total_frames_ < 1 ) {
-      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1\n"
-          "start_pos=%d end_pos=%d input_sequence_->size()=%d max_input_frames=%d is_live_sequence=%d",
-          total_frames_,
-          start_pos,
-          end_pos,
-          input_sequence_->size(),
-          input_options_.max_input_frames,
-          is_live_sequence);
-      return false;
-    }
-
-    if( !input_sequence_->seek(start_pos) ) {
-      CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
-      return false;
-    }
   }
 
   set_status_msg("RUNNING ...");
@@ -753,7 +720,8 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
       std::swap(current_keypoints_, previous_keypoints_);
     }
 
-    if( !is_live_sequence ) {
+    //if( !is_live_sequence )
+    {
       // give chance to GUI thread to call get_display_image()
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -939,8 +907,17 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   current_inliers_.create(matched_current_positions_.size(), 1);
   current_inliers_.setTo(255);
 
-  //  current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  //  current_translation_vector_ = cv::Vec3d(0, 0, camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1);
+
+//  CF_DEBUG("Initial A=(%+g %+g %+g) T=(%+g %+g %+g)",
+//      current_euler_anges_(0) * 180/CV_PI,
+//      current_euler_anges_(1) * 180/CV_PI,
+//      current_euler_anges_(2) * 180/CV_PI,
+//      current_translation_vector_(0),
+//      current_translation_vector_(1),
+//      current_translation_vector_(2));
+
+  current_euler_anges_ = cv::Vec3d(0, 0, 0);
+  current_translation_vector_ = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? +1 : -1
 
   bool fOk =
       lm_camera_pose_and_derotation_homography(
@@ -960,10 +937,14 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
-  const cv::Matx33d & camera_matrix = camera_options_.camera_intrinsics.camera_matrix;
+  const cv::Matx33d & camera_matrix =
+      camera_options_.camera_intrinsics.camera_matrix;
 
-  const cv::Vec3d A = current_euler_anges_;
-  const cv::Vec3d T = current_translation_vector_;
+  const cv::Vec3d A =
+      current_euler_anges_;
+
+  const cv::Vec3d T =
+      current_translation_vector_;
 
   currentRotationMatrix_ =
       build_rotation(A);

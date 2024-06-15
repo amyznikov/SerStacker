@@ -585,6 +585,23 @@ bool recover_camera_pose_from_essential_matrix(
 
 
 
+// apply derotation homography to current (second) camera point and translate to make the reference epipole as origin.
+template<class _Tp>
+static inline cv::Point_<_Tp> epopolar_transfrom(const cv::Point_<_Tp> & p, const cv::Matx<_Tp, 3, 3> & H,
+    const cv::Point_<_Tp> & E)
+{
+  cv::Vec<_Tp, 3> v =
+      H * cv::Vec<_Tp, 3>(p.x, p.y, 1);
+
+  if( v[2] != 1 ) {
+    v[0] /= v[2];
+    v[1] /= v[2];
+  }
+
+  return cv::Point_<_Tp> (v[0] - E.x, v[1] - E.y);
+}
+;
+
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
@@ -656,24 +673,11 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       [](const cv::Point2f & cp, const cv::Point2f & rp, const Matx33 & H, const Point & E,
           EPIPOLAR_MOTION_DIRECTION direction) -> _Tp {
 
-            // apply derotation homography to current (second) camera point and translate to make the reference epipole as origin.
-          static const auto homography_transfrom =
-              [](const Point & p, const Matx33 & H, const Point & E) -> Point {
-
-            Vec3 v = H * Vec3 (p.x, p.y, 1);
-            if ( v[2] != 1 ) {
-              v[0] /= v[2];
-              v[1] /= v[2];
-            }
-
-            return Point(v[0] - E.x, v[1] - E.y);
-          };
-
           const Point erp(rp.x - E.x,
               rp.y - E.y);
 
           const Point ecp =
-              homography_transfrom(cp, H, E);
+              epopolar_transfrom(cp, H, E);
 
           //  cos  sin
           // -sin  cos
@@ -948,6 +952,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
         CF_ERROR("lm.run() fails");
         return false;
       }
+
+      CF_DEBUG("ii=%d rmse = %g num_inliers = %d / %zu", ii, lm.rmse(), num_inliers, current_keypoints.size());
 
       if( num_inliers < 8 ) {
         break;

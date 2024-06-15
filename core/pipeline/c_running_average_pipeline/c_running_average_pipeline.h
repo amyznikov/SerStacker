@@ -114,7 +114,6 @@ public:
 
 protected:
   bool initialize_pipeline() override;
-  bool start_pipeline();
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frame1();

@@ -270,6 +270,42 @@ inline bool compute_epipoles(const cv::Matx33d & F, cv::Point2d e[2])
   return compute_epipoles(F, &e[0], &e[1]);
 }
 
+/**
+ * compute_epipole()
+ *
+ *  Compute epipole position in pixels for given translation vector T using given camera matrix
+ *
+ *  The epipole is projection of second camera center onto first frame image
+ */
+
+template<class _Tp>
+inline void compute_epipole(const cv::Matx<_Tp, 3, 3> & camera_matrix, const cv::Vec<_Tp, 3> & T,
+    _Tp * Ex, _Tp * Ey)
+{
+  const cv::Vec<_Tp, 3> E =
+      camera_matrix * T;
+
+  *Ex = E[0] / E[2];
+  *Ey = E[1] / E[2];
+}
+
+/**
+ * compute_epipole()
+ *
+ *  Compute epipole position in pixels for given translation vector T using given camera matrix
+ *
+ *  The epipole is projection of second camera center onto first frame image
+ *
+ * @overload
+ */
+template<class _Tp>
+inline cv::Point_<_Tp> compute_epipole(const cv::Matx<_Tp, 3, 3> & camera_matrix, const cv::Vec<_Tp, 3> & T)
+{
+  const cv::Vec<_Tp, 3> E =
+      camera_matrix * T;
+
+  return cv::Point(E[0] / E[2], E[1] / E[2]);
+}
 
 /*
  * estimate_essential_matrix()

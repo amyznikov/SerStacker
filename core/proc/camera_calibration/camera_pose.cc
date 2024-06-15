@@ -600,7 +600,24 @@ static inline cv::Point_<_Tp> epopolar_transfrom(const cv::Point_<_Tp> & p, cons
 
   return cv::Point_<_Tp> (v[0] - E.x, v[1] - E.y);
 }
-;
+
+template<class _Tp>
+static inline cv::Vec<_Tp, 3> from_spherical(_Tp phi, _Tp theta)
+{
+  return cv::Vec<_Tp, 3>(std::sin(theta) * std::cos(phi),
+      std::sin(theta) * std::sin(phi),
+      std::cos(theta));
+}
+
+template<class _Tp>
+static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theha)
+{
+  *phi = std::atan2(T(1), T(0));
+  *theha = std::atan2(std::sqrt(T(0) * T(0) + T(1) * T(1)), T(2));
+}
+
+
+
 
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
@@ -627,6 +644,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   typedef cv::Point_<_Tp>
     Point;
 
+
   /* Unpack Euler angles from storage array of levmar parameters */
   static const auto unpack_A =
       [](const std::vector<_Tp> & p) -> Vec3 {
@@ -635,33 +653,10 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
   /* Unpack camera translation from storage array of levmar parameters */
   static const auto unpack_T =
-      [](const std::vector<_Tp> & p, _Tp Tfix, int iTfix) -> Vec3 {
-
-        Vec3 T;
-
-        switch (iTfix) {
-          case 0:
-          T = Vec3(Tfix, p[3], p[4]);
-          break;
-          case 1:
-          T = Vec3(p[3], Tfix, p[4]);
-          break;
-          case 2:
-          T = Vec3(p[3], p[4], Tfix);
-          break;
-          default:
-          CF_FATAL("APP BUG: invalid iTfix=%d received", iTfix);
-          break;
-        }
-        return T / (_Tp)cv::norm(T);
+      [](const std::vector<_Tp> & p) -> Vec3 {
+          return from_spherical(p[3], p[4]);
       };
 
-  /* The epipole is projection of second camera center onto first frame image */
-  static const auto compute_epipole =
-      [](const Matx33 & camera_matrix, const Vec3 & T) -> Point {
-        const Vec3 ET = camera_matrix * T; //  / cv::norm(T);
-        return Point(ET[0]/ET[2], ET[1]/ET[2]);
-      };
 
   /*
    * Project vector of difference between warped current point and reference point onto
@@ -713,8 +708,6 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     Matx33 camera_matrix_inv;
     Matx33 camera_matrix_t_inv;
     EPIPOLAR_MOTION_DIRECTION direction;
-    const int iTfix;
-    const _Tp Tfix;
     _Tp robust_threshold = 5;
 
   public:
@@ -724,16 +717,12 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
         const Matx33 & _camera_matrix,
         const Matx33 & _camera_matrix_inv,
         const Matx33 & _camera_matrix_t_inv,
-        _Tp _Tfix,
-        int _iTfix,
         EPIPOLAR_MOTION_DIRECTION _direction) :
 
         camera_matrix(_camera_matrix),
         camera_matrix_inv(_camera_matrix_inv),
         camera_matrix_t_inv(_camera_matrix_t_inv),
-        direction(_direction),
-        iTfix(_iTfix),
-        Tfix(_Tfix)
+        direction(_direction)
     {
       if ( _inliers.empty() ) {
         current_keypoints = _current_keypoints;
@@ -779,7 +768,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       }
 
       const Vec3 A = unpack_A(p);
-      const Vec3 T = unpack_T(p, Tfix, iTfix);
+      const Vec3 T = unpack_T(p);
       const size_t N = current_keypoints.size();
 
       // compute projection error and apply robust function
@@ -884,13 +873,13 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
    * Find the translation component of maximal magnitude and fix it
    * iTmax = argmax(i, abs( T[i] ) )
    */
-  _Tp Tfix = T(0);
-  int iTfix = 0;
-  for( int i = 1; i < 3; ++i ) {
-    if( std::abs(T[i]) > std::abs(Tfix) ) {
-      Tfix = T[iTfix = i];
-    }
-  }
+//  _Tp Tfix = T(0);
+//  int iTfix = 0;
+//  for( int i = 1; i < 3; ++i ) {
+//    if( std::abs(T[i]) > std::abs(Tfix) ) {
+//      Tfix = T[iTfix = i];
+//    }
+//  }
 
   /*
    * Pack parameters into cv::Mat1d for levmar
@@ -920,11 +909,12 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   p[0] = A(0);
   p[1] = A(1);
   p[2] = A(2);
-  for( int i = 0, j = 3; i < 3; ++i ) {
-    if( i != iTfix ) {
-      p[j++] = T[i];
-    }
-  }
+  to_spherical(Vec3(T), &p[3], &p[4]);
+//  for( int i = 0, j = 3; i < 3; ++i ) {
+//    if( i != iTfix ) {
+//      p[j++] = T[i];
+//    }
+//  }
 
   for ( int ii = 0; ii < max_iterations; ++ii ) {
 
@@ -933,8 +923,6 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
      * */
     c_levmar_solver_callback callback(current_keypoints, reference_keypoints, inliers,
         camera_matrix, camera_matrix_inv, camera_matrix_t_inv,
-        Tfix,
-        iTfix,
         direction);
 
     if ( opts && opts->robust_threshold > 0 ) {
@@ -976,7 +964,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           lm.rmse();
 
       const Matx33 RR = build_rotation(unpack_A(p));
-      const Point EE = compute_epipole(camera_matrix, unpack_T(p, Tfix, iTfix));
+      const Point EE = compute_epipole(camera_matrix, unpack_T(p));
       const Matx33 HH = camera_matrix * RR * camera_matrix_inv;
 
       for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
@@ -1012,7 +1000,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
    * */
 
   A = unpack_A(p);
-  T = unpack_T(p, Tfix, iTfix);
+  T = unpack_T(p);
 
   return true;
 }

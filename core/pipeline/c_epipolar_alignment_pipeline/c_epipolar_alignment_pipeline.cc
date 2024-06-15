@@ -952,32 +952,36 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
   currentDerotationHomography_ =
       camera_matrix * currentRotationMatrix_ * camera_matrix.inv();
 
-  currentEssentialMatrix_ =
-      compose_essential_matrix(currentRotationMatrix_, T);
+//  currentEssentialMatrix_ =
+//      compose_essential_matrix(currentRotationMatrix_, T);
+//
+//  currentFundamentalMatrix_ =
+//      compose_fundamental_matrix(currentEssentialMatrix_, camera_matrix) * currentDerotationHomography_.inv();
+//
+//
+//  compute_epipoles(currentFundamentalMatrix_,
+//      currentEpipoles_);
 
-  currentFundamentalMatrix_ =
-      compose_fundamental_matrix(currentEssentialMatrix_, camera_matrix) * currentDerotationHomography_.inv();
-
-
-  compute_epipoles(currentFundamentalMatrix_,
-      currentEpipoles_);
+//  currentEpipole_ =
+//      0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
   currentEpipole_ =
-      0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
+      compute_epipole(camera_matrix, T);
 
     CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
     CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
-    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
-        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
+//    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
+//        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
+    CF_DEBUG("E: (%g %g) ", currentEpipole_.x, currentEpipole_.y);
 
-  if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
-    CF_WARNING("\nWARNING!\n"
-        "Something looks POOR: Computed epipoles differ after derotation:\n"
-        "E0 = {%g %g}\n"
-        "E1 = {%g %g}\n",
-        currentEpipoles_[0].x, currentEpipoles_[0].y,
-        currentEpipoles_[1].x, currentEpipoles_[1].y);
-  }
+//  if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
+//    CF_WARNING("\nWARNING!\n"
+//        "Something looks POOR: Computed epipoles differ after derotation:\n"
+//        "E0 = {%g %g}\n"
+//        "E1 = {%g %g}\n",
+//        currentEpipoles_[0].x, currentEpipoles_[0].y,
+//        currentEpipoles_[1].x, currentEpipoles_[1].y);
+//  }
 
   cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
       currentDerotationHomography_);

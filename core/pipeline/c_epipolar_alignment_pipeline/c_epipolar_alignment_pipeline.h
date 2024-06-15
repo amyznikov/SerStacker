@@ -141,10 +141,10 @@ protected:
   cv::Vec3d current_euler_anges_;
   cv::Vec3d current_translation_vector_;
   cv::Matx33d currentRotationMatrix_;
-  cv::Matx33d currentEssentialMatrix_;
-  cv::Matx33d currentFundamentalMatrix_;
+//  cv::Matx33d currentEssentialMatrix_;
+//  cv::Matx33d currentFundamentalMatrix_;
   cv::Matx33d currentDerotationHomography_;
-  cv::Point2d currentEpipoles_[2];
+//  cv::Point2d currentEpipoles_[2];
   cv::Point2d currentEpipole_;
 
   c_output_frame_writer progress_writer_;

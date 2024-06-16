@@ -43,14 +43,6 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
 }
 
 
-template<class T>
-static inline T sqr(T x)
-{
-  return x * x;
-}
-
-
-
 /**
  * Compute two (left and right) epipoles from given fundamental matrix F.
  * Return false if epipoles can not be computed.
@@ -782,7 +774,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
     inline _Tp robust_function(_Tp v) const
     {
-      return v > 0 ? std::min(v, robust_threshold) : v < 0 ? std::max(v, -robust_threshold) : 0;
+      return std::min(v, robust_threshold);
     }
 
     /**
@@ -1374,8 +1366,11 @@ bool lm_camera_pose_and_derotation_homography(/* in */ const cv::Matx33d & camer
   // Go on
   //
 
-  cv::Vec3d & A = eulerAnges;
-  cv::Vec3d & T = translationVector;
+  cv::Vec3d & A =
+      eulerAnges;
+
+  cv::Vec3d & T =
+      translationVector;
 
   cv::Matx33d R, E, H;
   cv::Mat1b mask;

@@ -14,7 +14,12 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-#include <signal.h>
+
+//#ifdef HAVE_TBB
+//#undef HAVE_TBB
+#define HAVE_TBB 1
+//#endif
+//
 
 #if HAVE_TBB
 # include <tbb/tbb.h>
@@ -590,11 +595,16 @@ template<class _Tp>
 static inline cv::Vec<_Tp, 2> epipolar_transfrom(const cv::Point_<_Tp> & p, const cv::Matx<_Tp, 3, 3> & H,
     const cv::Point_<_Tp> & E)
 {
-  const cv::Vec<_Tp, 3> v =
+  cv::Vec<_Tp, 3> v =
       H * cv::Vec<_Tp, 3>(p.x, p.y, 1);
 
-  return cv::Vec<_Tp, 2>(v[0] / v[2] - E.x,
-      v[1] / v[2] - E.y);
+  if ( v[2] != 0 ) {
+    v[0] /= v[2];
+    v[1] /= v[2];
+  }
+
+  return cv::Vec<_Tp, 2>(v[0] - E.x,
+      v[1] - E.y);
 }
 
 template<class _Tp>
@@ -629,8 +639,11 @@ static inline void compute_projection_errors(const cv::Point2f & cp, const cv::P
     _Tp * deltat,
     _Tp * deltar)
 {
-  using Vec2 = cv::Vec<_Tp,2>;
-  using Vec3 = cv::Vec<_Tp,3>;
+  using Vec2 =
+      cv::Vec<_Tp, 2>;
+
+  using Vec3 =
+      cv::Vec<_Tp, 3>;
 
   const Vec3 cv =
       H * Vec3(cp.x, cp.y, 1);
@@ -638,6 +651,9 @@ static inline void compute_projection_errors(const cv::Point2f & cp, const cv::P
   // current point relative to epipole
   const Vec2 ecv(cv[0] / cv[2] - E.x,
       cv[1] / cv[2] - E.y);
+
+//  const Vec2 ecv =
+//      epipolar_transfrom(cp, H, E);
 
   // reference point relative to epipole
   const Vec2 erv(rp.x - E.x,
@@ -701,10 +717,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   typedef cv::Vec<_Tp,3>
     Vec3;
 
-
   typedef cv::Point_<_Tp>
     Point;
-
 
   /* Unpack Euler angles from storage array of levmar parameters */
   static const auto unpack_A =
@@ -768,7 +782,12 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
     bool thread_safe_compute() const override
     {
-      return true;
+      return false;
+    }
+
+    inline _Tp robust_function(_Tp v) const
+    {
+      return v > 0 ? std::min(v, robust_threshold) : v < 0 ? std::max(v, -robust_threshold) : 0;
     }
 
     /**
@@ -776,6 +795,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const override
     {
+      INSTRUMENT_REGION("");
+
 #if HAVE_TBB
       typedef tbb::blocked_range<int> tbb_range;
       constexpr int tbb_grain_size = 256;
@@ -799,11 +820,17 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           direction == EPIPOLAR_DIRECTION_BACKWARD ? EPIPOLAR_DIRECTION_FORWARD :
               EPIPOLAR_DIRECTION_IGNORE;
 
-      const Matx33 Hf = camera_matrix * build_rotation(A) * camera_matrix_inv;
-      const Point Ef = compute_epipole(camera_matrix, T);
+      const Matx33 Hf =
+          camera_matrix * build_rotation(A) * camera_matrix_inv;
 
-      const Matx33 Hi = camera_matrix * build_rotation(-A) * camera_matrix_inv;
-      const Point Ei = compute_epipole(camera_matrix, -T);
+      const Point Ef =
+          compute_epipole(camera_matrix, T);
+
+      const Matx33 Hi =
+          camera_matrix * build_rotation(-A) * camera_matrix_inv;
+
+      const Point Ei =
+          compute_epipole(camera_matrix, -T);
 
       if ( direction == EPIPOLAR_DIRECTION_IGNORE ) {
         rhs.resize(2 * N);
@@ -827,23 +854,25 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
                   reference_keypoints[i],
                   Hf, Ef,
                   direction1,
-                  &deltat1, &deltar1);
+                  &deltat1,
+                  &deltar1);
 
               compute_projection_errors(reference_keypoints[i],
                   current_keypoints[i],
                   Hi, Ei,
                   direction2,
-                  &deltat2, &deltar2);
+                  &deltat2,
+                  &deltar2);
 
               if ( direction1 == EPIPOLAR_DIRECTION_IGNORE ) {
-                rhs[2 * i + 0] = std::min(robust_threshold, deltat1);
-                rhs[2 * i + 1] = std::min(robust_threshold, deltat2);
+                rhs[2 * i + 0] = robust_function(deltat1);
+                rhs[2 * i + 1] = robust_function(deltat2);
               }
               else {
-                rhs[4 * i + 0] = std::min(robust_threshold, deltat1);
-                rhs[4 * i + 1] = std::min(robust_threshold, deltar1);
-                rhs[4 * i + 2] = std::min(robust_threshold, deltat2);
-                rhs[4 * i + 3] = std::min(robust_threshold, deltar2);
+                rhs[4 * i + 0] = robust_function(deltat1);
+                rhs[4 * i + 1] = robust_function(deltat1);
+                rhs[4 * i + 2] = robust_function(deltar1);
+                rhs[4 * i + 3] = robust_function(deltar2);
               }
             }
 #if HAVE_TBB
@@ -951,17 +980,23 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     /*
      * Run levmar solver
      * */
+    int iterations;
 
-      int iterations =
+    if ( true ) {
+      INSTRUMENT_REGION("run");
+
+      iterations =
           lm.run(callback, p);
+    }
 
       if ( iterations < 0 ) {
         CF_ERROR("lm.run() fails");
         return false;
       }
 
-      CF_DEBUG("ii=%d rmse = %g num_inliers = %d / %zu",
+      CF_DEBUG("ii=%d rmse=%g iterations=%d num_inliers = %d / %zu",
           ii, lm.rmse(),
+          iterations,
           num_inliers,
           current_keypoints.size());
 

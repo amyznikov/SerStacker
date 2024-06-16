@@ -587,18 +587,21 @@ bool recover_camera_pose_from_essential_matrix(
 
 // apply derotation homography to current (second) camera point and translate to make the reference epipole as origin.
 template<class _Tp>
-static inline cv::Point_<_Tp> epopolar_transfrom(const cv::Point_<_Tp> & p, const cv::Matx<_Tp, 3, 3> & H,
+static inline cv::Vec<_Tp, 2> epipolar_transfrom(const cv::Point_<_Tp> & p, const cv::Matx<_Tp, 3, 3> & H,
     const cv::Point_<_Tp> & E)
 {
   cv::Vec<_Tp, 3> v =
       H * cv::Vec<_Tp, 3>(p.x, p.y, 1);
 
-  if( v[2] != 1 ) {
+  if( v[2] != 1) {
+
+    //CF_DEBUG("v2=%g", v[2]);
+
     v[0] /= v[2];
     v[1] /= v[2];
   }
 
-  return cv::Point_<_Tp> (v[0] - E.x, v[1] - E.y);
+  return cv::Vec<_Tp, 2> (v[0] - E.x, v[1] - E.y);
 }
 
 template<class _Tp>
@@ -638,8 +641,12 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   typedef cv::Matx<_Tp, 3, 3>
     Matx33;
 
+  typedef cv::Vec<_Tp,2>
+    Vec2;
+
   typedef cv::Vec<_Tp,3>
     Vec3;
+
 
   typedef cv::Point_<_Tp>
     Point;
@@ -668,35 +675,46 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       [](const cv::Point2f & cp, const cv::Point2f & rp, const Matx33 & H, const Point & E,
           EPIPOLAR_MOTION_DIRECTION direction) -> _Tp {
 
-          const Point erp(rp.x - E.x,
+          // current point relative to epipole
+          const Vec2 ecv =
+              epipolar_transfrom(cp, H, E);
+
+          // reference point relative to epipole
+          const Vec2 erv(rp.x - E.x,
               rp.y - E.y);
 
-          const Point ecp =
-              epopolar_transfrom(cp, H, E);
+          // displacement vector
+          const Vec2 flow =
+              ecv - erv;
 
-          //  cos  sin
-          // -sin  cos
-          const Point err(
-              (+erp.x * (ecp.x - erp.x) + erp.y * (ecp.y - erp.y)),
-              (-erp.y * (ecp.x - erp.x) + erp.x * (ecp.y - erp.y)));
+            // length of reference radius vector
+          const _Tp L =
+              std::sqrt(erv[0]*erv[0] + erv[1]*erv[1]);
 
+          // distance to to epipolar line
           _Tp rhs =
-              std::abs(err.y);
+              std::abs(flow.dot(Vec2( -erv[1] / L, erv[0] / L)));
 
           switch(direction) {
-            case EPIPOLAR_MOTION_FORWARD:
-            if ( err.x < 0 ) {
-              rhs -= err.x;
+            case EPIPOLAR_MOTION_FORWARD: {
+              // displacement along epipolar line
+              _Tp rhs2 = flow.dot(Vec2( erv[0] / L, erv[1] / L));
+              if ( rhs2 < 0 ) {
+                rhs -= rhs2;
+              }
+              break;
             }
-            break;
-            case EPIPOLAR_MOTION_BACKWARD:
-            if ( err.x > 0 ) {
-              rhs += err.x;
+            case EPIPOLAR_MOTION_BACKWARD: {
+              // displacement along epipolar line
+              _Tp rhs2 = flow.dot(Vec2( erv[0] / L, erv[1] / L));
+              if ( rhs2 > 0 ) {
+                rhs += rhs2;
+              }
+              break;
             }
-            break;
           }
 
-          return rhs / std::sqrt(erp.x * erp.x + erp.y * erp.y);
+          return rhs;// / std::sqrt(erp.x * erp.x + erp.y * erp.y);
         };
 
   class c_levmar_solver_callback:

@@ -636,22 +636,15 @@ static inline _Tp compute_projection_error(const cv::Point2f & cp, const cv::Poi
   const Vec2 ecv(cv[0] / cv[2] - E.x,
       cv[1] / cv[2] - E.y);
 
-//  const Vec2 ecv =
-//      epipolar_transfrom(cp, H, E);
-
   // reference point relative to epipole
   const Vec2 erv(rp.x - E.x,
       rp.y - E.y);
 
-  // length of reference radius vector
-  const _Tp L =
-      std::sqrt(erv[0] * erv[0] + erv[1] * erv[1]);
-
   // displacement vector
   const Vec2 flow =
-      (ecv - erv) / L;
+      (ecv - erv) / std::sqrt(erv[0] * erv[0] + erv[1] * erv[1]);
 
-  // displacement to epipolar line
+  // displacement perpendicular to epipolar line
   _Tp rhs =
       std::abs(flow.dot(Vec2(-erv[1], erv[0])));
 
@@ -659,7 +652,7 @@ static inline _Tp compute_projection_error(const cv::Point2f & cp, const cv::Poi
   switch (direction) {
     case EPIPOLAR_DIRECTION_FORWARD: {
       const _Tp rhs2 =
-          flow.dot(Vec2(erv[0], erv[1]));
+          flow.dot(erv);
       if( rhs2 < 0 ) {
         rhs -= rhs2;
       }
@@ -667,7 +660,7 @@ static inline _Tp compute_projection_error(const cv::Point2f & cp, const cv::Poi
     }
     case EPIPOLAR_DIRECTION_BACKWARD: {
       const _Tp rhs2 =
-          flow.dot(Vec2(erv[0], erv[1]));
+          flow.dot(erv);
       if( rhs2 > 0 ) {
         rhs += rhs2;
       }

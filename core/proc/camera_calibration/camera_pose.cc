@@ -590,18 +590,11 @@ template<class _Tp>
 static inline cv::Vec<_Tp, 2> epipolar_transfrom(const cv::Point_<_Tp> & p, const cv::Matx<_Tp, 3, 3> & H,
     const cv::Point_<_Tp> & E)
 {
-  cv::Vec<_Tp, 3> v =
+  const cv::Vec<_Tp, 3> v =
       H * cv::Vec<_Tp, 3>(p.x, p.y, 1);
 
-  if( v[2] != 1) {
-
-    //CF_DEBUG("v2=%g", v[2]);
-
-    v[0] /= v[2];
-    v[1] /= v[2];
-  }
-
-  return cv::Vec<_Tp, 2> (v[0] - E.x, v[1] - E.y);
+  return cv::Vec<_Tp, 2>(v[0] / v[2] - E.x,
+      v[1] / v[2] - E.y);
 }
 
 template<class _Tp>
@@ -620,6 +613,67 @@ static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theh
 }
 
 
+/**
+ * compute_projection_errors()
+ *    helper utility for lm_refine_camera_pose()
+ *
+ * Project vector of difference between warped current point and reference point onto
+ * vector originating from epipole towards to reference point.
+ *
+ * Compute rhs error based on components of projected vector.
+ */
+template<class _Tp>
+static inline void compute_projection_errors(const cv::Point2f & cp, const cv::Point2f & rp,
+    const cv::Matx<_Tp, 3, 3> & H, const cv::Point_<_Tp> & E,
+    EPIPOLAR_MOTION_DIRECTION direction,
+    _Tp * deltat,
+    _Tp * deltar)
+{
+  using Vec2 = cv::Vec<_Tp,2>;
+  using Vec3 = cv::Vec<_Tp,3>;
+
+  const Vec3 cv =
+      H * Vec3(cp.x, cp.y, 1);
+
+  // current point relative to epipole
+  const Vec2 ecv(cv[0] / cv[2] - E.x,
+      cv[1] / cv[2] - E.y);
+
+  // reference point relative to epipole
+  const Vec2 erv(rp.x - E.x,
+      rp.y - E.y);
+
+  // displacement vector
+  const Vec2 flow =
+      ecv - erv;
+
+  // length of reference radius vector
+  const _Tp L =
+      std::sqrt(erv[0] * erv[0] + erv[1] * erv[1]);
+
+  // displacement to epipolar line
+  *deltat =
+      flow.dot(Vec2(-erv[1] / L, erv[0] / L));
+
+  // displacement along epipolar line
+  switch (direction) {
+    case EPIPOLAR_DIRECTION_FORWARD: {
+      if( (*deltar = flow.dot(Vec2(erv[0] / L, erv[1] / L))) > 0 ) {
+        *deltar = 0;
+      }
+      break;
+    }
+    case EPIPOLAR_DIRECTION_BACKWARD: {
+      if( (*deltar = flow.dot(Vec2(erv[0] / L, erv[1] / L))) < 0 ) {
+        *deltar = 0;
+      }
+      break;
+    }
+    default: // don't touch deltar
+      // *deltar = 0;
+      break;
+  }
+}
 
 
 /**
@@ -663,59 +717,6 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       [](const std::vector<_Tp> & p) -> Vec3 {
           return from_spherical(p[3], p[4]);
       };
-
-
-  /*
-   * Project vector of difference between warped current point and reference point onto
-   * vector originating from epipole towards to reference point.
-   *
-   * Compute rhs error based on components of projected vector.
-   */
-  static const auto compute_projection_error =
-      [](const cv::Point2f & cp, const cv::Point2f & rp, const Matx33 & H, const Point & E,
-          EPIPOLAR_MOTION_DIRECTION direction) -> _Tp {
-
-          // current point relative to epipole
-          const Vec2 ecv =
-              epipolar_transfrom(cp, H, E);
-
-          // reference point relative to epipole
-          const Vec2 erv(rp.x - E.x,
-              rp.y - E.y);
-
-          // displacement vector
-          const Vec2 flow =
-              ecv - erv;
-
-            // length of reference radius vector
-          const _Tp L =
-              std::sqrt(erv[0]*erv[0] + erv[1]*erv[1]);
-
-          // distance to to epipolar line
-          _Tp rhs =
-              std::abs(flow.dot(Vec2( -erv[1] / L, erv[0] / L)));
-
-          switch(direction) {
-            case EPIPOLAR_MOTION_FORWARD: {
-              // displacement along epipolar line
-              _Tp rhs2 = flow.dot(Vec2( erv[0] / L, erv[1] / L));
-              if ( rhs2 < 0 ) {
-                rhs -= rhs2;
-              }
-              break;
-            }
-            case EPIPOLAR_MOTION_BACKWARD: {
-              // displacement along epipolar line
-              _Tp rhs2 = flow.dot(Vec2( erv[0] / L, erv[1] / L));
-              if ( rhs2 > 0 ) {
-                rhs += rhs2;
-              }
-              break;
-            }
-          }
-
-          return rhs;// / std::sqrt(erp.x * erp.x + erp.y * erp.y);
-        };
 
   class c_levmar_solver_callback:
       public c_levmar_solver::callback
@@ -794,9 +795,9 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           direction;
 
       const EPIPOLAR_MOTION_DIRECTION direction2 =
-          direction == EPIPOLAR_MOTION_FORWARD ? EPIPOLAR_MOTION_BACKWARD :
-          direction == EPIPOLAR_MOTION_BACKWARD ? EPIPOLAR_MOTION_FORWARD :
-              EPIPOLAR_MOTION_BOTH;
+          direction == EPIPOLAR_DIRECTION_FORWARD ? EPIPOLAR_DIRECTION_BACKWARD :
+          direction == EPIPOLAR_DIRECTION_BACKWARD ? EPIPOLAR_DIRECTION_FORWARD :
+              EPIPOLAR_DIRECTION_IGNORE;
 
       const Matx33 Hf = camera_matrix * build_rotation(A) * camera_matrix_inv;
       const Point Ef = compute_epipole(camera_matrix, T);
@@ -804,27 +805,46 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       const Matx33 Hi = camera_matrix * build_rotation(-A) * camera_matrix_inv;
       const Point Ei = compute_epipole(camera_matrix, -T);
 
-      rhs.resize(2 * N);
+      if ( direction == EPIPOLAR_DIRECTION_IGNORE ) {
+        rhs.resize(2 * N);
+      }
+      else {
+        rhs.resize(4 * N);
+      }
 
 #if HAVE_TBB
       tbb::parallel_for(tbb_range(0, N, tbb_grain_size),
           [this, &rhs, Hf, Ef, Hi, Ei, N, direction1, direction2](const tbb_range & range) {
+            _Tp deltat1 = 0, deltar1 = 0;
+            _Tp deltat2 = 0, deltar2 = 0;
             for( int i = range.begin(), n = range.end(); i < n; ++i ) {
 #else
+            _Tp deltat1 = 0, deltar1 = 0;
+            _Tp deltat2  = 0, deltar2 = 0;
             for( int i = 0; i < N; ++i ) {
 #endif
-              rhs[2 * i] = std::min(robust_threshold,
-                  compute_projection_error(current_keypoints[i],
-                      reference_keypoints[i],
-                      Hf, Ef,
-                      direction1));
+              compute_projection_errors(current_keypoints[i],
+                  reference_keypoints[i],
+                  Hf, Ef,
+                  direction1,
+                  &deltat1, &deltar1);
 
-              rhs[2 * i + 1] = std::min(robust_threshold,
-                  compute_projection_error(reference_keypoints[i],
-                      current_keypoints[i],
-                      Hi, Ei,
-                      direction2));
+              compute_projection_errors(reference_keypoints[i],
+                  current_keypoints[i],
+                  Hi, Ei,
+                  direction2,
+                  &deltat2, &deltar2);
 
+              if ( direction1 == EPIPOLAR_DIRECTION_IGNORE ) {
+                rhs[2 * i + 0] = std::min(robust_threshold, deltat1);
+                rhs[2 * i + 1] = std::min(robust_threshold, deltat2);
+              }
+              else {
+                rhs[4 * i + 0] = std::min(robust_threshold, deltat1);
+                rhs[4 * i + 1] = std::min(robust_threshold, deltar1);
+                rhs[4 * i + 2] = std::min(robust_threshold, deltat2);
+                rhs[4 * i + 3] = std::min(robust_threshold, deltar2);
+              }
             }
 #if HAVE_TBB
       });
@@ -883,20 +903,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 
   const EPIPOLAR_MOTION_DIRECTION direction =
       opts ? opts->direction :
-          EPIPOLAR_MOTION_BOTH;
-
-  /*
-   * The translation vector between frames is defined up to scale.
-   * Find the translation component of maximal magnitude and fix it
-   * iTmax = argmax(i, abs( T[i] ) )
-   */
-//  _Tp Tfix = T(0);
-//  int iTfix = 0;
-//  for( int i = 1; i < 3; ++i ) {
-//    if( std::abs(T[i]) > std::abs(Tfix) ) {
-//      Tfix = T[iTfix = i];
-//    }
-//  }
+          EPIPOLAR_DIRECTION_IGNORE;
 
   /*
    * Pack parameters into cv::Mat1d for levmar
@@ -927,11 +934,6 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   p[1] = A(1);
   p[2] = A(2);
   to_spherical(Vec3(T), &p[3], &p[4]);
-//  for( int i = 0, j = 3; i < 3; ++i ) {
-//    if( i != iTfix ) {
-//      p[j++] = T[i];
-//    }
-//  }
 
   for ( int ii = 0; ii < max_iterations; ++ii ) {
 
@@ -958,7 +960,10 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
         return false;
       }
 
-      CF_DEBUG("ii=%d rmse = %g num_inliers = %d / %zu", ii, lm.rmse(), num_inliers, current_keypoints.size());
+      CF_DEBUG("ii=%d rmse = %g num_inliers = %d / %zu",
+          ii, lm.rmse(),
+          num_inliers,
+          current_keypoints.size());
 
       if( num_inliers < 8 ) {
         break;
@@ -986,9 +991,9 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           direction;
 
       const EPIPOLAR_MOTION_DIRECTION direction2 =
-          direction == EPIPOLAR_MOTION_FORWARD ? EPIPOLAR_MOTION_BACKWARD :
-          direction == EPIPOLAR_MOTION_BACKWARD ? EPIPOLAR_MOTION_FORWARD :
-              EPIPOLAR_MOTION_BOTH;
+          direction == EPIPOLAR_DIRECTION_FORWARD ? EPIPOLAR_DIRECTION_BACKWARD :
+          direction == EPIPOLAR_DIRECTION_BACKWARD ? EPIPOLAR_DIRECTION_FORWARD :
+              EPIPOLAR_DIRECTION_IGNORE;
 
       const Vec3 A =
           unpack_A(p);
@@ -1008,6 +1013,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       const Point Ei =
           compute_epipole(camera_matrix, -T);
 
+      _Tp deltat = 0, deltar = 0;
+
       for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
         if( inliers[i][0] ) {
 
@@ -1017,27 +1024,29 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           const cv::Point2f & rp =
               reference_keypoints[i];
 
-          const _Tp rhs1 =
-              compute_projection_error(cp,
-                  rp,
-                  Hf,
-                  Ef,
-                  direction1);
+          compute_projection_errors(cp,
+              rp,
+              Hf,
+              Ef,
+              direction1,
+              &deltat,
+              &deltar);
 
-          if( rhs1 > 5 * rmse ) {
+          if( std::abs(deltat) > 5 * rmse || std::abs(deltar) > 5 * rmse) {
             inliers[i][0] = 0;
             ++num_outliers;
             continue;
           }
 
-          const _Tp rhs2 =
-              compute_projection_error(rp,
-                  cp,
-                  Hi,
-                  Ei,
-                  direction2);
+          compute_projection_errors(rp,
+              cp,
+              Hi,
+              Ei,
+              direction2,
+              &deltat,
+              &deltar);
 
-          if( rhs2 > 5 * rmse ) {
+          if( std::abs(deltat) > 5 * rmse || std::abs(deltar) > 5 * rmse) {
             inliers[i][0] = 0;
             ++num_outliers;
             continue;
@@ -1302,10 +1311,10 @@ template<>
 const c_enum_member * members_of<EPIPOLAR_MOTION_DIRECTION>()
 {
   static const c_enum_member members[] = {
-      {EPIPOLAR_MOTION_FORWARD, "FORWARD", "Assume forward camera motion"},
-      {EPIPOLAR_MOTION_BACKWARD, "BACKWARD", "Assume backward camera motion"},
-      {EPIPOLAR_MOTION_BOTH, "BOTH", "Don't use motion direction assumptions"},
-      {EPIPOLAR_MOTION_BOTH},
+      {EPIPOLAR_DIRECTION_FORWARD, "FORWARD", "Assume forward camera motion"},
+      {EPIPOLAR_DIRECTION_BACKWARD, "BACKWARD", "Assume backward camera motion"},
+      {EPIPOLAR_DIRECTION_IGNORE, "IGNORE", "Don't use motion direction assumptions"},
+      {EPIPOLAR_DIRECTION_IGNORE},
   };
 
   return members;

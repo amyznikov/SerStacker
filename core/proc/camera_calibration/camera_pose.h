@@ -470,9 +470,9 @@ bool estimate_camera_pose_and_derotation_homography(
  *  */
 
 enum EPIPOLAR_MOTION_DIRECTION {
-  EPIPOLAR_MOTION_FORWARD,
-  EPIPOLAR_MOTION_BACKWARD,
-  EPIPOLAR_MOTION_BOTH
+  EPIPOLAR_DIRECTION_FORWARD,
+  EPIPOLAR_DIRECTION_BACKWARD,
+  EPIPOLAR_DIRECTION_IGNORE
 };
 
 struct c_lm_camera_pose_options
@@ -482,7 +482,7 @@ struct c_lm_camera_pose_options
   double epsx = 1e-5;
   int max_iterations = 3;
   int max_levmar_iterations = 100;
-  EPIPOLAR_MOTION_DIRECTION direction = EPIPOLAR_MOTION_FORWARD;
+  EPIPOLAR_MOTION_DIRECTION direction = EPIPOLAR_DIRECTION_FORWARD;
 };
 
 /**

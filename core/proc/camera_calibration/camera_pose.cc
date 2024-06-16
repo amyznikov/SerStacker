@@ -780,26 +780,25 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           direction == EPIPOLAR_MOTION_BACKWARD ? EPIPOLAR_MOTION_FORWARD :
               EPIPOLAR_MOTION_BOTH;
 
-      const Matx33 R = build_rotation(A);
-      const Matx33 H = camera_matrix * R * camera_matrix_inv;
-      const Point E = compute_epipole(camera_matrix, T);
+      const Matx33 Hf = camera_matrix * build_rotation(A) * camera_matrix_inv;
+      const Point Ef = compute_epipole(camera_matrix, T);
 
-      const Matx33 Ri = build_rotation(-A);
-      const Matx33 Hi = camera_matrix * Ri * camera_matrix_inv;
+      const Matx33 Hi = camera_matrix * build_rotation(-A) * camera_matrix_inv;
       const Point Ei = compute_epipole(camera_matrix, -T);
 
       rhs.resize(2 * N);
 
 #if HAVE_TBB
       tbb::parallel_for(tbb_range(0, N, tbb_grain_size),
-          [this, &rhs, H, E, Hi, Ei, N, direction1, direction2](const tbb_range & range) {
+          [this, &rhs, Hf, Ef, Hi, Ei, N, direction1, direction2](const tbb_range & range) {
             for( int i = range.begin(), n = range.end(); i < n; ++i ) {
 #else
             for( int i = 0; i < N; ++i ) {
 #endif
               rhs[2 * i] = std::min(robust_threshold,
                   compute_projection_error(current_keypoints[i],
-                      reference_keypoints[i], H, E,
+                      reference_keypoints[i],
+                      Hf, Ef,
                       direction1));
 
               rhs[2 * i + 1] = std::min(robust_threshold,
@@ -963,24 +962,69 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       const double rmse =
           lm.rmse();
 
-      const Matx33 RR = build_rotation(unpack_A(p));
-      const Point EE = compute_epipole(camera_matrix, unpack_T(p));
-      const Matx33 HH = camera_matrix * RR * camera_matrix_inv;
+
+      // compute projection error and apply robust function
+      const EPIPOLAR_MOTION_DIRECTION direction1 =
+          direction;
+
+      const EPIPOLAR_MOTION_DIRECTION direction2 =
+          direction == EPIPOLAR_MOTION_FORWARD ? EPIPOLAR_MOTION_BACKWARD :
+          direction == EPIPOLAR_MOTION_BACKWARD ? EPIPOLAR_MOTION_FORWARD :
+              EPIPOLAR_MOTION_BOTH;
+
+      const Vec3 A =
+          unpack_A(p);
+
+      const Vec3 T =
+          unpack_T(p);
+
+      const Matx33 Hf =
+          camera_matrix * build_rotation(A) * camera_matrix_inv;
+
+      const Point Ef =
+          compute_epipole(camera_matrix, T);
+
+      const Matx33 Hi =
+          camera_matrix * build_rotation(-A) * camera_matrix_inv;
+
+      const Point Ei =
+          compute_epipole(camera_matrix, -T);
 
       for( int i = 0, j = 0, n = inliers.rows; i < n; ++i ) {
         if( inliers[i][0] ) {
 
-          const _Tp rhs =
-              compute_projection_error(current_keypoints[i],
-                  reference_keypoints[i],
-                  HH,
-                  EE,
-                  direction);
+          const cv::Point2f & cp =
+              current_keypoints[i];
 
-          if( rhs > 5 * rmse ) {
+          const cv::Point2f & rp =
+              reference_keypoints[i];
+
+          const _Tp rhs1 =
+              compute_projection_error(cp,
+                  rp,
+                  Hf,
+                  Ef,
+                  direction1);
+
+          if( rhs1 > 5 * rmse ) {
             inliers[i][0] = 0;
             ++num_outliers;
+            continue;
           }
+
+          const _Tp rhs2 =
+              compute_projection_error(rp,
+                  cp,
+                  Hi,
+                  Ei,
+                  direction2);
+
+          if( rhs2 > 5 * rmse ) {
+            inliers[i][0] = 0;
+            ++num_outliers;
+            continue;
+          }
+
         }
       }
     }

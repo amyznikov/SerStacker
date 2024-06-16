@@ -304,7 +304,7 @@ inline cv::Point_<_Tp> compute_epipole(const cv::Matx<_Tp, 3, 3> & camera_matrix
   const cv::Vec<_Tp, 3> E =
       camera_matrix * T;
 
-  return cv::Point(E[0] / E[2], E[1] / E[2]);
+  return cv::Point_<_Tp> (E[0] / E[2], E[1] / E[2]);
 }
 
 /*

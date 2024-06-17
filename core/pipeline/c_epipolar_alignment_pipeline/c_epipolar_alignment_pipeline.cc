@@ -194,6 +194,8 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
     SERIALIZE_OPTION(section, save, camera_pose_options_, max_levmar_iterations);
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsx);
     SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
+    SERIALIZE_OPTION(section, save, camera_pose_options_, lm);
+
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -289,6 +291,7 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeli
       PIPELINE_CTL(ctrls, camera_pose_options_.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
       PIPELINE_CTL(ctrls, camera_pose_options_.epsx, "levmar epsx", "levmar epsx parameter");
       PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
+      PIPELINE_CTL(ctrls, camera_pose_options_.lm, "lm", "lm method");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 

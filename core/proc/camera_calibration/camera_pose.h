@@ -475,6 +475,11 @@ enum EPIPOLAR_MOTION_DIRECTION {
   EPIPOLAR_DIRECTION_IGNORE
 };
 
+enum LM_METHOD {
+  LM_METHOD_1,
+  LM_METHOD_2,
+};
+
 struct c_lm_camera_pose_options
 {
   double robust_threshold = 5.0;
@@ -483,6 +488,7 @@ struct c_lm_camera_pose_options
   int max_iterations = 3;
   int max_levmar_iterations = 100;
   EPIPOLAR_MOTION_DIRECTION direction = EPIPOLAR_DIRECTION_FORWARD;
+  LM_METHOD lm = LM_METHOD_1;
 };
 
 /**
@@ -494,6 +500,13 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     const std::vector<cv::Point2f> & reference_keypoints,
     cv::Mat1b & inliers,
     const c_lm_camera_pose_options * opts = nullptr);
+
+bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
+    const cv::Matx33d & _camera_matrix,
+    const std::vector<cv::Point2f> & current_keypoints,
+    const std::vector<cv::Point2f> & reference_keypoints,
+    cv::Mat1b & inliers,
+    const c_lm_camera_pose_options * opts);
 
 bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,

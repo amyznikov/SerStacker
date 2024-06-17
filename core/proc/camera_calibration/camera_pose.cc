@@ -14,9 +14,13 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+//#undef HAVE_TBB
+//#define HAVE_TBB 0
 
 #if HAVE_TBB
-# include <tbb/tbb.h>
+#include <tbb/tbb.h>
+typedef tbb::blocked_range<int> tbb_range;
+static constexpr int tbb_grain_size = 256;
 #endif
 
 
@@ -42,6 +46,16 @@ const c_enum_member * members_of<ESSENTIAL_MATRIX_ESTIMATION_METHOD>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<LM_METHOD>()
+{
+  static const c_enum_member members[] = {
+      { LM_METHOD_1, "LM_METHOD_1", "" },
+      { LM_METHOD_2, "LM_METHOD_2", "" },
+      { LM_METHOD_1 },
+  };
+  return members;
+}
 
 /**
  * Compute two (left and right) epipoles from given fundamental matrix F.
@@ -682,6 +696,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     cv::Mat1b & inliers,
     const c_lm_camera_pose_options * opts)
 {
+  INSTRUMENT_REGION("");
+
   typedef float
       _Tp;
 
@@ -775,12 +791,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
      */
     bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const override
     {
-      INSTRUMENT_REGION("");
-
-#if HAVE_TBB
-      typedef tbb::blocked_range<int> tbb_range;
-      constexpr int tbb_grain_size = 256;
-#endif
+      // INSTRUMENT_REGION("");
 
       if ( current_keypoints.size() < 5 ) {
         CF_ERROR("current_keypoints.size()=%zu < 5", current_keypoints.size());
@@ -1381,16 +1392,34 @@ bool lm_camera_pose_and_derotation_homography(/* in */ const cv::Matx33d & camer
   //
   // Extimate camera pose using levmar
   //
-  fOk =
-      lm_refine_camera_pose(A, T,
-          camera_matrix,
-          current_keypoints,
-          reference_keypoints,
-          mask,
-          opts);
+
+  const LM_METHOD lm =
+      opts ? opts->lm :
+          LM_METHOD_1;
+
+  switch (lm) {
+    case LM_METHOD_2:
+      fOk =
+          lm_refine_camera_pose2(A, T,
+              camera_matrix,
+              current_keypoints,
+              reference_keypoints,
+              mask,
+              opts);
+      break;
+    default:
+      fOk =
+          lm_refine_camera_pose(A, T,
+              camera_matrix,
+              current_keypoints,
+              reference_keypoints,
+              mask,
+              opts);
+      break;
+  }
 
   if ( !fOk ) {
-    CF_ERROR("lm_refine_camera_pose3() fails");
+    CF_ERROR("lm_refine_camera_pose() fails");
   }
 
 

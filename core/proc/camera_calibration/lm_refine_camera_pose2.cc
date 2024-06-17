@@ -35,6 +35,19 @@ static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theh
   *theha = std::atan2(std::sqrt(T(0) * T(0) + T(1) * T(1)), T(2));
 }
 
+/* Unpack Euler angles from storage array of levmar parameters */
+template<class _Tp>
+static inline cv::Vec<_Tp, 3> unpack_A(const std::vector<double> & p)
+{
+  return cv::Vec<_Tp, 3>((_Tp)p[0], (_Tp)p[1], (_Tp)p[2]);
+}
+
+/* Unpack camera translation from storage array of levmar parameters */
+template<class _Tp>
+static inline cv::Vec<_Tp, 3> unpack_T(const std::vector<double> & p)
+{
+  return from_spherical<_Tp>(p[3], p[4]);
+}
 
 
 /**
@@ -109,11 +122,10 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     cv::Mat1b & inliers,
     const c_lm_camera_pose_options * opts)
 {
+  INSTRUMENT_REGION("");
+
   typedef float
       _Tp;
-
-  typedef c_levmar2_solver<_Tp>
-    c_levmar2_solver;
 
   typedef cv::Matx<_Tp, 3, 3>
     Matx33;
@@ -126,18 +138,6 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
   typedef cv::Point_<_Tp>
     Point;
-
-  /* Unpack Euler angles from storage array of levmar parameters */
-  static const auto unpack_A =
-      [](const std::vector<_Tp> & p) -> Vec3 {
-        return Vec3(p[0], p[1], p[2]);
-      };
-
-  /* Unpack camera translation from storage array of levmar parameters */
-  static const auto unpack_T =
-      [](const std::vector<_Tp> & p) -> Vec3 {
-          return from_spherical(p[3], p[4]);
-      };
 
   class c_levmar_solver_callback:
       public c_levmar2_solver::callback
@@ -153,7 +153,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     PARAMS P0;
     PARAMS PJF[5];
     PARAMS PJB[5];
-    _Tp Jden[5] = {0};
+    double Jden[5] = {0};
 
 
     std::vector<cv::Point2f> current_keypoints;
@@ -162,7 +162,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     Matx33 camera_matrix_inv;
     Matx33 camera_matrix_t_inv;
     EPIPOLAR_MOTION_DIRECTION direction;
-    _Tp robust_threshold = 10;
+    double robust_threshold = 10;
 
   public:
     c_levmar_solver_callback(const std::vector<cv::Point2f> & _current_keypoints,
@@ -196,18 +196,12 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       }
     }
 
-    void set_robust_threshold(_Tp v )
+    void set_robust_threshold(double v )
     {
       robust_threshold = v;
     }
 
-    bool thread_safe_compute() const override
-    {
-      return false;
-    }
-
-
-    inline _Tp robust_function(_Tp v) const
+    inline double robust_function(double v) const
     {
       return std::min(v, robust_threshold);
     }
@@ -218,13 +212,13 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       return current_keypoints.size();
     }
 
-    void set_params(const std::vector<_Tp> & p, PARAMS * P)
+    void set_params(const std::vector<double> & p, PARAMS * P)
     {
       const Vec3 A =
-          unpack_A(p);
+          unpack_A<_Tp>(p);
 
       const Vec3 T =
-          unpack_T(p);
+          unpack_T<_Tp>(p);
 
       P->Hf = camera_matrix * build_rotation(A) * camera_matrix_inv;
       P->Hi = camera_matrix * build_rotation(-A) * camera_matrix_inv;
@@ -232,7 +226,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       P->Ei = compute_epipole(camera_matrix, -T);
     }
 
-    _Tp compute_rhs(int i, const PARAMS & P)
+    double compute_rhs(int i, const PARAMS & P)
     {
       // compute projection error and apply robust function
       const EPIPOLAR_MOTION_DIRECTION direction1 =
@@ -248,13 +242,13 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       const Point & Ef = P.Ef;
       const Point & Ei = P.Ei;
 
-      const _Tp rhs1 =
+      const double rhs1 =
           compute_projection_error(current_keypoints[i],
               reference_keypoints[i],
               Hf, Ef,
               direction1);
 
-      const _Tp rhs2 =
+      const double rhs2 =
           compute_projection_error(reference_keypoints[i],
               current_keypoints[i],
               Hi, Ei,
@@ -264,21 +258,22 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     }
 
 
-    bool set_params(const std::vector<_Tp> & p, bool fjac) override
+    bool set_params(const std::vector<double> & p, bool fjac) override
     {
       set_params(p, &P0);
 
       if( fjac ) {
 
-        std::vector<_Tp> P = p;
+        std::vector<double> P =
+            p;
 
         for( int j = 0, n = P.size(); j < n; ++j ) {
 
-          const _Tp v =
+          const double v =
               P[j];
 
-          const _Tp delta =
-              (std::max)((_Tp) (1e-6), (_Tp) (1e-4) * std::abs(v));
+          const double delta =
+              (std::max)(1e-6, 1e-4 * std::abs(v));
 
           P[j] = v + delta;
           set_params(P, &PJF[j]);
@@ -286,7 +281,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
           P[j] = v - delta;
           set_params(P, &PJB[j]);
 
-          Jden[j] = (_Tp) (0.5) / delta;
+          Jden[j] = 0.5 / delta;
 
           P[j] = v;
         }
@@ -295,18 +290,16 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       return true;
     }
 
-    bool compute(int i, _Tp * rhs, _Tp J[/* params.size*/] )
+    double compute(int i, double J[/* params.size*/] )
     {
-      * rhs = compute_rhs(i, P0);
-
       if ( J ) {
 
         for ( int j = 0; j < 5; ++j ) {
 
-          const _Tp rhs1 =
+          const double rhs1 =
               compute_rhs(i, PJF[j]);
 
-          const _Tp rhs2 =
+          const double rhs2 =
               compute_rhs(i, PJB[j]);
 
           J[j] =
@@ -314,83 +307,9 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
         }
       }
 
-      return true;
+      return compute_rhs(i, P0);
     }
 
-//
-//
-//    /**
-//     * compute rhs errors for specified vector of parameters
-//     */
-//    bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const override
-//    {
-//      INSTRUMENT_REGION("");
-//
-//#if HAVE_TBB
-//      typedef tbb::blocked_range<int> tbb_range;
-//      constexpr int tbb_grain_size = 256;
-//#endif
-//
-//      if ( current_keypoints.size() < 5 ) {
-//        CF_ERROR("current_keypoints.size()=%zu < 5", current_keypoints.size());
-//        return false;
-//      }
-//
-//      const Vec3 A = unpack_A(p);
-//      const Vec3 T = unpack_T(p);
-//      const size_t N = current_keypoints.size();
-//
-//      // compute projection error and apply robust function
-//      const EPIPOLAR_MOTION_DIRECTION direction1 =
-//          direction;
-//
-//      const EPIPOLAR_MOTION_DIRECTION direction2 =
-//          direction == EPIPOLAR_DIRECTION_FORWARD ? EPIPOLAR_DIRECTION_BACKWARD :
-//          direction == EPIPOLAR_DIRECTION_BACKWARD ? EPIPOLAR_DIRECTION_FORWARD :
-//              EPIPOLAR_DIRECTION_IGNORE;
-//
-//      const Matx33 Hf =
-//          camera_matrix * build_rotation(A) * camera_matrix_inv;
-//
-//      const Point Ef =
-//          compute_epipole(camera_matrix, T);
-//
-//      const Matx33 Hi =
-//          camera_matrix * build_rotation(-A) * camera_matrix_inv;
-//
-//      const Point Ei =
-//          compute_epipole(camera_matrix, -T);
-//
-//      rhs.resize(N);
-//
-//#if HAVE_TBB
-//      tbb::parallel_for(tbb_range(0, N, tbb_grain_size),
-//          [this, &rhs, Hf, Ef, Hi, Ei, N, direction1, direction2](const tbb_range & range) {
-//            for( int i = range.begin(), n = range.end(); i < n; ++i ) {
-//#else
-//            for( int i = 0; i < N; ++i ) {
-//#endif
-//              const _Tp rhs1 =
-//                compute_projection_error(current_keypoints[i],
-//                    reference_keypoints[i],
-//                    Hf, Ef,
-//                    direction1);
-//
-//              const _Tp rhs2 =
-//                compute_projection_error(reference_keypoints[i],
-//                    current_keypoints[i],
-//                    Hi, Ei,
-//                    direction2);
-//
-//              rhs[i] =
-//                  robust_function(rhs1 + rhs2);
-//            }
-//#if HAVE_TBB
-//      });
-//#endif
-//
-//      return true;
-//    }
   };
 
   ////////////////////////////////////////
@@ -447,7 +366,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
   /*
    * Pack parameters into cv::Mat1d for levmar
    * */
-  std::vector<_Tp> p(5);
+  std::vector<double> p(5);
 
   int num_inliers =
       inliers.empty() ? current_keypoints.size() :
@@ -472,7 +391,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
   p[0] = A(0);
   p[1] = A(1);
   p[2] = A(2);
-  to_spherical(Vec3(T), &p[3], &p[4]);
+  to_spherical(T, &p[3], &p[4]);
 
   for ( int ii = 0; ii < max_iterations; ++ii ) {
 
@@ -540,10 +459,10 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
               EPIPOLAR_DIRECTION_IGNORE;
 
       const Vec3 A =
-          unpack_A(p);
+          unpack_A<_Tp>(p);
 
       const Vec3 T =
-          unpack_T(p);
+          unpack_T<_Tp>(p);
 
       const Matx33 Hf =
           camera_matrix * build_rotation(A) * camera_matrix_inv;
@@ -604,8 +523,11 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
    * Unpack euler angles and translation vector from levmar parameters array
    * */
 
-  A = unpack_A(p);
-  T = unpack_T(p);
+  A =
+      unpack_A<double>(p);
+
+  T =
+      unpack_T<double>(p);
 
   return true;
 }

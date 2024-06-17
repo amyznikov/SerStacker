@@ -12,7 +12,6 @@
 #define __c_levmar_solver_h__
 
 #include <opencv2/opencv.hpp>
-//#include <core/proc/median.h>
 #include <core/debug.h>
 
 #if HAVE_TBB

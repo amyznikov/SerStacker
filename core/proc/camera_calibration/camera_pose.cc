@@ -721,7 +721,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     Matx33 camera_matrix_inv;
     Matx33 camera_matrix_t_inv;
     EPIPOLAR_MOTION_DIRECTION direction;
-    _Tp robust_threshold = 5;
+    _Tp robust_threshold = 10;
 
   public:
     c_levmar_solver_callback(const std::vector<cv::Point2f> & _current_keypoints,

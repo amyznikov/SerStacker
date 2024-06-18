@@ -206,8 +206,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       return std::min(v, robust_threshold);
     }
 
-
-    int num_equations() override
+    int num_equations() final
     {
       return current_keypoints.size();
     }
@@ -258,7 +257,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     }
 
 
-    bool set_params(const std::vector<double> & p, bool fjac) override
+    bool set_params(const std::vector<double> & p, bool fjac) final
     {
       set_params(p, &P0);
 
@@ -290,7 +289,7 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       return true;
     }
 
-    double compute(int i, double J[/* params.size*/] )
+    double compute(int i, double J[/* params.size*/] ) final
     {
       if ( J ) {
 

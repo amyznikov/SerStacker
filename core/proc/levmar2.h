@@ -22,6 +22,12 @@
 
 class c_levmar2_solver
 {
+protected:
+  double rmse_ = -1;
+  double epsx_ = 1e-6;
+  double epsf_ = 1e-6;
+  int max_iterations_ = 100;
+
 public:
   struct callback
   {
@@ -30,8 +36,8 @@ public:
     }
 
     virtual int num_equations() = 0;
-    virtual bool set_params(const std::vector<double> & params, bool jac) = 0;
-    virtual double compute(int i,  double Ji[/* params.size*/] = nullptr) = 0;
+    virtual bool set_params(const std::vector<double> & params, bool fjac) = 0;
+    virtual double compute(int i, double J[/* params.size*/] = nullptr) = 0;
   };
 
 
@@ -46,7 +52,9 @@ public:
   {
   }
 
-  virtual ~c_levmar2_solver() = default;
+  virtual ~c_levmar2_solver()
+  {
+  }
 
   void set_max_iterations(int v)
   {
@@ -93,24 +101,20 @@ public:
     typedef tbb::blocked_range<int>
       tbb_range;
 
-    rhsmax_ = 0;
-
     struct Comp
     {
-      callback * cb;
-      const std::vector<double> * p;
+      callback * const cb ;
+      const std::vector<double> * const p;
       cv::Mat1d A;
       cv::Mat1d v;
       double rms;
-      double rhsmax;
 
       Comp(callback * _cb, const std::vector<double> * params) :
         cb(_cb),
         p(params),
         A(params->size(), params->size(), 0.0),
         v(params->size(), 1, 0.0),
-        rms(0),
-        rhsmax(0)
+        rms(0)
       {
       }
 
@@ -119,8 +123,7 @@ public:
         p(x.p),
         A(x.A.size(), 0.0),
         v(x.v.size(), 0.0),
-        rms(0),
-        rhsmax(0)
+        rms(0)
       {
       }
 
@@ -137,27 +140,23 @@ public:
           rhs = cb->compute(k, J);
           rms += rhs * rhs;
 
-          if( std::abs(rhs) > rhsmax ) {
-            rhsmax = std::abs(rhs);
-          }
-
           for( int i = 0; i < M; ++i ) {
+
+            v[i][0] += J[i] * rhs;
+
             for( int j = 0; j < M; ++j ) {
               A[i][j] += J[i] * J[j];
             }
 
-            v[i][0] += J[i] * rhs;
           }
         }
       }
 
-      void join (const Comp & rhs) {
+      void join (const Comp & rhs)
+      {
         A += rhs.A;
         v += rhs.v;
         rms += rhs.rms;
-        if ( rhs.rhsmax > rhsmax ) {
-          rhsmax = rhs.rhsmax;
-        }
       }
 
     };
@@ -167,7 +166,6 @@ public:
 
     A = std::move(comp.A);
     v = std::move(comp.v);
-    rhsmax_ = comp.rhsmax;
 
     return comp.rms;
 #else
@@ -190,10 +188,6 @@ public:
           cb.compute(k, J);
 
       rms += rhs * rhs;
-
-      if( std::abs(rhs) > rhsmax_ ) {
-        rhsmax_ = std::abs(rhs);
-      }
 
       for( int i = 0; i < M; ++i ) {
         for( int j = 0; j < M; ++j ) {
@@ -222,51 +216,40 @@ public:
       callback * cb;
       const std::vector<double> * p;
       double rms;
-      double rhsmax;
 
       Comp(callback * _cb, const std::vector<double> * params) :
         cb(_cb),
         p(params),
-        rms(0),
-        rhsmax(0)
-      {
+        rms(0)      {
       }
 
       Comp(const Comp &x, tbb::split) :
         cb(x.cb),
         p(x.p),
-        rms(0),
-        rhsmax(0)
+        rms(0)
       {
       }
 
       void operator()(const tbb_range & r)
       {
-        double rhs;
-
         for( int k = r.begin(); k < r.end(); ++k ) {
 
-          rhs = cb->compute(k);
-          rms += rhs * rhs;
+          const double rhs =
+              cb->compute(k);
 
-          if( std::abs(rhs) > rhsmax ) {
-            rhsmax = std::abs(rhs);
-          }
+          rms += rhs * rhs;
         }
       }
 
-      void join (const Comp & rhs) {
+      void join (const Comp & rhs)
+      {
         rms += rhs.rms;
-        if ( rhs.rhsmax > rhsmax ) {
-          rhsmax = rhs.rhsmax;
-        }
       }
 
     };
 
     Comp comp(&cb, &params);
     tbb::parallel_reduce(tbb_range(0, cb.num_equations()), comp);
-    rhsmax_ = comp.rhsmax;
 
     return comp.rms;
 
@@ -280,10 +263,6 @@ public:
           cb.compute(k);
 
       rms += rhs * rhs;
-
-      if ( std::abs(rhs) > rhsmax_ ) {
-        rhsmax_ = std::abs(rhs);
-      }
     }
 
     return rms;
@@ -293,34 +272,26 @@ public:
 
   virtual int run(callback & cb, std::vector<double> & params)
   {
-    std::vector<double> xd,  D;
-
     const int M =
         params.size();
-
-    std::vector<double> x =
-        params;
-
-    cv::Mat1d A(M, M);
-    cv::Mat1d v(M, 1);
-
-    cv::Mat1d Ap;
-    cv::Mat1d d, temp_d;
-
-    constexpr double eps =
-        std::numeric_limits<double>::epsilon();
-
-
-    rmse_ =
-        compute_av(cb, x, A, v);
-
-    A.diag().copyTo(D);
 
     const double Rlo = 0.25;
     const double Rhi = 0.75;
 
+    constexpr double eps =
+        std::numeric_limits<double>::epsilon();
+
+    std::vector<double> xd,  D;
+    cv::Mat1d A, Ap, v;
+    cv::Mat1d d, temp_d;
+
     double lambda = 1;
     double lc = 0.75;
+
+    rmse_ =
+        compute_av(cb, params, A, v);
+
+    A.diag().copyTo(D);
 
     int iteration = 0;
 
@@ -334,7 +305,7 @@ public:
 
       cv::solve(Ap, v, d, cv::DECOMP_EIG);
 
-      cv::subtract(cv::Mat(x), d, xd);
+      cv::subtract(cv::Mat(params), d, xd);
 
       const double Sd =
           compute_rhs(cb, xd);
@@ -389,50 +360,37 @@ public:
 
       if( Sd < rmse_ ) {
 
-        //rmse_ = Sd;
-        std::swap(x, xd);
+        std::swap(params, xd);
 
-        rmse_ =
-            compute_av(cb, x, A, v);
+        if( std::sqrt(Sd / cb.num_equations()) <= epsf_ ) {
+          rmse_ = Sd;
+          break;
+        }
       }
 
-
-      ++iteration;
-
-      const double d_norm =
-          cv::norm(d, cv::NORM_INF);
-
-//      CF_DEBUG(">> iteration=%d/%d d_norm=%g/%g rhsmax_=%g/%g",
-//          iteration, max_iterations_,
-//          d_norm, epsx_,
-//          rhsmax_, epsf_);
-
-      // XXX: Check if converged
-      const bool proceed =
-          iteration < max_iterations_ &&
-            d_norm >= epsx_ &&
-              rhsmax_ >= epsf_;
-
-      if( !proceed ) {
+      if ( ++iteration > max_iterations_ ) {
+        rmse_ = std::min(rmse_, Sd);
         break;
       }
+
+      if ( cv::norm(d, cv::NORM_INF) <= epsx_ ) {
+        rmse_ = std::min(rmse_, Sd);
+        break;
+      }
+
+      if( Sd < rmse_ ) {
+        rmse_ =
+            compute_av(cb, params, A, v);
+      }
+
     }
 
-    // CF_DEBUG("rmse_=%g num_equations=%d rhsmax_=%g / %g ", rmse_, cb.num_equations(), rhsmax_, epsf_);
-
-    params = x;
-    rmse_ = std::sqrt(rmse_ / cb.num_equations());
+    rmse_ =
+        std::sqrt(rmse_ / cb.num_equations());
 
     return iteration;
   }
 
-
-protected:
-  double rmse_ = -1;
-  double rhsmax_ = 0;
-  int max_iterations_ = 100;
-  double epsf_ = 1e-6;
-  double epsx_ = 1e-6;
 };
 
 

@@ -186,12 +186,19 @@ public:
       rms += rhs * rhs;
 
       for( int i = 0; i < M; ++i ) {
-        for( int j = 0; j < M; ++j ) {
+
+        v[i][0] += J[i] * rhs;
+
+        for( int j = 0; j <= i; ++j ) {
           A[i][j] += J[i] * J[j];
         }
 
-        v[i][0] +=
-            J[i] * rhs;
+      }
+    }
+
+    for( int i = 0; i < A.rows; ++i ) {
+      for( int j = i + 1; j < A.cols; ++j ) {
+        A[i][j] = A[j][i];
       }
     }
 
@@ -243,7 +250,7 @@ public:
 
             v[i][0] += J[i] * rhs;
 
-            for( int j = 0; j < M; ++j ) {
+            for( int j = 0; j <= i; ++j ) {
               A[i][j] += J[i] * J[j];
             }
 
@@ -265,6 +272,12 @@ public:
 
     A = std::move(comp.A);
     v = std::move(comp.v);
+
+    for( int i = 0; i < A.rows; ++i ) {
+      for( int j = i + 1; j < A.cols; ++j ) {
+        A[i][j] = A[j][i];
+      }
+    }
 
     return comp.rms;
 #endif

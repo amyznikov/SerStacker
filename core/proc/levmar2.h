@@ -16,6 +16,7 @@
 
 
 #if HAVE_TBB
+# define LM_USE_TBB 1
 # include <tbb/tbb.h>
 #endif
 
@@ -91,13 +92,111 @@ public:
     return rmse_;
   }
 
-  double compute_av(callback & cb, std::vector<double> & params,
+  double compute_rhs(callback & cb, std::vector<double> & params)
+  {
+    cb.set_params(params, false);
+
+#if !LM_USE_TBB
+    double rms = 0;
+
+    for( int k = 0, N = cb.num_equations(); k < N; ++k ) {
+
+      const double rhs =
+          cb.compute(k);
+
+      rms += rhs * rhs;
+    }
+
+    return rms;
+
+#else
+
+    typedef tbb::blocked_range<int>
+      tbb_range;
+
+    struct Comp
+    {
+      callback * cb;
+      const std::vector<double> * p;
+      double rms;
+
+      Comp(callback * _cb, const std::vector<double> * params) :
+          cb(_cb),
+          p(params),
+          rms(0)
+      {
+      }
+
+      Comp(const Comp & x, tbb::split) :
+          cb(x.cb),
+          p(x.p),
+          rms(0)
+      {
+      }
+
+      void operator()(const tbb_range & r)
+      {
+        for( int k = r.begin(); k < r.end(); ++k ) {
+
+          const double rhs =
+              cb->compute(k);
+
+          rms += rhs * rhs;
+        }
+      }
+
+      void join(const Comp & rhs)
+      {
+        rms += rhs.rms;
+      }
+
+    };
+
+    Comp comp(&cb, &params);
+    tbb::parallel_reduce(tbb_range(0, cb.num_equations()), comp);
+
+    return comp.rms;
+#endif
+  }
+
+  double compute_jac(callback & cb, std::vector<double> & params,
       cv::Mat1d & A, cv::Mat1d & v)
   {
     cb.set_params(params, true);
 
-#if HAVE_TBB
+#if !LM_USE_TBB
 
+    const int M =
+        params.size();
+
+    double J[M];
+    double rms = 0;
+
+    A.create(M, M);
+    A.setTo(0);
+
+    v.create(M, 1);
+    v.setTo(0);
+
+    for( int k = 0, N = cb.num_equations(); k < N; ++k ) {
+
+      const double rhs =
+          cb.compute(k, J);
+
+      rms += rhs * rhs;
+
+      for( int i = 0; i < M; ++i ) {
+        for( int j = 0; j < M; ++j ) {
+          A[i][j] += J[i] * J[j];
+        }
+
+        v[i][0] +=
+            J[i] * rhs;
+      }
+    }
+
+    return rms;
+#else
     typedef tbb::blocked_range<int>
       tbb_range;
 
@@ -168,104 +267,6 @@ public:
     v = std::move(comp.v);
 
     return comp.rms;
-#else
-
-    const int M =
-        params.size();
-
-    double J[M];
-    double rms = 0;
-
-    A.create(M, M);
-    A.setTo(0);
-
-    v.create(M, 1);
-    v.setTo(0);
-
-    for( int k = 0, N = cb.num_equations(); k < N; ++k ) {
-
-      const double rhs =
-          cb.compute(k, J);
-
-      rms += rhs * rhs;
-
-      for( int i = 0; i < M; ++i ) {
-        for( int j = 0; j < M; ++j ) {
-          A[i][j] += J[i] * J[j];
-        }
-
-        v[i][0] +=
-            J[i] * rhs;
-      }
-    }
-
-    return rms;
-#endif
-  }
-
-  double compute_rhs(callback & cb, std::vector<double> & params)
-  {
-    cb.set_params(params, false);
-
-#if HAVE_TBB
-    typedef tbb::blocked_range<int>
-      tbb_range;
-
-    struct Comp
-    {
-      callback * cb;
-      const std::vector<double> * p;
-      double rms;
-
-      Comp(callback * _cb, const std::vector<double> * params) :
-        cb(_cb),
-        p(params),
-        rms(0)      {
-      }
-
-      Comp(const Comp &x, tbb::split) :
-        cb(x.cb),
-        p(x.p),
-        rms(0)
-      {
-      }
-
-      void operator()(const tbb_range & r)
-      {
-        for( int k = r.begin(); k < r.end(); ++k ) {
-
-          const double rhs =
-              cb->compute(k);
-
-          rms += rhs * rhs;
-        }
-      }
-
-      void join (const Comp & rhs)
-      {
-        rms += rhs.rms;
-      }
-
-    };
-
-    Comp comp(&cb, &params);
-    tbb::parallel_reduce(tbb_range(0, cb.num_equations()), comp);
-
-    return comp.rms;
-
-#else
-
-    double rms = 0;
-
-    for( int k = 0, N = cb.num_equations(); k < N; ++k ) {
-
-      const double rhs =
-          cb.compute(k);
-
-      rms += rhs * rhs;
-    }
-
-    return rms;
 #endif
   }
 
@@ -275,118 +276,116 @@ public:
     const int M =
         params.size();
 
-    const double Rlo = 0.25;
-    const double Rhi = 0.75;
+    const int N =
+        cb.num_equations();
+
+    const int NM =
+        N - M;
 
     constexpr double eps =
         std::numeric_limits<double>::epsilon();
 
-    std::vector<double> xd,  D;
-    cv::Mat1d A, Ap, v;
-    cv::Mat1d d, temp_d;
+    // determines acceptance of a L-M step
+    constexpr double epsilon_4 =
+        1e-1;
 
-    double lambda = 1;
-    double lc = 0.75;
+    constexpr double Rhi =
+        0.75;
 
-    rmse_ =
-        compute_av(cb, params, A, v);
+    constexpr double Rlo =
+        0.25;
 
-    A.diag().copyTo(D);
+    constexpr double eps4 = 0.1;
+
+    std::vector<double> newparams;
+
+    const double epsfn =
+        epsf_ * epsf_ * NM;
+
+
+
+    cv::Mat1d H, Hp, v, deltap, temp_d;
+    double err = 0, newerr = 0, dp = 0;
+
+    double lambda = 0.1;
 
     int iteration = 0;
 
-    while( 42 ) {
+    while (iteration < max_iterations_) {
 
-      A.copyTo(Ap);
+      err = compute_jac(cb, params, H, v);
+      H.copyTo(Hp);
 
-      for( int i = 0; i < M; i++ ) {
-        Ap[i][i] += lambda * D[i];
-      }
+      /* Solve normal equation for given lambda and Jacobian */
+      do {
+        ++iteration;
 
-      cv::solve(Ap, v, d, cv::DECOMP_EIG);
-
-      cv::subtract(cv::Mat(params), d, xd);
-
-      const double Sd =
-          compute_rhs(cb, xd);
-
-      if( Sd < 0 ) {
-        CF_ERROR("compute() fails: Sd=%g", Sd);
-        return -1;
-      }
-
-      cv::gemm(A, d, -1, v, 2, temp_d);
-
-      const double dS =
-          d.dot(temp_d);
-
-      const double R =
-          (rmse_ - Sd) / (std::abs(dS) > eps ? dS : 1);
-
-      if( R > Rhi ) {
-        lambda /= 2;
-        if( lambda < lc ) {
-          lambda = 0;
-        }
-      }
-      else if( R < Rlo ) {
-        // find new nu if R too low
-
-        const double t =
-            d.dot(v);
-
-        double nu =
-            (Sd - rmse_) / (std::abs(t) > eps ? t : 1) + 2;
-
-        nu = (std::min)((std::max)(nu, 2.), 10.);
-
-        if( lambda == 0 ) {
-
-          cv::invert(A, Ap, cv::DECOMP_EIG);
-
-          double maxval = eps;
-
-          for( int i = 0; i < M; i++ ) {
-            maxval = (std::max)(maxval, std::abs(Ap[i][i]));
-          }
-
-          lambda = lc = 1 / maxval;
-
-          nu /= 2;
+        /* Increase diagonal elements by lambda */
+        for( int i = 0; i < M; ++i ) {
+          H[i][i] = (1 + lambda) * Hp[i][i];
         }
 
-        lambda *= nu;
-      }
+        /* Solve system to define delta and define new value of params */
+        cv::solve(H, v, deltap, cv::DECOMP_EIG);
+        cv::subtract(cv::Mat(params), deltap,  newparams);
 
-      if( Sd < rmse_ ) {
 
-        std::swap(params, xd);
+        /* Compute function for newparams */
 
-        if( std::sqrt(Sd / cb.num_equations()) <= epsf_ ) {
-          rmse_ = Sd;
+        const double preverr = err;
+
+        if( (newerr = compute_rhs(cb, newparams)) < err ) {
+          /* accept new value */
+          err = newerr;
+          std::swap(params, newparams);
+        }
+
+        /* Check for increments in parameters  */
+        if( (dp = cv::norm(deltap, cv::NORM_INF)) < epsx_ ) {
           break;
         }
-      }
 
-      if ( ++iteration > max_iterations_ ) {
-        rmse_ = std::min(rmse_, Sd);
+        /*
+         * Compute update to lambda
+         * */
+
+        cv::gemm(Hp, deltap, -1, v, 2,
+            temp_d);
+
+        const double dS =
+            deltap.dot(temp_d);
+
+        const double rho =
+            (preverr - newerr) / (std::abs(dS) > eps ? dS : 1);
+
+        if( rho > 0.25 ) {
+          lambda = std::max(1e-4, lambda / 5);
+        }
+        else if( lambda < 1 ) {
+          lambda = 1;
+        }
+        else {
+          lambda *= 10;
+        }
+
+        /*
+         * accept new value ?
+         * */
+        if( newerr < preverr ) {
+          break;
+        }
+
+      } while (iteration < max_iterations_);
+
+
+      if( err <= epsfn || dp < epsx_  ) {
         break;
       }
 
-      if ( cv::norm(d, cv::NORM_INF) <= epsx_ ) {
-        rmse_ = std::min(rmse_, Sd);
-        break;
-      }
-
-      if( Sd < rmse_ ) {
-        rmse_ =
-            compute_av(cb, params, A, v);
-      }
-
+      /* new params and lambda were accepted */
     }
 
-    rmse_ =
-        std::sqrt(rmse_ / cb.num_equations());
+    rmse_ = sqrt(err / NM);
 
     return iteration;
   }

@@ -344,7 +344,9 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
    * Setup c_levmar_solver instance
    * */
 
-  c_levmar2_solver lm(100, 1e-7);
+  c_levmar2_solver lm(100, 1e-5);
+
+  double epsx = 1e-5;
 
   if ( opts ) {
     if ( opts->max_levmar_iterations > 0 ) {
@@ -354,7 +356,8 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
       lm.set_epsf(opts->epsf);
     }
     if ( opts->epsx >= 0 ) {
-      lm.set_epsx(opts->epsx);
+      epsx = opts->epsx;
+      //lm.set_epsx(opts->epsx);
     }
   }
 
@@ -412,6 +415,8 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
 
     if ( true ) {
       INSTRUMENT_REGION("run");
+
+      lm.set_epsx(epsx * (1 << (max_iterations - ii)));
 
       iterations =
           lm.run(callback, p);

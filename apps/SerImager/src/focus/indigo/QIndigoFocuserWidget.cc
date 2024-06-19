@@ -1363,7 +1363,7 @@ void QIndigoFocuserWidget::onFocuserSpeedControlValueChanged(int value)
 
 //void QIndigoFocuserWidget::mousePressEvent(QMouseEvent *event)
 //{
-////  CF_DEBUG("H");
+////  
 //
 //  if ( enableMouse_ctl->isChecked() && canMoveFocusNow() ) {
 //
@@ -1389,7 +1389,7 @@ void QIndigoFocuserWidget::onFocuserSpeedControlValueChanged(int value)
 
 //void QIndigoFocuserWidget::mouseReleaseEvent(QMouseEvent *event)
 //{
-//  //CF_DEBUG("H");
+//  //
 //
 //  if ( isMovingFocusNow() ) {
 //    abortCurrentMotion();

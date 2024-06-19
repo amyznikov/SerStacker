@@ -102,7 +102,7 @@ namespace dso
 		cxiG[0] = KiG[0](0,2);
 		cyiG[0] = KiG[0](1,2);
 
-		CF_DEBUG("H");
+		
 		for (int level = 1; level < pyrLevelsUsed; ++ level) {
 
 		  wG[level] = w >> level;
@@ -122,7 +122,7 @@ namespace dso
 			cxiG[level] = KiG[level](0,2);
 			cyiG[level] = KiG[level](1,2);
 		}
-    CF_DEBUG("H");
+    
 	}
 
 

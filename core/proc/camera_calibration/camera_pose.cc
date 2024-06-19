@@ -824,6 +824,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           compute_epipole(camera_matrix, -T);
 
       rhs.resize(N);
+      
 
 #if HAVE_TBB
       tbb::parallel_for(tbb_range(0, N, tbb_grain_size),
@@ -851,6 +852,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       });
 #endif
 
+      
       return true;
     }
   };

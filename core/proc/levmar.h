@@ -108,8 +108,11 @@ public:
     return rhs_;
   }
 
+
   virtual int run(const callback & cb, std::vector<_Tp> & params)
   {
+    
+
     std::vector<_Tp> xd, rd, D;
 
     cv::Mat_<_Tp> J, A, Ap;
@@ -129,28 +132,12 @@ public:
       return -1;
     }
 
+    
     rmse_ =
         (_Tp)cv::norm(rhs_, cv::NORM_L2SQR);
 
-//    CF_DEBUG("1: rmse_=%g", rmse_);
-
+    
     cv::mulTransposed(J, A, true);
-
-//    CF_DEBUG("1> A: {\n"
-//        "%+20.9f %+20.9f %+20.9f %+20.9f %+20.9f\n"
-//        "%+20.9f %+20.9f %+20.9f %+20.9f %+20.9f\n"
-//        "%+20.9f %+20.9f %+20.9f %+20.9f %+20.9f\n"
-//        "%+20.9f %+20.9f %+20.9f %+20.9f %+20.9f\n"
-//        "%+20.9f %+20.9f %+20.9f %+20.9f %+20.9f\n"
-//        "\n",
-//        A[0][0], A[0][1], A[0][2], A[0][3], A[0][4],
-//        A[1][0], A[1][1], A[1][2], A[1][3], A[1][4],
-//        A[2][0], A[2][1], A[2][2], A[2][3], A[2][4],
-//        A[3][0], A[3][1], A[3][2], A[3][3], A[3][4],
-//        A[4][0], A[4][1], A[4][2], A[4][3], A[4][4]);
-
-
-
     cv::gemm(J, cv::Mat_<_Tp>(rhs_), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
 
     A.diag().copyTo(D);
@@ -165,30 +152,31 @@ public:
 
     while( 42 ) {
 
+      
       A.copyTo(Ap);
 
       for( int i = 0; i < lx; i++ ) {
         Ap[i][i] += lambda * D[i];
       }
 
+      
       cv::solve(Ap, v, d, cv::DECOMP_EIG);
-
       cv::subtract(cv::Mat_<_Tp>(x), d, xd);
-
+      
       if( !compute(cb, xd, rd, nullptr) ) {
         CF_ERROR("compute() fails");
         return -1;
       }
 
-      _Tp Sd =
+      const _Tp Sd =
           cv::norm(rd, cv::NORM_L2SQR);
 
       cv::gemm(A, d, -1, v, 2, temp_d);
 
-      _Tp dS =
+      const _Tp dS =
           d.dot(temp_d);
 
-      _Tp R =
+      const _Tp R =
           (rmse_ - Sd) / (std::abs(dS) > eps ? dS : 1);
 
       if( R > Rhi ) {
@@ -200,6 +188,7 @@ public:
       else if( R < Rlo ) {
         // find new nu if R too low
 
+        
         _Tp t =
             d.dot(v);
 
@@ -224,59 +213,66 @@ public:
         }
 
         lambda *= nu;
+        
       }
 
-      if( Sd < rmse_ ) {
+      const bool accepted =
+          Sd < rmse_;
 
-        rmse_ = Sd;
+      if( accepted ) {
+
         std::swap(x, xd);
+        rmse_ = Sd;
+
+        if( std::sqrt(rmse_ / rhs_.size()) <= epsf_ ) {
+          // CF_DEBUG("BREAK: std::sqrt(rmse_ / rhs_.size()) <= epsf_");
+          break;
+        }
+      }
+
+      
+      if ( ++iteration > max_iterations_ ) {
+        // CF_DEBUG("BREAK: ++iteration > max_iterations_");
+        break;
+      }
+
+      
+      double dp =
+          cv::norm(d, cv::NORM_INF);
+
+      if ( dp <= epsx_ ) {
+        // CF_DEBUG("BREAK: dp <= epsx_: dp=%g epsx_=%g", dp, epsx_);
+        break;
+      }
+
+
+      if ( accepted ) {
 
         if( !compute(cb, x, rhs_, &J) ) {
           CF_ERROR("compute() fails");
           return -1;
         }
 
+
         cv::mulTransposed(J, A, true);
         cv::gemm(J, cv::Mat_<_Tp>(rhs_), 1, cv::noArray(), 0, v, cv::GEMM_1_T);
-      }
-
-
-      ++iteration;
-
-      const _Tp d_norm =
-          cv::norm(d, cv::NORM_INF);
-
-      const _Tp rhsmax_ =
-          cv::norm(rhs_, cv::NORM_INF);
-
-//      CF_DEBUG(">> iteration=%d/%d d_norm=%g/%g rhsmax_=%g/%g",
-//          iteration, max_iterations_,
-//          d_norm, epsx_,
-//          rhsmax_, epsf_);
-
-      const bool proceed =
-          iteration < max_iterations_ &&
-          d_norm >= epsx_ &&
-          rhsmax_ >= epsf_;
-
-      if( !proceed ) {
-        break;
+        A.diag().copyTo(D);
       }
     }
 
-    params = x;
-    rmse_ = std::sqrt(rmse_ / rhs_.size());
+    params = std::move(x);
+    rmse_ = std::sqrt(rmse_ / (rhs_.size()-params.size()) );
 
+    
     return iteration;
   }
-
-
 
 protected:
 
   bool compute(const callback & cb, const std::vector<_Tp> & params,
       std::vector<_Tp> & rhs, cv::Mat_<_Tp> * jac) const
   {
+    
 
     bool have_jac =
         false;
@@ -286,6 +282,7 @@ protected:
       return false;
     }
 
+    
     if( rhs.size() < params.size() ) {
       CF_ERROR("c_levmar_solver: "
           "cb.compute() returns invalid rhs.size=%zu < params.size=%zu",
@@ -293,6 +290,7 @@ protected:
       return false;
     }
 
+    
     if( jac ) {
 
       // check if J was compute by callback
@@ -317,6 +315,7 @@ protected:
       jac->create((int)rhs.size(), (int)params.size());
 
       if ( !use_tbb ) {
+        
 
         std::vector<_Tp> P = params;
         std::vector<_Tp> rhs1, rhs2;
@@ -361,9 +360,11 @@ protected:
 
           P[j] = v;
         }
+        
       }
   #if HAVE_TBB
       else {
+        
 
         const int rhs_size = rhs.size();
 
@@ -422,9 +423,11 @@ protected:
             return false;
           }
         }
+        
       }
   #endif // HAVE_TBB
     }
+    
 
     return true;
   }

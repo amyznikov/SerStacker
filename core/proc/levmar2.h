@@ -283,7 +283,6 @@ public:
 #endif
   }
 
-
   virtual int run(callback & cb, std::vector<double> & params)
   {
     const int M =
@@ -298,29 +297,16 @@ public:
     constexpr double eps =
         std::numeric_limits<double>::epsilon();
 
-    // determines acceptance of a L-M step
-    constexpr double epsilon_4 =
-        1e-1;
-
-    constexpr double Rhi =
-        0.75;
-
-    constexpr double Rlo =
-        0.25;
-
-    constexpr double eps4 = 0.1;
-
-    std::vector<double> newparams;
-
     const double epsfn =
         epsf_ * epsf_ * NM;
 
 
-
     cv::Mat1d H, Hp, v, deltap, temp_d;
-    double err = 0, newerr = 0, dp = 0;
+    std::vector<double> newparams;
+
 
     double lambda = 0.1;
+    double err = 0, newerr = 0, dp = 0;
 
     int iteration = 0;
 
@@ -329,8 +315,9 @@ public:
       err = compute_jac(cb, params, H, v);
       H.copyTo(Hp);
 
-      /* Solve normal equation for given lambda and Jacobian */
+      /* Solve normal equation for given Jacobian and lambda */
       do {
+
         ++iteration;
 
         /* Increase diagonal elements by lambda */
@@ -340,18 +327,10 @@ public:
 
         /* Solve system to define delta and define new value of params */
         cv::solve(H, v, deltap, cv::DECOMP_EIG);
-        cv::subtract(cv::Mat(params), deltap,  newparams);
-
+        cv::subtract(cv::Mat(params), deltap, newparams);
 
         /* Compute function for newparams */
-
-        const double preverr = err;
-
-        if( (newerr = compute_rhs(cb, newparams)) < err ) {
-          /* accept new value */
-          err = newerr;
-          std::swap(params, newparams);
-        }
+        newerr = compute_rhs(cb, newparams);
 
         /* Check for increments in parameters  */
         if( (dp = cv::norm(deltap, cv::NORM_INF)) < epsx_ ) {
@@ -369,33 +348,44 @@ public:
             deltap.dot(temp_d);
 
         const double rho =
-            (preverr - newerr) / (std::abs(dS) > eps ? dS : 1);
+            (err - newerr) / (std::abs(dS) > eps ? dS : 1);
 
         if( rho > 0.25 ) {
+
+          /*
+           * Accept new params and decrease lambda ==> Gauss-Newton method
+           * */
+
+          err = newerr;
+          std::swap(params, newparams);
           lambda = std::max(1e-4, lambda / 5);
+
+          break;
         }
-        else if( lambda < 1 ) {
+
+        /**
+         * Try increase lambda ==> gradient descend
+         * */
+        if( lambda < 1 ) {
           lambda = 1;
         }
         else {
           lambda *= 10;
         }
 
-        /*
-         * accept new value ?
-         * */
-        if( newerr < preverr ) {
-          break;
-        }
-
       } while (iteration < max_iterations_);
 
-
-      if( err <= epsfn || dp < epsx_  ) {
-        break;
+      if( newerr < err ) {
+        /*
+         * Accept new params if were not yet accepted
+         * */
+        err = newerr;
+        std::swap(params, newparams);
       }
 
-      /* new params and lambda were accepted */
+      if( err <= epsfn || dp < epsx_ ) {
+        break;
+      }
     }
 
     rmse_ = sqrt(err / NM);

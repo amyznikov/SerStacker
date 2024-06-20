@@ -40,6 +40,8 @@
 #include <core/proc/c_quad_estimate.h>
 #include <core/proc/fit_exponential.h>
 
+#include <core/proc/image_registration/c_ecclm.h>
+
 #include <core/debug.h>
 
 namespace {
@@ -47,30 +49,174 @@ namespace {
 
 }
 
+
+
 int main(int argc, char *argv[])
 {
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
+  const std::string input_filename = "/home/data/photo_2022-04-09_19-36-23.jpg";
 
-  std::vector<float> vx, vy;
-  double A = 1, B = -2, C = -0.025;
+  cv::Mat input_image;
 
-  for( int i = 0; i < 100; ++i ) {
-    vx.emplace_back(i);
-    vy.emplace_back(A + B * exp(C * i) + 0.1 * (((double) rand() / RAND_MAX) - 0.5));
+  if ( !load_image(input_filename, input_image) ) {
+    CF_ERROR("load_image() fails");
+    return 1;
+  }
+
+  cv::cvtColor(input_image, input_image, cv::COLOR_BGR2GRAY);
+
+  cv::Size size(input_image.size());
+
+  cv::Matx23d A(
+      1.02, 0.0, +2,
+      0, 0.98, -1
+  );
+
+
+  cv::Mat1f reference_image, current_image;
+  cv::Mat1b current_mask;
+
+  input_image.convertTo(reference_image,
+      reference_image.depth());
+
+  cv::GaussianBlur(reference_image, reference_image, cv::Size(), 3, 3);
+
+
+  c_ecclm_affine::remap_image(size, A,
+      reference_image, cv::Mat1b(),
+      current_image, current_mask);
+
+  if( !save_image(reference_image, "debug_ecclm/reference_image.tiff") ) {
+    CF_ERROR("save_image(reference_image) fails");
+    return 1;
+  }
+
+  if( !save_image(current_image, current_mask, "debug_ecclm/current_image.tiff") ) {
+    CF_ERROR("save_image(current_image) fails");
+    return 1;
   }
 
 
-  float a, b, c;
-  fit_exponential(vx, vy, &a, &b, &c);
 
-  CF_DEBUG("a=%g b=%g c=%g", a, b, c);
+  c_ecclm_affine model;
+  c_ecclm ecclm(&model);
 
+  ecclm.set_max_iterations(100);
 
+  ecclm.set_reference_image(reference_image);
+  ecclm.align_to_reference(current_image, current_mask);
+
+  A = model.transform();
+
+  cv::Matx23d Ainv;
+  cv::invertAffineTransform(A, Ainv);
+
+  CF_DEBUG("H:\n"
+      "A= {\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "}\n"
+      "Ainv = {\n"
+      "  %+g %+g %+g\n"
+      "  %+g %+g %+g\n"
+      "}\n"
+      "\n",
+      A(0, 0), A(0, 1), A(0, 2),
+      A(1, 0), A(1, 1), A(1, 2),
+      Ainv(0, 0), Ainv(0, 1), Ainv(0, 2),
+      Ainv(1, 0), Ainv(1, 1), Ainv(1, 2)
+      );
+
+  c_ecclm_affine::remap_image(size, A,
+      current_image, current_mask,
+      current_image, current_mask);
+
+  if( !save_image(current_image, current_mask, "debug_ecclm/current_image_remapped_back.tiff") ) {
+    CF_ERROR("save_image(current_image_image_remapped_) fails");
+    return 1;
+  }
 
   return 0;
 }
+
+
+//
+//int main(int argc, char *argv[])
+//{
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//  const std::string input_filename = "/home/data/photo_2022-04-09_19-36-23.jpg";
+//
+//  cv::Mat input_image;
+//
+//  if ( !load_image(input_filename, input_image) ) {
+//    CF_ERROR("load_image() fails");
+//    return 1;
+//  }
+//
+//  cv::cvtColor(input_image, input_image, cv::COLOR_BGR2GRAY);
+//
+//  CF_DEBUG("H");
+//
+//  cv::Size size(input_image.size());
+//  cv::Vec2d T(-3, 2);
+//
+//  c_ecclm_translation model;
+//
+//
+//  cv::Mat1f reference_image, current_image;
+//  cv::Mat1b current_mask;
+//
+//  input_image.convertTo(reference_image,
+//      reference_image.depth());
+//
+//  cv::GaussianBlur(reference_image, reference_image, cv::Size(), 1, 1);
+//
+//
+//  c_ecclm_translation::remap_image(size, T,
+//      reference_image, cv::Mat1b(),
+//      current_image, current_mask);
+//
+//  if( !save_image(reference_image, "debug_ecclm/reference_image.tiff") ) {
+//    CF_ERROR("save_image(reference_image) fails");
+//    return 1;
+//  }
+//
+//  CF_DEBUG("H");
+//  if( !save_image(current_image, current_mask, "debug_ecclm/current_image.tiff") ) {
+//    CF_ERROR("save_image(current_image) fails");
+//    return 1;
+//  }
+//
+//
+//  CF_DEBUG("H");
+//  c_ecclm ecclm(&model);
+//
+//  CF_DEBUG("H");
+//  ecclm.set_reference_image(reference_image);
+//  CF_DEBUG("H");
+//  ecclm.align_to_reference(current_image, current_mask);
+//
+//  T = model.translation();
+//
+//  CF_DEBUG("H: T= {%+g %+g}", T(0), T(1));
+//
+//  c_ecclm_translation::remap_image(size, T,
+//      current_image, current_mask,
+//      current_image, current_mask);
+//
+//  if( !save_image(current_image, current_mask, "debug_ecclm/current_image_remapped_back.tiff") ) {
+//    CF_ERROR("save_image(current_image_image_remapped_) fails");
+//    return 1;
+//  }
+//
+//  return 0;
+//}
+//
+
 
 
 #if 0

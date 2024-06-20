@@ -159,7 +159,7 @@ public:
 #endif
   }
 
-  double compute_jac(callback & cb, std::vector<double> & params,
+  double compute_jac(callback & cb, const std::vector<double> & params,
       cv::Mat1d & A, cv::Mat1d & v)
   {
     cb.set_params(params, true);

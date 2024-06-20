@@ -85,7 +85,7 @@ class c_ecc_align
 {
 public:
   typedef c_ecc_align this_class;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_ecc_align( c_ecc_motion_model * model = nullptr);
   virtual ~c_ecc_align() = default;
@@ -177,7 +177,7 @@ class c_ecc_forward_additive :
 public:
   typedef c_ecc_forward_additive this_class;
   typedef c_ecc_align base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_ecc_forward_additive(c_ecc_motion_model * model = nullptr);
 
@@ -223,7 +223,7 @@ class c_ecc_inverse_compositional:
 public:
   typedef c_ecc_inverse_compositional this_class;
   typedef c_ecc_align base;
-  typedef std::shared_ptr<this_class> ptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_ecc_inverse_compositional(c_ecc_motion_model * model = nullptr);
 

@@ -37,20 +37,28 @@ public:
   virtual cv::Mat1d parameters() const = 0;
   virtual bool set_parameters(const cv::Mat1d & p) = 0;
 
-  virtual double compute_rhs(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask) = 0;
 
-  virtual double compute_jac(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask,
-      cv::Mat1d & A, cv::Mat1d & v) = 0;
+  virtual bool remap(const cv::Mat1d & params, const cv::Size & size,
+      cv::InputArray src, cv::InputArray src_mask,
+      cv::OutputArray dst, cv::OutputArray dst_mask);
+
+  virtual bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & map) = 0;
+  virtual bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) = 0;
+
+//  virtual double compute_rhs(const cv::Mat1d & params,
+//      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
+//      const cv::Mat1f & current_image, const cv::Mat1b & current_mask) = 0;
+//
+//  virtual double compute_jac(const cv::Mat1d & params,
+//      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
+//      const cv::Mat1f & current_image, const cv::Mat1b & current_mask,
+//      cv::Mat1d & A, cv::Mat1d & v) = 0;
 
 protected:
-  static double compute_rhs(const cv::Mat1f & reference_image,
-      const cv::Mat1f & remapped_current_image,
-      const cv::Mat1b & mask,
-      cv::Mat1f & rhs);
+//  static double compute_rhs(const cv::Mat1f & reference_image,
+//      const cv::Mat1f & remapped_current_image,
+//      const cv::Mat1b & mask,
+//      cv::Mat1f & rhs);
 
 //  virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
 //  virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
@@ -101,12 +109,20 @@ protected:
 
   bool align();
 
+  double compute_rhs(const cv::Mat1d & params);
+  double compute_jac(const cv::Mat1d & params, cv::Mat1d & H, cv::Mat1d & v);
+
 protected:
   c_ecclm_motion_model * model_ = nullptr;
   cv::Mat1f reference_image_;
   cv::Mat1b reference_mask_;
   cv::Mat1f current_image_;
   cv::Mat1b current_mask_;
+//  cv::Mat1f remapped_image;
+//  cv::Mat1b remapped_mask;
+  cv::Mat1f gx_, gy_;
+  std::vector<cv::Mat1f> J;
+
 
   int max_iterations_ = 50;
   double epsx_ = 1e-5;
@@ -132,21 +148,9 @@ public: // c_ecclm_motion_model
   cv::Mat1d parameters() const override;
   bool set_parameters(const cv::Mat1d & p) override;
 
-  double compute_rhs(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask) override;
-
-  double compute_jac(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask,
-      cv::Mat1d & A, cv::Mat1d & v) override;
-
-  static bool create_remap(const cv::Size & size, const cv::Vec2d & T,
-      cv::Mat2f & map);
-
-  static bool remap_image(const cv::Size & size, const cv::Vec2d & T,
-      const cv::Mat1f & src, const cv::Mat1b & src_mask,
-      cv::Mat1f & dst, cv::Mat1b & dst_mask);
+  bool create_remap(const cv::Vec2d & T, const cv::Size & size, cv::Mat2f & map);
+  bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & map) override;
+  bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) override;
 
 protected:
   cv::Vec2d translation_;
@@ -170,21 +174,25 @@ public: // c_ecclm_motion_model
   cv::Mat1d parameters() const override;
   bool set_parameters(const cv::Mat1d & p) override;
 
-  double compute_rhs(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask) override;
+  bool create_remap(const cv::Matx23d & a, const cv::Size & size, cv::Mat2f & rmap);
+  bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & rmap) override;
+  bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) override;
 
-  double compute_jac(const cv::Mat1d & params,
-      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
-      const cv::Mat1f & current_image, const cv::Mat1b & current_mask,
-      cv::Mat1d & A, cv::Mat1d & v) override;
-
-  static bool create_remap(const cv::Size & size, const cv::Matx23d & m,
-      cv::Mat2f & map);
-
-  static bool remap_image(const cv::Size & size, const cv::Matx23d & m,
-      const cv::Mat1f & src, const cv::Mat1b & src_mask,
-      cv::Mat1f & dst, cv::Mat1b & dst_mask);
+//  double compute_rhs(const cv::Mat1d & params,
+//      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
+//      const cv::Mat1f & current_image, const cv::Mat1b & current_mask) override;
+//
+//  double compute_jac(const cv::Mat1d & params,
+//      const cv::Mat1f & reference_image, const cv::Mat1b & reference_mask,
+//      const cv::Mat1f & current_image, const cv::Mat1b & current_mask,
+//      cv::Mat1d & A, cv::Mat1d & v) override;
+//
+//  static bool create_remap(const cv::Size & size, const cv::Matx23d & m,
+//      cv::Mat2f & map);
+//
+//  static bool remap_image(const cv::Size & size, const cv::Matx23d & m,
+//      const cv::Mat1f & src, const cv::Mat1b & src_mask,
+//      cv::Mat1f & dst, cv::Mat1b & dst_mask);
 
 protected:
   cv::Matx23d a_ =

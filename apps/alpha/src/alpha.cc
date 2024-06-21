@@ -56,59 +56,60 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  const std::string input_filename = "/home/data/photo_2022-04-09_19-36-23.jpg";
+  const std::string input_filenames[2] = {
+      "/home/data/ecclm/F1.png",
+      "/home/data/ecclm/F2.png",
+  };
 
-  cv::Mat input_image;
+  cv::Mat input_images[2];
 
-  if ( !load_image(input_filename, input_image) ) {
-    CF_ERROR("load_image() fails");
-    return 1;
+  for ( int i = 0; i < 2; ++i ) {
+
+    if ( !load_image(input_filenames[i], input_images[i]) ) {
+      CF_ERROR("load_image(%s) fails", input_filenames[i].c_str());
+      return 1;
+    }
+
+    //cv::morphologyEx(input_image, input_image, cv::MORPH_GRADIENT, cv::Mat1b(5,5, 255));
   }
 
-  cv::cvtColor(input_image, input_image, cv::COLOR_BGR2GRAY);
 
-  cv::Size size(input_image.size());
+  cv::Size size(input_images[0].size());
 
-  cv::Matx23d A(
-      1.02, 0.0, +2,
-      0, 0.98, -1
-  );
+  cv::Mat reference_image,  current_image;
+  cv::Mat1b reference_mask, current_mask;
 
+  cv::cvtColor(input_images[0], reference_image, cv::COLOR_BGR2GRAY);
+  cv::GaussianBlur(reference_image, reference_image, cv::Size(), 2, 2);
 
-  cv::Mat1f reference_image, current_image;
-  cv::Mat1b current_mask;
+  cv::cvtColor(input_images[1], current_image, cv::COLOR_BGR2GRAY);
+  cv::GaussianBlur(current_image, current_image, cv::Size(), 2, 2);
 
-  input_image.convertTo(reference_image,
-      reference_image.depth());
-
-  cv::GaussianBlur(reference_image, reference_image, cv::Size(), 3, 3);
-
-
-  c_ecclm_affine::remap_image(size, A,
-      reference_image, cv::Mat1b(),
-      current_image, current_mask);
-
-  if( !save_image(reference_image, "debug_ecclm/reference_image.tiff") ) {
-    CF_ERROR("save_image(reference_image) fails");
-    return 1;
-  }
 
   if( !save_image(current_image, current_mask, "debug_ecclm/current_image.tiff") ) {
     CF_ERROR("save_image(current_image) fails");
     return 1;
   }
 
+  if( !save_image(reference_image, reference_mask, "debug_ecclm/reference_image.tiff") ) {
+    CF_ERROR("save_image(current_image) fails");
+    return 1;
+  }
 
 
   c_ecclm_affine model;
-  c_ecclm ecclm(&model);
 
+  c_ecclm ecclm(&model);
+  ecclm.set_epsx(1e-2);
+
+  model.set_transform(cv::Matx23d::eye());
   ecclm.set_max_iterations(100);
 
   ecclm.set_reference_image(reference_image);
   ecclm.align_to_reference(current_image, current_mask);
 
-  A = model.transform();
+  cv::Matx23d A =
+      model.transform();
 
   cv::Matx23d Ainv;
   cv::invertAffineTransform(A, Ainv);
@@ -129,12 +130,17 @@ int main(int argc, char *argv[])
       Ainv(1, 0), Ainv(1, 1), Ainv(1, 2)
       );
 
-  c_ecclm_affine::remap_image(size, A,
-      current_image, current_mask,
-      current_image, current_mask);
+  model.remap( model.parameters(), size,
+      input_images[1], current_mask,
+      input_images[1], current_mask);
 
-  if( !save_image(current_image, current_mask, "debug_ecclm/current_image_remapped_back.tiff") ) {
-    CF_ERROR("save_image(current_image_image_remapped_) fails");
+  if( !save_image(input_images[0], current_mask, "debug_ecclm/input_reference_image.tiff") ) {
+    CF_ERROR("save_image(input_reference_image) fails");
+    return 1;
+  }
+
+  if( !save_image(input_images[1], current_mask, "debug_ecclm/input_current_image_remapped.tiff") ) {
+    CF_ERROR("save_image(input_current_image_remapped) fails");
     return 1;
   }
 

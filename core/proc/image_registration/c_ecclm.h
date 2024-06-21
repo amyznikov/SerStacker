@@ -36,25 +36,25 @@ public:
   {
   }
 
-  const cv::Mat1d & parameters() const;
-  virtual bool set_parameters(const cv::Mat1d & p) = 0;
-  virtual cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const = 0;
+  const cv::Mat1f & parameters() const;
+  virtual bool set_parameters(const cv::Mat1f & p) = 0;
+  virtual cv::Mat1f scale_parameters(const cv::Mat1f & p, double scale) const = 0;
 
-  virtual bool remap(const cv::Mat1d & params, const cv::Size & size,
+  virtual bool remap(const cv::Mat1f & params, const cv::Size & size,
       cv::InputArray src, cv::InputArray src_mask,
       cv::OutputArray dst, cv::OutputArray dst_mask);
 
   bool remap(const cv::Size & size, cv::InputArray src, cv::InputArray src_mask,
       cv::OutputArray dst, cv::OutputArray dst_mask);
 
-  virtual bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & map) = 0;
+  virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) = 0;
   bool create_remap(const cv::Size & size, cv::Mat2f & map);
 
   virtual bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy,
       cv::Mat1f J[/*nb parameters*/]) = 0;
 
 protected:
-  cv::Mat1d parameters_;
+  cv::Mat1f parameters_;
 };
 
 
@@ -74,6 +74,9 @@ public:
 
   void set_max_iterations(int v);
   int max_iterations() const;
+
+  void set_update_step_scale(double v);
+  double update_step_scale() const;
 
   void set_epsx(double v);
   double epsx() const;
@@ -104,8 +107,8 @@ protected:
 
   bool align();
 
-  double compute_rhs(const cv::Mat1d & params);
-  double compute_jac(const cv::Mat1d & params, cv::Mat1d & H, cv::Mat1d & v);
+  double compute_rhs(const cv::Mat1f & params);
+  double compute_jac(const cv::Mat1f & params, cv::Mat1f & H, cv::Mat1f & v);
 
 protected:
   c_ecclm_motion_model * model_ = nullptr;
@@ -117,8 +120,11 @@ protected:
   std::vector<cv::Mat1f> J;
 
   int max_iterations_ = 50;
+  double update_step_scale_ = 1.5;
   double epsx_ = 1e-5;
   double epsfn_ = 1e-5;
+
+
 };
 
 class c_ecclmp
@@ -149,7 +155,7 @@ protected:
 protected:
   std::vector<c_ecclm::uptr> pyramid_;
   c_ecclm_motion_model * model_ = nullptr;
-  int maxlevel_ = 6;
+  int maxlevel_ = 7;
 };
 
 
@@ -165,15 +171,15 @@ public:
 
 
   c_ecclm_translation();
-  c_ecclm_translation(const cv::Vec2d & T);
+  c_ecclm_translation(const cv::Vec2f & T);
 
-  void set_translation(const cv::Vec2d & T);
-  cv::Vec2d translation() const;
+  void set_translation(const cv::Vec2f & T);
+  cv::Vec2f translation() const;
 
-  bool set_parameters(const cv::Mat1d & p) final;
-  cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const final;
-  bool create_remap(const cv::Vec2d & T, const cv::Size & size, cv::Mat2f & map);
-  bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & map) final;
+  bool set_parameters(const cv::Mat1f & p) final;
+  cv::Mat1f scale_parameters(const cv::Mat1f & p, double scale) const final;
+  bool create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & map);
+  bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) final;
   bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) final;
 };
 
@@ -188,15 +194,15 @@ public:
   typedef std::unique_ptr<this_class> uptr;
 
   c_ecclm_affine();
-  c_ecclm_affine(const cv::Matx23d & matrix);
+  c_ecclm_affine(const cv::Matx23f & matrix);
 
-  void set_matrix(const cv::Matx23d & v);
-  cv::Matx23d matrix() const;
+  void set_matrix(const cv::Matx23f & v);
+  cv::Matx23f matrix() const;
 
-  bool set_parameters(const cv::Mat1d & p) final;
-  cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const final;
-  bool create_remap(const cv::Matx23d & a, const cv::Size & size, cv::Mat2f & rmap);
-  bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & rmap) final;
+  bool set_parameters(const cv::Mat1f & p) final;
+  cv::Mat1f scale_parameters(const cv::Mat1f & p, double scale) const final;
+  bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap);
+  bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & rmap) final;
   bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) final;
 };
 

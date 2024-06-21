@@ -161,6 +161,16 @@ int c_ecclm::max_iterations() const
   return max_iterations_;
 }
 
+void c_ecclm::set_update_step_scale(double v)
+{
+  update_step_scale_ = v;
+}
+
+double c_ecclm::update_step_scale() const
+{
+  return update_step_scale_;
+}
+
 void c_ecclm::set_epsx(double v)
 {
   epsx_ = v;
@@ -264,7 +274,7 @@ bool c_ecclm::align_to_reference(cv::InputArray current_image, cv::InputArray cu
   return align();
 }
 
-double c_ecclm::compute_rhs(const cv::Mat1d & params)
+double c_ecclm::compute_rhs(const cv::Mat1f & params)
 {
   INSTRUMENT_REGION("");
 
@@ -299,8 +309,8 @@ double c_ecclm::compute_rhs(const cv::Mat1d & params)
   return rhs.dot(rhs) / nrms;
 }
 
-double c_ecclm::compute_jac(const cv::Mat1d & params,
-    cv::Mat1d & H, cv::Mat1d & v)
+double c_ecclm::compute_jac(const cv::Mat1f & params,
+    cv::Mat1f & H, cv::Mat1f & v)
 {
   INSTRUMENT_REGION("");
 
@@ -374,8 +384,8 @@ bool c_ecclm::align()
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat1d H, Hp, v, deltap, temp_d;
-  cv::Mat1d params, newparams;
+  cv::Mat1f H, Hp, v, deltap, temp_d;
+  cv::Mat1f params, newparams;
 
   params =
       model_->parameters();
@@ -434,20 +444,23 @@ bool c_ecclm::align()
 
     H.copyTo(Hp);
 
-
-    /* Solve normal equation for given Jacobian and lambda */
+    /*
+     * Solve normal equation for given Jacobian and lambda
+     * */
     do {
 
       ++iteration;
 
-      /* Increase diagonal elements by lambda */
+      /*
+       * Increase diagonal elements by lambda
+       * */
       for( int i = 0; i < M; ++i ) {
         H[i][i] = (1 + lambda) * Hp[i][i];
       }
 
       /* Solve system to define delta and define new value of params */
       cv::solve(H, v, deltap, cv::DECOMP_EIG);
-      cv::subtract(cv::Mat(params), deltap, newparams);
+      cv::scaleAdd(deltap, -update_step_scale_, params, newparams);
 
       /* Compute function for newparams */
       newerr =
@@ -705,7 +718,7 @@ bool c_ecclmp::align(cv::InputArray current_image, cv::InputArray current_mask)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-const cv::Mat1d & c_ecclm_motion_model::parameters() const
+const cv::Mat1f & c_ecclm_motion_model::parameters() const
 {
   return parameters_;
 }
@@ -723,7 +736,7 @@ bool c_ecclm_motion_model::remap(const cv::Size & size, cv::InputArray src, cv::
 
 
 
-bool c_ecclm_motion_model::remap(const cv::Mat1d & params, const cv::Size & size,
+bool c_ecclm_motion_model::remap(const cv::Mat1f & params, const cv::Size & size,
     cv::InputArray src, cv::InputArray src_mask,
     cv::OutputArray dst, cv::OutputArray dst_mask)
 {
@@ -778,16 +791,16 @@ bool c_ecclm_motion_model::remap(const cv::Mat1d & params, const cv::Size & size
 
 c_ecclm_translation::c_ecclm_translation()
 {
-  set_translation(cv::Vec2d(0,0));
+  set_translation(cv::Vec2f(0,0));
 }
 
-c_ecclm_translation::c_ecclm_translation(const cv::Vec2d & T)
+c_ecclm_translation::c_ecclm_translation(const cv::Vec2f & T)
 {
   set_translation(T);
 }
 
 
-void c_ecclm_translation::set_translation(const cv::Vec2d & T)
+void c_ecclm_translation::set_translation(const cv::Vec2f & T)
 {
   if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
     parameters_.release();
@@ -798,12 +811,12 @@ void c_ecclm_translation::set_translation(const cv::Vec2d & T)
       sizeof(T.val));
 }
 
-cv::Vec2d c_ecclm_translation::translation() const
+cv::Vec2f c_ecclm_translation::translation() const
 {
-  return cv::Vec2d((const double*) parameters_.data);
+  return cv::Vec2f((const float*) parameters_.data);
 }
 
-bool c_ecclm_translation::set_parameters(const cv::Mat1d & p)
+bool c_ecclm_translation::set_parameters(const cv::Mat1f & p)
 {
   if ( p.rows != 2 || p.cols != 1 ) {
     CF_ERROR("c_ecclm_translation: invalid parameters array size %dx%d. Must be 2x1",
@@ -815,15 +828,15 @@ bool c_ecclm_translation::set_parameters(const cv::Mat1d & p)
   return true;
 }
 
-cv::Mat1d c_ecclm_translation::scale_parameters(const cv::Mat1d & p, double scale) const
+cv::Mat1f c_ecclm_translation::scale_parameters(const cv::Mat1f & p, double scale) const
 {
   if( p.rows != 2 || p.cols != 1 ) {
     CF_ERROR("c_ecclm_translation: invalid parameters array size %dx%d. Must be 2x1",
         p.rows, p.cols);
-    return cv::Mat1d();
+    return cv::Mat1f();
   }
 
-  cv::Mat1d sp(2, 1);
+  cv::Mat1f sp(2, 1);
 
   sp(0, 0) = p(0, 0) * scale;
   sp(1, 0) = p(1, 0) * scale;
@@ -831,7 +844,7 @@ cv::Mat1d c_ecclm_translation::scale_parameters(const cv::Mat1d & p, double scal
   return sp;
 }
 
-bool c_ecclm_translation::create_remap(const cv::Vec2d & T, const cv::Size & size, cv::Mat2f & rmap)
+bool c_ecclm_translation::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap)
 {
   INSTRUMENT_REGION("");
 
@@ -869,9 +882,9 @@ bool c_ecclm_translation::create_remap(const cv::Vec2d & T, const cv::Size & siz
   return true;
 }
 
-bool c_ecclm_translation::create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & rmap)
+bool c_ecclm_translation::create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & rmap)
 {
-  return create_remap(cv::Vec2d(params[0][0], params[1][0]), size, rmap);
+  return create_remap(cv::Vec2f(params[0][0], params[1][0]), size, rmap);
 }
 
 bool c_ecclm_translation::create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[2])
@@ -885,15 +898,15 @@ bool c_ecclm_translation::create_steppest_descend_images(const cv::Mat1f & gx, c
 
 c_ecclm_affine:: c_ecclm_affine()
 {
-  set_matrix(cv::Matx23d::eye());
+  set_matrix(cv::Matx23f::eye());
 }
 
-c_ecclm_affine::c_ecclm_affine(const cv::Matx23d & matrix)
+c_ecclm_affine::c_ecclm_affine(const cv::Matx23f & matrix)
 {
   set_matrix(matrix);
 }
 
-void c_ecclm_affine::set_matrix(const cv::Matx23d & matrix)
+void c_ecclm_affine::set_matrix(const cv::Matx23f & matrix)
 {
   if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
     parameters_.release();
@@ -904,12 +917,12 @@ void c_ecclm_affine::set_matrix(const cv::Matx23d & matrix)
       sizeof(matrix.val));
 }
 
-cv::Matx23d c_ecclm_affine::matrix() const
+cv::Matx23f c_ecclm_affine::matrix() const
 {
-  return cv::Matx23d((const double*) parameters_.data);
+  return cv::Matx23f((const float*) parameters_.data);
 }
 
-bool c_ecclm_affine::set_parameters(const cv::Mat1d & p)
+bool c_ecclm_affine::set_parameters(const cv::Mat1f & p)
 {
   if ( p.rows != 6 || p.cols != 1 ) {
     CF_ERROR("c_ecclm_affine: invalid parameters array size %dx%d. Must be 6x1",
@@ -921,15 +934,15 @@ bool c_ecclm_affine::set_parameters(const cv::Mat1d & p)
   return true;
 }
 
-cv::Mat1d c_ecclm_affine::scale_parameters(const cv::Mat1d & p, double scale) const
+cv::Mat1f c_ecclm_affine::scale_parameters(const cv::Mat1f & p, double scale) const
 {
   if ( p.rows != 6 || p.cols != 1 ) {
     CF_ERROR("c_ecclm_affine: invalid parameters array size %dx%d. Must be 6x1",
         p.rows, p.cols);
-    return cv::Mat1d();
+    return cv::Mat1f();
   }
 
-  cv::Mat1d sp(6, 1);
+  cv::Mat1f sp(6, 1);
 
   sp(0, 0) = p(0, 0);
   sp(1, 0) = p(1, 0);
@@ -942,7 +955,7 @@ cv::Mat1d c_ecclm_affine::scale_parameters(const cv::Mat1d & p, double scale) co
 }
 
 
-bool c_ecclm_affine::create_remap(const cv::Matx23d & a, const cv::Size & size, cv::Mat2f & rmap)
+bool c_ecclm_affine::create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap)
 {
   INSTRUMENT_REGION("");
 
@@ -974,9 +987,9 @@ bool c_ecclm_affine::create_remap(const cv::Matx23d & a, const cv::Size & size, 
 }
 
 
-bool c_ecclm_affine::create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & rmap)
+bool c_ecclm_affine::create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & rmap)
 {
-  return create_remap(cv::Matx23d((const double*) params.data), size, rmap);
+  return create_remap(cv::Matx23f((const float*) params.data), size, rmap);
 }
 
 bool c_ecclm_affine::create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[6])

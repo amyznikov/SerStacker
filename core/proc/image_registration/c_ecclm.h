@@ -38,6 +38,7 @@ public:
 
   const cv::Mat1d & parameters() const;
   virtual bool set_parameters(const cv::Mat1d & p) = 0;
+  virtual cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const = 0;
 
   virtual bool remap(const cv::Mat1d & params, const cv::Size & size,
       cv::InputArray src, cv::InputArray src_mask,
@@ -62,10 +63,10 @@ class c_ecclm
 public:
   typedef c_ecclm this_class;
   typedef std::shared_ptr<this_class> sptr;
-  typedef std::shared_ptr<this_class> uptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_ecclm();
-  c_ecclm( c_ecclm_motion_model * model = nullptr);
+  c_ecclm(c_ecclm_motion_model * model = nullptr);
   virtual ~c_ecclm() = default;
 
   void set_model(c_ecclm_motion_model * model);
@@ -90,6 +91,13 @@ public:
   bool align_to_reference(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray());
 
+  const cv::Mat1f & reference_image() const;
+  const cv::Mat1b & reference_mask() const;
+
+  const cv::Mat1f & current_image() const;
+  const cv::Mat1b & current_mask() const;
+
+
 protected:
   bool set_current_image(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray());
@@ -113,6 +121,38 @@ protected:
   double epsfn_ = 1e-5;
 };
 
+class c_ecclmp
+{
+public:
+  typedef c_ecclmp this_class;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+
+  c_ecclmp();
+  c_ecclmp( c_ecclm_motion_model * model = nullptr);
+  virtual ~c_ecclmp() = default;
+
+  void set_model(c_ecclm_motion_model * model);
+  c_ecclm_motion_model * model() const;
+
+  void set_maxlevel(int v);
+  int maxlevel() const;
+
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool align(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray());
+
+protected:
+
+protected:
+  std::vector<c_ecclm::uptr> pyramid_;
+  c_ecclm_motion_model * model_ = nullptr;
+  int maxlevel_ = 6;
+};
+
+
 
 class c_ecclm_translation :
     public c_ecclm_motion_model
@@ -131,6 +171,7 @@ public:
   cv::Vec2d translation() const;
 
   bool set_parameters(const cv::Mat1d & p) final;
+  cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const final;
   bool create_remap(const cv::Vec2d & T, const cv::Size & size, cv::Mat2f & map);
   bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & map) final;
   bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) final;
@@ -153,6 +194,7 @@ public:
   cv::Matx23d matrix() const;
 
   bool set_parameters(const cv::Mat1d & p) final;
+  cv::Mat1d scale_parameters(const cv::Mat1d & p, double scale) const final;
   bool create_remap(const cv::Matx23d & a, const cv::Size & size, cv::Mat2f & rmap);
   bool create_remap(const cv::Mat1d & params, const cv::Size & size, cv::Mat2f & rmap) final;
   bool create_steppest_descend_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[/*nb parameters*/]) final;

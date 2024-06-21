@@ -98,15 +98,19 @@ int main(int argc, char *argv[])
 
 
   c_ecclm_affine model;
+  c_ecclmp ecclmp(&model);
 
-  c_ecclm ecclm(&model);
-  ecclm.set_epsx(1e-2);
+  //ecclm.set_epsx(1e-2);
 
   model.set_matrix(cv::Matx23d::eye());
-  ecclm.set_max_iterations(100);
+  //ecclm.set_max_iterations(100);
 
-  ecclm.set_reference_image(reference_image);
-  ecclm.align_to_reference(current_image, current_mask);
+  ecclmp.set_reference_image(reference_image);
+
+  if ( true ) {
+    INSTRUMENT_REGION("ecclmp.align");
+    ecclmp.align(current_image, current_mask);
+  }
 
   cv::Matx23d A =
       model.matrix();

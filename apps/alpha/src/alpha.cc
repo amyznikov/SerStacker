@@ -102,14 +102,14 @@ int main(int argc, char *argv[])
   c_ecclm ecclm(&model);
   ecclm.set_epsx(1e-2);
 
-  model.set_transform(cv::Matx23d::eye());
+  model.set_matrix(cv::Matx23d::eye());
   ecclm.set_max_iterations(100);
 
   ecclm.set_reference_image(reference_image);
   ecclm.align_to_reference(current_image, current_mask);
 
   cv::Matx23d A =
-      model.transform();
+      model.matrix();
 
   cv::Matx23d Ainv;
   cv::invertAffineTransform(A, Ainv);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
       Ainv(1, 0), Ainv(1, 1), Ainv(1, 2)
       );
 
-  model.remap( model.parameters(), size,
+  model.remap(size,
       input_images[1], current_mask,
       input_images[1], current_mask);
 

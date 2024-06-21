@@ -25,6 +25,9 @@ constexpr int tbb_block_size =
 #include <core/debug.h>
 
 
+
+namespace {
+
 static void ecclm_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth = CV_32F)
 {
   INSTRUMENT_REGION("");
@@ -45,6 +48,89 @@ static void ecclm_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, 
 }
 
 
+static void ecclm_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap)
+{
+#if !ECCLM_USE_TBB
+  INSTRUMENT_REGION("cv::remap");
+  cv::remap(_src, _dst,
+      rmap, cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
+#else
+
+  if( _src.type() != CV_32FC1 ) {
+
+    INSTRUMENT_REGION("cv::remap");
+
+    cv::remap(_src, _dst,
+        rmap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT);
+  }
+  else {
+
+    INSTRUMENT_REGION("ecclm_remap");
+
+    const cv::Mat1f src =
+        _src.getMat();
+
+    const cv::Size src_size =
+        src.size();
+
+    const cv::Size dst_size =
+        rmap.size();
+
+    _dst.create(dst_size, CV_32FC1);
+
+    cv::Mat1f dst =
+        _dst.getMatRef();
+
+    tbb::parallel_for(tbb_range(0, dst_size.height),
+        [&](const tbb_range & r) {
+
+          const int w = src_size.width;
+          const int h = src_size.height;
+
+          for ( int dst_y = r.begin(); dst_y < r.end(); ++dst_y ) {
+
+            float * dstp = dst[dst_y];
+
+            const cv::Vec2f * m = rmap[dst_y];
+
+            for ( int dst_x = 0; dst_x < w; ++dst_x ) {
+
+              const float & x = m[dst_x][0];
+              const float & y = m[dst_x][1];
+
+              const int x1 = std::min(w - 1, std::max(0, (int) x));
+              const int y1 = std::min(h - 1, std::max(0, (int) y));
+
+              const int x2 = x1 + 1;
+              const int y2 = y1 + 1;
+
+              const float dx1 = x - x1;
+              const float dx2 = x2 - x;
+
+              const float dy1 = y - y1;
+              const float dy2 = y2 - y;
+
+              const float & Q11 = src[y1][x1];
+              const float & Q12 = src[std::min(y1 + 1, h - 1)][x1];
+              const float & Q21 = src[y1][std::min(x1 + 1, w - 1)];
+              const float & Q22 = src[std::min(y1 + 1, h - 1)][std::min(x1 + 1, w - 1)];
+
+              dstp[dst_x] =
+              dx1 * (dy2 * Q21 + dy1 * Q22) +
+              dx2 * (dy2 * Q11 + dy1 * Q12);
+
+            }
+          }
+        });
+  }
+#endif
+}
+
+} // namespace
 
 c_ecclm::c_ecclm()
 {
@@ -368,29 +454,29 @@ bool c_ecclm::align()
 
 
       if( rho > 0.25 ) {
-
-        /*
-         * Accept new params and decrease lambda ==> Gauss-Newton method
-         * */
-
-        err = newerr;
-        std::swap(params, newparams);
-        lambda = std::max(1e-5, lambda / 5);
-
-      //  CF_DEBUG("IT %d  ACCEPT: lambda --> %g ", iteration, lambda);
-
-
-        break;
+        /* Accept new params and decrease lambda ==> Gauss-Newton method */
+        if( lambda > 1e-4 ) {
+          lambda = std::max(1e-4, lambda / 5);
+        }
+        //CF_DEBUG("  lambda->%g", lambda);
       }
+      else if( rho > 0.1 ) {
 
-      /**
-       * Try increase lambda ==> gradient descend
-       * */
-      if( lambda < 1 ) {
+      }
+      else if( lambda < 1 ) {       /** Try increase lambda ==> gradient descend */
         lambda = 1;
+        //CF_DEBUG("  lambda->%g", lambda);
       }
       else {
         lambda *= 10;
+        //CF_DEBUG("  lambda->%g", lambda);
+      }
+
+      if ( newerr < err ) {
+        //CF_DEBUG("  ACCEPT");
+        err = newerr;
+        std::swap(params, newparams);
+        break;
       }
 
       //CF_DEBUG("IT %d  REJECT: lambda --> %g ", iteration, lambda);
@@ -423,6 +509,23 @@ bool c_ecclm::align()
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+const cv::Mat1d & c_ecclm_motion_model::parameters() const
+{
+  return parameters_;
+}
+
+bool c_ecclm_motion_model::create_remap(const cv::Size & size, cv::Mat2f & map)
+{
+  return create_remap(parameters(), size, map);
+}
+
+bool c_ecclm_motion_model::remap(const cv::Size & size, cv::InputArray src, cv::InputArray src_mask,
+    cv::OutputArray dst, cv::OutputArray dst_mask)
+{
+  return remap(parameters(), size, src, src_mask, dst, dst_mask);
+}
+
+
 
 bool c_ecclm_motion_model::remap(const cv::Mat1d & params, const cv::Size & size,
     cv::InputArray src, cv::InputArray src_mask,
@@ -437,17 +540,7 @@ bool c_ecclm_motion_model::remap(const cv::Mat1d & params, const cv::Size & size
     return false;
   }
 
-
-  if ( true ) {
-
-    INSTRUMENT_REGION("src");
-
-    cv::remap(src, dst,
-        rmap, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REFLECT101);
-
-  }
+  ecclm_remap(src, dst, rmap);
 
   if( !src_mask.empty() ) {
 
@@ -486,25 +579,43 @@ bool c_ecclm_motion_model::remap(const cv::Mat1d & params, const cv::Size & size
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void c_ecclm_translation::set_translation(const cv::Vec2d & v)
+
+c_ecclm_translation::c_ecclm_translation()
 {
-  translation_ = v;
+  set_translation(cv::Vec2d(0,0));
 }
 
-const cv::Vec2d & c_ecclm_translation::translation() const
+c_ecclm_translation::c_ecclm_translation(const cv::Vec2d & T)
 {
-  return translation_;
+  set_translation(T);
 }
 
-cv::Mat1d c_ecclm_translation::parameters() const
+
+void c_ecclm_translation::set_translation(const cv::Vec2d & T)
 {
-  return cv::Mat1d(translation_);
+  if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(6, 1);
+  }
+
+  memcpy(parameters_.data, T.val,
+      sizeof(T.val));
+}
+
+cv::Vec2d c_ecclm_translation::translation() const
+{
+  return cv::Vec2d((const double*) parameters_.data);
 }
 
 bool c_ecclm_translation::set_parameters(const cv::Mat1d & p)
 {
-  translation_[0] = p[0][0];
-  translation_[1] = p[1][0];
+  if ( p.rows != 2 || p.cols != 1 ) {
+    CF_ERROR("c_ecclm_translation: invalid parameters array size %dx%d. Must be 2x1",
+        p.rows, p.cols);
+    return false;
+  }
+
+  parameters_ = p;
   return true;
 }
 
@@ -515,44 +626,64 @@ bool c_ecclm_translation::create_remap(const cv::Vec2d & T, const cv::Size & siz
   //  Wx =  x + tx
   //  Wy =  y + ty
 
-  const float tx =
-      T[0];
-
-  const float ty =
-      T[1];
+//  const float tx =
+//      T[0];
+//
+//  const float ty =
+//      T[1];
 
   rmap.create(size);
 
-#if !ECCLM_USE_TBB
-
-  for ( int y = 0; y < map.rows; ++y ) {
-
-    cv::Vec2f * m =
-        rmap[y];
-
-    for ( int x = 0; x < map.cols; ++x ) {
-      m[x][0] = x + tx;
-      m[x][1] = y + ty;
-    }
-  }
-
-#else
-
+#if ECCLM_USE_TBB
   tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [&rmap, tx, ty](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = rmap[y];
+      [&rmap, T](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < rmap.rows; ++y ) {
+#endif
+          cv::Vec2f * mp =
+              rmap[y];
 
           for ( int x = 0; x < rmap.cols; ++x ) {
-            m[x][0] = x + tx;
-            m[x][1] = y + ty;
+            mp[x][0] = x + T[0];
+            mp[x][1] = y + T[1];
           }
         }
+#if ECCLM_USE_TBB
       });
+#endif
 
-#endif // ECCLM_USE_TBB
+//
+//#if !ECCLM_USE_TBB
+//
+//  for ( int y = 0; y < map.rows; ++y ) {
+//
+//    cv::Vec2f * m =
+//        rmap[y];
+//
+//    for ( int x = 0; x < map.cols; ++x ) {
+//      m[x][0] = x + tx;
+//      m[x][1] = y + ty;
+//    }
+//  }
+//
+//#else
+//
+//  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+//      [&rmap, tx, ty](const tbb_range & r) {
+//
+//        for ( int y = r.begin(); y < r.end(); ++y ) {
+//
+//          cv::Vec2f * m = rmap[y];
+//
+//          for ( int x = 0; x < rmap.cols; ++x ) {
+//            m[x][0] = x + tx;
+//            m[x][1] = y + ty;
+//          }
+//        }
+//      });
+//
+//#endif // ECCLM_USE_TBB
 
   return true;
 }
@@ -571,24 +702,41 @@ bool c_ecclm_translation::create_steppest_descend_images(const cv::Mat1f & gx, c
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-void c_ecclm_affine::set_transform(const cv::Matx23d & v)
+c_ecclm_affine:: c_ecclm_affine()
 {
-  a_ = v;
+  set_matrix(cv::Matx23d::eye());
 }
 
-const cv::Matx23d & c_ecclm_affine::transform() const
+c_ecclm_affine::c_ecclm_affine(const cv::Matx23d & matrix)
 {
-  return a_;
+  set_matrix(matrix);
 }
 
-cv::Mat1d c_ecclm_affine::parameters() const
+void c_ecclm_affine::set_matrix(const cv::Matx23d & matrix)
 {
-  return cv::Mat1d(6, 1, (double*) a_.val).clone();
+  if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(6, 1);
+  }
+
+  memcpy(parameters_.data, matrix.val,
+      sizeof(matrix.val));
+}
+
+cv::Matx23d c_ecclm_affine::matrix() const
+{
+  return cv::Matx23d((const double*) parameters_.data);
 }
 
 bool c_ecclm_affine::set_parameters(const cv::Mat1d & p)
 {
-  memcpy(a_.val, p.data, sizeof(a_.val) );
+  if ( p.rows != 6 || p.cols != 1 ) {
+    CF_ERROR("c_ecclm_affine: invalid parameters array size %dx%d. Must be 6x1",
+        p.rows, p.cols);
+    return false;
+  }
+
+  parameters_ = p;
   return true;
 }
 
@@ -600,45 +748,26 @@ bool c_ecclm_affine::create_remap(const cv::Matx23d & a, const cv::Size & size, 
   //  Wx =  a00 * x  + a01 * y + a02
   //  Wy =  a10 * x  + a11 * y + a12
 
-
   rmap.create(size);
 
 #if ECCLM_USE_TBB
-
   tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
       [&rmap, a](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m =
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < rmap.rows; ++y ) {
+#endif
+          cv::Vec2f * mp =
               rmap[y];
 
           for ( int x = 0; x < rmap.cols; ++x ) {
-
-            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
-            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
+            mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
+            mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
           }
-
         }
+#if ECCLM_USE_TBB
       });
-
-#else
-
-  for ( int y = 0; y < rmap.rows; ++y ) {
-
-    cv::Vec2f * m =
-        rmap[y];
-
-    for ( int x = 0; x < map.cols; ++x ) {
-
-      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
-      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
-
-    }
-
-  }
-
-#endif // TBB
+#endif
 
   return true;
 }

@@ -48,7 +48,7 @@ bool c_homography_ecc_motion_model::create_steepest_descent_images(const cv::Mat
   const int h = gx.rows;
 
   const cv::Matx33f a =
-      transform_->homography_matrix();
+      transform_->matrix();
 
   dst.create(h * 8, w);
 
@@ -102,7 +102,7 @@ bool c_homography_ecc_motion_model::update_forward_additive(const cv::Mat1f & p,
   // y' =  (x * a10 + y * a11 + a12) / w
 
   cv::Matx33f a =
-      transform_->homography_matrix();
+      transform_->matrix();
 
   a(0,0) += p(0, 0);
   a(0,1) += p(3, 0);
@@ -113,7 +113,7 @@ bool c_homography_ecc_motion_model::update_forward_additive(const cv::Mat1f & p,
   a(2,0) += p(2, 0);
   a(2,1) += p(5, 0);
 
-  transform_->set_homography_matrix(a);
+  transform_->set_matrix(a);
 
   if( e ) {
     // FIXME?: this estimate does not account for w
@@ -151,7 +151,7 @@ bool c_homography_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p
   //  a(2,2) => 1;
 
   cv::Matx33f a =
-      transform_->homography_matrix();
+      transform_->matrix();
 
   cv::Matx33f P(
       a(0,0), a(0,1), a(0,2),
@@ -185,7 +185,7 @@ bool c_homography_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p
   a(2,1) = P(2, 1);
   a(2,2) = 1;
 
-  transform_->set_homography_matrix(a);
+  transform_->set_matrix(a);
 
   if( e ) {
     *e = sqrt(square(p(6, 0)) + square(p(7, 0)) +

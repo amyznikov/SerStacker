@@ -531,12 +531,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if( have_transform && options_.ecc.scale != 1 ) {
-
-      if( !image_transform_->scale_transfrom(options_.ecc.scale) ) {
-        CF_ERROR("image_transform_->scale_transfrom(%g) fails", options_.ecc.scale);
-        return false;
-      }
-
+      image_transform_->scale_transfrom(options_.ecc.scale);
     }
 
     cv::Mat1f current_ecc_image;
@@ -644,10 +639,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    if( options_.ecc.scale != 1 && !image_transform_->scale_transfrom(1. / options_.ecc.scale) ) {
-
-      CF_ERROR("image_transform_->scale_transfrom(factor=%g) fails", 1. / options_.ecc.scale);
-      return false;
+    if( options_.ecc.scale != 1 ) {
+      image_transform_->scale_transfrom(1. / options_.ecc.scale);
     }
 
     current_status_.timings.ecc_align =
@@ -663,7 +656,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   t0 = get_realtime_ms();
 
 
-  if( !image_transform_->create_remap(current_remap_, reference_frame_size_) ) {
+  if( !image_transform_->create_remap(reference_frame_size_, current_remap_) ) {
     CF_ERROR("image_transform_->create_remap(size=%dx%d) fails",
         reference_frame_size_.width, reference_frame_size_.height);
     return false;
@@ -1124,10 +1117,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
 
     if( options_.feature_registration.scale != 1 ) {
-      if( !current_transform->scale_transfrom(1. / options_.feature_registration.scale) ) {
-        CF_ERROR("scale_transfrom() fails");
-        return false;
-      }
+      current_transform->scale_transfrom(1. / options_.feature_registration.scale);
     }
   }
 

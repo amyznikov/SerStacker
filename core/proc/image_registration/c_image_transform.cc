@@ -6,219 +6,377 @@
  */
 
 #include "c_image_transform.h"
+
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 #include <tbb/tbb.h>
 #endif
+
 #include <core/debug.h>
 
 namespace {
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 typedef tbb::blocked_range<int> tbb_range;
-constexpr int tbb_block_size = 512;
+constexpr int tbb_block_size = 256;
 #endif
 } // namespace
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const cv::Size & size,
+    cv::OutputArray dst, cv::OutputArray dst_mask,
+    cv::InterpolationFlags interpolation,
+    cv::BorderTypes borderMode,
+    const cv::Scalar & borderValue) const
+{
+  cv::Mat2f rmap;
+
+  if( !create_remap(size, rmap) ) {
+    CF_ERROR("create_remap() fails");
+    return false;
+  }
+
+  if( dst.needed() ) {
+
+    if( src.empty() ) {
+      dst.release();
+    }
+    else {
+
+      cv::remap(src, dst, rmap, cv::noArray(), interpolation,
+          borderMode, borderValue);
+    }
+  }
+
+  if( dst_mask.needed() ) {
+
+    if( src_mask.empty() ) {
+
+      cv::remap(cv::Mat1b(size, (uint8_t) 255), dst_mask,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+    }
+    else {
+
+      cv::remap(src_mask, dst_mask,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+    }
+
+    cv::compare(dst_mask, 250, dst_mask, cv::CMP_GE);
+  }
+
+  return true;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_translation_image_transform::c_translation_image_transform(float Tx, float Ty)
 {
-  Tx_ = Tx;
-  Ty_ = Ty;
+  set_translation(cv::Vec2f(Tx, Ty));
 }
 
 c_translation_image_transform::c_translation_image_transform(const cv::Vec2f & T)
 {
-  Tx_ = T[0];
-  Ty_ = T[1];
+  set_translation(T);
 }
 
 void c_translation_image_transform::reset()
 {
-  a[0] = 0;
-  a[1] = 0;
+  set_translation(cv::Vec2f(0, 0));
 }
 
 void c_translation_image_transform::set_translation(const cv::Vec2f & T)
 {
-  Tx_ = T[0];
-  Ty_ = T[1];
+  if ( parameters_.rows != 2 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(2, 1);
+  }
+
+  parameters_(0, 0) = T(0);
+  parameters_(1, 0) = T(1);
 }
 
 void c_translation_image_transform::set_translation(float x, float y)
 {
-  Tx_ = x;
-  Ty_ = y;
+  if ( parameters_.rows != 2 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(2, 1);
+  }
+
+  parameters_(0, 0) = x;
+  parameters_(1, 0) = y;
 }
 
 cv::Vec2f c_translation_image_transform::translation() const
 {
-  return cv::Vec2f(Tx_, Ty_);
-}
-
-cv::Mat1f c_translation_image_transform::parameters() const
-{
-  return cv::Mat1f(2, 1, (float*)a).clone();
+  return cv::Vec2f((const float*)parameters_.data);
 }
 
 bool c_translation_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if ( p.rows == 2 && p.cols == 1 ) {
-    Tx_ = p(0, 0);
-    Ty_ = p(1, 0);
-    return true;
+  if ( p.rows != 2 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
+    return false;
   }
 
-  if ( p.rows == 1 && p.cols == 2 ) {
-    Tx_ = p(0, 0);
-    Ty_ = p(0, 1);
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_translation_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 2 && p.cols == 1 ) {
-
-    cv::Mat1f ss =
-        p.clone();
-
-    ss(0, 0) *= factor;
-    ss(1, 0) *= factor;
-
-    return ss;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-bool c_translation_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
-{
-  //  Wx =  x + tx
-  //  Wy =  y + ty
-
-  INSTRUMENT_REGION("");
-
-  const float tx = Tx_;
-  const float ty = Ty_;
-
-  map.create(size);
-
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map, tx, ty](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            m[x][0] = x + tx;
-            m[x][1] = y + ty;
-
-          }
-        }
-      });
-
-#else
-
-  for ( int y = 0; y < map.rows; ++y ) {
-
-    cv::Vec2f * m = map[y];
-
-    for ( int x = 0; x < map.cols; ++x ) {
-
-      m[x][0] = x + tx;
-      m[x][1] = y + ty;
-    }
-
-  }
-
-#endif // TBB
+  p.copyTo(parameters_);
 
   return true;
+}
 
+void c_translation_image_transform::scale_transfrom(double factor)
+{
+  parameters_(0, 0) *= factor;
+  parameters_(1, 0) *= factor;
+}
+
+bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & map) const
+{
+  if( p.rows != 2 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
+    return false;
+  }
+  return create_remap(cv::Vec2f((const float*) p.data), size, map);
+}
+
+bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  INSTRUMENT_REGION("");
+
+  //  x' =  x + tx
+  //  y' =  y + ty
+
+  rmap.create(size);
+
+#if HAVE_TBB
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [&rmap, T](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for( int y = 0; y < rmap.rows; ++y ) {
+#endif
+          cv::Vec2f * mp = rmap[y];
+
+          for( int x = 0; x < rmap.cols; ++x ) {
+            mp[x][0] = x + T[0];
+            mp[x][1] = y + T[1];
+          }
+        }
+#if HAVE_TBB
+  });
+#endif
+
+  return true;
+}
+
+bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/,
+    const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+{
+  J[0] = gx;
+  J[1] = gy;
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_euclidean_image_transform::c_euclidean_image_transform(float Tx, float Ty, float angle, float scale)
 {
-  Tx_ = Tx;
-  Ty_ = Ty;
-  angle_ = angle;
-  scale_ = scale;
+  set_parameters(Tx, Ty, angle, scale, 0, 0);
 }
 
 c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & T, float angle, float scale)
 {
-  Tx_ = T[0];
-  Ty_ = T[1];
-  angle_ = angle;
-  scale_ = scale;
+  set_parameters(T[0], T[0], angle, scale, 0, 0);
 }
 
 c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle, float scale)
 {
-  Tx_ = T[0];
-  Ty_ = T[1];
-  angle_ = angle;
-  scale_ = scale;
-  Cx_ = C[0];
-  Cy_ = C[1];
+  set_parameters(T[0], T[0], angle, scale, C[0], C[1]);
 }
 
 void c_euclidean_image_transform::reset()
 {
-  a[0] = 0;
-  a[1] = 0;
-  a[2] = 0;
-  a[3] = 1;
-  a[4] = 0;
-  a[5] = 0;
+  set_parameters(0, 0, 0, 0, 0, 0);
 }
+
+int c_euclidean_image_transform::num_adjustable_parameters() const
+{
+  int np = 0;
+
+  if( !fix_translation_ ) {
+    np += 2;
+  }
+
+  if( !fix_rotation_ ) {
+    np += 1;
+  }
+
+  if( !fix_scale_ ) {
+    np += 1;
+  }
+
+  return np;
+}
+
+void c_euclidean_image_transform::update_parameters()
+{
+  const int np =
+      num_adjustable_parameters();
+
+  if ( np < 1 ) {
+    CF_ERROR("c_euclidean_image_transform: No adjusteble parameters");
+    parameters_.release();
+  }
+  else {
+    if ( parameters_.rows != np || parameters_.cols != 1 ) {
+      parameters_.release();
+      parameters_.create(np, 1);
+    }
+
+    int ip = 0;
+
+    if( !fix_translation_ ) {
+      parameters_(ip++, 0) = T_(0);
+      parameters_(ip++, 0) = T_(1);
+    }
+
+    if( !fix_rotation_ ) {
+      parameters_(ip++, 0) = angle_;
+    }
+
+    if( !fix_scale_ ) {
+      parameters_(ip++, 0) = scale_;
+    }
+  }
+}
+
+
+void c_euclidean_image_transform::set_parameters(float Tx, float Ty, float angle, float scale, float Cx, float Cy)
+{
+  T_(0) = Tx;
+  T_(1) = Ty;
+  C_(0) = Cx;
+  C_(1) = Cy;
+  angle_ = angle;
+  scale_ = scale;
+
+  update_parameters() ;
+}
+
+bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
+{
+  const int np =
+      num_adjustable_parameters();
+
+  if( p.rows != np || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
+    return false;
+  }
+
+  int i = 0;
+
+  if( !fix_translation_ ) {
+    T_(0) = p(i++, 0);
+    T_(1) = p(i++, 0);
+  }
+
+  if( !fix_rotation_ ) {
+    angle_ = p(i++, 0);
+  }
+
+  if( !fix_scale_ ) {
+    scale_ = p(i++, 0);
+  }
+
+  update_parameters();
+
+  return true;
+}
+
+bool c_euclidean_image_transform::get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle,
+    float * scale, float * Cx, float * Cy) const
+{
+  const int np =
+      num_adjustable_parameters();
+
+  if( p.rows != np || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
+    return false;
+  }
+
+  *Cx = C_[0];
+  *Cy = C_[1];
+
+  int ip = 0;
+
+  if( fix_translation_ ) {
+    *Tx = T_(0);
+    *Ty = T_(1);
+  }
+  else {
+    *Tx = p(ip++, 0);
+    *Ty = p(ip++, 0);
+  }
+
+  if( fix_rotation_ ) {
+    *angle = angle_;
+  }
+  else {
+    *angle = p(ip++, 0);
+  }
+
+  if( fix_scale_ ) {
+    *scale = scale_;
+  }
+  else {
+    *scale = p(ip++, 0);
+  }
+
+  return true;
+}
+
+
+
 
 void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
 {
-  Tx_ = v[0];
-  Ty_ = v[1];
+  T_ = v;
+  update_parameters() ;
 }
 
 cv::Vec2f c_euclidean_image_transform::translation() const
 {
-  return cv::Vec2f(Tx_, Ty_);
+  return T_;
 }
 
 void c_euclidean_image_transform::set_center(const cv::Vec2f & v)
 {
-  Cx_ = v[0];
-  Cy_ = v[1];
+  C_ = v;
 }
 
 cv::Vec2f c_euclidean_image_transform::center() const
 {
-  return cv::Vec2f(Cx_, Cy_);
+  return C_;
 }
 
-void c_euclidean_image_transform::set_rotation(float v)
+void c_euclidean_image_transform::set_rotation(float angle)
 {
-  angle_ = v;
+  angle_ = angle;
+  update_parameters();
 }
 
 float c_euclidean_image_transform::rotation() const
 {
-  return angle_;
+  return parameters_(2,0);
 }
 
-void c_euclidean_image_transform::set_scale(float v)
+void c_euclidean_image_transform::set_scale(float scale)
 {
-  scale_ = v;
+  scale_ = scale;
+  update_parameters();
 }
 
 float c_euclidean_image_transform::scale() const
@@ -229,16 +387,18 @@ float c_euclidean_image_transform::scale() const
 void c_euclidean_image_transform::set_fix_translation(bool v)
 {
   fix_translation_ = v;
+  update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_translation() const
 {
-  return c_euclidean_image_transform::fix_translation_;
+  return fix_translation_;
 }
 
 void c_euclidean_image_transform::set_fix_rotation(bool v)
 {
   fix_rotation_ = v;
+  update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_rotation() const
@@ -249,6 +409,7 @@ bool c_euclidean_image_transform::fix_rotation() const
 void c_euclidean_image_transform::set_fix_scale(bool v)
 {
   fix_scale_ = v;
+  update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_scale() const
@@ -256,254 +417,338 @@ bool c_euclidean_image_transform::fix_scale() const
   return fix_scale_;
 }
 
-cv::Mat1f c_euclidean_image_transform::parameters() const
+
+void c_euclidean_image_transform::scale_transfrom(double factor)
 {
-  return cv::Mat1f(6, 1, (float*)a).clone();
+  T_ *= factor;
+  C_ *= factor;
+  update_parameters();
 }
 
-bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
-{
-  if( p.rows == 6 && p.cols == 1 ) {
-    Tx_ = p(0, 0);
-    Ty_ = p(1, 0);
-    angle_ = p(2, 0);
-    scale_ = p(3, 0);
-    Cx_ = p(4, 0);
-    Cy_ = p(5, 0);
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 6x1", p.rows, p.cols);
-  return false;
-}
-
-cv::Mat1f c_euclidean_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
-{
-  if( p.rows == 6 && p.cols == 1 ) {
-
-    cv::Mat1f ss =
-        p.clone();
-
-    ss(0, 0) *= factor;
-    ss(1, 0) *= factor;
-    ss(4, 0) *= factor;
-    ss(5, 0) *= factor;
-
-    return ss;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 6x1", p.rows, p.cols);
-  return cv::Mat1f();
-}
-
-bool c_euclidean_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   //  Wx =  s * ( ca * x  - sa * y ) + tx
   //  Wy =  s * ( sa * x  + ca * y ) + ty
 
   INSTRUMENT_REGION("");
 
-  const float cx = Cx_;
-  const float cy = Cy_;
-  const float tx = Tx_;
-  const float ty = Ty_;
-  const float ca = std::cos(angle_);
-  const float sa = std::sin(angle_);
-  const float s = scale_;
+  float Tx, Ty, angle, scale, Cx, Cy;
 
-  map.create(size);
-
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map, cx, cy, tx, ty, sa, ca, s](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          const float yy = y - cy;
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            const float xx = x - cx;
-
-            m[x][0] = s * (ca * xx - sa * yy) + tx;
-            m[x][1] = s * (sa * xx + ca * yy) + ty;
-          }
-
-        }
-      });
-
-#else
-
-  for ( int y = 0; y < map.rows; ++y ) {
-
-    cv::Vec2f * m = map[y];
-
-    const float yy = y - cy;
-
-    for ( int x = 0; x < map.cols; ++x ) {
-
-      const float xx = x - cx;
-
-      m[x][0] = s * (ca * xx - sa * yy) + tx;
-      m[x][1] = s * (sa * xx + ca * yy) + ty;
-    }
-
+  if ( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+    CF_ERROR("get_parameters() fails");
+    return false;
   }
 
+  const float sa =
+      std::sin(angle);
+
+  const float ca =
+      std::cos(angle);
+
+  rmap.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [Cx, Cy, Tx, Ty, ca, sa, scale, &rmap] (const tbb_range & r) {
+        for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+        for ( int y = 0; y < rmap.rows; ++y ) {
+#endif // TBB
+
+          cv::Vec2f * mp = rmap[y];
+
+          const float yy = y - Cy;
+
+          for ( int x = 0; x < rmap.cols; ++x ) {
+
+            const float xx = x - Cx;
+
+            mp[x][0] = scale * (ca * xx - sa * yy) + Tx;
+            mp[x][1] = scale * (sa * xx + ca * yy) + Ty;
+          }
+        }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+     });
 #endif // TBB
 
   return true;
+}
+
+
+bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+{
+  INSTRUMENT_REGION("");
+
+  const int np =
+      num_adjustable_parameters();
+
+  if( p.rows != np || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
+    return false;
+  }
+
+  // STEEPEST DESCENT IMAGES:
+  //  [ gx * dWx / dp0 + gy * dWy / dp0]
+  //  [ gx * dWx / dp1 + gy * dWy / dp1]
+  //  ...
+  //  [ gx * dWx / dpn + gy * dWy / dpn]
+
+  // W([x,y], p):
+  //  Wx =  s * ( ca * (x-cx) - sa * (y-cy) ) + tx
+  //  Wy =  s * ( sa * (x-cx) + ca * (y-cy) ) + ty
+
+  // dWx / dtx = 1
+  // dWx / dty = 0
+  // dWx / da  = - s * (sa * (x-cx) + ca * (y-cy))
+  // dWx / ds  = ( ca * (x-cx) - sa * (y-cy) )
+
+  // dWy / dtx = 0
+  // dWy / dty = 1
+  // dWy / da  = s * (ca * (x-cx) - sa * (y-cy))
+  // dWy / ds  = ( sa * (x-cx) + ca * (y-cy) )
+
+  float Tx, Ty, angle, scale, Cx, Cy;
+
+  if ( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+    CF_ERROR("get_parameters() fails");
+    return false;
+  }
+
+  const cv::Size size =
+      gx.size();
+
+  const bool fix_translation =
+      fix_translation_;
+
+  const bool fix_rotation =
+      fix_rotation_;
+
+  const bool fix_scale =
+      fix_scale_;
+
+  const float sa =
+      std::sin(angle);
+
+  const float ca =
+      std::cos(angle);
+
+  for ( int i = 0; i < np; ++i ) {
+    J[i].create(size);
+  }
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [ fix_translation, fix_rotation, fix_scale,
+        size, Cx, Cy, Tx, Ty, ca, sa, scale, &gx, &gy, &J]
+        (const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < size.height; ++y ) {
+#endif // TBB
+
+          int i = 0;
+
+          if( !fix_translation ) {
+
+            for ( int x = 0; x < size.width; ++x ) {
+              J[0][y][x] = gx[y][x];
+              J[1][y][x] = gy[y][x];
+            }
+
+            i += 2;
+          }
+
+          if( !fix_rotation ) {
+
+            const float yy = y - Cy;
+
+            for ( int x = 0; x < size.width; ++x ) {
+
+              const float xx = x - Cx;
+
+              J[i][y][x] = scale * ( -gx[y][x] * (sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy));
+            }
+
+            i += 1;
+          }
+
+          if( !fix_scale ) {
+
+            const float yy = y - Cy;
+
+            for ( int x = 0; x < size.width; ++x ) {
+
+              const float xx = x - Cx;
+
+              J[i][y][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
+            }
+          }
+
+        }
+      }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  );
+#endif
+
+  return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_affine_image_transform::c_affine_image_transform()
 {
+  set_matrix(cv::Matx23f::eye());
 }
 
-c_affine_image_transform::c_affine_image_transform(const float _a[2][3])
+c_affine_image_transform::c_affine_image_transform(const float data[2][3])
 {
-  memcpy(this->a.val, _a, sizeof(this->a.val));
+  set_matrix(cv::Matx23f((const float*) data));
 }
 
-c_affine_image_transform::c_affine_image_transform(const cv::Matx23f & _a)
+c_affine_image_transform::c_affine_image_transform(const cv::Matx23f & a)
 {
-  this->a = _a;
+  set_matrix(a);
 }
 
 c_affine_image_transform::c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12)
 {
-  a(0,0) = a00;
-  a(0,1) = a01;
-  a(0,2) = a02;
-
-  a(1,0) = a10;
-  a(1,1) = a11;
-  a(1,2) = a12;
+  set_matrix(cv::Matx23f(
+      a00, a01, a02,
+      a10, a11, a12));
 }
 
+void c_affine_image_transform::reset()
+{
+  set_matrix(cv::Matx23f::eye());
+}
 
 void c_affine_image_transform::set_translation(const cv::Vec2f & v)
 {
-  a(0, 2) = v[0];
-  a(1, 2) = v[1];
+  parameters_(2, 0) = v(0);
+  parameters_(5, 0) = v(1);
 }
 
 cv::Vec2f c_affine_image_transform::translation() const
 {
-  return cv::Vec2f(a(0, 2), a(1, 2));
+  return cv::Vec2f(parameters_(2, 0), parameters_(5, 0));
 }
 
-
-void c_affine_image_transform::reset()
+void c_affine_image_transform::set_matrix(const cv::Matx23f & a)
 {
-  a = cv::Matx23f::eye();
+  if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(6, 1);
+  }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = a(1, 0);
+  parameters_(4, 0) = a(1, 1);
+  parameters_(5, 0) = a(1, 2);
 }
 
-
-void c_affine_image_transform::set_affine_matrix(const cv::Matx23f & a)
+cv::Matx23f c_affine_image_transform::matrix(const cv::Mat1f & p) const
 {
-  this->a = a;
+  return cv::Matx23f((const float*) p.data);
 }
 
-const cv::Matx23f& c_affine_image_transform::affine_matrix() const
+cv::Matx23f c_affine_image_transform::matrix() const
 {
-  return a;
-}
-
-cv::Mat1f c_affine_image_transform::parameters() const
-{
-  return cv::Mat1f(a.rows, a.cols, (float*) a.val).clone();
+  return matrix(parameters_);
 }
 
 bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if( p.rows == 2 && p.cols == 3 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a(i,j) = p[i][j];
-      }
-    }
-
-    return true;
+  if( p.rows != 6 || p.cols != 1 ) {
+    CF_ERROR("c_affine_image_transform: Invalid parameters size: %dx%d. Must be 6x1", p.rows, p.cols);
+    return false;
   }
 
-  if( p.rows == 6 && p.cols == 1 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a(i,j) = p(i * 3 + j, 0);
-      }
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
-  return false;
+  p.copyTo(parameters_);
+  return true;
 }
 
-cv::Mat1f c_affine_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+void c_affine_image_transform::scale_transfrom(double scale)
 {
-  if( p.rows == 2 && p.cols == 3 ) {
-
-    cv::Mat1f sp(2, 3);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-
-    return sp;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x3", p.rows, p.cols);
-  return cv::Mat1f();
+  parameters_(2, 0) *= scale;
+  parameters_(5, 0) *= scale;
 }
 
-bool c_affine_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  // Wx =  a00 * x + a01 * y + a02
-  // Wy =  a11 * x + a11 * y + a12
+  if( p.rows != 6 || p.cols != 1 ) {
+    CF_ERROR("c_affine_image_transform: Invalid parameters size: %dx%d. Must be 6x1", p.rows, p.cols);
+    return false;
+  }
 
-  map.create(size);
+  return create_remap(matrix(p), size, rmap);
+}
+
+bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  INSTRUMENT_REGION("");
+
+  //  x' =  a00 * x  + a01 * y + a02
+  //  y' =  a10 * x  + a11 * y + a12
+
+  rmap.create(size);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [a, &rmap](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for( int y = 0; y < rmap.rows; ++y ) {
+#endif
+          cv::Vec2f * mp = rmap[y];
 
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-
-          cv::Vec2f * m = map[y];
-
-          for ( int x = 0; x < map.cols; ++x ) {
-
-            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
-            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
+          for( int x = 0; x < rmap.cols; ++x ) {
+            mp[x][0] = a(0, 0) * x + a(0, 1) * y + a(0, 2);
+            mp[x][1] = a(1, 0) * x + a(1, 1) * y + a(1, 2);
           }
         }
-      });
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  });
+#endif
 
+  return true;
+}
+
+bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+{
+  const cv::Size size =
+      gx.size();
+
+  J[0].create(size);
+  J[1].create(size);
+  J[2] = gx;
+
+  J[3].create(size);
+  J[4].create(size);
+  J[5] = gy;
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [size, &gx, &gy, &J](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
 #else
+        for( int y = 0; y < size.height; ++y ) {
+#endif
+          for( int x = 0; x < size.width; ++x ) {
 
-  for ( int y = 0; y < map.rows; ++y ) {
+            J[0][y][x] = gx[y][x] * x;   // a00
+            J[1][y][x] = gx[y][x] * y;// a01
+            //J[2][y][x] = gx[y][x];     // a02
 
-    cv::Vec2f * m = map[y];
-
-    for ( int x = 0; x < map.cols; ++x ) {
-
-      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2);
-      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2);
-    }
-  }
-
-#endif // TBB
+            J[3][y][x] = gy[y][x] * x;// a10
+            J[4][y][x] = gy[y][x] * y;// a11
+            //J[5][y][x] = gy[y][x];     // a12
+          }
+        }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+   });
+#endif
 
   return true;
 }
@@ -513,499 +758,666 @@ bool c_affine_image_transform::create_remap(cv::Mat2f & map, const cv::Size & si
 
 c_homography_image_transform::c_homography_image_transform()
 {
+  set_matrix(cv::Matx33f::eye());
 }
 
-c_homography_image_transform::c_homography_image_transform(const float a[3][3])
+c_homography_image_transform::c_homography_image_transform(const float data[3][3])
 {
-  memcpy(this->a.val, a, sizeof(this->a.val));
+  set_matrix(cv::Matx33f((const float*) data));
 }
 
 c_homography_image_transform::c_homography_image_transform(const cv::Matx33f & a)
 {
-  this->a = a;
+  set_matrix(a);
 }
 
 c_homography_image_transform::c_homography_image_transform(float a00, float a01, float a02,
     float a10, float a11, float a12,
     float a20, float a21, float a22)
 {
-  a(0,0) = a00;
-  a(0,1) = a01;
-  a(0,2) = a02;
+  set_matrix(cv::Matx33f(
+      a00, a01, a02,
+      a10, a11, a12,
+      a20, a21, a22));
 
-  a(1,0) = a10;
-  a(1,1) = a11;
-  a(1,2) = a12;
+}
 
-  a(2,0) = a20;
-  a(2,1) = a21;
-  a(2,2) = a22;
+void c_homography_image_transform::reset()
+{
+  set_matrix(cv::Matx33f::eye());
+}
+
+void c_homography_image_transform::update_parameters()
+{
+  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(8, 1);
+  }
+
+  parameters_(0, 0) = matrix_(0, 0);
+  parameters_(1, 0) = matrix_(0, 1);
+  parameters_(2, 0) = matrix_(0, 2);
+  parameters_(3, 0) = matrix_(1, 0);
+  parameters_(4, 0) = matrix_(1, 1);
+  parameters_(5, 0) = matrix_(1, 2);
+  parameters_(6, 0) = matrix_(2, 0);
+  parameters_(7, 0) = matrix_(2, 1);
+  //parameters_(8, 0) = matrix_(2, 2);
 }
 
 void c_homography_image_transform::set_translation(const cv::Vec2f & v)
 {
-  Tx_ = v[0];
-  Ty_ = v[1];
+  matrix_(0, 2) = v(0);
+  matrix_(1, 2) = v(1);
+  update_parameters();
 }
 
 cv::Vec2f c_homography_image_transform::translation() const
 {
-  return cv::Vec2f(Tx_, Ty_);
+  return cv::Vec2f(matrix_(0, 2), matrix_(1, 2));
 }
 
-void c_homography_image_transform::set_homography_matrix(const cv::Matx33f & a)
+
+void c_homography_image_transform::set_matrix(const cv::Matx33f & a)
 {
-  this->a = a;
+  matrix_ = a;
+  update_parameters();
 }
 
-const cv::Matx33f& c_homography_image_transform::homography_matrix() const
+const cv::Matx33f & c_homography_image_transform::matrix() const
 {
-  return this->a;
+  return matrix_;
 }
 
-cv::Mat1f c_homography_image_transform::parameters() const
+cv::Matx33f c_homography_image_transform::matrix(const cv::Mat1f & p) const
 {
-  return cv::Mat1f(3, 3, (float*) a.val).clone();
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
+        p.rows, p.cols);
+  }
+
+  return cv::Matx33f(p(0, 0), p(1, 0), p(2, 0),
+      p(3, 0), p(4, 0), p(5, 0),
+      p(6, 0), p(7, 0), matrix_(2, 2));
 }
 
 bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if( p.rows == 3 && p.cols == 3 ) {
-    for( int i = 0; i < 3; ++i ) {
-      for( int j = 0; j < 3; ++j ) {
-        a(i, j) = p[i][j];
-      }
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
-  return false;
+  set_matrix(matrix(p));
+  update_parameters();
+  return true;
 }
 
-cv::Mat1f c_homography_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+void c_homography_image_transform::scale_transfrom(double factor)
 {
-  if( p.rows == 3 && p.cols == 3 ) {
+  matrix_(0, 2) *= factor;
+  matrix_(1, 2) *= factor;
+  matrix_(2, 0) /= factor;
+  matrix_(2, 1) /= factor;
 
-    cv::Mat1f sp(3, 3);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-
-    sp(2, 0) = p(2, 0) / factor;
-    sp(2, 1) = p(2, 1) / factor;
-    sp(2, 2) = p(2, 2);
-
-    return sp;
-  }
-
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 3x3", p.rows, p.cols);
-  return cv::Mat1f();
+  update_parameters();
 }
 
-bool c_homography_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+bool c_homography_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  map.create(size);
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
+        p.rows, p.cols);
+    return false;
+  }
+
+  return create_remap(matrix(p), size, rmap);
+}
+
+bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  rmap.create(size);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
-
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [a, &rmap](const tbb_range & r) {
         for ( int y = r.begin(); y < r.end(); ++y ) {
-          cv::Vec2f * m = map[y];
+#else
+          for( int y = 0; y < map.rows; ++y ) {
 
-          for ( int x = 0; x < map.cols; ++x ) {
+#endif
+          cv::Vec2f * mp = rmap[y];
 
-            float w = a(2,0) * x + a(2,1) * y + a(2,2);
-            if ( w ) {
-              w = 1 / w;
-            }
-            else {
-              w = 1;
-            }
+          for ( int x = 0; x < rmap.cols; ++x ) {
 
-            m[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) * w;
-            m[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) * w;
+            const float w = a(2,0) * x + a(2,1) * y + a(2,2);
+
+            mp[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) / w;
+            mp[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) / w;
           }
         }
-      });
-
-#else
-
-  for( int y = 0; y < map.rows; ++y ) {
-
-    cv::Vec2f *m = map[y];
-
-    for( int x = 0; x < map.cols; ++x ) {
-
-      float w = a(2,0) * x + a(2,1) * y + a(2,2);
-      if( w ) {
-        w = 1 / w;
-      }
-      else {
-        w = 1;
-      }
-
-      m[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) * w;
-      m[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) * w;
-    }
-  }
-
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+        });
 #endif
 
   return true;
 }
 
+bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+{
+  INSTRUMENT_REGION("");
+
+  // w  =  (x * a20 + y * a21 + a22)
+  // x' =  (x * a00 + y * a01 + a02) / w
+  // y' =  (x * a10 + y * a11 + a12) / w
+
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 9x1", p.rows, p.cols);
+    return false;
+  }
+
+  const cv::Size size =
+      gx.size();
+
+  const cv::Matx33f a(matrix(p));
+
+  for( int i = 0; i < 8; ++i ) {
+    J[i].create(size);
+  }
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [a, size, &gx, &gy, &J](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < size.height; ++y ) {
+#endif
+
+          for ( int x = 0; x < size.width; ++x ) {
+
+            const float den = 1.f / (x * a(2,0) + y * a(2,1) + 1.f );
+            const float hatX = -(x * a(0,0) + y * a(0,1) + a(0,2)) * den;
+            const float hatY = -(x * a(1,0) + y * a(1,1) + a(1,2)) * den;
+
+            const float ggx = gx[y][x] * den;
+            const float ggy = gy[y][x] * den;
+            const float gg = hatX * ggx + hatY * ggy;
+
+            J[0][y][x] = ggx * x;
+            J[1][y][x] = ggx * y;
+            J[2][y][x] = ggx;
+
+            J[3][y][x] = ggy * x;
+            J[4][y][x] = ggy * y;
+            J[5][y][x] = ggy;
+
+            J[6][y][x] = gg * x;
+            J[7][y][x] = gg * y;
+
+
+//            J[0][y][x] = ggx * x;
+//            J[1][y][x] = ggy * x;
+//            J[2][y][x] = gg * x;
+//            J[3][y][x] = ggx * y;
+//            J[4][y][x] = ggy * y;
+//            J[5][y][x] = gg * y;
+//            J[6][y][x] = ggx;
+//            J[7][y][x] = ggy;
+          }
+        }
+      }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  );
+#endif
+
+  return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_semi_quadratic_image_transform::c_semi_quadratic_image_transform()
 {
-
+  set_matrix(cv::Matx24f::eye());
 }
 
-c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(const float a[2][4])
+c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(const float data[2][4])
 {
-  memcpy(this->a.val, a, sizeof(this->a.val));
+  set_matrix(cv::Matx24f((const float *)data));
 }
 
 c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(const cv::Matx24f & a)
 {
-  this->a = a;
+  set_matrix(cv::Matx24f(a));
 }
-
 
 c_semi_quadratic_image_transform::c_semi_quadratic_image_transform(float a00, float a01, float a02, float a03,
     float a10, float a11, float a12, float a13)
 {
-  a(0,0) = a00;
-  a(0,1) = a01;
-  a(0,2) = a02;
-  a(0,3) = a03;
+  set_matrix(cv::Matx24f(
+      a00, a01, a02, a03,
+      a10, a11, a12, a13));
+}
 
-  a(1,0) = a10;
-  a(1,1) = a11;
-  a(1,2) = a12;
-  a(1,3) = a13;
+
+void c_semi_quadratic_image_transform::reset()
+{
+  set_matrix(cv::Matx24f::eye());
 }
 
 
 void c_semi_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 {
-  Tx_ = v[0];
-  Ty_ = v[1];
+  parameters_(2, 0) = v(0);
+  parameters_(6, 0) = v(1);
 }
 
 cv::Vec2f c_semi_quadratic_image_transform::translation() const
 {
-  return cv::Vec2f (Tx_, Ty_);
+  return cv::Vec2f ((const float*)parameters_.data);
 }
 
 void c_semi_quadratic_image_transform::set_matrix(const cv::Matx24f & a)
 {
-  this->a = a;
+  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(8, 1);
+  }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = a(0, 3);
+  parameters_(4, 0) = a(1, 0);
+  parameters_(5, 0) = a(1, 1);
+  parameters_(6, 0) = a(1, 2);
+  parameters_(7, 0) = a(1, 3);
 }
 
 void c_semi_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
 {
-  if( a.rows == 4 && a.cols == 2 ) {
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 4; ++j ) {
-        this->a(i, j) = a[j][i];
-      }
-    }
+  if ( a.rows != 2 || a.cols != 4 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x4", a.rows, a.cols);
+    return;
   }
-  else if( a.rows == 2 && a.cols == 4 ) {
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 4; ++j ) {
-        this->a(i, j) = a[i][j];
-      }
-    }
+
+  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(8, 1);
   }
-  else {
-    CF_ERROR("Invalid matrix size %dx%d. Must be 2x4", a.rows, a.cols);
-  }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = a(0, 3);
+  parameters_(4, 0) = a(1, 0);
+  parameters_(5, 0) = a(1, 1);
+  parameters_(6, 0) = a(1, 2);
+  parameters_(7, 0) = a(1, 3);
 }
 
-const cv::Matx24f & c_semi_quadratic_image_transform::matrix() const
+cv::Matx24f c_semi_quadratic_image_transform::matrix() const
 {
-  return this->a;
+  return cv::Matx24f((const float*)parameters_.data);
 }
+
+cv::Matx24f c_semi_quadratic_image_transform::matrix(const cv::Mat1f & p) const
+{
+  return cv::Matx24f((const float*)p.data);
+}
+
 
 void c_semi_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
 {
-  for ( int i = 0; i < 2; ++i ) {
-    for ( int j = 0; j < 3; ++j ) {
-      this->a(i, j) = a(i, j);
-    }
+  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(8, 1);
   }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = 0;
+  parameters_(4, 0) = a(1, 0);
+  parameters_(5, 0) = a(1, 1);
+  parameters_(6, 0) = a(1, 2);
+  parameters_(7, 0) = 0;
 }
 
 cv::Matx23f c_semi_quadratic_image_transform::affine_matrix() const
 {
-  return cv::Matx23f(
-      a(0, 0), a(0, 1), a(0, 2),
-      a(1, 0), a(1, 1), a(1, 2));
-}
+  const cv::Mat1f & a =
+      parameters_;
 
-cv::Mat1f c_semi_quadratic_image_transform::parameters() const
-{
-  return cv::Mat1f(2, 4, (float*) a.val).clone();
+  return cv::Matx23f(a(0, 0), a(1, 0), a(2, 0),
+      a(4, 0), a(5, 0), a(6, 0));
 }
 
 bool c_semi_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if( p.rows == 2 && p.cols == 4 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 4; ++j ) {
-        a(i,j) = p[i][j];
-      }
-    }
-
-    return true;
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 8x1", p.rows, p.cols);
+    return false;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x4", p.rows, p.cols);
-  return false;
+  p.copyTo(parameters_);
+  return true;
 }
 
-cv::Mat1f c_semi_quadratic_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+void c_semi_quadratic_image_transform::scale_transfrom(double factor)
 {
-  if( p.rows == 2 && p.cols == 4 ) {
+  parameters_(2, 0) *= factor;
+  parameters_(3, 0) /= factor;
 
-    cv::Mat1f sp(2, 4);
+  parameters_(6, 0) *= factor;
+  parameters_(7, 0) /= factor;
+}
 
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-    sp(0, 3) = p(0, 3) / factor;
-
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-    sp(1, 3) = p(1, 3) / factor;
-
-    return sp;
+bool c_semi_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 8x1", p.rows, p.cols);
+    return false;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x4", p.rows, p.cols);
-  return cv::Mat1f();
+  return create_remap(matrix(p), size, rmap);
 }
 
-bool c_semi_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  map.create(size);
+  rmap.create(size);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [a, &rmap](const tbb_range & r) {
         for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+        for( int y = 0; y < map.rows; ++y ) {
+#endif // TBB
 
-          cv::Vec2f * m = map[y];
+          cv::Vec2f * mp = rmap[y];
 
-          for ( int x = 0; x < map.cols; ++x ) {
-            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
-            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
+          for ( int x = 0; x < rmap.cols; ++x ) {
+            mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
+            mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
           }
         }
-      });
-#else
-
-  for( int y = 0; y < map.rows; ++y ) {
-    cv::Vec2f * m = map[y];
-
-    for ( int x = 0; x < map.cols; ++x ) {
-      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
-      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
-    }
-  }
-
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  });
 #endif // TBB
   return true;
 }
 
+bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
+    cv::Mat1f J[]) const
+{
+  INSTRUMENT_REGION("");
+
+  // x' =  a00 * x + a01 * y + a02 + a03 * x * y
+  // y' =  a10 * x + a11 * y + a12 + a13 * x * y
+
+  const cv::Size size =
+      gx.size();
+
+  for( int i = 0; i < 8; ++i ) {
+    J[i].create(size);
+  }
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [size, &gx, &gy, &J](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < size.height; ++y ) {
+#endif
+          for ( int x = 0; x < size.width; ++x ) {
+            J[0][y][x] = gx[y][x] * x; // a00
+            J[1][y][x] = gx[y][x] * y; // a01
+            J[2][y][x] = gx[y][x]; // a02
+            J[3][y][x] = gx[y][x] * x * y; // a03
+
+            J[4][y][x] = gy[y][x] * x; // a10
+            J[5][y][x] = gy[y][x] * y; // a11
+            J[6][y][x] = gy[y][x]; // a12
+            J[7][y][x] = gy[y][x] * x * y; // a13
+          }
+        }
+      }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  );
+#endif
+
+  return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_quadratic_image_transform::c_quadratic_image_transform()
 {
-
+  set_matrix(cv::Matx26f::eye());
 }
 
-c_quadratic_image_transform::c_quadratic_image_transform(const float a[2][6])
+c_quadratic_image_transform::c_quadratic_image_transform(const float data[2][6])
 {
-  memcpy(this->a.val, a, sizeof(this->a.val));
+  set_matrix(cv::Matx26f( (const float*)data));
 }
 
 c_quadratic_image_transform::c_quadratic_image_transform(const cv::Matx26f & a)
 {
-  this->a = a;
+  set_matrix(a);
 }
-
 
 c_quadratic_image_transform::c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
     float a10, float a11, float a12, float a13, float a14, float a15)
 {
-  a(0,0) = a00;
-  a(0,1) = a01;
-  a(0,2) = a02;
-  a(0,3) = a03;
-  a(0,4) = a04;
-  a(0,5) = a05;
+  set_matrix(cv::Matx26f(
+      a00, a01, a02, a03, a04, a05,
+      a10, a11, a12, a13, a14, a15));
+}
 
-  a(1,0) = a10;
-  a(1,1) = a11;
-  a(1,2) = a12;
-  a(1,3) = a13;
-  a(1,4) = a14;
-  a(1,5) = a15;
+void c_quadratic_image_transform::reset()
+{
+  set_matrix(cv::Matx26f::eye());
 }
 
 
 void c_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 {
-  Tx_ = v[0];
-  Ty_ = v[1];
+  parameters_(2, 0) = v(0);
+  parameters_(8, 0) = v(1);
 }
 
 cv::Vec2f c_quadratic_image_transform::translation() const
 {
-  return cv::Vec2f (Tx_, Ty_);
+  return cv::Vec2f(parameters_(2, 0), parameters_(8, 0));
 }
 
 void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
 {
-  this->a = a;
+  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(12, 1);
+  }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = a(0, 3);
+  parameters_(4, 0) = a(0, 4);
+  parameters_(5, 0) = a(0, 5);
+
+  parameters_(6, 0) = a(1, 0);
+  parameters_(7, 0) = a(1, 1);
+  parameters_(8, 0) = a(1, 2);
+  parameters_(9, 0) = a(1, 2);
+  parameters_(10, 0) = a(1, 4);
+  parameters_(11, 0) = a(1, 5);
 }
 
 void c_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
 {
-  if( a.rows == 6 && a.cols == 2 ) {
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        this->a(i, j) = a[j][i];
-      }
-    }
+  if ( a.rows != 2 || a.cols != 6 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", a.rows, a.cols);
+    return;
   }
-  else if( a.rows == 2 && a.cols == 6 ) {
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        this->a(i, j) = a[i][j];
-      }
-    }
+
+  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(12, 1);
   }
-  else {
-    CF_ERROR("Invalid matrix size %dx%d. Must be 2x6", a.rows, a.cols);
-  }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = a(0, 3);
+  parameters_(4, 0) = a(0, 4);
+  parameters_(5, 0) = a(0, 5);
+
+  parameters_(6, 0) = a(1, 0);
+  parameters_(7, 0) = a(1, 1);
+  parameters_(8, 0) = a(1, 2);
+  parameters_(9, 0) = a(1, 2);
+  parameters_(10, 0) = a(1, 4);
+  parameters_(11, 0) = a(1, 5);
 }
 
-const cv::Matx26f & c_quadratic_image_transform::matrix() const
+cv::Matx26f c_quadratic_image_transform::matrix() const
 {
-  return this->a;
+  return cv::Matx26f((const float*) parameters_.data);
+}
+
+cv::Matx26f c_quadratic_image_transform::matrix(const cv::Mat1f & p) const
+{
+  return cv::Matx26f((const float*) p.data);
 }
 
 void c_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
 {
-  for ( int i = 0; i < 2; ++i ) {
-    for ( int j = 0; j < 3; ++j ) {
-      this->a(i, j) = a(i, j);
-    }
+  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
+    parameters_.release();
+    parameters_.create(12, 1);
   }
+
+  parameters_(0, 0) = a(0, 0);
+  parameters_(1, 0) = a(0, 1);
+  parameters_(2, 0) = a(0, 2);
+  parameters_(3, 0) = 0;
+  parameters_(4, 0) = 0;
+  parameters_(5, 0) = 0;
+
+  parameters_(6, 0) = a(1, 0);
+  parameters_(7, 0) = a(1, 1);
+  parameters_(8, 0) = a(1, 2);
+  parameters_(9, 0) = 0;
+  parameters_(10, 0) = 0;
+  parameters_(11, 0) = 0;
 }
 
 cv::Matx23f c_quadratic_image_transform::affine_matrix() const
 {
-  return cv::Matx23f(
-      a(0, 0), a(0, 1), a(0, 2),
-      a(1, 0), a(1, 1), a(1, 2));
-}
+  const cv::Mat1f & a =
+      parameters_;
 
-cv::Mat1f c_quadratic_image_transform::parameters() const
-{
-  return cv::Mat1f(2, 6, (float*) a.val).clone();
+  return cv::Matx23f(a(0, 0), a(1, 0), a(2, 0),
+      a(6, 0), a(7, 0), a(8, 0));
 }
 
 bool c_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  if( p.rows == 2 && p.cols == 6 ) {
-
-    for( int i = 0; i < 2; ++i ) {
-      for( int j = 0; j < 6; ++j ) {
-        a(i,j) = p[i][j];
-      }
-    }
-
-    return true;
+  if( p.rows != 12 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 12x1", p.rows, p.cols);
+    return false;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
-  return false;
+  p.copyTo(parameters_);
+  return true;
 }
 
-cv::Mat1f c_quadratic_image_transform::scale_transfrom(const cv::Mat1f & p, double factor) const
+void c_quadratic_image_transform::scale_transfrom(double factor)
 {
-  if( p.rows == 2 && p.cols == 6 ) {
+  parameters_(2, 0) *= factor;
+  parameters_(3, 0) /= factor;
+  parameters_(4, 0) /= factor;
+  parameters_(5, 0) /= factor;
+  parameters_(8, 0) *= factor;
+  parameters_(9, 0) /= factor;
+  parameters_(10, 0) /= factor;
+  parameters_(11, 0) /= factor;
+}
 
-    cv::Mat1f sp(2, 6);
-
-    sp(0, 0) = p(0, 0);
-    sp(0, 1) = p(0, 1);
-    sp(0, 2) = p(0, 2) * factor;
-    sp(0, 3) = p(0, 3) / factor;
-    sp(0, 4) = p(0, 4) / factor;
-    sp(0, 5) = p(0, 5) / factor;
-
-    sp(1, 0) = p(1, 0);
-    sp(1, 1) = p(1, 1);
-    sp(1, 2) = p(1, 2) * factor;
-    sp(1, 3) = p(1, 3) / factor;
-    sp(1, 4) = p(1, 4) / factor;
-    sp(1, 5) = p(1, 5) / factor;
-
-    return sp;
+bool c_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 12 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 12x1", p.rows, p.cols);
+    return false;
   }
 
-  CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x6", p.rows, p.cols);
-  return cv::Mat1f();
+  return create_remap(matrix(p), size, rmap);
 }
 
-bool c_quadratic_image_transform::create_remap(cv::Mat2f & map, const cv::Size & size) const
+bool c_quadratic_image_transform::create_remap(const cv::Matx26f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  map.create(size);
+  rmap.create(size);
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [this, &map](const tbb_range & r) {
-
+  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
+      [a, &rmap](const tbb_range & r) {
         for ( int y = r.begin(); y < r.end(); ++y ) {
+#else
+        for( int y = 0; y < map.rows; ++y ) {
+#endif // TBB
 
-          cv::Vec2f * m = map[y];
+          cv::Vec2f * mp = rmap[y];
 
-          for ( int x = 0; x < map.cols; ++x ) {
-            m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
-            m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
+          for ( int x = 0; x < rmap.cols; ++x ) {
+            mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
+            mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
           }
         }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
       });
-#else
+#endif // TBB
+  return true;
+}
 
-  for( int y = 0; y < map.rows; ++y ) {
-    cv::Vec2f * m = map[y];
+bool c_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
+    cv::Mat1f J[]) const
+{
+  INSTRUMENT_REGION("");
 
-    for ( int x = 0; x < map.cols; ++x ) {
-      m[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
-      m[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
-    }
+  // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
+  // y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
+
+  const cv::Size size =
+      gx.size();
+
+  for( int i = 0; i < 12; ++i ) {
+    J[i].create(size);
   }
 
-#endif // TBB
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [size, &gx, &gy, &J](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for ( int y = 0; y < size.height; ++y ) {
+#endif
+          for ( int x = 0; x < size.width; ++x ) {
+
+            J[0][y][x] = gx[y][x] * x;
+            J[1][y][x] = gx[y][x] * y;
+            J[2][y][x] = gx[y][x];
+            J[3][y][x] = gx[y][x] * x * y;
+            J[4][y][x] = gx[y][x] * x * x;
+            J[5][y][x] = gx[y][x] * y * y;
+
+            J[6][y][x] = gy[y][x] * x;
+            J[7][y][x] = gy[y][x] * y;
+            J[8][y][x] = gy[y][x];
+            J[9][y][x] = gy[y][x] * x * y;
+            J[10][y][x] = gy[y][x] * x * x;
+            J[11][y][x] = gy[y][x] * y * y;
+          }
+        }
+      }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  );
+#endif
+
   return true;
 }
 

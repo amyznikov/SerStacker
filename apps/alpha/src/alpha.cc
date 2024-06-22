@@ -97,14 +97,16 @@ int main(int argc, char *argv[])
   }
 
 
-  c_ecclm_affine model;
-  c_ecclmp ecclmp(&model);
+  c_translation_image_transform transform;
 
-  //ecclm.set_epsx(1e-2);
+  c_ecclmp ecclmp(&transform);
 
-  model.set_matrix(cv::Matx23d::eye());
-  //ecclm.set_max_iterations(100);
+  //transform.set_translation(cv::Vec2f(0,0));
+  //transform.set_matrix(cv::Matx23d::eye());
+  //transform.set_matrix(cv::Matx33d::eye());
+  //transform.set_matrix(cv::Matx26f::eye());
 
+  ecclmp.set_epsx(1e-3);
   ecclmp.set_reference_image(reference_image);
 
   if ( true ) {
@@ -112,30 +114,77 @@ int main(int argc, char *argv[])
     ecclmp.align(current_image, current_mask);
   }
 
-  cv::Matx23d A =
-      model.matrix();
+//  cv::Matx33d A =
+//      transform.matrix();
 
-  cv::Matx23d Ainv;
-  cv::invertAffineTransform(A, Ainv);
+//  cv::Matx26f A =
+//      transform.matrix();
+
+//  cv::Matx23d A =
+//      transform.matrix();
+
+  cv::Vec2f T =
+      transform.translation();
 
   CF_DEBUG("H:\n"
-      "A= {\n"
-      "  %+g %+g %+g\n"
-      "  %+g %+g %+g\n"
-      "}\n"
-      "Ainv = {\n"
-      "  %+g %+g %+g\n"
-      "  %+g %+g %+g\n"
+      "T= {\n"
+      "  %+g %+g\n"
       "}\n"
       "\n",
-      A(0, 0), A(0, 1), A(0, 2),
-      A(1, 0), A(1, 1), A(1, 2),
-      Ainv(0, 0), Ainv(0, 1), Ainv(0, 2),
-      Ainv(1, 0), Ainv(1, 1), Ainv(1, 2)
-      );
+      T(0), T(01));
 
-  model.remap(size,
-      input_images[1], current_mask,
+ // cv::Matx23d Ainv;
+  //  cv::invertAffineTransform(A, Ainv);
+  //  CF_DEBUG("H:\n"
+  //      "A= {\n"
+  //      "  %+g %+g %+g\n"
+  //      "  %+g %+g %+g\n"
+  //      "}\n"
+  //      "Ainv = {\n"
+  //      "  %+g %+g %+g\n"
+  //      "  %+g %+g %+g\n"
+  //      "}\n"
+  //      "\n",
+  //      A(0, 0), A(0, 1), A(0, 2),
+  //      A(1, 0), A(1, 1), A(1, 2),
+  //      Ainv(0, 0), Ainv(0, 1), Ainv(0, 2),
+  //      Ainv(1, 0), Ainv(1, 1), Ainv(1, 2)
+  //      );
+
+//  cv::Matx33d Ainv = A.inv();
+//
+//  CF_DEBUG("H:\n"
+//      "A= {\n"
+//      "  %+g %+g %+g\n"
+//      "  %+g %+g %+g\n"
+//      "  %+g %+g %+g\n"
+//      "}\n"
+//      "Ainv = {\n"
+//      "  %+g %+g %+g\n"
+//      "  %+g %+g %+g\n"
+//      "  %+g %+g %+g\n"
+//      "}\n"
+//      "\n",
+//      A(0, 0), A(0, 1), A(0, 2),
+//      A(1, 0), A(1, 1), A(1, 2),
+//      A(2, 0), A(2, 1), A(2, 2),
+//      Ainv(0, 0), Ainv(0, 1), Ainv(0, 2),
+//      Ainv(1, 0), Ainv(1, 1), Ainv(1, 2),
+//      Ainv(2, 0), Ainv(2, 1), Ainv(2, 2)
+//    );
+
+
+//  CF_DEBUG("H:\n"
+//      "A= {\n"
+//      "  %+g %+g %+g %+g %+g %+g\n"
+//      "  %+g %+g %+g %+g %+g %+g\n"
+//      "}\n"
+//      "\n",
+//      A(0, 0), A(0, 1), A(0, 2), A(0, 3), A(0, 4), A(0, 5),
+//      A(1, 0), A(1, 1), A(1, 2), A(1, 3), A(1, 4), A(1, 5));
+
+
+  transform.remap(input_images[1], current_mask, size,
       input_images[1], current_mask);
 
   if( !save_image(input_images[0], current_mask, "debug_ecclm/input_reference_image.tiff") ) {

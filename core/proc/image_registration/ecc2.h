@@ -63,19 +63,86 @@ class c_ecc_motion_model
 public:
   typedef c_ecc_motion_model this_class;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   virtual ~c_ecc_motion_model() = default;
 
   virtual cv::Mat1f parameters() const = 0;
   virtual bool set_parameters(const cv::Mat1f & p) = 0;
-  virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
-  virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
+  virtual void scale_transfrom(double factor) = 0;
+  virtual bool create_remap(const cv::Size & size, cv::Mat2f & rmap) const = 0;
+  virtual bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const = 0;
 
   virtual int  num_adustable_parameters() const = 0;
   virtual bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const = 0;
+  virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
   virtual bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
   virtual bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
 };
+
+
+template<class c_image_transform_type>
+class c_ecc_motion_model_template :
+    public c_ecc_motion_model
+{
+public:
+  typedef c_ecc_motion_model_template this_class;
+  typedef c_ecc_motion_model base;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef c_image_transform_type image_transform_type;
+
+  c_ecc_motion_model_template(image_transform_type * transform = nullptr) :
+      transform_(transform)
+  {
+  }
+
+  void set_transform(image_transform_type * transform)
+  {
+    transform_ = transform;
+  }
+
+  image_transform_type * transform() const
+  {
+    return transform_;
+  }
+
+  cv::Mat1f parameters() const final
+  {
+    return transform_ ? transform_->parameters() : cv::Mat1f();
+  }
+
+  bool set_parameters(const cv::Mat1f & p) final
+  {
+    return transform_ ? transform_->set_parameters(p): false;
+  }
+
+  void scale_transfrom(double factor) final
+  {
+    if ( transform_ ) {
+       transform_->scale_transfrom(factor);
+    }
+  }
+
+  bool create_remap(const cv::Size & size, cv::Mat2f & rmap) const final
+  {
+    return transform_  ? ((c_image_transform*)transform_)->create_remap(size, rmap) : false;
+  }
+
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final
+  {
+    return transform_  ? transform_->create_remap(p, size, rmap) : false;
+  }
+
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final
+  {
+    return transform_ ? transform_->create_steepest_descent_images(p, gx, gy, J) : false;
+  }
+
+protected:
+  image_transform_type * transform_ = nullptr;
+};
+
 
 /**
  * Base interface to both forward-additive and

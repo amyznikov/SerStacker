@@ -39,24 +39,42 @@ class c_image_transform
 public:
   typedef c_image_transform this_class;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   virtual ~c_image_transform() = default;
+
+  virtual void reset() = 0;
+  virtual bool set_parameters(const cv::Mat1f & p) = 0;
+  virtual void scale_transfrom(double factor) = 0;
+  virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const = 0;
+  virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
+
 
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
-  virtual cv::Mat1f parameters() const = 0;
-  virtual bool set_parameters(const cv::Mat1f & p) = 0;
-  virtual cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const = 0;
 
-  virtual bool create_remap(cv::Mat2f & map, const cv::Size & size) const = 0;
-
-  bool scale_transfrom(double factor)
+  const cv::Mat1f & parameters() const
   {
-    return set_parameters(scale_transfrom(parameters(), factor));
+    return parameters_;
   }
 
+  bool create_remap(const cv::Size & size, cv::Mat2f & map) const
+  {
+    return create_remap(parameters(), size, map);
+  }
+
+  bool remap(cv::InputArray src, cv::InputArray src_mask, const cv::Size & size,
+      cv::OutputArray dst, cv::OutputArray dst_mask,
+      cv::InterpolationFlags interpolation = cv::INTER_LINEAR,
+      cv::BorderTypes borderMode = cv::BORDER_CONSTANT,
+      const cv::Scalar & borderValue = cv::Scalar()) const;
+
+protected:
+  cv::Mat1f parameters_;
 };
+
+
 
 /**
  * Translation transform
@@ -70,26 +88,22 @@ public:
   typedef c_translation_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_translation_image_transform(float Tx = 0, float Ty = 0);
   c_translation_image_transform(const cv::Vec2f & T);
-
-  void reset();
+  void reset() final;
 
   void set_translation(float x, float y);
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const override;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
 
-
-protected:
-  float a[2] = { 0, 0 };
-  float & Tx_ = a[0];
-  float & Ty_ = a[1];
+  bool create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & map) const;
+  bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 };
 
 
@@ -109,12 +123,13 @@ public:
   typedef c_euclidean_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_euclidean_image_transform(float Tx = 0, float Ty = 0, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & T, float angle = 0, float scale = 1);
   c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1);
 
-  void reset();
+  void reset() final;
 
   void set_translation(const cv::Vec2f & v) override;
   cv::Vec2f translation() const  override;
@@ -137,20 +152,23 @@ public:
   void set_fix_scale(bool v);
   bool fix_scale() const;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+  int num_adjustable_parameters() const;
+  void set_parameters(float Tx, float Ty, float angle, float scale, float Cx, float Cy);
+  bool set_parameters(const cv::Mat1f & p) final;
+  bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale, float * Cx, float * Cy) const;
+  void scale_transfrom(double factor) final;
+
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
 protected:
-  float a[6] = { 0, 0, 0, 1, 0, 0 };
-  float & Tx_ = a[0];
-  float & Ty_ = a[1];
-  float & angle_ = a[2];
-  float & scale_ = a[3];
-  float & Cx_ = a[4];
-  float & Cy_ = a[5];
+  void update_parameters();
 
+protected:
+  cv::Vec2f T_;
+  cv::Vec2f C_;
+  float angle_ = 0;
+  float scale_ = 1;
   bool fix_translation_ = false;
   bool fix_rotation_ = false;
   bool fix_scale_ = false;
@@ -181,27 +199,27 @@ public:
   typedef c_affine_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_affine_image_transform();
   c_affine_image_transform(const float a[2][3]);
   c_affine_image_transform(const cv::Matx23f & a);
   c_affine_image_transform(float a00, float a01, float a02, float a10, float a11, float a12);
+  void reset() final;
 
-  void reset();
+  void set_matrix(const cv::Matx23f & a);
+  cv::Matx23f matrix() const;
+  cv::Matx23f matrix(const cv::Mat1f & p) const;
 
-  void set_affine_matrix(const cv::Matx23f & a);
-  const cv::Matx23f& affine_matrix() const;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
 
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const  override;
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
-
-protected:
-  cv::Matx23f a = cv::Matx23f::eye();
+  bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const;
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 };
 
 
@@ -219,6 +237,7 @@ public:
   typedef c_homography_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_homography_image_transform();
   c_homography_image_transform(const float a[3][3]);
@@ -228,21 +247,27 @@ public:
       float a10, float a11, float a12,
       float a20, float a21, float a22);
 
-  void set_homography_matrix(const cv::Matx33f & a);
-  const cv::Matx33f& homography_matrix() const;
+  void reset() final;
 
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const override;
+  void set_matrix(const cv::Matx33f & a);
+  const cv::Matx33f & matrix() const;
+  cv::Matx33f matrix(const cv::Mat1f & p) const;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
+
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
+
+  bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
 protected:
-  cv::Matx33f a = cv::Matx33f::eye();
-  float &Tx_ = a(0, 2);
-  float &Ty_ = a(1, 2);
+  void update_parameters();
+
+protected:
+  cv::Matx33f matrix_;
 };
 
 
@@ -260,6 +285,7 @@ public:
   typedef c_semi_quadratic_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_semi_quadratic_image_transform();
   c_semi_quadratic_image_transform(const float a[2][4]);
@@ -267,25 +293,26 @@ public:
   c_semi_quadratic_image_transform(float a00, float a01, float a02, float a03,
       float a10, float a11, float a12, float a13);
 
+  void reset() final;
+
   void set_matrix(const cv::Matx24f & a);
   void set_matrix(const cv::Mat1f & a);
-  const cv::Matx24f & matrix() const;
+  cv::Matx24f matrix() const;
+  cv::Matx24f matrix(const cv::Mat1f & p) const;
+
 
   void set_affine_matrix(const cv::Matx23f & a);
   cv::Matx23f affine_matrix() const;
 
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const override;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
 
-protected:
-  cv::Matx24f a = cv::Matx24f::eye();
-  float &Tx_ = a(0, 2);
-  float &Ty_ = a(1, 2);
+  bool create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const;
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 };
 
 /*
@@ -300,6 +327,7 @@ public:
   typedef c_quadratic_image_transform this_class;
   typedef c_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_quadratic_image_transform();
   c_quadratic_image_transform(const float a[2][6]);
@@ -307,25 +335,25 @@ public:
   c_quadratic_image_transform(float a00, float a01, float a02, float a03, float a04, float a05,
       float a10, float a11, float a12, float a13, float a14, float a15);
 
+  void reset() final;
+
   void set_matrix(const cv::Matx26f & a);
   void set_matrix(const cv::Mat1f & a);
-  const cv::Matx26f & matrix() const;
+  cv::Matx26f matrix() const;
+  cv::Matx26f matrix(const cv::Mat1f & p) const;
 
   void set_affine_matrix(const cv::Matx23f & a);
   cv::Matx23f affine_matrix() const;
 
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const override;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
 
-  cv::Mat1f parameters() const override;
-  bool set_parameters(const cv::Mat1f & p) override;
-  cv::Mat1f scale_transfrom(const cv::Mat1f & p, double factor) const override;
-  bool create_remap(cv::Mat2f & map, const cv::Size & size) const override;
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
 
-protected:
-  cv::Matx26f a = cv::Matx26f::eye();
-  float &Tx_ = a(0, 2);
-  float &Ty_ = a(1, 2);
+  bool create_remap(const cv::Matx26f & a, const cv::Size & size, cv::Mat2f & rmap) const;
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 };
 
 
@@ -347,6 +375,7 @@ public:
   typedef c_epipolar_derotation_image_transform this_class;
   typedef c_homography_image_transform base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_epipolar_derotation_image_transform()
   {

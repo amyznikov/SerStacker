@@ -106,7 +106,7 @@ bool c_affine_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, flo
   }
 
   cv::Matx23f a =
-      transform_->affine_matrix();
+      transform_->matrix();
 
   a(0,0) += p(0, 0);
   a(0,1) += p(1, 0);
@@ -116,7 +116,7 @@ bool c_affine_ecc_motion_model::update_forward_additive(const cv::Mat1f & p, flo
   a(1,1) += p(4, 0);
   a(1,2) += p(5, 0);
 
-  transform_->set_affine_matrix(a);
+  transform_->set_matrix(a);
 
   if( e ) {
     *e = sqrt(square(p(2, 0)) + square(p(5, 0)) +
@@ -146,7 +146,7 @@ bool c_affine_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, fl
   const float a12 = p(5, 0);
 
   cv::Matx23f a =
-      transform_->affine_matrix();
+      transform_->matrix();
 
   cv::Matx33f P(
       a(0,0), a(0,1), a(0,2),
@@ -176,7 +176,7 @@ bool c_affine_ecc_motion_model::update_inverse_composite(const cv::Mat1f & p, fl
   a(1,1) = P(1, 1);
   a(1,2) = P(1, 2);
 
-  transform_->set_affine_matrix(a);
+  transform_->set_matrix(a);
 
 
   if( e ) {

@@ -551,7 +551,7 @@ bool c_ecc_align::create_current_remap(const cv::Size & size)
     return false;
   }
 
-  if( !model_->create_remap(current_remap_, size) ) {
+  if( !model_->create_remap(size, current_remap_) ) {
     CF_ERROR("model_->create_remap() fails");
     return false;
   }
@@ -1245,11 +1245,14 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
       cv::compare(cmask, 255, cmask, cv::CMP_GE);
     }
 
-    transform_pyramid_.emplace_back(model->scale_transfrom(transform_pyramid_.back(), 0.5));
-    if( transform_pyramid_.back().empty() ) {
-      CF_ERROR("transform->scale() fails");
-      return false;
-    }
+    model->scale_transfrom(0.5);
+    transform_pyramid_.emplace_back(model->parameters());
+
+//    transform_pyramid_.emplace_back(model->scale_transfrom(transform_pyramid_.back(), 0.5));
+//    if( transform_pyramid_.back().empty() ) {
+//      CF_ERROR("transform->scale() fails");
+//      return false;
+//    }
   }
 
   // Align pyramid images in coarse-to-fine direction
@@ -1297,7 +1300,8 @@ bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
     }
 
     // i > 0
-    if( (transform_pyramid_[i - 1] = model->scale_transfrom(model->parameters(), 2)).empty() ) {
+    model->scale_transfrom(2);
+    if( (transform_pyramid_[i - 1] = model->parameters()).empty() ) {
       CF_ERROR("L[%d] transform->scale() fails", i);
       return false;
     }

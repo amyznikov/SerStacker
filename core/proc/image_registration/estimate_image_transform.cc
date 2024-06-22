@@ -440,7 +440,7 @@ bool estimate_affine_transform(c_affine_image_transform * transform,
     return false;
   }
 
-  transform->set_affine_matrix(cv::Matx23f(affine_matrix));
+  transform->set_matrix(cv::Matx23f(affine_matrix));
 
   return true;
 }
@@ -464,7 +464,7 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
     return false;
   }
 
-  transform->set_homography_matrix(cv::Matx33f(homography));
+  transform->set_matrix(cv::Matx33f(homography));
 
   return true;
 }
@@ -750,7 +750,7 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
   const cv::Matx33d homography =
       camera_matrix * build_rotation(-A) * camera_matrix.inv();
 
-  transform->set_homography_matrix(cv::Matx33f(homography));
+  transform->set_matrix(cv::Matx33f(homography));
 
 
   return true;

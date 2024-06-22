@@ -97,7 +97,8 @@ int main(int argc, char *argv[])
   }
 
 
-  c_translation_image_transform transform;
+  //c_translation_image_transform transform;
+  c_affine_image_transform transform;
 
   c_ecclmp ecclmp(&transform);
 

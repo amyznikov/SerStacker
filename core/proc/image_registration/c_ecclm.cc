@@ -295,10 +295,38 @@ bool c_ecclm::set_reference_image(cv::InputArray reference_image, cv::InputArray
         cv::Mat1b(5, 5, 255));
   }
 
-  J.resize(image_transform_->parameters().rows);
+
+  const int M =
+      image_transform_->parameters().rows;
+
+  J.resize(M);
 
   image_transform_->create_steepest_descent_images(image_transform_->parameters(),
       gx_, gy_, J.data());
+
+  if( true ) {
+
+    INSTRUMENT_REGION("rdots");
+
+    JJ.create(M, M);
+
+    tbb::parallel_for(tbb_range(0, M),
+        [&](const tbb_range & r) {
+
+          for( int i = r.begin(); i < r.end(); ++i ) {
+            for( int j = 0; j <= i; ++j ) {
+              JJ[i][j] = J[i].dot(J[j]);
+            }
+          }
+        });
+
+    for( int i = 0; i < M; ++i ) {
+      for( int j = i + 1; j < M; ++j ) {
+        JJ[i][j] = JJ[j][i];
+      }
+    }
+
+  }
 
   return true;
 }
@@ -416,23 +444,42 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
 
     INSTRUMENT_REGION("dots");
 
-    tbb::parallel_for(tbb_range(0, M),
-        [&](const tbb_range & r) {
+    if ( true ) {
 
-          for( int i = r.begin(); i < r.end(); ++i ) {
+      tbb::parallel_for(tbb_range(0, M),
+          [&](const tbb_range & r) {
 
-            v[i][0] = J[i].dot(rhs) / nrms;
-
-            for( int j = 0; j <= i; ++j ) {
-              H[i][j] = J[i].dot(J[j]) / nrms;
+            for( int i = r.begin(); i < r.end(); ++i ) {
+              v[i][0] = J[i].dot(rhs) / nrms;
             }
+          });
 
-          }
-        });
+      for( int i = 0; i < M; ++i ) {
+        for( int j = 0; j < M; ++j ) {
+          H[i][j] = JJ[i][j] / nrms;
+        }
+      }
+    }
+    else {
 
-    for( int i = 0; i < M; ++i ) {
-      for( int j = i + 1; j < M; ++j ) {
-        H[i][j] = H[j][i];
+      tbb::parallel_for(tbb_range(0, M),
+          [&](const tbb_range & r) {
+
+            for( int i = r.begin(); i < r.end(); ++i ) {
+
+              v[i][0] = J[i].dot(rhs) / nrms;
+
+              for( int j = 0; j <= i; ++j ) {
+                H[i][j] = J[i].dot(J[j]) / nrms;
+              }
+
+            }
+          });
+
+      for( int i = 0; i < M; ++i ) {
+        for( int j = i + 1; j < M; ++j ) {
+          H[i][j] = H[j][i];
+        }
       }
     }
 

@@ -80,6 +80,7 @@ protected:
   cv::Mat1b current_mask_;
   cv::Mat1f gx_, gy_;
   std::vector<cv::Mat1f> J;
+  cv::Mat1f JJ;
 
   double update_step_scale_ = 1.5;
   double epsx_ = 1e-5;

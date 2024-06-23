@@ -46,6 +46,29 @@
 
 namespace {
 
+void ecclm_normalize(cv::Mat1f & image, cv::Mat1b & mask)
+{
+  cv::Mat m, s;
+
+  const double eps =
+      100;
+
+  const double sigma =
+      15;
+
+  const int ksize =
+      2 * ((int) (sigma * 3)) + 1;
+
+  cv::Mat G =
+      cv::getGaussianKernel(ksize, sigma,
+          CV_32F);
+
+  cv::sepFilter2D(image, m, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::subtract(image, m, m, cv::noArray(), CV_32F);
+
+  cv::sepFilter2D(cv::abs(m), s, CV_32F, G, G, cv::Point(-1, -1), eps, cv::BORDER_REPLICATE);
+  cv::divide(m, s, image);
+}
 
 }
 
@@ -86,19 +109,43 @@ int main(int argc, char *argv[])
   cv::GaussianBlur(current_image, current_image, cv::Size(), 2, 2);
 
 
+  if( !save_image(reference_image, reference_mask, "debug_ecclm/reference_image.tiff") ) {
+    CF_ERROR("save_image(reference_image) fails");
+    return 1;
+  }
+
   if( !save_image(current_image, current_mask, "debug_ecclm/current_image.tiff") ) {
     CF_ERROR("save_image(current_image) fails");
     return 1;
   }
 
-  if( !save_image(reference_image, reference_mask, "debug_ecclm/reference_image.tiff") ) {
-    CF_ERROR("save_image(current_image) fails");
+
+  cv::Mat1f reference_image_normalized, current_image_normalized;
+  cv::Mat1b reference_mask_normalized, current_mask_normalized;
+
+  ecclm_convert_input_image(reference_image, reference_mask,
+      reference_image_normalized, reference_mask_normalized);
+
+  ecclm_convert_input_image(current_image, current_mask,
+      current_image_normalized, current_mask_normalized);
+
+  ecclm_normalize(reference_image_normalized, reference_mask_normalized);
+  ecclm_normalize(current_image_normalized, current_mask_normalized);
+
+  if( !save_image(reference_image_normalized, reference_mask_normalized, "debug_ecclm/reference_image_normalized.tiff") ) {
+    CF_ERROR("save_image(reference_image_normalized) fails");
+    return 1;
+  }
+
+  if( !save_image(current_image_normalized, current_mask_normalized, "debug_ecclm/current_image__normalized.tiff") ) {
+    CF_ERROR("save_image(current_image_normalized) fails");
     return 1;
   }
 
 
   //c_translation_image_transform transform;
   c_affine_image_transform transform;
+  //c_homography_image_transform transform;
 
   c_ecclmp ecclmp(&transform);
 
@@ -108,11 +155,20 @@ int main(int argc, char *argv[])
   //transform.set_matrix(cv::Matx26f::eye());
 
   ecclmp.set_epsx(1e-3);
-  ecclmp.set_reference_image(reference_image);
+  ecclmp.set_reference_image(reference_image_normalized, reference_mask_normalized);
+
+  //  transform.set_matrix(cv::Matx23f(
+  //      1, 0, -5,
+  //      0, 1, 40));
 
   if ( true ) {
-    INSTRUMENT_REGION("ecclmp.align");
-    ecclmp.align(current_image, current_mask);
+    for ( int i = 0; i < 1; ++i ) {
+      INSTRUMENT_REGION("ecclmp.align");
+      //transform.reset();
+
+
+      ecclmp.align(current_image_normalized, current_mask_normalized);
+    }
   }
 
 //  cv::Matx33d A =

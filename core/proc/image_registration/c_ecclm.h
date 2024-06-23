@@ -45,11 +45,15 @@ public:
   void set_epsx(double v);
   double epsx() const;
 
-//  void set_epsfn(double v);
-//  double epsfn() const;
-
   bool set_reference_image(cv::InputArray reference_image,
       cv::InputArray reference_mask = cv::noArray());
+
+  bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray());
+
+  void release_current_image();
+
+  bool align();
 
   bool align(cv::InputArray current_image, cv::InputArray current_mask,
       cv::InputArray reference_image, cv::InputArray reference_mask);
@@ -62,13 +66,7 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
-
 protected:
-  bool set_current_image(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray());
-
-  bool align();
-
   double compute_rhs(const cv::Mat1f & params);
   double compute_jac(const cv::Mat1f & params, cv::Mat1f & H, cv::Mat1f & v);
 
@@ -82,7 +80,7 @@ protected:
   std::vector<cv::Mat1f> J;
   cv::Mat1f JJ;
 
-  double update_step_scale_ = 1.5;
+  double update_step_scale_ = 2;
   double epsx_ = 1e-5;
   int max_iterations_ = 50;
 };
@@ -95,7 +93,7 @@ public:
   typedef std::unique_ptr<this_class> uptr;
 
   c_ecclmp();
-  c_ecclmp( c_image_transform * image_transform = nullptr);
+  c_ecclmp(c_image_transform * image_transform = nullptr);
   virtual ~c_ecclmp() = default;
 
   void set_image_transform(c_image_transform * image_transform);
@@ -107,17 +105,31 @@ public:
   void set_epsx(double v);
   double epsx() const;
 
+  void set_max_iterations(int v);
+  int max_iterations() const;
+
   bool set_reference_image(cv::InputArray reference_image,
       cv::InputArray reference_mask = cv::noArray());
 
-  bool align(cv::InputArray current_image,
-      cv::InputArray current_mask = cv::noArray());
+  bool set_current_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool align();
+
+  bool align(cv::InputArray current_image, cv::InputArray current_mask);
+
+  bool align(cv::InputArray current_image, cv::InputArray current_mask,
+      cv::InputArray reference_image, cv::InputArray reference_mask);
 
 protected:
   std::vector<c_ecclm::uptr> pyramid_;
   c_image_transform  * image_transform_ = nullptr;
   double epsx_ = 1e-5;
+  int max_iterations_ = 50;
   int maxlevel_ = 7;
 };
+
+bool ecclm_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
+    cv::Mat1f & dst, cv::Mat1b & dst_mask);
 
 #endif /* __c_ecclm_h__ */

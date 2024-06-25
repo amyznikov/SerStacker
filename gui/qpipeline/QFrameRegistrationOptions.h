@@ -285,6 +285,8 @@ protected:
   QNumericBox * min_rho_ctl = nullptr;
   QNumericBox * input_smooth_sigma_ctl = nullptr;
   QNumericBox * reference_smooth_sigma_ctl = nullptr;
+  QNumericBox * normalization_scale_ctl = nullptr;
+  QNumericBox * normalization_noise_ctl = nullptr;
   QNumericBox * update_step_scale_ctl = nullptr;
   QNumericBox * max_iterations_ctl = nullptr;
   QNumericBox * ecch_max_level_ctl = nullptr;

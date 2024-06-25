@@ -416,16 +416,6 @@ bool c_live_stacking_pipeline::process_current_frame()
         return false;
       }
 
-//      if( !(ecc_motion_model_ = create_ecc_motion_model(image_transform_.get())) ) {
-//        CF_ERROR("create_ecc_motion_model() fails");
-//        return false;
-//      }
-
-      //ecc_.set_model(ecc_motion_model_.get());
-      //      ecc_.set_image_transform(image_transform_.get());
-      //      ecc_.set_max_eps(0.2);
-      //      ecc_.set_min_rho(registration_options_.min_rho);
-      //      ecc_.set_max_iterations(10);
       ecch_.set_image_transform(image_transform_.get());
       ecch_.set_minimum_image_size(std::max(8, registration_options_.minimum_image_size));
       ecch_.set_maxlevel(-1);
@@ -456,22 +446,23 @@ bool c_live_stacking_pipeline::process_current_frame()
         ecch_.align(gray, current_mask_);
       }
 
-      if( ecch_.rho() < registration_options_.min_rho ) {
-        CF_DEBUG("ecch_.rho()=%g", ecch_.rho());
-      }
-      else {
+      if(  true ) {
+
+        const cv::Mat2f current_remap =
+            ecch_.create_remap();
 
         lock_guard lock(mutex());
 
-        cv::remap(current_image_, aligned_image_, ecch_.current_remap(),
+
+        cv::remap(current_image_, aligned_image_, current_remap,
             cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
         if( current_mask_.empty() ) {
-          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecch_.current_remap(),
+          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, current_remap,
               cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
         else {
-          cv::remap(current_mask_, aligned_mask_, ecch_.current_remap(),
+          cv::remap(current_mask_, aligned_mask_, current_remap,
               cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
 
@@ -506,7 +497,7 @@ bool c_live_stacking_pipeline::process_current_frame()
       image = current_image_;
       mask = current_mask_;
     }
-    else if( registration_options_.enabled && ecch_.rho() >= registration_options_.min_rho ) {
+    else if( registration_options_.enabled ) {
       image = aligned_image_;
       mask = aligned_mask_;
     }

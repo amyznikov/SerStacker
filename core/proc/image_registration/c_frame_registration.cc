@@ -446,6 +446,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   cv::Mat ecc_image;
   cv::Mat ecc_mask;
   cv::Mat eccflow_mask;
+  double rho = -1;
 
   double start_time = 0, total_time = 0;
   double t0, t1;
@@ -461,10 +462,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   }
 
   image_transform_->set_parameters(image_transform_defaut_parameters_);
-  if ( true ) {
-    cv::Vec2f  xT = image_transform_->translation();
-    CF_DEBUG("XXXX: BEG: xT=%g %g", xT(0), xT(1));
-  }
+//  if ( true ) {
+//    cv::Vec2f  xT = image_transform_->translation();
+//    CF_DEBUG("XXXX: BEG: xT=%g %g", xT(0), xT(1));
+//  }
 
   current_frame_size_ = current_image.size();
   memset(&current_status_.timings, 0, sizeof(current_status_.timings));
@@ -487,10 +488,10 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    if ( true ) {
-      cv::Vec2f  xT = image_transform_->translation();
-      CF_DEBUG("XXXX: FEAT: xT=%g %g", xT(0), xT(1));
-    }
+//    if ( true ) {
+//      cv::Vec2f  xT = image_transform_->translation();
+//      CF_DEBUG("XXXX: FEAT: xT=%g %g", xT(0), xT(1));
+//    }
 
     current_status_.timings.estimate_feature_transform =
         (t1 = get_realtime_ms()) - t0, t0 = t1;
@@ -570,8 +571,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
 
-    //ecch_.set_image_transform(image_transform_.get());
-
     if( options_.ecc.ecch_estimate_translation_first && options_.motion_type != IMAGE_MOTION_TRANSLATION ) {
 
       c_translation_image_transform transform(image_transform_->translation());
@@ -580,8 +579,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       if( !ecch_.align(current_ecc_image, current_ecc_mask) ) {
 
         CF_ERROR("ERROR: ecch_.align() fails for translation estimate: "
-            "rho=%g/%g eps=%g/%g iterations=%d/%d",
-            ecch_.rho(), ecch_.min_rho(),
+            "eps=%g/%g iterations=%d/%d",
             ecch_.eps(), ecch_.max_eps(),
             ecch_.num_iterations(), ecch_.max_iterations()
             );
@@ -591,60 +589,50 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         return false;
       }
 
-      ecch_.set_image_transform(image_transform_.get());
-      image_transform_->set_translation(transform.translation());
+      rho =
+          compute_correlation(ecch_.current_image(), ecch_.current_mask(),
+              ecch_.reference_image(), ecch_.reference_mask(),
+              ecch_.create_remap());
 
-      cv::Vec2f T = image_transform_->translation();
-      CF_DEBUG("ECCH translation first = (%+g %+g)", T[0], T[1]);
+//      if ( true ) {
+//        const cv::Vec2f T = image_transform_->translation();
+//        CF_DEBUG("ECCH translation first:  rho = %g / %g  (%+g %+g)", rho, ecch_.min_rho(), T[0], T[1]);
+//      }
+
+      if ( rho < 0.75 * ecch_.min_rho() ) {
+        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, ecch_.min_rho());
+        ecch_.set_image_transform(image_transform_.get());
+        return false;
+      }
+
+      image_transform_->set_translation(transform.translation());
+      ecch_.set_image_transform(image_transform_.get());
     }
 
     if( !ecch_.align(current_ecc_image, current_ecc_mask) ) {
 
-      CF_ERROR("ecch_.align() fails: rho=%g/%g eps=%g/%g iterations=%d/%d",
-          ecch_.rho(), ecch_.min_rho(),
+      CF_ERROR("ecch_.align() fails: eps=%g/%g iterations=%d/%d",
           ecch_.eps(), ecch_.max_eps(),
           ecch_.num_iterations(), ecch_.max_iterations());
 
       return false;
     }
 
+    rho =
+        compute_correlation(ecch_.current_image(), ecch_.current_mask(),
+            ecch_.reference_image(), ecch_.reference_mask(),
+            ecch_.create_remap());
 
-    if ( true ) {
+//    if( true ) {
+//      const cv::Vec2f T = image_transform_->translation();
+//      CF_DEBUG("ECCH translation first:  rho = %g / %g  (%+g %+g)", rho, ecch_.min_rho(), T[0], T[1]);
+//    }
 
-
-      cv::Vec2f  xT = image_transform_->translation();
-
-      const cv::Mat & reference_image =
-          ecch_.reference_image();
-
-      const cv::Mat & reference_mask =
-          ecch_.reference_mask();
-
-      const cv::Mat & current_image =
-          ecch_.current_image();
-
-      const cv::Mat & current_mask =
-          ecch_.current_mask();
-
-      cv::Mat remapped_image, remapped_mask;
-
-      ecch_.image_transform()->remap(current_image, current_mask, reference_image.size(), remapped_image, remapped_mask,
-          cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-      if( !reference_mask.empty() ) {
-        cv::bitwise_and(reference_mask, remapped_mask, remapped_mask);
-      }
-
-      double rho2 =
-          compute_correlation(reference_image, remapped_image, remapped_mask);
-
-      CF_DEBUG("XXXX: ECCH: xT = (%+g %+g)  rho2=%g", xT(0), xT(1), rho2);
-    }
-
-    if( ecch_.rho() < ecch_.min_rho() ) {
-      CF_ERROR("ECC align failed: rho=%g < min_rho=%g", ecch_.rho(), ecch_.min_rho());
+    if( rho < ecch_.min_rho() ) {
+      CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, ecch_.min_rho());
       return false;
     }
+
 
     if( options_.ecc.scale != 1 ) {
       image_transform_->scale_transfrom(1. / options_.ecc.scale);
@@ -790,7 +778,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_status_.timings.estimate_feature_transform,
       current_status_.timings.extract_ecc_image,
 
-      ecch_.rho(), ecch_.min_rho(),
+      rho, ecch_.min_rho(),
       ecch_.eps(), ecch_.max_eps(),
       ecch_.num_iterations(), ecch_.max_iterations(),
       current_status_.timings.ecc_align, current_status_.timings.ecc_align / (ecch_.num_iterations() + 1),
@@ -852,24 +840,24 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
     ecc_image_preprocessor_(dst.getMatRef(), dstmsk.getMatRef());
   }
 
-//  if( options_.ecc.normalization_scale > 0 ) {
-//
-//    cv::Mat1f &m = (cv::Mat1f&) dst.getMatRef();
-//    cv::Mat mean, stdev;
-//    cv::Mat mask;
-//
-//    ecc_downscale(m, mean, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-//    ecc_downscale(m.mul(m), stdev, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-//    cv::absdiff(stdev, mean.mul(mean), stdev);
-//    cv::sqrt(stdev, stdev);
-//
-//    ecc_upscale(mean, m.size());
-//    ecc_upscale(stdev, m.size());
-//
-//    cv::add(stdev, options_.ecc.normalization_noise, stdev);
-//    cv::subtract(m, mean, m);
-//    cv::divide(m, stdev, m);
-//  }
+  if( options_.ecc.normalization_scale > 0 ) {
+
+    cv::Mat1f &m = (cv::Mat1f&) dst.getMatRef();
+    cv::Mat mean, stdev;
+    cv::Mat mask;
+
+    ecc_downscale(m, mean, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
+    ecc_downscale(m.mul(m), stdev, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
+    cv::absdiff(stdev, mean.mul(mean), stdev);
+    cv::sqrt(stdev, stdev);
+
+    ecc_upscale(mean, m.size());
+    ecc_upscale(stdev, m.size());
+
+    cv::add(stdev, options_.ecc.normalization_noise, stdev);
+    cv::subtract(m, mean, m);
+    cv::divide(m, stdev, m);
+  }
 
 //  {
 //    double min, max;

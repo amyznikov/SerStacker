@@ -64,7 +64,7 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
           cv::BORDER_CONSTANT);
     }
 
-    cv::compare(dst_mask, 250, dst_mask, cv::CMP_GE);
+    cv::compare(dst_mask, 255, dst_mask, cv::CMP_GE);
   }
 
   return true;

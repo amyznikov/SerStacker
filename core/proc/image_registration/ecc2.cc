@@ -101,9 +101,30 @@ double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputAr
     std2 += s2[i];
   }
 
-  CF_DEBUG("m1=%g m2=%g s1=%g s2=%g npix=%d covar=%g", m1[0], m2[0], s1[0], s2[0], npix, covar);
+  // CF_DEBUG("m1=%g m2=%g s1=%g s2=%g npix=%d covar=%g", m1[0], m2[0], s1[0], s2[0], npix, covar);
 
   return covar * cn / (std1 * std2);
+}
+
+
+double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap)
+{
+  cv::Mat remapped_image, remapped_mask;
+
+  cv::remap(current_image, remapped_image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  if ( current_mask.empty() ) {
+    remapped_mask = reference_mask.getMat();
+  }
+  else {
+    cv::remap(current_mask, remapped_mask, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    cv::compare(remapped_mask, 255, remapped_mask, cv::CMP_GE );
+
+    if ( !reference_mask.empty() ) {
+      cv::bitwise_and(reference_mask, remapped_mask, remapped_mask);
+    }
+  }
+
+  return compute_correlation(reference_image, remapped_image, remapped_mask);
 }
 
 
@@ -572,15 +593,15 @@ double c_ecc_align::max_eps() const
   return this->max_eps_;
 }
 
-void c_ecc_align::set_min_rho(double v)
-{
-  min_rho_ = v;
-}
-
-double c_ecc_align::min_rho() const
-{
-  return min_rho_;
-}
+//void c_ecc_align::set_min_rho(double v)
+//{
+//  min_rho_ = v;
+//}
+//
+//double c_ecc_align::min_rho() const
+//{
+//  return min_rho_;
+//}
 
 
 void c_ecc_align::set_interpolation(enum ECC_INTERPOLATION_METHOD  v)
@@ -591,26 +612,6 @@ void c_ecc_align::set_interpolation(enum ECC_INTERPOLATION_METHOD  v)
 enum ECC_INTERPOLATION_METHOD c_ecc_align::interpolation() const
 {
   return interpolation_;
-}
-
-void c_ecc_align::set_input_smooth_sigma(double v)
-{
-  input_smooth_sigma_ = v;
-}
-
-double c_ecc_align::input_smooth_sigma() const
-{
-  return input_smooth_sigma_;
-}
-
-void c_ecc_align::set_reference_smooth_sigma(double v)
-{
-  reference_smooth_sigma_ = v;
-}
-
-double c_ecc_align::reference_smooth_sigma() const
-{
-  return reference_smooth_sigma_;
 }
 
 void c_ecc_align::set_update_step_scale(double v)
@@ -628,11 +629,8 @@ void c_ecc_align::copy_parameters(const this_class & rhs)
   interpolation_ = rhs.interpolation_;
   num_iterations_  = rhs.num_iterations_;
   max_iterations_ = rhs.max_iterations_;
-  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
-  input_smooth_sigma_ = rhs.input_smooth_sigma_;
   update_step_scale_ = rhs.update_step_scale_;
   max_eps_ = rhs.max_eps_;
-  min_rho_ = rhs.min_rho_;
 }
 
 
@@ -641,10 +639,10 @@ bool c_ecc_align::failed() const
   return this->failed_;
 }
 
-double c_ecc_align::rho() const
-{
-  return this->rho_;
-}
+//double c_ecc_align::rho() const
+//{
+//  return this->rho_;
+//}
 
 int c_ecc_align::num_iterations() const
 {
@@ -732,25 +730,25 @@ const cv::Mat1b & c_ecc_align::current_mask() const
   return current_mask_;
 }
 
-const cv::Mat2f & c_ecc_align::current_remap() const
-{
-  return current_remap_;
-}
+//const cv::Mat2f & c_ecc_align::current_remap() const
+//{
+//  return current_remap_;
+//}
 
-bool c_ecc_align::create_current_remap(const cv::Size & size)
-{
-  if ( !image_transform_ ) {
-    CF_ERROR("ERROR: ECC image_transform not set");
-    return false;
-  }
-
-  if( !image_transform_->create_remap(size, current_remap_) ) {
-    CF_ERROR("model_->create_remap() fails");
-    return false;
-  }
-
-  return true;
-}
+//bool c_ecc_align::create_current_remap(const cv::Size & size)
+//{
+//  if ( !image_transform_ ) {
+//    CF_ERROR("ERROR: ECC image_transform not set");
+//    return false;
+//  }
+//
+//  if( !image_transform_->create_remap(size, current_remap_) ) {
+//    CF_ERROR("model_->create_remap() fails");
+//    return false;
+//  }
+//
+//  return true;
+//}
 
 bool c_ecc_align::align(cv::InputArray current_image, cv::InputArray reference_image,
     cv::InputArray current_mask, cv::InputArray reference_mask)
@@ -799,18 +797,18 @@ bool c_ecc_forward_additive::set_reference_image(cv::InputArray reference_image,
     return false;
   }
 
-  if( reference_smooth_sigma_ > 0 ) {
-
-    const cv::Mat1f G =
-        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
-            reference_smooth_sigma_);
-
-    cv::sepFilter2D(reference_image_, reference_image_, -1,
-        G, G,
-        cv::Point(-1, -1),
-        0,
-        cv::BORDER_REPLICATE);
-  }
+//  if( reference_smooth_sigma_ > 0 ) {
+//
+//    const cv::Mat1f G =
+//        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
+//            reference_smooth_sigma_);
+//
+//    cv::sepFilter2D(reference_image_, reference_image_, -1,
+//        G, G,
+//        cv::Point(-1, -1),
+//        0,
+//        cv::BORDER_REPLICATE);
+//  }
 
   if ( !reference_mask_.empty() ) {
 
@@ -837,18 +835,18 @@ bool c_ecc_forward_additive::set_current_image(cv::InputArray current_image, cv:
     return false;
   }
 
-  if( reference_smooth_sigma_ > 0 ) {
-
-    const cv::Mat1f G =
-        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
-            reference_smooth_sigma_);
-
-    cv::sepFilter2D(current_image_, current_image_, -1,
-        G, G,
-        cv::Point(-1, -1),
-        0,
-        cv::BORDER_REPLICATE);
-  }
+//  if( input_sm > 0 ) {
+//
+//    const cv::Mat1f G =
+//        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
+//            reference_smooth_sigma_);
+//
+//    cv::sepFilter2D(current_image_, current_image_, -1,
+//        G, G,
+//        cv::Point(-1, -1),
+//        0,
+//        cv::BORDER_REPLICATE);
+//  }
 
   if( current_mask_.empty() ) {
     current_mask_.create(current_image_.size());
@@ -899,7 +897,7 @@ bool c_ecc_forward_additive::align()
 
   failed_ = false;
   num_iterations_ = -1;
-  rho_ = -1;
+  //rho_ = -1;
 
   if( max_eps_ <= 0 ) {
     max_eps_ = 1e-3;
@@ -930,32 +928,36 @@ bool c_ecc_forward_additive::align()
 
   cv::Scalar gMean, gStd, fMean, fStd;
   double stdev_ratio;
+  cv::Mat2f current_remap;
 
   for( num_iterations_ = 0; num_iterations_ <= max_iterations_; ++num_iterations_ ) {
 
     // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
-    if( !create_current_remap(reference_image_.size()) ) {
+
+    if( !image_transform_->create_remap(reference_image_.size(), current_remap) ) {
       CF_ERROR("[i %d] create_current_remap() fails", num_iterations_);
       failed_ = true;
       break;
     }
 
     tbb::parallel_invoke(
-        [this]() {
-          cv::remap(current_image_, gw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        [this, &current_remap]() {
+          cv::remap(current_image_, gw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
         },
-        [this]() {
-          cv::remap(gx, gxw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        [this, &current_remap]() {
+          cv::remap(gx, gxw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
         },
-        [this]() {
-          cv::remap(gy, gyw, current_remap_, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+        [this, &current_remap]() {
+          cv::remap(gy, gyw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
         },
-        [this]() {
-          cv::remap(current_mask_, wmask, current_remap_, cv::noArray(), cv::INTER_AREA, cv::BORDER_CONSTANT, 0);
-          cv::compare(wmask, 253, wmask, cv::CMP_GE);
+        [this, &current_remap]() {
+          cv::remap(current_mask_, wmask, current_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
+          cv::compare(wmask, 255, wmask, cv::CMP_GE);
+
           if( !reference_mask_.empty() ) {
             bitwise_and(wmask, reference_mask_, wmask);
           }
+
           cv::bitwise_not(wmask, iwmask);
         }
     );
@@ -1006,37 +1008,52 @@ bool c_ecc_forward_additive::align()
 
     if( eps_ < max_eps_ || num_iterations_ == max_iterations_ ) {
 
-      const int wmask_area =
-          cv::countNonZero(wmask);
-
-      if( wmask_area <= nparams_ ) {
-
-        CF_ERROR("[i %d] Bad wmask area: nnz=%d / %d  < %d", num_iterations_,
-            wmask_area, wmask.size().area(),
-            nparams_ + 1);
-
-        failed_ = 1;
-      }
-      else {
-        cv::subtract(reference_image_, fMean, e), e.setTo(0, iwmask);
-        cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
-        rho_ = e.dot(gw) / (wmask_area * fStd[0] * gStd[0]);
-
-        if( isnan(rho_) ) {
-          CF_ERROR("[i %d] e.dot() returns rho=%g. eps_=%g nnz(wmask)=%d / %d",
-              num_iterations_,
-              rho_,
-              eps_,
-              wmask_area,
-              wmask.size().area());
-        }
-      }
+//      const int wmask_area =
+//          cv::countNonZero(wmask);
+//
+//      if( wmask_area <= nparams_ ) {
+//
+//        CF_ERROR("[i %d] Bad wmask area: nnz=%d / %d  < %d", num_iterations_,
+//            wmask_area, wmask.size().area(),
+//            nparams_ + 1);
+//
+//        failed_ = 1;
+//      }
+//      else {
+//
+//        const int rsize =
+//            cv::countNonZero(reference_mask_);
+//
+//        const int csize =
+//            cv::countNonZero(current_mask_);
+//
+//        cv::subtract(reference_image_, fMean, e), e.setTo(0, iwmask);
+//        cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
+//
+//        const double covar =
+//            e.dot(gw) / wmask_area;
+//
+//        rho_ = covar  / ( fStd[0] * gStd[0]);
+//
+//        CF_DEBUG("fMean=%g gMean=%g fStd=%g gStd=%g wmask_area=%d covar=%g rsize=%d csize=%d",
+//            fMean[0], gMean[0], fStd[0], gStd[0], wmask_area, covar, rsize, csize);
+//
+//
+//        if( isnan(rho_) ) {
+//          CF_ERROR("[i %d] e.dot() returns rho=%g. eps_=%g nnz(wmask)=%d / %d",
+//              num_iterations_,
+//              rho_,
+//              eps_,
+//              wmask_area,
+//              wmask.size().area());
+//        }
+//      }
 
       break;
     }
   }
 
-  return !failed_ && rho_ > 0;
+  return !failed_; //  && rho_ > 0;
 }
 
 //

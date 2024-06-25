@@ -229,33 +229,33 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 
 
 
-template<class ImageTransformType>
-bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
-{
-//  typename c_ecc_motion<ImageTransformType>::motion_model
-//    motion_model(transform);
-
-  c_ecc_forward_additive ecc(transform);
-
-  ecc.set_max_eps(0.1);
-  ecc.set_min_rho(0.5);
-  ecc.set_max_iterations(30);
-  ecc.set_input_smooth_sigma(1);
-  ecc.set_reference_smooth_sigma(1);
-
-  if( !ecc.align(input_image, reference_image) ) {
-    CF_ERROR("ecc.align() fails: failed: %d rho=%g eps=%g num_iterations=%d",
-        ecc.failed(),
-        ecc.rho(),
-        ecc.eps(),
-        ecc.num_iterations());
-
-    return false;
-  }
-
-  return true;
-}
-
+//template<class ImageTransformType>
+//bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
+//{
+////  typename c_ecc_motion<ImageTransformType>::motion_model
+////    motion_model(transform);
+//
+//  c_ecc_forward_additive ecc(transform);
+//
+//  ecc.set_max_eps(0.1);
+//  ecc.set_min_rho(0.5);
+//  ecc.set_max_iterations(30);
+//  ecc.set_input_smooth_sigma(1);
+//  ecc.set_reference_smooth_sigma(1);
+//
+//  if( !ecc.align(input_image, reference_image) ) {
+//    CF_ERROR("ecc.align() fails: failed: %d rho=%g eps=%g num_iterations=%d",
+//        ecc.failed(),
+//        ecc.rho(),
+//        ecc.eps(),
+//        ecc.num_iterations());
+//
+//    return false;
+//  }
+//
+//  return true;
+//}
+//
 
 
 } // namespace

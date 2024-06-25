@@ -1337,7 +1337,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   display_frame.create(previous_image_.size(), previous_image_.type());
 
   cv::Mat & dst_image = display_frame.getMatRef();
-  cv::remap(current_image_, dst_image, ecch.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::remap(current_image_, dst_image, ecch.create_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
   cv::addWeighted(dst_image, 0.5, previous_image_, 0.5, 0, dst_image);
 
   return true;

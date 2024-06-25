@@ -631,7 +631,6 @@ bool c_ecclm::align()
   // rmse_ = sqrt(err / NM);
 
 
-  rho_ = 1;
   eps_ = dp;
   num_iterations_ = iteration + 1;
   //CF_DEBUG("RET: iteration=%d err=%g dp=%g", iteration, err, dp);
@@ -658,9 +657,6 @@ bool c_ecclm::align()
       cv::bitwise_and(reference_mask_, remapped_mask,
           remapped_mask);
     }
-
-    rho_ = compute_correlation(reference_image_, remapped_image, remapped_mask);
-    //CF_DEBUG("rho_=%g", rho_);
   }
 
   return true;
@@ -778,19 +774,11 @@ double c_ecch::max_eps() const
 void c_ecch::set_min_rho(double v)
 {
   min_rho_ = v;
-  for( const auto & m : pyramid_ ) {
-    m->set_min_rho(v);
-  }
 }
 
 double c_ecch::min_rho() const
 {
   return min_rho_;
-}
-
-double c_ecch::rho() const
-{
-  return pyramid_.empty() ? -1 : pyramid_.front()->rho();
 }
 
 double c_ecch::eps() const
@@ -896,14 +884,16 @@ const cv::Mat1b & c_ecch::current_mask() const
   return pyramid_.front()->current_mask();
 }
 
-const cv::Mat2f & c_ecch::current_remap() const
+cv::Mat2f c_ecch::create_remap() const
 {
-  if( pyramid_.empty() ) {
-    static const cv::Mat2f empty_remap;
-    return empty_remap;
+  cv::Mat2f rmap;
+  if ( image_transform_ ) {
+    const cv::Mat & rimage = reference_image();
+    if ( !rimage.size().empty() ) {
+      image_transform_->create_remap(rimage.size(), rmap);
+    }
   }
-
-  return pyramid_.front()->current_remap();
+  return rmap;
 }
 
 c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
@@ -923,9 +913,6 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
   ecc->set_interpolation(interpolation_);
   ecc->set_max_iterations(max_iterations_);
   ecc->set_update_step_scale(update_step_scale_);
-  ecc->set_reference_smooth_sigma(reference_smooth_sigma_);
-  ecc->set_input_smooth_sigma(input_smooth_sigma_);
-  ecc->set_min_rho(min_rho_);
   ecc->set_max_eps(epsx);
 
   return ecc;
@@ -944,12 +931,26 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
     return false;
   }
 
+  if( reference_smooth_sigma_ > 0 ) {
+
+
+    const int ksize =
+        std::max(3, 2 * ((int) (3 * reference_smooth_sigma_)) + 1);
+
+    const cv::Mat1f G =
+        cv::getGaussianKernel(ksize,
+            reference_smooth_sigma_);
+
+    cv::sepFilter2D(image, image, -1,
+        G, G,
+        cv::Point(-1, -1),
+        0,
+        cv::BORDER_REPLICATE);
+  }
+
+
   double epsx =
       epsx_;
-
-//  CF_DEBUG("image_transform_=%p maxlevel_=%d method='%s'",
-//      image_transform_,  maxlevel_,
-//      toCString(method_));
 
   pyramid_.emplace_back(create_ecc_align(epsx));
 
@@ -1006,14 +1007,28 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
     return false;
   }
 
-  // CF_DEBUG("image_transform_=%p", image_transform_);
-
   cv::Mat1f image;
   cv::Mat1b mask;
 
   if( !ecc_convert_input_image(current_image, current_mask, image, mask) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
+  }
+
+  if( input_smooth_sigma_ > 0 ) {
+
+    const int ksize =
+        std::max(3, 2 * ((int) (3 * input_smooth_sigma_)) + 1);
+
+    const cv::Mat1f G =
+        cv::getGaussianKernel(ksize,
+            input_smooth_sigma_);
+
+    cv::sepFilter2D(image, image, -1,
+        G, G,
+        cv::Point(-1, -1),
+        0,
+        cv::BORDER_REPLICATE);
   }
 
   const int lvls =

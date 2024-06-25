@@ -204,8 +204,10 @@ bool c_align_color_channels::align(int reference_channel,
   computed_transforms_.resize(cn);
   computed_iterations_.resize(cn);
 
-  c_ecc_forward_additive ecc;
+  c_ecch ecc(ECC_ALIGN_FORWARD_ADDITIVE);
+  cv::Mat2f current_remap;
 
+  ecc.set_maxlevel(0);
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);
   ecc.set_reference_smooth_sigma(smooth_sigma_);
@@ -237,30 +239,34 @@ bool c_align_color_channels::align(int reference_channel,
     }
     else {
 
-//      c_ecc_motion_model::sptr model =
-//          create_ecc_motion_model(computed_transforms_[i]);
-
-//      ecc.set_model(model.get());
       ecc.set_image_transform(computed_transforms_[i].get());
 
-      if( !ecc.align_to_reference(channels[i], masks[i]) ) {
-        CF_ERROR("ecc.align_to_reference() %d-> %d fails: failed=%d iterations=%d rho=%g eps=%g",
+      if( !ecc.align(channels[i], masks[i]) ) {
+        CF_ERROR("ecc.align_to_reference() %d-> %d fails: iterations=%d eps=%g",
             i,
             reference_channel,
-            ecc.failed(),
             ecc.num_iterations(),
-            ecc.rho(),
             ecc.eps());
       }
 
-      computed_eps_[i] = ecc.eps();
-      computed_rhos_[i] = ecc.rho();
-      computed_iterations_[i] = ecc.num_iterations();
+      ecc.image_transform()->create_remap(ecc.reference_image().size(),
+          current_remap);
+
+      computed_rhos_[i] =
+          compute_correlation(ecc.current_image(), ecc.current_mask(),
+              ecc.reference_image(), ecc.reference_mask(),
+              current_remap);
+
+      computed_iterations_[i] =
+          ecc.num_iterations();
+
+      computed_eps_[i] =
+          ecc.eps();
 
       if ( dst.needed() ) {
 
         cv::remap(channels[i], channels[i],
-            ecc.current_remap(),
+            current_remap,
             cv::noArray(),
             interpolation_,
             border_mode_,
@@ -272,13 +278,14 @@ bool c_align_color_channels::align(int reference_channel,
 
         cv::remap(masks[i].empty() ? cv::Mat1b(src.size(), 255) : masks[i],
             masks[i],
-            ecc.current_remap(),
+            current_remap,
             cv::noArray(),
             cv::INTER_AREA,
             cv::BORDER_REPLICATE,
             0);
 
-        cv::compare(masks[i], 255, masks[i], cv::CMP_GE);
+        cv::compare(masks[i], 255, masks[i],
+            cv::CMP_GE);
       }
     }
   }
@@ -391,8 +398,10 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
   computed_iterations_.resize(cn);
 
 
-  c_ecc_forward_additive ecc;
+  c_ecch ecc(ECC_ALIGN_FORWARD_ADDITIVE);
+  cv::Mat2f current_remap;
 
+  ecc.set_maxlevel(0);
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);
   ecc.set_reference_smooth_sigma(smooth_sigma_);
@@ -408,30 +417,34 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
   for( int i = 0; i < cn; ++i ) {
 
-//    c_ecc_motion_model::sptr model =
-//        create_ecc_motion_model(computed_transforms_[i] =
-//            create_image_transform(motion_type_));
+    ecc.set_image_transform((computed_transforms_[i] =
+        create_image_transform(motion_type_)).get());
 
-//    ecc.set_model(model.get());
-    ecc.set_image_transform((computed_transforms_[i] = create_image_transform(motion_type_)).get());
-
-    if( ! ecc.align_to_reference( channels[i], masks[i]) ) {
-      CF_ERROR("ecc.align_to_reference(channel=%d) fails: failed=%d iterations=%d rho=%g eps=%g",
+    if( !ecc.align( channels[i], masks[i]) ) {
+      CF_ERROR("ecc.align_to_reference(channel=%d) fails: iterations=%d eps=%g",
           i,
-          ecc.failed(),
           ecc.num_iterations(),
-          ecc.rho(),
           ecc.eps());
     }
 
-    computed_eps_[i] = ecc.eps();
-    computed_rhos_[i] = ecc.rho();
-    computed_iterations_[i] = ecc.num_iterations();
+    ecc.image_transform()->create_remap(ecc.reference_image().size(),
+        current_remap);
+
+    computed_rhos_[i] =
+        compute_correlation(ecc.current_image(), ecc.current_mask(),
+            ecc.reference_image(), ecc.reference_mask(),
+            current_remap);
+
+    computed_iterations_[i] =
+        ecc.num_iterations();
+
+    computed_eps_[i] =
+        ecc.eps();
 
     if( dst.needed() ) {
 
       cv::remap(channels[i], channels[i],
-          ecc.current_remap(),
+          current_remap,
           cv::noArray(),
           interpolation_,
           border_mode_,
@@ -443,7 +456,7 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
       cv::remap(masks[i].empty() ? cv::Mat1b(src.size(), 255) : masks[i],
           masks[i],
-          ecc.current_remap(),
+          current_remap,
           cv::noArray(),
           cv::INTER_AREA,
           cv::BORDER_CONSTANT,

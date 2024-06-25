@@ -478,7 +478,7 @@ bool c_running_average_pipeline::process_current_frame1()
       ecch_.set_reference_image(image2, mask2);
 
       if( (has_updates = ecch_.align(image1, mask1)) ) {
-        rmap = ecch_.current_remap();
+        ecch_.image_transform()->create_remap(ecch_.reference_image().size(), rmap);
       }
     }
 
@@ -575,7 +575,7 @@ bool c_running_average_pipeline::process_current_frame2()
     }
     else {
 
-      if( !average_add(average1_, image2, mask2, W1, &(rmap = ecch_.current_remap())) ) {
+      if( !average_add(average1_, image2, mask2, W1, &(rmap = ecch_.create_remap())) ) {
         CF_ERROR("average_add() fails");
         return false;
       }

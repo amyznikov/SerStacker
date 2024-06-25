@@ -36,8 +36,8 @@ struct c_ecc_registration_options
   int max_iterations = 15;
   int ecch_max_level = 0;
   int ecch_minimum_image_size = 16;
-  //  double normalization_noise = 0.01;
-  //  int normalization_scale = 0;
+  double normalization_noise = 0.01;
+  int normalization_scale = 0;
   bool enabled = true;
   bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;

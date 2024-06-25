@@ -717,6 +717,9 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       stack_accumulation_options_.accumulation_method ==
           frame_accumulation_bayer_average;
 
+
+  cv::Mat2f current_remap;
+
   for( int i = 0, n = reference_frames.size(); i < n; ++i ) {
 
     if( !input_sequence_->seek(reference_frames[i]) ) {
@@ -779,18 +782,21 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       continue;
     }
 
-    CF_DEBUG("frame %d: rho=%g %d/%d iterations eps=%g/%g", cpos,
-        ecch.rho(),
+    CF_DEBUG("frame %d: %d/%d iterations eps=%g/%g", cpos,
         ecch.num_iterations(), ecch.max_iterations(),
         ecch.eps(), ecch.epsx());
 
+
+    current_remap =
+        ecch.create_remap();
+
     cv::remap(reference_frame, reference_frame,
-        ecch.current_remap(), cv::noArray(),
+        current_remap, cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_REFLECT101);
 
     cv::remap(reference_mask, reference_mask,
-        ecch.current_remap(), cv::noArray(),
+        current_remap, cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_REFLECT101);
 
@@ -2891,8 +2897,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
+        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
@@ -2975,8 +2981,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-//        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
+        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);

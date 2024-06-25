@@ -1045,6 +1045,29 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
+
+    normalization_scale_ctl =
+      add_numeric_box<int>("normalization_scale",
+          "",
+          [this](int value) {
+            if ( options_ && options_->normalization_scale != value ) {
+              options_->normalization_scale = value;
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  normalization_noise_ctl =
+      add_numeric_box<double>("normalization_noise",
+          "",
+          [this](double value) {
+            if ( options_ && options_->normalization_noise != value ) {
+              options_->normalization_noise = value;
+              Q_EMIT parameterChanged();
+            }
+          });
+
+
+
   update_step_scale_ctl =
       add_numeric_box<double>("update_step_scale",
           "",
@@ -1055,25 +1078,6 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
-//  normalization_noise_ctl =
-//      add_numeric_box<double>("normalization_noise",
-//          "",
-//          [this](double value) {
-//            if ( options_ && options_->normalization_noise != value ) {
-//              options_->normalization_noise = value;
-//              Q_EMIT parameterChanged();
-//            }
-//          });
-//
-//  normalization_scale_ctl =
-//      add_numeric_box<int>("normalization_scale",
-//          "",
-//          [this](int value) {
-//            if ( options_ && options_->normalization_scale != value ) {
-//              options_->normalization_scale = value;
-//              Q_EMIT parameterChanged();
-//            }
-//          });
 
   max_iterations_ctl =
       add_numeric_box<int>("max_iterations",
@@ -1153,8 +1157,8 @@ void QEccRegistrationOptions::onupdatecontrols()
     input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
     reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
     update_step_scale_ctl->setValue(options_->update_step_scale);
-//    normalization_noise_ctl->setValue(options_->normalization_noise);
-//    normalization_scale_ctl->setValue(options_->normalization_scale);
+    normalization_noise_ctl->setValue(options_->normalization_noise);
+    normalization_scale_ctl->setValue(options_->normalization_scale);
     max_iterations_ctl->setValue(options_->max_iterations);
 
     ecch_max_level_ctl->setValue(options_->ecch_max_level);

@@ -83,17 +83,8 @@ public:
   void set_max_eps(double v);
   double max_eps() const;
 
-  void set_min_rho(double v);
-  double min_rho() const;
-
   void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
   enum ECC_INTERPOLATION_METHOD interpolation() const;
-
-  void set_input_smooth_sigma(double v);
-  double input_smooth_sigma() const;
-
-  void set_reference_smooth_sigma(double v);
-  double reference_smooth_sigma() const;
 
   void set_update_step_scale(double v);
   double update_step_scale() const;
@@ -119,7 +110,6 @@ public:
 
 
   bool failed() const;
-  double rho() const;
   double eps() const;
   int num_iterations() const;
 
@@ -129,9 +119,9 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
-  const cv::Mat2f & current_remap() const;
+//  const cv::Mat2f & current_remap() const;
 
-  bool create_current_remap(const cv::Size & size);
+  //bool create_current_remap(const cv::Size & size);
 
 protected:
   cv::Mat1f reference_image_;
@@ -146,17 +136,10 @@ protected:
 
   int num_iterations_  = 0;
   int max_iterations_ = 30;
-
-  float reference_smooth_sigma_ = 1;
-  float input_smooth_sigma_ = 1;
   float update_step_scale_ = 1.f;
 
   float max_eps_ = 0.2f;
-  float min_rho_ = 0.75f;
   float eps_ = FLT_MAX;
-  float rho_ = -1;
-
-  cv::Mat2f current_remap_;
   int nparams_ = 0;
 
 };
@@ -165,64 +148,17 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-//
-//
-//// Coarse-To-Fine ECC registration using image pyramids
-//class c_ecch
-//{
-//public:
-//  typedef c_ecch this_class;
-//
-//  c_ecch(c_ecc_align * method = nullptr) ;
-//
-//  void set_method(c_ecc_align * method) ;
-//  c_ecc_align * method() const;
-//
-//  void set_minimum_image_size(int v);
-//  int minimum_image_size() const;
-//
-//  void set_minimum_pyramid_level(int v);
-//  int minimum_pyramid_level() const;
-//
-//  const std::vector<cv::Mat> & image_pyramid(int index) const;
-//  const std::vector<cv::Mat> & mask_pyramid(int index) const;
-//  const std::vector<cv::Mat1f> & transform_pyramid() const;
-//
-//  void copy_parameters(const this_class & rhs);
-//
-//  bool set_reference_image(cv::InputArray referenceImage,
-//      cv::InputArray referenceMask);
-//
-//  bool align(cv::InputArray inputImage,
-//      cv::InputArray inputMask);
-//
-//protected:
-//  enum {
-//    current_image_index = 0,
-//    reference_image_index = 1,
-//  };
-//
-//  c_ecc_align * method_ = nullptr;
-//  std::vector<cv::Mat> image_pyramids_[2];
-//  std::vector<cv::Mat> mask_pyramids_[2];
-//  std::vector<cv::Mat1f> transform_pyramid_;
-//  int minimum_image_size_ = 12;
-//  int minimum_pyramid_level_ = 0;
-//};
-
-
+// Coarse-To-Fine ECC registration using image pyramids
 class c_ecch
 {
 public:
   typedef c_ecch this_class;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
-  //typedef std::function<c_ecc_align::uptr()> eccfactory;
 
   c_ecch(c_image_transform * image_transform = nullptr);
   c_ecch(ECC_ALIGN_METHOD method);
   c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method);
-
 
   virtual ~c_ecch() = default;
 
@@ -283,7 +219,6 @@ public:
     image_transform_ = nullptr;
   }
 
-  double rho() const;
   double eps() const;
   int num_iterations() const;
 
@@ -293,7 +228,7 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
-  const cv::Mat2f & current_remap() const;
+  cv::Mat2f create_remap() const;
 
 protected:
   c_ecc_align::uptr create_ecc_align(double epsx) const;
@@ -572,5 +507,6 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Ma
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
 double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
+double compute_correlation(cv::InputArray current_image, cv::InputArray current_mask, cv::InputArray reference_image, cv::InputArray reference_mask,  const cv::Mat2f & rmap);
 
 #endif /* __ecc2_h__ */

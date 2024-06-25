@@ -26,6 +26,7 @@ struct c_running_average_registration_options
   bool double_align_moode = false;
   double reference_unsharp_sigma_ = 1;
   double reference_unsharp_alpha_ = 0.95;
+  ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
 
   bool enable_ecc = false;
   bool enable_eccflow = false;
@@ -129,8 +130,8 @@ protected:
   c_running_average_output_options output_options_;
 
   c_ecch ecch_;
-  c_ecc_forward_additive ecc_;
-  c_ecc_motion_model::sptr ecc_model_;
+  //c_ecc_forward_additive ecc_;
+  //c_ecc_motion_model::sptr ecc_model_;
   c_image_transform::sptr ecc_tramsform_;
   c_eccflow eccflow_;
 

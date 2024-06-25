@@ -84,11 +84,12 @@ namespace {
 
   static const char * get_current_time_string(char buf[32])
   {
-    struct c_current_time ct;
-    get_current_time(&ct);
-    snprintf(buf, 31, "%.4d-%.2d-%.2d-%.2d:%.2d:%.2d.%.3d",
-        ct.year, ct.month, ct.day, ct.hour, ct.min, ct.sec, ct.msec);
-    return buf;
+    return "";
+//    struct c_current_time ct;
+//    get_current_time(&ct);
+//    snprintf(buf, 31, "%.4d-%.2d-%.2d-%.2d:%.2d:%.2d.%.3d",
+//        ct.year, ct.month, ct.day, ct.hour, ct.min, ct.sec, ct.msec);
+//    return buf;
   }
 
 }
@@ -149,6 +150,7 @@ std::string cf_get_last_error_msg()
 
 pid_t get_tid()
 {
+  return 0;
 #ifdef _WIN32
   return 0; // fixme: return process id under win32
 #elif __APPLE__

@@ -1297,9 +1297,9 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   }
 
   c_homography_image_transform homography;
-  c_homography_ecc_motion_model model(&homography);
-  c_ecc_forward_additive ecc(&model);
-  c_ecch ecch(&ecc);
+  //c_homography_ecc_motion_model model(&homography);
+  //c_ecc_forward_additive ecc(&homography);
+  c_ecch ecch(&homography);
 
   cv::Mat cimg, pimg;
 
@@ -1318,6 +1318,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   }
 
   ecch.set_minimum_image_size(64);
+  ecch.set_maxlevel(-1);
 
   if ( !estimate_image_transform(&homography, matched_current_positions_, matched_previous_positions_) ) {
     CF_ERROR("estimate_image_transform() fails");
@@ -1336,7 +1337,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   display_frame.create(previous_image_.size(), previous_image_.type());
 
   cv::Mat & dst_image = display_frame.getMatRef();
-  cv::remap(current_image_, dst_image, ecc.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::remap(current_image_, dst_image, ecch.current_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
   cv::addWeighted(dst_image, 0.5, previous_image_, 0.5, 0, dst_image);
 
   return true;

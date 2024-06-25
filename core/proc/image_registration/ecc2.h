@@ -55,94 +55,10 @@ enum ECC_BORDER_MODE {
 };
 
 
-
-
-// Base interface
-class c_ecc_motion_model
-{
-public:
-  typedef c_ecc_motion_model this_class;
-  typedef std::shared_ptr<this_class> sptr;
-  typedef std::unique_ptr<this_class> uptr;
-
-  virtual ~c_ecc_motion_model() = default;
-
-  virtual cv::Mat1f parameters() const = 0;
-  virtual bool set_parameters(const cv::Mat1f & p) = 0;
-  virtual void scale_transfrom(double factor) = 0;
-  virtual bool create_remap(const cv::Size & size, cv::Mat2f & rmap) const = 0;
-  virtual bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const = 0;
-
-  virtual int  num_adustable_parameters() const = 0;
-  virtual bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f & dst) const = 0;
-  virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
-  virtual bool update_forward_additive(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
-  virtual bool update_inverse_composite(const cv::Mat1f & p, float * e, const cv::Size & size) = 0;
+enum ECC_ALIGN_METHOD {
+  ECC_ALIGN_FORWARD_ADDITIVE,
+  ECC_ALIGN_LM,
 };
-
-
-template<class c_image_transform_type>
-class c_ecc_motion_model_template :
-    public c_ecc_motion_model
-{
-public:
-  typedef c_ecc_motion_model_template this_class;
-  typedef c_ecc_motion_model base;
-  typedef std::shared_ptr<this_class> sptr;
-  typedef std::unique_ptr<this_class> uptr;
-  typedef c_image_transform_type image_transform_type;
-
-  c_ecc_motion_model_template(image_transform_type * transform = nullptr) :
-      transform_(transform)
-  {
-  }
-
-  void set_transform(image_transform_type * transform)
-  {
-    transform_ = transform;
-  }
-
-  image_transform_type * transform() const
-  {
-    return transform_;
-  }
-
-  cv::Mat1f parameters() const final
-  {
-    return transform_ ? transform_->parameters() : cv::Mat1f();
-  }
-
-  bool set_parameters(const cv::Mat1f & p) final
-  {
-    return transform_ ? transform_->set_parameters(p): false;
-  }
-
-  void scale_transfrom(double factor) final
-  {
-    if ( transform_ ) {
-       transform_->scale_transfrom(factor);
-    }
-  }
-
-  bool create_remap(const cv::Size & size, cv::Mat2f & rmap) const final
-  {
-    return transform_  ? ((c_image_transform*)transform_)->create_remap(size, rmap) : false;
-  }
-
-  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final
-  {
-    return transform_  ? transform_->create_remap(p, size, rmap) : false;
-  }
-
-  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final
-  {
-    return transform_ ? transform_->create_steepest_descent_images(p, gx, gy, J) : false;
-  }
-
-protected:
-  image_transform_type * transform_ = nullptr;
-};
-
 
 /**
  * Base interface to both forward-additive and
@@ -153,12 +69,13 @@ class c_ecc_align
 public:
   typedef c_ecc_align this_class;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
-  c_ecc_align( c_ecc_motion_model * model = nullptr);
+  c_ecc_align(c_image_transform * transform = nullptr);
   virtual ~c_ecc_align() = default;
 
-  void set_model(c_ecc_motion_model * model);
-  c_ecc_motion_model * model() const;
+  virtual void set_image_transform(c_image_transform * image_transform);
+  c_image_transform * image_transform() const;
 
   void set_max_iterations(int v);
   int max_iterations() const;
@@ -183,15 +100,22 @@ public:
 
   virtual void copy_parameters(const this_class & rhs);
 
-  virtual bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray()) = 0;
+  virtual bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
 
-  virtual bool align(cv::InputArray inputImage, cv::InputArray referenceImage,
-      cv::InputArray inputMask = cv::noArray(),
-      cv::InputArray referenceMask = cv::noArray()) = 0;
+  virtual bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray());
 
-  virtual bool align_to_reference(cv::InputArray inputImage,
-      cv::InputArray inputMask = cv::noArray()) = 0;
+  virtual void release_current_image();
+
+  virtual bool align() = 0;
+
+  virtual bool align(cv::InputArray current_image, cv::InputArray reference_image,
+      cv::InputArray current_mask = cv::noArray(),
+      cv::InputArray reference_mask = cv::noArray());
+
+  virtual bool align_to_reference(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray());
 
 
   bool failed() const;
@@ -199,19 +123,23 @@ public:
   double eps() const;
   int num_iterations() const;
 
+  const cv::Mat1f & reference_image() const;
+  const cv::Mat1b & reference_mask() const;
+
+  const cv::Mat1f & current_image() const;
+  const cv::Mat1b & current_mask() const;
+
   const cv::Mat2f & current_remap() const;
 
   bool create_current_remap(const cv::Size & size);
 
-
 protected:
-  // convert image to 32-bit float with optional gaussian smoothing
-  virtual void prepare_input_image(cv::InputArray src, cv::InputArray src_mask,
-      double smooth_sigma, bool force_create_mask,
-      cv::Mat1f & dst, cv::Mat1b & dst_mask) const;
+  cv::Mat1f reference_image_;
+  cv::Mat1b reference_mask_;
+  cv::Mat1f current_image_;
+  cv::Mat1b current_mask_;
 
-protected:
-  c_ecc_motion_model * model_ = nullptr;
+  c_image_transform * image_transform_ = nullptr;
 
   enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
   bool failed_ = false;
@@ -233,6 +161,165 @@ protected:
 
 };
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//
+//
+//// Coarse-To-Fine ECC registration using image pyramids
+//class c_ecch
+//{
+//public:
+//  typedef c_ecch this_class;
+//
+//  c_ecch(c_ecc_align * method = nullptr) ;
+//
+//  void set_method(c_ecc_align * method) ;
+//  c_ecc_align * method() const;
+//
+//  void set_minimum_image_size(int v);
+//  int minimum_image_size() const;
+//
+//  void set_minimum_pyramid_level(int v);
+//  int minimum_pyramid_level() const;
+//
+//  const std::vector<cv::Mat> & image_pyramid(int index) const;
+//  const std::vector<cv::Mat> & mask_pyramid(int index) const;
+//  const std::vector<cv::Mat1f> & transform_pyramid() const;
+//
+//  void copy_parameters(const this_class & rhs);
+//
+//  bool set_reference_image(cv::InputArray referenceImage,
+//      cv::InputArray referenceMask);
+//
+//  bool align(cv::InputArray inputImage,
+//      cv::InputArray inputMask);
+//
+//protected:
+//  enum {
+//    current_image_index = 0,
+//    reference_image_index = 1,
+//  };
+//
+//  c_ecc_align * method_ = nullptr;
+//  std::vector<cv::Mat> image_pyramids_[2];
+//  std::vector<cv::Mat> mask_pyramids_[2];
+//  std::vector<cv::Mat1f> transform_pyramid_;
+//  int minimum_image_size_ = 12;
+//  int minimum_pyramid_level_ = 0;
+//};
+
+
+class c_ecch
+{
+public:
+  typedef c_ecch this_class;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+  //typedef std::function<c_ecc_align::uptr()> eccfactory;
+
+  c_ecch(c_image_transform * image_transform = nullptr);
+  c_ecch(ECC_ALIGN_METHOD method);
+  c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method);
+
+
+  virtual ~c_ecch() = default;
+
+  void set_image_transform(c_image_transform * image_transform);
+  c_image_transform * image_transform() const;
+
+  void set_method(ECC_ALIGN_METHOD v);
+  ECC_ALIGN_METHOD method() const;
+
+  void set_maxlevel(int v);
+  int maxlevel() const;
+
+  void set_minimum_image_size(int v);
+  int minimum_image_size() const;
+
+  void set_max_iterations(int v);
+  int max_iterations() const;
+
+  void set_epsx(double v);
+  double epsx() const;
+
+  void set_max_eps(double v);
+  double max_eps() const;
+
+  void set_min_rho(double v);
+  double min_rho() const;
+
+  void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
+  enum ECC_INTERPOLATION_METHOD interpolation() const;
+
+  void set_input_smooth_sigma(double v);
+  double input_smooth_sigma() const;
+
+  void set_reference_smooth_sigma(double v);
+  double reference_smooth_sigma() const;
+
+  void set_update_step_scale(double v);
+  double update_step_scale() const;
+
+  void copy_parameters(const this_class & rhs);
+
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool set_current_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool align();
+
+  bool align(cv::InputArray current_image, cv::InputArray current_mask);
+
+  bool align(cv::InputArray current_image, cv::InputArray current_mask,
+      cv::InputArray reference_image, cv::InputArray reference_mask);
+
+  void clear()
+  {
+    pyramid_.clear();
+    image_transform_ = nullptr;
+  }
+
+  double rho() const;
+  double eps() const;
+  int num_iterations() const;
+
+  const cv::Mat1f & reference_image() const;
+  const cv::Mat1b & reference_mask() const;
+
+  const cv::Mat1f & current_image() const;
+  const cv::Mat1b & current_mask() const;
+
+  const cv::Mat2f & current_remap() const;
+
+protected:
+  c_ecc_align::uptr create_ecc_align(double epsx) const;
+
+protected:
+  std::vector<c_ecc_align::uptr> pyramid_;
+  c_image_transform  * image_transform_ = nullptr;
+  ECC_ALIGN_METHOD method_ = ECC_ALIGN_FORWARD_ADDITIVE;
+
+  double epsx_ = 1e-5;
+  double min_rho_ = 0.8;
+  double reference_smooth_sigma_ = 1;
+  double input_smooth_sigma_ = 1;
+  double update_step_scale_ = 1.f;
+  enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
+
+  int max_iterations_ = 50;
+  int minimum_image_size_ = 8;
+  int maxlevel_ = 0;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 // Forward additive ECC
 // "Lucas-Kanade 20 Years On: A Unifying Framework: Part 2",
 //          Simon Baker et.all.
@@ -246,37 +333,42 @@ public:
   typedef c_ecc_align base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_ecc_forward_additive(c_ecc_motion_model * model = nullptr);
-
-  const cv::Mat1f & input_image() const;
-
-  const cv::Mat1f & reference_image() const;
-
-  const cv::Mat1b & input_mask() const;
-
-  const cv::Mat1b & reference_mask() const;
+  c_ecc_forward_additive(c_image_transform * image_transform = nullptr);
 
   bool set_reference_image(cv::InputArray referenceImage,
       cv::InputArray referenceMask = cv::noArray()) override;
 
-  bool align_to_reference(cv::InputArray inputImage,
-      cv::InputArray inputMask = cv::noArray()) override;
+  bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
 
-  bool align(cv::InputArray inputImage, cv::InputArray referenceImage,
-      cv::InputArray inputMask = cv::noArray(),
-      cv::InputArray referenceMask = cv::noArray()) override;
+  bool align() override;
+
+  bool align(cv::InputArray current_image, cv::InputArray reference_image,
+      cv::InputArray current_mask = cv::noArray(),
+      cv::InputArray reference_mask = cv::noArray()) override;
+
+  bool align_to_reference(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
+
+//  bool align_to_reference(cv::InputArray inputImage,
+//      cv::InputArray inputMask = cv::noArray()) override;
+
+//  bool align(cv::InputArray inputImage, cv::InputArray referenceImage,
+//      cv::InputArray inputMask = cv::noArray(),
+//      cv::InputArray referenceMask = cv::noArray()) override;
 
 
 protected:
-  cv::Mat1f g;  // input image
-  cv::Mat1f f;  // reference image
-  cv::Mat1b fmask, gmask, wmask, iwmask; // image masks
+  cv::Mat1b wmask, iwmask; // image masks
   cv::Mat1f gw; // warped input image
   cv::Mat1f gx, gy, gxw, gyw; // input image derivatives
-  cv::Mat1f jac;  // jacobian [f.rows * numberOfParameters][f.cols]
   cv::Mat1f H; // Hessian matrix and its inverse
   cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1]
   cv::Mat1f e, ep;  // error image and it's projection
+
+  //cv::Mat1f jac;  // jacobian [f.rows * numberOfParameters][f.cols]
+  std::vector<cv::Mat1f> jac;
+
 };
 
 // Inverse compositional ECC
@@ -292,27 +384,12 @@ public:
   typedef c_ecc_align base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_ecc_inverse_compositional(c_ecc_motion_model * model = nullptr);
-
-  const cv::Mat1f& input_image() const;
-
-  const cv::Mat1f& reference_image() const;
-
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray()) override;
-
-  bool align(cv::InputArray inputImage, cv::InputArray referenceImage,
-      cv::InputArray inputMask = cv::noArray(),
-      cv::InputArray referenceMask = cv::noArray()) override;
-
-  bool align_to_reference(cv::InputArray inputImage,
-      cv::InputArray inputMask = cv::noArray()) override;
-
+  c_ecc_inverse_compositional(c_image_transform * image_transform = nullptr);
 
 protected: // Notations are from the paper of  B. Pan, K. Li and W. Tong
-  cv::Mat1f g; // input image
-  cv::Mat1f f; // reference image
-  cv::Mat1b fmask, gmask, wmask, iwmask; // image masks
+//  cv::Mat1f g; // input image
+//  cv::Mat1f f; // reference image
+  cv::Mat1b /*fmask, gmask, */wmask, iwmask; // image masks
   cv::Mat1f gw; // warped input image
   cv::Mat1f e, ep; // error image and it's projection
   cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1], the size and meaning depends on motion model
@@ -322,48 +399,57 @@ protected: // Notations are from the paper of  B. Pan, K. Li and W. Tong
 };
 
 
-// Coarse-To-Fine ECC registration using image pyramids
-class c_ecch
+
+class c_ecclm :
+    public c_ecc_align
 {
 public:
-  typedef c_ecch this_class;
+  typedef c_ecclm this_class;
+  typedef c_ecc_align base;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
-  c_ecch(c_ecc_align * method = nullptr) ;
+  //c_ecclm();
+  c_ecclm(c_image_transform * transform = nullptr);
+  virtual ~c_ecclm() = default;
 
-  void set_method(c_ecc_align * method) ;
-  c_ecc_align * method() const;
+  void set_image_transform(c_image_transform * image_transform) override;
 
-  void set_minimum_image_size(int v);
-  int minimum_image_size() const;
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray()) override;
 
-  void set_minimum_pyramid_level(int v);
-  int minimum_pyramid_level() const;
+  bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
 
-  const std::vector<cv::Mat> & image_pyramid(int index) const;
-  const std::vector<cv::Mat> & mask_pyramid(int index) const;
-  const std::vector<cv::Mat1f> & transform_pyramid() const;
+  bool align() override;
 
-  void copy_parameters(const this_class & rhs);
+  bool align(cv::InputArray current_image, cv::InputArray reference_image,
+      cv::InputArray current_mask = cv::noArray(),
+      cv::InputArray reference_mask = cv::noArray()) override;
 
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask);
-
-  bool align(cv::InputArray inputImage,
-      cv::InputArray inputMask);
+  bool align_to_reference(cv::InputArray current_image, cv::InputArray current_mask);
 
 protected:
-  enum {
-    current_image_index = 0,
-    reference_image_index = 1,
-  };
+  double compute_rhs(const cv::Mat1f & params);
+  double compute_jac(const cv::Mat1f & params, cv::Mat1f & H, cv::Mat1f & v);
 
-  c_ecc_align * method_ = nullptr;
-  std::vector<cv::Mat> image_pyramids_[2];
-  std::vector<cv::Mat> mask_pyramids_[2];
-  std::vector<cv::Mat1f> transform_pyramid_;
-  int minimum_image_size_ = 12;
-  int minimum_pyramid_level_ = 0;
+protected:
+  cv::Mat1f gx_, gy_;
+  std::vector<cv::Mat1f> J;
+  cv::Mat1f JJ;
 };
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * Coarse-to-fine SMOOTH optical flow on image pyramids
@@ -482,9 +568,9 @@ protected:
 
 };
 
-
+bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask);
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
-
+double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);
 
 #endif /* __ecc2_h__ */

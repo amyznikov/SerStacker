@@ -54,15 +54,21 @@ public:
   virtual cv::Vec2f translation() const = 0;
 
 
-  const cv::Mat1f & parameters() const
+  cv::Mat1f parameters() const
   {
-    return parameters_;
+    return parameters_.clone();
   }
 
   bool create_remap(const cv::Size & size, cv::Mat2f & map) const
   {
     return create_remap(parameters(), size, map);
   }
+
+  bool create_steepest_descent_images(const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+  {
+    return create_steepest_descent_images(parameters(), gx, gy, J);
+  }
+
 
   bool remap(cv::InputArray src, cv::InputArray src_mask, const cv::Size & size,
       cv::OutputArray dst, cv::OutputArray dst_mask,

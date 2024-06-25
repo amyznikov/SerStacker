@@ -133,13 +133,13 @@ void c_translation_image_transform::scale_transfrom(double factor)
   parameters_(1, 0) *= factor;
 }
 
-bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & map) const
+bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   if( p.rows != 2 || p.cols != 1 ) {
     CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
     return false;
   }
-  return create_remap(cv::Vec2f((const float*) p.data), size, map);
+  return create_remap(cv::Vec2f((const float*) p.data), size, rmap);
 }
 
 bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap) const
@@ -148,6 +148,8 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
 
   //  x' =  x + tx
   //  y' =  y + ty
+
+  // CF_DEBUG("T={%g %g} size=%dx%d", T(0), T(1), size.width, size.height);
 
   rmap.create(size);
 
@@ -175,8 +177,8 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
 bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/,
     const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
-  J[0] = gx;
-  J[1] = gy;
+  gx.copyTo(J[0]);
+  gy.copyTo(J[1]);
   return true;
 }
 
@@ -720,13 +722,10 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & 
   const cv::Size size =
       gx.size();
 
-  J[0].create(size);
-  J[1].create(size);
-  J[2] = gx;
 
-  J[3].create(size);
-  J[4].create(size);
-  J[5] = gy;
+  for ( int i = 0; i < 6; ++i ) {
+    J[i].create(size);
+  }
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
   tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
@@ -739,11 +738,11 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & 
 
             J[0][y][x] = gx[y][x] * x;   // a00
             J[1][y][x] = gx[y][x] * y;// a01
-            //J[2][y][x] = gx[y][x];     // a02
+            J[2][y][x] = gx[y][x];     // a02
 
             J[3][y][x] = gy[y][x] * x;// a10
             J[4][y][x] = gy[y][x] * y;// a11
-            //J[5][y][x] = gy[y][x];     // a12
+            J[5][y][x] = gy[y][x];     // a12
           }
         }
 #if HAVE_TBB && !defined(Q_MOC_RUN)

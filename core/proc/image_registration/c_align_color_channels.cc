@@ -8,7 +8,7 @@
  */
 
 #include "c_align_color_channels.h"
-#include "ecc_motion_model.h"
+#include "ecc2.h"
 #include <core/debug.h>
 
 void c_align_color_channels::set_motion_type(IMAGE_MOTION_TYPE motion_type)
@@ -237,10 +237,11 @@ bool c_align_color_channels::align(int reference_channel,
     }
     else {
 
-      c_ecc_motion_model::sptr model =
-          create_ecc_motion_model(computed_transforms_[i]);
+//      c_ecc_motion_model::sptr model =
+//          create_ecc_motion_model(computed_transforms_[i]);
 
-      ecc.set_model(model.get());
+//      ecc.set_model(model.get());
+      ecc.set_image_transform(computed_transforms_[i].get());
 
       if( !ecc.align_to_reference(channels[i], masks[i]) ) {
         CF_ERROR("ecc.align_to_reference() %d-> %d fails: failed=%d iterations=%d rho=%g eps=%g",
@@ -407,11 +408,12 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
   for( int i = 0; i < cn; ++i ) {
 
-    c_ecc_motion_model::sptr model =
-        create_ecc_motion_model(computed_transforms_[i] =
-            create_image_transform(motion_type_));
+//    c_ecc_motion_model::sptr model =
+//        create_ecc_motion_model(computed_transforms_[i] =
+//            create_image_transform(motion_type_));
 
-    ecc.set_model(model.get());
+//    ecc.set_model(model.get());
+    ecc.set_image_transform((computed_transforms_[i] = create_image_transform(motion_type_)).get());
 
     if( ! ecc.align_to_reference( channels[i], masks[i]) ) {
       CF_ERROR("ecc.align_to_reference(channel=%d) fails: failed=%d iterations=%d rho=%g eps=%g",

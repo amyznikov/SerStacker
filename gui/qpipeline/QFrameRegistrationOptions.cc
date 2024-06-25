@@ -995,6 +995,16 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
+  ecc_method_ctl =
+      add_enum_combobox<ECC_ALIGN_METHOD>("ecc_method",
+          "",
+          [this](ECC_ALIGN_METHOD value) {
+            if ( options_ && options_->ecc_method != value ) {
+              options_->ecc_method = value;
+              Q_EMIT parameterChanged();
+            }
+          });
+
   eps_ctl =
       add_numeric_box<double>("eps",
           "",
@@ -1075,14 +1085,22 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
-  enable_ecch_ctl =
-      add_checkbox("enable_ecch",
+  ecch_max_level_ctl =
+      add_numeric_box<int>("ecch_max_level",
           "",
-          [this](bool checked) {
-            if ( options_ && options_->enable_ecch != checked ) {
-              options_->enable_ecch = checked;
-              ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
-              ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
+          [this](int value) {
+            if ( options_ && options_->ecch_max_level != value ) {
+              options_->ecch_max_level = value;
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  ecch_minimum_image_size_ctl =
+      add_numeric_box<int>("ecch_minimum_image_size",
+          "",
+          [this](int value) {
+            if ( options_ && options_->ecch_minimum_image_size != value ) {
+              options_->ecch_minimum_image_size = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1097,15 +1115,6 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
-  ecch_minimum_image_size_ctl =
-      add_numeric_box<int>("ecch_minimum_image_size",
-          "",
-          [this](int value) {
-            if ( options_ && options_->ecch_minimum_image_size != value ) {
-              options_->ecch_minimum_image_size = value;
-              Q_EMIT parameterChanged();
-            }
-          });
 
   replace_planetary_disk_with_mask_ctl =
       add_checkbox("replace_planetary_disk_with_mask",
@@ -1138,6 +1147,7 @@ void QEccRegistrationOptions::onupdatecontrols()
   }
   else {
     scale_ctl->setValue(options_->scale);
+    ecc_method_ctl->setValue(options_->ecc_method);
     eps_ctl->setValue(options_->eps);
     min_rho_ctl->setValue(options_->min_rho);
     input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
@@ -1147,12 +1157,12 @@ void QEccRegistrationOptions::onupdatecontrols()
 //    normalization_scale_ctl->setValue(options_->normalization_scale);
     max_iterations_ctl->setValue(options_->max_iterations);
 
-    enable_ecch_ctl->setChecked(options_->enable_ecch);
+    ecch_max_level_ctl->setValue(options_->ecch_max_level);
     ecch_estimate_translation_first_ctl->setChecked(options_->ecch_estimate_translation_first);
     ecch_minimum_image_size_ctl->setValue(options_->ecch_minimum_image_size);
 
-    ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
-    ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
+//    ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
+//    ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
 
     replace_planetary_disk_with_mask_ctl->setChecked(options_->replace_planetary_disk_with_mask);
     planetary_disk_mask_stdev_factor_ctl->setEnabled(options_->replace_planetary_disk_with_mask);

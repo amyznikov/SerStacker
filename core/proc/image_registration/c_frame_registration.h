@@ -12,7 +12,7 @@
 #include <core/feature2d/feature2d.h>
 #include "c_jovian_derotation.h"
 #include "image_transform.h"
-#include "ecc_motion_model.h"
+//#include "ecc_motion_model.h"
 
 
 struct c_feature_registration_options
@@ -32,13 +32,13 @@ struct c_ecc_registration_options
   double reference_smooth_sigma = 1.0;
   double update_step_scale = 1.5;
   double planetary_disk_mask_stdev_factor = 0.5;
+  ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
   int max_iterations = 15;
+  int ecch_max_level = 0;
   int ecch_minimum_image_size = 16;
   //  double normalization_noise = 0.01;
   //  int normalization_scale = 0;
-
   bool enabled = true;
-  bool enable_ecch = true;
   bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;
 };
@@ -160,7 +160,7 @@ public:
   const c_sparse_feature_extractor_and_matcher::sptr & create_sparse_feature_extractor_and_matcher();
   const c_sparse_feature_extractor_and_matcher::sptr & sparse_feature_extractor_and_matcher() const;
 
-  const c_ecc_forward_additive & ecc() const;
+  // const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;
   const c_eccflow & eccflow() const;
   const c_jovian_derotation & jovian_derotation() const;
@@ -272,9 +272,9 @@ protected:
   cv::Mat1f image_transform_defaut_parameters_;
 
   c_ecch ecch_;
-  c_ecc_forward_additive ecc_;
+  //c_ecc_forward_additive ecc_;
   c_eccflow eccflow_;
-  c_ecc_motion_model::sptr ecc_motion_model_;
+  //c_ecc_motion_model::sptr ecc_motion_model_;
 
   c_jovian_derotation jovian_derotation_;
   ecc_image_preprocessor_function ecc_image_preprocessor_;

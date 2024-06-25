@@ -7,7 +7,6 @@
 
 #include "c_jovian_ellipse_detector.h"
 #include "image_transform.h"
-#include "ecc_motion_model.h"
 #include "ecc2.h"
 
 #include <core/proc/autoclip.h>
@@ -233,10 +232,10 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 template<class ImageTransformType>
 bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
 {
-  typename c_ecc_motion<ImageTransformType>::motion_model
-    motion_model(transform);
+//  typename c_ecc_motion<ImageTransformType>::motion_model
+//    motion_model(transform);
 
-  c_ecc_forward_additive ecc(&motion_model);
+  c_ecc_forward_additive ecc(transform);
 
   ecc.set_max_eps(0.1);
   ecc.set_min_rho(0.5);

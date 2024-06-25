@@ -223,8 +223,7 @@ bool c_live_stacking_pipeline::initialize_pipeline()
       create_output_path(output_options_.output_directory);
 
   frame_accumulation_.reset();
-  ecch_.set_method(nullptr);
-
+  ecch_.clear();
   current_image_.release();
   reference_image_.release();
   aligned_image_.release();
@@ -410,27 +409,28 @@ bool c_live_stacking_pipeline::process_current_frame()
 
   if( registration_options_.enabled ) {
 
-    if( !ecch_.method() ) {
+    if( !ecch_.image_transform() ) {
 
       if( !(image_transform_ = create_image_transfrom(registration_options_)) ) {
         CF_ERROR("create_image_transfrom() fails");
         return false;
       }
 
-      if( !(ecc_motion_model_ = create_ecc_motion_model(image_transform_.get())) ) {
-        CF_ERROR("create_ecc_motion_model() fails");
-        return false;
-      }
+//      if( !(ecc_motion_model_ = create_ecc_motion_model(image_transform_.get())) ) {
+//        CF_ERROR("create_ecc_motion_model() fails");
+//        return false;
+//      }
 
-      ecc_.set_model(ecc_motion_model_.get());
-      ecc_.set_max_eps(0.2);
-      ecc_.set_min_rho(registration_options_.min_rho);
-      ecc_.set_max_iterations(10);
-      ecch_.set_method(&ecc_);
+      //ecc_.set_model(ecc_motion_model_.get());
+      //      ecc_.set_image_transform(image_transform_.get());
+      //      ecc_.set_max_eps(0.2);
+      //      ecc_.set_min_rho(registration_options_.min_rho);
+      //      ecc_.set_max_iterations(10);
+      ecch_.set_image_transform(image_transform_.get());
       ecch_.set_minimum_image_size(std::max(8, registration_options_.minimum_image_size));
-      ecch_.set_minimum_pyramid_level(1);
-
+      ecch_.set_maxlevel(-1);
     }
+
 
     if( reference_image_.empty() ) {
 
@@ -456,22 +456,22 @@ bool c_live_stacking_pipeline::process_current_frame()
         ecch_.align(gray, current_mask_);
       }
 
-      if( ecc_.rho() < registration_options_.min_rho ) {
-        CF_DEBUG("ecc_.rho()=%g", ecc_.rho());
+      if( ecch_.rho() < registration_options_.min_rho ) {
+        CF_DEBUG("ecch_.rho()=%g", ecch_.rho());
       }
       else {
 
         lock_guard lock(mutex());
 
-        cv::remap(current_image_, aligned_image_, ecc_.current_remap(),
+        cv::remap(current_image_, aligned_image_, ecch_.current_remap(),
             cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
         if( current_mask_.empty() ) {
-          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecc_.current_remap(),
+          cv::remap(cv::Mat1b(current_image_.size(), 255), aligned_mask_, ecch_.current_remap(),
               cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
         else {
-          cv::remap(current_mask_, aligned_mask_, ecc_.current_remap(),
+          cv::remap(current_mask_, aligned_mask_, ecch_.current_remap(),
               cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
 
@@ -506,7 +506,7 @@ bool c_live_stacking_pipeline::process_current_frame()
       image = current_image_;
       mask = current_mask_;
     }
-    else if( registration_options_.enabled && ecc_.rho() >= registration_options_.min_rho ) {
+    else if( registration_options_.enabled && ecch_.rho() >= registration_options_.min_rho ) {
       image = aligned_image_;
       mask = aligned_mask_;
     }

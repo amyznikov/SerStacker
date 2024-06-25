@@ -8,9 +8,9 @@
 #include "c_image_stacking_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/feature2d/feature2d_settings.h>
-#include <core/proc/image_registration/c_translation_ecc_motion_model.h>
-#include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
-#include <core/proc/image_registration/c_affine_ecc_motion_model.h>
+//#include <core/proc/image_registration/c_translation_ecc_motion_model.h>
+//#include <core/proc/image_registration/c_euclidean_ecc_motion_model.h>
+//#include <core/proc/image_registration/c_affine_ecc_motion_model.h>
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/extract_channel.h>
@@ -681,7 +681,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
   }
 
   c_translation_image_transform image_transform;
-  c_translation_ecc_motion_model model(&image_transform);
+  //c_translation_ecc_motion_model model(&image_transform);
 
 //  c_euclidean_image_transform image_transform;
 //  c_euclidean_ecc_motion_model model(&image_transform);
@@ -689,11 +689,15 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 //  c_affine_image_transform image_transform;
 //  c_affine_ecc_motion_model model(&image_transform);
 
-  c_ecc_forward_additive ecc(&model);
-  c_ecch ecch(&ecc);
+  //c_ecc_forward_additive ecc(&model);
+  //c_ecc_forward_additive ecc(&image_transform);
 
-  ecc.set_max_eps(0.1);
+
+  c_ecch ecch(&image_transform, ECC_ALIGN_FORWARD_ADDITIVE);
+
+  ecch.set_epsx(0.1);
   ecch.set_minimum_image_size(16);
+  ecch.set_maxlevel(-1);
 
   if( !ecch.set_reference_image(master_frame, master_mask) ) {
     CF_FATAL("ecch.set_reference_image() fails");
@@ -776,17 +780,17 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
     }
 
     CF_DEBUG("frame %d: rho=%g %d/%d iterations eps=%g/%g", cpos,
-        ecc.rho(),
-        ecc.num_iterations(), ecc.max_iterations(),
-        ecc.eps(), ecc.max_eps());
+        ecch.rho(),
+        ecch.num_iterations(), ecch.max_iterations(),
+        ecch.eps(), ecch.epsx());
 
     cv::remap(reference_frame, reference_frame,
-        ecc.current_remap(), cv::noArray(),
+        ecch.current_remap(), cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_REFLECT101);
 
     cv::remap(reference_mask, reference_mask,
-        ecc.current_remap(), cv::noArray(),
+        ecch.current_remap(), cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_REFLECT101);
 
@@ -2889,9 +2893,10 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
 //        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
 //        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+        SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
-        SERIALIZE_OPTION(subsubsection, save, ecc, enable_ecch);
+        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_max_level);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
         SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
         SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);
@@ -2972,9 +2977,10 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
 //        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
 //        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
+        SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
         SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
-        SERIALIZE_OPTION(subsubsection, save, ecc, enable_ecch);
+        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_max_level);
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
         SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
         SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);

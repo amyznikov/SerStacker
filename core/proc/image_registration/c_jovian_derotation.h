@@ -10,9 +10,8 @@
 #define __jupiter_h__
 
 #include <opencv2/opencv.hpp>
-#include "image_transform.h"
-#include "ecc_motion_model.h"
 #include "c_jovian_ellipse_detector.h"
+#include "ecc2.h"
 
 /**
  *

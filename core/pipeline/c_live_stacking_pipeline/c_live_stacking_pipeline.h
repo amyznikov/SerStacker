@@ -128,9 +128,9 @@ protected:
   c_live_stacking_output_options output_options_;
 
   c_ecch ecch_;
-  c_ecc_forward_additive ecc_;
+  //c_ecc_forward_additive ecc_;
   // c_eccflow eccflow_;
-  c_ecc_motion_model::sptr ecc_motion_model_;
+  //c_ecc_motion_model::sptr ecc_motion_model_;
   c_image_transform::sptr image_transform_;
 
   c_frame_accumulation::ptr frame_accumulation_;

@@ -28,7 +28,7 @@
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/laplacian_pyramid.h>
 #include <core/proc/image_registration/ecc2.h>
-#include <core/proc/image_registration/ecc_motion_model.h>
+//#include <core/proc/image_registration/ecc_motion_model.h>
 #include <core/proc/reduce_channels.h>
 #include <core/proc/pyrscale.h>
 #include <core/proc/bfgs.h>
@@ -123,10 +123,10 @@ int main(int argc, char *argv[])
   cv::Mat1f reference_image_normalized, current_image_normalized;
   cv::Mat1b reference_mask_normalized, current_mask_normalized;
 
-  ecclm_convert_input_image(reference_image, reference_mask,
+  ecc_convert_input_image(reference_image, reference_mask,
       reference_image_normalized, reference_mask_normalized);
 
-  ecclm_convert_input_image(current_image, current_mask,
+  ecc_convert_input_image(current_image, current_mask,
       current_image_normalized, current_mask_normalized);
 
   ecclm_normalize(reference_image_normalized, reference_mask_normalized);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
   c_affine_image_transform transform;
   //c_homography_image_transform transform;
 
-  c_ecclmp ecclmp(&transform);
+  c_ecch ecclmp(&transform);
 
   //transform.set_translation(cv::Vec2f(0,0));
   //transform.set_matrix(cv::Matx23d::eye());

@@ -40,21 +40,21 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, registration_options_, min_rho);
 
     SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
-    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
+    //SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_ecc);
     SERIALIZE_OPTION(section, save, registration_options_, ecc_motion_type);
 
-    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
-    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
+//    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
+//    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
 
-    SERIALIZE_PROPERTY(section, save, ecc_, max_iterations);
-    SERIALIZE_PROPERTY(section, save, ecc_, max_eps);
-    SERIALIZE_PROPERTY(section, save, ecc_, min_rho);
-    SERIALIZE_PROPERTY(section, save, ecc_, interpolation);
-    SERIALIZE_PROPERTY(section, save, ecc_, input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, ecc_, reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, ecc_, update_step_scale);
+    SERIALIZE_PROPERTY(section, save, ecch_, max_iterations);
+    SERIALIZE_PROPERTY(section, save, ecch_, epsx);
+    SERIALIZE_PROPERTY(section, save, ecch_, min_rho);
+    SERIALIZE_PROPERTY(section, save, ecch_, interpolation);
+    SERIALIZE_PROPERTY(section, save, ecch_, input_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, ecch_, reference_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, ecch_, update_step_scale);
 
     SERIALIZE_OPTION(section, save, registration_options_, enable_eccflow);
     SERIALIZE_PROPERTY(section, save, eccflow_, downscale_method);
@@ -136,15 +136,15 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
 
         PIPELINE_CTLC(ctrls, registration_options_.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, ecch_, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecch_, minimum_pyramid_level, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, maxlevel, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
 
-        PIPELINE_CTLPC2(ctrls, ecc_, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecc_, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
@@ -258,7 +258,7 @@ bool c_running_average_pipeline::copyParameters(const base::sptr & dst) const
   p->average_options_ = this->average_options_;
   p->output_options_ = this->output_options_;
   p->ecch_.copy_parameters(ecch_);
-  p->ecc_.copy_parameters(ecc_);
+  //p->ecc_.copy_parameters(ecc_);
   p->eccflow_.copy_parameters(eccflow_);
 
   return true;
@@ -322,12 +322,8 @@ bool c_running_average_pipeline::initialize_pipeline()
     ecc_tramsform_ =
         create_image_transform(registration_options_.ecc_motion_type);
 
-    ecc_model_ =
-        create_ecc_motion_model(ecc_tramsform_.get());
-
-    ecc_.set_model(ecc_model_.get());
-
-    ecch_.set_method(&ecc_);
+    ecch_.set_image_transform(ecc_tramsform_.get());
+    ecch_.set_method(registration_options_.ecc_method);
   }
 
 
@@ -342,8 +338,7 @@ void c_running_average_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
 
-  ecc_.set_model(nullptr);
-  ecc_model_.reset();
+  ecch_.clear();
   ecc_tramsform_.reset();
 
   current_image_.release();
@@ -483,7 +478,7 @@ bool c_running_average_pipeline::process_current_frame1()
       ecch_.set_reference_image(image2, mask2);
 
       if( (has_updates = ecch_.align(image1, mask1)) ) {
-        rmap = ecc_.current_remap();
+        rmap = ecch_.current_remap();
       }
     }
 
@@ -580,7 +575,7 @@ bool c_running_average_pipeline::process_current_frame2()
     }
     else {
 
-      if( !average_add(average1_, image2, mask2, W1, &(rmap = ecc_.current_remap())) ) {
+      if( !average_add(average1_, image2, mask2, W1, &(rmap = ecch_.current_remap())) ) {
         CF_ERROR("average_add() fails");
         return false;
       }

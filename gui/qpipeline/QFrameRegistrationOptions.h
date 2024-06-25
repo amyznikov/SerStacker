@@ -280,15 +280,16 @@ protected:
 
 protected:
   QNumericBox * scale_ctl = nullptr;
+  QEnumComboBox<ECC_ALIGN_METHOD> * ecc_method_ctl = nullptr;
   QNumericBox * eps_ctl = nullptr;
   QNumericBox * min_rho_ctl = nullptr;
   QNumericBox * input_smooth_sigma_ctl = nullptr;
   QNumericBox * reference_smooth_sigma_ctl = nullptr;
   QNumericBox * update_step_scale_ctl = nullptr;
   QNumericBox * max_iterations_ctl = nullptr;
-  QCheckBox * enable_ecch_ctl = nullptr;
-  QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
+  QNumericBox * ecch_max_level_ctl = nullptr;
   QNumericBox * ecch_minimum_image_size_ctl = nullptr;
+  QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
   QCheckBox * replace_planetary_disk_with_mask_ctl = nullptr;
   QNumericBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
 };

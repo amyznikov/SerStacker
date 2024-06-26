@@ -22,15 +22,15 @@ constexpr int tbb_block_size =
 #endif
 
 
-//#include <core/io/save_image.h>
-//#include <core/ssprintf.h>
+#include <core/io/save_image.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 
 
 namespace {
 
-static void ecclm_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth = CV_32F)
+static void ecclm_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv::InputArray mask = cv::noArray() )
 {
   INSTRUMENT_REGION("");
 
@@ -41,23 +41,26 @@ static void ecclm_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, 
     Ky *= M_SQRT2;
   }
 
-  if( ddepth < 0 ) {
-    ddepth = std::max(src.depth(), CV_32F);
-  }
+  cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 
-  cv::sepFilter2D(src, gx, -1, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::sepFilter2D(src, gy, -1, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  if( !mask.empty() ) {
+    cv::Mat1b m;
+    cv::bitwise_not(mask, m);
+    gx.setTo(0, m);
+    gy.setTo(0, m);
+  }
 }
 
 
-static void ecclm_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap)
+static void ecclm_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap, cv::BorderTypes borderType = cv::BORDER_REPLICATE)
 {
 #if 1 // !ECCLM_USE_TBB
   INSTRUMENT_REGION("cv::remap");
   cv::remap(_src.getMat(), _dst,
       rmap, cv::noArray(),
       cv::INTER_LINEAR,
-      cv::BORDER_CONSTANT);
+      borderType);
 #else
 
   if( _src.type() != CV_32FC1 ) {
@@ -134,7 +137,8 @@ static bool ecclm_remap(const c_image_transform * image_transform,
     const cv::Mat1f & params,
     const cv::Size & size,
     cv::InputArray src, cv::InputArray src_mask,
-    cv::OutputArray dst, cv::OutputArray dst_mask)
+    cv::OutputArray dst, cv::OutputArray dst_mask,
+    cv::BorderTypes borderType = cv::BORDER_REPLICATE)
 {
   cv::Mat2f rmap;
 
@@ -143,7 +147,7 @@ static bool ecclm_remap(const c_image_transform * image_transform,
     return false;
   }
 
-  ecclm_remap(src, dst, rmap);
+  ecclm_remap(src, dst, rmap, borderType);
 
   if( !src_mask.empty() ) {
 
@@ -160,7 +164,7 @@ static bool ecclm_remap(const c_image_transform * image_transform,
 
     INSTRUMENT_REGION("dummy_mask");
 
-    cv::remap(cv::Mat1b(size, (uint8_t) (255)), dst_mask,
+    cv::remap(cv::Mat1b(src.size(), (uint8_t) (255)), dst_mask,
         rmap, cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_CONSTANT,
@@ -172,7 +176,7 @@ static bool ecclm_remap(const c_image_transform * image_transform,
 
     INSTRUMENT_REGION("compare");
 
-    cv::compare(dst_mask.getMat(), 255, dst_mask,
+    cv::compare(dst_mask.getMat(), 254, dst_mask,
         cv::CMP_GE);
   }
 
@@ -204,16 +208,16 @@ bool c_ecclm::set_reference_image(cv::InputArray reference_image, cv::InputArray
     return false;
   }
 
-  ecclm_differentiate(reference_image, gx_, gy_, CV_32F);
-
-  if ( !reference_mask_.empty() ) {
-
-    cv::erode(reference_mask_, reference_mask_,
-        cv::Mat1b(5, 5, 255));
-
-    gx_.setTo(0, ~reference_mask_);
-    gy_.setTo(0, ~reference_mask_);
-  }
+//  ecclm_differentiate(reference_image, gx_, gy_, CV_32F);
+//
+//  if ( !reference_mask_.empty() ) {
+//
+//    cv::erode(reference_mask_, reference_mask_,
+//        cv::Mat1b(5, 5, 255));
+//
+//    gx_.setTo(0, ~reference_mask_);
+//    gy_.setTo(0, ~reference_mask_);
+//  }
 
   if ( !image_transform_ ) {
     CF_DEBUG("Still wait for image transform");
@@ -271,10 +275,12 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
 
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
 
-  ecclm_remap(image_transform_, params, reference_image_.size(),
+  ecclm_remap(image_transform_, params, size,
       current_image_, current_mask_,
-      remapped_image, remapped_mask);
+      remapped_image, remapped_mask,
+      cv::BORDER_REPLICATE);
 
   if( remapped_mask.empty() ) {
     remapped_mask = reference_mask_;
@@ -284,17 +290,19 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
         remapped_mask);
   }
 
-  const double nrms =
-      remapped_mask.empty() ? size.area() :
-          cv::countNonZero(remapped_mask);
-
-  cv::Mat1f rhs;
   cv::subtract(remapped_image, reference_image_, rhs);
   if ( !remapped_mask.empty() ) {
     rhs.setTo(0, ~remapped_mask);
   }
 
-  return rhs.dot(rhs) / nrms;
+  const double nrms =
+      remapped_mask.empty() ? size.area() :
+          cv::countNonZero(remapped_mask);
+
+  const double rms =
+      rhs.dot(rhs) / nrms;
+
+  return rms;
 }
 
 double c_ecclm::compute_jac(const cv::Mat1f & params,
@@ -307,49 +315,14 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
 
   const cv::Size size(reference_image_.size());
 
-  if ( J.size() != M ) {
-
-    // CF_DEBUG("REBUILD J: M=%d", M);
-
-    J.resize(M);
-
-    image_transform_->create_steepest_descent_images(params,
-        gx_, gy_,
-        J.data());
-
-    if( true ) {
-
-      INSTRUMENT_REGION("rdots");
-
-      JJ.create(M, M);
-
-      tbb::parallel_for(tbb_range(0, M),
-          [&](const tbb_range & r) {
-
-            for( int i = r.begin(); i < r.end(); ++i ) {
-              for( int j = 0; j <= i; ++j ) {
-                JJ[i][j] = J[i].dot(J[j]);
-              }
-            }
-          });
-
-      for( int i = 0; i < M; ++i ) {
-        for( int j = i + 1; j < M; ++j ) {
-          JJ[i][j] = JJ[j][i];
-        }
-      }
-
-    }
-  }
-
-
-
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
 
-  ecclm_remap(image_transform_, params, reference_image_.size(),
+  ecclm_remap(image_transform_, params, size,
       current_image_, current_mask_,
-      remapped_image, remapped_mask);
+      remapped_image, remapped_mask,
+      cv::BORDER_REPLICATE);
 
   if( remapped_mask.empty() ) {
     remapped_mask = reference_mask_;
@@ -359,70 +332,65 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
         remapped_mask);
   }
 
-
   const double nrms =
       remapped_mask.empty() ? size.area() :
           cv::countNonZero(remapped_mask);
 
-
-  cv::Mat1f rhs;//(size, 0.0f);
-
   cv::subtract(remapped_image, reference_image_, rhs);
-  if ( !remapped_mask.empty() ) {
+  if( !remapped_mask.empty() ) {
     rhs.setTo(0, ~remapped_mask);
   }
 
   const double rms =
       rhs.dot(rhs) / nrms;
 
+  if ( J.size() != M ) {
+    J.resize(M);
+  }
+
+
+  ecclm_differentiate(remapped_image, gx_, gy_, remapped_mask);
+  image_transform_->create_steepest_descent_images(params, gx_, gy_, J.data());
 
   H.create(M, M);
+
+  if( true ) {
+
+    INSTRUMENT_REGION("rdots");
+
+    tbb::parallel_for(tbb_range(0, M),
+        [&](const tbb_range & r) {
+
+          for( int i = r.begin(); i < r.end(); ++i ) {
+            for( int j = 0; j <= i; ++j ) {
+              H[i][j] = J[i].dot(J[j]) / nrms;
+            }
+          }
+        });
+
+    for( int i = 0; i < M; ++i ) {
+      for( int j = i + 1; j < M; ++j ) {
+        H[i][j] = H[j][i];
+      }
+    }
+
+  }
+
+
   v.create(M, 1);
+
 
   if( true ) {
 
     INSTRUMENT_REGION("dots");
 
-    if ( true ) {
+    tbb::parallel_for(tbb_range(0, M),
+        [&](const tbb_range & r) {
 
-      tbb::parallel_for(tbb_range(0, M),
-          [&](const tbb_range & r) {
-
-            for( int i = r.begin(); i < r.end(); ++i ) {
-              v[i][0] = J[i].dot(rhs) / nrms;
-            }
-          });
-
-
-      for( int i = 0; i < M; ++i ) {
-        for( int j = 0; j < M; ++j ) {
-          H[i][j] = JJ[i][j] / nrms;
-        }
-      }
-    }
-    else {
-
-      tbb::parallel_for(tbb_range(0, M),
-          [&](const tbb_range & r) {
-
-            for( int i = r.begin(); i < r.end(); ++i ) {
-
-              v[i][0] = J[i].dot(rhs) / nrms;
-
-              for( int j = 0; j <= i; ++j ) {
-                H[i][j] = J[i].dot(J[j]) / nrms;
-              }
-
-            }
-          });
-
-      for( int i = 0; i < M; ++i ) {
-        for( int j = i + 1; j < M; ++j ) {
-          H[i][j] = H[j][i];
-        }
-      }
-    }
-
+          for( int i = r.begin(); i < r.end(); ++i ) {
+            v[i][0] = J[i].dot(rhs) / nrms;
+          }
+        });
   }
 
 
@@ -432,6 +400,8 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
 
 bool c_ecclm::align()
 {
+  ++rc;
+
   INSTRUMENT_REGION("");
 
   if ( !image_transform_ ) {
@@ -652,7 +622,8 @@ bool c_ecclm::align()
 
     ecclm_remap(image_transform_, params, reference_image_.size(),
         current_image_, current_mask_,
-        remapped_image, remapped_mask);
+        remapped_image, remapped_mask,
+        cv::BORDER_CONSTANT);
 
     if( remapped_mask.empty() ) {
       remapped_mask = reference_mask_;

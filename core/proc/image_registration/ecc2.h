@@ -368,7 +368,8 @@ protected:
 protected:
   cv::Mat1f gx_, gy_;
   std::vector<cv::Mat1f> J;
-  cv::Mat1f JJ;
+  //cv::Mat1f JJ;
+  int cc = 0, rc = 0;
 };
 
 

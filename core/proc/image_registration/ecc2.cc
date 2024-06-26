@@ -111,17 +111,33 @@ double compute_correlation(cv::InputArray current_image, cv::InputArray current_
 {
   cv::Mat remapped_image, remapped_mask;
 
-  cv::remap(current_image, remapped_image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::remap(current_image, remapped_image,
+      rmap, cv::noArray(),
+      cv::INTER_LINEAR,
+      cv::BORDER_CONSTANT);
+
   if ( current_mask.empty() ) {
-    remapped_mask = reference_mask.getMat();
+
+    cv::remap(cv::Mat1b(current_image.size(), (uint8_t) 255), remapped_mask,
+        rmap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT);
+
   }
   else {
-    cv::remap(current_mask, remapped_mask, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    cv::compare(remapped_mask, 255, remapped_mask, cv::CMP_GE );
 
-    if ( !reference_mask.empty() ) {
-      cv::bitwise_and(reference_mask, remapped_mask, remapped_mask);
-    }
+    cv::remap(current_mask, remapped_mask,
+        rmap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT);
+  }
+
+  cv::compare(remapped_mask, 254, remapped_mask,
+      cv::CMP_GE);
+
+  if ( !reference_mask.empty() ) {
+    cv::bitwise_and(reference_mask, remapped_mask,
+        remapped_mask);
   }
 
   return compute_correlation(reference_image, remapped_image, remapped_mask);
@@ -140,7 +156,7 @@ inline T square(T x)
   return x * x;
 }
 
-void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddepth = CV_32F)
+void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy)
 {
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
@@ -149,12 +165,8 @@ void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, int ddept
     Ky *= M_SQRT2;
   }
 
-  if( ddepth < 0 ) {
-    ddepth = std::max(src.depth(), CV_32F);
-  }
-
-  cv::sepFilter2D(src, gx, -1, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::sepFilter2D(src, gy, -1, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 }
 
 /**

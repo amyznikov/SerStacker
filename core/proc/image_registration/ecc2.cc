@@ -904,22 +904,8 @@ bool c_ecc_forward_additive::align()
   }
 
   if ( jac.size() != nparams_ ) {
-    jac.clear();
     jac.resize(nparams_);
   }
-
-  //
-  // Precompute
-  //
-
-//  // Evaluate the gradient ∇G of the input image G(x)
-//  ecc_differentiate(current_image_, gx, gy);
-//  if( !current_mask_.empty() ) {
-//    cv::bitwise_not(current_mask_, iwmask);
-//    gx.setTo(0, iwmask);
-//    gy.setTo(0, iwmask);
-//  }
-//
 
   //
   // Iterate
@@ -951,30 +937,8 @@ bool c_ecc_forward_additive::align()
             bitwise_and(wmask, reference_mask_, wmask);
           }
           cv::bitwise_not(wmask, iwmask);
-        }
-        );
+        });
 
-//    tbb::parallel_invoke(
-//        [this, &current_remap]() {
-//          cv::remap(current_image_, gw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-//        },
-//        [this, &current_remap]() {
-//          cv::remap(gx, gxw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-//        },
-//        [this, &current_remap]() {
-//          cv::remap(gy, gyw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-//        },
-//        [this, &current_remap]() {
-//          cv::remap(current_mask_, wmask, current_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
-//          cv::compare(wmask, 255, wmask, cv::CMP_GE);
-//
-//          if( !reference_mask_.empty() ) {
-//            bitwise_and(wmask, reference_mask_, wmask);
-//          }
-//
-//          cv::bitwise_not(wmask, iwmask);
-//        }
-//    );
 
     gxw.setTo(0, iwmask);
     gyw.setTo(0, iwmask);

@@ -208,16 +208,17 @@ bool c_ecclm::set_reference_image(cv::InputArray reference_image, cv::InputArray
     return false;
   }
 
-//  ecclm_differentiate(reference_image, gx_, gy_, CV_32F);
-//
-//  if ( !reference_mask_.empty() ) {
-//
-//    cv::erode(reference_mask_, reference_mask_,
-//        cv::Mat1b(5, 5, 255));
-//
-//    gx_.setTo(0, ~reference_mask_);
-//    gy_.setTo(0, ~reference_mask_);
-//  }
+  if ( !reference_mask_.empty() ) {
+
+    cv::erode(reference_mask_, reference_mask_,
+        cv::Mat1b(5, 5, 255));
+  }
+
+  /////////
+
+  //ecclm_differentiate(reference_image, gx_, gy_, reference_mask_);
+
+  /////////
 
   if ( !image_transform_ ) {
     CF_DEBUG("Still wait for image transform");
@@ -295,12 +296,12 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
     rhs.setTo(0, ~remapped_mask);
   }
 
-  const double nrms =
-      remapped_mask.empty() ? size.area() :
-          cv::countNonZero(remapped_mask);
+//  const double nrms =
+//      remapped_mask.empty() ? size.area() :
+//          cv::countNonZero(remapped_mask);
 
   const double rms =
-      rhs.dot(rhs) / nrms;
+      rhs.dot(rhs);
 
   return rms;
 }
@@ -332,9 +333,9 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
         remapped_mask);
   }
 
-  const double nrms =
-      remapped_mask.empty() ? size.area() :
-          cv::countNonZero(remapped_mask);
+//  const double nrms =
+//      remapped_mask.empty() ? size.area() :
+//          cv::countNonZero(remapped_mask);
 
   cv::subtract(remapped_image, reference_image_, rhs);
   if( !remapped_mask.empty() ) {
@@ -342,9 +343,9 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
   }
 
   const double rms =
-      rhs.dot(rhs) / nrms;
+      rhs.dot(rhs);
 
-  if ( J.size() != M ) {
+  if( J.size() != M ) {
     J.resize(M);
   }
 
@@ -352,46 +353,36 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
   ecclm_differentiate(remapped_image, gx_, gy_, remapped_mask);
   image_transform_->create_steepest_descent_images(params, gx_, gy_, J.data());
 
-  H.create(M, M);
-
-  if( true ) {
-
-    INSTRUMENT_REGION("rdots");
-
-    tbb::parallel_for(tbb_range(0, M),
-        [&](const tbb_range & r) {
-
-          for( int i = r.begin(); i < r.end(); ++i ) {
-            for( int j = 0; j <= i; ++j ) {
-              H[i][j] = J[i].dot(J[j]) / nrms;
-            }
-          }
-        });
-
-    for( int i = 0; i < M; ++i ) {
-      for( int j = i + 1; j < M; ++j ) {
-        H[i][j] = H[j][i];
-      }
-    }
-
-  }
-
 
   v.create(M, 1);
 
+  tbb::parallel_for(tbb_range(0, M),
+      [&](const tbb_range & r) {
 
-  if( true ) {
+        for( int i = r.begin(); i < r.end(); ++i ) {
+          v[i][0] = J[i].dot(rhs);
+        }
+      });
 
-    INSTRUMENT_REGION("dots");
+  H.create(M, M);
 
-    tbb::parallel_for(tbb_range(0, M),
-        [&](const tbb_range & r) {
+  tbb::parallel_for(tbb_range(0, M),
+      [&](const tbb_range & r) {
 
-          for( int i = r.begin(); i < r.end(); ++i ) {
-            v[i][0] = J[i].dot(rhs) / nrms;
+        for( int i = r.begin(); i < r.end(); ++i ) {
+          for( int j = 0; j <= i; ++j ) {
+            H[i][j] = J[i].dot(J[j]);
           }
-        });
+        }
+      });
+
+  for( int i = 0; i < M; ++i ) {
+    for( int j = i + 1; j < M; ++j ) {
+      H[i][j] = H[j][i];
+    }
   }
+
+
 
 
   return rms;
@@ -469,6 +460,8 @@ bool c_ecclm::align()
 //      params[6][0],
 //      params[7][0]
 //  );
+
+  J.clear();
 
   while (iteration < max_iterations_) {
 
@@ -606,33 +599,9 @@ bool c_ecclm::align()
 
 
   eps_ = dp;
+  dp = cv::norm(deltap, cv::NORM_INF);
   num_iterations_ = iteration + 1;
-  //CF_DEBUG("RET: iteration=%d err=%g dp=%g", iteration, err, dp);
-
-  if ( true ) {
-
-    cv::Mat1f remapped_image;
-    cv::Mat1b remapped_mask;
-
-    params = image_transform_->parameters();
-
-//    CF_DEBUG("image_transform_->parameters(): T={%+g %+g}\n",
-//        params[0][0],
-//        params[1][0]);
-
-    ecclm_remap(image_transform_, params, reference_image_.size(),
-        current_image_, current_mask_,
-        remapped_image, remapped_mask,
-        cv::BORDER_CONSTANT);
-
-    if( remapped_mask.empty() ) {
-      remapped_mask = reference_mask_;
-    }
-    else if( !reference_mask_.empty() ) {
-      cv::bitwise_and(reference_mask_, remapped_mask,
-          remapped_mask);
-    }
-  }
+  CF_DEBUG("RET: iteration=%d err=%g eps_=%g dp=%g", iteration, err, eps_, dp);
 
   return true;
 }

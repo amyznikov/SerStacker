@@ -792,23 +792,12 @@ c_ecc_forward_additive::c_ecc_forward_additive(c_image_transform * image_transfo
 
 bool c_ecc_forward_additive::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
+  //jac.clear();
+
   if( !base::set_reference_image(reference_image, reference_mask) ) {
     CF_ERROR("base::set_reference_image() fails");
     return false;
   }
-
-//  if( reference_smooth_sigma_ > 0 ) {
-//
-//    const cv::Mat1f G =
-//        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
-//            reference_smooth_sigma_);
-//
-//    cv::sepFilter2D(reference_image_, reference_image_, -1,
-//        G, G,
-//        cv::Point(-1, -1),
-//        0,
-//        cv::BORDER_REPLICATE);
-//  }
 
   if ( !reference_mask_.empty() ) {
 
@@ -830,23 +819,16 @@ bool c_ecc_forward_additive::set_reference_image(cv::InputArray reference_image,
 
 bool c_ecc_forward_additive::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
 {
+
+//  if ( !precompute_jac ) {
+//    jac.clear();
+//  }
+
+
   if( !base::set_current_image(current_image, current_mask) ) {
     CF_ERROR("base::set_current_image() fails");
     return false;
   }
-
-//  if( input_sm > 0 ) {
-//
-//    const cv::Mat1f G =
-//        cv::getGaussianKernel(2 * ((int) (4 * reference_smooth_sigma_)) + 1,
-//            reference_smooth_sigma_);
-//
-//    cv::sepFilter2D(current_image_, current_image_, -1,
-//        G, G,
-//        cv::Point(-1, -1),
-//        0,
-//        cv::BORDER_REPLICATE);
-//  }
 
   if( current_mask_.empty() ) {
     current_mask_.create(current_image_.size());
@@ -909,18 +891,23 @@ bool c_ecc_forward_additive::align()
     return false;
   }
 
-  jac.resize(nparams_);
+  if ( jac.size() != nparams_ ) {
+    jac.clear();
+    jac.resize(nparams_);
+  }
+
   //
   // Precompute
   //
 
-  // Evaluate the gradient ∇G of the input image G(x)
-  ecc_differentiate(current_image_, gx, gy);
-  if( !current_mask_.empty() ) {
-    cv::bitwise_not(current_mask_, iwmask);
-    gx.setTo(0, iwmask);
-    gy.setTo(0, iwmask);
-  }
+//  // Evaluate the gradient ∇G of the input image G(x)
+//  ecc_differentiate(current_image_, gx, gy);
+//  if( !current_mask_.empty() ) {
+//    cv::bitwise_not(current_mask_, iwmask);
+//    gx.setTo(0, iwmask);
+//    gy.setTo(0, iwmask);
+//  }
+//
 
   //
   // Iterate
@@ -943,24 +930,39 @@ bool c_ecc_forward_additive::align()
     tbb::parallel_invoke(
         [this, &current_remap]() {
           cv::remap(current_image_, gw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-        },
-        [this, &current_remap]() {
-          cv::remap(gx, gxw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
-        },
-        [this, &current_remap]() {
-          cv::remap(gy, gyw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+          ecc_differentiate(gw, gxw, gyw);
         },
         [this, &current_remap]() {
           cv::remap(current_mask_, wmask, current_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
           cv::compare(wmask, 255, wmask, cv::CMP_GE);
-
           if( !reference_mask_.empty() ) {
             bitwise_and(wmask, reference_mask_, wmask);
           }
-
           cv::bitwise_not(wmask, iwmask);
         }
-    );
+        );
+
+//    tbb::parallel_invoke(
+//        [this, &current_remap]() {
+//          cv::remap(current_image_, gw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+//        },
+//        [this, &current_remap]() {
+//          cv::remap(gx, gxw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+//        },
+//        [this, &current_remap]() {
+//          cv::remap(gy, gyw, current_remap, cv::noArray(), interpolation_, cv::BORDER_REPLICATE);
+//        },
+//        [this, &current_remap]() {
+//          cv::remap(current_mask_, wmask, current_remap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
+//          cv::compare(wmask, 255, wmask, cv::CMP_GE);
+//
+//          if( !reference_mask_.empty() ) {
+//            bitwise_and(wmask, reference_mask_, wmask);
+//          }
+//
+//          cv::bitwise_not(wmask, iwmask);
+//        }
+//    );
 
     gxw.setTo(0, iwmask);
     gyw.setTo(0, iwmask);
@@ -972,24 +974,24 @@ bool c_ecc_forward_additive::align()
 
     // create steepest descent images
     image_transform_->create_steepest_descent_images(gxw, gyw, jac.data());
-
-    // calculate Hessian and its inverse
     ecc_compute_hessian_matrix(jac, H);
-
     if( !cv::invert(H, H, cv::DECOMP_CHOLESKY) ) {
       CF_ERROR("[i %d] cv::invert(H) fails", num_iterations_);
       failed_ = true;
       break;
     }
 
+    // calculate Hessian and its inverse
+
+
     // compute update parameters
     // e = -(gwzm - stdev_ratio * fzm);
-    cv::scaleAdd(reference_image_, -stdev_ratio, gw, e);
-    cv::subtract(e, gMean - stdev_ratio * fMean, e);
-    e.setTo(0, iwmask);
+    cv::scaleAdd(reference_image_, -stdev_ratio, gw, rhs);
+    cv::subtract(rhs, gMean - stdev_ratio * fMean, rhs);
+    rhs.setTo(0, iwmask);
 
     // compute projected error
-    ecc_project_error_image(jac, e, ep, nparams_);
+    ecc_project_error_image(jac, rhs, ep, nparams_);
 
     // compute update parameters
     dp = -update_step_scale_ * (H * ep);

@@ -999,15 +999,6 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
             J[6][y][x] = gg * x;
             J[7][y][x] = gg * y;
 
-
-//            J[0][y][x] = ggx * x;
-//            J[1][y][x] = ggy * x;
-//            J[2][y][x] = gg * x;
-//            J[3][y][x] = ggx * y;
-//            J[4][y][x] = ggy * y;
-//            J[5][y][x] = gg * y;
-//            J[6][y][x] = ggx;
-//            J[7][y][x] = ggy;
           }
         }
       }

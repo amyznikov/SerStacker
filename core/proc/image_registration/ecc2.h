@@ -296,14 +296,11 @@ public:
 protected:
   cv::Mat1b wmask, iwmask; // image masks
   cv::Mat1f gw; // warped input image
-  cv::Mat1f gx, gy, gxw, gyw; // input image derivatives
+  cv::Mat1f /*gx, gy, */gxw, gyw; // input image derivatives
   cv::Mat1f H; // Hessian matrix and its inverse
   cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1]
-  cv::Mat1f e, ep;  // error image and it's projection
-
-  //cv::Mat1f jac;  // jacobian [f.rows * numberOfParameters][f.cols]
+  cv::Mat1f rhs, ep;  // error image and it's projection
   std::vector<cv::Mat1f> jac;
-
 };
 
 // Inverse compositional ECC

@@ -996,59 +996,11 @@ bool c_ecc_forward_additive::align()
 
     // update warping matrix
     image_transform_->set_parameters(image_transform_->parameters() + dp);
-    eps_ = cv::norm(dp, cv::NORM_INF);
 
-//    if( !image_transform_->update_forward_additive(dp, &eps_, f.size()) ) {
-//      CF_ERROR("[i %d] model_->update_forward_additive() fails", num_iterations_);
-//      failed_ = true;
-//      break;
-//    }
+    //eps_ = cv::norm(dp, cv::NORM_INF);
+    eps_ = image_transform_->eps(dp, reference_image_.size());
 
-
-
-    if( eps_ < max_eps_ || num_iterations_ == max_iterations_ ) {
-
-//      const int wmask_area =
-//          cv::countNonZero(wmask);
-//
-//      if( wmask_area <= nparams_ ) {
-//
-//        CF_ERROR("[i %d] Bad wmask area: nnz=%d / %d  < %d", num_iterations_,
-//            wmask_area, wmask.size().area(),
-//            nparams_ + 1);
-//
-//        failed_ = 1;
-//      }
-//      else {
-//
-//        const int rsize =
-//            cv::countNonZero(reference_mask_);
-//
-//        const int csize =
-//            cv::countNonZero(current_mask_);
-//
-//        cv::subtract(reference_image_, fMean, e), e.setTo(0, iwmask);
-//        cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
-//
-//        const double covar =
-//            e.dot(gw) / wmask_area;
-//
-//        rho_ = covar  / ( fStd[0] * gStd[0]);
-//
-//        CF_DEBUG("fMean=%g gMean=%g fStd=%g gStd=%g wmask_area=%d covar=%g rsize=%d csize=%d",
-//            fMean[0], gMean[0], fStd[0], gStd[0], wmask_area, covar, rsize, csize);
-//
-//
-//        if( isnan(rho_) ) {
-//          CF_ERROR("[i %d] e.dot() returns rho=%g. eps_=%g nnz(wmask)=%d / %d",
-//              num_iterations_,
-//              rho_,
-//              eps_,
-//              wmask_area,
-//              wmask.size().area());
-//        }
-//      }
-
+    if( eps_ < max_eps_ || num_iterations_ >= max_iterations_ ) {
       break;
     }
   }

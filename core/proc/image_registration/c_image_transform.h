@@ -48,6 +48,7 @@ public:
   virtual void scale_transfrom(double factor) = 0;
   virtual bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const = 0;
   virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
+  virtual double eps(const cv::Mat1f & dp, const cv::Size & image_size) = 0;
 
 
   virtual void set_translation(const cv::Vec2f & T) = 0;
@@ -106,6 +107,7 @@ public:
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
 
   bool create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & map) const;
   bool create_remap(const cv::Mat1f & params, const cv::Size & size, cv::Mat2f & map) const final;
@@ -161,8 +163,9 @@ public:
   int num_adjustable_parameters() const;
   void set_parameters(float Tx, float Ty, float angle, float scale, float Cx, float Cy);
   bool set_parameters(const cv::Mat1f & p) final;
-  bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale, float * Cx, float * Cy) const;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
+  bool get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle, float * scale, float * Cx, float * Cy) const;
 
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
@@ -222,6 +225,7 @@ public:
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
 
   bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
@@ -264,6 +268,7 @@ public:
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
 
   bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
@@ -315,6 +320,7 @@ public:
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
 
   bool create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
@@ -356,6 +362,7 @@ public:
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
 
   bool create_remap(const cv::Matx26f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;

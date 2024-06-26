@@ -21,6 +21,12 @@ constexpr int tbb_block_size = 256;
 } // namespace
 
 
+template<class T>
+static inline T square(T x)
+{
+  return x * x;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const cv::Size & size,
     cv::OutputArray dst, cv::OutputArray dst_mask,
@@ -131,6 +137,11 @@ void c_translation_image_transform::scale_transfrom(double factor)
 {
   parameters_(0, 0) *= factor;
   parameters_(1, 0) *= factor;
+}
+
+double c_translation_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
+{
+  return sqrt(dp(0, 0) * dp(0, 0) + dp(1, 0) * dp(0, 1));
 }
 
 bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
@@ -427,6 +438,24 @@ void c_euclidean_image_transform::scale_transfrom(double factor)
   update_parameters();
 }
 
+double c_euclidean_image_transform::eps(const cv::Mat1f & dp,
+    const cv::Size & image_size)
+{
+
+  float dTx = 0, dTy = 0, da = 0, ds = 0, dCx = 0, dCy = 0;
+
+  get_parameters(dp, &dTx, &dTy, &da, &ds, &dCx, &dCy);
+
+  const float sa =
+      std::sin(da);
+
+  const float eps =
+      std::sqrt(square(dTx) + square(dTy) + square(image_size.width * sa) + square(image_size.height * sa) +
+          square(std::max(image_size.width, image_size.height) * ds));
+
+  return eps;
+}
+
 bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   //  Wx =  s * ( ca * x  - sa * y ) + tx
@@ -677,6 +706,16 @@ void c_affine_image_transform::scale_transfrom(double scale)
   parameters_(5, 0) *= scale;
 }
 
+double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
+{
+  const float eps =
+      std::sqrt(square(image_size.width * dp(0, 0)) + square(image_size.height * dp(1, 0)) + square(dp(2, 0)) +
+          square(image_size.width * dp(3, 0)) + square(image_size.height * dp(4, 0)) + square(dp(5, 0)));
+
+  return eps;
+}
+
+
 bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   if( p.rows != 6 || p.cols != 1 ) {
@@ -855,6 +894,18 @@ void c_homography_image_transform::scale_transfrom(double factor)
   matrix_(2, 1) /= factor;
 
   update_parameters();
+}
+
+double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
+{
+  // FIXME?: this estimate does not account for w
+
+  const float eps =
+      sqrt(square(dp(2, 0)) + square(dp(5, 0)) +
+          square(image_size.width * dp(0, 0)) + square(image_size.height * dp(1, 0)) +
+          square(image_size.width * dp(3, 0)) + square(image_size.height * dp(4, 0)));
+
+  return eps;
 }
 
 bool c_homography_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
@@ -1106,6 +1157,30 @@ void c_semi_quadratic_image_transform::scale_transfrom(double factor)
   parameters_(7, 0) /= factor;
 }
 
+double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
+{
+  // x' =  a00 * x + a01 * y + a02 + a03 * x * y
+  // y' =  a10 * x + a11 * y + a12 + a13 * x * y
+
+//  dp(0, 0) = a(0, 0);
+//  dp(1, 0) = a(0, 1);
+//  dp(2, 0) = a(0, 2);
+//  dp(3, 0) = a(0, 3);
+//  dp(4, 0) = a(1, 0);
+//  dp(5, 0) = a(1, 1);
+//  dp(6, 0) = a(1, 2);
+//  dp(7, 0) = a(1, 3);
+
+  const float eps =
+      std::sqrt( square(dp(2, 0)) + square(dp(6, 0)) +
+            square(image_size.width * dp(0, 0)) + square(image_size.height * dp(1, 0)) +
+            square(image_size.width * dp(4, 0)) + square(image_size.height * dp(5, 0)) +
+            square(image_size.width * image_size.height * dp(3, 0)) +
+            square(image_size.width * image_size.height * dp(7, 0)));
+
+  return eps;
+}
+
 bool c_semi_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   if( p.rows != 8 || p.cols != 1 ) {
@@ -1337,6 +1412,24 @@ void c_quadratic_image_transform::scale_transfrom(double factor)
   parameters_(10, 0) /= factor;
   parameters_(11, 0) /= factor;
 }
+
+
+double c_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
+{
+  // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
+  // y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
+
+  const float eps =
+      std::sqrt(square(dp(2, 0)) + square(dp(8, 0)) +
+        square(image_size.width * dp(0, 0)) + square(image_size.height * dp(1, 0)) +
+        square(image_size.width * dp(6, 0)) + square(image_size.height * dp(7, 0)) +
+        square(image_size.width * image_size.height * dp(3, 0)) + square(image_size.width * image_size.height * dp(9, 0)) +
+        square(image_size.width * image_size.width * dp(4, 0)) + square(image_size.width * image_size.width * dp(10, 0)) +
+        square(image_size.height * image_size.height * dp(5, 0)) + square(image_size.height * image_size.height * dp(11, 0)));
+
+  return eps;
+}
+
 
 bool c_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {

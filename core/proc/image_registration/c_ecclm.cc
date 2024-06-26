@@ -553,9 +553,13 @@ bool c_ecclm::align()
           compute_rhs(newparams);
 
       /* Check for increments in parameters  */
-      if( (dp = cv::norm(deltap, cv::NORM_INF)) < max_eps_ ) {
+      if( (dp = image_transform_->eps(deltap, reference_image_.size())) ) {
         break;
       }
+
+//      if( (dp = cv::norm(deltap, cv::NORM_INF)) < max_eps_ ) {
+//        break;
+//      }
 
 
       /*

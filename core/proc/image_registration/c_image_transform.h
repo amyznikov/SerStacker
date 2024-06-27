@@ -230,6 +230,10 @@ public:
   bool create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+
+
+protected:
+  mutable cv::Mat1f xx, yy;
 };
 
 

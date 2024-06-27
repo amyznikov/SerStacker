@@ -248,6 +248,7 @@ protected:
   int max_iterations_ = 50;
   int minimum_image_size_ = 8;
   int maxlevel_ = 0;
+  int num_iterations_ = -1;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -363,11 +364,18 @@ public:
 
 protected:
   double compute_rhs(const cv::Mat1f & params);
-  double compute_jac(const cv::Mat1f & params, cv::Mat1f & H, cv::Mat1f & v);
+  double compute_jac(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & H, cv::Mat1f & v);
+  double compute_remap(const cv::Mat1f & params,
+      cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
 
 protected:
   cv::Mat1f gx_, gy_;
   std::vector<cv::Mat1f> J;
+  cv::Mat1f remapped_image;
+  cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
+  double nrms = 0;
+  double rms = 0;
   //cv::Mat1f JJ;
   int cc = 0, rc = 0;
 };

@@ -761,7 +761,51 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & 
   const cv::Size size =
       gx.size();
 
+#if 0
+  if ( xx.size() != size || yy.size() != size ) {
 
+    xx.create(size);
+    yy.create(size);
+
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
+      [&](const tbb_range & r) {
+        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+        for( int y = 0; y < size.height; ++y ) {
+#endif
+          for( int x = 0; x < size.width; ++x ) {
+            xx[y][x] =  x;
+            yy[y][x] =  y;
+          }
+        }
+#if HAVE_TBB && !defined(Q_MOC_RUN)
+   });
+#endif
+  }
+
+  tbb::parallel_invoke(
+    [&]() {
+      cv::multiply(gx, xx, J[0]); // a00
+    },
+    [&]() {
+      cv::multiply(gx, yy, J[1]); // a01
+    },
+    [&]() {
+      gx.copyTo(J[2]); // a02
+    },
+
+    [&]() {
+      cv::multiply(gy, xx, J[3]); // a10
+    },
+    [&]() {
+      cv::multiply(gy, yy, J[4]); // a11
+    },
+    [&]() {
+      gy.copyTo(J[5]); // a12
+    });
+
+#else
   for ( int i = 0; i < 6; ++i ) {
     J[i].create(size);
   }
@@ -786,6 +830,8 @@ bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & 
         }
 #if HAVE_TBB && !defined(Q_MOC_RUN)
    });
+#endif
+
 #endif
 
   return true;

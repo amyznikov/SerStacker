@@ -374,10 +374,8 @@ protected:
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
   cv::Mat1f rhs;
-  double nrms = 0;
+  // double nrms = 0;
   double rms = 0;
-  //cv::Mat1f JJ;
-  int cc = 0, rc = 0;
 };
 
 

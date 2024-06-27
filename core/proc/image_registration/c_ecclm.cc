@@ -299,7 +299,7 @@ double c_ecclm::compute_remap(const cv::Mat1f & params,
 
 double c_ecclm::compute_rhs(const cv::Mat1f & params)
 {
-  nrms =
+  //nrms =
       compute_remap(params, remapped_image, remapped_mask,
           rhs);
 
@@ -315,7 +315,7 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 
   if( recompute_remap ) {
 
-    nrms =
+    // nrms =
         compute_remap(params, remapped_image, remapped_mask,
             rhs);
 
@@ -370,8 +370,6 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 
 bool c_ecclm::align()
 {
-  ++rc;
-
   INSTRUMENT_REGION("");
 
   if ( !image_transform_ ) {

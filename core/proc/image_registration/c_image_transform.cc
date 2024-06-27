@@ -188,8 +188,12 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
 bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/,
     const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
-  gx.copyTo(J[0]);
-  gy.copyTo(J[1]);
+  //gx.copyTo(J[0]);
+  //gy.copyTo(J[1]);
+
+  J[0] = gx;
+  J[1] = gy;
+
   return true;
 }
 

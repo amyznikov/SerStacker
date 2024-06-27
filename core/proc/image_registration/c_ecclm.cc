@@ -265,18 +265,13 @@ bool c_ecclm::align_to_reference(cv::InputArray current_image, cv::InputArray cu
   return align();
 }
 
-double c_ecclm::compute_rhs(const cv::Mat1f & params)
+double c_ecclm::compute_remap(const cv::Mat1f & params,
+    cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
 {
-  INSTRUMENT_REGION("");
-
   const int M =
       params.rows;
 
   const cv::Size size(reference_image_.size());
-
-  cv::Mat1f remapped_image;
-  cv::Mat1b remapped_mask;
-  cv::Mat1f rhs;
 
   ecclm_remap(image_transform_, params, size,
       current_image_, current_mask_,
@@ -296,12 +291,29 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
     rhs.setTo(0, ~remapped_mask);
   }
 
-//  const double nrms =
-//      remapped_mask.empty() ? size.area() :
-//          cv::countNonZero(remapped_mask);
+  const double nrms =
+      remapped_mask.empty() ? size.area() :
+          cv::countNonZero(remapped_mask);
+
+  //  const double rms =
+  //      rhs.dot(rhs);
+
+  return nrms;
+
+}
+
+double c_ecclm::compute_rhs(const cv::Mat1f & params)
+{
+  cv::Mat1f remapped_image;
+  cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
+
+  const double nrms =
+      compute_remap(params, remapped_image, remapped_mask,
+          rhs);
 
   const double rms =
-      rhs.dot(rhs);
+      rhs.dot(rhs) / nrms;
 
   return rms;
 }
@@ -309,46 +321,23 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
 double c_ecclm::compute_jac(const cv::Mat1f & params,
     cv::Mat1f & H, cv::Mat1f & v)
 {
-  INSTRUMENT_REGION("");
-
-  const int M =
-      params.rows;
-
-  const cv::Size size(reference_image_.size());
-
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
   cv::Mat1f rhs;
 
-  ecclm_remap(image_transform_, params, size,
-      current_image_, current_mask_,
-      remapped_image, remapped_mask,
-      cv::BORDER_REPLICATE);
-
-  if( remapped_mask.empty() ) {
-    remapped_mask = reference_mask_;
-  }
-  else if( !reference_mask_.empty() ) {
-    cv::bitwise_and(reference_mask_, remapped_mask,
-        remapped_mask);
-  }
-
-//  const double nrms =
-//      remapped_mask.empty() ? size.area() :
-//          cv::countNonZero(remapped_mask);
-
-  cv::subtract(remapped_image, reference_image_, rhs);
-  if( !remapped_mask.empty() ) {
-    rhs.setTo(0, ~remapped_mask);
-  }
+  const double nrms =
+      compute_remap(params, remapped_image, remapped_mask,
+          rhs);
 
   const double rms =
-      rhs.dot(rhs);
+      rhs.dot(rhs) / nrms;
+
+  const int M =
+      params.rows;
 
   if( J.size() != M ) {
     J.resize(M);
   }
-
 
   ecclm_differentiate(remapped_image, gx_, gy_, remapped_mask);
   image_transform_->create_steepest_descent_images(params, gx_, gy_, J.data());
@@ -360,7 +349,7 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
       [&](const tbb_range & r) {
 
         for( int i = r.begin(); i < r.end(); ++i ) {
-          v[i][0] = J[i].dot(rhs);
+          v[i][0] = J[i].dot(rhs) / nrms;
         }
       });
 
@@ -371,7 +360,7 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
 
         for( int i = r.begin(); i < r.end(); ++i ) {
           for( int j = 0; j <= i; ++j ) {
-            H[i][j] = J[i].dot(J[j]);
+            H[i][j] = J[i].dot(J[j]) / nrms;
           }
         }
       });
@@ -381,9 +370,6 @@ double c_ecclm::compute_jac(const cv::Mat1f & params,
       H[i][j] = H[j][i];
     }
   }
-
-
-
 
   return rms;
 }
@@ -470,17 +456,10 @@ bool c_ecclm::align()
     err =
         compute_jac(params, H, v);
 
-//    CF_DEBUG("> IT %d err=%g\n"
-//        "H = {\n"
-//        "  %+20g %+20g\n"
-//        "  %+20g %+20g\n"
-//        "}\n"
-//        "v={%+g %+g}\n",
-//        iteration,
-//        err,
-//        H[0][0], H[0][1],
-//        H[1][0], H[1][1],
-//        v[0][0], v[1][0]);
+    CF_DEBUG("* JJ > IT %d lambda=%g err=%g\n",
+        iteration,
+        lambda,
+        err);
 
     H.copyTo(Hp);
 
@@ -503,20 +482,27 @@ bool c_ecclm::align()
       cv::scaleAdd(deltap, -update_step_scale_, params, newparams);
 
 
-//      CF_DEBUG("IT %d Compute function for newparams: \n"
-//          "deltap = { %+20g %+20g }\n"
-//          "newparams = {%+20g %+20g}"
-//          "\n",
-//          iteration,
-//          deltap[0][0], deltap[1][0],
-//          newparams[0][0], newparams[1][0]);
+      CF_DEBUG("IT %d Compute function for newparams: \n"
+          "deltap = { \n"
+          "  %+20g %+20g %+20g \n"
+          "  %+20g %+20g %+20g \n"
+          "}\n"
+          "newparams = {\n"
+          "  %+20g %+20g %+20g\n"
+          "  %+20g %+20g %+20g\n"
+          "}"
+          "\n",
+          iteration,
+          deltap[0][0], deltap[1][0],deltap[2][0],deltap[3][0],deltap[4][0],deltap[4][0],
+          newparams[0][0], newparams[1][0], newparams[2][0], newparams[3][0], newparams[4][0], newparams[5][0]);
 
       /* Compute function for newparams */
       newerr =
           compute_rhs(newparams);
 
       /* Check for increments in parameters  */
-      if( (dp = image_transform_->eps(deltap, reference_image_.size())) ) {
+      if( (dp = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
+        CF_DEBUG("BREAK by dp=%g / %g", dp, max_eps_);
         break;
       }
 
@@ -539,36 +525,37 @@ bool c_ecclm::align()
           (err - newerr) / (std::abs(dS) > eps ? dS : 1);
 
 
-//      CF_DEBUG("IT %d err=%g newerr=%g dp=%g lambda=%g rho=%+g\n",
-//          iteration,
-//          err, newerr,
-//          dp,
-//          lambda,
-//          rho
-//          );
-//
+      CF_DEBUG("IT %d err=%g newerr=%g dp=%g lambda=%g rho=%+g\n",
+          iteration,
+          err, newerr,
+          dp,
+          lambda,
+          rho
+          );
+
 
       if( rho > 0.25 ) {
         /* Accept new params and decrease lambda ==> Gauss-Newton method */
-        if( lambda > 1e-4 ) {
-          lambda = std::max(1e-4, lambda / 5);
+        if( lambda > 1e-6 ) {
+          lambda = std::max(1e-6, lambda / 5);
         }
-        //CF_DEBUG("  lambda->%g", lambda);
+        CF_DEBUG("  lambda->%g", lambda);
       }
       else if( rho > 0.1 ) {
+        CF_DEBUG(" NO CHANGE lambda->%g", lambda);
 
       }
       else if( lambda < 1 ) {       /** Try increase lambda ==> gradient descend */
         lambda = 1;
-        //CF_DEBUG("  lambda->%g", lambda);
+        CF_DEBUG("  lambda->%g", lambda);
       }
       else {
         lambda *= 10;
-        //CF_DEBUG("  lambda->%g", lambda);
+        CF_DEBUG("  lambda->%g", lambda);
       }
 
       if ( newerr < err ) {
-        //CF_DEBUG("  ACCEPT");
+        CF_DEBUG("  ACCEPT");
         break;
       }
 
@@ -583,6 +570,7 @@ bool c_ecclm::align()
     }
 
     if( dp < max_eps_ ) {
+      CF_DEBUG("BREAK2 by dp");
       break;
     }
   }

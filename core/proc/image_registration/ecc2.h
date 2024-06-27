@@ -364,6 +364,8 @@ public:
 protected:
   double compute_rhs(const cv::Mat1f & params);
   double compute_jac(const cv::Mat1f & params, cv::Mat1f & H, cv::Mat1f & v);
+  double compute_remap(const cv::Mat1f & params,
+      cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
 
 protected:
   cv::Mat1f gx_, gy_;

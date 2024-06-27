@@ -40,8 +40,6 @@
 #include <core/proc/c_quad_estimate.h>
 #include <core/proc/fit_exponential.h>
 
-#include <core/proc/image_registration/c_ecclm.h>
-
 #include <core/debug.h>
 
 namespace {

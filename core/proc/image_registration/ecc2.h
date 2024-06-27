@@ -286,14 +286,6 @@ public:
   bool align_to_reference(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray()) override;
 
-//  bool align_to_reference(cv::InputArray inputImage,
-//      cv::InputArray inputMask = cv::noArray()) override;
-
-//  bool align(cv::InputArray inputImage, cv::InputArray referenceImage,
-//      cv::InputArray inputMask = cv::noArray(),
-//      cv::InputArray referenceMask = cv::noArray()) override;
-
-
 protected:
   cv::Mat1b wmask, iwmask; // image masks
   cv::Mat1f gw; // warped input image
@@ -330,7 +322,6 @@ protected: // Notations are from the paper of  B. Pan, K. Li and W. Tong
   cv::Mat1f jac_; // steepest descend images ("jacobian")
   cv::Mat1f H; // inverse of Hessian matrix
 };
-
 
 
 class c_ecclm :

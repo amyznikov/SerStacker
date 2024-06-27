@@ -915,7 +915,8 @@ bool c_ecc_forward_additive::align()
   double stdev_ratio;
   cv::Mat2f current_remap;
 
-  for( num_iterations_ = 0; num_iterations_ <= max_iterations_; ++num_iterations_ ) {
+  num_iterations_ = 0;
+  while (num_iterations_++ < max_iterations_) {
 
     // Warp g, gx and gy with W(x; p) to compute warped input image g(W(x; p)) and it's gradients
 
@@ -977,11 +978,12 @@ bool c_ecc_forward_additive::align()
 
     //eps_ = cv::norm(dp, cv::NORM_INF);
     eps_ = image_transform_->eps(dp, reference_image_.size());
-
-    if( eps_ < max_eps_ || num_iterations_ >= max_iterations_ ) {
+    if( eps_ < max_eps_ ) {
       break;
     }
   }
+
+//  CF_DEBUG("RET: num_iterations=%d eps_=%g ", num_iterations_, eps_);
 
   return !failed_; //  && rho_ > 0;
 }

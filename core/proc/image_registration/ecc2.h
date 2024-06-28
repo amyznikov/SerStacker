@@ -59,6 +59,7 @@ enum ECC_ALIGN_METHOD {
   ECC_ALIGN_FORWARD_ADDITIVE,
   ECC_ALIGN_INVERSE_COMPOSITIONAL,
   ECC_ALIGN_LM,
+  ECC_ALIGN_INVERSE_COMPOSITIONAL_LM
 };
 
 /**
@@ -272,8 +273,8 @@ public:
 
   c_ecc_forward_additive(c_image_transform * image_transform = nullptr);
 
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray()) override;
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray()) override;
 
   bool set_current_image(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray()) override;
@@ -315,8 +316,8 @@ public:
 
   void set_image_transform(c_image_transform * image_transform) override;
 
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray()) override;
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray()) override;
 
   bool set_current_image(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray()) override;
@@ -371,8 +372,7 @@ public:
 protected:
   double compute_rhs(const cv::Mat1f & params);
   double compute_jac(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & H, cv::Mat1f & v);
-  double compute_remap(const cv::Mat1f & params,
-      cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
+  double compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
 
 protected:
   cv::Mat1f gx_, gy_;
@@ -385,6 +385,50 @@ protected:
 };
 
 
+class c_ecclm_inverse_compositional:
+    public c_ecc_align
+{
+public:
+  typedef c_ecclm_inverse_compositional this_class;
+  typedef c_ecc_align base;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+
+  c_ecclm_inverse_compositional(c_image_transform * image_transform = nullptr);
+
+  void set_image_transform(c_image_transform * image_transform) override;
+
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray()) override;
+
+  bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
+
+  bool align() override;
+
+  bool align(cv::InputArray current_image, cv::InputArray reference_image,
+      cv::InputArray current_mask = cv::noArray(),
+      cv::InputArray reference_mask = cv::noArray()) override;
+
+  bool align_to_reference(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
+
+protected:
+  double compute_rhs(const cv::Mat1f & params);
+  double compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v);
+  void compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
+
+protected:
+  cv::Mat1f gx, gy;
+  std::vector<cv::Mat1f> jac;
+  cv::Mat1f remapped_image;
+  cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
+  cv::Mat1f Hp;
+  double rms = 0;
+  double RMA = 0;
+  double CMA = 0;
+};
 
 
 
@@ -451,14 +495,14 @@ public:
 
   void copy_parameters(const this_class & rhs);
 
-  bool set_reference_image(cv::InputArray referenceImage,
-      cv::InputArray referenceMask = cv::noArray());
+  bool set_reference_image(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
 
-  bool compute(cv::InputArray inputImage, cv::InputArray referenceImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray(), cv::InputArray referenceMask = cv::noArray());
+  bool compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray(), cv::InputArray reference_mask = cv::noArray());
 
-  bool compute(cv::InputArray inputImage, cv::Mat2f & rmap,
-      cv::InputArray inputMask = cv::noArray());
+  bool compute(cv::InputArray input_image, cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray());
 
 public: // public access mainly for debug and visualization purposes
 

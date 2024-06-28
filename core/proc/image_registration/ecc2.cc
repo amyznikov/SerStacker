@@ -64,8 +64,9 @@ const c_enum_member * members_of<ECC_ALIGN_METHOD>()
 {
   static const c_enum_member members[] = {
     {ECC_ALIGN_FORWARD_ADDITIVE, "FORWARD_ADDITIVE", },
-    {ECC_ALIGN_INVERSE_COMPOSITIONAL, "INVERSE_COMPOSITIONAL", "Requires invertible image transform"},
     {ECC_ALIGN_LM, "LM", },
+    {ECC_ALIGN_INVERSE_COMPOSITIONAL, "INVERSE_COMPOSITIONAL", "Requires invertible image transform"},
+    {ECC_ALIGN_INVERSE_COMPOSITIONAL_LM, "INVERSE_COMPOSITIONAL_LM", },
     {ECC_ALIGN_LM},
   };
   return members;
@@ -1172,6 +1173,9 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
     case ECC_ALIGN_INVERSE_COMPOSITIONAL:
       ecc.reset(new c_ecc_inverse_compositional());
       break;
+    case ECC_ALIGN_INVERSE_COMPOSITIONAL_LM:
+      ecc.reset(new c_ecclm_inverse_compositional());
+      break;
     default:
       ecc.reset(new c_ecclm());
       break;
@@ -1900,7 +1904,7 @@ bool c_ecclm::align()
       }
 
       /* Solve system to define delta and define new value of params */
-      cv::solve(H, v, deltap, cv::DECOMP_EIG);
+      cv::solve(H, v, deltap, cv::DECOMP_CHOLESKY);
       cv::scaleAdd(deltap, -update_step_scale_, params, newparams);
 
 
@@ -2203,6 +2207,284 @@ bool c_ecc_inverse_compositional::align()
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+c_ecclm_inverse_compositional::c_ecclm_inverse_compositional(c_image_transform * image_transform) :
+    base(image_transform)
+{
+}
+
+void c_ecclm_inverse_compositional::set_image_transform(c_image_transform * image_transform)
+{
+  return base::set_image_transform(image_transform);
+}
+
+bool c_ecclm_inverse_compositional::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+{
+  return base::set_reference_image(reference_image, reference_mask);
+}
+
+bool c_ecclm_inverse_compositional::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
+{
+  return base::set_current_image(current_image, current_mask);
+}
+
+bool c_ecclm_inverse_compositional::align(cv::InputArray current_image, cv::InputArray reference_image,
+    cv::InputArray current_mask, cv::InputArray reference_mask)
+{
+  return base::align(current_image, reference_image, current_mask, reference_mask);
+}
+
+bool c_ecclm_inverse_compositional::align_to_reference(cv::InputArray current_image, cv::InputArray current_mask)
+{
+  return base::align_to_reference(current_image, current_mask);
+}
+
+void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
+    cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
+{
+  const int M =
+      params.rows;
+
+  const cv::Size size(reference_image_.size());
+
+  ecc_remap(image_transform_, params, size,
+      current_image_, current_mask_,
+      remapped_image, remapped_mask,
+      cv::BORDER_REPLICATE);
+
+  if( remapped_mask.empty() ) {
+    remapped_mask = reference_mask_;
+  }
+  else if( !reference_mask_.empty() ) {
+    cv::bitwise_and(reference_mask_, remapped_mask,
+        remapped_mask);
+  }
+
+  cv::subtract(remapped_image, reference_image_, rhs);
+  if ( remapped_mask.empty() ) {
+    CMA = rhs.size().area();
+  }
+  else {
+    CMA = cv::countNonZero(remapped_mask);
+    rhs.setTo(0, ~remapped_mask);
+  }
+
+  rms =
+      rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+}
+
+double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)
+{
+  compute_remap(params, remapped_image, remapped_mask, rhs);
+  return rms;
+}
+
+double c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v)
+{
+  if( recompute_remap ) {
+    compute_remap(params, remapped_image, remapped_mask, rhs);
+  }
+
+  ecc_project_error_image(jac, rhs, v);
+  v *= (RMA / CMA);
+
+  return rms;
+}
+
+bool c_ecclm_inverse_compositional::align()
+{
+  failed_ = true;
+
+  if ( !image_transform_ ) {
+    CF_ERROR("c_ecc_inverse_compositional: image_transform_ is null");
+    return false;
+  }
+
+  if ( !image_transform_->invertible() ) {
+    CF_ERROR("c_ecc_inverse_compositional: image_transform_ is not invertible");
+    return false;
+  }
+
+  if ( reference_image_.empty() ) {
+    CF_ERROR("c_ecc_inverse_compositional: reference_image_ is empty");
+    return false;
+  }
+
+  if ( current_image_.empty() ) {
+    CF_ERROR("c_ecc_inverse_compositional: current_image_ is empty");
+    return false;
+  }
+
+  cv::Mat1f params, newparams, deltap;
+  cv::Mat1f H, temp_d, v;
+
+  double err, newerr;
+
+  params =
+      image_transform_->parameters();
+
+  const int M =
+      params.rows;
+
+  constexpr double eps =
+      std::numeric_limits<double>::epsilon();
+
+  double lambda = 0.001;
+  double dp = 0;
+  bool recompute_remap = true;
+
+  RMA =
+      reference_mask_.empty() ?
+          reference_image_.size().area() :
+          cv::countNonZero(reference_mask_);
+
+//  CF_DEBUG("\n---------------------------------------------");
+
+  /**
+   * PreCompute
+   * */
+  if( jac.size() != M || gx.empty() || gy.empty() ) {
+    jac.resize(M);
+    ecc_differentiate(reference_image_, gx, gy, reference_mask_);
+    image_transform_->create_steepest_descent_images(gx, gy, jac.data());
+    ecc_compute_hessian_matrix(jac, Hp);
+  }
+
+  num_iterations_ = 0;
+  eps_ = FLT_MAX;
+  failed_ = false;
+
+
+  while (num_iterations_ < max_iterations_) {
+
+    //CF_DEBUG("> IT %d model_->compute_jac()", num_iterations_);
+
+    // CF_DEBUG("recompute_remap=%d", recompute_remap);
+
+    err = compute_v(params, recompute_remap, v);
+
+    Hp.copyTo(H);
+
+    /*
+     * Solve normal equation for given Jacobian and lambda
+     * */
+    do {
+
+      ++num_iterations_;
+      recompute_remap = true;
+
+      /*
+       * Increase diagonal elements by lambda
+       * */
+      for( int i = 0; i < M; ++i ) {
+        H[i][i] = (1 + lambda) * Hp[i][i];
+      }
+
+      /* Solve system to define delta and define new value of params */
+      cv::solve(H, v, deltap, cv::DECOMP_CHOLESKY);
+
+      newparams =
+          image_transform_->invert_and_compose(params,
+              update_step_scale_ * deltap);
+
+//      CF_DEBUG("IT %d Compute function for newparams: \n"
+//          "deltap = { \n"
+//          "  %+20g %+20g\n"
+//          "}\n"
+//          "newparams = {\n"
+//          "  %+20g %+20g\n"
+//          "}"
+//          "\n",
+//          num_iterations_,
+//          deltap[0][0], deltap[1][0],
+//          newparams[0][0], newparams[1][0]);
+
+      /* Compute function for newparams */
+      newerr =
+          compute_rhs(newparams);
+
+      /* Check for increments in parameters  */
+      if( (dp = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
+        // CF_DEBUG("BREAK by eps= %g / %g ", dp, max_eps_);
+        break;
+      }
+
+      /*
+       * Compute update to lambda
+       * */
+
+      cv::gemm(Hp, deltap, -1, v, 2,
+          temp_d);
+
+      const double dS =
+          deltap.dot(temp_d);
+
+      const double rho =
+          (err - newerr) / (std::abs(dS) > eps ? dS : 1);
+
+
+//      CF_DEBUG("IT %d err=%g newerr=%g dp=%g lambda=%g rho=%+g\n",
+//          num_iterations_,
+//          err, newerr,
+//          dp,
+//          lambda,
+//          rho);
+
+
+      if( rho > 0.25 ) {
+        /* Accept new params and decrease lambda ==> Gauss-Newton method */
+        if( lambda > 1e-6 ) {
+          lambda = std::max(1e-6, lambda / 5);
+        }
+        // CF_DEBUG("  lambda->%g", lambda);
+      }
+      else if( rho > 0.1 ) {
+        // CF_DEBUG(" NO CHANGE lambda->%g", lambda);
+
+      }
+      else if( lambda < 1 ) {       /** Try increase lambda ==> gradient descend */
+        lambda = 1;
+        // CF_DEBUG("  lambda->%g", lambda);
+      }
+      else {
+        lambda *= 10;
+        // CF_DEBUG("  lambda->%g", lambda);
+      }
+
+      if ( newerr < err ) {
+        // CF_DEBUG("  ACCEPT");
+        break;
+      }
+
+    } while (num_iterations_ < max_iterations_);
+
+    if( newerr < err ) {
+      /*
+       * Accept new params if were not yet accepted
+       * */
+      err = newerr;
+      recompute_remap = false;
+      image_transform_->set_parameters(newparams);
+      params = image_transform_->parameters();
+    }
+
+    if( dp < max_eps_ ) {
+      // CF_DEBUG("BREAK2 by dp");
+      break;
+    }
+  }
+
+
+//  CF_DEBUG("newparams: T={%+g %+g}\n",
+//      params[0][0],
+//      params[1][0]);
+
+  eps_ = dp;
+  dp = cv::norm(deltap, cv::NORM_INF);
+//  CF_DEBUG("RET: iteration=%d err=%g eps_=%g dp=%g", num_iterations_, err, eps_, dp);
+//  CF_DEBUG("\n---------------------------------------------");
+  return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

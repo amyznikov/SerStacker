@@ -2107,31 +2107,46 @@ bool c_ecc_inverse_compositional::align()
 
     cv::solve(H, v, deltap, cv::DECOMP_EIG);
 
-//    CF_DEBUG("[i %d] deltap= {%+g %+g}", num_iterations_,
-//        deltap(0, 0), deltap(1, 0));
+    newparams = image_transform_->invert_and_compose(params, deltap * update_step_scale_);
 
-    deltap = image_transform_->invert(deltap);
+    CF_DEBUG("[i %d]\n"
+        "params = {\n"
+        "      %+20g %+20g %+20g\n"
+        "      %+20g %+20g %+20g\n"
+        "}\n"
+        "deltap = {\n"
+        "      %+20g %+20g %+20g\n"
+        "      %+20g %+20g %+20g\n"
+        "}\n"
+        "newparams = {\n"
+        "      %+20g %+20g %+20g\n"
+        "      %+20g %+20g %+20g\n"
+        "}\n"
+        "\n",
+        num_iterations_,
 
-//    CF_DEBUG("[i %d] inv deltap= {%+g %+g}", num_iterations_,
-//        deltap(0, 0), deltap(1, 0));
+        params(0, 0), params(1, 0), params(2, 0),
+        params(3, 0), params(4, 0), params(5, 0),
 
-    cv::scaleAdd(deltap, update_step_scale_, params, newparams);
+        deltap(0, 0), deltap(1, 0), deltap(2, 0),
+        deltap(3, 0), deltap(4, 0), deltap(5, 0),
 
-//    CF_DEBUG("[i %d] params = {%+g %+g} -> {%g %g}", num_iterations_,
-//        params(0, 0), params(1, 0),
-//        newparams(0, 0), newparams(1, 0));
+        newparams(0, 0), newparams(1, 0), newparams(2, 0),
+        newparams(3, 0), newparams(4, 0), newparams(5, 0));
+
 
     image_transform_->set_parameters(newparams);
 
-    if ((eps_ = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
-      // CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
+    eps_ = image_transform_->eps(deltap, reference_image_.size());
+    if ( eps_ < max_eps_ ) {
+      CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
       break;
     }
 
-    // CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
+    CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
   }
 
-  // CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
+  CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
 
   return true;
 }

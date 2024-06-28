@@ -149,14 +149,25 @@ bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOu
             border_value_);
       }
 
-      if ( !mask.empty() ) {
-        cv::remap(mask.getMat(), mask,
-            remap_, cv::noArray(),
-            cv::INTER_AREA,
-            cv::BORDER_CONSTANT);
 
-        cv::compare(mask, 255, mask,
-            cv::CMP_EQ);
+      if ( mask.needed() ) {
+
+        if ( !mask.empty() ) {
+          cv::remap(mask.getMat(), mask,
+              remap_, cv::noArray(),
+              cv::INTER_AREA,
+              cv::BORDER_CONSTANT);
+
+        }
+        else {
+          cv::remap(cv::Mat1b(remap_.size(), 255), mask,
+              remap_, cv::noArray(),
+              cv::INTER_AREA,
+              cv::BORDER_CONSTANT);
+        }
+
+        cv::compare(mask.getMat(), 250, mask,
+            cv::CMP_GE);
       }
     }
   }

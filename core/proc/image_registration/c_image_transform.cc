@@ -719,6 +719,34 @@ double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & imag
   return eps;
 }
 
+cv::Mat1f c_affine_image_transform::invert(const cv::Mat1f & params) const
+{
+  cv::Matx23f a = matrix(params);
+  cv::Matx23f ai;
+
+  cv::invertAffineTransform(a, ai);
+
+  return cv::Mat1f(6, 1, (float*) ai.val).clone();
+
+//  cv::Mat1f m(6, 1);
+//  for( int i = 0; i < 6; ++i ) {
+//    m(i, 0) = -params(i, 0);
+//  }
+//
+//  return m;
+}
+
+cv::Mat1f c_affine_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+{
+  cv::Matx23f a;
+
+  cv::invertAffineTransform(matrix(p), a);
+  cv::invertAffineTransform(a + matrix(dp), a);
+
+  return cv::Mat1f(6, 1, (float*) a.val).clone();
+}
+
+
 
 bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {

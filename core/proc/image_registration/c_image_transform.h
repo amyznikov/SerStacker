@@ -88,6 +88,11 @@ public:
     return cv::Mat1f();
   }
 
+  virtual cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+  {
+    return cv::Mat1f();
+  }
+
 protected:
   cv::Mat1f parameters_;
 };
@@ -135,6 +140,11 @@ public:
     m(0, 0) = -params(0, 0);
     m(1, 0) = -params(1, 0);
     return m;
+  }
+
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+  {
+    return p - dp;
   }
 
 };
@@ -256,6 +266,14 @@ public:
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
+
+  bool invertible() const final
+  {
+    return true;
+  }
+
+  cv::Mat1f invert(const cv::Mat1f & params) const final;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 
 protected:
   mutable cv::Mat1f xx, yy;

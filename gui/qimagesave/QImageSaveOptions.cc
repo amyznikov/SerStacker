@@ -338,6 +338,14 @@ QString saveImageFileAs(QWidget * parent,
 
   // QString * savedFileName
 
+//  CF_DEBUG("currentImage=%dx%d depth=%d channels=%d",
+//      currentImage.cols, currentImage.rows,
+//      currentImage.depth(), currentImage.channels());
+//
+//  CF_DEBUG("currentMask=%dx%d depth=%d channels=%d",
+//      currentMask.cols, currentMask.rows,
+//      currentMask.depth(), currentMask.channels());
+
   QSettings settings;
 
   static const QString keyName =

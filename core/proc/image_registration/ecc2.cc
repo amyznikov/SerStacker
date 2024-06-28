@@ -360,9 +360,8 @@ static void ecc_epipolar_gradient(cv::InputArray src, cv::Mat1f & g, const cv::P
             gp[x] = (gxp[x] * ca + gyp[x] * sa);
           }
         }
-      }
 #if ECC_USE_TBB
-  );
+      });
 #endif
 
 }
@@ -545,21 +544,25 @@ void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/
 /*
  * Project error image to jacobian for ECC image alignment
  * */
-void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & rhs, cv::Mat1f & v, int nparams)
+void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & rhs, cv::Mat1f & v)
 {
   const int M =
       J.size();
 
   v.create(M, 1);
 
+#if ECC_USE_TBB
   tbb::parallel_for(tbb_range(0, M),
       [&](const tbb_range & r) {
-
         for( int i = r.begin(); i < r.end(); ++i ) {
+#else
+        for( int i = 0; i < M; ++i ) {
+#endif
           v[i][0] = J[i].dot(rhs);
         }
+#if ECC_USE_TBB
       });
-
+#endif
 }
 
 } // namespace
@@ -609,21 +612,6 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
     src_mask.copyTo(dst_mask);
   }
 
-
-  if ( false ) {
-    cv::Scalar m, s;
-    cv::meanStdDev(dst, m, s, dst_mask);
-
-    //(dst/= s -= m/= s)
-    CF_DEBUG("normalize");
-    //cv::scaleAdd(dst, 1 / (5 * s[0]), -m[0] / (5 * s[0]), dst);
-    cv::subtract(dst, m, dst);
-    cv::multiply(dst, 1/s[0], dst);
-    CF_DEBUG("normalize ok");
-
-    //cv::subtract(dst)
-  }
-
   return true;
 }
 
@@ -636,45 +624,62 @@ void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow)
 
   if( &flow == &rmap ) {
 
+#if ECC_USE_TBB
     tbb::parallel_for(range(0, rmap.rows, 256),
         [&](const range & r) {
           for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
+#endif
             for( int x = 0; x < rmap.cols; ++x ) {
               flow[y][x][0] -= x;
               flow[y][x][1] -= y;
             }
           }
+#if ECC_USE_TBB
         });
+#endif
 
   }
   else if( flow.data != rmap.data ) {
 
     flow.create(rmap.size());
 
+#if ECC_USE_TBB
     tbb::parallel_for(range(0, rmap.rows, 256),
         [&](const range & r) {
           for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
+#endif
             for( int x = 0; x < rmap.cols; ++x ) {
               flow[y][x][0] = rmap[y][x][0] - x;
               flow[y][x][1] = rmap[y][x][1] - y;
             }
           }
+#if ECC_USE_TBB
         });
-
+#endif
   }
   else {
 
     cv::Mat2f tmp(rmap.size());
 
+#if ECC_USE_TBB
     tbb::parallel_for(range(0, rmap.rows, 256),
         [&](const range & r) {
           for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+#else
+          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
+#endif
             for( int x = 0; x < rmap.cols; ++x ) {
               tmp[y][x][0] = rmap[y][x][0] - x;
               tmp[y][x][1] = rmap[y][x][1] - y;
             }
           }
+#if ECC_USE_TBB
         });
+#endif
 
     flow = std::move(tmp);
   }
@@ -1583,7 +1588,7 @@ bool c_ecc_forward_additive::align()
     rhs.setTo(0, iwmask);
 
     // compute projected error
-    ecc_project_error_image(jac, rhs, ep, nparams_);
+    ecc_project_error_image(jac, rhs, ep);
 
     // compute update parameters
     dp = -update_step_scale_ * (H * ep);
@@ -2067,15 +2072,23 @@ bool c_ecc_inverse_compositional::align()
   }
 
   cv::Mat1f params, newparams, deltap;
-  cv::Mat1f remapped_image, rhs;
+  cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;
+  cv::Mat1f rhs;
   cv::Mat1f v;
+
+  double rmsold, rmsnew;
 
   params =
       image_transform_->parameters();
 
   const int M =
       params.rows;
+
+  const double RMA =
+      reference_mask_.empty() ?
+          reference_image_.size().area() :
+          cv::countNonZero(reference_mask_);
 
   /**
    * PreCompute
@@ -2091,6 +2104,12 @@ bool c_ecc_inverse_compositional::align()
   eps_ = FLT_MAX;
   failed_ = false;
 
+
+  rmsold = FLT_MAX;
+
+  const double lambda =
+      update_step_scale_;
+
   while ( num_iterations_++ < max_iterations_ ) {
 
     params = image_transform_->parameters();
@@ -2103,50 +2122,73 @@ bool c_ecc_inverse_compositional::align()
       rhs.setTo(0, ~remapped_mask);
     }
 
-    ecc_project_error_image(jac, rhs, v, M);
+    const double CMA =
+        remapped_mask.empty() ? rhs.size().area() :
+            cv::countNonZero(remapped_mask);
 
-    cv::solve(H, v, deltap, cv::DECOMP_EIG);
+#if ECC_USE_TBB
+    tbb::parallel_invoke(
+        [&] () {
+#endif
+          rmsnew = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+#if ECC_USE_TBB
+        },
+        [&]() {
+#endif
+          ecc_project_error_image(jac, rhs, v);
+          cv::solve(H, v * (RMA / CMA), deltap, cv::DECOMP_CHOLESKY);
+#if ECC_USE_TBB
+        });
+#endif
 
-    newparams = image_transform_->invert_and_compose(params, deltap * update_step_scale_);
-
-    CF_DEBUG("[i %d]\n"
-        "params = {\n"
-        "      %+20g %+20g %+20g\n"
-        "      %+20g %+20g %+20g\n"
-        "}\n"
-        "deltap = {\n"
-        "      %+20g %+20g %+20g\n"
-        "      %+20g %+20g %+20g\n"
-        "}\n"
-        "newparams = {\n"
-        "      %+20g %+20g %+20g\n"
-        "      %+20g %+20g %+20g\n"
-        "}\n"
-        "\n",
-        num_iterations_,
-
-        params(0, 0), params(1, 0), params(2, 0),
-        params(3, 0), params(4, 0), params(5, 0),
-
-        deltap(0, 0), deltap(1, 0), deltap(2, 0),
-        deltap(3, 0), deltap(4, 0), deltap(5, 0),
-
-        newparams(0, 0), newparams(1, 0), newparams(2, 0),
-        newparams(3, 0), newparams(4, 0), newparams(5, 0));
-
-
-    image_transform_->set_parameters(newparams);
-
-    eps_ = image_transform_->eps(deltap, reference_image_.size());
-    if ( eps_ < max_eps_ ) {
-      CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
+    if ( rmsnew >= rmsold ) {
+      // CF_DEBUG("BREAK by rmsnew = %g rmsold = %g ", rmsnew, rmsold);
       break;
     }
 
-    CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
+    newparams =
+        image_transform_->invert_and_compose(params,
+            lambda * deltap);
+
+//    CF_DEBUG("[i %d] CMA=%g rms=%g rmsnew=%g drms=%g\n"
+//        "params = {\n"
+//        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g %+20g\n"
+//        "}\n"
+//        "deltap = {\n"
+//        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g %+20g\n"
+//        "}\n"
+//        "newparams = {\n"
+//        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g %+20g\n"
+//        "}\n"
+//        "\n",
+//        num_iterations_,
+//        CMA, rmsold, rmsnew, rmsold - rmsnew,
+//
+//        params(0, 0), params(1, 0), params(2, 0),
+//        params(3, 0), params(4, 0), params(5, 0),
+//
+//        deltap(0, 0), deltap(1, 0), deltap(2, 0),
+//        deltap(3, 0), deltap(4, 0), deltap(5, 0),
+//
+//        newparams(0, 0), newparams(1, 0), newparams(2, 0),
+//        newparams(3, 0), newparams(4, 0), newparams(5, 0));
+
+
+    rmsold = rmsnew;
+    image_transform_->set_parameters(newparams);
+
+    if ( (eps_ = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
+      //      CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
+      break;
+    }
+
+//    CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
   }
 
-  CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
+//  CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
 
   return true;
 }

@@ -57,6 +57,7 @@ enum ECC_BORDER_MODE {
 
 enum ECC_ALIGN_METHOD {
   ECC_ALIGN_FORWARD_ADDITIVE,
+  ECC_ALIGN_INVERSE_COMPOSITIONAL,
   ECC_ALIGN_LM,
 };
 
@@ -308,19 +309,33 @@ public:
   typedef c_ecc_inverse_compositional this_class;
   typedef c_ecc_align base;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   c_ecc_inverse_compositional(c_image_transform * image_transform = nullptr);
 
-protected: // Notations are from the paper of  B. Pan, K. Li and W. Tong
-//  cv::Mat1f g; // input image
-//  cv::Mat1f f; // reference image
-  cv::Mat1b /*fmask, gmask, */wmask, iwmask; // image masks
-  cv::Mat1f gw; // warped input image
-  cv::Mat1f e, ep; // error image and it's projection
-  cv::Mat1f dp; // warping parameters matrix update [numberOfParameters][1], the size and meaning depends on motion model
-  cv::Mat1f fx, fy; // gradient of reference image
-  cv::Mat1f jac_; // steepest descend images ("jacobian")
-  cv::Mat1f H; // inverse of Hessian matrix
+  void set_image_transform(c_image_transform * image_transform) override;
+
+  bool set_reference_image(cv::InputArray referenceImage,
+      cv::InputArray referenceMask = cv::noArray()) override;
+
+  bool set_current_image(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
+
+  bool align() override;
+
+  bool align(cv::InputArray current_image, cv::InputArray reference_image,
+      cv::InputArray current_mask = cv::noArray(),
+      cv::InputArray reference_mask = cv::noArray()) override;
+
+  bool align_to_reference(cv::InputArray current_image,
+      cv::InputArray current_mask = cv::noArray()) override;
+
+protected:
+
+protected:
+  cv::Mat1f gx, gy;
+  std::vector<cv::Mat1f> jac;
+  cv::Mat1f H;
 };
 
 

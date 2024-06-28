@@ -64,6 +64,7 @@ const c_enum_member * members_of<ECC_ALIGN_METHOD>()
 {
   static const c_enum_member members[] = {
     {ECC_ALIGN_FORWARD_ADDITIVE, "FORWARD_ADDITIVE", },
+    {ECC_ALIGN_INVERSE_COMPOSITIONAL, "INVERSE_COMPOSITIONAL", "Requires invertible image transform"},
     {ECC_ALIGN_LM, "LM", },
     {ECC_ALIGN_LM},
   };
@@ -1163,6 +1164,9 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
     case ECC_ALIGN_FORWARD_ADDITIVE:
       ecc.reset(new c_ecc_forward_additive());
       break;
+    case ECC_ALIGN_INVERSE_COMPOSITIONAL:
+      ecc.reset(new c_ecc_inverse_compositional());
+      break;
     default:
       ecc.reset(new c_ecclm());
       break;
@@ -2005,440 +2009,134 @@ c_ecc_inverse_compositional::c_ecc_inverse_compositional(c_image_transform * ima
 {
 }
 
-//const cv::Mat1f & c_ecc_inverse_compositional::input_image() const
-//{
-//  return g;
-//}
-//
-//const cv::Mat1f & c_ecc_inverse_compositional::reference_image() const
-//{
-//  return f;
-//}
+void c_ecc_inverse_compositional::set_image_transform(c_image_transform * image_transform)
+{
+  jac.clear();
+  gx.release();
+  gy.release();
+  return base::set_image_transform(image_transform);
+}
 
-//bool c_ecc_inverse_compositional::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
-//{
-////  // Convert reference image to floating point,
-////  // Pre-Evaluate the gradient ∇T of reference image T(x),
-////  // Pre-Compute Jacobian ∂W/∂p at (x,0) and steepest descent images ▽f*∂W/∂p
-////
-////  prepare_input_image(referenceImage, referenceMask, reference_smooth_sigma_, false, f, fmask);
-////
-////  ecc_differentiate(f, fx, fy);
-////
-////  if( !image_transform_->create_steepest_descent_images(fx, fy, jac_) ) {
-////    CF_ERROR("model_->compute_jacobian() fails");
-////    return false;
-////  }
-////
-////  return true;
-//  return false;
-//}
-//
-//bool c_ecc_inverse_compositional::align(cv::InputArray inputImage, cv::InputArray referenceImage,
-//    cv::InputArray inputMask, cv::InputArray referenceMask)
-//{
-//  num_iterations_ = -1, rho_ = -1;
-//  if ( !set_reference_image(referenceImage, referenceMask) ) {
-//    CF_FATAL("c_ecc_inverse_compositional: set_reference_image() fails");
-//    return false;
-//  }
-//  return align_to_reference(inputImage, inputMask);
-//}
-//
-//bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray inputImage, cv::InputArray inputMask)
-//{
-////  cv::Mat1f jac;
-////
-////  failed_ = false;
-////  num_iterations_ = -1;
-////  rho_ = -1;
-////  if ( max_eps_ <= 0 ) {
-////    max_eps_ = 1e-3;
-////  }
-////
-////
-////  if ( (nparams_ = image_transform_->parameters().rows) < 1 ) {
-////    CF_ERROR("c_ecc2_inverse_compositional: image_transform_->parameters().rows returns %d", nparams_);
-////    failed_ = true;
-////    return false;
-////  }
-////
-////  // Convert input image (to be aligned) to floating point and create the mask
-////  prepare_input_image(inputImage, inputMask, input_smooth_sigma_, true, g, gmask);
-////
-////  // Assume the initial warp matrix p is good enough to avoid the hessian matrix evaluation on each iteration
-////  if ( !create_current_remap(f.size()) ) {
-////    CF_ERROR("create_current_remap() fails");
-////    return false;
-////  }
-////
-////  cv::remap(gmask, wmask, current_remap_, cv::noArray(),
-////      cv::INTER_AREA,
-////      cv::BORDER_CONSTANT,
-////      cv::Scalar(0));
-////
-////  if ( !fmask.empty() ) {
-////    bitwise_and(wmask, fmask, wmask);
-////  }
-////
-////  wmask.copyTo(fmask);
-////  cv::bitwise_not(wmask, iwmask);
-////
-////  const double nnz0 =
-////      cv::countNonZero(wmask);
-////
-////  jac_.copyTo(jac);
-////
-////  for ( int i = 0; i < nparams_; ++i ) {
-////    jac.rowRange(i * f.rows, (i + 1) * f.rows).setTo(0, iwmask);
-////  }
-////
-////
-////  // Compute the Hessian matrix H = ∑x[▽f*∂W/∂p]^T*[▽f*∂W/∂p] and it's inverse
-////  ecc_compute_hessian_matrix(jac, H, nparams_);
-////  cv::invert(H, H, cv::DECOMP_CHOLESKY);
-////  H *= -update_step_scale_;
-////
-////  //
-////  // Iterate
-////  //
-////
-////  cv::Scalar gMean, gStd, fMean, fStd;
-////  double stdev_ratio, nnz1;
-////
-////  for ( num_iterations_ = 0; num_iterations_ <= max_iterations_; ++num_iterations_ ) {
-////
-////    // Warp g with W(x; p) to compute g(W(x; p))
-////
-////    if ( num_iterations_ < 1 ) {
-////      nnz1 = nnz0;
-////    }
-////    else {
-////
-////      if ( !create_current_remap(f.size()) ) {
-////        CF_ERROR("create_current_remap() fails");
-////        failed_ = true;
-////        break;
-////      }
-////
-////      cv::remap(gmask, wmask, current_remap_, cv::noArray(),
-////          cv::INTER_AREA,
-////          cv::BORDER_CONSTANT,
-////          cv::Scalar(0));
-////
-////      cv::bitwise_not(wmask, iwmask);
-////
-////      nnz1 = cv::countNonZero(wmask);
-////    }
-////
-////    // The cv::BORDER_REPLICATE is to avoid some annoying edge effects caused by interpolation
-////    cv::remap(g, gw, current_remap_, cv::noArray(),
-////        interpolation_,
-////        cv::BORDER_REPLICATE);
-////
-////    //
-////    // compute stdev ratio stdev(f)/stdev(gw) and mean values
-////    //
-////    cv::meanStdDev(f, fMean, fStd, wmask);
-////    cv::meanStdDev(gw, gMean, gStd, wmask);
-////    stdev_ratio = fStd[0] / gStd[0];
-////
-////    //
-////    // compute the error image e = fzm - stdev_ratio * gwzm
-////    //
-////    cv::scaleAdd(gw, -stdev_ratio, f, e);  // e now contains the error image
-////    cv::subtract(e, fMean - stdev_ratio * gMean, e), e.setTo(0, iwmask);
-////
-////    //
-////    // compute update parameters
-////    //
-////    ecc_project_error_image(jac, e, ep, nparams_);  // ep now contains projected error
-////    dp = (H * ep) * square(nnz0 / nnz1);
-////
-////    //
-////    // update warping parameters
-////    //
-////    if ( !image_transform_->update_inverse_composite(dp, &eps_, f.size()) ) {
-////      CF_ERROR("model_->update_inverse_composite() fails");
-////      failed_ = true;
-////      break;
-////    }
-////
-////    // check eps
-////    if ( eps_ < max_eps_ || num_iterations_ == max_iterations_ || failed_ ) {
-////      cv::subtract(f, fMean, e), e.setTo(0, iwmask);
-////      cv::subtract(gw, gMean, gw), gw.setTo(0, iwmask);
-////      rho_ = e.dot(gw) / (nnz1 * fStd[0] * gStd[0]);
-////      break;
-////    }
-////  }
-////
-////  return !failed_ && rho_ > min_rho_;
-//
-//  return false;
-//}
+bool c_ecc_inverse_compositional::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
+{
+  jac.clear();
+  gx.release();
+  gy.release();
+  return base::set_reference_image(reference_image, reference_mask);
+}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//c_ecch::c_ecch(c_ecc_align * method) :
-//    method_(method)
-//{
-//}
-//
-//void c_ecch::set_method(c_ecc_align * method)
-//{
-//  method_ = method;
-//}
-//
-//c_ecc_align * c_ecch::method() const
-//{
-//  return method_;
-//}
-//
-//void c_ecch::set_minimum_image_size(int v)
-//{
-//  minimum_image_size_ = v;
-//}
-//
-//int c_ecch::minimum_image_size() const
-//{
-//  return minimum_image_size_;
-//}
-//
-//void c_ecch::set_minimum_pyramid_level(int v)
-//{
-//  minimum_pyramid_level_ = v;
-//}
-//
-//int c_ecch::minimum_pyramid_level() const
-//{
-//  return minimum_pyramid_level_;
-//}
-//
-//const std::vector<cv::Mat> & c_ecch::image_pyramid(int index) const
-//{
-//  return image_pyramids_[index];
-//}
-//
-//const std::vector<cv::Mat> & c_ecch::mask_pyramid(int index) const
-//{
-//  return mask_pyramids_[index];
-//}
-//
-//const std::vector<cv::Mat1f> & c_ecch::transform_pyramid() const
-//{
-//  return transform_pyramid_;
-//}
-//
-//void c_ecch::copy_parameters(const this_class & rhs)
-//{
-//  minimum_image_size_ = rhs.minimum_image_size_;
-//  minimum_pyramid_level_ = rhs.minimum_pyramid_level_;
-//}
-//
-//bool c_ecch::set_reference_image(cv::InputArray referenceImage, cv::InputArray referenceMask)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  if( referenceImage.channels() != 1 ) {
-//    CF_ERROR("c_ecch: Both input and reference images must be single-channel (grayscale)");
-//    return false;
-//  }
-//
-//  // Build reference image pyramid
-//  constexpr int R = reference_image_index;
-//
-//  transform_pyramid_.clear();
-//  transform_pyramid_.reserve(10);
-//  image_pyramids_[R].clear();
-//  image_pyramids_[R].reserve(10);
-//  mask_pyramids_[R].clear();
-//  mask_pyramids_[R].reserve(10);
-//
-//  image_pyramids_[R].emplace_back(referenceImage.getMat());
-//  mask_pyramids_[R].emplace_back(referenceMask.getMat());
-//
-//  // Build pyramid for reference image
-//  while (42) {
-//
-//    const int currentMinSize =
-//        std::min(image_pyramids_[R].back().cols,
-//            image_pyramids_[R].back().rows);
-//
-//    const int nextMinSize =
-//        currentMinSize / 2;
-//
-//    if( nextMinSize < minimum_image_size_ ) {
-//      break;
-//    }
-//
-//    image_pyramids_[R].emplace_back();
-//
-//    cv::pyrDown(image_pyramids_[R][image_pyramids_[R].size() - 2],
-//        image_pyramids_[R].back());
-//
-//    mask_pyramids_[R].emplace_back();
-//
-//    cv::Mat & cmask =
-//        mask_pyramids_[R].back();
-//
-//    cv::Mat & pmask =
-//        mask_pyramids_[R][mask_pyramids_[R].size() - 2];
-//
-//    if( !pmask.empty() && cv::countNonZero(pmask) < pmask.size().area() ) {
-//      cv::pyrDown(pmask, cmask);
-//      cv::compare(cmask, 255, cmask, cv::CMP_GE);
-//    }
-//  }
-//
-//  return true;
-//}
-//
-//bool c_ecch::align(cv::InputArray inputImage, cv::InputArray inputMask)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  c_image_transform * image_transform;
-//
-//  constexpr int C = current_image_index;
-//  constexpr int R = reference_image_index;
-//
-//  if( !method_ ) {
-//    CF_ERROR("c_ecch2: underlying align method not specified");
-//    return false;
-//  }
-//
-//  if( !(image_transform = method_->image_transform()) ) {
-//    CF_ERROR("c_ecch2: image transform not specified");
-//    return false;
-//  }
-//
-//  if( image_pyramids_[R].empty() ) {
-//    CF_ERROR("c_ecch: No reference image was set");
-//    return false;
-//  }
-//
-//  if( inputImage.channels() != 1 ) {
-//    CF_ERROR("c_ecch2: Both input and reference images must be single-channel (grayscale)");
-//    return false;
-//  }
-//
-//  cv::Mat1f T =
-//      image_transform->parameters();
-//
-//  if( T.empty() ) {
-//    CF_ERROR("c_ecch2: method_->transfrom()->parameters() returns empty matrix");
-//    return false;
-//  }
-//
-//  // Build current image and initial transform pyramid
-//
-//  image_pyramids_[C].clear();
-//  image_pyramids_[C].reserve(10);
-//  mask_pyramids_[C].clear();
-//  mask_pyramids_[C].reserve(10);
-//  transform_pyramid_.clear();
-//  transform_pyramid_.reserve(10);
-//
-//  image_pyramids_[C].emplace_back(inputImage.getMat());
-//  mask_pyramids_[C].emplace_back(inputMask.getMat());
-//  transform_pyramid_.emplace_back(T);
-//
-//  while ( 42 ) {
-//
-//    int I = image_pyramids_[C].size() - 1;
-//
-//    const int currentMinSize = std::min(std::min(std::min(
-//        image_pyramids_[C][I].cols, image_pyramids_[C][I].rows),
-//        image_pyramids_[R][I].cols), image_pyramids_[R][I].rows);
-//
-//    const int nextMinSize = currentMinSize / 2;
-//
-//    if( nextMinSize < minimum_image_size_ ) {
-//      break;
-//    }
-//
-//    image_pyramids_[C].emplace_back();
-//    cv::pyrDown(image_pyramids_[C][image_pyramids_[C].size() - 2],
-//        image_pyramids_[C].back());
-//
-//    mask_pyramids_[C].emplace_back();
-//
-//    cv::Mat & cmask =
-//        mask_pyramids_[C].back();
-//
-//    cv::Mat & pmask =
-//        mask_pyramids_[C][mask_pyramids_[C].size() - 2];
-//
-//    if( !pmask.empty() && cv::countNonZero(pmask) < pmask.size().area() ) {
-//      cv::pyrDown(pmask, cmask);
-//      cv::compare(cmask, 255, cmask, cv::CMP_GE);
-//    }
-//
-//    image_transform->scale_transfrom(0.5);
-//    transform_pyramid_.emplace_back(image_transform->parameters());
-//
-////    transform_pyramid_.emplace_back(model->scale_transfrom(transform_pyramid_.back(), 0.5));
-////    if( transform_pyramid_.back().empty() ) {
-////      CF_ERROR("transform->scale() fails");
-////      return false;
-////    }
-//  }
-//
-//  // Align pyramid images in coarse-to-fine direction
-//  bool eccOk = false;
-//
-//  const int min_level =
-//      std::max(0, minimum_pyramid_level_);
-//
-//  for( int i = transform_pyramid_.size() - 1; i >= 0; --i ) {
-//
-//    if( !image_transform->set_parameters(transform_pyramid_[i]) ) {
-//      CF_ERROR("L[%d] transform->set_parameters() fails", i);
-//      return false;
-//    }
-//
-//    if( i >= min_level ) {
-//
-//      bool fOk =
-//          method_->align(image_pyramids_[C][i],
-//              image_pyramids_[R][i],
-//              mask_pyramids_[C][i],
-//              mask_pyramids_[R][i]);
-//
-//      if( !fOk ) {
-//
-//        CF_DEBUG("L[%2d/%zu] : align fails: size=%dx%d num_iterations=%d rho=%g eps=%g", i,
-//            transform_pyramid_.size(),
-//            image_pyramids_[C][i].cols, image_pyramids_[C][i].rows,
-//            method_->num_iterations(), method_->rho(), method_->eps());
-//
-//        continue;
-//      }
-//    }
-//
-//    if( i == 0 ) {
-//
-//      if( min_level > 0 && !method_->create_current_remap(image_pyramids_[R][i].size()) ) {
-//        CF_ERROR("method_->create_current_remap() fails");
-//      }
-//      else {
-//        eccOk = true;
-//      }
-//
-//      break;
-//    }
-//
-//    // i > 0
-//    image_transform->scale_transfrom(2);
-//    if( (transform_pyramid_[i - 1] = image_transform->parameters()).empty() ) {
-//      CF_ERROR("L[%d] transform->scale() fails", i);
-//      return false;
-//    }
-//  }
-//
-//  return eccOk;
-//}
+bool c_ecc_inverse_compositional::set_current_image(cv::InputArray current_image, cv::InputArray current_mask )
+{
+  return base::set_current_image(current_image, current_mask);
+}
+
+bool c_ecc_inverse_compositional::align(cv::InputArray current_image, cv::InputArray reference_image,
+    cv::InputArray current_mask, cv::InputArray reference_mask )
+{
+  return base::align(current_image, reference_image, current_mask, reference_mask);
+}
+
+bool c_ecc_inverse_compositional::align_to_reference(cv::InputArray current_image, cv::InputArray current_mask)
+{
+  return base::align_to_reference(current_image, current_mask);
+}
+
+bool c_ecc_inverse_compositional::align()
+{
+  failed_ = true;
+
+  if ( !image_transform_ ) {
+    CF_ERROR("c_ecc_inverse_compositional: image_transform_ is null");
+    return false;
+  }
+
+  if ( !image_transform_->invertible() ) {
+    CF_ERROR("c_ecc_inverse_compositional: image_transform_ is not invertible");
+    return false;
+  }
+
+
+  if ( reference_image_.empty() ) {
+    CF_ERROR("c_ecc_inverse_compositional: reference_image_ is empty");
+    return false;
+  }
+
+  if ( current_image_.empty() ) {
+    CF_ERROR("c_ecc_inverse_compositional: current_image_ is empty");
+    return false;
+  }
+
+  cv::Mat1f params, newparams, deltap;
+  cv::Mat1f remapped_image, rhs;
+  cv::Mat1b remapped_mask;
+  cv::Mat1f v;
+
+  params =
+      image_transform_->parameters();
+
+  const int M =
+      params.rows;
+
+  /**
+   * PreCompute
+   * */
+  if( jac.size() != M || gx.empty() || gy.empty() ) {
+    jac.resize(M);
+    ecc_differentiate(reference_image_, gx, gy, reference_mask_);
+    image_transform_->create_steepest_descent_images(gx, gy, jac.data());
+    ecc_compute_hessian_matrix(jac, H);
+  }
+
+  num_iterations_ = 0;
+  eps_ = FLT_MAX;
+  failed_ = false;
+
+  while ( num_iterations_++ < max_iterations_ ) {
+
+    params = image_transform_->parameters();
+
+    ecc_remap(image_transform_, params, reference_image().size(),
+        current_image_, current_mask_, remapped_image, remapped_mask, cv::BORDER_CONSTANT);
+
+    cv::subtract(remapped_image, reference_image_, rhs);
+    if ( !remapped_mask.empty() ) {
+      rhs.setTo(0, ~remapped_mask);
+    }
+
+    ecc_project_error_image(jac, rhs, v, M);
+
+    cv::solve(H, v, deltap, cv::DECOMP_EIG);
+
+//    CF_DEBUG("[i %d] deltap= {%+g %+g}", num_iterations_,
+//        deltap(0, 0), deltap(1, 0));
+
+    deltap = image_transform_->invert(deltap);
+
+//    CF_DEBUG("[i %d] inv deltap= {%+g %+g}", num_iterations_,
+//        deltap(0, 0), deltap(1, 0));
+
+    cv::scaleAdd(deltap, update_step_scale_, params, newparams);
+
+//    CF_DEBUG("[i %d] params = {%+g %+g} -> {%g %g}", num_iterations_,
+//        params(0, 0), params(1, 0),
+//        newparams(0, 0), newparams(1, 0));
+
+    image_transform_->set_parameters(newparams);
+
+    if ((eps_ = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
+      // CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
+      break;
+    }
+
+    // CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
+  }
+
+  // CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
+
+  return true;
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

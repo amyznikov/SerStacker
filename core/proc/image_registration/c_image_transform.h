@@ -83,11 +83,6 @@ public:
     return false;
   }
 
-  virtual cv::Mat1f invert(const cv::Mat1f & params) const
-  {
-    return cv::Mat1f();
-  }
-
   virtual cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
   {
     return cv::Mat1f();
@@ -132,14 +127,6 @@ public:
   bool invertible() const final
   {
     return true;
-  }
-
-  cv::Mat1f invert(const cv::Mat1f & params) const final
-  {
-    cv::Mat1f m(2, 1);
-    m(0, 0) = -params(0, 0);
-    m(1, 0) = -params(1, 0);
-    return m;
   }
 
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
@@ -272,7 +259,6 @@ public:
     return true;
   }
 
-  cv::Mat1f invert(const cv::Mat1f & params) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 
 protected:
@@ -309,6 +295,7 @@ public:
   void set_matrix(const cv::Matx33f & a);
   const cv::Matx33f & matrix() const;
   cv::Matx33f matrix(const cv::Mat1f & p) const;
+  cv::Matx33f dmatrix(const cv::Mat1f & dp) const;
 
   void set_translation(const cv::Vec2f & v) final;
   cv::Vec2f translation() const final;
@@ -320,6 +307,13 @@ public:
   bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
   bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+
+  bool invertible() const final
+  {
+    return true;
+  }
+
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
 
 protected:
   void update_parameters();

@@ -719,23 +719,6 @@ double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & imag
   return eps;
 }
 
-cv::Mat1f c_affine_image_transform::invert(const cv::Mat1f & params) const
-{
-  cv::Matx23f a = matrix(params);
-  cv::Matx23f ai;
-
-  cv::invertAffineTransform(a, ai);
-
-  return cv::Mat1f(6, 1, (float*) ai.val).clone();
-
-//  cv::Mat1f m(6, 1);
-//  for( int i = 0; i < 6; ++i ) {
-//    m(i, 0) = -params(i, 0);
-//  }
-//
-//  return m;
-}
-
 cv::Mat1f c_affine_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
   cv::Matx23f a;
@@ -957,6 +940,19 @@ cv::Matx33f c_homography_image_transform::matrix(const cv::Mat1f & p) const
       p(6, 0), p(7, 0), matrix_(2, 2));
 }
 
+cv::Matx33f c_homography_image_transform::dmatrix(const cv::Mat1f & dp) const
+{
+  if( dp.rows != 8 || dp.cols != 1 ) {
+    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
+        dp.rows, dp.cols);
+  }
+
+  return cv::Matx33f(dp(0, 0), dp(1, 0), dp(2, 0),
+      dp(3, 0), dp(4, 0), dp(5, 0),
+      dp(6, 0), dp(7, 0), 0);
+}
+
+
 bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
 {
   set_matrix(matrix(p));
@@ -973,6 +969,15 @@ void c_homography_image_transform::scale_transfrom(double factor)
 
   update_parameters();
 }
+
+cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+{
+  cv::Matx33f aii =
+      (matrix(p).inv() + dmatrix(dp)).inv();
+
+  return cv::Mat1f(8, 1, (float*)aii.val).clone();
+}
+
 
 double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
 {

@@ -2154,14 +2154,17 @@ bool c_ecc_inverse_compositional::align()
 //        "params = {\n"
 //        "      %+20g %+20g %+20g\n"
 //        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g \n"
 //        "}\n"
 //        "deltap = {\n"
 //        "      %+20g %+20g %+20g\n"
 //        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g \n"
 //        "}\n"
 //        "newparams = {\n"
 //        "      %+20g %+20g %+20g\n"
 //        "      %+20g %+20g %+20g\n"
+//        "      %+20g %+20g \n"
 //        "}\n"
 //        "\n",
 //        num_iterations_,
@@ -2169,26 +2172,30 @@ bool c_ecc_inverse_compositional::align()
 //
 //        params(0, 0), params(1, 0), params(2, 0),
 //        params(3, 0), params(4, 0), params(5, 0),
+//        params(6, 0), params(7, 0),
 //
 //        deltap(0, 0), deltap(1, 0), deltap(2, 0),
 //        deltap(3, 0), deltap(4, 0), deltap(5, 0),
+//        deltap(6, 0), deltap(7, 0),
 //
 //        newparams(0, 0), newparams(1, 0), newparams(2, 0),
-//        newparams(3, 0), newparams(4, 0), newparams(5, 0));
-
+//        newparams(3, 0), newparams(4, 0), newparams(5, 0),
+//        newparams(6, 0), newparams(7, 0)
+//        );
+//
 
     rmsold = rmsnew;
     image_transform_->set_parameters(newparams);
 
     if ( (eps_ = image_transform_->eps(deltap, reference_image_.size())) < max_eps_ ) {
-      //      CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
+      // CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
       break;
     }
 
-//    CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
+    //CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
   }
 
-//  CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
+  //CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
 
   return true;
 }

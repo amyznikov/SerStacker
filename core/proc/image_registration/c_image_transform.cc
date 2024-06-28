@@ -1358,7 +1358,7 @@ void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
   parameters_(6, 0) = a(1, 0);
   parameters_(7, 0) = a(1, 1);
   parameters_(8, 0) = a(1, 2);
-  parameters_(9, 0) = a(1, 2);
+  parameters_(9, 0) = a(1, 3);
   parameters_(10, 0) = a(1, 4);
   parameters_(11, 0) = a(1, 5);
 }
@@ -1385,7 +1385,7 @@ void c_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
   parameters_(6, 0) = a(1, 0);
   parameters_(7, 0) = a(1, 1);
   parameters_(8, 0) = a(1, 2);
-  parameters_(9, 0) = a(1, 2);
+  parameters_(9, 0) = a(1, 3);
   parameters_(10, 0) = a(1, 4);
   parameters_(11, 0) = a(1, 5);
 }

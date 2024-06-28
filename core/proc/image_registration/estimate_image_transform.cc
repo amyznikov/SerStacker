@@ -485,10 +485,10 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
   }
 
   /*
-   * [x' y'] = [x y 1 x*y x*x y*y ] [ a00 ] [ a10 ]
-   *                                [ a01 ] [ a11 ]
-   *                                [ a02 ] [ a12 ]
-   *                                [ a03 ] [ a13 ]
+   * [ x' y' ] = [x y 1 x*y ] [ a00 ] [ a10 ]
+   *                          [ a01 ] [ a11 ]
+   *                          [ a02 ] [ a12 ]
+   *                          [ a03 ] [ a13 ]
    *
    *
    * S2 = S1 * X
@@ -605,12 +605,12 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
   }
 
   /*
-   * [x' y'] = [x y 1 x*y x*x y*y ] [ a00 ] [ a10 ]
-   *                                [ a01 ] [ a11 ]
-   *                                [ a02 ] [ a12 ]
-   *                                [ a03 ] [ a13 ]
-   *                                [ a04 ] [ a14 ]
-   *                                [ a05 ] [ a15 ]
+   * [ x' y' ] = [x y 1 x*y x*x y*y ] [ a00 ] [ a10 ]
+   *                                  [ a01 ] [ a11 ]
+   *                                  [ a02 ] [ a12 ]
+   *                                  [ a03 ] [ a13 ]
+   *                                  [ a04 ] [ a14 ]
+   *                                  [ a05 ] [ a15 ]
    *
    *
    * S2 = S1 * X

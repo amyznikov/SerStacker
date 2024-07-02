@@ -2320,22 +2320,11 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
 
       for( int x = 0; x < cols; ++x ) {
 
-        const float & ww = wp[x];
-        float & w = cntp[x];
+        const float & ww =
+            wp[x];
 
-//        if ( ww >= w ) { // * avgw
-//
-//          for( int c = 0; c < cn; ++c ) {
-//
-//            const T & srcv = srcp[x * cn + c];
-//            float & dstv = dstp[x * cn + c];
-//
-//            dstv = (dstv * w + srcv * ww) / (w + ww);
-//          }
-//
-//          w = (w * w + ww * ww) / (w + ww);
-//        }
-//        else {
+        if ( ww ) {
+          float & w = cntp[x];
 
           for( int c = 0; c < cn; ++c ) {
 
@@ -2346,7 +2335,7 @@ static bool running_average_update_(cv::InputArray _src, cv::InputArray _srcmask
           }
 
           w = (w * w * avgw + ww * ww) / (w * avgw + ww);
-//        }
+        }
       }
     }
 #if HAVE_TBB

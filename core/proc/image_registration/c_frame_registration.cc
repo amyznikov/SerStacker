@@ -571,7 +571,12 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
 
-    if( options_.ecc.ecch_estimate_translation_first && options_.motion_type != IMAGE_MOTION_TRANSLATION ) {
+    const bool estimate_translation_first =
+        options_.motion_type != IMAGE_MOTION_TRANSLATION &&
+        options_.ecc.ecch_estimate_translation_first &&
+        options_.ecc.ecch_max_level != 0 ;
+
+    if( estimate_translation_first ) {
 
       c_translation_image_transform transform(image_transform_->translation());
       ecch_.set_image_transform(&transform);

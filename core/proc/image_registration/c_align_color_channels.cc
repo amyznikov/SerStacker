@@ -11,6 +11,16 @@
 #include "ecc2.h"
 #include <core/debug.h>
 
+void c_align_color_channels::set_method(ECC_ALIGN_METHOD v)
+{
+  method_ = v;
+}
+
+ECC_ALIGN_METHOD c_align_color_channels::method() const
+{
+  return method_;
+}
+
 void c_align_color_channels::set_motion_type(IMAGE_MOTION_TYPE motion_type)
 {
   motion_type_ = motion_type;
@@ -95,20 +105,50 @@ double c_align_color_channels::eps() const
   return eps_;
 }
 
-double c_align_color_channels::computed_rho(int channel_index) const
+void c_align_color_channels::set_max_level(int v)
 {
-  return computed_rhos_[channel_index];
+  max_level_ = v;
 }
 
-double c_align_color_channels::computed_eps(int channel_index) const
+int c_align_color_channels::max_level() const
 {
-  return computed_eps_[channel_index];
+  return max_level_;
 }
 
-int c_align_color_channels::computed_iterations(int channel_index) const
+void c_align_color_channels::set_normalization_level(int v)
 {
-  return computed_iterations_[channel_index];
+  normalization_level_ = v;
 }
+
+int c_align_color_channels::normalization_level() const
+{
+  return normalization_level_;
+}
+
+void c_align_color_channels::set_normalization_eps(double v)
+{
+  normalization_eps_ = v;
+}
+
+double c_align_color_channels::normalization_eps() const
+{
+  return normalization_eps_;
+}
+
+//double c_align_color_channels::computed_rho(int channel_index) const
+//{
+//  return computed_rhos_[channel_index];
+//}
+//
+//double c_align_color_channels::computed_eps(int channel_index) const
+//{
+//  return computed_eps_[channel_index];
+//}
+//
+//int c_align_color_channels::computed_iterations(int channel_index) const
+//{
+//  return computed_iterations_[channel_index];
+//}
 
 const c_image_transform::sptr & c_align_color_channels::computed_transform(int channel_index) const
 {
@@ -131,12 +171,13 @@ bool c_align_color_channels::align(int reference_channel,
     cv::InputArray srcmask, cv::OutputArray dstmask)
 {
 
-  computed_eps_.clear();
-  computed_rhos_.clear();
+//  computed_eps_.clear();
+//  computed_rhos_.clear();
   computed_transforms_.clear();
-  computed_iterations_.clear();
+//  computed_iterations_.clear();
 
-  const int cn = src.channels();
+  const int cn =
+      src.channels();
 
   if ( cn < 2 ) {
 
@@ -148,9 +189,9 @@ bool c_align_color_channels::align(int reference_channel,
       srcmask.copyTo(dstmask);
     }
 
-    computed_eps_.emplace_back(0);
-    computed_rhos_.emplace_back(1);
-    computed_iterations_.emplace_back(0);
+//    computed_eps_.emplace_back(0);
+//    computed_rhos_.emplace_back(1);
+//    computed_iterations_.emplace_back(0);
     computed_transforms_.emplace_back(nullptr);
 
     return true;
@@ -181,7 +222,7 @@ bool c_align_color_channels::align(int reference_channel,
   }
 
 
-  cv::Mat channels[cn];
+  cv::Mat channels[cn], normalized_channels[cn];
   cv::Mat masks[cn];
   cv::Mat cumulative_mask;
   cv::Mat cumulative_image;
@@ -199,15 +240,29 @@ bool c_align_color_channels::align(int reference_channel,
     }
   }
 
-  computed_eps_.resize(cn);
-  computed_rhos_.resize(cn);
+  if( normalization_level_ < 1 ) {
+    for ( int i = 0; i < cn; ++i ) {
+      normalized_channels[i] =
+          channels[i];
+    }
+  }
+  else {
+    for ( int i = 0; i < cn; ++i ) {
+      ecc_normalize_meanstdev(channels[i], masks[i], normalized_channels[i],
+          normalization_level_,
+          normalization_eps_);
+    }
+  }
+
+
+
+//  computed_eps_.resize(cn);
+//  computed_rhos_.resize(cn);
   computed_transforms_.resize(cn);
-  computed_iterations_.resize(cn);
+//  computed_iterations_.resize(cn);
 
-  c_ecch ecc(ECC_ALIGN_FORWARD_ADDITIVE);
-  cv::Mat2f current_remap;
-
-  ecc.set_maxlevel(0);
+  c_ecch ecc(method_);
+  ecc.set_maxlevel(max_level_);
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);
   ecc.set_reference_smooth_sigma(smooth_sigma_);
@@ -215,10 +270,12 @@ bool c_align_color_channels::align(int reference_channel,
   ecc.set_max_iterations(max_iterations_);
   ecc.set_max_eps(eps_);
 
-  if( !ecc.set_reference_image(channels[reference_channel], masks[reference_channel]) ) {
+  if( !ecc.set_reference_image(normalized_channels[reference_channel], masks[reference_channel]) ) {
     CF_ERROR("ecc.set_reference_image(reference_channel=%d) fails", reference_channel);
     return false;
   }
+
+  cv::Mat2f current_remap;
 
   for ( int i = 0; i < cn; ++i ) {
 
@@ -226,9 +283,9 @@ bool c_align_color_channels::align(int reference_channel,
         create_image_transform(motion_type_);
 
     if ( i == reference_channel ) {
-      computed_eps_[i] = 0;
-      computed_rhos_[i] = 1;
-      computed_iterations_[i] = 0;
+//      computed_eps_[i] = 0;
+//      computed_rhos_[i] = 1;
+//      computed_iterations_[i] = 0;
 
       if ( dst.needed() || dstmask.needed() ) {
         if ( masks[i].empty() ) {
@@ -241,27 +298,29 @@ bool c_align_color_channels::align(int reference_channel,
 
       ecc.set_image_transform(computed_transforms_[i].get());
 
-      if( !ecc.align(channels[i], masks[i]) ) {
-        CF_ERROR("ecc.align_to_reference() %d-> %d fails: iterations=%d eps=%g",
+      if( !ecc.align(normalized_channels[i], masks[i]) ) {
+        CF_ERROR("ecc.align() %d-> %d fails: iterations=%d eps=%g",
             i,
             reference_channel,
             ecc.num_iterations(),
             ecc.eps());
       }
 
-      ecc.image_transform()->create_remap(ecc.reference_image().size(),
+      computed_transforms_[i]->create_remap(ecc.reference_image().size(),
           current_remap);
 
-      computed_rhos_[i] =
-          compute_correlation(ecc.current_image(), ecc.current_mask(),
-              ecc.reference_image(), ecc.reference_mask(),
-              current_remap);
+//      computed_rhos_[i] =
+//          compute_correlation(ecc.current_image(), ecc.current_mask(),
+//              ecc.reference_image(), ecc.reference_mask(),
+//              current_remap);
 
-      computed_iterations_[i] =
-          ecc.num_iterations();
+//      computed_iterations_[i] =
+//          ecc.num_iterations();
+//
+//      computed_eps_[i] =
+//          ecc.eps();
 
-      computed_eps_[i] =
-          ecc.eps();
+//      CF_DEBUG("align channel %d: iterations=%d rho=%g eps=%g", i, computed_iterations_[i], computed_rhos_[i], computed_eps_[i]);
 
       if ( dst.needed() ) {
 
@@ -327,16 +386,17 @@ bool c_align_color_channels::align(int reference_channel,
   return true;
 }
 
+
 bool c_align_color_channels::align(cv::InputArray reference_image,
     cv::InputArray src, cv::OutputArray dst,
     cv::InputArray reference_mask,
     cv::InputArray srcmask,
     cv::OutputArray dstmask)
 {
-  computed_eps_.clear();
-  computed_rhos_.clear();
+//  computed_eps_.clear();
+//  computed_rhos_.clear();
   computed_transforms_.clear();
-  computed_iterations_.clear();
+//  computed_iterations_.clear();
 
   if( reference_image.channels() != 1 ) {
     CF_ERROR("Invalid argument: reference_image must have only single channel");
@@ -392,16 +452,16 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
     }
   }
 
-  computed_eps_.resize(cn);
-  computed_rhos_.resize(cn);
+//  computed_eps_.resize(cn);
+//  computed_rhos_.resize(cn);
   computed_transforms_.resize(cn);
-  computed_iterations_.resize(cn);
+//  computed_iterations_.resize(cn);
 
 
-  c_ecch ecc(ECC_ALIGN_FORWARD_ADDITIVE);
   cv::Mat2f current_remap;
 
-  ecc.set_maxlevel(0);
+  c_ecch ecc(method_);
+  ecc.set_maxlevel(max_level_);
   ecc.set_interpolation(interpolation_);
   ecc.set_update_step_scale(update_step_scale_);
   ecc.set_reference_smooth_sigma(smooth_sigma_);
@@ -430,16 +490,16 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
     ecc.image_transform()->create_remap(ecc.reference_image().size(),
         current_remap);
 
-    computed_rhos_[i] =
-        compute_correlation(ecc.current_image(), ecc.current_mask(),
-            ecc.reference_image(), ecc.reference_mask(),
-            current_remap);
-
-    computed_iterations_[i] =
-        ecc.num_iterations();
-
-    computed_eps_[i] =
-        ecc.eps();
+//    computed_rhos_[i] =
+//        compute_correlation(ecc.current_image(), ecc.current_mask(),
+//            ecc.reference_image(), ecc.reference_mask(),
+//            current_remap);
+//
+//    computed_iterations_[i] =
+//        ecc.num_iterations();
+//
+//    computed_eps_[i] =
+//        ecc.eps();
 
     if( dst.needed() ) {
 

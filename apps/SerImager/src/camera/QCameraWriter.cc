@@ -833,9 +833,12 @@ void QCameraWriter::writerThreadProc()
     auto start_time =
         std::chrono::system_clock::now();
 
-    double start_ts = 0;
-    double last_ts = 0;
+    std::chrono::system_clock::time_point start_ts, last_ts;
+    //double start_ts = 0;
+    //double last_ts = 0;
+
     int start_index = -1;
+    capture_duration_ = 0;
 
     const double max_capture_duration =
         capture_limits_.type == c_capture_limits::ByTime ?
@@ -936,7 +939,8 @@ void QCameraWriter::writerThreadProc()
               start_index = last_index_;
             }
 
-            last_ts = frame->ts();
+            //last_ts = frame->ts();
+            last_ts = std::chrono::system_clock::now();
             if( !num_saved_frames_ ) {
               start_ts = last_ts;
             }
@@ -953,7 +957,8 @@ void QCameraWriter::writerThreadProc()
             ++num_saved_frames_;
 
             capture_duration_ =
-                last_ts - start_ts;
+                std::chrono::duration_cast<std::chrono::seconds>(last_ts - start_ts).count();
+                //last_ts - start_ts;
 
           }
         }

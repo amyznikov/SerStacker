@@ -805,6 +805,12 @@ void c_image_processing_pipeline::cleanup_pipeline()
 
   opened_writers_.clear();
   opened_text_writers_.clear();
+
+  darkbayer_.release();
+  flatbayer_.release();
+  missing_pixel_mask_.release();
+  raw_bayer_image_.release();
+
 }
 
 bool c_image_processing_pipeline::run_pipeline()

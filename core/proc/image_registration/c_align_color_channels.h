@@ -22,6 +22,9 @@ class c_align_color_channels
 public:
   c_align_color_channels() = default;
 
+  void set_method(ECC_ALIGN_METHOD v);
+  ECC_ALIGN_METHOD method() const;
+
   void set_motion_type(IMAGE_MOTION_TYPE motion_type);
   IMAGE_MOTION_TYPE motion_type() const;
 
@@ -46,9 +49,18 @@ public:
   void set_eps(double v);
   double eps() const;
 
-  double computed_rho(int channel_index) const;
-  double computed_eps(int channel_index) const;
-  int computed_iterations(int channel_index) const;
+  void set_max_level(int v);
+  int max_level() const;
+
+  void set_normalization_level(int v);
+  int normalization_level() const;
+
+  void set_normalization_eps(double v);
+  double normalization_eps() const;
+
+  //  double computed_rho(int channel_index) const;
+  //  double computed_eps(int channel_index) const;
+  //  int computed_iterations(int channel_index) const;
   const c_image_transform::sptr & computed_transform(int channel_index) const;
 
   bool align(int reference_channel_index,
@@ -65,18 +77,24 @@ public:
       cv::OutputArray dstmask = cv::noArray() );
 
 protected:
+  ECC_ALIGN_METHOD method_ = ECC_ALIGN_LM;
   IMAGE_MOTION_TYPE motion_type_ = IMAGE_MOTION_TRANSLATION;
   enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode_ = ECC_BORDER_REPLICATE;
   cv::Scalar border_value_ = cv::Scalar();
-  int max_iterations_ = 30;
-  double smooth_sigma_ = 1;
+  double smooth_sigma_ = 0;
   double eps_ = 0.1;
   double update_step_scale_ = 1;
+  int max_iterations_ = 30;
+  int max_level_ = 0;
 
-  std::vector<double> computed_eps_;
-  std::vector<double> computed_rhos_;
-  std::vector<int> computed_iterations_;
+  double normalization_eps_ = 1;
+  int normalization_level_ = 3;
+
+
+  //  std::vector<double> computed_eps_;
+  //  std::vector<double> computed_rhos_;
+  //  std::vector<int> computed_iterations_;
   std::vector<c_image_transform::sptr> computed_transforms_;
 };
 

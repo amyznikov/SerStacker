@@ -160,7 +160,7 @@ bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOu
 
         }
         else {
-          cv::remap(cv::Mat1b(remap_.size(), 255), mask,
+          cv::remap(cv::Mat1b(previous_image_size_, 255), mask,
               remap_, cv::noArray(),
               cv::INTER_AREA,
               cv::BORDER_CONSTANT);

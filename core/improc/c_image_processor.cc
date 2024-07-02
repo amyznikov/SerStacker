@@ -35,6 +35,7 @@
 #include "c_image_calc_routine.h"
 #include "c_math_expression_routine.h"
 #include "c_threshold_routine.h"
+#include "c_normalize_mean_stdev_routine.h"
 
 
 #include "c_histogram_white_balance_routine.h"
@@ -68,6 +69,7 @@
 #include "c_morphology_routine.h"
 #include "c_fft_routine.h"
 #include "c_local_minmax_routine.h"
+
 
 #include "camera_calibration/c_find_chessboard_corners_routine.h"
 #include "camera_calibration/c_image_rectification_routine.h"
@@ -249,6 +251,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_laplacian_map_routine::class_factory_instance());
     register_class_factory(c_harris_map_routine::class_factory_instance());
     register_class_factory(c_gabor_filter_routine::class_factory_instance());
+
+    register_class_factory(c_normalize_mean_stdev_routine::class_factory_instance());
 
     register_class_factory(c_cvtcolor_routine::class_factory_instance());
     register_class_factory(c_equalize_hist_routine::class_factory_instance());

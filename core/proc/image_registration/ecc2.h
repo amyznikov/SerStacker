@@ -558,6 +558,7 @@ protected:
 };
 
 bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask);
+void ecc_normalize_meanstdev(cv::InputArray src, cv::InputArray src_mask, cv::OutputArray dst, int lvl, double eps);
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);
 double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask);

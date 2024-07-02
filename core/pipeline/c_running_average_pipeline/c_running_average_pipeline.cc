@@ -36,18 +36,13 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, registration_options_, double_align_moode);
     SERIALIZE_OPTION(section, save, registration_options_, reference_unsharp_sigma_);
     SERIALIZE_OPTION(section, save, registration_options_, reference_unsharp_alpha_);
-
-    SERIALIZE_OPTION(section, save, registration_options_, min_rho);
-
-    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
-    //SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
-
     SERIALIZE_OPTION(section, save, registration_options_, enable_ecc);
     SERIALIZE_OPTION(section, save, registration_options_, ecc_motion_type);
+    SERIALIZE_OPTION(section, save, registration_options_, min_rho);
 
-//    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
-//    SERIALIZE_PROPERTY(section, save, ecch_, minimum_pyramid_level);
-
+    SERIALIZE_PROPERTY(section, save, ecch_, method);
+    SERIALIZE_PROPERTY(section, save, ecch_, minimum_image_size);
+    SERIALIZE_PROPERTY(section, save, ecch_, maxlevel);
     SERIALIZE_PROPERTY(section, save, ecch_, max_iterations);
     SERIALIZE_PROPERTY(section, save, ecch_, epsx);
     SERIALIZE_PROPERTY(section, save, ecch_, min_rho);
@@ -135,9 +130,11 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline
         PIPELINE_CTL(ctrls, registration_options_.enable_ecc, "enabled", "");
 
         PIPELINE_CTLC(ctrls, registration_options_.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
+
+        PIPELINE_CTLPC2(ctrls, ecch_, method, "ecch method", "", (_this->ecc_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, ecch_, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecch_, maxlevel, "ecch_minimum_pyramid_level", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, ecch_, max_iterations, "ecc_max_iterations", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, maxlevel, "maxlevel ", "", (_this->ecc_ctls_enabled()));
+        PIPELINE_CTLPC2(ctrls, ecch_, max_iterations, "max_iterations", "", (_this->ecc_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, ecch_, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, ecch_, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
         PIPELINE_CTLPC2(ctrls, ecch_, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
@@ -323,7 +320,7 @@ bool c_running_average_pipeline::initialize_pipeline()
         create_image_transform(registration_options_.ecc_motion_type);
 
     ecch_.set_image_transform(ecc_tramsform_.get());
-    ecch_.set_method(registration_options_.ecc_method);
+    //ecch_.set_method(registration_options_.ecc_method);
   }
 
 
@@ -410,6 +407,7 @@ bool c_running_average_pipeline::average_add(c_running_frame_average & average, 
     double avgw, const cv::Mat2f * rmap)
 {
   if( average_options_.lpg.k < 0 ) {
+
     lock_guard lock(mutex());
 
     if( !average.add(src, srcmask, avgw, rmap) ) {
@@ -423,6 +421,7 @@ bool c_running_average_pipeline::average_add(c_running_frame_average & average, 
     compute_weights(src, srcmask, w);
 
     lock_guard lock(mutex());
+
     if( !average.add(src, w, avgw, rmap) ) {
       CF_ERROR("average.add() fails");
       return false;
@@ -630,18 +629,25 @@ bool c_running_average_pipeline::process_current_frame2()
       else {
 
         cv::remap(current_image_, image2, rmap2, cv::noArray(), cv::INTER_LINEAR,
-            cv::BORDER_REPLICATE);
+            cv::BORDER_CONSTANT);
+
+        CF_DEBUG("current_mask_: %dx%d nnz = %d / %d", current_mask_.cols, current_mask_.rows,
+            cv::countNonZero(current_mask_),
+            current_mask_.size().area());
 
         if ( current_mask_.empty() ) {
           mask2.release();
+          //          cv::remap(cv::Mat1b(current_image_.size(), 255), mask2, rmap2, cv::noArray(),
+          //              cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
         else {
 
-          cv::remap(current_mask_, mask2, rmap2, cv::noArray(), cv::INTER_LINEAR,
-              cv::BORDER_CONSTANT);
+          cv::remap(current_mask_, mask2, rmap2, cv::noArray(),
+              cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 
           cv::compare(mask2,  254, mask2, cv::CMP_GE);
         }
+
 
         if ( !average_add(average2_, image2, mask2, W2, &rmap) ) {
           CF_ERROR("average_add() fails");

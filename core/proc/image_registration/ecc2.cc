@@ -617,6 +617,47 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
 }
 
 
+void ecc_normalize_meanstdev(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray dst, int lvl, double eps)
+{
+  const cv::Mat src =
+      _src.getMat();
+
+  const cv::Size src_size =
+      src.size();
+
+  cv::Size dst_size =
+      src_size;
+
+  for( int l = 0; l < lvl; ++l ) {
+
+    const cv::Size next_size((dst_size.width + 1) / 2, (dst_size.height + 1) / 2);
+    if( next_size.width < 4 || next_size.height < 4 ) {
+      break;
+    }
+
+    dst_size =
+        next_size;
+  }
+
+  cv::Mat m, s;
+
+  cv::resize(src, m, dst_size, 0, 0, cv::INTER_AREA);
+  cv::resize(src.mul(src), s, dst_size, 0, 0, cv::INTER_AREA);
+  cv::add(s, eps, s);
+
+  ecc_upscale(m, src_size);
+  ecc_upscale(s, src_size);
+
+  cv::subtract(src, m, dst, cv::noArray(), CV_32F);
+  cv::divide(dst, s, dst);
+
+  if ( !_src_mask.empty() ) {
+    dst.setTo(0, ~_src_mask.getMat());
+  }
+
+}
+
+
 /* Remap to Flow
  * */
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow)
@@ -1645,7 +1686,7 @@ bool c_ecclm::set_reference_image(cv::InputArray reference_image, cv::InputArray
   }
 
   if ( !image_transform_ ) {
-    CF_DEBUG("Still wait for image transform");
+    // CF_DEBUG("Still wait for image transform");
     return true;
   }
 

@@ -19,6 +19,16 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_align_color_channels_routine,
       "align_color_channels", "Align color channels to reference one");
 
+  void set_method(ECC_ALIGN_METHOD v)
+  {
+    algorithm_.set_method(v);
+  }
+
+  ECC_ALIGN_METHOD method() const
+  {
+    return algorithm_.method();
+  }
+
   void set_reference_channel(int v)
   {
     reference_channel_ = v;
@@ -99,6 +109,16 @@ public:
     return algorithm_.eps();
   }
 
+  void set_max_level(int v)
+  {
+    algorithm_.set_max_level(v);
+  }
+
+  int max_level() const
+  {
+    return algorithm_.max_level();
+  }
+
   void set_max_iterations(int v)
   {
     return algorithm_.set_max_iterations(v);
@@ -129,6 +149,26 @@ public:
     return algorithm_.update_step_scale();
   }
 
+  void set_normalization_level(int v)
+  {
+    algorithm_.set_normalization_level(v);
+  }
+
+  int normalization_level() const
+  {
+    return algorithm_.normalization_level();
+  }
+
+  void set_normalization_eps(double v)
+  {
+    algorithm_.set_normalization_eps(v);
+  }
+
+  double normalization_eps() const
+  {
+    return algorithm_.normalization_eps();
+  }
+
   c_align_color_channels & algorithm()
   {
     return algorithm_;
@@ -139,41 +179,9 @@ public:
     return algorithm_;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, reference_channel, "");
-    BIND_PCTRL(ctls, enable_threshold, "");
-    BIND_PCTRL(ctls, threshold, "");
-    BIND_PCTRL(ctls, motion_type, "");
-    BIND_PCTRL(ctls, interpolation, "");
-    BIND_PCTRL(ctls, border_mode, "");
-    BIND_PCTRL(ctls, border_value, "");
-    BIND_PCTRL(ctls, eps, "");
-    BIND_PCTRL(ctls, max_iterations, "");
-    BIND_PCTRL(ctls, smooth_sigma, "");
-    BIND_PCTRL(ctls, update_step_scale, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, reference_channel);
-      SERIALIZE_PROPERTY(settings, save, *this, enable_threshold);
-      SERIALIZE_PROPERTY(settings, save, *this, threshold);
-      SERIALIZE_PROPERTY(settings, save, *this, motion_type);
-      SERIALIZE_PROPERTY(settings, save, *this, interpolation);
-      SERIALIZE_PROPERTY(settings, save, *this, border_mode);
-      SERIALIZE_PROPERTY(settings, save, *this, border_value);
-      SERIALIZE_PROPERTY(settings, save, *this, smooth_sigma);
-      SERIALIZE_PROPERTY(settings, save, *this, eps);
-      SERIALIZE_PROPERTY(settings, save, *this, max_iterations);
-      SERIALIZE_PROPERTY(settings, save, *this, update_step_scale);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 
 protected:

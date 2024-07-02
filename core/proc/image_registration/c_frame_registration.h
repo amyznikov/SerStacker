@@ -33,7 +33,7 @@ struct c_ecc_registration_options
   double update_step_scale = 1.5;
   double planetary_disk_mask_stdev_factor = 0.5;
   ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
-  int max_iterations = 15;
+  int max_iterations = 50;
   int ecch_max_level = 0;
   int ecch_minimum_image_size = 16;
   double normalization_noise = 0.01;

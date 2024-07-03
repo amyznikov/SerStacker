@@ -625,24 +625,11 @@ void ecc_normalize_meanstdev(cv::InputArray _src, cv::InputArray _src_mask, cv::
   const cv::Size src_size =
       src.size();
 
-  cv::Size dst_size =
-      src_size;
-
-  for( int l = 0; l < lvl; ++l ) {
-
-    const cv::Size next_size((dst_size.width + 1) / 2, (dst_size.height + 1) / 2);
-    if( next_size.width < 4 || next_size.height < 4 ) {
-      break;
-    }
-
-    dst_size =
-        next_size;
-  }
-
   cv::Mat m, s;
 
-  cv::resize(src, m, dst_size, 0, 0, cv::INTER_AREA);
-  cv::resize(src.mul(src), s, dst_size, 0, 0, cv::INTER_AREA);
+  ecc_downscale(src, m, lvl, cv::BORDER_REPLICATE);
+  ecc_downscale(src.mul(src), s, lvl, cv::BORDER_REPLICATE);
+
   cv::add(s, eps, s);
 
   ecc_upscale(m, src_size);

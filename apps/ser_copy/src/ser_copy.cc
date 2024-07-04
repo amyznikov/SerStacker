@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
   int start_frame = 0;
   int end_frame = -1;
 
+  bool fix_corrupted_header = false;
+
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -28,6 +30,8 @@ int main(int argc, char *argv[])
           "   ser_copy [OPTIONS] input_file.ser -o output_file.ser [-f start[:end]]\n"
           "\n"
           "OPTIONS:\n"
+          "  --fix "
+          "      Fix header of corrupted file\n"
           "\n"
       );
 
@@ -59,6 +63,12 @@ int main(int argc, char *argv[])
 
       continue;
     }
+
+    if ( strcmp(argv[i], "--fix") == 0 ) {
+      fix_corrupted_header = true;
+      continue;
+    }
+
 
     if ( input_file_name.empty() && is_regular_file(argv[i]) ) {
 
@@ -107,6 +117,13 @@ int main(int argc, char *argv[])
         input_file_name.c_str(),
         strerror(errno));
     return 1;
+  }
+
+  CF_DEBUG("ser_reader.timestamps().size = %zu", ser_reader.timestamps().size());
+
+  if ( fix_corrupted_header ) {
+    CF_DEBUG("file is opened");
+    return 0;
   }
 
   if ( start_frame < 0 ) {

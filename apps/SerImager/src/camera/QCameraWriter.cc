@@ -6,11 +6,12 @@
  */
 
 #include "QCameraWriter.h"
+#include <gui/widgets/qsprintf.h>
 #include <core/io/save_image.h>
 #include <core/io/c_ffmpeg_file.h>
 #include <core/io/c_ser_file.h>
+#include <core/get_time.h>
 #include <core/ssprintf.h>
-#include <gui/widgets/qsprintf.h>
 #include <core/readdir.h>
 #include <chrono>
 #include <core/debug.h>
@@ -79,7 +80,7 @@ struct c_ser_file_writer:
 
   bool write(const QCameraFrame::sptr & frame) override
   {
-    return ser.write(frame->image(), frame->ts());
+    return ser.write(frame->image(), realtime_sec_to_ser_timestamp(frame->ts()));
   }
 
   virtual void close() override
@@ -1003,7 +1004,6 @@ void QCameraWriter::writerThreadProc()
     }
 
     if( writer ) {
-      writer->close();
       delete writer;
     }
 

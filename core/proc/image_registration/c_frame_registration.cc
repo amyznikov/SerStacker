@@ -852,31 +852,6 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
         options_.ecc.normalization_noise);
   }
 
-//  if( options_.ecc.normalization_scale > 0 ) {
-//
-//    cv::Mat1f &m = (cv::Mat1f&) dst.getMatRef();
-//    cv::Mat mean, stdev;
-//    cv::Mat mask;
-//
-//    ecc_downscale(m, mean, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-//    ecc_downscale(m.mul(m), stdev, options_.ecc.normalization_scale, cv::BORDER_REPLICATE);
-//    cv::absdiff(stdev, mean.mul(mean), stdev);
-//    cv::sqrt(stdev, stdev);
-//
-//    ecc_upscale(mean, m.size());
-//    ecc_upscale(stdev, m.size());
-//
-//    cv::add(stdev, options_.ecc.normalization_noise, stdev);
-//    cv::subtract(m, mean, m);
-//    cv::divide(m, stdev, m);
-//  }
-
-//  {
-//    double min, max;
-//    cv::minMaxLoc(dst, &min, &max);
-//    CF_DEBUG("ECC IMAGE: min=%g max=%g", min, max);
-//  }
-
   return true;
 }
 

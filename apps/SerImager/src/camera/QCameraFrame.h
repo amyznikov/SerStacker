@@ -41,11 +41,13 @@ public:
     return image_;
   }
 
+  // in real-time seconds
   double ts() const
   {
     return ts_;
   }
 
+  // in real-time seconds
   void set_ts(double ts)
   {
     ts_ = ts;

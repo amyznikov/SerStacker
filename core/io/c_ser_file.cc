@@ -279,7 +279,9 @@ bool c_ser_reader::open(const std::string & filename)
     return false;
   }
 
-  const ssize_t current_file_size = fd_.size();
+  const ssize_t current_file_size =
+      fd_.size();
+
   if ( current_file_size < sizeof(file_header) ) {
     CF_ERROR("Too small file size: %zd < sizeof(HEADER)", current_file_size);
     close();
@@ -302,6 +304,7 @@ bool c_ser_reader::open(const std::string & filename)
 
   /// There is well-known bug with endiannes in ser file format
   header_.is_little_endian = header_.is_little_endian == 0;  // force from incorrect endian
+
   if ( !is_current_machine_little_endian() ) {
     swap_endianess(&header_.luid, 1);
     swap_endianess((int32_t*) &header_.color_id, 1);
@@ -358,14 +361,28 @@ bool c_ser_reader::open(const std::string & filename)
 
 
   const ssize_t timestamps_array_size_required =
-      header_.frames_count * sizeof(uint64_t);
+      header_.frames_count * sizeof(timestamps_[0]);
 
-  if ( current_file_size >= timestamps_array_offset + timestamps_array_size_required ) {
+  CF_DEBUG("timestamps_array_offset=%zd timestamps_array_size_required=%zd sum=%zd current_file_size=%zd",
+      timestamps_array_offset,
+      timestamps_array_size_required,
+      timestamps_array_offset + timestamps_array_size_required,
+      current_file_size);
+
+  if ( !(current_file_size >= timestamps_array_offset + timestamps_array_size_required) ) {
+    CF_DEBUG("No valid timestamps found");
+  }
+  else {
+
+    CF_DEBUG("timestamps found");
 
     const ssize_t backup_pos =
         fd_.whence();
 
-    if ( fd_.seek(timestamps_array_offset, SEEK_SET) == timestamps_array_offset ) {
+    if ( fd_.seek(timestamps_array_offset, SEEK_SET) != timestamps_array_offset ) {
+      CF_ERROR("fd_.seek(timestamps_array_offset) fails");
+    }
+    else {
 
       timestamps_.resize(header_.frames_count, 0);
 
@@ -373,7 +390,7 @@ bool c_ser_reader::open(const std::string & filename)
           sizeof(timestamps_[0]) * timestamps_.size();
 
       if ( fd_.read(timestamps_.data(), bytest_to_read) != bytest_to_read ) {
-        CF_ERROR("::read() fails : %s", strerror(errno));
+        CF_ERROR("::read(timestamps_) fails : %s", strerror(errno));
         return false;
       }
 
@@ -387,6 +404,8 @@ bool c_ser_reader::open(const std::string & filename)
 
     }
   }
+
+  CF_DEBUG("timestamps_.size=%zu", timestamps_.size());
 
   return true;
 }
@@ -597,13 +616,36 @@ bool c_ser_writer::close()
   bool fok = true;
 
   if( fd_.is_open() ) {
-    fd_.seek(0);
+
+    fd_.seek(0, SEEK_SET);
+
     if( fd_.write(&header_, sizeof(header_)) != sizeof(header_) ) {
       CF_FATAL("write(SER HEADER) fails: %s", strerror(errno));
       fok = false;
     }
+
+    if ( !timestamps_.empty() ) {
+
+      // time stamps must be in little endian format
+      if( !is_current_machine_little_endian() ) {
+        swap_endianess(timestamps_.data(), timestamps_.size());
+      }
+
+      const size_t cb =
+          timestamps_.size() * sizeof(timestamps_[0]);
+
+      fd_.seek(0, SEEK_END);
+
+      if( fd_.write(timestamps_.data(), cb) != cb ) {
+        CF_ERROR("write(timestamps) fails: %s", strerror(errno));
+      }
+
+    }
+
     fd_.close();
   }
+
+  timestamps_.clear();
 
   return fok;
 }
@@ -669,10 +711,18 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
     return false;
   }
 
+  if( header_.frames_count < 1 ) {
+    header_.date_time =
+        header_.date_time_utc =
+            ts;
+  }
+
   header_.frames_count++;
 
-  // FIXME: update time stamps
-  //frames_timestamps
+  timestamps_.emplace_back(ts);
+
+
+
 
   return true;
 }

@@ -80,6 +80,30 @@ inline cv::Matx<T, 3, 3> build_rotation(const cv::Vec<T, 3> & A)
   return build_rotation<T>(A(0), A(1), A(2));
 }
 
+/** @brief build_rotation()
+ * Simple utility function to construct rotation matrices from 3 given angles (in radians)
+ */
+template<class T>
+inline cv::Matx<T, 3, 3> build_rotation2(T ax, T ay, T az)
+{
+  cv::Matx<T, 3, 3> Rx, Ry, Rz;
+
+  build_rotation(ax, ay, az,
+      &Rx, &Ry, &Rz);
+
+  return Rx * Ry * Rz;
+}
+
+
+/** @brief build_rotation()
+ * Simple utility function to construct rotation matrices from 3 given angles (in radians)
+ */
+template<class T>
+inline cv::Matx<T, 3, 3> build_rotation2(const cv::Vec<T, 3> & A)
+{
+  return build_rotation2<T>(A(0), A(1), A(2));
+}
+
 /** @brief build_pose()
  * Compose given 3x3 rotation matrix R and 3x1 translation vector T into 3x4 projection matrix [R|T]
  * */

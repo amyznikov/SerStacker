@@ -38,9 +38,9 @@ public:
     return w_;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
   double sigma_ = 1;

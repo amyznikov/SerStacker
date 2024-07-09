@@ -11,7 +11,7 @@
 
 //#include "QImageProcessorRoutineSettings.h"
 #include "QImageProcessorChainEditor.h"
-#include <core/improc/c_radial_polysharp_routine.h>
+#include <core/improc/generic/c_radial_polysharp_routine.h>
 
 class QRadialPolyProfileView
     : public QWidget

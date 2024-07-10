@@ -104,7 +104,7 @@ public:
     lines_color_ = v;
   }
 
-  const cv::Scalar lines_color() const
+  const cv::Scalar & lines_color() const
   {
     return lines_color_;
   }

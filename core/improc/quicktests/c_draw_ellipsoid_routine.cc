@@ -15,18 +15,24 @@ static bool project_ellipsoid_point(const double lat, const double lon,
     const cv::Point2f & center,
     cv::Point2f * pos)
 {
+
+  const cv::Vec3d v0(A * cos(lat) * cos(lon),
+      B * cos(lat) * sin(lon),
+      C * sin(lat));
+
   const cv::Vec3d v1 =
-      R * cv::Vec3d(A * cos(lat) * cos(lon),
-          B * cos(lat) * sin(lon),
-          C * sin(lat));
+      R * v0;
 
   pos->x = v1(0) + center.x;
   pos->y = v1(1) + center.y;
 
-//  const double d =
-//      v1.dot(cv::Vec3d(0, 0, 1));
+  // check point visibility based on rotated surface normal direction
+  const double zr =
+      R(2, 0) * v0(0) / (A * A) +
+      R(2, 1) * v0(1) / (B * B) +
+      R(2, 2) * v0(2) / (C * C);
 
-  return true;
+    return zr >= 0;
 }
 
 
@@ -81,13 +87,18 @@ bool c_draw_ellipsoid_routine::process(cv::InputOutputArray image, cv::InputOutp
 
 
   const double A =
-      equatorial_radius1();
+      equatorial_radius1_ > 0 ? equatorial_radius1_ :
+      equatorial_radius2_ > 0 ? equatorial_radius2_ :
+          polar_radius_;
 
   const double B =
-      equatorial_radius2();
+      equatorial_radius2_ > 0 ? equatorial_radius2_ :
+      equatorial_radius1_ > 0 ? equatorial_radius1_ :
+          polar_radius_;
 
   const double C =
-      polar_radius();
+      polar_radius_ > 0 ? polar_radius_ :
+          A;
 
   const cv::Point2f center =
       center_.x >= 0 && center_.y >= 0 ? center_ :
@@ -114,8 +125,9 @@ bool c_draw_ellipsoid_routine::process(cv::InputOutputArray image, cv::InputOutp
 
       project_ellipsoid_point(-lat, lon = 0, A, B, C, R, center, &ppos);
       for( lon = lon_step; lon < 2 * CV_PI; lon += lon_step, ppos = cpos ) {
-        project_ellipsoid_point(-lat, lon, A, B, C, R, center, &cpos);
-        cv::line(image, ppos, cpos, lines_color_, 1, cv::LINE_AA);
+        if( project_ellipsoid_point(-lat, lon, A, B, C, R, center, &cpos) ) {
+          cv::line(image, ppos, cpos, lines_color_, 1, cv::LINE_AA);
+        }
       }
 
       if ( lat == 0 ) {
@@ -124,8 +136,9 @@ bool c_draw_ellipsoid_routine::process(cv::InputOutputArray image, cv::InputOutp
 
       project_ellipsoid_point(lat, lon = 0, A, B, C, R, center, &ppos);
       for( lon = lon_step; lon < 2 * CV_PI; lon += lon_step, ppos = cpos ) {
-        project_ellipsoid_point(lat, lon, A, B, C, R, center, &cpos);
-        cv::line(image, ppos, cpos, lines_color_, 1, cv::LINE_AA);
+        if ( project_ellipsoid_point(lat, lon, A, B, C, R, center, &cpos) ) {
+          cv::line(image, ppos, cpos, lines_color_ , 1, cv::LINE_AA);
+        }
       }
     }
   }
@@ -146,14 +159,19 @@ bool c_draw_ellipsoid_routine::process(cv::InputOutputArray image, cv::InputOutp
       project_ellipsoid_point(lat = -CV_PI / 2, lon, A, B, C, R, center, &ppos);
 
       for( lat = -CV_PI / 2 + lat_step; lat <= CV_PI / 2; lat += lat_step, ppos = cpos ) {
-        project_ellipsoid_point(lat, lon, A, B, C, R, center, &cpos);
-        cv::line(image, ppos, cpos, lines_color_, 1, cv::LINE_AA);
+        if( project_ellipsoid_point(lat, lon, A, B, C, R, center, &cpos) ) {
+          cv::line(image, ppos, cpos, lines_color_, 1, cv::LINE_AA);
+        }
       }
     }
 
   }
 
   cv::ellipse(image, bbox, outline_color_, 1, cv::LINE_AA);
+
+  //  cv::Vec3d N = R * cv::Vec3d(0, 0, 100);
+  //  cv::line(image, cv::Point2f(center), cv::Point2f(center.x + N(0), center.y + N(1)), cv::Scalar(0, 0, 0.5), 1, cv::LINE_AA);
+
 
   return true;
 }

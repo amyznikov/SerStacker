@@ -32,17 +32,18 @@
  *   const cv::RotatedRect bbox = ellipsoid_bbox(center, A, B, C, R.t());
  *   cv::ellipse(image, bbox, cv::Scalar::all(255), 1, cv::LINE_AA);
  */
-
 cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
     double A, double B, double C,
     const cv::Matx33d & R);
 
-
-cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center,
-    double A, double B,
+/**
+ * Compute rotated 2D ellipse outline bound box,
+ * appropriate to draw Saturn rings with cv::ellipse()
+ * */
+cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center, double A, double B,
     const cv::Matx33d & R);
 
-/*
+/**
  * Replacement for cv::ellipsePoly() with better angular precision
  * */
 void ellipse_poly(const cv::Point2f & center,
@@ -57,6 +58,9 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type);
 
 
+/**
+ * Convert 3D ellipsoid coordinates to Cartesian XYZ
+ * */
 inline cv::Vec3d ellipsoid_to_cart3d(double lat, double lon, double A, double B, double C)
 {
   return cv::Vec3d(A * std::cos(lat) * std::cos(lon),
@@ -64,6 +68,10 @@ inline cv::Vec3d ellipsoid_to_cart3d(double lat, double lon, double A, double B,
       C * std::sin(lat));
 }
 
+/**
+ * Convert 3D ellipsoid coordinates to Cartesian XY plane.
+ * Return point visibility flag computed based on rotated surface normal direction.
+ * */
 inline bool ellipsoid_to_cart2d(double lat, double lon,
     double A, double B, double C,
     const cv::Matx33d & R,

@@ -98,6 +98,26 @@ public:
     return lines_color_;
   }
 
+  void set_auto_location(bool v)
+  {
+    auto_location_ = v;
+  }
+
+  bool auto_location() const
+  {
+    return auto_location_;
+  }
+
+  void set_show_smask(bool v)
+  {
+    show_smask_ = v;
+  }
+
+  bool show_smask() const
+  {
+    return show_smask_;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -120,6 +140,9 @@ protected:
 
   cv::Scalar lines_color_ =
       cv::Scalar::all(255);
+
+  bool auto_location_ = false;
+  bool show_smask_ = false;
 
 };
 

@@ -145,17 +145,17 @@ cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center, double A, doubl
       Q.inv();
 
 
-  CF_DEBUG("\n"
-      "Qi: {\n"
-      " %+20g  %+20g %+20g %+20g\n"
-      " %+20g  %+20g %+20g %+20g\n"
-      " %+20g  %+20g %+20g %+20g\n"
-      " %+20g  %+20g %+20g %+20g\n"
-      "}\n",
-      Qi(0, 0), Qi(0, 1), Qi(0, 2), Qi(0, 3),
-      Qi(1, 0), Qi(1, 1), Qi(1, 2), Qi(1, 3),
-      Qi(2, 0), Qi(2, 1), Qi(2, 2), Qi(2, 3),
-      Qi(3, 0), Qi(3, 1), Qi(3, 2), Qi(3, 3));
+//  CF_DEBUG("\n"
+//      "Qi: {\n"
+//      " %+20g  %+20g %+20g %+20g\n"
+//      " %+20g  %+20g %+20g %+20g\n"
+//      " %+20g  %+20g %+20g %+20g\n"
+//      " %+20g  %+20g %+20g %+20g\n"
+//      "}\n",
+//      Qi(0, 0), Qi(0, 1), Qi(0, 2), Qi(0, 3),
+//      Qi(1, 0), Qi(1, 1), Qi(1, 2), Qi(1, 3),
+//      Qi(2, 0), Qi(2, 1), Qi(2, 2), Qi(2, 3),
+//      Qi(3, 0), Qi(3, 1), Qi(3, 2), Qi(3, 3));
 
 
   const cv::Matx34d P(

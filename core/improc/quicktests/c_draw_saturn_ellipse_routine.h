@@ -118,6 +118,16 @@ public:
     return show_smask_;
   }
 
+  void set_show_sbox(bool v)
+  {
+    show_sbox_ = v;
+  }
+
+  bool show_sbox() const
+  {
+    return show_sbox_;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -143,6 +153,7 @@ protected:
 
   bool auto_location_ = false;
   bool show_smask_ = false;
+  bool show_sbox_ = false;
 
 };
 

@@ -5,7 +5,8 @@
  *      Author: amyznikov
  */
 
-#include "ellipsoid.h"
+#include <core/proc/ellipsoid.h>
+#include <core/proc/planetary-disk-detection.h>
 #include <core/debug.h>
 
 /**
@@ -269,3 +270,75 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc, const c
   }
 }
 
+
+bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox, cv::OutputArray output_mask)
+{
+
+  cv::Point2f centrold;
+  cv::Point2f geometrical_center;
+  double gbsigma = 1;
+  double stdev_factor = 0.5;
+
+  cv::Mat1b component_mask, rotated_component_mask;
+  cv::Mat pts;
+
+  bool fOk =
+      simple_planetary_disk_detector(_image,
+          cv::noArray(),
+          &centrold,
+          gbsigma,
+          stdev_factor,
+          nullptr,
+          &component_mask,
+          &geometrical_center);
+
+  if ( !fOk ) {
+    CF_ERROR("simple_planetary_disk_detector() fails");
+    return false;
+  }
+
+  cv::findNonZero(component_mask, pts);
+  pts = pts.reshape(1, pts.rows);
+  pts.convertTo(pts, CV_32F);
+
+  cv::PCA pca(pts, cv::noArray(), cv::PCA::DATA_AS_ROW);
+
+  const cv::Mat1f mean = pca.mean;
+  const cv::Point2f center(mean(0, 0), mean(0, 1));
+  const cv::Matx22f eigenvectors = pca.eigenvectors;
+
+//  CF_DEBUG("cntr=(x=%g y=%g)\n"
+//      " eigenvectors= {\n"
+//      "  %+20g %+20g\n"
+//      "  %+20g %+20g\n"
+//      "}\n"
+//      "\n",
+//      center.x, center.y,
+//      eigenvectors(0, 0), eigenvectors(0, 1),
+//      eigenvectors(1, 0), eigenvectors(1, 1));
+
+  const double angle =
+      std::atan2(eigenvectors(0, 1), eigenvectors(0, 0)) * 180 / CV_PI;
+
+  const cv::Matx23f M =
+      getRotationMatrix2D(center, angle, 1);
+
+  cv::warpAffine(component_mask, rotated_component_mask, M,
+      component_mask.size(),
+      cv::INTER_NEAREST,
+      cv::BORDER_CONSTANT);
+
+  const cv::Rect rc =
+      cv::boundingRect(rotated_component_mask);
+
+  output_bbox.center = center;
+  output_bbox.size.width = rc.width - 2;
+  output_bbox.size.height = rc.height - 2;
+  output_bbox.angle = angle;
+
+  if ( output_mask.needed() ) {
+    output_mask.move(component_mask);
+  }
+
+  return true;
+}

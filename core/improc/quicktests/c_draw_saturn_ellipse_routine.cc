@@ -8,80 +8,8 @@
 #include "c_draw_saturn_ellipse_routine.h"
 #include <core/proc/pose.h>
 #include <core/proc/ellipsoid.h>
-#include <core/proc/planetary-disk-detection.h>
 
 
-static bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox,
-    cv::OutputArray output_mask = cv::noArray())
-{
-
-  cv::Point2f centrold;
-  cv::Point2f geometrical_center;
-  double gbsigma = 1;
-  double stdev_factor = 0.5;
-
-  cv::Mat1b component_mask, rotated_component_mask;
-  cv::Mat pts;
-
-  bool fOk =
-      simple_planetary_disk_detector(_image,
-          cv::noArray(),
-          &centrold,
-          gbsigma,
-          stdev_factor,
-          nullptr,
-          &component_mask,
-          &geometrical_center);
-
-  if ( !fOk ) {
-    CF_ERROR("simple_planetary_disk_detector() fails");
-    return false;
-  }
-
-  cv::findNonZero(component_mask, pts);
-  pts = pts.reshape(1, pts.rows);
-  pts.convertTo(pts, CV_32F);
-
-  cv::PCA pca(pts, cv::noArray(), cv::PCA::DATA_AS_ROW);
-
-  const cv::Mat1f mean = pca.mean;
-  const cv::Point2f center(mean(0, 0), mean(0, 1));
-  const cv::Matx22f eigenvectors = pca.eigenvectors;
-
-  CF_DEBUG("cntr=(x=%g y=%g)\n"
-      " eigenvectors= {\n"
-      "  %+20g %+20g\n"
-      "  %+20g %+20g\n"
-      "}\n"
-      "\n",
-      center.x, center.y,
-      eigenvectors(0, 0), eigenvectors(0, 1),
-      eigenvectors(1, 0), eigenvectors(1, 1));
-
-  const double angle =
-      atan2(eigenvectors(0, 1), eigenvectors(0, 0)) * 180 / CV_PI;
-
-  const cv::Matx23f M =
-      getRotationMatrix2D(center, angle, 1);
-
-  cv::warpAffine(component_mask, rotated_component_mask, M,
-      component_mask.size(),
-      cv::INTER_NEAREST,
-      cv::BORDER_CONSTANT);
-
-  const cv::Rect rc =
-      cv::boundingRect(rotated_component_mask);
-
-  output_bbox.center = center;
-  output_bbox.size = rc.size();
-  output_bbox.angle = angle;
-
-  if ( output_mask.needed() ) {
-    output_mask.move(component_mask);
-  }
-
-  return true;
-}
 
 
 static void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, const cv::Scalar & color,
@@ -122,6 +50,7 @@ void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ct
   BIND_PCTRL(ctls, lines_color, "");
 
   BIND_PCTRL(ctls, show_smask, "");
+  BIND_PCTRL(ctls, show_sbox, "");
 
 }
 
@@ -138,6 +67,7 @@ bool c_draw_saturn_ellipse_routine::serialize(c_config_setting settings, bool sa
     SERIALIZE_PROPERTY(settings, save, *this, outline_color);
     SERIALIZE_PROPERTY(settings, save, *this, lines_color);
     SERIALIZE_PROPERTY(settings, save, *this, show_smask);
+    SERIALIZE_PROPERTY(settings, save, *this, show_sbox);
     return true;
   }
   return false;
@@ -152,14 +82,18 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   const cv::Size image_size =
       image.size();
 
-  cv::RotatedRect sbbox;
+  cv::RotatedRect sbox;
   cv::Mat smask;
   bool saturn_detected = false;
 
+  double A, B, C, ring_radius;
+  cv::Point2f center;
+  cv::Vec3d rotation;
 
   if( auto_location_ ) {
+
     saturn_detected =
-        detect_saturn(image, sbbox,
+        detect_saturn(image, sbox,
             smask);
 
     if ( show_smask_ && saturn_detected ) {
@@ -169,25 +103,25 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
 
   }
 
+  if ( saturn_detected ) {
+    C = sbox.size.height / 2;
+    A = B = C / radius_ratio;
+    ring_radius = sbox.size.width / 2;
+    center = sbox.center;
+    rotation = cv::Vec3d(orientation_(0), sbox.angle, orientation_(2)) * CV_PI / 180; //  orientation() * CV_PI / 180;
+  }
+  else {
+    A = B = equatorial_radius_ ;
+    C = A * radius_ratio;
+    ring_radius = ring_radius_;
+    center = center_.x >= 0 && center_.y >= 0 ? center_ : cv::Point2f(image_size.width / 2, image_size.height / 2);
+    rotation = orientation() * CV_PI / 180;
+  }
 
-  const cv::Vec3d & rotation =
-      orientation() * CV_PI / 180;
+
 
   const cv::Matx33d R =
       build_rotation2(rotation);
-
-  const double A =
-      equatorial_radius_ ;
-
-  const double B =
-      equatorial_radius_;
-
-  const double C =
-      A * radius_ratio;
-
-  const cv::Point2f center =
-      center_.x >= 0 && center_.y >= 0 ? center_ :
-          cv::Point2f(image_size.width / 2, image_size.height / 2);
 
   const cv::RotatedRect bbox =
       ellipsoid_bbox(center, A, B, C, R.t());
@@ -254,18 +188,17 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   draw_ellipse(image, bbox, outline_color_, 1, cv::LINE_AA);
 
 
-  if ( ring_radius_ > 0 ) {
+  if ( ring_radius > 0 ) {
 
     const cv::RotatedRect ring_bbox =
-        rotated_ellipse_bbox(center, ring_radius_, ring_radius_, R.t());
+        rotated_ellipse_bbox(center, ring_radius, ring_radius, R.t());
 
     // cv::ellipse(image, ring_bbox, 0.5*outline_color_, 5, cv::LINE_AA);
     draw_ellipse(image, ring_bbox, outline_color_, 1, cv::LINE_AA);
-
   }
 
-  if ( saturn_detected ) {
-    draw_rotated_rect(image, sbbox, outline_color_, 1, cv::LINE_AA);
+  if( show_sbox_ && saturn_detected ) {
+    draw_rotated_rect(image, sbox, outline_color_, 1, cv::LINE_AA);
   }
 
 

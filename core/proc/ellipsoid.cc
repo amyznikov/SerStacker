@@ -270,6 +270,28 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc, const c
   }
 }
 
+void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, const cv::Scalar & color, int thickness, int line_type)
+{
+  cv::Point vertices[4];
+  cv::Point2f vertices2f[4];
+
+  rc.points(vertices2f);
+
+  for( int i = 0; i < 4; ++i ) {
+    vertices[i].x = cvRound(vertices2f[i].x);
+    vertices[i].y = cvRound(vertices2f[i].y);
+  }
+
+  if( thickness < 0 ) {
+    fillConvexPoly(_img, vertices, 4, color, line_type);
+  }
+  else {
+    const cv::Point * ppts[] = { vertices };
+    const int npts[] = { 4 };
+    cv::polylines(_img, ppts, npts, 1, true, color, thickness, line_type, 0);
+  }
+}
+
 
 bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox, cv::OutputArray output_mask)
 {

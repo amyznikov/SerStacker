@@ -128,6 +128,16 @@ public:
     return show_sbox_;
   }
 
+  void set_zrotation_remap(double v)
+  {
+    zrotation_remap_ = v;
+  }
+
+  double zrotation_remap() const
+  {
+    return zrotation_remap_;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -145,6 +155,8 @@ protected:
   double latidute_step_ = 30;
   double longitude_step_ = 30;
 
+  double zrotation_remap_ = 0;
+
   cv::Scalar outline_color_ =
       cv::Scalar::all(255);
 
@@ -154,6 +166,7 @@ protected:
   bool auto_location_ = false;
   bool show_smask_ = false;
   bool show_sbox_ = false;
+  //bool compute_zrotation_remap_ = false;
 
 };
 

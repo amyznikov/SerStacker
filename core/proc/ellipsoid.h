@@ -57,6 +57,11 @@ void ellipse_poly(const cv::Point2f & center,
 void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type);
 
+/*
+ * Draw cv::RotatedRect
+ * */
+void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc,
+    const cv::Scalar & color, int thickness, int line_type = cv::LINE_8);
 
 /**
  * Convert 3D ellipsoid coordinates to Cartesian XYZ
@@ -97,6 +102,35 @@ inline bool ellipsoid_to_cart2d(double lat, double lon,
 
   return  zr >= 0;
 }
+
+
+/**
+ * Convert 3D ellipsoid coordinates to Cartesian XY plane.
+ * Return point visibility flag computed based on rotated surface normal direction.
+ * */
+inline bool ellipsoid_to_cart2d(const cv::Vec3d & cart3d_pos,
+    double A, double B, double C,
+    const cv::Matx33d & R,
+    const cv::Point2d & center,
+    cv::Point2d * pos)
+{
+  const cv::Vec3d v1 =
+      R * cart3d_pos;
+
+  pos->x = v1(0) + center.x;
+  pos->y = v1(1) + center.y;
+
+  /*
+   * check point visibility based on rotated surface normal direction
+   * */
+  const double zr =
+      R(2, 0) * cart3d_pos(0) / (A * A) +
+          R(2, 1) * cart3d_pos(1) / (B * B) +
+          R(2, 2) * cart3d_pos(2) / (C * C);
+
+  return  zr >= 0;
+}
+
 
 bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox,
     cv::OutputArray output_mask = cv::noArray());

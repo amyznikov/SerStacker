@@ -10,31 +10,90 @@
 #include <core/proc/ellipsoid.h>
 
 
-
-
-static void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, const cv::Scalar & color,
-    int thickness, int line_type)
+bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
+    const cv::Vec3d & axes, const cv::Vec3d & orientation, double zrotation,
+    cv::Mat2f & rmap)
 {
-  // We take the edges that OpenCV calculated for us
-  cv::Point2f vertices2f[4];
-  rc.points(vertices2f);
+  rmap.create(size);
+  rmap.setTo(cv::Vec2f::all(0));
 
-  // Convert them so we can use them in a fillConvexPoly
-  cv::Point vertices[4];
-  for( int i = 0; i < 4; ++i ) {
-    vertices[i].x = cvRound(vertices2f[i].x);
-    vertices[i].y = cvRound(vertices2f[i].y);
+  cv::Mat1f counter(size, 0.0f);
+
+  const double & A =
+      axes(0);
+
+  const double & B =
+      axes(1);
+
+  const double & C =
+      axes(2);
+
+  const double lon_step =
+      0.5 / std::max(A, B);
+
+  const double lat_step =
+      0.5 / C;
+
+  const cv::Matx33d R1 =
+      build_rotation2(orientation);
+
+  const cv::Matx33d R2 =
+      build_rotation2(orientation(0), orientation(1), orientation(2) + zrotation);
+
+  cv::Point2d pos1, pos2;
+
+  for( double lat = -CV_PI / 2; lat <= CV_PI / 2; lat += lat_step ) {
+
+    for( double lon = 0; lon < 2 * CV_PI; lon += lon_step ) {
+
+      const cv::Vec3d cart3d_pos =
+          ellipsoid_to_cart3d(lat, lon, A, B, C);
+
+      if( !ellipsoid_to_cart2d(cart3d_pos, A, B, C, R2, center, &pos2) ) {
+        continue;
+      }
+
+      const int ix2 =
+          cvRound(pos2.x);
+
+      const int iy2 =
+          cvRound(pos2.y);
+
+      if( ix2 < 0 || ix2 >= size.width || iy2 < 0 || iy2 >= size.height ) {
+        continue;
+      }
+
+      if( !ellipsoid_to_cart2d(cart3d_pos, A, B, C, R1, center, &pos1) ) {
+        continue;
+      }
+
+      if( pos1.x < 0 || pos1.x >= size.width || pos1.y < 0 || pos1.y >= size.height ) {
+        continue;
+      }
+
+      rmap[iy2][ix2][0] += pos1.x;
+      rmap[iy2][ix2][1] += pos1.y;
+      ++counter[iy2][ix2];
+    }
+
   }
 
-  if( thickness < 0 ) {
-    fillConvexPoly(_img, vertices, 4, color, line_type);
+  for ( int y = 0; y < size.height; ++y ) {
+    for ( int x = 0; x < size.width; ++x ) {
+      if ( !counter[y][x] ) {
+        rmap[y][x][0] = -1;
+        rmap[y][x][1] = -1;
+      }
+      else {
+        rmap[y][x][0] /= counter[y][x];
+        rmap[y][x][1] /= counter[y][x];
+      }
+    }
   }
-  else {
-    const cv::Point * ppts[] = { vertices };
-    const int npts[] = { 4 };
-    cv::polylines(_img, ppts, npts, 1, true, color, thickness, line_type, 0);
-  }
+
+  return true;
 }
+
 
 void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
@@ -44,6 +103,8 @@ void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ct
   BIND_PCTRL(ctls, ring_radius, "");
   BIND_PCTRL(ctls, center, "");
   BIND_PCTRL(ctls, orientation, "");
+  BIND_PCTRL(ctls, zrotation_remap, "");
+
   BIND_PCTRL(ctls, longitude_step, "");
   BIND_PCTRL(ctls, latidute_step, "");
   BIND_PCTRL(ctls, outline_color, "");
@@ -62,6 +123,7 @@ bool c_draw_saturn_ellipse_routine::serialize(c_config_setting settings, bool sa
     SERIALIZE_PROPERTY(settings, save, *this, ring_radius);
     SERIALIZE_PROPERTY(settings, save, *this, center);
     SERIALIZE_PROPERTY(settings, save, *this, orientation);
+    SERIALIZE_PROPERTY(settings, save, *this, zrotation_remap);
     SERIALIZE_PROPERTY(settings, save, *this, longitude_step);
     SERIALIZE_PROPERTY(settings, save, *this, latidute_step);
     SERIALIZE_PROPERTY(settings, save, *this, outline_color);
@@ -116,6 +178,19 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
     ring_radius = ring_radius_;
     center = center_.x >= 0 && center_.y >= 0 ? center_ : cv::Point2f(image_size.width / 2, image_size.height / 2);
     rotation = orientation() * CV_PI / 180;
+  }
+
+  if ( saturn_detected && zrotation_remap_ != 0 ) {
+
+    cv::Mat2f rmap;
+
+    compute_ellipsoid_zrotation_remap(image.size(), center,
+        cv::Vec3d(A, B, C), rotation, zrotation_remap_ * CV_PI / 180,
+        rmap);
+
+    cv::remap(image.getMat(), image, rmap, cv::noArray(), cv::INTER_LINEAR,
+        cv::BORDER_CONSTANT, cv::Scalar::all(0));
+
   }
 
 
@@ -200,6 +275,8 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   if( show_sbox_ && saturn_detected ) {
     draw_rotated_rect(image, sbox, outline_color_, 1, cv::LINE_AA);
   }
+
+
 
 
   return true;

@@ -132,7 +132,7 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & cart3d_pos,
 }
 
 
-bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox,
+bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect & output_bbox,
     cv::OutputArray output_mask = cv::noArray());
 
 #endif /* __ellipsoid_h__ */

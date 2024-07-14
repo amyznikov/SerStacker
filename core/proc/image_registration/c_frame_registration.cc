@@ -879,6 +879,7 @@ bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_i
           nullptr,
           2,
           options_.ecc.planetary_disk_mask_stdev_factor,
+          options_.ecc.se_close_size,
           nullptr,
           &planetary_disk_mask);
 
@@ -963,6 +964,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
               nullptr,
               detector_opts.gbsigma,
               detector_opts.stdev_factor,
+              detector_opts.se_close_size,
               &planetary_disk_reference_component_rect_,
               &planetary_disk_reference_component_mask_,
               &planetary_disk_reference_centroid_);
@@ -1048,6 +1050,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
               nullptr,
               detector_opts.gbsigma,
               detector_opts.stdev_factor,
+              detector_opts.se_close_size,
               &planetary_disk_current_component_rect_,
               &planetary_disk_current_component_mask_,
               &planetary_disk_current_centroid_);

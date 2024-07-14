@@ -166,6 +166,7 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
             nullptr,
             1,
             0.25,
+            2,
             nullptr,
             &component_mask,
             nullptr/* &geometrical_center_*/,

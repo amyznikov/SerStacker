@@ -73,6 +73,7 @@ struct c_roi_selection_options
   cv::Rect rectangle_roi_selection;
   double planetary_disk_gbsigma = 1;
   double planetary_disk_stdev_factor = 0.25;
+  int se_close_size = 2;
 };
 
 

@@ -1444,6 +1444,7 @@ public:
     using feature2d_class = this_class;
     double gbsigma = 1;
     double stdev_factor = 0.5;
+    int se_close_size = 2;
     bool align_planetary_disk_masks = false;
   };
 
@@ -1460,7 +1461,8 @@ protected:
     feature2d_ =
         c_simple_planetary_disk_detector::create(
             opts_.gbsigma,
-            opts_.stdev_factor);
+            opts_.stdev_factor,
+            opts_.se_close_size);
   }
 
 protected:

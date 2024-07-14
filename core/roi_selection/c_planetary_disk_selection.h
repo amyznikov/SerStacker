@@ -11,8 +11,8 @@
 
 #include "c_roi_selection.h"
 
-class c_planetary_disk_selection
-    : public c_roi_selection
+class c_planetary_disk_selection :
+    public c_roi_selection
 {
 public:
   typedef c_planetary_disk_selection this_class;
@@ -20,10 +20,10 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   c_planetary_disk_selection();
-  c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor);
+  c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size);
 
   static this_class::ptr create();
-  static this_class::ptr create(const cv::Size & crop_size, double gbsigma, double stdev_factor);
+  static this_class::ptr create(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size);
 
   const cv::Size & crop_size() const;
   void set_crop_size(const cv::Size & size) ;
@@ -33,6 +33,9 @@ public:
 
   void set_stdev_factor(double v);
   double stdev_factor() const;
+
+  void set_se_close_size(int v);
+  int se_close_size() const;
 
   bool select(cv::InputArray image, cv::InputArray image_mask,
       cv::Rect & outputROIRectangle ) override;
@@ -48,6 +51,7 @@ protected:
   cv::Size crop_size_;
   double gbsigma_ = 1;
   double stdev_factor_ = 0.5;
+  int se_close_size_ = 2;
   cv::Point2f objpos_;
   cv::Rect objrect_;
 };

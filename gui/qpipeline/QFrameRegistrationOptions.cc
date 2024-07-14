@@ -1141,6 +1141,17 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
             }
           });
 
+  se_close_size_ctl =
+      add_numeric_box<int>("se_close_size",
+      "",
+      [this](int value) {
+        if ( options_ && options_->se_close_size != value ) {
+          options_->se_close_size = value;
+          Q_EMIT parameterChanged();
+        }
+      });
+
+
   updateControls();
 }
 
@@ -1171,6 +1182,8 @@ void QEccRegistrationOptions::onupdatecontrols()
     replace_planetary_disk_with_mask_ctl->setChecked(options_->replace_planetary_disk_with_mask);
     planetary_disk_mask_stdev_factor_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
     planetary_disk_mask_stdev_factor_ctl->setValue(options_->planetary_disk_mask_stdev_factor);
+    se_close_size_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
+    se_close_size_ctl->setValue(options_->se_close_size);
 
     setEnabled(true);
   }

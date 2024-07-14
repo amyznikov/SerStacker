@@ -41,6 +41,16 @@ double c_desaturate_edges_routine::stdev_factor() const
   return stdev_factor_;
 }
 
+void c_desaturate_edges_routine::set_se_close_radius(int v)
+{
+  se_close_radius_ = v;
+}
+
+int c_desaturate_edges_routine::se_close_radius() const
+{
+  return se_close_radius_;
+}
+
 void c_desaturate_edges_routine::set_show_weights(bool v)
 {
   show_weights_ = v;
@@ -81,6 +91,7 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
           nullptr,
           gbsigma_,
           stdev_factor_,
+          se_close_radius_,
           nullptr,
           &planetary_disk_mask);
 

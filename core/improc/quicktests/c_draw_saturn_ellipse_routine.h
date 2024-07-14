@@ -108,6 +108,16 @@ public:
     return auto_location_;
   }
 
+  void set_se_close_radius(int v)
+  {
+    se_close_radius_ = v;
+  }
+
+  int se_close_radius() const
+  {
+    return se_close_radius_;
+  }
+
   void set_show_smask(bool v)
   {
     show_smask_ = v;
@@ -127,6 +137,7 @@ public:
   {
     return show_sbox_;
   }
+
 
   void set_zrotation_remap(double v)
   {
@@ -166,7 +177,9 @@ protected:
   bool auto_location_ = false;
   bool show_smask_ = false;
   bool show_sbox_ = false;
-  //bool compute_zrotation_remap_ = false;
+
+  int se_close_radius_ = 3;
+
 
 };
 

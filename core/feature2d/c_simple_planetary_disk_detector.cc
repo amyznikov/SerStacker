@@ -9,15 +9,16 @@
 #include <core/proc/planetary-disk-detection.h>
 #include <core/debug.h>
 
-c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma, double stdev_factor) :
+c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma, double stdev_factor, int se_close_radius) :
   gbsigma_(gbsigma),
-  stdev_factor_(stdev_factor)
+  stdev_factor_(stdev_factor),
+  se_close_radius_(se_close_radius_)
 {
 }
 
-cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gbsigma, double stdev_factor)
+cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gbsigma, double stdev_factor, int se_close_radius)
 {
-  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gbsigma, stdev_factor));
+  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gbsigma, stdev_factor, se_close_radius));
 }
 
 void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints,
@@ -32,6 +33,7 @@ void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<c
           &centrold,
           gbsigma_,
           stdev_factor_,
+          se_close_radius_,
           &component_rect_,
           nullptr/* &cmponent_mask_*/,
           nullptr/* &geometrical_center_*/,

@@ -12,7 +12,8 @@
 
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Vec3d & orientation, double zrotation,
-    cv::Mat2f & rmap)
+    cv::Mat2f & rmap,
+    cv::Mat1b & mask)
 {
   rmap.create(size);
   rmap.setTo(cv::Vec2f::all(0));
@@ -91,6 +92,8 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
     }
   }
 
+  cv::compare(counter, 0, mask, cv::CMP_GT);
+
   return true;
 }
 
@@ -98,6 +101,7 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
 void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   BIND_PCTRL(ctls, auto_location, "");
+  BIND_PCTRL(ctls, se_close_radius, "");
 
   BIND_PCTRL(ctls, equatorial_radius, "");
   BIND_PCTRL(ctls, ring_radius, "");
@@ -119,6 +123,7 @@ bool c_draw_saturn_ellipse_routine::serialize(c_config_setting settings, bool sa
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_PROPERTY(settings, save, *this, auto_location);
+    SERIALIZE_PROPERTY(settings, save, *this, se_close_radius);
     SERIALIZE_PROPERTY(settings, save, *this, equatorial_radius);
     SERIALIZE_PROPERTY(settings, save, *this, ring_radius);
     SERIALIZE_PROPERTY(settings, save, *this, center);
@@ -155,8 +160,8 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   if( auto_location_ ) {
 
     saturn_detected =
-        detect_saturn(image, sbox,
-            smask);
+        detect_saturn(image, se_close_radius_,
+            sbox, smask);
 
     if ( show_smask_ && saturn_detected ) {
       smask.copyTo(image);
@@ -183,14 +188,17 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   if ( saturn_detected && zrotation_remap_ != 0 ) {
 
     cv::Mat2f rmap;
+    cv::Mat1b rmask;
+    cv::Mat remapped_image;
 
     compute_ellipsoid_zrotation_remap(image.size(), center,
         cv::Vec3d(A, B, C), rotation, zrotation_remap_ * CV_PI / 180,
-        rmap);
+        rmap, rmask);
 
-    cv::remap(image.getMat(), image, rmap, cv::noArray(), cv::INTER_LINEAR,
+    cv::remap(image.getMat(), remapped_image, rmap, cv::noArray(), cv::INTER_LINEAR,
         cv::BORDER_CONSTANT, cv::Scalar::all(0));
 
+    remapped_image.copyTo(image, rmask);
   }
 
 

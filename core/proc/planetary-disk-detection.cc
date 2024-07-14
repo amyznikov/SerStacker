@@ -89,6 +89,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
     cv::Point2f * out_centrold,
     double gbsigma,
     double stdev_factor,
+    int close_radius,
     cv::Rect * optional_output_component_rect,
     cv::Mat * optional_output_cmponent_mask,
     cv::Point2f * optional_output_geometrical_center,
@@ -129,7 +130,16 @@ bool simple_planetary_disk_detector(cv::InputArray frame,
 
 
   cv::threshold(gray, comp, 0, 255, cv::THRESH_TRIANGLE);
-  morphological_smooth_close(comp, comp, cv::Mat1b(5, 5, 255), cv::BORDER_CONSTANT);
+
+  if ( close_radius > 0 ) {
+
+    const int close_size =
+        2 * close_radius + 1;
+
+    morphological_smooth_close(comp, comp, cv::Mat1b(close_size, close_size, 255),
+        cv::BORDER_CONSTANT);
+  }
+
   if ( !mask.empty() ) {
     comp.setTo(0, ~mask.getMat());
   }

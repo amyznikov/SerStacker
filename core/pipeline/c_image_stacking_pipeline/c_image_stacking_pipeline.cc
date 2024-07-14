@@ -319,7 +319,8 @@ c_roi_selection::ptr c_image_stacking_pipeline::create_roi_selection() const
   case roi_selection_planetary_disk :
     return c_planetary_disk_selection::create(roi_selection_options_.planetary_disk_crop_size,
         roi_selection_options_.planetary_disk_gbsigma,
-        roi_selection_options_.planetary_disk_stdev_factor);
+        roi_selection_options_.planetary_disk_stdev_factor,
+        roi_selection_options_.se_close_size);
   case roi_selection_rectange_crop :
     return c_roi_rectangle_selection::create(roi_selection_options_.rectangle_roi_selection);
 
@@ -2826,6 +2827,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, roi_selection_options_, planetary_disk_crop_size);
     SERIALIZE_OPTION(section, save, roi_selection_options_, planetary_disk_gbsigma);
     SERIALIZE_OPTION(section, save, roi_selection_options_, planetary_disk_stdev_factor);
+    SERIALIZE_OPTION(section, save, roi_selection_options_, se_close_size);
   }
 
   // c_frame_upscale_options upscale_options_;
@@ -2906,6 +2908,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
         SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
         SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);
+        SERIALIZE_OPTION(subsubsection, save, ecc, se_close_size);
       }
 
       if( (subsubsection = get_group(subsection, save, "eccflow")) ) {
@@ -2990,6 +2993,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
         SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
         SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);
+        SERIALIZE_OPTION(subsubsection, save, ecc, se_close_size);
+
       }
 
       if( (subsubsection = get_group(subsection, save, "eccflow")) ) {
@@ -3208,6 +3213,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_crop_size, "Crop Size", "", (_this->roi_selection_options_.method == roi_selection_planetary_disk));
     PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_gbsigma, "gbsigma", "", (_this->roi_selection_options_.method == roi_selection_planetary_disk));
     PIPELINE_CTLC(ctrls, roi_selection_options_.planetary_disk_stdev_factor, "Stdev factor", "", (_this->roi_selection_options_.method == roi_selection_planetary_disk));
+    PIPELINE_CTLC(ctrls, roi_selection_options_.se_close_size, "Stdev factor", "", (_this->roi_selection_options_.method == roi_selection_planetary_disk));
     PIPELINE_CTLC(ctrls, roi_selection_options_.rectangle_roi_selection, "Rectangle:", "", (_this->roi_selection_options_.method == roi_selection_rectange_crop));
     PIPELINE_CTL_END_GROUP(ctrls);
 

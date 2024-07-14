@@ -32,6 +32,7 @@ struct c_ecc_registration_options
   double reference_smooth_sigma = 1.0;
   double update_step_scale = 1.5;
   double planetary_disk_mask_stdev_factor = 0.5;
+  int se_close_size = 2;
   ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
   int max_iterations = 50;
   int ecch_max_level = 0;

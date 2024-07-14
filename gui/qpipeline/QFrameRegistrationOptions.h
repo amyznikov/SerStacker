@@ -294,6 +294,7 @@ protected:
   QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
   QCheckBox * replace_planetary_disk_with_mask_ctl = nullptr;
   QNumericBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
+  QNumericBox * se_close_size_ctl = nullptr;
 };
 
 

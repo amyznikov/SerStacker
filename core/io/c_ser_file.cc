@@ -363,18 +363,18 @@ bool c_ser_reader::open(const std::string & filename)
   const ssize_t timestamps_array_size_required =
       header_.frames_count * sizeof(timestamps_[0]);
 
-  CF_DEBUG("timestamps_array_offset=%zd timestamps_array_size_required=%zd sum=%zd current_file_size=%zd",
-      timestamps_array_offset,
-      timestamps_array_size_required,
-      timestamps_array_offset + timestamps_array_size_required,
-      current_file_size);
+//  CF_DEBUG("timestamps_array_offset=%zd timestamps_array_size_required=%zd sum=%zd current_file_size=%zd",
+//      timestamps_array_offset,
+//      timestamps_array_size_required,
+//      timestamps_array_offset + timestamps_array_size_required,
+//      current_file_size);
 
   if ( !(current_file_size >= timestamps_array_offset + timestamps_array_size_required) ) {
-    CF_DEBUG("No valid timestamps found");
+    // CF_DEBUG("No valid timestamps found");
   }
   else {
 
-    CF_DEBUG("timestamps found");
+    // CF_DEBUG("timestamps found");
 
     const ssize_t backup_pos =
         fd_.whence();

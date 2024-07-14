@@ -27,6 +27,9 @@ public:
   void set_stdev_factor(double v);
   double stdev_factor() const;
 
+  void set_se_close_radius(int v);
+  int se_close_radius() const;
+
   void set_blur_radius(double v);
   double blur_radius() const;
 
@@ -71,6 +74,7 @@ protected:
   double gbsigma_ = 1;
   double stdev_factor_ = 0.25;
   double blur_radius_ = 1;
+  int se_close_radius_ = 2;
   bool show_weights_ = false;
   bool l1norm_ = false;
 };

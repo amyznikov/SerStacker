@@ -44,10 +44,11 @@ c_planetary_disk_selection::c_planetary_disk_selection()
 {
 }
 
-c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor) :
+c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size) :
     crop_size_(crop_size),
     gbsigma_(gbsigma),
-    stdev_factor_(stdev_factor)
+    stdev_factor_(stdev_factor),
+    se_close_size_(se_close_size)
 {
 }
 
@@ -81,21 +82,30 @@ double c_planetary_disk_selection::stdev_factor() const
   return stdev_factor_;
 }
 
+void c_planetary_disk_selection::set_se_close_size(int v)
+{
+  se_close_size_ = v;
+}
+
+int c_planetary_disk_selection::se_close_size() const
+{
+  return se_close_size_;
+}
 
 c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
 {
   return ptr(new this_class());
 }
 
-c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Size & crop_size, double gbsigma, double stdev_factor)
+c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size)
 {
-  return ptr(new this_class(crop_size, gbsigma, stdev_factor));
+  return ptr(new this_class(crop_size, gbsigma, stdev_factor, se_close_size));
 }
 
 bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mask,
     cv::Rect & outputROIRectangle )
 {
-  if ( !simple_planetary_disk_detector(image, mask, &objpos_, gbsigma_, stdev_factor_, &objrect_) ) {
+  if ( !simple_planetary_disk_detector(image, mask, &objpos_, gbsigma_, stdev_factor_, se_close_size_, &objrect_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

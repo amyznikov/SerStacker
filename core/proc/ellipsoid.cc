@@ -293,7 +293,7 @@ void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, co
 }
 
 
-bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox, cv::OutputArray output_mask)
+bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect & output_bbox, cv::OutputArray output_mask)
 {
 
   cv::Point2f centrold;
@@ -310,6 +310,7 @@ bool detect_saturn(cv::InputArray _image, cv::RotatedRect & output_bbox, cv::Out
           &centrold,
           gbsigma,
           stdev_factor,
+          se_close_radius,
           nullptr,
           &component_mask,
           &geometrical_center);

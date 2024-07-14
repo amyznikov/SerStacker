@@ -65,6 +65,7 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
             nullptr,
             1,
             0.25 * threshold_scale_,
+            2,
             nullptr,
             &m,
             nullptr,

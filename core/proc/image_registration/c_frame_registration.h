@@ -11,6 +11,7 @@
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
 #include "c_jovian_derotation.h"
+#include "c_saturn_derotation.h"
 #include "image_transform.h"
 //#include "ecc_motion_model.h"
 
@@ -61,8 +62,8 @@ struct c_eccflow_registration_options
 
 struct c_jovian_derotation_options
 {
-  bool enabled = false;
-  c_jovian_ellipse_detector_options ellipse;
+  // bool enabled = false;
+  c_jovian_ellipse_detector_options detector_options; // ellipse;
   double min_rotation = -40 * CV_PI / 180;
   double max_rotation = +40 * CV_PI / 180;
   int max_pyramid_level = -1;
@@ -70,6 +71,26 @@ struct c_jovian_derotation_options
   int max_context_size = 5;
   bool derotate_all_frames = false;
 };
+
+struct c_saturn_derotation_options
+{
+  c_saturn_ellipse_detector_options detector_options;
+};
+
+
+enum planetary_disk_derotation_type {
+  planetary_disk_derotation_disabled,
+  planetary_disk_derotation_jovian,
+  planetary_disk_derotation_saturn,
+};
+
+struct c_planetary_disk_derotation_options
+{
+  c_jovian_derotation_options jovian_derotation;
+  c_saturn_derotation_options saturn_derotation;
+  planetary_disk_derotation_type derotation_type = planetary_disk_derotation_disabled;
+};
+
 
 enum master_frame_selection_method
 {
@@ -103,7 +124,11 @@ struct c_image_registration_options
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
-  struct c_jovian_derotation_options jovian_derotation;
+
+  c_planetary_disk_derotation_options planetary_disk_derotation;
+
+//  struct c_jovian_derotation_options jovian_derotation;
+//  struct c_saturn_derotation_options saturn_derotation;
 
 //  // Dummy stub from KITTI
 //  cv::Matx33d camera_matrix =
@@ -164,8 +189,12 @@ public:
   // const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;
   const c_eccflow & eccflow() const;
+
   const c_jovian_derotation & jovian_derotation() const;
   c_jovian_derotation & jovian_derotation();
+
+  const c_saturn_derotation & saturn_derotation() const;
+  c_saturn_derotation & saturn_derotation();
 
   void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
   const ecc_image_preprocessor_function & ecc_image_preprocessor() const;
@@ -273,11 +302,10 @@ protected:
   cv::Mat1f image_transform_defaut_parameters_;
 
   c_ecch ecch_;
-  //c_ecc_forward_additive ecc_;
   c_eccflow eccflow_;
-  //c_ecc_motion_model::sptr ecc_motion_model_;
 
   c_jovian_derotation jovian_derotation_;
+  c_saturn_derotation saturn_derotation_;
   ecc_image_preprocessor_function ecc_image_preprocessor_;
 
   cv::Mat2f current_remap_;

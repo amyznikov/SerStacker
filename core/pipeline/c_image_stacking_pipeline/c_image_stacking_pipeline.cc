@@ -542,7 +542,7 @@ bool c_image_stacking_pipeline::run_pipeline()
 
   const bool do_jovian_derotation =
       stack_options_.registration.enabled &&
-      stack_options_.registration.jovian_derotation.enabled;
+      stack_options_.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian;
 
   if ( do_jovian_derotation ) {
     if( !(fOk = run_jovian_derotation()) ) {
@@ -637,7 +637,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
   std::vector<int> reference_frames;
 
-  if ( !stack_options_.registration.jovian_derotation.derotate_all_frames ) {
+  if ( !stack_options_.registration.planetary_disk_derotation.jovian_derotation.derotate_all_frames ) {
 
     const int master_source_index =
         input_sequence_->indexof(master_frame_options_.master_frame_selection.master_fiename);
@@ -712,7 +712,7 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
 
   const int context_size =
       std::min(input_sequence_->size(),
-          std::max(stack_options_.registration.jovian_derotation.max_context_size, 1));
+          std::max(stack_options_.registration.planetary_disk_derotation.jovian_derotation.max_context_size, 1));
 
   const bool save_raw_bayer_image =
       stack_accumulation_options_.accumulation_method ==
@@ -3018,17 +3018,17 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       if( (subsubsection = get_group(subsection, save, "jovian_derotation")) ) {
 
         struct c_jovian_derotation_options & jovian_derotation =
-            opts.registration.jovian_derotation;
+            opts.registration.planetary_disk_derotation.jovian_derotation;
 
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, min_rotation);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_rotation);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_pyramid_level);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, num_orientations);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, pca_blur);
+        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, stdev_factor);
+        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pca_blur);
         //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
       }
 
@@ -3291,10 +3291,17 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
           PIPELINE_CTL_ECC_REGISTRATION_OPTIONS(ctrls, stack_options_.registration.ecc, _this->stack_options_.registration.ecc.enabled);
         PIPELINE_CTL_END_GROUP(ctrls);
 
-        PIPELINE_CTL_GROUP(ctrls, "Jovian Derotation Options", "");
-        PIPELINE_CTL(ctrls, stack_options_.registration.jovian_derotation.enabled, "Enable Jovian Derotation", "");
-          PIPELINE_CTL_JOVIAN_DEROTATION_OPTIONS(ctrls, stack_options_.registration.jovian_derotation, _this->stack_options_.registration.jovian_derotation.enabled);
+//////////
+        PIPELINE_CTL_GROUP(ctrls, "Planetary Disk Derotation", "");
+
+          PIPELINE_CTL(ctrls, stack_options_.registration.planetary_disk_derotation.derotation_type, "Planetary Disk Derotation Type", "");
+
+          PIPELINE_CTL_GROUP(ctrls, "Jovian Derotation Options", "");
+          PIPELINE_CTL_JOVIAN_DEROTATION_OPTIONS(ctrls, stack_options_.registration.planetary_disk_derotation.jovian_derotation, (_this->stack_options_.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian));
+          PIPELINE_CTL_END_GROUP(ctrls);
+
         PIPELINE_CTL_END_GROUP(ctrls);
+//////////
 
         PIPELINE_CTL_GROUP(ctrls, "ECC Flow Registration Options", "");
           PIPELINE_CTL(ctrls, stack_options_.registration.eccflow.enabled, "Enable ECC Flow Registration", "");

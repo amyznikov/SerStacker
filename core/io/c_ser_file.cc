@@ -405,7 +405,7 @@ bool c_ser_reader::open(const std::string & filename)
     }
   }
 
-  CF_DEBUG("timestamps_.size=%zu", timestamps_.size());
+  //  CF_DEBUG("timestamps_.size=%zu", timestamps_.size());
 
   return true;
 }

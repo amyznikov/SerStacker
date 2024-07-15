@@ -11,7 +11,8 @@
 
 #include <opencv2/opencv.hpp>
 
-struct c_jovian_ellipse_detector_options {
+struct c_jovian_ellipse_detector_options
+{
   double stdev_factor = 0.5;
   double pca_blur = 3;
   cv::Point2f offset;

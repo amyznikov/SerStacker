@@ -7,6 +7,7 @@
 
 #include <core/proc/ellipsoid.h>
 #include <core/proc/planetary-disk-detection.h>
+#include <core/proc/pose.h>
 #include <core/debug.h>
 
 /**
@@ -365,3 +366,92 @@ bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect &
 
   return true;
 }
+
+
+bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
+    const cv::Vec3d & axes, const cv::Vec3d & orientation, double zrotation,
+    cv::Mat2f & rmap,
+    cv::Mat1b & mask)
+{
+  rmap.create(size);
+  rmap.setTo(cv::Vec2f::all(0));
+
+  cv::Mat1f counter(size, 0.0f);
+
+  const double & A =
+      axes(0);
+
+  const double & B =
+      axes(1);
+
+  const double & C =
+      axes(2);
+
+  const double lon_step =
+      0.5 / std::max(A, B);
+
+  const double lat_step =
+      0.5 / C;
+
+  const cv::Matx33d R1 =
+      build_rotation2(orientation);
+
+  const cv::Matx33d R2 =
+      build_rotation2(orientation(0), orientation(1), orientation(2) + zrotation);
+
+  cv::Point2d pos1, pos2;
+
+  for( double lat = -CV_PI / 2; lat <= CV_PI / 2; lat += lat_step ) {
+
+    for( double lon = 0; lon < 2 * CV_PI; lon += lon_step ) {
+
+      const cv::Vec3d cart3d_pos =
+          ellipsoid_to_cart3d(lat, lon, A, B, C);
+
+      if( !ellipsoid_to_cart2d(cart3d_pos, A, B, C, R2, center, &pos2) ) {
+        continue;
+      }
+
+      const int ix2 =
+          cvRound(pos2.x);
+
+      const int iy2 =
+          cvRound(pos2.y);
+
+      if( ix2 < 0 || ix2 >= size.width || iy2 < 0 || iy2 >= size.height ) {
+        continue;
+      }
+
+      if( !ellipsoid_to_cart2d(cart3d_pos, A, B, C, R1, center, &pos1) ) {
+        continue;
+      }
+
+      if( pos1.x < 0 || pos1.x >= size.width || pos1.y < 0 || pos1.y >= size.height ) {
+        continue;
+      }
+
+      rmap[iy2][ix2][0] += pos1.x;
+      rmap[iy2][ix2][1] += pos1.y;
+      ++counter[iy2][ix2];
+    }
+
+  }
+
+  for ( int y = 0; y < size.height; ++y ) {
+    for ( int x = 0; x < size.width; ++x ) {
+      if ( !counter[y][x] ) {
+        rmap[y][x][0] = -1;
+        rmap[y][x][1] = -1;
+      }
+      else {
+        rmap[y][x][0] /= counter[y][x];
+        rmap[y][x][1] /= counter[y][x];
+      }
+    }
+  }
+
+  cv::compare(counter, 0, mask, cv::CMP_GT);
+
+  return true;
+}
+

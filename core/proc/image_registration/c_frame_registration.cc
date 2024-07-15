@@ -25,8 +25,23 @@ const c_enum_member * members_of<master_frame_selection_method>()
       {master_frame_best_of_100_in_middle, "best_of_100_in_middle", },
       {master_frame_specific_index },
   };
+
   return members;
 }
+
+template<>
+const c_enum_member * members_of<planetary_disk_derotation_type>()
+{
+  static const c_enum_member members[] = {
+      {planetary_disk_derotation_disabled, "disable", },
+      {planetary_disk_derotation_jovian, "jovian", },
+      {planetary_disk_derotation_saturn, "saturn", },
+      {planetary_disk_derotation_disabled},
+  };
+
+  return members;
+}
+
 
 namespace {
 
@@ -279,6 +294,15 @@ c_jovian_derotation & c_frame_registration::jovian_derotation()
   return this->jovian_derotation_;
 }
 
+const c_saturn_derotation & c_frame_registration::saturn_derotation() const
+{
+  return this->saturn_derotation_;
+}
+
+c_saturn_derotation & c_frame_registration::saturn_derotation()
+{
+  return this->saturn_derotation_;
+}
 
 void c_frame_registration::set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func)
 {
@@ -417,23 +441,45 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   }
 
 
-  if( options_.jovian_derotation.enabled ) {
+  switch (options_.planetary_disk_derotation.derotation_type) {
+    case planetary_disk_derotation_jovian: {
 
-    jovian_derotation_.set_jovian_detector_options(options_.jovian_derotation.ellipse);
+      const c_jovian_derotation_options & opts =
+          options_.planetary_disk_derotation.jovian_derotation;
 
-    jovian_derotation_.set_min_rotation(options_.jovian_derotation.min_rotation);
-    jovian_derotation_.set_max_rotation(options_.jovian_derotation.max_rotation);
-    jovian_derotation_.set_max_pyramid_level(options_.jovian_derotation.max_pyramid_level);
-    jovian_derotation_.set_num_orientations(options_.jovian_derotation.num_orientations);
+      jovian_derotation_.set_jovian_detector_options(opts.detector_options);
+      jovian_derotation_.set_min_rotation(opts.min_rotation);
+      jovian_derotation_.set_max_rotation(opts.max_rotation);
+      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
+      jovian_derotation_.set_num_orientations(opts.num_orientations);
 
-    jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-        ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
+      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
 
-    if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-      CF_ERROR("jovian_derotation_.setup_reference_image() fails");
-      return false;
+      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
+        return false;
+      }
+
+      break;
     }
+
+
+    case planetary_disk_derotation_saturn : {
+
+      const c_saturn_derotation_options & opts =
+          options_.planetary_disk_derotation.saturn_derotation;
+
+      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
+
+      break;
+    }
+
+    case planetary_disk_derotation_disabled:
+    default:
+      break;
   }
+
 
   return true;
 }
@@ -674,7 +720,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   ///////////////
 
-  if( options_.jovian_derotation.enabled ) {
+  if( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian ) {
 
     jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
         ssprintf("%s/derotation", debug_path_.c_str()));
@@ -703,7 +749,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    // xxxxxxxxx
 
     const cv::Mat2f & derotation_remap =
         jovian_derotation_.current_derotation_remap();
@@ -726,8 +771,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
               debug_path_.c_str()));
     }
 
-    // xxxxxxxxx
   }
+  else if( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_saturn ) {
+
+    CF_ERROR("planetary_disk_derotation_saturn still not implemented");
+  }
+
+
   ///////////////
 
   if( options_.eccflow.enabled ) {
@@ -1181,7 +1231,7 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
 
-    if ( options_.jovian_derotation.enabled ) {
+    if ( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian ) {
 
       // size must be referece_image.size()
       // const cv::Mat orig_mask =
@@ -1219,6 +1269,10 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
 
       ++iitest;
     }
+    else if ( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_saturn ) {
+      CF_ERROR("planetary_disk_derotation_saturn still not implemented");
+    }
+
   }
 
   return true;

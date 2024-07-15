@@ -1326,8 +1326,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<double>("stdev_factor:",
           "",
           [this](double value) {
-            if ( options_ && options_->ellipse.stdev_factor != value ) {
-              options_->ellipse.stdev_factor = value;
+            if ( options_ && options_->detector_options.stdev_factor != value ) {
+              options_->detector_options.stdev_factor = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1336,8 +1336,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<double>("pca_blur:",
           "",
           [this](double value) {
-            if ( options_ && options_->ellipse.pca_blur != value ) {
-              options_->ellipse.pca_blur = value;
+            if ( options_ && options_->detector_options.pca_blur != value ) {
+              options_->detector_options.pca_blur = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1346,8 +1346,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<cv::Point2f>("ellipse offset:",
           "",
           [this](const cv::Point2f & value) {
-            if ( options_ && options_->ellipse.offset != value ) {
-              options_->ellipse.offset = value;
+            if ( options_ && options_->detector_options.offset != value ) {
+              options_->detector_options.offset = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1421,9 +1421,9 @@ void QJovianDerotationOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    jovian_detector_stdev_factor_ctl->setValue(options_->ellipse.stdev_factor);
-    jovian_detector_pca_blur_ctl->setValue(options_->ellipse.pca_blur);
-    jovian_detector_ellipse_offset_ctl->setValue(options_->ellipse.offset);
+    jovian_detector_stdev_factor_ctl->setValue(options_->detector_options.stdev_factor);
+    jovian_detector_pca_blur_ctl->setValue(options_->detector_options.pca_blur);
+    jovian_detector_ellipse_offset_ctl->setValue(options_->detector_options.offset);
     max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
     min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
     max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);

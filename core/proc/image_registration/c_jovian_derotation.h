@@ -19,7 +19,11 @@
 class c_jovian_derotation
 {
 public:
-  bool setup_jovian_ellipse(cv::InputArray reference_image,
+
+  void set_detector_options(const c_jovian_ellipse_detector_options & v);
+  const c_jovian_ellipse_detector_options & detector_options() const;
+
+  bool detect_jovian_ellipse(cv::InputArray reference_image,
       cv::InputArray reference_mask = cv::noArray());
 
   bool setup_reference_image(cv::InputArray reference_image,
@@ -28,8 +32,6 @@ public:
   bool compute(cv::InputArray input_image,
       cv::InputArray input_mask = cv::noArray());
 
-  void set_jovian_detector_options(const c_jovian_ellipse_detector_options & v);
-  const c_jovian_ellipse_detector_options & jovian_detector_options() const;
 
   void set_max_pyramid_level(int v);
   int max_pyramid_level() const;
@@ -45,8 +47,8 @@ public:
   void set_num_orientations(int v);
   int num_orientations() const;
 
-  const cv::RotatedRect & jovian_ellipse() const;
-  const cv::Mat1b & jovian_ellipse_mask() const ;
+  const cv::RotatedRect & planetary_disk_ellipse() const;
+  const cv::Mat1b & planetary_disk_ellipse_mask() const ;
 
   const cv::Mat2f & current_derotation_remap() const;
   const cv::Mat1f & current_wmask() const;

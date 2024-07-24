@@ -268,7 +268,7 @@ protected:
 
   bool run_image_stacking();
 
-  bool run_jovian_derotation();
+  bool run_planetary_disk_derotation();
 
   bool create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask);
 

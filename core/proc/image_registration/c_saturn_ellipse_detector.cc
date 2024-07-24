@@ -20,10 +20,6 @@ bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask
 
   bool saturn_detected = false;
 
-  double A, B, C, ring_radius;
-  cv::Point2f center;
-  cv::Vec3d rotation;
-
   saturn_detected =
       detect_saturn(image, options_.se_close_radius,
           saturn_bounding_box_, saturn_mask_);
@@ -33,12 +29,29 @@ bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask
     return false;
   }
 
+  double & A = ellipsoid_size_(0);
+  double & B = ellipsoid_size_(1);
+  double & C = ellipsoid_size_(2);
+
   C = saturn_bounding_box_.size.height / 2;
-  A = B = C / radius_ratio;
-  ring_radius = saturn_bounding_box_.size.width / 2;
-  center = saturn_bounding_box_.center;
-  //rotation = cv::Vec3d(orientation_(0), saturn_bounding_box_.angle, orientation_(2)) * CV_PI / 180; //  orientation() * CV_PI / 180;
+  A = B = (C / radius_ratio);
+  ring_radius_ = saturn_bounding_box_.size.width / 2;
+  center_ = saturn_bounding_box_.center;
+  ellipsoid_rotation_ = cv::Vec3d(options_.xrotation, saturn_bounding_box_.angle, 0) * CV_PI / 180;
 
+  const cv::Matx33d R =
+      build_rotation2(ellipsoid_rotation_);
 
-  return false;
+  planetary_disk_ellipse_ =
+      ellipsoid_bbox(center_, A, B, C, R.t());
+
+  planetary_disk_ellipse_mask_.create(image.size());
+  planetary_disk_ellipse_mask_.setTo(0);
+
+  draw_ellipse(planetary_disk_ellipse_mask_,
+      planetary_disk_ellipse_,
+      cv::Scalar::all(255), -1,
+      cv::LINE_8);
+
+  return true;
 }

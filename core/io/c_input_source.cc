@@ -13,6 +13,7 @@
 #include "image/c_regular_image_input_source.h"
 #include "image/c_ser_input_source.h"
 #include "hdl/c_hdl_input_source.h"
+#include "sply/c_sply_input_source.h"
 #include "text/c_textfile_input_source.h"
 #include "ply/c_ply_input_source.h"
 #include <core/ssprintf.h>
@@ -96,6 +97,12 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
 #if have_hdl_input_source
     if( contains(c_hdl_input_source::suffixes(), suffix) && (obj = c_hdl_input_source::create(filename)) ) {
+      return obj;
+    }
+#endif
+
+#if have_sply_input_source
+    if( contains(c_sply_input_source::suffixes(), suffix) && (obj = c_sply_input_source::create(filename)) ) {
       return obj;
     }
 #endif

@@ -540,13 +540,13 @@ bool c_image_stacking_pipeline::run_pipeline()
   //      output_path_.c_str(),
   //      cname()));
 
-  const bool do_jovian_derotation =
+  const bool do_planetary_disk_derotation =
       stack_options_.registration.enabled &&
-      stack_options_.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian;
+      stack_options_.registration.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled;
 
-  if ( do_jovian_derotation ) {
-    if( !(fOk = run_jovian_derotation()) ) {
-      CF_ERROR("run_jovian_derotation() fails");
+  if ( do_planetary_disk_derotation ) {
+    if( !(fOk = run_planetary_disk_derotation()) ) {
+      CF_ERROR("run_planetary_disk_derotation() fails");
     }
   }
   else {
@@ -558,7 +558,7 @@ bool c_image_stacking_pipeline::run_pipeline()
   return fOk;
 }
 
-bool c_image_stacking_pipeline::run_jovian_derotation()
+bool c_image_stacking_pipeline::run_planetary_disk_derotation()
 {
   CF_DEBUG("Starting '%s: %s' ...",
       csequence_name(), cname());
@@ -616,18 +616,47 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
   }
 
 
-  c_jovian_derotation & jovian_derotation =
-      frame_registration_->jovian_derotation();
+  switch (stack_options_.registration.planetary_disk_derotation.derotation_type) {
+    case planetary_disk_derotation_jovian: {
 
-  if( output_options_.debug_frame_registration ) {
-    jovian_derotation.set_debug_path(ssprintf("%s/debug/jovian_derotation",
-        output_path_.c_str()));
+      c_jovian_derotation & jovian_derotation =
+          frame_registration_->jovian_derotation();
+
+      if( output_options_.debug_frame_registration ) {
+        jovian_derotation.set_debug_path(ssprintf("%s/debug/jovian_derotation",
+            output_path_.c_str()));
+      }
+
+      if( !jovian_derotation.detect_jovian_ellipse(master_frame, master_mask) ) {
+        CF_FATAL("jovian_derotation.setup_jovian_ellipse() fails");
+        return false;
+      }
+
+      break;
+    }
+
+    case planetary_disk_derotation_saturn: {
+
+      c_saturn_derotation & saturn_derotation =
+          frame_registration_->saturn_derotation();
+
+      saturn_derotation.set_detector_options(stack_options_.registration.planetary_disk_derotation.saturn_derotation.detector_options);
+
+      if( !saturn_derotation.detect_saturn(master_frame, master_mask) ) {
+        CF_FATAL("saturn_derotation.detect_saturn() fails");
+        return false;
+      }
+
+      break;
+    }
+
+    default:
+      CF_ERROR("Invalid derotation_type=%d requested", stack_options_.registration.planetary_disk_derotation.derotation_type);
+      return false;
   }
 
-  if( !jovian_derotation.setup_jovian_ellipse(master_frame, master_mask) ) {
-    CF_FATAL("jovian_derotation.setup_jovian_ellipse() fails");
-    return false;
-  }
+
+
 
   if( !input_sequence_->is_open() && !input_sequence_->open() ) {
     CF_ERROR("input_sequence_->open() fails");
@@ -814,7 +843,19 @@ bool c_image_stacking_pipeline::run_jovian_derotation()
       cv::Mat tmp;
 
       cv::cvtColor(reference_frame, tmp, cv::COLOR_GRAY2BGR);
-      drawRotatedRectange(tmp, jovian_derotation.jovian_ellipse(), CV_RGB(0, 1, 0));
+
+      switch (stack_options_.registration.planetary_disk_derotation.derotation_type) {
+        case planetary_disk_derotation_jovian: {
+          drawRotatedRectange(tmp, frame_registration_->jovian_derotation().planetary_disk_ellipse(), CV_RGB(0, 1, 0));
+          break;
+        }
+        case planetary_disk_derotation_saturn: {
+          CF_DEBUG("FIXME: planetary_disk_derotation_saturn still not imp;emented");
+          drawRotatedRectange(tmp, frame_registration_->saturn_derotation().planetary_disk_ellipse(), CV_RGB(0, 1, 0));
+          break;
+        }
+      }
+
 
       if( !save_image(tmp, reference_mask, filename) ) {
         CF_ERROR("save_image(%s) fails", filename.c_str());
@@ -3029,6 +3070,23 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, stdev_factor);
         SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pca_blur);
+        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
+      }
+
+      if( (subsubsection = get_group(subsection, save, "saturn_derotation")) ) {
+
+        struct c_saturn_derotation_options & saturn_derotation =
+            opts.registration.planetary_disk_derotation.saturn_derotation;
+
+        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, min_rotation);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_rotation);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_pyramid_level);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, num_orientations);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, derotate_all_frames);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_context_size);
+        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, stdev_factor);
+        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, se_close_radius);
         //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
       }
 

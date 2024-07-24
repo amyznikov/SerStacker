@@ -11,5 +11,6 @@
 	<file>icons/textfile.png</file>
 	<file>icons/plyfile.png</file>
 	<file>icons/lidar1.png</file>
+	<file>icons/sply.png</file>
 </qresource>
 </RCC>

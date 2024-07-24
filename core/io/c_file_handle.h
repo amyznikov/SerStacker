@@ -50,6 +50,18 @@ public:
   ssize_t whence();
   bool flush();
 
+  template<class T>
+  bool write(const T & data)
+  {
+    return write(&data, sizeof(data)) == sizeof(data);
+  }
+  template<class T>
+  bool read(T * data)
+  {
+    return read(data, sizeof(*data)) == sizeof(*data);
+  }
+
+
 protected:
   FILE_DESCRIPTOR fd_ = INVALID_FILE_DESCRIPTOR;
 };

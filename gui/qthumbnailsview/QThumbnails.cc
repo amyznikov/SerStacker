@@ -17,6 +17,7 @@
 #include <core/io/image/c_ffmpeg_input_source.h>
 #include <core/io/image/c_fits_input_source.h>
 #include <core/io/hdl/c_hdl_input_source.h>
+#include <core/io/sply/c_sply_input_source.h>
 #include <core/io/text/c_textfile_input_source.h>
 #include <core/io/ply/c_ply_input_source.h>
 
@@ -29,6 +30,7 @@
 #include <core/debug.h>
 
 #define HDL_image   ":/qthumbnailsview/icons/lidar1.png"
+#define SPLY_image   ":/qthumbnailsview/icons/sply.png"
 
 QSize compute_thumbnail_size(QSize srcSize, int max_thumb_size)
 {
@@ -103,6 +105,12 @@ QStringList getSupportedThumbnailsExtensions()
 
 #if have_hdl_input_source
   for ( const std::string & s : c_hdl_input_source::suffixes() ) {
+    suffixes.append(s.c_str());
+  }
+#endif
+
+#if have_sply_input_source
+  for ( const std::string & s : c_sply_input_source::suffixes() ) {
     suffixes.append(s.c_str());
   }
 #endif
@@ -485,6 +493,12 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 #if have_hdl_input_source
   if( match_suffix(suffix, c_hdl_input_source::suffixes()) ) {
     return QImage(HDL_image);
+  }
+#endif
+
+#if have_sply_input_source
+  if( match_suffix(suffix, c_sply_input_source::suffixes()) ) {
+    return QImage(SPLY_image);
   }
 #endif
 

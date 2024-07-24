@@ -13,6 +13,7 @@
 
 struct c_saturn_ellipse_detector_options
 {
+  double xrotation = 90; // planet inclination to the ray of view, [deg]
   double stdev_factor = 0.5;
   int se_close_radius = 3;
 };
@@ -20,6 +21,8 @@ struct c_saturn_ellipse_detector_options
 class c_saturn_ellipse_detector
 {
 public:
+
+  bool detect(cv::InputArray _image, cv::InputArray mask = cv::noArray());
 
   c_saturn_ellipse_detector_options & options()
   {
@@ -41,17 +44,42 @@ public:
     return saturn_bounding_box_;
   }
 
-  //const cv::Mat & gray_image() const;
+  const cv::RotatedRect & planetary_disk_ellipse() const
+  {
+    return planetary_disk_ellipse_;
+  }
 
+  const cv::Mat1b & planetary_disk_ellipse_mask() const
+  {
+    return planetary_disk_ellipse_mask_;
+  }
 
-  bool detect(cv::InputArray _image,
-      cv::InputArray mask = cv::noArray());
+  const cv::Point2f & center() const
+  {
+    return center_;
+  }
+
+  const cv::Vec3d & ellipsoid_size() const
+  {
+    return ellipsoid_size_;
+  }
+
+  const cv::Vec3d & ellipsoid_rotation() const
+  {
+    return ellipsoid_rotation_;
+  }
 
 
 protected:
   c_saturn_ellipse_detector_options options_;
   cv::Mat1b saturn_mask_;
   cv::RotatedRect saturn_bounding_box_;
+  cv::RotatedRect planetary_disk_ellipse_;
+  cv::Mat1b planetary_disk_ellipse_mask_;
+  double ring_radius_ = 0;
+  cv::Point2f center_;
+  cv::Vec3d ellipsoid_rotation_;
+  cv::Vec3d ellipsoid_size_;
 };
 
 #endif /* __c_saturn_ellipse_detector_h__ */

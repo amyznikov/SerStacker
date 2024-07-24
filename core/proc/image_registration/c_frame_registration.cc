@@ -447,7 +447,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       const c_jovian_derotation_options & opts =
           options_.planetary_disk_derotation.jovian_derotation;
 
-      jovian_derotation_.set_jovian_detector_options(opts.detector_options);
+      jovian_derotation_.set_detector_options(opts.detector_options);
       jovian_derotation_.set_min_rotation(opts.min_rotation);
       jovian_derotation_.set_max_rotation(opts.max_rotation);
       jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
@@ -470,7 +470,14 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       const c_saturn_derotation_options & opts =
           options_.planetary_disk_derotation.saturn_derotation;
 
-      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
+//      saturn_derotation_.set_detector_options(opts.detector_options);
+//
+//      if( !saturn_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+//        CF_ERROR("saturn_derotation_.setup_reference_image() fails");
+//        return false;
+//      }
+//
+//      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
 
       break;
     }
@@ -720,10 +727,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   ///////////////
 
-  if( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian ) {
-
-    jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-        ssprintf("%s/derotation", debug_path_.c_str()));
+  if( options_.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
 
     cv::Mat tmp_image, tmp_mask;
 
@@ -744,17 +748,39 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     cv::compare(tmp_mask, 250, tmp_mask,
         cv::CMP_GE);
 
-    if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
-      CF_ERROR("jovian_derotation_.compute() fails");
-      return false;
+    cv::Mat2f derotation_remap;
+    cv::Mat1f current_wmask;
+
+    switch (options_.planetary_disk_derotation.derotation_type) {
+      case planetary_disk_derotation_jovian:
+
+        jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+            ssprintf("%s/derotation", debug_path_.c_str()));
+
+        if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
+          CF_ERROR("jovian_derotation_.compute() fails");
+          return false;
+        }
+
+        derotation_remap =
+            jovian_derotation_.current_derotation_remap();
+
+        current_wmask =
+            jovian_derotation_.current_wmask();
+
+        break;
+
+      case planetary_disk_derotation_saturn:
+        derotation_remap =
+            saturn_derotation_.current_derotation_remap();
+
+        current_wmask =
+            saturn_derotation_.current_wmask();
+
+        break;
+      default:
+        break;
     }
-
-
-    const cv::Mat2f & derotation_remap =
-        jovian_derotation_.current_derotation_remap();
-
-    const cv::Mat1f & current_wmask =
-        jovian_derotation_.current_wmask();
 
     for( int y = 0; y < current_remap_.rows; ++y ) {
       for( int x = 0; x < current_remap_.cols; ++x ) {
@@ -772,10 +798,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
   }
-  else if( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_saturn ) {
 
-    CF_ERROR("planetary_disk_derotation_saturn still not implemented");
-  }
+
 
 
   ///////////////
@@ -1231,12 +1255,9 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
 
-    if ( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian ) {
+    if ( options_.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
 
       // size must be referece_image.size()
-      // const cv::Mat orig_mask =
-      //    dst_mask.getMat();
-
       cv::Mat new_mask;
 
       if ( out_mask.depth() == CV_32F ) {
@@ -1246,11 +1267,17 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
         out_mask.convertTo(new_mask, CV_32F, 1./255);
       }
 
-      const cv::Mat1f & current_wmask =
-          jovian_derotation_.current_wmask();
+      switch (options_.planetary_disk_derotation.derotation_type) {
+        case planetary_disk_derotation_jovian:
+          jovian_derotation_.current_wmask().copyTo(new_mask,
+              jovian_derotation_.planetary_disk_ellipse_mask());
+          break;
+        case planetary_disk_derotation_saturn:
+          saturn_derotation_.current_wmask().copyTo(new_mask,
+              saturn_derotation_.planetary_disk_ellipse_mask());
+          break;
+      }
 
-      current_wmask.copyTo(new_mask,
-          jovian_derotation_.jovian_ellipse_mask());
 
       static int iitest = 0;
 
@@ -1269,9 +1296,7 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
 
       ++iitest;
     }
-    else if ( options_.planetary_disk_derotation.derotation_type == planetary_disk_derotation_saturn ) {
-      CF_ERROR("planetary_disk_derotation_saturn still not implemented");
-    }
+
 
   }
 

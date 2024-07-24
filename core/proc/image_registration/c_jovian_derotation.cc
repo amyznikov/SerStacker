@@ -189,12 +189,12 @@ static void drawRotatedRectange(cv::InputOutputArray image, const cv::RotatedRec
   cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
 }
 
-void c_jovian_derotation::set_jovian_detector_options(const c_jovian_ellipse_detector_options & v)
+void c_jovian_derotation::set_detector_options(const c_jovian_ellipse_detector_options & v)
 {
   jovian_detector_.set_options(v);
 }
 
-const c_jovian_ellipse_detector_options & c_jovian_derotation::jovian_detector_options() const
+const c_jovian_ellipse_detector_options & c_jovian_derotation::detector_options() const
 {
   return jovian_detector_.options();
 }
@@ -241,12 +241,12 @@ int c_jovian_derotation::num_orientations() const
   return num_orientations_;
 }
 
-const cv::RotatedRect& c_jovian_derotation::jovian_ellipse() const
+const cv::RotatedRect& c_jovian_derotation::planetary_disk_ellipse() const
 {
   return jovian_ellipse_;
 }
 
-const cv::Mat1b & c_jovian_derotation::jovian_ellipse_mask() const
+const cv::Mat1b & c_jovian_derotation::planetary_disk_ellipse_mask() const
 {
   return jovian_ellipse_mask_;
 }
@@ -317,7 +317,7 @@ int c_jovian_derotation::estimate_max_pyramid_level(const cv::RotatedRect & elli
 }
 
 
-bool c_jovian_derotation::setup_jovian_ellipse(cv::InputArray reference_image, cv::InputArray reference_mask)
+bool c_jovian_derotation::detect_jovian_ellipse(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
 

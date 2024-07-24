@@ -16,7 +16,44 @@
 class c_saturn_derotation
 {
 public:
-  c_saturn_derotation();
+  void set_detector_options(const c_saturn_ellipse_detector_options & v);
+  const c_saturn_ellipse_detector_options & detector_options() const;
+
+  bool detect_saturn(cv::InputArray reference_image,
+      cv::InputArray reference_mask = cv::noArray());
+
+  bool compute(double zrotation);
+
+  const cv::RotatedRect & planetary_disk_ellipse() const
+  {
+    return saturn_detector_.planetary_disk_ellipse();
+  }
+
+  const cv::Mat & planetary_disk_ellipse_mask() const
+  {
+    return saturn_detector_.planetary_disk_ellipse_mask();
+  }
+
+  const cv::Mat2f & current_derotation_remap() const
+  {
+    return current_remap_;
+  }
+
+  const cv::Mat1f & current_wmask() const
+  {
+    return current_wmask_;
+  }
+
+
+protected:
+  c_saturn_ellipse_detector saturn_detector_;
+  cv::Size reference_image_size_;
+//  cv::Mat reference_image_;
+//  cv::Mat reference_mask_;
+
+  cv::Mat2f current_remap_;
+  cv::Mat1f current_wmask_;
+
 };
 
 #endif /* __c_saturn_derotation_h__ */

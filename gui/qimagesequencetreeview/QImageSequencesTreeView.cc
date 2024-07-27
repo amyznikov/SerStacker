@@ -1704,6 +1704,38 @@ void QImageSequencesTree::onCustomContextMenuRequested(const QPoint & pos)
     }
 
   }
+  else if( contextItems.size() > 1 ) {
+
+    menu.addAction("Copy Item Names",
+        [this, &contextItems]() {
+
+          QClipboard * clipboard =
+              QApplication::clipboard();
+
+          if ( !clipboard ) {
+            CF_ERROR("ERROR: No clipboard available");
+          }
+          else {
+
+            QString text;
+
+            for ( const QTreeWidgetItem *  item : contextItems ) {
+              text += item->text(0);
+              text += '\n';
+            }
+
+            clipboard->setText(text);
+          }
+        });
+
+    menu.addAction("Toggle Check State",
+        [this, &contextItems]() {
+            for ( QTreeWidgetItem *  item : contextItems ) {
+              const Qt::CheckState state = item->checkState(0);
+              item->setCheckState(0, state == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+            }
+        });
+  }
 
   if( contextItems.size() > 0 ) {
     menu.addAction(deleteItemAction);

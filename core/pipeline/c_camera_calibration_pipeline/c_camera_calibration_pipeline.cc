@@ -204,10 +204,13 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
       SERIALIZE_OPTION(subsection, save, output_options_, output_rectified_video_options);
     }
 
-//    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
-//    if ( (subsection = SERIALIZE_GROUP(section, save, "output_chessboard_video_options")) ) {
-//      SERIALIZE_OPTION(subsection, save, output_options_, output_progress_video_options);
-//    }
+    SERIALIZE_OPTION(section, save, output_options_, save_debug_video);
+    if ( (subsection = SERIALIZE_GROUP(section, save, "output_debug_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, output_options_, output_debug_video_options);
+    }
+
+    SERIALIZE_OPTION(section, save, output_options_, save_coverage_frame);
+    SERIALIZE_OPTION(section, save, output_options_, output_coverage_frame_filename);
 
   }
 
@@ -270,6 +273,9 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipel
       PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
       PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "intrinsics_filename", "");
 
+      PIPELINE_CTL(ctrls, output_options_.save_coverage_frame, "save_coverage_frame", "");
+      PIPELINE_CTLC(ctrls, output_options_.output_coverage_frame_filename, "coverage_frame_filename", "", _this->output_options_.save_coverage_frame);
+
       PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
         PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
         PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_chessboard_video_options,
@@ -277,16 +283,19 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipel
       PIPELINE_CTL_END_GROUP(ctrls);
 
       PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_rectified_frames", "");
+        PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
         PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_rectified_video_options,
             _this->output_options_.save_rectified_frames);
       PIPELINE_CTL_END_GROUP(ctrls);
 
-//      PIPELINE_CTL_GROUP(ctrls, "Save Progress Frames", "");
-//        PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-//        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_progress_video_options,
-//            _this->output_options_.save_progress_video);
-//      PIPELINE_CTL_END_GROUP(ctrls);
+
+      PIPELINE_CTL_GROUP(ctrls, "Save Debug video", "");
+        PIPELINE_CTL(ctrls, output_options_.save_debug_video, "save_debug_video", "");
+        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.output_debug_video_options, _this->output_options_.save_debug_video);
+      PIPELINE_CTL_END_GROUP(ctrls);
+
+
+
     PIPELINE_CTL_END_GROUP(ctrls);
   }
 
@@ -1188,9 +1197,39 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
 
 bool c_camera_calibration_pipeline::write_output_videos()
 {
-  if( !output_options_.save_rectified_frames ) {
+  if ( output_options_.save_coverage_frame ) {
+
+    std::string coverage_frame_filename =
+        output_options_.output_coverage_frame_filename.empty() ? "coverage.png" :
+            output_options_.output_coverage_frame_filename;
+
+    if ( !is_absolute_path(coverage_frame_filename) ) {
+      coverage_frame_filename =
+          ssprintf("%s/%s", output_path_.c_str(),
+              coverage_frame_filename.c_str());
+    }
+
+
+    cv::Mat3b coverage_image(current_intrinsics_.image_size, cv::Vec3b(0, 0, 0));
+
+    for( const std::vector<cv::Point2f> &corners : image_points_ ) {
+      for( const cv::Point2f &corner : corners ) {
+
+        cv::rectangle(coverage_image, cv::Rect(corner.x - 1, corner.y - 1, 3, 3),
+            CV_RGB(0, 255, 0), -1,
+            cv::LINE_8);
+      }
+    }
+
+    if ( !save_image(coverage_image, coverage_frame_filename) ) {
+      CF_ERROR("ERROR: save_image('%s') fails", coverage_frame_filename.c_str());
+    }
+  }
+
+  if( !output_options_.save_rectified_frames && !!output_options_.save_debug_video ) {
     return true;
   }
+
 
   CF_DEBUG("update_undistortion_remap()...");
   update_undistortion_remap();
@@ -1209,73 +1248,139 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  c_output_frame_writer writer;
-  cv::Mat display_frame, display_mask;
+  c_output_frame_writer rectified_viddeo_writer;
+  c_output_frame_writer debug_viddeo_writer;
 
-  const c_output_frame_writer_options & opts =
-      output_options_.output_rectified_video_options;
+  if ( output_options_.save_rectified_frames ) {
 
-  std::string output_filename =
-      generate_output_filename(opts.output_filename,
-          "rectified",
-          ".avi");
+    const c_output_frame_writer_options & opts =
+        output_options_.output_rectified_video_options;
 
+    std::string output_filename =
+        generate_output_filename(opts.output_filename,
+            "rectified",
+            ".avi");
 
-  CF_DEBUG("Saving %s...", output_filename.c_str());
+    CF_DEBUG("Creating %s...", output_filename.c_str());
 
+    bool fOK =
+        rectified_viddeo_writer.open(output_filename,
+            opts.ffmpeg_opts,
+            opts.output_image_processor,
+            opts.output_pixel_depth,
+            opts.save_frame_mapping);
 
-  bool fOK =
-      writer.open(output_filename,
-          opts.ffmpeg_opts,
-          opts.output_image_processor,
-          opts.output_pixel_depth,
-          opts.save_frame_mapping);
+    if( !fOK ) {
+      CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_filename.c_str());
+      return false;
+    }
 
-  if( !fOK ) {
-    CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_filename.c_str());
   }
-  else {
 
-    total_frames_ = input_sequence_->size();
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+  if ( output_options_.save_debug_video ) {
 
-    for( on_status_update(); processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
+    const c_output_frame_writer_options & opts =
+        output_options_.output_debug_video_options;
 
-      if( !read_input_frame(input_sequence_, current_frame_, current_mask_) ) {
-        set_status_msg("read_input_frame() fails");
-        break;
-      }
+    std::string output_filename =
+        generate_output_filename(opts.output_filename,
+            "debug",
+            ".avi");
 
-      if( canceled() ) {
-        break;
-      }
+    CF_DEBUG("Creating %s...", output_filename.c_str());
 
-      cv::remap(current_frame_, display_frame,
-          current_undistortion_remap_, cv::noArray(),
-          cv::INTER_LINEAR);
+    bool fOK =
+        debug_viddeo_writer.open(output_filename,
+            opts.ffmpeg_opts,
+            opts.output_image_processor,
+            opts.output_pixel_depth,
+            opts.save_frame_mapping);
 
-        accumulated_frames_ =
-            processed_frames_;
-
-      if( canceled() ) {
-        break;
-      }
-
-      if( !writer.write(display_frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
-        CF_ERROR("ERROR: writer.write() fails. Disk full ?");
-        break;
-      }
-
-      if( canceled() ) {
-        break;
-      }
-
-      // give chance to GUI thread to call get_display_image()
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    if( !fOK ) {
+      CF_ERROR("ERROR: c_video_writer::open('%s') fails", output_filename.c_str());
+      return false;
     }
   }
 
+
+  total_frames_ = input_sequence_->size();
+  processed_frames_ = 0;
+  accumulated_frames_ = 0;
+
+  cv::Mat remapped_frame, debug_frame;
+  cv::Rect debug_roi[4];
+
+  for( on_status_update(); processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+
+    if( !read_input_frame(input_sequence_, current_frame_, current_mask_) ) {
+      set_status_msg("read_input_frame() fails");
+      break;
+    }
+
+    if( canceled() ) {
+      break;
+    }
+
+    cv::remap(current_frame_, remapped_frame,
+        current_undistortion_remap_, cv::noArray(),
+        cv::INTER_LINEAR);
+
+      accumulated_frames_ =
+          processed_frames_;
+
+    if( canceled() ) {
+      break;
+    }
+
+    if( rectified_viddeo_writer.is_open() ) {
+
+      if( !rectified_viddeo_writer.write(remapped_frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
+        CF_ERROR("ERROR: rectified_viddeo_writer.write('%s') fails. Disk full ?", rectified_viddeo_writer.filename().c_str());
+        return 1;
+      }
+
+      if( canceled() ) {
+        break;
+      }
+    }
+
+    if( debug_viddeo_writer.is_open() ) {
+
+      if ( debug_frame.empty() ) {
+
+        const cv::Size s =
+            current_frame_.size();
+
+        const cv::Size display_size(2 * s.width, 2 * s.height);
+
+
+        debug_roi[0] = cv::Rect(0, 0, s.width, s.height);
+        debug_roi[1] = cv::Rect(s.width, 0, s.width, s.height);
+        debug_roi[2] = cv::Rect(0, s.height, s.width, s.height);
+        debug_roi[3] = cv::Rect(s.width, s.height, s.width, s.height);
+
+        debug_frame.create(display_size, current_frame_.type());
+        debug_frame.setTo(cv::Scalar::all(0));
+      }
+
+      current_frame_.copyTo(debug_frame(debug_roi[0]));
+      remapped_frame.copyTo(debug_frame(debug_roi[1]));
+      remapped_frame.copyTo(debug_frame(debug_roi[2]));
+      cv::addWeighted(current_frame_, 0.5, remapped_frame, 0.5, 0, debug_frame(debug_roi[3]));
+
+      if( !debug_viddeo_writer.write(debug_frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
+        CF_ERROR("ERROR: debug_viddeo_writer.write('%s') fails. Disk full ?", debug_viddeo_writer.filename().c_str());
+        return 1;
+      }
+
+      if( canceled() ) {
+        break;
+      }
+    }
+
+    // give chance to GUI thread to call get_display_image()
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
 
   close_input_sequence();
 

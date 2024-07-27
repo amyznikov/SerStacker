@@ -41,12 +41,15 @@ struct c_camera_calibration_output_options :
 {
   bool save_chessboard_frames = false;
   bool save_rectified_frames = false;
-  // bool save_progress_video = false;
+  bool save_coverage_frame = true;
+  bool save_debug_video = false;
 
   std::string output_intrinsics_filename;
+  std::string output_coverage_frame_filename;
 
   c_output_frame_writer_options output_chessboard_video_options;
   c_output_frame_writer_options output_rectified_video_options;
+  c_output_frame_writer_options output_debug_video_options;
 };
 
 

@@ -504,6 +504,7 @@ void QDataFrameRoutineOptionsControl::setupControls()
     QLabel *label = new QLabel(this);
     label->setTextFormat(Qt::RichText);
     label->setWordWrap(true);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
     label->setText(routine_->classfactory()->tooltip.c_str());
     form->addRow(label);
   }

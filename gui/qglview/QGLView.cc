@@ -1086,7 +1086,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         else { // Rotate camera around of the Up / Right axes
 
-          if ( true ) {
+          if ( e->modifiers() & Qt::ControlModifier ) {
 
             const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
             const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
@@ -1095,7 +1095,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             double dx = delta.x();
             double dy = delta.y();
 
-            if( e->modifiers() == Qt::ControlModifier ) {
+            if( e->modifiers() & Qt::ShiftModifier ) {
               if( std::abs(dx) >= std::abs(dy) ) {
                 dy = 0;
               }
@@ -1124,14 +1124,14 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             double dx = delta.x();
             double dy = delta.y();
 
-            if( e->modifiers() == Qt::ControlModifier ) {
-              if( std::abs(dx) >= std::abs(dy) ) {
-                dy = 0;
-              }
-              else {
-                dx = 0;
-              }
-            }
+//            if( e->modifiers() == Qt::ControlModifier ) {
+//              if( std::abs(dx) >= std::abs(dy) ) {
+//                dy = 0;
+//              }
+//              else {
+//                dx = 0;
+//              }
+//            }
 
             QVector3D newForward =
                 QQuaternion::fromAxisAndAngle(-Up * dx - Right * dy, 0.2 * hypot(dx, dy))

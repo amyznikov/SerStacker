@@ -590,7 +590,7 @@ void MainWindow::setupThumbnailsView()
 void MainWindow::setupStackTreeView()
 {
   sequencesTreeViewDock =
-      addImageSequenceTreeDock(this,
+      addInputSequenceTreeDock(this,
           Qt::LeftDockWidgetArea,
           "sequencesTreeDock",
           "Sequences",
@@ -601,19 +601,19 @@ void MainWindow::setupStackTreeView()
 
   sequencesTreeView->loadSequences();
 
-  connect(sequencesTreeView, &QImageSequencesTree::currentItemChanged,
+  connect(sequencesTreeView, &QInputSequencesTree::currentItemChanged,
       this, &ThisClass::onStackTreeCurrentItemChanged);
 
-  connect(sequencesTreeView, &QImageSequencesTree::itemDoubleClicked,
+  connect(sequencesTreeView, &QInputSequencesTree::itemDoubleClicked,
       this, &ThisClass::onStackTreeItemDoubleClicked);
 
-  connect(sequencesTreeView, &QImageSequencesTree::showImageSequenceOptionsClicked,
+  connect(sequencesTreeView, &QInputSequencesTree::showImageSequenceOptionsClicked,
       this, &ThisClass::onShowImageSequenceOptions);
 
-  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceCollectionChanged,
+  connect(sequencesTreeView, &QInputSequencesTree::imageSequenceCollectionChanged,
         this, &ThisClass::saveCurrentWork );
 
-  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceSourcesChanged,
+  connect(sequencesTreeView, &QInputSequencesTree::imageSequenceSourcesChanged,
       [this](const c_image_sequence::sptr & sequence) {
         if ( pipelineOptionsView->isVisible() && pipelineOptionsView->current_sequence() == sequence ) {
           // fixme: temporary hack to force update options views
@@ -622,7 +622,7 @@ void MainWindow::setupStackTreeView()
         saveCurrentWork();
   });
 
-  connect(sequencesTreeView, &QImageSequencesTree::imageSequenceNameChanged,
+  connect(sequencesTreeView, &QInputSequencesTree::imageSequenceNameChanged,
       this, &ThisClass::saveCurrentWork);
 
 }

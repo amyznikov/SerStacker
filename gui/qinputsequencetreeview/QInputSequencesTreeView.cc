@@ -1,11 +1,12 @@
 /*
- * QStackingSequencesTree.cc
+ * QInputSequencesTreeView.cc
  *
  *  Created on: Jan 12, 2021
  *      Author: amyznikov
  */
 
-#include "QImageSequencesTreeView.h"
+#include "QInputSequencesTreeView.h"
+
 #include <gui/qpipeline/QPipelineThread.h>
 #include <gui/widgets/style.h>
 
@@ -31,18 +32,18 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QImageSequenceTreeItem::QImageSequenceTreeItem(QTreeWidget * treeview, const c_image_sequence::sptr & image_sequence) :
-    Base(treeview, (int) QImageSequenceTreeItemType)
+QInputSequenceTreeItem::QInputSequenceTreeItem(QTreeWidget * treeview, const c_image_sequence::sptr & image_sequence) :
+    Base(treeview, (int) QInputSequenceTreeItemType)
 {
   set_input_sequence(image_sequence);
 }
 
-bool QImageSequenceTreeItem::isRunnng() const
+bool QInputSequenceTreeItem::isRunnng() const
 {
   return input_sequence_ && input_sequence_->current_pipeline() && input_sequence_->current_pipeline()->is_running();
 }
 
-void QImageSequenceTreeItem::refreshInputSources()
+void QInputSequenceTreeItem::refreshInputSources()
 {
   QTreeWidgetItem *childItem;
 
@@ -58,12 +59,12 @@ void QImageSequenceTreeItem::refreshInputSources()
 
 }
 
-const c_image_sequence::sptr& QImageSequenceTreeItem::input_sequence() const
+const c_image_sequence::sptr& QInputSequenceTreeItem::input_sequence() const
 {
   return input_sequence_;
 }
 
-void QImageSequenceTreeItem::set_input_sequence(const c_image_sequence::sptr & image_sequence)
+void QInputSequenceTreeItem::set_input_sequence(const c_image_sequence::sptr & image_sequence)
 {
   if( (input_sequence_ = image_sequence) ) {
     setFlags(flags() | Qt::ItemIsEditable | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable);
@@ -110,7 +111,7 @@ void QInputSourceTreeItem::updateCheckState()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QImageSequencesTreeView::QImageSequencesTreeView(QWidget * parent) :
+QInputSequencesTreeView::QInputSequencesTreeView(QWidget * parent) :
     Base(parent)
 {
 
@@ -144,10 +145,10 @@ QImageSequencesTreeView::QImageSequencesTreeView(QWidget * parent) :
   //setEnabled(false);
 }
 
-std::string QImageSequencesTreeView::default_config_filename_ =
+std::string QInputSequencesTreeView::default_config_filename_ =
     "~/.config/SerStacker/corrent_work.cfg";
 
-void QImageSequencesTreeView::loadSequences(const std::string & cfgfilename)
+void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
 {
   c_update_controls_lock lock(this);
 
@@ -283,7 +284,7 @@ void QImageSequencesTreeView::loadSequences(const std::string & cfgfilename)
   config_filename_ = filename;
 }
 
-void QImageSequencesTreeView::saveSequences(const std::string & cfgfilename)
+void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
 {
   std::string filename;
 
@@ -327,8 +328,8 @@ void QImageSequencesTreeView::saveSequences(const std::string & cfgfilename)
 
   for( int i = 0; i < N; ++i ) {
 
-    const QImageSequenceTreeItem *item =
-        dynamic_cast<QImageSequenceTreeItem*>(Base::topLevelItem(i));
+    const QInputSequenceTreeItem *item =
+        dynamic_cast<QInputSequenceTreeItem*>(Base::topLevelItem(i));
 
     if( item ) {
 
@@ -407,13 +408,13 @@ void QImageSequencesTreeView::saveSequences(const std::string & cfgfilename)
 //  setUpdatingControls(oldValue);
 //}
 
-QImageSequenceTreeItem * QImageSequencesTreeView::addImageSequenceItem(const c_image_sequence::sptr & image_sequence)
+QInputSequenceTreeItem * QInputSequencesTreeView::addImageSequenceItem(const c_image_sequence::sptr & image_sequence)
 {
-  return new QImageSequenceTreeItem(this, image_sequence);
+  return new QInputSequenceTreeItem(this, image_sequence);
 }
 
 /* add new sequence to collection */
-QImageSequenceTreeItem * QImageSequencesTreeView::addNewImageSequence(const QString & name)
+QInputSequenceTreeItem * QInputSequencesTreeView::addNewImageSequence(const QString & name)
 {
   c_update_controls_lock lock(this);
 
@@ -440,14 +441,14 @@ QImageSequenceTreeItem * QImageSequencesTreeView::addNewImageSequence(const QStr
   return addImageSequenceItem(c_image_sequence::sptr(new c_image_sequence(cname)));
 }
 
-void QImageSequencesTreeView::updateImageSequenceName(const c_image_sequence::sptr & image_sequence)
+void QInputSequencesTreeView::updateImageSequenceName(const c_image_sequence::sptr & image_sequence)
 {
   c_update_controls_lock lock(this);
 
   for( int i = 0, n = this->topLevelItemCount(); i < n; ++i ) {
 
-    QImageSequenceTreeItem *item =
-        dynamic_cast<QImageSequenceTreeItem*>(this->topLevelItem(i));
+    QInputSequenceTreeItem *item =
+        dynamic_cast<QInputSequenceTreeItem*>(this->topLevelItem(i));
 
     if( item && item->input_sequence() == image_sequence ) {
       item->setText(0, image_sequence->name().c_str());
@@ -456,7 +457,7 @@ void QImageSequencesTreeView::updateImageSequenceName(const c_image_sequence::sp
   }
 }
 
-void QImageSequencesTreeView::onAddNewImageSequence()
+void QInputSequencesTreeView::onAddNewImageSequence()
 {
   QTreeWidgetItem *item = addNewImageSequence();
   if( item ) {
@@ -465,12 +466,12 @@ void QImageSequencesTreeView::onAddNewImageSequence()
   }
 }
 
-void QImageSequencesTreeView::onAddSourcesToCurrentImageSequence()
+void QInputSequencesTreeView::onAddSourcesToCurrentImageSequence()
 {
   c_update_controls_lock lock(this);
 
-  QImageSequenceTreeItem *item =
-      dynamic_cast<QImageSequenceTreeItem*>(currentItem());
+  QInputSequenceTreeItem *item =
+      dynamic_cast<QInputSequenceTreeItem*>(currentItem());
 
   if( item ) {
 
@@ -561,7 +562,7 @@ void QImageSequencesTreeView::onAddSourcesToCurrentImageSequence()
   }
 }
 
-void QImageSequencesTreeView::onDeleteSelectedItems()
+void QInputSequencesTreeView::onDeleteSelectedItems()
 {
 //  if ( QImageProcessingPipeline::isRunning() ) {
 //    //running_stack = QStackingThread::currentStack();
@@ -573,7 +574,7 @@ void QImageSequencesTreeView::onDeleteSelectedItems()
 
     if( cursel.size() == 1 ) {
 
-      const QImageSequenceTreeItem *sequenceItem =
+      const QInputSequenceTreeItem *sequenceItem =
           getImageSequenceItem(cursel[0]);
 
       if( !sequenceItem || sequenceItem->isRunnng() ) {
@@ -591,19 +592,19 @@ void QImageSequencesTreeView::onDeleteSelectedItems()
   }
 }
 
-void QImageSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
+void QInputSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
 {
   c_update_controls_lock lock(this);
 
-  QImageSequenceTreeItem *imageSequenceItem;
+  QInputSequenceTreeItem *imageSequenceItem;
   QInputSourceTreeItem *inputSourceItem;
 
   for( QTreeWidgetItem *item : items ) {
 
     switch (item->type()) {
 
-      case QImageSequenceTreeItemType:
-        if( (imageSequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item)) ) {
+      case QInputSequenceTreeItemType:
+        if( (imageSequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item)) ) {
 
           c_image_sequence::sptr image_sequence =
               imageSequenceItem->input_sequence();
@@ -634,7 +635,7 @@ void QImageSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
       case QInputSourceTreeItemType:
         if( (inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(item)) ) {
 
-          if( (imageSequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item->parent())) ) {
+          if( (imageSequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item->parent())) ) {
             if( imageSequenceItem->isRunnng() ) {
               continue;
             }
@@ -669,7 +670,7 @@ void QImageSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
   Q_EMIT imageSequenceCollectionChanged();
 }
 
-void QImageSequencesTreeView::onItemChanged(QTreeWidgetItem * item, int column)
+void QInputSequencesTreeView::onItemChanged(QTreeWidgetItem * item, int column)
 {
   if( updatingControls() ) {
     return;
@@ -679,10 +680,10 @@ void QImageSequencesTreeView::onItemChanged(QTreeWidgetItem * item, int column)
 
     switch (item->type()) {
 
-      case QImageSequenceTreeItemType: {
+      case QInputSequenceTreeItemType: {
 
-        QImageSequenceTreeItem *ppItem =
-            dynamic_cast<QImageSequenceTreeItem*>(item);
+        QInputSequenceTreeItem *ppItem =
+            dynamic_cast<QInputSequenceTreeItem*>(item);
 
         if( ppItem->text(0).isEmpty() ) {
           c_update_controls_lock lock(this);
@@ -703,8 +704,8 @@ void QImageSequencesTreeView::onItemChanged(QTreeWidgetItem * item, int column)
 
         if( sourceItem ) {
 
-          QImageSequenceTreeItem *ppItem =
-              dynamic_cast<QImageSequenceTreeItem*>(item->parent());
+          QInputSequenceTreeItem *ppItem =
+              dynamic_cast<QInputSequenceTreeItem*>(item->parent());
 
           if( ppItem && ppItem->input_sequence() && !ppItem->isRunnng() ) {
             sourceItem->input_source()->set_enabled(sourceItem->checkState(0) == Qt::Checked);
@@ -722,7 +723,7 @@ void QImageSequencesTreeView::onItemChanged(QTreeWidgetItem * item, int column)
 
 }
 
-void QImageSequencesTreeView::keyPressEvent(QKeyEvent * e)
+void QInputSequencesTreeView::keyPressEvent(QKeyEvent * e)
 {
   switch (e->key()) {
     case Qt::Key_Delete:
@@ -733,7 +734,7 @@ void QImageSequencesTreeView::keyPressEvent(QKeyEvent * e)
   Base::keyPressEvent(e);
 }
 
-void QImageSequencesTreeView::mouseMoveEvent(QMouseEvent * e)
+void QInputSequencesTreeView::mouseMoveEvent(QMouseEvent * e)
 {
   if( !(e->buttons() & Qt::LeftButton) ) {
     return Base::mouseMoveEvent(e);
@@ -766,8 +767,8 @@ void QImageSequencesTreeView::mouseMoveEvent(QMouseEvent * e)
     const QInputSourceTreeItem *inputSourceItem =
         dynamic_cast<const QInputSourceTreeItem*>(item);
 
-    const QImageSequenceTreeItem *sequenceItem =
-        dynamic_cast<const QImageSequenceTreeItem*>(inputSourceItem->parent());
+    const QInputSequenceTreeItem *sequenceItem =
+        dynamic_cast<const QInputSequenceTreeItem*>(inputSourceItem->parent());
 
     const c_input_source::sptr &input_source =
         inputSourceItem->input_source();
@@ -790,12 +791,12 @@ void QImageSequencesTreeView::mouseMoveEvent(QMouseEvent * e)
   drag->exec(Qt::MoveAction);
 }
 
-Qt::DropActions QImageSequencesTreeView::supportedDropActions() const
+Qt::DropActions QInputSequencesTreeView::supportedDropActions() const
 {
   return Qt::CopyAction | Qt::MoveAction;
 }
 
-void QImageSequencesTreeView::dragEnterEvent(QDragEnterEvent * event)
+void QInputSequencesTreeView::dragEnterEvent(QDragEnterEvent * event)
 {
   if( event->mimeData()->hasUrls() ) {
     event->acceptProposedAction();
@@ -805,7 +806,7 @@ void QImageSequencesTreeView::dragEnterEvent(QDragEnterEvent * event)
   }
 }
 
-void QImageSequencesTreeView::dragMoveEvent(QDragMoveEvent * event)
+void QInputSequencesTreeView::dragMoveEvent(QDragMoveEvent * event)
 {
   if( event->mimeData()->hasUrls() ) {
     event->setDropAction(Qt::DropAction::CopyAction);
@@ -815,10 +816,10 @@ void QImageSequencesTreeView::dragMoveEvent(QDragMoveEvent * event)
   event->setDropAction(Qt::DropAction::IgnoreAction);
 }
 
-void QImageSequencesTreeView::dropEvent(QDropEvent * e)
+void QInputSequencesTreeView::dropEvent(QDropEvent * e)
 {
   QTreeWidgetItem *selectedItem = nullptr;
-  QImageSequenceTreeItem *imageSequenceItem = nullptr;
+  QInputSequenceTreeItem *imageSequenceItem = nullptr;
   bool newStackItemCreated = false;
   Qt::DropAction action = Qt::IgnoreAction;
 
@@ -834,11 +835,11 @@ void QImageSequencesTreeView::dropEvent(QDropEvent * e)
 
   if( (selectedItem = Base::itemAt(epos)) ) {
     switch (selectedItem->type()) {
-      case QImageSequenceTreeItemType:
-        imageSequenceItem = dynamic_cast<QImageSequenceTreeItem*>(selectedItem);
+      case QInputSequenceTreeItemType:
+        imageSequenceItem = dynamic_cast<QInputSequenceTreeItem*>(selectedItem);
         break;
       case QInputSourceTreeItemType:
-        imageSequenceItem = dynamic_cast<QImageSequenceTreeItem*>(selectedItem->parent());
+        imageSequenceItem = dynamic_cast<QInputSequenceTreeItem*>(selectedItem->parent());
         break;
       default:
         CF_DEBUG("selectedItem->type()=%d", selectedItem->type());
@@ -955,7 +956,7 @@ void QImageSequencesTreeView::dropEvent(QDropEvent * e)
   }
 }
 
-bool QImageSequencesTreeView::dropSource(QDropEvent * e, const QUrl & url, QImageSequenceTreeItem * targetSequenceItem,
+bool QInputSequencesTreeView::dropSource(QDropEvent * e, const QUrl & url, QInputSequenceTreeItem * targetSequenceItem,
     QTreeWidgetItem * selectedItem)
 {
 
@@ -998,7 +999,7 @@ bool QImageSequencesTreeView::dropSource(QDropEvent * e, const QUrl & url, QImag
 
   else {
 
-    QImageSequenceTreeItem *sourceStackItem;
+    QInputSequenceTreeItem *sourceStackItem;
     QInputSourceTreeItem *inputSourceItem;
 
     if( (sourceStackItem = findImageSequenceItem(url.userName())) ) {
@@ -1064,7 +1065,7 @@ bool QImageSequencesTreeView::dropSource(QDropEvent * e, const QUrl & url, QImag
 
 }
 
-int QImageSequencesTreeView::dropSources(QDropEvent * e, QImageSequenceTreeItem * targetSequenceItem,
+int QInputSequencesTreeView::dropSources(QDropEvent * e, QInputSequenceTreeItem * targetSequenceItem,
     QTreeWidgetItem * targetItem)
 {
 
@@ -1090,7 +1091,7 @@ int QImageSequencesTreeView::dropSources(QDropEvent * e, QImageSequenceTreeItem 
   bool drop_confirmed = false;
 
   static const auto confirmThisDragDrop =
-      [](QImageSequencesTreeView * _this) -> bool {
+      [](QInputSequencesTreeView * _this) -> bool {
 
         const int reply = QMessageBox::question(_this,
             "Confirmation required",
@@ -1148,7 +1149,7 @@ int QImageSequencesTreeView::dropSources(QDropEvent * e, QImageSequenceTreeItem 
 //        drop_confirmed = true;
 //      }
 
-      QImageSequenceTreeItem *sourceSequenceItem;
+      QInputSequenceTreeItem *sourceSequenceItem;
       QInputSourceTreeItem *inputSourceItem;
 
       if( (sourceSequenceItem = findImageSequenceItem(url.userName())) ) {
@@ -1216,27 +1217,27 @@ int QImageSequencesTreeView::dropSources(QDropEvent * e, QImageSequenceTreeItem 
   return num_sourcess_added;
 }
 
-QImageSequenceTreeItem* QImageSequencesTreeView::getImageSequenceItem(QTreeWidgetItem * item) const
+QInputSequenceTreeItem* QInputSequencesTreeView::getImageSequenceItem(QTreeWidgetItem * item) const
 {
   if( item ) {
     switch (item->type()) {
-      case QImageSequenceTreeItemType:
-        return dynamic_cast<QImageSequenceTreeItem*>(item);
+      case QInputSequenceTreeItemType:
+        return dynamic_cast<QInputSequenceTreeItem*>(item);
       case QInputSourceTreeItemType:
-        return dynamic_cast<QImageSequenceTreeItem*>(item->parent());
+        return dynamic_cast<QInputSequenceTreeItem*>(item->parent());
     }
   }
   return nullptr;
 }
 
-QImageSequenceTreeItem* QImageSequencesTreeView::findImageSequenceItem(const QString & name) const
+QInputSequenceTreeItem* QInputSequencesTreeView::findImageSequenceItem(const QString & name) const
 {
   if( !name.isEmpty() ) {
 
     const std::string cname = name.toStdString();
 
     for( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
-      QImageSequenceTreeItem *item = dynamic_cast<QImageSequenceTreeItem*>(topLevelItem(i));
+      QInputSequenceTreeItem *item = dynamic_cast<QInputSequenceTreeItem*>(topLevelItem(i));
       if( item && item->input_sequence()->name() == cname ) {
         return item;
       }
@@ -1246,12 +1247,12 @@ QImageSequenceTreeItem* QImageSequencesTreeView::findImageSequenceItem(const QSt
   return nullptr;
 }
 
-QImageSequenceTreeItem* QImageSequencesTreeView::findImageSequenceItem(
+QInputSequenceTreeItem* QInputSequencesTreeView::findImageSequenceItem(
     const c_input_sequence::sptr & image_sequence) const
 {
   if( image_sequence ) {
     for( int i = 0, n = topLevelItemCount(); i < n; ++i ) {
-      QImageSequenceTreeItem *item = dynamic_cast<QImageSequenceTreeItem*>(topLevelItem(i));
+      QInputSequenceTreeItem *item = dynamic_cast<QInputSequenceTreeItem*>(topLevelItem(i));
       if( item && image_sequence == item->input_sequence() ) {
         return item;
       }
@@ -1260,7 +1261,7 @@ QImageSequenceTreeItem* QImageSequencesTreeView::findImageSequenceItem(
   return nullptr;
 }
 
-QInputSourceTreeItem* QImageSequencesTreeView::findInputSourceItem(QImageSequenceTreeItem * sequenceItem,
+QInputSourceTreeItem* QInputSequencesTreeView::findInputSourceItem(QInputSequenceTreeItem * sequenceItem,
     const QString & filename) const
 {
   if( sequenceItem && !filename.isEmpty() ) {
@@ -1280,7 +1281,7 @@ QInputSourceTreeItem* QImageSequencesTreeView::findInputSourceItem(QImageSequenc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
+QInputSequencesTree::QInputSequencesTree(QWidget * parent) :
     Base(parent)
 {
   Q_INIT_RESOURCE(qstacktree_resources);
@@ -1337,9 +1338,9 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
 //  startStopStackingAction->setEnabled(false);
 
   /* Setup Treeview */
-  treeView_ = new QImageSequencesTreeView(this);
+  treeView_ = new QInputSequencesTreeView(this);
   treeView_->installEventFilter(this);
-  connect(treeView_, &QImageSequencesTreeView::imageSequenceCollectionChanged,
+  connect(treeView_, &QInputSequencesTreeView::imageSequenceCollectionChanged,
       this, &ThisClass::imageSequenceCollectionChanged);
 
   /* Setup layout */
@@ -1350,13 +1351,13 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
   /* Setup event handlers */
 
   connect(addImageSequenceAction, &QAction::triggered,
-      treeView_, &QImageSequencesTreeView::onAddNewImageSequence);
+      treeView_, &QInputSequencesTreeView::onAddNewImageSequence);
 
   connect(addSourcesAction, &QAction::triggered,
-      treeView_, &QImageSequencesTreeView::onAddSourcesToCurrentImageSequence);
+      treeView_, &QInputSequencesTreeView::onAddSourcesToCurrentImageSequence);
 
   connect(deleteItemAction, &QAction::triggered,
-      treeView_, &QImageSequencesTreeView::onDeleteSelectedItems);
+      treeView_, &QInputSequencesTreeView::onDeleteSelectedItems);
 
 //  connect(startStopStackingAction, &QAction::triggered,
 //      treeView_, &QStackListTreeView::onStartStopStackingActionClicked);
@@ -1379,10 +1380,10 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
 //  connect(treeView_, &QTreeWidget::itemChanged,
 //      this, &ThisClass::onItemChanged);
 
-  connect(treeView_, &QImageSequencesTreeView::imageSequenceNameChanged,
+  connect(treeView_, &QInputSequencesTreeView::imageSequenceNameChanged,
       this, &ThisClass::imageSequenceNameChanged);
 
-  connect(treeView_, &QImageSequencesTreeView::imageSequenceSourcesChanged,
+  connect(treeView_, &QInputSequencesTreeView::imageSequenceSourcesChanged,
       this, &ThisClass::imageSequenceSourcesChanged);
 
   connect(treeView_, &QTreeWidget::currentItemChanged,
@@ -1408,22 +1409,22 @@ QImageSequencesTree::QImageSequencesTree(QWidget * parent) :
 
 }
 
-void QImageSequencesTree::loadSequences(const std::string & cfgfilename)
+void QInputSequencesTree::loadSequences(const std::string & cfgfilename)
 {
   treeView_->loadSequences(cfgfilename);
 }
 
-void QImageSequencesTree::saveSequences(const std::string & cfgfilename)
+void QInputSequencesTree::saveSequences(const std::string & cfgfilename)
 {
   treeView_->saveSequences(cfgfilename);
 }
 
-const QList<QAction*>& QImageSequencesTree::toolbarActions() const
+const QList<QAction*>& QInputSequencesTree::toolbarActions() const
 {
   return toolbarActions_;
 }
 
-c_input_source::sptr QImageSequencesTree::getCurrentInputSource(c_image_sequence::sptr * parent_sequence) const
+c_input_source::sptr QInputSequencesTree::getCurrentInputSource(c_image_sequence::sptr * parent_sequence) const
 {
   QTreeWidgetItem *currentItem =
       treeView_->currentItem();
@@ -1445,8 +1446,8 @@ c_input_source::sptr QImageSequencesTree::getCurrentInputSource(c_image_sequence
 
           if( parent_sequence ) {
 
-            QImageSequenceTreeItem *sequenceItem =
-                dynamic_cast<QImageSequenceTreeItem*>(inputSourceItem->parent());
+            QInputSequenceTreeItem *sequenceItem =
+                dynamic_cast<QInputSequenceTreeItem*>(inputSourceItem->parent());
 
             if( !sequenceItem ) {
               parent_sequence->reset();
@@ -1460,11 +1461,11 @@ c_input_source::sptr QImageSequencesTree::getCurrentInputSource(c_image_sequence
         return inputSource;
       }
 
-      case QImageSequenceTreeItemType:
+      case QInputSequenceTreeItemType:
         if( parent_sequence ) {
 
-          QImageSequenceTreeItem *sequenceItem =
-              dynamic_cast<QImageSequenceTreeItem*>(currentItem);
+          QInputSequenceTreeItem *sequenceItem =
+              dynamic_cast<QInputSequenceTreeItem*>(currentItem);
 
           if( !sequenceItem ) {
             parent_sequence->reset();
@@ -1485,14 +1486,14 @@ c_input_source::sptr QImageSequencesTree::getCurrentInputSource(c_image_sequence
   return nullptr;
 }
 
-void QImageSequencesTree::getSelectedSequences(std::vector<c_image_sequence::sptr> * sequences) const
+void QInputSequencesTree::getSelectedSequences(std::vector<c_image_sequence::sptr> * sequences) const
 {
   if( sequences ) {
 
     for( int i = 0, n = treeView_->topLevelItemCount(); i < n; ++i ) {
 
-      QImageSequenceTreeItem *item =
-          dynamic_cast<QImageSequenceTreeItem*>(treeView_->topLevelItem(i));
+      QInputSequenceTreeItem *item =
+          dynamic_cast<QInputSequenceTreeItem*>(treeView_->topLevelItem(i));
 
       if( item && item->isSelected() ) {
         sequences->emplace_back(item->input_sequence());
@@ -1501,27 +1502,27 @@ void QImageSequencesTree::getSelectedSequences(std::vector<c_image_sequence::spt
   }
 }
 
-void QImageSequencesTree::updateImageSequenceName(const c_image_sequence::sptr & image_sequece)
+void QInputSequencesTree::updateImageSequenceName(const c_image_sequence::sptr & image_sequece)
 {
   treeView_->updateImageSequenceName(image_sequece);
 }
 
-void QImageSequencesTree::addNewImageSequence()
+void QInputSequencesTree::addNewImageSequence()
 {
   treeView_->onAddNewImageSequence();
 }
 
-void QImageSequencesTree::addSourcesToCurrentImageSequence()
+void QInputSequencesTree::addSourcesToCurrentImageSequence()
 {
   treeView_->onAddSourcesToCurrentImageSequence();
 }
 
-void QImageSequencesTree::deleteSelectedItems()
+void QInputSequencesTree::deleteSelectedItems()
 {
   treeView_->onDeleteSelectedItems();
 }
 
-bool QImageSequencesTree::eventFilter(QObject * watched, QEvent * event)
+bool QInputSequencesTree::eventFilter(QObject * watched, QEvent * event)
 {
   if( watched == treeView_ && event->type() == QEvent::KeyPress ) {
 
@@ -1531,18 +1532,18 @@ bool QImageSequencesTree::eventFilter(QObject * watched, QEvent * event)
       QTreeWidgetItem *item = treeView_->currentItem();
       if( item ) {
 
-        QImageSequenceTreeItem *sequenceItem = nullptr;
+        QInputSequenceTreeItem *sequenceItem = nullptr;
         QInputSourceTreeItem *inputSourceItem = nullptr;
 
         switch (item->type()) {
 
-          case QImageSequenceTreeItemType:
-            sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item);
+          case QInputSequenceTreeItemType:
+            sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item);
             break;
 
           case QInputSourceTreeItemType:
             inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(item);
-            sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item->parent());
+            sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item->parent());
             break;
         }
 
@@ -1558,7 +1559,7 @@ bool QImageSequencesTree::eventFilter(QObject * watched, QEvent * event)
   return false;
 }
 
-void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
+void QInputSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
 {
 
   if( !current ) {
@@ -1569,7 +1570,7 @@ void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
   }
   else {
 
-    QImageSequenceTreeItem *sequenceItem = nullptr;
+    QInputSequenceTreeItem *sequenceItem = nullptr;
     QInputSourceTreeItem *inputSourceItem = nullptr;
 
     deleteItemAction->setEnabled(true);
@@ -1577,15 +1578,15 @@ void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
 
     switch (current->type()) {
 
-      case QImageSequenceTreeItemType:
-        sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(current);
+      case QInputSequenceTreeItemType:
+        sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(current);
         addSourcesAction->setEnabled(true);
         startMenuAction->setEnabled(!QPipelineThread::isRunning());
         break;
 
       case QInputSourceTreeItemType:
         inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(current);
-        sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(current->parent());
+        sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(current->parent());
         startMenuAction->setEnabled(!QPipelineThread::isRunning());
         break;
 
@@ -1600,20 +1601,20 @@ void QImageSequencesTree::onCurrentItemChanged(QTreeWidgetItem * current, QTreeW
   }
 }
 
-void QImageSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*column*/)
+void QInputSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*column*/)
 {
-  QImageSequenceTreeItem *sequenceItem = nullptr;
+  QInputSequenceTreeItem *sequenceItem = nullptr;
   QInputSourceTreeItem *inputSourceItem = nullptr;
 
   switch (item->type()) {
 
-    case QImageSequenceTreeItemType:
-      sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item);
+    case QInputSequenceTreeItemType:
+      sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item);
       break;
 
     case QInputSourceTreeItemType:
       inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(item);
-      sequenceItem = dynamic_cast<QImageSequenceTreeItem*>(item->parent());
+      sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(item->parent());
       break;
   }
 
@@ -1621,7 +1622,7 @@ void QImageSequencesTree::onItemDoubleClicked(QTreeWidgetItem * item, int /*colu
       inputSourceItem ? inputSourceItem->input_source() : nullptr);
 }
 
-void QImageSequencesTree::onCustomContextMenuRequested(const QPoint & pos)
+void QInputSequencesTree::onCustomContextMenuRequested(const QPoint & pos)
 {
   QMenu menu;
   QList<QTreeWidgetItem*> contextItems;
@@ -1653,7 +1654,7 @@ void QImageSequencesTree::onCustomContextMenuRequested(const QPoint & pos)
         contextItems[0];
 
     switch (item->type()) {
-      case QImageSequenceTreeItemType: {
+      case QInputSequenceTreeItemType: {
 
         menu.addAction("Copy Name",
             [this, item]() {
@@ -1747,9 +1748,9 @@ void QImageSequencesTree::onCustomContextMenuRequested(const QPoint & pos)
 
 }
 
-void QImageSequencesTree::onShowPipelineOptionsClicked()
+void QInputSequencesTree::onShowPipelineOptionsClicked()
 {
-  QImageSequenceTreeItem *sequenceItem =
+  QInputSequenceTreeItem *sequenceItem =
       treeView_->getImageSequenceItem(treeView_->currentItem());
 
   if( sequenceItem ) {
@@ -1757,11 +1758,11 @@ void QImageSequencesTree::onShowPipelineOptionsClicked()
   }
 }
 
-void QImageSequencesTree::onStartPipelineClicked()
+void QInputSequencesTree::onStartPipelineClicked()
 {
   if( !QPipelineThread::isRunning() ) {
 
-    QImageSequenceTreeItem *sequenceItem =
+    QInputSequenceTreeItem *sequenceItem =
         treeView_->getImageSequenceItem(treeView_->currentItem());
 
     if( sequenceItem && sequenceItem->input_sequence() ) {
@@ -1777,7 +1778,7 @@ void QImageSequencesTree::onStartPipelineClicked()
   }
 }
 
-void QImageSequencesTree::onStartAllPipelinesClicked()
+void QInputSequencesTree::onStartAllPipelinesClicked()
 {
   if( !QPipelineThread::isRunning() ) {
     currentProcessingMode_ = ProcessBatch;
@@ -1787,7 +1788,7 @@ void QImageSequencesTree::onStartAllPipelinesClicked()
   }
 }
 
-void QImageSequencesTree::onStopPipelineClicked()
+void QInputSequencesTree::onStopPipelineClicked()
 {
   if( QPipelineThread::isRunning() ) {
     currentProcessingMode_ = ProcessIdle;
@@ -1796,14 +1797,14 @@ void QImageSequencesTree::onStopPipelineClicked()
 
 }
 
-bool QImageSequencesTree::startNextStacking()
+bool QInputSequencesTree::startNextStacking()
 {
   if( !QPipelineThread::isRunning() && currentProcessingMode_ == ProcessBatch ) {
 
     for( int i = 0, n = treeView_->topLevelItemCount(); i < n; ++i ) {
 
-      QImageSequenceTreeItem *item =
-          dynamic_cast<QImageSequenceTreeItem*>(
+      QInputSequenceTreeItem *item =
+          dynamic_cast<QInputSequenceTreeItem*>(
           treeView_->topLevelItem(i));
 
       if( item && item->checkState(0) == Qt::Checked && item->input_sequence() ) {
@@ -1817,12 +1818,12 @@ bool QImageSequencesTree::startNextStacking()
   return false;
 }
 
-void QImageSequencesTree::onPipelineThreadStarting()
+void QInputSequencesTree::onPipelineThreadStarting()
 {
 
 }
 
-void QImageSequencesTree::onPipelineThreadStarted()
+void QInputSequencesTree::onPipelineThreadStarted()
 {
   startMenu->setEnabled(false);
   stopAction->setEnabled(true);
@@ -1832,7 +1833,7 @@ void QImageSequencesTree::onPipelineThreadStarted()
 
   if( currentPipeline ) {
 
-    QImageSequenceTreeItem *sequenceItem =
+    QInputSequenceTreeItem *sequenceItem =
         treeView_->findImageSequenceItem(currentPipeline->input_sequence());
 
     if( sequenceItem ) {
@@ -1852,12 +1853,12 @@ void QImageSequencesTree::onPipelineThreadStarted()
   }
 }
 
-void QImageSequencesTree::onPipelineThreadFinishing()
+void QInputSequencesTree::onPipelineThreadFinishing()
 {
   stopAction->setEnabled(false);
 }
 
-void QImageSequencesTree::onPipelineThreadFinished()
+void QInputSequencesTree::onPipelineThreadFinished()
 {
 
   c_image_processing_pipeline::sptr currentPipeline =
@@ -1865,7 +1866,7 @@ void QImageSequencesTree::onPipelineThreadFinished()
 
   if( currentPipeline ) {
 
-    QImageSequenceTreeItem *sequenceItem =
+    QInputSequenceTreeItem *sequenceItem =
         treeView_->findImageSequenceItem(currentPipeline->input_sequence());
 
     if( sequenceItem ) {
@@ -1897,10 +1898,10 @@ void QImageSequencesTree::onPipelineThreadFinished()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-QImageSequenceTreeDock::QImageSequenceTreeDock(const QString & title, QWidget * parent) :
+QInputSequenceTreeDock::QInputSequenceTreeDock(const QString & title, QWidget * parent) :
     Base(title, parent)
 {
-  Base::setWidget(treeView_ = new QImageSequencesTree(this));
+  Base::setWidget(treeView_ = new QInputSequencesTree(this));
 
   const QList<QAction*> actions = treeView_->toolbarActions();
   for( int i = 0, n = actions.size(); i < n; ++i ) {
@@ -1909,18 +1910,18 @@ QImageSequenceTreeDock::QImageSequenceTreeDock(const QString & title, QWidget * 
 
 }
 
-QImageSequencesTree* QImageSequenceTreeDock::treeView() const
+QInputSequencesTree* QInputSequenceTreeDock::treeView() const
 {
   return treeView_;
 }
 
-QImageSequenceTreeDock* addImageSequenceTreeDock(QMainWindow * parent,
+QInputSequenceTreeDock* addInputSequenceTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,
     QMenu * viewMenu)
 {
-  QImageSequenceTreeDock *dock = new QImageSequenceTreeDock(title, parent);
+  QInputSequenceTreeDock *dock = new QInputSequenceTreeDock(title, parent);
   dock->setObjectName(dockName);
   parent->addDockWidget(area, dock);
 

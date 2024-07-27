@@ -1,5 +1,5 @@
 /*
- * QImageSequencesTreeView.h
+ * QInputSequencesTreeView.h
  *
  *  Created on: Jan 12, 2021
  *      Author: amyznikov
@@ -13,22 +13,22 @@
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/widgets/UpdateControls.h>
 
-class QImageSequencesTreeView;
-class QImageSequencesTree;
+class QInputSequencesTreeView;
+class QInputSequencesTree;
 
 enum {
-  QImageSequenceTreeItemType = QTreeWidgetItem::UserType + 1,
+  QInputSequenceTreeItemType = QTreeWidgetItem::UserType + 1,
   QInputSourceTreeItemType = QTreeWidgetItem::UserType + 2,
 };
 
-class QImageSequenceTreeItem :
+class QInputSequenceTreeItem :
     public QTreeWidgetItem
 {
 public:
-  typedef QImageSequenceTreeItem ThisClass;
+  typedef QInputSequenceTreeItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QImageSequenceTreeItem(QTreeWidget * treeview, const c_image_sequence::sptr & image_sequence);
+  QInputSequenceTreeItem(QTreeWidget * treeview, const c_image_sequence::sptr & image_sequence);
   void refreshInputSources();
 
   const c_image_sequence::sptr& input_sequence() const;
@@ -61,23 +61,23 @@ protected:
 };
 
 
-class QImageSequencesTreeView :
+class QInputSequencesTreeView :
     public QTreeWidget,
     public HasUpdateControls
 {
   Q_OBJECT;
 public:
-  typedef QImageSequencesTreeView ThisClass;
+  typedef QInputSequencesTreeView ThisClass;
   typedef QTreeWidget Base;
-  friend class QImageSequencesTree;
+  friend class QInputSequencesTree;
 
 
-  QImageSequencesTreeView(QWidget * parent = nullptr);
+  QInputSequencesTreeView(QWidget * parent = nullptr);
 
-  QImageSequenceTreeItem * getImageSequenceItem(QTreeWidgetItem * item) const;
-  QImageSequenceTreeItem * findImageSequenceItem(const QString & name) const;
-  QImageSequenceTreeItem * findImageSequenceItem(const c_input_sequence::sptr & image_sequence) const;
-  QInputSourceTreeItem * findInputSourceItem(QImageSequenceTreeItem * stackItem, const QString & name) const;
+  QInputSequenceTreeItem * getImageSequenceItem(QTreeWidgetItem * item) const;
+  QInputSequenceTreeItem * findImageSequenceItem(const QString & name) const;
+  QInputSequenceTreeItem * findImageSequenceItem(const c_input_sequence::sptr & image_sequence) const;
+  QInputSourceTreeItem * findInputSourceItem(QInputSequenceTreeItem * stackItem, const QString & name) const;
 
   void loadSequences(const std::string & cfgfilename = "");
   void saveSequences(const std::string & cfgfilename = "");
@@ -96,8 +96,8 @@ protected Q_SLOTS:
 
 protected:
   //void populateTreeView();
-  QImageSequenceTreeItem * addImageSequenceItem(const c_image_sequence::sptr & image_sequence);
-  QImageSequenceTreeItem * addNewImageSequence(const QString & name = QString());
+  QInputSequenceTreeItem * addImageSequenceItem(const c_image_sequence::sptr & image_sequence);
+  QInputSequenceTreeItem * addNewImageSequence(const QString & name = QString());
   void deleteItems(QList<QTreeWidgetItem*> & items);
 
   void keyPressEvent(QKeyEvent *event) override;
@@ -107,8 +107,8 @@ protected:
   void dragEnterEvent(QDragEnterEvent *event) override;
   void dragMoveEvent(QDragMoveEvent *event) override;
   void dropEvent(QDropEvent *event) override;
-  int dropSources(QDropEvent *e, QImageSequenceTreeItem * targetStackItem, QTreeWidgetItem * targetItem);
-  bool dropSource(QDropEvent *e, const QUrl & url, QImageSequenceTreeItem * targetStackItem, QTreeWidgetItem * targetItem);
+  int dropSources(QDropEvent *e, QInputSequenceTreeItem * targetStackItem, QTreeWidgetItem * targetItem);
+  bool dropSource(QDropEvent *e, const QUrl & url, QInputSequenceTreeItem * targetStackItem, QTreeWidgetItem * targetItem);
 
 
 protected:
@@ -116,15 +116,15 @@ protected:
   static std::string default_config_filename_;
 };
 
-class QImageSequencesTree :
+class QInputSequencesTree :
     public QWidget
 {
   Q_OBJECT;
 public:
-  typedef QImageSequencesTree ThisClass;
+  typedef QInputSequencesTree ThisClass;
   typedef QWidget Base;
 
-  QImageSequencesTree(QWidget * parent = nullptr);
+  QInputSequencesTree(QWidget * parent = nullptr);
 
   void loadSequences(const std::string & cfgfilename = "");
   void saveSequences(const std::string & cfgfilename = "");
@@ -168,7 +168,7 @@ protected:
 
 protected:
   QVBoxLayout * vbox_ = nullptr;
-  QImageSequencesTreeView * treeView_ = nullptr;
+  QInputSequencesTreeView * treeView_ = nullptr;
 
   QAction * addImageSequenceAction = nullptr;
   QAction * addSourcesAction = nullptr;
@@ -193,24 +193,24 @@ protected:
 
 
 
-class QImageSequenceTreeDock :
+class QInputSequenceTreeDock :
     public QCustomDockWidget
 {
   Q_OBJECT;
 public:
-  typedef QImageSequenceTreeDock ThisClass;
+  typedef QInputSequenceTreeDock ThisClass;
   typedef QCustomDockWidget Base;
 
-  QImageSequenceTreeDock(const QString &title, QWidget * parent = nullptr);
+  QInputSequenceTreeDock(const QString &title, QWidget * parent = nullptr);
 
-  QImageSequencesTree * treeView() const;
+  QInputSequencesTree * treeView() const;
 
 protected:
-  QImageSequencesTree * treeView_ = nullptr;
+  QInputSequencesTree * treeView_ = nullptr;
 };
 
 
-QImageSequenceTreeDock * addImageSequenceTreeDock(QMainWindow * parent,
+QInputSequenceTreeDock * addInputSequenceTreeDock(QMainWindow * parent,
     Qt::DockWidgetArea area,
     const QString & dockName,
     const QString & title,

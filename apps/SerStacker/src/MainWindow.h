@@ -18,11 +18,11 @@
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
 #include <gui/qgraphicsshape/QGraphicsRectShapeSettings.h>
-#include <gui/qimagesequencetreeview/QImageSequencesTreeView.h>
 #include <gui/widgets/QScaleSelectionButton.h>
 #include <gui/qpipeline/QPipelineOptionsView.h>
 #include <gui/qdisplayvideowriter/QDisplayVideoWriterOptions.h>
 #include <gui/qinputoptions/QInputOptions.h>
+#include <gui/qinputsequencetreeview/QInputSequencesTreeView.h>
 
 #include "QPipelineProgressView.h"
 #include "QInputSourceView.h"
@@ -121,8 +121,8 @@ private:
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
-  QImageSequencesTree * sequencesTreeView = nullptr;
-  QImageSequenceTreeDock * sequencesTreeViewDock = nullptr;
+  QInputSequencesTree * sequencesTreeView = nullptr;
+  QInputSequenceTreeDock * sequencesTreeViewDock = nullptr;
 
 
   QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;

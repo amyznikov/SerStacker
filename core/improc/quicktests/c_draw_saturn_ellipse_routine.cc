@@ -14,6 +14,8 @@
 void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   BIND_PCTRL(ctls, auto_location, "");
+  BIND_PCTRL(ctls, gbsigma, "");
+  BIND_PCTRL(ctls, stdev_factor, "");
   BIND_PCTRL(ctls, se_close_radius, "");
 
   BIND_PCTRL(ctls, equatorial_radius, "");
@@ -27,6 +29,7 @@ void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ct
   BIND_PCTRL(ctls, outline_color, "");
   BIND_PCTRL(ctls, lines_color, "");
 
+  BIND_PCTRL(ctls, show_ring, "");
   BIND_PCTRL(ctls, show_smask, "");
   BIND_PCTRL(ctls, show_sbox, "");
 
@@ -46,8 +49,11 @@ bool c_draw_saturn_ellipse_routine::serialize(c_config_setting settings, bool sa
     SERIALIZE_PROPERTY(settings, save, *this, latidute_step);
     SERIALIZE_PROPERTY(settings, save, *this, outline_color);
     SERIALIZE_PROPERTY(settings, save, *this, lines_color);
+    SERIALIZE_PROPERTY(settings, save, *this, show_ring);
     SERIALIZE_PROPERTY(settings, save, *this, show_smask);
     SERIALIZE_PROPERTY(settings, save, *this, show_sbox);
+    SERIALIZE_PROPERTY(settings, save, *this, gbsigma);
+    SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
     return true;
   }
   return false;
@@ -74,7 +80,9 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
 
     saturn_detected =
         detect_saturn(image, se_close_radius_,
-            sbox, smask);
+            sbox, smask,
+            gbsigma_,
+            stdev_factor_);
 
     if ( show_smask_ && saturn_detected ) {
       smask.copyTo(image);
@@ -184,7 +192,7 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   draw_ellipse(image, bbox, outline_color_, 1, cv::LINE_AA);
 
 
-  if ( ring_radius > 0 ) {
+  if ( show_ring_ && ring_radius > 0 ) {
 
     const cv::RotatedRect ring_bbox =
         rotated_ellipse_bbox(center, ring_radius, ring_radius, R.t());

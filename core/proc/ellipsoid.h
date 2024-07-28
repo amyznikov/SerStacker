@@ -133,7 +133,8 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & cart3d_pos,
 
 
 bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect & output_bbox,
-    cv::OutputArray output_mask = cv::noArray());
+    cv::OutputArray output_mask = cv::noArray(),
+    double gbsigma = 1, double stdev_factor = 0.5);
 
 
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,

@@ -138,6 +138,16 @@ public:
     return show_sbox_;
   }
 
+  void set_show_ring(bool v)
+  {
+    show_ring_ = v;
+  }
+
+  bool show_ring() const
+  {
+    return show_ring_;
+  }
+
 
   void set_zrotation_remap(double v)
   {
@@ -149,6 +159,27 @@ public:
     return zrotation_remap_;
   }
 
+  void set_gbsigma(double v)
+  {
+    gbsigma_ = v;
+  }
+
+  double gbsigma() const
+  {
+    return gbsigma_;
+  }
+
+  void set_stdev_factor(double v)
+  {
+    stdev_factor_ = v;
+  }
+
+  double stdev_factor() const
+  {
+    return stdev_factor_;
+  }
+
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -156,6 +187,8 @@ public:
 protected:
   double equatorial_radius_ = 130;
   double ring_radius_ = 250;
+  double gbsigma_ = 1;
+  double stdev_factor_ = 0.5;
 
   cv::Point2f center_ =
       cv::Point2f (-1, -1);
@@ -165,7 +198,6 @@ protected:
 
   double latidute_step_ = 30;
   double longitude_step_ = 30;
-
   double zrotation_remap_ = 0;
 
   cv::Scalar outline_color_ =
@@ -175,6 +207,7 @@ protected:
       cv::Scalar::all(255);
 
   bool auto_location_ = false;
+  bool show_ring_ = true;
   bool show_smask_ = false;
   bool show_sbox_ = false;
 

@@ -302,6 +302,31 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipel
   return ctrls;
 }
 
+bool c_camera_calibration_pipeline::copyParameters(const base::sptr & dst) const
+{
+  if ( !base::copyParameters(dst) ) {
+    CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
+    return false;
+  }
+
+  this_class::sptr p =
+      std::dynamic_pointer_cast<this_class>(dst);
+
+  if( !p ) {
+    CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
+        get_class_name().c_str());
+    return false;
+  }
+
+  p->input_options_ = this->input_options_;
+  p->chessboard_detection_options_ = this->chessboard_detection_options_;
+  p->calibration_options_ = this->calibration_options_;
+  p->output_options_ = this->output_options_;
+
+  return true;
+
+}
+
 
 bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     cv::Mat & output_image, cv::Mat & output_mask)
@@ -1226,7 +1251,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
     }
   }
 
-  if( !output_options_.save_rectified_frames && !!output_options_.save_debug_video ) {
+  if( !output_options_.save_rectified_frames && !output_options_.save_debug_video ) {
     return true;
   }
 

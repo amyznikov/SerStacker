@@ -255,8 +255,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.tooltip.c_str(),
                 ctrl.get_enum_members(),
                 [this, ctrl](int v) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, toString(v)) ) {
-                    Q_EMIT parameterChanged();
+                  if (!updatingControls() && ctrl.set_value ) {
+                    if ( ctrl.set_value(pipeline_, flagsToString(v, ctrl.get_enum_members())) ) {
+                      Q_EMIT parameterChanged();
+                    }
                   }
                 },
                 [this, ctrl](int * v) {

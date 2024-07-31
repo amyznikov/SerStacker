@@ -101,6 +101,7 @@ public:
   bool serialize(c_config_setting setting, bool save) override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  bool copyParameters(const base::sptr & dst) const override;
 
 protected:
   bool initialize_pipeline()override;

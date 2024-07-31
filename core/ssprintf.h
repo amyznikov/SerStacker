@@ -370,7 +370,10 @@ inline std::string flagsToString(int flags, const c_enum_member * membs)
 {
   std::string s;
 
-  if( membs ) {
+  if( !membs ) {
+    s = ssprintf("0x%X", flags);
+  }
+  else {
     for( ; !membs->name.empty(); ++membs ) {
 
       if( flags & membs->value ) {
@@ -429,6 +432,10 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
 {
 
   int flags = 0;
+
+  if( sscanf(s.c_str(), "%d", &flags) == 1 ) {
+    return flags;
+  }
 
   const c_enum_member *membs =
       members_of<enum_type>();

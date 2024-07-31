@@ -211,9 +211,9 @@ bool c_data_frame::get_image(const std::string &display_name,
 
 
 bool c_data_frame::get_point_cloud(const std::string & display_name,
-    cv::OutputArray points,
-    cv::OutputArray colors,
-    cv::OutputArray mask)
+    cv::OutputArrayOfArrays points,
+    cv::OutputArrayOfArrays colors,
+    cv::OutputArrayOfArrays masks)
 {
   return false;
 }

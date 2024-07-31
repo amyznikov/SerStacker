@@ -55,9 +55,9 @@ c_sply_data_frame::c_sply_data_frame()
 
 
 bool c_sply_data_frame::get_point_cloud(const std::string & display_name,
-    cv::OutputArray output_points,
-    cv::OutputArray output_colors,
-    cv::OutputArray output_mask)
+    cv::OutputArrayOfArrays output_points,
+    cv::OutputArrayOfArrays output_colors,
+    cv::OutputArrayOfArrays output_mask)
 {
   if( output_points.needed() ) {
     cv::Mat(points_).copyTo(output_points);

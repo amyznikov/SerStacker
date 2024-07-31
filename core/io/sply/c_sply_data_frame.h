@@ -22,13 +22,18 @@ public:
   c_sply_data_frame();
 
   bool get_point_cloud(const std::string & display_name,
-      cv::OutputArray output_points,
-      cv::OutputArray output_colors,
-      cv::OutputArray output_mask) override;
+      cv::OutputArrayOfArrays output_points,
+      cv::OutputArrayOfArrays output_colors,
+      cv::OutputArrayOfArrays output_masks) override;
 
 protected:
   friend class c_sply_input_source;
   std::string filename_;
+
+//  std::vector<cv::Mat> points_;
+//  std::vector<cv::Mat> colors_;
+//  std::vector<double> timestamps_;
+
   std::vector<cv::Vec3f> points_;
   std::vector<cv::Vec3f> colors_;
   std::vector<double> timestamps_;

@@ -17,6 +17,33 @@ class c_sply_file
 {
 public:
   typedef c_sply_file this_class;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::shared_ptr<this_class> sptr;
+
+  // The data size is computed as rows * cols * CV_ELEM_SIZE(type);
+  struct c_sply_mat_header
+  {
+    int32_t rows = 0;
+    int32_t cols = 0;
+    int32_t type = -1;
+    int32_t data_start = 0;
+  };
+
+  struct c_sply_cloud_header
+  {
+    double cloud_timestamp = 0;
+    c_sply_mat_header points;
+    c_sply_mat_header colors;
+    c_sply_mat_header timestamps;
+  };
+
+  struct c_sply_frame_header2
+  {
+    int32_t num_clouds = 0;
+    // c_sply_cloud_header cloud_headers[1];
+  };
+
+
 
   struct c_sply_frame_header
   {
@@ -55,6 +82,8 @@ class c_sply_writer :
 public:
   typedef c_sply_writer this_class;
   typedef c_sply_file base;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_sply_writer(const std::string & filename = "");
   ~c_sply_writer();
@@ -65,9 +94,9 @@ public:
 
   int add_stream(const std::string & stream_name);
 
-  bool write(uint32_t stream_index, cv::InputArray points,
-      cv::InputArray colors = cv::noArray(),
-      cv::InputArray timestamps = cv::noArray());
+  bool write(uint32_t stream_index, cv::InputArrayOfArrays points,
+      cv::InputArrayOfArrays colors = cv::noArray(),
+      cv::InputArrayOfArrays timestamps = cv::noArray());
 
   void set_file_tag(uint64_t v)
   {
@@ -90,6 +119,8 @@ class c_sply_reader :
 public:
   typedef c_sply_reader this_class;
   typedef c_sply_file base;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::shared_ptr<this_class> sptr;
 
   c_sply_reader(const std::string & filename = "");
   ~c_sply_reader();
@@ -112,15 +143,13 @@ public:
   bool seek(uint32_t pos);
 
 
+  bool read(uint32_t stream_index, cv::OutputArrayOfArrays points,
+      cv::OutputArrayOfArrays colors = cv::noArray(),
+      cv::OutputArrayOfArrays timestamps = cv::noArray());
 
-
-  bool read(uint32_t stream_index, cv::OutputArray points,
-      cv::OutputArray colors = cv::noArray(),
-      cv::OutputArray timestamps = cv::noArray());
-
-  bool read(cv::OutputArray points,
-      cv::OutputArray colors = cv::noArray(),
-      cv::OutputArray timestamps = cv::noArray());
+  bool read(cv::OutputArrayOfArrays points,
+      cv::OutputArrayOfArrays colors = cv::noArray(),
+      cv::OutputArrayOfArrays timestamps = cv::noArray());
 
   void set_file_tag(uint64_t v)
   {

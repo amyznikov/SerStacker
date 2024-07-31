@@ -7,6 +7,7 @@
 
 #include "c_sply_input_source.h"
 #include "c_sply_data_frame.h"
+//#include <core/debug.h>
 
 
 c_sply_input_source::c_sply_input_source(const std::string & filename) :

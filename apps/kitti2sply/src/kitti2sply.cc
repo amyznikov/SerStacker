@@ -171,8 +171,8 @@ int main(int argc, char *argv[])
         return 1;
       }
 
-      if ( sply.add_stream("PointCloud") != 0 ) {
-        CF_ERROR("sply.add_stream('PointCloud') fails: %s", strerror(errno));
+      if ( sply.add_stream("PointClouds") != 0 ) {
+        CF_ERROR("sply.add_stream('PointClouds') fails: %s", strerror(errno));
         return 1;
       }
     }

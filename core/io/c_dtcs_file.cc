@@ -316,7 +316,7 @@ bool c_dtcs_reader::open(const std::string & filename)
       break;
     }
 
-    CF_DEBUG("stream_header.stream_name='%s'", stream_header.stream_name);
+    // CF_DEBUG("stream_header.stream_name='%s'", stream_header.stream_name);
 
     _streams.emplace_back();
 

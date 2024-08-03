@@ -81,7 +81,7 @@ bool c_sply_input_source::read(c_data_frame::sptr & output_frame)
 
   frame->cleanup();
 
-  return _sply.read(frame->points_, frame->colors_, frame->timestamps_);
+  return _sply.read(frame->_points, frame->_colors, frame->_timestamps);
 }
 
 bool c_sply_input_source::read(cv::Mat & output_frame,

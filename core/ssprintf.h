@@ -932,6 +932,36 @@ inline const c_enum_member * members_of<cv::TermCriteria::Type>()
   return members;
 }
 
+template<>
+inline const c_enum_member* members_of<cv::_InputArray::KindFlag>()
+{
+  static const c_enum_member members[] = {
+      { cv::_InputArray::NONE, "NONE", "" },
+      { cv::_InputArray::MAT, "MAT", "" },
+      { cv::_InputArray::MATX, "MATX", "" },
+      { cv::_InputArray::STD_VECTOR, "STD_VECTOR", "" },
+      { cv::_InputArray::STD_VECTOR_VECTOR, "STD_VECTOR_VECTOR", "" },
+      { cv::_InputArray::STD_VECTOR_MAT, "STD_VECTOR_MAT", "" },
+#if OPENCV_ABI_COMPATIBILITY < 500
+      { cv::_InputArray::EXPR, "EXPR", "" },
+#endif
+      { cv::_InputArray::OPENGL_BUFFER, "OPENGL_BUFFER", "" },
+      { cv::_InputArray::CUDA_HOST_MEM, "CUDA_HOST_MEM", "" },
+      { cv::_InputArray::CUDA_GPU_MAT, "CUDA_GPU_MAT", "" },
+      { cv::_InputArray::UMAT, "UMAT", "" },
+      { cv::_InputArray::STD_VECTOR_UMAT, "STD_VECTOR_UMAT", "" },
+      { cv::_InputArray::STD_BOOL_VECTOR, "STD_BOOL_VECTOR", "" },
+      { cv::_InputArray::STD_VECTOR_CUDA_GPU_MAT, "STD_VECTOR_CUDA_GPU_MAT", "" },
+#if OPENCV_ABI_COMPATIBILITY < 500
+      { cv::_InputArray::STD_ARRAY, "STD_ARRAY", "" },
+#endif
+      { cv::_InputArray::STD_ARRAY_MAT, "STD_ARRAY_MAT", "" },
+      { cv::_InputArray::NONE }
+  };
+
+  return members;
+}
+
 #endif // CV_VERSION
 
 

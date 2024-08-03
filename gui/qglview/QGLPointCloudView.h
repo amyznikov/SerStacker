@@ -24,7 +24,7 @@ public:
 
   virtual void createDisplayPoints(cv::InputArray currentPoints,
       cv::InputArray currentColors,
-      cv::InputArray currentMask,
+      cv::InputArray currentMasks,
       cv::OutputArray displayPoints,
       cv::OutputArray mtfColors,
       cv::OutputArray displayColors) = 0;
@@ -38,6 +38,16 @@ class QGLPointCloudView :
 public:
   typedef QGLPointCloudView ThisClass;
   typedef QGLView Base;
+
+  struct CloudSettings {
+    cv::Vec3f translation;
+    cv::Vec3f rotation;
+    cv::Vec3f scale;
+    cv::Vec3b color = cv::Vec3b(255,255,255);
+    bool visible = true;
+    bool override_color = false;
+  };
+
 
   QGLPointCloudView(QWidget* parent = nullptr);
 
@@ -53,18 +63,25 @@ public:
   void setSceneOrigin(const QVector3D & v);
   QVector3D sceneOrigin() const;
 
+  std::vector<CloudSettings> & cloudSettings();
+  const std::vector<CloudSettings> & cloudSettings() const;
+
   void rotateToShowCloud();
 
-  void setPoints(cv::InputArray points, cv::InputArray colors, cv::InputArray mask, bool make_copy = true);
+  void setPoints(cv::InputArrayOfArrays points, cv::InputArrayOfArrays colors, cv::InputArrayOfArrays masks, bool make_copy = true);
   void clearPoints();
 
-  const cv::Mat & currentPoints() const;
-  const cv::Mat & currentColors() const;
-  const cv::Mat & currentMask() const;
-  const cv::Mat & mtfColors() const;
+  const std::vector<cv::Mat> & currentPoints() const;
+  const std::vector<cv::Mat> & currentColors() const;
+  const std::vector<cv::Mat> & currentMasks() const;
 
-  const std::vector<cv::Vec3f> & displayPoints() const;
-  const std::vector<cv::Vec3b> & displayColors() const;
+  const cv::Mat & currentPoints(uint32_t index) const;
+  const cv::Mat & currentColors(uint32_t index) const;
+  const cv::Mat & currentMasks(uint32_t index) const;
+
+  const std::vector<std::vector<cv::Vec3f>> & displayPoints() const;
+  const std::vector<std::vector<cv::Vec3b>> & displayColors() const;
+  const std::vector<cv::Mat> & mtfColors() const;
 
   void updateDisplayPoints();
   void updateDisplayColors();
@@ -78,24 +95,26 @@ protected:
   void onSaveParameters(QSettings & settings) override;
 
 protected:
-  cv::Mat currentPoints_;
-  cv::Mat currentColors_;
-  cv::Mat currentMask_;
-  cv::Mat mtfColors_;
+  std::vector<cv::Mat> _currentPoints;
+  std::vector<cv::Mat> _currentColors;
+  std::vector<cv::Mat> _currentMasks;
 
-  std::vector<cv::Vec3f> displayPoints_;
-  std::vector<cv::Vec3b> displayColors_;
-  std::mutex display_lock_;
+  std::vector<std::vector<cv::Vec3f>> _displayPoints;
+  std::vector<std::vector<cv::Vec3b>> _displayColors;
+  std::vector<cv::Mat> _mtfColors;
+  std::mutex _display_lock;
 
-  QCloudViewDisplayFunction * displayFunction_ = nullptr;
+  std::vector<CloudSettings> _cloudSettings;
 
-  QVector3D sceneOrigin_;
-  double pointSize_ = 2;
-  double pointBrightness_ = 0;
+  QCloudViewDisplayFunction * _displayFunction = nullptr;
 
-  bool update_display_points_ = false;
-  bool update_display_colors_ = false;
-  int display_color_channels_ = 0;
+  QVector3D _sceneOrigin;
+  double _pointSize = 2;
+  double _pointBrightness = 0;
+
+  bool _update_display_points = false;
+  bool _update_display_colors = false;
+  int _display_color_channels = 0;
 };
 
 
@@ -179,6 +198,75 @@ protected:
 protected:
   QVBoxLayout * vbox_ = nullptr;
   QGlPointCloudViewSettingsWidget * cloudViewSettingsWidget_ = nullptr;
+  QSize lastWidnowSize_;
+  QPoint lastWidnowPos_;
+};
+
+
+class QGlPointCloudSettingsWidget :
+    public QSettingsWidget
+{
+  Q_OBJECT;
+public:
+  typedef QGlPointCloudSettingsWidget ThisClass;
+  typedef QSettingsWidget Base;
+
+  QGlPointCloudSettingsWidget(QWidget * parent = nullptr);
+
+  void setCloudView(QGLPointCloudView * v);
+  QGLPointCloudView * cloudView() const;
+
+protected:
+  void onupdatecontrols() override;
+  void updatecontrolstates();
+  void populatecombobox();
+  void onAddSettingsItem();
+  void onDeleteSettingsItem();
+  void onCurrentItemIndexChanged();
+
+protected:
+  QGLPointCloudView::CloudSettings * currentItem() const;
+
+protected:
+  QGLPointCloudView * cloudView_ = nullptr;
+  QToolBar * toolbar_ctl = nullptr;
+  QLabel * itemSelectionLb_ctl = nullptr;
+  QComboBox * itemSelection_ctl = nullptr;
+  QAction * addItem_action = nullptr;
+  QAction * removeItem_action = nullptr;
+
+  QCheckBox * itemVisible_ctl = nullptr;
+  QCheckBox * overrideColor_ctl = nullptr;
+  QNumericBox * itemColor_ctl = nullptr;
+  QNumericBox * itemTranslation_ctl = nullptr;
+  QNumericBox * itemRotation_ctl = nullptr;
+  QNumericBox * itemScale_ctl = nullptr;
+
+};
+
+
+class QGlPointCloudSettingsDialogBox :
+    public QDialog
+{
+  Q_OBJECT;
+public:
+  typedef QGlPointCloudSettingsDialogBox ThisClass;
+  typedef QDialog Base;
+
+  QGlPointCloudSettingsDialogBox(QWidget * parent = nullptr);
+
+  void setCloudViewer(QGLPointCloudView * v);
+  QGLPointCloudView * cloudViewer() const;
+
+Q_SIGNALS:
+  void visibilityChanged(bool visible);
+
+protected:
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
+protected:
+  QVBoxLayout * vbox_ = nullptr;
+  QGlPointCloudSettingsWidget * cloudSettingsWidget_ = nullptr;
   QSize lastWidnowSize_;
   QPoint lastWidnowPos_;
 };

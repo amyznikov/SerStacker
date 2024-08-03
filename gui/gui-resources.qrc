@@ -19,7 +19,9 @@
 
 	<file>icons/close.png</file>
 	<file>icons/copy.png</file>
+	<file>icons/add.png</file>
 	<file>icons/delete.png</file>
+	<file>icons/delete2.png</file>
 	<file>icons/dislike.png</file>
 	<file>icons/like.png</file>
 	<file>icons/next.png</file>
@@ -29,6 +31,7 @@
     <file>icons/marker-blue.png</file>
     <file>icons/reference.png</file>
     <file>icons/options.png</file>
+    <file>icons/list.png</file>
     <file>icons/mask.png</file>
     <file>icons/frame.png</file>
     <file>icons/badframe.png</file>

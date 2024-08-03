@@ -19,6 +19,12 @@ public:
   void set_input_range(double minval, double maxval);
   void get_input_range(double *minval, double *maxval) const;
 
+  void set_minval(double v);
+  double minval() const;
+
+  void set_maxval(double v);
+  double maxval() const;
+
   void set_bins(int nbins);
   int bins() const;
 
@@ -54,14 +60,15 @@ protected:
 // @brief build histogram for given multi-channel image.
 // Output is single-channel CV_32FC1 matrix of size 'nbins rows' x 'image channels columns'.
 // if input mask is not empty then it must be sigle-channel CV_8U matrix of the same size as input image.
-bool create_histogram(cv::InputArray image,
-    cv::InputArray mask,
+bool create_histogram(cv::InputArrayOfArrays images,
+    cv::InputArrayOfArrays masks,
     cv::OutputArray dst,
     /*[in, out]*/ double * minval,
     /*[in, out]*/ double * maxval,
     int nbins = -1,
     bool cumulative = false,
     bool scaled = false);
+
 
 /// @brief  scale conventional image histogram H by it's total sum
 void scale_histogram(cv::Mat1f & H);

@@ -24,9 +24,9 @@ public:
   std::string get_filename() override;
 
   bool get_point_cloud(const std::string & display_name,
-      cv::OutputArray output_points,
-      cv::OutputArray output_colors,
-      cv::OutputArray output_mask) override;
+      cv::OutputArrayOfArrays output_points,
+      cv::OutputArrayOfArrays output_colors,
+      cv::OutputArrayOfArrays output_mask) override;
 
 protected:
   friend class c_ply_input_source;

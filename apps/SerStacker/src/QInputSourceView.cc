@@ -11,6 +11,7 @@
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 #include <core/proc/minmax.h>
+#include <core/proc/histogram.h>
 #include <core/io/image/c_image_input_source.h>
 #include <core/debug.h>
 
@@ -558,10 +559,13 @@ void QInputSourceView::displayCurrentFrame()
 
       case DisplayType_PointCloud: {
 
-        cv::Mat points, colors, mask;
+
+        std::vector<cv::Mat> points, colors, mask;
 
         currentFrame_->get_point_cloud(displayChannel_.toStdString(),
             points, colors, mask);
+
+        // CF_DEBUG("get_point_cloud: points.size=%zu colors.size=%zu", points.size(), colors.size());
 
         setCurrentView(cloudView_);
         cloudView_->setPoints(points, colors, mask, false);
@@ -657,7 +661,7 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
       getminmax(imageView_->currentImage(), minval, maxval, imageView_->currentMask());
       break;
     case DisplayType_PointCloud:
-      getminmax(cloudView_->currentColors(), minval, maxval, cloudView_->currentMask());
+      getminmax(cloudView_->currentColors(), minval, maxval, cloudView_->currentMasks());
       break;
     default:
       break;
@@ -684,7 +688,7 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
     case DisplayType_PointCloud:
 
       create_histogram(cloudView_->currentColors(),
-          cloudView_->currentMask(),
+          cloudView_->currentMasks(),
           H,
           hmin, hmax,
           256,
@@ -720,7 +724,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
     case DisplayType_PointCloud:
 
       create_histogram(cloudView_->mtfColors(),
-          cloudView_->currentMask(),
+          cv::noArray(),
           H,
           hmin, hmax,
           256,
@@ -806,11 +810,18 @@ void QInputSourceView::createDisplayImage(cv::InputArray currentImage, cv::Input
 
 void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
     cv::InputArray currentColors,
-    cv::InputArray currentMask,
+    cv::InputArray currentMasks,
     cv::OutputArray displayPoints,
     cv::OutputArray mtfColors,
     cv::OutputArray displayColors)
 {
+
+//  CF_DEBUG("\n"
+//      "ncurrentPoints: %dx%d depth=%d channels=%d  currentColors: %dx%d depth=%d channels=%d",
+//      currentPoints.rows(), currentPoints.cols(), currentPoints.depth(), currentPoints.channels(),
+//      currentColors.rows(), currentColors.cols(), currentColors.depth(), currentColors.channels()
+//      );
+
   if ( currentPoints.empty() ) {
 
     displayPoints.release();
@@ -833,14 +844,12 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
   cv::Mat mtfcolors, displaycolors;
 
   const bool needColormap =
-      opts.colormap != COLORMAP_NONE;// &&
-          //currentColors.channels() == 1;
-
+      opts.colormap != COLORMAP_NONE;
 
   currentPoints.getMat().convertTo(displayPoints, CV_32F);
 
 
-  adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMask, &a);
+  adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMasks, &a);
   mtf->apply(currentColors, mtfcolors, CV_8U);
   restoreMtfRange(mtf, a);
 
@@ -862,8 +871,8 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
         displaycolors,
         opts.lut);
 
-    if( currentMask.size() == displaycolors.size() ) {
-      displaycolors.setTo(0, ~currentMask.getMat());
+    if( currentMasks.size() == displaycolors.size() ) {
+      displaycolors.setTo(0, ~currentMasks.getMat());
     }
 
     cv::cvtColor(displaycolors, displaycolors, cv::COLOR_BGR2RGB);
@@ -874,12 +883,25 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
 
   else {
 
-    if( mtfcolors.channels() == 1 ) {
-      cv::cvtColor(mtfcolors, mtfcolors,
-          cv::COLOR_GRAY2BGR);
-    }
+    // CF_DEBUG("mtfcolors.empty()=%d mtfcolors.channels()=%d", mtfcolors.empty(), mtfcolors.channels());
 
-    mtfcolors.copyTo(displayColors);
+    if( mtfcolors.empty() ) {
+      displayColors.release();
+    }
+    else {
+
+      if( mtfcolors.channels() == 1 ) {
+        cv::cvtColor(mtfcolors, mtfcolors,
+            cv::COLOR_GRAY2BGR);
+      }
+
+      if( !displayColors.fixedType() || displayColors.type() == mtfcolors.type() ) {
+        mtfcolors.copyTo(displayColors);
+      }
+      else {
+        mtfcolors.convertTo(displayColors, displayColors.type());
+      }
+    }
   }
 
   Q_EMIT displayImageChanged();

@@ -17,6 +17,10 @@ bool getminmax(cv::InputArray src,
     cv::InputArray mask = cv::noArray());
 
 
+//bool getminmax(const std::vector<cv::Mat> &src,
+//    double * minval,
+//    double * maxal,
+//    const std::vector<cv::Mat> * masks = nullptr);
 
 
 #endif /* __minmax_h__ */

@@ -30,13 +30,13 @@ protected:
   friend class c_sply_input_source;
   std::string filename_;
 
-//  std::vector<cv::Mat> points_;
-//  std::vector<cv::Mat> colors_;
-//  std::vector<double> timestamps_;
+  std::vector<cv::Mat> _points;
+  std::vector<cv::Mat> _colors;
+  std::vector<double> _timestamps;
 
-  std::vector<cv::Vec3f> points_;
-  std::vector<cv::Vec3f> colors_;
-  std::vector<double> timestamps_;
+//  std::vector<cv::Vec3f> points_;
+//  std::vector<cv::Vec3f> colors_;
+//  std::vector<double> timestamps_;
 };
 
 #endif /* __c_sply_data_frame_h__ */

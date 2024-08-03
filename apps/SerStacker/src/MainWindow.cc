@@ -32,6 +32,7 @@
 #define ICON_marker_blue        ":/gui/icons/marker-blue"
 #define ICON_reference          ":/gui/icons/reference"
 #define ICON_options            ":/gui/icons/options"
+#define ICON_list               ":/gui/icons/list"
 #define ICON_mask               ":/gui/icons/mask"
 #define ICON_frame              ":/gui/icons/frame"
 #define ICON_badframe           ":/gui/icons/badframe"
@@ -992,6 +993,27 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
     else {
       cloudViewSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
       cloudViewSettingsDialogBox->showNormal();
+    }
+  }
+}
+
+void MainWindow::onShowCloudSettingsDialogBoxActionClicked(bool checked)
+{
+  if ( checked && !cloudSettingsDialogBox ) {
+
+    cloudSettingsDialogBox = new QGlPointCloudSettingsDialogBox(this);
+    cloudSettingsDialogBox->setCloudViewer(cloudView);
+    connect(cloudSettingsDialogBox, &QGlPointCloudSettingsDialogBox::visibilityChanged,
+        showCloudSettingsDialogBoxAction, &QAction::setChecked);
+  }
+
+  if ( cloudSettingsDialogBox ) {
+    if ( !checked ) {
+      cloudSettingsDialogBox->hide();
+    }
+    else {
+      cloudSettingsDialogBox->setWindowTitle(QFileInfo(inputSourceView->currentFileName()).fileName());
+      cloudSettingsDialogBox->showNormal();
     }
   }
 }
@@ -2076,6 +2098,19 @@ void MainWindow::setupInputSequenceView()
                     }
                   }));
         }
+
+        if ( !showCloudSettingsDialogBoxAction ) {
+
+          showCloudSettingsDialogBoxAction =
+            createCheckableAction(getIcon(ICON_list),
+                "Clouds options...",
+                "Show / Hide individual clouds options",
+                is_visible(cloudSettingsDialogBox),
+                this,
+                &ThisClass::onShowCloudSettingsDialogBoxActionClicked);
+        }
+
+        menu.addAction(showCloudSettingsDialogBoxAction);
 
 
         menu.addSeparator();

@@ -12,8 +12,8 @@
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qtextview/QTextFileViewer.h>
-#include <gui/qcloudview/QCloudViewer.h>
-#include <gui/qcloudview/QCloudViewSettings.h>
+//#include <gui/qcloudview/QCloudViewer.h>
+//#include <gui/qcloudview/QCloudViewSettings.h>
 #include <gui/qglview/QGLViewPlanarGridSettings.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
@@ -86,6 +86,7 @@ private Q_SLOTS:
   void onPipelineThreadFinished();
 
   void onShowCloudViewSettingsDialogBoxActionClicked(bool checked);
+  void onShowCloudSettingsDialogBoxActionClicked(bool checked);
 
 
   void saveCurrentWork();
@@ -118,6 +119,7 @@ private:
 
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
   QGlPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
+  QGlPointCloudSettingsDialogBox * cloudSettingsDialogBox = nullptr;
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
@@ -151,6 +153,7 @@ private:
   QAction * reloadCurrentFileAction = nullptr;
   QAction * showImageProcessorSettingsAction = nullptr;
   QAction * showCloudViewSettingsDialogBoxAction = nullptr;
+  QAction * showCloudSettingsDialogBoxAction = nullptr;
 
   QLabel * currentFileNameLabel_ctl = nullptr;
   QLabel * imageSizeLabel_ctl = nullptr;

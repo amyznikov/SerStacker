@@ -185,7 +185,7 @@ static bool loadPlyPointCloud(const std::string & filename,
       char proptype[256] = "";
       char propname[256] = "";
 
-      if( sscanf(line.c_str(), "property %s %s", proptype, propname) != 2 ) {
+      if( sscanf(line.c_str(), "property %255s %255s", proptype, propname) != 2 ) {
         CF_ERROR("Syntax error in ply header line '%s'", line.c_str());
         goto end;
       }
@@ -305,8 +305,8 @@ static bool loadPlyPointCloud(const std::string & filename,
 
   }
 
-  CF_DEBUG("output_points.size=%zu output_colors.size=%zu",
-      output_points.size(), output_colors.size());
+//  CF_DEBUG("output_points.size=%zu output_colors.size=%zu",
+//      output_points.size(), output_colors.size());
 
   fOk = true;
 

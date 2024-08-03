@@ -390,22 +390,26 @@ void QDSOCloudView::displayKeyframes(const std::vector<dso::FrameHessian*> & fra
 
 
 
-  display_lock_.lock();
+  _display_lock.lock();
 
-  if ( total_points < 1 ) {
-    currentPoints_.release();
-    currentColors_.release();
-  }
-  else {
+  _currentPoints.clear();
+  _currentColors.clear();
+  _currentMasks.clear();
+  _mtfColors.clear();
 
-    currentPoints_.create(total_points, 1, CV_32FC3);
-    currentColors_.create(total_points, 1, CV_8UC3);
+  if ( total_points > 0 ) {
+
+    _currentPoints.emplace_back(cv::Mat3f(total_points, 1, CV_32FC3));
+    _currentColors.emplace_back(cv::Mat3b(total_points, 1, CV_8UC3));
+
+    //    currentPoints_.create(total_points, 1, CV_32FC3);
+    //    currentColors_.create(total_points, 1, CV_8UC3);
 
     cv::Mat3f pts =
-          currentPoints_;
+          _currentPoints.back();
 
     cv::Mat3b clrs =
-          currentColors_;
+          _currentColors.back();
 
     total_points = 0;
 
@@ -432,7 +436,7 @@ void QDSOCloudView::displayKeyframes(const std::vector<dso::FrameHessian*> & fra
 
 
 
-  display_lock_.unlock();
+  _display_lock.unlock();
 
   Q_EMIT redrawRequired();
 
@@ -662,13 +666,13 @@ void QDSOCloudView::createDisplayPoints(cv::InputArray currentPoints,
 
 void QDSOCloudView::getInputDataRange(double * minval, double * maxval) const
 {
-  getminmax(currentColors(), minval, maxval, currentMask());
+  getminmax(currentColors(), minval, maxval, currentMasks());
 }
 
 void QDSOCloudView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   create_histogram(currentColors(),
-      currentMask(),
+      currentMasks(),
       H,
       hmin, hmax,
       256,
@@ -679,7 +683,7 @@ void QDSOCloudView::getInputHistogramm(cv::OutputArray H, double * hmin, double 
 void QDSOCloudView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   create_histogram(mtfColors(),
-      currentMask(),
+      cv::noArray(),
       H,
       hmin, hmax,
       256,

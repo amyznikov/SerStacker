@@ -11,7 +11,8 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qimageview/QImageEditor.h>
-#include <gui/qcloudview/QCloudViewer.h>
+//#include <gui/qcloudview/QCloudViewer.h>
+#include <gui/qmtf/QMtfDisplay.h>
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qplaysequencecontrol/QPlaySequenceControl.h>
 

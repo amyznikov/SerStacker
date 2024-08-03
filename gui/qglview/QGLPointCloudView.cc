@@ -6,6 +6,65 @@
  */
 
 #include "QGLPointCloudView.h"
+#include <gui/widgets/createAction.h>
+#include <gui/widgets/style.h>
+#include <core/proc/pose.h>
+#include <core/debug.h>
+
+#define ICON_add              ":/gui/icons/add.png"
+#define ICON_delete           ":/gui/icons/delete2.png"
+
+static int get_items_count(cv::InputArrayOfArrays a)
+{
+  switch (a.kind()) {
+    case cv::_InputArray::MAT:
+    case cv::_InputArray::MATX:
+    case cv::_InputArray::UMAT:
+    case cv::_InputArray::CUDA_GPU_MAT:
+    case cv::_InputArray::STD_VECTOR:
+    case cv::_InputArray::STD_BOOL_VECTOR:
+#if OPENCV_ABI_COMPATIBILITY < 500
+    case cv::_InputArray::STD_ARRAY:
+#endif
+      return 1;
+
+    case cv::_InputArray::STD_VECTOR_VECTOR:
+    case cv::_InputArray::STD_VECTOR_MAT:
+    case cv::_InputArray::STD_VECTOR_UMAT:
+    case cv::_InputArray::STD_VECTOR_CUDA_GPU_MAT:
+    case cv::_InputArray::STD_ARRAY_MAT:
+      return a.total();
+  }
+
+  return 0;
+}
+
+static cv::Mat getItem(cv::InputArrayOfArrays a, int i)
+{
+  if ( !a.empty() ) {
+
+    switch (a.kind()) {
+      case cv::_InputArray::MAT:
+      case cv::_InputArray::MATX:
+      case cv::_InputArray::UMAT:
+      case cv::_InputArray::CUDA_GPU_MAT:
+      case cv::_InputArray::STD_VECTOR:
+      case cv::_InputArray::STD_ARRAY:
+      case cv::_InputArray::STD_BOOL_VECTOR:
+        return a.getMat(-1);
+
+      case cv::_InputArray::STD_VECTOR_VECTOR:
+      case cv::_InputArray::STD_VECTOR_MAT:
+      case cv::_InputArray::STD_VECTOR_UMAT:
+      case cv::_InputArray::STD_VECTOR_CUDA_GPU_MAT:
+      case cv::_InputArray::STD_ARRAY_MAT:
+        return a.getMat(i);
+    }
+  }
+
+  return cv::Mat();
+}
+
 
 QGLPointCloudView::QGLPointCloudView(QWidget * parent) :
     Base(parent)
@@ -14,80 +73,109 @@ QGLPointCloudView::QGLPointCloudView(QWidget * parent) :
 
 void QGLPointCloudView::setDisplayFunction(QCloudViewDisplayFunction * displayFunc)
 {
-  displayFunction_ = displayFunc;
-  update_display_points_ = true;
+  _displayFunction = displayFunc;
+  _update_display_points = true;
   update();
 }
 
 QCloudViewDisplayFunction * QGLPointCloudView::displayFunction() const
 {
-  return displayFunction_;
+  return _displayFunction;
 }
 
 void QGLPointCloudView::setPointSize(double v)
 {
-  pointSize_ = v;
+  _pointSize = v;
   update();
 }
 
 double QGLPointCloudView::pointSize() const
 {
-  return pointSize_;
+  return _pointSize;
 }
 
 void QGLPointCloudView::setPointBrightness(double v)
 {
-  pointBrightness_ = v;
+  _pointBrightness = v;
   updateDisplayColors();
 }
 
 double QGLPointCloudView::pointBrightness() const
 {
-  return pointBrightness_;
+  return _pointBrightness;
 }
 
 
 void QGLPointCloudView::setSceneOrigin(const QVector3D & v)
 {
-  sceneOrigin_ = v;
+  _sceneOrigin = v;
   updateDisplayPoints();
 }
 
 QVector3D QGLPointCloudView::sceneOrigin() const
 {
-  return sceneOrigin_;
+  return _sceneOrigin;
+}
+
+std::vector<QGLPointCloudView::CloudSettings> & QGLPointCloudView::cloudSettings()
+{
+  return _cloudSettings;
+}
+
+const std::vector<QGLPointCloudView::CloudSettings> & QGLPointCloudView::cloudSettings() const
+{
+  return _cloudSettings;
 }
 
 
 void QGLPointCloudView::rotateToShowCloud()
 {
-  const int mn =
-      displayPoints_.size();
+  int mn = 0;
+  cv::Vec3f mv;
 
-  if( mn > 0 ) {
-
-    cv::Vec3f mv;
-
-    for( const cv::Vec3f & p : displayPoints_ ) {
+  for( size_t i = 0, n = _displayPoints.size(); i < n; ++i ) {
+    mn += _displayPoints[i].size();
+    for( const cv::Vec3f & p : _displayPoints[i] ) {
       mv += p;
     }
+  }
 
+  if( mn > 0 ) {
     setViewTargetPoint(QVector3D(mv[0] / mn, mv[1] / mn, mv[2] / mn));
   }
 }
 
 
-void QGLPointCloudView::setPoints(cv::InputArray points, cv::InputArray colors, cv::InputArray mask, bool make_copy)
+void QGLPointCloudView::setPoints(cv::InputArrayOfArrays points, cv::InputArrayOfArrays colors, cv::InputArrayOfArrays masks, bool make_copy)
 {
-  if ( make_copy ) {
-    points.getMat().copyTo(currentPoints_);
-    colors.getMat().copyTo(currentColors_);
-    mask.getMat().copyTo(currentMask_);
-  }
-  else {
-    currentPoints_ = points.getMat();
-    currentColors_ = colors.getMat();
-    currentMask_ = mask.getMat();
+  _currentPoints.clear();
+  _currentColors.clear();
+  _currentMasks.clear();
+
+  const int num_clouds =
+      get_items_count(points);
+
+  const int num_colors =
+      get_items_count(colors);
+
+//  CF_DEBUG("kind=%s num_clouds=%d num_colors=%d", toCString(points.kind()),  num_clouds, num_colors);
+
+  if ( num_clouds > 0 ) {
+
+    for ( int i = 0; i < num_clouds; ++i ) {
+
+      if ( !make_copy ) {
+        _currentPoints.emplace_back(getItem(points, i));
+        _currentColors.emplace_back(getItem(colors, i));
+        _currentMasks.emplace_back(getItem(masks, i));
+      }
+      else {
+
+        _currentPoints.emplace_back(getItem(points, i).clone());
+        _currentColors.emplace_back(getItem(colors, i).clone());
+        _currentMasks.emplace_back(getItem(masks, i).clone());
+      }
+    }
   }
 
   updateDisplayPoints();
@@ -97,45 +185,60 @@ void QGLPointCloudView::clearPoints()
 {
 }
 
-const cv::Mat & QGLPointCloudView::currentPoints() const
+const std::vector<cv::Mat> & QGLPointCloudView::currentPoints() const
 {
-  return currentPoints_;
+  return _currentPoints;
 }
 
-const cv::Mat & QGLPointCloudView::currentColors() const
+const std::vector<cv::Mat> & QGLPointCloudView::currentColors() const
 {
-  return currentColors_;
+  return _currentColors;
 }
 
-const cv::Mat & QGLPointCloudView::currentMask() const
+const std::vector<cv::Mat> & QGLPointCloudView::currentMasks() const
 {
-  return currentMask_;
+  return _currentMasks;
 }
 
-const std::vector<cv::Vec3f> & QGLPointCloudView::displayPoints() const
+const cv::Mat & QGLPointCloudView::currentPoints(uint32_t index) const
 {
-  return displayPoints_;
+  return _currentPoints[index];
 }
 
-const cv::Mat & QGLPointCloudView::mtfColors() const
+const cv::Mat & QGLPointCloudView::currentColors(uint32_t index) const
 {
-  return mtfColors_;
+  return _currentColors[index];
 }
 
-const std::vector<cv::Vec3b> & QGLPointCloudView::displayColors() const
+const cv::Mat & QGLPointCloudView::currentMasks(uint32_t index) const
 {
-  return displayColors_;
+  return _currentMasks[index];
+}
+
+const std::vector<std::vector<cv::Vec3f>> & QGLPointCloudView::displayPoints() const
+{
+  return _displayPoints;
+}
+
+const std::vector<std::vector<cv::Vec3b>> & QGLPointCloudView::displayColors() const
+{
+  return _displayColors;
+}
+
+const std::vector<cv::Mat> & QGLPointCloudView::mtfColors() const
+{
+  return _mtfColors;
 }
 
 void QGLPointCloudView::updateDisplayPoints()
 {
-  update_display_points_ = true;
+  _update_display_points = true;
   update();
 }
 
 void QGLPointCloudView::updateDisplayColors()
 {
-  update_display_colors_ = true;
+  _update_display_colors = true;
   update();
 }
 
@@ -164,23 +267,31 @@ void QGLPointCloudView::glDraw()
 {
   computeDisplayPoints();
 
-  if ( !displayPoints_.empty() ) {
+  if( !_displayPoints.empty() ) {
 
-    glPointSize(pointSize_);
+    glPointSize(_pointSize);
     glColor3ub(255, 255, 255);
 
     // activate vertex arrays before array drawing
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, displayPoints_.data());
-
-    if ( !displayColors_.empty() ) {
+    if( !_displayColors.empty() ) {
       glEnableClientState(GL_COLOR_ARRAY);
-      glColorPointer(3, GL_UNSIGNED_BYTE, 3, displayColors_.data());
     }
 
-    glDrawArrays(GL_POINTS, 0, displayPoints_.size());
+    for( size_t i = 0, n = _displayPoints.size(); i < n; ++i ) {
+      if( !_displayPoints[i].empty() ) {
 
-    if ( !displayColors_.empty() ) {
+        glVertexPointer(3, GL_FLOAT, 0, _displayPoints[i].data());
+
+        if( !_displayColors[i].empty() ) {
+          glColorPointer(3, GL_UNSIGNED_BYTE, 3, _displayColors[i].data());
+        }
+
+        glDrawArrays(GL_POINTS, 0, _displayPoints[i].size());
+      }
+    }
+
+    if( !_displayColors.empty() ) {
       glDisableClientState(GL_COLOR_ARRAY);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -190,25 +301,89 @@ void QGLPointCloudView::glDraw()
 
 void QGLPointCloudView::computeDisplayPoints()
 {
-  if( display_lock_.try_lock() ) {
+  if( _display_lock.try_lock() ) {
 
-    if( update_display_points_ || update_display_colors_ ) {
+   // CF_DEBUG("_update_display_points=%d _update_display_colors=%d", _update_display_points, _update_display_colors);
 
-      if( displayFunction_ ) {
+    if( _update_display_points || _update_display_colors ) {
 
-        displayFunction_->createDisplayPoints(currentPoints_,
-            currentColors_,
-            currentMask_,
-            displayPoints_,
-            mtfColors_,
-            displayColors_);
+      if( _displayFunction ) {
+
+        const size_t num_clouds =
+            _currentPoints.size();
+
+        _displayPoints.resize(num_clouds);
+        _displayColors.resize(num_clouds);
+        _mtfColors.resize(num_clouds);
+
+        for( size_t i = 0; i < num_clouds; ++i ) {
+
+          const CloudSettings * opts =
+              i < _cloudSettings.size() ? &_cloudSettings[i] :
+                  nullptr;
+
+          if( _currentPoints[i].empty() || (opts && !opts->visible) ) {
+            _displayPoints[i].clear();
+            _displayColors[i].clear();
+            _mtfColors[i].release();
+          }
+          else {
+
+            _displayFunction->createDisplayPoints(_currentPoints[i],
+                _currentColors[i],
+                _currentMasks[i],
+                _displayPoints[i],
+                _mtfColors[i],
+                _displayColors[i]);
+
+            if ( opts ) {
+
+              if ( opts->override_color ) {
+                for ( cv::Vec3b & v : _displayColors[i] ) {
+                  v = opts->color;
+                }
+              }
+
+              const cv::Vec3f S(opts->scale[0] == 0 ? 1 : opts->scale[0],
+                  opts->scale[1] == 0 ? 1 : opts->scale[1],
+                  opts->scale[2] == 0 ? 1 : opts->scale[2]);
+
+              if ( opts->scale != cv::Vec3f(1,1,1) ) {
+                for( cv::Vec3f & v : _displayPoints[i] ) {
+                  v[0] *= S[0];
+                  v[1] *= S[1];
+                  v[2] *= S[2];
+                }
+              }
+
+              if( opts->rotation != cv::Vec3f(0, 0, 0) ) {
+
+                const cv::Matx33f R =
+                    build_rotation(opts->rotation * CV_PI / 180);
+
+                for ( cv::Vec3f & v : _displayPoints[i] ) {
+                  v = R * v;
+                }
+              }
+
+              if ( opts->translation != cv::Vec3f(0,0,0) ) {
+
+                for ( cv::Vec3f & v : _displayPoints[i] ) {
+                  v += opts->translation;
+                }
+              }
+            }
+
+          }
+        }
+
       }
 
-      update_display_points_ = false;
-      update_display_colors_ = false;
+      _update_display_points = false;
+      _update_display_colors = false;
     }
 
-    display_lock_.unlock();
+    _display_lock.unlock();
   }
 
 
@@ -355,17 +530,88 @@ void QGLPointCloudView::onLoadParameters(QSettings & settings)
 {
   Base::onLoadParameters(settings);
 
-  sceneOrigin_ =
+  _sceneOrigin =
       settings.value("QGLCloudViewer/sceneOrigin_",
-          sceneOrigin_).value<decltype(sceneOrigin_)>();
+          _sceneOrigin).value<decltype(_sceneOrigin)>();
 
-  pointSize_ =
+  _pointSize =
       settings.value("QGLCloudViewer/pointSize_",
-          pointSize_).value<decltype(pointSize_)>();
+          _pointSize).value<decltype(_pointSize)>();
 
-  pointBrightness_ =
+  _pointBrightness =
       settings.value("QGLCloudViewer/pointBrightness_",
-          pointBrightness_).value<decltype(pointBrightness_)>();
+          _pointBrightness).value<decltype(_pointBrightness)>();
+
+
+  const int num_cloud_settings =
+      std::min(64, settings.value("QGLCloudViewer/cloudSettings_size", 0).value<int>());
+
+  _cloudSettings.resize(num_cloud_settings);
+
+
+  for( int i = 0; i < num_cloud_settings; ++i ) {
+
+    CloudSettings & opts =
+            _cloudSettings[i];
+
+    opts.visible =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_visible", i),
+            opts.visible).value<decltype(opts.visible)>();
+
+    opts.override_color =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_override_color", i),
+            opts.override_color).value<decltype(opts.override_color)>();
+
+    opts.translation[0] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_translation0", i),
+            opts.translation[0]).value<float>();
+
+    opts.translation[1] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_translation1", i),
+            opts.translation[1]).value<float>();
+
+    opts.translation[2] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_translation2", i),
+            opts.translation[2]).value<float>();
+
+    opts.rotation[0] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation0", i),
+            opts.rotation[0]).value<float>();
+
+    opts.rotation[1] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation1", i),
+            opts.rotation[1]).value<float>();
+
+    opts.rotation[2] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation2", i),
+            opts.rotation[2]).value<float>();
+
+    opts.scale[0] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_scale0", i),
+            opts.scale[0]).value<float>();
+
+    opts.scale[1] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_scale1", i),
+            opts.scale[1]).value<float>();
+
+    opts.scale[2] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_scale2", i),
+            opts.scale[2]).value<float>();
+
+    opts.color[0] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_color0", i),
+            opts.color[0]).value<float>();
+
+    opts.color[1] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_color1", i),
+            opts.color[1]).value<float>();
+
+    opts.color[2] =
+        settings.value(qsprintf("QGLCloudViewer/cloudSettings%zu_color2", i),
+            opts.color[2]).value<float>();
+
+  }
+
 
 }
 
@@ -373,9 +619,34 @@ void QGLPointCloudView::onSaveParameters(QSettings & settings)
 {
   Base::onSaveParameters(settings);
 
-  settings.setValue("QGLCloudViewer/sceneOrigin_", sceneOrigin_);
-  settings.setValue("QGLCloudViewer/pointSize_", pointSize_);
-  settings.setValue("QGLCloudViewer/pointBrightness_", pointBrightness_);
+  settings.setValue("QGLCloudViewer/sceneOrigin_", _sceneOrigin);
+  settings.setValue("QGLCloudViewer/pointSize_", _pointSize);
+  settings.setValue("QGLCloudViewer/pointBrightness_", _pointBrightness);
+
+
+  settings.setValue("QGLCloudViewer/cloudSettings_size", (int)_cloudSettings.size());
+  for( size_t i = 0, n = _cloudSettings.size(); i < n; ++i ) {
+
+    const CloudSettings & opts =
+        _cloudSettings[i];
+
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_visible", i), opts.visible);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_override_color", i), opts.override_color);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_translation0", i), opts.translation[0]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_translation1", i), opts.translation[1]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_translation2", i), opts.translation[2]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation0", i), opts.rotation[0]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation1", i), opts.rotation[1]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_rotation2", i), opts.rotation[2]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_scale0", i), opts.scale[0]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_scale1", i), opts.scale[1]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_scale2", i), opts.scale[2]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_color0", i), opts.color[0]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_color1", i), opts.color[1]);
+    settings.setValue(qsprintf("QGLCloudViewer/cloudSettings%zu_color2", i), opts.color[2]);
+
+  }
+
 }
 
 
@@ -679,16 +950,6 @@ QGlPointCloudViewSettingsWidget::QGlPointCloudViewSettingsWidget(QWidget * paren
             }
           }));
 
-//  buttonBox->addWidget(moveCameraToShowCloud_ctl=
-//      createToolButton(this, QIcon(),
-//          "Show entire cloud",
-//          "Rotate and Move camera to show entire point cloud",
-//          [this]() {
-//            if ( cloudViewer_ ) {
-//            }
-//
-//          }));
-
   buttonBox->addWidget(showKeyBindings_ctl=
       createToolButton(this, QIcon(),
           "Help for keys...",
@@ -748,3 +1009,335 @@ void QGlPointCloudViewSettingsDialogBox::hideEvent(QHideEvent *e)
   Base::hideEvent(e);
   Q_EMIT visibilityChanged(isVisible());
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+QGlPointCloudSettingsWidget::QGlPointCloudSettingsWidget(QWidget * parent) :
+    Base("", parent)
+{
+  using CloudSettings = QGLPointCloudView::CloudSettings;
+
+  toolbar_ctl = new QToolBar(this);
+  toolbar_ctl->setIconSize(QSize(16, 16));
+  toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
+
+  toolbar_ctl->addWidget(itemSelectionLb_ctl = new QLabel("Cloud:  ", this));
+
+  toolbar_ctl->addWidget(itemSelection_ctl = new QComboBox(this));
+  itemSelection_ctl->setEditable(false);
+
+  toolbar_ctl->addAction(addItem_action =
+      createAction(getIcon(ICON_add),
+          "Add", "Add cloud settings item",
+          this,
+          &ThisClass::onAddSettingsItem));
+
+  toolbar_ctl->addAction(removeItem_action =
+      createAction(getIcon(ICON_delete),
+          "Remove", "Delete selected cloud settings item",
+          this,
+          &ThisClass::onDeleteSettingsItem));
+
+  addRow(toolbar_ctl);
+
+  itemVisible_ctl =
+      add_checkbox("Visible", "Show / Hide selected cloud",
+          [this](bool checked) {
+            CloudSettings * item = currentItem();
+            if ( item && item->visible != checked ) {
+              item->visible = checked;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * checked = item->visible;
+              return true;
+            }
+            return false;
+          });
+
+  overrideColor_ctl =
+      add_checkbox("Override Color", "Override points color for selected cloud",
+          [this](bool checked) {
+              CloudSettings * item = currentItem();
+              if ( item && item->override_color != checked ) {
+                item->override_color = checked;
+                Q_EMIT parameterChanged();
+              }
+          },
+          [this](bool * checked) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * checked = item->override_color;
+              return true;
+            }
+            return false;
+          });
+
+  itemColor_ctl =
+      add_numeric_box<cv::Vec3b>("Point color:", "Specify point color",
+          [this](const cv::Vec3b & v) {
+            CloudSettings * item = currentItem();
+            if ( item && item->color != v ) {
+              item->color = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3b * v) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * v = item->color;
+              return true;
+            }
+            return false;
+          });
+
+  itemTranslation_ctl =
+      add_numeric_box<cv::Vec3f>("Translation:", "Specify Cloud Translation Vector Tx;Ty;Tz",
+          [this](const cv::Vec3f & v) {
+            CloudSettings * item = currentItem();
+            if ( item && item->translation != v ) {
+              item->translation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3f * v) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * v = item->translation;
+              return true;
+            }
+            return false;
+          });
+
+  itemRotation_ctl =
+      add_numeric_box<cv::Vec3f>("Rotation:", "Specify Cloud Rotation Euler Angles Rx;Ry;Rz in degrees",
+          [this](const cv::Vec3f & v) {
+            CloudSettings * item = currentItem();
+            if ( item && item->rotation != v ) {
+              item->rotation = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3f * v) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * v = item->rotation;
+              return true;
+            }
+            return false;
+          });
+
+  itemScale_ctl =
+      add_numeric_box<cv::Vec3f>("Scale:", "Specify Cloud Scale Sx;Sy;Sz",
+          [this](const cv::Vec3f & v) {
+            CloudSettings * item = currentItem();
+            if ( item && item->scale != v ) {
+              item->scale = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](cv::Vec3f * v) -> bool {
+            const CloudSettings * item = currentItem();
+            if ( item ) {
+              * v = item->scale;
+              return true;
+            }
+            return false;
+          });
+
+  connect(itemSelection_ctl, (void (QComboBox::*)(int)) (&QComboBox::currentIndexChanged),
+      this, &ThisClass::onCurrentItemIndexChanged);
+
+
+  connect(this, &ThisClass::parameterChanged,
+      [this]() {
+        if ( cloudView_ ) {
+          cloudView_->updateDisplayPoints();
+          cloudView_->saveParameters();
+        }
+      });
+
+  updateControls();
+}
+
+QGLPointCloudView * QGlPointCloudSettingsWidget::cloudView() const
+{
+  return cloudView_;
+}
+
+void QGlPointCloudSettingsWidget::setCloudView(QGLPointCloudView * cloudView)
+{
+  cloudView_ = cloudView;
+  populatecombobox();
+  updateControls();
+}
+
+
+QGLPointCloudView::CloudSettings * QGlPointCloudSettingsWidget::currentItem() const
+{
+  if ( cloudView_ ) {
+
+    std::vector<QGLPointCloudView::CloudSettings> & items =
+        cloudView_->cloudSettings();
+
+    const int cursel =
+        itemSelection_ctl->currentIndex();
+
+    if( cursel >= 0 && cursel < (int) (items.size()) ) {
+      return &items[cursel];
+    }
+
+  }
+
+  return nullptr;
+}
+
+
+void QGlPointCloudSettingsWidget::onupdatecontrols()
+{
+  if ( !cloudView_ ) {
+    setEnabled(false);
+  }
+  else {
+    Base::populatecontrols();
+    updatecontrolstates();
+    setEnabled(true);
+  }
+}
+
+void QGlPointCloudSettingsWidget::populatecombobox()
+{
+  itemSelection_ctl->clear();
+
+  if ( cloudView_ ) {
+
+    const std::vector<QGLPointCloudView::CloudSettings> & items =
+        cloudView_->cloudSettings();
+
+    itemSelection_ctl->setUpdatesEnabled(false);
+
+    for ( size_t i = 0, n = items.size(); i < n; ++i ) {
+      itemSelection_ctl->addItem(qsprintf("%zu", i));
+    }
+
+    itemSelection_ctl->setUpdatesEnabled(true);
+  }
+
+}
+
+void QGlPointCloudSettingsWidget::updatecontrolstates()
+{
+  const int cursel =
+      itemSelection_ctl->currentIndex();
+
+  const bool enableControls =
+      cursel >= 0;
+
+  removeItem_action->setEnabled(enableControls);
+  itemVisible_ctl->setEnabled(enableControls);
+  overrideColor_ctl->setEnabled(enableControls);
+  itemColor_ctl->setEnabled(enableControls);
+  itemTranslation_ctl->setEnabled(enableControls);
+  itemRotation_ctl->setEnabled(enableControls);
+  itemScale_ctl->setEnabled(enableControls);
+}
+
+
+void QGlPointCloudSettingsWidget::onAddSettingsItem()
+{
+  if( cloudView_ ) {
+
+    std::vector<QGLPointCloudView::CloudSettings> & items =
+        cloudView_->cloudSettings();
+
+    items.emplace_back();
+
+    itemSelection_ctl->addItem(qsprintf("%zu", items.size() - 1));
+    itemSelection_ctl->setCurrentIndex(items.size() - 1);
+  }
+}
+
+void QGlPointCloudSettingsWidget::onDeleteSettingsItem()
+{
+  if( cloudView_ ) {
+
+    const int cursel =
+        itemSelection_ctl->currentIndex();
+
+    std::vector<QGLPointCloudView::CloudSettings> & items =
+        cloudView_->cloudSettings();
+
+    if( cursel >= 0 && cursel < (int) (items.size()) ) {
+
+      const int n =
+          itemSelection_ctl->count();
+
+      for( int i = cursel + 1; i < n; ++i ) {
+        itemSelection_ctl->setItemText(i, qsprintf("%d", i - 1));
+      }
+
+      items.erase(items.begin() + cursel);
+
+      itemSelection_ctl->removeItem(cursel);
+    }
+  }
+}
+
+void QGlPointCloudSettingsWidget::onCurrentItemIndexChanged()
+{
+  Base::populatecontrols();
+  updatecontrolstates();
+
+
+
+  const int cursel =
+      itemSelection_ctl->currentIndex();
+
+  const std::vector<QGLPointCloudView::CloudSettings> & items =
+      cloudView_->cloudSettings();
+
+  if( cursel >= 0 && cursel < (int) (items.size()) ) {
+  }
+
+
+  updatecontrolstates();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+QGlPointCloudSettingsDialogBox::QGlPointCloudSettingsDialogBox(QWidget * parent) :
+    Base(parent)
+{
+  setWindowTitle("Cloud View Settings");
+
+  vbox_ = new QVBoxLayout(this);
+  vbox_->addWidget(cloudSettingsWidget_ = new QGlPointCloudSettingsWidget(this));
+}
+
+void QGlPointCloudSettingsDialogBox::setCloudViewer(QGLPointCloudView * v)
+{
+  cloudSettingsWidget_->setCloudView(v);
+}
+
+QGLPointCloudView * QGlPointCloudSettingsDialogBox::cloudViewer() const
+{
+  return cloudSettingsWidget_->cloudView();
+}
+
+void QGlPointCloudSettingsDialogBox::showEvent(QShowEvent *e)
+{
+  Base::showEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+
+void QGlPointCloudSettingsDialogBox::hideEvent(QHideEvent *e)
+{
+  Base::hideEvent(e);
+  Q_EMIT visibilityChanged(isVisible());
+}
+

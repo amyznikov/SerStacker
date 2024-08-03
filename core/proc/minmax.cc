@@ -199,8 +199,11 @@ static bool getminmax_(cv::InputArray _src, double * minval, double * maxval, cv
 }
 
 
-bool getminmax(cv::InputArray src, double * minval, double * maxval, cv::InputArray mask)
+static bool getminmax__(cv::InputArray src, double * minval, double * maxval, cv::InputArray mask)
 {
+  //if ( src.kind()
+
+
   switch ( src.depth() ) {
 
   case CV_8U :  return getminmax_<uint8_t>(src, minval, maxval, mask);
@@ -217,5 +220,82 @@ bool getminmax(cv::InputArray src, double * minval, double * maxval, cv::InputAr
 
   return false;
 }
+
+bool getminmax(cv::InputArray src, double * minval, double * maxval, cv::InputArray mask)
+{
+  if( !src.empty() ) {
+
+    switch (src.kind()) {
+      case cv::_InputArray::MAT:
+        case cv::_InputArray::MATX:
+        case cv::_InputArray::UMAT:
+        case cv::_InputArray::CUDA_GPU_MAT:
+        case cv::_InputArray::STD_VECTOR:
+        case cv::_InputArray::STD_BOOL_VECTOR:
+#if OPENCV_ABI_COMPATIBILITY < 500
+        case cv::_InputArray::STD_ARRAY:
+#endif
+        return getminmax__(src, minval, maxval, mask);
+
+      case cv::_InputArray::STD_VECTOR_VECTOR:
+        case cv::_InputArray::STD_VECTOR_MAT:
+        case cv::_InputArray::STD_VECTOR_UMAT:
+        case cv::_InputArray::STD_VECTOR_CUDA_GPU_MAT:
+        case cv::_InputArray::STD_ARRAY_MAT: {
+
+        double minv = *minval;
+        double maxv = *maxval;
+
+        const int nvecs =
+            src.total();
+
+        for( int i = 0; i < nvecs; ++i ) {
+          getminmax__(src.getMat(i), &minv, &maxv, mask.empty() ? cv::noArray() : mask.getMat(i));
+          if( minv < *minval ) {
+            *minval = minv;
+          }
+          if( maxv > *maxval ) {
+            *maxval = maxv;
+          }
+        }
+
+        return true;
+      }
+
+    }
+  }
+
+  return false;
+}
+
+
+
+//bool getminmax(const std::vector<cv::Mat> &src, double * minval, double * maxval, const std::vector<cv::Mat> * masks)
+//{
+//  if ( !src.empty() ) {
+//
+//    getminmax(src[0], minval, maxval, masks && !masks->empty() ? (*masks)[0] : cv::noArray());
+//
+//    if ( src.size() > 1 ) {
+//
+//      double minv = *minval;
+//      double maxv = *maxval;
+//
+//      for ( size_t i = 1, n = src.size(); i < n; ++i  ) {
+//
+//        getminmax(src[i], &minv, &maxv, masks && !masks->size() > i ? (*masks)[i] : cv::noArray());
+//
+//        if ( minv < *minval ) {
+//          *minval = minv;
+//        }
+//        if ( maxv > *maxval ) {
+//          *maxval = maxv;
+//        }
+//      }
+//    }
+//  }
+//
+//  return true;
+//}
 
 

@@ -12,8 +12,8 @@
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qtextview/QTextFileViewer.h>
-#include <gui/qcloudview/QCloudViewer.h>
-#include <gui/qcloudview/QCloudViewSettings.h>
+//#include <gui/qcloudview/QCloudViewer.h>
+//#include <gui/qcloudview/QCloudViewSettings.h>
 #include <gui/qglview/QGLViewPlanarGridSettings.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>

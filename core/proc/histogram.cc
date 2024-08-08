@@ -475,8 +475,6 @@ bool create_histogram(cv::InputArrayOfArrays images, cv::InputArrayOfArrays mask
     bool cumulative,
     bool scaled)
 {
-  CF_DEBUG("Enter");
-
   static const auto is_vector_kind =
       [](cv::InputArrayOfArrays a) -> bool {
         switch (a.kind()) {
@@ -650,8 +648,6 @@ bool create_histogram(cv::InputArrayOfArrays images, cv::InputArrayOfArrays mask
     nbins = 10000;
   }
 
-  CF_DEBUG("Compute");
-
   cv::Mat1f H;
   c_histogram_builder builder;
 
@@ -680,7 +676,6 @@ bool create_histogram(cv::InputArrayOfArrays images, cv::InputArrayOfArrays mask
     dst.move(H);
   }
 
-  CF_DEBUG("leave");
   return true;
 }
 

@@ -241,4 +241,150 @@ inline cv::Matx<C, 3, 3> cofactors_matrix(const cv::Matx<C, 3, 3> & E)
       e12(0), e12(1), e12(2));
 }
 
+
+//@brief Trey Wilson closed-form solution for shortest distance between two angles (radians).
+//       Angles do NOT need to be normalized.
+//@see <https://gist.github.com/shaunlebron/8832585>
+inline double short_angle_dist(double a1, double a2)
+{
+  const double da = fmod(a2 - a1, CV_2PI);
+  return fmod(2 * da, CV_2PI) - da;
+}
+
+//@brief Use of Trey Wilson closed-form solution for shortest distance between two angles (radians) for angle interpolation.
+//  Input angles do NOT need to be normalized.
+//  Output angles MAY need to be normalized.
+//  For more alternatives see for example <https://stackoverflow.com/questions/2708476/rotation-interpolation>
+inline double angle_interpolate(double t1, double a1, double t2, double a2, double t)
+{
+  return a1 + short_angle_dist(a1, a2) * (t - t1) / (t2 - t1);
+}
+
+//@brief linear interpolation assuming t1 <= t < t2
+inline double linint(double t1, double y1, double t2, double y2, double t)
+{
+  return y1 + (t - t1) * (y2 - y1) / (t2 - t1);
+}
+
+//@brief angle wrapping
+inline double wrap_angle_0_2pi(double a)
+{
+  if ( a < 0 ) {
+    a += CV_2PI;
+  }
+  if ( a >= CV_2PI) {
+    a -= CV_2PI;
+  }
+  return a;
+}
+
+//@brief angle wrapping
+inline double wrap_angle_minus_pi_plus_pi(double a)
+{
+  if ( a <= -CV_PI ) {
+    a += CV_2PI;
+  }
+  if ( a > CV_PI ) {
+    a -= CV_2PI;
+  }
+  return a;
+}
+
+
+
+//@brief Compose 3x4 (R|T) matrix from rotation matrix R and translation vector T.
+//      The 3x4 (R|T) matrix is composed from R and T.
+//@param   R  3x3 rotation matrix
+//@param   T  3x1 translation vector
+//@return  RT 3x4 (R|T) matrix
+template<class T1, class T2, class T3>
+static void compose_rt_matrix(const cv::Matx<T1, 3, 3> & R, const cv::Vec<T2, 3> & T,
+    /* out */cv::Matx<T3, 3, 4> & RT)
+{
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      RT(i, j) = R(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    RT(i, 3) = T(i);
+  }
+}
+
+//@brief Compose 4x4 (R|T) matrix from rotation matrix R and translation vector T.
+//  The (4x4) RT matrix is composed from R and T by padding with zeros,
+//  filling with R|T and setting (R|T)(4,4) to 1.
+//@see  readme.txt in
+//      <http://kitti.is.tue.mpg.de/kitti/devkit_raw_data.zip>
+//@param   R  3x3 rotation matrix
+//@param   T  3x1 translation vector
+//@return  RT 4x4 (R|T) matrix
+template<class T1, class T2, class T3>
+static void compose_rt_matrix(const cv::Matx<T1, 3, 3> & R,
+    const cv::Vec<T2, 3> & T,
+    /* out */cv::Matx<T3, 4, 4> & RT)
+{
+  RT = cv::Matx<T3, 4, 4>::zeros();
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      RT(i, j) = R(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    RT(i, 3) = T(i);
+  }
+  RT(3, 3) = 1;
+}
+
+
+
+template<class T1, class T2, class T3>
+static void split_rt_matrix(const cv::Matx<T3, 3, 4> & RT, /*out*/ cv::Matx<T1, 3, 3> & R, /*out*/ cv::Vec<T2, 3> & T)
+{
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      R(i, j) = RT(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    T(i) = RT(i, 3);
+  }
+}
+
+template<class T1, class T2, class T3>
+static void split_rt_matrix(const cv::Matx<T3, 4, 4> & RT, /*out*/ cv::Matx<T1, 3, 3> & R, /*out*/ cv::Vec<T2, 3> & T)
+{
+  for ( int i = 0; i < 3; ++i ) {
+    for ( int j = 0; j < 3; ++j ) {
+      R(i, j) = RT(i, j);
+    }
+  }
+  for ( int i = 0; i < 3; ++i ) {
+    T(i) = RT(i, 3);
+  }
+}
+
+template<class C>
+static void invert_rt_matrix(const cv::Matx<C, 3, 4> & RT,
+    /*out*/cv::Matx<C, 3, 4> * RTi)
+{
+  cv::Matx<C, 3, 3> R;
+  cv::Vec<C, 3> T;
+
+  split_rt_matrix(RT, R, T);
+
+  R = R.inv(), T = -R * T;
+
+  compose_rt_matrix(R, T, *RTi);
+}
+
+template<class C>
+static void invert_rt_matrix(const cv::Matx<C, 3, 3> & R, const cv::Vec3d & T,
+    /*out*/cv::Matx<C, 3, 3> * Ri, /*out*/cv::Vec3d * Ti )
+{
+  *Ri = R.t();
+  *Ti = -(*Ri) * T;
+}
+
+
 #endif /* __pose_h__ */

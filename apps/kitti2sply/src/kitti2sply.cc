@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
   std::string input_directory;
   std::vector<std::string> input_file_names;
   std::string output_file_name;
-  int status;
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -126,7 +125,7 @@ int main(int argc, char *argv[])
   cf_set_loglevel(CF_LOG_DEBUG);
 
 
-  if( (status = readdir(&input_file_names, input_directory, "*.bin", true, DT_REG)) < 0 ) {
+  if( readdir(&input_file_names, input_directory, "*.bin", true, DT_REG) < 0 ) {
     CF_ERROR("readdir('%s') fails: %s", input_directory.c_str(), strerror(errno));
     return 1;
   }

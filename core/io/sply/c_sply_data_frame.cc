@@ -169,6 +169,82 @@ c_sply_data_frame::c_sply_data_frame()
 }
 
 
+template<class T>
+static bool extract_distances_(const cv::Mat & _pts, cv::Mat & _distances)
+{
+  const cv::Mat_<cv::Vec<T, 3>> pts = _pts;
+
+  _distances.create(pts.size().area(), 1, pts.depth());
+
+  cv::Mat_<T> distances =
+      _distances;
+
+  int i = 0;
+
+  for( int y = 0; y < pts.rows; ++y ) {
+    for( int x = 0; x < pts.cols; ++x ) {
+
+      const cv::Vec<T, 3> & v =
+          pts[y][x];
+
+      distances[i++][0] =
+          std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    }
+  }
+
+  return true;
+}
+
+static bool extract_distances(const cv::Mat & pts, cv::Mat & distances)
+{
+  switch (pts.type()) {
+    case CV_32FC3:
+      return extract_distances_<float>(pts, distances);
+    case CV_64FC3:
+      return extract_distances_<double>(pts, distances);
+  }
+
+  return false;
+}
+
+template<class T>
+static bool extract_depth_(const cv::Mat & _pts, cv::Mat & _depth)
+{
+  const cv::Mat_<cv::Vec<T, 3>> pts = _pts;
+
+  _depth.create(pts.size().area(), 1, pts.depth());
+
+  cv::Mat_<T> depth =
+      _depth;
+
+  int i = 0;
+
+  for( int y = 0; y < pts.rows; ++y ) {
+    for( int x = 0; x < pts.cols; ++x ) {
+
+      const cv::Vec<T, 3> & v =
+          pts[y][x];
+
+      depth[i++][0] =
+          std::sqrt(v[0] * v[0] + v[1] * v[1]);
+    }
+  }
+
+  return true;
+}
+
+static bool extract_depth(const cv::Mat & pts, cv::Mat & distances)
+{
+  switch (pts.type()) {
+    case CV_32FC3:
+      return extract_distances_<float>(pts, distances);
+    case CV_64FC3:
+      return extract_distances_<double>(pts, distances);
+  }
+
+  return false;
+}
+
 bool c_sply_data_frame::get_point_cloud(const std::string & display_name,
     cv::OutputArrayOfArrays output_points,
     cv::OutputArrayOfArrays output_colors,
@@ -182,40 +258,58 @@ bool c_sply_data_frame::get_point_cloud(const std::string & display_name,
 
     if( display_name == "DISTANCE" ) {
 
-//      cv::Mat1f distances(points_.size(), 1);
-//
-//      for ( int i = 0, n = points_.size(); i < n; ++i ) {
-//        distances[i][0] = std::sqrt(points_[i][0] * points_[i][0] +
-//            points_[i][1] * points_[i][1] +
-//            points_[i][2] * points_[i][2]);
-//      }
-//
-//      output_colors.move(distances);
+      std::vector<cv::Mat> m(_points.size());
+
+      for ( size_t i = 0, n = _points.size(); i < n; ++i ) {
+        extract_distances(_points[i], m[i]);
+      }
+
+      setItems("_distances", output_colors, m);
+
     }
     else if( display_name == "DEPTH" ) {
 
-//      cv::Mat1f depths(points_.size(), 1);
-//
-//      for ( int i = 0, n = points_.size(); i < n; ++i ) {
-//        depths[i][0] = std::sqrt(points_[i][0] * points_[i][0] +
-//            points_[i][1] * points_[i][1] +
-//            points_[i][2] * points_[i][2]);
-//      }
-//
-//      output_colors.move(depths);
+      std::vector<cv::Mat> m(_points.size());
+
+      for ( size_t i = 0, n = _points.size(); i < n; ++i ) {
+        extract_depth(_points[i], m[i]);
+      }
+
+      setItems("_depths", output_colors, m);
     }
 
     else if( display_name == "X" ) {
-      //cv::extractChannel(cv::Mat(points_), output_colors, 0);
+
+      std::vector<cv::Mat> m(_points.size());
+
+      for ( size_t i = 0, n = _points.size(); i < n; ++i ) {
+        cv::extractChannel(_points[i], m[i], 0);
+      }
+
+      setItems("X", output_colors, m);
     }
     else if( display_name == "Y" ) {
-      //cv::extractChannel(cv::Mat(points_), output_colors, 1);
+
+      std::vector<cv::Mat> m(_points.size());
+
+      for ( size_t i = 0, n = _points.size(); i < n; ++i ) {
+        cv::extractChannel(_points[i], m[i], 1);
+      }
+
+      setItems("Y", output_colors, m);
     }
     else if( display_name == "Z" ) {
-      //cv::extractChannel(cv::Mat(points_), output_colors, 2);
+
+      std::vector<cv::Mat> m(_points.size());
+
+      for ( size_t i = 0, n = _points.size(); i < n; ++i ) {
+        cv::extractChannel(_points[i], m[i], 2);
+      }
+
+      setItems("Z", output_colors, m);
     }
     else  {
-      //cv::Mat(_colors).copyTo(output_colors);
+
       setItems("_colors", output_colors, _colors);
     }
   }

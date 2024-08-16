@@ -138,8 +138,8 @@
 #include <numeric>
 #include <algorithm>
 
-#include "oxts.h"
-#include "gps.h"
+#include <core/io/kitti/oxts.h>
+#include <core/io/kitti/gps.h>
 #include <core/proc/pose.h>
 #include <core/debug.h>
 

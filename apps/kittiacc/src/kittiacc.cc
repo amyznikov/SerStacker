@@ -6,13 +6,12 @@
  */
 
 #include <core/io/c_sply_file.h>
+#include <core/io/kitti/c_kitti_dataset.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
-
-#include "c_kitti_dataset.h"
 #include "c_ego_motion_compensation.h"
+#include "c_voxel_grid3d.h"
 #include <core/debug.h>
-#include "c_z_grid3d.h"
 
 struct c_lidar_point
 {
@@ -103,8 +102,9 @@ int main(int argc, char *argv[])
   std::vector<double> acctimestamps;
 
 
+  typedef c_voxel_grid3d<c_voxel_type> grid_type;
 
-  c_voxel_grid3d<c_voxel_type> grid;
+  grid_type grid;
 
   for ( int i = 1; i < argc; ++i ) {
 
@@ -238,18 +238,20 @@ int main(int argc, char *argv[])
     acccolors.clear();
     acctimestamps.clear();
 
-    for( auto xx = grid.xbeg(); xx != grid.xend(); ++xx ) {
-      for( auto yy = (*xx)->a.begin(); yy != (*xx)->a.end(); ++yy ) {
-        for( auto zz = (*yy)->a.begin(); zz != (*yy)->a.end(); ++zz ) {
+    for( grid_type::const_xiterator xpos = grid.begin(); xpos != grid.end(); ++xpos ) {
+      for( grid_type::const_yiterator ypos = (*xpos)->begin(); ypos != (*xpos)->end(); ++ypos ) {
+        for( grid_type::const_ziterator zpos = (*ypos)->begin(); zpos != (*ypos)->end(); ++zpos ) {
 
           const auto & d =
-              (*zz)->data;
+              (*zpos)->value;
 
           accpoints.emplace_back(d.x, d.y, d.z);
           acccolors.emplace_back(d.r);
           acctimestamps.emplace_back(d.t);
+
         }
       }
+
     }
 
     if ( !splyacc.write(0, accpoints, acccolors, acctimestamps) ) {

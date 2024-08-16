@@ -5,4 +5,4 @@
  *      Author: amyznikov
  */
 
-#include "c_z_grid3d.h"
+#include "c_voxel_grid3d.h"

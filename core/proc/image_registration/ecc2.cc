@@ -1761,8 +1761,8 @@ double c_ecclm::compute_rhs(const cv::Mat1f & params)
       compute_remap(params, remapped_image, remapped_mask,
           rhs);
 
-  rms =
-      rhs.dot(rhs);// / nrms;
+  rms = cv::norm(rhs, cv::NORM_L2SQR);
+      //rhs.dot(rhs);// / nrms;
 
   return rms;
 }
@@ -1777,8 +1777,8 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
         compute_remap(params, remapped_image, remapped_mask,
             rhs);
 
-    rms =
-        rhs.dot(rhs);// / nrms;
+    rms = cv::norm(rhs, cv::NORM_L2SQR);
+        //rhs.dot(rhs);// / nrms;
   }
 
   const int M =
@@ -2162,7 +2162,9 @@ bool c_ecc_inverse_compositional::align()
     tbb::parallel_invoke(
         [&] () {
 #endif
-          rmsnew = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+          //rmsnew = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+          rmsnew = cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
+
 #if ECC_USE_TBB
         },
         [&]() {
@@ -2297,8 +2299,10 @@ void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
     rhs.setTo(0, ~remapped_mask);
   }
 
+//  rms =
+//      rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
   rms =
-      rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+      cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
 }
 
 double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)

@@ -109,6 +109,7 @@
 
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_homography_test_routine.h"
+#include "quicktests/c_rotation_homography_test_routine.h"
 #include "quicktests/c_sweepscan_routine.h"
 #include "quicktests/c_melp_stereo_matcher_routine.h"
 #include "quicktests/c_edge_test_routine.h"
@@ -264,6 +265,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_homography_test_routine::class_factory_instance());
+    register_class_factory(c_rotation_homography_test_routine::class_factory_instance());
+
     register_class_factory(c_sweepscan_routine::class_factory_instance());
     register_class_factory(c_melp_stereo_matcher_routine::class_factory_instance());
     register_class_factory(c_edge_test_routine::class_factory_instance());

@@ -32,6 +32,7 @@ class c_sparse_feature_extractor_and_matcher
 public:
   typedef c_sparse_feature_extractor_and_matcher this_class;
   typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
 
   static sptr create(const c_sparse_feature_extractor_and_matcher_options & options);
 

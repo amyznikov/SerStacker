@@ -462,4 +462,55 @@ public:
 };
 
 
+/**
+ * Pure rotation homography transform:
+ * w  =  (x * a20 + y * a21 + a22)
+ * x' =  (x * a00 + y * a01 + a02) / w
+ * y' =  (x * a10 + y * a11 + a12) / w
+ */
+class c_prh_image_transform :
+    public c_image_transform
+{
+public:
+  typedef c_homography_image_transform this_class;
+  typedef c_image_transform base;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+
+  c_prh_image_transform();
+
+  void reset() final;
+
+  // void set_matrix(const cv::Matx33f & a);
+  cv::Matx33f matrix() const;
+  cv::Matx33f matrix(const cv::Mat1f & p) const;
+  cv::Matx33f dmatrix(const cv::Mat1f & dp) const;
+
+  //  void set_translation(const cv::Vec2f & v) final;
+  //  cv::Vec2f translation() const final;
+
+  bool set_parameters(const cv::Mat1f & p) final;
+  void scale_transfrom(double factor) final;
+  double eps(const cv::Mat1f & dp, const cv::Size & image_size) final;
+
+  bool create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const;
+  bool create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const final;
+  bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
+
+  bool invertible() const final
+  {
+    return true;
+  }
+
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
+
+protected:
+  void update_parameters();
+
+protected:
+  cv::Matx33f _K;
+  cv::Vec3f _A;
+};
+
+
 #endif /* __c_image_transform_h__ */

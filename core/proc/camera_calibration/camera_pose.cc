@@ -698,11 +698,11 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
 {
   INSTRUMENT_REGION("");
 
-  typedef float
+  typedef double
       _Tp;
 
-  typedef c_levmar_solver<_Tp>
-    c_levmar_solver;
+  typedef c_levmar_solver
+    c_lm_solver;
 
   typedef cv::Matx<_Tp, 3, 3>
     Matx33;
@@ -728,8 +728,8 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
           return from_spherical(p[3], p[4]);
       };
 
-  class c_levmar_solver_callback:
-      public c_levmar_solver::callback
+  class c_lm_solver_callback:
+      public c_lm_solver::callback
   {
     std::vector<cv::Point2f> current_keypoints;
     std::vector<cv::Point2f> reference_keypoints;
@@ -740,7 +740,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     _Tp robust_threshold = 10;
 
   public:
-    c_levmar_solver_callback(const std::vector<cv::Point2f> & _current_keypoints,
+    c_lm_solver_callback(const std::vector<cv::Point2f> & _current_keypoints,
         const std::vector<cv::Point2f> & _reference_keypoints,
         const cv::Mat1b & _inliers,
         const Matx33 & _camera_matrix,
@@ -776,7 +776,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
       robust_threshold = v;
     }
 
-    bool thread_safe_compute() const override
+    bool allow_tbb() const final
     {
       return false;
     }
@@ -789,7 +789,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     /**
      * compute rhs errors for specified vector of parameters
      */
-    bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const override
+    bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const final
     {
       // INSTRUMENT_REGION("");
 
@@ -890,14 +890,14 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
    * Setup c_levmar_solver instance
    * */
 
-  c_levmar_solver lm(100, 1e-7);
+  c_lm_solver lm(100, 1e-7);
 
   if ( opts ) {
     if ( opts->max_levmar_iterations > 0 ) {
       lm.set_max_iterations(opts->max_levmar_iterations);
     }
     if ( opts->epsf >= 0 ) {
-      lm.set_epsf(opts->epsf);
+      lm.set_epsfn(opts->epsf);
     }
     if ( opts->epsx >= 0 ) {
       lm.set_epsx(opts->epsx);
@@ -943,7 +943,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     /*
      * Setup c_levmar_solver callback instance
      * */
-    c_levmar_solver_callback callback(current_keypoints, reference_keypoints, inliers,
+    c_lm_solver_callback callback(current_keypoints, reference_keypoints, inliers,
         camera_matrix, camera_matrix_inv, camera_matrix_t_inv,
         direction);
 

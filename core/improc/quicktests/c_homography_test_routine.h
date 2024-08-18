@@ -38,11 +38,6 @@ public:
     return T;
   }
 
-  void set_focus(float v)
-  {
-    F = v;
-  }
-
   void set_output_size(const cv::Size & v)
   {
     output_size_ = v;
@@ -51,6 +46,11 @@ public:
   const cv::Size & output_size() const
   {
     return output_size_;
+  }
+
+  void set_focus(float v)
+  {
+    F = v;
   }
 
   float focus() const

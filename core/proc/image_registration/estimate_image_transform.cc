@@ -756,6 +756,18 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
   return true;
 }
 
+bool estimate_prh_transform(c_epipolar_derotation_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions_,
+    const c_estimate_image_transform_options * options)
+{
+  // c_prh_image_transform
+
+  return false;
+}
+
+
+
 } // namespace
 
 

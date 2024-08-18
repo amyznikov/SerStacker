@@ -15,11 +15,11 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
     cv::RotatedRect * rc)
 {
 
-  typedef c_levmar_solver<double>
-    c_levmar_solver;
+  typedef c_levmar_solver
+    c_lm_solver;
 
-  class c_levmar_solver_callback:
-      public c_levmar_solver::callback
+  class c_lm_solver_callback:
+      public c_lm_solver::callback
   {
     double axis_ratio;
     double orientation;
@@ -27,7 +27,7 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
 
   public:
 
-    c_levmar_solver_callback(double _axis_ratio, double _orientation, const std::vector<cv::Point2f> & _points) :
+    c_lm_solver_callback(double _axis_ratio, double _orientation, const std::vector<cv::Point2f> & _points) :
         axis_ratio(_axis_ratio),
         orientation(_orientation),
         points(_points)
@@ -35,7 +35,7 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
     }
 
     bool compute(const std::vector<double> & params, std::vector<double> & rhs,
-        cv::Mat1d * jac, bool * have_analytical_jac) const override
+        cv::Mat1d * jac, bool * have_analytical_jac) const final
     {
       const double x0 = params[0];
       const double y0 = params[1];
@@ -73,8 +73,8 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
   params.emplace_back(center[1]); // y0
   params.emplace_back(1.44 * std::max(size[0], size[1])); // a
 
-  c_levmar_solver_callback callback(fixed_axis_ratio, fixed_orientation, edge_points);
-  c_levmar_solver solver;
+  c_lm_solver_callback callback(fixed_axis_ratio, fixed_orientation, edge_points);
+  c_lm_solver solver;
 
   const int iterations =
       solver.run(callback, params);

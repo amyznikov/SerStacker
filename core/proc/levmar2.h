@@ -3,6 +3,12 @@
  *
  *  Created on: Jun 16, 2024
  *      Author: amyznikov
+ *
+ * Based on the paper
+ *  "The Levenberg-Marquardt algorithm for nonlinear least squares curve-fitting problems"
+ *    Henri P. Gavin, Department of Civil and Environmental Engineering Duke University
+ *    May 5, 2024
+ *
  */
 
 #pragma once

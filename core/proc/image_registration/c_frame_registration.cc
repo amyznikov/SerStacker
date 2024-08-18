@@ -1085,7 +1085,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
     CF_DEBUG("reference_keypoints: %zu", sparse_feature_extractor_and_matcher_->referece_keypoints().size());
 
     if ( sparse_feature_extractor_and_matcher_->referece_keypoints().empty() ) {
-      CF_ERROR("No parse keypoints extracted");
+      CF_ERROR("No sparse keypoints extracted");
       return false;
     }
   }

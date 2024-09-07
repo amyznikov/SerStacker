@@ -222,6 +222,19 @@ public:
     return false;
   }
 
+  bool select_stream(const std::string & stream_name)
+  {
+    const int stream_index =
+        find_stream(stream_name);
+
+    if ( stream_index < 0 ) {
+      errno = EINVAL;
+      return false;
+    }
+
+    return select_stream(stream_index);
+  }
+
   uint32_t selected_stream() const
   {
     return _selected_stream;
@@ -260,6 +273,11 @@ public:
   ssize_t read(void * buff, size_t maxsize)
   {
     return read(_selected_stream, buff, maxsize);
+  }
+
+  bool readx(const std::function<bool(c_file_handle & fd)> & rfn)
+  {
+    return readx(_selected_stream, rfn);
   }
 
 protected:

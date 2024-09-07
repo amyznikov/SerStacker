@@ -133,7 +133,7 @@ protected:
 
 protected:
   c_stereo_input_source input_;
-  c_stereo_matcher_input_options input_options_;
+  c_stereo_matcher_input_options _input_options;
   c_stereo_matcher_stereo_rectification_options stereo_rectification_options_;
   c_stereo_matcher_processing_options processing_options_;
   c_stereo_matcher_image_processing_options image_processing_options_;

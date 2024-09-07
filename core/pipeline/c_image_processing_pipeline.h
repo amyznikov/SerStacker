@@ -44,23 +44,23 @@ struct c_image_processing_pipeline_input_options
 bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
 
 #define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
-  PIPELINE_CTLC(ctrls, input_options_.start_frame_index, "start frame index", "", _this->input_sequence_ != nullptr); \
-  PIPELINE_CTL(ctrls, input_options_.max_input_frames, "max input frames", "");\
-  PIPELINE_CTL(ctrls, input_options_.debayer_method, "debayer method", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.darkbayer_filename, "Dark frame", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.flatbayer_filename, "Flat frame", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, input_options_.missing_pixel_mask_filename, "missing pixel mask", "");\
-  PIPELINE_CTL(ctrls, input_options_.missing_pixels_marked_black, "missing pixels are black", "");\
-  PIPELINE_CTL(ctrls, input_options_.inpaint_missing_pixels, "inpaint missing pixels", "");\
-  PIPELINE_CTL(ctrls, input_options_.enable_color_maxtrix, "enable color maxtrix", "");\
-  PIPELINE_CTL(ctrls, input_options_.detect_bad_asi_frames, "detect bad asi frames", "");\
-  PIPELINE_CTL(ctrls, input_options_.filter_bad_pixels, "filter bad pixels", "");\
-  PIPELINE_CTL(ctrls, input_options_.bad_pixels_variation_threshold, "bad pixels variation", "");\
-  PIPELINE_CTL(ctrls, input_options_.enable_bground_normalization, "bground normalization", "");\
-  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.norm_type, "norm type", "norm type", _this->input_options_.enable_bground_normalization);\
-  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.stretch, "stretch", "stretch", _this->input_options_.enable_bground_normalization);\
-  PIPELINE_CTLC(ctrls, input_options_.background_normalization_options.offset, "offset", "offset", _this->input_options_.enable_bground_normalization);\
-  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, input_options_.input_image_processor, "input_image_processor", "");
+  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->input_sequence_ != nullptr); \
+  PIPELINE_CTL(ctrls, _input_options.max_input_frames, "max input frames", "");\
+  PIPELINE_CTL(ctrls, _input_options.debayer_method, "debayer method", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.darkbayer_filename, "Dark frame", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.flatbayer_filename, "Flat frame", "");\
+  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.missing_pixel_mask_filename, "missing pixel mask", "");\
+  PIPELINE_CTL(ctrls, _input_options.missing_pixels_marked_black, "missing pixels are black", "");\
+  PIPELINE_CTL(ctrls, _input_options.inpaint_missing_pixels, "inpaint missing pixels", "");\
+  PIPELINE_CTL(ctrls, _input_options.enable_color_maxtrix, "enable color maxtrix", "");\
+  PIPELINE_CTL(ctrls, _input_options.detect_bad_asi_frames, "detect bad asi frames", "");\
+  PIPELINE_CTL(ctrls, _input_options.filter_bad_pixels, "filter bad pixels", "");\
+  PIPELINE_CTL(ctrls, _input_options.bad_pixels_variation_threshold, "bad pixels variation", "");\
+  PIPELINE_CTL(ctrls, _input_options.enable_bground_normalization, "bground normalization", "");\
+  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.norm_type, "norm type", "norm type", _this->_input_options.enable_bground_normalization);\
+  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.stretch, "stretch", "stretch", _this->_input_options.enable_bground_normalization);\
+  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.offset, "offset", "offset", _this->_input_options.enable_bground_normalization);\
+  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _input_options.input_image_processor, "input_image_processor", "");
 
 
 

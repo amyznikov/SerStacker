@@ -39,12 +39,12 @@ c_live_stacking_pipeline::c_live_stacking_pipeline(const std::string & name,
 
 const c_live_stacking_input_options& c_live_stacking_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_live_stacking_input_options& c_live_stacking_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_live_stacking_registration_options & c_live_stacking_pipeline::registration_options() const
@@ -92,7 +92,7 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, input_options_);
+    serialize_base_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
@@ -292,13 +292,13 @@ bool c_live_stacking_pipeline::run_pipeline()
   else {
 
     const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
+        std::max(_input_options.start_frame_index, 0);
 
     const int end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_sequence_->size() :
             std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
 
     total_frames_ = end_pos - start_pos;
     processed_frames_ = 0;
@@ -326,7 +326,7 @@ bool c_live_stacking_pipeline::run_pipeline()
 
     const bool fOk =
         read_input_frame(input_sequence_,
-            input_options_,
+            _input_options,
             current_image_, current_mask_,
             false,
             false);
@@ -340,14 +340,19 @@ bool c_live_stacking_pipeline::run_pipeline()
       break;
     }
 
+    if ( current_image_.empty() ) {
+      // in case of corrupted ASI frame detection the read_input_frame() returns true with empty output image.
+      continue;
+    }
+
     if( input_display_scale_ <= 0 ) {
       input_display_scale_ =
           (1 << input_sequence_->bpp());
     }
 
-    if( input_options_.input_image_processor ) {
+    if( _input_options.input_image_processor ) {
       lock_guard lock(mutex());
-      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }

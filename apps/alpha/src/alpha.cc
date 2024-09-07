@@ -71,35 +71,35 @@ void ecclm_normalize(cv::Mat1f & image, cv::Mat1b & mask)
 
 int main(int argc, char *argv[])
 {
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
-
-  const std::string input_filenames[2] = {
-      "/home/data/ecclm/F1.png",
-      "/home/data/ecclm/F2.png",
-  };
-
-  cv::Mat input_images[2];
-
-  for ( int i = 0; i < 2; ++i ) {
-
-    if ( !load_image(input_filenames[i], input_images[i]) ) {
-      CF_ERROR("load_image(%s) fails", input_filenames[i].c_str());
-      return 1;
-    }
-
-    extract_channel(input_images[i], input_images[i], cv::noArray(), cv::noArray(), color_channel_gray, 1, CV_32F);
-    cv::GaussianBlur(input_images[i], input_images[i], cv::Size(), 1, 1);
-
-    //cv::morphologyEx(input_image, input_image, cv::MORPH_GRADIENT, cv::Mat1b(5,5, 255));
-  }
-
-  double corr =
-      compute_correlation(input_images[0],
-          input_images[0],
-          cv::noArray() );
-
-  CF_DEBUG("corr=%g", corr);
+//  cf_set_logfile(stderr);
+//  cf_set_loglevel(CF_LOG_DEBUG);
+//
+//  const std::string input_filenames[2] = {
+//      "/home/data/ecclm/F1.png",
+//      "/home/data/ecclm/F2.png",
+//  };
+//
+//  cv::Mat input_images[2];
+//
+//  for ( int i = 0; i < 2; ++i ) {
+//
+//    if ( !load_image(input_filenames[i], input_images[i]) ) {
+//      CF_ERROR("load_image(%s) fails", input_filenames[i].c_str());
+//      return 1;
+//    }
+//
+//    extract_channel(input_images[i], input_images[i], cv::noArray(), cv::noArray(), color_channel_gray, 1, CV_32F);
+//    cv::GaussianBlur(input_images[i], input_images[i], cv::Size(), 1, 1);
+//
+//    //cv::morphologyEx(input_image, input_image, cv::MORPH_GRADIENT, cv::Mat1b(5,5, 255));
+//  }
+//
+//  double corr =
+//      compute_correlation(input_images[0],
+//          input_images[0],
+//          cv::noArray() );
+//
+//  CF_DEBUG("corr=%g", corr);
 
   return 0;
 }

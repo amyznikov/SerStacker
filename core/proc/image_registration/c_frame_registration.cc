@@ -157,6 +157,40 @@ const c_image_transform::sptr & c_frame_registration::image_transform() const
   return image_transform_;
 }
 
+void c_frame_registration::set_current_timestamp(double v, bool valid)
+{
+  _current_timestamp = v;
+  _has_valid_current_timestamp = valid;
+}
+
+double c_frame_registration::current_timestamp() const
+{
+  return _current_timestamp;
+}
+
+bool c_frame_registration::has_valid_current_timestamp() const
+{
+  return _has_valid_current_timestamp;
+}
+
+void c_frame_registration::set_reference_timestamp(double v, bool valid)
+{
+  _reference_timestamp = v;
+  _has_valid_reference_timestamp = valid;
+}
+
+double c_frame_registration::reference_timestamp() const
+{
+  return _reference_timestamp;
+}
+
+bool c_frame_registration::has_valid_reference_timestamp() const
+{
+  return _has_valid_reference_timestamp;
+}
+
+
+
 bool c_frame_registration::create_image_transfrom()
 {
   if( !image_transform_ ) {
@@ -284,12 +318,22 @@ const c_eccflow & c_frame_registration::eccflow() const
   return this->eccflow_;
 }
 
-const c_jovian_derotation & c_frame_registration::jovian_derotation() const
+//const c_jovian_derotation & c_frame_registration::jovian_derotation() const
+//{
+//  return this->jovian_derotation_;
+//}
+//
+//c_jovian_derotation & c_frame_registration::jovian_derotation()
+//{
+//  return this->jovian_derotation_;
+//}
+
+const c_jovian_derotation2 & c_frame_registration::jovian_derotation() const
 {
   return this->jovian_derotation_;
 }
 
-c_jovian_derotation & c_frame_registration::jovian_derotation()
+c_jovian_derotation2 & c_frame_registration::jovian_derotation()
 {
   return this->jovian_derotation_;
 }
@@ -447,19 +491,26 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       const c_jovian_derotation_options & opts =
           options_.planetary_disk_derotation.jovian_derotation;
 
-      jovian_derotation_.set_detector_options(opts.detector_options);
-      jovian_derotation_.set_min_rotation(opts.min_rotation);
-      jovian_derotation_.set_max_rotation(opts.max_rotation);
-      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
-      jovian_derotation_.set_num_orientations(opts.num_orientations);
+//      jovian_derotation_.set_detector_options(opts.detector_options);
+//      jovian_derotation_.set_min_rotation(opts.min_rotation);
+//      jovian_derotation_.set_max_rotation(opts.max_rotation);
+//      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
+//      jovian_derotation_.set_num_orientations(opts.num_orientations);
+//
+//      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+//          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
+//      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+//        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
+//        return false;
+//      }
 
-      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
-
-      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
+      jovian_derotation_.detector_options() = opts.detector_options;
+      jovian_derotation_.detector_options().auto_location = false;
+      if( !jovian_derotation_.detect(reference_image, reference_mask) ) {
+        CF_ERROR("jovian_derotation_.detect() fails");
         return false;
       }
+
 
       break;
     }
@@ -750,27 +801,68 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     cv::Mat2f derotation_remap;
     cv::Mat1f current_wmask;
+    cv::Mat1b current_bmask;
 
     switch (options_.planetary_disk_derotation.derotation_type) {
-      case planetary_disk_derotation_jovian:
+      case planetary_disk_derotation_jovian: {
 
-        jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-            ssprintf("%s/derotation", debug_path_.c_str()));
+//        jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+//            ssprintf("%s/derotation", debug_path_.c_str()));
 
-        if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
+//        if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
+//          CF_ERROR("jovian_derotation_.compute() fails");
+//          return false;
+//        }
+
+//        derotation_remap =
+//            jovian_derotation_.current_derotation_remap();
+//
+//        current_wmask =
+//            jovian_derotation_.current_wmask();
+
+        const double current_tstamp_sec =
+            _current_timestamp;
+
+        const double reference_tstamp_sec =
+            _reference_timestamp;
+
+        CF_DEBUG("current_tstamp_sec=%g reference_tstamp_sec=%g", current_tstamp_sec, reference_tstamp_sec);
+
+        if ( !jovian_derotation_.compute(current_tstamp_sec, reference_tstamp_sec) ) {
           CF_ERROR("jovian_derotation_.compute() fails");
           return false;
         }
 
+
         derotation_remap =
             jovian_derotation_.current_derotation_remap();
+
+        CF_DEBUG("derotation_remap: %dx%d", derotation_remap.cols, derotation_remap.rows);
 
         current_wmask =
             jovian_derotation_.current_wmask();
 
-        break;
+        CF_DEBUG("current_wmask: %dx%d", current_wmask.cols, current_wmask.rows);
 
-      case planetary_disk_derotation_saturn:
+        current_bmask =
+            jovian_derotation_.current_bmask();
+
+        CF_DEBUG("current_bmask: %dx%d", current_bmask.cols, current_bmask.rows);
+
+        break;
+      }
+
+      case planetary_disk_derotation_saturn: {
+
+        const double current_tstamp_sec = _current_timestamp;
+        const double reference_tstamp_sec = _reference_timestamp;
+
+        if ( !saturn_derotation_.compute(current_tstamp_sec, reference_tstamp_sec) ) {
+          CF_ERROR("saturn_derotation_.compute() fails");
+          return false;
+        }
+
+
         derotation_remap =
             saturn_derotation_.current_derotation_remap();
 
@@ -778,6 +870,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
             saturn_derotation_.current_wmask();
 
         break;
+      }
+
       default:
         break;
     }
@@ -884,23 +978,49 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
     tmp = src.getMat();
   }
   else {
+
     // dark frame subtraction could produce negative pixel values, star extractor may be sensitive.
     cv::max(src, 0, tmp);
     normalize_minmax(tmp, tmp, 0, 255, srcmsk);
+    tmp.convertTo(tmp, CV_8U);
   }
 
-  const bool fOk =
-      extract_channel(tmp, dst, srcmsk, dstmsk,
-          options_.registration_channel,
-          options_.feature_registration.scale,
-          CV_8U,
-          1);
+  if ( options_.feature_registration.registration_channel !=  color_channel_dont_change ) {
 
-  if ( !fOk ) {
-    CF_ERROR("extract_channel(channel_=%d scale=%g) fails",
-        options_.registration_channel,
-        options_.feature_registration.scale);
-    return false;
+    const bool fOk =
+        extract_channel(tmp, dst, srcmsk, dstmsk,
+            options_.ecc_registration_channel,
+            options_.feature_registration.scale,
+            CV_8U,
+            1);
+
+    if ( !fOk ) {
+      CF_ERROR("extract_channel(channel_=%d scale=%g) fails",
+          options_.ecc_registration_channel,
+          options_.feature_registration.scale);
+      return false;
+    }
+  }
+  else if ( options_.feature_registration.scale == 0 || options_.feature_registration.scale == 1 ) {
+
+    dst.move(tmp);
+    srcmsk.copyTo(dstmsk);
+
+  }
+  else {
+
+    const double f =
+        options_.feature_registration.scale;
+
+    cv::resize(tmp, dst, cv::Size(), f, f, cv::INTER_AREA);
+
+    if ( srcmsk.empty() ) {
+      dstmsk.release();
+    }
+    else {
+      cv::resize(srcmsk.getMat(), dstmsk, cv::Size(), f, f, cv::INTER_AREA);
+      cv::compare(dstmsk.getMat(), 252, dstmsk, cv::CMP_GE);
+    }
   }
 
   return true;
@@ -910,8 +1030,8 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
     cv::OutputArray dst, cv::OutputArray dstmsk,
     double scale) const
 {
-  if( !extract_channel(src, dst, srcmsk, dstmsk, options_.registration_channel, scale, CV_32F) ) {
-    CF_ERROR("extract_channel(registration_channel_=%d) fails", options_.registration_channel);
+  if( !extract_channel(src, dst, srcmsk, dstmsk, options_.ecc_registration_channel, scale, CV_32F) ) {
+    CF_ERROR("extract_channel(registration_channel_=%d) fails", options_.ecc_registration_channel);
     return false;
   }
 
@@ -950,10 +1070,10 @@ bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_i
 
   bool fOk =
       simple_planetary_disk_detector(src_ecc_image, src_mask,
-          nullptr,
           2,
           options_.ecc.planetary_disk_mask_stdev_factor,
           options_.ecc.se_close_size,
+          nullptr,
           nullptr,
           &planetary_disk_mask);
 
@@ -1019,10 +1139,11 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
     if( !detector_opts.align_planetary_disk_masks ) {
 
       const bool fOk =
-          simple_planetary_disk_detector(reference_feature_image,
-              reference_feature_mask,
-              &planetary_disk_reference_centroid_,
-              detector_opts.gbsigma);
+          simple_planetary_disk_detector(reference_feature_image, reference_feature_mask,
+              detector_opts.gbsigma,
+              0.5,
+              2,
+              &planetary_disk_reference_centroid_);
 
       if( !fOk ) {
         CF_FATAL("simple_planetary_disk_detector() fails");
@@ -1033,12 +1154,11 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
     else {
 
       const bool fOk =
-          simple_planetary_disk_detector(reference_feature_image,
-              reference_feature_mask,
-              nullptr,
+          simple_planetary_disk_detector(reference_feature_image, reference_feature_mask,
               detector_opts.gbsigma,
               detector_opts.stdev_factor,
               detector_opts.se_close_size,
+              nullptr,
               &planetary_disk_reference_component_rect_,
               &planetary_disk_reference_component_mask_,
               &planetary_disk_reference_centroid_);
@@ -1106,10 +1226,11 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
     if( !detector_opts.align_planetary_disk_masks ) {
 
       const bool fOk =
-          simple_planetary_disk_detector(current_feature_image,
-              current_feature_mask,
-              &planetary_disk_current_centroid_,
-              detector_opts.gbsigma);
+          simple_planetary_disk_detector(current_feature_image, current_feature_mask,
+              detector_opts.gbsigma,
+              0.5,
+              2,
+              &planetary_disk_current_centroid_);
 
       if( !fOk ) {
         CF_FATAL("simple_planetary_disk_detector() fails");
@@ -1119,12 +1240,11 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
     else {
 
       const bool fOk =
-          simple_planetary_disk_detector(current_feature_image,
-              current_feature_mask,
-              nullptr,
+          simple_planetary_disk_detector(current_feature_image, current_feature_mask,
               detector_opts.gbsigma,
               detector_opts.stdev_factor,
               detector_opts.se_close_size,
+              nullptr,
               &planetary_disk_current_component_rect_,
               &planetary_disk_current_component_mask_,
               &planetary_disk_current_centroid_);
@@ -1190,8 +1310,11 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
     enum ECC_BORDER_MODE border_mode,
     const cv::Scalar & border_value) const
 {
-  cv::Mat src = _src.getMat();
-  cv::Mat src_mask = _src_mask.getMat();
+  cv::Mat src =
+      _src.getMat();
+
+  cv::Mat src_mask =
+      _src_mask.getMat();
 
   cv::Size src_size;
   const cv::Scalar * border_value_ptr;

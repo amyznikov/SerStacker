@@ -398,70 +398,100 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
   return true;
 }
 
-
-bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray current_image, cv::InputArray current_mask)
+bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray current_image,
+    cv::InputArray current_mask)
 {
-  if( matcher_  ) {
+  bool fOk = false;
 
-    current_matches_.clear();
-    matched_reference_positions_.clear();
-    matched_current_positions_.clear();
+  current_matches_.clear();
+  matched_reference_positions_.clear();
+  matched_current_positions_.clear();
 
-    if( !descriptor_ ) {
-      detector_->detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
+  try {
+
+    if( matcher_ ) {
+
+      if( !descriptor_ ) {
+        detector_->detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
+      }
+      else {
+        detector_->detect(current_image, current_keypoints_, current_mask);
+        descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
+      }
+
+      if( !matcher_->match(&current_keypoints_, current_descriptors_, current_matches_) ) {
+        CF_ERROR("matcher_->match() fails");
+        return false;
+      }
+
+      for( const cv::DMatch & m : current_matches_ ) {
+        matched_reference_positions_.emplace_back(reference_keypoints_[m.trainIdx].pt);
+        matched_current_positions_.emplace_back(current_keypoints_[m.queryIdx].pt);
+      }
+
+      CF_DEBUG("current_descriptors: rows=%d cols=%d depth=%d channels=%d",
+          current_descriptors_.rows,
+          current_descriptors_.cols,
+          current_descriptors_.depth(),
+          current_descriptors_.channels());
+
+
     }
     else {
-      detector_->detect(current_image, current_keypoints_, current_mask);
-      descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
-    }
 
-    if ( !matcher_->match(&current_keypoints_, current_descriptors_, current_matches_) ) {
-      CF_ERROR("matcher_->match() fails");
-      return false;
-    }
+      std::vector<uint8_t> status;
+      std::vector<float> err;
 
-    for ( const cv::DMatch & m : current_matches_ ) {
-      matched_reference_positions_.emplace_back(reference_keypoints_[m.trainIdx].pt);
-      matched_current_positions_.emplace_back(current_keypoints_[m.queryIdx].pt);
-    }
+      const c_optflowpyrlk_feature2d_matcher_options & opts =
+          options_.matcher.optflowpyrlk;
 
-  }
-  else {
+      cv::calcOpticalFlowPyrLK(reference_image_, current_image,
+          reference_positions_, current_positions_,
+          status, err,
+          opts.winSize,
+          opts.maxLevel,
+          cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
+              opts.maxIterations,
+              opts.eps),
+          opts.flags,
+          opts.minEigThreshold);
 
-    std::vector<uint8_t> status;
-    std::vector<float> err;
+      for( int i = 0, n = reference_positions_.size(); i < n; ++i ) {
+        if( status[i] && (opts.maxErr <= 0 || err[i] < opts.maxErr) ) {
 
-    current_positions_.clear();
-    matched_reference_positions_.clear();
-    matched_current_positions_.clear();
-
-    const c_optflowpyrlk_feature2d_matcher_options & opts =
-        options_.matcher.optflowpyrlk;
-
-    cv::calcOpticalFlowPyrLK(reference_image_, current_image,
-        reference_positions_, current_positions_,
-        status, err,
-        opts.winSize,
-        opts.maxLevel,
-        cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
-            opts.maxIterations,
-            opts.eps),
-            opts.flags,
-            opts.minEigThreshold);
-
-
-    for( int i = 0, n = reference_positions_.size(); i < n; ++i ) {
-      if( status[i] && (opts.maxErr <= 0 || err[i] < opts.maxErr) ) {
-
-        matched_reference_positions_.emplace_back(reference_positions_[i]);
-        matched_current_positions_.emplace_back(current_positions_[i]);
+          matched_reference_positions_.emplace_back(reference_positions_[i]);
+          matched_current_positions_.emplace_back(current_positions_[i]);
+        }
       }
     }
+
+    fOk = true;
+
+  }
+
+  catch( const cv::Exception & e ) {
+
+    CF_ERROR("OpenCV Exception caught in %s():\n"
+        "%s\n"
+        "%s() : %d\n"
+        "file : %s\n",
+        __func__,
+        e.err.c_str(), ///< error description
+        e.func.c_str(),///< function name. Available only when the compiler supports getting it
+        e.line,///< line number in the source file where the error has occurred
+        e.file.c_str()///< source file name where the error has occurred
+        );
+  }
+  catch( const std::exception & e ) {
+    CF_ERROR("std::exception caught in %s(): %s\n", __func__, e.what());
+  }
+  catch( ... ) {
+    CF_ERROR("Unknown exception caught in %s()\n", __func__);
   }
 
   CF_DEBUG("matched keypoints: %zu", matched_reference_positions_.size());
 
-  return true;
+  return fOk;
 }
 
 void c_sparse_feature_extractor_and_matcher::detect(cv::InputArray image,

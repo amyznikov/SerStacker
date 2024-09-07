@@ -62,10 +62,10 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
 
     bool fOK =
         simple_planetary_disk_detector(image, mask,
-            nullptr,
             1,
             0.25 * threshold_scale_,
             2,
+            nullptr,
             nullptr,
             &m,
             nullptr,

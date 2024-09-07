@@ -30,10 +30,10 @@ void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<c
       simple_planetary_disk_detector(
           _src,
           _mask,
-          &centrold,
           gbsigma_,
           stdev_factor_,
           se_close_radius_,
+          &centrold,
           &component_rect_,
           nullptr/* &cmponent_mask_*/,
           nullptr/* &geometrical_center_*/,

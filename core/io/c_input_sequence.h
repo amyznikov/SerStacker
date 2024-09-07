@@ -74,6 +74,9 @@ public:
   const cv::Matx33f & color_matrix() const;
   bool has_color_matrix() const;
 
+  bool has_last_ts() const;
+  double last_ts() const;
+
   virtual bool serialize(c_config_setting settings, bool save);
   virtual bool is_live() const;
 
@@ -102,6 +105,10 @@ protected:
   int last_bpp_ = 0;
   cv::Matx33f last_color_matrix_ = cv::Matx33f::eye() ;
   bool has_last_color_matrix_ = false;
+
+  double _last_ts = 0;
+  bool _has_last_ts = false;
+
 };
 
 #endif /* __c_input_sequence_h__ */

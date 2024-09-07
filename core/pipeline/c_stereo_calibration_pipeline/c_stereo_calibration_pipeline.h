@@ -136,7 +136,7 @@ protected:
 
 protected:
   c_stereo_input_source input_;
-  c_stereo_calibration_input_options input_options_;
+  c_stereo_calibration_input_options _input_options;
   c_chessboard_corners_detection_options chessboard_detection_options_;
   c_stereo_calibrate_options calibration_options_;
   c_stereo_calibration_output_options output_options_;

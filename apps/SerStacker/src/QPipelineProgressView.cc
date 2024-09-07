@@ -240,8 +240,6 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
         std::string output_file_name =
             image_stacking->output_file_name();
 
-        CF_DEBUG("output_file_name: %s", output_file_name.c_str());
-
         if( !output_file_name.empty() ) {
           // imageViewer_->openImage(output_file_name);
         }

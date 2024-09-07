@@ -10,18 +10,20 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
-#include "c_jovian_derotation.h"
+//#include "c_jovian_derotation.h"
+#include "c_jovian_derotation2.h"
 #include "c_saturn_derotation.h"
 #include "image_transform.h"
-//#include "ecc_motion_model.h"
+#include "ecc2.h"
 
 
 struct c_feature_registration_options
 {
-  bool enabled = false;
-  double scale = 0.5;
   c_sparse_feature_extractor_and_matcher_options sparse_feature_extractor_and_matcher;
   c_estimate_image_transform_options estimate_options;
+  double scale = 0.5;
+  color_channel_type registration_channel = color_channel_gray;
+  bool enabled = false;
 };
 
 struct c_ecc_registration_options
@@ -63,11 +65,12 @@ struct c_eccflow_registration_options
 struct c_jovian_derotation_options
 {
   // bool enabled = false;
-  c_jovian_ellipse_detector_options detector_options; // ellipse;
-  double min_rotation = -40 * CV_PI / 180;
-  double max_rotation = +40 * CV_PI / 180;
-  int max_pyramid_level = -1;
-  int num_orientations = 1;
+  //c_jovian_ellipse_detector_options detector_options;
+  c_jovian_ellipse_detector2_options detector_options;
+//  double min_rotation = -40 * CV_PI / 180;
+//  double max_rotation = +40 * CV_PI / 180;
+//  int max_pyramid_level = -1;
+//  int num_orientations = 1;
   int max_context_size = 5;
   bool derotate_all_frames = false;
 };
@@ -78,7 +81,8 @@ struct c_saturn_derotation_options
 };
 
 
-enum planetary_disk_derotation_type {
+enum planetary_disk_derotation_type
+{
   planetary_disk_derotation_disabled,
   planetary_disk_derotation_jovian,
   planetary_disk_derotation_saturn,
@@ -111,31 +115,30 @@ struct c_master_frame_selection_options
 
 struct c_image_registration_options
 {
-  bool enabled = true;
+  IMAGE_MOTION_TYPE motion_type =
+      IMAGE_MOTION_AFFINE;
 
-  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
-  bool accumulate_and_compensate_turbulent_flow = false;
+  color_channel_type ecc_registration_channel =
+      color_channel_gray;
 
-  color_channel_type registration_channel = color_channel_gray;
-  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
-  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
-  cv::Scalar border_value = cv::Scalar(0, 0, 0);
+  enum ECC_INTERPOLATION_METHOD interpolation =
+      ECC_INTER_LINEAR;
+
+  enum ECC_BORDER_MODE border_mode =
+      ECC_BORDER_REFLECT101;
+
+  cv::Scalar border_value =
+      cv::Scalar(0, 0, 0);
+
 
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
+  struct c_planetary_disk_derotation_options planetary_disk_derotation;
 
-  c_planetary_disk_derotation_options planetary_disk_derotation;
+  bool accumulate_and_compensate_turbulent_flow = false;
 
-//  struct c_jovian_derotation_options jovian_derotation;
-//  struct c_saturn_derotation_options saturn_derotation;
-
-//  // Dummy stub from KITTI
-//  cv::Matx33d camera_matrix =
-//      cv::Matx33d(
-//          7.215377e+02, 0.000000e+00, 6.095593e+02,
-//          0.000000e+00, 7.215377e+02, 1.728540e+02,
-//          0.000000e+00, 0.000000e+00, 1.000000e+00);
+  bool enabled = true;
 };
 
 struct c_image_registration_status
@@ -183,6 +186,14 @@ public:
   void set_image_transform(const c_image_transform::sptr & transform);
   const c_image_transform::sptr & image_transform() const;
 
+  void set_current_timestamp(double v, bool valid);
+  double current_timestamp() const;
+  bool has_valid_current_timestamp() const;
+
+  void set_reference_timestamp(double v, bool valid);
+  double reference_timestamp() const;
+  bool has_valid_reference_timestamp() const;
+
   const c_sparse_feature_extractor_and_matcher::sptr & create_sparse_feature_extractor_and_matcher();
   const c_sparse_feature_extractor_and_matcher::sptr & sparse_feature_extractor_and_matcher() const;
 
@@ -190,8 +201,11 @@ public:
   const c_ecch & ecch() const;
   const c_eccflow & eccflow() const;
 
-  const c_jovian_derotation & jovian_derotation() const;
-  c_jovian_derotation & jovian_derotation();
+//  const c_jovian_derotation & jovian_derotation() const;
+//  c_jovian_derotation & jovian_derotation();
+
+  const c_jovian_derotation2 & jovian_derotation() const;
+  c_jovian_derotation2 & jovian_derotation();
 
   const c_saturn_derotation & saturn_derotation() const;
   c_saturn_derotation & saturn_derotation();
@@ -304,7 +318,8 @@ protected:
   c_ecch ecch_;
   c_eccflow eccflow_;
 
-  c_jovian_derotation jovian_derotation_;
+  //c_jovian_derotation jovian_derotation_;
+  c_jovian_derotation2 jovian_derotation_;
   c_saturn_derotation saturn_derotation_;
   ecc_image_preprocessor_function ecc_image_preprocessor_;
 
@@ -314,6 +329,13 @@ protected:
 
   std::string debug_path_;
   //bool enable_debug_ = false;
+
+  // for planetary disk derotations using known frame timestamps
+  double _current_timestamp = 0;
+  double _reference_timestamp = 0;
+  bool _has_valid_current_timestamp = false;
+  bool _has_valid_reference_timestamp = false;
+
 };
 
 #endif /* __c_frame_registration_h__ */

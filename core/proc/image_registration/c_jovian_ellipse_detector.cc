@@ -19,7 +19,6 @@
 
 #include <core/debug.h>
 
-
 cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc)
 {
   const float a =
@@ -47,12 +46,10 @@ cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc)
       2 * halfheight);
 }
 
-
 cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Size & image_size, int margin)
 {
   cv::Rect rc =
       compute_ellipse_bounding_box(ellipse);
-
 
   if( margin < 0 ) {
     margin =
@@ -86,7 +83,6 @@ cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Siz
   return rc;
 }
 
-
 namespace {
 
 /**
@@ -101,30 +97,31 @@ bool get_maximal_connected_component(const cv::Mat1b & src,
   cv::Mat1d centroids;
   int N;
 
-  if ( (N = cv::connectedComponentsWithStats(src, labels, stats, centroids, 8, labels.type())) < 2 ) {
+  if( (N = cv::connectedComponentsWithStats(src, labels, stats, centroids, 8, labels.type())) < 2 ) {
     return false;
   }
 
-  struct ss {
+  struct ss
+  {
     int label, area;
   };
 
   std::vector<ss> cstats;
 
-  for ( int i = 1; i < N; ++i ) {
+  for( int i = 1; i < N; ++i ) {
     cstats.emplace_back();
     cstats.back().label = i;
     cstats.back().area = stats[i][cv::CC_STAT_AREA];
   }
 
-  if ( cstats.size() > 1 ) {
+  if( cstats.size() > 1 ) {
     std::sort(cstats.begin(), cstats.end(),
         [](const ss & p, const ss & n) {
           return p.area > n.area;
         });
   }
 
-  if ( cstats[0].area < 4 ) {
+  if( cstats[0].area < 4 ) {
     CF_DEBUG("Small area: %d", cstats[0].area);
     return false;
   }
@@ -139,7 +136,6 @@ bool get_maximal_connected_component(const cv::Mat1b & src,
         *component_mask,
         cv::CMP_EQ);
   }
-
 
   return true;
 }
@@ -161,21 +157,21 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 
   cv::Rect rc, rcc;
 
-  if ( (src = input_image.getMat()).empty() ) {
+  if( (src = input_image.getMat()).empty() ) {
     return false;
   }
 
-  if ( src.channels() == 1 ) {
+  if( src.channels() == 1 ) {
     src.copyTo(gray);
   }
-  else if ( src.channels() == 4 ) {
+  else if( src.channels() == 4 ) {
     cv::cvtColor(src, gray, cv::COLOR_BGRA2GRAY);
   }
   else {
     cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
   }
 
-  if ( gbsigma > 0 ) {
+  if( gbsigma > 0 ) {
     GaussianBlur(gray, gray, cv::Size(0, 0), gbsigma);
   }
 
@@ -188,11 +184,11 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
       cv::Mat1b(5, 5, 255),
       cv::BORDER_CONSTANT);
 
-  if ( !input_mask.empty() ) {
+  if( !input_mask.empty() ) {
     comp.setTo(0, ~input_mask.getMat());
   }
 
-  if ( !get_maximal_connected_component(comp, &rc, &comp) ) {
+  if( !get_maximal_connected_component(comp, &rc, &comp) ) {
     CF_DEBUG("get_maximal_connected_component() fails");
     return false;
   }
@@ -215,7 +211,7 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
   morphological_smooth_close(comp, comp, cv::Mat1b(3, 3, 255));
   geo_fill_holes(comp, comp, 8);
 
-  if ( !get_maximal_connected_component(comp, &rc, output_component_mask) ) {
+  if( !get_maximal_connected_component(comp, &rc, output_component_mask) ) {
     CF_DEBUG("get_maximal_connected_component() fails");
     return false;
   }
@@ -226,8 +222,6 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 
   return true;
 }
-
-
 
 //template<class ImageTransformType>
 //bool align_images_ecc(ImageTransformType * transform, cv::InputArray input_image, cv::InputArray reference_image)
@@ -257,9 +251,7 @@ bool detect_planetary_disk(cv::InputArray input_image, cv::InputArray input_mask
 //}
 //
 
-
-} // namespace
-
+}// namespace
 
 void c_jovian_ellipse_detector::set_stdev_factor(double v)
 {
@@ -286,7 +278,7 @@ void c_jovian_ellipse_detector::set_offset(const cv::Point2f & v)
   options_.offset = v;
 }
 
-const cv::Point2f & c_jovian_ellipse_detector::offset() const
+const cv::Point2f& c_jovian_ellipse_detector::offset() const
 {
   return options_.offset;
 }
@@ -306,27 +298,27 @@ void c_jovian_ellipse_detector::set_options(const c_jovian_ellipse_detector_opti
   options_ = v;
 }
 
-const c_jovian_ellipse_detector_options & c_jovian_ellipse_detector::options() const
+const c_jovian_ellipse_detector_options& c_jovian_ellipse_detector::options() const
 {
   return options_;
 }
 
-c_jovian_ellipse_detector_options & c_jovian_ellipse_detector::options()
+c_jovian_ellipse_detector_options& c_jovian_ellipse_detector::options()
 {
   return options_;
 }
 
-const cv::Mat1b & c_jovian_ellipse_detector::final_planetary_disk_mask() const
+const cv::Mat1b& c_jovian_ellipse_detector::final_planetary_disk_mask() const
 {
   return final_planetary_disk_mask_;
 }
 
-const cv::Mat1b & c_jovian_ellipse_detector::detected_planetary_disk_mask() const
+const cv::Mat1b& c_jovian_ellipse_detector::detected_planetary_disk_mask() const
 {
   return detected_planetary_disk_mask_;
 }
 
-const cv::Mat1b & c_jovian_ellipse_detector::detected_planetary_disk_edge() const
+const cv::Mat1b& c_jovian_ellipse_detector::detected_planetary_disk_edge() const
 {
   return detected_planetary_disk_edge_;
 }
@@ -367,7 +359,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_pca(const cv::Mat &
 
   cv::Mat g;
 
-  if ( options_.pca_blur <= 0 ) {
+  if( options_.pca_blur <= 0 ) {
     g = gray_image(component_rect);
   }
   else {
@@ -399,7 +391,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_pca(const cv::Mat &
   int ii = 0;
   for( int y = 0; y < mask.rows; ++y ) {
     for( int x = 0; x < mask.cols; ++x ) {
-      if ( mask[y][x] ) {
+      if( mask[y][x] ) {
         data_pts[ii][0] = pca_gx_[y][x];
         data_pts[ii][1] = pca_gy_[y][x];
         ++ii;
@@ -455,19 +447,8 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
       cv::Mat1b(3, 3, 255),
       cv::BORDER_CONSTANT);
 
-
   cv::findNonZero(detected_planetary_disk_edge_,
       component_edge_points);
-
-//  ellipse =
-//      cv::fitEllipseAMS(component_edge_points);
-//
-//  if( ellipse.size.width < ellipse.size.height ) {
-//    std::swap(ellipse.size.width, ellipse.size.height);
-//    ellipse.angle -= 90;
-//  }
-//
-//  ellipseAMS_ = ellipse;
 
   // Use PCA on image gradients to compute jovian disk orientation
   ellipse.angle =
@@ -475,10 +456,10 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
           detected_planetary_disk_mask_,
           detected_component_rect);
 
-  if ( ellipse.angle > 90 ) {
+  if( ellipse.angle > 90 ) {
     ellipse.angle -= 180;
   }
-  else if ( ellipse.angle < -90 ) {
+  else if( ellipse.angle < -90 ) {
     ellipse.angle += 180;
   }
 
@@ -509,3 +490,4 @@ bool c_jovian_ellipse_detector::detect_jovian_disk(cv::InputArray _image, cv::In
 
   return true;
 }
+

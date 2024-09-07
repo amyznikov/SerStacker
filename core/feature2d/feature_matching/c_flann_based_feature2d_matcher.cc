@@ -244,7 +244,10 @@ bool c_flann_based_feature2d_matcher::match(const std::vector<cv::KeyPoint> * qu
   try {
 
 
-    const int knn = lowe_ratio_ > 0 ? 2 : 1;
+    const int knn =
+        lowe_ratio_ > 0 ? 2 : 1;
+
+    CF_DEBUG("H knn=%d", knn);
 
     // CF_DEBUG("lowe_ratio_=%g knn=%d", lowe_ratio_, knn);
 
@@ -280,7 +283,6 @@ bool c_flann_based_feature2d_matcher::match(const std::vector<cv::KeyPoint> * qu
         [](const cv::Mat & m, int r, int c) -> float {
           return m.depth() == CV_32F ? m.at<float>(r,c) : m.at<int32_t>(r,c);
         };
-
 
     const int cr = indices_.rows;
     const int cc = indices_.cols;

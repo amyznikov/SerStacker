@@ -53,10 +53,10 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
     f->color_matrix_ = color_matrix();
   }
 
-  if ( input_options_ ) {
+  if ( _input_options ) {
 
     const c_video_input_options & opts =
-        input_options_->video;
+        _input_options->video;
 
     if( opts.filter_bad_pixels && opts.bad_pixels_variation_threshold > 0 ) {
 

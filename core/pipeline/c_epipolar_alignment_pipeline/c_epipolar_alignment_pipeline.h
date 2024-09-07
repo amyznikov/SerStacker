@@ -108,7 +108,7 @@ protected:
   bool save_matches_csv();
 
 protected:
-  c_epipolar_alignment_input_options input_options_;
+  c_epipolar_alignment_input_options _input_options;
   c_epipolar_alignment_camera_options camera_options_;
   c_epipolar_alignment_feature2d_options feature2d_options_;
   c_lm_camera_pose_options camera_pose_options_;

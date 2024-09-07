@@ -56,12 +56,12 @@ c_regular_stereo_pipeline::~c_regular_stereo_pipeline()
 
 c_regular_stereo_input_options & c_regular_stereo_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_regular_stereo_input_options & c_regular_stereo_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_regular_stereo_feature2d_options & c_regular_stereo_pipeline::feature2d_options()
@@ -124,14 +124,14 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    SERIALIZE_OPTION(section, save, input_options_, left_stereo_source);
-    SERIALIZE_OPTION(section, save, input_options_, right_stereo_source);
-    SERIALIZE_OPTION(section, save, input_options_, start_frame_index);
-    SERIALIZE_OPTION(section, save, input_options_, max_input_frames);
-    SERIALIZE_OPTION(section, save, input_options_, convert_to_grayscale);
-    SERIALIZE_OPTION(section, save, input_options_, inpaint_missing_pixels);
-    SERIALIZE_OPTION(section, save, input_options_, enable_color_maxtrix);
-    SERIALIZE_OPTION(section, save, input_options_, cameraMatrix);
+    SERIALIZE_OPTION(section, save, _input_options, left_stereo_source);
+    SERIALIZE_OPTION(section, save, _input_options, right_stereo_source);
+    SERIALIZE_OPTION(section, save, _input_options, start_frame_index);
+    SERIALIZE_OPTION(section, save, _input_options, max_input_frames);
+    SERIALIZE_OPTION(section, save, _input_options, convert_to_grayscale);
+    SERIALIZE_OPTION(section, save, _input_options, inpaint_missing_pixels);
+    SERIALIZE_OPTION(section, save, _input_options, enable_color_maxtrix);
+    SERIALIZE_OPTION(section, save, _input_options, cameraMatrix);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
@@ -266,13 +266,13 @@ bool c_regular_stereo_pipeline::open_input_streams()
   }
 
   const int start_pos =
-      std::max(input_options_.start_frame_index, 0);
+      std::max(_input_options.start_frame_index, 0);
 
   const int end_pos =
-      input_options_.max_input_frames < 1 ?
+      _input_options.max_input_frames < 1 ?
           input_sources_[0]->size() :
           std::min(input_sources_[0]->size(),
-              input_options_.start_frame_index + input_options_.max_input_frames);
+              _input_options.start_frame_index + _input_options.max_input_frames);
 
 
   total_frames_ = end_pos - start_pos;
@@ -470,7 +470,7 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
     return false;
   }
 
-  if( input_options_.enable_color_maxtrix && source->has_color_matrix() && output_image.channels() == 3 ) {
+  if( _input_options.enable_color_maxtrix && source->has_color_matrix() && output_image.channels() == 3 ) {
     cv::transform(output_image, output_image,
         source->color_matrix());
   }
@@ -502,11 +502,11 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
     }
   }
 
-  if ( !output_mask.empty() && input_options_.inpaint_missing_pixels ) {
+  if ( !output_mask.empty() && _input_options.inpaint_missing_pixels ) {
     linear_interpolation_inpaint(output_image, output_mask, output_image);
   }
 
-  if( input_options_.convert_to_grayscale && output_image.channels() != 1 ) {
+  if( _input_options.convert_to_grayscale && output_image.channels() != 1 ) {
     cv::cvtColor(output_image, output_image, cv::COLOR_BGR2GRAY);
   }
 
@@ -839,12 +839,12 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
 
-  if ( input_options_.left_stereo_source.empty() ) {
+  if ( _input_options.left_stereo_source.empty() ) {
     CF_ERROR("ERROR: No left stereo source specified");
     return false;
   }
 
-  if ( input_options_.right_stereo_source.empty() ) {
+  if ( _input_options.right_stereo_source.empty() ) {
     CF_ERROR("ERROR: No right stereo source specified");
     return false;
   }
@@ -852,20 +852,20 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   input_sources_[0] =
-      input_sequence_->source(input_options_.left_stereo_source);
+      input_sequence_->source(_input_options.left_stereo_source);
 
   if ( !input_sources_[0] ) {
     CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
-        input_options_.left_stereo_source.c_str());
+        _input_options.left_stereo_source.c_str());
     return false;
   }
 
   input_sources_[1] =
-      input_sequence_->source(input_options_.right_stereo_source);
+      input_sequence_->source(_input_options.right_stereo_source);
 
   if ( !input_sources_[1] ) {
     CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
-        input_options_.right_stereo_source.c_str());
+        _input_options.right_stereo_source.c_str());
     return false;
   }
 
@@ -893,7 +893,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   haveRectificationHomography = false;
 
   const cv::Matx23d & C =
-      input_options_.cameraMatrix;
+      _input_options.cameraMatrix;
 
   intrinsics_.camera_matrix = cv::Matx33d(
       C(0, 0), C(0, 1), C(0, 2),

@@ -216,7 +216,7 @@ protected:
 
 
   cv::Mat missing_pixel_mask_;
-  c_regular_stereo_input_options input_options_;
+  c_regular_stereo_input_options _input_options;
   c_regular_stereo_feature2d_options feature2d_options_;
   c_regular_stereo_calibratie_options calibration_options_;
   c_regular_stereo_matching_options stereo_matching_options_;

@@ -150,7 +150,7 @@ protected:
   c_input_source::sptr currentSource_;
   c_data_frame::sptr currentFrame_;
   c_data_frame_processor::sptr currentProcessor_;
-  c_input_options input_options_;
+  c_input_options _input_options;
 
   QVBoxLayout * mainLayout_ = nullptr;
   QHBoxLayout * toolbarLayout_ = nullptr;

@@ -10,173 +10,184 @@
 #define __c_draw_saturn_ellipse_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/image_registration/c_saturn_ellipse_detector.h>
+
 
 class c_draw_saturn_ellipse_routine :
     public c_image_processor_routine
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_draw_saturn_ellipse_routine,
-      "draw_saturn_ellipse", "test for drawing saturnian planetary disk ellipse");
+      "draw_saturn_ellipse", "test for drawing saturn planetary disk ellipse");
 
   void set_equatorial_radius(double v)
   {
-    equatorial_radius_ = v;
+    _detector.options().equatorial_radius = v;
   }
 
   double equatorial_radius() const
   {
-    return equatorial_radius_;
+    return _detector.options().equatorial_radius;
   }
 
   void set_ring_radius(double v)
   {
-    ring_radius_ = v;
+    _detector.options().ring_radius = v;
   }
 
   double ring_radius() const
   {
-    return ring_radius_;
+    return _detector.options().ring_radius;
   }
 
   void set_center(const cv::Point2f & v)
   {
-    center_ = v;
+    _detector.options().center = v;
   }
 
   const cv::Point2f & center() const
   {
-    return center_;
+    return _detector.options().center;
   }
 
-  void set_orientation(const cv::Vec3d & v)
+  void set_pose(const cv::Vec3d & v)
   {
-    orientation_ = v;
+    _detector.options().pose = v;
   }
 
-  const cv::Vec3d & orientation() const
+  const cv::Vec3d & pose() const
   {
-    return orientation_;
+    return _detector.options().pose;
   }
 
   void set_latidute_step(double v)
   {
-    latidute_step_ = v;
+    _detector.options().draw.latidute_step = v;
   }
 
   double latidute_step() const
   {
-    return latidute_step_;
+    return _detector.options().draw.latidute_step;
   }
 
   void set_longitude_step(double v)
   {
-    longitude_step_ = v;
+    _detector.options().draw.longitude_step = v;
   }
 
   double longitude_step() const
   {
-    return longitude_step_;
+    return _detector.options().draw.longitude_step;
   }
 
   void set_outline_color(const cv::Scalar & v)
   {
-    outline_color_ = v;
+    _detector.options().draw.outline_color = v;
   }
 
   const cv::Scalar outline_color() const
   {
-    return outline_color_;
+    return _detector.options().draw.outline_color;
   }
 
   void set_lines_color(const cv::Scalar & v)
   {
-    lines_color_ = v;
+    _detector.options().draw.line_color = v;
   }
 
   const cv::Scalar & lines_color() const
   {
-    return lines_color_;
+    return _detector.options().draw.line_color;
   }
 
   void set_auto_location(bool v)
   {
-    auto_location_ = v;
+    _detector.options().auto_location = v;
   }
 
   bool auto_location() const
   {
-    return auto_location_;
+    return _detector.options().auto_location;
   }
 
   void set_se_close_radius(int v)
   {
-    se_close_radius_ = v;
+    _detector.options().se_close_radius = v;
   }
 
   int se_close_radius() const
   {
-    return se_close_radius_;
+    return _detector.options().se_close_radius;
   }
 
   void set_show_smask(bool v)
   {
-    show_smask_ = v;
+    _detector.options().draw.show_smask = v;
   }
 
   bool show_smask() const
   {
-    return show_smask_;
+    return _detector.options().draw.show_smask;
   }
 
   void set_show_sbox(bool v)
   {
-    show_sbox_ = v;
+    _detector.options().draw.show_sbox = v;
   }
 
   bool show_sbox() const
   {
-    return show_sbox_;
+    return _detector.options().draw.show_sbox;
   }
 
   void set_show_ring(bool v)
   {
-    show_ring_ = v;
+    _detector.options().draw.show_ring = v;
   }
 
   bool show_ring() const
   {
-    return show_ring_;
+    return _detector.options().draw.show_ring;
   }
 
+  void set_print_debug_info(bool v)
+  {
+    _detector.options().draw.print_debug_info = v;
+  }
+
+  bool print_debug_info() const
+  {
+    return _detector.options().draw.print_debug_info;
+  }
 
   void set_zrotation_remap(double v)
   {
-    zrotation_remap_ = v;
+    _detector.options().draw.deltat = v;
   }
 
   double zrotation_remap() const
   {
-    return zrotation_remap_;
+    return _detector.options().draw.deltat;
   }
 
   void set_gbsigma(double v)
   {
-    gbsigma_ = v;
+    _detector.options().gbsigma = v;
   }
 
   double gbsigma() const
   {
-    return gbsigma_;
+    return _detector.options().gbsigma;
   }
 
   void set_stdev_factor(double v)
   {
-    stdev_factor_ = v;
+    _detector.options().stdev_factor = v;
   }
 
   double stdev_factor() const
   {
-    return stdev_factor_;
+    return _detector.options().stdev_factor;
   }
 
 
@@ -185,35 +196,7 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
-  double equatorial_radius_ = 130;
-  double ring_radius_ = 250;
-  double gbsigma_ = 1;
-  double stdev_factor_ = 0.5;
-
-  cv::Point2f center_ =
-      cv::Point2f (-1, -1);
-
-  cv::Vec3d orientation_ =
-      cv::Vec3d(90, 0, 0);
-
-  double latidute_step_ = 30;
-  double longitude_step_ = 30;
-  double zrotation_remap_ = 0;
-
-  cv::Scalar outline_color_ =
-      cv::Scalar::all(255);
-
-  cv::Scalar lines_color_ =
-      cv::Scalar::all(255);
-
-  bool auto_location_ = false;
-  bool show_ring_ = true;
-  bool show_smask_ = false;
-  bool show_sbox_ = false;
-
-  int se_close_radius_ = 3;
-
-
+  c_saturn_ellipse_detector _detector;
 };
 
 #endif /* __c_draw_saturn_ellipse_routine_h__ */

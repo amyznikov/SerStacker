@@ -255,6 +255,9 @@ void ellipse_poly(const cv::Point2f & center, const cv::Size2f & axes, double an
   }
 }
 
+/*
+ * Replacement for cv::ellipse() with better angular precision
+ * */
 void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc, const cv::Scalar & color, int thickness, int line_type)
 {
   std::vector<cv::Point> pts;
@@ -293,78 +296,56 @@ void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, co
   }
 }
 
+//
+//
+///**
+// * */
+//static bool ellipsoid_from_cart2d(
+//    const cv::Point2d & pos,
+//    double A, double B, double C,
+//    const cv::Matx33d & R,
+//    const cv::Point2d & center,
+//    cv::Vec3d *  cart3d_pos )
+//{
+//
+//  // (x/a)^2 + (y/b)^2 + (z/c)^2 = 1;
+//  // (z/c)^2 = 1 - (x/a)^2 + (y/b)^2;
+//  // (z/c)^2 = 1 - (x/a)^2 + (y/b)^2;
+//
+//
+//
+//
+//
+//
+//
+//
 
-bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect & output_bbox, cv::OutputArray output_mask,
-    double gbsigma, double stdev_factor)
-{
 
-  cv::Point2f centrold;
-  cv::Point2f geometrical_center;
 
-  cv::Mat1b component_mask, rotated_component_mask;
-  cv::Mat pts;
-
-  bool fOk =
-      simple_planetary_disk_detector(_image,
-          cv::noArray(),
-          &centrold,
-          gbsigma,
-          stdev_factor,
-          se_close_radius,
-          nullptr,
-          &component_mask,
-          &geometrical_center);
-
-  if ( !fOk ) {
-    CF_ERROR("simple_planetary_disk_detector() fails");
-    return false;
-  }
-
-  cv::findNonZero(component_mask, pts);
-  pts = pts.reshape(1, pts.rows);
-  pts.convertTo(pts, CV_32F);
-
-  cv::PCA pca(pts, cv::noArray(), cv::PCA::DATA_AS_ROW);
-
-  const cv::Mat1f mean = pca.mean;
-  const cv::Point2f center(mean(0, 0), mean(0, 1));
-  const cv::Matx22f eigenvectors = pca.eigenvectors;
-
-//  CF_DEBUG("cntr=(x=%g y=%g)\n"
-//      " eigenvectors= {\n"
-//      "  %+20g %+20g\n"
-//      "  %+20g %+20g\n"
-//      "}\n"
-//      "\n",
-//      center.x, center.y,
-//      eigenvectors(0, 0), eigenvectors(0, 1),
-//      eigenvectors(1, 0), eigenvectors(1, 1));
-
-  const double angle =
-      std::atan2(eigenvectors(0, 1), eigenvectors(0, 0)) * 180 / CV_PI;
-
-  const cv::Matx23f M =
-      getRotationMatrix2D(center, angle, 1);
-
-  cv::warpAffine(component_mask, rotated_component_mask, M,
-      component_mask.size(),
-      cv::INTER_NEAREST,
-      cv::BORDER_CONSTANT);
-
-  const cv::Rect rc =
-      cv::boundingRect(rotated_component_mask);
-
-  output_bbox.center = center;
-  output_bbox.size.width = rc.width - 2;
-  output_bbox.size.height = rc.height - 2;
-  output_bbox.angle = angle;
-
-  if ( output_mask.needed() ) {
-    output_mask.move(component_mask);
-  }
-
-  return true;
-}
+////  const cv::Point2d cpos(pos.x - center.x,
+////      pos.y - center.y);
+//
+////  cv::Vec3d cart3d_pos(
+////      pos.x - center.x,
+////      pos.y - center.y,
+////  );
+//
+////  const cv::Vec3d v1 =
+////      R * cart3d_pos;
+////
+////  pos->x = v1(0) + center.x;
+////  pos->y = v1(1) + center.y;
+////
+////  /*
+////   * check point visibility based on rotated surface normal direction
+////   * */
+////  const double zr =
+////      R(2, 0) * cart3d_pos(0) / (A * A) +
+////          R(2, 1) * cart3d_pos(1) / (B * B) +
+////          R(2, 2) * cart3d_pos(2) / (C * C);
+////
+////  return  zr >= 0;
+//}
 
 
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
@@ -374,6 +355,8 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
 {
   rmap.create(size);
   rmap.setTo(cv::Vec2f::all(0));
+
+  cv::Mat1f wmap(size, 0.0f);
 
   cv::Mat1f counter(size, 0.0f);
 
@@ -386,11 +369,14 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
   const double & C =
       axes(2);
 
+  const double L =
+      std::max(A, std::max(B, C));
+
   const double lon_step =
-      0.5 / std::max(A, B);
+      0.5 / L;
 
   const double lat_step =
-      0.5 / C;
+      0.25 / L;
 
   const cv::Matx33d R1 =
       build_rotation2(orientation);
@@ -452,5 +438,24 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
   cv::compare(counter, 0, mask, cv::CMP_GT);
 
   return true;
+}
+
+bool compute_saturn_zrotation_deltat_remap(const cv::Size & size, const cv::Point2d & center,
+    const cv::Vec3d & axes, const cv::Vec3d & orientation, double deltat_sec,
+    cv::Mat2f & output_rmap, cv::Mat1b & output_mask)
+{
+  // Saturn daily rotation period is 10h 33m 38s.
+
+  static constexpr double rotation_period_sec =
+      10. * 3660 + 33. * 60 + 38.;
+
+  const double rotation_angle_deg =
+      360 * deltat_sec / rotation_period_sec;
+
+  return compute_ellipsoid_zrotation_remap(size, center, axes,
+      orientation,
+      rotation_angle_deg * CV_PI / 180,
+      output_rmap,
+      output_mask);
 }
 

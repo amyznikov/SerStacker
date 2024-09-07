@@ -22,12 +22,12 @@ c_generic_image_processor_pipeline::c_generic_image_processor_pipeline(const std
 
 const c_generic_image_processor_input_options & c_generic_image_processor_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_generic_image_processor_input_options & c_generic_image_processor_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_generic_image_processor_options & c_generic_image_processor_pipeline::processing_options() const
@@ -113,13 +113,13 @@ bool c_generic_image_processor_pipeline::run_pipeline()
   else {
 
     const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
+        std::max(_input_options.start_frame_index, 0);
 
     const int end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_sequence_->size() :
             std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
 
     total_frames_ = end_pos - start_pos;
 
@@ -130,7 +130,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
           start_pos,
           end_pos,
           input_sequence_->size(),
-          input_options_.max_input_frames,
+          _input_options.max_input_frames,
           is_live_sequence);
       return false;
     }
@@ -168,11 +168,11 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       break;
     }
 
-    if( input_options_.input_image_processor ) {
+    if( _input_options.input_image_processor ) {
 
       lock_guard lock(mutex());
 
-      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }
@@ -254,7 +254,7 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, input_options_);
+    serialize_base_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
@@ -318,7 +318,7 @@ bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) 
     return false;
   }
 
-  p->input_options_ = this->input_options_;
+  p->_input_options = this->_input_options;
   p->processing_options_ = this->processing_options_;
   p->output_options_ = this->output_options_;
 

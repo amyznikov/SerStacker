@@ -22,13 +22,15 @@
 #include <atomic>
 
 
-enum roi_selection_method {
+enum roi_selection_method
+{
   roi_selection_none = 0,
   roi_selection_planetary_disk = 1,
   roi_selection_rectange_crop = 2
 };
 
-enum frame_accumulation_method {
+enum frame_accumulation_method
+{
   frame_accumulation_none = -1,
   frame_accumulation_average = 0,
   frame_accumulation_weighted_average,
@@ -37,13 +39,15 @@ enum frame_accumulation_method {
   frame_accumulation_bayer_average,
 };
 
-enum frame_upscale_stage {
+enum frame_upscale_stage
+{
   frame_upscale_stage_unknown = -1,
   frame_upscale_after_align = 1,
   frame_upscale_before_align = 2,
 };
 
-enum frame_upscale_option {
+enum frame_upscale_option
+{
   frame_upscale_none = 0,
   frame_upscale_pyrUp = 1,
   frame_upscale_x15 = 2,
@@ -51,7 +55,8 @@ enum frame_upscale_option {
 };
 
 
-enum STACKING_STAGE {
+enum STACKING_STAGE
+{
   stacking_stage_idle = 0,
   stacking_stage_initialize,
   stacking_stage_select_master_frame_index,
@@ -79,8 +84,11 @@ struct c_roi_selection_options
 
 struct c_frame_upscale_options
 {
-  enum frame_upscale_option upscale_option = frame_upscale_none;
-  enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
+  enum frame_upscale_option upscale_option =
+      frame_upscale_none;
+
+  enum frame_upscale_stage upscale_stage =
+      frame_upscale_after_align;
 
   bool need_upscale_before_align() const
   {
@@ -160,26 +168,33 @@ struct c_image_stacking_output_options  :
   bool save_incremental_frames = false;
   bool save_eccflow_frames = false;
   bool save_sparse_match_blend_frames = false;
+  bool save_sparse_matches_video = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_aligned_video_options;
   c_output_frame_writer_options output_ecc_video_options;
   c_output_frame_writer_options output_acc_masks_video_options;
   c_output_frame_writer_options output_incremental_video_options;
-  c_eccflow_output_frame_writer_options output_eccflow_options;
   c_output_frame_writer_options output_sparse_match_blend_options;
+  c_output_frame_writer_options output_sparse_matches_video_options;
+  c_eccflow_output_frame_writer_options output_eccflow_options;
 
 };
 
-struct c_image_stacking_master_frame_options
+struct c_image_stacking_master_options
 {
-  c_master_frame_selection_options master_frame_selection;
-  c_image_registration_options registration;
+  struct c_master_frame_selection_options master_selection;
+  struct c_image_registration_options registration;
+  struct c_frame_accumulation_options accumulation;
+
+  color_channel_type master_channel = color_channel_dont_change;
+  int max_frames_to_generate_master_frame = 3000;
 
   bool apply_input_image_processor = true;
   bool generate_master_frame = true;
+  bool stop_after_master_frame_generation = false;
   bool save_master_frame = true;
-  int max_frames_to_generate_master_frame = 3000;
+
 
   double unsharp_sigma = 0;
   double unsharp_alpha = 0.8;
@@ -189,6 +204,7 @@ struct c_image_stacking_master_frame_options
 struct c_image_stacking_options
 {
   c_image_registration_options registration;
+  c_frame_accumulation_options accumulation;
 
   double unsharp_sigma = 0;
   double unsharp_alpha = 0;
@@ -268,20 +284,20 @@ protected:
 
   bool run_image_stacking();
 
-  bool run_planetary_disk_derotation();
+  // bool run_planetary_disk_derotation();
 
-  bool create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask);
+  bool create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask, double * reference_timestamp);
 
   bool create_reference_frame(const c_input_sequence::sptr & input_sequence, bool is_external_file,
       int master_frame_pos, int max_frames_to_stack,
-      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask);
+      cv::Mat & output_reference_frame, cv::Mat & output_reference_mask,
+      double * output_reference_timestamp);
 
   bool setup_frame_registration(const c_frame_registration::sptr & frame_registration,
       cv::Mat & reference_frame, cv::Mat & reference_mask);
 
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
-      int startpos, int endpos,
-      bool generating_master_frame);
+      int startpos, int endpos);
 
   int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
@@ -300,12 +316,13 @@ protected:
       const cv::Mat & output_mask);
 
   bool save_preprocessed_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
-  bool save_sparse_matches_video(int seqindex);
+  bool save_sparse_matches_blend_video(int seqindex);
   bool save_ecc_video(int seqindex);
   bool save_eccflow_video(int seqindex);
   bool save_aligned_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_incremental_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_accumulation_masks_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
+  bool save_sparse_matches_video(int seqindex);
 
   std::string generate_output_file_name() const;
 
@@ -333,19 +350,16 @@ protected:
   bool upscale_required(frame_upscale_stage current_stage, bool generating_master_frame) const;
 
 protected:
-
-  c_image_stacking_input_options input_options_;
-  c_roi_selection_options roi_selection_options_;
-  c_frame_upscale_options upscale_options_;
-  c_image_stacking_master_frame_options master_frame_options_;
-  c_frame_accumulation_options master_accumulation_options_;
-  c_image_stacking_options stack_options_;
-  c_frame_accumulation_options stack_accumulation_options_;
-  c_image_stacking_output_options output_options_;
-  c_image_processing_options image_processing_options_;
+  c_image_stacking_input_options _input_options;
+  c_roi_selection_options _roi_selection_options;
+  c_frame_upscale_options _upscale_options;
+  c_image_stacking_master_options _master_options;
+  c_image_stacking_options _stacking_options;
+  c_image_stacking_output_options _output_options;
+  c_image_processing_options _image_processing_options;
 
 
-  std::string output_file_name_;
+  std::string _output_file_name;
 
   cv::Mat selected_master_frame_;
   cv::Mat selected_master_frame_mask_;
@@ -365,7 +379,9 @@ protected:
   c_output_frame_writer aligned_video_writer_;
   c_output_frame_writer incremental_video_writer_;
   c_output_frame_writer accumulation_masks_writer_;
+  c_output_frame_writer sparse_matches_video_writer_;
 
+  bool _generating_master_frame = false;
 };
 
 #endif /* __c_stacking_pipeline_h__ */

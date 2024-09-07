@@ -148,7 +148,7 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, input_options_);
+    serialize_base_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_options")) ) {
@@ -337,7 +337,7 @@ bool c_epipolar_alignment_pipeline::copyParameters(const base::sptr & dst) const
     return false;
   }
 
-  p->input_options_ = this->input_options_;
+  p->_input_options = this->_input_options;
   p->camera_options_ = this->camera_options_;
   p->camera_pose_options_ = this->camera_pose_options_;
   p->output_options_ = this->output_options_;
@@ -665,7 +665,7 @@ void c_epipolar_alignment_pipeline::cleanup_pipeline()
 bool c_epipolar_alignment_pipeline::run_pipeline()
 {
 
-  if ( !start_pipeline(input_options_.start_frame_index, input_options_.max_input_frames) ) {
+  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
     CF_ERROR("ERROR: start_pipeline() fails");
     return false;
   }
@@ -693,11 +693,11 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
     }
 
 
-    if( input_options_.input_image_processor ) {
+    if( _input_options.input_image_processor ) {
 
       lock_guard lock(mutex());
 
-      if( !input_options_.input_image_processor->process(current_frame_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(current_frame_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }

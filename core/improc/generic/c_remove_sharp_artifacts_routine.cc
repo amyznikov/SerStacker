@@ -160,13 +160,11 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
     cv::Mat component_mask;
 
     bool planetary_disk_detected =
-        simple_planetary_disk_detector(
-            image,
-            mask,
-            nullptr,
+        simple_planetary_disk_detector(image, mask,
             1,
             0.25,
             2,
+            nullptr,
             nullptr,
             &component_mask,
             nullptr/* &geometrical_center_*/,

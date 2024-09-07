@@ -88,10 +88,10 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
 
   bool fOk =
       simple_planetary_disk_detector(src_image, src_mask,
-          nullptr,
           gbsigma_,
           stdev_factor_,
           se_close_radius_,
+          nullptr,
           nullptr,
           &planetary_disk_mask);
 

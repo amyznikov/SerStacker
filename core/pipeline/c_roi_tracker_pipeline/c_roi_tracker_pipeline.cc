@@ -20,12 +20,12 @@ c_roi_tracker_pipeline::c_roi_tracker_pipeline(const std::string & name,
 
 const c_roi_tracker_input_options & c_roi_tracker_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_roi_tracker_input_options & c_roi_tracker_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_roi_tracker_pipeline_options & c_roi_tracker_pipeline::tracker_options() const
@@ -58,7 +58,7 @@ bool c_roi_tracker_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, input_options_);
+    serialize_base_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "tracker_options")) ) {
@@ -257,13 +257,13 @@ bool c_roi_tracker_pipeline::run_pipeline()
   else {
 
     const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
+        std::max(_input_options.start_frame_index, 0);
 
     const int end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_sequence_->size() :
             std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
 
     total_frames_ = end_pos - start_pos;
     processed_frames_ = 0;
@@ -276,7 +276,7 @@ bool c_roi_tracker_pipeline::run_pipeline()
           start_pos,
           end_pos,
           input_sequence_->size(),
-          input_options_.max_input_frames,
+          _input_options.max_input_frames,
           is_live_sequence);
       return false;
     }
@@ -307,9 +307,9 @@ bool c_roi_tracker_pipeline::run_pipeline()
       break;
     }
 
-    if( input_options_.input_image_processor ) {
+    if( _input_options.input_image_processor ) {
       lock_guard lock(mutex());
-      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }

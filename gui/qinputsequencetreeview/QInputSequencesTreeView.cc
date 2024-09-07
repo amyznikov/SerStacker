@@ -462,6 +462,7 @@ void QInputSequencesTreeView::onAddNewImageSequence()
   QTreeWidgetItem *item = addNewImageSequence();
   if( item ) {
     setCurrentItem(item);
+    setFocus();
     Q_EMIT imageSequenceCollectionChanged();
   }
 }

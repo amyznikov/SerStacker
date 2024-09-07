@@ -7,7 +7,10 @@
 
 #include "c_regular_image_input_source.h"
 #include <core/io/load_image.h>
+#include <core/proc/parse_timestamp.h>
 #include <core/readdir.h>
+//#include <core/debug.h>
+
 
 
 c_regular_image_input_source::c_regular_image_input_source(const std::string & filename) :
@@ -122,6 +125,10 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     }
 
   }
+
+  _has_last_ts =
+      parse_timestamp_from_filename(filename_,
+          &_last_ts);
 
   ++curpos_;
 

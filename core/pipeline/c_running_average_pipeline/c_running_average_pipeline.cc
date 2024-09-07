@@ -29,7 +29,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, input_options_);
+    serialize_base_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
@@ -250,7 +250,7 @@ bool c_running_average_pipeline::copyParameters(const base::sptr & dst) const
     return false;
   }
 
-  p->input_options_ = this->input_options_;
+  p->_input_options = this->_input_options;
   p->registration_options_ = this->registration_options_;
   p->average_options_ = this->average_options_;
   p->output_options_ = this->output_options_;
@@ -277,38 +277,38 @@ bool c_running_average_pipeline::initialize_pipeline()
   current_image_.release();
   current_mask_.release();
 
-  if ( !input_options_.darkbayer_filename.empty() ) {
+  if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(input_options_.darkbayer_filename, darkbayer_, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", input_options_.darkbayer_filename.c_str());
+    if ( !load_image(_input_options.darkbayer_filename, darkbayer_, ignored_optional_mask) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
       return false;
     }
   }
 
-  if ( !input_options_.flatbayer_filename.empty() ) {
+  if ( !_input_options.flatbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(input_options_.flatbayer_filename, flatbayer_, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", input_options_.flatbayer_filename.c_str());
+    if ( !load_image(_input_options.flatbayer_filename, flatbayer_, ignored_optional_mask) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
       return false;
     }
   }
 
 
 
-  if ( !input_options_.missing_pixel_mask_filename.empty() ) {
+  if ( !_input_options.missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(input_options_.missing_pixel_mask_filename, missing_pixel_mask_) ) {
-      CF_ERROR("load_image('%s') fails.", input_options_.missing_pixel_mask_filename.c_str());
+    if ( !load_image(_input_options.missing_pixel_mask_filename, missing_pixel_mask_) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
     if ( missing_pixel_mask_.type() != CV_8UC1 ) {
       CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-          input_options_.missing_pixel_mask_filename.c_str());
+          _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
-    if ( !input_options_.missing_pixels_marked_black ) {
+    if ( !_input_options.missing_pixels_marked_black ) {
       cv::invert(missing_pixel_mask_, missing_pixel_mask_);
     }
   }
@@ -346,7 +346,7 @@ void c_running_average_pipeline::cleanup_pipeline()
 
 bool c_running_average_pipeline::run_pipeline()
 {
-  if ( !start_pipeline(input_options_.start_frame_index, input_options_.max_input_frames) ) {
+  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
     CF_ERROR("ERROR: start_pipeline() fails");
     return false;
   }
@@ -361,7 +361,7 @@ bool c_running_average_pipeline::run_pipeline()
 
     const bool fOk =
         read_input_frame(input_sequence_,
-            input_options_,
+            _input_options,
             current_image_, current_mask_,
             false,
             false);
@@ -375,8 +375,13 @@ bool c_running_average_pipeline::run_pipeline()
       break;
     }
 
-    if( input_options_.input_image_processor && !input_options_.input_image_processor->empty() ) {
-      if( !input_options_.input_image_processor->process(current_image_, current_mask_) ) {
+    if ( current_image_.empty() ) {
+      // in case of corrupted ASI frame detection the read_input_frame() returns true with empty output image.
+      continue;
+    }
+
+    if( _input_options.input_image_processor && !_input_options.input_image_processor->empty() ) {
+      if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }

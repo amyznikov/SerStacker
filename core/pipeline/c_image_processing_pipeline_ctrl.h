@@ -25,6 +25,8 @@ class c_image_processing_pipeline;
 enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_begin_group,
   c_image_processor_pipeline_ctl_end_group,
+//  c_image_processor_pipeline_ctl_begin_frame,
+//  c_image_processor_pipeline_ctl_end_frame,
   c_image_processor_pipeline_ctl_numeric_box,
   c_image_processor_pipeline_ctl_enum_combobox,
   c_image_processor_pipeline_ctl_spinbox,
@@ -46,6 +48,7 @@ enum c_image_processing_pipeline_ctrl_type {
   c_image_processor_pipeline_ctl_ecc_registration_options,
   c_image_processor_pipeline_ctl_eccflow_registration_options,
   c_image_processor_pipeline_ctl_jovian_derotation_options,
+  c_image_processor_pipeline_ctl_saturn_derotation_options,
 };
 
 
@@ -77,6 +80,7 @@ struct c_image_processing_pipeline_ctrl
   std::function<c_ecc_registration_options *(c_image_processing_pipeline *)> get_ecc_registration_options;
   std::function<c_eccflow_registration_options *(c_image_processing_pipeline *)> get_eccflow_registration_options;
   std::function<c_jovian_derotation_options *(c_image_processing_pipeline *)> get_jovian_derotation_options;
+  std::function<c_saturn_derotation_options *(c_image_processing_pipeline *)> get_saturn_derotation_options;
 
   std::function<bool (const c_image_processing_pipeline*)> is_enabled;
 };
@@ -111,6 +115,31 @@ struct c_image_processing_pipeline_ctrl
     ctl.type = c_image_processor_pipeline_ctl_end_group; \
     ctrls.emplace_back(ctl);\
   }
+
+//
+
+//#define PIPELINE_CTL_FRAME(ctrls, _cond) \
+//  if ( true ) { \
+//    c_image_processing_pipeline_ctrl ctl; \
+//    ctl.type = c_image_processor_pipeline_ctl_begin_frame; \
+//    ctl.name = _name; \
+//    ctl.tooltip = _tooltip; \
+//    ctl.is_enabled = \
+//        [](const c_image_processing_pipeline * p) -> bool { \
+//          const this_class * _this = dynamic_cast<const this_class * >(p); \
+//          return (_this) && (_cond); \
+//        }; \
+//    ctrls.emplace_back(ctl);\
+//  }
+//
+//#define PIPELINE_CTL_END_FRAME(ctrls) \
+//  if ( true ) { \
+//    c_image_processing_pipeline_ctrl ctl; \
+//    ctl.type = c_image_processor_pipeline_ctl_end_frame; \
+//    ctrls.emplace_back(ctl);\
+//  }
+
+//
 
 #define PIPELINE_CTL(ctrls, prop, _name, _tooltip ) \
     if ( true ) { \
@@ -726,6 +755,23 @@ struct c_image_processing_pipeline_ctrl
       ctrls.emplace_back(ctl); \
     }
 
+// c_saturn_derotation_options
+#define PIPELINE_CTL_SATURN_DEROTATION_OPTIONS(ctrls, c, _cond) \
+    if ( true ) { \
+      c_image_processing_pipeline_ctrl ctl; \
+      ctl.type = c_image_processor_pipeline_ctl_saturn_derotation_options; \
+      ctl.get_saturn_derotation_options = \
+          [](c_image_processing_pipeline * p) -> c_saturn_derotation_options * { \
+          this_class * _this = dynamic_cast<this_class * >(p); \
+          return _this ? &(_this->c) : (nullptr); \
+      }; \
+      ctl.is_enabled = \
+          [](const c_image_processing_pipeline * p) -> bool { \
+            const this_class * _this = dynamic_cast<const this_class * >(p); \
+            return (_this) && (_cond); \
+          }; \
+      ctrls.emplace_back(ctl); \
+    }
 
 
 

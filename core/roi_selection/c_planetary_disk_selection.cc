@@ -105,7 +105,7 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Siz
 bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mask,
     cv::Rect & outputROIRectangle )
 {
-  if ( !simple_planetary_disk_detector(image, mask, &objpos_, gbsigma_, stdev_factor_, se_close_size_, &objrect_) ) {
+  if ( !simple_planetary_disk_detector(image, mask, gbsigma_, stdev_factor_, se_close_size_, &objpos_, &objrect_) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

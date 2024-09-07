@@ -45,12 +45,18 @@ bool c_output_frame_writer::create_output_frame(const cv::Mat & src, const cv::M
 
   if( !processor || processor->empty() ) {
     tmp = src;
-    tmp_mask = src_mask;
+    if( src_mask.type() == CV_8UC1 && src_mask.size() == src.size() ) {
+      tmp_mask = src_mask;
+    }
   }
   else {
 
     src.copyTo(tmp);
-    src_mask.copyTo(tmp_mask);
+
+    if( src_mask.type() == CV_8UC1 && src_mask.size() == src.size() ) {
+      src_mask.copyTo(tmp_mask);
+    }
+
 
     if( !processor->process(tmp, tmp_mask) ) {
       CF_ERROR("c_output_frame_writer: processor->process() fails");

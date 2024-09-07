@@ -40,7 +40,6 @@ public:
   struct c_sply_frame_header2
   {
     int32_t num_clouds = 0;
-    // c_sply_cloud_header cloud_headers[1];
   };
 
 
@@ -98,6 +97,16 @@ public:
       cv::InputArrayOfArrays colors = cv::noArray(),
       cv::InputArrayOfArrays timestamps = cv::noArray());
 
+  const std::string & filename() const
+  {
+    return _datafile.filename();
+  }
+
+  const char * cfilename() const
+  {
+    return _datafile.cfilename();
+  }
+
   void set_file_tag(uint64_t v)
   {
     _datafile.set_file_tag(v);
@@ -150,6 +159,16 @@ public:
   bool read(cv::OutputArrayOfArrays points,
       cv::OutputArrayOfArrays colors = cv::noArray(),
       cv::OutputArrayOfArrays timestamps = cv::noArray());
+
+  const std::string & filename() const
+  {
+    return _datafile.filename();
+  }
+
+  const char * cfilename() const
+  {
+    return _datafile.cfilename();
+  }
 
   void set_file_tag(uint64_t v)
   {

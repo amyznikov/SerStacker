@@ -6,10 +6,14 @@
  */
 
 #include "c_raw_image_input_source.h"
-#include <core/readdir.h>
 
 
 #if HAVE_LIBRAW
+
+#include <core/proc/parse_timestamp.h>
+#include <core/readdir.h>
+
+
 c_raw_image_input_source::c_raw_image_input_source(const std::string & filename) :
     base(/*c_input_source::RAW_IMAGE, */filename)
 {
@@ -130,6 +134,10 @@ bool c_raw_image_input_source::read(cv::Mat & output_frame,
   if ( (this->has_color_matrix_ = raw_.has_color_matrix()) ) {
     this->color_matrix_ = raw_.color_matrix();
   }
+
+  _has_last_ts =
+      parse_timestamp_from_filename(filename_,
+          &_last_ts);
 
   return true;
 }

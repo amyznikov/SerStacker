@@ -83,7 +83,7 @@ protected:
   bool process_current_frame();
 
 protected:
-  c_generic_image_processor_input_options input_options_;
+  c_generic_image_processor_input_options _input_options;
   c_generic_image_processor_options processing_options_;
   c_generic_image_processor_output_options output_options_;
 

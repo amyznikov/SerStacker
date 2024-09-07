@@ -122,7 +122,7 @@ protected:
   bool accumulate_image(const cv::Mat & current_image, const cv::Mat & current_mask);
 
 protected:
-  c_live_stacking_input_options input_options_;
+  c_live_stacking_input_options _input_options;
   c_live_stacking_registration_options registration_options_;
   c_live_stacking_accumulation_options accumulation_options_;
   c_live_stacking_output_options output_options_;

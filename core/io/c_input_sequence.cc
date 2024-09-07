@@ -508,6 +508,9 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     last_color_matrix_ = source->color_matrix();
   }
 
+  if( (_has_last_ts = source->has_last_ts()) ) {
+    _last_ts = source->last_ts();
+  }
 
   return true;
 }
@@ -521,17 +524,8 @@ bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 
   while ( current_source_ < (int) enabled_sources_.size() ) {
     if ( read_current_source(output_frame, output_mask) ) {
-      // ++current_global_pos_;
 
       update_current_pos();
-
-      //
-      //      const c_input_source::sptr & current_source =
-      //          enabled_sources_[current_source_];
-      //
-      //      current_global_pos_ =
-      //          current_source->global_pos() + current_source->curpos();
-
       return true;
     }
 
@@ -562,4 +556,14 @@ const cv::Matx33f & c_input_sequence::color_matrix() const
 bool c_input_sequence::has_color_matrix() const
 {
   return has_last_color_matrix_;
+}
+
+bool c_input_sequence::has_last_ts() const
+{
+  return _has_last_ts;
+}
+
+double c_input_sequence::last_ts() const
+{
+  return _last_ts;
 }

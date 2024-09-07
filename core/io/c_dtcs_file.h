@@ -54,6 +54,16 @@ public:
   {
   }
 
+  const std::string & filename() const
+  {
+    return _filename;
+  }
+
+  const char * cfilename() const
+  {
+    return _filename.c_str();
+  }
+
   bool is_open() const
   {
     return _fd.is_open();

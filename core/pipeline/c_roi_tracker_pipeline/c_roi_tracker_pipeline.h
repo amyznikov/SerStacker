@@ -85,7 +85,7 @@ protected:
   bool write_progress_video();
 
 protected:
-  c_roi_tracker_input_options input_options_;
+  c_roi_tracker_input_options _input_options;
   c_roi_tracker_pipeline_options tracker_options_;
   c_roi_tracker_output_options output_options_;
 

@@ -124,7 +124,7 @@ protected:
       double avgw, const cv::Mat2f * rmap = nullptr);
 
 protected:
-  c_running_average_input_options input_options_;
+  c_running_average_input_options _input_options;
   c_running_average_registration_options registration_options_;
   c_running_average_update_options average_options_;
   c_running_average_output_options output_options_;

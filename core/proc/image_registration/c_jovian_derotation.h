@@ -32,6 +32,10 @@ public:
   bool compute(cv::InputArray input_image,
       cv::InputArray input_mask = cv::noArray());
 
+  bool compute(double zrotation_deg);
+
+  bool compute(double current_tstamp_sec,
+      double target_tstamp_sec);
 
   void set_max_pyramid_level(int v);
   int max_pyramid_level() const;

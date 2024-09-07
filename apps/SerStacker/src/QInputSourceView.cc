@@ -334,12 +334,12 @@ const c_input_source::sptr & QInputSourceView::inputSource() const
 
 const c_input_options * QInputSourceView::inputOptions() const
 {
-  return &input_options_;
+  return &_input_options;
 }
 
 c_input_options * QInputSourceView::inputOptions()
 {
-  return &input_options_;
+  return &_input_options;
 }
 
 bool QInputSourceView::openFile(const QString & abspath)
@@ -358,7 +358,7 @@ bool QInputSourceView::openFile(const QString & abspath)
 
     // CF_DEBUG("typeid(currentSource_)=%s",  typeid(*currentSource_.get()).name());
 
-    currentSource_->set_input_options(&input_options_);
+    currentSource_->set_input_options(&_input_options);
 
     startDisplay();
 

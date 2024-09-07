@@ -197,7 +197,7 @@ protected:
 
 
 protected:
-  c_virtual_stereo_input_options input_options_;
+  c_virtual_stereo_input_options _input_options;
   c_virtual_stereo_camera_options camera_options_;
   c_virtual_stereo_image_processing_options image_processing_options_;
   c_virtual_stereo_feature2d_options feature2d_options_;

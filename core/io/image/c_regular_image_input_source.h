@@ -43,6 +43,7 @@ public:
 
 protected:
   int curpos_ = -1;
+
 };
 
 #endif /* __c_regular_image_input_source_h__ */

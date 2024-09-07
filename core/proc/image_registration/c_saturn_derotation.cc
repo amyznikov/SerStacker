@@ -12,22 +12,22 @@
 
 void c_saturn_derotation::set_detector_options(const c_saturn_ellipse_detector_options & v)
 {
-  saturn_detector_.options() = v;
+  _detector.options() = v;
 }
 
 const c_saturn_ellipse_detector_options & c_saturn_derotation::detector_options() const
 {
-  return saturn_detector_.options();
+  return _detector.options();
 }
 
-bool c_saturn_derotation::detect_saturn(cv::InputArray reference_image, cv::InputArray reference_mask)
+bool c_saturn_derotation::detect(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
 
-  reference_image_size_ =
+  _reference_image_size =
       reference_image.size();
 
-  if( !saturn_detector_.detect(reference_image, reference_mask) ) {
+  if( !_detector.detect(reference_image, reference_mask) ) {
     CF_ERROR("saturn_detector_.detect() fails");
     return false;
   }
@@ -48,16 +48,17 @@ bool c_saturn_derotation::detect_saturn(cv::InputArray reference_image, cv::Inpu
 
 }
 
-bool c_saturn_derotation::compute(double zrotation)
+
+bool c_saturn_derotation::compute(double zrotation_deg)
 {
   cv::Mat2f rmap;
   cv::Mat1b rmask;
   cv::Mat remapped_image;
 
-  compute_ellipsoid_zrotation_remap(reference_image_size_, saturn_detector_.center(),
-      saturn_detector_.ellipsoid_size(),
-      saturn_detector_.ellipsoid_rotation(),
-      zrotation * CV_PI / 180,
+  compute_ellipsoid_zrotation_remap(_reference_image_size, _detector.center(),
+      _detector.axes(),
+      _detector.pose(),
+      zrotation_deg * CV_PI / 180,
       rmap, rmask);
 
   //  cv::remap(image.getMat(), remapped_image, rmap, cv::noArray(), cv::INTER_LINEAR,
@@ -65,5 +66,18 @@ bool c_saturn_derotation::compute(double zrotation)
   //  remapped_image.copyTo(image, rmask);
 
   return true;
+}
+
+bool c_saturn_derotation::compute(double current_tstamp_sec, double target_tstamp_sec)
+{
+  // Saturn daily rotation period is 10h 33m 38s.
+
+  static constexpr double rotation_period_sec =
+      10. * 3660 + 33. * 60 + 38.;
+
+  const double rotation_angle_deg =
+      360 * (current_tstamp_sec - target_tstamp_sec) / rotation_period_sec;
+
+  return compute(rotation_angle_deg);
 }
 

@@ -404,6 +404,8 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
 
   SAVE_OPTION(settings, options, chessboard_size);
   SAVE_OPTION(settings, options, chessboard_cell_size);
+  SAVE_OPTION(settings, options, chessboard_distance);
+
 
   SAVE_OPTION(settings, options, method);
 
@@ -441,6 +443,7 @@ bool load_settings(c_config_setting settings, c_chessboard_corners_detection_opt
 
   LOAD_OPTION(settings, *options, chessboard_size);
   LOAD_OPTION(settings, *options, chessboard_cell_size);
+  LOAD_OPTION(settings, *options, chessboard_distance);
 
   LOAD_OPTION(settings, *options, method);
 

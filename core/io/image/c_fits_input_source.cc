@@ -6,10 +6,11 @@
  */
 
 #include "c_fits_input_source.h"
-#include <core/readdir.h>
-
 
 #if HAVE_CFITSIO
+
+#include <core/proc/parse_timestamp.h>
+#include <core/readdir.h>
 
 c_fits_input_source::c_fits_input_source(const std::string & filename) :
     base(/*c_input_source::FITS, */filename)
@@ -85,6 +86,10 @@ bool c_fits_input_source::read(cv::Mat & output_frame,
     *output_bpc = suggest_bpp(
         output_frame.depth());
   }
+
+  _has_last_ts =
+      parse_timestamp_from_filename(filename_,
+          &_last_ts);
 
   return true;
 }

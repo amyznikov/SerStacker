@@ -73,12 +73,12 @@ c_stereo_matcher_pipeline::~c_stereo_matcher_pipeline()
 
 c_stereo_matcher_input_options & c_stereo_matcher_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_stereo_matcher_input_options & c_stereo_matcher_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_stereo_matcher_stereo_rectification_options & c_stereo_matcher_pipeline::stereo_rectification_options()
@@ -141,7 +141,7 @@ bool c_stereo_matcher_pipeline::serialize(c_config_setting settings, bool save)
 
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_stereo_input_options(section, save, input_options_);
+    serialize_base_stereo_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_rectification")) ) {
@@ -241,30 +241,30 @@ bool c_stereo_matcher_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
-    if( input_options_.left_stereo_source.empty() && input_options_.right_stereo_source.empty() ) {
+  if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
+    if( _input_options.left_stereo_source.empty() && _input_options.right_stereo_source.empty() ) {
       CF_ERROR("ERROR: No separate stereo sources video files specified");
       return false;
     }
   }
 
-  if ( input_options_.left_stereo_source.empty() ) {
+  if ( _input_options.left_stereo_source.empty() ) {
     CF_WARNING("WARNING: No left stereo source specified, "
         "use continuous input sequence");
   }
   else {
-    input_.inputs[0] = input_sequence_->source(input_options_.left_stereo_source);
+    input_.inputs[0] = input_sequence_->source(_input_options.left_stereo_source);
     if ( !input_.inputs[0] ) {
       CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
-          input_options_.left_stereo_source.c_str());
+          _input_options.left_stereo_source.c_str());
       return false;
     }
 
-    if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
-      input_.inputs[1] = input_sequence_->source(input_options_.right_stereo_source);
+    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
+      input_.inputs[1] = input_sequence_->source(_input_options.right_stereo_source);
       if( !input_.inputs[1] ) {
         CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
-            input_options_.right_stereo_source.c_str());
+            _input_options.right_stereo_source.c_str());
         return false;
       }
     }
@@ -309,21 +309,21 @@ bool c_stereo_matcher_pipeline::run_pipeline()
     int start_pos, end_pos;
 
     start_pos =
-        std::max(input_options_.start_frame_index, 0);
+        std::max(_input_options.start_frame_index, 0);
 
     if ( input_.inputs[0] ) {
       end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_.inputs[0]->size() :
             std::min(input_.inputs[0]->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
     }
     else {
       end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_sequence_->size() :
             std::min(input_sequence_->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
 
     }
 
@@ -524,7 +524,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
 bool c_stereo_matcher_pipeline::open_input_source()
 {
   if( input_.inputs[0] ) {
-    if( !::open_stereo_source(input_, input_options_.layout_type) ) {
+    if( !::open_stereo_source(input_, _input_options.layout_type) ) {
       CF_ERROR("::open_stereo_source() fails");
       return false;
     }
@@ -574,9 +574,9 @@ bool c_stereo_matcher_pipeline::read_input_source()
 
     const bool fok =
         ::read_stereo_source(input_,
-            input_options_.layout_type,
-            input_options_.swap_cameras,
-            input_options_.enable_color_maxtrix,
+            _input_options.layout_type,
+            _input_options.swap_cameras,
+            _input_options.enable_color_maxtrix,
             current_frames_,
             current_masks_);
 
@@ -588,9 +588,9 @@ bool c_stereo_matcher_pipeline::read_input_source()
   else {
     const bool fok =
         ::read_stereo_frame(input_sequence_,
-            input_options_.layout_type,
-            input_options_.swap_cameras,
-            input_options_.enable_color_maxtrix,
+            _input_options.layout_type,
+            _input_options.swap_cameras,
+            _input_options.enable_color_maxtrix,
             current_frames_,
             current_masks_);
 
@@ -614,14 +614,14 @@ bool c_stereo_matcher_pipeline::process_current_frames()
 
     if ( rmaps_[i].empty() ) {
 
-      if( input_options_.input_image_processor ) {
-        if( !input_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
-          CF_ERROR("input_options_->process(frame_index=%d) fails", i);
+      if( _input_options.input_image_processor ) {
+        if( !_input_options.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
+          CF_ERROR("_input_options->process(frame_index=%d) fails", i);
           return false;
         }
       }
     }
-    else if( !input_options_.input_image_processor ) {
+    else if( !_input_options.input_image_processor ) {
 
       cv::remap(current_frames_[i], current_frames_[i],
           rmaps_[i], cv::noArray(),
@@ -641,8 +641,8 @@ bool c_stereo_matcher_pipeline::process_current_frames()
     }
     else {
 
-      if( !input_options_.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
-        CF_ERROR("input_options_->process(frame_index=%d) fails", i);
+      if( !_input_options.input_image_processor->process(current_frames_[i], current_masks_[i]) ) {
+        CF_ERROR("_input_options->process(frame_index=%d) fails", i);
         return false;
       }
 

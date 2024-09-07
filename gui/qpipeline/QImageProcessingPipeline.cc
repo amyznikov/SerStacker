@@ -140,6 +140,16 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         break;
       }
 
+      /////////////////////
+//      case c_image_processor_pipeline_ctl_begin_frame: {
+//        break;
+//      }
+//      /////////////////////
+//      case c_image_processor_pipeline_ctl_end_frame: {
+//        break;
+//      }
+//      /////////////////////
+
         /////////////////////
       case c_image_processor_pipeline_ctl_numeric_box: {
 
@@ -745,6 +755,36 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
 
       /////////////////////
 
+      case c_image_processor_pipeline_ctl_saturn_derotation_options : {
+
+        QSaturnDerotationOptions * w =
+            new QSaturnDerotationOptions(this);
+
+        if( ctrl.get_jovian_derotation_options ) {
+          connect(this, &Base::populatecontrols,
+              [this, w, ctrl]() {
+                w->set_options(ctrl.get_saturn_derotation_options(pipeline_));
+              });
+        }
+
+        connect(w, &QSettingsWidget::parameterChanged,
+            [this]() {
+              if ( !updatingControls() ) {
+                Q_EMIT parameterChanged();
+              }
+            });
+
+        currentsettings->addRow(w);
+
+        if( ctrl.is_enabled ) {
+          state_ctls_.emplace(w, ctrl.is_enabled);
+        }
+
+        break;
+      }
+
+
+      /////////////////////
       default:
         break;
     }

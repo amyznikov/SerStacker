@@ -32,12 +32,12 @@ c_stereo_calibration_pipeline::~c_stereo_calibration_pipeline()
 
 c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_options()
 {
-  return input_options_;
+  return _input_options;
 }
 
 const c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_options() const
 {
-  return input_options_;
+  return _input_options;
 }
 
 c_chessboard_corners_detection_options & c_stereo_calibration_pipeline::chessboard_detection_options()
@@ -79,7 +79,7 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_stereo_input_options(section, save, input_options_);
+    serialize_base_stereo_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "chessboard_detection")) ) {
@@ -150,6 +150,8 @@ const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeli
       PIPELINE_CTL(ctrls, chessboard_detection_options_.method, "Method", "");
       PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_size, "chessboard_size", "");
       PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_cell_size, "chessboard_cell_size", "");
+      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
+
 
       PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
       PIPELINE_CTL(ctrls, chessboard_detection_options_. findChessboardCorners.max_scales, "max_scales", "");
@@ -245,7 +247,7 @@ bool c_stereo_calibration_pipeline::copyParameters(const base::sptr & dst) const
     return false;
   }
 
-  p->input_options_ = this->input_options_;
+  p->_input_options = this->_input_options;
   p->chessboard_detection_options_ = this->chessboard_detection_options_;
   p->calibration_options_ = this->calibration_options_;
   p->output_options_ = this->output_options_;
@@ -260,9 +262,9 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
 
   bool fOK =
       ::read_stereo_source(input_,
-          input_options_.layout_type,
-          input_options_.swap_cameras,
-          input_options_.enable_color_maxtrix,
+          _input_options.layout_type,
+          _input_options.swap_cameras,
+          _input_options.enable_color_maxtrix,
           current_frames_,
           current_masks_);
 
@@ -288,12 +290,12 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
     }
   }
 
-  if( input_options_.input_image_processor ) {
+  if( _input_options.input_image_processor ) {
     for( int i = 0; i < 2; ++i ) {
       cv::Mat &image = current_frames_[i];
       cv::Mat &mask = current_masks_[i];
 
-      if( !input_options_.input_image_processor->process(image, mask) ) {
+      if( !_input_options.input_image_processor->process(image, mask) ) {
         CF_ERROR("ERROR: input_image_processor->process() fails for stereo frame %d", i);
         return false;
       }
@@ -352,7 +354,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
       current_object_points_.emplace_back(
           j * chessboard_detection_options_.chessboard_cell_size.width,
           i * chessboard_detection_options_.chessboard_cell_size.height,
-          0.f);
+          chessboard_detection_options_.chessboard_distance);
     }
   }
 
@@ -384,30 +386,30 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
 
   if( !is_live_input ) {
 
-    if( input_options_.left_stereo_source.empty() ) {
+    if( _input_options.left_stereo_source.empty() ) {
       CF_ERROR("ERROR: No left stereo source specified");
       return false;
     }
 
-    if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
-      if( input_options_.right_stereo_source.empty() ) {
+    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
+      if( _input_options.right_stereo_source.empty() ) {
         CF_ERROR("ERROR: No right stereo source specified");
         return false;
       }
     }
 
-    input_.inputs[0] = input_sequence_->source(input_options_.left_stereo_source);
+    input_.inputs[0] = input_sequence_->source(_input_options.left_stereo_source);
     if( !input_.inputs[0] ) {
       CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
-          input_options_.left_stereo_source.c_str());
+          _input_options.left_stereo_source.c_str());
       return false;
     }
 
-    if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
-      input_.inputs[1] = input_sequence_->source(input_options_.right_stereo_source);
+    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
+      input_.inputs[1] = input_sequence_->source(_input_options.right_stereo_source);
       if( !input_.inputs[1] ) {
         CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
-            input_options_.right_stereo_source.c_str());
+            _input_options.right_stereo_source.c_str());
         return false;
       }
     }
@@ -423,7 +425,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
       return false;
     }
 
-    if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
+    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
 
       if( input_sequence_->sources().size() < 2 ) {
         CF_ERROR("ERROR: No second stereo source specified");
@@ -590,7 +592,7 @@ bool c_stereo_calibration_pipeline::open_input_source()
 //    return false;
 //  }
 //
-//  if ( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
+//  if ( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
 //    if ( !input_sources_[1]->open() ) {
 //      CF_ERROR("ERROR: can not open input source '%s'", input_sources_[1]->cfilename());
 //      return false;
@@ -603,7 +605,7 @@ bool c_stereo_calibration_pipeline::open_input_source()
 //    }
 //  }
 
-  return ::open_stereo_source(input_, input_options_.layout_type);
+  return ::open_stereo_source(input_, _input_options.layout_type);
 }
 
 bool c_stereo_calibration_pipeline::seek_input_source(int pos)
@@ -613,7 +615,7 @@ bool c_stereo_calibration_pipeline::seek_input_source(int pos)
 //    return false;
 //  }
 //
-//  if( input_options_.layout_type == stereo_frame_layout_separate_sources ) {
+//  if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
 //    if( !input_sources_[1]->seek(pos) ) {
 //      CF_ERROR("ERROR: input_sources_[1]->seek(pos=%d) fails", pos);
 //      return false;
@@ -644,13 +646,13 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     }
 
     const int start_pos =
-        std::max(input_options_.start_frame_index, 0);
+        std::max(_input_options.start_frame_index, 0);
 
     const int end_pos =
-        input_options_.max_input_frames < 1 ?
+        _input_options.max_input_frames < 1 ?
             input_.inputs[0]->size() :
             std::min(input_.inputs[0]->size(),
-                input_options_.start_frame_index + input_options_.max_input_frames);
+                _input_options.start_frame_index + _input_options.max_input_frames);
 
 
     total_frames_ = end_pos - start_pos;
@@ -1203,13 +1205,13 @@ bool c_stereo_calibration_pipeline::save_current_camera_parameters() const
 //  }
 //
 //  const int start_pos =
-//      std::max(input_options_.start_frame_index, 0);
+//      std::max(_input_options.start_frame_index, 0);
 //
 //  const int end_pos =
-//      input_options_.max_input_frames < 1 ?
+//      _input_options.max_input_frames < 1 ?
 //          input_.inputs[0]->size() :
 //          std::min(input_.inputs[0]->size(),
-//              input_options_.start_frame_index + input_options_.max_input_frames);
+//              _input_options.start_frame_index + _input_options.max_input_frames);
 //
 //
 //  total_frames_ = end_pos - start_pos;

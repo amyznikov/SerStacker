@@ -56,7 +56,8 @@ enum FindChessboardCornersSBFlags
 struct c_chessboard_corners_detection_options
 {
   cv::Size chessboard_size = cv::Size(9, 6);
-  cv::Size2f chessboard_cell_size = cv::Size2f(0.09, 0.09);
+  cv::Size2f chessboard_cell_size = cv::Size2f(0.09, 0.09); // [m]
+  double chessboard_distance = 0; // [m]
 
   // Which method to use for findChessboardCorners
   enum FindChessboardCornersMethod method =

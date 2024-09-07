@@ -246,6 +246,7 @@ protected Q_SLOTS:
   void onDetectorTypeChanged();
 
 protected:
+  QEnumComboBox<color_channel_type> * registrationChannel_ctl = nullptr;
   QNumericBox * scale_ctl = nullptr;
   QSparseFeatureDetectorOptions * sparseFeatureDetectorOptions_ctl = nullptr;
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
@@ -343,159 +344,45 @@ protected:
   QNumericBox * jovian_detector_pca_blur_ctl = nullptr;
   QNumericBox * jovian_detector_ellipse_offset_ctl = nullptr;
 
-  QNumericBox * min_rotation_ctl = nullptr;
-  QNumericBox * max_rotation_ctl = nullptr;
-  QNumericBox * max_pyramid_level_ctl = nullptr;
-  QNumericBox * num_orientations_ctl = nullptr;
+//  QNumericBox * min_rotation_ctl = nullptr;
+//  QNumericBox * max_rotation_ctl = nullptr;
+//  QNumericBox * max_pyramid_level_ctl = nullptr;
+//  QNumericBox * num_orientations_ctl = nullptr;
 
   QCheckBox * derotate_all_frames_ctl = nullptr;
   QNumericBox * max_context_size_ctl = nullptr;
-  QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
+//  QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
 };
 
 
+class QSaturnDerotationOptions :
+    public QSettingsWidgetTemplate<c_saturn_derotation_options>
+{
+  Q_OBJECT;
+public:
+  typedef QSaturnDerotationOptions ThisClass;
+  typedef QSettingsWidgetTemplate<c_saturn_derotation_options> Base;
+
+  QSaturnDerotationOptions(QWidget * parent = nullptr);
+
+
+protected:
+//  QNumericBox * jovian_detector_stdev_factor_ctl = nullptr;
+//  QNumericBox * jovian_detector_pca_blur_ctl = nullptr;
+//  QNumericBox * jovian_detector_ellipse_offset_ctl = nullptr;
 //
+//  QNumericBox * min_rotation_ctl = nullptr;
+//  QNumericBox * max_rotation_ctl = nullptr;
+//  QNumericBox * max_pyramid_level_ctl = nullptr;
+//  QNumericBox * num_orientations_ctl = nullptr;
 //
-//class QMasterFrameOptions :
-//    public QSettingsWidget,
-//    public QInputSourceSelectionControl
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QMasterFrameOptions ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QMasterFrameOptions(QWidget * parent = nullptr);
-//
-////  void set_current_pipeline(c_image_stacking_pipeline * current_pipeline);
-////  c_image_stacking_pipeline * current_pipeline() const;
-//
-//  void set_master_frame_options(c_master_frame_options * options);
-//  c_master_frame_options * master_frame_options() const;
-//
-//  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
-//  void setEnableExternalFile(bool v) override;
-//  bool enableExternalFile() const override;
-//
-//protected:
-//  void onupdatecontrols() override;
-//  //QString browseForMasterFrame();
-//  //QString browseForMasterFFTSPath();
-//  //void updateMasterSourceBasingOnComboboxItemIndex(int comboboxItemIndex);
-//  //void updateMasterFrameIndex();
-//
-//protected Q_SLOTS:
-//  //void onMasterSourceComboCurrentIndexChanged(int);
-//  //void updateMasterSourceControlStates();
-//  //void onSpinBoxValueChanged(int value);
-//  void updateGenerateMasterFrameControlStates();
-//  //void onEccFlowScaleChanged();
-//  //void onMasterSharpenFactorChanged();
-//  //void onAccumulatedSharpenFactorChanged();
-//  //void onSaveMasterFrameCheckboxStateChanged(int);
-//  //void onApplyInputFramePprocessorCheckboxStateChanged(int);
-//
-//protected:
-//  c_master_frame_options * options_ = nullptr;
-//
-//  QMasterFrameSelectionControl * master_frame_selection_ctl = nullptr;
-//
-//  //QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = nullptr;
-//  // QInputSourceSelectionCombo * masterSource_ctl = nullptr;
-//  //QMasterSourceSelectionCombo * masterSource_ctl = nullptr;
-//  //QSpinBox * masterFrameIndex_ctl = nullptr;
-//
-//  QCheckBox * apply_input_frame_processors_ctl = nullptr;
-//  QCheckBox * generateMasterFrame_ctl = nullptr;
-//  QNumericBox * maxFramesForMasterFrameGeneration_ctl = nullptr;
-//
-////  QNumericBox * featureScale_ctl = nullptr;
-////  QNumericBox * eccScale_ctl = nullptr;
-//  QNumericBox * eccFlowScale_ctl = nullptr;
-//  QNumericBox * eccflowMinImageSize_ctl = nullptr;
-//  QNumericBox * eccflowMaxPyramidLevel_ctl = nullptr;
-//
-//  QNumericBox * master_unsharp_sigma_ctl = nullptr;
-//  QNumericBox * master_unsharp_alpha_ctl = nullptr;
-//  QNumericBox * accumulated_sharpen_factor_ctl = nullptr;
-//
-//  //QCheckBox * compensateMasterFlow_ctl = nullptr;
-//  QCheckBox * saveMasterFrame_ctl = nullptr;
-//
-//  //QToolButton * applyToAll_ctl = nullptr;
-//  //int previousComboboxItemIndex = -1;
-//};
-//
-//class QImageRegistrationOptions :
-//    public QSettingsWidget,
-//    public QInputSourceSelectionControl
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QImageRegistrationOptions ThisClass;
-//  typedef QSettingsWidget Base;
-//  typedef QEnumComboBox<IMAGE_MOTION_TYPE> QMotionTypeCombo;
-//  typedef QEnumComboBox<color_channel_type> QRegistrationColorChannelCombo;
-//  typedef QEnumComboBox<ECC_INTERPOLATION_METHOD> QEccInterpolatioMethodCombo;
-//  typedef QEnumComboBox<ECC_BORDER_MODE> QEccBorderModeCombo;
-//
-//  QImageRegistrationOptions(QWidget * parent = nullptr);
-//
-//  void set_registration_options(c_image_registration_options * options);
-//  c_image_registration_options* registration_options() const;
-//
-//  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
-//  void setEnableExternalFile(bool v) override;
-//  bool enableExternalFile() const override;
-//
-//protected:
-//  void onupdatecontrols() override;
-//
-//protected:
-//  c_image_registration_options * options_ = nullptr;
-//  QMotionTypeCombo * motion_type_ctl = nullptr;
-//  QRegistrationColorChannelCombo * registration_channel_ctl = nullptr;
-//  QEccInterpolatioMethodCombo * interpolation_method_ctl = nullptr;
-//  QEccBorderModeCombo * border_mode_ctl = nullptr;
-//  QNumericBox * border_value_ctl = nullptr;
-//  QCheckBox * accumulateAndCompensateTurbulentFlow_ctl = nullptr;
-//  QCameraIntrinsicsEditBox * camera_matrix_ctl = nullptr;
-//  QExpandableGroupBox * camera_matrix_groupbox_ctl = nullptr;
-//
-//  QMasterFrameOptions * masterFrameOptions_ctl = nullptr;
-//  QFeatureBasedRegistrationOptions * featureRegistrationOptions_ctl = nullptr;
-//  QEccRegistrationOptions * eccOptions_ctl = nullptr;
-//  QJovianDerotationOptions * jovianDerotationOptions_ctl = nullptr;
-//  QEccFlowRegistrationOptions * eccFlowOptions_ctl = nullptr;
-//};
-//
-//
-//class QFrameRegistrationOptions:
-//    public QSettingsWidget,
-//    public QInputSourceSelectionControl
-//{
-//  Q_OBJECT;
-//public:
-//  typedef QFrameRegistrationOptions ThisClass;
-//  typedef QSettingsWidget Base;
-//
-//  QFrameRegistrationOptions(QWidget * parent = nullptr);
-//
-//  void set_registration_options(c_image_registration_options * options);
-//  c_image_registration_options* registration_options() const;
-//
-//  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
-//  void setEnableExternalFile(bool v) override;
-//  bool enableExternalFile() const override;
-//
-//protected:
-//  void onupdatecontrols() override;
-//  void update_controls_visibility();
-//
-//protected:
-//  c_image_registration_options * options_ = nullptr;
-//  QCheckBox * enable_frame_registration_ctl = nullptr;
-//  QImageRegistrationOptions * imageRegistrationOptions_ctl = nullptr;
-//};
+//  QCheckBox * derotate_all_frames_ctl = nullptr;
+//  QNumericBox * max_context_size_ctl = nullptr;
+//  QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
+};
+
+
+
+
 
 #endif /* __QFrameRegistrationSettings_h__ */

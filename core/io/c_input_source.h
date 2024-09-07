@@ -63,6 +63,16 @@ public:
     return color_matrix_;
   }
 
+  bool has_last_ts() const
+  {
+    return _has_last_ts;
+  }
+
+  double last_ts() const
+  {
+    return _last_ts;
+  }
+
   void set_enabled(bool v)
   {
     enabled_ = v;
@@ -75,12 +85,12 @@ public:
 
   void set_input_options(const c_input_options * options)
   {
-    input_options_ = options;
+    _input_options = options;
   }
 
   const c_input_options * input_options() const
   {
-    return input_options_;
+    return _input_options;
   }
 
   virtual ~c_input_source() = default;
@@ -117,17 +127,18 @@ protected:
   c_input_source(const std::string & filename);
 
   std::string filename_;
+  std::vector<uint> badframes_;
+  const c_input_options * _input_options = nullptr;
+
   int size_ = 0;
   int global_pos_ = 0;
   bool enabled_ = true;
 
-  bool has_color_matrix_ = false;
   cv::Matx33f color_matrix_ = cv::Matx33f::eye();
+  bool has_color_matrix_ = false;
 
-  std::vector<uint> badframes_;
-  const c_input_options * input_options_ = nullptr;
-
-
+  double _last_ts = 0;
+  bool _has_last_ts = false;
 };
 
 

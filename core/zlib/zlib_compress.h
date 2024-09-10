@@ -1,5 +1,5 @@
 /*
- * compress.h
+ * zlib_compress.h
  *
  *  Created on: Apr 11, 2022
  *      Author: amyznikov
@@ -8,18 +8,13 @@
  */
 
 #pragma once
-#ifndef __compress_h__
-#define __compress_h__
-
-#ifndef ZLIB_CONST
-# define ZLIB_CONST
-#endif
+#ifndef __zlib_compress_h__
+#define __zlib_compress_h__
 
 #include <stdint.h>
-#include <zlib.h>
 #include <vector>
 
-bool compress(const void * data, uint32_t size,
+bool zlib_compress(const void * data, uint32_t size,
     std::vector<uint8_t> * output);
 
 #endif /* __compress_h__ */

@@ -15,6 +15,14 @@
 #include <core/debug.h>
 
 
+// avcodec_close() is deprecated in fresh ffmpeg versions
+#if (LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0))
+# define USE_AVCODEC_CLOSE 1
+#else
+# define USE_AVCODEC_CLOSE 0
+#endif
+
+
 extern "C" {
 
 // as defined in libavformat/internal.h
@@ -331,8 +339,10 @@ static AVCodecContext * ffmpeg_open_encoder(AVCodecID codec_id,
 end:
   if ( !fOk ) {
     if ( codec_ctx ) {
+#if (USE_AVCODEC_CLOSE)
       avcodec_close(codec_ctx);
-      codec_ctx = nullptr;
+#endif
+      avcodec_free_context(&codec_ctx);
     }
   }
 
@@ -1422,7 +1432,9 @@ void c_ffmpeg_writer::close()
   }
 
   if ( codec_ctx ) {
+#if (USE_AVCODEC_CLOSE)
     avcodec_close(codec_ctx);
+#endif
     avcodec_free_context(&codec_ctx);
   }
 
@@ -1452,7 +1464,7 @@ void c_ffmpeg_writer::close()
   start_pts_ = 0;
 }
 
-bool c_ffmpeg_writer::write(const cv::Mat image, int64_t pts)
+bool c_ffmpeg_writer::write(const cv::Mat & image, int64_t pts)
 {
   if ( !is_open() ) {
     CF_ERROR("c_ffmpeg_writer: output stream is not open");
@@ -1679,6 +1691,633 @@ bool c_ffmpeg_writer::write_frame(const uint8_t * data, int step, int width, int
   }
 
   return status >= 0 ;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+c_ffmpeg_encoder::c_ffmpeg_encoder()
+{
+
+}
+
+c_ffmpeg_encoder::~c_ffmpeg_encoder()
+{
+  close();
+}
+
+const std::string & c_ffmpeg_encoder::opts() const
+{
+  return _opts;
+}
+
+bool c_ffmpeg_encoder::is_open() const
+{
+  return codec_ctx != nullptr;
+}
+
+bool c_ffmpeg_encoder::create(const cv::Size & image_size, bool is_color, const std::string & ffmpeg_opts)
+{
+  std::string output_directory;
+  AVDictionary * opts = nullptr;
+
+  AVCodecID codec_id = AV_CODEC_ID_NONE;
+  AVPixelFormat codec_pix_fmt = AV_PIX_FMT_NONE;
+  double fps = -1;
+  int qscale = -1;
+
+  bool need_color_convert = false;
+
+  int status = 0;
+  bool fOk = false;
+
+  ensure_ffmpeg_initialized();
+
+  /*
+   * Get output file name
+   *  */
+  _opts = ffmpeg_opts;
+  /*
+   * Select input pixel format
+   * */
+  input_pix_fmt =
+      is_color ? AV_PIX_FMT_BGR24 :
+          AV_PIX_FMT_GRAY8;
+
+
+  /*
+   * Like to OpenCV:
+   *  we allow frames of odd width or height, but in this case we truncate
+   *  the rightmost column/the bottom row. Probably, this should be handled more elegantly,
+   *  but some internal functions inside FFMPEG swscale require even width/height.
+   */
+  frame_size.width = image_size.width & -2;
+  frame_size.height = image_size.height & -2;
+
+  if ( frame_size.width <= 0 || frame_size.height <= 0 ) {
+    CF_ERROR("Invalid output frame size specified : %dx%d",
+        frame_size.width, frame_size.height);
+    goto end;
+  }
+
+
+  /*
+   * Check if ffmpeg options are specified
+   */
+  if ( !ffmpeg_opts.empty() ) {
+
+    if ( (status = ffmpeg_parse_options(ffmpeg_opts, true, &opts)) < 0 ) {
+      CF_ERROR("ffmpeg_parse_options() fails");
+      goto end;
+    }
+
+    if ( opts ) {
+
+      AVDictionaryEntry * e;
+      const int flags = AV_DICT_IGNORE_SUFFIX;
+
+      /* check if codec specified */
+      if ( (e = av_dict_get(opts, "c", nullptr, flags)) ) {
+        const AVCodec * codec = avcodec_find_encoder_by_name(e->value);
+        if ( codec ) {
+          codec_id = codec->id;
+        }
+        else {
+          CF_ERROR("requested encoder '%s; not found", e->value);
+          goto end;
+        }
+      }
+      if ( (e = av_dict_get(opts, "c:v", nullptr, flags)) ) {
+        const AVCodec * codec = avcodec_find_encoder_by_name(e->value);
+        if ( codec ) {
+          codec_id = codec->id;
+        }
+        else {
+          CF_ERROR("requested encoder '%s; not found", e->value);
+          goto end;
+        }
+      }
+
+      /* check if codec pixel format specified */
+      if ( (e = av_dict_get(opts, "pix_fmt", nullptr, flags)) ) {
+        codec_pix_fmt = av_get_pix_fmt(e->value);
+        if ( codec_pix_fmt == AV_PIX_FMT_NONE ) {
+          CF_ERROR("requested pixel format '%s; not found", e->value);
+          goto end;
+        }
+      }
+
+      /* check if fps (frame rate) specified */
+      if ( (e = av_dict_get(opts, "r", nullptr, flags)) || (e = av_dict_get(opts, "fps", nullptr, flags)) ) {
+        if ( sscanf(e->value, "%lf", &fps) != 1 || fps <= 0 ) {
+          CF_ERROR("requested fps %s is invalid", e->value);
+          goto end;
+        }
+      }
+
+      /* check if global_quality (q, qscale) option specified */
+      if ( (e = av_dict_get(opts, "q", nullptr, flags)) || (e = av_dict_get(opts, "qscale", nullptr, flags)) ||
+          (e = av_dict_get(opts, "q:v", nullptr, flags)) ) {
+        if ( sscanf(e->value, "%d", &qscale) != 1 ) {
+          CF_ERROR("requested qscale %s is invalid", e->value);
+          goto end;
+        }
+      }
+
+    }
+  }
+
+  if ( fps < 0 ) { // try to make timestamps as precise as possible
+    fps = 1000000;
+  }
+
+
+  /*
+   * Auto select codec if was not specified
+   * */
+  if ( codec_id == AV_CODEC_ID_NONE ) {
+    codec_id = AV_CODEC_ID_HUFFYUV;
+  }
+
+  /*
+   * Open encoder
+   * */
+
+  codec_ctx =
+      ffmpeg_open_encoder(codec_id,
+          frame_size.width,
+          frame_size.height,
+          codec_pix_fmt,
+          fps,
+          AV_CODEC_FLAG_GLOBAL_HEADER, /*(ofmt->flags & AVFMT_GLOBALHEADER) ? AV_CODEC_FLAG_GLOBAL_HEADER : 0,*/
+          qscale,
+          &opts);
+
+  if ( !codec_ctx ) {
+    CF_ERROR("ffmpeg_open_encoder() fails");
+    goto end;
+  }
+
+  /*
+   * Allocate AVFrames
+   * */
+
+  output_frame =
+      ffmpeg_alloc_frame(codec_ctx->pix_fmt,
+          codec_ctx->width,
+          codec_ctx->height,
+          codec_ctx->pix_fmt != input_pix_fmt);
+
+  if ( !output_frame ) {
+    CF_ERROR("ffmpeg_alloc_frame(output_frame) fails");
+    goto end;
+  }
+
+  if ( codec_ctx->pix_fmt != input_pix_fmt ) {
+
+    input_frame =
+        ffmpeg_alloc_frame(input_pix_fmt,
+            codec_ctx->width,
+            codec_ctx->height,
+            false);
+
+    if ( !input_frame ) {
+      CF_ERROR("ffmpeg_alloc_frame(input_frame) fails");
+      goto end;
+    }
+  }
+
+  av_dict_free(&opts);
+  fOk = true;
+
+end:
+  if ( !fOk ) {
+    close();
+  }
+
+  return fOk;
+
+}
+
+void c_ffmpeg_encoder::close()
+{
+  if ( codec_ctx ) {
+#if (USE_AVCODEC_CLOSE)
+    avcodec_close(codec_ctx);
+#endif
+    avcodec_free_context(&codec_ctx);
+  }
+
+  if ( sws_ctx ) {
+    sws_freeContext(sws_ctx);
+    sws_ctx = nullptr;
+  }
+
+  if ( aligned_input ) {
+    av_free(aligned_input);
+    aligned_input = nullptr;
+  }
+
+  if ( input_frame ) {
+    av_frame_free(&input_frame);
+  }
+
+  if ( output_frame ) {
+    av_frame_free(&output_frame);
+  }
+
+  if (encoded_pkt) {
+    av_packet_unref(encoded_pkt);
+    encoded_pkt = nullptr;
+  }
+}
+
+
+bool c_ffmpeg_encoder::encode(const cv::Mat & image, const writefunc & writepkt)
+{
+  const uint8_t * data =
+      image.ptr();
+
+  const int cn =
+      image.channels();
+
+  const int origin =
+      0;
+
+  int step =
+      (int) image.step;
+
+  int width =
+      image.cols;
+
+  int height =
+      image.rows;
+
+
+  // check parameters
+  if ( input_pix_fmt == AV_PIX_FMT_BGR24 ) {
+    if ( cn != 3 ) {
+      CF_ERROR("Invalid inpput: cn = %d but 3 expected", cn);
+      return false;
+    }
+  }
+  else if ( input_pix_fmt == AV_PIX_FMT_GRAY8 ) {
+    if ( cn != 1 ) {
+      CF_ERROR("Invalid inpput: cn = %d but 1 expected", cn);
+      return false;
+    }
+  }
+  else {
+    CF_ERROR("APP BUG: invalid input_pix_fmt=%d encountered", input_pix_fmt);
+    return false;
+  }
+
+  if ( (width & -2) != frame_size.width || (height & -2) != frame_size.height || !data ) {
+    CF_ERROR("Invalid input frame size: %dx%d. Expected %dx%d", width, height,
+        frame_size.width, frame_size.height);
+    return false;
+  }
+
+  width = frame_size.width;
+  height = frame_size.height;
+
+
+  // FFmpeg contains SIMD optimizations which can sometimes read data past the supplied input buffer.
+  // Related info: https://trac.ffmpeg.org/ticket/6763
+  // 1. To ensure that doesn't happen, we pad the step to a multiple of 32
+  // (that's the minimal alignment for which Valgrind doesn't raise any warnings).
+  // 2. (dataend - SIMD_SIZE) and (dataend + SIMD_SIZE) is from the same 4k page
+  const int CV_STEP_ALIGNMENT = 32;
+  const size_t CV_SIMD_SIZE = 32;
+  const size_t CV_PAGE_MASK = ~(4096 - 1);
+  const uint8_t * const dataend = data + ((size_t)height * step);
+  int status;
+
+
+  if ( step % CV_STEP_ALIGNMENT != 0 ||
+      (((size_t) dataend - CV_SIMD_SIZE) & CV_PAGE_MASK) != (((size_t) dataend + CV_SIMD_SIZE) & CV_PAGE_MASK) ) {
+
+    const int aligned_step = (step + CV_STEP_ALIGNMENT - 1) & ~(CV_STEP_ALIGNMENT - 1);
+    const size_t new_size = (aligned_step * height + CV_SIMD_SIZE);
+
+    if ( !aligned_input || aligned_input_size < new_size ) {
+      if ( aligned_input ) {
+        av_freep(&aligned_input);
+      }
+      aligned_input_size = new_size;
+      aligned_input = (unsigned char*) av_mallocz(aligned_input_size);
+    }
+
+    if ( origin == 1 )
+      for ( int y = 0; y < height; y++ ) {
+        memcpy(aligned_input + y * aligned_step, data + (height - 1 - y) * step, step);
+      }
+    else {
+      for ( int y = 0; y < height; y++ ) {
+        memcpy(aligned_input + y * aligned_step, data + y * step, step);
+      }
+    }
+
+    data = aligned_input;
+    step = aligned_step;
+  }
+
+  if ( codec_ctx->pix_fmt == input_pix_fmt ) {
+
+#if LIBAVUTIL_BUILD >= (LIBAVUTIL_VERSION_MICRO >= 100  ? AV_VERSION_INT(51, 63, 100) : AV_VERSION_INT(54, 6, 0))
+    av_image_fill_arrays(output_frame->data, output_frame->linesize, data, input_pix_fmt, width, height, 1);
+#else
+    avpicture_fill((AVPicture*)output_frame, data, input_pix_fmt, width, height);
+#endif
+
+    output_frame->linesize[0] = step;
+  }
+  else {
+
+    if ( !input_frame ) {
+      CF_ERROR("APP BUG: input_picture is null");
+      return false;
+    }
+
+    // let input_picture point to the raw data buffer of 'image'
+#if LIBAVUTIL_BUILD >= (LIBAVUTIL_VERSION_MICRO >= 100  ? AV_VERSION_INT(51, 63, 100) : AV_VERSION_INT(54, 6, 0))
+    av_image_fill_arrays(input_frame->data, input_frame->linesize, (uint8_t *) data, input_pix_fmt, width, height, 1);
+#else
+    avpicture_fill((AVPicture*)input_frame, data, input_pix_fmt, width, height);
+#endif
+
+    input_frame->linesize[0] = step;
+
+    if ( !sws_ctx ) {
+      sws_ctx = sws_getContext(width,
+          height,
+          input_pix_fmt,
+          codec_ctx->width,
+          codec_ctx->height,
+          codec_ctx->pix_fmt,
+          SWS_AREA,
+          NULL, NULL, NULL);
+      if ( !sws_ctx ) {
+        CF_ERROR("sws_getContext() fails");
+        return false;
+      }
+    }
+
+
+    status =
+        sws_scale(sws_ctx,
+            input_frame->data,
+            input_frame->linesize, 0,
+            height,
+            output_frame->data,
+            output_frame->linesize);
+
+    if ( status < 0 ) {
+      CF_ERROR("sws_scale() fails : %s",
+          averr2str(status));
+      return false;
+    }
+  }
+
+  output_frame->pts = pts ++;
+
+  if ( codec_ctx->flags & AV_CODEC_FLAG_QSCALE ) {
+    output_frame->quality =
+        codec_ctx->global_quality;
+  }
+
+  if ( !encoded_pkt ) {
+    encoded_pkt = av_packet_alloc();
+  }
+
+  int index = 0;
+  status = avcodec_send_frame(codec_ctx, output_frame);
+  while ( status >= 0 ) {
+
+    if ( (status = avcodec_receive_packet(codec_ctx, encoded_pkt)) >= 0 ) {
+
+      errno = 0;
+      if( !writepkt(*encoded_pkt, index++) ) {
+        status = errno ? AVERROR(errno) : AVERROR(EIO);
+        break;
+      }
+
+      continue;
+    }
+
+    if ( status == AVERROR(EAGAIN) ) {
+
+    //      while ((status = avcodec_send_frame(codec_ctx, nullptr)) == AVERROR(EAGAIN)) {
+    //        CF_DEBUG("FLUSH: status=%d (%s)", status, averr2str(status));
+    //      }
+
+      status = 0;
+    }
+    else if ( output_frame || status != AVERROR_EOF ) {
+      CF_ERROR("avcodec_receive_packet() fails: %s",
+          averr2str(status));
+    }
+
+    break;
+  }
+
+  return status >= 0 ;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+c_ffmpeg_decoder::c_ffmpeg_decoder()
+{
+}
+
+c_ffmpeg_decoder::~c_ffmpeg_decoder()
+{
+  close();
+}
+
+
+const std::string & c_ffmpeg_decoder::opts() const
+{
+  return _opts;
+}
+
+bool c_ffmpeg_decoder::is_open() const
+{
+  return cctx != nullptr;
+}
+
+void c_ffmpeg_decoder::close()
+{
+
+}
+
+bool c_ffmpeg_decoder::create(const std::string & ffmpeg_opts)
+{
+  AVDictionary * opts = nullptr;
+  AVCodecID codec_id = AV_CODEC_ID_HUFFYUV;
+
+  int status = 0;
+
+  ensure_ffmpeg_initialized();
+
+  if ( (status = ffmpeg_parse_options(ffmpeg_opts, true, &opts)) ) {
+    CF_ERROR("[%s] ffmpeg_parse_options() fails", averr2str(status));
+    goto end;
+  }
+
+  if ( opts ) {
+
+    AVDictionaryEntry * e;
+    const int flags = AV_DICT_IGNORE_SUFFIX;
+
+    /* check if codec specified */
+    if ( (e = av_dict_get(opts, "c", nullptr, flags)) ) {
+      const AVCodec * codec = avcodec_find_decoder_by_name(e->value);
+      if ( codec ) {
+        codec_id = codec->id;
+      }
+      else {
+        CF_ERROR("requested decoder '%s; not found", e->value);
+        goto end;
+      }
+    }
+    if ( (e = av_dict_get(opts, "c:v", nullptr, flags)) ) {
+      const AVCodec * codec = avcodec_find_decoder_by_name(e->value);
+      if ( codec ) {
+        codec_id = codec->id;
+      }
+      else {
+        CF_ERROR("requested encoder '%s; not found", e->value);
+        goto end;
+      }
+    }
+  }
+
+
+  if ( !(codec = avcodec_find_decoder(codec_id)) ) {
+    CF_ERROR("avcodec_find_decoder(codec_id=%d) fails", codec_id);
+    status = AVERROR_DECODER_NOT_FOUND;
+    goto end;
+  }
+
+  if ( !(cctx = avcodec_alloc_context3(codec)) ) {
+    CF_ERROR("avcodec_alloc_context3(codec=%s) fails", codec->name);
+    status = AVERROR(ENOMEM);
+    goto end;
+  }
+
+//  if ( (status = avcodec_parameters_to_context(cctx, istream->codecpar)) < 0 ) {
+//    CF_ERROR("[%s] avcodec_parameters_to_context(codec=%s) fails: %s", stream_name_.c_str(), codec->name,
+//        averr2str(status));
+//    goto end;
+//  }
+
+  CF_DEBUG("cctx: width=%d height=%d", cctx->width, cctx->height);
+
+  if ( (status = avcodec_open2(cctx, codec, &opts)) < 0 ) {
+    CF_ERROR("avcodec_open2() fails for codec=%s : %s", codec->name,
+        averr2str(status));
+    goto end;
+  }
+
+end:
+
+  if ( opts ) {
+    av_dict_free(&opts);
+  }
+
+  if ( status ) {
+    close();
+  }
+
+  return status >= 0;
+}
+
+bool c_ffmpeg_decoder::decode(const readfunc & readpkt, const writefunc & writeframe)
+{
+  AVPacket pkt;
+
+  int pktidx = 0;
+  int frmidx = 0;
+  int status;
+
+  av_init_packet(&pkt);
+
+  if ( !avframe && !(avframe = av_frame_alloc())) {
+    CF_ERROR("av_frame_alloc() fails - out of memory?");
+    return false;
+  }
+
+  if ( !rgbpicture ) {
+    if ( !(rgbpicture = av_frame_alloc()) ) {
+      CF_ERROR("av_frame_alloc() fails - out of memory?");
+      return false;
+    }
+
+    rgbpicture->width = scaledSize_.empty() ? cctx->coded_width : scaledSize_.width;
+    rgbpicture->height = scaledSize_.empty() ? cctx->coded_height : scaledSize_.height;
+    rgbpicture->format = AV_PIX_FMT_BGR24;
+
+    if ( (status = av_frame_get_buffer(rgbpicture, 32)) < 0 ) {
+      CF_ERROR("av_frame_get_buffer() fails : %s", averr2str(status));
+      return false;
+    }
+  }
+
+  while ( readpkt(pkt, pktidx++) ) {
+
+    if( (status = avcodec_send_packet(cctx, &pkt)) < 0 ) {
+      CF_ERROR("avcodec_send_packet() fails: %s", averr2str(status));
+      return false;
+    }
+
+    while ( (status = avcodec_receive_frame(cctx, avframe)) >= 0 ) {
+
+      if ( !swsctx || cctx->coded_width != rgbpicture->width || cctx->coded_height != rgbpicture->height
+          || cctx->pix_fmt != rgbpicture->format ) {
+
+        swsctx = sws_getCachedContext(
+            swsctx,
+            cctx->coded_width,
+            cctx->coded_height,
+            cctx->pix_fmt,
+            rgbpicture->width,
+            rgbpicture->height,
+            (AVPixelFormat)rgbpicture->format,
+            SWS_FAST_BILINEAR,
+            nullptr, nullptr, nullptr);
+
+        if ( !swsctx ) {
+          CF_ERROR("sws_getCachedContext() fails");
+          return false;
+        }
+      }
+
+      sws_scale(swsctx,
+          avframe->data,
+          avframe->linesize,
+          0, cctx->coded_height,
+          rgbpicture->data,
+          rgbpicture->linesize);
+
+      const cv::Mat frame(rgbpicture->height,
+          rgbpicture->width,
+          CV_MAKETYPE(CV_8U, 3),
+          rgbpicture->data[0],
+          rgbpicture->linesize[0]);
+
+      if ( !writeframe(frame, frmidx++) ) {
+        break;
+      }
+    }
+
+    if ( status < 0 && status != AVERROR(EAGAIN)  ) {
+      CF_ERROR("avcodec_receive_frame() fails: %s", averr2str(status));
+      return false;
+    }
+  }
+
+  return true;
 }
 
 

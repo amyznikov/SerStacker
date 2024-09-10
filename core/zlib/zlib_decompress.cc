@@ -6,10 +6,15 @@
  *
  *  Based on https://github.com/mapbox/gzip-hpp
  */
-#include "decompress.h"
+#ifndef ZLIB_CONST
+# define ZLIB_CONST
+#endif
+
+#include <zlib.h>
+#include "zlib_decompress.h"
 #include <core/debug.h>
 
-bool decompress(const void * data, uint32_t size, std::vector<uint8_t> * output)
+bool zlib_decompress(const void * data, uint32_t size, std::vector<uint8_t> * output)
 {
   z_stream inflate_s = { 0 };
   size_t size_decompressed = 0;

@@ -1,16 +1,22 @@
 /*
- * compress.cc
+ * zlib_compress.cc
  *
  *  Created on: Apr 11, 2022
  *      Author: amyznikov
  *
  *  Based on https://github.com/mapbox/gzip-hpp
  */
-#include "compress.h"
+
+#ifndef ZLIB_CONST
+# define ZLIB_CONST
+#endif
+
+#include <zlib.h>
+#include "zlib_compress.h"
 #include <core/debug.h>
 
 
-bool compress(const void * data, uint32_t size, std::vector<uint8_t> * output)
+bool zlib_compress(const void * data, uint32_t size, std::vector<uint8_t> * output)
 {
   z_stream deflate_s = {0};
   std::size_t size_compressed = 0;

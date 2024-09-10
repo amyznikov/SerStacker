@@ -1,5 +1,5 @@
 /*
- * decompress.h
+ * zlib_decompress.h
  *
  *  Created on: Apr 11, 2022
  *      Author: amyznikov
@@ -8,18 +8,13 @@
  */
 
 #pragma once
-#ifndef __decompress_h__
-#define __decompress_h__
-
-#ifndef ZLIB_CONST
-# define ZLIB_CONST
-#endif
+#ifndef __zlib_decompress_h__
+#define __zlib_decompress_h__
 
 #include <stdint.h>
-#include <zlib.h>
 #include <vector>
 
-bool decompress(const void * data, uint32_t size,
+bool zlib_decompress(const void * data, uint32_t size,
     std::vector<uint8_t> * output);
 
 #endif /* __decompress_h__ */

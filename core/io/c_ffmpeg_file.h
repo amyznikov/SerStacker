@@ -148,7 +148,7 @@ public:
   ~c_ffmpeg_writer();
 
   ///@brief open (create) video file
-  bool open(const std::string & filename, const cv::Size & frame_size,
+  bool open(const std::string & filename, const cv::Size & image_size,
       bool iscolor, const std::string & ffmpeg_opts = "");
 
   ///@brief return true if video file is open
@@ -158,7 +158,7 @@ public:
   void close();
 
   ///@brief write framw with pts stream time base units
-  bool write(const cv::Mat frame, int64_t pts);
+  bool write(const cv::Mat & frame, int64_t pts);
 
   const std::string & filename() const;
 
@@ -195,14 +195,106 @@ protected:
   uint8_t * aligned_input =  nullptr;
   size_t  aligned_input_size = 0;
   cv::Size frame_size;
-  int frames_written_ = 0;
-  bool header_written_ = false;
+  int64_t frames_written_ = 0;
   int64_t start_pts_ = 0;
   int64_t ppts_ = 0;
+  bool header_written_ = false;
 
   AVPacket * encoded_pkt = nullptr;
   SwsContext * sws_ctx = nullptr;
 
+};
+
+
+/**
+ * c_ffmpeg_encoder
+ *
+ * Based on code example
+ *  <https://ffmpeg.org/doxygen/0.6/output-example_8c-source.html>
+ */
+class c_ffmpeg_encoder
+{
+public:
+  typedef c_ffmpeg_encoder this_class;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::function<bool(const AVPacket &, int index)> writefunc;
+
+  c_ffmpeg_encoder();
+  ~c_ffmpeg_encoder();
+
+  const std::string & opts() const;
+
+  bool create(const cv::Size & image_size,
+      bool iscolor, const std::string & ffmpeg_opts = "");
+
+  void close();
+
+  bool is_open() const;
+
+  bool encode(const cv::Mat & frame, const writefunc & writepkt);
+
+protected:
+  std::string _opts;
+  AVCodecContext * codec_ctx = nullptr;
+  AVFrame * input_frame = nullptr;
+  AVFrame * output_frame = nullptr;
+  enum AVPixelFormat input_pix_fmt = AV_PIX_FMT_NONE;
+  uint8_t * aligned_input =  nullptr;
+  AVPacket * encoded_pkt = nullptr;
+  SwsContext * sws_ctx = nullptr;
+  size_t  aligned_input_size = 0;
+  cv::Size frame_size;
+  int64_t pts = 0;
+};
+
+
+/**
+ * c_ffmpeg_decoder
+ *
+ * Based on code example
+ *  <https://ffmpeg.org/doxygen/0.6/output-example_8c-source.html>
+ */
+class c_ffmpeg_decoder
+{
+public:
+  typedef c_ffmpeg_decoder this_class;
+  typedef std::shared_ptr<this_class> sptr;
+  typedef std::unique_ptr<this_class> uptr;
+  typedef std::function<bool(AVPacket &, int pktidx)> readfunc;
+  typedef std::function<bool(const cv::Mat &, int frmidx)> writefunc;
+
+  c_ffmpeg_decoder();
+  ~c_ffmpeg_decoder();
+
+  const std::string & opts() const;
+
+  bool create(const std::string & ffmpeg_opts = "");
+
+  void close();
+
+  bool is_open() const;
+
+  bool decode(const readfunc & readpkt, const writefunc & writeframe);
+
+protected:
+  std::string _opts;
+  ff_const59 AVCodec * codec = nullptr;
+  AVCodecContext *  cctx = nullptr;
+  //AVStream *        istream = nullptr;
+  //AVPacket *        avpacket = nullptr;
+  AVFrame *         avframe = nullptr;
+  AVFrame *         rgbpicture = nullptr;
+  SwsContext *      swsctx = nullptr;
+  cv::Size          scaledSize_;
+
+//  struct cvframe {
+//    cv::Mat image;
+//    int64_t pts; // in stream time_base units
+//  };
+//  std::vector<cvframe> received_frames;
+//  int64_t last_ts = 0;
+//  double timescale_ = 0;
 };
 
 #endif // HAVE_FFMPEG

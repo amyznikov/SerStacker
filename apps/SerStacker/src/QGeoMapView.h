@@ -12,7 +12,6 @@
 #include <gui/qgeoview/QGeoViewWidgetDock.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QColorPickerButton.h>
-// #include <gui/widgets/QSliderSpinBox.h>
 #include <core/proc/gps/gpx.h>
 
 namespace serstacker {
@@ -31,12 +30,15 @@ public:
   const c_gpx_track & track() const;
 
 protected: // QAbstractGeoPolygonItem
+  void mousePressEvent(QGraphicsSceneMouseEvent * event) final;
   bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
   int pointsCount() const final;
   void insertPoint(const QGeoPos &, int insert_pos) final;
   void removePoint(int remove_pos) final;
   void setGeoPoint(int index, const QGeoPos & ) final;
   QGeoPos getGeoPoint(int index) const final;
+
+
 
 protected:
   c_gpx_track _track;

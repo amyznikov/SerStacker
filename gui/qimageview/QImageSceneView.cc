@@ -8,8 +8,8 @@
 #include "QImageSceneView.h"
 #include <core/debug.h>
 
-QImageSceneView::QImageSceneView(QWidget *parent)
-    : Base(parent)
+QImageSceneView::QImageSceneView(QWidget *parent) :
+  Base(parent)
 {
   setMouseTracking(true);
 

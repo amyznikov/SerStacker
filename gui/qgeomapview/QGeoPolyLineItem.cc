@@ -280,6 +280,42 @@ int QAbstractGeoPolyLineItem::lineOpaqueness() const
   return linePen_.color().alpha();
 }
 
+int QAbstractGeoPolyLineItem::findPointByViewPos(const QGraphicsView * view, const QPointF & viewPos,
+    double hit_distance_in_pixels) const
+{
+  if( view ) {
+
+    const QGeoProjection * projection =
+        this->projection();
+
+    const int n =
+        pointsCount();
+
+    double best_distance =
+        hit_distance_in_pixels;
+
+    int nearest_point_index = -1;
+
+    for( int i = 0; i < n; ++i ) {
+
+      const double dist =
+          distance(viewPos,
+              view->mapFromScene(mapToScene(projection->geoToProj(getGeoPoint(i)))));
+
+      if( dist < best_distance ) {
+        best_distance = dist;
+        nearest_point_index = i;
+      }
+    }
+
+    if( best_distance < hit_distance_in_pixels ) {
+      return nearest_point_index;
+    }
+  }
+
+  return -1;
+}
+
 bool QAbstractGeoPolyLineItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   bool populated = false;
@@ -495,6 +531,10 @@ void QAbstractGeoPolyLineItem::paint(QPainter * painter, const QStyleOptionGraph
   }
 }
 
+
+
+// Use keyboard modifier like CTRL, ALT or SHIFT in order to receive this event,
+// because GeoView uses Mouse move event with left button for view dragging
 void QAbstractGeoPolyLineItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
   //  CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
@@ -548,9 +588,9 @@ void QAbstractGeoPolyLineItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
 void QAbstractGeoPolyLineItem::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 {
-  //  CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
-  //      (uint)event->buttons(),
-  //      (uint)event->modifiers());
+    CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
+        (uint)event->buttons(),
+        (uint)event->modifiers());
 
     if( currentMovingPointIndex_ >= 0 && (event->buttons() == Qt::LeftButton) ) {
 

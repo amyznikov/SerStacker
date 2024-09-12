@@ -66,6 +66,9 @@ public:
 
   bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
 
+  int findPointByViewPos(const QGraphicsView * view, const QPointF & viewPos, double hit_distance_in_pixels) const;
+
+
 Q_SIGNALS:
   void geoPointsChanged();
 

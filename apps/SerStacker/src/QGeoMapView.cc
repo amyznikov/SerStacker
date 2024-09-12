@@ -25,7 +25,7 @@ QGpxTrackItem::QGpxTrackItem(QGraphicsItem *parent) :
 {
   setEnableAddPoints(false);
   setEnableRemovePoints(false);
-  setEnableMovePoints(false);
+  setEnableMovePoints(true);
 }
 
 const c_gpx_track & QGpxTrackItem::track() const
@@ -70,6 +70,39 @@ QGeoPos QGpxTrackItem::getGeoPoint(int index) const
 bool QGpxTrackItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   return Base::popuateContextMenu(event, menu);
+}
+
+// Use keyboard modifier like CTRL, ALT or SHIFT in order to receive this event,
+// because GeoView uses Mouse move event with left button for view dragging
+void QGpxTrackItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
+{
+  if( event->buttons() == Qt::LeftButton  && !projPoints_.empty() ) {
+
+    const QGraphicsView *view =
+        getActiveView(event);
+
+    if ( view ) {
+
+      const int index =
+          findPointByViewPos(view, view->mapFromScene(event->scenePos()), 9);
+
+      if ( index >= 0 && index < (int)_track.pts.size() ) {
+
+        const c_gps_position & gps =
+            _track.pts[index];
+
+        CF_DEBUG("\ngpx point %d: lat=%+.8f lon=%+.8f alt=%g ts=%.3f relts=%.3f", index,
+            gps.latitude * 180 / CV_PI, gps.longitude * 180 / CV_PI, gps.altitude,
+            gps.timestamp, gps.timestamp - _track.pts[0].timestamp);
+
+      }
+
+    }
+
+  }
+
+  Base::mousePressEvent(event);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -432,6 +465,7 @@ void QGpxTrackViewSettingsDialogBox::setGpxTracks(std::vector<QGpxTrackItem*> * 
 QGeoMapView::QGeoMapView(QWidget * parent) :
     Base(parent)
 {
+  // geoview_->setMouseTracking(true);
 }
 
 

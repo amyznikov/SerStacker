@@ -1,17 +1,17 @@
 /*
- * QGeoPolygonItem.cc
+ * QGeoPolyLineItem.cc
  *
- *  Created on: Nov 27, 2022
+ *  Created on: Sep 11, 2024
  *      Author: amyznikov
  */
 
-#include "QGeoPolygonItem.h"
+#include "QGeoPolyLineItem.h"
 #include <float.h>
 #include <core/debug.h>
 
 namespace {
 
-constexpr int draw_handle_size = 6;
+constexpr int draw_handle_size = 0;
 constexpr double hit_dstance = 30;
 
 // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
@@ -73,74 +73,214 @@ QPainterPath qt_graphicsItem_shapeFromPath(const QPainterPath & path, const QPen
 
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-QAbstractGeoPolygonItem::QAbstractGeoPolygonItem(QGraphicsItem * parent) :
+QAbstractGeoPolyLineItem::QAbstractGeoPolyLineItem(QGraphicsItem * parent) :
   ThisClass("", "", parent)
 {
 }
 
-QAbstractGeoPolygonItem::QAbstractGeoPolygonItem(const QString & name, const QString & description,
+QAbstractGeoPolyLineItem::QAbstractGeoPolyLineItem(const QString & name, const QString & description,
     QGraphicsItem * parent) :
     Base(parent)
 {
-  pen_.setWidth(1);
-  pen_.setCosmetic(true);
-  pen_.setColor(QColor(255, 0, 0, 128));
+  linePen_.setWidth(3);
+  linePen_.setCosmetic(true);
+  linePen_.setColor(QColor(0, 255, 128));
 
-  brush_.setStyle(Qt::BrushStyle::SolidPattern);
-  brush_.setColor(QColor(255, 255, 255, 120));
+  pointPen_.setWidth(5);
+  pointPen_.setCosmetic(true);
+  pointPen_.setColor(QColor(255, 0, 0, 128));
+
+  //  brush_.setStyle(Qt::BrushStyle::SolidPattern);
+  //  brush_.setColor(QColor(255, 255, 255, 120));
 }
 
-QAbstractGeoPolygonItem::~QAbstractGeoPolygonItem()
+QAbstractGeoPolyLineItem::~QAbstractGeoPolyLineItem()
 {
 }
 
 
-void QAbstractGeoPolygonItem::setFillRule(Qt::FillRule v)
+void QAbstractGeoPolyLineItem::setFillRule(Qt::FillRule v)
 {
   fillRule_ = v;
 }
 
-Qt::FillRule QAbstractGeoPolygonItem::fillRule() const
+Qt::FillRule QAbstractGeoPolyLineItem::fillRule() const
 {
   return fillRule_;
 }
 
-
-void QAbstractGeoPolygonItem::setEnableMovePoints(bool v)
+void QAbstractGeoPolyLineItem::setEnableMovePoints(bool v)
 {
   enableMovePoints_ = v;
 }
 
-bool QAbstractGeoPolygonItem::enableMovePoints() const
+bool QAbstractGeoPolyLineItem::enableMovePoints() const
 {
   return enableMovePoints_;
 }
 
 
-void QAbstractGeoPolygonItem::setEnableAddPoints(bool v)
+void QAbstractGeoPolyLineItem::setEnableAddPoints(bool v)
 {
   enableAddPoints_ = v;
 }
 
-bool QAbstractGeoPolygonItem::enableAddPoints() const
+bool QAbstractGeoPolyLineItem::enableAddPoints() const
 {
   return  enableAddPoints_ ;
 }
 
-void QAbstractGeoPolygonItem::setEnableRemovePoints(bool v)
+void QAbstractGeoPolyLineItem::setEnableRemovePoints(bool v)
 {
   enableRemovePoints_ = v;
 }
 
-bool QAbstractGeoPolygonItem::enableRemovePoints() const
+bool QAbstractGeoPolyLineItem::enableRemovePoints() const
 {
   return enableRemovePoints_;
 }
 
+void QAbstractGeoPolyLineItem::setShowPoints(bool v)
+{
+  if( showPoints_ != v ) {
+    showPoints_ = v;
+    updateProjected();
+  }
+}
 
-bool QAbstractGeoPolygonItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QAbstractGeoPolyLineItem::showPoints() const
+{
+  return showPoints_;
+}
+
+void QAbstractGeoPolyLineItem::setShowLines(bool v)
+{
+  if( showLines_ != v ) {
+    showLines_ = v;
+    updateProjected();
+  }
+}
+
+bool QAbstractGeoPolyLineItem::showLines() const
+{
+  return showLines_;
+}
+
+void QAbstractGeoPolyLineItem::setPointSize(int v)
+{
+  if ( pointSize_ != v ) {
+    pointSize_ = v;
+    updateProjected();
+  }
+}
+
+int QAbstractGeoPolyLineItem::pointSize() const
+{
+  return pointSize_;
+}
+
+void QAbstractGeoPolyLineItem::setPointPenWidth(int v)
+{
+  if( pointPen_.width() != v ) {
+    pointPen_.setWidth(v);
+    updateProjected();
+  }
+}
+
+int QAbstractGeoPolyLineItem::pointPenWidth() const
+{
+  return pointPen_.width();
+}
+
+void QAbstractGeoPolyLineItem::setPointColor(const QColor & v)
+{
+  QColor c =
+      pointPen_.color();
+
+  if( c.red() != v.red() || c.green() != v.green() || c.blue() != v.blue() ) {
+    c.setRed(v.red());
+    c.setGreen(v.green());
+    c.setBlue(v.blue());
+    pointPen_.setColor(c);
+    updateProjected();
+  }
+
+}
+
+QColor QAbstractGeoPolyLineItem::pointColor() const
+{
+  return pointPen_.color();
+}
+
+void QAbstractGeoPolyLineItem::setPointOpaqueness(int v)
+{
+  QColor c =
+      pointPen_.color();
+
+  if( c.alpha() != v ) {
+    c.setAlpha(v);
+    pointPen_.setColor(c);
+    updateProjected();
+  }
+
+}
+
+int QAbstractGeoPolyLineItem::pointOpaqueness() const
+{
+  return pointPen_.color().alpha();
+}
+
+void QAbstractGeoPolyLineItem::setLineWidth(int v)
+{
+  if ( linePen_.width() != v ) {
+    linePen_.setWidth(v);
+    updateProjected();
+  }
+}
+
+int QAbstractGeoPolyLineItem::lineWidth() const
+{
+  return linePen_.width();
+}
+
+void QAbstractGeoPolyLineItem::setLineColor(const QColor & v)
+{
+  QColor c =
+      linePen_.color();
+
+  if( c.red() != v.red() || c.green() != v.green() || c.blue() != v.blue() ) {
+    c.setRed(v.red());
+    c.setGreen(v.green());
+    c.setBlue(v.blue());
+    linePen_.setColor(c);
+    updateProjected();
+  }
+}
+
+QColor QAbstractGeoPolyLineItem::lineColor() const
+{
+  return  linePen_.color();
+}
+
+void QAbstractGeoPolyLineItem::setLineOpaqueness(int v)
+{
+  QColor c =
+      linePen_.color();
+
+  if( c.alpha() != v ) {
+    c.setAlpha(v);
+    linePen_.setColor(c);
+    updateProjected();
+  }
+
+}
+
+int QAbstractGeoPolyLineItem::lineOpaqueness() const
+{
+  return linePen_.color().alpha();
+}
+
+bool QAbstractGeoPolyLineItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   bool populated = false;
 
@@ -242,7 +382,7 @@ bool QAbstractGeoPolygonItem::popuateContextMenu(const QGraphicsSceneContextMenu
   return Base::popuateContextMenu(event, menu) || populated;
 }
 
-void QAbstractGeoPolygonItem::updateProjected(const QGeoScene * scene)
+void QAbstractGeoPolyLineItem::updateProjected(const QGeoScene * scene)
 {
   if( scene || (scene = geoScene()) ) {
 
@@ -285,7 +425,7 @@ void QAbstractGeoPolygonItem::updateProjected(const QGeoScene * scene)
       QPainterPath path;
       path.addPolygon(projPoints_);
 
-      if ( draw_handle_size > 1 ) {
+      if ( std::max(pointSize(), lineWidth()) > 1 ) { // draw_handle_size
 
         for ( int i = 0, n = projPoints_.size(); i < n; ++i ) {
 
@@ -298,7 +438,7 @@ void QAbstractGeoPolygonItem::updateProjected(const QGeoScene * scene)
       }
 
       projShape_ =
-          qt_graphicsItem_shapeFromPath(path, pen_);
+          qt_graphicsItem_shapeFromPath(path, linePen_);
 
       boundingRect_ =
           projShape_.boundingRect();
@@ -306,51 +446,56 @@ void QAbstractGeoPolygonItem::updateProjected(const QGeoScene * scene)
   }
 }
 
-void QAbstractGeoPolygonItem::updateGeo(const QGeoScene * geoScene)
+void QAbstractGeoPolyLineItem::updateGeo(const QGeoScene * geoScene)
 {
   CF_ERROR("FIXME: QGeoMapPolygonItem::updateGeo NOT IMPLEMENTED");
 }
 
-QRectF QAbstractGeoPolygonItem::boundingRect() const
+QRectF QAbstractGeoPolyLineItem::boundingRect() const
 {
   return boundingRect_;
 }
 
-QPainterPath QAbstractGeoPolygonItem::shape() const
+QPainterPath QAbstractGeoPolyLineItem::shape() const
 {
   return projShape_;
 }
 
-void QAbstractGeoPolygonItem::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
+void QAbstractGeoPolyLineItem::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
   if ( !projPoints_.empty() ) {
 
-    painter->setPen(pen_);
-    painter->setBrush(brush_);
+    //painter->setBrush(brush_);
 
-    painter->drawPolygon(projPoints_, fillRule_);
+    if ( showLines_ && linePen_.color().alpha() > 0 ) {
+      painter->setPen(linePen_);
+      painter->drawPolyline(projPoints_);
+    }
 
-    if ( draw_handle_size > 1 ) {
+    if ( showPoints_ && pointSize_ > 0  && pointPen_.color().alpha() > 0 ) {
 
       const QTransform & transform =
           painter->transform();
 
       const double h =
-          draw_handle_size / (std::max)(transform.m11(), transform.m22());
+          pointSize_ / (std::max)(transform.m11(), transform.m22());
+
+      painter->setPen(pointPen_);
 
       for ( int i = 0, n = projPoints_.size(); i < n; ++i ) {
 
         const QPointF & p =
             projPoints_[i];
 
-        painter->fillRect(QRectF(p.x() - h / 2, p.y() - h / 2, h, h),
-            pen_.color());
+//        painter->fillRect(QRectF(p.x() - h / 2, p.y() - h / 2, h, h),
+//            pointPen_.color());
+        painter->drawRect(QRectF(p.x() - h / 2, p.y() - h / 2, h, h));
       }
     }
   }
 }
 
-void QAbstractGeoPolygonItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
+void QAbstractGeoPolyLineItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
 {
   //  CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
   //      (uint)event->buttons(),
@@ -401,7 +546,7 @@ void QAbstractGeoPolygonItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
     Base::mousePressEvent(event);
 }
 
-void QAbstractGeoPolygonItem::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
+void QAbstractGeoPolyLineItem::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 {
   //  CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
   //      (uint)event->buttons(),
@@ -438,7 +583,7 @@ void QAbstractGeoPolygonItem::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
     Base::mouseMoveEvent(event);
 }
 
-void QAbstractGeoPolygonItem::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
+void QAbstractGeoPolyLineItem::mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 {
   if ( currentMovingPointIndex_ >= 0 ) {
     currentMovingPointIndex_ = -1;
@@ -449,73 +594,3 @@ void QAbstractGeoPolygonItem::mouseReleaseEvent(QGraphicsSceneMouseEvent * event
 
   Base::mouseReleaseEvent(event);
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-QGeoPolygonItem::QGeoPolygonItem(QGraphicsItem *parent) :
-  ThisClass("", "", parent)
-{
-}
-
-QGeoPolygonItem::QGeoPolygonItem(const QString & name, const QString & description, QGraphicsItem *parent) :
-    Base(parent)
-{
-  pen_.setWidth(1);
-  pen_.setCosmetic(true);
-  pen_.setColor(QColor(255, 0, 0, 128));
-
-  brush_.setStyle(Qt::BrushStyle::SolidPattern);
-  brush_.setColor(QColor(255, 255, 255, 120));
-}
-
-
-void QGeoPolygonItem::setPoints(const QVector<QGeoPos> & points)
-{
-//  geoPoints_ = points;
-//  updateProjected();
-  return setPoints(points.constData(), points.size());
-}
-
-void QGeoPolygonItem::setPoints(const std::vector<QGeoPos> & points)
-{
-  geoPoints_ = points;
-  updateProjected();
-}
-
-void QGeoPolygonItem::setPoints(const QGeoPos points[], int count)
-{
-  geoPoints_.clear();
-  geoPoints_.reserve(count);
-  for( int i = 0; i < count; ++i ) {
-    geoPoints_.emplace_back(points[i]);
-  }
-  updateProjected();
-}
-
-int QGeoPolygonItem::pointsCount() const
-{
-  return geoPoints_.size();
-}
-
-void QGeoPolygonItem::insertPoint(const QGeoPos & gp, int insert_pos)
-{
-  geoPoints_.insert(geoPoints_.begin() + insert_pos, gp);
-}
-
-void QGeoPolygonItem::removePoint(int remove_pos)
-{
-  geoPoints_.erase(geoPoints_.begin() + remove_pos);
-}
-
-void QGeoPolygonItem::setGeoPoint(int index, const QGeoPos & gpos)
-{
-  geoPoints_[index] = gpos;
-}
-
-QGeoPos QGeoPolygonItem::getGeoPoint(int index) const
-{
-  return geoPoints_[index];
-}
-
-
-
-

@@ -15,6 +15,7 @@
 
 struct c_gps_position
 {
+  double timestamp = 0; // [sec]
   double latitude = 40.725563 * CV_PI / 180; // [radians]
   double longitude = -74.536627 * CV_PI / 180;  // [radians]
   double altitude = 100; // [meters]
@@ -150,5 +151,48 @@ void velo2enu_pose(double roll, double pitch, double yaw,
     /*in, out*/ cv::Vec3d axis[], uint nbaxis,
     /* out, opt */cv::Matx33d * M = nullptr);
 
+//@brief OxTS coordinate system conversions:
+//     ISO 8855 ENU earth-fixed system (East North Up) -> ISO 8855 vehicle system
+//@see conversion between OxTS navigation and vehicle frames
+//    <https://support.oxts.com/hc/en-us/articles/115002859149-OxTS-Reference-Frames-and-ISO8855-Reference-Frames>
+cv::Matx33d enu2iso8855vs_rotation_matrix(double roll, double pitch, double yaw);
+
+//@brief OxTS coordinate system conversions:
+//     ISO 8855 vehicle system -> ISO 8855 ENU earth-fixed system (East North Up)
+//  @see conversion between OxTS navigation and vehicle frames
+//    <https://support.oxts.com/hc/en-us/articles/115002859149-OxTS-Reference-Frames-and-ISO8855-Reference-Frames>
+cv::Matx33d iso8855vs2enu_rotation_matrix(double roll, double pitch, double yaw);
+
+//@brief inverse of iso8855vs2ecef rotation
+cv::Matx33d ecef2iso8855vs_rotation_matrix(double lat, double lon, double /*alt*/,
+    double roll, double pitch, double yaw);
+
+//@brief OxTS coordinate system conversions:
+//     ECEF Rotation matrix ISO 8855 vehicle system -> ECEF (EARTH-CENTERED, EARTH-FIXED) XYZ
+//@see conversion between OxTS navigation and vehicle frames
+//    <https://support.oxts.com/hc/en-us/articles/115002859149-OxTS-Reference-Frames-and-ISO8855-Reference-Frames>
+//@see From_ENU_to_ECEF
+//    <https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_ENU_to_ECEF>
+cv::Matx33d iso8855vs2ecef_rotation_matrix(double lat, double lon, double /*alt*/,
+    double roll, double pitch, double yaw);
+
+//@brief OxTS coordinate system conversions:
+//     ECEF Position and/or Rotation matrix ISO 8855 vehicle system -> ECEF (EARTH-CENTERED, EARTH-FIXED) XYZ
+//
+//  Given position of some point vs_pos in ISO8855 VS centered at GPS lat, lon, alt, and directed along roll, pitch, yaw,
+//  the ECEF position of the point can be computed as Rotation followed by positive Translation:
+//@code
+//    cv::Matx33d vs2ecef_rotation;
+//    cv::Vec3d ecef_zeropoint_position;
+//
+//    iso8855vs2ecef(lat, lon, alt, roll, pitch, yaw, &vs2ecef_rotation, &ecef_zeropoint_position);
+//    ecef_pos = vs2ecef_rotation * vs_pos + ecef_zeropoint_position;
+//
+//@see conversion between OxTS navigation and vehicle frames
+//    <https://support.oxts.com/hc/en-us/articles/115002859149-OxTS-Reference-Frames-and-ISO8855-Reference-Frames>
+//@see From_ENU_to_ECEF
+//    <https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_ENU_to_ECEF>
+void iso8855vs2ecef(double lat, double lon, double alt, double roll, double pitch, double yaw,
+    /*out, opt*/ cv::Matx33d * Rotation, /*out, opt*/ cv::Vec3d * ecefPosition);
 
 #endif /* __gps_h__ */

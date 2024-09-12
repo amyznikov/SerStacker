@@ -172,6 +172,30 @@ QToolButton* createToolButton(const QIcon & icon, const QString & text, const QS
   return tb;
 }
 
+template<class Obj, typename Fn>
+QToolButton* createCheckableToolButton(const QIcon & icon, const QString & text, const QString & tooltip, bool checked,
+    Obj * receiver, Fn onclick,
+    QShortcut * shortcut = nullptr)
+{
+  QToolButton *tb = new QToolButton();
+  tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  tb->setIcon(icon);
+  tb->setText(text);
+  tb->setToolTip(tooltip);
+  tb->setCheckable(true);
+  tb->setChecked(checked);
+
+  QObject::connect(tb, &QToolButton::clicked,
+      receiver, onclick);
+
+  if ( shortcut ) {
+    QObject::connect(shortcut, &QShortcut::activated,
+        tb, &QToolButton::click);
+  }
+
+  return tb;
+}
+
 template<class Fn>
 QToolButton* createCheckableToolButton(const QIcon & icon, const QString & text, const QString & tooltip,
     bool checked, Fn && onclicked)

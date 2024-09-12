@@ -16,6 +16,7 @@
 #include "QGeoProjectionEPSG3857.h"
 #include "QGeoGraphicsImageItem.h"
 #include "QGeoPolygonItem.h"
+#include "QGeoPolyLineItem.h"
 #include "QGeoTilesGoogle.h"
 #include "QGeoTilesBing.h"
 #include "QGeoTilesOSM.h"

@@ -139,8 +139,7 @@
 #include <algorithm>
 
 #include <core/io/kitti/oxts.h>
-#include <core/io/kitti/gps.h>
-#include <core/proc/pose.h>
+#include <core/proc/gps/gps.h>
 #include <core/debug.h>
 
 

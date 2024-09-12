@@ -9,16 +9,9 @@
 #ifndef __gpx_h__
 #define __gpx_h__
 
+#include <core/proc/gps/gps.h>
 #include <vector>
 #include <string>
-
-struct c_gpx_point
-{
-  double ts;
-  double lat;
-  double lon;
-  double elev;
-};
 
 struct c_gpx_track
 {
@@ -29,7 +22,7 @@ struct c_gpx_track
   double length = 0;
   double duration = 0;
 
-  std::vector<c_gpx_point> pts;
+  std::vector<c_gps_position> pts;
 };
 
 

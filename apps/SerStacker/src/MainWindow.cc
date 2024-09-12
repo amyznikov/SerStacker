@@ -125,6 +125,7 @@ MainWindow::MainWindow()
   setupProfileGraph();
   setupInputSequenceView();
   setupPipelineProgressView();
+  setupGeoView();
 
 
   tabifyDockWidget(fileSystemTreeDock, sequencesTreeViewDock);
@@ -413,6 +414,14 @@ void MainWindow::setupMainMenu()
 
   menuFile->addSeparator();
 
+  onLoadGpsTrackAction_ =
+      menuFile->addAction("Load GPX Track...",
+          this, &ThisClass::onLoadGpxTrack);
+
+
+  menuFile->addSeparator();
+
+
   quitAppAction =
       menuFile->addAction("Quit",
           this, &ThisClass::close);
@@ -497,6 +506,21 @@ void MainWindow::setupStatusbar()
   sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
   sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
   statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
+}
+
+void MainWindow::setupGeoView()
+{
+  geoViewDock =
+      addGeoMapViewDock(this,
+          Qt::BottomDockWidgetArea,
+          "geoViewDock",
+          "GeoView",
+          menuView);
+
+  geoView =
+      geoViewDock->geoView();
+
+  geoViewDock->hide();
 }
 
 
@@ -739,6 +763,62 @@ void MainWindow::onWriteDisplayVideo()
 
   lockDiplayImageWriter_ = false;
 }
+
+
+void MainWindow::onLoadGpxTrack()
+{
+  static const QString loadGpsTrackLastPathKeyName =
+      "loadGpsTrackLastPathKeyName";
+
+  QSettings settings;
+
+  QString savedPathFileName =
+      settings.value(loadGpsTrackLastPathKeyName).toString();
+
+  const QString filter =
+      "GPX files (*.gpx) ;;"
+      "All files (*.*)";
+
+  QStringList selectedFileNames =
+      QFileDialog::getOpenFileNames(this,
+          "Select gpx file",
+          savedPathFileName,
+          filter,
+          nullptr,
+          QFileDialog::ReadOnly);
+
+  if ( selectedFileNames.isEmpty() ) {
+    return;
+  }
+
+  settings.setValue(loadGpsTrackLastPathKeyName,
+      selectedFileNames[0]);
+
+  for( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
+
+    if( !geoView->addGpxTrack(selectedFileNames[i]) ) {
+      if( i == n - 1 ) {
+        QMessageBox::critical(this,
+            "ERROR",
+            QString("Can not load %1.\nSee error log for details.").arg(selectedFileNames[i]));
+        break;
+      }
+
+      const int responce =
+          QMessageBox::critical(this, "ERROR",
+              QString("Can not load %1.\n"
+                  "See error log for details.\n"
+                  "Continue loading ?").arg(selectedFileNames[i]),
+              QMessageBox::Yes | QMessageBox::No);
+
+      if( responce != QMessageBox::Yes ) {
+        break;
+      }
+    }
+  }
+
+}
+
 
 void MainWindow::onCurrentViewVisibilityChanged()
 {

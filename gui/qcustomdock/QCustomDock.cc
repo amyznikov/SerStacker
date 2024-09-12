@@ -216,10 +216,9 @@ QToolButton* QCustomDockTitleBar::addButton(QAction * action)
       button->setIcon(action->icon());
 
       layout_->insertWidget(layout_->indexOf(title_) + 1, button, 1, Qt::AlignRight);
-      //tb_->insertWidget(separator_, button);
 
-      connect(button, &QToolButton::triggered,
-          button, &QToolButton::setDefaultAction);
+      //      connect(button, &QToolButton::triggered,
+      //          button, &QToolButton::setDefaultAction);
 
       connect(action, &QAction::changed,
           [action, button]() {

@@ -48,12 +48,18 @@ public:
     }
   };
 
-  struct c_update_controls_lock {
+  struct c_update_controls_lock
+  {
     ThisClass * _this;
-    c_update_controls_lock(ThisClass * obj) : _this(obj) {
+
+    c_update_controls_lock(ThisClass * obj) :
+      _this(obj)
+    {
       _this->setUpdatingControls(true);
     }
-    ~c_update_controls_lock() {
+
+    ~c_update_controls_lock()
+    {
       _this->setUpdatingControls(false);
     }
   };

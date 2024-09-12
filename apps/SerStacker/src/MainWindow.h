@@ -12,8 +12,6 @@
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qtextview/QTextFileViewer.h>
-//#include <gui/qcloudview/QCloudViewer.h>
-//#include <gui/qcloudview/QCloudViewSettings.h>
 #include <gui/qglview/QGLViewPlanarGridSettings.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
@@ -27,6 +25,7 @@
 #include "QPipelineProgressView.h"
 #include "QInputSourceView.h"
 #include "QProgressImageViewer.h"
+#include "QGeoMapView.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -53,10 +52,13 @@ private:
   void setupInputSequenceView();
   void setupPipelineProgressView();
   void setupStatusbar();
+  void setupGeoView();
   void showImageViewOptions(bool show);
+
 
 private Q_SLOTS:
   void updateWindowTittle();
+  void onLoadGpxTrack();
   void onSaveCurrentImageAs();
   void onSaveCurrentDisplayImageAs();
   void onSaveCurrentImageMask();
@@ -126,7 +128,6 @@ private:
   QInputSequencesTree * sequencesTreeView = nullptr;
   QInputSequenceTreeDock * sequencesTreeViewDock = nullptr;
 
-
   QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
   QAction * showRoiOptionsAction = nullptr;
   QAction * showRoiRectangleAction = nullptr;
@@ -171,6 +172,12 @@ private:
 
   ///
   QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog_ = nullptr;
+
+  ///
+  QGeoMapView * geoView = nullptr;
+  QGeoMapViewDock * geoViewDock = nullptr;
+  QAction * onLoadGpsTrackAction_ = nullptr;
+
 };
 
 

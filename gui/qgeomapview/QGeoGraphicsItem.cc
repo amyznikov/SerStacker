@@ -11,54 +11,54 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-
-template<>
-const c_enum_member* members_of<QGraphicsItem::GraphicsItemChange>()
-{
-  static const c_enum_member members[] = {
-      { QGraphicsItem::ItemPositionChange, "ItemPositionChange", "ItemPositionChange" },
-      #if !QT_DEPRECATED_SINCE(5, 14)
-        {QGraphicsItem::ItemMatrixChange, "ItemMatrixChange", "ItemMatrixChange" },
-#endif
-      { QGraphicsItem::ItemVisibleChange, "ItemVisibleChange", "ItemVisibleChange" },
-      { QGraphicsItem::ItemEnabledChange, "ItemEnabledChange", "ItemEnabledChange" },
-      { QGraphicsItem::ItemSelectedChange, "ItemSelectedChange", "ItemSelectedChange" },
-      { QGraphicsItem::ItemParentChange, "ItemParentChange", "ItemParentChange" },
-      { QGraphicsItem::ItemChildAddedChange, "ItemChildAddedChange", "ItemChildAddedChange" },
-      { QGraphicsItem::ItemChildRemovedChange, "ItemChildRemovedChange", "ItemChildRemovedChange" },
-      { QGraphicsItem::ItemTransformChange, "ItemTransformChange", "ItemTransformChange" },
-      { QGraphicsItem::ItemPositionHasChanged, "ItemPositionHasChanged", "ItemPositionHasChanged" },
-      { QGraphicsItem::ItemTransformHasChanged, "ItemTransformHasChanged", "ItemTransformHasChanged" },
-      { QGraphicsItem::ItemSceneChange, "ItemSceneChange", "ItemSceneChange" },
-      { QGraphicsItem::ItemVisibleHasChanged, "ItemVisibleHasChanged", "ItemVisibleHasChanged" },
-      { QGraphicsItem::ItemEnabledHasChanged, "ItemEnabledHasChanged", "ItemEnabledHasChanged" },
-      { QGraphicsItem::ItemSelectedHasChanged, "ItemSelectedHasChanged", "ItemSelectedHasChanged" },
-      { QGraphicsItem::ItemParentHasChanged, "ItemParentHasChanged", "ItemParentHasChanged" },
-      { QGraphicsItem::ItemSceneHasChanged, "ItemSceneHasChanged", "ItemSceneHasChanged" },
-      { QGraphicsItem::ItemCursorChange, "ItemCursorChange", "ItemCursorChange" },
-      { QGraphicsItem::ItemCursorHasChanged, "ItemCursorHasChanged", "ItemCursorHasChanged" },
-      { QGraphicsItem::ItemToolTipChange, "ItemToolTipChange", "ItemToolTipChange" },
-      { QGraphicsItem::ItemToolTipHasChanged, "ItemToolTipHasChanged", "ItemToolTipHasChanged" },
-      { QGraphicsItem::ItemFlagsChange, "ItemFlagsChange", "ItemFlagsChange" },
-      { QGraphicsItem::ItemFlagsHaveChanged, "ItemFlagsHaveChanged", "ItemFlagsHaveChanged" },
-      { QGraphicsItem::ItemZValueChange, "ItemZValueChange", "ItemZValueChange" },
-      { QGraphicsItem::ItemZValueHasChanged, "ItemZValueHasChanged", "ItemZValueHasChanged" },
-      { QGraphicsItem::ItemOpacityChange, "ItemOpacityChange", "ItemOpacityChange" },
-      { QGraphicsItem::ItemOpacityHasChanged, "ItemOpacityHasChanged", "ItemOpacityHasChanged" },
-      { QGraphicsItem::ItemScenePositionHasChanged, "ItemScenePositionHasChanged", "ItemScenePositionHasChanged" },
-      { QGraphicsItem::ItemRotationChange, "ItemRotationChange", "ItemRotationChange" },
-      { QGraphicsItem::ItemRotationHasChanged, "ItemRotationHasChanged", "ItemRotationHasChanged" },
-      { QGraphicsItem::ItemScaleChange, "ItemScaleChange", "ItemScaleChange" },
-      { QGraphicsItem::ItemScaleHasChanged, "ItemScaleHasChanged", "ItemScaleHasChanged" },
-      { QGraphicsItem::ItemTransformOriginPointChange, "ItemTransformOriginPointChange",
-          "ItemTransformOriginPointChange" },
-      { QGraphicsItem::ItemTransformOriginPointHasChanged, "ItemTransformOriginPointChange",
-          "ItemTransformOriginPointChange" },
-      { (QGraphicsItem::GraphicsItemChange) (-1) }
-  };
-
-  return members;
-}
+//
+//template<>
+//const c_enum_member* members_of<QGraphicsItem::GraphicsItemChange>()
+//{
+//  static const c_enum_member members[] = {
+//      { QGraphicsItem::ItemPositionChange, "ItemPositionChange", "ItemPositionChange" },
+//      #if !QT_DEPRECATED_SINCE(5, 14)
+//        {QGraphicsItem::ItemMatrixChange, "ItemMatrixChange", "ItemMatrixChange" },
+//#endif
+//      { QGraphicsItem::ItemVisibleChange, "ItemVisibleChange", "ItemVisibleChange" },
+//      { QGraphicsItem::ItemEnabledChange, "ItemEnabledChange", "ItemEnabledChange" },
+//      { QGraphicsItem::ItemSelectedChange, "ItemSelectedChange", "ItemSelectedChange" },
+//      { QGraphicsItem::ItemParentChange, "ItemParentChange", "ItemParentChange" },
+//      { QGraphicsItem::ItemChildAddedChange, "ItemChildAddedChange", "ItemChildAddedChange" },
+//      { QGraphicsItem::ItemChildRemovedChange, "ItemChildRemovedChange", "ItemChildRemovedChange" },
+//      { QGraphicsItem::ItemTransformChange, "ItemTransformChange", "ItemTransformChange" },
+//      { QGraphicsItem::ItemPositionHasChanged, "ItemPositionHasChanged", "ItemPositionHasChanged" },
+//      { QGraphicsItem::ItemTransformHasChanged, "ItemTransformHasChanged", "ItemTransformHasChanged" },
+//      { QGraphicsItem::ItemSceneChange, "ItemSceneChange", "ItemSceneChange" },
+//      { QGraphicsItem::ItemVisibleHasChanged, "ItemVisibleHasChanged", "ItemVisibleHasChanged" },
+//      { QGraphicsItem::ItemEnabledHasChanged, "ItemEnabledHasChanged", "ItemEnabledHasChanged" },
+//      { QGraphicsItem::ItemSelectedHasChanged, "ItemSelectedHasChanged", "ItemSelectedHasChanged" },
+//      { QGraphicsItem::ItemParentHasChanged, "ItemParentHasChanged", "ItemParentHasChanged" },
+//      { QGraphicsItem::ItemSceneHasChanged, "ItemSceneHasChanged", "ItemSceneHasChanged" },
+//      { QGraphicsItem::ItemCursorChange, "ItemCursorChange", "ItemCursorChange" },
+//      { QGraphicsItem::ItemCursorHasChanged, "ItemCursorHasChanged", "ItemCursorHasChanged" },
+//      { QGraphicsItem::ItemToolTipChange, "ItemToolTipChange", "ItemToolTipChange" },
+//      { QGraphicsItem::ItemToolTipHasChanged, "ItemToolTipHasChanged", "ItemToolTipHasChanged" },
+//      { QGraphicsItem::ItemFlagsChange, "ItemFlagsChange", "ItemFlagsChange" },
+//      { QGraphicsItem::ItemFlagsHaveChanged, "ItemFlagsHaveChanged", "ItemFlagsHaveChanged" },
+//      { QGraphicsItem::ItemZValueChange, "ItemZValueChange", "ItemZValueChange" },
+//      { QGraphicsItem::ItemZValueHasChanged, "ItemZValueHasChanged", "ItemZValueHasChanged" },
+//      { QGraphicsItem::ItemOpacityChange, "ItemOpacityChange", "ItemOpacityChange" },
+//      { QGraphicsItem::ItemOpacityHasChanged, "ItemOpacityHasChanged", "ItemOpacityHasChanged" },
+//      { QGraphicsItem::ItemScenePositionHasChanged, "ItemScenePositionHasChanged", "ItemScenePositionHasChanged" },
+//      { QGraphicsItem::ItemRotationChange, "ItemRotationChange", "ItemRotationChange" },
+//      { QGraphicsItem::ItemRotationHasChanged, "ItemRotationHasChanged", "ItemRotationHasChanged" },
+//      { QGraphicsItem::ItemScaleChange, "ItemScaleChange", "ItemScaleChange" },
+//      { QGraphicsItem::ItemScaleHasChanged, "ItemScaleHasChanged", "ItemScaleHasChanged" },
+//      { QGraphicsItem::ItemTransformOriginPointChange, "ItemTransformOriginPointChange",
+//          "ItemTransformOriginPointChange" },
+//      { QGraphicsItem::ItemTransformOriginPointHasChanged, "ItemTransformOriginPointChange",
+//          "ItemTransformOriginPointChange" },
+//      { (QGraphicsItem::GraphicsItemChange) (-1) }
+//  };
+//
+//  return members;
+//}
 
 
 QGeoGraphicsItem::QGeoGraphicsItem(QGraphicsItem *parent) :

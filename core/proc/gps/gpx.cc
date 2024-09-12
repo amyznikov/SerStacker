@@ -168,13 +168,16 @@ bool load_gpx_track_xml(const std::string & gpx_xml_file_name, c_gpx_track * gpx
 
     gpx_track->pts.emplace_back();
 
-    c_gpx_point & p =
+    c_gps_position & p =
         gpx_track->pts.back();
 
-    getAttribute(trkpt_element, "lat", &p.lat);
-    getAttribute(trkpt_element, "lon", &p.lon);
-    getValue(trkpt_element, "ele", &p.elev);
-    getGPXTime(trkpt_element, "time", &p.ts);
+    getAttribute(trkpt_element, "lat", &p.latitude);
+    getAttribute(trkpt_element, "lon", &p.longitude);
+    getValue(trkpt_element, "ele", &p.altitude);
+    getGPXTime(trkpt_element, "time", &p.timestamp);
+
+    p.latitude *= CV_PI / 180;
+    p.longitude *= CV_PI / 180;
   }
 
 

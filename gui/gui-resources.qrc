@@ -35,5 +35,7 @@
     <file>icons/mask.png</file>
     <file>icons/frame.png</file>
     <file>icons/badframe.png</file>
+    <file>icons/eye.png</file>
+    <file>icons/send.png</file>
 </qresource>
 </RCC>

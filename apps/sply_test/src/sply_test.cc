@@ -5,12 +5,8 @@
  *      Author: amyznikov
  */
 
-#include <core/io/c_sply_file.h>
-#include <opencv2/opencv.hpp>
-#include <core/io/c_dtcs_file.h>
 #include <core/io/sply/c_sply_video_file.h>
 #include <core/io/c_ffmpeg_file.h>
-#include <core/proc/gps/gps.h>
 #include <core/proc/gps/gpx.h>
 #include <core/readdir.h>
 #include <core/debug.h>

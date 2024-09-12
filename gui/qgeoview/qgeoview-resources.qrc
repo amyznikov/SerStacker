@@ -1,0 +1,25 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/qgeoview">
+
+	<file>icons/qlidarview.png</file>
+	<file>icons/send.png</file>
+	<file>icons/cartesian64_icon.png</file>
+	<file>icons/lidar_label_icon.png</file>
+	<file>icons/circles1_icon.png</file>
+	<file>icons/circles2_icon.png</file>
+	<file>icons/circles3_icon.png</file>
+	<file>icons/pentagon_icon.png</file>
+	<file>icons/polygon_icon.png</file>
+	<file>icons/blue_cross.png</file>
+	<file>icons/layers_icon.png</file>
+	<file>icons/car000.png</file>
+	<file>icons/car045.png</file>
+	<file>icons/car090.png</file>
+	<file>icons/car135.png</file>
+	<file>icons/car180.png</file>
+	<file>icons/car225.png</file>
+	<file>icons/car270.png</file>
+	<file>icons/car315.png</file>	
+	
+</qresource>
+</RCC>

@@ -90,6 +90,7 @@ private Q_SLOTS:
   void onShowCloudViewSettingsDialogBoxActionClicked(bool checked);
   void onShowCloudSettingsDialogBoxActionClicked(bool checked);
 
+  void onOpenVideoFileRequested(const QString & filename, int scrollToIndex = -1);
 
   void saveCurrentWork();
 

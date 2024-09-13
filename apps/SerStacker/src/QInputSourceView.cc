@@ -378,6 +378,24 @@ void QInputSourceView::reloadCurrentFrame()
   }
 }
 
+bool QInputSourceView::scrollToFrame(int frameIndex)
+{
+  if( isOpen(currentSource_) ) {
+
+    if( frameIndex >= 0 ) {
+      currentSource_->seek(frameIndex - 1);
+    }
+
+    loadNextFrame();
+
+    playControls_->setCurpos(std::max(0,
+        currentSource_->curpos()));
+
+    return true;
+  }
+
+  return false;
+}
 
 void QInputSourceView::onSeek(int pos)
 {

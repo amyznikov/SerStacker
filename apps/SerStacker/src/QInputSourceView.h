@@ -76,6 +76,8 @@ public:
 
   bool openFile(const QString & abspath);
 
+  bool scrollToFrame(int frameIndex);
+
   void reloadCurrentFrame();
 
   //////////////////////////////////////////

@@ -529,8 +529,29 @@ void MainWindow::setupGeoView()
       geoViewDock->geoView();
 
   geoViewDock->hide();
+
+  connect(geoView, &QGeoMapView::openVideoFileRequested,
+      this, &ThisClass::onOpenVideoFileRequested);
 }
 
+void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollToIndex)
+{
+  QWaitCursor wait(this);
+
+  if ( pipelineProgressView ) {
+    pipelineProgressView->setImageViewer(nullptr);
+  }
+
+  centralStackedWidget->setCurrentWidget(inputSourceView);
+
+  if ( filename == inputSourceView->currentFileName() || inputSourceView->openFile(filename) ) {
+    if ( scrollToIndex >= 0 ) {
+      CF_DEBUG("scrollToIndex=%d", scrollToIndex);
+      inputSourceView->scrollToFrame(scrollToIndex);
+    }
+  }
+
+}
 
 void MainWindow::onStackProgressViewTextChanged()
 {

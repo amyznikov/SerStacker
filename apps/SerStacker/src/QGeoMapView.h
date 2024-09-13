@@ -66,17 +66,20 @@ public:
   QComboBox * combo() const;
 
   QToolButton * trackVisibiltyControl() const;
+  QToolButton * openVideoControl() const;
 
 Q_SIGNALS:
   void toggleTrackVisibilityClicked(bool visible);
   void showSelectedTrackOnMapClicked();
   void deleteSelectedTrackClicked();
+  void openAssociatedVideoFileClicked();
 
 protected:
   QHBoxLayout * _hbox = nullptr;
   QComboBox * combobox_ctl = nullptr;
   QToolButton * trackVisibilty_ctl = nullptr;
   QToolButton * trackSend_ctl = nullptr;
+  QToolButton * openVideo_ctl = nullptr;
   QToolButton * trackDelete_ctl = nullptr;
 };
 
@@ -90,24 +93,26 @@ public:
 
   QGpxTrackViewSettings(QWidget * parent = nullptr);
 
-  void setGpxTracks(std::vector<QGpxTrackItem*> * gpxTracks);
+  void setGpxTracks(const std::vector<QGpxTrackItem*> * gpxTracks);
 
   QGpxTrackItem * selectedTrack() const;
 
 Q_SIGNALS:
+  void openSelectedAssociatedVideoFileClicked();
   void showPositionOnMap(double latitude, double longitude);
+  void deleteSelectedTrackClicked();
 
 protected:
   void onupdatecontrols() final;
+  void update_control_states() final;
   void populateTrackSelectionCombo();
   void onGpxTrackSelected(int index);
   void onToggleTrackVisibilityClicked(bool visible);
   void onShowSelectedTrackOnMapClicked();
-  void onDeleteSelectedTrackClicked();
 
 
 protected:
-  std::vector<QGpxTrackItem*> * gpxTracks = nullptr;
+  const std::vector<QGpxTrackItem*> * gpxTracks = nullptr;
 
   QGpxTrackSelectorWidget * gpxTrackSelector_ctl = nullptr;
 
@@ -139,10 +144,12 @@ public:
 
   void setGpxTracks(std::vector<QGpxTrackItem*> * gpxTracks);
 
+  QGpxTrackItem * selectedTrack() const;
+
 Q_SIGNALS:
   void showPositionOnMap(double latitude, double longitude);
-
-protected:
+  void openSelectedAssociatedVideoFileClicked();
+  void deleteSelectedTrackClicked();
 };
 
 
@@ -165,8 +172,13 @@ public:
   void loadSettings(QSettings & settings);
   void saveSettings(QSettings & settings);
 
+Q_SIGNALS:
+  void openVideoFileRequested(const QString & filename, int scrollToIndex = -1);
+
 protected Q_SLOTS:
   void onToggleOptionsDialogBox(bool checked);
+  void onOpenSelectedAssociatedVideoFileClicked();
+  void onDeleteSelectedTrackClicked();
 
 protected:
   void createToolbarActions() final;

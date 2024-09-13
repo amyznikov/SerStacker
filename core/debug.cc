@@ -82,13 +82,23 @@ namespace {
   #endif
   }
 
-  static const char * get_current_time_string(char buf[32])
+  static const char * get_current_date_time_string(char buf[32])
   {
     //    return "";
     struct c_current_time ct;
     get_current_time(&ct);
     snprintf(buf, 31, "%.4d-%.2d-%.2d-%.2d:%.2d:%.2d.%.3d",
         ct.year, ct.month, ct.day, ct.hour, ct.min, ct.sec, ct.msec);
+    return buf;
+  }
+
+  static const char * get_current_time_string(char buf[32])
+  {
+    //    return "";
+    struct c_current_time ct;
+    get_current_time(&ct);
+    snprintf(buf, 31, "%.2d:%.2d:%.2d.%.3d",
+        ct.hour, ct.min, ct.sec, ct.msec);
     return buf;
   }
 
@@ -214,7 +224,7 @@ bool cf_set_logfilename(const std::string fname, const std::string & mode)
   }
   else {
     char ctime_string[32];
-    get_current_time_string(ctime_string);
+    get_current_date_time_string(ctime_string);
     fprintf(fplog, "\n\nNEW LOG STARTED AT %s\n", ctime_string);
     fok = true;
   }
@@ -404,7 +414,7 @@ void cf_plog(int pri, const char * file, const char * func, int line, const char
         }
         else {
           char ctime_string[32];
-          get_current_time_string(ctime_string);
+          get_current_date_time_string(ctime_string);
           fprintf(fplog, "\n\nLOG TRUNCATED AT %s\n", ctime_string);
         }
       }

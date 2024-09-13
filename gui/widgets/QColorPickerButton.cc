@@ -10,6 +10,9 @@
 QColorPickerButton::QColorPickerButton(QWidget * parent) :
   Base(parent)
 {
+  setAutoDefault(false);
+  setDefault(false);
+
   connect(this, &Base::clicked,
       this, &ThisClass::onClicked);
 }
@@ -18,6 +21,12 @@ QColorPickerButton::QColorPickerButton(const QColor & color, QWidget * parent) :
   Base(parent),
   color_(color)
 {
+  setAutoDefault(false);
+  setDefault(false);
+
+  connect(this, &Base::clicked,
+      this, &ThisClass::onClicked);
+
 }
 
 void QColorPickerButton::setColor(const QColor & color)

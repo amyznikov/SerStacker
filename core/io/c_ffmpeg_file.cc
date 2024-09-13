@@ -751,6 +751,7 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
   int status = 0;
 
   video_stream_index = -1;
+  last_ts = -1;
 
   ensure_ffmpeg_initialized();
 
@@ -807,13 +808,15 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
     goto end;
   }
 
-    CF_DEBUG("[%s] %d:%s %dx%d %d/%d tbn %d/%d tbr", url.c_str(),
-        video_stream_index,
-        codec->name,
-        cctx->coded_width,
-        cctx->coded_height,
-        istream->time_base.num, istream->time_base.den,
-        cctx->time_base.num, cctx->time_base.den);
+  last_ts = -(istream->start_time > 0 ? istream->start_time : 1);
+
+  CF_DEBUG("[%s] %d:%s %dx%d %d/%d tbn %d/%d tbr", url.c_str(),
+      video_stream_index,
+      codec->name,
+      cctx->coded_width,
+      cctx->coded_height,
+      istream->time_base.num, istream->time_base.den,
+      cctx->time_base.num, cctx->time_base.den);
 
   timescale_ = istream->time_base.num > 0 ?
       (double) istream->time_base.den / istream->time_base.num :
@@ -848,7 +851,7 @@ void c_ffmpeg_reader::close()
   }
 
   video_stream_index = -1;
-  last_ts = 0;
+  last_ts = -1;
 }
 
 const AVStream * c_ffmpeg_reader::stream() const
@@ -868,7 +871,10 @@ bool c_ffmpeg_reader::seek_frame(int frame_index)
       / ((int64_t) istream->avg_frame_rate.num * istream->time_base.num);
 
   int status = av_seek_frame(ic, video_stream_index, timestamp, AVSEEK_FLAG_BACKWARD);
-  if ( status < 0 ) {
+  if ( status >= 0 ) {
+    last_ts = timestamp;
+  }
+  else  {
     CF_ERROR("av_seek_frame(video_stream_index=%d frame_index=%d timestamp=%lld start_time=%lld stream->time_base=%d/%d) fails: "
         "status=%d (%s)",
         video_stream_index, frame_index, (long long )(timestamp), (long long )(start_time),
@@ -884,9 +890,7 @@ int64_t c_ffmpeg_reader::curpos() const
   int64_t pos = 0;
   if ( istream ) {
     const double start_time = istream->start_time > 0 ? istream->start_time : 0;
-    pos = last_ts - start_time;
-    //const double sec = (last_ts - start_time) * stream->time_base.num / stream->time_base.den;
-    //pos = (int64_t) (fps() * sec + 0.5);
+    pos = last_ts - start_time + 1;
   }
   return pos;
 }
@@ -1003,6 +1007,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, double * outpts)
 
       last_ts = avframe->best_effort_timestamp;
       received_frames.back().pts = avframe->best_effort_timestamp;
+
       // CF_DEBUG("avframe->pts=%ld best_effort_timestamp=%ld", avframe->pts, avframe->best_effort_timestamp);
       //const double pts = avframe->best_effort_timestamp == AV_NOPTS_VALUE ? 0 : avframe->best_effort_timestamp;
       //received_frames.back().pts = pts * stream->time_base.num / stream->time_base.den;

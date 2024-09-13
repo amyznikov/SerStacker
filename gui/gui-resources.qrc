@@ -37,5 +37,6 @@
     <file>icons/badframe.png</file>
     <file>icons/eye.png</file>
     <file>icons/send.png</file>
+    <file>icons/video.png</file>
 </qresource>
 </RCC>

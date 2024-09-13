@@ -129,7 +129,7 @@ protected:
     int64_t pts; // in stream time_base units
   };
   std::vector<cvframe> received_frames;
-  int64_t last_ts = 0;
+  int64_t last_ts = -1;
   double timescale_ = 0;
 };
 

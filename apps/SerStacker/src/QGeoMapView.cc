@@ -15,6 +15,7 @@
 #define ICON_eye      ":/gui/icons/eye.png"
 #define ICON_send     ":/gui/icons/send.png"
 #define ICON_delete   ":/gui/icons/delete2.png"
+#define ICON_video    ":/gui/icons/video.png"
 
 namespace serstacker {
 
@@ -150,6 +151,12 @@ QGpxTrackSelectorWidget::QGpxTrackSelectorWidget(QWidget * parent) :
           this,
           &ThisClass::showSelectedTrackOnMapClicked);
 
+  openVideo_ctl =
+      createToolButton(getIcon(ICON_video), "Video",
+          "Open Associated video file",
+          this,
+          &ThisClass::openAssociatedVideoFileClicked);
+
   trackDelete_ctl =
       createToolButton(getIcon(ICON_delete), "Delete",
           "Delete selected track",
@@ -158,6 +165,7 @@ QGpxTrackSelectorWidget::QGpxTrackSelectorWidget(QWidget * parent) :
   _hbox->addWidget(combobox_ctl, 1000);
   _hbox->addWidget(trackVisibilty_ctl);
   _hbox->addWidget(trackSend_ctl);
+  _hbox->addWidget(openVideo_ctl);
   _hbox->addWidget(trackDelete_ctl);
 
 }
@@ -170,6 +178,11 @@ QComboBox * QGpxTrackSelectorWidget::combo() const
 QToolButton * QGpxTrackSelectorWidget::trackVisibiltyControl() const
 {
   return trackVisibilty_ctl;
+}
+
+QToolButton * QGpxTrackSelectorWidget::openVideoControl() const
+{
+  return openVideo_ctl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -350,6 +363,7 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
           [this](const QString & value) {
             if ( options_ ) {
               options_ ->setAssociatedVideoFileName(value);
+              update_control_states();
             }
           },
           [this](QString * v) {
@@ -371,8 +385,11 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::showSelectedTrackOnMapClicked,
       this, &ThisClass::onShowSelectedTrackOnMapClicked);
 
+  connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::openAssociatedVideoFileClicked,
+      this, &ThisClass::openSelectedAssociatedVideoFileClicked);
+
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::deleteSelectedTrackClicked,
-      this, &ThisClass::onDeleteSelectedTrackClicked);
+      this, &ThisClass::deleteSelectedTrackClicked);
 
 
   updateControls();
@@ -395,7 +412,7 @@ QGpxTrackItem * QGpxTrackViewSettings::selectedTrack() const
   return item;
 }
 
-void QGpxTrackViewSettings::setGpxTracks(std::vector<QGpxTrackItem*> * gpxTracks)
+void QGpxTrackViewSettings::setGpxTracks(const std::vector<QGpxTrackItem*> * gpxTracks)
 {
   this->gpxTracks = gpxTracks;
   populateTrackSelectionCombo();
@@ -412,6 +429,20 @@ void QGpxTrackViewSettings::onupdatecontrols()
   else {
     setEnabled(true);
     Base::onupdatecontrols();
+  }
+}
+
+void QGpxTrackViewSettings::update_control_states()
+{
+  QGpxTrackItem * item =
+      selectedTrack();
+
+  if ( !item ) {
+    gpxTrackSelector_ctl->openVideoControl()->setEnabled(false);
+  }
+  else {
+    gpxTrackSelector_ctl->trackVisibiltyControl()->setChecked(item->isVisible());
+    gpxTrackSelector_ctl->openVideoControl()->setEnabled(!item->associatedVideoFileName().isEmpty());
   }
 }
 
@@ -439,7 +470,6 @@ void QGpxTrackViewSettings::onGpxTrackSelected(int index)
   else {
     QGpxTrackItem * item = (*gpxTracks)[index];
     set_options(item);
-    gpxTrackSelector_ctl->trackVisibiltyControl()->setChecked(item->isVisible());
   }
 }
 
@@ -474,11 +504,6 @@ void QGpxTrackViewSettings::onShowSelectedTrackOnMapClicked()
   }
 }
 
-void QGpxTrackViewSettings::onDeleteSelectedTrackClicked()
-{
-
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QGpxTrackViewSettingsDialogBox::QGpxTrackViewSettingsDialogBox(QWidget * parent) :
@@ -489,6 +514,12 @@ QGpxTrackViewSettingsDialogBox::QGpxTrackViewSettingsDialogBox(QWidget * parent)
   connect(settings_ctl, &QGpxTrackViewSettings::showPositionOnMap,
       this, &ThisClass::showPositionOnMap);
 
+  connect(settings_ctl, &QGpxTrackViewSettings::deleteSelectedTrackClicked,
+      this, &ThisClass::deleteSelectedTrackClicked);
+
+  connect(settings_ctl, &QGpxTrackViewSettings::openSelectedAssociatedVideoFileClicked,
+      this, &ThisClass::openSelectedAssociatedVideoFileClicked);
+
 }
 
 void QGpxTrackViewSettingsDialogBox::setGpxTracks(std::vector<QGpxTrackItem*> * gpxTracks)
@@ -496,6 +527,10 @@ void QGpxTrackViewSettingsDialogBox::setGpxTracks(std::vector<QGpxTrackItem*> * 
   settings_ctl->setGpxTracks(gpxTracks);
 }
 
+QGpxTrackItem * QGpxTrackViewSettingsDialogBox::selectedTrack() const
+{
+  return settings_ctl->selectedTrack();
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -504,6 +539,7 @@ QGeoMapView::QGeoMapView(QWidget * parent) :
 {
   // geoview_->setMouseTracking(true);
 }
+
 
 
 QGpxTrackItem * QGeoMapView::loadGpxTrack(const QString & filename)
@@ -580,6 +616,11 @@ void QGeoMapView::onToggleOptionsDialogBox(bool checked)
       connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::showPositionOnMap,
         this, &ThisClass::flyToPosition);
 
+      connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::openSelectedAssociatedVideoFileClicked,
+        this, &ThisClass::onOpenSelectedAssociatedVideoFileClicked);
+
+      connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::deleteSelectedTrackClicked,
+          this, &ThisClass::onDeleteSelectedTrackClicked);
     }
 
 
@@ -591,6 +632,57 @@ void QGeoMapView::flyToPosition(double latitude, double longitude)
 {
   Base::flyTo(QGeoPos(latitude * 180 / CV_PI, longitude * 180 / CV_PI));
 }
+
+void QGeoMapView::onOpenSelectedAssociatedVideoFileClicked()
+{
+  QGpxTrackItem * item =
+      viewSettingsDialogBox->selectedTrack();
+
+  if( item ) {
+
+    const QString filename =
+        item->associatedVideoFileName();
+
+    if( !filename.isEmpty() ) {
+      Q_EMIT openVideoFileRequested(filename, 101);
+    }
+  }
+}
+
+void QGeoMapView::onDeleteSelectedTrackClicked()
+{
+  if ( viewSettingsDialogBox ) {
+
+    QGpxTrackItem * item =
+        viewSettingsDialogBox->selectedTrack();
+
+    if ( item ) {
+
+      const int reply =
+          QMessageBox::question(this, "Confirmation required",
+              "Confirmation required:\n"
+                  "Are you sure to delete selected GPX track from Geo Map View ?",
+              QMessageBox::Yes | QMessageBox::No);
+
+      if ( reply == QMessageBox::Yes ) {
+
+        scene_->removeItem(item);
+
+        const auto pos =
+            std::find(gpxTrackItems.begin(), gpxTrackItems.end(), item);
+
+        if ( pos != gpxTrackItems.end() ) {
+          gpxTrackItems.erase(pos);
+        }
+
+        viewSettingsDialogBox->setGpxTracks(&gpxTrackItems);
+
+        delete item;
+      }
+    }
+  }
+}
+
 
 void QGeoMapView::loadSettings()
 {
@@ -621,23 +713,23 @@ void QGeoMapView::loadSettings(QSettings & settings)
 
     if ( !pathFileName.isEmpty() ) {
 
-      QGpxTrackItem * trackItem =
+      QGpxTrackItem * item =
           loadGpxTrack(pathFileName);
 
-      trackItem->setAssociatedVideoFileName(settings.value(QString("%1_videoFileName").arg(prefix)).toString());
-      trackItem->setVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());
-      trackItem->setShowLines(settings.value(QString("%1_showLines").arg(prefix)).toBool());
-      trackItem->setLineWidth(settings.value(QString("%1_lineWidth").arg(prefix)).toInt());
-      trackItem->setLineColor(settings.value(QString("%1_lineColor").arg(prefix)).value<QColor>());
-      trackItem->setLineOpaqueness(settings.value(QString("%1_lineOpaqueness").arg(prefix)).toInt());
-      trackItem->setShowPoints(settings.value(QString("%1_showPoints").arg(prefix)).toBool());
-      trackItem->setPointSize(settings.value(QString("%1_pointSize").arg(prefix)).toInt());
-      trackItem->setPointPenWidth(settings.value(QString("%1_pointPenWidth").arg(prefix)).toInt());
-      trackItem->setPointColor(settings.value(QString("%1_pointColor").arg(prefix)).value<QColor>());
-      trackItem->setPointOpaqueness(settings.value(QString("%1_pointOpaqueness").arg(prefix)).toInt());
+      item->setAssociatedVideoFileName(settings.value(QString("%1_videoFileName").arg(prefix)).toString());
+      item->setVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());
+      item->setShowLines(settings.value(QString("%1_showLines").arg(prefix)).toBool());
+      item->setLineWidth(settings.value(QString("%1_lineWidth").arg(prefix)).toInt());
+      item->setLineColor(settings.value(QString("%1_lineColor").arg(prefix)).value<QColor>());
+      item->setLineOpaqueness(settings.value(QString("%1_lineOpaqueness").arg(prefix)).toInt());
+      item->setShowPoints(settings.value(QString("%1_showPoints").arg(prefix)).toBool());
+      item->setPointSize(settings.value(QString("%1_pointSize").arg(prefix)).toInt());
+      item->setPointPenWidth(settings.value(QString("%1_pointPenWidth").arg(prefix)).toInt());
+      item->setPointColor(settings.value(QString("%1_pointColor").arg(prefix)).value<QColor>());
+      item->setPointOpaqueness(settings.value(QString("%1_pointOpaqueness").arg(prefix)).toInt());
 
-      gpxTrackItems.emplace_back(trackItem);
-      scene_->addItem(trackItem);
+      gpxTrackItems.emplace_back(item);
+      scene_->addItem(item);
     }
   }
 

@@ -25,9 +25,15 @@ public:
 
   QGpxTrackItem(QGraphicsItem *parent = nullptr);
 
-  bool loadGpxTrack(const QString & filename);
+  bool loadTrack(const QString & filename);
 
   const c_gpx_track & track() const;
+
+  void setPathFileName(const QString& filename);
+  const QString & pathFileName() const;
+
+  void setAssociatedVideoFileName(const QString & fname);
+  const QString & associatedVideoFileName() const;
 
 protected: // QAbstractGeoPolygonItem
   void mousePressEvent(QGraphicsSceneMouseEvent * event) final;
@@ -42,6 +48,8 @@ protected: // QAbstractGeoPolygonItem
 
 protected:
   c_gpx_track _track;
+  QString _pathFileName;
+  QString _associatedVideoFileName;
 };
 
 
@@ -113,6 +121,9 @@ protected:
   QSpinBox * pointPenWidth_ctl = nullptr;
   QColorPickerButton * pointColor_ctl = nullptr;
   QIntegerSliderSpinBox * pointOpaqueness_ctl = nullptr;
+
+  QBrowsePathCombo * associatedVideoFileName_ctl = nullptr;
+
 };
 
 
@@ -149,18 +160,23 @@ public:
 
   void flyToPosition(double latitude, double longitude);
 
+  void loadSettings();
+  void saveSettings();
+  void loadSettings(QSettings & settings);
+  void saveSettings(QSettings & settings);
+
 protected Q_SLOTS:
   void onToggleOptionsDialogBox(bool checked);
 
 protected:
   void createToolbarActions() final;
+  static QGpxTrackItem * loadGpxTrack(const QString & filename);
 
 protected:
   QGpxTrackViewSettingsDialogBox * viewSettingsDialogBox = nullptr;
   QAction * toggleOptionsDialogBoxAction = nullptr;
 
   std::vector<QGpxTrackItem*> gpxTrackItems;
-
 };
 
 

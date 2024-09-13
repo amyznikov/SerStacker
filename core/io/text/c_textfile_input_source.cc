@@ -38,6 +38,7 @@ const std::vector<std::string> & c_textfile_input_source::suffixes()
       ".sh",
       ".bash",
       ".zsh",
+      ".gpx",
       // ".dat",
       // ".ply"
   };

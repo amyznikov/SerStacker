@@ -197,6 +197,10 @@ void MainWindow::onSaveState(QSettings & settings)
         dataframeProcessor_ctl->selected_processor());
   }
 
+  if ( geoView ) {
+    geoView->saveSettings(settings);
+  }
+
   saveShapes(settings);
 
 
@@ -254,6 +258,10 @@ void MainWindow::onRestoreState(QSettings & settings)
       dataframeProcessor_ctl->set_selected_processor(selected_processor);
     }
 
+  }
+
+  if ( geoView ) {
+    geoView->loadSettings(settings);
   }
 
   loadShapes(settings);

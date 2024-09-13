@@ -43,8 +43,8 @@ void QColorPickerButton::updateIcon()
       this->size();
 
   const QSize iconSize =
-      QSize(buttonSize.width() - 4,
-          buttonSize.height() - 4);
+      QSize( std::min(32, buttonSize.width() - 2),
+          std::min(32, buttonSize.height() - 2));
 
   if( iconSize.width() > 0 && iconSize.height() > 0 ) {
 

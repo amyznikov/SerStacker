@@ -21,21 +21,21 @@ QBrowsePathCombo::QBrowsePathCombo(const QString & label_, QFileDialog::AcceptMo
     QFileDialog::FileMode mode, QWidget * parent) :
     Base(parent),
     fileDialogCaption(label_),
-    labelText_(label_),
-    fileMode_(mode),
-    acceptMode_(acceptMode)
+    _labelText(label_),
+    _fileMode(mode),
+    _acceptMode(acceptMode)
 {
   construct();
 }
 
 void QBrowsePathCombo::setShowDirsOnly(bool v)
 {
-  showDirsOnly_ = v;
+  _showDirsOnly = v;
 }
 
 bool QBrowsePathCombo::showDirsOnly() const
 {
-  return showDirsOnly_;
+  return _showDirsOnly;
 }
 
 void QBrowsePathCombo::construct(void)
@@ -48,8 +48,8 @@ void QBrowsePathCombo::construct(void)
   vbox = new QVBoxLayout(this);
   vbox->setContentsMargins(0,0,0,0);
 
-  if ( !labelText_.isEmpty() ) {
-    vbox->addWidget(label = new QLabel(labelText_), 0, Qt::AlignLeft);
+  if ( !_labelText.isEmpty() ) {
+    vbox->addWidget(label = new QLabel(_labelText), 0, Qt::AlignLeft);
   }
 
   vbox->addLayout(hbox = new QHBoxLayout(), 0);
@@ -68,7 +68,7 @@ void QBrowsePathCombo::construct(void)
   combo->setMinimumContentsLength(16);
   combo->setMaxCount(30);
 
-  if( acceptMode_ == QFileDialog::AcceptSave ) {
+  if( _acceptMode == QFileDialog::AcceptSave ) {
     combo->lineEdit()->setPlaceholderText("auto");
 #if QT_VERSION >= QT_VERSION_CHECK(5, 16, 0)
     combo->setPlaceholderText("auto");
@@ -94,31 +94,41 @@ void QBrowsePathCombo::setFileDialogCaption(const QString & caption)
 
 void QBrowsePathCombo::setFileMode(QFileDialog::FileMode mode)
 {
-  fileMode_ = mode;
+  _fileMode = mode;
 }
 
 QFileDialog::FileMode QBrowsePathCombo::fileMode() const
 {
-  return fileMode_;
+  return _fileMode;
 }
 
 void QBrowsePathCombo::setAcceptMode(QFileDialog::AcceptMode mode)
 {
-  acceptMode_ = mode;
+  _acceptMode = mode;
 }
 
 QFileDialog::AcceptMode QBrowsePathCombo::acceptMode() const
 {
-  return acceptMode_;
+  return _acceptMode;
+}
+
+void QBrowsePathCombo::setFileFilter(const QString & v)
+{
+  _fileFilter = v;
+}
+
+const QString & QBrowsePathCombo::fileFilter() const
+{
+  return _fileFilter;
 }
 
 
 void QBrowsePathCombo::onBrowseForPath(void)
 {
-  QString title = fileDialogCaption.isEmpty() ? labelText_ : fileDialogCaption;
+  QString title = fileDialogCaption.isEmpty() ? _labelText : fileDialogCaption;
   QString path = combo->currentText();
 
-  switch (fileMode_) {
+  switch (_fileMode) {
     case QFileDialog::Directory: {
       QFileInfo fileInfo(path);
       QString dir = fileInfo.isDir() ? path : fileInfo.filePath();
@@ -127,12 +137,12 @@ void QBrowsePathCombo::onBrowseForPath(void)
     }
 
     default:
-      switch (acceptMode_) {
+      switch (_acceptMode) {
         case QFileDialog::AcceptOpen:
           path = QFileDialog::getOpenFileName(this,
               title,
               path,
-              QString(),
+              _fileFilter,
               nullptr,
               QFileDialog::DontUseNativeDialog);
           break;
@@ -141,7 +151,7 @@ void QBrowsePathCombo::onBrowseForPath(void)
           path = QFileDialog::getSaveFileName(this,
               title,
               path,
-              QString(),
+              _fileFilter,
               nullptr,
               QFileDialog::DontUseNativeDialog);
           break;
@@ -162,7 +172,7 @@ void QBrowsePathCombo::onBrowseForPath(void)
 
 void QBrowsePathCombo::addPath(const QString & path, bool emitHasChages)
 {
-  enableEmitChagesEvent_ = emitHasChages;
+  _enableEmitChagesEvent = emitHasChages;
 
   int existing_index = combo->findText(path); // check if item exists
   if ( existing_index < 0 ) {
@@ -178,12 +188,12 @@ void QBrowsePathCombo::addPath(const QString & path, bool emitHasChages)
     setHasChanges(false);
   }
 
-  enableEmitChagesEvent_ = true;
+  _enableEmitChagesEvent = true;
 }
 
 void QBrowsePathCombo::setCurrentPath(const QString & path, bool emitHasChages)
 {
-  enableEmitChagesEvent_ = emitHasChages;
+  _enableEmitChagesEvent = emitHasChages;
   combo->setCurrentText(path);
   if ( path.isEmpty() ) {
     combo->setCurrentIndex(-1);
@@ -191,7 +201,7 @@ void QBrowsePathCombo::setCurrentPath(const QString & path, bool emitHasChages)
   if ( !emitHasChages ) {
     setHasChanges(false);
   }
-  enableEmitChagesEvent_ = true;
+  _enableEmitChagesEvent = true;
 }
 
 QString QBrowsePathCombo::currentPath(void) const
@@ -201,18 +211,18 @@ QString QBrowsePathCombo::currentPath(void) const
 
 bool QBrowsePathCombo::hasChanges(void) const
 {
-  return hasChanges_;
+  return _hasChanges;
 }
 
 void QBrowsePathCombo::setHasChanges(bool f)
 {
-  hasChanges_ = f;
+  _hasChanges = f;
 }
 
 void QBrowsePathCombo::currentTextChanged(const QString &)
 {
-  if ( enableEmitChagesEvent_ ) {
-    hasChanges_ = true;
+  if ( _enableEmitChagesEvent ) {
+    _hasChanges = true;
     emit pathChanged();
   }
 }

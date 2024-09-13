@@ -18,6 +18,7 @@
 #include <gui/widgets/QSliderSpinBox.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QFFmpegOptionsControl.h>
+#include <gui/widgets/QColorPickerButton.h>
 #include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/ctrlbind/ctrlbind.h>
@@ -1163,6 +1164,80 @@ public:
   {
     return add_ffmpeg_options_control(form, name, tooltip, setfn, getfn);
   }
+
+  /////////////////////////////////////////////////////////////////////
+
+  QColorPickerButton* add_color_picker_button(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QColor&)> & setfn)
+  {
+    QColorPickerButton * ctl =
+        new QColorPickerButton(this);
+
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl, &QColorPickerButton::colorSelected,
+              [this, ctl, setfn]() {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(ctl->color());
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+
+  QColorPickerButton * add_color_picker_button(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(const QColor &)> & setfn,
+      const std::function<bool(QColor*)> & getfn)
+  {
+    QColorPickerButton *ctl =
+        add_color_picker_button(form, name, tooltip, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                QColor v;
+                if ( getfn(&v) ) {
+                  ctl->setColor(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QColorPickerButton * add_color_picker_button(const QString & name, const QString & tooltip,
+      const std::function<void(const QColor &)> & setfn)
+  {
+    return add_color_picker_button(form, name, tooltip, setfn);
+  }
+
+  QColorPickerButton * add_color_picker_button(const QString & name, const QString & tooltip,
+      const std::function<void(const QColor &)> & setfn,
+      const std::function<bool(QColor*)> & getfn)
+  {
+    return add_color_picker_button(form, name, tooltip, setfn, getfn);
+  }
+
 
   /////////////////////////////////////////////////////////////////////
 

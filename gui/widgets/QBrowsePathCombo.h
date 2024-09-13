@@ -38,6 +38,9 @@ public:
   void setAcceptMode(QFileDialog::AcceptMode mode);
   QFileDialog::AcceptMode acceptMode() const;
 
+  void setFileFilter(const QString & v);
+  const QString & fileFilter() const;
+
   void addPath(const QString & path, bool emitHasChages = false);
 
   void setCurrentPath(const QString & path, bool emitHasChages = false) ;
@@ -60,13 +63,14 @@ private:
   QComboBox * combo = nullptr;
   QToolButton * button = nullptr;
   QString fileDialogCaption;
-  QString labelText_;
-  QFileDialog::FileMode fileMode_ = QFileDialog::AnyFile;
-  QFileDialog::AcceptMode acceptMode_ = QFileDialog::AcceptOpen;
-  QFileDialog::ViewMode viewMode_ = QFileDialog::ViewMode::Detail;
-  bool showDirsOnly_ = false;
-  bool hasChanges_ = false;
-  bool enableEmitChagesEvent_ = true;
+  QString _labelText;
+  QString _fileFilter;
+  QFileDialog::FileMode _fileMode = QFileDialog::AnyFile;
+  QFileDialog::AcceptMode _acceptMode = QFileDialog::AcceptOpen;
+  QFileDialog::ViewMode _viewMode = QFileDialog::ViewMode::Detail;
+  bool _showDirsOnly = false;
+  bool _hasChanges = false;
+  bool _enableEmitChagesEvent = true;
 
 
 private:

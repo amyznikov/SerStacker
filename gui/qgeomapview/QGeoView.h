@@ -65,8 +65,8 @@ public:
   void flyTo(const QGeoPos & gpos, double latsize, double lonsize);
   void flyTo(const QGeoViewCameraActions& actions);
 
-  void setItemMouseMoveKeyboardModifiers(Qt::KeyboardModifier v);
-  Qt::KeyboardModifier itemMouseMoveKeyboardModifiers();
+  void setItemMouseMoveKeyboardModifiers(Qt::KeyboardModifiers v);
+  Qt::KeyboardModifiers itemMouseMoveKeyboardModifiers();
 
   QAction * addCopyImageToClipboardAction(const QString & text,
       const QKeySequence & keysequence = QKeySequence());
@@ -121,7 +121,7 @@ protected:
   QScopedPointer<QGeoViewRubberBand> rubberBand_;
   QScopedPointer<QContextMenuEvent> contextMenuEvent_;
 
-  Qt::KeyboardModifier itemMouseMoveKeyboardModifiers_ = Qt::AltModifier;
+  Qt::KeyboardModifiers itemMouseMoveKeyboardModifiers_ = Qt::AltModifier | Qt::ShiftModifier | Qt::ControlModifier;
   QAction * copyImageToClipboardAction_ = nullptr;
   QShortcut * copyImageToClipboardActionShortcut_  = nullptr;
 

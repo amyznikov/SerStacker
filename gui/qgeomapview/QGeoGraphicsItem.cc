@@ -246,6 +246,11 @@ void QGeoGraphicsItem::updateGeo(const QGeoScene* geoScene)
 {
 }
 
+void QGeoGraphicsItem::onGeoPosChanged(const QGeoPos & pos)
+{
+  Q_EMIT geoPosChanged(pos);
+}
+
 void QGeoGraphicsItem::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
   if( renderHintsOn_ ) {
@@ -265,6 +270,15 @@ bool QGeoGraphicsItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent *
   return menu.actions().count() != n;
 }
 
+
+void QGeoGraphicsItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+  if ( event->buttons() == Qt::MouseButton::RightButton ) {
+    // allow properly proceed to context menu
+    event->ignore();
+  }
+  Base::mousePressEvent(event);
+}
 
 void QGeoGraphicsItem::contextMenuEvent(QGraphicsSceneContextMenuEvent * event)
 {

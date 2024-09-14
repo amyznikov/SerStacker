@@ -184,12 +184,12 @@ double QGeoView::azimuth() const
   return azimuth_;
 }
 
-Qt::KeyboardModifier QGeoView::itemMouseMoveKeyboardModifiers()
+Qt::KeyboardModifiers QGeoView::itemMouseMoveKeyboardModifiers()
 {
   return itemMouseMoveKeyboardModifiers_;
 }
 
-void QGeoView::setItemMouseMoveKeyboardModifiers(Qt::KeyboardModifier v)
+void QGeoView::setItemMouseMoveKeyboardModifiers(Qt::KeyboardModifiers v)
 {
   itemMouseMoveKeyboardModifiers_ = v;
 }
@@ -400,9 +400,6 @@ void QGeoView::hideEvent(QHideEvent *event)
 
 void QGeoView::contextMenuEvent(QContextMenuEvent *e)
 {
-  // will be handled later if user will not move ruber band
-  //contextMenuEvent_.reset(new QContextMenuEvent(*e));
-
   contextMenuEvent_.reset(new QContextMenuEvent(
       e->reason(),
       e->pos(),
@@ -414,54 +411,42 @@ void QGeoView::contextMenuEvent(QContextMenuEvent *e)
 
 void QGeoView::mousePressEvent(QMouseEvent * event)
 {
-//  CF_DEBUG("%s: ENTER: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
-//      "QGeoView",
+//  CF_DEBUG("QGeoView: ENTER: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
 //      event->isAccepted(),
 //      event->buttons(),
 //      event->modifiers());
 
+  event->ignore();
+
   if( event->buttons() == Qt::MouseButton::LeftButton ) {
-    if( event->modifiers() == itemMouseMoveKeyboardModifiers_ ) {
-      event->ignore();
-      Base::mousePressEvent(event);
-      //CF_DEBUG("ItemMove: isAccepted()=%d", event->isAccepted());
-      if( event->isAccepted() ) {
-        return;
-      }
-    }
 
-    if( event->modifiers() == Qt::NoModifier ) {
+    const Qt::KeyboardModifiers modifiers =
+        event->modifiers();
+
+    if( modifiers == Qt::NoModifier ) {
       startMoving(event);
-      //CF_DEBUG("moveMap: isAccepted()=%d", event->isAccepted());
-      if( event->isAccepted() ) {
-        return;
-      }
     }
-  }
-  else if( event->buttons() == Qt::MouseButton::RightButton ) {
+    else if( modifiers & itemMouseMoveKeyboardModifiers_ ) {
+      Base::mousePressEvent(event);
+    }
 
-    event->ignore();
+    return;
+  }
+
+  if( event->buttons() == Qt::MouseButton::RightButton ) {
+
     Base::mousePressEvent(event);
-    if ( event->isAccepted() ) {
-      // CF_DEBUG("%s: Base::mousePressEvent isAccepted=%d", "QGeoView", event->isAccepted());
-      return;
-    }
 
-    if( event->modifiers() == Qt::NoModifier ) {
+    if ( !event->isAccepted() ) {
       startSelectionRect(event);
-      if ( event->isAccepted() ) {
-        // CF_DEBUG("%s: startSelectionRect isAccepted=%d", "QGeoView", event->isAccepted());
-        return;
-      }
     }
-  }
 
+    return;
+  }
 
   Base::mousePressEvent(event);
 
-
-//  CF_DEBUG("%s: LEAVE: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
-//      "QGeoView",
+//  CF_DEBUG("QGeoView: LEAVE: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
 //      event->isAccepted(),
 //      event->buttons(),
 //      event->modifiers());
@@ -469,25 +454,21 @@ void QGeoView::mousePressEvent(QMouseEvent * event)
 
 void QGeoView::mouseReleaseEvent(QMouseEvent * event)
 {
-//  CF_DEBUG("%s: ENTER: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
+//  CF_DEBUG("%s: ENTER: isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x state_=%d rubberBand_=%p",
 //      "QGeoView",
 //      event->isAccepted(),
 //      event->buttons(),
-//      event->modifiers());
+//      event->modifiers(),
+//      state_,
+//      (void*)rubberBand_.get());
 
   if( state_ == State::SelectionRect ) {
 
-    if( stopSelectionRect(event) ) {
-      contextMenuEvent_.reset();
-      return;
-    }
-
-    if( contextMenuEvent_ ) {
+    if( !stopSelectionRect(event) && contextMenuEvent_ ) {
       Base::contextMenuEvent(contextMenuEvent_.get());
-      contextMenuEvent_.reset();
-      return;
     }
 
+    contextMenuEvent_.reset();
     return;
   }
 
@@ -504,30 +485,18 @@ void QGeoView::mouseReleaseEvent(QMouseEvent * event)
 
 void QGeoView::mouseMoveEvent(QMouseEvent * event)
 {
-//  if( event->buttons() ) {
-//    CF_DEBUG("%s: ENTER: state=%d isAccepted=%d event: buttons()=0x%0x modifiers()=0x%0x",
-//        "QGeoView",
-//        state_,
-//        event->isAccepted(),
-//        event->buttons(),
-//        event->modifiers());
-//  }
-
   if( state_ == State::Wheel ) {
     mouseMoveForWheel(event);
-    // CF_DEBUG("Wheel: isAccepted()=%d", event->isAccepted());
     return;
   }
 
   if( state_ == State::MovingMap ) {
     moveMap(event);
-    // CF_DEBUG("moveMap: isAccepted()=%d", event->isAccepted());
     return;
   }
 
   if( state_ == State::SelectionRect ) {
     updateSelectionRect(event);
-    // CF_DEBUG("SelectionRect: isAccepted()=%d", event->isAccepted());
     return;
   }
 
@@ -535,7 +504,6 @@ void QGeoView::mouseMoveEvent(QMouseEvent * event)
     if( event->modifiers() == itemMouseMoveKeyboardModifiers_ ) {
       event->ignore();
       Base::mouseMoveEvent(event);
-      // CF_DEBUG("ItemMove: isAccepted()=%d", event->isAccepted());
       if( event->isAccepted() ) {
         return;
       }
@@ -543,14 +511,7 @@ void QGeoView::mouseMoveEvent(QMouseEvent * event)
   }
 
 
-  // CF_DEBUG("Base::mouseMoveEvent(event)");
   Base::mouseMoveEvent(event);
-
-//  if( event->buttons() ) {
-//    CF_DEBUG("%s: LEAVE: isAccepted=%d",
-//        "QGeoView",
-//        event->isAccepted());
-//  }
 }
 
 void QGeoView::wheelEvent(QWheelEvent * event)
@@ -627,8 +588,6 @@ void QGeoView::wheelEvent(QWheelEvent * event)
   }
 
 #endif
-
-//  CF_DEBUG("SCALE %g->%g", scale_, newScale);
 
   cameraScale(newScale);
 

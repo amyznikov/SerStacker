@@ -65,11 +65,13 @@ Q_SIGNALS:
 protected:
   virtual void updateProjected(const QGeoScene* geoScene = nullptr);
   virtual void updateGeo(const QGeoScene* geoScene = nullptr);
+  virtual void onGeoPosChanged(const QGeoPos & pos);
 
 protected: // QGraphicsObject
   QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
   void contextMenuEvent(QGraphicsSceneContextMenuEvent * event) override;
+  void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
 protected:
   QString name_;

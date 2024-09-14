@@ -16,9 +16,38 @@
 
 namespace serstacker {
 
+
+class QGpxLandmarkItem :
+    public QGeoPixmapItem
+{
+  Q_OBJECT;
+public:
+  typedef QGpxLandmarkItem ThisClass;
+  typedef QGeoPixmapItem Base;
+
+  QGpxLandmarkItem(const QGeoPos & geoPos,
+      QGraphicsItem *parent = nullptr);
+
+  void setAssociatedVideoFrameIndex(int v);
+  int associatedVideoFrameIndex() const;
+
+Q_SIGNALS:
+  void deleteRequested(QGpxLandmarkItem * item);
+  void openAssociatedVideoFrameRequested(QGpxLandmarkItem * item);
+
+protected:
+  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
+  void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)final;
+  void onGeoPosChanged(const QGeoPos & pos) final;
+
+protected:
+  int _associatedVideoFrameIndex = 0;
+};
+
 class QGpxTrackItem :
     public QAbstractGeoPolyLineItem
 {
+  Q_OBJECT;
 public:
   typedef QGpxTrackItem ThisClass;
   typedef QAbstractGeoPolyLineItem Base;
@@ -35,6 +64,18 @@ public:
   void setAssociatedVideoFileName(const QString & fname);
   const QString & associatedVideoFileName() const;
 
+  const std::vector<QGpxLandmarkItem*> gpxLandmarks() const;
+  const QGpxLandmarkItem* gpxLandmarks(int index) const;
+
+  void addGpxLandmarkItem(const QGeoPos & pos, int associatedVideoFrameIndex);
+
+  void setLandmarksVisible(bool v);
+  bool landmarksVisible() const;
+
+Q_SIGNALS:
+  void openAssociatedVideoFrameRequested(QGpxTrackItem * trackItem,
+      QGpxLandmarkItem * keyPointItem);
+
 protected: // QAbstractGeoPolygonItem
   void mousePressEvent(QGraphicsSceneMouseEvent * event) final;
   bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
@@ -44,12 +85,12 @@ protected: // QAbstractGeoPolygonItem
   void setGeoPoint(int index, const QGeoPos & ) final;
   QGeoPos getGeoPoint(int index) const final;
 
-
-
 protected:
-  c_gpx_track _track;
   QString _pathFileName;
   QString _associatedVideoFileName;
+  c_gpx_track _track;
+  std::vector<QGpxLandmarkItem*> _gpxLandmarks;
+  bool _landmarksVisible = true;
 };
 
 
@@ -66,10 +107,12 @@ public:
   QComboBox * combo() const;
 
   QToolButton * trackVisibiltyControl() const;
+  QToolButton * landmarksVisibiltyControl() const;
   QToolButton * openVideoControl() const;
 
 Q_SIGNALS:
   void toggleTrackVisibilityClicked(bool visible);
+  void toggleLandmarksVisibilityClicked(bool visible);
   void showSelectedTrackOnMapClicked();
   void deleteSelectedTrackClicked();
   void openAssociatedVideoFileClicked();
@@ -77,10 +120,11 @@ Q_SIGNALS:
 protected:
   QHBoxLayout * _hbox = nullptr;
   QComboBox * combobox_ctl = nullptr;
-  QToolButton * trackVisibilty_ctl = nullptr;
-  QToolButton * trackSend_ctl = nullptr;
-  QToolButton * openVideo_ctl = nullptr;
-  QToolButton * trackDelete_ctl = nullptr;
+  QToolButton * track_visibilty_ctl = nullptr;
+  QToolButton * landmarks_visibilty_ctl = nullptr;
+  QToolButton * show_track_on_geomap_ctl = nullptr;
+  QToolButton * open_video_ctl = nullptr;
+  QToolButton * delete_track_ctl = nullptr;
 };
 
 class QGpxTrackViewSettings :
@@ -108,6 +152,7 @@ protected:
   void populateTrackSelectionCombo();
   void onGpxTrackSelected(int index);
   void onToggleTrackVisibilityClicked(bool visible);
+  void onToggleLandmarksVisibilityClicked(bool visible);
   void onShowSelectedTrackOnMapClicked();
 
 
@@ -181,14 +226,18 @@ protected Q_SLOTS:
   void onDeleteSelectedTrackClicked();
 
 protected:
+  void showEvent(QShowEvent *event) final;
+
+protected:
   void createToolbarActions() final;
-  static QGpxTrackItem * loadGpxTrack(const QString & filename);
+  QGpxTrackItem * loadGpxTrack(const QString & filename);
+
 
 protected:
   QGpxTrackViewSettingsDialogBox * viewSettingsDialogBox = nullptr;
   QAction * toggleOptionsDialogBoxAction = nullptr;
-
   std::vector<QGpxTrackItem*> gpxTrackItems;
+  bool _firstShow = true;
 };
 
 

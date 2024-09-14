@@ -383,13 +383,13 @@ bool QInputSourceView::scrollToFrame(int frameIndex)
   if( isOpen(currentSource_) ) {
 
     if( frameIndex >= 0 ) {
-      currentSource_->seek(frameIndex - 1);
+      currentSource_->seek(frameIndex);
     }
 
     loadNextFrame();
 
     playControls_->setCurpos(std::max(0,
-        currentSource_->curpos()));
+        currentSource_->curpos() - 1));
 
     return true;
   }

@@ -541,56 +541,58 @@ void QAbstractGeoPolyLineItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
   //      (uint)event->buttons(),
   //      (uint)event->modifiers());
 
-    if( event->buttons() == Qt::LeftButton  && !projPoints_.empty() ) {
+  currentMovingPointIndex_ = -1;
 
-      currentMovingPointIndex_ = -1;
+  if( event->buttons() == Qt::LeftButton && !projPoints_.empty() ) {
 
-      if( enableMovePoints_ ) {
+    if( enableMovePoints_ ) {
 
-        const QGraphicsView *view =
-            getActiveView(event);
+      const QGraphicsView * view =
+          getActiveView(event);
 
-        if( view ) {
+      if( view ) {
 
-          double nearest_distance = DBL_MAX;
-          int nearest_point = -1;
+        double nearest_distance = DBL_MAX;
+        int nearest_point = -1;
 
-          const QPoint eventpos =
-              view->mapFromScene(event->scenePos());
+        const QPoint eventpos =
+            view->mapFromScene(event->scenePos());
 
-          for( int i = 0, n = projPoints_.size(); i < n; ++i ) {
+        for( int i = 0, n = projPoints_.size(); i < n; ++i ) {
 
-            const QPoint viewpos =
-                view->mapFromScene(this->mapToScene(
-                    projPoints_[i]));
+          const QPoint viewpos =
+              view->mapFromScene(this->mapToScene(
+                  projPoints_[i]));
 
-            const double distance =
-                sqrt((viewpos.x() - eventpos.x()) * (viewpos.x() - eventpos.x()) +
-                    (viewpos.y() - eventpos.y()) * (viewpos.y() - eventpos.y()));
+          const double distance =
+              sqrt((viewpos.x() - eventpos.x()) * (viewpos.x() - eventpos.x()) +
+                  (viewpos.y() - eventpos.y()) * (viewpos.y() - eventpos.y()));
 
-            if( distance < nearest_distance ) {
-              nearest_distance = distance;
-              nearest_point = i;
-            }
+          if( distance < nearest_distance ) {
+            nearest_distance = distance;
+            nearest_point = i;
           }
+        }
 
-          if( nearest_distance < hit_dstance ) {
-            currentMovingPointIndex_ = nearest_point;
-            event->accept();
-            return;
-          }
+        if( nearest_distance < hit_dstance ) {
+          currentMovingPointIndex_ = nearest_point;
+          event->accept();
+          return;
         }
       }
     }
+  }
 
-    Base::mousePressEvent(event);
+  Base::mousePressEvent(event);
 }
 
 void QAbstractGeoPolyLineItem::mouseMoveEvent(QGraphicsSceneMouseEvent * event)
 {
-    CF_DEBUG("buttons=0x%0X modifiers=0x%0X",
-        (uint)event->buttons(),
-        (uint)event->modifiers());
+//    CF_DEBUG("buttons=0x%0X modifiers=0x%0X enableMovePoints_=%d currentMovingPointIndex_=%d",
+//        (uint)event->buttons(),
+//        (uint)event->modifiers(),
+//        enableMovePoints_,
+//        currentMovingPointIndex_);
 
     if( currentMovingPointIndex_ >= 0 && (event->buttons() == Qt::LeftButton) ) {
 

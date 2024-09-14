@@ -9,19 +9,20 @@
 
 #include <core/debug.h>
 
-QGeoImageItem::QGeoImageItem()
+QGeoImageItem::QGeoImageItem(QGraphicsItem *parent) :
+  Base(parent)
 {
 }
 
 QGeoImageItem::QGeoImageItem(const QGeoPos & geoPos, const QImage & image,
-    const QPoint & imageAnchor) :
-    Base(geoPos, image, imageAnchor)
+    const QPoint & imageAnchor, QGraphicsItem *parent) :
+    Base(geoPos, image, imageAnchor, parent)
 {
 }
 
 QGeoImageItem::QGeoImageItem(const QGeoRect & geoRect, const QImage & image,
-    const QPoint & imageAnchor) :
-    Base(geoRect, image, imageAnchor)
+    const QPoint & imageAnchor, QGraphicsItem *parent) :
+    Base(geoRect, image, imageAnchor, parent)
 {
 }
 
@@ -41,19 +42,20 @@ void QGeoImageItem::paint(QPainter * painter, const QStyleOptionGraphicsItem * o
   }
 }
 
-QGeoPixmapItem::QGeoPixmapItem()
+QGeoPixmapItem::QGeoPixmapItem(QGraphicsItem *parent) :
+    Base(parent)
 {
 }
 
 QGeoPixmapItem::QGeoPixmapItem(const QGeoPos & geoPos, const QPixmap & image,
-    const QPoint & imageAnchor) :
-    Base(geoPos, image, imageAnchor)
+    const QPoint & imageAnchor, QGraphicsItem *parent) :
+    Base(geoPos, image, imageAnchor, parent)
 {
 }
 
 QGeoPixmapItem::QGeoPixmapItem(const QGeoRect & geoRect, const QPixmap & image,
-    const QPoint & imageAnchor) :
-    Base(geoRect, image, imageAnchor)
+    const QPoint & imageAnchor, QGraphicsItem *parent) :
+    Base(geoRect, image, imageAnchor, parent)
 {
 }
 

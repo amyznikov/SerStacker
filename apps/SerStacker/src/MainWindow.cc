@@ -544,11 +544,8 @@ void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollTo
 
   centralStackedWidget->setCurrentWidget(inputSourceView);
 
-  if ( filename == inputSourceView->currentFileName() || inputSourceView->openFile(filename) ) {
-    if ( scrollToIndex >= 0 ) {
-      CF_DEBUG("scrollToIndex=%d", scrollToIndex);
-      inputSourceView->scrollToFrame(scrollToIndex);
-    }
+  if( filename == inputSourceView->currentFileName() || inputSourceView->openFile(filename) ) {
+    inputSourceView->scrollToFrame(scrollToIndex);
   }
 
 }

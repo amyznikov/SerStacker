@@ -27,18 +27,21 @@ public:
   typedef QGeoGraphicsImageItem ThisClass;
   typedef QGeoGraphicsItem Base;
 
-  QGeoGraphicsImageItem()
+  QGeoGraphicsImageItem(QGraphicsItem *parent = nullptr) :
+    Base(parent)
   {
   }
 
-  QGeoGraphicsImageItem(const QGeoPos & geoPos, const ImageType & image,
-      const QPoint & imageAnchor = QPoint(-1, -1))
+  QGeoGraphicsImageItem(const QGeoPos & geoPos, const ImageType & image, const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem * parent = nullptr) :
+      Base(parent)
   {
     setImage(geoPos, image, imageAnchor);
   }
 
-  QGeoGraphicsImageItem(const QGeoRect & geoRect, const ImageType & image,
-      const QPoint & imageAnchor = QPoint(-1, -1))
+  QGeoGraphicsImageItem(const QGeoRect & geoRect, const ImageType & image, const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem * parent = nullptr) :
+      Base(parent)
   {
     setImage(geoRect, image, imageAnchor);
   }
@@ -188,7 +191,7 @@ protected:
       updateLocalPos();
     }
 
-    Q_EMIT geoPosChanged(geoPos_);
+    onGeoPosChanged(geoPos_);
   }
 
   void updateGeo(const QGeoScene * scene) override
@@ -217,7 +220,7 @@ protected:
       }
 
       if ( projection ) {
-        Q_EMIT geoPosChanged(geoPos_);
+        onGeoPosChanged(geoPos_);
       }
     }
   }
@@ -304,13 +307,15 @@ public:
   typedef QGeoImageItem ThisClass;
   typedef QGeoGraphicsImageItem<QImage> Base;
 
-  QGeoImageItem();
+  QGeoImageItem(QGraphicsItem *parent = nullptr);
 
   QGeoImageItem(const QGeoPos & geoPos, const QImage & image,
-      const QPoint & imageAnchor = QPoint(-1, -1));
+      const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem *parent = nullptr);
 
   QGeoImageItem(const QGeoRect & geoRect, const QImage & image,
-      const QPoint & imageAnchor = QPoint(-1, -1));
+      const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem *parent = nullptr);
 
 protected:
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option,
@@ -324,13 +329,15 @@ public:
   typedef QGeoPixmapItem ThisClass;
   typedef QGeoGraphicsImageItem<QPixmap> Base;
 
-  QGeoPixmapItem();
+  QGeoPixmapItem(QGraphicsItem *parent = nullptr);
 
   QGeoPixmapItem(const QGeoPos & geoPos, const QPixmap & image,
-      const QPoint & imageAnchor = QPoint(-1, -1));
+      const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem *parent = nullptr);
 
   QGeoPixmapItem(const QGeoRect & geoRect, const QPixmap & image,
-      const QPoint & imageAnchor = QPoint(-1, -1));
+      const QPoint & imageAnchor = QPoint(-1, -1),
+      QGraphicsItem *parent = nullptr);
 
 protected:
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,

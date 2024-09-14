@@ -38,5 +38,7 @@
     <file>icons/eye.png</file>
     <file>icons/send.png</file>
     <file>icons/video.png</file>
+    <file>icons/geo-landmark.png</file>
+    <file>icons/show-geo-landmarks.png</file>
 </qresource>
 </RCC>

@@ -9,12 +9,20 @@
 
 #include "QGeoPos.h"
 
-QGeoPos::QGeoPos() :
-  latitude_(0),
-  longitude_(0)
+bool QGeoPos::registerMetatype()
 {
+  qRegisterMetaTypeStreamOperators<QGeoPos>("QGeoPos");
+  return true;
 }
 
+const bool QGeoPos::_metatypeRegistered =
+    QGeoPos::registerMetatype();
+
+QGeoPos::QGeoPos() :
+  _latitude(0),
+  _longitude(0)
+{
+}
 
 QGeoPos::QGeoPos(double latitude, double longitude)
 {
@@ -22,42 +30,15 @@ QGeoPos::QGeoPos(double latitude, double longitude)
   setLongitude(longitude);
 }
 
-void QGeoPos::setLatitude(double latitude)
+
+QDataStream& operator <<(QDataStream & arch, const QGeoPos & gpos)
 {
-  latitude_ = qMin(90.0, qMax(-90.0, latitude));
+  return (arch << gpos._latitude << gpos._longitude);
 }
 
-double QGeoPos::latitude() const
+QDataStream& operator >>(QDataStream & arch, QGeoPos & gpos)
 {
-  return latitude_;
-}
-
-void QGeoPos::setLongitude(double longitude)
-{
-  if( longitude > 180.000001 ) {
-    longitude = fmod((180.0 + longitude), 360.0) - 180.0;
-  }
-  else if( longitude < -180.000001 ) {
-    longitude = 180.0 - fmod((180.0 - longitude), 360.0);
-  }
-
-  longitude_ = longitude;
-}
-
-double QGeoPos::longitude() const
-{
-  return longitude_;
-}
-
-
-QString QGeoPos::lonToString(const QString& format) const
-{
-  return lonToString(longitude(), format);
-}
-
-QString QGeoPos::latToString(const QString& format) const
-{
-  return latToString(latitude(), format);
+  return (arch >> gpos._latitude >> gpos._longitude);
 }
 
 /**

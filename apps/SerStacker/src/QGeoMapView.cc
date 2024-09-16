@@ -903,6 +903,7 @@ QGpxTrackItem* QGeoMapView::loadGpxTrack(const QString & filename)
       });
 
 
+  CF_DEBUG("H");
   return item;
 }
 
@@ -1094,6 +1095,11 @@ void QGeoMapView::loadSettings(QSettings & settings)
 
       QGpxTrackItem * item =
           loadGpxTrack(pathFileName);
+
+      if ( !item ) {
+        continue;
+      }
+
 
       item->setAssociatedVideoFileName(settings.value(QString("%1_videoFileName").arg(prefix)).toString());
       item->setVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());

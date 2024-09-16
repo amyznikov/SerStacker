@@ -87,12 +87,13 @@ static bool getGPXTime(const XMLElement * root, const char * path, double * valu
   }
   else {
 
-    int Y, M, D, h, m, s;
+    int Y, M, D, h, m;
+    double s;
 
-    if( sscanf(token.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d", &Y, &M, &D, &h, &m, &s) == 6 ) {
+    if( sscanf(token.c_str(), "%4d-%2d-%2dT%2d:%2d:%lf", &Y, &M, &D, &h, &m, &s) == 6 ) {
 
       struct tm tm = {
-          .tm_sec = s, /* Seconds. [0-60] (1 leap second) */
+          .tm_sec = (int)s, /* Seconds. [0-60] (1 leap second) */
           .tm_min = m, /* Minutes. [0-59] */
           .tm_hour = h, /* Hours. [0-23] */
           .tm_mday = D, /* Day.   [1-31] */
@@ -103,7 +104,7 @@ static bool getGPXTime(const XMLElement * root, const char * path, double * valu
           .tm_isdst = 0, /* DST.   [-1/0/1]*/
       };
 
-      *value = mktime(&tm);
+      *value = mktime(&tm) + (s - (int) s);
       return true;
     }
   }
@@ -165,20 +166,34 @@ bool load_gpx_track_xml(const std::string & gpx_xml_file_name, c_gpx_track * gpx
   const XMLElement * trkpt_element =
       trkseg_element->FirstChildElement( "trkpt");
 
+  c_gps_position p;
+
   for( ; trkpt_element; trkpt_element = trkpt_element->NextSiblingElement() ) {
 
-    gpx_track->pts.emplace_back();
+    if ( !getAttribute(trkpt_element, "lat", &p.latitude) ) {
+      CF_DEBUG("getAttribute(lat) fails at line %d", trkpt_element->GetLineNum());
+      continue;
+    }
 
-    c_gps_position & p =
-        gpx_track->pts.back();
+    if ( !getAttribute(trkpt_element, "lon", &p.longitude) ) {
+      CF_DEBUG("getAttribute(lon) fails at line %d", trkpt_element->GetLineNum());
+      continue;
+    }
 
-    getAttribute(trkpt_element, "lat", &p.latitude);
-    getAttribute(trkpt_element, "lon", &p.longitude);
-    getValue(trkpt_element, "ele", &p.altitude);
-    getGPXTime(trkpt_element, "time", &p.timestamp);
+    if ( !getValue(trkpt_element, "ele", &p.altitude) ) {
+      CF_DEBUG("getValue(ele) fails at line %d", trkpt_element->GetLineNum());
+      continue;
+    }
+
+    if ( !getGPXTime(trkpt_element, "time", &p.timestamp) ) {
+      CF_DEBUG("getGPXTime fails at  at line %d", trkpt_element->GetLineNum());
+      continue;
+    }
 
     p.latitude *= CV_PI / 180;
     p.longitude *= CV_PI / 180;
+
+    gpx_track->pts.emplace_back(p);
   }
 
   std::sort(gpx_track->pts.begin(), gpx_track->pts.end(),

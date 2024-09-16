@@ -315,10 +315,15 @@ void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFra
   QObject::connect(item, &QGpxLandmarkItem::deleteRequested,
       [this](QGpxLandmarkItem * item) {
 
+        _gpx_interpolation.remove_landmark(item->associatedVideoFrameIndex());
+
         scene()->removeItem(item);
 
-        const auto pos = std::find(_gpxLandmarks.begin(), _gpxLandmarks.end(), item);
+        const auto pos =
+            std::find(_gpxLandmarks.begin(), _gpxLandmarks.end(), item);
+
         if ( pos != _gpxLandmarks.end() ) {
+
           _gpxLandmarks.erase(pos);
         }
 
@@ -902,8 +907,6 @@ QGpxTrackItem* QGeoMapView::loadGpxTrack(const QString & filename)
 
       });
 
-
-  CF_DEBUG("H");
   return item;
 }
 

@@ -97,6 +97,11 @@ void QPlaySequenceControl::setCurpos(int pos)
   curposSlider_ctl->setValue(curposSpin_ctl->value());
 }
 
+int QPlaySequenceControl::curPos() const
+{
+  return curposSpin_ctl->value();
+}
+
 
 void QPlaySequenceControl::onPlayClicked()
 {

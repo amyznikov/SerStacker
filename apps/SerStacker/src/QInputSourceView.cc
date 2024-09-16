@@ -48,13 +48,10 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
   mainLayout_ = new QVBoxLayout(this);
   mainLayout_->setAlignment(Qt::AlignTop);
   setContentsMargins(0, 0, 0, 0);
-  //mainLayout_->setContentsMargins(0,0,0,0);
-  //mainLayout_->setMargin(0);
   mainLayout_->setSpacing(0);
 
   mainLayout_->addLayout(toolbarLayout_ = new QHBoxLayout());
   toolbarLayout_->setContentsMargins(0,0,0,0);
-  //toolbarLayout_->setMargin(0);
   toolbarLayout_->addWidget(mainToolbar_ = createToolbar(this), 10, Qt::AlignLeft);
   toolbarLayout_->addWidget(imageViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
   toolbarLayout_->addWidget(cloudViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
@@ -74,9 +71,6 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
 
   QObject::connect(stackWidget_, &QStackedWidget::currentChanged,
       this, &ThisClass::onStackedWidgetCurrentIndexChanged);
-
-  //  imageView_->setDisplayFunction(&mtfDisplayFunction_);
-  //  cloudView_->setM
 
   setupMainToolbar();
   setupMtfDisplayFunction();
@@ -378,6 +372,11 @@ void QInputSourceView::reloadCurrentFrame()
   }
 }
 
+int QInputSourceView::currentScrollpos() const
+{
+  return playControls_->curPos();
+}
+
 bool QInputSourceView::scrollToFrame(int frameIndex)
 {
   if( isOpen(currentSource_) ) {
@@ -386,10 +385,13 @@ bool QInputSourceView::scrollToFrame(int frameIndex)
       currentSource_->seek(frameIndex);
     }
 
+
     loadNextFrame();
 
     playControls_->setCurpos(std::max(0,
         currentSource_->curpos() - 1));
+
+    Q_EMIT currentFrameChanged();
 
     return true;
   }

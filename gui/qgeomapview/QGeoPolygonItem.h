@@ -36,7 +36,7 @@ public:
   void setEnableRemovePoints(bool v);
   bool enableRemovePoints() const;
 
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
+  bool populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
 
 Q_SIGNALS:
   void geoPointsChanged();

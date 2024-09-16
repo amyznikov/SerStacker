@@ -30,6 +30,7 @@ public:
 
   void setSeekRange(int min,  int max);
   void setCurpos(int pos);
+  int curPos() const;
 
 Q_SIGNALS:
   void onSeek(int pos);

@@ -6,7 +6,6 @@
  */
 
 #include "gpx.h"
-#include <core/ssprintf.h>
 #include <core/debug.h>
 
 #if HAVE_TINYXML2
@@ -14,6 +13,8 @@
 #include <tinyxml2.h>
 #include <string.h>
 #include <time.h>
+#include <core/ssprintf.h>
+#include <algorithm>
 
 using namespace tinyxml2;
 
@@ -180,6 +181,10 @@ bool load_gpx_track_xml(const std::string & gpx_xml_file_name, c_gpx_track * gpx
     p.longitude *= CV_PI / 180;
   }
 
+  std::sort(gpx_track->pts.begin(), gpx_track->pts.end(),
+      [](const c_gps_position & prev, const c_gps_position & next) {
+        return prev.timestamp < next.timestamp;
+      });
 
 
   return true;

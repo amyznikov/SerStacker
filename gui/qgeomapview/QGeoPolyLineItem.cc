@@ -316,7 +316,7 @@ int QAbstractGeoPolyLineItem::findPointByViewPos(const QGraphicsView * view, con
   return -1;
 }
 
-bool QAbstractGeoPolyLineItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QAbstractGeoPolyLineItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   bool populated = false;
 
@@ -415,7 +415,7 @@ bool QAbstractGeoPolyLineItem::popuateContextMenu(const QGraphicsSceneContextMen
     }
   }
 
-  return Base::popuateContextMenu(event, menu) || populated;
+  return Base::populateContextMenu(event, menu) || populated;
 }
 
 void QAbstractGeoPolyLineItem::updateProjected(const QGeoScene * scene)

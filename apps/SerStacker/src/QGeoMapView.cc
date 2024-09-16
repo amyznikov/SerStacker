@@ -17,19 +17,39 @@
 #define ICON_delete               ":/gui/icons/delete2.png"
 #define ICON_video                ":/gui/icons/video.png"
 #define ICON_geo_landmark         ":/gui/icons/geo-landmark.png"
-#define ICON_show_geo_landmarks   ICON_geo_landmark   //":/gui/icons/show-geo-landmarks.png"
+//":/gui/icons/show-geo-landmarks.png"
+#define ICON_show_geo_landmarks   ICON_geo_landmark
 
+#define ICON_car000               ":/serstacker/icons/car/car000.png"
+#define ICON_car045               ":/serstacker/icons/car/car045.png"
+#define ICON_car090               ":/serstacker/icons/car/car090.png"
+#define ICON_car135               ":/serstacker/icons/car/car135.png"
+#define ICON_car180               ":/serstacker/icons/car/car180.png"
+#define ICON_car225               ":/serstacker/icons/car/car225.png"
+#define ICON_car270               ":/serstacker/icons/car/car270.png"
+#define ICON_car315               ":/serstacker/icons/car/car315.png"
+
+
+#define TRACK_ZVALUE              1000
+#define LANDMARK_ZVALUE           1001
+#define CAR_ZVALUE                1002
 
 namespace serstacker {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QGpxLandmarkItem::QGpxLandmarkItem(const QGeoPos & geoPos, QGraphicsItem * parent) :
-    Base(geoPos, getPixmap(ICON_geo_landmark), QPoint(-1, -1), parent)
+QGpxLandmarkItem::QGpxLandmarkItem(int gpxPointIndex, const QGeoPos & geoPos, QGraphicsItem * parent) :
+    Base(geoPos, getPixmap(ICON_geo_landmark), QPoint(-1, -1), parent),
+    _gpxPointIndex(gpxPointIndex)
 {
   setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
-  setFlag(QGraphicsItem::ItemIsMovable, true);
+  setFlag(QGraphicsItem::ItemIsMovable, false);
   setFlag(QGraphicsItem::ItemIsSelectable, false);
+}
+
+int QGpxLandmarkItem::gpxPointIndex() const
+{
+  return _gpxPointIndex;
 }
 
 void QGpxLandmarkItem::setAssociatedVideoFrameIndex(int v)
@@ -42,7 +62,7 @@ int QGpxLandmarkItem::associatedVideoFrameIndex() const
   return _associatedVideoFrameIndex;
 }
 
-bool QGpxLandmarkItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QGpxLandmarkItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   // CF_DEBUG("MENU");
 
@@ -60,6 +80,9 @@ bool QGpxLandmarkItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent *
             Qt::WindowFlags());
 
         if ( fOk && frameIndex != _associatedVideoFrameIndex ) {
+
+          // remove_landmark
+
           setAssociatedVideoFrameIndex(frameIndex);
         }
 
@@ -76,12 +99,14 @@ bool QGpxLandmarkItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent *
         Q_EMIT deleteRequested(this);
       });
 
-  return Base::popuateContextMenu(event, menu) || true;
+  return Base::populateContextMenu(event, menu) || true;
 }
 
 void QGpxLandmarkItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent * event)
 {
-  Base::mouseDoubleClickEvent(event);
+  event->ignore();
+  Q_EMIT openAssociatedVideoFrameRequested(this);
+  // Base::mouseDoubleClickEvent(event);
 }
 
 void QGpxLandmarkItem::onGeoPosChanged(const QGeoPos & pos)
@@ -92,9 +117,49 @@ void QGpxLandmarkItem::onGeoPosChanged(const QGeoPos & pos)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QGpxTrackItem::QGpxTrackItem(QGraphicsItem * parent) :
+QGpxCarItem::QGpxCarItem(QGraphicsItem *parent) :
     Base(parent)
 {
+  setZValue(CAR_ZVALUE);
+  setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+  setFlag(QGraphicsItem::ItemIsMovable, false);
+  setFlag(QGraphicsItem::ItemIsSelectable, false);
+}
+
+QGpxCarItem::QGpxCarItem(const QGeoPos & geopos, QGraphicsItem *parent) :
+    Base(geopos, getPixmap(ICON_car000), QPoint(-1, -1), parent)
+{
+  setZValue(CAR_ZVALUE);
+  setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+  setFlag(QGraphicsItem::ItemIsMovable, false);
+  setFlag(QGraphicsItem::ItemIsSelectable, false);
+}
+
+
+bool QGpxCarItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+{
+  return Base::populateContextMenu(event, menu);
+}
+
+void QGpxCarItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
+{
+  event->ignore();
+}
+
+void QGpxCarItem::onGeoPosChanged(const QGeoPos & pos)
+{
+  // CF_DEBUG("H");
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+QGpxTrackItem::QGpxTrackItem(QGeoMapView * geoMmapView, QGraphicsItem * parent) :
+    Base(parent),
+    _geoMmapView(geoMmapView)
+{
+  _gpx_interpolation.set_gpx_track(&_track);
+
   setFlag(QGraphicsItem::ItemIgnoresTransformations, false);
   setFlag(QGraphicsItem::ItemIsMovable, false);
   setFlag(QGraphicsItem::ItemIsSelectable, false);
@@ -190,35 +255,78 @@ bool QGpxTrackItem::landmarksVisible() const
   return _landmarksVisible;
 }
 
-void QGpxTrackItem::addGpxLandmarkItem(const QGeoPos & geopos, int associatedVideoFrameIndex)
+void QGpxTrackItem::setCarVisible(bool v)
 {
-  QGpxLandmarkItem * item = new QGpxLandmarkItem(geopos);
+  if ( !_carItem ) {
+    scene()->addItem(_carItem = new QGpxCarItem(_track.pts[0]));
+  }
+
+  _carItem->setVisible(v);
+}
+
+bool QGpxTrackItem::carVisible() const
+{
+  return _carItem && _carItem->isVisible();
+}
+
+void QGpxTrackItem::computeCarPositon(int scrollpos)
+{
+  if ( carVisible() ) {
+
+    c_gps_position gps;
+
+    if ( !_gpx_interpolation.interpolate_for_frame(scrollpos, &gps) ) {
+      CF_ERROR("interpolate_for_frame() fails");
+    }
+    else {
+      _carItem->setGeoPos(gps);
+    }
+  }
+
+}
+
+QGpxLandmarkItem * QGpxTrackItem::findGpxLandmarkItem(int gpxPointIndex)
+{
+  for( QGpxLandmarkItem * item : _gpxLandmarks ) {
+    if ( item->gpxPointIndex() == gpxPointIndex ) {
+      return item;
+    }
+  }
+  return nullptr;
+}
+
+void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & geopos)
+{
+  QGpxLandmarkItem * item = new QGpxLandmarkItem(gpxPointIndex, geopos);
   item->setVisible(_landmarksVisible);
-  item->setZValue(10000);
+  item->setZValue(LANDMARK_ZVALUE);
   item->setAssociatedVideoFrameIndex(associatedVideoFrameIndex);
   scene()->addItem(item);
   _gpxLandmarks.emplace_back(item);
 
+  _gpx_interpolation.set_landmark(associatedVideoFrameIndex,
+      gpxPointIndex);
+
   QObject::connect(item, &QGpxLandmarkItem::openAssociatedVideoFrameRequested,
-      [this](QGpxLandmarkItem * keyitem) {
-        Q_EMIT openAssociatedVideoFrameRequested(this, keyitem);
+      [this](QGpxLandmarkItem * item) {
+        Q_EMIT openAssociatedVideoFrameRequested(this, item);
       });
 
   QObject::connect(item, &QGpxLandmarkItem::deleteRequested,
-      [this](QGpxLandmarkItem * keyitem) {
+      [this](QGpxLandmarkItem * item) {
 
-        scene()->removeItem(keyitem);
+        scene()->removeItem(item);
 
-        const auto pos = std::find(_gpxLandmarks.begin(), _gpxLandmarks.end(), keyitem);
+        const auto pos = std::find(_gpxLandmarks.begin(), _gpxLandmarks.end(), item);
         if ( pos != _gpxLandmarks.end() ) {
           _gpxLandmarks.erase(pos);
         }
 
-        delete keyitem;
+        delete item;
       });
 }
 
-bool QGpxTrackItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QGpxTrackItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   bool populated = false;
 
@@ -233,28 +341,46 @@ bool QGpxTrackItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * ev
     const QPointF scenePos =
         event->scenePos();
 
-    menu.addAction("Add Gpx KeyPoint",
-        [this, projection, scenePos]() {
+    const QPointF viewPos =
+        view->mapFromScene(scenePos);
 
-          bool fOk = false;
+    const int gpxPointIndex =
+        findPointByViewPos(view, viewPos, 25);
 
-          const int frameIndex = QInputDialog::getInt(QApplication::activeWindow(),
-              "Add keypoint",
-              "Specify Target Video Frame Index to associate:",
-              0,
-              INT32_MIN, INT32_MAX, 1,
-              &fOk,
-              Qt::WindowFlags());
+    if( gpxPointIndex >= 0 && gpxPointIndex < (int) (_track.pts.size()) ) {
 
-          if ( fOk ) {
-            addGpxLandmarkItem(projection->projToGeo(scenePos), frameIndex);
-          }
-    });
+      QGpxLandmarkItem * existingLandmark =
+          findGpxLandmarkItem(gpxPointIndex);
 
-    populated = true;
+      if ( !existingLandmark ) {
+
+        menu.addAction("Add GPX Landmark...",
+            [this, gpxPointIndex]() {
+
+              bool fOk = false;
+
+              const int frameIndex =
+                  QInputDialog::getInt(QApplication::activeWindow(),
+                  "Add keypoint",
+                  "Specify Target Video Frame Index to associate:",
+                  _geoMmapView->currentVideoScrollpos(),
+                  INT32_MIN, INT32_MAX, 1,
+                  &fOk,
+                  Qt::WindowFlags());
+
+              if ( fOk ) {
+                addGpxLandmarkItem(gpxPointIndex, frameIndex, _track.pts[gpxPointIndex]);
+              }
+        });
+
+        populated = true;
+      }
+    }
+
+
   }
 
-  return Base::popuateContextMenu(event, menu) || populated;
+  return Base::populateContextMenu(event, menu) || populated;
 }
 
 // Use keyboard modifier like CTRL, ALT or SHIFT in order to receive this event,
@@ -318,11 +444,19 @@ QGpxTrackSelectorWidget::QGpxTrackSelectorWidget(QWidget * parent) :
         this,
         &ThisClass::toggleLandmarksVisibilityClicked));
 
+  _hbox->addWidget(car_visibilty_ctl =
+    createCheckableToolButton(getIcon(ICON_car000), "Show Car",
+        "Show / Hide car associated with selected track",
+        false,
+        this,
+        &ThisClass::toggleCarVisibilityClicked));
+
   _hbox->addWidget(show_track_on_geomap_ctl =
       createToolButton(getIcon(ICON_send), "FlyTo",
           "Show selected track on map",
           this,
           &ThisClass::showSelectedTrackOnMapClicked));
+
 
   _hbox->addWidget(open_video_ctl =
       createToolButton(getIcon(ICON_video), "Video",
@@ -335,12 +469,6 @@ QGpxTrackSelectorWidget::QGpxTrackSelectorWidget(QWidget * parent) :
           "Delete selected track",
           this, &ThisClass::deleteSelectedTrackClicked));
 
-
-//  _hbox->addWidget(track_visibilty_ctl);
-//  _hbox->addWidget(landmarks_visibilty_ctl);
-//  _hbox->addWidget(show_track_on_geomap_ctl);
-//  _hbox->addWidget(open_video_ctl);
-//  _hbox->addWidget(delete_track_ctl);
 
 }
 
@@ -357,6 +485,11 @@ QToolButton* QGpxTrackSelectorWidget::trackVisibiltyControl() const
 QToolButton * QGpxTrackSelectorWidget::landmarksVisibiltyControl() const
 {
   return landmarks_visibilty_ctl;
+}
+
+QToolButton * QGpxTrackSelectorWidget::carVisibiltyControl() const
+{
+  return car_visibilty_ctl;
 }
 
 QToolButton* QGpxTrackSelectorWidget::openVideoControl() const
@@ -560,6 +693,8 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::toggleLandmarksVisibilityClicked,
       this, &ThisClass::onToggleLandmarksVisibilityClicked);
 
+  connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::toggleCarVisibilityClicked,
+      this, &ThisClass::onToggleCarVisibilityClicked);
 
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::showSelectedTrackOnMapClicked,
       this, &ThisClass::onShowSelectedTrackOnMapClicked);
@@ -619,6 +754,7 @@ void QGpxTrackViewSettings::update_control_states()
   else {
     gpxTrackSelector_ctl->trackVisibiltyControl()->setChecked(item->isVisible());
     gpxTrackSelector_ctl->landmarksVisibiltyControl()->setChecked(item->landmarksVisible());
+    gpxTrackSelector_ctl->carVisibiltyControl()->setChecked(item->carVisible());
     gpxTrackSelector_ctl->openVideoControl()->setEnabled(!item->associatedVideoFileName().isEmpty());
   }
 }
@@ -668,6 +804,16 @@ void QGpxTrackViewSettings::onToggleLandmarksVisibilityClicked(bool visible)
 
   if( item ) {
     item->setLandmarksVisible(visible);
+  }
+}
+
+void QGpxTrackViewSettings::onToggleCarVisibilityClicked(bool visible)
+{
+  QGpxTrackItem * item =
+      selectedTrack();
+
+  if( item ) {
+    item->setCarVisible(visible);
   }
 }
 
@@ -730,14 +876,14 @@ QGeoMapView::QGeoMapView(QWidget * parent) :
 QGpxTrackItem* QGeoMapView::loadGpxTrack(const QString & filename)
 {
   QGpxTrackItem * item =
-      new QGpxTrackItem();
+      new QGpxTrackItem(this);
 
   if( !item->loadTrack(filename) ) {
     delete item;
     return nullptr;
   }
 
-  item->setZValue(1000);
+  item->setZValue(TRACK_ZVALUE);
   item->setVisible(true);
   item->setName(QFileInfo(filename).fileName());
   item->setDescription(item->track().name.c_str());
@@ -827,6 +973,30 @@ void QGeoMapView::onToggleOptionsDialogBox(bool checked)
 void QGeoMapView::flyToPosition(double latitude, double longitude)
 {
   Base::flyTo(QGeoPos(latitude * 180 / CV_PI, longitude * 180 / CV_PI));
+}
+
+void QGeoMapView::setCurrentVideoScrollpos(const QString & currentFileName, int scrollpos)
+{
+  _currentVideoScrollpos = scrollpos;
+
+  if ( !currentFileName.isEmpty() ) {
+
+    for ( QGpxTrackItem * trackItem : gpxTrackItems ) {
+      if ( trackItem->associatedVideoFileName() == currentFileName ) {
+
+        trackItem->computeCarPositon(scrollpos);
+
+        break;
+      }
+
+    }
+  }
+
+}
+
+int QGeoMapView::currentVideoScrollpos() const
+{
+  return _currentVideoScrollpos;
 }
 
 void QGeoMapView::onOpenSelectedAssociatedVideoFileClicked()
@@ -951,10 +1121,17 @@ void QGeoMapView::loadSettings(QSettings & settings)
         const int associatedFrameIndex =
             settings.value(QString("%1_associatedVideoFrameIndex").arg(prefix2)).value<int>();
 
-        const QGeoPos geopos =
-            settings.value(QString("%1_geoPos").arg(prefix2)).value<QGeoPos>();
+        const int gpxPointIndex =
+            settings.value(QString("%1_gpxPointIndex").arg(prefix2), -1).toInt();
 
-        item->addGpxLandmarkItem(geopos, associatedFrameIndex);
+        if ( gpxPointIndex >= 0 && gpxPointIndex < (int)item->track().pts.size() ) {
+          if ( !item->findGpxLandmarkItem(gpxPointIndex) )   {
+
+            item->addGpxLandmarkItem(gpxPointIndex, associatedFrameIndex,
+                item->track().pts[gpxPointIndex]);
+
+          }
+        }
       }
 
     }
@@ -1012,10 +1189,9 @@ void QGeoMapView::saveSettings(QSettings & settings)
       const QString prefix2 =
           qsprintf("%skeypoint%d_",utf8prefix.constData(), j);
 
+      settings.setValue(QString("%1_gpxPointIndex").arg(prefix2),  kpItem->gpxPointIndex());
       settings.setValue(QString("%1_associatedVideoFrameIndex").arg(prefix2), kpItem->associatedVideoFrameIndex());
-      settings.setValue(QString("%1_geoPos").arg(prefix2),  QVariant::fromValue(kpItem->geoPos()));
     }
-
 
   }
 

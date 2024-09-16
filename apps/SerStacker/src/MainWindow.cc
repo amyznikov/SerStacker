@@ -92,7 +92,7 @@ MainWindow::MainWindow()
       this, &ThisClass::onCurrentViewVisibilityChanged);
 
   connect(inputSourceView, &QInputSourceView::currentFrameChanged,
-      this, &ThisClass::checkIfBadFrameSelected);
+      this, &ThisClass::onCurrentViewFrameChanged);
 
   connect(imageView, &QImageEditor::currentImageChanged,
       this, &ThisClass::onImageViewCurrentImageChanged);
@@ -532,6 +532,15 @@ void MainWindow::setupGeoView()
 
   connect(geoView, &QGeoMapView::openVideoFileRequested,
       this, &ThisClass::onOpenVideoFileRequested);
+
+  connect(geoViewDock, &QGeoMapViewDock::visibilityChanged,
+      [this](bool visible) {
+        if ( visible ) {
+          geoView->setCurrentVideoScrollpos(inputSourceView->currentFileName(),
+              inputSourceView->currentScrollpos());
+        }
+      });
+
 }
 
 void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollToIndex)
@@ -545,7 +554,9 @@ void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollTo
   centralStackedWidget->setCurrentWidget(inputSourceView);
 
   if( filename == inputSourceView->currentFileName() || inputSourceView->openFile(filename) ) {
-    inputSourceView->scrollToFrame(scrollToIndex);
+    if( scrollToIndex >= 0 && inputSourceView->currentScrollpos() != scrollToIndex ) {
+      inputSourceView->scrollToFrame(scrollToIndex);
+    }
   }
 
 }
@@ -933,6 +944,17 @@ void MainWindow::onCurrentViewVisibilityChanged()
 
 }
 
+
+void MainWindow::onCurrentViewFrameChanged()
+{
+  checkIfBadFrameSelected();
+
+  if( is_visible(geoView) && is_visible(inputSourceView) ) {
+
+    geoView->setCurrentVideoScrollpos(inputSourceView->currentFileName(),
+        inputSourceView->currentScrollpos());
+  }
+}
 
 void MainWindow::onCurrentViewDisplayImageChanged()
 {

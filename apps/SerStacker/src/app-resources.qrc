@@ -34,5 +34,14 @@
 	<file>icons/dark/grid.png</file>
 	<file>icons/light/grid.png</file>
 	
+	<file>icons/car/car000.png</file>
+	<file>icons/car/car045.png</file>
+	<file>icons/car/car090.png</file>
+	<file>icons/car/car135.png</file>
+	<file>icons/car/car180.png</file>
+	<file>icons/car/car225.png</file>
+	<file>icons/car/car270.png</file>
+	<file>icons/car/car315.png</file>
+	
 </qresource>
 </RCC>

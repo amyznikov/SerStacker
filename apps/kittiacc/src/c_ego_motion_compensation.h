@@ -106,7 +106,7 @@
  *
  * 3) Optional: setup grouping time interval:
  *
-     emc.set_time_step(0.01); // 10 msec
+ emc.set_time_step(0.01); // 10 msec
  *
  * 4) Use appropriate from several overloads of emc.compensate_ego_motion():
  *
@@ -142,7 +142,6 @@
 #include <core/proc/gps/gps.h>
 #include <core/debug.h>
 
-
 //! @addtogroup emc
 //! @{
 
@@ -173,12 +172,12 @@ enum TRAJECTORY_ESTIMATION_METHOD
   // is mostly identical to one build from simplified linear approximation TRAJECTORY_ESTIMATION_IMU.
   TRAJECTORY_ESTIMATION_IMUE = 3,
 
-  // FIXME: add combined GPS + IMU trajectory estimation method for further improvements
+// FIXME: add combined GPS + IMU trajectory estimation method for further improvements
 };
 
 /**
  * @brief Car trajectory estimation and LIDAR point cloud correction
-   @see Jens Rieken and Markus Maurer,
+ @see Jens Rieken and Markus Maurer,
  *    Sensor scan timing compensation in environment models for automated road vehicles
  * @see Pierre Merriaux, Yohan Dupuis et. all,
  *    LiDAR point clouds correction acquired from a moving car based on CAN-bus data
@@ -297,16 +296,21 @@ class c_ego_motion_compensation
   // Use VELO as input / output
   bool enable_imu2velo_ = false;
 
-
-  struct c_index_entry {
+  struct c_index_entry
+  {
     double ts;
     size_t p;
-    c_index_entry(double _ts, size_t _p) : ts(_ts), p(_p) {}
-    static bool less_by_time(const c_index_entry & lhs, const c_index_entry & rhs) { return lhs.ts < rhs.ts; }
+    c_index_entry(double _ts, size_t _p) : ts(_ts), p(_p)
+    {
+    }
+    static bool less_by_time(const c_index_entry & lhs, const c_index_entry & rhs)
+    {
+      return lhs.ts < rhs.ts;
+    }
   };
 
   typedef std::vector<c_index_entry>
-    PointIndex;
+  PointIndex;
 
 public: // properties
   /**
@@ -331,7 +335,7 @@ public: // properties
    * @brief Get pointer to currently used oxts_data[] array
    * @return vector of oxts_data structures
    */
-  const std::vector<oxts_data> * trajectory() const
+  const std::vector<oxts_data>* trajectory() const
   {
     return trajectory_;
   }
@@ -351,7 +355,7 @@ public: // properties
   }
 
   ///@brief Get current time_step value.
-  double time_step () const
+  double time_step() const
   {
     return time_step_;
   }
@@ -405,7 +409,7 @@ public: // properties
   {
     imu2velo_rotation_ = rotation;
     imu2velo_translation_ = translation;
-    if ( update_reverse ) {
+    if( update_reverse ) {
       velo2imu_rotation_ = rotation.inv();
       velo2imu_translation_ = -velo2imu_rotation_ * imu2velo_translation_;
     }
@@ -434,7 +438,7 @@ public: // properties
   {
     velo2imu_rotation_ = rotation;
     velo2imu_translation_ = translation;
-    if ( update_reverse ) {
+    if( update_reverse ) {
       imu2velo_rotation_ = rotation.inv();
       imu2velo_translation_ = -imu2velo_rotation_ * velo2imu_translation_;
     }
@@ -450,35 +454,35 @@ public: // properties
   }
 
   ///@brief Reference to forward mapping IMU -> VELO translation vector
-  const cv::Vec3d & imu2velo_translation() const
+  const cv::Vec3d& imu2velo_translation() const
   {
     return imu2velo_translation_;
   }
 
   ///@brief Reference to forward mapping IMU -> VELO rotation matrix
-  const cv::Matx33d & imu2velo_rotation() const
+  const cv::Matx33d& imu2velo_rotation() const
   {
     return imu2velo_rotation_;
   }
 
   ///@brief Reference to reverse mapping VELO -> IMU translation vector
-  const cv::Vec3d & velo2imu_translation() const
+  const cv::Vec3d& velo2imu_translation() const
   {
     return velo2imu_translation_;
   }
 
   ///@brief Reference to reverse mapping VELO -> IMU rotation matrix
-  const cv::Matx33d & velo2imu_rotation() const
+  const cv::Matx33d& velo2imu_rotation() const
   {
     return velo2imu_rotation_;
   }
 
   ///@brief wrap for glv::oxts_interpolate_for_timestamp()
-  void oxts_interpolate_for_timestamp(double ts, /*out*/ oxts_data * oxtsi) const
+  void oxts_interpolate_for_timestamp(double ts, /*out*/oxts_data * oxtsi) const
   {
-    if ( !trajectory_ || trajectory_->empty() ) {
+    if( !trajectory_ || trajectory_->empty() ) {
       CF_FATAL("c_ego_motion_correction: OxTS data was not set correctly: oxts_data_=%p size=%zu",
-               (void *) trajectory_, trajectory_ ? 0 : trajectory_->size());
+          (void* ) trajectory_, trajectory_ ? 0 : trajectory_->size());
     }
     else {
       ::oxts_interpolate_for_timestamp(*trajectory_, ts /*+ tts_offset_*/, oxtsi);
@@ -508,32 +512,32 @@ public: // conventional EGO motion correction methods
       /*out, opt*/oxts_data * out_target_oxts = nullptr,
       const std::vector<bool> & mask = std::vector<bool>() /* don't touch points outside of mask*/) const
   {
-    if ( !trajectory_ || trajectory_->empty() ) {
+    if( !trajectory_ || trajectory_->empty() ) {
       CF_FATAL("APP BUG: Empty Oxts in c_ego_motion_correction");
       return false;
     }
 
-    if ( !mask.empty() && mask.size() != cloud.size() ) {
+    if( !mask.empty() && mask.size() != cloud.size() ) {
       CF_ERROR("Invalid mask specified: mask.size=%zu src.size=%zu", mask.size(), cloud.size());
       return false;
     }
 
     oxts_data target_oxts;
     oxts_interpolate_for_timestamp(target_ts, &target_oxts);
-    if ( out_target_oxts ) {
+    if( out_target_oxts ) {
       *out_target_oxts = target_oxts;
     }
 
-    switch ( trajectory_estimation_method_ ) {
-      case TRAJECTORY_ESTIMATION_NONE :
+    switch (trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_NONE:
         return true; // silently skip compensation
-      case TRAJECTORY_ESTIMATION_GPS :
+      case TRAJECTORY_ESTIMATION_GPS:
         return compensate_ego_motion_using_gps(cloud, cloud, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMU :
+      case TRAJECTORY_ESTIMATION_IMU:
         return compensate_ego_motion_using_imu(cloud, cloud, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMUE :
+      case TRAJECTORY_ESTIMATION_IMUE:
         return compensate_ego_motion_using_imue(cloud, cloud, mask, target_oxts);
-      default :
+      default:
         break;
     }
 
@@ -553,36 +557,35 @@ public: // conventional EGO motion correction methods
    */
   template<class PointType>
   bool compensate_ego_motion(std::vector<PointType> & cloud, double target_ts, const std::vector<double> & time_stamps,
-      /*out, opt*/ oxts_data * out_target_oxts = nullptr,
+      /*out, opt*/oxts_data * out_target_oxts = nullptr,
       const std::vector<bool> & mask = std::vector<bool>() /* don't touch points outside of mask*/) const
   {
-    if ( !trajectory_ || trajectory_->empty() ) {
+    if( !trajectory_ || trajectory_->empty() ) {
       CF_FATAL("APP BUG: Empty Oxts in c_ego_motion_correction");
       return false;
     }
 
-    if ( !mask.empty() && mask.size() != cloud.size() ) {
+    if( !mask.empty() && mask.size() != cloud.size() ) {
       CF_ERROR("Invalid mask specified: mask.size=%zu cloud.size=%zu", mask.size(), cloud.size());
       return false;
     }
 
-
     oxts_data target_oxts;
     oxts_interpolate_for_timestamp(target_ts, &target_oxts);
-    if ( out_target_oxts ) {
+    if( out_target_oxts ) {
       *out_target_oxts = target_oxts;
     }
 
-    switch ( trajectory_estimation_method_ ) {
-      case TRAJECTORY_ESTIMATION_NONE :
+    switch (trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_NONE:
         return true; // silently skip compensation
-      case TRAJECTORY_ESTIMATION_GPS :
+      case TRAJECTORY_ESTIMATION_GPS:
         return compensate_ego_motion_using_gps(cloud, cloud, mask, time_stamps, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMU :
+      case TRAJECTORY_ESTIMATION_IMU:
         return compensate_ego_motion_using_imu(cloud, cloud, mask, time_stamps, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMUE :
+      case TRAJECTORY_ESTIMATION_IMUE:
         return compensate_ego_motion_using_imue(cloud, cloud, mask, time_stamps, target_oxts);
-      default :
+      default:
         break;
     }
 
@@ -605,62 +608,60 @@ public: // conventional EGO motion correction methods
       /*out, opt*/oxts_data * out_target_oxts = nullptr,
       const std::vector<bool> & mask = std::vector<bool>() /* don't touch points outside of mask*/) const
   {
-    if ( !trajectory_ || trajectory_->empty() ) {
+    if( !trajectory_ || trajectory_->empty() ) {
       CF_FATAL("APP BUG: Empty Oxts in c_ego_motion_correction");
       return false;
     }
 
-    if ( !mask.empty() && mask.size() != src.size() ) {
+    if( !mask.empty() && mask.size() != src.size() ) {
       CF_ERROR("Invalid mask specified: mask.size=%zu src.size=%zu", mask.size(), src.size());
       return false;
     }
 
-
     oxts_data target_oxts;
     oxts_interpolate_for_timestamp(target_ts, &target_oxts);
-    if ( out_target_oxts ) {
+    if( out_target_oxts ) {
       *out_target_oxts = target_oxts;
     }
 
-    switch ( trajectory_estimation_method_ ) {
-      case TRAJECTORY_ESTIMATION_NONE :
-        if ( &src != &dst ) {
-          if ( mask.empty() ) {
+    switch (trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_NONE:
+        if( &src != &dst ) {
+          if( mask.empty() ) {
             dst = src;
           }
           else {
             dst.clear(), dst.reserve(src.size());
-            for ( int i = 0, n = (int)src.size(); i < n; ++i ) {
-              if ( mask[i] ) {
+            for( int i = 0, n = (int) src.size(); i < n; ++i ) {
+              if( mask[i] ) {
                 dst.emplace_back(src[i]);
               }
             }
           }
         }
-        else if ( !mask.empty() ) {
+        else if( !mask.empty() ) {
           std::vector<PointType> tmp;
           tmp.reserve(src.size());
-          for ( int i = 0, n = (int)src.size(); i < n; ++i ) {
-            if ( mask[i] ) {
+          for( int i = 0, n = (int) src.size(); i < n; ++i ) {
+            if( mask[i] ) {
               tmp.emplace_back(src[i]);
             }
           }
           dst = std::move(tmp);
         }
         return true; // silently skip motion compensation
-      case TRAJECTORY_ESTIMATION_GPS :
+      case TRAJECTORY_ESTIMATION_GPS:
         return compensate_ego_motion_using_gps(src, dst, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMU :
+      case TRAJECTORY_ESTIMATION_IMU:
         return compensate_ego_motion_using_imu(src, dst, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMUE :
+      case TRAJECTORY_ESTIMATION_IMUE:
         return compensate_ego_motion_using_imue(src, dst, mask, target_oxts);
-      default :
+      default:
         break;
     }
 
     return false;
   }
-
 
   /**
    * @brief Compensates point coordinates in given cloud and writes into output cloud dst
@@ -675,52 +676,51 @@ public: // conventional EGO motion correction methods
   template<class PointType>
   bool compensate_ego_motion(const std::vector<PointType> & src, std::vector<PointType> & dst,
       const oxts_data & target_oxts,
-      const std::vector<bool> & mask = std::vector<bool>() ) const
+      const std::vector<bool> & mask = std::vector<bool>()) const
   {
-    if ( !mask.empty() && mask.size() != src.size() ) {
+    if( !mask.empty() && mask.size() != src.size() ) {
       CF_ERROR("Invalid mask specified: mask.size=%zu src.size=%zu", mask.size(), src.size());
       return false;
     }
 
-    switch ( trajectory_estimation_method_ ) {
-      case TRAJECTORY_ESTIMATION_NONE :
-        if ( &src != &dst ) {
-          if ( mask.empty() ) {
+    switch (trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_NONE:
+        if( &src != &dst ) {
+          if( mask.empty() ) {
             dst = src;
           }
           else {
             dst.clear(), dst.reserve(src.size());
-            for ( int i = 0, n = (int)src.size(); i < n; ++i ) {
-              if ( mask[i] ) {
+            for( int i = 0, n = (int) src.size(); i < n; ++i ) {
+              if( mask[i] ) {
                 dst.emplace_back(src[i]);
               }
             }
           }
         }
-        else if ( !mask.empty() ) {
+        else if( !mask.empty() ) {
           std::vector<PointType> tmp;
           tmp.reserve(src.size());
-          for ( int i = 0, n = (int)src.size(); i < n; ++i ) {
-            if ( mask[i] ) {
+          for( int i = 0, n = (int) src.size(); i < n; ++i ) {
+            if( mask[i] ) {
               tmp.emplace_back(src[i]);
             }
           }
           dst = std::move(tmp);
         }
         return true; // silently skip motion compensation
-      case TRAJECTORY_ESTIMATION_GPS :
+      case TRAJECTORY_ESTIMATION_GPS:
         return compensate_ego_motion_using_gps(src, dst, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMU :
+      case TRAJECTORY_ESTIMATION_IMU:
         return compensate_ego_motion_using_imu(src, dst, mask, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMUE :
+      case TRAJECTORY_ESTIMATION_IMUE:
         return compensate_ego_motion_using_imue(src, dst, mask, target_oxts);
-      default :
+      default:
         break;
     }
 
     return false;
   }
-
 
   /**
    * @brief Compensates point coordinates in given cloud src and writes into output cloud dst
@@ -741,63 +741,60 @@ public: // conventional EGO motion correction methods
       const std::vector<double> & time_stamps, /*out, opt*/oxts_data * out_target_oxts = nullptr,
       const std::vector<bool> & mask = std::vector<bool>() /* don't touch points outside of mask*/) const
   {
-    if ( !trajectory_ || trajectory_->empty() ) {
+    if( !trajectory_ || trajectory_->empty() ) {
       CF_FATAL("APP BUG: Empty Oxts in c_ego_motion_correction");
       return false;
     }
 
-    if ( !mask.empty() && mask.size() != src.size() ) {
+    if( !mask.empty() && mask.size() != src.size() ) {
       CF_ERROR("Invalid mask specified: mask.size=%zu src.size=%zu", mask.size(), src.size());
       return false;
     }
 
-
     oxts_data target_oxts;
     oxts_interpolate_for_timestamp(target_ts, &target_oxts);
-    if ( out_target_oxts ) {
+    if( out_target_oxts ) {
       *out_target_oxts = target_oxts;
     }
 
-    switch ( trajectory_estimation_method_ ) {
-      case TRAJECTORY_ESTIMATION_NONE :
-        if ( &src != &dst ) {
-          if ( mask.empty() ) {
+    switch (trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_NONE:
+        if( &src != &dst ) {
+          if( mask.empty() ) {
             dst = src;
           }
           else {
             dst.clear(), dst.reserve(src.size());
-            for ( int i = 0, n = src.size(); i < n; ++i ) {
-              if ( mask[i] ) {
+            for( int i = 0, n = src.size(); i < n; ++i ) {
+              if( mask[i] ) {
                 dst.emplace_back(src[i]);
               }
             }
           }
         }
-        else if ( !mask.empty() ) {
+        else if( !mask.empty() ) {
           std::vector<PointType> tmp;
           tmp.reserve(src.size());
-          for ( int i = 0, n = src.size(); i < n; ++i ) {
-            if ( mask[i] ) {
+          for( int i = 0, n = src.size(); i < n; ++i ) {
+            if( mask[i] ) {
               tmp.emplace_back(src[i]);
             }
           }
           dst = std::move(tmp);
         }
         return true; // silently skip compensation
-      case TRAJECTORY_ESTIMATION_GPS :
+      case TRAJECTORY_ESTIMATION_GPS:
         return compensate_ego_motion_using_gps(src, dst, mask, time_stamps, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMU :
+      case TRAJECTORY_ESTIMATION_IMU:
         return compensate_ego_motion_using_imu(src, dst, mask, time_stamps, target_oxts);
-      case TRAJECTORY_ESTIMATION_IMUE :
+      case TRAJECTORY_ESTIMATION_IMUE:
         return compensate_ego_motion_using_imue(src, dst, mask, time_stamps, target_oxts);
-      default :
+      default:
         break;
     }
 
     return false;
   }
-
-
 
 public: // Implementation-specific auxiliary subroutines,
         // Don't call them directly if you are not sure what you are doing,
@@ -817,7 +814,7 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, index, &mask) ) {
+    if( build_index<PointType>(src, index, &mask) ) {
       return compensate_ego_motion_using_gps_trajectory(src, dst, index, target_oxts);
     }
     return true;
@@ -840,7 +837,7 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts, std::vector<TimeType> & tstamps) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, tstamps, index, &mask) ) {
+    if( build_index<PointType>(src, tstamps, index, &mask) ) {
       return compensate_ego_motion_using_gps_trajectory(src, dst, index, target_oxts);
     }
     return true;
@@ -860,7 +857,7 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, index, &mask) ) {
+    if( build_index<PointType>(src, index, &mask) ) {
       return compensate_ego_motion_using_linearized_imu_trajectory(src, dst, index, target_oxts);
     }
     return true;
@@ -883,7 +880,7 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts, std::vector<TimeType> & tstamps) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, tstamps, index, &mask) ) {
+    if( build_index<PointType>(src, tstamps, index, &mask) ) {
       return compensate_ego_motion_using_linearized_imu_trajectory(src, dst, index, target_oxts);
     }
     return true;
@@ -903,7 +900,7 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, index, &mask) ) {
+    if( build_index<PointType>(src, index, &mask) ) {
       return compensate_ego_motion_using_full_imu_trajectory(src, dst, index, target_oxts);
     }
     return true;
@@ -926,13 +923,11 @@ public: // Implementation-specific auxiliary subroutines,
       const std::vector<bool> & mask, const oxts_data & target_oxts, std::vector<TimeType> & tstamps) const
   {
     PointIndex index;
-    if ( build_index<PointType>(src, tstamps, index, &mask) ) {
+    if( build_index<PointType>(src, tstamps, index, &mask) ) {
       return compensate_ego_motion_using_full_imu_trajectory(src, dst, index, target_oxts);
     }
     return true;
   }
-
-
 
 private:
   /**
@@ -948,15 +943,15 @@ private:
       const std::vector<bool> * mask) const
   {
     index.reserve(cloud.size());
-    if ( !mask || mask->empty() ) {
-      for ( size_t i = 0, n = cloud.size(); i < n; ++i ) {
+    if( !mask || mask->empty() ) {
+      for( size_t i = 0, n = cloud.size(); i < n; ++i ) {
         index.emplace_back(cloud[i].t, i);
       }
     }
     else {
       assert(mask->size() == cloud.size());
-      for ( size_t i = 0, n = cloud.size(); i < n; ++i ) {
-        if ( (*mask)[i] ) {
+      for( size_t i = 0, n = cloud.size(); i < n; ++i ) {
+        if( (*mask)[i] ) {
           index.emplace_back(cloud[i].t, i);
         }
       }
@@ -984,15 +979,15 @@ private:
       PointIndex & index, const std::vector<bool> * mask) const
   {
     index.reserve(cloud.size());
-    if ( !mask || mask->empty() ) {
-      for ( size_t i = 0, n = cloud.size(); i < n; ++i ) {
+    if( !mask || mask->empty() ) {
+      for( size_t i = 0, n = cloud.size(); i < n; ++i ) {
         index.emplace_back(tstamps[i], i);
       }
     }
     else {
       assert(mask->size() == cloud.size());
-      for ( size_t i = 0, n = cloud.size(); i < n; ++i ) {
-        if ( (*mask)[i] ) {
+      for( size_t i = 0, n = cloud.size(); i < n; ++i ) {
+        if( (*mask)[i] ) {
           index.emplace_back(tstamps[i], i);
         }
       }
@@ -1015,7 +1010,7 @@ private:
   {
     size_t last_point_in_group = first_point_in_group;
     const double last_timestamp = index[first_point_in_group].ts + time_step_;
-    while ( last_point_in_group + 1 < index.size() && index[last_point_in_group + 1].ts <= last_timestamp ) {
+    while (last_point_in_group + 1 < index.size() && index[last_point_in_group + 1].ts <= last_timestamp) {
       ++last_point_in_group;
     }
     return last_point_in_group;
@@ -1042,16 +1037,14 @@ private:
 
     std::vector<PointType> tmp;
     std::vector<PointType> & dstp = ((&src == &dst && src.size() == index.size()) || (&src != &dst)) ? dst : tmp;
-    if ( &dstp == &src ) {
+    if( &dstp == &src ) {
     }
-    else if ( src.size() == index.size() ) {
+    else if( src.size() == index.size() ) {
       dstp = src;
     }
     else {
       dstp.clear(), dstp.reserve(index.size());
     }
-
-
 
     target_ecef_position =
         gps2ecef(target_oxts.lat, target_oxts.lon, target_oxts.alt);
@@ -1060,18 +1053,17 @@ private:
         ecef2iso8855vs_rotation_matrix(target_oxts.lat, target_oxts.lon, target_oxts.alt,
             target_oxts.roll, target_oxts.pitch, target_oxts.yaw);
 
-
     size_t first_point_in_group = 0;
 
-    while ( first_point_in_group < index.size() ) {
+    while (first_point_in_group < index.size()) {
 
       // Find end of the group
       const size_t last_point_in_group = find_last_point_in_group(index, first_point_in_group);
       const double group_timestamp = 0.5 * (index[first_point_in_group].ts + index[last_point_in_group].ts);
 
-      if ( group_timestamp == target_oxts.ts ) {
-        if ( dstp.size() != src.size() ) {
-          for ( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+      if( group_timestamp == target_oxts.ts ) {
+        if( dstp.size() != src.size() ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             dst.emplace_back(src[index[i].p]);
           }
         }
@@ -1088,7 +1080,8 @@ private:
 
         // Compute group position in ECEF and convert to offset relative to reference VS
         group_orign =
-            target_ecef_to_vs_rotation * (gps2ecef(group_oxts.lat, group_oxts.lon, group_oxts.alt) - target_ecef_position);
+            target_ecef_to_vs_rotation
+                * (gps2ecef(group_oxts.lat, group_oxts.lon, group_oxts.alt) - target_ecef_position);
 
         // Compute ISO8855VS -> ECEF rotation matrix
         iso8855vs2ecef(group_oxts.lat, group_oxts.lon, group_oxts.alt,
@@ -1097,27 +1090,28 @@ private:
 
         group_vs_to_reference_rotation = target_ecef_to_vs_rotation * group_vs_to_ecef_rotation;
 
-
         // Update positions of each point in selected group
 
         const Matx33d TotalRotation = enable_imu2velo_ ?
-            imu2velo_rotation_ * group_vs_to_reference_rotation * velo2imu_rotation_:
+            imu2velo_rotation_ * group_vs_to_reference_rotation * velo2imu_rotation_ :
             group_vs_to_reference_rotation;
 
-        const Vec3d TotalTranslation = enable_imu2velo_ ?
-            imu2velo_rotation_ * (group_vs_to_reference_rotation * velo2imu_translation_ + group_orign) + imu2velo_translation_ :
-            group_orign;
+        const Vec3d TotalTranslation =
+            enable_imu2velo_ ?
+                imu2velo_rotation_ * (group_vs_to_reference_rotation * velo2imu_translation_ + group_orign)
+                    + imu2velo_translation_ :
+                group_orign;
 
         // Update positions of each point in selected group of points
-        if ( src.size() == dstp.size() ) { // in-place correction correction preserving points order
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+        if( src.size() == dstp.size() ) { // in-place correction correction preserving points order
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType & p = dst[index[i].p];
             const Vec3d new_pos(TotalRotation * Vec3d(p.x, p.y, p.z) + TotalTranslation);
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
           }
         }
         else {
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType p = src[index[i].p];
             const Vec3d new_pos(TotalRotation * Vec3d(p.x, p.y, p.z) + TotalTranslation);
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
@@ -1130,7 +1124,7 @@ private:
       first_point_in_group = last_point_in_group + 1;
     }
 
-    if ( &dstp == &tmp ) {
+    if( &dstp == &tmp ) {
       dst = std::move(tmp);
     }
 
@@ -1152,7 +1146,8 @@ private:
    * @return true if always return true
    */
   template<class PointType>
-  bool compensate_ego_motion_using_linearized_imu_trajectory(const std::vector<PointType> & src, std::vector<PointType> & dst,
+  bool compensate_ego_motion_using_linearized_imu_trajectory(const std::vector<PointType> & src,
+      std::vector<PointType> & dst,
       const PointIndex & index, const oxts_data & target_oxts) const
   {
     using namespace cv;
@@ -1163,9 +1158,9 @@ private:
 
     std::vector<PointType> tmp;
     std::vector<PointType> & dstp = ((&src == &dst && src.size() == index.size()) || (&src != &dst)) ? dst : tmp;
-    if ( &dstp == &src ) {
+    if( &dstp == &src ) {
     }
-    else if ( src.size() == index.size() ) {
+    else if( src.size() == index.size() ) {
       dstp = src;
     }
     else {
@@ -1174,7 +1169,7 @@ private:
 
     size_t first_point_in_group = 0;
 
-    while ( first_point_in_group < index.size() ) {
+    while (first_point_in_group < index.size()) {
 
       // Find end of the group based on time_step_.
       // Use set_time_step(DBL_EPSILON) if you need exact match (slow computation)
@@ -1183,9 +1178,9 @@ private:
       // use middle as group time stamp.
       const double group_timestamp = 0.5 * (index[first_point_in_group].ts + index[last_point_in_group].ts);
 
-      if ( group_timestamp == target_oxts.ts ) {
-        if ( dstp.size() != src.size() ) {
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+      if( group_timestamp == target_oxts.ts ) {
+        if( dstp.size() != src.size() ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             dst.emplace_back(src[index[i].p]);
           }
         }
@@ -1196,15 +1191,15 @@ private:
         compute_correction(group_oxts, target_oxts, R, T);
 
         // Update positions of each point in selected group
-        if ( src.size() == dstp.size() ) { // in-place correction correction preserving points order
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+        if( src.size() == dstp.size() ) { // in-place correction correction preserving points order
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType & p = dst[index[i].p];
             const Vec3d new_pos(R * Vec3d(p.x, p.y, p.z) + T);
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
           }
         }
         else {
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType p = src[index[i].p];
             const Vec3d new_pos(R * Vec3d(p.x, p.y, p.z) + T);
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
@@ -1216,7 +1211,7 @@ private:
       first_point_in_group = last_point_in_group + 1;
     }
 
-    if ( &dstp == &tmp ) {
+    if( &dstp == &tmp ) {
       dst = std::move(tmp);
     }
 
@@ -1251,8 +1246,7 @@ private:
         target_oxts.vl + group_oxts.vl,
         target_oxts.vu + group_oxts.vu);
 
-
-    if ( !enable_imu2velo_ ) {
+    if( !enable_imu2velo_ ) {
       TotalRotation = ImuRotation;
       TotalTranslation = ImuTranslation;
     }
@@ -1277,9 +1271,9 @@ private:
 
     std::vector<PointType> tmp;
     std::vector<PointType> & dstp = ((&src == &dst && src.size() == index.size()) || (&src != &dst)) ? dst : tmp;
-    if ( &dstp == &src ) {
+    if( &dstp == &src ) {
     }
-    else if ( src.size() == index.size() ) {
+    else if( src.size() == index.size() ) {
       dstp = src;
     }
     else {
@@ -1288,7 +1282,7 @@ private:
 
     size_t first_point_in_group = 0;
 
-    while ( first_point_in_group < index.size() ) {
+    while (first_point_in_group < index.size()) {
 
       // Find end of the group based on time_step_.
       // Use set_time_step(DBL_EPSILON) if you need exact match (slow computation)
@@ -1297,9 +1291,9 @@ private:
       // use middle as group time stamp.
       const double group_timestamp = 0.5 * (index[first_point_in_group].ts + index[last_point_in_group].ts);
 
-      if ( group_timestamp == target_oxts.ts ) {
-        if ( dstp.size() != src.size() ) {
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+      if( group_timestamp == target_oxts.ts ) {
+        if( dstp.size() != src.size() ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             dst.emplace_back(src[index[i].p]);
           }
         }
@@ -1310,15 +1304,15 @@ private:
         oxts_integrate(group_oxts, target_oxts, *trajectory_, &T, &R);
 
         // Update positions of each point in selected group of points
-        if ( src.size() == dstp.size() ) { // in-place correction correction preserving points order
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+        if( src.size() == dstp.size() ) { // in-place correction correction preserving points order
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType & p = dst[index[i].p];
             const Vec3d new_pos(R * (Vec3d(p.x, p.y, p.z) - T));
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
           }
         }
         else {
-          for (size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
+          for( size_t i = first_point_in_group; i <= last_point_in_group; ++i ) {
             PointType p = src[index[i].p];
             const Vec3d new_pos(R * (Vec3d(p.x, p.y, p.z) - T));
             p.x = new_pos[0], p.y = new_pos[1], p.z = new_pos[2];
@@ -1330,14 +1324,12 @@ private:
       first_point_in_group = last_point_in_group + 1;
     }
 
-    if ( &dstp == &tmp ) {
+    if( &dstp == &tmp ) {
       dst = std::move(tmp);
     }
 
     return true;
   }
-
-
 
 public: // additional utility methods which may be usefull for applications
   /**
@@ -1355,15 +1347,15 @@ public: // additional utility methods which may be usefull for applications
   {
     using namespace cv;
 
-    switch ( trajectory_estimation_method() ) {
-      case TRAJECTORY_ESTIMATION_INVALID :
-        case TRAJECTORY_ESTIMATION_NONE : {
+    switch (trajectory_estimation_method()) {
+      case TRAJECTORY_ESTIMATION_INVALID:
+        case TRAJECTORY_ESTIMATION_NONE: {
         TotalRotation = cv::Matx33d::eye();
         TotalTranslation = Vec3d::all(0);
         break;
       }
-      case TRAJECTORY_ESTIMATION_IMU :
-        case TRAJECTORY_ESTIMATION_IMUE : {
+      case TRAJECTORY_ESTIMATION_IMU:
+        case TRAJECTORY_ESTIMATION_IMUE: {
         Matx33d L, T, Y;
 
         build_rotation((source_oxts.roll - target_oxts.roll),
@@ -1378,7 +1370,7 @@ public: // additional utility methods which may be usefull for applications
             target_oxts.vl + source_oxts.vl,
             target_oxts.vu + source_oxts.vu);
 
-        if ( !enable_imu2velo() ) {
+        if( !enable_imu2velo() ) {
           TotalRotation = ImuRotation;
           TotalTranslation = ImuTranslation;
         }
@@ -1390,7 +1382,7 @@ public: // additional utility methods which may be usefull for applications
         break;
       }
 
-      case TRAJECTORY_ESTIMATION_GPS : {
+      case TRAJECTORY_ESTIMATION_GPS: {
 
         Vec3d source_orign;
         Vec3d target_ecef_position;
@@ -1412,18 +1404,18 @@ public: // additional utility methods which may be usefull for applications
             iso8855vs2ecef_rotation_matrix(source_oxts.lat, source_oxts.lon, source_oxts.alt,
                 source_oxts.roll, source_oxts.pitch, source_oxts.yaw);
 
-
         source_orign = target_ecef_to_vs_rotation * (source_orign - target_ecef_position);
         source_vs_to_reference_rotation = target_ecef_to_vs_rotation * source_vs_to_ecef_rotation;
 
-
         TotalRotation = enable_imu2velo() ?
-            imu2velo_rotation() * source_vs_to_reference_rotation * velo2imu_rotation():
+            imu2velo_rotation() * source_vs_to_reference_rotation * velo2imu_rotation() :
             source_vs_to_reference_rotation;
 
-        TotalTranslation = enable_imu2velo() ?
-            imu2velo_rotation() * (source_vs_to_reference_rotation * velo2imu_translation() + source_orign) + imu2velo_translation() :
-            source_orign;
+        TotalTranslation =
+            enable_imu2velo() ?
+                imu2velo_rotation() * (source_vs_to_reference_rotation * velo2imu_translation() + source_orign)
+                    + imu2velo_translation() :
+                source_orign;
 
         break;
       }
@@ -1463,163 +1455,167 @@ public: // additional utility methods which may be usefull for applications
   {
     oxts_data target_oxts;
     oxts_interpolate_for_timestamp(target_ts, &target_oxts);
-    if ( _target_oxts ) {
+    if( _target_oxts ) {
       *_target_oxts = target_oxts;
     }
     return compute_transform(source_oxts, target_oxts);
   }
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  struct target_cache {
+  struct target_cache
+  {
     enum TRAJECTORY_ESTIMATION_METHOD method = TRAJECTORY_ESTIMATION_NONE;
     oxts_data target_oxts;
     cv::Vec3d target_ecef_position; // Used with TRAJECTORY_ESTIMATION_GPS
     cv::Matx33d target_ecef_to_vs_rotation; // Used with TRAJECTORY_ESTIMATION_GPS
   };
 
-
   void cache_target(const oxts_data & target_oxts, struct target_cache * cache) const
   {
     cache->target_oxts = target_oxts;
-    switch ( cache->method = this->trajectory_estimation_method_ ) {
-    case TRAJECTORY_ESTIMATION_GPS :
-      cache->target_ecef_position =
-          gps2ecef(target_oxts.lat, target_oxts.lon, target_oxts.alt);
+    switch (cache->method = this->trajectory_estimation_method_) {
+      case TRAJECTORY_ESTIMATION_GPS:
+        cache->target_ecef_position =
+            gps2ecef(target_oxts.lat, target_oxts.lon, target_oxts.alt);
 
-      cache->target_ecef_to_vs_rotation =
-          ecef2iso8855vs_rotation_matrix(target_oxts.lat, target_oxts.lon, target_oxts.alt,
-              target_oxts.roll, target_oxts.pitch, target_oxts.yaw);
-      break;
-    default :
-      break;
+        cache->target_ecef_to_vs_rotation =
+            ecef2iso8855vs_rotation_matrix(target_oxts.lat, target_oxts.lon, target_oxts.alt,
+                target_oxts.roll, target_oxts.pitch, target_oxts.yaw);
+        break;
+      default:
+        break;
     }
   }
 
   void compensate_ego_motion(double src_x, double src_y, double src_z, const oxts_data & src_oxts,
       const struct target_cache & cache,
-      double * x, double * y, double * z ) const
+      double * x, double * y, double * z) const
   {
     constexpr double time_eps = 1e-4; // 0.1 ms
 
-    switch ( cache.method ) {
-    case TRAJECTORY_ESTIMATION_GPS :
-      if ( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
-        *x = src_x, *y = src_y, *z = src_z;
-      }
-      else {
-        cv::Vec3d src_orign;
-        cv::Matx33d src_vs_to_ecef_rotation;
-        cv::Matx33d src_vs_to_reference_rotation;
+    switch (cache.method) {
+      case TRAJECTORY_ESTIMATION_GPS:
+        if( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
+          *x = src_x, *y = src_y, *z = src_z;
+        }
+        else {
+          cv::Vec3d src_orign;
+          cv::Matx33d src_vs_to_ecef_rotation;
+          cv::Matx33d src_vs_to_reference_rotation;
 
-        // Compute src position in ECEF and convert to offset relative to reference VS
+          // Compute src position in ECEF and convert to offset relative to reference VS
           src_orign =
               cache.target_ecef_to_vs_rotation * (gps2ecef(src_oxts.lat, src_oxts.lon, src_oxts.alt) -
                   cache.target_ecef_position);
 
-        // Compute ISO8855VS -> ECEF rotation matrix
-        iso8855vs2ecef(src_oxts.lat, src_oxts.lon, src_oxts.alt,
-            src_oxts.roll, src_oxts.pitch, src_oxts.yaw,
-            &src_vs_to_ecef_rotation, NULL);
+          // Compute ISO8855VS -> ECEF rotation matrix
+          iso8855vs2ecef(src_oxts.lat, src_oxts.lon, src_oxts.alt,
+              src_oxts.roll, src_oxts.pitch, src_oxts.yaw,
+              &src_vs_to_ecef_rotation, NULL);
 
-        src_vs_to_reference_rotation = cache.target_ecef_to_vs_rotation * src_vs_to_ecef_rotation;
+          src_vs_to_reference_rotation = cache.target_ecef_to_vs_rotation * src_vs_to_ecef_rotation;
 
-        const cv::Matx33d TotalRotation =
-            enable_imu2velo_ ?
-                               imu2velo_rotation_ * src_vs_to_reference_rotation * velo2imu_rotation_ :
-                               src_vs_to_reference_rotation;
+          const cv::Matx33d TotalRotation =
+              enable_imu2velo_ ?
+                  imu2velo_rotation_ * src_vs_to_reference_rotation * velo2imu_rotation_ :
+                  src_vs_to_reference_rotation;
 
-        const cv::Vec3d TotalTranslation =
-            enable_imu2velo_ ?
-                               imu2velo_rotation_ * (src_vs_to_reference_rotation * velo2imu_translation_ + src_orign)
-                                   + imu2velo_translation_ :
-                               src_orign;
+          const cv::Vec3d TotalTranslation =
+              enable_imu2velo_ ?
+                  imu2velo_rotation_ * (src_vs_to_reference_rotation * velo2imu_translation_ + src_orign)
+                      + imu2velo_translation_ :
+                  src_orign;
 
-        // Compute transformed position
-        const cv::Vec3d corrected_pos(TotalRotation * cv::Vec3d(src_x, src_y, src_z) + TotalTranslation);
+          // Compute transformed position
+          const cv::Vec3d corrected_pos(TotalRotation * cv::Vec3d(src_x, src_y, src_z) + TotalTranslation);
 
-        *x = corrected_pos[0];
-        *y = corrected_pos[1];
-        *z = corrected_pos[2];
-      }
-      break;
+          *x = corrected_pos[0];
+          *y = corrected_pos[1];
+          *z = corrected_pos[2];
+        }
+        break;
 
+      case TRAJECTORY_ESTIMATION_IMU:
+        if( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
+          *x = src_x, *y = src_y, *z = src_z;
+        }
+        else {
+          cv::Matx33d R;
+          cv::Vec3d T;
+          compute_correction(src_oxts, cache.target_oxts, R, T);
+          const cv::Vec3d corrected_pos(R * cv::Vec3d(src_x, src_y, src_z) + T);
+          *x = corrected_pos[0];
+          *y = corrected_pos[1];
+          *z = corrected_pos[2];
+        }
+        break;
 
-    case TRAJECTORY_ESTIMATION_IMU :
-      if ( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
-        *x = src_x, *y = src_y, *z = src_z;
-      }
-      else {
-        cv::Matx33d R;
-        cv::Vec3d T;
-        compute_correction(src_oxts, cache.target_oxts, R, T);
-        const cv::Vec3d corrected_pos(R * cv::Vec3d(src_x, src_y, src_z) + T);
-        *x = corrected_pos[0];
-        *y = corrected_pos[1];
-        *z = corrected_pos[2];
-      }
-      break;
+      case TRAJECTORY_ESTIMATION_IMUE:
+        if( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
+          *x = src_x, *y = src_y, *z = src_z;
+        }
+        else {
+          cv::Matx33d R;
+          cv::Vec3d T;
+          oxts_integrate(src_oxts, cache.target_oxts, *trajectory_, &T, &R);
+          const cv::Vec3d corrected_pos(R * cv::Vec3d(src_x, src_y, src_z) + T);
+          *x = corrected_pos[0];
+          *y = corrected_pos[1];
+          *z = corrected_pos[2];
+        }
+        break;
 
-    case TRAJECTORY_ESTIMATION_IMUE :
-      if ( fabs(src_oxts.ts - cache.target_oxts.ts) < time_eps ) {
-        *x = src_x, *y = src_y, *z = src_z;
-      }
-      else {
-        cv::Matx33d R;
-        cv::Vec3d T;
-        oxts_integrate(src_oxts, cache.target_oxts, *trajectory_, &T, &R);
-        const cv::Vec3d corrected_pos(R * cv::Vec3d(src_x, src_y, src_z) + T);
-        *x = corrected_pos[0];
-        *y = corrected_pos[1];
-        *z = corrected_pos[2];
-      }
-      break;
-
-    default :
-      *x = src_x;
-      *y = src_y;
-      *z = src_z;
-      break;
+      default:
+        *x = src_x;
+        *y = src_y;
+        *z = src_z;
+        break;
     }
   }
 
   // Simple experimental function which switches trajectory estimation method - GPS for "fast" moving object, IMU for "slow"
-  static enum TRAJECTORY_ESTIMATION_METHOD get_trajectory_estimation_method_by_velocity(const std::vector<oxts_data> * oxts, double source_ts, double target_ts, double thr=9.5) {
-      auto iter_target = std::lower_bound(
-              oxts->begin(), oxts->end(), target_ts,
-              [] (const oxts_data & oxts_, const double ts) {
-                  return oxts_.ts <= ts;
-              });
-      int idx_target = (int)(iter_target - oxts->begin() - 1);
-      if (idx_target<0 || idx_target>=(int) oxts->size()){
-          CF_WARNING("get_trajectory_estimation_method_by_velocity: target_ts %.3f is out of ego oxts timerange", target_ts);
-          return TRAJECTORY_ESTIMATION_NONE;
-      }
-      auto iter_source = std::lower_bound(
-              oxts->begin(), oxts->end(), source_ts,
-              [] (const oxts_data & oxts_, const double ts) {
-                  return oxts_.ts <= ts;
-              });
-      int idx_source = (int)(iter_source - oxts->begin() - 1);
-      if (idx_source<0 || idx_source>=(int) oxts->size()){
-          CF_WARNING("get_trajectory_estimation_method_by_velocity: source_ts %.3f is out of ego oxts timerange", source_ts);
-          return TRAJECTORY_ESTIMATION_NONE;
-      }
-      if (idx_source == idx_target){
-          return oxts->at(idx_source).vf <=thr ? TRAJECTORY_ESTIMATION_IMU : TRAJECTORY_ESTIMATION_GPS;
-      }
-      bool is_future = idx_source<idx_target;
-      int start = is_future ? idx_source : idx_target;
-      int end = is_future ? idx_target : idx_source;
-      double vf_integrated = 0.;
-      double t = 0.;
-      for (int i=start; i<end; i++){
-          double dt = oxts->at(i+1).ts - oxts->at(i).ts;
-          vf_integrated += (oxts->at(i+1).vf - oxts->at(i).vf)*dt/2.;
-          t += dt;
-      }
-      double vf_mean = vf_integrated/t;
-      return vf_mean <= thr ? TRAJECTORY_ESTIMATION_IMU : TRAJECTORY_ESTIMATION_GPS;
-  }
+  static enum TRAJECTORY_ESTIMATION_METHOD get_trajectory_estimation_method_by_velocity(
+      const std::vector<oxts_data> * oxts, double source_ts, double target_ts, double thr = 9.5)
+  {
 
+    auto iter_target = std::lower_bound(
+        oxts->begin(), oxts->end(), target_ts,
+        [](const oxts_data & oxts_, const double ts) {
+          return oxts_.ts < ts;
+        });
+
+    int idx_target = (int) (iter_target - oxts->begin() - 1);
+    if( idx_target < 0 || idx_target >= (int) oxts->size() ) {
+      CF_WARNING("get_trajectory_estimation_method_by_velocity: target_ts %.3f is out of ego oxts timerange",
+          target_ts);
+      return TRAJECTORY_ESTIMATION_NONE;
+    }
+    auto iter_source = std::lower_bound(
+        oxts->begin(), oxts->end(), source_ts,
+        [](const oxts_data & oxts_, const double ts) {
+          return oxts_.ts < ts;
+        });
+    int idx_source = (int) (iter_source - oxts->begin() - 1);
+    if( idx_source < 0 || idx_source >= (int) oxts->size() ) {
+      CF_WARNING("get_trajectory_estimation_method_by_velocity: source_ts %.3f is out of ego oxts timerange",
+          source_ts);
+      return TRAJECTORY_ESTIMATION_NONE;
+    }
+    if( idx_source == idx_target ) {
+      return oxts->at(idx_source).vf <= thr ? TRAJECTORY_ESTIMATION_IMU : TRAJECTORY_ESTIMATION_GPS;
+    }
+    bool is_future = idx_source < idx_target;
+    int start = is_future ? idx_source : idx_target;
+    int end = is_future ? idx_target : idx_source;
+    double vf_integrated = 0.;
+    double t = 0.;
+    for( int i = start; i < end; i++ ) {
+      double dt = oxts->at(i + 1).ts - oxts->at(i).ts;
+      vf_integrated += (oxts->at(i + 1).vf - oxts->at(i).vf) * dt / 2.;
+      t += dt;
+    }
+    double vf_mean = vf_integrated / t;
+    return vf_mean <= thr ? TRAJECTORY_ESTIMATION_IMU : TRAJECTORY_ESTIMATION_GPS;
+  }
 
 };
 

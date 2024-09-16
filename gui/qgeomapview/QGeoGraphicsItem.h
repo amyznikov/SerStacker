@@ -55,7 +55,7 @@ public:
   virtual void onCamera(const QGeoViewCameraState& oldState,
       const QGeoViewCameraState & newState);
 
-  virtual bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event,
+  virtual bool populateContextMenu(const QGraphicsSceneContextMenuEvent * event,
       QMenu & menu);
 
 Q_SIGNALS:

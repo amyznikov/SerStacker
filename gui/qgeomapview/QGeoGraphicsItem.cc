@@ -261,7 +261,7 @@ void QGeoGraphicsItem::paint(QPainter * painter, const QStyleOptionGraphicsItem 
   }
 }
 
-bool QGeoGraphicsItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QGeoGraphicsItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   const int n = menu.actions().count();
 
@@ -295,7 +295,7 @@ void QGeoGraphicsItem::contextMenuEvent(QGraphicsSceneContextMenuEvent * event)
 
   QMenu menu;
 
-  if( popuateContextMenu(event, menu) ) {
+  if( populateContextMenu(event, menu) ) {
     menu.addSeparator();
   }
 

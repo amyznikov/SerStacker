@@ -71,6 +71,7 @@ private Q_SLOTS:
   void onWriteDisplayVideo();
 
   void onCurrentViewVisibilityChanged();
+  void onCurrentViewFrameChanged();
   void onCurrentViewDisplayImageChanged();
   void onImageViewCurrentImageChanged();
 

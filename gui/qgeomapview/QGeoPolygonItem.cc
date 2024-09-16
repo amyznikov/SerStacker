@@ -140,7 +140,7 @@ bool QAbstractGeoPolygonItem::enableRemovePoints() const
 }
 
 
-bool QAbstractGeoPolygonItem::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+bool QAbstractGeoPolygonItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
 {
   bool populated = false;
 
@@ -239,7 +239,7 @@ bool QAbstractGeoPolygonItem::popuateContextMenu(const QGraphicsSceneContextMenu
     }
   }
 
-  return Base::popuateContextMenu(event, menu) || populated;
+  return Base::populateContextMenu(event, menu) || populated;
 }
 
 void QAbstractGeoPolygonItem::updateProjected(const QGeoScene * scene)

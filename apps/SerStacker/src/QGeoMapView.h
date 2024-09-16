@@ -12,10 +12,12 @@
 #include <gui/qgeoview/QGeoViewWidgetDock.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/widgets/QColorPickerButton.h>
-#include <core/proc/gps/gpx.h>
+#include <core/proc/gps/c_gpx_interpolation.h>
+
 
 namespace serstacker {
 
+class QGeoMapView;
 
 class QGpxLandmarkItem :
     public QGeoPixmapItem
@@ -25,24 +27,46 @@ public:
   typedef QGpxLandmarkItem ThisClass;
   typedef QGeoPixmapItem Base;
 
-  QGpxLandmarkItem(const QGeoPos & geoPos,
+  QGpxLandmarkItem(int gpxPointIndex, const QGeoPos & geoPos,
       QGraphicsItem *parent = nullptr);
+
+  int gpxPointIndex() const;
 
   void setAssociatedVideoFrameIndex(int v);
   int associatedVideoFrameIndex() const;
+
 
 Q_SIGNALS:
   void deleteRequested(QGpxLandmarkItem * item);
   void openAssociatedVideoFrameRequested(QGpxLandmarkItem * item);
 
 protected:
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
+  bool populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
   void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)final;
   void onGeoPosChanged(const QGeoPos & pos) final;
 
 protected:
+  const int _gpxPointIndex;
   int _associatedVideoFrameIndex = 0;
 };
+
+class QGpxCarItem :
+    public QGeoPixmapItem
+{
+  Q_OBJECT;
+public:
+  typedef QGpxLandmarkItem ThisClass;
+  typedef QGeoPixmapItem Base;
+
+  QGpxCarItem(QGraphicsItem *parent = nullptr);
+  QGpxCarItem(const QGeoPos & pos, QGraphicsItem *parent = nullptr);
+
+protected:
+  bool populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
+  void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)final;
+  void onGeoPosChanged(const QGeoPos & pos) final;
+};
+
 
 class QGpxTrackItem :
     public QAbstractGeoPolyLineItem
@@ -52,7 +76,7 @@ public:
   typedef QGpxTrackItem ThisClass;
   typedef QAbstractGeoPolyLineItem Base;
 
-  QGpxTrackItem(QGraphicsItem *parent = nullptr);
+  QGpxTrackItem(QGeoMapView * geoMapView, QGraphicsItem *parent = nullptr);
 
   bool loadTrack(const QString & filename);
 
@@ -67,18 +91,23 @@ public:
   const std::vector<QGpxLandmarkItem*> gpxLandmarks() const;
   const QGpxLandmarkItem* gpxLandmarks(int index) const;
 
-  void addGpxLandmarkItem(const QGeoPos & pos, int associatedVideoFrameIndex);
+  void addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & pos);
 
   void setLandmarksVisible(bool v);
   bool landmarksVisible() const;
 
+  void setCarVisible(bool v);
+  bool carVisible() const;
+  void computeCarPositon(int scrollpos);
+
+  QGpxLandmarkItem * findGpxLandmarkItem(int gpxPointIndex);
+
 Q_SIGNALS:
-  void openAssociatedVideoFrameRequested(QGpxTrackItem * trackItem,
-      QGpxLandmarkItem * keyPointItem);
+  void openAssociatedVideoFrameRequested(QGpxTrackItem * trackItem, QGpxLandmarkItem * keyPointItem);
 
 protected: // QAbstractGeoPolygonItem
   void mousePressEvent(QGraphicsSceneMouseEvent * event) final;
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
+  bool populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) final;
   int pointsCount() const final;
   void insertPoint(const QGeoPos &, int insert_pos) final;
   void removePoint(int remove_pos) final;
@@ -86,10 +115,13 @@ protected: // QAbstractGeoPolygonItem
   QGeoPos getGeoPoint(int index) const final;
 
 protected:
+  QGeoMapView * _geoMmapView = nullptr;
   QString _pathFileName;
   QString _associatedVideoFileName;
   c_gpx_track _track;
+  c_gpx_interpolation _gpx_interpolation;
   std::vector<QGpxLandmarkItem*> _gpxLandmarks;
+  QGpxCarItem * _carItem = nullptr;
   bool _landmarksVisible = true;
 };
 
@@ -108,11 +140,13 @@ public:
 
   QToolButton * trackVisibiltyControl() const;
   QToolButton * landmarksVisibiltyControl() const;
+  QToolButton * carVisibiltyControl() const;
   QToolButton * openVideoControl() const;
 
 Q_SIGNALS:
   void toggleTrackVisibilityClicked(bool visible);
   void toggleLandmarksVisibilityClicked(bool visible);
+  void toggleCarVisibilityClicked(bool visible);
   void showSelectedTrackOnMapClicked();
   void deleteSelectedTrackClicked();
   void openAssociatedVideoFileClicked();
@@ -122,6 +156,7 @@ protected:
   QComboBox * combobox_ctl = nullptr;
   QToolButton * track_visibilty_ctl = nullptr;
   QToolButton * landmarks_visibilty_ctl = nullptr;
+  QToolButton * car_visibilty_ctl = nullptr;
   QToolButton * show_track_on_geomap_ctl = nullptr;
   QToolButton * open_video_ctl = nullptr;
   QToolButton * delete_track_ctl = nullptr;
@@ -153,6 +188,7 @@ protected:
   void onGpxTrackSelected(int index);
   void onToggleTrackVisibilityClicked(bool visible);
   void onToggleLandmarksVisibilityClicked(bool visible);
+  void onToggleCarVisibilityClicked(bool visible);
   void onShowSelectedTrackOnMapClicked();
 
 
@@ -217,6 +253,9 @@ public:
   void loadSettings(QSettings & settings);
   void saveSettings(QSettings & settings);
 
+  void setCurrentVideoScrollpos(const QString & currentFileName, int scrollpos);
+  int currentVideoScrollpos() const;
+
 Q_SIGNALS:
   void openVideoFileRequested(const QString & filename, int scrollToIndex = -1);
 
@@ -234,9 +273,10 @@ protected:
 
 
 protected:
+  std::vector<QGpxTrackItem*> gpxTrackItems;
   QGpxTrackViewSettingsDialogBox * viewSettingsDialogBox = nullptr;
   QAction * toggleOptionsDialogBoxAction = nullptr;
-  std::vector<QGpxTrackItem*> gpxTrackItems;
+  int _currentVideoScrollpos = 0;
   bool _firstShow = true;
 };
 

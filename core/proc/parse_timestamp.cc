@@ -11,6 +11,10 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#if __WIN32__ || __WIN64__ //  __MINGW32__ || __MINGW64__
+#define timegm _mkgmtime
+#endif
+
 bool parse_timestamp_from_filename(const std::string & pathfilename, double * ts)
 {
 

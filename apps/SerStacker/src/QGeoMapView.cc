@@ -323,7 +323,6 @@ void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFra
             std::find(_gpxLandmarks.begin(), _gpxLandmarks.end(), item);
 
         if ( pos != _gpxLandmarks.end() ) {
-
           _gpxLandmarks.erase(pos);
         }
 

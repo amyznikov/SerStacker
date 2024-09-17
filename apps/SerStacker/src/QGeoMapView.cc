@@ -242,11 +242,46 @@ QGeoPos QGpxTrackItem::getGeoPoint(int index) const
   return QGeoPos(_track.pts[index]);
 }
 
+void QGpxTrackItem::setTrackVisible(bool v)
+{
+  if( !(_trackVisible = v) ) {
+
+    this->setVisible(false);
+
+    if( _carItem ) {
+      _carItem->setVisible(false);
+    }
+
+    for( auto landmark : _gpxLandmarks ) {
+      landmark->setVisible(false);
+    }
+  }
+  else {
+
+    this->setVisible(true);
+
+    if( _carItem ) {
+      _carItem->setVisible(_carVisible);
+    }
+
+    if( _landmarksVisible ) {
+      for( auto landmark : _gpxLandmarks ) {
+        landmark->setVisible(true);
+      }
+    }
+  }
+}
+
+bool QGpxTrackItem::trackVisible() const
+{
+  return _trackVisible;
+}
+
 void QGpxTrackItem::setLandmarksVisible(bool v)
 {
   _landmarksVisible = v;
-  for ( auto landmark : _gpxLandmarks ) {
-    landmark->setVisible(v);
+  for( auto landmark : _gpxLandmarks ) {
+    landmark->setVisible(v && _trackVisible);
   }
 }
 
@@ -260,22 +295,21 @@ void QGpxTrackItem::setCarVisible(bool v)
   if ( !_carItem ) {
     scene()->addItem(_carItem = new QGpxCarItem(_track.pts[0]));
   }
-
-  _carItem->setVisible(v);
+  _carItem->setVisible( (_carVisible = v) && _trackVisible );
 }
 
 bool QGpxTrackItem::carVisible() const
 {
-  return _carItem && _carItem->isVisible();
+  return _carItem && _carVisible; //  _carItem->isVisible();
 }
 
 void QGpxTrackItem::computeCarPositon(int scrollpos)
 {
-  if ( carVisible() ) {
+  if( _trackVisible && _carVisible ) {
 
     c_gps_position gps;
 
-    if ( !_gpx_interpolation.interpolate_for_frame(scrollpos, &gps) ) {
+    if( !_gpx_interpolation.interpolate_for_frame(scrollpos, &gps) ) {
       CF_ERROR("interpolate_for_frame() fails");
     }
     else {
@@ -298,7 +332,7 @@ QGpxLandmarkItem * QGpxTrackItem::findGpxLandmarkItem(int gpxPointIndex)
 void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & geopos)
 {
   QGpxLandmarkItem * item = new QGpxLandmarkItem(gpxPointIndex, geopos);
-  item->setVisible(_landmarksVisible);
+  item->setVisible(_landmarksVisible && _trackVisible );
   item->setZValue(LANDMARK_ZVALUE);
   item->setAssociatedVideoFrameIndex(associatedVideoFrameIndex);
   scene()->addItem(item);
@@ -796,7 +830,7 @@ void QGpxTrackViewSettings::onToggleTrackVisibilityClicked(bool visible)
       selectedTrack();
 
   if( item ) {
-    item->setVisible(visible);
+    item->setTrackVisible(visible);
   }
 
 }
@@ -888,7 +922,7 @@ QGpxTrackItem* QGeoMapView::loadGpxTrack(const QString & filename)
   }
 
   item->setZValue(TRACK_ZVALUE);
-  item->setVisible(true);
+  item->setTrackVisible(true);
   item->setName(QFileInfo(filename).fileName());
   item->setDescription(item->track().name.c_str());
   item->setPathFileName(filename);
@@ -1104,7 +1138,7 @@ void QGeoMapView::loadSettings(QSettings & settings)
 
 
       item->setAssociatedVideoFileName(settings.value(QString("%1_videoFileName").arg(prefix)).toString());
-      item->setVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());
+      item->setTrackVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());
       item->setShowLines(settings.value(QString("%1_showLines").arg(prefix)).toBool());
       item->setLineWidth(settings.value(QString("%1_lineWidth").arg(prefix)).toInt());
       item->setLineColor(settings.value(QString("%1_lineColor").arg(prefix)).value<QColor>());

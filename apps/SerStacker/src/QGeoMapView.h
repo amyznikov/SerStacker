@@ -93,6 +93,9 @@ public:
 
   void addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & pos);
 
+  void setTrackVisible(bool v);
+  bool trackVisible() const;
+
   void setLandmarksVisible(bool v);
   bool landmarksVisible() const;
 
@@ -122,7 +125,9 @@ protected:
   c_gpx_interpolation _gpx_interpolation;
   std::vector<QGpxLandmarkItem*> _gpxLandmarks;
   QGpxCarItem * _carItem = nullptr;
+  bool _trackVisible = true;
   bool _landmarksVisible = true;
+  bool _carVisible = true;
 };
 
 

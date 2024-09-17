@@ -450,7 +450,10 @@ void QGpxTrackItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
 bool QGpxTrackItem::exportToConfigFile(const QString & filename)
 {
-  c_config config(filename.toStdString());
+//  c_config config(filename.toStdString());
+
+//  c_config_setting cfg =
+//      config.root();
 
 
 

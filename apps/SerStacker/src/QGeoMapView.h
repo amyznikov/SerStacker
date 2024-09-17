@@ -78,12 +78,15 @@ public:
 
   QGpxTrackItem(QGeoMapView * geoMapView, QGraphicsItem *parent = nullptr);
 
-  bool loadTrack(const QString & filename);
+  bool loadGPXTrack(const QString & filename);
+
+  bool exportToConfigFile(const QString & filename);
+  bool importFromConfigFile(const QString & filename);
 
   const c_gpx_track & track() const;
 
-  void setPathFileName(const QString& filename);
-  const QString & pathFileName() const;
+  void setGPXPathFileName(const QString& filename);
+  const QString & gpxPathFileName() const;
 
   void setAssociatedVideoFileName(const QString & fname);
   const QString & associatedVideoFileName() const;
@@ -119,7 +122,7 @@ protected: // QAbstractGeoPolygonItem
 
 protected:
   QGeoMapView * _geoMmapView = nullptr;
-  QString _pathFileName;
+  QString _gpxPathFileName;
   QString _associatedVideoFileName;
   c_gpx_track _track;
   c_gpx_interpolation _gpx_interpolation;
@@ -153,6 +156,7 @@ Q_SIGNALS:
   void toggleLandmarksVisibilityClicked(bool visible);
   void toggleCarVisibilityClicked(bool visible);
   void showSelectedTrackOnMapClicked();
+  void exportToConfigFileClicked();
   void deleteSelectedTrackClicked();
   void openAssociatedVideoFileClicked();
 
@@ -164,6 +168,7 @@ protected:
   QToolButton * car_visibilty_ctl = nullptr;
   QToolButton * show_track_on_geomap_ctl = nullptr;
   QToolButton * open_video_ctl = nullptr;
+  QToolButton * export_to_config_file_ctl = nullptr;
   QToolButton * delete_track_ctl = nullptr;
 };
 
@@ -196,6 +201,8 @@ protected:
   void onToggleCarVisibilityClicked(bool visible);
   void onShowSelectedTrackOnMapClicked();
 
+protected Q_SLOTS:
+  void onExportToConfigFileClicked();
 
 protected:
   const std::vector<QGpxTrackItem*> * gpxTracks = nullptr;

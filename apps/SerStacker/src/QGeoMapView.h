@@ -78,10 +78,9 @@ public:
 
   QGpxTrackItem(QGeoMapView * geoMapView, QGraphicsItem *parent = nullptr);
 
-  bool loadGPXTrack(const QString & filename);
+  void deleteChildItems();
 
-  bool exportToConfigFile(const QString & filename);
-  bool importFromConfigFile(const QString & filename);
+  bool loadGPXTrack(const QString & filename);
 
   const c_gpx_track & track() const;
 
@@ -94,7 +93,7 @@ public:
   const std::vector<QGpxLandmarkItem*> gpxLandmarks() const;
   const QGpxLandmarkItem* gpxLandmarks(int index) const;
 
-  void addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & pos);
+  bool addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex);
 
   void setTrackVisible(bool v);
   bool trackVisible() const;
@@ -107,6 +106,7 @@ public:
   void computeCarPositon(int scrollpos);
 
   QGpxLandmarkItem * findGpxLandmarkItem(int gpxPointIndex);
+
 
 Q_SIGNALS:
   void openAssociatedVideoFrameRequested(QGpxTrackItem * trackItem, QGpxLandmarkItem * keyPointItem);
@@ -156,7 +156,7 @@ Q_SIGNALS:
   void toggleLandmarksVisibilityClicked(bool visible);
   void toggleCarVisibilityClicked(bool visible);
   void showSelectedTrackOnMapClicked();
-  void exportToConfigFileClicked();
+  void exportGPXTrackToConfigFileClicked();
   void deleteSelectedTrackClicked();
   void openAssociatedVideoFileClicked();
 
@@ -188,7 +188,8 @@ public:
 
 Q_SIGNALS:
   void openSelectedAssociatedVideoFileClicked();
-  void showPositionOnMap(double latitude, double longitude);
+  void showPositionOnMapClicked(double latitude, double longitude);
+  void exportSelectedGPXTrackToConfigFileClicked();
   void deleteSelectedTrackClicked();
 
 protected:
@@ -200,9 +201,6 @@ protected:
   void onToggleLandmarksVisibilityClicked(bool visible);
   void onToggleCarVisibilityClicked(bool visible);
   void onShowSelectedTrackOnMapClicked();
-
-protected Q_SLOTS:
-  void onExportToConfigFileClicked();
 
 protected:
   const std::vector<QGpxTrackItem*> * gpxTracks = nullptr;
@@ -242,6 +240,7 @@ public:
 Q_SIGNALS:
   void showPositionOnMap(double latitude, double longitude);
   void openSelectedAssociatedVideoFileClicked();
+  void exportSelectedGPXTrackToConfigFileClicked();
   void deleteSelectedTrackClicked();
 };
 
@@ -256,7 +255,10 @@ public:
 
   QGeoMapView(QWidget * parent = nullptr);
 
-  bool addGpxTrack(const QString & filename);
+  void importGpxTrack();
+  void exportSelectedGpxTrack();
+  bool importGpxTrack(const QString & filename);
+
 
   void flyToPosition(double latitude, double longitude);
 
@@ -264,6 +266,8 @@ public:
   void saveSettings();
   void loadSettings(QSettings & settings);
   void saveSettings(QSettings & settings);
+
+
 
   void setCurrentVideoScrollpos(const QString & currentFileName, int scrollpos);
   int currentVideoScrollpos() const;
@@ -275,6 +279,10 @@ protected Q_SLOTS:
   void onToggleOptionsDialogBox(bool checked);
   void onOpenSelectedAssociatedVideoFileClicked();
   void onDeleteSelectedTrackClicked();
+
+protected:
+  bool exportGpxTrackToConfigFile(const QGpxTrackItem * item, const QString & filename) const;
+  bool importGpxTrackFromConfigFile(const QString & filename);
 
 protected:
   void showEvent(QShowEvent *event) final;

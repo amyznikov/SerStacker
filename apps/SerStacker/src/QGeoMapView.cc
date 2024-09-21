@@ -167,6 +167,29 @@ QGpxTrackItem::QGpxTrackItem(QGeoMapView * geoMmapView, QGraphicsItem * parent) 
   setEnableMovePoints(false);
 }
 
+void QGpxTrackItem::deleteChildItems()
+{
+  QGraphicsScene * scene =
+      this->scene();
+
+  if ( scene )  {
+
+    for ( QGpxLandmarkItem* landmark : _gpxLandmarks ) {
+      scene->removeItem(landmark);
+      delete landmark;
+    }
+
+    _gpxLandmarks.clear();
+
+    if ( _carItem ) {
+      scene->removeItem(_carItem);
+      delete _carItem;
+      _carItem = nullptr;
+    }
+
+  }
+}
+
 const c_gpx_track& QGpxTrackItem::track() const
 {
   return _track;
@@ -323,9 +346,13 @@ QGpxLandmarkItem * QGpxTrackItem::findGpxLandmarkItem(int gpxPointIndex)
   return nullptr;
 }
 
-void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex, const QGeoPos & geopos)
+bool QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFrameIndex)
 {
-  QGpxLandmarkItem * item = new QGpxLandmarkItem(gpxPointIndex, geopos);
+  if ( gpxPointIndex < 0 || gpxPointIndex >= (int)(_track.pts.size()) ) {
+    return false;
+  }
+
+  QGpxLandmarkItem * item = new QGpxLandmarkItem(gpxPointIndex, QGeoPos(_track.pts[gpxPointIndex]));
   item->setVisible(_landmarksVisible && _trackVisible );
   item->setZValue(LANDMARK_ZVALUE);
   item->setAssociatedVideoFrameIndex(associatedVideoFrameIndex);
@@ -356,6 +383,8 @@ void QGpxTrackItem::addGpxLandmarkItem(int gpxPointIndex, int associatedVideoFra
 
         delete item;
       });
+
+  return true;
 }
 
 bool QGpxTrackItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
@@ -401,7 +430,7 @@ bool QGpxTrackItem::populateContextMenu(const QGraphicsSceneContextMenuEvent * e
                   Qt::WindowFlags());
 
               if ( fOk ) {
-                addGpxLandmarkItem(gpxPointIndex, frameIndex, _track.pts[gpxPointIndex]);
+                addGpxLandmarkItem(gpxPointIndex, frameIndex);
               }
         });
 
@@ -446,23 +475,6 @@ void QGpxTrackItem::mousePressEvent(QGraphicsSceneMouseEvent * event)
 
   Base::mousePressEvent(event);
 
-}
-
-bool QGpxTrackItem::exportToConfigFile(const QString & filename)
-{
-//  c_config config(filename.toStdString());
-
-//  c_config_setting cfg =
-//      config.root();
-
-
-
-  return false;
-}
-
-bool QGpxTrackItem::importFromConfigFile(const QString & filename)
-{
-  return false;
 }
 
 
@@ -518,7 +530,7 @@ QGpxTrackSelectorWidget::QGpxTrackSelectorWidget(QWidget * parent) :
       createToolButton(getIcon(ICON_save), "Export",
           "Export track into config file",
           this,
-          &ThisClass::exportToConfigFileClicked));
+          &ThisClass::exportGPXTrackToConfigFileClicked));
 
   _hbox->addWidget(delete_track_ctl =
       createToolButton(getIcon(ICON_delete), "Delete",
@@ -551,49 +563,6 @@ QToolButton * QGpxTrackSelectorWidget::carVisibiltyControl() const
 QToolButton* QGpxTrackSelectorWidget::openVideoControl() const
 {
   return open_video_ctl;
-}
-
-void QGpxTrackViewSettings::onExportToConfigFileClicked()
-{
-  QGpxTrackItem * currentItem =
-      selectedTrack();
-
-  if ( !currentItem ) {
-    return;
-  }
-
-  static const QString exportTrackToConfigFileLastPath =
-      "exportTrackToConfigFileLastPath";
-
-  QSettings settings;
-
-  QString savedPathFileName =
-      settings.value(exportTrackToConfigFileLastPath).toString();
-
-  const QString filter =
-      "Config files (*.conf) ;;"
-      "All files (*.*)";
-
-  QString selectedFileName =
-      QFileDialog::getSaveFileName(this,
-          "Specify config file to save",
-          savedPathFileName,
-          filter,
-          nullptr);
-
-  if ( selectedFileName.isEmpty() ) {
-    return;
-  }
-
-  settings.setValue(exportTrackToConfigFileLastPath,
-      selectedFileName);
-
-
-  if ( !currentItem->exportToConfigFile(selectedFileName) ) {
-    QMessageBox::critical(this, "ERROR",
-        QString("Eport to config file fails .\n"
-            "See error log for details.\n"));
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -798,8 +767,8 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::showSelectedTrackOnMapClicked,
       this, &ThisClass::onShowSelectedTrackOnMapClicked);
 
-  connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::exportToConfigFileClicked,
-      this, &ThisClass::onExportToConfigFileClicked);
+  connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::exportGPXTrackToConfigFileClicked,
+      this, &ThisClass::exportSelectedGPXTrackToConfigFileClicked);
 
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::openAssociatedVideoFileClicked,
       this, &ThisClass::openSelectedAssociatedVideoFileClicked);
@@ -934,7 +903,7 @@ void QGpxTrackViewSettings::onShowSelectedTrackOnMapClicked()
       const c_gps_position & gps =
           track.pts[track.pts.size() / 2];
 
-      Q_EMIT showPositionOnMap(gps.latitude, gps.longitude);
+      Q_EMIT showPositionOnMapClicked(gps.latitude, gps.longitude);
     }
   }
 }
@@ -946,8 +915,11 @@ QGpxTrackViewSettingsDialogBox::QGpxTrackViewSettingsDialogBox(QWidget * parent)
 {
   setWindowTitle("GPX track options");
 
-  connect(settings_ctl, &QGpxTrackViewSettings::showPositionOnMap,
+  connect(settings_ctl, &QGpxTrackViewSettings::showPositionOnMapClicked,
       this, &ThisClass::showPositionOnMap);
+
+  connect(settings_ctl, &QGpxTrackViewSettings::exportSelectedGPXTrackToConfigFileClicked,
+      this, &ThisClass::exportSelectedGPXTrackToConfigFileClicked);
 
   connect(settings_ctl, &QGpxTrackViewSettings::deleteSelectedTrackClicked,
       this, &ThisClass::deleteSelectedTrackClicked);
@@ -1007,25 +979,6 @@ QGpxTrackItem* QGeoMapView::loadGpxTrack(const QString & filename)
   return item;
 }
 
-bool QGeoMapView::addGpxTrack(const QString & filename)
-{
-  QGpxTrackItem * item =
-      loadGpxTrack(filename);
-
-  if( !item ) {
-    return false;
-  }
-
-  scene_->addItem(item);
-  gpxTrackItems.emplace_back(item);
-
-  if( viewSettingsDialogBox ) {
-    viewSettingsDialogBox->settingsWidget()->setGpxTracks(&gpxTrackItems);
-  }
-
-  return true;
-}
-
 void QGeoMapView::createToolbarActions()
 {
   toolbarActions_.append(toggleOptionsDialogBoxAction =
@@ -1062,6 +1015,9 @@ void QGeoMapView::onToggleOptionsDialogBox(bool checked)
 
       connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::openSelectedAssociatedVideoFileClicked,
           this, &ThisClass::onOpenSelectedAssociatedVideoFileClicked);
+
+      connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::exportSelectedGPXTrackToConfigFileClicked,
+          this, &ThisClass::exportSelectedGpxTrack);
 
       connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::deleteSelectedTrackClicked,
           this, &ThisClass::onDeleteSelectedTrackClicked);
@@ -1133,6 +1089,7 @@ void QGeoMapView::onDeleteSelectedTrackClicked()
 
       if( reply == QMessageBox::Yes ) {
 
+        item->deleteChildItems();
         scene_->removeItem(item);
 
         const auto pos =
@@ -1231,8 +1188,7 @@ void QGeoMapView::loadSettings(QSettings & settings)
         if ( gpxPointIndex >= 0 && gpxPointIndex < (int)item->track().pts.size() ) {
           if ( !item->findGpxLandmarkItem(gpxPointIndex) )   {
 
-            item->addGpxLandmarkItem(gpxPointIndex, associatedFrameIndex,
-                item->track().pts[gpxPointIndex]);
+            item->addGpxLandmarkItem(gpxPointIndex, associatedFrameIndex);
 
           }
         }
@@ -1300,6 +1256,267 @@ void QGeoMapView::saveSettings(QSettings & settings)
   }
 
 }
+
+
+void QGeoMapView::importGpxTrack()
+{
+  static const QString loadGpsTrackLastPathKeyName =
+      "loadGpsTrackLastPathKeyName";
+
+  QSettings settings;
+
+  QString savedPathFileName =
+      settings.value(loadGpsTrackLastPathKeyName).toString();
+
+  const QString filter =
+      "GPX files (*.gpx) ;;"
+      "Track config files files (*.conf *.cfg * config) ;;"
+      "All files (*.*)";
+
+  QStringList selectedFileNames =
+      QFileDialog::getOpenFileNames(this,
+          "Select gpx or track config file",
+          savedPathFileName,
+          filter,
+          nullptr,
+          QFileDialog::ReadOnly);
+
+  if ( selectedFileNames.isEmpty() ) {
+    return;
+  }
+
+  settings.setValue(loadGpsTrackLastPathKeyName,
+      selectedFileNames[0]);
+
+  for( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
+
+    const QString & selectedFileName =
+        selectedFileNames[i];
+
+    bool fOk ;
+
+    if ( selectedFileName.endsWith(".gpx", Qt::CaseInsensitive) ) {
+      fOk = importGpxTrack(selectedFileName);
+    }
+    else {
+      fOk = importGpxTrackFromConfigFile(selectedFileName);
+    }
+
+    if( !fOk ) {
+      if( i == n - 1 ) {
+        QMessageBox::critical(this, "ERROR",
+            QString("Can not load %1.\nSee error log for details.").arg(selectedFileName));
+        break;
+      }
+
+      const int responce =
+          QMessageBox::critical(this, "ERROR",
+              QString("Can not load %1.\n"
+                  "See error log for details.\n"
+                  "Continue loading ?").arg(selectedFileName),
+              QMessageBox::Yes | QMessageBox::No);
+
+      if( responce != QMessageBox::Yes ) {
+        break;
+      }
+    }
+  }
+
+  if( viewSettingsDialogBox ) {
+    viewSettingsDialogBox->settingsWidget()->setGpxTracks(&gpxTrackItems);
+  }
+}
+
+void QGeoMapView::exportSelectedGpxTrack()
+{
+  if ( !viewSettingsDialogBox || !viewSettingsDialogBox->isVisible() ) {
+    return;
+  }
+
+  QGpxTrackItem * currentItem =
+      viewSettingsDialogBox->selectedTrack();
+
+  if ( !currentItem ) {
+    return;
+  }
+
+  static const QString exportTrackToConfigFileLastPath =
+      "exportTrackToConfigFileLastPath";
+
+  QSettings settings;
+
+  QString savedPathFileName =
+      settings.value(exportTrackToConfigFileLastPath).toString();
+
+  const QString filter =
+      "Config files (*.conf) ;;"
+      "All files (*.*)";
+
+  QString selectedFileName =
+      QFileDialog::getSaveFileName(this,
+          "Specify config file to save",
+          savedPathFileName,
+          filter,
+          nullptr);
+
+  if ( selectedFileName.isEmpty() ) {
+    return;
+  }
+
+  settings.setValue(exportTrackToConfigFileLastPath,
+      selectedFileName);
+
+
+  if ( !exportGpxTrackToConfigFile(currentItem, selectedFileName) ) {
+    QMessageBox::critical(this, "ERROR",
+        QString("Eport to config file fails .\n"
+            "See error log for details.\n"));
+  }
+
+}
+
+
+bool QGeoMapView::importGpxTrack(const QString & filename)
+{
+  QGpxTrackItem * item =
+      loadGpxTrack(filename);
+
+  if( !item ) {
+    return false;
+  }
+
+  scene_->addItem(item);
+  gpxTrackItems.emplace_back(item);
+
+  if( viewSettingsDialogBox ) {
+    viewSettingsDialogBox->settingsWidget()->setGpxTracks(&gpxTrackItems);
+  }
+
+  return true;
+}
+
+
+bool QGeoMapView::importGpxTrackFromConfigFile(const QString & filename)
+{
+  c_config config(filename.toStdString());
+
+  if ( !config.read() ) {
+    CF_ERROR("config.read('%s') fails", config.filename().c_str());
+    return false;
+  }
+
+  c_config_setting cfg =
+      config.root();
+
+  std::string gpxFileName;
+  std::string videoFileName;
+  //std::vector<c_gpx_interpolation::Landmark> landmarks;
+
+
+  if( !load_settings(cfg, "gpx", &gpxFileName) || gpxFileName.empty() ) {
+    CF_ERROR("load_settings('gpx') fails, no string entry found in '%s'",
+        config.filename().c_str());
+    return false;
+  }
+
+  QGpxTrackItem * gpxTrackItem =
+      loadGpxTrack(gpxFileName.c_str());
+
+  if( !gpxTrackItem ) {
+    CF_ERROR("loadGpxTrack('%s') fails",
+        gpxFileName.c_str());
+    return false;
+  }
+
+
+  scene_->addItem(gpxTrackItem);
+  gpxTrackItems.emplace_back(gpxTrackItem);
+
+
+  if ( load_settings(cfg, "video", &videoFileName) && !videoFileName.empty() )  {
+    gpxTrackItem->setAssociatedVideoFileName(videoFileName.c_str());
+  }
+
+  c_config_setting landmarks_items =
+      cfg.get_list("landmarks");
+
+  if ( landmarks_items ) {
+
+    for ( int i = 0, n = landmarks_items.length(); i < n; ++i ) {
+
+      c_config_setting item =
+          landmarks_items[i];
+
+      if ( item.isGroup() ) {
+
+        int videoFrameIndex = -1;
+        int gpxPointIndex = -1;
+
+        if ( !load_settings(item, "f", &videoFrameIndex) ) {
+          continue;
+        }
+
+        if ( !load_settings(item, "p", &gpxPointIndex) ) {
+          continue;
+        }
+
+        gpxTrackItem->addGpxLandmarkItem(gpxPointIndex,
+            videoFrameIndex);
+      }
+
+    }
+  }
+
+
+  return true;
+}
+
+
+
+bool QGeoMapView::exportGpxTrackToConfigFile(const QGpxTrackItem * currentItem, const QString & filename) const
+{
+  c_config config(filename.toStdString());
+
+  c_config_setting cfg =
+      config.root();
+
+
+  save_settings(cfg, "gpx",
+      currentItem->gpxPathFileName().toStdString());
+
+  save_settings(cfg, "video",
+      currentItem->associatedVideoFileName().toStdString());
+
+  c_config_setting landmarks_items =
+      cfg.add_list("landmarks");
+
+  const std::vector<QGpxLandmarkItem*> gpxLandmarks =
+      currentItem->gpxLandmarks();
+
+  for ( int i = 0, n = gpxLandmarks.size(); i < n; ++i ) {
+
+    const QGpxLandmarkItem * landmark =
+        gpxLandmarks[i];
+
+    c_config_setting item =
+        landmarks_items.add_group();
+
+    save_settings(item, "f",
+        landmark->associatedVideoFrameIndex());
+
+    save_settings(item, "p",
+        landmark->gpxPointIndex());
+
+  }
+
+  if ( !config.write() ) {
+    CF_ERROR("config.write('%s') fails", config.filename().c_str());
+    return false;
+  }
+
+  return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -804,56 +804,12 @@ void MainWindow::onWriteDisplayVideo()
 
 void MainWindow::onLoadGpxTrack()
 {
-  static const QString loadGpsTrackLastPathKeyName =
-      "loadGpsTrackLastPathKeyName";
-
-  QSettings settings;
-
-  QString savedPathFileName =
-      settings.value(loadGpsTrackLastPathKeyName).toString();
-
-  const QString filter =
-      "GPX files (*.gpx) ;;"
-      "All files (*.*)";
-
-  QStringList selectedFileNames =
-      QFileDialog::getOpenFileNames(this,
-          "Select gpx file",
-          savedPathFileName,
-          filter,
-          nullptr,
-          QFileDialog::ReadOnly);
-
-  if ( selectedFileNames.isEmpty() ) {
-    return;
+  if ( !geoView->isVisible() ) {
+    geoViewDock->show();
+    geoViewDock->raise();
   }
 
-  settings.setValue(loadGpsTrackLastPathKeyName,
-      selectedFileNames[0]);
-
-  for( int i = 0, n = selectedFileNames.size(); i < n; ++i ) {
-
-    if( !geoView->addGpxTrack(selectedFileNames[i]) ) {
-      if( i == n - 1 ) {
-        QMessageBox::critical(this,
-            "ERROR",
-            QString("Can not load %1.\nSee error log for details.").arg(selectedFileNames[i]));
-        break;
-      }
-
-      const int responce =
-          QMessageBox::critical(this, "ERROR",
-              QString("Can not load %1.\n"
-                  "See error log for details.\n"
-                  "Continue loading ?").arg(selectedFileNames[i]),
-              QMessageBox::Yes | QMessageBox::No);
-
-      if( responce != QMessageBox::Yes ) {
-        break;
-      }
-    }
-  }
-
+  geoView->importGpxTrack();
 }
 
 

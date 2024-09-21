@@ -131,6 +131,11 @@ public:
     return get_member(setting_, name.c_str());
   }
 
+  c_config_setting get_list(const std::string & name) const {
+    c_config_setting cfg = get_member(setting_, name.c_str());
+    return cfg.isList() ? cfg : c_config_setting();
+  }
+
   c_config_setting operator [](const std::string & name) const {
     return get_member(setting_, name.c_str());
   }

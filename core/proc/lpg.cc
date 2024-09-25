@@ -182,6 +182,7 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
       image.getMat();
 
   cv::Mat s, l, g, m;
+  double min, max;
 
   if ( src.depth() == CV_32F ) {
     src.copyTo(s);
@@ -212,12 +213,15 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     downscale(m, m, uscale - std::max(0, dscale));
   }
 
-  if( m.size() != src.size() ) {
-    upscale(m, src.size());
-  }
+  cv::minMaxLoc(m, &min, &max);
+  cv::add(m, cv::Scalar::all(1e-5 * (max - min)), m);
 
   if( p != 0 && p != 1  ) {
     cv::pow(m, p, m);
+  }
+
+  if( m.size() != src.size() ) {
+    upscale(m, src.size());
   }
 
   if( optional_output_sharpness_metric ) {

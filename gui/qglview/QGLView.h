@@ -5,6 +5,8 @@
  *      Author: amyznikov
  *
  *  https://doc.qt.io/qt-6/qopenglwidget.html
+ *
+ *  TODO: http://aco.ifmo.ru/el_books/computer_visualization/lectures/8.html
  */
 
 #pragma once

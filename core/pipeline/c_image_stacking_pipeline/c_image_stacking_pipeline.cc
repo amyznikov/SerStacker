@@ -3333,8 +3333,11 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
         PIPELINE_CTL(ctrls, _master_options.unsharp_alpha, "unsharp_alpha", "Set positive value to apply unsharp mask to master frame");
 
         PIPELINE_CTL(ctrls, _master_options.generate_master_frame, "Generate Master Frame:", "");
-        PIPELINE_CTLC(ctrls, _master_options.stop_after_master_frame_generation, "Stop after master generation:",
-            "Finish pipeline after master frame generation", _this->_master_options.generate_master_frame);
+        PIPELINE_CTLC(ctrls, _master_options.save_master_frame, "Save Generated Master Frame:", "",
+            _this->_master_options.generate_master_frame);
+        PIPELINE_CTLC(ctrls, _master_options.stop_after_master_frame_generation, "Stop after master generation:", "Finish pipeline after master frame generation",
+            _this->_master_options.generate_master_frame);
+
 
         PIPELINE_CTL_GROUPC(ctrls, "Master Frame Generation", "", _this->_master_options.generate_master_frame);
 
@@ -3346,7 +3349,6 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
           PIPELINE_CTL(ctrls, _master_options.registration.ecc_registration_channel, "ECC Registration Channel:", "");
           PIPELINE_CTL(ctrls, _master_options.registration.accumulate_and_compensate_turbulent_flow, "Compute and Compensate Turbulent Flow:", "");
           PIPELINE_CTL(ctrls, _master_options.max_frames_to_generate_master_frame, "Max Input frames:", "Max input frames used to generate master frame");
-          PIPELINE_CTL(ctrls, _master_options.save_master_frame, "Save Generated Master Frame:", "");
 
           PIPELINE_CTL_GROUPC(ctrls, "Camera Matrix", "", (_this->_master_options.registration.motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION));
             PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
@@ -3601,6 +3603,13 @@ bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
     return false;
   }
 
+  const std::string backup_master_source_fiename =
+      p->_master_options.master_selection.master_fiename;
+
+  const int backup_master_frame_index =
+      p->_master_options.master_selection.master_frame_index;
+
+
   p->_input_options = this->_input_options;
   p->_roi_selection_options = this->_roi_selection_options;
   p->_upscale_options = this->_upscale_options;
@@ -3608,14 +3617,6 @@ bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
   p->_stacking_options = this->_stacking_options ;
   p->_output_options = this->_output_options;
   p->_image_processing_options = this->_image_processing_options;
-
-  const std::string backup_master_source_fiename =
-      p->_master_options.master_selection.master_fiename;
-
-  const int backup_master_frame_index =
-      p->_master_options.master_selection.master_frame_index;
-
-  p->_master_options = this->_master_options;
 
   p->_master_options.master_selection.master_fiename =
       backup_master_source_fiename;

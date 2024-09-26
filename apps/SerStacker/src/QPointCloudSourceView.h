@@ -24,6 +24,9 @@ public:
   QPointCloudSourceView(QWidget * parent = nullptr);
 
 protected:
+  void keyPressEvent(QKeyEvent *event) final;
+  void keyReleaseEvent(QKeyEvent *event) final;
+  void glSelectionEvent(const QPointF & click_pos, double objX, double objY, double objZ) final;
 };
 
 /////////////////

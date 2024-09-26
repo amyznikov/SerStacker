@@ -14,6 +14,7 @@
 
 #include "QGLView.h"
 #include <gui/widgets/settings.h>
+#include <core/io/save_image.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -147,50 +148,50 @@ void QGLView::loadParameters()
 
 void QGLView::onLoadParameters(QSettings & settings)
 {
-  backgroundColor_ =
+  _backgroundColor =
       settings.value("QGLView/backgroundColor_",
-          backgroundColor_).value<QColor>();
+          _backgroundColor).value<QColor>();
 
-  foregroundColor_ =
+  _foregroundColor =
       settings.value("QGLView/foregroundColor_",
-          foregroundColor_).value<QColor>();
+          _foregroundColor).value<QColor>();
 
-  showMainAxes_ =
+  _showMainAxes =
       settings.value("QGLView/showMainAxes",
-          showMainAxes_).toBool();
+          _showMainAxes).toBool();
 
-  mainAxesLength_ =
+  _mainAxesLength =
       settings.value("QGLView/mainAxesLength",
-          mainAxesLength_).toDouble();
+          _mainAxesLength).toDouble();
 
   fromString(settings.value("QGLView/projection",
-      toQString(viewParams_.projection)).toString().toStdString(),
-      &viewParams_.projection);
+      toQString(_viewParams.projection)).toString().toStdString(),
+      &_viewParams.projection);
 
-  viewParams_.fov = settings.value("QGLView/fov",
-      viewParams_.fov).value<decltype(viewParams_.fov)>();
+  _viewParams.fov = settings.value("QGLView/fov",
+      _viewParams.fov).value<decltype(_viewParams.fov)>();
 
-  viewParams_.nearPlane = settings.value("QGLView/nearPlane",
-      viewParams_.nearPlane).value<decltype(viewParams_.nearPlane)>();
+  _viewParams.nearPlane = settings.value("QGLView/nearPlane",
+      _viewParams.nearPlane).value<decltype(_viewParams.nearPlane)>();
 
-  viewParams_.farPlane = settings.value("QGLView/farPlane",
-      viewParams_.farPlane).value<decltype(viewParams_.farPlane)>();
+  _viewParams.farPlane = settings.value("QGLView/farPlane",
+      _viewParams.farPlane).value<decltype(_viewParams.farPlane)>();
 
   const int numGrids =
       settings.value("QGLView/numGrids",
           0).value<int>();
 
-  grids_.clear();
+  _grids.clear();
 
   for( int i = 0; i < numGrids; ++i ) {
 
     const QString keyPrefix =
         QString("QGLView/grid%1").arg(i);
 
-    grids_.emplace_back();
+    _grids.emplace_back();
 
     PlanarGridOptions & grid =
-        grids_.back();
+        _grids.back();
 
     grid.name =
         settings.value(QString("%1/name").arg(keyPrefix),
@@ -245,36 +246,36 @@ void QGLView::saveParameters()
 void QGLView::onSaveParameters(QSettings & settings)
 {
   settings.setValue("QGLView/backgroundColor_",
-      backgroundColor_);
+      _backgroundColor);
 
   settings.setValue("QGLView/foregroundColor_",
-      foregroundColor_);
+      _foregroundColor);
 
   settings.setValue("QGLView/showMainAxes",
-      showMainAxes_);
+      _showMainAxes);
 
   settings.setValue("QGLView/mainAxesLength",
-      mainAxesLength_);
+      _mainAxesLength);
 
   settings.setValue("QGLView/projection",
-      toQString(viewParams_.projection));
+      toQString(_viewParams.projection));
 
   settings.setValue("QGLView/fov",
-      viewParams_.fov);
+      _viewParams.fov);
 
   settings.setValue("QGLView/nearPlane",
-      viewParams_.nearPlane);
+      _viewParams.nearPlane);
 
   settings.setValue("QGLView/farPlane",
-      viewParams_.farPlane);
+      _viewParams.farPlane);
 
   settings.setValue("QGLView/numGrids",
-      (int) (grids_.size()));
+      (int) (_grids.size()));
 
-  for( int i = 0, n = grids_.size(); i < n; ++i ) {
+  for( int i = 0, n = _grids.size(); i < n; ++i ) {
 
     const PlanarGridOptions & grid =
-        grids_[i];
+        _grids[i];
 
     const QString keyPrefix =
         QString("QGLView/grid%1").arg(i);
@@ -317,72 +318,72 @@ void QGLView::onSaveParameters(QSettings & settings)
 
 void QGLView::setBackgroundColor(const QColor &color)
 {
-  backgroundColor_ = color;
-  dirty_ = true;
+  _backgroundColor = color;
+  _dirty = true;
   update();
 }
 
 const QColor & QGLView::backgroundColor() const
 {
-  return backgroundColor_;
+  return _backgroundColor;
 }
 
 void QGLView::setForegroundColor(const QColor &color)
 {
-  foregroundColor_ = color;
-  dirty_ = true;
+  _foregroundColor = color;
+  _dirty = true;
   update();
 }
 
 const QColor & QGLView::foregroundColor() const
 {
-  return foregroundColor_;
+  return _foregroundColor;
 }
 
 const QGLView::ViewParams & QGLView::viewParams() const
 {
-  return viewParams_;
+  return _viewParams;
 }
 
 const std::vector<QGLView::PlanarGridOptions> & QGLView::grids() const
 {
-  return grids_;
+  return _grids;
 }
 
 std::vector<QGLView::PlanarGridOptions> & QGLView::grids()
 {
-  return grids_;
+  return _grids;
 }
 
 
 QGLView::Projection QGLView::projection() const
 {
-  return viewParams_.projection;
+  return _viewParams.projection;
 }
 
 void QGLView::setProjection(Projection v)
 {
-  viewParams_.projection = v;
-  dirty_ = true;
+  _viewParams.projection = v;
+  _dirty = true;
   update();
 }
 
 void QGLView::setFOV(double degrees)
 {
-  viewParams_.fov = degrees;
-  dirty_ = true;
+  _viewParams.fov = degrees;
+  _dirty = true;
   update();
 }
 
 double QGLView::fov() const
 {
-  return viewParams_.fov;
+  return _viewParams.fov;
 }
 
 void QGLView::setNearPlane(double v)
 {
-  viewParams_.nearPlane = v;
-  dirty_ = true;
+  _viewParams.nearPlane = v;
+  _dirty = true;
   update();
 
 
@@ -390,87 +391,87 @@ void QGLView::setNearPlane(double v)
 
 double QGLView::nearPlane() const
 {
-  return viewParams_.nearPlane;
+  return _viewParams.nearPlane;
 }
 
 void QGLView::setFarPlane(double v)
 {
-  viewParams_.farPlane = v;
-  dirty_ = true;
+  _viewParams.farPlane = v;
+  _dirty = true;
   update();
 }
 
 double QGLView::farPlane() const
 {
-  return viewParams_.farPlane;
+  return _viewParams.farPlane;
 }
 
 void QGLView::setShowMainAxes(bool v)
 {
-  showMainAxes_ = v;
+  _showMainAxes = v;
   update();
 }
 
 bool QGLView::showMainAxes() const
 {
-  return showMainAxes_;
+  return _showMainAxes;
 }
 
 void QGLView::setMainAxesLength(double v)
 {
-  mainAxesLength_ = v;
+  _mainAxesLength = v;
   update();
 }
 
 double QGLView::mainAxesLength() const
 {
-  return mainAxesLength_;
+  return _mainAxesLength;
 }
 
 void QGLView::setViewPoint(const QVector3D & eye)
 {
-  viewPoint_ = eye;
-  dirty_ = true;
+  _viewPoint = eye;
+  _dirty = true;
   update();
 }
 
 const QVector3D & QGLView::viewPoint() const
 {
-  return viewPoint_;
+  return _viewPoint;
 }
 
 void QGLView::setViewTargetPoint(const QVector3D & v)
 {
-  viewTarget_ = v;
-  dirty_ = true;
+  _viewTarget = v;
+  _dirty = true;
   update();
 }
 
 const QVector3D & QGLView::viewTargetPoint() const
 {
-  return viewTarget_;
+  return _viewTarget;
 }
 
 
 void QGLView::setUpDirection(const QVector3D & v)
 {
-  viewUpDirection_ = v;
-  dirty_ = true;
+  _viewUpDirection = v;
+  _dirty = true;
   update();
 }
 
 const QVector3D & QGLView::upDirection() const
 {
-  return viewUpDirection_;
+  return _viewUpDirection;
 }
 
 void QGLView::setPerspecitive(double fov, double nearPlane, double farPlane)
 {
-  viewParams_.projection = Perspective;
-  viewParams_.fov = fov;
-  viewParams_.nearPlane = nearPlane;
-  viewParams_.farPlane = farPlane;
-  dirty_ = true;
+  _viewParams.projection = Perspective;
+  _viewParams.fov = fov;
+  _viewParams.nearPlane = nearPlane;
+  _viewParams.farPlane = farPlane;
+  _dirty = true;
   update();
 }
 
@@ -478,10 +479,10 @@ void QGLView::cameraTo(const QVector3D & eye_pos,
     const QVector3D & target_pos,
     const QVector3D & up_direction)
 {
-  viewPoint_ = eye_pos;
-  viewTarget_ = target_pos;
-  viewUpDirection_ = up_direction;
-  dirty_ = true;
+  _viewPoint = eye_pos;
+  _viewTarget = target_pos;
+  _viewUpDirection = up_direction;
+  _dirty = true;
   update();
 }
 
@@ -494,7 +495,7 @@ bool QGLView::projectToScreen(const QVector3D & pos, QPointF * screen_pos) const
 {
   // normalized device coordinates
   const QVector3D ndc =
-      mtotal_.map(pos);
+      _mtotal.map(pos);
 
   if( ndc.z() < 1 && fabsf(ndc.x()) < 1 && fabsf(ndc.y()) < 1 ) {
 
@@ -527,7 +528,7 @@ void QGLView::resizeGL(int w, int h)
   // update and save current viewport
   if( w > 0 && h > 0 ) {
     glViewport(viewport.x = 0, viewport.y = 0, GLint(viewport.w = w), GLint(viewport.h = h));
-    dirty_ = true;
+    _dirty = true;
     update();
   }
 }
@@ -577,15 +578,15 @@ void QGLView::glPreDraw()
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  if( dirty_ && viewport.w > 0 && viewport.h > 0 ) {
+  if( _dirty && viewport.w > 0 && viewport.h > 0 ) {
 
-    mview_.setToIdentity();
-    mview_.lookAt(viewPoint_, viewTarget_,
-        viewUpDirection_);
+    _mview.setToIdentity();
+    _mview.lookAt(_viewPoint, _viewTarget,
+        _viewUpDirection);
 
-    mprojection_.setToIdentity();
+    _mprojection.setToIdentity();
 
-    switch (viewParams_.projection) {
+    switch (_viewParams.projection) {
 
       case Projection::Orthographic: {
         ///////////////
@@ -595,16 +596,16 @@ void QGLView::glPreDraw()
         // halfHeight = dist * ((aspectRatio() < 1.0) ? 1.0 / aspectRatio() : 1.0);
 
         // the camera coordinates of pivot point around which the camera rotates
-        const QVector3D pivotPoint = viewTarget_ - viewPoint_;
-        const double orthoCoef = tan(viewParams_.fov * M_PI / 360);
+        const QVector3D pivotPoint = _viewTarget - _viewPoint;
+        const double orthoCoef = tan(_viewParams.fov * M_PI / 360);
         const double dist = orthoCoef * pivotPoint.length();
         const double aspectRatio = viewport.w / (double) (viewport.h);
         const double w = dist * ((aspectRatio < 1.0) ? 1.0 : aspectRatio);
         const double h = dist * ((aspectRatio < 1.0) ? 1.0 / aspectRatio : 1.0);
 
-        mprojection_.ortho(-w, w, -h, h,
-            viewParams_.nearPlane,
-            viewParams_.farPlane);
+        _mprojection.ortho(-w, w, -h, h,
+            _viewParams.nearPlane,
+            _viewParams.farPlane);
 
         break;
       }
@@ -612,26 +613,26 @@ void QGLView::glPreDraw()
       case Projection::Perspective:
       default: {
 
-        mprojection_.perspective(viewParams_.fov,
+        _mprojection.perspective(_viewParams.fov,
             GLfloat(viewport.w) / viewport.h,
-            viewParams_.nearPlane,
-            viewParams_.farPlane);
+            _viewParams.nearPlane,
+            _viewParams.farPlane);
 
         break;
       }
     }
 
-    mtotal_ = mprojection_ * mview_;
-    dirty_ = false;
+    _mtotal = _mprojection * _mview;
+    _dirty = false;
   }
 
   glMatrixMode(GL_PROJECTION);
-  glLoadMatrixf(mtotal_.constData());
+  glLoadMatrixf(_mtotal.constData());
 
-  glClearColor(backgroundColor_.redF(),
-      backgroundColor_.greenF(),
-      backgroundColor_.blueF(),
-      backgroundColor_.alphaF());
+  glClearColor(_backgroundColor.redF(),
+      _backgroundColor.greenF(),
+      _backgroundColor.blueF(),
+      _backgroundColor.alphaF());
 
 
   /*
@@ -658,30 +659,50 @@ void QGLView::glDraw()
 
 void QGLView::glPostDraw()
 {
-  if ( showMainAxes_ ) {
+  if ( _enableSelection ) {
+    //CF_DEBUG("selection is activated: viewport size=%dx%d", viewport.w, viewport.h);
+
+    if( viewport.w > 1 && viewport.h > 1 ) {
+
+      _depthBuffer.create(viewport.h, viewport.w);
+
+      glReadPixels(viewport.x, viewport.y, viewport.w, viewport.h, GL_DEPTH_COMPONENT,
+          GL_FLOAT, _depthBuffer.data);
+
+      glGetDoublev( GL_MODELVIEW_MATRIX, _smodelview);
+      glGetDoublev( GL_PROJECTION_MATRIX, _sprojection);
+      glGetIntegerv( GL_VIEWPORT, _sviewport);
+
+      // save_image(depthBuffer, "gldebug/depthBuffer.tiff");
+      // CF_DEBUG("depthBuffer saved");
+    }
+  }
+
+
+  if ( _showMainAxes ) {
     glColor3ub(200, 200, 200);
     drawMainAxes();
   }
 
   const bool showViewTarget =
-      hideViewTargetTimerId_ > 0;
+      _hideViewTargetTimerId > 0;
 
   if ( showViewTarget ) {
 
     const qreal length =
-        mainAxesLength_ > 0 ? mainAxesLength_ :
-            0.0025 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
+        _mainAxesLength > 0 ? _mainAxesLength :
+            0.0025 * std::abs(_viewParams.farPlane - _viewParams.nearPlane);
 
     const QVector3D arrow_start[3] = {
-        QVector3D(viewTarget_.x() - length, viewTarget_.y(), viewTarget_.z()),
-        QVector3D(viewTarget_.x(), viewTarget_.y() - length, viewTarget_.z()),
-        QVector3D(viewTarget_.x(), viewTarget_.y(), viewTarget_.z() - length),
+        QVector3D(_viewTarget.x() - length, _viewTarget.y(), _viewTarget.z()),
+        QVector3D(_viewTarget.x(), _viewTarget.y() - length, _viewTarget.z()),
+        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() - length),
     };
 
     const QVector3D arrow_end[3] = {
-        QVector3D(viewTarget_.x() + 2 * length, viewTarget_.y(), viewTarget_.z()),
-        QVector3D(viewTarget_.x(), viewTarget_.y() + 2 * length, viewTarget_.z()),
-        QVector3D(viewTarget_.x(), viewTarget_.y(), viewTarget_.z() + 2 * length),
+        QVector3D(_viewTarget.x() + 2 * length, _viewTarget.y(), _viewTarget.z()),
+        QVector3D(_viewTarget.x(), _viewTarget.y() + 2 * length, _viewTarget.z()),
+        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() + 2 * length),
     };
 
     glColor3ub(255, 255, 64);
@@ -693,12 +714,12 @@ void QGLView::glPostDraw()
 
   // For transparency (blend) to work it is important to draw the solid things first,
   // so the grids are drawn here in glPostDraw()
-  if( !grids_.empty() ) {
+  if( !_grids.empty() ) {
 
     GLboolean gl_depth_writemask = GL_TRUE;
     int numGridsDrawn = 0;
 
-    for( const PlanarGridOptions & grid : grids_ ) {
+    for( const PlanarGridOptions & grid : _grids ) {
 
       if( grid.visible ) {
 
@@ -708,8 +729,8 @@ void QGLView::glPostDraw()
         }
 
         const float max_distance =
-            grid.maxDistance > 0 ? std::min(grid.maxDistance, (float) viewParams_.farPlane) :
-                viewParams_.farPlane;
+            grid.maxDistance > 0 ? std::min(grid.maxDistance, (float) _viewParams.farPlane) :
+                _viewParams.farPlane;
 
         const QQuaternion R =
             QQuaternion::fromEulerAngles(grid.Rotation.x(),
@@ -940,8 +961,8 @@ void QGLView::drawMainAxes()
       QFont::Weight::DemiBold);
 
   const qreal length =
-      mainAxesLength_ > 0 ? mainAxesLength_ :
-          0.005 * std::abs(viewParams_.farPlane - viewParams_.nearPlane);
+      _mainAxesLength > 0 ? _mainAxesLength :
+          0.005 * std::abs(_viewParams.farPlane - _viewParams.nearPlane);
 
 //  CF_DEBUG("length=%g", length);
 
@@ -963,17 +984,70 @@ void QGLView::drawMainAxes()
 //
 //}
 
-void QGLView::mousePressEvent(QMouseEvent *e)
+void QGLView::glSelectionEvent(const QPointF & click_pos, double objX, double objY, double objZ)
+{
+  CF_DEBUG("click: x=%g y=%g obj: X=%g Y=%g Z=%g",
+      click_pos.x(), click_pos.y(), objX, objY, objZ);
+}
+
+void QGLView::mousePressEvent(QMouseEvent * e)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-  prev_mouse_pos_ = e->position();
+  _prev_mouse_pos = e->position();
 #else
-  prev_mouse_pos_ = e->localPos();
+  _prev_mouse_pos = e->localPos();
 #endif
 
-  if( (e->buttons() == Qt::LeftButton) && (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) ) {
-    setAutoShowViewTarget(!autoShowViewTarget());
-    update();
+  if( (e->buttons() == Qt::LeftButton) ) {
+
+    if( !_enableSelection ) {
+
+      if( e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier) ) {
+        setAutoShowViewTarget(!autoShowViewTarget());
+        update();
+      }
+
+    }
+    else if( e->modifiers() == (Qt::ControlModifier) ) {
+
+      const QPointF click_pos =
+          e->localPos();
+
+      const GLdouble X =
+          click_pos.x();
+
+      const GLdouble Y =
+          _depthBuffer.rows - click_pos.y();
+
+      const int iX =
+          qRound(X);
+
+      const int iY =
+          qRound(Y);
+
+      if( iX >= 0 && iY >= 0 && iX < _depthBuffer.cols && iY < _depthBuffer.rows ) {
+
+        const GLdouble Z =
+            _depthBuffer[iY][iX];
+
+        if ( Z < 1 ) {
+
+          GLdouble objX = 0, objY = 0, objZ = 0;
+
+          const GLint status =
+              gluUnProject(X, Y, Z,
+                  _smodelview, _sprojection, _sviewport,
+                  &objX, &objY, &objZ);
+
+          if( status == GL_TRUE ) {
+            glSelectionEvent(click_pos, objX, objY, objZ);
+          }
+        }
+
+      }
+
+    }
+
   }
 
   e->ignore();
@@ -1004,15 +1078,15 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
 
       const QPointF delta =
-          newpos - prev_mouse_pos_;
+          newpos - _prev_mouse_pos;
 
       if( delta.x() || delta.y() ) {
 
         const QVector3D forward =
-            viewPoint_ - viewTarget_;
+            _viewPoint - _viewTarget;
 
         const QMatrix4x4 minv =
-            mview_.inverted();
+            _mview.inverted();
 
         const QVector3D T0 =
             minv.map(QVector3D(0, 0, forward.length()));
@@ -1023,10 +1097,10 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(0, delta.y() / viewport.h, forward.length()));
 
           const QVector3D Up =
-              (TU - T0) * std::max( (float)viewParams_.nearPlane, forward.length());
+              (TU - T0) * std::max( (float)_viewParams.nearPlane, forward.length());
 
-          viewTarget_ += Up;
-          viewPoint_ += Up;
+          _viewTarget += Up;
+          _viewPoint += Up;
         }
 
         if( delta.x() ) {
@@ -1035,34 +1109,34 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(-delta.x() / viewport.w, 0, forward.length()));
 
           const QVector3D Right =
-              (TR - T0) * std::max((float)viewParams_.nearPlane, forward.length());
+              (TR - T0) * std::max((float)_viewParams.nearPlane, forward.length());
 
-          viewTarget_ += Right;
-          viewPoint_ += Right;
+          _viewTarget += Right;
+          _viewPoint += Right;
         }
 
-        dirty_ = true;
+        _dirty = true;
 
         showViewTarget(true);
         update();
         Q_EMIT viewPointChanged();
       }
 
-      prev_mouse_pos_ = newpos;
+      _prev_mouse_pos = newpos;
     }
 
     else if( e->buttons() == Qt::LeftButton ) { // Rotate camera
 
       const QPointF delta =
-          newpos - prev_mouse_pos_;
+          newpos - _prev_mouse_pos;
 
       if( delta.x() || delta.y() ) {
 
         const QVector3D forward =
-            viewPoint_ - viewTarget_;
+            _viewPoint - _viewTarget;
 
         const QMatrix4x4 minv =
-            mview_.inverted();
+            _mview.inverted();
 
         if( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
 
@@ -1072,12 +1146,12 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
           const int signx =
               newpos.y() < viewport.h / 2 ? +1 : -1;
 
-          viewUpDirection_ =
+          _viewUpDirection =
               QQuaternion::fromAxisAndAngle(forward,
                   0.2 * (signy * delta.y() + signx * delta.x()))
-                  .rotatedVector(viewUpDirection_);
+                  .rotatedVector(_viewUpDirection);
 
-          dirty_ = true;
+          _dirty = true;
 
           showViewTarget(true);
           update();
@@ -1106,10 +1180,10 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
             const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
 
-            viewPoint_  =
-                fromSpherical(toSpherical(viewPoint_ - viewTarget_) + viewRotation) + viewTarget_;
+            _viewPoint  =
+                fromSpherical(toSpherical(_viewPoint - _viewTarget) + viewRotation) + _viewTarget;
 
-            viewUpDirection_ =
+            _viewUpDirection =
                 fromSpherical(toSpherical(Up) + viewRotation);
 
           }
@@ -1141,18 +1215,18 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             TU = minv.map(QVector3D(0, 0.5, newForward.length()));
             Up = (TU - T0).normalized();
 
-            viewPoint_ = newForward + viewTarget_;
-            viewUpDirection_ = Up;
+            _viewPoint = newForward + _viewTarget;
+            _viewUpDirection = Up;
           }
 
-          dirty_ = true;
+          _dirty = true;
           showViewTarget(true);
           update();
           Q_EMIT viewPointChanged();
         }
       }
 
-      prev_mouse_pos_ = newpos;
+      _prev_mouse_pos = newpos;
     }
   }
   e->accept();
@@ -1171,22 +1245,22 @@ void QGLView::wheelEvent(QWheelEvent * e)
       // Move both camera and viewTarget_ forward / backward
 
       const QVector3D forward =
-          viewTarget_ - viewPoint_;
+          _viewTarget - _viewPoint;
 
       const QVector3D neweye =
-          viewPoint_ + 1e-4 * forward * delta;  // / forward.length();
+          _viewPoint + 1e-4 * forward * delta;  // / forward.length();
 
       const QVector3D newforward =
-          viewTarget_ - neweye;
+          _viewTarget - neweye;
 
-      if( newforward.length() < 3 * viewParams_.nearPlane ||
+      if( newforward.length() < 3 * _viewParams.nearPlane ||
           QVector3D::dotProduct(forward, newforward)  < 0 )
       {
-        viewTarget_ += neweye - viewPoint_;
+        _viewTarget += neweye - _viewPoint;
       }
 
-      viewPoint_ = neweye;
-      dirty_ = true;
+      _viewPoint = neweye;
+      _dirty = true;
 
       showViewTarget(true);
       update();
@@ -1198,21 +1272,21 @@ void QGLView::wheelEvent(QWheelEvent * e)
       // Move viewTarget_ only (the effect is mouse sensitivity adjustment)
 
       const QVector3D forward =
-          viewTarget_ - viewPoint_;
+          _viewTarget - _viewPoint;
 
       const QVector3D newtarget =
-          viewTarget_ + 1e-3 * forward * delta; // / forward.length();
+          _viewTarget + 1e-3 * forward * delta; // / forward.length();
 
       const QVector3D newforward =
-          newtarget - viewPoint_;
+          newtarget - _viewPoint;
 
       const double p =
           QVector3D::dotProduct(newforward,
               forward);
 
-      if ( p > 0 &&  newforward.length() > viewParams_.nearPlane ) {
-        viewTarget_ = newtarget;
-        dirty_ = true;
+      if ( p > 0 &&  newforward.length() > _viewParams.nearPlane ) {
+        _viewTarget = newtarget;
+        _dirty = true;
         showViewTarget(true);
         update();
         Q_EMIT viewPointChanged();
@@ -1228,30 +1302,45 @@ void QGLView::wheelEvent(QWheelEvent * e)
 
 void QGLView::setAutoShowViewTarget(bool v)
 {
-  autoShowViewTarget_ = v;
+  _autoShowViewTarget = v;
 }
 
 bool QGLView::autoShowViewTarget() const
 {
-  return autoShowViewTarget_;
+  return _autoShowViewTarget;
 }
 
 void QGLView::showViewTarget(bool show)
 {
-  if ( hideViewTargetTimerId_ > 0 ) {
-    Base::killTimer(hideViewTargetTimerId_);
-    hideViewTargetTimerId_ = 0;
+  if ( _hideViewTargetTimerId > 0 ) {
+    Base::killTimer(_hideViewTargetTimerId);
+    _hideViewTargetTimerId = 0;
   }
 
-  if( show && autoShowViewTarget_ ) {
-    hideViewTargetTimerId_ =
+  if( show && _autoShowViewTarget ) {
+    _hideViewTargetTimerId =
         Base::startTimer(500, Qt::CoarseTimer);
   }
 }
 
+void QGLView::setEnableSelection(bool v)
+{
+  if( (_enableSelection = v) ) {
+    update(); // force repaint to get depth buffer
+  }
+  else {
+    _depthBuffer.release();
+  }
+}
+
+bool QGLView::enableSelection() const
+{
+  return _enableSelection;
+}
+
 void QGLView::timerEvent(QTimerEvent * e)
 {
-  if ( e->timerId() == hideViewTargetTimerId_)  {
+  if ( e->timerId() == _hideViewTargetTimerId)  {
     showViewTarget(false);
     e->ignore();
     update();

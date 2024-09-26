@@ -390,7 +390,7 @@ void QDSOCloudView::displayKeyframes(const std::vector<dso::FrameHessian*> & fra
 
 
 
-  _display_lock.lock();
+  _displayLock.lock();
 
   _currentPoints.clear();
   _currentColors.clear();
@@ -436,7 +436,7 @@ void QDSOCloudView::displayKeyframes(const std::vector<dso::FrameHessian*> & fra
 
 
 
-  _display_lock.unlock();
+  _displayLock.unlock();
 
   Q_EMIT redrawRequired();
 

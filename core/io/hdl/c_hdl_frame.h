@@ -79,6 +79,7 @@ template<class T>
 void convert_to_cartesian(const std::vector<c_hdl_point> & lidar_points, std::vector<cv::Vec<T, 3>> & positions)
 {
   positions.clear();
+  positions.reserve(lidar_points.size());
   for( const c_hdl_point & p : lidar_points ) {
     if( p.distance <= 0 ) {
       positions.emplace_back(0, 0, 0);
@@ -159,6 +160,21 @@ inline cv::Vec3f compute_cartesian(const c_hdl_point & p)
           p.distance * cos(p.elevation) * cos(p.azimuth),
           p.distance * sin(p.elevation)) :
       cv::Vec3f::all(0);
+}
+
+inline double compute_x(const c_hdl_point & p)
+{
+  return p.distance > 0 ? p.distance * cos(p.elevation) * sin(p.azimuth) : 0;
+}
+
+inline double compute_y(const c_hdl_point & p)
+{
+  return p.distance > 0 ? p.distance * cos(p.elevation) * cos(p.azimuth) : 0;
+}
+
+inline double compute_z(const c_hdl_point & p)
+{
+  return p.distance > 0 ? p.distance * sin(p.elevation) : 0;
 }
 
 inline double compute_depth(const c_hdl_point & p)

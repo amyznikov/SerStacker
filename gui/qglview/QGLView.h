@@ -15,6 +15,7 @@
 
 #include <QtGui/QtGui>
 #include <QtWidgets/QtWidgets>
+#include <opencv2/opencv.hpp>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
 # include <QtOpenGLWidgets/QOpenGLWidget>
@@ -111,6 +112,9 @@ public:
   void setAutoShowViewTarget(bool v);
   bool autoShowViewTarget() const;
 
+  void setEnableSelection(bool v);
+  bool enableSelection() const;
+
   void setPerspecitive(double fov_degrees, double nearPlane, double farPlane);
 
   void cameraTo(const QVector3D & viewPoint, const QVector3D & viewTargetPoint, const QVector3D & viewUpDirection);
@@ -170,8 +174,9 @@ protected:
 
 protected:
   void showViewTarget(bool v);
-  //void drawPlanarGrids();
   void timerEvent(QTimerEvent *event) override;
+//  void keyPressEvent(QKeyEvent *event) override;
+//  void keyReleaseEvent(QKeyEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
@@ -185,24 +190,27 @@ protected:
   void resizeGL(int w, int h) override;
   void paintGL() override;
   void paintEvent(QPaintEvent *e) override;
+
   virtual void cleanupGL();
+  virtual void glSelectionEvent(const QPointF & click_pos,
+      double objX, double objY, double objZ );
 
 protected:
-  QColor backgroundColor_ = QColor(80, 80, 80); // QColor(32, 32, 32);
-  QColor foregroundColor_ = QColor(232, 232, 232);
+  QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);
+  QColor _foregroundColor = QColor(232, 232, 232);
 
-  ViewParams viewParams_;
-  std::vector<PlanarGridOptions> grids_;
+  ViewParams _viewParams;
+  std::vector<PlanarGridOptions> _grids;
 
-  QVector3D viewPoint_ = QVector3D(40, 30, 30);
-  QVector3D viewTarget_ = QVector3D(0, 0, 0);
-  QVector3D viewUpDirection_ = QVector3D(0, 0, 1);
-  double mainAxesLength_ = 0; // auto
-  bool showMainAxes_ = true;
+  QVector3D _viewPoint = QVector3D(40, 30, 30);
+  QVector3D _viewTarget = QVector3D(0, 0, 0);
+  QVector3D _viewUpDirection = QVector3D(0, 0, 1);
+  double _mainAxesLength = 0; // auto
+  bool _showMainAxes = true;
 
-  QMatrix4x4 mview_;
-  QMatrix4x4 mprojection_;
-  QMatrix4x4 mtotal_;
+  QMatrix4x4 _mview;
+  QMatrix4x4 _mprojection;
+  QMatrix4x4 _mtotal;
 
   // current view port, update in resizeGL()
   struct {
@@ -212,10 +220,18 @@ protected:
     int h = 1;
   } viewport;
 
-  QPointF prev_mouse_pos_;
-  bool dirty_ = true;
-  bool autoShowViewTarget_ = false;
-  int hideViewTargetTimerId_ = 0;
+  QPointF _prev_mouse_pos;
+  bool _dirty = true;
+  bool _enableSelection = false;
+  bool _autoShowViewTarget = false;
+  int _hideViewTargetTimerId = 0;
+
+  // selection support
+  cv::Mat1f _depthBuffer;
+  GLint _sviewport[4] = {0};
+  GLdouble _smodelview[16] = {0};
+  GLdouble _sprojection[16] = {0};
+
 
 };
 

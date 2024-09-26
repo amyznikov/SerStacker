@@ -84,6 +84,24 @@ public:
       /* out, opt */ cv::Mat1b * mask = nullptr,
       const std::vector<uint8_t> * filter = nullptr) const;
 
+  /** build range image where each pixel is the X of HDL point  */
+  bool build_x(const std::vector<c_hdl_point> & points,
+      /* out*/ cv::Mat1f & values,
+      /* out, opt */ cv::Mat1b * mask = nullptr,
+      const std::vector<uint8_t> * filter = nullptr) const;
+
+  /** build range image where each pixel is the Y of HDL point  */
+  bool build_y(const std::vector<c_hdl_point> & points,
+      /* out*/ cv::Mat1f & values,
+      /* out, opt */ cv::Mat1b * mask = nullptr,
+      const std::vector<uint8_t> * filter = nullptr) const;
+
+  /** build range image where each pixel is the Z of HDL point  */
+  bool build_z(const std::vector<c_hdl_point> & points,
+      /* out*/ cv::Mat1f & values,
+      /* out, opt */ cv::Mat1b * mask = nullptr,
+      const std::vector<uint8_t> * filter = nullptr) const;
+
   /** build range image where each pixel is the intensity of HDL point  */
   bool build_intensity(const std::vector<c_hdl_point> & points,
       /* out*/ cv::Mat1f & intensity,

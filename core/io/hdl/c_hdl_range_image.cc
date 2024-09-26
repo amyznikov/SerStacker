@@ -408,6 +408,170 @@ bool c_hdl_range_image::build_depths(const std::vector<c_hdl_point> & points, do
 
 }
 
+/** build range image where each pixel is the X of HDL point  */
+bool c_hdl_range_image::build_x(const std::vector<c_hdl_point> & points,
+    /* out*/ cv::Mat1f & values,
+    /* out, opt */ cv::Mat1b * mask,
+    const std::vector<uint8_t> * filter ) const
+{
+  if( filter && !filter->empty() && filter->size() != points.size() ) {
+    CF_ERROR("Invalid filter size=%zu, expected %zu", filter->size(), points.size());
+    return false;
+  }
+
+  if( !create_output_images(values, mask) ) {
+    CF_ERROR("create_output_images() fails");
+    return false;
+  }
+
+  cv::Mat1f distances;
+  int r, c;
+
+  distances.create(values.size());
+  distances.setTo(0);
+
+  if ( !filter || filter->empty() ) {
+    for( const c_hdl_point &p : points ) {
+      if( p.distance > 0 && project(p, &r, &c) ) {
+        if( !distances[r][c] || p.distance < distances[r][c] ) {
+          distances[r][c] = p.distance;
+          values[r][c] = compute_x(p);
+          if( mask ) {
+            (*mask)[r][c] = 255;
+          }
+        }
+      }
+    }
+  }
+  else {
+    for( uint i = 0, n = points.size(); i < n; ++i ) {
+      if( (*filter)[i] ) {
+        const c_hdl_point &p = points[i];
+        if( p.distance > 0 && project(p, &r, &c) ) {
+          if( !distances[r][c] || p.distance < distances[r][c] ) {
+            distances[r][c] = p.distance;
+            values[r][c] = compute_x(p);
+            if( mask ) {
+              (*mask)[r][c] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+/** build range image where each pixel is the Y of HDL point  */
+bool c_hdl_range_image::build_y(const std::vector<c_hdl_point> & points,
+    /* out*/ cv::Mat1f & values,
+    /* out, opt */ cv::Mat1b * mask,
+    const std::vector<uint8_t> * filter ) const
+{
+  if( filter && !filter->empty() && filter->size() != points.size() ) {
+    CF_ERROR("Invalid filter size=%zu, expected %zu", filter->size(), points.size());
+    return false;
+  }
+
+  if( !create_output_images(values, mask) ) {
+    CF_ERROR("create_output_images() fails");
+    return false;
+  }
+
+  cv::Mat1f distances;
+  int r, c;
+
+  distances.create(values.size());
+  distances.setTo(0);
+
+  if ( !filter || filter->empty() ) {
+    for( const c_hdl_point &p : points ) {
+      if( p.distance > 0 && project(p, &r, &c) ) {
+        if( !distances[r][c] || p.distance < distances[r][c] ) {
+          distances[r][c] = p.distance;
+          values[r][c] = compute_y(p);
+          if( mask ) {
+            (*mask)[r][c] = 255;
+          }
+        }
+      }
+    }
+  }
+  else {
+    for( uint i = 0, n = points.size(); i < n; ++i ) {
+      if( (*filter)[i] ) {
+        const c_hdl_point &p = points[i];
+        if( p.distance > 0 && project(p, &r, &c) ) {
+          if( !distances[r][c] || p.distance < distances[r][c] ) {
+            distances[r][c] = p.distance;
+            values[r][c] = compute_y(p);
+            if( mask ) {
+              (*mask)[r][c] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+
+}
+
+/** build range image where each pixel is the Z of HDL point  */
+bool c_hdl_range_image::build_z(const std::vector<c_hdl_point> & points,
+    /* out*/ cv::Mat1f & values,
+    /* out, opt */ cv::Mat1b * mask,
+    const std::vector<uint8_t> * filter) const
+{
+  if( filter && !filter->empty() && filter->size() != points.size() ) {
+    CF_ERROR("Invalid filter size=%zu, expected %zu", filter->size(), points.size());
+    return false;
+  }
+
+  if( !create_output_images(values, mask) ) {
+    CF_ERROR("create_output_images() fails");
+    return false;
+  }
+
+  cv::Mat1f distances;
+  int r, c;
+
+  distances.create(values.size());
+  distances.setTo(0);
+
+  if ( !filter || filter->empty() ) {
+    for( const c_hdl_point &p : points ) {
+      if( p.distance > 0 && project(p, &r, &c) ) {
+        if( !distances[r][c] || p.distance < distances[r][c] ) {
+          distances[r][c] = p.distance;
+          values[r][c] = compute_z(p);
+          if( mask ) {
+            (*mask)[r][c] = 255;
+          }
+        }
+      }
+    }
+  }
+  else {
+    for( uint i = 0, n = points.size(); i < n; ++i ) {
+      if( (*filter)[i] ) {
+        const c_hdl_point &p = points[i];
+        if( p.distance > 0 && project(p, &r, &c) ) {
+          if( !distances[r][c] || p.distance < distances[r][c] ) {
+            distances[r][c] = p.distance;
+            values[r][c] = compute_z(p);
+            if( mask ) {
+              (*mask)[r][c] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+
+}
+
+
 
 /** build range image where each pixel is the height of HDL point  */
 bool c_hdl_range_image::build_heights(const std::vector<c_hdl_point> & points,

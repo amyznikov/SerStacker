@@ -18,37 +18,37 @@ QTestGLView::QTestGLView(QWidget * parent) :
 
 double QTestGLView::eyeX() const
 {
-  return viewPoint_.x();
+  return _viewPoint.x();
 }
 
 void QTestGLView::setEyeX(double value)
 {
-  viewPoint_.setX(value);
-  dirty_ = true;
+  _viewPoint.setX(value);
+  _dirty = true;
   update();
 }
 
 double QTestGLView::eyeY() const
 {
-  return viewPoint_.y();
+  return _viewPoint.y();
 }
 
 void QTestGLView::setEyeY(double value)
 {
-  viewPoint_.setY(value);
-  dirty_ = true;
+  _viewPoint.setY(value);
+  _dirty = true;
   update();
 }
 
 double QTestGLView::eyeZ() const
 {
-  return viewPoint_.z();
+  return _viewPoint.z();
 }
 
 void QTestGLView::setEyeZ(double value)
 {
-  viewPoint_.setZ(value);
-  dirty_ = true;
+  _viewPoint.setZ(value);
+  _dirty = true;
   update();
 }
 
@@ -74,7 +74,7 @@ void QTestGLView::glCleanup()
 
 void QTestGLView::glDraw()
 {
-  if( showMainAxes_ ) {
+  if( _showMainAxes ) {
     glColor3ub(200, 200, 200);
     drawMainAxes();
   }
@@ -97,7 +97,7 @@ void QTestGLView::glDraw()
     glVertex3f(0,  0,  10);
 
     glColor3ub(255, 255, 0);
-    glVertex3f(viewTarget_.x(),  viewTarget_.y(),  viewTarget_.z());
+    glVertex3f(_viewTarget.x(),  _viewTarget.y(),  _viewTarget.z());
 
   glEnd(/*GL_POINTS*/);
 

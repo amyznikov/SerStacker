@@ -93,6 +93,7 @@ protected:
   void computeDisplayPoints();
   void onLoadParameters(QSettings & settings) override;
   void onSaveParameters(QSettings & settings) override;
+ // void mousePressEvent(QMouseEvent *e) override;
 
 protected:
   std::vector<cv::Mat> _currentPoints;
@@ -102,7 +103,7 @@ protected:
   std::vector<std::vector<cv::Vec3f>> _displayPoints;
   std::vector<std::vector<cv::Vec3b>> _displayColors;
   std::vector<cv::Mat> _mtfColors;
-  std::mutex _display_lock;
+  std::mutex _displayLock;
 
   std::vector<CloudSettings> _cloudSettings;
 
@@ -112,9 +113,10 @@ protected:
   double _pointSize = 2;
   double _pointBrightness = 0;
 
-  bool _update_display_points = false;
-  bool _update_display_colors = false;
-  int _display_color_channels = 0;
+  int _displayColorChannels = 0;
+  bool _updateDisplayPoints = false;
+  bool _updateDisplayColors = false;
+
 };
 
 

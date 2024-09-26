@@ -74,7 +74,7 @@ QGLPointCloudView::QGLPointCloudView(QWidget * parent) :
 void QGLPointCloudView::setDisplayFunction(QCloudViewDisplayFunction * displayFunc)
 {
   _displayFunction = displayFunc;
-  _update_display_points = true;
+  _updateDisplayPoints = true;
   update();
 }
 
@@ -232,13 +232,13 @@ const std::vector<cv::Mat> & QGLPointCloudView::mtfColors() const
 
 void QGLPointCloudView::updateDisplayPoints()
 {
-  _update_display_points = true;
+  _updateDisplayPoints = true;
   update();
 }
 
 void QGLPointCloudView::updateDisplayColors()
 {
-  _update_display_colors = true;
+  _updateDisplayColors = true;
   update();
 }
 
@@ -298,14 +298,13 @@ void QGLPointCloudView::glDraw()
   }
 }
 
-
 void QGLPointCloudView::computeDisplayPoints()
 {
-  if( _display_lock.try_lock() ) {
+  if( _displayLock.try_lock() ) {
 
    // CF_DEBUG("_update_display_points=%d _update_display_colors=%d", _update_display_points, _update_display_colors);
 
-    if( _update_display_points || _update_display_colors ) {
+    if( _updateDisplayPoints || _updateDisplayColors ) {
 
       if( _displayFunction ) {
 
@@ -379,11 +378,11 @@ void QGLPointCloudView::computeDisplayPoints()
 
       }
 
-      _update_display_points = false;
-      _update_display_colors = false;
+      _updateDisplayPoints = false;
+      _updateDisplayColors = false;
     }
 
-    _display_lock.unlock();
+    _displayLock.unlock();
   }
 
 

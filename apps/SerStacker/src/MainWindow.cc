@@ -456,6 +456,9 @@ void MainWindow::setupMainMenu()
                 imageView->copyDisplayImageToClipboard();
               }
             }
+            else if ( is_visible(pipelineProgressImageView) ) {
+              pipelineProgressImageView->copyDisplayImageToClipboard();
+            }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
               inputSourceView->stackWidget(), nullptr, nullptr,
@@ -474,6 +477,12 @@ void MainWindow::setupMainMenu()
             }
             else if ( is_visible(imageView) ) {
               const QPixmap pxmap = imageView->sceneView()->grab();
+              if ( !pxmap.isNull() ) {
+                QApplication::clipboard()->setPixmap(pxmap);
+              }
+            }
+            else if ( is_visible(pipelineProgressImageView) ) {
+              const QPixmap pxmap = pipelineProgressImageView->sceneView()->grab();
               if ( !pxmap.isNull() ) {
                 QApplication::clipboard()->setPixmap(pxmap);
               }

@@ -248,7 +248,8 @@ static bool extract_depth(const cv::Mat & pts, cv::Mat & distances)
 bool c_sply_data_frame::get_point_cloud(const std::string & display_name,
     cv::OutputArrayOfArrays output_points,
     cv::OutputArrayOfArrays output_colors,
-    cv::OutputArrayOfArrays output_mask)
+    cv::OutputArrayOfArrays output_mask,
+    std::vector<std::vector<uint64_t>> * output_pids)
 {
   if( output_points.needed() ) {
     setItems("_points", output_points, _points);

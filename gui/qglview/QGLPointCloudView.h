@@ -69,6 +69,7 @@ public:
   void rotateToShowCloud();
 
   void setPoints(cv::InputArrayOfArrays points, cv::InputArrayOfArrays colors, cv::InputArrayOfArrays masks, bool make_copy = true);
+  void setPoints(std::vector<cv::Mat> && points, std::vector<cv::Mat> && colors, std::vector<cv::Mat> && masks, std::vector<std::vector<uint64_t>> && pids);
   void clearPoints();
 
   const std::vector<cv::Mat> & currentPoints() const;
@@ -99,6 +100,7 @@ protected:
   std::vector<cv::Mat> _currentPoints;
   std::vector<cv::Mat> _currentColors;
   std::vector<cv::Mat> _currentMasks;
+  std::vector<std::vector<uint64_t>> _currentPids;
 
   std::vector<std::vector<cv::Vec3f>> _displayPoints;
   std::vector<std::vector<cv::Vec3b>> _displayColors;

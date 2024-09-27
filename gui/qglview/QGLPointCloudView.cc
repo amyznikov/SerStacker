@@ -151,6 +151,7 @@ void QGLPointCloudView::setPoints(cv::InputArrayOfArrays points, cv::InputArrayO
   _currentPoints.clear();
   _currentColors.clear();
   _currentMasks.clear();
+  _currentPids.clear();
 
   const int num_clouds =
       get_items_count(points);
@@ -181,8 +182,22 @@ void QGLPointCloudView::setPoints(cv::InputArrayOfArrays points, cv::InputArrayO
   updateDisplayPoints();
 }
 
+
+void QGLPointCloudView::setPoints(std::vector<cv::Mat> && points, std::vector<cv::Mat> && colors, std::vector<cv::Mat> && masks, std::vector<std::vector<uint64_t>> && pids)
+{
+  _currentPoints = points;
+  _currentColors = colors;
+  _currentMasks = masks;
+  _currentPids = pids;
+  updateDisplayPoints();
+}
+
 void QGLPointCloudView::clearPoints()
 {
+  _currentPoints.clear();
+  _currentColors.clear();
+  _currentMasks.clear();
+  _currentPids.clear();
 }
 
 const std::vector<cv::Mat> & QGLPointCloudView::currentPoints() const

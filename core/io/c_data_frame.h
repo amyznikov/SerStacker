@@ -66,7 +66,8 @@ public:
   virtual bool get_point_cloud(const std::string & display_name,
       cv::OutputArrayOfArrays output_points,
       cv::OutputArrayOfArrays output_colors,
-      cv::OutputArrayOfArrays output_masks);
+      cv::OutputArrayOfArrays output_masks,
+      std::vector<std::vector<uint64_t>> * output_pids = nullptr);
 
   virtual std::string get_filename();
 

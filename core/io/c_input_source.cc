@@ -85,63 +85,70 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
 #if have_ser_input_source
     if( contains(c_ser_input_source::suffixes(), suffix) && (obj = c_ser_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_vlo_input_source
     if( contains(c_vlo_input_source::suffixes(), suffix) && (obj = c_vlo_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_hdl_input_source
     if( contains(c_hdl_input_source::suffixes(), suffix) && (obj = c_hdl_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_sply_input_source
     if( contains(c_sply_input_source::suffixes(), suffix) && (obj = c_sply_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_textfile_input_source
     if( contains(c_textfile_input_source::suffixes(), suffix) && (obj = c_textfile_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_ply_input_source
     if( contains(c_ply_input_source::suffixes(), suffix) && (obj = c_ply_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_fits_input_source
     if( contains(c_fits_input_source::suffixes(), suffix) && (obj = c_fits_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_ffmpeg_input_source
     if( contains(c_ffmpeg_input_source::suffixes(), suffix) && (obj = c_ffmpeg_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_regular_image_input_source
     if( contains(c_regular_image_input_source::suffixes(), suffix) && (obj = c_regular_image_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
 
 #if have_raw_image_input_source
     if( contains(c_raw_image_input_source::suffixes(), suffix) && (obj = c_raw_image_input_source::create(filename)) ) {
-      return obj;
+      goto end;
     }
 #endif
+
+end:
+    if ( obj ) {
+      obj->load_badframes();
+    }
+
+    return obj;
   }
 
   return nullptr;
@@ -150,7 +157,11 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
 
 c_input_source::sptr c_input_source::open(const std::string & filename)
 {
-  c_input_source::sptr obj = create(filename);
+  //CF_DEBUG("c_input_source::open(filename='%s')", filename.c_str());
+
+  c_input_source::sptr obj =
+      create(filename);
+
   if( obj && !obj->is_open() && !obj->open() ) {
     CF_ERROR("obj->open(filename='%s') fails", filename.c_str());
     obj.reset();
@@ -220,6 +231,8 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
         gen_badframes_file_name(this->filename_);
   }
 
+  CF_DEBUG("badframes_file_name='%s'", badframes_file_name.c_str());
+
   if ( !badframes_file_name.empty() ) {
 
     FILE * fp =
@@ -229,14 +242,40 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
 
       badframes_.clear();
 
-      uint index;
-      while ( fscanf(fp,"%u", &index) == 1 ) {
-        badframes_.emplace_back(index);
+      char line[256] = "";
+
+      while (fgets(line, 255, fp)) {
+
+        int index1 = -1, index2 = -1;
+
+        const int n =
+            sscanf(line, "%d-%d", &index1, &index2);
+
+        CF_DEBUG("line '%s' n=%d index1=%d, index2=%d", line, n, index1, index2);
+
+        if( n == 1 ) {
+          badframes_.emplace_back(index1);
+        }
+        else if( n == 2 ) {
+          for( uint i = index1; i <= index2; ++i ) {
+            badframes_.emplace_back(i);
+          }
+        }
       }
 
       fclose(fp);
 
-      std::sort(badframes_.begin(), badframes_.end());
+      std::sort(badframes_.begin(),
+          badframes_.end());
+
+      const auto pos =
+          std::unique(badframes_.begin(),
+              badframes_.end());
+
+      if ( pos != badframes_.end() ) {
+        badframes_.erase(pos, badframes_.end());
+      }
+
     }
   }
 
@@ -273,8 +312,20 @@ void c_input_source::save_badframes(const std::string & fname) const
       }
       else {
 
-        for( uint i = 0, n = badframes_.size(); i < n; ++i ) {
-          fprintf(fp, "%u\n", badframes_[i]);
+        for( uint32_t i1 = 0, n = badframes_.size(); i1 < n; ++i1 ) {
+
+          uint32_t i2 = i1;
+          while (i2 + 1 < n && badframes_[i2 + 1] == badframes_[i2] + 1) {
+            ++i2;
+          }
+
+          if( i2 == i1 ) {
+            fprintf(fp, "%u\n", badframes_[i1]);
+          }
+          else {
+            fprintf(fp, "%u-%u\n", badframes_[i1], badframes_[i2]);
+            i1 = i2;
+          }
         }
 
         fclose(fp);

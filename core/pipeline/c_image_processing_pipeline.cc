@@ -519,7 +519,7 @@ void c_image_processing_pipeline::gather_badframe_indexes()
       if( source ) {
 
         const std::vector<uint> &bad_source_frames =
-            source->load_badframes();
+            source->badframes();
 
         for( uint source_frame_index : bad_source_frames ) {
 

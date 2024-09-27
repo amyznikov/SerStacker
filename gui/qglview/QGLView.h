@@ -175,8 +175,6 @@ protected:
 protected:
   void showViewTarget(bool v);
   void timerEvent(QTimerEvent *event) override;
-//  void keyPressEvent(QKeyEvent *event) override;
-//  void keyReleaseEvent(QKeyEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;

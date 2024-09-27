@@ -581,11 +581,10 @@ void QInputSourceView::displayCurrentFrame()
 
 
         std::vector<cv::Mat> points, colors, mask;
+        std::vector<std::vector<uint64_t>> pids;
 
         currentFrame_->get_point_cloud(displayChannel_.toStdString(),
-            points, colors, mask);
-
-        // CF_DEBUG("get_point_cloud: points.size=%zu colors.size=%zu", points.size(), colors.size());
+            points, colors, mask, &pids);
 
         setCurrentView(cloudView_);
         cloudView_->setPoints(points, colors, mask, false);

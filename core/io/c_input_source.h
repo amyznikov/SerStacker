@@ -127,7 +127,7 @@ protected:
   c_input_source(const std::string & filename);
 
   std::string filename_;
-  std::vector<uint> badframes_;
+  std::vector<uint32_t> badframes_;
   const c_input_options * _input_options = nullptr;
 
   int size_ = 0;

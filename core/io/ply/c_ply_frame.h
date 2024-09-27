@@ -26,7 +26,8 @@ public:
   bool get_point_cloud(const std::string & display_name,
       cv::OutputArrayOfArrays output_points,
       cv::OutputArrayOfArrays output_colors,
-      cv::OutputArrayOfArrays output_mask) override;
+      cv::OutputArrayOfArrays output_mask,
+      std::vector<std::vector<uint64_t>> * output_pids = nullptr) override;
 
 protected:
   friend class c_ply_input_source;

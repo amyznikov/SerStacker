@@ -514,7 +514,7 @@ bool c_hdl_range_image::build_y(const std::vector<c_hdl_point> & points,
       }
     }
   }
-
+  return true;
 }
 
 /** build range image where each pixel is the Z of HDL point  */
@@ -568,7 +568,7 @@ bool c_hdl_range_image::build_z(const std::vector<c_hdl_point> & points,
       }
     }
   }
-
+  return true;
 }
 
 

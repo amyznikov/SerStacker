@@ -298,7 +298,8 @@ bool c_hdl_data_frame::get_image(const std::string & display_name,
 bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
     cv::OutputArray output_points,
     cv::OutputArray output_colors,
-    cv::OutputArray output_mask)
+    cv::OutputArray output_mask,
+    std::vector<std::vector<uint64_t>> * output_pids)
 {
 
   std::vector<cv::Vec3f> _points;

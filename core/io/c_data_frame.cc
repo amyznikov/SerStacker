@@ -213,7 +213,8 @@ bool c_data_frame::get_image(const std::string &display_name,
 bool c_data_frame::get_point_cloud(const std::string & display_name,
     cv::OutputArrayOfArrays points,
     cv::OutputArrayOfArrays colors,
-    cv::OutputArrayOfArrays masks)
+    cv::OutputArrayOfArrays masks,
+    std::vector<std::vector<uint64_t>> * output_pids)
 {
   return false;
 }

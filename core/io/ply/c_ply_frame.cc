@@ -157,7 +157,8 @@ std::string c_ply_frame::get_filename()
 bool c_ply_frame::get_point_cloud(const std::string & display_name,
       cv::OutputArrayOfArrays output_points,
       cv::OutputArrayOfArrays output_colors,
-      cv::OutputArrayOfArrays output_mask)
+      cv::OutputArrayOfArrays output_mask,
+      std::vector<std::vector<uint64_t>> * output_pids)
 {
   if( output_points.needed() ) {
     setItems("points_", output_points, cv::Mat(points_));

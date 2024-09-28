@@ -22,7 +22,12 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_dont_change, "dont_change", "dont change color channels"},
 
       { color_channel_gray, "gray", "cv::cvtColor(cv::COLOR_BGR2GRAY)"},
-      { color_channel_luminance, "luminance", "cv::cvtColor(cv::COLOR_BGR2LAB)->cv::extractChannel(0)"},
+
+      { color_channel_luminance_lab, "luminance_lab", "cv::cvtColor(cv::COLOR_BGR2LAB)->cv::extractChannel(0)"},
+      { color_channel_luminance_luv, "luminance_luv", "cv::cvtColor(cv::COLOR_BGR2Luv)->cv::extractChannel(0)"},
+      { color_channel_luminance_hsv, "luminance_hsv", "cv::cvtColor(cv::COLOR_BGR2HSV)->cv::extractChannel(2)"},
+      { color_channel_luminance_hls, "luminance_hls", "cv::cvtColor(cv::COLOR_BGR2HLS)->cv::extractChannel(0)"},
+
       { color_channel_red, "red", "cv::extractChannel(2)"},
       { color_channel_green, "green", "cv::extractChannel(1)" },
       { color_channel_blue, "blue", "cv::extractChannel(0)"},
@@ -31,6 +36,8 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
       { color_channel_max_color, "max_color", "max - min"},
+
+      { color_channel_max_gradient, "max_gradient", "max gradient"},
 
       { color_channel_unknown}
   };
@@ -122,7 +129,7 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         break;
 
 
-      case color_channel_luminance:
+      case color_channel_luminance_lab:
         if( scaled_src.channels() != 3 ) {
           CF_ERROR("Invalid argument: conversion to Lab not supported for image with %d channels",
               scaled_src.channels());
@@ -135,7 +142,38 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         }
         break;
 
+      case color_channel_luminance_luv:
+        if( scaled_src.channels() != 3 ) {
+          CF_ERROR("Invalid argument: conversion to Luv not supported for image with %d channels",
+              scaled_src.channels());
+          return false;
+        }
+        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2Luv);
+        cv::extractChannel(converted_src, converted_src, 0);
+        if( converted_src.depth() == CV_32F || converted_src.depth() == CV_64F ) {
+          cv::multiply(converted_src, 1e-2, converted_src);
+        }
+        break;
 
+      case color_channel_luminance_hsv:
+        if( scaled_src.channels() != 3 ) {
+          CF_ERROR("Invalid argument: conversion to HSV not supported for image with %d channels",
+              scaled_src.channels());
+          return false;
+        }
+        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HSV);
+        cv::extractChannel(converted_src, converted_src, 2);
+        break;
+
+      case color_channel_luminance_hls:
+        if( scaled_src.channels() != 3 ) {
+          CF_ERROR("Invalid argument: conversion to HLS not supported for image with %d channels",
+              scaled_src.channels());
+          return false;
+        }
+        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HLS);
+        cv::extractChannel(converted_src, converted_src, 1);
+        break;
 
       case color_channel_blue:
         cv::extractChannel(scaled_src, converted_src, 0);
@@ -238,6 +276,51 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         cv::reduce(tmp.reshape(1, tmp.total()), cmax, 1, cv::REDUCE_MAX);
         cv::subtract(cmax, cmin, converted_src);
         converted_src = converted_src.reshape(0, src_rows);
+
+        break;
+      }
+
+      case color_channel_max_gradient : {
+
+        static const auto compute_sobel_gradients =
+            [](cv::InputArray src, cv::OutputArray g, int ddepth, int borderType) -> void {
+
+              static thread_local cv::Mat Kx, Ky;
+              if( Kx.empty() ) {
+                cv::getDerivKernels(Kx, Ky, 1, 0, 5, true, CV_32F);
+                Kx *= M_SQRT2;
+                Ky *= M_SQRT2;
+              }
+
+              if( ddepth < 0 ) {
+                ddepth = std::max(src.depth(), CV_32F);
+              }
+
+              cv::Mat gx, gy;
+
+              cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
+              cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
+              cv::magnitude(gx, gy, g);
+            };
+
+
+        cv::Mat g, gm;
+        std::vector<cv::Mat> gchannels;
+        std::vector<cv::Mat> src_channels;
+
+        compute_sobel_gradients(scaled_src, g, -1, cv::BORDER_REPLICATE);
+
+        cv::split(g, gchannels);
+        cv::split(scaled_src, src_channels);
+
+        src_channels[0].copyTo(converted_src);
+        gchannels[0].copyTo(g);
+
+        for( int c = 1, cn = gchannels.size(); c < cn; ++c ) {
+          cv::compare(gchannels[c], g, gm, cv::CMP_GT);
+          gchannels[c].copyTo(g, gm);
+          src_channels[c].copyTo(converted_src, gm);
+        }
 
         break;
       }

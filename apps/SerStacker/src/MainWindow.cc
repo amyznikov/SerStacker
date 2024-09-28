@@ -544,9 +544,20 @@ void MainWindow::setupGeoView()
 
   connect(geoViewDock, &QGeoMapViewDock::visibilityChanged,
       [this](bool visible) {
+
         if ( visible ) {
           geoView->setCurrentVideoScrollpos(inputSourceView->currentFileName(),
               inputSourceView->currentScrollpos());
+
+          static bool firstShow = true;
+          if ( firstShow && !geoView->view()->visibleRegion().isEmpty() ) {
+            firstShow = false;
+            CF_DEBUG("C geoView->flyToPosition");
+            geoView->flyToPosition(10, 10, 90, 120);
+            CF_DEBUG("R geoView->flyToPosition");
+          }
+
+
         }
       });
 

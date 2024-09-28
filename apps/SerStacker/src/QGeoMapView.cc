@@ -1011,7 +1011,9 @@ void QGeoMapView::onToggleOptionsDialogBox(bool checked)
           toggleOptionsDialogBoxAction, &QAction::setChecked);
 
       connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::showPositionOnMap,
-          this, &ThisClass::flyToPosition);
+          [this](double latitude, double longitude) {
+            Base::flyTo(QGeoPos(latitude * 180 / CV_PI, longitude * 180 / CV_PI));
+          });
 
       connect(viewSettingsDialogBox, &QGpxTrackViewSettingsDialogBox::openSelectedAssociatedVideoFileClicked,
           this, &ThisClass::onOpenSelectedAssociatedVideoFileClicked);
@@ -1027,10 +1029,11 @@ void QGeoMapView::onToggleOptionsDialogBox(bool checked)
   }
 }
 
-void QGeoMapView::flyToPosition(double latitude, double longitude)
+void QGeoMapView::flyToPosition(double lat_deg, double lon_deg, double lat_size_deg, double lon_size_deg)
 {
-  Base::flyTo(QGeoPos(latitude * 180 / CV_PI, longitude * 180 / CV_PI));
+  geoview_->flyTo(QGeoPos(lat_deg, lon_deg), lat_size_deg, lon_size_deg);
 }
+
 
 void QGeoMapView::setCurrentVideoScrollpos(const QString & currentFileName, int scrollpos)
 {
@@ -1107,15 +1110,20 @@ void QGeoMapView::onDeleteSelectedTrackClicked()
   }
 }
 
-void QGeoMapView::showEvent(QShowEvent *event)
-{
-  Base::showEvent(event);
-
-  if ( !Base::visibleRegion().isEmpty() ) {
-    _firstShow = false;
-    geoview_->cameraTo(QGeoPos(0, 0), 90, 120);
-  }
-}
+//void QGeoMapView::showEvent(QShowEvent *event)
+//{
+//  CF_DEBUG("E1 visibleRegion().isEmpty()=%d", geoview_->visibleRegion().isEmpty());
+//  Base::showEvent(event);
+//  CF_DEBUG("E2 visibleRegion().isEmpty()=%d", geoview_->visibleRegion().isEmpty());
+//
+//  if ( !visibleRegion().isEmpty() ) {
+//    _firstShow = false;
+//
+//    CF_DEBUG("C geoview_->cameraTo");
+//    geoview_->cameraTo(QGeoPos(10, 10), 90, 120);
+//    CF_DEBUG("R geoview_->cameraTo");
+//  }
+//}
 
 void QGeoMapView::loadSettings()
 {

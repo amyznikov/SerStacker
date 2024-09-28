@@ -79,7 +79,7 @@ QVariant QGeoTiles::itemChange(GraphicsItemChange change, const QVariant & value
               QGeoView * geoview =
                   dynamic_cast<QGeoView * >(view);
 
-              if ( geoview ) {
+              if ( geoview && !geoview->visibleRegion().isEmpty() ) {
                 processCamera(geoview->getCameraState(), true);
               }
             }

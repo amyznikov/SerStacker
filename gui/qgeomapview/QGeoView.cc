@@ -21,7 +21,12 @@ static const double wheelExponentUp = qPow(2, 1.0 / 2.0);
 }
 
 QGeoView::QGeoView(QWidget * parent) :
-    Base(parent)
+    ThisClass(nullptr, parent)
+{
+}
+
+QGeoView::QGeoView(QGeoScene * scene, QWidget * parent) :
+    Base(scene, parent)
 {
   // setContextMenuPolicy(Qt::NoContextMenu);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -34,12 +39,6 @@ QGeoView::QGeoView(QWidget * parent) :
   setMouseTracking(true);
   setBackgroundBrush(QBrush(Qt::darkGray));
   setDragMode(DragMode::NoDrag);
-
-}
-
-QGeoView::QGeoView(QGeoScene * scene, QWidget * parent) :
-    Base(scene, parent)
-{
 }
 
 void QGeoView::setScene(QGeoScene * scene)
@@ -369,13 +368,21 @@ void QGeoView::cameraMove(const QPointF & projPos)
 void QGeoView::resizeEvent(QResizeEvent * event)
 {
   Base::resizeEvent(event);
-  applyNewCameraState(getCameraState());
+
+  if ( !visibleRegion().isEmpty() ) {
+    applyNewCameraState(getCameraState());
+  }
+
 }
 
 void QGeoView::showEvent(QShowEvent * event)
 {
   Base::showEvent(event);
-  applyNewCameraState(getCameraState());
+
+  if ( !visibleRegion().isEmpty() ) {
+
+    applyNewCameraState(getCameraState());
+  }
 
   if ( copyImageToClipboardAction_ ) {
     copyImageToClipboardAction_->setEnabled(isVisible());

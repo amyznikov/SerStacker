@@ -259,8 +259,7 @@ public:
   void exportSelectedGpxTrack();
   bool importGpxTrack(const QString & filename);
 
-
-  void flyToPosition(double latitude, double longitude);
+  void flyToPosition(double lat_deg, double lon_deg, double lat_size_deg, double lon_size_deg);
 
   void loadSettings();
   void saveSettings();
@@ -285,7 +284,7 @@ protected:
   bool importGpxTrackFromConfigFile(const QString & filename);
 
 protected:
-  void showEvent(QShowEvent *event) final;
+//  void showEvent(QShowEvent *event) final;
 
 protected:
   void createToolbarActions() final;
@@ -297,7 +296,7 @@ protected:
   QGpxTrackViewSettingsDialogBox * viewSettingsDialogBox = nullptr;
   QAction * toggleOptionsDialogBoxAction = nullptr;
   int _currentVideoScrollpos = 0;
-  bool _firstShow = true;
+//  bool _firstShow = true;
 };
 
 

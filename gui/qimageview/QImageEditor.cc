@@ -21,33 +21,33 @@ QImageEditor::QImageEditor(QImageScene * scene, QWidget * parent) :
 
 const cv::Mat & QImageEditor::inputImage() const
 {
-  return inputImage_;
+  return _inputImage;
 }
 
 cv::Mat & QImageEditor::inputImage()
 {
-  return inputImage_;
+  return _inputImage;
 }
 
 const cv::Mat & QImageEditor::inputMask() const
 {
-  return inputMask_;
+  return _inputMask;
 }
 
 cv::Mat & QImageEditor::inputMask()
 {
-  return inputMask_;
+  return _inputMask;
 }
 
 void QImageEditor::set_current_processor(const c_image_processor::sptr & processor)
 {
-  current_processor_ = processor;
+  _current_processor = processor;
   updateImage();
 }
 
 const c_image_processor::sptr & QImageEditor::current_processor() const
 {
-  return current_processor_;
+  return _current_processor;
 }
 
 void QImageEditor::clear()
@@ -60,12 +60,12 @@ void QImageEditor::clear()
 void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask, bool make_copy)
 {
   if ( make_copy ) {
-    image.getMat().copyTo(inputImage_);
-    mask.getMat().copyTo(inputMask_);
+    image.getMat().copyTo(_inputImage);
+    mask.getMat().copyTo(_inputMask);
   }
   else {
-    inputImage_ = image.getMat();
-    inputMask_ = mask.getMat();
+    _inputImage = image.getMat();
+    _inputMask = mask.getMat();
   }
 
   updateImage();
@@ -84,22 +84,28 @@ void QImageEditor::updateImage()
 
    // c_current_image_lock lock(this);
 
-    if ( inputImage_.empty() ) {
+    if ( _inputImage.empty() ) {
 
       current_image_lock lock(this);
-      currentImage_.release();
-      currentMask_.release();
-      currentImageData_.release();
+      _currentImage.release();
+      _currentMask.release();
+      _currentImageData.release();
     }
     else {
 
       current_image_lock lock(this);
 
-      inputImage_.copyTo(currentImage_);
-      inputMask_.copyTo(currentMask_);
+      _inputImage.copyTo(_currentImage);
 
-      if ( current_processor_ && !current_processor_->empty() ) {
-        current_processor_->process(currentImage_, currentMask_);
+      if( enableEditMask() && keepMaskOnMaskEditMode() && _currentImage.size() == _currentMask.size() ) {
+        _inputMask.release();
+      }
+      else {
+        _inputMask.copyTo(_currentMask);
+      }
+
+      if ( _current_processor && !_current_processor->empty() ) {
+        _current_processor->process(_currentImage, _currentMask);
       }
     }
 

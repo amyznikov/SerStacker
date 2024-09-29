@@ -32,111 +32,111 @@ QImageViewer::QImageViewer(QWidget * parent) :
 
 QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
     Base(parent),
-    scene_(scene)
+    _scene(scene)
 {
-  if ( !scene_ ) {
-    scene_ = new QImageScene(this);
+  if ( !_scene ) {
+    _scene = new QImageScene(this);
   }
 
-  layout_ = new QVBoxLayout(this);
-  layout_->setAlignment(Qt::AlignTop);
-  layout_->setContentsMargins(0,0,0,0);
+  _layout = new QVBoxLayout(this);
+  _layout->setAlignment(Qt::AlignTop);
+  _layout->setContentsMargins(0,0,0,0);
   //layout_->setMargin(0);
-  layout_->setSpacing(0);
-  layout_->addWidget(view_ = new QImageSceneView(this), 1000);
-  view_->setScene(scene_);
+  _layout->setSpacing(0);
+  _layout->addWidget(_view = new QImageSceneView(this), 1000);
+  _view->setScene(_scene);
 
-  connect(view_, &QImageSceneView::onMouseMove,
+  connect(_view, &QImageSceneView::onMouseMove,
       this, &ThisClass::handleMouseMoveEvent);
-  connect(view_, &QImageSceneView::onMousePressEvent,
+  connect(_view, &QImageSceneView::onMousePressEvent,
       this, &ThisClass::handleMousePressEvent);
-  connect(view_, &QImageSceneView::onMouseReleaseEvent,
+  connect(_view, &QImageSceneView::onMouseReleaseEvent,
       this, &ThisClass::onMouseReleaseEvent);
-  connect(view_, &QImageSceneView::onMouseDoubleClick,
+  connect(_view, &QImageSceneView::onMouseDoubleClick,
       this, &ThisClass::onMouseDoubleClick);
-  connect(view_, &QImageSceneView::onMouseEnterEvent,
+  connect(_view, &QImageSceneView::onMouseEnterEvent,
       this, &ThisClass::onMouseEnterEvent);
-  connect(view_, &QImageSceneView::onMouseLeaveEvent,
+  connect(_view, &QImageSceneView::onMouseLeaveEvent,
       this, &ThisClass::onMouseLeaveEvent);
-  connect(view_, &QImageSceneView::scaleChanged,
+  connect(_view, &QImageSceneView::scaleChanged,
       this, &ThisClass::onScaleChanged);
-  connect(view_, &QImageSceneView::viewScrolled,
+  connect(_view, &QImageSceneView::viewScrolled,
       this, &ThisClass::onViewScrolled);
 
-  undoEditMaskActionShortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), this);
-  connect(undoEditMaskActionShortcut_, &QShortcut::activated,
+  _undoEditMaskActionShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), this);
+  connect(_undoEditMaskActionShortcut, &QShortcut::activated,
       this, &ThisClass::undoEditMask);
 }
 
 QImageSceneView * QImageViewer::sceneView() const
 {
-  return view_;
+  return _view;
 }
 
 QImageScene * QImageViewer::scene() const
 {
-  return scene_;
+  return _scene;
 }
 
 QToolBar * QImageViewer::embedToolbar(QToolBar * toolbar)
 {
-  if ( this->toolbar_ ) {
+  if ( this->_toolbar ) {
     if ( !toolbar ) {
-      return this->toolbar_; // already embedded
+      return this->_toolbar; // already embedded
     }
-    layout_->removeWidget(this->toolbar_);
+    _layout->removeWidget(this->_toolbar);
   }
 
 
-  if ( !(this->toolbar_ = toolbar) ) {
-    this->toolbar_ = new QToolBar(this);
-    this->toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    this->toolbar_->setOrientation(Qt::Horizontal);
-    this->toolbar_->setIconSize(QSize(16,16));
+  if ( !(this->_toolbar = toolbar) ) {
+    this->_toolbar = new QToolBar(this);
+    this->_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    this->_toolbar->setOrientation(Qt::Horizontal);
+    this->_toolbar->setIconSize(QSize(16,16));
   }
 
-  layout_->insertWidget(0, this->toolbar_, 0);
+  _layout->insertWidget(0, this->_toolbar, 0);
 
-  return this->toolbar_;
+  return this->_toolbar;
 }
 
 QToolBar * QImageViewer::toolbar() const
 {
-  return toolbar_;
+  return _toolbar;
 }
 
 QStatusBar * QImageViewer::embedStatusbar(QStatusBar * statusBar)
 {
-  if ( this->statusbar_ ) {
+  if ( this->_statusbar ) {
     if ( !statusBar ) {
-      return this->statusbar_; // already embedded
+      return this->_statusbar; // already embedded
     }
-    layout_->removeWidget(this->statusbar_);
+    _layout->removeWidget(this->_statusbar);
   }
 
-  if ( !(this->statusbar_ = statusBar) ) {
-    this->statusbar_ = new QStatusBar(this);
+  if ( !(this->_statusbar = statusBar) ) {
+    this->_statusbar = new QStatusBar(this);
   }
 
-  layout_->addWidget(this->statusbar_, 0);
+  _layout->addWidget(this->_statusbar, 0);
 
-  return this->statusbar_;
+  return this->_statusbar;
 }
 
 QStatusBar * QImageViewer::statusbar() const
 {
-  return statusbar_;
+  return _statusbar;
 }
 
 
 void QImageViewer::setDisplayFunction(QImageDisplayFunction *  displayfunction)
 {
-  if( displayFunction_ ) {
+  if( _displayFunction ) {
 //    disconnect(displayFunction_, &QImageDisplayFunction::update,
 //        this, &ThisClass::updateDisplay);
   }
 
-  if( (displayFunction_ = displayfunction) ) {
+  if( (_displayFunction = displayfunction) ) {
 //    connect(displayFunction_, &QImageDisplayFunction::update,
 //        this, &ThisClass::updateDisplay);
   }
@@ -144,93 +144,93 @@ void QImageViewer::setDisplayFunction(QImageDisplayFunction *  displayfunction)
 
 QImageDisplayFunction * QImageViewer::displayFunction() const
 {
-  return this->displayFunction_;
+  return this->_displayFunction;
 }
 
 void QImageViewer::setViewScale(int scale, const QPoint * centerPos)
 {
-  view_->setViewScale(scale, centerPos);
+  _view->setViewScale(scale, centerPos);
 }
 
 int QImageViewer::viewScale() const
 {
-  return view_->viewScale();
+  return _view->viewScale();
 }
 
 void QImageViewer::setDisplayType(DisplayType v)
 {
-  currentDisplayType_ = v;
+  _currentDisplayType = v;
   displayTypeChanged();
   updateDisplay();
 }
 
 QImageViewer::DisplayType QImageViewer::displayType() const
 {
-  return currentDisplayType_;
+  return _currentDisplayType;
 }
 
 void QImageViewer::setMaskBlendAlpha(double v)
 {
-  maskBlendAlpha_ = v;
+  _maskBlendAlpha = v;
   updateDisplay();
 }
 
 double QImageViewer::maskBlendAlpha() const
 {
-  return maskBlendAlpha_;
+  return _maskBlendAlpha;
 }
 
 void QImageViewer::setTransparentMask(bool v)
 {
-  transparentMask_ = v;
+  _transparentMask = v;
   updateDisplay();
 }
 
 bool QImageViewer::transparentMask() const
 {
-  return transparentMask_;
+  return _transparentMask;
 }
 
 const cv::Mat & QImageViewer::currentImage() const
 {
-  return currentImage_;
+  return _currentImage;
 }
 
 const cv::Mat & QImageViewer::currentMask() const
 {
-  return currentMask_;
+  return _currentMask;
 }
 
 const cv::Mat & QImageViewer::currentImageData() const
 {
-  return currentImageData_;
+  return _currentImageData;
 }
 
 const cv::Mat& QImageViewer::mtfImage() const
 {
-  return mtfImage_;
+  return _mtfImage;
 }
 
 const cv::Mat & QImageViewer::displayImage() const
 {
-  return displayImage_;
+  return _displayImage;
 }
 
 QPixmap QImageViewer::grabViewportPixmap()
 {
-  QWidget * w = view_->viewport();
-  return w ? w->grab(w->rect()) : view_->grab(view_->rect());
+  QWidget * w = _view->viewport();
+  return w ? w->grab(w->rect()) : _view->grab(_view->rect());
 }
 
 QString QImageViewer::currentFileName() const
 {
-  return this->currentFileName_;
+  return this->_currentFileName;
 }
 
 void QImageViewer::setCurrentFileName(const QString & newFileName)
 {
-  if( currentFileName_ != newFileName ) {
-    currentFileName_ = newFileName;
+  if( _currentFileName != newFileName ) {
+    _currentFileName = newFileName;
     Q_EMIT currentFileNameChanged();
   }
 }
@@ -239,25 +239,25 @@ void QImageViewer::setCurrentImage(cv::InputArray image, cv::InputArray mask, cv
 {
   // c_current_image_lock lock(this);
 
-  editMaskUndoQueue_.clear();
+  _editMaskUndoQueue.clear();
 
   if( image.empty() ) {
     current_image_lock lock(this);
-    currentImage_.release();
-    currentMask_.release();
-    currentImageData_.release();
+    _currentImage.release();
+    _currentMask.release();
+    _currentImageData.release();
   }
   else if( make_copy ) {
     current_image_lock lock(this);
-    image.getMat().copyTo(currentImage_);
-    mask.getMat().copyTo(currentMask_);
-    imageData.getMat().copyTo(currentImageData_);
+    image.getMat().copyTo(_currentImage);
+    mask.getMat().copyTo(_currentMask);
+    imageData.getMat().copyTo(_currentImageData);
   }
   else {
     current_image_lock lock(this);
-    currentImage_ = image.getMat();
-    currentMask_ = mask.getMat();
-    currentImageData_ = imageData.getMat();
+    _currentImage = image.getMat();
+    _currentMask = mask.getMat();
+    _currentImageData = imageData.getMat();
   }
 
 //  CF_DEBUG("Q_EMIT currentImageChanged()");
@@ -272,20 +272,20 @@ void QImageViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::Input
 
 void QImageViewer::setMask(cv::InputArray mask, bool make_copy /*= true*/)
 {
-  if( !mask.empty() && (mask.size() != currentImage_.size() || mask.type() != CV_8UC1) ) {
+  if( !mask.empty() && (mask.size() != _currentImage.size() || mask.type() != CV_8UC1) ) {
     CF_ERROR("Invalid mask specifed: %dx%d channes=%d depth=%d. Must be  %dx%d CV_8UC1",
         mask.cols(), mask.rows(), mask.channels(), mask.depth(),
-        currentImage_.cols, currentImage_.rows);
+        _currentImage.cols, _currentImage.rows);
     return;
   }
 
-  editMaskUndoQueue_.clear();
+  _editMaskUndoQueue.clear();
 
   if ( make_copy ) {
-    mask.getMat().copyTo(currentMask_);
+    mask.getMat().copyTo(_currentMask);
   }
   else {
-    currentMask_ = mask.getMat();
+    _currentMask = mask.getMat();
   }
 
   Q_EMIT currentImageChanged();
@@ -303,62 +303,62 @@ void QImageViewer::updateDisplay()
 
 void QImageViewer::createDisplayImage()
 {
-  if ( currentDisplayType_ == DisplayMask ) {
-    currentMask_.copyTo(displayImage_);
+  if ( _currentDisplayType == DisplayMask ) {
+    _currentMask.copyTo(_displayImage);
   }
   else {
 
     if( true ) {
       current_image_lock lock(this);
 
-      if( currentImage_.empty() ) {
-        displayImage_.release();
+      if( _currentImage.empty() ) {
+        _displayImage.release();
       }
       else {
 
-        if( !displayFunction_ ) {
-          currentImage_.copyTo(displayImage_);
+        if( !_displayFunction ) {
+          _currentImage.copyTo(_displayImage);
         }
-        else if( currentImage_.channels() == 2 ) { // assume this is optical flow image
+        else if( _currentImage.channels() == 2 ) { // assume this is optical flow image
 
-          displayFunction_->createDisplayImage(currentImage_,
-              transparentMask_ ? cv::noArray() : currentMask_,
-              mtfImage_,
-              displayImage_,
-              currentImage_.depth());
+          _displayFunction->createDisplayImage(_currentImage,
+              _transparentMask ? cv::noArray() : _currentMask,
+              _mtfImage,
+              _displayImage,
+              _currentImage.depth());
         }
         else {
           // displayImage_.release();
 
-          displayFunction_->createDisplayImage(currentImage_,
-              transparentMask_ ? cv::noArray() : currentMask_,
-              mtfImage_,
-              displayImage_,
+          _displayFunction->createDisplayImage(_currentImage,
+              _transparentMask ? cv::noArray() : _currentMask,
+              _mtfImage,
+              _displayImage,
               CV_8U);
         }
       }
     }
 
-    if ( currentDisplayType_ == DisplayBlend && !displayImage_.empty() && !currentMask_.empty() ) {
+    if ( _currentDisplayType == DisplayBlend && !_displayImage.empty() && !_currentMask.empty() ) {
 
       cv::Mat mask;
-      if ( displayImage_.channels() == currentMask_.channels() ) {
-        mask = currentMask_;
+      if ( _displayImage.channels() == _currentMask.channels() ) {
+        mask = _currentMask;
       }
       else {
-        const int cn = displayImage_.channels();
+        const int cn = _displayImage.channels();
         cv::Mat channels[cn];
         for ( int i = 0; i < cn; ++i ) {
-          channels[i] = currentMask_;
+          channels[i] = _currentMask;
         }
         cv::merge(channels, cn, mask);
       }
 
-      cv::addWeighted(displayImage_, maskBlendAlpha_,
-          mask, 1 - maskBlendAlpha_,
+      cv::addWeighted(_displayImage, _maskBlendAlpha,
+          mask, 1 - _maskBlendAlpha,
           0,
-          displayImage_,
-          displayImage_.depth());
+          _displayImage,
+          _displayImage.depth());
     }
 
   }
@@ -383,13 +383,13 @@ void QImageViewer::createDisplayImage()
 
 void QImageViewer::showCurrentDisplayImage()
 {
-  if( displayImage_.empty() ) {
+  if( _displayImage.empty() ) {
     scene()->setImage(QPixmap());
   }
   else {
 
     QPixmap pixmap =
-        createPixmap(displayImage_, true,
+        createPixmap(_displayImage, true,
             Qt::AutoColor |
                 Qt::ThresholdDither |
                 Qt::ThresholdAlphaDither |
@@ -407,8 +407,8 @@ void QImageViewer::copyDisplayImageToClipboard()
     QMessageBox::critical(this, "ERROR", "No application clipboard available");
   }
   else {
-    cv2qt(displayImage(), &qimage_, true);
-    clipboard->setImage(qimage_);
+    cv2qt(displayImage(), &_qimage, true);
+    clipboard->setImage(_qimage);
   }
 }
 
@@ -420,9 +420,9 @@ void QImageViewer::copyDisplayImageROIToClipboard(const QRect & roi)
   }
   else {
     cv::Rect rc;
-    if( adjustRoi(roi, cv::Rect(0, 0, displayImage_.cols, displayImage_.rows), &rc) ) {
-      cv2qt(displayImage_(rc), &qimage_, true);
-      clipboard->setImage(qimage_);
+    if( adjustRoi(roi, cv::Rect(0, 0, _displayImage.cols, _displayImage.rows), &rc) ) {
+      cv2qt(_displayImage(rc), &_qimage, true);
+      clipboard->setImage(_qimage);
     }
   }
 }
@@ -492,7 +492,7 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
   int n = 0;
 
   QPointF pos =
-      view_->mapToScene(viewpos);
+      _view->mapToScene(viewpos);
 
   const int x =
       pos.x();
@@ -507,14 +507,14 @@ QString QImageViewer::statusStringForPixel(const QPoint & viewpos)
 
   current_image_lock lock(this);
 
-  if ( !currentImageData_.empty() ) {
-    n = sdump(currentImageData_, x, y, buf, sizeof(buf) - 1 - n, n);
+  if ( !_currentImageData.empty() ) {
+    n = sdump(_currentImageData, x, y, buf, sizeof(buf) - 1 - n, n);
   }
-  else if ( !currentImage_.empty() ) {
-    n = sdump(currentImage_, x, y, buf, sizeof(buf) - 1 - n, n);
+  else if ( !_currentImage.empty() ) {
+    n = sdump(_currentImage, x, y, buf, sizeof(buf) - 1 - n, n);
   }
-  else if ( !qimage_.isNull() && x >= 0 && x < qimage_.width() && y >= 0 && y < qimage_.height() ) {
-    const QRgb px = qimage_.pixel(x, y);
+  else if ( !_qimage.isNull() && x >= 0 && x < _qimage.width() && y >= 0 && y < _qimage.height() ) {
+    const QRgb px = _qimage.pixel(x, y);
     n += snprintf(buf + n, sizeof(buf) - 1 - n, " RGB %d %d %d", qRed(px), qGreen(px), qBlue(px));
   }
 
@@ -548,44 +548,54 @@ void QImageViewer::focusOutEvent(QFocusEvent *e)
 
 void QImageViewer::setEnableEditMask(bool enable)
 {
-  enableEditMask_ = enable;
-  view_->setMouseScrollEnabled(!enable);
+  _enableEditMask = enable;
+  _view->setMouseScrollEnabled(!enable);
   updateCursor();
 }
 
 bool QImageViewer::enableEditMask() const
 {
-  return enableEditMask_;
+  return _enableEditMask;
 }
 
 void QImageViewer::setEditMaskPenRadius(int v)
 {
-  editMaskPenRadius_ = v;
+  _editMaskPenRadius = v;
   updateCursor();
 }
 
 int QImageViewer::editMaskPenRadius() const
 {
-  return editMaskPenRadius_;
+  return _editMaskPenRadius;
 }
 
 void QImageViewer::setEditMaskPenShape(PenShape v)
 {
-  editMaskPenShape_ = v;
+  _editMaskPenShape = v;
   updateCursor();
 }
 
 QImageViewer::PenShape QImageViewer::editMaskPenShape() const
 {
-  return editMaskPenShape_;
+  return _editMaskPenShape;
+}
+
+void QImageViewer::setKeepMaskOnMaskEditMode(bool v)
+{
+  _keepMaskOnMaskEditMode = v;
+}
+
+bool QImageViewer::keepMaskOnMaskEditMode() const
+{
+  return _keepMaskOnMaskEditMode;
 }
 
 void QImageViewer::updateCursor()
 {
   static const QCursor defaultCursor =
-      view_->cursor();
+      _view->cursor();
 
-  view_->setCursor(enableEditMask_ ?
+  _view->setCursor(_enableEditMask ?
       Qt::CursorShape::CrossCursor :
       defaultCursor);
 }
@@ -594,27 +604,27 @@ void QImageViewer::editMask(QMouseEvent * e)
 {
   //c_current_image_lock lock(this);
 
-  if( !currentImage_.empty() ) {
+  if( !_currentImage.empty() ) {
 
-    if( currentMask_.empty() ) {
-      currentMask_.create(currentImage_.size(), CV_8UC1);
-      currentMask_.setTo(255);
+    if( _currentMask.empty() ) {
+      _currentMask.create(_currentImage.size(), CV_8UC1);
+      _currentMask.setTo(255);
     }
 
-    if ( editMaskUndoQueue_.size() > 100 ) {
-      editMaskUndoQueue_.erase(editMaskUndoQueue_.begin());
+    if ( _editMaskUndoQueue.size() > 100 ) {
+      _editMaskUndoQueue.erase(_editMaskUndoQueue.begin());
     }
 
-    editMaskUndoQueue_.push(currentMask_.clone());
+    _editMaskUndoQueue.push(_currentMask.clone());
 
-    const QPointF pos = view_->mapToScene(e->pos());
+    const QPointF pos = _view->mapToScene(e->pos());
     const int x = pos.x(), y = pos.y();
 
-    switch (editMaskPenShape_) {
+    switch (_editMaskPenShape) {
     case PenShape_circle:
 
-      cv::circle(currentMask_, cv::Point(x, y),
-          editMaskPenRadius_,
+      cv::circle(_currentMask, cv::Point(x, y),
+          _editMaskPenRadius,
           0,
           -1,
           cv::LINE_8,
@@ -623,9 +633,9 @@ void QImageViewer::editMask(QMouseEvent * e)
       break;
 
     default:
-      cv::rectangle(currentMask_,
-          cv::Point(x - editMaskPenRadius_, y - editMaskPenRadius_),
-          cv::Point(x + editMaskPenRadius_, y + editMaskPenRadius_),
+      cv::rectangle(_currentMask,
+          cv::Point(x - _editMaskPenRadius, y - _editMaskPenRadius),
+          cv::Point(x + _editMaskPenRadius, y + _editMaskPenRadius),
           0,
           -1,
           cv::LINE_8,
@@ -642,11 +652,11 @@ void QImageViewer::undoEditMask()
 {
   //c_current_image_lock lock(this);
 
-  if( !editMaskUndoQueue_.empty() ) {
+  if( !_editMaskUndoQueue.empty() ) {
 
-    cv::Mat mask = editMaskUndoQueue_.pop();
-    if( mask.size() == currentImage_.size() ) {
-      currentMask_ = mask;
+    cv::Mat mask = _editMaskUndoQueue.pop();
+    if( mask.size() == _currentImage.size() ) {
+      _currentMask = mask;
       Q_EMIT currentImageChanged();
       updateDisplay();
     }
@@ -684,7 +694,7 @@ bool QImageViewer::adjustRoi(const QRect & srcRoi, const cv::Rect & imageRect, c
 
 void QImageViewer::handleMousePressEvent(QMouseEvent * e)
 {
-  if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
+  if( e->buttons() == Qt::LeftButton && _enableEditMask ) {
     editMask(e);
   }
 
@@ -693,7 +703,7 @@ void QImageViewer::handleMousePressEvent(QMouseEvent * e)
 
 void QImageViewer::handleMouseMoveEvent(QMouseEvent * e)
 {
-  if( e->buttons() == Qt::LeftButton && enableEditMask_ ) {
+  if( e->buttons() == Qt::LeftButton && _enableEditMask ) {
     editMask(e);
   }
   Q_EMIT onMouseMove(e);

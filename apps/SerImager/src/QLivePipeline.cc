@@ -200,12 +200,12 @@ void QLiveDisplay::createShapes()
 
     QRectF rect;
 
-    if( currentImage_.empty() ) {
+    if( _currentImage.empty() ) {
       rect.setRect(0, 0, 400, 400);
     }
     else {
 
-      rect.setRect(0, 0, currentImage_.cols, currentImage_.rows);
+      rect.setRect(0, 0, _currentImage.cols, _currentImage.rows);
 
       if( rect.width() > 400 ) {
         rect.setX((rect.left() + rect.right()) / 2 - 200);
@@ -225,7 +225,7 @@ void QLiveDisplay::createShapes()
     rectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     rectShape_->setCosmeticPen(Qt::red);
     rectShape_->setVisible(false);
-    scene_->addItem(rectShape_);
+    _scene->addItem(rectShape_);
   }
 
   if( !lineShape_ ) {
@@ -235,7 +235,7 @@ void QLiveDisplay::createShapes()
     lineShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     lineShape_->setCosmeticPen(Qt::green);
     lineShape_->setVisible(false);
-    scene_->addItem(lineShape_);
+    _scene->addItem(lineShape_);
   }
 
   if( !targetShape_ ) {
@@ -244,7 +244,7 @@ void QLiveDisplay::createShapes()
     targetShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     targetShape_->setCosmeticPen(Qt::red);
     targetShape_->setVisible(false);
-    scene_->addItem(targetShape_);
+    _scene->addItem(targetShape_);
   }
 
 }
@@ -263,7 +263,7 @@ QLiveDisplayMtfFunction * QLiveDisplay::mtfDisplayFunction()
 void QLiveDisplay::setFrameProcessor(const c_image_processor::sptr & processor)
 {
   mtfDisplayFunction_.mutex().lock();
-  Base::current_processor_ = processor;
+  Base::_current_processor = processor;
 
   if ( !mtfDisplayFunction_.isBusy() ) {
     updateImage();
@@ -310,7 +310,7 @@ void QLiveDisplay::timerEvent(QTimerEvent * e)
 
         live_pipeline_lock_.lock();
 
-        if( live_pipeline_ && live_pipeline_->get_display_image(inputImage_, inputMask_) ) {
+        if( live_pipeline_ && live_pipeline_->get_display_image(_inputImage, _inputMask) ) {
           updateCurrentImage();
         }
 
@@ -400,37 +400,37 @@ void QLiveDisplay::onPixmapChanged()
 
 void QLiveDisplay::updateCurrentImage()
 {
-  if( !current_processor_ || current_processor_->empty() ) {
+  if( !_current_processor || _current_processor->empty() ) {
 
     current_image_lock lock(this);
-    inputImage_.copyTo(currentImage_);
-    inputMask_.copyTo(currentMask_);
+    _inputImage.copyTo(_currentImage);
+    _inputMask.copyTo(_currentMask);
   }
   else {
 
     cv::Mat tmp_image, tmp_mask;
 
-    inputImage_.copyTo(tmp_image);
-    inputMask_.copyTo(tmp_mask);
-    current_processor_->process(tmp_image, tmp_mask);
+    _inputImage.copyTo(tmp_image);
+    _inputMask.copyTo(tmp_mask);
+    _current_processor->process(tmp_image, tmp_mask);
 
     current_image_lock lock(this);
-    currentImage_ = tmp_image;
-    currentMask_ = tmp_mask;
+    _currentImage = tmp_image;
+    _currentMask = tmp_mask;
   }
 
   if ( true ) {
     mtfDisplayFunction_.createDisplayImage(
-        currentImage_,
-        currentMask_,
-        mtfImage_,
-        displayImage_,
+        _currentImage,
+        _currentMask,
+        _mtfImage,
+        _displayImage,
         CV_8U);
   }
 
   if ( true ) {
     pixmap_ =
-        createPixmap(displayImage_, true,
+        createPixmap(_displayImage, true,
             Qt::NoFormatConversion |
                 Qt::ThresholdDither |
                 Qt::ThresholdAlphaDither |

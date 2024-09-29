@@ -17,7 +17,7 @@ QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
   //input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence_->set_auto_apply_color_matrix(true);
 
-  Base::layout_->addWidget(playControls =
+  Base::_layout->addWidget(playControls =
       new QPlaySequenceControl(this));
 
   connect(playControls, &QPlaySequenceControl::onSeek,
@@ -181,14 +181,14 @@ void QImageFileEditor::loadNextFrame()
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      input_sequence_->read(inputImage_, &inputMask_);
+      input_sequence_->read(_inputImage, &_inputMask);
 
 //      CF_DEBUG("inputImage_: %dx%d channels=%d depth=%d inputMask_: %dx%d channels=%d depth=%d",
 //          inputImage_.cols, inputImage_.rows, inputImage_.channels(), inputImage_.depth(),
 //          inputMask_.cols, inputMask_.rows, inputMask_.channels(), inputMask_.depth());
 
 
-      Q_EMIT onInputImageLoad(inputImage_, inputMask_,
+      Q_EMIT onInputImageLoad(_inputImage, _inputMask,
           input_sequence_->colorid(),
           input_sequence_->bpp());
 
@@ -196,20 +196,20 @@ void QImageFileEditor::loadNextFrame()
       if ( filterBadPixels_ && badPixelsVariationThreshold_ > 0 ) {
 
         if( !is_bayer_pattern(input_sequence_->colorid()) ) {
-          median_filter_hot_pixels(inputImage_, badPixelsVariationThreshold_, false);
+          median_filter_hot_pixels(_inputImage, badPixelsVariationThreshold_, false);
         }
-        else if( !extract_bayer_planes(inputImage_, inputImage_, input_sequence_->colorid()) ) {
+        else if( !extract_bayer_planes(_inputImage, _inputImage, input_sequence_->colorid()) ) {
           CF_ERROR("ERROR: extract_bayer_planes() fails");
         }
         else {
-          median_filter_hot_pixels(inputImage_, badPixelsVariationThreshold_, true);
-          if( !nninterpolation(inputImage_, inputImage_, input_sequence_->colorid()) ) {
+          median_filter_hot_pixels(_inputImage, badPixelsVariationThreshold_, true);
+          if( !nninterpolation(_inputImage, _inputImage, input_sequence_->colorid()) ) {
             CF_ERROR("nninterpolation() fails");
           }
         }
       }
       else if( is_bayer_pattern(input_sequence_->colorid()) ) {
-        debayer(inputImage_, inputImage_, input_sequence_->colorid(),
+        debayer(_inputImage, _inputImage, input_sequence_->colorid(),
             debayerAlgorithm_);
       }
 

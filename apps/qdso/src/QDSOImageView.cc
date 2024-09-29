@@ -21,10 +21,10 @@ QDSOImageView::QDSOImageView(QWidget * parent) :
 void QDSOImageView::showImage(const cv::Mat & image, bool make_copy)
 {
   if ( make_copy)  {
-    image.copyTo(Base::inputImage_);
+    image.copyTo(Base::_inputImage);
   }
   else {
-    Base::inputImage_ = image;
+    Base::_inputImage = image;
   }
 
   Q_EMIT redrawImage();

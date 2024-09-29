@@ -579,7 +579,6 @@ void QInputSourceView::displayCurrentFrame()
 
       case DisplayType_PointCloud: {
 
-
         std::vector<cv::Mat> points, colors, mask;
         std::vector<std::vector<uint64_t>> pids;
 

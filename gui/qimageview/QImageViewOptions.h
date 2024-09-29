@@ -37,6 +37,7 @@ protected:
   DisplayTypeCombo * displayType_ctl = nullptr;
   QNumericBox * blendAlpha_ctl = nullptr;
   QCheckBox * transparentMask_ctl = nullptr;
+  QCheckBox * keepMaskOnMaskEditMode_ctl = nullptr;
   QPenOptionsControl * penOptions_ctl = nullptr;
 };
 

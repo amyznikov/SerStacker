@@ -53,6 +53,25 @@ QImageViewOptions::QImageViewOptions(QWidget * parent) :
             return false;
           });
 
+
+  keepMaskOnMaskEditMode_ctl =
+      add_checkbox("Keep mask",
+          "",
+          [this](bool checked) {
+            if ( imageViewer_ ) {
+              imageViewer_->setKeepMaskOnMaskEditMode(checked);
+              // Q_EMIT parameterChanged();
+            }
+          },
+          [this](bool * checked) {
+            if ( imageViewer_ ) {
+              * checked = imageViewer_->keepMaskOnMaskEditMode();
+              return true;
+            }
+            return false;
+          });
+
+
   blendAlpha_ctl =
       add_numeric_box<double>("Bleand alpha",
           "",

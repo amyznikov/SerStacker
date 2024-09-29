@@ -16,7 +16,7 @@ QImageFileViewer::QImageFileViewer(QImageScene * scene, QWidget * parent) :
   //input_sequence_->set_auto_debayer(DEBAYER_GB);
   input_sequence_->set_auto_apply_color_matrix(true);
 
-  Base::layout_->insertWidget(2, playControls =
+  Base::_layout->insertWidget(2, playControls =
       new QPlaySequenceControl(this));
 
   connect(playControls, &QPlaySequenceControl::onSeek,
@@ -140,7 +140,7 @@ void QImageFileViewer::loadNextFrame()
 
       if ( true ) {
         current_image_lock lock(this);
-        input_sequence_->read(currentImage_, &currentMask_);
+        input_sequence_->read(_currentImage, &_currentMask);
       }
       Base::updateDisplay();
       Q_EMIT currentImageChanged();

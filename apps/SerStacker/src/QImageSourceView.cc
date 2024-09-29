@@ -49,12 +49,12 @@ void QImageSourceView::createRoiShape()
 
     QRectF rect;
 
-    if( currentImage_.empty() ) {
+    if( _currentImage.empty() ) {
       rect.setRect(0, 0, 256, 256);
     }
     else {
 
-      rect.setRect(0, 0, currentImage_.cols, currentImage_.rows);
+      rect.setRect(0, 0, _currentImage.cols, _currentImage.rows);
 
       if( rect.width() > 400 ) {
         rect.setX((rect.left() + rect.right()) / 2 - 200);
@@ -80,7 +80,7 @@ void QImageSourceView::createRoiShape()
         "Shift + LeftMouseButton for move\n"
         "Ctrl + LeftMouseButton for resize\n");
 
-    scene_->addItem(roiShape_);
+    _scene->addItem(roiShape_);
   }
 
 }

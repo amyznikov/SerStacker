@@ -27,7 +27,7 @@ public:
     typedef std::lock_guard<std::mutex> base;
 
     current_image_lock(QImageViewer * view) :
-        base(view->currentImageLock_)
+        base(view->_currentImageLock)
     {
     }
   };
@@ -90,6 +90,7 @@ public:
 
   QString statusStringForPixel(const QPoint & viewpos);
 
+
   void setEnableEditMask(bool enable);
   bool enableEditMask() const;
 
@@ -98,6 +99,9 @@ public:
 
   void setEditMaskPenShape(PenShape v);
   PenShape editMaskPenShape() const;
+
+  void setKeepMaskOnMaskEditMode(bool v);
+  bool keepMaskOnMaskEditMode() const;
 
   static bool adjustRoi(const cv::Rect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
   static bool adjustRoi(const QRect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
@@ -139,30 +143,31 @@ public Q_SLOTS:
   void undoEditMask();
 
 protected:
-  QVBoxLayout *layout_ = nullptr;
-  QImageScene *scene_ = nullptr;
-  QImageSceneView *view_ = nullptr;
-  QToolBar *toolbar_ = nullptr;
-  QStatusBar *statusbar_ = nullptr;
+  QVBoxLayout *_layout = nullptr;
+  QImageScene *_scene = nullptr;
+  QImageSceneView *_view = nullptr;
+  QToolBar *_toolbar = nullptr;
+  QStatusBar *_statusbar = nullptr;
 
-  QImageDisplayFunction *displayFunction_ = nullptr;
-  DisplayType currentDisplayType_ = DisplayImage;
-  double maskBlendAlpha_  = 0.9;
+  QImageDisplayFunction *_displayFunction = nullptr;
+  DisplayType _currentDisplayType = DisplayImage;
+  double _maskBlendAlpha  = 0.9;
 
-  QString currentFileName_;
-  cv::Mat currentImage_, mtfImage_, currentImageData_, currentMask_;
-  cv::Mat displayImage_;
-  QImage qimage_;
+  QString _currentFileName;
+  cv::Mat _currentImage, _mtfImage, _currentImageData, _currentMask;
+  cv::Mat _displayImage;
+  QImage _qimage;
 
 
-  bool transparentMask_ = true;
-  bool enableEditMask_ = false;
-  int editMaskPenRadius_ = 15;
-  PenShape editMaskPenShape_ = PenShape_circle;
-  QShortcut *undoEditMaskActionShortcut_ = nullptr;
-  QStack<cv::Mat> editMaskUndoQueue_;
+  bool _transparentMask = true;
+  bool _enableEditMask = false;
+  bool _keepMaskOnMaskEditMode = true;
+  int _editMaskPenRadius = 15;
+  PenShape _editMaskPenShape = PenShape_circle;
+  QShortcut *_undoEditMaskActionShortcut = nullptr;
+  QStack<cv::Mat> _editMaskUndoQueue;
 
-  std::mutex currentImageLock_;
+  std::mutex _currentImageLock;
 
 };
 

@@ -41,9 +41,9 @@ protected:
   void showEvent(QShowEvent *event) override;
 
 protected:
-  c_image_processor::sptr current_processor_;
-  cv::Mat inputImage_;
-  cv::Mat inputMask_;
+  c_image_processor::sptr _current_processor;
+  cv::Mat _inputImage;
+  cv::Mat _inputMask;
   bool hasPendingUpdates_ = false;
 };
 

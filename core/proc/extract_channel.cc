@@ -19,24 +19,26 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_3, "3", "cv::extractChannel(3)" },
       { color_channel_4, "4", "cv::extractChannel(4)" },
 
-      { color_channel_dont_change, "dont_change", "dont change color channels"},
+      { color_channel_dont_change, "dont_change", "Don't change color channels"},
+
+      { color_channel_red, "red", "cv::extractChannel(2)"},
+      { color_channel_green, "green", "cv::extractChannel(1)" },
+      { color_channel_blue, "blue", "cv::extractChannel(0)"},
 
       { color_channel_gray, "gray", "cv::cvtColor(cv::COLOR_BGR2GRAY)"},
-
+      { color_channel_luminance_YCrCb, "luminance_YCrCb", "cv::cvtColor(cv::COLOR_BGR2YCRCB) -> cv::extractChannel(0)"},
       { color_channel_luminance_lab, "luminance_lab", "cv::cvtColor(cv::COLOR_BGR2LAB)->cv::extractChannel(0)"},
       { color_channel_luminance_luv, "luminance_luv", "cv::cvtColor(cv::COLOR_BGR2Luv)->cv::extractChannel(0)"},
       { color_channel_luminance_hsv, "luminance_hsv", "cv::cvtColor(cv::COLOR_BGR2HSV)->cv::extractChannel(2)"},
       { color_channel_luminance_hls, "luminance_hls", "cv::cvtColor(cv::COLOR_BGR2HLS)->cv::extractChannel(0)"},
 
-      { color_channel_red, "red", "cv::extractChannel(2)"},
-      { color_channel_green, "green", "cv::extractChannel(1)" },
-      { color_channel_blue, "blue", "cv::extractChannel(0)"},
+
       { color_channel_min_inensity, "min", "cv::reduce(cv::REDUCE_MIN)"},
       { color_channel_max_intensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
       { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
-      { color_channel_max_color, "max_color", "max - min"},
 
+      { color_channel_max_color, "max_color", "max - min"},
       { color_channel_max_gradient, "max_gradient", "max gradient"},
 
       { color_channel_unknown}
@@ -128,6 +130,15 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
             cv::COLOR_BGR2GRAY);
         break;
 
+      case color_channel_luminance_YCrCb:
+        if( scaled_src.channels() != 3 ) {
+          CF_ERROR("Invalid argument: conversion to YCrCb not supported for image with %d channels",
+              scaled_src.channels());
+          return false;
+        }
+        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2YCrCb);
+        cv::extractChannel(converted_src, converted_src, 0);
+        break;
 
       case color_channel_luminance_lab:
         if( scaled_src.channels() != 3 ) {
@@ -307,20 +318,47 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         cv::Mat g, gm;
         std::vector<cv::Mat> gchannels;
         std::vector<cv::Mat> src_channels;
+        double min, max;
 
         compute_sobel_gradients(scaled_src, g, -1, cv::BORDER_REPLICATE);
 
         cv::split(g, gchannels);
         cv::split(scaled_src, src_channels);
 
-        src_channels[0].copyTo(converted_src);
-        gchannels[0].copyTo(g);
+        converted_src.release();
 
-        for( int c = 1, cn = gchannels.size(); c < cn; ++c ) {
-          cv::compare(gchannels[c], g, gm, cv::CMP_GT);
-          gchannels[c].copyTo(g, gm);
-          src_channels[c].copyTo(converted_src, gm);
+        for( int c = 0, cn = gchannels.size(); c < cn; ++c ) {
+
+          cv::minMaxLoc(gm, &min, &max);
+          cv::add(gchannels[c], max > min ? 1e-3 * (max - min) : 1e-3, gchannels[c]);
+
+          if( converted_src.empty() ) {
+            cv::multiply(src_channels[c], gchannels[c],
+                converted_src);
+          }
+          else {
+            cv::multiply(src_channels[c], gchannels[c], src_channels[c]);
+            cv::add(src_channels[c], converted_src, converted_src);
+          }
+
+          if( gm.empty() ) {
+            gchannels[c].copyTo(gm);
+          }
+          else {
+            cv::add(gchannels[c], gm, gm);
+          }
         }
+
+        cv::divide(converted_src, gm, converted_src);
+
+//        src_channels[0].copyTo(converted_src);
+//        gchannels[0].copyTo(g);
+//
+//        for( int c = 1, cn = gchannels.size(); c < cn; ++c ) {
+//          cv::compare(gchannels[c], g, gm, cv::CMP_GT);
+//          gchannels[c].copyTo(g, gm);
+//          src_channels[c].copyTo(converted_src, gm);
+//        }
 
         break;
       }

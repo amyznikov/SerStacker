@@ -35,35 +35,14 @@
 #include <core/proc/c_line_estimate.h>
 #include <core/proc/c_quad_estimate.h>
 #include <core/proc/fit_exponential.h>
+#include <core/proc/fit_decreasing_exponent.h>
 #include <core/proc/extract_channel.h>
 
 #include <core/debug.h>
 
 namespace {
 
-void ecclm_normalize(cv::Mat1f & image, cv::Mat1b & mask)
-{
-  cv::Mat m, s;
 
-  const double eps =
-      100;
-
-  const double sigma =
-      15;
-
-  const int ksize =
-      2 * ((int) (sigma * 3)) + 1;
-
-  cv::Mat G =
-      cv::getGaussianKernel(ksize, sigma,
-          CV_32F);
-
-  cv::sepFilter2D(image, m, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::subtract(image, m, m, cv::noArray(), CV_32F);
-
-  cv::sepFilter2D(cv::abs(m), s, CV_32F, G, G, cv::Point(-1, -1), eps, cv::BORDER_REPLICATE);
-  cv::divide(m, s, image);
-}
 
 }
 
@@ -71,35 +50,24 @@ void ecclm_normalize(cv::Mat1f & image, cv::Mat1b & mask)
 
 int main(int argc, char *argv[])
 {
-//  cf_set_logfile(stderr);
-//  cf_set_loglevel(CF_LOG_DEBUG);
-//
-//  const std::string input_filenames[2] = {
-//      "/home/data/ecclm/F1.png",
-//      "/home/data/ecclm/F2.png",
-//  };
-//
-//  cv::Mat input_images[2];
-//
-//  for ( int i = 0; i < 2; ++i ) {
-//
-//    if ( !load_image(input_filenames[i], input_images[i]) ) {
-//      CF_ERROR("load_image(%s) fails", input_filenames[i].c_str());
-//      return 1;
-//    }
-//
-//    extract_channel(input_images[i], input_images[i], cv::noArray(), cv::noArray(), color_channel_gray, 1, CV_32F);
-//    cv::GaussianBlur(input_images[i], input_images[i], cv::Size(), 1, 1);
-//
-//    //cv::morphologyEx(input_image, input_image, cv::MORPH_GRADIENT, cv::Mat1b(5,5, 255));
-//  }
-//
-//  double corr =
-//      compute_correlation(input_images[0],
-//          input_images[0],
-//          cv::noArray() );
-//
-//  CF_DEBUG("corr=%g", corr);
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
+  const size_t n = 32;
+  std::vector<double> x(n), y(n);
+
+  for ( size_t i = 0; i < n; ++i ) {
+    x[i] = i;
+    y[i] = -10 + 5 * exp(-0.25 * x[i]);
+  }
+
+  double a = -1, b = -1, c = -1;
+
+  fit_decreasing_exponent(x, y, &a, &b, &c);
+
+  CF_DEBUG("c=%g b=%g a=%g ", c, b, a);
+
+
 
   return 0;
 }

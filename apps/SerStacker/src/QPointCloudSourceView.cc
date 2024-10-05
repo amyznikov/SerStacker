@@ -30,10 +30,32 @@ void QPointCloudSourceView::keyPressEvent(QKeyEvent *e)
   return Base::keyPressEvent(e) ;
 }
 
-
-void QPointCloudSourceView::glSelectionEvent(const QPointF & click_pos, double objX, double objY, double objZ)
+QString QPointCloudSourceView::statusStringForPoint(int cloud_index, int point_index) const
 {
+  if ( cloud_index >= 0 && cloud_index < (int) _displayPoints.size() ) {
 
+    const std::vector<cv::Vec3f> & cloud  =
+        _displayPoints[cloud_index];
+
+    if ( point_index >= 0 && point_index < (int)cloud.size() ) {
+
+      const cv::Vec3f & v =
+          cloud[point_index];
+
+      return qsprintf("c=%d p=%d v={ %+g %+g %+g } dist=%g",
+          cloud_index, point_index,
+          v[0], v[1], v[2],
+          cv::norm(v));
+    }
+
+  }
+
+  return "";
+}
+
+
+void QPointCloudSourceView::glPointSelection(double objX, double objY, double objZ, const QPointF & mousePos, bool fMouseMove)
+{
   if ( !_displayPoints.empty() ) {
 
 
@@ -70,19 +92,18 @@ void QPointCloudSourceView::glSelectionEvent(const QPointF & click_pos, double o
 
     }
 
-
     if( best_point_index >= 0 ) {
 
-      const cv::Vec3f & p =
-          _displayPoints[best_cloud_index][best_point_index];
-
-      const double pointDistance =
-          cv::norm(p);
-
-      CF_DEBUG("click: x=%g y=%g c:%d p:%d X=%g Y=%g Z=%g Distance=%g delta=%g",
-          click_pos.x(), click_pos.y(), best_cloud_index, best_point_index,
-          p[0], p[1], p[2], pointDistance,
-          best_delta);
+//      const cv::Vec3f & p =
+//          _displayPoints[best_cloud_index][best_point_index];
+//
+//      const double pointDistance =
+//          cv::norm(p);
+//
+//      CF_DEBUG("click: c:%d p:%d X=%g Y=%g Z=%g Distance=%g delta=%g",
+//          best_cloud_index, best_point_index,
+//          p[0], p[1], p[2], pointDistance,
+//          best_delta);
 
       Q_EMIT pointClicked(best_cloud_index, best_point_index);
     }

@@ -521,8 +521,12 @@ void MainWindow::setupStatusbar()
 
   sb->addWidget(statusbarShapesLabel_ctl = new QLabel(this));
   sb->addWidget(statusbarMousePosLabel_ctl = new QLabel(this));
+
   sb->addPermanentWidget(statusbarShowLog_ctl = new QToolButton());
   statusbarShowLog_ctl->setDefaultAction(showLogWidgetAction);
+
+  statusbarShapesLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  statusbarMousePosLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse);
 }
 
 void MainWindow::setupGeoView()
@@ -2234,6 +2238,13 @@ void MainWindow::setupInputSequenceView()
 
         menu.exec(tb->mapToGlobal(QPoint(tb->width() - 4,tb->height() - 4)));
       }));
+
+
+
+  connect(cloudView, &QPointCloudSourceView::pointClicked,
+      [this](int cloud_index, int point_index) {
+        statusbarMousePosLabel_ctl->setText(cloudView->statusStringForPoint(cloud_index, point_index));
+      });
 
 
   ///////////////////////////////////////////////////////////////////////

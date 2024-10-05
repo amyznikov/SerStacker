@@ -173,7 +173,6 @@ protected:
   virtual void onSaveParameters(QSettings & settings);
 
 protected:
-  void showViewTarget(bool v);
   void timerEvent(QTimerEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
@@ -190,8 +189,12 @@ protected:
   void paintEvent(QPaintEvent *e) override;
 
   virtual void cleanupGL();
-  virtual void glSelectionEvent(const QPointF & click_pos,
-      double objX, double objY, double objZ );
+  virtual void glPointSelection(double objX, double objY, double objZ,
+      const QPointF & mousePos, bool fMouseMove);
+
+protected:
+  void showViewTarget(bool v);
+  void onGLPointSelection(const QPointF & mouse_pos, bool mouse_move);
 
 protected:
   QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);

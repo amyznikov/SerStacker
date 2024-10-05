@@ -23,12 +23,14 @@ public:
 
   QPointCloudSourceView(QWidget * parent = nullptr);
 
+  QString statusStringForPoint(int cloud_index, int point_index) const;
+
 Q_SIGNALS:
   void pointClicked(int cloud_index, int point_index);
 
 protected:
   void keyPressEvent(QKeyEvent *event) final;
-  void glSelectionEvent(const QPointF & click_pos, double objX, double objY, double objZ) final;
+  void glPointSelection(double objX, double objY, double objZ, const QPointF & mousePos, bool fMouseMove) final;
 };
 
 /////////////////

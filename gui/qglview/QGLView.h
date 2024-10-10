@@ -189,12 +189,19 @@ protected:
   void paintEvent(QPaintEvent *e) override;
 
   virtual void cleanupGL();
+
   virtual void glPointSelection(double objX, double objY, double objZ,
-      const QPointF & mousePos, bool fMouseMove);
+      const QPointF & mousePos,
+      QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons,
+      Qt::KeyboardModifiers modifiers);
 
 protected:
   void showViewTarget(bool v);
-  void onGLPointSelection(const QPointF & mouse_pos, bool mouse_move);
+  void onGLPointSelection(const QPointF & mousePos,
+      QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers);
 
 protected:
   QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);

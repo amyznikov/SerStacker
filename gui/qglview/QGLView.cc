@@ -985,14 +985,20 @@ void QGLView::drawMainAxes()
 //}
 
 void QGLView::glPointSelection(double objX, double objY, double objZ,
-    const QPointF & mousePos, bool fMouseMove)
+    const QPointF &mousePos,
+    QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers)
 {
   CF_DEBUG("QGLView: x=%g y=%g obj: X=%g Y=%g Z=%g",
       mousePos.x(), mousePos.y(), objX, objY, objZ);
 }
 
 
-void QGLView::onGLPointSelection(const QPointF & mousePos, bool fMouseMove)
+void QGLView::onGLPointSelection(const QPointF &mousePos,
+    QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers)
 {
   if( _enableSelection ) {
 
@@ -1022,8 +1028,9 @@ void QGLView::onGLPointSelection(const QPointF & mousePos, bool fMouseMove)
                 _smodelview, _sprojection, _sviewport,
                 &objX, &objY, &objZ);
 
-        if( status == GL_TRUE ) {
-          glPointSelection(objX, objY, objZ, mousePos, fMouseMove);
+        if (status == GL_TRUE) {
+          glPointSelection(objX, objY, objZ, mousePos,
+              mouseEventType, mouseButtons, keyboardModifiers);
         }
       }
 
@@ -1040,16 +1047,25 @@ void QGLView::mousePressEvent(QMouseEvent * e)
   _prev_mouse_pos = e->localPos();
 #endif
 
-  if (e->buttons() == Qt::LeftButton) {
-
-    if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
-      onGLPointSelection(e->localPos(), false);
-    }
-    else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
-      setAutoShowViewTarget(!autoShowViewTarget());
-      update();
-    }
+  if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
+    onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
+  else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
+    setAutoShowViewTarget(!autoShowViewTarget());
+    update();
+  }
+
+
+//  if (e->buttons() == Qt::LeftButton) {
+//
+//    if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
+//      onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+//    }
+//    else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
+//      setAutoShowViewTarget(!autoShowViewTarget());
+//      update();
+//    }
+//  }
 
   e->ignore();
 }
@@ -1076,7 +1092,10 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     const QPointF newpos = e->localPos();
 #endif
 
-    if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
+    if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
+      onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    }
+    else if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
 
       const QPointF delta =
           newpos - _prev_mouse_pos;
@@ -1126,83 +1145,80 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
       _prev_mouse_pos = newpos;
     }
 
-    else if( e->buttons() == Qt::LeftButton ) {
+    else if (e->buttons() == Qt::LeftButton) {
 
-      if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
-        onGLPointSelection(e->localPos(), true);
-      }
-      else { // Rotate camera
+      // Rotate camera
 
-        const QPointF delta =
-            newpos - _prev_mouse_pos;
+      const QPointF delta =
+          newpos - _prev_mouse_pos;
 
-        if (delta.x() || delta.y()) {
+      if (delta.x() || delta.y()) {
 
-          const QVector3D forward =
-              _viewPoint - _viewTarget;
+        const QVector3D forward =
+            _viewPoint - _viewTarget;
 
-          const QMatrix4x4 minv =
-              _mview.inverted();
+        const QMatrix4x4 minv =
+            _mview.inverted();
 
-          if (e->modifiers() == Qt::ShiftModifier) { // Rotate around forward looking axis
+        if (e->modifiers() == Qt::ShiftModifier) { // Rotate around forward looking axis
 
-            const int signy =
-                newpos.x() > viewport.w / 2 ? +1 : -1;
+          const int signy =
+              newpos.x() > viewport.w / 2 ? +1 : -1;
 
-            const int signx =
-                newpos.y() < viewport.h / 2 ? +1 : -1;
+          const int signx =
+              newpos.y() < viewport.h / 2 ? +1 : -1;
+
+          _viewUpDirection =
+              QQuaternion::fromAxisAndAngle(forward,
+                  0.2 * (signy * delta.y() + signx * delta.x()))
+                  .rotatedVector(_viewUpDirection);
+
+          _dirty = true;
+
+          showViewTarget(true);
+          update();
+          Q_EMIT viewPointChanged();
+        }
+
+        else { // Rotate camera around of the Up / Right axes
+
+          if (e->modifiers() & Qt::ControlModifier) {
+
+            const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+            const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            const QVector3D Up = (TU - T0).normalized();
+
+            double dx = delta.x();
+            double dy = delta.y();
+
+            if (e->modifiers() & Qt::ShiftModifier) {
+              if (std::abs(dx) >= std::abs(dy)) {
+                dy = 0;
+              }
+              else {
+                dx = 0;
+              }
+            }
+
+            const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
+
+            _viewPoint =
+                fromSpherical(toSpherical(_viewPoint - _viewTarget) + viewRotation) + _viewTarget;
 
             _viewUpDirection =
-                QQuaternion::fromAxisAndAngle(forward,
-                    0.2 * (signy * delta.y() + signx * delta.x()))
-                    .rotatedVector(_viewUpDirection);
+                fromSpherical(toSpherical(Up) + viewRotation);
 
-            _dirty = true;
-
-            showViewTarget(true);
-            update();
-            Q_EMIT viewPointChanged();
           }
+          else {
 
-          else { // Rotate camera around of the Up / Right axes
+            QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
+            QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
+            QVector3D Up = (TU - T0).normalized();
+            QVector3D Right = (TR - T0).normalized();
 
-            if (e->modifiers() & Qt::ControlModifier) {
-
-              const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
-              const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
-              const QVector3D Up = (TU - T0).normalized();
-
-              double dx = delta.x();
-              double dy = delta.y();
-
-              if (e->modifiers() & Qt::ShiftModifier) {
-                if (std::abs(dx) >= std::abs(dy)) {
-                  dy = 0;
-                }
-                else {
-                  dx = 0;
-                }
-              }
-
-              const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
-
-              _viewPoint =
-                  fromSpherical(toSpherical(_viewPoint - _viewTarget) + viewRotation) + _viewTarget;
-
-              _viewUpDirection =
-                  fromSpherical(toSpherical(Up) + viewRotation);
-
-            }
-            else {
-
-              QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
-              QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
-              QVector3D TR = minv.map(QVector3D(0.5, 0, forward.length()));
-              QVector3D Up = (TU - T0).normalized();
-              QVector3D Right = (TR - T0).normalized();
-
-              double dx = delta.x();
-              double dy = delta.y();
+            double dx = delta.x();
+            double dy = delta.y();
 
 //            if( e->modifiers() == Qt::ControlModifier ) {
 //              if( std::abs(dx) >= std::abs(dy) ) {
@@ -1213,23 +1229,22 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 //              }
 //            }
 
-              QVector3D newForward =
-                  QQuaternion::fromAxisAndAngle(-Up * dx - Right * dy, 0.2 * hypot(dx, dy))
-                      .rotatedVector(forward);
+            QVector3D newForward =
+                QQuaternion::fromAxisAndAngle(-Up * dx - Right * dy, 0.2 * hypot(dx, dy))
+                    .rotatedVector(forward);
 
-              T0 = minv.map(QVector3D(0, 0, newForward.length()));
-              TU = minv.map(QVector3D(0, 0.5, newForward.length()));
-              Up = (TU - T0).normalized();
+            T0 = minv.map(QVector3D(0, 0, newForward.length()));
+            TU = minv.map(QVector3D(0, 0.5, newForward.length()));
+            Up = (TU - T0).normalized();
 
-              _viewPoint = newForward + _viewTarget;
-              _viewUpDirection = Up;
-            }
-
-            _dirty = true;
-            showViewTarget(true);
-            update();
-            Q_EMIT viewPointChanged();
+            _viewPoint = newForward + _viewTarget;
+            _viewUpDirection = Up;
           }
+
+          _dirty = true;
+          showViewTarget(true);
+          update();
+          Q_EMIT viewPointChanged();
         }
       }
 

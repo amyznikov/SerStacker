@@ -49,6 +49,129 @@ const c_enum_member * members_of<color_channel_type>()
   return members;
 }
 
+template<class T>
+static void extract_first_non_zero_channel_(cv::InputArray _src, cv::OutputArray _dst)
+{
+  const int rows =
+      _src.rows();
+
+  const int cols =
+      _src.cols();
+
+  const int channels =
+      _src.channels();
+
+  const cv::Mat_<T> src =
+      _src.getMat();
+
+  _dst.create(rows, cols, CV_MAKETYPE(src.depth(), 1));
+
+  cv::Mat_<T> dst =
+      _dst.getMatRef();
+
+  for( int y = 0; y < rows; ++y ) {
+
+    const T * srcp = src[y];
+    T * dstp = dst[y];
+
+    for( int x = 0; x < cols; ++x ) {
+
+      int c = 0;
+      while ( c < channels && !(dstp[x] = srcp[x * channels + c]) ) {
+        ++c;
+      }
+    }
+  }
+}
+
+static void extract_first_non_zero_channel(cv::InputArray src, cv::OutputArray dst)
+{
+  switch (src.depth()) {
+    case CV_8U:
+      return extract_first_non_zero_channel_<uint8_t>(src, dst);
+    case CV_8S:
+      return extract_first_non_zero_channel_<int8_t>(src, dst);
+    case CV_16U:
+      return extract_first_non_zero_channel_<uint16_t>(src, dst);
+    case CV_16S:
+      return extract_first_non_zero_channel_<int16_t>(src, dst);
+    case CV_32S:
+      return extract_first_non_zero_channel_<int32_t>(src, dst);
+    case CV_32F:
+      return extract_first_non_zero_channel_<float>(src, dst);
+    case CV_64F:
+      return extract_first_non_zero_channel_<double>(src, dst);
+  }
+}
+
+
+
+template<class T>
+static void extract_max_absdiff_channel_(cv::InputArray _src, cv::OutputArray _dst)
+{
+  const int rows =
+      _src.rows();
+
+  const int cols =
+      _src.cols();
+
+  const int channels =
+      _src.channels();
+
+  const cv::Mat_<T> src =
+      _src.getMat();
+
+  _dst.create(rows, cols, CV_MAKETYPE(src.depth(), 1));
+
+  cv::Mat_<T> dst =
+      _dst.getMatRef();
+
+  for( int y = 0; y < rows; ++y ) {
+
+    const T * srcp = src[y];
+    T * dstp = dst[y];
+
+    for( int x = 0; x < cols; ++x ) {
+
+      T v1 =
+          std::abs(dstp[x] = srcp[x * channels + 0]);
+
+      for( int c = 1; c < channels; ++c ) {
+
+        const T v2 =
+            std::abs(srcp[x * channels + c]);
+
+        if( v2 > v1 ) {
+          dstp[x] = srcp[x * channels + c];
+          v1 = v2;
+        }
+      }
+
+    }
+  }
+
+}
+
+static void extract_max_absdiff_channel(cv::InputArray src, cv::OutputArray dst)
+{
+  switch (src.depth()) {
+    case CV_8U:
+      return extract_max_absdiff_channel_<uint8_t>(src, dst);
+    case CV_8S:
+      return extract_max_absdiff_channel_<int8_t>(src, dst);
+    case CV_16U:
+      return extract_max_absdiff_channel_<uint16_t>(src, dst);
+    case CV_16S:
+      return extract_max_absdiff_channel_<int16_t>(src, dst);
+    case CV_32S:
+      return extract_max_absdiff_channel_<int32_t>(src, dst);
+    case CV_32F:
+      return extract_max_absdiff_channel_<float>(src, dst);
+    case CV_64F:
+      return extract_max_absdiff_channel_<double>(src, dst);
+  }
+}
+
 // Extract requested color channel form input color image
 bool extract_channel(cv::InputArray src, cv::OutputArray dst,
     cv::InputArray srcmsk, cv::OutputArray dstmsk,
@@ -277,56 +400,16 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
 
 
       case color_channel_max_absdiff: {
-
-        std::vector<cv::Mat> src_channels;
-        cv::Mat tmp1, tmp2, mask;
-
-        cv::split(scaled_src, src_channels);
-
-        src_channels[0].copyTo(converted_src);
-        tmp1 = cv::abs(converted_src);
-
-        for( int c = 1, cn = src_channels.size(); c < cn; ++c ) {
-
-          tmp2 = cv::abs(src_channels[c]);
-
-          cv::compare(tmp2, tmp1, mask, cv::CMP_GT);
-
-          src_channels[c].copyTo(converted_src, mask);
-
-          if( c < cn - 1 ) {
-            tmp2.copyTo(tmp1, mask);
-          }
-        }
-
+        extract_max_absdiff_channel(scaled_src,
+            converted_src);
         break;
       }
 
       case color_channel_first_nonzero: {
-
-        std::vector<cv::Mat> src_channels;
-        cv::Mat m1, m2;
-
-        cv::split(scaled_src, src_channels);
-
-        src_channels[0].copyTo(converted_src);
-        cv::compare(src_channels[0], 0, m1, cv::CMP_NE);
-
-        for( int c = 1, cn = src_channels.size(); c < cn; ++c ) {
-
-          cv::compare(src_channels[c], 0, m2, cv::CMP_NE);
-
-          src_channels[c].copyTo(converted_src, m2 & m1);
-
-          if( c < cn - 1 ) {
-            m1.setTo(0, m2);
-          }
-
-        }
-
+        extract_first_non_zero_channel(scaled_src,
+            converted_src);
         break;
       }
-
 
 
       case color_channel_max_color: {

@@ -38,6 +38,9 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
 
+      { color_channel_max_absdiff , "max_absdiff",  "max(abs(image))"},
+      { color_channel_first_nonzero, "first_nonzero", "first nonzero value"},
+
       { color_channel_max_color, "max_color", "max - min"},
       { color_channel_max_gradient, "max_gradient", "max gradient"},
 
@@ -271,6 +274,60 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         }
         break;
       }
+
+
+      case color_channel_max_absdiff: {
+
+        std::vector<cv::Mat> src_channels;
+        cv::Mat tmp1, tmp2, mask;
+
+        cv::split(scaled_src, src_channels);
+
+        src_channels[0].copyTo(converted_src);
+        tmp1 = cv::abs(converted_src);
+
+        for( int c = 1, cn = src_channels.size(); c < cn; ++c ) {
+
+          tmp2 = cv::abs(src_channels[c]);
+
+          cv::compare(tmp2, tmp1, mask, cv::CMP_GT);
+
+          src_channels[c].copyTo(converted_src, mask);
+
+          if( c < cn - 1 ) {
+            tmp2.copyTo(tmp1, mask);
+          }
+        }
+
+        break;
+      }
+
+      case color_channel_first_nonzero: {
+
+        std::vector<cv::Mat> src_channels;
+        cv::Mat m1, m2;
+
+        cv::split(scaled_src, src_channels);
+
+        src_channels[0].copyTo(converted_src);
+        cv::compare(src_channels[0], 0, m1, cv::CMP_NE);
+
+        for( int c = 1, cn = src_channels.size(); c < cn; ++c ) {
+
+          cv::compare(src_channels[c], 0, m2, cv::CMP_NE);
+
+          src_channels[c].copyTo(converted_src, m2 & m1);
+
+          if( c < cn - 1 ) {
+            m1.setTo(0, m2);
+          }
+
+        }
+
+        break;
+      }
+
+
 
       case color_channel_max_color: {
 

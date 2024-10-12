@@ -14,6 +14,7 @@
 #include "generic/c_clear_globals_routine.h"
 #include "generic/c_load_image_routine.h"
 
+#include "generic/c_type_convertor_routine.h"
 #include "generic/c_gradient_routine.h"
 #include "generic/c_laplacian_routine.h"
 #include "generic/c_hessian_routine.h"
@@ -53,7 +54,6 @@
 #include "generic/c_autoclip_routine.h"
 #include "generic/c_unsharp_mask_routine.h"
 #include "generic/c_auto_unsharp_mask_routine.h"
-#include "generic/c_type_convert_routine.h"
 #include "generic/c_radial_polysharp_routine.h"
 #include "generic/c_median_blur_routine.h"
 #include "generic/c_median_hat_routine.h"
@@ -69,8 +69,6 @@
 #include "generic/c_morphology_routine.h"
 #include "generic/c_fft_routine.h"
 #include "generic/c_local_minmax_routine.h"
-
-
 #include "camera_calibration/c_find_chessboard_corners_routine.h"
 #include "camera_calibration/c_image_rectification_routine.h"
 #include "camera_calibration/c_stereo_rectification_routine.h"
@@ -202,7 +200,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_set_luminance_channel_routine::class_factory_instance());
     register_class_factory(c_color_balance_routine::class_factory_instance());
 
-    register_class_factory(c_type_convert_routine::class_factory_instance());
+    register_class_factory(c_type_convertor_routine::class_factory_instance());
     register_class_factory(c_color_saturation_routine::class_factory_instance());
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());

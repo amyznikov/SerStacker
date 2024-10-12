@@ -1,23 +1,23 @@
 /*
- * c_type_convert_routine.h
+ * c_type_convertor_routine.h
  *
  *  Created on: Aug 14, 2021
  *      Author: amyznikov
  */
 
-#ifndef __c_type_convert_routine_h__
-#define __c_type_convert_routine_h__
+#ifndef __c_type_convertor_routine_h__
+#define __c_type_convertor_routine_h__
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
 
-class c_type_convert_routine :
+class c_type_convertor_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_type_convert_routine,
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_type_convertor_routine,
       "convertTo",
-      "calls image.convertTo(ddepth, alpha, beta)")  ;
+      "Calls image.convertTo(ddepth, alpha, beta)")  ;
 
 
   void set_ddepth(enum PIXEL_DEPTH v)
@@ -73,5 +73,5 @@ protected:
 
 
 
-#endif /* __c_type_convert_routine_h__ */
+#endif /* __c_type_convertor_routine_h__ */
 

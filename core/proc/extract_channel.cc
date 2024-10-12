@@ -6,6 +6,8 @@
  */
 
 #include "extract_channel.h"
+#include <core/proc/reduce_channels.h>
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -38,7 +40,7 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
 
-      { color_channel_max_absdiff , "max_absdiff",  "max(abs(image))"},
+      { color_channel_absmax , "absmax",  "max of absolute pixel value "},
       { color_channel_first_nonzero, "first_nonzero", "first nonzero value"},
 
       { color_channel_max_color, "max_color", "max - min"},
@@ -48,6 +50,7 @@ const c_enum_member * members_of<color_channel_type>()
   };
   return members;
 }
+
 
 template<class T>
 static void extract_first_non_zero_channel_(cv::InputArray _src, cv::OutputArray _dst)
@@ -107,7 +110,7 @@ static void extract_first_non_zero_channel(cv::InputArray src, cv::OutputArray d
 
 
 template<class T>
-static void extract_max_absdiff_channel_(cv::InputArray _src, cv::OutputArray _dst)
+static void extract_absmax_channel_(cv::InputArray _src, cv::OutputArray _dst)
 {
   const int rows =
       _src.rows();
@@ -152,24 +155,41 @@ static void extract_max_absdiff_channel_(cv::InputArray _src, cv::OutputArray _d
 
 }
 
-static void extract_max_absdiff_channel(cv::InputArray src, cv::OutputArray dst)
+static void extract_absmax_channel(cv::InputArray src, cv::OutputArray dst)
 {
   switch (src.depth()) {
     case CV_8U:
-      return extract_max_absdiff_channel_<uint8_t>(src, dst);
+      return extract_absmax_channel_<uint8_t>(src, dst);
     case CV_8S:
-      return extract_max_absdiff_channel_<int8_t>(src, dst);
+      return extract_absmax_channel_<int8_t>(src, dst);
     case CV_16U:
-      return extract_max_absdiff_channel_<uint16_t>(src, dst);
+      return extract_absmax_channel_<uint16_t>(src, dst);
     case CV_16S:
-      return extract_max_absdiff_channel_<int16_t>(src, dst);
+      return extract_absmax_channel_<int16_t>(src, dst);
     case CV_32S:
-      return extract_max_absdiff_channel_<int32_t>(src, dst);
+      return extract_absmax_channel_<int32_t>(src, dst);
     case CV_32F:
-      return extract_max_absdiff_channel_<float>(src, dst);
+      return extract_absmax_channel_<float>(src, dst);
     case CV_64F:
-      return extract_max_absdiff_channel_<double>(src, dst);
+      return extract_absmax_channel_<double>(src, dst);
   }
+}
+
+
+static void convert_image(cv::Mat & image, int dst_depth)
+{
+  if ( image.depth() != dst_depth ) {
+
+    double scale = 1;
+    double offset = 0;
+
+    get_scale_offset(image.depth(), dst_depth,
+        &scale, &offset);
+
+    image.convertTo(image, dst_depth,
+        scale, offset);
+  }
+
 }
 
 // Extract requested color channel form input color image
@@ -190,6 +210,13 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
   }
 
 
+  if( output_depth < 0 ) {
+
+    output_depth =
+        dst.fixedType() ? dst.depth() :
+            src.depth();
+  }
+
   if ( output_scale <= 0 || output_scale == 1 ) {
 
     scaled_src =
@@ -203,8 +230,13 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
     cv::pyrDown(src, scaled_src);
 
     if ( !srcmsk.empty() ) {
+
       cv::pyrDown(srcmsk, scaled_mask,
           scaled_src.size());
+
+      cv::compare(scaled_mask, cv::Scalar::all(250),
+          scaled_mask,
+          cv::CMP_GE);
     }
   }
   else {
@@ -219,7 +251,12 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
       cv::resize(srcmsk, scaled_mask, cv::Size(0, 0),
           output_scale,
           output_scale,
-          cv::INTER_NEAREST);
+          cv::INTER_AREA);
+
+      cv::compare(scaled_mask, cv::Scalar::all(250),
+          scaled_mask,
+          cv::CMP_GE);
+
     }
   }
 
@@ -239,6 +276,12 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
       cv::extractChannel(scaled_src, scaled_src,
           channel);
     }
+
+    if( !scaled_mask.empty() && scaled_mask.channels() > channel ) {
+      cv::extractChannel(scaled_mask, scaled_mask,
+          channel);
+    }
+
   }
 
   else if( scaled_src.channels() > 1 ) {
@@ -254,6 +297,11 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
 
         cv::cvtColor(scaled_src, converted_src,
             cv::COLOR_BGR2GRAY);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
+
         break;
 
       case color_channel_luminance_YCrCb:
@@ -264,56 +312,145 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
         }
         cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2YCrCb);
         cv::extractChannel(converted_src, converted_src, 0);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
         break;
 
-      case color_channel_luminance_lab:
+      case color_channel_luminance_lab: {
+
         if( scaled_src.channels() != 3 ) {
           CF_ERROR("Invalid argument: conversion to Lab not supported for image with %d channels",
               scaled_src.channels());
           return false;
         }
+
+        const int src_depth =
+            scaled_src.depth();
+
+        const bool conversion_required =
+            src_depth != CV_8U && src_depth != CV_32F;
+
+        if( conversion_required ) {
+          convert_image(scaled_src, CV_32F);
+        }
+
         cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2Lab);
         cv::extractChannel(converted_src, converted_src, 0);
         if( converted_src.depth() == CV_32F || converted_src.depth() == CV_64F ) {
           cv::multiply(converted_src, 1e-2, converted_src);
         }
-        break;
 
-      case color_channel_luminance_luv:
+        convert_image(converted_src,
+            output_depth);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
+        break;
+      }
+
+      case color_channel_luminance_luv: {
+
         if( scaled_src.channels() != 3 ) {
           CF_ERROR("Invalid argument: conversion to Luv not supported for image with %d channels",
               scaled_src.channels());
           return false;
         }
+
+        const int src_depth =
+            scaled_src.depth();
+
+        const bool conversion_required =
+            src_depth != CV_8U && src_depth != CV_32F;
+
+        if( conversion_required ) {
+          convert_image(scaled_src, CV_32F);
+        }
+
+
         cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2Luv);
         cv::extractChannel(converted_src, converted_src, 0);
         if( converted_src.depth() == CV_32F || converted_src.depth() == CV_64F ) {
           cv::multiply(converted_src, 1e-2, converted_src);
         }
-        break;
 
-      case color_channel_luminance_hsv:
+        convert_image(converted_src,
+            output_depth);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
+        break;
+      }
+
+      case color_channel_luminance_hsv: {
         if( scaled_src.channels() != 3 ) {
           CF_ERROR("Invalid argument: conversion to HSV not supported for image with %d channels",
               scaled_src.channels());
           return false;
         }
+
+        const int src_depth =
+            scaled_src.depth();
+
+        const bool conversion_required =
+            src_depth != CV_8U && src_depth != CV_32F;
+
+        if( conversion_required ) {
+          convert_image(scaled_src, CV_32F);
+        }
+
         cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HSV);
         cv::extractChannel(converted_src, converted_src, 2);
-        break;
 
-      case color_channel_luminance_hls:
+        convert_image(converted_src,
+            output_depth);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
+        break;
+      }
+
+      case color_channel_luminance_hls: {
+
         if( scaled_src.channels() != 3 ) {
           CF_ERROR("Invalid argument: conversion to HLS not supported for image with %d channels",
               scaled_src.channels());
           return false;
         }
+
+        const int src_depth =
+            scaled_src.depth();
+
+        const bool conversion_required =
+            src_depth != CV_8U && src_depth != CV_32F;
+
+        if( conversion_required ) {
+          convert_image(scaled_src, CV_32F);
+        }
+
         cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HLS);
         cv::extractChannel(converted_src, converted_src, 1);
+
+        convert_image(converted_src,
+            output_depth);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
+          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
+        }
         break;
+      }
 
       case color_channel_blue:
+
         cv::extractChannel(scaled_src, converted_src, 0);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() > 0 ) {
+          cv::extractChannel(scaled_mask, scaled_mask, 0);
+        }
         break;
 
 
@@ -323,7 +460,12 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
               scaled_src.channels());
           return false;
         }
+
         cv::extractChannel(scaled_src, converted_src, 1);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() > 1 ) {
+          cv::extractChannel(scaled_mask, scaled_mask, 1);
+        }
         break;
 
 
@@ -333,74 +475,67 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
               scaled_src.channels());
           return false;
         }
+
         cv::extractChannel(scaled_src, converted_src, 2);
+
+        if( !scaled_mask.empty() && scaled_mask.channels() > 2 ) {
+          cv::extractChannel(scaled_mask, scaled_mask, 2);
+        }
         break;
 
 
       case color_channel_min_inensity: {
-        if( scaled_src.isContinuous() ) {
-          const int src_rows = scaled_src.rows;
-          cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_MIN);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
-        else {
-          cv::Mat tmp = scaled_src.clone();
-          const int src_rows = tmp.rows;
-          cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_MIN);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
+        reduce_color_channels(scaled_src, converted_src,
+            cv::REDUCE_MIN);
         break;
       }
 
 
       case color_channel_max_intensity: {
-        if( scaled_src.isContinuous() ) {
-          const int src_rows = scaled_src.rows;
-          cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_MAX);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
-        else {
-          cv::Mat tmp = scaled_src.clone();
-          const int src_rows = tmp.rows;
-          cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_MAX);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
+        reduce_color_channels(scaled_src, converted_src,
+            cv::REDUCE_MAX);
         break;
       }
 
       case color_channel_avg_intensity: {
-        if( scaled_src.isContinuous() ) {
-          const int src_rows = scaled_src.rows;
-          cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_AVG);
-          converted_src = converted_src.reshape(0, src_rows);
+
+        const int src_depth =
+            scaled_src.depth();
+
+        const bool conversion_required =
+            src_depth != CV_8U && src_depth != CV_32F;
+
+        if( conversion_required ) {
+          convert_image(scaled_src, CV_32F);
         }
-        else {
-          cv::Mat tmp = scaled_src.clone();
-          const int src_rows = tmp.rows;
-          cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_AVG);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
+
+        reduce_color_channels(scaled_src, converted_src,
+            cv::REDUCE_AVG);
+
+        convert_image(converted_src,
+            output_depth);
+
         break;
       }
 
       case color_channel_sum_intensity: {
-        if( scaled_src.isContinuous() ) {
-          const int src_rows = scaled_src.rows;
-          cv::reduce(scaled_src.reshape(1, scaled_src.total()), converted_src, 1, cv::REDUCE_SUM);
-          converted_src = converted_src.reshape(0, src_rows);
+
+        if( scaled_src.depth() != CV_32F ) {
+          convert_image(scaled_src, CV_32F);
         }
-        else {
-          cv::Mat tmp = scaled_src.clone();
-          const int src_rows = tmp.rows;
-          cv::reduce(tmp.reshape(1, tmp.total()), converted_src, 1, cv::REDUCE_SUM);
-          converted_src = converted_src.reshape(0, src_rows);
-        }
+
+        reduce_color_channels(scaled_src, converted_src,
+            cv::REDUCE_SUM);
+
+        convert_image(converted_src,
+            output_depth);
+
         break;
       }
 
 
-      case color_channel_max_absdiff: {
-        extract_max_absdiff_channel(scaled_src,
+      case color_channel_absmax: {
+        extract_absmax_channel(scaled_src,
             converted_src);
         break;
       }
@@ -414,19 +549,15 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
 
       case color_channel_max_color: {
 
-        const cv::Mat tmp =
-            scaled_src.isContinuous() ? scaled_src :
-                scaled_src.clone();
-
-        const int src_rows =
-            scaled_src.rows;
-
         cv::Mat cmin, cmax;
 
-        cv::reduce(tmp.reshape(1, tmp.total()), cmin, 1, cv::REDUCE_MIN);
-        cv::reduce(tmp.reshape(1, tmp.total()), cmax, 1, cv::REDUCE_MAX);
+        reduce_color_channels(scaled_src, cmin,
+            cv::REDUCE_MIN);
+
+        reduce_color_channels(scaled_src, cmax,
+            cv::REDUCE_MAX);
+
         cv::subtract(cmax, cmin, converted_src);
-        converted_src = converted_src.reshape(0, src_rows);
 
         break;
       }
@@ -491,14 +622,6 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
 
         cv::divide(converted_src, gm, converted_src);
 
-//        src_channels[0].copyTo(converted_src);
-//        gchannels[0].copyTo(g);
-//
-//        for( int c = 1, cn = gchannels.size(); c < cn; ++c ) {
-//          cv::compare(gchannels[c], g, gm, cv::CMP_GT);
-//          gchannels[c].copyTo(g, gm);
-//          src_channels[c].copyTo(converted_src, gm);
-//        }
 
         break;
       }
@@ -510,35 +633,37 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
     }
   }
 
-  if( output_depth < 0 ) {
+  if( converted_src.empty() ) {
 
-    output_depth =
-        dst.fixedType() ? dst.depth() :
-            src.depth();
-  }
-
-
-  if( output_depth == src.depth() && output_depth_scale == 1.0 ) {
-
-    if( converted_src.empty() ) {
+    if( output_depth == src.depth() && output_depth_scale == 1.0 ) {
       scaled_src.copyTo(dst);
     }
     else {
-      dst.move(converted_src);
+      scaled_src.convertTo(dst, output_depth,
+          output_depth_scale);
     }
 
   }
-  else if( converted_src.empty() ) {
-    scaled_src.convertTo(dst, output_depth,
-        output_depth_scale);
-  }
   else {
-    converted_src.convertTo(dst, output_depth,
-        output_depth_scale);
+
+    if( output_depth == converted_src.depth() && output_depth_scale == 1.0 ) {
+      dst.move(converted_src);
+    }
+    else {
+      converted_src.convertTo(dst, output_depth,
+          output_depth_scale);
+    }
   }
 
+
   if( dstmsk.needed() ) {
-    scaled_mask.copyTo(dstmsk);
+
+    if( scaled_mask.empty() || scaled_mask.channels() == 1 ) {
+      dstmsk.move(scaled_mask);
+    }
+    else {
+      reduce_color_channels(scaled_mask, dstmsk, cv::REDUCE_MAX);
+    }
   }
 
   return true;

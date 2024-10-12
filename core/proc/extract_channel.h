@@ -39,7 +39,7 @@ enum color_channel_type
   color_channel_max_intensity, // cv::reduce(max)
   color_channel_avg_intensity, // cv::reduce(avg)
   color_channel_sum_intensity, // cv::reduce(sum)
-  color_channel_max_absdiff, //
+  color_channel_absmax, // max of absolute value
   color_channel_first_nonzero, //
 
   color_channel_max_color, // cv::reduce(max) - cv::reduce(min)

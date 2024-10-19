@@ -13,6 +13,9 @@ namespace serstacker {
 QPointCloudSourceView::QPointCloudSourceView(QWidget * parent) :
     Base(parent)
 {
+  _line.setVisible(false);
+  _line.setTopLevel(true);
+  Base::addShape(&_line);
 }
 
 void QPointCloudSourceView::keyPressEvent(QKeyEvent *e)
@@ -60,6 +63,18 @@ void QPointCloudSourceView::glPointSelection(double objX, double objY, double ob
     Qt::MouseButtons mouseButtons,
     Qt::KeyboardModifiers modifiers)
 {
+
+  if( mouseEventType == QEvent::MouseButtonRelease ) {
+
+    if( _line.isVisible() ) {
+      _line.setVisible(false);
+      update();
+    }
+
+    return;
+  }
+
+
   if ( !_displayPoints.empty() ) {
 
 
@@ -96,7 +111,37 @@ void QPointCloudSourceView::glPointSelection(double objX, double objY, double ob
 
     }
 
-    if( best_point_index >= 0 ) {
+    if( best_point_index < 0 ) {
+    }
+    else {
+
+      if( mouseEventType == QEvent::MouseButtonPress ) {
+
+        const cv::Vec3f & p =
+            _displayPoints[best_cloud_index][best_point_index];
+
+        _line.setStart(QVector3D(p[0], p[1], p[2]));
+        _line.setEnd(QVector3D(p[0], p[1], p[2]));
+
+        if( _line.isVisible() ) {
+          _line.setVisible(false);
+        }
+
+        update();
+      }
+      else if( mouseEventType == QEvent::MouseMove ) {
+
+        const cv::Vec3f & p =
+            _displayPoints[best_cloud_index][best_point_index];
+
+        _line.setEnd(QVector3D(p[0], p[1], p[2]));
+
+        if( !_line.isVisible() ) {
+          _line.setVisible(true);
+        }
+
+        update();
+      }
 
 //      const cv::Vec3f & p =
 //          _displayPoints[best_cloud_index][best_point_index];

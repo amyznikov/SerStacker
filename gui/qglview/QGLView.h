@@ -28,6 +28,9 @@
 # include <GL/glu.h>
 #endif
 
+// forward declaration
+class QGLShape;
+
 class QGLView :
   public QOpenGLWidget,
   protected QOpenGLExtraFunctions
@@ -137,13 +140,17 @@ public:
   void glprintf(const QVector3D & pos, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(4, 5);
   void glprintf(double x, double y, double z, const QFont &font, const char * format, ...) Q_ATTRIBUTE_FORMAT_PRINTF(6, 7);
 
-
   void drawArrow(qreal length, qreal radius, int nbSubdivisions);
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
 
-  // void drawLine(const QVector3D & start, const QVector3D & end);
 
+  // Dynamic shapes
+  void addShape(QGLShape * shape);
+  void removeShape(QGLShape * shape);
+
+
+  // Helpers
   bool copyViewportToClipboard();
   void showKeyBindings();
 
@@ -240,7 +247,49 @@ protected:
   GLdouble _smodelview[16] = {0};
   GLdouble _sprojection[16] = {0};
 
+  // Shapes
+  std::vector<QGLShape*> _shapes;
+};
 
+
+class QGLShape :
+    public QObject
+    // , public QOpenGLExtraFunctions
+{
+public:
+  typedef QGLShape ThisClass;
+  typedef QObject Base;
+
+  QGLShape(QObject * parent = nullptr) :
+    Base(parent)
+  {
+  }
+
+  virtual void setVisible(bool v)
+  {
+    _visible = v;
+  }
+
+  bool isVisible() const
+  {
+    return _visible;
+  }
+
+  virtual void setTopLevel(bool v)
+  {
+    _topLevel = v;
+  }
+
+  bool isTopLevel() const
+  {
+    return _topLevel;
+  }
+
+  virtual void draw(QGLView * glview) = 0;
+
+protected:
+  bool _visible = true;
+  bool _topLevel = true;
 };
 
 

@@ -10,6 +10,7 @@
 #define __QInputPointCloudSourceView_h__
 
 #include <gui/qglview/QGLPointCloudView.h>
+#include <gui/qglshapes/QGLLineShape.h>
 
 namespace serstacker {
 
@@ -35,6 +36,9 @@ protected:
       QEvent::Type mouseEventType,
       Qt::MouseButtons mouseButtons,
       Qt::KeyboardModifiers modifiers) final;
+
+protected:
+  QGLLineShape _line;
 };
 
 /////////////////

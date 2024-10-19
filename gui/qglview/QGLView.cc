@@ -659,30 +659,35 @@ void QGLView::glDraw()
 
 void QGLView::glPostDraw()
 {
-  if ( _enableSelection ) {
-    //CF_DEBUG("selection is activated: viewport size=%dx%d", viewport.w, viewport.h);
+  if( viewport.w < 3 || viewport.h < 3 ) {
+    glFlush();
+    return;
+  }
 
-    if( viewport.w > 1 && viewport.h > 1 ) {
-
-      _depthBuffer.create(viewport.h, viewport.w);
-
-      glReadPixels(viewport.x, viewport.y, viewport.w, viewport.h, GL_DEPTH_COMPONENT,
-          GL_FLOAT, _depthBuffer.data);
-
-      glGetDoublev( GL_MODELVIEW_MATRIX, _smodelview);
-      glGetDoublev( GL_PROJECTION_MATRIX, _sprojection);
-      glGetIntegerv( GL_VIEWPORT, _sviewport);
-
-      // save_image(depthBuffer, "gldebug/depthBuffer.tiff");
-      // CF_DEBUG("depthBuffer saved");
+  for( QGLShape * shape : _shapes ) {
+    if ( shape && shape->isVisible() && !shape->isTopLevel() ) {
+      shape->draw(this);
     }
   }
 
+  if( _enableSelection ) {
+
+    _depthBuffer.create(viewport.h, viewport.w);
+
+    glReadPixels(viewport.x, viewport.y, viewport.w, viewport.h,
+        GL_DEPTH_COMPONENT, GL_FLOAT,
+        _depthBuffer.data);
+
+    glGetDoublev( GL_MODELVIEW_MATRIX, _smodelview);
+    glGetDoublev( GL_PROJECTION_MATRIX, _sprojection);
+    glGetIntegerv( GL_VIEWPORT, _sviewport);
+  }
 
   if ( _showMainAxes ) {
     glColor3ub(200, 200, 200);
     drawMainAxes();
   }
+
 
   const bool showViewTarget =
       _hideViewTargetTimerId > 0;
@@ -791,6 +796,41 @@ void QGLView::glPostDraw()
     }
 
     /////////
+  }
+
+
+
+  bool haveTopLevelShapes =
+      false;
+
+  for( QGLShape * shape : _shapes ) {
+    if ( shape && shape->isVisible() && shape->isTopLevel() ) {
+      haveTopLevelShapes = true;
+      break;
+    }
+  }
+
+  if ( haveTopLevelShapes ) {
+
+    GLboolean DEPTH_TEST_ENABLED =
+        GL_FALSE;
+
+    glGetBooleanv(GL_DEPTH_TEST,
+        &DEPTH_TEST_ENABLED);
+
+    if ( DEPTH_TEST_ENABLED ) {
+      glDisable(GL_DEPTH_TEST);
+    }
+
+    for( QGLShape * shape : _shapes ) {
+      if ( shape && shape->isVisible() && shape->isTopLevel() ) {
+        shape->draw(this);
+      }
+    }
+
+    if ( DEPTH_TEST_ENABLED ) {
+      glEnable(GL_DEPTH_TEST);
+    }
   }
 
   glFlush();
@@ -975,6 +1015,21 @@ void QGLView::drawMainAxes()
   drawText(QVector3D(0, 0, length), font, "Z");
 }
 
+void QGLView::addShape(QGLShape * shape)
+{
+  if ( shape ) {
+    _shapes.emplace_back(shape);
+  }
+}
+
+void QGLView::removeShape(QGLShape * shape)
+{
+  auto ii = std::find(_shapes.begin(), _shapes.end(), shape);
+  while (ii != _shapes.end()) {
+    ii = std::find(_shapes.erase(ii), _shapes.end(), shape);
+  }
+}
+
 
 //void QGLView::drawLine(const QVector3D & start, const QVector3D & end)
 //{
@@ -1072,6 +1127,10 @@ void QGLView::mousePressEvent(QMouseEvent * e)
 
 void QGLView::mouseReleaseEvent(QMouseEvent *e)
 {
+  if (_enableSelection ) {
+    onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+  }
+
   e->ignore();
 }
 

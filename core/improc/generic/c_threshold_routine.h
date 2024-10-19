@@ -33,115 +33,80 @@ public:
     THRESHOLD_MINIMUM = THRESHOLD_TYPE_MINIMUM,
     THRESHOLD_NOISE = THRESHOLD_TYPE_NOISE,
     THRESHOLD_PLANETARY_DISK,
-    THRESHOLD_CLEAR
+    THRESHOLD_CLEAR_MASK
   };
 
   void set_compare(cv::CmpTypes v)
   {
-    compare_ = v;
+    _compare = v;
   }
 
   cv::CmpTypes compare() const
   {
-    return compare_;
+    return _compare;
   }
 
   void set_threshold_type(THRESHOLD_TYPE v)
   {
-    threshold_type_ = v;
+    _threshold_type = v;
   }
 
   THRESHOLD_TYPE threshold_type() const
   {
-    return threshold_type_;
+    return _threshold_type;
   }
 
   void set_threshold_value(double v)
   {
-    threshold_value_ = v;
+    _threshold_value = v;
   }
 
   double threshold_value() const
   {
-    return threshold_value_;
+    return _threshold_value;
   }
 
   void set_threshold_scale(double v)
   {
-    threshold_scale_ = v;
+    _threshold_scale = v;
   }
 
   double threshold_scale() const
   {
-    return threshold_scale_;
+    return _threshold_scale;
   }
 
   void set_fill_holes(bool v)
   {
-    fill_holes_ = v;
+    _fill_holes = v;
   }
 
   bool fill_holes() const
   {
-    return fill_holes_;
+    return _fill_holes;
   }
 
   void set_invert(bool v)
   {
-    invert_ = v;
+    _invert = v;
   }
 
   bool invert() const
   {
-    return invert_;
+    return _invert;
   }
 
-  void set_modify_mask(bool v)
-  {
-    modify_mask_ = v;
-  }
-
-  bool modify_mask() const
-  {
-    return modify_mask_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, compare, "Compare operation");
-    BIND_PCTRL(ctls, threshold_type, "Threshold type");
-    BIND_PCTRL(ctls, threshold_value, "Threshold value");
-    BIND_PCTRL(ctls, threshold_scale, "Threshold scale");
-    BIND_PCTRL(ctls, fill_holes, "fill_holes");
-    BIND_PCTRL(ctls, invert, "invert");
-    BIND_PCTRL(ctls, modify_mask, "Modify mask instead of image");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, compare);
-      SERIALIZE_PROPERTY(settings, save, *this, threshold_type);
-      SERIALIZE_PROPERTY(settings, save, *this, threshold_value);
-      SERIALIZE_PROPERTY(settings, save, *this, threshold_scale);
-      SERIALIZE_PROPERTY(settings, save, *this, fill_holes);
-      SERIALIZE_PROPERTY(settings, save, *this, invert);
-      SERIALIZE_PROPERTY(settings, save, *this, modify_mask);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
-  cv::CmpTypes compare_ = cv::CMP_GT;
-  THRESHOLD_TYPE threshold_type_ = THRESHOLD_VALUE;
-  double threshold_value_ = 0;
-  double threshold_scale_ = 1.0;
-  bool fill_holes_ = false;
-  bool invert_ = false;
-  bool modify_mask_ = true;
+  cv::CmpTypes _compare = cv::CMP_GT;
+  THRESHOLD_TYPE _threshold_type = THRESHOLD_VALUE;
+  double _threshold_value = 0;
+  double _threshold_scale = 1.0;
+  bool _fill_holes = false;
+  bool _invert = false;
 };
 
 #endif /* __c_threshold_routine_h__ */

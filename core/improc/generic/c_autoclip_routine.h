@@ -81,7 +81,7 @@ public:
     }
 
     return autoclip(image.getMatRef(),
-        ignore_mask_ ? cv::noArray() : mask,
+        _ignore_mask ? cv::noArray() : mask,
         plo_, phi_,
         omin, omax);
   }

@@ -159,7 +159,7 @@ bool geo_reconstruction_erode(cv::InputArray marker_image,
 ///    * Removes capes, isthmus and islands smaller than the structuring element.
 ///    * Grayscale and color image: removes dark features smaller than the structuring element.
 ///
-bool geo_open(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connectivity = 8,
+bool geo_open(cv::InputArray src,  cv::OutputArray & dst, cv::InputArray SE, int connectivity = 8,
     const cv::Point & anchor = cv::Point(-1,-1), int borderType = cv::BORDER_CONSTANT,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
 
@@ -180,7 +180,7 @@ bool geo_open(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connect
 ///    * Fills gulfs, channels and lakes smaller than the structuring element.
 ///    * Grayscale and color image: removes dark features smaller than the structuring element.
 ///
-bool geo_close(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connectivity = 8,
+bool geo_close(cv::InputArray src,  cv::OutputArray & dst, cv::InputArray SE, int connectivity = 8,
     const cv::Point & anchor = cv::Point(-1,-1), int borderType = cv::BORDER_CONSTANT,
     const cv::Scalar & borderValue = cv::morphologyDefaultBorderValue());
 

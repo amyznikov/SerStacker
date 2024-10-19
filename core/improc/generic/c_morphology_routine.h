@@ -41,80 +41,84 @@ public:
       MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
       MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
       MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
+      MORPH_GEO_OPEN4,
+      MORPH_GEO_OPEN8,
+      MORPH_GEO_CLOSE4,
+      MORPH_GEO_CLOSE8,
   };
 
 
   void set_se_shape(cv::MorphShapes v)
   {
-    se_shape_ = v;
+    _se_shape = v;
     SE.release();
   }
 
   cv::MorphShapes se_shape() const
   {
-    return se_shape_;
+    return _se_shape;
   }
 
   void set_se_size(const cv::Size & v)
   {
-    se_size_ = v;
+    _se_size = v;
     SE.release();
   }
 
   const cv::Size& se_size() const
   {
-    return se_size_;
+    return _se_size;
   }
 
   void set_anchor(const cv::Point & v)
   {
-    anchor_ = v;
+    _anchor = v;
     SE.release();
   }
 
   const cv::Point & anchor() const
   {
-    return anchor_;
+    return _anchor;
   }
 
   void set_operation(OPERATION v)
   {
-    operation_ = v;
+    _operation = v;
   }
 
   OPERATION operation() const
   {
-    return operation_;
+    return _operation;
   }
 
   void set_iterations(int v)
   {
-    iterations_ = v;
+    _iterations = v;
   }
 
   int iterations() const
   {
-    return iterations_;
+    return _iterations;
   }
 
   void set_borderType(cv::BorderTypes v)
   {
-    borderType_ = v;
+    _borderType = v;
   }
 
   cv::BorderTypes borderType() const
   {
-    return borderType_;
+    return _borderType;
   }
 
   void set_borderValue(const cv::Scalar& v)
   {
-    borderValue_ = v;
+    _borderValue = v;
   }
 
   const cv::Scalar& borderValue() const
   {
-    return borderValue_;
+    return _borderValue;
   }
 
   void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
@@ -123,13 +127,13 @@ public:
 
 
 protected:
-  cv::MorphShapes se_shape_ = cv::MORPH_RECT;
-  cv::Size se_size_ = cv::Size(3, 3);
-  cv::Point anchor_ = cv::Point(-1,-1);
-  OPERATION operation_ = MORPH_ERODE;
-  int iterations_ = 1;
-  cv::BorderTypes borderType_ = cv::BORDER_CONSTANT;
-  cv::Scalar borderValue_ = cv::Scalar::all(0);
+  cv::MorphShapes _se_shape = cv::MORPH_RECT;
+  cv::Size _se_size = cv::Size(3, 3);
+  cv::Point _anchor = cv::Point(-1,-1);
+  OPERATION _operation = MORPH_ERODE;
+  int _iterations = 1;
+  cv::BorderTypes _borderType = cv::BORDER_CONSTANT;
+  cv::Scalar _borderValue = cv::Scalar::all(0);
   cv::Mat SE;
 };
 

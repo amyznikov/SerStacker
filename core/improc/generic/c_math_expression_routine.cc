@@ -14,17 +14,6 @@
  typedef tbb::blocked_range<int> tbb_range;
 #endif
 
-template<>
-const c_enum_member* members_of<c_math_expression_routine::CHANNEL>()
-{
-  static const c_enum_member members[] = {
-      { c_math_expression_routine::IMAGE, "IMAGE", "" },
-      { c_math_expression_routine::MASK, "MASK", "" },
-      { c_math_expression_routine::IMAGE },
-  };
-
-  return members;
-}
 
 static constexpr struct
 {
@@ -376,20 +365,20 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
     expression_changed_ = false;
   }
 
-  switch (input_channel_) {
+  switch (_input_channel) {
     case IMAGE:
-      switch (output_channel_) {
+      switch (_output_channel) {
 
         case IMAGE:
           process_image(image.getMatRef(), image.getMatRef(), math_,
-              ignore_mask_ ? cv::noArray() :
+              _ignore_mask ? cv::noArray() :
                   mask);
           break;
 
         case MASK: {
           cv::Mat1b input_mask;
           if( !mask.empty() ) {
-            if( !ignore_mask_ ) {
+            if( !_ignore_mask ) {
               mask.getMat().copyTo(input_mask);
             }
           }
@@ -407,11 +396,11 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       break;
 
     case MASK:
-      switch (output_channel_) {
+      switch (_output_channel) {
 
         case MASK:
           process_image(mask.getMatRef(), mask.getMatRef(), math_,
-              ignore_mask_ ? cv::noArray() : mask.getMat());
+              _ignore_mask ? cv::noArray() : mask.getMat());
           break;
 
         case IMAGE:
@@ -421,7 +410,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
               image.create(mask.size(), CV_MAKETYPE(std::max(image.depth(), mask.depth()), mask.channels()));
             }
             process_image(mask.getMatRef(), image.getMatRef(), math_,
-                ignore_mask_ ? cv::noArray() : mask.getMat());
+                _ignore_mask ? cv::noArray() : mask.getMat());
           }
           break;
       }

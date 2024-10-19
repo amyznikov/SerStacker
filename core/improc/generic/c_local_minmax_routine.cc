@@ -92,7 +92,7 @@ bool c_local_minmax_routine::process(cv::InputOutputArray image, cv::InputOutput
   cv::Mat M;
 
   locate_extremes(image,
-      ignore_mask_ ? cv::noArray() :
+      _ignore_mask ? cv::noArray() :
           mask.getMat(),
       M,
       opts_);

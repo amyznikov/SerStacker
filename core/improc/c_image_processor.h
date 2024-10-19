@@ -64,6 +64,13 @@ public:
     }
   };
 
+
+  enum DATA_CHANNEL {
+    IMAGE,
+    MASK
+  };
+
+
   static void register_class_factory(const class_factory * class_factory);
   static void register_all();
 
@@ -82,73 +89,93 @@ public:
 
   const std::string & class_name() const
   {
-    return class_factory_->class_name;
+    return _class_factory->class_name;
   }
 
   const std::string & display_name() const
   {
-    return class_factory_->display_name;
+    return _class_factory->display_name;
   }
 
   const std::string & tooltip() const
   {
-    return class_factory_->tooltip;
+    return _class_factory->tooltip;
   }
 
   std::mutex & mutex()
   {
-    return mtx_;
+    return _mtx;
   }
 
   void set_enabled(bool v)
   {
-    enabled_ = v;
+    _enabled = v;
   }
 
   bool enabled() const
   {
-    return enabled_;
+    return _enabled;
+  }
+
+  void set_input_channel(DATA_CHANNEL v )
+  {
+    _input_channel = v;
+  }
+
+  DATA_CHANNEL input_channel() const
+  {
+    return _input_channel;
+  }
+
+  void set_output_channel(DATA_CHANNEL v )
+  {
+    _output_channel = v;
+  }
+
+  DATA_CHANNEL output_channel() const
+  {
+    return _output_channel;
   }
 
   void set_ignore_mask(bool v)
   {
-    ignore_mask_ = v;
+    _ignore_mask = v;
   }
 
   bool ignore_mask() const
   {
-    return ignore_mask_;
+    return _ignore_mask;
   }
 
   void set_preprocess_notify_callback(const notify_callback & preprocess_notify)
   {
-    preprocess_notify_ = preprocess_notify;
+    _preprocess_notify = preprocess_notify;
   }
 
   const notify_callback & preprocess_notify_callback() const
   {
-    return preprocess_notify_;
+    return _preprocess_notify;
   }
 
   void set_postprocess_notify_callback(const notify_callback & postprocess_notify)
   {
-    postprocess_notify_ = postprocess_notify;
+    _postprocess_notify = postprocess_notify;
   }
 
   const notify_callback & postprocess_notify_callback() const
   {
-    return postprocess_notify_;
+    return _postprocess_notify;
   }
 
   void emit_preprocess_notify(cv::InputOutputArray image, cv::InputOutputArray mask) {
-    if ( preprocess_notify_ ) {
-      preprocess_notify_(this, image, mask);
+    if ( _preprocess_notify ) {
+      _preprocess_notify(this, image, mask);
     }
   }
 
   void emit_postprocess_notify(cv::InputOutputArray image, cv::InputOutputArray mask) {
-    if ( postprocess_notify_ ) {
-      postprocess_notify_(this, image, mask);
+    if ( _postprocess_notify ) {
+      _postprocess_notify(this, image, mask);
     }
   }
 
@@ -242,7 +269,7 @@ public:
 
 protected:
   c_image_processor_routine(const class_factory * _class_factory, bool enabled = true) :
-    class_factory_(_class_factory), enabled_(enabled)
+    _class_factory(_class_factory), _enabled(enabled)
   {
   }
 
@@ -252,12 +279,14 @@ protected:
   }
 
 protected:
-  const class_factory * const class_factory_;
-  notify_callback preprocess_notify_;
-  notify_callback postprocess_notify_;
-  std::mutex mtx_;
-  bool enabled_;
-  bool ignore_mask_ = false;
+  const class_factory * const _class_factory;
+  notify_callback _preprocess_notify;
+  notify_callback _postprocess_notify;
+  std::mutex _mtx;
+  DATA_CHANNEL _input_channel = IMAGE;
+  DATA_CHANNEL _output_channel = IMAGE;
+  bool _ignore_mask = false;
+  bool _enabled;
 };
 
 #define DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \

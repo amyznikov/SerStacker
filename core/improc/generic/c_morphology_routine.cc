@@ -33,6 +33,11 @@ const c_enum_member * members_of<c_morphology_routine::OPERATION>()
       {c_morphology_routine::MORPH_GEO_FILL_HOLES4, "GEO_FILL_HOLES4", "geo_fill_holes"},
       {c_morphology_routine::MORPH_GEO_FILL_HOLES8, "GEO_FILL_HOLES8", "geo_fill_holes"},
 
+      {c_morphology_routine::MORPH_GEO_OPEN4, "GEO_OPEN4", "geo_open(connectivity=4)"},
+      {c_morphology_routine::MORPH_GEO_OPEN8, "GEO_OPEN8", "geo_open(connectivity=8)"},
+      {c_morphology_routine::MORPH_GEO_CLOSE4, "GEO_CLOSE4", "geo_close(connectivity=4)"},
+      {c_morphology_routine::MORPH_GEO_CLOSE8, "GEO_CLOSE8", "geo_close(connectivity=8)"},
+
       {c_morphology_routine::MORPH_ERODE},
   };
 
@@ -49,6 +54,8 @@ void c_morphology_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
   BIND_PCTRL(ctls, iterations, "Number of times erosion and dilation are applied");
   BIND_PCTRL(ctls, borderType, "Pixel extrapolation method, see #BorderTypes. BORDER_WRAP is not supported");
   BIND_PCTRL(ctls, borderValue, "Border value in case of a constant border");
+  BIND_PCTRL(ctls, input_channel, "Input data source");
+  BIND_PCTRL(ctls, output_channel, "Output destination");
 }
 
 bool c_morphology_routine::serialize(c_config_setting settings, bool save)
@@ -61,6 +68,8 @@ bool c_morphology_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(settings, save, *this, iterations);
     SERIALIZE_PROPERTY(settings, save, *this, borderType);
     SERIALIZE_PROPERTY(settings, save, *this, borderValue);
+    SERIALIZE_PROPERTY(settings, save, *this, input_channel);
+    SERIALIZE_PROPERTY(settings, save, *this, output_channel);
     return true;
   }
   return false;
@@ -70,85 +79,140 @@ bool c_morphology_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 {
   if( SE.empty() ) {
     SE =
-        cv::getStructuringElement(se_shape_,
-            se_size_,
-            anchor_);
+        cv::getStructuringElement(_se_shape,
+            _se_size,
+            _anchor);
   }
 
-  switch (operation_) {
+  cv::Mat src, dst;
+
+  switch (_input_channel) {
+    case DATA_CHANNEL::IMAGE:
+      src = image.getMat();
+      break;
+    case DATA_CHANNEL::MASK:
+      src = mask.getMat();
+      break;
+  }
+
+  switch (_operation) {
 
     case MORPH_SMOOTH_OPEN:
-      morphological_smooth_open(image.getMat(), image,
+      morphological_smooth_open(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_SMOOTH_CLOSE:
-      morphological_smooth_close(image.getMat(), image,
+      morphological_smooth_close(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_INTERNAL_GRADIENT:
-      morphological_internal_gradient(image.getMat(), image,
+      morphological_internal_gradient(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_EXTERNAL_GRADIENT:
-      morphological_external_gradient(image.getMat(), image,
+      morphological_external_gradient(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_LAPLACIAN:
-      morphological_laplacian(image.getMat(), image,
+      morphological_laplacian(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_LAPLACIAN_ABS:
-      morphological_laplacian_abs(image.getMat(), image,
+      morphological_laplacian_abs(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_RAMPLEE:
-      rampLee(image.getMat(), image,
+      rampLee(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_TEXLEE:
-      texLee(image.getMat(), image,
+      texLee(src, dst,
           SE,
-          borderType_,
-          borderValue_);
+          _borderType,
+          _borderValue);
       break;
 
     case MORPH_GEO_FILL_HOLES4:
-      geo_fill_holes(image.getMat(), image, 4);
+      geo_fill_holes(src, dst, 4);
       break;
 
     case MORPH_GEO_FILL_HOLES8:
-      geo_fill_holes(image.getMat(), image, 8);
+      geo_fill_holes(src, dst, 8);
+      break;
+
+    case MORPH_GEO_OPEN4:
+      geo_open(src, dst,
+          SE, 4,
+          cv::Point(-1,-1),
+          _borderType,
+          _borderValue);
+      break;
+
+    case MORPH_GEO_OPEN8:
+      geo_open(src, dst,
+          SE, 8,
+          cv::Point(-1,-1),
+          _borderType,
+          _borderValue);
+      break;
+
+    case MORPH_GEO_CLOSE4:
+      geo_close(src, dst,
+          SE, 4,
+          cv::Point(-1,-1),
+          _borderType,
+          _borderValue);
+      break;
+
+    case MORPH_GEO_CLOSE8:
+      geo_close(src, dst,
+          SE, 8,
+          cv::Point(-1,-1),
+          _borderType,
+          _borderValue);
       break;
 
     default:
-      cv::morphologyEx(image.getMat(), image,
-          operation_,
+      cv::morphologyEx(src, dst,
+          _operation,
           SE,
-          anchor_,
-          iterations_,
-          borderType_,
-          borderValue_);
+          _anchor,
+          _iterations,
+          _borderType,
+          _borderValue);
+      break;
+  }
+
+
+  switch (_output_channel) {
+    case DATA_CHANNEL::IMAGE:
+      image.move(dst);
+      break;
+    case DATA_CHANNEL::MASK:
+      mask.create(dst.size(), CV_8UC1);
+      mask.setTo(cv::Scalar::all(0));
+      mask.setTo(255, dst != 0);
       break;
   }
 

@@ -125,7 +125,7 @@ public:
   {
     switch (stereo_mode_) {
       case StereoNone:
-        if( ignore_mask_ || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
+        if( _ignore_mask || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
           c_gaussian_filter(sigmax_, sigmay_, cv::Size(ksizex_, ksizey_)).
               apply(image.getMat(), cv::noArray(), image, border_type_);
         }
@@ -155,7 +155,7 @@ public:
         src_image(cv::Rect(0, 0, size.width / 2, size.height)).copyTo(frames[0]);
         src_image(cv::Rect(size.width / 2, 0, size.width - size.width / 2, size.height)).copyTo(frames[1]);
 
-        if ( !ignore_mask_ && !src_mask.empty() ) {
+        if ( !_ignore_mask && !src_mask.empty() ) {
           src_mask(cv::Rect(0, 0, size.width / 2, size.height)).copyTo(masks[0]);
           src_mask(cv::Rect(size.width / 2, 0, size.width - size.width / 2, size.height)).copyTo(masks[1]);
         }
@@ -191,7 +191,7 @@ public:
         src_image(cv::Rect(0, 0, size.width, size.height / 2)).copyTo(frames[0]);
         src_image(cv::Rect(0, size.height / 2, size.width, size.height - size.width / 2)).copyTo(frames[1]);
 
-        if( !ignore_mask_ && !src_mask.empty() ) {
+        if( !_ignore_mask && !src_mask.empty() ) {
           src_mask(cv::Rect(0, 0, size.width, size.height / 2)).copyTo(masks[0]);
           src_mask(cv::Rect(0, size.height / 2, size.width, size.height - size.width / 2)).copyTo(masks[1]);
         }

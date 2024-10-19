@@ -121,6 +121,18 @@
 #include <core/readdir.h>
 #include <core/debug.h>
 
+template<>
+const c_enum_member* members_of<c_image_processor_routine::DATA_CHANNEL>()
+{
+  static const c_enum_member members[] = {
+      { c_image_processor_routine::IMAGE, "IMAGE", "" },
+      { c_image_processor_routine::MASK, "MASK", "" },
+      { c_image_processor_routine::IMAGE },
+  };
+
+  return members;
+}
+
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -142,7 +154,7 @@ const std::vector<const c_image_processor_routine::class_factory*> & c_image_pro
 
 const c_image_processor_routine::class_factory * c_image_processor_routine::classfactory() const
 {
-  return class_factory_;
+  return _class_factory;
 }
 
 void c_image_processor_routine::register_class_factory(const class_factory * class_factory)
@@ -643,8 +655,8 @@ bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
     settings.set("ignore_mask", ignore_mask());
   }
   else {
-    settings.get("enabled", &enabled_);
-    settings.get("ignore_mask", &ignore_mask_);
+    settings.get("enabled", &_enabled);
+    settings.get("ignore_mask", &_ignore_mask);
   }
 
   return true;

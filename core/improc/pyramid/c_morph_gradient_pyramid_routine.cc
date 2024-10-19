@@ -33,7 +33,7 @@ bool c_morph_gradient_pyramid_routine::process(cv::InputOutputArray image, cv::I
   if ( image.needed() && !image.empty() ) {
 
     build_morph_gradient_pyramid(image,
-        ignore_mask_ ? cv::noArray() : mask,
+        _ignore_mask ? cv::noArray() : mask,
         pyramid_,
         max_level_);
 

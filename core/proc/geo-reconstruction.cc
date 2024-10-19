@@ -1379,7 +1379,9 @@ static bool geo_reconstruction_erode_(const cv::Mat_<T> & marker, const cv::Mat_
   cv::Mat_<T> tmp;
   std::deque<cv::Point> queue;
 
-  cv::Mat_<T> & res = marker.data == dst.data || mask.data == dst.data ? tmp : dst;
+  cv::Mat_<T> & res =
+      marker.data == dst.data || mask.data == dst.data ? tmp :
+          dst;
 
   cv::max((const cv::Mat&) marker, (const cv::Mat&) mask, (cv::Mat&) res);
 
@@ -1400,7 +1402,7 @@ static bool geo_reconstruction_erode_(const cv::Mat_<T> & marker, const cv::Mat_
 
 
 bool geo_reconstruction_dilate(cv::InputArray _marker_image, cv::InputArray _reference_image,
-    cv::OutputArray _reconstructed_image, int connectivity)
+    cv::OutputArray reconstructed_image, int connectivity)
 {
   const cv::Mat marker_image = _marker_image.getMat();
   const cv::Mat reference_image = _reference_image.getMat();
@@ -1417,47 +1419,44 @@ bool geo_reconstruction_dilate(cv::InputArray _marker_image, cv::InputArray _ref
     return false;
   }
 
-  _reconstructed_image.create(marker_image.size(),
+  reconstructed_image.create(marker_image.size(),
       marker_image.type());
-
-  cv::Mat & reconstructed_image =
-      _reconstructed_image.getMatRef();
 
   switch ( marker_image.depth() ) {
   case CV_8U :
     return geo_reconstruction_dilate_((const cv::Mat_<uint8_t> &) marker_image,
         (const cv::Mat_<uint8_t> &) reference_image,
-        (cv::Mat_<uint8_t> &) reconstructed_image,
+        (cv::Mat_<uint8_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_8S :
     return geo_reconstruction_dilate_((const cv::Mat_<int8_t> &) marker_image,
         (const cv::Mat_<int8_t> &) reference_image,
-        (cv::Mat_<int8_t> &) reconstructed_image,
+        (cv::Mat_<int8_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_16U :
     return geo_reconstruction_dilate_((const cv::Mat_<uint16_t> &) marker_image,
         (const cv::Mat_<uint16_t> &) reference_image,
-        (cv::Mat_<uint16_t> &) reconstructed_image,
+        (cv::Mat_<uint16_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_16S :
     return geo_reconstruction_dilate_((const cv::Mat_<int16_t> &) marker_image,
         (const cv::Mat_<int16_t> &) reference_image,
-        (cv::Mat_<int16_t> &) reconstructed_image,
+        (cv::Mat_<int16_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_32S :
     return geo_reconstruction_dilate_((const cv::Mat_<int32_t> &) marker_image,
         (const cv::Mat_<int32_t> &) reference_image,
-        (cv::Mat_<int32_t> &) reconstructed_image,
+        (cv::Mat_<int32_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_32F :
     return geo_reconstruction_dilate_((const cv::Mat_<float> &) marker_image,
         (const cv::Mat_<float> &) reference_image,
-        (cv::Mat_<float> &) reconstructed_image,
+        (cv::Mat_<float> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_64F :
     return geo_reconstruction_dilate_((const cv::Mat_<double> &) marker_image,
         (const cv::Mat_<double> &) reference_image,
-        (cv::Mat_<double> &) reconstructed_image,
+        (cv::Mat_<double> &) reconstructed_image.getMatRef(),
         connectivity);
   }
 
@@ -1468,10 +1467,14 @@ bool geo_reconstruction_dilate(cv::InputArray _marker_image, cv::InputArray _ref
 
 
 bool geo_reconstruction_erode(cv::InputArray _marker_image, cv::InputArray _reference_image,
-    cv::Mat & reconstructed_image, int connectivity)
+    cv::OutputArray & reconstructed_image, int connectivity)
 {
-  const cv::Mat marker_image = _marker_image.getMat();
-  const cv::Mat reference_image = _reference_image.getMat();
+
+  const cv::Mat marker_image =
+      _marker_image.getMat();
+
+  const cv::Mat reference_image =
+      _reference_image.getMat();
 
   if ( marker_image.empty() ) {
     CF_FATAL("Invalid argument: marker image is empty");
@@ -1495,45 +1498,49 @@ bool geo_reconstruction_erode(cv::InputArray _marker_image, cv::InputArray _refe
     return false;
   }
 
+  reconstructed_image.create(marker_image.size(),
+      marker_image.type());
+
   switch ( marker_image.depth() ) {
   case CV_8U :
     return geo_reconstruction_erode_((const cv::Mat_<uint8_t> &) marker_image,
         (const cv::Mat_<uint8_t> &) reference_image,
-        (cv::Mat_<uint8_t> &) reconstructed_image,
+        (cv::Mat_<uint8_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_8S :
     return geo_reconstruction_erode_((const cv::Mat_<int8_t> &) marker_image,
         (const cv::Mat_<int8_t> &) reference_image,
-        (cv::Mat_<int8_t> &) reconstructed_image,
+        (cv::Mat_<int8_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_16U :
     return geo_reconstruction_erode_((const cv::Mat_<uint16_t> &) marker_image,
         (const cv::Mat_<uint16_t> &) reference_image,
-        (cv::Mat_<uint16_t> &) reconstructed_image,
+        (cv::Mat_<uint16_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_16S :
     return geo_reconstruction_erode_((const cv::Mat_<int16_t> &) marker_image,
         (const cv::Mat_<int16_t> &) reference_image,
-        (cv::Mat_<int16_t> &) reconstructed_image,
+        (cv::Mat_<int16_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_32S :
     return geo_reconstruction_erode_((const cv::Mat_<int32_t> &) marker_image,
         (const cv::Mat_<int32_t> &) reference_image,
-        (cv::Mat_<int32_t> &) reconstructed_image,
+        (cv::Mat_<int32_t> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_32F :
     return geo_reconstruction_erode_((const cv::Mat_<float> &) marker_image,
         (const cv::Mat_<float> &) reference_image,
-        (cv::Mat_<float> &) reconstructed_image,
+        (cv::Mat_<float> &) reconstructed_image.getMatRef(),
         connectivity);
   case CV_64F :
     return geo_reconstruction_erode_((const cv::Mat_<double> &) marker_image,
         (const cv::Mat_<double> &) reference_image,
-        (cv::Mat_<double> &) reconstructed_image,
+        (cv::Mat_<double> &) reconstructed_image.getMatRef(),
         connectivity);
   }
 
-  CF_FATAL("Invalid argument: not supported pixel depth %d", marker_image.depth());
+  CF_FATAL("Invalid argument: not supported pixel depth %d",
+      marker_image.depth());
   return false;
 }
 
@@ -1542,7 +1549,7 @@ bool geo_reconstruction_erode(cv::InputArray _marker_image, cv::InputArray _refe
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Geodesic Opening by Reconstruction
 
-bool geo_open(cv::InputArray src, cv::Mat & dst, cv::InputArray SE, int connectivity,
+bool geo_open(cv::InputArray src, cv::OutputArray & dst, cv::InputArray SE, int connectivity,
     const cv::Point & anchor, int borderType, const cv::Scalar & borderValue)
 {
   cv::Mat eroded_src;
@@ -1560,7 +1567,7 @@ bool geo_open(cv::InputArray src, cv::Mat & dst, cv::InputArray SE, int connecti
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Geodesic Close by Reconstruction
 
-bool geo_close(cv::InputArray src,  cv::Mat & dst, cv::InputArray SE, int connectivity,
+bool geo_close(cv::InputArray src,  cv::OutputArray & dst, cv::InputArray SE, int connectivity,
     const cv::Point & anchor, int borderType, const cv::Scalar & borderValue)
 {
   cv::Mat dilated_src;

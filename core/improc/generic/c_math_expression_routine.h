@@ -19,11 +19,6 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_math_expression_routine,
       "math", "c_math_expression_routine");
 
-  enum CHANNEL {
-    IMAGE,
-    MASK
-  };
-
   void set_expression(const std::string & v)
   {
     expression_ = v;
@@ -35,40 +30,18 @@ public:
     return expression_;
   }
 
-  void set_input_channel(CHANNEL v )
-  {
-    input_channel_ = v;
-  }
-
-  CHANNEL input_channel() const
-  {
-    return input_channel_;
-  }
-
-  void set_output_channel(CHANNEL v )
-  {
-    output_channel_ = v;
-  }
-
-  CHANNEL output_channel() const
-  {
-    return output_channel_;
-  }
-
   std::string helpstring();
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
-  bool initialize() override;
+  bool initialize() final;
 
 protected:
   c_math_expression math_;
   std::string expression_;
   bool expression_changed_ = true;
-  CHANNEL input_channel_ = IMAGE;
-  CHANNEL output_channel_ = IMAGE;
 };
 
 #endif /* __c_math_expression_routine_h__ */

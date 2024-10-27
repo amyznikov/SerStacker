@@ -176,7 +176,10 @@ bool c_config::read(const std::string & filename)
 {
   errno = 0;
 
-  const std::string & fname = filename.empty() ? defaultFilename_ : filename;
+  const std::string fname =
+      expand_path(filename.empty() ? defaultFilename_ :
+          filename);
+
   if ( fname.empty() ) {
     CF_FATAL("ERROR: c_config::read(): No config file name was specified.");
     errno = EINVAL;

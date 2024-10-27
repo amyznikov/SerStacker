@@ -31,11 +31,9 @@ Q_SIGNALS:
 
 protected:
   void keyPressEvent(QKeyEvent *event) final;
-  void glPointSelection(double objX, double objY, double objZ,
-      const QPointF & mousePos,
-      QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons,
-      Qt::KeyboardModifiers modifiers) final;
+  void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ) final;
 
 protected:
   QGLLineShape _line;

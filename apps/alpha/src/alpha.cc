@@ -38,12 +38,10 @@
 #include <core/proc/fit_decreasing_exponent.h>
 #include <core/proc/extract_channel.h>
 
+#include <limits>
 #include <core/debug.h>
 
 namespace {
-
-
-
 }
 
 
@@ -53,20 +51,22 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  const size_t n = 32;
-  std::vector<double> x(n), y(n);
+  typedef uint16_t datatype;
 
-  for ( size_t i = 0; i < n; ++i ) {
-    x[i] = i;
-    y[i] = -10 + 5 * exp(-0.25 * x[i]);
-  }
 
-  double a = -1, b = -1, c = -1;
+  datatype databits = std::numeric_limits<datatype>::digits;
+  datatype datamask = (datatype)(-1);
+  datatype masku = (datatype )(datamask << (databits/2));
+  datatype maskl = ~(datatype )(datamask << (databits/2));
 
-  fit_decreasing_exponent(x, y, &a, &b, &c);
 
-  CF_DEBUG("c=%g b=%g a=%g ", c, b, a);
 
+  printf("digits=%d is_integer=%d databits=%u masku=0x%0X maskl=0x%0X\n",
+      std::numeric_limits<datatype>::digits,
+      std::numeric_limits<datatype>::is_integer,
+      databits,
+      masku,
+      maskl);
 
 
   return 0;

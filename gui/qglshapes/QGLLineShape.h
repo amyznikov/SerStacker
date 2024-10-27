@@ -23,9 +23,11 @@ public:
   QGLLineShape(const QVector3D & start, const QVector3D & end,
       QObject * parent = nullptr);
 
+  void setStart(double objX, double objY, double objZ);
   void setStart(const QVector3D &v);
   const QVector3D &start() const;
 
+  void setEnd(double objX, double objY, double objZ);
   void setEnd(const QVector3D & v);
   const QVector3D & end() const;
 

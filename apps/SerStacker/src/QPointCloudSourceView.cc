@@ -57,11 +57,9 @@ QString QPointCloudSourceView::statusStringForPoint(int cloud_index, int point_i
 }
 
 
-void QPointCloudSourceView::glPointSelection(double objX, double objY, double objZ,
-    const QPointF & mousePos,
-    QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons,
-    Qt::KeyboardModifiers modifiers)
+void QPointCloudSourceView::glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
 {
 
   if( mouseEventType == QEvent::MouseButtonRelease ) {

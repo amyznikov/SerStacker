@@ -2277,6 +2277,27 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
   }
   else {
 
+    if( _input_options.detect_bad_asi_frames ) {
+
+      cv::Mat tmp;
+      if ( !extract_bayer_planes(output_image, tmp, input_sequence->colorid()) ) {
+        CF_ERROR("extract_bayer_planes() fails");
+        output_image.release();
+        return false;
+      }
+
+      CF_DEBUG("Check for corrupted_asi_frame");
+
+      if ( is_corrupted_asi_frame(tmp) ) {
+        CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+        output_image.release();
+        return true; // return true with empty output image
+      }
+
+      CF_DEBUG("Check OK");
+
+    }
+
     const DEBAYER_ALGORITHM algo =
         _input_options.debayer_method;
 
@@ -2318,11 +2339,11 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
           CF_ERROR("debayer() fails");
           return false;
         }
-        if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-          output_image.release();
-          return true; // return true with empty output image
-        }
+//        if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+//          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+//          output_image.release();
+//          return true; // return true with empty output image
+//        }
         if ( _input_options.filter_bad_pixels ) {
           remove_bad_pixels(output_image, _input_options, true);
         }
@@ -2776,7 +2797,7 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
 
       c_laplacian_sharpness_measure measure(2, cv::Size(5, 5));
 
-      constexpr int max_frames_to_scan = 1000;
+      constexpr int max_frames_to_scan = 2000;
 
       CF_DEBUG("Scan %d frames around of middle %d",
           max_frames_to_scan, input_sequence->size() / 2);

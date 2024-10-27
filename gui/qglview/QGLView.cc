@@ -475,6 +475,11 @@ void QGLView::setPerspecitive(double fov, double nearPlane, double farPlane)
   update();
 }
 
+const cv::Mat1f & QGLView::depthBuffer() const
+{
+  return _depthBuffer;
+}
+
 void QGLView::cameraTo(const QVector3D & eye_pos,
     const QVector3D & target_pos,
     const QVector3D & up_direction)
@@ -497,17 +502,55 @@ bool QGLView::projectToScreen(const QVector3D & pos, QPointF * screen_pos) const
   const QVector3D ndc =
       _mtotal.map(pos);
 
-  if( ndc.z() < 1 && fabsf(ndc.x()) < 1 && fabsf(ndc.y()) < 1 ) {
+  if( ndc.z() < 1 && std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1 ) {
 
     // apply view port to compute window coordinates
-    screen_pos->setX(((ndc.x() + 1.0) / 2.0) * viewport.w + viewport.x);
-    screen_pos->setY(((1.0 - ndc.y()) / 2.0) * viewport.h + viewport.y);
+//    screen_pos->setX(((ndc.x() + 1.0) / 2.0) * viewport.w + viewport.x);
+//    screen_pos->setY(((1.0 - ndc.y()) / 2.0) * viewport.h + viewport.y);
+
+    screen_pos->setX((1 + ndc.x()) * viewport.w / 2 + viewport.x);
+    screen_pos->setY((1 - ndc.y()) * viewport.h / 2 + viewport.y);
+
     return true;
   }
 
   return false;
 }
 
+bool QGLView::projectToScreen(const cv::Vec3f & pos, cv::Point2f * screen_pos) const
+{
+  // normalized device coordinates
+  const QVector3D ndc =
+      _mtotal.map(QVector3D(pos[0], pos[1], pos[2]));
+
+  if( ndc.z() < 1 && std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1 ) {
+
+    // apply view port to compute window coordinates
+    screen_pos->x = (1 + ndc.x()) * viewport.w / 2 + viewport.x;
+    screen_pos->y = (1 - ndc.y()) * viewport.h / 2 + viewport.y;
+    return true;
+  }
+
+  return false;
+}
+
+bool QGLView::projectToScreen(const cv::Vec3f & pos, cv::Point3f * screen_pos) const
+{
+  // normalized device coordinates
+  const QVector3D ndc =
+      _mtotal.map(QVector3D(pos[0], pos[1], pos[2]));
+
+  if( ndc.z() < 1 && std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1 ) {
+
+    // apply view port to compute window coordinates
+    screen_pos->x = (1 + ndc.x()) * viewport.w / 2 + viewport.x;
+    screen_pos->y = (1 - ndc.y()) * viewport.h / 2 + viewport.y;
+    screen_pos->z = ndc.z();
+    return true;
+  }
+
+  return false;
+}
 
 
 void QGLView::initializeGL()
@@ -670,7 +713,7 @@ void QGLView::glPostDraw()
     }
   }
 
-  if( _enableSelection ) {
+  if( _enableGLMouseEvents ) {
 
     _depthBuffer.create(viewport.h, viewport.w);
 
@@ -1030,32 +1073,21 @@ void QGLView::removeShape(QGLShape * shape)
   }
 }
 
-
-//void QGLView::drawLine(const QVector3D & start, const QVector3D & end)
-//{
-//
-//  glBegin(GL_LINES);
-//  glEnd(/*GL_LINE*/);
-//
-//}
-
-void QGLView::glPointSelection(double objX, double objY, double objZ,
-    const QPointF &mousePos,
-    QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons,
-    Qt::KeyboardModifiers keyboardModifiers)
+void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
 {
   CF_DEBUG("QGLView: x=%g y=%g obj: X=%g Y=%g Z=%g",
       mousePos.x(), mousePos.y(), objX, objY, objZ);
 }
 
 
-void QGLView::onGLPointSelection(const QPointF &mousePos,
+void QGLView::onGLMouseEvent(const QPointF &mousePos,
     QEvent::Type mouseEventType,
     Qt::MouseButtons mouseButtons,
     Qt::KeyboardModifiers keyboardModifiers)
 {
-  if( _enableSelection ) {
+  if( _enableGLMouseEvents ) {
 
     const GLdouble X =
         mousePos.x();
@@ -1074,21 +1106,19 @@ void QGLView::onGLPointSelection(const QPointF &mousePos,
       const GLdouble Z =
           _depthBuffer[iY][iX];
 
+      bool objHit = false;
+      GLdouble objX = 0, objY = 0, objZ = 0;
+
       if ( Z < 1 ) {
-
-        GLdouble objX = 0, objY = 0, objZ = 0;
-
-        const GLint status =
+        objHit =
             gluUnProject(X, Y, Z,
                 _smodelview, _sprojection, _sviewport,
-                &objX, &objY, &objZ);
-
-        if (status == GL_TRUE) {
-          glPointSelection(objX, objY, objZ, mousePos,
-              mouseEventType, mouseButtons, keyboardModifiers);
-        }
+                &objX, &objY, &objZ) == GL_TRUE;
       }
 
+      glMouseEvent(mousePos, mouseEventType,
+          mouseButtons, keyboardModifiers,
+          objHit, objX, objY, objZ);
     }
   }
 }
@@ -1102,33 +1132,21 @@ void QGLView::mousePressEvent(QMouseEvent * e)
   _prev_mouse_pos = e->localPos();
 #endif
 
-  if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
-    onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+  if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
   else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
     setAutoShowViewTarget(!autoShowViewTarget());
     update();
   }
 
-
-//  if (e->buttons() == Qt::LeftButton) {
-//
-//    if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
-//      onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
-//    }
-//    else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
-//      setAutoShowViewTarget(!autoShowViewTarget());
-//      update();
-//    }
-//  }
-
   e->ignore();
 }
 
 void QGLView::mouseReleaseEvent(QMouseEvent *e)
 {
-  if (_enableSelection ) {
-    onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+  if (_enableGLMouseEvents ) {
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
 
   e->ignore();
@@ -1136,6 +1154,9 @@ void QGLView::mouseReleaseEvent(QMouseEvent *e)
 
 void QGLView::mouseDoubleClickEvent(QMouseEvent *e)
 {
+  if (_enableGLMouseEvents ) {
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+  }
   e->ignore();
 }
 
@@ -1151,8 +1172,8 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     const QPointF newpos = e->localPos();
 #endif
 
-    if (_enableSelection && e->modifiers() == Qt::ControlModifier) {
-      onGLPointSelection(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
+      onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
     }
     else if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
 
@@ -1406,7 +1427,7 @@ void QGLView::showViewTarget(bool show)
 
 void QGLView::setEnableSelection(bool v)
 {
-  if( (_enableSelection = v) ) {
+  if( (_enableGLMouseEvents = v) ) {
     update(); // force repaint to get depth buffer
   }
   else {
@@ -1416,7 +1437,7 @@ void QGLView::setEnableSelection(bool v)
 
 bool QGLView::enableSelection() const
 {
-  return _enableSelection;
+  return _enableGLMouseEvents;
 }
 
 void QGLView::timerEvent(QTimerEvent * e)

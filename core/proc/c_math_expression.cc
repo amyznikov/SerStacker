@@ -94,6 +94,30 @@ static double operator_logical_and(double x, double y)
 {
   return x && y;
 }
+static double operator_bitwise_or(double x, double y)
+{
+  return ((unsigned int)(x)) | ((unsigned int)(y)) ;
+}
+static double operator_bitwise_xor(double x, double y)
+{
+  return ((unsigned int)(x)) ^ ((unsigned int)(y)) ;
+}
+static double operator_bitwise_and(double x, double y)
+{
+  return ((unsigned int)(x)) & ((unsigned int)(y)) ;
+}
+static double operator_bitwise_lshift(double x, double y)
+{
+  return ((unsigned int)(x)) << ((unsigned int)(y)) ;
+}
+static double operator_bitwise_rshift(double x, double y)
+{
+  return ((unsigned int)(x)) >> ((unsigned int)(y)) ;
+}
+static double operator_remainder(double x, double y)
+{
+  return ((unsigned int)(x)) % ((unsigned int)(y)) ;
+}
 static double operator_eq(double x, double y)
 {
   return x == y;
@@ -586,18 +610,23 @@ c_math_expression::c_math_expression()
 
   add_binary_operation(0, operator_logical_or, "||", "logical OR");
   add_binary_operation(1, operator_logical_and, "&&", "logical AND");
-  add_binary_operation(6, pow, "**", "Fortran-style power");
-  add_binary_operation(3, operator_le,"<=", "Less or equal");
-  add_binary_operation(3, operator_ge,">=", "Greater or equal");
-  add_binary_operation(2, operator_eq,"==", "Equality");
-  add_binary_operation(2, operator_not_eq,"!=", "Not Equality");
-  add_binary_operation(3, operator_lt,"<" , "Less than");
-  add_binary_operation(3, operator_gt,">" , "Greater than");
-  add_binary_operation(4, operator_add, "+", "binary plus");
-  add_binary_operation(4, operator_sub, "-", "binary minus");
-  add_binary_operation(5, operator_mul, "*", "multiply");
-  add_binary_operation(5, operator_div, "/",  "divide");
-  add_binary_operation(6, pow, "^",  "Pascal-style power");
+  add_binary_operation(2, operator_bitwise_or, "|", "integer bitwise OR");
+  add_binary_operation(3, operator_bitwise_xor, "^", "integer bitwise XOR");
+  add_binary_operation(4, operator_bitwise_and, "&", "integer bitwise AND");
+  add_binary_operation(5, operator_eq,"==", "Equality");
+  add_binary_operation(5, operator_not_eq,"!=", "Not Equality");
+  add_binary_operation(6, operator_lt,"<" , "Less than");
+  add_binary_operation(6, operator_le,"<=", "Less or equal");
+  add_binary_operation(6, operator_gt,">" , "Greater than");
+  add_binary_operation(6, operator_ge,">=", "Greater or equal");
+  add_binary_operation(7, operator_bitwise_lshift,"<<", "integer bitwise left shift");
+  add_binary_operation(7, operator_bitwise_rshift,">>", "integer bitwise right shift");
+  add_binary_operation(8, operator_add, "+", "binary plus");
+  add_binary_operation(8, operator_sub, "-", "binary minus");
+  add_binary_operation(9, operator_mul, "*", "multiply");
+  add_binary_operation(9, operator_div, "/",  "divide");
+  add_binary_operation(9, operator_remainder, "%",  "integer remainder");
+  add_binary_operation(10, pow, "**", "Fortran-style power");
 
   add_constant(M_PI, "PI", nullptr);
   add_constant(M_PI, "pi", nullptr);

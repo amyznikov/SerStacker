@@ -120,10 +120,14 @@ public:
 
   void setPerspecitive(double fov_degrees, double nearPlane, double farPlane);
 
+  const cv::Mat1f & depthBuffer() const;
+
   void cameraTo(const QVector3D & viewPoint, const QVector3D & viewTargetPoint, const QVector3D & viewUpDirection);
   void lookTo(const QVector3D &target);
 
   bool projectToScreen(const QVector3D & pos, QPointF * screen_pos) const;
+  bool projectToScreen(const cv::Vec3f & pos, cv::Point2f * screen_pos) const;
+  bool projectToScreen(const cv::Vec3f & pos, cv::Point3f * screen_pos) const;
 
   void drawText(const QPointF & pos, const QFont &font, const QString &str);
   void drawText(double x, double y, const QFont &font, const QString &str);
@@ -197,15 +201,13 @@ protected:
 
   virtual void cleanupGL();
 
-  virtual void glPointSelection(double objX, double objY, double objZ,
-      const QPointF & mousePos,
-      QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons,
-      Qt::KeyboardModifiers modifiers);
+  virtual void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
 
 protected:
   void showViewTarget(bool v);
-  void onGLPointSelection(const QPointF & mousePos,
+  void onGLMouseEvent(const QPointF & mousePos,
       QEvent::Type mouseEventType,
       Qt::MouseButtons mouseButtons,
       Qt::KeyboardModifiers keyboardModifiers);
@@ -237,7 +239,7 @@ protected:
 
   QPointF _prev_mouse_pos;
   bool _dirty = true;
-  bool _enableSelection = false;
+  bool _enableGLMouseEvents = false;
   bool _autoShowViewTarget = false;
   int _hideViewTargetTimerId = 0;
 
@@ -254,7 +256,6 @@ protected:
 
 class QGLShape :
     public QObject
-    // , public QOpenGLExtraFunctions
 {
 public:
   typedef QGLShape ThisClass;
@@ -263,6 +264,16 @@ public:
   QGLShape(QObject * parent = nullptr) :
     Base(parent)
   {
+  }
+
+  virtual void setEnabled(bool v)
+  {
+    _enabled = v;
+  }
+
+  bool isEnabled() const
+  {
+    return _enabled;
   }
 
   virtual void setVisible(bool v)
@@ -285,9 +296,11 @@ public:
     return _topLevel;
   }
 
+
   virtual void draw(QGLView * glview) = 0;
 
 protected:
+  bool _enabled = false;
   bool _visible = true;
   bool _topLevel = true;
 };

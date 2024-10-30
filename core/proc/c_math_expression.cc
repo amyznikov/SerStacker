@@ -86,6 +86,10 @@ static double operator_logical_not(double x)
 {
   return !x;
 }
+static double operator_bitwise_not(double x)
+{
+  return ~((unsigned int)(x));
+}
 static double operator_logical_or(double x, double y)
 {
   return x || y;
@@ -607,6 +611,7 @@ c_math_expression::c_math_expression()
   add_unary_operation(operator_unary_minus, "-", "unary minus");
   add_unary_operation(operator_unary_plus, "+", "unary plus");
   add_unary_operation(operator_logical_not, "!", "logical NOT");
+  add_unary_operation(operator_bitwise_not, "~", "bitwise NOT");
 
   add_binary_operation(0, operator_logical_or, "||", "logical OR");
   add_binary_operation(1, operator_logical_and, "&&", "logical AND");
@@ -815,20 +820,29 @@ const c_math_expression::binary_operation* c_math_expression::lookup_binary_oper
   if( priority_level >= 0 && priority_level < (int) binops_.size() ) {
 
     size_t maxlen = 0;
+    int best_priority = -1;
 
-    for ( size_t i = 0, n = binops_[priority_level].size(); i < n; ++i ) {
+    for ( int p = 0; p <= priority_level; ++p ) {
+      for ( size_t i = 0, n = binops_[p].size(); i < n; ++i ) {
 
-      const binary_operation * op =
-          &binops_[priority_level][i];
+        const binary_operation * op =
+            &binops_[p][i];
 
-      const size_t oplen =
-          strlen(op->name.c_str());
+        const size_t oplen =
+            strlen(op->name.c_str());
 
-      if( oplen > maxlen && strncmp(op->name.c_str(), curpos, oplen) == 0 ) {
-        maxlen = oplen;
-        best_match = op;
+        if( oplen > maxlen && strncmp(op->name.c_str(), curpos, oplen) == 0 ) {
+          maxlen = oplen;
+          best_match = op;
+          best_priority = p;
+        }
       }
     }
+
+    if ( best_priority != priority_level ) {
+      best_match = nullptr;
+    }
+
   }
 
   return best_match;

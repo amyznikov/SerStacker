@@ -25,6 +25,7 @@ public:
   void setMaxLines(int v);
   int maxLines() const;
 
+  void putText(const QString & text);
   void clear();
 
 Q_SIGNALS:

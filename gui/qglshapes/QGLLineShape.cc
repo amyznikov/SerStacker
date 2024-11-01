@@ -51,6 +51,18 @@ const QVector3D & QGLLineShape::end() const
   return _end;
 }
 
+void QGLLineShape::setEnableTooltip(bool v)
+{
+  if ( !(_enableTooltip = v) ) {
+    QToolTip::hideText();
+  }
+}
+
+bool QGLLineShape::enableTooltip() const
+{
+  return _enableTooltip;
+}
+
 void QGLLineShape::setVisible(bool v)
 {
   Base::setVisible(v);
@@ -59,15 +71,17 @@ void QGLLineShape::setVisible(bool v)
 
 void QGLLineShape::draw(QGLView *glview)
 {
-  QToolTip::showText(glview->mapToGlobal(QPoint(24, 24)),
-      qsprintf("<strong>Line:</strong><br>\n"
-          "start = (%+g %+g %+g)<br>"
-          "end = (%+g %+g %+g)<br>"
-          "<strong>Length</strong> = %g (%+g %+g %+g)",
-          _start.x(), _start.y(), _start.z(),
-          _end.x(), _end.y(), _end.z(),
-          QVector3D(_end - _start).length(),
-          _end.x()-_start.x(), _end.y()-_start.y(),_end.z()-_start.z()));
+  if ( _enableTooltip ) {
+    QToolTip::showText(glview->mapToGlobal(QPoint(24, 24)),
+        qsprintf("<strong>Line:</strong><br>\n"
+            "start = (%+g %+g %+g)<br>"
+            "end = (%+g %+g %+g)<br>"
+            "<strong>Length</strong> = %g (%+g %+g %+g)",
+            _start.x(), _start.y(), _start.z(),
+            _end.x(), _end.y(), _end.z(),
+            QVector3D(_end - _start).length(),
+            _end.x()-_start.x(), _end.y()-_start.y(),_end.z()-_start.z()));
+  }
 
   glLineWidth(3);
   glColor3ub(255, 255, 0);

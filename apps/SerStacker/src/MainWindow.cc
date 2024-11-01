@@ -2241,6 +2241,64 @@ void MainWindow::setupInputSequenceView()
 
 
 
+  static const auto uncheckOtherActions =
+      [](const QList<QAction*> & actions, const QAction * checkedAction) {
+        if ( checkedAction->isChecked() ) {
+          for ( QAction * a : actions ) {
+            if ( a != checkedAction ) {
+              a->setChecked(false);
+            }
+          }
+        }
+      };
+
+
+  _pointSelectionModeActions.append(createCheckableAction2(QIcon(), "3D Ruler Line",
+      "3D ruler line selection", false,
+      [this](QAction * action) {
+
+        uncheckOtherActions(_pointSelectionModeActions, action);
+
+        if ( !action->isChecked() ) {
+          inputSourceView->setPointSelectionMode(nullptr);
+          _pointSelection3DRulerMode.disconnect(this);
+        }
+        else {
+
+          connect(&_pointSelection3DRulerMode, &QPointSelection3DRulerMode::rulerChanged,
+              [this]() {
+                if ( is_visible(logWidget_ctl) ) {
+
+                  const QGLLineShape & line = _pointSelection3DRulerMode.ruler();
+                  const QVector3D & start = line.start();
+                  const QVector3D & end = line.end();
+
+                  const QString text = qsprintf("RULER: start=(%+g %+g %+g) end=(%+g %+g %+g) length=%g",
+                      start.x(), start.y(), start.z(),
+                      end.x(), end.y(), end.z(),
+                      QVector3D(end-start).length());
+
+                  logWidget_ctl->putText(text);
+                }
+
+              });
+
+
+          inputSourceView->setPointSelectionMode(&_pointSelection3DRulerMode);
+        }
+
+      }));
+
+
+  toolbar->addWidget(_pointSelectionModeToolbutton =
+      createPointSelectionModeToolButton(this));
+
+  _pointSelectionModeMenu.addActions(_pointSelectionModeActions);
+  _pointSelectionModeToolbutton->setMenu(&_pointSelectionModeMenu);
+
+
+
+
   connect(cloudView, &QPointCloudSourceView::pointClicked,
       [this](int cloud_index, int point_index) {
         statusbarMousePosLabel_ctl->setText(cloudView->statusStringForPoint(cloud_index, point_index));

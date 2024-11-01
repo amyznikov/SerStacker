@@ -61,7 +61,8 @@ void QLogWidget::clear()
   textbox_ctl->clear();
 }
 
-void QLogWidget::onAppendText(const QString & msg)
+
+void QLogWidget::putText(const QString & msg)
 {
   if ( textbox_ctl ) {
 
@@ -85,8 +86,13 @@ void QLogWidget::onAppendText(const QString & msg)
       textbox_ctl->ensureCursorVisible();
     }
   }
+
 }
 
+void QLogWidget::onAppendText(const QString & msg)
+{
+  putText(msg);
+}
 
 QLogWidgetDock::QLogWidgetDock(const QString & title, QWidget * parent, QLogWidget * log) :
     Base(title, parent, log)

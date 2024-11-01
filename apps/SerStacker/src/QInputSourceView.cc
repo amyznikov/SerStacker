@@ -76,6 +76,11 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
   setupMtfDisplayFunction();
   setCurrentView(imageView_);
   setCurrentToolbar(imageViewToolbar_);
+
+  connect(cloudView_, &QPointCloudSourceView::glPointSelectionMouseEvent,
+      this, &ThisClass::onCloudViewPointSelectionMouseEvent);
+
+
 }
 
 QToolBar * QInputSourceView::toolbar() const
@@ -309,6 +314,23 @@ void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & 
 const c_data_frame_processor::sptr & QInputSourceView::currentProcessor() const
 {
   return currentProcessor_;
+}
+
+
+void QInputSourceView::setPointSelectionMode(QPointSelectionMode * selectionMode)
+{
+  if( _currentPointSelectionMode ) {
+    _currentPointSelectionMode->setActive(this, false);
+  }
+
+  if( (_currentPointSelectionMode = selectionMode) ) {
+    _currentPointSelectionMode->setActive(this, true);
+  }
+}
+
+QPointSelectionMode * QInputSourceView::pointSelectionMode() const
+{
+  return _currentPointSelectionMode;
 }
 
 //void QInputSourceView::setInputSource(const c_input_source::sptr & current_source)
@@ -1115,6 +1137,19 @@ void QInputSourceView::setBadPixelsVariationThreshold(double v)
 double QInputSourceView::badPixelsVariationThreshold() const
 {
   return badPixelsVariationThreshold_;
+}
+
+
+void QInputSourceView::onCloudViewPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
+{
+  if( _currentPointSelectionMode ) {
+    _currentPointSelectionMode->glMouseEvent(this, mousePos, mouseEventType,
+        mouseButtons, keyboardModifiers,
+        objHit, objX, objY, objZ);
+  }
+
 }
 
 

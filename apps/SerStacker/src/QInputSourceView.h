@@ -28,6 +28,9 @@
 
 namespace serstacker {
 
+// Forward declaration
+class QPointSelectionMode;
+
 class QInputSourceView :
     public QWidget,
     public IMtfDisplay,
@@ -67,6 +70,9 @@ public:
 
   void setCurrentProcessor(const c_data_frame_processor::sptr & processor);
   const c_data_frame_processor::sptr & currentProcessor() const;
+
+  void setPointSelectionMode(QPointSelectionMode * selectionMode);
+  QPointSelectionMode * pointSelectionMode() const;
 
   //void setInputSource(const c_input_source::sptr & current_source);
   const c_input_source::sptr & inputSource() const;
@@ -131,6 +137,7 @@ protected: // QWidget
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 
+
 protected: // QImageDisplayFunction
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
@@ -148,6 +155,11 @@ protected: // MTF
   void getInputDataRange(double * minval, double * maxval) const override;
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+
+protected: // point selection
+  void onCloudViewPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
 
 protected:
   c_input_source::sptr currentSource_;
@@ -185,7 +197,45 @@ protected:
 
   //////////////////////////////////////////
 
+  QPointSelectionMode * _currentPointSelectionMode = nullptr;
 
+};
+
+class QPointSelectionMode :
+    public QObject
+{
+  Q_OBJECT;
+public:
+  typedef QPointSelectionMode ThisClass;
+  typedef QObject Base;
+
+  QPointSelectionMode(QObject * parent = nullptr) :
+    Base(parent)
+  {
+  }
+
+  virtual void setActive(QInputSourceView * sourceView, bool activate)
+  {
+    if ( _isActive != activate ) {
+      _isActive = activate;
+      Q_EMIT stateChanged();
+    }
+  }
+
+  bool isActive() const
+  {
+    return _isActive;
+  }
+
+  virtual void glMouseEvent(QInputSourceView * sourceView, const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ) = 0;
+
+Q_SIGNALS:
+  void stateChanged();
+
+protected:
+  bool _isActive = false;
 };
 
 } // namespace serstacker

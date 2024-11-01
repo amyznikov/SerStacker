@@ -28,7 +28,7 @@
 # include <GL/glu.h>
 #endif
 
-// forward declaration
+// forward declarations
 class QGLShape;
 
 class QGLView :
@@ -295,7 +295,6 @@ public:
   {
     return _topLevel;
   }
-
 
   virtual void draw(QGLView * glview) = 0;
 

@@ -14,7 +14,10 @@
 
     <file>icons/light/zoom.png</file>
     <file>icons/dark/zoom.png</file>
-    
+
+    <file>icons/light/annotation.png</file>
+    <file>icons/dark/annotation.png</file>
+
 	<file>icons/bayer.png</file>
 
 	<file>icons/save.png</file>

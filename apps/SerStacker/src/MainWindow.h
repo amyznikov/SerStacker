@@ -26,6 +26,7 @@
 #include "QInputSourceView.h"
 #include "QProgressImageViewer.h"
 #include "QGeoMapView.h"
+#include "QPointSelectionMode.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
@@ -179,6 +180,14 @@ private:
   QGeoMapView * geoView = nullptr;
   QGeoMapViewDock * geoViewDock = nullptr;
   QAction * onLoadGpsTrackAction_ = nullptr;
+
+
+  // QPointSelectionMode
+  QPointSelection3DRulerMode _pointSelection3DRulerMode;
+  QToolButton * _pointSelectionModeToolbutton = nullptr;
+  QList<QAction *> _pointSelectionModeActions;
+  QMenu _pointSelectionModeMenu;
+
 
 };
 

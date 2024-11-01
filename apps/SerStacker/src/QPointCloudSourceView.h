@@ -28,6 +28,9 @@ public:
 
 Q_SIGNALS:
   void pointClicked(int cloud_index, int point_index);
+  void glPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
 
 protected:
   void keyPressEvent(QKeyEvent *event) final;
@@ -36,7 +39,7 @@ protected:
       bool objHit, double objX, double objY, double objZ) final;
 
 protected:
-  QGLLineShape _line;
+  //QGLLineShape _line;
 };
 
 /////////////////

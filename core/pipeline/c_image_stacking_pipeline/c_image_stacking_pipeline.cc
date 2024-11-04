@@ -2277,25 +2277,32 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
   }
   else {
 
-    if( _input_options.detect_bad_asi_frames ) {
+    if( _input_options.detect_bad_asi_frames && _input_options.bad_asi_frame_median_hat_threshold ) {
 
-      cv::Mat tmp;
-      if ( !extract_bayer_planes(output_image, tmp, input_sequence->colorid()) ) {
-        CF_ERROR("extract_bayer_planes() fails");
-        output_image.release();
-        return false;
-      }
-
-      CF_DEBUG("Check for corrupted_asi_frame");
-
-      if ( is_corrupted_asi_frame(tmp) ) {
+      if( is_corrupted_asi_bayer_frame(output_image, input_sequence->colorid(),
+          _input_options.bad_asi_frame_median_hat_threshold) ) {
         CF_ERROR("CORRUPTED ASI FRAME DETECTED");
         output_image.release();
         return true; // return true with empty output image
       }
 
-      CF_DEBUG("Check OK");
-
+//      cv::Mat tmp;
+//      if ( !extract_bayer_planes(output_image, tmp, input_sequence->colorid()) ) {
+//        CF_ERROR("extract_bayer_planes() fails");
+//        output_image.release();
+//        return false;
+//      }
+//
+//      CF_DEBUG("Check for corrupted_asi_frame");
+//
+//      if ( is_corrupted_asi_frame(tmp) ) {
+//        CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+//        output_image.release();
+//        return true; // return true with empty output image
+//      }
+//
+//      CF_DEBUG("Check OK");
+//
     }
 
     const DEBAYER_ALGORITHM algo =

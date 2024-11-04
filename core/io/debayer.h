@@ -103,6 +103,14 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
 bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
 
 
+/** @brief
+ * Check for ZWO ASI specific horizontal stripe artifact
+ * on the 1-channel Bayer image.
+ */
+bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image,
+    COLORID bayer_pattern,
+    double median_hat_threshold);
+
 /**
  *
  */

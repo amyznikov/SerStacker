@@ -1952,6 +1952,43 @@ bool is_corrupted_asi_frame(const cv::Mat & image)
   return false;
 }
 
+/** @brief
+ * Check for ZWO ASI specific horizontal stripe artifact
+ * on the 1-channel Bayer image.
+ */
+bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, COLORID bayer_pattern,
+    double median_hat_threshold)
+{
+  cv::Mat tmp;
+  cv::Mat mb;
+
+  if ( !extract_bayer_planes(bayer_image, tmp, bayer_pattern) ) {
+    CF_ERROR("extract_bayer_planes() fails");
+    return false;
+  }
+
+  cv::absdiff(tmp(cv::Rect(0, 0, tmp.cols, tmp.rows - 1)),
+      tmp(cv::Rect(0, 1, tmp.cols, tmp.rows - 1)),
+      tmp);
+
+  const cv::Size size =
+      tmp.size();
+
+  cv::reduce(tmp, tmp, 1, cv::REDUCE_AVG,
+      CV_32F);
+
+  cv::medianBlur(tmp, mb, 5);
+  cv::absdiff(tmp, mb, tmp);
+  cv::reduce(tmp.reshape(1, tmp.total()), tmp, 1, cv::REDUCE_MAX);
+  tmp = tmp.reshape(0, size.height);
+
+  cv::compare(tmp, median_hat_threshold, tmp,
+      cv::CMP_GE);
+
+  return cv::countNonZero(tmp) > 0;
+}
+
+
 template<class T>
 static bool bayer_denoise_(cv::Mat & bayer_image, double k)
 {

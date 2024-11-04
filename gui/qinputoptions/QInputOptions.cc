@@ -126,7 +126,7 @@ QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
   QPixmap pxmap =
       getPixmap(ICON_lidar);
 
-  CF_DEBUG("pxmap: isNull=%d %dx%d", pxmap.isNull(), pxmap.width(), pxmap.height());
+  // CF_DEBUG("pxmap: isNull=%d %dx%d", pxmap.isNull(), pxmap.width(), pxmap.height());
 
   iconLabel->setPixmap(pxmap);
 

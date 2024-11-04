@@ -35,6 +35,7 @@ struct c_image_processing_pipeline_input_options
   bool detect_bad_asi_frames = false;
   bool enable_bground_normalization  = false;
 
+  double bad_asi_frame_median_hat_threshold = 300;
   double bad_pixels_variation_threshold = 15;
   c_histogram_normalization_options background_normalization_options;
 
@@ -54,6 +55,7 @@ bool serialize_base_input_options(c_config_setting section, bool save, c_image_p
   PIPELINE_CTL(ctrls, _input_options.inpaint_missing_pixels, "inpaint missing pixels", "");\
   PIPELINE_CTL(ctrls, _input_options.enable_color_maxtrix, "enable color maxtrix", "");\
   PIPELINE_CTL(ctrls, _input_options.detect_bad_asi_frames, "detect bad asi frames", "");\
+  PIPELINE_CTL(ctrls, _input_options.bad_asi_frame_median_hat_threshold, "bad_asi_frame_median_hat_threshold", "");\
   PIPELINE_CTL(ctrls, _input_options.filter_bad_pixels, "filter bad pixels", "");\
   PIPELINE_CTL(ctrls, _input_options.bad_pixels_variation_threshold, "bad pixels variation", "");\
   PIPELINE_CTL(ctrls, _input_options.enable_bground_normalization, "bground normalization", "");\

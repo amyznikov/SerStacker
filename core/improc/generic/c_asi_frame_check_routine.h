@@ -35,6 +35,7 @@ public:
     DISPLAY_CHANNEL_1 = 1,
     DISPLAY_CHANNEL_2 = 2,
     DISPLAY_CHANNEL_3 = 3,
+    DISPLAY_CHANNEL_MAX = 4,
   };
 
   void set_bayer_pattern(BAYER_PATTERN v)
@@ -67,6 +68,36 @@ public:
     return _differentiate;
   }
 
+  void set_reduce(bool v)
+  {
+    _reduce = v;
+  }
+
+  bool reduce() const
+  {
+    return _reduce;
+  }
+
+  void set_medianhat(bool v)
+  {
+    _medianhat = v;
+  }
+
+  bool medianhat() const
+  {
+    return _medianhat;
+  }
+
+  void set_threshold(double v)
+  {
+    _threshold = v;
+  }
+
+  double threshold() const
+  {
+    return _threshold;
+  }
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -81,6 +112,15 @@ protected:
 
   bool _differentiate =
       false;
+
+
+  bool _reduce =
+      false;
+
+  bool _medianhat =
+      false;
+
+  double _threshold = -1;
 };
 
 #endif /* __c_asi_frame_check_routine_h__ */

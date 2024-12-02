@@ -288,13 +288,17 @@ public:
   ssize_t current_payload_size() const;
   ssize_t read_payload(void * data, size_t max_size);
 
+  static void set_dump_stream_names_on_file_open(bool v);
+  static bool dump_stream_names_on_file_open();
 
 protected:
-  c_file_handle fd_;
-  FileHeader file_header_;
-  std::vector<IfhdStream> file_streams_;
-  ssize_t current_stream_index_ = -1;
-  ssize_t current_frame_index_in_current_stream_ = -1;
+  c_file_handle _fd;
+  FileHeader _file_header;
+  std::vector<IfhdStream> _file_streams;
+  ssize_t _current_stream_index = -1;
+  ssize_t _current_frame_index_in_current_stream = -1;
+
+  static bool _dump_stream_names_on_file_open;
 };
 
 #endif /* __c_ifhd_file_h__ */

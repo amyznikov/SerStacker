@@ -28,23 +28,6 @@
 
 #endif
 
-
-//@brief get current file position
-//static inline ssize_t whence(int fd)
-//{
-//  return ::lseek64(fd, 0, SEEK_CUR);
-//}
-
-//static inline ssize_t readfrom(file_t fd, ssize_t offset, void * data, size_t size)
-//{
-//  if( ::lseek64(fd, offset, SEEK_SET) != offset ) {
-//    return -1;
-//  }
-//
-//  return ::read(fd, data, size);
-//}
-
-
 // check if it is a IFHD file
 static bool check_file_header(const ifhd::FileHeader & file_header)
 {
@@ -57,8 +40,6 @@ static bool check_file_header(const ifhd::FileHeader & file_header)
 
   return true;
 }
-
-
 
 c_ifhd_file::c_ifhd_file()
 {
@@ -74,6 +55,9 @@ const std::string& c_ifhd_file::filename() const
   return filename_;
 }
 
+
+bool c_ifhd_reader::_dump_stream_names_on_file_open = false;
+
 c_ifhd_reader::c_ifhd_reader() :
     this_class("")
 {
@@ -82,7 +66,7 @@ c_ifhd_reader::c_ifhd_reader() :
 c_ifhd_reader::c_ifhd_reader(const std::string & filename) :
     base(filename)
 {
-  memset(&file_header_, 0, sizeof(file_header_));
+  memset(&_file_header, 0, sizeof(_file_header));
 }
 
 c_ifhd_reader::~c_ifhd_reader()
@@ -90,22 +74,32 @@ c_ifhd_reader::~c_ifhd_reader()
   close();
 }
 
+void c_ifhd_reader::set_dump_stream_names_on_file_open(bool v)
+{
+  _dump_stream_names_on_file_open = v;
+}
+
+bool c_ifhd_reader::dump_stream_names_on_file_open()
+{
+  return _dump_stream_names_on_file_open;
+}
+
 const std::vector<c_ifhd_reader::IfhdStream> & c_ifhd_reader::streams() const
 {
-  return file_streams_;
+  return _file_streams;
 }
 
 bool c_ifhd_reader::is_open() const
 {
-  return fd_.is_open();
+  return _fd.is_open();
 }
 
 void c_ifhd_reader::close()
 {
-  if ( fd_.is_open() ) {
-    fd_.close();
-    current_stream_index_ = -1;
-    current_frame_index_in_current_stream_ = -1;
+  if ( _fd.is_open() ) {
+    _fd.close();
+    _current_stream_index = -1;
+    _current_frame_index_in_current_stream = -1;
   }
 }
 
@@ -132,52 +126,56 @@ bool c_ifhd_reader::open(const std::string & filename)
   constexpr int openflags = O_RDONLY | O_NOATIME;
 #endif
 
-  if( !fd_.open(fname, openflags) ) {
-    CF_ERROR("fd_.open('%s') fails: %s", fname, strerror(errno));
+  if( !_fd.open(fname, openflags) ) {
+    CF_ERROR("_fd.open('%s') fails: %s", fname, strerror(errno));
     goto end;
   }
 
 
-  if( fd_.read(&file_header_, sizeof(file_header_)) != sizeof(file_header_) ) {
+  if( _fd.read(&_file_header, sizeof(_file_header)) != sizeof(_file_header) ) {
     CF_ERROR("read('%s', file_header_) fails: %s", fname,
         strerror(errno));
     goto end;
   }
 
-  if ( !check_file_header(file_header_) ) {
+  if ( !check_file_header(_file_header) ) {
     errno = ENODATA;
     goto end;
   }
 
-  file_streams_.clear();
-  file_streams_.reserve(file_header_.extension_count);
+  _file_streams.clear();
+  _file_streams.reserve(_file_header.extension_count);
 
-  for( std::size_t i = 0; i < file_header_.extension_count; ++i ) {
+  for( std::size_t i = 0; i < _file_header.extension_count; ++i ) {
 
     IfhdStream stream;
 
     const ssize_t offset =
-        file_header_.extension_offset + i * sizeof(FileExtension);
+        _file_header.extension_offset + i * sizeof(FileExtension);
 
-    if( fd_.readfrom(offset, &stream.extension, sizeof(stream.extension)) != sizeof(stream.extension) ) {
+    if( _fd.readfrom(offset, &stream.extension, sizeof(stream.extension)) != sizeof(stream.extension) ) {
       CF_ERROR("readfrom('%s',offset=%zd, size=%zu) fails: %s", fname, offset, sizeof(stream.extension),
           strerror(errno));
       goto end;
     }
 
-    if( fd_.readfrom(stream.extension.data_pos, &stream.header, sizeof(stream.header)) != sizeof(stream.header) ) {
+    if( _fd.readfrom(stream.extension.data_pos, &stream.header, sizeof(stream.header)) != sizeof(stream.header) ) {
       CF_ERROR("readfrom('%s',offset=%zd, size=%zu) fails: %s", fname, stream.extension.data_pos, sizeof(stream.header),
           strerror(errno));
       goto end;
     }
 
-    file_streams_.emplace_back(stream);
+    _file_streams.emplace_back(stream);
 
-    // CF_DEBUG("stream[%zd]: name='%s' stream_index_count=%llu", i, stream.header.stream_name, (unsigned long long) stream.header.stream_index_count);
+
+    if ( dump_stream_names_on_file_open() ) {
+      CF_DEBUG("stream[%zd]: name='%s' stream_index_count=%zu", i, stream.header.stream_name,
+          (size_t) stream.header.stream_index_count);
+    }
   }
 
-  if( fd_.seek(0, SEEK_SET) != 0 ) {
-    CF_ERROR("fd_.seek('%s', offset=0, SEEK_SET) fails: %s", fname,
+  if( _fd.seek(0, SEEK_SET) != 0 ) {
+    CF_ERROR("_fd.seek('%s', offset=0, SEEK_SET) fails: %s", fname,
         strerror(errno));
     goto end;
   }
@@ -196,25 +194,29 @@ end:
 
 int c_ifhd_reader::current_stream() const
 {
-  return current_stream_index_;
+  return _current_stream_index;
 }
 
 bool c_ifhd_reader::select_stream(int index)
 {
+  if( index == _current_stream_index ) {
+    return true;
+  }
+
   if ( index < 0 || index >= streams().size() ) {
     CF_ERROR("invalid stream index %d requested", index);
     errno = EINVAL;
     return false;
   }
 
-  current_stream_index_ = index;
-  current_frame_index_in_current_stream_ = -1;
+  _current_stream_index = index;
+  _current_frame_index_in_current_stream = -1;
 
   IfhdStream & stream =
-      file_streams_[current_stream_index_];
+      _file_streams[_current_stream_index];
 
   if ( !stream.chunks.empty() ) {
-    current_frame_index_in_current_stream_ = 0;
+    _current_frame_index_in_current_stream = 0;
     return true;
   }
 
@@ -229,13 +231,13 @@ bool c_ifhd_reader::select_stream(int index)
   //      (size_t ) file_header_.chunk_count,
   //      (size_t ) stream.header.stream_index_count);
 
-  for( ; current_chunk_offset < file_header_.data_size;  current_chunk_offset += 16 * ((chunk_header.size + 15) / 16) ) {
+  for( ; current_chunk_offset < _file_header.data_size;  current_chunk_offset += 16 * ((chunk_header.size + 15) / 16) ) {
 
     const ssize_t offset =
-        file_header_.data_offset + current_chunk_offset;
+        _file_header.data_offset + current_chunk_offset;
 
-    if( fd_.readfrom(offset, &chunk_header, sizeof(ifhd::ChunkHeader)) != sizeof(ifhd::ChunkHeader) ) {
-      CF_ERROR("readfrom(fd=%d, offset=%zd, size=%zu) fails: %s", fd_, offset, sizeof(ifhd::ChunkHeader),
+    if( _fd.readfrom(offset, &chunk_header, sizeof(ifhd::ChunkHeader)) != sizeof(ifhd::ChunkHeader) ) {
+      CF_ERROR("readfrom(fd=%d, offset=%zd, size=%zu) fails: %s", _fd, offset, sizeof(ifhd::ChunkHeader),
           strerror(errno));
       break;
     }
@@ -243,7 +245,7 @@ bool c_ifhd_reader::select_stream(int index)
 
     if( chunk_header.stream_id == stream.extension.stream_id ) {
       chunk_header.payload_size = chunk_header.size - sizeof(ifhd::ChunkHeader) - 5 - 17;
-      chunk_header.payload_offset = file_header_.data_offset + current_chunk_offset + sizeof(ifhd::ChunkHeader) + 17;
+      chunk_header.payload_offset = _file_header.data_offset + current_chunk_offset + sizeof(ifhd::ChunkHeader) + 17;
       stream.chunks.emplace_back(chunk_header);
 
       //      CF_DEBUG("chunk_header.size=%u payload_size=%zd payload_offset=%zd",
@@ -264,7 +266,7 @@ bool c_ifhd_reader::select_stream(int index)
 //      sizeof(c_vlo_scan5));
 
   if ( !stream.chunks.empty() ) {
-    current_frame_index_in_current_stream_ = 0;
+    _current_frame_index_in_current_stream = 0;
   }
 
   return true;
@@ -272,8 +274,8 @@ bool c_ifhd_reader::select_stream(int index)
 
 bool c_ifhd_reader::select_stream(const std::string & stream_name)
 {
-  for( int i = 0, n = file_streams_.size(); i < n; ++i ) {
-    if( file_streams_[i].header.stream_name == stream_name ) {
+  for( int i = 0, n = _file_streams.size(); i < n; ++i ) {
+    if( _file_streams[i].header.stream_name == stream_name ) {
       return select_stream(i);
     }
   }
@@ -286,21 +288,21 @@ bool c_ifhd_reader::select_stream(const std::string & stream_name)
 /// @brief get number of frames in current stream
 ssize_t c_ifhd_reader::num_frames() const
 {
-  return current_stream_index_ >= 0 ?
-      file_streams_[current_stream_index_].chunks.size() :
+  return _current_stream_index >= 0 ?
+      _file_streams[_current_stream_index].chunks.size() :
       -1;
 }
 
 bool c_ifhd_reader::seek(int32_t frame_index_in_current_stream)
 {
-  if ( current_stream_index_ < 0 ) {
+  if ( _current_stream_index < 0 ) {
     CF_ERROR("No current stream selected");
     errno = EINVAL;
     return false;
   }
 
   const IfhdStream & stream =
-      file_streams_[current_stream_index_];
+      _file_streams[_current_stream_index];
 
   if ( frame_index_in_current_stream < 0 || frame_index_in_current_stream >= (int32_t)stream.chunks.size() ) {
     CF_ERROR("Seek to invalid position %d requested", frame_index_in_current_stream);
@@ -308,7 +310,7 @@ bool c_ifhd_reader::seek(int32_t frame_index_in_current_stream)
     return false;
   }
 
-  current_frame_index_in_current_stream_ =
+  _current_frame_index_in_current_stream =
       frame_index_in_current_stream;
 
   return true;
@@ -316,65 +318,63 @@ bool c_ifhd_reader::seek(int32_t frame_index_in_current_stream)
 
 int32_t c_ifhd_reader::curpos() const
 {
-  return current_frame_index_in_current_stream_;
+  return _current_frame_index_in_current_stream;
 }
 
 ssize_t c_ifhd_reader::current_payload_size() const
 {
-  if( current_stream_index_ < 0 || current_stream_index_ >= (ssize_t) file_streams_.size() ) {
+  if( _current_stream_index < 0 || _current_stream_index >= (ssize_t) _file_streams.size() ) {
     CF_ERROR("ERROR current stream was not selected");
     errno = EINVAL;
     return -1;
   }
 
   const IfhdStream & stream =
-      file_streams_[current_stream_index_];
+      _file_streams[_current_stream_index];
 
-  if( current_frame_index_in_current_stream_ < 0 || current_frame_index_in_current_stream_ >= stream.chunks.size() ) {
+  if( _current_frame_index_in_current_stream < 0 || _current_frame_index_in_current_stream >= stream.chunks.size() ) {
     errno = EINVAL;
     return -1;
   }
 
-  return stream.chunks[current_frame_index_in_current_stream_].payload_size;
+  return stream.chunks[_current_frame_index_in_current_stream].payload_size;
 }
 
 ssize_t c_ifhd_reader::read_payload(void * data, size_t max_size)
 {
-  if( current_stream_index_ < 0 || current_stream_index_ >= (ssize_t) file_streams_.size() ) {
+  if( _current_stream_index < 0 || _current_stream_index >= (ssize_t) _file_streams.size() ) {
     CF_ERROR("ERROR current stream was not selected");
     errno = EINVAL;
     return -1;
   }
 
   const IfhdStream &stream =
-      file_streams_[current_stream_index_];
+      _file_streams[_current_stream_index];
 
-  if( current_frame_index_in_current_stream_ < 0 ) {
+  if( _current_frame_index_in_current_stream < 0 ) {
     errno = EINVAL;
     return -1;
   }
 
-  if( current_frame_index_in_current_stream_ >= stream.chunks.size() ) {
+  if( _current_frame_index_in_current_stream >= stream.chunks.size() ) {
     return 0;
   }
 
 
   const ChunkHeader &chunk =
-      stream.chunks[current_frame_index_in_current_stream_];
+      stream.chunks[_current_frame_index_in_current_stream];
 
   if( max_size > (size_t) chunk.payload_size ) {
     max_size = chunk.payload_size;
   }
 
   const ssize_t bytes_read =
-      fd_.readfrom(chunk.payload_offset, data,
+      _fd.readfrom(chunk.payload_offset, data,
             max_size);
 
   if( bytes_read >= 0 ) {
-    ++current_frame_index_in_current_stream_;
+    ++_current_frame_index_in_current_stream;
   }
 
   return bytes_read;
 }
-
-

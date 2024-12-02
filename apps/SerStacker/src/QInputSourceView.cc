@@ -1139,17 +1139,15 @@ double QInputSourceView::badPixelsVariationThreshold() const
   return badPixelsVariationThreshold_;
 }
 
-
-void QInputSourceView::onCloudViewPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+void QInputSourceView::onCloudViewPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
     bool objHit, double objX, double objY, double objZ)
 {
   if( _currentPointSelectionMode ) {
-    _currentPointSelectionMode->glMouseEvent(this, mousePos, mouseEventType,
-        mouseButtons, keyboardModifiers,
+    _currentPointSelectionMode->glMouseEvent(this, eventType, keyOrMouseButtons,
+        keyboardModifiers, mousePos,
         objHit, objX, objY, objZ);
   }
-
 }
 
 

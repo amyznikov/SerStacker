@@ -39,6 +39,7 @@ public:
 
   ~c_file_handle();
 
+  bool create(const std::string & filename, bool write_only = true);
   bool open(const std::string & filename, int openflags);
   void close();
   bool is_open() const;
@@ -55,15 +56,22 @@ public:
   {
     return write(&data, sizeof(data)) == sizeof(data);
   }
+
   template<class T>
-  bool read(T * data)
+  bool read(T & data)
   {
-    return read(data, sizeof(*data)) == sizeof(*data);
+    return read(&data, sizeof(data)) == sizeof(data);
   }
 
+  template<class T>
+  bool readfrom(ssize_t offset, T & data)
+  {
+    return readfrom(offset, &data, sizeof(data)) == sizeof(data);
+  }
 
 protected:
-  FILE_DESCRIPTOR fd_ = INVALID_FILE_DESCRIPTOR;
+  FILE_DESCRIPTOR _fd =
+      INVALID_FILE_DESCRIPTOR;
 };
 
 #endif /* __c_file_handle_h__ */

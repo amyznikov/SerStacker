@@ -185,6 +185,8 @@ protected:
 
 protected:
   void timerEvent(QTimerEvent *event) override;
+  void keyPressEvent(QKeyEvent *event) override;
+  void keyReleaseEvent(QKeyEvent *event) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
@@ -201,16 +203,15 @@ protected:
 
   virtual void cleanupGL();
 
-  virtual void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  virtual void glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
   void showViewTarget(bool v);
-  void onGLMouseEvent(const QPointF & mousePos,
-      QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons,
-      Qt::KeyboardModifiers keyboardModifiers);
+  void onGLMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers,
+      const QPointF & mousePos);
 
 protected:
   QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);

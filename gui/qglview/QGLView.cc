@@ -1073,8 +1073,8 @@ void QGLView::removeShape(QGLShape * shape)
   }
 }
 
-void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+void QGLView::glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
     bool objHit, double objX, double objY, double objZ)
 {
   CF_DEBUG("QGLView: x=%g y=%g obj: X=%g Y=%g Z=%g",
@@ -1082,10 +1082,9 @@ void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType
 }
 
 
-void QGLView::onGLMouseEvent(const QPointF &mousePos,
-    QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons,
-    Qt::KeyboardModifiers keyboardModifiers)
+void QGLView::onGLMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers,
+    const QPointF & mousePos)
 {
   if( _enableGLMouseEvents ) {
 
@@ -1116,10 +1115,25 @@ void QGLView::onGLMouseEvent(const QPointF &mousePos,
                 &objX, &objY, &objZ) == GL_TRUE;
       }
 
-      glMouseEvent(mousePos, mouseEventType,
-          mouseButtons, keyboardModifiers,
+      glMouseEvent(eventType, keyOrMouseButtons,
+          keyboardModifiers, mousePos,
           objHit, objX, objY, objZ);
     }
+  }
+}
+
+
+void QGLView::keyPressEvent(QKeyEvent *event)
+{
+  Base::keyPressEvent(event);
+  if (_enableGLMouseEvents ) {
+  }
+}
+
+void QGLView::keyReleaseEvent(QKeyEvent *event)
+{
+  Base::keyReleaseEvent(event);
+  if (_enableGLMouseEvents ) {
   }
 }
 
@@ -1132,10 +1146,10 @@ void QGLView::mousePressEvent(QMouseEvent * e)
   _prev_mouse_pos = e->localPos();
 #endif
 
-  if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
-    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+  if( _enableGLMouseEvents && e->modifiers() == Qt::ControlModifier ) {
+    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
   }
-  else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
+  else if( e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier) ) {
     setAutoShowViewTarget(!autoShowViewTarget());
     update();
   }
@@ -1146,7 +1160,7 @@ void QGLView::mousePressEvent(QMouseEvent * e)
 void QGLView::mouseReleaseEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
   }
 
   e->ignore();
@@ -1155,16 +1169,17 @@ void QGLView::mouseReleaseEvent(QMouseEvent *e)
 void QGLView::mouseDoubleClickEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
   }
   e->ignore();
 }
 
-// temporary very stupid mouse move management,
-// may be consider also deformed Mouse Trackball algorithm instead ?
 void QGLView::mouseMoveEvent(QMouseEvent * e)
 {
-  if( e->buttons() ) {
+  if( _enableGLMouseEvents && e->modifiers() == Qt::ControlModifier ) {
+    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
+  }
+  else if( e->buttons() ) {
 
 #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     const QPointF newpos = e->position();
@@ -1172,10 +1187,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
     const QPointF newpos = e->localPos();
 #endif
 
-    if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
-      onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
-    }
-    else if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
+    if( e->buttons() == Qt::RightButton ) { // Translate (shift) camera Up / Right
 
       const QPointF delta =
           newpos - _prev_mouse_pos;
@@ -1197,7 +1209,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(0, delta.y() / viewport.h, forward.length()));
 
           const QVector3D Up =
-              (TU - T0) * std::max( (float)_viewParams.nearPlane, forward.length());
+              (TU - T0) * std::max((float) _viewParams.nearPlane, forward.length());
 
           _viewTarget += Up;
           _viewPoint += Up;
@@ -1209,7 +1221,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(-delta.x() / viewport.w, 0, forward.length()));
 
           const QVector3D Right =
-              (TR - T0) * std::max((float)_viewParams.nearPlane, forward.length());
+              (TR - T0) * std::max((float) _viewParams.nearPlane, forward.length());
 
           _viewTarget += Right;
           _viewPoint += Right;
@@ -1225,14 +1237,14 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
       _prev_mouse_pos = newpos;
     }
 
-    else if (e->buttons() == Qt::LeftButton) {
+    else if( e->buttons() == Qt::LeftButton ) {
 
       // Rotate camera
 
       const QPointF delta =
           newpos - _prev_mouse_pos;
 
-      if (delta.x() || delta.y()) {
+      if( delta.x() || delta.y() ) {
 
         const QVector3D forward =
             _viewPoint - _viewTarget;
@@ -1240,7 +1252,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
         const QMatrix4x4 minv =
             _mview.inverted();
 
-        if (e->modifiers() == Qt::ShiftModifier) { // Rotate around forward looking axis
+        if( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
 
           const int signy =
               newpos.x() > viewport.w / 2 ? +1 : -1;
@@ -1262,7 +1274,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         else { // Rotate camera around of the Up / Right axes
 
-          if (e->modifiers() & Qt::ControlModifier) {
+          if( e->modifiers() & Qt::ControlModifier ) {
 
             const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
             const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
@@ -1271,8 +1283,8 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             double dx = delta.x();
             double dy = delta.y();
 
-            if (e->modifiers() & Qt::ShiftModifier) {
-              if (std::abs(dx) >= std::abs(dy)) {
+            if( e->modifiers() & Qt::ShiftModifier ) {
+              if( std::abs(dx) >= std::abs(dy) ) {
                 dy = 0;
               }
               else {

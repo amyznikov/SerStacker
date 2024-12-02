@@ -2240,13 +2240,38 @@ end:
 
 bool c_ffmpeg_decoder::decode(const readfunc & readpkt, const writefunc & writeframe)
 {
-  AVPacket pkt;
+  class AVPacketPtr
+  {
+  public:
+    AVPacketPtr() :
+      pkt(av_packet_alloc())
+    {
+    }
+    ~AVPacketPtr()
+    {
+      av_packet_free(&pkt);
+    }
+
+    operator AVPacket*()
+    {
+      return pkt;
+    }
+
+    operator const AVPacket*() const
+    {
+      return pkt;
+    }
+
+  protected:
+    AVPacket * pkt;
+  };
+
+  AVPacketPtr pkt;
 
   int pktidx = 0;
   int frmidx = 0;
   int status;
 
-  av_init_packet(&pkt);
 
   if ( !avframe && !(avframe = av_frame_alloc())) {
     CF_ERROR("av_frame_alloc() fails - out of memory?");
@@ -2269,9 +2294,9 @@ bool c_ffmpeg_decoder::decode(const readfunc & readpkt, const writefunc & writef
     }
   }
 
-  while ( readpkt(pkt, pktidx++) ) {
+  while ( readpkt(*pkt, pktidx++) ) {
 
-    if( (status = avcodec_send_packet(cctx, &pkt)) < 0 ) {
+    if( (status = avcodec_send_packet(cctx, pkt)) < 0 ) {
       CF_ERROR("avcodec_send_packet() fails: %s", averr2str(status));
       return false;
     }

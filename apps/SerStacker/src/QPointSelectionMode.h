@@ -27,8 +27,8 @@ public:
 
   void setActive(QInputSourceView* sourceView, bool activate) final;
 
-  void glMouseEvent(QInputSourceView * sourceView, const QPointF &mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  void glMouseEvent(QInputSourceView * sourceView, QEvent::Type eventType, int buttons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ) final;
 
 

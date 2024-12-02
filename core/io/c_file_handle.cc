@@ -6,6 +6,7 @@
  */
 
 #include "c_file_handle.h"
+#include <sys/stat.h>
 #include <core/debug.h>
 
 #ifdef _MSC_VER
@@ -27,6 +28,11 @@
 c_file_handle::~c_file_handle()
 {
   close();
+}
+
+bool c_file_handle::create(const std::string & filename, bool write_only)
+{
+  return open(filename, O_CREAT | (write_only ? O_WRONLY : O_RDWR));
 }
 
 bool c_file_handle::open(const std::string & filename, int openflags)
@@ -55,7 +61,7 @@ bool c_file_handle::open(const std::string & filename, int openflags)
     accessFlags |= GENERIC_WRITE;
   }
 
-  fd_ =
+  _fd =
       CreateFileA(filename,
           accessFlags,
           shareMode,
@@ -64,21 +70,21 @@ bool c_file_handle::open(const std::string & filename, int openflags)
           FILE_ATTRIBUTE_NORMAL,
           (HANDLE) nullptr);
 
-  if( fd_ == INVALID_FILE_DESCRIPTOR ) {
+  if( _fd == INVALID_FILE_DESCRIPTOR ) {
     CF_ERROR("CreateFileA() fails");
     return false;
   }
 
 #else
 
-#if _WIN32 || _WIN64
-  const int mode = 0;
-#else
   const int mode =
       S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH;
+
+#if _WIN32 || _WIN64
+  openflags |= O_BINARY;
 #endif
 
-  if( (fd_ = ::open(filename.c_str(), openflags, mode)) == INVALID_FILE_DESCRIPTOR ) {
+  if( (_fd = ::open(filename.c_str(), openflags, mode)) == INVALID_FILE_DESCRIPTOR ) {
     CF_ERROR("open('%s') fails", filename.c_str());
     return false;
   }
@@ -93,21 +99,21 @@ bool c_file_handle::open(const std::string & filename, int openflags)
 void c_file_handle::close()
 {
 #if _MSC_VER
-  if ( fd_ != INVALID_FILE_DESCRIPTOR ) {
-    CloseHandle(fd_);
-    fd_ = INVALID_FILE_DESCRIPTOR;
+  if ( _fd != INVALID_FILE_DESCRIPTOR ) {
+    CloseHandle(_fd);
+    _fd = INVALID_FILE_DESCRIPTOR;
   }
 #else
-  if( fd_ != INVALID_FILE_DESCRIPTOR ) {
-    ::close(fd_);
-    fd_ = INVALID_FILE_DESCRIPTOR;
+  if( _fd != INVALID_FILE_DESCRIPTOR ) {
+    ::close(_fd);
+    _fd = INVALID_FILE_DESCRIPTOR;
   }
 #endif
 }
 
 bool c_file_handle::is_open() const
 {
-  return fd_ != INVALID_FILE_DESCRIPTOR;
+  return _fd != INVALID_FILE_DESCRIPTOR;
 }
 
 ssize_t c_file_handle::read(void * buf, size_t nbytes)
@@ -121,12 +127,12 @@ ssize_t c_file_handle::read(void * buf, size_t nbytes)
 
   DWORD numberOfBytesRead = 0;
 
-  ReadFile(fd_, buf, (DWORD) nbytes, &numberOfBytesRead, nullptr);
+  ReadFile(_fd, buf, (DWORD) nbytes, &numberOfBytesRead, nullptr);
 
   return (ssize_t)(numberOfBytesRead);
 #else
 
-  return ::read(fd_, buf, nbytes);
+  return ::read(_fd, buf, nbytes);
 
 #endif
 }
@@ -152,12 +158,12 @@ ssize_t c_file_handle::write(const void * buf, size_t nbytes)
 
   DWORD numberOfBytesWritten = 0;
 
-  WriteFile(fd_, buf, (DWORD) nbytes, &numberOfBytesWritten, nullptr);
+  WriteFile(_fd, buf, (DWORD) nbytes, &numberOfBytesWritten, nullptr);
 
   return (ssize_t)(numberOfBytesWritten);
 #else
 
-  return ::write(fd_, buf, nbytes);
+  return ::write(_fd, buf, nbytes);
 
 #endif
 }
@@ -202,7 +208,7 @@ ssize_t c_file_handle::seek(ssize_t offset, int whence)
       break;
   }
 
-  if( !SetFilePointerEx(fd_, DistanceToMove, &NewFilePointer, dwMoveMethod) ) {
+  if( !SetFilePointerEx(_fd, DistanceToMove, &NewFilePointer, dwMoveMethod) ) {
     return -1;
   }
 
@@ -210,7 +216,7 @@ ssize_t c_file_handle::seek(ssize_t offset, int whence)
 
 #else
 
-  return ::lseek64 (fd_, offset, whence);
+  return ::lseek64 (_fd, offset, whence);
 
 #endif
 }
@@ -222,14 +228,14 @@ ssize_t c_file_handle::whence()
 
 bool c_file_handle::flush()
 {
-  if( fd_ != INVALID_FILE_DESCRIPTOR ) {
+  if( _fd != INVALID_FILE_DESCRIPTOR ) {
 #if _MSC_VER
-  return FlushFileBuffers(fd_);
+  return FlushFileBuffers(_fd);
 #else
 #if _WIN32 || _WIN64
-    _commit(fd_);
+    _commit(_fd);
 #else
-    fdatasync(fd_);
+    fdatasync(_fd);
 #endif
     return true;
 #endif

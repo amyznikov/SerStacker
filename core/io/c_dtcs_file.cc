@@ -271,7 +271,7 @@ bool c_dtcs_reader::open(const std::string & filename)
     goto end;
   }
 
-  if( !_fd.read(&_file_header) ) {
+  if( !_fd.read(_file_header) ) {
     CF_ERROR("_fd.read(_file_header, _filename='%s') fails: %s", _filename.c_str(),
         strerror(errno));
     goto end;
@@ -298,7 +298,7 @@ bool c_dtcs_reader::open(const std::string & filename)
     goto end;
   }
 
-  if( !_fd.read(&index_header) ) {
+  if( !_fd.read(index_header) ) {
     CF_ERROR("_fd.read(index_header) fails: %s", strerror(errno));
     goto end;
   }
@@ -311,7 +311,7 @@ bool c_dtcs_reader::open(const std::string & filename)
 
     memset(&stream_header, 0, sizeof(stream_header));
 
-    if( !(fOk = _fd.read(&stream_header)) ) {
+    if( !(fOk = _fd.read(stream_header)) ) {
       CF_ERROR("_fd.read(stream_header) fails: %s", strerror(errno));
       break;
     }
@@ -333,7 +333,7 @@ bool c_dtcs_reader::open(const std::string & filename)
 
     for( uint32_t j = 0; j < stream_header.chunks_count && fOk; ++j ) {
 
-      if( !(fOk = _fd.read(&chunk_item)) ) {
+      if( !(fOk = _fd.read(chunk_item)) ) {
         CF_ERROR("_fd.read(chunk_item) fails: %s", strerror(errno));
         break;
       }

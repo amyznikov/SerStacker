@@ -157,8 +157,8 @@ protected: // MTF
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
 protected: // point selection
-  void onCloudViewPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  void onCloudViewPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
@@ -227,8 +227,8 @@ public:
     return _isActive;
   }
 
-  virtual void glMouseEvent(QInputSourceView * sourceView, const QPointF & mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  virtual void glMouseEvent(QInputSourceView * sourceView, QEvent::Type eventType, int buttons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ) = 0;
 
 Q_SIGNALS:

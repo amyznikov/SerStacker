@@ -285,7 +285,7 @@ bool c_sply_video_reader::read_gps(c_file_handle & fd, c_sply_video_frame & fram
 {
   gps_storage gps;
 
-  if( fd.read(&gps) ) {
+  if( fd.read(gps) ) {
 
     frame.ts = gps.ts;
     frame.lat = gps.lat;
@@ -303,7 +303,7 @@ bool c_sply_video_reader::read_mat(c_file_handle & fd, cv::Mat & image)
 {
   cv_mat_header_storage mh;
 
-  if( !fd.read(&mh) ) {
+  if( !fd.read(mh) ) {
     return false;
   }
 

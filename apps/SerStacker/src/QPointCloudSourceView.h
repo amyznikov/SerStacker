@@ -28,14 +28,14 @@ public:
 
 Q_SIGNALS:
   void pointClicked(int cloud_index, int point_index);
-  void glPointSelectionMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  void glPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
   void keyPressEvent(QKeyEvent *event) final;
-  void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+  void glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
       bool objHit, double objX, double objY, double objZ) final;
 
 protected:

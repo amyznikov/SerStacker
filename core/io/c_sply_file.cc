@@ -534,7 +534,7 @@ bool c_sply_reader::read(uint32_t stream_index, cv::OutputArrayOfArrays points, 
             c_sply_frame_header2 fh;
             c_sply_cloud_header ch;
 
-            if ( !fd.read(&fh) ) {
+            if ( !fd.read(fh) ) {
               CF_ERROR("fd.read(frame_header) fails: %s", strerror(errno));
               return false;
             }
@@ -547,7 +547,7 @@ bool c_sply_reader::read(uint32_t stream_index, cv::OutputArrayOfArrays points, 
 
             for ( int i = 0; i < fh.num_clouds; ++i ) {
 
-              if ( !fd.read(&ch) ) {
+              if ( !fd.read(ch) ) {
                 CF_ERROR("fd.read(cloud_header[%d]) fails: %s", i, strerror(errno));
                 return false;
               }

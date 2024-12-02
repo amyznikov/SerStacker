@@ -61,19 +61,19 @@ void QPointSelection3DRulerMode::setActive(QInputSourceView* sourceView, bool ac
   Base::setActive(sourceView, activate);
 }
 
-void QPointSelection3DRulerMode::glMouseEvent(QInputSourceView * sourceView, const QPointF &mousePos, QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+void QPointSelection3DRulerMode::glMouseEvent(QInputSourceView * sourceView, QEvent::Type eventType, int buttons,
+    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
     bool objHit, double objX, double objY, double objZ)
 {
   //CF_DEBUG("QPointSelection3DRulerMode: currentViewType=%d", sourceView->currentViewType());
-  if (mouseEventType == QEvent::MouseButtonRelease ) {
-    if (_rulerLine.isVisible()) {
+  if( eventType == QEvent::MouseButtonRelease ) {
+    if( _rulerLine.isVisible() ) {
       _rulerLine.setEnableTooltip(false);
     }
   }
   else {
 
-    if (objHit && mouseButtons == Qt::LeftButton ) {
+    if( objHit && buttons == Qt::LeftButton ) {
 
 //      uint64_t pid;
 //      if (sourceView->cloudView()->findPointID(objX, objY, objZ, &pid)) {
@@ -81,34 +81,34 @@ void QPointSelection3DRulerMode::glMouseEvent(QInputSourceView * sourceView, con
 //            mouseButtons, keyboardModifiers);
 //      }
 
-      switch(mouseEventType)  {
+      switch (eventType) {
 
-      case QEvent::MouseButtonPress:
-        if (_rulerLine.isEnabled()) {
-          _rulerLine.setStart(objX, objY, objZ);
-          _rulerLine.setEnd(objX, objY, objZ);
-          sourceView->cloudView()->update();
+        case QEvent::MouseButtonPress:
+          if( _rulerLine.isEnabled() ) {
+            _rulerLine.setStart(objX, objY, objZ);
+            _rulerLine.setEnd(objX, objY, objZ);
+            sourceView->cloudView()->update();
 
-          Q_EMIT rulerChanged();
-        }
-        break;
-
-      case QEvent::MouseMove:
-        if (_rulerLine.isEnabled()) {
-
-          _rulerLine.setEnd(objX, objY, objZ);
-
-          if (!_rulerLine.isVisible()) {
-            _rulerLine.setVisible(true);
+            Q_EMIT rulerChanged();
           }
+          break;
 
-          _rulerLine.setEnableTooltip(true);
+        case QEvent::MouseMove:
+          if( _rulerLine.isEnabled() ) {
 
-          sourceView->cloudView()->update();
+            _rulerLine.setEnd(objX, objY, objZ);
 
-          Q_EMIT rulerChanged();
-        }
-        break;
+            if( !_rulerLine.isVisible() ) {
+              _rulerLine.setVisible(true);
+            }
+
+            _rulerLine.setEnableTooltip(true);
+
+            sourceView->cloudView()->update();
+
+            Q_EMIT rulerChanged();
+          }
+          break;
       }
     }
   }

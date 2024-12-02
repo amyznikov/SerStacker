@@ -57,110 +57,13 @@ QString QPointCloudSourceView::statusStringForPoint(int cloud_index, int point_i
 }
 
 
-void QPointCloudSourceView::glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
-    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+void QPointCloudSourceView::glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
     bool objHit, double objX, double objY, double objZ)
 {
-  Q_EMIT glPointSelectionMouseEvent(mousePos, mouseEventType,
-      mouseButtons, keyboardModifiers,
+  Q_EMIT glPointSelectionMouseEvent(eventType, keyOrMouseButtons,
+      keyboardModifiers, mousePos,
       objHit, objX, objY, objZ);
-
-//
-//  if( mouseEventType == QEvent::MouseButtonRelease ) {
-//
-//    if( _line.isVisible() ) {
-//      _line.setVisible(false);
-//      update();
-//    }
-//
-//    return;
-//  }
-//
-//
-//  if ( !_displayPoints.empty() ) {
-//
-//
-//    int best_cloud_index = -1;
-//    int best_point_index = -1;
-//    double best_delta = DBL_MAX;
-//
-//    static const auto distance =
-//        [](double x1, double y1, double z1, double x2, double y2, double z2) -> double {
-//          return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2) );
-//        };
-//
-//
-//    for ( int cloud_index = 0, num_clouds = _displayPoints.size(); cloud_index < num_clouds; ++ cloud_index ) {
-//
-//      const std::vector<cv::Vec3f> & cloud  =
-//          _displayPoints[cloud_index];
-//
-//      for ( int point_index = 0, num_points = cloud.size(); point_index < num_points; ++ point_index ) {
-//
-//        const cv::Vec3f & p =
-//            cloud[point_index];
-//
-//        const double d =
-//            distance(p[0], p[1], p[2], objX, objY, objZ);
-//
-//        if ( d < best_delta ) {
-//          best_delta = d;
-//          best_cloud_index = cloud_index;
-//          best_point_index = point_index;
-//        }
-//
-//      }
-//
-//    }
-//
-//    if( best_point_index < 0 ) {
-//    }
-//    else {
-//
-//      if( mouseEventType == QEvent::MouseButtonPress ) {
-//
-//        const cv::Vec3f & p =
-//            _displayPoints[best_cloud_index][best_point_index];
-//
-//        _line.setStart(QVector3D(p[0], p[1], p[2]));
-//        _line.setEnd(QVector3D(p[0], p[1], p[2]));
-//
-//        if( _line.isVisible() ) {
-//          _line.setVisible(false);
-//        }
-//
-//        update();
-//      }
-//      else if( mouseEventType == QEvent::MouseMove ) {
-//
-//        const cv::Vec3f & p =
-//            _displayPoints[best_cloud_index][best_point_index];
-//
-//        _line.setEnd(QVector3D(p[0], p[1], p[2]));
-//
-//        if( !_line.isVisible() ) {
-//          _line.setVisible(true);
-//        }
-//
-//        update();
-//      }
-//
-////      const cv::Vec3f & p =
-////          _displayPoints[best_cloud_index][best_point_index];
-////
-////      const double pointDistance =
-////          cv::norm(p);
-////
-////      CF_DEBUG("click: c:%d p:%d X=%g Y=%g Z=%g Distance=%g delta=%g",
-////          best_cloud_index, best_point_index,
-////          p[0], p[1], p[2], pointDistance,
-////          best_delta);
-//
-//      Q_EMIT pointClicked(best_cloud_index, best_point_index);
-//    }
-//
-//  }
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

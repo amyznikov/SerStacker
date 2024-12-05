@@ -32,7 +32,7 @@ c_file_handle::~c_file_handle()
 
 bool c_file_handle::create(const std::string & filename, bool write_only)
 {
-  return open(filename, O_CREAT | (write_only ? O_WRONLY : O_RDWR));
+  return open(filename, O_CREAT | O_TRUNC | (write_only ? O_WRONLY : O_RDWR));
 }
 
 bool c_file_handle::open(const std::string & filename, int openflags)

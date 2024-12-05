@@ -592,10 +592,10 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
   header_.date_time = 0;
   header_.date_time_utc = 0;
 
-  const int openflags =
-      O_CREAT | O_TRUNC | O_WRONLY;
+//  const int openflags =
+//      O_CREAT | O_TRUNC | O_WRONLY;
 
-  if ( !fd_.open(filename, openflags) ) {
+  if ( !fd_.create(filename) ) {
     CF_FATAL("open('%s') fails: %s", filename.c_str(), strerror(errno));
     return false;
   }

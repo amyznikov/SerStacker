@@ -29,7 +29,7 @@ bool c_dtcs_writer::create(const std::string & filename /*= ""*/)
     _filename  = filename;
   }
 
-  if( !_fd.open(_filename, O_CREAT | O_TRUNC | O_WRONLY) ) {
+  if( !_fd.create(_filename, true) ) {
     CF_ERROR("_fd.open(_filename='%s') fails : %s", _filename.c_str(), strerror(errno));
     return false;
   }

@@ -11,13 +11,15 @@
 void c_keypoins_detector_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   BIND_SPARSE_FEATURE_DETECTOR_CTRL(ctls, options, "Options", "Options for feature2D detector");
+  BIND_PCTRL(ctls, octave, "Draw key points from selected octave only");
   BIND_PCTRL(ctls, black_background, "");
 }
 
 bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, options_);
+    SERIALIZE_OPTION(settings, save, *this, _options);
+    SERIALIZE_PROPERTY(settings, save, *this, octave);
     SERIALIZE_PROPERTY(settings, save, *this, black_background);
     return true;
   }
@@ -26,7 +28,7 @@ bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save
 
 void c_keypoins_detector_routine::parameter_changed()
 {
-  keypoints_detector_.reset();
+  _keypoints_detector.reset();
 }
 
 bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -35,42 +37,59 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
     if( image.needed() && !image.empty() ) {
 
-      if( !keypoints_detector_ && !(keypoints_detector_ = create_sparse_feature_detector(options_)) ) {
+      if( !_keypoints_detector && !(_keypoints_detector = create_sparse_feature_detector(_options)) ) {
         CF_ERROR("create_sparse_feature_detector() fails");
         return false;
       }
 
-      keypoints_.clear();
+      _keypoints.clear();
 
-      keypoints_detector_->detect(image, keypoints_, mask);
+      _keypoints_detector->detect(image, _keypoints, mask);
 
-      if( options_.max_keypoints > 0 && keypoints_.size() > options_.max_keypoints ) {
+      if( _octave >= 0 ) {
 
-        std::sort(keypoints_.begin(), keypoints_.end(),
+        std::vector<cv::KeyPoint> tmp;
+
+        const int octave =
+            this->_octave;
+
+        std::copy_if(_keypoints.begin(), _keypoints.end(),  std::back_inserter(tmp),
+            [octave](const cv::KeyPoint & p) {
+              return p.octave == octave;
+            });
+
+        _keypoints = std::move(tmp);
+      }
+
+
+      if( _options.max_keypoints > 0 && _keypoints.size() > _options.max_keypoints ) {
+
+        std::sort(_keypoints.begin(), _keypoints.end(),
             [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
               return prev.response > next.response;
             });
 
-        keypoints_.erase(keypoints_.begin() + options_.max_keypoints,
-            keypoints_.end());
+        _keypoints.erase(_keypoints.begin() + _options.max_keypoints,
+            _keypoints.end());
       }
 
-      if( black_background_ ) {
-        display_.create(image.size(), CV_MAKETYPE(image.depth(), 3));
-        display_.setTo(cv::Scalar::all(0));
+      if( _black_background ) {
+        _display.create(image.size(), CV_MAKETYPE(image.depth(), 3));
+        _display.setTo(cv::Scalar::all(0));
       }
       else if( image.channels() == 3 ) {
-        image.copyTo(display_);
+        image.copyTo(_display);
       }
       else {
-        cv::cvtColor(image, display_, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(image, _display, cv::COLOR_GRAY2BGR);
       }
 
-      cv::drawKeypoints(display_, keypoints_, display_,
+
+      cv::drawKeypoints(_display, _keypoints, _display,
           cv::Scalar::all(-1),
           cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
-      display_.copyTo(image);
+      _display.copyTo(image);
     }
 
     return true;

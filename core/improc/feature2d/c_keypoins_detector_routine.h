@@ -21,30 +21,41 @@ public:
 
   c_sparse_feature_detector_options * options()
   {
-    return &options_;
+    return &_options;
+  }
+
+  void set_octave(int v)
+  {
+    _octave = v;
+  }
+
+  int octave() const
+  {
+    return _octave;
   }
 
   void set_black_background(bool v)
   {
-    black_background_ = v;
+    _black_background = v;
   }
 
   bool black_background() const
   {
-    return black_background_;
+    return _black_background;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-  void parameter_changed() override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  void parameter_changed() final;
 
 protected:
-  c_feature2d::sptr keypoints_detector_;
-  c_sparse_feature_detector_options options_;
-  std::vector<cv::KeyPoint> keypoints_;
-  cv::Mat display_;
-  bool black_background_ = false;
+  c_feature2d::sptr _keypoints_detector;
+  c_sparse_feature_detector_options _options;
+  std::vector<cv::KeyPoint> _keypoints;
+  cv::Mat _display;
+  int _octave = -1;
+  bool _black_background = false;
 };
 
 #endif /* __c_keypoins_detector_routine_h__ */

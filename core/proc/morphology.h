@@ -10,6 +10,42 @@
 
 #include <opencv2/opencv.hpp>
 
+
+enum MORPH_OPERATION {
+    MORPH_ERODE    = cv::MORPH_ERODE, //!< see #erode
+    MORPH_DILATE   = cv::MORPH_DILATE, //!< see #dilate
+    MORPH_OPEN     = cv::MORPH_OPEN, //!< an opening operation
+    MORPH_CLOSE    = cv::MORPH_CLOSE, //!< a closing operation
+    MORPH_GRADIENT = cv::MORPH_GRADIENT, //!< a morphological gradient
+    MORPH_TOPHAT   = cv::MORPH_TOPHAT, //!< "top hat"
+    MORPH_BLACKHAT = cv::MORPH_BLACKHAT, //!< "black hat"
+    MORPH_HITMISS  = cv::MORPH_HITMISS,  //!< "hit or miss"
+    MORPH_SMOOTH_OPEN, //!< morphological_smooth_open
+    MORPH_SMOOTH_CLOSE, //!< morphological_smooth_close
+    MORPH_INTERNAL_GRADIENT, //!< morphological_internal_gradient
+    MORPH_EXTERNAL_GRADIENT, //!< morphological_external_gradient
+    MORPH_LAPLACIAN, //!< morphological_laplacian
+    MORPH_RAMPLEE, //!< rampLee
+    MORPH_TEXLEE, //!< texLee
+    MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
+    MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
+    MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
+    MORPH_GEO_OPEN4,
+    MORPH_GEO_OPEN8,
+    MORPH_GEO_CLOSE4,
+    MORPH_GEO_CLOSE8,
+};
+
+
+void apply_morphology(cv::InputArray src, cv::OutputArray dst,
+    MORPH_OPERATION operation,
+    cv::InputArray SE = cv::Mat1b(3, 3, 255),
+    const cv::Point & anchor = cv::Point(-1,-1),
+    int iterations = 1,
+    int borderType = cv::BORDER_REPLICATE,
+    const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
+
+
 /** @brief Morphological smoothing
 
  @see <http://www.mif.vu.lt/atpazinimas/dip/FIP/fip-Morpholo.html>
@@ -121,7 +157,11 @@ void apply_morphological_filter_bank(const std::vector<cv::Mat> & K,
 /***/
 void build_morph_gradient_pyramid(cv::InputArray image, cv::InputArray mask,
     std::vector<cv::Mat> & layers,
-    int max_level);
+    int max_level,
+    MORPH_OPERATION morphop = MORPH_OPERATION::MORPH_GRADIENT);
+
+// ,
+//
 
 /***/
 void build_morph_laplacian_pyramid(cv::InputArray image, cv::InputArray mask,

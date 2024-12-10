@@ -12,6 +12,7 @@
 void c_morph_gradient_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
   base::get_parameters(ctls);
+  BIND_CTRL(ctls, operation, "operation", "Specify morphological operation");
   BIND_SPINBOX_CTRL(ctls, max_level, 0, 32, 1,  "max_level", "Specify max pyramid level");
   BIND_SPINBOX_CTRL(ctls, display_pos, 0, 32, 1, "display level", "Specify display pyramid level");
 }
@@ -19,6 +20,7 @@ void c_morph_gradient_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> *
 bool c_morph_gradient_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, operation);
     SERIALIZE_PROPERTY(settings, save, *this, max_level);
     SERIALIZE_PROPERTY(settings, save, *this, display_pos);
     return true;
@@ -34,18 +36,19 @@ bool c_morph_gradient_pyramid_routine::process(cv::InputOutputArray image, cv::I
 
     build_morph_gradient_pyramid(image,
         _ignore_mask ? cv::noArray() : mask,
-        pyramid_,
-        max_level_);
+        _pyramid,
+        _max_level,
+        _operation);
 
     display_pos =
-        std::max(0, std::min(display_pos_,
-            (int) pyramid_.size() - 1));
+        std::max(0, std::min(_display_pos,
+            (int) _pyramid.size() - 1));
 
-    pyramid_[display_pos].copyTo(image);
+    _pyramid[display_pos].copyTo(image);
   }
 
   if ( mask.needed() && !mask.empty() && display_pos > 0 ) {
-    cv::resize(mask.getMat(), mask, pyramid_[display_pos].size(), 0, 0, cv::INTER_AREA);
+    cv::resize(mask.getMat(), mask, _pyramid[display_pos].size(), 0, 0, cv::INTER_AREA);
     cv::compare(mask, 250, mask, cv::CMP_GE);
   }
 

@@ -42,6 +42,81 @@
 #include <core/debug.h>
 
 namespace {
+
+//
+//class c_place
+//{
+//public:
+//
+//  // ?????????
+//
+//};
+//
+//
+//int recognise_place_using_lgd_algorithm(const c_place & unknown_place, const std::vector<c_place> & database_of_known_places )
+//{
+//
+//  int index_of_recognozed_place = 20;
+//
+//  return index_of_recognozed_place;
+//}
+//
+//
+//void test()
+//{
+//  std::vector<c_place> database_of_known_places;
+//
+//  while ( 42 ) {
+//
+//    c_place new_place = get_current_place();
+//
+//    int index = recognise_place_using_lgd_algorithm( new_place, database_of_known_places);
+//    if ( index > 0 ) {
+//      // recognized !!!!
+//    }
+//    else {
+//      // NOT recognized !!!!
+//      database_of_known_places.emplace_back(new_place);
+//    }
+//
+//
+//  }
+//
+//  /*
+//
+//  coarse       middle               fine
+//  GPS     / Global Descriptors / Local Descriptors
+//
+//
+//  GPS Positions
+//      | ---------------- Midle
+//      | ---------------- Midle
+//      | ---------------- Midle
+//      | ---------------- Midle
+//                           |-------------------- Fine
+//                           |-------------------- Fine
+//                           |-------------------- Fine      V
+//      |  ...
+//      |
+//      | ---------------- Midle
+//                           |-------------------- Fine      V
+//                           |-------------------- Fine
+//                           |-------------------- Fine
+//                           |-------------------- Fine
+//                           |-------------------- Fine
+//                           |-------------------- Fine
+//                           |  .......
+//                           |
+//                           |-------------------- Fine
+//                                                   |  Point Cloud     X,Y,Z
+//
+//
+//
+//  */
+//
+//
+//}
+
 }
 
 

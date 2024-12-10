@@ -11,7 +11,7 @@
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/morphology.h>
-#include <core/proc/geo-reconstruction.h>
+//#include <core/proc/geo-reconstruction.h>
 
 
 class c_morphology_routine :
@@ -22,31 +22,31 @@ public:
       "morphology",
       "Apply morphological operation on image");
 
-  enum OPERATION {
-      MORPH_ERODE    = cv::MORPH_ERODE, //!< see #erode
-      MORPH_DILATE   = cv::MORPH_DILATE, //!< see #dilate
-      MORPH_OPEN     = cv::MORPH_OPEN, //!< an opening operation
-      MORPH_CLOSE    = cv::MORPH_CLOSE, //!< a closing operation
-      MORPH_GRADIENT = cv::MORPH_GRADIENT, //!< a morphological gradient
-      MORPH_TOPHAT   = cv::MORPH_TOPHAT, //!< "top hat"
-      MORPH_BLACKHAT = cv::MORPH_BLACKHAT, //!< "black hat"
-      MORPH_HITMISS  = cv::MORPH_HITMISS,  //!< "hit or miss"
-      MORPH_SMOOTH_OPEN, //!< morphological_smooth_open
-      MORPH_SMOOTH_CLOSE, //!< morphological_smooth_close
-      MORPH_INTERNAL_GRADIENT, //!< morphological_internal_gradient
-      MORPH_EXTERNAL_GRADIENT, //!< morphological_external_gradient
-      MORPH_LAPLACIAN, //!< morphological_laplacian
-      MORPH_RAMPLEE, //!< rampLee
-      MORPH_TEXLEE, //!< texLee
-      MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
-      MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
-      MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
-      MORPH_GEO_OPEN4,
-      MORPH_GEO_OPEN8,
-      MORPH_GEO_CLOSE4,
-      MORPH_GEO_CLOSE8,
-  };
-
+//  enum OPERATION {
+//      MORPH_ERODE    = cv::MORPH_ERODE, //!< see #erode
+//      MORPH_DILATE   = cv::MORPH_DILATE, //!< see #dilate
+//      MORPH_OPEN     = cv::MORPH_OPEN, //!< an opening operation
+//      MORPH_CLOSE    = cv::MORPH_CLOSE, //!< a closing operation
+//      MORPH_GRADIENT = cv::MORPH_GRADIENT, //!< a morphological gradient
+//      MORPH_TOPHAT   = cv::MORPH_TOPHAT, //!< "top hat"
+//      MORPH_BLACKHAT = cv::MORPH_BLACKHAT, //!< "black hat"
+//      MORPH_HITMISS  = cv::MORPH_HITMISS,  //!< "hit or miss"
+//      MORPH_SMOOTH_OPEN, //!< morphological_smooth_open
+//      MORPH_SMOOTH_CLOSE, //!< morphological_smooth_close
+//      MORPH_INTERNAL_GRADIENT, //!< morphological_internal_gradient
+//      MORPH_EXTERNAL_GRADIENT, //!< morphological_external_gradient
+//      MORPH_LAPLACIAN, //!< morphological_laplacian
+//      MORPH_RAMPLEE, //!< rampLee
+//      MORPH_TEXLEE, //!< texLee
+//      MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
+//      MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
+//      MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
+//      MORPH_GEO_OPEN4,
+//      MORPH_GEO_OPEN8,
+//      MORPH_GEO_CLOSE4,
+//      MORPH_GEO_CLOSE8,
+//  };
+//
 
   void set_se_shape(cv::MorphShapes v)
   {
@@ -81,12 +81,12 @@ public:
     return _anchor;
   }
 
-  void set_operation(OPERATION v)
+  void set_operation(MORPH_OPERATION v)
   {
     _operation = v;
   }
 
-  OPERATION operation() const
+  MORPH_OPERATION operation() const
   {
     return _operation;
   }
@@ -121,16 +121,16 @@ public:
     return _borderValue;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
 
 
 protected:
   cv::MorphShapes _se_shape = cv::MORPH_RECT;
   cv::Size _se_size = cv::Size(3, 3);
   cv::Point _anchor = cv::Point(-1,-1);
-  OPERATION _operation = MORPH_ERODE;
+  MORPH_OPERATION _operation = MORPH_ERODE;
   int _iterations = 1;
   cv::BorderTypes _borderType = cv::BORDER_CONSTANT;
   cv::Scalar _borderValue = cv::Scalar::all(0);

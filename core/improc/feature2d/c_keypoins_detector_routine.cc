@@ -46,6 +46,17 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
       _keypoints_detector->detect(image, _keypoints, mask);
 
+      if( _options.max_keypoints > 0 && _keypoints.size() > _options.max_keypoints ) {
+
+        std::sort(_keypoints.begin(), _keypoints.end(),
+            [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
+              return prev.response > next.response;
+            });
+
+        _keypoints.erase(_keypoints.begin() + _options.max_keypoints,
+            _keypoints.end());
+      }
+
       if( _octave >= 0 ) {
 
         std::vector<cv::KeyPoint> tmp;
@@ -62,16 +73,6 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
       }
 
 
-      if( _options.max_keypoints > 0 && _keypoints.size() > _options.max_keypoints ) {
-
-        std::sort(_keypoints.begin(), _keypoints.end(),
-            [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
-              return prev.response > next.response;
-            });
-
-        _keypoints.erase(_keypoints.begin() + _options.max_keypoints,
-            _keypoints.end());
-      }
 
       if( _black_background ) {
         _display.create(image.size(), CV_MAKETYPE(image.depth(), 3));

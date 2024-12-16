@@ -47,7 +47,6 @@ protected:
   };
 
   cv::Mat1i train_descriptors_;
-  cv::Mat1i query_descriptors_;
   std::vector<index_entry> index_;
   int max_acceptable_distance_ = -1; // auto select
 };

@@ -160,8 +160,10 @@ int c_levmar_solver::run(callback & cb, std::vector<double> & params)
 
     //CF_DEBUG("> IT %d model_->compute_jac()", iteration);
 
-    err =
-        compute_hessian(cb, params, H, v);
+    if( (err = compute_hessian(cb, params, H, v)) < 0 ) {
+      CF_ERROR("compute_hessian() fails");
+      return -1;
+    }
 
     //    CF_DEBUG("* JJ > IT %d lambda=%g err=%g\n",
     //        iteration,
@@ -235,8 +237,11 @@ int c_levmar_solver::run(callback & cb, std::vector<double> & params)
 //             newparams[0], newparams[1]);
 
       /* Compute function for newparams */
-      newerr =
-          compute_rhs(cb, newparams);
+      if( (newerr = compute_rhs(cb, newparams)) < 0 ) {
+        CF_ERROR("compute_rhs() fails");
+        return -1;
+      }
+
 
       /* Check for increments in parameters  */
       if( (dp = cv::norm(deltap, cv::NORM_INF)) < _epsx ) {
@@ -328,6 +333,7 @@ double c_levmar_solver::compute_hessian(callback & cb, const std::vector<double>
     cv::Mat1d & H, cv::Mat1d & v)
 {
   if( !compute(cb, params, _rhs, &_J) ) {
+    CF_ERROR("compute() fails");
     return -1;
   }
 
@@ -398,7 +404,7 @@ double c_levmar_solver::compute_hessian(callback & cb, const std::vector<double>
   return cv::norm(_rhs, cv::NORM_L2SQR);
 }
 
-bool c_levmar_solver::compute(const callback & cb, const std::vector<double> & params,
+bool c_levmar_solver::compute(callback & cb, const std::vector<double> & params,
     std::vector<double> & rhs, cv::Mat1d * J)
 {
 

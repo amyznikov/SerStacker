@@ -269,7 +269,7 @@ bool c_running_average_pipeline::initialize_pipeline()
     return false;
   }
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   average1_.clear();
@@ -279,7 +279,7 @@ bool c_running_average_pipeline::initialize_pipeline()
 
   if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(_input_options.darkbayer_filename, darkbayer_, ignored_optional_mask) ) {
+    if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
       CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
       return false;
     }
@@ -287,7 +287,7 @@ bool c_running_average_pipeline::initialize_pipeline()
 
   if ( !_input_options.flatbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(_input_options.flatbayer_filename, flatbayer_, ignored_optional_mask) ) {
+    if ( !load_image(_input_options.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
       CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
       return false;
     }
@@ -297,19 +297,19 @@ bool c_running_average_pipeline::initialize_pipeline()
 
   if ( !_input_options.missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(_input_options.missing_pixel_mask_filename, missing_pixel_mask_) ) {
+    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask) ) {
       CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
-    if ( missing_pixel_mask_.type() != CV_8UC1 ) {
+    if ( _missing_pixel_mask.type() != CV_8UC1 ) {
       CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
           _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
     if ( !_input_options.missing_pixels_marked_black ) {
-      cv::invert(missing_pixel_mask_, missing_pixel_mask_);
+      cv::invert(_missing_pixel_mask, _missing_pixel_mask);
     }
   }
 
@@ -325,7 +325,7 @@ bool c_running_average_pipeline::initialize_pipeline()
 
 
 
-  CF_DEBUG("Output path='%s'", this->output_path_.c_str());
+  CF_DEBUG("Output path='%s'", this->_output_path.c_str());
 
 
   return true;
@@ -353,14 +353,14 @@ bool c_running_average_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, ++accumulated_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, ++_accumulated_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
     }
 
     const bool fOk =
-        read_input_frame(input_sequence_,
+        read_input_frame(_input_sequence,
             _input_options,
             current_image_, current_mask_,
             false,

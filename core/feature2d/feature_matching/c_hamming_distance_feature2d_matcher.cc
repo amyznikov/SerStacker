@@ -27,17 +27,21 @@ c_hamming_distance_feature2d_matcher::ptr create_sparse_feature_matcher(
 }
 
 
-static void convert_descriptors(const cv::Mat1b & src, cv::Mat1i & dst)
+static inline void copy_descriptor_rows(const cv::Mat1b & src, cv::Mat1i & dst)
 {
- // INSTRUMENT_REGION("");
-
-  dst.create(src.rows, (src.cols + 3) / 4);
-  dst.setTo(0);
-
   for ( int i = 0; i < src.rows; ++i ) {
     memcpy(dst[i], src[i], src.cols);
   }
 }
+
+static inline void convert_descriptors(const cv::Mat1b & src, cv::Mat1i & dst)
+{
+  dst.create(src.rows, (src.cols + 3) / 4);
+  dst.setTo(0);
+  copy_descriptor_rows(src, dst);
+}
+
+
 
 // Set add_compile_options(-march=native) in CMakeLists.txt
 // DON'T ALLOW n = 0.
@@ -74,8 +78,6 @@ int c_hamming_distance_feature2d_matcher::max_acceptable_distance() const
 
 bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors)
 {
-  INSTRUMENT_REGION("");
-
   index_.clear();
 
   if ( train_descriptors.type() != CV_8U ) {
@@ -151,8 +153,6 @@ bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint>
 bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint> * _query_keypoints, cv::InputArray _query_descriptors,
     std::vector<cv::DMatch> & matches)
 {
-  INSTRUMENT_REGION("");
-
   const int query_descriptor_size_in_bytes =
       _query_descriptors.cols();
 
@@ -175,11 +175,15 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
             this->max_acceptable_distance_ :
             query_descriptor_size_in_bytes / 2;
 
-    convert_descriptors(_query_descriptors.getMat(),
-        query_descriptors_);
+    cv::Mat1i query_descriptors(_query_descriptors.rows(),
+        (_query_descriptors.cols() + 3) / 4,
+        (int)(0));
+
+    copy_descriptor_rows(_query_descriptors.getMat(),
+        query_descriptors);
 
     matches.clear();
-    matches.reserve(query_descriptors_.rows);
+    matches.reserve(query_descriptors.rows);
 
 
     using match_candidate =
@@ -187,10 +191,10 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
 
     std::vector<match_candidate> other_candidates;
 
-    for ( int i = 0; i < query_descriptors_.rows; ++i ) {
+    for ( int i = 0; i < query_descriptors.rows; ++i ) {
 
       const int32_t * query_descriptor =
-          query_descriptors_[i];
+          query_descriptors[i];
 
       const int query_norm =
           hamming_norm(query_descriptor,

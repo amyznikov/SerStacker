@@ -250,28 +250,28 @@ c_triangle_matcher::ptr c_triangle_matcher::create(double eps)
 
 bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray reference_triangles)
 {
-  reference_triangles.getMat().copyTo(reference_triangles_);
+  reference_triangles.getMat().copyTo(_reference_triangles);
 
-  if( reference_triangles_.cols != sizeof(c_triangle_descriptor) ) {
+  if( _reference_triangles.cols != sizeof(c_triangle_descriptor) ) {
     CF_ERROR("c_triangle_matcher: Invalid number of cols (%d) in triangle descriptor."
         "Must be %d",
-        reference_triangles_.cols,
+        _reference_triangles.cols,
         (int )sizeof(c_triangle_descriptor));
     return false;
   }
 
   float * data =
-      reinterpret_cast<float*>(reference_triangles_.data);
+      reinterpret_cast<float*>(_reference_triangles.data);
 
-  const size_t rows = reference_triangles_.rows;
+  const size_t rows = _reference_triangles.rows;
   const size_t cols = 2;
-  const size_t stride = reference_triangles_.cols / sizeof(float);
+  const size_t stride = _reference_triangles.cols / sizeof(float);
 
-  reference_features_ = cvflann::Matrix<float>(data, rows, cols, stride);
-  index_.reset(new cvflann::KDTreeIndex<DistanceType>(reference_features_, cvflann::KDTreeIndexParams(1)));
-  index_->buildIndex();
+  _reference_features = cvflann::Matrix<float>(data, rows, cols, stride);
+  _index.reset(new cvflann::KDTreeIndex<DistanceType>(_reference_features, cvflann::KDTreeIndexParams(1)));
+  _index->buildIndex();
 
-  return !index_.empty();
+  return !_index.empty();
 }
 
 bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
@@ -301,10 +301,10 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints
   }
 
   int max_reference_star_index = 0;
-  for ( int i = 0, n = reference_triangles_.rows; i < n; ++i) {
+  for ( int i = 0, n = _reference_triangles.rows; i < n; ++i) {
 
     const c_triangle_descriptor * data =
-        reinterpret_cast<const c_triangle_descriptor*>(reference_triangles_[i]);
+        reinterpret_cast<const c_triangle_descriptor*>(_reference_triangles[i]);
 
     for ( int k = 0; k < 3; ++k ) {
       if ( data->triangle[k] > max_reference_star_index ) {
@@ -331,7 +331,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints
         reinterpret_cast<const c_triangle_descriptor*>(q[i]);
 
     searchResult.clear();
-    index_->findNeighbors(searchResult, (float*)query, searchParams);
+    _index->findNeighbors(searchResult, (float*)query, searchParams);
     const size_t nnsize = searchResult.size();
 
     if ( nnsize > 0 ) {
@@ -344,7 +344,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints
 
         const c_triangle_descriptor *reference =
             reinterpret_cast<const c_triangle_descriptor*>(
-                reference_triangles_[indices[j]]);
+                _reference_triangles[indices[j]]);
 
         for ( int k = 0; k < 3; ++k ) {
           ++votes[query->triangle[k]][reference->triangle[k]];

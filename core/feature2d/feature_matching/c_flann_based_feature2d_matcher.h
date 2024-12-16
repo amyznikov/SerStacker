@@ -141,13 +141,11 @@ public:
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
-  double lowe_ratio_ = 0.75;
-  cvflann::flann_distance_t distance_type_ = cvflann::FLANN_DIST_L2;
-  cv::flann::Index index_;
-  cv::Ptr<cv::flann::IndexParams> index_params_;
-  cv::Ptr<cv::flann::SearchParams> search_params_;
-  cv::Mat1i indices_;
-  cv::Mat dists_;
+  double _lowe_ratio = 0.75;
+  cvflann::flann_distance_t _distance_type = cvflann::FLANN_DIST_L2;
+  cv::flann::Index _index;
+  cv::Ptr<cv::flann::IndexParams> _index_params;
+  cv::Ptr<cv::flann::SearchParams> _search_params;
 };
 
 template<>

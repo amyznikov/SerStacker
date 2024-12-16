@@ -128,7 +128,7 @@ static bool decompuse_pure_rotation_homograpy(const cv::Matx33d & H,
     }
 
     bool compute(const std::vector<double> & p, std::vector<double> & rhs,
-        cv::Mat_<double> * jac, bool * have_analytical_jac) const final
+        cv::Mat_<double> * jac, bool * have_analytical_jac) final
     {
       rhs.resize(13);
 

@@ -275,13 +275,13 @@ bool c_regular_stereo_pipeline::open_input_streams()
               _input_options.start_frame_index + _input_options.max_input_frames);
 
 
-  total_frames_ = end_pos - start_pos;
-  processed_frames_ = 0;
-  accumulated_frames_ = 0;
+  _total_frames = end_pos - start_pos;
+  _processed_frames = 0;
+  _accumulated_frames = 0;
 
-  if( total_frames_ < 1 ) {
+  if( _total_frames < 1 ) {
     CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-        total_frames_);
+        _total_frames);
     return false;
   }
 
@@ -715,7 +715,7 @@ bool c_regular_stereo_pipeline::write_calibration_progress_video(c_output_frame_
       }
     }
 
-    if( !progress_writer.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+    if( !progress_writer.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
       CF_ERROR("c_output_frame_writer: write(fails)");
       return false;
     }
@@ -732,13 +732,13 @@ std::string c_regular_stereo_pipeline::get_calibraton_config_output_filename() c
   if( output_file_name.empty() ) {
     output_file_name =
         ssprintf("%s/regular_stereto_calib.%s.yml",
-            output_path_.c_str(),
+            _output_path.c_str(),
             csequence_name());
   }
   else if( !is_absolute_path(output_file_name) ) {
     output_file_name =
         ssprintf("%s/%s",
-            output_path_.c_str(),
+            _output_path.c_str(),
             output_file_name.c_str());
   }
 
@@ -833,7 +833,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
     return false;
   }
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   /////////////////////////////////////////////////////////////////////////////
@@ -852,7 +852,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   input_sources_[0] =
-      input_sequence_->source(_input_options.left_stereo_source);
+      _input_sequence->source(_input_options.left_stereo_source);
 
   if ( !input_sources_[0] ) {
     CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
@@ -861,7 +861,7 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   }
 
   input_sources_[1] =
-      input_sequence_->source(_input_options.right_stereo_source);
+      _input_sequence->source(_input_options.right_stereo_source);
 
   if ( !input_sources_[1] ) {
     CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
@@ -1289,7 +1289,7 @@ bool c_regular_stereo_pipeline::run_calibration()
 
   reset_input_frames();
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_status_update() ) {
 
     if ( canceled() ) {
       break;
@@ -1331,7 +1331,7 @@ bool c_regular_stereo_pipeline::run_calibration()
       }
 
       pose.stream_pos =
-          processed_frames_;
+          _processed_frames;
 
       dump_motion_pose(pose);
 
@@ -1704,7 +1704,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
           rectified_videos_output_filenames[i] =
               ssprintf("%s/%s.%s.avi",
-                  output_path_.c_str(),
+                  _output_path.c_str(),
                   filename.c_str(),
                   postfix[i].c_str());
         }
@@ -1717,13 +1717,13 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
     }
 
 
-    total_frames_ = input_sources_[0]->size();
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = input_sources_[0]->size();
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
     reset_input_frames();
 
-    for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
+    for( ; _processed_frames < _total_frames; ++_processed_frames, on_status_update() ) {
 
       if( canceled() ) {
         break;
@@ -1775,7 +1775,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           }
 
 
-          if( !rectified_videos[i].write(tmp, cv::noArray(), false, processed_frames_) ) {
+          if( !rectified_videos[i].write(tmp, cv::noArray(), false, _processed_frames) ) {
             CF_ERROR("rectified_video_writer.write() fails");
             return false;
           }
@@ -1788,7 +1788,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
       if( output_options_.save_stereo_matches_video ) {
 
-        update_calibration_display_image(false, false, processed_frames_);
+        update_calibration_display_image(false, false, _processed_frames);
 
         if( canceled() ) {
           break;
@@ -1811,7 +1811,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           break;
         }
 
-        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
@@ -1820,9 +1820,9 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           break;
         }
 
-        update_calibration_display_image(true, false, processed_frames_);
+        update_calibration_display_image(true, false, _processed_frames);
 
-        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
@@ -1878,7 +1878,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
   reset_input_frames();
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_status_update() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_status_update() ) {
 
     if( canceled() ) {
       break;
@@ -1898,7 +1898,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
       const auto pos =
           std::find(stereo_matching_options_.debug_frames.begin(),
               stereo_matching_options_.debug_frames.end(),
-              processed_frames_);
+              _processed_frames);
 
       if( pos == stereo_matching_options_.debug_frames.end() ) {
 
@@ -1913,8 +1913,8 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
 
         matcher.set_debug_directory(
             ssprintf("%s/debug/match%05d",
-                output_path_.c_str(),
-                processed_frames_));
+                _output_path.c_str(),
+                _processed_frames));
       }
 
     }
@@ -2016,7 +2016,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
         }
       }
 
-      if ( !progress_video.write(display_frame_, cv::noArray(), false, processed_frames_) ) {
+      if ( !progress_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
         CF_ERROR("progress_video.write() fails");
         return false;
       }

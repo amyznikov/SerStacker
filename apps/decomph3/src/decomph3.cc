@@ -195,7 +195,7 @@ static bool estimate_pure_rotation_homograpy(const std::vector<cv::Point2f> & cu
     }
 
     bool compute(const std::vector<double> & p, std::vector<double> & rhs,
-        cv::Mat1d * jac, bool * have_analytical_jac) const final
+        cv::Mat1d * jac, bool * have_analytical_jac) final
     {
       const cv::Matx33d H =
           unpack_homography(p);

@@ -35,7 +35,7 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
     }
 
     bool compute(const std::vector<double> & params, std::vector<double> & rhs,
-        cv::Mat1d * jac, bool * have_analytical_jac) const final
+        cv::Mat1d * jac, bool * have_analytical_jac) final
     {
       const double x0 = params[0];
       const double y0 = params[1];

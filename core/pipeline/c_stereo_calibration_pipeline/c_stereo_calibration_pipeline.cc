@@ -314,7 +314,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   output_intrinsics_filename_ =
@@ -382,7 +382,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
   /////////////////////////////////////////////////////////////////////////////
 
   const bool is_live_input =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
   if( !is_live_input ) {
 
@@ -398,7 +398,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
       }
     }
 
-    input_.inputs[0] = input_sequence_->source(_input_options.left_stereo_source);
+    input_.inputs[0] = _input_sequence->source(_input_options.left_stereo_source);
     if( !input_.inputs[0] ) {
       CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
           _input_options.left_stereo_source.c_str());
@@ -406,7 +406,7 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
     }
 
     if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
-      input_.inputs[1] = input_sequence_->source(_input_options.right_stereo_source);
+      input_.inputs[1] = _input_sequence->source(_input_options.right_stereo_source);
       if( !input_.inputs[1] ) {
         CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
             _input_options.right_stereo_source.c_str());
@@ -414,25 +414,25 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
       }
     }
   }
-  else if( input_sequence_->sources().empty() ) {
+  else if( _input_sequence->sources().empty() ) {
     CF_ERROR("ERROR: No stereo source specified");
     return false;
   }
   else {
 
-    if( !(input_.inputs[0] = input_sequence_->source(0)) ) {
+    if( !(input_.inputs[0] = _input_sequence->source(0)) ) {
       CF_ERROR("ERROR: stereo source is null in input sequence");
       return false;
     }
 
     if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
 
-      if( input_sequence_->sources().size() < 2 ) {
+      if( _input_sequence->sources().size() < 2 ) {
         CF_ERROR("ERROR: No second stereo source specified");
         return false;
       }
 
-      if( !(input_.inputs[1] = input_sequence_->source(1)) ) {
+      if( !(input_.inputs[1] = _input_sequence->source(1)) ) {
         CF_ERROR("ERROR: second stereo source is null in input sequence");
         return false;
       }
@@ -633,10 +633,10 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   ////////////
 
-  if ( input_sequence_->is_live() ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+  if ( _input_sequence->is_live() ) {
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
   }
   else {
 
@@ -655,13 +655,13 @@ bool c_stereo_calibration_pipeline::run_pipeline()
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-          total_frames_);
+          _total_frames);
       return false;
     }
 
@@ -675,9 +675,9 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   const bool enable_live_calibration =
       calibration_options_.enable_calibration &&
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
     if ( canceled() ) {
       break;
@@ -697,7 +697,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
       break;
     }
 
-    accumulated_frames_ =
+    _accumulated_frames =
         object_points_.size();
 
     // give chance to GUI thread to call get_display_image()
@@ -706,7 +706,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   close_input_source();
 
-  if ( calibration_options_.enable_calibration && !input_sequence_->is_live()  ) {
+  if ( calibration_options_.enable_calibration && !_input_sequence->is_live()  ) {
 
     if ( !update_calibration() ) {
       CF_ERROR("update_stereo_calibration() fails");
@@ -1376,7 +1376,7 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
     CF_DEBUG("Created '%s'", chessboard_video_writer_.filename().c_str());
   }
 
-  if( !chessboard_video_writer_.write(frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
+  if( !chessboard_video_writer_.write(frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1414,13 +1414,13 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
   CF_DEBUG("Saving debug videos...");
 
-  total_frames_ = input_.inputs[0]->size();
-  processed_frames_ = 0;
-  accumulated_frames_ = 0;
+  _total_frames = input_.inputs[0]->size();
+  _processed_frames = 0;
+  _accumulated_frames = 0;
 
   bool fOK;
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_,  ++accumulated_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames,  ++_accumulated_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
@@ -1462,7 +1462,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
           }
         }
 
-        if( !video_writer[i].write(remapped_frames[0], cv::noArray(), false, processed_frames_) ) {
+        if( !video_writer[i].write(remapped_frames[0], cv::noArray(), false, _processed_frames) ) {
           CF_ERROR("video_writer[%d].write() fails", i);
           return false;
         }
@@ -1495,7 +1495,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       remapped_frames[0].copyTo(display_frame(rc0));
       remapped_frames[1].copyTo(display_frame(rc1));
 
-      if( !stereo_writer.write(display_frame, cv::noArray(), false, processed_frames_) ) {
+      if( !stereo_writer.write(display_frame, cv::noArray(), false, _processed_frames) ) {
         CF_ERROR("stereo_writer.write() fails");
         return false;
       }
@@ -1531,7 +1531,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       remapped_frames[1].copyTo(display_frame(rc2));
       cv::addWeighted(remapped_frames[0], 0.5, remapped_frames[1], 0.5, 0, display_frame(rc3));
 
-      if ( !quad_writer.write(display_frame, cv::noArray(), false, processed_frames_ ) ) {
+      if ( !quad_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
         CF_ERROR("quad_writer.write() fails");
         return false;
       }

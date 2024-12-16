@@ -789,7 +789,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
     /**
      * compute rhs errors for specified vector of parameters
      */
-    bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) const final
+    bool compute(const std::vector<_Tp> & p, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * , bool * ) final
     {
       // INSTRUMENT_REGION("");
 

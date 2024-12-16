@@ -41,7 +41,7 @@ public:
      The callback should explicitly allocate each output array (unless it's nullptr).
      */
     virtual bool compute(const std::vector<double> & params, std::vector<double> & rhs,
-        cv::Mat1d * J, bool * have_analytical_jac) const = 0;
+        cv::Mat1d * J, bool * have_analytical_jac) = 0;
 
     /* Return true if compute() can be called in parallel.
      * Can be useful to speedup numerical differentiation with central differences. */
@@ -82,7 +82,7 @@ public:
 protected:
   double compute_rhs(callback & cb, std::vector<double> & params);
   double compute_hessian(callback & cb, const std::vector<double> & params, cv::Mat1d & A, cv::Mat1d & v);
-  static bool compute(const callback & cb, const std::vector<double> & params, std::vector<double> & rhs, cv::Mat1d * J);
+  static bool compute(callback & cb, const std::vector<double> & params, std::vector<double> & rhs, cv::Mat1d * J);
 
 protected:
   std::vector<double> _rhs;

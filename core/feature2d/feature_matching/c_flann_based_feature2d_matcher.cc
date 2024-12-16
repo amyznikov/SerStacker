@@ -176,47 +176,45 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
 
 
 c_flann_based_feature2d_matcher::c_flann_based_feature2d_matcher(const cv::Ptr<cv::flann::IndexParams> & index_args)
-  : index_params_(index_args)
+  : _index_params(index_args)
 {
 }
 
 const cv::Ptr<cv::flann::IndexParams> & c_flann_based_feature2d_matcher::index_params() const
 {
-  return index_params_;
+  return _index_params;
 }
 
 
 void c_flann_based_feature2d_matcher::set_distance_type(cvflann::flann_distance_t v)
 {
-  distance_type_ = v;
+  _distance_type = v;
 }
 
 cvflann::flann_distance_t c_flann_based_feature2d_matcher::distance_type() const
 {
-  return distance_type_;
+  return _distance_type;
 }
 
 void c_flann_based_feature2d_matcher::set_lowe_ratio(double v)
 {
-  lowe_ratio_ = v;
-  search_params_.reset();
+  _lowe_ratio = v;
+  _search_params.reset();
 }
 
 double c_flann_based_feature2d_matcher::lowe_ratio() const
 {
-  return lowe_ratio_;
+  return _lowe_ratio;
 }
 
 
 bool c_flann_based_feature2d_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors)
 {
-  INSTRUMENT_REGION("");
-
   try {
 
-    index_.build(train_descriptors,
-        *index_params_,
-        distance_type_);
+    _index.build(train_descriptors,
+        *_index_params,
+        _distance_type);
 
     return true;
   }
@@ -239,84 +237,68 @@ bool c_flann_based_feature2d_matcher::train(const std::vector<cv::KeyPoint> * tr
 bool c_flann_based_feature2d_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
     /* out */ std::vector<cv::DMatch> & matches)
 {
-  INSTRUMENT_REGION("");
-
   try {
 
+    cv::Mat1i indices;
+    cv::Mat dists;
 
     const int knn =
-        lowe_ratio_ > 0 ? 2 : 1;
-
-    CF_DEBUG("H knn=%d", knn);
-
-    // CF_DEBUG("lowe_ratio_=%g knn=%d", lowe_ratio_, knn);
+        _lowe_ratio > 0 ? 2 : 1;
 
     matches.clear();
-    matches.reserve( lowe_ratio_ > 0 ? query_descriptors.rows() : knn * query_descriptors.rows());
+    matches.reserve( _lowe_ratio > 0 ? query_descriptors.rows() : knn * query_descriptors.rows());
 
-    if ( !search_params_ ) {
-      search_params_.reset(new cv::flann::SearchParams(
+    if ( !_search_params ) {
+      _search_params.reset(new cv::flann::SearchParams(
             cvflann::FLANN_CHECKS_UNLIMITED,
             0,
             true));
     }
 
-//    CF_DEBUG("query_descriptors.size=%dx%d depth=%d channels=%d",
-//        query_descriptors.rows(), query_descriptors.cols(),
-//        query_descriptors.depth(), query_descriptors.channels());
-
-    index_.knnSearch(query_descriptors,
-        indices_,
-        dists_,
+    _index.knnSearch(query_descriptors,
+        indices,
+        dists,
         knn,
-        *search_params_);
-
-//    CF_DEBUG("indices_.size=%dx%d depth=%d channels=%d",
-//        indices_.rows, indices_.cols,
-//        indices_.depth(), indices_.channels());
-
-//    CF_DEBUG("dists_.size=%dx%d depth=%d channels=%d",
-//        dists_.rows, dists_.cols,
-//        dists_.depth(), dists_.channels());
+        *_search_params);
 
     static const auto dist =
         [](const cv::Mat & m, int r, int c) -> float {
           return m.depth() == CV_32F ? m.at<float>(r,c) : m.at<int32_t>(r,c);
         };
 
-    const int cr = indices_.rows;
-    const int cc = indices_.cols;
-    const int ddepth = dists_.depth();
+    const int cr = indices.rows;
+    const int cc = indices.cols;
+    const int ddepth = dists.depth();
 
     // CF_DEBUG("cr=%d cc=%d", cr, cc);
     for ( int i = 0; i < cr; ++i ) {
 
-      if ( indices_[i][0] < 0 ) {
+      if ( indices[i][0] < 0 ) {
         continue;
       }
 
       const float dist0 =
-          dist(dists_, i, 0);
+          dist(dists, i, 0);
 
-      if ( lowe_ratio_ > 0 && indices_[i][1] >= 0 ) {
+      if ( _lowe_ratio > 0 && indices[i][1] >= 0 ) {
 
-        if ( dist0 < lowe_ratio_ * dist(dists_, i, 1) ) {
-          matches.emplace_back(i, indices_[i][0], dist0);
+        if ( dist0 < _lowe_ratio * dist(dists, i, 1) ) {
+          matches.emplace_back(i, indices[i][0], dist0);
         }
 
       }
       else {  // if ( lowe_ratio_ <= 0 || indices_[i][1] < 0 )
 
-        matches.emplace_back(i, indices_[i][0], dist0);
+        matches.emplace_back(i, indices[i][0], dist0);
 
-        for ( int j = 1; j < cc && indices_[i][j] >= 0; ++j ) {
+        for ( int j = 1; j < cc && indices[i][j] >= 0; ++j ) {
 
-          const double distj = dist(dists_, i, j);
+          const double distj = dist(dists, i, j);
           if ( dist0 - distj > FLT_EPSILON ) {
             break;
           }
 
-          matches.emplace_back(i, indices_[i][j], distj);
+          matches.emplace_back(i, indices[i][j], distj);
         }
       }
     }

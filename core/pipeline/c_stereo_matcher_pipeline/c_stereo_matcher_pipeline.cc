@@ -236,7 +236,7 @@ bool c_stereo_matcher_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options().output_directory);
 
   /////////////////////////////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ bool c_stereo_matcher_pipeline::initialize_pipeline()
         "use continuous input sequence");
   }
   else {
-    input_.inputs[0] = input_sequence_->source(_input_options.left_stereo_source);
+    input_.inputs[0] = _input_sequence->source(_input_options.left_stereo_source);
     if ( !input_.inputs[0] ) {
       CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
           _input_options.left_stereo_source.c_str());
@@ -261,7 +261,7 @@ bool c_stereo_matcher_pipeline::initialize_pipeline()
     }
 
     if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
-      input_.inputs[1] = input_sequence_->source(_input_options.right_stereo_source);
+      input_.inputs[1] = _input_sequence->source(_input_options.right_stereo_source);
       if( !input_.inputs[1] ) {
         CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
             _input_options.right_stereo_source.c_str());
@@ -300,10 +300,10 @@ bool c_stereo_matcher_pipeline::run_pipeline()
   //  cv::Mat masks[2];
   cv::Mat1w depthmap;
 
-  if ( input_sequence_->is_live() ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+  if ( _input_sequence->is_live() ) {
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
   }
   else {
     int start_pos, end_pos;
@@ -321,19 +321,19 @@ bool c_stereo_matcher_pipeline::run_pipeline()
     else {
       end_pos =
         _input_options.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
     }
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-          total_frames_);
+          _total_frames);
       return false;
     }
 
@@ -348,7 +348,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
   bool fOK = true;
 
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
     fOK = true;
 
@@ -370,7 +370,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
       return false;
     }
 
-    accumulated_frames_ = processed_frames_;
+    _accumulated_frames = _processed_frames;
 
 
     // give chance to GUI thread to call get_display_image()
@@ -399,7 +399,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
           }
         }
 
-        if ( !progress_writer.write(image, cv::noArray(), false, processed_frames_ ) ) {
+        if ( !progress_writer.write(image, cv::noArray(), false, _processed_frames ) ) {
           CF_ERROR("progress_writer.write('%s') fails. image: %dx%d channels=%d deprth=%d",
               progress_writer.filename().c_str(),
               image.cols, image.rows, image.channels(), image.depth());
@@ -434,7 +434,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
           processing_options_.camera_focus,
           processing_options_.stereo_baseline);
 
-      if ( !depthmaps_writer.write(depthmap, cv::noArray(), false, processed_frames_ ) ) {
+      if ( !depthmaps_writer.write(depthmap, cv::noArray(), false, _processed_frames ) ) {
         CF_ERROR("progress_writer.write() fails");
         return false;
       }
@@ -478,7 +478,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
             }
           }
 
-          if ( !cloud3d_image_writer.write(cloud3d, cv::noArray(), false, processed_frames_ ) ) {
+          if ( !cloud3d_image_writer.write(cloud3d, cv::noArray(), false, _processed_frames ) ) {
             CF_ERROR("cloud3d_image_writer.write() fails");
             return false;
           }
@@ -489,9 +489,9 @@ bool c_stereo_matcher_pipeline::run_pipeline()
 
           const std::string output_file_name =
             ssprintf("%s/cloud3d/%s.cloud.%06d.ply",
-                output_path_.c_str(),
+                _output_path.c_str(),
                 csequence_name(),
-                processed_frames_);
+                _processed_frames);
 
           cv::Mat3b colors;
 
@@ -530,7 +530,7 @@ bool c_stereo_matcher_pipeline::open_input_source()
     }
   }
   else {
-    if( !input_sequence_->open() ) {
+    if( !_input_sequence->open() ) {
       CF_ERROR("input_sequence_->open() fails");
       return false;
     }
@@ -544,7 +544,7 @@ void c_stereo_matcher_pipeline::close_input_source()
     ::close_stereo_source(input_);
   }
   else {
-    input_sequence_->close();
+    _input_sequence->close();
   }
 }
 
@@ -557,7 +557,7 @@ bool c_stereo_matcher_pipeline::seek_input_source(int pos)
     }
   }
   else {
-    if ( !input_sequence_->seek(pos) ) {
+    if ( !_input_sequence->seek(pos) ) {
       CF_ERROR("input_sequence_->seek(pos=%d) fails", pos);
       return false;
     }
@@ -587,7 +587,7 @@ bool c_stereo_matcher_pipeline::read_input_source()
   }
   else {
     const bool fok =
-        ::read_stereo_frame(input_sequence_,
+        ::read_stereo_frame(_input_sequence,
             _input_options.layout_type,
             _input_options.swap_cameras,
             _input_options.enable_color_maxtrix,
@@ -771,7 +771,7 @@ bool c_stereo_matcher_pipeline::get_display_image(cv::OutputArray display_frame,
     return false;
   }
 
-  switch (display_type_) {
+  switch (_display_type) {
     case DISPLAY_DISPARITY: {
 
       if ( display_frame.needed() ) {

@@ -369,7 +369,7 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options().output_directory);
 
 
@@ -472,43 +472,43 @@ void c_virtual_stereo_pipeline::cleanup_pipeline()
 
 }
 
-bool c_virtual_stereo_pipeline::open_input_sequence()
-{
-  if ( !input_sequence_ ) {
-    CF_ERROR("ERROR: input_sequence_ not set");
-    return false;
-  }
-
-  if (  !input_sequence_->open() ) {
-    CF_ERROR("ERROR: input_sequence->open() fails");
-    return false;
-  }
-
-  return true;
-}
-
-void c_virtual_stereo_pipeline::close_input_sequence()
-{
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
-}
-
-
-bool c_virtual_stereo_pipeline::seek_input_sequence(int pos)
-{
-  if ( !input_sequence_->seek(pos) ) {
-    CF_ERROR("ERROR: input_sequence->seek(start_pos=%d) fails", pos);
-    return false;
-  }
-  return true;
-}
+//bool c_virtual_stereo_pipeline::open_input_sequence()
+//{
+//  if ( !input_sequence_ ) {
+//    CF_ERROR("ERROR: input_sequence_ not set");
+//    return false;
+//  }
+//
+//  if (  !input_sequence_->open() ) {
+//    CF_ERROR("ERROR: input_sequence->open() fails");
+//    return false;
+//  }
+//
+//  return true;
+//}
+//
+//void c_virtual_stereo_pipeline::close_input_sequence()
+//{
+//  if ( input_sequence_ ) {
+//    input_sequence_->close();
+//  }
+//}
+//
+//
+//bool c_virtual_stereo_pipeline::seek_input_sequence(int pos)
+//{
+//  if ( !input_sequence_->seek(pos) ) {
+//    CF_ERROR("ERROR: input_sequence->seek(start_pos=%d) fails", pos);
+//    return false;
+//  }
+//  return true;
+//}
 
 bool c_virtual_stereo_pipeline::read_input_frame(cv::Mat & output_image, cv::Mat & output_mask)
 {
   // lock_guard lock(mutex());
 
-  if( !base::read_input_frame(input_sequence_, _input_options, output_image, output_mask, false, false) ) {
+  if( !base::read_input_frame(_input_sequence, _input_options, output_image, output_mask, false, false) ) {
     CF_DEBUG("base::read_input_frame() fails");
     return false;
   }
@@ -546,13 +546,13 @@ bool c_virtual_stereo_pipeline::run_pipeline()
   }
 
   const bool is_live_sequence =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
   if ( is_live_sequence ) {
 
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
   }
   else {
@@ -562,18 +562,18 @@ bool c_virtual_stereo_pipeline::run_pipeline()
 
     const int end_pos =
         _input_options.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-          total_frames_);
+          _total_frames);
       return false;
     }
 
@@ -586,7 +586,7 @@ bool c_virtual_stereo_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
@@ -643,7 +643,7 @@ bool c_virtual_stereo_pipeline::run_pipeline()
     if ( true ) {
       lock_guard lock(mutex());
 
-      accumulated_frames_ = processed_frames_;
+      _accumulated_frames = _processed_frames;
 
       std::swap(current_image_, previous_image_);
       std::swap(current_mask_, previous_mask_);
@@ -943,7 +943,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
       }
     }
 
-    if( !run_triangulation(ssprintf("%s/polar_stereo", output_path_.c_str())) ) {
+    if( !run_triangulation(ssprintf("%s/polar_stereo", _output_path.c_str())) ) {
       CF_ERROR("run_triangulation() fails");
       return false;
     }
@@ -1037,7 +1037,7 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
   const std::string output_filename =
       ssprintf("%s/cloud3d/cloud3d.%05d.ply",
           output_directory.c_str(),
-          input_sequence_->current_pos()-1);
+          _input_sequence->current_pos()-1);
 
   if( !save_ply(cloud3d, colors3d, output_filename) ) {
     CF_ERROR("save_ply('%s') fails", output_filename.c_str());
@@ -1058,8 +1058,8 @@ bool c_virtual_stereo_pipeline::run_epipolar_stereo()
     epipolar_matcher_.set_debug_path("");
   }
   else {
-    epipolar_matcher_.set_debug_path(ssprintf("%s/epipolar_debug/frame%05d", output_path_.c_str(),
-        input_sequence_->current_pos() - 1));
+    epipolar_matcher_.set_debug_path(ssprintf("%s/epipolar_debug/frame%05d", _output_path.c_str(),
+        _input_sequence->current_pos() - 1));
   }
 
   bool fOK =
@@ -1182,7 +1182,7 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
   const std::string debug_path =
       morph_gradient_flow_options_.enable_debug ?
           ssprintf("%s/morph_gradient_flow/%03d",
-              output_path_.c_str(), input_sequence_->current_pos() - 1) :
+              _output_path.c_str(), _input_sequence->current_pos() - 1) :
           "";
 
 
@@ -1231,7 +1231,7 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 
   current_disparity_ = disp;
 
-  if( !run_triangulation(ssprintf("%s/morph_gradient_flow", output_path_.c_str())) ) {
+  if( !run_triangulation(ssprintf("%s/morph_gradient_flow", _output_path.c_str())) ) {
     CF_ERROR("run_triangulation() fails");
     return false;
   }

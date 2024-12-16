@@ -617,3 +617,21 @@ c_feature2d::sptr create_sparse_descriptor_extractor(const c_sparse_feature_desc
   return nullptr;
 }
 
+c_feature2d::sptr create_sparse_descriptor_extractor(const c_feature2d::sptr & detector,
+    const c_sparse_feature_descriptor_options & options)
+{
+  if( options.type != SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT && options.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
+    return create_sparse_descriptor_extractor(options);
+  }
+
+  if ( !detector ) {
+    CF_ERROR("No feature2d detector specified");
+    return nullptr;
+  }
+
+  if ( can_compute_decriptors(detector->type()) ) {
+    return detector;
+  }
+
+  return create_feature2d(options.akaze);
+}

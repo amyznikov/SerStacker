@@ -635,7 +635,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
   matched_previous_positions_.clear();
   matched_fused_positions_.clear();
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   if( feature2d_options_.feature2d_type != c_epipolar_alignment_feature2d_sparse ) {
@@ -672,9 +672,9 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  processed_frames_ = 0;
-  accumulated_frames_ = 0;
-  for( ; processed_frames_ < total_frames_;  ++processed_frames_, on_frame_processed() ) {
+  _processed_frames = 0;
+  _accumulated_frames = 0;
+  for( ; _processed_frames < _total_frames;  ++_processed_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
@@ -682,7 +682,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !input_sequence_->read(current_frame_, &current_mask_) ) {
+      if( !_input_sequence->read(current_frame_, &current_mask_) ) {
         CF_ERROR("input_sequence_->read() fails");
         return false;
       }
@@ -716,7 +716,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
     if ( true ) {
       lock_guard lock(mutex());
 
-      accumulated_frames_ = processed_frames_;
+      _accumulated_frames = _processed_frames;
 
       std::swap(current_frame_, previous_frame_);
       std::swap(current_mask_, previous_mask_);
@@ -1089,7 +1089,7 @@ bool c_epipolar_alignment_pipeline::save_matches_csv()
 
   std::string output_directory =
       ssprintf("%s/matches_csv",
-          output_path_.c_str());
+          _output_path.c_str());
 
   if ( !create_path(output_directory) ) {
     CF_ERROR("create_path('%s') fails.",
@@ -1100,7 +1100,7 @@ bool c_epipolar_alignment_pipeline::save_matches_csv()
   std::string output_filename =
       ssprintf("%s/matches.%06d.txt",
           output_directory.c_str(),
-          input_sequence_->current_pos()-1);
+          _input_sequence->current_pos()-1);
 
   FILE * fp = fopen(output_filename.c_str(), "w");
   if ( !fp ) {

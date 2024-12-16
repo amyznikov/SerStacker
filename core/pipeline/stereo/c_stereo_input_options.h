@@ -32,9 +32,9 @@ bool serialize_base_stereo_input_options(c_config_setting section, bool save, c_
 #define POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls) \
     PIPELINE_CTL(ctrls, _input_options.layout_type, "stereo frame layout", "");\
     PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, _input_options.left_stereo_source, "left stereo source", "", \
-        (_this->input_sequence_ && _this->input_sequence_->sources().size() > 0)); \
+        (_this->_input_sequence && _this->_input_sequence->sources().size() > 0)); \
     PIPELINE_CTL_INPUT_SOURCE_SELECTION(ctrls, _input_options.right_stereo_source, "right stereo source", "",\
-        (_this->input_sequence_ && _this->input_sequence_->sources().size() > 1)); \
+        (_this->_input_sequence && _this->_input_sequence->sources().size() > 1)); \
     PIPELINE_CTL(ctrls, _input_options.swap_cameras, "swap cameras", ""); \
 
 

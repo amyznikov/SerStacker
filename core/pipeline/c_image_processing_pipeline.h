@@ -45,7 +45,7 @@ struct c_image_processing_pipeline_input_options
 bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
 
 #define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
-  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->input_sequence_ != nullptr); \
+  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->_input_sequence != nullptr); \
   PIPELINE_CTL(ctrls, _input_options.max_input_frames, "max input frames", "");\
   PIPELINE_CTL(ctrls, _input_options.debayer_method, "debayer method", "");\
   PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.darkbayer_filename, "Dark frame", "");\
@@ -135,6 +135,11 @@ protected:
   virtual bool run_pipeline();
 
 protected:
+  virtual bool open_input_sequence();
+  virtual void close_input_sequence();
+  virtual bool seek_input_sequence(int pos);
+
+protected:
   virtual void on_frame_processed();
   virtual void on_state_changed();
   virtual void on_status_update();
@@ -195,36 +200,36 @@ public: // factory methods
       const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
 
 protected:
-  static std::vector<factory_item> registered_classes_;
+  static std::vector<factory_item> _registered_classes;
 
 protected:
-  std::string name_;
-  c_input_sequence::sptr input_sequence_;
-  std::vector<uint> badframes_; // global indexes
-  std::string output_path_;
-  std::vector<c_output_frame_writer*> opened_writers_;
-  std::vector<c_output_text_writer*> opened_text_writers_;
+  std::string _name;
+  c_input_sequence::sptr _input_sequence;
+  std::vector<uint32_t> _badframes; // global indexes
+  std::string _output_path;
+  std::vector<c_output_frame_writer*> _opened_writers;
+  std::vector<c_output_text_writer*> _opened_text_writers;
 
-  cv::Mat darkbayer_;
-  cv::Mat flatbayer_;
-  cv::Mat missing_pixel_mask_;
-  mutable cv::Mat raw_bayer_image_;
-  mutable COLORID raw_bayer_colorid_ = COLORID_UNKNOWN;
+  cv::Mat _darkbayer;
+  cv::Mat _flatbayer;
+  cv::Mat _missing_pixel_mask;
+  mutable cv::Mat _raw_bayer_image;
+  mutable COLORID _raw_bayer_colorid = COLORID_UNKNOWN;
 
-  int display_type_ = 0;
+  int _display_type = 0;
 
-  int total_frames_ = 0;
-  int processed_frames_ = 0;
-  int accumulated_frames_ = 0;
+  int _total_frames = 0;
+  int _processed_frames = 0;
+  int _accumulated_frames = 0;
 
-  mutable std::mutex lock_;
-  mutable std::mutex status_lock_; // FIXME: get rid of obsolete status_lock_
-  std::string statusmsg_;
+  mutable std::mutex _lock;
+  mutable std::mutex _status_lock; // FIXME: get rid of obsolete status_lock_
+  std::string _statusmsg;
 
-  int pipeline_stage_ = 0;
+  int _pipeline_stage = 0;
 
-  volatile std::atomic_bool is_running_ = false;
-  volatile std::atomic_bool canceled_ = false;
+  volatile std::atomic_bool _is_running = false;
+  volatile std::atomic_bool _canceled = false;
 };
 
 

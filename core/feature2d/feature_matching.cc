@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 
+#include "feature_extraction.h"
 #include "feature_matching.h"
 #include <core/debug.h>
 
@@ -49,6 +50,28 @@ c_feature2d_matcher::sptr create_sparse_feature_matcher(
 
   CF_ERROR("ERROR: Unknown or not supported sparse feature matcher type=%d (%s) requested",
       options.type, toCString(options.type));
+  return nullptr;
+}
+
+c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_feature2d::sptr & descriptor,
+    const c_feature2d_matcher_options & options)
+{
+  if( !descriptor || options.type != FEATURE2D_MATCHER_AUTO_SELECT ) {
+    return create_sparse_feature_matcher(options);
+  }
+
+  if( (SPARSE_FEATURE_DESCRIPTOR_TYPE)descriptor->type() == SPARSE_FEATURE_DESCRIPTOR_TRIANGLE ) {
+    return create_sparse_feature_matcher(options.triangles);
+  }
+
+  switch (descriptor->descriptorType()) {
+    case CV_8U:
+      return create_sparse_feature_matcher(options.hamming);
+    default:
+      return create_sparse_feature_matcher(options.flann);
+  }
+
+  CF_ERROR("invalid descriptor type specified");
   return nullptr;
 }
 

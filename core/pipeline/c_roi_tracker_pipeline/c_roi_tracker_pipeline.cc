@@ -199,7 +199,7 @@ bool c_roi_tracker_pipeline::initialize_pipeline()
    return false;
  }
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   if( tracker_options_.tracker.enabled ) {
@@ -222,8 +222,8 @@ bool c_roi_tracker_pipeline::initialize_pipeline()
 
 void c_roi_tracker_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
+  if ( _input_sequence ) {
+    _input_sequence->close();
   }
 
   if ( progress_writer_.is_open() ) {
@@ -236,23 +236,23 @@ void c_roi_tracker_pipeline::cleanup_pipeline()
 
 bool c_roi_tracker_pipeline::run_pipeline()
 {
-  if( !input_sequence_ ) {
+  if( !_input_sequence ) {
     CF_ERROR("No input_sequence provided, can not run");
     return false;
   }
 
-  if ( !input_sequence_->open() ) {
+  if ( !_input_sequence->open() ) {
     CF_ERROR("input_sequence_->open() fails");
     return false;
   }
 
   const bool is_live_sequence =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
   if( is_live_sequence ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
   }
   else {
 
@@ -261,27 +261,27 @@ bool c_roi_tracker_pipeline::run_pipeline()
 
     const int end_pos =
         _input_options.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1\n"
           "start_pos=%d end_pos=%d input_sequence_->size()=%d max_input_frames=%d is_live_sequence=%d",
-          total_frames_,
+          _total_frames,
           start_pos,
           end_pos,
-          input_sequence_->size(),
+          _input_sequence->size(),
           _input_options.max_input_frames,
           is_live_sequence);
       return false;
     }
 
-    if( !input_sequence_->seek(start_pos) ) {
+    if( !_input_sequence->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
     }
@@ -289,7 +289,7 @@ bool c_roi_tracker_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
@@ -297,7 +297,7 @@ bool c_roi_tracker_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !input_sequence_->read(current_image_, &current_mask_) ) {
+      if( !_input_sequence->read(current_image_, &current_mask_) ) {
         CF_DEBUG("input_sequence_->read() fails");
         break;
       }
@@ -320,7 +320,7 @@ bool c_roi_tracker_pipeline::run_pipeline()
       return false;
     }
 
-    ++accumulated_frames_;
+    ++_accumulated_frames;
 
     if( !is_live_sequence ) {
       // give chance to GUI thread to call get_display_image()

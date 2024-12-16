@@ -181,33 +181,30 @@ bool c_snorm_based_feature2d_matcher::match(const std::vector<cv::KeyPoint> * qu
             this->max_acceptable_distance_ :
             0.5f;
 
+    cv::Mat1f query_descriptors;
+
     if ( _query_descriptors.depth() == CV_32F ) {
-
-      _query_descriptors.copyTo(query_descriptors_);
-
+      query_descriptors = _query_descriptors.getMat();
+      //_query_descriptors.copyTo(query_descriptors);
     }
     else {
-
-      _query_descriptors.getMat().convertTo(query_descriptors_,
-          query_descriptors_.depth());
-
+      _query_descriptors.getMat().convertTo(query_descriptors,
+          query_descriptors.depth());
     }
 
 
-    //const int knn = lowe_ratio_ > 0 ? 1 : 2;
-
     matches.clear();
-    matches.reserve(2 * query_descriptors_.rows);
+    matches.reserve(2 * query_descriptors.rows);
 
     using match_candidate =
         std::pair< float /*distance*/, std::vector<index_entry>::const_iterator /*pos*/>;
 
     std::vector<match_candidate> other_candidates;
 
-    for ( int i = 0; i < query_descriptors_.rows; ++i ) {
+    for ( int i = 0; i < query_descriptors.rows; ++i ) {
 
       const float * query_descriptor =
-          query_descriptors_[i];
+          query_descriptors[i];
 
       const float query_norm =
           compute_norm(query_descriptor,

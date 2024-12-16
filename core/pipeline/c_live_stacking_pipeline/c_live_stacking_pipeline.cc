@@ -219,7 +219,7 @@ bool c_live_stacking_pipeline::initialize_pipeline()
     return false;
   }
 
-  output_path_ =
+  _output_path =
       create_output_path(output_options_.output_directory);
 
   frame_accumulation_.reset();
@@ -271,23 +271,18 @@ void c_live_stacking_pipeline::cleanup_pipeline()
 
 bool c_live_stacking_pipeline::run_pipeline()
 {
-  if( !input_sequence_ ) {
-    CF_ERROR("No input_sequence provided, can not run");
-    return false;
-  }
-
-  if ( !input_sequence_->open() ) {
-    CF_ERROR("input_sequence_->open() fails");
+  if ( !open_input_sequence() ) {
+    CF_ERROR("open_input_sequence() fails, can not run");
     return false;
   }
 
   const bool is_live_sequence =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
   if( is_live_sequence ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
   }
   else {
 
@@ -296,21 +291,21 @@ bool c_live_stacking_pipeline::run_pipeline()
 
     const int end_pos =
         _input_options.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
-          total_frames_, input_sequence_->size());
+          _total_frames, _input_sequence->size());
       return false;
     }
 
-    if( !input_sequence_->seek(start_pos) ) {
+    if( !_input_sequence->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
     }
@@ -318,14 +313,14 @@ bool c_live_stacking_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
     }
 
     const bool fOk =
-        read_input_frame(input_sequence_,
+        read_input_frame(_input_sequence,
             _input_options,
             current_image_, current_mask_,
             false,
@@ -347,7 +342,7 @@ bool c_live_stacking_pipeline::run_pipeline()
 
     if( input_display_scale_ <= 0 ) {
       input_display_scale_ =
-          (1 << input_sequence_->bpp());
+          (1 << _input_sequence->bpp());
     }
 
     if( _input_options.input_image_processor ) {
@@ -363,7 +358,7 @@ bool c_live_stacking_pipeline::run_pipeline()
       return false;
     }
 
-    ++accumulated_frames_;
+    ++_accumulated_frames;
   }
 
   return true;

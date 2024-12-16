@@ -167,9 +167,9 @@ protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
-  bool open_input_sequence();
-  void close_input_sequence();
-  bool seek_input_sequence(int pos);
+//  bool open_input_sequence();
+//  void close_input_sequence();
+//  bool seek_input_sequence(int pos);
   bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
   bool write_progress_video();
   c_sparse_feature_extractor_and_matcher::sptr create_keypoints_extractor() const;

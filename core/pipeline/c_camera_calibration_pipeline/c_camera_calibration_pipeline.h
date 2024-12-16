@@ -110,9 +110,9 @@ protected:
 
 protected:
   //bool run_chessboard_corners_collection();
-  bool open_input_sequence();
-  void close_input_sequence();
-  bool seek_input_sequence(int pos);
+//  bool open_input_sequence();
+//  void close_input_sequence();
+//  bool seek_input_sequence(int pos);
   bool read_input_frame(const c_input_sequence::sptr & input_sequence, cv::Mat & output_image, cv::Mat & output_mask);
   bool process_current_frame(bool enable_calibration);
   bool detect_chessboard(const cv::Mat &frame);

@@ -13,7 +13,7 @@
 #include <chrono>
 #include <thread>
 
-std::vector<c_image_processing_pipeline::factory_item> c_image_processing_pipeline::registered_classes_;
+std::vector<c_image_processing_pipeline::factory_item> c_image_processing_pipeline::_registered_classes;
 
 c_image_processing_pipeline::factory_item::factory_item(const std::string & _class_name, const std::string & _tooltip,
     const c_image_processing_pipeline::instance_creator & _create_instance) :
@@ -25,14 +25,14 @@ c_image_processing_pipeline::factory_item::factory_item(const std::string & _cla
 
 const std::vector<c_image_processing_pipeline::factory_item>& c_image_processing_pipeline::registered_classes()
 {
-  return registered_classes_;
+  return _registered_classes;
 }
 
 const c_image_processing_pipeline::factory_item* c_image_processing_pipeline::find_class(const std::string & class_name)
 {
-  for( size_t i = 0, n = registered_classes_.size(); i < n; ++i ) {
-    if( registered_classes_[i].class_name == class_name ) {
-      return &registered_classes_[i];
+  for( size_t i = 0, n = _registered_classes.size(); i < n; ++i ) {
+    if( _registered_classes[i].class_name == class_name ) {
+      return &_registered_classes[i];
     }
   }
 
@@ -53,7 +53,7 @@ bool c_image_processing_pipeline::register_class(const std::string & class_name,
     return false;
   }
 
-  registered_classes_.emplace_back(class_name, tooltip, create_instance);
+  _registered_classes.emplace_back(class_name, tooltip, create_instance);
   return true;
 }
 
@@ -118,8 +118,8 @@ static void remove_bad_pixels(cv::Mat & image, double hot_pixels_variation_thres
 
 c_image_processing_pipeline::c_image_processing_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
-    name_(name),
-    input_sequence_(input_sequence)
+    _name(name),
+    _input_sequence(input_sequence)
 {
 }
 
@@ -134,7 +134,7 @@ bool c_image_processing_pipeline::initialize()
 
 std::mutex & c_image_processing_pipeline::mutex()
 {
-  return lock_;
+  return _lock;
 }
 
 
@@ -144,30 +144,30 @@ bool c_image_processing_pipeline::copyParameters(const sptr & dst) const
     return false;
   }
 
-  dst->name_ = this->name_;
+  dst->_name = this->_name;
 
   return true;
 }
 
 void c_image_processing_pipeline::set_name(const std::string & name)
 {
-  name_ = name;
+  _name = name;
 }
 
 const std::string& c_image_processing_pipeline::name() const
 {
-  return name_;
+  return _name;
 }
 
 const char* c_image_processing_pipeline::cname() const
 {
-  return name_.c_str();
+  return _name.c_str();
 }
 
 const char* c_image_processing_pipeline::csequence_name() const
 {
-  if( input_sequence_ && !input_sequence_->name().empty() ) {
-    return input_sequence_->cname();
+  if( _input_sequence && !_input_sequence->name().empty() ) {
+    return _input_sequence->cname();
   }
   return "live";
 }
@@ -175,13 +175,13 @@ const char* c_image_processing_pipeline::csequence_name() const
 
 bool c_image_processing_pipeline::is_running() const
 {
-  return is_running_;
+  return _is_running;
 }
 
 void c_image_processing_pipeline::set_running(bool v)
 {
-  if ( v != is_running_ ) {
-    is_running_ = v;
+  if ( v != _is_running ) {
+    _is_running = v;
     on_state_changed();
   }
 }
@@ -226,12 +226,12 @@ int c_image_processing_pipeline::master_frame_index() const
 
 const c_input_sequence::sptr & c_image_processing_pipeline::input_sequence() const
 {
-  return input_sequence_;
+  return _input_sequence;
 }
 
 void c_image_processing_pipeline::cancel(bool v)
 {
-  canceled_ = v;
+  _canceled = v;
 }
 
 std::string c_image_processing_pipeline::generate_output_filename(const std::string & ufilename,
@@ -240,8 +240,8 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
 {
 
   const bool live_stream =
-      !input_sequence_ ||
-          input_sequence_->is_live();
+      !_input_sequence ||
+          _input_sequence->is_live();
 
   static const auto get_current_date_time_string =
       []() -> std::string
@@ -280,7 +280,7 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
     if ( live_stream ) {
       output_file_name =
           ssprintf("%s/%s.%s.%s%s",
-              output_path_.c_str(),
+              _output_path.c_str(),
               csequence_name(),
               postfix.c_str(),
               get_current_date_time_string().c_str(),
@@ -290,7 +290,7 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
     else {
       output_file_name =
           ssprintf("%s/%s.%s%s",
-              output_path_.c_str(),
+              _output_path.c_str(),
               csequence_name(),
               postfix.c_str(),
               suffix.empty() ? ".avi" :
@@ -309,12 +309,12 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
         &file_suffix);
 
     if( file_directory.empty() ) {
-      file_directory = output_path_;
+      file_directory = _output_path;
     }
     else if( !is_absolute_path(file_directory) ) {
       file_directory =
           ssprintf("%s/%s",
-              output_path_.c_str(),
+              _output_path.c_str(),
               file_directory.c_str());
     }
 
@@ -358,30 +358,30 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
 
 bool c_image_processing_pipeline::canceled() const
 {
-  return canceled_;
+  return _canceled;
 }
 
 void c_image_processing_pipeline::set_pipeline_stage(int newstage)
 {
   const auto oldstage =
-      pipeline_stage_;
+      _pipeline_stage;
 
   if( newstage != oldstage ) {
-    pipeline_stage_ = newstage;
+    _pipeline_stage = newstage;
     on_status_update(); // (oldstage, newstage);
   }
 }
 
 int c_image_processing_pipeline::pipeline_stage() const
 {
-  return pipeline_stage_;
+  return _pipeline_stage;
 }
 
 void c_image_processing_pipeline::set_status_msg(const std::string & msg)
 {
   if( true ) {
-    lock_guard lock(status_lock_);
-    statusmsg_ = msg;
+    lock_guard lock(_status_lock);
+    _statusmsg = msg;
   }
 
   CF_DEBUG("STATUS: %s", msg.c_str());
@@ -392,25 +392,25 @@ std::string c_image_processing_pipeline::status_message() const
 {
   std::string msg;
   if( true ) {
-    lock_guard lock(status_lock_);
-    msg = statusmsg_;
+    lock_guard lock(_status_lock);
+    msg = _statusmsg;
   }
   return msg;
 }
 
 int c_image_processing_pipeline::total_frames() const
 {
-  return total_frames_;
+  return _total_frames;
 }
 
 int c_image_processing_pipeline::processed_frames() const
 {
-  return processed_frames_;
+  return _processed_frames;
 }
 
 int c_image_processing_pipeline::accumulated_frames() const
 {
-  return accumulated_frames_;
+  return _accumulated_frames;
 }
 
 std::string c_image_processing_pipeline::create_output_path(const std::string & output_directory) const
@@ -420,8 +420,8 @@ std::string c_image_processing_pipeline::create_output_path(const std::string & 
   if( output_directory.empty() ) {
 
     std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
+        _input_sequence->sources().empty() ? "." :
+            get_parent_directory(_input_sequence->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -436,8 +436,8 @@ std::string c_image_processing_pipeline::create_output_path(const std::string & 
   else if( !is_absolute_path(output_directory) ) {
 
     std::string parent_directory =
-        input_sequence_->sources().empty() ? "." :
-            get_parent_directory(input_sequence_->source(0)->filename());
+        _input_sequence->sources().empty() ? "." :
+            get_parent_directory(_input_sequence->source(0)->filename());
 
     if( parent_directory.empty() ) {
       parent_directory = ".";
@@ -498,23 +498,23 @@ std::string c_image_processing_pipeline::create_output_path(const std::string & 
 
 void c_image_processing_pipeline::gather_badframe_indexes()
 {
-  badframes_.clear();
+  _badframes.clear();
 
-  if( input_sequence_ && !input_sequence_->is_live() ) {
+  if( _input_sequence && !_input_sequence->is_live() ) {
 
-    const bool was_open = input_sequence_->is_open();
-    if( !was_open && !input_sequence_->open() ) {
+    const bool was_open = _input_sequence->is_open();
+    if( !was_open && !_input_sequence->open() ) {
       CF_ERROR("input_sequence_->open() fails");
       return;
     }
 
     const std::vector<c_input_source::sptr> &sources =
-        input_sequence_->sources();
+        _input_sequence->sources();
 
     for( uint source_index = 0, n = sources.size(); source_index < n; ++source_index ) {
 
       const c_input_source::sptr source =
-          input_sequence_->source(source_index);
+          _input_sequence->source(source_index);
 
       if( source ) {
 
@@ -524,32 +524,32 @@ void c_image_processing_pipeline::gather_badframe_indexes()
         for( uint source_frame_index : bad_source_frames ) {
 
           const int global_index =
-              input_sequence_->global_pos(source_index,
+              _input_sequence->global_pos(source_index,
                   source_frame_index);
 
           if( global_index >= 0 ) {
-            badframes_.emplace_back(global_index);
+            _badframes.emplace_back(global_index);
           }
         }
       }
     }
 
     if( !was_open ) {
-      input_sequence_->close(false);
+      _input_sequence->close(false);
     }
   }
 }
 
 bool c_image_processing_pipeline::is_bad_frame_index(int global_pos) const
 {
-  if( !badframes_.empty() ) {
+  if( !_badframes.empty() ) {
 
     const std::vector<uint>::const_iterator pos =
-        std::find(badframes_.begin(),
-            badframes_.end(),
+        std::find(_badframes.begin(),
+            _badframes.end(),
             global_pos);
 
-    return pos != badframes_.end();
+    return pos != _badframes.end();
   }
 
   return false;
@@ -607,10 +607,10 @@ bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writ
   }
 
   const auto pos =
-      std::find(opened_writers_.begin(), opened_writers_.end(),
+      std::find(_opened_writers.begin(), _opened_writers.end(),
           &writer);
-  if( pos == opened_writers_.end() ) {
-    opened_writers_.emplace_back(&writer);
+  if( pos == _opened_writers.end() ) {
+    _opened_writers.emplace_back(&writer);
   }
 
   return true;
@@ -625,10 +625,10 @@ bool c_image_processing_pipeline::add_output_writer(c_output_text_writer & write
   }
 
   const auto pos =
-      std::find(opened_text_writers_.begin(), opened_text_writers_.end(),
+      std::find(_opened_text_writers.begin(), _opened_text_writers.end(),
           &writer);
-  if( pos == opened_text_writers_.end() ) {
-    opened_text_writers_.emplace_back(&writer);
+  if( pos == _opened_text_writers.end() ) {
+    _opened_text_writers.emplace_back(&writer);
   }
 
   return true;
@@ -651,12 +651,12 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
 
 void c_image_processing_pipeline::set_display_type(int v)
 {
-  display_type_ = v;
+  _display_type = v;
 }
 
 int c_image_processing_pipeline::display_type() const
 {
-  return display_type_;
+  return _display_type;
 }
 
 const c_enum_member* c_image_processing_pipeline::get_display_types() const
@@ -681,10 +681,10 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
   set_running(true);
 
   const c_input_sequence::sptr backup_input_sequence =
-      this->input_sequence_;
+      this->_input_sequence;
 
   if ( input_sequence ) {
-    this->input_sequence_ = input_sequence;
+    this->_input_sequence = input_sequence;
   }
 
   bool fOk = false;
@@ -750,7 +750,7 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
   }
 
   if ( input_sequence ) {
-    this->input_sequence_ = backup_input_sequence;
+    this->_input_sequence = backup_input_sequence;
   }
 
   set_running(false);
@@ -765,15 +765,15 @@ bool c_image_processing_pipeline::initialize_pipeline()
 
   cancel(false);
 
-  if ( !input_sequence_ || input_sequence_->empty() ) {
+  if ( !_input_sequence || _input_sequence->empty() ) {
     set_status_msg("ERROR: empty input sequence specified");
     return false;
   }
 
-  total_frames_ = 0;
-  processed_frames_ = 0;
-  accumulated_frames_ = 0;
-  statusmsg_.clear();
+  _total_frames = 0;
+  _processed_frames = 0;
+  _accumulated_frames = 0;
+  _statusmsg.clear();
 
   //  output_path_ =
   //      create_output_path(output_directory());
@@ -785,31 +785,31 @@ bool c_image_processing_pipeline::initialize_pipeline()
 
 void c_image_processing_pipeline::cleanup_pipeline()
 {
-  if ( input_sequence_ ) {
-    input_sequence_->close();
+  if ( _input_sequence ) {
+    _input_sequence->close();
   }
 
-  for ( c_output_frame_writer * w :  opened_writers_ ) {
+  for ( c_output_frame_writer * w :  _opened_writers ) {
     if ( w->is_open() ) {
       CF_DEBUG("Closing '%s'", w->filename().c_str());
       w->close();
     }
   }
 
-  for ( c_output_text_writer * w :  opened_text_writers_ ) {
+  for ( c_output_text_writer * w :  _opened_text_writers ) {
     if ( w->is_open() ) {
       CF_DEBUG("Closing '%s'", w->filename().c_str());
       w->close();
     }
   }
 
-  opened_writers_.clear();
-  opened_text_writers_.clear();
+  _opened_writers.clear();
+  _opened_text_writers.clear();
 
-  darkbayer_.release();
-  flatbayer_.release();
-  missing_pixel_mask_.release();
-  raw_bayer_image_.release();
+  _darkbayer.release();
+  _flatbayer.release();
+  _missing_pixel_mask.release();
+  _raw_bayer_image.release();
 
 }
 
@@ -822,23 +822,23 @@ bool c_image_processing_pipeline::run_pipeline()
 
 bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_input_frames)
 {
-  if( !input_sequence_ ) {
-    CF_ERROR("No input_sequence provided, can not run");
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
+
+  if ( !open_input_sequence() ) {
+    CF_ERROR("open_input_sequence() fails");
     return false;
   }
 
-  if ( !input_sequence_->open() ) {
-    CF_ERROR("input_sequence_->open() fails");
-    return false;
-  }
+  _processed_frames = 0;
+  _accumulated_frames = 0;
 
   const bool is_live_sequence =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
+
 
   if( is_live_sequence ) {
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = INT_MAX;
   }
   else {
 
@@ -847,21 +847,19 @@ bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_
 
     const int end_pos =
         max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 start_frame_index + max_input_frames);
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
-          total_frames_, input_sequence_->size());
+          _total_frames, _input_sequence->size());
       return false;
     }
 
-    if( !input_sequence_->seek(start_pos) ) {
+    if( !_input_sequence->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
     }
@@ -886,11 +884,11 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
   if( !is_external_master_frame ) {
 
-    if( !darkbayer_.empty() ) {
+    if( !_darkbayer.empty() ) {
 
-      if( darkbayer_.size() != output_image.size() || darkbayer_.channels() != output_image.channels() ) {
+      if( _darkbayer.size() != output_image.size() || _darkbayer.channels() != output_image.channels() ) {
         CF_FATAL("darkbayer (%dx%d*%d) and input frame (%dx%d*%d) not match",
-            darkbayer_.cols, darkbayer_.rows, darkbayer_.channels(),
+            _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(),
             output_image.cols, output_image.rows, output_image.channels());
         return false;
       }
@@ -900,15 +898,15 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
             1. / ((1 << input_sequence->bpp())));
       }
 
-      cv::subtract(output_image, darkbayer_,
+      cv::subtract(output_image, _darkbayer,
           output_image);
     }
 
-    if( !flatbayer_.empty() ) {
+    if( !_flatbayer.empty() ) {
 
-      if( flatbayer_.size() != output_image.size() || flatbayer_.channels() != output_image.channels() ) {
+      if( _flatbayer.size() != output_image.size() || _flatbayer.channels() != output_image.channels() ) {
         CF_FATAL("flatbayer_ (%dx%d*%d) and input frame (%dx%d*%d) not match",
-            flatbayer_.cols, flatbayer_.rows, flatbayer_.channels(),
+            _flatbayer.cols, _flatbayer.rows, _flatbayer.channels(),
             output_image.cols, output_image.rows, output_image.channels());
         return false;
       }
@@ -918,7 +916,7 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
             1. / ((1 << input_sequence->bpp())));
       }
 
-      cv::divide(output_image, flatbayer_,
+      cv::divide(output_image, _flatbayer,
           output_image, output_image.depth());
     }
 
@@ -954,19 +952,19 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
     if ( save_raw_bayer ) {
 
-      raw_bayer_colorid_ =
+      _raw_bayer_colorid =
           input_sequence->colorid();
 
       if( output_image.depth() == CV_32F ) {
-        output_image.copyTo(raw_bayer_image_);
+        output_image.copyTo(_raw_bayer_image);
       }
       else {
-        output_image.convertTo(raw_bayer_image_, CV_32F,
+        output_image.convertTo(_raw_bayer_image, CV_32F,
             1. / ((1 << input_sequence->bpp())));
       }
 
       if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
-        if( !bayer_denoise(raw_bayer_image_, input_options.bad_pixels_variation_threshold) ) {
+        if( !bayer_denoise(_raw_bayer_image, input_options.bad_pixels_variation_threshold) ) {
           CF_ERROR("bayer_denoise() fails");
           return false;
         }
@@ -1047,25 +1045,25 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 //    anscombe_.apply(output_image, output_image);
 //  }
 
-  if ( !missing_pixel_mask_.empty() ) {
+  if ( !_missing_pixel_mask.empty() ) {
 
-    if ( output_image.size() != missing_pixel_mask_.size() ) {
+    if ( output_image.size() != _missing_pixel_mask.size() ) {
 
       CF_ERROR("Invalid input: "
           "frame and bad pixel mask sizes not match:\n"
           "frame size: %dx%d\n"
           "mask size : %dx%d",
           output_image.cols, output_image.rows,
-          missing_pixel_mask_.cols, missing_pixel_mask_.rows);
+          _missing_pixel_mask.cols, _missing_pixel_mask.rows);
 
       return false;
     }
 
     if ( output_mask.empty() ) {
-      missing_pixel_mask_.copyTo(output_mask);
+      _missing_pixel_mask.copyTo(output_mask);
     }
     else {
-      cv::bitwise_and(output_mask, missing_pixel_mask_,
+      cv::bitwise_and(output_mask, _missing_pixel_mask,
           output_mask);
     }
   }
@@ -1083,6 +1081,38 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
   return true;
 }
+
+
+bool c_image_processing_pipeline::open_input_sequence()
+{
+  if ( !_input_sequence ) {
+    CF_ERROR("ERROR: input_sequence_ not set");
+    return false;
+  }
+
+  if ( !_input_sequence->open() ) {
+    set_status_msg("ERROR: input_sequence->open() fails");
+    return false;
+  }
+  return true;
+}
+
+void c_image_processing_pipeline::close_input_sequence()
+{
+  if ( _input_sequence ) {
+    _input_sequence->close();
+  }
+}
+
+bool c_image_processing_pipeline::seek_input_sequence(int pos)
+{
+  if ( !_input_sequence->seek(pos) ) {
+    CF_ERROR("ERROR: input_sequence->seek(pos=%d) fails", pos);
+    return false;
+  }
+  return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

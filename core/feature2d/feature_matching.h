@@ -46,6 +46,8 @@ struct c_feature2d_matcher_options {
 c_feature2d_matcher::sptr create_sparse_feature_matcher(
     const c_feature2d_matcher_options & options);
 
+c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_feature2d::sptr & descriptor,
+    const c_feature2d_matcher_options & options);
 
 
 void dump_supported_feature2d_matchers(FILE * fp = stdout);

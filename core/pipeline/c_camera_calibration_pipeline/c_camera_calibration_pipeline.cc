@@ -444,7 +444,7 @@ bool c_camera_calibration_pipeline::initialize_pipeline()
     return false;
   }
 
-  output_path_ =
+  _output_path =
       create_output_path(_output_options.output_directory);
 
   _output_intrinsics_filename =
@@ -533,11 +533,11 @@ bool c_camera_calibration_pipeline::run_pipeline()
     return false;
   }
 
-  if ( input_sequence_->is_live() ) {
+  if ( _input_sequence->is_live() ) {
 
-    total_frames_ = INT_MAX;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = INT_MAX;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
   }
   else {
@@ -547,18 +547,18 @@ bool c_camera_calibration_pipeline::run_pipeline()
 
     const int end_pos =
         _input_options.max_input_frames < 1 ?
-            input_sequence_->size() :
-            std::min(input_sequence_->size(),
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
 
-    total_frames_ = end_pos - start_pos;
-    processed_frames_ = 0;
-    accumulated_frames_ = 0;
+    _total_frames = end_pos - start_pos;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
 
-    if( total_frames_ < 1 ) {
+    if( _total_frames < 1 ) {
       CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1",
-          total_frames_);
+          _total_frames);
       return false;
     }
 
@@ -572,17 +572,17 @@ bool c_camera_calibration_pipeline::run_pipeline()
   set_status_msg("RUNNING ...");
 
   const bool is_live_sequence =
-      input_sequence_->is_live();
+      _input_sequence->is_live();
 
   const bool enable_live_calibration =
       is_live_sequence &&
           _calibration_options.enable_calibration;
 
-  for( ; processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
-    if( !is_live_sequence && is_bad_frame_index(input_sequence_->current_pos()) ) {
-      CF_DEBUG("Skip frame %d as blacklisted", input_sequence_->current_pos());
-      input_sequence_->seek(input_sequence_->current_pos() + 1);
+    if( !is_live_sequence && is_bad_frame_index(_input_sequence->current_pos()) ) {
+      CF_DEBUG("Skip frame %d as blacklisted", _input_sequence->current_pos());
+      _input_sequence->seek(_input_sequence->current_pos() + 1);
       continue;
     }
 
@@ -590,7 +590,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
       break;
     }
 
-    if( !read_input_frame(input_sequence_, _current_frame, _current_mask) ) {
+    if( !read_input_frame(_input_sequence, _current_frame, _current_mask) ) {
       set_status_msg("read_input_frame() fails");
       break;
     }
@@ -616,7 +616,7 @@ bool c_camera_calibration_pipeline::run_pipeline()
       return false;
     }
 
-    accumulated_frames_ =
+    _accumulated_frames =
           _object_points.size();
 
 
@@ -1152,30 +1152,30 @@ bool c_camera_calibration_pipeline::save_current_camera_parameters() const
 }
 
 
-bool c_camera_calibration_pipeline::open_input_sequence()
-{
-  if ( !input_sequence_->open() ) {
-    set_status_msg("ERROR: input_sequence->open() fails");
-    return false;
-  }
-  return true;
-}
-
-void c_camera_calibration_pipeline::close_input_sequence()
-{
-  if ( input_sequence_ ) {
-    input_sequence_->close();
-  }
-}
-
-bool c_camera_calibration_pipeline::seek_input_sequence(int pos)
-{
-  if ( !input_sequence_->seek(pos) ) {
-    CF_ERROR("ERROR: input_sequence->seek(start_pos=%d) fails", pos);
-    return false;
-  }
-  return true;
-}
+//bool c_camera_calibration_pipeline::open_input_sequence()
+//{
+//  if ( !input_sequence_->open() ) {
+//    set_status_msg("ERROR: input_sequence->open() fails");
+//    return false;
+//  }
+//  return true;
+//}
+//
+//void c_camera_calibration_pipeline::close_input_sequence()
+//{
+//  if ( input_sequence_ ) {
+//    input_sequence_->close();
+//  }
+//}
+//
+//bool c_camera_calibration_pipeline::seek_input_sequence(int pos)
+//{
+//  if ( !input_sequence_->seek(pos) ) {
+//    CF_ERROR("ERROR: input_sequence->seek(start_pos=%d) fails", pos);
+//    return false;
+//  }
+//  return true;
+//}
 
 
 bool c_camera_calibration_pipeline::write_chessboard_video()
@@ -1214,7 +1214,7 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
     CF_DEBUG("Created '%s'", filename.c_str());
   }
 
-  if( !_chessboard_video_writer.write(_current_frame, _current_mask, false, input_sequence_->current_pos() - 1) ) {
+  if( !_chessboard_video_writer.write(_current_frame, _current_mask, false, _input_sequence->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1232,7 +1232,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
     if ( !is_absolute_path(coverage_frame_filename) ) {
       coverage_frame_filename =
-          ssprintf("%s/%s", output_path_.c_str(),
+          ssprintf("%s/%s", _output_path.c_str(),
               coverage_frame_filename.c_str());
     }
 
@@ -1330,16 +1330,16 @@ bool c_camera_calibration_pipeline::write_output_videos()
   }
 
 
-  total_frames_ = input_sequence_->size();
-  processed_frames_ = 0;
-  accumulated_frames_ = 0;
+  _total_frames = _input_sequence->size();
+  _processed_frames = 0;
+  _accumulated_frames = 0;
 
   cv::Mat remapped_frame, debug_frame;
   cv::Rect debug_roi[4];
 
-  for( on_status_update(); processed_frames_ < total_frames_; ++processed_frames_, on_frame_processed() ) {
+  for( on_status_update(); _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
 
-    if( !read_input_frame(input_sequence_, _current_frame, _current_mask) ) {
+    if( !read_input_frame(_input_sequence, _current_frame, _current_mask) ) {
       set_status_msg("read_input_frame() fails");
       break;
     }
@@ -1352,8 +1352,8 @@ bool c_camera_calibration_pipeline::write_output_videos()
         _current_undistortion_remap, cv::noArray(),
         cv::INTER_LINEAR);
 
-      accumulated_frames_ =
-          processed_frames_;
+      _accumulated_frames =
+          _processed_frames;
 
     if( canceled() ) {
       break;
@@ -1361,7 +1361,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
     if( rectified_viddeo_writer.is_open() ) {
 
-      if( !rectified_viddeo_writer.write(remapped_frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
+      if( !rectified_viddeo_writer.write(remapped_frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
         CF_ERROR("ERROR: rectified_viddeo_writer.write('%s') fails. Disk full ?", rectified_viddeo_writer.filename().c_str());
         return 1;
       }
@@ -1395,7 +1395,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
       remapped_frame.copyTo(debug_frame(debug_roi[2]));
       cv::addWeighted(_current_frame, 0.5, remapped_frame, 0.5, 0, debug_frame(debug_roi[3]));
 
-      if( !debug_viddeo_writer.write(debug_frame, cv::noArray(), false, input_sequence_->current_pos() - 1) ) {
+      if( !debug_viddeo_writer.write(debug_frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
         CF_ERROR("ERROR: debug_viddeo_writer.write('%s') fails. Disk full ?", debug_viddeo_writer.filename().c_str());
         return 1;
       }

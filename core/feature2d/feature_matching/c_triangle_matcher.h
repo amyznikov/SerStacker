@@ -66,9 +66,9 @@ public:
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
-  cv::Mat1b reference_triangles_;
-  cvflann::Matrix<DistanceType::ElementType> reference_features_;
-  cv::Ptr<cvflann::KDTreeIndex<DistanceType>> index_;
+  cv::Mat1b _reference_triangles;
+  cvflann::Matrix<DistanceType::ElementType> _reference_features;
+  cv::Ptr<cvflann::KDTreeIndex<DistanceType>> _index;
   double eps_ = 1e-4;
 };
 

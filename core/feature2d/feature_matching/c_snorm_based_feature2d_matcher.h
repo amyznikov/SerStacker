@@ -59,7 +59,7 @@ protected:
   };
 
   cv::Mat1f train_descriptors_;
-  cv::Mat1f query_descriptors_;
+  //cv::Mat1f query_descriptors_;
   std::vector<index_entry> index_;
   float max_acceptable_distance_ = -1; // auto select
   float lowe_ratio_ = -1;

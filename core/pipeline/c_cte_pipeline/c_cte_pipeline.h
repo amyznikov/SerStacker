@@ -11,6 +11,7 @@
 
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
+#include <core/proc/pose.h>
 #include <deque>
 
 struct c_cte_pipeline_input_options:
@@ -52,9 +53,11 @@ struct c_cte_context_options
 };
 
 
-struct c_cte_output_options :
+struct c_cte_output_options:
     c_image_processing_pipeline_output_options
 {
+  bool save_progress_video = false;
+  c_output_frame_writer_options progress_output_options;
 };
 
 struct c_cte_pose_estimation_options
@@ -66,6 +69,102 @@ struct c_cte_pose_estimation_options
   double robust_threshold = 5;
 };
 
+
+template<class _Tp>
+class UVec3
+{
+public:
+  typedef UVec3 this_class;
+
+  inline UVec3() :
+    _phi(0),
+    _theta(0)
+  {
+  }
+
+  inline UVec3(const this_class & rhs) :
+    _phi(rhs._phi),
+    _theta(rhs._theta)
+  {
+  }
+
+  inline UVec3(_Tp phi, _Tp theta) :
+    _phi(phi),
+    _theta(theta)
+  {
+  }
+
+  inline UVec3(_Tp x, _Tp y, _Tp z)
+  {
+    to_spherical(cv::Vec<_Tp, 3>(x, y, z), &_phi, &_theta);
+  }
+
+  inline UVec3(const cv::Vec<_Tp, 3> & rhs)
+  {
+    to_spherical(rhs, &_phi, &_theta);
+  }
+
+  inline cv::Vec<_Tp, 3> vec() const
+  {
+    return from_spherical(_phi, _theta);
+  }
+
+  inline operator cv::Vec<_Tp, 3> () const
+  {
+    return vec();
+  }
+
+  inline this_class& operator =(const this_class & rhs)
+  {
+    if( this != &rhs ) {
+      _phi = rhs._phi;
+      _theta = rhs._theta;
+    }
+    return *this;
+  }
+
+  inline this_class& operator =(const cv::Vec<_Tp, 3> & rhs)
+  {
+    to_spherical(rhs, &_phi, &_theta);
+    return *this;
+  }
+
+  inline _Tp & phi()
+  {
+    return _phi;
+  }
+
+  inline const _Tp & phi() const
+  {
+    return _phi;
+  }
+
+  inline _Tp & theta()
+  {
+    return _theta;
+  }
+
+  inline const _Tp & theta() const
+  {
+    return _theta;
+  }
+
+  friend inline this_class operator - (const this_class & lhs, const this_class & rhs)
+  {
+    return this_class(lhs._phi - rhs._phi, lhs._theta - rhs._theta);
+  }
+
+  friend inline this_class operator + (const this_class & lhs, const this_class & rhs)
+  {
+    return this_class(lhs._phi + rhs._phi, lhs._theta + rhs._theta);
+  }
+
+protected:
+  _Tp _phi, _theta;
+};
+
+typedef UVec3<double> UVec3d;
+typedef UVec3<float> UVec3f;
 
 class c_cte_pipeline :
     public c_image_processing_pipeline
@@ -110,8 +209,8 @@ protected:
   void cleanup_pipeline() override;
   bool process_current_frame();
   bool update_trajectory();
-
-protected:
+  bool save_progress_video();
+  bool create_display_image(size_t back_frame_index, cv::OutputArray display_frame);
 
 protected:
   c_cte_pipeline_input_options _input_options;
@@ -124,6 +223,10 @@ protected:
 protected:
   c_feature2d::sptr  _keypoints_detector;
   c_feature2d::sptr  _keypoints_descriptor;
+
+protected:
+  cv::Mat lastDisplayImage;
+  c_output_frame_writer _progress_writer;
 
 protected:
 
@@ -139,12 +242,13 @@ protected:
     cv::Mat descriptors;
     c_feature2d_matcher::sptr keypoints_matcher;
     std::vector<std::vector<cv::DMatch>> matches;
+    std::vector<cv::Mat1b> inliers;
 
     cv::Vec3d A =
         cv::Vec3d(0, 0, 0);
 
-    cv::Vec3d T =
-        cv::Vec3d(0, 0, 0);
+    UVec3d T =
+        UVec3d (0, 0);
 
     cv::Matx33f H =
         cv::Matx33f::eye();

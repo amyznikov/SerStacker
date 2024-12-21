@@ -606,21 +606,21 @@ static inline cv::Vec<_Tp, 2> epipolar_transfrom(const cv::Point_<_Tp> & p, cons
   return cv::Vec<_Tp, 2>(v[0] - E.x,
       v[1] - E.y);
 }
-
-template<class _Tp>
-static inline cv::Vec<_Tp, 3> from_spherical(_Tp phi, _Tp theta)
-{
-  return cv::Vec<_Tp, 3>(std::sin(theta) * std::cos(phi),
-      std::sin(theta) * std::sin(phi),
-      std::cos(theta));
-}
-
-template<class _Tp>
-static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theha)
-{
-  *phi = std::atan2(T(1), T(0));
-  *theha = std::atan2(std::sqrt(T(0) * T(0) + T(1) * T(1)), T(2));
-}
+//
+//template<class _Tp>
+//static inline cv::Vec<_Tp, 3> from_spherical(_Tp phi, _Tp theta)
+//{
+//  return cv::Vec<_Tp, 3>(std::sin(theta) * std::cos(phi),
+//      std::sin(theta) * std::sin(phi),
+//      std::cos(theta));
+//}
+//
+//template<class _Tp>
+//static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theha)
+//{
+//  *phi = std::atan2(T(1), T(0));
+//  *theha = std::atan2(std::sqrt(T(0) * T(0) + T(1) * T(1)), T(2));
+//}
 
 
 /**

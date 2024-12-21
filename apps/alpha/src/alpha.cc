@@ -38,84 +38,13 @@
 #include <core/proc/fit_decreasing_exponent.h>
 #include <core/proc/extract_channel.h>
 
+#include <core/pipeline/c_cte_pipeline/c_cte_pipeline.h>
+
 #include <limits>
 #include <core/debug.h>
 
 namespace {
 
-//
-//class c_place
-//{
-//public:
-//
-//  // ?????????
-//
-//};
-//
-//
-//int recognise_place_using_lgd_algorithm(const c_place & unknown_place, const std::vector<c_place> & database_of_known_places )
-//{
-//
-//  int index_of_recognozed_place = 20;
-//
-//  return index_of_recognozed_place;
-//}
-//
-//
-//void test()
-//{
-//  std::vector<c_place> database_of_known_places;
-//
-//  while ( 42 ) {
-//
-//    c_place new_place = get_current_place();
-//
-//    int index = recognise_place_using_lgd_algorithm( new_place, database_of_known_places);
-//    if ( index > 0 ) {
-//      // recognized !!!!
-//    }
-//    else {
-//      // NOT recognized !!!!
-//      database_of_known_places.emplace_back(new_place);
-//    }
-//
-//
-//  }
-//
-//  /*
-//
-//  coarse       middle               fine
-//  GPS     / Global Descriptors / Local Descriptors
-//
-//
-//  GPS Positions
-//      | ---------------- Midle
-//      | ---------------- Midle
-//      | ---------------- Midle
-//      | ---------------- Midle
-//                           |-------------------- Fine
-//                           |-------------------- Fine
-//                           |-------------------- Fine      V
-//      |  ...
-//      |
-//      | ---------------- Midle
-//                           |-------------------- Fine      V
-//                           |-------------------- Fine
-//                           |-------------------- Fine
-//                           |-------------------- Fine
-//                           |-------------------- Fine
-//                           |-------------------- Fine
-//                           |  .......
-//                           |
-//                           |-------------------- Fine
-//                                                   |  Point Cloud     X,Y,Z
-//
-//
-//
-//  */
-//
-//
-//}
 
 }
 
@@ -126,23 +55,27 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  typedef uint16_t datatype;
+  UVec3d uv1(0, 0);
+  UVec3d uv2(0, 0);
+  UVec3d uv = uv1 - uv2;
+
+  cv::Vec3d v1 = uv1.vec();
+  cv::Vec3d v2 = uv2.vec();
+  cv::Vec3d v = uv.vec();
 
 
-  datatype databits = std::numeric_limits<datatype>::digits;
-  datatype datamask = (datatype)(-1);
-  datatype masku = (datatype )(datamask << (databits/2));
-  datatype maskl = ~(datatype )(datamask << (databits/2));
+//  CF_DEBUG("\n"
+//      "v2={%g %g %g) norm=%g\n",
+//      v2(0), v2(1), v2(2), cv::norm(v2));
 
 
-
-  printf("digits=%d is_integer=%d databits=%u masku=0x%0X maskl=0x%0X\n",
-      std::numeric_limits<datatype>::digits,
-      std::numeric_limits<datatype>::is_integer,
-      databits,
-      masku,
-      maskl);
-
+  CF_DEBUG("\n"
+      "v1={%g %g %g) norm=%g\n"
+      "v2={%g %g %g) norm=%g\n"
+      "v={%g %g %g) norm=%g\n",
+      v1(0), v1(1), v1(2), cv::norm(v1),
+      v2(0), v2(1), v2(2), cv::norm(v2),
+      v(0), v(1), v(2), cv::norm(v));
 
   return 0;
 }

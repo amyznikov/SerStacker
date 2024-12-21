@@ -20,21 +20,6 @@
 
 
 
-template<class _Tp>
-static inline cv::Vec<_Tp, 3> from_spherical(_Tp phi, _Tp theta)
-{
-  return cv::Vec<_Tp, 3>(std::sin(theta) * std::cos(phi),
-      std::sin(theta) * std::sin(phi),
-      std::cos(theta));
-}
-
-template<class _Tp>
-static inline void to_spherical(const cv::Vec<_Tp, 3> & T, _Tp * phi, _Tp * theha)
-{
-  *phi = std::atan2(T(1), T(0));
-  *theha = std::atan2(std::sqrt(T(0) * T(0) + T(1) * T(1)), T(2));
-}
-
 /* Unpack Euler angles from storage array of levmar parameters */
 template<class _Tp>
 static inline cv::Vec<_Tp, 3> unpack_A(const std::vector<double> & p)

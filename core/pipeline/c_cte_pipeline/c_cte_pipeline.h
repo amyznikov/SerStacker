@@ -12,6 +12,7 @@
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/pose.h>
+#include <core/proc/uvec3.h>
 #include <deque>
 
 struct c_cte_pipeline_input_options:
@@ -70,101 +71,6 @@ struct c_cte_pose_estimation_options
 };
 
 
-template<class _Tp>
-class UVec3
-{
-public:
-  typedef UVec3 this_class;
-
-  inline UVec3() :
-    _phi(0),
-    _theta(0)
-  {
-  }
-
-  inline UVec3(const this_class & rhs) :
-    _phi(rhs._phi),
-    _theta(rhs._theta)
-  {
-  }
-
-  inline UVec3(_Tp phi, _Tp theta) :
-    _phi(phi),
-    _theta(theta)
-  {
-  }
-
-  inline UVec3(_Tp x, _Tp y, _Tp z)
-  {
-    to_spherical(cv::Vec<_Tp, 3>(x, y, z), &_phi, &_theta);
-  }
-
-  inline UVec3(const cv::Vec<_Tp, 3> & rhs)
-  {
-    to_spherical(rhs, &_phi, &_theta);
-  }
-
-  inline cv::Vec<_Tp, 3> vec() const
-  {
-    return from_spherical(_phi, _theta);
-  }
-
-  inline operator cv::Vec<_Tp, 3> () const
-  {
-    return vec();
-  }
-
-  inline this_class& operator =(const this_class & rhs)
-  {
-    if( this != &rhs ) {
-      _phi = rhs._phi;
-      _theta = rhs._theta;
-    }
-    return *this;
-  }
-
-  inline this_class& operator =(const cv::Vec<_Tp, 3> & rhs)
-  {
-    to_spherical(rhs, &_phi, &_theta);
-    return *this;
-  }
-
-  inline _Tp & phi()
-  {
-    return _phi;
-  }
-
-  inline const _Tp & phi() const
-  {
-    return _phi;
-  }
-
-  inline _Tp & theta()
-  {
-    return _theta;
-  }
-
-  inline const _Tp & theta() const
-  {
-    return _theta;
-  }
-
-  friend inline this_class operator - (const this_class & lhs, const this_class & rhs)
-  {
-    return this_class(lhs._phi - rhs._phi, lhs._theta - rhs._theta);
-  }
-
-  friend inline this_class operator + (const this_class & lhs, const this_class & rhs)
-  {
-    return this_class(lhs._phi + rhs._phi, lhs._theta + rhs._theta);
-  }
-
-protected:
-  _Tp _phi, _theta;
-};
-
-typedef UVec3<double> UVec3d;
-typedef UVec3<float> UVec3f;
 
 class c_cte_pipeline :
     public c_image_processing_pipeline

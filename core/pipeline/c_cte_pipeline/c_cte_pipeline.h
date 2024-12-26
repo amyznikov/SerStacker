@@ -18,6 +18,7 @@
 struct c_cte_pipeline_input_options:
     c_image_processing_pipeline_input_options
 {
+   int read_step = -1;
 };
 
 

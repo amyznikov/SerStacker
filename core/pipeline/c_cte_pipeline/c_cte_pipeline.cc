@@ -318,9 +318,10 @@ bool c_cte_pipeline::save_progress_video()
 
     lock_guard lock(mutex());
 
-    for( size_t i = 1; i < _frames.size(); ++i ) {
+    //for( size_t i = 1; i < _frames.size(); ++i ) {
+    if( _frames.size() > 1 ) {
 
-      if( !create_display_image(i, display) ) {
+      if( !create_display_image(1, display) ) {
         CF_WARNING("create_display_image() fails");
         return true;
       }
@@ -363,21 +364,29 @@ bool c_cte_pipeline::save_progress_video()
   return true;
 }
 
-bool c_cte_pipeline::create_display_image(size_t back_frame_index, cv::OutputArray display_frame)
+bool c_cte_pipeline::create_display_image(size_t current_frame_index, cv::OutputArray display_frame)
 {
-  if( _frames.size() > 1 && back_frame_index < _frames.size() ) {
+  if( _frames.size() > 1 && current_frame_index < _frames.size() ) {
 
-    const c_cte_frame::uptr & front_frame =
+    const c_cte_frame::uptr & reference_frame =
         _frames.front();
 
-    const c_cte_frame::uptr & back_frame =
-        _frames[back_frame_index];
+    const c_cte_frame::uptr & current_frame =
+        _frames[current_frame_index];
 
     const cv::Size frame_size =
-        front_frame->image.size();
+        reference_frame->image.size();
 
     const cv::Size display_size(frame_size.width * 2,
         frame_size.height * 3);
+
+    const cv::Vec3d dT =
+        current_frame->T - reference_frame->T;
+
+    const cv::Point2d E =
+        compute_epipole(_camera_options.camera_intrinsics.camera_matrix,
+            dT);
+
 
     const cv::Rect roi[3][2] = {
 
@@ -398,107 +407,118 @@ bool c_cte_pipeline::create_display_image(size_t back_frame_index, cv::OutputArr
     cv::Mat & display =
         display_frame.getMatRef();
 
-    cv::Mat3b front_image_display =
+    cv::Mat3b display00 =
         display(roi[0][0]);
 
-    cv::Mat3b back_image_display =
-        display(roi[1][0]);
-
-    cv::Mat3b epipoles_display =
+    cv::Mat3b display01 =
         display(roi[0][1]);
 
-    cv::Mat3b blend_display =
+    cv::Mat3b display10 =
+        display(roi[1][0]);
+
+    cv::Mat3b display11 =
         display(roi[1][1]);
 
-    cv::Mat3b flow_display =
+    cv::Mat3b display20 =
         display(roi[2][0]);
 
-    //    cv::Mat3b xx_display =
-    //        display(roi[2][1]);
+    cv::Mat3b display21 =
+        display(roi[2][1]);
 
-    copyimage(back_frame->image,
-        back_image_display);
+    copyimage(reference_frame->image,
+        display00);
 
-    copyimage(back_frame->image,
-        epipoles_display);
+    copyimage(current_frame->image,
+        display01);
 
-    copyimage(front_frame->image,
-        front_image_display);
+    cv::addWeighted(display00, 0.5,
+        display01, 0.5,
+        0,
+        display10);
 
-
-    cv::warpPerspective(back_image_display, blend_display, back_frame->H, frame_size,
+    cv::warpPerspective(display01, display11, current_frame->H, frame_size,
         cv::INTER_LINEAR);
 
-    cv::addWeighted(blend_display, 0.5,
-        front_image_display, 0.5,
+    cv::addWeighted(display11, 0.5,
+        display00, 0.5,
         0,
-        blend_display);
+        display11);
 
-//    cv::drawKeypoints(front_image_display, front_frame->keypoints,
-//        front_image_display,
-//        cv::Scalar::all(-1),
-//        cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-
-    draw_keypoints(front_image_display,
-        front_frame->keypoints);
+    //    draw_keypoints(front_image_display,
+    //        reference_frame->keypoints);
 
     if( true ) {
 
       std::vector<cv::KeyPoint> & rpts =
-          front_frame->keypoints;
+          reference_frame->keypoints;
 
       std::vector<cv::KeyPoint> & cpts =
-          back_frame->keypoints;
+          current_frame->keypoints;
 
-      const std::vector<cv::DMatch> & Mij =
-          front_frame->matches[back_frame_index - 1];
+      const std::vector<int32_t> & matches =
+          reference_frame->kpmatches[current_frame_index - 1];
 
       const cv::Mat1b & inliers =
-          front_frame->inliers[back_frame_index - 1];
+          reference_frame->inliers[current_frame_index - 1];
 
-      for( size_t k = 0; k < Mij.size(); ++k ) {
+      if( matches.size() != reference_frame->keypoints.size() ) {
+        CF_ERROR("BUG");
+        exit(1);
+      }
 
-        const cv::DMatch & m =
-            Mij[k];
+      for( size_t k = 0, nk = rpts.size(); k < nk; ++k ) {
+
+        if ( matches[k] < 0 ) {
+          continue;
+        }
+
+        if( matches[k] >= cpts.size() ) {
+          CF_ERROR("BUG");
+          exit(1);
+        }
 
         const cv::Point2f & rp =
-            rpts[m.queryIdx].pt;
+            rpts[k].pt;
 
         const cv::Point2f & cp =
-            cpts[m.trainIdx].pt;
-
+            cpts[matches[k]].pt;
 
         const cv::Scalar color =
             inliers[0][k] ? CV_RGB(250, 250, 32) :
                 CV_RGB(250, 20, 20);
 
-        cv::line(display, rp, cp + cv::Point2f(0, frame_size.height), color, 1,
+        cv::line(display20, rp, cp, color, 1,
             cv::LINE_8, 0);
+
+        cv::rectangle(display20,
+            cv::Point2f(rp.x - 1, rp.y - 1),
+            cv::Point2f(rp.x + 1, rp.y + 1),
+            CV_RGB(16, 160, 16),
+            1,
+            cv::LINE_4);
+
 
         const cv::Point2f cpw =
-            warp(cp, back_frame->H);
+            warp(cp, current_frame->H);
 
-        cv::line(flow_display, rp, cpw, color, 1,
+        cv::line(display21, rp, cpw, color, 1,
             cv::LINE_8, 0);
 
+        cv::rectangle(display21,
+            cv::Point2f(rp.x - 1, rp.y - 1),
+            cv::Point2f(rp.x + 1, rp.y + 1),
+            CV_RGB(16, 160, 16),
+            1,
+            cv::LINE_4);
       }
     }
 
-    if( true ) {
-
-      const cv::Vec3d dT =
-          back_frame->T - front_frame->T;
-
-      const cv::Point2d E =
-          compute_epipole(_camera_options.camera_intrinsics.camera_matrix,
-              dT);
-
-      //CF_DEBUG("DRAW: E=(%g %g)", E.x, E.y);
-
-      draw_epipole(epipoles_display, E);
-      draw_epipole(blend_display, E);
-      draw_epipole(flow_display, E);
-    }
+    draw_epipole(display00, E);
+    draw_epipole(display01, E);
+    draw_epipole(display10, E);
+    draw_epipole(display11, E);
+    draw_epipole(display20, E);
+    draw_epipole(display21, E);
 
     display.copyTo(lastDisplayImage);
 
@@ -517,7 +537,8 @@ bool c_cte_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
 
   lock_guard lock(mutex());
 
-  if( _frames.size() < 2 || !create_display_image(_frames.size() - 1, display_frame) ) {
+  if( _frames.size() < 2 || !create_display_image(1, display_frame) ) {
+    CF_DEBUG("H");
     lastDisplayImage.copyTo(display_frame);
   }
 
@@ -706,41 +727,55 @@ bool c_cte_pipeline::process_current_frame()
     tbb::parallel_for(tbb_range(0, _frames.size()),
         [this, &current_frame](const tbb_range & range) {
 
+          std::vector<cv::DMatch> matches;
+
           for ( int i = range.begin(); i < range.end(); ++i ) {
 
             const c_cte_frame::uptr & frame =
                 _frames[i];
 
-            frame->matches.emplace_back();
+            frame->inliers.emplace_back(cv::Mat1b(1, frame->keypoints.size(), (uint8_t) 255));
 
-            std::vector<cv::DMatch> & matches =
-                frame->matches.back();
+            frame->kpmatches.emplace_back();
+
+            std::vector<int32_t> & kpmatches =
+                frame->kpmatches.back();
+
+            matches.clear();
+            kpmatches.resize(frame->keypoints.size(), -1);
 
             current_frame->keypoints_matcher->match(&frame->keypoints,
                 frame->descriptors,
                 matches);
 
-            frame->inliers.emplace_back(cv::Mat1b(1, matches.size(),
-                    (uint8_t) 255U));
-
+            for ( const cv::DMatch & m : matches ) {
+              kpmatches[m.queryIdx] = m.trainIdx;
+            }
           }
-
         });
 
 #else
-    for( const c_cte_frame::uptr & frame : _frames ) {
 
-      frame->matches.emplace_back();
+    if ( true ) {
+      std::vector<cv::DMatch> matches;
+      for( const c_cte_frame::uptr & frame : _frames ) {
 
-      std::vector<cv::DMatch> & matches =
-          frame->matches.back();
+        frame->kpmatches.emplace_back();
+        std::vector<int32_t> & kpmatches =
+            frame->kpmatches.back();
 
-      current_frame->keypoints_matcher->match(&frame->keypoints,
-          frame->descriptors,
-          matches);
+        frame->inliers.emplace_back(cv::Mat1b(1, frame->keypoints.size(), (uint8_t) 255));
 
-      frame->inliers.emplace_back(cv::Mat1b(1, matches.size(),
-              (uint8_t) 255U));
+        matches.clear();
+        kpmatches.resize(frame->keypoints.size(), -1);
+        current_frame->keypoints_matcher->match(&frame->keypoints,
+            frame->descriptors,
+            matches);
+
+        for ( const cv::DMatch & m : matches ) {
+          kpmatches[m.queryIdx] = m.trainIdx;
+        }
+      }
     }
 #endif
   }
@@ -785,7 +820,7 @@ bool c_cte_pipeline::process_current_frame()
           F->T;
 
       CF_DEBUG("[%zu] matches=%zu A=(%+g %+g %+g) T=(%+g %+g %+g)", i,
-          F->matches.size(),
+          F->kpmatches.size(),
           F->A[0], F->A[1], F->A[2],
           fT[0], fT[1], fT[2]);
     }
@@ -960,38 +995,31 @@ bool c_cte_pipeline::update_trajectory()
       const cv::Matx33d H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
 
-      const std::vector<cv::DMatch> & Mij =
-          reference_frame->matches[_current_frame_index - _reference_frame_index - 1];
+      const std::vector<int32_t> & matches =
+          reference_frame->kpmatches[_current_frame_index - _reference_frame_index - 1];
 
       cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
       if( is_bad_number(E) ) {
 
-        CF_ERROR("bad E=(%g %g) Mij.size=%zu",
-            E.x, E.y,
-            Mij.size());
+        CF_ERROR("bad E=(%g %g)",
+            E.x, E.y);
 
         return false;
       }
 
-   //   CF_DEBUG(">> Ap=(%g %g %g) Ep=(%g %g)", A(0), A(1), A(2), E.x, E.y);
+      for( size_t k = 0, nk = matches.size(); k < nk; ++k ) {
 
-
-      for( size_t k = 0, nk = Mij.size(); k < nk; ++k ) {
-
-        if( !inliers[0][k] ) {
+        if( !inliers[0][k] || matches[k] < 0 ) {
           continue;
         }
 
-        const cv::DMatch & m =
-            Mij[k];
-
         const cv::Point2f & rp =
-            reference_frame->keypoints[m.queryIdx].pt;
+            reference_frame->keypoints[k].pt;
 
         const cv::Point2f & cp =
-            current_frame->keypoints[m.trainIdx].pt;
+            current_frame->keypoints[matches[k]].pt;
 
         if( is_bad_number(rp) || is_bad_number(cp) ) {
           CF_ERROR("bad cp=(%g %g) rp= (%g %g) at k=%zu", rp.x, rp.y, cp.x, cp.y, k);
@@ -1031,7 +1059,7 @@ bool c_cte_pipeline::update_trajectory()
       const double e =
           std::sqrt(elateral * elateral + eradial * eradial);
 
-      return e ; // _robust_threshold > 0 ? std::log(1 + e * _robust_threshold) : e;
+      return e;
     }
 
     bool compute(const std::vector<double> & p, std::vector<double> & rhs,
@@ -1046,7 +1074,7 @@ bool c_cte_pipeline::update_trajectory()
       const bool fOk =
           compute_rhs(p, [this, &rhs](double er, double elateral, double eradial, cv::Mat1b&, int) {
             const double e = compute_error(er, elateral, eradial);
-            rhs.emplace_back(_robust_threshold > 0 ? std::min(e, _robust_threshold) : e);
+            rhs.emplace_back(_robust_threshold > 0 ? (_robust_threshold*std::log(1+e/_robust_threshold)/M_LN2) : e);
             //rhs.emplace_back(e);
           });
 
@@ -1072,17 +1100,19 @@ bool c_cte_pipeline::update_trajectory()
     {
       int num_outliers = 0;
 
+      thresh *= thresh;
+
       bool fOk =
           compute_rhs(p, [this, thresh, &num_outliers](
               double er, double elateral, double eradial, cv::Mat1b & inliers, int k) {
 
-            const double e =
+              const double e =
                 compute_error(er, elateral, eradial);
 
-            if (e > thresh ) {
-              inliers[0][k] = 0;
-              ++num_outliers;
-            }
+              if (e * e > thresh ) {
+                inliers[0][k] = 0;
+                ++num_outliers;
+              }
           });
 
       return fOk ? num_outliers : -1;
@@ -1100,34 +1130,41 @@ bool c_cte_pipeline::update_trajectory()
 
   };
 
-  c_levmar_solver lm(100, 1e-7);
-  std::vector<double> p;
+  if( _frames.size() > 1 ) {
 
-  const cv::Matx33d & camera_matrix =
-      _camera_options.camera_intrinsics.camera_matrix;
+    c_levmar_solver lm(100, 1e-7);
+    std::vector<double> p;
 
-  const cv::Matx33d camera_matrix_inv =
-      _camera_options.camera_intrinsics.camera_matrix.inv();
+    const cv::Matx33d & camera_matrix =
+        _camera_options.camera_intrinsics.camera_matrix;
 
-  if( _pose_estimation.max_levmar_iterations > 0 ) {
-    lm.set_max_iterations(_pose_estimation.max_levmar_iterations);
-  }
+    const cv::Matx33d camera_matrix_inv =
+        _camera_options.camera_intrinsics.camera_matrix.inv();
 
-  const c_cte_frame::uptr & reference_frame =
-      _frames.front();
-
-  for( const c_cte_frame::uptr & Fi : _frames ) {
-    for( auto & inliers : Fi->inliers ) {
-      inliers.setTo(255);
+    if( _pose_estimation.max_levmar_iterations > 0 ) {
+      lm.set_max_iterations(_pose_estimation.max_levmar_iterations);
     }
-  }
 
-  CF_DEBUG("*");
-
-  for( size_t j = 1, m = _frames.size(); j < m; ++j ) {
+    const c_cte_frame::uptr & reference_frame =
+        _frames.front();
 
     const c_cte_frame::uptr & current_frame =
-        _frames[j];
+        _frames[1];
+
+    for ( auto & inliers : reference_frame->inliers ) {
+      inliers.setTo(255);
+    }
+
+//    for ( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
+//      for ( size_t j = 0, nj = reference_frame->kpmatches.size(); j < nj; ++j ) {
+//        if ( reference_frame->kpmatches[j][k] < 0 ) {
+//          reference_frame->inliers[0][0][k] = 0;
+//        }
+//      }
+//    }
+
+    CF_DEBUG("*");
+
 
     const int max_iterations =
         std::max(1, _pose_estimation.max_iterations);
@@ -1136,11 +1173,11 @@ bool c_cte_pipeline::update_trajectory()
         compute_epipole(camera_matrix,
             (cv::Vec3d) (current_frame->T - reference_frame->T));
 
-//    pack_params(p, current_frame->A - reference_frame->A,
-//        Einitial);
-
     CF_DEBUG("Einitial=(%g %g)", Einitial.x, Einitial.y);
 
+
+//    pack_params(p, current_frame->A - reference_frame->A,
+//        Einitial);
 
     for( int iteration = 0; iteration < max_iterations; ++iteration ) {
 
@@ -1148,13 +1185,15 @@ bool c_cte_pipeline::update_trajectory()
         return false;
       }
 
-      pack_params(p, current_frame->A - reference_frame->A,
-          Einitial);
+      if ( iteration < 2 ) {
+        pack_params(p, current_frame->A - reference_frame->A,
+            Einitial);
+      }
 
       const int iteration_scale =
-          (1 << (max_iterations - iteration));
+          iteration > 0 ? 1 : 10;
 
-      c_levmar_solver_callback callback(this, j, 0,
+      c_levmar_solver_callback callback(this, 1, 0,
           camera_matrix, camera_matrix_inv);
 
       if( _pose_estimation.levmar_epsf >= 0 ) {
@@ -1165,14 +1204,7 @@ bool c_cte_pipeline::update_trajectory()
         lm.set_epsx(_pose_estimation.levmar_epsx * iteration_scale);
       }
 
-      if( _pose_estimation.robust_threshold > 0 ) {
-        if( iteration == 0 ) {
-          callback.set_robust_threshold(_pose_estimation.robust_threshold);
-        }
-        else {
-          callback.set_robust_threshold(0);
-        }
-      }
+      callback.set_robust_threshold(_pose_estimation.robust_threshold);
 
       CF_DEBUG("C lm.run[%d]", iteration);
 
@@ -1187,7 +1219,7 @@ bool c_cte_pipeline::update_trajectory()
           lm.rmse();
 
       const int num_outliers =
-          callback.mark_outliers(p, 5 * rmse);
+          callback.mark_outliers(p, 3 * rmse);
 
       CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d",
           iteration,
@@ -1213,7 +1245,7 @@ bool c_cte_pipeline::update_trajectory()
       unpack_params(p, A, E);
       Tv = T = compute_translation(camera_matrix_inv, E);
 
-      CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) T=(%g %g %g)", j, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y, Tv[0], Tv[1], Tv[2]);
+      CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) T=(%g %g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y, Tv[0], Tv[1], Tv[2]);
 
       CF_DEBUG("<UPDATE>");
 
@@ -1223,7 +1255,7 @@ bool c_cte_pipeline::update_trajectory()
       A = (current_frame->A = A + reference_frame->A);
       Tv = (current_frame->T = T + reference_frame->T);
 
-      CF_DEBUG("[%zu] A=(%g %g %g) T=(%g %g %g)", j, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, Tv[0], Tv[1], Tv[2]);
+      CF_DEBUG("[%zu] A=(%g %g %g) T=(%g %g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, Tv[0], Tv[1], Tv[2]);
       CF_DEBUG("</UPDATE>");
     }
   }

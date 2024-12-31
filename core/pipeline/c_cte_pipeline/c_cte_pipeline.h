@@ -148,7 +148,8 @@ protected:
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
     c_feature2d_matcher::sptr keypoints_matcher;
-    std::vector<std::vector<cv::DMatch>> matches;
+    //std::vector<std::vector<cv::DMatch>> matches;
+    std::vector<std::vector<int32_t>> kpmatches;
     std::vector<cv::Mat1b> inliers;
 
     cv::Vec3d A =

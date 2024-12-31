@@ -19,6 +19,25 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_keypoins_detector_routine,
       "keypoins_detector", "Extract and draw feature2d keypoints on image");
 
+  enum DisplayType {
+    DisplayRichKeypoints,
+    DisplayTestHomography
+  };
+
+  ////////////
+
+  void set_display_type(DisplayType v)
+  {
+    _display_type = v;
+  }
+
+  DisplayType display_type() const
+  {
+    return _display_type;
+  }
+
+  ////////////
+
   c_sparse_feature_detector_options * options()
   {
     return &_options;
@@ -44,6 +63,40 @@ public:
     return _black_background;
   }
 
+  ////
+  // Test Homography
+  void set_rotation(const cv::Vec3f & v)
+  {
+    A = v;
+  }
+
+  const cv::Vec3f& rotation() const
+  {
+    return A;
+  }
+
+  void set_translation(const cv::Vec3f & v)
+  {
+    T = v;
+  }
+
+  const cv::Vec3f& translation() const
+  {
+    return T;
+  }
+
+  void set_focus(float v)
+  {
+    F = v;
+  }
+
+  float focus() const
+  {
+    return F;
+  }
+  ////
+
+
   void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -56,6 +109,18 @@ protected:
   cv::Mat _display;
   int _octave = -1;
   bool _black_background = false;
+
+
+  ////
+  // Test Homography
+  cv::Vec3f A = cv::Vec3f(0, 0, 0);
+  cv::Vec3f T = cv::Vec3f(0, 0, 1);
+  float F = 1000;
+  ////
+
+
+  DisplayType _display_type =
+      DisplayRichKeypoints;
 };
 
 #endif /* __c_keypoins_detector_routine_h__ */

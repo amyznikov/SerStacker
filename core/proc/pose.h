@@ -177,6 +177,20 @@ void invert_pose(const cv::Matx<C, 3, 3> & R, const cv::Vec3d & T,
   *Ti = -(*Ri) * T;
 }
 
+template<class C>
+cv::Matx<C, 3, 4> invert_pose(const cv::Matx<C, 3, 4> & RT)
+{
+  cv::Matx<C, 3, 3> R;
+  cv::Vec<C, 3> T;
+
+  split_pose(RT, R, T);
+
+  R = R.inv();
+  T = -R * T;
+
+  return build_pose(R, T);
+}
+
 
 
 //split_rt_matrix

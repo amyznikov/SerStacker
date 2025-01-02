@@ -85,6 +85,7 @@ protected:
 protected:
   c_hamming_distance_feature2d_matcher_options * options_ = nullptr;
   QNumericBox * max_acceptable_distance_ctl = nullptr;
+  QNumericBox * octavedif_ctl = nullptr;
 };
 
 class QFlannBasedFeature2dMatcherOptions :

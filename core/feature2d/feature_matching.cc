@@ -173,7 +173,7 @@ size_t match_keypoints(const cv::Ptr<c_feature2d_matcher> & keypoints_matcher,
   cv::theRNG().state = 1234567890;
 
   // Train the matcher on reference descriptors
-  if ( !keypoints_matcher->train(&reference_keypoints, reference_descriptors) ) {
+  if ( !keypoints_matcher->train(reference_keypoints, reference_descriptors) ) {
     CF_ERROR("keypoints_matcher->train() fails");
     return 0;
   }
@@ -182,7 +182,7 @@ size_t match_keypoints(const cv::Ptr<c_feature2d_matcher> & keypoints_matcher,
   // Match the descriptors
   std::vector<cv::DMatch> matches;
 
-  if ( !keypoints_matcher->match(&current_keypoints, current_descriptors, matches) ) {
+  if ( !keypoints_matcher->match(current_keypoints, current_descriptors, matches) ) {
     CF_ERROR("keypoints_matcher->match() fails");
     return 0;
   }

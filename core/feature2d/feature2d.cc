@@ -391,7 +391,7 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
       detector_->detect(image, reference_keypoints_, mask);
       descriptor_->compute(image, reference_keypoints_, reference_descriptors_);
     }
-    matcher_->train(&reference_keypoints_, reference_descriptors_);
+    matcher_->train(reference_keypoints_, reference_descriptors_);
     reference_positions_.clear();
   }
 
@@ -419,7 +419,7 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
         descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
       }
 
-      if( !matcher_->match(&current_keypoints_, current_descriptors_, current_matches_) ) {
+      if( !matcher_->match(current_keypoints_, current_descriptors_, current_matches_) ) {
         CF_ERROR("matcher_->match() fails");
         return false;
       }

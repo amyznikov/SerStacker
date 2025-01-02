@@ -64,11 +64,12 @@ struct c_cte_output_options:
 
 struct c_cte_pose_estimation_options
 {
-  int max_iterations = 3;
+  int max_iterations = 30;
   int max_levmar_iterations = 100;
-  double levmar_epsf = 1e-5;
-  double levmar_epsx = 1e-5;
-  double robust_threshold = 5;
+  double levmar_epsf = 1e-15;
+  double levmar_epsx = 1e-15;
+  double robust_threshold = 15;
+  double erfactor = 50;
 };
 
 
@@ -148,8 +149,7 @@ protected:
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
     c_feature2d_matcher::sptr keypoints_matcher;
-    //std::vector<std::vector<cv::DMatch>> matches;
-    std::vector<std::vector<int32_t>> kpmatches;
+    std::vector<std::vector<int32_t>> matches;
     std::vector<cv::Mat1b> inliers;
 
     cv::Vec3d A =

@@ -136,8 +136,8 @@ public:
 
   const cv::Ptr<cv::flann::IndexParams> & index_params() const;
 
-  bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) override;
-  bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+  bool train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray train_descriptors) override;
+  bool match(const std::vector<cv::KeyPoint> & query_keypoints, cv::InputArray query_descriptors,
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:

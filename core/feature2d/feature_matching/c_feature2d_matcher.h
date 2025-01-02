@@ -27,27 +27,38 @@ public:
   typedef cv::Ptr<this_class> sptr;
 
   c_feature2d_matcher(int type = -1)  :
-    type_(type)
+    _type(type)
   {
   }
 
   void set_type(int v)
   {
-    type_ = v;
+    _type = v;
   }
 
   int type() const
   {
-    return type_;
+    return _type;
+  }
+
+  void set_octavedif(int v)
+  {
+    _octavedif = v;
+  }
+
+  int octavedif() const
+  {
+    return _octavedif;
   }
 
   virtual ~c_feature2d_matcher() = default;
-  virtual bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) = 0;
-  virtual bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+  virtual bool train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray train_descriptors) = 0;
+  virtual bool match(const std::vector<cv::KeyPoint> & query_keypoints, cv::InputArray query_descriptors,
       /*out*/ std::vector<cv::DMatch> & output_matches) = 0;
 
 protected:
-  int type_ = -1;
+  int _type = -1;
+  int _octavedif = -1;
 };
 
 

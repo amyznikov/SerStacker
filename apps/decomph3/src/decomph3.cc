@@ -351,6 +351,7 @@ int main(int argc, char *argv[])
   opts.detector.akaze.nOctaveLayers = 4;
   opts.matcher.type = FEATURE2D_MATCHER_HAMMING;
   opts.matcher.hamming.max_acceptable_distance = 24;
+  opts.matcher.hamming.octavedif = -1;
 
   c_sparse_feature_extractor_and_matcher::sptr matcher =
       c_sparse_feature_extractor_and_matcher::create(opts);

@@ -248,7 +248,7 @@ c_triangle_matcher::ptr c_triangle_matcher::create(double eps)
   return ptr(new this_class(eps));
 }
 
-bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray reference_triangles)
+bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray reference_triangles)
 {
   reference_triangles.getMat().copyTo(_reference_triangles);
 
@@ -274,7 +274,7 @@ bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints
   return !_index.empty();
 }
 
-bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & query_keypoints, cv::InputArray query_descriptors,
     /* out */ std::vector<cv::DMatch> & matches)
 {
   const cv::Mat1b q =

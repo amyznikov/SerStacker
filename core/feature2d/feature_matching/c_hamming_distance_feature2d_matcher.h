@@ -14,9 +14,11 @@
 /**
  * Options for c_hamming_distance_feature2d_matcher
  */
-struct c_hamming_distance_feature2d_matcher_options : c_feature2d_matcher_base_options
+struct c_hamming_distance_feature2d_matcher_options :
+    c_feature2d_matcher_base_options
 {
   int max_acceptable_distance = -1; // auto select
+  int octavedif = -1; // ignore by default
 };
 
 /** @brief Sparse feature2d descriptor matcher based on haming distance
@@ -34,21 +36,21 @@ public:
   void set_max_acceptable_distance(int v);
   int max_acceptable_distance() const;
 
-  bool train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors) override;
-  bool match(const std::vector<cv::KeyPoint> * query_keypoints, cv::InputArray query_descriptors,
+  bool train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray train_descriptors) override;
+  bool match(const std::vector<cv::KeyPoint> & query_keypoints, cv::InputArray query_descriptors,
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
   struct index_entry {
-    uint16_t row, norm;
-    index_entry(uint16_t r, uint16_t n) :
-      row(r), norm(n)
+    uint16_t row, norm, octave;
+    index_entry(uint16_t r, uint16_t n, uint16_t oct) :
+      row(r), norm(n), octave(oct)
     {}
   };
 
-  cv::Mat1i train_descriptors_;
-  std::vector<index_entry> index_;
-  int max_acceptable_distance_ = -1; // auto select
+  cv::Mat1i _train_descriptors;
+  std::vector<index_entry> _index;
+  int _max_acceptable_distance = -1; // auto select
 };
 
 

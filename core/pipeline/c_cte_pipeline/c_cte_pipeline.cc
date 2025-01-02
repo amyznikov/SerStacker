@@ -235,6 +235,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_cte_pipeline::get_contro
       PIPELINE_CTL(ctrls, _pose_estimation.levmar_epsf, "levmar_epsf", "levmar epsf");
       PIPELINE_CTL(ctrls, _pose_estimation.levmar_epsx, "levmar_epsx", "levmar epsx");
       PIPELINE_CTL(ctrls, _pose_estimation.robust_threshold, "robust_threshold", "robust_threshold");
+      PIPELINE_CTL(ctrls, _pose_estimation.erfactor, "erfactor", "erfactor");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 
@@ -295,6 +296,7 @@ bool c_cte_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _pose_estimation, levmar_epsf);
     SERIALIZE_OPTION(section, save, _pose_estimation, levmar_epsx);
     SERIALIZE_OPTION(section, save, _pose_estimation, robust_threshold);
+    SERIALIZE_OPTION(section, save, _pose_estimation, erfactor);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -456,7 +458,7 @@ bool c_cte_pipeline::create_display_image(size_t current_frame_index, cv::Output
           current_frame->keypoints;
 
       const std::vector<int32_t> & matches =
-          reference_frame->kpmatches[current_frame_index - 1];
+          reference_frame->matches[current_frame_index - 1];
 
       const cv::Mat1b & inliers =
           reference_frame->inliers[current_frame_index - 1];
@@ -510,6 +512,17 @@ bool c_cte_pipeline::create_display_image(size_t current_frame_index, cv::Output
             CV_RGB(16, 160, 16),
             1,
             cv::LINE_4);
+
+        if ( !inliers[0][k] ) {
+
+          cv::line(display10, rp, cp, color, 1,
+              cv::LINE_8, 0);
+
+          cv::line(display11, rp, cpw, color, 1,
+              cv::LINE_8, 0);
+
+        }
+
       }
     }
 
@@ -537,8 +550,8 @@ bool c_cte_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
 
   lock_guard lock(mutex());
 
-  if( _frames.size() < 2 || !create_display_image(1, display_frame) ) {
-    CF_DEBUG("H");
+  //if( _frames.size() < 2 || !create_display_image(1, display_frame) )
+  {
     lastDisplayImage.copyTo(display_frame);
   }
 
@@ -717,34 +730,29 @@ bool c_cte_pipeline::process_current_frame()
     return false;
   }
 
-  current_frame->keypoints_matcher->train(&current_frame->keypoints,
+  current_frame->keypoints_matcher->train(current_frame->keypoints,
       current_frame->descriptors);
 
 
   if( !_frames.empty() ) {
 
-#if HAVE_TBB
-    tbb::parallel_for(tbb_range(0, _frames.size()),
-        [this, &current_frame](const tbb_range & range) {
+    static const auto match_frames =
+       [](c_cte_pipeline * cte, const c_cte_frame::uptr & current_frame, int rbeg, int rend) {
 
           std::vector<cv::DMatch> matches;
 
-          for ( int i = range.begin(); i < range.end(); ++i ) {
+          for ( int i = rbeg; i < rend; ++i ) {
 
-            const c_cte_frame::uptr & frame =
-                _frames[i];
-
+            const c_cte_frame::uptr & frame = cte->_frames[i];
             frame->inliers.emplace_back(cv::Mat1b(1, frame->keypoints.size(), (uint8_t) 255));
 
-            frame->kpmatches.emplace_back();
-
-            std::vector<int32_t> & kpmatches =
-                frame->kpmatches.back();
+            frame->matches.emplace_back();
+            std::vector<int32_t> & kpmatches = frame->matches.back();
 
             matches.clear();
             kpmatches.resize(frame->keypoints.size(), -1);
 
-            current_frame->keypoints_matcher->match(&frame->keypoints,
+            current_frame->keypoints_matcher->match(frame->keypoints,
                 frame->descriptors,
                 matches);
 
@@ -752,31 +760,17 @@ bool c_cte_pipeline::process_current_frame()
               kpmatches[m.queryIdx] = m.trainIdx;
             }
           }
+
+        };
+
+#if HAVE_TBB
+    tbb::parallel_for(tbb_range(0, _frames.size()),
+        [this, &current_frame](const tbb_range & range) {
+          match_frames(this, current_frame, range.begin(), range.end());
         });
 
 #else
-
-    if ( true ) {
-      std::vector<cv::DMatch> matches;
-      for( const c_cte_frame::uptr & frame : _frames ) {
-
-        frame->kpmatches.emplace_back();
-        std::vector<int32_t> & kpmatches =
-            frame->kpmatches.back();
-
-        frame->inliers.emplace_back(cv::Mat1b(1, frame->keypoints.size(), (uint8_t) 255));
-
-        matches.clear();
-        kpmatches.resize(frame->keypoints.size(), -1);
-        current_frame->keypoints_matcher->match(&frame->keypoints,
-            frame->descriptors,
-            matches);
-
-        for ( const cv::DMatch & m : matches ) {
-          kpmatches[m.queryIdx] = m.trainIdx;
-        }
-      }
-    }
+    match_frames(this, current_frame, 0, _frames.size());
 #endif
   }
 
@@ -820,7 +814,7 @@ bool c_cte_pipeline::process_current_frame()
           F->T;
 
       CF_DEBUG("[%zu] matches=%zu A=(%+g %+g %+g) T=(%+g %+g %+g)", i,
-          F->kpmatches.size(),
+          F->matches.size(),
           F->A[0], F->A[1], F->A[2],
           fT[0], fT[1], fT[2]);
     }
@@ -942,6 +936,7 @@ bool c_cte_pipeline::update_trajectory()
     size_t _reference_frame_index;
     cv::Matx33d _camera_matrix, _camera_matrix_inv;
     double _robust_threshold = 0; // (double) std::numeric_limits<float>::max();
+    double _erfactor = 1.0;
 
   public:
 
@@ -963,6 +958,16 @@ bool c_cte_pipeline::update_trajectory()
     double robust_threshold() const
     {
       return _robust_threshold;
+    }
+
+    void set_erfactor(double v)
+    {
+      _erfactor = v;
+    }
+
+    double erfactor() const
+    {
+      return _erfactor;
     }
 
     bool allow_tbb() const final
@@ -996,7 +1001,7 @@ bool c_cte_pipeline::update_trajectory()
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
 
       const std::vector<int32_t> & matches =
-          reference_frame->kpmatches[_current_frame_index - _reference_frame_index - 1];
+          reference_frame->matches[_current_frame_index - _reference_frame_index - 1];
 
       cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
@@ -1053,11 +1058,11 @@ bool c_cte_pipeline::update_trajectory()
     double compute_error(double er, double elateral, double eradial) const
     {
       if( eradial > 0 ) {
-        eradial /= (1 + er);
+        eradial /= (1. + (er / _erfactor) * (er / _erfactor));
       }
 
       const double e =
-          std::sqrt(elateral * elateral + eradial * eradial);
+          std::sqrt(elateral * elateral + eradial * eradial + er * er * 1e-6);
 
       return e;
     }
@@ -1155,13 +1160,29 @@ bool c_cte_pipeline::update_trajectory()
       inliers.setTo(255);
     }
 
-//    for ( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
-//      for ( size_t j = 0, nj = reference_frame->kpmatches.size(); j < nj; ++j ) {
-//        if ( reference_frame->kpmatches[j][k] < 0 ) {
-//          reference_frame->inliers[0][0][k] = 0;
-//        }
-//      }
-//    }
+    if ( _frames.size() > 2 ) {
+
+      const size_t jmax =
+          _frames.size() - 1;
+
+      for ( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
+
+        int m =
+            reference_frame->matches[0][k];
+
+        if( m >= 0 ) {
+          for( size_t j = 1; j < jmax; ++j ) {
+            if( (m = _frames[j]->matches[0][m]) < 0 ) {
+              break;
+            }
+          }
+
+          if( m < 0 || m != reference_frame->matches[jmax - 1][k] ) {
+            reference_frame->inliers[0][0][k] = 0;
+          }
+        }
+      }
+    }
 
     CF_DEBUG("*");
 
@@ -1170,13 +1191,15 @@ bool c_cte_pipeline::update_trajectory()
         std::max(1, _pose_estimation.max_iterations);
 
     const cv::Point2d Einitial =
-        compute_epipole(camera_matrix,
-            (cv::Vec3d) (current_frame->T - reference_frame->T));
+//        compute_epipole(camera_matrix,
+//            (cv::Vec3d) (current_frame->T - reference_frame->T));
+          compute_epipole(camera_matrix,
+              cv::Vec3d(0,0,1));
 
     CF_DEBUG("Einitial=(%g %g)", Einitial.x, Einitial.y);
 
 
-//    pack_params(p, current_frame->A - reference_frame->A,
+//    pack_params(p, cv::Vec3d(0,0,0),
 //        Einitial);
 
     for( int iteration = 0; iteration < max_iterations; ++iteration ) {
@@ -1185,13 +1208,14 @@ bool c_cte_pipeline::update_trajectory()
         return false;
       }
 
-      if ( iteration < 2 ) {
-        pack_params(p, current_frame->A - reference_frame->A,
-            Einitial);
+      //if ( iteration < 2 )
+      {
+                pack_params(p, cv::Vec3d(0,0,0),
+                    Einitial);
       }
 
-      const int iteration_scale =
-          iteration > 0 ? 1 : 10;
+      const int iteration_scale = 1;
+          // iteration > 0 ? 1 : 10;
 
       c_levmar_solver_callback callback(this, 1, 0,
           camera_matrix, camera_matrix_inv);
@@ -1204,7 +1228,12 @@ bool c_cte_pipeline::update_trajectory()
         lm.set_epsx(_pose_estimation.levmar_epsx * iteration_scale);
       }
 
+      if( _pose_estimation.erfactor > 0 ) {
+        callback.set_erfactor(_pose_estimation.erfactor);
+      }
+
       callback.set_robust_threshold(_pose_estimation.robust_threshold);
+
 
       CF_DEBUG("C lm.run[%d]", iteration);
 
@@ -1215,20 +1244,32 @@ bool c_cte_pipeline::update_trajectory()
         return false;
       }
 
-      const double rmse =
-          lm.rmse();
+      if ( 1 ) {
 
-      const int num_outliers =
-          callback.mark_outliers(p, 3 * rmse);
+        cv::Vec3d A;
+        cv::Point2d E;
 
-      CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d",
-          iteration,
-          num_iterations,
-          rmse,
-          num_outliers);
+        const double rmse =
+            lm.rmse();
 
-      if ( num_outliers < 1 ) {
-        break;
+        //reference_frame->inliers[0].setTo(255);
+
+        const int num_outliers =
+            callback.mark_outliers(p, 3 * rmse);
+
+        unpack_params(p, A, E);
+
+        CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g)",
+            iteration,
+            num_iterations,
+            rmse,
+            num_outliers,
+            A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI,
+            E.x, E.y);
+
+        if ( num_outliers < 1 ) {
+          break;
+        }
       }
     }
 
@@ -1238,8 +1279,6 @@ bool c_cte_pipeline::update_trajectory()
       cv::Point2d E;
       UVec3d T;
 
-      lock_guard lock(mutex());
-
       CF_DEBUG("<EXTRACT>");
 
       unpack_params(p, A, E);
@@ -1248,6 +1287,8 @@ bool c_cte_pipeline::update_trajectory()
       CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) T=(%g %g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y, Tv[0], Tv[1], Tv[2]);
 
       CF_DEBUG("<UPDATE>");
+
+      lock_guard lock(mutex());
 
       current_frame->H =
           camera_matrix * build_rotation(A) * camera_matrix_inv;

@@ -262,6 +262,7 @@ int main(int argc, char *argv[])
   //opts.feature_registration.sparse_feature_extractor_and_matcher.descriptor.type;
   opts.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
   opts.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 32;
+  opts.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.octavedif = -1;
 
   // TBF
   opts.ecc.enabled = true;

@@ -1014,6 +1014,7 @@ bool load_settings(c_config_setting settings, c_flann_index_options * options)
 bool save_settings(c_config_setting settings, const c_hamming_distance_feature2d_matcher_options & args)
 {
   SAVE_SETINGS(max_acceptable_distance);
+  SAVE_SETINGS(octavedif);
   return true;
 }
 
@@ -1021,6 +1022,7 @@ bool load_settings(c_config_setting settings, c_hamming_distance_feature2d_match
 {
   BEGIN_LOAD_OPTIONS(settings)
   LOAD_OPTIONS(settings, *options, max_acceptable_distance);
+  LOAD_OPTIONS(settings, *options, octavedif);
   END_LOAD_OPTIONS(settings)
 
   return true;

@@ -53,6 +53,8 @@ c_virtual_stereo_pipeline::c_virtual_stereo_pipeline(const std::string & name,
   feature2d_options_.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
   feature2d_options_.matcher.type = FEATURE2D_MATCHER_HAMMING;
   feature2d_options_.matcher.hamming.max_acceptable_distance = 20;
+  feature2d_options_.matcher.hamming.octavedif = -1;
+
 
   //pyrflowlk_options_.detector.type = SPARSE_FEATURE_DETECTOR_FAST;
 }

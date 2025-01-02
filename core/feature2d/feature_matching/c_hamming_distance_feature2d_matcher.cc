@@ -20,8 +20,8 @@ c_hamming_distance_feature2d_matcher::ptr create_sparse_feature_matcher(
   c_hamming_distance_feature2d_matcher::ptr obj(
       new c_hamming_distance_feature2d_matcher());
 
-  obj->set_max_acceptable_distance(
-      options.max_acceptable_distance);
+  obj->set_max_acceptable_distance(options.max_acceptable_distance);
+  obj->set_octavedif(options.octavedif);
 
   return obj;
 }
@@ -68,17 +68,17 @@ static inline unsigned int hamming_distance(const int32_t a[], const int32_t b[]
 
 void c_hamming_distance_feature2d_matcher::set_max_acceptable_distance(int v)
 {
-  max_acceptable_distance_ = v;
+  _max_acceptable_distance = v;
 }
 
 int c_hamming_distance_feature2d_matcher::max_acceptable_distance() const
 {
-  return max_acceptable_distance_;
+  return _max_acceptable_distance;
 }
 
-bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint> * train_keypoints, cv::InputArray train_descriptors)
+bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray train_descriptors)
 {
-  index_.clear();
+  _index.clear();
 
   if ( train_descriptors.type() != CV_8U ) {
     CF_ERROR("train_descriptors.type()=%d not match to expected descriptor type CV_8U",
@@ -86,32 +86,36 @@ bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint>
     return false;
   }
 
+  if( train_keypoints.size() != train_descriptors.rows() ) {
+    CF_ERROR("train_keypoints.size=%zu not equal to train_descriptors.rows()=%d",
+        train_keypoints.size(), train_descriptors.rows());
+    return false;
+  }
+
   if ( !train_descriptors.empty() ) {
 
     convert_descriptors(train_descriptors.getMat(),
-        train_descriptors_);
+        _train_descriptors);
 
     const int nrows =
-        train_descriptors_.rows;
+        _train_descriptors.rows;
 
     const int ncols =
-        train_descriptors_.cols;
+        _train_descriptors.cols;
 
     for ( int i = 0; i < nrows; ++i ) {
 
-      index_.emplace_back(i,
-          hamming_norm(train_descriptors_[i],
-              ncols));
-
+      _index.emplace_back(i,
+          hamming_norm(_train_descriptors[i], ncols),
+          train_keypoints[i].octave);
     }
 
-    std::sort(index_.begin(), index_.end(),
+    std::sort(_index.begin(), _index.end(),
         [](const index_entry & prev, const index_entry & next) {
           return prev.norm < next.norm;
         });
 
-
-
+#if 0
     if ( false ) {
 
       FILE * fp = fopen("train.txt", "w");
@@ -126,13 +130,13 @@ bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint>
               return buf;
             };
 
-        for ( uint i = 0, n = index_.size(); i < n; ++i ) {
+        for ( uint i = 0, n = _index.size(); i < n; ++i ) {
 
           const index_entry & e =
-              index_[i];
+              _index[i];
 
           const int32_t * a =
-              train_descriptors_[e.row];
+              _train_descriptors[e.row];
 
           fprintf(fp, "%9u   ", e.norm);
           for ( int j = 0; j < ncols; ++j ) {
@@ -144,35 +148,41 @@ bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint>
         fclose(fp);
       }
     }
+#endif
   }
 
 
   return true;
 }
 
-bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint> * _query_keypoints, cv::InputArray _query_descriptors,
+bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint> & _query_keypoints, cv::InputArray _query_descriptors,
     std::vector<cv::DMatch> & matches)
 {
   const int query_descriptor_size_in_bytes =
       _query_descriptors.cols();
 
-  if ( ((query_descriptor_size_in_bytes + 3) / 4) != train_descriptors_.cols ) {
+  if ( ((query_descriptor_size_in_bytes + 3) / 4) != _train_descriptors.cols ) {
     CF_ERROR("train and query descriptor sizes not match: "
         "train.cols=%d (query.cols+3)/4=%d",
-        train_descriptors_.cols,
+        _train_descriptors.cols,
         (query_descriptor_size_in_bytes + 3) / 4);
     return false;
   }
 
+  if( _query_keypoints.size() != _query_descriptors.rows() ) {
+    CF_ERROR("_query_keypoints.size=%zu not equal to query_descriptors.rows()=%d",
+        _query_keypoints.size(), _query_descriptors.rows());
+    return false;
+  }
 
-  if ( !train_descriptors_.empty() ) {
+  if ( !_train_descriptors.empty() ) {
 
     const unsigned int nc =
-        train_descriptors_.cols;
+        _train_descriptors.cols;
 
     const int max_acceptable_distance =
-        this->max_acceptable_distance_ >= 0 ?
-            this->max_acceptable_distance_ :
+        this->_max_acceptable_distance >= 0 ?
+            this->_max_acceptable_distance :
             query_descriptor_size_in_bytes / 2;
 
     cv::Mat1i query_descriptors(_query_descriptors.rows(),
@@ -193,6 +203,9 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
 
     for ( int i = 0; i < query_descriptors.rows; ++i ) {
 
+      const cv::KeyPoint & query_keypoint =
+          _query_keypoints[i];
+
       const int32_t * query_descriptor =
           query_descriptors[i];
 
@@ -207,13 +220,13 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
           query_norm + max_acceptable_distance;
 
       std::vector<index_entry>::const_iterator curpos =
-          std::lower_bound(index_.begin(), index_.end(),
+          std::lower_bound(_index.begin(), _index.end(),
               search_range_min,
               [](const index_entry & e, int value) {
                 return e.norm < value;
               });
 
-      if ( curpos == index_.end() || curpos->norm > search_range_max ) {
+      if ( curpos == _index.end() || curpos->norm > search_range_max ) {
         continue;
       }
 
@@ -222,26 +235,32 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
 
       int best_distance =
           hamming_distance(query_descriptor,
-              train_descriptors_[curpos->row],
+              _train_descriptors[curpos->row],
               nc);
 
       other_candidates.clear();
 
-      while ( ++curpos != index_.end() && curpos->norm <= search_range_max ) {
+      while ( ++curpos != _index.end() && curpos->norm <= search_range_max ) {
+
+        if( _octavedif >= 0 && std::abs((int) curpos->octave - (int) query_keypoint.octave) > _octavedif ) {
+          continue;
+        }
 
         const int32_t * train_descriptor =
-            train_descriptors_[curpos->row];
+            _train_descriptors[curpos->row];
 
         const int distance =
             hamming_distance(query_descriptor,
                 train_descriptor,
                 nc);
 
-        if ( distance <= best_distance ) {
-          other_candidates.emplace_back(std::make_pair(best_distance, best_pos));
-          best_pos = curpos;
-          best_distance = distance;
+        if ( distance > best_distance ) {
+          continue;
         }
+
+        other_candidates.emplace_back(std::make_pair(best_distance, best_pos));
+        best_pos = curpos;
+        best_distance = distance;
       }
 
       if ( best_distance <= max_acceptable_distance ) {

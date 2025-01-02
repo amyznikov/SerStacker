@@ -487,8 +487,31 @@ QHammingDistanceFeature2dMatcherOptions::QHammingDistanceFeature2dMatcherOptions
               options_->max_acceptable_distance = value;
               Q_EMIT parameterChanged();
             }
+          },
+          [this](int * value) {
+            if ( options_  ) {
+              * value = options_->max_acceptable_distance;
+              return true;
+            }
+            return false;
           });
 
+  octavedif_ctl =
+      add_numeric_box<int>("octavedif",
+          "",
+          [this](int value) {
+            if ( options_ && options_->octavedif != value ) {
+              options_->octavedif = value;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * value) {
+            if ( options_ ) {
+              * value = options_->octavedif;
+              return true;
+            }
+            return false;
+          });
 }
 
 void QHammingDistanceFeature2dMatcherOptions::set_feature_matcher_options(c_hamming_distance_feature2d_matcher_options * options)
@@ -508,7 +531,7 @@ void QHammingDistanceFeature2dMatcherOptions::onupdatecontrols()
     setEnabled(false);
   }
   else {
-    max_acceptable_distance_ctl->setValue(options_->max_acceptable_distance);
+    Base::onupdatecontrols();
     setEnabled(true);
   }
 }

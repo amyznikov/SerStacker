@@ -41,10 +41,14 @@ public:
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
-  struct index_entry {
-    uint16_t row, norm, octave;
-    index_entry(uint16_t r, uint16_t n, uint16_t oct) :
-      row(r), norm(n), octave(oct)
+  struct index_entry
+  {
+    uint16_t row;
+    uint16_t norm;
+    int octave;
+    float responce;
+    index_entry(uint16_t r, uint16_t n, int oct, float resp) :
+      row(r), norm(n), octave(oct), responce(resp)
     {}
   };
 

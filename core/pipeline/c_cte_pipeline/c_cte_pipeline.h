@@ -155,8 +155,7 @@ protected:
     cv::Vec3d A =
         cv::Vec3d(0, 0, 0);
 
-    UVec3d T =
-        UVec3d (0, 0);
+    cv::Point2d E;
 
     cv::Matx33f H =
         cv::Matx33f::eye();

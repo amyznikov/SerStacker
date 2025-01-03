@@ -382,13 +382,15 @@ bool c_cte_pipeline::create_display_image(size_t current_frame_index, cv::Output
     const cv::Size display_size(frame_size.width * 2,
         frame_size.height * 3);
 
-    const cv::Vec3d dT =
-        current_frame->T - reference_frame->T;
+//    const cv::Vec3d dT =
+//        current_frame->T - reference_frame->T;
+//
+//    const cv::Point2d E =
+//        compute_epipole(_camera_options.camera_intrinsics.camera_matrix,
+//            dT);
 
-    const cv::Point2d E =
-        compute_epipole(_camera_options.camera_intrinsics.camera_matrix,
-            dT);
-
+    const cv::Point2d & E =
+        current_frame->E;
 
     const cv::Rect roi[3][2] = {
 
@@ -445,9 +447,6 @@ bool c_cte_pipeline::create_display_image(size_t current_frame_index, cv::Output
         display00, 0.5,
         0,
         display11);
-
-    //    draw_keypoints(front_image_display,
-    //        reference_frame->keypoints);
 
     if( true ) {
 
@@ -730,9 +729,17 @@ bool c_cte_pipeline::process_current_frame()
     return false;
   }
 
+  current_frame->E.x =
+      _current_image.cols / 2;
+
+  current_frame->E.y =
+      _current_image.rows / 2;
+
   current_frame->keypoints_matcher->train(current_frame->keypoints,
       current_frame->descriptors);
 
+  _current_image.copyTo(current_frame->image);
+  _current_mask.copyTo(current_frame->mask);
 
   if( !_frames.empty() ) {
 
@@ -763,7 +770,7 @@ bool c_cte_pipeline::process_current_frame()
 
         };
 
-#if HAVE_TBB
+#if 0 // HAVE_TBB
     tbb::parallel_for(tbb_range(0, _frames.size()),
         [this, &current_frame](const tbb_range & range) {
           match_frames(this, current_frame, range.begin(), range.end());
@@ -776,48 +783,15 @@ bool c_cte_pipeline::process_current_frame()
 
 
   if ( true ) {
-
     lock_guard lock(mutex());
-
-    if( !_frames.empty() ) {
-
-      const c_cte_frame::uptr & back_frame =
-          _frames.back();
-
-      current_frame->A =
-          back_frame->A;
-
-      current_frame->T =
-          back_frame->T; // + cv::Vec3d(0, 0, 1);
-    }
-
-    _current_image.copyTo(current_frame->image);
-    _current_mask.copyTo(current_frame->mask);
     _frames.emplace_back(std::move(current_frame));
   }
-
 
   const size_t max_context_size =
       std::max((size_t) 2, std::min((size_t) 128,
           _context_options.max_context_size));
 
   if( _frames.size() >= max_context_size ) {
-
-    CF_DEBUG("[%d] _frames.size()=%zu / %zu", _input_sequence->current_pos() - 1,  _frames.size(), max_context_size);
-
-    for( size_t i = 0; i < _frames.size(); ++i ) {
-
-      const c_cte_frame::uptr & F =
-          _frames[i];
-
-      const cv::Vec3d fT =
-          F->T;
-
-      CF_DEBUG("[%zu] matches=%zu A=(%+g %+g %+g) T=(%+g %+g %+g)", i,
-          F->matches.size(),
-          F->A[0], F->A[1], F->A[2],
-          fT[0], fT[1], fT[2]);
-    }
 
     CF_DEBUG("[%d] C update_trajectory() _frames.size()=%zu", _input_sequence->current_pos() - 1, _frames.size());
     if ( !update_trajectory() ) {
@@ -1135,171 +1109,153 @@ bool c_cte_pipeline::update_trajectory()
 
   };
 
-  if( _frames.size() > 1 ) {
+  if( _frames.size() < 2 ) {
+    return true;
+  }
 
-    c_levmar_solver lm(100, 1e-7);
-    std::vector<double> p;
+  c_levmar_solver lm(100, 1e-7);
+  std::vector<double> p;
+  cv::Vec3d A;
+  cv::Point2d E;
 
-    const cv::Matx33d & camera_matrix =
-        _camera_options.camera_intrinsics.camera_matrix;
+  const cv::Matx33d & camera_matrix =
+      _camera_options.camera_intrinsics.camera_matrix;
 
-    const cv::Matx33d camera_matrix_inv =
-        _camera_options.camera_intrinsics.camera_matrix.inv();
+  const cv::Matx33d camera_matrix_inv =
+      _camera_options.camera_intrinsics.camera_matrix.inv();
 
-    if( _pose_estimation.max_levmar_iterations > 0 ) {
-      lm.set_max_iterations(_pose_estimation.max_levmar_iterations);
-    }
+  if( _pose_estimation.max_levmar_iterations > 0 ) {
+    lm.set_max_iterations(_pose_estimation.max_levmar_iterations);
+  }
 
-    const c_cte_frame::uptr & reference_frame =
+  const c_cte_frame::uptr & reference_frame =
         _frames.front();
 
-    const c_cte_frame::uptr & current_frame =
-        _frames[1];
+  const c_cte_frame::uptr & current_frame =
+      _frames[1];
 
-    for ( auto & inliers : reference_frame->inliers ) {
-      inliers.setTo(255);
-    }
+  for( auto & inliers : reference_frame->inliers ) {
+    inliers.setTo(255);
+  }
 
-    if ( _frames.size() > 2 ) {
+  if( _frames.size() > 2 ) {
 
-      const size_t jmax =
-          _frames.size() - 1;
+    const size_t jmax =
+        _frames.size() - 1;
 
-      for ( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
+    for( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
 
-        int m =
-            reference_frame->matches[0][k];
+      int m =
+          reference_frame->matches[0][k];
 
-        if( m >= 0 ) {
-          for( size_t j = 1; j < jmax; ++j ) {
-            if( (m = _frames[j]->matches[0][m]) < 0 ) {
-              break;
-            }
-          }
-
-          if( m < 0 || m != reference_frame->matches[jmax - 1][k] ) {
-            reference_frame->inliers[0][0][k] = 0;
+      if( m >= 0 ) {
+        for( size_t j = 1; j < jmax; ++j ) {
+          if( (m = _frames[j]->matches[0][m]) < 0 ) {
+            break;
           }
         }
-      }
-    }
 
-    CF_DEBUG("*");
-
-
-    const int max_iterations =
-        std::max(1, _pose_estimation.max_iterations);
-
-    const cv::Point2d Einitial =
-//        compute_epipole(camera_matrix,
-//            (cv::Vec3d) (current_frame->T - reference_frame->T));
-          compute_epipole(camera_matrix,
-              cv::Vec3d(0,0,1));
-
-    CF_DEBUG("Einitial=(%g %g)", Einitial.x, Einitial.y);
-
-
-//    pack_params(p, cv::Vec3d(0,0,0),
-//        Einitial);
-
-    for( int iteration = 0; iteration < max_iterations; ++iteration ) {
-
-      if( canceled() ) {
-        return false;
-      }
-
-      //if ( iteration < 2 )
-      {
-                pack_params(p, cv::Vec3d(0,0,0),
-                    Einitial);
-      }
-
-      const int iteration_scale = 1;
-          // iteration > 0 ? 1 : 10;
-
-      c_levmar_solver_callback callback(this, 1, 0,
-          camera_matrix, camera_matrix_inv);
-
-      if( _pose_estimation.levmar_epsf >= 0 ) {
-        lm.set_epsfn(_pose_estimation.levmar_epsf * iteration_scale);
-      }
-
-      if( _pose_estimation.levmar_epsx >= 0 ) {
-        lm.set_epsx(_pose_estimation.levmar_epsx * iteration_scale);
-      }
-
-      if( _pose_estimation.erfactor > 0 ) {
-        callback.set_erfactor(_pose_estimation.erfactor);
-      }
-
-      callback.set_robust_threshold(_pose_estimation.robust_threshold);
-
-
-      CF_DEBUG("C lm.run[%d]", iteration);
-
-      const int num_iterations =
-          lm.run(callback, p);
-
-      if( canceled() ) {
-        return false;
-      }
-
-      if ( 1 ) {
-
-        cv::Vec3d A;
-        cv::Point2d E;
-
-        const double rmse =
-            lm.rmse();
-
-        //reference_frame->inliers[0].setTo(255);
-
-        const int num_outliers =
-            callback.mark_outliers(p, 3 * rmse);
-
-        unpack_params(p, A, E);
-
-        CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g)",
-            iteration,
-            num_iterations,
-            rmse,
-            num_outliers,
-            A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI,
-            E.x, E.y);
-
-        if ( num_outliers < 1 ) {
-          break;
+        if( m < 0 || m != reference_frame->matches[jmax - 1][k] ) {
+          reference_frame->inliers[0][0][k] = 0;
         }
       }
-    }
-
-    if( true ) {
-
-      cv::Vec3d A, Tv;
-      cv::Point2d E;
-      UVec3d T;
-
-      CF_DEBUG("<EXTRACT>");
-
-      unpack_params(p, A, E);
-      Tv = T = compute_translation(camera_matrix_inv, E);
-
-      CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) T=(%g %g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y, Tv[0], Tv[1], Tv[2]);
-
-      CF_DEBUG("<UPDATE>");
-
-      lock_guard lock(mutex());
-
-      current_frame->H =
-          camera_matrix * build_rotation(A) * camera_matrix_inv;
-
-      A = (current_frame->A = A + reference_frame->A);
-      Tv = (current_frame->T = T + reference_frame->T);
-
-      CF_DEBUG("[%zu] A=(%g %g %g) T=(%g %g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, Tv[0], Tv[1], Tv[2]);
-      CF_DEBUG("</UPDATE>");
     }
   }
+
+
+  CF_DEBUG("*");
+
+  const int max_iterations =
+      std::max(1, _pose_estimation.max_iterations);
+
+  const cv::Vec3d & Ainitial =
+      current_frame->A;
+
+  const cv::Point2d & Einitial =
+      current_frame->E;
+
+  CF_DEBUG("INITIAL A=(%+g %+g %+g) E=(%+g %+g)",
+      Ainitial(0) * 180 / CV_PI, Ainitial(1) * 180 / CV_PI, Ainitial(2) * 180 / CV_PI,
+      Einitial.x, Einitial.y);
+
+  for( int iteration = 0; iteration < max_iterations; ++iteration ) {
+
+    if( canceled() ) {
+      return false;
+    }
+
+    //if ( iteration < 2 )
+    {
+      pack_params(p, Ainitial, Einitial);
+    }
+
+    c_levmar_solver_callback callback(this, 1, 0,
+        camera_matrix, camera_matrix_inv);
+
+    if( _pose_estimation.levmar_epsf >= 0 ) {
+      lm.set_epsfn(_pose_estimation.levmar_epsf);
+    }
+
+    if( _pose_estimation.levmar_epsx >= 0 ) {
+      lm.set_epsx(_pose_estimation.levmar_epsx);
+    }
+
+    if( _pose_estimation.erfactor > 0 ) {
+      callback.set_erfactor(_pose_estimation.erfactor);
+    }
+
+    callback.set_robust_threshold(_pose_estimation.robust_threshold);
+
+    CF_DEBUG("C lm.run[%d]", iteration);
+
+    const int num_iterations =
+        lm.run(callback, p);
+
+    if( canceled() ) {
+      return false;
+    }
+
+    const double rmse =
+        lm.rmse();
+
+    const int num_outliers =
+        callback.mark_outliers(p, 3 * rmse);
+
+
+    if( false ) {
+      unpack_params(p, A, E);
+      CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g)",
+          iteration,
+          num_iterations,
+          rmse,
+          num_outliers,
+          A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI,
+          E.x, E.y);
+    }
+
+    if( num_outliers < 1 ) {
+      break;
+    }
+
+  }
+
+  if( true ) {
+
+    unpack_params(p, A, E);
+
+    lock_guard lock(mutex());
+
+    current_frame->A = A;
+    current_frame->E = E;
+
+    current_frame->H =
+        camera_matrix * build_rotation(A) * camera_matrix_inv;
+
+    CF_DEBUG("<UPDATE>");
+    CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y);
+    CF_DEBUG("</UPDATE>");
+  }
+
 
   CF_DEBUG("*");
 

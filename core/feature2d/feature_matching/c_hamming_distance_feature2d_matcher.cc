@@ -103,11 +103,14 @@ bool c_hamming_distance_feature2d_matcher::train(const std::vector<cv::KeyPoint>
     const int ncols =
         _train_descriptors.cols;
 
+    _index.reserve(nrows);
+
     for ( int i = 0; i < nrows; ++i ) {
 
       _index.emplace_back(i,
           hamming_norm(_train_descriptors[i], ncols),
-          train_keypoints[i].octave);
+          train_keypoints[i].octave,
+          train_keypoints[i].response);
     }
 
     std::sort(_index.begin(), _index.end(),
@@ -180,9 +183,8 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
     const unsigned int nc =
         _train_descriptors.cols;
 
-    const int max_acceptable_distance =
-        this->_max_acceptable_distance >= 0 ?
-            this->_max_acceptable_distance :
+    const unsigned int max_acceptable_distance =
+        this->_max_acceptable_distance >= 0 ? (unsigned int) this->_max_acceptable_distance :
             query_descriptor_size_in_bytes / 2;
 
     cv::Mat1i query_descriptors(_query_descriptors.rows(),
@@ -195,11 +197,10 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
     matches.clear();
     matches.reserve(query_descriptors.rows);
 
-
     using match_candidate =
         std::pair< int /*distance*/, std::vector<index_entry>::const_iterator /*pos*/>;
 
-    std::vector<match_candidate> other_candidates;
+    std::vector<match_candidate> candidates;
 
     for ( int i = 0; i < query_descriptors.rows; ++i ) {
 
@@ -209,20 +210,21 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
       const int32_t * query_descriptor =
           query_descriptors[i];
 
-      const int query_norm =
+      const unsigned int query_norm =
           hamming_norm(query_descriptor,
               nc);
 
-      const int search_range_min =
-          std::max(0, query_norm - max_acceptable_distance);
+      const unsigned int search_range_min =
+          query_norm <= max_acceptable_distance ? 0 :
+              query_norm - max_acceptable_distance;
 
-      const int search_range_max =
-          query_norm + max_acceptable_distance;
+      const unsigned int search_range_max =
+          query_norm >= UINT_MAX - max_acceptable_distance ? UINT_MAX :
+              query_norm + max_acceptable_distance;
 
       std::vector<index_entry>::const_iterator curpos =
-          std::lower_bound(_index.begin(), _index.end(),
-              search_range_min,
-              [](const index_entry & e, int value) {
+          std::lower_bound(_index.begin(), _index.end(), search_range_min,
+              [](const index_entry & e, unsigned int value) {
                 return e.norm < value;
               });
 
@@ -230,64 +232,80 @@ bool c_hamming_distance_feature2d_matcher::match(const std::vector<cv::KeyPoint>
         continue;
       }
 
-      std::vector<index_entry>::const_iterator best_pos =
-          curpos;
+      candidates.clear();
 
-      int best_distance =
-          hamming_distance(query_descriptor,
-              _train_descriptors[curpos->row],
-              nc);
+      unsigned int best_distance =
+          max_acceptable_distance + 1;
 
-      other_candidates.clear();
+      if( _octavedif < 0 ) {
 
-      while ( ++curpos != _index.end() && curpos->norm <= search_range_max ) {
+        for( ; curpos != _index.end() && curpos->norm <= search_range_max; ++curpos ) {
 
-        if( _octavedif >= 0 && std::abs((int) curpos->octave - (int) query_keypoint.octave) > _octavedif ) {
-          continue;
+          const unsigned int distance =
+              hamming_distance(query_descriptor,
+                  _train_descriptors[curpos->row],
+                  nc);
+
+          if( distance < best_distance ) {
+            candidates.emplace_back(std::make_pair(distance, curpos));
+            best_distance = distance;
+          }
         }
+      }
+      else {
 
-        const int32_t * train_descriptor =
-            _train_descriptors[curpos->row];
+        const int octave =
+            query_keypoint.octave;
 
-        const int distance =
-            hamming_distance(query_descriptor,
-                train_descriptor,
-                nc);
+        for( ; curpos != _index.end() && curpos->norm <= search_range_max; ++curpos ) {
+          if( std::abs((int) curpos->octave - octave) <= _octavedif ) {
 
-        if ( distance > best_distance ) {
-          continue;
+            const unsigned int distance =
+                hamming_distance(query_descriptor,
+                    _train_descriptors[curpos->row],
+                    nc);
+
+            if( distance < best_distance ) {
+              candidates.emplace_back(std::make_pair(distance, curpos));
+              best_distance = distance;
+            }
+          }
         }
-
-        other_candidates.emplace_back(std::make_pair(best_distance, best_pos));
-        best_pos = curpos;
-        best_distance = distance;
       }
 
-      if ( best_distance <= max_acceptable_distance ) {
+      if( candidates.size() == 1 ) {
+        matches.emplace_back(cv::DMatch(i,
+            candidates[0].second->row,
+            candidates[0].first));
+      }
+      else if( !candidates.empty() ) {
+
+        std::sort(candidates.begin(), candidates.end(),
+            [](const match_candidate & prev, const match_candidate & next) {
+
+              if ( prev.first < next.first ) {
+                return true;
+              }
+              if ( prev.first == next.first ) {
+                return next.second->responce < prev.second->responce;
+              }
+              return false;
+            });
 
         matches.emplace_back(cv::DMatch(i,
-            best_pos->row,
-            best_distance));
+            candidates[0].second->row,
+            candidates[0].first));
 
-        if( !other_candidates.empty() ) {
+//        best_distance =
+//            candidates[0].first;
 
-          if ( other_candidates.size() > 1 ) {
-            std::sort(other_candidates.begin(), other_candidates.end(),
-                [](const match_candidate & prev, const match_candidate & next) {
-                  return prev.first < next.first;
-                });
-          }
-
-          for ( std::vector<match_candidate>::const_iterator ii = other_candidates.begin();
-              ii != other_candidates.end() && ii->first == best_distance; ++ii ) {
-
-            matches.emplace_back(cv::DMatch(i,
-                ii->second->row,
-                ii->first));
-
-          }
-        }
-
+//        for( std::vector<match_candidate>::const_iterator ii = candidates.begin();
+//            ii != candidates.end() && ii->first == best_distance; ++ii ) {
+//
+//          matches.emplace_back(cv::DMatch(i,
+//              ii->second->row,
+//              ii->first));
+//        }
       }
     }
 

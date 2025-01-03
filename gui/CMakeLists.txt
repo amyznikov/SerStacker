@@ -21,7 +21,8 @@ if(NOT DEFINED CMAKE_INSTALL_PREFIX)
 endif()
 
 
-
+# for __builtin_popcount()
+add_compile_options(-march=native)
 
 # ----------------------------------------------------------------------------
 # target sources

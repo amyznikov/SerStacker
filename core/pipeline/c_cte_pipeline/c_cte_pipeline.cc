@@ -902,12 +902,6 @@ bool c_cte_pipeline::update_trajectory()
     std::vector<float> rptsy;
     std::vector<float> cptsx;
     std::vector<float> cptsy;
-    std::vector<float> ervx;
-    std::vector<float> ervy;
-    std::vector<float> ecvx;
-    std::vector<float> ecvy;
-
-
     std::vector<uint32_t> ks;
 
   public:
@@ -951,12 +945,6 @@ bool c_cte_pipeline::update_trajectory()
           ks.emplace_back(k);
         }
       }
-
-      ervx.resize(ks.size());
-      ervy.resize(ks.size());
-      ecvx.resize(ks.size());
-      ecvy.resize(ks.size());
-
     }
 
     void set_robust_threshold(double v)
@@ -989,11 +977,18 @@ bool c_cte_pipeline::update_trajectory()
 
     bool compute_rhs(const std::vector<double> & p, const ComputeCallback & callback)
     {
+      INSTRUMENT_REGION("");
+
+#define USE_VECTORIZED 1
+
       const std::deque<c_cte_frame::uptr> & frames =
           _cte->_frames;
 
       const c_cte_frame::uptr & reference_frame =
           frames[_reference_frame_index];
+
+      const size_t nj =
+          ks.size();
 
       cv::Vec3d A;
       cv::Point2d E;
@@ -1006,33 +1001,85 @@ bool c_cte_pipeline::update_trajectory()
       cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
-      double er, elateral, eradial;
+#if USE_VECTORIZED
+      std::vector<float> ervx(nj);
+      std::vector<float> ervy(nj);
+      std::vector<float> erv(nj);
+      std::vector<float> flowx(nj);
+      std::vector<float> flowy(nj);
+      std::vector<float> flowz(nj);
 
-      const size_t nj =
-          ks.size();
+      const float h20 = H(2, 0);
+      const float h21 = H(2, 1);
+      const float h22 = H(2, 2);
+      for( size_t j = 0; j < nj; ++j ) {
+        flowz[j] = h20 * cptsx[j] + h21 * cptsy[j] + h22;
+      }
 
-//      for( size_t j = 0; j < nj; ++j ) {
-//        ervx[j] = rptsx[j] - E.x;
-//      }
-//      for( size_t j = 0; j < nj; ++j ) {
-//        ervy[j] = rptsy[j] - E.y;
-//      }
-//
-//      for( size_t j = 0; j < nj; ++j ) {
-//        ecvx[j] = cptsx[j] - E.x;
-//      }
+      const float h00 = H(0, 0);
+      const float h01 = H(0, 1);
+      const float h02 = H(0, 2);
+      for( size_t j = 0; j < nj; ++j ) {
+        flowx[j] = (h00 * cptsx[j]  + h01 * cptsy[j] + h02) / flowz[j]  - rptsx[j];
+      }
+
+      const float h10 = H(1, 0);
+      const float h11 = H(1, 1);
+      const float h12 = H(1, 2);
+      for( size_t j = 0; j < nj; ++j ) {
+        flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j] - rptsy[j];
+      }
+
+
+      for( size_t j = 0; j < nj; ++j ) {
+        ervx[j] = rptsx[j] - E.x;
+      }
+      for( size_t j = 0; j < nj; ++j ) {
+        ervy[j] = rptsy[j] - E.y;
+      }
+      for( size_t j = 0; j < nj; ++j ) {
+        erv[j] = std::sqrt(ervx[j] * ervx[j] + ervy[j] * ervy[j]);
+      }
+
+#endif
 
       for( size_t j = 0; j < nj; ++j ) {
 
-        const Vec2 rp (rptsx[j], rptsy[j]);
+#if USE_VECTORIZED
 
-        const Vec2 cp(cptsx[j], cptsy[j]);
+        // epipolar distance
+        const float er =
+            erv[j];
 
-        compute_projection_error(cp, rp,
-                H, E,
-                &er,
-                &elateral,
-                &eradial);
+        // displacement along epipolar line eradial = flow.dot(erv) / ||erv||
+        const float eradial =
+            (ervx[j] * flowx[j] + ervy[j] * flowy[j])  / erv[j];
+
+        // displacement perpendicular to epipolar line elateral = flow.dot(Vec2(-erv[1], erv[0])) ||erv||
+        const float elateral =
+            (ervx[j] * flowy[j] - ervy[j] * flowx[j]) / erv[j];
+
+#else
+
+        const Vec2 erv(rptsx[j] - E.x, rptsy[j] - E.y);
+        const Vec2 ecv = warp(Vec2(cptsx[j], cptsy[j]), H) - Vec2(E.x, E.y);
+
+        double er, elateral, eradial;
+
+        // epipole distance
+        er = cv::norm(erv);
+        // displacement vector
+        const Vec2 flow = (ecv - erv) / er;
+
+        // displacement along epipolar line
+        eradial =
+            flow.dot(erv);
+
+        // displacement perpendicular to epipolar line
+        elateral =
+            flow.dot(Vec2(-erv[1], erv[0]));
+
+#endif
 
         callback(er, elateral, eradial,
             inliers,

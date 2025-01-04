@@ -856,37 +856,6 @@ bool c_cte_pipeline::update_trajectory()
         E.y = params[4];
       };
 
-  static const auto compute_projection_error =
-      [](const Vec2 & cp, const Vec2 & rp,
-          const cv::Matx33d & H, const cv::Point2d & E,
-          double * er, double * elateral, double * eradial) -> void {
-
-          // reference point relative to epipole
-          const Vec2 erv(rp(0) - E.x,
-              rp(1) - E.y);
-
-          // current point relative to epipole
-          const Vec2 ecv =
-              warp(cp, H) - Vec2(E.x, E.y);
-
-          // epipolar distance
-          *er =
-              cv::norm(erv);
-
-          // displacement vector
-          const Vec2 flow =
-              (ecv - erv) / *er;
-
-          // displacement along epipolar line
-          * eradial =
-              flow.dot(erv);
-
-          // displacement perpendicular to epipolar line
-          * elateral =
-              flow.dot(Vec2(-erv[1], erv[0]));
-    };
-
-
 
   class c_levmar_solver_callback:
       public c_levmar_solver::callback
@@ -973,22 +942,10 @@ bool c_cte_pipeline::update_trajectory()
     }
 
   protected:
-    typedef std::function<void (double, double, double, cv::Mat1b &, int k)> ComputeCallback;
 
-    bool compute_rhs(const std::vector<double> & p, const ComputeCallback & callback)
+    bool compute_reprojection_errors(const std::vector<double> & p, std::vector<float> & e)
     {
       INSTRUMENT_REGION("");
-
-#define USE_VECTORIZED 1
-
-      const std::deque<c_cte_frame::uptr> & frames =
-          _cte->_frames;
-
-      const c_cte_frame::uptr & reference_frame =
-          frames[_reference_frame_index];
-
-      const size_t nj =
-          ks.size();
 
       cv::Vec3d A;
       cv::Point2d E;
@@ -998,10 +955,9 @@ bool c_cte_pipeline::update_trajectory()
       const cv::Matx33d H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
 
-      cv::Mat1b & inliers =
-          reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
+      const size_t nj =
+          ks.size();
 
-#if USE_VECTORIZED
       std::vector<float> ervx(nj);
       std::vector<float> ervy(nj);
       std::vector<float> erv(nj);
@@ -1019,71 +975,50 @@ bool c_cte_pipeline::update_trajectory()
       const float h00 = H(0, 0);
       const float h01 = H(0, 1);
       const float h02 = H(0, 2);
-      for( size_t j = 0; j < nj; ++j ) {
-        flowx[j] = (h00 * cptsx[j]  + h01 * cptsy[j] + h02) / flowz[j]  - rptsx[j];
-      }
 
       const float h10 = H(1, 0);
       const float h11 = H(1, 1);
       const float h12 = H(1, 2);
+
       for( size_t j = 0; j < nj; ++j ) {
+        flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j] - rptsx[j];
         flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j] - rptsy[j];
       }
 
-
       for( size_t j = 0; j < nj; ++j ) {
         ervx[j] = rptsx[j] - E.x;
-      }
-      for( size_t j = 0; j < nj; ++j ) {
         ervy[j] = rptsy[j] - E.y;
       }
+
       for( size_t j = 0; j < nj; ++j ) {
         erv[j] = std::sqrt(ervx[j] * ervx[j] + ervy[j] * ervy[j]);
       }
 
-#endif
+
+      e.resize(nj);
 
       for( size_t j = 0; j < nj; ++j ) {
-
-#if USE_VECTORIZED
 
         // epipolar distance
         const float er =
             erv[j];
 
-        // displacement along epipolar line eradial = flow.dot(erv) / ||erv||
-        const float eradial =
-            (ervx[j] * flowx[j] + ervy[j] * flowy[j])  / erv[j];
-
         // displacement perpendicular to epipolar line elateral = flow.dot(Vec2(-erv[1], erv[0])) ||erv||
         const float elateral =
             (ervx[j] * flowy[j] - ervy[j] * flowx[j]) / erv[j];
 
-#else
+        // displacement along epipolar line eradial = flow.dot(erv) / ||erv||
+        float eradial =
+            (ervx[j] * flowx[j] + ervy[j] * flowy[j])  / erv[j];
 
-        const Vec2 erv(rptsx[j] - E.x, rptsy[j] - E.y);
-        const Vec2 ecv = warp(Vec2(cptsx[j], cptsy[j]), H) - Vec2(E.x, E.y);
+        if( eradial > 0 ) {
+          eradial /= (1. + (er / _erfactor) * (er / _erfactor));
+        }
 
-        double er, elateral, eradial;
-
-        // epipole distance
-        er = cv::norm(erv);
-        // displacement vector
-        const Vec2 flow = (ecv - erv) / er;
-
-        // displacement along epipolar line
-        eradial =
-            flow.dot(erv);
-
-        // displacement perpendicular to epipolar line
-        elateral =
-            flow.dot(Vec2(-erv[1], erv[0]));
-
-#endif
-
-        callback(er, elateral, eradial,
-            inliers,
-            ks[j]);
+        e[j] =
+            std::sqrt(elateral * elateral +
+                eradial * eradial +
+                er * er * 1e-6f);
       }
 
       return true;
@@ -1091,58 +1026,77 @@ bool c_cte_pipeline::update_trajectory()
 
   public:
 
-    double compute_error(double er, double elateral, double eradial) const
-    {
-      if( eradial > 0 ) {
-        eradial /= (1. + (er / _erfactor) * (er / _erfactor));
-      }
-
-      const double e =
-          std::sqrt(elateral * elateral + eradial * eradial + er * er * 1e-6);
-
-      return e;
-    }
-
     bool compute(const std::vector<double> & p, std::vector<double> & rhs,
         cv::Mat1d * J, bool * have_analytical_jac) final
     {
-      if( have_analytical_jac ) {
-        *have_analytical_jac = false;
-      }
+      std::vector<float> e;
+
+      const size_t nj =
+          ks.size();
+
+      const c_cte_frame::uptr & reference_frame =
+         _cte->_frames[_reference_frame_index];
+
+      const cv::Mat1b & inliers =
+          reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
       rhs.clear();
+      compute_reprojection_errors(p, e);
 
-      const bool fOk =
-          compute_rhs(p, [this, &rhs](double er, double elateral, double eradial, cv::Mat1b & inliers, int k) {
-            if ( inliers[0][k] ) {
-              const double e = compute_error(er, elateral, eradial);
-              rhs.emplace_back(_robust_threshold > 0 ? (_robust_threshold * std::log(1 + e / _robust_threshold) / M_LN2) : e);
-            }
-          });
+      if( _robust_threshold <= 0 ) {
+        for( size_t j = 0; j < nj; ++j ) {
+          if( inliers[0][ks[j]] ) {
+            rhs.emplace_back(e[j]);
+          }
+        }
+      }
+      else {
 
-      return fOk;
+        const double scale =
+            _robust_threshold / M_LN2;
+
+        for( size_t j = 0; j < nj; ++j ) {
+          if( inliers[0][ks[j]] ) {
+            rhs.emplace_back(scale * std::log(1. + e[j] / _robust_threshold));
+          }
+        }
+      }
+
+      return true;
     }
 
     int mark_outliers(const std::vector<double> & p, double thresh)
     {
+      std::vector<float> e;
+
+      const size_t nj =
+          ks.size();
+
+      const c_cte_frame::uptr & reference_frame =
+         _cte->_frames[_reference_frame_index];
+
+      cv::Mat1b & inliers =
+          reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
+
       int num_outliers = 0;
 
-      bool fOk =
-          compute_rhs(p, [this, thresh, &num_outliers](
-              double er, double elateral, double eradial, cv::Mat1b & inliers, int k) {
+      compute_reprojection_errors(p, e);
 
-                const double e = compute_error(er, elateral, eradial);
+      for( size_t j = 0; j < nj; ++j ) {
 
-                if (e < thresh ) {
-                  inliers[0][k] = 255U;
-                }
-                else if ( inliers[0][k] ) {
-                  inliers[0][k] = 0;
-                  ++num_outliers;
-                }
-              });
+        uint8_t & inlier =
+            inliers[0][ks[j]];
 
-      return fOk ? num_outliers : -1;
+        if ( e[j] < thresh ) {
+          inlier = 255U;
+        }
+        else if( inlier ) {
+          inlier = 0;
+          ++num_outliers;
+        }
+      }
+
+      return num_outliers;
     }
 
   };

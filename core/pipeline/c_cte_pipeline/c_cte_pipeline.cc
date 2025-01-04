@@ -323,6 +323,8 @@ bool c_cte_pipeline::save_progress_video()
 {
   if( _output_options.save_progress_video ) {
 
+    INSTRUMENT_REGION("");
+
     cv::Mat display;
 
     lock_guard lock(mutex());
@@ -556,8 +558,13 @@ bool c_cte_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
 
   lock_guard lock(mutex());
 
-  //if( _frames.size() < 2 || !create_display_image(1, display_frame) )
-  {
+  if ( _output_options.save_progress_video ) {
+    lastDisplayImage.copyTo(display_frame);
+  }
+  else if( _frames.size() > 1 ) {
+    create_display_image(1, display_frame);
+  }
+  else {
     lastDisplayImage.copyTo(display_frame);
   }
 
@@ -717,11 +724,13 @@ bool c_cte_pipeline::process_current_frame()
 
   if ( _keypoints_detector == _keypoints_descriptor ) {
 
+    INSTRUMENT_REGION("detectAndCompute");
     _keypoints_detector->detectAndCompute(_current_image, _current_mask,
         current_frame->keypoints,
         current_frame->descriptors);
   }
   else {
+    INSTRUMENT_REGION("detect_compute");
     _keypoints_detector->detect(_current_image, current_frame->keypoints, _current_mask);
     _keypoints_descriptor->compute(_current_image, current_frame->keypoints, current_frame->descriptors);
   }
@@ -752,6 +761,8 @@ bool c_cte_pipeline::process_current_frame()
 
     static const auto match_frames =
        [](c_cte_pipeline * cte, const c_cte_frame::uptr & current_frame, int rbeg, int rend) {
+
+          INSTRUMENT_REGION("match_frames");
 
           std::vector<cv::DMatch> matches;
 
@@ -800,12 +811,10 @@ bool c_cte_pipeline::process_current_frame()
 
   if( _frames.size() >= max_context_size ) {
 
-    CF_DEBUG("[%d] C update_trajectory() _frames.size()=%zu", _input_sequence->current_pos() - 1, _frames.size());
     if ( !update_trajectory() ) {
       CF_ERROR("update_trajectory() fails");
       return false;
     }
-    CF_DEBUG("[%d] R update_trajectory() _frames.size()=%zu", _input_sequence->current_pos() - 1, _frames.size());
 
     if( canceled() ) {
       return false;
@@ -945,7 +954,7 @@ bool c_cte_pipeline::update_trajectory()
 
     bool compute_reprojection_errors(const std::vector<double> & p, std::vector<float> & e)
     {
-      INSTRUMENT_REGION("");
+      //INSTRUMENT_REGION("");
 
       cv::Vec3d A;
       cv::Point2d E;
@@ -1037,14 +1046,13 @@ bool c_cte_pipeline::update_trajectory()
       const cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
-      rhs.clear();
       compute_reprojection_errors(p, e);
+
+      rhs.resize(e.size());
 
       if( _robust_threshold <= 0 ) {
         for( size_t j = 0; j < nj; ++j ) {
-          if( inliers[0][ks[j]] ) {
-            rhs.emplace_back(e[j]);
-          }
+          rhs[j] = inliers[0][ks[j]] ? e[j] : 0;
         }
       }
       else {
@@ -1053,9 +1061,7 @@ bool c_cte_pipeline::update_trajectory()
             _robust_threshold / M_LN2;
 
         for( size_t j = 0; j < nj; ++j ) {
-          if( inliers[0][ks[j]] ) {
-            rhs.emplace_back(scale * std::log(1. + e[j] / _robust_threshold));
-          }
+          rhs[j] = inliers[0][ks[j]] ? scale * std::log(1. + e[j] / _robust_threshold) : 0;
         }
       }
 
@@ -1101,6 +1107,8 @@ bool c_cte_pipeline::update_trajectory()
   if( _frames.size() < 2 ) {
     return true;
   }
+
+  INSTRUMENT_REGION("");
 
   c_levmar_solver lm(100, 1e-7);
   std::vector<double> p;

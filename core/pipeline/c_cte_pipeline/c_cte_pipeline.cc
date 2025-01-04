@@ -849,7 +849,6 @@ bool c_cte_pipeline::update_trajectory()
   static const auto compute_projection_error =
       [](const cv::Point2d & cp, const cv::Point2d & rp,
           const cv::Matx33d & H, const cv::Point2d & E,
-          EPIPOLAR_MOTION_DIRECTION direction,
           double * er, double * elateral, double * eradial) -> void
   {
     using Vec2 =
@@ -863,41 +862,21 @@ bool c_cte_pipeline::update_trajectory()
     const Vec2 ecv =
         warpv(cp, H) - Vec2(E.x, E.y);
 
-
-    *er = cv::norm(erv);
+    // epipolar distance
+    *er =
+        cv::norm(erv);
 
     // displacement vector
     const Vec2 flow =
           (ecv - erv) / *er;
 
-    // displacement perpendicular to epipolar line
-    * elateral =
-        flow.dot(Vec2(-erv[1], erv[0]));
-
     // displacement along epipolar line
     * eradial =
         flow.dot(erv);
 
-//      if ( 0 ) {
-//        * eradial = 0;
-//      }
-//      else {
-//        switch (direction) {
-//          case EPIPOLAR_DIRECTION_FORWARD: {
-//            const double rflow = flow.dot(erv);
-//            * eradial = rflow < 0 ? rflow : 0;
-//            break;
-//          }
-//          case EPIPOLAR_DIRECTION_BACKWARD: {
-//            const double rflow = flow.dot(erv);
-//            * eradial = rflow > 0 ? rflow : 0;
-//            break;
-//          }
-//          default:
-//            * eradial = 0;
-//            break;
-//        }
-//      }
+    // displacement perpendicular to epipolar line
+    * elateral =
+        flow.dot(Vec2(-erv[1], erv[0]));
     };
 
 
@@ -954,9 +933,6 @@ bool c_cte_pipeline::update_trajectory()
 
     bool compute_rhs(const std::vector<double> & p, const ComputeCallback & callback)
     {
-      const EPIPOLAR_MOTION_DIRECTION motion_direction =
-          EPIPOLAR_DIRECTION_FORWARD;
-
       const std::deque<c_cte_frame::uptr> & frames =
           _cte->_frames;
 
@@ -980,17 +956,11 @@ bool c_cte_pipeline::update_trajectory()
       cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
-      if( is_bad_number(E) ) {
-
-        CF_ERROR("bad E=(%g %g)",
-            E.x, E.y);
-
-        return false;
-      }
+      double er, elateral, eradial;
 
       for( size_t k = 0, nk = matches.size(); k < nk; ++k ) {
 
-        if( !inliers[0][k] || matches[k] < 0 ) {
+        if( matches[k] < 0 ) {
           continue;
         }
 
@@ -1000,24 +970,11 @@ bool c_cte_pipeline::update_trajectory()
         const cv::Point2f & cp =
             current_frame->keypoints[matches[k]].pt;
 
-        if( is_bad_number(rp) || is_bad_number(cp) ) {
-          CF_ERROR("bad cp=(%g %g) rp= (%g %g) at k=%zu", rp.x, rp.y, cp.x, cp.y, k);
-          return false;
-        }
-
-        double er, elateral, eradial;
-
         compute_projection_error(cp, rp,
                 H, E,
-                motion_direction,
                 &er,
                 &elateral,
                 &eradial);
-
-        if( is_bad_number(elateral) || is_bad_number(eradial)) {
-          CF_ERROR("bad data at k=%zu elateral=%g eradial=%g", k, elateral, eradial);
-          return false;
-        }
 
         callback(er, elateral, eradial,
             inliers,
@@ -1051,61 +1008,39 @@ bool c_cte_pipeline::update_trajectory()
       rhs.clear();
 
       const bool fOk =
-          compute_rhs(p, [this, &rhs](double er, double elateral, double eradial, cv::Mat1b&, int) {
-            const double e = compute_error(er, elateral, eradial);
-            rhs.emplace_back(_robust_threshold > 0 ? (_robust_threshold*std::log(1+e/_robust_threshold)/M_LN2) : e);
-            //rhs.emplace_back(e);
+          compute_rhs(p, [this, &rhs](double er, double elateral, double eradial, cv::Mat1b & inliers, int k) {
+            if ( inliers[0][k] ) {
+              const double e = compute_error(er, elateral, eradial);
+              rhs.emplace_back(_robust_threshold > 0 ? (_robust_threshold * std::log(1 + e / _robust_threshold) / M_LN2) : e);
+            }
           });
 
       return fOk;
     }
 
-//    double compute_rmse(const std::vector<double> & p)
-//    {
-//      double s = 0;
-//      double n = 0;
-//
-//      const bool fOk =
-//          compute_rhs(p, [this, &n, &s](double er, double elateral, double eradial, cv::Mat1b&, int)  {
-//            s += elateral * elateral;
-//            n += 1;
-//          });
-//
-//      return fOk ? s / n : -1;
-//    }
-
-
     int mark_outliers(const std::vector<double> & p, double thresh)
     {
       int num_outliers = 0;
 
-      thresh *= thresh;
+      //thresh *= thresh;
 
       bool fOk =
           compute_rhs(p, [this, thresh, &num_outliers](
               double er, double elateral, double eradial, cv::Mat1b & inliers, int k) {
 
-              const double e =
-                compute_error(er, elateral, eradial);
+                const double e = compute_error(er, elateral, eradial);
 
-              if (e * e > thresh ) {
-                inliers[0][k] = 0;
-                ++num_outliers;
-              }
-          });
+                if (e < thresh ) {
+                  inliers[0][k] = 255U;
+                }
+                else if ( inliers[0][k] ) {
+                  inliers[0][k] = 0;
+                  ++num_outliers;
+                }
+              });
 
       return fOk ? num_outliers : -1;
     }
-
-    void clear_outliers()
-    {
-      for( const c_cte_frame::uptr & Fi : _cte->_frames ) {
-        for( auto & inliers : Fi->inliers ) {
-          inliers.setTo(255);
-        }
-      }
-    }
-
 
   };
 
@@ -1134,33 +1069,33 @@ bool c_cte_pipeline::update_trajectory()
   const c_cte_frame::uptr & current_frame =
       _frames[1];
 
-  for( auto & inliers : reference_frame->inliers ) {
-    inliers.setTo(255);
-  }
+//  for( auto & inliers : reference_frame->inliers ) {
+//    inliers.setTo(255);
+//  }
 
-  if( _frames.size() > 2 ) {
-
-    const size_t jmax =
-        _frames.size() - 1;
-
-    for( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
-
-      int m =
-          reference_frame->matches[0][k];
-
-      if( m >= 0 ) {
-        for( size_t j = 1; j < jmax; ++j ) {
-          if( (m = _frames[j]->matches[0][m]) < 0 ) {
-            break;
-          }
-        }
-
-        if( m < 0 || m != reference_frame->matches[jmax - 1][k] ) {
-          reference_frame->inliers[0][0][k] = 0;
-        }
-      }
-    }
-  }
+//  if( _frames.size() > 2 ) {
+//
+//    const size_t jmax =
+//        _frames.size() - 1;
+//
+//    for( size_t k = 0, nk = reference_frame->keypoints.size(); k < nk; ++k ) {
+//
+//      int m =
+//          reference_frame->matches[0][k];
+//
+//      if( m >= 0 ) {
+//        for( size_t j = 1; j < jmax; ++j ) {
+//          if( (m = _frames[j]->matches[0][m]) < 0 ) {
+//            break;
+//          }
+//        }
+//
+//        if( m < 0 || m != reference_frame->matches[jmax - 1][k] ) {
+//          reference_frame->inliers[0][0][k] = 0;
+//        }
+//      }
+//    }
+//  }
 
 
   CF_DEBUG("*");
@@ -1221,8 +1156,7 @@ bool c_cte_pipeline::update_trajectory()
     const int num_outliers =
         callback.mark_outliers(p, 3 * rmse);
 
-
-    if( false ) {
+    if( true ) {
       unpack_params(p, A, E);
       CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g)",
           iteration,

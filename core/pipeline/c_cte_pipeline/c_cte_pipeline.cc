@@ -952,7 +952,7 @@ bool c_cte_pipeline::update_trajectory()
 
       unpack_params(p, A, E);
 
-      const cv::Matx33d H =
+      const cv::Matx33f H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
 
       const size_t nj =
@@ -960,25 +960,24 @@ bool c_cte_pipeline::update_trajectory()
 
       std::vector<float> ervx(nj);
       std::vector<float> ervy(nj);
-      std::vector<float> erv(nj);
       std::vector<float> flowx(nj);
       std::vector<float> flowy(nj);
       std::vector<float> flowz(nj);
 
-      const float h20 = H(2, 0);
-      const float h21 = H(2, 1);
-      const float h22 = H(2, 2);
+      const float & h20 = H(2, 0);
+      const float & h21 = H(2, 1);
+      const float & h22 = H(2, 2);
       for( size_t j = 0; j < nj; ++j ) {
         flowz[j] = h20 * cptsx[j] + h21 * cptsy[j] + h22;
       }
 
-      const float h00 = H(0, 0);
-      const float h01 = H(0, 1);
-      const float h02 = H(0, 2);
+      const float & h00 = H(0, 0);
+      const float & h01 = H(0, 1);
+      const float & h02 = H(0, 2);
 
-      const float h10 = H(1, 0);
-      const float h11 = H(1, 1);
-      const float h12 = H(1, 2);
+      const float & h10 = H(1, 0);
+      const float & h11 = H(1, 1);
+      const float & h12 = H(1, 2);
 
       for( size_t j = 0; j < nj; ++j ) {
         flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j] - rptsx[j];
@@ -986,39 +985,37 @@ bool c_cte_pipeline::update_trajectory()
       }
 
       for( size_t j = 0; j < nj; ++j ) {
-        ervx[j] = rptsx[j] - E.x;
-        ervy[j] = rptsy[j] - E.y;
+        ervx[j] = rptsx[j] - (float)E.x;
+        ervy[j] = rptsy[j] - (float)E.y;
       }
-
-      for( size_t j = 0; j < nj; ++j ) {
-        erv[j] = std::sqrt(ervx[j] * ervx[j] + ervy[j] * ervy[j]);
-      }
-
 
       e.resize(nj);
 
       for( size_t j = 0; j < nj; ++j ) {
 
         // epipolar distance
-        const float er =
-            erv[j];
+        const float er2 =
+            ervx[j] * ervx[j] + ervy[j] * ervy[j];
 
-        // displacement perpendicular to epipolar line elateral = flow.dot(Vec2(-erv[1], erv[0])) ||erv||
+        // displacement perpendicular to epipolar line
+        //  elateral = flow.dot(Vec2(-erv[1], erv[0]))
         const float elateral =
-            (ervx[j] * flowy[j] - ervy[j] * flowx[j]) / erv[j];
+            (ervx[j] * flowy[j] - ervy[j] * flowx[j]);
 
-        // displacement along epipolar line eradial = flow.dot(erv) / ||erv||
+        // displacement along epipolar line
+        //  eradial = flow.dot(erv)
         float eradial =
-            (ervx[j] * flowx[j] + ervy[j] * flowy[j])  / erv[j];
+            (ervx[j] * flowx[j] + ervy[j] * flowy[j]);
 
         if( eradial > 0 ) {
-          eradial /= (1. + (er / _erfactor) * (er / _erfactor));
+          eradial /= (1. + er2 / (_erfactor * _erfactor));
         }
 
         e[j] =
-            std::sqrt(elateral * elateral +
-                eradial * eradial +
-                er * er * 1e-6f);
+            std::sqrt((elateral * elateral +
+                eradial * eradial) / er2 +
+                1e-6f * er2);
+
       }
 
       return true;

@@ -949,6 +949,7 @@ bool c_cte_pipeline::update_trajectory()
       return false;
     }
 
+    // test
     cv::Point2f estimate_epipole_location(const cv::Matx33f & H) const
     {
       const int nj = ks.size();
@@ -1022,17 +1023,6 @@ bool c_cte_pipeline::update_trajectory()
       const cv::Matx33f H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
 
-      if ( true ) {
-
-        const cv::Point2f EE =
-            estimate_epipole_location(H);
-
-        CF_DEBUG("EST: E=(%+g %+g) EE=(%+g %+g)",
-            E.x, E.y,
-            EE.x, EE.y);
-      }
-
-
       const size_t nj =
           ks.size();
 
@@ -1093,7 +1083,7 @@ bool c_cte_pipeline::update_trajectory()
         e[j] =
             std::sqrt((elateral * elateral +
                 eradial * eradial) / er2 +
-                1e-6f * er2);
+                1e-4f * er2);
 
       }
 

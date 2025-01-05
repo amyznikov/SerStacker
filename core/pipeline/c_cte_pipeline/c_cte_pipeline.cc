@@ -1029,7 +1029,7 @@ bool c_cte_pipeline::update_trajectory()
       const float & h11 = H(1, 1);
       const float & h12 = H(1, 2);
 
-      if ( true ) {
+      if ( false ) {
 
         for( size_t j = 0; j < nj; ++j ) {
           flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j];

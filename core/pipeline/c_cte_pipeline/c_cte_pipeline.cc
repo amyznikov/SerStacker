@@ -865,48 +865,6 @@ bool c_cte_pipeline::update_trajectory()
         E.y = params[4];
       };
 
-  static const auto estimate_epipole =
-      [](const std::vector<float> & rvx, const std::vector<float> & rvy,
-          const std::vector<float> & cvx, const std::vector<float> & cvy,
-          std::vector<uint32_t> & ks,
-          const cv::Mat1b & inliers) -> cv::Point2f {
-
-            const int nj = ks.size();
-
-            int num_inliers = 0;
-
-            for ( int j = 0; j < nj; ++j ) {
-              num_inliers += inliers[ks[j]] != 0;
-            }
-
-            cv::Mat1f S1(num_inliers, 2);
-            cv::Mat1f S2(num_inliers, 1);
-            cv::Mat1f E;
-
-            for ( int j = 0, k = 0; j < nj; ++j ) {
-              if ( inliers[ks[j]] ) {
-                S1[k][0] = rvy[j] - cvy[j];
-                S1[k][1] = cvx[j] - rvx[j];
-                S2[k][0] = cvx[j] * rvy[j] - cvy[j] * rvx[j];
-                ++k;
-              }
-            }
-
-            try {
-              if( !cv::solve(S1, S2, E, cv::DECOMP_NORMAL) ) {
-                CF_ERROR("cv::solve() fails");
-              }
-              else {
-                return cv::Point2f(E[0][0],E[1][0]);
-              }
-            }
-            catch (const std::exception & e) {
-              CF_ERROR("cv::solve() fails: %s", e.what());
-            }
-
-            return cv::Point2f(0,0);
-          };
-
   class c_levmar_solver_callback:
       public c_levmar_solver::callback
   {
@@ -991,6 +949,65 @@ bool c_cte_pipeline::update_trajectory()
       return false;
     }
 
+    cv::Point2f estimate_epipole_location(const cv::Matx33f & H) const
+    {
+      const int nj = ks.size();
+
+      const cv::Mat1b & inliers =
+          _cte->_frames[_reference_frame_index]->inliers[_current_frame_index - _reference_frame_index - 1];
+
+      int num_inliers = 0;
+
+      for ( int j = 0; j < nj; ++j ) {
+        num_inliers += inliers[ks[j]] != 0;
+      }
+
+      cv::Mat1f S1(num_inliers, 2);
+      cv::Mat1f S2(num_inliers, 1);
+      cv::Mat1f E;
+
+      const float & h00 = H(0, 0);
+      const float & h01 = H(0, 1);
+      const float & h02 = H(0, 2);
+
+      const float & h10 = H(1, 0);
+      const float & h11 = H(1, 1);
+      const float & h12 = H(1, 2);
+
+      const float & h20 = H(2, 0);
+      const float & h21 = H(2, 1);
+      const float & h22 = H(2, 2);
+
+      for ( int j = 0, k = 0; j < nj; ++j ) {
+        if ( inliers[ks[j]] ) {
+
+          const float cvz = (h20 * cptsx[j] + h21 * cptsy[j] + h22);
+          const float cvx = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / cvz;
+          const float cvy = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / cvz;
+
+          S1[k][0] = rptsy[j] - cvy;
+          S1[k][1] = cvx - rptsx[j];
+          S2[k][0] = cvx * rptsy[j] - cvy * rptsx[j];
+
+          ++k;
+        }
+      }
+
+      try {
+        if( !cv::solve(S1, S2, E, cv::DECOMP_SVD) ) {
+          CF_ERROR("cv::solve() fails");
+        }
+        else {
+          return cv::Point2f(E[0][0],E[1][0]);
+        }
+      }
+      catch (const std::exception & e) {
+        CF_ERROR("cv::solve() fails: %s", e.what());
+      }
+
+      return cv::Point2f(0,0);
+    }
+
   protected:
 
     bool compute_reprojection_errors(const std::vector<double> & p, std::vector<float> & e)
@@ -1004,6 +1021,17 @@ bool c_cte_pipeline::update_trajectory()
 
       const cv::Matx33f H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
+
+      if ( true ) {
+
+        const cv::Point2f EE =
+            estimate_epipole_location(H);
+
+        CF_DEBUG("EST: E=(%+g %+g) EE=(%+g %+g)",
+            E.x, E.y,
+            EE.x, EE.y);
+      }
+
 
       const size_t nj =
           ks.size();
@@ -1029,22 +1057,6 @@ bool c_cte_pipeline::update_trajectory()
       const float & h11 = H(1, 1);
       const float & h12 = H(1, 2);
 
-      if ( false ) {
-
-        for( size_t j = 0; j < nj; ++j ) {
-          flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j];
-          flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j];
-        }
-
-        const cv::Point2f EE =
-            estimate_epipole(rptsx, rptsy,
-                flowx, flowy,
-                ks,
-                _cte->_frames[_reference_frame_index]->inliers[_current_frame_index - _reference_frame_index - 1]);
-
-        CF_DEBUG("EST: E=(%+g %+g) EE=(%+g %+g)", E.x, E.y, EE.x, EE.y);
-      }
-
       for( size_t j = 0; j < nj; ++j ) {
         flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j] - rptsx[j];
         flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j] - rptsy[j];
@@ -1054,8 +1066,6 @@ bool c_cte_pipeline::update_trajectory()
         ervx[j] = rptsx[j] - (float)E.x;
         ervy[j] = rptsy[j] - (float)E.y;
       }
-
-
 
 
       e.resize(nj);

@@ -70,6 +70,7 @@ struct c_cte_pose_estimation_options
   double levmar_epsx = 1e-15;
   double robust_threshold = 15;
   double erfactor = 50;
+  double ew = 100;
 };
 
 

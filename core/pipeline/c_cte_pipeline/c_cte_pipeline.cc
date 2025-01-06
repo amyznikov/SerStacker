@@ -10,6 +10,7 @@
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/levmar.h>
+#include <core/proc/c_lse2_estimate.h>
 #include <thread>
 
 #if HAVE_TBB
@@ -243,6 +244,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_cte_pipeline::get_contro
       PIPELINE_CTL(ctrls, _pose_estimation.levmar_epsx, "levmar_epsx", "levmar epsx");
       PIPELINE_CTL(ctrls, _pose_estimation.robust_threshold, "robust_threshold", "robust_threshold");
       PIPELINE_CTL(ctrls, _pose_estimation.erfactor, "erfactor", "erfactor");
+      PIPELINE_CTL(ctrls, _pose_estimation.ew, "ew", "ew");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 
@@ -304,6 +306,7 @@ bool c_cte_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _pose_estimation, levmar_epsx);
     SERIALIZE_OPTION(section, save, _pose_estimation, robust_threshold);
     SERIALIZE_OPTION(section, save, _pose_estimation, erfactor);
+    SERIALIZE_OPTION(section, save, _pose_estimation, ew);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -759,6 +762,12 @@ bool c_cte_pipeline::process_current_frame()
 
   if( !_frames.empty() ) {
 
+    const c_cte_frame::uptr & back_frame =
+        _frames.back();
+
+    current_frame->E =
+        back_frame->E;
+
     static const auto match_frames =
        [](c_cte_pipeline * cte, const c_cte_frame::uptr & current_frame, int rbeg, int rend) {
 
@@ -845,24 +854,20 @@ bool c_cte_pipeline::update_trajectory()
       cv::Vec2d;
 
   static const auto pack_params =
-      [](std::vector<double> & params, const cv::Vec3d & A, const cv::Point2d & E) {
+      [](std::vector<double> & params, const cv::Vec3d & A) {
         if ( params.size() != 5 ) {
           params.resize(5);
         }
         params[0] = A[0];
         params[1] = A[1];
         params[2] = A[2];
-        params[3] = E.x;
-        params[4] = E.y;
       };
 
   static const auto unpack_params =
-      [](const std::vector<double> & params, cv::Vec3d & A, cv::Point2d & E) {
+      [](const std::vector<double> & params, cv::Vec3d & A) {
         A[0] = params[0];
         A[1] = params[1];
         A[2] = params[2];
-        E.x = params[3];
-        E.y = params[4];
       };
 
   class c_levmar_solver_callback:
@@ -880,6 +885,8 @@ bool c_cte_pipeline::update_trajectory()
     std::vector<float> cptsx;
     std::vector<float> cptsy;
     std::vector<uint32_t> ks;
+
+    cv::Point2f E;
 
   public:
 
@@ -946,26 +953,30 @@ bool c_cte_pipeline::update_trajectory()
 
     bool allow_tbb() const final
     {
-      return false;
+      return true;
     }
 
     // test
-    cv::Point2f estimate_epipole_location(const cv::Matx33f & H) const
+    void set_epipole(const cv::Point2f & e )
     {
-      const int nj = ks.size();
+      E = e;
+    }
+    const cv::Point2f & epipole() const
+    {
+      return E;
+    }
+
+    // test
+    bool estimate_epipole_location(const cv::Matx33f & H, cv::Point2d & E) const
+    {
+      c_lse2_estimate<float> lse;
+      float ex, ey;
+
+      const int nj =
+          ks.size();
 
       const cv::Mat1b & inliers =
           _cte->_frames[_reference_frame_index]->inliers[_current_frame_index - _reference_frame_index - 1];
-
-      int num_inliers = 0;
-
-      for ( int j = 0; j < nj; ++j ) {
-        num_inliers += inliers[ks[j]] != 0;
-      }
-
-      cv::Mat1f S1(num_inliers, 2);
-      cv::Mat1f S2(num_inliers, 1);
-      cv::Mat1f E;
 
       const float & h00 = H(0, 0);
       const float & h01 = H(0, 1);
@@ -979,34 +990,30 @@ bool c_cte_pipeline::update_trajectory()
       const float & h21 = H(2, 1);
       const float & h22 = H(2, 2);
 
-      for ( int j = 0, k = 0; j < nj; ++j ) {
-        if ( inliers[ks[j]] ) {
+      for( int j = 0; j < nj; ++j ) {
+        if( inliers[0][ks[j]] ) {
 
-          const float cvz = (h20 * cptsx[j] + h21 * cptsy[j] + h22);
-          const float cvx = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / cvz;
-          const float cvy = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / cvz;
+          const float & rx = rptsx[j];
+          const float & ry = rptsy[j];
 
-          S1[k][0] = rptsy[j] - cvy;
-          S1[k][1] = cvx - rptsx[j];
-          S2[k][0] = cvx * rptsy[j] - cvy * rptsx[j];
+          const float cz = (h20 * cptsx[j] + h21 * cptsy[j] + h22);
+          const float cx = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / cz;
+          const float cy = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / cz;
 
-          ++k;
+          lse.update(cy - ry, rx - cx, rx * cy - ry * cx);
         }
       }
 
-      try {
-        if( !cv::solve(S1, S2, E, cv::DECOMP_SVD) ) {
-          CF_ERROR("cv::solve() fails");
-        }
-        else {
-          return cv::Point2f(E[0][0],E[1][0]);
-        }
-      }
-      catch (const std::exception & e) {
-        CF_ERROR("cv::solve() fails: %s", e.what());
+
+      if( !lse.compute(ex, ey) ) {
+        CF_ERROR("lse.compute() fails");
+        return false;
       }
 
-      return cv::Point2f(0,0);
+      E.x = ex;
+      E.y = ey;
+
+      return true;
     }
 
   protected:
@@ -1016,9 +1023,8 @@ bool c_cte_pipeline::update_trajectory()
       //INSTRUMENT_REGION("");
 
       cv::Vec3d A;
-      cv::Point2d E;
 
-      unpack_params(p, A, E);
+      unpack_params(p, A);
 
       const cv::Matx33f H =
           _camera_matrix * build_rotation(A) * _camera_matrix_inv;
@@ -1035,9 +1041,6 @@ bool c_cte_pipeline::update_trajectory()
       const float & h20 = H(2, 0);
       const float & h21 = H(2, 1);
       const float & h22 = H(2, 2);
-      for( size_t j = 0; j < nj; ++j ) {
-        flowz[j] = h20 * cptsx[j] + h21 * cptsy[j] + h22;
-      }
 
       const float & h00 = H(0, 0);
       const float & h01 = H(0, 1);
@@ -1048,13 +1051,17 @@ bool c_cte_pipeline::update_trajectory()
       const float & h12 = H(1, 2);
 
       for( size_t j = 0; j < nj; ++j ) {
-        flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j] - rptsx[j];
-        flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j] - rptsy[j];
+        flowz[j] = h20 * cptsx[j] + h21 * cptsy[j] + h22;
       }
 
       for( size_t j = 0; j < nj; ++j ) {
-        ervx[j] = rptsx[j] - (float)E.x;
-        ervy[j] = rptsy[j] - (float)E.y;
+        flowx[j] = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / flowz[j] - rptsx[j];
+        ervx[j] = rptsx[j] - (float) E.x;
+      }
+
+      for( size_t j = 0; j < nj; ++j ) {
+        flowy[j] = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / flowz[j] - rptsy[j];
+        ervy[j] = rptsy[j] - (float) E.y;
       }
 
 
@@ -1082,8 +1089,7 @@ bool c_cte_pipeline::update_trajectory()
 
         e[j] =
             std::sqrt((elateral * elateral +
-                eradial * eradial) / er2 +
-                1e-4f * er2);
+                eradial * eradial) / er2);
 
       }
 
@@ -1174,6 +1180,8 @@ bool c_cte_pipeline::update_trajectory()
   std::vector<double> p;
   cv::Vec3d A;
   cv::Point2d E;
+  cv::Matx33f H;
+  bool EOk = false;
 
   const cv::Matx33d & camera_matrix =
       _camera_options.camera_intrinsics.camera_matrix;
@@ -1243,11 +1251,13 @@ bool c_cte_pipeline::update_trajectory()
 
     //if ( iteration < 2 )
     {
-      pack_params(p, Ainitial, Einitial);
+      pack_params(p, Ainitial);
     }
 
     c_levmar_solver_callback callback(this, 1, 0,
         camera_matrix, camera_matrix_inv);
+
+    callback.set_epipole(Einitial);
 
     if( _pose_estimation.levmar_epsf >= 0 ) {
       lm.set_epsfn(_pose_estimation.levmar_epsf);
@@ -1279,14 +1289,20 @@ bool c_cte_pipeline::update_trajectory()
         callback.mark_outliers(p, 3 * rmse);
 
     if( true ) {
-      unpack_params(p, A, E);
-      CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g)",
+
+      unpack_params(p, A);
+      H = camera_matrix * build_rotation(A) * camera_matrix_inv;
+
+      EOk = callback.estimate_epipole_location(H, E);
+
+      CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g) EOk=%d",
           iteration,
           num_iterations,
           rmse,
           num_outliers,
-          A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI,
-          E.x, E.y);
+          A[0] * 180 / CV_PI, A[1] * 180 / CV_PI, A[2] * 180 / CV_PI,
+          E.x, E.y,
+          EOk);
     }
 
     if( num_outliers < 1 ) {
@@ -1297,18 +1313,22 @@ bool c_cte_pipeline::update_trajectory()
 
   if( true ) {
 
-    unpack_params(p, A, E);
+    //unpack_params(p, A);
+    //E = callback.estimate_epipole_location(camera_matrix * build_rotation(A) * camera_matrix_inv);
 
     lock_guard lock(mutex());
 
     current_frame->A = A;
-    current_frame->E = E;
+    current_frame->H = H;
 
-    current_frame->H =
-        camera_matrix * build_rotation(A) * camera_matrix_inv;
+    if ( EOk ) {
+      current_frame->E =
+          (Einitial * _pose_estimation.ew + E) / (_pose_estimation.ew + 1);
+    }
+
 
     CF_DEBUG("<UPDATE>");
-    CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g)", 1, A[0] * 180/ CV_PI, A[1] * 180/ CV_PI, A[2] * 180/ CV_PI, E.x, E.y);
+    CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) Eok=%d", 1, A[0] * 180 / CV_PI, A[1] * 180 / CV_PI, A[2] * 180 / CV_PI, E.x, E.y, EOk);
     CF_DEBUG("</UPDATE>");
   }
 

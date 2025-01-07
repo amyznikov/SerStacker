@@ -967,10 +967,9 @@ bool c_cte_pipeline::update_trajectory()
     }
 
     // test
-    bool estimate_epipole_location(const cv::Matx33f & H, cv::Point2d & E) const
+    bool estimate_epipole_location(const cv::Matx33f & H, cv::Point2f & E) const
     {
       c_lse2_estimate<float> lse;
-      float ex, ey;
 
       const int nj =
           ks.size();
@@ -1005,20 +1004,18 @@ bool c_cte_pipeline::update_trajectory()
       }
 
 
-      if( !lse.compute(ex, ey) ) {
+      if( !lse.compute(E.x, E.y) ) {
         CF_ERROR("lse.compute() fails");
         return false;
       }
 
-      E.x = ex;
-      E.y = ey;
 
       return true;
     }
 
   protected:
 
-    bool compute_reprojection_errors(const std::vector<double> & p, std::vector<float> & e)
+    bool compute_reprojection_errors(const std::vector<double> & p, std::vector<double> & e)
     {
       //INSTRUMENT_REGION("");
 
@@ -1101,8 +1098,6 @@ bool c_cte_pipeline::update_trajectory()
     bool compute(const std::vector<double> & p, std::vector<double> & rhs,
         cv::Mat1d * J, bool * have_analytical_jac) final
     {
-      std::vector<float> e;
-
       const size_t nj =
           ks.size();
 
@@ -1112,13 +1107,13 @@ bool c_cte_pipeline::update_trajectory()
       const cv::Mat1b & inliers =
           reference_frame->inliers[_current_frame_index - _reference_frame_index - 1];
 
-      compute_reprojection_errors(p, e);
-
-      rhs.resize(e.size());
+      compute_reprojection_errors(p, rhs);
 
       if( _robust_threshold <= 0 ) {
         for( size_t j = 0; j < nj; ++j ) {
-          rhs[j] = inliers[0][ks[j]] ? e[j] : 0;
+          if( !inliers[0][ks[j]] ) {
+            rhs[j] = 0;
+          }
         }
       }
       else {
@@ -1127,7 +1122,7 @@ bool c_cte_pipeline::update_trajectory()
             _robust_threshold / M_LN2;
 
         for( size_t j = 0; j < nj; ++j ) {
-          rhs[j] = inliers[0][ks[j]] ? scale * std::log(1. + e[j] / _robust_threshold) : 0;
+          rhs[j] = inliers[0][ks[j]] ? scale * std::log(1. + rhs[j] / _robust_threshold) : 0;
         }
       }
 
@@ -1136,7 +1131,7 @@ bool c_cte_pipeline::update_trajectory()
 
     int mark_outliers(const std::vector<double> & p, double thresh)
     {
-      std::vector<float> e;
+      std::vector<double> e;
 
       const size_t nj =
           ks.size();
@@ -1176,10 +1171,10 @@ bool c_cte_pipeline::update_trajectory()
 
   INSTRUMENT_REGION("");
 
-  c_levmar_solver lm(100, 1e-7);
+  c_levmar_solver lm(100, 1e-12);
   std::vector<double> p;
   cv::Vec3d A;
-  cv::Point2d E;
+  cv::Point2f E;
   cv::Matx33f H;
   bool EOk = false;
 
@@ -1236,7 +1231,7 @@ bool c_cte_pipeline::update_trajectory()
   const cv::Vec3d & Ainitial =
       current_frame->A;
 
-  const cv::Point2d & Einitial =
+  const cv::Point2f & Einitial =
       current_frame->E;
 
   CF_DEBUG("INITIAL A=(%+g %+g %+g) E=(%+g %+g)",
@@ -1288,12 +1283,11 @@ bool c_cte_pipeline::update_trajectory()
     const int num_outliers =
         callback.mark_outliers(p, 3 * rmse);
 
+    unpack_params(p, A);
+    H = camera_matrix * build_rotation(A) * camera_matrix_inv;
+    EOk = callback.estimate_epipole_location(H, E);
+
     if( true ) {
-
-      unpack_params(p, A);
-      H = camera_matrix * build_rotation(A) * camera_matrix_inv;
-
-      EOk = callback.estimate_epipole_location(H, E);
 
       CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g) EOk=%d",
           iteration,

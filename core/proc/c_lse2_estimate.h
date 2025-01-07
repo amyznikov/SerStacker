@@ -9,7 +9,8 @@
 #ifndef __c_lse2_estimate_h__
 #define __c_lse2_estimate_h__
 
-#include <math.h>
+#include <cfloat>
+//#include <math.h>
 
 
 /**
@@ -45,16 +46,10 @@ public:
 
   inline bool compute(T & a0, T & a1) const
   {
-    const T D = X2 * Y2 - XY * XY;
-    if ( D != 0 ) {
-
-      a0 = (Y2 * ZX + XY * ZY) / D;
-      a1 = (XY * ZX + X2 * ZY) / D;
-
-      return true;
-    }
-
-    return false;
+    const T D = (X2 * Y2 - XY * XY);
+    a0 = (Y2 * ZX + XY * ZY) / D;
+    a1 = (XY * ZX + X2 * ZY) / D;
+    return D != 0;
   }
 
 protected:

@@ -48,34 +48,20 @@ namespace {
 
 }
 
-
+static inline bool is_good(double x)
+{
+  return !std::isinf(x);
+}
 
 int main(int argc, char *argv[])
 {
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  UVec3d uv1(0, 0);
-  UVec3d uv2(0, 0);
-  UVec3d uv = uv1 - uv2;
 
-  cv::Vec3d v1 = uv1.vec();
-  cv::Vec3d v2 = uv2.vec();
-  cv::Vec3d v = uv.vec();
+  double x = 1./0.;
 
-
-//  CF_DEBUG("\n"
-//      "v2={%g %g %g) norm=%g\n",
-//      v2(0), v2(1), v2(2), cv::norm(v2));
-
-
-  CF_DEBUG("\n"
-      "v1={%g %g %g) norm=%g\n"
-      "v2={%g %g %g) norm=%g\n"
-      "v={%g %g %g) norm=%g\n",
-      v1(0), v1(1), v1(2), cv::norm(v1),
-      v2(0), v2(1), v2(2), cv::norm(v2),
-      v(0), v(1), v(2), cv::norm(v));
+  CF_DEBUG("is_good(%g)=%d", x,  is_good(x));
 
   return 0;
 }

@@ -7,6 +7,7 @@
 
 #include <core/io/save_image.h>
 #include <core/io/load_image.h>
+#include <core/io/c_stdio_file.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/downstrike.h>
 #include <core/proc/unsharp_mask.h>
@@ -45,8 +46,79 @@
 #include <core/debug.h>
 
 namespace temp {
+}
+
+int load_data_file(const std::string & fname, int maxpts,
+    int NI[],
+    double TS[], double Tx[], double Ty[], double Tz[],
+    double lat[], double  lon[], double alt[] )
+{
+  c_stdio_file fp(fname, "r");
+  char line [1024] = "";
+
+  if ( !fp.open() ) {
+    CF_ERROR("fp.open('%s') fails: %s", fname.c_str(), strerror(errno));
+    return -1;
+  }
+
+  // NI      TS      Tx      Ty      Tz      lat     lon     alt
 
 
+  if ( !fgets(line, sizeof(line), fp) ) {
+    CF_ERROR("fgets('%s') fails: %s", fname.c_str(), strerror(errno));
+    return -1;
+  }
+
+  int cn = 0;
+  while ( !feof(fp) && cn < maxpts ) {
+
+    int n =
+        fscanf(fp, "%d %lf %lf %lf %lf %lf %lf %lf",
+            &NI[cn], &TS[cn], &Tx[cn], &Ty[cn], &Tz[cn],
+            &lat[cn], &lon[cn], &alt[cn]);
+
+    if ( n == 8 ) {
+      ++cn;
+    }
+  }
+
+  return cn;
+}
+
+
+bool save_data_file(const std::string & fname, int npts,
+    int NI[],
+    double TS[], double Tx[], double Ty[], double Tz[],
+    double lat[], double  lon[], double alt[],
+    const cv::Mat1f & S3)
+{
+
+  c_stdio_file fp (fname, "w");
+  if ( !fp.open() ) {
+    CF_ERROR("fp.open('%s') fails: %s", fname.c_str(), strerror(errno));
+    return false;
+  }
+
+
+  fprintf(fp, "NI\tTS\tTx\tTy\tTz\tlat\tlon\talt\tplat\tplon\tpalt\n");
+
+  for ( int i = 0; i < npts; ++i ) {
+    fprintf(fp, "%6d"
+        "\t%9.0f"
+        "\t%+12.6f\t%+12.6f\t%+12.6f"
+        "\t%+12.9f\t%+12.9f\t%+12.9f"
+        "\t%+12.9f\t%+12.9f\t%+12.9f"
+        "\n",
+        NI[i],
+        TS[i],
+        Tx[i], Ty[i], Tz[i],
+        lat[i], lon[i], alt[i],
+        S3(i, 0), S3(i, 1), S3(i, 2)
+       );
+  }
+
+
+  return true;
 }
 
 
@@ -55,27 +127,121 @@ int main(int argc, char *argv[])
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);
 
-  c_linear_regression3d l;
+  constexpr int maxpts = 500;
 
-  const double a0 = -10, b0 = 0.20, c0 = -0.1;
-  double a = 0, b = 0, c = 0;
+  int NI[maxpts];
+  double TS[maxpts];
+  double Tx[maxpts];
+  double Ty[maxpts];
+  double Tz[maxpts];
+  double lat[maxpts];
+  double lon[maxpts];
+  double alt[maxpts];
 
-  const size_t n = 20;
-  double x[n];
-  double y[n];
+  std::string input_file_name;
 
-  for( size_t i = 0; i < n; ++i ) {
-    x[i] = i;
-    y[i] = (a0 * x[i] + b0) / (c0 * x[i] + 1);
+  for ( int i = 1; i < argc; ++i  ) {
+
+    if( strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ) {
+      fprintf(stdout, "Usage:\n"
+          "   alpha <trajectory-selected-points.txt>\n");
+      return 0;
+    }
+
+    if ( input_file_name.empty() ) {
+      input_file_name = argv[i];
+      continue;
+    }
+
+    fprintf(stderr, "Invalid argument: %s\n", argv[i]);
+    return 1;
   }
 
-  for( size_t i = 0; i < n; ++i ) {
-    l.update(x[i], 1, -x[i] * y[i], y[i]);
+  if ( input_file_name.empty() ) {
+    fprintf(stderr, "No input file name specified\n");
+    return 1;
   }
 
-  l.compute(a, b, c);
+  const int npts =
+      load_data_file(input_file_name, 30,
+          NI, TS, Tx, Ty, Tz, lat, lon, alt);
 
-  CF_DEBUG("computed: a=%g b=%g c=%g", a, b, c);
+  if( npts < 4 ) {
+    CF_ERROR("load_data_file(): not enough points loaded : %d", npts);
+    return 1;
+  }
+
+  /*
+   *
+   lat = Tx * a00 + Ty * a01 + Tz * a02 + 1 * a03
+
+   S2[0]  = [Tx  Ty  Tz  1]  [a00]
+                             [a01]
+                             [a02]
+                             [a03]
+
+   S2[1]  = [Tx  Ty  Tz  1]  [a10]
+                             [a11]
+                             [a12]
+                             [a13]
+
+   S2[2]  = [Tx  Ty  Tz  1]  [a20]
+                             [a21]
+                             [a22]
+                             [a23]
+
+   */
+
+  cv::Mat1f S1 (npts, 4);
+  cv::Mat1f S2 (npts, 3);
+  cv::Mat1f S3;
+
+  cv::Mat1f X;
+
+  for( int i = 0; i < npts; ++i ) {
+
+    S1[i][0] = Tx[i];
+    S1[i][1] = Ty[i];
+    S1[i][2] = Tz[i];
+    S1[i][3] = 1;
+
+    S2[i][0] = lat[i];
+    S2[i][1] = lon[i];
+    S2[i][2] = alt[i];
+  }
+
+
+  try {
+    cv::solve(S1, S2, X, cv::DECOMP_NORMAL);
+
+    CF_DEBUG("X: rows=%d cols=%d", X.rows, X.cols);
+
+    CF_DEBUG("X{\n"
+        "%+16.12f\t%+16.12f\t%+16.12f\n"
+        "%+16.12f\t%+16.12f\t%+16.12f\n"
+        "%+16.12f\t%+16.12f\t%+16.12f\n"
+        "}\n",
+        X(0, 0), X(0, 1), X(0, 2),
+        X(1, 0), X(1, 1), X(1, 2),
+        X(2, 0), X(2, 1), X(2, 2),
+        X(3, 0), X(3, 1), X(3, 2));
+
+    S3 = S1 * X;
+
+    CF_DEBUG("S3: rows=%d cols=%d", S3.rows, S3.cols);
+
+    save_data_file("TransformedOutput.txt", npts,
+        NI,
+        TS, Tx, Ty, Tz,
+        lat, lon, alt,
+        S3);
+
+  }
+  catch (const std::exception & e) {
+    CF_ERROR("cv::solve() fails : %s", e.what());
+    return 1;
+  }
+
 
   return 0;
 }

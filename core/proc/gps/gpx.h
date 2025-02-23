@@ -29,4 +29,7 @@ struct c_gpx_track
 bool load_gpx_track_xml(const std::string & gpx_xml_file_name,
     c_gpx_track * gpx_track);
 
+bool load_gpx_track_csv(const std::string & csv_file_name,
+    c_gpx_track * gpx_track);
+
 #endif /* __gpx_h__ */

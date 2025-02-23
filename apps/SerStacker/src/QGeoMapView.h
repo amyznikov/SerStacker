@@ -283,6 +283,7 @@ protected:
   bool exportGpxTrackToConfigFile(const QGpxTrackItem * item, const QString & filename) const;
   bool importGpxTrackFromConfigFile(const QString & filename);
 
+
 protected:
 //  void showEvent(QShowEvent *event) final;
 

@@ -6,6 +6,9 @@
  */
 
 #include "gpx.h"
+#include <core/io/c_stdio_file.h>
+#include <core/readdir.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 #if HAVE_TINYXML2
@@ -207,4 +210,140 @@ bool load_gpx_track_xml(const std::string & gpx_xml_file_name, c_gpx_track * gpx
   CF_ERROR("This app is built with no tinyxml2 support. Can not parse gpx xml file");
   return false;
 #endif
+}
+
+bool load_gpx_track_csv(const std::string & csv_file_name, c_gpx_track * gpx_track)
+{
+  // Location.csv
+  // time,seconds_elapsed,bearingAccuracy,speedAccuracy,verticalAccuracy,horizontalAccuracy,speed,bearing,altitude,longitude,latitude
+  // time,seconds_elapsed,bearingAccuracy,speedAccuracy,verticalAccuracy,horizontalAccuracy,speed,bearing,altitude,longitude,latitude
+
+  c_stdio_file fp;
+
+  if( !fp.open(csv_file_name, "r") ) {
+    CF_ERROR("Can not read '%s': %s ",
+        csv_file_name.c_str(),
+        strerror(errno));
+    return false;
+  }
+
+  std::vector<char> line(2048, (char)(0));
+  std::vector<std::string> tokens;
+  c_gps_position gps;
+
+  int time_column_index = -1;
+  int seconds_elapsed_column_index = -1;
+  int altitude_column_index = -1;
+  int longitude_column_index = -1;
+  int latitude_column_index = -1;
+
+
+  if ( !fgets(line.data(), line.size(), fp) ) {
+    CF_ERROR("Can not read header line from '%s': %s ",
+        csv_file_name.c_str(),
+        strerror(errno));
+    return false;
+  }
+
+
+  CF_DEBUG("line='%s'", line.data());
+
+  tokens = strsplit(line.data(), ", \t\n\r");
+
+  CF_DEBUG("tokens.size=%zu", tokens.size());
+
+  for( size_t i = 0, n = tokens.size(); i < n; ++i ) {
+
+    CF_DEBUG("token[%zu]='%s'", i, tokens[i].c_str());
+
+    if( strcasecmp(tokens[i].c_str(), "time") == 0 ) {
+      time_column_index = (int) (i);
+    }
+    else if( strcasecmp(tokens[i].c_str(), "seconds_elapsed") == 0 ) {
+      seconds_elapsed_column_index = (int) (i);
+    }
+    else if( strcasecmp(tokens[i].c_str(), "altitude") == 0 ) {
+      altitude_column_index = (int) (i);
+    }
+    else if( strcasecmp(tokens[i].c_str(), "longitude") == 0 ) {
+      longitude_column_index = (int) (i);
+    }
+    else if( strcasecmp(tokens[i].c_str(), "latitude") == 0 ) {
+      latitude_column_index = (int) (i);
+    }
+  }
+
+  if( longitude_column_index < 0 ) {
+    CF_ERROR("Can not determine longitude column index from header line");
+    errno = EINVAL;
+    return false;
+  }
+
+  if( latitude_column_index < 0 ) {
+    CF_ERROR("Can not determine latitude column index from header line");
+    errno = EINVAL;
+    return false;
+  }
+
+
+  for( int current_line_index = 2; fgets(line.data(), line.size(), fp); ++current_line_index ) {
+    if( line[0] == '#' || line[0] == '/' ) {
+      continue;
+    }
+
+    tokens = strsplit(line.data(), ", \t");
+    const int num_tokens = (int)(tokens.size());
+
+
+    if( seconds_elapsed_column_index >= 0 && seconds_elapsed_column_index < num_tokens) {
+      if( sscanf(tokens[seconds_elapsed_column_index].c_str(), "%lf", &gps.timestamp) != 1 ) {
+        CF_ERROR("Can parse 'seconds_elapsed' value at line %d: %s", current_line_index,
+            tokens[seconds_elapsed_column_index].c_str());
+        continue;
+      }
+    }
+    else if( time_column_index >= 0 && time_column_index < num_tokens ) {
+      if( sscanf(tokens[time_column_index].c_str(), "%lf", &gps.timestamp) != 1 ) {
+        CF_ERROR("Can parse 'time' value at line %d: %s", current_line_index,
+            tokens[time_column_index].c_str());
+        continue;
+      }
+    }
+
+    if( altitude_column_index >= 0 && altitude_column_index < num_tokens) {
+      if( sscanf(tokens[altitude_column_index].c_str(), "%lf", &gps.altitude) != 1 ) {
+        CF_ERROR("Can parse 'altitude' value at line %d: %s", current_line_index,
+            tokens[altitude_column_index].c_str());
+        continue;
+      }
+    }
+
+    if( longitude_column_index >= 0 && longitude_column_index < num_tokens) {
+      if( sscanf(tokens[longitude_column_index].c_str(), "%lf", &gps.longitude) != 1 ) {
+        CF_ERROR("Can parse 'longitude' value at line %d: %s", current_line_index,
+            tokens[longitude_column_index].c_str());
+        continue;
+      }
+
+      gps.longitude *= CV_PI / 180;
+    }
+
+    if( latitude_column_index >= 0 && latitude_column_index < num_tokens) {
+      if( sscanf(tokens[latitude_column_index].c_str(), "%lf", &gps.latitude) != 1 ) {
+        CF_ERROR("Can parse 'latitude' value at line %d: %s", current_line_index,
+            tokens[latitude_column_index].c_str());
+        continue;
+      }
+
+      gps.latitude *= CV_PI / 180;
+    }
+
+    gpx_track->pts.emplace_back(gps);
+  }
+
+  gpx_track->name = get_file_name(csv_file_name);
+  gpx_track->author = "Unknown Author";
+  gpx_track->src = csv_file_name;
+
+  return true;
 }

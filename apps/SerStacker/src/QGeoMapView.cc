@@ -227,12 +227,24 @@ const QGpxLandmarkItem* QGpxTrackItem::gpxLandmarks(int index) const
 
 bool QGpxTrackItem::loadGPXTrack(const QString & filename)
 {
-  if( !load_gpx_track_xml(filename.toStdString(), &_track) ) {
-    return false;
+  if( filename.endsWith(".csv", Qt::CaseInsensitive) ) {
+    if( !load_gpx_track_csv(filename.toStdString(), &_track) ) {
+      return false;
+    }
+  }
+  else {
+
+    if( !load_gpx_track_xml(filename.toStdString(), &_track) ) {
+      return false;
+    }
+
   }
 
   return true;
 }
+
+
+
 
 int QGpxTrackItem::pointsCount() const
 {
@@ -1278,6 +1290,7 @@ void QGeoMapView::importGpxTrack()
 
   const QString filter =
       "GPX files (*.gpx) ;;"
+      "CSV files (*.csv) ;;"
       "Track config files files (*.conf *.cfg * config) ;;"
       "All files (*.*)";
 
@@ -1304,6 +1317,9 @@ void QGeoMapView::importGpxTrack()
     bool fOk ;
 
     if ( selectedFileName.endsWith(".gpx", Qt::CaseInsensitive) ) {
+      fOk = importGpxTrack(selectedFileName);
+    }
+    else if ( selectedFileName.endsWith(".csv", Qt::CaseInsensitive) ) {
       fOk = importGpxTrack(selectedFileName);
     }
     else {
@@ -1403,7 +1419,6 @@ bool QGeoMapView::importGpxTrack(const QString & filename)
   return true;
 }
 
-
 bool QGeoMapView::importGpxTrackFromConfigFile(const QString & filename)
 {
   c_config config(filename.toStdString());
@@ -1478,8 +1493,6 @@ bool QGeoMapView::importGpxTrackFromConfigFile(const QString & filename)
 
   return true;
 }
-
-
 
 bool QGeoMapView::exportGpxTrackToConfigFile(const QGpxTrackItem * currentItem, const QString & filename) const
 {

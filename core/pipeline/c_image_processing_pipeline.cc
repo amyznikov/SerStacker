@@ -703,10 +703,12 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
 
     fOk = false;
 
-    CF_ERROR("OpenCV Exception catched in c_image_processing_pipeline::run():\n"
+    CF_ERROR("OpenCV Exception caught in c_image_processing_pipeline::run():\n"
+        "%s\n"
         "%s\n"
         "%s() : %d\n"
         "file : %s\n",
+        e.what(),
         e.err.c_str(), ///< error description
         e.func.c_str(),///< function name. Available only when the compiler supports getting it
         e.line,///< line number in the source file where the error has occurred

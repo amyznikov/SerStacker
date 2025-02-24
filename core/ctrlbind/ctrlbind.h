@@ -114,6 +114,50 @@ struct c_ctrl_bind
     (ctls)->emplace_back(tmp); \
   }
 
+#define BIND_CTRLC(ctls, param, cname, cond, cdesc) \
+  if ( true ) { \
+    ctrl_bind_type ctype; \
+    if( std::is_enum<decltype(param())>::value ) { \
+      ctype = ctrl_bind_enum_combobox; \
+    } \
+    else if( std::is_same<decltype(param()), bool>::value ) { \
+      ctype = ctrl_bind_check_box; \
+    } \
+    else { \
+      ctype = ctrl_bind_numeric_box; \
+    } \
+    \
+    c_ctrl_bind tmp; \
+    tmp.ctl_name = cname; \
+    tmp.ctl_tooltip = cdesc; \
+    tmp.ctl_type = ctype; \
+    \
+    tmp.get_value = [this](std::string * v) -> bool { \
+      *v = toString(param()); \
+      return true; \
+    }; \
+    \
+    tmp.set_value = [this](const std::string & s) { \
+      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      if( fromString(s, &v) ) { \
+        std::lock_guard<std::mutex> lock(mutex()); \
+        set_##param(v); \
+        return true; \
+      } \
+      return false; \
+    }; \
+    \
+    if ( ctype == ctrl_bind_enum_combobox ) { \
+      tmp.get_enum_members = get_members_of<decltype(param())>(); \
+    } \
+    \
+    tmp.is_enabled = [this]() { \
+      return (cond); \
+    }; \
+    \
+    (ctls)->emplace_back(tmp); \
+  }
+
 #define BIND_PCTRL(ctls, param, cdesc) \
     BIND_CTRL(ctls, param, #param, cdesc )
 

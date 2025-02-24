@@ -161,6 +161,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
                 });
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -191,6 +192,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
                 });
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
         break;
@@ -215,6 +217,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
                 });
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -242,6 +245,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
                 });
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -270,6 +274,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         ctl->setSingleStep(p.range.step);
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -298,6 +303,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         ctl->setSingleStep(p.range.step);
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -329,6 +335,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         ctl->setToolTip(p.ctl_tooltip.c_str());
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -359,6 +366,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         ctl->setToolTip(p.ctl_tooltip.c_str());
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -389,6 +397,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         }
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 
@@ -424,6 +433,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         }
 
         if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
           bound_state_ctls_.emplace(ctl, p.is_enabled);
         }
 

@@ -89,45 +89,50 @@ public:
 
   const std::string & class_name() const
   {
-    return class_factory_->class_name;
-  }
-
-  const std::string & display_name() const
-  {
-    return class_factory_->display_name;
+    return _class_factory->class_name;
   }
 
   const std::string & tooltip() const
   {
-    return class_factory_->tooltip;
+    return _class_factory->tooltip;
+  }
+
+  void set_display_name(const std::string & v)
+  {
+    _display_name = v;
+  }
+
+  const std::string & display_name() const
+  {
+    return _display_name;
   }
 
   std::mutex & mutex()
   {
-    return mtx_;
+    return _mtx;
   }
 
   bool enabled() const
   {
-    return enabled_;
+    return _enabled;
   }
 
   void set_enabled(bool v)
   {
-    if( enabled_ != v ) {
-      enabled_ = v;
+    if( _enabled != v ) {
+      _enabled = v;
       onstatechanged();
     }
   }
 
   void set_ignore_mask(bool v)
   {
-    ignore_mask_ = v;
+    _ignore_mask = v;
   }
 
   bool ignore_mask() const
   {
-    return ignore_mask_;
+    return _ignore_mask;
   }
 
   static sptr create(const std::string & class_name);
@@ -143,16 +148,19 @@ protected:
   }
 
 protected:
-  c_data_frame_processor_routine(const class_factory * _class_factory, bool enabled = false) :
-    class_factory_(_class_factory), enabled_(enabled)
+  c_data_frame_processor_routine(const class_factory * cfactory, bool enabled = false) :
+      _class_factory(cfactory),
+      _display_name(cfactory->display_name),
+      _enabled(enabled)
   {
   }
 
 protected:
-  std::mutex mtx_;
-  const class_factory * const class_factory_;
-  bool enabled_;
-  bool ignore_mask_ = false;
+  std::mutex _mtx;
+  const class_factory * const _class_factory;
+  std::string _display_name;
+  bool _enabled;
+  bool _ignore_mask = false;
 };
 
 

@@ -103,18 +103,38 @@ bool save_data_file(const std::string & fname, int npts,
   fprintf(fp, "NI\tTS\tTx\tTy\tTz\tlat\tlon\talt\tplat\tplon\tpalt\n");
 
   for ( int i = 0; i < npts; ++i ) {
-    fprintf(fp, "%6d"
-        "\t%9.0f"
-        "\t%+12.6f\t%+12.6f\t%+12.6f"
-        "\t%+12.9f\t%+12.9f\t%+12.9f"
-        "\t%+12.9f\t%+12.9f\t%+12.9f"
-        "\n",
-        NI[i],
-        TS[i],
-        Tx[i], Ty[i], Tz[i],
-        lat[i], lon[i], alt[i],
-        S3(i, 0), S3(i, 1), S3(i, 2)
-       );
+
+    if ( S3.cols == 3 ) {
+
+      fprintf(fp, "%6d"
+          "\t%9.0f"
+          "\t%+12.6f\t%+12.6f\t%+12.6f"
+          "\t%+12.9f\t%+12.9f\t%+12.9f"
+          "\t%+12.9f\t%+12.9f\t%+12.9f"
+          "\n",
+          NI[i],
+          TS[i],
+          Tx[i], Ty[i], Tz[i],
+          lat[i], lon[i], alt[i],
+          S3(i, 0), S3(i, 1), S3(i, 2)
+         );
+    }
+    else {
+
+      fprintf(fp, "%6d"
+          "\t%9.0f"
+          "\t%+12.6f\t%+12.6f\t%+12.6f"
+          "\t%+12.9f\t%+12.9f\t%+12.9f"
+          "\t%+12.9f\t%+12.9f\t%+12.9f"
+          "\n",
+          NI[i],
+          TS[i],
+          Tx[i], Ty[i], Tz[i],
+          lat[i], lon[i], alt[i],
+          S3(i, 0), S3(i, 1), 0.0f
+         );
+
+    }
   }
 
 
@@ -163,7 +183,7 @@ int main(int argc, char *argv[])
   }
 
   const int npts =
-      load_data_file(input_file_name, 30,
+      load_data_file(input_file_name, maxpts,
           NI, TS, Tx, Ty, Tz, lat, lon, alt);
 
   if( npts < 4 ) {
@@ -171,78 +191,134 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  /*
-   *
-   lat = Tx * a00 + Ty * a01 + Tz * a02 + 1 * a03
+  if ( 0 ) {
 
-   S2[0]  = [Tx  Ty  Tz  1]  [a00]
-                             [a01]
-                             [a02]
-                             [a03]
+    /*
+     *
+     lat = Tx * a00 + Ty * a01 + Tz * a02 + 1 * a03
+     lon = Tx * a10 + Ty * a11 + Tz * a12 + 1 * a13
+     alt = Tx * a20 + Ty * a21 + Tz * a22 + 1 * a23
 
-   S2[1]  = [Tx  Ty  Tz  1]  [a10]
-                             [a11]
-                             [a12]
-                             [a13]
+     S2[0]  = [Tx  Ty  Tz  1]  [a00] [a10] [a20]
+     S2[1]  = [Tx  Ty  Tz  1]  [a01] [a11] [a21]
+     S2[2]  = [Tx  Ty  Tz  1]  [a02] [a12] [a22]
+                               [a03] [a13] [a23]
 
-   S2[2]  = [Tx  Ty  Tz  1]  [a20]
-                             [a21]
-                             [a22]
-                             [a23]
+     */
 
-   */
+    cv::Mat1f S1 (npts, 4);
+    cv::Mat1f S2 (npts, 3);
+    cv::Mat1f S3;
 
-  cv::Mat1f S1 (npts, 4);
-  cv::Mat1f S2 (npts, 3);
-  cv::Mat1f S3;
+    cv::Mat1f X;
 
-  cv::Mat1f X;
+    for( int i = 0; i < npts; ++i ) {
 
-  for( int i = 0; i < npts; ++i ) {
+      S1[i][0] = Tx[i];
+      S1[i][1] = Ty[i];
+      S1[i][2] = Tz[i];
+      S1[i][3] = 1;
 
-    S1[i][0] = Tx[i];
-    S1[i][1] = Ty[i];
-    S1[i][2] = Tz[i];
-    S1[i][3] = 1;
+      S2[i][0] = lat[i];
+      S2[i][1] = lon[i];
+      S2[i][2] = alt[i];
+    }
 
-    S2[i][0] = lat[i];
-    S2[i][1] = lon[i];
-    S2[i][2] = alt[i];
+
+    try {
+      cv::solve(S1, S2, X, cv::DECOMP_NORMAL);
+
+      CF_DEBUG("X: rows=%d cols=%d", X.rows, X.cols);
+
+      CF_DEBUG("X{\n"
+          "%+16.12f\t%+16.12f\t%+16.12f\n"
+          "%+16.12f\t%+16.12f\t%+16.12f\n"
+          "%+16.12f\t%+16.12f\t%+16.12f\n"
+          "%+16.12f\t%+16.12f\t%+16.12f\n"
+          "}\n",
+          X(0, 0), X(0, 1), X(0, 2),
+          X(1, 0), X(1, 1), X(1, 2),
+          X(2, 0), X(2, 1), X(2, 2),
+          X(3, 0), X(3, 1), X(3, 2));
+
+      S3 = S1 * X;
+
+      CF_DEBUG("S3: rows=%d cols=%d", S3.rows, S3.cols);
+
+      save_data_file("TransformedOutput.txt", npts,
+          NI,
+          TS, Tx, Ty, Tz,
+          lat, lon, alt,
+          S3);
+
+    }
+    catch (const std::exception & e) {
+      CF_ERROR("cv::solve() fails : %s", e.what());
+      return 1;
+    }
+
   }
+  else {
+
+    /*
+     *
+     lat = Tx * a00 + Tz * a01 + 1 * a02
+     lon = Tx * a10 + Tz * a11 + 1 * a12
+
+     S2[0]  = [Tx  Tz  1]  [a00] [a10]
+     S2[1]  = [Tx  Tz  1]  [a01] [a11]
+                           [a02] [a12]
+
+     */
+
+    cv::Mat1f S1 (npts, 3);
+    cv::Mat1f S2 (npts, 2);
+    cv::Mat1f S3;
+
+    cv::Mat1f X;
+
+    for( int i = 0; i < npts; ++i ) {
+
+      S1[i][0] = Tx[i];
+      S1[i][1] = Tz[i];
+      S1[i][2] = 1;
+
+      S2[i][0] = lat[i];
+      S2[i][1] = lon[i];
+    }
 
 
-  try {
-    cv::solve(S1, S2, X, cv::DECOMP_NORMAL);
+    try {
+      cv::solve(S1, S2, X, cv::DECOMP_NORMAL);
 
-    CF_DEBUG("X: rows=%d cols=%d", X.rows, X.cols);
+      CF_DEBUG("X: rows=%d cols=%d", X.rows, X.cols);
 
-    CF_DEBUG("X{\n"
-        "%+16.12f\t%+16.12f\t%+16.12f\n"
-        "%+16.12f\t%+16.12f\t%+16.12f\n"
-        "%+16.12f\t%+16.12f\t%+16.12f\n"
-        "}\n",
-        X(0, 0), X(0, 1), X(0, 2),
-        X(1, 0), X(1, 1), X(1, 2),
-        X(2, 0), X(2, 1), X(2, 2),
-        X(3, 0), X(3, 1), X(3, 2));
+      CF_DEBUG("X{\n"
+          "%+16.12f\t%+16.12f\n"
+          "%+16.12f\t%+16.12f\n"
+          "%+16.12f\t%+16.12f\n"
+          "}\n",
+          X(0, 0), X(0, 1),
+          X(1, 0), X(1, 1),
+          X(2, 0), X(2, 1));
 
-    S3 = S1 * X;
+      S3 = S1 * X;
 
-    CF_DEBUG("S3: rows=%d cols=%d", S3.rows, S3.cols);
+      CF_DEBUG("S3: rows=%d cols=%d", S3.rows, S3.cols);
 
-    save_data_file("TransformedOutput.txt", npts,
-        NI,
-        TS, Tx, Ty, Tz,
-        lat, lon, alt,
-        S3);
+      save_data_file("TransformedOutput.txt", npts,
+          NI,
+          TS, Tx, Ty, Tz,
+          lat, lon, alt,
+          S3);
+
+    }
+    catch (const std::exception & e) {
+      CF_ERROR("cv::solve() fails : %s", e.what());
+      return 1;
+    }
 
   }
-  catch (const std::exception & e) {
-    CF_ERROR("cv::solve() fails : %s", e.what());
-    return 1;
-  }
-
-
   return 0;
 }
 

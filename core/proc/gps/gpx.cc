@@ -246,15 +246,15 @@ bool load_gpx_track_csv(const std::string & csv_file_name, c_gpx_track * gpx_tra
   }
 
 
-  CF_DEBUG("line='%s'", line.data());
+  // CF_DEBUG("line='%s'", line.data());
 
   tokens = strsplit(line.data(), ", \t\n\r");
 
-  CF_DEBUG("tokens.size=%zu", tokens.size());
+  // CF_DEBUG("tokens.size=%zu", tokens.size());
 
   for( size_t i = 0, n = tokens.size(); i < n; ++i ) {
 
-    CF_DEBUG("token[%zu]='%s'", i, tokens[i].c_str());
+    // CF_DEBUG("token[%zu]='%s'", i, tokens[i].c_str());
 
     if( strcasecmp(tokens[i].c_str(), "time") == 0 ) {
       time_column_index = (int) (i);

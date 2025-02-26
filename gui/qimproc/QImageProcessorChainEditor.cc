@@ -176,6 +176,7 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
   tree_ctl->setColumnCount(1);
   tree_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
   tree_ctl->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+  tree_ctl->setContextMenuPolicy(Qt::CustomContextMenu);
 
   connect(tree_ctl, &QTreeWidget::itemChanged,
       this, &ThisClass::onTreeItemChanged);
@@ -185,6 +186,40 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
 
   connect(tree_ctl, &QTreeWidget::itemExpanded,
       this, &ThisClass::updateItemSizeHint);
+
+  connect(tree_ctl, &QTreeWidget::customContextMenuRequested,
+      [this](
+          const QPoint & pos) {
+            QImageProcessorItem *item = dynamic_cast<QImageProcessorItem*>(tree_ctl->itemAt(pos));
+            if ( item ) {
+
+              QMenu menu;
+
+              menu.addAction("Change Display Name...",
+                  [this, item]() {
+
+                    const QString oldDisplayName =
+                        QString::fromStdString(item->routine()->display_name());
+
+                    const QString newDisplayName =
+                        QInputDialog::getText(this, "Enter new display name",  "name:",
+                            QLineEdit::EchoMode::Normal,
+                            oldDisplayName);
+
+                    if ( !newDisplayName.isEmpty() && newDisplayName != oldDisplayName ) {
+
+                      item->routine()->set_display_name(newDisplayName.toStdString());
+                      item->setText(0, QString::fromStdString(item->routine()->display_name()));
+
+                      Q_EMIT parameterChanged();
+                    }
+                  });
+
+              menu.exec(tree_ctl->mapToGlobal(QPoint(pos.x()-4, pos.y()-4)));
+
+            }
+          });
+
 
   ///////////////////////////////////////////////////////////////////
 

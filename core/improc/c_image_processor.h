@@ -94,7 +94,12 @@ public:
 
   const std::string & display_name() const
   {
-    return _class_factory->display_name;
+    return _display_name;
+  }
+
+  void set_display_name(const std::string & v)
+  {
+    _display_name = v;
   }
 
   const std::string & tooltip() const
@@ -268,8 +273,10 @@ public:
   /////////////////////////////////////////////////////////////////////////////
 
 protected:
-  c_image_processor_routine(const class_factory * _class_factory, bool enabled = true) :
-    _class_factory(_class_factory), _enabled(enabled)
+  c_image_processor_routine(const class_factory * cfactory, bool enabled = true) :
+      _class_factory(cfactory),
+      _enabled(enabled),
+      _display_name(_class_factory->display_name)
   {
   }
 
@@ -282,6 +289,7 @@ protected:
   const class_factory * const _class_factory;
   notify_callback _preprocess_notify;
   notify_callback _postprocess_notify;
+  std::string _display_name;
   std::mutex _mtx;
   DATA_CHANNEL _input_channel = IMAGE;
   DATA_CHANNEL _output_channel = IMAGE;

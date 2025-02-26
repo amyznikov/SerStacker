@@ -660,6 +660,7 @@ bool c_image_processor_routine::serialize(c_config_setting settings, bool save)
   else {
     settings.get("enabled", &_enabled);
     settings.get("ignore_mask", &_ignore_mask);
+    settings.get("display_name", &_display_name);
   }
 
   return true;

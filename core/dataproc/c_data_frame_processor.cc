@@ -44,7 +44,7 @@ const std::vector<const c_data_frame_processor_routine::class_factory*> & c_data
 
 const c_data_frame_processor_routine::class_factory * c_data_frame_processor_routine::classfactory() const
 {
-  return class_factory_;
+  return _class_factory;
 }
 
 void c_data_frame_processor_routine::register_class_factory(const class_factory * class_factory)
@@ -150,8 +150,9 @@ bool c_data_frame_processor_routine::serialize(c_config_setting settings, bool s
     settings.set("ignore_mask", ignore_mask());
   }
   else {
-    settings.get("enabled", &enabled_);
-    settings.get("ignore_mask", &ignore_mask_);
+    settings.get("enabled", &_enabled);
+    settings.get("ignore_mask", &_ignore_mask);
+    settings.get("display_name", &_display_name);
   }
 
   return true;

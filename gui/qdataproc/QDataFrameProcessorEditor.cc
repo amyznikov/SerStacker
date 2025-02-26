@@ -37,7 +37,7 @@ public:
   QRoutineItem(const c_data_frame_processor_routine::sptr & routine) :
       routine_(routine)
   {
-    setText(0, routine->display_name().c_str());
+    setText(0, QString::fromStdString(routine->display_name()));
     setToolTip(0, routine->tooltip().c_str());
     setCheckState(0, routine->enabled() ? Qt::Checked : Qt::Unchecked);
   }
@@ -138,6 +138,7 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
   tree_ctl->setColumnCount(1);
   tree_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
   tree_ctl->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+  tree_ctl->setContextMenuPolicy(Qt::CustomContextMenu);
 
   connect(tree_ctl, &QTreeWidget::itemChanged,
       this, &ThisClass::onTreeItemChanged);
@@ -147,6 +148,39 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
 
   connect(tree_ctl, &QTreeWidget::itemExpanded,
       this, &ThisClass::updateItemSizeHint);
+
+  connect(tree_ctl, &QTreeWidget::customContextMenuRequested,
+      [this](
+          const QPoint & pos) {
+            QRoutineItem *item = dynamic_cast<QRoutineItem*>(tree_ctl->itemAt(pos));
+            if ( item ) {
+
+              QMenu menu;
+
+              menu.addAction("Change Display Name...",
+                  [this, item]() {
+
+                    const QString oldDisplayName =
+                        QString::fromStdString(item->routine()->display_name());
+
+                    const QString newDisplayName =
+                      QInputDialog::getText(this, "Enter new display name", "name:",
+                          QLineEdit::EchoMode::Normal,
+                          oldDisplayName);
+
+                    if ( !newDisplayName.isEmpty() && newDisplayName != oldDisplayName ) {
+
+                      item->routine()->set_display_name(newDisplayName.toStdString());
+                      item->setText(0, QString::fromStdString(item->routine()->display_name()));
+
+                      Q_EMIT parameterChanged();
+                    }
+                  });
+
+              menu.exec(tree_ctl->mapToGlobal(QPoint(pos.x()-4, pos.y()-4)));
+            }
+          });
+
 
   ///////////////////////////////////////////////////////////////////
   updateControls();

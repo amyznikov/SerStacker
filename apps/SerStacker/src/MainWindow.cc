@@ -813,6 +813,8 @@ void MainWindow::onWriteDisplayVideo()
     if( !image.isNull() ) {
 
       if ( image.format() != QImage::Format_BGR888 ) {
+        // In some versions of Qt the direct conversion of ARGB32_Premultiplied to BGR888 may work incorrectly
+        image.convertTo(QImage::Format_RGBA8888);
         image.convertTo(QImage::Format_BGR888);
       }
 

@@ -254,7 +254,7 @@ public:
     edgeboxes_->setKappa(value);
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
   {
     BIND_PCTRL(ctls, gradient_type, "Method for computing image gradients");
     BIND_PCTRL(ctls, gradient_pscale, "Gradient pyramid scale");
@@ -277,7 +277,7 @@ public:
     BIND_CTRL_END_GROUP(ctls);
   }
 
-  bool serialize(c_config_setting settings, bool save) override
+  bool serialize(c_config_setting settings, bool save) final
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, gradient_type);
@@ -298,7 +298,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
   std::string model_;

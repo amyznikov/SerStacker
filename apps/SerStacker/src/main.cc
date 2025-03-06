@@ -7,6 +7,7 @@
 #include <opencv2/core/ocl.hpp>
 #include <gui/widgets/style.h>
 #include "MainWindow.h"
+#include <core/readdir.h>
 #include <core/debug.h>
 
 
@@ -26,11 +27,20 @@ int main(int argc, char *argv[])
   app.setOrganizationName(MY_COMPANY);
   app.setApplicationName(MY_APP);
 
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
+  if ( true ) {
+
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::defaultFormat(), QSettings::UserScope,
+        QString("%1/.config").arg(get_home_directory().c_str()));
+  }
+
+
   Q_INIT_RESOURCE(app_resources);
   Q_INIT_RESOURCE(gui_resources);
 
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
 
   setIconStyleSelector("dark");
 

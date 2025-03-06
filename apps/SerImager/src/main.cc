@@ -6,8 +6,8 @@
  */
 #include <opencv2/core/ocl.hpp>
 #include <gui/widgets/style.h>
-//#include <QtGui/5.15.13/QtGui/qpa/qplatformnativeinterface.h>
 #include "MainWindow.h"
+#include <core/readdir.h>
 #include <core/debug.h>
 
 #define MY_COMPANY  "amyznikov"
@@ -25,12 +25,21 @@ int main(int argc, char * argv[])
   app.setOrganizationName(MY_COMPANY);
   app.setApplicationName(MY_APP);
 
+  cf_set_logfile(stderr);
+  cf_set_loglevel(CF_LOG_DEBUG);
+
+  if ( true ) {
+
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::defaultFormat(), QSettings::UserScope,
+        QString("%1/.config").arg(get_home_directory().c_str()));
+  }
+
   Q_INIT_RESOURCE(gui_resources);
   Q_INIT_RESOURCE(app_resources);
   Q_INIT_RESOURCE(qdarkstyle);
 
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
+
 
   // speed-up using multithreads
   cv::setUseOptimized(true);

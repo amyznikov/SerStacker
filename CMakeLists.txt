@@ -78,6 +78,28 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 
 # ----------------------------------------------------------------------------
+# onnxruntime
+#
+if ( FALSE ) 
+find_package(onnxruntime QUIET)
+if ( onnxruntime_FOUND ) 
+  get_target_property(onnxruntime_INCLUDES onnxruntime::onnxruntime INTERFACE_INCLUDE_DIRECTORIES)
+  # get_target_property(onnxruntime_LIBRARY onnxruntime::onnxruntime INTERFACE_LINK_LIBRARIES)
+	# onnxruntime::onnxruntime  onnxruntime_providers_shared 	
+  set(onnxruntime_LIBRARY onnxruntime::onnxruntime)
+  message (STATUS "onnxruntime FOUND: INCLUDE=${onnxruntime_INCLUDES} LIB=${onnxruntime_LIBRARY}")
+  
+  include_directories(${onnxruntime_INCLUDE_DIRS})
+  add_definitions(-DHAVE_ONNXRUNTIME=1)
+else()
+  message (STATUS "onnxruntime: NOT FOUND")
+  set(onnxruntime_LIBRARY "")
+endif()	
+endif()	
+
+
+
+# ----------------------------------------------------------------------------
 # cfitsio
 #
 unset(CFITSIO_INCLUDE_DIRS CACHE)
@@ -409,6 +431,7 @@ endif()
 set(CORE_LIBRARIES
 	core
 	${LIBCONFIG_LIBRARIES}
+	${onnxruntime_LIBRARY}
 	${OpenCV_LIBS}
 	${FFMPEG_LIBRARIES}
 	${TIFF_LIBRARIES}

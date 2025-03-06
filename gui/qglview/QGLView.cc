@@ -40,33 +40,41 @@ namespace {
 
 void toSpherical(const QVector3D & v, double * r, double * phi, double * theta)
 {
-  *r = v.length();
+  const double x = v.x();
+  const double y = v.y();
+  const double z = v.z();
+
+  *r = std::sqrt(x * x + y * y + z * z); //  v.length();
   *phi = std::acos(v.z() / *r);
   *theta = std::atan2(v.y(), v.x());
 }
 
 QVector3D toSpherical(const QVector3D & v)
 {
-  const auto r = v.length();
-  return QVector3D(r, std::acos(v.z() / r), std::atan2(v.y(), v.x()));
+  const double x = v.x();
+  const double y = v.y();
+  const double z = v.z();
+  const double r = std::sqrt(x * x + y * y + z * z); //  v.length();
+
+  return QVector3D(r, std::acos(z / r), std::atan2(y, x));
 }
 
 QVector3D fromSpherical(double r, double phi, double theta)
 {
-  return QVector3D(r * cos(theta) * sin(phi),
-      r * sin(theta) * sin(phi),
-      r * cos(phi));
+  return QVector3D(r * std::cos(theta) * std::sin(phi),
+      r * std::sin(theta) * std::sin(phi),
+      r * std::cos(phi));
 }
 
 QVector3D fromSpherical(const QVector3D & v)
 {
-  const auto & r = v[0];
-  const auto & phi = v[1];
-  const auto & theta = v[2];
+  const double r = v[0];
+  const double phi = v[1];
+  const double theta = v[2];
 
-  return QVector3D(r * cos(theta) * sin(phi),
-      r * sin(theta) * sin(phi),
-      r * cos(phi));
+  return QVector3D(r * std::cos(theta) * std::sin(phi),
+      r * std::sin(theta) * std::sin(phi),
+      r * std::cos(phi));
 }
 
 template<typename T>
@@ -1283,16 +1291,16 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             double dx = delta.x();
             double dy = delta.y();
 
-            if( e->modifiers() & Qt::ShiftModifier ) {
-              if( std::abs(dx) >= std::abs(dy) ) {
-                dy = 0;
-              }
-              else {
-                dx = 0;
-              }
+            // if( e->modifiers() & Qt::ShiftModifier ) {
+            if( std::abs(dx) >= std::abs(dy) ) {
+              dy = 0;
             }
+            else {
+              dx = 0;
+            }
+//          }
 
-            const QVector3D viewRotation(0, -0.1 * dy * M_PI / 180, -0.1 * dx * M_PI / 180);
+            const QVector3D viewRotation(0, -0.05 * dy * M_PI / 180, -0.05 * dx * M_PI / 180);
 
             _viewPoint =
                 fromSpherical(toSpherical(_viewPoint - _viewTarget) + viewRotation) + _viewTarget;
@@ -1309,8 +1317,8 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
             QVector3D Up = (TU - T0).normalized();
             QVector3D Right = (TR - T0).normalized();
 
-            double dx = delta.x();
-            double dy = delta.y();
+            double dx = 0.5 * delta.x();
+            double dy = 0.5 * delta.y();
 
 //            if( e->modifiers() == Qt::ControlModifier ) {
 //              if( std::abs(dx) >= std::abs(dy) ) {

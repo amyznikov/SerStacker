@@ -15,7 +15,7 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
     cv::RotatedRect * rc)
 {
 
-  typedef c_levmar_solver
+  typedef c_levmard_solver
     c_lm_solver;
 
   class c_lm_solver_callback:

@@ -94,8 +94,7 @@ static bool estimate_pure_rotation_homograpy(const std::vector<cv::Point2f> & cu
     cv::Vec3d & RotationVector, cv::Matx33d & CameraMatrix)
 {
 
-  typedef c_levmar_solver c_lm_solver;
-  //typedef c_levmar_solver<double> c_lm_solver;
+  typedef c_levmard_solver c_lm_solver;
 
   class c_solver_callback:
       public c_lm_solver::callback

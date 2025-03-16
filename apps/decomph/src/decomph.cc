@@ -68,8 +68,7 @@ static bool decompuse_pure_rotation_homograpy(const cv::Matx33d & H,
     cv::Vec3d & outputRotationVector, cv::Matx33d & outputCameraMatrix)
 {
 
-  typedef c_levmar_solver c_lm_solver;
-  //typedef c_levmar_solver<double> c_lm_solver;
+  typedef c_levmard_solver c_lm_solver;
 
   class c_solver_callback:
       public c_lm_solver::callback

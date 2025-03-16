@@ -491,6 +491,13 @@ struct c_lm_camera_pose_options
   LM_METHOD lm = LM_METHOD_1;
 };
 
+struct c_lm_camera_pose3_options:
+    c_lm_camera_pose_options
+{
+    double erfactor = 50;
+    double ew = 10;
+};
+
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
@@ -507,6 +514,16 @@ bool lm_refine_camera_pose2(cv::Vec3d & A, cv::Vec3d & T,
     const std::vector<cv::Point2f> & reference_keypoints,
     cv::Mat1b & inliers,
     const c_lm_camera_pose_options * opts);
+
+bool lm_refine_camera_pose3(cv::Vec3f & A, cv::Point2f & E,
+    const cv::Matx33f & camera_matrix,
+    const cv::Matx33f & camera_matrix_inv /* pre-compured by caller to avoid extra computations if called in a loop*/,
+    const std::vector<cv::KeyPoint> & current_keypoints,
+    const std::vector<cv::KeyPoint> & reference_keypoints,
+    const std::vector<int32_t> & matches/* reference -> current */,
+    cv::Mat1b & inliers /* reference -> current */,
+    const c_lm_camera_pose3_options * opts);
+
 
 bool lm_camera_pose_and_derotation_homography(
     /* in */ const cv::Matx33d & camera_matrix,

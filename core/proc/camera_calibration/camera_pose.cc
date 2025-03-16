@@ -701,7 +701,7 @@ bool lm_refine_camera_pose(cv::Vec3d & A, cv::Vec3d & T,
   typedef double
       _Tp;
 
-  typedef c_levmar_solver
+  typedef c_levmar_solver<_Tp>
     c_lm_solver;
 
   typedef cv::Matx<_Tp, 3, 3>

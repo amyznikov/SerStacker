@@ -10,9 +10,11 @@
 #define __c_cte_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/pose.h>
+#include <core/proc/camera_calibration/camera_pose.h>
+#include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/uvec3.h>
+#include <core/io/c_stdio_file.h>
 #include <deque>
 
 struct c_cte_pipeline_input_options:
@@ -60,17 +62,21 @@ struct c_cte_output_options:
 {
   bool save_progress_video = false;
   c_output_frame_writer_options progress_output_options;
+
+  bool save_poses = false;
+  std::string poses_file_name;
 };
 
-struct c_cte_pose_estimation_options
+struct c_cte_pose_estimation_options :
+    c_lm_camera_pose3_options
 {
-  int max_iterations = 30;
-  int max_levmar_iterations = 100;
-  double levmar_epsf = 1e-15;
-  double levmar_epsx = 1e-15;
-  double robust_threshold = 15;
-  double erfactor = 50;
-  double ew = 100;
+//  int max_iterations = 30;
+//  int max_levmar_iterations = 100;
+//  double levmar_epsf = 1e-15;
+//  double levmar_epsx = 1e-15;
+//  double robust_threshold = 15;
+//  double erfactor = 50;
+//  double ew = 10;
 };
 
 
@@ -119,6 +125,7 @@ protected:
   bool process_current_frame();
   bool update_trajectory();
   bool save_progress_video();
+  bool save_current_pose();
   bool create_display_image(size_t back_frame_index, cv::OutputArray display_frame);
 
 protected:
@@ -126,7 +133,7 @@ protected:
   c_cte_pipeline_camera_options _camera_options;
   c_cte_pipeline_feature2d_options _feature2d;
   c_cte_context_options _context_options;
-  c_cte_pose_estimation_options _pose_estimation;
+  c_cte_pose_estimation_options _pose_estimation_options;
   c_cte_output_options _output_options;
 
 protected:
@@ -136,6 +143,9 @@ protected:
 protected:
   cv::Mat lastDisplayImage;
   c_output_frame_writer _progress_writer;
+
+protected:
+  c_stdio_file _posesfp;
 
 protected:
 
@@ -153,8 +163,8 @@ protected:
     std::vector<std::vector<int32_t>> matches;
     std::vector<cv::Mat1b> inliers;
 
-    cv::Vec3d A =
-        cv::Vec3d(0, 0, 0);
+    cv::Vec3f A =
+        cv::Vec3f(0, 0, 0);
 
     cv::Point2f E;
 

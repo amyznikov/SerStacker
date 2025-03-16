@@ -26,7 +26,7 @@
  */
 
 #ifndef __OPTIMIZE__
-# define __OPTIMIZE__
+# define __OPTIMIZE__ 1
 #endif
 
 #include "ssdesc.h"

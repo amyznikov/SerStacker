@@ -23,8 +23,8 @@ namespace {
 
 static inline void pack_params(std::vector<float> & params, const cv::Vec3f & A)
 {
-  if( params.size() != 5 ) {
-    params.resize(5);
+  if( params.size() != 3 ) {
+    params.resize(3);
   }
   params[0] = A[0];
   params[1] = A[1];
@@ -268,7 +268,6 @@ public:
     const cv::Mat1b & inliers =
         _inliers;
 
-//    CF_DEBUG("_inliers.size=%dx%d", _inliers.rows, _inliers.cols);
     compute_reprojection_errors(p, rhs);
 
     if( _robust_threshold <= 0 ) {
@@ -351,8 +350,6 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
     lm.set_max_iterations(opts->max_levmar_iterations);
   }
 
-  CF_DEBUG("*");
-
   const int max_iterations =
       std::max(1, opts->max_iterations);
 
@@ -361,10 +358,6 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
 
   const cv::Point2f Einitial =
       EE;
-
-  CF_DEBUG("INITIAL A=(%+g %+g %+g) E=(%+g %+g)",
-      Ainitial(0) * 180 / CV_PI, Ainitial(1) * 180 / CV_PI, Ainitial(2) * 180 / CV_PI,
-      Einitial.x, Einitial.y);
 
   for( int iteration = 0; iteration < max_iterations; ++iteration ) {
 
@@ -396,12 +389,8 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
 
     callback.set_robust_threshold(opts->robust_threshold);
 
-    CF_DEBUG("C lm.run[%d]", iteration);
-
     const int num_levmar_iterations =
         lm.run(callback, p);
-
-    CF_DEBUG("R lm.run[%d] num_levmar_iterations=%d", iteration, num_levmar_iterations);
 
 //    if( canceled() ) {
 //      return false;
@@ -417,7 +406,7 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
     H = camera_matrix * build_rotation(A) * camera_matrix_inv;
     EOk = callback.estimate_epipole_location(H, E);
 
-    if( true ) {
+    if( false ) {
 
       CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g) EOk=%d",
           iteration,
@@ -450,13 +439,11 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
     }
 
 
-    CF_DEBUG("<UPDATE>");
-    CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) Eok=%d", 1, AA[0] * 180 / CV_PI, AA[1] * 180 / CV_PI, AA[2] * 180 / CV_PI, EE.x, EE.y, EOk);
-    CF_DEBUG("</UPDATE>");
+    // CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) Eok=%d", 1, AA[0] * 180 / CV_PI, AA[1] * 180 / CV_PI, AA[2] * 180 / CV_PI, EE.x, EE.y, EOk);
   }
 
 
-  CF_DEBUG("*");
+  //CF_DEBUG("*");
 
 
 //  if( canceled() ) {

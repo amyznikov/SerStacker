@@ -166,6 +166,9 @@ protected:
     cv::Vec3f A =
         cv::Vec3f(0, 0, 0);
 
+    cv::Vec3f AC =
+        cv::Vec3f(0, 0, 0);
+
     cv::Point2f E;
 
     cv::Matx33f H =

@@ -495,7 +495,9 @@ struct c_lm_camera_pose3_options:
     c_lm_camera_pose_options
 {
     double erfactor = 50;
-    double ew = 10;
+    double ew = 100;
+
+    cv::Point2f E;
 };
 
 /**

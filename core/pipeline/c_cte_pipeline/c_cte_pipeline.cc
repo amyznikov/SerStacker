@@ -304,6 +304,7 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_cte_pipeline::get_contro
       PIPELINE_CTL(ctrls, _pose_estimation_options.robust_threshold, "robust_threshold", "robust_threshold");
       PIPELINE_CTL(ctrls, _pose_estimation_options.erfactor, "erfactor", "erfactor");
       PIPELINE_CTL(ctrls, _pose_estimation_options.ew, "ew", "ew");
+      PIPELINE_CTL(ctrls, _pose_estimation_options.E, "E", "SAet e1 < 0 to Fix Epipole Position");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 
@@ -371,6 +372,7 @@ bool c_cte_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _pose_estimation_options, robust_threshold);
     SERIALIZE_OPTION(section, save, _pose_estimation_options, erfactor);
     SERIALIZE_OPTION(section, save, _pose_estimation_options, ew);
+    SERIALIZE_OPTION(section, save, _pose_estimation_options, E);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -875,11 +877,16 @@ bool c_cte_pipeline::process_current_frame()
     return false;
   }
 
-  current_frame->E.x =
-      _current_image.cols / 2;
+  if ( _pose_estimation_options.ew < 0 ) {
+    current_frame->E = _pose_estimation_options.E;
+  }
+  else {
+    current_frame->E.x =
+        _current_image.cols / 2;
 
-  current_frame->E.y =
-      _current_image.rows / 2;
+    current_frame->E.y =
+        _current_image.rows / 2;
+  }
 
   current_frame->keypoints_matcher->train(current_frame->keypoints,
       current_frame->descriptors);
@@ -892,8 +899,9 @@ bool c_cte_pipeline::process_current_frame()
     const c_cte_frame::uptr & back_frame =
         _frames.back();
 
-    current_frame->E =
-        back_frame->E;
+    if( _pose_estimation_options.ew >= 0 ) {
+      current_frame->E = back_frame->E;
+    }
 
     static const auto match_frames =
        [](c_cte_pipeline * cte, const c_cte_frame::uptr & current_frame, int rbeg, int rend) {

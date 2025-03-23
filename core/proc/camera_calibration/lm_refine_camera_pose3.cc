@@ -153,6 +153,8 @@ public:
     const float & h21 = H(2, 1);
     const float & h22 = H(2, 2);
 
+    int npts = 0;
+
     for( int j = 0; j < nj; ++j ) {
       if( inliers[0][ks[j]] ) {
 
@@ -163,10 +165,17 @@ public:
         const float cx = (h00 * cptsx[j] + h01 * cptsy[j] + h02) / cz;
         const float cy = (h10 * cptsx[j] + h11 * cptsy[j] + h12) / cz;
 
-        lse.update(cy - ry, rx - cx, rx * cy - ry * cx);
+        if( (cy - ry) * (cy - ry) + (rx - cx) * (rx - cx) > 1.5 * 1.5 ) {
+          lse.update(cy - ry, rx - cx, rx * cy - ry * cx);
+          ++npts;
+        }
       }
     }
 
+    if( npts < 3 ) {
+      CF_ERROR("small parallax: npts=%d", npts);
+      return false;
+    }
 
     if( !lse.compute(E.x, E.y) ) {
       CF_ERROR("lse.compute() fails");
@@ -404,9 +413,16 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
 
     unpack_params(p, A);
     H = camera_matrix * build_rotation(A) * camera_matrix_inv;
-    EOk = callback.estimate_epipole_location(H, E);
+
+    if( opts->ew >= 0 ) {
+      EOk = callback.estimate_epipole_location(H, E);
+    }
 
     if( false ) {
+
+      if( opts->ew < 0 ) {
+        E = Einitial;
+      }
 
       CF_DEBUG("lm.run[%d]: iterations=%d rmse=%g num_outliers=%d A=(%g %g %g) E=(%g %g) EOk=%d",
           iteration,
@@ -414,7 +430,7 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
           rmse,
           num_outliers,
           A[0] * 180 / CV_PI, A[1] * 180 / CV_PI, A[2] * 180 / CV_PI,
-          EE.x, EE.y,
+          E.x, E.y,
           EOk);
     }
 
@@ -432,12 +448,10 @@ bool lm_refine_camera_pose3(cv::Vec3f & AA, cv::Point2f & EE,
     //lock_guard lock(mutex());
 
     AA = A;
-    //current_frame->H = H;
 
-    if ( EOk ) {
+    if( EOk && opts->ew >= 0 ) {
       EE = (Einitial * opts->ew + E) / (opts->ew + 1);
     }
-
 
     // CF_DEBUG("[%zu] A=(%g %g %g) E=(%g %g) Eok=%d", 1, AA[0] * 180 / CV_PI, AA[1] * 180 / CV_PI, AA[2] * 180 / CV_PI, EE.x, EE.y, EOk);
   }

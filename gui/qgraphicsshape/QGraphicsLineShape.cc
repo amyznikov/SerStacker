@@ -36,12 +36,30 @@ QGraphicsLineShape::QGraphicsLineShape(const QPointF & p1, const QPointF & p2, Q
 
 void QGraphicsLineShape::setLine(const QLineF &line)
 {
+  prepareGeometryChange();
+
   line_ = line;
+
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 void QGraphicsLineShape::setLine(qreal x1, qreal y1, qreal x2, qreal y2)
 {
+  prepareGeometryChange();
+
   line_.setLine(x1, y1, x2, y2);
+
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 const QLineF & QGraphicsLineShape::line() const
@@ -51,12 +69,30 @@ const QLineF & QGraphicsLineShape::line() const
 
 void QGraphicsLineShape::setSceneLine(const QLineF &line)
 {
+  prepareGeometryChange();
+
   line_.setPoints(mapFromScene(line.p1()), mapFromScene(line.p1()));
+
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 void QGraphicsLineShape::setSceneLine(qreal x1, qreal y1, qreal x2, qreal y2)
 {
+  prepareGeometryChange();
+
   line_.setPoints(mapFromScene(QPointF(x1, y1)), mapFromScene(QPointF(x2, y2)));
+
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
 }
 
 QLineF QGraphicsLineShape::sceneLine() const

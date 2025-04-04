@@ -60,10 +60,15 @@ QGraphicsRectShape::QGraphicsRectShape(const QString & name, const QString & des
 void QGraphicsRectShape::setRect(const QRectF & rc)
 {
   if (rect_ != rc ) {
+
     prepareGeometryChange();
     rect_ = rc;
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
   }
 }
 
@@ -86,10 +91,15 @@ QRect QGraphicsRectShape::iSceneRect() const
 void QGraphicsRectShape::setCenter(const QPointF & p)
 {
   if (rect_.center() != p ) {
+
     prepareGeometryChange();
     rect_.moveCenter(p);
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
   }
 }
 

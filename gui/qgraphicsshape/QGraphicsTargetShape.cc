@@ -18,10 +18,15 @@ QGraphicsTargetShape::QGraphicsTargetShape(QGraphicsItem * parent) :
 void QGraphicsTargetShape::setCenter(const QPointF & v)
 {
   if( center_ != v ) {
+
     prepareGeometryChange();
     center_ = v;
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
   }
 }
 
@@ -37,10 +42,16 @@ void QGraphicsTargetShape::setBaseRadius(double v)
   }
 
   if ( baseRadius_ != v ) {
+
     prepareGeometryChange();
     baseRadius_ = v;
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
+
   }
 }
 
@@ -52,10 +63,15 @@ double QGraphicsTargetShape::baseRadius() const
 void QGraphicsTargetShape::setNumRings(int v)
 {
   if ( numRings_ != v ) {
+
     prepareGeometryChange();
     numRings_ = v;
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
   }
 }
 
@@ -68,10 +84,15 @@ int QGraphicsTargetShape::numRings() const
 void QGraphicsTargetShape::setShowDiagonalRays(bool v)
 {
   if ( showDiagonals_ != v ) {
+
     prepareGeometryChange();
     showDiagonals_ = v;
     updateGeometry();
     update();
+
+    if( flags() & ItemSendsGeometryChanges ) {
+      Q_EMIT itemChanged(this);
+    }
   }
 }
 

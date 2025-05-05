@@ -2080,6 +2080,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         }
 
 
+        if( _input_options.enable_bground_normalization ) {
+          nomalize_image_histogramm(_raw_bayer_image, cv::noArray(), _raw_bayer_image,
+              _input_options.background_normalization_options,
+              input_sequence->colorid());
+        }
+
         static const cv::Mat2f empty_remap;
         bayer_average->set_remap(frame_registration_ ? frame_registration_->current_remap() : empty_remap);
         bayer_average->add(_raw_bayer_image, current_mask);
@@ -2102,6 +2108,12 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 //            return false;
 //          }
 //        }
+
+        if ( _input_options.enable_bground_normalization && current_frame.channels() > 1 ) {
+          nomalize_image_histogramm(current_frame, current_mask, current_frame,
+              _input_options.background_normalization_options);
+        }
+
 
         if ( !frame_accumulation_->add(current_frame, current_mask) ) {
           CF_ERROR("frame_accumulation_->add(current_frame) fails");
@@ -2250,11 +2262,11 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
           output_image, output_image.depth());
     }
 
-    if ( _input_options.enable_bground_normalization ) {
-      nomalize_image_histogramm(output_image, output_mask, output_image,
-          _input_options.background_normalization_options,
-          input_sequence->colorid());
-    }
+//    if ( _input_options.enable_bground_normalization ) {
+//      nomalize_image_histogramm(output_image, output_mask, output_image,
+//          _input_options.background_normalization_options,
+//          input_sequence->colorid());
+//    }
   }
 
   if ( !is_bayer_pattern(input_sequence->colorid()) ) {

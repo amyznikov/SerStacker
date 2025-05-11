@@ -94,6 +94,7 @@
 #include "feature2d/c_selective_search_segmentation_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
 #include "feature2d/c_segformer_routine.h"
+#include "feature2d/c_segformer2_routine.h"
 #include "feature2d/c_seed_fill_segmentation_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
@@ -268,6 +269,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_harris_map_routine::class_factory_instance());
     register_class_factory(c_gabor_filter_routine::class_factory_instance());
     register_class_factory(c_segformer_routine::class_factory_instance());
+    register_class_factory(c_segformer2_routine::class_factory_instance());
     register_class_factory(c_seed_fill_segmentation_routine::class_factory_instance());
 
 

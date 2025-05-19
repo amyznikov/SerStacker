@@ -278,8 +278,13 @@ bool compute_sobel_gradients(cv::InputArray src,
     ddepth = std::max(src.depth(), CV_32F);
   }
 
-  cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
-  cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
+  if ( gx.needed() ) {
+    cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
+  }
+
+  if ( gy.needed() ) {
+    cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
+  }
 
   return true;
 }
@@ -320,10 +325,12 @@ bool compute_diagonal_gradients(cv::InputArray src, cv::OutputArray gx, cv::Outp
 
 bool compute_second_sobel_derivatives(cv::InputArray src,
     cv::OutputArray gxx,
-    cv::OutputArray gxy,
     cv::OutputArray gyy,
+    cv::OutputArray gxy,
     int ddepth,
-    int borderType)
+    int borderType,
+    double scale,
+    double delta)
 {
   static thread_local cv::Mat Kx1, Ky1, Kx2, Ky2;
   if( Kx1.empty() ) {
@@ -338,9 +345,32 @@ bool compute_second_sobel_derivatives(cv::InputArray src,
     ddepth = std::max(src.depth(), CV_32F);
   }
 
-  cv::sepFilter2D(src, gxx, ddepth, Kx2, Ky2, cv::Point(-1, -1), 0, borderType);
-  cv::sepFilter2D(src, gyy, ddepth, Ky2, Kx2, cv::Point(-1, -1), 0, borderType);
-  cv::sepFilter2D(src, gxy, ddepth, Kx1, Ky1, cv::Point(-1, -1), 0, borderType);
+  if( scale == 0 || scale == 1 ) {
+    if ( gxx.needed() ) {
+      cv::sepFilter2D(src, gxx, ddepth, Kx2, Ky2, cv::Point(-1, -1), delta, borderType);
+    }
+
+    if ( gyy.needed() ) {
+      cv::sepFilter2D(src, gyy, ddepth, Ky2, Kx2, cv::Point(-1, -1), delta, borderType);
+    }
+
+    if ( gxy.needed() ) {
+      cv::sepFilter2D(src, gxy, ddepth, Kx1, Ky1, cv::Point(-1, -1), delta, borderType);
+    }
+  }
+  else {
+    if ( gxx.needed() ) {
+      cv::sepFilter2D(src, gxx, ddepth, scale * Kx2, Ky2, cv::Point(-1, -1), delta, borderType);
+    }
+
+    if ( gyy.needed() ) {
+      cv::sepFilter2D(src, gyy, ddepth, scale * Ky2, Kx2, cv::Point(-1, -1), delta, borderType);
+    }
+
+    if ( gxy.needed() ) {
+      cv::sepFilter2D(src, gxy, ddepth, scale * Kx1, Ky1, cv::Point(-1, -1), delta, borderType);
+    }
+  }
 
   return true;
 }

@@ -8,6 +8,7 @@
 #include "c_keypoins_detector_routine.h"
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/pose.h>
+#include <core/proc/pixtype.h>
 #include <core/debug.h>
 
 template<>
@@ -311,14 +312,23 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
         }
 
         default: {
+          if( _display.depth() != CV_8U ) {
+
+            double scale = 1, offset = 0;
+
+            get_scale_offset(_display.depth(), CV_8U,
+                &scale, &offset);
+
+            _display.convertTo(_display, CV_8U,
+                scale, offset);
+          }
+
           cv::drawKeypoints(_display, _keypoints, _display,
               cv::Scalar::all(-1),
               cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
           break;
         }
       }
-
-
 
       _display.copyTo(image);
     }

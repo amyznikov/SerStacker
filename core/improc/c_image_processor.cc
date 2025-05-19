@@ -65,6 +65,7 @@
 #include "generic/c_bilateral_filter_routine.h"
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
+#include "generic/c_fast_gaussian_blur_routine.h"
 #include "generic/c_neighbourhood_average_routine.h"
 #include "generic/c_morphology_routine.h"
 #include "generic/c_fft_routine.h"
@@ -90,12 +91,14 @@
 #include "pyramid/c_amelp_pyramid_routine.h"
 
 #include "feature2d/c_keypoins_detector_routine.h"
+#include "feature2d/c_star_extractor_routine.h"
 #include "feature2d/c_edgebox_routine.h"
 #include "feature2d/c_selective_search_segmentation_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
 #include "feature2d/c_segformer_routine.h"
 #include "feature2d/c_segformer2_routine.h"
 #include "feature2d/c_seed_fill_segmentation_routine.h"
+#include "feature2d/c_connected_components_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -223,6 +226,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
+    register_class_factory(c_fast_gaussian_blur_routine::class_factory_instance());
     register_class_factory(c_neighbourhood_average_routine::class_factory_instance());
 
 
@@ -271,6 +275,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_segformer_routine::class_factory_instance());
     register_class_factory(c_segformer2_routine::class_factory_instance());
     register_class_factory(c_seed_fill_segmentation_routine::class_factory_instance());
+    register_class_factory(c_connected_components_routine::class_factory_instance());
 
 
     register_class_factory(c_normalize_mean_stdev_routine::class_factory_instance());
@@ -302,6 +307,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_asi_frame_check_routine::class_factory_instance());
 
     register_class_factory(c_keypoins_detector_routine::class_factory_instance());
+    register_class_factory(c_star_extractor_routine::class_factory_instance());
     register_class_factory(c_edgebox_routine::class_factory_instance());
     register_class_factory(c_selective_search_segmentation_routine::class_factory_instance());
 

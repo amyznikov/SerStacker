@@ -1389,7 +1389,7 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
 
   set_status_msg("CREATE REFERENCE FRAME...");
 
-  if ( master_frame_index < 0 ) {
+  if( (master_frame_index < 0) || master_sequence->is_live() ) {
     master_frame_index = 0;
   }
   else if ( master_frame_index >= master_sequence->source(master_source_index)->size() ) {

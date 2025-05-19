@@ -35,10 +35,12 @@ bool compute_diagonal_gradients(cv::InputArray src,
 //  cv::absdiff(gx.mul(gy), gxy.mul(gxy), det_abs);
 bool compute_second_sobel_derivatives(cv::InputArray src,
     cv::OutputArray gxx,
-    cv::OutputArray gxy,
     cv::OutputArray gyy,
+    cv::OutputArray gxy,
     int ddepth,
-    int borderType = cv::BORDER_REPLICATE);
+    int borderType = cv::BORDER_REPLICATE,
+    double scale=1.0,
+    double delta=0.0);
 
 bool compute_hessian_eigenvalues(cv::InputArray gxx, cv::InputArray gxy, cv::InputArray gyy,
     cv::OutputArray mu1, cv::OutputArray mu2);

@@ -20,10 +20,17 @@ public:
       "hessian", "c_hessian_routine");
 
   enum OutputType {
+    OutputGx,
+    OutputGy,
     OutputGxx,
     OutputGyy,
     OutputGxy,
+    OutputGxxGyy,
+    OutputGxyGxy,
     OutputDet,
+    OutputLap,
+    OutputDetLap,
+    OutputGaussianCurvature,
     OutputMaxEigenValues,
     OutputMinEigenValues,
   };

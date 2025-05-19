@@ -131,8 +131,8 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
       1e-12, // set to some small number to prevent division by zero below
       borderType);
 
-  const cv::Mat1b src_mask =
-      _mask.getMat();
+//  const cv::Mat1b src_mask =
+//      _mask.getMat();
 
   if( gsrc.channels() != gmask.channels() ) {
     cv::merge(std::vector<cv::Mat>(gsrc.channels(), gmask), gmask);

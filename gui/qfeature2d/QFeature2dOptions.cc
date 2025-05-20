@@ -228,6 +228,17 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
       break;
 #endif
 
+#if HAVE_STAR_EXTRACTOR
+    case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
+      ADD_CTL(star_extractor, median_filter_size);
+      ADD_CTL(star_extractor, sigma1);
+      ADD_CTL(star_extractor, sigma2);
+      ADD_CTL(star_extractor, noise_blur);
+      ADD_CTL(star_extractor, noise_threshold);
+      break;
+#endif
+
+
 #if HAVE_FEATURE2D_MSD
     case SPARSE_FEATURE_DETECTOR_MSD:
       ADD_CTL(msd, m_patch_radius);

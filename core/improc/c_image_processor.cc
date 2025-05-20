@@ -719,6 +719,7 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
   }
 
   for ( const std::string & filename : filenames ) {
+
     c_image_processor::sptr processor = c_image_processor::load(filename);
     if ( !processor ) {
       CF_ERROR("c_image_processor::load(filename='%s') fails", filename.c_str());

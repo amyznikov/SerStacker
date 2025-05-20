@@ -8,7 +8,7 @@
 #include "c_star_extractor_routine.h"
 #include <core/proc/estimate_noise.h>
 #include <core/proc/fast_gaussian_blur.h>
-#include <core/proc/gradient.h>
+//#include <core/proc/gradient.h>
 
 template<>
 const c_enum_member * members_of<c_star_extractor_routine::DisplayType>()
@@ -21,12 +21,6 @@ const c_enum_member * members_of<c_star_extractor_routine::DisplayType>()
   };
 
   return members;
-}
-
-template<class _Tp>
-static inline _Tp square(_Tp x)
-{
-  return x * x;
 }
 
 static void compute_dog(cv::InputArray src, cv::OutputArray dst, double sigma1, double sigma2, int ddepth)

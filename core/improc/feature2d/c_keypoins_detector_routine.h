@@ -40,7 +40,7 @@ public:
 
   c_sparse_feature_detector_options * options()
   {
-    return &_options;
+    return &opts;
   }
 
   void set_octave(int v)
@@ -103,8 +103,8 @@ public:
   void parameter_changed() final;
 
 protected:
+  c_sparse_feature_detector_options opts;
   c_feature2d::sptr _keypoints_detector;
-  c_sparse_feature_detector_options _options;
   std::vector<cv::KeyPoint> _keypoints;
   cv::Mat _display;
   int _octave = -1;

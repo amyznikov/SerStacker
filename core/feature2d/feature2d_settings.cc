@@ -577,12 +577,22 @@ bool save_settings(c_config_setting settings, const c_feature2d_boost::options &
 bool load_settings(c_config_setting settings, c_feature2d_star_extractor::options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *args, median_filter_size);
+  LOAD_OPTIONS(settings, *args, sigma1);
+  LOAD_OPTIONS(settings, *args, sigma2);
+  LOAD_OPTIONS(settings, *args, noise_blur);
+  LOAD_OPTIONS(settings, *args, noise_threshold);
   END_LOAD_OPTIONS(settings)
   return true;
 }
 
-bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::options & )
+bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::options & args)
 {
+  SAVE_SETINGS(median_filter_size);
+  SAVE_SETINGS(sigma1);
+  SAVE_SETINGS(sigma2);
+  SAVE_SETINGS(noise_blur);
+  SAVE_SETINGS(noise_threshold);
   return true;
 }
 #endif
@@ -1652,8 +1662,6 @@ bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opti
 
 bool load_settings(c_config_setting settings, c_sparse_feature_detector_options * options)
 {
-  INSTRUMENT_REGION("");
-
   if ( !settings ) {
     CF_ERROR("libconfig settings is null in load_settings(c_sparse_feature_detector_options)");
     return false;
@@ -1713,8 +1721,15 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
 
 bool save_settings(c_config_setting settings, const c_sparse_feature_detector_options & options)
 {
-  save_settings(settings, "type",
-      toString(options.type));
+  if ( !settings ) {
+    CF_ERROR("libconfig settings is null in save_settings(c_sparse_feature_detector_options)");
+    return false;
+  }
+
+  if ( !save_settings(settings, "type", toString(options.type)) ) {
+    CF_ERROR("save_settings(type='%s') fails in save_settings(c_sparse_feature_detector_options)", toString(options.type).c_str() );
+    return false;
+  }
 
   save_settings(settings, "max_keypoints",
       options.max_keypoints);

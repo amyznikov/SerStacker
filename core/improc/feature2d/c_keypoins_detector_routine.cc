@@ -146,7 +146,8 @@ void c_keypoins_detector_routine::get_parameters(std::vector<c_ctrl_bind> * ctls
 bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _options);
+
+    SERIALIZE_OPTION(settings, save, *this, opts);
     SERIALIZE_PROPERTY(settings, save, *this, octave);
     SERIALIZE_PROPERTY(settings, save, *this, black_background);
     SERIALIZE_PROPERTY(settings, save, *this, display_type);
@@ -169,7 +170,7 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
     if( image.needed() && !image.empty() ) {
 
-      if( !_keypoints_detector && !(_keypoints_detector = create_sparse_feature_detector(_options)) ) {
+      if( !_keypoints_detector && !(_keypoints_detector = create_sparse_feature_detector(opts)) ) {
         CF_ERROR("create_sparse_feature_detector() fails");
         return false;
       }
@@ -178,14 +179,14 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
       _keypoints_detector->detect(image, _keypoints, mask);
 
-      if( _options.max_keypoints > 0 && _keypoints.size() > _options.max_keypoints ) {
+      if( opts.max_keypoints > 0 && _keypoints.size() > opts.max_keypoints ) {
 
         std::sort(_keypoints.begin(), _keypoints.end(),
             [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
               return prev.response > next.response;
             });
 
-        _keypoints.erase(_keypoints.begin() + _options.max_keypoints,
+        _keypoints.erase(_keypoints.begin() + opts.max_keypoints,
             _keypoints.end());
       }
 

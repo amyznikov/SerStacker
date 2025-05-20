@@ -371,6 +371,12 @@ c_config_setting c_config_setting::parent() const
 config_setting_t * c_config_setting::get_member(const config_setting_t *setting, const char * name)
 {
   return setting ? config_setting_get_member(setting, name) : nullptr;
+//  config_setting_t * mp  = config_setting_get_member(setting, name);
+//  if ( !mp ) {
+//    CF_ERROR("config_setting_get_member(setting=%p, name='%s') fails", (void*)setting, name);
+//  }
+//
+//  return mp;
 }
 
 config_setting_t * c_config_setting::add_member(config_setting_t *setting, const char * name, int type)
@@ -380,16 +386,20 @@ config_setting_t * c_config_setting::add_member(config_setting_t *setting, const
   }
 
   config_setting_t * item = get_member(setting, name);
-  if ( item ) {
-    if ( item->type == type ) {
+  if( item ) {
+    if( item->type == type ) {
       return item; // already exists
     }
-    if ( !config_setting_remove(setting, name) ) {
+    if( !config_setting_remove(setting, name) ) {
       return nullptr;
     }
   }
 
-  return config_setting_add(setting, name, type);
+  if ( !(item  = config_setting_add(setting, name, type)) ) {
+    CF_ERROR("config_setting_add(setting=%p, name='%s' type=%d) fails", (void*)setting, name, type);
+  }
+
+  return item;
 }
 
 

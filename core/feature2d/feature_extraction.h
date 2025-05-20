@@ -1370,7 +1370,11 @@ public:
       public base::options
   {
     using feature2d_class = this_class;
-    int numOctaves = 4;
+    int median_filter_size = 0;
+    double sigma1 = 2.5;
+    double sigma2 = 5;
+    double noise_blur = 100;
+    double noise_threshold = 10;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1383,9 +1387,16 @@ protected:
       base(&this->opts_),
           opts_(opts ? *opts : options())
   {
-    feature2d_ =
-        c_star_extractor::create(
-            opts_.numOctaves);
+    const cv::Ptr<c_star_extractor> obj =
+        c_star_extractor::create();
+
+    obj->set_median_filter_size(opts_.median_filter_size);
+    obj->set_sigma1(opts_.sigma1);
+    obj->set_sigma2(opts_.sigma2);
+    obj->set_noise_blur(opts_.noise_blur);
+    obj->set_noise_threshold(opts_.noise_threshold);
+
+    feature2d_ = obj;
   }
 
 protected:

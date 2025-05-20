@@ -231,7 +231,7 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
         gen_badframes_file_name(this->filename_);
   }
 
-  CF_DEBUG("badframes_file_name='%s'", badframes_file_name.c_str());
+  // CF_DEBUG("badframes_file_name='%s'", badframes_file_name.c_str());
 
   if ( !badframes_file_name.empty() ) {
 
@@ -251,7 +251,7 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
         const int n =
             sscanf(line, "%d-%d", &index1, &index2);
 
-        CF_DEBUG("line '%s' n=%d index1=%d, index2=%d", line, n, index1, index2);
+        // CF_DEBUG("line '%s' n=%d index1=%d, index2=%d", line, n, index1, index2);
 
         if( n == 1 ) {
           badframes_.emplace_back(index1);

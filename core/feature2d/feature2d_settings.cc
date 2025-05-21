@@ -582,6 +582,11 @@ bool load_settings(c_config_setting settings, c_feature2d_star_extractor::option
   LOAD_OPTIONS(settings, *args, sigma2);
   LOAD_OPTIONS(settings, *args, noise_blur);
   LOAD_OPTIONS(settings, *args, noise_threshold);
+  LOAD_OPTIONS(settings, *args, min_score);
+  LOAD_OPTIONS(settings, *args, min_b);
+  LOAD_OPTIONS(settings, *args, min_ba_ratio);
+  LOAD_OPTIONS(settings, *args, min_pts);
+
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -593,6 +598,10 @@ bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::
   SAVE_SETINGS(sigma2);
   SAVE_SETINGS(noise_blur);
   SAVE_SETINGS(noise_threshold);
+  SAVE_SETINGS(min_score);
+  SAVE_SETINGS(min_b);
+  SAVE_SETINGS(min_ba_ratio);
+  SAVE_SETINGS(min_pts);
   return true;
 }
 #endif
@@ -1707,6 +1716,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
 #if HAVE_MORPH_EXTRACTOR
   LOAD_GROUP(morph);
 #endif
+#if HAVE_STAR_EXTRACTOR
+  LOAD_GROUP(sex);
+#endif
 #if HAVE_FEATURE2D_MSD
   LOAD_GROUP(msd);
 #endif
@@ -1762,6 +1774,13 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_detector_op
 #if HAVE_FEATURE2D_HL
   SAVE_GROUP(hl);
 #endif
+#if HAVE_MORPH_EXTRACTOR
+  SAVE_GROUP(morph);
+#endif
+#if HAVE_STAR_EXTRACTOR
+  SAVE_GROUP(sex);
+#endif
+
 
 #undef SAVE_GROUP
 

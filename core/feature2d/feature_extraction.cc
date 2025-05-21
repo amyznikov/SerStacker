@@ -289,8 +289,9 @@ bool c_sparse_feature_extractor::detect(cv::InputArray image,
     CV_OUT std::vector<cv::KeyPoint> & keypoints,
     cv::InputArray mask) const
 {
-  INSTRUMENT_REGION("");
   detector_->detect(image, keypoints, mask);
+
+  CF_DEBUG("c_sparse_feature_extractor::detect() max_keypoints_=%d keypoints.size()=%zu", max_keypoints_, keypoints.size());
 
   if ( max_keypoints_ > 0 && keypoints.size() > max_keypoints_ ) {
 
@@ -459,7 +460,7 @@ c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector
 #endif
 #if HAVE_STAR_EXTRACTOR
   case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
-    return create_feature2d(options.star_extractor);
+    return create_feature2d(options.sex);
 #endif
 #if HAVE_MORPH_EXTRACTOR
   case SPARSE_FEATURE_DETECTOR_MORPH:

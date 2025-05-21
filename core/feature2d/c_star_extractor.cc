@@ -246,7 +246,7 @@ void c_star_extractor::detect(cv::InputArray src, std::vector<cv::KeyPoint> & ke
     for( int lb = 1; lb < N; ++lb ) {
 
       Blob & b = _blobs[lb];
-      if( b.n > 5 ) {
+      if( b.n > _min_pts ) {
         b.x /= b.I;
         b.y /= b.I;
         b.x2 = b.x2 / b.I - b.x * b.x;
@@ -258,53 +258,42 @@ void c_star_extractor::detect(cv::InputArray src, std::vector<cv::KeyPoint> & ke
         b.a = std::sqrt(0.5 * (b.x2 + b.y2 + D));
         b.b = std::sqrt(0.5 * (b.x2 + b.y2 - D));
 
-        if ( b.b > 0 ) {
+        if( b.b > _min_b && b.b / b.a > _min_ba_ratio ) {
 
-          const double ww = b.a;
-          mamb += (b.a - b.b) * ww;
-          mabr += b.b / b.a * ww;
-          mtheta += b.theta * ww;
-          stheta += b.theta * b.theta * ww;
-          w += ww;
-//
-//          const double R = 5 * b.a;
-//
-//          cv::line(mask, cv::Point(cvRound(b.x - R), cvRound(b.y)),
-//              cv::Point(cvRound(b.x + R), cvRound(b.y)),
-//              255, 1,
-//              cv::LINE_4);
-//
-//          cv::line(mask, cv::Point(cvRound(b.x), cvRound(b.y - R)),
-//              cv::Point(cvRound(b.x), cvRound(b.y + R)),
-//              255, 1,
-//              cv::LINE_4);
-//
-//          const cv::RotatedRect box(cv::Point2f(b.x, b.y),
-//              cv::Size2f(5 * b.a, 10 * b.b),
-//              b.theta * 180 / CV_PI);
-//
-//          cv::ellipse(mask, box, cv::Scalar::all(255), 1, cv::LINE_8);
+          keypoints.emplace_back(cv::KeyPoint(b.x, b.y, 5 * b.a, b.theta * 180 / CV_PI, b.I));
+
+          if  ( _min_score > 0 ) {
+            const double ww = b.a;
+            mamb += (b.a - b.b) * ww;
+            mabr += b.b / b.a * ww;
+            mtheta += b.theta * ww;
+            stheta += b.theta * b.theta * ww;
+            w += ww;
+          }
         }
-
       }
     }
 
-    if (w > 0 ) {
-      mamb = mamb / w;
-      mabr = mabr / w;
-      mtheta = mtheta / w;
-      stheta = sqrt(stheta/w - mtheta * mtheta);
-    }
+    if  ( _min_score > 0 ) {
 
-    CF_DEBUG("mamb = %g  mabr = %g  mtheta = %g  stheta = %g score=%g",
-        mamb, mabr, mtheta, stheta, stheta * mabr );
+      if (w > 0 ) {
+        mamb = mamb / w;
+        mabr = mabr / w;
+        mtheta = mtheta / w;
+        stheta = sqrt(stheta/w - mtheta * mtheta);
+      }
+
+      const double score =
+          stheta * mabr;
+
+      CF_DEBUG("mamb = %g  mabr = %g  mtheta = %g  stheta = %g score=%g",
+          mamb, mabr, mtheta, stheta, score );
+
+      if ( score < _min_score ) {
+        CF_ERROR("Clear keypoints by average frame score = %g < %g", score, _min_score);
+        keypoints.clear();
+      }
+    }
   }
 
-
-  for( size_t i = 1; i < _blobs.size(); ++i ) {
-    const Blob & b = _blobs[i];
-    if ( b.b > 0 ) {
-      keypoints.emplace_back(cv::KeyPoint(b.x, b.y, 5 * b.a, b.theta * 180 / CV_PI, b.I));
-    }
-  }
 }

@@ -1371,10 +1371,15 @@ public:
   {
     using feature2d_class = this_class;
     int median_filter_size = 0;
-    double sigma1 = 2.5;
+    double sigma1 = 2;
     double sigma2 = 5;
     double noise_blur = 100;
     double noise_threshold = 10;
+    double min_score = 0.4;
+    double min_b = 1;
+    double min_ba_ratio = 0.7;
+    int min_pts = 5;
+
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1395,6 +1400,10 @@ protected:
     obj->set_sigma2(opts_.sigma2);
     obj->set_noise_blur(opts_.noise_blur);
     obj->set_noise_threshold(opts_.noise_threshold);
+    obj->set_min_b(opts_.min_b);
+    obj->set_min_ba_ratio(opts_.min_ba_ratio);
+    obj->set_min_pts(opts_.min_pts);
+    obj->set_min_score(opts_.min_score);
 
     feature2d_ = obj;
   }
@@ -1651,14 +1660,14 @@ struct c_sparse_feature_detector_options
 #if HAVE_MORPH_EXTRACTOR
   c_feature2d_morph_extractor::options morph;
 #endif
+#if HAVE_STAR_EXTRACTOR
+  c_feature2d_star_extractor::options sex;
+#endif
 #if HAVE_FEATURE2D_MSD
   c_feature2d_msd::options msd;
 #endif
 #if HAVE_FEATURE2D_HL
   c_feature2d_hl::options hl;
-#endif
-#if HAVE_STAR_EXTRACTOR
-  c_feature2d_star_extractor::options star_extractor;
 #endif
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
   c_feature2d_planetary_disk_detector::options planetary_disk_detector;

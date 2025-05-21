@@ -380,17 +380,11 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
     reference_descriptors_.release();
     image.copyTo(reference_image_);
     mask.copyTo(reference_mask_);
-    detector_->detect(image, reference_keypoints_, mask);
+    detect(image, reference_keypoints_, mask);
     extract_positions(reference_keypoints_, reference_positions_);
   }
   else {
-    if( !descriptor_ ) {
-      detector_->detectAndCompute(image, mask, reference_keypoints_, reference_descriptors_);
-    }
-    else {
-      detector_->detect(image, reference_keypoints_, mask);
-      descriptor_->compute(image, reference_keypoints_, reference_descriptors_);
-    }
+    detectAndCompute(image, mask, reference_keypoints_, reference_descriptors_);
     matcher_->train(reference_keypoints_, reference_descriptors_);
     reference_positions_.clear();
   }
@@ -411,13 +405,15 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
 
     if( matcher_ ) {
 
-      if( !descriptor_ ) {
-        detector_->detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
-      }
-      else {
-        detector_->detect(current_image, current_keypoints_, current_mask);
-        descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
-      }
+//      if( !descriptor_ ) {
+//        detector_->detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
+//      }
+//      else {
+//        detector_->detect(current_image, current_keypoints_, current_mask);
+//        descriptor_->compute(current_image, current_keypoints_, current_descriptors_);
+//      }
+
+      detectAndCompute(current_image, current_mask, current_keypoints_, current_descriptors_);
 
       if( !matcher_->match(current_keypoints_, current_descriptors_, current_matches_) ) {
         CF_ERROR("matcher_->match() fails");
@@ -498,7 +494,18 @@ void c_sparse_feature_extractor_and_matcher::detect(cv::InputArray image,
     CV_OUT std::vector<cv::KeyPoint> & keypoints,
     cv::InputArray mask) const
 {
+  keypoints.clear();
   detector_->detect(image, keypoints, mask);
+
+  if( options_.detector.max_keypoints > 0 && (int) (keypoints.size()) > options_.detector.max_keypoints ) {
+
+    std::sort(keypoints.begin(), keypoints.end(),
+        [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
+          return prev.response > next.response;
+        });
+
+    keypoints.erase(keypoints.begin() + options_.detector.max_keypoints, keypoints.end());
+  }
 }
 
 void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray image, cv::InputArray mask,
@@ -506,13 +513,18 @@ void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray ima
     cv::OutputArray descriptors,
     bool useProvidedKeypoints)
 {
-  if ( !descriptor_ )  {
-    detector_->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
-  }
-  else {
-    detector_->detect(image, keypoints, mask);
+  keypoints.clear();
+  if ( descriptor_ )  {
+    detect(image, keypoints, mask);
     descriptor_->compute(image, keypoints, descriptors);
   }
+  else {
+    // FIXME: limit num keypoints by options_.detector.max_keypoints
+    CF_DEBUG("FIXME: NOT LIMITING keypoints.size = %zu > max_keypoints=%d", keypoints.size(), options_.detector.max_keypoints);
+    detector_->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
+  }
+
+  ///////
 }
 
 

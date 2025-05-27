@@ -11,6 +11,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/settings/opencv_settings.h>
 #include <core/ctrlbind/ctrlbind.h>
+#include <core/io/load_image.h>
 #include <map>
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -226,6 +227,10 @@ public:
     if ( ii != artifacts().end() ) {
       ii->second.image.copyTo(image);
       ii->second.mask.copyTo(mask);
+      return true;
+    }
+
+    if ( load_image(name, image, mask) ) {
       return true;
     }
 

@@ -59,7 +59,7 @@ public:
   }
 
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
   {
     BIND_PCTRL(ctls, d,
         "Diameter of each pixel neighborhood that is used during filtering."
@@ -82,7 +82,7 @@ public:
         "Border mode used to extrapolate pixels outside of the image");
   }
 
-  bool serialize(c_config_setting settings, bool save)
+  bool serialize(c_config_setting settings, bool save) final
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, d);
@@ -94,7 +94,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final
   {
     cv::Mat tmp;
     cv::bilateralFilter(image, tmp, d_, sigmaColor_, sigmaSpace_, borderType_);

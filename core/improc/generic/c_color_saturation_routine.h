@@ -32,12 +32,12 @@ public:
     return scales_;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
   {
     BIND_PCTRL(ctls, scales, "");
   }
 
-  bool serialize(c_config_setting settings, bool save) override
+  bool serialize(c_config_setting settings, bool save) final
   {
     if( base::serialize(settings, save) ) {
       SERIALIZE_PROPERTY(settings, save, *this, scales);
@@ -46,7 +46,7 @@ public:
     return false;
   }
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
 protected:
   std::vector<double> scales_;

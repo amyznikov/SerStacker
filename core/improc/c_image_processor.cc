@@ -15,6 +15,7 @@
 #include "generic/c_load_image_routine.h"
 
 #include "generic/c_type_convertor_routine.h"
+#include "generic/c_debayer_image_routine.h"
 #include "generic/c_gradient_routine.h"
 #include "generic/c_laplacian_routine.h"
 #include "generic/c_hessian_routine.h"
@@ -220,6 +221,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_color_balance_routine::class_factory_instance());
 
     register_class_factory(c_type_convertor_routine::class_factory_instance());
+    register_class_factory(c_debayer_image_routine::class_factory_instance());
+
     register_class_factory(c_color_saturation_routine::class_factory_instance());
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());

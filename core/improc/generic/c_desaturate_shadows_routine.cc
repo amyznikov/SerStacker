@@ -13,9 +13,10 @@
 #include <core/debug.h>
 
 template<class T>
-static void combine_images(cv::InputArray _color_image, cv::InputArray _gray_image,const cv::Mat1f & weights,
+static void _combine_images(cv::InputArray _color_image, cv::InputArray _gray_image,const cv::Mat1f & weights,
     cv::OutputArray _combined_image,
-    double wmin, double wmax)
+    double wmin, double wmax,
+    cv::InputArray _mask = cv::noArray())
 {
 
   const cv::Mat_<cv::Vec<T, 3>> color_image =
@@ -33,48 +34,75 @@ static void combine_images(cv::InputArray _color_image, cv::InputArray _gray_ima
   const double strecth =
       1 / (wmax - wmin);
 
-  for( int y = 0; y < color_image.rows; ++y ) {
-    for( int x = 0; x < color_image.cols; ++x ) {
+  const cv::Mat1b mask =
+      _mask.getMat();
 
-      const double w1 = std::max(0., std::min(1., (weights[y][x] - wmin) * strecth));
-      const double w2 = 1 - w1;
-      const double g = gray_image[y][x];
+  if( mask.size() != color_image.size() ) {
 
-      for( int i = 0; i < 3; ++i ) {
+    for( int y = 0; y < color_image.rows; ++y ) {
+      for( int x = 0; x < color_image.cols; ++x ) {
 
-        combined_image[y][x][i] =
-            cv::saturate_cast<T>(w1 * color_image[y][x][i] + w2 * g);
+        const double w1 = std::max(0., std::min(1., (weights[y][x] - wmin) * strecth));
+        const double w2 = 1 - w1;
+        const double g = gray_image[y][x];
+
+        for( int i = 0; i < 3; ++i ) {
+
+          combined_image[y][x][i] =
+              cv::saturate_cast<T>(w1 * color_image[y][x][i] + w2 * g);
+        }
+
       }
-
     }
+  }
+  else {
+
+    for( int y = 0; y < color_image.rows; ++y ) {
+      const uint8_t * mp = mask[y];
+      for( int x = 0; x < color_image.cols; ++x ) {
+        if ( mp[x] ) {
+
+          const double w1 = std::max(0., std::min(1., (weights[y][x] - wmin) * strecth));
+          const double w2 = 1 - w1;
+          const double g = gray_image[y][x];
+
+          for( int i = 0; i < 3; ++i ) {
+
+            combined_image[y][x][i] =
+                cv::saturate_cast<T>(w1 * color_image[y][x][i] + w2 * g);
+          }
+
+        }
+      }
+    }
+
   }
 }
 
 static void combine_images(cv::InputArray color_image, cv::InputArray gray_image, const cv::Mat1f & weights,
-    cv::OutputArray combined_image, double wmin, double wmax)
+    cv::OutputArray combined_image, double wmin, double wmax, cv::InputArray mask = cv::noArray())
 {
-
   switch (color_image.depth()) {
     case CV_8U:
-      combine_images<uint8_t>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<uint8_t>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_8S:
-      combine_images<int8_t>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<int8_t>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_16U:
-      combine_images<uint16_t>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<uint16_t>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_16S:
-      combine_images<int16_t>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<int16_t>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_32S:
-      combine_images<int32_t>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<int32_t>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_32F:
-      combine_images<float>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<float>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     case CV_64F:
-      combine_images<double>(color_image, gray_image, weights, combined_image, wmin, wmax);
+      _combine_images<double>(color_image, gray_image, weights, combined_image, wmin, wmax, mask);
       break;
     default:
       break;
@@ -87,6 +115,7 @@ void c_desaturate_shadows_routine::get_parameters(std::vector<c_ctrl_bind> * ctl
   BIND_PCTRL(ctls, wmin, "");
   BIND_PCTRL(ctls, wmax, "");
   BIND_PCTRL(ctls, mblur, "");
+  BIND_PCTRL(ctls, ignore_mask, "");
 }
 
 bool c_desaturate_shadows_routine::serialize(c_config_setting settings, bool save)
@@ -102,21 +131,20 @@ bool c_desaturate_shadows_routine::serialize(c_config_setting settings, bool sav
 
 bool c_desaturate_shadows_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( image.channels() != 3 ) {
-    return true;
+  if( image.channels() == 3 ) {
+
+    color_saturation_hls(image, _gray, 0);
+
+    cv::cvtColor(_gray, _gray, cv::COLOR_BGR2GRAY);
+
+    convert_depth(_gray, CV_32F, _weights);
+
+    if( _mblur ) {
+      fast_gaussian_blur(_weights, _ignore_mask ? cv::noArray() : mask, _weights, _mblur);
+    }
+
+    combine_images(image, _gray, _weights, image, _wmin, _wmax, _ignore_mask ? cv::noArray() : mask);
   }
-
-  color_saturation_hls(image, _gray, 0);
-
-  cv::cvtColor(_gray, _gray, cv::COLOR_BGR2GRAY);
-
-  convert_depth(_gray, CV_32F, _weights);
-
-  if( _mblur ) {
-    fast_gaussian_blur(_weights, cv::noArray(), _weights, _mblur);
-  }
-
-  combine_images(image.getMat(), _gray, _weights, image, _wmin, _wmax);
 
   return true;
 }

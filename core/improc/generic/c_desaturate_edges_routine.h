@@ -16,7 +16,7 @@ class c_desaturate_edges_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_desaturate_edges_routine,
-      "desaturate_edges", "Desaturate color on planetary dsk edges");
+      "desaturate_edges", "Desaturate color on planetary disk edges");
 
   void set_alpha(double v);
   double alpha() const;
@@ -39,31 +39,9 @@ public:
   void set_show_weights(bool v);
   bool show_weights() const;
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, alpha, "");
-    BIND_PCTRL(ctls, gbsigma, "");
-    BIND_PCTRL(ctls, stdev_factor, "");
-    BIND_PCTRL(ctls, blur_radius, "");
-    BIND_PCTRL(ctls, l1norm, "");
-    BIND_PCTRL(ctls, show_weights, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, alpha);
-      SERIALIZE_PROPERTY(settings, save, *this, gbsigma);
-      SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
-      SERIALIZE_PROPERTY(settings, save, *this, blur_radius);
-      SERIALIZE_PROPERTY(settings, save, *this, l1norm);
-      SERIALIZE_PROPERTY(settings, save, *this, show_weights);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
   bool compute_planetary_disk_weights(const cv::Mat & src_ecc_image,
       const cv::Mat & src_mask,

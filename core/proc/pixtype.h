@@ -42,4 +42,12 @@ bool get_scale_offset(int src_depth, int dst_depth,
 bool get_scale_offset(int src_depth, int src_bpp,
     int dst_depth, double * scale, double * offset);
 
+inline void convert_depth(cv::InputArray src, int ddepth, cv::OutputArray dst)
+{
+  double scale = 1, offset = 0;
+
+  get_scale_offset(src.depth(), ddepth, &scale, &offset);
+  src.getMat().convertTo(dst, CV_MAKETYPE(ddepth, src.channels()), scale, offset);
+}
+
 #endif /* __pixtype_h__ */

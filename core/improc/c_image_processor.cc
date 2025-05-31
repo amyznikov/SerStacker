@@ -42,6 +42,7 @@
 
 #include "generic/c_histogram_white_balance_routine.h"
 #include "generic/c_color_saturation_routine.h"
+#include "generic/c_desaturate_shadows_routine.h"
 #include "generic/c_color_transform_routine.h"
 #include "generic/c_cvtcolor_routine.h"
 #include "generic/c_desaturate_edges_routine.h"
@@ -224,6 +225,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_debayer_image_routine::class_factory_instance());
 
     register_class_factory(c_color_saturation_routine::class_factory_instance());
+    register_class_factory(c_desaturate_shadows_routine::class_factory_instance());
+
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());

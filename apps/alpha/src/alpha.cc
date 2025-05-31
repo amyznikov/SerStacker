@@ -33,7 +33,7 @@
 #include <core/io/image/c_regular_image_input_source.h>
 #include <core/io/image/c_ffmpeg_input_source.h>
 
-#include <core/proc/c_linear_regression3.h>
+#include <core/proc/c_linear_regression.h>
 #include <core/proc/c_line_estimate.h>
 #include <core/proc/c_quad_estimate.h>
 #include <core/proc/fit_exponential.h>

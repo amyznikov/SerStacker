@@ -6,10 +6,8 @@
  */
 
 #include "camera_pose.h"
-#include <core/proc/c_lse2_estimate.h>
+#include <core/proc/c_linear_regression.h>
 #include <core/proc/levmar.h>
-//#include <core/proc/bfgs.h>
-//#include <core/ssprintf.h>
 #include <core/debug.h>
 
 
@@ -133,7 +131,7 @@ public:
   // test
   bool estimate_epipole_location(const cv::Matx33f & H, cv::Point2f & E) const
   {
-    c_lse2_estimate<float> lse;
+    c_linear_regression2<float> lse;
 
     const int nj =
         ks.size();

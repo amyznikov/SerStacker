@@ -133,7 +133,7 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
 template<class T>
 static void combine_images(const cv::Mat_<cv::Vec<T, 3>> & color_image, const cv::Mat_<cv::Vec<T, 3>> & gray_image,
     cv::Mat_<cv::Vec<T, 3>> & dst_image,
-    const cv::Mat1f & weigts, double alpha )
+    const cv::Mat1f & weights, double alpha )
 {
 
   dst_image.create(color_image.size());
@@ -141,12 +141,12 @@ static void combine_images(const cv::Mat_<cv::Vec<T, 3>> & color_image, const cv
   for ( int y = 0; y < color_image.rows; ++y ) {
     for ( int x = 0; x < color_image.cols; ++x ) {
 
-      if ( !(weigts[y][x] > 0) ) {
+      if ( !(weights[y][x] > 0) ) {
         dst_image[y][x] = color_image[y][x];
       }
       else {
 
-        const double w1 = std::min(1., alpha + weigts[y][x]);
+        const double w1 = std::min(1., alpha + weights[y][x]);
         const double w2 = 1 - w1;
 
         for ( int i = 0; i < 3; ++i ) {
@@ -159,6 +159,30 @@ static void combine_images(const cv::Mat_<cv::Vec<T, 3>> & color_image, const cv
       }
     }
   }
+}
+
+void c_desaturate_edges_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+{
+  BIND_PCTRL(ctls, alpha, "");
+  BIND_PCTRL(ctls, gbsigma, "");
+  BIND_PCTRL(ctls, stdev_factor, "");
+  BIND_PCTRL(ctls, blur_radius, "");
+  BIND_PCTRL(ctls, l1norm, "");
+  BIND_PCTRL(ctls, show_weights, "");
+}
+
+bool c_desaturate_edges_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, alpha);
+    SERIALIZE_PROPERTY(settings, save, *this, gbsigma);
+    SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
+    SERIALIZE_PROPERTY(settings, save, *this, blur_radius);
+    SERIALIZE_PROPERTY(settings, save, *this, l1norm);
+    SERIALIZE_PROPERTY(settings, save, *this, show_weights);
+    return true;
+  }
+  return false;
 }
 
 bool c_desaturate_edges_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

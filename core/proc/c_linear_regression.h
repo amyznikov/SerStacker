@@ -1,13 +1,67 @@
 /*
- * c_linear_regression3.h
+ * c_linear_regression.h
  *
- *  Created on: Jan 24, 2025
+ *  Created on: May 29, 2025
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_linear_regression3_h__
-#define __c_linear_regression3_h__
+#ifndef __c_linear_regression_h__
+#define __c_linear_regression_h__
+
+#include <cfloat>
+
+
+/**
+ * The Least Squares estimate for linear regression
+ *
+ *  Zi = a0 * Xi + a1 * Yi
+ *
+ *
+ * */
+
+template<class T = double>
+class c_linear_regression2
+{
+public:
+
+  inline void reset()
+  {
+    X2 = 0;
+    Y2 = 0;
+    XY = 0;
+    ZX = 0;
+    ZY = 0;
+  }
+
+  inline void update(const T & xi, const T & yi, const T & zi)
+  {
+    X2 += xi * xi;
+    Y2 += yi * yi;
+    ZX += zi * xi;
+    ZY += zi * yi;
+    XY -= xi * yi;
+  }
+
+  inline bool compute(T & a0, T & a1) const
+  {
+    const T D = (X2 * Y2 - XY * XY);
+    a0 = (Y2 * ZX + XY * ZY) / D;
+    a1 = (XY * ZX + X2 * ZY) / D;
+    return D != 0;
+  }
+
+protected:
+  T X2 = 0;
+  T Y2 = 0;
+  T XY = 0;
+  T ZX = 0;
+  T ZY = 0;
+};
+
+typedef c_linear_regression2<float> c_linear_regression2f;
+typedef c_linear_regression2<double> c_linear_regression2d;
+
 
 /**
  * Simple utility to solve the 3-factors linear regression problem
@@ -112,4 +166,4 @@ typedef c_linear_regression3<float> c_linear_regression3f;
 typedef c_linear_regression3<double> c_linear_regression3d;
 
 
-#endif /* __c_linear_regression3_h__ */
+#endif /* __c_linear_regression_h__ */

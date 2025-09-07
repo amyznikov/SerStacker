@@ -51,11 +51,12 @@ public:
 
   void showShapeSettings();
 
+  void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
+
 protected:
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
   void mousePressEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
@@ -64,19 +65,17 @@ protected:
   void onSceneRectChanged(const QRectF &rect);
   void updateGeometry() override;
 
-
-
 protected:
-  QPointF center_;
-  double baseRadius_ = 30;
-  int numRings_ = 4;
-  bool showDiagonals_ = false;
-  bool fixOnSceneCenter_ = true;
-  bool lockPosition_ = false;
+  QPointF _center;
+  QRectF _boundingRect;
+  QPainterPath _shape;
+  QPen _pen;
 
-  QRectF boundingRect_;
-  QPainterPath shape_;
-  QPen pen_;
+  double _baseRadius = 30;
+  int _numRings = 4;
+  bool _showDiagonals = false;
+  bool _fixOnSceneCenter = true;
+  bool _lockPosition = false;
 };
 
 #endif /* __QGraphicsTargetShape_h__ */

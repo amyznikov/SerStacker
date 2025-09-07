@@ -1505,6 +1505,7 @@ public:
       public base::options
   {
     using feature2d_class = this_class;
+    int max_points = 20;
     int min_side_size = 10;
   };
 
@@ -1519,7 +1520,8 @@ protected:
           opts_(opts ? *opts : options())
   {
     feature2d_ =
-        c_triangle_extractor::create(opts_.min_side_size);
+        c_triangle_extractor::create(opts_.max_points,
+            opts_.min_side_size);
   }
 
 protected:

@@ -610,6 +610,7 @@ bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::
 bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::options * options)
 {
   BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *options, max_points);
   LOAD_OPTIONS(settings, *options, min_side_size);
   END_LOAD_OPTIONS(settings)
   return true;
@@ -617,6 +618,7 @@ bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::op
 
 bool save_settings(c_config_setting settings, const c_feature2d_triangle_extractor::options & args)
 {
+  SAVE_SETINGS(max_points);
   SAVE_SETINGS(min_side_size);
   return true;
 }

@@ -53,11 +53,11 @@ public:
   static QGraphicsShape * load(const QSettings & settings,
       const QString & sectionName);
 
+  virtual void popuateContextMenu(QMenu & menu, const QPoint & viewpos);
+
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);
-  void populateContextMenuReuested(QGraphicsShape* _this,
-      const QGraphicsSceneContextMenuEvent * event,
-      QMenu * menu);
+  void populateContextMenuReuested(QGraphicsShape* _this, QMenu & menu, const QPoint & viewpos);
 
 public:  // frequently used utilities
   static double distance(const QPointF & p1, const QPointF & p2);
@@ -70,8 +70,6 @@ protected:
   Q_DISABLE_COPY(QGraphicsShape);
   QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
   void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = nullptr) override;
-  void contextMenuEvent(QGraphicsSceneContextMenuEvent * event) override;
-  virtual bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu);
   virtual void updateGeometry();
   virtual void onSceneChange();
   virtual void onSceneHasChanged();

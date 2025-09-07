@@ -169,6 +169,7 @@ struct c_image_stacking_output_options  :
   bool save_eccflow_frames = false;
   bool save_sparse_match_blend_frames = false;
   bool save_sparse_matches_video = false;
+  bool save_acc_weights = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
   c_output_frame_writer_options output_aligned_video_options;

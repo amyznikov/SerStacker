@@ -42,6 +42,7 @@ public:
   bool resizable() const;
 
   void setRect(const QRectF & rc);
+  void setSceneRect(const QPointF & topLeft, const QPointF & bottomRight);
   const QRectF & rect() const;
   QRectF sceneRect() const;
   QRect iSceneRect() const;
@@ -67,6 +68,8 @@ public:
 
   void showShapeSettings();
 
+  void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
+
 protected:
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
@@ -78,24 +81,18 @@ protected:
   void onSceneHasChanged() override;
   void onSceneRectChanged(const QRectF &rect);
   void updateGeometry() override;
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
 
 protected:
-
-  QRectF rect_;
-  QRectF boundingRect_;
-  QPainterPath shape_;
-  QPen pen_;
-  QBrush brush_;
-  //int handleSize_ = 0;
-  int hitDstance_ = 15;
-  MouseAction currentMouseAction_ = MouseAction_None;
-  QPointF mdelta_;
-  bool itemIsResizable_ = true;
-  bool fixOnSceneCenter_ = false;
-  //QAction * showSettingsAction_ = nullptr;
-
-
+  QRectF _rect;
+  QRectF _boundingRect;
+  QPainterPath _shape;
+  QPen _pen;
+  QBrush _brush;
+  int _hitDstance = 15;
+  MouseAction _currentMouseAction = MouseAction_None;
+  QPointF _mdelta;
+  bool _itemIsResizable = true;
+  bool _fixOnSceneCenter = false;
 };
 
 #endif /* __QGraphicsRectShape_h__ */

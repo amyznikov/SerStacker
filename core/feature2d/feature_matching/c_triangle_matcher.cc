@@ -193,19 +193,20 @@ static bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_triangle_extractor::c_triangle_extractor(int min_side_size) :
-    min_side_size_(min_side_size)
+c_triangle_extractor::c_triangle_extractor(int max_points, int min_side_size) :
+    _max_points(max_points),
+    _min_side_size(min_side_size)
 {
 }
 
-cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(int min_side_size)
+cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(int max_points, int min_side_size)
 {
-  return cv::Ptr<this_class>(new this_class(min_side_size));
+  return cv::Ptr<this_class>(new this_class(max_points, min_side_size));
 }
 
 void c_triangle_extractor::compute( cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
 {
-  if ( !build_triangles(keypoints, descriptors, min_side_size_) ) {
+  if ( !build_triangles(keypoints, descriptors, _min_side_size) ) {
     CF_ERROR("build_triangles() fails");
     descriptors.release();
   }

@@ -129,8 +129,17 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
     switch (obj->options_.matcher.type) {
       case FEATURE2D_MATCHER_OptFlowPyrLK:
         break;
+
+      case FEATURE2D_MATCHER_TRIANGLES:
+        obj->options_.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+        break;
+
       case FEATURE2D_MATCHER_AUTO_SELECT:
-        if ( !can_compute_decriptors(obj->detector_->type()) ) {
+      default:
+        if( obj->detector_->type() == FEATURE2D_STAR_EXTRACTOR ) {
+          obj->options_.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+        }
+        else if( !can_compute_decriptors(obj->detector_->type()) ) {
           obj->options_.matcher.type = FEATURE2D_MATCHER_OptFlowPyrLK;
         }
         else {
@@ -140,6 +149,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
         break;
     }
   }
+
 
   if( obj->options_.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
     if( (int)obj->options_.descriptor.type != (int)obj->detector_->type() ) {

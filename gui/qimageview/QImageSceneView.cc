@@ -6,6 +6,7 @@
  */
 
 #include "QImageSceneView.h"
+#include <gui/qgraphicsshape/QGraphicsShape.h>
 #include <core/debug.h>
 
 QImageSceneView::QImageSceneView(QWidget *parent) :
@@ -77,7 +78,7 @@ QImageScene * QImageSceneView::imageScene() const
 
 int QImageSceneView::viewScale() const
 {
-  return currentViewScale_;
+  return _currentViewScale;
 }
 
 void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
@@ -89,7 +90,7 @@ void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
     scale = MAX_SCALE;
   }
 
-  if ( currentViewScale_ != scale ) {
+  if ( _currentViewScale != scale ) {
 
     QPoint mouse_pos =
         centerPos ? *centerPos :
@@ -122,14 +123,14 @@ void QImageSceneView::setViewScale(int scale, const QPoint * centerPos)
     horizontalScrollBar()->setValue(delta.x() + horizontalScrollBar()->value());
     verticalScrollBar()->setValue(delta.y() + verticalScrollBar()->value());
 
-    currentViewScale_ = scale;
+    _currentViewScale = scale;
     Q_EMIT scaleChanged(scale);
   }
 }
 
 void QImageSceneView::zoom(int delta)
 {
-  setViewScale(viewScale() + (delta > 0 ? +1 : -1), nullptr);
+  setViewScale(viewScale() + (delta > 0 ? +1 : -1), Q_NULLPTR);
 }
 
 void QImageSceneView::zoom(int delta, QPoint mousePos)
@@ -144,14 +145,14 @@ void QImageSceneView::resetZoom()
 
 void QImageSceneView::setMouseScrollEnabled(bool v)
 {
-  if ( !(mouseScrollEnabled_ = v) ) {
-    mouseScrollActive_ = false;
+  if ( !(_mouseScrollEnabled = v) ) {
+    _mouseScrollActive = false;
   }
 }
 
 bool QImageSceneView::mouseScrollEnabled() const
 {
-  return mouseScrollEnabled_;
+  return _mouseScrollEnabled;
 }
 
 void QImageSceneView::scrollView(int dx, int dy)
@@ -163,8 +164,6 @@ void QImageSceneView::scrollView(int dx, int dy)
 
 void QImageSceneView::wheelEvent(QWheelEvent* e)
 {
- // CF_DEBUG("Scene: %p", scene_);
-
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   if ( (e->modifiers() & Qt::ControlModifier) || (e->buttons() == Qt::LeftButton) ) {
     const int amount = e->angleDelta().y();
@@ -184,9 +183,35 @@ void QImageSceneView::wheelEvent(QWheelEvent* e)
 #endif
 }
 
+
+void QImageSceneView::keyPressEvent(QKeyEvent *e)
+{
+  if (e->key() == Qt::Key_Menu) {
+    // context menu requested
+    const QPoint cpos = mapFromGlobal(QCursor::pos());
+    if (Base::rect().contains(cpos)) {
+      if (handleContextMenuRequest(cpos)) {
+        return;
+      }
+    }
+  }
+
+  Base::keyPressEvent(e);
+}
+
+//void QImageSceneView::keyReleaseEvent(QKeyEvent *e)
+//{
+//  Base::keyReleaseEvent(e);
+//}
+
 void QImageSceneView::mousePressEvent(QMouseEvent * e)
 {
   e->ignore();
+
+  if (e->buttons() == Qt::RightButton && handleContextMenuRequest(e->pos())) {
+    e->accept();
+    return;
+  }
 
   Q_EMIT onMousePressEvent(e);
 
@@ -194,9 +219,9 @@ void QImageSceneView::mousePressEvent(QMouseEvent * e)
     return;
   }
 
-  if( mouseScrollEnabled_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
-    mouseScrollActive_ = true;
-    prevMouseScrollPos_ = e->pos();
+  if( _mouseScrollEnabled && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
+    _mouseScrollActive = true;
+    _prevMouseScrollPos = e->pos();
     e->accept();
   }
   else {
@@ -213,11 +238,11 @@ void QImageSceneView::mouseMoveEvent(QMouseEvent * e)
     return;
   }
 
-  if( mouseScrollActive_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
+  if( _mouseScrollActive && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
     const QPoint mpos = e->pos();
-    const QPointF delta = prevMouseScrollPos_ - mpos;
+    const QPointF delta = _prevMouseScrollPos - mpos;
     scrollView(delta.x(), delta.y());
-    prevMouseScrollPos_ = mpos;
+    _prevMouseScrollPos = mpos;
     e->accept();
   }
   else if( e->buttons() != Qt::NoButton ) {
@@ -227,8 +252,8 @@ void QImageSceneView::mouseMoveEvent(QMouseEvent * e)
 
 void QImageSceneView::mouseReleaseEvent(QMouseEvent *e)
 {
-  if( mouseScrollActive_ && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
-    mouseScrollActive_ = false;
+  if( _mouseScrollActive && e->buttons() == Qt::LeftButton && e->modifiers() == Qt::NoModifier ) {
+    _mouseScrollActive = false;
   }
   else {
     Base::mouseReleaseEvent(e);
@@ -263,3 +288,76 @@ void QImageSceneView::leaveEvent(QEvent *e)
   Q_EMIT onMouseLeaveEvent(e);
 }
 
+
+bool QImageSceneView::handleContextMenuRequest(const QPoint &mpos)
+{
+  QMenu menu;
+
+  Q_EMIT onPopulateContextMenu(menu, mpos);
+
+  if (!menu.isEmpty()) {
+    menu.exec(mapToGlobal(QPoint(mpos.x() - 2, mpos.y() - 2)));
+    return true;
+  }
+
+  return false;
+}
+
+void QImageSceneView::populateContextMenu(QMenu & menu, const QPoint & viewpos)
+{
+  if (QImageScene *scene = imageScene()) {
+
+    const QPointF scenePos = mapToScene(viewpos);
+    QList<QGraphicsItem*> items = scene->items(scenePos);
+
+    if (items.size() > 0) {
+
+      QGraphicsItem *topItem = items.front();
+
+      const QGraphicsItem *groundImageItem = scene->image();
+      if (topItem != groundImageItem) {
+
+        const qreal zvalue = topItem->zValue();
+        QGraphicsItem *zItem = nullptr;
+
+        for (int i = 1, n = items.size(); i < n; ++i) {
+          QGraphicsItem *item = items[i];
+          if (item == groundImageItem) {
+            break;
+          }
+          if (item->zValue() >= zvalue) {
+            zItem = item;
+            break;
+          }
+        }
+
+        if (QGraphicsShape *shape = dynamic_cast<QGraphicsShape*>(topItem)) {
+
+          const QString objName = shape->name();
+
+          QMenu * subMenu = menu.isEmpty() ? &menu : menu.addMenu(objName.isEmpty() ? "Item" : objName);
+
+          if (zItem) {
+            subMenu->addAction("Send to back",
+                [this, topItem, zItem]() {
+                  topItem->stackBefore(zItem);
+                  this->update();
+                });
+            subMenu->addSeparator();
+          }
+
+          shape->popuateContextMenu(*subMenu, viewpos);
+        }
+        else if (zItem) {
+          menu.addAction("Send to back",
+              [this, topItem, zItem]() {
+                topItem->stackBefore(zItem);
+                this->update();
+              });
+
+          menu.addSeparator();
+        }
+      }
+    }
+  }
+}

@@ -21,9 +21,9 @@ public:
   typedef c_feature2d_matcher base;
   typedef cv::Ptr<this_class> ptr;
 
-  c_triangle_extractor(int min_side_size = 10);
+  c_triangle_extractor(int max_points, int min_side_size);
 
-  static cv::Ptr<c_triangle_extractor> create(int min_side_size = 10);
+  static cv::Ptr<c_triangle_extractor> create(int max_points, int min_side_size);
 
   void compute( cv::InputArray /*image*/,
       CV_OUT CV_IN_OUT std::vector<cv::KeyPoint>& keypoints,
@@ -34,7 +34,8 @@ public:
   int defaultNorm() const override;
 
 protected:
-  int min_side_size_ = 10;
+  int _max_points = 20;
+  int _min_side_size = 10;
 };
 
 

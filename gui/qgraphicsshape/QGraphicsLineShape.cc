@@ -9,50 +9,44 @@
 #include "QGraphicsLineShapeSettings.h"
 #include <core/debug.h>
 
+static const QString myName = "Line";
+static const QString myDescription = "Line shape";
+
 static constexpr int hit_distance = 15;
 
 QGraphicsLineShape::QGraphicsLineShape(QGraphicsItem *parent) :
-   Base(parent)
+   Base(myName, myDescription, parent)
 {
 }
 
 QGraphicsLineShape::QGraphicsLineShape(const QLineF &line, QGraphicsItem *parent) :
-    Base(parent),
-    line_(line)
+    Base(myName, myDescription, parent),
+    _line(line)
 {
 }
 
 QGraphicsLineShape::QGraphicsLineShape(qreal x1, qreal y1, qreal x2, qreal y2, QGraphicsItem *parent) :
-    Base(parent),
-    line_(x1, y1, x2, y2)
+    Base(myName, myDescription, parent),
+    _line(x1, y1, x2, y2)
 {
 }
 
 QGraphicsLineShape::QGraphicsLineShape(const QPointF & p1, const QPointF & p2, QGraphicsItem * parent) :
-    Base(parent),
-    line_(p1, p2)
+    Base(myName, myDescription, parent),
+    _line(p1, p2)
 {
 }
 
 void QGraphicsLineShape::setLine(const QLineF &line)
 {
-  prepareGeometryChange();
-
-  line_ = line;
-
-  updateGeometry();
-  update();
-
-  if( flags() & ItemSendsGeometryChanges ) {
-    Q_EMIT itemChanged(this);
-  }
+  _line = line;
 }
 
 void QGraphicsLineShape::setLine(qreal x1, qreal y1, qreal x2, qreal y2)
 {
   prepareGeometryChange();
 
-  line_.setLine(x1, y1, x2, y2);
+  _line.setLine(x1, y1, x2, y2);
 
   updateGeometry();
   update();
@@ -64,14 +58,15 @@ void QGraphicsLineShape::setLine(qreal x1, qreal y1, qreal x2, qreal y2)
 
 const QLineF & QGraphicsLineShape::line() const
 {
-  return line_;
+  return _line;
 }
 
 void QGraphicsLineShape::setSceneLine(const QLineF &line)
 {
   prepareGeometryChange();
 
-  line_.setPoints(mapFromScene(line.p1()), mapFromScene(line.p1()));
+  _line.setPoints(mapFromScene(line.p1()),
+      mapFromScene(line.p1()));
 
   updateGeometry();
   update();
@@ -85,7 +80,8 @@ void QGraphicsLineShape::setSceneLine(qreal x1, qreal y1, qreal x2, qreal y2)
 {
   prepareGeometryChange();
 
-  line_.setPoints(mapFromScene(QPointF(x1, y1)), mapFromScene(QPointF(x2, y2)));
+  _line.setPoints(mapFromScene(QPointF(x1, y1)),
+      mapFromScene(QPointF(x2, y2)));
 
   updateGeometry();
   update();
@@ -97,14 +93,14 @@ void QGraphicsLineShape::setSceneLine(qreal x1, qreal y1, qreal x2, qreal y2)
 
 QLineF QGraphicsLineShape::sceneLine() const
 {
-  return QLineF(mapToScene(line_.p1()), mapToScene(line_.p2()));
+  return QLineF(mapToScene(_line.p1()), mapToScene(_line.p2()));
 }
 
 void QGraphicsLineShape::setPen(const QPen & pen)
 {
-  if ( pen_ != pen ) {
+  if ( _pen != pen ) {
     prepareGeometryChange();
-    pen_ = pen;
+    _pen = pen;
     updateGeometry();
     update();
   }
@@ -120,9 +116,9 @@ void QGraphicsLineShape::setCosmeticPen(const QColor & color, int width )
 
 void QGraphicsLineShape::setPenWidth(int v)
 {
-  if ( pen_.width() != v ) {
+  if ( _pen.width() != v ) {
     prepareGeometryChange();
-    pen_.setWidth(v);
+    _pen.setWidth(v);
     updateGeometry();
     update();
   }
@@ -130,54 +126,54 @@ void QGraphicsLineShape::setPenWidth(int v)
 
 int QGraphicsLineShape::penWidth() const
 {
-  return pen_.width();
+  return _pen.width();
 }
 
 void QGraphicsLineShape::setPenColor(const QColor & color)
 {
-  pen_.setColor(color);
+  _pen.setColor(color);
   update();
 }
 
 QColor QGraphicsLineShape::penColor() const
 {
-  return pen_.color();
+  return _pen.color();
 }
 
 const QPen & QGraphicsLineShape::pen() const
 {
-  return pen_;
+  return _pen;
 }
 
 void QGraphicsLineShape::setLockP1(bool v)
 {
-  lockP1_ = v;
+  _lockP1 = v;
 }
 
 bool QGraphicsLineShape::lockP1() const
 {
-  return lockP1_;
+  return _lockP1;
 }
 
 void QGraphicsLineShape::setLockP2(bool v)
 {
-  lockP2_ = v;
+  _lockP2 = v;
 }
 
 bool QGraphicsLineShape::lockP2() const
 {
-  return lockP2_;
+  return _lockP2;
 }
 
 void QGraphicsLineShape::setArrowSize(double v)
 {
-  arrowSize_ = v;
+  _arrowSize = v;
   update();
 }
 
 double QGraphicsLineShape::arrowSize() const
 {
-  return arrowSize_;
+  return _arrowSize;
 }
 
 void QGraphicsLineShape::alignVertically()
@@ -185,14 +181,14 @@ void QGraphicsLineShape::alignVertically()
   prepareGeometryChange();
 
   const QPointF p1 =
-      line_.p1();
+      _line.p1();
 
   if( !snapToPixelGrid_ ) {
-    line_.setP2(QPointF(p1.x(), line_.p2().y()));
+    _line.setP2(QPointF(p1.x(), _line.p2().y()));
   }
   else {
-    line_.setP1(QPointF((int) p1.x(), (int) p1.y()));
-    line_.setP2(QPointF((int) p1.x(), (int) line_.p2().y()));
+    _line.setP1(QPointF((int) p1.x(), (int) p1.y()));
+    _line.setP2(QPointF((int) p1.x(), (int) _line.p2().y()));
   }
 
   updateGeometry();
@@ -208,14 +204,14 @@ void QGraphicsLineShape::alignHorizontally()
   prepareGeometryChange();
 
   const QPointF p1 =
-      line_.p1();
+      _line.p1();
 
   if( !snapToPixelGrid_ ) {
-    line_.setP2(QPointF(line_.p2().x(), p1.y()));
+    _line.setP2(QPointF(_line.p2().x(), p1.y()));
   }
   else {
-    line_.setP1(QPointF((int) p1.x(), (int) p1.y()));
-    line_.setP2(QPointF((int) line_.p2().x(), (int) p1.y()));
+    _line.setP1(QPointF((int) p1.x(), (int) p1.y()));
+    _line.setP2(QPointF((int) _line.p2().x(), (int) p1.y()));
   }
 
   updateGeometry();
@@ -229,12 +225,12 @@ void QGraphicsLineShape::alignHorizontally()
 
 QRectF QGraphicsLineShape::boundingRect() const
 {
-  return boundingRect_;
+  return _boundingRect;
 }
 
 QPainterPath QGraphicsLineShape::shape() const
 {
-  return shape_;
+  return _shape;
 }
 
 
@@ -253,47 +249,47 @@ void QGraphicsLineShape::updateGeometry()
 {
   QPainterPath path;
 
-  path.moveTo(line_.p1());
-  path.lineTo(line_.p2());
+  path.moveTo(_line.p1());
+  path.lineTo(_line.p2());
 
-  if( arrowSize_ > 1 ) {
+  if( _arrowSize > 1 ) {
 
     QPointF arrowP1, arrowP2;
-    compute_arrow(line_, arrowSize_, &arrowP1, &arrowP2);
+    compute_arrow(_line, _arrowSize, &arrowP1, &arrowP2);
 
     path.moveTo(arrowP1);
-    path.lineTo(line_.p2());
+    path.lineTo(_line.p2());
 
     path.moveTo(arrowP2);
-    path.lineTo(line_.p2());
+    path.lineTo(_line.p2());
   }
 
-  QPen pen = pen_;
+  QPen pen = _pen;
   pen.setWidth(hit_distance);
 
-  shape_ =
+  _shape =
       Base::shapeFromPath(path,
           pen);
 
-  boundingRect_ =
-      shape_.boundingRect();
+  _boundingRect =
+      _shape.boundingRect();
 }
 
 void QGraphicsLineShape::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
   Base::paint(painter, option, widget);
 
-  painter->setPen(pen_);
-  painter->drawLine(line_);
+  painter->setPen(_pen);
+  painter->drawLine(_line);
 
-  if( arrowSize_ > 1 ) {
+  if( _arrowSize > 1 ) {
 
     QPointF arrowP1, arrowP2;
 
-    compute_arrow(line_, arrowSize_, &arrowP1, &arrowP2);
+    compute_arrow(_line, _arrowSize, &arrowP1, &arrowP2);
 
-    painter->drawLine(arrowP1, line_.p2());
-    painter->drawLine(arrowP2, line_.p2());
+    painter->drawLine(arrowP1, _line.p2());
+    painter->drawLine(arrowP2, _line.p2());
   }
 }
 
@@ -301,9 +297,9 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton && (flags() & ItemIsMovable) ) {
 
-    lastPos_ = e->pos();
+    _lastPos = e->pos();
 
-    if( lockP1_ && lockP2_ ) {
+    if( _lockP1 && _lockP2 ) {
       e->accept();
       return;
     }
@@ -323,7 +319,7 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
           view->mapFromScene(e->scenePos());
 
       const QPoint p1 =
-          view->mapFromScene(mapToScene(line_.p1()));
+          view->mapFromScene(mapToScene(_line.p1()));
 
       const double p1_distance =
           distance(epos, p1);
@@ -335,7 +331,7 @@ void QGraphicsLineShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
       }
 
       const QPoint p2 =
-          view->mapFromScene(mapToScene(line_.p2()));
+          view->mapFromScene(mapToScene(_line.p2()));
 
       const double p2_distance =
           distance(epos, p2);
@@ -360,7 +356,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton && (flags() & ItemIsMovable) ) {
 
-    if( lockP1_ && lockP2_ ) {
+    if( _lockP1 && _lockP2 ) {
       e->accept();
       return;
     }
@@ -368,16 +364,16 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
     switch (currentMouseAction_) {
 
       case MouseAction_MoveP1:
-        if( !lockP1_ ) {
+        if( !_lockP1 ) {
 
           prepareGeometryChange();
 
           if ( !snapToPixelGrid_ ) {
-            line_.setP1(e->pos());
+            _line.setP1(e->pos());
           }
           else {
             const QPointF pos = e->pos();
-            line_.setP1(QPointF((int)pos.x(), (int)pos.y()));
+            _line.setP1(QPointF((int)pos.x(), (int)pos.y()));
           }
 
           updateGeometry();
@@ -392,16 +388,16 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
         return;
 
       case MouseAction_MoveP2:
-        if( !lockP2_ ) {
+        if( !_lockP2 ) {
 
           prepareGeometryChange();
 
           if ( !snapToPixelGrid_ ) {
-            line_.setP2(e->pos());
+            _line.setP2(e->pos());
           }
           else {
             const QPointF pos = e->pos();
-            line_.setP2(QPointF((int)pos.x(), (int)pos.y()));
+            _line.setP2(QPointF((int)pos.x(), (int)pos.y()));
           }
 
           updateGeometry();
@@ -416,25 +412,25 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
         return;
 
       default:
-        if( lockP1_ ) {
+        if( _lockP1 ) {
 
           prepareGeometryChange();
 
-          const QPointF p1 = line_.p1();
+          const QPointF p1 = _line.p1();
           const QPointF epos = e->pos();
 
           const double angle =
               atan2(epos.y() - p1.y(), epos.x() - p1.x());
 
-          const QPointF p2(p1.x() + cos(angle) * line_.length(),
-              p1.y() + sin(angle) * line_.length());
+          const QPointF p2(p1.x() + cos(angle) * _line.length(),
+              p1.y() + sin(angle) * _line.length());
 
 
           if ( !snapToPixelGrid_ ) {
-            line_.setP2(p2);
+            _line.setP2(p2);
           }
           else {
-            line_.setP2(QPointF((int)p2.x(), (int)p2.y()));
+            _line.setP2(QPointF((int)p2.x(), (int)p2.y()));
           }
 
           updateGeometry();
@@ -445,24 +441,24 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           }
 
         }
-        else if( lockP2_ ) {
+        else if( _lockP2 ) {
 
           prepareGeometryChange();
 
-          const QPointF p2 = line_.p2();
+          const QPointF p2 = _line.p2();
           const QPointF epos = e->pos();
 
           const double angle =
               atan2(epos.y() - p2.y(), epos.x() - p2.x());
 
-          const QPointF p1(p2.x() + cos(angle) * line_.length(),
-              p2.y() + sin(angle) * line_.length());
+          const QPointF p1(p2.x() + cos(angle) * _line.length(),
+              p2.y() + sin(angle) * _line.length());
 
           if ( !snapToPixelGrid_ ) {
-            line_.setP1(p1);
+            _line.setP1(p1);
           }
           else {
-            line_.setP1(QPointF((int)p1.x(), (int)p1.y()));
+            _line.setP1(QPointF((int)p1.x(), (int)p1.y()));
           }
 
           updateGeometry();
@@ -480,7 +476,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           /////////////////////
 
           const QPointF delta =
-              e->pos() - (snapToPixelGrid_ ? lastPos_ : e->lastPos());
+              e->pos() - (snapToPixelGrid_ ? _lastPos : e->lastPos());
 
           if ( delta.x() || delta.y() ) {
 
@@ -488,8 +484,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
               prepareGeometryChange();
 
-              line_.setP1(line_.p1() + delta);
-              line_.setP2(line_.p2() + delta);
+              _line.setP1(_line.p1() + delta);
+              _line.setP2(_line.p2() + delta);
 
               updateGeometry();
               update();
@@ -501,8 +497,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             }
             else {
 
-              const QPointF p1 = line_.p1();
-              const QPointF p2 = line_.p2();
+              const QPointF p1 = _line.p1();
+              const QPointF p2 = _line.p2();
 
               const QPointF p3(qRound(p1.x() + delta.x()), qRound(p1.y() + delta.y()));
               const QPointF p4(qRound(p2.x() + delta.x()), qRound(p2.y() + delta.y()));
@@ -511,9 +507,9 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
                 prepareGeometryChange();
 
-                line_.setP1(p3);
-                line_.setP2(p4);
-                lastPos_ = e->pos();
+                _line.setP1(p3);
+                _line.setP2(p4);
+                _lastPos = e->pos();
 
                 updateGeometry();
                 update();
@@ -558,14 +554,21 @@ static QAction * createAction(const QString & text, Fn && fn)
   return action;
 }
 
-bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
+void QGraphicsLineShape::popuateContextMenu(QMenu &menu, const QPoint &viewpos)
 {
-  menu.addAction(createCheckableAction("Lock P1", lockP1_,
+  menu.addAction(createCheckableAction("Options...", false,
+      [this](bool checked) {
+        showShapeSettings();
+      }));
+
+  menu.addSeparator();
+
+  menu.addAction(createCheckableAction("Lock P1", _lockP1,
       [this](bool checked) {
         setLockP1(checked);
       }));
 
-  menu.addAction(createCheckableAction("Lock P2", lockP2_,
+  menu.addAction(createCheckableAction("Lock P2", _lockP2,
       [this](bool checked) {
         setLockP2(checked);
       }));
@@ -586,16 +589,7 @@ bool QGraphicsLineShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
       }));
 
   menu.addSeparator();
-
-  menu.addAction(createCheckableAction("Options...", false,
-      [this](bool checked) {
-        showShapeSettings();
-      }));
-
-  menu.addSeparator();
-  Base::popuateContextMenu(e, menu);
-
-  return true;
+  Base::popuateContextMenu(menu, viewpos);
 }
 
 void QGraphicsLineShape::showShapeSettings()
@@ -604,5 +598,3 @@ void QGraphicsLineShape::showShapeSettings()
       this, QApplication::activeWindow());
   dialogBox.exec();
 }
-
-

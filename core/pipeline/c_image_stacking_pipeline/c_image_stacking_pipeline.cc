@@ -1060,6 +1060,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
       cv::Mat accumulated_image;
       cv::Mat1b accumulated_mask;
+      cv::Mat accw;
 
       if ( true ) {
         lock_guard lock(mutex());
@@ -1067,6 +1068,15 @@ bool c_image_stacking_pipeline::run_image_stacking()
         if ( !frame_accumulation_->compute(accumulated_image, accumulated_mask) ) {
           CF_ERROR("ERROR: frame_accumulation_->compute() fails");
           return false;
+        }
+
+        if( _output_options.save_acc_weights ) {
+          if( !frame_accumulation_->get_acc_counters(accw) ) {
+            CF_ERROR("frame_accumulation_->get_acc_counters() fails");
+          }
+          else if( accw.empty() ) {
+            CF_ERROR("frame_accumulation_->get_acc_counters() rerturned empty accw image");
+          }
         }
 
   #if 1
@@ -1178,6 +1188,15 @@ bool c_image_stacking_pipeline::run_image_stacking()
       CF_DEBUG("Saving '%s'", output_file_name.c_str());
       if ( !write_image(_output_file_name = output_file_name, _output_options, accumulated_image, accumulated_mask) ) {
         CF_ERROR("write_image('%s') fails", output_file_name.c_str());
+      }
+
+      if( !accw.empty() ) {
+
+        set_file_suffix(output_file_name, "-accw.tiff");
+        CF_DEBUG("Saving '%s' : %dx%d channel=%d epth=%d", output_file_name.c_str(), accw.cols, accw.rows, accw.channels(), accw.depth());
+        if( !save_image(accw, cv::noArray(), output_file_name) ) {
+          CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+        }
       }
 
 
@@ -3285,6 +3304,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, _output_options, dump_reference_data_for_debug);
     SERIALIZE_OPTION(section, save, _output_options, write_image_mask_as_alpha_channel);
+    SERIALIZE_OPTION(section, save, _output_options, save_acc_weights);
   }
 
   if( (section = get_group(settings, save, "image_processing")) ) {
@@ -3591,6 +3611,10 @@ const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline:
     PIPELINE_CTL_GROUP(ctrls, "Save sparse match blends", "");
       PIPELINE_CTL(ctrls, _output_options.save_sparse_match_blend_frames, "save sparse match blends", "");
       PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_sparse_match_blend_options, (_this->_output_options.save_sparse_match_blend_frames));
+    PIPELINE_CTL_END_GROUP(ctrls);
+
+    PIPELINE_CTL_GROUP(ctrls, "Save Acc Weights", "");
+      PIPELINE_CTL(ctrls, _output_options.save_acc_weights, "save acc weights", "");
     PIPELINE_CTL_END_GROUP(ctrls);
 
 

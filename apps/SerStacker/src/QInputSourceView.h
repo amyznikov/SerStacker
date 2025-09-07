@@ -59,6 +59,7 @@ public:
 
   void setCurrentView(QWidget * w);
   QWidget * currentView() const;
+  DisplayType currentViewType() const;
 
   void setCurrentToolbar(QToolBar * toolbar);
   QToolBar * currentToolbar() const;
@@ -86,6 +87,17 @@ public:
   int currentScrollpos() const;
 
   void reloadCurrentFrame();
+
+  void populateImageViewContextMenu(QMenu & menu,
+      const QPoint & mpos);
+
+//  void populate3DPointContextMenu(QMenu &menu,
+//      const c_data_frame::sptr &dataframe,
+//      const QPointF &mpos,
+//      bool objHit,
+//      double objX,
+//      double objY,
+//      double objZ);
 
   //////////////////////////////////////////
   // TEMPORARY HACK SUUFF
@@ -162,38 +174,35 @@ protected: // point selection
       bool objHit, double objX, double objY, double objZ);
 
 protected:
-  c_input_source::sptr currentSource_;
-  c_data_frame::sptr currentFrame_;
-  c_data_frame_processor::sptr currentProcessor_;
+  c_input_source::sptr _currentSource;
+  c_data_frame::sptr _currentFrame;
+  c_data_frame_processor::sptr _currentProcessor;
   c_input_options _input_options;
 
-  QVBoxLayout * mainLayout_ = nullptr;
-  QHBoxLayout * toolbarLayout_ = nullptr;
-  QToolBar * mainToolbar_ = nullptr;
-  QToolBar * imageViewToolbar_ = nullptr;
-  QToolBar * cloudViewToolbar_ = nullptr;
-  QToolBar * textViewToolbar_ = nullptr;
-  QToolBar * rightToolbar_ = nullptr;
+  QVBoxLayout * _mainLayout = nullptr;
+  QHBoxLayout * _toolbarLayout = nullptr;
+  QToolBar * _mainToolbar = nullptr;
+  QToolBar * _imageViewToolbar = nullptr;
+  QToolBar * _cloudViewToolbar = nullptr;
+  QToolBar * _textViewToolbar = nullptr;
+  QToolBar * _rightToolbar = nullptr;
 
-  QStackedWidget * stackWidget_ = nullptr;
-  QPlaySequenceControl * playControls_ = nullptr;
+  QStackedWidget * _stackWidget = nullptr;
+  QPlaySequenceControl * _playControls = nullptr;
 
-  QImageSourceView * imageView_ = nullptr;
-  QPointCloudSourceView * cloudView_ = nullptr;
-  QTextSourceView * textView_ = nullptr;
+  QImageSourceView * _imageView = nullptr;
+  QPointCloudSourceView * _cloudView = nullptr;
+  QTextSourceView * _textView = nullptr;
 
-  QToolButton * viewSelectionToolbutton_ctl = nullptr;
+  QToolButton * _viewSelectionToolbutton_ctl = nullptr;
 
-  //std::set<DataViewType> supportedViewTypes_;
-  //std::vector<c_enum_member> displayTypes_;
-  // c_enum_members displayChannels_;
-  DisplayType selectedViewType_ = DisplayType_Image;
+  DisplayType _selectedViewType = DisplayType_Image;
 
   //////////////////////////////////////////
   // TEMPORARY HACK SUUFF
-  DEBAYER_ALGORITHM debayerAlgorithm_ = DEBAYER_DEFAULT;
-  bool filterBadPixels_ = false;
-  double badPixelsVariationThreshold_ = 5;
+  DEBAYER_ALGORITHM _debayerAlgorithm = DEBAYER_DEFAULT;
+  bool _filterBadPixels = false;
+  double _badPixelsVariationThreshold = 5;
 
   //////////////////////////////////////////
 

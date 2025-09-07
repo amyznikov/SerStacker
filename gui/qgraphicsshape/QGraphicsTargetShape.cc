@@ -9,30 +9,28 @@
 #include "QGraphicsTargetShapeSettings.h"
 #include <core/debug.h>
 
+static const QString myName = "Target circle";
+static const QString myDescription = "Target circle shape";
+
 QGraphicsTargetShape::QGraphicsTargetShape(QGraphicsItem * parent) :
-  Base(parent)
+  Base(myName, myDescription, parent)
 {
   setCosmeticPen(Qt::red, 1);
 }
 
 void QGraphicsTargetShape::setCenter(const QPointF & v)
 {
-  if( center_ != v ) {
-
+  if( _center != v ) {
     prepareGeometryChange();
-    center_ = v;
+    _center = v;
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
   }
 }
 
 const QPointF & QGraphicsTargetShape::center() const
 {
-  return center_;
+  return _center;
 }
 
 void QGraphicsTargetShape::setBaseRadius(double v)
@@ -41,71 +39,55 @@ void QGraphicsTargetShape::setBaseRadius(double v)
     v = 1;
   }
 
-  if ( baseRadius_ != v ) {
-
+  if ( _baseRadius != v ) {
     prepareGeometryChange();
-    baseRadius_ = v;
+    _baseRadius = v;
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
-
   }
 }
 
 double QGraphicsTargetShape::baseRadius() const
 {
-  return baseRadius_;
+  return _baseRadius;
 }
 
 void QGraphicsTargetShape::setNumRings(int v)
 {
-  if ( numRings_ != v ) {
-
+  if ( _numRings != v ) {
     prepareGeometryChange();
-    numRings_ = v;
+    _numRings = v;
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
   }
 }
 
 int QGraphicsTargetShape::numRings() const
 {
-  return numRings_;
+  return _numRings;
 }
 
 
 void QGraphicsTargetShape::setShowDiagonalRays(bool v)
 {
-  if ( showDiagonals_ != v ) {
-
+  if ( _showDiagonals != v ) {
     prepareGeometryChange();
-    showDiagonals_ = v;
+    _showDiagonals = v;
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
   }
 }
 
 bool QGraphicsTargetShape::showDiagonalRays() const
 {
-  return showDiagonals_;
+  return _showDiagonals;
 }
 
 void QGraphicsTargetShape::setPen(const QPen & pen)
 {
-  if ( pen_ != pen ) {
+  if ( _pen != pen ) {
     prepareGeometryChange();
-    pen_ = pen;
+    _pen = pen;
     updateGeometry();
     update();
   }
@@ -121,9 +103,9 @@ void QGraphicsTargetShape::setCosmeticPen(const QColor & color, int width )
 
 void QGraphicsTargetShape::setPenWidth(int v)
 {
-  if ( pen_.width() != v ) {
+  if ( _pen.width() != v ) {
     prepareGeometryChange();
-    pen_.setWidth(v);
+    _pen.setWidth(v);
     updateGeometry();
     update();
   }
@@ -131,75 +113,75 @@ void QGraphicsTargetShape::setPenWidth(int v)
 
 int QGraphicsTargetShape::penWidth() const
 {
-  return pen_.width();
+  return _pen.width();
 }
 
 void QGraphicsTargetShape::setPenColor(const QColor & color)
 {
-  pen_.setColor(color);
+  _pen.setColor(color);
   update();
 }
 
 QColor QGraphicsTargetShape::penColor() const
 {
-  return pen_.color();
+  return _pen.color();
 }
 
 const QPen & QGraphicsTargetShape::pen() const
 {
-  return pen_;
+  return _pen;
 }
 
 QRectF QGraphicsTargetShape::boundingRect() const
 {
-  return boundingRect_;
+  return _boundingRect;
 }
 
 QPainterPath QGraphicsTargetShape::shape() const
 {
-  return shape_;
+  return _shape;
 }
 
 void QGraphicsTargetShape::updateGeometry()
 {
   QPainterPath path;
 
-  double r = baseRadius_;
-  for( int i = 0; i < numRings_; ++i) {
-    path.addEllipse(center_, r, r);
-    if( i < numRings_ - 1 ) {
+  double r = _baseRadius;
+  for( int i = 0; i < _numRings; ++i) {
+    path.addEllipse(_center, r, r);
+    if( i < _numRings - 1 ) {
       r *= 2;
     }
   }
 
   const double ray_length =
-      r + baseRadius_;
+      r + _baseRadius;
 
-  path.moveTo(QPointF(center_.x() - ray_length, center_.y()));
-  path.lineTo(QPointF(center_.x() + ray_length, center_.y()));
+  path.moveTo(QPointF(_center.x() - ray_length, _center.y()));
+  path.lineTo(QPointF(_center.x() + ray_length, _center.y()));
 
 
-  path.moveTo(QPointF(center_.x(), center_.y() - ray_length));
-  path.lineTo(QPointF(center_.x(), center_.y() + ray_length));
+  path.moveTo(QPointF(_center.x(), _center.y() - ray_length));
+  path.lineTo(QPointF(_center.x(), _center.y() + ray_length));
 
-  if( showDiagonals_ ) {
+  if( _showDiagonals ) {
 
-    path.moveTo(QPointF(center_.x() - ray_length, center_.y() - ray_length));
-    path.lineTo(QPointF(center_.x() + ray_length, center_.y() + ray_length));
+    path.moveTo(QPointF(_center.x() - ray_length, _center.y() - ray_length));
+    path.lineTo(QPointF(_center.x() + ray_length, _center.y() + ray_length));
 
-    path.moveTo(QPointF(center_.x() - ray_length, center_.y() + ray_length));
-    path.lineTo(QPointF(center_.x() + ray_length, center_.y() - ray_length));
+    path.moveTo(QPointF(_center.x() - ray_length, _center.y() + ray_length));
+    path.lineTo(QPointF(_center.x() + ray_length, _center.y() - ray_length));
   }
 
-  QPen pen = pen_;
+  QPen pen = _pen;
   pen.setWidth(15);
 
-  shape_ =
+  _shape =
       Base::shapeFromPath(path,
           pen);
 
-  boundingRect_ =
-      shape_.boundingRect();
+  _boundingRect =
+      _shape.boundingRect();
 }
 
 
@@ -207,32 +189,32 @@ void QGraphicsTargetShape::paint(QPainter * painter, const QStyleOptionGraphicsI
 {
   Base::paint(painter, option, widget);
 
-  painter->setPen(pen_);
+  painter->setPen(_pen);
 
-  double r = baseRadius_;
-  for( int i = 0; i < numRings_; ++i) {
-    painter->drawEllipse(center_, r, r);
-    if( i < numRings_ - 1 ) {
+  double r = _baseRadius;
+  for( int i = 0; i < _numRings; ++i) {
+    painter->drawEllipse(_center, r, r);
+    if( i < _numRings - 1 ) {
       r *= 2;
     }
   }
 
   const double ray_length =
-      r + baseRadius_;
+      r + _baseRadius;
 
-  painter->drawLine(QPointF(center_.x() - ray_length, center_.y()),
-      QPointF(center_.x() + ray_length, center_.y()));
+  painter->drawLine(QPointF(_center.x() - ray_length, _center.y()),
+      QPointF(_center.x() + ray_length, _center.y()));
 
-  painter->drawLine(QPointF(center_.x(), center_.y() - ray_length),
-      QPointF(center_.x(), center_.y() + ray_length));
+  painter->drawLine(QPointF(_center.x(), _center.y() - ray_length),
+      QPointF(_center.x(), _center.y() + ray_length));
 
-  if( showDiagonals_ ) {
+  if( _showDiagonals ) {
 
-    painter->drawLine(QPointF(center_.x() - ray_length, center_.y() - ray_length),
-        QPointF(center_.x() + ray_length, center_.y() + ray_length));
+    painter->drawLine(QPointF(_center.x() - ray_length, _center.y() - ray_length),
+        QPointF(_center.x() + ray_length, _center.y() + ray_length));
 
-    painter->drawLine(QPointF(center_.x() - ray_length, center_.y() + ray_length),
-        QPointF(center_.x() + ray_length, center_.y() - ray_length));
+    painter->drawLine(QPointF(_center.x() - ray_length, _center.y() + ray_length),
+        QPointF(_center.x() + ray_length, _center.y() - ray_length));
 
   }
 
@@ -241,7 +223,7 @@ void QGraphicsTargetShape::paint(QPainter * painter, const QStyleOptionGraphicsI
 void QGraphicsTargetShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ || lockPosition_ ) {
+    if( _fixOnSceneCenter || _lockPosition ) {
       e->ignore();
       return;
     }
@@ -252,7 +234,7 @@ void QGraphicsTargetShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 void QGraphicsTargetShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ || lockPosition_ ) {
+    if( _fixOnSceneCenter || _lockPosition ) {
       e->ignore();
       return;
     }
@@ -263,7 +245,7 @@ void QGraphicsTargetShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 void QGraphicsTargetShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->button() & Qt::LeftButton ) {
-    if( fixOnSceneCenter_ || lockPosition_ ) {
+    if( _fixOnSceneCenter || _lockPosition ) {
       e->ignore();
       return;
     }
@@ -273,21 +255,18 @@ void QGraphicsTargetShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
 
 bool QGraphicsTargetShape::fixOnSceneCenter() const
 {
-  return fixOnSceneCenter_;
+  return _fixOnSceneCenter;
 }
 
 void QGraphicsTargetShape::setFixOnSceneCenter(bool v)
 {
-  if( fixOnSceneCenter_ != v ) {
+  if( _fixOnSceneCenter != v ) {
 
-    fixOnSceneCenter_ = v;
+    _fixOnSceneCenter = v;
 
-    QGraphicsScene *scene =
-        this->scene();
+    if( QGraphicsScene *scene = this->scene() ) {
 
-    if( scene ) {
-
-      if( !fixOnSceneCenter_ ) {
+      if( !_fixOnSceneCenter ) {
         scene->disconnect(this);
       }
       else {
@@ -295,7 +274,7 @@ void QGraphicsTargetShape::setFixOnSceneCenter(bool v)
             this, &ThisClass::onSceneRectChanged);
       }
 
-      if( fixOnSceneCenter_ ) {
+      if( _fixOnSceneCenter ) {
         setCenter(mapFromScene(scene->sceneRect().center()));
       }
     }
@@ -304,34 +283,26 @@ void QGraphicsTargetShape::setFixOnSceneCenter(bool v)
 
 bool QGraphicsTargetShape::lockPosition() const
 {
-  return lockPosition_;
+  return _lockPosition;
 }
 
 void QGraphicsTargetShape::setLockPosition(bool v)
 {
-  if ( (lockPosition_ = v) ) {
+  if ( (_lockPosition = v) ) {
   }
-
 }
 
 void QGraphicsTargetShape::onSceneChange()
 {
-  QGraphicsScene * scene =
-      this->scene();
-
-  if ( scene ) {
+  if ( QGraphicsScene * scene = this->scene() ) {
     scene->disconnect(this);
   }
 }
 
 void QGraphicsTargetShape::onSceneHasChanged()
 {
-  if( fixOnSceneCenter_ ) {
-
-    QGraphicsScene *scene =
-        this->scene();
-
-    if( scene ) {
+  if( _fixOnSceneCenter ) {
+    if( QGraphicsScene *scene = this->scene() ) {
       connect(scene, &QGraphicsScene::sceneRectChanged,
           this, &ThisClass::onSceneRectChanged);
     }
@@ -340,12 +311,12 @@ void QGraphicsTargetShape::onSceneHasChanged()
 
 void QGraphicsTargetShape::onSceneRectChanged(const QRectF &rect)
 {
-  if ( fixOnSceneCenter_ ) {
+  if ( _fixOnSceneCenter ) {
     setCenter(mapFromScene(rect.center()));
   }
 }
 
-bool QGraphicsTargetShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu)
+void QGraphicsTargetShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   QAction * action;
 
@@ -359,7 +330,7 @@ bool QGraphicsTargetShape::popuateContextMenu(const QGraphicsSceneContextMenuEve
 
   menu.addAction(action = new QAction("Lock position"));
   action->setCheckable(true);
-  action->setChecked(lockPosition_);
+  action->setChecked(_lockPosition);
   connect(action, &QAction::triggered,
       [this](bool checked) {
         setLockPosition(checked);
@@ -367,16 +338,14 @@ bool QGraphicsTargetShape::popuateContextMenu(const QGraphicsSceneContextMenuEve
 
   menu.addAction(action = new QAction("Center on scene"));
   action->setCheckable(true);
-  action->setChecked(fixOnSceneCenter_);
+  action->setChecked(_fixOnSceneCenter);
   connect(action, &QAction::triggered,
       [this](bool checked) {
         setFixOnSceneCenter(checked);
       });
 
-
-  Base::popuateContextMenu(event, menu);
-
-  return true;
+  menu.addSeparator();
+  Base::popuateContextMenu(menu, viewpos);
 }
 
 void QGraphicsTargetShape::showShapeSettings()
@@ -385,6 +354,5 @@ void QGraphicsTargetShape::showShapeSettings()
       this, QApplication::activeWindow());
 
   dialogBox.exec();
-
 }
 

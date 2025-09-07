@@ -54,6 +54,8 @@ public:
   void alignVertically();
   void alignHorizontally();
 
+  void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
+
 protected:
   QRectF boundingRect() const override;
   QPainterPath shape() const override;
@@ -61,16 +63,16 @@ protected:
   void mousePressEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseMoveEvent(QGraphicsSceneMouseEvent * event) override;
   void mouseReleaseEvent(QGraphicsSceneMouseEvent * event) override;
-  bool popuateContextMenu(const QGraphicsSceneContextMenuEvent * event, QMenu & menu) override;
   void updateGeometry() override;
   void showShapeSettings();
 
 protected:
-  QLineF line_;
-  double arrowSize_ = 5;
-  QRectF boundingRect_;
-  QPainterPath shape_;
-  QPen pen_;
+  QLineF _line;
+  double _arrowSize = 5;
+  QRectF _boundingRect;
+  QPainterPath _shape;
+  QPen _pen;
+  QPointF _lastPos;
 
   enum MouseAction {
     MouseAction_None = 0,
@@ -79,11 +81,8 @@ protected:
     MouseAction_MoveWholeLine,
   } currentMouseAction_ = MouseAction_None;
 
-  bool lockP1_ = false;
-  bool lockP2_ = false;
-
-  QPointF lastPos_;
-
+  bool _lockP1 = false;
+  bool _lockP2 = false;
 };
 
 #endif /* __QGraphicsLineShape_h__ */

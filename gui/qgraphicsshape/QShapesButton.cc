@@ -79,29 +79,25 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
   setToolTip("Show/Hide shapes");
   setCheckable(true);
 
-  pen_.setCosmetic(true);
-  pen_.setColor(Qt::yellow);
+  _pen.setCosmetic(true);
+  _pen.setColor(Qt::yellow);
 
 
   connect(this, &QToolButton::toggled,
       [this](bool checked) {
-        for ( QGraphicsShape * shape : shapes_ ) {
+        for ( QGraphicsShape * shape : _shapes ) {
           shape->setVisible(checked);
         }
       });
 
-  popup_.addAction(rectangle_icon,
+  _popup.addAction(rectangle_icon,
       "Add rectangle ...",
       [this]() {
-        if ( sceneView_ ) {
-
-          QGraphicsScene * scene =
-              sceneView_->scene();
-
-          if ( scene ) {
+        if ( _sceneView ) {
+          if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
             QRect rc1 =
-                sceneView_->rect();
+                _sceneView->rect();
 
             QPoint center =
                 rc1.center();
@@ -115,18 +111,18 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             QRect rc2(center.x() - w/2, center.y() - h/2, w, h);
 
             QGraphicsRectShape *shape =
-                new QGraphicsRectShape(sceneView_->mapToScene(rc2).boundingRect());
+                new QGraphicsRectShape(_sceneView->mapToScene(rc2).boundingRect());
 
             shape->setVisible(true);
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-            shape->setPen(pen_);
+            shape->setPen(_pen);
 
             connect(shape, &QGraphicsShape::populateContextMenuReuested,
                 this, &ThisClass::onPopulateGraphicsShapeContextMenu);
 
             scene->addItem(shape);
-            shapes_.append(shape);
+            _shapes.append(shape);
 
             connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
@@ -135,18 +131,14 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
         }
   });
 
-  popup_.addAction(line_icon,
+  _popup.addAction(line_icon,
       "Add line ...",
       [this]() {
-        if ( sceneView_ ) {
-
-          QGraphicsScene * scene =
-              sceneView_->scene();
-
-          if ( scene ) {
+        if ( _sceneView ) {
+          if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
             const QRect rc1 =
-                sceneView_->rect();
+                _sceneView->rect();
 
             const QPoint center =
                 rc1.center();
@@ -156,10 +148,10 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
                 std::max(20, std::max( rc1.width(), rc1.height()) / 6 );
 
             const QPointF p1 =
-                sceneView_->mapToScene(QPoint(center.x() - L, center.y() - L));
+                _sceneView->mapToScene(QPoint(center.x() - L, center.y() - L));
 
             const QPointF p2 =
-                sceneView_->mapToScene(QPoint(center.x() + L, center.y() + L));
+                _sceneView->mapToScene(QPoint(center.x() + L, center.y() + L));
 
 
             QGraphicsLineShape *shape =
@@ -168,13 +160,13 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setVisible(true);
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-            shape->setPen(pen_);
+            shape->setPen(_pen);
 
             connect(shape, &QGraphicsShape::populateContextMenuReuested,
                 this, &ThisClass::onPopulateGraphicsShapeContextMenu);
 
             scene->addItem(shape);
-            shapes_.append(shape);
+            _shapes.append(shape);
 
             connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
@@ -183,18 +175,14 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
         }
     });
 
-  popup_.addAction(target_icon,
+  _popup.addAction(target_icon,
       "Add target ...",
       [this]() {
-        if ( sceneView_ ) {
-
-          QGraphicsScene * scene =
-              sceneView_->scene();
-
-          if ( scene ) {
+        if ( _sceneView ) {
+          if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
             const QRectF rc1 =
-                sceneView_->sceneRect();
+                _sceneView->sceneRect();
 
             const QPointF center(rc1.width()/2,
                 rc1.height()/2);
@@ -207,13 +195,13 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
             shape->setVisible(true);
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-            shape->setPen(pen_);
+            shape->setPen(_pen);
 
             connect(shape, &QGraphicsShape::populateContextMenuReuested,
                 this, &ThisClass::onPopulateGraphicsShapeContextMenu);
 
             scene->addItem(shape);
-            shapes_.append(shape);
+            _shapes.append(shape);
 
             connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
 
@@ -223,27 +211,25 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
     });
 
 
-  popup_.addSeparator();
-  popup_.addAction(delete_icon,
+  _popup.addSeparator();
+  _popup.addAction(delete_icon,
       "Delete all shapes...",
       [this]() {
-        if ( sceneView_ ) {
+        if ( _sceneView ) {
+          if ( QGraphicsScene * scene = _sceneView->scene()) {
 
-          QGraphicsScene * scene = sceneView_->scene();
-          if ( scene ) {
-
-            for ( QGraphicsShape * shape : shapes_ ) {
+            for ( QGraphicsShape * shape : _shapes ) {
               scene->removeItem(shape);
               delete shape;
             }
 
-            shapes_.clear();
+            _shapes.clear();
           }
         }
       });
 
   setPopupMode(QToolButton::MenuButtonPopup);
-  setMenu(&popup_);
+  setMenu(&_popup);
 
   setSceneView(view);
 }
@@ -256,7 +242,7 @@ QShapesButton::QShapesButton(QWidget * parent) :
 
 void QShapesButton::setSceneView(QGraphicsView * sceneView)
 {
-  if ( !(sceneView_ = sceneView) ) {
+  if ( !(_sceneView = sceneView) ) {
     setEnabled(false);
   }
   else {
@@ -266,27 +252,24 @@ void QShapesButton::setSceneView(QGraphicsView * sceneView)
 
 QGraphicsView * QShapesButton::sceneView() const
 {
-  return sceneView_;
+  return _sceneView;
 }
 
 
 const QList<QGraphicsShape*>& QShapesButton::shapes() const
 {
-  return shapes_;
+  return _shapes;
 }
 
 void QShapesButton::addShape(QGraphicsShape * shape)
 {
-  if ( shapes_.indexOf(shape) < 0 ) {
+  if ( _shapes.indexOf(shape) < 0 ) {
 
-    shapes_.append(shape);
+    _shapes.append(shape);
     connect(shape, &QGraphicsShape::populateContextMenuReuested,
         this, &ThisClass::onPopulateGraphicsShapeContextMenu);
 
-
-    QGraphicsScene * scene =
-        sceneView_->scene();
-
+    QGraphicsScene * scene = _sceneView->scene();
     if ( scene && scene->items().indexOf(shape) < 0 ) {
       scene->addItem(shape);
       connectShapeEvents(shape, dynamic_cast<QImageScene * >(scene));
@@ -294,19 +277,19 @@ void QShapesButton::addShape(QGraphicsShape * shape)
   }
 }
 
-void QShapesButton::onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape, const QGraphicsSceneContextMenuEvent * event, QMenu * menu)
+void QShapesButton::onPopulateGraphicsShapeContextMenu(QGraphicsShape *shape,
+    QMenu &menu, const QPoint &viewpos)
 {
-  menu->addAction("Delete object",
-      [this, shape]() {
-        if ( sceneView_ ) {
-          QGraphicsScene * scene = sceneView_->scene();
-          if ( scene ) {
-            shapes_.removeOne(shape);
+  if (_sceneView) {
+
+    menu.addAction(QString("Delete %1").arg(shape->name()),
+        [this, shape]() {
+          if ( QGraphicsScene * scene = _sceneView->scene() ) {
+            _shapes.removeOne(shape);
             scene->removeItem(shape);
             delete shape;
           }
-        }
-      });
-
+        });
+  }
 }
 

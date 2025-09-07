@@ -45,87 +45,90 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
 {
   init_resources();
 
-  mainLayout_ = new QVBoxLayout(this);
-  mainLayout_->setAlignment(Qt::AlignTop);
+  _mainLayout = new QVBoxLayout(this);
+  _mainLayout->setAlignment(Qt::AlignTop);
   setContentsMargins(0, 0, 0, 0);
-  mainLayout_->setSpacing(0);
+  _mainLayout->setSpacing(0);
 
-  mainLayout_->addLayout(toolbarLayout_ = new QHBoxLayout());
-  toolbarLayout_->setContentsMargins(0,0,0,0);
-  toolbarLayout_->addWidget(mainToolbar_ = createToolbar(this), 10, Qt::AlignLeft);
-  toolbarLayout_->addWidget(imageViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
-  toolbarLayout_->addWidget(cloudViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
-  toolbarLayout_->addWidget(textViewToolbar_ = createToolbar(this), 10, Qt::AlignRight);
-  toolbarLayout_->addWidget(rightToolbar_ = createToolbar(this), 0, Qt::AlignRight);
+  _mainLayout->addLayout(_toolbarLayout = new QHBoxLayout());
+  _toolbarLayout->setContentsMargins(0,0,0,0);
+  _toolbarLayout->addWidget(_mainToolbar = createToolbar(this), 10, Qt::AlignLeft);
+  _toolbarLayout->addWidget(_imageViewToolbar = createToolbar(this), 10, Qt::AlignRight);
+  _toolbarLayout->addWidget(_cloudViewToolbar = createToolbar(this), 10, Qt::AlignRight);
+  _toolbarLayout->addWidget(_textViewToolbar = createToolbar(this), 10, Qt::AlignRight);
+  _toolbarLayout->addWidget(_rightToolbar = createToolbar(this), 0, Qt::AlignRight);
 
 
-  mainLayout_->addWidget(stackWidget_ = new QStackedWidget(this), 10000);
-  stackWidget_->addWidget(imageView_ = new QImageSourceView(this));
-  stackWidget_->addWidget(cloudView_ = new QPointCloudSourceView(this));
-  stackWidget_->addWidget(textView_ = new QTextSourceView(this));
+  _mainLayout->addWidget(_stackWidget = new QStackedWidget(this), 10000);
+  _stackWidget->addWidget(_imageView = new QImageSourceView(this));
+  _stackWidget->addWidget(_cloudView = new QPointCloudSourceView(this));
+  _stackWidget->addWidget(_textView = new QTextSourceView(this));
 
-  mainLayout_->addWidget(playControls_ = new QPlaySequenceControl(this), 0, Qt::AlignBottom);
+  _mainLayout->addWidget(_playControls = new QPlaySequenceControl(this), 0, Qt::AlignBottom);
 
-  QObject::connect(playControls_, &QPlaySequenceControl::onSeek,
+  QObject::connect(_imageView, &QImageSourceView::onPopulateContextMenu,
+      this, &ThisClass::populateImageViewContextMenu);
+
+  QObject::connect(_cloudView, &QPointCloudSourceView::glPointSelectionMouseEvent,
+       this, &ThisClass::onCloudViewPointSelectionMouseEvent);
+
+  QObject::connect(_playControls, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
 
-  QObject::connect(stackWidget_, &QStackedWidget::currentChanged,
+  QObject::connect(_stackWidget, &QStackedWidget::currentChanged,
       this, &ThisClass::onStackedWidgetCurrentIndexChanged);
 
   setupMainToolbar();
   setupMtfDisplayFunction();
-  setCurrentView(imageView_);
-  setCurrentToolbar(imageViewToolbar_);
-
-  connect(cloudView_, &QPointCloudSourceView::glPointSelectionMouseEvent,
-      this, &ThisClass::onCloudViewPointSelectionMouseEvent);
+  setCurrentView(_imageView);
+  setCurrentToolbar(_imageViewToolbar);
 
 
 }
 
 QToolBar * QInputSourceView::toolbar() const
 {
-  return mainToolbar_;
+  return _mainToolbar;
 }
 
 QToolBar * QInputSourceView::imageViewToolbar() const
 {
-  return imageViewToolbar_;
+  return _imageViewToolbar;
 }
 
 QToolBar * QInputSourceView::cloudViewToolbar() const
 {
-  return cloudViewToolbar_;
+  return _cloudViewToolbar;
 }
 
 QToolBar * QInputSourceView::textViewToolbar() const
 {
-  return textViewToolbar_;
+  return _textViewToolbar;
 }
 
 QToolBar * QInputSourceView::rightToolbar() const
 {
-  return rightToolbar_;
+  return _rightToolbar;
 }
 
 QStackedWidget * QInputSourceView::stackWidget() const
 {
-  return stackWidget_;
+  return _stackWidget;
 }
 
 QImageSourceView * QInputSourceView::imageView() const
 {
-  return imageView_;
+  return _imageView;
 }
 
 QPointCloudSourceView * QInputSourceView::cloudView() const
 {
-  return cloudView_;
+  return _cloudView;
 }
 
 QTextSourceView * QInputSourceView::textView() const
 {
-  return textView_;
+  return _textView;
 }
 
 void QInputSourceView::showEvent(QShowEvent *event)
@@ -150,25 +153,25 @@ void QInputSourceView::hideEvent(QHideEvent *event)
 
 void QInputSourceView::setCurrentView(QWidget * w)
 {
-  stackWidget_->setCurrentWidget(w);
+  _stackWidget->setCurrentWidget(w);
 }
 
 QWidget * QInputSourceView::currentView() const
 {
-  return stackWidget_->currentWidget();
+  return _stackWidget->currentWidget();
 }
 
 void QInputSourceView::setupMainToolbar()
 {
-  mainToolbar_->addWidget(viewSelectionToolbutton_ctl =
+  _mainToolbar->addWidget(_viewSelectionToolbutton_ctl =
       createToolButton(getIcon(ICON_eye), "",
           "Select View",
           [this](QToolButton * tb) {
 
-            if ( currentFrame_ ) {
+            if ( _currentFrame ) {
 
               const auto & viewTypwes =
-                  currentFrame_->get_available_display_types();
+                  _currentFrame->get_available_display_types();
 
               if ( viewTypwes.size() > 1 ) {
 
@@ -182,7 +185,7 @@ void QInputSourceView::setupMainToolbar()
                     menu.addAction(createCheckableAction(QIcon(),
                             m->name.c_str(),
                             m->comment.c_str(),
-                            viewType == selectedViewType_,
+                            viewType == _selectedViewType,
                             [this, viewType]() {
                               setViewType(viewType);
                             }));
@@ -200,10 +203,10 @@ void QInputSourceView::setupMainToolbar()
 
 void QInputSourceView::setupMtfDisplayFunction()
 {
-  imageView_->setDisplayFunction(this);
-  cloudView_->setDisplayFunction(this);
+  _imageView->setDisplayFunction(this);
+  _cloudView->setDisplayFunction(this);
 
-  connect(imageView_, &QImageViewer::displayImageChanged,
+  connect(_imageView, &QImageViewer::displayImageChanged,
       this, &ThisClass::displayImageChanged);
 
   connect(this, &ThisClass::displayChannelsChanged,
@@ -211,11 +214,11 @@ void QInputSourceView::setupMtfDisplayFunction()
 
   connect(this, &ThisClass::parameterChanged,
       [this]() {
-        if ( imageView_->isVisible() ) {
-          imageView_->updateDisplay();
+        if ( _imageView->isVisible() ) {
+          _imageView->updateDisplay();
         }
-        else if ( cloudView_->isVisible() ) {
-          cloudView_->updateDisplayColors();
+        else if ( _cloudView->isVisible() ) {
+          _cloudView->updateDisplayColors();
         }
       });
 
@@ -227,14 +230,14 @@ void QInputSourceView::onStackedWidgetCurrentIndexChanged()
   const QWidget *currentWidget =
       currentView();
 
-  if( currentWidget == imageView_ ) {
-    setCurrentToolbar(imageViewToolbar_);
+  if( currentWidget == _imageView ) {
+    setCurrentToolbar(_imageViewToolbar);
   }
-  else if( currentWidget == cloudView_ ) {
-    setCurrentToolbar(cloudViewToolbar_);
+  else if( currentWidget == _cloudView ) {
+    setCurrentToolbar(_cloudViewToolbar);
   }
-  else if( currentWidget == textView_ ) {
-    setCurrentToolbar(textViewToolbar_);
+  else if( currentWidget == _textView ) {
+    setCurrentToolbar(_textViewToolbar);
   }
 
   Q_EMIT currentViewChanged();
@@ -243,42 +246,42 @@ void QInputSourceView::onStackedWidgetCurrentIndexChanged()
 
 void QInputSourceView::setCurrentToolbar(QToolBar * toolbar)
 {
-  if( toolbar == imageViewToolbar_ ) {
-    cloudViewToolbar_->hide();
-    textViewToolbar_->hide();
-    imageViewToolbar_->show();
+  if( toolbar == _imageViewToolbar ) {
+    _cloudViewToolbar->hide();
+    _textViewToolbar->hide();
+    _imageViewToolbar->show();
   }
-  else if( toolbar == cloudViewToolbar_ ) {
-    imageViewToolbar_->hide();
-    textViewToolbar_->hide();
-    cloudViewToolbar_->show();
+  else if( toolbar == _cloudViewToolbar ) {
+    _imageViewToolbar->hide();
+    _textViewToolbar->hide();
+    _cloudViewToolbar->show();
   }
-  else if( toolbar == textViewToolbar_ ) {
-    imageViewToolbar_->hide();
-    cloudViewToolbar_->hide();
-    textViewToolbar_->show();
+  else if( toolbar == _textViewToolbar ) {
+    _imageViewToolbar->hide();
+    _cloudViewToolbar->hide();
+    _textViewToolbar->show();
   }
   else {
-    imageViewToolbar_->hide();
-    cloudViewToolbar_->hide();
-    textViewToolbar_->hide();
+    _imageViewToolbar->hide();
+    _cloudViewToolbar->hide();
+    _textViewToolbar->hide();
   }
 
-  toolbarLayout_->update();
+  _toolbarLayout->update();
 }
 
 QToolBar* QInputSourceView::currentToolbar() const
 {
-  if( cloudViewToolbar_->isVisible() ) {
-    return cloudViewToolbar_;
+  if( _cloudViewToolbar->isVisible() ) {
+    return _cloudViewToolbar;
   }
 
-  if( imageViewToolbar_->isVisible() ) {
-    return imageViewToolbar_;
+  if( _imageViewToolbar->isVisible() ) {
+    return _imageViewToolbar;
   }
 
-  if( textViewToolbar_->isVisible() ) {
-    return textViewToolbar_;
+  if( _textViewToolbar->isVisible() ) {
+    return _textViewToolbar;
   }
 
   return nullptr;
@@ -287,7 +290,7 @@ QToolBar* QInputSourceView::currentToolbar() const
 
 QString QInputSourceView::currentFileName() const
 {
-  return currentSource_ ? currentSource_->cfilename() : QString();
+  return _currentSource ? _currentSource->cfilename() : QString();
 }
 
 IMtfDisplay * QInputSourceView::mtfDisplay()
@@ -302,18 +305,18 @@ const IMtfDisplay * QInputSourceView::mtfDisplay() const
 
 void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & processor)
 {
-  currentProcessor_ = processor;
+  _currentProcessor = processor;
 
-  if ( currentFrame_ ) {
-    currentFrame_->cleanup();
+  if ( _currentFrame ) {
+    _currentFrame->cleanup();
     processCurrentFrame();
-    setViewType(selectedViewType_);
+    setViewType(_selectedViewType);
   }
 }
 
 const c_data_frame_processor::sptr & QInputSourceView::currentProcessor() const
 {
-  return currentProcessor_;
+  return _currentProcessor;
 }
 
 
@@ -345,7 +348,7 @@ QPointSelectionMode * QInputSourceView::pointSelectionMode() const
 
 const c_input_source::sptr & QInputSourceView::inputSource() const
 {
-  return currentSource_;
+  return _currentSource;
 }
 
 const c_input_options * QInputSourceView::inputOptions() const
@@ -367,14 +370,14 @@ bool QInputSourceView::openFile(const QString & abspath)
     const std::string filename =
         abspath.toStdString();
 
-    if( !(currentSource_ = c_input_source::create(filename)) ) {
+    if( !(_currentSource = c_input_source::create(filename)) ) {
       CF_ERROR("c_input_source::open('%s') fails", filename.c_str());
       return false;
     }
 
     // CF_DEBUG("typeid(currentSource_)=%s",  typeid(*currentSource_.get()).name());
 
-    currentSource_->set_input_options(&_input_options);
+    _currentSource->set_input_options(&_input_options);
 
     startDisplay();
 
@@ -386,9 +389,9 @@ bool QInputSourceView::openFile(const QString & abspath)
 
 void QInputSourceView::reloadCurrentFrame()
 {
-  if( isOpen(currentSource_) ) {
-    if( currentSource_->curpos() > 0 ) {
-      currentSource_->seek(currentSource_->curpos() - 1);
+  if( isOpen(_currentSource) ) {
+    if( _currentSource->curpos() > 0 ) {
+      _currentSource->seek(_currentSource->curpos() - 1);
     }
     loadNextFrame();
   }
@@ -396,22 +399,22 @@ void QInputSourceView::reloadCurrentFrame()
 
 int QInputSourceView::currentScrollpos() const
 {
-  return playControls_->curPos();
+  return _playControls->curPos();
 }
 
 bool QInputSourceView::scrollToFrame(int frameIndex)
 {
-  if( isOpen(currentSource_) ) {
+  if( isOpen(_currentSource) ) {
 
     if( frameIndex >= 0 ) {
-      currentSource_->seek(frameIndex);
+      _currentSource->seek(frameIndex);
     }
 
 
     loadNextFrame();
 
-    playControls_->setCurpos(std::max(0,
-        currentSource_->curpos() - 1));
+    _playControls->setCurpos(std::max(0,
+        _currentSource->curpos() - 1));
 
     Q_EMIT currentFrameChanged();
 
@@ -421,11 +424,12 @@ bool QInputSourceView::scrollToFrame(int frameIndex)
   return false;
 }
 
+
 void QInputSourceView::onSeek(int pos)
 {
-  if( isOpen(currentSource_) ) {
-    if( pos != currentSource_->curpos() ) {
-      currentSource_->seek(pos);
+  if( isOpen(_currentSource) ) {
+    if( pos != _currentSource->curpos() ) {
+      _currentSource->seek(pos);
     }
     loadNextFrame();
   }
@@ -433,22 +437,22 @@ void QInputSourceView::onSeek(int pos)
 
 void QInputSourceView::startDisplay()
 {
-  imageView_->setImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
+  _imageView->setImage(cv::noArray(), cv::noArray(), cv::noArray(), false);
 
-  playControls_->setState(QPlaySequenceControl::Stopped);
-  playControls_->hide();
+  _playControls->setState(QPlaySequenceControl::Stopped);
+  _playControls->hide();
 
-  if ( !currentSource_ ) {
+  if ( !_currentSource ) {
     return;
   }
 
-  if ( !currentSource_->is_open() && !currentSource_->open() ) {
+  if ( !_currentSource->is_open() && !_currentSource->open() ) {
     CF_ERROR("currentSource_->open() fails");
     return;
   }
 
   const int num_frames =
-      currentSource_->size();
+      _currentSource->size();
 
   if ( num_frames < 1 ) {
     QMessageBox::critical(this, "ERROR",
@@ -458,9 +462,9 @@ void QInputSourceView::startDisplay()
   }
 
   if( num_frames > 1 ) {
-    playControls_->show();
-    playControls_->setSeekRange(0, num_frames - 1);
-    playControls_->setCurpos(0);
+    _playControls->show();
+    _playControls->setSeekRange(0, num_frames - 1);
+    _playControls->setCurpos(0);
   }
 
   loadNextFrame();
@@ -468,18 +472,18 @@ void QInputSourceView::startDisplay()
 
 void QInputSourceView::loadNextFrame()
 {
-  if( isOpen(currentSource_) ) {
+  if( isOpen(_currentSource) ) {
 
-    QWaitCursor wait(this, currentSource_->size() == 1);
+    QWaitCursor wait(this, _currentSource->size() == 1);
 
-    if( !currentSource_->read(currentFrame_) ) {
+    if( !_currentSource->read(_currentFrame) ) {
       CF_ERROR("currentSource_->read(currentFrame_) fails");
       return;
     }
 
     processCurrentFrame();
 
-    setViewType(selectedViewType_);
+    setViewType(_selectedViewType);
 
     Q_EMIT currentFrameChanged();
   }
@@ -488,50 +492,50 @@ void QInputSourceView::loadNextFrame()
 
 void QInputSourceView::processCurrentFrame()
 {
-  if( !currentFrame_ ) {
-    selectedViewType_ = DisplayType_Image;
-    viewSelectionToolbutton_ctl->setEnabled(false);
+  if( !_currentFrame ) {
+    _selectedViewType = DisplayType_Image;
+    _viewSelectionToolbutton_ctl->setEnabled(false);
   }
   else {
 
-    if( currentProcessor_ && !currentProcessor_->process(currentFrame_) ) {
+    if( _currentProcessor && !_currentProcessor->process(_currentFrame) ) {
       CF_ERROR("currentProcessor_->process(currentFrame_) fails");
     }
 
     const auto & viewTypes =
-        currentFrame_->get_available_display_types();
+        _currentFrame->get_available_display_types();
 
     if( viewTypes.empty() ) {
-      selectedViewType_ = DisplayType_Image;
+      _selectedViewType = DisplayType_Image;
     }
-    else if( viewTypes.find(selectedViewType_) == viewTypes.end() ) {
-      selectedViewType_ = *viewTypes.begin();
+    else if( viewTypes.find(_selectedViewType) == viewTypes.end() ) {
+      _selectedViewType = *viewTypes.begin();
     }
 
-    viewSelectionToolbutton_ctl->setEnabled(viewTypes.size() > 1);
+    _viewSelectionToolbutton_ctl->setEnabled(viewTypes.size() > 1);
   }
 }
 
 
 void QInputSourceView::closeCurrentSource()
 {
-  if ( currentSource_ ) {
-    currentSource_->close();
+  if ( _currentSource ) {
+    _currentSource->close();
   }
 
-  currentFrame_.reset();
+  _currentFrame.reset();
 }
 
 void QInputSourceView::setViewType(DisplayType viewType)
 {
-  if ( viewType != selectedViewType_ ) {
-    selectedViewType_ = viewType;
+  if ( viewType != _selectedViewType ) {
+    _selectedViewType = viewType;
   }
 
-  if( currentFrame_ ) {
+  if( _currentFrame ) {
 
     const auto & new_displays =
-        currentFrame_->get_available_data_displays();
+        _currentFrame->get_available_data_displays();
 
     auto & existing_displays =
         this->displays_;
@@ -581,21 +585,21 @@ void QInputSourceView::displayCurrentFrame()
     displayChannel_ = displays_.begin()->first;
   }
 
-  if( currentFrame_ ) {
+  if( _currentFrame ) {
 
-    switch (selectedViewType_) {
+    switch (_selectedViewType) {
 
       case DisplayType_Image: {
 
         cv::Mat image, data, mask;
 
-        currentFrame_->get_image(displayChannel_.toStdString(),
+        _currentFrame->get_image(displayChannel_.toStdString(),
             image, mask, data);
 
-        setCurrentView(imageView_);
-        imageView_->inputImage() = image;
-        imageView_->inputMask() = mask;
-        imageView_->updateImage();
+        setCurrentView(_imageView);
+        _imageView->inputImage() = image;
+        _imageView->inputMask() = mask;
+        _imageView->updateImage();
         break;
       }
 
@@ -604,17 +608,17 @@ void QInputSourceView::displayCurrentFrame()
         std::vector<cv::Mat> points, colors, mask;
         std::vector<std::vector<uint64_t>> pids;
 
-        currentFrame_->get_point_cloud(displayChannel_.toStdString(),
+        _currentFrame->get_point_cloud(displayChannel_.toStdString(),
             points, colors, mask, &pids);
 
-        setCurrentView(cloudView_);
-        cloudView_->setPoints(points, colors, mask, false);
+        setCurrentView(_cloudView);
+        _cloudView->setPoints(points, colors, mask, false);
         break;
       }
 
       case DisplayType_TextFile:
-        setCurrentView(textView_);
-        textView_->showTextFile(currentFrame_->get_filename());
+        setCurrentView(_textView);
+        _textView->showTextFile(_currentFrame->get_filename());
         break;
 
       default:
@@ -696,12 +700,12 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
 
-  switch (selectedViewType_) {
+  switch (_selectedViewType) {
     case DisplayType_Image:
-      getminmax(imageView_->currentImage(), minval, maxval, imageView_->currentMask());
+      getminmax(_imageView->currentImage(), minval, maxval, _imageView->currentMask());
       break;
     case DisplayType_PointCloud:
-      getminmax(cloudView_->currentColors(), minval, maxval, cloudView_->currentMasks());
+      getminmax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMasks());
       break;
     default:
       break;
@@ -711,11 +715,11 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 
 void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-  switch (selectedViewType_) {
+  switch (_selectedViewType) {
     case DisplayType_Image:
 
-      create_histogram(imageView_->currentImage(),
-          imageView_->currentMask(),
+      create_histogram(_imageView->currentImage(),
+          _imageView->currentMask(),
           H,
           hmin, hmax,
           256,
@@ -727,8 +731,8 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
 
     case DisplayType_PointCloud:
 
-      create_histogram(cloudView_->currentColors(),
-          cloudView_->currentMasks(),
+      create_histogram(_cloudView->currentColors(),
+          _cloudView->currentMasks(),
           H,
           hmin, hmax,
           256,
@@ -748,11 +752,11 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
 
-  switch (selectedViewType_) {
+  switch (_selectedViewType) {
     case DisplayType_Image:
 
-      create_histogram(imageView_->mtfImage(),
-          imageView_->currentMask(),
+      create_histogram(_imageView->mtfImage(),
+          _imageView->currentMask(),
           H,
           hmin, hmax,
           256,
@@ -763,7 +767,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
 
     case DisplayType_PointCloud:
 
-      create_histogram(cloudView_->mtfColors(),
+      create_histogram(_cloudView->mtfColors(),
           cv::noArray(),
           H,
           hmin, hmax,
@@ -1077,12 +1081,12 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
 
 void QInputSourceView::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
 {
-  debayerAlgorithm_ = algo;
+  _debayerAlgorithm = algo;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
+  if( isOpen(_currentSource) && dynamic_cast<c_image_input_source*>(_currentSource.get()) ) {
 
-    if( currentSource_->curpos() > 0 ) {
-      currentSource_->seek(currentSource_->curpos() - 1);
+    if( _currentSource->curpos() > 0 ) {
+      _currentSource->seek(_currentSource->curpos() - 1);
     }
 
     loadNextFrame();
@@ -1093,17 +1097,17 @@ void QInputSourceView::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
 
 DEBAYER_ALGORITHM QInputSourceView::debayerAlgorithm() const
 {
-  return debayerAlgorithm_;
+  return _debayerAlgorithm;
 }
 
 void QInputSourceView::setDropBadPixels(bool v)
 {
-  filterBadPixels_ = v;
+  _filterBadPixels = v;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
+  if( isOpen(_currentSource) && dynamic_cast<c_image_input_source*>(_currentSource.get()) ) {
 
-    if( currentSource_->curpos() > 0 ) {
-      currentSource_->seek(currentSource_->curpos() - 1);
+    if( _currentSource->curpos() > 0 ) {
+      _currentSource->seek(_currentSource->curpos() - 1);
     }
 
     loadNextFrame();
@@ -1115,17 +1119,17 @@ void QInputSourceView::setDropBadPixels(bool v)
 
 bool QInputSourceView::dropBadPixels() const
 {
-  return filterBadPixels_;
+  return _filterBadPixels;
 }
 
 void QInputSourceView::setBadPixelsVariationThreshold(double v)
 {
-  badPixelsVariationThreshold_ = v;
+  _badPixelsVariationThreshold = v;
 
-  if( isOpen(currentSource_) && dynamic_cast<c_image_input_source*>(currentSource_.get()) ) {
+  if( isOpen(_currentSource) && dynamic_cast<c_image_input_source*>(_currentSource.get()) ) {
 
-    if( currentSource_->curpos() > 0 ) {
-      currentSource_->seek(currentSource_->curpos() - 1);
+    if( _currentSource->curpos() > 0 ) {
+      _currentSource->seek(_currentSource->curpos() - 1);
     }
 
     loadNextFrame();
@@ -1136,7 +1140,7 @@ void QInputSourceView::setBadPixelsVariationThreshold(double v)
 
 double QInputSourceView::badPixelsVariationThreshold() const
 {
-  return badPixelsVariationThreshold_;
+  return _badPixelsVariationThreshold;
 }
 
 void QInputSourceView::onCloudViewPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
@@ -1151,6 +1155,10 @@ void QInputSourceView::onCloudViewPointSelectionMouseEvent(QEvent::Type eventTyp
 }
 
 
+void QInputSourceView::populateImageViewContextMenu(QMenu & menu, const QPoint & viewpos)
+{
+  _imageView->populateContextMenu(menu, viewpos);
+}
 
 ///////////////
 } // namespace serstacker

@@ -18,10 +18,10 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static inline constexpr bool is_current_machine_little_endian()
+static inline bool is_current_machine_little_endian()
 {
-  constexpr int num = 1;
-  return (*(char *) &num == 1);
+  static const int num = 1;
+  return (*(const char *) &num == 1);
 }
 
 template<typename T>

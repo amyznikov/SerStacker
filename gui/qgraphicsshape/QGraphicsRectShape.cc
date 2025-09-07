@@ -13,6 +13,9 @@
 #include <core/debug.h>
 
 
+static const QString myName = "Rect";
+static const QString myDescription = "Rect shape";
+
 template<>
 const c_enum_member* members_of<QGraphicsRectShape::MouseAction>()
 {
@@ -35,13 +38,13 @@ const c_enum_member* members_of<QGraphicsRectShape::MouseAction>()
 
 
 QGraphicsRectShape::QGraphicsRectShape(QGraphicsItem * parent) :
-    Base(parent)
+    Base(myName, myDescription, parent)
 {
 }
 
 QGraphicsRectShape::QGraphicsRectShape(const QRectF & rect, QGraphicsItem * parent) :
-    Base(parent),
-    rect_(rect)
+    Base(myName, myDescription, parent),
+    _rect(rect)
 {
 }
 
@@ -53,33 +56,33 @@ QGraphicsRectShape::QGraphicsRectShape(const QString & name, const QString & des
 QGraphicsRectShape::QGraphicsRectShape(const QString & name, const QString & description, const QRectF & rect,
     QGraphicsItem * parent) :
     Base(name, description, parent),
-    rect_(rect)
+    _rect(rect)
 {
 }
 
 void QGraphicsRectShape::setRect(const QRectF & rc)
 {
-  if (rect_ != rc ) {
-
+  if (_rect != rc ) {
     prepareGeometryChange();
-    rect_ = rc;
+    _rect = rc;
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
   }
+}
+
+void QGraphicsRectShape::setSceneRect(const QPointF & topLeft, const QPointF & bottomRight)
+{
+  setRect(QRectF(mapFromScene(topLeft), mapFromScene(bottomRight)));
 }
 
 const QRectF & QGraphicsRectShape::rect() const
 {
-  return rect_;
+  return _rect;
 }
 
 QRectF QGraphicsRectShape::sceneRect() const
 {
-  return mapToScene(rect_).boundingRect();
+  return mapToScene(_rect).boundingRect();
 }
 
 QRect QGraphicsRectShape::iSceneRect() const
@@ -90,29 +93,24 @@ QRect QGraphicsRectShape::iSceneRect() const
 
 void QGraphicsRectShape::setCenter(const QPointF & p)
 {
-  if (rect_.center() != p ) {
-
+  if (_rect.center() != p ) {
     prepareGeometryChange();
-    rect_.moveCenter(p);
+    _rect.moveCenter(p);
     updateGeometry();
     update();
-
-    if( flags() & ItemSendsGeometryChanges ) {
-      Q_EMIT itemChanged(this);
-    }
   }
 }
 
 QPointF QGraphicsRectShape::center() const
 {
-  return rect_.center();
+  return _rect.center();
 }
 
 void QGraphicsRectShape::setPen(const QPen & pen)
 {
-  if ( pen_ != pen ) {
+  if ( _pen != pen ) {
     prepareGeometryChange();
-    pen_ = pen;
+    _pen = pen;
     updateGeometry();
     update();
   }
@@ -128,9 +126,9 @@ void QGraphicsRectShape::setCosmeticPen(const QColor & color, int width )
 
 void QGraphicsRectShape::setPenWidth(int v)
 {
-  if ( pen_.width() != v ) {
+  if ( _pen.width() != v ) {
     prepareGeometryChange();
-    pen_.setWidth(v);
+    _pen.setWidth(v);
     updateGeometry();
     update();
   }
@@ -138,30 +136,30 @@ void QGraphicsRectShape::setPenWidth(int v)
 
 int QGraphicsRectShape::penWidth() const
 {
-  return pen_.width();
+  return _pen.width();
 }
 
 void QGraphicsRectShape::setPenColor(const QColor & color)
 {
-  pen_.setColor(color);
+  _pen.setColor(color);
   update();
 }
 
 QColor QGraphicsRectShape::penColor() const
 {
-  return pen_.color();
+  return _pen.color();
 }
 
 const QPen & QGraphicsRectShape::pen() const
 {
-  return pen_;
+  return _pen;
 }
 
 void QGraphicsRectShape::setBrush(const QBrush & brush)
 {
-  if ( brush_ != brush ) {
+  if ( _brush != brush ) {
     prepareGeometryChange();
-    brush_ = brush;
+    _brush = brush;
     // updateGeometry();
     update();
   }
@@ -169,54 +167,54 @@ void QGraphicsRectShape::setBrush(const QBrush & brush)
 
 const QBrush & QGraphicsRectShape::brush() const
 {
-  return brush_;
+  return _brush;
 }
 
 void QGraphicsRectShape::setResizable(bool v)
 {
-  itemIsResizable_ = v;
+  _itemIsResizable = v;
 }
 
 bool QGraphicsRectShape::resizable() const
 {
-  return itemIsResizable_;
+  return _itemIsResizable;
 }
 
 void QGraphicsRectShape::updateGeometry()
 {
   QPainterPath path;
 
-  boundingRect_ =
-      rect_.adjusted(-hitDstance_, -hitDstance_,
-          +hitDstance_, +hitDstance_);
+  _boundingRect =
+      _rect.adjusted(-_hitDstance, -_hitDstance,
+          +_hitDstance, +_hitDstance);
 
 
-  path.addRect(boundingRect_);
+  path.addRect(_boundingRect);
 
-  shape_ =
+  _shape =
       Base::shapeFromPath(path, pen());
 }
 
 QRectF QGraphicsRectShape::boundingRect() const
 {
-  return boundingRect_;
+  return _boundingRect;
 }
 
 QPainterPath QGraphicsRectShape::shape() const
 {
-  return shape_;
+  return _shape;
 }
 
 void QGraphicsRectShape::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
   Base::paint(painter, option, widget);
 
-  if( !rect_.isEmpty() ) {
+  if( !_rect.isEmpty() ) {
 
-    painter->setPen(pen_);
-    painter->setBrush(brush_);
+    painter->setPen(_pen);
+    painter->setBrush(_brush);
 
-    painter->drawRect(rect_);
+    painter->drawRect(_rect);
   }
 }
 
@@ -224,10 +222,10 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton ) {
 
-    currentMouseAction_  = MouseAction_None;
-    mdelta_ = e->pos() - rect_.topLeft();
+    _currentMouseAction  = MouseAction_None;
+    _mdelta = e->pos() - _rect.topLeft();
 
-    if( itemIsResizable_ && e->modifiers() == Qt::ControlModifier) {
+    if( _itemIsResizable && e->modifiers() == Qt::ControlModifier) {
 
       QGraphicsView *view =
           getActiveView(e);
@@ -238,10 +236,10 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
             view->mapFromScene(e->scenePos());
 
         const QPoint corners[4] = {
-            view->mapFromScene(mapToScene(rect_.topLeft())),
-            view->mapFromScene(mapToScene(rect_.topRight())),
-            view->mapFromScene(mapToScene(rect_.bottomRight())),
-            view->mapFromScene(mapToScene(rect_.bottomLeft())),
+            view->mapFromScene(mapToScene(_rect.topLeft())),
+            view->mapFromScene(mapToScene(_rect.topRight())),
+            view->mapFromScene(mapToScene(_rect.bottomRight())),
+            view->mapFromScene(mapToScene(_rect.bottomLeft())),
         };
 
         // Try corners first
@@ -255,7 +253,7 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
               distance(viewpos,
                   corners[i]);
 
-          if( d < hitDstance_ && d < best_corner_distance ) {
+          if( d < _hitDstance && d < best_corner_distance ) {
             best_corner_distance = d;
             best_corner = i;
           }
@@ -265,16 +263,16 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 
           switch (best_corner) {
             case 0:
-              currentMouseAction_ = MouseAction_MoveTopLeft;
+              _currentMouseAction = MouseAction_MoveTopLeft;
               break;
             case 1:
-              currentMouseAction_ = MouseAction_MoveTopRight;
+              _currentMouseAction = MouseAction_MoveTopRight;
               break;
             case 2:
-              currentMouseAction_ = MouseAction_MoveBottomRight;
+              _currentMouseAction = MouseAction_MoveBottomRight;
               break;
             case 3:
-              currentMouseAction_ = MouseAction_MoveBottomLeft;
+              _currentMouseAction = MouseAction_MoveBottomLeft;
               break;
           }
 
@@ -297,7 +295,7 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
               distance_from_point_to_line(viewpos,
                   corners[i1], corners[i2]);
 
-          if( d < hitDstance_ && d < best_side_distance ) {
+          if( d < _hitDstance && d < best_side_distance ) {
             best_side_distance = d;
             best_side = i1;
           }
@@ -307,16 +305,16 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
 
           switch (best_side) {
             case 0:
-              currentMouseAction_ = MouseAction_MoveTop;
+              _currentMouseAction = MouseAction_MoveTop;
               break;
             case 1:
-              currentMouseAction_ = MouseAction_MoveRight;
+              _currentMouseAction = MouseAction_MoveRight;
               break;
             case 2:
-              currentMouseAction_ = MouseAction_MoveBottom;
+              _currentMouseAction = MouseAction_MoveBottom;
               break;
             case 3:
-              currentMouseAction_ = MouseAction_MoveLeft;
+              _currentMouseAction = MouseAction_MoveLeft;
               break;
           }
 
@@ -325,8 +323,8 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
         }
       }
 
-      if( !fixOnSceneCenter_ && (flags() & ItemIsMovable) ) {
-        currentMouseAction_ = MouseAction_MoveRect;
+      if( !_fixOnSceneCenter && (flags() & ItemIsMovable) ) {
+        _currentMouseAction = MouseAction_MoveRect;
       }
 
       e->accept();
@@ -335,7 +333,7 @@ void QGraphicsRectShape::mousePressEvent(QGraphicsSceneMouseEvent * e)
   }
 
   // Try move
-  if( !fixOnSceneCenter_ ) {
+  if( !_fixOnSceneCenter ) {
     if( (flags() & ItemIsMovable) && (e->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier)) ) {
       Base::mousePressEvent(e);
       e->accept();
@@ -351,21 +349,21 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
   if( e->buttons() == Qt::LeftButton ) {
 
     if( (flags() & ItemIsMovable) && e->modifiers() == Qt::ShiftModifier ) {
-      currentMouseAction_ = MouseAction_MoveRect;
+      _currentMouseAction = MouseAction_MoveRect;
     }
 
-    if ( currentMouseAction_ != MouseAction_None ) {
+    if ( _currentMouseAction != MouseAction_None ) {
 
       const QRectF oldrect =
-          this->rect_;
+          this->_rect;
 
-      if( currentMouseAction_ == MouseAction_MoveRect ) {
+      if( _currentMouseAction == MouseAction_MoveRect ) {
         if( !snapToPixelGrid_ ) {
-          rect_.moveTo(e->pos() - mdelta_);
+          _rect.moveTo(e->pos() - _mdelta);
         }
         else {
-          rect_.moveTo(round(e->pos().x() - mdelta_.x()),
-              round(e->pos().y() - mdelta_.y()));
+          _rect.moveTo(round(e->pos().x() - _mdelta.x()),
+              round(e->pos().y() - _mdelta.y()));
         }
       }
       else {
@@ -374,160 +372,160 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
             QPointF(round(e->pos().x()), round(e->pos().y())) :
             e->pos();
 
-        switch (currentMouseAction_) {
+        switch (_currentMouseAction) {
           case MouseAction_MoveTop:
-            if( pos.y() < rect_.bottom() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setTop(pos.y());
+            if( pos.y() < _rect.bottom() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setTop(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setTop(pos.y());
-                rect_.setBottom(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setTop(pos.y());
+                _rect.setBottom(2 * center.y() - pos.y());
               }
             }
             break;
           case MouseAction_MoveRight:
-            if( pos.x() > rect_.left() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setRight(pos.x());
+            if( pos.x() > _rect.left() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setRight(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setRight(pos.x());
-                rect_.setLeft(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setRight(pos.x());
+                _rect.setLeft(2 * center.x() - pos.x());
               }
             }
             break;
           case MouseAction_MoveBottom:
-            if( pos.y() > rect_.top() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setBottom(pos.y());
+            if( pos.y() > _rect.top() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setBottom(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setBottom(pos.y());
-                rect_.setTop(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setBottom(pos.y());
+                _rect.setTop(2 * center.y() - pos.y());
               }
             }
             break;
           case MouseAction_MoveLeft:
-            if( pos.x() <= rect_.right() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setLeft(pos.x());
+            if( pos.x() <= _rect.right() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setLeft(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setLeft(pos.x());
-                rect_.setRight(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setLeft(pos.x());
+                _rect.setRight(2 * center.x() - pos.x());
               }
             }
             break;
 
           case MouseAction_MoveTopLeft:
-            if( pos.y() < rect_.bottom() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setTop(pos.y());
+            if( pos.y() < _rect.bottom() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setTop(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setTop(pos.y());
-                rect_.setBottom(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setTop(pos.y());
+                _rect.setBottom(2 * center.y() - pos.y());
               }
             }
-            if( pos.x() < rect_.right() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setLeft(pos.x());
+            if( pos.x() < _rect.right() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setLeft(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setLeft(pos.x());
-                rect_.setRight(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setLeft(pos.x());
+                _rect.setRight(2 * center.x() - pos.x());
               }
             }
             break;
           case MouseAction_MoveTopRight:
-            if( pos.y() < rect_.bottom() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setTop(pos.y());
+            if( pos.y() < _rect.bottom() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setTop(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setTop(pos.y());
-                rect_.setBottom(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setTop(pos.y());
+                _rect.setBottom(2 * center.y() - pos.y());
               }
             }
-            if( pos.x() >= rect_.left() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setRight(pos.x());
+            if( pos.x() >= _rect.left() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setRight(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setRight(pos.x());
-                rect_.setLeft(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setRight(pos.x());
+                _rect.setLeft(2 * center.x() - pos.x());
               }
             }
             break;
           case MouseAction_MoveBottomRight:
-            if( pos.y() > rect_.top() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setBottom(pos.y());
+            if( pos.y() > _rect.top() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setBottom(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setBottom(pos.y());
-                rect_.setTop(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setBottom(pos.y());
+                _rect.setTop(2 * center.y() - pos.y());
               }
             }
-            if( pos.x() >= rect_.left() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setRight(pos.x());
+            if( pos.x() >= _rect.left() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setRight(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setRight(pos.x());
-                rect_.setLeft(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setRight(pos.x());
+                _rect.setLeft(2 * center.x() - pos.x());
               }
             }
             break;
           case MouseAction_MoveBottomLeft:
-            if( pos.y() >= rect_.top() + 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setBottom(pos.y());
+            if( pos.y() >= _rect.top() + 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setBottom(pos.y());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setBottom(pos.y());
-                rect_.setTop(2 * center.y() - pos.y());
+                const QPointF center = _rect.center();
+                _rect.setBottom(pos.y());
+                _rect.setTop(2 * center.y() - pos.y());
               }
             }
-            if( pos.x() <= rect_.right() - 1 ) {
-              if( !fixOnSceneCenter_ ) {
-                rect_.setLeft(pos.x());
+            if( pos.x() <= _rect.right() - 1 ) {
+              if( !_fixOnSceneCenter ) {
+                _rect.setLeft(pos.x());
               }
               else {
-                const QPointF center = rect_.center();
-                rect_.setLeft(pos.x());
-                rect_.setRight(2 * center.x() - pos.x());
+                const QPointF center = _rect.center();
+                _rect.setLeft(pos.x());
+                _rect.setRight(2 * center.x() - pos.x());
               }
             }
             break;
         }
       }
 
-      if( rect_ != oldrect ) {
+      if( _rect != oldrect ) {
 
         prepareGeometryChange();
 
-        if ( rect_.width() < 1 ) {
-          const QPointF center = rect_.center();
-          rect_.setWidth(1);
-          rect_.moveCenter(center);
+        if ( _rect.width() < 1 ) {
+          const QPointF center = _rect.center();
+          _rect.setWidth(1);
+          _rect.moveCenter(center);
         }
-        if ( rect_.height() < 1 ) {
-          const QPointF center = rect_.center();
-          rect_.setHeight(1);
-          rect_.moveCenter(center);
+        if ( _rect.height() < 1 ) {
+          const QPointF center = _rect.center();
+          _rect.setHeight(1);
+          _rect.moveCenter(center);
         }
 
         updateGeometry();
@@ -549,7 +547,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 void QGraphicsRectShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
 {
   if( e->buttons() == Qt::LeftButton ) {
-    currentMouseAction_ = MouseAction_None;
+    _currentMouseAction = MouseAction_None;
   }
   Base::mouseReleaseEvent(e);
 }
@@ -557,21 +555,21 @@ void QGraphicsRectShape::mouseReleaseEvent(QGraphicsSceneMouseEvent * e)
 
 bool QGraphicsRectShape::fixOnSceneCenter() const
 {
-  return fixOnSceneCenter_;
+  return _fixOnSceneCenter;
 }
 
 void QGraphicsRectShape::setFixOnSceneCenter(bool v)
 {
-  if( fixOnSceneCenter_ != v ) {
+  if( _fixOnSceneCenter != v ) {
 
-    fixOnSceneCenter_ = v;
+    _fixOnSceneCenter = v;
 
     QGraphicsScene *scene =
         this->scene();
 
     if( scene ) {
 
-      if( !fixOnSceneCenter_ ) {
+      if( !_fixOnSceneCenter ) {
         scene->disconnect(this);
       }
       else {
@@ -579,7 +577,7 @@ void QGraphicsRectShape::setFixOnSceneCenter(bool v)
             this, &ThisClass::onSceneRectChanged);
       }
 
-      if( fixOnSceneCenter_ ) {
+      if( _fixOnSceneCenter ) {
         setCenter(mapFromScene(scene->sceneRect().center()));
       }
     }
@@ -598,7 +596,7 @@ void QGraphicsRectShape::onSceneChange()
 
 void QGraphicsRectShape::onSceneHasChanged()
 {
-  if( fixOnSceneCenter_ ) {
+  if( _fixOnSceneCenter ) {
 
     QGraphicsScene *scene =
         this->scene();
@@ -612,28 +610,104 @@ void QGraphicsRectShape::onSceneHasChanged()
 
 void QGraphicsRectShape::onSceneRectChanged(const QRectF &rect)
 {
-  if ( fixOnSceneCenter_ ) {
+  if ( _fixOnSceneCenter ) {
     setCenter(mapFromScene(rect.center()));
   }
 }
 
-bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
+//bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent * e, QMenu & menu)
+//{
+//  QAction * action;
+//  QMenu * subMenu;
+//  QString copyText;
+//
+//
+////  if ( !showSettingsAction_ ) {
+////
+////    showSettingsAction_ = new QAction("Options...", this);
+////
+////    connect(showSettingsAction_, &QAction::triggered,
+////        this, &ThisClass::showShapeSettings);
+////  }
+//
+//
+//  menu.addSeparator();
+//
+//  menu.addAction(action = new QAction("Options..."));
+//  connect(action, &QAction::triggered,
+//      this, &ThisClass::showShapeSettings);
+//
+//  menu.addSeparator();
+//
+//  menu.addAction(action = new QAction("Center on scene"));
+//  action->setCheckable(true);
+//  action->setChecked(fixOnSceneCenter_);
+//  connect(action, &QAction::triggered,
+//      [this](bool checked) {
+//        setFixOnSceneCenter(checked);
+//      });
+//
+//  menu.addAction(action = new QAction("Fix Size"));
+//  action->setCheckable(true);
+//  action->setChecked(!resizable());
+//  connect(action, &QAction::triggered,
+//      [this](bool checked) {
+//        setResizable(!checked);
+//      });
+//
+//  menu.addSeparator();
+//
+//  subMenu =
+//      menu.addMenu("Copy");
+//
+//  copyText = qsprintf("%gx%g", rect_.width(), rect_.height());
+//  subMenu->addAction(copyText,
+//      [copyText]() {
+//        QApplication::clipboard()->setText(copyText);
+//      });
+//
+//  copyText = qsprintf("%d;%d;%dx%d", (int) rect_.x(), (int) rect_.y(), (int) rect_.width(), (int) rect_.height());
+//  subMenu->addAction(copyText,
+//      [copyText]() {
+//        QApplication::clipboard()->setText(copyText);
+//      });
+//
+//  if( rect_.width() != (int) rect_.width() || rect_.height() != (int) rect_.height() ||
+//      rect_.x() != (int) rect_.x() || rect_.y() != (int) rect_.y() ) {
+//
+//    copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
+//    subMenu->addAction(copyText,
+//        [copyText]() {
+//          QApplication::clipboard()->setText(copyText);
+//        });
+//  }
+//
+//  copyText = qsprintf("%g;%g;%g;%g", rect_.left(), rect_.top(), rect_.right(), rect_.bottom());
+//  subMenu->addAction(copyText,
+//      [copyText]() {
+//        QApplication::clipboard()->setText(copyText);
+//      });
+//
+//  menu.addSeparator();
+//  Base::popuateContextMenu(e, menu);
+//
+//  return true;
+//
+//}
+
+void QGraphicsRectShape::showShapeSettings()
+{
+  QGraphicsRectShapeSettingsDialogBox dialogBox("Rectangle Options",
+      this, QApplication::activeWindow());
+
+  dialogBox.exec();
+}
+
+void QGraphicsRectShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   QAction * action;
   QMenu * subMenu;
   QString copyText;
-
-
-//  if ( !showSettingsAction_ ) {
-//
-//    showSettingsAction_ = new QAction("Options...", this);
-//
-//    connect(showSettingsAction_, &QAction::triggered,
-//        this, &ThisClass::showShapeSettings);
-//  }
-
-
-  menu.addSeparator();
 
   menu.addAction(action = new QAction("Options..."));
   connect(action, &QAction::triggered,
@@ -643,7 +717,7 @@ bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
 
   menu.addAction(action = new QAction("Center on scene"));
   action->setCheckable(true);
-  action->setChecked(fixOnSceneCenter_);
+  action->setChecked(_fixOnSceneCenter);
   connect(action, &QAction::triggered,
       [this](bool checked) {
         setFixOnSceneCenter(checked);
@@ -659,49 +733,36 @@ bool QGraphicsRectShape::popuateContextMenu(const QGraphicsSceneContextMenuEvent
 
   menu.addSeparator();
 
-  subMenu =
-      menu.addMenu("Copy");
+  subMenu = menu.addMenu("Copy");
 
-  copyText = qsprintf("%gx%g", rect_.width(), rect_.height());
+  copyText = qsprintf("%gx%g", _rect.width(), _rect.height());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);
       });
 
-  copyText = qsprintf("%d;%d;%dx%d", (int) rect_.x(), (int) rect_.y(), (int) rect_.width(), (int) rect_.height());
+  copyText = qsprintf("%d;%d;%dx%d", (int) _rect.x(), (int) _rect.y(), (int) _rect.width(), (int) _rect.height());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);
       });
 
-  if( rect_.width() != (int) rect_.width() || rect_.height() != (int) rect_.height() ||
-      rect_.x() != (int) rect_.x() || rect_.y() != (int) rect_.y() ) {
+  if( std::abs(_rect.width()-(int) _rect.width()) || std::abs(_rect.height() -(int) _rect.height()) ||
+      std::abs(_rect.x() -(int) _rect.x()) || std::abs(_rect.y() -(int) _rect.y()) ) {
 
-    copyText = qsprintf("%g;%g;%gx%g", rect_.x(), rect_.y(), rect_.width(), rect_.height());
+    copyText = qsprintf("%g;%g;%gx%g", _rect.x(), _rect.y(), _rect.width(), _rect.height());
     subMenu->addAction(copyText,
         [copyText]() {
           QApplication::clipboard()->setText(copyText);
         });
   }
 
-  copyText = qsprintf("%g;%g;%g;%g", rect_.left(), rect_.top(), rect_.right(), rect_.bottom());
+  copyText = qsprintf("%g;%g;%g;%g", _rect.left(), _rect.top(), _rect.right(), _rect.bottom());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);
       });
 
   menu.addSeparator();
-  Base::popuateContextMenu(e, menu);
-
-  return true;
-
+  Base::popuateContextMenu(menu, viewpos);
 }
-
-void QGraphicsRectShape::showShapeSettings()
-{
-  QGraphicsRectShapeSettingsDialogBox dialogBox("Rectangle Options",
-      this, QApplication::activeWindow());
-
-  dialogBox.exec();
-}
-

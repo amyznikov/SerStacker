@@ -97,6 +97,13 @@ void QSparseFeatureDetectorOptions::update_detector_specific_controls()
     ))
 
     switch (options_->type) {
+    case SPARSE_FEATURE_DETECTOR_PLANETARY_DISK:
+      ADD_CTL(planetary_disk_detector, gbsigma);
+      ADD_CTL(planetary_disk_detector, stdev_factor);
+      ADD_CTL(planetary_disk_detector, se_close_size);
+      ADD_CTL(planetary_disk_detector, align_planetary_disk_masks);
+      break;
+
     case SPARSE_FEATURE_DETECTOR_ORB:
       ADD_CTL(orb, nfeatures);
       ADD_CTL(orb, scaleFactor);
@@ -364,6 +371,13 @@ void QSparseFeatureDescriptorOptions::update_descriptor_specific_controls()
     ))
 
     switch (options_->type) {
+      case SPARSE_FEATURE_DESCRIPTOR_TRIANGLE:
+        ADD_CTL(triangles, max_points);
+        ADD_CTL(triangles, min_side_size);
+        break;
+
+
+
     case SPARSE_FEATURE_DESCRIPTOR_ORB:
       ADD_CTL(orb, nfeatures);
       ADD_CTL(orb, scaleFactor);

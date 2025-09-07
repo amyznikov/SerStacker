@@ -1098,6 +1098,17 @@ double c_frame_weigthed_average::max_weights_ratio() const
   return max_weights_ratio_;
 }
 
+bool c_frame_weigthed_average::reinitialize(cv::InputArray src, cv::InputArray accw)
+{
+  clear();
+
+  src.getMat().copyTo(accumulator_);
+  accw.getMat().copyTo(counter_);
+  accumulated_frames_ = 1;
+
+  return true;
+}
+
 bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 {
   INSTRUMENT_REGION("");
@@ -1194,6 +1205,18 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
   return true;
 }
 
+bool c_frame_weigthed_average::get_acc_counters(cv::Mat & accw) const
+{
+  if ( counter_.channels() == 1) {
+    counter_.copyTo(accw);
+  }
+  else {
+    cv::cvtColor(counter_, accw, cv::COLOR_BGR2GRAY);
+  }
+
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<>
@@ -1248,6 +1271,12 @@ void c_laplacian_pyramid_focus_stacking::clear()
 //  weightstype_ = weightstype;
 //  accumulated_frames_ = 0;
 
+}
+
+bool c_laplacian_pyramid_focus_stacking::reinitialize(cv::InputArray src, cv::InputArray accw)
+{
+  //clear();
+  return false;
 }
 
 
@@ -1450,6 +1479,12 @@ bool c_laplacian_pyramid_focus_stacking::compute(cv::OutputArray avg, cv::Output
   return true;
 }
 
+bool c_laplacian_pyramid_focus_stacking::get_acc_counters(cv::Mat & accw) const
+{
+  accw.release();
+  return true;
+}
+
 
 cv::Size c_laplacian_pyramid_focus_stacking::accumulator_size() const
 {
@@ -1477,6 +1512,11 @@ void c_frame_accumulation_with_fft::clear()
   border_bottom_ = 0;
   border_left_ = 0;
   border_right_ = 0;
+}
+
+bool c_frame_accumulation_with_fft::reinitialize(cv::InputArray src, cv::InputArray accw)
+{
+  return false;
 }
 
 bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
@@ -1656,6 +1696,12 @@ bool c_frame_accumulation_with_fft::compute(cv::OutputArray avg, cv::OutputArray
 
 
   return true;
+}
+
+bool c_frame_accumulation_with_fft::get_acc_counters(cv::Mat & accw) const
+{
+  accw.release();
+  return false;
 }
 
 cv::Size c_frame_accumulation_with_fft::accumulator_size() const
@@ -1855,31 +1901,31 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
 
                 // select color channels and pixel weights for update
 
-                const float ax = (src_x + 1 - p[0]);// occupied x side on [src_x] pixel
-                const float ay = (src_y + 1 - p[1]);// occupied y side on [src_y] pixel
-                const float bx = (p[0] - src_x);// occupied x side on [src_x+1] pixel
-                const float by = (p[1] - src_y);// occupied y side on [src_y+1] pixel
+                const double ax = (src_x + 1 - p[0]);// occupied x side on [src_x] pixel
+                const double ay = (src_y + 1 - p[1]);// occupied y side on [src_y] pixel
+                const double bx = (p[0] - src_x);// occupied x side on [src_x+1] pixel
+                const double by = (p[1] - src_y);// occupied y side on [src_y+1] pixel
 
 
-                const float s00 = ax * ay * w;
+                const double s00 = ax * ay * w;
                 const int c00 = bayer_pattern[src_y + 0][src_x + 0];
                 acc[y][x][c00] += src[src_y + 0][src_x + 0] * s00;
                 cntr[y][x][c00] += s00;
 
 
-                const float s01 = bx * ay * w;
+                const double s01 = bx * ay * w;
                 const int c01 = bayer_pattern[src_y + 0][src_x + 1];
                 acc[y][x][c01] += src[src_y + 0][src_x + 1] * s01;
                 cntr[y][x][c01] += s01;
 
 
-                const float s10 = ax * by * w;
+                const double s10 = ax * by * w;
                 const int c10 = bayer_pattern[src_y + 1][src_x + 0];
                 acc[y][x][c10] += src[src_y + 1][src_x + 0] * s10;
                 cntr[y][x][c10] += s10;
 
 
-                const float s11 = bx * by * w;
+                const double s11 = bx * by * w;
                 const int c11 = bayer_pattern[src_y + 1][src_x + 1];
                 acc[y][x][c11] += src[src_y + 1][src_x + 1] * s11;
                 cntr[y][x][c11] += s11;
@@ -2003,6 +2049,11 @@ void c_bayer_average::clear()
   accumulated_frames_ = 0;
 }
 
+bool c_bayer_average::reinitialize(cv::InputArray src, cv::InputArray accw)
+{
+  return false;
+}
+
 
 
 bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
@@ -2094,6 +2145,17 @@ bool c_bayer_average::compute(cv::OutputArray avg, cv::OutputArray mask, double 
   return true;
 }
 
+bool c_bayer_average::get_acc_counters(cv::Mat & accw) const
+{
+  if( is_bayer_pattern(colorid_) ) { // should be always true
+    cv::multiply(counter_, cv::Scalar(1, 0.5, 1), accw);
+  }
+  else {
+    counter_.copyTo(accw);
+  }
+
+  return true;
+}
 
 cv::Size c_bayer_average::accumulator_size() const
 {
@@ -2437,7 +2499,6 @@ bool c_running_frame_average::compute(cv::OutputArray avg, cv::OutputArray mask,
 
   return true;
 }
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

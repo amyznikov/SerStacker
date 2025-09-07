@@ -38,6 +38,7 @@ public:
 
   void scrollView(int dx, int dy);
 
+  virtual void populateContextMenu(QMenu & menu, const QPoint & mpos);
 
 Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
@@ -48,8 +49,11 @@ Q_SIGNALS:
   void onMouseLeaveEvent(QEvent *e);
   void scaleChanged(int currentScale);
   void viewScrolled();
+  void onPopulateContextMenu(QMenu & menu, const QPoint & mpos);
 
 protected:
+  void keyPressEvent(QKeyEvent *event) override;
+  // void keyReleaseEvent(QKeyEvent *event) override;
   void wheelEvent(QWheelEvent* e) override;
   void mousePressEvent(QMouseEvent * e) override;
   void mouseMoveEvent(QMouseEvent *e) override;
@@ -62,12 +66,14 @@ protected:
   void enterEvent(QEvent *event) override;
 #endif
 
+protected:
+  virtual bool handleContextMenuRequest(const QPoint & mpos);
 
 protected:
-  QPoint prevMouseScrollPos_;
-  int currentViewScale_ = 0;
-  bool mouseScrollEnabled_ = true;
-  bool mouseScrollActive_ = false;
+  QPoint _prevMouseScrollPos;
+  int _currentViewScale = 0;
+  bool _mouseScrollEnabled = true;
+  bool _mouseScrollActive = false;
 };
 
 #endif /* __QImageSceneView_h__ */

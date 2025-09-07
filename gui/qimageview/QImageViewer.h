@@ -106,6 +106,8 @@ public:
   static bool adjustRoi(const cv::Rect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
   static bool adjustRoi(const QRect & srcRoi, const cv::Rect & imageRect, cv::Rect * dstRoi);
 
+  virtual void populateContextMenu(QMenu & menu, const QPoint & mpos);
+
 
 Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
@@ -118,6 +120,7 @@ Q_SIGNALS:
   void onViewScrolled();
   void onFocusInEvent(QFocusEvent * e);
   void onFocusOutEvent(QFocusEvent * e);
+  void onPopulateContextMenu(QMenu & menu, const QPoint & mpos);
   void visibilityChanged(bool visible);
   void currentImageChanged();
   void currentFileNameChanged();
@@ -154,7 +157,10 @@ protected:
   double _maskBlendAlpha  = 0.9;
 
   QString _currentFileName;
-  cv::Mat _currentImage, _mtfImage, _currentImageData, _currentMask;
+  cv::Mat _currentImage;
+  cv::Mat _mtfImage;
+  cv::Mat _currentImageData;
+  cv::Mat _currentMask;
   cv::Mat _displayImage;
   QImage _qimage;
 

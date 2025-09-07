@@ -12,8 +12,8 @@
 #include <QtWidgets/QtWidgets>
 #include "QGraphicsShape.h"
 
-class QShapesButton
-    : public QToolButton
+class QShapesButton :
+    public QToolButton
 {
   Q_OBJECT;
 public:
@@ -31,14 +31,13 @@ public:
 
 protected Q_SLOTS:
   void onPopulateGraphicsShapeContextMenu(QGraphicsShape* shape,
-      const QGraphicsSceneContextMenuEvent * event,
-      QMenu * menu);
+      QMenu & menu, const QPoint & viewpos);
 
 protected:
-  QMenu popup_;
-  QGraphicsView * sceneView_ = nullptr;
-  QPen pen_;
-  QList<QGraphicsShape *> shapes_;
+  QMenu _popup;
+  QGraphicsView * _sceneView = nullptr;
+  QPen _pen;
+  QList<QGraphicsShape *> _shapes;
 };
 
 #endif /* __QShapesButton__ */

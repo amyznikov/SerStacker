@@ -21,6 +21,8 @@ public:
 
   virtual bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) = 0;
   virtual bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const = 0;
+  virtual bool get_acc_counters(cv::Mat & accw) const = 0;
+  virtual bool reinitialize(cv::InputArray src, cv::InputArray accw) = 0;
   virtual void clear() = 0;
 
   virtual cv::Size accumulator_size() const = 0;
@@ -46,10 +48,12 @@ public:
   c_frame_weigthed_average(double max_weights_ratio);
 
 
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void clear() override;
-  cv::Size accumulator_size() const override;
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+  bool get_acc_counters(cv::Mat & accw) const final;
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
+  void clear() final;
+  cv::Size accumulator_size() const final;
 
   const cv::Mat & accumulator() const;
   const cv::Mat & counter() const;
@@ -86,10 +90,12 @@ public:
 
   c_laplacian_pyramid_focus_stacking(const options & opts);
 
-  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void clear() override;
-  cv::Size accumulator_size() const override;
+  bool add(cv::InputArray src, cv::InputArray mask = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+  bool get_acc_counters(cv::Mat & accw) const final;
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
+  void clear() final;
+  cv::Size accumulator_size() const final;
 
 protected:
   static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
@@ -113,10 +119,12 @@ public:
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void clear() override;
-  cv::Size accumulator_size() const override;
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+  bool get_acc_counters(cv::Mat & accw) const final;
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
+  void clear() final;
+  cv::Size accumulator_size() const final;
 
   const std::vector<cv::Mat> & accumulators() const;
   const std::vector<cv::Mat> & weights() const;
@@ -160,10 +168,12 @@ public:
   void set_remap(const cv::Mat2f & rmap);
   const cv::Mat2f & remap() const;
 
-  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) override;
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const override;
-  void clear() override;
-  cv::Size accumulator_size() const override;
+  bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
+  bool get_acc_counters(cv::Mat & accw) const final;
+  bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
+  void clear() final;
+  cv::Size accumulator_size() const final;
 
   const cv::Mat & accumulator() const;
   const cv::Mat & counter() const;

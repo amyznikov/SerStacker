@@ -7,6 +7,7 @@
 
 #include "QImageViewer.h"
 #include "cv2qt.h"
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -41,7 +42,6 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
   _layout = new QVBoxLayout(this);
   _layout->setAlignment(Qt::AlignTop);
   _layout->setContentsMargins(0,0,0,0);
-  //layout_->setMargin(0);
   _layout->setSpacing(0);
   _layout->addWidget(_view = new QImageSceneView(this), 1000);
   _view->setScene(_scene);
@@ -62,6 +62,9 @@ QImageViewer::QImageViewer(QImageScene * scene, QWidget * parent) :
       this, &ThisClass::onScaleChanged);
   connect(_view, &QImageSceneView::viewScrolled,
       this, &ThisClass::onViewScrolled);
+  connect(_view, &QImageSceneView::onPopulateContextMenu,
+      this, &ThisClass::onPopulateContextMenu);
+
 
   _undoEditMaskActionShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z), this);
   connect(_undoEditMaskActionShortcut, &QShortcut::activated,
@@ -131,15 +134,7 @@ QStatusBar * QImageViewer::statusbar() const
 
 void QImageViewer::setDisplayFunction(QImageDisplayFunction *  displayfunction)
 {
-  if( _displayFunction ) {
-//    disconnect(displayFunction_, &QImageDisplayFunction::update,
-//        this, &ThisClass::updateDisplay);
-  }
-
-  if( (_displayFunction = displayfunction) ) {
-//    connect(displayFunction_, &QImageDisplayFunction::update,
-//        this, &ThisClass::updateDisplay);
-  }
+  _displayFunction = displayfunction;
 }
 
 QImageDisplayFunction * QImageViewer::displayFunction() const
@@ -315,7 +310,6 @@ void QImageViewer::createDisplayImage()
         _displayImage.release();
       }
       else {
-
         if( !_displayFunction ) {
           _currentImage.copyTo(_displayImage);
         }
@@ -328,10 +322,18 @@ void QImageViewer::createDisplayImage()
               _currentImage.depth());
         }
         else {
-          // displayImage_.release();
+          cv::Mat mask;
+          if( !_transparentMask ) {
+            if( _currentMask.channels() == 1 || _currentImage.channels() == _currentMask.channels() ) {
+              mask = _currentMask;
+            }
+            else {
+              reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+            }
+          }
 
           _displayFunction->createDisplayImage(_currentImage,
-              _transparentMask ? cv::noArray() : _currentMask,
+              mask,
               _mtfImage,
               _displayImage,
               CV_8U);
@@ -339,17 +341,29 @@ void QImageViewer::createDisplayImage()
       }
     }
 
-    if ( _currentDisplayType == DisplayBlend && !_displayImage.empty() && !_currentMask.empty() ) {
+    if( _currentDisplayType == DisplayBlend && !_displayImage.empty() && !_currentMask.empty() ) {
 
       cv::Mat mask;
-      if ( _displayImage.channels() == _currentMask.channels() ) {
+
+      if( _displayImage.channels() == _currentMask.channels() ) {
         mask = _currentMask;
       }
-      else {
+      else if( _currentMask.channels() == 1 ) {
+
         const int cn = _displayImage.channels();
         cv::Mat channels[cn];
-        for ( int i = 0; i < cn; ++i ) {
+        for( int i = 0; i < cn; ++i ) {
           channels[i] = _currentMask;
+        }
+        cv::merge(channels, cn, mask);
+      }
+      else {
+        reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+
+        const int cn = _displayImage.channels();
+        cv::Mat channels[cn];
+        for( int i = 0; i < cn; ++i ) {
+          channels[i] = mask;
         }
         cv::merge(channels, cn, mask);
       }
@@ -360,26 +374,10 @@ void QImageViewer::createDisplayImage()
           _displayImage,
           _displayImage.depth());
     }
-
   }
 
   Q_EMIT displayImageChanged();
 }
-
-//////
-//static QPixmap QPixmap_fromImage(const QImage &image, Qt::ImageConversionFlags flags)
-//{
-//    if (image.isNull())
-//        return QPixmap();
-//    if (Q_UNLIKELY(!qobject_cast<QGuiApplication *>(QCoreApplication::instance()))) {
-//        qWarning("QPixmap::fromImage: QPixmap cannot be created without a QGuiApplication");
-//        return QPixmap();
-//    }
-//    QScopedPointer<QPlatformPixmap> data(QGuiApplicationPrivate::platformIntegration()->createPlatformPixmap(QPlatformPixmap::PixmapType));
-//    data->fromImage(image, flags);
-//    return QPixmap(data.take());
-//}
-//////
 
 void QImageViewer::showCurrentDisplayImage()
 {
@@ -710,3 +708,7 @@ void QImageViewer::handleMouseMoveEvent(QMouseEvent * e)
 }
 
 
+void QImageViewer::populateContextMenu(QMenu & menu, const QPoint & viewpos)
+{
+  _view->populateContextMenu(menu, viewpos);
+}

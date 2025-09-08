@@ -468,6 +468,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
       default:
         if( _lockP1 ) {
 
+          _alignMode = AlignNone;
+
           prepareGeometryChange();
 
           const QPointF p1 = _line.p1();
@@ -496,6 +498,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
         }
         else if( _lockP2 ) {
+
+          _alignMode = AlignNone;
 
           prepareGeometryChange();
 

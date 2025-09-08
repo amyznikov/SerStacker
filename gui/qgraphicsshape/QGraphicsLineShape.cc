@@ -180,15 +180,23 @@ void QGraphicsLineShape::alignVertically()
 {
   prepareGeometryChange();
 
-  const QPointF p1 =
-      _line.p1();
+  const QPointF p1 = _line.p1();
+  QPointF p2 = _line.p2();
 
-  if( !snapToPixelGrid_ ) {
-    _line.setP2(QPointF(p1.x(), _line.p2().y()));
+  if( std::abs(p2.y() - p1.y()) > 1 ) {
+    p2.setX(p1.x());
+  }
+  else {
+    p2.setY(p1.y()+ p2.x() - p1.x());
+    p2.setX(p1.x());
+  }
+
+  if( !_snapToPixelGrid ) {
+    _line.setP2(p2);
   }
   else {
     _line.setP1(QPointF((int) p1.x(), (int) p1.y()));
-    _line.setP2(QPointF((int) p1.x(), (int) _line.p2().y()));
+    _line.setP2(QPointF((int) p2.x(), (int) p2.y()));
   }
 
   updateGeometry();
@@ -203,15 +211,23 @@ void QGraphicsLineShape::alignHorizontally()
 {
   prepareGeometryChange();
 
-  const QPointF p1 =
-      _line.p1();
+  const QPointF p1 = _line.p1();
+  QPointF p2 = _line.p2();
 
-  if( !snapToPixelGrid_ ) {
-    _line.setP2(QPointF(_line.p2().x(), p1.y()));
+  if( std::abs(p2.x() - p1.x()) > 1 ) {
+    p2.setY(p1.y());
+  }
+  else {
+    p2.setX(p1.x() + p2.y() - p1.y());
+    p2.setY(p1.y());
+  }
+
+  if( !_snapToPixelGrid ) {
+    _line.setP2(p2);
   }
   else {
     _line.setP1(QPointF((int) p1.x(), (int) p1.y()));
-    _line.setP2(QPointF((int) _line.p2().x(), (int) p1.y()));
+    _line.setP2(QPointF((int) p2.x(), (int) p2.y()));
   }
 
   updateGeometry();
@@ -220,6 +236,16 @@ void QGraphicsLineShape::alignHorizontally()
   if( flags() & ItemSendsGeometryChanges ) {
     Q_EMIT itemChanged(this);
   }
+}
+
+void QGraphicsLineShape::setAlignMode(AlignMode v)
+{
+  _alignMode = v;
+}
+
+QGraphicsLineShape::AlignMode QGraphicsLineShape::alignMode() const
+{
+  return _alignMode;
 }
 
 
@@ -368,12 +394,26 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
           prepareGeometryChange();
 
-          if ( !snapToPixelGrid_ ) {
-            _line.setP1(e->pos());
+          QPointF mpos;
+
+          switch (_alignMode)
+          {
+            case AlignVert:
+              mpos = QPointF(_line.p1().x(), e->pos().y());
+              break;
+            case AlignHorz:
+              mpos = QPointF(e->pos().x(), _line.p1().y());
+              break;
+            default:
+              mpos = e->pos();
+              break;
+          }
+
+          if( !_snapToPixelGrid ) {
+            _line.setP1(mpos);
           }
           else {
-            const QPointF pos = e->pos();
-            _line.setP1(QPointF((int)pos.x(), (int)pos.y()));
+            _line.setP1(QPointF((int) mpos.x() + 0.5, (int) mpos.y() + 0.5));
           }
 
           updateGeometry();
@@ -392,12 +432,26 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
           prepareGeometryChange();
 
-          if ( !snapToPixelGrid_ ) {
-            _line.setP2(e->pos());
+          QPointF mpos;
+
+          switch (_alignMode)
+          {
+            case AlignVert:
+              mpos = QPointF(_line.p1().x(), e->pos().y());
+              break;
+            case AlignHorz:
+              mpos = QPointF(e->pos().x(), _line.p1().y());
+              break;
+            default:
+              mpos = e->pos();
+              break;
+          }
+
+          if ( !_snapToPixelGrid ) {
+            _line.setP2(mpos);
           }
           else {
-            const QPointF pos = e->pos();
-            _line.setP2(QPointF((int)pos.x(), (int)pos.y()));
+            _line.setP2(QPointF((int) mpos.x() + 0.5, (int) mpos.y() + 0.5));
           }
 
           updateGeometry();
@@ -426,7 +480,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
               p1.y() + sin(angle) * _line.length());
 
 
-          if ( !snapToPixelGrid_ ) {
+          if ( !_snapToPixelGrid ) {
             _line.setP2(p2);
           }
           else {
@@ -454,7 +508,7 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           const QPointF p1(p2.x() + cos(angle) * _line.length(),
               p2.y() + sin(angle) * _line.length());
 
-          if ( !snapToPixelGrid_ ) {
+          if ( !_snapToPixelGrid ) {
             _line.setP1(p1);
           }
           else {
@@ -476,11 +530,11 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           /////////////////////
 
           const QPointF delta =
-              e->pos() - (snapToPixelGrid_ ? _lastPos : e->lastPos());
+              e->pos() - (_snapToPixelGrid ? _lastPos : e->lastPos());
 
           if ( delta.x() || delta.y() ) {
 
-            if( !snapToPixelGrid_ ) {
+            if( !_snapToPixelGrid ) {
 
               prepareGeometryChange();
 
@@ -500,8 +554,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
               const QPointF p1 = _line.p1();
               const QPointF p2 = _line.p2();
 
-              const QPointF p3(qRound(p1.x() + delta.x()), qRound(p1.y() + delta.y()));
-              const QPointF p4(qRound(p2.x() + delta.x()), qRound(p2.y() + delta.y()));
+              const QPointF p3(qRound(p1.x() + delta.x()) + 0.5, qRound(p1.y() + delta.y()) + 0.5);
+              const QPointF p4(qRound(p2.x() + delta.x()) + 0.5, qRound(p2.y() + delta.y()) + 0.5);
 
               if( p3.x() != p1.x() || p3.y() != p1.y() || p4.x() != p2.x() || p4.y() != p2.y() ) {
 
@@ -563,29 +617,46 @@ void QGraphicsLineShape::popuateContextMenu(QMenu &menu, const QPoint &viewpos)
 
   menu.addSeparator();
 
-  menu.addAction(createCheckableAction("Lock P1", _lockP1,
+  menu.addAction(createCheckableAction("Lock P1",
+      _lockP1,
       [this](bool checked) {
         setLockP1(checked);
       }));
 
-  menu.addAction(createCheckableAction("Lock P2", _lockP2,
+  menu.addAction(createCheckableAction("Lock P2",
+      _lockP2,
       [this](bool checked) {
         setLockP2(checked);
       }));
 
-  menu.addAction(createCheckableAction("Snap to pixels", snapToPixelGrid_,
+  menu.addAction(createCheckableAction("Snap to pixels",
+      _snapToPixelGrid,
       [this](bool checked) {
         setSnapToPixelGrid(checked);
       }));
 
-  menu.addAction(createAction("Align Vertically",
-      [this]() {
-        alignVertically();
+  menu.addAction(createCheckableAction("Align Vertically",
+      _alignMode == AlignVert,
+      [this](bool checked) {
+        if ( !checked ) {
+          _alignMode = AlignNone;
+        }
+        else {
+          alignVertically();
+          _alignMode = AlignVert;
+        }
       }));
 
-  menu.addAction(createAction("Align Horizontally",
-      [this]() {
-        alignHorizontally();
+  menu.addAction(createCheckableAction("Align Horizontally",
+      _alignMode == AlignHorz,
+      [this](bool checked) {
+        if ( !checked ) {
+          _alignMode = AlignNone;
+        }
+        else {
+          alignHorizontally();
+          _alignMode = AlignHorz;
+        }
       }));
 
   menu.addSeparator();

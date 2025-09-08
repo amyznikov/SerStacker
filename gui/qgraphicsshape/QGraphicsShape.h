@@ -75,13 +75,13 @@ protected:
   virtual void onSceneHasChanged();
 
 protected:
-  QString name_;
-  QString description_;
-  QPainter::RenderHints renderHintsOn_;
-  QPainter::RenderHints renderHintsOff_;
-  QGraphicsScene * myPreviousScene_ = nullptr;
-  bool snapToPixelGrid_ = false;
-  int inUpdatingPos_ = 0;
+  QString _name;
+  QString _description;
+  QPainter::RenderHints _renderHintsOn;
+  QPainter::RenderHints _renderHintsOff;
+  QGraphicsScene * _myPreviousScene = nullptr;
+  bool _snapToPixelGrid = false;
+  int _inUpdatingPos = 0;
 
   // See https://stackoverflow.com/questions/40590798/how-to-keep-the-size-and-position-of-qgraphicsitem-when-scaling-the-view
   // Assume that the object anchor is always at item's coordinate (0,0)
@@ -99,7 +99,7 @@ protected:
     void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) override
     { // empty
     }
-  } * ignoreTransformation_ = nullptr;
+  } * _ignoreTransformation = nullptr;
 
 };
 

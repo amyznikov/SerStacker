@@ -358,7 +358,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
           this->_rect;
 
       if( _currentMouseAction == MouseAction_MoveRect ) {
-        if( !snapToPixelGrid_ ) {
+        if( !_snapToPixelGrid ) {
           _rect.moveTo(e->pos() - _mdelta);
         }
         else {
@@ -368,7 +368,7 @@ void QGraphicsRectShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
       }
       else {
 
-        const QPointF pos = snapToPixelGrid_ ?
+        const QPointF pos = _snapToPixelGrid ?
             QPointF(round(e->pos().x()), round(e->pos().y())) :
             e->pos();
 

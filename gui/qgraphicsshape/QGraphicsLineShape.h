@@ -19,6 +19,12 @@ public:
   typedef QGraphicsLineShape ThisClass;
   typedef QGraphicsShape Base;
 
+  enum AlignMode {
+    AlignNone,
+    AlignVert,
+    AlignHorz,
+  };
+
   explicit QGraphicsLineShape(QGraphicsItem * parent = nullptr);
   explicit QGraphicsLineShape(const QLineF & line, QGraphicsItem * parent = nullptr);
   explicit QGraphicsLineShape(const QPointF & p1, const QPointF & p2,  QGraphicsItem * parent = nullptr);
@@ -54,6 +60,9 @@ public:
   void alignVertically();
   void alignHorizontally();
 
+  void setAlignMode(AlignMode v);
+  AlignMode alignMode() const;
+
   void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
 
 protected:
@@ -81,6 +90,7 @@ protected:
     MouseAction_MoveWholeLine,
   } currentMouseAction_ = MouseAction_None;
 
+  AlignMode _alignMode = AlignNone;
   bool _lockP1 = false;
   bool _lockP2 = false;
 };

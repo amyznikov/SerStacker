@@ -62,8 +62,8 @@ QGraphicsShape::QGraphicsShape(QGraphicsItem *parent) :
 
 QGraphicsShape::QGraphicsShape(const QString & name, const QString & description, QGraphicsItem * parent) :
     Base(parent),
-    name_(name),
-    description_(description)
+    _name(name),
+    _description(description)
 {
 }
 
@@ -73,47 +73,47 @@ QGraphicsShape::~QGraphicsShape()
 
 void QGraphicsShape::setName(const QString& name)
 {
-  name_ = name;
+  _name = name;
 }
 
 const QString & QGraphicsShape::name() const
 {
-  return name_;
+  return _name;
 }
 
 void QGraphicsShape::setDescription(const QString& description)
 {
-  description_ = description;
+  _description = description;
 }
 
 const QString & QGraphicsShape::description() const
 {
-  return description_;
+  return _description;
 }
 
 void QGraphicsShape::setRenderHints(QPainter::RenderHints hints, bool on)
 {
   if( on ) {
-    renderHintsOn_ |= hints;
+    _renderHintsOn |= hints;
   }
   else {
-    renderHintsOff_ |= hints;
+    _renderHintsOff |= hints;
   }
 }
 
 QPainter::RenderHints QGraphicsShape::renderHintsOn() const
 {
-  return renderHintsOn_;
+  return _renderHintsOn;
 }
 
 QPainter::RenderHints QGraphicsShape::renderHintsOff() const
 {
-  return renderHintsOff_;
+  return _renderHintsOff;
 }
 
 void QGraphicsShape::setSnapToPixelGrid(bool v)
 {
-  if( (snapToPixelGrid_ != v) && (snapToPixelGrid_ = v) ) {
+  if( (_snapToPixelGrid != v) && (_snapToPixelGrid = v) ) {
     prepareGeometryChange();
     updateGeometry();
     update();
@@ -122,22 +122,22 @@ void QGraphicsShape::setSnapToPixelGrid(bool v)
 
 bool QGraphicsShape::snapToPixelGrid() const
 {
-  return snapToPixelGrid_;
+  return _snapToPixelGrid;
 }
 
 void QGraphicsShape::setUpdatingPos(bool v)
 {
   if( v ) {
-    ++inUpdatingPos_;
+    ++_inUpdatingPos;
   }
-  else if( inUpdatingPos_ && --inUpdatingPos_ < 0 ) {
-    inUpdatingPos_ = 0;
+  else if( _inUpdatingPos && --_inUpdatingPos < 0 ) {
+    _inUpdatingPos = 0;
   }
 }
 
 bool QGraphicsShape::inUpdatingPos() const
 {
-  return inUpdatingPos_;
+  return _inUpdatingPos;
 }
 
 void QGraphicsShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
@@ -183,21 +183,21 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
       break;
 
     case ItemSceneChange:
-      if( ignoreTransformation_ ) {
-        myPreviousScene_ = Base::scene();
+      if( _ignoreTransformation ) {
+        _myPreviousScene = Base::scene();
       }
       break;
 
     case ItemSceneHasChanged: {
-      if( ignoreTransformation_ ) {
+      if( _ignoreTransformation ) {
 
-        if( myPreviousScene_ ) {
-          setParentItem(ignoreTransformation_->parentItem());
-          myPreviousScene_->removeItem(ignoreTransformation_);
+        if( _myPreviousScene ) {
+          setParentItem(_ignoreTransformation->parentItem());
+          _myPreviousScene->removeItem(_ignoreTransformation);
         }
 
-        delete ignoreTransformation_;
-        ignoreTransformation_ = nullptr;
+        delete _ignoreTransformation;
+        _ignoreTransformation = nullptr;
       }
 
       QGraphicsScene *newScene =
@@ -210,10 +210,10 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
           QGraphicsItem *myParentItem =
               this->parentItem();
 
-          newScene->addItem(ignoreTransformation_ = new QIgnoreTransformationStub());
-          setParentItem(ignoreTransformation_);
-          ignoreTransformation_->setParentItem(myParentItem);
-          ignoreTransformation_->setZValue(this->zValue());
+          newScene->addItem(_ignoreTransformation = new QIgnoreTransformationStub());
+          setParentItem(_ignoreTransformation);
+          _ignoreTransformation->setParentItem(myParentItem);
+          _ignoreTransformation->setZValue(this->zValue());
         }
       }
 
@@ -227,8 +227,8 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
     }
 
     case ItemZValueHasChanged:
-      if( ignoreTransformation_ ) {
-        ignoreTransformation_->setZValue(this->zValue());
+      if( _ignoreTransformation ) {
+        _ignoreTransformation->setZValue(this->zValue());
       }
       break;
 
@@ -242,11 +242,11 @@ QVariant QGraphicsShape::itemChange(GraphicsItemChange change, const QVariant & 
 
 void QGraphicsShape::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
-  if( renderHintsOn_ ) {
-    painter->setRenderHints(renderHintsOn_, true);
+  if( _renderHintsOn ) {
+    painter->setRenderHints(_renderHintsOn, true);
   }
-  if( renderHintsOff_ ) {
-    painter->setRenderHints(renderHintsOff_, false);
+  if( _renderHintsOff ) {
+    painter->setRenderHints(_renderHintsOff, false);
   }
 }
 

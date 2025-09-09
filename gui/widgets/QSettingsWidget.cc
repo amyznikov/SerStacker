@@ -8,8 +8,8 @@
 #include "QSettingsWidget.h"
 #include <gui/qfeature2d/QFeature2dOptions.h>
 
-QSettingsWidget::QSettingsWidget(const QString & prefix, QWidget * parent)
-  : Base(parent), PREFIX(prefix)
+QSettingsWidget::QSettingsWidget(const QString & prefix, QWidget * parent) :
+  Base(parent), PREFIX(prefix)
 {
   setFrameShape(NoFrame);
   form = new QFormLayout(this);
@@ -128,6 +128,12 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         connect(this, &QSettingsWidget::populatecontrols,
             currentSettings, &QSettingsWidget::populatecontrols);
 
+        connect(currentGroup, &QExpandableGroupBox::expanded,
+            this, &ThisClass::groupExpanded);
+
+        connect(currentGroup, &QExpandableGroupBox::collapsed,
+            this, &ThisClass::groupCollapsed);
+
         break;
       }
 
@@ -139,6 +145,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         }
         else {
           currentGroup = groups.back();
+          currentGroup->expand();
           currentSettings = (QSettingsWidget*) currentGroup->view();
           groups.pop_back();
         }
@@ -441,6 +448,87 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         break;
       }
 #endif // __QFeature2dOptions_h__
+
+      case ctrl_bind_data_annotation_selector: {
+
+        QDataAnnotationSelectorCtrl * ctl =
+            new QDataAnnotationSelectorCtrl(this);
+
+        ctl->setToolTip(p.ctl_tooltip.c_str());
+
+        currentSettings->addRow(p.ctl_name.c_str(), ctl);
+
+        if( p.get_data_annotation ) {
+
+          static const auto updateAnnotationLabels =
+            [](QDataAnnotationSelectorCtrl *ctl, const c_ctrl_bind & p) {
+              int lb;
+              const int cmaps = ctl->num_colormaps();
+              for ( int cmap = 0; cmap < cmaps; ++cmap ) {
+                if ( p.get_data_annotation(cmap, &lb) ) {
+                  ctl->setAnnotationLabel(cmap, lb);
+                }
+              }
+            };
+
+
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, p]() {
+                updateAnnotationLabels(ctl, p);
+              });
+
+
+          const int change_handler_id =
+              c_data_annotation_labels::default_instance().add_change_handler([ctl, p]() {
+                updateAnnotationLabels(ctl, p);
+              });
+
+          connect(this, &QObject::destroyed,
+              [change_handler_id]() {
+                c_data_annotation_labels::default_instance().remove_change_handler(change_handler_id);
+              });
+
+        }
+
+        if (p.set_data_annotation) {
+
+          QObject::connect(ctl, &QDataAnnotationSelectorCtrl::annotationLabelChanged,
+              [this, ctl, p](int cmap, int label) {
+                if ( !updatingControls() && p.set_data_annotation && p.set_data_annotation(cmap, label) ) {
+                  Q_EMIT parameterChanged();
+                }
+              });
+        }
+
+        if( p.is_enabled ) {
+          ctl->setEnabled(p.is_enabled());
+          bound_state_ctls_.emplace(ctl, p.is_enabled);
+        }
+
+        break;
+      }
+
+
+      case ctrl_bind_data_command_button: {
+
+        QToolButton * ctl =
+            new QToolButton(this);
+
+        ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonTextOnly);
+        ctl->setText(p.ctl_name.c_str());
+        ctl->setToolTip(p.ctl_tooltip.c_str());
+        currentSettings->addRow(ctl);
+
+        if (p.on_button_click ) {
+          QObject::connect(ctl, &QToolButton::clicked,
+              [p](bool ) {
+                p.on_button_click();
+          });
+        }
+
+        break;
+      }
+
 
       // case ctrl_bind_string_combobox:
       default:

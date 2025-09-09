@@ -35,27 +35,14 @@ QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageV
   QMtfDisplay(prefix, imageViewer),
   imageViewer_(imageViewer)
 {
-  QMtfDisplay::displayChannel_ = "PIXEL_VALUE";
-  QMtfDisplay::addDisplay(QMtfDisplay::displayChannel_, -1, -1);
+  QMtfDisplay::_displayChannel = "PIXEL_VALUE";
+  QMtfDisplay::addDisplay(QMtfDisplay::_displayChannel, -1, -1);
 }
 
 QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
 {
   return imageViewer_;
 }
-
-//QStringList QImageViewMtfDisplayFunction::displayChannels() const
-//{
-//  QStringList sl;
-//
-//  for ( const auto & p : displays_ ) {
-//    sl.append(p.first);
-//  }
-//
-//  return sl;
-//
-//  //return members_of<DISPLAY_TYPE>();
-//}
 
 void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {

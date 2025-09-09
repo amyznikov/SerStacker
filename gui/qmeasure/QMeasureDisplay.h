@@ -23,42 +23,53 @@ public:
 
   QMeasureDisplay(QWidget * parent = nullptr);
 
+  QMultiMeasureSelectionDialogBox * measureSelector() const
+  {
+    return _measureSelectorDialogBox;
+  }
+
+  void loadParameters();
+  void saveParameters();
+  void loadParameters(const QSettings & settings);
+  void saveParameters(QSettings & settings);
+
 Q_SIGNALS:
+  void updateAvailableMeasureDataChannelsRequired();
   void measureRightNowRequested();
 
 protected:
   void setupToolbar();
-  void setupTableView();
   void onSelectMeasuresClicked(bool checked);
   void onEnableMeasurementsClicked(bool checked);
 
 protected:
   void updateVisibleColumns();
-  void updateMeasurements();
+  void onFramesMeasured(const QList<QMeasureProvider::MeasuredFrame> & frames);
   void updateEnableMeasurements();
   void clearMeasurements();
   void onTableViewContextMenuRequested(const QPoint &pos);
   void onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 protected:
-  void showEvent(QShowEvent * e) override;
-  void hideEvent(QHideEvent * e) override;
-  void closeEvent(QCloseEvent * event) override;
+  void showEvent(QShowEvent * e) final;
+  void hideEvent(QHideEvent * e) final;
+  void closeEvent(QCloseEvent * event) final;
 
 protected:
-  std::set<QMeasure*> cm_;
+  QMeasureProvider::MeasuresCollection _cm;
+  bool _measurementsEnabled = false;
 
-  QVBoxLayout * lv_ = nullptr;
-  QToolBar * toolbar_ = nullptr;
-  QTableWidget * table_ = nullptr;
-  QMultiMeasureSelectionDialogBox * measureSelectorDialog_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
+  QToolBar * _toolbar = nullptr;
+  QTableWidget * _table = nullptr;
+  QMultiMeasureSelectionDialogBox * _measureSelectorDialogBox = nullptr;
 
-  QAction * saveToFileAction_ = nullptr;
-  QAction * copyToClipboardAction_ = nullptr;
-  QAction * clearTableAction_ = nullptr;
-  QAction * selectMeasuresAction_ = nullptr;
-  QAction * incrementalModeAction_ = nullptr;
-  QAction * enableMeasureAction_ = nullptr;
+  QAction * _saveToFileAction = nullptr;
+  QAction * _copyToClipboardAction = nullptr;
+  QAction * _clearTableAction = nullptr;
+  QAction * _selectMeasuresAction = nullptr;
+  QAction * _incrementalModeAction = nullptr;
+  QAction * _enableMeasureAction = nullptr;
 };
 
 
@@ -73,16 +84,27 @@ public:
   QMeasureDisplayDialogBox(QWidget * parent = nullptr);
   QMeasureDisplayDialogBox(const QString & title, QWidget * parent = nullptr);
 
+  QMultiMeasureSelectionDialogBox * measureSelector() const
+  {
+    return _measureDisplay->measureSelector();
+  }
+
+  void loadParameters();
+  void saveParameters();
+  void loadParameters(const QSettings & settings);
+  void saveParameters(QSettings & settings);
+
 Q_SIGNALS:
   void visibilityChanged(bool visible);
+  void updateAvailableMeasureDataChannelsRequired();
   void measureRightNowRequested();
 
 protected:
-  void showEvent(QShowEvent * e) override;
-  void hideEvent(QHideEvent * e) override;
+  void showEvent(QShowEvent * e) final;
+  void hideEvent(QHideEvent * e) final;
 
 protected:
-  QMeasureDisplay * measureDisplay_ = nullptr;
+  QMeasureDisplay * _measureDisplay = nullptr;
 };
 
 #endif /* __QMeasureDisplay_h__ */

@@ -17,17 +17,17 @@ QMeasureSettingsWidget* QMeasureLC::createSettingsWidget(QWidget * parent) const
   return new QLCMeasureSettingsWidget(parent);
 }
 
-void QMeasureLC::setAverageColorChannels(bool v)
-{
-  c_local_contrast_measure::set_avgchannel(average_color_channels_ = v);
-}
+//void QMeasureLC::setAverageColorChannels(bool v)
+//{
+//  c_local_contrast_measure::set_avgchannel(_average_color_channels = v);
+//}
+//
+//bool QMeasureLC::averageColorChannels() const
+//{
+//  return c_local_contrast_measure::avgchannel();
+//}
 
-bool QMeasureLC::averageColorChannels() const
-{
-  return c_local_contrast_measure::avgchannel();
-}
-
-int QMeasureLC::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureLC::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_local_contrast_measure::compute(image);
   return avgchannel_ ? 1 : image.channels();

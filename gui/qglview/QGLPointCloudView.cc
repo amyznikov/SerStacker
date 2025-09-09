@@ -151,7 +151,6 @@ void QGLPointCloudView::setPoints(cv::InputArrayOfArrays points, cv::InputArrayO
   _currentPoints.clear();
   _currentColors.clear();
   _currentMasks.clear();
-  _currentPids.clear();
 
   const int num_clouds =
       get_items_count(points);
@@ -182,22 +181,8 @@ void QGLPointCloudView::setPoints(cv::InputArrayOfArrays points, cv::InputArrayO
   updateDisplayPoints();
 }
 
-
-void QGLPointCloudView::setPoints(std::vector<cv::Mat> && points, std::vector<cv::Mat> && colors, std::vector<cv::Mat> && masks, std::vector<std::vector<uint64_t>> && pids)
-{
-  _currentPoints = points;
-  _currentColors = colors;
-  _currentMasks = masks;
-  _currentPids = pids;
-  updateDisplayPoints();
-}
-
 void QGLPointCloudView::clearPoints()
 {
-  _currentPoints.clear();
-  _currentColors.clear();
-  _currentMasks.clear();
-  _currentPids.clear();
 }
 
 const std::vector<cv::Mat> & QGLPointCloudView::currentPoints() const
@@ -540,9 +525,9 @@ void QGLPointCloudView::computeDisplayPoints()
 
 }
 
-void QGLPointCloudView::onLoadParameters(QSettings & settings)
+void QGLPointCloudView::loadParameters(QSettings & settings)
 {
-  Base::onLoadParameters(settings);
+  Base::loadParameters(settings);
 
   _sceneOrigin =
       settings.value("QGLCloudViewer/sceneOrigin_",
@@ -629,9 +614,9 @@ void QGLPointCloudView::onLoadParameters(QSettings & settings)
 
 }
 
-void QGLPointCloudView::onSaveParameters(QSettings & settings)
+void QGLPointCloudView::saveParameters(QSettings & settings)
 {
-  Base::onSaveParameters(settings);
+  Base::saveParameters(settings);
 
   settings.setValue("QGLCloudViewer/sceneOrigin_", _sceneOrigin);
   settings.setValue("QGLCloudViewer/pointSize_", _pointSize);
@@ -998,18 +983,18 @@ QGlPointCloudViewSettingsDialogBox::QGlPointCloudViewSettingsDialogBox(QWidget *
 {
   setWindowTitle("Cloud View Settings");
 
-  vbox_ = new QVBoxLayout(this);
-  vbox_->addWidget(cloudViewSettingsWidget_ = new QGlPointCloudViewSettingsWidget(this));
+  _vbox = new QVBoxLayout(this);
+  _vbox->addWidget(_cloudViewSettingsWidget = new QGlPointCloudViewSettingsWidget(this));
 }
 
 void QGlPointCloudViewSettingsDialogBox::setCloudViewer(QGLPointCloudView * v)
 {
-  cloudViewSettingsWidget_->setCloudView(v);
+  _cloudViewSettingsWidget->setCloudView(v);
 }
 
 QGLPointCloudView * QGlPointCloudViewSettingsDialogBox::cloudViewer() const
 {
-  return cloudViewSettingsWidget_->cloudView();
+  return _cloudViewSettingsWidget->cloudView();
 }
 
 void QGlPointCloudViewSettingsDialogBox::showEvent(QShowEvent *e)
@@ -1171,9 +1156,9 @@ QGlPointCloudSettingsWidget::QGlPointCloudSettingsWidget(QWidget * parent) :
 
   connect(this, &ThisClass::parameterChanged,
       [this]() {
-        if ( cloudView_ ) {
-          cloudView_->updateDisplayPoints();
-          cloudView_->saveParameters();
+        if ( _cloudView ) {
+          _cloudView->updateDisplayPoints();
+          _cloudView->saveParameters();
         }
       });
 
@@ -1182,12 +1167,12 @@ QGlPointCloudSettingsWidget::QGlPointCloudSettingsWidget(QWidget * parent) :
 
 QGLPointCloudView * QGlPointCloudSettingsWidget::cloudView() const
 {
-  return cloudView_;
+  return _cloudView;
 }
 
 void QGlPointCloudSettingsWidget::setCloudView(QGLPointCloudView * cloudView)
 {
-  cloudView_ = cloudView;
+  _cloudView = cloudView;
   populatecombobox();
   updateControls();
 }
@@ -1195,10 +1180,10 @@ void QGlPointCloudSettingsWidget::setCloudView(QGLPointCloudView * cloudView)
 
 QGLPointCloudView::CloudSettings * QGlPointCloudSettingsWidget::currentItem() const
 {
-  if ( cloudView_ ) {
+  if ( _cloudView ) {
 
     std::vector<QGLPointCloudView::CloudSettings> & items =
-        cloudView_->cloudSettings();
+        _cloudView->cloudSettings();
 
     const int cursel =
         itemSelection_ctl->currentIndex();
@@ -1215,7 +1200,7 @@ QGLPointCloudView::CloudSettings * QGlPointCloudSettingsWidget::currentItem() co
 
 void QGlPointCloudSettingsWidget::onupdatecontrols()
 {
-  if ( !cloudView_ ) {
+  if ( !_cloudView ) {
     setEnabled(false);
   }
   else {
@@ -1229,10 +1214,10 @@ void QGlPointCloudSettingsWidget::populatecombobox()
 {
   itemSelection_ctl->clear();
 
-  if ( cloudView_ ) {
+  if ( _cloudView ) {
 
     const std::vector<QGLPointCloudView::CloudSettings> & items =
-        cloudView_->cloudSettings();
+        _cloudView->cloudSettings();
 
     itemSelection_ctl->setUpdatesEnabled(false);
 
@@ -1265,10 +1250,10 @@ void QGlPointCloudSettingsWidget::updatecontrolstates()
 
 void QGlPointCloudSettingsWidget::onAddSettingsItem()
 {
-  if( cloudView_ ) {
+  if( _cloudView ) {
 
     std::vector<QGLPointCloudView::CloudSettings> & items =
-        cloudView_->cloudSettings();
+        _cloudView->cloudSettings();
 
     items.emplace_back();
 
@@ -1279,13 +1264,13 @@ void QGlPointCloudSettingsWidget::onAddSettingsItem()
 
 void QGlPointCloudSettingsWidget::onDeleteSettingsItem()
 {
-  if( cloudView_ ) {
+  if( _cloudView ) {
 
     const int cursel =
         itemSelection_ctl->currentIndex();
 
     std::vector<QGLPointCloudView::CloudSettings> & items =
-        cloudView_->cloudSettings();
+        _cloudView->cloudSettings();
 
     if( cursel >= 0 && cursel < (int) (items.size()) ) {
 
@@ -1314,7 +1299,7 @@ void QGlPointCloudSettingsWidget::onCurrentItemIndexChanged()
       itemSelection_ctl->currentIndex();
 
   const std::vector<QGLPointCloudView::CloudSettings> & items =
-      cloudView_->cloudSettings();
+      _cloudView->cloudSettings();
 
   if( cursel >= 0 && cursel < (int) (items.size()) ) {
   }
@@ -1329,18 +1314,18 @@ QGlPointCloudSettingsDialogBox::QGlPointCloudSettingsDialogBox(QWidget * parent)
 {
   setWindowTitle("Cloud View Settings");
 
-  vbox_ = new QVBoxLayout(this);
-  vbox_->addWidget(cloudSettingsWidget_ = new QGlPointCloudSettingsWidget(this));
+  _vbox = new QVBoxLayout(this);
+  _vbox->addWidget(_cloudSettingsWidget = new QGlPointCloudSettingsWidget(this));
 }
 
-void QGlPointCloudSettingsDialogBox::setCloudViewer(QGLPointCloudView * v)
+void QGlPointCloudSettingsDialogBox::setCloudView(QGLPointCloudView * v)
 {
-  cloudSettingsWidget_->setCloudView(v);
+  _cloudSettingsWidget->setCloudView(v);
 }
 
-QGLPointCloudView * QGlPointCloudSettingsDialogBox::cloudViewer() const
+QGLPointCloudView * QGlPointCloudSettingsDialogBox::cloudView() const
 {
-  return cloudSettingsWidget_->cloudView();
+  return _cloudSettingsWidget->cloudView();
 }
 
 void QGlPointCloudSettingsDialogBox::showEvent(QShowEvent *e)

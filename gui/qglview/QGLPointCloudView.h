@@ -39,6 +39,9 @@ public:
   typedef QGLPointCloudView ThisClass;
   typedef QGLView Base;
 
+  using Base::saveParameters;
+  using Base::loadParameters;
+
   struct CloudSettings {
     cv::Vec3f translation;
     cv::Vec3f rotation;
@@ -69,7 +72,6 @@ public:
   void rotateToShowCloud();
 
   void setPoints(cv::InputArrayOfArrays points, cv::InputArrayOfArrays colors, cv::InputArrayOfArrays masks, bool make_copy = true);
-  void setPoints(std::vector<cv::Mat> && points, std::vector<cv::Mat> && colors, std::vector<cv::Mat> && masks, std::vector<std::vector<uint64_t>> && pids);
   void clearPoints();
 
   const std::vector<cv::Mat> & currentPoints() const;
@@ -92,15 +94,14 @@ protected:
   void glPreDraw() override;
   void glDraw() override;
   void computeDisplayPoints();
-  void onLoadParameters(QSettings & settings) override;
-  void onSaveParameters(QSettings & settings) override;
- // void mousePressEvent(QMouseEvent *e) override;
+  void loadParameters(QSettings & settings) override;
+  void saveParameters(QSettings & settings) override;
+  // void mousePressEvent(QMouseEvent *e) override;
 
 protected:
   std::vector<cv::Mat> _currentPoints;
   std::vector<cv::Mat> _currentColors;
   std::vector<cv::Mat> _currentMasks;
-  std::vector<std::vector<uint64_t>> _currentPids;
 
   std::vector<std::vector<cv::Vec3f>> _displayPoints;
   std::vector<std::vector<cv::Vec3b>> _displayColors;
@@ -200,10 +201,10 @@ protected:
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 protected:
-  QVBoxLayout * vbox_ = nullptr;
-  QGlPointCloudViewSettingsWidget * cloudViewSettingsWidget_ = nullptr;
-  QSize lastWidnowSize_;
-  QPoint lastWidnowPos_;
+  QVBoxLayout * _vbox = nullptr;
+  QGlPointCloudViewSettingsWidget * _cloudViewSettingsWidget = nullptr;
+  QSize _lastWidnowSize;
+  QPoint _lastWidnowPos;
 };
 
 
@@ -232,7 +233,7 @@ protected:
   QGLPointCloudView::CloudSettings * currentItem() const;
 
 protected:
-  QGLPointCloudView * cloudView_ = nullptr;
+  QGLPointCloudView * _cloudView = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QLabel * itemSelectionLb_ctl = nullptr;
   QComboBox * itemSelection_ctl = nullptr;
@@ -259,8 +260,8 @@ public:
 
   QGlPointCloudSettingsDialogBox(QWidget * parent = nullptr);
 
-  void setCloudViewer(QGLPointCloudView * v);
-  QGLPointCloudView * cloudViewer() const;
+  void setCloudView(QGLPointCloudView * v);
+  QGLPointCloudView * cloudView() const;
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);
@@ -269,10 +270,10 @@ protected:
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 protected:
-  QVBoxLayout * vbox_ = nullptr;
-  QGlPointCloudSettingsWidget * cloudSettingsWidget_ = nullptr;
-  QSize lastWidnowSize_;
-  QPoint lastWidnowPos_;
+  QVBoxLayout * _vbox = nullptr;
+  QGlPointCloudSettingsWidget * _cloudSettingsWidget = nullptr;
+  QSize _lastWidnowSize;
+  QPoint _lastWidnowPos;
 };
 
 

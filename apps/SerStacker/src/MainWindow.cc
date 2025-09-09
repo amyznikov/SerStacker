@@ -577,7 +577,7 @@ void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollTo
 
   centralStackedWidget->setCurrentWidget(inputSourceView);
 
-  if( filename == inputSourceView->currentFileName() || inputSourceView->openFile(filename) ) {
+  if( filename == inputSourceView->currentFileName() || inputSourceView->openSource(filename) ) {
     if( scrollToIndex >= 0 && inputSourceView->currentScrollpos() != scrollToIndex ) {
       inputSourceView->scrollToFrame(scrollToIndex);
     }
@@ -755,7 +755,7 @@ void MainWindow::checkIfBadFrameSelected()
   if( is_visible(inputSourceView) ) {
 
     const c_input_source::sptr & currentSource =
-        inputSourceView->inputSource();
+        inputSourceView->currentSource();
 
     if( currentSource ) {
       isBadFrameSelected =
@@ -1090,9 +1090,9 @@ void MainWindow::onShowCloudViewSettingsDialogBoxActionClicked(bool checked)
 {
   if ( checked && !cloudViewSettingsDialogBox ) {
 
-    cloudViewSettingsDialogBox = new QGlPointCloudViewSettingsDialogBox(this);
-    cloudViewSettingsDialogBox->setCloudViewer(cloudView);
-    connect(cloudViewSettingsDialogBox, &QGlPointCloudViewSettingsDialogBox::visibilityChanged,
+    cloudViewSettingsDialogBox = new QPointCloudViewSettingsDialogBox(this);
+    cloudViewSettingsDialogBox->setCloudView(cloudView);
+    connect(cloudViewSettingsDialogBox, &QPointCloudViewSettingsDialogBox::visibilityChanged,
         showCloudViewSettingsDialogBoxAction, &QAction::setChecked);
   }
 
@@ -1112,7 +1112,7 @@ void MainWindow::onShowCloudSettingsDialogBoxActionClicked(bool checked)
   if ( checked && !cloudSettingsDialogBox ) {
 
     cloudSettingsDialogBox = new QGlPointCloudSettingsDialogBox(this);
-    cloudSettingsDialogBox->setCloudViewer(cloudView);
+    // cloudSettingsDialogBox->setCloudView(cloudView);
     connect(cloudSettingsDialogBox, &QGlPointCloudSettingsDialogBox::visibilityChanged,
         showCloudSettingsDialogBoxAction, &QAction::setChecked);
   }
@@ -1128,17 +1128,93 @@ void MainWindow::onShowCloudSettingsDialogBoxActionClicked(bool checked)
   }
 }
 
+void MainWindow::onUpdateAvailableMeasureDataChannelsRequired()
+{
+  updateMeasureChannels();
+}
+
+void MainWindow::updateMeasureChannels()
+{
+  if ( is_visible(measureDisplay) && is_visible(measureDisplay->measureSelector())) {
+
+    const c_data_frame::sptr & currentDataFrame =
+        inputSourceView->currentFrame();
+
+    if ( currentDataFrame ) {
+
+      QStringList displayNames;
+
+      const c_data_frame::ImageDisplays & displays =
+          currentDataFrame->get_available_image_displays();
+
+      for ( auto ii = displays.begin(); ii != displays.end(); ++ii) {
+        displayNames.append(ii->first.c_str());
+      }
+
+
+      measureDisplay->measureSelector()->updateAvailableDataChannels(displayNames);
+    }
+  }
+}
+
 void MainWindow::updateMeasurements()
 {
-  if( !QMeasureProvider::requested_measures().empty() && imageView->roiShape()->isVisible() ) {
+  updateMeasureChannels();
+
+  if( !QMeasureProvider::requested_measures().empty() && is_visible(imageView) && imageView->roiShape()->isVisible() ) {
 
     QImageViewer::current_image_lock lock(imageView);
 
     if ( !imageView->currentImage().empty() ) {
 
-      QMeasureProvider::compute(imageView->currentImage(),
-          imageView->currentMask(),
-          imageView->roiShape()->iSceneRect());
+      QList<QMeasureProvider::MeasuredFrame> measuredFrames;
+
+      if (true) {
+        QMeasureProvider::MeasuredFrame frame;
+
+        const bool fOK =
+            QMeasureProvider::compute(&frame,
+                imageView->currentImage(),
+                imageView->currentMask(),
+                imageView->roiShape()->iSceneRect());
+
+        if ( fOK ) {
+          measuredFrames.append(std::move(frame));
+        }
+      }
+
+      const QStringList & requestedChannels =
+          QMeasureProvider::requested_channels();
+
+      if ( !requestedChannels.empty() ) {
+
+        const c_data_frame::sptr & currentDataFrame =
+            inputSourceView->currentFrame();
+
+        if ( currentDataFrame ) {
+
+          cv::Mat image, mask, data;
+
+          for ( const QString & displayName : requestedChannels ) {
+            if ( currentDataFrame->get_image(displayName.toStdString(), image, mask, data) ) {
+
+              QMeasureProvider::MeasuredFrame frame;
+
+              const bool fOK = QMeasureProvider::compute(&frame, image, mask,
+                  imageView->roiShape()->iSceneRect());
+
+              if ( fOK ) {
+                frame.dataChannel = displayName;
+                measuredFrames.append(std::move(frame));
+              }
+            }
+          }
+        }
+      }
+
+      if (!measuredFrames.empty()) {
+        Q_EMIT QMeasureProvider::instance()->framesMeasured(measuredFrames);
+      }
     }
   }
 }
@@ -1237,7 +1313,7 @@ void MainWindow::openImage(const QString & abspath)
   }
 
   centralStackedWidget->setCurrentWidget(inputSourceView);
-  inputSourceView->openFile(abspath);
+  inputSourceView->openSource(abspath);
 }
 
 
@@ -1717,14 +1793,14 @@ void MainWindow::setupInputSequenceView()
           false,
           [this](bool checked) {
 
-            const c_input_source::sptr & currentSource = inputSourceView->inputSource();
+            const c_input_source::sptr & currentSource = inputSourceView->currentSource();
             if ( currentSource ) {
               currentSource->set_badframe(std::max(0, currentSource->curpos() - 1), checked);
               currentSource->save_badframes();
             }
 
           },
-          QKeySequence(Qt::CTRL | Qt::Key_W)));
+          badframeActionShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_W), this)));
 
 
   toolbar->addAction(setReferenceFrameAction =
@@ -1768,7 +1844,7 @@ void MainWindow::setupInputSequenceView()
 
 
             const c_input_source::sptr & currentSource =
-                inputSourceView->inputSource();
+                inputSourceView->currentSource();
 
             if ( !currentSource ) {
               return;
@@ -1805,32 +1881,6 @@ void MainWindow::setupInputSequenceView()
           onMtfControlVisibilityChanged(true);
         }
       });
-
-
-//  shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
-//      currentFileNameLabel_ctl,
-//      [this]() {
-//
-//    CF_DEBUG("H Qt::CTRL | Qt::Key_C");
-//
-//        if (currentFileNameLabel_ctl->hasFocus() ) {
-//
-//
-//          const QString text =
-//            currentFileNameLabel_ctl->hasSelectedText() ?
-//                currentFileNameLabel_ctl->selectedText() :
-//                currentFileNameLabel_ctl->text();
-//
-//          if ( !text.isEmpty() ) {
-//            QApplication::clipboard()->setText(text);
-//          }
-//
-//        }
-//
-//      },
-//      Qt::WidgetShortcut);
-
-  // toolbar->addSeparator();
 
   ///////////////////////////////////////////////////////////////////////
 
@@ -2301,9 +2351,11 @@ void MainWindow::setupInputSequenceView()
 
 
 
-  connect(cloudView, &QPointCloudSourceView::pointClicked,
-      [this](int cloud_index, int point_index) {
-        statusbarMousePosLabel_ctl->setText(cloudView->statusStringForPoint(cloud_index, point_index));
+  connect(cloudView, &QPointCloudSourceView::glPointMouseEvent,
+      [this](const QPointF & mousePos, QEvent::Type mouseEventType, Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+          bool objHit, double objX, double objY, double objZ) {
+          //statusbarMousePosLabel_ctl->setText(cloudView->statusStringForPoint(cloud_index, point_index));
+        CF_DEBUG("FIXME: Unhandled mouse event");
       });
 
 

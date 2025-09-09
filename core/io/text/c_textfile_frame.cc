@@ -9,7 +9,7 @@
 
 c_textfile_frame::c_textfile_frame()
 {
-  display_types_.emplace(DisplayType_TextFile);
+  _display_types.emplace(DisplayType_TextFile);
 }
 
 std::string c_textfile_frame::get_filename()

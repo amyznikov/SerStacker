@@ -220,7 +220,6 @@ QImageProcessorChainEditor::QImageProcessorChainEditor(QWidget * parent) :
             }
           });
 
-
   ///////////////////////////////////////////////////////////////////
 
   updateControls();

@@ -17,7 +17,7 @@ QMeasureSettingsWidget* QMeasureMeanValue::createSettingsWidget(QWidget * parent
   return new QMeanValueMeasureSettingsWidget(parent);
 }
 
-int QMeasureMeanValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureMeanValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   if ( mask.empty() || mask.channels() == 1 ) {
     *output_value =
@@ -53,7 +53,7 @@ QMeasureSettingsWidget* QMeasureStdevValue::createSettingsWidget(QWidget * paren
   return new QStdevValueMeasureSettingsWidget(parent);
 }
 
-int QMeasureStdevValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureStdevValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   if ( mask.empty() || mask.channels() == 1 ) {
     cv::Scalar m;

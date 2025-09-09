@@ -130,66 +130,72 @@ c_hdl_data_frame::c_hdl_data_frame()
 
 void c_hdl_data_frame::cleanup()
 {
+  clean_artifacts();
+}
+
+void c_hdl_data_frame::clean_artifacts()
+{
+  base::clean_artifacts();
   setup_default_channels();
 }
 
 void c_hdl_data_frame::setup_default_channels()
 {
-  data_displays_.clear();
+  _image_displays.clear();
 
-  add_display_channel("DEPTH",
+  add_image_display("DEPTH",
       "3D Point depth",
       0, 300);
 
-  add_display_channel("INTENSITY",
+  add_image_display("INTENSITY",
       "3D Point intensity",
       0, 1);
 
-  add_display_channel("DISTANCES",
+  add_image_display("DISTANCES",
       "3D Point distance",
       0, 300);
 
-  add_display_channel("X",
+  add_image_display("X",
       "3D Point X",
       -5, 150);
 
-  add_display_channel("Y",
+  add_image_display("Y",
       "3D Point Y",
       -150, 150);
 
-  add_display_channel("Z",
+  add_image_display("Z",
       "3D Point Z",
       -5, 15);
 
-  add_display_channel("HEIGHT",
+  add_image_display("HEIGHT",
       "3D Point height",
       -5, 15);
 
-  add_display_channel("AZIMUTH",
+  add_image_display("AZIMUTH",
       "3D Point azimuth angle",
       0, 2 * M_PI);
 
-  add_display_channel("ELEVATION",
+  add_image_display("ELEVATION",
       "3D Point elevation angle",
       -25 * M_PI, 25 * M_PI);
 
-  add_display_channel("LASER_ID",
+  add_image_display("LASER_ID",
       "3D Point laser_id",
       0, 128);
 
-  add_display_channel("LASER_RING",
+  add_image_display("LASER_RING",
       "3D Point laser ring",
       0, 128);
 
-  add_display_channel("DATABLOCK",
+  add_image_display("DATABLOCK",
       "3D Point Lidar Data block id",
       0, 12);
 
-  add_display_channel("TIMESTAMP",
+  add_image_display("TIMESTAMP",
       "3D Point time stamp relative to start of rotation",
       0, 100);
 
-  add_display_channel("GSLOPES",
+  add_image_display("GSLOPES",
       "Local surface horizontal slope",
       -M_PI, +M_PI);
 
@@ -198,9 +204,9 @@ void c_hdl_data_frame::setup_default_channels()
 //      "1- or 3-channel binary 2D Image representing current selection mask",
 //      0, 255);
 
-  display_types_.clear();
-  display_types_.emplace(DisplayType_Image);
-  display_types_.emplace(DisplayType_PointCloud);
+  _display_types.clear();
+  _display_types.emplace(DisplayType_Image);
+  _display_types.emplace(DisplayType_PointCloud);
 
   range_image_.set_azimuthal_resolution(c_hdl_range_image::default_azimuthal_resolution());
   range_image_.set_start_azimuth(c_hdl_range_image::default_start_azimuth());
@@ -299,8 +305,12 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
     cv::OutputArray output_points,
     cv::OutputArray output_colors,
     cv::OutputArray output_mask,
-    std::vector<std::vector<uint64_t>> * output_pids)
+    std::vector<uint64_t> * output_pids)
 {
+
+  if ( output_pids ) {
+    output_pids->clear();
+  }
 
   std::vector<cv::Vec3f> _points;
 
@@ -308,9 +318,13 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
 
   if( output_points.needed() ) {
 
-    std::vector<cv::Mat> positions(1, cv::Mat(_points));
-    setItems("_points", output_points, positions);
+    cv::Mat(_points).copyTo(output_points);
+
+//    std::vector<cv::Mat> positions(1, cv::Mat(_points));
+//    setItems("_points", output_points, positions);
   }
+
+
 
   if( output_colors.needed() ) {
 
@@ -433,8 +447,9 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
       }
     }
 
-    std::vector<cv::Mat> _colors(1, cv::Mat(colors));
-    setItems("_colors", output_colors, _colors);
+//    std::vector<cv::Mat> _colors(1, cv::Mat(colors));
+//    setItems("_colors", output_colors, _colors);
+    cv::Mat(colors).copyTo(output_colors);
 
   }
 
@@ -444,4 +459,135 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
 
   return true;
 }
+
+
+
+//
+//bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
+//    cv::OutputArray output_points,
+//    cv::OutputArray output_colors,
+//    cv::OutputArray output_mask)
+//{
+//  CF_DEBUG("H");
+//  convert_to_cartesian(current_frame_->points, output_points);
+//
+//  CF_DEBUG("H");
+//
+//  output_colors.create(output_points.size(),
+//      CV_32FC1);
+//
+//  CF_DEBUG("H");
+//
+//  cv::Mat1f colors =
+//      output_colors.getMatRef();
+//
+//  CF_DEBUG("H");
+//
+//  if ( display_name == "INTENSITY" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].intensity;
+//    }
+//
+//  }
+//  else if( display_name == "DISTANCES" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].distance;
+//    }
+//
+//  }
+//  else if( display_name == "HEIGHT" ) {
+//
+//    const cv::Mat3f pts =
+//        output_points.getMatRef();
+//
+//    for ( int i = 0, n = pts.rows; i < n; ++i ) {
+//      colors[i][0] = pts[i][0][2];
+//    }
+//
+//  }
+//  else if( display_name == "AZIMUTH" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].azimuth;
+//    }
+//
+//  }
+//  else if( display_name == "ELEVATION" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].elevation;
+//    }
+//
+//  }
+//  else if( display_name == "LASER_ID" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].laser_id;
+//    }
+//
+//  }
+//  else if( display_name == "LASER_RING" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].laser_ring;
+//    }
+//
+//  }
+//  else if( display_name == "DATABLOCK" ) {
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].datablock;
+//    }
+//
+//  }
+//  else if( display_name == "TIMESTAMP" ) {
+//
+//    double tsmin = DBL_MAX;
+//    for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      const double ts = current_frame_->points[i].timestamp;
+//      if( ts < tsmin ) {
+//        tsmin = ts;
+//      }
+//    }
+//
+//    for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = current_frame_->points[i].timestamp - tsmin;
+//    }
+//  }
+//  else if( display_name == "GSLOPES" ) {
+//
+//    cv::Mat1f im1;
+//    cv::Mat1b m;
+//    int r, c;
+//
+//    range_image_.set_lidar_specifcation(&current_lidar_);
+//    range_image_.build_gslopes(current_frame_->points, im1, &m);
+//
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      if( range_image_.project(current_frame_->points[i], &r, &c) ) {
+//        colors[i][0] = im1[r][c];
+//      }
+//    }
+//
+//  }
+//  else if (display_name == "SELECTION_MASK") {
+//
+//    if (selection_mask_.size() != colors.size()) {
+//
+//      colors.setTo(cv::Scalar::all(255));
+//
+//    }
+//  }
+//  else // if( display_name == "DEPTH" )
+//  {
+//    for ( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+//      colors[i][0] = compute_depth(current_frame_->points[i]);
+//    }
+//  }
+//
+//  return true;
+//}
+//
 

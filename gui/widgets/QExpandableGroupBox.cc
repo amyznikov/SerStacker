@@ -69,6 +69,12 @@ QExpandableGroupBox::QExpandableGroupBox(const QString & title, QWidget * view, 
 
         this->parentWidget()->updateGeometry();
 
+        if ( frame_->isVisible() ) {
+          Q_EMIT expanded();
+        }
+        else {
+          Q_EMIT collapsed();
+        }
       });
 
 }

@@ -14,7 +14,7 @@ QMeasureSelectionCombo::QMeasureSelectionCombo(QWidget * parent) :
 
   //addItem("NONE", QVariant::fromValue((QMeasure*) nullptr));
 
-  for( QMeasure *m : QMeasureProvider::measures() ) {
+  for( QMeasure *m : QMeasureProvider::available_measures() ) {
     addItem(m->name(),
         QVariant::fromValue(m));
   }
@@ -175,21 +175,20 @@ QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(const QString & title, QWid
   settinngs_ctl->addRow("Measure:", combobox_ctl = new QMeasureSelectionCombo());
   settinngs_ctl->addRow(tooltip_ctl = new QLabel());
 
-  maxMeasurements_ctl =
-      settinngs_ctl->add_numeric_box<int>("maxMeasurements",
-          "Set max measurements in queue",
-          [](int value) {
-            QMeasureProvider::set_max_measured_frames(value);
-          },
-          [](int * value) {
-            * value = QMeasureProvider::max_measured_frames();
-            return true;
-          });
+//  maxMeasurements_ctl =
+//      settinngs_ctl->add_numeric_box<int>("maxMeasurements",
+//          "Set max measurements in queue",
+//          [](int value) {
+//            //QMeasureProvider::set_max_measured_frames(value);
+//          },
+//          [](int * value) {
+//            //* value = QMeasureProvider::max_measured_frames();
+//            return true;
+//          });
 
 //  layout_->addWidget(combobox_ctl = new QMeasureSelectionCombo(), 0, Qt::AlignTop);
 //  layout_->addWidget(tooltip_ctl = new QLabel(), 0, Qt::AlignTop);
 
-  // maxMeasurements_ctl
 
   scrollArea_ctl = new QScrollArea(this);
   scrollArea_ctl->setWidgetResizable(true);
@@ -284,18 +283,28 @@ QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QWidget * parent) :
   vbox_->addLayout(hbox_ = new QHBoxLayout(), 1000);
 
 
-  listview_ctl = new QListWidget();
-  listview_ctl->setViewMode(QListView::ViewMode::ListMode);
-  listview_ctl->setSelectionMode(QListView::SelectionMode::SingleSelection);
-  listview_ctl->setSelectionBehavior(QListView::SelectionBehavior::SelectRows);
-  listview_ctl->setSizeAdjustPolicy(QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents);
+  /////////////////////////////////////
+  dataChannelsListView_ctl= new QListWidget();
+  dataChannelsListView_ctl->setViewMode(QListView::ViewMode::ListMode);
+  dataChannelsListView_ctl->setSelectionMode(QListView::SelectionMode::SingleSelection);
+  dataChannelsListView_ctl->setSelectionBehavior(QListView::SelectionBehavior::SelectRows);
+  dataChannelsListView_ctl->setSizeAdjustPolicy(QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents);
+  hbox_->addWidget(dataChannelsListView_ctl);
+
+  /////////////////////////////////////
+  measuresListView_ctl = new QListWidget();
+  measuresListView_ctl->setViewMode(QListView::ViewMode::ListMode);
+  measuresListView_ctl->setSelectionMode(QListView::SelectionMode::SingleSelection);
+  measuresListView_ctl->setSelectionBehavior(QListView::SelectionBehavior::SelectRows);
+  measuresListView_ctl->setSizeAdjustPolicy(QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents);
   //listview_ctl->setSizePolicy(QSizePolicy::Policy);
 
-  hbox_->addWidget(listview_ctl);
+  hbox_->addWidget(measuresListView_ctl);
+
 
   /////////////////////////////////////
 
-  for( QMeasure *m : QMeasureProvider::measures() ) {
+  for( QMeasure *m : QMeasureProvider::available_measures() ) {
 
     QListWidgetItem *item =
         new QListWidgetItem(m->name());
@@ -305,28 +314,45 @@ QMultiMeasureSelectionWidget::QMultiMeasureSelectionWidget(QWidget * parent) :
 
     item->setCheckState(Qt::Unchecked);
 
-    listview_ctl->addItem(item);
+    measuresListView_ctl->addItem(item);
   }
 
   /////////////////////////////////////
 
+  connect(dataChannelsListView_ctl, &QListWidget::itemChanged,
+      this, &ThisClass::onDataChannelsListViewItemChanged);
 
-  connect(listview_ctl, &QListWidget::itemChanged,
-      this, &ThisClass::onListViewItemChanged);
+  connect(measuresListView_ctl, &QListWidget::itemChanged,
+      this, &ThisClass::onMeasuresListViewItemChanged);
 
-  connect(listview_ctl, &QListWidget::currentItemChanged,
-      this, &ThisClass::onListViewCurrentItemChanged);
+  connect(measuresListView_ctl, &QListWidget::currentItemChanged,
+      this, &ThisClass::onMeasuresListViewCurrentItemChanged);
 
 
   updateControls();
 }
 
 
-void QMultiMeasureSelectionWidget::selectMeasures(std::set<QMeasure*> * cm)
+void QMultiMeasureSelectionWidget::selectMeasures(QMeasureProvider::MeasuresCollection * cm)
 {
   cm_ = cm;
   updateControls();
 }
+
+void QMultiMeasureSelectionWidget::updateAvailableDataChannels(const QStringList & displayNames)
+{
+  QSignalBlocker disableNotify(dataChannelsListView_ctl);
+
+  for ( const QString & displayName : displayNames ) {
+    if ( dataChannelsListView_ctl->findItems(displayName, Qt::MatchExactly).count() < 1 ) {
+
+      QListWidgetItem *item = new QListWidgetItem(displayName);
+      item->setCheckState(Qt::Unchecked);
+      dataChannelsListView_ctl->addItem(item);
+    }
+  }
+}
+
 
 void QMultiMeasureSelectionWidget::onupdatecontrols()
 {
@@ -336,10 +362,10 @@ void QMultiMeasureSelectionWidget::onupdatecontrols()
   else {
 
 
-    for ( int i = 0, n = listview_ctl->count(); i < n; ++i ) {
+    for ( int i = 0, n = measuresListView_ctl->count(); i < n; ++i ) {
 
       QListWidgetItem *item =
-          listview_ctl->item(i);
+          measuresListView_ctl->item(i);
 
       QMeasure *m =
           item->data(Qt::UserRole).value<QMeasure *>();
@@ -352,7 +378,25 @@ void QMultiMeasureSelectionWidget::onupdatecontrols()
   }
 }
 
-void QMultiMeasureSelectionWidget::onListViewItemChanged(QListWidgetItem *item)
+void QMultiMeasureSelectionWidget::onDataChannelsListViewItemChanged(QListWidgetItem *item)
+{
+  if (item) {
+
+    QStringList selectedItems;
+
+    for (int i = 0, n = dataChannelsListView_ctl->count(); i < n; ++i) {
+      if ((item = dataChannelsListView_ctl->item(i))) {
+        if (item->checkState() == Qt::Checked) {
+          selectedItems.append(item->text());
+        }
+      }
+    }
+
+    QMeasureProvider::set_requested_channels(selectedItems);
+  }
+}
+
+void QMultiMeasureSelectionWidget::onMeasuresListViewItemChanged(QListWidgetItem *item)
 {
   if( item && cm_ ) {
 
@@ -370,7 +414,7 @@ void QMultiMeasureSelectionWidget::onListViewItemChanged(QListWidgetItem *item)
   }
 }
 
-void QMultiMeasureSelectionWidget::onListViewCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+void QMultiMeasureSelectionWidget::onMeasuresListViewCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
   QMeasureSettingsWidget *currentWidget = nullptr;
   QMeasure * m = nullptr;
@@ -417,11 +461,13 @@ void QMultiMeasureSelectionWidget::onListViewCurrentItemChanged(QListWidgetItem 
 
     if ( cw_ ) {
       cw_->setVisible(false);
-      hbox_->removeWidget(cw_);
+      //hbox_->removeWidget(cw_);
+      vbox_->removeWidget(cw_);
     }
 
     if( (cw_ = currentWidget) ) {
-      hbox_->addWidget(cw_);
+      //hbox_->addWidget(cw_);
+      vbox_->addWidget(cw_);
       cw_->setVisible(true);
     }
 
@@ -453,9 +499,14 @@ QMultiMeasureSelectionDialogBox::QMultiMeasureSelectionDialogBox(const QString &
 
 }
 
-void QMultiMeasureSelectionDialogBox::selectMeasures(std::set<QMeasure*> * cm)
+void QMultiMeasureSelectionDialogBox::selectMeasures(QMeasureProvider::MeasuresCollection * cm)
 {
   measureSelection_ctl->selectMeasures(cm);
+}
+
+void QMultiMeasureSelectionDialogBox::updateAvailableDataChannels(const QStringList & displayNames)
+{
+  measureSelection_ctl->updateAvailableDataChannels(displayNames);
 }
 
 void QMultiMeasureSelectionDialogBox::showEvent(QShowEvent * e)

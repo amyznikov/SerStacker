@@ -215,7 +215,7 @@ void QMtfSlider::mousePressEvent(QMouseEvent *e)
           }
           updateSliderRects();
           update();
-          Q_EMIT mtfChanged();
+          emit mtfChanged();
           return;
         }
       }
@@ -297,15 +297,10 @@ void QMtfSlider::mouseMoveEvent(QMouseEvent *e)
     return;
   }
 
-  // prevent accumulation of mouse move events in case if mtfChanged() is too slow
-  setMouseTracking(false);
-
   sliding_pos = new_sliding_pos;
   sliders[sliding_side].value = new_value;
   updateSliderRects();
   update();
 
-  Q_EMIT mtfChanged();
-
-  setMouseTracking(true);
+  emit mtfChanged();
 }

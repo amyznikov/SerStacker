@@ -11,7 +11,7 @@
 #include <core/debug.h>
 
 IMtfDisplay::IMtfDisplay(const QString & prefix) :
-  prefix_(prefix.isEmpty() ? "IMtfDisplay" : prefix)
+  _prefix(prefix.isEmpty() ? "IMtfDisplay" : prefix)
 {
 
 }
@@ -58,7 +58,7 @@ IMtfDisplay::DisplayParams & IMtfDisplay::addDisplay(DisplayMap & map,
 void IMtfDisplay::addDisplay(const QString & displayChannelName, double input_min, double input_max)
 {
 
-  addDisplay(displays_,
+  addDisplay(_displays,
       displayChannelName,
       input_min,
       input_max);
@@ -118,7 +118,7 @@ void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
 
     mtf->get_input_range(&a->imin, &a->imax);
 
-    if( autoClip_ || a->imin >= a->imax ) {
+    if( _autoClip || a->imin >= a->imax ) {
 
       a->adjusted_inputs = true;
 
@@ -127,7 +127,7 @@ void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
       const int cdepth =
           currentImage.depth();
 
-      if( autoClip_ || cdepth == CV_32F || cdepth == CV_64F ) {
+      if( _autoClip || cdepth == CV_32F || cdepth == CV_64F ) {
         getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
       }
       else {
@@ -161,7 +161,7 @@ QStringList IMtfDisplay::displayChannels() const
 {
   QStringList sl;
 
-  for ( const auto & p : displays_ ) {
+  for ( const auto & p : _displays ) {
     sl.append(p.first);
   }
 
@@ -170,23 +170,23 @@ QStringList IMtfDisplay::displayChannels() const
 
 void IMtfDisplay::setDisplayChannel(const QString & v)
 {
-  if ( displayChannel_ != v ) {
-    displayChannel_ = v;
+  if ( _displayChannel != v ) {
+    _displayChannel = v;
     Q_EMIT displayChannelsChanged();
   }
 }
 
 const QString & IMtfDisplay::displayChannel() const
 {
-  return displayChannel_;
+  return _displayChannel;
 }
 
 void IMtfDisplay::setMtfInputRange(double min, double max)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
     ii->second.mtf.set_input_range(min, max);
     Q_EMIT parameterChanged();
   }
@@ -195,9 +195,9 @@ void IMtfDisplay::setMtfInputRange(double min, double max)
 void IMtfDisplay::getMtfInputRange(double * min, double * max) const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
     ii->second.mtf.get_input_range(min, max);
   }
 }
@@ -205,9 +205,9 @@ void IMtfDisplay::getMtfInputRange(double * min, double * max) const
 void IMtfDisplay::setMtf(double shadows, double highlights, double midtones)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     ii->second.mtf.set_parameters(shadows,
         highlights,
@@ -220,9 +220,9 @@ void IMtfDisplay::setMtf(double shadows, double highlights, double midtones)
 void IMtfDisplay::getMtf(double * shadows, double * highlights, double * midtones) const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     ii->second.mtf.get_parameters(shadows,
         highlights,
@@ -233,9 +233,9 @@ void IMtfDisplay::getMtf(double * shadows, double * highlights, double * midtone
 void IMtfDisplay::setShadows(double shadows)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     ii->second.mtf.set_shadows(shadows);
 
@@ -246,9 +246,9 @@ void IMtfDisplay::setShadows(double shadows)
 double IMtfDisplay::shadows() const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  return ii != displays_.end() ?
+  return ii != _displays.end() ?
       ii->second.mtf.shadows() :
       0;
 }
@@ -256,9 +256,9 @@ double IMtfDisplay::shadows() const
 void IMtfDisplay::setHighlights(double highlights)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     ii->second.mtf.set_highlights(highlights);
 
@@ -269,9 +269,9 @@ void IMtfDisplay::setHighlights(double highlights)
 double IMtfDisplay::highlights() const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  return ii != displays_.end() ?
+  return ii != _displays.end() ?
       ii->second.mtf.highlights() :
       1;
 }
@@ -279,9 +279,9 @@ double IMtfDisplay::highlights() const
 void IMtfDisplay::setMidtones(double midtones)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     ii->second.mtf.set_midtones(midtones);
 
@@ -292,9 +292,9 @@ void IMtfDisplay::setMidtones(double midtones)
 double IMtfDisplay::midtones() const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  return ii != displays_.end() ?
+  return ii != _displays.end() ?
       ii->second.mtf.midtones() :
       0.5;
 }
@@ -302,9 +302,9 @@ double IMtfDisplay::midtones() const
 void IMtfDisplay::setColormap(COLORMAP v)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     DisplayParams & p = ii->second;
 
@@ -318,9 +318,9 @@ void IMtfDisplay::setColormap(COLORMAP v)
 COLORMAP IMtfDisplay::colormap() const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     return ii->second.colormap;
   }
@@ -331,9 +331,9 @@ COLORMAP IMtfDisplay::colormap() const
 void IMtfDisplay::setInvertColormap(bool v)
 {
   const DisplayMap::iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     DisplayParams & p =
         ii->second;
@@ -351,9 +351,9 @@ void IMtfDisplay::setInvertColormap(bool v)
 bool IMtfDisplay::invertColormap() const
 {
   const DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( ii != displays_.end() ) {
+  if ( ii != _displays.end() ) {
 
     return ii->second.invert_colormap;
   }
@@ -363,26 +363,26 @@ bool IMtfDisplay::invertColormap() const
 
 void IMtfDisplay::setAutoClip(bool v)
 {
-  if ( autoClip_ != v ) {
-    autoClip_ = v;
+  if ( _autoClip != v ) {
+    _autoClip = v;
     Q_EMIT parameterChanged();
   }
 }
 
 bool IMtfDisplay::autoClip() const
 {
-  return autoClip_;
+  return _autoClip;
 }
 
 IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 {
   DisplayMap::iterator pos =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( pos == displays_.end())  {
+  if ( pos == _displays.end())  {
     CF_FATAL("FATAL APP BUG: displayType_='%s' not registered. displays_.size=%zu",
-        displayChannel_.toUtf8().constData(),
-        displays_.size());
+        _displayChannel.toUtf8().constData(),
+        _displays.size());
     exit(1);
   }
 
@@ -392,12 +392,12 @@ IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 {
   DisplayMap::const_iterator pos =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if ( pos == displays_.end())  {
+  if ( pos == _displays.end())  {
     CF_FATAL("APP BUG: displayType_='%s' not registered.displays_.size=%zu",
-        displayChannel_.toUtf8().constData(),
-        displays_.size());
+        _displayChannel.toUtf8().constData(),
+        _displays.size());
     exit(1);
   }
 
@@ -418,26 +418,26 @@ const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 void IMtfDisplay::loadParameters()
 {
   QSettings settings;
-  loadParameters(settings, prefix_);
+  loadParameters(settings, _prefix);
 }
 
 void IMtfDisplay::saveParameters() const
 {
   QSettings settings;
-  saveParameters(settings, prefix_);
+  saveParameters(settings, _prefix);
 }
 
 void IMtfDisplay::loadParameters(const QSettings & settings, const QString & prefix)
 {
   const QString displayChannel =
       settings.value(QString("%1_DisplayChannel").arg(prefix),
-          displayChannel_).toString();
+          _displayChannel).toString();
 
-  if( displays_.find(displayChannel) != displays_.end() ) {
-    displayChannel_ = displayChannel;
+  if( _displays.find(displayChannel) != _displays.end() ) {
+    _displayChannel = displayChannel;
   }
 
-  for ( DisplayMap::iterator ii = displays_.begin(); ii != displays_.end(); ++ii ) {
+  for ( DisplayMap::iterator ii = _displays.begin(); ii != _displays.end(); ++ii ) {
 
     const QString displayType = ii->first;
     DisplayParams & p = ii->second;
@@ -462,18 +462,18 @@ void IMtfDisplay::loadParameters(const QSettings & settings, const QString & pre
 void IMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) const
 {
   settings.setValue(QString("%1_DisplayChannel").arg(prefix),
-      displayChannel_);
+      _displayChannel);
 
   DisplayMap::const_iterator ii =
-      displays_.find(displayChannel_);
+      _displays.find(_displayChannel);
 
-  if( ii != displays_.end() ) {
+  if( ii != _displays.end() ) {
 
     const DisplayParams &p =
         ii->second;
 
     const QString prefix2 =
-        QString("%1_DisplayParams_%2").arg(prefix).arg(displayChannel_);
+        QString("%1_DisplayParams_%2").arg(prefix).arg(_displayChannel);
 
     double min, max;
 

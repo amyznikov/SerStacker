@@ -18,7 +18,7 @@ QMeasureSettingsWidget * QMeasureNoise::createSettingsWidget(QWidget * parent) c
   return new QNoiseMeasureSettingsWidget(parent);
 }
 
-int QMeasureNoise::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureNoise::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   * output_value = estimate_noise(image, cv::noArray(), mask);
   return image.channels();

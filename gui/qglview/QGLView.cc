@@ -45,8 +45,8 @@ void toSpherical(const QVector3D & v, double * r, double * phi, double * theta)
   const double z = v.z();
 
   *r = std::sqrt(x * x + y * y + z * z); //  v.length();
-  *phi = std::acos(v.z() / *r);
-  *theta = std::atan2(v.y(), v.x());
+  *phi = std::acos(z / *r);
+  *theta = std::atan2(y, x);
 }
 
 QVector3D toSpherical(const QVector3D & v)
@@ -151,10 +151,10 @@ QGLView::~QGLView()
 void QGLView::loadParameters()
 {
   QSettings settings;
-  onLoadParameters(settings);
+  loadParameters(settings);
 }
 
-void QGLView::onLoadParameters(QSettings & settings)
+void QGLView::loadParameters(QSettings & settings)
 {
   _backgroundColor =
       settings.value("QGLView/backgroundColor_",
@@ -248,10 +248,10 @@ void QGLView::onLoadParameters(QSettings & settings)
 void QGLView::saveParameters()
 {
   QSettings settings;
-  onSaveParameters(settings);
+  saveParameters(settings);
 }
 
-void QGLView::onSaveParameters(QSettings & settings)
+void QGLView::saveParameters(QSettings & settings)
 {
   settings.setValue("QGLView/backgroundColor_",
       _backgroundColor);
@@ -542,19 +542,46 @@ bool QGLView::projectToScreen(const cv::Vec3f & pos, cv::Point2f * screen_pos) c
   return false;
 }
 
-bool QGLView::projectToScreen(const cv::Vec3f & pos, cv::Point3f * screen_pos) const
+bool QGLView::projectToScreen(const cv::Vec3f &pos, cv::Point3f *screen_pos) const
 {
-  // normalized device coordinates
-  const QVector3D ndc =
-      _mtotal.map(QVector3D(pos[0], pos[1], pos[2]));
+  //  // normalized device coordinates
+  //  const QVector3D ndc =
+  //      _mtotal.map(QVector3D(pos[0], pos[1], pos[2]));
+  //
+  //  if( ndc.z() < 1 && std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1 ) {
+  //
+  //    // apply view port to compute window coordinates
+  //    screen_pos->x = (1 + ndc.x()) * viewport.w / 2 + viewport.x;
+  //    screen_pos->y = (1 - ndc.y()) * viewport.h / 2 + viewport.y;
+  //    screen_pos->z = ndc.z();
+  //    return true;
+  //  }
+  //
+  //  return false;
 
-  if( ndc.z() < 1 && std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1 ) {
+  // Not normalized version for Z
+  QVector4D ndc =
+      _mtotal.map(QVector4D(pos[0], pos[1], pos[2], 1));
 
-    // apply view port to compute window coordinates
-    screen_pos->x = (1 + ndc.x()) * viewport.w / 2 + viewport.x;
-    screen_pos->y = (1 - ndc.y()) * viewport.h / 2 + viewport.y;
-    screen_pos->z = ndc.z();
-    return true;
+  if (ndc.w()) {
+
+    const float ndcz =
+        ndc.z() / ndc.w();
+
+    if (ndcz < 1) {
+
+      ndc.setX(ndc.x() / ndc.w());
+      ndc.setY(ndc.y() / ndc.w());
+
+      if (std::abs(ndc.x()) < 1 && std::abs(ndc.y()) < 1) {
+
+        // apply view port to compute window coordinates
+        screen_pos->x = (1 + ndc.x()) * viewport.w / 2 + viewport.x;
+        screen_pos->y = (1 - ndc.y()) * viewport.h / 2 + viewport.y;
+        screen_pos->z = ndc.z();
+        return true;
+      }
+    }
   }
 
   return false;
@@ -1081,8 +1108,8 @@ void QGLView::removeShape(QGLShape * shape)
   }
 }
 
-void QGLView::glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
+void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type eventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
     bool objHit, double objX, double objY, double objZ)
 {
   CF_DEBUG("QGLView: x=%g y=%g obj: X=%g Y=%g Z=%g",
@@ -1090,9 +1117,10 @@ void QGLView::glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
 }
 
 
-void QGLView::onGLMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-    Qt::KeyboardModifiers keyboardModifiers,
-    const QPointF & mousePos)
+void QGLView::onGLMouseEvent(const QPointF &mousePos,
+    QEvent::Type eventType,
+    Qt::MouseButtons mouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers)
 {
   if( _enableGLMouseEvents ) {
 
@@ -1123,26 +1151,37 @@ void QGLView::onGLMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
                 &objX, &objY, &objZ) == GL_TRUE;
       }
 
-      glMouseEvent(eventType, keyOrMouseButtons,
-          keyboardModifiers, mousePos,
+      glMouseEvent(mousePos, eventType,
+          mouseButtons, keyboardModifiers,
           objHit, objX, objY, objZ);
     }
   }
 }
 
-
 void QGLView::keyPressEvent(QKeyEvent *event)
 {
+  //CF_DEBUG("key=%d modifiers=%d", event->key(), event->modifiers());
   Base::keyPressEvent(event);
-  if (_enableGLMouseEvents ) {
+
+  if (_enableGLMouseEvents) {
+    onGLMouseEvent(mapFromGlobal(QCursor::pos()),
+        event->type(),
+        QApplication::mouseButtons(),
+        event->modifiers());
   }
 }
 
 void QGLView::keyReleaseEvent(QKeyEvent *event)
 {
   Base::keyReleaseEvent(event);
-  if (_enableGLMouseEvents ) {
+
+  if (_enableGLMouseEvents) {
+    onGLMouseEvent(mapFromGlobal(QCursor::pos()),
+        event->type(),
+        QApplication::mouseButtons(),
+        event->modifiers());
   }
+
 }
 
 
@@ -1154,10 +1193,10 @@ void QGLView::mousePressEvent(QMouseEvent * e)
   _prev_mouse_pos = e->localPos();
 #endif
 
-  if( _enableGLMouseEvents && e->modifiers() == Qt::ControlModifier ) {
-    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
+  if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
-  else if( e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier) ) {
+  else if (e->modifiers() == (Qt::ShiftModifier | Qt::ControlModifier)) {
     setAutoShowViewTarget(!autoShowViewTarget());
     update();
   }
@@ -1168,7 +1207,7 @@ void QGLView::mousePressEvent(QMouseEvent * e)
 void QGLView::mouseReleaseEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
 
   e->ignore();
@@ -1177,15 +1216,17 @@ void QGLView::mouseReleaseEvent(QMouseEvent *e)
 void QGLView::mouseDoubleClickEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
   e->ignore();
 }
 
+// temporary very stupid mouse move management,
+// may be consider also deformed Mouse Trackball algorithm instead ?
 void QGLView::mouseMoveEvent(QMouseEvent * e)
 {
-  if( _enableGLMouseEvents && e->modifiers() == Qt::ControlModifier ) {
-    onGLMouseEvent(e->type(), e->buttons(), e->modifiers(), e->localPos());
+  if (_enableGLMouseEvents && e->modifiers() == Qt::ControlModifier) {
+    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
   }
   else if( e->buttons() ) {
 
@@ -1217,7 +1258,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(0, delta.y() / viewport.h, forward.length()));
 
           const QVector3D Up =
-              (TU - T0) * std::max((float) _viewParams.nearPlane, forward.length());
+              (TU - T0) * std::max( (float)_viewParams.nearPlane, forward.length());
 
           _viewTarget += Up;
           _viewPoint += Up;
@@ -1229,7 +1270,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
               minv.map(QVector3D(-delta.x() / viewport.w, 0, forward.length()));
 
           const QVector3D Right =
-              (TR - T0) * std::max((float) _viewParams.nearPlane, forward.length());
+              (TR - T0) * std::max((float)_viewParams.nearPlane, forward.length());
 
           _viewTarget += Right;
           _viewPoint += Right;
@@ -1245,14 +1286,14 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
       _prev_mouse_pos = newpos;
     }
 
-    else if( e->buttons() == Qt::LeftButton ) {
+    else if (e->buttons() == Qt::LeftButton) {
 
       // Rotate camera
 
       const QPointF delta =
           newpos - _prev_mouse_pos;
 
-      if( delta.x() || delta.y() ) {
+      if (delta.x() || delta.y()) {
 
         const QVector3D forward =
             _viewPoint - _viewTarget;
@@ -1260,7 +1301,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
         const QMatrix4x4 minv =
             _mview.inverted();
 
-        if( e->modifiers() == Qt::ShiftModifier ) { // Rotate around forward looking axis
+        if (e->modifiers() == Qt::ShiftModifier) { // Rotate around forward looking axis
 
           const int signy =
               newpos.x() > viewport.w / 2 ? +1 : -1;
@@ -1270,7 +1311,7 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
           _viewUpDirection =
               QQuaternion::fromAxisAndAngle(forward,
-                  0.2 * (signy * delta.y() + signx * delta.x()))
+                  0.1 * (signy * delta.y() + signx * delta.x()))
                   .rotatedVector(_viewUpDirection);
 
           _dirty = true;
@@ -1282,31 +1323,38 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
         else { // Rotate camera around of the Up / Right axes
 
-          if( e->modifiers() & Qt::ControlModifier ) {
+          if (e->modifiers() & Qt::ControlModifier) {
 
             const QVector3D T0 = minv.map(QVector3D(0, 0, forward.length()));
-            const QVector3D TU = minv.map(QVector3D(0, 0.5, forward.length()));
+            const QVector3D TU = minv.map(QVector3D(0, 0.49, forward.length()));
             const QVector3D Up = (TU - T0).normalized();
 
             double dx = delta.x();
             double dy = delta.y();
 
-            // if( e->modifiers() & Qt::ShiftModifier ) {
-            if( std::abs(dx) >= std::abs(dy) ) {
-              dy = 0;
+            // if (e->modifiers() & Qt::ShiftModifier)
+            {
+              if (std::abs(dx) >= std::abs(dy)) {
+                dy = 0;
+              }
+              else {
+                dx = 0;
+              }
             }
-            else {
-              dx = 0;
-            }
-//          }
 
             const QVector3D viewRotation(0, -0.05 * dy * M_PI / 180, -0.05 * dx * M_PI / 180);
 
             _viewPoint =
                 fromSpherical(toSpherical(_viewPoint - _viewTarget) + viewRotation) + _viewTarget;
 
+#if 0 // __WIN32 // strange behavior was observed under MinGW, had no time to figure out the real reason
+            _viewUpDirection =
+                fromSpherical(toSpherical(Up) + 1.3 * viewRotation);
+#else
             _viewUpDirection =
                 fromSpherical(toSpherical(Up) + viewRotation);
+#endif
+
 
           }
           else {
@@ -1319,15 +1367,6 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 
             double dx = 0.5 * delta.x();
             double dy = 0.5 * delta.y();
-
-//            if( e->modifiers() == Qt::ControlModifier ) {
-//              if( std::abs(dx) >= std::abs(dy) ) {
-//                dy = 0;
-//              }
-//              else {
-//                dx = 0;
-//              }
-//            }
 
             QVector3D newForward =
                 QQuaternion::fromAxisAndAngle(-Up * dx - Right * dy, 0.2 * hypot(dx, dy))

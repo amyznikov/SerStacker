@@ -24,11 +24,7 @@ public :
 
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
 
-  void setAverageColorChannels(bool v) override;
-  bool averageColorChannels() const override;
-
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 class QLPGMeasureSettingsWidget :

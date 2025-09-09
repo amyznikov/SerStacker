@@ -28,7 +28,7 @@
 # include <GL/glu.h>
 #endif
 
-// forward declarations
+// forward declaration
 class QGLShape;
 
 class QGLView :
@@ -73,6 +73,9 @@ public:
 
   void loadParameters();
   void saveParameters();
+  virtual void loadParameters(QSettings & settings);
+  virtual void saveParameters(QSettings & settings);
+
 
   void setBackgroundColor(const QColor &color);
   const QColor & backgroundColor() const;
@@ -180,8 +183,8 @@ protected:
   virtual void glDraw();
   virtual void glPostDraw();
   virtual void glCleanup();
-  virtual void onLoadParameters(QSettings & settings);
-  virtual void onSaveParameters(QSettings & settings);
+//  virtual void onLoadParameters(QSettings & settings);
+//  virtual void onSaveParameters(QSettings & settings);
 
 protected:
   void timerEvent(QTimerEvent *event) override;
@@ -203,15 +206,16 @@ protected:
 
   virtual void cleanupGL();
 
-  virtual void glMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
+  virtual void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
   void showViewTarget(bool v);
-  void onGLMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-      Qt::KeyboardModifiers keyboardModifiers,
-      const QPointF & mousePos);
+  void onGLMouseEvent(const QPointF & mousePos,
+      QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons,
+      Qt::KeyboardModifiers keyboardModifiers);
 
 protected:
   QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);
@@ -257,6 +261,7 @@ protected:
 
 class QGLShape :
     public QObject
+    // , public QOpenGLExtraFunctions
 {
 public:
   typedef QGLShape ThisClass;
@@ -296,6 +301,7 @@ public:
   {
     return _topLevel;
   }
+
 
   virtual void draw(QGLView * glview) = 0;
 

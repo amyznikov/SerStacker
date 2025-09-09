@@ -124,45 +124,45 @@ static bool setItems(const char * output_name, cv::OutputArrayOfArrays a, const 
 
 c_sply_data_frame::c_sply_data_frame()
 {
-  display_types_.emplace(DisplayType_PointCloud);
+  _display_types.emplace(DisplayType_PointCloud);
 
-  add_display_channel("COLOR",
+  add_image_display("COLOR",
       "Point Color",
       -1, -1);
 
-  add_display_channel("DISTANCE",
+  add_image_display("DISTANCE",
       "Distance to each point",
       -1, -1);
 
-  add_display_channel("DEPTH",
+  add_image_display("DEPTH",
       "3D Point depth",
       0, 300);
 
-  add_display_channel("HEIGHT",
+  add_image_display("HEIGHT",
       "3D Point height",
       -5, 15);
 
-//  add_display_channel("AZIMUTH",
+//  add_image_display("AZIMUTH",
 //      "3D Point azimuth angle",
 //      0, 2 * M_PI);
 
-//  add_display_channel("ELEVATION",
+//  add_image_display("ELEVATION",
 //      "3D Point elevation angle",
 //      -25 * M_PI, 25 * M_PI);
 
-//  add_display_channel("GSLOPE",
+//  add_image_display("GSLOPE",
 //      "Local surface horizontal slope",
 //      -M_PI, +M_PI);
 
-  add_display_channel("X",
+  add_image_display("X",
       "X coordinate",
       -1, -1);
 
-  add_display_channel("Y",
+  add_image_display("Y",
       "Y coordinate",
       -1, -1);
 
-  add_display_channel("Z",
+  add_image_display("Z",
       "Z coordinate",
       -1, -1);
 
@@ -246,10 +246,10 @@ static bool extract_depth(const cv::Mat & pts, cv::Mat & distances)
 }
 
 bool c_sply_data_frame::get_point_cloud(const std::string & display_name,
-    cv::OutputArrayOfArrays output_points,
-    cv::OutputArrayOfArrays output_colors,
-    cv::OutputArrayOfArrays output_mask,
-    std::vector<std::vector<uint64_t>> * output_pids)
+    cv::OutputArray output_points,
+    cv::OutputArray output_colors,
+    cv::OutputArray output_mask,
+    std::vector<uint64_t> * output_pids)
 {
   if( output_points.needed() ) {
     setItems("_points", output_points, _points);

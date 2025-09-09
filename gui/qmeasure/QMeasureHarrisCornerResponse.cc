@@ -17,17 +17,17 @@ QMeasureSettingsWidget* QMeasureHarrisCornerResponse::createSettingsWidget(QWidg
   return new QHarrisCornerResponseSettingsWidget(parent);
 }
 
-void QMeasureHarrisCornerResponse::setAverageColorChannels(bool v)
-{
-  c_harris_sharpness_measure::set_avgchannel(average_color_channels_ = v);
-}
+//void QMeasureHarrisCornerResponse::setAverageColorChannels(bool v)
+//{
+//  c_harris_sharpness_measure::set_avgchannel(_average_color_channels = v);
+//}
+//
+//bool QMeasureHarrisCornerResponse::averageColorChannels() const
+//{
+//  return c_harris_sharpness_measure::avgchannel();
+//}
 
-bool QMeasureHarrisCornerResponse::averageColorChannels() const
-{
-  return c_harris_sharpness_measure::avgchannel();
-}
-
-int QMeasureHarrisCornerResponse::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureHarrisCornerResponse::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_harris_sharpness_measure::compute(image);
   return avgchannel_ ? 1 : image.channels();

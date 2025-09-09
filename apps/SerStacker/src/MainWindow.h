@@ -12,6 +12,7 @@
 #include <gui/qfilesystemtreeview/QFileSystemTreeDock.h>
 #include <gui/qthumbnailsview/QThumbnailsView.h>
 #include <gui/qtextview/QTextFileViewer.h>
+#include <gui/qglview/QGLPointCloudView.h>
 #include <gui/qglview/QGLViewPlanarGridSettings.h>
 #include <gui/qimageview/QImageViewOptions.h>
 #include <gui/qgraphicsshape/QShapesButton.h>
@@ -81,9 +82,10 @@ private Q_SLOTS:
   void onStackTreeCurrentItemChanged(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
   void onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source);
 
+  void updateMeasureChannels();
   void updateMeasurements();
-  void updateProfileGraph(QGraphicsItem * lineItem = nullptr) override;
-  void onShowProfileGraphActionTriggered(bool checked) override;
+  void updateProfileGraph(QGraphicsItem * lineItem = nullptr) final;
+  void onShowProfileGraphActionTriggered(bool checked) final;
 
   void onShowImageSequenceOptions(const c_image_sequence::sptr & sequence);
   void onPipelineThreadStarted();
@@ -97,16 +99,17 @@ private Q_SLOTS:
   void saveCurrentWork();
 
 private :
-  void closeEvent(QCloseEvent *event) override;
-  void onSaveState(QSettings & settings) override;
-  void onRestoreState(QSettings & settings) override;
-  void onMtfControlVisibilityChanged(bool visible) override;
-  void onImageProcessorParameterChanged() override;
-  void onDataframeProcessorParameterChanged() override;
-  void onMeasureRightNowRequested() override;
+  void closeEvent(QCloseEvent *event) final;
+  void onSaveState(QSettings & settings) final;
+  void onRestoreState(QSettings & settings) final;
+  void onMtfControlVisibilityChanged(bool visible) final;
+  void onImageProcessorParameterChanged() final;
+  void onDataframeProcessorParameterChanged() final;
+  void onMeasureRightNowRequested() final;
+  void onUpdateAvailableMeasureDataChannelsRequired() final;
   void saveShapes(QSettings & settings);
   void loadShapes(const QSettings & settings);
-  IMtfDisplay * getCurrentMtfDisplay() override;
+  IMtfDisplay * getCurrentMtfDisplay() final;
 
 private:
   QStackedWidget * centralStackedWidget = nullptr;
@@ -123,7 +126,7 @@ private:
   QInputOptionsDialogBox * inputOptionsDlgBox = nullptr;
 
   QImageViewOptionsDlgBox * imageViewOptionsDlgBox = nullptr;
-  QGlPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
+  QPointCloudViewSettingsDialogBox * cloudViewSettingsDialogBox = nullptr;
   QGlPointCloudSettingsDialogBox * cloudSettingsDialogBox = nullptr;
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
@@ -149,6 +152,7 @@ private:
   QAction * loadImageMaskAction = nullptr;
   QAction * badframeAction = nullptr;
   QAction * viewInputOptionsAction = nullptr;
+  QShortcut * badframeActionShortcut = nullptr;
 
 
 

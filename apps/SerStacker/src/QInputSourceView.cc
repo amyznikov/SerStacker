@@ -10,9 +10,9 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
+#include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <core/proc/minmax.h>
-#include <core/proc/histogram.h>
-#include <core/io/image/c_image_input_source.h>
+#include <core/data_annotation/c_data_annotation_labels.h>
 #include <core/debug.h>
 
 
@@ -48,10 +48,13 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
   _mainLayout = new QVBoxLayout(this);
   _mainLayout->setAlignment(Qt::AlignTop);
   setContentsMargins(0, 0, 0, 0);
+  //mainLayout_->setContentsMargins(0,0,0,0);
+  //mainLayout_->setMargin(0);
   _mainLayout->setSpacing(0);
 
   _mainLayout->addLayout(_toolbarLayout = new QHBoxLayout());
   _toolbarLayout->setContentsMargins(0,0,0,0);
+  //toolbarLayout_->setMargin(0);
   _toolbarLayout->addWidget(_mainToolbar = createToolbar(this), 10, Qt::AlignLeft);
   _toolbarLayout->addWidget(_imageViewToolbar = createToolbar(this), 10, Qt::AlignRight);
   _toolbarLayout->addWidget(_cloudViewToolbar = createToolbar(this), 10, Qt::AlignRight);
@@ -69,8 +72,8 @@ QInputSourceView::QInputSourceView(QWidget * parent) :
   QObject::connect(_imageView, &QImageSourceView::onPopulateContextMenu,
       this, &ThisClass::populateImageViewContextMenu);
 
-  QObject::connect(_cloudView, &QPointCloudSourceView::glPointSelectionMouseEvent,
-       this, &ThisClass::onCloudViewPointSelectionMouseEvent);
+  QObject::connect(_cloudView, &QPointCloudSourceView::glPointMouseEvent,
+      this, &ThisClass::onCloudViewPointSelection);
 
   QObject::connect(_playControls, &QPlaySequenceControl::onSeek,
       this, &ThisClass::onSeek);
@@ -161,9 +164,14 @@ QWidget * QInputSourceView::currentView() const
   return _stackWidget->currentWidget();
 }
 
+DisplayType QInputSourceView::currentViewType() const
+{
+  return _currentViewType;
+}
+
 void QInputSourceView::setupMainToolbar()
 {
-  _mainToolbar->addWidget(_viewSelectionToolbutton_ctl =
+  _mainToolbar->addWidget(viewTypeSelectionToolbutton_ctl =
       createToolButton(getIcon(ICON_eye), "",
           "Select View",
           [this](QToolButton * tb) {
@@ -185,7 +193,7 @@ void QInputSourceView::setupMainToolbar()
                     menu.addAction(createCheckableAction(QIcon(),
                             m->name.c_str(),
                             m->comment.c_str(),
-                            viewType == _selectedViewType,
+                            viewType == _currentViewType,
                             [this, viewType]() {
                               setViewType(viewType);
                             }));
@@ -308,9 +316,9 @@ void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & 
   _currentProcessor = processor;
 
   if ( _currentFrame ) {
-    _currentFrame->cleanup();
+    _currentFrame->clean_artifacts();
     processCurrentFrame();
-    setViewType(_selectedViewType);
+    setViewType(_currentViewType);
   }
 }
 
@@ -320,31 +328,42 @@ const c_data_frame_processor::sptr & QInputSourceView::currentProcessor() const
 }
 
 
-void QInputSourceView::setPointSelectionMode(QPointSelectionMode * selectionMode)
+void QInputSourceView::setPointSelectionMode(QPointSelectionMode *selectionMode)
 {
-  if( _currentPointSelectionMode ) {
-    _currentPointSelectionMode->setActive(this, false);
+  if (_pointSelectionMode) {
+    _pointSelectionMode->setActive(this, false);
   }
 
-  if( (_currentPointSelectionMode = selectionMode) ) {
-    _currentPointSelectionMode->setActive(this, true);
+  if ((_pointSelectionMode = selectionMode)) {
+    _pointSelectionMode->setActive(this, true);
   }
 }
 
 QPointSelectionMode * QInputSourceView::pointSelectionMode() const
 {
-  return _currentPointSelectionMode;
+  return _pointSelectionMode;
 }
 
-//void QInputSourceView::setInputSource(const c_input_source::sptr & current_source)
-//{
-//  closeCurrentSource();
-//
-//  currentSource_ = current_source;
-//  startDisplay();
-//
-//  Q_EMIT currentFileNameChanged();
-//}
+void QInputSourceView::setDataAnnotationLabels(const c_data_annotation_labels * v)
+{
+  data_annotation_labels = v;
+}
+
+const c_data_annotation_labels * QInputSourceView::dataAnnotationLabels() const
+{
+  return data_annotation_labels;
+}
+
+void QInputSourceView::setDataAnnotationBlendAlpha(double v)
+{
+  _dataAnnotationBlendAlpha = v;
+  _cloudView->updateDisplayColors();
+}
+
+double QInputSourceView::dataAnnotationBlendAlpha() const
+{
+  return _dataAnnotationBlendAlpha;
+}
 
 const c_input_source::sptr & QInputSourceView::inputSource() const
 {
@@ -353,15 +372,15 @@ const c_input_source::sptr & QInputSourceView::inputSource() const
 
 const c_input_options * QInputSourceView::inputOptions() const
 {
-  return &_input_options;
+  return &_inputOptions;
 }
 
 c_input_options * QInputSourceView::inputOptions()
 {
-  return &_input_options;
+  return &_inputOptions;
 }
 
-bool QInputSourceView::openFile(const QString & abspath)
+bool QInputSourceView::openSource(const QString & abspath)
 {
   closeCurrentSource();
 
@@ -377,7 +396,7 @@ bool QInputSourceView::openFile(const QString & abspath)
 
     // CF_DEBUG("typeid(currentSource_)=%s",  typeid(*currentSource_.get()).name());
 
-    _currentSource->set_input_options(&_input_options);
+    _currentSource->set_input_options(&_inputOptions);
 
     startDisplay();
 
@@ -387,14 +406,14 @@ bool QInputSourceView::openFile(const QString & abspath)
   return true;
 }
 
-void QInputSourceView::reloadCurrentFrame()
+const c_data_frame::sptr & QInputSourceView::currentFrame() const
 {
-  if( isOpen(_currentSource) ) {
-    if( _currentSource->curpos() > 0 ) {
-      _currentSource->seek(_currentSource->curpos() - 1);
-    }
-    loadNextFrame();
-  }
+  return _currentFrame;
+}
+
+const c_input_source::sptr & QInputSourceView::currentSource() const
+{
+  return _currentSource;
 }
 
 int QInputSourceView::currentScrollpos() const
@@ -410,7 +429,6 @@ bool QInputSourceView::scrollToFrame(int frameIndex)
       _currentSource->seek(frameIndex);
     }
 
-
     loadNextFrame();
 
     _playControls->setCurpos(std::max(0,
@@ -422,6 +440,16 @@ bool QInputSourceView::scrollToFrame(int frameIndex)
   }
 
   return false;
+}
+
+void QInputSourceView::reloadCurrentFrame()
+{
+  if( isOpen(_currentSource) ) {
+    if( _currentSource->curpos() > 0 ) {
+      _currentSource->seek(_currentSource->curpos() - 1);
+    }
+    loadNextFrame();
+  }
 }
 
 
@@ -483,7 +511,7 @@ void QInputSourceView::loadNextFrame()
 
     processCurrentFrame();
 
-    setViewType(_selectedViewType);
+    setViewType(_currentViewType);
 
     Q_EMIT currentFrameChanged();
   }
@@ -493,8 +521,8 @@ void QInputSourceView::loadNextFrame()
 void QInputSourceView::processCurrentFrame()
 {
   if( !_currentFrame ) {
-    _selectedViewType = DisplayType_Image;
-    _viewSelectionToolbutton_ctl->setEnabled(false);
+    _currentViewType = DisplayType_Image;
+    viewTypeSelectionToolbutton_ctl->setEnabled(false);
   }
   else {
 
@@ -506,13 +534,13 @@ void QInputSourceView::processCurrentFrame()
         _currentFrame->get_available_display_types();
 
     if( viewTypes.empty() ) {
-      _selectedViewType = DisplayType_Image;
+      _currentViewType = DisplayType_Image;
     }
-    else if( viewTypes.find(_selectedViewType) == viewTypes.end() ) {
-      _selectedViewType = *viewTypes.begin();
+    else if( viewTypes.find(_currentViewType) == viewTypes.end() ) {
+      _currentViewType = *viewTypes.begin();
     }
 
-    _viewSelectionToolbutton_ctl->setEnabled(viewTypes.size() > 1);
+    viewTypeSelectionToolbutton_ctl->setEnabled(viewTypes.size() > 1);
   }
 }
 
@@ -528,17 +556,17 @@ void QInputSourceView::closeCurrentSource()
 
 void QInputSourceView::setViewType(DisplayType viewType)
 {
-  if ( viewType != _selectedViewType ) {
-    _selectedViewType = viewType;
+  if ( viewType != _currentViewType ) {
+    _currentViewType = viewType;
   }
 
   if( _currentFrame ) {
 
     const auto & new_displays =
-        _currentFrame->get_available_data_displays();
+        _currentFrame->get_available_image_displays();
 
     auto & existing_displays =
-        this->displays_;
+        this->_displays;
 
     bool haschages = false;
 
@@ -579,21 +607,19 @@ void QInputSourceView::displayCurrentFrame()
 {
   // CF_DEBUG("displayCurrentFrame()");
 
-  cv::Mat image, data, mask;
-
-  if( !displays_.empty() && displays_.find(displayChannel_) == displays_.end() ) {
-    displayChannel_ = displays_.begin()->first;
+  if( !_displays.empty() && _displays.find(_displayChannel) == _displays.end() ) {
+    _displayChannel = _displays.begin()->first;
   }
 
   if( _currentFrame ) {
 
-    switch (_selectedViewType) {
+    switch (_currentViewType) {
 
       case DisplayType_Image: {
 
         cv::Mat image, data, mask;
 
-        _currentFrame->get_image(displayChannel_.toStdString(),
+        _currentFrame->get_image(_displayChannel.toStdString(),
             image, mask, data);
 
         setCurrentView(_imageView);
@@ -605,14 +631,14 @@ void QInputSourceView::displayCurrentFrame()
 
       case DisplayType_PointCloud: {
 
-        std::vector<cv::Mat> points, colors, mask;
-        std::vector<std::vector<uint64_t>> pids;
+        cv::Mat points, colors, mask;
+        std::vector<uint64_t> pids;
 
-        _currentFrame->get_point_cloud(displayChannel_.toStdString(),
+        _currentFrame->get_point_cloud(_displayChannel.toStdString(),
             points, colors, mask, &pids);
 
         setCurrentView(_cloudView);
-        _cloudView->setPoints(points, colors, mask, false);
+        _cloudView->setPoints(std::move(points), std::move(colors), std::move(mask), std::move(pids));
         break;
       }
 
@@ -700,12 +726,14 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
 
-  switch (_selectedViewType) {
+  switch (_currentViewType) {
     case DisplayType_Image:
       getminmax(_imageView->currentImage(), minval, maxval, _imageView->currentMask());
+      CF_DEBUG("minval=%g maxval=%g", *minval, *maxval);
       break;
     case DisplayType_PointCloud:
-      getminmax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMasks());
+      getminmax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMask());
+      CF_DEBUG("minval=%g maxval=%g", *minval, *maxval);
       break;
     default:
       break;
@@ -715,7 +743,7 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 
 void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-  switch (_selectedViewType) {
+  switch (_currentViewType) {
     case DisplayType_Image:
 
       create_histogram(_imageView->currentImage(),
@@ -732,7 +760,7 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
     case DisplayType_PointCloud:
 
       create_histogram(_cloudView->currentColors(),
-          _cloudView->currentMasks(),
+          _cloudView->currentMask(),
           H,
           hmin, hmax,
           256,
@@ -752,7 +780,7 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
 
-  switch (_selectedViewType) {
+  switch (_currentViewType) {
     case DisplayType_Image:
 
       create_histogram(_imageView->mtfImage(),
@@ -768,7 +796,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
     case DisplayType_PointCloud:
 
       create_histogram(_cloudView->mtfColors(),
-          cv::noArray(),
+          _cloudView->currentMask(),
           H,
           hmin, hmax,
           256,
@@ -849,28 +877,29 @@ void QInputSourceView::createDisplayImage(cv::InputArray currentImage, cv::Input
     else {
       displayImage = mtfImage;
     }
+
+//    if (data_annotation_labels && _currentFrame->has_point_annotations()) {
+//
+//    }
+
   }
 }
 
-void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
-    cv::InputArray currentColors,
-    cv::InputArray currentMasks,
-    cv::OutputArray displayPoints,
-    cv::OutputArray mtfColors,
-    cv::OutputArray displayColors)
+void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
+    std::vector<cv::Vec3f> & displayPoints,
+    std::vector<cv::Vec3b> & displayColors)
 {
 
-//  CF_DEBUG("\n"
-//      "ncurrentPoints: %dx%d depth=%d channels=%d  currentColors: %dx%d depth=%d channels=%d",
-//      currentPoints.rows(), currentPoints.cols(), currentPoints.depth(), currentPoints.channels(),
-//      currentColors.rows(), currentColors.cols(), currentColors.depth(), currentColors.channels()
-//      );
+  const cv::Mat &currentPoints =
+      _cloudView->currentPoints();
+
+  //CF_DEBUG("currentPoints: %dx%d", currentPoints.rows, currentPoints.cols);
 
   if ( currentPoints.empty() ) {
 
-    displayPoints.release();
     mtfColors.release();
-    displayColors.release();
+    displayPoints.clear();
+    displayColors.clear();
 
     Q_EMIT displayImageChanged();
 
@@ -887,13 +916,19 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
 
   cv::Mat mtfcolors, displaycolors;
 
+  const cv::Mat & currentColors =
+      _cloudView->currentColors();
+
+  const cv::Mat & currentMask =
+      _cloudView->currentMask();
+
   const bool needColormap =
       opts.colormap != COLORMAP_NONE;
 
-  currentPoints.getMat().convertTo(displayPoints, CV_32F);
 
+  currentPoints.convertTo(displayPoints, CV_32F);
 
-  adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMasks, &a);
+  adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMask, &a);
   mtf->apply(currentColors, mtfcolors, CV_8U);
   restoreMtfRange(mtf, a);
 
@@ -915,8 +950,8 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
         displaycolors,
         opts.lut);
 
-    if( currentMasks.size() == displaycolors.size() ) {
-      displaycolors.setTo(0, ~currentMasks.getMat());
+    if( currentMask.size() == displaycolors.size() ) {
+      displaycolors.setTo(0, ~currentMask);
     }
 
     cv::cvtColor(displaycolors, displaycolors, cv::COLOR_BGR2RGB);
@@ -927,154 +962,51 @@ void QInputSourceView::createDisplayPoints(cv::InputArray currentPoints,
 
   else {
 
-    // CF_DEBUG("mtfcolors.empty()=%d mtfcolors.channels()=%d", mtfcolors.empty(), mtfcolors.channels());
-
-    if( mtfcolors.empty() ) {
-      displayColors.release();
+    if( mtfcolors.channels() == 1 ) {
+      cv::cvtColor(mtfcolors, mtfcolors,
+          cv::COLOR_GRAY2BGR);
     }
-    else {
 
-      if( mtfcolors.channels() == 1 ) {
-        cv::cvtColor(mtfcolors, mtfcolors,
-            cv::COLOR_GRAY2BGR);
-      }
+    mtfcolors.copyTo(displayColors);
+  }
 
-      if( !displayColors.fixedType() || displayColors.type() == mtfcolors.type() ) {
-        mtfcolors.copyTo(displayColors);
-      }
-      else {
-        mtfcolors.convertTo(displayColors, displayColors.type());
+
+  const std::vector<uint64_t> &currentPids =
+      _cloudView->currentPids();
+
+  if (data_annotation_labels && !currentPids.empty() && _currentFrame->has_point_annotations()) {
+
+    cv::Vec4b c;
+
+    const int num_colormaps =
+        data_annotation_labels->num_colormaps();
+
+    const double global_alpha =
+        _dataAnnotationBlendAlpha;
+
+    for (size_t i = 0, n = currentPids.size(); i < n; ++i) {
+      for (int cmap = 0; cmap < num_colormaps; ++cmap) {
+        if (data_annotation_labels->colormap(cmap)->visible()) {
+
+          const uint8_t lb =
+              _currentFrame->point_annotation(currentPids[i], cmap);
+
+          if (lb) {
+
+            if (data_annotation_labels->colormap(cmap)->color_for_label(lb, &c)) {
+
+              const double alpha = global_alpha * c[3] / 255.;
+              displayColors[i] = (1 - alpha) * displayColors[i] + alpha * cv::Vec3b(c[2], c[1], c[0]);
+
+            }
+          }
+        }
       }
     }
+
   }
 
   Q_EMIT displayImageChanged();
-
-
-  //    if( total_points_to_display > 0 ) {
-  //
-  //      display_points_.reserve(total_points_to_display);
-  //
-  //      for( const auto &cloud : clouds_ ) {
-  //        if( cloud->visible && cloud->points.rows > 0 ) {
-  //
-  //          const cv::Mat3f &points =
-  //              cloud->points;
-  //
-  //          const double Sx = cloud->Scale.x();
-  //          const double Sy = cloud->Scale.y();
-  //          const double Sz = cloud->Scale.z();
-  //
-  //          const double Tx = cloud->Translation.x();
-  //          const double Ty = cloud->Translation.y();
-  //          const double Tz = cloud->Translation.z();
-  //
-  //          const double Rx = cloud->Rotation.x();
-  //          const double Ry = cloud->Rotation.y();
-  //          const double Rz = cloud->Rotation.z();
-  //
-  //          for( int i = 0; i < points.rows; ++i ) {
-  //
-  //            const cv::Vec3f & srcp =
-  //                points[i][0];
-  //
-  //            display_points_.emplace_back(srcp[0] * Sx - Tx - sceneOrigin_.x(),
-  //                srcp[1] * Sy - Ty - sceneOrigin_.y(),
-  //                srcp[2] * Sz - Tz - sceneOrigin_.z());
-  //
-  //          }
-  //        }
-  //      }
-  //    }
-  //
-  //    update_display_colors_ = true;
-  //  }
-  //
-  //  if( update_display_colors_ || display_colors_.size() != display_points_.size() ) {
-  //
-  //    display_colors_.clear();
-  //
-  //    QMtfDisplay::DisplayParams & opts =
-  //        mtfDisplay_.displayParams();
-  //
-  //    c_pixinsight_mtf &mtf =
-  //        opts.mtf;
-  //
-  //    double imin, imax;
-  //
-  //    mtf.get_input_range(&imin, &imax);
-  //
-  //    if( imin >= imax ) {
-  //      mtf.set_input_range(0, 255);
-  //    }
-  //
-  //    for( const auto &cloud : clouds_ ) {
-  //      if( cloud->visible && cloud->points.rows > 0 ) {
-  //
-  //        if ( cloud->colors.rows != cloud->points.rows ) {
-  //
-  //          int gray = mtf.apply(255);
-  //
-  //          for( int i = 0, n = cloud->points.rows; i < n; ++i ) {
-  //            display_colors_.emplace_back(gray, gray, gray);
-  //          }
-  //
-  //        }
-  //        else {
-  //
-  //          const cv::Mat & colors =
-  //              cloud->colors;
-  //
-  //          const int channels =
-  //              colors.channels();
-  //
-  //
-  //          for( int i = 0; i < colors.rows; ++i ) {
-  //
-  //            const cv::Scalar color =
-  //                compute_point_color(colors, i, mtf);
-  //
-  //            if ( channels == 1) {
-  //
-  //              const int gray =
-  //                  std::max(0, std::min(255,
-  //                      (int) (color[0] + pointBrightness_)));
-  //
-  //              display_colors_.emplace_back(gray, gray, gray);
-  //            }
-  //            else {
-  //
-  //              const int red =
-  //                  std::max(0, std::min(255,
-  //                      (int) (color[2] + pointBrightness_)));
-  //
-  //              const int green =
-  //                  std::max(0, std::min(255,
-  //                      (int) (color[1] + pointBrightness_)));
-  //
-  //              const int blue =
-  //                  std::max(0, std::min(255,
-  //                      (int) (color[0] + pointBrightness_)));
-  //
-  //              display_colors_.emplace_back(red, green, blue);
-  //            }
-  //          }
-  //        }
-  //      }
-  //    }
-  //
-  //    if( imin >= imax ) {
-  //      mtf.set_input_range(imin, imax);
-  //    }
-  //  }
-  //
-  //  if ( update_display_colors_ ) {
-  //    Q_EMIT mtfDisplay_.displayImageChanged();
-  //  }
-  //
-  //  update_display_points_ = false;
-  //  update_display_colors_ = false;
-
 }
 
 
@@ -1143,22 +1075,89 @@ double QInputSourceView::badPixelsVariationThreshold() const
   return _badPixelsVariationThreshold;
 }
 
-void QInputSourceView::onCloudViewPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-    Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
-    bool objHit, double objX, double objY, double objZ)
+QString QInputSourceView::statusStringForPoint3D(uint64_t pid) const
 {
-  if( _currentPointSelectionMode ) {
-    _currentPointSelectionMode->glMouseEvent(this, eventType, keyOrMouseButtons,
-        keyboardModifiers, mousePos,
-        objHit, objX, objY, objZ);
-  }
+  return "";
 }
 
+
+void QInputSourceView::onContextMenuRequest(const QPointF & mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
+{
+  QMenu menu;
+
+  populate3DPointContextMenu(menu,
+      currentFrame(),
+      mousePos,
+      objHit,
+      objX,
+      objY,
+      objZ);
+
+  if (!menu.isEmpty()) {
+
+    menu.exec(cloudView()->mapToGlobal(QPoint(
+        mousePos.x(),
+        mousePos.y())));
+  }
+
+
+
+}
+
+void QInputSourceView::onCloudViewPointSelection(const QPointF &mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
+{
+
+  if (mouseEventType == QEvent::MouseButtonPress && mouseButtons == Qt::RightButton) {
+    onContextMenuRequest(mousePos, mouseEventType,
+        mouseButtons, keyboardModifiers,
+        objHit, objX, objY, objZ);
+    return;
+  }
+
+  if (_pointSelectionMode && _pointSelectionMode->isActive()) {
+
+    return _pointSelectionMode->glMouseEvent(this, mousePos,
+        mouseEventType,
+        mouseButtons,
+        keyboardModifiers,
+        objHit, objX, objY, objZ);
+  }
+
+  if (objHit) {
+
+    uint64_t pid;
+
+    if (_cloudView->findPointID(objX, objY, objZ, &pid)) {
+
+      if (mouseEventType == QEvent::MouseButtonPress && mouseButtons == Qt::LeftButton) {
+
+        Q_EMIT glPointClick(pid, mousePos, mouseEventType,
+            mouseButtons, keyboardModifiers);
+      }
+    }
+  }
+}
 
 void QInputSourceView::populateImageViewContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   _imageView->populateContextMenu(menu, viewpos);
 }
+
+void QInputSourceView::populate3DPointContextMenu(QMenu &menu,
+    const c_data_frame::sptr &dataframe,
+    const QPointF &mousePos,
+    bool objHit,
+    double objX,
+    double objY,
+    double objZ)
+{
+}
+
+
 
 ///////////////
 } // namespace serstacker

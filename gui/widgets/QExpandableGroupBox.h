@@ -32,7 +32,9 @@ public:
   void collapse();
   void toggle();
 
-
+Q_SIGNALS:
+  void expanded();
+  void collapsed();
 
 protected:
   QWidget * view_ = nullptr;

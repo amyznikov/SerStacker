@@ -12,7 +12,7 @@ QMeasureSharpnessNorm::QMeasureSharpnessNorm() :
 {
 }
 
-int QMeasureSharpnessNorm::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureSharpnessNorm::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   (*output_value)[0] = c_sharpness_norm_measure::measure(image, mask);
   return 1;
@@ -47,7 +47,7 @@ QSharpnessNormMeasureSettingsWidget::QSharpnessNormMeasureSettingsWidget(QWidget
       add_numeric_box<double>("Low-pass sigma [pix]:",
           "",
           [this](double v) {
-            if ( measure_ && v > 0 && measure_->sigma() != v ) {
+            if ( measure_ && v > 0 ) {
               measure_->set_sigma(v);
               Q_EMIT parameterChanged();
             }

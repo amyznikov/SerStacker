@@ -31,16 +31,18 @@ public:
   void setEnd(const QVector3D & v);
   const QVector3D & end() const;
 
+  void setVisible(bool v) override;
+
   void setEnableTooltip(bool v);
   bool enableTooltip() const;
 
-  void setVisible(bool v) override;
   void draw(QGLView * glview) override;
+
 
 protected:
   QVector3D _start;
   QVector3D _end;
-  bool _enableTooltip = false;
+  bool _enableTooltip = true;
 };
 
 #endif /* __QGLLineShape_h__ */

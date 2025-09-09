@@ -22,7 +22,7 @@ QProgressImageViewer::QProgressImageViewer(QWidget * parent) :
 {
   scene()->setBackgroundBrush(Qt::darkGray);
 
-  addDisplay(displayChannel_ = "0", -1, -1);
+  addDisplay(_displayChannel = "0", -1, -1);
 
   setDisplayFunction(this);
 

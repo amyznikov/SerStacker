@@ -11,24 +11,24 @@
 
 #include <QtWidgets/QtWidgets>
 #include <gui/qimageview/QImageEditor.h>
-//#include <gui/qcloudview/QCloudViewer.h>
-#include <gui/qmtf/QMtfDisplay.h>
+#include <gui/qcloudview/QCloudViewer.h>
 #include <gui/qtextview/QTextFileViewer.h>
 #include <gui/qplaysequencecontrol/QPlaySequenceControl.h>
 
 #include <core/io/c_input_source.h>
 #include <core/io/c_input_options.h>
+#include <core/io/image/c_image_input_source.h>
 #include <core/dataproc/c_data_frame_processor.h>
+#include <core/data_annotation/c_data_annotation_labels.h>
 
 #include "QImageSourceView.h"
 #include "QPointCloudSourceView.h"
 #include "QTextSourceView.h"
 
 
-
 namespace serstacker {
 
-// Forward declaration
+// forward declaration
 class QPointSelectionMode;
 
 class QInputSourceView :
@@ -57,6 +57,7 @@ public:
   QPointCloudSourceView * cloudView() const;
   QTextSourceView * textView() const;
 
+
   void setCurrentView(QWidget * w);
   QWidget * currentView() const;
   DisplayType currentViewType() const;
@@ -75,29 +76,43 @@ public:
   void setPointSelectionMode(QPointSelectionMode * selectionMode);
   QPointSelectionMode * pointSelectionMode() const;
 
+  void setDataAnnotationLabels(const c_data_annotation_labels * v);
+  const c_data_annotation_labels * dataAnnotationLabels() const;
+
+  void setDataAnnotationBlendAlpha(double v);
+  double dataAnnotationBlendAlpha() const;
+
+  void populateImageViewContextMenu(QMenu & menu,
+      const QPoint & mpos);
+
+  void populate3DPointContextMenu(QMenu &menu,
+      const c_data_frame::sptr &dataframe,
+      const QPointF &mpos,
+      bool objHit,
+      double objX,
+      double objY,
+      double objZ);
+
+
   //void setInputSource(const c_input_source::sptr & current_source);
   const c_input_source::sptr & inputSource() const;
 
   const c_input_options * inputOptions() const;
   c_input_options * inputOptions();
 
-  bool openFile(const QString & abspath);
+  bool openSource(const QString & abspath);
+  void closeCurrentSource();
 
   bool scrollToFrame(int frameIndex);
   int currentScrollpos() const;
-
   void reloadCurrentFrame();
 
-  void populateImageViewContextMenu(QMenu & menu,
-      const QPoint & mpos);
 
-//  void populate3DPointContextMenu(QMenu &menu,
-//      const c_data_frame::sptr &dataframe,
-//      const QPointF &mpos,
-//      bool objHit,
-//      double objX,
-//      double objY,
-//      double objZ);
+  const c_data_frame::sptr & currentFrame() const;
+
+  const c_input_source::sptr & currentSource() const;
+
+  QString statusStringForPoint3D(uint64_t pid) const;
 
   //////////////////////////////////////////
   // TEMPORARY HACK SUUFF
@@ -127,10 +142,12 @@ Q_SIGNALS:
   void badPixelsVariationThresholdChanged();
   void vloDataChannelChanged();
 
+  void glPointClick(uint64_t pid, const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers);
+
 protected:
   void setupMainToolbar();
   void setupMtfDisplayFunction();
-  void closeCurrentSource();
   void startDisplay();
   void loadNextFrame();
   void processCurrentFrame();
@@ -138,6 +155,9 @@ protected:
   void onStackedWidgetCurrentIndexChanged();
   void setViewType(DisplayType viewType);
   void displayCurrentFrame();
+  void onCloudViewPointSelection(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
 
   bool applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::OutputArray displayImage, int ddepth = CV_8U);
@@ -145,22 +165,22 @@ protected:
   bool applyColorMap(cv::InputArray displayImage, cv::InputArray displayMask,
       cv::OutputArray colormapImage);
 
+  void onContextMenuRequest(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
+
 protected: // QWidget
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
-
 
 protected: // QImageDisplayFunction
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
 
 protected: // QCloudViewDisplayFunction
-  void createDisplayPoints(cv::InputArray currentPoints,
-      cv::InputArray currentColors,
-      cv::InputArray currentMask,
-      cv::OutputArray displayPoints,
-      cv::OutputArray mtfColors,
-      cv::OutputArray displayColors) override;
+  void createDisplayPoints(cv::OutputArray mtfColors,
+      std::vector<cv::Vec3f> & displayPoints,
+      std::vector<cv::Vec3b> & displayColors) override;
 
 protected: // MTF
   //QStringList displayChannels() const override;
@@ -168,16 +188,11 @@ protected: // MTF
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
-protected: // point selection
-  void onCloudViewPointSelectionMouseEvent(QEvent::Type eventType, int keyOrMouseButtons,
-      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
-      bool objHit, double objX, double objY, double objZ);
-
 protected:
   c_input_source::sptr _currentSource;
   c_data_frame::sptr _currentFrame;
   c_data_frame_processor::sptr _currentProcessor;
-  c_input_options _input_options;
+  c_input_options _inputOptions;
 
   QVBoxLayout * _mainLayout = nullptr;
   QHBoxLayout * _toolbarLayout = nullptr;
@@ -194,21 +209,23 @@ protected:
   QPointCloudSourceView * _cloudView = nullptr;
   QTextSourceView * _textView = nullptr;
 
-  QToolButton * _viewSelectionToolbutton_ctl = nullptr;
+  QToolButton * viewTypeSelectionToolbutton_ctl = nullptr;
+  DisplayType _currentViewType = DisplayType_Image;
 
-  DisplayType _selectedViewType = DisplayType_Image;
+  //////////////////////////////////////////
+
+  QPointSelectionMode * _pointSelectionMode = nullptr;
+  const c_data_annotation_labels * data_annotation_labels = nullptr;
+  double _dataAnnotationBlendAlpha = 0.8;
+  //////////////////////////////////////////
 
   //////////////////////////////////////////
   // TEMPORARY HACK SUUFF
   DEBAYER_ALGORITHM _debayerAlgorithm = DEBAYER_DEFAULT;
   bool _filterBadPixels = false;
   double _badPixelsVariationThreshold = 5;
-
-  //////////////////////////////////////////
-
-  QPointSelectionMode * _currentPointSelectionMode = nullptr;
-
 };
+
 
 class QPointSelectionMode :
     public QObject
@@ -218,16 +235,16 @@ public:
   typedef QPointSelectionMode ThisClass;
   typedef QObject Base;
 
-  QPointSelectionMode(QObject * parent = nullptr) :
+  QPointSelectionMode(QObject *parent = nullptr) :
     Base(parent)
   {
   }
 
-  virtual void setActive(QInputSourceView * sourceView, bool activate)
+  virtual void setActive(QInputSourceView* /*sourceView*/, bool acivate)
   {
-    if ( _isActive != activate ) {
-      _isActive = activate;
-      Q_EMIT stateChanged();
+    if (acivate != _isActive) {
+      _isActive = acivate;
+      Q_EMIT stateChanged(this);
     }
   }
 
@@ -236,16 +253,30 @@ public:
     return _isActive;
   }
 
-  virtual void glMouseEvent(QInputSourceView * sourceView, QEvent::Type eventType, int buttons,
-      Qt::KeyboardModifiers keyboardModifiers, const QPointF & mousePos,
-      bool objHit, double objX, double objY, double objZ) = 0;
+  virtual void glMouseEvent(QInputSourceView * sourceView, const QPointF &mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ)
+  {
+    if (objHit && mouseEventType == QEvent::MouseButtonPress) {
+      if (mouseButtons == Qt::LeftButton && keyboardModifiers == Qt::ControlModifier) {
+
+        uint64_t pid;
+
+        if (sourceView->cloudView()->findPointID(objX, objY, objZ, &pid)) {
+          Q_EMIT sourceView->glPointClick(pid, mousePos, mouseEventType,
+              mouseButtons, keyboardModifiers);
+        }
+      }
+    }
+  }
 
 Q_SIGNALS:
-  void stateChanged();
+  void stateChanged(QPointSelectionMode * obj);
 
 protected:
   bool _isActive = false;
 };
+
 
 } // namespace serstacker
 

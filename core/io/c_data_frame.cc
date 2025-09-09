@@ -27,6 +27,7 @@ template<>
 const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
 {
   static const c_enum_member members[] = {
+      { c_data_frame::SELECTION_MASK_DISABLE, "DISABLE", "DISABLE" },
       { c_data_frame::SELECTION_MASK_REPLACE, "REPLACE", "REPLACE" },
       { c_data_frame::SELECTION_MASK_AND, "AND", "AND" },
       { c_data_frame::SELECTION_MASK_OR, "OR", "OR" },
@@ -37,58 +38,28 @@ const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
   return members;
 }
 
-namespace {
-
-static void reduce_color_channels(cv::InputArray src, cv::OutputArray dst, enum cv::ReduceTypes rtype, int dtype = -1)
-{
-  cv::Mat s, tmp;
-
-  if (src.isContinuous()) {
-    s = src.getMat();
-  }
-  else {
-    src.copyTo(s);
-  }
-
-  const int src_rows = s.rows;
-  cv::reduce(s.reshape(1, s.total()), tmp, 1, rtype, dtype);
-  tmp.reshape(0, src_rows).copyTo(dst);
-}
-
-} // namespace
-
 void c_data_frame::copy_output_mask(cv::InputArray src, cv::OutputArray dst)
 {
-  if ( src.empty() ) {
-    dst.release();
-  }
-  else if ( src.channels() == 1 ) {
-    src.copyTo(dst);
-  }
-  else {
-    reduce_color_channels(src, dst, cv::
-        REDUCE_MAX);
-  }
+  src.copyTo(dst);
 }
 
-c_data_frame::DisplayMap::iterator c_data_frame::add_display_channel(const std::string & display_name,
+c_data_frame::ImageDisplays::iterator c_data_frame::add_image_display(const std::string & display_name,
     const std::string & tooltip,
     double minval,
     double maxval)
 {
   auto pos =
-      data_displays_.find(display_name);
+      _image_displays.find(display_name);
 
-  if ( pos == data_displays_.end() ) {
+  if ( pos == _image_displays.end() ) {
 
-    DisplayData c;
-    c.tooltip = tooltip;
-    c.minval = minval;
-    c.maxval = maxval;
+    const ImageDisplay c = {
+        .tooltip = tooltip,
+        .minval = minval,
+        .maxval = maxval
+    };
 
-    pos =
-        data_displays_.emplace(display_name,
-            std::move(c)).first;
+    pos = _image_displays.emplace(display_name, c).first;
   }
 
   pos->second.images.clear();
@@ -98,6 +69,37 @@ c_data_frame::DisplayMap::iterator c_data_frame::add_display_channel(const std::
   return pos;
 }
 
+c_data_frame::CloudDisplays::iterator c_data_frame::add_cloud_display(const std::string & display_name,
+    const std::string & tooltip,
+    double minval,
+    double maxval)
+{
+  auto pos =
+      _cloud_displays.find(display_name);
+
+  if ( pos == _cloud_displays.end() ) {
+
+    const CloudDisplay c = {
+        .tooltip = tooltip,
+        .minval = minval,
+        .maxval = maxval
+    };
+
+    pos =
+        _cloud_displays.emplace(display_name, c).first;
+  }
+
+  CloudDisplay & display =
+      pos->second;
+
+  display.points.clear();
+  display.colors.clear();
+  display.masks.clear();
+
+  return pos;
+
+}
+
 void c_data_frame::add_image(const std::string &display_name,
     cv::InputArray image,
     cv::InputArray mask,
@@ -105,7 +107,7 @@ void c_data_frame::add_image(const std::string &display_name,
 {
 
   auto &display =
-      add_display_channel(display_name)->second;
+      add_image_display(display_name)->second;
 
   if (!image.empty()) {
     display.images.emplace_back(image.getMat().clone());
@@ -117,7 +119,7 @@ void c_data_frame::add_image(const std::string &display_name,
     display.masks.emplace_back(mask.getMat().clone());
   }
 
-  display_types_.emplace(DisplayType_Image);
+  _display_types.emplace(DisplayType_Image);
 }
 
 
@@ -127,7 +129,7 @@ void c_data_frame::add_images(const std::string & display_name,
     const std::vector<cv::Mat> & data)
 {
   auto &display =
-      add_display_channel(display_name)->second;
+      add_image_display(display_name)->second;
 
   if (!images.empty()) {
     display.images = images;
@@ -139,7 +141,7 @@ void c_data_frame::add_images(const std::string & display_name,
     display.masks = masks;
   }
 
-  display_types_.emplace(DisplayType_Image);
+  _display_types.emplace(DisplayType_Image);
 }
 
 void c_data_frame::add_images(const std::string &display_name,
@@ -149,7 +151,7 @@ void c_data_frame::add_images(const std::string &display_name,
     const cv::Mat data[/*count*/])
 {
   auto &display =
-      add_display_channel(display_name)->second;
+      add_image_display(display_name)->second;
 
   for ( size_t i = 0; i < count; ++i ) {
 
@@ -166,7 +168,7 @@ void c_data_frame::add_images(const std::string &display_name,
     }
   }
 
-  display_types_.emplace(DisplayType_Image);
+  _display_types.emplace(DisplayType_Image);
 }
 
 void c_data_frame::add_point_cloud(const std::string & display_name,
@@ -174,7 +176,21 @@ void c_data_frame::add_point_cloud(const std::string & display_name,
     cv::InputArray colors,
     cv::InputArray mask)
 {
-  CF_ERROR("FIXME: c_data_frame::add_point_cloud() not implemented");
+  auto &display =
+      add_cloud_display(display_name)->second;
+
+  if ( !points.empty() ) {
+    display.points.emplace_back(points.getMat().clone());
+  }
+
+  if ( !colors.empty() ) {
+    display.colors.emplace_back(colors.getMat().clone());
+  }
+  if (!mask.empty()) {
+    display.masks.emplace_back(mask.getMat().clone());
+  }
+
+  _display_types.emplace(DisplayType_PointCloud);
 }
 
 bool c_data_frame::get_image(const std::string &display_name,
@@ -183,17 +199,25 @@ bool c_data_frame::get_image(const std::string &display_name,
     cv::OutputArray output_data)
 {
   const auto pos =
-      data_displays_.find(display_name);
+      _image_displays.find(display_name);
 
   bool fOk = false;
 
-  if (pos != data_displays_.end()) {
+  if (pos != _image_displays.end()) {
 
     const auto &display =
         pos->second;
 
     if (output_image.needed() && !display.images.empty()) {
-      display.images[0].copyTo(output_image);
+
+      if (_selection_mask.size() == output_image.size() && _selection_mask.channels() == 3) {
+        CF_DEBUG("WARNING: Special case for selection_mask_ not handled");
+        display.images[0].copyTo(output_image);
+      }
+      else {
+        display.images[0].copyTo(output_image);
+      }
+
       fOk = true;
     }
     if (output_mask.needed() && !display.masks.empty()) {
@@ -211,11 +235,35 @@ bool c_data_frame::get_image(const std::string &display_name,
 
 
 bool c_data_frame::get_point_cloud(const std::string & display_name,
-    cv::OutputArrayOfArrays points,
-    cv::OutputArrayOfArrays colors,
-    cv::OutputArrayOfArrays masks,
-    std::vector<std::vector<uint64_t>> * output_pids)
+    cv::OutputArray points,
+    cv::OutputArray colors,
+    cv::OutputArray mask,
+    std::vector<uint64_t> * output_pids)
 {
+  bool fOk = false;
+
+  const auto pos =
+      _cloud_displays.find(display_name);
+
+  if (pos != _cloud_displays.end()) {
+
+    const auto &display =
+        pos->second;
+
+    if ( points.needed() && !display.points.empty()) {
+      display.points[0].copyTo(points);
+    }
+
+    if ( colors.needed() && !display.colors.empty()) {
+      display.colors[0].copyTo(colors);
+    }
+
+    if ( mask.needed() && !display.masks.empty()) {
+      display.masks[0].copyTo(mask);
+    }
+
+    return true;
+  }
   return false;
 }
 
@@ -227,7 +275,9 @@ std::string c_data_frame::get_filename()
 
 void c_data_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mode)
 {
-  static const auto dup_channels =
+  if ( mode != SELECTION_MASK_DISABLE ) {
+
+    static const auto dup_channels =
       [](const cv::Mat & src, cv::Mat & dst, int cn) -> bool {
 
         std::vector<cv::Mat> channels(cn);
@@ -241,48 +291,49 @@ void c_data_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mod
       };
 
 
-  if( selection_mask_.empty() || mode == SELECTION_MASK_REPLACE ) {
-    mask.getMat().copyTo(selection_mask_);
-  }
-  else if ( !mask.empty() ) {
-
-    cv::Mat cmask;
-
-    if ( selection_mask_.channels() == mask.channels() ) {
-      cmask = mask.getMat();
+    if( _selection_mask.empty() || mode == SELECTION_MASK_REPLACE ) {
+      mask.getMat().copyTo(_selection_mask);
     }
-    else if ( selection_mask_.channels() == 1 ) {
-      dup_channels(selection_mask_, selection_mask_, mask.channels());
-      cmask = mask.getMat();
-    }
-    else if ( mask.channels() == 1 ) {
-      dup_channels(mask.getMat(), cmask, selection_mask_.channels());
-    }
-    else {
+    else if ( !mask.empty() ) {
 
-      CF_ERROR("Unsupported combination of mask channels:\n"
-          "selection_mask: %dx%d channels=%d\n"
-          "mask: %dx%d channels=%d\n"
-          "",
-          selection_mask_.cols, selection_mask_.rows, selection_mask_.channels(),
-          mask.cols(), mask.rows(), mask.channels());
+      cv::Mat cmask;
 
-      return;
-    }
+      if ( _selection_mask.channels() == mask.channels() ) {
+        cmask = mask.getMat();
+      }
+      else if ( _selection_mask.channels() == 1 ) {
+        dup_channels(_selection_mask, _selection_mask, mask.channels());
+        cmask = mask.getMat();
+      }
+      else if ( mask.channels() == 1 ) {
+        dup_channels(mask.getMat(), cmask, _selection_mask.channels());
+      }
+      else {
 
-    switch (mode) {
-      case SELECTION_MASK_AND:
-        cv::bitwise_and(cmask, selection_mask_, selection_mask_);
-        break;
-      case SELECTION_MASK_OR:
-        cv::bitwise_or(cmask, selection_mask_, selection_mask_);
-        break;
-      case SELECTION_MASK_XOR:
-        cv::bitwise_xor(cmask, selection_mask_, selection_mask_);
-        break;
-      default:
-        CF_ERROR("Not implemented mask operation detected: mode=%d", mode);
-        break;
+        CF_ERROR("Unsupported combination of mask channels:\n"
+            "selection_mask: %dx%d channels=%d\n"
+            "mask: %dx%d channels=%d\n"
+            "",
+            _selection_mask.cols, _selection_mask.rows, _selection_mask.channels(),
+            mask.cols(), mask.rows(), mask.channels());
+
+        return;
+      }
+
+      switch (mode) {
+        case SELECTION_MASK_AND:
+          cv::bitwise_and(cmask, _selection_mask, _selection_mask);
+          break;
+        case SELECTION_MASK_OR:
+          cv::bitwise_or(cmask, _selection_mask, _selection_mask);
+          break;
+        case SELECTION_MASK_XOR:
+          cv::bitwise_xor(cmask, _selection_mask, _selection_mask);
+          break;
+        default:
+          CF_ERROR("Not implemented mask operation detected: mode=%d", mode);
+          break;
+      }
     }
   }
 }

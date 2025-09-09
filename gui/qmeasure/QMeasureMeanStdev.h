@@ -20,10 +20,9 @@ public:
 
   QMeasureMeanValue();
 
-  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const override;
+  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const final;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 class QMeanValueMeasureSettingsWidget :
@@ -31,12 +30,12 @@ class QMeanValueMeasureSettingsWidget :
 {
 public:
   typedef QMeanValueMeasureSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetTemplate<QMeasureMeanValue> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureType> Base;
 
   QMeanValueMeasureSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-    averageColorChannels_ctl->setEnabled(false);
+    //averageColorChannels_ctl->setEnabled(false);
     updateControls();
   }
 };
@@ -50,10 +49,9 @@ public:
 
   QMeasureStdevValue();
 
-  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const override;
+  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const final;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 
@@ -62,13 +60,14 @@ class QStdevValueMeasureSettingsWidget :
 {
 public:
   typedef QStdevValueMeasureSettingsWidget ThisClass;
-  typedef QMeasureSettingsWidgetTemplate<QMeasureStdevValue> Base;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureType> Base;
 
   QStdevValueMeasureSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-    averageColorChannels_ctl->setEnabled(false);
+    //averageColorChannels_ctl->setEnabled(false);
     updateControls();
   }
 };
+
 #endif /* __QMeasureMeanStdev_h__ */

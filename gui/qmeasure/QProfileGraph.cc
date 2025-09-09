@@ -9,6 +9,7 @@
 #include <gui/widgets/QToolBarStretch.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -59,15 +60,6 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
     QVector<double> values[4],
     QVector<uint8_t> & ptmasks)
 {
-  const cv::Mat_<T> src =
-      image;
-
-  const int cn =
-      image.channels();
-
-  const cv::Mat1b M =
-      mask.empty() ? cv::Mat1b() :
-          mask;
 
   keys.clear();
 
@@ -75,33 +67,84 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
     values[c].clear();
   }
 
-  for( int i = 0, n = pts.size(); i < n; ++i ) {
+  const cv::Mat_<T> src =
+      image;
 
-    const cv::Point & p =
-        pts[i];
+  const int cn =
+      image.channels();
 
-    if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
+  if (mask.empty()) {
 
-      const T * srcp = src[p.y];
+    for (int i = 0, n = pts.size(); i < n; ++i) {
+      const cv::Point &p = pts[i];
+      if (p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows) {
 
-      keys.append(i);
-
-      if( !M.empty() ) {
-        ptmasks.append(M[p.y][p.x]);
-      }
-      else {
+        keys.append(i);
         ptmasks.append(true);
-      }
 
-      for( int c = 0; c < cn; ++c ) {
-
-        const T & value =
-            srcp[p.x * cn + c];
-
-        values[c].append(value);
+        const T *srcp = src[p.y];
+        for (int c = 0; c < cn; ++c) {
+          values[c].append(srcp[p.x * cn + c]);
+        }
       }
     }
   }
+  else {
+
+    const cv::Mat1b M =
+        mask.channels() == 1 ? mask :
+            reduce_channels(mask, cv::REDUCE_MAX, CV_8U);
+
+    for( int i = 0, n = pts.size(); i < n; ++i ) {
+
+      const cv::Point & p = pts[i];
+
+      if (p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows) {
+
+        keys.append(i);
+        ptmasks.append(M[p.y][p.x]);
+
+        const T * srcp = src[p.y];
+        for( int c = 0; c < cn; ++c ) {
+          values[c].append(srcp[p.x * cn + c]);
+        }
+      }
+    }
+  }
+
+
+//  const cv::Mat1b M =
+//      mask.empty() ? cv::Mat1b() :
+//          mask;
+//
+//
+//  for( int i = 0, n = pts.size(); i < n; ++i ) {
+//
+//    const cv::Point & p =
+//        pts[i];
+//
+//    if( p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows ) {
+//
+//      const T * srcp = src[p.y];
+//
+//      keys.append(i);
+//
+//      if( !M.empty() ) {
+//        ptmasks.append(M[p.y][p.x]);
+//      }
+//      else {
+//        ptmasks.append(true);
+//      }
+//
+//      for( int c = 0; c < cn; ++c ) {
+//
+//        const T & value =
+//            srcp[p.x * cn + c];
+//
+//        values[c].append(value);
+//      }
+//    }
+//  }
 }
 
 void get_pixels(const cv::Mat & image, const cv::Mat & mask,
@@ -606,12 +649,15 @@ void QProfileGraph::replot()
 
     plot_->yAxis->rescale();
 
+    const double adjust =
+        0.05 * std::abs(plot_->yAxis->range().upper - plot_->yAxis->range().lower);
+
     if ( !fixYMin_ ) {
-      ymin = plot_->yAxis->range().lower;
+      ymin = plot_->yAxis->range().lower - adjust;
     }
 
     if ( !fixYMax_ ) {
-      ymax = plot_->yAxis->range().upper;
+      ymax = plot_->yAxis->range().upper + adjust;
     }
 
     plot_->yAxis->setRange(ymin, ymax);
@@ -1009,22 +1055,6 @@ QProfileGraph * QProfileGraphSettings::profileGraph() const
 {
   return options_;
 }
-//
-//void QProfileGraphSettings::onupdatecontrols()
-//{
-//  if ( !options_ ) {
-//    setEnabled(false);
-//  }
-//  else {
-//    Base::onupdatecontrols();
-//    setEnabled(true);
-//  }
-//}
-
-//void QProfileGraphSettings::onload(QSettings & settings)
-//{
-//  // Base::onload(settings);
-//}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

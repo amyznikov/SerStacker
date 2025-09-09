@@ -327,6 +327,9 @@ void QMainAppWindow::onShowMeasureDisplayActionTriggered(bool checked)
       connect(measureDisplay, &QMeasureDisplayDialogBox::visibilityChanged,
           this, &ThisClass::onMeasuresDisplayVisibilityChanged);
 
+      connect(measureDisplay, &QMeasureDisplayDialogBox::updateAvailableMeasureDataChannelsRequired,
+          this, &ThisClass::onUpdateAvailableMeasureDataChannelsRequired);
+
       connect(measureDisplay, &QMeasureDisplayDialogBox::measureRightNowRequested,
           this, &ThisClass::onMeasureRightNowRequested);
     }
@@ -363,6 +366,10 @@ void QMainAppWindow::onMeasureRightNowRequested()
   CF_DEBUG("QMainAppWindow::MeasureRequested");
 }
 
+void QMainAppWindow::onUpdateAvailableMeasureDataChannelsRequired()
+{
+  CF_DEBUG("QMainAppWindow::onUpdateAvailableMeasureDataChannelsRequired()");
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -373,7 +380,7 @@ QToolButton* QMainAppWindow::createMtfControlButton()
           "Display Options...",
           "Show / Hide Display Options",
           is_visible(mtfControl),
-          [this](QToolButton * tb) {
+          [this](QToolButton * ) {
             if ( showMtfControlAction ) {
               showMtfControlAction->trigger();
             }
@@ -494,18 +501,18 @@ IMtfDisplay * QMainAppWindow::getCurrentMtfDisplay()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void QMainAppWindow::setupProfileGraph()
 {
-  if ( !showProfileGraphAction_ ) {
+  if ( !showProfileGraphAction ) {
 
-    showProfileGraphAction_ =
+    showProfileGraphAction =
         createCheckableAction(getIcon(ICON_plot),
             "Plot Profile ...",
             "Show / Hide plot profile widget",
-            is_visible(plotProfileDialogBox_),
+            is_visible(plotProfileDialogBox),
             this,
             &ThisClass::onShowProfileGraphActionTriggered);
 
 
-    measuresMenu.addAction(showProfileGraphAction_);
+    measuresMenu.addAction(showProfileGraphAction);
 
     if( menuView && !measuresMenuAction ) {
       measuresMenuAction = menuView->addMenu(&measuresMenu);
@@ -519,17 +526,17 @@ void QMainAppWindow::setupProfileGraph()
 void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
 {
   if( !checked ) {
-    if( plotProfileDialogBox_ ) {
-      plotProfileDialogBox_->hide();
+    if( plotProfileDialogBox ) {
+      plotProfileDialogBox->hide();
     }
   }
   else {
-    if( !plotProfileDialogBox_ ) {
+    if( !plotProfileDialogBox ) {
 
-      plotProfileDialogBox_ = new QProfileGraphDialogBox(this);
-      profileGraph_ctl = plotProfileDialogBox_->profileGraph();
+      plotProfileDialogBox = new QProfileGraphDialogBox(this);
+      profileGraph_ctl = plotProfileDialogBox->profileGraph();
 
-      connect(plotProfileDialogBox_, &QProfileGraphDialogBox::visibilityChanged,
+      connect(plotProfileDialogBox, &QProfileGraphDialogBox::visibilityChanged,
           this, &ThisClass::onPlotProfileDialogBoxVisibilityChanged);
 
 //      connect(profileGraph_ctl_, &QProfileGraph::skipZeroPixlelsChanged,
@@ -539,16 +546,16 @@ void QMainAppWindow::onShowProfileGraphActionTriggered(bool checked)
 
     }
 
-    plotProfileDialogBox_->show();
-    plotProfileDialogBox_->raise();
-    plotProfileDialogBox_->setFocus();
+    plotProfileDialogBox->show();
+    plotProfileDialogBox->raise();
+    plotProfileDialogBox->setFocus();
   }
 }
 
 void QMainAppWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
 {
-  if( showProfileGraphAction_ ) {
-    showProfileGraphAction_->setChecked(visible);
+  if( showProfileGraphAction ) {
+    showProfileGraphAction->setChecked(visible);
   }
 
   if ( visible ) {

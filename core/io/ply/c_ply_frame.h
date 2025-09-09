@@ -24,10 +24,10 @@ public:
   std::string get_filename() override;
 
   bool get_point_cloud(const std::string & display_name,
-      cv::OutputArrayOfArrays output_points,
-      cv::OutputArrayOfArrays output_colors,
-      cv::OutputArrayOfArrays output_mask,
-      std::vector<std::vector<uint64_t>> * output_pids = nullptr) override;
+      cv::OutputArray output_points,
+      cv::OutputArray output_colors,
+      cv::OutputArray output_mask,
+      std::vector<uint64_t> * output_pids = nullptr) final;
 
 protected:
   friend class c_ply_input_source;

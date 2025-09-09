@@ -19,6 +19,7 @@
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QFFmpegOptionsControl.h>
 #include <gui/widgets/QColorPickerButton.h>
+#include <gui/widgets/QDataAnnotationSelectorCtrl.h>
 #include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/ctrlbind/ctrlbind.h>
@@ -86,6 +87,8 @@ public Q_SLOTS:
 Q_SIGNALS:
   void parameterChanged();
   void populatecontrols();
+  void groupExpanded();
+  void groupCollapsed();
 
 protected:
   virtual void onload(QSettings & settings);
@@ -184,12 +187,6 @@ public:
 
     return ctl;
   }
-
-//  template<class T>
-//  QNumberEditBox * add_numeric_box(const QString & name, const std::function<void(T)> & setfn = std::function<void(T)>() )
-//  {
-//    return add_numeric_box<T>(this->form, name, setfn);
-//  }
 
   template<class T>
   QNumericBox * add_numeric_box(const QString & name, const QString & tooltip, const std::function<void(T)> & setfn = std::function<void(T)>() )
@@ -858,7 +855,79 @@ public:
     return add_spinbox(this->form, name, tooltip, setfn, getfn);
   }
 
+  /////////////////////////////////////////////////////////////////////
+  // XX
+  QDoubleSpinBox * add_double_spinbox(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(double)> & setfn = std::function<void(double)>())
+  {
+    QDoubleSpinBox *ctl = new QDoubleSpinBox();
 
+    ctl->setKeyboardTracking(false);
+    ctl->setFocusPolicy(Qt::StrongFocus);
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(ctl,
+              static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+              [this, ctl, setfn](double v) {
+                if ( !updatingControls() ) {
+                  c_mutex_lock lock(this);
+                  setfn(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QDoubleSpinBox* add_double_spinbox(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(double)> & setfn, const std::function<bool(double*)> & getfn)
+  {
+    QDoubleSpinBox *ctl =
+        add_double_spinbox(form, name, tooltip, setfn);
+
+    if( getfn ) {
+
+      QMetaObject::Connection conn =
+          QObject::connect(this, &ThisClass::populatecontrols,
+              [ctl, getfn]() {
+                double v;
+                if ( getfn(&v) ) {
+                  ctl->setValue(v);
+                }
+              });
+
+      QObject::connect(ctl, &QObject::destroyed,
+          [conn](QObject * obj) {
+            obj->disconnect(conn);
+          });
+    }
+
+    return ctl;
+  }
+
+  QDoubleSpinBox* add_double_spinbox(const QString & name, const QString & tooltip,
+      const std::function<void(double)> & setfn = std::function<void(double)>())
+  {
+    return add_double_spinbox(this->form, name, tooltip, setfn);
+  }
+
+  QDoubleSpinBox* add_double_spinbox(const QString & name, const QString & tooltip,
+      const std::function<void(double)> & setfn, const std::function<bool(double*)> & getfn)
+  {
+    return add_double_spinbox(this->form, name, tooltip, setfn, getfn);
+  }
+
+  // XX
   /////////////////////////////////////////////////////////////////////
   template<class T>
   typename QSliderSpinBox<T>::Type * add_sliderspinbox(QFormLayout * form, const QString & name, const QString & tooltip,
@@ -1094,6 +1163,77 @@ public:
 
 
   /////////////////////////////////////////////////////////////////////
+  QDataAnnotationSelectorCtrl * add_data_annotation_ctl(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(int cmap, int lb)> & setfn)
+  {
+    QDataAnnotationSelectorCtrl * ctl =
+        new QDataAnnotationSelectorCtrl(this);
+
+    ctl->setToolTip(tooltip);
+
+    form->addRow(name, ctl);
+
+    if( setfn ) {
+
+//      QMetaObject::Connection conn =
+//          QObject::connect(ctl, &QFFmpegOptionsControl::textChanged,
+//              [this, ctl, setfn]() {
+//                if ( !updatingControls() ) {
+//                  c_mutex_lock lock(this);
+//                  setfn(ctl->text());
+//                }
+//              });
+//
+//      QObject::connect(ctl, &QObject::destroyed,
+//          [conn](QObject * obj) {
+//            obj->disconnect(conn);
+//          });
+    }
+
+    return ctl;
+  }
+
+  QDataAnnotationSelectorCtrl * add_data_annotation_ctl(QFormLayout * form, const QString & name, const QString & tooltip,
+      const std::function<void(int cmap, int lb)> & setfn,
+      const std::function<bool(int cmap, int * lb)> & getfn)
+  {
+    QDataAnnotationSelectorCtrl *ctl =
+        add_data_annotation_ctl(form, name, tooltip, setfn);
+
+    if( getfn ) {
+
+//      QMetaObject::Connection conn =
+//          QObject::connect(this, &ThisClass::populatecontrols,
+//              [ctl, getfn]() {
+//                QString v;
+//                if ( getfn(&v) ) {
+//                  ctl->setText(v);
+//                }
+//              });
+//
+//      QObject::connect(ctl, &QObject::destroyed,
+//          [conn](QObject * obj) {
+//            obj->disconnect(conn);
+//          });
+    }
+
+    return ctl;
+  }
+
+  QDataAnnotationSelectorCtrl * add_data_annotation_ctl(const QString & name, const QString & tooltip,
+      const std::function<void(int cmap, int  lb)> & setfn)
+  {
+    return add_data_annotation_ctl(form, name, tooltip, setfn);
+  }
+
+  QDataAnnotationSelectorCtrl * add_data_annotation_ctl(const QString & name, const QString & tooltip,
+      const std::function<void(int cmap, int  lb)> & setfn,
+      const std::function<bool(int cmap, int  *lb)> & getfn)
+  {
+    return add_data_annotation_ctl(form, name, tooltip, setfn, getfn);
+  }
+
+  /////////////////////////////////////////////////////////////////////
 
   QFFmpegOptionsControl* add_ffmpeg_options_control(QFormLayout * form, const QString & name, const QString & tooltip,
       const std::function<void(const QString&)> & setfn)
@@ -1237,7 +1377,6 @@ public:
   {
     return add_color_picker_button(form, name, tooltip, setfn, getfn);
   }
-
 
   /////////////////////////////////////////////////////////////////////
 

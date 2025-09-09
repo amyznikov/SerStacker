@@ -662,6 +662,31 @@ void MainWindow::onCurrentImageChanged()
 }
 
 
+
+//void MainWindow::updateMeasureChannels()
+//{
+//  if ( is_visible(measureDisplay) && is_visible(measureDisplay->measureSelector())) {
+//
+//    const c_data_frame::sptr & currentDataFrame =
+//        inputSourceView->currentFrame();
+//
+//    if ( currentDataFrame ) {
+//
+//      QStringList displayNames;
+//
+//      const c_data_frame::ImageDisplays & displays =
+//          currentDataFrame->get_available_image_displays();
+//
+//      for ( auto ii = displays.begin(); ii != displays.end(); ++ii) {
+//        displayNames.append(ii->first.c_str());
+//      }
+//
+//
+//      measureDisplay->measureSelector()->updateAvailableDataChannels(displayNames);
+//    }
+//  }
+//}
+
 void MainWindow::updateMeasurements()
 {
   if( is_visible(profileGraph_ctl) ) {
@@ -677,9 +702,27 @@ void MainWindow::updateMeasurements()
 
     QImageViewer::current_image_lock lock(centralDisplay_);
 
-    QMeasureProvider::compute(centralDisplay_->currentImage(),
-        centralDisplay_->currentMask(),
-        centralDisplay_->rectShape()->iSceneRect());
+    QList<QMeasureProvider::MeasuredFrame> measuredFrames;
+    QMeasureProvider::MeasuredFrame frame;
+
+     const bool fOK =
+         QMeasureProvider::compute(&frame,
+             centralDisplay_->currentImage(),
+             centralDisplay_->currentMask(),
+             centralDisplay_->rectShape()->iSceneRect());
+
+     if ( fOK ) {
+       measuredFrames.append(std::move(frame));
+     }
+
+     if (!measuredFrames.empty()) {
+       CF_DEBUG("FIXME: check if this measurement is handled correctly");
+       Q_EMIT QMeasureProvider::instance()->framesMeasured(measuredFrames);
+     }
+
+//    QMeasureProvider::compute(centralDisplay_->currentImage(),
+//        centralDisplay_->currentMask(),
+//        centralDisplay_->rectShape()->iSceneRect());
   }
 }
 

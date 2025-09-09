@@ -38,7 +38,7 @@ const cv::Size & QMeasureLAP::se_size() const
   return se_size_;
 }
 
-int QMeasureLAP::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureLAP::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   c_laplacian_sharpness_measure::compute(image, mask, dscale_, se_size_, output_value);
   return 1;

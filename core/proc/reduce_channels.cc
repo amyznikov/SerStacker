@@ -56,3 +56,19 @@ void reduce_color_channels(cv::Mat & image, enum cv::ReduceTypes rtype, int dtyp
   cv::reduce(s.reshape(1, s.total()), s, 1, rtype, dtype);
   image = s.reshape(0, src_rows);
 }
+
+cv::Mat reduce_channels(cv::InputArray src, enum cv::ReduceTypes rtype, int dtype)
+{
+  cv::Mat s;
+
+  if ( src.isContinuous() ) {
+    s = src.getMat();
+  }
+  else {
+    src.copyTo(s);
+  }
+
+  const int src_rows = src.rows();
+  cv::reduce(s.reshape(1, s.total()), s, 1, rtype, dtype);
+  return s.reshape(0, src_rows);
+}

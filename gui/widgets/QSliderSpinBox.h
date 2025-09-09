@@ -252,6 +252,16 @@ public:
     return spinBox_ctl->singleStep();
   }
 
+  void setDecimals(int prec)
+  {
+    spinBox_ctl->setDecimals(prec);
+  }
+
+  int decimals() const
+  {
+    return spinBox_ctl->decimals();
+  }
+
   double value() const
   {
     return spinBox_ctl->value();

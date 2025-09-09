@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include "histogram.h"
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 
@@ -209,10 +210,40 @@ static bool update_histogram__(cv::InputArray _src, c_histogram_builder & builde
       }
     }
   }
-  else {
+  else if( _mask.channels() == 1 ) {
 
     const cv::Mat1b mask = _mask.getMat();
 
+    for( int y = 0; y < src.rows; ++y ) {
+      for( int x = 0; x < src.cols; ++x ) {
+        if( mask[y][x] ) {
+          for( int c = 0; c < cn; ++c ) {
+            s[c] = src[y][x][c];
+          }
+          builder.add_pixel(s);
+        }
+      }
+    }
+  }
+  else if( _mask.channels() == cn ) {
+
+    const cv::Mat_<cv::Vec<uint8_t, cn>> mask = _mask.getMat();
+
+    for (int y = 0; y < src.rows; ++y) {
+      for (int x = 0; x < src.cols; ++x) {
+        for (int c = 0; c < cn; ++c) {
+          if (mask[y][x][c]) {
+            s[c] = src[y][x][c];
+          }
+          builder.add_pixel(s);
+        }
+      }
+    }
+  }
+  else {
+
+    cv::Mat1b mask;
+    reduce_color_channels(_mask.getMat(), mask, cv::REDUCE_MAX);
     for( int y = 0; y < src.rows; ++y ) {
       for( int x = 0; x < src.cols; ++x ) {
         if( mask[y][x] ) {

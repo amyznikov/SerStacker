@@ -11,11 +11,11 @@
 
 c_video_frame::c_video_frame()
 {
-  add_display_channel("PIXEL_VALUE",
+  add_image_display("PIXEL_VALUE",
       "PIXEL_VALUE",
       -1, -1);
 
-  display_types_.emplace(DisplayType_Image);
+  _display_types.emplace(DisplayType_Image);
 }
 
 void c_video_frame::cleanup()
@@ -43,11 +43,11 @@ bool c_video_frame::get_image(const std::string & display_name,
   if ( display_name == "PIXEL_VALUE" ) {
 
     if ( output_image.needed() ) {
-      current_image_.copyTo(output_image);
+      this->current_image_.copyTo(output_image);
     }
 
     if( output_mask.needed() ) {
-      copy_output_mask(current_mask_, output_mask);
+      this->current_mask_.copyTo(output_mask);
     }
 
     if ( output_data.needed() ) {

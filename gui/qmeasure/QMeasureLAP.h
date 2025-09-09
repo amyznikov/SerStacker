@@ -28,8 +28,7 @@ public:
   void set_se_size(const cv::Size & v);
   const cv::Size & se_size() const;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 
 protected:
   int dscale_ = 3;

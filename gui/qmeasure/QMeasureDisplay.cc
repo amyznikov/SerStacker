@@ -24,35 +24,37 @@ QMeasureDisplay::QMeasureDisplay(QWidget * parent) :
 {
   Q_INIT_RESOURCE(qmeasure_resources);
 
-  lv_ = new QVBoxLayout(this);
-  lv_->setContentsMargins(0,0,0,0);
+  _lv = new QVBoxLayout(this);
+  _lv->setContentsMargins(0,0,0,0);
 
-  lv_->addWidget(toolbar_ = new QToolBar(this));
-  lv_->addWidget(table_ = new QTableWidget(this));
+  _lv->addWidget(_toolbar = new QToolBar(this));
+  _lv->addWidget(_table = new QTableWidget(this));
 
-  table_->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
-  table_->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
-  table_->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-  table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  _table->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+  _table->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
+  _table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+  _table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  _table->horizontalHeader()->setVisible(true);
+  _table->verticalHeader()->setVisible(true);
+
+  _table->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+  _table->setRowCount(1);
+
+  connect(_table, &QTableWidget::currentCellChanged,
+      this, &ThisClass::onTableViewCurrentCellChanged);
+
+  connect(_table, &QTableWidget::customContextMenuRequested,
+      this, &ThisClass::onTableViewContextMenuRequested);
+
 
   setupToolbar();
-  setupTableView();
+  updateVisibleColumns();
 }
 
 void QMeasureDisplay::onEnableMeasurementsClicked(bool checked)
 {
   updateEnableMeasurements();
-
-  const bool enabled =
-      enableMeasureAction_->isChecked() &&
-          !cm_.empty() &&
-          this->isVisible();
-
-//  CF_DEBUG("MeasureRequested: cm_.empty()=%d enabled=%d", cm_.empty(), enabled);
-
-
-  if ( enabled ) {
-    CF_DEBUG("Q_EMIT measureRightNowRequested");
+  if ( _measurementsEnabled ) {
     Q_EMIT measureRightNowRequested();
   }
 }
@@ -60,25 +62,32 @@ void QMeasureDisplay::onEnableMeasurementsClicked(bool checked)
 void QMeasureDisplay::updateEnableMeasurements()
 {
   const bool enable =
-      !cm_.empty() &&
-      enableMeasureAction_->isChecked() &&
+      !_cm.empty() &&
+          _enableMeasureAction->isChecked() &&
           this->isVisible();
 
-  if( enable ) {
-    QMeasureProvider::request_measures(&cm_);
-    connect(QMeasureProvider::instance(), &QMeasureProvider::measurementsChanged,
-        this, &ThisClass::updateMeasurements);
-  }
-  else {
-    QMeasureProvider::instance()->disconnect(this);
-    QMeasureProvider::remove_measure_request(&cm_);
+  if (enable != _measurementsEnabled) {
+    if (!(_measurementsEnabled = enable)) {
+      QMeasureProvider::instance()->disconnect(this);
+    }
+    else {
+      connect(QMeasureProvider::instance(), &QMeasureProvider::framesMeasured,
+          this, &ThisClass::onFramesMeasured);
+    }
   }
 
+  if ( _measurementsEnabled ) {
+    QMeasureProvider::request_measures(&_cm);
+  }
+  else {
+    QMeasureProvider::remove_measure_request(&_cm);
+  }
 }
 
 void QMeasureDisplay::clearMeasurements()
 {
-  table_->setRowCount(0);
+  _table->setRowCount(0);
+  _table->setColumnCount(0);
 }
 
 
@@ -96,15 +105,15 @@ void QMeasureDisplay::hideEvent(QHideEvent * e)
 
 void QMeasureDisplay::closeEvent(QCloseEvent * e)
 {
-  QMeasureProvider::remove_measure_request(&cm_);
+  QMeasureProvider::remove_measure_request(&_cm);
   Base::closeEvent(e);
 }
 
 void QMeasureDisplay::setupToolbar()
 {
-  toolbar_->setContentsMargins(0, 0, 0, 0);
-  toolbar_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  toolbar_->setIconSize(QSize(16, 16));
+  _toolbar->setContentsMargins(0, 0, 0, 0);
+  _toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  _toolbar->setIconSize(QSize(16, 16));
 
   static const auto addAction =
       [](QToolBar * toolbar, const char * icon, const char * text, const char * tooltip, bool checkable) {
@@ -126,57 +135,57 @@ void QMeasureDisplay::setupToolbar()
 
 
 
-  saveToFileAction_ =
-      addAction(toolbar_, ICON_save,
+  _saveToFileAction =
+      addAction(_toolbar, ICON_save,
           "Save",
           "Save measurements to file...",
           false);
 
-  copyToClipboardAction_ =
-      addAction(toolbar_, ICON_copy,
+  _copyToClipboardAction =
+      addAction(_toolbar, ICON_copy,
           "Copy",
           "Copy measurements to clipboard",
           false);
 
-  toolbar_->addSeparator();
+  _toolbar->addSeparator();
 
-  selectMeasuresAction_  =
-      addAction(toolbar_, ICON_select,
+  _selectMeasuresAction  =
+      addAction(_toolbar, ICON_select,
           "Select measures",
           "Select measures",
           true);
 
-  incrementalModeAction_ =
-      addAction(toolbar_, ICON_add,
+  _incrementalModeAction =
+      addAction(_toolbar, ICON_add,
           "Incremental",
           "Incremental mode",
           true);
 
-  enableMeasureAction_ =
-      addAction(toolbar_, ICON_measure,
+  _enableMeasureAction =
+      addAction(_toolbar, ICON_measure,
           "Measure",
           "Enable Measurements",
           true);
 
-  addStretch(toolbar_);
+  addStretch(_toolbar);
 
-  clearTableAction_ =
-      addAction(toolbar_, ICON_clear,
+  _clearTableAction =
+      addAction(_toolbar, ICON_clear,
           "Clear",
           "Clear measurements",
           false);
 
-  connect(selectMeasuresAction_, &QAction::triggered,
+  connect(_selectMeasuresAction, &QAction::triggered,
       this, &ThisClass::onSelectMeasuresClicked);
 
-  connect(enableMeasureAction_, &QAction::triggered,
+  connect(_enableMeasureAction, &QAction::triggered,
       this, &ThisClass::onEnableMeasurementsClicked);
 
-  connect(clearTableAction_, &QAction::triggered,
+  connect(_clearTableAction, &QAction::triggered,
       this, &ThisClass::clearMeasurements);
 
 
-  enableMeasureAction_->setChecked(true);
+  _enableMeasureAction->setChecked(true);
   updateEnableMeasurements();
 }
 
@@ -184,175 +193,148 @@ void QMeasureDisplay::setupToolbar()
 void QMeasureDisplay::onSelectMeasuresClicked(bool checked)
 {
   if ( !checked ) {
-    if ( measureSelectorDialog_ ) {
-      measureSelectorDialog_->hide();
+    if ( _measureSelectorDialogBox ) {
+      _measureSelectorDialogBox->hide();
     }
   }
   else {
 
-    if( !measureSelectorDialog_ ) {
+    if( !_measureSelectorDialogBox ) {
 
-      measureSelectorDialog_ = new QMultiMeasureSelectionDialogBox(this);
+      _measureSelectorDialogBox = new QMultiMeasureSelectionDialogBox(this);
 
-      connect(measureSelectorDialog_, &QMultiMeasureSelectionDialogBox::visibilityChanged,
-          selectMeasuresAction_, &QAction::setChecked);
+      connect(_measureSelectorDialogBox, &QMultiMeasureSelectionDialogBox::visibilityChanged,
+          [this](bool visible) {
+            _selectMeasuresAction->setChecked(visible);
+            if ( visible ) {
+              Q_EMIT updateAvailableMeasureDataChannelsRequired();
+            }
+          });
 
-      connect(measureSelectorDialog_, &QMultiMeasureSelectionDialogBox::selectedMeasuresChanged,
+      connect(_measureSelectorDialogBox, &QMultiMeasureSelectionDialogBox::selectedMeasuresChanged,
           this, &ThisClass::updateVisibleColumns);
 
-      measureSelectorDialog_->selectMeasures(&cm_);
+      _measureSelectorDialogBox->selectMeasures(&_cm);
     }
 
-    measureSelectorDialog_->selectMeasures(&cm_);
-    measureSelectorDialog_->show();
-    measureSelectorDialog_->raise();
-    measureSelectorDialog_->setFocus();
+    _measureSelectorDialogBox->selectMeasures(&_cm);
+    _measureSelectorDialogBox->show();
+    _measureSelectorDialogBox->raise();
+    _measureSelectorDialogBox->setFocus();
   }
 }
 
-
-void QMeasureDisplay::setupTableView()
-{
-  const auto & measures =
-      QMeasureProvider::measures();
-
-  int i = 0;
-
-  table_->setColumnCount(measures.size());
-
-  for( QMeasure *m : measures ) {
-    QTableWidgetItem * item = new QTableWidgetItem(m->name());
-    item->setData(Qt::UserRole, QVariant::fromValue(m));
-    table_->setHorizontalHeaderItem(i, item);
-    ++i;
-  }
-
-  table_->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
-
-  connect(table_, &QTableWidget::currentCellChanged,
-      this, &ThisClass::onTableViewCurrentCellChanged);
-
-  connect(table_, &QTableWidget::customContextMenuRequested,
-      this, &ThisClass::onTableViewContextMenuRequested);
-
-  table_->setRowCount(1);
-
-  updateVisibleColumns();
-}
 
 void QMeasureDisplay::updateVisibleColumns()
 {
-  for( int i = 0, n = table_->columnCount(); i < n; ++i ) {
-
-    QMeasure *m =
-        table_->horizontalHeaderItem(i)->data(Qt::UserRole).
-            value<QMeasure*>();
-
-    table_->setColumnHidden(i,
-        cm_.find(m) == cm_.end());
-  }
-
   updateEnableMeasurements();
 }
 
-void QMeasureDisplay::updateMeasurements()
+void QMeasureDisplay::onFramesMeasured(const QList<QMeasureProvider::MeasuredFrame> &frames)
 {
-  if ( !cm_.empty() ) {
-
-    const std::deque<QMeasureProvider::MeasuredFrame> &measured_frames =
-        QMeasureProvider::measured_frames();
-
-    if ( measured_frames.empty() ) {
-      table_->setRowCount(0);
-    }
-    else {
-      using MeasuredValue = QMeasureProvider::MeasuredValue;
-      using MeasuredFrame = QMeasureProvider::MeasuredFrame;
-
-      static const auto find_measurement =
-          [](const QMeasure * measure, const MeasuredFrame & frame) -> const MeasuredValue* {
-            for ( const MeasuredValue & v : frame.measurements ) {
-              if ( v.measure == measure ) {
-                return &v;
-              }
-            }
-            return nullptr;
-          };
-
-      const QMeasureProvider::MeasuredFrame & frame =
-          measured_frames.back();
-
-      const bool incremental_mode =
-          incrementalModeAction_->isChecked();
-
-      const int rc =
-          table_->rowCount();
-
-      bool row_inserted =
-          false;
-
-      for ( int i = 0, n = table_->columnCount(); i < n; ++i )  {
-        if ( !table_->isColumnHidden(i) ) {
-
-          const QMeasure *m =
-              table_->horizontalHeaderItem(i)->data(Qt::UserRole).
-                  value<QMeasure*>();
-
-          if ( m ) {
-
-            const MeasuredValue * v =
-                find_measurement(m, frame);
-
-            if( v && v->cn > 0 ) {
-
-              QString text =
-                  qsprintf("%+g", v->value(0));
-
-              for( int c = 1; c < v->cn; ++c ) {
-                text += qsprintf("; %+g", v->value(c));
-              }
-
-              if( incremental_mode ) {
-
-                if( !row_inserted ) {
-                  table_->insertRow(rc);
-                  row_inserted = true;
-                }
-
-                table_->setItem(rc, i,
-                    new QTableWidgetItem(text));
-              }
-              else {
-
-                if( rc != 1 ) {
-                  table_->setRowCount(1);
-                }
-
-                QTableWidgetItem *item =
-                    table_->item(0, i);
-
-                if( item ) {
-                  item->setText(text);
-                }
-                else {
-                  table_->setItem(0, i,
-                      new QTableWidgetItem(text));
-                }
-              }
-            }
+  static const auto findColumn =
+      [](QTableWidget *table, const QString &name) {
+        for ( int i = 0, n = table->columnCount(); i < n; ++i ) {
+          const QTableWidgetItem * hitem = table->horizontalHeaderItem(i);
+          if ( hitem && hitem->text() == name ) {
+            return i;
           }
         }
+        return -1;
+      };
+
+
+  static const auto getColumn =
+      [](QTableWidget *table, const QString &name) -> int {
+        int currentColumn = findColumn(table, name);
+        if (currentColumn < 0) {
+          table->setColumnCount((currentColumn = table->columnCount()) + 1);
+          table->setHorizontalHeaderItem(currentColumn, new QTableWidgetItem(name));
+        }
+        return currentColumn;
+      };
+
+
+  static const auto putItem =
+      [](QTableWidget *table, const QString &columnName, double value, int currentRow, bool incremental_mode) -> int {
+
+        const int currentColumn = getColumn(table, columnName);
+        const QString itemText = qsprintf("%+g", value);
+
+        if (incremental_mode) {
+          if (currentRow < 0) {
+            table->setRowCount((currentRow = table->rowCount()) + 1);
+          }
+          table->setItem(currentRow, currentColumn, new QTableWidgetItem(itemText));
+        }
+        else {
+
+          if (table->rowCount() != 1) {
+            table->setRowCount(1);
+          }
+
+          QTableWidgetItem *item = table->item(0, currentColumn);
+          if (item) {
+            item->setText(itemText);
+          }
+          else {
+            table->setItem(0, currentColumn, new QTableWidgetItem(itemText));
+          }
+        }
+
+        return currentRow;
+      };
+
+  const bool incremental_mode =
+      _incrementalModeAction->isChecked();
+
+  int currentRow = -1;
+
+  for (int i = 0, n = frames.size(); i < n; ++i) {
+
+    const QMeasureProvider::MeasuredFrame &frame = frames[i];
+    const QString &dataChannel = frame.dataChannel;
+    const int mcn = frame.mcn;
+
+    if (!frame.measurements.empty() && mcn > 0) {
+
+      for (int c = 0; c < mcn; ++c) {
+        const QString columnName =
+            QString("%1%2%3").arg(dataChannel).arg("C")
+                .arg(mcn < 2 ? QString("") : QString("%1").arg(c));
+
+        currentRow =
+            putItem(_table, columnName, frame.mcc[c], currentRow,
+                incremental_mode);
+      }
+    }
+
+    for (int j = 0, m = frame.measurements.size(); j < m; ++j) {
+
+      const QMeasureProvider::MeasuredValue &mv = frame.measurements[j];
+      if (!mv.measure) {
+        CF_ERROR("APP BUG: mv.measure is NULL");
+        continue;
       }
 
-      if ( row_inserted && table_->rowCount() > QMeasureProvider::max_measured_frames() ) {
-        table_->removeRow(0);
-      }
+      for (int c = 0; c < mv.cn; ++c) {
 
-      table_->scrollToBottom();
+        const QString columnName =
+            QString("%1%2%3") .arg(dataChannel) .arg(mv.measure->name())
+                .arg(mv.cn < 2 ? QString("") : QString("%1").arg(c));
+
+        currentRow =
+            putItem(_table, columnName, mv.value[c], currentRow,
+                incremental_mode);
+      }
     }
   }
 
+  if ( currentRow > 0 ) {
+    _table->scrollToBottom();
+  }
 }
+
 
 void QMeasureDisplay::onTableViewCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
@@ -364,73 +346,147 @@ void QMeasureDisplay::onTableViewContextMenuRequested(const QPoint &pos)
 
   menu.addAction("Select all",
       [this]() {
-        table_->selectAll();
+        _table->selectAll();
       });
 
-  if( table_->selectionModel()->hasSelection() ) {
+  if( _table->selectionModel()->hasSelection() ) {
 
     menu.addAction("Delete selected rows",
         [this]() {
           QWaitCursor wait(this);
 
-          QItemSelectionModel * model = table_->selectionModel();
+          QItemSelectionModel * model = _table->selectionModel();
           const QModelIndex parent = QModelIndex();
-          for ( int i = table_->rowCount()-1; i >= 0; --i ) {
+          for ( int i = _table->rowCount()-1; i >= 0; --i ) {
             if ( model->isRowSelected(i, parent) ) {
-              table_->removeRow(i);
+              _table->removeRow(i);
             }
           }
         });
 
-    menu.addAction("Copy to clipboard",
-        [this]() {
 
-          QWaitCursor wait(this);
+    static const auto copyToClipboard =
+        [](QTableWidget *table, bool includeHeaders) {
 
-          std::vector<int> visible_columns;
+          const int rowCount = table->rowCount();
+          const int columnCount = table->columnCount();
 
-          for ( int j = 0, nj = table_->columnCount(); j < nj; ++j ) {
-            if ( !table_->isColumnHidden(j) ) {
-              visible_columns.emplace_back(j);
-            }
-          }
+          QString text;
 
-          if ( !visible_columns.empty() ) {
+          if ( includeHeaders ) {
 
-            QString text;
-
-            QItemSelectionModel * model = table_->selectionModel();
-            const QModelIndex parent = QModelIndex();
-            for ( int i = 0, ni = table_->rowCount(); i < ni; ++i ) {
-              if ( model->isRowSelected(i, parent) ) {
-
-                for ( int j = 0, nj = visible_columns.size(); j < nj; ++j ) {
-
-                  const QTableWidgetItem * item =
-                  table_->item(i, visible_columns[j]);
-
-                  if ( item ) {
-                    text.append(item->text());
-                  }
-
-                  if ( j < nj - 1 ) {
-                    text.append("\t");
-                  }
+            for ( int c = 0; c < columnCount; ++ c) {
+              const QTableWidgetItem * hitem = table->horizontalHeaderItem(c);
+              if ( hitem ) {
+                text.append(hitem->text());
+                if ( c < columnCount+1) {
+                  text.append("\t");
                 }
-
-                text.append("\n");
               }
             }
 
-            QApplication::clipboard()->setText(text);
+            text.append("\n");
           }
+
+          const QItemSelectionModel * model = table->selectionModel();
+          const QModelIndex parent = QModelIndex();
+
+          for ( int r = 0; r < rowCount; ++ r) {
+            if ( model->isRowSelected(r, parent) ) {
+              for ( int c = 0; c < columnCount; ++ c) {
+                const QTableWidgetItem * hitem = table->item(r,c);
+                if ( hitem ) {
+                  text.append(hitem->text());
+                  if ( c < columnCount+1) {
+                    text.append("\t");
+                  }
+                }
+              }
+              text.append("\n");
+            }
+          }
+
+          QApplication::clipboard()->setText(text);
+        };
+
+    menu.addAction("Copy to clipboard (with headers)",
+        [this]() {
+          QWaitCursor wait(this);
+          copyToClipboard(_table, true);
         });
 
+    menu.addAction("Copy to clipboard (NO headers)",
+        [this]() {
+          QWaitCursor wait(this);
+          copyToClipboard(_table, false);
+        });
   }
 
 
   if ( !menu.isEmpty() ) {
-    menu.exec(table_->viewport()->mapToGlobal(pos));
+    menu.exec(_table->viewport()->mapToGlobal(pos));
+  }
+}
+
+
+void QMeasureDisplay::loadParameters()
+{
+  QSettings settings;
+  loadParameters(settings);
+}
+
+void QMeasureDisplay::saveParameters()
+{
+  QSettings settings;
+  saveParameters(settings);
+}
+
+void QMeasureDisplay::loadParameters(const QSettings & settings)
+{
+  const QString prefix = "QMeasureDisplay";
+
+  const int num_measures =
+      settings.value(QString("%1/selected_measures").arg(prefix), (int) (0)).toInt();
+
+  const std::vector<QMeasure*> & available_measures =
+      QMeasureProvider::available_measures();
+
+  _cm.clear();
+
+  for ( int i = 0; i < num_measures; ++i ) {
+
+    const QString name =
+        settings.value(QString("%1/measure_%2").arg(prefix).arg(i)).toString();
+
+    if ( name.isEmpty() ) {
+      continue;
+    }
+
+    const auto mpos =
+      std::find_if(available_measures.begin(), available_measures.end(),
+          [&name](const QMeasure * obj) {
+          return obj->name() == name;
+      });
+
+    if ( mpos == available_measures.end() ) {
+      continue;
+    }
+
+    QMeasure * m = *mpos;
+    _cm.emplace(m);
+  }
+}
+
+void QMeasureDisplay::saveParameters(QSettings & settings)
+{
+  const QString prefix = "QMeasureDisplay";
+
+  settings.setValue(QString("%1/selected_measures").arg(prefix), (int) (_cm.size()));
+
+  int i = 0;
+  for( const auto * m : _cm ) {
+    settings.setValue(QString("%1/measure_%2").arg(prefix).arg(i), m->name());
+    ++i;
   }
 }
 
@@ -450,11 +506,16 @@ QMeasureDisplayDialogBox::QMeasureDisplayDialogBox(const QString & title, QWidge
 
   lv->setContentsMargins(0,0,0,0);
 
-  lv->addWidget(measureDisplay_ =
+  lv->addWidget(_measureDisplay =
       new QMeasureDisplay(this));
 
-  connect(measureDisplay_, &QMeasureDisplay::measureRightNowRequested,
+  connect(_measureDisplay, &QMeasureDisplay::updateAvailableMeasureDataChannelsRequired,
+      this, &ThisClass::updateAvailableMeasureDataChannelsRequired);
+
+  connect(_measureDisplay, &QMeasureDisplay::measureRightNowRequested,
       this, &ThisClass::measureRightNowRequested);
+
+
 }
 
 void QMeasureDisplayDialogBox::showEvent(QShowEvent * e)
@@ -469,3 +530,23 @@ void QMeasureDisplayDialogBox::hideEvent(QHideEvent * e)
   Q_EMIT visibilityChanged(isVisible());
 }
 
+void QMeasureDisplayDialogBox::loadParameters()
+{
+  _measureDisplay->loadParameters();
+}
+
+void QMeasureDisplayDialogBox::saveParameters()
+{
+  _measureDisplay->saveParameters();
+}
+
+void QMeasureDisplayDialogBox::loadParameters(const QSettings & settings)
+{
+  _measureDisplay->loadParameters(settings);
+
+}
+
+void QMeasureDisplayDialogBox::saveParameters(QSettings & settings)
+{
+  _measureDisplay->saveParameters(settings);
+}

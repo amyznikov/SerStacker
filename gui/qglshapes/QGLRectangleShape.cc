@@ -1,8 +1,8 @@
 /*
  * QGLRectangleShape.cc
  *
- *  Created on: Oct 19, 2024
- *      Author: amyznikov
+ *  Created on: Oct 23, 2024
+ *      Author: gandriim
  */
 
 #include "QGLRectangleShape.h"

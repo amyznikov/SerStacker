@@ -36,14 +36,13 @@ public:
   int curpos() override;
 
   bool read(cv::Mat & output_frame,
-      enum COLORID * output_colorid = nullptr,
-      int * output_bpc = nullptr) override;
+      enum COLORID * output_colorid,
+      int * output_bpc) override;
 
   bool is_open() const override;
 
 protected:
   int curpos_ = -1;
-
 };
 
 #endif /* __c_regular_image_input_source_h__ */

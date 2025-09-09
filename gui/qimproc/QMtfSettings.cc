@@ -75,7 +75,7 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
       });
 
 
-  QMtfDisplay::displayChannel_ = "PIXEL_VALUE";
+  QMtfDisplay::_displayChannel = "PIXEL_VALUE";
   addDisplay("PIXEL_VALUE", -1, -1);
 }
 
@@ -83,7 +83,7 @@ QStringList QMtfRoutineDisplaySettings::displayChannels() const
 {
   QStringList sl;
 
-  for ( const auto & p : displays_ ) {
+  for ( const auto & p : _displays ) {
     sl.append(p.first);
   }
 
@@ -98,7 +98,7 @@ void QMtfRoutineDisplaySettings::setDisplayChannel(const QString & /*v*/)
 
 const QString & QMtfRoutineDisplaySettings::displayChannel() const
 {
-  return displayChannel_;
+  return _displayChannel;
 }
 
 void QMtfRoutineDisplaySettings::setColormap(COLORMAP /*v*/)

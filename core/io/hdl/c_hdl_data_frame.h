@@ -27,15 +27,17 @@ public:
   bool get_image(const std::string & display_name,
       cv::OutputArray output_image,
       cv::OutputArray output_mask,
-      cv::OutputArray output_data ) override;
+      cv::OutputArray output_data ) final;
 
   bool get_point_cloud(const std::string & display_name,
       cv::OutputArray output_points,
       cv::OutputArray output_colors,
       cv::OutputArray output_mask,
-      std::vector<std::vector<uint64_t>> * output_pids = nullptr) override;
+      std::vector<uint64_t> * output_pids = nullptr) final;
 
-  void cleanup() override;
+  void clean_artifacts() final;
+
+  void cleanup() final;
 
   c_hdl_range_image & range_image()
   {

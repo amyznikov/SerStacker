@@ -132,6 +132,16 @@ public:
     return !p_;
   }
 
+  elem_type& operator ()(int r, int c)
+  {
+    return pp_[r][c];
+  }
+
+  const elem_type& operator ()(int r, int c) const
+  {
+    return pp_[r][c];
+  }
+
   elem_type & at(int r, int c)
   {
     return pp_[r][c];

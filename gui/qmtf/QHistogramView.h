@@ -30,7 +30,7 @@ public:
     DisplayChannel_RGB,
   };
 
-  QHistogramView(QWidget * parent = nullptr);
+  QHistogramView(QWidget * parent = Q_NULLPTR);
 
   void setImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void setHistogram(cv::InputArray H, double hmin, double hmax);

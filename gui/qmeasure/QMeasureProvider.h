@@ -18,6 +18,8 @@ class QMeasureProvider :
 public:
   typedef QMeasureProvider ThisClass;
   typedef QObject Base;
+  typedef std::set<QMeasure*,std::less<QMeasure*>> MeasuresCollection;
+  typedef std::set<const MeasuresCollection*,std::less<const MeasuresCollection*>> MeasureRequest;
 
   struct MeasuredValue
   {
@@ -35,7 +37,10 @@ public:
 
   struct MeasuredFrame
   {
+    QString dataChannel;
     std::vector<MeasuredValue> measurements;
+    cv::Scalar mcc;
+    int mcn = 0;
 
     template<typename ... _Args>
     MeasuredValue& emplace_back(_Args && ... __args)
@@ -52,32 +57,32 @@ public:
 
   static QMeasureProvider * instance();
 
-  static const std::vector<QMeasure*> & measures();
+  static const std::vector<QMeasure*> & available_measures();
+  static const QMeasure* valueMeasure();
 
-  static bool compute(cv::InputArray image, cv::InputArray mask, const QRect & roi);
-  static bool compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi);
+  static bool compute(MeasuredFrame * frame, cv::InputArray image, cv::InputArray mask, const QRect & roi);
+  static bool compute(MeasuredFrame * frame, cv::InputArray image, cv::InputArray mask, const cv::Rect & roi);
 
-  static const std::set<const std::set<QMeasure*>*>& requested_measures();
-  static void request_measures(const std::set<QMeasure*> * r);
-  static void remove_measure_request(const std::set<QMeasure*> * r);
+  static const QStringList & requested_channels();
+  static void set_requested_channels(QStringList & v);
+  static const MeasureRequest& requested_measures();
+  static void request_measures(const MeasuresCollection * r);
+  static void remove_measure_request(const MeasuresCollection * r);
 
-  static const std::deque<MeasuredFrame> & measured_frames();
-  static void clear_measured_frames();
-
-  static void set_max_measured_frames(int v);
-  static int max_measured_frames();
+  static bool adjust_roi(const cv::Rect & src_roi, const cv::Size & image_size, cv::Rect * dst_roi);
 
 Q_SIGNALS:
   void measurementsChanged();
+  void framesMeasured(const QList<MeasuredFrame> & frames);
 
 protected:
   QMeasureProvider(QObject * parent = nullptr);
 
 protected:
-  static std::set<const std::set<QMeasure*>*> requested_measures_;
-  static std::deque<MeasuredFrame> measured_frames_;
-  static std::vector<QMeasure*> measures_;
-  static int max_measured_frames_;
+  static QStringList _requested_channels;
+  static MeasureRequest _requested_measurements;
+  static std::vector<QMeasure*> _available_measures;
+  static QMeasure* _valueMeasure;
 };
 
 #endif /* __QMeasureProvider_h__ */

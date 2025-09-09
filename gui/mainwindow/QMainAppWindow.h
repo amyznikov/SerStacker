@@ -74,6 +74,7 @@ protected:
   virtual void onMeasuresDisplayVisibilityChanged(bool visible);
   virtual void onMeasuresGraphVisibilityChanged(bool visible);
   virtual void onMeasureRightNowRequested();
+  virtual void onUpdateAvailableMeasureDataChannelsRequired();
 
   virtual void onShowProfileGraphActionTriggered(bool checked);
   virtual void onPlotProfileDialogBoxVisibilityChanged(bool visible);
@@ -136,8 +137,8 @@ protected:
   QMenu measuresMenu;
 
   QProfileGraph * profileGraph_ctl = nullptr;
-  QProfileGraphDialogBox * plotProfileDialogBox_ = nullptr;
-  QAction * showProfileGraphAction_ = nullptr;
+  QProfileGraphDialogBox * plotProfileDialogBox = nullptr;
+  QAction * showProfileGraphAction = nullptr;
 
 };
 

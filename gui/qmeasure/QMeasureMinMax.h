@@ -20,10 +20,9 @@ public:
 
   QMeasureMinValue();
 
-  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const final;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 class QMinValueMeasureSettingsWidget :
@@ -50,10 +49,9 @@ public:
 
   QMeasureMaxValue();
 
-  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const final;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 class QMaxValueMeasureSettingsWidget :

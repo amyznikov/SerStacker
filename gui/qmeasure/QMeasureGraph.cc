@@ -77,16 +77,30 @@ QMeasureGraph::QMeasureGraph(QWidget * parent) :
 
 }
 
+void QMeasureGraph::set_max_measurements(int v)
+{
+  _max_measurements = v;
+
+  while ( _measured_values.size() > _max_measurements ) {
+    _measured_values.pop_front();
+  }
+}
+
+int QMeasureGraph::max_measurements() const
+{
+  return _max_measurements;
+}
+
 void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
 {
-  cm_.clear();
+  _cm.clear();
   if ( cm ) {
-    cm_.emplace(cm);
+    _cm.emplace(cm);
   }
 
   updateEnableMeasurements();
 
-  if ( cm_.empty() ) {
+  if ( _cm.empty() ) {
     clearGraphs();
   }
   else {
@@ -94,10 +108,13 @@ void QMeasureGraph::setCurrentMeasure(QMeasure * cm)
   }
 }
 
-//void QMeasureGraph::clearMeasurements()
-//{
-//  QMeasureProvider::clear_measured_frames();
-//}
+void QMeasureGraph::clearMeasurements()
+{
+  if ( !_measured_values.empty() ) {
+    _measured_values.clear();
+    updateGraphs();
+  }
+}
 
 
 void QMeasureGraph::clearGraphs()
@@ -112,88 +129,176 @@ void QMeasureGraph::clearGraphs()
   plot_->replot();
 }
 
+void QMeasureGraph::onFramesMeasured(const QList<QMeasureProvider::MeasuredFrame> & frames)
+{
+  if ( _cm.size() != 1 ) {
+    CF_ERROR("APP BUG: _cm.size()=%zu", _cm.size());
+    return;
+  }
+
+  const QMeasure * const mp = *_cm.begin();
+  bool hasChanges = false;
+
+  for ( const auto & frame : frames ) {
+    if ( frame.dataChannel.isEmpty() ) {
+
+      for ( const auto & m : frame.measurements ) {
+        if ( m.measure == mp && m.cn > 0 ) {
+
+          _measured_values.emplace_back(m);
+          while ( _measured_values.size() > _max_measurements ) {
+            _measured_values.pop_front();
+          }
+          hasChanges = true;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  if ( hasChanges ) {
+    updateGraphs();
+  }
+
+}
+
 void QMeasureGraph::updateGraphs()
 {
-  using Frame = QMeasureProvider::MeasuredFrame;
-  using MeasuredValue = QMeasureProvider::MeasuredValue;
+  QVector<double> keys[4];
+  QVector<double> values[4];
+  const QMeasureProvider:: MeasuredValue * mlast = nullptr;
 
-  if( !cm_.empty() ) {
-
-    QVector<double> keys[4];
-    QVector<double> values[4];
-    int max_key = 0;
-    int i = 0;
-
-    const QMeasure * cm = *cm_.begin();
-    const MeasuredValue * mlast = nullptr;
-
-
-    for( auto ii = QMeasureProvider::measured_frames().begin();
-        ii != QMeasureProvider::measured_frames().end();
-        ++i, ++ii ) {
-
-        for( const auto &m : ii->measurements ) {
-          if ( m.measure == cm && m.cn > 0 ) {
-            for ( int j = 0; j < m.cn; ++j ) {
-              mlast = &m;
-              keys[j].append(i);
-              values[j].append(m.value(j));
-              if ( i > max_key ) {
-                max_key = i;
-              }
-            }
-          }
-        }
-      }
-
-      for( i = 0; i < 4; ++i ) {
-        graphs_[i]->setData(keys[i], values[i], true);
-      }
-
-      if ( !mlast ) {
-        textLabel_->setText("");
-      }
-      else {
-        switch(mlast->cn) {
-          case 0:
-            textLabel_->setText("");
-            break;
-          case 1:
-            textLabel_->setText(ssprintf("%+g",
-                mlast->value[0]).c_str());
-            break;
-          case 2:
-            textLabel_->setText(ssprintf("%+g %+g",
-                mlast->value[0],
-                mlast->value[1]).c_str());
-            break;
-          case 3:
-            textLabel_->setText(ssprintf("%+g %+g %+g",
-                mlast->value[0],
-                mlast->value[1],
-                mlast->value[2]).c_str());
-            break;
-          case 4:
-            textLabel_->setText(ssprintf("%+g %+g %+g %+g",
-                mlast->value[0],
-                mlast->value[1],
-                mlast->value[2],
-                mlast->value[3]).c_str());
-            break;
-        }
-      }
-
-
-      plot_->yAxis->rescale();
-      plot_->xAxis->setRange(0, 1.2 * max_key);
-
-      //      enum COLORID colorid = provider_->colorid();
-      //      if( colorid != last_colorid_ ) {
-      //        updatePenColors(last_colorid_ = colorid);
-      //      }
-
-      plot_->replot();
+  for (int i = 0, n = _measured_values.size(); i < n; ++i) {
+    const auto &mv = _measured_values[i];
+    for (int c = 0; c < mv.cn; ++c) {
+      keys[c].append(i);
+      values[c].append(mv.value(c));
+      mlast = &mv;
+    }
   }
+
+  for (int i = 0; i < 4; ++i) {
+    graphs_[i]->setData(keys[i], values[i], true);
+  }
+
+  if (!mlast) {
+    textLabel_->setText("");
+  }
+  else {
+    switch (mlast->cn) {
+    case 0:
+      textLabel_->setText("");
+    break;
+    case 1:
+      textLabel_->setText(ssprintf("%+g",
+          mlast->value[0]).c_str());
+    break;
+    case 2:
+      textLabel_->setText(ssprintf("%+g %+g",
+          mlast->value[0],
+          mlast->value[1]).c_str());
+    break;
+    case 3:
+      textLabel_->setText(ssprintf("%+g %+g %+g",
+          mlast->value[0],
+          mlast->value[1],
+          mlast->value[2]).c_str());
+    break;
+    case 4:
+      textLabel_->setText(ssprintf("%+g %+g %+g %+g",
+          mlast->value[0],
+          mlast->value[1],
+          mlast->value[2],
+          mlast->value[3]).c_str());
+    break;
+    }
+  }
+
+  plot_->yAxis->rescale();
+  plot_->xAxis->setRange(0, std::max(10., 1.2 * _measured_values.size()));
+  plot_->replot();
+
+//  using Frame = QMeasureProvider::MeasuredFrame;
+//  using MeasuredValue = QMeasureProvider::MeasuredValue;
+//
+//  if( !_cm.empty() ) {
+//
+//    QVector<double> keys[4];
+//    QVector<double> values[4];
+//    int max_key = 0;
+//    int i = 0;
+//
+//    const QMeasure * cm = *_cm.begin();
+//    const MeasuredValue * mlast = nullptr;
+//
+//
+//    for( auto ii = QMeasureProvider::measured_frames().begin();
+//        ii != QMeasureProvider::measured_frames().end();
+//        ++i, ++ii ) {
+//
+//        for( const auto &m : ii->measurements ) {
+//          if ( m.measure == cm && m.cn > 0 ) {
+//            for ( int j = 0; j < m.cn; ++j ) {
+//              mlast = &m;
+//              keys[j].append(i);
+//              values[j].append(m.value(j));
+//              if ( i > max_key ) {
+//                max_key = i;
+//              }
+//            }
+//          }
+//        }
+//      }
+//
+//      for( i = 0; i < 4; ++i ) {
+//        graphs_[i]->setData(keys[i], values[i], true);
+//      }
+//
+//      if ( !mlast ) {
+//        textLabel_->setText("");
+//      }
+//      else {
+//        switch(mlast->cn) {
+//          case 0:
+//            textLabel_->setText("");
+//            break;
+//          case 1:
+//            textLabel_->setText(ssprintf("%+g",
+//                mlast->value[0]).c_str());
+//            break;
+//          case 2:
+//            textLabel_->setText(ssprintf("%+g %+g",
+//                mlast->value[0],
+//                mlast->value[1]).c_str());
+//            break;
+//          case 3:
+//            textLabel_->setText(ssprintf("%+g %+g %+g",
+//                mlast->value[0],
+//                mlast->value[1],
+//                mlast->value[2]).c_str());
+//            break;
+//          case 4:
+//            textLabel_->setText(ssprintf("%+g %+g %+g %+g",
+//                mlast->value[0],
+//                mlast->value[1],
+//                mlast->value[2],
+//                mlast->value[3]).c_str());
+//            break;
+//        }
+//      }
+//
+//
+//      plot_->yAxis->rescale();
+//      plot_->xAxis->setRange(0, 1.2 * max_key);
+//
+//      //      enum COLORID colorid = provider_->colorid();
+//      //      if( colorid != last_colorid_ ) {
+//      //        updatePenColors(last_colorid_ = colorid);
+//      //      }
+//
+//      plot_->replot();
+//  }
 }
 
 void QMeasureGraph::showEvent(QShowEvent * event)
@@ -211,18 +316,35 @@ void QMeasureGraph::hideEvent(QHideEvent * event)
 void QMeasureGraph::updateEnableMeasurements()
 {
   const bool enable =
-      !cm_.empty() &&
+      !_cm.empty() &&
           this->isVisible();
 
-  if( enable ) {
-    QMeasureProvider::request_measures(&cm_);
-    connect(QMeasureProvider::instance(), &QMeasureProvider::measurementsChanged,
-        this, &ThisClass::updateGraphs);
+  if (enable != _measurementsEnabled) {
+    if (!(_measurementsEnabled = enable)) {
+      QMeasureProvider::instance()->disconnect(this);
+    }
+    else {
+      connect(QMeasureProvider::instance(), &QMeasureProvider::framesMeasured,
+          this, &ThisClass::onFramesMeasured);
+    }
+  }
+
+  if ( _measurementsEnabled ) {
+    QMeasureProvider::request_measures(&_cm);
   }
   else {
-    QMeasureProvider::instance()->disconnect(this);
-    QMeasureProvider::remove_measure_request(&cm_);
+    QMeasureProvider::remove_measure_request(&_cm);
   }
+
+//  if( enable ) {
+//    QMeasureProvider::request_measures(&_cm);
+//    connect(QMeasureProvider::instance(), &QMeasureProvider::measurementsChanged,
+//        this, &ThisClass::updateGraphs);
+//  }
+//  else {
+//    QMeasureProvider::instance()->disconnect(this);
+//    QMeasureProvider::remove_measure_request(&_cm);
+//  }
 }
 
 
@@ -259,7 +381,18 @@ QMeasureGraphDock::QMeasureGraphDock(const QString & title, QWidget * parent, QM
     buttonClear_ctl->setText("clear");
     buttonClear_ctl->setToolTip("Clear measurements");
     connect(buttonClear_ctl, &QToolButton::clicked,
-        []{ QMeasureProvider::clear_measured_frames(); });
+        graph, &QMeasureGraph::clearMeasurements);
+
+
+    bar->addWidget(maxMeasurements_ctl = new QNumericBox(this));
+    maxMeasurements_ctl->setValue(graph->max_measurements());
+    connect(maxMeasurements_ctl, &QNumericBox::textChanged,
+        [this, graph]() {
+          int v;
+          if ( fromString(maxMeasurements_ctl->text(), &v) ) {
+            graph->set_max_measurements(v);
+          }
+      });
 
     bar->addWidget(combobox_ctl = new QMeasureGraphCombo());
     connect(combobox_ctl, &QMeasureSelectionCombo::currentMeasureChanged,

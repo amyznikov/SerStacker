@@ -22,8 +22,7 @@ public:
 
   QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 class QNoiseMeasureSettingsWidget :

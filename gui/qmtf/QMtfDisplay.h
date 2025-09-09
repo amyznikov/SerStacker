@@ -28,7 +28,8 @@ public:
     bool invert_colormap = false;
   };
 
-  typedef std::map<QString, DisplayParams> DisplayMap;
+  typedef std::map<QString, DisplayParams, std::less<QString>>
+      DisplayMap;
 
   IMtfDisplay(const QString & prefix = "");
 
@@ -109,11 +110,10 @@ protected:
 
 
 protected:
-  QString displayChannel_;
-  //int displayChannel_ = -1;
-  DisplayMap displays_;
-  bool autoClip_ = false;
-  QString prefix_;
+  QString _displayChannel;
+  DisplayMap _displays;
+  bool _autoClip = false;
+  QString _prefix;
 };
 
 Q_DECLARE_INTERFACE(IMtfDisplay, "IMtfDisplay");

@@ -56,6 +56,7 @@ protected Q_SLOTS:
   void onCentralDisplayROIShapeChanged();
   void onCentralDisplayLineShapeChanged();
   void onCentralDisplayTargetShapeChanged();
+  //void updateMeasureChannels();
   void updateMeasurements();
 
 

@@ -25,18 +25,26 @@ public:
   QMeasureGraph(QWidget * parent = nullptr);
 
   void setCurrentMeasure(QMeasure * cm);
+  void clearMeasurements();
+
+  void set_max_measurements(int v);
+  int max_measurements() const;
 
 protected Q_SLOTS:
   void clearGraphs();
   void updateGraphs();
 
 protected:
-  void showEvent(QShowEvent * event) override;
-  void hideEvent(QHideEvent * event) override;
+  void showEvent(QShowEvent * event) final;
+  void hideEvent(QHideEvent * event) final;
   void updateEnableMeasurements();
+  void onFramesMeasured(const QList<QMeasureProvider::MeasuredFrame> & frames);
 
 protected:
-  std::set<QMeasure*> cm_;
+  QMeasureProvider::MeasuresCollection _cm;
+  std::deque<QMeasureProvider:: MeasuredValue> _measured_values;
+  int _max_measurements = 200;
+  bool _measurementsEnabled = false;
 
   QVBoxLayout *vl_ = nullptr;
   QCustomPlot *plot_ = nullptr;
@@ -57,6 +65,7 @@ public:
 
 protected:
   QMeasureSelectionCombo * combobox_ctl = nullptr;
+  QNumericBox * maxMeasurements_ctl = nullptr;
   QToolButton * buttonClear_ctl = nullptr;
 };
 

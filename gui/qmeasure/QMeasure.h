@@ -18,8 +18,8 @@ class QMeasure
 {
 public:
   QMeasure(const QString & name, const QString & tooltip) :
-      name_(name),
-      tooltip_(tooltip)
+      _name(name),
+      _tooltip(tooltip)
   {
   }
 
@@ -27,53 +27,23 @@ public:
 
   const QString & name() const
   {
-    return name_;
+    return _name;
   }
 
   const QString & tooltip() const
   {
-    return tooltip_;
+    return _tooltip;
   }
 
   virtual QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const = 0;
 
-  virtual void setAverageColorChannels(bool v)
-  {
-    average_color_channels_ = v;
-  }
-
-  virtual bool averageColorChannels() const
-  {
-    return average_color_channels_;
-  }
-
-  virtual void setSkipZeroPixels(bool v)
-  {
-    skip_zero_pixels_ = v;
-  }
-
-  virtual bool skipZeroPixels() const
-  {
-    return skip_zero_pixels_;
-  }
-
-  int compute(cv::InputArray image, cv::InputArray mask, const QRect& roi, cv::Scalar * output_value) const
-  {
-    return compute(image, mask, cv::Rect(roi.x(), roi.y(), roi.width(), roi.height()), output_value);
-  }
-
-  int compute(cv::InputArray image, cv::InputArray mask, const cv::Rect & roi, cv::Scalar * output_value) const;
-
-  static bool adjust_roi(const cv::Rect & src_roi, const cv::Size & image_size, cv::Rect * dst_roi);
+  virtual int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const = 0;
 
 protected:
-  virtual int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const = 0;
 
 protected:
-  const QString name_;
-  const QString tooltip_;
-  bool average_color_channels_ = false;
-  bool skip_zero_pixels_ = false;
+  const QString _name;
+  const QString _tooltip;
 };
 
 Q_DECLARE_METATYPE(const QMeasure*);
@@ -104,43 +74,44 @@ class QMeasureSettingsWidgetTemplate:
 public:
   typedef QMeasureSettingsWidgetTemplate ThisClass;
   typedef QMeasureSettingsWidget Base;
+  typedef MeasureType QMeasureType;
 
   QMeasureSettingsWidgetTemplate(QWidget * parent = nullptr) :
       Base(parent)
   {
-    averageColorChannels_ctl =
-        add_checkbox("Average Color Channels",
-            "",
-            [this](bool checked) {
-              if ( measure_ && measure_->averageColorChannels() != checked ) {
-                measure_->setAverageColorChannels(checked);
-                Q_EMIT parameterChanged();
-              }
-            },
-            [this](bool * checked) {
-              if ( measure_ ) {
-                * checked = measure_->averageColorChannels();
-                return true;
-              }
-              return false;
-            });
-
-    skipZeroPixels_ctl =
-        add_checkbox("Skip zero pixels",
-            "",
-            [this](bool checked) {
-              if ( measure_ && measure_->skipZeroPixels() != checked ) {
-                measure_->setSkipZeroPixels(checked);
-                Q_EMIT parameterChanged();
-              }
-            },
-            [this](bool * checked) {
-              if ( measure_ ) {
-                * checked =measure_->skipZeroPixels();
-                return true;
-              }
-              return false;
-            });
+//    averageColorChannels_ctl =
+//        add_checkbox("Average Color Channels",
+//            "",
+//            [this](bool checked) {
+//              if ( measure_ && measure_->averageColorChannels() != checked ) {
+//                measure_->setAverageColorChannels(checked);
+//                Q_EMIT parameterChanged();
+//              }
+//            },
+//            [this](bool * checked) {
+//              if ( measure_ ) {
+//                * checked = measure_->averageColorChannels();
+//                return true;
+//              }
+//              return false;
+//            });
+//
+//    skipZeroPixels_ctl =
+//        add_checkbox("Skip zero pixels",
+//            "",
+//            [this](bool checked) {
+//              if ( measure_ && measure_->skipZeroPixels() != checked ) {
+//                measure_->setSkipZeroPixels(checked);
+//                Q_EMIT parameterChanged();
+//              }
+//            },
+//            [this](bool * checked) {
+//              if ( measure_ ) {
+//                * checked =measure_->skipZeroPixels();
+//                return true;
+//              }
+//              return false;
+//            });
   }
 
   void setMeasure(MeasureType * m)
@@ -185,8 +156,8 @@ protected:
 
 protected:
   MeasureType *measure_ = nullptr;
-  QCheckBox * averageColorChannels_ctl = nullptr;
-  QCheckBox * skipZeroPixels_ctl = nullptr;
+//  QCheckBox * averageColorChannels_ctl = nullptr;
+//  QCheckBox * skipZeroPixels_ctl = nullptr;
 };
 
 class QMeasureCentralPixelValue:
@@ -198,10 +169,9 @@ public:
 
   QMeasureCentralPixelValue();
 
-  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const override;
+  QMeasureSettingsWidget * createSettingsWidget(QWidget * parent) const final;
 
-protected:
-  int compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const override;
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
 };
 
 
@@ -215,8 +185,8 @@ public:
   QMeasureCentralPixelValueSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-    averageColorChannels_ctl->setEnabled(false);
-    skipZeroPixels_ctl->setEnabled(false);
+//    averageColorChannels_ctl->setEnabled(false);
+//    skipZeroPixels_ctl->setEnabled(false);
     updateControls();
   }
 };

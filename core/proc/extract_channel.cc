@@ -217,7 +217,7 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
             src.depth();
   }
 
-  if ( output_scale <= 0 || output_scale == 1 ) {
+  if (output_scale <= 0 || std::abs(output_scale - 1.) < FLT_EPSILON) {
 
     scaled_src =
         src.getMat();
@@ -225,7 +225,7 @@ bool extract_channel(cv::InputArray src, cv::OutputArray dst,
     scaled_mask =
         srcmsk.getMat();
   }
-  else if ( output_scale == 0.5 ) {
+  else if ( std::abs(output_scale - 0.5) < FLT_EPSILON ) {
 
     cv::pyrDown(src, scaled_src);
 

@@ -16,18 +16,7 @@ QMeasureSettingsWidget* QMeasureLPG::createSettingsWidget(QWidget * parent) cons
   return new QLPGMeasureSettingsWidget(parent);
 }
 
-void QMeasureLPG::setAverageColorChannels(bool v)
-{
-  options_.avgchannel = v;
-  average_color_channels_ = options_.avgchannel;
-}
-
-bool QMeasureLPG::averageColorChannels() const
-{
-  return options_.avgchannel;
-}
-
-int QMeasureLPG::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureLPG::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_lpg_sharpness_measure::compute(image, mask);
   return options_.avgchannel ? 1 : image.channels();

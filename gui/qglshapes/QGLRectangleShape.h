@@ -1,8 +1,8 @@
 /*
  * QGLRectangleShape.h
  *
- *  Created on: Oct 19, 2024
- *      Author: amyznikov
+ *  Created on: Oct 23, 2024
+ *      Author: gandriim
  */
 
 #ifndef __QGLRectangleShape_h__

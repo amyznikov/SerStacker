@@ -58,7 +58,7 @@ protected:
   QSettingsWidget * settinngs_ctl = nullptr;
   QMeasureSelectionCombo * combobox_ctl = nullptr;
   QLabel * tooltip_ctl = nullptr;
-  QNumericBox * maxMeasurements_ctl = nullptr;
+  //QNumericBox * maxMeasurements_ctl = nullptr;
 
   QScrollArea * scrollArea_ctl = nullptr;
   QList<QMeasureSettingsWidget*> widgets_;
@@ -76,22 +76,25 @@ public:
 
   QMultiMeasureSelectionWidget(QWidget * parent = nullptr);
 
-  void selectMeasures(std::set<QMeasure*> * r);
+  void selectMeasures(QMeasureProvider::MeasuresCollection * cm);
+  void updateAvailableDataChannels(const QStringList & displayNames);
 
 Q_SIGNALS:
   void selectedMeasuresChanged();
 
 protected:
   void onupdatecontrols();
-  void onListViewItemChanged(QListWidgetItem *item);
-  void onListViewCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+  void onDataChannelsListViewItemChanged(QListWidgetItem *item);
+  void onMeasuresListViewItemChanged(QListWidgetItem *item);
+  void onMeasuresListViewCurrentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
 
 protected:
-  std::set<QMeasure*> * cm_ = nullptr;
+  QMeasureProvider::MeasuresCollection * cm_ = nullptr;
   QHBoxLayout * hbox_ = nullptr;
   QVBoxLayout * vbox_ = nullptr;
 
-  QListWidget * listview_ctl = nullptr;
+  QListWidget * dataChannelsListView_ctl = nullptr;
+  QListWidget * measuresListView_ctl = nullptr;
   QLabel * tooltip_ctl = nullptr;
   QNumericBox * maxMeasurements_ctl = nullptr;
   QMeasureSettingsWidget * cw_ = nullptr;
@@ -110,7 +113,8 @@ public:
   QMultiMeasureSelectionDialogBox(QWidget * parent = nullptr);
   QMultiMeasureSelectionDialogBox(const QString & title, QWidget * parent = nullptr);
 
-  void selectMeasures(std::set<QMeasure*> * r);
+  void selectMeasures(QMeasureProvider::MeasuresCollection * r);
+  void updateAvailableDataChannels(const QStringList & displayNames);
 
 Q_SIGNALS:
   void visibilityChanged(bool visible);

@@ -19,33 +19,9 @@ QMeasureSettingsWidget * QMeasureMinValue::createSettingsWidget(QWidget * parent
   return new QMinValueMeasureSettingsWidget(parent);
 }
 
-int QMeasureMinValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureMinValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   double min, max;
-
-  if( average_color_channels_ && image.channels() > 1 ) {
-
-    if( mask.empty() || mask.channels() == 1 ) {
-      cv::minMaxLoc(image, &min, &max,
-          nullptr, nullptr,
-          mask);
-    }
-    else {
-
-      cv::Mat compute_mask;
-
-      reduce_color_channels(mask, compute_mask,
-          cv::REDUCE_MAX);
-
-      cv::minMaxLoc(image, &min, &max,
-          nullptr, nullptr,
-          compute_mask);
-    }
-
-    (*output_value)[0] = min;
-    return 1;
-  }
-
 
   if ( mask.empty() || mask.channels() == 1 ) {
 
@@ -93,34 +69,9 @@ QMeasureSettingsWidget * QMeasureMaxValue::createSettingsWidget(QWidget * parent
 }
 
 
-int QMeasureMaxValue::compute_measure(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+int QMeasureMaxValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   double min, max;
-
-  if( average_color_channels_ && image.channels() > 1 ) {
-
-    if( mask.empty() || mask.channels() == 1 ) {
-
-      cv::minMaxLoc(image, &min, &max,
-          nullptr, nullptr,
-          mask);
-    }
-    else {
-
-      cv::Mat compute_mask;
-
-      reduce_color_channels(mask, compute_mask,
-          cv::REDUCE_MAX);
-
-      cv::minMaxLoc(image, &min, &max,
-          nullptr, nullptr,
-          compute_mask);
-    }
-
-    (*output_value)[0] = max;
-    return 1;
-  }
-
 
   if ( mask.empty() || mask.channels() == 1 ) {
 

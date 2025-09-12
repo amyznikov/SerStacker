@@ -84,30 +84,30 @@ protected:
   void replot();
 
 protected:
-  QVBoxLayout * vl_ = nullptr;
-  QToolBar * toolbar_ = nullptr;
-  QStatusBar * statusBar_ = nullptr;
-  QAction * copyToClipboardAction_ = nullptr;
-  QAction * showSettingsAction_ = nullptr;
-  QAction * showStatusbarAction_ = nullptr;
+  QVBoxLayout * _vl = nullptr;
+  QToolBar * _toolbar = nullptr;
+  QStatusBar * _statusBar = nullptr;
+  QAction * _copyToClipboardAction = nullptr;
+  QAction * _showSettingsAction = nullptr;
+  QAction * _showStatusbarAction = nullptr;
   QProfileGraphSettingsDialogBox * plotSettings_ctl = nullptr;
 
-  QCustomPlot *plot_ = nullptr;
-  QCPGraph *graphs_[4] = { nullptr };
-  QCPGraph::LineStyle lineStyle_ = QCPGraph::lsLine;
+  QCustomPlot *_plot = nullptr;
+  QCPGraph *_graphs[4] = { nullptr };
+  QCPGraph::LineStyle _lineStyle = QCPGraph::lsLine;
 
-  QVector<double> current_keys_;
-  QVector<double> current_values_[4];
-  QVector<uint8_t> current_ptmasks_;
+  QVector<double> _current_keys;
+  QVector<double> _current_values[4];
+  QVector<uint8_t> _current_ptmasks[4];
 
-  QLine currentLine_;
-  bool fixXMin_ = false;
-  bool fixXMax_ = false;
-  bool fixYMin_ = false;
-  bool fixYMax_ = false;
+  QLine _currentLine;
+  bool _fixXMin = false;
+  bool _fixXMax = false;
+  bool _fixYMin = false;
+  bool _fixYMax = false;
 
-  bool skipZeroPixels_ = false;
-  bool skipMaskedPixels_ = false;
+  bool _skipZeroPixels = false;
+  bool _skipMaskedPixels = false;
 };
 
 
@@ -195,7 +195,7 @@ protected:
   void hideEvent(QHideEvent * e) override;
 
 protected:
-  QProfileGraphSettings * settingsWidget_ = nullptr;
+  QProfileGraphSettings * _settingsWidget = nullptr;
 };
 
 #endif /* __QPofileGraph_h__ */

@@ -509,7 +509,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
       }
 
 
-      case ctrl_bind_data_command_button: {
+      case ctrl_bind_command_button: {
 
         QToolButton * ctl =
             new QToolButton(this);
@@ -521,8 +521,10 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if (p.on_button_click ) {
           QObject::connect(ctl, &QToolButton::clicked,
-              [p](bool ) {
-                p.on_button_click();
+              [this, p]() {
+                if ( p.on_button_click() ) {
+                  updateControls();
+                }
           });
         }
 

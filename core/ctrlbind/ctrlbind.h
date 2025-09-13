@@ -32,7 +32,7 @@ enum ctrl_bind_type
   ctrl_bind_string_combobox,
   ctrl_bind_sparse_feature_detector,
   ctrl_bind_data_annotation_selector,
-  ctrl_bind_data_command_button,
+  ctrl_bind_command_button,
 };
 
 typedef std::function<void(const std::string&)> ctrlbind_copy_to_clipboard_callback;
@@ -58,7 +58,7 @@ struct c_ctrl_bind
   std::function<c_sparse_feature_detector_options *()> sparse_feature_detector;
   std::function<bool (int cmap, int * label)> get_data_annotation;
   std::function<bool(int cmap, int label)> set_data_annotation;
-  std::function<void()> on_button_click;
+  std::function<bool()> on_button_click;
 
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<bool ()> is_enabled;
@@ -367,9 +367,9 @@ struct c_ctrl_bind
       c_ctrl_bind tmp; \
       tmp.ctl_name = cname; \
       tmp.ctl_tooltip = cdesc; \
-      tmp.ctl_type = ctrl_bind_data_command_button; \
+      tmp.ctl_type = ctrl_bind_command_button; \
       tmp.on_button_click = [this]() { \
-          func(); \
+          return func(); \
       }; \
       \
      (ctls)->emplace_back(tmp); \

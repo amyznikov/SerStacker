@@ -133,6 +133,27 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
       }
     }
   }
+  else if (image.channels() == 1 && mask.channels() > 1 ) {
+
+    const cv::Mat1b M = reduce_channels(mask, cv::REDUCE_MAX);
+
+    for( int i = 0, n = pts.size(); i < n; ++i ) {
+
+      const cv::Point & p = pts[i];
+
+      if (p.x >= 0 && p.x < src.cols && p.y >= 0 && p.y < src.rows) {
+
+        keys.append(i);
+
+        const T * srcp = src[p.y];
+        for( int c = 0; c < cn; ++c ) {
+          values[c].append(srcp[p.x * cn + c]);
+          ptmasks[c].append(M[p.y][p.x]);
+        }
+      }
+    }
+
+  }
 }
 
 void get_pixels(const cv::Mat & image, const cv::Mat & mask,

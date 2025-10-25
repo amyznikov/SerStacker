@@ -25,8 +25,13 @@ public:
   void setPixelDepth(PIXEL_DEPTH v);
   PIXEL_DEPTH pixelDepth() const;
 
+  void setEmbedAlphaMask(bool v);
+  bool embedAlphaMask() const;
+  QCheckBox * embedAlphaMaskCtl() const;
+
 protected:
   QComboBox * pixtype_ctl = nullptr;
+  QCheckBox * embedAlphaMask_ctl = nullptr;
 };
 
 class QImageSaveTIFFOptions :
@@ -48,7 +53,6 @@ public:
 
   void setEmbedAlphaMask(bool v);
   bool embedAlphaMask() const;
-
   QCheckBox * embedAlphaMaskCtl() const;
 
 protected:

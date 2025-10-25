@@ -135,7 +135,7 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
   }
   else if (image.channels() == 1 && mask.channels() > 1 ) {
 
-    const cv::Mat1b M = reduce_channels(mask, cv::REDUCE_MAX);
+    const cv::Mat1b M   = reduce_channels(mask, cv::REDUCE_MAX);
 
     for( int i = 0, n = pts.size(); i < n; ++i ) {
 

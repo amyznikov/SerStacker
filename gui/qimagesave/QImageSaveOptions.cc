@@ -78,6 +78,9 @@ QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
   pixtype_ctl->addItem(toQString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
   pixtype_ctl->addItem(toQString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
   pixtype_ctl->setCurrentIndex(0);
+
+  embedAlphaMask_ctl = add_checkbox("Embed alpha mask", "");
+  embedAlphaMask_ctl->setChecked(true);
 }
 
 void QImageSavePNGOptions::setPixelDepth(PIXEL_DEPTH v)
@@ -100,6 +103,21 @@ void QImageSavePNGOptions::setPixelDepth(PIXEL_DEPTH v)
 PIXEL_DEPTH QImageSavePNGOptions::pixelDepth() const
 {
   return (PIXEL_DEPTH) pixtype_ctl->currentData().toInt();
+}
+
+void QImageSavePNGOptions::setEmbedAlphaMask(bool v)
+{
+  embedAlphaMask_ctl->setChecked(true);
+}
+
+bool QImageSavePNGOptions::embedAlphaMask() const
+{
+  return embedAlphaMask_ctl->isChecked();
+}
+
+QCheckBox * QImageSavePNGOptions::embedAlphaMaskCtl() const
+{
+  return embedAlphaMask_ctl;
 }
 
 QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
@@ -428,6 +446,7 @@ QString saveImageFileAs(QWidget * parent,
       dlgbox->set_format(format);
       dlgbox->saveProcessorConfigCtl()->setEnabled(currentProcesor != nullptr);
       dlgbox->tiffOptions()->embedAlphaMaskCtl()->setEnabled(!currentMask.empty());
+      dlgbox->pngOptions()->embedAlphaMaskCtl()->setEnabled(!currentMask.empty());
 
       if ( dlgbox->exec() != QDialog::Accepted ) {
         break;
@@ -464,10 +483,11 @@ QString saveImageFileAs(QWidget * parent,
             dlgbox->pngOptions();
 
         selectedPixelDepth = pngOptions->pixelDepth();
+        embedAlphaMask = !currentMask.empty() && pngOptions->embedAlphaMask();
 
-        if ( embedAlphaMask && currentImage.channels() == 1 ) {
-          embedAlphaMask = false;
-        }
+        //        if ( embedAlphaMask && currentImage.channels() == 1 ) {
+        //          embedAlphaMask = false;
+        //        }
 
         break;
       }

@@ -1,5 +1,5 @@
 /*
- * levmar3.h
+ * levmar.h
  *
  *  Created on: Aug 17, 2024
  *      Author: amyznikov
@@ -8,11 +8,14 @@
  *  "The Levenberg-Marquardt algorithm for nonlinear least squares curve-fitting problems"
  *    Henri P. Gavin, Department of Civil and Environmental Engineering Duke University
  *    May 5, 2024
+ *
+ *  curvefit-pro:
+ *    https://www.standardsapplied.com/curvefit-pro.html
  */
 
 #pragma once
-#ifndef __levmar3_h__
-#define __levmar3_h__
+#ifndef __levmar_h__
+#define __levmar_h__
 
 #include <opencv2/opencv.hpp>
 #include <limits>
@@ -523,4 +526,4 @@ protected:
 typedef c_levmar_solver<float> c_levmarf_solver;
 typedef c_levmar_solver<double> c_levmard_solver;
 
-#endif /* __levmar3_h__ */
+#endif /* __levmar_h__ */

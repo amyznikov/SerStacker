@@ -9,6 +9,8 @@
  *    Henri P. Gavin, Department of Civil and Environmental Engineering Duke University
  *    May 5, 2024
  *
+ *  curvefit-pro:
+ *    https://www.standardsapplied.com/curvefit-pro.html
  */
 
 #pragma once

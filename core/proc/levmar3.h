@@ -46,7 +46,7 @@ public:
      *
      * Typical implementation for f(x) = P0 / (1 + P1 * x):
      *  df(x) / dP0 = 1 / (1 + P1 * x)
-     *  df(x) / dP01= P0 * x / (1 + P1 * x)**2
+     *  df(x) / dP1 = -P0 * x / (1 + P1 * x)**2
      *
      *  const double P0 = params[0];
      *  const double P1 = params[1];
@@ -69,10 +69,10 @@ public:
      *    const double J1 = -wi * P0 * xi * den * den; // wi * df(xi)/dP1
      *    v0 += J0 * dy;
      *    v1 += J1 * dy;
-     *    h00 += jb * jb;
-     *    h01 += jb * jc;
-     *    h10 += jc * jb;
-     *    h11 += jc * jc;
+     *    h00 += J0 * J0;
+     *    h01 += J0 * J1;
+     *    h10 += J1 * J0;
+     *    h11 += J1 * J1;
      *   }
      *  }
      *

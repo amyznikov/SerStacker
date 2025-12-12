@@ -44,5 +44,6 @@
     <file>icons/video.png</file>
     <file>icons/geo-landmark.png</file>
     <file>icons/show-geo-landmarks.png</file>
+    <file>icons/search.png</file>
 </qresource>
 </RCC>

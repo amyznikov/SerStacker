@@ -40,6 +40,7 @@
 
 #define ICON_copy               ":/gui/icons/copy"
 #define ICON_delete             ":/gui/icons/delete"
+#define ICON_search             ":/gui/icons/search"
 
 #define ICON_roi                ":/serstacker/icons/roi.png"
 #define ICON_point_size         ":/serstacker/icons/degree.png"
@@ -456,6 +457,9 @@ void MainWindow::setupMainMenu()
                 imageView->copyDisplayImageToClipboard();
               }
             }
+            else if ( is_visible(textView) ) {
+              textView->copySelectionToClipboard();
+            }
             else if ( is_visible(pipelineProgressImageView) ) {
               pipelineProgressImageView->copyDisplayImageToClipboard();
             }
@@ -862,6 +866,10 @@ void MainWindow::onCurrentViewVisibilityChanged()
 
   QWidget * currentView =
       inputSourceView->currentView();
+
+  if( currentView != textView ) {
+    toggleFindTextDialogBox(false);
+  }
 
   if ( currentView == imageView ) {
 
@@ -2363,6 +2371,38 @@ void MainWindow::setupInputSequenceView()
 
 
   toolbar = inputSourceView->textViewToolbar();
+  toolbar->addAction(showFindTextDialogAction =
+        createCheckableAction(getIcon(ICON_search),
+            "Find Text...",
+            "Find text in text file",
+            false,
+            this,
+            &ThisClass::toggleFindTextDialogBox,
+            new QShortcut(QKeySequence::Find,
+                textView, nullptr, nullptr,
+                Qt::WidgetWithChildrenShortcut/*WindowShortcut*/)
+                ));
+
+  findNextShortcut = new QShortcut(QKeySequence::FindNext,
+      textView, [this]() {
+        if ( is_visible(textView) ) {
+          textView->findNext();
+        }
+      },
+      Qt::WidgetWithChildrenShortcut);
+
+  findPrevShortcut = new QShortcut(QKeySequence::FindPrevious,
+      textView, [this]() {
+        if ( is_visible(textView) ) {
+          textView->findPrevious();
+        }
+      },
+      Qt::WidgetWithChildrenShortcut);
+
+
+
+
+
 
 
   ///////////////////////////////////////////////////////////////////////
@@ -2453,6 +2493,38 @@ void MainWindow::setupPipelineProgressView()
 
 }
 
+
+void MainWindow::toggleFindTextDialogBox(bool fshow)
+{
+  if ( !fshow ) {
+    if ( is_visible(findTextDialog) ) {
+      findTextDialog->hide();
+    }
+  }
+  else {
+    if ( !findTextDialog ) {
+
+      findTextDialog = new QFindTextDialog(this);
+
+      connect(findTextDialog, &QFindTextDialog::visibilityChanged,
+          showFindTextDialogAction, &QAction::setChecked);
+
+      connect(findTextDialog, &QFindTextDialog::findTextRequested,
+          [this](const QString &text, bool caseSensitive, bool wholeWords, bool backward) {
+            if ( is_visible(textView) ) {
+              textView->findString(text, caseSensitive, wholeWords, backward);
+            }
+          });
+    }
+
+    if ( !findTextDialog->isVisible() ) {
+      findTextDialog->show();
+    }
+
+    findTextDialog->raise();
+  }
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 }  // namespace serstacker

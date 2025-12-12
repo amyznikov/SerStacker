@@ -66,21 +66,21 @@ QPipelineSettingsWidget::QPipelineSettingsWidget(QWidget * parent) :
 void QPipelineSettingsWidget::update_pipeline_input_sources()
 {
   c_update_controls_lock lock(this);
-  for ( QInputSourceSelectionControl * combo : inputSourceCombos_ ) {
-    combo->refreshInputSources(pipeline_);
+  for ( QInputSourceSelectionControl * combo : _inputSourceCombos ) {
+    combo->refreshInputSources(_pipeline);
   }
 }
 
 void QPipelineSettingsWidget::update_control_states()
 {
-  if( !pipeline_ || pipeline_->is_running() ) {
+  if( !_pipeline || _pipeline->is_running() ) {
     setEnabled(false);
   }
   else {
-    for( auto &p : state_ctls_ ) {
+    for( auto &p : _bound_state_ctls ) {
       QWidget *w = p.first;
       const std::function<bool(const c_image_processing_pipeline*)> &is_enabled = p.second;
-      w->setEnabled(is_enabled(pipeline_));
+      w->setEnabled(is_enabled(_pipeline));
     }
     setEnabled(true);
   }
@@ -121,7 +121,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             currentsettings, &QSettingsWidget::populatecontrols);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(currentsettings, ctrl.is_enabled);
+          _bound_state_ctls.emplace(currentsettings, ctrl.is_enabled);
         }
 
         break;
@@ -159,16 +159,16 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             currentsettings->add_numeric_box<std::string>(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
                 [this, ctrl](const std::string & v) {
-                  if ( !updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, v) ) {
+                  if ( !updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, v) ) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](std::string * v) -> bool {
-                  return ctrl.get_value ? ctrl.get_value(pipeline_, v) : false;
+                  return ctrl.get_value ? ctrl.get_value(_pipeline, v) : false;
                 });
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -180,20 +180,20 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             currentsettings->add_checkbox(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
                 [this, ctrl](bool checked) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, checked ? "1" : "0") ) {
+                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, checked ? "1" : "0") ) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](bool * checked) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s)) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s)) {
                     return fromString(s, checked);
                   }
                   return false;
                 });
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -207,13 +207,13 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.tooltip.c_str(),
                 ctrl.get_enum_members(),
                 [this, ctrl](int v) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, toString(v))) {
+                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, toString(v))) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](int * v) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s) ) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s) ) {
                     const c_enum_member* m = fromString(s, ctrl.get_enum_members());
                     if (m ) {
                       * v = m->value;
@@ -224,7 +224,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 });
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -237,13 +237,13 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             currentsettings->add_spinbox(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
                 [this, ctrl](int v) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, toString(v)) ) {
+                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, toString(v)) ) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](int * v) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s) ) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s) ) {
                     return fromString(s, v);
                   }
                   return false;
@@ -253,7 +253,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         w->setSingleStep(ctrl.range.step);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -268,14 +268,14 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.get_enum_members(),
                 [this, ctrl](int v) {
                   if (!updatingControls() && ctrl.set_value ) {
-                    if ( ctrl.set_value(pipeline_, flagsToString(v, ctrl.get_enum_members())) ) {
+                    if ( ctrl.set_value(_pipeline, flagsToString(v, ctrl.get_enum_members())) ) {
                       Q_EMIT parameterChanged();
                     }
                   }
                 },
                 [this, ctrl](int * v) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s) ) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s) ) {
                     *v = flagsFromString(s, ctrl.get_enum_members());
                     return true;
                   }
@@ -283,7 +283,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 });
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -298,13 +298,13 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 QFileDialog::AcceptOpen,
                 QFileDialog::ExistingFile,
                 [this, ctrl](const QString & v) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, v.toStdString()) ) {
+                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, v.toStdString()) ) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](QString * v) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s) ) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s) ) {
                     *v = s.c_str();
                     return true;
                   }
@@ -314,7 +314,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         w->setToolTip(ctrl.tooltip.c_str());
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -329,13 +329,13 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 QFileDialog::AcceptOpen,
                 QFileDialog::Directory,
                 [this, ctrl](const QString & v) {
-                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, v.toStdString()) ) {
+                  if (!updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, v.toStdString()) ) {
                     Q_EMIT parameterChanged();
                   }
                 },
                 [this, ctrl](QString * v) {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s) ) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s) ) {
                     *v = s.c_str();
                     return true;
                   }
@@ -345,7 +345,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         w->setToolTip(ctrl.tooltip.c_str());
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -359,21 +359,21 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.tooltip.c_str(),
                 [this, ctrl](int index,
                     QImageProcessorSelectionCombo * combo) {
-                      if( !updatingControls() && ctrl.set_image_processor && ctrl.set_image_processor(pipeline_, combo->processor(index)) ) {
+                      if( !updatingControls() && ctrl.set_image_processor && ctrl.set_image_processor(_pipeline, combo->processor(index)) ) {
                         Q_EMIT parameterChanged();
                       }
                     },
                 [this, ctrl](int * index, QImageProcessorSelectionCombo * combo) -> bool {
-                  if ( !ctrl.get_image_processor || !combo->setCurrentProcessor(ctrl.get_image_processor(pipeline_)) ) {
+                  if ( !ctrl.get_image_processor || !combo->setCurrentProcessor(ctrl.get_image_processor(_pipeline)) ) {
                     if( ctrl.set_image_processor ) {
-                      ctrl.set_image_processor(pipeline_, nullptr);
+                      ctrl.set_image_processor(_pipeline, nullptr);
                     }
                   }
                   return false;
                 });
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -388,22 +388,22 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
                 ctrl.tooltip.c_str(),
                 [this, ctrl](int index,
                     QInputSourceSelectionCombo * combo) {
-                      if( !updatingControls() && ctrl.set_value && ctrl.set_value(pipeline_, combo->itemData(index).toString().toStdString()) ) {
+                      if( !updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, combo->itemData(index).toString().toStdString()) ) {
                         Q_EMIT parameterChanged();
                       }
                     },
                 [this, ctrl](int * index, QInputSourceSelectionCombo * combo) -> bool {
                   std::string s;
-                  if ( ctrl.get_value && ctrl.get_value(pipeline_, &s)) {
+                  if ( ctrl.get_value && ctrl.get_value(_pipeline, &s)) {
                     combo->setCurrentIndex(combo->findData(QString(s.c_str())));
                   }
                   return false;
                 });
 
-        inputSourceCombos_.append(w);
+        _inputSourceCombos.append(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -446,7 +446,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_feature2d_detector_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_feature_detector_options(ctrl.get_feature2d_detector_options(pipeline_));
+                w->set_feature_detector_options(ctrl.get_feature2d_detector_options(_pipeline));
               });
         }
 
@@ -460,7 +460,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -474,7 +474,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_feature2d_descriptor_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_feature_descriptor_options(ctrl.get_feature2d_descriptor_options(pipeline_));
+                w->set_feature_descriptor_options(ctrl.get_feature2d_descriptor_options(_pipeline));
               });
         }
 
@@ -488,7 +488,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -502,7 +502,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_feature2d_matcher_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_feature_matcher_options(ctrl.get_feature2d_matcher_options(pipeline_));
+                w->set_feature_matcher_options(ctrl.get_feature2d_matcher_options(_pipeline));
               });
         }
 
@@ -516,7 +516,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -530,7 +530,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_camera_intrinsicts ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_camera_intrinsicts(pipeline_));
+                w->set_options(ctrl.get_camera_intrinsicts(_pipeline));
               });
         }
 
@@ -544,7 +544,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -559,7 +559,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_stereo_matcher ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_stereo_matcher(ctrl.get_stereo_matcher(pipeline_));
+                w->set_stereo_matcher(ctrl.get_stereo_matcher(_pipeline));
               });
         }
 
@@ -573,7 +573,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -588,7 +588,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_output_writer_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_output_writer_options(pipeline_));
+                w->set_options(ctrl.get_output_writer_options(_pipeline));
               });
         }
 
@@ -602,7 +602,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -617,7 +617,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_master_frame_selection_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_master_frame_selection_options(pipeline_));
+                w->set_options(ctrl.get_master_frame_selection_options(_pipeline));
               });
         }
 
@@ -630,10 +630,10 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
             });
 
         currentsettings->addRow(w);
-        inputSourceCombos_.append(w);
+        _inputSourceCombos.append(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -648,7 +648,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_feature_registration_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_feature_registration_options(pipeline_));
+                w->set_options(ctrl.get_feature_registration_options(_pipeline));
               });
         }
 
@@ -662,7 +662,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -677,7 +677,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_ecc_registration_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_ecc_registration_options(pipeline_));
+                w->set_options(ctrl.get_ecc_registration_options(_pipeline));
               });
         }
 
@@ -691,7 +691,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -706,7 +706,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_eccflow_registration_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_eccflow_registration_options(pipeline_));
+                w->set_options(ctrl.get_eccflow_registration_options(_pipeline));
               });
         }
 
@@ -720,7 +720,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -735,7 +735,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_jovian_derotation_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_jovian_derotation_options(pipeline_));
+                w->set_options(ctrl.get_jovian_derotation_options(_pipeline));
               });
         }
 
@@ -749,7 +749,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;
@@ -765,7 +765,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         if( ctrl.get_jovian_derotation_options ) {
           connect(this, &Base::populatecontrols,
               [this, w, ctrl]() {
-                w->set_options(ctrl.get_saturn_derotation_options(pipeline_));
+                w->set_options(ctrl.get_saturn_derotation_options(_pipeline));
               });
         }
 
@@ -779,7 +779,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         currentsettings->addRow(w);
 
         if( ctrl.is_enabled ) {
-          state_ctls_.emplace(w, ctrl.is_enabled);
+          _bound_state_ctls.emplace(w, ctrl.is_enabled);
         }
 
         break;

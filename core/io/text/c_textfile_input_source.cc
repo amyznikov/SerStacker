@@ -25,6 +25,7 @@ const std::vector<std::string> & c_textfile_input_source::suffixes()
       ".txt",
       ".doc",
       ".md",
+      ".json",
       ".xml",
       ".html",
       ".htm",

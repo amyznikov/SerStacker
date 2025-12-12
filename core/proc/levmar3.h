@@ -227,7 +227,7 @@ public:
         /*
          * Compute update to lambda
          * */
-
+        // temp_d = 2 * v - Hp * delpatp
         cv::gemm(Hp, deltap, -1, v, 2, temp_d);
 
         const double dS = deltap.dot(temp_d);

@@ -13,6 +13,9 @@ QSettingsWidget::QSettingsWidget(const QString & prefix, QWidget * parent) :
 {
   setFrameShape(NoFrame);
   form = new QFormLayout(this);
+
+  connect(this, &ThisClass::parameterChanged,
+      this, &ThisClass::update_control_states);
 }
 
 void QSettingsWidget::setSettingsPrefix(const QString & v)
@@ -28,41 +31,41 @@ const QString & QSettingsWidget::settingsPrefix() const
 
 void QSettingsWidget::set_mutex(std::mutex * mtx)
 {
-  this->mtx_ = mtx;
+  this->_mtx = mtx;
 }
 
 std::mutex * QSettingsWidget::mutex()
 {
-  return this->mtx_;
+  return this->_mtx;
 
 }
 
 void QSettingsWidget::lock()
 {
-  if ( mtx_ ) {
-    mtx_->lock();
+  if ( _mtx ) {
+    _mtx->lock();
   }
 }
 
 void QSettingsWidget::unlock()
 {
-  if ( mtx_ ) {
-    mtx_->unlock();
+  if ( _mtx ) {
+    _mtx->unlock();
   }
 }
 
 bool QSettingsWidget::updatingControls()
 {
-  return updatingControls_ > 0;
+  return _updatingControls > 0;
 }
 
 void QSettingsWidget::setUpdatingControls(bool v)
 {
   if ( v ) {
-    ++updatingControls_;
+    ++_updatingControls;
   }
-  else if ( updatingControls_ && --updatingControls_ < 0 ) {
-    updatingControls_ = 0;
+  else if ( _updatingControls && --_updatingControls < 0 ) {
+    _updatingControls = 0;
   }
 }
 
@@ -96,6 +99,16 @@ void QSettingsWidget::onupdatecontrols()
 }
 
 #ifdef __ctrlbind_h__
+
+void QSettingsWidget::update_control_states()
+{
+  for( auto &p : _bound_state_ctls ) {
+    QWidget *w = p.first;
+    const auto &is_enabled = p.second;
+    w->setEnabled(is_enabled());
+  }
+}
+
 void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 {
   std::vector<QExpandableGroupBox*> groups;
@@ -169,7 +182,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -200,7 +213,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
         break;
       }
@@ -225,7 +238,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -253,7 +266,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -282,7 +295,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -311,7 +324,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -343,7 +356,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -374,7 +387,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;
@@ -405,7 +418,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
 
@@ -441,7 +454,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
 
@@ -502,7 +515,7 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
 
         if( p.is_enabled ) {
           ctl->setEnabled(p.is_enabled());
-          bound_state_ctls_.emplace(ctl, p.is_enabled);
+          _bound_state_ctls.emplace(ctl, p.is_enabled);
         }
 
         break;

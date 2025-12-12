@@ -96,6 +96,8 @@ private Q_SLOTS:
 
   void onOpenVideoFileRequested(const QString & filename, int scrollToIndex = -1);
 
+  void toggleFindTextDialogBox(bool fshow);
+
   void saveCurrentWork();
 
 private :
@@ -192,7 +194,11 @@ private:
   QList<QAction *> _pointSelectionModeActions;
   QMenu _pointSelectionModeMenu;
 
-
+  // QFindTextDialog
+  QFindTextDialog * findTextDialog = nullptr;
+  QAction* showFindTextDialogAction = nullptr;
+  QShortcut* findNextShortcut = nullptr;
+  QShortcut* findPrevShortcut = nullptr;
 };
 
 

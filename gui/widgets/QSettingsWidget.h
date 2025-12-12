@@ -1482,6 +1482,7 @@ public:
   /////////////////////////////////////////////////////////////////////
 #ifdef __ctrlbind_h__
   void setup_controls(const std::vector<c_ctrl_bind> & ctls);
+  void update_control_states();
 #endif
   /////////////////////////////////////////////////////////////////////
 
@@ -1490,11 +1491,11 @@ protected:
   QFormLayout *form = nullptr;
 
 private:
-  std::mutex *mtx_ = nullptr;
-  int updatingControls_ = 0;
+  std::mutex *_mtx = nullptr;
+  int _updatingControls = 0;
 
 #ifdef __ctrlbind_h__
-  std::map<QWidget*, std::function<bool()>> bound_state_ctls_;
+  std::map<QWidget*, std::function<bool()>,std::less<QWidget*>> _bound_state_ctls;
 #endif
 };
 

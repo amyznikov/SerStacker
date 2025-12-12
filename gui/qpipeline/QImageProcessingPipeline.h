@@ -63,9 +63,9 @@ protected Q_SLOTS:
   virtual void onPipelineStateChanged() {}
 
 protected:
-  c_image_processing_pipeline * pipeline_ = nullptr;
-  std::map<QWidget*, std::function<bool(const c_image_processing_pipeline*)>> state_ctls_;
-  QList<QInputSourceSelectionControl*> inputSourceCombos_;
+  c_image_processing_pipeline * _pipeline = nullptr;
+  std::map<QWidget*, std::function<bool(const c_image_processing_pipeline*)>> _bound_state_ctls;
+  QList<QInputSourceSelectionControl*> _inputSourceCombos;
 };
 
 
@@ -96,16 +96,16 @@ public:
 
   QImageProcessingPipeline* currentPipeline() const override
   {
-    return dynamic_cast<QImageProcessingPipeline*>(pipeline_);
+    return dynamic_cast<QImageProcessingPipeline*>(_pipeline);
   }
 
   void setPipeline(QPipelineType * pipeline)
   {
-    if( QImageProcessingPipeline *pp = dynamic_cast<QImageProcessingPipeline*>(pipeline_) ) {
+    if( QImageProcessingPipeline *pp = dynamic_cast<QImageProcessingPipeline*>(_pipeline) ) {
       pp->disconnect(this);
     }
 
-    if( (pipeline_ = pipeline) ) {
+    if( (_pipeline = pipeline) ) {
       connect(pipeline, &QPipelineType::stateChanged,
           this, &ThisClass::onPipelineStateChanged,
           Qt::QueuedConnection);
@@ -117,14 +117,14 @@ public:
 
   QPipelineType * pipeline() const
   {
-    return dynamic_cast<QPipelineType * >(pipeline_);
+    return dynamic_cast<QPipelineType * >(_pipeline);
   }
 
 protected:
   // placeholder for overrides
   void onupdatecontrols() override
   {
-    if( !pipeline_ ) {
+    if( !_pipeline ) {
       setEnabled(false);
     }
     else {

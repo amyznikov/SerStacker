@@ -172,6 +172,29 @@ bool c_config::write(const std::string & filename)
   return true;
 }
 
+// @brief write config into in-memory string
+std::string c_config::write_string() const
+{
+  FILE *fp = nullptr;
+  char *bufloc = nullptr;
+  size_t sizeloc = 0;
+
+  std::string s;
+
+  if( !(fp = open_memstream(&bufloc, &sizeloc)) ) {
+    CF_ERROR("ERROR: c_config: open_memstream() fails: %s",
+        strerror(errno));
+  }
+  else {
+    config_write(&config_, fp);
+    fclose(fp);
+    s = bufloc;
+    free(bufloc);
+  }
+
+  return s;
+}
+
 bool c_config::read(const std::string & filename)
 {
   errno = 0;
@@ -226,6 +249,49 @@ bool c_config::read(const std::string & filename)
             strerror(errno));
         break;
 
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+// @brief read config from in-memory string
+bool c_config::read_string(const std::string & s)
+{
+  return read_string(s.c_str());
+}
+
+// @brief read config from in-memory string
+bool c_config::read_string(const char * s)
+{
+  if( !config_read_string(&config_, s) ) {
+
+    switch (config_error_type(&config_))
+    {
+    case CONFIG_ERR_PARSE:
+      CF_FATAL("ERROR: config_read_string() fails: CONFIG_ERR_PARSE\n"
+          "Parse error on line %d :\n(%s).\n",
+          config_error_line(&config_),
+          config_error_text(&config_)
+          );
+      break;
+
+    case CONFIG_ERR_FILE_IO:
+      CF_FATAL("ERROR: config_read_string() fails: CONFIG_ERR_FILE_IO.\n"
+          "ERRNO=%d (%s), Hope it helps)",
+          errno,
+          strerror(errno));
+      break;
+
+    case CONFIG_ERR_NONE:
+      default:
+      CF_FATAL("ERROR: config_read_string() fails: Unknown error.\n"
+          "ERRNO=%d (%s), Hope it helps)",
+          errno,
+          strerror(errno));
+      break;
     }
 
     return false;

@@ -292,8 +292,17 @@ public:
   // @brief no-exception write current config into specified file
   bool write(const std::string & filename = std::string());
 
+  // @brief write config into in-memory string
+  std::string write_string() const;
+
   // @brief no-exception read config from specified file
   bool read(const std::string & filename = std::string());
+
+  // @brief read config from in-memory string
+  bool read_string(const std::string & s);
+
+  // @brief read config from in-memory string
+  bool read_string(const char * s);
 
   c_config_setting root() const;
 

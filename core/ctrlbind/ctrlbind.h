@@ -33,11 +33,21 @@ enum ctrl_bind_type
   ctrl_bind_sparse_feature_detector,
   ctrl_bind_data_annotation_selector,
   ctrl_bind_command_button,
+  ctrl_bind_menu_button,
 };
 
 typedef std::function<void(const std::string&)> ctrlbind_copy_to_clipboard_callback;
 void set_ctrlbind_copy_to_clipboard_callback(const ctrlbind_copy_to_clipboard_callback & fn);
 const ctrlbind_copy_to_clipboard_callback & get_ctrlbind_copy_to_clipboard_callback();
+
+typedef std::function<const std::string()> ctrlbind_get_clipboard_text_callback;
+void set_ctrlbind_get_clipboard_text_callback(const ctrlbind_get_clipboard_text_callback & fn);
+const ctrlbind_get_clipboard_text_callback & get_ctrlbind_get_clipboard_text_callback();
+
+typedef std::function<void(double x, double y, double w, double h)> ctrlbind_update_roi_callback;
+void set_ctrlbind_update_roi_callback(const ctrlbind_update_roi_callback & fn);
+const ctrlbind_update_roi_callback & get_ctrlbind_update_roi_callback();
+
 
 struct c_ctrl_bind
 {
@@ -51,6 +61,12 @@ struct c_ctrl_bind
     double step = 1;
   } range;
 
+  struct menu_command
+  {
+    std::string command_name;
+    std::function<bool()> onclick;
+  };
+
   std::function<std::string ()> helpstring;
   std::function<bool (std::string *)> get_value;
   std::function<bool(const std::string&)> set_value;
@@ -59,11 +75,14 @@ struct c_ctrl_bind
   std::function<bool (int cmap, int * label)> get_data_annotation;
   std::function<bool(int cmap, int label)> set_data_annotation;
   std::function<bool()> on_button_click;
+  std::vector<menu_command> menu_commands;
 
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<bool ()> is_enabled;
 };
 
+
+//       std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
 
 #define BIND_CTRL_BEGIN_GROUP(ctls, cname, cdesc) \
   if ( true ) { \
@@ -107,7 +126,7 @@ struct c_ctrl_bind
     }; \
     \
     tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      auto v = param(); \
       if( fromString(s, &v) ) { \
         std::lock_guard<std::mutex> lock(mutex()); \
         set_##param(v); \
@@ -147,7 +166,7 @@ struct c_ctrl_bind
     }; \
     \
     tmp.set_value = [this](const std::string & s) { \
-      std::remove_const<std::remove_reference<decltype(param())>::type>::type v; \
+      auto v = param(); \
       if( fromString(s, &v) ) { \
         std::lock_guard<std::mutex> lock(mutex()); \
         set_##param(v); \
@@ -363,17 +382,32 @@ struct c_ctrl_bind
   }
 
 #define BIND_COMMAND_BUTTON(ctls, func, cname, cdesc) \
-    if ( true ) { \
-      c_ctrl_bind tmp; \
-      tmp.ctl_name = cname; \
-      tmp.ctl_tooltip = cdesc; \
-      tmp.ctl_type = ctrl_bind_command_button; \
-      tmp.on_button_click = [this]() { \
-          return func(); \
-      }; \
-      \
-     (ctls)->emplace_back(tmp); \
-    }
+  if ( true ) { \
+    c_ctrl_bind tmp; \
+    tmp.ctl_name = cname; \
+    tmp.ctl_tooltip = cdesc; \
+    tmp.ctl_type = ctrl_bind_command_button; \
+    tmp.on_button_click = [this]() { \
+        return func(); \
+    }; \
+    \
+   (ctls)->emplace_back(tmp); \
+  }
 
+#define BIND_MENU_BUTTON(ctls, cname, cdesc) \
+  if ( true ) { \
+    c_ctrl_bind tmp; \
+    tmp.ctl_name = cname; \
+    tmp.ctl_tooltip = cdesc; \
+    tmp.ctl_type = ctrl_bind_menu_button;
+
+#define BIND_MENU_COMMAND(func, cname) \
+    tmp.menu_commands.emplace_back(); \
+    tmp.menu_commands.back().command_name = cname; \
+    tmp.menu_commands.back().onclick = [this]() {return func(); };
+
+#define END_MENU_BUTTON(ctls) \
+    (ctls)->emplace_back(tmp); \
+  }
 
 #endif /* __ctrlbind_h__ */

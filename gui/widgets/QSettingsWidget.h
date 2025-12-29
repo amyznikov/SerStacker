@@ -1491,8 +1491,8 @@ protected:
   QFormLayout *form = nullptr;
 
 private:
-  std::mutex *_mtx = nullptr;
-  int _updatingControls = 0;
+  std::mutex *mtx_ = nullptr;
+  int updatingControls_ = 0;
 
 #ifdef __ctrlbind_h__
   std::map<QWidget*, std::function<bool()>,std::less<QWidget*>> _bound_state_ctls;

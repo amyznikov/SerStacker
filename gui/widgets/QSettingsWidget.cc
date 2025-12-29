@@ -7,6 +7,9 @@
 
 #include "QSettingsWidget.h"
 #include <gui/qfeature2d/QFeature2dOptions.h>
+#include <gui/widgets/style.h>
+
+#define ICON_menu   ":/gui/icons/menu"
 
 QSettingsWidget::QSettingsWidget(const QString & prefix, QWidget * parent) :
   Base(parent), PREFIX(prefix)
@@ -31,41 +34,41 @@ const QString & QSettingsWidget::settingsPrefix() const
 
 void QSettingsWidget::set_mutex(std::mutex * mtx)
 {
-  this->_mtx = mtx;
+  this->mtx_ = mtx;
 }
 
 std::mutex * QSettingsWidget::mutex()
 {
-  return this->_mtx;
+  return this->mtx_;
 
 }
 
 void QSettingsWidget::lock()
 {
-  if ( _mtx ) {
-    _mtx->lock();
+  if ( mtx_ ) {
+    mtx_->lock();
   }
 }
 
 void QSettingsWidget::unlock()
 {
-  if ( _mtx ) {
-    _mtx->unlock();
+  if ( mtx_ ) {
+    mtx_->unlock();
   }
 }
 
 bool QSettingsWidget::updatingControls()
 {
-  return _updatingControls > 0;
+  return updatingControls_ > 0;
 }
 
 void QSettingsWidget::setUpdatingControls(bool v)
 {
   if ( v ) {
-    ++_updatingControls;
+    ++updatingControls_;
   }
-  else if ( _updatingControls && --_updatingControls < 0 ) {
-    _updatingControls = 0;
+  else if ( updatingControls_ && --updatingControls_ < 0 ) {
+    updatingControls_ = 0;
   }
 }
 
@@ -537,10 +540,45 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
               [this, p]() {
                 if ( p.on_button_click() ) {
                   updateControls();
+                  Q_EMIT parameterChanged();
                 }
           });
         }
 
+        break;
+      }
+
+      case ctrl_bind_menu_button: {
+        QToolButton * ctl =
+            new QToolButton(this);
+
+        ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonTextBesideIcon);
+        ctl->setIcon(getIcon(ICON_menu));
+        ctl->setText(p.ctl_name.c_str());
+        ctl->setToolTip(p.ctl_tooltip.c_str());
+        currentSettings->addRow(ctl);
+
+        if ( !p.menu_commands.empty() ) {
+
+          QObject::connect(ctl, &QToolButton::clicked,
+              [this, p, ctl]() {
+
+                QMenu menu;
+                for ( const auto & item : p.menu_commands ) {
+                  menu.addAction(item.command_name.c_str(),
+                      [this, &item]() {
+                        if ( item.onclick() ) {
+                          updateControls();
+                          Q_EMIT parameterChanged();
+                        }
+                      });
+                }
+
+                if ( !menu.isEmpty() ) {
+                  menu.exec(ctl->mapToGlobal(QPoint(6, 6)));
+                }
+              });
+        }
         break;
       }
 

@@ -23,28 +23,21 @@
 #include <netinet/in.h>
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-typedef
 union sockaddr_type {
   struct sockaddr sa;
   struct sockaddr_in in;
   struct sockaddr_in6 in6;
   struct sockaddr_un un;
   struct sockaddr_storage ss;
-} sockaddr_type;
+};
 
 
-typedef
 struct so_keepalive_opts {
   bool enable;
   int keepidle;
   int keepintvl;
   int keepcnt;
-} so_keepalive_opts;
+};
 
 int so_get_error(int so);
 
@@ -94,9 +87,7 @@ int so_tcp_connect(struct sockaddr_in * addrs);
 int so_tcp_connect2(const char * addrs, uint16_t port);
 int so_tcp_connect3(const char * addrport);
 
-
-#ifdef __cplusplus
-}
-#endif
+int so_connect(struct sockaddr_in * addrs, int sock_type, int protocol);
+int so_connect(uint32_t addrs, uint16_t port, int sock_type, int protocol, struct sockaddr_in *outaddrs = nullptr);
 
 #endif /* __cuttle_sockopt_h__ */

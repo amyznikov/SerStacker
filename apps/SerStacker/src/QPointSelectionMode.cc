@@ -452,6 +452,7 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
   colorMapSelection_ctl =
       add_combobox<QComboBox>("Select Colormap:",
           "",
+          false,
           [this](int cursel, QComboBox */*combo*/) {
             onCurrentColormapMapChanged(cursel);
           });
@@ -459,6 +460,7 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
   labelSelection_ctl =
       add_combobox<QComboBox>("Select Label:",
           "",
+          false,
           [this](int cursel, QComboBox*) {
             onCurrentLabelSelectionChanged(cursel);
           });

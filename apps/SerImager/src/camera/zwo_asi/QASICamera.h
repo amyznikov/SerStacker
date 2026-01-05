@@ -54,7 +54,7 @@ protected:
   void device_stop() override;
   int device_max_qsize() override;
   void device_release_frame(const QCameraFrame::sptr & frame) override;
-  QCameraFrame::sptr device_recv_frame() override;
+  bool device_recv_frame(QCameraFrame::sptr & frm) override;
 
 protected:
   bool create_frame_buffers(const cv::Size & imageSize,
@@ -68,9 +68,9 @@ protected:
   QCameraFrame::sptr dqpool();
 
 protected:
-  ASI_CAMERA_INFO camInfo_;
-  std::vector<QCameraFrame::sptr> p_;
-  bool is_asi_open_ = false;
+  ASI_CAMERA_INFO _camInfo;
+  std::vector<QCameraFrame::sptr> _p;
+  bool _is_asi_open = false;
 };
 
 } /* namespace serimager */

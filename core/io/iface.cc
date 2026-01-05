@@ -177,3 +177,21 @@ bool cf_get_iface_address(const char * string, uint32_t * address, uint16_t * po
 
   return true;
 }
+
+/* fixme: only IPv4 is implemented */
+std::string cf_get_iface_address(const std::string & ifacename)
+{
+  char ipaddrs[INET_ADDRSTRLEN + 8] = "";
+  uint32_t address = (uint32_t)(-1);
+  uint16_t port = (uint16_t )(-1);
+
+  if ( cf_get_iface_address(ifacename.c_str(), &address, &port) ) {
+    struct in_addr in = {htonl(address)};
+    inet_ntop(AF_INET, &in, ipaddrs, INET_ADDRSTRLEN);
+    if ( port != (uint16_t)(-1)) {
+      sprintf(ipaddrs + strlen(ipaddrs), ":%u", port);
+    }
+  }
+
+  return ipaddrs;
+}

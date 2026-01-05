@@ -60,7 +60,7 @@ protected:
   void device_stop() override;
   int device_max_qsize() override;
   void device_release_frame(const QCameraFrame::sptr & frame) override;
-  QCameraFrame::sptr device_recv_frame() override;
+  bool device_recv_frame(QCameraFrame::sptr & frm) override;
 
 protected:
   bool create_frame_buffers(const cv::Size & imageSize,
@@ -73,13 +73,12 @@ protected:
   QCameraFrame::sptr dqpool();
 
 protected:
-  c_ffmpeg_reader ffmpeg_;
+  c_ffmpeg_reader _ffmpeg;
 
-  QString name_;
-  QString url_;
-  QString opts_ = "-nobuffer -nodelay";
-
-  std::vector<QCameraFrame::sptr> p_;
+  QString _name;
+  QString _url;
+  QString _opts = "-nobuffer -nodelay";
+  std::vector<QCameraFrame::sptr> _p;
 };
 
 /**

@@ -47,6 +47,7 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
   output_image_processor_ctl =
       add_combobox<QImageProcessorSelectionCombo>("Image processor:",
           "Optional image processor before writing output frame",
+          false,
           [this](int index, QImageProcessorSelectionCombo * combo) {
             if( options_ ) {
               options_ ->output_image_processor = combo->processor(index);

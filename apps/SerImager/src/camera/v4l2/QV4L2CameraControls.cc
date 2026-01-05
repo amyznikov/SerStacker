@@ -242,6 +242,7 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
       QComboBox *ctrl =
           add_combobox<QComboBox>(QString(c.name),
               "",
+              false,
               [this, c](int index, QComboBox * combo) -> void {
                 if ( camera_ ) {
                   int value = combo->itemData(index).value<int>();
@@ -285,12 +286,6 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
         }
       }
 
-      CF_DEBUG("'%s': c.default_value=%lld c.minimum=%lld c.maximum=%lld", c.name,
-          (long long )c.default_value,
-          (long long )c.minimum,
-          (long long )c.maximum);
-
-      ctrl->setEditable(false);
       ctrl->setToolTip(QString("%1: default=%2").arg(c.name)
           .arg(ctrl->itemText(ctrl->findData(c.default_value))));
 
@@ -558,12 +553,7 @@ void QV4L2CameraControls::createControls()
       videoInput_ctl->clear();
     }
     else {
-      videoInput_ctl =
-          add_combobox("Input:",
-              "");
-
-      videoInput_ctl->setEditable(false);
-
+      videoInput_ctl = add_combobox("Input:", "", false);
       connect(videoInput_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
           this, &ThisClass::onVideoInputChanged);
     }
@@ -631,12 +621,7 @@ void QV4L2CameraControls::refreshFormats(cv4l_fd & device)
       fmt_ctl->clear();
     }
     else {
-
-      fmt_ctl =
-          add_combobox("Format:",
-              "");
-
-      fmt_ctl->setEditable(false);
+      fmt_ctl = add_combobox("Format:","", false);
       fmt_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
       connect(fmt_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
@@ -757,13 +742,7 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
         frameSize_ctl->clear();
       }
       else {
-
-        frameSize_ctl =
-            add_combobox("Frame Size:",
-                "");
-
-        frameSize_ctl->setEditable(false);
-
+        frameSize_ctl = add_combobox("Frame Size:","", false);
         connect(frameSize_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &ThisClass::onFrameSizeChanged);
       }
@@ -955,13 +934,7 @@ void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
         frameRate_ctl->clear();
       }
       else {
-
-        frameRate_ctl =
-            add_combobox("Frame Rate:",
-                "");
-
-        frameRate_ctl->setEditable(false);
-
+        frameRate_ctl = add_combobox("Frame Rate:","", false);
         connect(frameRate_ctl, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &ThisClass::onFrameRateChanged);
       }

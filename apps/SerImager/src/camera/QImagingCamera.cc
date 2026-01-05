@@ -309,32 +309,34 @@ bool QImagingCamera::start()
 
     while ( current_state_ == State_started ) {
 
+      QCameraFrame::sptr frame;
+      bool fOk;
+
       lock.unlock();
-
-      QCameraFrame::sptr frame =
-          device_recv_frame();
-
+      fOk = device_recv_frame(frame);
       lock.lock();
-
-      if ( !frame ) {
+      if ( !fOk ) {
         CF_ERROR("device_recv_frame() fails");
         break;
       }
 
-      frame->set_index(index++);
-      frame->set_ts(get_realtime_sec());
+      if ( frame ) {
 
-      deque_.emplace_back(frame);
+        frame->set_index(index++);
+        frame->set_ts(get_realtime_sec());
 
-      if ( deque_.size() > qsize ) {
+        deque_.emplace_back(frame);
 
-        frame = deque_.front();
-        deque_.pop_front();
+        if ( deque_.size() > qsize ) {
 
-        device_release_frame(frame);
+          frame = deque_.front();
+          deque_.pop_front();
+
+          device_release_frame(frame);
+        }
+
+        condvar_.notify_all();
       }
-
-      condvar_.notify_all();
     }
 
     device_stop();

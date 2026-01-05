@@ -300,6 +300,11 @@ bool c_config::read_string(const char * s)
   return true;
 }
 
+void c_config::clear()
+{
+  config_clear(&config_);
+}
+
 c_config_setting c_config::root() const
 {
   return c_config_setting(config_root_setting(&config_));

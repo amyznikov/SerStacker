@@ -31,83 +31,94 @@ public:
     return sptr(new ThisClass(imageSize, cvType, colorid, bpp, data, step));
   }
 
+  static sptr create(const cv::Mat & image, enum COLORID colorid = COLORID_UNKNOWN, int bpp = 0)
+  {
+    return sptr(new ThisClass(image, colorid, bpp));
+  }
+
   const cv::Mat & image() const
   {
-    return image_;
+    return _image;
   }
 
   cv::Mat & image()
   {
-    return image_;
+    return _image;
   }
 
   // in real-time seconds
   double ts() const
   {
-    return ts_;
+    return _ts;
   }
 
   // in real-time seconds
   void set_ts(double ts)
   {
-    ts_ = ts;
+    _ts = ts;
   }
 
   int index() const
   {
-    return index_;
+    return _index;
   }
 
   void set_index(int index)
   {
-    index_ = index;
+    _index = index;
   }
 
   enum COLORID colorid() const
   {
-    return colorid_;
+    return _colorid;
   }
 
   int bpp() const
   {
-    return bpp_;
+    return _bpp;
   }
 
   void * data()
   {
-    return data_;
+    return _data;
   }
 
   int size() const
   {
-    return size_;
+    return _size;
   }
 
 protected:
   QCameraFrame(const cv::Size & imageSize, int cvType, enum COLORID colorid, int bpp,
       void * data = nullptr, size_t step = cv::Mat::AUTO_STEP) :
-      colorid_(colorid),
-      bpp_(bpp)
+      _colorid(colorid), _bpp(bpp)
   {
     if( !data ) {
-      image_.create(imageSize, cvType);
+      _image.create(imageSize, cvType);
     }
     else {
-      image_ = cv::Mat(imageSize, cvType, data, step);
+      _image = cv::Mat(imageSize, cvType, data, step);
     }
 
-    data_ = image_.data;
-    size_ = image_.size().area() * image_.elemSize();
+    _data = _image.data;
+    _size = _image.size().area() * _image.elemSize();
+  }
+
+  QCameraFrame(const cv::Mat & image, enum COLORID colorid, int bpp) :
+    _image(image), _bpp(bpp), _colorid(colorid)
+  {
+    _data = _image.data;
+    _size = _image.size().area() * _image.elemSize();
   }
 
 protected:
-  cv::Mat image_;
-  void * data_ = nullptr;
-  int size_ = 0;
-  double ts_ = 0; // in (real-time?) seconds
-  int index_ = 0;
-  enum COLORID colorid_ = COLORID_UNKNOWN;
-  int bpp_ = 0;
+  cv::Mat _image;
+  void * _data = nullptr;
+  int _size = 0;
+  double _ts = 0; // in (real-time?) seconds
+  int _index = 0;
+  enum COLORID _colorid = COLORID_UNKNOWN;
+  int _bpp = 0;
 };
 
 } /* namespace serimager */

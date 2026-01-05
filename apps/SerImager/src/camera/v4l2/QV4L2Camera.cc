@@ -567,9 +567,9 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
   return status == 0;
 }
 
-QCameraFrame::sptr QV4L2Camera::device_recv_frame()
+bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 {
-  QV4L2CameraFrame::sptr frm;
+  //QV4L2CameraFrame::sptr frm;
   cv4l_buffer buf(q_);
 
   int status = 0;
@@ -618,9 +618,7 @@ QCameraFrame::sptr QV4L2Camera::device_recv_frame()
       }
       else {
 
-        frm =
-            p_[buf.g_index()];
-
+        frm = p_[buf.g_index()];
         if( !convert_ ) {
           // frm->data() is already mapped to plane[0]]
           // memcpy(frm->data(), plane[0], frm->size());
@@ -675,7 +673,7 @@ QCameraFrame::sptr QV4L2Camera::device_recv_frame()
       break;
   }
 
-  return frm;
+  return (bool)frm;
 }
 
 void QV4L2Camera::device_release_frame(const QCameraFrame::sptr & frame)

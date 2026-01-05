@@ -86,7 +86,7 @@ protected:
   virtual void device_stop() = 0;
   virtual int device_max_qsize() = 0;
   virtual void device_release_frame(const QCameraFrame::sptr & frame) = 0;
-  virtual QCameraFrame::sptr device_recv_frame() = 0;
+  virtual bool device_recv_frame(QCameraFrame::sptr & fo) = 0;
 
 protected:
   void finish();

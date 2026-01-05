@@ -357,6 +357,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         QImageProcessorSelectionCombo *w =
             currentsettings->add_combobox<QImageProcessorSelectionCombo>(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
+                false,
                 [this, ctrl](int index,
                     QImageProcessorSelectionCombo * combo) {
                       if( !updatingControls() && ctrl.set_image_processor && ctrl.set_image_processor(_pipeline, combo->processor(index)) ) {
@@ -386,6 +387,7 @@ void QPipelineSettingsWidget::setup_controls(const std::vector<c_image_processin
         QInputSourceSelectionCombo *w =
             currentsettings->add_combobox<QInputSourceSelectionCombo>(ctrl.name.c_str(),
                 ctrl.tooltip.c_str(),
+                false,
                 [this, ctrl](int index,
                     QInputSourceSelectionCombo * combo) {
                       if( !updatingControls() && ctrl.set_value && ctrl.set_value(_pipeline, combo->itemData(index).toString().toStdString()) ) {

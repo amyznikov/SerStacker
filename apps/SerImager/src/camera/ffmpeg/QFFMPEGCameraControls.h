@@ -38,7 +38,6 @@ protected:
 
   QFFMPEGCameraUrlWidget * url_ctl = nullptr;
   QLineEditBox * options_ctl = nullptr;
-
 };
 
 

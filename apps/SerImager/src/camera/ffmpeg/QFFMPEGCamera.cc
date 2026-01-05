@@ -17,49 +17,49 @@ QFFMPEGCamera::QFFMPEGCamera(const QString & name, QObject * parent) :
 
 QFFMPEGCamera::QFFMPEGCamera(const QString & name, const QString & url, const QString & opts, QObject * parent) :
     Base(parent),
-    name_(name),
-    url_(url),
-    opts_(opts)
+    _name(name),
+    _url(url),
+    _opts(opts)
 {
 }
 
 QFFMPEGCamera::~QFFMPEGCamera()
 {
   finish();
-  ffmpeg_.close();
+  _ffmpeg.close();
 }
 
 void QFFMPEGCamera::setName(const QString & name)
 {
-  name_ = name;
+  _name = name;
   Q_EMIT parametersChanged();
 }
 
 const QString& QFFMPEGCamera::name() const
 {
-  return name_;
+  return _name;
 }
 
 void QFFMPEGCamera::setUrl(const QString & v)
 {
-  url_ = v;
+  _url = v;
   Q_EMIT parametersChanged();
 }
 
 const QString & QFFMPEGCamera::url() const
 {
-  return url_;
+  return _url;
 }
 
 void QFFMPEGCamera::setOpts(const QString & v)
 {
-  opts_ = v;
+  _opts = v;
   Q_EMIT parametersChanged();
 }
 
 const QString & QFFMPEGCamera::opts() const
 {
-  return opts_;
+  return _opts;
 }
 
 QFFMPEGCamera::sptr QFFMPEGCamera::create(const QString & name, const QString & url, const QString & opts, QObject * parent)
@@ -70,12 +70,12 @@ QFFMPEGCamera::sptr QFFMPEGCamera::create(const QString & name, const QString & 
 
 QString QFFMPEGCamera::display_name() const
 {
-  return name_;
+  return _name;
 }
 
 QString QFFMPEGCamera::parameters() const
 {
-  return opts_;
+  return _opts;
 }
 
 bool QFFMPEGCamera::is_same_camera(const QImagingCamera::sptr & rhs) const
@@ -93,16 +93,16 @@ int QFFMPEGCamera::drops() const
 
 bool QFFMPEGCamera::device_is_connected() const
 {
-  return ffmpeg_.is_open();
+  return _ffmpeg.is_open();
 }
 
 bool QFFMPEGCamera::device_connect()
 {
-  if( !ffmpeg_.is_open() ) {
+  if( !_ffmpeg.is_open() ) {
 
     bool fOk =
-        ffmpeg_.open(url_.toStdString(),
-            opts_.toStdString());
+        _ffmpeg.open(_url.toStdString(),
+            _opts.toStdString());
 
     if( !fOk ) {
       CF_ERROR("ffmpeg_.open() fails");
@@ -115,13 +115,13 @@ bool QFFMPEGCamera::device_connect()
 
 void QFFMPEGCamera::device_disconnect()
 {
-  ffmpeg_.close();
+  _ffmpeg.close();
 
 }
 
 bool QFFMPEGCamera::device_start()
 {
-  if ( !ffmpeg_.is_open() ) {
+  if ( !_ffmpeg.is_open() ) {
     CF_ERROR("ERROR: ffmpeg_ is not open");
     return false;
   }
@@ -129,7 +129,7 @@ bool QFFMPEGCamera::device_start()
   cv::Mat frame;
   double pts;
 
-  if( !ffmpeg_.read(frame, &pts) ) {
+  if( !_ffmpeg.read(frame, &pts) ) {
     CF_ERROR("ffmpeg_.read() fails");
     return false;
   }
@@ -159,7 +159,7 @@ void QFFMPEGCamera::device_stop()
 
 int QFFMPEGCamera::device_max_qsize()
 {
-  return p_.size() / 2;
+  return _p.size() / 2;
 }
 
 void QFFMPEGCamera::device_release_frame(const QCameraFrame::sptr & frame)
@@ -167,25 +167,23 @@ void QFFMPEGCamera::device_release_frame(const QCameraFrame::sptr & frame)
   qpool(frame);
 }
 
-QCameraFrame::sptr QFFMPEGCamera::device_recv_frame()
+bool QFFMPEGCamera::device_recv_frame(QCameraFrame::sptr & frm)
 {
-  QCameraFrame::sptr frm =
-      dqpool();
-
-  if( frm ) {
+  if( (frm = dqpool()) ) {
 
     double pts;
 
-    if( !ffmpeg_.read(frm->image(), &pts) ) {
-      CF_ERROR("ffmpeg_.read() fails");
-      qpool(frm);
-      return nullptr;
+    if( _ffmpeg.read(frm->image(), &pts) ) {
+      frm->set_ts(pts);
+      return true;
     }
 
-    frm->set_ts(pts);
+    CF_ERROR("ffmpeg.read() fails");
+    qpool(frm);
+    frm.reset();
   }
 
-  return frm;
+  return false;
 }
 
 bool QFFMPEGCamera::create_frame_buffers(const cv::Size & imageSize,
@@ -194,10 +192,10 @@ bool QFFMPEGCamera::create_frame_buffers(const cv::Size & imageSize,
     int bpp,
     int num_buffers)
 {
-  p_.clear();
+  _p.clear();
 
   for( int i = 0; i < num_buffers; ++i ) {
-    p_.emplace_back(QCameraFrame::create(imageSize,
+    _p.emplace_back(QCameraFrame::create(imageSize,
         cvType, colorid, bpp));
   }
 
@@ -207,21 +205,21 @@ bool QFFMPEGCamera::create_frame_buffers(const cv::Size & imageSize,
 void QFFMPEGCamera::qpool(const QCameraFrame::sptr & frame)
 {
   if( frame ) {
-    p_.emplace_back(frame);
+    _p.emplace_back(frame);
   }
 }
 
 QCameraFrame::sptr QFFMPEGCamera::dqpool()
 {
-  if( p_.empty() ) {
+  if( _p.empty() ) {
     CF_ERROR("APP BUG: frame pool pool devastation, must not happen");
     return nullptr;
   }
 
   QCameraFrame::sptr frm =
-      p_.back();
+      _p.back();
 
-  p_.pop_back();
+  _p.pop_back();
 
   return frm;
 }

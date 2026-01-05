@@ -12,6 +12,7 @@
 #include "zwo_asi/QASICamera.h"
 #include "ffmpeg/QFFMPEGCamera.h"
 #include "ffmpeg/QFFStreams.h"
+#include "libcamera-sctp/QLCSCTPStreams.h"
 
 
 namespace serimager {
@@ -252,9 +253,8 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
   QMenu menu;
   QAction * action;
 
-  static QFFStreamsDialogBox *ffStreamsDialogBox = nullptr;
-
   /////////////
+  static QFFStreamsDialogBox *ffStreamsDialogBox = nullptr;
 
   menu.addAction(action = new QAction("FFmpeg streams..."));
 
@@ -287,6 +287,40 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
       });
 
   /////////////
+
+  static QLCSCTPStreamsDialogBox *lcsctpStreamsDialogBox = nullptr;
+  menu.addAction(action = new QAction("LCSCTP streams..."));
+
+  action->setCheckable(true);
+  action->setChecked(lcsctpStreamsDialogBox  && lcsctpStreamsDialogBox ->isVisible());
+
+  connect(action, &QAction::triggered,
+      [this](bool checked) {
+
+        if ( !checked ) {
+          if ( lcsctpStreamsDialogBox && lcsctpStreamsDialogBox->isVisible() ) {
+            lcsctpStreamsDialogBox->hide();
+          }
+        }
+        else {
+          if( !lcsctpStreamsDialogBox ) {
+            lcsctpStreamsDialogBox = new QLCSCTPStreamsDialogBox(this);
+          }
+          else if( lcsctpStreamsDialogBox->parent() != this ) {
+            lcsctpStreamsDialogBox->setParent(this);
+          }
+
+          if( !lcsctpStreamsDialogBox->isVisible() ) {
+            lcsctpStreamsDialogBox->show();
+          }
+
+          lcsctpStreamsDialogBox->setFocus();
+        }
+
+      });
+
+  /////////////
+
 
   menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width() / 2, menu_ctl->height() / 2)));
 
@@ -376,6 +410,7 @@ void QCameraSelectionWidget::refreshCameras()
   detectedCameras.append(QASICamera::detectCameras());
   detectedCameras.append(QV4L2Camera::detectCameras());
   detectedCameras.append(QFFStreams::streams());
+  detectedCameras.append(QLCSCTPStreams::streams());
 
   //
   // Remove disappeared cameras

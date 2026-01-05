@@ -104,6 +104,10 @@ public:
     return add_element(setting_, type);
   }
 
+  bool add_element(const std::string & value) {
+    return c_config_setting(add_element(setting_, CONFIG_TYPE_STRING)).set(value);
+  }
+
   c_config_setting add_group(const std::string & name = "")
   {
     return (isList() || isArray()) ? add_element(CONFIG_TYPE_GROUP) :
@@ -303,6 +307,8 @@ public:
 
   // @brief read config from in-memory string
   bool read_string(const char * s);
+
+  void clear();
 
   c_config_setting root() const;
 

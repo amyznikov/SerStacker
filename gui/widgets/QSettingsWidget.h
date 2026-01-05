@@ -709,7 +709,7 @@ public:
   /////////////////////////////////////////////////////////////////////
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
+  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip, bool editable,
       const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
   {
     ComboBoxType *ctl =
@@ -717,6 +717,7 @@ public:
 
     ctl->setFocusPolicy(Qt::StrongFocus);
     ctl->setToolTip(tooltip);
+    ctl->setEditable(editable);
 
     form->addRow(name, ctl);
 
@@ -742,12 +743,12 @@ public:
   }
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip,
+  ComboBoxType* add_combobox(QFormLayout * form, const QString & name, const QString & tooltip, bool editable,
       const std::function<void(int, ComboBoxType*)> & setfn,
       const std::function<bool(int*, ComboBoxType*)> & getfn)
   {
     ComboBoxType *ctl =
-        add_combobox(form, name, tooltip, setfn);
+        add_combobox(form, name, tooltip, editable, setfn);
 
     if( getfn ) {
 
@@ -770,18 +771,18 @@ public:
   }
 
   template<typename ComboBoxType = QComboBox>
-  ComboBoxType * add_combobox(const QString & name, const QString & tooltip,
+  ComboBoxType * add_combobox(const QString & name, const QString & tooltip, bool editable,
       const std::function<void(int, ComboBoxType*)> & setfn = std::function<void(int, ComboBoxType*)>())
   {
-    return add_combobox<ComboBoxType>(this->form, name, tooltip, setfn);
+    return add_combobox<ComboBoxType>(this->form, name, tooltip, editable, setfn);
   }
 
   template<class ComboBoxType = QComboBox>
-  ComboBoxType * add_combobox(const QString & name, const QString & tooltip,
+  ComboBoxType * add_combobox(const QString & name, const QString & tooltip, bool editable,
       const std::function<void(int, ComboBoxType*)> & setfn,
       const std::function<bool(int*, ComboBoxType*)> & getfn)
   {
-    return add_combobox<ComboBoxType>(this->form, name, tooltip, setfn, getfn);
+    return add_combobox<ComboBoxType>(this->form, name, tooltip, editable, setfn, getfn);
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -1478,6 +1479,29 @@ public:
   {
     return add_widget<WidgetType>(this->form, name);
   }
+
+  template<class WidgetType, class _UpdateSignal, class _UpdateCallback,class _PopuLateCallback>
+  WidgetType * add_widget2(const QString & name, const _UpdateSignal & s, const _UpdateCallback & ucb, const _PopuLateCallback & pcb)
+  {
+    WidgetType * ctl = new WidgetType(this);
+    if ( !name.isEmpty() ) {
+      form->addRow(name, ctl);
+    }
+    else {
+      form->addRow(ctl);
+    }
+
+    QMetaObject::Connection cn1 = QObject::connect(ctl, s, ucb);
+    QMetaObject::Connection cn2 = QObject::connect(this, &ThisClass::populatecontrols, pcb);
+    QObject::connect(ctl, &QObject::destroyed,
+        [cn1, cn2](QObject * obj) {
+          obj->disconnect(cn1);
+          obj->disconnect(cn2);
+    });
+
+    return ctl;
+  }
+
 
   /////////////////////////////////////////////////////////////////////
 #ifdef __ctrlbind_h__

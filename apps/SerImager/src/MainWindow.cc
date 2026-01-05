@@ -7,6 +7,7 @@
 
 #include "MainWindow.h"
 #include "camera/ffmpeg/QFFStreams.h"
+#include "camera/libcamera-sctp/QLCSCTPStreams.h"
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/widgets/style.h>
@@ -53,6 +54,8 @@ MainWindow::MainWindow(QWidget * parent) :
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
   QFFStreams::load();
+  QLCSCTPStreams::load();
+
   liveView_ = new QLivePipelineThread(this);
   liveView_->setDisplay(centralDisplay_);
 

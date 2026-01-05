@@ -71,10 +71,7 @@ const c_enum_member * members_of<QImageSaveFormat>()
 QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
     Base("QImageSavePNGOptions", parent)
 {
-  pixtype_ctl =
-      add_combobox("Pixel depth:",
-          "");
-
+  pixtype_ctl = add_combobox("Pixel depth:", "", false);
   pixtype_ctl->addItem(toQString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
   pixtype_ctl->addItem(toQString(PIXEL_DEPTH_16U), QVariant::fromValue((int) (PIXEL_DEPTH_16U)));
   pixtype_ctl->setCurrentIndex(0);
@@ -123,27 +120,15 @@ QCheckBox * QImageSavePNGOptions::embedAlphaMaskCtl() const
 QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
     Base("QImageSaveTIFFOptions", parent)
 {
-  pixelDepth_ctl =
-      add_enum_combobox<PIXEL_DEPTH>("Pixel type:",
-          "");
+  pixelDepth_ctl = add_enum_combobox<PIXEL_DEPTH>("Pixel type:", "");
 
-  compression_ctl = 
-      add_combobox( "TIFF Compression: ",
-          "",
-          std::function<void(int, QComboBox *)>());
-
-
+  compression_ctl =  add_combobox( "TIFF Compression: ", "", false, std::function<void(int, QComboBox *)>());
   compression_ctl->addItem("NONE", COMPRESSION_NONE);
   compression_ctl->addItem("LZW", COMPRESSION_LZW);
   compression_ctl->addItem("LZMA", COMPRESSION_LZMA);
+  compression_ctl->setCurrentIndex(std::max(0,compression_ctl->findData( default_tiff_compression())));
 
-  compression_ctl->setCurrentIndex(std::max(0,
-      compression_ctl->findData(
-          default_tiff_compression())));
-
-  embedAlphaMask_ctl =
-      add_checkbox("Embed alpha mask",
-          "");
+  embedAlphaMask_ctl = add_checkbox("Embed alpha mask", "");
 
   embedAlphaMask_ctl->setChecked(true);
 }

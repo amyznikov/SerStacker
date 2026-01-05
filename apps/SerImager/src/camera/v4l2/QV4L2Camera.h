@@ -63,7 +63,7 @@ protected:
   void device_stop() override;
   int device_max_qsize() override;
   void device_release_frame(const QCameraFrame::sptr & queue) override;
-  QCameraFrame::sptr device_recv_frame() override;
+  bool device_recv_frame(QCameraFrame::sptr & frm) override;
 
   bool create_queue();
   bool dqbuf(cv4l_buffer & buf);

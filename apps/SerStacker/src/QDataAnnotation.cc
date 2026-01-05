@@ -21,15 +21,15 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
     Base("", parent)
 {
   colorMapSelection_ctl =
-      add_combobox<QComboBox>("Select Colormap:",
-          "",
+      add_combobox<QComboBox>("Select Colormap:", "",
+          false,
           [this](int cursel, QComboBox*/*combo*/) {
             onCurrentColormapMapChanged(cursel);
           });
 
   labelSelection_ctl =
-      add_combobox<QComboBox>("Select Label:",
-          "",
+      add_combobox<QComboBox>("Select Label:", "",
+          false,
           [this](int cursel, QComboBox*) {
             onCurrentLabelSelectionChanged(cursel);
           });
@@ -98,7 +98,7 @@ void QDataAnnotationSettingsWidget::set_options(OptionsType * options)
 
 void QDataAnnotationSettingsWidget::populateColormaps()
 {
-  colorMapSelection_ctl->blockSignals(true);
+  QSignalBlocker block(colorMapSelection_ctl);
 
   colorMapSelection_ctl->clear();
   if ( options_ ) {
@@ -112,7 +112,6 @@ void QDataAnnotationSettingsWidget::populateColormaps()
     onCurrentColormapMapChanged(colorMapSelection_ctl->currentIndex());
   }
 
-  colorMapSelection_ctl->blockSignals(false);
 }
 
 

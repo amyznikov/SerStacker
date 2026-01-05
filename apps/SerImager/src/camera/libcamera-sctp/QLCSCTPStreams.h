@@ -1,33 +1,33 @@
 /*
- * QFFStreams.h
+ * QLCSCTStreams.h
  *
- *  Created on: Mar 17, 2023
+ *  Created on: Jan 1, 2026
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __QFFStreams_h__
-#define __QFFStreams_h__
+#ifndef __QLCSCTStreams_h__
+#define __QLCSCTStreams_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include "QFFMPEGCameraUrlWidget.h"
-#include "QFFMPEGCamera.h"
+#include "QLCSCTPCamera.h"
+#include "QLCSCTPUrlWidget.h"
 
 namespace serimager {
 
-class QFFStreamListWidget :
+class QLCSCTPStreamListWidget :
     public QWidget
 {
   Q_OBJECT;
 public:
-  typedef QFFStreamListWidget ThisClass;
+  typedef QLCSCTPStreamListWidget ThisClass;
   typedef QWidget Base;
 
-  QFFStreamListWidget(QWidget * parent = nullptr);
+  QLCSCTPStreamListWidget(QWidget * parent = nullptr);
 
-  QFFMPEGCamera::sptr selectedStream() const;
+  QLCSCTPCamera::sptr selectedStream() const;
 
-  void selectStream(const QFFMPEGCamera::sptr & camera);
+  void selectStream(const QLCSCTPCamera::sptr & camera);
 
 Q_SIGNALS:
   void selectedStreamChanged();
@@ -48,15 +48,15 @@ protected:
   QToolButton * removeStream_ctl = nullptr;
 };
 
-class QFFStreamsWidget:
+class QLCSCTPStreamsWidget:
     public QSettingsWidget
 {
   Q_OBJECT;
 public:
-  typedef QFFStreamsWidget ThisClass;
+  typedef QLCSCTPStreamsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QFFStreamsWidget(QWidget * parent);
+  QLCSCTPStreamsWidget(QWidget * parent);
 
 protected:
   void onupdatecontrols() override;
@@ -65,39 +65,38 @@ protected Q_SLOTS:
   void onSelectedStreamChanged();
 
 protected:
-  QFFMPEGCamera::sptr selectedStream_;
+  QLCSCTPCamera::sptr selectedStream_;
   QLineEditBox * streamName_ctl = nullptr;
-  QFFMPEGCameraUrlWidget * streamUrl_ctl = nullptr;
-  QLineEditBox * streamOpts_ctl = nullptr;
-  QFFStreamListWidget * list_ctl = nullptr;
+  QLCSCTPUrlWidget * streamUrl_ctl = nullptr;
+  QLCSCTPStreamListWidget * list_ctl = nullptr;
 };
 
-class QFFStreamsDialogBox:
+class QLCSCTPStreamsDialogBox:
     public QDialog
 {
 public:
-  typedef QFFStreamsDialogBox ThisClass;
+  typedef QLCSCTPStreamsDialogBox ThisClass;
   typedef QDialog Base;
 
-  QFFStreamsDialogBox(QWidget * parent = nullptr);
+  QLCSCTPStreamsDialogBox(QWidget * parent = nullptr);
 
 protected:
-  QFFStreamsWidget * streams_ctl = nullptr;
+  QLCSCTPStreamsWidget * streams_ctl = nullptr;
 };
 
-class QFFStreams :
+class QLCSCTPStreams :
     public QObject
 {
   Q_OBJECT;
 public:
 
   static void registerMetaTypes();
-  static QFFStreams * instance();
+  static QLCSCTPStreams * instance();
 
   static const QList<QImagingCamera::sptr> & streams();
 
-  static void add(const QFFMPEGCamera::sptr & stream);
-  static void remove(const QFFMPEGCamera::sptr & stream);
+  static void add(const QLCSCTPCamera::sptr & stream);
+  static void remove(const QLCSCTPCamera::sptr & stream);
   static bool exist(const QImagingCamera::sptr & stream);
   static bool exist(const QString & streamName);
   static void save();
@@ -107,14 +106,12 @@ Q_SIGNALS:
   void streamsChaged();
 
 protected: // Indented to be a singleton
-  QFFStreams();
+  QLCSCTPStreams();
 
 protected:
   QList<QImagingCamera::sptr> streams_;
 };
 
+} /* namespace serimager */
 
-
-} // namespace serimager
-
-#endif /* __QFFStreams_h__ */
+#endif /* __QLCSCTStreams_h__ */

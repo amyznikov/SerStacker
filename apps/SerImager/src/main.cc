@@ -7,6 +7,8 @@
 #include <opencv2/core/ocl.hpp>
 #include <gui/widgets/style.h>
 #include "MainWindow.h"
+#include "camera/ffmpeg/QFFStreams.h"
+#include "camera/libcamera-sctp/QLCSCTPStreams.h"
 #include <core/readdir.h>
 #include <core/debug.h>
 
@@ -24,6 +26,9 @@ int main(int argc, char * argv[])
   QApplication app(argc, argv);
   app.setOrganizationName(MY_COMPANY);
   app.setApplicationName(MY_APP);
+
+  QFFStreams::registerMetaTypes();
+  QLCSCTPStreams::registerMetaTypes();
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);

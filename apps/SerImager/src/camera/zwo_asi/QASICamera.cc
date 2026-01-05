@@ -138,7 +138,7 @@ namespace serimager {
 
 QASICamera::QASICamera(const ASI_CAMERA_INFO & camInfo, QObject * parent) :
     Base(parent),
-    camInfo_(camInfo)
+    _camInfo(camInfo)
 {
 }
 
@@ -154,17 +154,17 @@ QASICamera::sptr QASICamera::create(const ASI_CAMERA_INFO & camInfo, QObject * p
 
 const ASI_CAMERA_INFO & QASICamera::cameraInfo() const
 {
-  return camInfo_;
+  return _camInfo;
 }
 
 QString QASICamera::display_name() const
 {
-  return camInfo_.Name;
+  return _camInfo.Name;
 }
 
 QString QASICamera::parameters() const
 {
-  if ( camInfo_.CameraID >= 0 ) {
+  if ( _camInfo.CameraID >= 0 ) {
 
     //    int SupportedBins[16]; //1 means bin1 which is supported by every camera, 2 means bin 2 etc.. 0 is the end of supported binning method
     //    ASI_IMG_TYPE SupportedVideoFormat[8]; //this array will content with the support output format type.IMG_END is the end of supported video format
@@ -215,49 +215,49 @@ QString QASICamera::parameters() const
     long asi_overclock = -1;
     ASI_BOOL auto_asi_overclock = ASI_FALSE;
 
-    ASIGetROIFormat(camInfo_.CameraID,
+    ASIGetROIFormat(_camInfo.CameraID,
         &iWidth,
         &iHeight,
         &iBin,
         &asiType);
 
-    ASIGetStartPos(camInfo_.CameraID,
+    ASIGetStartPos(_camInfo.CameraID,
         &iX,
         &iY);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_EXPOSURE,
+    ASIGetControlValue(_camInfo.CameraID, ASI_EXPOSURE,
         &exposure,
         &auto_exposure);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_GAIN,
+    ASIGetControlValue(_camInfo.CameraID, ASI_GAIN,
         &gain,
         &auto_gain);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_GAMMA,
+    ASIGetControlValue(_camInfo.CameraID, ASI_GAMMA,
         &gamma,
         &auto_gamma);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_WB_R,
+    ASIGetControlValue(_camInfo.CameraID, ASI_WB_R,
         &wb_r,
         &auto_wb_r);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_WB_B,
+    ASIGetControlValue(_camInfo.CameraID, ASI_WB_B,
         &wb_b,
         &auto_wb_b);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_OFFSET,
+    ASIGetControlValue(_camInfo.CameraID, ASI_OFFSET,
         &offset,
         &auto_offset);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_TEMPERATURE,
+    ASIGetControlValue(_camInfo.CameraID, ASI_TEMPERATURE,
         &temperature,
         &auto_temperature);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_BANDWIDTHOVERLOAD,
+    ASIGetControlValue(_camInfo.CameraID, ASI_BANDWIDTHOVERLOAD,
         &asi_bandwidthoverload,
         &auto_asi_bandwidthoverload);
 
-    ASIGetControlValue(camInfo_.CameraID, ASI_OVERCLOCK,
+    ASIGetControlValue(_camInfo.CameraID, ASI_OVERCLOCK,
         &asi_overclock,
         &auto_asi_overclock);
 
@@ -309,13 +309,13 @@ QString QASICamera::parameters() const
             "ASI_OVERCLOCK              = %ld\n"
             "ASI_OVERCLOCK_AUTO         = %d\n"
             "",
-            camInfo_.Name,
-            camInfo_.CameraID,
-            camInfo_.MaxHeight,
-            camInfo_.MaxWidth,
-            camInfo_.IsColorCam,
-            toCString(camInfo_.BayerPattern),
-            camInfo_.PixelSize,
+            _camInfo.Name,
+            _camInfo.CameraID,
+            _camInfo.MaxHeight,
+            _camInfo.MaxWidth,
+            _camInfo.IsColorCam,
+            toCString(_camInfo.BayerPattern),
+            _camInfo.PixelSize,
 
             toCString(asiType),
             iBin,
@@ -338,14 +338,14 @@ QString QASICamera::parameters() const
 
             0.1 * temperature,
 
-            camInfo_.MechanicalShutter,
-            camInfo_.ST4Port,
-            camInfo_.IsCoolerCam,
-            camInfo_.IsUSB3Host,
-            camInfo_.IsUSB3Camera,
-            camInfo_.ElecPerADU,
-            camInfo_.BitDepth,
-            camInfo_.IsTriggerCam,
+            _camInfo.MechanicalShutter,
+            _camInfo.ST4Port,
+            _camInfo.IsCoolerCam,
+            _camInfo.IsUSB3Host,
+            _camInfo.IsUSB3Camera,
+            _camInfo.ElecPerADU,
+            _camInfo.BitDepth,
+            _camInfo.IsTriggerCam,
 
             asi_bandwidthoverload,
             auto_asi_bandwidthoverload,
@@ -368,8 +368,8 @@ bool QASICamera::is_same_camera(const QImagingCamera::sptr & rhs) const
       dynamic_cast<const ThisClass*>(rhs.get());
 
   if( rhsp ) {
-    return this->camInfo_.CameraID ==
-        rhsp->camInfo_.CameraID;
+    return this->_camInfo.CameraID ==
+        rhsp->_camInfo.CameraID;
   }
 
   return false;
@@ -378,15 +378,15 @@ bool QASICamera::is_same_camera(const QImagingCamera::sptr & rhs) const
 int QASICamera::drops() const
 {
   int drops_ = 0;
-  if ( is_asi_open_ ) {
+  if ( _is_asi_open ) {
 
     ASI_ERROR_CODE status =
-        ASIGetDroppedFrames(camInfo_.CameraID,
+        ASIGetDroppedFrames(_camInfo.CameraID,
             &drops_);
 
     if ( status != ASI_SUCCESS ) {
       CF_ERROR("ASIGetDroppedFrames(CameraID=%d) fails: %d (%s)",
-          camInfo_.CameraID, status, toCString(status));
+          _camInfo.CameraID, status, toCString(status));
     }
   }
 
@@ -396,10 +396,10 @@ int QASICamera::drops() const
 void QASICamera::asi_close()
 {
   unique_lock lock(mtx_);
-  if ( is_asi_open_ ) {
-    CF_DEBUG("ASICloseCamera(CameraID=%d)", camInfo_.CameraID);
-    ASICloseCamera(camInfo_.CameraID);
-    is_asi_open_ = false;
+  if ( _is_asi_open ) {
+    CF_DEBUG("ASICloseCamera(CameraID=%d)", _camInfo.CameraID);
+    ASICloseCamera(_camInfo.CameraID);
+    _is_asi_open = false;
   }
 }
 //
@@ -473,21 +473,19 @@ QList<QImagingCamera::sptr> QASICamera::detectCameras()
 void QASICamera::qpool(const QCameraFrame::sptr & frame)
 {
   if( frame ) {
-    p_.emplace_back(frame);
+    _p.emplace_back(frame);
   }
 }
 
 QCameraFrame::sptr QASICamera::dqpool()
 {
-  if( p_.empty() ) {
+  if( _p.empty() ) {
     CF_ERROR("APP BUG: frame pool pool devastation, must not happen");
     return nullptr;
   }
 
-  QCameraFrame::sptr frm =
-      p_.back();
-
-  p_.pop_back();
+  QCameraFrame::sptr frm = _p.back();
+  _p.pop_back();
 
   return frm;
 }
@@ -500,52 +498,52 @@ QCameraFrame::sptr QASICamera::dqpool()
 //
 bool QASICamera::device_is_connected() const
 {
-  return is_asi_open_;
+  return _is_asi_open;
 }
 
 bool QASICamera::device_connect()
 {
-  if( !is_asi_open_ ) {
+  if( !_is_asi_open ) {
 
     ASI_ERROR_CODE status;
 
-    CF_DEBUG("ASIOpenCamera(CameraID=%d)", camInfo_.CameraID);
+    CF_DEBUG("ASIOpenCamera(CameraID=%d)", _camInfo.CameraID);
 
-    if( (status = ASIOpenCamera(camInfo_.CameraID)) != ASI_SUCCESS ) {
+    if( (status = ASIOpenCamera(_camInfo.CameraID)) != ASI_SUCCESS ) {
 
       CF_ERROR("QImagingCameraASI:\n"
           "ASIOpenCamera(CameraID=%d) fails.\n"
           "Status=%d (%s)",
-          camInfo_.CameraID,
+          _camInfo.CameraID,
           status,
           toCString(status));
     }
-    else if( (status = ASIInitCamera(camInfo_.CameraID)) != ASI_SUCCESS ) {
+    else if( (status = ASIInitCamera(_camInfo.CameraID)) != ASI_SUCCESS ) {
 
       CF_ERROR("QImagingCameraASI:\n"
           "ASIInitCamera(CameraID=%d) fails.\n"
           "Status=%d (%s)",
-          camInfo_.CameraID,
+          _camInfo.CameraID,
           status,
           toCString(status));
 
-      CF_DEBUG("ASICloseCamera(CameraID=%d)", camInfo_.CameraID);
-      ASICloseCamera(camInfo_.CameraID);
+      CF_DEBUG("ASICloseCamera(CameraID=%d)", _camInfo.CameraID);
+      ASICloseCamera(_camInfo.CameraID);
     }
     else {
-      is_asi_open_ = true;
+      _is_asi_open = true;
     }
   }
 
-  return is_asi_open_;
+  return _is_asi_open;
 }
 
 void QASICamera::device_disconnect()
 {
-  if ( is_asi_open_ ) {
-    CF_DEBUG("ASICloseCamera(CameraID=%d)", camInfo_.CameraID);
-    ASICloseCamera(camInfo_.CameraID);
-    is_asi_open_ = false;
+  if ( _is_asi_open ) {
+    CF_DEBUG("ASICloseCamera(CameraID=%d)", _camInfo.CameraID);
+    ASICloseCamera(_camInfo.CameraID);
+    _is_asi_open = false;
   }
 }
 
@@ -560,10 +558,10 @@ bool QASICamera::device_start()
 
   ASI_ERROR_CODE status;
 
-  CF_DEBUG("BitDepth=%d", camInfo_.BitDepth);
+  CF_DEBUG("BitDepth=%d", _camInfo.BitDepth);
 
   status =
-      ASIGetROIFormat(camInfo_.CameraID,
+      ASIGetROIFormat(_camInfo.CameraID,
           &frameSize.width, &frameSize.height,
           &iBin,
           &asiType);
@@ -572,7 +570,7 @@ bool QASICamera::device_start()
     CF_ERROR("QImagingCameraASI:\n"
         "ASIGetROIFormat(CameraID=%d) fails.\n"
         "Status=%d (%s)",
-        camInfo_.CameraID,
+        _camInfo.CameraID,
         status,
         toCString(status));
 
@@ -580,7 +578,7 @@ bool QASICamera::device_start()
       asi_close();
     }
     else if( status == ASI_ERROR_INVALID_ID ) {
-      is_asi_open_ = false;
+      _is_asi_open = false;
     }
 
     return false;
@@ -590,11 +588,11 @@ bool QASICamera::device_start()
     case ASI_IMG_RAW8:
       cvType = CV_8UC1;
       bpp = 8;
-      if( !camInfo_.IsColorCam ) {
+      if( !_camInfo.IsColorCam ) {
         colorid = COLORID_MONO;
       }
       else {
-        switch (camInfo_.BayerPattern) {
+        switch (_camInfo.BayerPattern) {
           case ASI_BAYER_RG:
             colorid = COLORID_BAYER_RGGB;
             break;
@@ -614,11 +612,11 @@ bool QASICamera::device_start()
       cvType = CV_16UC1;
       //bpp = camInfo_.BitDepth;
       bpp = 16;
-      if( !camInfo_.IsColorCam ) {
+      if( !_camInfo.IsColorCam ) {
         colorid = COLORID_MONO;
       }
       else {
-        switch (camInfo_.BayerPattern) {
+        switch (_camInfo.BayerPattern) {
           case ASI_BAYER_RG:
             colorid = COLORID_BAYER_RGGB;
             break;
@@ -654,12 +652,12 @@ bool QASICamera::device_start()
     return false;
   }
 
-  if( (status = ASIStartVideoCapture(camInfo_.CameraID)) != ASI_SUCCESS ) {
+  if( (status = ASIStartVideoCapture(_camInfo.CameraID)) != ASI_SUCCESS ) {
 
     CF_ERROR("QImagingCameraASI:\n"
         "ASIStartVideoCapture(CameraID=%d) fails.\n"
         "Status=%d (%s)",
-        camInfo_.CameraID,
+        _camInfo.CameraID,
         status,
         toCString(status));
 
@@ -671,19 +669,19 @@ bool QASICamera::device_start()
 
 int QASICamera::device_max_qsize()
 {
-  return p_.size() / 2;
+  return _p.size() / 2;
 }
 
 void QASICamera::device_stop()
 {
   ASI_ERROR_CODE status =
-      ASIStopVideoCapture(camInfo_.CameraID);
+      ASIStopVideoCapture(_camInfo.CameraID);
 
   if( status != ASI_SUCCESS ) {
 
     CF_ERROR("ASIStopVideoCapture(CameraID=%d) fails.\n"
         "Status=%d (%s)",
-        camInfo_.CameraID,
+        _camInfo.CameraID,
         status,
         toCString(status));
   }
@@ -691,14 +689,11 @@ void QASICamera::device_stop()
   Q_EMIT exposureStatusUpdate(Exposure_idle, 0, 0);
 }
 
-QCameraFrame::sptr QASICamera::device_recv_frame()
+bool QASICamera::device_recv_frame(QCameraFrame::sptr & frm)
 {
   INSTRUMENT_REGION("");
 
-  QCameraFrame::sptr frm =
-      dqpool();
-
-  if( frm ) {
+  if( (frm = dqpool()) ) {
     INSTRUMENT_REGION("ASIGetVideoData");
 
     ASI_ERROR_CODE status;
@@ -707,7 +702,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
     long exposure = -1;
 
     status =
-        ASIGetControlValue(camInfo_.CameraID, ASI_EXPOSURE,
+        ASIGetControlValue(_camInfo.CameraID, ASI_EXPOSURE,
             &exposure,
             &auto_exposure);
 
@@ -730,10 +725,10 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
           exposure_time_ms, 0);
     }
 
-    while (is_asi_open_ && current_state_ == State_started) {
+    while (_is_asi_open && current_state_ == State_started) {
 
       status =
-          ASIGetVideoData(camInfo_.CameraID,
+          ASIGetVideoData(_camInfo.CameraID,
               (uint8_t*) frm->data(),
               frm->size(),
               500);
@@ -746,7 +741,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
               get_realtime_ms() - start_time_ms);
         }
 
-        return frm;
+        return true;// frm;
       }
 
       if( status == ASI_ERROR_TIMEOUT ) {
@@ -755,7 +750,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
             ASI_EXP_IDLE;
 
         status =
-            ASIGetExpStatus(camInfo_.CameraID,
+            ASIGetExpStatus(_camInfo.CameraID,
                 &expStatus);
 
         if( status || expStatus != ASI_EXP_WORKING ) {
@@ -772,7 +767,7 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
         continue;
       }
 
-      CF_DEBUG("ASIGetVideoData: status=%d (%s) is_open_=%d data: %p size=%d ", status, toCString(status), is_asi_open_,
+      CF_DEBUG("ASIGetVideoData: status=%d (%s) is_open_=%d data: %p size=%d ", status, toCString(status), _is_asi_open,
           frm->data(), frm->size());
 
       if( is_long_exposure ) {
@@ -785,9 +780,10 @@ QCameraFrame::sptr QASICamera::device_recv_frame()
     }
 
     qpool(frm);
+    frm.reset();
   }
 
-  return nullptr;
+  return false;
 }
 
 void QASICamera::device_release_frame(const QCameraFrame::sptr & frame)
@@ -797,10 +793,10 @@ void QASICamera::device_release_frame(const QCameraFrame::sptr & frame)
 
 bool QASICamera::create_frame_buffers(const cv::Size & imageSize, int cvType, enum COLORID colorid, int bpp,  int num_buffers)
 {
-  p_.clear();
+  _p.clear();
 
   for( int i = 0; i < num_buffers; ++i ) {
-    p_.emplace_back(QCameraFrame::create(imageSize,
+    _p.emplace_back(QCameraFrame::create(imageSize,
         cvType, colorid, bpp));
   }
 

@@ -387,3 +387,43 @@ int so_tcp_connect3(const char * addrport)
   }
   return so_tcp_connect2(addrs, port);
 }
+
+int so_connect(struct sockaddr_in * addrs, int sock_type, int protocol)
+{
+  bool fOk = false;
+  int so = -1;
+
+  if ((so = socket(AF_INET, sock_type, protocol)) < 0 ) {
+    goto __end;
+  }
+
+  if ( connect(so, (struct sockaddr *)addrs, sizeof(*addrs)) < 0 ) {
+    goto __end;
+  }
+
+  fOk = true;
+__end:
+
+  if ( !fOk ) {
+    if ( so != -1 ) {
+      close(so), so = -1;
+    }
+  }
+
+  return so;
+}
+
+int so_connect(uint32_t addrs, uint16_t port, int sock_type, int protocol, struct sockaddr_in *outaddrs)
+{
+  struct sockaddr_in sin;
+  memset(&sin, 0, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = htonl(addrs);
+  sin.sin_port = htons(port);
+
+  if ( outaddrs) {
+    *outaddrs = sin;
+  }
+
+  return so_connect(&sin, sock_type, protocol);
+}

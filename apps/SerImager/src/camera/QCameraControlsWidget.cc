@@ -10,6 +10,7 @@
 #include "v4l2/QV4L2CameraControls.h"
 #include "zwo_asi/QASICameraControls.h"
 #include "ffmpeg/QFFMPEGCameraControls.h"
+#include "libcamera-sctp/QLCSCTPCameraControls.h"
 
 namespace serimager {
 
@@ -30,6 +31,10 @@ QCameraControlsWidget * QCameraControlsWidget::create(const QImagingCamera::sptr
 
   if ( QFFMPEGCamera::sptr FFMPEGCamera = std::dynamic_pointer_cast<QFFMPEGCamera>(camera) ) {
     return new QFFMPEGCameraControls(FFMPEGCamera, parent);
+  }
+
+  if ( QLCSCTPCamera::sptr LCSCTPCamera = std::dynamic_pointer_cast<QLCSCTPCamera>(camera) ) {
+    return new QLCSCTPCameraControls(LCSCTPCamera, parent);
   }
 
   return nullptr;

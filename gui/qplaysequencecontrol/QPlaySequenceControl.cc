@@ -6,7 +6,6 @@
  */
 
 #include "QPlaySequenceControl.h"
-#include <gui/widgets/QSignalsBock.h>
 #include <core/debug.h>
 
 QPlaySequenceControl::QPlaySequenceControl(QWidget * parent) :
@@ -82,8 +81,8 @@ void QPlaySequenceControl::setState(State state)
 
 void QPlaySequenceControl::setSeekRange(int min,  int max)
 {
-  QSignalsBock block1(curposSlider_ctl);
-  QSignalsBock block2(curposSpin_ctl);
+  QSignalBlocker block1(curposSlider_ctl);
+  QSignalBlocker block2(curposSpin_ctl);
   curposSlider_ctl->setRange(min, max);
   curposSpin_ctl->setRange(min, max);
   updateCurposLabel();
@@ -91,8 +90,8 @@ void QPlaySequenceControl::setSeekRange(int min,  int max)
 
 void QPlaySequenceControl::setCurpos(int pos)
 {
-  QSignalsBock block1(curposSlider_ctl);
-  QSignalsBock block2(curposSpin_ctl);
+  QSignalBlocker block1(curposSlider_ctl);
+  QSignalBlocker block2(curposSpin_ctl);
   curposSpin_ctl->setValue(pos);
   curposSlider_ctl->setValue(curposSpin_ctl->value());
 }

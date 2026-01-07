@@ -279,62 +279,6 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
 //    case formats::NV42:
 //      cv::cvtColor(cv::Mat(, (void*) data.data(), stride), image, cv::);
 //      return true;
-//    case formats::R8:
-//      formatFamily_ = RGB;
-//      r_pos_ = 0;
-//      g_pos_ = 0;
-//      b_pos_ = 0;
-//      bpp_ = 1;
-//      break;
-//    case formats::RGB888:
-//      formatFamily_ = RGB;
-//      r_pos_ = 2;
-//      g_pos_ = 1;
-//      b_pos_ = 0;
-//      bpp_ = 3;
-//      break;
-//    case formats::ARGB8888:
-//      case formats::XRGB8888:
-//      formatFamily_ = RGB;
-//      r_pos_ = 2;
-//      g_pos_ = 1;
-//      b_pos_ = 0;
-//      bpp_ = 4;
-//      break;
-//    case formats::RGBA8888:
-//      case formats::RGBX8888:
-//      formatFamily_ = RGB;
-//      r_pos_ = 3;
-//      g_pos_ = 2;
-//      b_pos_ = 1;
-//      bpp_ = 4;
-//      break;
-//    case formats::ABGR8888:
-//      case formats::XBGR8888:
-//      formatFamily_ = RGB;
-//      r_pos_ = 0;
-//      g_pos_ = 1;
-//      b_pos_ = 2;
-//      bpp_ = 4;
-//      break;
-//    case formats::BGRA8888:
-//      case formats::BGRX8888:
-//      formatFamily_ = RGB;
-//      r_pos_ = 1;
-//      g_pos_ = 2;
-//      b_pos_ = 3;
-//      bpp_ = 4;
-//      break;
-//
-//    default:
-//      errno = EINVAL;
-//      break;
-//  };
-
-//  format_ = format;
-//  width_ = size.width();
-//  height_ = size.height();
-//  stride_ = stride;
 
   CF_DEBUG("Unknown format: fourcc=%u modifier=%llu '%s'", fourcc, modifier, format.toString().c_str());
   return false;

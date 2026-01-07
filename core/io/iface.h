@@ -32,6 +32,7 @@ ssize_t cf_enumerate_ifaces(struct ifaceinfo ifaces[], size_t maxifaces);
 char * cf_format_iface_flags(uint32_t ifa_flags, char string[256]);
 
 bool cf_get_iface_address(const char * string, uint32_t * address, uint16_t * port);
+bool cf_get_iface_address(const char * string, struct sockaddr_in * saddrs);
 std::string cf_get_iface_address(const std::string & ifacename);
 
 

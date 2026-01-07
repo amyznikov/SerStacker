@@ -24,8 +24,8 @@ public:
   struct MeasuredValue
   {
     const QMeasure * measure;
-    const cv::Scalar value;
-    const int cn = 0;
+    cv::Scalar value;
+    int cn = 0;
 
     MeasuredValue(const QMeasure * _measure, const cv::Scalar & _value, int _cn) :
         measure(_measure),

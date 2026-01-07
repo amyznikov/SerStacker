@@ -395,7 +395,7 @@ int QASICamera::drops() const
 
 void QASICamera::asi_close()
 {
-  unique_lock lock(mtx_);
+  unique_lock lock(_mtx);
   if ( _is_asi_open ) {
     CF_DEBUG("ASICloseCamera(CameraID=%d)", _camInfo.CameraID);
     ASICloseCamera(_camInfo.CameraID);
@@ -725,7 +725,7 @@ bool QASICamera::device_recv_frame(QCameraFrame::sptr & frm)
           exposure_time_ms, 0);
     }
 
-    while (_is_asi_open && current_state_ == State_started) {
+    while (_is_asi_open && _current_state == State_started) {
 
       status =
           ASIGetVideoData(_camInfo.CameraID,

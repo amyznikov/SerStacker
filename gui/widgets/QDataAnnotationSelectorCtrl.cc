@@ -6,7 +6,6 @@
  */
 
 #include "QDataAnnotationSelectorCtrl.h"
-#include <gui/widgets/QSignalsBock.h>
 #include <core/debug.h>
 
 QDataAnnotationSelectorCtrl::QDataAnnotationSelectorCtrl(QWidget * parent) :
@@ -72,7 +71,7 @@ void QDataAnnotationSelectorCtrl::setAnnotationLabel(int cmap, int label)
   if ( cmap >= 0 && cmap < _selectors.size() ) {
     QComboBox * ctrl = _selectors[cmap];
 
-    QSignalsBock block(ctrl);
+    QSignalBlocker block(ctrl);
     ctrl->setCurrentIndex(ctrl->findData(QVariant::fromValue((int)(label))));
   }
 }

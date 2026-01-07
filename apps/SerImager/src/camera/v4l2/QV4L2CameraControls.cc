@@ -485,8 +485,8 @@ void QV4L2CameraControls::onupdatecontrols()
       case QImagingCamera::State_disconnected:
         case QImagingCamera::State_connecting:
         case QImagingCamera::State_starting:
-        case QImagingCamera::State_stopping:
-        case QImagingCamera::State_disconnecting:
+        case QImagingCamera::State_stop:
+        case QImagingCamera::State_disconnect:
         enable_primary_controls = false;
         enable_extended_controls = false;
         break;

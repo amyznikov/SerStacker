@@ -30,6 +30,7 @@ public:
 protected :
   void onupdatecontrols() override;
   void populateCameras();
+  void populateCameraControls();
   void populateStreams();
   void populateFormats();
   void populateSizes();
@@ -46,6 +47,8 @@ protected:
   QComboBox * formats_ctl = nullptr;
   QComboBox * sizes_ctl = nullptr;
   QSpinBox* cameraDeviceBuffers_ctl = nullptr;
+  QList<QLineEditBox*> cameraControls;
+
 };
 
 } /* namespace serimager */

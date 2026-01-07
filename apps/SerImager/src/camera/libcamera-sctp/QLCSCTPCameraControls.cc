@@ -38,6 +38,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
           [this](int cursel, QComboBox * combo) {
             if (_camera ) {
               _camera->setSelectedCameraIndex(cursel);
+              populateCameraControls();
               populateStreams();
               populateFormats();
               populateSizes();
@@ -154,6 +155,38 @@ void QLCSCTPCameraControls::populateCameras()
   cameras_ctl->setCurrentIndex(_camera->selectedCameraIndex());
 }
 
+void QLCSCTPCameraControls::populateCameraControls()
+{
+  for( QLineEditBox * w : cameraControls ) {
+    w->disconnect();
+    form->removeRow(w);
+  }
+
+  cameraControls.clear();
+
+  if( _camera ) {
+    QLCSCTPCamera::QLCCamera * cam = _camera->selectedCamera();
+    if( cam ) {
+      for( QLCSCTPCamera::QLCCameraControl & ctl : cam->contols ) {
+        QLineEditBox * w = new QLineEditBox(this);
+
+        w->setValue(ctl.value.isEmpty() ? ctl.defval : ctl.value);
+
+        addRow(ctl.id, w);
+        cameraControls.append(w);
+
+        connect(w, &QLineEditBox::textChanged,
+            [this, w, &ctl]() {
+              ctl.value = w->text();
+              if (_camera ) {
+                _camera->applyDeviceControl(ctl);
+              }
+            });
+      }
+    }
+  }
+}
+
 void QLCSCTPCameraControls::populateStreams()
 {
   QSignalBlocker block(streams_ctl);
@@ -201,10 +234,10 @@ void QLCSCTPCameraControls::onupdatecontrols()
     setEnabled(false);
   }
   else {
-
     const QImagingCamera::State cameraState = _camera->state();
     if( cameraState == QImagingCamera::State_connected ) {
       populateCameras();
+      populateCameraControls();
       populateStreams();
       populateFormats();
       populateSizes();
@@ -217,6 +250,11 @@ void QLCSCTPCameraControls::onupdatecontrols()
     streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
     formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
     sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+    cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+
+    for ( QWidget * w : cameraControls ) {
+      w->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+    }
 
     setEnabled(true);
   }

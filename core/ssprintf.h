@@ -208,7 +208,7 @@ inline typename std::enable_if_t<std::is_enum_v<enum_type>,
 
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
-  const std::string &> toString(const enum_type & v)
+  const std::string &> toString(const enum_type v)
 {
   const c_enum_member * members =
       members_of<enum_type>();
@@ -227,7 +227,7 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
 
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
-  const char *> toCString(const enum_type & v)
+  const char *> toCString(const enum_type v)
 {
   const c_enum_member * members =
       members_of<enum_type>();
@@ -246,7 +246,7 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
 
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
-  const std::string &> comment_for(const enum_type & v)
+  const std::string &> comment_for(const enum_type v)
 {
   const c_enum_member * members =
       members_of<enum_type>();

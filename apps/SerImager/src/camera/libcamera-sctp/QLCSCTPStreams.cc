@@ -120,7 +120,7 @@ void QLCSCTPStreams::save()
     }
   }
 
-
+  CF_DEBUG("QSettings().setValue(QLCSCTPStreams");
   QSettings().setValue("QLCSCTPStreams",
       QVariant::fromValue(cameras));
 }

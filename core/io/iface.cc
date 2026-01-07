@@ -178,6 +178,23 @@ bool cf_get_iface_address(const char * string, uint32_t * address, uint16_t * po
   return true;
 }
 
+bool cf_get_iface_address(const char * string, struct sockaddr_in * saddrs)
+{
+  uint32_t address = 0;
+  uint16_t port = 0;
+
+  if ( cf_get_iface_address(string, &address, &port) ) {
+
+    memset(saddrs, 0, sizeof(saddrs));
+    saddrs->sin_family = AF_INET;
+    saddrs->sin_addr.s_addr = htonl(address);
+    saddrs->sin_port = htons(port);
+    return true;
+  }
+
+  return false;
+}
+
 /* fixme: only IPv4 is implemented */
 std::string cf_get_iface_address(const std::string & ifacename)
 {
@@ -195,3 +212,4 @@ std::string cf_get_iface_address(const std::string & ifacename)
 
   return ipaddrs;
 }
+

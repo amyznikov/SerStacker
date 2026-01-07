@@ -23,6 +23,20 @@ public:
   typedef QImagingCamera Base;
   typedef std::shared_ptr<ThisClass> sptr;
 
+#pragma pack(push, 1)
+  struct ImageHeader
+  {
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
+    uint32_t datasize;
+    uint32_t bpp;
+    uint32_t fourcc;
+    uint64_t fourcc_modifier;
+    uint64_t timestamp;
+  };
+#pragma pack(pop)
+
   struct QLCCameraPixFormats
   {
     QString format;
@@ -41,56 +55,58 @@ public:
     QLCCameraStream(const QString & name) : role(name) {}
   };
 
+  struct QLCCameraControl
+  {
+    QString id;
+    QString type;
+    QString value;
+    QString minval;
+    QString maxval;
+    QString defval;
+    QLCCameraControl() = default;
+    QLCCameraControl(const QString & _id, const QString & _type, const QString & _value, const QString & _minval,
+        const QString & _maxval, const QString & _defval) :
+        id(_id), type(_type), value(_value), minval(_minval), maxval(_maxval), defval(_defval)
+    {}
+  };
+
   struct QLCCamera
   {
     QString id;
     QString model;
+    QList<QLCCameraControl> contols;
     QList<QLCCameraStream> streams;
     int selectedStreamIndex = -1;
     QLCCamera() = default;
     QLCCamera(const QString & name, const QString & _model) : id(name), model(_model) {}
-
   };
 
-  class c_sctp
-  {
-  public:
-    typedef c_sctp this_class;
-
-#pragma pack(push, 1)
-  struct ImageHeader
-  {
-    uint32_t width;
-    uint32_t height;
-    uint32_t stride;
-    uint32_t datasize;
-    uint32_t bpp;
-    uint32_t fourcc;
-    uint64_t fourcc_modifier;
-    uint64_t timestamp;
-  };
-#pragma pack(pop)
-
-    int connect(uint32_t address, uint16_t port);
-    void disconnect();
-    bool connected() const;
-    bool sendmsg(const std::string & msg);
-    int recvmsg();
-    const std::string & smsg() const;
-    const ImageHeader & imghdr() const;
-    const std::vector<uint8_t> & imgdata() const;
-    void clear_smsg();
-    void clear_image();
-  protected:
-//    public QThread
-//    void run() final;
-  protected:
-    int _so = -1;
-    std::string _smsg;
-    std::vector<uint8_t> _imghdr;
-    std::vector<uint8_t> _imgdata;
-    std::vector<uint8_t> _buf;
-  };
+//  class c_sctp_connection
+//  {
+//  public:
+//    typedef c_sctp_connection this_class;
+//
+//    int connect(const QString & url);
+//    void disconnect();
+//    bool connected() const;
+//    bool sendmsg(const std::string & msg);
+//    int recvmsg();
+//    const std::string & smsg() const;
+//    const ImageHeader & imghdr() const;
+//    const std::vector<uint8_t> & imgdata() const;
+//    void clear_smsg();
+//    void clear_image();
+//
+//  protected:
+//    int _so = -1;
+//    struct sockaddr_in saddrs = {0};
+//    std::string _smsg;
+//    std::vector<uint8_t> _imghdr;
+//    std::vector<uint8_t> _imgdata;
+//    std::vector<uint8_t> _buf;
+//    std::deque<std::string> _smsgq;
+//    std::deque<QCameraFrame::sptr> _frmq;
+//  };
 
   ~QLCSCTPCamera();
 
@@ -134,6 +150,7 @@ public:
   int cameraDeviceBuffers() const;
   void setCameraDeviceBuffers(int v);
 
+  void applyDeviceControl(const QLCCameraControl & ctl);
 
 Q_SIGNALS:
   void parametersChanged();
@@ -152,22 +169,26 @@ protected:
   bool device_recv_frame(QCameraFrame::sptr & frm) override;
 
 protected:
-//  bool create_frame_buffers(const cv::Size & imageSize,
-//      int cvType,
-//      enum COLORID colorid,
-//      int bpp,
-//      int num_buffers);
-
-//  void qpool(const QCameraFrame::sptr & );
-//  QCameraFrame::sptr dqpool();
-
-protected:
-  c_sctp _sctp;
   QString _name;
   QString _url;
   QList<QLCCamera> _cameras;
   int _selectedCameraIndex = -1;
   int _cameraDeviceBuffers = 2;
+
+protected:
+  std::unique_ptr<std::thread> _sctp_thread;
+  struct sockaddr_in saddrs = {0};
+  int _so = -1;
+  std::string _smsg;
+  std::vector<uint8_t> _imghdr;
+  std::vector<uint8_t> _imgdata;
+  std::vector<uint8_t> _buf;
+  std::deque<std::string> _smsgs;
+  std::deque<QCameraFrame::sptr> _frms;
+  void sctp_threadproc();
+  bool sctp_connect(const QString & url);
+  void sctp_disconnect();
+  bool sctp_sendmsg(const std::string & msg);
 };
 
 

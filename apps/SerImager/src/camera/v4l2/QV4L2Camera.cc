@@ -531,7 +531,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
           .revents = 0
       };
 
-      while (current_state_ == State_started) {
+      while (_current_state == State_started) {
 
         if( (status = poll(&pfd, 1, 150)) < 0 ) {
           status = errno;
@@ -680,7 +680,7 @@ void QV4L2Camera::device_release_frame(const QCameraFrame::sptr & frame)
 {
   INSTRUMENT_REGION("");
 
-  if( current_state_ == State_started ) {
+  if( _current_state == State_started ) {
 
     QV4L2CameraFrame *frm =
         dynamic_cast<QV4L2CameraFrame*>(frame.get());

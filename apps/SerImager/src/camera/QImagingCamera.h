@@ -23,18 +23,26 @@ public:
   typedef QImagingCamera ThisClass;
   typedef QObject Base;
   typedef std::shared_ptr<ThisClass> sptr;
+  typedef std::function<bool ()> PreStartProc;
   typedef std::unique_lock<std::shared_mutex> unique_lock;
   typedef std::shared_lock<std::shared_mutex> shared_lock;
-  typedef std::function<bool ()> PreStartProc;
 
-  enum State {
+  struct temporary_unlock
+  {
+    unique_lock & lk;
+    temporary_unlock(unique_lock & _lk) : lk(_lk) { lk.unlock(); }
+    ~temporary_unlock() { lk.lock(); }
+  };
+
+  enum State
+  {
     State_disconnected,
     State_connecting,
     State_connected,
     State_starting,
     State_started,
-    State_stopping,
-    State_disconnecting,
+    State_stop,
+    State_disconnect,
   };
 
   enum ExposureStatus
@@ -94,15 +102,15 @@ protected:
   virtual void onStateCanged(QImagingCamera::State oldSate, QImagingCamera::State newState);
 
 protected:
-  std::shared_mutex mtx_;
-  std::condition_variable_any condvar_;
-  std::deque<QCameraFrame::sptr> deque_;
-  std::vector<const PreStartProc*> prestartproc_;
+  std::shared_mutex _mtx;
+  std::condition_variable_any _condvar;
+  std::deque<QCameraFrame::sptr> _deque;
+  std::vector<const PreStartProc*> _prestartproc;
 
-  State current_state_ = State_disconnected;
-  QString stateChangeReason_;
+  volatile State _current_state = State_disconnected;
+  QString _stateChangeReason;
 
-  QRect roi_;
+  QRect _roi;
 };
 
 std::string fourccToString (uint32_t fourcc);

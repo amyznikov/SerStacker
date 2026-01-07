@@ -715,7 +715,7 @@ void MainWindow::updateMeasurements()
              centralDisplay_->rectShape()->iSceneRect());
 
      if ( fOK ) {
-       measuredFrames.append(std::move(frame));
+       measuredFrames.append(frame);
      }
 
      if (!measuredFrames.empty()) {

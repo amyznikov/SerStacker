@@ -209,10 +209,10 @@ void QCameraSelectionWidget::onConnectionStatusCtrlClicked()
       case QImagingCamera::State_started:
         selectedCamera_->disconnect();
         break;
-      case QImagingCamera::State_stopping:
+      case QImagingCamera::State_stop:
         selectedCamera_->disconnect();
         break;
-      case QImagingCamera::State_disconnecting:
+      case QImagingCamera::State_disconnect:
         break;
     }
   }
@@ -235,9 +235,9 @@ void QCameraSelectionWidget::onStartStopCtrlClicked()
       case QImagingCamera::State_started:
         selectedCamera_->stop();
         break;
-      case QImagingCamera::State_stopping:
+      case QImagingCamera::State_stop:
         break;
-      case QImagingCamera::State_disconnecting:
+      case QImagingCamera::State_disconnect:
         break;
     }
   }
@@ -389,12 +389,12 @@ void QCameraSelectionWidget::onupdatecontrols()
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, true, icon_stop);
         break;
-      case QImagingCamera::State_stopping:
+      case QImagingCamera::State_stop:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_disconnect);
         enableControl(startStop_ctl, false, icon_hourglass);
         break;
-      case QImagingCamera::State_disconnecting:
+      case QImagingCamera::State_disconnect:
         cameraSelection_ctl->setEnabled(false);
         enableControl(connectionStatus_ctl, true, icon_hourglass);
         enableControl(startStop_ctl, false, icon_connect);

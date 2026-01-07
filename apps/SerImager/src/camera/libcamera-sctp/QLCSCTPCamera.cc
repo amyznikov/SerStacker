@@ -231,6 +231,39 @@ int QLCSCTPCamera::selectedSizeIndex() const
   return fmt ? fmt->selectedSizeIndex : -1;
 }
 
+
+QLCSCTPCamera::QLCCameraControl * QLCSCTPCamera::QLCCamera::getControl(const QString & id)
+{
+  for( int i = 0, n = contols.size(); i < n; ++i ) {
+    if( contols[i].id == id ) {
+      return &contols[i];
+    }
+  }
+  return nullptr;
+}
+
+const QLCSCTPCamera::QLCCameraControl * QLCSCTPCamera::QLCCamera::getControl(const QString & id) const
+{
+  for( int i = 0, n = contols.size(); i < n; ++i ) {
+    if( contols[i].id == id ) {
+      return &contols[i];
+    }
+  }
+  return nullptr;
+}
+
+QLCSCTPCamera::QLCCameraControl* QLCSCTPCamera::getControl(const QString & id)
+{
+  QLCCamera * cam = selectedCamera();
+  return cam ? cam->getControl(id) : nullptr;
+}
+
+const QLCSCTPCamera::QLCCameraControl* QLCSCTPCamera::getControl(const QString & id) const
+{
+  const QLCCamera * cam = selectedCamera();
+  return cam ? cam->getControl(id) : nullptr;
+}
+
 int QLCSCTPCamera::cameraDeviceBuffers() const
 {
   return _cameraDeviceBuffers;
@@ -414,7 +447,12 @@ void QLCSCTPCamera::sctp_threadproc()
       if( sinfo.sinfo_stream == 0 ) {
         _smsg.append(_buf.begin(), _buf.begin() + cb);
         if( flags & MSG_EOR ) {
-          CF_DEBUG("MSG_EOR: cb=%d stream=%u flags=0x%0X msg=\n%s\n", cb, sinfo.sinfo_stream, flags, _smsg.c_str());
+          if ( _smsg.size() < 1024 ) {
+            CF_DEBUG("MSG_EOR: cb=%d stream=%u flags=0x%0X msg=\n%s\n", cb, sinfo.sinfo_stream, flags, _smsg.c_str());
+          }
+          else {
+            fprintf(stderr, "MSG_EOR: cb=%d stream=%u flags=0x%0X msg=\n'%s'\n", cb, sinfo.sinfo_stream, flags, _smsg.c_str());
+          }
           if ( _current_state == State_connecting ) {
             _smsgs.emplace_back(_smsg);
             _condvar.notify_all();
@@ -547,35 +585,27 @@ bool QLCSCTPCamera::device_connect()
     }
   }
 
-  CF_DEBUG("H");
   while (_current_state == State_connecting) {
 
-    CF_DEBUG("H");
     _condvar.wait(lock, [this]() {
       return (_current_state != State_connecting || !_smsgs.empty() );
     });
 
-    CF_DEBUG("H");
     if( _current_state != State_connecting ) {
-      CF_DEBUG("H");
       break;
     }
 
-    CF_DEBUG("H");
     if( !_smsgs.empty() ) {
 
-      CF_DEBUG("H");
       const std::string smsg = _smsgs.front();
       _smsgs.pop_front();
 
-      CF_DEBUG("server message:\n%s\n", smsg.c_str());
+      //CF_DEBUG("server message:\n%s\n", smsg.c_str());
 
       c_config cfg;
       if( !cfg.read_string(smsg.c_str()) ) {
-        CF_ERROR("cfg.read_string() fails");
-        CF_DEBUG("sctp_disconnect()");
+        CF_ERROR("cfg.read_string() fails. smsg='\n%s\n'", smsg.c_str());
         sctp_disconnect();
-        CF_DEBUG("return false");
         return false;
       }
 
@@ -583,6 +613,7 @@ bool QLCSCTPCamera::device_connect()
       c_config_setting cameras_item = root.get_list("cameras");
 
       QString id, model, role, pixfmt, size, type, value, minval, maxval, defval;
+      std::vector<std::string> values;
 
       _cameras.clear();
 
@@ -603,12 +634,14 @@ bool QLCSCTPCamera::device_connect()
         for( int ictrl = 0, nctrls = controls_item.length(); ictrl < nctrls; ++ictrl ) {
           const c_config_setting control_item = controls_item[ictrl];
           if( load_settings(control_item, "id", &id) ) {
+            values.clear();
             load_settings(control_item, "type", &type);
             load_settings(control_item, "min", &minval);
             load_settings(control_item, "max", &maxval);
             load_settings(control_item, "def", &defval);
             load_settings(control_item, "val", &value);
-            cam.contols.append(QLCCameraControl(id, type, value, minval, maxval, defval));
+            load_settings(control_item, "values", &values);
+            cam.contols.append(QLCCameraControl(id, type, value, minval, maxval, defval, values));
           }
         }
 

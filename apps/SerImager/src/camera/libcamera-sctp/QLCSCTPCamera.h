@@ -63,10 +63,11 @@ public:
     QString minval;
     QString maxval;
     QString defval;
+    std::vector<std::string> values;
     QLCCameraControl() = default;
     QLCCameraControl(const QString & _id, const QString & _type, const QString & _value, const QString & _minval,
-        const QString & _maxval, const QString & _defval) :
-        id(_id), type(_type), value(_value), minval(_minval), maxval(_maxval), defval(_defval)
+        const QString & _maxval, const QString & _defval, const std::vector<std::string> &_values ) :
+        id(_id), type(_type), value(_value), minval(_minval), maxval(_maxval), defval(_defval), values(_values)
     {}
   };
 
@@ -79,6 +80,8 @@ public:
     int selectedStreamIndex = -1;
     QLCCamera() = default;
     QLCCamera(const QString & name, const QString & _model) : id(name), model(_model) {}
+    QLCCameraControl * getControl(const QString & id);
+    const QLCCameraControl * getControl(const QString & id) const;
   };
 
 //  class c_sctp_connection
@@ -146,6 +149,9 @@ public:
   int selectedSizeIndex() const;
   QString * selectedSize();
   const QString * selectedSize() const;
+
+  QLCCameraControl * getControl(const QString & id);
+  const QLCCameraControl * getControl(const QString & id) const;
 
   int cameraDeviceBuffers() const;
   void setCameraDeviceBuffers(int v);

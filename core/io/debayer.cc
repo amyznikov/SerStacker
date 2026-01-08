@@ -888,7 +888,7 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   case COLORID_BAYER_RGGB :
     switch ( algo ) {
     case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR);
+      cv::demosaicing(src, dst, cv::COLOR_BayerRG2BGR);
       break;
     case DEBAYER_VNG :
       cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_VNG);

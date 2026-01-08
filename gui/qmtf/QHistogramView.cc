@@ -136,7 +136,8 @@ void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
   }
 
   if( isVisible() ) {
-    repaint();
+    // repaint();
+    update();
   }
 }
 

@@ -369,6 +369,12 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
     }
     return true;
   }
+  if( format == formats::SBGGR12 ) {
+    *colorid = COLORID_BAYER_BGGR;
+    *bpp = 12;
+    cv::Mat(h, w, CV_16UC1, (void*) data.data(), stride).copyTo(image);
+    return true;
+  }
   if( format == formats::SBGGR12_CSI2P ) {
     *colorid = COLORID_BAYER_BGGR;
     *bpp = 12;
@@ -393,6 +399,7 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
 //      return true;
 
   //CF_DEBUG("Unknown format: fourcc=%u modifier=%llu '%s'", fourcc, modifier, format.toString().c_str());
+  CF_DEBUG("Unknown format: fourcc=%u modifier=%llu'", fourcc, modifier);
   return false;
 }
 

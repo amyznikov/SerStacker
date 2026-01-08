@@ -377,9 +377,11 @@ void QLCSCTPCameraControls::updateCameraControl(QSpinBox * sb, const QLCSCTPCame
     if ( !ctlid.isEmpty() ) {
       const auto * c = cam->getControl(ctlid);
       if ( c ) {
-        int minv = 0, maxv = 1e6;
+        int minv = 0, maxv = 30 * 1e6;
         fromString(c->minval, &minv);
-        fromString(c->maxval, &maxv);
+        if (sb != ExposureTime_ctl) { // libcamera max exposure preset is too low
+          fromString(c->maxval, &maxv);
+        }
         sb->setRange(minv, maxv);
         sb->setEnabled(true);
         return;

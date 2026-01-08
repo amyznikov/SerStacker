@@ -369,13 +369,14 @@ bool QLCSCTPCamera::sctp_connect(const QString & url)
   so_set_recv_timeout(_so, 1);
 
   fOk = true;
-__end:
+  _so = so;
 
+__end:
   if( !fOk && so != -1 ) {
-    close(so), so = -1;
+    close(so);
   }
 
-  return (_so = so);
+  return fOk;
 }
 
 void QLCSCTPCamera::sctp_disconnect()
@@ -574,6 +575,10 @@ bool QLCSCTPCamera::device_connect()
     return false;
   }
 
+  if (_sctp_thread ) {
+    CF_ERROR("APP BUG: _sctp_thread is not null");
+  }
+
   _sctp_thread.reset(new std::thread(&ThisClass::sctp_threadproc, this));
 
   if ( true ) {
@@ -727,6 +732,8 @@ void QLCSCTPCamera::device_disconnect()
     temporary_unlock unlock(lock);
     _sctp_thread->join();
     CF_DEBUG("_sctp_thread->join() OK");
+    _sctp_thread.reset();
+    CF_DEBUG("_sctp_thread.reset() OK");
   }
 
   CF_DEBUG("leave");

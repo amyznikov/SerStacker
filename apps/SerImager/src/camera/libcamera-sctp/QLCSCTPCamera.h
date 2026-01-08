@@ -160,10 +160,12 @@ public:
 
 Q_SIGNALS:
   void parametersChanged();
+  void sctpThreadFinished(QPrivateSignal* p = nullptr);
 
 protected:
   QLCSCTPCamera(const QString & name, const QString & url, QObject * parent = nullptr);
   QLCSCTPCamera(const QString & name, QObject * parent = nullptr);
+  void onSctpThreadFinished();
 
   bool device_is_connected() const override;
   bool device_connect() override;

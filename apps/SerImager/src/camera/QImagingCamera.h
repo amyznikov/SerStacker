@@ -111,6 +111,8 @@ protected:
   QString _stateChangeReason;
 
   QRect _roi;
+
+
 };
 
 std::string fourccToString (uint32_t fourcc);

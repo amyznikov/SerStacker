@@ -94,6 +94,8 @@ QImagingCamera::~QImagingCamera()
   // don't call finish() because of pure virtual functions calls
 }
 
+
+
 void QImagingCamera::finish()
 {
   stop();
@@ -392,6 +394,7 @@ void QImagingCamera::disconnect()
     case State_connected:
       setState(State_disconnect);
       lock.unlock();
+      CF_DEBUG("call device_disconnect()");
       device_disconnect();
       lock.lock();
       setState(State_disconnected);

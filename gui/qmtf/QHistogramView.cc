@@ -39,7 +39,8 @@ void QHistogramView::setLogScale(bool v)
   if ( logScale_ != v ) {
     logScale_ = v;
     if( isVisible() ) {
-      repaint();
+      //repaint();
+      update();
     }
   }
 }
@@ -55,7 +56,8 @@ void QHistogramView::setBackgroundColor(const QColor & v)
   if ( backgroundColor_ != v ) {
     backgroundColor_ = v;
     if( isVisible() ) {
-      repaint();
+      //repaint();
+      update();
     }
   }
 }
@@ -70,7 +72,8 @@ void QHistogramView::setForegroundColor(const QColor & v)
   if ( foregroundColor_ != v ) {
     foregroundColor_ = v;
     if( isVisible() ) {
-      repaint();
+      //repaint();
+      update();
     }
   }
 }
@@ -85,7 +88,8 @@ void QHistogramView::setChartType(ChartType v)
   if ( chartType_ != v ) {
     chartType_ = v;
     if ( isVisible() ) {
-      repaint();
+      //repaint();
+      update();
     }
   }
 }
@@ -100,7 +104,8 @@ void QHistogramView::setDisplayChannel(DisplayChannel v)
   if ( displayChannel_ != v ) {
     displayChannel_ = v;
     if ( isVisible() ) {
-      repaint();
+      //repaint();
+      update();
     }
   }
 }
@@ -351,5 +356,6 @@ void QHistogramView::clear()
 {
   H.release();
   LH.release();
-  repaint();
+  //repaint();
+  update();
 }

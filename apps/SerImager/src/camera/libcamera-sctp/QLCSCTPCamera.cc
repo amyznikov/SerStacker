@@ -7,6 +7,7 @@
 
 #include "QLCSCTPCamera.h"
 #include <netinet/sctp.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/io/iface.h>
 #include <core/settings.h>
 #include <core/debug.h>
@@ -52,12 +53,31 @@ QLCSCTPCamera::QLCSCTPCamera(const QString & name, const QString & url, QObject 
     _name(name),
     _url(url)
 {
+  QObject::connect(this, &ThisClass::sctpThreadFinished,
+      this, &ThisClass::onSctpThreadFinished,
+      Qt::QueuedConnection);
 }
 
 QLCSCTPCamera::~QLCSCTPCamera()
 {
   finish();
 }
+
+void QLCSCTPCamera::onSctpThreadFinished()
+{
+  CF_DEBUG("call device_disconnect()");
+  device_disconnect();
+  CF_DEBUG("device_disconnect() returns");
+}
+
+//void QLCSCTPCamera::onStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
+//{
+////  if ( !device_is_connected() ) {
+////    CF_DEBUG("call device_disconnect()");
+////    device_disconnect();
+////    CF_DEBUG("device_disconnect() returns");
+////  }
+//}
 
 void QLCSCTPCamera::setName(const QString & name)
 {
@@ -381,8 +401,8 @@ __end:
 
 void QLCSCTPCamera::sctp_disconnect()
 {
-  CF_DEBUG("_so=%d", _so);
   if ( _so != -1 ) {
+    CF_DEBUG("so_close(_so=%d)", _so);
     so_close(_so, true);
     _so = -1;
   }
@@ -537,8 +557,15 @@ void QLCSCTPCamera::sctp_threadproc()
     }
   }
 
-  CF_DEBUG("sctp_disconnect(). _current_state=%d (%s)", _current_state, toCString(_current_state));
+  const State oldState = _current_state;
+  CF_DEBUG("call sctp_disconnect(). _current_state=%d (%s)", _current_state, toCString(_current_state));
   sctp_disconnect();
+  _condvar.notify_all();
+
+  if ( oldState != State_disconnected ) {
+    Q_EMIT sctpThreadFinished();
+  }
+
   CF_DEBUG("leave");
 }
 
@@ -716,27 +743,22 @@ bool QLCSCTPCamera::device_connect()
 
 void QLCSCTPCamera::device_disconnect()
 {
-  CF_DEBUG("sctp_disconnect()");
   sctp_disconnect();
 
-  CF_DEBUG("unique_lock lock(_mtx)");
   unique_lock lock(_mtx);
-  CF_DEBUG("_sctp_thread=%p", _sctp_thread.get());
   if ( _sctp_thread ) {
     if ( _current_state != State_disconnect ) {
-      CF_DEBUG("setState(State_disconnect)");
       setState(State_disconnect, "QLCSCTPCamera::device_disconnect");
       _condvar.notify_all();
     }
-    CF_DEBUG("_sctp_thread->join()");
-    temporary_unlock unlock(lock);
-    _sctp_thread->join();
-    CF_DEBUG("_sctp_thread->join() OK");
+    if ( true ) {
+      temporary_unlock unlock(lock);
+      _sctp_thread->join();
+    }
     _sctp_thread.reset();
-    CF_DEBUG("_sctp_thread.reset() OK");
   }
 
-  CF_DEBUG("leave");
+  setState(State_disconnected);
 }
 
 bool QLCSCTPCamera::device_start()

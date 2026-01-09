@@ -129,6 +129,7 @@ protected:
   c_running_average_update_options average_options_;
   c_running_average_output_options output_options_;
 
+  int _input_bpp = 0;
   c_ecch ecch_;
   c_image_transform::sptr ecc_tramsform_;
   c_eccflow eccflow_;

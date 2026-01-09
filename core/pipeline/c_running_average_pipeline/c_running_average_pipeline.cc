@@ -214,24 +214,28 @@ bool c_running_average_pipeline::double_align_moode() const
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
+  bool fOk = false;
 
-//  if ( average1_.compute(display_frame, display_mask) ) {
-//    return true;
-//  }
+  if ( true ) {
+    lock_guard lock(mutex());
 
-  if ( registration_options_.double_align_moode ) {
-    if ( average2_.compute(display_frame, display_mask) ) {
-      return true;
+    if ( registration_options_.double_align_moode ) {
+      if ( average2_.compute(display_frame, display_mask) ) {
+        fOk = true;
+      }
+    }
+    else {
+      if ( average1_.compute(display_frame, display_mask) ) {
+        fOk = true;
+      }
     }
   }
-  else {
-    if ( average1_.compute(display_frame, display_mask) ) {
-      return true;
-    }
+
+  if ( fOk && _input_bpp > 1 ) {
+    cv::multiply(display_frame, cv::Scalar::all(1 << _input_bpp), display_frame);
   }
 
-  return false;
+  return fOk;
 }
 
 bool c_running_average_pipeline::copyParameters(const base::sptr & dst) const
@@ -379,6 +383,8 @@ bool c_running_average_pipeline::run_pipeline()
       // in case of corrupted ASI frame detection the read_input_frame() returns true with empty output image.
       continue;
     }
+
+    _input_bpp = _input_sequence->bpp();
 
     if( _input_options.input_image_processor && !_input_options.input_image_processor->empty() ) {
       if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {

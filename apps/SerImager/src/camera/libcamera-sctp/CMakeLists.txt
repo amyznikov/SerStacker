@@ -1,33 +1,35 @@
-# libcamera
-#set(LIBCAMERA_LINK_LIBRARIES)
-#set(LIBCAMERA_INCLUDE_DIRS)
+# libcamera-sctp
+
+if ( NOT SCTP_FOUND )
+  message(STATUS "SCTP NOT found. libcamera-sctp will disabled")
+  return()
+endif()
+
 #
-#find_package(PkgConfig QUIET) # REQUIRED
-#if ( NOT PkgConfig_FOUND )
-#	message( WARNING "PkgConfig NOT FOUND, libcamera can not be detected.")
+## Look for the header file (usually in /usr/include/netinet/sctp.h) for the library file (libsctp.so)
+#find_path(SCTP_INCLUDE_DIR NAMES netinet/sctp.h)
+#find_library(SCTP_LIBRARY NAMES sctp)
+#
+## Handle standard arguments and set SCTP_FOUND
+#include(FindPackageHandleStandardArgs)
+#find_package_handle_standard_args(SCTP DEFAULT_MSG SCTP_LIBRARY SCTP_INCLUDE_DIR)
+#
+#if(SCTP_FOUND)
+#    set(SCTP_LIBRARIES ${SCTP_LIBRARY})
+#    set(SCTP_INCLUDE_DIRS ${SCTP_INCLUDE_DIR})
+#    message(STATUS "SCTP found: ${SCTP_LIBRARIES}")
+#	add_definitions(-DHAVE_SCTP=1)
 #else()
-#	pkg_check_modules(LIBCAMERA QUIET libcamera)
-#	if ( NOT LIBCAMERA_VERSION ) 
-#		message(WARNING "libcamera nor found. Install please libcamera package 
-#			https://aur.archlinux.org/packages/libcamera-git 
-#			https://libcamera.org")
-#         return()
-#    else()
-#		message(STATUS "libcamera: ${LIBCAMERA_VERSION} ${LIBCAMERA_INCLUDE_DIRS} ${LIBCAMERA_LINK_LIBRARIES}")
-#		add_definitions(-DHAVE_LIBCAMERA=1)
-#    endif()
+#    message(STATUS "SCTP NOT found. libcamera-sctp will disabled")
+#	add_definitions(-DHAVE_SCTP=0)
+#    return()
 #endif()
-#
+
 
 file(GLOB_RECURSE SOURCES *.c *.cc *.cpp)
 file(GLOB_RECURSE HEADERS *.h *.hpp)
 file(GLOB QRC_FILES *.qrc )
 
-#target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
-#target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCAMERA_INCLUDE_DIRS})
-#target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBCAMERA_LINK_LIBRARIES} -lsctp)
-
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES} ${HEADERS})
-target_include_directories(${PROJECT_NAME} PRIVATE )
-target_link_libraries(${PROJECT_NAME} PRIVATE -lsctp)
-
+target_include_directories(${PROJECT_NAME} PRIVATE ${SCTP_INCLUDE_DIRS} )
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SCTP_LIBRARIES})

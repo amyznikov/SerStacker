@@ -28,7 +28,12 @@ int main(int argc, char * argv[])
   app.setApplicationName(MY_APP);
 
   QFFStreams::registerMetaTypes();
+
+#if HAVE_QLCSCTPCamera
   QLCSCTPStreams::registerMetaTypes();
+#else
+#error  HAVE_QLCSCTPCamera not defined
+#endif // HAVE_QLCSCTPCamera
 
   cf_set_logfile(stderr);
   cf_set_loglevel(CF_LOG_DEBUG);

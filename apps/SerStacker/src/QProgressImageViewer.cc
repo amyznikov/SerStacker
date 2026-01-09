@@ -141,17 +141,17 @@ void QProgressImageViewer::getInputDataRange(double * minval, double * maxval) c
   getminmax(currentImage(), minval, maxval, currentMask());
 }
 
-
-void QProgressImageViewer::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-{
-  create_histogram(currentImage(),
-      currentMask(),
-      H,
-      hmin, hmax,
-      256,
-      false,
-      false);
-}
+//
+//void QProgressImageViewer::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+//{
+//  create_histogram(currentImage(),
+//      currentMask(),
+//      H,
+//      hmin, hmax,
+//      256,
+//      false,
+//      false);
+//}
 
 
 void QProgressImageViewer::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)

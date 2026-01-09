@@ -56,50 +56,50 @@ void QLiveDisplayMtfFunction::getInputDataRange(double * minval, double * maxval
   c_unique_lock lock(_mutex);
   Base::getInputDataRange(minval, maxval);
 }
-
-void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
-{
-  INSTRUMENT_REGION("");
-
-  if ( imageViewer_ ) {
-
-    cv::Mat image, mask;
-
-    double scale = 1.0;
-    double offset = 0.0;
-
-    _mutex.lock();
-    _isBusy = true;
-
-    const cv::Mat & currentImage =
-        imageViewer_->currentImage();
-
-    if ( currentImage.depth() == CV_8U ) {
-      currentImage.copyTo(image);
-    }
-    else {
-      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-      currentImage.convertTo(image, CV_8U, scale, offset);
-    }
-
-    imageViewer_->currentMask().copyTo(mask);
-    _mutex.unlock();
-
-    create_histogram(image, mask,
-        H,
-        output_hmin, output_hmax,
-        256,
-        false,
-        false);
-
-    _mutex.lock();
-    _isBusy = false;
-    _mutex.unlock();
-
-    (*output_hmin -= offset) /= scale;
-    (*output_hmax -= offset) /= scale;
-  }
-}
+//
+//void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  if ( imageViewer_ ) {
+//
+//    cv::Mat image, mask;
+//
+//    double scale = 1.0;
+//    double offset = 0.0;
+//
+//    _mutex.lock();
+//    _isBusy = true;
+//
+//    const cv::Mat & currentImage =
+//        imageViewer_->currentImage();
+//
+//    if ( currentImage.depth() == CV_8U ) {
+//      currentImage.copyTo(image);
+//    }
+//    else {
+//      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+//      currentImage.convertTo(image, CV_8U, scale, offset);
+//    }
+//
+//    imageViewer_->currentMask().copyTo(mask);
+//    _mutex.unlock();
+//
+//    create_histogram(image, mask,
+//        H,
+//        output_hmin, output_hmax,
+//        256,
+//        false,
+//        false);
+//
+//    _mutex.lock();
+//    _isBusy = false;
+//    _mutex.unlock();
+//
+//    (*output_hmin -= offset) /= scale;
+//    (*output_hmax -= offset) /= scale;
+//  }
+//}
 
 void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
 {

@@ -253,7 +253,7 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
   QMenu menu;
   QAction * action;
 
-  /////////////
+  ////////////////////////////////////////////////////////////////////////////
   static QFFStreamsDialogBox *ffStreamsDialogBox = nullptr;
 
   menu.addAction(action = new QAction("FFmpeg streams..."));
@@ -286,8 +286,8 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
 
       });
 
-  /////////////
-
+  ////////////////////////////////////////////////////////////////////////////
+#if HAVE_QLCSCTPCamera
   static QLCSCTPStreamsDialogBox *lcsctpStreamsDialogBox = nullptr;
   menu.addAction(action = new QAction("LCSCTP streams..."));
 
@@ -318,14 +318,12 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
         }
 
       });
-
-  /////////////
-
-
-  menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width() / 2, menu_ctl->height() / 2)));
+#endif // HAVE_QLCSCTPCamera
+  ////////////////////////////////////////////////////////////////////////////
 
 
-
+  menu.exec(menu_ctl->mapToGlobal(QPoint(menu_ctl->width() / 2,
+      menu_ctl->height() / 2)));
 }
 
 void QCameraSelectionWidget::timerEvent(QTimerEvent *event)
@@ -410,7 +408,9 @@ void QCameraSelectionWidget::refreshCameras()
   detectedCameras.append(QASICamera::detectCameras());
   detectedCameras.append(QV4L2Camera::detectCameras());
   detectedCameras.append(QFFStreams::streams());
+#if HAVE_QLCSCTPCamera
   detectedCameras.append(QLCSCTPStreams::streams());
+#endif //HAVE_QLCSCTPCamera
 
   //
   // Remove disappeared cameras

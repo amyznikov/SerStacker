@@ -61,34 +61,34 @@ void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * m
     }
   }
 }
-
-void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-{
-  if( !imageViewer_ ) {
-    H.release();
-  }
-  else {
-
-    const cv::Mat &image =
-        imageViewer_->currentImage();
-
-    const cv::Mat &mask =
-        imageViewer_->currentMask();
-
-    if( image.empty() ) {
-      H.release();
-    }
-    else {
-
-      create_histogram(image, mask,
-          H,
-          hmin, hmax,
-          256,
-          false,
-          false);
-    }
-  }
-}
+//
+//void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+//{
+//  if( !imageViewer_ ) {
+//    H.release();
+//  }
+//  else {
+//
+//    const cv::Mat &image =
+//        imageViewer_->currentImage();
+//
+//    const cv::Mat &mask =
+//        imageViewer_->currentMask();
+//
+//    if( image.empty() ) {
+//      H.release();
+//    }
+//    else {
+//
+//      create_histogram(image, mask,
+//          H,
+//          hmin, hmax,
+//          256,
+//          false,
+//          false);
+//    }
+//  }
+//}
 
 void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {

@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(serstacker CXX)
 
+include(FindPackageHandleStandardArgs)
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
+
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -392,6 +395,26 @@ endif()
 include_directories(${LIBCONFIG_INCLUDE_DIRS})
 message (STATUS "libconfig : ${LIBCONFIG_VERSION} ${LIBCONFIG_INCLUDE_DIRS} ${LIBCONFIG_LIBRARIES}")
 
+# ----------------------------------------------------------------------------
+# sctp
+#
+# Look for the header file (usually in /usr/include/netinet/sctp.h) for the library file (libsctp.so)
+find_path(SCTP_INCLUDE_DIR NAMES netinet/sctp.h)
+find_library(SCTP_LIBRARY NAMES sctp)
+#include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(SCTP DEFAULT_MSG SCTP_LIBRARY SCTP_INCLUDE_DIR)
+
+if(SCTP_FOUND)
+    set(SCTP_LIBRARIES ${SCTP_LIBRARY})
+    set(SCTP_INCLUDE_DIRS ${SCTP_INCLUDE_DIR})
+    include_directories(${SCTP_INCLUDE_DIRS})
+	add_definitions(-DHAVE_SCTP=1)
+    message(STATUS "SCTP found: ${SCTP_LIBRARIES} ${SCTP_INCLUDE_DIRS}")
+else()
+    message(STATUS "SCTP NOT found. sctp-dependend functions will disabled")
+	add_definitions(-DHAVE_SCTP=0)
+endif()
+
 
 # ----------------------------------------------------------------------------
 # Qt
@@ -414,8 +437,6 @@ if ( "${QT_VERSION}" STREQUAL "6" )
 endif()
 
 
-
-
 find_package(Qt${QT_VERSION} COMPONENTS ${Qt_REQUIRED_COMPONENTS}) 
 message( STATUS "Qt=Qt${QT_VERSION}")
 
@@ -430,6 +451,7 @@ endif()
 
 set(CORE_LIBRARIES
 	core
+	${SCTP_LIBRARIES}
 	${LIBCONFIG_LIBRARIES}
 	${onnxruntime_LIBRARY}
 	${OpenCV_LIBS}

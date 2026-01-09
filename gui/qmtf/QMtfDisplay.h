@@ -75,7 +75,7 @@ public:
   void saveParameters() const;
 
   virtual void getInputDataRange(double * output_minval, double * output_maxval) const = 0;
-  virtual void getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
+  //virtual void getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
   virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
 
   static DisplayParams & addDisplay(DisplayMap & map,

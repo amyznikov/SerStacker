@@ -54,7 +54,9 @@ MainWindow::MainWindow(QWidget * parent) :
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
   QFFStreams::load();
+#if HAVE_QLCSCTPCamera
   QLCSCTPStreams::load();
+#endif //HAVE_QLCSCTPCamera
 
   liveView_ = new QLivePipelineThread(this);
   liveView_->setDisplay(centralDisplay_);

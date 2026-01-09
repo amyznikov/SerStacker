@@ -120,7 +120,6 @@ void QLCSCTPStreams::save()
     }
   }
 
-  CF_DEBUG("QSettings().setValue(QLCSCTPStreams");
   QSettings().setValue("QLCSCTPStreams",
       QVariant::fromValue(cameras));
 }
@@ -337,7 +336,7 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
   addRow("URL:", streamUrl_ctl =
       new QLCSCTPUrlWidget());
 
-  connect(streamUrl_ctl, &QLCSCTPUrlWidget::urlChanged,
+  QObject::connect(streamUrl_ctl, &QLCSCTPUrlWidget::urlChanged,
       [this]() {
         if ( !updatingControls() && selectedStream_ ) {
           selectedStream_->setUrl(streamUrl_ctl->url());

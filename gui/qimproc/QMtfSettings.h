@@ -54,7 +54,7 @@ public:
   bool invertColormap() const override;
 
   void getInputDataRange(double * minval, double * maxval) const override;
-  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  //void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
 //  void loadParameters() override;
@@ -68,7 +68,7 @@ protected:
   c_mtf_routine::ptr processor_;
   double imin = 0, imax = 0;
   double omin = 0, omax = 255;
-  cv::Mat iH, oH;
+  cv::Mat /*iH, */oH;
 };
 
 

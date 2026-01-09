@@ -309,52 +309,52 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
   }
 }
 
-void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, double * imax)
-{
-  H.release();
-
-  if( !cloudView_ || cloudView_->clouds().empty() ) {
-    *imin = *imax = 0;
-    return;
-  }
-
-  int max_channels = 0;
-
-  for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
-    if( cloud->visible && cloud->colors.rows > 0 ) {
-
-      const int channels =
-          cloud->colors.channels();
-
-      if( channels > max_channels ) {
-        max_channels = channels;
-      }
-    }
-  }
-
-  if( max_channels > 0 ) {
-
-    c_histogram_builder builder;
-
-    getInputDataRange(imin, imax);
-
-    builder.set_input_range(*imin, *imax);
-    builder.set_channels(max_channels);
-    builder.set_bins(256);
-
-    for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
-      if( cloud->visible && cloud->colors.rows > 0 ) {
-
-        for( int i = 0; i < cloud->colors.rows; ++i ) {
-          builder.add_pixel(get_point_color(cloud->colors, i));
-        }
-
-      }
-    }
-
-    builder.compute(H);
-  }
-}
+//void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, double * imax)
+//{
+//  H.release();
+//
+//  if( !cloudView_ || cloudView_->clouds().empty() ) {
+//    *imin = *imax = 0;
+//    return;
+//  }
+//
+//  int max_channels = 0;
+//
+//  for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+//    if( cloud->visible && cloud->colors.rows > 0 ) {
+//
+//      const int channels =
+//          cloud->colors.channels();
+//
+//      if( channels > max_channels ) {
+//        max_channels = channels;
+//      }
+//    }
+//  }
+//
+//  if( max_channels > 0 ) {
+//
+//    c_histogram_builder builder;
+//
+//    getInputDataRange(imin, imax);
+//
+//    builder.set_input_range(*imin, *imax);
+//    builder.set_channels(max_channels);
+//    builder.set_bins(256);
+//
+//    for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+//      if( cloud->visible && cloud->colors.rows > 0 ) {
+//
+//        for( int i = 0; i < cloud->colors.rows; ++i ) {
+//          builder.add_pixel(get_point_color(cloud->colors, i));
+//        }
+//
+//      }
+//    }
+//
+//    builder.compute(H);
+//  }
+//}
 
 void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
 {

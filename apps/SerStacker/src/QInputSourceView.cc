@@ -740,41 +740,41 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
   }
 }
 
-
-void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-{
-  switch (_currentViewType) {
-    case DisplayType_Image:
-
-      create_histogram(_imageView->currentImage(),
-          _imageView->currentMask(),
-          H,
-          hmin, hmax,
-          256,
-          false,
-          false);
-
-
-      break;
-
-    case DisplayType_PointCloud:
-
-      create_histogram(_cloudView->currentColors(),
-          _cloudView->currentMask(),
-          H,
-          hmin, hmax,
-          256,
-          false,
-          false);
-
-      break;
-
-    default:
-      H.release();
-      break;
-  }
-
-}
+//
+//void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+//{
+//  switch (_currentViewType) {
+//    case DisplayType_Image:
+//
+//      create_histogram(_imageView->currentImage(),
+//          _imageView->currentMask(),
+//          H,
+//          hmin, hmax,
+//          256,
+//          false,
+//          false);
+//
+//
+//      break;
+//
+//    case DisplayType_PointCloud:
+//
+//      create_histogram(_cloudView->currentColors(),
+//          _cloudView->currentMask(),
+//          H,
+//          hmin, hmax,
+//          256,
+//          false,
+//          false);
+//
+//      break;
+//
+//    default:
+//      H.release();
+//      break;
+//  }
+//
+//}
 
 
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)

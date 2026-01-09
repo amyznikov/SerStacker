@@ -33,9 +33,11 @@ QCameraControlsWidget * QCameraControlsWidget::create(const QImagingCamera::sptr
     return new QFFMPEGCameraControls(FFMPEGCamera, parent);
   }
 
+#if HAVE_QLCSCTPCamera
   if ( QLCSCTPCamera::sptr LCSCTPCamera = std::dynamic_pointer_cast<QLCSCTPCamera>(camera) ) {
     return new QLCSCTPCameraControls(LCSCTPCamera, parent);
   }
+#endif // HAVE_QLCSCTPCamera
 
   return nullptr;
 }

@@ -177,37 +177,40 @@ void QMasterSourceSelectionCombo::onBrowseButtonClicked()
 
 void QMasterSourceSelectionCombo::setCurrentInputSource(const std::string & pathfilename)
 {
-  c_update_controls_lock lock(this);
+  if ( !pathfilename.empty() ) {
 
-  for( int i = 0, n = combo_->count(); i < n; ++i ) {
+    c_update_controls_lock lock(this);
 
-    const InputSourceData data =
-        combo_->itemData(i).value<InputSourceData>();
+    for( int i = 0, n = combo_->count(); i < n; ++i ) {
 
-    if( data.source_pathfilename == pathfilename ) {
-      combo_->setCurrentIndex(i);
+      const InputSourceData data =
+          combo_->itemData(i).value<InputSourceData>();
+
+      if( data.source_pathfilename == pathfilename ) {
+        combo_->setCurrentIndex(i);
+        return;
+      }
+    }
+
+    c_input_source::sptr source =
+        c_input_source::create(pathfilename);
+
+    if( !source ) {
+      CF_ERROR("c_input_source::create(pathfilename='%s') fails",
+          pathfilename.c_str());
       return;
     }
+
+    InputSourceData data = {
+        .source_pathfilename = source->cfilename(),
+        .source_size = source->size()
+    };
+
+    combo_->addItem(QFileInfo(source->cfilename()).fileName(),
+        QVariant::fromValue(data));
+
+    combo_->setCurrentIndex(combo_->count() - 1);
   }
-
-  c_input_source::sptr source =
-      c_input_source::create(pathfilename);
-
-  if( !source ) {
-    CF_ERROR("c_input_source::create(pathfilename='%s') fails",
-        pathfilename.c_str());
-    return;
-  }
-
-  InputSourceData data = {
-      .source_pathfilename = source->cfilename(),
-      .source_size = source->size()
-  };
-
-  combo_->addItem(QFileInfo(source->cfilename()).fileName(),
-      QVariant::fromValue(data));
-
-  combo_->setCurrentIndex(combo_->count() - 1);
 }
 
 QMasterSourceSelectionCombo::InputSourceData QMasterSourceSelectionCombo::currentInputSource() const

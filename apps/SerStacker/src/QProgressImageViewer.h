@@ -51,7 +51,7 @@ protected: // QImageDisplayFunction
 protected: // MTF
   //const QStringList displayChannels() const override;
   void getInputDataRange(double * minval, double * maxval) const override;
-  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  //void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
 protected:

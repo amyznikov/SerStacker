@@ -38,19 +38,19 @@ QMtfRoutineDisplaySettings::QMtfRoutineDisplaySettings(const c_mtf_routine::ptr 
 
         if ( image.empty() ) {
           imin = imax = 0;
-          iH.release();
+          //iH.release();
         }
         else {
           getminmax(image, &imin, &imax, mask);
 
-          if ( 0 ) {
-            create_histogram(image, mask,
-                iH,
-                &imin, &imax,
-                256,
-                false,
-                false);
-          }
+//          if ( 0 ) {
+//            create_histogram(image, mask,
+//                iH,
+//                &imin, &imax,
+//                256,
+//                false,
+//                false);
+//          }
         }
       });
 
@@ -180,12 +180,12 @@ void QMtfRoutineDisplaySettings::getInputDataRange(double * minval, double * max
   *maxval = imax;
 }
 
-void QMtfRoutineDisplaySettings::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-{
-  *hmin = imin;
-  *hmax = imax;
-  iH.copyTo(H);
-}
+//void QMtfRoutineDisplaySettings::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+//{
+//  *hmin = imin;
+//  *hmax = imax;
+//  iH.copyTo(H);
+//}
 
 void QMtfRoutineDisplaySettings::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {

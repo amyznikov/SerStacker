@@ -6,12 +6,15 @@
  */
 
 #include "QLCSCTPCamera.h"
+#if HAVE_QLCSCTPCamera
 #include <netinet/sctp.h>
 #include <gui/widgets/qsprintf.h>
 #include <core/io/iface.h>
 #include <core/settings.h>
 #include <core/debug.h>
 #include "unpack-libcamera-image.h"
+
+
 
 namespace serimager {
 
@@ -883,3 +886,5 @@ void QLCSCTPCamera::applyDeviceControl(const QLCCameraControl & ctl)
 }
 
 } // namespace serimager
+
+#endif // HAVE_QLCSCTPCamera

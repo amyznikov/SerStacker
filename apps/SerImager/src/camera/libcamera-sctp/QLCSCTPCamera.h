@@ -12,6 +12,12 @@
 #include "QImagingCamera.h"
 #include <core/io/sockopt.h>
 
+#if HAVE_SCTP
+# define HAVE_QLCSCTPCamera  1
+#else
+# define HAVE_QLCSCTPCamera  0
+#endif
+
 namespace serimager {
 
 class QLCSCTPCamera :

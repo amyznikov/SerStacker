@@ -40,12 +40,12 @@ public:
 
   std::mutex & mutex()
   {
-    return mutex_;
+    return _mutex;
   }
 
   bool isBusy() const
   {
-    return isBusy_;
+    return _isBusy;
   }
 
   void getInputDataRange(double * minval, double * maxval) const override;
@@ -53,8 +53,8 @@ public:
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
 
 protected:
-  mutable std::mutex mutex_;
-  bool isBusy_ = false;
+  mutable std::mutex _mutex;
+  bool _isBusy = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -100,18 +100,18 @@ protected: friend class QLivePipelineThread;
   void updateCurrentImage();
 
 protected:
-  QLiveDisplayMtfFunction mtfDisplayFunction_;
+  QLiveDisplayMtfFunction _mtfDisplayFunction;
 
-  QPixmap pixmap_;
+  QPixmap _pixmap;
 
-  QGraphicsRectShape * rectShape_ = nullptr;
-  QGraphicsLineShape * lineShape_ = nullptr;
-  QGraphicsTargetShape * targetShape_ = nullptr;
+  QGraphicsRectShape * _rectShape = nullptr;
+  QGraphicsLineShape * _lineShape = nullptr;
+  QGraphicsTargetShape * _targetShape = nullptr;
 
-  std::atomic_int update_display_timer_id_ = 0;
-  std::atomic_bool update_display_required_ = false;
-  std::mutex live_pipeline_lock_;
-  c_image_processing_pipeline::sptr live_pipeline_;
+  std::atomic_int _update_display_timer_id = 0;
+  std::atomic_bool _update_display_required = false;
+  std::mutex _live_pipeline_lock;
+  c_image_processing_pipeline::sptr _live_pipeline;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -163,18 +163,18 @@ protected:
 protected:
   using unique_lock = std::unique_lock<std::mutex>;
   using lock_guard = std::lock_guard<std::mutex>;
-  std::mutex mutex_;
-  std::condition_variable condvar_;
+  std::mutex _mutex;
+  std::condition_variable _condvar;
 
-  QImagingCamera::sptr camera_;
-  QLiveDisplay *display_ = nullptr;
-  c_image_processing_pipeline::sptr pipeline_;
+  QImagingCamera::sptr _camera;
+  QLiveDisplay *_display = nullptr;
+  c_image_processing_pipeline::sptr _pipeline;
 
-  std::atomic<DEBAYER_ALGORITHM> debayer_ = DEBAYER_NN;
-  QString darkFramePath_;
-  cv::Mat darkFrame_;
-  double darkFrameScale_ = 1; // auto
-  std::mutex darkFrameLock_;
+  std::atomic<DEBAYER_ALGORITHM> _debayer = DEBAYER_NN;
+  QString _darkFramePath;
+  cv::Mat _darkFrame;
+  double _darkFrameScale = 1; // auto
+  std::mutex _darkFrameLock;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,17 +215,17 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  QLivePipelineThread * liveThread_ = nullptr;
-  std::string config_filename_;
+  QLivePipelineThread * _liveThread = nullptr;
+  std::string _configFilename;
 
-  QVBoxLayout * layout_ = nullptr;
+  QVBoxLayout * _layout = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QComboBox * combobox_ctl = nullptr;
   QToolButton * startStop_ctl = nullptr;
   QToolButton * menuButton_ctl = nullptr;
 
   QScrollArea * scrollArea_ctl = nullptr;
-  QList<QPipelineSettingsWidget *> settingsWidgets_;
+  QList<QPipelineSettingsWidget *> _settingsWidgets;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -249,7 +249,7 @@ protected:
   void onupdatecontrols() override;
 
 protected:
-  QLivePipelineThread * liveThread_ = nullptr;
+  QLivePipelineThread * _liveThread = nullptr;
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
   QBrowsePathCombo * darkframe_ctl = nullptr;
   QNumericBox * darkFrameScale_ctl  = nullptr;
@@ -277,8 +277,8 @@ protected:
   void hideEvent(QHideEvent *e) override;
 
 protected:
-  QVBoxLayout * layout_ = nullptr;
-  QLiveThreadSettingsWidget * setiingsWidget_ = nullptr;
+  QVBoxLayout * _layout = nullptr;
+  QLiveThreadSettingsWidget * _setiingsWidget = nullptr;
 
 };
 

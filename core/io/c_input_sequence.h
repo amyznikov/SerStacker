@@ -88,23 +88,22 @@ protected:
   bool read_current_source(cv::Mat & output_frame, cv::Mat * output_mask);
 
 protected:
-  std::string name_;
+  std::string _name;
 
-  std::vector<c_input_source::sptr> all_sources_;
-  std::vector<c_input_source::sptr> enabled_sources_;
+  std::vector<c_input_source::sptr> _all_sources;
+  std::vector<c_input_source::sptr> _enabled_sources;
 
-  //enum DEBAYER_ALGORITHM auto_debayer_ = DEBAYER_DEFAULT; // DEBAYER_GBNR;
-  bool auto_apply_color_matrix_ = true;
+  bool _auto_apply_color_matrix = true;
 
-  int total_frames_ = -1;  // in enabled_sources_
-  int current_source_ = -1; // in enabled_sources_
-  int current_global_pos_ = -1; // in enabled_sources_
+  int _total_frames = -1;  // in enabled_sources_
+  int _current_source = -1; // in enabled_sources_
+  int _current_global_pos = -1; // in enabled_sources_
 
 
-  enum COLORID last_colorid_ = COLORID_UNKNOWN;
-  int last_bpp_ = 0;
-  cv::Matx33f last_color_matrix_ = cv::Matx33f::eye() ;
-  bool has_last_color_matrix_ = false;
+  enum COLORID _last_colorid = COLORID_UNKNOWN;
+  int _last_bpp = 0;
+  cv::Matx33f _last_color_matrix = cv::Matx33f::eye() ;
+  bool _has_last_color_matrix = false;
 
   double _last_ts = 0;
   bool _has_last_ts = false;

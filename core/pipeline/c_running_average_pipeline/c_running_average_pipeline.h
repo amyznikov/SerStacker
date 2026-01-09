@@ -125,24 +125,23 @@ protected:
 
 protected:
   c_running_average_input_options _input_options;
-  c_running_average_registration_options registration_options_;
-  c_running_average_update_options average_options_;
-  c_running_average_output_options output_options_;
-
+  c_running_average_registration_options _registration_options;
+  c_running_average_update_options _average_options;
+  c_running_average_output_options _output_options;
   int _input_bpp = 0;
-  c_ecch ecch_;
-  c_image_transform::sptr ecc_tramsform_;
-  c_eccflow eccflow_;
 
-  c_running_frame_average average1_;
-  c_running_frame_average average2_;
+  c_ecch _ecch;
+  c_image_transform::sptr _ecc_tramsform;
+  c_eccflow _eccflow;
 
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
+  c_running_frame_average _average1;
+  c_running_frame_average _average2;
 
-  c_output_frame_writer accumulated_video_writer_;
-  c_output_frame_writer reference_video_writer_;
+  cv::Mat _current_image;
+  cv::Mat _current_mask;
 
+  c_output_frame_writer _accumulated_video_writer;
+  c_output_frame_writer _reference_video_writer;
 };
 
 #endif /* __c_running_average_pipeline_h__ */

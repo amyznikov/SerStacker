@@ -52,17 +52,17 @@ c_input_sequence::sptr c_input_sequence::create(const std::vector<std::string> &
 
 void c_input_sequence::set_name(const std::string & name)
 {
-  name_ = name;
+  _name = name;
 }
 
 const std::string& c_input_sequence::name() const
 {
-  return name_;
+  return _name;
 }
 
 const char* c_input_sequence::cname() const
 {
-  return name_.c_str();
+  return _name.c_str();
 }
 
 bool c_input_sequence::is_live() const
@@ -81,7 +81,7 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
     c_config_setting sources_list =
         settings.add_list("sources");
 
-    for ( const c_input_source::sptr & source : all_sources_ ) {
+    for ( const c_input_source::sptr & source : _all_sources ) {
       if ( source )  {
 
         c_config_setting group =
@@ -101,7 +101,7 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
     if ( sources_list.isList() ) {
 
       const int n = sources_list.length();
-      all_sources_.reserve(n);
+      _all_sources.reserve(n);
 
       for ( int i = 0; i < n; ++i ) {
 
@@ -127,7 +127,7 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
           }
           else {
             source->set_enabled(enabled);
-            all_sources_.emplace_back(source);
+            _all_sources.emplace_back(source);
           }
         }
       }
@@ -149,22 +149,22 @@ bool c_input_sequence::serialize(c_config_setting settings, bool save)
 
 void c_input_sequence::set_auto_apply_color_matrix(bool v)
 {
-  auto_apply_color_matrix_ = v;
+  _auto_apply_color_matrix = v;
 }
 
 bool c_input_sequence::auto_apply_color_matrix() const
 {
-  return auto_apply_color_matrix_;
+  return _auto_apply_color_matrix;
 }
 
 const std::vector<c_input_source::sptr> & c_input_sequence::sources() const
 {
-  return all_sources_;
+  return _all_sources;
 }
 
 const c_input_source::sptr & c_input_sequence::source(int index) const
 {
-  return all_sources_[index];
+  return _all_sources[index];
 }
 
 
@@ -192,19 +192,19 @@ int c_input_sequence::indexof(const std::string & pathfilename,
 
 int c_input_sequence::indexof(const std::string & pathfilename) const
 {
-  return indexof(pathfilename, all_sources_);
+  return indexof(pathfilename, _all_sources);
 }
 
 int c_input_sequence::indexof(const c_input_source::sptr & source) const
 {
-  return indexof(source, all_sources_);
+  return indexof(source, _all_sources);
 }
 
 
 c_input_source::sptr c_input_sequence::source(const std::string & pathfilename) const
 {
   const int pos = indexof(pathfilename);
-  return pos >= 0 ? all_sources_[pos] : nullptr;
+  return pos >= 0 ? _all_sources[pos] : nullptr;
 }
 
 
@@ -218,11 +218,11 @@ c_input_source::sptr c_input_sequence::add_source(const std::string & pathfilena
     return nullptr;
   }
 
-  if ( pos < 0 || pos >= all_sources_.size() ) {
-    all_sources_.emplace_back(source);
+  if ( pos < 0 || pos >= _all_sources.size() ) {
+    _all_sources.emplace_back(source);
   }
   else {
-    all_sources_.insert(all_sources_.begin() + pos, source);
+    _all_sources.insert(_all_sources.begin() + pos, source);
   }
 
   return source;
@@ -241,12 +241,12 @@ bool c_input_sequence::add_sources(const std::vector<std::string> & pathfilename
 
 void c_input_sequence::remove_source(int pos)
 {
-  if ( pos >= 0 && pos < all_sources_.size() ) {
+  if ( pos >= 0 && pos < _all_sources.size() ) {
 
     c_input_source::sptr p =
-        all_sources_[pos];
+        _all_sources[pos];
 
-    all_sources_.erase(all_sources_.begin() + pos);
+    _all_sources.erase(_all_sources.begin() + pos);
   }
 }
 
@@ -256,10 +256,10 @@ void c_input_sequence::remove_source(const c_input_source::sptr & source)
   if ( source ) {
 
     const std::vector<c_input_source::sptr>::iterator ii =
-        std::find(all_sources_.begin(), all_sources_.end(), source);
+        std::find(_all_sources.begin(), _all_sources.end(), source);
 
-    if ( ii != all_sources_.end() ) {
-      all_sources_.erase(ii);
+    if ( ii != _all_sources.end() ) {
+      _all_sources.erase(ii);
     }
   }
 }
@@ -273,57 +273,57 @@ void c_input_sequence::remove_source(const std::string & sourcefilename)
 void c_input_sequence::clear()
 {
   close();
-  all_sources_.clear();
+  _all_sources.clear();
 }
 
 bool c_input_sequence::empty() const
 {
-  return all_sources_.empty();
+  return _all_sources.empty();
 }
 
 bool c_input_sequence::open()
 {
   close();
 
-  total_frames_ = 0;
+  _total_frames = 0;
 
-  for ( c_input_source::sptr & s : all_sources_ ) {
+  for ( c_input_source::sptr & s : _all_sources ) {
     if ( s->enabled() ) {
-      enabled_sources_.emplace_back(s);
-      s->set_global_pos(total_frames_);
-      total_frames_ += s->size();
+      _enabled_sources.emplace_back(s);
+      s->set_global_pos(_total_frames);
+      _total_frames += s->size();
     }
   }
 
-  if ( enabled_sources_.size() < 1 || !open_source(0)  ) {
+  if ( _enabled_sources.size() < 1 || !open_source(0)  ) {
     return false;
   }
 
-  current_source_ = 0;
-  current_global_pos_ = 0;
+  _current_source = 0;
+  _current_global_pos = 0;
 
   return true;
 }
 
 bool c_input_sequence::is_open() const
 {
-  return current_global_pos_ >= 0;
+  return _current_global_pos >= 0;
 }
 
 void c_input_sequence::close(bool also_clear)
 {
-  if ( current_source_ >= 0 ) {
-    close_source(current_source_);
+  if ( _current_source >= 0 ) {
+    close_source(_current_source);
   }
 
-  total_frames_ = -1;
-  current_source_ = -1;
-  current_global_pos_ = -1;
-  last_bpp_ = 0;
-  last_colorid_ = COLORID_UNKNOWN;
-  last_color_matrix_ = cv::Matx33f::eye();
-  has_last_color_matrix_ = false;
-  enabled_sources_.clear();
+  _total_frames = -1;
+  _current_source = -1;
+  _current_global_pos = -1;
+  _last_bpp = 0;
+  _last_colorid = COLORID_UNKNOWN;
+  _last_color_matrix = cv::Matx33f::eye();
+  _has_last_color_matrix = false;
+  _enabled_sources.clear();
 
   if ( also_clear ) {
     clear();
@@ -333,13 +333,13 @@ void c_input_sequence::close(bool also_clear)
 
 bool c_input_sequence::open_source(int source_index)
 {
-  if ( source_index < 0 || source_index >= (int) enabled_sources_.size() ) {
+  if ( source_index < 0 || source_index >= (int) _enabled_sources.size() ) {
     return false;
   }
 
-  if ( !enabled_sources_[source_index]->open() ) {
+  if ( !_enabled_sources[source_index]->open() ) {
     CF_ERROR("enabled_[source_index=%d]->open('%s') fails", source_index,
-        enabled_sources_[source_index]->filename().c_str());
+        _enabled_sources[source_index]->filename().c_str());
     return false;
   }
 
@@ -348,23 +348,23 @@ bool c_input_sequence::open_source(int source_index)
 
 void c_input_sequence::close_source(int source_index)
 {
-  if ( source_index >= 0 && source_index < (int) enabled_sources_.size() ) {
-    enabled_sources_[source_index]->close();
+  if ( source_index >= 0 && source_index < (int) _enabled_sources.size() ) {
+    _enabled_sources[source_index]->close();
   }
 }
 
 bool c_input_sequence::seek_current_source(int source_pos)
 {
-  if ( current_source_ < 0 || current_source_ >= (int) enabled_sources_.size() ) {
+  if ( _current_source < 0 || _current_source >= (int) _enabled_sources.size() ) {
     CF_DEBUG("c_input_sequence:seek_current_source(source_pos=%d) FAILS", source_pos);
     return false;
   }
-  return enabled_sources_[current_source_]->seek(source_pos);
+  return _enabled_sources[_current_source]->seek(source_pos);
 }
 
 int c_input_sequence::size()
 {
-  return total_frames_;
+  return _total_frames;
 }
 
 bool c_input_sequence::seek(int global_pos)
@@ -372,8 +372,8 @@ bool c_input_sequence::seek(int global_pos)
   int source_pos = -1;
   int required_source_ = -1;
 
-  for ( int i = 0, n = enabled_sources_.size(); i < n; ++i ) {
-    const c_input_source::sptr & s = enabled_sources_[i];
+  for ( int i = 0, n = _enabled_sources.size(); i < n; ++i ) {
+    const c_input_source::sptr & s = _enabled_sources[i];
     if ( global_pos >= s->global_pos() && global_pos < s->global_pos() + s->size() ) {
       required_source_ = i;
       source_pos = global_pos - s->global_pos();
@@ -381,16 +381,16 @@ bool c_input_sequence::seek(int global_pos)
     }
   }
 
-  if ( required_source_ < 0 || required_source_ >= (int)enabled_sources_.size() )  {
+  if ( required_source_ < 0 || required_source_ >= (int)_enabled_sources.size() )  {
     CF_ERROR("ERROR: required_source_=%d / %zu is invalid",
-        required_source_, enabled_sources_.size());
+        required_source_, _enabled_sources.size());
     return  false;
   }
 
-  if ( required_source_ != current_source_ ) {
-    close_source(current_source_);
-    if ( !open_source(current_source_ = required_source_) ) {
-      CF_ERROR("open_source(%d) fails", current_source_);
+  if ( required_source_ != _current_source ) {
+    close_source(_current_source);
+    if ( !open_source(_current_source = required_source_) ) {
+      CF_ERROR("open_source(%d) fails", _current_source);
       close();
       return false;
     }
@@ -398,30 +398,30 @@ bool c_input_sequence::seek(int global_pos)
 
   if ( !seek_current_source(source_pos) ) {
     CF_ERROR("seek_current_source(source=%d, source_pos=%d) fails",
-        current_source_, source_pos);
+        _current_source, source_pos);
     close();
     return false;
   }
 
 
-  current_global_pos_ = global_pos;
+  _current_global_pos = global_pos;
 
   return true;
 }
 
 int c_input_sequence::current_pos() const
 {
-  return current_global_pos_;
+  return _current_global_pos;
 }
 
 void c_input_sequence::update_current_pos()
 {
-  if ( current_source_ >= 0 && current_source_ < (int)enabled_sources_.size() ) {
+  if ( _current_source >= 0 && _current_source < (int)_enabled_sources.size() ) {
 
     const c_input_source::sptr & s =
-        enabled_sources_[current_source_];
+        _enabled_sources[_current_source];
 
-    current_global_pos_ =
+    _current_global_pos =
         s->global_pos() + s->curpos();
   }
 
@@ -429,7 +429,7 @@ void c_input_sequence::update_current_pos()
 
 c_input_source::sptr c_input_sequence::current_source() const
 {
-  return current_source_ >= 0 && current_source_ < (int) enabled_sources_.size() ? enabled_sources_[current_source_] : nullptr;
+  return _current_source >= 0 && _current_source < (int) _enabled_sources.size() ? _enabled_sources[_current_source] : nullptr;
 }
 
 int c_input_sequence::global_pos(int source_index, int source_frame_index) const
@@ -439,14 +439,14 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
     return -1;
   }
 
-  if ( source_index < 0 || source_index >= all_sources_.size() ) {
-    CF_ERROR("Invalid source_index=%d / %zu", source_index, all_sources_.size());
+  if ( source_index < 0 || source_index >= _all_sources.size() ) {
+    CF_ERROR("Invalid source_index=%d / %zu", source_index, _all_sources.size());
     return -1;
   }
 
   int enabled_source_index = -1;
-  for ( int i = 0, n = enabled_sources_.size(); i < n; ++i ) {
-    if ( enabled_sources_[i] == all_sources_[source_index] ) {
+  for ( int i = 0, n = _enabled_sources.size(); i < n; ++i ) {
+    if ( _enabled_sources[i] == _all_sources[source_index] ) {
       enabled_source_index = i;
       break;
     }
@@ -457,28 +457,28 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
     return -1;
   }
 
-  if ( source_frame_index < 0 || source_frame_index >= enabled_sources_[enabled_source_index]->size() ) {
+  if ( source_frame_index < 0 || source_frame_index >= _enabled_sources[enabled_source_index]->size() ) {
     CF_ERROR("source_frame_index=%d exceeds the size=%d of source_index=%d ",
-        source_frame_index, enabled_sources_[enabled_source_index]->size(), source_index);
+        source_frame_index, _enabled_sources[enabled_source_index]->size(), source_index);
     return -1;
   }
 
-  return enabled_sources_[enabled_source_index]->global_pos() + source_frame_index;
+  return _enabled_sources[enabled_source_index]->global_pos() + source_frame_index;
 }
 
 
 bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * output_mask)
 {
-  last_bpp_ = 0;
-  last_colorid_ = COLORID_UNKNOWN;
-  has_last_color_matrix_ = false;
+  _last_bpp = 0;
+  _last_colorid = COLORID_UNKNOWN;
+  _has_last_color_matrix = false;
 
   c_input_source::sptr source = current_source();
   if ( !source ) {
     return false;
   }
 
-  if ( !source->read(output_frame, &last_colorid_, &last_bpp_) ) {
+  if ( !source->read(output_frame, &_last_colorid, &_last_bpp) ) {
     return false;
   }
 
@@ -494,7 +494,7 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
 //  else
   if ( output_mask  ) {
 
-    if ( last_colorid_ == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
+    if ( _last_colorid == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
       output_mask->release();
     }
     else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
@@ -504,8 +504,8 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
   }
 
 
-  if ( (has_last_color_matrix_ = source->has_color_matrix()) ) {
-    last_color_matrix_ = source->color_matrix();
+  if ( (_has_last_color_matrix = source->has_color_matrix()) ) {
+    _last_color_matrix = source->color_matrix();
   }
 
   if( (_has_last_ts = source->has_last_ts()) ) {
@@ -517,20 +517,20 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
 
 bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 {
-  if ( current_source_ < 0 || current_source_ >= (int) enabled_sources_.size() ) {
-    CF_DEBUG("return false: current_source_=%d", current_source_);
+  if ( _current_source < 0 || _current_source >= (int) _enabled_sources.size() ) {
+    CF_DEBUG("return false: current_source_=%d", _current_source);
     return false;
   }
 
-  while ( current_source_ < (int) enabled_sources_.size() ) {
+  while ( _current_source < (int) _enabled_sources.size() ) {
     if ( read_current_source(output_frame, output_mask) ) {
 
       update_current_pos();
       return true;
     }
 
-    close_source(current_source_);
-    if ( ++current_source_ < (int) enabled_sources_.size() && !open_source(current_source_) ) {
+    close_source(_current_source);
+    if ( ++_current_source < (int) _enabled_sources.size() && !open_source(_current_source) ) {
       break;
     }
   }
@@ -540,22 +540,22 @@ bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
 
 enum COLORID c_input_sequence::colorid() const
 {
-  return last_colorid_;
+  return _last_colorid;
 }
 
 int c_input_sequence::bpp() const
 {
-  return last_bpp_;
+  return _last_bpp;
 }
 
 const cv::Matx33f & c_input_sequence::color_matrix() const
 {
-  return last_color_matrix_;
+  return _last_color_matrix;
 }
 
 bool c_input_sequence::has_color_matrix() const
 {
-  return has_last_color_matrix_;
+  return _has_last_color_matrix;
 }
 
 bool c_input_sequence::has_last_ts() const

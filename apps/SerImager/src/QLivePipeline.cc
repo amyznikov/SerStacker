@@ -53,7 +53,7 @@ QLiveDisplayMtfFunction::QLiveDisplayMtfFunction(QImageViewer * imageViewer) :
 
 void QLiveDisplayMtfFunction::getInputDataRange(double * minval, double * maxval) const
 {
-  c_unique_lock lock(mutex_);
+  c_unique_lock lock(_mutex);
   Base::getInputDataRange(minval, maxval);
 }
 
@@ -68,8 +68,8 @@ void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * out
     double scale = 1.0;
     double offset = 0.0;
 
-    mutex_.lock();
-    isBusy_ = true;
+    _mutex.lock();
+    _isBusy = true;
 
     const cv::Mat & currentImage =
         imageViewer_->currentImage();
@@ -83,7 +83,7 @@ void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * out
     }
 
     imageViewer_->currentMask().copyTo(mask);
-    mutex_.unlock();
+    _mutex.unlock();
 
     create_histogram(image, mask,
         H,
@@ -92,9 +92,9 @@ void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * out
         false,
         false);
 
-    mutex_.lock();
-    isBusy_ = false;
-    mutex_.unlock();
+    _mutex.lock();
+    _isBusy = false;
+    _mutex.unlock();
 
     (*output_hmin -= offset) /= scale;
     (*output_hmax -= offset) /= scale;
@@ -113,8 +113,8 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     double scale = 1.0;
     double offset = 0.0;
 
-    mutex_.lock();
-    isBusy_ = true;
+    _mutex.lock();
+    _isBusy = true;
 
     const cv::Mat & currentImage =
         imageViewer_->mtfImage();
@@ -128,7 +128,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     }
 
     imageViewer_->currentMask().copyTo(mask);
-    mutex_.unlock();
+    _mutex.unlock();
 
     create_histogram(image, mask,
         H,
@@ -140,9 +140,9 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     (*output_hmin -= offset) /= scale;
     (*output_hmax -= offset) /= scale;
 
-    mutex_.lock();
-    isBusy_ = false;
-    mutex_.unlock();
+    _mutex.lock();
+    _isBusy = false;
+    _mutex.unlock();
 
   }
 }
@@ -153,26 +153,26 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
 
 QLiveDisplay::QLiveDisplay(QWidget * parent) :
     Base(parent),
-    mtfDisplayFunction_(this)
+    _mtfDisplayFunction(this)
 {
-  setDisplayFunction(&mtfDisplayFunction_);
+  setDisplayFunction(&_mtfDisplayFunction);
 
   connect(this, &ThisClass::pixmapChanged,
       this, &ThisClass::onPixmapChanged,
       Qt::QueuedConnection);
 
-  connect(&mtfDisplayFunction_, &QMtfDisplay::displayChannelsChanged,
-      &mtfDisplayFunction_, &QMtfDisplay::parameterChanged);
+  connect(&_mtfDisplayFunction, &QMtfDisplay::displayChannelsChanged,
+      &_mtfDisplayFunction, &QMtfDisplay::parameterChanged);
 
-  connect(&mtfDisplayFunction_, &QMtfDisplay::parameterChanged,
+  connect(&_mtfDisplayFunction, &QMtfDisplay::parameterChanged,
       [this]() {
-        if ( !mtfDisplayFunction_.isBusy() ) {
+        if ( !_mtfDisplayFunction.isBusy() ) {
           Base::updateImage();
         }
       });
 
   connect(this, &ThisClass::displayImageChanged,
-      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
+      &_mtfDisplayFunction, &QMtfDisplay::displayImageChanged,
       Qt::QueuedConnection);
 
 
@@ -196,7 +196,7 @@ QLiveDisplay::~QLiveDisplay()
 
 void QLiveDisplay::createShapes()
 {
-  if( !rectShape_ ) {
+  if( !_rectShape ) {
 
     QRectF rect;
 
@@ -218,73 +218,73 @@ void QLiveDisplay::createShapes()
       }
     }
 
-    rectShape_ = new QGraphicsRectShape(rect);
-    rectShape_->setResizable(true);
-    rectShape_->setSnapToPixelGrid(true);
-    rectShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
-    rectShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    rectShape_->setCosmeticPen(Qt::red);
-    rectShape_->setVisible(false);
-    _scene->addItem(rectShape_);
+    _rectShape = new QGraphicsRectShape(rect);
+    _rectShape->setResizable(true);
+    _rectShape->setSnapToPixelGrid(true);
+    _rectShape->setFlag(QGraphicsItem::ItemIsMovable, true);
+    _rectShape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    _rectShape->setCosmeticPen(Qt::red);
+    _rectShape->setVisible(false);
+    _scene->addItem(_rectShape);
   }
 
-  if( !lineShape_ ) {
+  if( !_lineShape ) {
 
-    lineShape_ = new QGraphicsLineShape(-100, -100, 100, 100);
-    lineShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
-    lineShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    lineShape_->setCosmeticPen(Qt::green);
-    lineShape_->setVisible(false);
-    _scene->addItem(lineShape_);
+    _lineShape = new QGraphicsLineShape(-100, -100, 100, 100);
+    _lineShape->setFlag(QGraphicsItem::ItemIsMovable, true);
+    _lineShape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    _lineShape->setCosmeticPen(Qt::green);
+    _lineShape->setVisible(false);
+    _scene->addItem(_lineShape);
   }
 
-  if( !targetShape_ ) {
-    targetShape_ = new QGraphicsTargetShape();
-    targetShape_->setFlag(QGraphicsItem::ItemIsMovable, true);
-    targetShape_->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    targetShape_->setCosmeticPen(Qt::red);
-    targetShape_->setVisible(false);
-    _scene->addItem(targetShape_);
+  if( !_targetShape ) {
+    _targetShape = new QGraphicsTargetShape();
+    _targetShape->setFlag(QGraphicsItem::ItemIsMovable, true);
+    _targetShape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    _targetShape->setCosmeticPen(Qt::red);
+    _targetShape->setVisible(false);
+    _scene->addItem(_targetShape);
   }
 
 }
 
 const QLiveDisplayMtfFunction * QLiveDisplay::mtfDisplayFunction() const
 {
-  return &mtfDisplayFunction_;
+  return &_mtfDisplayFunction;
 }
 
 QLiveDisplayMtfFunction * QLiveDisplay::mtfDisplayFunction()
 {
-  return &mtfDisplayFunction_;
+  return &_mtfDisplayFunction;
 }
 
 
 void QLiveDisplay::setFrameProcessor(const c_image_processor::sptr & processor)
 {
-  mtfDisplayFunction_.mutex().lock();
+  _mtfDisplayFunction.mutex().lock();
   Base::_current_processor = processor;
 
-  if ( !mtfDisplayFunction_.isBusy() ) {
+  if ( !_mtfDisplayFunction.isBusy() ) {
     updateImage();
   }
 
-  mtfDisplayFunction_.mutex().unlock();
+  _mtfDisplayFunction.mutex().unlock();
 }
 
 QGraphicsRectShape * QLiveDisplay::rectShape() const
 {
-  return rectShape_;
+  return _rectShape;
 }
 
 QGraphicsLineShape * QLiveDisplay::lineShape() const
 {
-  return lineShape_;
+  return _lineShape;
 }
 
 QGraphicsTargetShape * QLiveDisplay::targetShape() const
 {
-  return targetShape_;
+  return _targetShape;
 }
 
 void QLiveDisplay::showEvent(QShowEvent *event)
@@ -299,22 +299,22 @@ void QLiveDisplay::hideEvent(QHideEvent *event)
 
 void QLiveDisplay::timerEvent(QTimerEvent * e)
 {
-  if( e->timerId() == update_display_timer_id_ ) {
+  if( e->timerId() == _update_display_timer_id ) {
 
-    if( update_display_required_ ) {
+    if( _update_display_required ) {
 
-      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
-      if( !mtfDisplayFunction_.isBusy() ) {
+      c_unique_lock mtflock(_mtfDisplayFunction.mutex());
+      if( !_mtfDisplayFunction.isBusy() ) {
 
-        update_display_required_ = false;
+        _update_display_required = false;
 
-        live_pipeline_lock_.lock();
+        _live_pipeline_lock.lock();
 
-        if( live_pipeline_ && live_pipeline_->get_display_image(_inputImage, _inputMask) ) {
+        if( _live_pipeline && _live_pipeline->get_display_image(_inputImage, _inputMask) ) {
           updateCurrentImage();
         }
 
-        live_pipeline_lock_.unlock();
+        _live_pipeline_lock.unlock();
       }
     }
 
@@ -328,22 +328,22 @@ void QLiveDisplay::timerEvent(QTimerEvent * e)
 
 void QLiveDisplay::onStartUpdateLiveDisplayTimer()
 {
-  update_display_timer_id_ = startTimer(100);
+  _update_display_timer_id = startTimer(100);
 }
 
 void QLiveDisplay::onStopUpdateLiveDisplayTimer()
 {
-  if ( update_display_timer_id_ ) {
-    killTimer(update_display_timer_id_);
-    update_display_timer_id_ = 0;
+  if ( _update_display_timer_id ) {
+    killTimer(_update_display_timer_id);
+    _update_display_timer_id = 0;
   }
 }
 
 void QLiveDisplay::setLivePipeline(const c_image_processing_pipeline::sptr & pipeline)
 {
-  live_pipeline_lock_.lock();
+  _live_pipeline_lock.lock();
 
-  if( live_pipeline_ ) {
+  if( _live_pipeline ) {
 
 //    if( true ) {
 //      c_unique_lock mtflock(mtfDisplayFunction_.mutex());
@@ -357,44 +357,44 @@ void QLiveDisplay::setLivePipeline(const c_image_processing_pipeline::sptr & pip
 //    }
 
     QImageProcessingPipeline *pp =
-        dynamic_cast<QImageProcessingPipeline*>(live_pipeline_.get());
+        dynamic_cast<QImageProcessingPipeline*>(_live_pipeline.get());
     if( pp ) {
       pp->disconnect(this);
     }
 
-    if( update_display_timer_id_ ) {
+    if( _update_display_timer_id ) {
       Q_EMIT stopUpdateLiveDisplayTimer();
     }
 
   }
 
 
-  if( (live_pipeline_ = pipeline) ) {
+  if( (_live_pipeline = pipeline) ) {
 
     QImageProcessingPipeline *pp =
-        dynamic_cast<QImageProcessingPipeline*>(live_pipeline_.get());
+        dynamic_cast<QImageProcessingPipeline*>(_live_pipeline.get());
 
     if( pp ) {
       connect(pp, &QImageProcessingPipeline::frameProcessed,
           [this]() {
             // give chance to GUI thread to call get_display_image()
-            update_display_required_ = true;
+            _update_display_required = true;
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
           });
     }
 
-    update_display_required_ = true;
+    _update_display_required = true;
     Q_EMIT startUpdateLiveDisplayTimer();
   }
 
-  live_pipeline_lock_.unlock();
+  _live_pipeline_lock.unlock();
 }
 
 
 void QLiveDisplay::onPixmapChanged()
 {
-  c_unique_lock lock(mtfDisplayFunction_.mutex());
-  scene()->setImage(pixmap_);
+  c_unique_lock lock(_mtfDisplayFunction.mutex());
+  scene()->setImage(_pixmap);
   Q_EMIT currentImageChanged();
 }
 
@@ -420,7 +420,7 @@ void QLiveDisplay::updateCurrentImage()
   }
 
   if ( true ) {
-    mtfDisplayFunction_.createDisplayImage(
+    _mtfDisplayFunction.createDisplayImage(
         _currentImage,
         _currentMask,
         _mtfImage,
@@ -429,7 +429,7 @@ void QLiveDisplay::updateCurrentImage()
   }
 
   if ( true ) {
-    pixmap_ =
+    _pixmap =
         createPixmap(_displayImage, true,
             Qt::NoFormatConversion |
                 Qt::ThresholdDither |
@@ -439,7 +439,7 @@ void QLiveDisplay::updateCurrentImage()
 
   Q_EMIT pixmapChanged();
 
-  if ( !mtfDisplayFunction_.isBusy() ) {
+  if ( !_mtfDisplayFunction.isBusy() ) {
     Q_EMIT displayImageChanged();
   }
 }
@@ -455,8 +455,8 @@ QLivePipelineThread::QLivePipelineThread(QObject * parent) :
 QLivePipelineThread::~QLivePipelineThread()
 {
   while ( isRunning() ) {
-    if ( camera_ ) {
-      camera_->disconnect();
+    if ( _camera ) {
+      _camera->disconnect();
     }
     QThread::msleep(20);
   }
@@ -465,13 +465,13 @@ QLivePipelineThread::~QLivePipelineThread()
 
 void QLivePipelineThread::setDebayer(DEBAYER_ALGORITHM algo)
 {
-  debayer_ = algo;
+  _debayer = algo;
   save_settings();
 }
 
 DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
 {
-  return debayer_;
+  return _debayer;
 }
 
 void QLivePipelineThread::setDarkFramePath(const QString & pathfilename)
@@ -482,87 +482,87 @@ void QLivePipelineThread::setDarkFramePath(const QString & pathfilename)
 
 const QString & QLivePipelineThread::darkFramePath() const
 {
-  return darkFramePath_;
+  return _darkFramePath;
 }
 
 void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
 {
-  darkFrameLock_.lock();
+  _darkFrameLock.lock();
 
-  darkFrame_.release();
+  _darkFrame.release();
 
-  if ( !(darkFramePath_ = pathfilename).isEmpty() ) {
+  if ( !(_darkFramePath = pathfilename).isEmpty() ) {
 
     cv::Mat ignoreMaskIfExists;
-    if ( !load_image(darkFramePath_.toStdString(), darkFrame_, ignoreMaskIfExists) ) {
-      CF_ERROR("load_image('%s') fails", darkFramePath_.toUtf8().constData());
+    if ( !load_image(_darkFramePath.toStdString(), _darkFrame, ignoreMaskIfExists) ) {
+      CF_ERROR("load_image('%s') fails", _darkFramePath.toUtf8().constData());
     }
-    else if ( darkFrameScale_ != 0 ) {
-      cv::multiply(darkFrame_, darkFrameScale_, darkFrame_);
+    else if ( _darkFrameScale != 0 ) {
+      cv::multiply(_darkFrame, _darkFrameScale, _darkFrame);
     }
     //    else if (darkFrame_.depth() == CV_32F ) {
     //    }
   }
 
-  darkFrameLock_.unlock();
+  _darkFrameLock.unlock();
 }
 
 void QLivePipelineThread::setDarkFrameScale(double v)
 {
-  darkFrameScale_ = v;
-  if ( !darkFramePath_.isEmpty() ) {
-    setDarkFrame(darkFramePath_);
+  _darkFrameScale = v;
+  if ( !_darkFramePath.isEmpty() ) {
+    setDarkFrame(_darkFramePath);
   }
   save_settings();
 }
 
 double QLivePipelineThread::darkFrameScale() const
 {
-  return darkFrameScale_;
+  return _darkFrameScale;
 }
 
 void QLivePipelineThread::load_settings()
 {
   QSettings settigs;
-  debayer_ = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) debayer_).toInt());
-  darkFramePath_ = settigs.value("QLivePipelineThread/darkFramePath", darkFramePath_).toString();
-  darkFrameScale_ = settigs.value("QLivePipelineThread/darkFrameScale", darkFrameScale_).toDouble();
+  _debayer = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) _debayer).toInt());
+  _darkFramePath = settigs.value("QLivePipelineThread/darkFramePath", _darkFramePath).toString();
+  _darkFrameScale = settigs.value("QLivePipelineThread/darkFrameScale", _darkFrameScale).toDouble();
 }
 
 void QLivePipelineThread::save_settings()
 {
   QSettings settigs;
-  settigs.setValue("QLivePipelineThread/debayer", (int)debayer_);
-  settigs.setValue("QLivePipelineThread/darkFramePath", darkFramePath_);
-  settigs.setValue("QLivePipelineThread/darkFrameScale", darkFrameScale_);
+  settigs.setValue("QLivePipelineThread/debayer", (int)_debayer);
+  settigs.setValue("QLivePipelineThread/darkFramePath", _darkFramePath);
+  settigs.setValue("QLivePipelineThread/darkFrameScale", _darkFrameScale);
 }
 
 void QLivePipelineThread::setDisplay(QLiveDisplay * display)
 {
-  display_ = display;
+  _display = display;
 }
 
 QLiveDisplay* QLivePipelineThread::display() const
 {
-  return display_;
+  return _display;
 }
 
 void QLivePipelineThread::setCamera(const QImagingCamera::sptr & camera)
 {
   // finish(true);
 
-  if( camera_ ) {
-    disconnect(camera_.get(), nullptr,
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
         this, nullptr);
   }
 
-  if( (camera_ = camera) ) {
+  if( (_camera = camera) ) {
 
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged,
         Qt::QueuedConnection);
 
-    if( camera_->state() == QImagingCamera::State_started ) {
+    if( _camera->state() == QImagingCamera::State_started ) {
       start();
     }
   }
@@ -570,7 +570,7 @@ void QLivePipelineThread::setCamera(const QImagingCamera::sptr & camera)
 
 const QImagingCamera::sptr & QLivePipelineThread::camera() const
 {
-  return camera_;
+  return _camera;
 }
 
 void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
@@ -589,22 +589,22 @@ void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, Q
 
 bool QLivePipelineThread::setPipeline(const c_image_processing_pipeline::sptr & pipeline)
 {
-  unique_lock lock(mutex_);
+  unique_lock lock(_mutex);
 
   c_image_processing_pipeline::sptr current_pipeline =
-      this->pipeline_;
+      this->_pipeline;
 
   if( current_pipeline ) {
 
-    this->pipeline_.reset();
+    this->_pipeline.reset();
 
     current_pipeline->cancel(true);
-    condvar_.wait(lock, [current_pipeline]() {
+    _condvar.wait(lock, [current_pipeline]() {
       return !current_pipeline->is_running();
     });
   }
 
-  this->pipeline_ = pipeline;
+  this->_pipeline = pipeline;
 
   if ( !isRunning() ) {
     Q_EMIT pipelineChanged();
@@ -615,7 +615,7 @@ bool QLivePipelineThread::setPipeline(const c_image_processing_pipeline::sptr & 
 
 const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
 {
-  return pipeline_;
+  return _pipeline;
 }
 
 void QLivePipelineThread::run()
@@ -627,22 +627,22 @@ void QLivePipelineThread::run()
     typedef c_image_input_source base;
     typedef std::shared_ptr<this_class> sptr;
 
-    QLivePipelineThread * thread_;
-    QImagingCamera::sptr camera_;
+    QLivePipelineThread * _thread;
+    QImagingCamera::sptr _camera;
     int last_frame_index = -1;
     int bpp = -1;
     COLORID colorid = COLORID_UNKNOWN;
 
     c_camera_input_source(QLivePipelineThread * thread, const QImagingCamera::sptr & camera) :
         base(/*c_input_source::CAMERA, */""),
-        thread_(thread),
-        camera_(camera)
+        _thread(thread),
+        _camera(camera)
     {
     }
 
     bool open() override
     {
-      return camera_->state() == QImagingCamera::State_started;
+      return _camera->state() == QImagingCamera::State_started;
     }
 
     void close()  override
@@ -661,21 +661,21 @@ void QLivePipelineThread::run()
 
     bool is_open() const override
     {
-      return camera_->state() == QImagingCamera::State_started;
+      return _camera->state() == QImagingCamera::State_started;
     }
 
     bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpp) override
     {
-      while (camera_->state() == QImagingCamera::State_started) {
+      while (_camera->state() == QImagingCamera::State_started) {
 
         bool haveInputImage = false;
 
         if( 42 ) {
 
-          QImagingCamera::shared_lock lock(camera_->mutex());
+          QImagingCamera::shared_lock lock(_camera->mutex());
 
           const std::deque<QCameraFrame::sptr> &deque =
-              camera_->deque();
+              _camera->deque();
 
           if( !deque.empty() ) {
 
@@ -716,10 +716,10 @@ void QLivePipelineThread::run()
     c_camera_input_sequence(QLivePipelineThread * thread, const QImagingCamera::sptr & camera)
     {
       camera_source.reset(new c_camera_input_source(thread, camera));
-      all_sources_.emplace_back(camera_source);
-      enabled_sources_.emplace_back(camera_source);
-      current_source_ = 0;
-      current_global_pos_ = 0;
+      _all_sources.emplace_back(camera_source);
+      _enabled_sources.emplace_back(camera_source);
+      _current_source = 0;
+      _current_global_pos = 0;
 
       set_name(get_file_name(camera->display_name().toStdString()));
     }
@@ -754,7 +754,7 @@ void QLivePipelineThread::run()
   CF_DEBUG("enter");
   /////////////////////
 
-  const QImagingCamera::sptr camera = camera_;
+  const QImagingCamera::sptr camera = _camera;
 
   if( camera ) {
 
@@ -768,12 +768,12 @@ void QLivePipelineThread::run()
 
       try {
 
-        mutex_.lock();
+        _mutex.lock();
         c_image_processing_pipeline::sptr pipeline =
-            this->pipeline_;
-        mutex_.unlock();
+            this->_pipeline;
+        _mutex.unlock();
 
-        display_->setLivePipeline(pipeline);
+        _display->setLivePipeline(pipeline);
 
         Q_EMIT pipelineChanged();
 
@@ -796,11 +796,11 @@ void QLivePipelineThread::run()
 
           if( camera->state() == QImagingCamera::State_started ) {
             // most probably there was an error in pipeline->run()
-            unique_lock lock(mutex_);
-            this->pipeline_.reset();
+            unique_lock lock(_mutex);
+            this->_pipeline.reset();
           }
 
-          condvar_.notify_all();
+          _condvar.notify_all();
         }
         else {
 
@@ -808,25 +808,25 @@ void QLivePipelineThread::run()
           COLORID colorid;
           int bpp;
 
-          display_->inputMask().release();
+          _display->inputMask().release();
 
           while ( input_sequence->camera_source->read(inputImage, &colorid, &bpp)  ) {
 
             if ( true ) {
-              c_unique_lock lock(darkFrameLock_);
+              c_unique_lock lock(_darkFrameLock);
 
-              if( darkFrameScale_ != 0 && darkFrame_.size() == inputImage.size() &&
-                  darkFrame_.channels() == inputImage.channels() ) {
-                inputImage.convertTo(inputImage, darkFrame_.depth());
-                cv::subtract(inputImage, darkFrame_, inputImage);
+              if( _darkFrameScale != 0 && _darkFrame.size() == inputImage.size() &&
+                  _darkFrame.channels() == inputImage.channels() ) {
+                inputImage.convertTo(inputImage, _darkFrame.depth());
+                cv::subtract(inputImage, _darkFrame, inputImage);
               }
             }
 
-            if( debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+            if( _debayer != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
 
               const DEBAYER_ALGORITHM method =
                   inputImage.depth() == CV_32F ? DEBAYER_NN2 :
-                      (DEBAYER_ALGORITHM) debayer_;
+                      (DEBAYER_ALGORITHM) _debayer;
 
               if( ::debayer(inputImage, inputImage, colorid, method) ) {
                 colorid = COLORID_BGR;
@@ -834,15 +834,15 @@ void QLivePipelineThread::run()
             }
 
             if( true ) {
-              c_unique_lock mtflock(display_->mtfDisplayFunction()->mutex());
-              inputImage.copyTo(display_->inputImage());
-              display_->updateCurrentImage();
+              c_unique_lock mtflock(_display->mtfDisplayFunction()->mutex());
+              inputImage.copyTo(_display->inputImage());
+              _display->updateCurrentImage();
               QThread::msleep(10);
             }
 
             if( true ) {
-              unique_lock lock(mutex_);
-              if( pipeline_ != nullptr ) {
+              unique_lock lock(_mutex);
+              if( _pipeline != nullptr ) {
                 break;
               }
             }
@@ -856,7 +856,7 @@ void QLivePipelineThread::run()
         CF_ERROR("Unknown Exception in live thread");
       }
 
-      display_->setLivePipeline(nullptr);
+      _display->setLivePipeline(nullptr);
     }
   }
 
@@ -970,9 +970,9 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
 
   setFrameShape(QFrame::Shape::NoFrame);
 
-  layout_ = new QVBoxLayout(this);
+  _layout = new QVBoxLayout(this);
 
-  layout_->addWidget(toolbar_ctl = new QToolBar(this), 0, Qt::AlignTop);
+  _layout->addWidget(toolbar_ctl = new QToolBar(this), 0, Qt::AlignTop);
   toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
   toolbar_ctl->setIconSize(QSize(16, 16));
 
@@ -996,7 +996,7 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
   scrollArea_ctl->setWidgetResizable(true);
   scrollArea_ctl->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
   scrollArea_ctl->setFrameShape(QFrame::NoFrame);
-  layout_->addWidget(scrollArea_ctl, 1000);
+  _layout->addWidget(scrollArea_ctl, 1000);
 
 
 
@@ -1014,13 +1014,13 @@ QLivePipelineSelectionWidget::QLivePipelineSelectionWidget(QWidget * parent) :
 
 void QLivePipelineSelectionWidget::setLiveThread(QLivePipelineThread * liveThread)
 {
-  if( liveThread_ ) {
-    liveThread_->disconnect(this);
+  if( _liveThread ) {
+    _liveThread->disconnect(this);
   }
 
-  if ( (liveThread_  = liveThread) ) {
+  if ( (_liveThread  = liveThread) ) {
 
-    connect(liveThread_, &QLivePipelineThread::pipelineChanged,
+    connect(_liveThread, &QLivePipelineThread::pipelineChanged,
         this, &ThisClass::onPipelineChanged,
         Qt::QueuedConnection);
 
@@ -1032,7 +1032,7 @@ void QLivePipelineSelectionWidget::setLiveThread(QLivePipelineThread * liveThrea
 
 QLivePipelineThread * QLivePipelineSelectionWidget::liveThread() const
 {
-  return liveThread_;
+  return _liveThread;
 }
 
 
@@ -1046,8 +1046,8 @@ void QLivePipelineSelectionWidget::loadPipelines(const std::string & cfgfilename
   if( !cfgfilename.empty() ) {
     filename = cfgfilename;
   }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
+  else if( !_configFilename.empty() ) {
+    filename = _configFilename;
   }
   else {
     filename = default_config_filename_;
@@ -1131,7 +1131,7 @@ void QLivePipelineSelectionWidget::loadPipelines(const std::string & cfgfilename
     }
   }
 
-  config_filename_ = filename;
+  _configFilename = filename;
 }
 
 void QLivePipelineSelectionWidget::savePipelines(const std::string & cfgfilename)
@@ -1141,8 +1141,8 @@ void QLivePipelineSelectionWidget::savePipelines(const std::string & cfgfilename
   if( !cfgfilename.empty() ) {
     filename = cfgfilename;
   }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
+  else if( !_configFilename.empty() ) {
+    filename = _configFilename;
   }
   else {
     filename = default_config_filename_;
@@ -1197,7 +1197,7 @@ void QLivePipelineSelectionWidget::savePipelines(const std::string & cfgfilename
     return;
   }
 
-  config_filename_ = filename;
+  _configFilename = filename;
 }
 
 c_image_processing_pipeline::sptr QLivePipelineSelectionWidget::selectedPipeline() const
@@ -1207,12 +1207,12 @@ c_image_processing_pipeline::sptr QLivePipelineSelectionWidget::selectedPipeline
 
 void QLivePipelineSelectionWidget::onupdatecontrols()
 {
-  if ( !liveThread_ ) {
+  if ( !_liveThread ) {
     setEnabled(false);
   }
   else {
 
-    if( liveThread_->pipeline() ) {
+    if( _liveThread->pipeline() ) {
       combobox_ctl->setEnabled(false);
       menuButton_ctl->setEnabled(false);
       startStop_ctl->setIcon(getIcon(ICON_stop));
@@ -1252,12 +1252,12 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
         pipeline->get_class_name().c_str();
 
     const auto pos =
-        std::find_if(settingsWidgets_.begin(), settingsWidgets_.end(),
+        std::find_if(_settingsWidgets.begin(), _settingsWidgets.end(),
             [className](const QPipelineSettingsWidget * obj) {
               return obj->pipelineClass() == className;
             });
 
-    if( pos != settingsWidgets_.end() ) {
+    if( pos != _settingsWidgets.end() ) {
       currentWidget = *pos;
     }
     else if( !(currentWidget = p->createSettingsWidget(this)) ) {
@@ -1265,7 +1265,7 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
           className.toUtf8().constData());
     }
     else {
-      settingsWidgets_.append(currentWidget);
+      _settingsWidgets.append(currentWidget);
 
       connect(currentWidget, &QSettingsWidget::parameterChanged,
           [this]() {
@@ -1295,12 +1295,12 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
 
 void QLivePipelineSelectionWidget::onStartStopCtlClicked()
 {
-  if( liveThread_ ) {
-    if( liveThread_->pipeline() ) {
-      liveThread_->setPipeline(nullptr);
+  if( _liveThread ) {
+    if( _liveThread->pipeline() ) {
+      _liveThread->setPipeline(nullptr);
     }
     else {
-      liveThread_->setPipeline(selectedPipeline());
+      _liveThread->setPipeline(selectedPipeline());
     }
   }
 }
@@ -1381,7 +1381,7 @@ void QLivePipelineSelectionWidget::onAddLivePipelineClicked()
       else {
         combobox_ctl->addItem(pipeline->cname(), QVariant::fromValue(pipeline));
         combobox_ctl->setCurrentIndex(combobox_ctl->count() - 1);
-        startStop_ctl->setEnabled(liveThread_ && liveThread_->isRunning() );
+        startStop_ctl->setEnabled(_liveThread && _liveThread->isRunning() );
         savePipelines();
       }
     }
@@ -1411,9 +1411,9 @@ void QLivePipelineSelectionWidget::onRemoveLivePipelineClicked()
         dynamic_cast<QImageProcessingPipeline *>(pipeline.get());
 
     if( pp ) {
-      for( int i = 0, n = settingsWidgets_.size(); i < n; ++i ) {
-        if( settingsWidgets_[i]->currentPipeline() == pp ) {
-          settingsWidgets_[i]->setCurrentPipeline(nullptr);
+      for( int i = 0, n = _settingsWidgets.size(); i < n; ++i ) {
+        if( _settingsWidgets[i]->currentPipeline() == pp ) {
+          _settingsWidgets[i]->setCurrentPipeline(nullptr);
         }
       }
     }
@@ -1495,13 +1495,13 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
       add_enum_combobox<DEBAYER_ALGORITHM>("Default debayer:",
           "Select debayer algorithm for bayer patterns",
           [this](DEBAYER_ALGORITHM v) {
-            if ( liveThread_ ) {
-              liveThread_->setDebayer(v);
+            if ( _liveThread ) {
+              _liveThread->setDebayer(v);
             }
           },
           [this](DEBAYER_ALGORITHM * v) {
-            if ( liveThread_ ) {
-              *v = liveThread_->debayer();
+            if ( _liveThread ) {
+              *v = _liveThread->debayer();
               return true;
             }
             return false;
@@ -1513,13 +1513,13 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & v) {
-            if ( liveThread_ ) {
-              liveThread_->setDarkFramePath(v);
+            if ( _liveThread ) {
+              _liveThread->setDarkFramePath(v);
             }
           },
           [this](QString * v) {
-            if ( liveThread_ ) {
-              *v = liveThread_->darkFramePath();
+            if ( _liveThread ) {
+              *v = _liveThread->darkFramePath();
               return true;
             }
             return false;
@@ -1529,13 +1529,13 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
       add_numeric_box<double>("darkFrameScale",
           "",
           [this](double v) {
-            if ( liveThread_ ) {
-              liveThread_->setDarkFrameScale(v);
+            if ( _liveThread ) {
+              _liveThread->setDarkFrameScale(v);
             }
           },
           [this](double * v) {
-            if ( liveThread_ ) {
-              *v = liveThread_->darkFrameScale();
+            if ( _liveThread ) {
+              *v = _liveThread->darkFrameScale();
               return true;
             }
             return false;
@@ -1546,18 +1546,18 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
 
 void QLiveThreadSettingsWidget::setLiveThread(QLivePipelineThread * liveThread)
 {
-  liveThread_ = liveThread;
+  _liveThread = liveThread;
   updateControls();
 }
 
 QLivePipelineThread * QLiveThreadSettingsWidget::liveThread() const
 {
-  return liveThread_;
+  return _liveThread;
 }
 
 void QLiveThreadSettingsWidget::onupdatecontrols()
 {
-  if( !liveThread_ ) {
+  if( !_liveThread ) {
     setEnabled(false);
   }
   else {
@@ -1572,19 +1572,19 @@ QLiveThreadSettingsDialogBox::QLiveThreadSettingsDialogBox(QWidget * parent) :
   setWindowIcon(getIcon(ICON_bayer));
   setWindowTitle("Frame Processor Options");
 
-  layout_ = new QVBoxLayout(this);
-  layout_->addWidget(setiingsWidget_ = new QLiveThreadSettingsWidget(this));
+  _layout = new QVBoxLayout(this);
+  _layout->addWidget(_setiingsWidget = new QLiveThreadSettingsWidget(this));
 }
 
 
 void QLiveThreadSettingsDialogBox::setLiveThread(QLivePipelineThread * liveThread)
 {
-  setiingsWidget_->setLiveThread(liveThread);
+  _setiingsWidget->setLiveThread(liveThread);
 }
 
 QLivePipelineThread * QLiveThreadSettingsDialogBox::liveThread() const
 {
-  return setiingsWidget_->liveThread();
+  return _setiingsWidget->liveThread();
 }
 
 void QLiveThreadSettingsDialogBox::closeEvent(QCloseEvent * e)
@@ -1611,7 +1611,7 @@ bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bp
 {
   cv::Mat inputImage;
 
-  while (camera_->state() == QImagingCamera::State_started) {
+  while (_camera->state() == QImagingCamera::State_started) {
 
     QThread::msleep(20);
 
@@ -1619,10 +1619,10 @@ bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bp
 
     if( 42 ) {
 
-      QImagingCamera::shared_lock lock(camera_->mutex());
+      QImagingCamera::shared_lock lock(_camera->mutex());
 
       const std::deque<QCameraFrame::sptr> &deque =
-          camera_->deque();
+          _camera->deque();
 
       if( !deque.empty() ) {
 
@@ -1646,24 +1646,24 @@ bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bp
 
     if( haveInputImage ) {
 
-      thread_->darkFrameLock_.lock();
-      if( thread_->darkFrame_.size() == inputImage.size()
-          && thread_->darkFrame_.channels() == inputImage.channels() ) {
+      _thread->_darkFrameLock.lock();
+      if( _thread->_darkFrame.size() == inputImage.size()
+          && _thread->_darkFrame.channels() == inputImage.channels() ) {
 
-        inputImage.convertTo(inputImage, thread_->darkFrame_.depth());
+        inputImage.convertTo(inputImage, _thread->_darkFrame.depth());
 
-        if( thread_->darkFrameScale_ != 0 ) {
-          cv::subtract(inputImage, thread_->darkFrame_, inputImage);
+        if( _thread->_darkFrameScale != 0 ) {
+          cv::subtract(inputImage, _thread->_darkFrame, inputImage);
         }
       }
-      thread_->darkFrameLock_.unlock();
+      _thread->_darkFrameLock.unlock();
 
-      if( thread_->debayer_ != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
+      if( _thread->_debayer != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
 
         const DEBAYER_ALGORITHM method =
             inputImage.depth() == CV_32F ?
                 DEBAYER_NN2 :
-                (DEBAYER_ALGORITHM) thread_->debayer_;
+                (DEBAYER_ALGORITHM) _thread->_debayer;
 
         if( ::debayer(inputImage, inputImage, colorid, method) ) {
           colorid = COLORID_BGR;

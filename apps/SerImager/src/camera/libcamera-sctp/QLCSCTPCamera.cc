@@ -18,9 +18,6 @@
 
 namespace serimager {
 
-//using c_sctp = QLCSCTPCamera::c_sctp_connection;
-//using ImageHeader = c_sctp::ImageHeader;
-
 static inline bool load_settings(c_config_setting cfg, const std::string & name, QString * v)
 {
   v->clear();
@@ -68,19 +65,8 @@ QLCSCTPCamera::~QLCSCTPCamera()
 
 void QLCSCTPCamera::onSctpThreadFinished()
 {
-  CF_DEBUG("call device_disconnect()");
   device_disconnect();
-  CF_DEBUG("device_disconnect() returns");
 }
-
-//void QLCSCTPCamera::onStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
-//{
-////  if ( !device_is_connected() ) {
-////    CF_DEBUG("call device_disconnect()");
-////    device_disconnect();
-////    CF_DEBUG("device_disconnect() returns");
-////  }
-//}
 
 void QLCSCTPCamera::setName(const QString & name)
 {
@@ -364,7 +350,7 @@ bool QLCSCTPCamera::sctp_connect(const QString & url)
     if( getsockopt(so, IPPROTO_SCTP, SCTP_DELAYED_SACK, &sack_info, &len) < 0 ) {
       CF_DEBUG("getsockopt(SCTP_DELAYED_SACK) fails. errno=%d (%s)", errno, strerror(errno));
     }
-    CF_DEBUG("2: SCTP_DELAYED_SACK: Delay: %u, Freq: %u", sack_info.sack_delay, sack_info.sack_freq);
+    CF_DEBUG("SCTP_DELAYED_SACK: Delay: %u, Freq: %u", sack_info.sack_delay, sack_info.sack_freq);
   }
 
   initmsg.sinit_num_ostreams = 2;
@@ -732,14 +718,9 @@ bool QLCSCTPCamera::device_connect()
   if( _current_state != State_connecting ) {
     CF_DEBUG("sctp_disconnect()");
     sctp_disconnect();
-    CF_DEBUG("return false");
     return false;
   }
 
-//  CF_DEBUG("setState(State_connected)");
-//  setState(State_connected);
-
-  CF_DEBUG("return true");
   return true;
 }
 
@@ -871,19 +852,50 @@ void QLCSCTPCamera::applyDeviceControl(const QLCCameraControl & ctl)
 {
   if ( _so >= -1 )  {
     const std::string command =
-        ssprintf("command=\"set-control\";\n"
-            "id=\"%s\";\n"
-            "value=\"%s\";\n",
+        ssprintf("command=\"set-controls\";\n"
+            "controls=({ id=\"%s\"; value=\"%s\"; });",
             ctl.id.toUtf8().constData(),
             ctl.value.toUtf8().constData());
 
-    CF_DEBUG("sctp_sendmsg(set-control)");
-
+    CF_DEBUG("sctp_sendmsg(set-controls)");
     if( !sctp_sendmsg(command) ) {
       CF_ERROR("sctp_sendmsg(set-control) fails. errno=%d (%s)", errno, strerror(errno));
     }
   }
 }
+
+void QLCSCTPCamera::applyDeviceControls(const QLCCameraControl * ctls[], int count)
+{
+  if ( _so >= -1 )  {
+
+    std::string controls;
+    int nctls = 0;
+
+    for( int i = 0; i < count; ++i ) {
+      const QLCCameraControl * ctl = ctls[i];
+      if( ctl ) {
+        controls += ssprintf("%s{ id=\"%s\"; value=\"%s\"; }",
+            nctls++ ? ",\n" : "",
+            ctl->id.toUtf8().constData(),
+            ctl->value.toUtf8().constData());
+      }
+    }
+
+    if ( nctls ) {
+
+      const std::string command =
+          ssprintf("command=\"set-controls\";\n"
+              "controls=(\n%s\n);", controls.c_str());
+
+      CF_DEBUG("sctp_sendmsg(set-controls)");
+
+      if( !sctp_sendmsg(command) ) {
+        CF_ERROR("sctp_sendmsg(set-controls) fails. errno=%d (%s)", errno, strerror(errno));
+      }
+    }
+  }
+}
+
 
 } // namespace serimager
 

@@ -73,7 +73,7 @@ public:
     QLCCameraControl() = default;
     QLCCameraControl(const QString & _id, const QString & _type, const QString & _value, const QString & _minval,
         const QString & _maxval, const QString & _defval, const std::vector<std::string> &_values ) :
-        id(_id), type(_type), value(_value), minval(_minval), maxval(_maxval), defval(_defval), values(_values)
+        id(_id), type(_type), value(_value.isEmpty() ? _defval : _value), minval(_minval), maxval(_maxval), defval(_defval), values(_values)
     {}
   };
 
@@ -163,6 +163,7 @@ public:
   void setCameraDeviceBuffers(int v);
 
   void applyDeviceControl(const QLCCameraControl & ctl);
+  void applyDeviceControls(const QLCCameraControl * ctls[], int count);
 
 Q_SIGNALS:
   void parametersChanged();

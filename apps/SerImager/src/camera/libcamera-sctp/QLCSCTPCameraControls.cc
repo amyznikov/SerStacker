@@ -10,6 +10,155 @@
 
 namespace serimager {
 
+QLCExposureTimeTimeControlWidget::QLCExposureTimeTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent) :
+    Base(parent),
+    _camera(camera)
+{
+  _layout = new QHBoxLayout(this);
+  _layout->addWidget(_spinbox_ctl = new QSpinBox(this), 100);
+  _layout->addWidget(_chkbox_ctl = new QCheckBox("Auto", this), 1);
+  _spinbox_ctl->setKeyboardTracking(false);
+  _spinbox_ctl->setRange(1, 60 * 1000000);
+
+  const auto applyChanges = [this]() {
+    const bool isAuto = _chkbox_ctl->isChecked();
+    _spinbox_ctl->setEnabled(!isAuto);
+
+    auto * cam = _camera ? _camera->selectedCamera() : nullptr;
+    if ( cam ) {
+      auto * AeEnable = cam->getControl("AeEnable");
+      auto * ExposureTimeMode = cam->getControl("ExposureTimeMode");
+      auto * ExposureTime = cam->getControl("ExposureTime");
+
+      if ( AeEnable ) {
+        AeEnable->value = isAuto ? "true" : "false";
+      }
+      if ( ExposureTimeMode ) {
+        ExposureTimeMode->value = isAuto ? "0" : "1";
+      }
+      if ( ExposureTime ) {
+        ExposureTime->value = toQString(_spinbox_ctl->value());
+      }
+      _camera->applyDeviceControls((const QLCSCTPCamera::QLCCameraControl*[]) {
+            AeEnable, ExposureTimeMode, ExposureTime},
+          3);
+    }
+  };
+
+  QObject::connect(_chkbox_ctl, &QCheckBox::stateChanged, applyChanges);
+  QObject::connect(_spinbox_ctl, QOverload<int>::of(&QSpinBox::valueChanged), applyChanges);
+}
+
+void QLCExposureTimeTimeControlWidget::updateControls()
+{
+  const auto * cam = _camera ? _camera->selectedCamera() : nullptr;
+  if( !cam ) {
+    setEnabled(false);
+    return;
+  }
+
+  const auto * AeEnable = cam->getControl("AeEnable");
+  const auto * ExposureTime = cam->getControl("ExposureTime");
+  if( !AeEnable ) {
+    _chkbox_ctl->setEnabled(false);
+  }
+  else {
+    QSignalBlocker block(_chkbox_ctl);
+    bool isAuto = false;
+    fromString(AeEnable->value, &isAuto);
+    _chkbox_ctl->setChecked(isAuto);
+    _chkbox_ctl->setEnabled(true);
+  }
+
+  if( !ExposureTime ) {
+    _spinbox_ctl->setEnabled(false);
+  }
+  else {
+    uint32_t cval;
+    if( fromString(ExposureTime->value, &cval) ) {
+      QSignalBlocker block(_spinbox_ctl);
+      _spinbox_ctl->setValue(cval);
+    }
+    _spinbox_ctl->setEnabled(!_chkbox_ctl->isChecked());
+  }
+  setEnabled(true);
+}
+
+
+QLCAnalogueGainControlWidget::QLCAnalogueGainControlWidget(QLCSCTPCamera* camera, QWidget * parent) :
+    Base(parent),
+    _camera(camera)
+{
+  _layout = new QHBoxLayout(this);
+  _layout->addWidget(_spinbox_ctl = new QDoubleSpinBox(this), 100);
+  _layout->addWidget(_chkbox_ctl = new QCheckBox("Auto", this), 1);
+  _spinbox_ctl->setKeyboardTracking(false);
+
+  const auto applyChanges = [this]() {
+    const bool isAuto = _chkbox_ctl->isChecked();
+    _spinbox_ctl->setEnabled(!isAuto);
+
+    auto * cam = _camera ? _camera->selectedCamera() : nullptr;
+    if ( cam ) {
+      auto * AnalogueGainMode = cam->getControl("AnalogueGainMode");
+      auto * AnalogueGain = cam->getControl("AnalogueGain");
+      if ( AnalogueGainMode ) {
+        AnalogueGainMode->value = isAuto ? "0" : "1";
+      }
+      if ( AnalogueGain ) {
+        AnalogueGain->value = toQString(_spinbox_ctl->value());
+      }
+
+      _camera->applyDeviceControls((const QLCSCTPCamera::QLCCameraControl*[]) {
+            AnalogueGain, AnalogueGainMode},
+          2);
+    }
+  };
+
+  QObject::connect(_chkbox_ctl, &QCheckBox::stateChanged, applyChanges);
+  QObject::connect(_spinbox_ctl, QOverload<double>::of(&QDoubleSpinBox::valueChanged), applyChanges);
+}
+
+void QLCAnalogueGainControlWidget::updateControls()
+{
+  const auto * cam = _camera ? _camera->selectedCamera() : nullptr;
+  if( !cam ) {
+    setEnabled(false);
+    return;
+  }
+
+  const auto * AnalogueGainMode = cam->getControl("AnalogueGainMode");
+  const auto * AnalogueGain = cam->getControl("AnalogueGain");
+  if( !AnalogueGainMode ) {
+    _chkbox_ctl->setEnabled(false);
+  }
+  else {
+    QSignalBlocker block(_chkbox_ctl);
+    uint32_t mode = 0;
+
+    fromString(AnalogueGainMode->value, &mode);
+    _chkbox_ctl->setChecked(mode == 0);
+    _chkbox_ctl->setEnabled(true);
+  }
+
+  if( !AnalogueGain ) {
+    _spinbox_ctl->setEnabled(false);
+  }
+  else {
+    double minval = 0, maxval = 1e6, cval = 1;
+
+    fromString(AnalogueGain->minval, &minval) ;
+    fromString(AnalogueGain->maxval, &maxval);
+    fromString(AnalogueGain->value, &cval);
+
+    QSignalBlocker block(_spinbox_ctl);
+    _spinbox_ctl->setRange(minval, maxval);
+    _spinbox_ctl->setValue(cval);
+    _spinbox_ctl->setEnabled(!_chkbox_ctl->isChecked());
+  }
+  setEnabled(true);
+}
+
 
 QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera, QWidget * parent) :
     Base(parent),
@@ -38,7 +187,6 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
           [this](int cursel, QComboBox * combo) {
             if (_camera ) {
               _camera->setSelectedCameraIndex(cursel);
-              populateCameraControls();
               populateStreams();
               populateFormats();
               populateSizes();
@@ -123,29 +271,33 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
           });
 
   ////////////////////////////////////////////
+  addRow("Exposure [us]:", ExposureTime_ctl = new QLCExposureTimeTimeControlWidget(camera.get(), this));
+  addRow("AnalogueGain :", AnalogueGain_ctl = new QLCAnalogueGainControlWidget(camera.get(), this));
 
-  AeEnable_ctl = createCheckBoxCameraControl(this, "AeEnable", "AeEnable",
-      "Enable or disable the AEGC algorithm.\n"
-          "When this control is set to true, both ExposureTimeMode and AnalogueGainMode are set to auto,\n"
-          "and if this control is set to false then both are set to manual.");
+  ////////////////////////////////////////////
 
-  ExposureTime_ctl = createSpinBoxCameraControl(this, "ExposureTime", "ExposureTime",
-      "Exposure time in microseconds for the frame applied in the sensor device.\n"
-          "This control will only take effect if ExposureTimeMode is Manual.\n"
-          "If this control is set when ExposureTimeMode is Auto, the value will be ignored and will not be retained."
-      );
+//  AeEnable_ctl = createCheckBoxCameraControl(this, "AeEnable", "AeEnable",
+//      "Enable or disable the AEGC algorithm.\n"
+//          "When this control is set to true, both ExposureTimeMode and AnalogueGainMode are set to auto,\n"
+//          "and if this control is set to false then both are set to manual.");
+//
+//  ExposureTime_ctl = createSpinBoxCameraControl(this, "ExposureTime", "ExposureTime",
+//      "Exposure time in microseconds for the frame applied in the sensor device.\n"
+//          "This control will only take effect if ExposureTimeMode is Manual.\n"
+//          "If this control is set when ExposureTimeMode is Auto, the value will be ignored and will not be retained."
+//      );
 
-  AnalogueGain_ctl = createDoubleSpinBoxCameraControl(this, "AnalogueGain", "AnalogueGain",
-      "Floating-point Analogue gain value applied in the sensor device.\n"
-          "The value of the control specifies the gain multiplier applied to all colour channels.\n"
-          "This value cannot be lower than 1.0.\n"
-          "This control will only take effect if AnalogueGainMode is Manual.");
+//  AnalogueGain_ctl = createDoubleSpinBoxCameraControl(this, "AnalogueGain", "AnalogueGain",
+//      "Floating-point Analogue gain value applied in the sensor device.\n"
+//          "The value of the control specifies the gain multiplier applied to all colour channels.\n"
+//          "This value cannot be lower than 1.0.\n"
+//          "This control will only take effect if AnalogueGainMode is Manual.");
 
-  AeExposureMode_ctl = createComboBoxCameraControl(this, "AeExposureMode", "AeExposureMode", "");
-  AeMeteringMode_ctl =  createComboBoxCameraControl(this, "AeMeteringMode", "AeMeteringMode", "");
-  AeConstraintMode_ctl  = createComboBoxCameraControl(this, "AeConstraintMode", "AeConstraintMode", "");
-  AeFlickerMode_ctl  = createComboBoxCameraControl(this, "AeFlickerMode", "AeFlickerMode", "");
-  AeFlickerPeriod_ctl = createSpinBoxCameraControl(this, "AeFlickerPeriod", "AeFlickerPeriod", "");
+//  AeExposureMode_ctl = createComboBoxCameraControl(this, "AeExposureMode", "AeExposureMode", "");
+//  AeMeteringMode_ctl =  createComboBoxCameraControl(this, "AeMeteringMode", "AeMeteringMode", "");
+//  AeConstraintMode_ctl  = createComboBoxCameraControl(this, "AeConstraintMode", "AeConstraintMode", "");
+//  AeFlickerMode_ctl  = createComboBoxCameraControl(this, "AeFlickerMode", "AeFlickerMode", "");
+//  AeFlickerPeriod_ctl = createSpinBoxCameraControl(this, "AeFlickerPeriod", "AeFlickerPeriod", "");
 
   ////////////////////////////////////////////
   // ISP Color & White Balance
@@ -280,7 +432,6 @@ void QLCSCTPCameraControls::onupdatecontrols()
     const QImagingCamera::State cameraState = _camera->state();
     if( cameraState == QImagingCamera::State_connected ) {
       populateCameras();
-      populateCameraControls();
       populateStreams();
       populateFormats();
       populateSizes();
@@ -377,12 +528,19 @@ void QLCSCTPCameraControls::updateCameraControl(QSpinBox * sb, const QLCSCTPCame
     if ( !ctlid.isEmpty() ) {
       const auto * c = cam->getControl(ctlid);
       if ( c ) {
-        int minv = 0, maxv = 30 * 1e6;
+        QSignalBlocker block(sb);
+
+        int minv = 0, maxv = 30 * 1e6, v = 0;
+
         fromString(c->minval, &minv);
-        if (sb != ExposureTime_ctl) { // libcamera max exposure preset is too low
-          fromString(c->maxval, &maxv);
-        }
+        fromString(c->maxval, &maxv);
+        fromString(c->value, &v);
+//        if( sb == ExposureTime_ctl && maxv < 30 * 1e6 ) { // libcamera max exposure preset is too low
+//          maxv = 30 * 1e6;
+//        }
+
         sb->setRange(minv, maxv);
+        sb->setValue(v);
         sb->setEnabled(true);
         return;
       }
@@ -426,10 +584,13 @@ void QLCSCTPCameraControls::updateCameraControl(QDoubleSpinBox * sb, const QLCSC
     if ( !ctlid.isEmpty() ) {
       const auto * c = cam->getControl(ctlid);
       if ( c ) {
-        double minv = 0, maxv = 1e6;
+        QSignalBlocker block(sb);
+        double minv = 0, maxv = 1e6, v = 0;
         fromString(c->minval, &minv);
         fromString(c->maxval, &maxv);
+        fromString(c->value, &v);
         sb->setRange(minv, maxv);
+        sb->setValue(v);
         sb->setEnabled(true);
         return;
       }
@@ -492,17 +653,15 @@ void QLCSCTPCameraControls::updateCameraControl(QComboBox * cb, const QLCSCTPCam
 
 void QLCSCTPCameraControls::updateBasicSensorControls()
 {
-  const QLCSCTPCamera::QLCCamera * cam = _camera ? _camera->selectedCamera() : nullptr;
-  updateCameraControl(AeEnable_ctl, cam);
-  updateCameraControl(ExposureTime_ctl, cam);
-  updateCameraControl(AnalogueGain_ctl, cam);
-  updateCameraControl(AeExposureMode_ctl, cam);
-  updateCameraControl(AeMeteringMode_ctl, cam);
-  updateCameraControl(AeConstraintMode_ctl, cam);
-  updateCameraControl(AeFlickerMode_ctl, cam);
-  updateCameraControl(AeFlickerPeriod_ctl, cam);
-
-  //updateCameraControl(LensPosition_ctl, cam);
+  //const QLCSCTPCamera::QLCCamera * cam = _camera ? _camera->selectedCamera() : nullptr;
+  //updateCameraControl(AeEnable_ctl, cam);
+  ExposureTime_ctl->updateControls();
+  AnalogueGain_ctl->updateControls();
+//  updateCameraControl(AeExposureMode_ctl, cam);
+//  updateCameraControl(AeMeteringMode_ctl, cam);
+//  updateCameraControl(AeConstraintMode_ctl, cam);
+//  updateCameraControl(AeFlickerMode_ctl, cam);
+//  updateCameraControl(AeFlickerPeriod_ctl, cam);
 }
 
 void QLCSCTPCameraControls::updateColorToneControls()
@@ -523,13 +682,6 @@ void QLCSCTPCameraControls::updateVisualAdjustmentsControls()
   updateCameraControl(Sharpness_ctl, cam);
   updateCameraControl(NoiseReductionMode_ctl, cam);
   updateCameraControl(HdrMode_ctl, cam);
-}
-
-void QLCSCTPCameraControls::populateCameraControls()
-{
-  updateBasicSensorControls();
-  updateColorToneControls();
-  updateVisualAdjustmentsControls();
 }
 
 } /* namespace serimager */

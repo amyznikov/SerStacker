@@ -888,13 +888,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   case COLORID_BAYER_RGGB :
     switch ( algo ) {
     case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerRG2BGR);
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR);
       break;
     case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_VNG);
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_VNG);
       break;
     case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_EA);
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_EA);
       break;
     default :
       CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
@@ -905,13 +905,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   case COLORID_BAYER_GRBG :
     switch ( algo ) {
     case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGR2BGR);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR);
       break;
     case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGR2BGR_VNG);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_VNG);
       break;
     case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGR2BGR_EA);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_EA);
       break;
     default :
       CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
@@ -922,13 +922,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   case COLORID_BAYER_GBRG :
     switch ( algo ) {
     case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGB2BGR);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR);
       break;
     case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGB2BGR_VNG);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_VNG);
       break;
     case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGB2BGR_EA);
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_EA);
       break;
     default :
       CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
@@ -939,13 +939,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   case COLORID_BAYER_BGGR :
     switch ( algo ) {
     case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR);
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR);
       break;
     case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_VNG);
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_VNG);
       break;
     case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBG2BGR_EA);
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_EA);
       break;
     default :
       CF_DEBUG("Unknown debayer algorithm=%d requested", algo);

@@ -16,6 +16,42 @@
 
 namespace serimager {
 
+class QLCExposureTimeTimeControlWidget :
+    public QWidget
+{
+  Q_OBJECT;
+public:
+  typedef QLCExposureTimeTimeControlWidget ThisClass;
+  typedef QWidget Base;
+  QLCExposureTimeTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent = nullptr);
+  void updateControls();
+protected:
+  QLCSCTPCamera* _camera;
+  QHBoxLayout * _layout = nullptr;
+  QSpinBox * _spinbox_ctl = nullptr;
+  QCheckBox * _chkbox_ctl = nullptr;
+  //  QComboBox * AeMeteringMode_ctl = nullptr;
+  //  QComboBox * AeConstraintMode_ctl = nullptr;
+  //  QComboBox * AeFlickerMode_ctl = nullptr;
+  //  QSpinBox * AeFlickerPeriod_ctl = nullptr;
+};
+
+class QLCAnalogueGainControlWidget :
+    public QWidget
+{
+  Q_OBJECT;
+public:
+  typedef QLCAnalogueGainControlWidget ThisClass;
+  typedef QWidget Base;
+  QLCAnalogueGainControlWidget(QLCSCTPCamera* camera, QWidget * parent = nullptr);
+  void updateControls();
+protected:
+  QLCSCTPCamera *  _camera = nullptr;
+  QHBoxLayout * _layout = nullptr;
+  QDoubleSpinBox * _spinbox_ctl = nullptr;
+  QCheckBox * _chkbox_ctl = nullptr;
+};
+
 class QLCSCTPCameraControls :
     public QCameraControlsWidget
 {
@@ -33,7 +69,7 @@ protected :
   void populateStreams();
   void populateFormats();
   void populateSizes();
-  void populateCameraControls();
+//  void updateCameraControls();
   void updateBasicSensorControls();
   void updateColorToneControls();
   void updateVisualAdjustmentsControls();
@@ -50,7 +86,6 @@ protected :
   QComboBox * createComboBoxCameraControl(QSettingsWidget * sw, const QString & ctlid, const QString & name, const QString & tooltip);
   void updateCameraControl(QComboBox * cb, const QLCSCTPCamera::QLCCamera * cam);
 
-
 protected Q_SLOTS:
   void onCameraStateChanged();
 
@@ -65,14 +100,8 @@ protected:
   QSpinBox* cameraDeviceBuffers_ctl = nullptr;
 
   // Exposure & Sensor Hardware Controls
-  QCheckBox * AeEnable_ctl = nullptr;
-  QSpinBox * ExposureTime_ctl = nullptr;
-  QDoubleSpinBox * AnalogueGain_ctl = nullptr;
-  QComboBox * AeExposureMode_ctl = nullptr;
-  QComboBox * AeMeteringMode_ctl = nullptr;
-  QComboBox * AeConstraintMode_ctl = nullptr;
-  QComboBox * AeFlickerMode_ctl = nullptr;
-  QSpinBox * AeFlickerPeriod_ctl = nullptr;
+  QLCExposureTimeTimeControlWidget * ExposureTime_ctl = nullptr;
+  QLCAnalogueGainControlWidget * AnalogueGain_ctl = nullptr;
 
   // ISP Color & White Balance
   QExpandableGroupBox * ISPColorToneGroup_ctl = nullptr;

@@ -275,29 +275,51 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
   addRow("AnalogueGain :", AnalogueGain_ctl = new QLCAnalogueGainControlWidget(camera.get(), this));
 
   ////////////////////////////////////////////
+  // Auto Exposure Options
+  AutoExposureOptionsGroup_ctl =
+      add_expandable_groupbox("Auto Exposure Options",
+          AutoExposureOptions_ctl = new QSettingsWidget("", this));
 
-//  AeEnable_ctl = createCheckBoxCameraControl(this, "AeEnable", "AeEnable",
-//      "Enable or disable the AEGC algorithm.\n"
-//          "When this control is set to true, both ExposureTimeMode and AnalogueGainMode are set to auto,\n"
-//          "and if this control is set to false then both are set to manual.");
-//
-//  ExposureTime_ctl = createSpinBoxCameraControl(this, "ExposureTime", "ExposureTime",
-//      "Exposure time in microseconds for the frame applied in the sensor device.\n"
-//          "This control will only take effect if ExposureTimeMode is Manual.\n"
-//          "If this control is set when ExposureTimeMode is Auto, the value will be ignored and will not be retained."
-//      );
+  AeExposureMode_ctl =
+      createComboBoxCameraControl(AutoExposureOptions_ctl, "AeExposureMode", "AeExposureMode",
+          "Exposure mode for the AE algorithm to use.\n"
+              "  0: ExposureNormal Default exposure mode\n"
+              "  1: ExposureShort Exposure mode allowing only short exposure times.\n"
+              "  2: ExposureLong Exposure mode allowing long exposure times.\n"
+              "  3: ExposureCustom Custom exposure mode.\n");
 
-//  AnalogueGain_ctl = createDoubleSpinBoxCameraControl(this, "AnalogueGain", "AnalogueGain",
-//      "Floating-point Analogue gain value applied in the sensor device.\n"
-//          "The value of the control specifies the gain multiplier applied to all colour channels.\n"
-//          "This value cannot be lower than 1.0.\n"
-//          "This control will only take effect if AnalogueGainMode is Manual.");
+  ExposureValue_ctl = createDoubleSpinBoxCameraControl(AutoExposureOptions_ctl, "ExposureValue", "ExposureValue",
+      "Exposure Value (EV) parameter.\n"
+          " The EV parameter will only be applied if the AE algorithm is currentlyenabled,\n"
+          " that is, at least one of AnalogueGainMode and ExposureTimeMode are in Auto mode.\n");
 
-//  AeExposureMode_ctl = createComboBoxCameraControl(this, "AeExposureMode", "AeExposureMode", "");
-//  AeMeteringMode_ctl =  createComboBoxCameraControl(this, "AeMeteringMode", "AeMeteringMode", "");
-//  AeConstraintMode_ctl  = createComboBoxCameraControl(this, "AeConstraintMode", "AeConstraintMode", "");
-//  AeFlickerMode_ctl  = createComboBoxCameraControl(this, "AeFlickerMode", "AeFlickerMode", "");
-//  AeFlickerPeriod_ctl = createSpinBoxCameraControl(this, "AeFlickerPeriod", "AeFlickerPeriod", "");
+  AeConstraintMode_ctl =
+      createComboBoxCameraControl(AutoExposureOptions_ctl, "AeConstraintMode", "AeConstraintMode",
+          "Constraint mode for the AE algorithm to use.\n"
+              "  The constraint modes determine how the measured scene brightness is adjusted to reach the desired target exposure.\n"
+              "  0: ConstraintNormal Default constraint mode.\n"
+              "  1: ConstraintHighlight Highlight constraint mode.\n"
+              "  2:  ConstraintShadows Shadows constraint mode.\n"
+              "  3: ConstraintCustom Custom constraint mode.\n");
+
+  AeFlickerMode_ctl = createComboBoxCameraControl(AutoExposureOptions_ctl, "AeFlickerMode", "AeFlickerMode",
+      "Flicker avoidance mode for AGC/AEC.\n"
+          "  0: FlickerOff No flicker avoidance is performed\n"
+          "  1: FlickerManual Manual flicker avoidance\n"
+          "  2: FlickerAuto Automatic flicker period detection and avoidance\n");
+
+  AeFlickerPeriod_ctl = createSpinBoxCameraControl(AutoExposureOptions_ctl, "AeFlickerPeriod", "AeFlickerPeriod",
+      "Manual flicker period in microseconds.\n"
+          "  To cancel 50Hz mains flicker, set to 10000 (corresponding to 100Hz),\n"
+          "  or 8333 (120Hz) for 60Hz mains.");
+
+  HdrMode_ctl = createComboBoxCameraControl(AutoExposureOptions_ctl, "HdrMode", "HdrMode",
+      "Set the mode to be used for High Dynamic Range (HDR) imaging.\n"
+      "  0: HdrModeOff HDR is disabled.\n"
+      "  1: HdrModeMultiExposureUnmerged Multiple exposures will be generated in an alternating fashion.\n"
+      "  2: HdrModeMultiExposure Multiple exposures will be generated and merged to create HDR images.\n"
+      "  3: HdrModeSingleExposure Multiple frames all at a single exposure will be used to create HDR images.\n"
+      "  4: HdrModeNight Multiple frames will be combined to produce night mode images.\n");
 
   ////////////////////////////////////////////
   // ISP Color & White Balance
@@ -307,22 +329,25 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
           ISPColorToneControls_ctl = new QSettingsWidget("", this));
 
   AwbEnable_ctl = createCheckBoxCameraControl(ISPColorToneControls_ctl, "AwbEnable", "AwbEnable",
-      "Enable or disable the AWB.\n"
-          "When AWB is enabled, the algorithm estimates the colour temperature of the scene \n"
-          "and computes colour gains and the colour correction matrix automatically.\n"
-          "The computed colour temperature, gains and correction matrix are reported in metadata.\n"
-          "The corresponding controls are ignored if set in a request.\n"
-          "When AWB is disabled, the colour temperature, gains and correction matrix are not updated automatically\n"
-          "and can be set manually in requests.");
+      "Enable/disable the AWB.\n");
 
   AwbMode_ctl = createComboBoxCameraControl(ISPColorToneControls_ctl, "AwbMode", "AwbMode",
-      "Specify the illuminant to use for the AWB algorithm.");
+      "Specify the illuminant to use for the AWB algorithm.\n"
+      "  0 :AwbAuto Search over the whole colour temperature range.\n"
+      "  1 :AwbIncandescent Incandescent AWB lamp mode.\n"
+      "  2 :AwbTungsten Tungsten AWB lamp mode.\n"
+      "  3 :AwbFluorescent Fluorescent AWB lamp mode.\n"
+      "  4 :AwbIndoor Indoor AWB lighting mode.\n"
+      "  5 :AwbDaylight Daylight AWB lighting mode.\n"
+      "  6 :AwbCloudy Cloudy AWB lighting mode.\n"
+      "  0 :AwbCustom Custom AWB mode.");
 
   ColourTemperature_ctl = createSpinBoxCameraControl(ISPColorToneControls_ctl, "ColourTemperature", "ColourTemperature",
-      "Manual Kelvin setting (if supported by IPA).");
+      "Manual Kelvin setting (if supported by IPA).\n"
+      "  ColourTemperature can only be applied in a Request when the AWB is disabled.");
 
-//  QNumericBox * ColourGains_ctl = nullptr; //  Manual Red and Blue channel gain values.
-//  QNumericBox * ColourCorrectionMatrix_ctl = nullptr; //  Fine-tuning of the color gamut (3x3 matrix).
+  //  ColourGains_ctl = nullptr; //  Manual Red and Blue channel gain values.
+  //  ColourCorrectionMatrix_ctl = nullptr; //  Fine-tuning of the color gamut (3x3 matrix).
 
   ////////////////////////////////////////////
   // ISP Visual Adjustments
@@ -330,13 +355,31 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
       add_expandable_groupbox("ISP Visual Adjustments Controls",
           ISPVisualAdjustmentsControls_ctl = new QSettingsWidget("", this));
 
-  Brightness_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Brightness", "Brightness", "General pixel offset");
-  Contrast_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Contrast", "Contrast", "Luminance range scaling");
-  Saturation_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Saturation", "Saturation", "Color intensity scaling");
-  Gamma_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Gamma", "Gamma", "Fixed gamma curve application");
-  Sharpness_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Sharpness", "Sharpness", "Edge enhancement strength");
-  NoiseReductionMode_ctl = createComboBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "NoiseReductionMode", "NoiseReductionMode", "Set the level/type of noise filtering");
-  HdrMode_ctl = createComboBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "HdrMode", "HdrMode", "Enable High Dynamic Range imaging (e.g., Off, Sensor, Multi-frame)");
+  Brightness_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Brightness", "Brightness",
+      "General pixel offset");
+
+  Contrast_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Contrast", "Contrast",
+      "Luminance range scaling");
+
+  Saturation_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Saturation", "Saturation",
+      "Color intensity scaling");
+
+  Gamma_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Gamma", "Gamma",
+      "Fixed gamma curve application\n"
+          "  The default gamma value must be 2.2 which closely mimics sRGB gamma.\n"
+          "  Note that this is camera gamma, so it is applied as 1.0/gamma.\n");
+
+  Sharpness_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Sharpness", "Sharpness",
+      "Intensity of the sharpening applied to the image.\n");
+
+  NoiseReductionMode_ctl =
+      createComboBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "NoiseReductionMode", "NoiseReductionMode",
+          "The level/type of noise filtering\n"
+              "  0: NoiseReductionModeOff No noise reduction is applied\n"
+              "  1: NoiseReductionModeFast Noise reduction is applied without reducing the frame rate.\n"
+              "  2: NoiseReductionModeHighQuality High quality noise reduction at the expense of frame rate.\n"
+              "  3: NoiseReductionModeMinimal Minimal noise reduction is applied without reducing the frame rate.\n"
+              "  4: NoiseReductionModeZSL Noise reduction is applied at different levels to different streams.");
 
   ////////////////////////////////////////////
   //  LensPosition_ctl = createDoubleSpinBoxCameraControl(this, "LensPosition", "LensPosition",
@@ -437,10 +480,8 @@ void QLCSCTPCameraControls::onupdatecontrols()
       populateSizes();
     }
 
-    updateBasicSensorControls();
-    updateColorToneControls();
-    updateVisualAdjustmentsControls();
     Base::onupdatecontrols();
+    updateCameraControls();
 
     url_ctl->setEnabled(cameraState == QImagingCamera::State_disconnected);
     cameras_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
@@ -448,6 +489,12 @@ void QLCSCTPCameraControls::onupdatecontrols()
     formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
     sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
     cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+
+    ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+    AnalogueGain_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+    AutoExposureOptions_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+    ISPColorToneControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+    ISPVisualAdjustmentsControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
 
     setEnabled(true);
   }
@@ -651,37 +698,30 @@ void QLCSCTPCameraControls::updateCameraControl(QComboBox * cb, const QLCSCTPCam
   cb->setEnabled(false);
 }
 
-void QLCSCTPCameraControls::updateBasicSensorControls()
+void QLCSCTPCameraControls::updateCameraControls()
 {
-  //const QLCSCTPCamera::QLCCamera * cam = _camera ? _camera->selectedCamera() : nullptr;
-  //updateCameraControl(AeEnable_ctl, cam);
   ExposureTime_ctl->updateControls();
   AnalogueGain_ctl->updateControls();
-//  updateCameraControl(AeExposureMode_ctl, cam);
-//  updateCameraControl(AeMeteringMode_ctl, cam);
-//  updateCameraControl(AeConstraintMode_ctl, cam);
-//  updateCameraControl(AeFlickerMode_ctl, cam);
-//  updateCameraControl(AeFlickerPeriod_ctl, cam);
-}
 
-void QLCSCTPCameraControls::updateColorToneControls()
-{
   const QLCSCTPCamera::QLCCamera * cam = _camera ? _camera->selectedCamera() : nullptr;
+  updateCameraControl(AeExposureMode_ctl, cam);
+  updateCameraControl(ExposureValue_ctl, cam);
+  updateCameraControl(AeConstraintMode_ctl, cam);
+  updateCameraControl(AeFlickerMode_ctl, cam);
+  updateCameraControl(AeFlickerPeriod_ctl, cam);
+  updateCameraControl(HdrMode_ctl, cam);
+
   updateCameraControl(AwbEnable_ctl, cam);
   updateCameraControl(AwbMode_ctl, cam);
   updateCameraControl(ColourTemperature_ctl, cam);
-}
 
-void QLCSCTPCameraControls::updateVisualAdjustmentsControls()
-{
-  const QLCSCTPCamera::QLCCamera * cam = _camera ? _camera->selectedCamera() : nullptr;
   updateCameraControl(Brightness_ctl, cam);
   updateCameraControl(Contrast_ctl, cam);
   updateCameraControl(Saturation_ctl, cam);
   updateCameraControl(Gamma_ctl, cam);
   updateCameraControl(Sharpness_ctl, cam);
   updateCameraControl(NoiseReductionMode_ctl, cam);
-  updateCameraControl(HdrMode_ctl, cam);
 }
+
 
 } /* namespace serimager */

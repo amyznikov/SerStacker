@@ -30,10 +30,6 @@ protected:
   QHBoxLayout * _layout = nullptr;
   QSpinBox * _spinbox_ctl = nullptr;
   QCheckBox * _chkbox_ctl = nullptr;
-  //  QComboBox * AeMeteringMode_ctl = nullptr;
-  //  QComboBox * AeConstraintMode_ctl = nullptr;
-  //  QComboBox * AeFlickerMode_ctl = nullptr;
-  //  QSpinBox * AeFlickerPeriod_ctl = nullptr;
 };
 
 class QLCAnalogueGainControlWidget :
@@ -69,10 +65,7 @@ protected :
   void populateStreams();
   void populateFormats();
   void populateSizes();
-//  void updateCameraControls();
-  void updateBasicSensorControls();
-  void updateColorToneControls();
-  void updateVisualAdjustmentsControls();
+  void updateCameraControls();
 
   QCheckBox * createCheckBoxCameraControl(QSettingsWidget * sw, const QString & ctlid, const QString & name, const QString & tooltip);
   void updateCameraControl(QCheckBox * cb, const QLCSCTPCamera::QLCCamera * cam);
@@ -103,14 +96,24 @@ protected:
   QLCExposureTimeTimeControlWidget * ExposureTime_ctl = nullptr;
   QLCAnalogueGainControlWidget * AnalogueGain_ctl = nullptr;
 
+  // Auto Exposure Options
+  QExpandableGroupBox * AutoExposureOptionsGroup_ctl = nullptr;
+  QSettingsWidget * AutoExposureOptions_ctl = nullptr;
+  QComboBox * AeExposureMode_ctl = nullptr;
+  QDoubleSpinBox * ExposureValue_ctl = nullptr;
+  QComboBox * AeConstraintMode_ctl = nullptr;
+  QComboBox * AeFlickerMode_ctl = nullptr;
+  QSpinBox * AeFlickerPeriod_ctl = nullptr;
+  QComboBox * HdrMode_ctl = nullptr;
+
   // ISP Color & White Balance
   QExpandableGroupBox * ISPColorToneGroup_ctl = nullptr;
   QSettingsWidget * ISPColorToneControls_ctl = nullptr;
   QCheckBox * AwbEnable_ctl = nullptr;
   QComboBox * AwbMode_ctl = nullptr;
   QSpinBox * ColourTemperature_ctl = nullptr;
-//  QNumericBox * ColourGains_ctl = nullptr;
-//  QNumericBox * ColourCorrectionMatrix_ctl = nullptr;
+  //  QNumericBox * ColourGains_ctl = nullptr;
+  //  QNumericBox * ColourCorrectionMatrix_ctl = nullptr;
 
   // ISP Visual Adjustments
   QExpandableGroupBox * ISPVisualAdjustmentsGroup_ctl = nullptr;
@@ -121,8 +124,8 @@ protected:
   QDoubleSpinBox * Gamma_ctl = nullptr;
   QDoubleSpinBox * Sharpness_ctl = nullptr;
   QComboBox * NoiseReductionMode_ctl = nullptr;
-  QComboBox * HdrMode_ctl = nullptr;
 
+  // Focus / Lens Controls
   //QDoubleSpinBox * LensPosition_ctl = nullptr;
 
 };

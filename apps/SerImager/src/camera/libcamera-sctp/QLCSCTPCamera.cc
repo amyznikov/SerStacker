@@ -375,7 +375,9 @@ bool QLCSCTPCamera::sctp_connect(const QString & url)
     goto __end;
   }
 
-  so_set_recv_timeout(_so, 1);
+  if ( !so_set_recv_timeout(so, 1) ) {
+    CF_ERROR("so_set_recv_timeout() fails.errno=%d (%s)", errno, strerror(errno));
+  }
 
   fOk = true;
   _so = so;
@@ -438,11 +440,13 @@ void QLCSCTPCamera::sctp_threadproc()
 
       const int cb = sctp_recvmsg(_so, _buf.data(), _buf.size(), nullptr, nullptr, &sinfo, &flags);
       if( cb <= 0 ) {
-        CF_ERROR("sctp_recvmsg() fails: cb=%d stream=%u flags=0x%0X errno=%d (%s)",
-            cb, sinfo.sinfo_stream, flags, errno, strerror(errno));
         if( errno == EAGAIN || errno == EWOULDBLOCK ) {
+          if( _current_state == State_connecting ) {
+            CF_ERROR("sctp_recvmsg() fails: errno=%d (%s)", errno, strerror(errno));
+          }
           continue;
         }
+        CF_ERROR("sctp_recvmsg() fails: errno=%d (%s)", errno, strerror(errno));
         break;
       }
 

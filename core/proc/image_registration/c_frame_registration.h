@@ -21,7 +21,8 @@ struct c_feature_registration_options
 {
   c_sparse_feature_extractor_and_matcher_options sparse_feature_extractor_and_matcher;
   c_estimate_image_transform_options estimate_options;
-  double scale = 0.5;
+  double image_scale = 0.5;
+  double triangle_eps = 5; // [px]
   color_channel_type registration_channel = color_channel_gray;
   bool enabled = false;
 };
@@ -292,43 +293,42 @@ protected:
       const cv::Scalar & border_value = cv::Scalar()) const;
 
 protected:
-  c_image_registration_options options_;
+  c_image_registration_options _options;
 
-  cv::Size reference_frame_size_;
-  cv::Size current_frame_size_;
+  cv::Size _reference_frame_size;
+  cv::Size _current_frame_size;
 
-  cv::Mat reference_feature_image_;
-  cv::Mat current_feature_image_;
+  cv::Mat _reference_feature_image;
+  cv::Mat _current_feature_image;
 
-  cv::Mat reference_feature_mask_;
-  cv::Mat current_feature_mask_;
+  cv::Mat _reference_feature_mask;
+  cv::Mat _current_feature_mask;
 
-  c_sparse_feature_extractor_and_matcher::sptr sparse_feature_extractor_and_matcher_;
+  c_sparse_feature_extractor_and_matcher::sptr _sparse_feature_extractor_and_matcher;
 
-  cv::Point2f planetary_disk_reference_centroid_;
-  cv::Point2f planetary_disk_current_centroid_;
-  cv::Rect planetary_disk_reference_component_rect_;
-  cv::Rect planetary_disk_current_component_rect_;
-  cv::Mat planetary_disk_reference_component_mask_;
-  cv::Mat planetary_disk_current_component_mask_;
+  cv::Point2f _planetary_disk_reference_centroid;
+  cv::Point2f _planetary_disk_current_centroid;
+  cv::Rect _planetary_disk_reference_component_rect;
+  cv::Rect _planetary_disk_current_component_rect;
+  cv::Mat _planetary_disk_reference_component_mask;
+  cv::Mat _planetary_disk_current_component_mask;
 
-  c_image_transform::sptr image_transform_;
-  cv::Mat1f image_transform_defaut_parameters_;
+  c_image_transform::sptr _image_transform;
+  cv::Mat1f _image_transform_defaut_parameters;
 
-  c_ecch ecch_;
-  c_eccflow eccflow_;
+  c_ecch _ecch;
+  c_eccflow _eccflow;
 
   //c_jovian_derotation jovian_derotation_;
-  c_jovian_derotation2 jovian_derotation_;
-  c_saturn_derotation saturn_derotation_;
-  ecc_image_preprocessor_function ecc_image_preprocessor_;
+  c_jovian_derotation2 _jovian_derotation;
+  c_saturn_derotation _saturn_derotation;
+  ecc_image_preprocessor_function _ecc_image_preprocessor;
 
-  cv::Mat2f current_remap_;
+  cv::Mat2f _current_remap;
 
-  c_image_registration_status current_status_;
+  c_image_registration_status _current_status;
 
-  std::string debug_path_;
-  //bool enable_debug_ = false;
+  std::string _debug_path;
 
   // for planetary disk derotations using known frame timestamps
   double _current_timestamp = 0;

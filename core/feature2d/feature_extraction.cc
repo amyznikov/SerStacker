@@ -278,9 +278,9 @@ const c_enum_member * members_of<BoostDesc_Type>()
 
 c_sparse_feature_extractor::c_sparse_feature_extractor(const c_feature2d::sptr & detector,
     const c_feature2d::sptr & descriptor, int max_keypoints) :
-    detector_(detector),
-    descriptor_(descriptor),
-    max_keypoints_(max_keypoints)
+    _detector(detector),
+    _descriptor(descriptor),
+    _max_keypoints(max_keypoints)
 {
 }
 
@@ -289,18 +289,18 @@ bool c_sparse_feature_extractor::detect(cv::InputArray image,
     CV_OUT std::vector<cv::KeyPoint> & keypoints,
     cv::InputArray mask) const
 {
-  detector_->detect(image, keypoints, mask);
+  _detector->detect(image, keypoints, mask);
 
-  CF_DEBUG("c_sparse_feature_extractor::detect() max_keypoints_=%d keypoints.size()=%zu", max_keypoints_, keypoints.size());
+  CF_DEBUG("c_sparse_feature_extractor::detect() max_keypoints_=%d keypoints.size()=%zu", _max_keypoints, keypoints.size());
 
-  if ( max_keypoints_ > 0 && keypoints.size() > max_keypoints_ ) {
+  if ( _max_keypoints > 0 && keypoints.size() > _max_keypoints ) {
 
     std::sort(keypoints.begin(), keypoints.end(),
         [](const cv::KeyPoint & prev, const cv::KeyPoint & next )-> bool {
           return prev.response > next.response;
         });
 
-    keypoints.erase(keypoints.begin() + max_keypoints_, keypoints.end());
+    keypoints.erase(keypoints.begin() + _max_keypoints, keypoints.end());
   }
 
   return true;
@@ -312,19 +312,19 @@ bool c_sparse_feature_extractor::compute(cv::InputArray image,
 {
   INSTRUMENT_REGION("");
 
-  if ( descriptor_ ) {
-    descriptor_->compute(image, keypoints, descriptors);
+  if ( _descriptor ) {
+    _descriptor->compute(image, keypoints, descriptors);
     return true;
   }
 
-  if ( can_compute_decriptors(detector_->type()) ) {
-    detector_->compute(image, keypoints, descriptors);
+  if ( can_compute_decriptors(_detector->type()) ) {
+    _detector->compute(image, keypoints, descriptors);
     return true;
   }
 
   CF_ERROR("sparse featute descriptor extractor was not specified,"
       "but provided featute detector %s can not compute descriptors",
-      typeid(*detector_.get()).name());
+      typeid(*_detector.get()).name());
 
   return false;
 }
@@ -344,15 +344,15 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
 
   ////////////////
 
-  if( !descriptor_ && !can_compute_decriptors(detector_->type()) ) {
-    switch (detector_->type()) {
+  if( !_descriptor && !can_compute_decriptors(_detector->type()) ) {
+    switch (_detector->type()) {
       case FEATURE2D_PLANETARY_DISK: // simple planetary disk detector not required to compute descriptors
         break;
       case FEATURE2D_GFTT: // special case of GFTT below
         break;
       default:
         CF_ERROR("specified keypoints detector %s can not compute feature descriptors",
-            toCString(detector_->type()));
+            toCString(_detector->type()));
         return false;
     }
   }
@@ -360,26 +360,26 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   //
   // Detect sparse 2D features (keypoints) and compute descriptors
   //
-  keypoints.reserve(std::max(max_keypoints_, 4000));
+  keypoints.reserve(std::max(_max_keypoints, 4000));
 
 
   // Prefer detectAndCompute() if possible because it can be faster for some detectors
-  if( !descriptor_ || descriptor_.get() == detector_.get() ) {
+  if( !_descriptor || _descriptor.get() == _detector.get() ) {
 
-    switch (detector_->type()) {
+    switch (_detector->type()) {
       case FEATURE2D_PLANETARY_DISK:
         // simple planetary disk detector not required to compute descriptors
-        detector_->detect(image, keypoints, mask);
+        _detector->detect(image, keypoints, mask);
         descriptors.release();
         break;
 
       case FEATURE2D_GFTT: // special case of GFTT
-        detector_->detect(image, keypoints, mask);
+        _detector->detect(image, keypoints, mask);
         image.copyTo(descriptors);
         break;
 
       default:
-        detector_->detectAndCompute(image, mask,
+        _detector->detectAndCompute(image, mask,
             keypoints, descriptors,
             useProvidedKeypoints);
         break;
@@ -388,21 +388,21 @@ bool c_sparse_feature_extractor::detectAndCompute(cv::InputArray image, cv::Inpu
   }
   else {
 
-    detector_->detect(image,
+    _detector->detect(image,
         keypoints,
         mask);
 
-    if ( max_keypoints_ > 0 && (int)keypoints.size() > max_keypoints_ ) {
+    if ( _max_keypoints > 0 && (int)keypoints.size() > _max_keypoints ) {
 
       std::sort(keypoints.begin(), keypoints.end(),
           [](const cv::KeyPoint & prev, const cv::KeyPoint & next )-> bool {
             return prev.response > next.response;
           });
 
-      keypoints.erase(keypoints.begin() + max_keypoints_, keypoints.end());
+      keypoints.erase(keypoints.begin() + _max_keypoints, keypoints.end());
     }
 
-    descriptor_->compute(image,
+    _descriptor->compute(image,
         keypoints,
         descriptors);
   }

@@ -1747,32 +1747,32 @@ public:
 
   enum SPARSE_FEATURE_DETECTOR_TYPE detector_type() const
   {
-    return (SPARSE_FEATURE_DETECTOR_TYPE) detector_->type();
+    return (SPARSE_FEATURE_DETECTOR_TYPE) _detector->type();
   }
 
   enum SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type() const
   {
-    return descriptor_ ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)descriptor_->type() : SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
+    return _descriptor ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)_descriptor->type() : SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
   }
 
   void set_max_keypoints(int v)
   {
-    max_keypoints_ = v;
+    _max_keypoints = v;
   }
 
   int max_keypoints() const
   {
-    return max_keypoints_;
+    return _max_keypoints;
   }
 
   const c_feature2d::sptr & detector() const
   {
-    return detector_;
+    return _detector;
   }
 
   const c_feature2d::sptr & descriptor() const
   {
-    return descriptor_ ? descriptor_ : detector_;
+    return _descriptor ? _descriptor : _detector;
   }
 
   bool detect(cv::InputArray image,
@@ -1794,9 +1794,9 @@ protected:
       int max_keypoints = -1);
 
 protected:
-  c_feature2d::sptr detector_;
-  c_feature2d::sptr descriptor_;
-  int max_keypoints_;
+  c_feature2d::sptr _detector;
+  c_feature2d::sptr _descriptor;
+  int _max_keypoints;
 };
 
 
@@ -1808,13 +1808,6 @@ c_feature2d::sptr create_sparse_descriptor_extractor(
 
 c_feature2d::sptr create_sparse_descriptor_extractor(const c_feature2d::sptr & detector,
     const c_sparse_feature_descriptor_options & options);
-
-//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
-//    const c_sparse_feature_extractor_options & options);
-
-//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
-//    const c_sparse_feature_detector_options & detector,
-//    const c_sparse_feature_descriptor_options & descriptor);
 
 
 #endif /* __feature_detection_h__ */

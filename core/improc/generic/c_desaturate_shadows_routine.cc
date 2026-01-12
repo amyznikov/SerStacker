@@ -112,9 +112,9 @@ static void combine_images(cv::InputArray color_image, cv::InputArray gray_image
 
 void c_desaturate_shadows_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
 {
-  BIND_PCTRL(ctls, wmin, "");
-  BIND_PCTRL(ctls, wmax, "");
-  BIND_PCTRL(ctls, mblur, "");
+  BIND_PCTRL(ctls, wmin, "min gray intensity clip for unsaturated colors");
+  BIND_PCTRL(ctls, wmax, "max gray intensity clip for saturated colors");
+  BIND_PCTRL(ctls, mblur, "optional gaussian blur sigma for grayscale intensity");
   BIND_PCTRL(ctls, ignore_mask, "");
 }
 

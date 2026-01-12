@@ -1546,13 +1546,13 @@ public:
 
   virtual void set_options(OptionsType * options)
   {
-    this->options_ = options;
+    this->_options = options;
     updateControls();
   }
 
   OptionsType * options() const
   {
-    return options_;
+    return _options;
   }
 
 protected:
@@ -1563,7 +1563,7 @@ protected:
 
   void onupdatecontrols() override
   {
-    if ( !options_ ) {
+    if ( !_options ) {
       setEnabled(false);
     }
     else {
@@ -1574,7 +1574,7 @@ protected:
   }
 
 protected:
-  OptionsType * options_ = nullptr;
+  OptionsType * _options = nullptr;
 };
 
 
@@ -1633,10 +1633,10 @@ public:
   QSettingsDialogBoxTemplate(const QString & title, QWidget * parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags()) :
     Base(title, parent, flags)
   {
-    layout_ =
+    _layout =
         new QVBoxLayout(this);
 
-    layout_->addWidget(settings_ctl =
+    _layout->addWidget(settings_ctl =
         new SettingsWidgetType(this));
 
     connect(settings_ctl, &QSettingsWidget::parameterChanged,
@@ -1659,7 +1659,7 @@ public:
   }
 
 protected:
-  QVBoxLayout * layout_;
+  QVBoxLayout * _layout;
   SettingsWidgetType * settings_ctl = nullptr;
 };
 

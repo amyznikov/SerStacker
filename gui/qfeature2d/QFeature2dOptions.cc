@@ -360,6 +360,7 @@ void QSparseFeatureDescriptorOptions::update_descriptor_specific_controls()
         [this](decltype(options_->f.name) v){ \
           if ( options_ ) { \
             options_->f.name = v; \
+            Q_EMIT parameterChanged(); \
           }}, \
         [this](decltype(options_->f.name) * v) -> bool { \
           if ( options_ ) { \

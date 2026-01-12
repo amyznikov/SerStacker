@@ -76,7 +76,6 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
   return true;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 c_translation_image_transform::c_translation_image_transform(float Tx, float Ty)
@@ -184,6 +183,35 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
 
   return true;
 }
+
+bool c_translation_image_transform::remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts,
+    std::vector<cv::Point2f> & cpts) const
+{
+  //  x' =  x + tx
+  //  y' =  y + ty
+
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+    cp.x = rp.x + T[0];
+    cp.y = rp.y + T[1];
+  }
+
+  return true;
+}
+
+bool c_translation_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts,
+    std::vector<cv::Point2f> & cpts) const
+{
+  if( p.rows != 2 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 2x1", p.rows, p.cols);
+    return false;
+  }
+  return remap(cv::Vec2f((const float*) p.data), rpts, cpts);
+}
+
 
 bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/,
     const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
@@ -450,9 +478,7 @@ double c_euclidean_image_transform::eps(const cv::Mat1f & dp,
 
   get_parameters(dp, &dTx, &dTy, &da, &ds, &dCx, &dCy);
 
-  const float sa =
-      std::sin(da);
-
+  const float sa = std::sin(da);
   const float eps =
       std::sqrt(square(dTx) + square(dTy) + square(image_size.width * sa) + square(image_size.height * sa) +
           square(std::max(image_size.width, image_size.height) * ds));
@@ -462,10 +488,10 @@ double c_euclidean_image_transform::eps(const cv::Mat1f & dp,
 
 bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
+  INSTRUMENT_REGION("");
+
   //  Wx =  s * ( ca * x  - sa * y ) + tx
   //  Wy =  s * ( sa * x  + ca * y ) + ty
-
-  INSTRUMENT_REGION("");
 
   float Tx, Ty, angle, scale, Cx, Cy;
 
@@ -474,11 +500,8 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
     return false;
   }
 
-  const float sa =
-      std::sin(angle);
-
-  const float ca =
-      std::cos(angle);
+  const float sa = std::sin(angle);
+  const float ca = std::cos(angle);
 
   rmap.create(size);
 
@@ -509,6 +532,35 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
   return true;
 }
 
+bool c_euclidean_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts,
+    std::vector<cv::Point2f> & cpts) const
+{
+  //  Wx =  s * ( ca * x  - sa * y ) + tx
+  //  Wy =  s * ( sa * x  + ca * y ) + ty
+
+  float Tx, Ty, angle, scale, Cx, Cy;
+
+  if ( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+    CF_ERROR("get_parameters() fails");
+    return false;
+  }
+
+  const float sa = std::sin(angle);
+  const float ca = std::cos(angle);
+
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+    const float xx = rp.x - Cx;
+    const float yy = rp.y - Cy;
+    cp.x = scale * (ca * xx - sa * yy) + Tx;
+    cp.y = scale * (sa * xx + ca * yy) + Ty;
+  }
+
+  return true;
+}
 
 bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
@@ -730,17 +782,6 @@ cv::Mat1f c_affine_image_transform::invert_and_compose(const cv::Mat1f & p, cons
 }
 
 
-
-bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
-{
-  if( p.rows != 6 || p.cols != 1 ) {
-    CF_ERROR("c_affine_image_transform: Invalid parameters size: %dx%d. Must be 6x1", p.rows, p.cols);
-    return false;
-  }
-
-  return create_remap(matrix(p), size, rmap);
-}
-
 bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
   INSTRUMENT_REGION("");
@@ -771,10 +812,46 @@ bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Siz
   return true;
 }
 
+bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 6 || p.cols != 1 ) {
+    CF_ERROR("c_affine_image_transform: Invalid parameters size: %dx%d. Must be 6x1", p.rows, p.cols);
+    return false;
+  }
+
+  return create_remap(matrix(p), size, rmap);
+}
+
+
+bool c_affine_image_transform::remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  //  x' =  a00 * x  + a01 * y + a02
+  //  y' =  a10 * x  + a11 * y + a12
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+    cp.x = a(0, 0) * rp.x + a(0, 1) * rp.y + a(0, 2);
+    cp.y = a(1, 0) * rp.x + a(1, 1) * rp.y + a(1, 2);
+  }
+
+  return true;
+}
+
+bool c_affine_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  if( p.rows != 6 || p.cols != 1 ) {
+    CF_ERROR("c_affine_image_transform: Invalid parameters size: %dx%d. Must be 6x1", p.rows, p.cols);
+    return false;
+  }
+
+  return remap(matrix(p), rpts, cpts);
+}
+
 bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
-  const cv::Size size =
-      gx.size();
+  const cv::Size size = gx.size();
 
 #if 0
   if ( xx.size() != size || yy.size() != size ) {
@@ -991,17 +1068,6 @@ double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & 
   return eps;
 }
 
-bool c_homography_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
-{
-  if( p.rows != 8 || p.cols != 1 ) {
-    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
-        p.rows, p.cols);
-    return false;
-  }
-
-  return create_remap(matrix(p), size, rmap);
-}
-
 bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
   rmap.create(size);
@@ -1031,6 +1097,45 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
   return true;
 }
 
+bool c_homography_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
+        p.rows, p.cols);
+    return false;
+  }
+
+  return create_remap(matrix(p), size, rmap);
+}
+
+
+bool c_homography_image_transform::remap(const cv::Matx33f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+
+    const float w = 1.f / (a(2,0) * rp.x + a(2,1) * rp.y + a(2,2));
+    cp.x = (a(0,0) * rp.x + a(0,1) * rp.y + a(0,2)) * w;
+    cp.x = (a(1,0) * rp.x + a(1,1) * rp.y + a(1,2)) * w;
+  }
+
+  return true;
+}
+
+bool c_homography_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("c_homography_image_transform: Invalid parameters size: %dx%d. Must be 8x1",
+        p.rows, p.cols);
+    return false;
+  }
+
+  return remap(matrix(p), rpts, cpts);
+}
+
 bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
   INSTRUMENT_REGION("");
@@ -1044,9 +1149,7 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
     return false;
   }
 
-  const cv::Size size =
-      gx.size();
-
+  const cv::Size size = gx.size();
   const cv::Matx33f a(matrix(p));
 
   for( int i = 0; i < 8; ++i ) {
@@ -1255,16 +1358,6 @@ double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Siz
   return eps;
 }
 
-bool c_semi_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
-{
-  if( p.rows != 8 || p.cols != 1 ) {
-    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 8x1", p.rows, p.cols);
-    return false;
-  }
-
-  return create_remap(matrix(p), size, rmap);
-}
-
 bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
   rmap.create(size);
@@ -1288,6 +1381,40 @@ bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const
   });
 #endif // TBB
   return true;
+}
+
+bool c_semi_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 8x1", p.rows, p.cols);
+    return false;
+  }
+
+  return create_remap(matrix(p), size, rmap);
+}
+
+bool c_semi_quadratic_image_transform::remap(const cv::Matx24f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+    cp.x = a(0,0) * rp.x + a(0,1) * rp.y + a(0,2) + a(0,3) * rp.x * rp.y;
+    cp.y = a(1,0) * rp.x + a(1,1) * rp.y + a(1,2) + a(1,3) * rp.x * rp.y;
+  }
+
+  return true;
+}
+
+bool c_semi_quadratic_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  if( p.rows != 8 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 8x1", p.rows, p.cols);
+    return false;
+  }
+
+  return remap(matrix(p), rpts, cpts);
 }
 
 bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
@@ -1487,7 +1614,6 @@ void c_quadratic_image_transform::scale_transfrom(double factor)
   parameters_(11, 0) /= factor;
 }
 
-
 double c_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
 {
   // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
@@ -1502,17 +1628,6 @@ double c_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & i
         square(image_size.height * image_size.height * dp(5, 0)) + square(image_size.height * image_size.height * dp(11, 0)));
 
   return eps;
-}
-
-
-bool c_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
-{
-  if( p.rows != 12 || p.cols != 1 ) {
-    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 12x1", p.rows, p.cols);
-    return false;
-  }
-
-  return create_remap(matrix(p), size, rmap);
 }
 
 bool c_quadratic_image_transform::create_remap(const cv::Matx26f & a, const cv::Size & size, cv::Mat2f & rmap) const
@@ -1538,6 +1653,40 @@ bool c_quadratic_image_transform::create_remap(const cv::Matx26f & a, const cv::
       });
 #endif // TBB
   return true;
+}
+
+bool c_quadratic_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
+{
+  if( p.rows != 12 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 12x1", p.rows, p.cols);
+    return false;
+  }
+
+  return create_remap(matrix(p), size, rmap);
+}
+
+bool c_quadratic_image_transform::remap(const cv::Matx26f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  cpts.resize(rpts.size());
+
+  for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
+    const auto & rp = rpts[i];
+    auto & cp = cpts[i];
+    cp.x = a(0,0) * rp.x + a(0,1) * rp.y + a(0,2) + a(0,3) * rp.x * rp.y + a(0,4) * rp.x * rp.x + a(0,5) * rp.y * rp.y;
+    cp.y = a(1,0) * rp.x + a(1,1) * rp.y + a(1,2) + a(1,3) * rp.x * rp.y + a(1,4) * rp.x * rp.x + a(1,5) * rp.y * rp.y;
+  }
+
+  return true;
+}
+
+bool c_quadratic_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const
+{
+  if( p.rows != 12 || p.cols != 1 ) {
+    CF_ERROR("Invalid size of parameters matrix %dx%d. Must be 12x1", p.rows, p.cols);
+    return false;
+  }
+
+  return remap(matrix(p), rpts, cpts);
 }
 
 bool c_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,

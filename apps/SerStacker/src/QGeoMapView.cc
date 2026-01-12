@@ -589,14 +589,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_checkbox("Show lines",
           "Show /Hide lines",
           [this](bool checked) {
-            if ( options_ && options_->showLines() != checked ) {
-              options_->setShowLines(checked);
+            if ( _options && _options->showLines() != checked ) {
+              _options->setShowLines(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              * checked = options_->showLines();
+            if ( _options ) {
+              * checked = _options->showLines();
               return true;
             }
             return false;
@@ -605,14 +605,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   lineWidth_ctl =
       add_spinbox("Line width", "Set GPS line width",
           [this](int value) {
-            if ( options_ ) {
-              options_->setLineWidth(value);
+            if ( _options ) {
+              _options->setLineWidth(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->lineWidth();
+            if ( _options ) {
+              * value = _options->lineWidth();
               return true;
             }
             return false;
@@ -624,14 +624,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_color_picker_button("Line Color",
           "Select color for GPS lines",
           [this](const QColor & value) {
-            if ( options_ ) {
-              options_->setLineColor(value);
+            if ( _options ) {
+              _options->setLineColor(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](QColor * value) {
-            if ( options_ ) {
-              * value = options_->lineColor();
+            if ( _options ) {
+              * value = _options->lineColor();
               return true;
             }
             return false;
@@ -641,14 +641,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_sliderspinbox<int>("Line opaqueness",
           "Set line opaqueness",
           [this](int value) {
-            if ( options_ && options_->lineOpaqueness() != value ) {
-              options_->setLineOpaqueness(value);
+            if ( _options && _options->lineOpaqueness() != value ) {
+              _options->setLineOpaqueness(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->lineOpaqueness();
+            if ( _options ) {
+              * value = _options->lineOpaqueness();
               return true;
             }
             return false;
@@ -660,14 +660,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_checkbox("Show points",
           "Show /Hide points",
           [this](bool checked) {
-            if ( options_ && options_->showPoints() != checked ) {
-              options_->setShowPoints(checked);
+            if ( _options && _options->showPoints() != checked ) {
+              _options->setShowPoints(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              * checked = options_->showPoints();
+            if ( _options ) {
+              * checked = _options->showPoints();
               return true;
             }
             return false;
@@ -677,14 +677,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_spinbox("Point size",
           "Set point radius",
           [this](int value) {
-            if ( options_ && options_->pointSize() != value ) {
-              options_->setPointSize(value);
+            if ( _options && _options->pointSize() != value ) {
+              _options->setPointSize(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->pointSize();
+            if ( _options ) {
+              * value = _options->pointSize();
               return true;
             }
             return false;
@@ -695,14 +695,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   pointPenWidth_ctl =
       add_spinbox("Point pen width", "Set pen width used to draw points",
           [this](int value) {
-            if ( options_ && options_->pointPenWidth() != value ) {
-              options_->setPointPenWidth(value);
+            if ( _options && _options->pointPenWidth() != value ) {
+              _options->setPointPenWidth(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->pointPenWidth();
+            if ( _options ) {
+              * value = _options->pointPenWidth();
               return true;
             }
             return false;
@@ -714,14 +714,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_color_picker_button("Point Color",
           "Select color for GPS points",
           [this](const QColor & value) {
-            if ( options_ ) {
-              options_->setPointColor(value);
+            if ( _options ) {
+              _options->setPointColor(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](QColor * value) {
-            if ( options_ ) {
-              * value = options_->pointColor();
+            if ( _options ) {
+              * value = _options->pointColor();
               return true;
             }
             return false;
@@ -730,14 +730,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   pointOpaqueness_ctl =
       add_sliderspinbox<int>("Point opaqueness", "Set point opaqueness",
           [this](int value) {
-            if ( options_ && options_->pointOpaqueness() != value ) {
-              options_->setPointOpaqueness(value);
+            if ( _options && _options->pointOpaqueness() != value ) {
+              _options->setPointOpaqueness(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->pointOpaqueness();
+            if ( _options ) {
+              * value = _options->pointOpaqueness();
               return true;
             }
             return false;
@@ -750,14 +750,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & value) {
-            if ( options_ ) {
-              options_ ->setAssociatedVideoFileName(value);
+            if ( _options ) {
+              _options ->setAssociatedVideoFileName(value);
               update_control_states();
             }
           },
           [this](QString * v) {
-            if ( options_ ) {
-              *v = options_->associatedVideoFileName();
+            if ( _options ) {
+              *v = _options->associatedVideoFileName();
               return true;
             }
             return false;

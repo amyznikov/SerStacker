@@ -15,14 +15,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_checkbox("Visible",
           "Set checked to draw this grid",
           [this](bool checked) {
-            if ( options_ && options_->visible != checked ) {
-              options_->visible = checked;
+            if ( _options && _options->visible != checked ) {
+              _options->visible = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->visible;
+            if ( _options ) {
+              *checked = _options->visible;
               return true;
             }
             return false;
@@ -32,14 +32,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_textbox("Grid Name",
           "Optional name for this grid to be displayed in quick menu",
           [this](const QString & v) {
-            if ( options_ && options_->name != v ) {
-              options_->name = v;
+            if ( _options && _options->name != v ) {
+              _options->name = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * v) {
-            if ( options_ ) {
-              *v = options_->name;
+            if ( _options ) {
+              *v = _options->name;
               return true;
             }
             return false;
@@ -53,14 +53,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_numeric_box<step_type>("Step Size",
           "Set grid step size",
           [this](const step_type v) {
-            if ( options_ && options_->step != v ) {
-              options_->step = v;
+            if ( _options && _options->step != v ) {
+              _options->step = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](step_type * v) {
-            if ( options_ ) {
-              *v = options_->step;
+            if ( _options ) {
+              *v = _options->step;
               return true;
             }
             return false;
@@ -74,14 +74,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
           "Max distance for the grid.\n"
           "Set <= 0 for auto selection based on far plane setting",
           [this](const max_distance_type v) {
-            if ( options_ && options_->maxDistance != v ) {
-              options_->maxDistance = v;
+            if ( _options && _options->maxDistance != v ) {
+              _options->maxDistance = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](max_distance_type * v) {
-            if ( options_ ) {
-              *v = options_->maxDistance;
+            if ( _options ) {
+              *v = _options->maxDistance;
               return true;
             }
             return false;
@@ -94,14 +94,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_numeric_box<Rotation_type>("Rotation",
           "Rotation Euler Angles in degrees [pitch;yaw;roll]",
           [this](const Rotation_type v) {
-            if ( options_  ) {
-              options_->Rotation = v;
+            if ( _options  ) {
+              _options->Rotation = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](Rotation_type * v) {
-            if ( options_ ) {
-              *v = options_->Rotation;
+            if ( _options ) {
+              *v = _options->Rotation;
               return true;
             }
             return false;
@@ -116,14 +116,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_numeric_box<Translation_type>("Translation",
           "Translation [Tx;Ty;Tz].",
           [this](const Translation_type v) {
-            if ( options_ ) {
-              options_->Translation = v;
+            if ( _options ) {
+              _options->Translation = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](Translation_type * v) {
-            if ( options_ ) {
-              *v = options_->Translation;
+            if ( _options ) {
+              *v = _options->Translation;
               return true;
             }
             return false;
@@ -135,15 +135,15 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
 
   connect(gridColor_ctl, &QColorPickerButton::colorSelected,
       [this]() {
-        if ( options_ ) {
-          options_->gridColor = gridColor_ctl->color();
+        if ( _options ) {
+          _options->gridColor = gridColor_ctl->color();
           Q_EMIT parameterChanged();
         }
       });
   connect(this, &ThisClass::populatecontrols,
       [this]() {
-        if ( options_ ) {
-          gridColor_ctl->setColor(options_->gridColor);
+        if ( _options ) {
+          gridColor_ctl->setColor(_options->gridColor);
         }
       });
 
@@ -152,14 +152,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_sliderspinbox<int>("Grid Opaqueness",
           "Opaqueness (alpha-channel) the grid in range 0..255",
           [this](const int v) {
-            if ( options_ && options_->gridOpaqueness != v ) {
-              options_->gridOpaqueness = v;
+            if ( _options && _options->gridOpaqueness != v ) {
+              _options->gridOpaqueness = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->gridOpaqueness;
+            if ( _options ) {
+              *v = _options->gridOpaqueness;
               return true;
             }
             return false;
@@ -173,15 +173,15 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
 
   connect(fillColor_ctl, &QColorPickerButton::colorSelected,
       [this]() {
-        if ( options_ ) {
-          options_->fillColor = fillColor_ctl->color();
+        if ( _options ) {
+          _options->fillColor = fillColor_ctl->color();
           Q_EMIT parameterChanged();
         }
       });
   connect(this, &ThisClass::populatecontrols,
       [this]() {
-        if ( options_ ) {
-          fillColor_ctl->setColor(options_->fillColor);
+        if ( _options ) {
+          fillColor_ctl->setColor(_options->fillColor);
         }
       });
 
@@ -190,14 +190,14 @@ QGLViewPlanarGridSettings::QGLViewPlanarGridSettings(QWidget * parent) :
       add_sliderspinbox<int>("Fill Opaqueness",
           "Opaqueness (alpha-channel) the grid fill in range 0..255",
           [this](const int v) {
-            if ( options_ && options_->fillOpaqueness != v ) {
-              options_->fillOpaqueness = v;
+            if ( _options && _options->fillOpaqueness != v ) {
+              _options->fillOpaqueness = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->fillOpaqueness;
+            if ( _options ) {
+              *v = _options->fillOpaqueness;
               return true;
             }
             return false;

@@ -46,11 +46,11 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
           "",
           [this](const QColor &v) {
 
-            if ( options_ ) {
+            if ( _options ) {
 
               const int currentColormapIndex = colorMapSelection_ctl->currentIndex();
-              if (currentColormapIndex>=0 && currentColormapIndex < options_->num_colormaps() ) {
-                const ColorMap & colormap = options_->colormap(currentColormapIndex);
+              if (currentColormapIndex>=0 && currentColormapIndex < _options->num_colormaps() ) {
+                const ColorMap & colormap = _options->colormap(currentColormapIndex);
                 cv::Vec4b & color = colormap->at((uint8_t)labelValue_ctl->value()).color;
                 color[0] = v.blue();
                 color[1] = v.green();
@@ -65,10 +65,10 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
     add_double_spinbox("Color Blend Alpha:",
         "Brush depth in [m]",
         [this](double value) {
-            if ( options_ ) {
+            if ( _options ) {
               const int currentColormapIndex = colorMapSelection_ctl->currentIndex();
-              if (currentColormapIndex>=0 && currentColormapIndex < options_->num_colormaps() ) {
-                const ColorMap & colormap = options_->colormap(currentColormapIndex);
+              if (currentColormapIndex>=0 && currentColormapIndex < _options->num_colormaps() ) {
+                const ColorMap & colormap = _options->colormap(currentColormapIndex);
                 cv::Vec4b & color = colormap->at((uint8_t)labelValue_ctl->value()).color;
                 color[3] = (uint8_t)(255 * std::max(0., std::min(value, 1.)));
                 Q_EMIT parameterChanged();
@@ -101,8 +101,8 @@ void QDataAnnotationSettingsWidget::populateColormaps()
   QSignalBlocker block(colorMapSelection_ctl);
 
   colorMapSelection_ctl->clear();
-  if ( options_ ) {
-    for ( const auto & colormap : options_->colormaps() ) {
+  if ( _options ) {
+    for ( const auto & colormap : _options->colormaps() ) {
       colorMapSelection_ctl->addItem(colormap->name().c_str());
     }
   }
@@ -121,7 +121,7 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
 
   labelSelection_ctl->clear();
 
-  if ( !options_ || cursel < 0 || cursel >= options_->num_colormaps() ) {
+  if ( !_options || cursel < 0 || cursel >= _options->num_colormaps() ) {
     labelSelection_ctl->setEnabled(false);
     labelValue_ctl->setEnabled(false);
     labelColor_ctl->setEnabled(false);
@@ -129,7 +129,7 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
   else {
 
     const ColorMap & colormap =
-        options_->colormap(cursel);
+        _options->colormap(cursel);
 
     for (auto ii = colormap->begin(); ii != colormap->end(); ++ii) {
 
@@ -164,15 +164,15 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
 
 void QDataAnnotationSettingsWidget::onCurrentLabelSelectionChanged(int currentLabelIndex)
 {
-  if (options_) {
+  if (_options) {
 
     const int currentColormapIndex =
         colorMapSelection_ctl->currentIndex();
 
-    if (currentColormapIndex >= 0 && currentColormapIndex < options_->num_colormaps()) {
+    if (currentColormapIndex >= 0 && currentColormapIndex < _options->num_colormaps()) {
 
       const ColorMap &colormap =
-          options_->colormap(currentColormapIndex);
+          _options->colormap(currentColormapIndex);
 
       if (currentLabelIndex >= 0 && currentLabelIndex < colormap->size()) {
 

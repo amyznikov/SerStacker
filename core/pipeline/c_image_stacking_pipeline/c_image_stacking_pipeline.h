@@ -362,25 +362,25 @@ protected:
 
   std::string _output_file_name;
 
-  cv::Mat selected_master_frame_;
-  cv::Mat selected_master_frame_mask_;
+  cv::Mat _selected_master_frame;
+  cv::Mat _selected_master_frame_mask;
 
-  c_anscombe_transform anscombe_;
-  c_roi_selection::ptr roi_selection_;
-  c_frame_registration::sptr frame_registration_;
-  c_frame_weigthed_average::ptr flow_accumulation_;
-  c_frame_accumulation::ptr frame_accumulation_;
+  c_anscombe_transform _anscombe;
+  c_roi_selection::ptr _roi_selection;
+  c_frame_registration::sptr _frame_registration;
+  c_frame_weigthed_average::ptr _flow_accumulation;
+  c_frame_accumulation::ptr _frame_accumulation;
 
-  mutable std::string output_file_name_postfix_;
+  mutable std::string _output_file_name_postfix;
 
-  c_output_frame_writer preprocessed_video_writer_;
-  c_output_frame_writer sparse_match_blend_writer_;
-  c_output_frame_writer ecc_writer_;
-  c_output_frame_writer eccflow_writer_;
-  c_output_frame_writer aligned_video_writer_;
-  c_output_frame_writer incremental_video_writer_;
-  c_output_frame_writer accumulation_masks_writer_;
-  c_output_frame_writer sparse_matches_video_writer_;
+  c_output_frame_writer _preprocessed_video_writer;
+  c_output_frame_writer _sparse_match_blend_writer;
+  c_output_frame_writer _ecc_writer;
+  c_output_frame_writer _eccflow_writer;
+  c_output_frame_writer _aligned_video_writer;
+  c_output_frame_writer _incremental_video_writer;
+  c_output_frame_writer _accumulation_masks_writer;
+  c_output_frame_writer _sparse_matches_video_writer;
 
   bool _generating_master_frame = false;
 };

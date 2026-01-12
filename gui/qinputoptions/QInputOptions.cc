@@ -36,14 +36,14 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
       add_enum_combobox<DEBAYER_ALGORITHM>("Default debayer:",
           "Select debayer algorithm for bayer patterns",
           [this](DEBAYER_ALGORITHM v) {
-            if ( options_ && options_->debayer_method != v ) {
-              options_->debayer_method = v;
+            if ( _options && _options->debayer_method != v ) {
+              _options->debayer_method = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](DEBAYER_ALGORITHM * v) {
-            if ( options_ ) {
-              *v = options_->debayer_method;
+            if ( _options ) {
+              *v = _options->debayer_method;
               return true;
             }
             return false;
@@ -53,14 +53,14 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
       add_checkbox("Enable Color Matrix",
           "Enable Color Matrix if provided",
           [this](bool checked) {
-            if ( options_ && options_->enable_color_maxtrix != checked ) {
-              options_->enable_color_maxtrix = checked;
+            if ( _options && _options->enable_color_maxtrix != checked ) {
+              _options->enable_color_maxtrix = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->enable_color_maxtrix;
+            if ( _options ) {
+              *checked = _options->enable_color_maxtrix;
               return true;
             }
             return false;
@@ -70,14 +70,14 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
       add_checkbox("Filter Bad Pixels",
           "Enable Detect and Filter Bad Pixels",
           [this](bool checked) {
-            if ( options_ && options_->filter_bad_pixels != checked ) {
-              options_->filter_bad_pixels = checked;
+            if ( _options && _options->filter_bad_pixels != checked ) {
+              _options->filter_bad_pixels = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->filter_bad_pixels;
+            if ( _options ) {
+              *checked = _options->filter_bad_pixels;
               return true;
             }
             return false;
@@ -87,14 +87,14 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
       add_numeric_box<double>("Bad Pixels Variation:",
           "bad_pixels_variation_threshold",
           [this](double v) {
-            if ( options_ && options_->bad_pixels_variation_threshold != v ) {
-              options_->bad_pixels_variation_threshold = v;
+            if ( _options && _options->bad_pixels_variation_threshold != v ) {
+              _options->bad_pixels_variation_threshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->bad_pixels_variation_threshold;
+            if ( _options ) {
+              *v = _options->bad_pixels_variation_threshold;
               return true;
             }
             return false;
@@ -282,11 +282,11 @@ QInputOptions::QInputOptions(QWidget * parent) :
 
 void QInputOptions::set_options(c_input_options * options)
 {
-  if ( !(this->options_ = options) ) {
+  if ( !(this->_options = options) ) {
     videoOptions_ctl->set_options(nullptr);
   }
   else {
-    videoOptions_ctl->set_options(&options_->video);
+    videoOptions_ctl->set_options(&_options->video);
   }
 
   updateControls();

@@ -11,281 +11,165 @@
 #include "feature2d.h"
 #include <core/settings/opencv_settings.h>
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_orb::options * args);
-bool save_settings(c_config_setting settings,
-    c_feature2d_orb::options & args);
+bool save_settings(c_config_setting settings, const c_feature2d_orb::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_orb::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_brisk::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_brisk::options & args);
+bool save_settings(c_config_setting settings, const c_feature2d_brisk::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_brisk::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_kaze::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_kaze::options &);
+bool save_settings(c_config_setting settings, const c_feature2d_kaze::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_kaze::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_akaze::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_akaze::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_akaze::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_akaze::options * args);
 
 #if HAVE_FEATURE2D_SIFT
-bool load_settings(c_config_setting settings,
-    c_feature2d_sift::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_sift::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_sift::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_sift::options * args);
 #endif
 
 #if HAVE_FEATURE2D_SURF
-bool load_settings(c_config_setting settings,
-    c_feature2d_surf::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_surf::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_surf::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_surf::options * args);
 #endif
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_mser::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_mser::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_mser::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_mser::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_fast::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_fast::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_fast::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_fast::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_agast::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_agast::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_agast::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_agast::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_gftt::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_gftt::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_gftt::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_gftt::options * args);
 
-bool load_settings(c_config_setting settings,
-    c_feature2d_blob::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_blob::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_blob::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_blob::options * args);
 
 #if HAVE_FEATURE2D_STAR
-bool load_settings(c_config_setting settings,
-    c_feature2d_star::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_star::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_star::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_star::options * args);
 #endif
 
 #if HAVE_FEATURE2D_MSD
-bool load_settings(c_config_setting settings,
-    c_feature2d_msd::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_msd::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_msd::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_msd::options * args);
 #endif
 
 #if HAVE_FEATURE2D_HL
-bool load_settings(c_config_setting settings,
-    c_feature2d_hl::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_hl::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_hl::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_hl::options * args);
 #endif
 
 #if HAVE_FEATURE2D_FREAK
-bool load_settings(c_config_setting settings,
-    c_feature2d_freak::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_freak::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_freak::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_freak::options * args);
 #endif
 
 #if HAVE_FEATURE2D_BRIEF
-bool load_settings(c_config_setting settings,
-    c_feature2d_brief::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_brief::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_brief::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_brief::options * args);
 #endif
 
 #if HAVE_FEATURE2D_LUCID
-bool load_settings(c_config_setting settings,
-    c_feature2d_lucid::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_lucid::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_lucid::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_lucid::options * args);
 #endif
 
 #if HAVE_FEATURE2D_LATCH
-bool load_settings(c_config_setting settings,
-    c_feature2d_latch::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_latch::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_latch::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_latch::options * args);
 #endif
 
 #if HAVE_FEATURE2D_DAISY
-bool load_settings(c_config_setting settings,
-    c_feature2d_daisy::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_daisy::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_daisy::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_daisy::options * args);
 #endif
 
 #if HAVE_FEATURE2D_VGG
-bool load_settings(c_config_setting settings,
-    c_feature2d_vgg::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_vgg::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_vgg::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_vgg::options * args);
 #endif
 
 #if HAVE_FEATURE2D_BOOST
-bool load_settings(c_config_setting settings,
-    c_feature2d_boost::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_boost::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_boost::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_boost::options * args);
 #endif
 
 #if HAVE_STAR_EXTRACTOR
-bool load_settings(c_config_setting settings,
-    c_feature2d_star_extractor::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_star_extractor::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_star_extractor::options * args);
 #endif
 
 #if HAVE_MORPH_EXTRACTOR
-bool load_settings(c_config_setting settings,
-    c_feature2d_morph_extractor::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_morph_extractor::options & );
+bool save_settings(c_config_setting settings, const c_feature2d_morph_extractor::options & args);
+bool load_settings(c_config_setting settings, c_feature2d_morph_extractor::options * args);
 #endif
 
 #if HAVE_TRIANGLE_EXTRACTOR
-bool load_settings(c_config_setting settings,
-    c_feature2d_triangle_extractor::options * args);
-bool save_settings(c_config_setting settings,
-    const c_feature2d_triangle_extractor::options & );
+bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::options * args);
+bool save_settings(c_config_setting settings, const c_feature2d_triangle_extractor::options & args);
 #endif
 
-bool save_settings(c_config_setting settings,
-    const c_feature2d::sptr & obj);
+bool save_settings(c_config_setting settings, const c_sparse_feature_detector_options & args);
+bool load_settings(c_config_setting settings, c_sparse_feature_detector_options * opts);
+
+bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_options & args);
+bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_options * opts);
+
+bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & args);
+bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * opts);
 
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_detector_options * options);
+bool save_settings(c_config_setting settings, const c_flann_linear_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_linear_index_options * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_sparse_feature_detector_options & options);
+bool save_settings(c_config_setting settings, const c_flann_kdtree_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_kdtree_index_options * opts);
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_descriptor_options * options);
+bool save_settings(c_config_setting settings, const c_flann_kmeans_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_kmeans_index_options * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_sparse_feature_descriptor_options & options);
+bool save_settings(c_config_setting settings, const c_flann_composite_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_composite_index_options * opts);
 
-bool load_settings(c_config_setting settings,
-    c_sparse_feature_extractor_options * options);
+bool save_settings(c_config_setting settings, const c_flann_hierarchical_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_hierarchical_index_options  * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_sparse_feature_extractor_options & options);
+bool save_settings(c_config_setting settings, const c_flann_lsh_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_lsh_index_options * opts);
 
+bool save_settings(c_config_setting settings, const c_flann_autotuned_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_autotuned_index_options  * opts);
 
+bool save_settings(c_config_setting settings, const c_flann_index_options & args);
+bool load_settings(c_config_setting settings, c_flann_index_options * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_flann_linear_index_options & options);
+bool save_settings(c_config_setting settings, const c_hamming_distance_feature2d_matcher_options & args);
+bool load_settings(c_config_setting settings, c_hamming_distance_feature2d_matcher_options * opts);
 
-bool load_settings(c_config_setting settings,
-    c_flann_linear_index_options * options);
+bool save_settings(c_config_setting settings, const c_flann_based_feature2d_matcher_options & args);
+bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_options * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_flann_kdtree_index_options & options);
+bool save_settings(c_config_setting settings, const c_optflowpyrlk_feature2d_matcher_options & args);
+bool load_settings(c_config_setting settings, c_optflowpyrlk_feature2d_matcher_options * opts);
 
-bool load_settings(c_config_setting settings,
-    c_flann_kdtree_index_options * options);
+bool save_settings(c_config_setting settings, const c_snorm_based_feature2d_matcher_options & args);
+bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_options * opts);
 
-bool save_settings(c_config_setting settings,
-    const c_flann_kmeans_index_options & options);
+bool save_settings(c_config_setting settings, const c_triangle_matcher_options & args);
+bool load_settings(c_config_setting settings, c_triangle_matcher_options * opts);
 
-bool load_settings(c_config_setting settings,
-    c_flann_kmeans_index_options* options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_composite_index_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_composite_index_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_hierarchical_index_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_hierarchical_index_options  * options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_lsh_index_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_lsh_index_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_autotuned_index_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_autotuned_index_options  * options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_index_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_index_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_hamming_distance_feature2d_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_hamming_distance_feature2d_matcher_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_flann_based_feature2d_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_flann_based_feature2d_matcher_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_optflowpyrlk_feature2d_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_optflowpyrlk_feature2d_matcher_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_snorm_based_feature2d_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_snorm_based_feature2d_matcher_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_triangle_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_triangle_matcher_options * options);
-
-bool save_settings(c_config_setting settings,
-    const c_feature2d_matcher_options & options);
-
-bool load_settings(c_config_setting settings,
-    c_feature2d_matcher_options * options);
+bool save_settings(c_config_setting settings, const c_feature2d_matcher_options & args);
+bool load_settings(c_config_setting settings, c_feature2d_matcher_options * opts);
 
 
-
-bool save_settings(c_config_setting settings,
-    const c_feature2d_matcher::sptr & obj);
-
+bool save_settings(c_config_setting settings, const c_feature2d::sptr & obj);
+bool save_settings(c_config_setting settings, const c_feature2d_matcher::sptr & obj);
 
 ///////////////////////////////////////////////////////////////////////
-
-//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(
-//    c_config_setting settings);
-
-//c_feature2d_matcher::sptr create_sparse_feature_matcher(
-//    c_config_setting settings);
-
-//c_feature2d_matcher::sptr create_sparse_feature_matcher(
-//    const c_sparse_feature_extractor::sptr & extractor,
-//    c_config_setting settings);
 
 c_feature2d_matcher::sptr create_sparse_feature_matcher(
     const c_sparse_feature_extractor::sptr & extractor,

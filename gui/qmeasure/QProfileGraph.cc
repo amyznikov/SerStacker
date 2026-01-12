@@ -840,13 +840,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_enum_combobox<QCPGraph::LineStyle>("Line Style:",
           "Set line style",
           [this](QCPGraph::LineStyle v) {
-            if ( options_ ) {
-              options_->setLineStyle(v);
+            if ( _options ) {
+              _options->setLineStyle(v);
             }
           },
           [this](QCPGraph::LineStyle * v) {
-            if ( options_ ) {
-              *v = options_->lineStyle();
+            if ( _options ) {
+              *v = _options->lineStyle();
               return true;
             }
             return false;
@@ -856,13 +856,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Fix X min:",
           "Set checked to fix X min range of the plot",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setFixXMin(checked);
+            if ( _options ) {
+              _options->setFixXMin(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->fixXMin();
+            if ( _options ) {
+              *checked = _options->fixXMin();
               return true;
             }
             return false;
@@ -872,13 +872,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_numeric_box<double>("Xmin:",
           "X range minimum value",
           [this](double v) {
-            if ( options_ ) {
-              options_->setXRangeMin(v);
+            if ( _options ) {
+              _options->setXRangeMin(v);
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->xRangeMin();
+            if ( _options ) {
+              *v = _options->xRangeMin();
               return true;
             }
             return false;
@@ -889,13 +889,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Fix X max:",
           "Set checked to fix X maxx range of the plot",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setFixXMax(checked);
+            if ( _options ) {
+              _options->setFixXMax(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->fixXMax();
+            if ( _options ) {
+              *checked = _options->fixXMax();
               return true;
             }
             return false;
@@ -905,13 +905,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_numeric_box<double>("Xmax:",
           "X range maximum value",
           [this](double v) {
-            if ( options_ ) {
-              options_->setXRangeMax(v);
+            if ( _options ) {
+              _options->setXRangeMax(v);
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->xRangeMax();
+            if ( _options ) {
+              *v = _options->xRangeMax();
               return true;
             }
             return false;
@@ -923,13 +923,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Fix Y min:",
           "Set checked to fix Y min range of the plot",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setFixYMin(checked);
+            if ( _options ) {
+              _options->setFixYMin(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->fixYMin();
+            if ( _options ) {
+              *checked = _options->fixYMin();
               return true;
             }
             return false;
@@ -940,13 +940,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_numeric_box<double>("Ymin:",
           "Y range minimum value",
           [this](double v) {
-            if ( options_ ) {
-              options_->setYRangeMin(v);
+            if ( _options ) {
+              _options->setYRangeMin(v);
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->yRangeMin();
+            if ( _options ) {
+              *v = _options->yRangeMin();
               return true;
             }
             return false;
@@ -957,13 +957,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Fix Y Max:",
           "Set checked to fix Y max range of the plot",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setFixYMax(checked);
+            if ( _options ) {
+              _options->setFixYMax(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->fixYMax();
+            if ( _options ) {
+              *checked = _options->fixYMax();
               return true;
             }
             return false;
@@ -973,13 +973,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_numeric_box<double>("Ymax:",
           "Y range maximum value",
           [this](double v) {
-            if ( options_ ) {
-              options_->setYRangeMax(v);
+            if ( _options ) {
+              _options->setYRangeMax(v);
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->yRangeMax();
+            if ( _options ) {
+              *v = _options->yRangeMax();
               return true;
             }
             return false;
@@ -991,13 +991,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Skip Zero values:",
           "Set checked to skip pixels with zero value",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setSkipZeroPixels(checked);
+            if ( _options ) {
+              _options->setSkipZeroPixels(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->skipZeroPixels();
+            if ( _options ) {
+              *checked = _options->skipZeroPixels();
               return true;
             }
             return false;
@@ -1007,13 +1007,13 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
       add_checkbox("Skip Masked values:",
           "Set checked to skip masked pixels",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->setSkipMaskedPixels(checked);
+            if ( _options ) {
+              _options->setSkipMaskedPixels(checked);
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->skipMaskedPixels();
+            if ( _options ) {
+              *checked = _options->skipMaskedPixels();
               return true;
             }
             return false;
@@ -1032,24 +1032,24 @@ void QProfileGraphSettings::set_options(QProfileGraph * profileGraph)
 
 void QProfileGraphSettings::setProfileGraph(QProfileGraph * options)
 {
-  if ( options_ ) {
-    options_->disconnect(this);
+  if ( _options ) {
+    _options->disconnect(this);
   }
 
-  if ( (options_ = options) ) {
+  if ( (_options = options) ) {
 
-    connect(options_, &QProfileGraph::xRangeRescaled,
+    connect(_options, &QProfileGraph::xRangeRescaled,
         [this]() {
           c_update_controls_lock lock(this);
-          xRangeMin_ctl->setValue(options_->xRangeMin());
-          xRangeMax_ctl->setValue(options_->xRangeMax());
+          xRangeMin_ctl->setValue(_options->xRangeMin());
+          xRangeMax_ctl->setValue(_options->xRangeMax());
         });
 
-    connect(options_, &QProfileGraph::yRangeRescaled,
+    connect(_options, &QProfileGraph::yRangeRescaled,
         [this]() {
           c_update_controls_lock lock(this);
-          yRangeMin_ctl->setValue(options_->yRangeMin());
-          yRangeMax_ctl->setValue(options_->yRangeMax());
+          yRangeMin_ctl->setValue(_options->yRangeMin());
+          yRangeMax_ctl->setValue(_options->yRangeMax());
         });
 
     //    connect(profileGraph_, &QProfileGraph::parameterChanged,
@@ -1062,7 +1062,7 @@ void QProfileGraphSettings::setProfileGraph(QProfileGraph * options)
 
 QProfileGraph * QProfileGraphSettings::profileGraph() const
 {
-  return options_;
+  return _options;
 }
 
 

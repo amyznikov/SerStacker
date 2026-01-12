@@ -67,6 +67,7 @@ public:
       /* out */ std::vector<cv::DMatch> & matches) override;
 
 protected:
+  //std::vector<cv::KeyPoint> _train_keypoints;
   cv::Mat1b _reference_triangles;
   cvflann::Matrix<DistanceType::ElementType> _reference_features;
   cv::Ptr<cvflann::KDTreeIndex<DistanceType>> _index;

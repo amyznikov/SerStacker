@@ -76,35 +76,25 @@ protected:
   c_sparse_feature_extractor_and_matcher(const c_sparse_feature_extractor_and_matcher_options & opts);
   void extract_positions(const std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point2f> & positions) const;
 
-  c_sparse_feature_extractor_and_matcher_options options_;
-  c_feature2d::sptr detector_;
-  c_feature2d::sptr descriptor_;
-  c_feature2d_matcher::sptr matcher_;
+  c_sparse_feature_extractor_and_matcher_options _options;
+  c_feature2d::sptr _detector;
+  c_feature2d::sptr _descriptor;
+  c_feature2d_matcher::sptr _matcher;
 
-  cv::Mat reference_image_;
-  cv::Mat reference_mask_;
-  cv::Mat reference_descriptors_;
-  std::vector<cv::KeyPoint> reference_keypoints_;
-  std::vector<cv::Point2f> reference_positions_;
-  std::vector<cv::Point2f> matched_reference_positions_;
+  cv::Mat _reference_image;
+  cv::Mat _reference_mask;
+  cv::Mat _reference_descriptors;
+  std::vector<cv::KeyPoint> _reference_keypoints;
+  std::vector<cv::Point2f> _reference_positions;
+  std::vector<cv::Point2f> _matched_reference_positions;
 
-//  cv::Mat current_image_;
-//  cv::Mat current_mask_;
-  cv::Mat current_descriptors_;
-  std::vector<cv::KeyPoint> current_keypoints_;
-  std::vector<cv::Point2f> current_positions_;
-  std::vector<cv::Point2f> matched_current_positions_;
+  cv::Mat _current_descriptors;
+  std::vector<cv::KeyPoint> _current_keypoints;
+  std::vector<cv::Point2f> _current_positions;
+  std::vector<cv::Point2f> _matched_current_positions;
 
-  std::vector<cv::DMatch> current_matches_;
+  std::vector<cv::DMatch> _current_matches;
 };
-
-//struct c_feature2d_options
-//{
-//  double scale = 0.5;
-//  c_sparse_feature_extractor_options sparse_feature_extractor;
-//  c_feature2d_matcher_options sparse_feature_matcher;
-//};
-
 
 /**
  * draw_matched_positions()

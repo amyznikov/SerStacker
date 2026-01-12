@@ -248,6 +248,7 @@ protected Q_SLOTS:
 protected:
   QEnumComboBox<color_channel_type> * registrationChannel_ctl = nullptr;
   QNumericBox * scale_ctl = nullptr;
+  QNumericBox * triangle_eps_ctl = nullptr;
   QSparseFeatureDetectorOptions * sparseFeatureDetectorOptions_ctl = nullptr;
   QSparseFeatureDescriptorOptions * sparseFeatureDescriptorOptions_ctl = nullptr;
   QSparseFeatureMatcherOptions * sparseFeatureMatcherOptions_ctl = nullptr;

@@ -35,7 +35,6 @@ const c_enum_member * members_of<ROBUST_METHOD>()
 }
 
 
-namespace {
 
 bool estimate_translation(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
@@ -802,10 +801,6 @@ bool estimate_prh_transform(c_epipolar_derotation_image_transform * transform,
 }
 
 
-
-} // namespace
-
-
 bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
@@ -815,6 +810,8 @@ bool estimate_image_transform(c_image_transform * transform,
     CF_ERROR("No image transform specified");
     return false;
   }
+
+  CF_DEBUG("matched_current_positions.size=%zu", matched_current_positions.size());
 
   try {
 

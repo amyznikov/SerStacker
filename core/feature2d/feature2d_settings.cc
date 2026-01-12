@@ -607,11 +607,11 @@ bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::
 #endif
 
 #if HAVE_TRIANGLE_EXTRACTOR
-bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::options * options)
+bool load_settings(c_config_setting settings, c_feature2d_triangle_extractor::options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, max_points);
-  LOAD_OPTIONS(settings, *options, min_side_size);
+  LOAD_OPTIONS(settings, *args, max_points);
+  LOAD_OPTIONS(settings, *args, min_side_size);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -633,12 +633,12 @@ bool save_settings(c_config_setting settings, const c_flann_based_feature2d_matc
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_options * options)
+bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, distance_type);
-  LOAD_OPTIONS(settings, *options, lowe_ratio);
-  LOAD_OPTIONS(settings, *options, index);
+  LOAD_OPTIONS(settings, *args, distance_type);
+  LOAD_OPTIONS(settings, *args, lowe_ratio);
+  LOAD_OPTIONS(settings, *args, index);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -656,16 +656,16 @@ bool save_settings(c_config_setting settings, const c_optflowpyrlk_feature2d_mat
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_optflowpyrlk_feature2d_matcher_options * options)
+bool load_settings(c_config_setting settings, c_optflowpyrlk_feature2d_matcher_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, maxLevel);
-  LOAD_OPTIONS(settings, *options, winSize);
-  LOAD_OPTIONS(settings, *options, maxIterations);
-  LOAD_OPTIONS(settings, *options, flags);
-  LOAD_OPTIONS(settings, *options, eps);
-  LOAD_OPTIONS(settings, *options, minEigThreshold);
-  LOAD_OPTIONS(settings, *options, maxErr);
+  LOAD_OPTIONS(settings, *args, maxLevel);
+  LOAD_OPTIONS(settings, *args, winSize);
+  LOAD_OPTIONS(settings, *args, maxIterations);
+  LOAD_OPTIONS(settings, *args, flags);
+  LOAD_OPTIONS(settings, *args, eps);
+  LOAD_OPTIONS(settings, *args, minEigThreshold);
+  LOAD_OPTIONS(settings, *args, maxErr);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -677,11 +677,11 @@ bool save_settings(c_config_setting settings, const c_snorm_based_feature2d_matc
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_options * options)
+bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, max_acceptable_distance);
-  LOAD_OPTIONS(settings, *options, lowe_ratio);
+  LOAD_OPTIONS(settings, *args, max_acceptable_distance);
+  LOAD_OPTIONS(settings, *args, lowe_ratio);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -692,10 +692,10 @@ bool save_settings(c_config_setting settings, const c_triangle_matcher_options &
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_triangle_matcher_options * options)
+bool load_settings(c_config_setting settings, c_triangle_matcher_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, eps);
+  LOAD_OPTIONS(settings, *args, eps);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -719,10 +719,10 @@ bool save_settings(c_config_setting settings, const c_flann_kdtree_index_options
   return true;
 }
 
-bool load_settings(c_config_setting settings, c_flann_kdtree_index_options * options)
+bool load_settings(c_config_setting settings, c_flann_kdtree_index_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, trees);
+  LOAD_OPTIONS(settings, *args, trees);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -830,9 +830,7 @@ bool load_settings(c_config_setting settings, c_flann_autotuned_index_options  *
 
 bool save_settings(c_config_setting section, const c_feature2d::sptr & obj)
 {
-  const c_feature2d * p =
-      obj.get();
-
+  const c_feature2d * p = obj.get();
   if ( !p ) {
     CF_ERROR("No FeatureDetector object specified for saving into config section");
     return false;
@@ -840,101 +838,82 @@ bool save_settings(c_config_setting section, const c_feature2d::sptr & obj)
 
   switch ( p->type() ) {
   case FEATURE2D_ORB :
-    return save_settings(section,
-        *static_cast<const c_feature2d_orb::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_orb::options*>(p->opts()));
   case FEATURE2D_BRISK :
-    return save_settings(section,
-        *static_cast<const c_feature2d_brisk::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_brisk::options*>(p->opts()));
   case FEATURE2D_MSER :
-    return save_settings(section,
-        *static_cast<const c_feature2d_mser::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_mser::options*>(p->opts()));
   case FEATURE2D_FAST :
-    return save_settings(section,
-        *static_cast<const c_feature2d_fast::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_fast::options*>(p->opts()));
   case FEATURE2D_AGAST :
-    return save_settings(section,
-        *static_cast<const c_feature2d_agast::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_agast::options*>(p->opts()));
   case FEATURE2D_GFTT :
-    return save_settings(section,
-        *static_cast<const c_feature2d_gftt::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_gftt::options*>(p->opts()));
   case FEATURE2D_BLOB :
-    return save_settings(section,
-        *static_cast<const c_feature2d_blob::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_blob::options*>(p->opts()));
   case FEATURE2D_KAZE :
-    return save_settings(section,
-        *static_cast<const c_feature2d_kaze::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_kaze::options*>(p->opts()));
   case FEATURE2D_AKAZE :
-    return save_settings(section,
-        *static_cast<const c_feature2d_akaze::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_akaze::options*>(p->opts()));
 #if HAVE_FEATURE2D_BRIEF
   case FEATURE2D_BRIEF :
-    return save_settings(section,
-        *static_cast<const c_feature2d_brief::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_brief::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_SIFT
   case FEATURE2D_SIFT :
-    return save_settings(section,
-        *static_cast<const c_feature2d_sift::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_sift::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_SURF
   case FEATURE2D_SURF :
-    return save_settings(section,
-        *static_cast<const c_feature2d_surf::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_surf::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_FREAK
   case FEATURE2D_FREAK :
-    return save_settings(section,
-        *static_cast<const c_feature2d_freak::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_freak::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_STAR
   case FEATURE2D_STAR :
-    return save_settings(section,
-        *static_cast<const c_feature2d_star::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_star::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_LUCID
   case FEATURE2D_LUCID :
-    return save_settings(section,
-        *static_cast<const c_feature2d_lucid::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_lucid::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_LATCH
   case FEATURE2D_LATCH :
-    return save_settings(section,
-        *static_cast<const c_feature2d_latch::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_latch::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_DAISY
   case FEATURE2D_DAISY :
-    return save_settings(section,
-        *static_cast<const c_feature2d_daisy::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_daisy::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_MSD
   case FEATURE2D_MSD :
-    return save_settings(section,
-        *static_cast<const c_feature2d_msd::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_msd::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_VGG
   case FEATURE2D_VGG :
-    return save_settings(section,
-        *static_cast<const c_feature2d_vgg::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_vgg::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_BOOST
   case FEATURE2D_BOOST :
-    return save_settings(section,
-        *static_cast<const c_feature2d_boost::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_boost::options*>(p->opts()));
 #endif
 #if HAVE_FEATURE2D_HL
   case FEATURE2D_HL :
-    return save_settings(section,
-        *static_cast<const c_feature2d_hl::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_hl::options*>(p->opts()));
 #endif
 #if HAVE_STAR_EXTRACTOR
   case FEATURE2D_STAR_EXTRACTOR :
-    return save_settings(section,
-        *static_cast<const c_feature2d_star_extractor::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_star_extractor::options*>(p->opts()));
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  case FEATURE2D_TRIANGLE_EXTRACTOR:
+    return save_settings(section, *static_cast<const c_feature2d_triangle_extractor::options*>(p->opts()));
 #endif
 #if HAVE_MORPH_EXTRACTOR
   case FEATURE2D_MORPH :
-    return save_settings(section,
-        *static_cast<const c_feature2d_morph_extractor::options*>(p->opts()));
+    return save_settings(section, *static_cast<const c_feature2d_morph_extractor::options*>(p->opts()));
 #endif
 
   default :
@@ -1695,6 +1674,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
 #define LOAD_GROUP(name) \
   if ( (group = settings[#name]).isGroup() ) { \
     load_settings(group, &options->name); \
+  } \
+  else { \
+    CF_DEBUG("Group %s not found", #name); \
   }
 
   LOAD_GROUP(orb);
@@ -1783,7 +1765,6 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_detector_op
   SAVE_GROUP(sex);
 #endif
 
-
 #undef SAVE_GROUP
 
   return true;
@@ -1816,6 +1797,9 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
 #define LOAD_GROUP(name) \
   if ( (group = settings[#name]).isGroup() ) { \
     load_settings(group, &options->name); \
+  } \
+  else { \
+    CF_DEBUG("Group %s not found", #name); \
   }
 
   LOAD_GROUP(orb);
@@ -1860,11 +1844,8 @@ bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_option
 
 bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_options & options)
 {
-  save_settings(settings, "type",
+   save_settings(settings, "type",
       toString(options.type));
-
-//  save_settings(settings, "use_detector_options",
-//      options.use_detector_options);
 
 #define SAVE_GROUP(name) \
     save_settings(settings.add_group(#name), \
@@ -1900,6 +1881,9 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_
 #endif
 #if HAVE_FEATURE2D_BOOST
   SAVE_GROUP(boost);
+#endif
+#if HAVE_TRIANGLE_EXTRACTOR
+  SAVE_GROUP(triangles);
 #endif
 
 #undef SAVE_GROUP

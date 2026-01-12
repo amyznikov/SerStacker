@@ -227,15 +227,15 @@ QMasterFrameSelectionControl::QMasterFrameSelectionControl(QWidget * parent) :
       add_enum_combobox<master_frame_selection_method>("Master frame selection:",
           "",
           [this](master_frame_selection_method v) {
-            if ( options_ && options_->master_selection_method != v ) {
-              options_->master_selection_method = v;
+            if ( _options && _options->master_selection_method != v ) {
+              _options->master_selection_method = v;
               updateMasterSourceControlStates();
               Q_EMIT parameterChanged();
             }
           },
           [this](master_frame_selection_method * v) {
-            if ( options_ ) {
-              *v = options_->master_selection_method;
+            if ( _options ) {
+              *v = _options->master_selection_method;
               return true;
             }
             return false;
@@ -245,16 +245,16 @@ QMasterFrameSelectionControl::QMasterFrameSelectionControl(QWidget * parent) :
   masterSource_ctl->setToolTip("Specify input source for master frame");
   connect(masterSource_ctl, &QMasterSourceSelectionCombo::currentSourceChanged,
       [this]() {
-        if( options_ && !updatingControls() ) {
+        if( _options && !updatingControls() ) {
 
           const QMasterSourceSelectionCombo::InputSourceData data = masterSource_ctl->currentInputSource();
 
-          options_->master_fiename = data.source_pathfilename;
+          _options->master_fiename = data.source_pathfilename;
 
           if ( true ) {
             c_update_controls_lock lock(this);
             masterFrameIndex_ctl->setRange(0, data.source_size-1);
-            options_->master_frame_index = masterFrameIndex_ctl->value();
+            _options->master_frame_index = masterFrameIndex_ctl->value();
           }
 
           Q_EMIT parameterChanged();
@@ -263,14 +263,14 @@ QMasterFrameSelectionControl::QMasterFrameSelectionControl(QWidget * parent) :
 
   connect(this, &ThisClass::populatecontrols,
       [this]() {
-        if( options_ ) {
+        if( _options ) {
 
-          masterSource_ctl->setCurrentInputSource(options_->master_fiename);
+          masterSource_ctl->setCurrentInputSource(_options->master_fiename);
 
           c_update_controls_lock lock(this);
           masterFrameIndex_ctl->setRange(0, masterSource_ctl->currentInputSource().source_size - 1);
-          masterFrameIndex_ctl->setValue(options_->master_frame_index);
-          options_->master_frame_index = masterFrameIndex_ctl->value();
+          masterFrameIndex_ctl->setValue(_options->master_frame_index);
+          _options->master_frame_index = masterFrameIndex_ctl->value();
         }
       });
 
@@ -278,14 +278,14 @@ QMasterFrameSelectionControl::QMasterFrameSelectionControl(QWidget * parent) :
       add_spinbox("Master frame Index:",
           "",
           [this](int v) {
-            if ( options_ && options_->master_frame_index != v ) {
-              options_->master_frame_index = v;
+            if ( _options && _options->master_frame_index != v ) {
+              _options->master_frame_index = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->master_frame_index;
+            if ( _options ) {
+              *v = _options->master_frame_index;
               return true;
             }
             return false;
@@ -296,9 +296,9 @@ QMasterFrameSelectionControl::QMasterFrameSelectionControl(QWidget * parent) :
 
 void QMasterFrameSelectionControl::updateMasterSourceControlStates()
 {
-  if( options_ ) {
+  if( _options ) {
 
-    switch (options_->master_selection_method) {
+    switch (_options->master_selection_method) {
       case master_frame_specific_index:
         masterFrameIndex_ctl->setEnabled(true);
         break;
@@ -339,14 +339,14 @@ QEstimateTranslationImageTransformOptions::QEstimateTranslationImageTransformOpt
       add_numeric_box<int>("max_iterations",
           "max number of iterations for outliers removal",
           [this](int v) {
-            if ( options_ && options_->translation.max_iterations != v ) {
-              options_->translation.max_iterations = v;
+            if ( _options && _options->translation.max_iterations != v ) {
+              _options->translation.max_iterations = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->translation.max_iterations;
+            if ( _options ) {
+              *v = _options->translation.max_iterations;
               return true;
             }
             return false;
@@ -356,14 +356,14 @@ QEstimateTranslationImageTransformOptions::QEstimateTranslationImageTransformOpt
       add_numeric_box<double>("rmse_factor",
           "rmse factor for outliers removal",
           [this](double v) {
-            if ( options_ && options_->translation.rmse_factor != v ) {
-              options_->translation.rmse_factor = v;
+            if ( _options && _options->translation.rmse_factor != v ) {
+              _options->translation.rmse_factor = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->translation.rmse_factor;
+            if ( _options ) {
+              *v = _options->translation.rmse_factor;
               return true;
             }
             return false;
@@ -379,14 +379,14 @@ QEstimateEuclideanImageTransformOptions::QEstimateEuclideanImageTransformOptions
       add_numeric_box<int>("max_iterations",
           "max number of iterations for outliers removal",
           [this](int v) {
-            if ( options_ && options_->euclidean.max_iterations != v ) {
-              options_->euclidean.max_iterations = v;
+            if ( _options && _options->euclidean.max_iterations != v ) {
+              _options->euclidean.max_iterations = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->euclidean.max_iterations;
+            if ( _options ) {
+              *v = _options->euclidean.max_iterations;
               return true;
             }
             return false;
@@ -396,14 +396,14 @@ QEstimateEuclideanImageTransformOptions::QEstimateEuclideanImageTransformOptions
       add_numeric_box<double>("rmse_threshold",
           "",
           [this](double v) {
-            if ( options_ && options_->euclidean.rmse_threshold != v ) {
-              options_->euclidean.rmse_threshold = v;
+            if ( _options && _options->euclidean.rmse_threshold != v ) {
+              _options->euclidean.rmse_threshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->euclidean.rmse_threshold;
+            if ( _options ) {
+              *v = _options->euclidean.rmse_threshold;
               return true;
             }
             return false;
@@ -419,14 +419,14 @@ QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTran
       add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
           "",
           [this](ROBUST_METHOD v) {
-            if ( options_ && options_->scaled_euclidean.method != v ) {
-              options_->scaled_euclidean.method = v;
+            if ( _options && _options->scaled_euclidean.method != v ) {
+              _options->scaled_euclidean.method = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](ROBUST_METHOD * v) {
-            if ( options_ ) {
-              *v = options_->scaled_euclidean.method;
+            if ( _options ) {
+              *v = _options->scaled_euclidean.method;
               return true;
             }
             return false;
@@ -436,14 +436,14 @@ QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTran
       add_numeric_box<double>("ransacReprojThreshold",
           "",
           [this](double v) {
-            if ( options_ && options_->scaled_euclidean.ransacReprojThreshold != v ) {
-              options_->scaled_euclidean.ransacReprojThreshold = v;
+            if ( _options && _options->scaled_euclidean.ransacReprojThreshold != v ) {
+              _options->scaled_euclidean.ransacReprojThreshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->scaled_euclidean.ransacReprojThreshold;
+            if ( _options ) {
+              *v = _options->scaled_euclidean.ransacReprojThreshold;
               return true;
             }
             return false;
@@ -453,14 +453,14 @@ QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTran
       add_numeric_box<double>("confidence",
           "",
           [this](double v) {
-            if ( options_ && options_->scaled_euclidean.confidence != v ) {
-              options_->scaled_euclidean.confidence = v;
+            if ( _options && _options->scaled_euclidean.confidence != v ) {
+              _options->scaled_euclidean.confidence = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->scaled_euclidean.confidence;
+            if ( _options ) {
+              *v = _options->scaled_euclidean.confidence;
               return true;
             }
             return false;
@@ -470,14 +470,14 @@ QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTran
       add_numeric_box<int>("maxIters",
           "",
           [this](int v) {
-            if ( options_ && options_->scaled_euclidean.maxIters != v ) {
-              options_->scaled_euclidean.maxIters = v;
+            if ( _options && _options->scaled_euclidean.maxIters != v ) {
+              _options->scaled_euclidean.maxIters = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->scaled_euclidean.maxIters;
+            if ( _options ) {
+              *v = _options->scaled_euclidean.maxIters;
               return true;
             }
             return false;
@@ -487,14 +487,14 @@ QEstimateScaledEuclideanImageTransformOptions::QEstimateScaledEuclideanImageTran
       add_numeric_box<int>("refineIters",
           "",
           [this](int v) {
-            if ( options_ && options_->scaled_euclidean.refineIters != v ) {
-              options_->scaled_euclidean.refineIters = v;
+            if ( _options && _options->scaled_euclidean.refineIters != v ) {
+              _options->scaled_euclidean.refineIters = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->scaled_euclidean.refineIters;
+            if ( _options ) {
+              *v = _options->scaled_euclidean.refineIters;
               return true;
             }
             return false;
@@ -510,14 +510,14 @@ QEstimateAffineImageTransformOptions::QEstimateAffineImageTransformOptions(QWidg
       add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
           "",
           [this](ROBUST_METHOD v) {
-            if ( options_ && options_->affine.method != v ) {
-              options_->affine.method = v;
+            if ( _options && _options->affine.method != v ) {
+              _options->affine.method = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](ROBUST_METHOD * v) {
-            if ( options_ ) {
-              *v = options_->affine.method;
+            if ( _options ) {
+              *v = _options->affine.method;
               return true;
             }
             return false;
@@ -527,14 +527,14 @@ QEstimateAffineImageTransformOptions::QEstimateAffineImageTransformOptions(QWidg
       add_numeric_box<double>("ransacReprojThreshold",
           "",
           [this](double v) {
-            if ( options_ && options_->affine.ransacReprojThreshold != v ) {
-              options_->affine.ransacReprojThreshold = v;
+            if ( _options && _options->affine.ransacReprojThreshold != v ) {
+              _options->affine.ransacReprojThreshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->affine.ransacReprojThreshold;
+            if ( _options ) {
+              *v = _options->affine.ransacReprojThreshold;
               return true;
             }
             return false;
@@ -544,14 +544,14 @@ QEstimateAffineImageTransformOptions::QEstimateAffineImageTransformOptions(QWidg
       add_numeric_box<double>("confidence",
           "",
           [this](double v) {
-            if ( options_ && options_->affine.confidence != v ) {
-              options_->affine.confidence = v;
+            if ( _options && _options->affine.confidence != v ) {
+              _options->affine.confidence = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->affine.confidence;
+            if ( _options ) {
+              *v = _options->affine.confidence;
               return true;
             }
             return false;
@@ -561,14 +561,14 @@ QEstimateAffineImageTransformOptions::QEstimateAffineImageTransformOptions(QWidg
       add_numeric_box<int>("maxIters",
           "",
           [this](int v) {
-            if ( options_ && options_->affine.maxIters != v ) {
-              options_->affine.maxIters = v;
+            if ( _options && _options->affine.maxIters != v ) {
+              _options->affine.maxIters = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->affine.maxIters;
+            if ( _options ) {
+              *v = _options->affine.maxIters;
               return true;
             }
             return false;
@@ -578,14 +578,14 @@ QEstimateAffineImageTransformOptions::QEstimateAffineImageTransformOptions(QWidg
       add_numeric_box<int>("refineIters",
           "",
           [this](int v) {
-            if ( options_ && options_->affine.refineIters != v ) {
-              options_->affine.refineIters = v;
+            if ( _options && _options->affine.refineIters != v ) {
+              _options->affine.refineIters = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->affine.refineIters;
+            if ( _options ) {
+              *v = _options->affine.refineIters;
               return true;
             }
             return false;
@@ -601,14 +601,14 @@ QEstimateHomographyImageTransformOptions::QEstimateHomographyImageTransformOptio
       add_enum_combobox<ROBUST_METHOD>("ROBUST METHOD",
           "",
           [this](ROBUST_METHOD v) {
-            if ( options_ && options_->homography.method != v ) {
-              options_->homography.method = v;
+            if ( _options && _options->homography.method != v ) {
+              _options->homography.method = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](ROBUST_METHOD * v) {
-            if ( options_ ) {
-              *v = options_->homography.method;
+            if ( _options ) {
+              *v = _options->homography.method;
               return true;
             }
             return false;
@@ -618,14 +618,14 @@ QEstimateHomographyImageTransformOptions::QEstimateHomographyImageTransformOptio
       add_numeric_box<double>("ransacReprojThreshold",
           "",
           [this](double v) {
-            if ( options_ && options_->homography.ransacReprojThreshold != v ) {
-              options_->homography.ransacReprojThreshold = v;
+            if ( _options && _options->homography.ransacReprojThreshold != v ) {
+              _options->homography.ransacReprojThreshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->homography.ransacReprojThreshold;
+            if ( _options ) {
+              *v = _options->homography.ransacReprojThreshold;
               return true;
             }
             return false;
@@ -635,14 +635,14 @@ QEstimateHomographyImageTransformOptions::QEstimateHomographyImageTransformOptio
       add_numeric_box<double>("confidence",
           "",
           [this](double v) {
-            if ( options_ && options_->homography.confidence != v ) {
-              options_->homography.confidence = v;
+            if ( _options && _options->homography.confidence != v ) {
+              _options->homography.confidence = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->homography.confidence;
+            if ( _options ) {
+              *v = _options->homography.confidence;
               return true;
             }
             return false;
@@ -652,14 +652,14 @@ QEstimateHomographyImageTransformOptions::QEstimateHomographyImageTransformOptio
       add_numeric_box<int>("maxIters",
           "",
           [this](int v) {
-            if ( options_ && options_->homography.maxIters != v ) {
-              options_->homography.maxIters = v;
+            if ( _options && _options->homography.maxIters != v ) {
+              _options->homography.maxIters = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->homography.maxIters;
+            if ( _options ) {
+              *v = _options->homography.maxIters;
               return true;
             }
             return false;
@@ -675,14 +675,14 @@ QEstimateSemiQuadraticImageTransformOptions::QEstimateSemiQuadraticImageTransfor
       add_numeric_box<double>("rmse_factor",
           "",
           [this](double v) {
-            if ( options_ && options_->semi_quadratic.rmse_factor != v ) {
-              options_->semi_quadratic.rmse_factor = v;
+            if ( _options && _options->semi_quadratic.rmse_factor != v ) {
+              _options->semi_quadratic.rmse_factor = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->semi_quadratic.rmse_factor;
+            if ( _options ) {
+              *v = _options->semi_quadratic.rmse_factor;
               return true;
             }
             return false;
@@ -698,14 +698,14 @@ QEstimateQuadraticImageTransformOptions::QEstimateQuadraticImageTransformOptions
       add_numeric_box<double>("rmse_factor",
           "",
           [this](double v) {
-            if ( options_ && options_->quadratic.rmse_factor != v ) {
-              options_->quadratic.rmse_factor = v;
+            if ( _options && _options->quadratic.rmse_factor != v ) {
+              _options->quadratic.rmse_factor = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->quadratic.rmse_factor;
+            if ( _options ) {
+              *v = _options->quadratic.rmse_factor;
               return true;
             }
             return false;
@@ -721,14 +721,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_enum_combobox<EPIPOLAR_MOTION_DIRECTION>("Motion direction",
           "Optimize assuming a priori known motion direction",
           [this](EPIPOLAR_MOTION_DIRECTION v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.direction != v ) {
-              options_->epipolar_derotation.camera_pose.direction = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.direction != v ) {
+              _options->epipolar_derotation.camera_pose.direction = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](EPIPOLAR_MOTION_DIRECTION * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.direction;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.direction;
               return true;
             }
             return false;
@@ -738,14 +738,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<int>("max_iterations",
           "",
           [this](int v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.max_iterations != v ) {
-              options_->epipolar_derotation.camera_pose.max_iterations = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.max_iterations != v ) {
+              _options->epipolar_derotation.camera_pose.max_iterations = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.max_iterations;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.max_iterations;
               return true;
             }
             return false;
@@ -755,14 +755,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<int>("max_levmar_iterations",
           "",
           [this](int v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.max_levmar_iterations != v ) {
-              options_->epipolar_derotation.camera_pose.max_levmar_iterations = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.max_levmar_iterations != v ) {
+              _options->epipolar_derotation.camera_pose.max_levmar_iterations = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.max_levmar_iterations;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.max_levmar_iterations;
               return true;
             }
             return false;
@@ -772,14 +772,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<double>("robust_threshold",
           "",
           [this](double v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.robust_threshold != v ) {
-              options_->epipolar_derotation.camera_pose.robust_threshold = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.robust_threshold != v ) {
+              _options->epipolar_derotation.camera_pose.robust_threshold = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.robust_threshold;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.robust_threshold;
               return true;
             }
             return false;
@@ -789,14 +789,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<double>("epsf",
           "",
           [this](double v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.epsf != v ) {
-              options_->epipolar_derotation.camera_pose.epsf = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.epsf != v ) {
+              _options->epipolar_derotation.camera_pose.epsf = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.epsf;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.epsf;
               return true;
             }
             return false;
@@ -806,14 +806,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<double>("epsx",
           "",
           [this](double v) {
-            if ( options_ && options_->epipolar_derotation.camera_pose.epsx != v ) {
-              options_->epipolar_derotation.camera_pose.epsx = v;
+            if ( _options && _options->epipolar_derotation.camera_pose.epsx != v ) {
+              _options->epipolar_derotation.camera_pose.epsx = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.camera_pose.epsx;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.camera_pose.epsx;
               return true;
             }
             return false;
@@ -823,14 +823,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<cv::Vec3f>("initial_translation",
           "",
           [this](const cv::Vec3f & v) {
-            if ( options_ && options_->epipolar_derotation.initial_translation != v ) {
-              options_->epipolar_derotation.initial_translation = v;
+            if ( _options && _options->epipolar_derotation.initial_translation != v ) {
+              _options->epipolar_derotation.initial_translation = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Vec3f * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.initial_translation;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.initial_translation;
               return true;
             }
             return false;
@@ -840,14 +840,14 @@ QEstimateEpipolarDerotationImageTransformOptions::QEstimateEpipolarDerotationIma
       add_numeric_box<cv::Vec3f>("initial_rotation [deg]",
           "",
           [this](const cv::Vec3f & v) {
-            if ( options_ && options_->epipolar_derotation.initial_rotation != v ) {
-              options_->epipolar_derotation.initial_rotation = v;
+            if ( _options && _options->epipolar_derotation.initial_rotation != v ) {
+              _options->epipolar_derotation.initial_rotation = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Vec3f * v) {
-            if ( options_ ) {
-              *v = options_->epipolar_derotation.initial_rotation;
+            if ( _options ) {
+              *v = _options->epipolar_derotation.initial_rotation;
               return true;
             }
             return false;
@@ -866,8 +866,8 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
       add_enum_combobox<color_channel_type>("Channel:",
           "color channel for feature2d extraction",
           [this](color_channel_type value) {
-            if ( options_ && options_->registration_channel != value ) {
-              options_->registration_channel = value;
+            if ( _options && _options->registration_channel != value ) {
+              _options->registration_channel = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -877,8 +877,18 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
       add_numeric_box<double>("Image scale",
           "Scale input image before feature extraction",
           [this](double value) {
-            if ( options_ && options_->scale != value ) {
-              options_->scale = value;
+            if ( _options && _options->image_scale != value ) {
+              _options->image_scale = value;
+              Q_EMIT parameterChanged();
+            }
+          });
+
+  triangle_eps_ctl =
+      add_numeric_box<double>("Triangle_eps [px]",
+          "Max distance in pixels between current and remapped reference keypoints for triangle-based transfrom reestimation",
+          [this](double value) {
+            if ( _options && _options->triangle_eps != value ) {
+              _options->triangle_eps = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -952,28 +962,29 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
 
 void QFeatureBasedRegistrationOptions::onupdatecontrols()
 {
-  if( !options_ ) {
+  if( !_options ) {
     setEnabled(false);
   }
   else {
 
-    registrationChannel_ctl->setValue(options_->registration_channel);
-    scale_ctl->setValue(options_->scale);
+    registrationChannel_ctl->setValue(_options->registration_channel);
+    scale_ctl->setValue(_options->image_scale);
+    triangle_eps_ctl->setValue(_options->triangle_eps);
     sparseFeatureDetectorOptions_ctl->set_feature_detector_options(
-        &options_->sparse_feature_extractor_and_matcher.detector);
+        &_options->sparse_feature_extractor_and_matcher.detector);
     sparseFeatureDescriptorOptions_ctl->set_feature_descriptor_options(
-        &options_->sparse_feature_extractor_and_matcher.descriptor);
+        &_options->sparse_feature_extractor_and_matcher.descriptor);
     sparseFeatureMatcherOptions_ctl->set_feature_matcher_options(
-        &options_->sparse_feature_extractor_and_matcher.matcher);
+        &_options->sparse_feature_extractor_and_matcher.matcher);
 
-    estimateTranslation_ctl->set_options(&options_->estimate_options);
-    estimateEuclidean_ctl->set_options(&options_->estimate_options);
-    estimateScaledEuclidean_ctl->set_options(&options_->estimate_options);
-    estimateAffine_ctl->set_options(&options_->estimate_options);
-    estimateHomography_ctl->set_options(&options_->estimate_options);
-    estimateSemiQuadratic_ctl->set_options(&options_->estimate_options);
-    estimateQuadratic_ctl->set_options(&options_->estimate_options);
-    estimateEpipolarDerotation_ctl->set_options(&options_->estimate_options);
+    estimateTranslation_ctl->set_options(&_options->estimate_options);
+    estimateEuclidean_ctl->set_options(&_options->estimate_options);
+    estimateScaledEuclidean_ctl->set_options(&_options->estimate_options);
+    estimateAffine_ctl->set_options(&_options->estimate_options);
+    estimateHomography_ctl->set_options(&_options->estimate_options);
+    estimateSemiQuadratic_ctl->set_options(&_options->estimate_options);
+    estimateQuadratic_ctl->set_options(&_options->estimate_options);
+    estimateEpipolarDerotation_ctl->set_options(&_options->estimate_options);
 
     onDetectorTypeChanged();
     setEnabled(true);
@@ -982,9 +993,9 @@ void QFeatureBasedRegistrationOptions::onupdatecontrols()
 
 void QFeatureBasedRegistrationOptions::onDetectorTypeChanged()
 {
-  if( options_ ) {
+  if( _options ) {
 
-    if( options_->sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+    if( _options->sparse_feature_extractor_and_matcher.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
       sparseFeatureDescriptorOptions_ctl->setEnabled(false);
       sparseFeatureMatcherOptions_ctl->setEnabled(false);
     }
@@ -1004,8 +1015,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("image scale",
           "",
           [this](double value) {
-            if ( options_ && options_->scale != value ) {
-              options_->scale = value;
+            if ( _options && _options->scale != value ) {
+              _options->scale = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1014,8 +1025,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_enum_combobox<ECC_ALIGN_METHOD>("ecc_method",
           "",
           [this](ECC_ALIGN_METHOD value) {
-            if ( options_ && options_->ecc_method != value ) {
-              options_->ecc_method = value;
+            if ( _options && _options->ecc_method != value ) {
+              _options->ecc_method = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1024,8 +1035,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("eps",
           "",
           [this](double value) {
-            if ( options_ && options_->eps != value ) {
-              options_->eps = value;
+            if ( _options && _options->eps != value ) {
+              _options->eps = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1034,8 +1045,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("min_rho",
           "",
           [this](double value) {
-            if ( options_ && options_->min_rho != value ) {
-              options_->min_rho = value;
+            if ( _options && _options->min_rho != value ) {
+              _options->min_rho = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1044,8 +1055,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("input_smooth_sigma",
           "",
           [this](double value) {
-            if ( options_ && options_->input_smooth_sigma != value ) {
-              options_->input_smooth_sigma = value;
+            if ( _options && _options->input_smooth_sigma != value ) {
+              _options->input_smooth_sigma = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1054,8 +1065,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("reference_smooth_sigma",
           "",
           [this](double value) {
-            if ( options_ && options_->reference_smooth_sigma != value ) {
-              options_->reference_smooth_sigma = value;
+            if ( _options && _options->reference_smooth_sigma != value ) {
+              _options->reference_smooth_sigma = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1065,8 +1076,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("normalization_scale",
           "",
           [this](int value) {
-            if ( options_ && options_->normalization_scale != value ) {
-              options_->normalization_scale = value;
+            if ( _options && _options->normalization_scale != value ) {
+              _options->normalization_scale = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1075,8 +1086,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("normalization_noise",
           "",
           [this](double value) {
-            if ( options_ && options_->normalization_noise != value ) {
-              options_->normalization_noise = value;
+            if ( _options && _options->normalization_noise != value ) {
+              _options->normalization_noise = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1087,8 +1098,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("update_step_scale",
           "",
           [this](double value) {
-            if ( options_ && options_->update_step_scale != value ) {
-              options_->update_step_scale = value;
+            if ( _options && _options->update_step_scale != value ) {
+              _options->update_step_scale = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1098,8 +1109,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("max_iterations",
           "",
           [this](int value) {
-            if ( options_ && options_->max_iterations != value ) {
-              options_->max_iterations = value;
+            if ( _options && _options->max_iterations != value ) {
+              _options->max_iterations = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1108,8 +1119,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("ecch_max_level",
           "",
           [this](int value) {
-            if ( options_ && options_->ecch_max_level != value ) {
-              options_->ecch_max_level = value;
+            if ( _options && _options->ecch_max_level != value ) {
+              _options->ecch_max_level = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1118,8 +1129,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("ecch_minimum_image_size",
           "",
           [this](int value) {
-            if ( options_ && options_->ecch_minimum_image_size != value ) {
-              options_->ecch_minimum_image_size = value;
+            if ( _options && _options->ecch_minimum_image_size != value ) {
+              _options->ecch_minimum_image_size = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1128,8 +1139,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_checkbox("Estimate translation first",
           "",
           [this](bool checked) {
-            if ( options_ && options_->ecch_estimate_translation_first != checked ) {
-              options_->ecch_estimate_translation_first = checked;
+            if ( _options && _options->ecch_estimate_translation_first != checked ) {
+              _options->ecch_estimate_translation_first = checked;
               Q_EMIT parameterChanged();
             }
           });
@@ -1139,8 +1150,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_checkbox("replace_planetary_disk_with_mask",
           "",
           [this](bool checked) {
-            if ( options_ && options_->replace_planetary_disk_with_mask != checked ) {
-              options_->replace_planetary_disk_with_mask = checked;
+            if ( _options && _options->replace_planetary_disk_with_mask != checked ) {
+              _options->replace_planetary_disk_with_mask = checked;
               planetary_disk_mask_stdev_factor_ctl->setEnabled(checked);
               Q_EMIT parameterChanged();
             }
@@ -1150,8 +1161,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("stdev_factor",
           "",
           [this](double value) {
-            if ( options_ && options_->planetary_disk_mask_stdev_factor != value ) {
-              options_->planetary_disk_mask_stdev_factor = value;
+            if ( _options && _options->planetary_disk_mask_stdev_factor != value ) {
+              _options->planetary_disk_mask_stdev_factor = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1160,8 +1171,8 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("se_close_size",
       "",
       [this](int value) {
-        if ( options_ && options_->se_close_size != value ) {
-          options_->se_close_size = value;
+        if ( _options && _options->se_close_size != value ) {
+          _options->se_close_size = value;
           Q_EMIT parameterChanged();
         }
       });
@@ -1172,33 +1183,33 @@ QEccRegistrationOptions::QEccRegistrationOptions(QWidget * parent) :
 
 void QEccRegistrationOptions::onupdatecontrols()
 {
-  if( !options_ ) {
+  if( !_options ) {
     setEnabled(false);
   }
   else {
-    scale_ctl->setValue(options_->scale);
-    ecc_method_ctl->setValue(options_->ecc_method);
-    eps_ctl->setValue(options_->eps);
-    min_rho_ctl->setValue(options_->min_rho);
-    input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
-    reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
-    update_step_scale_ctl->setValue(options_->update_step_scale);
-    normalization_noise_ctl->setValue(options_->normalization_noise);
-    normalization_scale_ctl->setValue(options_->normalization_scale);
-    max_iterations_ctl->setValue(options_->max_iterations);
+    scale_ctl->setValue(_options->scale);
+    ecc_method_ctl->setValue(_options->ecc_method);
+    eps_ctl->setValue(_options->eps);
+    min_rho_ctl->setValue(_options->min_rho);
+    input_smooth_sigma_ctl->setValue(_options->input_smooth_sigma);
+    reference_smooth_sigma_ctl->setValue(_options->reference_smooth_sigma);
+    update_step_scale_ctl->setValue(_options->update_step_scale);
+    normalization_noise_ctl->setValue(_options->normalization_noise);
+    normalization_scale_ctl->setValue(_options->normalization_scale);
+    max_iterations_ctl->setValue(_options->max_iterations);
 
-    ecch_max_level_ctl->setValue(options_->ecch_max_level);
-    ecch_estimate_translation_first_ctl->setChecked(options_->ecch_estimate_translation_first);
-    ecch_minimum_image_size_ctl->setValue(options_->ecch_minimum_image_size);
+    ecch_max_level_ctl->setValue(_options->ecch_max_level);
+    ecch_estimate_translation_first_ctl->setChecked(_options->ecch_estimate_translation_first);
+    ecch_minimum_image_size_ctl->setValue(_options->ecch_minimum_image_size);
 
-//    ecch_minimum_image_size_ctl->setEnabled(options_->enable_ecch);
-//    ecch_estimate_translation_first_ctl->setEnabled(options_->enable_ecch);
+//    ecch_minimum_image_size_ctl->setEnabled(_options->enable_ecch);
+//    ecch_estimate_translation_first_ctl->setEnabled(_options->enable_ecch);
 
-    replace_planetary_disk_with_mask_ctl->setChecked(options_->replace_planetary_disk_with_mask);
-    planetary_disk_mask_stdev_factor_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
-    planetary_disk_mask_stdev_factor_ctl->setValue(options_->planetary_disk_mask_stdev_factor);
-    se_close_size_ctl->setEnabled(options_->replace_planetary_disk_with_mask);
-    se_close_size_ctl->setValue(options_->se_close_size);
+    replace_planetary_disk_with_mask_ctl->setChecked(_options->replace_planetary_disk_with_mask);
+    planetary_disk_mask_stdev_factor_ctl->setEnabled(_options->replace_planetary_disk_with_mask);
+    planetary_disk_mask_stdev_factor_ctl->setValue(_options->planetary_disk_mask_stdev_factor);
+    se_close_size_ctl->setEnabled(_options->replace_planetary_disk_with_mask);
+    se_close_size_ctl->setValue(_options->se_close_size);
 
     setEnabled(true);
   }
@@ -1213,8 +1224,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("support_scale",
           "",
           [this](int value) {
-            if ( options_ && options_->support_scale != value ) {
-              options_->support_scale = value;
+            if ( _options && _options->support_scale != value ) {
+              _options->support_scale = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1223,8 +1234,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_enum_combobox<c_eccflow::DownscaleMethod>("downscale_method",
           "",
           [this](c_eccflow::DownscaleMethod value) {
-            if ( options_ && options_->downscale_method != value ) {
-              options_->downscale_method = value;
+            if ( _options && _options->downscale_method != value ) {
+              _options->downscale_method = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1233,8 +1244,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("min_image_size",
           "",
           [this](int value) {
-            if ( options_ && options_->min_image_size != value ) {
-              options_->min_image_size = value;
+            if ( _options && _options->min_image_size != value ) {
+              _options->min_image_size = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1243,8 +1254,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("max_pyramid_level",
           "",
           [this](int value) {
-            if ( options_ && options_->max_pyramid_level != value ) {
-              options_->max_pyramid_level = value;
+            if ( _options && _options->max_pyramid_level != value ) {
+              _options->max_pyramid_level = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1253,8 +1264,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("scale_factor",
           "",
           [this](double value) {
-            if ( options_ && options_->scale_factor != value ) {
-              options_->scale_factor = value;
+            if ( _options && _options->scale_factor != value ) {
+              _options->scale_factor = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1263,8 +1274,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("input_smooth_sigma",
           "",
           [this](double value) {
-            if ( options_ && options_->input_smooth_sigma != value ) {
-              options_->input_smooth_sigma = value;
+            if ( _options && _options->input_smooth_sigma != value ) {
+              _options->input_smooth_sigma = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1273,8 +1284,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("reference_smooth_sigma",
           "",
           [this](double value) {
-            if ( options_ && options_->reference_smooth_sigma != value ) {
-              options_->reference_smooth_sigma = value;
+            if ( _options && _options->reference_smooth_sigma != value ) {
+              _options->reference_smooth_sigma = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1283,8 +1294,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("update_multiplier",
           "",
           [this](double value) {
-            if ( options_ && options_->update_multiplier != value ) {
-              options_->update_multiplier = value;
+            if ( _options && _options->update_multiplier != value ) {
+              _options->update_multiplier = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1293,8 +1304,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<int>("max_iterations",
           "",
           [this](int value) {
-            if ( options_ && options_->max_iterations != value ) {
-              options_->max_iterations = value;
+            if ( _options && _options->max_iterations != value ) {
+              _options->max_iterations = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1303,8 +1314,8 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
       add_numeric_box<double>("noise_level",
           "Set > 0 to manually force noise level",
           [this](double value) {
-            if ( options_ && options_->noise_level != value ) {
-              options_->noise_level = value;
+            if ( _options && _options->noise_level != value ) {
+              _options->noise_level = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1314,20 +1325,20 @@ QEccFlowRegistrationOptions::QEccFlowRegistrationOptions(QWidget * parent) :
 
 void QEccFlowRegistrationOptions::onupdatecontrols()
 {
-  if( !options_ ) {
+  if( !_options ) {
     setEnabled(false);
   }
   else {
-    update_multiplier_ctl->setValue(options_->update_multiplier);
-    input_smooth_sigma_ctl->setValue(options_->input_smooth_sigma);
-    reference_smooth_sigma_ctl->setValue(options_->reference_smooth_sigma);
-    max_iterations_ctl->setValue(options_->max_iterations);
-    downscale_method_ctl->setValue(options_->downscale_method);
-    support_scale_ctl->setValue(options_->support_scale);
-    min_image_size_ctl->setValue(options_->min_image_size);
-    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
-    scale_factor_ctl->setValue(options_->scale_factor);
-    noise_level_ctl->setValue(options_->noise_level);
+    update_multiplier_ctl->setValue(_options->update_multiplier);
+    input_smooth_sigma_ctl->setValue(_options->input_smooth_sigma);
+    reference_smooth_sigma_ctl->setValue(_options->reference_smooth_sigma);
+    max_iterations_ctl->setValue(_options->max_iterations);
+    downscale_method_ctl->setValue(_options->downscale_method);
+    support_scale_ctl->setValue(_options->support_scale);
+    min_image_size_ctl->setValue(_options->min_image_size);
+    max_pyramid_level_ctl->setValue(_options->max_pyramid_level);
+    scale_factor_ctl->setValue(_options->scale_factor);
+    noise_level_ctl->setValue(_options->noise_level);
     setEnabled(true);
   }
 }
@@ -1341,8 +1352,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<double>("stdev_factor:",
           "",
           [this](double value) {
-            if ( options_ && options_->detector_options.stdev_factor != value ) {
-              options_->detector_options.stdev_factor = value;
+            if ( _options && _options->detector_options.stdev_factor != value ) {
+              _options->detector_options.stdev_factor = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1351,8 +1362,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<double>("pca_blur:",
           "",
           [this](double value) {
-            if ( options_ && options_->detector_options.pca_blur != value ) {
-              options_->detector_options.pca_blur = value;
+            if ( _options && _options->detector_options.pca_blur != value ) {
+              _options->detector_options.pca_blur = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1361,8 +1372,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<cv::Point2f>("ellipse offset:",
           "",
           [this](const cv::Point2f & value) {
-            if ( options_ && options_->detector_options.offset != value ) {
-              options_->detector_options.offset = value;
+            if ( _options && _options->detector_options.offset != value ) {
+              _options->detector_options.offset = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1371,8 +1382,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 //      add_numeric_box<int>("max pyramid level:",
 //          "",
 //          [this](int value) {
-//            if ( options_ && options_->max_pyramid_level != value ) {
-//              options_->max_pyramid_level = value;
+//            if ( _options && _options->max_pyramid_level != value ) {
+//              _options->max_pyramid_level = value;
 //              Q_EMIT parameterChanged();
 //            }
 //          });
@@ -1381,8 +1392,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 //      add_numeric_box<double>("min_rotation [deg]:",
 //          "",
 //          [this](double value) {
-//            if ( options_ && options_->min_rotation != (value *= M_PI / 180) ) {
-//              options_->min_rotation = value;
+//            if ( _options && _options->min_rotation != (value *= M_PI / 180) ) {
+//              _options->min_rotation = value;
 //              Q_EMIT parameterChanged();
 //            }
 //          });
@@ -1391,8 +1402,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 //      add_numeric_box<double>("max_rotation [deg]:",
 //          "",
 //          [this](double value) {
-//            if ( options_ && options_->max_rotation != (value *= M_PI / 180) ) {
-//              options_->max_rotation = value;
+//            if ( _options && _options->max_rotation != (value *= M_PI / 180) ) {
+//              _options->max_rotation = value;
 //              Q_EMIT parameterChanged();
 //            }
 //          });
@@ -1401,8 +1412,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 //      add_numeric_box<int>("num_orientations:",
 //          "",
 //          [this](int value) {
-//            if ( options_ && options_->num_orientations != value ) {
-//              options_->num_orientations = value;
+//            if ( _options && _options->num_orientations != value ) {
+//              _options->num_orientations = value;
 //              Q_EMIT parameterChanged();
 //            }
 //          });
@@ -1411,8 +1422,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_numeric_box<int>("max_context_size:",
           "",
           [this](double value) {
-            if ( options_ && options_->max_context_size != value ) {
-              options_->max_context_size = value;
+            if ( _options && _options->max_context_size != value ) {
+              _options->max_context_size = value;
               Q_EMIT parameterChanged();
             }
           });
@@ -1421,8 +1432,8 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
       add_checkbox("process all frames",
           "",
           [this](bool checked) {
-            if ( options_ && options_->derotate_all_frames != checked ) {
-              options_->derotate_all_frames = checked;
+            if ( _options && _options->derotate_all_frames != checked ) {
+              _options->derotate_all_frames = checked;
               Q_EMIT parameterChanged();
             }
           });
@@ -1432,19 +1443,19 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
 void QJovianDerotationOptions::onupdatecontrols()
 {
-  if( !options_ ) {
+  if( !_options ) {
     setEnabled(false);
   }
   else {
-    jovian_detector_stdev_factor_ctl->setValue(options_->detector_options.stdev_factor);
-    jovian_detector_pca_blur_ctl->setValue(options_->detector_options.pca_blur);
-    jovian_detector_ellipse_offset_ctl->setValue(options_->detector_options.offset);
-//    max_pyramid_level_ctl->setValue(options_->max_pyramid_level);
-//    min_rotation_ctl->setValue(options_->min_rotation * 180 / M_PI);
-//    max_rotation_ctl->setValue(options_->max_rotation * 180 / M_PI);
-//    num_orientations_ctl->setValue(options_->num_orientations);
-    max_context_size_ctl->setValue(options_->max_context_size);
-    derotate_all_frames_ctl->setChecked(options_->derotate_all_frames);
+    jovian_detector_stdev_factor_ctl->setValue(_options->detector_options.stdev_factor);
+    jovian_detector_pca_blur_ctl->setValue(_options->detector_options.pca_blur);
+    jovian_detector_ellipse_offset_ctl->setValue(_options->detector_options.offset);
+//    max_pyramid_level_ctl->setValue(_options->max_pyramid_level);
+//    min_rotation_ctl->setValue(_options->min_rotation * 180 / M_PI);
+//    max_rotation_ctl->setValue(_options->max_rotation * 180 / M_PI);
+//    num_orientations_ctl->setValue(_options->num_orientations);
+    max_context_size_ctl->setValue(_options->max_context_size);
+    derotate_all_frames_ctl->setChecked(_options->derotate_all_frames);
 
     setEnabled(true);
   }

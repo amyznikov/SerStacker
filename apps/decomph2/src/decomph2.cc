@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
   opts.border_value = cv::Scalar(0, 0, 0);
 
   opts.feature_registration.enabled = true;
-  opts.feature_registration.scale = 0.5;
+  opts.feature_registration.image_scale = 0.5;
   opts.feature_registration.registration_channel = color_channel_gray;
 
   // TBF

@@ -97,6 +97,50 @@ bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_reference_positions_,
     const c_estimate_image_transform_options * options = nullptr);
 
+bool estimate_translation(c_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_affine_transform(c_affine_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_homography_transform(c_homography_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions,
+    const std::vector<cv::Point2f> & matched_reference_positions,
+    const c_estimate_image_transform_options * opts);
+
+bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transform,
+    const std::vector<cv::Point2f> & matched_current_positions_,
+    const std::vector<cv::Point2f> & matched_reference_positions_,
+    const c_estimate_image_transform_options * opts);
 
 bool save_settings(c_config_setting, const c_estimate_image_transform_options& opts);
 bool load_settings(c_config_setting, c_estimate_image_transform_options * opts);

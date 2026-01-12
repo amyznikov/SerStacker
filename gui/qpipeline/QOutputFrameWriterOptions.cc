@@ -14,14 +14,14 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
       add_textbox("Filename:",
           "Optional output file name pattern",
           [this](const QString & v) {
-            if ( options_ ) {
-              options_->output_filename = v.toStdString();
+            if ( _options ) {
+              _options->output_filename = v.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * v) {
-            if ( options_ ) {
-              *v = options_->output_filename.c_str();
+            if ( _options ) {
+              *v = _options->output_filename.c_str();
               return true;
             }
             return false;
@@ -31,14 +31,14 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
       add_ffmpeg_options_control("ffmpeg opts:",
           "Optional ffmpeg options for ffmpeg writers",
           [this](const QString & v) {
-            if ( options_ ) {
-              options_->ffmpeg_opts = v.toStdString();
+            if ( _options ) {
+              _options->ffmpeg_opts = v.toStdString();
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * v) {
-            if ( options_ ) {
-              *v = options_->ffmpeg_opts.c_str();
+            if ( _options ) {
+              *v = _options->ffmpeg_opts.c_str();
               return true;
             }
             return false;
@@ -49,14 +49,14 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
           "Optional image processor before writing output frame",
           false,
           [this](int index, QImageProcessorSelectionCombo * combo) {
-            if( options_ ) {
-              options_ ->output_image_processor = combo->processor(index);
+            if( _options ) {
+              _options ->output_image_processor = combo->processor(index);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * index, QImageProcessorSelectionCombo * combo) -> bool {
-            if( options_ ) {
-              combo->setCurrentProcessor(options_->output_image_processor);
+            if( _options ) {
+              combo->setCurrentProcessor(_options->output_image_processor);
             }
             return false;
           });
@@ -65,14 +65,14 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
       add_enum_combobox<PIXEL_DEPTH>("Pixel Depth:",
           "Optional conversion to output pixel depth",
           [this](PIXEL_DEPTH v) {
-            if( options_ ) {
-              options_ ->output_pixel_depth = v;
+            if( _options ) {
+              _options ->output_pixel_depth = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](PIXEL_DEPTH * v) {
-            if( options_ ) {
-              * v = options_ ->output_pixel_depth;
+            if( _options ) {
+              * v = _options ->output_pixel_depth;
               return true;
             }
             return false;
@@ -82,14 +82,14 @@ QOutputFrameWriterOptions::QOutputFrameWriterOptions(QWidget * parent) :
       add_checkbox("Save frame mapping",
           "",
           [this](bool checked) {
-            if( options_ ) {
-              options_ ->save_frame_mapping = checked;
+            if( _options ) {
+              _options ->save_frame_mapping = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if( options_ ) {
-              * checked = options_ ->save_frame_mapping;
+            if( _options ) {
+              * checked = _options ->save_frame_mapping;
               return true;
             }
             return false;

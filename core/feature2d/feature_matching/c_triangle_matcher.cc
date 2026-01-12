@@ -67,12 +67,12 @@ static void build_distances(const std::vector<cv::Point2f> & keypoints, cv::Mat1
 template<class PointType>
 static bool build_triangles_(const std::vector<PointType> & keypoints,
     std::vector<c_triangle_descriptor> & descriptors,
+    size_t max_keypoints_to_use,
     float min_side_size)
 {
   cv::Mat1f distances;
 
-  const int n = keypoints.size();
-
+  const int n = (int) std::min(keypoints.size(), max_keypoints_to_use);
 
   build_distances(keypoints, distances);
 
@@ -156,11 +156,12 @@ static bool build_triangles_(const std::vector<PointType> & keypoints,
 
 static bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
     cv::OutputArray output_descriptors,
+    size_t max_keypoints_to_use,
     float min_side_size)
 {
   std::vector<c_triangle_descriptor> triangles;
 
-  if ( !build_triangles_(keypoints, triangles, min_side_size) ) {
+  if ( !build_triangles_(keypoints, triangles, max_keypoints_to_use, min_side_size) ) {
     CF_DEBUG("build_triangles_() fails");
     return false;
   }
@@ -170,23 +171,6 @@ static bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
 
   return true;
 }
-//
-//static bool build_triangles(const std::vector<cv::Point2f> & keypoints,
-//    cv::OutputArray output_descriptors,
-//    float min_side_size)
-//{
-//  std::vector<c_triangle_descriptor> triangles;
-//
-//  if ( !build_triangles_(keypoints, triangles, min_side_size) ) {
-//    CF_DEBUG("build_triangles_() fails");
-//    return false;
-//  }
-//
-//  cv::Mat1b((int) triangles.size(), (int) sizeof(triangles[0]),
-//      (uint8_t*) triangles.data()).copyTo(output_descriptors);
-//
-//  return true;
-//}
 
 } /* namespace */
 
@@ -204,14 +188,25 @@ cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(int max_points, int m
   return cv::Ptr<this_class>(new this_class(max_points, min_side_size));
 }
 
-void c_triangle_extractor::compute( cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
+void c_triangle_extractor::compute(cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
 {
-  if ( !build_triangles(keypoints, descriptors, _min_side_size) ) {
+  size_t max_points_to_use = keypoints.size();
+
+  if( _max_points > 0 && (int) keypoints.size() > _max_points ) {
+    std::sort(keypoints.begin(), keypoints.end(),
+        [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
+          return prev.response > next.response;
+        });
+
+    max_points_to_use = (size_t)_max_points;
+  }
+
+  if ( !build_triangles(keypoints, descriptors, max_points_to_use, _min_side_size) ) {
     CF_ERROR("build_triangles() fails");
     descriptors.release();
   }
 
-  CF_DEBUG("keypoints.size=%zu descriptors.rows=%d", keypoints.size(), descriptors.rows());
+  CF_DEBUG("c_triangle_extractor: Use %zu/%zu points. descriptors.rows=%d", max_points_to_use, keypoints.size(), descriptors.rows());
 }
 
 int c_triangle_extractor::descriptorSize() const
@@ -261,9 +256,9 @@ bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> & train_keypoints
     return false;
   }
 
-  float * data =
-      reinterpret_cast<float*>(_reference_triangles.data);
+  // _train_keypoints = train_keypoints;
 
+  float * data = reinterpret_cast<float*>(_reference_triangles.data);
   const size_t rows = _reference_triangles.rows;
   const size_t cols = 2;
   const size_t stride = _reference_triangles.cols / sizeof(float);
@@ -275,7 +270,7 @@ bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> & train_keypoints
   return !_index.empty();
 }
 
-bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & query_keypoints, cv::InputArray query_descriptors,
+bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & /*query_keypoints*/, cv::InputArray query_descriptors,
     /* out */ std::vector<cv::DMatch> & matches)
 {
   const cv::Mat1b q =
@@ -291,9 +286,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & query_keypoints
 
   int max_input_star_index = 0;
   for ( int i = 0, n = q.rows; i < n; ++i) {
-    const c_triangle_descriptor * data =
-        reinterpret_cast<const c_triangle_descriptor*>(q[i]);
-
+    const c_triangle_descriptor * data = reinterpret_cast<const c_triangle_descriptor*>(q[i]);
     for ( int k = 0; k < 3; ++k ) {
       if ( data->triangle[k] > max_input_star_index ) {
         max_input_star_index = data->triangle[k];
@@ -303,10 +296,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & query_keypoints
 
   int max_reference_star_index = 0;
   for ( int i = 0, n = _reference_triangles.rows; i < n; ++i) {
-
-    const c_triangle_descriptor * data =
-        reinterpret_cast<const c_triangle_descriptor*>(_reference_triangles[i]);
-
+    const c_triangle_descriptor * data = reinterpret_cast<const c_triangle_descriptor*>(_reference_triangles[i]);
     for ( int k = 0; k < 3; ++k ) {
       if ( data->triangle[k] > max_reference_star_index ) {
         max_reference_star_index = data->triangle[k];
@@ -384,11 +374,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & query_keypoints
       continue;
     }
 
-
-    //matches.emplace_back(std::make_pair((uint16_t)i, (uint16_t)best_j));
-
     matches.emplace_back(cv::DMatch(i, best_j, 1.f / best_vote_i2j));
-
   }
 
   return true;

@@ -552,7 +552,8 @@ void QSettingsWidget::setup_controls(const std::vector<c_ctrl_bind> & ctls)
         QToolButton * ctl =
             new QToolButton(this);
 
-        ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonTextBesideIcon);
+        ctl->setToolButtonStyle(p.ctl_name.empty() ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextOnly);
+        //ctl->setToolButtonStyle(p.ctl_name.empty() ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextBesideIcon);
         ctl->setIcon(getIcon(ICON_menu));
         ctl->setText(p.ctl_name.c_str());
         ctl->setToolTip(p.ctl_tooltip.c_str());

@@ -15,7 +15,7 @@
 #define __c_lpg_sharpness_measure_h__
 
 #include "c_image_sharpness_measure.h"
-
+#include <core/settings.h>
 
 struct c_lpg_options
 {
@@ -24,6 +24,10 @@ struct c_lpg_options
   int dscale = 1;
   int uscale = 3;
   bool avgchannel = true;
+
+  std::string save_settings();
+  bool load_settings(const std::string & text);
+  bool serialize(c_config_setting settings, bool save);
 };
 
 class c_lpg_sharpness_measure:
@@ -63,8 +67,12 @@ public:
   static bool create_map(cv::InputArray image, cv::OutputArray output_map,
       const c_lpg_options & opts);
 
+  std::string save_settings();
+  bool load_settings(const std::string & text);
+  bool serialize(c_config_setting settings, bool save);
+
 protected:
-  c_lpg_options options_;
+  c_lpg_options _opts;
 };
 
 #endif /* __c_lpg_sharpness_measure_h__ */

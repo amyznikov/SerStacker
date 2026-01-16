@@ -40,7 +40,7 @@ typedef std::function<void(const std::string&)> ctrlbind_copy_to_clipboard_callb
 void set_ctrlbind_copy_to_clipboard_callback(const ctrlbind_copy_to_clipboard_callback & fn);
 const ctrlbind_copy_to_clipboard_callback & get_ctrlbind_copy_to_clipboard_callback();
 
-typedef std::function<const std::string()> ctrlbind_get_clipboard_text_callback;
+typedef std::function<std::string()> ctrlbind_get_clipboard_text_callback;
 void set_ctrlbind_get_clipboard_text_callback(const ctrlbind_get_clipboard_text_callback & fn);
 const ctrlbind_get_clipboard_text_callback & get_ctrlbind_get_clipboard_text_callback();
 

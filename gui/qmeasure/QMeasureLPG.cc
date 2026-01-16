@@ -19,7 +19,7 @@ QMeasureSettingsWidget* QMeasureLPG::createSettingsWidget(QWidget * parent) cons
 int QMeasureLPG::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_lpg_sharpness_measure::compute(image, mask);
-  return options_.avgchannel ? 1 : image.channels();
+  return _opts.avgchannel ? 1 : image.channels();
 }
 
 

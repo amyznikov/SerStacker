@@ -18,7 +18,7 @@
 #include <gui/qimproc/QImageProcessorsCollection.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qpipeline/QPipelineThread.h>
-
+#include <core/ctrlbind/ctrlbind.h>
 #include <core/io/load_image.h>
 #include <core/debug.h>
 
@@ -144,6 +144,22 @@ MainWindow::MainWindow()
   restoreState();
 
   imageView->set_current_processor(imageProcessor_ctl->current_processor());
+
+
+  set_ctrlbind_copy_to_clipboard_callback([](const std::string & text) {
+    QApplication::clipboard()->setText(QString::fromStdString(text));
+  });
+
+  set_ctrlbind_get_clipboard_text_callback([]() -> std::string {
+    return QApplication::clipboard()->text().toStdString();
+  });
+
+  set_ctrlbind_update_roi_callback([this](double x, double y, double w, double h) {
+    if (imageView) {
+      imageView->roiShape()->setSceneRect(QPointF(x,y), QPointF(x+w,y+h));
+    }
+  });
+
 }
 
 MainWindow::~MainWindow()

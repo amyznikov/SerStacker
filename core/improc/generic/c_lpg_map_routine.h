@@ -22,85 +22,63 @@ public:
 
   void set_k(double v)
   {
-    m_.set_k(v);
+    _m.set_k(v);
   }
 
   double k() const
   {
-    return m_.k();
+    return _m.k();
   }
 
   void set_p(double v)
   {
-    m_.set_p(v);
+    _m.set_p(v);
   }
 
   double p() const
   {
-    return m_.p();
+    return _m.p();
   }
 
   void set_dscale(int v)
   {
-    m_.set_dscale(v);
+    _m.set_dscale(v);
   }
 
   int dscale() const
   {
-    return m_.dscale();
+    return _m.dscale();
   }
 
   void set_uscale(int v)
   {
-    m_.set_uscale(v);
+    _m.set_uscale(v);
   }
 
   int uscale() const
   {
-    return m_.uscale();
+    return _m.uscale();
   }
 
 
   void set_avgchannel(bool v)
   {
-    m_.set_avgchannel(v);
+    _m.set_avgchannel(v);
   }
 
   bool avgchannel() const
   {
-    return m_.avgchannel();
+    return _m.avgchannel();
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, k, "laplacian/gradient ratio");
-    BIND_PCTRL(ctls, p, "power");
-    BIND_PCTRL(ctls, dscale, "downscale");
-    BIND_PCTRL(ctls, uscale, "upscale");
-    BIND_PCTRL(ctls, avgchannel, "average color channels");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, k);
-      SERIALIZE_PROPERTY(settings, save, *this, p);
-      SERIALIZE_PROPERTY(settings, save, *this, dscale);
-      SERIALIZE_PROPERTY(settings, save, *this, uscale);
-      SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    m_.create_map(image.getMat(), image);
-    return true;
-  }
+  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  bool copy_parameters_to_clipboard();
+  bool paste_parameters_from_clipboard();
 
 protected:
-  c_lpg_sharpness_measure m_;
+  c_lpg_sharpness_measure _m;
 };
 
 #endif /* __c_lpg_map_routine_h__ */

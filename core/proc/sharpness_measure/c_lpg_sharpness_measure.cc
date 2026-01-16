@@ -7,186 +7,111 @@
 
 #include "c_lpg_sharpness_measure.h"
 #include <core/proc/lpg.h>
-
-//#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
-//
-//static void compute_gradient(const cv::Mat & src, cv::Mat & g)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  static thread_local const cv::Matx<float, 1, 5> K(
-//      (+1.f / 12),
-//      (-8.f / 12),
-//      0.f,
-//      (+8.f / 12),
-//      (-1.f / 12));
-//
-//  constexpr int ddepth = CV_32F;
-//
-//  cv::Mat gx, gy;
-//
-//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
-//  cv::add(gx.mul(gx), gy.mul(gy), g);
-//}
-//
-//
-//// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
-//static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  static float k[5 * 5] = {
-//      0, 0, -1, 0, 0,
-//      0, -1, -2, -1, 0,
-//      -1, -2, 16, -2, -1,
-//      0, -1, -2, -1, 0,
-//      0, 0, -1, 0, 0,
-//  };
-//
-//  static const cv::Mat1f K =
-//      cv::Mat1f(5, 5, k) / 16.;
-//
-//  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  cv::multiply(l, l, l);
-//}
-//
-//
-//static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
-//{
-//  if( std::min(src.cols(), src.rows()) < 4 ) {
-//    src.copyTo(dst);
-//  }
-//  else {
-//
-//    cv::pyrDown(src, dst, cv::Size(), border_mode);
-//
-//    if( std::min(dst.cols, dst.rows) >= 4 ) {
-//
-//      for( int l = 1; l < level; ++l ) {
-//
-//        cv::pyrDown(dst, dst, cv::Size(), border_mode);
-//
-//        if( std::min(dst.cols, dst.rows) < 4 ) {
-//          break;
-//        }
-//      }
-//    }
-//  }
-//
-//  return true;
-//}
-//
-//static bool upscale(cv::Mat & image, cv::Size dstSize)
-//{
-//  const cv::Size inputSize = image.size();
-//
-//  if( inputSize != dstSize ) {
-//
-//    std::vector<cv::Size> spyramid;
-//
-//    spyramid.emplace_back(dstSize);
-//
-//    while (42) {
-//      const cv::Size nextSize((spyramid.back().width + 1) / 2, (spyramid.back().height + 1) / 2);
-//      if( nextSize == inputSize ) {
-//        break;
-//      }
-//      if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-//        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
-//            nextSize.width, nextSize.height,
-//            inputSize.width, inputSize.height);
-//        return false;
-//      }
-//      spyramid.emplace_back(nextSize);
-//    }
-//
-//    for( int i = spyramid.size() - 1; i >= 0; --i ) {
-//      cv::pyrUp(image, image, spyramid[i]);
-//    }
-//  }
-//
-//  return true;
-//}
-//
-//static double maxval(int ddepth)
-//{
-//  switch (CV_MAT_DEPTH(ddepth)) {
-//    case CV_8U:
-//      return UINT8_MAX;
-//    case CV_8S:
-//      return INT8_MAX;
-//    case CV_16U:
-//      return UINT16_MAX;
-//    case CV_16S:
-//      return INT16_MAX;
-//    case CV_32S:
-//      return INT32_MAX;
-//  }
-//
-//  return 1;
-//}
+bool c_lpg_options::serialize(c_config_setting settings, bool save)
+{
+  SERIALIZE_OPTION(settings, save, *this, k);
+  SERIALIZE_OPTION(settings, save, *this, p);
+  SERIALIZE_OPTION(settings, save, *this, dscale);
+  SERIALIZE_OPTION(settings, save, *this, uscale);
+  SERIALIZE_OPTION(settings, save, *this, avgchannel);
+  return true;
+}
+
+std::string c_lpg_options::save_settings()
+{
+  c_config cfg;
+
+  if( !serialize(cfg.root().add_group("c_lpg_options"), true) ) {
+    CF_FATAL("c_lpg_options::serialize() fails");
+    return "";
+  }
+
+  return cfg.write_string();
+}
+
+bool c_lpg_options::load_settings(const std::string & text)
+{
+  c_config cfg;
+
+  if ( !cfg.read_string(text.c_str()) ) {
+    CF_FATAL("c_lpg_options: cfg.read_string() fails");
+    return false;
+  }
+
+  c_config_setting section = cfg.root()["c_lpg_options"];
+  if ( !section.isGroup() ) {
+    CF_FATAL("Group 'c_lpg_options' not found");
+    return false;
+  }
+
+  if( !serialize(section, false) ) {
+    CF_FATAL("c_lpg_options::serialize(c_lpg_options) fails");
+    return false;
+  }
+
+  return true;
+}
+
 
 c_lpg_sharpness_measure::c_lpg_sharpness_measure()
 {
-
 }
 
 c_lpg_sharpness_measure::c_lpg_sharpness_measure(const c_lpg_options & opts) :
-    options_(opts)
+    _opts(opts)
 {
 }
 
 void c_lpg_sharpness_measure::set_k(double v)
 {
-  options_.k = v;
+  _opts.k = v;
 }
 
 double c_lpg_sharpness_measure::k() const
 {
-  return options_.k;
+  return _opts.k;
 }
 
 void c_lpg_sharpness_measure::set_dscale(int v)
 {
-  options_.dscale = v;
+  _opts.dscale = v;
 }
 
 int c_lpg_sharpness_measure::dscale() const
 {
-  return options_.dscale;
+  return _opts.dscale;
 }
 
 void c_lpg_sharpness_measure::set_uscale(int v)
 {
-  options_.uscale = v;
+  _opts.uscale = v;
 }
 
 int c_lpg_sharpness_measure::uscale() const
 {
-  return options_.uscale;
+  return _opts.uscale;
 }
 
 void c_lpg_sharpness_measure::set_p(double v)
 {
-  options_.p = v;
+  _opts.p = v;
 }
 
 double c_lpg_sharpness_measure::p() const
 {
-  return options_.p;
+  return _opts.p;
 }
 
 void c_lpg_sharpness_measure::set_avgchannel(bool v)
 {
-  options_.avgchannel = v;
+  _opts.avgchannel = v;
 }
 
 bool c_lpg_sharpness_measure::avgchannel() const
 {
-  return options_.avgchannel;
+  return _opts.avgchannel;
 }
 
 cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask) const
@@ -194,11 +119,11 @@ cv::Scalar c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray
   cv::Scalar rv;
   compute(image, mask,
       cv::noArray(),
-      options_.k,
-      options_.p,
-      options_.dscale,
-      options_.uscale,
-      options_.avgchannel,
+      _opts.k,
+      _opts.p,
+      _opts.dscale,
+      _opts.uscale,
+      _opts.avgchannel,
       &rv);
   return rv;
 }
@@ -207,11 +132,11 @@ bool c_lpg_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray o
 {
   return compute(image, cv::noArray(),
       output_map,
-      options_.k,
-      options_.p,
-      options_.dscale,
-      options_.uscale,
-      options_.avgchannel,
+      _opts.k,
+      _opts.p,
+      _opts.dscale,
+      _opts.uscale,
+      _opts.avgchannel,
       nullptr);
 }
 
@@ -245,3 +170,19 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask,
       opts.k, opts.p, opts.dscale, opts.uscale, opts.avgchannel,
       output_sharpness_metric);
 }
+
+bool c_lpg_sharpness_measure::serialize(c_config_setting settings, bool save)
+{
+  return _opts.serialize(settings, save);
+}
+
+std::string c_lpg_sharpness_measure::save_settings()
+{
+  return _opts.save_settings();
+}
+
+bool c_lpg_sharpness_measure::load_settings(const std::string & text)
+{
+  return _opts.load_settings(text);
+}
+

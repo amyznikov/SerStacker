@@ -37,6 +37,23 @@ endif()
 # Initialize the project with the computed version
 project(core VERSION ${GIT_TAG_VER} LANGUAGES CXX)
 
+# Forming a string for About (PROJECT_FULL_VERSION_STR)
+if(GIT_COMMITS EQUAL 0)
+    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}")
+else()
+    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}-dev${GIT_COMMITS}")
+endif()
+
+message (status, "PROJECT_VERSION=${PROJECT_VERSION} PROJECT_FULL_VERSION_STR=${PROJECT_FULL_VERSION_STR}")
+
+configure_file( "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h"
+)
+
+
+# ----------------------------------------------------------------------------
+# core library
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if( NOT CMAKE_CXX_STANDARD )
 	set (CMAKE_CXX_STANDARD 17)
@@ -45,22 +62,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-
-# Forming a string for About (PROJECT_FULL_VERSION_STR)
-if(GIT_COMMITS EQUAL 0)
-    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}")
-else()
-    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}-dev${GIT_COMMITS}")
-endif()
-
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/version.h"
-)
-
-
-# ----------------------------------------------------------------------------
-# core library
 
 file(GLOB_RECURSE CURRENT_SOURCES *.c *.cc *.cpp) 
 file(GLOB_RECURSE CURRENT_HEADERS *.h *.hpp)

@@ -1,4 +1,5 @@
 # temp files
+#core/version.h
 *~
 CMakeLists.txt.user
 CMakeCache.txt

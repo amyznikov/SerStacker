@@ -6,6 +6,7 @@
  */
 
 #include "MainWindow.h"
+#include <gui/widgets/AboutDialog.h>
 #include <gui/widgets/QToolbarSpacer.h>
 #include <gui/widgets/QMenuWidgetAction.h>
 #include <gui/widgets/QWaitCursor.h>
@@ -22,6 +23,7 @@
 #include <core/io/load_image.h>
 #include <core/debug.h>
 
+#define APP_ICON               ":/serstacker/icons/app-icon.png"
 #define ICON_reload             ":/gui/icons/reload"
 #define ICON_prev               ":/gui/icons/prev"
 #define ICON_next               ":/gui/icons/next"
@@ -58,7 +60,7 @@ namespace serstacker {
 
 MainWindow::MainWindow()
 {
-  setWindowIcon(QIcon(":/serstacker/icons/app-icon.png"));
+  setWindowIcon(QIcon(APP_ICON));
   updateWindowTittle();
   QImageProcessorsCollection::load();
 
@@ -159,6 +161,16 @@ MainWindow::MainWindow()
       imageView->roiShape()->setSceneRect(QPointF(x,y), QPointF(x+w,y+h));
     }
   });
+
+  //
+  // Add to the end of View menu
+  //
+  menuView->addSeparator();
+  menuView->addAction("About SerStacker...",
+      [this]() {
+        AboutDialog dialog("SerStacker", getPixmap(APP_ICON), this);
+        dialog.exec();
+      });
 
 }
 
@@ -524,7 +536,6 @@ void MainWindow::setupMainMenu()
           this,
           &ThisClass::onViewInputOptions));
 
-
   pipelineProgressView = new QPipelineProgressView(this);
   menuBar()->setCornerWidget(pipelineProgressView, Qt::TopRightCorner );
   pipelineProgressView->hide();
@@ -532,7 +543,6 @@ void MainWindow::setupMainMenu()
   connect(pipelineProgressView, &QPipelineProgressView::progressTextChanged,
       this, &ThisClass::onStackProgressViewTextChanged,
       Qt::QueuedConnection);
-
 }
 
 void MainWindow::setupStatusbar()

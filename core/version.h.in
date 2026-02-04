@@ -1,0 +1,17 @@
+#pragma once
+#ifndef __project_version_h__
+#define __project_version_h__
+
+#define PROJECT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define PROJECT_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define PROJECT_GIT_HASH     "@PROJECT_GIT_HASH@"
+
+#define PROJECT_VERSION_INT(major, minor, patch) ((major << 16) | (minor << 8) | patch)
+#define PROJECT_VERSION_CURR PROJECT_VERSION_INT(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH)
+
+#define PROJECT_VERSION "@PROJECT_VERSION@"
+#define PROJECT_FULL_VERSION_STR "@PROJECT_VERSION@-@PROJECT_GIT_HASH@"
+
+#endif // __project_version_h__
+

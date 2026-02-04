@@ -1,28 +1,17 @@
-/*
- * version.h
- *
- *  Created on September 5, 2019
- *      Author: amyznikov
- */
 #pragma once
-#ifndef __qwcc_version_h__
-#define __qwcc_version_h__
+#ifndef __project_version_h__
+#define __project_version_h__
 
-#define QWCC_VERSION_MAJOR    0
-#define QWCC_VERSION_MINOR    0
-#define QWCC_VERSION_REVISION 1
-#define QWCC_VERSION_STATUS   "-pre"
+#define PROJECT_VERSION_MAJOR 1
+#define PROJECT_VERSION_MINOR 1
+#define PROJECT_VERSION_PATCH 1
+#define PROJECT_GIT_HASH     "5f52e1d"
 
-#define QWCCAUX_STR_EXP(__A)  #__A
-#define QWCCAUX_STR(__A)      QWCCAUX_STR_EXP(__A)
+#define PROJECT_VERSION_INT(major, minor, patch) ((major << 16) | (minor << 8) | patch)
+#define PROJECT_VERSION_CURR PROJECT_VERSION_INT(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH)
 
-#define QWCCAUX_STRW_EXP(__A)  L ## #__A
-#define QWCCAUX_STRW(__A)      QWCCAUX_STRW_EXP(__A)
+#define PROJECT_VERSION "1.1.1"
+#define PROJECT_FULL_VERSION_STR "1.1.1-5f52e1d"
 
-#define QWCC_VERSION   \
-  QWCCAUX_STR(QWCC_VERSION_MAJOR) "." QWCCAUX_STR(QWCC_VERSION_MINOR) "." QWCCAUX_STR(QWCC_VERSION_REVISION) QWCC_VERSION_STATUS
+#endif // __project_version_h__
 
-
-
-
-#endif /* __qwcc_version_h__ */

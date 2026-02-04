@@ -6,6 +6,7 @@
  */
 
 #include "MainWindow.h"
+#include <gui/widgets/AboutDialog.h>
 #include "camera/ffmpeg/QFFStreams.h"
 #include "camera/libcamera-sctp/QLCSCTPStreams.h"
 #include <gui/qpipeline/QImageProcessingPipeline.h>
@@ -15,6 +16,7 @@
 
 namespace serimager {
 
+#define APP_ICON              ":/serimager/icons/app-icon.png"
 #define ICON_camera           ":/serimager/icons/camera.png"
 #define ICON_histogram        ":/serimager/icons/histogram.png"
 #define ICON_shapes           ":/serimager/icons/shapes.png"
@@ -41,7 +43,7 @@ inline bool is_visible(QWidget * w)
 MainWindow::MainWindow(QWidget * parent) :
     Base(parent)
 {
-  setWindowIcon(getIcon(":/serimager/icons/app-icon.png"));
+  setWindowIcon(getIcon(APP_ICON));
 
   QImageProcessorsCollection::load();
 
@@ -97,6 +99,15 @@ MainWindow::MainWindow(QWidget * parent) :
         }
       });
 
+  //
+  // Add to the end of View menu
+  //
+  menuView->addSeparator();
+  menuView->addAction("About SerImager...",
+      [this]() {
+        AboutDialog dialog("SerImager", getPixmap(APP_ICON), this);
+        dialog.exec();
+      });
 }
 
 MainWindow::~MainWindow()

@@ -37,6 +37,15 @@ endif()
 # Initialize the project with the computed version
 project(core VERSION ${GIT_TAG_VER} LANGUAGES CXX)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if( NOT CMAKE_CXX_STANDARD )
+	set (CMAKE_CXX_STANDARD 17)
+endif()
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+
 # Forming a string for About (PROJECT_FULL_VERSION_STR)
 if(GIT_COMMITS EQUAL 0)
     set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}")
@@ -52,14 +61,6 @@ configure_file(
 
 # ----------------------------------------------------------------------------
 # core library
-
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-if( NOT CMAKE_CXX_STANDARD )
-	set (CMAKE_CXX_STANDARD 17)
-endif()
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif()
 
 file(GLOB_RECURSE CURRENT_SOURCES *.c *.cc *.cpp) 
 file(GLOB_RECURSE CURRENT_HEADERS *.h *.hpp)

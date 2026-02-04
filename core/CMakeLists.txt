@@ -1,5 +1,57 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
-project(core VERSION 1.1.1 LANGUAGES CXX)
+
+# ----------------------------------------------------------------------------
+# version.h
+# Automatic version detection from Git
+
+find_package(Git QUIET)
+if(GIT_FOUND)
+    # Getting the version description: v1.2.3-4-g5b7c2d
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --always --long
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_DESCRIBE_RAW
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    # Parsing a string (for example, v1.2.4-5-gabcdef)
+    # The regular expression matches: 1.2.4 (version) and 5 (number of commits)
+    if(GIT_DESCRIBE_RAW MATCHES "v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)")
+        set(PROJECT_VERSION_MAJOR ${CMAKE_MATCH_1})
+        set(PROJECT_VERSION_MINOR ${CMAKE_MATCH_2})
+        set(PROJECT_VERSION_PATCH ${CMAKE_MATCH_3})
+        set(GIT_COMMITS           ${CMAKE_MATCH_4})
+        set(PROJECT_GIT_HASH      ${CMAKE_MATCH_5})
+        
+        set(GIT_TAG_VER "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+    else()
+        # If there are no tags, we take only the hash
+        set(PROJECT_GIT_HASH ${GIT_DESCRIBE_RAW})
+    endif()
+else()
+    set(FINAL_VERSION "0.0.0-unknown")
+endif()
+
+
+# Initialize the project with the computed version
+project(core VERSION ${GIT_TAG_VER} LANGUAGES CXX)
+
+# Forming a string for About (PROJECT_FULL_VERSION_STR)
+if(GIT_COMMITS EQUAL 0)
+    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}")
+else()
+    set(PROJECT_FULL_VERSION_STR "${PROJECT_VERSION}-dev${GIT_COMMITS}")
+endif()
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h"
+)
+
+
+# ----------------------------------------------------------------------------
+# core library
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if( NOT CMAKE_CXX_STANDARD )
@@ -8,45 +60,9 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  if(NOT CMAKE_TOOLCHAIN_FILE)
-    # it _must_ go before any project in order to work
-    set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation Directory")
-  else()
-    #Android: set output folder to ${CMAKE_BINARY_DIR}
-    set(LIBRARY_OUTPUT_PATH_ROOT ${CMAKE_BINARY_DIR} CACHE PATH "root for library output, set this to change where android libs are compiled to" )
-    # any cross-compiling
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory")
-  endif()
-endif()
 
-# ----------------------------------------------------------------------------
-# version.h
-
-find_package(Git QUIET)
-if(GIT_FOUND AND (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git" ) )
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        OUTPUT_VARIABLE PROJECT_GIT_HASH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-else()
-    set(PROJECT_GIT_HASH "unknown")
-endif()
-
-
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/version.h"
-)
-
-# ----------------------------------------------------------------------------
-# target sources
 file(GLOB_RECURSE CURRENT_SOURCES *.c *.cc *.cpp) 
 file(GLOB_RECURSE CURRENT_HEADERS *.h *.hpp)
-
-# ----------------------------------------------------------------------------
 
 add_library(${PROJECT_NAME} STATIC
 	${CURRENT_HEADERS}

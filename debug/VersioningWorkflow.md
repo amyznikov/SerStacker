@@ -76,31 +76,67 @@ To sync local tags:
 git fetch --all --tags
 ```
 
+## 🛠 Branching & Versioning Policy (SemVer)
+To ensure stability and provide long-term support for older releases, we follow the **Support Branches strategy** combined with Semantic Versioning.
 
-## Branching & Hotfixes
-
-* Feature Branches.
-
- Feature Branches inherit the last tag from 'main' plus the commit count. 
- 
- This helps identify the branch during testing.
-
-
-* Hotfix Procedure
-
-If a bug is found in some version, for example v1.2.0:
+* **Initializing a Support Line.**
+When the main (or master) branch reaches a major milestone (e.g., v2.0.0), we create a dedicated support branch for that version.
 
 ```bash
-	# Checkout from tag: 
-	git checkout -b hotfix/name v1.2.0
+	# While on the main branch at the release point
+	git tag -a v2.0.0 -m "Release v2.0.0"
+	git push origin v2.0.0
 	
-	# Apply fix and commit.
-	# Tag new version: 
-	git tag -a v1.2.1 -m "Hotfix description"
-	
-	# Merge back to main and push tags: 
-	git push origin --tags
+	# Create a support branch for the version 2.x line
+	git checkout -b support/v2.x
+	git push origin support/v2.x
 ```
+
+* **Applying Bugfixes to Older Versions (Patch).**
+If a bug is found in v2.0.0 while main has already moved forward to v3.0.0, the fix must be applied to the specific support branch:
+
+```bash
+	# Switch to the required support branch
+	git checkout support/v2.x
+	
+	# Apply the fix, test, and commit
+	git add .
+	git commit -m "fix: resolve critical parsing error"
+	
+	# Create a new Patch tag
+	git tag -a v2.0.1 -m "Release v2.0.1"
+	git push origin support/v2.x --tags
+```
+
+* **Syncing Fixes to the Main Branch.**
+To prevent the bug from reappearing in future releases, "port" the fix from the support branch back to main.
+
+```bash
+	# Switch to the main development branch
+	git checkout main
+	
+	# Copy the specific fix using its commit hash
+	git cherry-pick <commit_hash_from_support_branch>
+	
+	# Resolve any conflicts and push
+	git push origin main
+```
+
+### 📌 Branching Cheat Sheet
+
+**main / master**	: New features, breaking changes MAJOR or MINOR
+
+**support/v1.x**	: Bugfixes for v1 line only	1.x.PATCH
+
+**support/v2.x**	: Bugfixes for v2 line only	2.x.PATCH
+
+**Core Rules:**
+
+Never merge main into a support branch. This would accidentally introduce new features into a stable/patch release.
+
+Always cherry-pick critical bugfixes from support branches back into main.
+
+The Version in main must always be higher than the versions in any support branches.
 
 
 ## Troubleshooting

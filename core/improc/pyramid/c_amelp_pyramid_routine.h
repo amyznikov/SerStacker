@@ -18,45 +18,15 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_amelp_pyramid_routine,
       "amelp_pyramid", "Display amelp pyramid layers");
 
-  void set_scale_factor(double v)
-  {
-    scale_factor_ = v;
-  }
-
-  double scale_factor() const
-  {
-    return scale_factor_;
-  }
-
-  void set_max_level(int v)
-  {
-    max_level_ = v;
-  }
-
-  int max_level() const
-  {
-    return max_level_;
-  }
-
-  void set_display_pos(int v)
-  {
-    display_pos_ = v;
-  }
-
-  int display_pos() const
-  {
-    return display_pos_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::vector<cv::Mat> pyramid_;
-  double scale_factor_ = 0.75;
-  int display_pos_ = 0;
-  int max_level_ = 3;
+  std::vector<cv::Mat> _pyramid;
+  double _scale_factor = 0.75;
+  int _display_pos = 0;
+  int _max_level = 3;
 };
 
 #endif /* __c_amelp_pyramid_routine_h__ */

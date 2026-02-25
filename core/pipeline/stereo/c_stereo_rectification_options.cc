@@ -9,44 +9,44 @@
 
 void c_stereo_rectification_options::set_enabled(bool v)
 {
-  enabled_ = v;
+  _enabled = v;
 }
 
 bool c_stereo_rectification_options::enabled() const
 {
-  return enabled_;
+  return _enabled;
 }
 
 void c_stereo_rectification_options::set_has_changes(bool v)
 {
-  has_changes_ = v;
+  _has_changes = v;
 }
 
 bool c_stereo_rectification_options::has_changes() const
 {
-  return has_changes_;
+  return _has_changes;
 }
 
 void c_stereo_rectification_options::set_camera_intrinsics_yml(const std::string & v)
 {
-  camera_intrinsics_yml_ = v;
-  has_changes_ = true;
+  _camera_intrinsics_yml = v;
+  _has_changes = true;
 }
 
 const std::string& c_stereo_rectification_options::camera_intrinsics_yml() const
 {
-  return camera_intrinsics_yml_;
+  return _camera_intrinsics_yml;
 }
 
 void c_stereo_rectification_options::set_camera_extrinsics_yml(const std::string & v)
 {
-  camera_extrinsics_yml_ = v;
-  has_changes_ = true;
+  _camera_extrinsics_yml = v;
+  _has_changes = true;
 }
 
 const std::string& c_stereo_rectification_options::camera_extrinsics_yml() const
 {
-  return camera_extrinsics_yml_;
+  return _camera_extrinsics_yml;
 }
 
 //const c_stereo_camera_intrinsics & c_stereo_rectification_options::stereo_intrinsics() const

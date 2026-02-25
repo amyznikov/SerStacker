@@ -58,13 +58,12 @@ public:
   typedef QSettingsWidget Base;
 
   QMeasureSettingsWidget(QWidget * parent = nullptr) :
-    Base("", parent)
+    Base(parent)
   {
   }
 
   virtual void setCurrentMeasure(QMeasure * m) = 0;
   virtual QMeasure * currentMeasure() const = 0;
-
 };
 
 template<class MeasureType>
@@ -143,16 +142,16 @@ protected:
     setEnabled(true);
   }
 
-  void onupdatecontrols() override
-  {
-    if( !measure_ ) {
-      setEnabled(false);
-    }
-    else {
-      Q_EMIT Base::populatecontrols();
-      update_measure_controls();
-    }
-  }
+//  void onupdatecontrols() override
+//  {
+//    if( !measure_ ) {
+//      setEnabled(false);
+//    }
+//    else {
+//      Q_EMIT Base::populatecontrols();
+//      update_measure_controls();
+//    }
+//  }
 
 protected:
   MeasureType *measure_ = nullptr;

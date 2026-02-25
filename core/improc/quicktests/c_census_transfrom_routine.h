@@ -29,64 +29,13 @@ public:
     CV_STAR_KERNEL = cv::stereo::CV_STAR_KERNEL
   };
 
-  void set_type(CensusType v)
-  {
-    census_type_ = v;
-  }
-
-  CensusType type() const
-  {
-    return census_type_;
-  }
-
-  void set_kernel_size(int v)
-  {
-    kernel_size_ = v;
-  }
-
-  int kernel_size() const
-  {
-    return kernel_size_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, type, "census type");
-    BIND_PCTRL(ctls, kernel_size, "kernel size");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, type);
-      SERIALIZE_PROPERTY(settings, save, *this, kernel_size);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    cv::Mat gray;
-
-    if( image.channels() == 1 ) {
-      gray = image.getMat();
-    }
-    else {
-      cv::cvtColor(image, gray,
-          cv::COLOR_BGR2GRAY);
-    }
-
-    cv::Mat dist1(gray.size(), CV_32SC1);
-    cv::stereo::censusTransform(gray, kernel_size_, dist1, census_type_);
-    dist1.copyTo(image);
-
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  int kernel_size_ = 5;
-  CensusType census_type_ = CV_SPARSE_CENSUS;
+  int _kernel_size = 5;
+  CensusType _census_type = CV_SPARSE_CENSUS;
 
 };
 

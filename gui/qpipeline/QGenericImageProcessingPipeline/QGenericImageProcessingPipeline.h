@@ -17,7 +17,8 @@ class QGenericImageProcessingPipeline :
 {
 public:
   typedef QGenericImageProcessingPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline> Base;
+  typedef c_generic_image_processor_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QGenericImageProcessingPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

@@ -35,3 +35,28 @@ void c_pnormalize_routine::pnormalize(const cv::Mat & src, cv::Mat & dst, int ps
 //  m.convertTo(dst, CV_8U, 24. * src.channels() / f, 128);
 }
 
+void c_pnormalize_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "scale", ctx(&this_class::_scale), "Gaussian pyramid scale (max level)");
+   ctlbind(ctls, "ddepth", ctx(&this_class::_ddepth), "Destination image depth");
+}
+
+bool c_pnormalize_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _scale);
+    SERIALIZE_OPTION(settings, save, *this, _ddepth);
+    return true;
+  }
+  return false;
+}
+
+bool c_pnormalize_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+{
+  if( _scale > 0 ) {
+    pnormalize(image.getMat(), image.getMatRef(), _scale, _ddepth);
+  }
+
+  return true;
+}
+

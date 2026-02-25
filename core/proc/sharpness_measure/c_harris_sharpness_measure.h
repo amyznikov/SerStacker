@@ -22,6 +22,26 @@
 #define __c_harris_sharpness_measure_h__
 
 #include "c_image_sharpness_measure.h"
+#include <core/ctrlbind/ctrlbind.h>
+
+struct c_harris_sharpness_measure_options
+{
+  double k = 5;
+  int dscale = 1;
+  int uscale = 1;
+  bool avgchannel = true;
+};
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_harris_sharpness_measure_options> & ctx)
+{
+  using S = c_harris_sharpness_measure_options;
+  ctlbind(ctls, "k", ctx(&S::k), "Metric: Determinant + k * Trace^2");
+  ctlbind(ctls, "dscale", ctx(&S:: dscale), "");
+  ctlbind(ctls, "uscale", ctx(&S::uscale), "");
+  ctlbind(ctls, "avgchannel", ctx(&S:: avgchannel), "");
+}
+
 
 class c_harris_sharpness_measure:
     public c_image_sharpness_measure
@@ -49,11 +69,14 @@ public:
       double k, int dscale, int uscale, bool avgchannel,
       cv::Scalar * output_sharpness_measure = nullptr);
 
+  template<class RootObjectType>
+  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
+  {
+    ctlbind(ctls, ctx(&this_class::_opts));
+  }
+
 protected:
-  double k_ = 5;
-  int dscale_ = 1;
-  int uscale_ = 1;
-  bool avgchannel_ = true;
+  c_harris_sharpness_measure_options _opts;
 };
 
 #endif /* __c_harris_sharpness_measure_h__ */

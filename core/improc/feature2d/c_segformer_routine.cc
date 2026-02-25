@@ -55,10 +55,10 @@ cv::Mat process_output(const cv::Mat & output)
   return segMap;
 }
 
-void c_segformer_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_model_path, "onnx_model_path", "Specify onnx_model_path");
-}
+//void c_segformer_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+//{
+//  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_model_path, "onnx_model_path", "Specify onnx_model_path");
+//}
 
 bool c_segformer_routine::serialize(c_config_setting settings, bool save)
 {
@@ -88,6 +88,12 @@ void c_segformer_routine::release_session()
     _net = cv::dnn::Net();
   }
 #endif  // HAVE_OpenCV_dnn
+}
+
+
+void c_segformer_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind_browse_for_file(ctls, "onnx_model", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model_path");
 }
 
 bool c_segformer_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

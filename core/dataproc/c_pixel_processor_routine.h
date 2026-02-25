@@ -30,33 +30,33 @@ public:
 
   InputType input_type() const
   {
-    return input_type_;
+    return _input_type;
   }
 
   void set_input_type(InputType v)
   {
-    input_type_ = v;
-    expression_changed_ = true;
+    _input_type = v;
+    _expression_changed = true;
   }
 
   const std::string & input() const
   {
-    return input_;
+    return _input;
   }
 
   void set_input(const std::string & v)
   {
-    input_ = v;
+    _input = v;
   }
 
   const std::string & output() const
   {
-    return output_;
+    return _output;
   }
 
   void set_output(const std::string & v)
   {
-    output_ = v;
+    _output = v;
   }
 
   void set_output_depth(enum PIXEL_DEPTH v)
@@ -71,30 +71,38 @@ public:
 
   void set_expression(const std::string & v)
   {
-    expression_ = v;
-    expression_changed_ = true;
+    _expression = v;
+    _expression_changed = true;
   }
 
   const std::string & expression() const
   {
-    return expression_;
+    return _expression;
   }
 
 
-  bool process(c_data_frame::sptr & dataframe) override;
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  std::string helpstring() const;
+  bool process(c_data_frame::sptr & dataframe) final;
+  bool serialize(c_config_setting settings, bool save) final;
+  std::string helpstring();
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+     ctlbind(ctls, "input_type", ctx, &this_class::input_type, &this_class::set_input_type, "input view type");
+     ctlbind(ctls, "input", ctx, &this_class::input, &this_class::set_input, "input image name");
+     ctlbind(ctls, "output", ctx, &this_class::output, &this_class::set_output, "output image name");
+     ctlbind(ctls, "output_depth", ctx, &this_class::output_depth, &this_class::set_output_depth, "output image depth");
+     ctlbind(ctls, "math expression", ctx, &this_class::expression, &this_class::set_expression, "", &this_class::helpstring);
+  }
 
 protected:
-  std::string input_;
-  std::string output_;
-  InputType input_type_ = InputType_Image;
+  std::string _input;
+  std::string _output;
+  InputType _input_type = InputType_Image;
   PIXEL_DEPTH output_depth_ = PIXEL_DEPTH_NO_CHANGE;
 
-  std::string expression_;
+  std::string _expression;
   mutable c_math_expression math_;
-  bool expression_changed_ = true;
+  bool _expression_changed = true;
   bool initialized_ = false;
 
 };

@@ -16,6 +16,20 @@
 #define __c_normalized_variance_measure_h__
 
 #include "c_image_sharpness_measure.h"
+#include <core/ctrlbind/ctrlbind.h>
+
+struct c_normalized_variance_measure_options
+{
+  bool avgchannel = true;
+};
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_normalized_variance_measure_options> & ctx)
+{
+  using S = c_normalized_variance_measure_options;
+  ctlbind(ctls, "avgchannel", ctx(&S::avgchannel), "");
+}
+
 
 class c_normalized_variance_measure :
     public c_image_sharpness_measure
@@ -33,8 +47,14 @@ public:
   static bool compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map, bool avgchannel,
       cv::Scalar * output_sharpness_metric);
 
+  template<class RootObjectType>
+  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
+  {
+    ctlbind(ctls, ctx(&this_class::_opts));
+  }
+
 protected:
-  bool avgchannel_ = false;
+  c_normalized_variance_measure_options _opts;
 };
 
 #endif /* __c_normalized_variance_measure_h__ */

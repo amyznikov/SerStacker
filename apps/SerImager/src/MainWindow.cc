@@ -141,6 +141,11 @@ void MainWindow::onSaveState(QSettings & settings)
         dataframeProcessor_ctl->selected_processor());
   }
 
+  if ( cameraControls_ctl ) {
+    cameraControls_ctl->saveSettings(settings, "QImagingCameraControls");
+  }
+
+  diplayImageWriter_.saveSettings(settings, "QDisplayVideoWriter");
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -166,8 +171,13 @@ void MainWindow::onRestoreState(QSettings & settings)
     if ( !selected_processor.isEmpty() ) {
       dataframeProcessor_ctl->set_selected_processor(selected_processor);
     }
-
   }
+
+  if ( cameraControls_ctl ) {
+    cameraControls_ctl->loadSettings(settings, "QImagingCameraControls");
+  }
+
+  diplayImageWriter_.loadSettings(settings, "QDisplayVideoWriter");
 }
 
 void MainWindow::setupMainMenu()
@@ -810,7 +820,6 @@ void MainWindow::setupIndigoFocuser()
 
 void MainWindow::setupDisplayImageVideoWriter()
 {
-  diplayImageWriter_.loadParameters();
   mainToolbar_->addWidget(displayImageVideoWriterToolButton_ =
       createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
 }

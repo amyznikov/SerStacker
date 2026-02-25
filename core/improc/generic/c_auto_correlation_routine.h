@@ -19,11 +19,9 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_auto_correlation_routine,
       "auto_correlation", "Compute image auto correlation matrix");
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    fftComputeAutoCorrelation(image.getMat(), image.getMatRef(), true);
-    return true;
-  }
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
+
 };
 
 #endif /* __c_auto_correlation_routine_h__ */

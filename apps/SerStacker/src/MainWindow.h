@@ -136,10 +136,10 @@ private:
   QInputSequencesTree * sequencesTreeView = nullptr;
   QInputSequenceTreeDock * sequencesTreeViewDock = nullptr;
 
-  QGraphicsRectShapeSettingsDialogBox * roiOptionsDialogBox_ = nullptr;
+  QGraphicsRectShapeSettingsDialogBox * _roiOptionsDialogBox = nullptr;
   QAction * showRoiOptionsAction = nullptr;
   QAction * showRoiRectangleAction = nullptr;
-  QMenu roiActionsMenu_;
+  QMenu _roiActionsMenu;
 
 
   QAction * quitAppAction = nullptr;
@@ -175,17 +175,17 @@ private:
   QToolButton * statusbarShowLog_ctl = nullptr;
 
   ///
-  QDisplayVideoWriter diplayImageWriter_;
-  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
-  bool lockDiplayImageWriter_ = false;
+  QDisplayVideoWriter _diplayImageWriter;
+  QToolButton* _displayImageVideoWriterToolButton = nullptr;
+  bool _lockDiplayImageWriter = false;
 
   ///
-  QGLViewPlanarGridSettingsDialogBox * glGridSettingsDialog_ = nullptr;
+  QGLViewPlanarGridSettingsDialogBox * _glGridSettingsDialog = nullptr;
 
   ///
   QGeoMapView * geoView = nullptr;
   QGeoMapViewDock * geoViewDock = nullptr;
-  QAction * onLoadGpsTrackAction_ = nullptr;
+  QAction * onLoadGpsTrackAction = nullptr;
 
 
   // QPointSelectionMode

@@ -406,7 +406,6 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
   SAVE_OPTION(settings, options, chessboard_cell_size);
   SAVE_OPTION(settings, options, chessboard_distance);
 
-
   SAVE_OPTION(settings, options, method);
 
   if( (section = settings.add_group("findChessboardCorners")) ) {
@@ -420,7 +419,6 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
   }
 
   if( (section = settings.add_group("cornerSubPix")) ) {
-
     SAVE_OPTION(section, options.cornerSubPix, winSize);
     SAVE_OPTION(section, options.cornerSubPix, zeroZone);
     SAVE_OPTION(section, options.cornerSubPix, max_solver_iterations);
@@ -428,7 +426,6 @@ bool save_settings(c_config_setting settings, const c_chessboard_corners_detecti
   }
 
   if( (section = settings.add_group("bilateralFilter")) ) {
-
     SAVE_OPTION(section, options.bilateralFilter, d);
     SAVE_OPTION(section, options.bilateralFilter, sigmaColor);
     SAVE_OPTION(section, options.bilateralFilter, sigmaSpace);
@@ -448,28 +445,29 @@ bool load_settings(c_config_setting settings, c_chessboard_corners_detection_opt
   LOAD_OPTION(settings, *options, method);
 
   if ( (section = settings["findChessboardCorners"]).isGroup() ) {
-    LOAD_OPTION(settings, options->findChessboardCorners, max_scales);
-    LOAD_OPTION(settings, options->findChessboardCorners, flags);
+    bool fOk;
+    LOAD_OPTION(section, options->findChessboardCorners, max_scales);
+    LOAD_OPTION(section, options->findChessboardCorners, flags);
   }
 
   if ( (section = settings["findChessboardCornersSB"]).isGroup() ) {
-    LOAD_OPTION(settings, options->findChessboardCornersSB, max_scales);
-    LOAD_OPTION(settings, options->findChessboardCornersSB, flags);
+    LOAD_OPTION(section, options->findChessboardCornersSB, max_scales);
+    LOAD_OPTION(section, options->findChessboardCornersSB, flags);
   }
 
   if ( (section = settings["cornerSubPix"]).isGroup() ) {
 
-    LOAD_OPTION(settings, options->cornerSubPix, winSize);
-    LOAD_OPTION(settings, options->cornerSubPix, zeroZone);
-    LOAD_OPTION(settings, options->cornerSubPix, max_solver_iterations);
-    LOAD_OPTION(settings, options->cornerSubPix, solver_eps);
+    LOAD_OPTION(section, options->cornerSubPix, winSize);
+    LOAD_OPTION(section, options->cornerSubPix, zeroZone);
+    LOAD_OPTION(section, options->cornerSubPix, max_solver_iterations);
+    LOAD_OPTION(section, options->cornerSubPix, solver_eps);
   }
 
   if ( (section = settings["bilateralFilter"]).isGroup() ) {
 
-    LOAD_OPTION(settings, options->bilateralFilter, d);
-    LOAD_OPTION(settings, options->bilateralFilter, sigmaColor);
-    LOAD_OPTION(settings, options->bilateralFilter, sigmaSpace);
+    LOAD_OPTION(section, options->bilateralFilter, d);
+    LOAD_OPTION(section, options->bilateralFilter, sigmaColor);
+    LOAD_OPTION(section, options->bilateralFilter, sigmaSpace);
   }
 
   return true;

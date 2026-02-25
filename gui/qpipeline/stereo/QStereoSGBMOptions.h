@@ -13,23 +13,15 @@
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 class QStereoSGBMOptions:
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_cvStereoSGBMOptions>
 {
 public:
   typedef QStereoSGBMOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_cvStereoSGBMOptions> Base;
 
   QStereoSGBMOptions(QWidget * parent = nullptr);
 
-  void set_options(c_cvStereoSGBMOptions * options);
-  c_cvStereoSGBMOptions* options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_cvStereoSGBMOptions *options_ = nullptr;
-
   QNumericBox *minDisparity_ctl = nullptr;
   QNumericBox *numDisparities_ctl = nullptr;
   QNumericBox *blockSize_ctl = nullptr;

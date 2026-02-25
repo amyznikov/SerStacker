@@ -20,13 +20,13 @@ const c_enum_member* members_of<c_selective_search_segmentation_routine::Strateg
   return members;
 }
 
-void c_selective_search_segmentation_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_selective_search_segmentation_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, strategy, "");
-  BIND_PCTRL(ctls, base_k, "");
-  BIND_PCTRL(ctls, inc_k, "");
-  BIND_PCTRL(ctls, sigma, "");
-  BIND_PCTRL(ctls, max_display_rects, "");
+  ctlbind(ctls, "strategy", ctx, &this_class::strategy, &this_class::set_strategy, "");
+  ctlbind(ctls, "base_k", ctx, &this_class::base_k, &this_class::set_base_k, "");
+  ctlbind(ctls, "inc_k", ctx, &this_class::inc_k, &this_class::set_inc_k, "");
+  ctlbind(ctls, "sigma", ctx, &this_class::sigma, &this_class::set_sigma, "");
+  ctlbind(ctls, "max_display_rects", ctx, &this_class::max_display_rects, &this_class::set_max_display_rects, "");
 }
 
 bool c_selective_search_segmentation_routine::serialize(c_config_setting settings, bool save)
@@ -46,29 +46,29 @@ bool c_selective_search_segmentation_routine::process(cv::InputOutputArray image
 {
   if ( image.needed() && !image.empty() ) {
 
-    if( !ss_ ) {
-      ss_ = cv::ximgproc::segmentation::createSelectiveSearchSegmentation();
+    if( !_ss ) {
+      _ss = cv::ximgproc::segmentation::createSelectiveSearchSegmentation();
     }
 
     try {
-      ss_->setBaseImage(image.getMat());
+      _ss->setBaseImage(image.getMat());
 
-      switch (strategy_) {
+      switch (_strategy) {
         case Fast:
-          ss_->switchToSelectiveSearchFast(base_k_, inc_k_, sigma_);
+          _ss->switchToSelectiveSearchFast(_base_k, _inc_k, _sigma);
           break;
         case Quality:
-          ss_->switchToSelectiveSearchQuality(base_k_, inc_k_, sigma_);
+          _ss->switchToSelectiveSearchQuality(_base_k, _inc_k, _sigma);
           break;
         case Single:
-          ss_->switchToSingleStrategy(base_k_, sigma_);
+          _ss->switchToSingleStrategy(_base_k, _sigma);
           break;
       }
 
-      rects_.clear();
-      ss_->process(rects_);
+      _rects.clear();
+      _ss->process(_rects);
 
-      CF_DEBUG("%zu rects proposed", rects_.size());
+      CF_DEBUG("%zu rects proposed", _rects.size());
     }
     catch (const std::exception &e) {
       CF_ERROR("ss->process() fails: %s", e.what());
@@ -77,8 +77,8 @@ bool c_selective_search_segmentation_routine::process(cv::InputOutputArray image
 
 
     const int max_display_rects =
-        std::min(max_display_rects_,
-            (int) (rects_.size()));
+        std::min(_max_display_rects,
+            (int) (_rects.size()));
 
     double color_scale = 1.0;
     switch (image.depth()) {
@@ -102,7 +102,7 @@ bool c_selective_search_segmentation_routine::process(cv::InputOutputArray image
 
     for( int i = 0; i < max_display_rects; ++i ) {
       cv::Scalar color(rand() % 255 + 32, rand() % 255 + 32, rand() % 255 + 32);
-      cv::rectangle(image, rects_[i], color);
+      cv::rectangle(image, _rects[i], color);
     }
   }
 

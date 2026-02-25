@@ -11,76 +11,6 @@
 #include <core/proc/geo-reconstruction.h>
 #include <core/debug.h>
 
-void c_desaturate_edges_routine::set_alpha(double v)
-{
-  alpha_ = v;
-}
-
-double c_desaturate_edges_routine::alpha() const
-{
-  return alpha_;
-}
-
-void c_desaturate_edges_routine::set_gbsigma(double v)
-{
-  gbsigma_ = v;
-}
-
-double c_desaturate_edges_routine::gbsigma() const
-{
-  return gbsigma_;
-}
-
-void c_desaturate_edges_routine::set_stdev_factor(double v)
-{
-  stdev_factor_ = v;
-}
-
-double c_desaturate_edges_routine::stdev_factor() const
-{
-  return stdev_factor_;
-}
-
-void c_desaturate_edges_routine::set_se_close_radius(int v)
-{
-  se_close_radius_ = v;
-}
-
-int c_desaturate_edges_routine::se_close_radius() const
-{
-  return se_close_radius_;
-}
-
-void c_desaturate_edges_routine::set_show_weights(bool v)
-{
-  show_weights_ = v;
-}
-
-bool c_desaturate_edges_routine::show_weights() const
-{
-  return show_weights_;
-}
-
-void c_desaturate_edges_routine::set_blur_radius(double v)
-{
-  blur_radius_ = v;
-}
-
-double c_desaturate_edges_routine::blur_radius() const
-{
-  return blur_radius_;
-}
-
-void c_desaturate_edges_routine::set_l1norm(bool v)
-{
-  l1norm_ = v;
-}
-
-bool c_desaturate_edges_routine::l1norm() const
-{
-  return l1norm_;
-}
-
 bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & src_image, const cv::Mat & src_mask,
     cv::Mat1f & dst_image) const
 {
@@ -88,9 +18,9 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
 
   bool fOk =
       simple_planetary_disk_detector(src_image, src_mask,
-          gbsigma_,
-          stdev_factor_,
-          se_close_radius_,
+          _gbsigma,
+          _stdev_factor,
+          _se_close_radius,
           nullptr,
           nullptr,
           &planetary_disk_mask);
@@ -106,10 +36,10 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
       cv::DIST_MASK_PRECISE,
       CV_32F);
 
-  if ( blur_radius_ > 0 ) {
+  if ( _blur_radius > 0 ) {
     cv::GaussianBlur(planetary_disk_mask, planetary_disk_mask,
         cv::Size(),
-        blur_radius_);
+        _blur_radius);
   }
 
   double min, max;
@@ -119,7 +49,7 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
   cv::multiply(planetary_disk_mask, 1. / max,
       planetary_disk_mask);
 
-  if ( l1norm_ ) {
+  if ( _l1norm ) {
     cv::sqrt(planetary_disk_mask,
         planetary_disk_mask);
   }
@@ -161,25 +91,26 @@ static void combine_images(const cv::Mat_<cv::Vec<T, 3>> & color_image, const cv
   }
 }
 
-void c_desaturate_edges_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_desaturate_edges_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, alpha, "");
-  BIND_PCTRL(ctls, gbsigma, "");
-  BIND_PCTRL(ctls, stdev_factor, "");
-  BIND_PCTRL(ctls, blur_radius, "");
-  BIND_PCTRL(ctls, l1norm, "");
-  BIND_PCTRL(ctls, show_weights, "");
+   ctlbind(ctls, "alpha", ctx(&this_class::_alpha), "");
+   ctlbind(ctls, "gbsigma", ctx(&this_class::_gbsigma), "");
+   ctlbind(ctls, "stdev_factor", ctx(&this_class::_stdev_factor), "");
+   ctlbind(ctls, "blur_radius", ctx(&this_class::_blur_radius), "");
+   ctlbind(ctls, "se_close_radius", ctx(&this_class::_se_close_radius), "");
+   ctlbind(ctls, "show_weights", ctx(&this_class::_show_weights), "");
+   ctlbind(ctls, "l1norm", ctx(&this_class::_l1norm), "");
 }
 
 bool c_desaturate_edges_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, alpha);
-    SERIALIZE_PROPERTY(settings, save, *this, gbsigma);
-    SERIALIZE_PROPERTY(settings, save, *this, stdev_factor);
-    SERIALIZE_PROPERTY(settings, save, *this, blur_radius);
-    SERIALIZE_PROPERTY(settings, save, *this, l1norm);
-    SERIALIZE_PROPERTY(settings, save, *this, show_weights);
+    SERIALIZE_OPTION(settings, save, *this, _alpha);
+    SERIALIZE_OPTION(settings, save, *this, _gbsigma);
+    SERIALIZE_OPTION(settings, save, *this, _stdev_factor);
+    SERIALIZE_OPTION(settings, save, *this, _blur_radius);
+    SERIALIZE_OPTION(settings, save, *this, _l1norm);
+    SERIALIZE_OPTION(settings, save, *this, _show_weights);
     return true;
   }
   return false;
@@ -196,7 +127,7 @@ bool c_desaturate_edges_routine::process(cv::InputOutputArray image, cv::InputOu
 
     if( compute_planetary_disk_weights(gray_image, mask.getMat(), weights) ) {
 
-      if ( show_weights_ ) {
+      if ( _show_weights ) {
         weights.copyTo(image);
       }
       else {
@@ -207,7 +138,7 @@ bool c_desaturate_edges_routine::process(cv::InputOutputArray image, cv::InputOu
 
         case CV_8U: {
           cv::Mat3b combined_image;
-          combine_images(cv::Mat3b(image.getMat()), cv::Mat3b(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3b(image.getMat()), cv::Mat3b(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
@@ -215,42 +146,42 @@ bool c_desaturate_edges_routine::process(cv::InputOutputArray image, cv::InputOu
         case CV_8S: {
           typedef cv::Mat_<cv::Vec<int8_t, 3>> Mat3h;
           Mat3h combined_image;
-          combine_images(Mat3h(image.getMat()), Mat3h(gray_image), combined_image, weights, alpha_);
+          combine_images(Mat3h(image.getMat()), Mat3h(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
 
         case CV_16U: {
           cv::Mat3w combined_image;
-          combine_images(cv::Mat3w(image.getMat()), cv::Mat3w(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3w(image.getMat()), cv::Mat3w(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
 
         case CV_16S: {
           cv::Mat3s combined_image;
-          combine_images(cv::Mat3s(image.getMat()), cv::Mat3s(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3s(image.getMat()), cv::Mat3s(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
 
         case CV_32S: {
           cv::Mat3i combined_image;
-          combine_images(cv::Mat3i(image.getMat()), cv::Mat3i(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3i(image.getMat()), cv::Mat3i(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
 
         case CV_32F: {
           cv::Mat3f combined_image;
-          combine_images(cv::Mat3f(image.getMat()), cv::Mat3f(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3f(image.getMat()), cv::Mat3f(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }
 
         case CV_64F: {
           cv::Mat3d combined_image;
-          combine_images(cv::Mat3d(image.getMat()), cv::Mat3d(gray_image), combined_image, weights, alpha_);
+          combine_images(cv::Mat3d(image.getMat()), cv::Mat3d(gray_image), combined_image, weights, _alpha);
           combined_image.copyTo(image);
           break;
         }

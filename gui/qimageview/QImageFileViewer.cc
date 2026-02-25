@@ -12,9 +12,9 @@
 QImageFileViewer::QImageFileViewer(QImageScene * scene, QWidget * parent) :
   Base(scene, parent)
 {
-  input_sequence_ = c_input_sequence::create();
+  _input_sequence = c_input_sequence::create();
   //input_sequence_->set_auto_debayer(DEBAYER_GB);
-  input_sequence_->set_auto_apply_color_matrix(true);
+  _input_sequence->set_auto_apply_color_matrix(true);
 
   Base::_layout->insertWidget(2, playControls =
       new QPlaySequenceControl(this));
@@ -32,7 +32,7 @@ QImageFileViewer::QImageFileViewer(QWidget * parent) :
 
 const c_input_sequence::sptr & QImageFileViewer::input_sequence() const
 {
-  return input_sequence_;
+  return _input_sequence;
 }
 
 void QImageFileViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy )
@@ -43,8 +43,8 @@ void QImageFileViewer::setImage(cv::InputArray image, cv::InputArray mask, cv::I
 
 void QImageFileViewer::openImage(const std::string & pathfilename)
 {
-  input_sequence_->clear();
-  input_sequence_->add_source(pathfilename);
+  _input_sequence->clear();
+  _input_sequence->add_source(pathfilename);
 
   startDisplay();
 }
@@ -56,8 +56,8 @@ void QImageFileViewer::openImage(const QString & pathfilename)
 
 void QImageFileViewer::openImages(const std::vector<std::string> & pathfilenames)
 {
-  input_sequence_->clear();
-  input_sequence_->add_sources(pathfilenames);
+  _input_sequence->clear();
+  _input_sequence->add_sources(pathfilenames);
   startDisplay();
 }
 
@@ -81,8 +81,8 @@ void QImageFileViewer::closeCurrentSequence()
 
   playControls->hide();
 
-  if ( input_sequence_->is_open() ) {
-    input_sequence_->clear();
+  if ( _input_sequence->is_open() ) {
+    _input_sequence->clear();
   }
 
   Q_EMIT currentImageChanged();
@@ -98,11 +98,11 @@ void QImageFileViewer::startDisplay()
   playControls->setState(QPlaySequenceControl::Stopped);
   playControls->hide();
 
-  if ( !input_sequence_->is_open() && !input_sequence_->open() ) {
+  if ( !_input_sequence->is_open() && !_input_sequence->open() ) {
     return;
   }
 
-  const int num_frames = input_sequence_->size();
+  const int num_frames = _input_sequence->size();
 
   if ( num_frames < 1 ) {
     return;
@@ -119,9 +119,9 @@ void QImageFileViewer::startDisplay()
 
 void QImageFileViewer::onSeek(int pos)
 {
-  if ( input_sequence_ && input_sequence_->is_open() ) {
-    if ( pos != input_sequence_->current_pos() ) {
-      input_sequence_->seek(pos);
+  if ( _input_sequence && _input_sequence->is_open() ) {
+    if ( pos != _input_sequence->current_pos() ) {
+      _input_sequence->seek(pos);
     }
     loadNextFrame();
   }
@@ -129,10 +129,10 @@ void QImageFileViewer::onSeek(int pos)
 
 void QImageFileViewer::loadNextFrame()
 {
-  if ( input_sequence_ && input_sequence_->is_open() ) {
+  if ( _input_sequence && _input_sequence->is_open() ) {
 
     c_input_source::sptr current_source =
-        input_sequence_->current_source();
+        _input_sequence->current_source();
 
     if ( current_source ) {
 
@@ -140,7 +140,7 @@ void QImageFileViewer::loadNextFrame()
 
       if ( true ) {
         current_image_lock lock(this);
-        input_sequence_->read(_currentImage, &_currentMask);
+        _input_sequence->read(_currentImage, &_currentMask);
       }
       Base::updateDisplay();
       Q_EMIT currentImageChanged();
@@ -152,10 +152,10 @@ void QImageFileViewer::loadNextFrame()
 
 QString QImageFileViewer::currentFileName() const
 {
-  if ( input_sequence_->is_open() ) {
+  if ( _input_sequence->is_open() ) {
 
     c_input_source::sptr source =
-        input_sequence_->current_source();
+        _input_sequence->current_source();
 
     if ( source ) {
       return source->filename().c_str();

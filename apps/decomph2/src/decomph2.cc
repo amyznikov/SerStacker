@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
   opts.border_mode = ECC_BORDER_REFLECT101;
   opts.border_value = cv::Scalar(0, 0, 0);
 
-  opts.feature_registration.enabled = true;
+  opts.enable_feature_registration = true;
   opts.feature_registration.image_scale = 0.5;
   opts.feature_registration.registration_channel = color_channel_gray;
 
@@ -264,14 +264,14 @@ int main(int argc, char *argv[])
   opts.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.octavedif = -1;
 
   // TBF
-  opts.ecc.enabled = true;
+  opts.enable_ecc_registration = true;
   opts.ecc.ecch_estimate_translation_first = false;
   opts.ecc.scale = 1;
   opts.ecc.min_rho = 0.5;
   opts.ecc.ecch_max_level = 5;
   opts.ecc.ecch_minimum_image_size = 4;
 
-  opts.eccflow.enabled = false;
+  opts.enable_eccflow_registration = false;
 
   c_frame_registration fg(opts);
 

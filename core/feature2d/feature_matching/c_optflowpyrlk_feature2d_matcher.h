@@ -31,4 +31,20 @@ bool match_optflowpyrlk(cv::InputArray previous_image, cv::InputArray next_image
     /* out */ std::vector<cv::Point2f> & matched_predicted_previous_positions);
 
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_optflowpyrlk_feature2d_matcher_options> & ctx)
+{
+  using S = c_optflowpyrlk_feature2d_matcher_options;
+
+  ctlbind(ctls, as_base<c_feature2d_matcher_base_options>(ctx));
+
+  ctlbind(ctls, "maxLevel", ctx(&S::maxLevel), "");
+  ctlbind(ctls, "winSize", ctx(&S::winSize), "");
+  ctlbind(ctls, "maxIterations", ctx(&S::maxIterations), "");
+  //ctlbind(ctls, "flags", ctx)&S::flags), "");
+  ctlbind(ctls, "eps", ctx(&S::eps), "");
+  ctlbind(ctls, "minEigThreshold", ctx(&S::minEigThreshold), "");
+  ctlbind(ctls, "maxErr", ctx(&S::maxErr), "");
+}
+
 #endif /* __c_optflowpyrlk_feature2d_matcher_h__ */

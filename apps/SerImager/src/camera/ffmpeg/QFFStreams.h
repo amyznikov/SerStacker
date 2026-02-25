@@ -58,14 +58,14 @@ public:
 
   QFFStreamsWidget(QWidget * parent);
 
-protected:
-  void onupdatecontrols() override;
+//protected:
+//  void onupdatecontrols() override;
 
 protected Q_SLOTS:
   void onSelectedStreamChanged();
 
 protected:
-  QFFMPEGCamera::sptr selectedStream_;
+  QFFMPEGCamera::sptr _selectedStream;
   QLineEditBox * streamName_ctl = nullptr;
   QFFMPEGCameraUrlWidget * streamUrl_ctl = nullptr;
   QLineEditBox * streamOpts_ctl = nullptr;

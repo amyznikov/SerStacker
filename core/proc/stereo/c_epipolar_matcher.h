@@ -12,7 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/array2d.h>
 #include <core/settings/opencv_settings.h>
-
+#include <core/ctrlbind/ctrlbind.h>
 
 
 struct c_epipolar_matcher_options
@@ -23,6 +23,18 @@ struct c_epipolar_matcher_options
   bool enabled = false;
   bool enable_debug = false;
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_epipolar_matcher_options> & ctx)
+{
+  using S = c_epipolar_matcher_options;
+  ctlbind(ctls, "Enable epipolar matcher", ctx(&S::enabled), "");
+  ctlbind(ctls, "max_disparity", ctx(&S::max_disparity), "");
+  ctlbind(ctls, "diff_threshold", ctx(&S::diff_threshold), "");
+  ctlbind(ctls, "avg_scale", ctx(&S::avg_scale), "");
+  ctlbind(ctls, "enable_debug", ctx(&S::enable_debug), "");
+}
+
 
 class c_epipolar_matcher
 {

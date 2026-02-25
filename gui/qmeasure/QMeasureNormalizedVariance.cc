@@ -20,7 +20,7 @@ QMeasureSettingsWidget* QMeasureNormalizedVariance::createSettingsWidget(QWidget
 int QMeasureNormalizedVariance::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_normalized_variance_measure::compute(image);
-  return avgchannel_ ? 1 : image.channels();
+  return _opts.avgchannel ? 1 : image.channels();
 }
 
 

@@ -726,7 +726,7 @@ c_math_expression::c_math_expression()
   add_function(bgr2gray, "bgr2gray", "bgr2gray(b, g, r) : "
       "Convert BGR color to gray value : 0.299 * r + 0.587 * g + 0.114 * b");
 
-  std::sort(functions_.begin(), functions_.end(),
+  std::sort(_functions.begin(), _functions.end(),
       [](const auto & prev, const auto & next) {
         return prev.name < next.name;
       });
@@ -740,23 +740,23 @@ c_math_expression::~c_math_expression()
 
 void c_math_expression::clear_args()
 {
-  args_.clear();
+  _args.clear();
 }
 
 const std::string & c_math_expression::error_message() const
 {
-  return errmsg_;
+  return _errmsg;
 }
 
 const char * c_math_expression::pointer_to_syntax_error() const
 {
-  return pointer_to_syntax_error_;
+  return _pointer_to_syntax_error;
 }
 
 void c_math_expression::clear_errmsg()
 {
-  errmsg_.clear();
-  pointer_to_syntax_error_ = nullptr;
+  _errmsg.clear();
+  _pointer_to_syntax_error = nullptr;
 }
 
 void c_math_expression::set_errmsg(const char * format, ...)
@@ -770,22 +770,22 @@ void c_math_expression::set_errmsg(const char * format, ...)
 
 void c_math_expression::set_errmsgv(const char * format, va_list arglist)
 {
-  errmsg_.resize(4098);
-  vsnprintf(errmsg_.data(), 4097, format, arglist);
-  errmsg_[4097] = 0;
+  _errmsg.resize(4098);
+  vsnprintf(_errmsg.data(), 4097, format, arglist);
+  _errmsg[4097] = 0;
 }
 
 void c_math_expression::cleanup()
 {
-  if ( root_ ) {
-    delete root_;
-    root_ = 0;
+  if ( _root ) {
+    delete _root;
+    _root = 0;
   }
 }
 
 double c_math_expression::eval(const double args[]) const
 {
-  return root_ ? root_->eval(args) : 0;
+  return _root ? _root->eval(args) : 0;
 }
 
 const c_math_expression::unary_operation * c_math_expression::lookup_unary_operator(const char *curpos) const
@@ -795,10 +795,10 @@ const c_math_expression::unary_operation * c_math_expression::lookup_unary_opera
 
   size_t maxlen = 0;
 
-  for ( size_t i = 0, n = unops_.size(); i < n; ++i ) {
+  for ( size_t i = 0, n = _unops.size(); i < n; ++i ) {
 
     const unary_operation * op =
-        &unops_[i];
+        &_unops[i];
 
     const size_t oplen =
         strlen(op->name.c_str());
@@ -817,16 +817,16 @@ const c_math_expression::binary_operation* c_math_expression::lookup_binary_oper
   const binary_operation * best_match =
       nullptr;
 
-  if( priority_level >= 0 && priority_level < (int) binops_.size() ) {
+  if( priority_level >= 0 && priority_level < (int) _binops.size() ) {
 
     size_t maxlen = 0;
     int best_priority = -1;
 
     for ( int p = 0; p <= priority_level; ++p ) {
-      for ( size_t i = 0, n = binops_[p].size(); i < n; ++i ) {
+      for ( size_t i = 0, n = _binops[p].size(); i < n; ++i ) {
 
         const binary_operation * op =
-            &binops_[p][i];
+            &_binops[p][i];
 
         const size_t oplen =
             strlen(op->name.c_str());
@@ -850,8 +850,8 @@ const c_math_expression::binary_operation* c_math_expression::lookup_binary_oper
 
 const c_math_expression::arg_desc* c_math_expression::lookup_argument(const char * name) const
 {
-  for( size_t i = 0, n = args_.size(); i < n; ++i) {
-    const arg_desc * arg = &args_[i];
+  for( size_t i = 0, n = _args.size(); i < n; ++i) {
+    const arg_desc * arg = &_args[i];
     if( strcmp(arg->name.c_str(), name) == 0 ) {
       return arg;
     }
@@ -861,8 +861,8 @@ const c_math_expression::arg_desc* c_math_expression::lookup_argument(const char
 
 const c_math_expression::binding_desc* c_math_expression::lookup_bindings(const char * name) const
 {
-  for( size_t i = 0, n = bindings_.size(); i < n; ++i) {
-    const binding_desc * binding = &bindings_[i];
+  for( size_t i = 0, n = _bindings.size(); i < n; ++i) {
+    const binding_desc * binding = &_bindings[i];
     if( strcmp(binding->name.c_str(), name) == 0 ) {
       return binding;
     }
@@ -872,8 +872,8 @@ const c_math_expression::binding_desc* c_math_expression::lookup_bindings(const 
 
 const c_math_expression::const_desc* c_math_expression::lookup_constant(const char * name) const
 {
-  for( size_t i = 0, n = constants_.size(); i < n; ++i) {
-    const const_desc * c = &constants_[i];
+  for( size_t i = 0, n = _constants.size(); i < n; ++i) {
+    const const_desc * c = &_constants[i];
     if( strcmp(c->name.c_str(), name) == 0 ) {
       return c;
     }
@@ -883,8 +883,8 @@ const c_math_expression::const_desc* c_math_expression::lookup_constant(const ch
 
 const c_math_expression::function_desc* c_math_expression::lookup_function(const char * name) const
 {
-  for( size_t i = 0, n = functions_.size(); i < n; ++i) {
-    const function_desc * f = &functions_[i];
+  for( size_t i = 0, n = _functions.size(); i < n; ++i) {
+    const function_desc * f = &_functions[i];
     if( strcmp(f->name.c_str(), name) == 0 ) {
       return f;
     }
@@ -1170,7 +1170,7 @@ bool c_math_expression::parse_expression(size_t priority_level, const char ** cu
 
   *ppnode = nullptr;
 
-  if( priority_level >= binops_.size() ) {
+  if( priority_level >= _binops.size() ) {
     return parse_terminal_token(curpos, ppnode);
   }
 
@@ -1214,15 +1214,15 @@ bool c_math_expression::parse(const char * string)
   cleanup();
   clear_errmsg();
 
-  if( !parse_expression(0, &string, &root_) ) {
-    pointer_to_syntax_error_ = string;
+  if( !parse_expression(0, &string, &_root) ) {
+    _pointer_to_syntax_error = string;
     return false;
   }
 
   if ( *string != 0 ) {
     cleanup();
     set_errmsg("Unexpected text after end of expression: '%s'", string);
-    pointer_to_syntax_error_ = string;
+    _pointer_to_syntax_error = string;
     return false;
   }
 
@@ -1238,20 +1238,20 @@ bool c_math_expression::parse(const std::string & s)
 bool c_math_expression::add_argument(int arg_index, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(args_.begin(), args_.end(),
+      std::find_if(_args.begin(), _args.end(),
           [name, arg_index](const auto & f) {
             return f.name == name || f.index == arg_index;
           });
 
-  if ( ii != args_.end() ) {
+  if ( ii != _args.end() ) {
     set_errmsg("Argument '%s' already exists with index %d", name, ii->index);
     return false;
   }
 
-  args_.emplace_back();
+  _args.emplace_back();
 
   arg_desc & f =
-      args_.back();
+      _args.back();
 
   f.name = name;
   f.index = arg_index;
@@ -1265,20 +1265,20 @@ bool c_math_expression::add_argument(int arg_index, const char * name, const cha
 bool c_math_expression::add_constant(double value, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(constants_.begin(), constants_.end(),
+      std::find_if(_constants.begin(), _constants.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != constants_.end() ) {
+  if ( ii != _constants.end() ) {
     set_errmsg("Constant '%s' already exists with value = %g", name, ii->value);
     return false;
   }
 
-  constants_.emplace_back();
+  _constants.emplace_back();
 
   const_desc & f =
-      constants_.back();
+      _constants.back();
 
   f.name = name;
   f.value = value;
@@ -1295,20 +1295,20 @@ bool c_math_expression::add_constant(double value, const char * name, const char
 bool c_math_expression::add_bind(double * value, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(bindings_.begin(), bindings_.end(),
+      std::find_if(_bindings.begin(), _bindings.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != bindings_.end() ) {
+  if ( ii != _bindings.end() ) {
     set_errmsg("Binding '%s' already exists", name);
     return false;
   }
 
-  bindings_.emplace_back();
+  _bindings.emplace_back();
 
   binding_desc & f =
-      bindings_.back();
+      _bindings.back();
 
   f.name = name;
   f.value = value;
@@ -1322,20 +1322,20 @@ bool c_math_expression::add_bind(double * value, const char * name, const char *
 bool c_math_expression::add_function(func00 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f00 = fn;
@@ -1350,20 +1350,20 @@ bool c_math_expression::add_function(func00 fn, const char * name, const char * 
 bool c_math_expression::add_function(func01 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f01 = fn;
@@ -1378,20 +1378,20 @@ bool c_math_expression::add_function(func01 fn, const char * name, const char * 
 bool c_math_expression::add_function(func02 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f02 = fn;
@@ -1406,20 +1406,20 @@ bool c_math_expression::add_function(func02 fn, const char * name, const char * 
 bool c_math_expression::add_function(func03 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f03 = fn;
@@ -1434,20 +1434,20 @@ bool c_math_expression::add_function(func03 fn, const char * name, const char * 
 bool c_math_expression::add_function(func04 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f04 = fn;
@@ -1462,20 +1462,20 @@ bool c_math_expression::add_function(func04 fn, const char * name, const char * 
 bool c_math_expression::add_function(func05 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f05 = fn;
@@ -1490,20 +1490,20 @@ bool c_math_expression::add_function(func05 fn, const char * name, const char * 
 bool c_math_expression::add_function(func06 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f06 = fn;
@@ -1518,20 +1518,20 @@ bool c_math_expression::add_function(func06 fn, const char * name, const char * 
 bool c_math_expression::add_function(func07 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f07 = fn;
@@ -1546,20 +1546,20 @@ bool c_math_expression::add_function(func07 fn, const char * name, const char * 
 bool c_math_expression::add_function(func08 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f08 = fn;
@@ -1574,20 +1574,20 @@ bool c_math_expression::add_function(func08 fn, const char * name, const char * 
 bool c_math_expression::add_function(func09 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f09 = fn;
@@ -1602,20 +1602,20 @@ bool c_math_expression::add_function(func09 fn, const char * name, const char * 
 bool c_math_expression::add_function(func10 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.f10 = fn;
@@ -1630,20 +1630,20 @@ bool c_math_expression::add_function(func10 fn, const char * name, const char * 
 bool c_math_expression::add_function(funcfn fn, void * param, int numargs, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(functions_.begin(), functions_.end(),
+      std::find_if(_functions.begin(), _functions.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != functions_.end() ) {
+  if ( ii != _functions.end() ) {
     set_errmsg("Function named '%s' already exists", name);
     return false;
   }
 
-  functions_.emplace_back();
+  _functions.emplace_back();
 
   function_desc & f =
-      functions_.back();
+      _functions.back();
 
   f.name = name;
   f.ffn = fn;
@@ -1660,20 +1660,20 @@ bool c_math_expression::add_function(funcfn fn, void * param, int numargs, const
 bool c_math_expression::add_unary_operation(func01 fn, const char * name, const char * desc)
 {
   const auto ii =
-      std::find_if(unops_.begin(), unops_.end(),
+      std::find_if(_unops.begin(), _unops.end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if ( ii != unops_.end() ) {
+  if ( ii != _unops.end() ) {
     set_errmsg("Unary operation '%s' already exists", name);
     return false;
   }
 
-  unops_.emplace_back();
+  _unops.emplace_back();
 
   unary_operation & f =
-      unops_.back();
+      _unops.back();
 
   f.name = name;
   f.fn = fn;
@@ -1691,25 +1691,25 @@ bool c_math_expression::add_binary_operation(int priority, func02 fn, const char
     return false;
   }
 
-  if( priority >= binops_.size() ) {
-    binops_.resize(priority + 1);
+  if( priority >= _binops.size() ) {
+    _binops.resize(priority + 1);
   }
 
   const auto ii =
-      std::find_if(binops_[priority].begin(), binops_[priority].end(),
+      std::find_if(_binops[priority].begin(), _binops[priority].end(),
           [name](const auto & f) {
             return f.name == name;
           });
 
-  if( ii != binops_[priority].end() ) {
+  if( ii != _binops[priority].end() ) {
     set_errmsg("Binary operation '%s' already exists with priority=%d", name, priority);
     return false;
   }
 
-  binops_[priority].emplace_back();
+  _binops[priority].emplace_back();
 
   binary_operation & f =
-      binops_[priority].back();
+      _binops[priority].back();
 
   f.fn = fn;
   f.name = name;

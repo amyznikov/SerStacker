@@ -30,32 +30,63 @@ const c_enum_member* members_of<c_auto_unsharp_mask_routine::COLOR_CHANNEL>()
   return members;
 }
 
+
+void c_auto_unsharp_mask_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "target_sharpness", ctx(&this_class::_target_sharpness), "");
+   ctlbind(ctls, "alpha_factor", ctx(&this_class::_alpha_factor), "");
+   ctlbind(ctls, "outmin", ctx(&this_class::_outmin), "");
+   ctlbind(ctls, "outmax", ctx(&this_class::_outmax), "");
+   ctlbind(ctls, "blur_color_channels", ctx(&this_class::_blur_color_channels), "");
+   ctlbind(ctls, "channel", ctx(&this_class::_channel), "");
+
+   ctlbind_expandable_group(ctls, "sharpness_measure", "");
+    c_sharpness_norm_measure::getcontrols(ctls, ctx(&this_class::_measure));
+   ctlbind_end_group(ctls);
+}
+
+bool c_auto_unsharp_mask_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _channel);
+    SERIALIZE_PROPERTY(settings, save, *this, sigma);
+    SERIALIZE_OPTION(settings, save, *this, _target_sharpness);
+    SERIALIZE_OPTION(settings, save, *this, _alpha_factor);
+    SERIALIZE_PROPERTY(settings, save, *this, norm_type);
+    SERIALIZE_OPTION(settings, save, *this, _blur_color_channels);
+    SERIALIZE_OPTION(settings, save, *this, _outmin);
+    SERIALIZE_OPTION(settings, save, *this, _outmax);
+    return true;
+  }
+  return false;
+}
+
 bool c_auto_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   const double current_sharpness =
-      measure_.measure(image, mask);
+      _measure.measure(image, mask);
 
   const double alpha =
       std::min(0.999999,
-          alpha_factor_ * (1. - current_sharpness * current_sharpness / (target_sharpness_ * target_sharpness_)));
+          _alpha_factor * (1. - current_sharpness * current_sharpness / (_target_sharpness * _target_sharpness)));
 
   CF_DEBUG("current_sharpness=%g target_sharpness=%g alpha=%g",
-      current_sharpness, target_sharpness_, alpha);
+      current_sharpness, _target_sharpness, alpha);
 
   if ( alpha < 0 ) {
     return true;
   }
 
 
-  if( channel_ == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
-    return unsharp_mask(image, mask, image, measure_.sigma(), alpha, outmin_, outmax_);
+  if( _channel == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
+    return unsharp_mask(image, mask, image, _measure.sigma(), alpha, _outmin, _outmax);
   }
 
   cv::Mat tmp;
   int cc;
   double cscale = 1.0;
 
-  switch (channel_) {
+  switch (_channel) {
 
     case COLOR_CHANNEL_0:
       cc = 0;
@@ -140,25 +171,25 @@ bool c_auto_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputO
       break;
 
     default:
-      CF_ERROR("APP BUG: Invalid color channel requested: %d", channel_);
+      CF_ERROR("APP BUG: Invalid color channel requested: %d", _channel);
       return false;
   }
 
   cv::extractChannel(image, tmp, cc);
 
-  if( measure_.sigma() > 0 ) {
-    unsharp_mask(tmp, mask, tmp, measure_.sigma(), alpha);
+  if( _measure.sigma() > 0 ) {
+    unsharp_mask(tmp, mask, tmp, _measure.sigma(), alpha);
   }
 
-  if( blur_color_channels_ > 0 ) {
+  if( _blur_color_channels > 0 ) {
     cv::GaussianBlur(image, image, cv::Size(-1, -1),
-        blur_color_channels_, blur_color_channels_,
+        _blur_color_channels, _blur_color_channels,
         cv::BORDER_REPLICATE);
   }
 
   cv::insertChannel(tmp, image, cc);
 
-  switch (channel_) {
+  switch (_channel) {
 
     case COLOR_CHANNEL_YCrCb:
       cv::cvtColor(image, image, cv::COLOR_YCrCb2BGR);
@@ -181,9 +212,9 @@ bool c_auto_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputO
       break;
   }
 
-  if ( outmax_ > outmin_ ) {
-    cv::max(image, outmin_, image);
-    cv::min(image, outmax_, image);
+  if ( _outmax > _outmin ) {
+    cv::max(image, _outmin, image);
+    cv::min(image, _outmax, image);
   }
 
   return true;

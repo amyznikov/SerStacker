@@ -217,92 +217,192 @@ bool c_camera_calibration_pipeline::serialize(c_config_setting settings, bool sa
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipeline::get_controls()
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_camera_calibration_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-
-  if( ctrls.empty() ) {
-
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls); // , _this->_input_options
-
-    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.method, "Method", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_size, "chessboard_size", "Size of chessboard - number of internal chessboard corners");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_cell_size, "chessboard_cell_size", "cell size in [m]");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
+  using S = c_camera_calibration_input_options;
+  using Base = c_image_processing_pipeline_input_options;
+  ctlbind(ctls, as_base<Base>(ctx));
+}
 
 
-      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options. findChessboardCorners.max_scales, "max_scales", "See documentation to cv::findChessboardCorners()");
-      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "See documentation to cv::findChessboardCorners()");
-      PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_calibrate_camera_options> & ctx)
+{
+  using S = c_calibrate_camera_options;
 
-      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.findChessboardCornersSB.max_scales, "max_scales", "See documentation to cv::findChessboardCornersSB()");
-      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "See documentation to cv::findChessboardCornersSB()");
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "enable_calibration", ctx(&S::enable_calibration), "");
+  ctlbind_group(ctls, ctx(&S::enable_calibration));
+    ctlbind(ctls, "min_frames", ctx(&S::min_frames), "");
+    ctlbind(ctls, "max_frames", ctx(&S::max_frames), "");
+    ctlbind_flags_checkbox<CAMERA_CALIBRATION_FLAGS>(ctls, "calibration flags", ctx(&S::calibration_flags), "");
+    ctlbind(ctls, "auto_tune_calibration_flags", ctx(&S::auto_tune_calibration_flags), "");
+    ctlbind(ctls, "init_camera_matrix_2d", ctx(&S::init_camera_matrix_2d), "");
+    ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+    ctlbind(ctls, "solver_eps", ctx(&S::solver_eps), "");
+    ctlbind(ctls, "filter_alpha", ctx(&S::filter_alpha), "");
+  ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.winSize, "winSize", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.zeroZone, "zeroZone", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.solver_eps, "solver_eps", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.d, "d", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaColor, "sigmaColor", "");
-      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaSpace, "sigmaSpace", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_camera_calibration_output_options> & ctx)
+{
+  using S = c_camera_calibration_output_options;
 
-    PIPELINE_CTL_GROUP(ctrls, "Calibration options", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.enable_calibration, "enable_calibration", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.min_frames, "min_frames", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.max_frames, "max_frames", "");
-    PIPELINE_CTL_BITFLAGS(ctrls, _calibration_options.calibration_flags, CAMERA_CALIBRATION_FLAGS,  "calibration flags", "" );
-    PIPELINE_CTL(ctrls,  _calibration_options.auto_tune_calibration_flags, "auto_tune_calibration_flags", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.init_camera_matrix_2d, "init_camera_matrix_2d", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.max_iterations, "max_iterations", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.solver_eps, "solver_eps", "");
-    PIPELINE_CTL(ctrls,  _calibration_options.filter_alpha, "filter_alpha", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
 
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
-      PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
-      PIPELINE_CTL(ctrls, _output_options.output_intrinsics_filename, "intrinsics_filename", "");
+  ctlbind_browse_for_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
+  ctlbind_browse_for_file(ctls, "output_coverage_frame_filename", ctx(&S::output_coverage_frame_filename), "");
 
-      PIPELINE_CTL(ctrls, _output_options.save_coverage_frame, "save_coverage_frame", "");
-      PIPELINE_CTLC(ctrls, _output_options.output_coverage_frame_filename, "coverage_frame_filename", "", _this->_output_options.save_coverage_frame);
+  ctlbind(ctls, "Save Coverage Frame", ctx(&S::save_coverage_frame), "");
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
-        PIPELINE_CTL(ctrls, _output_options.save_chessboard_frames, "save_chessboard_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_chessboard_video_options,
-            _this->_output_options.save_chessboard_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Rectified Video ...", "");
+    ctlbind(ctls, "save rectified video", ctx(&S::save_rectified_frames), "");
+    ctlbind_group(ctls, ctx(&S::save_rectified_frames));
+      ctlbind(ctls, ctx(&S::output_rectified_video_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
-        PIPELINE_CTL(ctrls, _output_options.save_rectified_frames, "save_rectified_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_rectified_video_options,
-            _this->_output_options.save_rectified_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Chessboard Video ...", "");
+    ctlbind(ctls, "save chessboard video", ctx(&S::save_chessboard_frames), "");
+    ctlbind_group(ctls, ctx(&S::save_chessboard_frames));
+      ctlbind(ctls, ctx(&S::output_chessboard_video_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
 
+  ctlbind_expandable_group(ctls, "Save Debug Video ...", "");
+    ctlbind(ctls, "save_debug_video", ctx(&S::save_debug_video), "");
+    ctlbind_group(ctls, ctx(&S::save_debug_video));
+      ctlbind(ctls, ctx(&S::output_debug_video_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Debug video", "");
-        PIPELINE_CTL(ctrls, _output_options.save_debug_video, "save_debug_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_debug_video_options, _this->_output_options.save_debug_video);
-      PIPELINE_CTL_END_GROUP(ctrls);
+const c_ctlist<c_camera_calibration_pipeline> & c_camera_calibration_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
 
+    ctlbind_expandable_group(ctls, "1. Input options", "");
+      ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
 
+    ctlbind_expandable_group(ctls, "2. Chessboard corners detection", "");
+      ctlbind(ctls, ctx(&this_class::_chessboard_detection_options));
 
-    PIPELINE_CTL_END_GROUP(ctrls);
+      ctlbind_menu_button(ctls, "Options...", ctx);
+        ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+            std::function([](this_class * _ths) {
+              ctlbind_copy_config_to_clipboard("c_chessboard_corners_detection_options", _ths->_chessboard_detection_options);
+              return false;
+            }));
+        ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+            std::function([](this_class * _ths) {
+              return  ctlbind_paste_config_from_clipboard("c_chessboard_corners_detection_options", &_ths->_chessboard_detection_options);
+            }));
+
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "3. Calibration options", "");
+      ctlbind(ctls, ctx(&this_class::_calibration_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "4. Output options", "");
+    ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+//
+//const std::vector<c_image_processing_pipeline_ctrl> & c_camera_calibration_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+////
+////  if( ctrls.empty() ) {
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.method, "Method", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_size, "chessboard_size", "Size of chessboard - number of internal chessboard corners");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_cell_size, "chessboard_cell_size", "cell size in [m]");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
+////
+////
+////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options. findChessboardCorners.max_scales, "max_scales", "See documentation to cv::findChessboardCorners()");
+////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "See documentation to cv::findChessboardCorners()");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.findChessboardCornersSB.max_scales, "max_scales", "See documentation to cv::findChessboardCornersSB()");
+////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "See documentation to cv::findChessboardCornersSB()");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.winSize, "winSize", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.zeroZone, "zeroZone", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.solver_eps, "solver_eps", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.d, "d", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaColor, "sigmaColor", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaSpace, "sigmaSpace", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Calibration options", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.enable_calibration, "enable_calibration", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.min_frames, "min_frames", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.max_frames, "max_frames", "");
+////    PIPELINE_CTL_BITFLAGS(ctrls, _calibration_options.calibration_flags, CAMERA_CALIBRATION_FLAGS,  "calibration flags", "" );
+////    PIPELINE_CTL(ctrls,  _calibration_options.auto_tune_calibration_flags, "auto_tune_calibration_flags", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.init_camera_matrix_2d, "init_camera_matrix_2d", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.max_iterations, "max_iterations", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.solver_eps, "solver_eps", "");
+////    PIPELINE_CTL(ctrls,  _calibration_options.filter_alpha, "filter_alpha", "");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////      PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_intrinsics_filename, "intrinsics_filename", "");
+////
+////      PIPELINE_CTL(ctrls, _output_options.save_coverage_frame, "save_coverage_frame", "");
+////      PIPELINE_CTLC(ctrls, _output_options.output_coverage_frame_filename, "coverage_frame_filename", "", _this->_output_options.save_coverage_frame);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_chessboard_frames, "save_chessboard_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_chessboard_video_options,
+////            _this->_output_options.save_chessboard_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_rectified_frames, "save_rectified_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_rectified_video_options,
+////            _this->_output_options.save_rectified_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Debug video", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_debug_video, "save_debug_video", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_debug_video_options, _this->_output_options.save_debug_video);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////  }
+//
+//  return ctrls;
+//}
 
 bool c_camera_calibration_pipeline::copyParameters(const base::sptr & dst) const
 {

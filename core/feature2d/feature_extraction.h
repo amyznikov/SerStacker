@@ -268,115 +268,63 @@ members_of<BoostDesc_Type>();
 template<class cvFeature2D_type>
 struct feature2d_traits;
 
-template<> struct feature2d_traits<cv::ORB> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB;
-};
-template<> struct feature2d_traits<cv::BRISK> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;
-};
-template<> struct feature2d_traits<cv::MSER> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_MSER;
-};
-template<> struct feature2d_traits<cv::FastFeatureDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;
-};
-template<> struct feature2d_traits<cv::AgastFeatureDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;
-};
-template<> struct feature2d_traits<cv::GFTTDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_GFTT;
-};
-template<> struct feature2d_traits<cv::SimpleBlobDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;
-};
-template<> struct feature2d_traits<cv::KAZE> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;
-};
-template<> struct feature2d_traits<cv::AKAZE> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;
-};
+template<> struct feature2d_traits<cv::ORB> { static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB; };
+template<> struct feature2d_traits<cv::BRISK> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
+template<> struct feature2d_traits<cv::MSER> { static constexpr FEATURE2D_TYPE type = FEATURE2D_MSER;};
+template<> struct feature2d_traits<cv::FastFeatureDetector> { static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;};
+template<> struct feature2d_traits<cv::AgastFeatureDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
+template<> struct feature2d_traits<cv::GFTTDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_GFTT; };
+template<> struct feature2d_traits<cv::SimpleBlobDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;};
+template<> struct feature2d_traits<cv::KAZE> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
+template<> struct feature2d_traits<cv::AKAZE> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
+
 #if  HAVE_FEATURE2D_BRIEF
-template<> struct feature2d_traits<cv::xfeatures2d::BriefDescriptorExtractor> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_BRIEF;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::BriefDescriptorExtractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BRIEF;};
 #endif
+
 #if HAVE_FEATURE2D_SIFT
-template<> struct feature2d_traits<SIFT> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_SIFT;
-};
+template<> struct feature2d_traits<SIFT> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SIFT;};
 #endif
+
 #if HAVE_FEATURE2D_SURF
-template<> struct feature2d_traits<SURF> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_SURF;
-};
+template<> struct feature2d_traits<SURF> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SURF;};
 #endif
+
 #if HAVE_FEATURE2D_FREAK
-template<> struct feature2d_traits<cv::xfeatures2d::FREAK> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_FREAK;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::FREAK> {static constexpr FEATURE2D_TYPE type = FEATURE2D_FREAK;};
 #endif
+
 #if HAVE_FEATURE2D_STAR
-template<> struct feature2d_traits<cv::xfeatures2d::StarDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::StarDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR;};
 #endif
+
 #if HAVE_FEATURE2D_LUCID
-template<> struct feature2d_traits<cv::xfeatures2d::LUCID> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_LUCID;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::LUCID> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LUCID;};
 #endif
+
 #if HAVE_FEATURE2D_LATCH
-template<> struct feature2d_traits<cv::xfeatures2d::LATCH> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_LATCH;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::LATCH> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LATCH;};
 #endif
+
 #if HAVE_FEATURE2D_DAISY
-template<> struct feature2d_traits<cv::xfeatures2d::DAISY> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_DAISY;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::DAISY> {static constexpr FEATURE2D_TYPE type = FEATURE2D_DAISY;};
 #endif
+
 #if HAVE_FEATURE2D_MSD
-template<> struct feature2d_traits<cv::xfeatures2d::MSDDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_MSD;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::MSDDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MSD;};
 #endif
+
 #if HAVE_FEATURE2D_VGG
-template<> struct feature2d_traits<cv::xfeatures2d::VGG> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_VGG;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::VGG> {static constexpr FEATURE2D_TYPE type = FEATURE2D_VGG;};
 #endif
+
 #if HAVE_FEATURE2D_BOOST
-template<> struct feature2d_traits<cv::xfeatures2d::BoostDesc> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_BOOST;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::BoostDesc> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BOOST;};
 #endif
+
 #if HAVE_FEATURE2D_HL
-template<> struct feature2d_traits<cv::xfeatures2d::HarrisLaplaceFeatureDetector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_HL;
-};
+template<> struct feature2d_traits<cv::xfeatures2d::HarrisLaplaceFeatureDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_HL;};
 #endif
-#if HAVE_STAR_EXTRACTOR
-template<> struct feature2d_traits<c_star_extractor> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;
-};
-#endif
-#if HAVE_TRIANGLE_EXTRACTOR
-template<> struct feature2d_traits<c_triangle_extractor> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;
-};
-#endif
-#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
-template<> struct feature2d_traits<c_simple_planetary_disk_detector> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;
-};
-#endif
-#if HAVE_MORPH_EXTRACTOR
-template<> struct feature2d_traits<c_morph_features_extractor> {
-  static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;
-};
-#endif
-
-
 
 class c_feature2d
 {
@@ -525,6 +473,8 @@ protected:
   const options opts_;
 };
 
+template<> struct feature2d_traits<c_feature2d_orb> { static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB; };
+
 class c_feature2d_brisk :
     public c_feature2d_base<cv::BRISK>
 {
@@ -561,6 +511,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_brisk> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
 
 class c_feature2d_mser :
     public c_feature2d_base<cv::MSER>
@@ -609,6 +560,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_mser> { static constexpr FEATURE2D_TYPE type = FEATURE2D_MSER;};
 
 class c_feature2d_fast :
     public c_feature2d_base<cv::FastFeatureDetector>
@@ -646,6 +598,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_fast> { static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;};
 
 class c_feature2d_agast :
     public c_feature2d_base<cv::AgastFeatureDetector>
@@ -683,6 +636,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_agast> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
 
 class c_feature2d_gftt :
     public c_feature2d_base<cv::GFTTDetector>
@@ -728,6 +682,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_gftt> {static constexpr FEATURE2D_TYPE type = FEATURE2D_GFTT; };
 
 class c_feature2d_blob :
     public c_feature2d_base<cv::SimpleBlobDetector>
@@ -760,6 +715,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_blob> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;};
 
 class c_feature2d_kaze :
     public c_feature2d_base<cv::KAZE>
@@ -803,6 +759,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_kaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
 
 class c_feature2d_akaze :
     public c_feature2d_base<cv::AKAZE>
@@ -848,8 +805,9 @@ protected:
 
 protected:
   const options opts_;
-
 };
+template<> struct feature2d_traits<c_feature2d_akaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
+
 
 #if HAVE_FEATURE2D_SIFT
 class c_feature2d_sift :
@@ -891,6 +849,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_sift> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SIFT;};
 #endif // HAVE_FEATURE2D_SIFT
 
 #if HAVE_FEATURE2D_SURF
@@ -933,6 +892,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_surf> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SURF;};
 #endif // HAVE_SURF
 
 #if HAVE_FEATURE2D_FREAK
@@ -977,6 +937,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_freak> {static constexpr FEATURE2D_TYPE type = FEATURE2D_FREAK;};
 #endif
 
 #if HAVE_FEATURE2D_STAR
@@ -1019,6 +980,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_star> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR;};
 #endif
 
 #if HAVE_FEATURE2D_BRIEF
@@ -1055,6 +1017,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_brief> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BRIEF;};
 #endif
 
 #if HAVE_FEATURE2D_LUCID
@@ -1091,6 +1054,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_lucid> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LUCID;};
 #endif
 
 #if HAVE_FEATURE2D_LATCH
@@ -1131,6 +1095,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_latch> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LATCH;};
 #endif
 
 #if HAVE_FEATURE2D_DAISY
@@ -1179,6 +1144,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_daisy> {static constexpr FEATURE2D_TYPE type = FEATURE2D_DAISY;};
 #endif
 
 #if HAVE_FEATURE2D_MSD
@@ -1228,8 +1194,8 @@ protected:
 
 protected:
   const options opts_;
-
 };
+template<> struct feature2d_traits<c_feature2d_msd> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MSD;};
 #endif
 
 #if HAVE_FEATURE2D_VGG
@@ -1274,7 +1240,7 @@ protected:
 protected:
   const options opts_;
 };
-
+template<> struct feature2d_traits<c_feature2d_vgg> {static constexpr FEATURE2D_TYPE type = FEATURE2D_VGG;};
 #endif
 
 #if HAVE_FEATURE2D_BOOST
@@ -1312,8 +1278,8 @@ protected:
 
 protected:
   const options opts_;
-
 };
+template<> struct feature2d_traits<c_feature2d_boost> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BOOST;};
 #endif
 
 #if HAVE_FEATURE2D_HL
@@ -1356,6 +1322,7 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_feature2d_hl> {static constexpr FEATURE2D_TYPE type = FEATURE2D_HL;};
 #endif
 
 #if HAVE_STAR_EXTRACTOR
@@ -1411,6 +1378,9 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_star_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;};
+template<> struct feature2d_traits<c_feature2d_star_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;};
+
 #endif
 
 #if HAVE_MORPH_EXTRACTOR
@@ -1446,7 +1416,8 @@ protected:
 protected:
   const options opts_;
 };
-
+template<> struct feature2d_traits<c_morph_features_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;};
+template<> struct feature2d_traits<c_feature2d_morph_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;};
 #endif
 
 
@@ -1488,8 +1459,8 @@ protected:
 protected:
   const options opts_;
 };
-
-
+template<> struct feature2d_traits<c_simple_planetary_disk_detector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;};
+template<> struct feature2d_traits<c_feature2d_planetary_disk_detector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;};
 #endif
 
 
@@ -1527,6 +1498,8 @@ protected:
 protected:
   const options opts_;
 };
+template<> struct feature2d_traits<c_triangle_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;};
+template<> struct feature2d_traits<c_feature2d_triangle_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;};
 #endif
 
 
@@ -1676,6 +1649,29 @@ struct c_sparse_feature_detector_options
 #endif
 };
 
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_sparse_feature_detector_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_sparse_feature_detector_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::SparseFeatureDetector;
+
+  c.sparse_feature_detector =
+      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
+
+
+
 
 struct c_sparse_feature_descriptor_options
 {
@@ -1719,6 +1715,32 @@ struct c_sparse_feature_descriptor_options
   c_feature2d_triangle_extractor::options triangles;
 #endif
 };
+
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_sparse_feature_descriptor_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_sparse_feature_descriptor_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::SparseFeatureDescriptor;
+
+  const size_t offset = ctx.offset;
+
+  c.sparse_feature_descriptor =
+      [offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
+
+
 
 struct c_sparse_feature_extractor_options
 {

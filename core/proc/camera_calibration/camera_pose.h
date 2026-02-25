@@ -11,6 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/proc/pose.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 
 // OpenCV version macro
@@ -500,6 +501,31 @@ struct c_lm_camera_pose3_options:
     cv::Point2f E;
 };
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_lm_camera_pose_options> & ctx)
+{
+  using S = c_lm_camera_pose_options;
+
+  ctlbind(ctls, "robust_threshold", ctx(&S::robust_threshold), "");
+  ctlbind(ctls, "epsf", ctx(&S::epsf), "");
+  ctlbind(ctls, "epsx", ctx(&S::epsx), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "max_levmar_iterations", ctx(&S::max_levmar_iterations), "");
+  ctlbind(ctls, "direction", ctx(&S::direction), "");
+  ctlbind(ctls, "lm", ctx(&S::lm), "");
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_lm_camera_pose3_options> & ctx)
+{
+  using S = c_lm_camera_pose3_options;
+
+   ctlbind(ctls, "erfactor", ctx(&S::erfactor), "" );
+   ctlbind(ctls, "ew", ctx(&S::ew), "" );
+   ctlbind(ctls, "E", ctx(&S::E), "" );
+   ctlbind(ctls, as_base<c_lm_camera_pose_options>(ctx));
+}
+
 /**
  * Use of c_levmar_solver to refine camera pose estimated from essential matrix
  */
@@ -564,5 +590,7 @@ bool bfgs_camera_pose_and_derotation_homography(
     /* out, opt */ cv::Matx33d * outputFundamentalMatrix,
     /* out, opt */ cv::Matx33d * outputDerotationHomography,
     /* in, out, opt */ cv::InputOutputArray M);
+
+
 
 #endif /* __camera_pose_h__ */

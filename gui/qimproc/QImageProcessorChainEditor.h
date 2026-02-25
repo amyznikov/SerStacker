@@ -10,7 +10,7 @@
 #define __QImageProcessorChainEditor_h__
 
 //#include "QImageProcessorRoutineSettings.h"
-#include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QSettingsWidgetTemplate.h>
 #include <gui/widgets/UpdateControls.h>
 #include <core/improc/c_image_processor.h>
 
@@ -57,25 +57,23 @@ protected:
   QAction * removeProcAction_ = nullptr;
 };
 
-
-class QImageProcessorSettingsControl :
-    public QSettingsWidget
+class QImageProcessorSettingsControl2 :
+    public QSettingsWidgetTemplate<c_image_processor_routine>
 {
   Q_OBJECT;
 public:
-  typedef QImageProcessorSettingsControl ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QImageProcessorSettingsControl2 ThisClass;
+  typedef QSettingsWidgetTemplate<c_image_processor_routine> Base;
 
-  static QImageProcessorSettingsControl * create(const c_image_processor_routine::ptr & processor,
+  static QImageProcessorSettingsControl2 * create(const c_image_processor_routine::ptr & processor,
       QWidget * parent = nullptr);
 
 protected:
-  QImageProcessorSettingsControl(const c_image_processor_routine::ptr & processor, QWidget * parent = nullptr);
+  QImageProcessorSettingsControl2(const c_image_processor_routine::ptr & processor, QWidget * parent = nullptr);
   virtual void setupControls();
-  void onupdatecontrols() override;
 
 protected:
-  c_image_processor_routine::ptr processor_;
+  c_image_processor_routine::ptr _processor;
 };
 
 #endif /* __QImageProcessorChainEditor_h__ */

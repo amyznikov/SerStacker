@@ -8,6 +8,7 @@
 #include "QDisplayVideoWriterOptions.h"
 #include <gui/widgets/style.h>
 #include <gui/widgets/createAction.h>
+#include <gui/widgets/settings.h>
 #include <core/debug.h>
 
 #define ICON_video_start    ":/qdisplayvideowriter/icons/video-start.png"
@@ -18,7 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
-    Base("QDisplayVideoWriterOptions", parent)
+    Base(parent)
 {
   Q_INIT_RESOURCE(qdisplayvideowriter_resources);
 
@@ -27,14 +28,13 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
           QFileDialog::AcceptMode::AcceptSave,
           QFileDialog::FileMode::Directory,
           [this](const QString & s) {
-            if ( videoWriter_ ) {
-              videoWriter_->setOutputPath(s);
-              save_parameter(PREFIX, "outputPath", videoWriter_->outputPath());
+            if ( _opts ) {
+              _opts->setOutputPath(s);
             }
           },
           [this](QString * s) {
-            if ( videoWriter_ ) {
-              * s = videoWriter_->outputPath();
+            if ( _opts ) {
+              * s = _opts->outputPath();
               return true;
             }
             return false;
@@ -43,14 +43,13 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
   ffoptions_ctl =
       add_ffmpeg_options_control("ffmpeg opts:", "Options for ffmpeg AVI writer",
           [this](const QString & s) {
-            if ( videoWriter_ ) {
-              videoWriter_->setFfoptions(s);
-              save_parameter(PREFIX, "ffoptions", videoWriter_->ffoptions());
+            if ( _opts ) {
+              _opts->setFfoptions(s);
             }
           },
           [this](QString * s) {
-            if ( videoWriter_ ) {
-              * s = videoWriter_->ffoptions();
+            if ( _opts ) {
+              * s = _opts->ffoptions();
               return true;
             }
             return false;
@@ -59,14 +58,13 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
   outputFilenamePrefix_ctl =
       add_textbox("Prefix:", "Optional prefix for output file name",
           [this](const QString & s) {
-            if ( videoWriter_ ) {
-              videoWriter_->setOutputFilenamePrefix(s);
-              save_parameter(PREFIX, "outputFilenamePrefix", videoWriter_->outputFilenamePrefix());
+            if ( _opts ) {
+              _opts->setOutputFilenamePrefix(s);
             }
           },
           [this](QString * s) {
-            if ( videoWriter_ ) {
-              *s = videoWriter_->outputFilenamePrefix();
+            if ( _opts ) {
+              *s = _opts->outputFilenamePrefix();
               return true;
             }
             return false;
@@ -75,14 +73,13 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
   outputFilenameSuffix_ctl =
       add_textbox("Suffix:", "Optional suffix for output file name",
           [this](const QString & s) {
-            if ( videoWriter_ ) {
-              videoWriter_->setOutputFilenameSuffix(s);
-              save_parameter(PREFIX, "outputFilenameSuffix", videoWriter_->outputFilenameSuffix());
+            if ( _opts ) {
+              _opts->setOutputFilenameSuffix(s);
             }
           },
           [this](QString * s) {
-            if ( videoWriter_ ) {
-              *s = videoWriter_->outputFilenameSuffix();
+            if ( _opts ) {
+              *s = _opts->outputFilenameSuffix();
               return true;
             }
             return false;
@@ -92,14 +89,13 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
       add_checkbox("Write Viewport",
           "Set checked to write image viewer viewport instead of raw display image",
           [this](bool checked) {
-            if ( videoWriter_ ) {
-              videoWriter_->setWriteViewPort(checked);
-              save_parameter(PREFIX, "writeViewPort", videoWriter_->writeViewPort());
+            if ( _opts ) {
+              _opts->setWriteViewPort(checked);
             }
           },
           [this](bool * checked) {
-            if ( videoWriter_ ) {
-              * checked = videoWriter_->writeViewPort();
+            if ( _opts ) {
+              * checked = _opts->writeViewPort();
               return true;
             }
             return false;
@@ -110,11 +106,11 @@ QDisplayVideoWriterOptions::QDisplayVideoWriterOptions(QWidget * parent) :
 
 void QDisplayVideoWriterOptions::setVideoWriter(QDisplayVideoWriter * writer)
 {
-  if( videoWriter_ ) {
-    videoWriter_->disconnect(this);
+  if( _opts ) {
+    _opts->disconnect(this);
   }
 
-  if( (videoWriter_ = writer) ) {
+  if( (_opts = writer) ) {
   }
 
   updateControls();
@@ -122,44 +118,49 @@ void QDisplayVideoWriterOptions::setVideoWriter(QDisplayVideoWriter * writer)
 
 QDisplayVideoWriter* QDisplayVideoWriterOptions::videoWriter() const
 {
-  return videoWriter_;
+  return _opts;
 }
 
-void QDisplayVideoWriterOptions::onupdatecontrols()
+void QDisplayVideoWriterOptions::onload(const QSettings & settings, const QString & prefix)
 {
-  if( !videoWriter_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
-}
+  if( _opts ) {
 
-void QDisplayVideoWriterOptions::onload(QSettings & settings)
-{
-  if( videoWriter_ ) {
+    const QString PREFIX = prefix.isEmpty() ? "QDisplayVideoWriter" : prefix;
 
-    QString outputPath = videoWriter_->outputPath();
+    QString outputPath = _opts->outputPath();
     if( load_parameter(settings, PREFIX, "outputPath", &outputPath) ) {
-      videoWriter_->setOutputPath(outputPath);
+      _opts->setOutputPath(outputPath);
     }
 
-    QString ffoptions = videoWriter_->ffoptions();
+    QString ffoptions = _opts->ffoptions();
     if( load_parameter(settings, PREFIX, "ffoptions", &ffoptions) ) {
-      videoWriter_->setFfoptions(ffoptions);
+      _opts->setFfoptions(ffoptions);
     }
 
-    QString outputFilenamePrefix = videoWriter_->outputFilenamePrefix();
+    QString outputFilenamePrefix = _opts->outputFilenamePrefix();
     if( load_parameter(settings, PREFIX, "outputFilenamePrefix", &outputFilenamePrefix) ) {
-      videoWriter_->setOutputFilenamePrefix(outputFilenamePrefix);
+      _opts->setOutputFilenamePrefix(outputFilenamePrefix);
     }
 
-    QString outputFilenameSuffix = videoWriter_->outputFilenameSuffix();
+    QString outputFilenameSuffix = _opts->outputFilenameSuffix();
     if( load_parameter(settings, PREFIX, "outputFilenameSuffix", &outputFilenameSuffix) ) {
-      videoWriter_->setOutputFilenameSuffix(outputFilenameSuffix);
+      _opts->setOutputFilenameSuffix(outputFilenameSuffix);
     }
   }
+}
+
+void QDisplayVideoWriterOptions::onsave(QSettings & settings, const QString & prefix)
+{
+  if( _opts ) {
+
+    const QString PREFIX = prefix.isEmpty() ? "QDisplayVideoWriter" : prefix;
+
+    save_parameter(settings, PREFIX, "outputPath", _opts->outputPath());
+    save_parameter(settings, PREFIX, "ffoptions", _opts->ffoptions());
+    save_parameter(settings, PREFIX, "outputFilenamePrefix", _opts->outputFilenamePrefix());
+    save_parameter(settings, PREFIX, "outputFilenameSuffix", _opts->outputFilenameSuffix());
+  }
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,40 +171,22 @@ QDisplayVideoWriterOptionsDialogBox::QDisplayVideoWriterOptionsDialogBox(QWidget
 }
 
 QDisplayVideoWriterOptionsDialogBox::QDisplayVideoWriterOptionsDialogBox(const QString & title, QWidget * parent) :
-    Base(parent)
+    Base(title, parent)
 {
-  QVBoxLayout *vbox = new QVBoxLayout(this);
-  vbox->addWidget(options_ctl = new QDisplayVideoWriterOptions(this));
-  setWindowTitle(title);
   setWindowIcon(getIcon(ICON_video_options));
 }
 
 void QDisplayVideoWriterOptionsDialogBox::setVideoWriter(QDisplayVideoWriter * writer)
 {
-  options_ctl->setVideoWriter(writer);
+  _settings->setVideoWriter(writer);
 }
 
 QDisplayVideoWriter* QDisplayVideoWriterOptionsDialogBox::videoWriter() const
 {
-  return options_ctl->videoWriter();
+  return _settings->videoWriter();
 }
 
-void QDisplayVideoWriterOptionsDialogBox::loadParameters()
-{
-  options_ctl->loadParameters();
-}
 
-void QDisplayVideoWriterOptionsDialogBox::showEvent(QShowEvent * e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QDisplayVideoWriterOptionsDialogBox::hideEvent(QHideEvent * e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -261,6 +244,7 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
           }
 
           dlgbox->setVideoWriter(writer);
+          dlgbox->loadSettings();
           dlgbox->show();
         }
 

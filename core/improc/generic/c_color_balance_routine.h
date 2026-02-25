@@ -18,19 +18,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_color_balance_routine,
       "color_balance", "Test for c_color_balance_routine");
 
-  void set_gscale(double v);
-  double gscale() const;
-
-  void set_alpha(double v);
-  double alpha() const;
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double gscale_ = 1.0;
-  double alpha_ = 0;
+  double _gscale = 1.0;
+  double _alpha = 0;
 };
 
 #endif /* __c_color_balance_routine_h__ */

@@ -8,17 +8,17 @@
 #include "c_debayer_image_routine.h"
 #include <core/debug.h>
 
-void c_debayer_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_debayer_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, colorid, "Select source image colorID ");
-  BIND_PCTRL(ctls, method, "Select algorithm used for debayer");
+   ctlbind(ctls, "colorid", ctx(&this_class::_colorid), "Source image colorID");
+   ctlbind(ctls, "method", ctx(&this_class::_method), "Algorithm used for debayer");
 }
 
 bool c_debayer_image_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, colorid);
-    SERIALIZE_PROPERTY(settings, save, *this, method);
+    SERIALIZE_OPTION(settings, save, *this, _colorid);
+    SERIALIZE_OPTION(settings, save, *this, _method);
     return true;
   }
   return false;

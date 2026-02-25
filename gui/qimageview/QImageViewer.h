@@ -108,6 +108,10 @@ public:
 
   virtual void populateContextMenu(QMenu & menu, const QPoint & mpos);
 
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
 
 Q_SIGNALS:
   void onMouseMove(QMouseEvent * e);
@@ -135,6 +139,8 @@ protected:
   virtual void createDisplayImage();
   virtual void showCurrentDisplayImage();
   void updateCursor();
+  virtual void onload(const QSettings & settings, const QString & prefix);
+  virtual void onsave(QSettings & settings, const QString & prefix);
 
 public Q_SLOTS:
   virtual void updateDisplay();

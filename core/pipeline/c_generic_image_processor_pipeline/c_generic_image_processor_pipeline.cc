@@ -32,33 +32,24 @@ c_generic_image_processor_input_options & c_generic_image_processor_pipeline::in
 
 const c_generic_image_processor_options & c_generic_image_processor_pipeline::processing_options() const
 {
-  return processing_options_;
+  return _processing_options;
 }
 
 c_generic_image_processor_options & c_generic_image_processor_pipeline::processing_options()
 {
-  return processing_options_;
+  return _processing_options;
 }
 
 const c_generic_image_processor_output_options & c_generic_image_processor_pipeline::output_options() const
 {
-  return output_options_;
+  return _output_options;
 }
 
 c_generic_image_processor_output_options & c_generic_image_processor_pipeline::output_options()
 {
-  return output_options_;
+  return _output_options;
 }
 
-//void c_generic_image_processor_pipeline::set_output_file_name(const std::string & v)
-//{
-//  output_file_name_ = v;
-//}
-//
-//const std::string & c_generic_image_processor_pipeline::output_file_name() const
-//{
-//  return output_file_name_;
-//}
 
 bool c_generic_image_processor_pipeline::initialize_pipeline()
 {
@@ -68,14 +59,7 @@ bool c_generic_image_processor_pipeline::initialize_pipeline()
  }
 
   _output_path =
-      create_output_path(output_options_.output_directory);
-
-//  if( output_options_.save_processed_frames ) {
-//    output_file_name_ =
-//        generate_output_filename(output_options_.processed_file_options.output_filename,
-//            "processed",
-//            ".avi");
-//  }
+      create_output_path(_output_options.output_directory);
 
   return true;
 }
@@ -84,12 +68,10 @@ void c_generic_image_processor_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
 
-  if ( processed_file_writer_.is_open() ) {
-    CF_DEBUG("Closing '%s'", processed_file_writer_.filename().c_str());
-    processed_file_writer_.close();
+  if ( _processed_file_writer.is_open() ) {
+    CF_DEBUG("Closing '%s'", _processed_file_writer.filename().c_str());
+    _processed_file_writer.close();
   }
-
-  // sharpness_norm_measure_.reset();
 }
 
 bool c_generic_image_processor_pipeline::run_pipeline()
@@ -135,11 +117,6 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       return false;
     }
 
-//    if( processing_options_.adjust_sharpness && !compute_averaged_sharpeness(start_pos, end_pos) ) {
-//      CF_ERROR("ERROR: compute_average_sharpness() fails");
-//      return false;
-//    }
-
     if( !_input_sequence->seek(start_pos) ) {
       CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
       return false;
@@ -158,7 +135,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !_input_sequence->read(current_image_, &current_mask_) ) {
+      if( !_input_sequence->read(_current_image, &_current_mask) ) {
         CF_DEBUG("input_sequence_->read() fails");
         return false;
       }
@@ -172,7 +149,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
       lock_guard lock(mutex());
 
-      if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(_current_image, _current_mask) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }
@@ -205,28 +182,28 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
 bool c_generic_image_processor_pipeline::process_current_frame()
 {
-  if( processing_options_.image_processor && !processing_options_.image_processor->empty() ) {
-    if( !processing_options_.image_processor->process(current_image_, current_mask_) ) {
+  if( _processing_options.image_processor && !_processing_options.image_processor->empty() ) {
+    if( !_processing_options.image_processor->process(_current_image, _current_mask) ) {
       CF_ERROR("image_processor->process() fails");
       return false;
     }
   }
 
-  if( output_options_.save_processed_frames ) {
+  if( _output_options.save_processed_frames ) {
 
-    if( !processed_file_writer_.is_open() ) {
+    if( !_processed_file_writer.is_open() ) {
 
       const std::string output_filename =
-          generate_output_filename(output_options_.processed_file_options.output_filename,
+          generate_output_filename(_output_options.processed_file_options.output_filename,
               "processed",
               ".avi");
 
       const bool fOk =
-          processed_file_writer_.open(output_filename,
-              output_options_.processed_file_options.ffmpeg_opts,
-              output_options_.processed_file_options.output_image_processor,
-              output_options_.processed_file_options.output_pixel_depth,
-              output_options_.processed_file_options.save_frame_mapping);
+          _processed_file_writer.open(output_filename,
+              _output_options.processed_file_options.ffmpeg_opts,
+              _output_options.processed_file_options.output_image_processor,
+              _output_options.processed_file_options.output_pixel_depth,
+              _output_options.processed_file_options.save_frame_mapping);
 
       if( !fOk ) {
         CF_ERROR("output_writer_.open(%s) fails",
@@ -235,9 +212,9 @@ bool c_generic_image_processor_pipeline::process_current_frame()
       }
     }
 
-    if( !processed_file_writer_.write(current_image_, current_mask_, false, _input_sequence->current_pos() - 1) ) {
+    if( !_processed_file_writer.write(_current_image, _current_mask, false, _input_sequence->current_pos() - 1) ) {
       CF_ERROR("output_writer_.write(%s) fails",
-          processed_file_writer_.filename().c_str());
+          _processed_file_writer.filename().c_str());
       return false;
     }
   }
@@ -258,49 +235,101 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
-    SERIALIZE_IMAGE_PROCESSOR(section, save, processing_options_, image_processor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, _processing_options, image_processor);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
-    SERIALIZE_OPTION(section, save, output_options_, output_directory);
+    SERIALIZE_OPTION(section, save, _output_options, output_directory);
 
-    SERIALIZE_OPTION(section, save, output_options_, save_processed_frames);
+    SERIALIZE_OPTION(section, save, _output_options, save_processed_frames);
     if( (subsection = SERIALIZE_GROUP(section, save, "processed_file_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, processed_file_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, processed_file_options);
     }
   }
 
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_pipeline::get_controls()
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+  using S = c_generic_image_processor_input_options;
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+}
 
-  if( ctrls.empty() ) {
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_options> & ctx)
+{
+  using S = c_generic_image_processor_options;
+  ctlbind(ctls, "image_processor",  ctx(&S::image_processor), "");
+}
 
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_output_options> & ctx)
+{
+  using S = c_generic_image_processor_output_options;
 
-    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, processing_options_.image_processor, "image_processor", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
 
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-      PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+  ctlbind(ctls, "save_processed_frames",  ctx(&S::save_processed_frames), "");
+  ctlbind_group(ctls, ctx(&S::save_processed_frames));
+    ctlbind(ctls, ctx(&S::processed_file_options));
+  ctlbind_end_group(ctls);
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Processed Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_processed_frames, "save_processed_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.processed_file_options,
-            _this->output_options_.save_processed_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
 
-    PIPELINE_CTL_END_GROUP(ctrls);
+const c_ctlist<c_generic_image_processor_pipeline> & c_generic_image_processor_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
+
+     ctlbind_expandable_group(ctls, "1. Input options", "");
+       ctlbind(ctls, ctx(&this_class::_input_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "2. Image processing", "");
+       ctlbind(ctls, ctx(&this_class::_processing_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "3. Output options", "");
+       ctlbind(ctls, ctx(&this_class::_output_options));
+     ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+
+
+//const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+//
+////  if( ctrls.empty() ) {
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+////      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _processing_options.image_processor, "image_processor", "");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Processed Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_processed_frames, "save_processed_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.processed_file_options,
+////            _this->_output_options.save_processed_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////  }
+//
+//  return ctrls;
+//}
 
 bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) const
 {
@@ -319,8 +348,8 @@ bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) 
   }
 
   p->_input_options = this->_input_options;
-  p->processing_options_ = this->processing_options_;
-  p->output_options_ = this->output_options_;
+  p->_processing_options = this->_processing_options;
+  p->_output_options = this->_output_options;
 
   return true;
 }
@@ -330,10 +359,10 @@ bool c_generic_image_processor_pipeline::get_display_image(cv::OutputArray displ
   lock_guard lock(mutex());
 
   if( display_frame.needed() ) {
-    current_image_.copyTo(display_frame);
+    _current_image.copyTo(display_frame);
   }
   if( display_mask.needed() ) {
-    current_mask_.copyTo(display_mask);
+    _current_mask.copyTo(display_mask);
   }
   return true;
 }

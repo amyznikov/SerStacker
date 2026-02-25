@@ -51,13 +51,13 @@ public:
   c_jovian_ellipse_detector * detector();
   const c_jovian_ellipse_detector * detector() const;
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  display_type display_type_ = display_final_ellipse_fit;
-  c_jovian_ellipse_detector detector_;
+  display_type _display_type = display_final_ellipse_fit;
+  c_jovian_ellipse_detector _detector;
 };
 
 #endif /* __c_fit_jovian_ellipse_routine_h__ */

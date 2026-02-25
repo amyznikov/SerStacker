@@ -7,25 +7,25 @@
 
 #include "c_resize_image_routine.h"
 
-void c_resize_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_resize_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, dstize, "output image size.\nIf it equals zero it is computed from fx and fy");
-  BIND_PCTRL(ctls, fx, "scale factor along the horizontal axis;\nIf it equals 0, it is set ftom dstize.width");
-  BIND_PCTRL(ctls, fy, "scale factor along the vertical axis;\nIf it equals 0, it is set ftom dstize.height");
-  BIND_PCTRL(ctls, interpolation, "interpolation method, see cv::InterpolationFlags");
-  BIND_PCTRL(ctls, mask_interpolation, "mask interpolation method for cv::resize(), see cv::InterpolationFlags");
-  BIND_SPINBOX_CTRL(ctls, mask_threshold, 0, 255, 1, "mask_threshold",  "mask threshold for cv::compare() ");
+   ctlbind(ctls, "dstize", ctx(&this_class::_dstize), "output image size.\nIf it equals zero it is computed from fx and fy");
+   ctlbind(ctls, "fx", ctx(&this_class::_fx), "scale factor along the horizontal axis;\nIf it equals 0, it is set ftom dstize.width");
+   ctlbind(ctls, "fy", ctx(&this_class::_fy), "scale factor along the vertical axis;\nIf it equals 0, it is set ftom dstize.height");
+   ctlbind(ctls, "interpolation", ctx(&this_class::_interpolation), "interpolation method, see cv::InterpolationFlags");
+   ctlbind(ctls, "mask_interpolation", ctx(&this_class::_mask_interpolation), "mask interpolation method for cv::resize(), see cv::InterpolationFlags");
+   ctlbind_spinbox(ctls, "mask_threshold", ctx(&this_class::_mask_threshold), 0, 255, 1, "mask threshold for cv::compare() ");
 }
 
 bool c_resize_image_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, dstize);
-    SERIALIZE_PROPERTY(settings, save, *this, fx);
-    SERIALIZE_PROPERTY(settings, save, *this, fy);
-    SERIALIZE_PROPERTY(settings, save, *this, interpolation);
-    SERIALIZE_PROPERTY(settings, save, *this, mask_interpolation);
-    SERIALIZE_PROPERTY(settings, save, *this, mask_threshold);
+    SERIALIZE_OPTION(settings, save, *this, _dstize);
+    SERIALIZE_OPTION(settings, save, *this, _fx);
+    SERIALIZE_OPTION(settings, save, *this, _fy);
+    SERIALIZE_OPTION(settings, save, *this, _interpolation);
+    SERIALIZE_OPTION(settings, save, *this, _mask_interpolation);
+    SERIALIZE_OPTION(settings, save, *this, _mask_threshold);
     return true;
   }
   return false;
@@ -33,11 +33,11 @@ bool c_resize_image_routine::serialize(c_config_setting settings, bool save)
 
 bool c_resize_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::resize(image.getMat(), image, dstize_, fx_, fy_, interpolation_);
+  cv::resize(image.getMat(), image, _dstize, _fx, _fy, _interpolation);
 
   if( mask.needed() && !mask.empty() ) {
-    cv::resize(mask.getMat(), mask, image.size(), 0, 0, mask_interpolation_);
-    cv::compare(mask.getMat(), cv::Scalar::all(mask_threshold_), mask, cv::CMP_GE);
+    cv::resize(mask.getMat(), mask, image.size(), 0, 0, _mask_interpolation);
+    cv::compare(mask.getMat(), cv::Scalar::all(_mask_threshold), mask, cv::CMP_GE);
   }
 
   return true;

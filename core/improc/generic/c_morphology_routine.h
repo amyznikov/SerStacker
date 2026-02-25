@@ -22,32 +22,6 @@ public:
       "morphology",
       "Apply morphological operation on image");
 
-//  enum OPERATION {
-//      MORPH_ERODE    = cv::MORPH_ERODE, //!< see #erode
-//      MORPH_DILATE   = cv::MORPH_DILATE, //!< see #dilate
-//      MORPH_OPEN     = cv::MORPH_OPEN, //!< an opening operation
-//      MORPH_CLOSE    = cv::MORPH_CLOSE, //!< a closing operation
-//      MORPH_GRADIENT = cv::MORPH_GRADIENT, //!< a morphological gradient
-//      MORPH_TOPHAT   = cv::MORPH_TOPHAT, //!< "top hat"
-//      MORPH_BLACKHAT = cv::MORPH_BLACKHAT, //!< "black hat"
-//      MORPH_HITMISS  = cv::MORPH_HITMISS,  //!< "hit or miss"
-//      MORPH_SMOOTH_OPEN, //!< morphological_smooth_open
-//      MORPH_SMOOTH_CLOSE, //!< morphological_smooth_close
-//      MORPH_INTERNAL_GRADIENT, //!< morphological_internal_gradient
-//      MORPH_EXTERNAL_GRADIENT, //!< morphological_external_gradient
-//      MORPH_LAPLACIAN, //!< morphological_laplacian
-//      MORPH_RAMPLEE, //!< rampLee
-//      MORPH_TEXLEE, //!< texLee
-//      MORPH_GEO_FILL_HOLES4, //!< geo_fill_holes
-//      MORPH_GEO_FILL_HOLES8, //!< geo_fill_holes
-//      MORPH_LAPLACIAN_ABS, //!< morphological_laplacian
-//      MORPH_GEO_OPEN4,
-//      MORPH_GEO_OPEN8,
-//      MORPH_GEO_CLOSE4,
-//      MORPH_GEO_CLOSE8,
-//  };
-//
-
   void set_se_shape(cv::MorphShapes v)
   {
     _se_shape = v;
@@ -81,50 +55,9 @@ public:
     return _anchor;
   }
 
-  void set_operation(MORPH_OPERATION v)
-  {
-    _operation = v;
-  }
-
-  MORPH_OPERATION operation() const
-  {
-    return _operation;
-  }
-
-  void set_iterations(int v)
-  {
-    _iterations = v;
-  }
-
-  int iterations() const
-  {
-    return _iterations;
-  }
-
-  void set_borderType(cv::BorderTypes v)
-  {
-    _borderType = v;
-  }
-
-  cv::BorderTypes borderType() const
-  {
-    return _borderType;
-  }
-
-  void set_borderValue(const cv::Scalar& v)
-  {
-    _borderValue = v;
-  }
-
-  const cv::Scalar& borderValue() const
-  {
-    return _borderValue;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
-
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   cv::MorphShapes _se_shape = cv::MORPH_RECT;

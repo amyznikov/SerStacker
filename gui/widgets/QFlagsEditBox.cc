@@ -17,50 +17,52 @@ QFlagsEditBoxBase::QFlagsEditBoxBase(const c_enum_member * membs, QWidget * pare
 {
   setContentsMargins(0, 0, 0, 0);
 
-  layout_ = new QHBoxLayout(this);
-  layout_->setContentsMargins(0, 0, 0, 0);
-  layout_->addWidget(editBox_ = new QLineEdit(this));
-  layout_->addWidget(menuButton_ = new QToolButton(this));
+  _layout = new QHBoxLayout(this);
+  _layout->setContentsMargins(0, 0, 0, 0);
+  _layout->addWidget(_editBox = new QLineEdit(this));
+  _layout->addWidget(_menuButton = new QToolButton(this));
 
-  editBox_->setReadOnly(true);
+  _editBox->setReadOnly(true);
 
-  menuButton_->setIconSize(QSize(16,16));
-  menuButton_->setText("Edit...");
+  _menuButton->setIconSize(QSize(16,16));
+  _menuButton->setText("Edit...");
 
-  connect(menuButton_, &QToolButton::clicked,
+  connect(_menuButton, &QToolButton::clicked,
       this, &ThisClass::onMenuButtonClicked);
 
   if ( membs ) {
-    setupItems(membs);
+    setupItems(_membs = membs);
     updateLabelText();
   }
 }
 
 int QFlagsEditBoxBase::flags() const
 {
-  return flags_;
+  return _flags;
 }
 
 void QFlagsEditBoxBase::setFlags(int value)
 {
-  flags_ = value;
+  _flags = value;
   updateControls();
 }
 
 void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
 {
-  for( QAction *action : actions_ ) {
+  QSignalBlocker block(this);
+
+  for( QAction *action : _actions ) {
     delete action;
   }
 
-  actions_.clear();
+  _actions.clear();
 
   if( membs ) {
 
     QAction *action;
 
     action = new QAction("Edit...", this);
-    actions_.append(action);
+    _actions.append(action);
 
     connect(action, &QAction::triggered,
         [this, action, membs]() {
@@ -71,35 +73,35 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
               "QFlagsEditBox",
               "Enter flags:",
               QLineEdit::Normal,
-              flagsToString(flags_, membs).c_str(),
+              flagsToString(_flags, membs).c_str(),
               &fOk).trimmed();
 
           if ( !text.isEmpty() ) {
 
             const int oldflags =
-                flags_;
+                _flags;
 
             if ( text.startsWith("0x", Qt::CaseInsensitive ) ) {
-              flags_ = text.toInt(&fOk, 16);
+              _flags = text.toInt(&fOk, 16);
             }
             else if ( text[0].isDigit() ) {
-              flags_ = text.toInt(&fOk, 10);
+              _flags = text.toInt(&fOk, 10);
             }
             else {
-              flags_ = flagsFromString(text.toStdString(), membs);
+              _flags = flagsFromString(text.toStdString(), membs);
             }
 
             updateControls();
 
-            if ( flags_ != oldflags ) {
-              Q_EMIT flagsChanged(flags_);
+            if ( _flags != oldflags ) {
+              Q_EMIT flagsChanged(_flags);
             }
           }
         });
 
     action = new QAction("", this);
     action->setSeparator(true);
-    actions_.append(action);
+    _actions.append(action);
 
     while (!membs->name.empty()) {
 
@@ -109,27 +111,28 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
       action->setData(membs->value);
       action->setToolTip(membs->comment.c_str());
       action->setCheckable(true);
-      action->setChecked((flags_ & membs->value));
-      actions_.append(action);
+      action->setChecked((_flags & membs->value));
+      _actions.append(action);
 
-      connect(action, &QAction::triggered,
+      QObject::connect(action, &QAction::triggered,
           [this, action](bool checked) {
 
-            if ( !updatingControls_ ) {
+            //if ( !updatingControls_ )
+            {
 
               const int value =
                   action->data().toInt();
 
               if ( checked ) {
-                flags_ |= value;
+                _flags |= value;
               }
               else {
-                flags_ &= ~value;
+                _flags &= ~value;
               }
 
               updateLabelText();
 
-              Q_EMIT flagsChanged(flags_);
+              Q_EMIT flagsChanged(_flags);
             }
           });
 
@@ -141,31 +144,32 @@ void QFlagsEditBoxBase::setupItems(const c_enum_member * membs)
 
 void QFlagsEditBoxBase::updateLabelText()
 {
-  editBox_->setText(qsprintf("0x%0X", flags_));
+  _editBox->setText(qsprintf("0x%0X %s", _flags, _membs ? flagsToString(_flags, _membs).c_str() : "" ));
 }
 
 void QFlagsEditBoxBase::updateControls()
 {
-  updatingControls_ = true;
+  QSignalBlocker block(this);
+  //updatingControls_ = true;
   updateLabelText();
 
-  for( QAction *action : actions_ ) {
+  for( QAction *action : _actions ) {
 
     const int value =
         action->data().toInt();
 
-    action->setChecked((flags_ & value));
+    action->setChecked((_flags & value));
   }
 
-  updatingControls_ = false;
+  //updatingControls_ = false;
 }
 
 void QFlagsEditBoxBase::onMenuButtonClicked()
 {
-  const QPoint pos(menuButton_->width() / 2,
-      menuButton_->height() / 2);
+  const QPoint pos(_menuButton->width() / 2,
+      _menuButton->height() / 2);
 
-  QMenu::exec(actions_,
-      menuButton_->mapToGlobal(pos));
+  QMenu::exec(_actions,
+      _menuButton->mapToGlobal(pos));
 }
 

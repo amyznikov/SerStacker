@@ -112,12 +112,12 @@ protected:
 
 
 class QProfileGraphSettings :
-    public QSettingsWidgetTemplate<QProfileGraph>
+    public QSettingsWidget // Template<QProfileGraph>
 {
   Q_OBJECT;
 public:
   typedef QProfileGraphSettings ThisClass;
-  typedef QSettingsWidgetTemplate<QProfileGraph> Base;
+  typedef QSettingsWidget Base;//  Template<QProfileGraph> Base;
 
   QProfileGraphSettings(QWidget * parent = nullptr);
 
@@ -125,11 +125,9 @@ public:
   QProfileGraph * profileGraph() const;
 
 protected:
-  void set_options(QProfileGraph * profileGraph) override;
-  // void onupdatecontrols() override;
-  // void onload(QSettings & settings) override;
-
 protected:
+  QProfileGraph * _options = nullptr;
+
   QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
 
   QCheckBox * fixXMin_ctl = nullptr;

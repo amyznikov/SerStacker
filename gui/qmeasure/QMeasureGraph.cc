@@ -7,6 +7,7 @@
 
 #include "QMeasureGraph.h"
 #include <gui/widgets/style.h>
+#include <core/debug.h>
 
 //#define ICON_menu         ":/qmeasure/icons/menu.png"
 //#define ICON_chart        ":/qmeasure/icons/chart.png"

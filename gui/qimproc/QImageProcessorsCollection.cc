@@ -10,7 +10,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-QImageProcessorsCollection QImageProcessorsCollection::instance_;
+QImageProcessorsCollection QImageProcessorsCollection::_instance;
 
 //c_image_processor_collection::ptr QImageProcessorsCollection::processors_ =
 //    c_image_processor_collection::create();
@@ -26,7 +26,7 @@ QImageProcessorsCollection::~QImageProcessorsCollection()
 // for QObject::connect()
 QImageProcessorsCollection * QImageProcessorsCollection::instance()
 {
-  return &instance_;
+  return &_instance;
 }
 
 bool QImageProcessorsCollection::load()
@@ -67,7 +67,7 @@ void QImageProcessorsCollection::add(const c_image_processor::sptr & p, bool emi
   c_image_processor_collection::default_instance()->emplace_back(p);
 
   if ( emit_notify ) {
-    Q_EMIT instance_.collectionChanged();
+    Q_EMIT _instance.collectionChanged();
   }
 }
 
@@ -81,7 +81,7 @@ bool QImageProcessorsCollection::insert(int pos, const c_image_processor::sptr &
   c_image_processor_collection::default_instance()->insert(c_image_processor_collection::default_instance()->begin() + pos, p);
 
   if ( emit_notify ) {
-    Q_EMIT instance_.collectionChanged();
+    Q_EMIT _instance.collectionChanged();
   }
 
   return true;
@@ -96,7 +96,7 @@ bool QImageProcessorsCollection::remove(const c_image_processor::sptr & p, bool 
     c_image_processor_collection::default_instance()->erase(pos);
 
     if ( emit_notify ) {
-      Q_EMIT instance_.collectionChanged();
+      Q_EMIT _instance.collectionChanged();
     }
 
     return true;
@@ -114,7 +114,7 @@ bool QImageProcessorsCollection::remove_at(int pos, bool emit_notify)
 
   c_image_processor_collection::default_instance()->erase(c_image_processor_collection::default_instance()->begin() + pos);
   if ( emit_notify ) {
-    Q_EMIT instance_.collectionChanged();
+    Q_EMIT _instance.collectionChanged();
   }
 
   return true;
@@ -235,5 +235,71 @@ void QImageProcessorSelectionCombo::refresh()
   }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+
+QImageProcessorSelectionCombo2::QImageProcessorSelectionCombo2(QWidget * parent) :
+    Base(parent)
+{
+  setEditable(false);
+  setMinimumContentsLength(12);
+  setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  setFocusPolicy(Qt::StrongFocus);
+
+  connect(QImageProcessorsCollection::instance(), &QImageProcessorsCollection::collectionChanged,
+      this, &ThisClass::refresh);
+
+  refresh();
+}
+
+bool QImageProcessorSelectionCombo2::setCurrentProcessor(const QString & name)
+{
+  int current_index = 0; // "None" in refresh()
+  if ( !name.isEmpty() && (current_index = findText(name)) < 0) {
+    current_index = 0;
+  }
+
+  setCurrentIndex(current_index);
+
+  return currentIndex() > 0;
+}
+
+QString QImageProcessorSelectionCombo2::currentProcessor() const
+{
+  return processor(currentIndex());
+}
+
+QString QImageProcessorSelectionCombo2::processor(int index) const
+{
+  return index > 1 ? itemText(index) : QString();
+}
+
+void QImageProcessorSelectionCombo2::refresh()
+{
+  QSignalBlocker block(this);
+
+  const QString current_processor_name = currentText();
+
+  clear();
+  addItem("None");
+
+  for ( int i = 0, n = QImageProcessorsCollection::size(); i < n; ++i ) {
+    const c_image_processor::sptr processor = QImageProcessorsCollection::item(i);
+    if( processor ) {
+      addItem(processor->cname(), processor->cfilename());
+    }
+  }
+
+  if ( !current_processor_name.isEmpty() ) {
+    const int index = findText(current_processor_name);
+    if ( index >= 0 ) {
+      setCurrentIndex(index);
+    }
+  }
+
+  if ( currentText() != current_processor_name ) {
+    Q_EMIT currentIndexChanged(currentIndex());
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////

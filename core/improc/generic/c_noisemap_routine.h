@@ -23,11 +23,9 @@ public:
       "  Computer Vision and Image Understanding,<br>"
       "  Vol. 64, No. 2, pp. 300-302, Sep. 1996");
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    create_noise_map(image.getMatRef(), image.getMatRef(), mask);
-    return true;
-  }
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
+
 };
 
 

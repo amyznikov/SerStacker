@@ -39,6 +39,12 @@
     static sptr create(bool enabled = false) { \
         return sptr(new this_class(enabled)); \
     } \
+    using ctlbind_context = c_ctlbind_context<c_data_frame_processor_routine, this_class>;  \
+    void getcontrols(c_control_list & ctls) override { \
+      this_class::getcontrols(ctls, ctlbind_context{}); \
+    }
+
+//
 
 
 class c_data_frame_processor_routine
@@ -138,9 +144,21 @@ public:
   static sptr create(const std::string & class_name);
   static sptr create(c_config_setting settings);
 
-  virtual void get_parameters(std::vector<c_ctrl_bind> * ctls);
   virtual bool serialize(c_config_setting settings, bool save);
   virtual bool process(c_data_frame::sptr & dataframe) = 0;
+
+  using c_control_list = c_ctlist<this_class> ;
+  using ctlbind_context = c_ctlbind_context<this_class>;
+
+  virtual void getcontrols(c_control_list & ctls)
+  {
+    getcontrols(ctls, ctlbind_context());
+  }
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+    ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "");
+  }
 
 protected:
   virtual void onstatechanged()
@@ -215,95 +233,95 @@ public:
 
   void set_name(const std::string & v)
   {
-    name_ = v;
+    _name = v;
   }
 
   const std::string & name() const
   {
-    return name_;
+    return _name;
   }
 
   const char * cname() const
   {
-    return name_.c_str();
+    return _name.c_str();
   }
 
   void set_filename(const std::string & v)
   {
-    filename_ = v;
+    _filename = v;
   }
 
   const std::string & filename() const
   {
-    return filename_;
+    return _filename;
   }
 
   const char * cfilename() const
   {
-    return filename_.c_str();
+    return _filename.c_str();
   }
 
   const std::vector<c_data_frame_processor_routine::sptr> & routines() const
   {
-    return routines_;
+    return _routines;
   }
 
   iterator find(const c_data_frame_processor_routine::sptr & routine)
   {
-    return std::find(routines_.begin(), routines_.end(), routine);
+    return std::find(_routines.begin(), _routines.end(), routine);
   }
 
   const_iterator find(const c_data_frame_processor_routine::sptr & routine) const
   {
-    return std::find(routines_.begin(), routines_.end(), routine);
+    return std::find(_routines.begin(), _routines.end(), routine);
   }
 
   iterator begin()
   {
-    return routines_.begin();
+    return _routines.begin();
   }
 
   const_iterator begin() const
   {
-    return routines_.begin();
+    return _routines.begin();
   }
 
   iterator end()
   {
-    return routines_.end();
+    return _routines.end();
   }
 
   const_iterator end() const
   {
-    return routines_.end();
+    return _routines.end();
   }
 
   void erase(iterator pos)
   {
-    routines_.erase(pos);
+    _routines.erase(pos);
   }
 
   void insert(iterator pos, const c_data_frame_processor_routine::sptr & routine)
   {
-    routines_.insert(pos, routine);
+    _routines.insert(pos, routine);
   }
 
   void reserve(size_t size)
   {
-    routines_.reserve(size);
+    _routines.reserve(size);
   }
 
   template<typename... _Args>
   void emplace_back(_Args&&... __args)
   {
-    routines_.emplace_back(std::forward<_Args>(__args)...);
+    _routines.emplace_back(std::forward<_Args>(__args)...);
   }
 
 
 protected:
-  std::string name_;
-  mutable std::string filename_;
-  std::vector<c_data_frame_processor_routine::sptr> routines_;
+  std::string _name;
+  mutable std::string _filename;
+  std::vector<c_data_frame_processor_routine::sptr> _routines;
 };
 
 
@@ -339,8 +357,8 @@ public:
   static c_data_frame_processor_collection::sptr default_instance();
 
 protected:
-  static std::string default_processor_collection_path_;
-  static c_data_frame_processor_collection::sptr default_instance_;
+  static std::string _default_processor_collection_path;
+  static c_data_frame_processor_collection::sptr _default_instance;
 };
 
 

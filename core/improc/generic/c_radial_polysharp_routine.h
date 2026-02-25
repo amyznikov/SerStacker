@@ -21,61 +21,43 @@ public:
 
   void set_coeffs(std::vector<double> & v)
   {
-    coeffs_ = v;
+    _coeffs = v;
   }
 
   const std::vector<double> & coeffs() const
   {
-    return coeffs_;
+    return _coeffs;
   }
 
   std::vector<double> & coeffs()
   {
-    return coeffs_;
+    return _coeffs;
   }
 
   const std::vector<double> & profile_before() const
   {
-    return profile_before_;
+    return _profile_before;
   }
 
   const std::vector<double> & profile_after() const
   {
-    return profile_after_;
+    return _profile_after;
   }
 
   const std::vector<double> & profile_poly() const
   {
-    return profile_poly_;
+    return _profile_poly;
   }
 
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, coeffs, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, coeffs);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    fftRadialPolySharp(image, image, coeffs_, profile_before_, profile_after_, profile_poly_);
-    return true;
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::vector<double> profile_before_;
-  std::vector<double> profile_after_;
-  std::vector<double> profile_poly_;
-  std::vector<double> coeffs_;
+  std::vector<double> _profile_before;
+  std::vector<double> _profile_after;
+  std::vector<double> _profile_poly;
+  std::vector<double> _coeffs;
 };
 
 #endif /* __c_radial_polysharp_routine_h__ */

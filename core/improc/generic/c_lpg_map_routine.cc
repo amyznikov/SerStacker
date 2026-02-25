@@ -6,19 +6,12 @@
  */
 
 #include "c_lpg_map_routine.h"
+#include <core/ctrlbind/ctrlbind.h>
 
-void c_lpg_map_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+
+void c_lpg_map_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_MENU_BUTTON(ctls, "Options...", "");
-    BIND_MENU_COMMAND(copy_parameters_to_clipboard, "Copy parameters to clipboard");
-    BIND_MENU_COMMAND(paste_parameters_from_clipboard, "Paste parameters from clipboard");
-  END_MENU_BUTTON(ctls)
-
-  BIND_PCTRL(ctls, k, "Sharpness map: (k * laplacian + gradient) / (k + 1)");
-  BIND_PCTRL(ctls, p, "Sharpness estimator: sharpness map power");
-  BIND_PCTRL(ctls, dscale, "Sharpness estimator: sharpness map downscale pyramid level");
-  BIND_PCTRL(ctls, uscale, "Sharpness estimator: sharpness map upscale pyramid level");
-  BIND_PCTRL(ctls, avgchannel, "Sharpness estimator: use grayscale sharpness map");
+  c_lpg_sharpness_measure::getcontrols(ctls, ctx(&this_class::_m));
 }
 
 bool c_lpg_map_routine::serialize(c_config_setting settings, bool save)

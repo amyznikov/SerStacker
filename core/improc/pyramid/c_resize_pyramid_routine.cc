@@ -21,21 +21,21 @@ const c_enum_member* members_of<c_resize_pyramid_routine::DisplayType>()
   return members;
 }
 
-void c_resize_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_resize_pyramid_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, scale_factor, "Scale factor");
-  BIND_SPINBOX_CTRL(ctls, level, 0, 127, 1, "level", "Display level");
-  BIND_PCTRL(ctls, interpolation, "interpolation method, see cv::InterpolationFlags");
-  BIND_PCTRL(ctls, display_type, "");
+   ctlbind(ctls, "scale_factor",  ctx(&this_class::_scale_factor), "");
+   ctlbind(ctls, "level",  ctx(&this_class::_level), "");
+   ctlbind(ctls, "interpolation",  ctx(&this_class::_interpolation), "");
+   ctlbind(ctls, "display_type",  ctx(&this_class::_display_type), "");
 }
 
 bool c_resize_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, scale_factor);
-    SERIALIZE_PROPERTY(settings, save, *this, level);
-    SERIALIZE_PROPERTY(settings, save, *this, interpolation);
-    SERIALIZE_PROPERTY(settings, save, *this, display_type);
+    SERIALIZE_OPTION(settings, save, *this, _scale_factor);
+    SERIALIZE_OPTION(settings, save, *this, _level);
+    SERIALIZE_OPTION(settings, save, *this, _interpolation);
+    SERIALIZE_OPTION(settings, save, *this, _display_type);
     return true;
   }
   return false;
@@ -43,23 +43,23 @@ bool c_resize_pyramid_routine::serialize(c_config_setting settings, bool save)
 
 bool c_resize_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( level_ > 0 ) {
+  if ( _level > 0 ) {
 
     double f = 1;
-    for ( int i = 0; i < level_; ++i ) {
-      f *= scale_factor_;
+    for ( int i = 0; i < _level; ++i ) {
+      f *= _scale_factor;
     }
 
-    if ( display_type_ == DisplayImage ) {
+    if ( _display_type == DisplayImage ) {
 
       cv::resize(image.getMat(), image, cv::Size(),
-          f, f, interpolation_);
+          f, f, _interpolation);
     }
     else {
       cv::Mat tmp;
 
       cv::resize(image.getMat(), tmp, cv::Size(),
-          f, f, interpolation_);
+          f, f, _interpolation);
 
       cv::resize(tmp, tmp, image.size(),
           0, 0, cv::INTER_CUBIC);

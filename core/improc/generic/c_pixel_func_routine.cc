@@ -111,29 +111,25 @@ static void forEachPixel(cv::Mat & image, const Op & op)
   }
 }
 
-
-
-void c_pixel_func_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_pixel_func_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, function,
-      "Select function to apply to pixel values\n");
-
-  BIND_PCTRL(ctls, c1, "c1");
-  BIND_PCTRL(ctls, c2, "c2");
-  BIND_PCTRL(ctls, c3, "c3");
-  BIND_PCTRL(ctls, c4, "c4");
-  BIND_PCTRL(ctls, params, "params");
+   ctlbind(ctls, "function", ctx(&this_class::_function), "output = c4 + c3 * func((input - c1) * c2)");
+   ctlbind(ctls, "c1", ctx(&this_class::_c1), "");
+   ctlbind(ctls, "c2", ctx(&this_class::_c2), "");
+   ctlbind(ctls, "c3", ctx(&this_class::_c3), "");
+   ctlbind(ctls, "c4", ctx(&this_class::_c4), "");
+   ctlbind(ctls, "params", ctx(&this_class::_params), "");
 }
 
 bool c_pixel_func_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, function);
-    SERIALIZE_PROPERTY(settings, save, *this, c1);
-    SERIALIZE_PROPERTY(settings, save, *this, c2);
-    SERIALIZE_PROPERTY(settings, save, *this, c3);
-    SERIALIZE_PROPERTY(settings, save, *this, c4);
-    SERIALIZE_PROPERTY(settings, save, *this, params);
+    SERIALIZE_OPTION(settings, save, *this, _function);
+    SERIALIZE_OPTION(settings, save, *this, _c1);
+    SERIALIZE_OPTION(settings, save, *this, _c2);
+    SERIALIZE_OPTION(settings, save, *this, _c3);
+    SERIALIZE_OPTION(settings, save, *this, _c4);
+    SERIALIZE_OPTION(settings, save, *this, _params);
     return true;
   }
   return false;
@@ -141,12 +137,12 @@ bool c_pixel_func_routine::serialize(c_config_setting settings, bool save)
 
 bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  switch (function_) {
+  switch (_function) {
     case Function_None:
-      if( c1_ != 0 || c2_ != 1 || c3_ != 1 || c4_ != 0 ) {
+      if( _c1 != 0 || _c2 != 1 || _c3 != 1 || _c4 != 0 ) {
         forEachPixel(image.getMatRef(),
             [this](double v) {
-              return c4_ + c3_ * (v - c1_) * c2_;
+              return _c4 + _c3 * (v - _c1) * _c2;
             });
       }
       break;
@@ -154,120 +150,120 @@ bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     case Function_sqrt:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ * std::sqrt(std::abs( (v - c1_) * c2_));
+            return _c4 + _c3 * std::sqrt(std::abs( (v - _c1) * _c2));
           });
       break;
 
     case Function_sqr:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ * sqr((v - c1_) * c2_);
+            return _c4 + _c3 * sqr((v - _c1) * _c2);
           });
       break;
 
     case Function_abs:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ * std::abs((v - c1_) * c2_);
+            return _c4 + _c3 * std::abs((v - _c1) * _c2);
           });
       break;
 
     case Function_log:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ * std::log((v - c1_) * c2_);
+            return _c4 + _c3 * std::log((v - _c1) * _c2);
           });
       break;
 
     case Function_exp:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ * std::exp((v - c1_) * c2_);
+            return _c4 + _c3 * std::exp((v - _c1) * _c2);
           });
       break;
 
     case Function_inv:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c4_ + c3_ / ((v - c1_) * c2_);
+            return _c4 + _c3 / ((v - _c1) * _c2);
           });
       break;
 
     case Function_sin:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::sin((v - c1_) * c2_) + c4_;
+            return _c3 * std::sin((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_cos:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::cos((v - c1_) * c2_) + c4_;
+            return _c3 * std::cos((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_asin:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::asin((v - c1_) * c2_) + c4_;
+            return _c3 * std::asin((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_acos:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::acos((v - c1_) * c2_) + c4_;
+            return _c3 * std::acos((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_asinh:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::asinh((v - c1_) * c2_) + c4_;
+            return _c3 * std::asinh((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_acosh:
       forEachPixel(image.getMatRef(),
           [this](double v) {
-            return c3_ * std::acosh((v - c1_) * c2_) + c4_;
+            return _c3 * std::acosh((v - _c1) * _c2) + _c4;
           });
       break;
 
     case Function_pow:
-      if ( params_.size() == 1 ) {
+      if ( _params.size() == 1 ) {
 
         const double p =
-            params_[0] ;
+            _params[0] ;
 
         forEachPixel(image.getMatRef(),
             [this, p](double v) {
-              return c3_ * std::pow((v - c1_) * c2_, p) + c4_;
+              return _c3 * std::pow((v - _c1) * _c2, p) + _c4;
             });
       }
       break;
 
     case Function_poly:
-      if( params_.size() > 0 ) {
+      if( _params.size() > 0 ) {
         forEachPixel(image.getMatRef(),
             [this](double v) {
 
-              double s = params_[0];
+              double s = _params[0];
 
-              if ( params_.size() > 1 ) {
+              if ( _params.size() > 1 ) {
 
-                const double x = (v - c1_) * c2_;
-                s += params_[1] * x;
+                const double x = (v - _c1) * _c2;
+                s += _params[1] * x;
 
                 double xx = x;
-                for ( int i = 2, n = params_.size(); i < n; ++i ) {
+                for ( int i = 2, n = _params.size(); i < n; ++i ) {
                   xx *= x;
-                  s += params_[i] * xx;
+                  s += _params[i] * xx;
                 }
               }
 
-              return c3_ * s + c4_;
+              return _c3 * s + _c4;
             });
       }
       break;
@@ -275,5 +271,3 @@ bool c_pixel_func_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 
   return true;
 }
-
-

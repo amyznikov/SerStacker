@@ -19,77 +19,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_autoclip_routine,
       "autoclip_routine", "Auto clip image histogram");
 
-  void set_lclip(double v)
-  {
-    plo_ = v;
-  }
-
-  double lclip() const
-  {
-    return plo_;
-  }
-
-
-  void set_hclip(double v)
-  {
-    phi_ = v;
-  }
-
-  double hclip() const
-  {
-    return phi_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, lclip, "");
-    BIND_PCTRL(ctls, hclip, "");
-    BIND_PCTRL(ctls, ignore_mask, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, lclip);
-      SERIALIZE_PROPERTY(settings, save, *this, hclip);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    double omin = 0, omax = 1;
-
-    switch ( image.depth() ) {
-    case CV_8U :
-      omin = 0, omax = UINT8_MAX;
-      break;
-    case CV_8S :
-      omin = INT8_MIN, omax = INT8_MAX;
-      break;
-    case CV_16U :
-      omin = 0, omax = UINT16_MAX;
-      break;
-    case CV_16S :
-      omin = INT16_MIN, omax = INT16_MAX;
-      break;
-    case CV_32S :
-      omin = INT32_MIN, omax = INT32_MAX;
-      break;
-      break;
-    }
-
-    return autoclip(image.getMatRef(),
-        _ignore_mask ? cv::noArray() : mask,
-        plo_, phi_,
-        omin, omax);
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double plo_ = 0.5;
-  double phi_ = 99.5;
+  double _lclip = 0.5;
+  double _hclip = 99.5;
 };
 
 

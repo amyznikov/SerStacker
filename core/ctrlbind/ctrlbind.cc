@@ -6,7 +6,6 @@
  */
 
 #include "ctrlbind.h"
-#include <core/feature2d/feature_extraction.h>
 
 static ctrlbind_copy_to_clipboard_callback copy_to_clipboard_callback_instance;
 static ctrlbind_update_roi_callback update_roi_callback_instance;
@@ -41,3 +40,6 @@ const ctrlbind_update_roi_callback & get_ctrlbind_update_roi_callback()
 {
   return update_roi_callback_instance;
 }
+
+
+

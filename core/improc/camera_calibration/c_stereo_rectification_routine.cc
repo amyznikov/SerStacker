@@ -42,26 +42,63 @@ const c_enum_member* members_of<c_stereo_rectification_routine::SwapFramesMode>(
   return members;
 }
 
+
+void c_stereo_rectification_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "Enable rectification", ctx, &this_class::enable_rectification, &this_class::set_enable_rectification, "Enable image rectification");
+  ctlbind_browse_for_file(ctls, "intrinsics", ctx, &this_class::intrinsics_filename, &this_class::set_intrinsics_filename, "Stereo intrinsics YML file");
+  ctlbind_browse_for_file(ctls, "extrinsics", ctx, &this_class::extrinsics_filename, &this_class::set_extrinsics_filename, "Stereo extrinsics YML file");
+  ctlbind(ctls, "swap_frames", ctx, &this_class::swap_frames, &this_class::set_swap_frames, "Swap Left and Right frames");
+  ctlbind(ctls, "display_mode", ctx, &this_class::display_mode, &this_class::set_display_mode, "Overlay two stereo frames into one frame");
+  ctlbind(ctls, "ss_sigma", ctx, &this_class::ss_sigma, &this_class::set_ss_sigma, "ss_sigma");
+  ctlbind(ctls, "ss_radius", ctx, &this_class::ss_radius, &this_class::set_ss_radius, "ss_radius");
+  ctlbind(ctls, "ss_maxlvl", ctx, &this_class::ss_maxlvl, &this_class::set_ss_maxlvl, "ss_maxlvl");
+  ctlbind_spinbox(ctls, "overlay_offset", ctx(&this_class::_overlay_offset), 0, 511, 1, "Shift left image before overlay");
+}
+
+bool c_stereo_rectification_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+
+    c_config_setting section;
+
+    SERIALIZE_PROPERTY(settings, save, *this, enable_rectification);
+    SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
+    SERIALIZE_PROPERTY(settings, save, *this, extrinsics_filename);
+    SERIALIZE_PROPERTY(settings, save, *this, swap_frames);
+    SERIALIZE_PROPERTY(settings, save, *this, display_mode);
+    SERIALIZE_PROPERTY(settings, save, *this, overlay_offset);
+    SERIALIZE_PROPERTY(settings, save, *this, ss_sigma);
+    SERIALIZE_PROPERTY(settings, save, *this, ss_radius);
+    SERIALIZE_PROPERTY(settings, save, *this, ss_maxlvl);
+
+    return true;
+  }
+
+  return false;
+}
+
+
 bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( enable_rectification_ && !have_stereo_calibration_ ) {
+  if( _enable_rectification && !_have_stereo_calibration ) {
 
     bool have_initrinsics = false;
     bool have_extrinsics = false;
 
-    if( !stereo_intrinsics_filename_.empty() ) {
-      if( !read_stereo_camera_intrinsics_yml(&intrinsics_, stereo_intrinsics_filename_) ) {
+    if( !_stereo_intrinsics_filename.empty() ) {
+      if( !read_stereo_camera_intrinsics_yml(&_intrinsics, _stereo_intrinsics_filename) ) {
         CF_ERROR("read_stereo_camera_intrinsics_yml('%s') fails",
-            stereo_intrinsics_filename_.c_str());
+            _stereo_intrinsics_filename.c_str());
         return false;
       }
       have_initrinsics = true;
     }
 
-    if( !stereo_extrinsics_filename_.empty() ) {
-      if( !read_stereo_camera_extrinsics_yml(&extrinsics_, stereo_extrinsics_filename_) ) {
+    if( !_stereo_extrinsics_filename.empty() ) {
+      if( !read_stereo_camera_extrinsics_yml(&_extrinsics, _stereo_extrinsics_filename) ) {
         CF_ERROR("read_stereo_camera_extrinsics_yml('%s') fails",
-            stereo_extrinsics_filename_.c_str());
+            _stereo_extrinsics_filename.c_str());
         return false;
       }
       have_extrinsics = true;
@@ -71,8 +108,8 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 
       bool fOk =
           create_stereo_rectification(cv::Size(image.cols() / 2, image.rows()),
-              intrinsics_,
-              extrinsics_,
+              _intrinsics,
+              _extrinsics,
               -1,
               rmaps);
 
@@ -81,7 +118,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         return false;
       }
 
-      have_stereo_calibration_ = true;
+      _have_stereo_calibration = true;
     }
   }
 
@@ -93,12 +130,12 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
   cv::Mat images[2] = {};
   cv::Mat masks[2] = {};
 
-  if( !enable_rectification_ || !have_stereo_calibration_ ) {
+  if( !_enable_rectification || !_have_stereo_calibration ) {
 
     const cv::Mat src = image.getMat();
     const cv::Mat msk = mask.getMat();
 
-    if ( swap_frames_ == SwapFramesBeforeRectification ) {
+    if ( _swap_frames == SwapFramesBeforeRectification ) {
       for( int i = 0; i < 2; ++i ) {
         src(roi[i]).copyTo(images[!i]);
         if( mask.needed() && !mask.empty() ) {
@@ -122,7 +159,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     const cv::Mat src = image.getMat();
     const cv::Mat msk = mask.getMat();
 
-    if ( swap_frames_ == SwapFramesBeforeRectification ) {
+    if ( _swap_frames == SwapFramesBeforeRectification ) {
 
       for( int i = 0; i < 2; ++i ) {
 
@@ -168,14 +205,14 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
     }
   }
 
-  switch (display_mode_) {
+  switch (_display_mode) {
 
     case DisplayHLayout: {
 
       image.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), images[0].type());
       cv::Mat &dst = image.getMatRef();
 
-      if( swap_frames_ == SwapFramesAfterRectification ) {
+      if( _swap_frames == SwapFramesAfterRectification ) {
         for( int i = 0; i < 2; ++i ) {
           images[i].copyTo(dst(roi[!i]));
         }
@@ -191,7 +228,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         mask.create(cv::Size(roi[0].width + roi[1].width, std::max(roi[0].height, roi[1].height)), masks[0].type());
         cv::Mat &m = mask.getMatRef();
 
-        if( swap_frames_ == SwapFramesAfterRectification ) {
+        if( _swap_frames == SwapFramesAfterRectification ) {
           for( int i = 0; i < 2; ++i ) {
             masks[i].copyTo(m(roi[!i]));
           }
@@ -211,7 +248,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       image.create(cv::Size(std::max(roi[0].width, roi[1].width), roi[0].height + roi[1].height), images[0].type());
       cv::Mat &dst = image.getMatRef();
 
-      if( swap_frames_ == SwapFramesAfterRectification ) {
+      if( _swap_frames == SwapFramesAfterRectification ) {
         images[1].copyTo(dst(cv::Rect(0, 0, roi[1].width, roi[1].height)));
         images[0].copyTo(dst(cv::Rect(0, roi[1].height, roi[0].width, roi[0].height)));
       }
@@ -225,7 +262,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         mask.create(cv::Size(std::max(roi[0].width, roi[1].width), roi[0].height + roi[1].height), images[0].type());
         cv::Mat &m = mask.getMatRef();
 
-        if( swap_frames_ == SwapFramesAfterRectification ) {
+        if( _swap_frames == SwapFramesAfterRectification ) {
           masks[1].copyTo(m(cv::Rect(0, 0, roi[1].width, roi[1].height)));
           masks[0].copyTo(m(cv::Rect(0, roi[1].height, roi[0].width, roi[0].height)));
         }
@@ -259,10 +296,10 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 //          0,
 //      dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
 
-      cv::addWeighted(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
-          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+      cv::addWeighted(left_image(cv::Rect(_overlay_offset, 0, left_image.cols - _overlay_offset, left_image.rows)), 0.5,
+          right_image(cv::Rect(0, 0, right_image.cols - _overlay_offset, right_image.rows)), 0.5,
           0,
-          dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+          dst_image(cv::Rect(0, 0, left_image.cols - _overlay_offset, left_image.rows)));
 
       if( mask.needed() && !mask.empty() ) {
 
@@ -283,9 +320,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 //        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
 //            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
 //            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
-        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_mask(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+        cv::bitwise_and(left_mask(cv::Rect(_overlay_offset, 0, left_image.cols - _overlay_offset, left_image.rows)),
+            right_mask(cv::Rect(0, 0, right_image.cols - _overlay_offset, right_image.rows)),
+            dst_mask(cv::Rect(0, 0, left_image.cols - _overlay_offset, left_image.rows)));
 
       }
 
@@ -311,9 +348,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 //      cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
 //          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
 //          dst_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
-      cv::absdiff(left_image(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-          right_image(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-          dst_image(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+      cv::absdiff(left_image(cv::Rect(_overlay_offset, 0, left_image.cols - _overlay_offset, left_image.rows)),
+          right_image(cv::Rect(0, 0, right_image.cols - _overlay_offset, right_image.rows)),
+          dst_image(cv::Rect(0, 0, left_image.cols - _overlay_offset, left_image.rows)));
 
 
       if( mask.needed() && !mask.empty() ) {
@@ -335,9 +372,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
 //        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
 //            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
 //            dst_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)));
-        cv::bitwise_and(left_mask(cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)),
-            right_mask(cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)),
-            dst_mask(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+        cv::bitwise_and(left_mask(cv::Rect(_overlay_offset, 0, left_image.cols - _overlay_offset, left_image.rows)),
+            right_mask(cv::Rect(0, 0, right_image.cols - _overlay_offset, right_image.rows)),
+            dst_mask(cv::Rect(0, 0, left_image.cols - _overlay_offset, left_image.rows)));
       }
 
       break;
@@ -351,12 +388,12 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> pdescs[2];
       cv::Mat desc_images[2];
 
-      if ( !ssa_pyramid(left_image, pdescs[0], ss_maxlvl_) ) {
+      if ( !ssa_pyramid(left_image, pdescs[0], _ss_maxlvl) ) {
         CF_ERROR("ssa_pyramid() fails");
         break;
       }
 
-      if ( !ssa_pyramid(right_image, pdescs[1], ss_maxlvl_) ) {
+      if ( !ssa_pyramid(right_image, pdescs[1], _ss_maxlvl) ) {
         CF_ERROR("ssa_pyramid() fails");
         break;
       }
@@ -365,7 +402,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       cv::Mat &dst = image.getMatRef();
 
       for( int i = 0; i < 2; ++i ) {
-        if( swap_frames_ == SwapFramesAfterRectification ) {
+        if( _swap_frames == SwapFramesAfterRectification ) {
           ssa_cvtfp32(pdescs[!i].back(), desc_images[i]);
         }
         else {
@@ -390,18 +427,18 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       std::vector<c_ssarray> descs[2];
       cv::Mat desc_images[2];
 
-      if ( !ssa_pyramid(left_image, descs[0], ss_maxlvl_) ) {
+      if ( !ssa_pyramid(left_image, descs[0], _ss_maxlvl) ) {
         CF_ERROR("ssa_pyramid() fails");
         break;
       }
 
-      if( !ssa_pyramid(right_image, descs[1], ss_maxlvl_) ) {
+      if( !ssa_pyramid(right_image, descs[1], _ss_maxlvl) ) {
         CF_ERROR("ssa_pyramid() fails");
         break;
       }
 
       for( int i = 0; i < 2; ++i ) {
-        if( swap_frames_ == SwapFramesAfterRectification ) {
+        if( _swap_frames == SwapFramesAfterRectification ) {
           ssa_cvtfp32(descs[!i].back(), desc_images[i]);
         }
         else {
@@ -415,10 +452,10 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       cv::Mat &dst = image.getMatRef();
       dst.setTo(0);
 
-      cv::addWeighted(desc_images[0](cv::Rect(overlay_offset_, 0, left_image.cols - overlay_offset_, left_image.rows)), 0.5,
-          desc_images[1](cv::Rect(0, 0, right_image.cols - overlay_offset_, right_image.rows)), 0.5,
+      cv::addWeighted(desc_images[0](cv::Rect(_overlay_offset, 0, left_image.cols - _overlay_offset, left_image.rows)), 0.5,
+          desc_images[1](cv::Rect(0, 0, right_image.cols - _overlay_offset, right_image.rows)), 0.5,
           0,
-          dst(cv::Rect(0, 0, left_image.cols - overlay_offset_, left_image.rows)));
+          dst(cv::Rect(0, 0, left_image.cols - _overlay_offset, left_image.rows)));
 
 
       break;
@@ -437,7 +474,7 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
         INSTRUMENT_REGION("ssa_pyramid");
 
         for ( int i = 0; i < 2; ++i ) {
-          if ( !ssa_pyramid(src_images[i], descs[i], ss_maxlvl_) ) {
+          if ( !ssa_pyramid(src_images[i], descs[i], _ss_maxlvl) ) {
             CF_ERROR("ssa_pyramid() fails");
             break;
           }
@@ -467,9 +504,9 @@ bool c_stereo_rectification_routine::process(cv::InputOutputArray image, cv::Inp
       {
         INSTRUMENT_REGION("ssa_compare");
 
-        ssa_compare(descs[0], cv::Rect(overlay_offset_, 0, images[0].cols - overlay_offset_, images[0].rows),
-            descs[1], cv::Rect(0, 0, images[1].cols - overlay_offset_, images[1].rows),
-            dst_image(cv::Rect(0, 0, images[0].cols - overlay_offset_, images[0].rows)));
+        ssa_compare(descs[0], cv::Rect(_overlay_offset, 0, images[0].cols - _overlay_offset, images[0].rows),
+            descs[1], cv::Rect(0, 0, images[1].cols - _overlay_offset, images[1].rows),
+            dst_image(cv::Rect(0, 0, images[0].cols - _overlay_offset, images[0].rows)));
 
         //cv::Mat1b m;
         //ssa_mask(descs[1][0], m);

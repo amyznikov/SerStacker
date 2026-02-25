@@ -25,11 +25,10 @@ public:
   const c_regular_stereo_pipeline::sptr & current_pipeline() const;
 
 protected:
-  void onupdatecontrols() override;
   void populatesources();
 
 protected:
-  c_regular_stereo_pipeline::sptr pipeline_;
+  c_regular_stereo_pipeline::sptr _pipeline;
 
   QCheckBox * enable_stereo_matching_ctl = nullptr;
   QNumericBox * max_disparity_ctl = nullptr;

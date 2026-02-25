@@ -26,52 +26,53 @@ public:
 
   const std::string & onnx_model_path() const
   {
-    return onnx_model_path_;
+    return _onnx_model_path;
   }
 
   void set_onnx_model_path(const std::string & v)
   {
-    onnx_model_path_ = v;
-    initialized_ = false;
+    _onnx_model_path = v;
+    _initialized = false;
   }
 
   const std::string & classes_text_file() const
   {
-    return classes_text_file_;
+    return _classes_text_file;
   }
 
   void set_classes_text_file(const std::string & v)
   {
-    classes_text_file_ = v;
-    initialized_ = false;
+    _classes_text_file = v;
+    _initialized = false;
   }
 
   const cv::Size & model_input_shape() const
   {
-    return model_input_shape_;
+    return _model_input_shape;
   }
 
   void set_model_input_shape(const cv::Size & v)
   {
-    model_input_shape_ = v;
-    initialized_ = false;
+    _model_input_shape = v;
+    _initialized = false;
   }
 
   bool run_with_cuda() const
   {
-    return run_with_cuda_;
+    return _run_with_cuda;
   }
 
   void set_run_with_cuda(bool v)
   {
-    run_with_cuda_ = v;
-    initialized_ = false;
+    _run_with_cuda = v;
+    _initialized = false;
   }
 
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
+
 
   struct Detection
   {
@@ -126,12 +127,12 @@ public:
 
 
 protected:
-  Inference inference_;
-  std::string onnx_model_path_;
-  std::string classes_text_file_;
-  cv::Size model_input_shape_;// = cv::Size(640, 640);
-  bool run_with_cuda_ = false;
-  bool initialized_ = false;
+  Inference _inference;
+  std::string _onnx_model_path;
+  std::string _classes_text_file;
+  cv::Size _model_input_shape;// = cv::Size(640, 640);
+  bool _run_with_cuda = false;
+  bool _initialized = false;
 };
 
 #endif /* __c_dnn_test_routine_h__ */

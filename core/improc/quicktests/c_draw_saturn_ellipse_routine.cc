@@ -10,31 +10,32 @@
 //#include <core/proc/pose.h>
 
 
-
-void c_draw_saturn_ellipse_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_draw_saturn_ellipse_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, auto_location, "");
-  BIND_PCTRL(ctls, gbsigma, "");
-  BIND_PCTRL(ctls, stdev_factor, "");
-  BIND_PCTRL(ctls, se_close_radius, "");
+  ctlbind(ctls, "auto_location", ctx, &this_class::auto_location, &this_class::set_auto_location, "");
+  ctlbind(ctls, "gbsigma", ctx, &this_class::gbsigma, &this_class::set_gbsigma, "");
+  ctlbind(ctls, "stdev_factor", ctx, &this_class::stdev_factor, &this_class::set_stdev_factor, "");
+  ctlbind(ctls, "se_close_radius", ctx, &this_class::se_close_radius, &this_class::set_se_close_radius, "");
 
-  BIND_PCTRL(ctls, equatorial_radius, "");
-  BIND_PCTRL(ctls, ring_radius, "");
-  BIND_PCTRL(ctls, center, "");
-  BIND_PCTRL(ctls, pose, "Ellipsoid pose rotation angles Ax;Ay;Az in [deg]");
-  BIND_PCTRL(ctls, zrotation_remap, "derotation time in [sec]");
+  ctlbind(ctls, "equatorial_radius", ctx, &this_class::equatorial_radius, &this_class::set_equatorial_radius, "");
+  ctlbind(ctls, "ring_radius", ctx, &this_class::ring_radius, &this_class::set_ring_radius, "");
+  ctlbind(ctls, "center", ctx, &this_class::center, &this_class::set_center, "");
+  ctlbind(ctls, "pose", ctx, &this_class::pose, &this_class::set_pose,
+      "Ellipsoid pose rotation angles Ax;Ay;Az in [deg]");
+  ctlbind(ctls, "zrotation_remap", ctx, &this_class::zrotation_remap, &this_class::set_zrotation_remap,
+      "derotation time in [sec]");
 
-  BIND_PCTRL(ctls, longitude_step, "");
-  BIND_PCTRL(ctls, latidute_step, "");
-  BIND_PCTRL(ctls, outline_color, "");
-  BIND_PCTRL(ctls, lines_color, "");
+  ctlbind(ctls, "longitude_step", ctx, &this_class::longitude_step, &this_class::set_longitude_step, "");
+  ctlbind(ctls, "latidute_step", ctx, &this_class::latidute_step, &this_class::set_latidute_step, "");
+  ctlbind(ctls, "outline_color", ctx, &this_class::outline_color, &this_class::set_outline_color, "");
+  ctlbind(ctls, "lines_color", ctx, &this_class::lines_color, &this_class::set_lines_color, "");
 
-  BIND_PCTRL(ctls, show_ring, "");
-  BIND_PCTRL(ctls, show_smask, "");
-  BIND_PCTRL(ctls, show_sbox, "");
-  BIND_PCTRL(ctls, print_debug_info, "print detected ellipse parameters into debug log");
+  ctlbind(ctls, "show_ring", ctx, &this_class::show_ring, &this_class::set_show_ring, "");
+  ctlbind(ctls, "show_smask", ctx, &this_class::show_smask, &this_class::set_show_smask, "");
+  ctlbind(ctls, "show_sbox", ctx, &this_class::show_sbox, &this_class::set_show_sbox, "");
 
-
+  ctlbind(ctls, "", ctx, &this_class::print_debug_info, &this_class::set_print_debug_info,
+      "print detected ellipse parameters into debug log");
 }
 
 bool c_draw_saturn_ellipse_routine::serialize(c_config_setting settings, bool save)

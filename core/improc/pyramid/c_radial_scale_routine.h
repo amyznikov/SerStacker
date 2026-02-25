@@ -20,33 +20,33 @@ public:
 
   void set_reference_point(const cv::Point2f & v)
   {
-    reference_point_ = v;
+    _reference_point = v;
     rmap_.release();
   }
 
   const cv::Point2f & reference_point() const
   {
-    return reference_point_;
+    return _reference_point;
   }
 
   void set_disparity(int  v)
   {
-    disparity_ = v;
+    _disparity = v;
     rmap_.release();
   }
 
   int disparity() const
   {
-    return disparity_;
+    return _disparity;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Point2f reference_point_ = cv::Point2f(0,0);
-  int disparity_ = 1;
+  cv::Point2f _reference_point = cv::Point2f(0,0);
+  int _disparity = 1;
   cv::Mat2f rmap_;
 };
 

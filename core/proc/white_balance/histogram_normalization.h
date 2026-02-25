@@ -11,6 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/io/debayer.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 enum histogram_normalization_type {
   histogram_normalize_mean,
@@ -24,6 +25,15 @@ struct c_histogram_normalization_options
   cv::Scalar stretch = cv::Scalar(1, 1, 1, 1);
   cv::Scalar offset = cv::Scalar(0, 0, 0, 0);
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_histogram_normalization_options> & ctx)
+{
+  using S = c_histogram_normalization_options;
+  ctlbind(ctls, "norm_type", ctx(&S::norm_type), "");
+  ctlbind(ctls, "stretch", ctx(&S::stretch), "");
+  ctlbind(ctls, "offset", ctx(&S::offset), "");
+}
 
 bool nomalize_image_histogramm(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
     histogram_normalization_type norm_type,

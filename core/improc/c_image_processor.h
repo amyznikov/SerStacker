@@ -189,9 +189,16 @@ public:
       cv::InputOutputArray mask = cv::noArray()) = 0;
 
 
-  virtual void get_parameters(std::vector<c_ctrl_bind> * ctls)
+  using c_control_list = c_ctlist<c_image_processor_routine> ;
+  using ctlbind_context = c_ctlbind_context<c_image_processor_routine>;
+  virtual void getcontrols(c_control_list & ctls)
   {
-    BIND_PCTRL(ctls, ignore_mask, "ignore_mask");
+    getcontrols(ctls, ctlbind_context());
+  }
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+    ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "");
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -278,7 +285,7 @@ public:
   /////////////////////////////////////////////////////////////////////////////
 
 protected:
-  c_image_processor_routine(const class_factory * cfactory, bool enabled = true) :
+  c_image_processor_routine(const class_factory * cfactory, bool enabled = false) :
       _class_factory(cfactory),
       _enabled(enabled),
       _display_name(_class_factory->display_name)
@@ -299,7 +306,7 @@ protected:
   DATA_CHANNEL _input_channel = IMAGE;
   DATA_CHANNEL _output_channel = IMAGE;
   bool _ignore_mask = false;
-  bool _enabled;
+  bool _enabled = false;
 };
 
 #define DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(class_name, display_name, tooltip ) \
@@ -315,12 +322,16 @@ protected:
       static c_class_factory class_factory_instance_; \
       return &class_factory_instance_; \
     } \
-    class_name(bool enabled = true) : \
+    class_name(bool enabled = false) : \
       base(class_factory_instance(), enabled) { \
     } \
-    static ptr create(bool enabled = true) { \
+    static ptr create(bool enabled = false) { \
         return ptr(new this_class(enabled)); \
     } \
+    using ctlbind_context = c_ctlbind_context<c_image_processor_routine, this_class>;  \
+    void getcontrols(c_control_list & ctls) override {  \
+      this_class::getcontrols(ctls, ctlbind_context()); \
+    }
 
 
 class c_image_processor :
@@ -435,13 +446,13 @@ public:
   bool save(const std::string & output_directrory = "") const;
   bool serialize(c_config_setting settings) const;
 
+  iterator find(const c_image_processor::sptr &);
+  const_iterator find(const c_image_processor::sptr &) const;
+
   iterator find(const std::string & name);
   const_iterator find(const std::string & name) const;
 
   c_image_processor::sptr get(const std::string & name) const;
-
-  iterator find(const c_image_processor::sptr &);
-  const_iterator find(const c_image_processor::sptr &) const;
 
 
   static const std::string & default_processor_collection_path();
@@ -492,6 +503,57 @@ inline bool load_settings(c_config_setting settings, const std::string & name,
 
 #define SAVE_IMAGE_PROCESSOR(settings, obj, proc) \
     save_settings(settings, #proc, (obj).proc)
+
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_image_processor::sptr> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_image_processor::sptr;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::ImageProcessorCombobox;
+
+  const size_t offset = ctx.offset;
+
+  c.getvalue =
+      [offset](const RootObjectType * obj, std::string * s) -> bool {
+        if ( obj ) {
+          const FieldType * p = reinterpret_cast<const FieldType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+          if ( (*p) ) {
+            * s = (*p)->name();
+            return true;
+          }
+        }
+        return false;
+      };
+
+  c.setvalue =
+      [offset](RootObjectType * obj, const std::string & v) -> bool {
+        if ( obj ) {
+          FieldType * p = reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset);
+          if ( v.empty() ) {
+            (*p).reset();
+            return true;
+          }
+
+          const auto & collection = c_image_processor_collection::default_instance();
+          const auto pos = collection->find(v);
+          if ( pos != collection->end() ) {
+            *p  = *pos;
+            return true;
+          }
+        }
+        return false;
+      };
+
+
+  ctls.emplace_back(c);
+}
 
 #endif /* __c_image_processor_h__ */
 

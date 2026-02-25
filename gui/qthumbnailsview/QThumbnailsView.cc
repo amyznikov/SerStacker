@@ -15,16 +15,16 @@
 #define MAX_ZOOM  24
 #define MIN_ZOOM  1
 
-#define ICON_file_reload   "reload"
-#define ICON_file_delete   "delete"
-#define ICON_dirtree      "dirtree"
-#define ICON_filter        "filter"
-#define ICON_filter_clear  "filter-clear"
+#define ICON_file_reload   ":/qthumbnailsview/icons/reload"
+#define ICON_file_delete   ":/qthumbnailsview/icons/delete"
+#define ICON_dirtree       ":/qthumbnailsview/icons/dirtree"
+#define ICON_filter        ":/qthumbnailsview/icons/filter"
+#define ICON_filter_clear  ":/qthumbnailsview/icons/filter-clear"
 
-#define ICON_hourglass     "hourglass2"
-#define ICON_badimage      "badimage"
-#define ICON_textfile      "textfile"
-#define ICON_plyfile       "plyfile"
+#define ICON_hourglass     ":/qthumbnailsview/icons/hourglass2"
+#define ICON_badimage      ":/qthumbnailsview/icons/badimage"
+#define ICON_textfile      ":/qthumbnailsview/icons/textfile"
+#define ICON_plyfile       ":/qthumbnailsview/icons/plyfile"
 
 
 static QIcon hourglass_icon;
@@ -33,10 +33,10 @@ static QIcon textfile_icon;
 static QIcon plyfile_icon;
 
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qthumbnailsview/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qthumbnailsview/icons/%1").arg(name));
+//}
 
 //static QPixmap getPixmap(const QString & name)
 //{

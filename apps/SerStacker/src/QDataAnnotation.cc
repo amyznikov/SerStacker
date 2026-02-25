@@ -18,7 +18,7 @@ using Label =
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
-    Base("", parent)
+    Base(parent)
 {
   colorMapSelection_ctl =
       add_combobox<QComboBox>("Select Colormap:", "",
@@ -46,11 +46,11 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
           "",
           [this](const QColor &v) {
 
-            if ( _options ) {
+            if ( _opts ) {
 
               const int currentColormapIndex = colorMapSelection_ctl->currentIndex();
-              if (currentColormapIndex>=0 && currentColormapIndex < _options->num_colormaps() ) {
-                const ColorMap & colormap = _options->colormap(currentColormapIndex);
+              if (currentColormapIndex>=0 && currentColormapIndex < _opts->num_colormaps() ) {
+                const ColorMap & colormap = _opts->colormap(currentColormapIndex);
                 cv::Vec4b & color = colormap->at((uint8_t)labelValue_ctl->value()).color;
                 color[0] = v.blue();
                 color[1] = v.green();
@@ -65,10 +65,10 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
     add_double_spinbox("Color Blend Alpha:",
         "Brush depth in [m]",
         [this](double value) {
-            if ( _options ) {
+            if ( _opts ) {
               const int currentColormapIndex = colorMapSelection_ctl->currentIndex();
-              if (currentColormapIndex>=0 && currentColormapIndex < _options->num_colormaps() ) {
-                const ColorMap & colormap = _options->colormap(currentColormapIndex);
+              if (currentColormapIndex>=0 && currentColormapIndex < _opts->num_colormaps() ) {
+                const ColorMap & colormap = _opts->colormap(currentColormapIndex);
                 cv::Vec4b & color = colormap->at((uint8_t)labelValue_ctl->value()).color;
                 color[3] = (uint8_t)(255 * std::max(0., std::min(value, 1.)));
                 Q_EMIT parameterChanged();
@@ -85,15 +85,11 @@ QDataAnnotationSettingsWidget::QDataAnnotationSettingsWidget(QWidget *parent) :
 }
 
 
-void QDataAnnotationSettingsWidget::onupdatecontrols()
+void QDataAnnotationSettingsWidget::setOpts(OptsType * opts)
 {
-  Base::onupdatecontrols();
-}
-
-void QDataAnnotationSettingsWidget::set_options(OptionsType * options)
-{
-  Base::set_options(options);
+  this->_opts = opts;
   populateColormaps();
+  updateControls();
 }
 
 void QDataAnnotationSettingsWidget::populateColormaps()
@@ -101,8 +97,8 @@ void QDataAnnotationSettingsWidget::populateColormaps()
   QSignalBlocker block(colorMapSelection_ctl);
 
   colorMapSelection_ctl->clear();
-  if ( _options ) {
-    for ( const auto & colormap : _options->colormaps() ) {
+  if ( _opts ) {
+    for ( const auto & colormap : _opts->colormaps() ) {
       colorMapSelection_ctl->addItem(colormap->name().c_str());
     }
   }
@@ -121,7 +117,7 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
 
   labelSelection_ctl->clear();
 
-  if ( !_options || cursel < 0 || cursel >= _options->num_colormaps() ) {
+  if ( !_opts || cursel < 0 || cursel >= _opts->num_colormaps() ) {
     labelSelection_ctl->setEnabled(false);
     labelValue_ctl->setEnabled(false);
     labelColor_ctl->setEnabled(false);
@@ -129,7 +125,7 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
   else {
 
     const ColorMap & colormap =
-        _options->colormap(cursel);
+        _opts->colormap(cursel);
 
     for (auto ii = colormap->begin(); ii != colormap->end(); ++ii) {
 
@@ -164,15 +160,15 @@ void QDataAnnotationSettingsWidget::onCurrentColormapMapChanged(int cursel)
 
 void QDataAnnotationSettingsWidget::onCurrentLabelSelectionChanged(int currentLabelIndex)
 {
-  if (_options) {
+  if (_opts) {
 
     const int currentColormapIndex =
         colorMapSelection_ctl->currentIndex();
 
-    if (currentColormapIndex >= 0 && currentColormapIndex < _options->num_colormaps()) {
+    if (currentColormapIndex >= 0 && currentColormapIndex < _opts->num_colormaps()) {
 
       const ColorMap &colormap =
-          _options->colormap(currentColormapIndex);
+          _opts->colormap(currentColormapIndex);
 
       if (currentLabelIndex >= 0 && currentLabelIndex < colormap->size()) {
 
@@ -194,14 +190,6 @@ void QDataAnnotationSettingsWidget::onCurrentLabelSelectionChanged(int currentLa
   }
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-QDataAnnotationsSettingsDialogBox::QDataAnnotationsSettingsDialogBox(QWidget *parent) :
-    Base(parent)
-{
-  setWindowTitle("Data Annotation Options");
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

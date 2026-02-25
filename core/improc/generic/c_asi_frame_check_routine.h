@@ -38,88 +38,16 @@ public:
     DISPLAY_CHANNEL_MAX = 4,
   };
 
-  void set_bayer_pattern(BAYER_PATTERN v)
-  {
-    _bayer_pattern = v;
-  }
-
-  BAYER_PATTERN bayer_pattern() const
-  {
-    return _bayer_pattern;
-  }
-
-  void set_display_channel(DISPLAY_CHANNEL v)
-  {
-    _display_channel = v;
-  }
-
-  DISPLAY_CHANNEL display_channel() const
-  {
-    return _display_channel;
-  }
-
-  void set_differentiate(bool v)
-  {
-    _differentiate = v;
-  }
-
-  bool differentiate() const
-  {
-    return _differentiate;
-  }
-
-  void set_reduce(bool v)
-  {
-    _reduce = v;
-  }
-
-  bool reduce() const
-  {
-    return _reduce;
-  }
-
-  void set_medianhat(bool v)
-  {
-    _medianhat = v;
-  }
-
-  bool medianhat() const
-  {
-    return _medianhat;
-  }
-
-  void set_threshold(double v)
-  {
-    _threshold = v;
-  }
-
-  double threshold() const
-  {
-    return _threshold;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
-
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  BAYER_PATTERN _bayer_pattern =
-      BAYER_RGGB;
-
-  DISPLAY_CHANNEL _display_channel =
-      DISPLAY_CHANNEL_0;
-
-  bool _differentiate =
-      false;
-
-
-  bool _reduce =
-      false;
-
-  bool _medianhat =
-      false;
-
+  BAYER_PATTERN _bayer_pattern = BAYER_RGGB;
+  DISPLAY_CHANNEL _display_channel = DISPLAY_CHANNEL_0;
+  bool _differentiate = false;
+  bool _reduce = false;
+  bool _medianhat = false;
   double _threshold = -1;
 };
 

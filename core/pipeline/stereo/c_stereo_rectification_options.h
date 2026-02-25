@@ -30,10 +30,10 @@ public:
   bool serialize(c_config_setting settings, bool save);
 
 protected:
-  std::string camera_intrinsics_yml_;
-  std::string camera_extrinsics_yml_;
-  bool enabled_ = false;
-  bool has_changes_ = false;
+  std::string _camera_intrinsics_yml;
+  std::string _camera_extrinsics_yml;
+  bool _enabled = false;
+  bool _has_changes = false;
 };
 
 #endif /* __c_stereo_rectification_options_h__ */

@@ -85,7 +85,7 @@ public:
     _detector.options().draw.outline_color = v;
   }
 
-  const cv::Scalar outline_color() const
+  const cv::Scalar & outline_color() const
   {
     return _detector.options().draw.outline_color;
   }
@@ -191,9 +191,9 @@ public:
   }
 
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   c_saturn_ellipse_detector _detector;

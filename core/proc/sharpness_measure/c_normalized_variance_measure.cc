@@ -11,19 +11,19 @@
 
 void c_normalized_variance_measure::set_avgchannel(bool v)
 {
-  avgchannel_ = v;
+  _opts.avgchannel = v;
 }
 
 bool c_normalized_variance_measure::avgchannel() const
 {
-  return avgchannel_;
+  return _opts.avgchannel;
 }
 
 cv::Scalar c_normalized_variance_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar v;
 
-  if ( !compute(image, mask, cv::noArray(), avgchannel_, &v) ) {
+  if ( !compute(image, mask, cv::noArray(), _opts.avgchannel, &v) ) {
     CF_ERROR("c_normalized_variance_measure::compute() fails");
   }
 
@@ -32,7 +32,7 @@ cv::Scalar c_normalized_variance_measure::compute(cv::InputArray image, cv::Inpu
 
 bool c_normalized_variance_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  if ( !compute(image, cv::noArray(), output_map, avgchannel_, nullptr) ) {
+  if ( !compute(image, cv::noArray(), output_map, _opts.avgchannel, nullptr) ) {
     CF_ERROR("c_normalized_variance_measure::compute() fails");
     return false;
   }

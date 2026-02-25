@@ -146,7 +146,7 @@ bool matchQuickFilter(const QString & text,
 
 
 QThumbnailsQuickFilterOptions::QThumbnailsQuickFilterOptions(QWidget * parent) :
-    Base("QThumbnailsQuickFilterOptions", parent)
+    Base(parent)
 {
 
   searchText_ctl = new QComboBox(this);

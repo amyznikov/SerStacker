@@ -6,7 +6,6 @@
  */
 
 #include "c_median_pyramid_routine.h"
-// #include <core/ssprintf.h>
 
 template<>
 const c_enum_member* members_of<c_median_pyramid_routine::DisplayType>()
@@ -21,22 +20,21 @@ const c_enum_member* members_of<c_median_pyramid_routine::DisplayType>()
   return members;
 }
 
-
-void c_median_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_median_pyramid_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, display_type, "Specify display type");
-  BIND_PCTRL(ctls, display_level, "Specify display pyramid layer");
-  BIND_PCTRL(ctls, ksize, "Specify Median blur kernel size");
-  BIND_PCTRL(ctls, median_iterations, "Specify Median iterations");
+   ctlbind(ctls, "display_type",  ctx(&this_class::_display_type), "");
+   ctlbind(ctls, "ksize",  ctx(&this_class::_ksize), "");
+   ctlbind(ctls, "median_iterations",  ctx(&this_class::_median_iterations), "");
+   ctlbind(ctls, "display_level",  ctx(&this_class::_display_level), "");
 }
 
 bool c_median_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, display_type);
-    SERIALIZE_PROPERTY(settings, save, *this, display_level);
-    SERIALIZE_PROPERTY(settings, save, *this, ksize);
-    SERIALIZE_PROPERTY(settings, save, *this, median_iterations);
+    SERIALIZE_OPTION(settings, save, *this, _display_type);
+    SERIALIZE_OPTION(settings, save, *this, _display_level);
+    SERIALIZE_OPTION(settings, save, *this, _ksize);
+    SERIALIZE_OPTION(settings, save, *this, _median_iterations);
     return true;
   }
   return false;
@@ -44,7 +42,7 @@ bool c_median_pyramid_routine::serialize(c_config_setting settings, bool save)
 
 bool c_median_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  build_median_pyramid(image, ksize_, median_iterations_,
+  build_median_pyramid(image, _ksize, _median_iterations,
       scaled_images_,
       median_blurs_,
       median_hats_);
@@ -55,10 +53,10 @@ bool c_median_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutp
   }
 
   const int display_level =
-      std::max(0, std::min(display_level_,
+      std::max(0, std::min(_display_level,
           (int) median_blurs_.size() - 1));
 
-  switch (display_type_) {
+  switch (_display_type) {
     case DisplayMedianBlur:
       median_blurs_[display_level].copyTo(image);
       break;

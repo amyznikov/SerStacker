@@ -9,29 +9,24 @@
 #ifndef __QGraphicsRectShapeSettings_h__
 #define __QGraphicsRectShapeSettings_h__
 
-#include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QColorPickerButton.h>
 #include "QGraphicsRectShape.h"
+#include "QGraphicsShapeSettings.h"
+#include <gui/widgets/QColorPickerButton.h>
 
 class QGraphicsRectShapeSettings :
-    public QSettingsWidget
+    public QGraphicsShapeSettings<QGraphicsRectShape>
 {
 public:
   typedef QGraphicsRectShapeSettings ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QGraphicsShapeSettings<QGraphicsRectShape> Base;
 
   QGraphicsRectShapeSettings(QWidget * parent = nullptr);
-  QGraphicsRectShapeSettings(const QString &prefix, QWidget * parent = nullptr);
-
-  void setShape(QGraphicsRectShape * shape);
-  QGraphicsRectShape * shape() const;
 
 protected:
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") override;
 
 protected:
-  QGraphicsRectShape * shape_ = nullptr;
   QCheckBox * snapToPixelGrid_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
   QColorPickerButton * penColor_ctl = nullptr;
@@ -42,35 +37,29 @@ protected:
 
 
 class QGraphicsRectShapeSettingsDialogBox:
-    public QDialog
+    public QGraphicsShapeSettingsDialogBox<QGraphicsRectShapeSettings>
 {
-Q_OBJECT;
+  Q_OBJECT;
 public:
   typedef QGraphicsRectShapeSettingsDialogBox ThisClass;
-  typedef QDialog Base;
+  typedef QGraphicsShapeSettingsDialogBox<QGraphicsRectShapeSettings> Base;
 
-  QGraphicsRectShapeSettingsDialogBox(QWidget * parent = nullptr);
+  QGraphicsRectShapeSettingsDialogBox(QWidget * parent = nullptr) :
+      ThisClass("Shape Options", parent)
+  {
+  }
 
-  QGraphicsRectShapeSettingsDialogBox(const QString & title,
-      QWidget * parent = nullptr);
+  QGraphicsRectShapeSettingsDialogBox(const QString & title, QWidget * parent = nullptr) :
+      ThisClass("Shape Options", nullptr, parent)
+  {
+  }
 
-  QGraphicsRectShapeSettingsDialogBox(const QString & title, QGraphicsRectShape * shape,
-      QWidget * parent = nullptr);
-
-  void setShape(QGraphicsRectShape * shape);
-  QGraphicsRectShape* shape() const;
-
-  void loadParameters();
-
-Q_SIGNALS:
-  void visibilityChanged(bool visible);
-
-protected:
-  void showEvent(QShowEvent * e) override;
-  void hideEvent(QHideEvent * e) override;
-
-protected:
-  QGraphicsRectShapeSettings *settigs_ctl = nullptr;
+  QGraphicsRectShapeSettingsDialogBox(const QString & title, QGraphicsRectShape * shape, QWidget * parent = nullptr) :
+      Base(title, parent)
+  {
+    layout()->setSizeConstraint(QLayout::SetFixedSize);
+    _settings->setShape(shape);
+  }
 };
 
 #endif /* __QGraphicsRectShapeSettings_h__ */

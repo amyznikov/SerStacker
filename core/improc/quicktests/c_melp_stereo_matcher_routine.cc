@@ -29,13 +29,13 @@ const c_enum_member* members_of<c_melp_stereo_matcher_routine::DisplayType>()
   return members;
 }
 
-void c_melp_stereo_matcher_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_melp_stereo_matcher_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, displayType, "displayType");
-  BIND_PCTRL(ctls, minimum_image_size, "minimum_image_size");
-  BIND_PCTRL(ctls, texture_threshold, "texture_threshold");
-  BIND_PCTRL(ctls, displaypos, "displaypos");
-  BIND_SPINBOX_CTRL(ctls, overlay_offset, 0, 511, 1, "overlay_offset", "Shift left image before overlay");
+   ctlbind(ctls, "display", ctx, &this_class::displayType, &this_class::set_displayType, "displayType");
+   ctlbind(ctls, "minimum_image_size", ctx, &this_class::minimum_image_size, &this_class::set_minimum_image_size, "minimum_image_size");
+   ctlbind(ctls, "texture_threshold", ctx, &this_class::texture_threshold, &this_class::set_texture_threshold, "texture_threshold");
+   ctlbind(ctls, "displaypos", ctx, &this_class::displaypos, &this_class::set_displaypos, "displaypos");
+   ctlbind_spinbox(ctls, "overlay_offset", ctx(&this_class::_overlay_offset), 0, 511, 1, "Shift left image before overlay");
 }
 
 bool c_melp_stereo_matcher_routine::serialize(c_config_setting settings, bool save)
@@ -107,23 +107,23 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     images[i] = src_image(ROI[i]);
   }
 
-  if( !m.compute(images[0], images[1], cv::noArray()) ) {
+  if( !_m.compute(images[0], images[1], cv::noArray()) ) {
     CF_ERROR("m.compute() fails");
     return false;
   }
 
-  switch (displayType_) {
+  switch (_displayType) {
 
     case DisplayTextureMap: {
-      m.texture_map().copyTo(image);
+      _m.texture_map().copyTo(image);
       if( mask.needed() ) {
-        m.texture_mask().copyTo(mask);
+        _m.texture_mask().copyTo(mask);
       }
       break;
     }
 
     case DisplayTextureMask: {
-      m.texture_mask().copyTo(image);
+      _m.texture_mask().copyTo(image);
       if( mask.needed() ) {
         mask.release();
       }
@@ -131,13 +131,13 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayDisparity: {
-      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+      c_block_pyramid::sptr p = select_display_node(_m.rp(), _displaypos);
       if( p ) {
         p->M.convertTo(image, CV_32F);
       }
       if ( mask.needed() ) {
-        if ( p->M.size() == m.texture_mask().size() ) {
-          m.texture_mask().copyTo(mask);
+        if ( p->M.size() == _m.texture_mask().size() ) {
+          _m.texture_mask().copyTo(mask);
         }
         else {
           mask.release();
@@ -147,7 +147,7 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayMM0:{
-      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+      c_block_pyramid::sptr p = select_display_node(_m.rp(), _displaypos);
       if( p ) {
         p->MM[0].convertTo(image, CV_32F);
       }
@@ -158,7 +158,7 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayMM1:{
-      c_block_pyramid::sptr p = select_display_node(m.rp(), displaypos_);
+      c_block_pyramid::sptr p = select_display_node(_m.rp(), _displaypos);
       if( p ) {
         p->MM[1].convertTo(image, CV_32F);
       }
@@ -191,8 +191,8 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
 //    }
 
     case DisplayHlayout: {
-      c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
-      c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
+      c_block_pyramid::sptr rp = select_display_node(_m.rp(), _displaypos);
+      c_block_pyramid::sptr lp = select_display_node(_m.lp(), _displaypos);
       if( rp && lp ) {
 
         image.create(cv::Size(lp->image.cols + rp->image.cols,
@@ -217,8 +217,8 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayVlayout:{
-      c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
-      c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
+      c_block_pyramid::sptr rp = select_display_node(_m.rp(), _displaypos);
+      c_block_pyramid::sptr lp = select_display_node(_m.lp(), _displaypos);
       if( rp && lp ) {
 
         image.create(cv::Size(std::max(lp->image.cols, rp->image.cols),
@@ -238,8 +238,8 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayBlend: {
-      c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
-      c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
+      c_block_pyramid::sptr rp = select_display_node(_m.rp(), _displaypos);
+      c_block_pyramid::sptr lp = select_display_node(_m.lp(), _displaypos);
       if( rp && lp ) {
 
         image.create(cv::Size(rp->image.cols, rp->image.rows), rp->image.type());
@@ -252,14 +252,14 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
 //            0,
 //            dst(cv::Rect(0, 0, lp->image.cols - overlay_offset_, lp->image.rows)));
 
-        cv::addWeighted(rp->image(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)), 0.5,
-            lp->image(cv::Rect(overlay_offset_, 0, lp->image.cols - overlay_offset_, lp->image.rows)), 0.5,
+        cv::addWeighted(rp->image(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)), 0.5,
+            lp->image(cv::Rect(_overlay_offset, 0, lp->image.cols - _overlay_offset, lp->image.rows)), 0.5,
             0,
-            dst(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)));
+            dst(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)));
 
         if ( mask.needed() ) {
           cv::Mat1b m(rp->image.size(), 0);
-          m(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)).setTo(255);
+          m(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)).setTo(255);
           m.copyTo(mask);
         }
 
@@ -268,8 +268,8 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplayAbsdiff: {
-      c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
-      c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
+      c_block_pyramid::sptr rp = select_display_node(_m.rp(), _displaypos);
+      c_block_pyramid::sptr lp = select_display_node(_m.lp(), _displaypos);
       if( rp && lp ) {
 
         image.create(cv::Size(rp->image.cols, rp->image.rows), rp->image.type());
@@ -280,13 +280,13 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
 //        cv::absdiff(lp->image(cv::Rect(overlay_offset_, 0, lp->image.cols - overlay_offset_, lp->image.rows)),
 //            rp->image(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)),
 //            dst(cv::Rect(0, 0, lp->image.cols - overlay_offset_, lp->image.rows)));
-        cv::absdiff(rp->image(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)),
-            lp->image(cv::Rect(overlay_offset_, 0, lp->image.cols - overlay_offset_, lp->image.rows)),
-            dst(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)));
+        cv::absdiff(rp->image(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)),
+            lp->image(cv::Rect(_overlay_offset, 0, lp->image.cols - _overlay_offset, lp->image.rows)),
+            dst(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)));
 
         if ( mask.needed() ) {
           cv::Mat1b m(rp->image.size(), 0);
-          m(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)).setTo(255);
+          m(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)).setTo(255);
           m.copyTo(mask);
         }
 
@@ -296,19 +296,19 @@ bool c_melp_stereo_matcher_routine::process(cv::InputOutputArray image, cv::Inpu
     }
 
     case DisplaySAD: {
-      c_block_pyramid::sptr rp = select_display_node(m.rp(), displaypos_);
-      c_block_pyramid::sptr lp = select_display_node(m.lp(), displaypos_);
+      c_block_pyramid::sptr rp = select_display_node(_m.rp(), _displaypos);
+      c_block_pyramid::sptr lp = select_display_node(_m.lp(), _displaypos);
       if( rp && lp ) {
 
         image.create(cv::Size(rp->image.cols, rp->image.rows), CV_32FC1);
 
         cv::Mat1f dst = image.getMatRef();
 
-        c_melp_stereo_matcher::sad(overlay_offset_, lp, rp, dst);
+        c_melp_stereo_matcher::sad(_overlay_offset, lp, rp, dst);
 
         if ( mask.needed() ) {
           cv::Mat1b m(rp->image.size(), 0);
-          m(cv::Rect(0, 0, rp->image.cols - overlay_offset_, rp->image.rows)).setTo(255);
+          m(cv::Rect(0, 0, rp->image.cols - _overlay_offset, rp->image.rows)).setTo(255);
           m.copyTo(mask);
         }
 

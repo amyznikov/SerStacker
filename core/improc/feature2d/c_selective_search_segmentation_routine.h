@@ -27,71 +27,71 @@ public:
 
   void set_strategy(Strategy v)
   {
-    strategy_ = v;
-    ss_.release();
+    _strategy = v;
+    _ss.release();
   }
 
   Strategy strategy() const
   {
-    return strategy_;
+    return _strategy;
   }
 
   void set_base_k(int v)
   {
-    base_k_ = v;
-    ss_.release();
+    _base_k = v;
+    _ss.release();
   }
 
   int base_k() const
   {
-    return base_k_;
+    return _base_k;
   }
 
   void set_inc_k(int v)
   {
-    inc_k_ = v;
-    ss_.release();
+    _inc_k = v;
+    _ss.release();
   }
 
   int inc_k() const
   {
-    return inc_k_;
+    return _inc_k;
   }
 
   void set_sigma(float v)
   {
-    sigma_ = v;
-    ss_.release();
+    _sigma = v;
+    _ss.release();
   }
 
   float sigma() const
   {
-    return sigma_;
+    return _sigma;
   }
 
   void set_max_display_rects(int v)
   {
-    max_display_rects_ = v;
+    _max_display_rects = v;
   }
 
   int max_display_rects() const
   {
-    return max_display_rects_;
+    return _max_display_rects;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Ptr<cv::ximgproc::segmentation::SelectiveSearchSegmentation> ss_;
-  Strategy strategy_ = Fast;
-  int base_k_ = 150;
-  int inc_k_ = 150;
-  float sigma_ = 0.8f;
+  cv::Ptr<cv::ximgproc::segmentation::SelectiveSearchSegmentation> _ss;
+  Strategy _strategy = Fast;
+  int _base_k = 150;
+  int _inc_k = 150;
+  float _sigma = 0.8f;
 
-  int max_display_rects_ = 10;
-  std::vector<cv::Rect> rects_;
+  int _max_display_rects = 10;
+  std::vector<cv::Rect> _rects;
 
 
 };

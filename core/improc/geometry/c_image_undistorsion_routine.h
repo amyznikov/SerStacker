@@ -20,24 +20,12 @@ public:
       "undistorsion",
       "c_image_undistorsion_routine");
 
-
-  void set_dist_coeffs(const std::vector<double> & v)
-  {
-    dist_coeffs_ = v;
-  }
-
-  const std::vector<double> & dist_coeffs() const
-  {
-    return dist_coeffs_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::vector<double> dist_coeffs_;
-
+  std::vector<double> _dist_coeffs;
 };
 
 #endif /* __c_image_undistorsion_routine_h__ */

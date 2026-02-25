@@ -9,6 +9,25 @@
 #include <core/proc/white_balance/histogram_white_balance.h>
 #include <core/proc/reduce_channels.h>
 
+void c_histogram_white_balance_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "lclip", ctx(&this_class::_lclip), "");
+   ctlbind(ctls, "hclip", ctx(&this_class::_hclip), "");
+   ctlbind(ctls, "enable_threshold", ctx(&this_class::_enable_threshold), "");
+   ctlbind(ctls, "threshold", ctx(&this_class::_threshold), "");
+}
+
+bool c_histogram_white_balance_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _lclip);
+    SERIALIZE_OPTION(settings, save, *this, _hclip);
+    SERIALIZE_OPTION(settings, save, *this, _enable_threshold);
+    SERIALIZE_OPTION(settings, save, *this, _threshold);
+    return true;
+  }
+  return false;
+}
 
 bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
@@ -18,11 +37,11 @@ bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::
 
   cv::Mat objmask;
 
-  if ( !enable_threshold_ ) {
+  if ( !_enable_threshold ) {
     objmask = mask.getMat();
   }
   else {
-    cv::compare(image, threshold_, objmask, cv::CMP_GE);
+    cv::compare(image, _threshold, objmask, cv::CMP_GE);
 
     if ( objmask.channels() > 1 ) {
       reduce_color_channels(objmask, cv::REDUCE_MIN);
@@ -36,9 +55,6 @@ bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::
   return histogram_white_balance(image.getMatRef(),
       objmask,
       image.getMatRef(),
-      lclip_,
-      hclip_);
-
+      _lclip,
+      _hclip);
 }
-
-

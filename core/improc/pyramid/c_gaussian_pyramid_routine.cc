@@ -63,68 +63,67 @@ static void sharpen_image(cv::InputArray src, cv::OutputArray dst, double alpha,
   }
 }
 
-void c_gaussian_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_gaussian_pyramid_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_SPINBOX_CTRL(ctls, count, -32, 32, 1, "count", "count of times for pyDown (negative value for pyrUp instead)");
-  BIND_PCTRL(ctls, borderType, "enum cv::BorderTypes");
-  BIND_PCTRL(ctls, sharpen_amount, "Optional sharpen factor (set 0 to disable)");
-  BIND_PCTRL(ctls, sharpen_outmin, "");
-  BIND_PCTRL(ctls, sharpen_outmax, "");
-  BIND_PCTRL(ctls, sharpen_order, "When to apply unsharp_mask");
+   ctlbind(ctls, "count",  ctx(&this_class::_count), "");
+   ctlbind(ctls, "borderType",  ctx(&this_class::_borderType), "");
+   ctlbind(ctls, "sharpen_order",  ctx(&this_class::_sharpen_order), "");
+   ctlbind(ctls, "sharpen_amount",  ctx(&this_class::_sharpen_amount), "");
+   ctlbind(ctls, "sharpen_outmin",  ctx(&this_class::_sharpen_outmin), "");
+   ctlbind(ctls, "sharpen_outmax",  ctx(&this_class::_sharpen_outmax), "");
 }
 
 bool c_gaussian_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, count);
-    SERIALIZE_PROPERTY(settings, save, *this, borderType);
-    SERIALIZE_PROPERTY(settings, save, *this, sharpen_amount);
-    SERIALIZE_PROPERTY(settings, save, *this, sharpen_outmin);
-    SERIALIZE_PROPERTY(settings, save, *this, sharpen_outmax);
-    SERIALIZE_PROPERTY(settings, save, *this, sharpen_order);
+    SERIALIZE_OPTION(settings, save, *this, _count);
+    SERIALIZE_OPTION(settings, save, *this, _borderType);
+    SERIALIZE_OPTION(settings, save, *this, _sharpen_amount);
+    SERIALIZE_OPTION(settings, save, *this, _sharpen_outmin);
+    SERIALIZE_OPTION(settings, save, *this, _sharpen_outmax);
+    SERIALIZE_OPTION(settings, save, *this, _sharpen_order);
     return true;
-
   }
   return false;
 }
 
 bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( count_ > 0 ) {
+  if( _count > 0 ) {
 
     const bool trivialMask =
         mask.empty() || cv::countNonZero(mask) == mask.size().area();
 
-    if ( sharpen_order_ == SharpenBefore && sharpen_amount_ != 0 ) {
+    if ( _sharpen_order == SharpenBefore && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, sharpen_amount_,
-          sharpen_outmin_,
-          sharpen_outmax_);
+      sharpen_image(image.getMat(), image, _sharpen_amount,
+          _sharpen_outmin,
+          _sharpen_outmax);
     }
 
 
-    for( int i = 0; i < count_ && std::min(image.cols(), image.rows()) > 3; ++i ) {
+    for( int i = 0; i < _count && std::min(image.cols(), image.rows()) > 3; ++i ) {
 
-      if( sharpen_order_ == SharpenEachIteration && sharpen_amount_ != 0 ) {
+      if( _sharpen_order == SharpenEachIteration && _sharpen_amount != 0 ) {
 
-        sharpen_image(image.getMat(), image, sharpen_amount_,
-            sharpen_outmin_,
-            sharpen_outmax_);
+        sharpen_image(image.getMat(), image, _sharpen_amount,
+            _sharpen_outmin,
+            _sharpen_outmax);
 
       }
 
-      cv::pyrDown(image.getMat(), image, cv::Size(), borderType_);
+      cv::pyrDown(image.getMat(), image, cv::Size(), _borderType);
 
       if( !trivialMask ) {
-        cv::pyrDown(mask.getMat(), mask, cv::Size(), borderType_);
+        cv::pyrDown(mask.getMat(), mask, cv::Size(), _borderType);
       }
     }
 
-    if ( sharpen_order_ == SharpenAfter && sharpen_amount_ != 0 ) {
+    if ( _sharpen_order == SharpenAfter && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, sharpen_amount_,
-          sharpen_outmin_,
-          sharpen_outmax_);
+      sharpen_image(image.getMat(), image, _sharpen_amount,
+          _sharpen_outmin,
+          _sharpen_outmax);
     }
 
     if( !mask.empty() ) {
@@ -138,42 +137,42 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
     }
 
   }
-  else if( count_ < 0 ) {
+  else if( _count < 0 ) {
 
     const bool trivialMask =
         mask.empty() || cv::countNonZero(mask) == mask.size().area();
 
-    if ( sharpen_order_ == SharpenBefore && sharpen_amount_ != 0 ) {
+    if ( _sharpen_order == SharpenBefore && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, sharpen_amount_,
-          sharpen_outmin_,
-          sharpen_outmax_);
+      sharpen_image(image.getMat(), image, _sharpen_amount,
+          _sharpen_outmin,
+          _sharpen_outmax);
 
     }
 
-    for( int i = 0; i < -count_ && std::max(image.cols(), image.rows()) < 16000; ++i ) {
+    for( int i = 0; i < -_count && std::max(image.cols(), image.rows()) < 16000; ++i ) {
 
-      if( sharpen_order_ == SharpenEachIteration && sharpen_amount_ != 0 ) {
+      if( _sharpen_order == SharpenEachIteration && _sharpen_amount != 0 ) {
 
-        sharpen_image(image.getMat(), image, sharpen_amount_,
-            sharpen_outmin_,
-            sharpen_outmax_);
+        sharpen_image(image.getMat(), image, _sharpen_amount,
+            _sharpen_outmin,
+            _sharpen_outmax);
 
       }
 
-      cv::pyrUp(image.getMat(), image, cv::Size(), borderType_);
+      cv::pyrUp(image.getMat(), image, cv::Size(), _borderType);
 
       if( !trivialMask ) {
-        cv::pyrUp(mask.getMat(), mask, cv::Size(), borderType_);
+        cv::pyrUp(mask.getMat(), mask, cv::Size(), _borderType);
       }
 
     }
 
-    if ( sharpen_order_ == SharpenAfter && sharpen_amount_ != 0 ) {
+    if ( _sharpen_order == SharpenAfter && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, sharpen_amount_,
-          sharpen_outmin_,
-          sharpen_outmax_);
+      sharpen_image(image.getMat(), image, _sharpen_amount,
+          _sharpen_outmin,
+          _sharpen_outmax);
 
     }
 

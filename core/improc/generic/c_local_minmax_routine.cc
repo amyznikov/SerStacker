@@ -36,28 +36,11 @@ const c_enum_member* members_of<c_local_minmax_routine::BorderType>()
   return members;
 }
 
-
-void c_local_minmax_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_local_minmax_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, filter_type, "filter_type");
-
-  BIND_PCTRL(ctls, se_shape, "se_shape");
-  BIND_PCTRL(ctls, se_size, "se_size");
-  BIND_PCTRL(ctls, anchor, "anchor");
-
-  BIND_PCTRL(ctls, locate_maximums, "locate_maximums");
-  BIND_PCTRL(ctls, maximums_alpha, "maximums_alpha");
-  BIND_PCTRL(ctls, maximums_beta, "maximums_beta");
-
-  BIND_PCTRL(ctls, locate_minimums, "locate_minimums");
-  BIND_PCTRL(ctls, minimums_alpha, "minimums_alpha");
-  BIND_PCTRL(ctls, minimums_beta, "minimums_beta");
-
-  BIND_PCTRL(ctls, border_type, "border_type");
-  BIND_PCTRL(ctls, border_value, "border_value");
-
-  BIND_PCTRL(ctls, output_channel, "output_channel");
-  BIND_PCTRL(ctls, ignore_mask, "ignore_mask");
+  ctlbind(ctls, ctx(&this_class::_opts));
+  ctlbind(ctls, "output_channel", ctx(&this_class::_output_channel), "");
+  ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "");
 }
 
 bool c_local_minmax_routine::serialize(c_config_setting settings, bool save)
@@ -95,9 +78,9 @@ bool c_local_minmax_routine::process(cv::InputOutputArray image, cv::InputOutput
       _ignore_mask ? cv::noArray() :
           mask.getMat(),
       M,
-      opts_);
+      _opts);
 
-  if ( output_channel_ == OUTPUT_IMAGE ) {
+  if ( _output_channel == OUTPUT_IMAGE ) {
     image.move(M);
   }
   else if ( M.channels() > 1 ) {

@@ -36,69 +36,9 @@ public:
     THRESHOLD_CLEAR_MASK
   };
 
-  void set_compare(cv::CmpTypes v)
-  {
-    _compare = v;
-  }
-
-  cv::CmpTypes compare() const
-  {
-    return _compare;
-  }
-
-  void set_threshold_type(THRESHOLD_TYPE v)
-  {
-    _threshold_type = v;
-  }
-
-  THRESHOLD_TYPE threshold_type() const
-  {
-    return _threshold_type;
-  }
-
-  void set_threshold_value(double v)
-  {
-    _threshold_value = v;
-  }
-
-  double threshold_value() const
-  {
-    return _threshold_value;
-  }
-
-  void set_threshold_scale(double v)
-  {
-    _threshold_scale = v;
-  }
-
-  double threshold_scale() const
-  {
-    return _threshold_scale;
-  }
-
-  void set_fill_holes(bool v)
-  {
-    _fill_holes = v;
-  }
-
-  bool fill_holes() const
-  {
-    return _fill_holes;
-  }
-
-  void set_invert(bool v)
-  {
-    _invert = v;
-  }
-
-  bool invert() const
-  {
-    return _invert;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   cv::CmpTypes _compare = cv::CMP_GT;

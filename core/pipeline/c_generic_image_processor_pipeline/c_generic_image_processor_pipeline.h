@@ -24,6 +24,7 @@ struct c_generic_image_processor_options
   c_image_processor::sptr image_processor;
 };
 
+
 struct c_generic_image_processor_output_options :
     c_image_processing_pipeline_output_options
 {
@@ -49,9 +50,8 @@ public:
 
   static const std::string & class_name()
   {
-    static const std::string class_name_ =
-        "generic";
-    return class_name_;
+    static const std::string _class_name = "generic";
+    return _class_name;
   }
 
   static const std::string & tooltip()
@@ -73,8 +73,10 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool copyParameters(const base::sptr & dst) const override;
+
+  static const c_ctlist<this_class> & getcontrols();
 
 protected:
   bool initialize_pipeline() override;
@@ -84,13 +86,13 @@ protected:
 
 protected:
   c_generic_image_processor_input_options _input_options;
-  c_generic_image_processor_options processing_options_;
-  c_generic_image_processor_output_options output_options_;
+  c_generic_image_processor_options _processing_options;
+  c_generic_image_processor_output_options _output_options;
 
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
+  cv::Mat _current_image;
+  cv::Mat _current_mask;
 
-  c_output_frame_writer processed_file_writer_;
+  c_output_frame_writer _processed_file_writer;
 };
 
 #endif /* __c_generic_image_processor_h__ */

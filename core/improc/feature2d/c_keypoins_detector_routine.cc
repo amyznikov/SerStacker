@@ -130,24 +130,22 @@ static inline void draw_epipole(cv::Mat & image, const cv::Point2d & E, const cv
   }
 }
 
-
-void c_keypoins_detector_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_keypoins_detector_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_SPARSE_FEATURE_DETECTOR_CTRL(ctls, options, "Options", "Options for feature2D detector");
-  BIND_PCTRL(ctls, octave, "Draw key points from selected octave only");
-  BIND_PCTRL(ctls, black_background, "");
-
-  BIND_PCTRL(ctls, display_type, "");
-  BIND_PCTRL(ctls, rotation, "");
-  BIND_PCTRL(ctls, translation, "");
-  BIND_PCTRL(ctls, focus, "");
+  ctlbind(ctls, "Options", ctx(&this_class:: _opts), "Options for feature2D detector");
+  ctlbind(ctls, "octave", ctx, &this_class::octave, &this_class::set_octave, "Draw key points from selected octave only");
+  ctlbind(ctls, "", ctx, &this_class::black_background, &this_class::set_black_background, "");
+  ctlbind(ctls, "display", ctx, &this_class::display_type, &this_class::set_display_type, "");
+  ctlbind(ctls, "rotation", ctx, &this_class::rotation, &this_class::set_rotation, "");
+  ctlbind(ctls, "translation", ctx, &this_class::translation, &this_class::set_translation, "");
+  ctlbind(ctls, "focus", ctx, &this_class::focus, &this_class::set_focus, "");
 }
 
 bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
 
-    SERIALIZE_OPTION(settings, save, *this, opts);
+    SERIALIZE_OPTION(settings, save, *this, _opts);
     SERIALIZE_PROPERTY(settings, save, *this, octave);
     SERIALIZE_PROPERTY(settings, save, *this, black_background);
     SERIALIZE_PROPERTY(settings, save, *this, display_type);
@@ -170,7 +168,7 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
     if( image.needed() && !image.empty() ) {
 
-      if( !_keypoints_detector && !(_keypoints_detector = create_sparse_feature_detector(opts)) ) {
+      if( !_keypoints_detector && !(_keypoints_detector = create_sparse_feature_detector(_opts)) ) {
         CF_ERROR("create_sparse_feature_detector() fails");
         return false;
       }
@@ -179,14 +177,14 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
 
       _keypoints_detector->detect(image, _keypoints, mask);
 
-      if( opts.max_keypoints > 0 && _keypoints.size() > opts.max_keypoints ) {
+      if( _opts.max_keypoints > 0 && _keypoints.size() > _opts.max_keypoints ) {
 
         std::sort(_keypoints.begin(), _keypoints.end(),
             [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
               return prev.response > next.response;
             });
 
-        _keypoints.erase(_keypoints.begin() + opts.max_keypoints,
+        _keypoints.erase(_keypoints.begin() + _opts.max_keypoints,
             _keypoints.end());
       }
 

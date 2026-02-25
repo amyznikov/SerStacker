@@ -7,37 +7,17 @@
 
 #include "c_color_balance_routine.h"
 
-void c_color_balance_routine::set_gscale(double v)
+void c_color_balance_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  gscale_ = v;
-}
-
-double c_color_balance_routine::gscale() const
-{
-  return gscale_;
-}
-
-void c_color_balance_routine::set_alpha(double v)
-{
-  alpha_ = v;
-}
-
-double c_color_balance_routine::alpha() const
-{
-  return alpha_;
-}
-
-void c_color_balance_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_DOUBLE_SLIDER_CTRL(ctls, alpha, -1, +1, 1e-4, "alpha", "");
-  BIND_DOUBLE_SLIDER_CTRL(ctls, gscale, 0, +2, 1e-4, "gscale", "");
+  ctlbind(ctls, "gscale", ctx(&this_class::_gscale), "");
+  ctlbind(ctls, "alpha", ctx(&this_class::_alpha), "");
 }
 
 bool c_color_balance_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, alpha);
-    SERIALIZE_PROPERTY(settings, save, *this, gscale);
+    SERIALIZE_OPTION(settings, save, *this, _alpha);
+    SERIALIZE_OPTION(settings, save, *this, _gscale);
     return true;
   }
   return false;
@@ -48,11 +28,11 @@ bool c_color_balance_routine::process(cv::InputOutputArray image, cv::InputOutpu
   if( !image.empty() && image.channels() == 3 ) {
 
     const double v =
-        alpha_ > 0 ? alpha_ * alpha_ :
-            -alpha_ * alpha_;
+        _alpha > 0 ? _alpha * _alpha :
+            -_alpha * _alpha;
 
     const double b = (1 + v );
-    const double g = gscale_;
+    const double g = _gscale;
     const double r = (1 - v);
 
     cv::transform(image.getMat(), image,

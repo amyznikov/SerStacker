@@ -35,6 +35,11 @@ public:
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
 
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
+
 Q_SIGNALS:
   void selectedCameraChanged();
 
@@ -42,10 +47,7 @@ protected Q_SLOTS:
   void onSelectedCameraChanged();
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  QVBoxLayout * layout_ = nullptr;
+  QVBoxLayout * _layout = nullptr;
   QCameraSelectionWidget * cameraSelection_ctl = nullptr;
   QSettingsWidget * settings_ctl = nullptr;
 
@@ -64,8 +66,6 @@ public:
 
   QImagingCameraControlsDock(const QString & title, QWidget * parent,
       QImagingCameraControlsWidget * view);
-
-protected:
 };
 
 } /* namespace serimager */

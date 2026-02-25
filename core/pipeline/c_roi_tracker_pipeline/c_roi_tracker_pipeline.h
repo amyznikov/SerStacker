@@ -75,7 +75,8 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  static const c_ctlist<this_class> & getcontrols();
 
 protected:
   bool initialize_pipeline() override;
@@ -86,16 +87,16 @@ protected:
 
 protected:
   c_roi_tracker_input_options _input_options;
-  c_roi_tracker_pipeline_options tracker_options_;
-  c_roi_tracker_output_options output_options_;
+  c_roi_tracker_pipeline_options _tracker_options;
+  c_roi_tracker_output_options _output_options;
 
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
+  cv::Mat _current_image;
+  cv::Mat _current_mask;
 
-  c_roi_tracker tracker_;
-  cv::Rect objbox_;
+  c_roi_tracker _tracker;
+  cv::Rect _objbox;
 
-  c_output_frame_writer progress_writer_;
+  c_output_frame_writer _progress_writer;
 
 };
 

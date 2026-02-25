@@ -63,9 +63,7 @@ enum ROI_TRACKER_TYPE
 
 struct c_roi_tracker_options
 {
-  ROI_TRACKER_TYPE tracker_type =
-      ROI_TRACKER_MEDIANFLOW;
-
+  ROI_TRACKER_TYPE tracker_type = ROI_TRACKER_MEDIANFLOW;
   bool enabled = true;
 
   TrackerBoosting::Params boosting;

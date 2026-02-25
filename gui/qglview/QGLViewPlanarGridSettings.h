@@ -11,6 +11,7 @@
 
 #include "QGLView.h"
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QSettingsWidgetTemplate.h>
 #include <gui/widgets/QColorPickerButton.h>
 
 class QGLViewPlanarGridSettings :
@@ -21,6 +22,17 @@ public:
   typedef QSettingsWidgetTemplate<QGLView::PlanarGridOptions> Base;
 
   QGLViewPlanarGridSettings(QWidget * parent = nullptr);
+
+  void setOptions(QGLView::PlanarGridOptions * options)
+  {
+    Base::setOpts(options);
+  }
+
+  QGLView::PlanarGridOptions * options() const
+  {
+    return Base::opts();
+  }
+
 
 protected:
   QCheckBox * visible_ctl = nullptr;
@@ -51,6 +63,17 @@ public:
     Base(title, parent, flags)
   {
   }
+
+  void setOptions(QGLView::PlanarGridOptions * options)
+  {
+    _settings->setOptions(options);
+  }
+
+  QGLView::PlanarGridOptions * options() const
+  {
+    return _settings->options();
+  }
+
 };
 
 #endif /* __QGlViewPlanarGridSettings_h__ */

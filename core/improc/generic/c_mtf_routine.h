@@ -17,73 +17,19 @@ class c_mtf_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_mtf_routine,
-      "mtf", "mtf");
+      "mtf", "c_pixinsight_mtf");
 
-  c_pixinsight_mtf & mtf()
-  {
-    return mtf_;
-  }
-
-  const c_pixinsight_mtf & mtf() const
-  {
-    return mtf_;
-  }
-
-  void set_shadows(double v)
-  {
-    mtf_.set_shadows(v);
-  }
-
-  double shadows() const
-  {
-    return mtf_.shadows();
-  }
-
-  void set_highlights(double v)
-  {
-    mtf_.set_highlights(v);
-  }
-
-  double highlights() const
-  {
-    return mtf_.highlights();
-  }
-
-  void set_midtones(double v)
-  {
-    mtf_.set_midtones(v);
-  }
-
-  double midtones() const
-  {
-    return mtf_.midtones();
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, shadows, "");
-    BIND_PCTRL(ctls, highlights, "");
-    BIND_PCTRL(ctls, midtones, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, shadows);
-      SERIALIZE_PROPERTY(settings, save, *this, highlights);
-      SERIALIZE_PROPERTY(settings, save, *this, midtones);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    return mtf_.apply(image, image);
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_pixinsight_mtf mtf_;
+  cv::Vec2d _inputRange = cv::Vec2d(-1,-1);
+  cv::Vec2d _outputRange = cv::Vec2d(-1,-1);
+  double _shadows = 0;
+  double _highlights = 0;
+  double _midtones = 0;
+  c_pixinsight_mtf _mtf;
 };
 
 #endif /* __c_mtf_routine_h__ */

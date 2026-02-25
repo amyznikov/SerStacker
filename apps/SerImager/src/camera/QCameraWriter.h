@@ -112,29 +112,29 @@ protected:
 
 
 protected:
-  std::mutex mtx_;
-  QImagingCamera::sptr camera_;
-  c_capture_limits capture_limits_;
-  QString output_directoty_;
-  QString output_file_name_;
-  QString filename_prefix_;
-  QString filename_suffix_;
+  std::mutex _mtx;
+  QImagingCamera::sptr _camera;
+  c_capture_limits _capture_limits;
+  QString _output_directoty;
+  QString _output_file_name;
+  QString _filename_prefix;
+  QString _filename_suffix;
 
-  FORMAT output_format_ = FORMAT::SER;
-  QString ffmpeg_options_ = "-r 10 -c rawvideo -pix_fmt bgr24"; // "-c huffyuv -r 100 -f avi";
+  FORMAT _output_format = FORMAT::SER;
+  QString _ffmpeg_options = "-r 10 -c rawvideo -pix_fmt bgr24"; // "-c huffyuv -r 100 -f avi";
 
-  bool enable_split_stereo_stream_ = false;
-  c_stereo_stream_options stereo_stream_options_;
+  bool _enable_split_stereo_stream = false;
+  c_stereo_stream_options _stereo_stream_options;
 
-  std::atomic<int> numRounds_ = 1;
-  std::atomic<int> interval_between_rounds_ = 0;
+  std::atomic<int> _numRounds = 1;
+  std::atomic<int> _interval_between_rounds = 0;
 
-  State current_state_ = State::Idle;
-  int last_index_ = -1;
-  int num_saved_frames_ = 0;
-  int num_dropped_frames_ = 0;
-  int round_ = 0;
-  double capture_duration_ = 0;
+  State _current_state = State::Idle;
+  int _last_index = -1;
+  int _num_saved_frames = 0;
+  int _num_dropped_frames = 0;
+  int _round = 0;
+  double _capture_duration = 0;
 };
 
 

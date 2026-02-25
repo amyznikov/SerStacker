@@ -45,30 +45,25 @@ const c_enum_member* members_of<c_asi_frame_check_routine::DISPLAY_CHANNEL>()
   return members;
 }
 
-
-//static bool
-
-
-void c_asi_frame_check_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_asi_frame_check_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, bayer_pattern, "");
-  BIND_PCTRL(ctls, display_channel, "");
-  BIND_PCTRL(ctls, differentiate, "");
-  BIND_PCTRL(ctls, reduce, "");
-  BIND_PCTRL(ctls, medianhat, "");
-  BIND_PCTRL(ctls, threshold, "");
+   ctlbind(ctls, "bayer_pattern", ctx(&this_class::_bayer_pattern), "");
+   ctlbind(ctls, "display_channel", ctx(&this_class::_display_channel), "");
+   ctlbind(ctls, "differentiate", ctx(&this_class::_differentiate), "");
+   ctlbind(ctls, "reduce", ctx(&this_class::_reduce), "");
+   ctlbind(ctls, "median hat", ctx(&this_class::_medianhat), "");
+   ctlbind(ctls, "threshold", ctx(&this_class::_threshold), "");
 }
 
 bool c_asi_frame_check_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, bayer_pattern);
-    SERIALIZE_PROPERTY(settings, save, *this, display_channel);
-    SERIALIZE_PROPERTY(settings, save, *this, differentiate);
-    SERIALIZE_PROPERTY(settings, save, *this, reduce);
-    SERIALIZE_PROPERTY(settings, save, *this, medianhat);
-    SERIALIZE_PROPERTY(settings, save, *this, threshold);
-
+    SERIALIZE_OPTION(settings, save, *this, _bayer_pattern);
+    SERIALIZE_OPTION(settings, save, *this, _display_channel);
+    SERIALIZE_OPTION(settings, save, *this, _differentiate);
+    SERIALIZE_OPTION(settings, save, *this, _reduce);
+    SERIALIZE_OPTION(settings, save, *this, _medianhat);
+    SERIALIZE_OPTION(settings, save, *this, _threshold);
     return true;
   }
   return false;

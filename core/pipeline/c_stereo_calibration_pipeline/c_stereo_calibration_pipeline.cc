@@ -15,7 +15,6 @@
 #include <thread>
 #include <core/debug.h>
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -23,6 +22,7 @@ c_stereo_calibration_pipeline::c_stereo_calibration_pipeline(const std::string &
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
+  _input_options.input_source.input_sequence = input_sequence.get();
 }
 
 c_stereo_calibration_pipeline::~c_stereo_calibration_pipeline()
@@ -42,32 +42,32 @@ const c_stereo_calibration_input_options & c_stereo_calibration_pipeline::input_
 
 c_chessboard_corners_detection_options & c_stereo_calibration_pipeline::chessboard_detection_options()
 {
-  return chessboard_detection_options_;
+  return _chessboard_detection_options;
 }
 
 const c_chessboard_corners_detection_options & c_stereo_calibration_pipeline::chessboard_detection_options() const
 {
-  return chessboard_detection_options_;
+  return _chessboard_detection_options;
 }
 
 c_stereo_calibrate_options & c_stereo_calibration_pipeline::calibration_options()
 {
-  return calibration_options_;
+  return _calibration_options;
 }
 
 const c_stereo_calibrate_options & c_stereo_calibration_pipeline::calibration_options() const
 {
-  return calibration_options_;
+  return _calibration_options;
 }
 
 c_stereo_calibration_output_options & c_stereo_calibration_pipeline::output_options()
 {
-  return output_options_;
+  return _output_options;
 }
 
 const c_stereo_calibration_output_options & c_stereo_calibration_pipeline::output_options() const
 {
-  return output_options_;
+  return _output_options;
 }
 
 bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool save)
@@ -83,152 +83,259 @@ bool c_stereo_calibration_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "chessboard_detection")) ) {
-    SERIALIZE_OBJECT(section, save, chessboard_detection_options_);
+    SERIALIZE_OBJECT(section, save, _chessboard_detection_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "calibration_options")) ) {
-    SERIALIZE_OPTION(section, save, calibration_options_, enable_calibration);
-    SERIALIZE_OPTION(section, save, calibration_options_, min_frames);
-    SERIALIZE_OPTION(section, save, calibration_options_, max_frames);
-    SERIALIZE_OPTION(section, save, calibration_options_, calibration_flags);
-    SERIALIZE_OPTION(section, save, calibration_options_, auto_tune_calibration_flags);
-    SERIALIZE_OPTION(section, save, calibration_options_, init_camera_matrix_2d);
-    SERIALIZE_OPTION(section, save, calibration_options_, max_iterations );
-    SERIALIZE_OPTION(section, save, calibration_options_, solver_eps );
-    SERIALIZE_OPTION(section, save, calibration_options_, filter_alpha);
+    SERIALIZE_OPTION(section, save, _calibration_options, enable_calibration);
+    SERIALIZE_OPTION(section, save, _calibration_options, min_frames);
+    SERIALIZE_OPTION(section, save, _calibration_options, max_frames);
+    SERIALIZE_OPTION(section, save, _calibration_options, calibration_flags);
+    SERIALIZE_OPTION(section, save, _calibration_options, auto_tune_calibration_flags);
+    SERIALIZE_OPTION(section, save, _calibration_options, init_camera_matrix_2d);
+    SERIALIZE_OPTION(section, save, _calibration_options, max_iterations );
+    SERIALIZE_OPTION(section, save, _calibration_options, solver_eps );
+    SERIALIZE_OPTION(section, save, _calibration_options, filter_alpha);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
-    SERIALIZE_OPTION(section, save, output_options_, output_directory);
+    SERIALIZE_OPTION(section, save, _output_options, output_directory);
 
-    SERIALIZE_OPTION(section, save, output_options_, output_intrinsics_filename);
-    SERIALIZE_OPTION(section, save, output_options_, output_extrinsics_filename);
+    SERIALIZE_OPTION(section, save, _output_options, output_intrinsics_filename);
+    SERIALIZE_OPTION(section, save, _output_options, output_extrinsics_filename);
 
-    SERIALIZE_OPTION(section, save, output_options_, save_chessboard_frames);
+    SERIALIZE_OPTION(section, save, _output_options, save_chessboard_frames);
     if( (subsection = SERIALIZE_GROUP(section, save, "chessboard_frames_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, chessboard_frames_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, chessboard_frames_output_options);
     }
 
-    SERIALIZE_OPTION(section, save, output_options_, save_rectified_frames);
+    SERIALIZE_OPTION(section, save, _output_options, save_rectified_frames);
     if( (subsection = SERIALIZE_GROUP(section, save, "rectified_frames_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, rectified_frames_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, rectified_frames_output_options);
     }
 
-    SERIALIZE_OPTION(section, save, output_options_, save_stereo_rectified_frames);
+    SERIALIZE_OPTION(section, save, _output_options, save_stereo_rectified_frames);
     if( (subsection = SERIALIZE_GROUP(section, save, "stereo_rectified_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, stereo_rectified_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, stereo_rectified_output_options);
     }
 
-    SERIALIZE_OPTION(section, save, output_options_, save_quad_rectified_frames);
+    SERIALIZE_OPTION(section, save, _output_options, save_quad_output_frames);
+    if( (subsection = SERIALIZE_GROUP(section, save, "quad_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, quad_output_options);
+    }
+
+    SERIALIZE_OPTION(section, save, _output_options, save_quad_rectified_frames);
     if( (subsection = SERIALIZE_GROUP(section, save, "quad_rectified_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, quad_rectified_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, quad_rectified_output_options);
     }
 
-    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    SERIALIZE_OPTION(section, save, _output_options, save_progress_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "progress_video_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, progress_video_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, progress_video_output_options);
     }
   }
 
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeline::get_controls()
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_stereo_calibration_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+  using S = c_stereo_calibration_input_options;
+  ctlbind(ctls, as_base<c_stereo_input_options>(ctx));
+}
 
-  if( ctrls.empty() ) {
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_stereo_calibrate_options> & ctx)
+{
+  using S = c_stereo_calibrate_options;
 
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls)
-      PIPELINE_CTL_GROUP(ctrls, "Input Sequence", "");
-        POPULATE_PIPELINE_INPUT_OPTIONS(ctrls);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "enable calibration",ctx(&S::enable_calibration),  "");
+  ctlbind(ctls, "min_frames", ctx(&S::min_frames), "");
+  ctlbind(ctls, "max_frames", ctx(&S::max_frames), "");
 
-    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.method, "Method", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_size, "chessboard_size", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_cell_size, "chessboard_cell_size", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
+  ctlbind_flags_checkbox<STEREO_CALIBRATION_FLAGS>(ctls,"calibration flags", ctx(&S::calibration_flags), "" );
 
+  ctlbind(ctls, "auto_tune_calibration_flags", ctx(&S::auto_tune_calibration_flags), "");
+  ctlbind(ctls, "init_camera_matrix_2d", ctx(&S::init_camera_matrix_2d), "");
+  ctlbind(ctls, "max solver iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "solver_eps",ctx(&S::solver_eps),  "");
+  ctlbind(ctls, "corners filter alpha", ctx(&S::filter_alpha), "");
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_. findChessboardCorners.max_scales, "max_scales", "");
-      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_stereo_calibration_output_options> & ctx)
+{
+  using S = c_stereo_calibration_output_options;
 
-      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.findChessboardCornersSB.max_scales, "max_scales", "");
-      PIPELINE_CTL_BITFLAGS(ctrls, chessboard_detection_options_.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_browse_for_file(ctls, "output_intrinsics_filename", ctx(&S::output_intrinsics_filename), "");
+  ctlbind_browse_for_file(ctls, "output_extrinsics_filename", ctx(&S::output_extrinsics_filename), "");
 
-      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.winSize, "winSize", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.zeroZone, "zeroZone", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.cornerSubPix.solver_eps, "solver_eps", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Chessboard Frames", "");
+  ctlbind(ctls, "save_chessboard_frames", ctx(&S::save_chessboard_frames), "");
+    ctlbind(ctls, ctx(&S::chessboard_frames_output_options)); // _this->_output_options.save_chessboard_frames);
+  ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.d, "d", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaColor, "sigmaColor", "");
-      PIPELINE_CTL(ctrls, chessboard_detection_options_.bilateralFilter.sigmaSpace, "sigmaSpace", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Rectified Frames", "");
+  ctlbind(ctls, "save_rectified_frames", ctx(&S::save_rectified_frames), "");
+    ctlbind(ctls, ctx(&S::rectified_frames_output_options)); // _this->_output_options.save_rectified_frames);
+  ctlbind_end_group(ctls);
 
+  ctlbind_expandable_group(ctls, "Save Stereo Rectified Frames", "");
+  ctlbind(ctls, "save_stereo_rectified_frames", ctx(&S::save_stereo_rectified_frames), "");
+    ctlbind(ctls, ctx(&S::stereo_rectified_output_options));//, _this->_output_options.save_stereo_rectified_frames);
+  ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_GROUP(ctrls, "Stereo Calibration", "");
-      PIPELINE_CTL(ctrls, calibration_options_.enable_calibration, "enable calibration", ""); \
-      PIPELINE_CTL(ctrls, calibration_options_.min_frames, "min_frames", "");
-      PIPELINE_CTL(ctrls, calibration_options_.max_frames, "max_frames", "");
-      PIPELINE_CTL_BITFLAGS(ctrls, calibration_options_.calibration_flags, STEREO_CALIBRATION_FLAGS,  "calibration flags", "" );
-      PIPELINE_CTL(ctrls, calibration_options_.auto_tune_calibration_flags, "auto_tune_calibration_flags", "")
-      PIPELINE_CTL(ctrls, calibration_options_.init_camera_matrix_2d, "init_camera_matrix_2d", "")
-      PIPELINE_CTL(ctrls, calibration_options_.max_iterations, "max solver iterations", "")
-      PIPELINE_CTL(ctrls, calibration_options_.solver_eps, "solver_eps", "")
-      PIPELINE_CTL(ctrls, calibration_options_.filter_alpha, "corners filter alpha", "")
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Quad Frames", "");
+  ctlbind(ctls, "save_quad_output_options", ctx(&S::save_quad_output_frames), "");
+    ctlbind(ctls, ctx(&S::quad_output_options));
+  ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-      PIPELINE_CTL(ctrls, output_options_.output_intrinsics_filename, "output_intrinsics_filename", "");
-      PIPELINE_CTL(ctrls, output_options_.output_extrinsics_filename, "output_extrinsics_filename", "");
+  ctlbind_expandable_group(ctls, "Save Quad Rectified Frames", "");
+  ctlbind(ctls, "save_quad_rectified_frames", ctx(&S::save_quad_rectified_frames), "");
+    ctlbind(ctls, ctx(&S::quad_rectified_output_options));// _this->_output_options.save_quad_rectified_frames);
+  ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_chessboard_frames, "save_chessboard_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.chessboard_frames_output_options,
-            _this->output_options_.save_chessboard_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Progress Video", "");
+  ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+    ctlbind(ctls, ctx(&S::progress_video_output_options)); // _this->_output_options.save_progress_video);
+  ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_rectified_frames, "save_rectified_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.rectified_frames_output_options,
-            _this->output_options_.save_rectified_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Stereo Rectified Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.stereo_rectified_output_options,
-            _this->output_options_.save_stereo_rectified_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+const c_ctlist<c_stereo_calibration_pipeline> & c_stereo_calibration_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Quad Rectified Frames", "");
-        PIPELINE_CTL(ctrls, output_options_.save_quad_rectified_frames, "save_quad_rectified_frames", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.quad_rectified_output_options,
-            _this->output_options_.save_quad_rectified_frames);
-      PIPELINE_CTL_END_GROUP(ctrls);
+    ctlbind_expandable_group(ctls, "1. Input options", "");
+      ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Progress Video", "");
-        PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_video_output_options,
-            _this->output_options_.save_progress_video);
-      PIPELINE_CTL_END_GROUP(ctrls);
+    ctlbind_expandable_group(ctls, "2. Chessboard corners detection", "");
+      ctlbind(ctls, ctx(&this_class::_chessboard_detection_options));
 
-    PIPELINE_CTL_END_GROUP(ctrls);
+      ctlbind_menu_button(ctls, "Options...", ctx);
+        ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+            std::function([](this_class * _ths) {
+              ctlbind_copy_config_to_clipboard("c_chessboard_corners_detection_options", _ths->_chessboard_detection_options);
+              return false;
+            }));
+        ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+            std::function([](this_class * _ths) {
+              return  ctlbind_paste_config_from_clipboard("c_chessboard_corners_detection_options", &_ths->_chessboard_detection_options);
+            }));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "3. Stereo Calibration", "");
+      ctlbind(ctls, ctx(&this_class::_calibration_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "4. Output options", "");
+      ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+
+//const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+////
+////  if( ctrls.empty() ) {
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////      POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls)
+////      PIPELINE_CTL_GROUP(ctrls, "Input Sequence", "");
+////        POPULATE_PIPELINE_INPUT_OPTIONS(ctrls);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.method, "Method", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_size, "chessboard_size", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_cell_size, "chessboard_cell_size", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
+////
+////
+////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options. findChessboardCorners.max_scales, "max_scales", "");
+////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.findChessboardCornersSB.max_scales, "max_scales", "");
+////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.winSize, "winSize", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.zeroZone, "zeroZone", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.solver_eps, "solver_eps", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.d, "d", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaColor, "sigmaColor", "");
+////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaSpace, "sigmaSpace", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Stereo Calibration", "");
+////      PIPELINE_CTL(ctrls, _calibration_options.enable_calibration, "enable calibration", ""); \
+////      PIPELINE_CTL(ctrls, _calibration_options.min_frames, "min_frames", "");
+////      PIPELINE_CTL(ctrls, _calibration_options.max_frames, "max_frames", "");
+////      PIPELINE_CTL_BITFLAGS(ctrls, _calibration_options.calibration_flags, STEREO_CALIBRATION_FLAGS,  "calibration flags", "" );
+////      PIPELINE_CTL(ctrls, _calibration_options.auto_tune_calibration_flags, "auto_tune_calibration_flags", "")
+////      PIPELINE_CTL(ctrls, _calibration_options.init_camera_matrix_2d, "init_camera_matrix_2d", "")
+////      PIPELINE_CTL(ctrls, _calibration_options.max_iterations, "max solver iterations", "")
+////      PIPELINE_CTL(ctrls, _calibration_options.solver_eps, "solver_eps", "")
+////      PIPELINE_CTL(ctrls, _calibration_options.filter_alpha, "corners filter alpha", "")
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_intrinsics_filename, "output_intrinsics_filename", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_extrinsics_filename, "output_extrinsics_filename", "");
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_chessboard_frames, "save_chessboard_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.chessboard_frames_output_options,
+////            _this->_output_options.save_chessboard_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_rectified_frames, "save_rectified_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.rectified_frames_output_options,
+////            _this->_output_options.save_rectified_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Stereo Rectified Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.stereo_rectified_output_options,
+////            _this->_output_options.save_stereo_rectified_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Quad Rectified Frames", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_quad_rectified_frames, "save_quad_rectified_frames", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.quad_rectified_output_options,
+////            _this->_output_options.save_quad_rectified_frames);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Progress Video", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.progress_video_output_options,
+////            _this->_output_options.save_progress_video);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////  }
+//
+//  return ctrls;
+//}
 
 
 bool c_stereo_calibration_pipeline::copyParameters(const base::sptr & dst) const
@@ -248,9 +355,9 @@ bool c_stereo_calibration_pipeline::copyParameters(const base::sptr & dst) const
   }
 
   p->_input_options = this->_input_options;
-  p->chessboard_detection_options_ = this->chessboard_detection_options_;
-  p->calibration_options_ = this->calibration_options_;
-  p->output_options_ = this->output_options_;
+  p->_chessboard_detection_options = this->_chessboard_detection_options;
+  p->_calibration_options = this->_calibration_options;
+  p->_output_options = this->_output_options;
 
   return true;
 
@@ -261,12 +368,12 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
   lock_guard lock(mutex());
 
   bool fOK =
-      ::read_stereo_source(input_,
-          _input_options.layout_type,
-          _input_options.swap_cameras,
+      ::read_stereo_source(_input,
+          _input_options.input_source.layout_type,
+          _input_options.input_source.swap_cameras,
           _input_options.enable_color_maxtrix,
-          current_frames_,
-          current_masks_);
+          _current_frames,
+          _current_masks);
 
   if( !fOK ) {
     CF_ERROR("read_stereo_source() fails");
@@ -276,24 +383,24 @@ bool c_stereo_calibration_pipeline::read_stereo_frame()
   for( int i = 0; i < 2; ++i ) {
 
     c_camera_intrinsics &intrinsics =
-        current_intrinsics_.camera[i];
+        _current_intrinsics.camera[i];
 
     if( intrinsics.image_size.empty() ) {
       intrinsics.image_size =
-          current_frames_[0].size();
+          _current_frames[0].size();
     }
-    else if( intrinsics.image_size != current_frames_[0].size() ) {
+    else if( intrinsics.image_size != _current_frames[0].size() ) {
       CF_ERROR("INPUT ERROR: Frame size change (%dx%d) -> (%dx%d) not supported\n",
           intrinsics.image_size.width, intrinsics.image_size.height,
-          current_frames_[0].cols, current_frames_[0].rows);
+          _current_frames[0].cols, _current_frames[0].rows);
       return false;
     }
   }
 
   if( _input_options.input_image_processor ) {
     for( int i = 0; i < 2; ++i ) {
-      cv::Mat &image = current_frames_[i];
-      cv::Mat &mask = current_masks_[i];
+      cv::Mat &image = _current_frames[i];
+      cv::Mat &mask = _current_masks[i];
 
       if( !_input_options.input_image_processor->process(image, mask) ) {
         CF_ERROR("ERROR: input_image_processor->process() fails for stereo frame %d", i);
@@ -314,69 +421,72 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  _output_path =
-      create_output_path(output_options_.output_directory);
+  _writing_output_videos = false;
 
-  output_intrinsics_filename_ =
-      generate_output_filename(output_options_.output_intrinsics_filename,
+  _output_path =
+      create_output_path(_output_options.output_directory);
+
+  _output_intrinsics_filename =
+      generate_output_filename(_output_options.output_intrinsics_filename,
           "stereo_intrinsics",
           ".yml");
 
-  output_extrinsics_filename_ =
-      generate_output_filename(output_options_.output_extrinsics_filename,
+  _output_extrinsics_filename =
+      generate_output_filename(_output_options.output_extrinsics_filename,
           "stereo_extrinsics",
           ".yml");
 
   /////////////////////////////////////////////////////////////////////////////
 
-  best_calibration_flags_ = current_calibration_flags_ = calibration_options_.calibration_flags;
-  best_subset_quality_ = HUGE_VAL;
-  stereo_intrinsics_initialized_ = false;
+  _best_calibration_flags = _current_calibration_flags = _calibration_options.calibration_flags;
+  _best_subset_quality = DBL_MAX;
+  _stereo_intrinsics_initialized = false;
 
-  if ( chessboard_detection_options_.chessboard_size.width < 2 || chessboard_detection_options_.chessboard_size.height < 2 ) {
-    CF_ERROR("Invalid chessboard_detection_options_.chessboard_size: %dx%d", chessboard_detection_options_.chessboard_size.width,
-        chessboard_detection_options_.chessboard_size.height);
+
+  if ( _chessboard_detection_options.chessboard_size.width < 2 || _chessboard_detection_options.chessboard_size.height < 2 ) {
+    CF_ERROR("Invalid chessboard_detection_options_.chessboard_size: %dx%d", _chessboard_detection_options.chessboard_size.width,
+        _chessboard_detection_options.chessboard_size.height);
     return false;
   }
 
-  if ( !(chessboard_detection_options_.chessboard_cell_size.width > 0) || !(chessboard_detection_options_.chessboard_cell_size.height > 0)  ) {
-    CF_ERROR("Invalid chessboard_cell_size_: %gx%g", chessboard_detection_options_.chessboard_cell_size.width,
-        chessboard_detection_options_.chessboard_cell_size.height);
+  if ( !(_chessboard_detection_options.chessboard_cell_size.width > 0) || !(_chessboard_detection_options.chessboard_cell_size.height > 0)  ) {
+    CF_ERROR("Invalid chessboard_cell_size_: %gx%g", _chessboard_detection_options.chessboard_cell_size.width,
+        _chessboard_detection_options.chessboard_cell_size.height);
     return false;
   }
 
-  current_object_points_.clear();
-  current_object_points_.reserve(chessboard_detection_options_.chessboard_size.area());
+  _current_object_points.clear();
+  _current_object_points.reserve(_chessboard_detection_options.chessboard_size.area());
 
-  for( int i = 0; i < chessboard_detection_options_.chessboard_size.height; ++i ) {
-    for( int j = 0; j < chessboard_detection_options_.chessboard_size.width; ++j ) {
+  for( int i = 0; i < _chessboard_detection_options.chessboard_size.height; ++i ) {
+    for( int j = 0; j < _chessboard_detection_options.chessboard_size.width; ++j ) {
 
-      current_object_points_.emplace_back(
-          j * chessboard_detection_options_.chessboard_cell_size.width,
-          i * chessboard_detection_options_.chessboard_cell_size.height,
-          chessboard_detection_options_.chessboard_distance);
+      _current_object_points.emplace_back(
+          j * _chessboard_detection_options.chessboard_cell_size.width,
+          i * _chessboard_detection_options.chessboard_cell_size.height,
+          _chessboard_detection_options.chessboard_distance);
     }
   }
 
-  current_extrinsics_.R = cv::Matx33d::eye();
-  current_extrinsics_.T = cv::Vec3d::all(0);
-  best_extrinsics_.R = cv::Matx33d::eye();
-  best_extrinsics_.T = cv::Vec3d::all(0);
-  new_extrinsics_.R = cv::Matx33d::eye();
-  new_extrinsics_.T = cv::Vec3d::all(0);
+  _current_extrinsics.R = cv::Matx33d::eye();
+  _current_extrinsics.T = cv::Vec3d::all(0);
+  _best_extrinsics.R = cv::Matx33d::eye();
+  _best_extrinsics.T = cv::Vec3d::all(0);
+  _new_extrinsics.R = cv::Matx33d::eye();
+  _new_extrinsics.T = cv::Vec3d::all(0);
 
   for ( int i = 0; i < 2; ++i ) {
-    current_intrinsics_.camera[i].image_size = cv::Size(0, 0);
-    current_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
-    current_intrinsics_.camera[i].dist_coeffs.clear();
+    _current_intrinsics.camera[i].image_size = cv::Size(0, 0);
+    _current_intrinsics.camera[i].camera_matrix = cv::Matx33d::eye();
+    _current_intrinsics.camera[i].dist_coeffs.clear();
 
-    best_intrinsics_.camera[i].image_size = cv::Size(0, 0);
-    best_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
-    best_intrinsics_.camera[i].dist_coeffs.clear();
+    _best_intrinsics.camera[i].image_size = cv::Size(0, 0);
+    _best_intrinsics.camera[i].camera_matrix = cv::Matx33d::eye();
+    _best_intrinsics.camera[i].dist_coeffs.clear();
 
-    new_intrinsics_.camera[i].image_size = cv::Size(0, 0);
-    new_intrinsics_.camera[i].camera_matrix = cv::Matx33d::eye();
-    new_intrinsics_.camera[i].dist_coeffs.clear();
+    _new_intrinsics.camera[i].image_size = cv::Size(0, 0);
+    _new_intrinsics.camera[i].camera_matrix = cv::Matx33d::eye();
+    _new_intrinsics.camera[i].dist_coeffs.clear();
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -386,30 +496,30 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
 
   if( !is_live_input ) {
 
-    if( _input_options.left_stereo_source.empty() ) {
+    if( _input_options.input_source.left_stereo_source.empty() ) {
       CF_ERROR("ERROR: No left stereo source specified");
       return false;
     }
 
-    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
-      if( _input_options.right_stereo_source.empty() ) {
+    if( _input_options.input_source.layout_type == stereo_frame_layout_separate_sources ) {
+      if( _input_options.input_source.right_stereo_source.empty() ) {
         CF_ERROR("ERROR: No right stereo source specified");
         return false;
       }
     }
 
-    input_.inputs[0] = _input_sequence->source(_input_options.left_stereo_source);
-    if( !input_.inputs[0] ) {
+    _input.inputs[0] = _input_sequence->source(_input_options.input_source.left_stereo_source);
+    if( !_input.inputs[0] ) {
       CF_ERROR("ERROR: requested left stereo source not found in input sequence: %s",
-          _input_options.left_stereo_source.c_str());
+          _input_options.input_source.left_stereo_source.c_str());
       return false;
     }
 
-    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
-      input_.inputs[1] = _input_sequence->source(_input_options.right_stereo_source);
-      if( !input_.inputs[1] ) {
+    if( _input_options.input_source.layout_type == stereo_frame_layout_separate_sources ) {
+      _input.inputs[1] = _input_sequence->source(_input_options.input_source.right_stereo_source);
+      if( !_input.inputs[1] ) {
         CF_ERROR("ERROR: requested right stereo source not found in input sequence: %s",
-            _input_options.right_stereo_source.c_str());
+            _input_options.input_source.right_stereo_source.c_str());
         return false;
       }
     }
@@ -420,19 +530,19 @@ bool c_stereo_calibration_pipeline::initialize_pipeline()
   }
   else {
 
-    if( !(input_.inputs[0] = _input_sequence->source(0)) ) {
+    if( !(_input.inputs[0] = _input_sequence->source(0)) ) {
       CF_ERROR("ERROR: stereo source is null in input sequence");
       return false;
     }
 
-    if( _input_options.layout_type == stereo_frame_layout_separate_sources ) {
+    if( _input_options.input_source.layout_type == stereo_frame_layout_separate_sources ) {
 
       if( _input_sequence->sources().size() < 2 ) {
         CF_ERROR("ERROR: No second stereo source specified");
         return false;
       }
 
-      if( !(input_.inputs[1] = _input_sequence->source(1)) ) {
+      if( !(_input.inputs[1] = _input_sequence->source(1)) ) {
         CF_ERROR("ERROR: second stereo source is null in input sequence");
         return false;
       }
@@ -451,24 +561,24 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
 
   close_input_source();
 
-  if( chessboard_video_writer_.is_open() ) {
-    CF_DEBUG("closing '%s'", chessboard_video_writer_.filename().c_str());
-    chessboard_video_writer_.close();
+  if( _chessboard_video_writer.is_open() ) {
+    CF_DEBUG("closing '%s'", _chessboard_video_writer.filename().c_str());
+    _chessboard_video_writer.close();
   }
 
-  object_points_.clear();
-  current_object_points_.clear();
+  _object_points.clear();
+  _current_object_points.clear();
   //  rvecs_.clear();
   //  tvecs_.clear();
-  perViewErrors_.release();
+  _perViewErrors.release();
 
   for ( int i = 0; i < 2; ++i ) {
 
-    image_points_[i].clear();
-    current_image_points_[i].clear();
-    current_frames_[i].release();
-    current_masks_[i].release();
-    rmaps_[i].release();
+    _image_points[i].clear();
+    _current_image_points[i].clear();
+    _current_frames[i].release();
+    _current_masks[i].release();
+    _rmaps[i].release();
   }
 
   base::cleanup_pipeline();
@@ -479,13 +589,13 @@ bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray display_fr
 {
   lock_guard lock(mutex());
 
-  if ( current_frames_[0].empty() || current_frames_[0].empty() ) {
+  if ( _current_frames[0].empty() || _current_frames[0].empty() ) {
     return false;
   }
 
   const cv::Size sizes[2] = {
-      current_frames_[0].size(),
-      current_frames_[1].size(),
+      _current_frames[0].size(),
+      _current_frames[1].size(),
   };
 
   const cv::Rect roi[4] = {
@@ -500,73 +610,75 @@ bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray display_fr
       2 * std::max(sizes[0].height, sizes[1].height));
 
   display_frame.create(displaySize,
-      current_frames_[0].type());
+      _current_frames[0].type());
 
   cv::Mat & display_frame_ =
       display_frame.getMatRef();
 
-  current_frames_[0].copyTo(display_frame_(roi[0]));
-  current_frames_[1].copyTo(display_frame_(roi[1]));
+  _current_frames[0].copyTo(display_frame_(roi[0]));
+  _current_frames[1].copyTo(display_frame_(roi[1]));
 
-  if( rmaps_[0].empty() ) {
-    current_frames_[0].copyTo(display_frame_(roi[2]));
-    current_frames_[1].copyTo(display_frame_(roi[3]));
+  if( _rmaps[0].empty() ) {
+    _current_frames[0].copyTo(display_frame_(roi[2]));
+    _current_frames[1].copyTo(display_frame_(roi[3]));
   }
 
   else {
 
-    cv::remap(current_frames_[0], display_frame_(roi[2]),
-        rmaps_[0], cv::noArray(),
+    cv::remap(_current_frames[0], display_frame_(roi[2]),
+        _rmaps[0], cv::noArray(),
         cv::INTER_LINEAR);
 
-    cv::remap(current_frames_[1], display_frame_(roi[3]),
-        rmaps_[1], cv::noArray(),
+    cv::remap(_current_frames[1], display_frame_(roi[3]),
+        _rmaps[1], cv::noArray(),
         cv::INTER_LINEAR);
   }
 
-  if( !current_image_points_[0].empty() ) {
+  if ( !_writing_output_videos )  {
 
-    if ( display_frame_.channels() == 1 ) {
-      cv::cvtColor(display_frame_, display_frame_,
-          cv::COLOR_GRAY2BGR);
+    if( !_current_image_points[0].empty() ) {
+
+      if ( display_frame_.channels() == 1 ) {
+        cv::cvtColor(display_frame_, display_frame_,
+            cv::COLOR_GRAY2BGR);
+      }
+
+      cv::drawChessboardCorners(display_frame_(roi[0]),
+          _chessboard_detection_options.chessboard_size,
+          _current_image_points[0],
+          true);
     }
 
-    cv::drawChessboardCorners(display_frame_(roi[0]),
-        chessboard_detection_options_.chessboard_size,
-        current_image_points_[0],
-        true);
-  }
+    if( !_current_image_points[1].empty() ) {
 
-  if( !current_image_points_[1].empty() ) {
+      if ( display_frame_.channels() == 1 ) {
+        cv::cvtColor(display_frame_, display_frame_,
+            cv::COLOR_GRAY2BGR);
+      }
 
-    if ( display_frame_.channels() == 1 ) {
-      cv::cvtColor(display_frame_, display_frame_,
-          cv::COLOR_GRAY2BGR);
+      cv::drawChessboardCorners(display_frame_(roi[1]),
+          _chessboard_detection_options.chessboard_size,
+          _current_image_points[1],
+          true);
     }
 
-    cv::drawChessboardCorners(display_frame_(roi[1]),
-        chessboard_detection_options_.chessboard_size,
-        current_image_points_[1],
-        true);
-  }
+    if( _rmaps[0].empty() ) {
 
-  if( rmaps_[0].empty() ) {
+      // draw coverage
 
-    // draw coverage
+      for ( int i = 0; i < 2; ++i ) {
 
-    for ( int i = 0; i < 2; ++i ) {
+        cv::Mat3b display =
+            display_frame_(roi[i + 2]);
 
-      cv::Mat3b display =
-          display_frame_(roi[i + 2]);
-
-      for( const std::vector<cv::Point2f> &corners : image_points_[i] ) {
-        for( const cv::Point2f &corner : corners ) {
-          cv::rectangle(display, cv::Rect(corner.x - 1, corner.y - 1, 3, 3), CV_RGB(0, 255, 0), -1, cv::LINE_8);
+        for( const std::vector<cv::Point2f> &corners : _image_points[i] ) {
+          for( const cv::Point2f &corner : corners ) {
+            cv::rectangle(display, cv::Rect(corner.x - 1, corner.y - 1, 3, 3), CV_RGB(0, 255, 0), -1, cv::LINE_8);
+          }
         }
       }
     }
   }
-
 
   if( display_frame.needed() ) {
     display_frame_.copyTo(display_frame);
@@ -582,7 +694,7 @@ bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray display_fr
 
 void c_stereo_calibration_pipeline::close_input_source()
 {
-  ::close_stereo_source(input_);
+  ::close_stereo_source(_input);
 }
 
 bool c_stereo_calibration_pipeline::open_input_source()
@@ -605,7 +717,7 @@ bool c_stereo_calibration_pipeline::open_input_source()
 //    }
 //  }
 
-  return ::open_stereo_source(input_, _input_options.layout_type);
+  return ::open_stereo_source(_input, _input_options.input_source.layout_type);
 }
 
 bool c_stereo_calibration_pipeline::seek_input_source(int pos)
@@ -622,7 +734,7 @@ bool c_stereo_calibration_pipeline::seek_input_source(int pos)
 //    }
 //  }
 
-  return ::seek_stereo_source(input_, pos);
+  return ::seek_stereo_source(_input, pos);
 }
 
 
@@ -650,8 +762,8 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
     const int end_pos =
         _input_options.max_input_frames < 1 ?
-            input_.inputs[0]->size() :
-            std::min(input_.inputs[0]->size(),
+            _input.inputs[0]->size() :
+            std::min(_input.inputs[0]->size(),
                 _input_options.start_frame_index + _input_options.max_input_frames);
 
 
@@ -674,7 +786,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
   set_status_msg("RUNNING ...");
 
   const bool enable_live_calibration =
-      calibration_options_.enable_calibration &&
+      _calibration_options.enable_calibration &&
       _input_sequence->is_live();
 
   for( ; _processed_frames < _total_frames; ++_processed_frames, on_frame_processed() ) {
@@ -698,7 +810,7 @@ bool c_stereo_calibration_pipeline::run_pipeline()
     }
 
     _accumulated_frames =
-        object_points_.size();
+        _object_points.size();
 
     // give chance to GUI thread to call get_display_image()
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -706,13 +818,22 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
   close_input_source();
 
-  if ( calibration_options_.enable_calibration && !_input_sequence->is_live()  ) {
+  if ( canceled()  ) {
+    return false;
+  }
+
+  if ( _calibration_options.enable_calibration && !_input_sequence->is_live()  ) {
 
     if ( !update_calibration() ) {
       CF_ERROR("update_stereo_calibration() fails");
       return false;
     }
 
+    if ( canceled()  ) {
+      return false;
+    }
+
+    _writing_output_videos = true;
     if ( !write_output_videos() ) {
       return false;
     }
@@ -723,29 +844,29 @@ bool c_stereo_calibration_pipeline::run_pipeline()
 
 bool c_stereo_calibration_pipeline::update_calibration()
 {
-  if( !stereo_intrinsics_initialized_ && calibration_options_.init_camera_matrix_2d ) {
+  if( !_stereo_intrinsics_initialized && _calibration_options.init_camera_matrix_2d ) {
 
     const cv::Size image_size =
-        current_frames_[0].size();
+        _current_frames[0].size();
 
-    stereo_intrinsics_initialized_ =
-        init_camera_intrinsics(current_intrinsics_,
-            object_points_,
-            image_points_[0],
-            image_points_[1],
-            image_size,
-            1);
+      _stereo_intrinsics_initialized =
+          init_camera_intrinsics(_current_intrinsics,
+              _object_points,
+              _image_points[0],
+              _image_points[1],
+              image_size,
+              1);
 
-    if( !stereo_intrinsics_initialized_ ) {
+    if( !_stereo_intrinsics_initialized ) {
       CF_ERROR("init_camera_intrinsics() fails");
       return false; // wait for next frame
     }
 
     const cv::Matx33d &M0 =
-        current_intrinsics_.camera[0].camera_matrix;
+        _current_intrinsics.camera[0].camera_matrix;
 
     const cv::Matx33d &M1 =
-        current_intrinsics_.camera[1].camera_matrix;
+        _current_intrinsics.camera[1].camera_matrix;
 
     CF_DEBUG("\nINITIAL M0: {\n"
         "  %+g %+g %+g\n"
@@ -759,7 +880,7 @@ bool c_stereo_calibration_pipeline::update_calibration()
         "  %+g %+g %+g\n"
         "}\n",
 
-    M0(0, 0), M0(0, 1), M0(0, 2),
+        M0(0, 0), M0(0, 1), M0(0, 2),
         M0(1, 0), M0(1, 1), M0(1, 2),
         M0(2, 0), M0(2, 1), M0(2, 2),
 
@@ -768,32 +889,34 @@ bool c_stereo_calibration_pipeline::update_calibration()
         M1(2, 0), M1(2, 1), M1(2, 2));
   }
 
-  if( best_subset_quality_ < HUGE_VAL ) {
-    current_intrinsics_ = best_intrinsics_;
-    current_extrinsics_ = best_extrinsics_;
-    current_calibration_flags_ = best_calibration_flags_;
+  if( _best_subset_quality < DBL_MAX ) {
+    _current_intrinsics = _best_intrinsics;
+    _current_extrinsics = _best_extrinsics;
+    _current_calibration_flags = _best_calibration_flags;
   }
 
-  rmse_ =
-      stereo_calibrate(object_points_,
-          image_points_[0], image_points_[1],
-          current_intrinsics_,
-          current_extrinsics_,
-          current_calibration_flags_,
+  CF_DEBUG("Run stereo_calibrate() ...");
+
+  _rmse =
+      stereo_calibrate(_object_points,
+          _image_points[0], _image_points[1],
+          _current_intrinsics,
+          _current_extrinsics,
+          _current_calibration_flags,
           cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-              calibration_options_.max_iterations,
-              calibration_options_.solver_eps),
-          &E_,
-          &F_,
+              _calibration_options.max_iterations,
+              _calibration_options.solver_eps),
+          &_E,
+          &_F,
           // &rvecs_,
           // &tvecs_,
-          &perViewErrors_);
+          &_perViewErrors);
 
   const cv::Matx33d &M0 =
-      current_intrinsics_.camera[0].camera_matrix;
+      _current_intrinsics.camera[0].camera_matrix;
 
   const cv::Matx33d &M1 =
-      current_intrinsics_.camera[1].camera_matrix;
+      _current_intrinsics.camera[1].camera_matrix;
 
   CF_DEBUG("\nM0: {\n"
       "  %+g %+g %+g\n"
@@ -816,24 +939,23 @@ bool c_stereo_calibration_pipeline::update_calibration()
       M1(0, 0), M1(0, 1), M1(0, 2),
       M1(1, 0), M1(1, 1), M1(1, 2),
       M1(2, 0), M1(2, 1), M1(2, 2),
-      rmse_);
+      _rmse);
 
-  if( rmse_ >= 0 ) {
+  if( _rmse >= 0 ) {
 
     const double subset_quality =
         estimate_subset_quality();
 
-    stereo_intrinsics_initialized_ = true;
+    _stereo_intrinsics_initialized = true;
 
     CF_DEBUG("subset_quality=%g best_subset_quality_=%g",
-        subset_quality, best_subset_quality_);
+        subset_quality, _best_subset_quality);
 
-    if( subset_quality < best_subset_quality_ ) {
-
-      best_intrinsics_ = current_intrinsics_;
-      best_extrinsics_ = current_extrinsics_;
-      best_calibration_flags_ = current_calibration_flags_;
-      best_subset_quality_ = subset_quality;
+    if( subset_quality < _best_subset_quality ) {
+      _best_intrinsics = _current_intrinsics;
+      _best_extrinsics = _current_extrinsics;
+      _best_calibration_flags = _current_calibration_flags;
+      _best_subset_quality = subset_quality;
 
       update_state();
 
@@ -846,6 +968,9 @@ bool c_stereo_calibration_pipeline::update_calibration()
 
       return true;
     }
+    else {
+      CF_DEBUG("NOT ASSIGN _best_subset_quality=%g subset_quality=%g", _best_subset_quality, subset_quality);
+    }
   }
 
 
@@ -856,7 +981,7 @@ bool c_stereo_calibration_pipeline::update_calibration()
 double c_stereo_calibration_pipeline::estimate_subset_quality() const
 {
   const int nbframes =
-      object_points_.size();
+      _object_points.size();
 
   if( nbframes > 0 ) {
 
@@ -870,13 +995,13 @@ double c_stereo_calibration_pipeline::estimate_subset_quality() const
 
     double rmse_quality = 0;
     for( size_t i = 0; i < nbframes; i++ ) {
-      rmse_quality += (perViewErrors_[i][0] + perViewErrors_[i][1]);
+      rmse_quality += (_perViewErrors[i][0] + _perViewErrors[i][1]);
     }
     rmse_quality /= nbframes;
 
 
     const double alpha =
-        calibration_options_.filter_alpha;
+        _calibration_options.filter_alpha;
 
     CF_DEBUG("grid: mean=%g stdev=%g quality=%g ; rmse: %g",
         grid_mean, grid_stdev, grid_quality, rmse_quality);
@@ -889,7 +1014,7 @@ double c_stereo_calibration_pipeline::estimate_subset_quality() const
 
 void c_stereo_calibration_pipeline::estimate_grid_meanstdev(double * m, double * s, int excludedIndex) const
 {
-  const cv::Size image_size = current_frames_[0].size();
+  const cv::Size image_size = _current_frames[0].size();
 
   const int gridSize = 10;
   const int xGridStep = image_size.width / gridSize;
@@ -900,12 +1025,12 @@ void c_stereo_calibration_pipeline::estimate_grid_meanstdev(double * m, double *
 
   std::fill(pointsInCell.begin(), pointsInCell.end(), 0);
 
-  for( int k = 0; k < object_points_.size(); k++ )
+  for( int k = 0; k < _object_points.size(); k++ )
     if( k != excludedIndex ) {
 
       for( int i = 0; i < 2; ++i ) {
 
-        for( const auto &p : image_points_[i][k] ) {
+        for( const auto &p : _image_points[i][k] ) {
 
           int ii = (int) (p.x / xGridStep);
           int jj = (int) (p.y / yGridStep);
@@ -941,26 +1066,26 @@ double c_stereo_calibration_pipeline::estimate_coverage_quality(int excludedInde
 void c_stereo_calibration_pipeline::filter_frames(bool only_landmarks)
 {
   const int nbframes =
-      object_points_.size();
+      _object_points.size();
 
   const int nbframesmax =
-      std::max(1, std::max(calibration_options_.min_frames,
-          calibration_options_.max_frames));
+      std::max(1, std::max(_calibration_options.min_frames,
+          _calibration_options.max_frames));
 
   //CF_DEBUG("nbframes = %d / %d", nbframes, nbframesmax);
 
-  if( !only_landmarks && nbframes != perViewErrors_.rows ) {
+  if( !only_landmarks && nbframes != _perViewErrors.rows ) {
 
     if( nbframes > 1 ) {
       CF_ERROR("APP BUG: object_points_.size()=%zu != current_per_view_errors_.total()=%d",
-          object_points_.size(),
-          perViewErrors_.rows);
+          _object_points.size(),
+          _perViewErrors.rows);
     }
 
     if( nbframes > nbframesmax ) {
-      image_points_[0].erase(image_points_[0].begin());
-      image_points_[1].erase(image_points_[1].begin());
-      object_points_.erase(object_points_.begin());
+      _image_points[0].erase(_image_points[0].begin());
+      _image_points[1].erase(_image_points[1].begin());
+      _object_points.erase(_object_points.begin());
     }
 
     return;
@@ -980,16 +1105,16 @@ void c_stereo_calibration_pipeline::filter_frames(bool only_landmarks)
 
 
     const double alpha =
-        calibration_options_.filter_alpha;
+        _calibration_options.filter_alpha;
 
     const double totalRmeQuality =
         only_landmarks ? 0 :
-            estimateRmeQuality(perViewErrors_);
+            estimateRmeQuality(_perViewErrors);
 
     const double totalCoverageQuality =
         estimate_coverage_quality(nbframes);
 
-    double bestSubsetQuality = HUGE_VAL;
+    double bestQuality = DBL_MAX;
     int worstElemIndex = 0;
 
     for( int i = 0; i < nbframes; ++i ) {
@@ -997,58 +1122,58 @@ void c_stereo_calibration_pipeline::filter_frames(bool only_landmarks)
       const double currentCoverageQuality =
           estimate_coverage_quality(i);
 
-      double currentSubsetQuality;
+      double currentQuality;
 
       if ( only_landmarks ) {
-        currentSubsetQuality =
+        currentQuality =
             currentCoverageQuality;
       }
       else {
 
         const double currentRmseQuality =
-            (totalRmeQuality - 0.5 * (perViewErrors_[i][0] + perViewErrors_[i][1])) / (perViewErrors_.rows - 1);
+            (totalRmeQuality - 0.5 * (_perViewErrors[i][0] + _perViewErrors[i][1])) / (_perViewErrors.rows - 1);
 
-        currentSubsetQuality =
+        currentQuality =
             alpha * currentRmseQuality + (1. - alpha) * currentCoverageQuality;
       }
 
-      if( currentSubsetQuality < bestSubsetQuality ) {
-        bestSubsetQuality = currentSubsetQuality;
+      if( currentQuality < bestQuality ) {
+        bestQuality = currentQuality;
         worstElemIndex = i;
       }
     }
 
     // CF_DEBUG("worstElemIndex=%d bestSubsetQuality=%g", worstElemIndex, bestSubsetQuality);
 
-    image_points_[0].erase(image_points_[0].begin() + worstElemIndex);
-    image_points_[1].erase(image_points_[1].begin() + worstElemIndex);
-    object_points_.erase(object_points_.begin() + worstElemIndex);
+    _image_points[0].erase(_image_points[0].begin() + worstElemIndex);
+    _image_points[1].erase(_image_points[1].begin() + worstElemIndex);
+    _object_points.erase(_object_points.begin() + worstElemIndex);
 
-    if ( nbframes == perViewErrors_.rows ) {
+    if ( nbframes == _perViewErrors.rows ) {
 
       cv::Mat1f newErrorsVec(nbframes - 1,
-          perViewErrors_.cols);
+          _perViewErrors.cols);
 
-      std::copy(perViewErrors_[0],
-          perViewErrors_[worstElemIndex],
+      std::copy(_perViewErrors[0],
+          _perViewErrors[worstElemIndex],
           newErrorsVec[0]);
 
       if( worstElemIndex < nbframes - 1 ) {
-        std::copy(perViewErrors_[worstElemIndex + 1],
-            perViewErrors_[nbframes],
+        std::copy(_perViewErrors[worstElemIndex + 1],
+            _perViewErrors[nbframes],
             newErrorsVec[worstElemIndex]);
       }
 
-      perViewErrors_ = newErrorsVec;
+      _perViewErrors = newErrorsVec;
     }
   }
 }
 
 void c_stereo_calibration_pipeline::update_state()
 {
-  if( calibration_options_.auto_tune_calibration_flags && object_points_.size() > calibration_options_.min_frames ) {
+  if( _calibration_options.auto_tune_calibration_flags && _object_points.size() > _calibration_options.min_frames ) {
 
-    if( !(current_calibration_flags_ & cv::CALIB_ZERO_TANGENT_DIST) ) {
+    if( !(_current_calibration_flags & cv::CALIB_ZERO_TANGENT_DIST) ) {
 
       const double eps = 0.005;
 
@@ -1057,7 +1182,7 @@ void c_stereo_calibration_pipeline::update_state()
       for( int i = 0; i < 2; ++i ) {
 
         const std::vector<double> &D =
-            current_intrinsics_.camera[i].dist_coeffs;
+            _current_intrinsics.camera[i].dist_coeffs;
 
         if( (D.size() > 3) && (fabs(D[2]) > eps || fabs(D[3]) > eps) ) {
           fix_zero_tangent_dist = false;
@@ -1066,11 +1191,11 @@ void c_stereo_calibration_pipeline::update_state()
       }
 
       if( fix_zero_tangent_dist ) {
-        current_calibration_flags_ |= cv::CALIB_ZERO_TANGENT_DIST;
+        _current_calibration_flags |= cv::CALIB_ZERO_TANGENT_DIST;
       }
     }
 
-    if( !(current_calibration_flags_ & cv::CALIB_FIX_K1) ) {
+    if( !(_current_calibration_flags & cv::CALIB_FIX_K1) ) {
 
       const double eps = 0.005;
 
@@ -1079,7 +1204,7 @@ void c_stereo_calibration_pipeline::update_state()
       for( int i = 0; i < 2; ++i ) {
 
         const std::vector<double> &D =
-            current_intrinsics_.camera[i].dist_coeffs;
+            _current_intrinsics.camera[i].dist_coeffs;
 
         if( (D.size() > 0) && (fabs(D[0]) > eps) ) {
           fix_k1 = false;
@@ -1088,11 +1213,11 @@ void c_stereo_calibration_pipeline::update_state()
       }
 
       if( fix_k1 ) {
-        current_calibration_flags_ |= cv::CALIB_FIX_K1;
+        _current_calibration_flags |= cv::CALIB_FIX_K1;
       }
     }
 
-    if( !(current_calibration_flags_ & cv::CALIB_FIX_K2) ) {
+    if( !(_current_calibration_flags & cv::CALIB_FIX_K2) ) {
 
       const double eps = 0.005;
 
@@ -1101,7 +1226,7 @@ void c_stereo_calibration_pipeline::update_state()
       for( int i = 0; i < 2; ++i ) {
 
         const std::vector<double> &D =
-            current_intrinsics_.camera[i].dist_coeffs;
+            _current_intrinsics.camera[i].dist_coeffs;
 
         if( (D.size() > 1) && (fabs(D[1]) > eps) ) {
           fix_k2 = false;
@@ -1110,11 +1235,11 @@ void c_stereo_calibration_pipeline::update_state()
       }
 
       if( fix_k2 ) {
-        current_calibration_flags_ |= cv::CALIB_FIX_K2;
+        _current_calibration_flags |= cv::CALIB_FIX_K2;
       }
     }
 
-    if( !(current_calibration_flags_ & cv::CALIB_FIX_K3) ) {
+    if( !(_current_calibration_flags & cv::CALIB_FIX_K3) ) {
 
       const double eps = 0.005;
 
@@ -1123,7 +1248,7 @@ void c_stereo_calibration_pipeline::update_state()
       for( int i = 0; i < 2; ++i ) {
 
         const std::vector<double> &D =
-            current_intrinsics_.camera[i].dist_coeffs;
+            _current_intrinsics.camera[i].dist_coeffs;
 
         if( (D.size() > 4) && (fabs(D[4]) > eps) ) {
           fix_k3 = false;
@@ -1132,7 +1257,7 @@ void c_stereo_calibration_pipeline::update_state()
       }
 
       if( fix_k3 ) {
-        current_calibration_flags_ |= cv::CALIB_FIX_K3;
+        _current_calibration_flags |= cv::CALIB_FIX_K3;
       }
     }
   }
@@ -1142,15 +1267,15 @@ void c_stereo_calibration_pipeline::update_state()
 void c_stereo_calibration_pipeline::update_undistortion_remap()
 {
   const cv::Size & image_size =
-      best_intrinsics_.camera[0].image_size;
+      _best_intrinsics.camera[0].image_size;
 
   create_stereo_rectification(image_size,
-      best_intrinsics_,
-      best_extrinsics_,
+      _best_intrinsics,
+      _best_extrinsics,
       -1,
-      rmaps_,
-      &new_intrinsics_,
-      &new_extrinsics_,
+      _rmaps,
+      &_new_intrinsics,
+      &_new_extrinsics,
       nullptr,
       nullptr,
       nullptr,
@@ -1159,34 +1284,34 @@ void c_stereo_calibration_pipeline::update_undistortion_remap()
 
 bool c_stereo_calibration_pipeline::save_current_camera_parameters() const
 {
-  if( !output_intrinsics_filename_.empty() ) {
+  if( !_output_intrinsics_filename.empty() ) {
 
-    if( !create_path(get_parent_directory(output_intrinsics_filename_)) ) {
-      CF_ERROR("create_path('%s') fails: %s", output_intrinsics_filename_.c_str(), strerror(errno));
+    if( !create_path(get_parent_directory(_output_intrinsics_filename)) ) {
+      CF_ERROR("create_path('%s') fails: %s", _output_intrinsics_filename.c_str(), strerror(errno));
       return false;
     }
 
-    CF_DEBUG("saving output_intrinsics_filename_: %s", output_intrinsics_filename_.c_str());
+    CF_DEBUG("saving output_intrinsics_filename_: %s", _output_intrinsics_filename.c_str());
 
-    if( !write_stereo_camera_intrinsics_yml(best_intrinsics_, output_intrinsics_filename_) ) {
+    if( !write_stereo_camera_intrinsics_yml(_best_intrinsics, _output_intrinsics_filename) ) {
       CF_ERROR("ERROR: save_stereo_camera_intrinsics_yml('%s') fails",
-          output_intrinsics_filename_.c_str());
+          _output_intrinsics_filename.c_str());
       return false;
     }
   }
 
-  if( !output_extrinsics_filename_.empty() ) {
+  if( !_output_extrinsics_filename.empty() ) {
 
-    if( !create_path(get_parent_directory(output_extrinsics_filename_)) ) {
-      CF_ERROR("create_path('%s') fails: %s", output_extrinsics_filename_.c_str(), strerror(errno));
+    if( !create_path(get_parent_directory(_output_extrinsics_filename)) ) {
+      CF_ERROR("create_path('%s') fails: %s", _output_extrinsics_filename.c_str(), strerror(errno));
       return false;
     }
 
-    CF_DEBUG("saving output_extrinsics_filename_: %s", output_extrinsics_filename_.c_str());
+    CF_DEBUG("saving output_extrinsics_filename_: %s", _output_extrinsics_filename.c_str());
 
-    if( !write_stereo_camera_extrinsics_yml(best_extrinsics_, output_extrinsics_filename_) ) {
+    if( !write_stereo_camera_extrinsics_yml(_best_extrinsics, _output_extrinsics_filename) ) {
       CF_ERROR("ERROR: save_stereo_camera_extrinsics_yml('%s') fails",
-          output_extrinsics_filename_.c_str());
+          _output_extrinsics_filename.c_str());
     }
   }
 
@@ -1271,9 +1396,9 @@ bool c_stereo_calibration_pipeline::save_current_camera_parameters() const
 bool c_stereo_calibration_pipeline::detect_chessboard(const cv::Mat & frame, std::vector<cv::Point2f> & corners_) const
 {
   return find_chessboard_corners(frame,
-      chessboard_detection_options_.chessboard_size,
+      _chessboard_detection_options.chessboard_size,
       corners_,
-      chessboard_detection_options_);
+      _chessboard_detection_options);
 }
 
 bool c_stereo_calibration_pipeline::process_current_stereo_frame(bool enable_calibration)
@@ -1284,11 +1409,11 @@ bool c_stereo_calibration_pipeline::process_current_stereo_frame(bool enable_cal
     lock_guard lock(mutex());
 
     for( int i = 0; i < 2; ++i ) {
-      current_image_points_[i].clear();
+      _current_image_points[i].clear();
     }
 
     for( int i = 0; i < 2; ++i ) {
-      if( !detect_chessboard(current_frames_[i], current_image_points_[i]) ) {
+      if( !detect_chessboard(_current_frames[i], _current_image_points[i]) ) {
         return true; // wait for next frame
       }
     }
@@ -1311,11 +1436,11 @@ bool c_stereo_calibration_pipeline::process_current_stereo_frame(bool enable_cal
 
     lock_guard lock(mutex());
 
-    image_points_[0].emplace_back(current_image_points_[0]);
-    image_points_[1].emplace_back(current_image_points_[1]);
-    object_points_.emplace_back(current_object_points_);
+    _image_points[0].emplace_back(_current_image_points[0]);
+    _image_points[1].emplace_back(_current_image_points[1]);
+    _object_points.emplace_back(_current_object_points);
 
-    if( object_points_.size() >= std::max(1, calibration_options_.min_frames) ) {
+    if( _object_points.size() >= std::max(1, _calibration_options.min_frames) ) {
 
       if( !enable_calibration ) {
 
@@ -1338,13 +1463,13 @@ bool c_stereo_calibration_pipeline::process_current_stereo_frame(bool enable_cal
 
 bool c_stereo_calibration_pipeline::write_chessboard_video()
 {
-  if( !output_options_.save_chessboard_frames ) {
+  if( !_output_options.save_chessboard_frames ) {
     return true;
   }
 
   const cv::Size sizes[2] = {
-      current_frames_[0].size(),
-      current_frames_[1].size(),
+      _current_frames[0].size(),
+      _current_frames[1].size(),
   };
 
   const cv::Size totalsize(sizes[0].width + sizes[1].width,
@@ -1355,28 +1480,28 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
       cv::Rect(sizes[0].width, 0, sizes[1].width, sizes[1].height),
   };
 
-  cv::Mat frame(totalsize, current_frames_[0].type());
-  current_frames_[0].copyTo(frame(roi[0]));
-  current_frames_[1].copyTo(frame(roi[1]));
+  cv::Mat frame(totalsize, _current_frames[0].type());
+  _current_frames[0].copyTo(frame(roi[0]));
+  _current_frames[1].copyTo(frame(roi[1]));
 
-  if( !chessboard_video_writer_.is_open() ) {
+  if( !_chessboard_video_writer.is_open() ) {
 
     bool fOK =
-        open_output_writer(chessboard_video_writer_,
-            output_options_.chessboard_frames_output_options,
+        open_output_writer(_chessboard_video_writer,
+            _output_options.chessboard_frames_output_options,
             "chessboard",
             ".avi");
 
     if( !fOK ) {
       CF_ERROR("chessboard_video_writer_.open('%s') fails",
-          chessboard_video_writer_.filename().c_str());
+          _chessboard_video_writer.filename().c_str());
       return false;
     }
 
-    CF_DEBUG("Created '%s'", chessboard_video_writer_.filename().c_str());
+    CF_DEBUG("Created '%s'", _chessboard_video_writer.filename().c_str());
   }
 
-  if( !chessboard_video_writer_.write(frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
+  if( !_chessboard_video_writer.write(frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1386,11 +1511,13 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
 
 bool c_stereo_calibration_pipeline::write_output_videos()
 {
-  if( !output_options_.save_rectified_frames &&
-      !output_options_.save_stereo_rectified_frames &&
-      !output_options_.save_quad_rectified_frames ) {
+  if( !_output_options.save_rectified_frames &&
+      !_output_options.save_stereo_rectified_frames &&
+      !_output_options.save_quad_rectified_frames &&
+      !_output_options.save_quad_output_frames ) {
     return true;
   }
+
 
   CF_DEBUG("update_undistortion_remap()...");
   update_undistortion_remap();
@@ -1400,6 +1527,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
   c_output_frame_writer video_writer[2];
   c_output_frame_writer stereo_writer;
   c_output_frame_writer quad_writer;
+  c_output_frame_writer quad_rectified_writer;
 
   cv::Size sizes[2];
   cv::Size stereo_size;
@@ -1414,7 +1542,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
   CF_DEBUG("Saving debug videos...");
 
-  _total_frames = input_.inputs[0]->size();
+  _total_frames = _input.inputs[0]->size();
   _processed_frames = 0;
   _accumulated_frames = 0;
 
@@ -1436,15 +1564,16 @@ bool c_stereo_calibration_pipeline::write_output_videos()
     }
 
     for( int i = 0; i < 2; ++i ) {
-      cv::remap(current_frames_[i], remapped_frames[i],
-          rmaps_[i], cv::noArray(),
+      cv::remap(_current_frames[i], remapped_frames[i],
+          _rmaps[i], cv::noArray(),
           cv::INTER_LINEAR);
     }
 
     sizes[0] = remapped_frames[0].size();
     sizes[1] = remapped_frames[1].size();
 
-    if( output_options_.save_rectified_frames ) {
+    ///////////////////////////////////////////////////////////////
+    if( _output_options.save_rectified_frames ) {
 
       for( int i = 0; i < 2; ++i ) {
 
@@ -1452,7 +1581,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
           fOK =
               open_output_writer(video_writer[i],
-                  output_options_.rectified_frames_output_options,
+                  _output_options.rectified_frames_output_options,
                   i == 0 ? "rect-left" : "rect-right",
                   ".avi");
 
@@ -1469,7 +1598,8 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       }
     }
 
-    if( output_options_.save_stereo_rectified_frames ) {
+    ///////////////////////////////////////////////////////////////
+    if( _output_options.save_stereo_rectified_frames ) {
 
       if( !stereo_writer.is_open() ) {
 
@@ -1478,7 +1608,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
         fOK =
             open_output_writer(stereo_writer,
-                output_options_.stereo_rectified_output_options,
+                _output_options.stereo_rectified_output_options,
                 "stereo",
                 ".avi");
 
@@ -1501,7 +1631,8 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       }
     }
 
-    if ( output_options_.save_quad_rectified_frames ) {
+    ///////////////////////////////////////////////////////////////
+    if ( _output_options.save_quad_output_frames ) {
 
       if( !quad_writer.is_open() ) {
 
@@ -1510,7 +1641,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
 
         fOK =
             open_output_writer(quad_writer,
-                output_options_.quad_rectified_output_options,
+                _output_options.quad_output_options,
                 "quad",
                 ".avi");
 
@@ -1526,13 +1657,50 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> blend
 
       display_frame.create(quad_size, remapped_frames[0].type());
+      _current_frames[0].copyTo(display_frame(rc0));
+      _current_frames[1].copyTo(display_frame(rc1));
+      remapped_frames[0].copyTo(display_frame(rc2));
+      remapped_frames[1].copyTo(display_frame(rc3));
+
+      if ( !quad_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
+        CF_ERROR("quad_writer.write() fails");
+        return false;
+      }
+    }
+
+    ///////////////////////////////////////////////////////////////
+    if ( _output_options.save_quad_rectified_frames ) {
+
+      if( !quad_rectified_writer.is_open() ) {
+
+        quad_size.width = sizes[0].width + sizes[1].width;
+        quad_size.height = sizes[0].height + sizes[1].height;
+
+        fOK =
+            open_output_writer(quad_rectified_writer,
+                _output_options.quad_rectified_output_options,
+                "quad_rect",
+                ".avi");
+
+        if( !fOK ) {
+          CF_ERROR("quad_rectified_writer.open() fails");
+          return false;
+        }
+      }
+
+      const cv::Rect rc0(0, 0, sizes[0].width, sizes[0].height); // tl -> 0
+      const cv::Rect rc1(sizes[0].width, 0, sizes[1].width, sizes[1].height); // tr -> 1
+      const cv::Rect rc2(0, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> 1
+      const cv::Rect rc3(sizes[0].width, sizes[0].height, sizes[1].width, sizes[1].height); // bl -> blend
+
+      display_frame.create(quad_size, remapped_frames[0].type());
       remapped_frames[0].copyTo(display_frame(rc0));
       remapped_frames[1].copyTo(display_frame(rc1));
       remapped_frames[1].copyTo(display_frame(rc2));
       cv::addWeighted(remapped_frames[0], 0.5, remapped_frames[1], 0.5, 0, display_frame(rc3));
 
-      if ( !quad_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
-        CF_ERROR("quad_writer.write() fails");
+      if ( !quad_rectified_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
+        CF_ERROR("quad_rectified_writer.write() fails");
         return false;
       }
     }

@@ -621,33 +621,28 @@ inline QString toQString(const QRectF & v)
 }
 
 template<class T>
-inline void save_parameter(const QString & prefix, const char * name, const T & value )
+inline void save_parameter(QSettings & settings, const QString & prefix, const char * name, const T & value )
 {
-  QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), toQString(value));
 }
 
-inline void save_parameter(const QString & prefix, const char * name, const QColor & value )
+inline void save_parameter(QSettings & settings, const QString & prefix, const char * name, const QColor & value )
 {
-  QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), QVariant::fromValue(value));
 }
 
-inline void save_parameter(const QString & prefix, const char * name, const QString & value )
+inline void save_parameter(QSettings & settings, const QString & prefix, const char * name, const QString & value )
 {
-  QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value);
 }
 
-inline void save_parameter(const QString & prefix, const char * name, const std::string & value )
+inline void save_parameter(QSettings & settings, const QString & prefix, const char * name, const std::string & value )
 {
-  QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value.c_str());
 }
 
-inline void save_parameter(const QString & prefix, const char * name, bool value )
+inline void save_parameter(QSettings & settings, const QString & prefix, const char * name, bool value )
 {
-  QSettings settings;
   settings.setValue(QString("%1/%2").arg(prefix).arg(QString(name)), value);
 }
 

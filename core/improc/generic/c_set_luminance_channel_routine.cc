@@ -25,42 +25,25 @@ const c_enum_member * members_of<c_set_luminance_channel_routine::Colorspace>()
   return members;
 }
 
-void c_set_luminance_channel_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_set_luminance_channel_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, luminance_channel,
-      "Select which channel must become luminance (brightness)\n"
-      "Normally it should be modt detailed channel ([infra] red for moon/planetary imaging)");
-
-  BIND_PCTRL(ctls, colorspace,
-      "Operation colorspace\n"
-      "For non-linear color spaces like Lab/Luv the input image must be normalized to standard range");
-
-  BIND_PCTRL(ctls, usharp_sigma,
-      "Unsharp mask sigma\n"
-      "");
-
-  BIND_PCTRL(ctls, usharp_alpha,
-      "Unsharp mask alpha\n"
-      "");
-
-  BIND_PCTRL(ctls, usharp_outmin,
-      "Unsharp mask outmin\n"
-      "");
-
-  BIND_PCTRL(ctls, usharp_outmax,
-      "Unsharp mask outmax\n"
-      "");
+   ctlbind(ctls, "luminance_channel", ctx(&this_class::_luminance_channel), "");
+   ctlbind(ctls, "colorspace", ctx(&this_class::_colorspace), "");
+   ctlbind(ctls, "usharp_sigma", ctx(&this_class::_usharp_sigma), "");
+   ctlbind(ctls, "usharp_alpha", ctx(&this_class::_usharp_alpha), "");
+   ctlbind(ctls, "outmin", ctx(&this_class::_usharp_outmin), "");
+   ctlbind(ctls, "outmax", ctx(&this_class::_usharp_outmax), "");
 }
 
 bool c_set_luminance_channel_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, luminance_channel);
-    SERIALIZE_PROPERTY(settings, save, *this, colorspace);
-    SERIALIZE_PROPERTY(settings, save, *this, usharp_sigma);
-    SERIALIZE_PROPERTY(settings, save, *this, usharp_alpha);
-    SERIALIZE_PROPERTY(settings, save, *this, usharp_outmin);
-    SERIALIZE_PROPERTY(settings, save, *this, usharp_outmax);
+    SERIALIZE_OPTION(settings, save, *this, _luminance_channel);
+    SERIALIZE_OPTION(settings, save, *this, _colorspace);
+    SERIALIZE_OPTION(settings, save, *this, _usharp_sigma);
+    SERIALIZE_OPTION(settings, save, *this, _usharp_alpha);
+    SERIALIZE_OPTION(settings, save, *this, _usharp_outmin);
+    SERIALIZE_OPTION(settings, save, *this, _usharp_outmax);
     return true;
   }
   return false;
@@ -69,9 +52,9 @@ bool c_set_luminance_channel_routine::serialize(c_config_setting settings, bool 
 bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( image.channels() == 1 ) {
-    if( usharp_sigma_ > 0 && usharp_alpha_ > 0 ) {
-      unsharp_mask(image, mask, image, usharp_sigma_, usharp_alpha_,
-          usharp_outmin_, usharp_outmax_);
+    if( _usharp_sigma > 0 && _usharp_alpha > 0 ) {
+      unsharp_mask(image, mask, image, _usharp_sigma, _usharp_alpha,
+          _usharp_outmin, _usharp_outmax);
     }
     return true;
   }
@@ -82,17 +65,17 @@ bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::In
 
   cv::Mat luminance;
 
-  if( !extract_channel(image, luminance, cv::noArray(), cv::noArray(), luminance_channel_) ) {
-    CF_ERROR("extract_channel('%s') fails", toString(luminance_channel_));
+  if( !extract_channel(image, luminance, cv::noArray(), cv::noArray(), _luminance_channel) ) {
+    CF_ERROR("extract_channel('%s') fails", toString(_luminance_channel));
     return false;
   }
 
-  if( usharp_sigma_ > 0 && usharp_alpha_ > 0 ) {
-    unsharp_mask(luminance, mask, luminance, usharp_sigma_, usharp_alpha_,
-        usharp_outmin_, usharp_outmax_);
+  if( _usharp_sigma > 0 && _usharp_alpha > 0 ) {
+    unsharp_mask(luminance, mask, luminance, _usharp_sigma, _usharp_alpha,
+        _usharp_outmin, _usharp_outmax);
   }
 
-  switch (colorspace_) {
+  switch (_colorspace) {
     case Colorspace_Lab:
 
       cv::cvtColor(image,  image, cv::COLOR_BGR2Lab);
@@ -131,7 +114,7 @@ bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::In
       break;
 
     default:
-      CF_ERROR("APP BUG: unsupported colorspace %d ('%s') requested", colorspace_, toString(colorspace_));
+      CF_ERROR("APP BUG: unsupported colorspace %d ('%s') requested", _colorspace, toString(_colorspace));
       return false;
   }
 

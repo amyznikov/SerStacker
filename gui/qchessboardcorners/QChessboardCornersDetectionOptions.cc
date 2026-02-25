@@ -10,27 +10,22 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QFindChessboardCornersOptions::QFindChessboardCornersOptions(QWidget * parent) :
-    ThisClass("QFindChessboardCornersOptions", parent)
-{
-}
-
-QFindChessboardCornersOptions::QFindChessboardCornersOptions(const QString & prefix, QWidget * parent) :
-    Base(prefix, parent)
+  Base(parent)
 {
   max_scales_ctl =
       add_numeric_box<int>("max_scales:",
           "",
           [this](int value) {
-            if ( options_ ) {
-              options_->max_scales = value;
+            if ( _opts ) {
+              _opts->max_scales = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              *value = options_->max_scales;
+            if ( _opts ) {
+              *value = _opts->max_scales;
             }
-            return options_ != nullptr;
+            return _opts != nullptr;
           });
 
 
@@ -38,120 +33,76 @@ QFindChessboardCornersOptions::QFindChessboardCornersOptions(const QString & pre
       add_flags_editbox<FindChessboardCornersFlags>("flags:",
           "flags for cv::findChessboardCorners()",
           [this](int value) {
-            if ( options_ ) {
-              options_->flags = value;
+            if ( _opts ) {
+              _opts->flags = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              *value = options_->flags;
+            if ( _opts ) {
+              *value = _opts->flags;
             }
-            return options_ != nullptr;
+            return _opts != nullptr;
           });
 
-}
-
-void QFindChessboardCornersOptions::set_options(c_findChessboardCorners_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-QFindChessboardCornersOptions::c_findChessboardCorners_options* QFindChessboardCornersOptions::options() const
-{
-  return options_;
-}
-
-void QFindChessboardCornersOptions::onupdatecontrols()
-{
-  setEnabled(options_ != nullptr);
-  Base::onupdatecontrols();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QFindChessboardCornersSBOptions::QFindChessboardCornersSBOptions(QWidget * parent) :
-    ThisClass("QFindChessboardCornersSBOptions", parent)
-{
-}
-
-QFindChessboardCornersSBOptions::QFindChessboardCornersSBOptions(const QString & prefix, QWidget * parent) :
-    Base(prefix, parent)
+    Base(parent)
 {
   max_scales_ctl =
       add_numeric_box<int>("max_scales:",
           "",
           [this](int value) {
-            if ( options_ ) {
-              options_->max_scales = value;
+            if ( _opts ) {
+              _opts->max_scales = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              *value = options_->max_scales;
+            if ( _opts ) {
+              *value = _opts->max_scales;
             }
-            return options_ != nullptr;
+            return _opts != nullptr;
           });
 
   flags_ctl =
       add_flags_editbox<FindChessboardCornersSBFlags>("flags:",
           "flags for cv::findChessboardCornersSB()",
           [this](int value) {
-            if ( options_ ) {
-              options_->flags = value;
+            if ( _opts ) {
+              _opts->flags = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              *value = options_->flags;
+            if ( _opts ) {
+              *value = _opts->flags;
             }
-            return options_ != nullptr;
+            return _opts != nullptr;
           });
-}
-
-void QFindChessboardCornersSBOptions::set_options(c_findChessboardCornersSB_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-QFindChessboardCornersSBOptions::c_findChessboardCornersSB_options* QFindChessboardCornersSBOptions::options() const
-{
-  return options_;
-}
-
-void QFindChessboardCornersSBOptions::onupdatecontrols()
-{
-  setEnabled(options_ != nullptr);
-  Base::onupdatecontrols();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QCornerSubPixOptions::QCornerSubPixOptions(QWidget * parent) :
-    ThisClass("QCornerSubPixOptions", parent)
-{
-}
-
-QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * parent) :
-    Base(prefix, parent)
+    Base(parent)
 {
 
   winSize_ctl =
       add_numeric_box<cv::Size>("winSize",
           "",
           [this](const cv::Size & value) {
-            if ( options_ ) {
-              options_->winSize = value;
+            if ( _opts ) {
+              _opts->winSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size * value) {
-            if ( options_ ) {
-              * value = options_->winSize;
+            if ( _opts ) {
+              * value = _opts->winSize;
               return true;
             }
             return false;
@@ -161,14 +112,14 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
       add_numeric_box<cv::Size>("zeroZone",
           "",
           [this](const cv::Size & value) {
-            if ( options_ ) {
-              options_->zeroZone = value;
+            if ( _opts ) {
+              _opts->zeroZone = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size * value) {
-            if ( options_ ) {
-              * value = options_->zeroZone;
+            if ( _opts ) {
+              * value = _opts->zeroZone;
               return true;
             }
             return false;
@@ -179,14 +130,14 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
       add_numeric_box<int>("MaxIterations:",
           "",
           [this](int value) {
-            if ( options_ ) {
-              options_->max_solver_iterations = value;
+            if ( _opts ) {
+              _opts->max_solver_iterations = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->max_solver_iterations;
+            if ( _opts ) {
+              * value = _opts->max_solver_iterations;
               return true;
             }
             return false;
@@ -196,14 +147,14 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
       add_numeric_box<double>("Eps:",
           "",
          [this](double value) {
-            if ( options_ ) {
-              options_->solver_eps = value;
+            if ( _opts ) {
+              _opts->solver_eps = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
-            if ( options_ ) {
-              * value = options_->solver_eps;
+            if ( _opts ) {
+              * value = _opts->solver_eps;
               return true;
             }
             return false;
@@ -211,45 +162,23 @@ QCornerSubPixOptions::QCornerSubPixOptions(const QString & prefix, QWidget * par
 
 }
 
-void QCornerSubPixOptions::set_options(c_cornerSubPix_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-QCornerSubPixOptions::c_cornerSubPix_options* QCornerSubPixOptions::options() const
-{
-  return options_;
-}
-
-void QCornerSubPixOptions::onupdatecontrols()
-{
-  setEnabled(options_ != nullptr);
-  Base::onupdatecontrols();
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QBilateralFilterOptions::QBilateralFilterOptions(QWidget * parent) :
-    ThisClass("QBilateralFilterOptions", parent)
-{
-}
-
-QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget * parent) :
-    Base(prefix, parent)
+    Base(parent)
 {
   d_ctl =
       add_numeric_box<int>("d:",
           "",
           [this](int value) {
-            if ( options_ ) {
-              options_->d = value;
+            if ( _opts ) {
+              _opts->d = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->d;
+            if ( _opts ) {
+              * value = _opts->d;
               return true;
             }
             return false;
@@ -259,14 +188,14 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
       add_numeric_box<double>("SigmaColor:",
           "",
           [this](double value) {
-            if ( options_ ) {
-              options_->sigmaColor = value;
+            if ( _opts ) {
+              _opts->sigmaColor = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
-            if ( options_ ) {
-              * value = options_->sigmaColor;
+            if ( _opts ) {
+              * value = _opts->sigmaColor;
               return true;
             }
             return false;
@@ -276,14 +205,14 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
       add_numeric_box<double>("SigmaSpace:",
           "",
           [this](double value) {
-            if ( options_ ) {
-              options_->sigmaSpace = value;
+            if ( _opts ) {
+              _opts->sigmaSpace = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
-            if ( options_ ) {
-              * value = options_->sigmaSpace;
+            if ( _opts ) {
+              * value = _opts->sigmaSpace;
               return true;
             }
             return false;
@@ -291,41 +220,23 @@ QBilateralFilterOptions::QBilateralFilterOptions(const QString & prefix, QWidget
 
 }
 
-void QBilateralFilterOptions::set_options(c_bilateralFilter_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-QBilateralFilterOptions::c_bilateralFilter_options* QBilateralFilterOptions::options() const
-{
-  return options_;
-}
-
-void QBilateralFilterOptions::onupdatecontrols()
-{
-  setEnabled(options_ != nullptr);
-  Base::onupdatecontrols();
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget * parent) :
-    ThisClass("QChessboardCornersDetectionOptions", parent)
+    Base(parent)
 {
-
   chessboardSize_ctl =
       add_numeric_box<cv::Size>("Chessboard Size:",
           "",
           [this](const cv::Size & size) {
-            if ( options_ ) {
-              options_->chessboard_size = size;
+            if ( _opts ) {
+              _opts->chessboard_size = size;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size * size) {
-            if ( options_ ) {
-              *size = options_->chessboard_size;
+            if ( _opts ) {
+              *size = _opts->chessboard_size;
               return true;
             }
             return false;
@@ -335,14 +246,14 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
       add_numeric_box<cv::Size2f>("Chessboard Cell Size [m]:",
           "",
           [this](const cv::Size2f & size) {
-            if ( options_ ) {
-              options_->chessboard_cell_size = size;
+            if ( _opts ) {
+              _opts->chessboard_cell_size = size;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size2f * size) {
-            if ( options_ ) {
-              *size = options_->chessboard_cell_size;
+            if ( _opts ) {
+              *size = _opts->chessboard_cell_size;
               return true;
             }
             return false;
@@ -353,16 +264,16 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
           "Chessboard Detection:",
           "",
           [this](FindChessboardCornersMethod value) {
-            if ( options_ ) {
-              options_->method = value;
+            if ( _opts ) {
+              _opts->method = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](FindChessboardCornersMethod * value) {
-            if ( options_ ) {
-              *value = options_->method;
+            if ( _opts ) {
+              *value = _opts->method;
             }
-            return options_ != nullptr;
+            return _opts != nullptr;
           });
 
 
@@ -387,46 +298,14 @@ QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(QWidget *
   connect(bilateralFilterOptions_ctl, &QSettingsWidget::parameterChanged,
       this, &ThisClass::parameterChanged);
 
-}
-
-QChessboardCornersDetectionOptions::QChessboardCornersDetectionOptions(const QString & prefix, QWidget * parent) :
-    Base(prefix, parent)
-{
-}
-
-void QChessboardCornersDetectionOptions::set_chessboard_corners_detection_options(
-    c_chessboard_corners_detection_options * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-c_chessboard_corners_detection_options* QChessboardCornersDetectionOptions::chessboard_corners_detection_options() const
-{
-  return options_;
-}
-
-void QChessboardCornersDetectionOptions::onupdatecontrols()
-{
-  if ( !options_ ) {
-
-    findChessboardCornersOptions_ctl->set_options(nullptr);
-    findChessboardCornersSBOptions_ctl->set_options(nullptr);
-    cornerSubPixOptions_ctl->set_options(nullptr);
-    bilateralFilterOptions_ctl->set_options(nullptr);
-
-    setEnabled(false);
-  }
-  else {
-
-    findChessboardCornersOptions_ctl->set_options(&options_->findChessboardCorners);
-    findChessboardCornersSBOptions_ctl->set_options(&options_->findChessboardCornersSB);
-    cornerSubPixOptions_ctl->set_options(&options_->cornerSubPix);
-    bilateralFilterOptions_ctl->set_options(&options_->bilateralFilter);
-
-    Base::onupdatecontrols();
-
-    setEnabled(true);
-  }
+  QObject::connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        findChessboardCornersOptions_ctl->setOpts(_opts?  &_opts->findChessboardCorners : nullptr);
+        findChessboardCornersSBOptions_ctl->setOpts(_opts?  &_opts->findChessboardCornersSB : nullptr);
+        cornerSubPixOptions_ctl->setOpts(_opts?  &_opts->cornerSubPix : nullptr);
+        bilateralFilterOptions_ctl->setOpts(_opts?  &_opts->bilateralFilter : nullptr);
+    });
 
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////

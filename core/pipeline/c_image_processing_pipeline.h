@@ -13,9 +13,11 @@
 #include <core/io/c_input_sequence.h>
 #include <core/proc/white_balance/histogram_normalization.h>
 #include <core/settings/opencv_settings.h>
+#include <core/ctrlbind/ctrlbind.h>
+#include <core/improc/c_image_processor.h>
+#include "c_output_frame_writer.h"
 #include <atomic>
-#include "c_image_processing_pipeline_ctrl.h"
-
+//#include "c_image_processing_pipeline_ctrl.h"
 
 struct c_image_processing_pipeline_input_options
 {
@@ -44,25 +46,102 @@ struct c_image_processing_pipeline_input_options
 
 bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
 
-#define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
-  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->_input_sequence != nullptr); \
-  PIPELINE_CTL(ctrls, _input_options.max_input_frames, "max input frames", "");\
-  PIPELINE_CTL(ctrls, _input_options.debayer_method, "debayer method", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.darkbayer_filename, "Dark frame", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.flatbayer_filename, "Flat frame", "");\
-  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.missing_pixel_mask_filename, "missing pixel mask", "");\
-  PIPELINE_CTL(ctrls, _input_options.missing_pixels_marked_black, "missing pixels are black", "");\
-  PIPELINE_CTL(ctrls, _input_options.inpaint_missing_pixels, "inpaint missing pixels", "");\
-  PIPELINE_CTL(ctrls, _input_options.enable_color_maxtrix, "enable color maxtrix", "");\
-  PIPELINE_CTL(ctrls, _input_options.detect_bad_asi_frames, "detect bad asi frames", "");\
-  PIPELINE_CTL(ctrls, _input_options.bad_asi_frame_median_hat_threshold, "bad_asi_frame_median_hat_threshold", "");\
-  PIPELINE_CTL(ctrls, _input_options.filter_bad_pixels, "filter bad pixels", "");\
-  PIPELINE_CTL(ctrls, _input_options.bad_pixels_variation_threshold, "bad pixels variation", "");\
-  PIPELINE_CTL(ctrls, _input_options.enable_bground_normalization, "bground normalization", "");\
-  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.norm_type, "norm type", "norm type", _this->_input_options.enable_bground_normalization);\
-  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.stretch, "stretch", "stretch", _this->_input_options.enable_bground_normalization);\
-  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.offset, "offset", "offset", _this->_input_options.enable_bground_normalization);\
-  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _input_options.input_image_processor, "input_image_processor", "");
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_input_options> & ctx)
+{
+  using S = c_image_processing_pipeline_input_options;
+
+  ctlbind(ctls, "start frame index", ctx(&S::start_frame_index), "");
+  ctlbind(ctls, "max input frames", ctx(&S::max_input_frames), "");
+  ctlbind(ctls, "debayer method", ctx(&S::debayer_method), "");
+  ctlbind(ctls, "enable color maxtrix", ctx(&S::enable_color_maxtrix), "");
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
+  ctlbind_browse_for_file(ctls, "Dark frame", ctx(&S::darkbayer_filename), "");
+  ctlbind_browse_for_file(ctls, "Flat frame", ctx(&S::flatbayer_filename), "");
+
+  ctlbind_expandable_group(ctls, "missing pixels...", "");
+   ctlbind_browse_for_file(ctls, "missing pixel mask", ctx(&S::missing_pixel_mask_filename), "");
+   ctlbind(ctls, "inpaint missing pixels", ctx(&S::inpaint_missing_pixels), "");
+   ctlbind(ctls, "missing pixels are black", ctx(&S::missing_pixels_marked_black ), "");
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "bad_pixels...", "");
+   ctlbind(ctls, "filter_bad_pixels", ctx(&S::filter_bad_pixels), "");
+   ctlbind_group(ctls, ctx(&S::filter_bad_pixels));
+     ctlbind(ctls, "bad_pixels_variance_threshold", ctx(&S::bad_pixels_variation_threshold), "");
+   ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "bad asi frames...", "");
+    ctlbind(ctls, "detect bad asi frames", ctx(&S::detect_bad_asi_frames), "");
+    ctlbind_group(ctls, ctx(&S::detect_bad_asi_frames));
+      ctlbind(ctls, "bad_asi_frame_median_hat_threshold", ctx(&S::bad_asi_frame_median_hat_threshold), "");
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "bground normalization...", "");
+    ctlbind(ctls, "enable bground normalization ", ctx(&S::enable_bground_normalization ), "");
+    ctlbind_group(ctls, ctx(&S::enable_bground_normalization));
+     ctlbind(ctls, ctx(&S::background_normalization_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+}
+
+//
+//#define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
+//  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->_input_sequence != nullptr); \
+//  PIPELINE_CTL(ctrls, _input_options.max_input_frames, "max input frames", "");\
+//  PIPELINE_CTL(ctrls, _input_options.debayer_method, "debayer method", "");\
+//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.darkbayer_filename, "Dark frame", "");\
+//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.flatbayer_filename, "Flat frame", "");\
+//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.missing_pixel_mask_filename, "missing pixel mask", "");\
+//  PIPELINE_CTL(ctrls, _input_options.missing_pixels_marked_black, "missing pixels are black", "");\
+//  PIPELINE_CTL(ctrls, _input_options.inpaint_missing_pixels, "inpaint missing pixels", "");\
+//  PIPELINE_CTL(ctrls, _input_options.enable_color_maxtrix, "enable color maxtrix", "");\
+//  PIPELINE_CTL(ctrls, _input_options.detect_bad_asi_frames, "detect bad asi frames", "");\
+//  PIPELINE_CTL(ctrls, _input_options.bad_asi_frame_median_hat_threshold, "bad_asi_frame_median_hat_threshold", "");\
+//  PIPELINE_CTL(ctrls, _input_options.filter_bad_pixels, "filter bad pixels", "");\
+//  PIPELINE_CTL(ctrls, _input_options.bad_pixels_variation_threshold, "bad pixels variation", "");\
+//  PIPELINE_CTL(ctrls, _input_options.enable_bground_normalization, "bground normalization", "");\
+//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.norm_type, "norm type", "norm type", _this->_input_options.enable_bground_normalization);\
+//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.stretch, "stretch", "stretch", _this->_input_options.enable_bground_normalization);\
+//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.offset, "offset", "offset", _this->_input_options.enable_bground_normalization);\
+//  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _input_options.input_image_processor, "input_image_processor", "");
+//
+
+
+
+enum master_frame_selection_method
+{
+  master_frame_specific_index,
+  master_frame_middle_index,
+  master_frame_best_of_100_in_middle,
+};
+
+
+struct c_master_frame_selection_options
+{
+  c_input_sequence * input_sequence = nullptr;
+  master_frame_selection_method master_selection_method = master_frame_specific_index;
+  int master_frame_index = 0;
+  std::string master_fiename;
+};
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls,const c_ctlbind_context<RootObjectType, c_master_frame_selection_options> & ctx)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_master_frame_selection_options;
+
+  BindType c;
+  c.ctype = BindType::CtlType::MasterFrameSelection;
+  c.master_frame_selection =
+      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
 
 
 
@@ -71,6 +150,15 @@ struct c_image_processing_pipeline_output_options
   std::string output_directory;
   int default_display_type = -1;
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_output_options> & ctx)
+{
+  using S = c_image_processing_pipeline_output_options;
+  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
+  ctlbind(ctls, "default_display_type", ctx(&S::default_display_type), "");
+}
+
 
 class c_image_processing_pipeline
 {

@@ -8,20 +8,20 @@
 #include "QStereoMatcherOptions.h"
 
 QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
-    Base("", parent)
+    Base(parent)
 {
   enabled_ctl =
       add_checkbox("Enable stereo matcher",
           "",
           [this](bool checked) {
-            if ( stereo_matcher_ && stereo_matcher_->enabled() != checked ) {
-              stereo_matcher_->set_enabled(checked);
+            if ( _opts && _opts->enabled() != checked ) {
+              _opts->set_enabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( stereo_matcher_ ) {
-              * checked = stereo_matcher_->enabled();
+            if ( _opts ) {
+              * checked = _opts->enabled();
               return true;
             }
             return false;
@@ -32,14 +32,14 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
       add_enum_combobox<stereo_matcher_type>("Stereo Matcher:",
           "Current stereo matcher",
           [this](stereo_matcher_type value) {
-            if ( stereo_matcher_ && stereo_matcher_->matcher_type() != value ) {
-              stereo_matcher_->set_matcher_type(value);
+            if ( _opts && _opts->matcher_type() != value ) {
+              _opts->set_matcher_type(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](stereo_matcher_type * value) {
-            if ( stereo_matcher_ ) {
-              * value = stereo_matcher_->matcher_type();
+            if ( _opts ) {
+              * value = _opts->matcher_type();
               return true;
             }
             return false;
@@ -48,35 +48,35 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   add_expandable_groupbox("StereoBM Options",
       stereoBMOptions_ctl = new QStereoBMOptions());
 
-  connect(stereoBMOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(stereoBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoBMOptions();
+        if ( _opts ) {
+          _opts->updateStereoBMOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
   add_expandable_groupbox("StereoSGBM Options",
       stereoSGBMOptions_ctl = new QStereoSGBMOptions());
 
-  connect(stereoSGBMOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(stereoSGBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoSGBMOptions();
+        if ( _opts ) {
+          _opts->updateStereoSGBMOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
 
   add_expandable_groupbox("ScaleSweep Options",
       scaleSweepOptions_ctl = new QScaleSweepOptions());
 
-  connect(scaleSweepOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(scaleSweepOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateScaleSweepOptions();
+        if ( _opts ) {
+          _opts->updateScaleSweepOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
 
@@ -85,73 +85,74 @@ QStereoMatcherOptions::QStereoMatcherOptions(QWidget * parent) :
   add_expandable_groupbox("QuasiDenseStereo Options",
       quasiDenseStereoOptions_ctl = new QQuasiDenseStereoOptions());
 
-  connect(quasiDenseStereoOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(quasiDenseStereoOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateQuasiDenseStereoOptions();
+        if ( _opts ) {
+          _opts->updateQuasiDenseStereoOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
   add_expandable_groupbox("StereoBinaryBM Options",
       stereoBinaryBMOptions_ctl = new QStereoBinaryBMOptions());
 
-  connect(stereoBinaryBMOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(stereoBinaryBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoBinaryBMOptions();
+        if ( _opts ) {
+          _opts->updateStereoBinaryBMOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
   add_expandable_groupbox("StereoBinarySGBM Options",
       stereoBinarySGBMOptions_ctl = new QStereoBinarySGBMOptions());
 
-  connect(stereoBinarySGBMOptions_ctl, &QSettingsWidget::parameterChanged,
+  QObject::connect(stereoBinarySGBMOptions_ctl, &QSettingsWidget::parameterChanged,
       [this]() {
-        if ( stereo_matcher_ ) {
-          stereo_matcher_->updateStereoBinarySGBMOptions();
+        if ( _opts ) {
+          _opts->updateStereoBinarySGBMOptions();
+          Q_EMIT parameterChanged();
         }
-        Q_EMIT parameterChanged();
       });
 
 #endif // HAVE_OpenCV_stereo
 
+  QObject::connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        stereoBMOptions_ctl->setOpts(_opts? &_opts->StereoBMOptions() : nullptr);
+        stereoSGBMOptions_ctl->setOpts(_opts? &_opts->StereoSGBMOptions() : nullptr);
+        scaleSweepOptions_ctl->setOpts(_opts? &_opts->ScaleSweepOptions() : nullptr);
+    #if HAVE_OpenCV_stereo
+        quasiDenseStereoOptions_ctl->setOpts(_opts? &_opts->quasiDenseStereoOptions() : nullptr);
+        stereoBinarySGBMOptions_ctl->setOpts(_opts? &_opts->StereoBinarySGBMOptions() : nullptr);
+        stereoBinaryBMOptions_ctl->setOpts(_opts? &_opts->StereoBinaryBMOptions() : nullptr);
+    #endif // HAVE_OpenCV_stereo
+    });
+
+
   updateControls();
 }
-
-void QStereoMatcherOptions::set_stereo_matcher(c_regular_stereo_matcher * stereo_matcher)
-{
-  stereo_matcher_ = stereo_matcher;
-  updateControls();
-}
-
-c_regular_stereo_matcher* QStereoMatcherOptions::stereo_matcher() const
-{
-  return stereo_matcher_;
-}
-
-void QStereoMatcherOptions::onupdatecontrols()
-{
-  if( !stereo_matcher_ ) {
-    setEnabled(false);
-  }
-  else {
-    stereoBMOptions_ctl->set_options(&stereo_matcher_->StereoBMOptions());
-    stereoSGBMOptions_ctl->set_options(&stereo_matcher_->StereoSGBMOptions());
-    scaleSweepOptions_ctl->set_options(&stereo_matcher_->ScaleSweepOptions());
-
-#if HAVE_OpenCV_stereo
-    quasiDenseStereoOptions_ctl->set_options(&stereo_matcher_->quasiDenseStereoOptions());
-    stereoBinarySGBMOptions_ctl->set_options(&stereo_matcher_->StereoBinarySGBMOptions());
-    stereoBinaryBMOptions_ctl->set_options(&stereo_matcher_->StereoBinaryBMOptions());
-#endif // HAVE_OpenCV_stereo
-
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
-
-}
+//void QStereoMatcherOptions::onupdatecontrols()
+//{
+//  if( !_opts ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    stereoBMOptions_ctl->set_options(&_opts->StereoBMOptions());
+//    stereoSGBMOptions_ctl->set_options(&_opts->StereoSGBMOptions());
+//    scaleSweepOptions_ctl->set_options(&_opts->ScaleSweepOptions());
+//
+//#if HAVE_OpenCV_stereo
+//    quasiDenseStereoOptions_ctl->set_options(&_opts->quasiDenseStereoOptions());
+//    stereoBinarySGBMOptions_ctl->set_options(&_opts->StereoBinarySGBMOptions());
+//    stereoBinaryBMOptions_ctl->set_options(&_opts->StereoBinaryBMOptions());
+//#endif // HAVE_OpenCV_stereo
+//
+//    Base::onupdatecontrols();
+//    setEnabled(true);
+//  }
+//
+//}
 
 QEnumComboBox<stereo_matcher_type> * QStereoMatcherOptions::matcherTypeControl() const
 {

@@ -18,33 +18,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_flip_image_routine,
        "flip", "calls cv::flip() on image");
 
-  void set_hflip(bool v)
-  {
-    hflip_ = v;
-  }
-
-  bool hflip() const
-  {
-    return hflip_;
-  }
-
-  void set_vflip(bool v)
-  {
-    vflip_ = v;
-  }
-
-  bool vflip() const
-  {
-    return vflip_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  bool hflip_ = true;
-  bool vflip_ = false;
+  bool _hflip = true;
+  bool _vflip = false;
 };
 
 #endif /* __c_flip_image_routine_h__ */

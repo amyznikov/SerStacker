@@ -16,43 +16,14 @@ class c_cvtcolor_routine:
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_cvtcolor_routine,
-      "cvtcolor", "Calls cv::cvtColor()");
+      "cvtcolor", "Apply cv::cvtColor() to image");
 
-  void set_conversion(enum cv::ColorConversionCodes v)
-  {
-    code_ = v;
-  }
-
-  enum cv::ColorConversionCodes conversion() const
-  {
-    return code_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, conversion, "enum cv::ColorConversionCodes");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, conversion);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
-  {
-    if ( code_ != cv::COLOR_COLORCVT_MAX ) {
-      cv::cvtColor(image.getMat(), image, code_);
-    }
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  enum cv::ColorConversionCodes code_ =
-      cv::COLOR_COLORCVT_MAX;
+  enum cv::ColorConversionCodes _conversion = cv::COLOR_COLORCVT_MAX;
 };
 
 

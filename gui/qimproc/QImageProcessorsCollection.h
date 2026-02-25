@@ -44,7 +44,7 @@ protected:
   virtual ~QImageProcessorsCollection();
 
 protected:
-  static QImageProcessorsCollection instance_;
+  static QImageProcessorsCollection _instance;
 };
 
 class QImageProcessorSelectionCombo :
@@ -60,6 +60,24 @@ public:
   bool setCurrentProcessor(const c_image_processor::sptr & processor);
   c_image_processor::sptr currentProcessor() const;
   c_image_processor::sptr processor(int index) const;
+
+public slots:
+  void refresh();
+};
+
+class QImageProcessorSelectionCombo2 :
+    public QComboBox
+{
+  Q_OBJECT;
+public:
+  typedef QImageProcessorSelectionCombo2 ThisClass;
+  typedef QComboBox Base;
+
+  QImageProcessorSelectionCombo2(QWidget * parent = nullptr);
+
+  bool setCurrentProcessor(const QString & name);
+  QString currentProcessor() const;
+  QString processor(int index) const;
 
 public slots:
   void refresh();

@@ -39,9 +39,7 @@ enum live_stacking_accumulation_type
 
 struct c_live_stacking_accumulation_options
 {
-  live_stacking_accumulation_type accumulation_type =
-      live_stacking_accumulation_average;
-
+  live_stacking_accumulation_type accumulation_type = live_stacking_accumulation_average;
   bool ignore_input_mask = true;
 };
 
@@ -105,7 +103,8 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  static const c_ctlist<this_class> & getcontrols();
 
 protected:
   bool initialize_pipeline() override;
@@ -123,31 +122,23 @@ protected:
 
 protected:
   c_live_stacking_input_options _input_options;
-  c_live_stacking_registration_options registration_options_;
-  c_live_stacking_accumulation_options accumulation_options_;
-  c_live_stacking_output_options output_options_;
+  c_live_stacking_registration_options _registration_options;
+  c_live_stacking_accumulation_options _accumulation_options;
+  c_live_stacking_output_options _output_options;
 
-  c_ecch ecch_;
-  //c_ecc_forward_additive ecc_;
-  // c_eccflow eccflow_;
-  //c_ecc_motion_model::sptr ecc_motion_model_;
-  c_image_transform::sptr image_transform_;
+  c_ecch _ecch;
+  c_image_transform::sptr _image_transform;
+  c_frame_accumulation::ptr _frame_accumulation;
 
-  c_frame_accumulation::ptr frame_accumulation_;
+  cv::Mat _reference_image;
+  cv::Mat _reference_mask;
+  cv::Mat _current_image;
+  cv::Mat _current_mask;
+  cv::Mat _aligned_image;
+  cv::Mat _aligned_mask;
+  double _input_display_scale = -1;
 
-  cv::Mat reference_image_;
-  cv::Mat reference_mask_;
-  cv::Mat current_image_;
-  cv::Mat current_mask_;
-  cv::Mat aligned_image_;
-  cv::Mat aligned_mask_;
-  double input_display_scale_ = -1;
-
-
-  c_output_frame_writer accumulated_video_writer_;
-
-
-
+  c_output_frame_writer _accumulated_video_writer;
 };
 
 

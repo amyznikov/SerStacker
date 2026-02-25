@@ -333,3 +333,27 @@ const c_enum_member* members_of<cv::ColorConversionCodes>()
 
   return members;
 }
+
+
+void c_cvtcolor_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "conversion", ctx(&this_class::_conversion), "cv::ColorConversionCodes");
+}
+
+bool c_cvtcolor_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _conversion);
+    return true;
+  }
+  return false;
+}
+
+bool c_cvtcolor_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+{
+  if ( _conversion != cv::COLOR_COLORCVT_MAX ) {
+    cv::cvtColor(image.getMat(), image, _conversion);
+  }
+  return true;
+}
+

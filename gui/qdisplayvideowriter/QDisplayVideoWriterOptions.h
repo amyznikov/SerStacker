@@ -14,11 +14,11 @@
 
 
 class QDisplayVideoWriterOptions:
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QDisplayVideoWriter>
 {
 public:
   typedef QDisplayVideoWriterOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QDisplayVideoWriter> Base;
 
   QDisplayVideoWriterOptions(QWidget * parent = nullptr);
 
@@ -26,14 +26,12 @@ public:
   QDisplayVideoWriter * videoWriter() const;
 
 protected:
-  void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") override;
 
 protected:
-  QDisplayVideoWriter * videoWriter_ = nullptr;
   QBrowsePathCombo * outputPath_ctl = nullptr;
   QFFmpegOptionsControl * ffoptions_ctl = nullptr;
-  //QLineEditBox * ffoptions_ctl = nullptr;
   QLineEditBox * outputFilenamePrefix_ctl = nullptr;
   QLineEditBox * outputFilenameSuffix_ctl = nullptr;
   QCheckBox * writeViewPort_ctl = nullptr;
@@ -41,31 +39,19 @@ protected:
 
 
 class QDisplayVideoWriterOptionsDialogBox:
-    public QDialog
+    public QSettingsDialogBoxTemplate<QDisplayVideoWriterOptions>
 {
   Q_OBJECT;
 
 public:
   typedef QDisplayVideoWriterOptionsDialogBox ThisClass;
-  typedef QDialog Base;
+  typedef QSettingsDialogBoxTemplate<QDisplayVideoWriterOptions> Base;
 
   QDisplayVideoWriterOptionsDialogBox(const QString & title, QWidget * parent = nullptr);
   QDisplayVideoWriterOptionsDialogBox(QWidget * parent = nullptr);
 
   void setVideoWriter(QDisplayVideoWriter * writer);
   QDisplayVideoWriter * videoWriter() const;
-
-  void loadParameters();
-
-Q_SIGNALS:
-  void visibilityChanged(bool visible);
-
-protected:
-  void showEvent(QShowEvent *e) override;
-  void hideEvent(QHideEvent *e) override;
-
-protected:
-  QDisplayVideoWriterOptions * options_ctl = nullptr;
 };
 
 QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * writer, QWidget * parent = nullptr);

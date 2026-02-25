@@ -91,7 +91,6 @@ struct c_estimate_image_transform_options
 };
 
 
-
 bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_,

@@ -39,29 +39,27 @@ const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
   return members;
 }
 
-void c_threshold_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_threshold_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, compare, "Compare operation");
-  BIND_PCTRL(ctls, threshold_type, "Threshold type");
-  BIND_PCTRL(ctls, threshold_value, "Threshold value");
-  BIND_PCTRL(ctls, threshold_scale, "Threshold scale");
-  BIND_PCTRL(ctls, fill_holes, "fill_holes");
-  BIND_PCTRL(ctls, invert, "invert");
-  BIND_PCTRL(ctls, input_channel, "input data source");
-  BIND_PCTRL(ctls, output_channel, "Output destination");
+   ctlbind(ctls, "compare", ctx(&this_class::_compare), "");
+   ctlbind(ctls, "threshold_type", ctx(&this_class::_threshold_type), "");
+   ctlbind(ctls, "threshold_value", ctx(&this_class::_threshold_value), "");
+   ctlbind(ctls, "threshold_scale", ctx(&this_class::_threshold_scale), "");
+   ctlbind(ctls, "fill_holes", ctx(&this_class::_fill_holes), "");
+   ctlbind(ctls, "invert", ctx(&this_class::_invert), "");
 }
 
 bool c_threshold_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, compare);
-    SERIALIZE_PROPERTY(settings, save, *this, threshold_type);
-    SERIALIZE_PROPERTY(settings, save, *this, threshold_value);
-    SERIALIZE_PROPERTY(settings, save, *this, threshold_scale);
-    SERIALIZE_PROPERTY(settings, save, *this, fill_holes);
-    SERIALIZE_PROPERTY(settings, save, *this, invert);
-    SERIALIZE_PROPERTY(settings, save, *this, input_channel);
-    SERIALIZE_PROPERTY(settings, save, *this, output_channel);
+    SERIALIZE_OPTION(settings, save, *this, _compare);
+    SERIALIZE_OPTION(settings, save, *this, _threshold_type);
+    SERIALIZE_OPTION(settings, save, *this, _threshold_value);
+    SERIALIZE_OPTION(settings, save, *this, _threshold_scale);
+    SERIALIZE_OPTION(settings, save, *this, _fill_holes);
+    SERIALIZE_OPTION(settings, save, *this, _invert);
+    SERIALIZE_OPTION(settings, save, *this, _input_channel);
+    SERIALIZE_OPTION(settings, save, *this, _output_channel);
     return true;
   }
   return false;

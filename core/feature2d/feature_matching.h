@@ -40,8 +40,29 @@ struct c_feature2d_matcher_options {
   c_triangle_matcher_options triangles;
   c_optflowpyrlk_feature2d_matcher_options optflowpyrlk;
   c_snorm_based_feature2d_matcher_options snorm;
-
 };
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_feature2d_matcher_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_feature2d_matcher_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::SparseFeatureMatcher;
+
+  const size_t offset = ctx.offset;
+  c.sparse_feature_matcher =
+      [offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
 
 c_feature2d_matcher::sptr create_sparse_feature_matcher(
     const c_feature2d_matcher_options & options);
@@ -51,6 +72,7 @@ c_feature2d_matcher::sptr create_sparse_feature_matcher(const c_feature2d::sptr 
 
 
 void dump_supported_feature2d_matchers(FILE * fp = stdout);
+
 
 
 

@@ -28,13 +28,13 @@ public:
   ~QFFMPEGCameraControls();
 
 protected :
-  void onupdatecontrols() override;
+//  void onupdatecontrols() override;
 
 protected Q_SLOTS:
   void onCameraStateChanged();
 
 protected:
-  QFFMPEGCamera::sptr camera_;
+  QFFMPEGCamera::sptr _camera;
 
   QFFMPEGCameraUrlWidget * url_ctl = nullptr;
   QLineEditBox * options_ctl = nullptr;

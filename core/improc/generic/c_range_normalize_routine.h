@@ -17,116 +17,18 @@ class c_range_normalize_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_range_normalize_routine, "normalize",
-      "cv::normalize()");
+      "Apply normalize_image() for given input/output ranges");
 
-  void set_auto_input_range(bool v)
-  {
-    auto_input_range_ = v;
-  }
-
-  bool auto_input_range() const
-  {
-    return auto_input_range_;
-  }
-
-  void set_input_min(double  v)
-  {
-    input_min_ = v;
-  }
-
-  double input_min() const
-  {
-    return input_min_;
-  }
-
-  void set_input_max(double  v)
-  {
-    input_max_ = v;
-  }
-
-  double input_max() const
-  {
-    return input_max_;
-  }
-
-  void set_output_min(double v)
-  {
-    output_min_ = v;
-  }
-
-  double output_min() const
-  {
-    return output_min_;
-  }
-
-  void set_output_max(double v)
-  {
-    output_max_ = v;
-  }
-
-  double output_max() const
-  {
-    return output_max_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, auto_input_range, "");
-    BIND_PCTRL(ctls, input_min, "");
-    BIND_PCTRL(ctls, input_max, "");
-    BIND_PCTRL(ctls, output_min, "");
-    BIND_PCTRL(ctls, output_max, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, auto_input_range);
-      SERIALIZE_PROPERTY(settings, save, *this, input_min);
-      SERIALIZE_PROPERTY(settings, save, *this, input_max);
-      SERIALIZE_PROPERTY(settings, save, *this, output_min);
-      SERIALIZE_PROPERTY(settings, save, *this, output_max);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    bool fOk;
-
-    // CF_DEBUG("auto_input_range_=%d", auto_input_range_);
-
-    if ( auto_input_range_ ) {
-
-      // CF_DEBUG("normalize_minmax(output_min_=%g, output_max_=%g)", output_min_, output_max_);
-      fOk = normalize_minmax(image.getMatRef(),
-          image.getMatRef(),
-          output_min_,
-          output_max_,
-          mask);
-    }
-    else {
-
-      // CF_DEBUG("normalize_image(input_min_=%g input_max_=%g output_min_=%g, output_max_=%g)", input_min_, input_max_, output_min_, output_max_);
-      fOk = normalize_image(image.getMatRef(),
-          input_min_,
-          input_max_,
-          output_min_,
-          output_max_,
-          mask.getMatRef());
-
-    }
-
-    return fOk;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double  input_min_ = 0.0;
-  double  input_max_ = 1.0;
-  double  output_min_ = 0.0;
-  double  output_max_ = 1.0;
-  bool    auto_input_range_ = true;
+  double  _input_min = 0.0;
+  double  _input_max = 1.0;
+  double  _output_min = 0.0;
+  double  _output_max = 1.0;
+  bool    _auto_input_range = true;
 };
 
 #endif /* __c_range_normalize_routine_h__ */

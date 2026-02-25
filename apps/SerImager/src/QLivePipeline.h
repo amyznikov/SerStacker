@@ -232,12 +232,12 @@ protected:
 
 
 class QLiveThreadSettingsWidget :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QLivePipelineThread>
 {
   Q_OBJECT;
 public:
   typedef QLiveThreadSettingsWidget ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QLivePipelineThread> Base;
 
   QLiveThreadSettingsWidget(QWidget * parent = nullptr);
   QLiveThreadSettingsWidget(QLivePipelineThread * liveThread, QWidget * parent = nullptr);
@@ -246,10 +246,6 @@ public:
   QLivePipelineThread * liveThread() const;
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  QLivePipelineThread * _liveThread = nullptr;
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
   QBrowsePathCombo * darkframe_ctl = nullptr;
   QNumericBox * darkFrameScale_ctl  = nullptr;

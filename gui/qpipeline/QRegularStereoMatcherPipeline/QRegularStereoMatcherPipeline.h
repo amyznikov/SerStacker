@@ -17,7 +17,8 @@ class QRegularStereoMatcherPipeline:
 {
 public:
   typedef QRegularStereoMatcherPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_stereo_matcher_pipeline> Base;
+  typedef c_stereo_matcher_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QRegularStereoMatcherPipeline(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 
 };

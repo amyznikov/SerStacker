@@ -29,17 +29,16 @@
 #endif // INDIGO_TRACE
 
 
-#define ICON_goto_position      "play_icon.png"
-#define ICON_stop               "stop_icon.png"
-
-#define ICON_left_arrow         "left_arrow_icon.png"
-#define ICON_right_arrow        "right_arrow_icon.png"
-#define ICON_double_left_arrow  "double_left_arrow_icon.png"
-#define ICON_double_right_arrow "double_right_arrow_icon.png"
-#define ICON_down_arrow         "down_b_arrow_icon.png"
-#define ICON_up_arrow           "up_b_arrow_icon.png"
-#define ICON_apply              "apply_icon.png"
-#define ICON_center             "center.png"
+#define ICON_goto_position      ":/qindigo/icons/play_icon.png"
+#define ICON_stop               ":/qindigo/icons/stop_icon.png"
+#define ICON_left_arrow         ":/qindigo/icons/left_arrow_icon.png"
+#define ICON_right_arrow        ":/qindigo/icons/right_arrow_icon.png"
+#define ICON_double_left_arrow  ":/qindigo/icons/double_left_arrow_icon.png"
+#define ICON_double_right_arrow ":/qindigo/icons/double_right_arrow_icon.png"
+#define ICON_down_arrow         ":/qindigo/icons/down_b_arrow_icon.png"
+#define ICON_up_arrow           ":/qindigo/icons/up_b_arrow_icon.png"
+#define ICON_apply              ":/qindigo/icons/apply_icon.png"
+#define ICON_center             ":/qindigo/icons/center.png"
 #define ICON_mc                 ":/qindigo/icons/mc-light.png"
 
 static QIcon icon_apply;
@@ -54,10 +53,10 @@ static QIcon icon_stop;
 static QIcon icon_center;
 //static QIcon icon_mc;
 
-static QIcon getIcon(const QString & name)
-{
-  return QIcon(QString(":/qindigo/icons/%1").arg(name));
-}
+//static QIcon getIcon(const QString & name)
+//{
+//  return QIcon(QString(":/qindigo/icons/%1").arg(name));
+//}
 
 static void init_resources()
 {
@@ -119,11 +118,8 @@ static QWidget * createFocuserSelectorControl(QWidget * parent,
     QComboBox * focuserSelect_ctl,
     QToolButton * connectDiconnect_ctl)
 {
-  QWidget * w =
-      new QWidget(parent);
-
-  QHBoxLayout * hbox =
-      new QHBoxLayout(w);
+  QWidget * w = new QWidget(parent);
+  QHBoxLayout * hbox = new QHBoxLayout(w);
 
   w->setContentsMargins(0,0,0,0);
   hbox->setContentsMargins(0, 0, 0, 0);
@@ -138,11 +134,8 @@ static QWidget * createFocusLimitsControl(QWidget * parent,
     QLineEditBox * focusLimits_ctl/*,
     QToolButton * applyFocusLimits_ctl*/)
 {
-  QWidget * w =
-      new QWidget(parent);
-
-  QHBoxLayout * hbox =
-      new QHBoxLayout(w);
+  QWidget * w = new QWidget(parent);
+  QHBoxLayout * hbox = new QHBoxLayout(w);
 
   w->setContentsMargins(0,0,0,0);
   hbox->setContentsMargins(0, 0, 0, 0);
@@ -172,11 +165,8 @@ static QWidget * createFocuserPositionControl(QWidget * parent,
     QToolButton * moveFocusToMaxAbsolutePosition_ctl,
     QToolButton * moveFocusToMiddlePosition_ctl)
 {
-  QWidget * w =
-      new QWidget(parent);
-
-  QHBoxLayout * hbox =
-      new QHBoxLayout(w);
+  QWidget * w = new QWidget(parent);
+  QHBoxLayout * hbox = new QHBoxLayout(w);
 
   w->setContentsMargins(0,0,0,0);
   hbox->setContentsMargins(0, 0, 0, 0);
@@ -223,11 +213,8 @@ static QWidget * createRelativeMoveControl(QWidget * parent,
     QToolButton * focusStepsInward4x_ctl,
     QToolButton * focusStepsOutward4x_ctl)
 {
-  QWidget * w =
-      new QWidget(parent);
-
-  QHBoxLayout * hbox =
-      new QHBoxLayout(w);
+  QWidget * w = new QWidget(parent);
+  QHBoxLayout * hbox = new QHBoxLayout(w);
 
   w->setContentsMargins(0,0,0,0);
   hbox->setContentsMargins(0, 0, 0, 0);
@@ -271,11 +258,8 @@ static QWidget * createFocuserStateStatusLabel(QWidget * parent,
     QLabel * status_ctl,
     QLabel * temperature_ctl)
 {
-  QWidget * w =
-      new QWidget(parent);
-
-  QHBoxLayout * hbox =
-      new QHBoxLayout(w);
+  QWidget * w = new QWidget(parent);
+  QHBoxLayout * hbox = new QHBoxLayout(w);
 
   w->setContentsMargins(0,0,0,0);
   hbox->setContentsMargins(0, 0, 0, 0);
@@ -288,7 +272,7 @@ static QWidget * createFocuserStateStatusLabel(QWidget * parent,
 
 
 QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
-  Base("QIndigoFocuserSettings", parent)
+  Base(parent) // "QIndigoFocuserSettings"
 {
   init_resources();
 
@@ -434,7 +418,93 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
         mouseclick_ctl->setEnabled(state==Qt::Checked);
       });
 
-  //////////////
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        if ( !client_ || currentDeviceName_.isEmpty() ) {
+          setEnabled(false);
+        }
+        else {
+
+          if( !isConnected() ) {
+            enableControl(focuserLimits_ctl, false);
+            //enableControl(focuserLimitsApply_ctl, false);
+            enableControl(focuserPosition_ctl, false);
+            enableControl(focuserPositionMoveToAbsolutePosition_ctl, false);
+            enableControl(focuserPositionMoveToMinPosition_ctl, false);
+            enableControl(focuserPositionMoveToMaxPosition_ctl, false);
+            enableControl(focuserSteps_ctl, false);
+            enableControl(focuserStepsMoveInward_ctl, false);
+            enableControl(focuserStepsMoveOutward_ctl, false);
+            enableControl(focuserStepsMoveInward4x_ctl, false);
+            enableControl(focuserStepsMoveOutward4x_ctl, false);
+            enableControl(focuserSpeed_ctl, false);
+            enableControl(enableMouse_ctl, false);
+            enableControl(mouseclick_ctl, false);
+          }
+          else if ( isMovingFocusNow() ) {
+
+            enableControl(focuserLimits_ctl, false);
+            //enableControl(focuserLimitsApply_ctl, false);
+            enableControl(focuserPosition_ctl, false);
+
+            enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_stop);
+            enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_stop);
+            enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_stop);
+
+            enableControl(focuserSteps_ctl, false);
+            enableControl(focuserStepsMoveInward_ctl, true, icon_stop);
+            enableControl(focuserStepsMoveOutward_ctl, true, icon_stop);
+            enableControl(focuserStepsMoveInward4x_ctl, true, icon_stop);
+            enableControl(focuserStepsMoveOutward4x_ctl, true, icon_stop);
+            enableControl(focuserSpeed_ctl, true);
+            enableControl(enableMouse_ctl, false);
+          }
+          else {
+
+            enableControl(focuserLimits_ctl, true);
+            //enableControl(focuserLimitsApply_ctl, true);
+
+            enableControl(focuserPosition_ctl, true);
+            enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_goto_position);
+            enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_down_arrow);
+            enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_up_arrow);
+
+            enableControl(focuserSteps_ctl, true);
+            enableControl(focuserStepsMoveInward_ctl, true, icon_left_arrow);
+            enableControl(focuserStepsMoveOutward_ctl, true, icon_right_arrow);
+            enableControl(focuserStepsMoveInward4x_ctl, true, icon_double_left_arrow);
+            enableControl(focuserStepsMoveOutward4x_ctl, true, icon_double_right_arrow);
+            enableControl(focuserSpeed_ctl, true);
+            enableControl(enableMouse_ctl, true);
+            enableControl(mouseclick_ctl, enableMouse_ctl->isChecked());
+          }
+
+          setEnabled(true);
+        }
+      });
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( client_ && !currentDeviceName_.isEmpty() ) {
+
+          QString statusText;
+
+          if ( focuser_position.defined ) {
+            statusText +=
+            QString("%1").arg(focuser_position.value);
+          }
+
+          if( focuser_limits.defined ) {
+            statusText +=
+            QString(" [%1:%2]")
+            .arg(focuser_limits.min_value)
+            .arg(focuser_limits.max_value);
+          }
+
+          status_ctl->setText(statusText);
+        }
+      });
+
 
   onDeviceSelectorCurrentIndexChanged(deviceSelector_ctl->currentIndex());
   updateControls();
@@ -523,93 +593,89 @@ void QIndigoFocuserWidget::on_indigo_log_message(indigo_log_levels level, const 
 
 }
 
-void QIndigoFocuserWidget::onload(QSettings & settings)
-{
-  Base::onload(settings);
-}
-
-void QIndigoFocuserWidget::onupdatecontrols()
-{
-  if ( !client_ || currentDeviceName_.isEmpty() ) {
-    setEnabled(false);
-  }
-  else {
-
-    if( !isConnected() ) {
-
-      enableControl(focuserLimits_ctl, false);
-      //enableControl(focuserLimitsApply_ctl, false);
-      enableControl(focuserPosition_ctl, false);
-      enableControl(focuserPositionMoveToAbsolutePosition_ctl, false);
-      enableControl(focuserPositionMoveToMinPosition_ctl, false);
-      enableControl(focuserPositionMoveToMaxPosition_ctl, false);
-      enableControl(focuserSteps_ctl, false);
-      enableControl(focuserStepsMoveInward_ctl, false);
-      enableControl(focuserStepsMoveOutward_ctl, false);
-      enableControl(focuserStepsMoveInward4x_ctl, false);
-      enableControl(focuserStepsMoveOutward4x_ctl, false);
-      enableControl(focuserSpeed_ctl, false);
-      enableControl(enableMouse_ctl, false);
-      enableControl(mouseclick_ctl, false);
-    }
-    else if ( isMovingFocusNow() ) {
-
-      enableControl(focuserLimits_ctl, false);
-      //enableControl(focuserLimitsApply_ctl, false);
-      enableControl(focuserPosition_ctl, false);
-
-      enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_stop);
-      enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_stop);
-      enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_stop);
-
-      enableControl(focuserSteps_ctl, false);
-      enableControl(focuserStepsMoveInward_ctl, true, icon_stop);
-      enableControl(focuserStepsMoveOutward_ctl, true, icon_stop);
-      enableControl(focuserStepsMoveInward4x_ctl, true, icon_stop);
-      enableControl(focuserStepsMoveOutward4x_ctl, true, icon_stop);
-      enableControl(focuserSpeed_ctl, true);
-      enableControl(enableMouse_ctl, false);
-    }
-    else {
-
-      enableControl(focuserLimits_ctl, true);
-      //enableControl(focuserLimitsApply_ctl, true);
-
-      enableControl(focuserPosition_ctl, true);
-      enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_goto_position);
-      enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_down_arrow);
-      enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_up_arrow);
-
-      enableControl(focuserSteps_ctl, true);
-      enableControl(focuserStepsMoveInward_ctl, true, icon_left_arrow);
-      enableControl(focuserStepsMoveOutward_ctl, true, icon_right_arrow);
-      enableControl(focuserStepsMoveInward4x_ctl, true, icon_double_left_arrow);
-      enableControl(focuserStepsMoveOutward4x_ctl, true, icon_double_right_arrow);
-      enableControl(focuserSpeed_ctl, true);
-      enableControl(enableMouse_ctl, true);
-      enableControl(mouseclick_ctl, enableMouse_ctl->isChecked());
-    }
-
-
-    QString statusText;
-
-    if ( focuser_position.defined ) {
-      statusText +=
-          QString("%1").arg(focuser_position.value);
-    }
-
-    if( focuser_limits.defined ) {
-      statusText +=
-          QString(" [%1:%2]")
-              .arg(focuser_limits.min_value)
-              .arg(focuser_limits.max_value);
-    }
-
-    status_ctl->setText(statusText);
-    setEnabled(true);
-  }
-}
-
+//
+//void QIndigoFocuserWidget::onupdatecontrols()
+//{
+//  if ( !client_ || currentDeviceName_.isEmpty() ) {
+//    setEnabled(false);
+//  }
+//  else {
+//
+//    if( !isConnected() ) {
+//
+//      enableControl(focuserLimits_ctl, false);
+//      //enableControl(focuserLimitsApply_ctl, false);
+//      enableControl(focuserPosition_ctl, false);
+//      enableControl(focuserPositionMoveToAbsolutePosition_ctl, false);
+//      enableControl(focuserPositionMoveToMinPosition_ctl, false);
+//      enableControl(focuserPositionMoveToMaxPosition_ctl, false);
+//      enableControl(focuserSteps_ctl, false);
+//      enableControl(focuserStepsMoveInward_ctl, false);
+//      enableControl(focuserStepsMoveOutward_ctl, false);
+//      enableControl(focuserStepsMoveInward4x_ctl, false);
+//      enableControl(focuserStepsMoveOutward4x_ctl, false);
+//      enableControl(focuserSpeed_ctl, false);
+//      enableControl(enableMouse_ctl, false);
+//      enableControl(mouseclick_ctl, false);
+//    }
+//    else if ( isMovingFocusNow() ) {
+//
+//      enableControl(focuserLimits_ctl, false);
+//      //enableControl(focuserLimitsApply_ctl, false);
+//      enableControl(focuserPosition_ctl, false);
+//
+//      enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_stop);
+//      enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_stop);
+//      enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_stop);
+//
+//      enableControl(focuserSteps_ctl, false);
+//      enableControl(focuserStepsMoveInward_ctl, true, icon_stop);
+//      enableControl(focuserStepsMoveOutward_ctl, true, icon_stop);
+//      enableControl(focuserStepsMoveInward4x_ctl, true, icon_stop);
+//      enableControl(focuserStepsMoveOutward4x_ctl, true, icon_stop);
+//      enableControl(focuserSpeed_ctl, true);
+//      enableControl(enableMouse_ctl, false);
+//    }
+//    else {
+//
+//      enableControl(focuserLimits_ctl, true);
+//      //enableControl(focuserLimitsApply_ctl, true);
+//
+//      enableControl(focuserPosition_ctl, true);
+//      enableControl(focuserPositionMoveToAbsolutePosition_ctl, true, icon_goto_position);
+//      enableControl(focuserPositionMoveToMinPosition_ctl, true, icon_down_arrow);
+//      enableControl(focuserPositionMoveToMaxPosition_ctl, true, icon_up_arrow);
+//
+//      enableControl(focuserSteps_ctl, true);
+//      enableControl(focuserStepsMoveInward_ctl, true, icon_left_arrow);
+//      enableControl(focuserStepsMoveOutward_ctl, true, icon_right_arrow);
+//      enableControl(focuserStepsMoveInward4x_ctl, true, icon_double_left_arrow);
+//      enableControl(focuserStepsMoveOutward4x_ctl, true, icon_double_right_arrow);
+//      enableControl(focuserSpeed_ctl, true);
+//      enableControl(enableMouse_ctl, true);
+//      enableControl(mouseclick_ctl, enableMouse_ctl->isChecked());
+//    }
+//
+//
+//    QString statusText;
+//
+//    if ( focuser_position.defined ) {
+//      statusText +=
+//          QString("%1").arg(focuser_position.value);
+//    }
+//
+//    if( focuser_limits.defined ) {
+//      statusText +=
+//          QString(" [%1:%2]")
+//              .arg(focuser_limits.min_value)
+//              .arg(focuser_limits.max_value);
+//    }
+//
+//    status_ctl->setText(statusText);
+//    setEnabled(true);
+//  }
+//}
+//
 
 void QIndigoFocuserWidget::onFocuserConnectionStateChanged()
 {

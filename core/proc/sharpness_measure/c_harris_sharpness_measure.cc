@@ -118,54 +118,54 @@ static double maxval(int ddepth)
 
 void c_harris_sharpness_measure::set_k(double v)
 {
-  k_ = v;
+  _opts.k = v;
 }
 
 double c_harris_sharpness_measure::k() const
 {
-  return k_;
+  return _opts.k;
 }
 
 void c_harris_sharpness_measure::set_dscale(int v)
 {
-  dscale_ = v;
+  _opts.dscale = v;
 }
 
 int c_harris_sharpness_measure::dscale() const
 {
-  return dscale_;
+  return _opts.dscale;
 }
 
 void c_harris_sharpness_measure::set_uscale(int v)
 {
-  uscale_ = v;
+  _opts.uscale = v;
 }
 
 int c_harris_sharpness_measure::uscale() const
 {
-  return uscale_;
+  return _opts.uscale;
 }
 
 void c_harris_sharpness_measure::set_avgchannel(bool v)
 {
-  avgchannel_ = v;
+  _opts.avgchannel = v;
 }
 
 bool c_harris_sharpness_measure::avgchannel() const
 {
-  return avgchannel_;
+  return _opts.avgchannel;
 }
 
 cv::Scalar c_harris_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar rv;
-  compute(image, mask, cv::noArray(), k_, dscale_, uscale_, avgchannel_, &rv);
+  compute(image, mask, cv::noArray(), _opts.k, _opts.dscale, _opts.uscale, _opts.avgchannel, &rv);
   return rv;
 }
 
 bool c_harris_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return compute(image, cv::noArray(), output_map, k_, dscale_, uscale_, avgchannel_);
+  return compute(image, cv::noArray(), output_map, _opts.k, _opts.dscale, _opts.uscale, _opts.avgchannel);
 }
 
 bool c_harris_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,

@@ -22,50 +22,56 @@ public:
 
   void set_expression(const std::string & v)
   {
-    expression_ = v;
-    expression_changed_ = true;
+    _expression = v;
+    _expression_changed = true;
   }
 
   const std::string & expression() const
   {
-    return expression_;
+    return _expression;
   }
 
   void set_mask_mode(c_data_frame::SELECTION_MASK_MODE v)
   {
-    mask_mode_ = v;
+    _mask_mode = v;
   }
 
   c_data_frame::SELECTION_MASK_MODE mask_mode() const
   {
-    return mask_mode_;
+    return _mask_mode;
   }
 
   void set_invert_selection(bool v)
   {
-    invert_selection_ = v;
+    _invert_selection = v;
   }
 
   bool invert_selection() const
   {
-    return invert_selection_;
+    return _invert_selection;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_video_frame * vlo) override;
-  std::string helpstring() const;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(c_video_frame * vlo) final;
+  std::string helpstring();
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+    ctlbind(ctls, "expression", ctx, &this_class::expression, &this_class::set_expression, "", &this_class::helpstring);
+    ctlbind(ctls, "invert_selection", ctx, &this_class::invert_selection, &this_class::set_invert_selection);
+    ctlbind(ctls, "mask_mode", ctx, &this_class::mask_mode, &this_class::set_mask_mode, "selection combine mode");
+  }
 
 protected:
-  std::string expression_;
-  c_math_expression math_;
-  cv::Mat current_image_;
-  cv::Mat1b current_mask_;
-  c_data_frame::SELECTION_MASK_MODE mask_mode_ = c_data_frame::SELECTION_MASK_AND;
-  int previous_vlo_scan_version_ = -1;
-  bool invert_selection_ = false;
-  bool expression_changed_ = true;
-  bool initialized_ = false;
+  std::string _expression;
+  c_math_expression _math;
+  cv::Mat _current_image;
+  cv::Mat1b _current_mask;
+  c_data_frame::SELECTION_MASK_MODE _mask_mode = c_data_frame::SELECTION_MASK_AND;
+  int _previous_vlo_scan_version = -1;
+  bool _invert_selection = false;
+  bool _expression_changed = true;
+  bool _initialized = false;
 };
 
 #endif /* __c_image_pixels_selection_routine_h__ */

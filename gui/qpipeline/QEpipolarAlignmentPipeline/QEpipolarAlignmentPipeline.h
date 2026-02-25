@@ -17,7 +17,8 @@ class QEpipolarAlignmentPipeline :
 {
 public:
   typedef QEpipolarAlignmentPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_epipolar_alignment_pipeline> Base;
+  typedef c_epipolar_alignment_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QEpipolarAlignmentPipeline();
 
@@ -32,9 +33,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 
 };

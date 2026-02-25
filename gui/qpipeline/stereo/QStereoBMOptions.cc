@@ -8,7 +8,7 @@
 #include "QStereoBMOptions.h"
 
 QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
-    Base("", parent)
+    Base(parent)
 {
   minDisparity_ctl =
       add_numeric_box<int>("minDisparity",
@@ -16,14 +16,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
               "Normally, it is zero but sometimes rectification algorithms can shift images,\n"
               "so this parameter needs to be adjusted accordingly",
           [this](int value) {
-            if ( options_ && options_->minDisparity != value ) {
-              options_->minDisparity = value;
+            if ( _opts && _opts->minDisparity != value ) {
+              _opts->minDisparity = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->minDisparity;
+            if ( _opts ) {
+              * value = _opts->minDisparity;
               return true;
             }
             return false;
@@ -35,14 +35,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
               "For each pixel algorithm will find the best disparity from 0 (default minimum disparity) to numDisparities.\n"
               "The search range can then be shifted by changing the minimum disparity",
           [this](int value) {
-            if ( options_ && options_->numDisparities != value ) {
-              options_->numDisparities = value;
+            if ( _opts && _opts->numDisparities != value ) {
+              _opts->numDisparities = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->numDisparities;
+            if ( _opts ) {
+              * value = _opts->numDisparities;
               return true;
             }
             return false;
@@ -56,14 +56,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
               "Smaller block size gives more detailed disparity map, but there is higher\n"
               "chance for algorithm to find a wrong correspondence.",
           [this](int value) {
-            if ( options_ && options_->blockSize != value ) {
-              options_->blockSize = value;
+            if ( _opts && _opts->blockSize != value ) {
+              _opts->blockSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->blockSize;
+            if ( _opts ) {
+              * value = _opts->blockSize;
               return true;
             }
             return false;
@@ -75,14 +75,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
               "Set it to 0 to disable speckle filtering.\n"
               "Otherwise, set it somewhere in the 50-200 range.",
           [this](int value) {
-            if ( options_ && options_->speckleWindowSize != value ) {
-              options_->speckleWindowSize = value;
+            if ( _opts && _opts->speckleWindowSize != value ) {
+              _opts->speckleWindowSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleWindowSize;
+            if ( _opts ) {
+              * value = _opts->speckleWindowSize;
               return true;
             }
             return false;
@@ -95,14 +95,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
               "it will be implicitly multiplied by 16.\n"
               "Normally, 1 or 2 is good enough.",
           [this](int value) {
-            if ( options_ && options_->speckleRange != value ) {
-              options_->speckleRange = value;
+            if ( _opts && _opts->speckleRange != value ) {
+              _opts->speckleRange = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleRange;
+            if ( _opts ) {
+              * value = _opts->speckleRange;
               return true;
             }
             return false;
@@ -113,14 +113,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
           "Maximum allowed difference (in integer pixel units) in the left-right disparity check.\n"
               "Set it to a non-positive value to disable the check.",
           [this](int value) {
-            if ( options_ && options_->disp12MaxDiff != value ) {
-              options_->disp12MaxDiff = value;
+            if ( _opts && _opts->disp12MaxDiff != value ) {
+              _opts->disp12MaxDiff = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->disp12MaxDiff;
+            if ( _opts ) {
+              * value = _opts->disp12MaxDiff;
               return true;
             }
             return false;
@@ -130,14 +130,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBM_PreFilterType>("preFilterType",
           "",
           [this](StereoBM_PreFilterType value) {
-            if ( options_ && options_->preFilterType != value ) {
-              options_->preFilterType = value;
+            if ( _opts && _opts->preFilterType != value ) {
+              _opts->preFilterType = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBM_PreFilterType * value) {
-            if ( options_ ) {
-              * value = options_->preFilterType;
+            if ( _opts ) {
+              * value = _opts->preFilterType;
               return true;
             }
             return false;
@@ -147,14 +147,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_numeric_box<int>("preFilterSize",
           "",
           [this](int value) {
-            if ( options_ && options_->preFilterSize != value ) {
-              options_->preFilterSize = value;
+            if ( _opts && _opts->preFilterSize != value ) {
+              _opts->preFilterSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->preFilterSize;
+            if ( _opts ) {
+              * value = _opts->preFilterSize;
               return true;
             }
             return false;
@@ -164,14 +164,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_numeric_box<int>("preFilterCap",
           "",
           [this](int value) {
-            if ( options_ && options_->preFilterCap != value ) {
-              options_->preFilterCap = value;
+            if ( _opts && _opts->preFilterCap != value ) {
+              _opts->preFilterCap = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->preFilterCap;
+            if ( _opts ) {
+              * value = _opts->preFilterCap;
               return true;
             }
             return false;
@@ -181,14 +181,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_numeric_box<int>("textureThreshold",
           "",
           [this](int value) {
-            if ( options_ && options_->textureThreshold != value ) {
-              options_->textureThreshold = value;
+            if ( _opts && _opts->textureThreshold != value ) {
+              _opts->textureThreshold = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->textureThreshold;
+            if ( _opts ) {
+              * value = _opts->textureThreshold;
               return true;
             }
             return false;
@@ -198,14 +198,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_numeric_box<int>("uniquenessRatio",
           "",
           [this](int value) {
-            if ( options_ && options_->uniquenessRatio != value ) {
-              options_->uniquenessRatio = value;
+            if ( _opts && _opts->uniquenessRatio != value ) {
+              _opts->uniquenessRatio = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->uniquenessRatio;
+            if ( _opts ) {
+              * value = _opts->uniquenessRatio;
               return true;
             }
             return false;
@@ -215,14 +215,14 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
       add_numeric_box<int>("smallerBlockSize",
           "",
           [this](int value) {
-            if ( options_ && options_->smallerBlockSize != value ) {
-              options_->smallerBlockSize = value;
+            if ( _opts && _opts->smallerBlockSize != value ) {
+              _opts->smallerBlockSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->smallerBlockSize;
+            if ( _opts ) {
+              * value = _opts->smallerBlockSize;
               return true;
             }
             return false;
@@ -231,24 +231,24 @@ QStereoBMOptions::QStereoBMOptions(QWidget * parent) :
   updateControls();
 }
 
-void QStereoBMOptions::set_options(c_cvStereoBMOptions * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-c_cvStereoBMOptions* QStereoBMOptions::options() const
-{
-  return options_;
-}
-
-void QStereoBMOptions::onupdatecontrols()
-{
-  if ( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
-}
+//void QStereoBMOptions::set_options(c_cvStereoBMOptions * options)
+//{
+//  _opts = options;
+//  updateControls();
+//}
+//
+//c_cvStereoBMOptions* QStereoBMOptions::options() const
+//{
+//  return _opts;
+//}
+//
+//void QStereoBMOptions::onupdatecontrols()
+//{
+//  if ( !_opts ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    Base::onupdatecontrols();
+//    setEnabled(true);
+//  }
+//}

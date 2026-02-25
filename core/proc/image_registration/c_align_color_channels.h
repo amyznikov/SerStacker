@@ -11,8 +11,45 @@
 #ifndef __align_channels_h__
 #define __align_channels_h__
 
+#include <core/ctrlbind/ctrlbind.h>
 #include "image_transform.h"
 #include "ecc2.h"
+
+
+struct c_align_color_channels_options
+{
+  ECC_ALIGN_METHOD method = ECC_ALIGN_LM;
+  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REPLICATE;
+  cv::Scalar border_value = cv::Scalar();
+  double smooth_sigma = 0;
+  double eps = 0.1;
+  double update_step_scale = 1;
+  double normalization_eps = 1;
+  int max_iterations = 30;
+  int max_level = 0;
+  int normalization_level = 3;
+};
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_align_color_channels_options> & ctx)
+{
+  using S = c_align_color_channels_options;
+  ctlbind(ctls, "method", ctx(&S::method), "");
+  ctlbind(ctls, "motion_type", ctx(&S::motion_type), "");
+  ctlbind(ctls, "interpolation", ctx(&S::interpolation), "");
+  ctlbind(ctls, "border_mode", ctx(&S::border_mode), "");
+  ctlbind(ctls, "border_value", ctx(&S::border_value), "");
+  ctlbind(ctls, "smooth_sigma", ctx(&S::smooth_sigma), "");
+  ctlbind(ctls, "eps", ctx(&S::eps), "");
+  ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "max_level", ctx(&S::max_level), "");
+  ctlbind(ctls, "normalization_eps", ctx(&S::normalization_eps), "");
+  ctlbind(ctls, "normalization_level", ctx(&S::normalization_level), "");
+}
+
 
 /**
  *  Use of ECC for color channels alignment in multi-channel images
@@ -20,7 +57,19 @@
 class c_align_color_channels
 {
 public:
+  typedef c_align_color_channels this_class;
+
   c_align_color_channels() = default;
+
+  c_align_color_channels_options & options()
+  {
+    return _opts;
+  }
+
+  const c_align_color_channels_options & options() const
+  {
+    return _opts;
+  }
 
   void set_method(ECC_ALIGN_METHOD v);
   ECC_ALIGN_METHOD method() const;
@@ -58,9 +107,6 @@ public:
   void set_normalization_eps(double v);
   double normalization_eps() const;
 
-  //  double computed_rho(int channel_index) const;
-  //  double computed_eps(int channel_index) const;
-  //  int computed_iterations(int channel_index) const;
   const c_image_transform::sptr & computed_transform(int channel_index) const;
 
   bool align(int reference_channel_index,
@@ -76,26 +122,17 @@ public:
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );
 
+  template<class RootObjectType>
+  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
+  {
+    ctlbind(ctls, ctx(&this_class::_opts));
+  }
+
 protected:
-  ECC_ALIGN_METHOD method_ = ECC_ALIGN_LM;
-  IMAGE_MOTION_TYPE motion_type_ = IMAGE_MOTION_TRANSLATION;
-  enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
-  enum ECC_BORDER_MODE border_mode_ = ECC_BORDER_REPLICATE;
-  cv::Scalar border_value_ = cv::Scalar();
-  double smooth_sigma_ = 0;
-  double eps_ = 0.1;
-  double update_step_scale_ = 1;
-  int max_iterations_ = 30;
-  int max_level_ = 0;
-
-  double normalization_eps_ = 1;
-  int normalization_level_ = 3;
-
-
-  //  std::vector<double> computed_eps_;
-  //  std::vector<double> computed_rhos_;
-  //  std::vector<int> computed_iterations_;
-  std::vector<c_image_transform::sptr> computed_transforms_;
+  c_align_color_channels_options _opts;
+  std::vector<c_image_transform::sptr> _computed_transforms;
 };
+
+
 
 #endif /* __align_channels_h__ */

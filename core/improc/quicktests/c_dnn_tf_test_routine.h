@@ -24,26 +24,26 @@ public:
 
   const std::string & model_path() const
   {
-    return model_path_;
+    return _model_path;
   }
 
   void set_model_path(const std::string & v)
   {
-    model_path_ = v;
-    initialized_ = false;
+    _model_path = v;
+    _initialized = false;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string model_path_;
+  std::string _model_path;
 //#if HAVE_OpenCV_dnn
   cv::dnn::Net net;
 //#endif //
 
-  bool initialized_ = false;
+  bool _initialized = false;
 };
 
 #endif /* __c_dnn_tf_test_routine_h__ */

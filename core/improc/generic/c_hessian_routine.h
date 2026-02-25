@@ -35,33 +35,13 @@ public:
     OutputMinEigenValues,
   };
 
-  void set_output_type(OutputType v)
-  {
-    output_type_ = v;
-  }
-
-  OutputType output_type() const
-  {
-    return output_type_;
-  }
-
-  void set_border_type(cv::BorderTypes v)
-  {
-    border_type_ = v;
-  }
-
-  cv::BorderTypes border_type() const
-  {
-    return border_type_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  OutputType output_type_ = OutputGxx;
-  cv::BorderTypes border_type_  = cv::BORDER_DEFAULT;
+  OutputType _output_type = OutputGxx;
+  cv::BorderTypes _border_type  = cv::BORDER_DEFAULT;
 };
 
 #endif /* __c_hessian_routine_h__ */

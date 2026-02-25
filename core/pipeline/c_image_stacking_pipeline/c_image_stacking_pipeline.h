@@ -25,8 +25,8 @@
 enum roi_selection_method
 {
   roi_selection_none = 0,
-  roi_selection_planetary_disk = 1,
-  roi_selection_rectange_crop = 2
+  roi_selection_rectange_crop = 1,
+  roi_selection_planetary_disk = 2,
 };
 
 enum frame_accumulation_method
@@ -120,9 +120,7 @@ struct c_frame_upscale_options
 
 struct c_frame_accumulation_options
 {
-  enum frame_accumulation_method accumulation_method  =
-      frame_accumulation_average;
-
+  enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
   c_lpg_options lpg;
   c_laplacian_pyramid_focus_stacking::options fs;
   double max_weights_ratio = 0;
@@ -132,6 +130,8 @@ struct c_frame_accumulation_options
     lpg.dscale = 2;
   }
 };
+
+
 
 struct c_image_processing_options
 {
@@ -193,6 +193,7 @@ struct c_image_stacking_master_options
 
   bool apply_input_image_processor = true;
   bool generate_master_frame = true;
+//  bool enable_registration = true;
   bool stop_after_master_frame_generation = false;
   bool save_master_frame = true;
 
@@ -209,6 +210,7 @@ struct c_image_stacking_options
 
   double unsharp_sigma = 0;
   double unsharp_alpha = 0;
+  bool enable_registration = true;
 };
 
 
@@ -269,9 +271,10 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
-
   bool copyParameters(const base::sptr & dst) const override;
+
+  static const c_ctlist<this_class> & getcontrols();
+
   bool has_master_frame() const  override;
   void set_master_source(const std::string & master_source_path) override;
   std::string master_source() const override;
@@ -356,6 +359,7 @@ protected:
   c_frame_upscale_options _upscale_options;
   c_image_stacking_master_options _master_options;
   c_image_stacking_options _stacking_options;
+  c_camera_intrinsics _camera_intrinsics;
   c_image_stacking_output_options _output_options;
   c_image_processing_options _image_processing_options;
 

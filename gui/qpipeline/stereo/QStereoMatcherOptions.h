@@ -23,25 +23,17 @@
 
 
 class QStereoMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_regular_stereo_matcher>
 {
 public:
   typedef QStereoMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_regular_stereo_matcher> Base;
 
   QStereoMatcherOptions(QWidget * parent = nullptr);
-
-  void set_stereo_matcher(c_regular_stereo_matcher * stereo_matcher);
-  c_regular_stereo_matcher * stereo_matcher() const;
 
   QEnumComboBox<stereo_matcher_type> * matcherTypeControl() const;
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_regular_stereo_matcher * stereo_matcher_ = nullptr;
-
   QCheckBox * enabled_ctl = nullptr;
   QEnumComboBox<stereo_matcher_type> * matcher_type_ctl = nullptr;
 

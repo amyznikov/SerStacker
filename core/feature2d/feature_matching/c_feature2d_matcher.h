@@ -11,11 +11,18 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
+#include <core/ctrlbind/ctrlbind.h>
 
 /* Base options for sparse feature2d matchers */
 struct c_feature2d_matcher_base_options
 {
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_feature2d_matcher_base_options> & ctx)
+{
+  using S = c_feature2d_matcher_base_options;
+}
 
 
 /** @brief Sparse feature2d descriptor matcher abstract base class

@@ -18,18 +18,15 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_test_scale_space_routine,
        "test_scale_space", "");
 
-  void set_minimum_image_size(int v);
-  int minimum_image_size() const;
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   void apply_functional();
 
 protected:
-  int minimum_image_size_ = 32;
+  int _minimum_image_size = 32;
 };
 
 #endif /* __c_test_scale_space_routine_h__ */

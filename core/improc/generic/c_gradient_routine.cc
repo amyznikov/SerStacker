@@ -41,33 +41,29 @@ const c_enum_member* members_of<c_gradient_routine::OutputType>()
   return members;
 }
 
-void c_gradient_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_gradient_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, compute_method, "method");
-  BIND_PCTRL(ctls, output_type, "Output type");
-//  BIND_PCTRL(ctls, order_x, "Order of x derivative");
-//  BIND_PCTRL(ctls, order_y, "Order of y derivative");
-//  BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
-  BIND_PCTRL(ctls, border_type, "Border type");
-
-  BIND_PCTRL(ctls, ddepth, "Destination image depth");
-  BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
-  BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
-  BIND_PCTRL(ctls, squared, "Square output");
-  BIND_PCTRL(ctls, erode_mask, "Update image mask if not empty");
+   ctlbind(ctls, "compute_method", ctx(&this_class::_compute_method), "");
+   ctlbind(ctls, "output", ctx(&this_class::_output_type), "");
+   ctlbind(ctls, "ddepth", ctx(&this_class::_ddepth), "");
+   ctlbind(ctls, "border_type", ctx(&this_class::_border_type), "");
+   ctlbind(ctls, "scale", ctx(&this_class::_scale), "");
+   ctlbind(ctls, "delta", ctx(&this_class::_delta), "");
+   ctlbind(ctls, "squared", ctx(&this_class::_squared), "");
+   ctlbind(ctls, "erode_mask", ctx(&this_class::_erode_mask), "");
 }
 
 bool c_gradient_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, compute_method);
-    SERIALIZE_PROPERTY(settings, save, *this, output_type);
-    SERIALIZE_PROPERTY(settings, save, *this, border_type);
-    SERIALIZE_PROPERTY(settings, save, *this, scale);
-    SERIALIZE_PROPERTY(settings, save, *this, ddepth);
-    SERIALIZE_PROPERTY(settings, save, *this, delta);
-    SERIALIZE_PROPERTY(settings, save, *this, squared);
-    SERIALIZE_PROPERTY(settings, save, *this, erode_mask);
+    SERIALIZE_OPTION(settings, save, *this, _compute_method);
+    SERIALIZE_OPTION(settings, save, *this, _output_type);
+    SERIALIZE_OPTION(settings, save, *this, _border_type);
+    SERIALIZE_OPTION(settings, save, *this, _scale);
+    SERIALIZE_OPTION(settings, save, *this, _ddepth);
+    SERIALIZE_OPTION(settings, save, *this, _delta);
+    SERIALIZE_OPTION(settings, save, *this, _squared);
+    SERIALIZE_OPTION(settings, save, *this, _erode_mask);
     return true;
   }
   return false;
@@ -77,27 +73,27 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 {
   cv::Mat gx, gy;
 
-  switch (compute_method_) {
+  switch (_compute_method) {
     case ComputeMethodSobel:
-      if ( !compute_sobel_gradients(image, gx, gy, ddepth_, border_type_) ) {
+      if ( !compute_sobel_gradients(image, gx, gy, _ddepth, _border_type) ) {
         CF_ERROR("compute_sobel_gradients() fails");
         return false;
       }
       break;
 
     case ComputeMethodDiagonalGradient:
-      if ( !compute_diagonal_gradients(image, gx, gy, ddepth_, border_type_) ) {
+      if ( !compute_diagonal_gradients(image, gx, gy, _ddepth, _border_type) ) {
         CF_ERROR("compute_diagonal_gradients() fails");
         return false;
       }
       break;
 
     case ComputeMethodFilter1D:
-      if ( !compute_gradient(image, gx, 1, 0, 1, ddepth_, delta_, scale_) ) {
+      if ( !compute_gradient(image, gx, 1, 0, 1, _ddepth, _delta, _scale) ) {
         CF_ERROR("compute_gradient(gx) fails");
         return false;
       }
-      if ( !compute_gradient(image, gy, 0, 1, 1, ddepth_, delta_, scale_) ) {
+      if ( !compute_gradient(image, gy, 0, 1, 1, _ddepth, _delta, _scale) ) {
         CF_ERROR("compute_gradient(gx) fails");
         return false;
       }
@@ -105,14 +101,14 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
       break;
     default:
-      CF_ERROR("Invalid compute_method_=%d ('%s') requested ", compute_method_,
-          toCString(compute_method_));
+      CF_ERROR("Invalid compute_method_=%d ('%s') requested ", _compute_method,
+          toCString(_compute_method));
       return false;
   }
 
 
 
-  switch (output_type_) {
+  switch (_output_type) {
     case OutputGradientX:
       image.move(gx);
       break;
@@ -129,7 +125,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
     case OutputGradientMagnitude:
       cv::magnitude(gx, gy, image);
-      if( squared_ ) {
+      if( _squared ) {
         cv::multiply(image.getMat(), image.getMat(), image);
       }
       break;
@@ -143,7 +139,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
       cv::Mat g;
       cv::magnitude(gx, gy, g);
-      if ( squared_ ) {
+      if ( _squared ) {
         cv::multiply(g,  g,  g);
       }
       cv::multiply(image,  g,  image);
@@ -162,7 +158,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       cv::absdiff(gx, 0, gx);
       cv::absdiff(gy, 0, gy);
       cv::magnitude(gx, gy, g);
-      if ( squared_ ) {
+      if ( _squared ) {
         cv::multiply(g,  g,  g);
       }
 
@@ -172,13 +168,13 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
     }
 
     default:
-      CF_ERROR("Invalid compute_method_=%d ('%s') requested ", output_type_,
-          toCString(output_type_));
+      CF_ERROR("Invalid compute_method_=%d ('%s') requested ", _output_type,
+          toCString(_output_type));
       return false;
       break;
   }
 
-  if( erode_mask_ && mask.needed() && !mask.empty() ) {
+  if( _erode_mask && mask.needed() && !mask.empty() ) {
     const int r = 2; // std::max(1, kradius_);
     cv::erode(mask, mask, cv::Mat1b(2 * r + 1, 2 * r + 1, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
     image.getMatRef().setTo(0, ~mask.getMat());

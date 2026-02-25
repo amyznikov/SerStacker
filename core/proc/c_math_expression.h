@@ -130,27 +130,27 @@ public:
 
   const std::vector<const_desc> & constants() const
   {
-    return constants_;
+    return _constants;
   }
 
   const std::vector<function_desc> & functions() const
   {
-    return functions_;
+    return _functions;
   }
 
   const std::vector<unary_operation> & unary_operations() const
   {
-    return unops_;
+    return _unops;
   }
 
   const std::vector<std::vector<binary_operation>>& binary_operations() const
   {
-    return binops_;
+    return _binops;
   }
 
   const std::vector<arg_desc> & arguments() const
   {
-    return args_;
+    return _args;
   }
 
 protected:
@@ -175,27 +175,27 @@ protected:
   const function_desc * lookup_function(const char * name) const;
 
 protected:
-  abstract_node * root_ = nullptr;
-  const char * pointer_to_syntax_error_ = nullptr;
-  std::string errmsg_;
+  abstract_node * _root = nullptr;
+  const char * _pointer_to_syntax_error = nullptr;
+  std::string _errmsg;
 
   // functions table
-  std::vector<function_desc> functions_;
+  std::vector<function_desc> _functions;
 
   // unary operation table
-  std::vector<unary_operation> unops_;
+  std::vector<unary_operation> _unops;
 
   // binary operation table
-  std::vector<std::vector<binary_operation>> binops_;
+  std::vector<std::vector<binary_operation>> _binops;
 
   // arguments table
-  std::vector<arg_desc> args_;
+  std::vector<arg_desc> _args;
 
   // bindings table
-  std::vector<binding_desc> bindings_;
+  std::vector<binding_desc> _bindings;
 
   // constants table
-  std::vector<const_desc> constants_;
+  std::vector<const_desc> _constants;
 
 
   int OBRACE = '(';

@@ -17,7 +17,8 @@ class QCameraCalibrationPipeline :
 {
 public:
   typedef QCameraCalibrationPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_camera_calibration_pipeline> Base;
+  typedef c_camera_calibration_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QCameraCalibrationPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

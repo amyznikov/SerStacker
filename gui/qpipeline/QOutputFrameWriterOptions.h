@@ -15,16 +15,28 @@
 #include <core/pipeline/c_output_frame_writer.h>
 
 class QOutputFrameWriterOptions :
-    public QSettingsWidgetTemplate<c_output_frame_writer_options>
+    public QSettingsWidget // Template<c_output_frame_writer_options>
 {
   Q_OBJECT;
 public:
   typedef QOutputFrameWriterOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_output_frame_writer_options> Base;
+  typedef QSettingsWidget Base; // Template<c_output_frame_writer_options> Base;
 
   QOutputFrameWriterOptions(QWidget * parent = nullptr);
 
+  void set_output_frame_writer_options(c_output_frame_writer_options * options)
+  {
+    _options = options;
+    updateControls();
+  }
+
+  c_output_frame_writer_options * output_frame_writer_options() const
+  {
+    return _options;
+  }
+
 protected:
+  c_output_frame_writer_options * _options =  nullptr;
   QLineEditBox * output_filename_ctl =  nullptr;
   QFFmpegOptionsControl * output_ffmpeg_opts_ctl = nullptr;
   QImageProcessorSelectionCombo * output_image_processor_ctl = nullptr;

@@ -516,49 +516,42 @@ void QDataFrameProcessorEditor::onRemoveCurrentProcessor()
 QDataFrameRoutineOptionsControl * QDataFrameRoutineOptionsControl::create(const c_data_frame_processor_routine::sptr & processor,
     QWidget * parent)
 {
-  QDataFrameRoutineOptionsControl * widget = nullptr;
-
-  widget = new QDataFrameRoutineOptionsControl(processor, parent);
-
+  QDataFrameRoutineOptionsControl * widget = new QDataFrameRoutineOptionsControl(processor, parent);
   widget->setupControls();
-
   return widget;
 }
 
 QDataFrameRoutineOptionsControl::QDataFrameRoutineOptionsControl(const c_data_frame_processor_routine::sptr & processor, QWidget * parent) :
-    Base("QDataFrameProcessorRoutineOptionsControl", parent),
-    routine_(processor)
+    Base(parent),
+    _routine(processor)
 {
   setFrameShape(QFrame::Shape::Box);
 }
 
 void QDataFrameRoutineOptionsControl::setupControls()
 {
-  if( !routine_->classfactory()->tooltip.empty() ) {
+  if( !_routine->classfactory()->tooltip.empty() ) {
     QLabel *label = new QLabel(this);
     label->setTextFormat(Qt::RichText);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    label->setText(routine_->classfactory()->tooltip.c_str());
+    label->setText(_routine->classfactory()->tooltip.c_str());
     form->addRow(label);
   }
 
-  std::vector<c_ctrl_bind> ctls;
-  routine_->get_parameters(&ctls);
-  Base::setup_controls(ctls);
+  c_ctlist<c_data_frame_processor_routine> controls;
+  _routine->getcontrols(controls);
+  ::setupControls(this, controls);
 
+  //  QObject::connect(this, &ThisClass::parameterChanged,
+  //      [this]() {
+  //        if ( _routine ) {
+  //          _routine->parameter_changed();
+  //        }
+  //      });
+
+  setOpts(_routine.get());
   updateControls();
-}
-
-void QDataFrameRoutineOptionsControl::onupdatecontrols()
-{
-  if ( !routine_ ) {
-    setEnabled(false);
-  }
-  else {
-    Q_EMIT populatecontrols();
-    setEnabled(true);
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

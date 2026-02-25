@@ -8,20 +8,20 @@
 #include "QStereoBinaryBMOptions.h"
 
 QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
-    Base("", parent)
+    Base(parent)
 {
   minDisparity_ctl =
       add_numeric_box<int>("minDisparity",
           "minDisparity",
           [this](int value) {
-            if ( options_ && options_->minDisparity != value ) {
-              options_->minDisparity = value;
+            if ( _opts && _opts->minDisparity != value ) {
+              _opts->minDisparity = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->minDisparity;
+            if ( _opts ) {
+              * value = _opts->minDisparity;
               return true;
             }
             return false;
@@ -31,14 +31,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("numDisparities",
           "numDisparities",
           [this](int value) {
-            if ( options_ && options_->numDisparities != value ) {
-              options_->numDisparities = value;
+            if ( _opts && _opts->numDisparities != value ) {
+              _opts->numDisparities = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->numDisparities;
+            if ( _opts ) {
+              * value = _opts->numDisparities;
               return true;
             }
             return false;
@@ -48,14 +48,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("blockSize",
           "blockSize",
           [this](int value) {
-            if ( options_ && options_->blockSize != value ) {
-              options_->blockSize = value;
+            if ( _opts && _opts->blockSize != value ) {
+              _opts->blockSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->blockSize;
+            if ( _opts ) {
+              * value = _opts->blockSize;
               return true;
             }
             return false;
@@ -65,14 +65,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("speckleWindowSize",
           "speckleWindowSize",
           [this](int value) {
-            if ( options_ && options_->speckleWindowSize != value ) {
-              options_->speckleWindowSize = value;
+            if ( _opts && _opts->speckleWindowSize != value ) {
+              _opts->speckleWindowSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleWindowSize;
+            if ( _opts ) {
+              * value = _opts->speckleWindowSize;
               return true;
             }
             return false;
@@ -82,14 +82,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("speckleRange",
           "speckleRange",
           [this](int value) {
-            if ( options_ && options_->speckleRange != value ) {
-              options_->speckleRange = value;
+            if ( _opts && _opts->speckleRange != value ) {
+              _opts->speckleRange = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleRange;
+            if ( _opts ) {
+              * value = _opts->speckleRange;
               return true;
             }
             return false;
@@ -99,14 +99,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("disp12MaxDiff",
           "disp12MaxDiff",
           [this](int value) {
-            if ( options_ && options_->disp12MaxDiff != value ) {
-              options_->disp12MaxDiff = value;
+            if ( _opts && _opts->disp12MaxDiff != value ) {
+              _opts->disp12MaxDiff = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->disp12MaxDiff;
+            if ( _opts ) {
+              * value = _opts->disp12MaxDiff;
               return true;
             }
             return false;
@@ -116,14 +116,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_checkbox("usePrefilter",
           "usePrefilter",
           [this](bool value) {
-            if ( options_ && options_->usePrefilter != value ) {
-              options_->usePrefilter = value;
+            if ( _opts && _opts->usePrefilter != value ) {
+              _opts->usePrefilter = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * value) {
-            if ( options_ ) {
-              * value = options_->usePrefilter;
+            if ( _opts ) {
+              * value = _opts->usePrefilter;
               return true;
             }
             return false;
@@ -134,14 +134,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinaryBMPrefilterType>("preFilterType",
           "preFilterType",
           [this](StereoBinaryBMPrefilterType value) {
-            if ( options_ && options_->preFilterType != value ) {
-              options_->preFilterType = value;
+            if ( _opts && _opts->preFilterType != value ) {
+              _opts->preFilterType = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinaryBMPrefilterType * value) {
-            if ( options_ ) {
-              * value = options_->preFilterType;
+            if ( _opts ) {
+              * value = _opts->preFilterType;
               return true;
             }
             return false;
@@ -152,14 +152,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("preFilterSize",
           "preFilterSize",
           [this](int value) {
-            if ( options_ && options_->preFilterSize != value ) {
-              options_->preFilterSize = value;
+            if ( _opts && _opts->preFilterSize != value ) {
+              _opts->preFilterSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->preFilterSize;
+            if ( _opts ) {
+              * value = _opts->preFilterSize;
               return true;
             }
             return false;
@@ -170,14 +170,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("preFilterCap",
           "preFilterCap",
           [this](int value) {
-            if ( options_ && options_->preFilterCap != value ) {
-              options_->preFilterCap = value;
+            if ( _opts && _opts->preFilterCap != value ) {
+              _opts->preFilterCap = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->preFilterCap;
+            if ( _opts ) {
+              * value = _opts->preFilterCap;
               return true;
             }
             return false;
@@ -188,14 +188,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("textureThreshold",
           "textureThreshold",
           [this](int value) {
-            if ( options_ && options_->textureThreshold != value ) {
-              options_->textureThreshold = value;
+            if ( _opts && _opts->textureThreshold != value ) {
+              _opts->textureThreshold = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->textureThreshold;
+            if ( _opts ) {
+              * value = _opts->textureThreshold;
               return true;
             }
             return false;
@@ -206,14 +206,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("uniquenessRatio",
           "uniquenessRatio",
           [this](int value) {
-            if ( options_ && options_->uniquenessRatio != value ) {
-              options_->uniquenessRatio = value;
+            if ( _opts && _opts->uniquenessRatio != value ) {
+              _opts->uniquenessRatio = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->uniquenessRatio;
+            if ( _opts ) {
+              * value = _opts->uniquenessRatio;
               return true;
             }
             return false;
@@ -224,14 +224,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("smallerBlockSize",
           "smallerBlockSize",
           [this](int value) {
-            if ( options_ && options_->smallerBlockSize != value ) {
-              options_->smallerBlockSize = value;
+            if ( _opts && _opts->smallerBlockSize != value ) {
+              _opts->smallerBlockSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->smallerBlockSize;
+            if ( _opts ) {
+              * value = _opts->smallerBlockSize;
               return true;
             }
             return false;
@@ -242,14 +242,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("scalleFactor",
           "scalleFactor",
           [this](int value) {
-            if ( options_ && options_->scalleFactor != value ) {
-              options_->scalleFactor = value;
+            if ( _opts && _opts->scalleFactor != value ) {
+              _opts->scalleFactor = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->scalleFactor;
+            if ( _opts ) {
+              * value = _opts->scalleFactor;
               return true;
             }
             return false;
@@ -260,14 +260,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinarySpeckleRemovalTechnique>("spekleRemoval",
           "spekleRemoval Technique",
           [this](StereoBinarySpeckleRemovalTechnique value) {
-            if ( options_ && options_->spekleRemovalTechnique != value ) {
-              options_->spekleRemovalTechnique = value;
+            if ( _opts && _opts->spekleRemovalTechnique != value ) {
+              _opts->spekleRemovalTechnique = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinarySpeckleRemovalTechnique * value) {
-            if ( options_ ) {
-              * value = options_->spekleRemovalTechnique;
+            if ( _opts ) {
+              * value = _opts->spekleRemovalTechnique;
               return true;
             }
             return false;
@@ -278,14 +278,14 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinaryKernelType>("kernelType",
           "kernelType",
           [this](StereoBinaryKernelType value) {
-            if ( options_ && options_->kernelType != value ) {
-              options_->kernelType = value;
+            if ( _opts && _opts->kernelType != value ) {
+              _opts->kernelType = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinaryKernelType * value) {
-            if ( options_ ) {
-              * value = options_->kernelType;
+            if ( _opts ) {
+              * value = _opts->kernelType;
               return true;
             }
             return false;
@@ -296,40 +296,18 @@ QStereoBinaryBMOptions::QStereoBinaryBMOptions(QWidget * parent) :
       add_numeric_box<int>("agregationWindowSize",
           "agregationWindowSize",
           [this](int value) {
-            if ( options_ && options_->agregationWindowSize != value ) {
-              options_->agregationWindowSize = value;
+            if ( _opts && _opts->agregationWindowSize != value ) {
+              _opts->agregationWindowSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->agregationWindowSize;
+            if ( _opts ) {
+              * value = _opts->agregationWindowSize;
               return true;
             }
             return false;
           });
 
   updateControls();
-}
-
-void QStereoBinaryBMOptions::set_options(c_cvStereoBinaryBMOptions * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-c_cvStereoBinaryBMOptions* QStereoBinaryBMOptions::options() const
-{
-  return options_;
-}
-
-void QStereoBinaryBMOptions::onupdatecontrols()
-{
-  if( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
 }

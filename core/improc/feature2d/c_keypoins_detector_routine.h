@@ -40,7 +40,7 @@ public:
 
   c_sparse_feature_detector_options * options()
   {
-    return &opts;
+    return &_opts;
   }
 
   void set_octave(int v)
@@ -97,19 +97,19 @@ public:
   ////
 
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   void parameter_changed() final;
+  void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_sparse_feature_detector_options opts;
+  c_sparse_feature_detector_options _opts;
   c_feature2d::sptr _keypoints_detector;
   std::vector<cv::KeyPoint> _keypoints;
   cv::Mat _display;
   int _octave = -1;
+  DisplayType _display_type = DisplayRichKeypoints;
   bool _black_background = false;
-
 
   ////
   // Test Homography
@@ -118,9 +118,6 @@ protected:
   float F = 1000;
   ////
 
-
-  DisplayType _display_type =
-      DisplayRichKeypoints;
 };
 
 #endif /* __c_keypoins_detector_routine_h__ */

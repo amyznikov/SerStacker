@@ -81,8 +81,7 @@ void QLogWidget::putText(const QString & msg)
 
       textbox_ctl->appendPlainText(msg);
       textbox_ctl->moveCursor (QTextCursor::End);
-      //textbox_ctl->moveCursor (QTextCursor::StartOfLine);
-      //textbox_ctl->moveCursor (QTextCursor::End);
+      textbox_ctl->moveCursor (QTextCursor::StartOfLine);
       textbox_ctl->ensureCursorVisible();
     }
   }

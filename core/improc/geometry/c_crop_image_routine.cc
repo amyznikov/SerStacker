@@ -21,25 +21,15 @@ static void adjust_rect(const cv::Rect & src, cv::Rect & dst, const cv::Size & i
 }
 
 
-void c_crop_image_routine::set_rect(const cv::Rect & rc)
+void c_crop_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  rect_ = rc;
-}
-
-const cv::Rect & c_crop_image_routine::rect() const
-{
-  return rect_;
-}
-
-void c_crop_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_PCTRL(ctls, rect, "crop rectangle in format X;Y;WxH");
+  ctlbind(ctls, "rect", ctx(&this_class::_rect), "Rectangular ROI to crop, X,Y;WxH");
 }
 
 bool c_crop_image_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, rect);
+    SERIALIZE_OPTION(settings, save, *this, _rect);
     return true;
   }
   return false;
@@ -50,10 +40,8 @@ bool c_crop_image_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   const cv::Size size =
       image.size();
 
-  //CF_DEBUG("rect_: x=%d y=%d w=%d h=%d", rect_.x, rect_.y, rect_.width, rect_.height);
-
   cv::Rect rc;
-  adjust_rect(rect_, rc, size);
+  adjust_rect(_rect, rc, size);
 
   if ( rc.empty() ) {
     CF_ERROR("c_crop_image_routine: adjusted rect is empty");

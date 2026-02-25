@@ -8,20 +8,20 @@
 #include "QStereoRectificationOptions.h"
 
 QStereoRectificationOptions::QStereoRectificationOptions(QWidget * parent) :
-  Base("", parent)
+  Base(parent)
 {
   enable_stereo_rectification_ctl =
       add_checkbox("enable_stereo_rectification",
           "enable_stereo_rectification",
           [this](bool checked) {
-            if ( options_ ) {
-              options_->set_enabled(checked);
+            if ( _opts ) {
+              _opts->set_enabled(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( options_ ) {
-              *checked = options_->enabled();
+            if ( _opts ) {
+              *checked = _opts->enabled();
               return true;
             }
             return false;
@@ -32,14 +32,14 @@ QStereoRectificationOptions::QStereoRectificationOptions(QWidget * parent) :
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & path) {
-            if ( options_ ) {
-              options_->set_camera_intrinsics_yml(path.toStdString());
+            if ( _opts ) {
+              _opts->set_camera_intrinsics_yml(path.toStdString());
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * path) {
-            if ( options_ ) {
-              * path = options_->camera_intrinsics_yml().c_str();
+            if ( _opts ) {
+              * path = _opts->camera_intrinsics_yml().c_str();
               return true;
             }
             return false;
@@ -51,14 +51,14 @@ QStereoRectificationOptions::QStereoRectificationOptions(QWidget * parent) :
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & path) {
-            if ( options_ ) {
-              options_->set_camera_extrinsics_yml(path.toStdString());
+            if ( _opts ) {
+              _opts->set_camera_extrinsics_yml(path.toStdString());
               Q_EMIT parameterChanged();
             }
           },
           [this](QString * path) {
-            if ( options_ ) {
-              * path = options_->camera_extrinsics_yml().c_str();
+            if ( _opts ) {
+              * path = _opts->camera_extrinsics_yml().c_str();
               return true;
             }
             return false;
@@ -67,24 +67,24 @@ QStereoRectificationOptions::QStereoRectificationOptions(QWidget * parent) :
   updateControls();
 }
 
-void QStereoRectificationOptions::set_rectification_options(c_stereo_rectification_options * options)
-{
-  options_ = options;
-  updateControls();
-}
+//void QStereoRectificationOptions::set_rectification_options(c_stereo_rectification_options * options)
+//{
+//  _opts = options;
+//  updateControls();
+//}
+//
+//c_stereo_rectification_options * QStereoRectificationOptions::rectification_options() const
+//{
+//  return _opts;
+//}
 
-c_stereo_rectification_options * QStereoRectificationOptions::rectification_options() const
-{
-  return options_;
-}
-
-void QStereoRectificationOptions::onupdatecontrols()
-{
-  if( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::populatecontrols();
-    setEnabled(true);
-  }
-}
+//void QStereoRectificationOptions::onupdatecontrols()
+//{
+//  if( !_opts ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    Base::populatecontrols();
+//    setEnabled(true);
+//  }
+//}

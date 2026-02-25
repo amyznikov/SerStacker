@@ -17,16 +17,28 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class QVideoInputOptions :
-    public QSettingsWidgetTemplate<c_video_input_options>
+    public QSettingsWidget // Template<c_video_input_options>
 {
   Q_OBJECT;
 public:
   typedef QVideoInputOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_video_input_options> Base;
+  typedef QSettingsWidget Base; // Template<c_video_input_options> Base;
 
   QVideoInputOptions(QWidget * parent = nullptr);
 
+  void set_video_input_options(c_video_input_options * options)
+  {
+    _options = options;
+    updateControls();
+  }
+
+  c_video_input_options * video_input_options() const
+  {
+    return _options;
+  }
+
 protected:
+  c_video_input_options * _options = nullptr;
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
   QCheckBox * filter_bad_pixels_ctl = nullptr;
@@ -57,18 +69,20 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class QInputOptions :
-    public QSettingsWidgetTemplate<c_input_options>
+    public QSettingsWidget // Template<c_input_options>
 {
   Q_OBJECT;
 public:
   typedef QInputOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_input_options> Base;
+  typedef QSettingsWidget Base; // Template<c_input_options> Base;
 
   QInputOptions(QWidget * parent = nullptr);
 
-  void set_options(c_input_options * options) override;
+  void set_options(c_input_options * options);
+  c_input_options * options() const;
 
 protected:
+  c_input_options * _options = nullptr;
   QTabWidget * tab_ctl = nullptr;
   QVideoInputOptions * videoOptions_ctl = nullptr;
   QHDLConfigOptions * hdlconfigOptions_ctl = nullptr;

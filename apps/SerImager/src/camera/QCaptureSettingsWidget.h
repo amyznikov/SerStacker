@@ -34,12 +34,14 @@ public:
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
 
+  bool getSelectedCaptureLimits(c_capture_limits * c);
+  bool setSelectedCaptureLimits(const c_capture_limits & c);
+
 Q_SIGNALS:
   void captureLimitChanged();
 
 protected:
   void populateCaptureLimitsCombobox();
-  bool getSelectedCaptureLimits(c_capture_limits * c);
   void onupdatecontrols() override;
 
 protected Q_SLOTS:
@@ -48,22 +50,22 @@ protected Q_SLOTS:
   void onLimitsSelectionChanged(int);
 
 protected:
-  QCameraWriter *writer_ = nullptr;
-  QVBoxLayout * vbox_ = nullptr;
+  QCameraWriter *_writer = nullptr;
+  QVBoxLayout * _vbox = nullptr;
 
-  QHBoxLayout *h1_ = nullptr;
+  QHBoxLayout *_h1 = nullptr;
   QComboBox *limitsSelection_ctl = nullptr;
   QToolButton *startStop_ctl = nullptr;
-  QShortcut * startStopSortuct_ = nullptr;
+  QShortcut * _startStopSortuct = nullptr;
 };
 
 
 class QStereoStreamCaptureOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QCameraWriter>
 {
 public:
   typedef QStereoStreamCaptureOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QCameraWriter> Base;
 
   QStereoStreamCaptureOptions(QWidget * parent = nullptr);
 
@@ -71,11 +73,6 @@ public:
   QCameraWriter * cameraWriter() const;
 
 protected:
-  void onupdatecontrols() override;
-  void update_control_states();
-
-protected:
-  QCameraWriter *writer_ = nullptr;
   QCheckBox * enable_split_stereo_stream_ctl = nullptr;
   QEnumComboBox<stereo_stream_layout_type> * stereo_stream_layout_type_ctl = nullptr;
   QCheckBox * enable_swap_cameras_ctl = nullptr;
@@ -85,11 +82,11 @@ protected:
 
 
 class QCaptureSettingsWidget:
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QCameraWriter>
 {
 public:
   typedef QCaptureSettingsWidget ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QCameraWriter> Base;
 
   QCaptureSettingsWidget(QWidget * parent = nullptr);
 
@@ -97,15 +94,12 @@ public:
   QCameraWriter * cameraWriter() const;
 
 protected:
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
-  void saveCaptureLimits();
-  void loadCaptureLimits(QSettings & settings);
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") override;
   void onAviOptionsMenuButtonClicked();
 
 
 protected:
-  QCameraWriter *writer_ = nullptr;
   QCaptureLimitsControl * captureLimits_ctl = nullptr;
   QSpinBox *num_rounds_ctl = nullptr;
   QSpinBox *interval_between_rounds_ctl = nullptr;

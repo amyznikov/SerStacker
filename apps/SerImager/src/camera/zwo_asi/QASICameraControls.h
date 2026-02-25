@@ -125,15 +125,13 @@ public:
 
 protected:
   void createControls();
-  void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
 
 protected Q_SLOTS:
   void onCameraStateChanged();
 
 protected:
-  QASICamera::sptr camera_;
-  QList<QASIControlWidgetBase*> controls_;
+  QASICamera::sptr _camera;
+  QList<QASIControlWidgetBase*> _controls;
 
 };
 
@@ -152,14 +150,12 @@ public:
 
 protected:
   void create_controls();
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
 
 protected Q_SLOTS:
   void onCameraStateChanged();
 
 protected:
-  QASICamera::sptr camera_;
+  QASICamera::sptr _camera;
   QASIROIControlWidget * roi_ctl = nullptr;
   QASIControlWidget * exposure_ctl = nullptr;
   QASIControlWidget * gain_ctl = nullptr;

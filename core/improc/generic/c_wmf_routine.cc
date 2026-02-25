@@ -26,16 +26,37 @@ const c_enum_member * members_of<cv::ximgproc::WMFWeightType>()
   return members;
 }
 
+
+void c_wmf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "weightType", ctx(&this_class::_weightType), "");
+   ctlbind(ctls, "radius", ctx(&this_class::_radius), "");
+   ctlbind(ctls, "sigma", ctx(&this_class::_sigma), "");
+   ctlbind(ctls, "ignore_mask", ctx(&this_class::_ignore_mask), "");
+}
+
+bool c_wmf_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _radius);
+    SERIALIZE_OPTION(settings, save, *this, _sigma);
+    SERIALIZE_OPTION(settings, save, *this, _weightType);
+    SERIALIZE_OPTION(settings, save, *this, _ignore_mask);
+    return true;
+  }
+  return false;
+}
+
 bool c_wmf_routine::process(cv::InputOutputArray _image, cv::InputOutputArray _mask)
 {
   cv::Mat joint;
   cv::Mat mask;
 
-  if ( !ignore_mask_ ) {
+  if ( !_ignore_mask ) {
     mask = _mask.getMat();
   }
 
-  if( weightType_ == cv::ximgproc::WMF_OFF ) {
+  if( _weightType == cv::ximgproc::WMF_OFF ) {
     joint = cv::Mat1b::ones(_image.size());
   }
   else {
@@ -54,9 +75,9 @@ bool c_wmf_routine::process(cv::InputOutputArray _image, cv::InputOutputArray _m
   cv::ximgproc::weightedMedianFilter(joint,
       _image,
       _image,
-      radius_,
-      sigma_,
-      weightType_,
+      _radius,
+      _sigma,
+      _weightType,
       mask);
 
   return true;

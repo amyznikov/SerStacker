@@ -89,18 +89,19 @@
 //
 //}
 //
+//
 
-void c_normalize_mean_stdev_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_normalize_mean_stdev_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_CTRL(ctls, level, "level", "normalization scalle");
-  BIND_CTRL(ctls, eps, "eps", "normalization eps");
+   ctlbind(ctls, "level", ctx(&this_class::_level), "normalization scalle");
+   ctlbind(ctls, "eps", ctx(&this_class::_eps), "normalization eps");
 }
 
 bool c_normalize_mean_stdev_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, level);
-    SERIALIZE_PROPERTY(settings, save, *this, eps);
+    SERIALIZE_OPTION(settings, save, *this, _level);
+    SERIALIZE_OPTION(settings, save, *this, _eps);
     return true;
   }
   return false;
@@ -108,6 +109,6 @@ bool c_normalize_mean_stdev_routine::serialize(c_config_setting settings, bool s
 
 bool c_normalize_mean_stdev_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  ecc_normalize_meanstdev(image.getMat(), mask, image, level_, eps_);
+  ecc_normalize_meanstdev(image.getMat(), mask, image, _level, _eps);
   return true;
 }

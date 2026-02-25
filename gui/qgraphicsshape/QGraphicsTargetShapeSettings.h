@@ -9,29 +9,24 @@
 #ifndef __QGraphicsTargetShapeSettings_h__
 #define __QGraphicsTargetShapeSettings_h__
 
-#include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QColorPickerButton.h>
 #include "QGraphicsTargetShape.h"
+#include "QGraphicsShapeSettings.h"
+#include <gui/widgets/QColorPickerButton.h>
 
 class QGraphicsTargetShapeSettings:
-    public QSettingsWidget
+    public QGraphicsShapeSettings<QGraphicsTargetShape>
 {
 public:
   typedef QGraphicsTargetShapeSettings ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QGraphicsShapeSettings<QGraphicsTargetShape> Base;
 
   QGraphicsTargetShapeSettings(QWidget * parent = nullptr);
-  QGraphicsTargetShapeSettings(const QString &prefix, QWidget * parent = nullptr);
-
-  void setShape(QGraphicsTargetShape * shape);
-  QGraphicsTargetShape * shape() const;
 
 protected:
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") override;
 
 protected:
-  QGraphicsTargetShape * shape_ = nullptr;
   QCheckBox * lockPosition_ctl = nullptr;
   QCheckBox * fixOnSceneCenter_ctl = nullptr;
   QSpinBox * numRings_ctl = nullptr;
@@ -42,35 +37,28 @@ protected:
 };
 
 class QGraphicsTargetShapeSettingsDialogBox:
-    public QDialog
+    public QGraphicsShapeSettingsDialogBox<QGraphicsTargetShapeSettings>
 {
 Q_OBJECT;
 public:
   typedef QGraphicsTargetShapeSettingsDialogBox ThisClass;
-  typedef QDialog Base;
+  typedef QGraphicsShapeSettingsDialogBox<QGraphicsTargetShapeSettings> Base;
 
-  QGraphicsTargetShapeSettingsDialogBox(QWidget * parent = nullptr);
+  QGraphicsTargetShapeSettingsDialogBox(QWidget * parent = nullptr) :
+    ThisClass("Shape Options", parent)
+  {
+  }
 
-  QGraphicsTargetShapeSettingsDialogBox(const QString & title,
-      QWidget * parent = nullptr);
+  QGraphicsTargetShapeSettingsDialogBox(const QString & title, QWidget * parent = nullptr) :
+    ThisClass("Shape Options", nullptr, parent)
+  {
+  }
 
-  QGraphicsTargetShapeSettingsDialogBox(const QString & title, QGraphicsTargetShape * shape,
-      QWidget * parent = nullptr);
-
-  void setShape(QGraphicsTargetShape * shape);
-  QGraphicsTargetShape* shape() const;
-
-  void loadParameters();
-
-Q_SIGNALS:
-  void visibilityChanged(bool visible);
-
-protected:
-  void showEvent(QShowEvent * e) override;
-  void hideEvent(QHideEvent * e) override;
-
-protected:
-  QGraphicsTargetShapeSettings *settigs_ctl = nullptr;
+  QGraphicsTargetShapeSettingsDialogBox(const QString & title, QGraphicsTargetShape * shape, QWidget * parent = nullptr) :
+    Base(title, parent)
+  {
+    setShape(shape);
+  }
 };
 
 #endif /* __QGraphicsTargetShapeSettings_h__ */

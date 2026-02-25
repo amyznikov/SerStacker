@@ -24,31 +24,9 @@ public:
     TestPyrDownUp,
   };
 
-  void set_mode(Mode v)
-  {
-    mode_ = v;
-  }
-
-  Mode mode() const
-  {
-    return mode_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, mode, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, mode);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   static void pyrdown(cv::InputArray src, cv::OutputArray dst,
@@ -59,7 +37,7 @@ protected:
       int borderType = cv::BORDER_DEFAULT);
 
 protected:
-  Mode mode_ = TestPyrDown;
+  Mode _mode = TestPyrDown;
 };
 
 #endif /* __c_pyramid_test_routine_h__ */

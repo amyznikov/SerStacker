@@ -17,7 +17,8 @@ class QLveStackingPipeline :
 {
 public:
   typedef QLveStackingPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_live_stacking_pipeline> Base;
+  typedef c_live_stacking_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QLveStackingPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

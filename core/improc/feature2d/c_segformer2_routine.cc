@@ -17,13 +17,13 @@ static const cv::Vec3b cityscapes_palette[] = {
     {255, 0, 0}, {0, 0, 142}, {0, 0, 70}, {0, 60, 100},
     {0, 80, 100}, {0, 0, 230}, {119, 11, 32}
 };
-
-
-void c_segformer2_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_preproc_model_path, "preproc model path", "Specify onnx_preproc_model_path");
-  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_model_path, "model path", "Specify onnx_model_path");
-}
+//
+//
+//void c_segformer2_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+//{
+//  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_preproc_model_path, "preproc model path", "Specify onnx_preproc_model_path");
+//  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_model_path, "model path", "Specify onnx_model_path");
+//}
 
 bool c_segformer2_routine::serialize(c_config_setting settings, bool save)
 {
@@ -57,6 +57,12 @@ void c_segformer2_routine::release_session()
     _model_net = cv::dnn::Net();
   }
 #endif  // HAVE_OpenCV_dnn
+}
+
+void c_segformer2_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind_browse_for_file(ctls, "onnx_preproc_model", ctx, &this_class::onnx_preproc_model_path, &this_class::set_onnx_preproc_model_path, "Specify onnx preproc model path");
+  ctlbind_browse_for_file(ctls, "onnx_model", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model path");
 }
 
 bool c_segformer2_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)

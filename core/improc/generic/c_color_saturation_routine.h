@@ -22,34 +22,12 @@ public:
       "Based on gimp_rgb_to_hsl() and OpenCV image pyramid.");
 
 
-  void set_scales(const std::vector<double> & scales)
-  {
-    scales_ = scales;
-  }
-
-  const std::vector<double> & scales() const
-  {
-    return scales_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
-  {
-    BIND_PCTRL(ctls, scales, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) final
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, scales);
-      return true;
-    }
-    return false;
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::vector<double> scales_;
+  std::vector<double> _scales;
 };
 
 #endif /* __c_color_saturation_routine_h__ */

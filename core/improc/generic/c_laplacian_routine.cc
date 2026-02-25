@@ -27,6 +27,10 @@ static void compute_laplacian(cv::InputArray src, cv::OutputArray l, double delt
 }
 
 
+void c_laplacian_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+}
+
 bool c_laplacian_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   compute_laplacian(image.getMat(), image, 0);

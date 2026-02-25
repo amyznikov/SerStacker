@@ -45,9 +45,9 @@ protected Q_SLOTS:
 
 
 protected:
-  c_image_sequence::sptr current_sequence_;
-  QVBoxLayout * layout_ = nullptr;
-  QToolBar * toolbar_ = nullptr;
+  c_image_sequence::sptr _current_sequence;
+  QVBoxLayout * _layout = nullptr;
+  QToolBar * _toolbar = nullptr;
   QLabel * sequenceName_lb = nullptr;
   QComboBox * pipelineSelector_ctl = nullptr;
   QToolButton * menuButton_ctl = nullptr;
@@ -55,10 +55,10 @@ protected:
   QAction * close_ctl = nullptr;
 
   QScrollArea * scrollArea_ctl = nullptr;
-  QList<QPipelineSettingsWidget *> settingsWidgets_;
+  QList<QPipelineSettingsWidget *> _pipelineSettingsWidgets;
 
-  QMenu menu_;
-  bool updatingControls_ = false;
+  QMenu _menu;
+  bool _updatingControls = false;
 };
 
 class QAddPipelineDialogBox :
@@ -74,13 +74,13 @@ public:
   QString selectedPipelineClass() const;
 
 protected:
-  QFormLayout * form_ = nullptr;
-  QHBoxLayout * hbox_ = nullptr;
+  QFormLayout * _form = nullptr;
+  QHBoxLayout * _hbox = nullptr;
   QLineEditBox * pipelineName_ctl = nullptr;
   QComboBox * pipelineTypeSelector_ctl = nullptr;
   QLabel * pipelineTooltop_ctl = nullptr;
-  QPushButton * btnOk_ = nullptr;
-  QPushButton * btnCancel_ = nullptr;
+  QPushButton * btnOk_ctl = nullptr;
+  QPushButton * btnCancel_ctl = nullptr;
 };
 
 #endif /* __QPipelineOptionsView_h__ */

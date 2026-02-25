@@ -13,8 +13,8 @@
 #include "QImageProcessorChainEditor.h"
 #include <core/improc/generic/c_radial_polysharp_routine.h>
 
-class QRadialPolyProfileView
-    : public QWidget
+class QRadialPolyProfileView :
+    public QWidget
 {
   Q_OBJECT;
 public:
@@ -35,21 +35,21 @@ protected:
 };
 
 class QRadialPolySharpSettings :
-    public QImageProcessorSettingsControl
+    public QImageProcessorSettingsControl2
 {
 public:
   typedef QRadialPolySharpSettings ThisClass;
-  typedef QImageProcessorSettingsControl Base;
+  typedef QImageProcessorSettingsControl2 Base;
 
   QRadialPolySharpSettings(const c_radial_polysharp_routine::ptr & processor,
       QWidget * parent = nullptr);
 
 protected:
   void setupControls() override;
-  void onupdatecontrols() override;
+  //void onupdatecontrols() override;
 
 protected:
-  QRadialPolyProfileView * profileView_ = nullptr;
+  QRadialPolyProfileView * _profileView = nullptr;
   QLineEditBox * coeffs_ctl = nullptr;
 
 };

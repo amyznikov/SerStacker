@@ -40,12 +40,12 @@ QLCSCTPStreams::QLCSCTPStreams()
 
 const QList<QImagingCamera::sptr> & QLCSCTPStreams::streams()
 {
-  return instance()->streams_;
+  return instance()->_streams;
 }
 
 void QLCSCTPStreams::add(const QLCSCTPCamera::sptr & stream)
 {
-  instance()->streams_.append(stream);
+  instance()->_streams.append(stream);
   instance()->save();
   Q_EMIT instance()->streamsChaged();
 }
@@ -53,7 +53,7 @@ void QLCSCTPStreams::add(const QLCSCTPCamera::sptr & stream)
 void QLCSCTPStreams::remove(const QLCSCTPCamera::sptr & stream)
 {
   QList<QImagingCamera::sptr> & streams =
-      instance()->streams_;
+      instance()->_streams;
 
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
@@ -67,7 +67,7 @@ void QLCSCTPStreams::remove(const QLCSCTPCamera::sptr & stream)
 bool QLCSCTPStreams::exist(const QImagingCamera::sptr & stream)
 {
   const QList<QImagingCamera::sptr> & streams =
-      instance()->streams_;
+      instance()->_streams;
 
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
@@ -81,7 +81,7 @@ bool QLCSCTPStreams::exist(const QImagingCamera::sptr & stream)
 bool QLCSCTPStreams::exist(const QString & streamName)
 {
   const QList<QImagingCamera::sptr> & streams =
-      instance()->streams_;
+      instance()->_streams;
 
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
 
@@ -100,7 +100,7 @@ bool QLCSCTPStreams::exist(const QString & streamName)
 void QLCSCTPStreams::save()
 {
   const QList<QImagingCamera::sptr> & streams =
-      instance()->streams_;
+      instance()->_streams;
 
   QList<QLCSCTPCameraParameters> cameras;
 
@@ -127,7 +127,7 @@ void QLCSCTPStreams::save()
 void QLCSCTPStreams::load()
 {
   QList<QImagingCamera::sptr> & streams =
-      instance()->streams_;
+      instance()->_streams;
 
   const QList<QLCSCTPCameraParameters> cameras =
       QSettings().value("QLCSCTPStreams",
@@ -312,21 +312,21 @@ void QLCSCTPStreamListWidget::selectStream(const QLCSCTPCamera::sptr & camera)
 }
 
 QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
-    Base("QLCSCTPStreams", parent)
+    Base(parent)
 {
   ///
   streamName_ctl =
       add_textbox("Name:",
           "",
           [this](const QString & value) {
-            if ( selectedStream_ ) {
-              selectedStream_->setName(value);
+            if ( _selectedStream ) {
+              _selectedStream->setName(value);
               QLCSCTPStreams::save();
             }
           },
           [this](QString * value) {
-            if ( selectedStream_ ) {
-              *value = selectedStream_->name();
+            if ( _selectedStream ) {
+              *value = _selectedStream->name();
               return true;
             }
             return false;
@@ -338,11 +338,19 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
 
   QObject::connect(streamUrl_ctl, &QLCSCTPUrlWidget::urlChanged,
       [this]() {
-        if ( !updatingControls() && selectedStream_ ) {
-          selectedStream_->setUrl(streamUrl_ctl->url());
+        if ( !updatingControls() && _selectedStream ) {
+          _selectedStream->setUrl(streamUrl_ctl->url());
           QLCSCTPStreams::save();
         }
       });
+
+  QObject::connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( _selectedStream ) {
+          streamUrl_ctl->setUrl(_selectedStream->url());
+        }
+      });
+
 
   ///
   addRow(list_ctl =
@@ -353,37 +361,44 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
 
   ///
 
+  QObject::connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        const bool enable = _selectedStream != nullptr;
+        streamName_ctl->setEnabled(enable);
+        streamUrl_ctl->setEnabled(enable);
+      });
+
   updateControls();
 }
 
 void QLCSCTPStreamsWidget::onSelectedStreamChanged()
 {
-  if( selectedStream_ ) {
-    QObject::disconnect(selectedStream_.get(),
+  if( _selectedStream ) {
+    QObject::disconnect(_selectedStream.get(),
         nullptr, this, nullptr);
   }
 
-  if( (selectedStream_ = list_ctl->selectedStream()) ) {
-    QObject::connect(selectedStream_.get(), &QLCSCTPCamera::parametersChanged,
+  if( (_selectedStream = list_ctl->selectedStream()) ) {
+    QObject::connect(_selectedStream.get(), &QLCSCTPCamera::parametersChanged,
         this, &ThisClass::updateControls);
   }
 
   updateControls();
 }
 
-void QLCSCTPStreamsWidget::onupdatecontrols()
-{
-  const bool enable =
-      selectedStream_ != nullptr;
-
-  if ( enable ) {
-    streamUrl_ctl->setUrl(selectedStream_->url());
-  }
-
-  streamName_ctl->setEnabled(enable);
-  streamUrl_ctl->setEnabled(enable);
-
-  Base::onupdatecontrols();
-}
+//void QLCSCTPStreamsWidget::onupdatecontrols()
+//{
+//  const bool enable =
+//      selectedStream_ != nullptr;
+//
+//  if ( enable ) {
+//    streamUrl_ctl->setUrl(selectedStream_->url());
+//  }
+//
+//  streamName_ctl->setEnabled(enable);
+//  streamUrl_ctl->setEnabled(enable);
+//
+//  Base::onupdatecontrols();
+//}
 
 } /* namespace serimager */

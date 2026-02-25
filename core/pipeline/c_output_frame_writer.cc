@@ -21,7 +21,7 @@ c_output_frame_writer_options::c_output_frame_writer_options() :
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string c_output_frame_writer::default_ffmpeg_opts_ =
+std::string c_output_frame_writer::_default_ffmpeg_opts =
     "-r 30 -c huffyuv -f avi";
     // "-r 10 -c rawvideo -pix_fmt rgb24";
 
@@ -103,17 +103,17 @@ const std::string & c_output_frame_writer::filename() const
 
 const std::string & c_output_frame_writer::ffmpeg_opts() const
 {
-  return ffmpeg_opts_;
+  return _ffmpeg_opts;
 }
 
 void c_output_frame_writer::set_default_ffmpeg_opts(const std::string & opts)
 {
-  default_ffmpeg_opts_ = opts;
+  _default_ffmpeg_opts = opts;
 }
 
 const std::string & c_output_frame_writer::default_ffmpeg_opts()
 {
-  return default_ffmpeg_opts_;
+  return _default_ffmpeg_opts;
 }
 
 bool c_output_frame_writer::is_open() const
@@ -142,10 +142,10 @@ bool c_output_frame_writer::open(const std::string & filename,
     bool write_frame_mapping)
 {
   output_file_name = filename;
-  ffmpeg_opts_ = ffmpeg_opts;
+  _ffmpeg_opts = ffmpeg_opts;
   output_type = output_type_unknown;
-  output_image_processor_ = output_image_processor;
-  output_pixel_depth_ = output_pixel_depth;
+  _output_image_processor = output_image_processor;
+  _output_pixel_depth = output_pixel_depth;
   current_frame_index = 0;
   pts = 0;
 
@@ -270,7 +270,7 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       bool fOk = true;
           create_output_frame(currenFrame.getMat(), currentMask.getMat(),
               output_frame, output_mask,
-              output_image_processor_,
+              _output_image_processor,
               PIXEL_DEPTH_8U);
 
       if( !fOk ) {
@@ -287,8 +287,8 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       if( !ffmpeg.is_open() ) {
 
         const std::string opts =
-            ffmpeg_opts_.empty() ? default_ffmpeg_opts_ :
-                ffmpeg_opts_;
+            _ffmpeg_opts.empty() ? _default_ffmpeg_opts :
+                _ffmpeg_opts;
 
         fOk =
             ffmpeg.open(filename(), output_frame.size(),
@@ -315,8 +315,8 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       bool fOk =
           create_output_frame(currenFrame.getMat(), currentMask.getMat(),
               output_frame, output_mask,
-              output_image_processor_,
-              output_pixel_depth_);
+              _output_image_processor,
+              _output_pixel_depth);
 
       if( !fOk ) {
         CF_ERROR("create_output_frame() fails for '%s'",
@@ -354,8 +354,8 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       bool fOk =
           create_output_frame(currenFrame.getMat(), currentMask.getMat(),
               output_frame, output_mask,
-              output_image_processor_,
-              output_pixel_depth_);
+              _output_image_processor,
+              _output_pixel_depth);
 
       if( !fOk ) {
         CF_ERROR("create_output_frame() fails for '%s'",
@@ -434,18 +434,18 @@ c_output_text_writer::~c_output_text_writer()
 
 const std::string & c_output_text_writer::filename() const
 {
-  return filename_;
+  return _filename;
 }
 
 bool c_output_text_writer::open(const std::string & filename)
 {
   close();
 
-  this->filename_ =
+  this->_filename =
       filename;
 
-  if( !(fp_ = fopen(filename_.c_str(), "w")) ) {
-    CF_ERROR("fopen('%s') fails: %s", filename_.c_str(), strerror(errno));
+  if( !(_fp = fopen(_filename.c_str(), "w")) ) {
+    CF_ERROR("fopen('%s') fails: %s", _filename.c_str(), strerror(errno));
     return false;
   }
 
@@ -454,16 +454,16 @@ bool c_output_text_writer::open(const std::string & filename)
 
 bool c_output_text_writer::vprintf(const char * format, va_list arglist)
 {
-  if( !fp_ ) {
+  if( !_fp ) {
     CF_ERROR("c_output_text_writer: file '%s' is not open",
-        filename_.c_str());
+        _filename.c_str());
     errno = EBADF;
     return false;
   }
 
-  if( vfprintf(fp_, format, arglist) < 0 ) {
+  if( vfprintf(_fp, format, arglist) < 0 ) {
     CF_ERROR("c_output_text_writer: vfprintf into '%s' fails: %s",
-        filename_.c_str(), strerror(errno));
+        _filename.c_str(), strerror(errno));
     return false;
   }
 
@@ -484,21 +484,21 @@ bool c_output_text_writer::printf(const char * format, ...)
 
 bool c_output_text_writer::is_open() const
 {
-  return fp_ != nullptr;
+  return _fp != nullptr;
 }
 
 void c_output_text_writer::close()
 {
-  if ( fp_ ) {
-    fclose(fp_);
-    fp_ = nullptr;
+  if ( _fp ) {
+    fclose(_fp);
+    _fp = nullptr;
   }
 }
 
 void c_output_text_writer::flush()
 {
-  if ( fp_ ) {
-    fflush(fp_);
+  if ( _fp ) {
+    fflush(_fp);
   }
 }
 

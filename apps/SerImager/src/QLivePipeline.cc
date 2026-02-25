@@ -1267,7 +1267,7 @@ void QLivePipelineSelectionWidget::onPipelinesComboboxCurrentIndexChanged(int)
     else {
       _settingsWidgets.append(currentWidget);
 
-      connect(currentWidget, &QSettingsWidget::parameterChanged,
+      QObject::connect(currentWidget, &QSettingsWidget::parameterChanged,
           [this]() {
             savePipelines();
           });
@@ -1489,19 +1489,19 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QWidget * parent)  :
 }
 
 QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveThread, QWidget * parent) :
-    Base("QDisplayFrameProcessorSettings", parent)
+    Base(parent)
 {
   debayer_ctl =
       add_enum_combobox<DEBAYER_ALGORITHM>("Default debayer:",
           "Select debayer algorithm for bayer patterns",
           [this](DEBAYER_ALGORITHM v) {
-            if ( _liveThread ) {
-              _liveThread->setDebayer(v);
+            if ( _opts ) {
+              _opts->setDebayer(v);
             }
           },
           [this](DEBAYER_ALGORITHM * v) {
-            if ( _liveThread ) {
-              *v = _liveThread->debayer();
+            if ( _opts ) {
+              *v = _opts->debayer();
               return true;
             }
             return false;
@@ -1513,13 +1513,13 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & v) {
-            if ( _liveThread ) {
-              _liveThread->setDarkFramePath(v);
+            if ( _opts ) {
+              _opts->setDarkFramePath(v);
             }
           },
           [this](QString * v) {
-            if ( _liveThread ) {
-              *v = _liveThread->darkFramePath();
+            if ( _opts ) {
+              *v = _opts->darkFramePath();
               return true;
             }
             return false;
@@ -1529,13 +1529,13 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
       add_numeric_box<double>("darkFrameScale",
           "",
           [this](double v) {
-            if ( _liveThread ) {
-              _liveThread->setDarkFrameScale(v);
+            if ( _opts ) {
+              _opts->setDarkFrameScale(v);
             }
           },
           [this](double * v) {
-            if ( _liveThread ) {
-              *v = _liveThread->darkFrameScale();
+            if ( _opts ) {
+              *v = _opts->darkFrameScale();
               return true;
             }
             return false;
@@ -1546,24 +1546,12 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
 
 void QLiveThreadSettingsWidget::setLiveThread(QLivePipelineThread * liveThread)
 {
-  _liveThread = liveThread;
-  updateControls();
+  setOpts(liveThread);
 }
 
 QLivePipelineThread * QLiveThreadSettingsWidget::liveThread() const
 {
-  return _liveThread;
-}
-
-void QLiveThreadSettingsWidget::onupdatecontrols()
-{
-  if( !_liveThread ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
+  return opts();
 }
 
 QLiveThreadSettingsDialogBox::QLiveThreadSettingsDialogBox(QWidget * parent) :

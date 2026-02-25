@@ -32,124 +32,37 @@ public:
     COLOR_CHANNEL_HLS = 8,
   };
 
-
-  void set_channel(COLOR_CHANNEL v)
-  {
-    channel_ = v;
-  }
-
-  COLOR_CHANNEL channel() const
-  {
-    return channel_;
-  }
-
   void set_sigma(double v)
   {
-    measure_.set_sigma(v);
+    _measure.set_sigma(v);
   }
 
   double sigma() const
   {
-    return measure_.sigma();
-  }
-
-  void set_target_sharpness(double v)
-  {
-    target_sharpness_ = v;
-  }
-
-  double target_sharpness() const
-  {
-    return target_sharpness_;
+    return _measure.sigma();
   }
 
   void set_norm_type(cv::NormTypes v)
   {
-    measure_.set_norm_type(v);
+    _measure.set_norm_type(v);
   }
 
   cv::NormTypes norm_type() const
   {
-    return measure_.norm_type();
+    return _measure.norm_type();
   }
 
-  void set_alpha_factor(double v)
-  {
-    alpha_factor_ = v;
-  }
-
-  double alpha_factor() const
-  {
-    return alpha_factor_;
-  }
-
-  void set_blur_color_channels(double v)
-  {
-    blur_color_channels_ = v;
-  }
-
-  double blur_color_channels() const
-  {
-    return blur_color_channels_;
-  }
-
-  void set_outmin(double v)
-  {
-    outmin_ = v;
-  }
-
-  double outmin() const
-  {
-    return outmin_;
-  }
-
-  void set_outmax(double v)
-  {
-    outmax_ = v;
-  }
-
-  double outmax() const
-  {
-    return outmax_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, channel, "Color channel for sharpenning");
-    BIND_PCTRL(ctls, sigma, "");
-    BIND_PCTRL(ctls, target_sharpness, "");
-    BIND_PCTRL(ctls, alpha_factor, "");
-    BIND_PCTRL(ctls, norm_type, "");
-    BIND_PCTRL(ctls, blur_color_channels, "Gaussian blur sigma for color channels");
-    BIND_PCTRL(ctls, outmin, "");
-    BIND_PCTRL(ctls, outmax, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, channel);
-      SERIALIZE_PROPERTY(settings, save, *this, sigma);
-      SERIALIZE_PROPERTY(settings, save, *this, target_sharpness);
-      SERIALIZE_PROPERTY(settings, save, *this, alpha_factor);
-      SERIALIZE_PROPERTY(settings, save, *this, norm_type);
-      SERIALIZE_PROPERTY(settings, save, *this, blur_color_channels);
-      SERIALIZE_PROPERTY(settings, save, *this, outmin);
-      SERIALIZE_PROPERTY(settings, save, *this, outmax);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_sharpness_norm_measure measure_;
-  double target_sharpness_ = 0.5;
-  double alpha_factor_ = 1.5;
-  double outmin_ = -1, outmax_ = -1;
-  double blur_color_channels_ = 0;
-  COLOR_CHANNEL channel_ = COLOR_CHANNEL_ALL;
+  c_sharpness_norm_measure _measure;
+  double _target_sharpness = 0.5;
+  double _alpha_factor = 1.5;
+  double _outmin = -1, _outmax = -1;
+  double _blur_color_channels = 0;
+  COLOR_CHANNEL _channel = COLOR_CHANNEL_ALL;
 };
 
 

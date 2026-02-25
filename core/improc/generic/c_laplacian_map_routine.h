@@ -21,48 +21,30 @@ public:
 
   void set_dscale(int v)
   {
-    m_.set_dscale(v);
+    _m.set_dscale(v);
   }
 
   int dscale() const
   {
-    return m_.dscale();
+    return _m.dscale();
   }
 
   void set_se_size(const cv::Size & v)
   {
-    m_.set_se_size(v);
+    _m.set_se_size(v);
   }
 
   const cv::Size & se_size() const
   {
-    return m_.se_size();
+    return _m.se_size();
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, dscale, "");
-    BIND_PCTRL(ctls, se_size, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, dscale);
-      SERIALIZE_PROPERTY(settings, save, *this, se_size);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    m_.create_map(image.getMat(), image);
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_laplacian_sharpness_measure m_;
+  c_laplacian_sharpness_measure _m;
 };
 
 #endif /* __c_laplacian_map_routine_h__ */

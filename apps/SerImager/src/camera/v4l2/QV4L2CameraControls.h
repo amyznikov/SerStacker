@@ -23,24 +23,20 @@ public:
   typedef QV4L2CameraExtraSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QV4L2CameraExtraSettingsWidget(const QV4L2Camera::sptr & camera,
-      QWidget * parent = nullptr);
+  QV4L2CameraExtraSettingsWidget(const QV4L2Camera::sptr & camera, QWidget * parent = nullptr);
   ~QV4L2CameraExtraSettingsWidget();
 
 protected:
   QWidget* add_ex_ctrl(cv4l_fd & device, const v4l2_query_ext_ctrl & c);
   void createControls();
-  void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
-
 
 protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldSate,
       QImagingCamera::State newState);
 
 protected:
-  QV4L2Camera::sptr camera_;
-  QWidgetList controls_;
+  QV4L2Camera::sptr _camera;
+  QWidgetList _controls;
 };
 
 
@@ -58,8 +54,6 @@ public:
 protected:
   void createControls();
   void deleteControls();
-  void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
   void refreshFormats(cv4l_fd & device);
   void refreshFrameSizes(cv4l_fd & device);
   void refreshFrameRates(cv4l_fd & device);
@@ -75,7 +69,7 @@ protected Q_SLOTS:
 
 
 protected:
-  QV4L2Camera::sptr camera_;
+  QV4L2Camera::sptr _camera;
 
   QComboBox * videoInput_ctl = nullptr;
   QComboBox *fmt_ctl = nullptr;

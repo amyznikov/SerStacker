@@ -15,23 +15,15 @@
 #if HAVE_OpenCV_stereo
 
 class QQuasiDenseStereoOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<cv::stereo::PropagationParameters>
 {
 public:
   typedef QQuasiDenseStereoOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<cv::stereo::PropagationParameters> Base;
 
   QQuasiDenseStereoOptions(QWidget * parent = nullptr);
 
-  void set_options(cv::stereo::PropagationParameters * options);
-  cv::stereo::PropagationParameters* options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  cv::stereo::PropagationParameters *options_ = nullptr;
-
   QNumericBox *corrWinSize_ctl = nullptr;     // similarity window
   QNumericBox *border_ctl = nullptr;         // border to ignore
 
@@ -52,7 +44,6 @@ protected:
   QNumericBox *gftQualityThres_ctl = nullptr;
   QNumericBox *gftMinSeperationDist_ctl = nullptr;
   QNumericBox *gftMaxNumFeatures_ctl = nullptr;
-
 };
 
 #endif // HAVE_OpenCV_stereo

@@ -36,33 +36,13 @@ public:
     //DisplayEdgeType,
   };
 
-  void set_kradius(int v)
-  {
-    kradius_ = v;
-  }
-
-  int kradius() const
-  {
-    return kradius_;
-  }
-
-  void set_display_id(DisplayID v)
-  {
-    display_id_ = v;
-  }
-
-  DisplayID display_id() const
-  {
-    return display_id_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  int kradius_ = 2;
-  DisplayID display_id_ = DisplayCornerTL;
+  int _kradius = 2;
+  DisplayID _display_id = DisplayCornerTL;
 };
 
 #endif /* __c_edge_test_routine_h__ */

@@ -58,14 +58,14 @@ public:
 
   QLCSCTPStreamsWidget(QWidget * parent);
 
-protected:
-  void onupdatecontrols() override;
+//protected:
+//  void onupdatecontrols() override;
 
 protected Q_SLOTS:
   void onSelectedStreamChanged();
 
 protected:
-  QLCSCTPCamera::sptr selectedStream_;
+  QLCSCTPCamera::sptr _selectedStream;
   QLineEditBox * streamName_ctl = nullptr;
   QLCSCTPUrlWidget * streamUrl_ctl = nullptr;
   QLCSCTPStreamListWidget * list_ctl = nullptr;
@@ -109,7 +109,7 @@ protected: // Indented to be a singleton
   QLCSCTPStreams();
 
 protected:
-  QList<QImagingCamera::sptr> streams_;
+  QList<QImagingCamera::sptr> _streams;
 };
 
 } /* namespace serimager */

@@ -32,98 +32,17 @@ public:
   };
 
 
-  void set_channel(COLOR_CHANNEL v)
-  {
-    channel_ = v;
-  }
-
-  COLOR_CHANNEL channel() const
-  {
-    return channel_;
-  }
-
-  void set_sigma(double v)
-  {
-    sigma_ = v;
-  }
-
-  double sigma() const
-  {
-    return sigma_;
-  }
-
-  void set_alpha(double v)
-  {
-    alpha_ = v;
-  }
-
-  double alpha() const
-  {
-    return alpha_;
-  }
-
-  void set_blur_color_channels(double v)
-  {
-    blur_color_channels_ = v;
-  }
-
-  double blur_color_channels() const
-  {
-    return blur_color_channels_;
-  }
-
-  void set_outmin(double v)
-  {
-    outmin_ = v;
-  }
-
-  double outmin() const
-  {
-    return outmin_;
-  }
-
-  void set_outmax(double v)
-  {
-    outmax_ = v;
-  }
-
-  double outmax() const
-  {
-    return outmax_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, channel, "Color channel for sharpenning");
-    BIND_PCTRL(ctls, sigma, "");
-    BIND_PCTRL(ctls, alpha, "");
-    BIND_PCTRL(ctls, blur_color_channels, "Gaussian blur sigma for color channels");
-    BIND_PCTRL(ctls, outmin, "");
-    BIND_PCTRL(ctls, outmax, "");
-    BIND_PCTRL(ctls, ignore_mask, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, channel);
-      SERIALIZE_PROPERTY(settings, save, *this, sigma);
-      SERIALIZE_PROPERTY(settings, save, *this, alpha);
-      SERIALIZE_PROPERTY(settings, save, *this, blur_color_channels);
-      SERIALIZE_PROPERTY(settings, save, *this, outmin);
-      SERIALIZE_PROPERTY(settings, save, *this, outmax);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double sigma_ = 1, alpha_ = 0.9;
-  double outmin_ = -1, outmax_ = -1;
-  COLOR_CHANNEL channel_ = COLOR_CHANNEL_ALL;
-  double blur_color_channels_ = 0;
+  double _sigma = 1;
+  double _alpha = 0.9;
+  double _outmin = -1;
+  double _outmax = -1;
+  COLOR_CHANNEL _channel = COLOR_CHANNEL_ALL;
+  double _blur_color_channels = 0;
 };
 
 #endif /* __c_unsharp_mask_routine_h__ */

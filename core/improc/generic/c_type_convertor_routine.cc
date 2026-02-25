@@ -7,21 +7,21 @@
 
 #include "c_type_convertor_routine.h"
 
-void c_type_convertor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_type_convertor_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, ddepth, "OpenCV pixel depth");
-  BIND_PCTRL(ctls, auto_scale, "auto_scale");
-  BIND_PCTRL(ctls, alpha, "scale");
-  BIND_PCTRL(ctls, beta, "offset");
+   ctlbind(ctls, "ddepth", ctx(&this_class::_ddepth), "Output OpenCV pixel depth");
+   ctlbind(ctls, "alpha", ctx(&this_class::_alpha), "output = alpha * input + beta");
+   ctlbind(ctls, "beta", ctx(&this_class::_beta), "");
+   ctlbind(ctls, "auto_scale", ctx(&this_class::_auto_scale), "auto alpha/beta");
 }
 
 bool c_type_convertor_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, ddepth);
-    SERIALIZE_PROPERTY(settings, save, *this, alpha);
-    SERIALIZE_PROPERTY(settings, save, *this, beta);
-    SERIALIZE_PROPERTY(settings, save, *this, auto_scale);
+    SERIALIZE_OPTION(settings, save, *this, _ddepth);
+    SERIALIZE_OPTION(settings, save, *this, _alpha);
+    SERIALIZE_OPTION(settings, save, *this, _beta);
+    SERIALIZE_OPTION(settings, save, *this, _auto_scale);
     return true;
   }
   return false;

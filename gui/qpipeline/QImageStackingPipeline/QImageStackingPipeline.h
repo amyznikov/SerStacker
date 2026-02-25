@@ -17,7 +17,8 @@ class QImageStackingPipeline:
 {
 public:
   typedef QImageStackingPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_image_stacking_pipeline> Base;
+  typedef c_image_stacking_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QImageStackingPipeline(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

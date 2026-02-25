@@ -15,6 +15,7 @@
 #define __c_lpg_sharpness_measure_h__
 
 #include "c_image_sharpness_measure.h"
+#include <core/ctrlbind/ctrlbind.h>
 #include <core/settings.h>
 
 struct c_lpg_options
@@ -29,6 +30,18 @@ struct c_lpg_options
   bool load_settings(const std::string & text);
   bool serialize(c_config_setting settings, bool save);
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_lpg_options> & ctx)
+{
+  using S = c_lpg_options;
+  ctlbind(ctls, "k", ctx(&S::k), "Sharpness map: (k * laplacian + gradient) / (k + 1)");
+  ctlbind(ctls, "p", ctx(&S::p), "Sharpness estimator: sharpness map power");
+  ctlbind(ctls, "dscale", ctx(&S::dscale), "Sharpness estimator: sharpness map downscale pyramid level");
+  ctlbind(ctls, "uscale", ctx(&S::uscale), "Sharpness estimator: sharpness map upscale pyramid level");
+  ctlbind(ctls, "avgchannel", ctx(&S::avgchannel), "Sharpness estimator: use grayscale sharpness map");
+}
+
 
 class c_lpg_sharpness_measure:
     public c_image_sharpness_measure
@@ -70,6 +83,12 @@ public:
   std::string save_settings();
   bool load_settings(const std::string & text);
   bool serialize(c_config_setting settings, bool save);
+
+  template<class RootObjectType>
+  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
+  {
+    ctlbind(ctls, ctx(&this_class::_opts));
+  }
 
 protected:
   c_lpg_options _opts;

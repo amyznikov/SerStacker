@@ -34,8 +34,8 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
     SERIALIZE_OPTION(section, save, _registration_options, double_align_moode);
-    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_sigma_);
-    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_alpha_);
+    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_sigma);
+    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_alpha);
     SERIALIZE_OPTION(section, save, _registration_options, enable_ecc);
     SERIALIZE_OPTION(section, save, _registration_options, ecc_motion_type);
     SERIALIZE_OPTION(section, save, _registration_options, min_rho);
@@ -110,93 +110,185 @@ bool c_running_average_pipeline::eccflow_ctls_enabled() const
   return (_registration_options.enable_eccflow || _registration_options.double_align_moode);
 }
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline::get_controls()
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-
-  if( ctrls.empty() ) {
-
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-    POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
-
-      PIPELINE_CTL(ctrls, _registration_options.double_align_moode, "double_align_moode", "");
-      PIPELINE_CTLC(ctrls, _registration_options.reference_unsharp_sigma_, "ref_unsharp_sigma", "", _this->_registration_options.double_align_moode);
-      PIPELINE_CTLC(ctrls,  _registration_options.reference_unsharp_alpha_, "ref_unsharp_alpha", "", _this->_registration_options.double_align_moode);
-
-      PIPELINE_CTL_GROUP(ctrls, "ECC", "");
-        PIPELINE_CTL(ctrls, _registration_options.enable_ecc, "enabled", "");
-
-        PIPELINE_CTLC(ctrls, _registration_options.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
-
-        PIPELINE_CTLPC2(ctrls, _ecch, method, "ecch method", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, maxlevel, "maxlevel ", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, max_iterations, "max_iterations", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
-
-        PIPELINE_CTLPC2(ctrls, _ecch, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _ecch, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
-        PIPELINE_CTL(ctrls, _registration_options.enable_eccflow, "enabled", "");
-        PIPELINE_CTLPC2(ctrls, _eccflow, support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, max_pyramid_level, "max_pyramid_level", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, max_iterations, "max_iterations", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-        PIPELINE_CTLPC2(ctrls, _eccflow, update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTLC(ctrls, _registration_options.min_rho, "min_rho", "", (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
-
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Average options", "");
-    PIPELINE_CTLC(ctrls, _average_options.reference_weight, "reference running_weight", "", (_this->_registration_options.double_align_moode));
-    PIPELINE_CTL(ctrls, _average_options.running_weight, "running_weight", "");
-      PIPELINE_CTL_GROUP(ctrls, "Shapness measure", "");
-        PIPELINE_CTL(ctrls, _average_options.lpg.k, "k", "");
-        PIPELINE_CTL(ctrls, _average_options.lpg.p, "p", "power");
-        PIPELINE_CTL(ctrls, _average_options.lpg.dscale, "dscale", "");
-        PIPELINE_CTL(ctrls, _average_options.lpg.uscale, "uscale", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-    PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
-    PIPELINE_CTL(ctrls, _output_options.display_scale, "display_scale", "");
-    PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+  using S = c_running_average_input_options;
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor));
+}
 
 
-    PIPELINE_CTL_GROUP(ctrls, "Save accumulated video", "");
-      PIPELINE_CTL(ctrls, _output_options.save_accumulated_video, "save_accumulated_video", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_accumulated_video_options,
-          (_this->_output_options.save_accumulated_video));
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_registration_options> & ctx)
+{
+  using S = c_running_average_registration_options;
 
-    PIPELINE_CTL_GROUP(ctrls, "save_reference_video", "");
-      PIPELINE_CTL(ctrls, _output_options.save_reference_video, "save_reference_video", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_reference_video_options,
-          (_this->_output_options.save_reference_video));
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "double_align_moode", ctx(&S::double_align_moode), "");
+  ctlbind(ctls, "ref_unsharp_sigma", ctx(&S::reference_unsharp_sigma), ""); // _this->_registration_options.double_align_moode);
+  ctlbind(ctls, "ref_unsharp_alpha", ctx(&S::reference_unsharp_alpha), ""); // _this->_registration_options.double_align_moode);
 
+  ctlbind_expandable_group(ctls, "ECC", "");
+    ctlbind(ctls, "enable ecc", ctx(&S::enable_ecc), "");
+    ctlbind(ctls, "motion_type", ctx(&S::ecc_motion_type), "");
+    ctlbind(ctls, ctx(&S::ecch));
+  ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "ECCFLOW", "");
+    ctlbind(ctls, "enable eccflow", ctx(&S::enable_eccflow), "");
+    ctlbind(ctls, ctx(&S::eccflow));
+  ctlbind_end_group(ctls);
+
+  ctlbind(ctls, "min_rho", ctx(&S::min_rho), "");// , (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
+}
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_update_options> & ctx)
+{
+  using S = c_running_average_update_options;
+
+  ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
+  ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
+  ctlbind_expandable_group(ctls, "Shapness measure", "");
+    ctlbind(ctls, ctx(&S::lpg));
+  ctlbind_end_group(ctls);
+}
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_output_options> & ctx)
+{
+  using S = c_running_average_output_options;
+
+  ctlbind(ctls, "display_type", ctx(&S::default_display_type), "");
+  ctlbind(ctls, "display_scale", ctx(&S::display_scale), "");
+  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
+
+  ctlbind_expandable_group(ctls, "Save accumulated video");
+    ctlbind(ctls, "save_accumulated_video", ctx(&S::save_accumulated_video), "");
+    ctlbind(ctls, ctx(&S::output_accumulated_video_options));//  (_this->_output_options.save_accumulated_video));
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Save reference video", "");
+    ctlbind(ctls, "save_reference_video", ctx(&S::save_reference_video), "");
+    ctlbind(ctls, ctx(&S::output_reference_video_options)); //  (_this->_output_options.save_reference_video));
+  ctlbind_end_group(ctls);
+}
+
+const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
+
+    ctlbind_expandable_group(ctls, "Input options", "");
+      ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Image registration", "");
+      ctlbind(ctls, ctx(&this_class::_registration_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Average options", "");
+      ctlbind(ctls, ctx(&this_class::_average_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Output options", "");
+      ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+
+//
+//const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+//
+////  if( ctrls.empty() ) {
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////    POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
+////
+////      PIPELINE_CTL(ctrls, _registration_options.double_align_moode, "double_align_moode", "");
+////      PIPELINE_CTLC(ctrls, _registration_options.reference_unsharp_sigma, "ref_unsharp_sigma", "", _this->_registration_options.double_align_moode);
+////      PIPELINE_CTLC(ctrls,  _registration_options.reference_unsharp_alpha, "ref_unsharp_alpha", "", _this->_registration_options.double_align_moode);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "ECC", "");
+////        PIPELINE_CTL(ctrls, _registration_options.enable_ecc, "enabled", "");
+////
+////        PIPELINE_CTLC(ctrls, _registration_options.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
+////
+////        PIPELINE_CTLPC2(ctrls, _ecch, method, "ecch method", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, maxlevel, "maxlevel ", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, max_iterations, "max_iterations", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
+////
+////        PIPELINE_CTLPC2(ctrls, _ecch, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _ecch, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
+////        PIPELINE_CTL(ctrls, _registration_options.enable_eccflow, "enabled", "");
+////        PIPELINE_CTLPC2(ctrls, _eccflow, support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, max_pyramid_level, "max_pyramid_level", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, max_iterations, "max_iterations", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
+////        PIPELINE_CTLPC2(ctrls, _eccflow, update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTLC(ctrls, _registration_options.min_rho, "min_rho", "", (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Average options", "");
+////    PIPELINE_CTLC(ctrls, _average_options.reference_weight, "reference running_weight", "", (_this->_registration_options.double_align_moode));
+////    PIPELINE_CTL(ctrls, _average_options.running_weight, "running_weight", "");
+////      PIPELINE_CTL_GROUP(ctrls, "Shapness measure", "");
+////        PIPELINE_CTL(ctrls, _average_options.lpg.k, "k", "");
+////        PIPELINE_CTL(ctrls, _average_options.lpg.p, "p", "power");
+////        PIPELINE_CTL(ctrls, _average_options.lpg.dscale, "dscale", "");
+////        PIPELINE_CTL(ctrls, _average_options.lpg.uscale, "uscale", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////    PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
+////    PIPELINE_CTL(ctrls, _output_options.display_scale, "display_scale", "");
+////    PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Save accumulated video", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_accumulated_video, "save_accumulated_video", "");
+////      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_accumulated_video_options,
+////          (_this->_output_options.save_accumulated_video));
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "save_reference_video", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_reference_video, "save_reference_video", "");
+////      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_reference_video_options,
+////          (_this->_output_options.save_reference_video));
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////  }
+//
+//  return ctrls;
+//}
 
 ///
 
@@ -319,15 +411,14 @@ bool c_running_average_pipeline::initialize_pipeline()
 
 
   if ( _registration_options.enable_ecc ) {
-
-    _ecc_tramsform =
-        create_image_transform(_registration_options.ecc_motion_type);
-
+    _ecc_tramsform = create_image_transform(_registration_options.ecc_motion_type);
     _ecch.set_image_transform(_ecc_tramsform.get());
-    //ecch_.set_method(registration_options_.ecc_method);
+    _ecch.options() = _registration_options.ecch;
   }
 
-
+  if( _registration_options.enable_eccflow ) {
+    _eccflow.options() = _registration_options.eccflow;
+  }
 
   CF_DEBUG("Output path='%s'", this->_output_path.c_str());
 
@@ -606,10 +697,10 @@ bool c_running_average_pipeline::process_current_frame2()
       mkgrayscale(image1, mask1,
           image1, mask1);
 
-      if( _registration_options.reference_unsharp_sigma_ > 0 && _registration_options.reference_unsharp_alpha_ > 0 ) {
+      if( _registration_options.reference_unsharp_sigma > 0 && _registration_options.reference_unsharp_alpha > 0 ) {
 
-        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma_,
-            _registration_options.reference_unsharp_alpha_);
+        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma,
+            _registration_options.reference_unsharp_alpha);
       }
 
 
@@ -687,10 +778,10 @@ bool c_running_average_pipeline::process_current_frame2()
 
       _average1.compute(image1, mask1);
 
-      if( _registration_options.reference_unsharp_sigma_ > 0 && _registration_options.reference_unsharp_alpha_ > 0 ) {
+      if( _registration_options.reference_unsharp_sigma > 0 && _registration_options.reference_unsharp_alpha > 0 ) {
 
-        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma_,
-            _registration_options.reference_unsharp_alpha_);
+        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma,
+            _registration_options.reference_unsharp_alpha);
       }
 
       if( !_reference_video_writer.write(image1, mask1) ) {

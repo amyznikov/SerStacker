@@ -915,7 +915,7 @@ bool save_settings(c_config_setting settings, const c_estimate_image_transform_o
   }
 
   if( (subsection = settings.add_group("epipolar_derotation")) ) {
-    SAVE_OPTION(subsection, opts.epipolar_derotation, camera_intrinsics);
+    //SAVE_OPTION(subsection, opts.epipolar_derotation, camera_intrinsics);
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, robust_threshold);
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsf);
     SAVE_OPTION(subsection, opts.epipolar_derotation.camera_pose, epsx);
@@ -975,7 +975,7 @@ bool load_settings(c_config_setting settings, c_estimate_image_transform_options
   }
 
   if( (subsection = settings["epipolar_derotation"]).isGroup() ) {
-    LOAD_OPTION(subsection, opts->epipolar_derotation, camera_intrinsics);
+    //LOAD_OPTION(subsection, opts->epipolar_derotation, camera_intrinsics);
     LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, robust_threshold);
     LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsf);
     LOAD_OPTION(subsection, opts->epipolar_derotation.camera_pose, epsx);

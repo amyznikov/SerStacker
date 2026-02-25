@@ -38,13 +38,13 @@ protected:
   void onMenuButtonClicked();
 
 protected:
-  QHBoxLayout * layout_ = nullptr;
-  QLineEdit * editBox_ = nullptr;
-  QToolButton * menuButton_ = nullptr;
-  QList<QAction *> actions_;
-
-  int flags_ = 0;
-  bool updatingControls_ = false;
+  QHBoxLayout * _layout = nullptr;
+  QLineEdit * _editBox = nullptr;
+  QToolButton * _menuButton = nullptr;
+  QList<QAction *> _actions;
+  const c_enum_member * _membs = nullptr;
+  int _flags = 0;
+  //bool updatingControls_ = false;
 };
 
 template<class E>
@@ -65,7 +65,7 @@ public:
 protected:
   void updateLabelText() override
   {
-    editBox_->setText(qsprintf("0x%0X %s", flags_, flagsToString<E>(flags_).c_str()));
+    _editBox->setText(qsprintf("0x%0X %s", _flags, flagsToString<E>(_flags).c_str()));
   }
 
 };

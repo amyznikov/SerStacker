@@ -25,55 +25,16 @@ public:
     DisplayScaledImage,
   };
 
-  void set_display_type(DisplayType v)
-  {
-    display_type_ = v;
-  }
 
-  DisplayType display_type() const
-  {
-    return display_type_;
-  }
-
-  void set_display_level(int v)
-  {
-    display_level_ = v;
-  }
-
-  int display_level() const
-  {
-    return display_level_;
-  }
-
-  void set_ksize(int v)
-  {
-    ksize_  = v;
-  }
-
-  int ksize()
-  {
-    return ksize_;
-  }
-
-  void set_median_iterations(int v)
-  {
-    median_iterations_ = v;
-  }
-
-  int median_iterations() const
-  {
-    return median_iterations_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DisplayType display_type_ = DisplayMedianBlur;
-  int ksize_ = 3;
-  int median_iterations_ = 1;
-  int display_level_ = 0;
+  DisplayType _display_type = DisplayMedianBlur;
+  int _ksize = 3;
+  int _median_iterations = 1;
+  int _display_level = 0;
   std::vector<cv::Mat> scaled_images_;
   std::vector<cv::Mat> median_blurs_;
   std::vector<cv::Mat> median_hats_;

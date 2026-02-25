@@ -18,65 +18,15 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_rotation_homography_test_routine,
       "c_rotation_homography_test_routine", "test for pure rotation homography");
 
-  void set_rotation(const cv::Vec3f & v)
-  {
-    _A = v;
-  }
-
-  const cv::Vec3f& rotation() const
-  {
-    return _A;
-  }
-
-  void set_center(const cv::Vec2f & v)
-  {
-    _C = v;
-  }
-
-  const cv::Vec2f & center() const
-  {
-    return _C;
-  }
-
-  void set_focus(float v)
-  {
-    _F = v;
-  }
-
-  float focus() const
-  {
-    return _F;
-  }
-
-  void set_output_size(const cv::Size & v)
-  {
-    _output_size = v;
-  }
-
-  const cv::Size & output_size() const
-  {
-    return _output_size;
-  }
-
-  void set_inverse_remap(bool v)
-  {
-    _inverse_remap = v;
-  }
-
-  bool inverse_remap() const
-  {
-    return _inverse_remap;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Vec3f _A;
-  cv::Vec2f _C = cv::Vec2f(500, 500);
+  cv::Vec3f _rotation;
+  cv::Vec2f _center = cv::Vec2f(500, 500);
   cv::Size _output_size;
-  float _F = 1000;
+  float _focus = 1000;
   bool _inverse_remap = false;
 };
 

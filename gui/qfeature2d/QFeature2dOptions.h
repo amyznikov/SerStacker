@@ -13,126 +13,146 @@
 #include <core/feature2d/feature2d.h>
 
 
+template<class Feature2DDetectorType>
+class QSparseFeature2DOptionsTemplate :
+    public QSettingsWidgetTemplate<typename Feature2DDetectorType::options>
+{
+  // Q_OBJECT;
+public:
+  typedef QSparseFeature2DOptionsTemplate ThisClass;
+  typedef QSettingsWidgetTemplate<typename Feature2DDetectorType::options> Base;
+
+  QSparseFeature2DOptionsTemplate(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+    Base::setObjectName(QString::fromStdString(toString(feature2d_traits<Feature2DDetectorType>::type)));
+    populate_feature2d_options(this);
+  }
+};
+
+
 class QSparseFeatureDetectorOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_sparse_feature_detector_options>
 {
   Q_OBJECT;
 public:
   typedef QSparseFeatureDetectorOptions ThisClass;
-  typedef QSettingsWidget Base;
-  typedef QEnumComboBox<SPARSE_FEATURE_DETECTOR_TYPE> QSparseFeatureDetectorTypeCombo;
+  typedef QSettingsWidgetTemplate<c_sparse_feature_detector_options> Base;
+  typedef QEnumComboBox<SPARSE_FEATURE_DETECTOR_TYPE> QSparseFeatureDetectorCombo;
 
   QSparseFeatureDetectorOptions(QWidget * parent = nullptr);
-
-  void set_feature_detector_options(c_sparse_feature_detector_options * options);
-  c_sparse_feature_detector_options* feature_detector_options() const;
 
 Q_SIGNALS:
  void detectorTypeChanged();
 
 protected:
-  void onupdatecontrols() override;
-  void update_detector_specific_controls();
+ void updateDetectorSpecificControls();
+
+ template<class F>
+ void addStackWidget(F c_sparse_feature_detector_options::* mp);
 
 protected:
-  c_sparse_feature_detector_options *options_ = nullptr;
-  QSparseFeatureDetectorTypeCombo * detectorType_ctl = nullptr;
+  QSparseFeatureDetectorCombo * detectorType_ctl = nullptr;
   QNumericBox * max_keypoints_ctl = nullptr;
-  QWidgetList controls;
+  QStackedWidget * _stack = nullptr;
 };
 
 class QSparseFeatureDescriptorOptions:
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_sparse_feature_descriptor_options>
 {
   Q_OBJECT;
 public:
   typedef QSparseFeatureDescriptorOptions ThisClass;
-  typedef QSettingsWidget Base;
-  typedef QEnumComboBox<SPARSE_FEATURE_DESCRIPTOR_TYPE> QSparseFeatureDecriptorTypeCombo;
+  typedef QSettingsWidgetTemplate<c_sparse_feature_descriptor_options> Base;
+  typedef QEnumComboBox<SPARSE_FEATURE_DESCRIPTOR_TYPE> QSparseFeatureDecriptorCombo;
 
   QSparseFeatureDescriptorOptions(QWidget * parent = nullptr);
 
-  void set_feature_descriptor_options(c_sparse_feature_descriptor_options * options);
-  c_sparse_feature_descriptor_options* feature_descriptor_options() const;
+protected:
+  void updateDescriptorSpecificControls();
+
+  template<class F>
+  void addStackWidget(F c_sparse_feature_descriptor_options::* mp);
 
 protected:
-  void onupdatecontrols() override;
-  void update_descriptor_specific_controls();
-
-protected:
-  c_sparse_feature_descriptor_options *options_ = nullptr;
-  QSparseFeatureDecriptorTypeCombo * descriptorType_ctl = nullptr;
-  // QCheckBox * useDetectorSettings_ctl = nullptr;
-  QWidgetList controls;
+  QSparseFeatureDecriptorCombo * descriptorType_ctl = nullptr;
+  QStackedWidget * _stack = nullptr;
 };
 
 class QHammingDistanceFeature2dMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_hamming_distance_feature2d_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QHammingDistanceFeature2dMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_hamming_distance_feature2d_matcher_options> Base;
 
   QHammingDistanceFeature2dMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options(c_hamming_distance_feature2d_matcher_options * options);
-  c_hamming_distance_feature2d_matcher_options * feature_matcher_options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_hamming_distance_feature2d_matcher_options * options_ = nullptr;
   QNumericBox * max_acceptable_distance_ctl = nullptr;
   QNumericBox * octavedif_ctl = nullptr;
 };
 
+
+
+template<class flann_index_options>
+class QFlannIndexOptions :
+    public QSettingsWidgetTemplate<flann_index_options>
+{
+public:
+  typedef QFlannIndexOptions ThisClass;
+  typedef QSettingsWidgetTemplate<flann_index_options> Base;
+
+  QFlannIndexOptions(QWidget * parent = nullptr) : Base(parent)
+  {
+    populate_feature2d_options(this);
+  }
+};
+
 class QFlannBasedFeature2dMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_flann_based_feature2d_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QFlannBasedFeature2dMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
-  typedef QEnumComboBox<FlannIndexType > QFlannIndexTypeCombo;
+  typedef QSettingsWidgetTemplate<c_flann_based_feature2d_matcher_options> Base;
+  typedef QEnumComboBox<FlannIndexType> QFlannIndexTypeCombo;
   typedef QEnumComboBox<cvflann::flann_distance_t> QFlannDistanceTypeCombo;
 
   QFlannBasedFeature2dMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options( c_flann_based_feature2d_matcher_options * options);
-  c_flann_based_feature2d_matcher_options * feature_matcher_options() const;
+  template<class F>
+  QFlannIndexOptions<F> * addStackWidget(F c_flann_based_feature2d_matcher_options::* mp);
 
 protected:
-  void onupdatecontrols() override;
-  void update_matcher_specific_controls();
+  void showMatcherSpecificControls();
 
 protected:
-  c_flann_based_feature2d_matcher_options * options_ = nullptr;
   QFlannIndexTypeCombo * flannIndexType_ctl = nullptr;
   QFlannDistanceTypeCombo * flannDistanceType_ctl = nullptr;
   QNumericBox * lowe_ratio_ctl = nullptr;
-  QWidgetList controls;
+  QStackedWidget * _stack = nullptr;
+  QFlannIndexOptions<c_flann_linear_index_options> * _linear_index_options = nullptr;
+  QFlannIndexOptions<c_flann_kdtree_index_options> * _kdtree_index_options = nullptr;
+  QFlannIndexOptions<c_flann_kmeans_index_options> * _kmeans_index_options = nullptr;
+  QFlannIndexOptions<c_flann_composite_index_options> * _composite_index_options = nullptr;
+  QFlannIndexOptions<c_flann_hierarchical_index_options> * _hierarchical_index_options = nullptr;
+  QFlannIndexOptions<c_flann_lsh_index_options> * _lsh_index_options = nullptr;
+  QFlannIndexOptions<c_flann_autotuned_index_options> * _autotuned_index_options = nullptr;
 };
 
 class QOptFlowPyrLKMatcherOptions  :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_optflowpyrlk_feature2d_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QOptFlowPyrLKMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_optflowpyrlk_feature2d_matcher_options> Base;
 
   QOptFlowPyrLKMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options(c_optflowpyrlk_feature2d_matcher_options * options);
-  c_optflowpyrlk_feature2d_matcher_options * feature_matcher_options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_optflowpyrlk_feature2d_matcher_options * options_ = nullptr;
   QNumericBox * maxLevel_ctl = nullptr;
   QNumericBox * winSize_ctl = nullptr;
   QNumericBox * maxIterations_ctl = nullptr;
@@ -143,76 +163,57 @@ protected:
 };
 
 class QTriangleMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_triangle_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QTriangleMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_triangle_matcher_options> Base;
 
   QTriangleMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options( c_triangle_matcher_options * options);
-  c_triangle_matcher_options * feature_matcher_options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_triangle_matcher_options * options_ = nullptr;
   QNumericBox * eps_ctl = nullptr;
 };
 
 class QSnormBasedFeature2dMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_snorm_based_feature2d_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QSnormBasedFeature2dMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_snorm_based_feature2d_matcher_options> Base;
 
   QSnormBasedFeature2dMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options( c_snorm_based_feature2d_matcher_options * options);
-  c_snorm_based_feature2d_matcher_options * feature_matcher_options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_snorm_based_feature2d_matcher_options * options_ = nullptr;
   QNumericBox * max_acceptable_distance_ctl = nullptr;
   QNumericBox * lowe_ratio_ctl = nullptr;
 };
 
 
 class QSparseFeatureMatcherOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_feature2d_matcher_options>
 {
   Q_OBJECT;
 public:
   typedef QSparseFeatureMatcherOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_feature2d_matcher_options> Base;
   typedef QEnumComboBox<FEATURE2D_MATCHER_TYPE> QSparseFeatureMatcherTypeCombo;
 
   QSparseFeatureMatcherOptions(QWidget * parent = nullptr);
 
-  void set_feature_matcher_options(c_feature2d_matcher_options * options);
-  c_feature2d_matcher_options * feature_matcher_options() const;
+protected:
+  void showMatcherSpecificControls();
 
 protected:
-  void onupdatecontrols() override;
-  void show_current_matcher_controls();
-
-protected:
-  c_feature2d_matcher_options * options_ = nullptr;
   QSparseFeatureMatcherTypeCombo * sparseFeatureMatcherType_ctl = nullptr;
   QHammingDistanceFeature2dMatcherOptions * hammingDistanceFeature2dMatcherOptions_ctl = nullptr;
   QFlannBasedFeature2dMatcherOptions * flannBasedFeature2dMatcherOptions_ctl = nullptr;
   QOptFlowPyrLKMatcherOptions * optFlowPyrLKMatcherOptions_ctl = nullptr;
   QTriangleMatcherOptions * triangleMatcherOptions_ctl = nullptr;
-
   QSnormBasedFeature2dMatcherOptions * snormBasedFeature2dMatcherOptions_ctl = nullptr;
+  QStackedWidget * _stack = nullptr;
 };
 
 

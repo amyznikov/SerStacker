@@ -17,7 +17,8 @@ class QCTEPipeline :
 {
 public:
   typedef QCTEPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_cte_pipeline> Base;
+  typedef c_cte_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QCTEPipeline();
 
@@ -32,9 +33,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 
 };

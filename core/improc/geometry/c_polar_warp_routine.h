@@ -30,103 +30,39 @@ public:
     INTER_NEAREST_EXACT = cv::INTER_NEAREST_EXACT,
 #endif
   };
-//
-//  enum WARP_MODE
-//  {
-//    WARP_POLAR_LINEAR = cv::WARP_POLAR_LINEAR,
-//    WARP_POLAR_LOG = cv::WARP_POLAR_LOG
-//  };
-
-
-  const cv::Point2f & center() const
-  {
-    return center_;
-  }
 
   void set_center(const cv::Point2f & v)
   {
-    center_ = v;
-    rmap_.release();
+    _center = v;
+    _rmap.release();
   }
 
-//  const cv::Size & dsize() const
-//  {
-//    return dsize_;
-//  }
-//
-//  void set_dsize(const cv::Size & v)
-//  {
-//    dsize_ = v;
-//    rmap_.release();
-//  }
-
-
-//  double maxRadius() const
-//  {
-//    return maxRadius_;
-//  }
-//
-//  void set_maxRadius(double v)
-//  {
-//    maxRadius_ = v;
-//    rmap_.release();
-//  }
-
-  INTERPOLATION_MODE interpolation_mode() const
+  const cv::Point2f & center() const
   {
-    return interpolation_mode_;
+    return _center;
   }
 
   void set_interpolation_mode(INTERPOLATION_MODE v)
   {
-    interpolation_mode_ = v;
-    rmap_.release();
+    _interpolation = v;
+    _rmap.release();
   }
-//
-//  WARP_MODE warp_mode() const
-//  {
-//    return warp_mode_;
-//  }
-//
-//  void set_warp_mode(WARP_MODE v)
-//  {
-//    warp_mode_ = v;
-//    rmap_.release();
-//  }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
+  INTERPOLATION_MODE interpolation_mode() const
   {
-    BIND_PCTRL(ctls, center, "");
-//    BIND_PCTRL(ctls, dsize, "");
-//    BIND_PCTRL(ctls, maxRadius, "");
-    BIND_PCTRL(ctls, interpolation_mode, "");
-//    BIND_PCTRL(ctls, warp_mode, "");
+    return _interpolation;
   }
 
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, center);
-//      SERIALIZE_PROPERTY(settings, save, *this, dsize);
-//      SERIALIZE_PROPERTY(settings, save, *this, maxRadius);
-      SERIALIZE_PROPERTY(settings, save, *this, interpolation_mode);
-//      SERIALIZE_PROPERTY(settings, save, *this, warp_mode);
-      return true;
-    }
-    return false;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
 
 protected:
-  cv::Mat2f rmap_;
-  cv::Size old_src_size_;
-  cv::Point2f center_;
-//  cv::Size dsize_ = cv::Size(100, 100);
-//  double maxRadius_ = 100;
-  INTERPOLATION_MODE interpolation_mode_ = INTER_LINEAR;
-//  WARP_MODE warp_mode_ = WARP_POLAR_LINEAR;
-
+  cv::Mat2f _rmap;
+  cv::Size _old_src_size;
+  cv::Point2f _center;
+  INTERPOLATION_MODE _interpolation = INTER_LINEAR;
 };
 
 #endif /* __c_polar_warp_routine_h__ */

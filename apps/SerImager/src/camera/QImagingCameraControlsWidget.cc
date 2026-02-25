@@ -29,13 +29,13 @@ QScrollArea* createScrollableWrap(QWidget * w, QWidget * parent = nullptr)
 QImagingCameraControlsWidget::QImagingCameraControlsWidget(QWidget * parent) :
     Base(parent)
 {
-  layout_ = new QVBoxLayout(this);
+  _layout = new QVBoxLayout(this);
 
-  layout_->addWidget(cameraSelection_ctl =
+  _layout->addWidget(cameraSelection_ctl =
       new QCameraSelectionWidget(this));
 
-  layout_->addWidget(createScrollableWrap(
-      settings_ctl = new QSettingsWidget("captureControls", this),
+  _layout->addWidget(createScrollableWrap(
+      settings_ctl = new QSettingsWidget(this),
       this));
 
   settings_ctl->add_expandable_groupbox("Capture",
@@ -65,8 +65,26 @@ QCameraWriter * QImagingCameraControlsWidget::cameraWriter() const
   return captureSettings_ctl->cameraWriter();
 }
 
-void QImagingCameraControlsWidget::onupdatecontrols()
+void QImagingCameraControlsWidget::loadSettings(const QString & prefix)
 {
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QImagingCameraControlsWidget::loadSettings(const QSettings & settings, const QString & prefix)
+{
+  captureSettings_ctl->loadSettings(settings, prefix);
+}
+
+void QImagingCameraControlsWidget::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QImagingCameraControlsWidget::saveSettings(QSettings & settings, const QString & prefix)
+{
+  captureSettings_ctl->saveSettings(settings, prefix);
 }
 
 void QImagingCameraControlsWidget::onSelectedCameraChanged()

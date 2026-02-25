@@ -37,80 +37,17 @@ public:
     Function_poly,
   };
 
-  void set_function(enum Function v)
-  {
-    function_ = v;
-  }
-
-  enum Function function() const
-  {
-    return function_;
-  }
-
-  void set_c1(double v)
-  {
-    c1_ = v;
-  }
-
-  double c1() const
-  {
-    return c1_;
-  }
-
-
-  void set_c2(double v)
-  {
-    c2_ = v;
-  }
-
-  double c2() const
-  {
-    return c2_;
-  }
-
-  void set_c3(double v)
-  {
-    c3_ = v;
-  }
-
-  double c3() const
-  {
-    return c3_;
-  }
-
-  void set_c4(double v)
-  {
-    c4_ = v;
-  }
-
-  double c4() const
-  {
-    return c4_;
-  }
-
-  void set_params(std::vector<double> & v)
-  {
-    params_ = v;
-  }
-
-  const std::vector<double> & params() const
-  {
-    return params_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  enum Function function_ = Function_None;
-  double c1_ = 0;
-  double c2_ = 1;
-  double c3_ = 1;
-  double c4_ = 0;
-
-  std::vector<double> params_;
-
+  enum Function _function = Function_None;
+  double _c1 = 0;
+  double _c2 = 1;
+  double _c3 = 1;
+  double _c4 = 0;
+  std::vector<double> _params;
 };
 
 #endif /* __c_pixel_func_routine_h__ */

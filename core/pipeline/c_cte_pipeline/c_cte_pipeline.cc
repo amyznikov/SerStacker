@@ -260,75 +260,181 @@ bool c_cte_pipeline::copyParameters(const base::sptr & dst) const
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_cte_pipeline::get_controls()
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_pipeline_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+  using S = c_cte_pipeline_input_options;
+  ctlbind(ctls, "read step", ctx(&S::read_step), "set > 1 to specify number of frames to skip" );
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+}
 
-  if( ctrls.empty() ) {
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_pipeline_camera_options> & ctx)
+{
+  using S = c_cte_pipeline_camera_options;
+  ctlbind(ctls, "camera intrinsics", ctx(&S::camera_intrinsics), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Input Options", "");
-      PIPELINE_CTL(ctrls, _input_options.read_step, "read step", "set > 1 to specify number of frames to skip");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_pipeline_feature2d_options> & ctx)
+{
+  using S = c_cte_pipeline_feature2d_options;
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
-      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _camera_options.camera_intrinsics);
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "image scale", ctx(&S::image_scale), "");
 
-    PIPELINE_CTL_GROUP(ctrls, "Feature2D Options", "");
-      PIPELINE_CTL(ctrls, _feature2d.image_scale, "image scale", "image scale");
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Detector", "");
-        PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, _feature2d.detector);
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Descriptor", "");
-        PIPELINE_CTL_FEATURE2D_DESCRIPTOR_OPTIONS(ctrls, _feature2d.descriptor);
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Matcher", "");
-        PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, _feature2d.matcher);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Feature2D Detector", "");
+  ctlbind(ctls, "Detector", ctx(&S::detector));
+  ctlbind_end_group(ctls);
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Context Options...", "");
-      PIPELINE_CTL(ctrls, _context_options.max_context_size, "Track context size", "Number of frames in context");
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Feature2D Descriptor", "");
+  ctlbind(ctls, "Descriptor", ctx(&S::descriptor));
+  ctlbind_end_group(ctls);
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Pose Estimation", "Parameters for lm_refine_camera_pose2()");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.max_iterations, "max_iterations", "max iterations for outliers detection");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.max_levmar_iterations, "max_levmar_iterations", "max levmar iterations");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.epsf, "levmar_epsf", "levmar epsf");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.epsx, "levmar_epsx", "levmar epsx");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.robust_threshold, "robust_threshold", "robust_threshold");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.erfactor, "erfactor", "erfactor");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.ew, "ew", "ew");
-      PIPELINE_CTL(ctrls, _pose_estimation_options.E, "E", "SAet e1 < 0 to Fix Epipole Position");
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Feature2D Matcher", "");
+  ctlbind(ctls, "Matcher", ctx(&S::matcher));
+  ctlbind_end_group(ctls);
+}
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_context_options> & ctx)
+{
+  using S = c_cte_context_options;
+  ctlbind(ctls, "max_context_size", ctx(&S::max_context_size), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Output Options", "");
-      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_pose_estimation_options> & ctx)
+{
+  using S = c_cte_pose_estimation_options;
+  ctlbind(ctls, as_base<c_lm_camera_pose3_options>(ctx));
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Progress video", "");
-        PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.progress_output_options, _this->_output_options.save_progress_video);
-      PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_cte_output_options> & ctx)
+{
+  using S = c_cte_output_options;
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Poses", "");
-        PIPELINE_CTL(ctrls, _output_options.save_poses, "save_poses", "");
-        PIPELINE_CTLC(ctrls, _output_options.poses_file_name, "poses_file_name", "poses_file_name", _this->_output_options.save_poses);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
 
+  ctlbind_expandable_group(ctls, "Save progress video...");
+    ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+    ctlbind_group(ctls, ctx(&S::save_progress_video));
+      ctlbind(ctls, ctx(&S::progress_output_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_END_GROUP(ctrls);
-    ////////
+  ctlbind_expandable_group(ctls, "Save Poses...");
+    ctlbind(ctls, "save_poses", ctx(&S::save_poses), "");
+    ctlbind_group(ctls, ctx(&S::save_poses));
+      ctlbind_browse_for_file(ctls, "poses_file_name", ctx(&S::poses_file_name), "");
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+}
+
+const c_ctlist<c_cte_pipeline>& c_cte_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
+
+    ctlbind_expandable_group(ctls, "1. Input options", "");
+      ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "2. Camera parameters", "");
+      ctlbind(ctls, ctx(&this_class::_camera_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "3. Feature2D Options", "");
+      ctlbind(ctls, ctx(&this_class::_feature2d));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "4. Context Options", "");
+      ctlbind(ctls, ctx(&this_class::_context_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "5. Pose Estimation", "");
+      ctlbind(ctls, ctx(&this_class::_pose_estimation_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "6. Output Options", "");
+      ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+//
+//const std::vector<c_image_processing_pipeline_ctrl> & c_cte_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+//
+////  if( ctrls.empty() ) {
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Input Options", "");
+////      PIPELINE_CTL(ctrls, _input_options.read_step, "read step", "set > 1 to specify number of frames to skip");
+////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
+////      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _camera_options.camera_intrinsics);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Feature2D Options", "");
+////      PIPELINE_CTL(ctrls, _feature2d.image_scale, "image scale", "image scale");
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Detector", "");
+////        PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, _feature2d.detector);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Descriptor", "");
+////        PIPELINE_CTL_FEATURE2D_DESCRIPTOR_OPTIONS(ctrls, _feature2d.descriptor);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Matcher", "");
+////        PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, _feature2d.matcher);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Context Options...", "");
+////      PIPELINE_CTL(ctrls, _context_options.max_context_size, "Track context size", "Number of frames in context");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.max_iterations, "max_iterations", "max iterations for outliers detection");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.max_levmar_iterations, "max_levmar_iterations", "max levmar iterations");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.epsf, "levmar_epsf", "levmar epsf");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.epsx, "levmar_epsx", "levmar epsx");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.robust_threshold, "robust_threshold", "robust_threshold");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.erfactor, "erfactor", "erfactor");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.ew, "ew", "ew");
+////      PIPELINE_CTL(ctrls, _pose_estimation_options.E, "E", "SAet e1 < 0 to Fix Epipole Position");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Output Options", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Progress video", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.progress_output_options, _this->_output_options.save_progress_video);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Poses", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_poses, "save_poses", "");
+////        PIPELINE_CTLC(ctrls, _output_options.poses_file_name, "poses_file_name", "poses_file_name", _this->_output_options.save_poses);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////    ////////
+////  }
+//
+//  return ctrls;
+//}
 
 bool c_cte_pipeline::serialize(c_config_setting settings, bool save)
 {

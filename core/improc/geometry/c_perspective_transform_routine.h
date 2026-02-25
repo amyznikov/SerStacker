@@ -22,117 +22,125 @@ public:
 
   void set_src_point0(const cv::Point2f  & v)
   {
-    src_pts[0] = v;
+    _srcp0 = v;
     H.release();
   }
 
   const cv::Point2f & src_point0() const
   {
-    return src_pts[0];
+    return _srcp0;
   }
 
   void set_src_point1(const cv::Point2f  & v)
   {
-    src_pts[1] = v;
+    _srcp1 = v;
     H.release();
   }
 
   const cv::Point2f & src_point1() const
   {
-    return src_pts[1];
+    return _srcp1;
   }
 
   void set_src_point2(const cv::Point2f  & v)
   {
-    src_pts[2] = v;
+    _srcp2 = v;
     H.release();
   }
 
   const cv::Point2f & src_point2() const
   {
-    return src_pts[2];
+    return _srcp2;
   }
 
   void set_src_point3(const cv::Point2f  & v)
   {
-    src_pts[3] = v;
+    _srcp3 = v;
     H.release();
   }
 
   const cv::Point2f & src_point3() const
   {
-    return src_pts[3];
+    return _srcp3;
   }
 
   //
 
   void set_dst_point0(const cv::Point2f  & v)
   {
-    dst_pts[0] = v;
+    _dstp0 = v;
     H.release();
   }
 
   const cv::Point2f & dst_point0() const
   {
-    return dst_pts[0];
+    return _dstp0;
   }
 
   void set_dst_point1(const cv::Point2f  & v)
   {
-    dst_pts[1] = v;
+    _dstp1 = v;
     H.release();
   }
 
   const cv::Point2f & dst_point1() const
   {
-    return dst_pts[1];
+    return _dstp1;
   }
 
   void set_dst_point2(const cv::Point2f  & v)
   {
-    dst_pts[2] = v;
+    _dstp2 = v;
     H.release();
   }
 
   const cv::Point2f & dst_point2() const
   {
-    return dst_pts[2];
+    return _dstp2;
   }
 
   void set_dst_point3(const cv::Point2f  & v)
   {
-    dst_pts[3] = v;
+    _dstp3 = v;
     H.release();
   }
 
   const cv::Point2f & dst_point3() const
   {
-    return dst_pts[3];
+    return _dstp3;
   }
 
   //
   void set_output_image_size(const cv::Size & v)
   {
-    output_image_size_ = v;
+    _output_image_size = v;
     H.release();
   }
 
   const cv::Size & output_image_size() const
   {
-    return output_image_size_;
+    return _output_image_size;
   }
 
   //
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Mat H; // 3x3 Homography Matrix
-  cv::Point2f  src_pts[4];
-  cv::Point2f  dst_pts[4];
-  cv::Size output_image_size_;
+  // 3x3 Homography Matrix
+  cv::Mat H;
+
+  cv::Point2f  _srcp0;
+  cv::Point2f  _srcp1;
+  cv::Point2f  _srcp2;
+  cv::Point2f  _srcp3;
+  cv::Point2f  _dstp0;
+  cv::Point2f  _dstp1;
+  cv::Point2f  _dstp2;
+  cv::Point2f  _dstp3;
+  cv::Size _output_image_size;
 };
 
 #endif /* __c_perspective_transform_routine_h__ */

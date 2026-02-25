@@ -627,18 +627,36 @@ bool save_settings(c_config_setting settings, const c_feature2d_triangle_extract
 
 bool save_settings(c_config_setting settings, const c_flann_based_feature2d_matcher_options & args)
 {
+  SAVE_SETINGS(index_type);
   SAVE_SETINGS(distance_type);
   SAVE_SETINGS(lowe_ratio);
-  SAVE_SETINGS(index);
+  //SAVE_SETINGS(index);
+
+  SAVE_SETINGS(linear);
+  SAVE_SETINGS(kdtree);
+  SAVE_SETINGS(kmeans);
+  SAVE_SETINGS(composite);
+  SAVE_SETINGS(hierarchical);
+  SAVE_SETINGS(lsh);
+  SAVE_SETINGS(autotuned);
+
   return true;
 }
 
 bool load_settings(c_config_setting settings, c_flann_based_feature2d_matcher_options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
+  LOAD_OPTIONS(settings, *args, index_type);
   LOAD_OPTIONS(settings, *args, distance_type);
   LOAD_OPTIONS(settings, *args, lowe_ratio);
-  LOAD_OPTIONS(settings, *args, index);
+  //LOAD_OPTIONS(settings, *args, index);
+  LOAD_OPTIONS(settings, *args, linear);
+  LOAD_OPTIONS(settings, *args, kdtree);
+  LOAD_OPTIONS(settings, *args, kmeans);
+  LOAD_OPTIONS(settings, *args, composite);
+  LOAD_OPTIONS(settings, *args, hierarchical);
+  LOAD_OPTIONS(settings, *args, lsh);
+  LOAD_OPTIONS(settings, *args, autotuned);
   END_LOAD_OPTIONS(settings)
   return true;
 }
@@ -950,66 +968,66 @@ bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options
 //
 //  return create_sparse_feature_extractor(options);
 //}
-
-bool save_settings(c_config_setting settings, const c_flann_index_options & args)
-{
-  SAVE_SETINGS(type);
-  SAVE_SETINGS(linear);
-  SAVE_SETINGS(kdtree);
-  SAVE_SETINGS(kmeans);
-  SAVE_SETINGS(composite);
-  SAVE_SETINGS(hierarchical);
-  SAVE_SETINGS(lsh);
-  SAVE_SETINGS(autotuned);
-  return true;
-}
-
-bool load_settings(c_config_setting settings, c_flann_index_options * options)
-{
-  if ( !settings ) {
-    CF_ERROR("settings pointer is NULL");
-    return false;
-  }
-
-  std::string objtype;
-  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
-    if ( options->type == FlannIndex_unknown ) {
-      CF_ERROR("No flann index type specified");
-      return false;
-    }
-  }
-  else if ( !fromString(objtype, &options->type) || options->type == FlannIndex_unknown ) {
-    CF_ERROR("Unknown or not supported flann index type specified: '%s'",
-        objtype.c_str());
-    return false;
-  }
-
-  c_config_setting subsection;
-
-  if( (subsection = settings[toString(FlannIndex_linear)]).isGroup() ) {
-    load_settings(subsection, &options->linear);
-  }
-  if( (subsection = settings[toString(FlannIndex_kdtree)]).isGroup() ) {
-    load_settings(subsection, &options->kdtree);
-  }
-  if( (subsection = settings[toString(FlannIndex_kmeans)]).isGroup() ) {
-    load_settings(subsection, &options->kmeans);
-  }
-  if( (subsection = settings[toString(FlannIndex_composite)]).isGroup() ) {
-    load_settings(subsection, &options->composite);
-  }
-  if( (subsection = settings[toString(FlannIndex_hierarchical)]).isGroup() ) {
-    load_settings(subsection, &options->hierarchical);
-  }
-  if( (subsection = settings[toString(FlannIndex_lsh)]).isGroup() ) {
-    load_settings(subsection, &options->lsh);
-  }
-  if( (subsection = settings[toString(FlannIndex_autotuned)]).isGroup() ) {
-    load_settings(subsection, &options->autotuned);
-  }
-
-  return true;
-}
+//
+//bool save_settings(c_config_setting settings, const c_flann_index_options & args)
+//{
+//  SAVE_SETINGS(type);
+//  SAVE_SETINGS(linear);
+//  SAVE_SETINGS(kdtree);
+//  SAVE_SETINGS(kmeans);
+//  SAVE_SETINGS(composite);
+//  SAVE_SETINGS(hierarchical);
+//  SAVE_SETINGS(lsh);
+//  SAVE_SETINGS(autotuned);
+//  return true;
+//}
+//
+//bool load_settings(c_config_setting settings, c_flann_index_options * options)
+//{
+//  if ( !settings ) {
+//    CF_ERROR("settings pointer is NULL");
+//    return false;
+//  }
+//
+//  std::string objtype;
+//  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
+//    if ( options->type == FlannIndex_unknown ) {
+//      CF_ERROR("No flann index type specified");
+//      return false;
+//    }
+//  }
+//  else if ( !fromString(objtype, &options->type) || options->type == FlannIndex_unknown ) {
+//    CF_ERROR("Unknown or not supported flann index type specified: '%s'",
+//        objtype.c_str());
+//    return false;
+//  }
+//
+//  c_config_setting subsection;
+//
+//  if( (subsection = settings[toString(FlannIndex_linear)]).isGroup() ) {
+//    load_settings(subsection, &options->linear);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_kdtree)]).isGroup() ) {
+//    load_settings(subsection, &options->kdtree);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_kmeans)]).isGroup() ) {
+//    load_settings(subsection, &options->kmeans);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_composite)]).isGroup() ) {
+//    load_settings(subsection, &options->composite);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_hierarchical)]).isGroup() ) {
+//    load_settings(subsection, &options->hierarchical);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_lsh)]).isGroup() ) {
+//    load_settings(subsection, &options->lsh);
+//  }
+//  if( (subsection = settings[toString(FlannIndex_autotuned)]).isGroup() ) {
+//    load_settings(subsection, &options->autotuned);
+//  }
+//
+//  return true;
+//}
 
 bool save_settings(c_config_setting settings, const c_hamming_distance_feature2d_matcher_options & args)
 {

@@ -21,27 +21,27 @@ public:
 
   void set_expression(const std::string & v)
   {
-    expression_ = v;
-    expression_changed_ = true;
+    _expression = v;
+    _expression_changed = true;
   }
 
   const std::string & expression() const
   {
-    return expression_;
+    return _expression;
   }
 
   std::string helpstring();
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   bool initialize() final;
 
 protected:
-  c_math_expression math_;
-  std::string expression_;
-  bool expression_changed_ = true;
+  c_math_expression _math;
+  std::string _expression;
+  bool _expression_changed = true;
 };
 
 #endif /* __c_math_expression_routine_h__ */

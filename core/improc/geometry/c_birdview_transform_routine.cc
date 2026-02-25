@@ -7,13 +7,11 @@
 
 #include "c_birdview_transform_routine.h"
 
-
-void c_birdview_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_birdview_transform_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, src_line, "");
-  BIND_PCTRL(ctls, stretch, "");
-
-  BIND_PCTRL(ctls, output_image_size, "");
+   ctlbind(ctls, "src_line", ctx, &this_class::src_line, &this_class::set_src_line, "");
+   ctlbind(ctls, "stretch", ctx, &this_class::stretch, &this_class::set_stretch, "");
+   ctlbind(ctls, "output_size", ctx, &this_class::output_image_size, &this_class::set_output_image_size, "");
 }
 
 bool c_birdview_transform_routine::serialize(c_config_setting settings, bool save)
@@ -34,18 +32,18 @@ bool c_birdview_transform_routine::process(cv::InputOutputArray image, cv::Input
     const cv::Size src_size =
         image.size();
 
-    if( src_size != input_image_size_ ) {
-      input_image_size_ = src_size;
+    if( src_size != _input_image_size ) {
+      _input_image_size = src_size;
       H.release();
     }
 
     double src_line =
-        src_line_ < 0 ? src_size.height * 5 / 8 :
-            src_line_;
+        _src_line < 0 ? src_size.height * 5 / 8 :
+            _src_line;
 
 
     cv::Size dst_size =
-        output_image_size_;
+        _output_image_size;
 
     if ( dst_size.width < 1 ) {
       dst_size.width = 3 * src_size.width/2;
@@ -65,8 +63,8 @@ bool c_birdview_transform_routine::process(cv::InputOutputArray image, cv::Input
       };
 
       const cv::Point2f dst_points[4] = {
-          cv::Point2f(dst_size.width / 2 - stretch_, 0), // top left
-          cv::Point2f(dst_size.width / 2 + stretch_, 0), // top right
+          cv::Point2f(dst_size.width / 2 - _stretch, 0), // top left
+          cv::Point2f(dst_size.width / 2 + _stretch, 0), // top right
           cv::Point2f((dst_size.width + src_size.width) / 2, dst_size.height - 1), // bottom right
           cv::Point2f((dst_size.width - src_size.width) / 2, dst_size.height - 1), // bottom left
       };

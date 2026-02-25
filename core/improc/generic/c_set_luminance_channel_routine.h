@@ -30,74 +30,17 @@ public:
     Colorspace_YCrCb,
   };
 
-  void set_luminance_channel(enum color_channel_type v)
-  {
-    luminance_channel_ = v;
-  }
-
-  enum color_channel_type luminance_channel() const
-  {
-    return luminance_channel_;
-  }
-
-  void set_colorspace(enum Colorspace v)
-  {
-    colorspace_ = v;
-  }
-
-  enum Colorspace colorspace() const
-  {
-    return colorspace_;
-  }
-
-  double usharp_sigma() const
-  {
-    return usharp_sigma_;
-  }
-  void set_usharp_sigma(double v)
-  {
-    usharp_sigma_ = v;
-  }
-
-  double usharp_alpha() const
-  {
-    return usharp_alpha_;
-  }
-
-  void set_usharp_alpha(double v)
-  {
-    usharp_alpha_ = v;
-  }
-
-  double usharp_outmin() const
-  {
-    return usharp_outmin_;
-  }
-
-  void set_usharp_outmin(double v)
-  {
-    usharp_outmin_ = v;
-  }
-
-  double usharp_outmax() const
-  {
-    return usharp_outmax_;
-  }
-
-  void set_usharp_outmax(double v)
-  {
-    usharp_outmax_ = v;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  enum color_channel_type luminance_channel_ = color_channel_red;
-  enum Colorspace colorspace_ = Colorspace_Lab;
-  double usharp_sigma_ = 1, usharp_alpha_ = 0;
-  double usharp_outmin_ = -1, usharp_outmax_ = -1;
+  enum color_channel_type _luminance_channel = color_channel_red;
+  enum Colorspace _colorspace = Colorspace_Lab;
+  double _usharp_sigma = 1;
+  double _usharp_alpha = 0;
+  double _usharp_outmin = -1;
+  double _usharp_outmax = -1;
 };
 
 #endif /* __c_set_luminance_channel_routine_h__ */

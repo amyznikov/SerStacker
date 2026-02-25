@@ -9,10 +9,10 @@
 #include <core/proc/stereo/scale_sweep.h>
 #include <core/debug.h>
 
-void c_radial_scale_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_radial_scale_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, reference_point, "Reference point location X,Y [px]");
-  BIND_PCTRL(ctls, disparity, "disparity for image scale calculation");
+  ctlbind(ctls, "reference_point", ctx, &this_class::reference_point, &this_class::set_reference_point, "");
+  ctlbind(ctls, "disparity", ctx, &this_class::disparity, &this_class::set_disparity, "");
 }
 
 bool c_radial_scale_routine::serialize(c_config_setting settings, bool save)
@@ -23,7 +23,6 @@ bool c_radial_scale_routine::serialize(c_config_setting settings, bool save)
     return true;
   }
   return false;
-
 }
 
 bool c_radial_scale_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -36,7 +35,7 @@ bool c_radial_scale_routine::process(cv::InputOutputArray image, cv::InputOutput
             image.size();
 
     if( rmap_.size() != image_size ) {
-      create_scale_compression_remap(disparity_, image_size, reference_point_, rmap_);
+      create_scale_compression_remap(_disparity, image_size, _reference_point, rmap_);
     }
 
     if( image.needed() && !image.empty() ) {
@@ -54,7 +53,6 @@ bool c_radial_scale_routine::process(cv::InputOutputArray image, cv::InputOutput
 
       cv::compare(mask, 255, mask, cv::CMP_GE);
     }
-
   }
 
   return true;

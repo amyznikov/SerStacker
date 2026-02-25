@@ -7,7 +7,7 @@
 
 #include "c_ridgeness_routine.h"
 
-void c_ridgeness_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_ridgeness_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
 }
 
@@ -22,9 +22,7 @@ bool c_ridgeness_routine::serialize(c_config_setting settings, bool save)
 
 bool c_ridgeness_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
-
   ridgeness(image.getMat(), image );
-
   return true;
 }
 

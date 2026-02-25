@@ -7,6 +7,7 @@
 
 #include "c_image_stacking_pipeline.h"
 #include <core/settings/opencv_settings.h>
+#include <core/settings/camera_settings.h>
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/estimate_noise.h>
@@ -29,14 +30,26 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template<>
+const c_enum_member * members_of<master_frame_selection_method>()
+{
+  static const c_enum_member members[] = {
+      {master_frame_specific_index, "specific_index", },
+      {master_frame_middle_index, "middle_index", },
+      {master_frame_best_of_100_in_middle, "best_of_100_in_middle", },
+      {master_frame_specific_index },
+  };
+
+  return members;
+}
 
 template<>
 const c_enum_member * members_of<roi_selection_method>()
 {
   static const c_enum_member members[] = {
       { roi_selection_none, "none", },
-      { roi_selection_planetary_disk, "planetary_disk", },
       { roi_selection_rectange_crop, "rectangle", },
+      { roi_selection_planetary_disk, "planetary_disk", },
       { roi_selection_none, },
   };
   return members;
@@ -259,6 +272,7 @@ c_image_stacking_pipeline::c_image_stacking_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
+  _master_options.master_selection.input_sequence = input_sequence.get();
   if( input_sequence && input_sequence->sources().size() > 0 ) {
     set_master_source(input_sequence->source(0)->filename());
     set_master_frame_index(0);
@@ -313,13 +327,14 @@ const c_roi_selection_options & c_image_stacking_pipeline::roi_selection_options
 c_roi_selection::ptr c_image_stacking_pipeline::create_roi_selection() const
 {
   switch ( _roi_selection_options.method ) {
+    case roi_selection_rectange_crop :
+      return c_roi_rectangle_selection::create(_roi_selection_options.rectangle_roi_selection);
+
   case roi_selection_planetary_disk :
     return c_planetary_disk_selection::create(_roi_selection_options.planetary_disk_crop_size,
         _roi_selection_options.planetary_disk_gbsigma,
         _roi_selection_options.planetary_disk_stdev_factor,
         _roi_selection_options.se_close_size);
-  case roi_selection_rectange_crop :
-    return c_roi_rectangle_selection::create(_roi_selection_options.rectangle_roi_selection);
 
   default :
     break;
@@ -456,6 +471,8 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _frame_accumulation.reset();
     _flow_accumulation.reset();
     _generating_master_frame = false;
+    _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
+    _stacking_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
   }
 
   _anscombe.set_method(input_options().anscombe);
@@ -975,7 +992,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( _stacking_options.registration.enabled || _master_options.generate_master_frame ) {
+  if( _stacking_options.enable_registration || _master_options.generate_master_frame ) {
 
     // SETUP FRAME REGISTRATION
 
@@ -987,7 +1004,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    if ( !_stacking_options.registration.enabled ) {
+    if ( !_stacking_options.enable_registration ) {
       _frame_registration.reset();
     }
     else {
@@ -1272,7 +1289,7 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
     _frame_registration->set_debug_path("");
   }
 
-  if ( _output_options.debug_frame_registration && _frame_registration->options().eccflow.enabled  ) {
+  if ( _output_options.debug_frame_registration && _frame_registration->options().enable_eccflow_registration  ) {
 
     const c_eccflow &eccflow =
         _frame_registration->eccflow();
@@ -1291,7 +1308,7 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
 
   if( registration_options.accumulate_and_compensate_turbulent_flow ) {
     if( registration_options.motion_type > IMAGE_MOTION_EUCLIDEAN ||
-        registration_options.eccflow.enabled ) {
+        registration_options.enable_eccflow_registration ) {
       _flow_accumulation.reset(new c_frame_weigthed_average());
     }
   }
@@ -2933,6 +2950,8 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   c_config_setting section, subsection, subsubsection;
 
+  SERIALIZE_OPTION(settings, save, *this, _camera_intrinsics);
+
   if( (section = get_group(settings, save, "input_options")) ) {
     serialize_base_input_options(section, save, _input_options);
     SERIALIZE_OPTION(section, save, _input_options, anscombe);
@@ -2959,6 +2978,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, apply_input_image_processor);
     SERIALIZE_OPTION(section, save, opts, generate_master_frame);
+    //SERIALIZE_OPTION(section, save, opts, enable_registration);
     SERIALIZE_OPTION(section, save, opts, stop_after_master_frame_generation);
     SERIALIZE_OPTION(section, save, opts, save_master_frame);
     SERIALIZE_OPTION(section, save, opts, max_frames_to_generate_master_frame);
@@ -2974,13 +2994,16 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     if( (subsection = get_group(section, save, "registration")) ) {
 
-      SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
+      //SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
       SERIALIZE_OPTION(subsection, save, opts.registration, motion_type);
-      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
       SERIALIZE_OPTION(subsection, save, opts.registration, ecc_registration_channel);
       SERIALIZE_OPTION(subsection, save, opts.registration, interpolation);
       SERIALIZE_OPTION(subsection, save, opts.registration, border_mode);
       SERIALIZE_OPTION(subsection, save, opts.registration, border_value);
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_feature_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_ecc_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_eccflow_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
 
 
       if( (subsubsection = get_group(subsection, save, "feature_registration")) ) {
@@ -2988,7 +3011,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         c_feature_registration_options & feature_registration =
             opts.registration.feature_registration;
 
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
         SERIALIZE_OPTION(subsubsection, save, feature_registration, image_scale);
         SERIALIZE_OPTION(subsubsection, save, feature_registration, triangle_eps);
         SERIALIZE_OPTION(subsection, save, feature_registration, registration_channel);
@@ -3011,7 +3034,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         c_ecc_registration_options & ecc =
             opts.registration.ecc;
 
-        SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
         SERIALIZE_OPTION(subsubsection, save, ecc, scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, eps);
         SERIALIZE_OPTION(subsubsection, save, ecc, min_rho);
@@ -3035,7 +3058,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         c_eccflow_registration_options & eccflow =
             opts.registration.eccflow;
 
-        SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
         SERIALIZE_OPTION(subsubsection, save, eccflow, update_multiplier);
         SERIALIZE_OPTION(subsubsection, save, eccflow, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
@@ -3057,25 +3080,28 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, unsharp_sigma);
     SERIALIZE_OPTION(section, save, opts, unsharp_alpha);
+    SERIALIZE_OPTION(section, save, opts, enable_registration);
 
     // c_image_registration_options registration;
     if( (subsection = get_group(section, save, "registration")) ) {
 
-      SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
+      //SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
       SERIALIZE_OPTION(subsection, save, opts.registration, motion_type);
-      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
       SERIALIZE_OPTION(subsection, save, opts.registration, ecc_registration_channel);
       SERIALIZE_OPTION(subsection, save, opts.registration, interpolation);
       SERIALIZE_OPTION(subsection, save, opts.registration, border_mode);
       SERIALIZE_OPTION(subsection, save, opts.registration, border_value);
-
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_feature_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_ecc_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, enable_eccflow_registration);
+      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
 
       if( (subsubsection = get_group(subsection, save, "feature_registration")) ) {
 
         c_feature_registration_options & feature_registration =
             opts.registration.feature_registration;
 
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
         SERIALIZE_OPTION(subsubsection, save, feature_registration, image_scale);
         SERIALIZE_OPTION(subsubsection, save, feature_registration, triangle_eps);
         SERIALIZE_OPTION(subsection, save, feature_registration, registration_channel);
@@ -3098,7 +3124,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         c_ecc_registration_options & ecc =
             opts.registration.ecc;
 
-        SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
         SERIALIZE_OPTION(subsubsection, save, ecc, scale);
         SERIALIZE_OPTION(subsubsection, save, ecc, eps);
         SERIALIZE_OPTION(subsubsection, save, ecc, min_rho);
@@ -3123,7 +3149,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
         c_eccflow_registration_options & eccflow =
             opts.registration.eccflow;
 
-        SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
+        //SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
         SERIALIZE_OPTION(subsubsection, save, eccflow, update_multiplier);
         SERIALIZE_OPTION(subsubsection, save, eccflow, input_smooth_sigma);
         SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
@@ -3349,285 +3375,256 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_image_stacking_pipeline::get_controls()
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+  using S = c_image_stacking_input_options;
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+  ctlbind(ctls, "anscombe", ctx(&S::anscombe), "");
+}
 
-  if( ctrls.empty() ) {
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_roi_selection_options> & ctx)
+{
+  using S = c_roi_selection_options;
+  ctlbind(ctls, "ROI selection:", ctx(&S::method), "");
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-      PIPELINE_CTL(ctrls, _input_options.anscombe, "anscombe", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "rectange crop...");
+    ctlbind(ctls, "Rectangle:", ctx(&S::rectangle_roi_selection), "");// , (_this->_roi_selection_options.method == roi_selection_rectange_crop));
+  ctlbind_end_group(ctls);
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "ROI options", "");
-    PIPELINE_CTL(ctrls, _roi_selection_options.method, "ROI selection:", "");
-    PIPELINE_CTLC(ctrls, _roi_selection_options.planetary_disk_crop_size, "Crop Size", "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    PIPELINE_CTLC(ctrls, _roi_selection_options.planetary_disk_gbsigma, "gbsigma", "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    PIPELINE_CTLC(ctrls, _roi_selection_options.planetary_disk_stdev_factor, "Stdev factor", "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    PIPELINE_CTLC(ctrls, _roi_selection_options.se_close_size, "Stdev factor", "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    PIPELINE_CTLC(ctrls, _roi_selection_options.rectangle_roi_selection, "Rectangle:", "", (_this->_roi_selection_options.method == roi_selection_rectange_crop));
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "planetary disk crop...");
+    ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), ""); // , "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+    ctlbind(ctls, "gbsigma", ctx(&S::planetary_disk_gbsigma), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+    ctlbind(ctls, "Stdev factor", ctx(&S::planetary_disk_stdev_factor), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+    ctlbind(ctls, "se_close_size", ctx(&S::se_close_size), ""); //  (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+  ctlbind_end_group(ctls);
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Upscale options", "");
-    PIPELINE_CTL(ctrls, _upscale_options.upscale_option, "Upscale:", "");
-    PIPELINE_CTLC(ctrls, _upscale_options.upscale_stage, "Stage:", "", (_this->_upscale_options.upscale_option != frame_upscale_none));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Frame Registration", "");
-
-      PIPELINE_CTL_GROUP(ctrls, "Master Frame", "");
-
-        PIPELINE_CTL_MASTER_FRAME_SELECTION(ctrls, _master_options.master_selection, true);
-        PIPELINE_CTL(ctrls, _master_options.apply_input_image_processor, "apply_input_image_processor", "");
-        PIPELINE_CTL(ctrls, _master_options.master_channel, "master_channel", "");
-        PIPELINE_CTL(ctrls, _master_options.unsharp_sigma, "unsharp_sigma", "Set positive value to apply unsharp mask to master frame");
-        PIPELINE_CTL(ctrls, _master_options.unsharp_alpha, "unsharp_alpha", "Set positive value to apply unsharp mask to master frame");
-
-        PIPELINE_CTL(ctrls, _master_options.generate_master_frame, "Generate Master Frame:", "");
-        PIPELINE_CTLC(ctrls, _master_options.save_master_frame, "Save Generated Master Frame:", "",
-            _this->_master_options.generate_master_frame);
-        PIPELINE_CTLC(ctrls, _master_options.stop_after_master_frame_generation, "Stop after master generation:", "Finish pipeline after master frame generation",
-            _this->_master_options.generate_master_frame);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_upscale_options> & ctx)
+{
+  using S = c_frame_upscale_options;
+  ctlbind(ctls, "Upscale:", ctx(&S::upscale_option), "");
+  ctlbind(ctls, "Stage:", ctx(&S::upscale_stage), ""); // (_this->_upscale_options.upscale_option != frame_upscale_none));
+}
 
 
-        PIPELINE_CTL_GROUPC(ctrls, "Master Frame Generation", "", _this->_master_options.generate_master_frame);
+template<class RootObjectType>
+static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_image_stacking_master_options> & ctx)
+{
+  using S = c_image_stacking_master_options;
+
+  ctlbind(ctls, ctx(&S::master_selection));
+  ctlbind(ctls, "apply_input_image_processor", ctx(&S::apply_input_image_processor), "");
+  ctlbind(ctls, "master_channel", ctx(&S::master_channel), "");
+  ctlbind(ctls, "unsharp_sigma", ctx(&S::unsharp_sigma), "Set positive value to apply unsharp mask to master frame");
+  ctlbind(ctls, "unsharp_alpha", ctx(&S::unsharp_alpha), "Set positive value to apply unsharp mask to master frame");
+
+  ctlbind(ctls, "Generate Master Frame:", ctx(&S::generate_master_frame), "");
+  ctlbind_expandable_group(ctls, "Master Frame Generation", ctx(&S::generate_master_frame), ""); //  _this->_master_options.generate_master_frame);
+    ctlbind(ctls, "Save Generated Master Frame:", ctx(&S::save_master_frame), ""); //  _this->_master_options.generate_master_frame);
+    ctlbind(ctls, "Stop after master generation:", ctx(&S::stop_after_master_frame_generation), "Finish pipeline after master frame generation" ); //   _this->_master_options.generate_master_frame);
+     ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
+     ctlbind(ctls, ctx(&S::registration));
+  ctlbind_end_group(ctls);
+}
+
+template<class RootObjectType>
+static inline void ctlbind_master_accumulation_options(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_image_stacking_master_options> & ctx)
+{
+  using S = c_image_stacking_master_options;
+  ctlbind(ctls, ctx(&S::accumulation));
+}
+
+template<class RootObjectType>
+static inline void ctlbind_stack_registration_options(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_options> & ctx)
+{
+  using S = c_image_stacking_options;
+
+  ctlbind(ctls, "Enable stack registration", ctx(&S::enable_registration), "");
+  ctlbind_group(ctls, ctx(&S::enable_registration));
+    ctlbind(ctls, ctx(&S::registration));
+  ctlbind_end_group(ctls);
+}
+
+template<class RootObjectType>
+static inline void ctlbind_stack_accumulation_options(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_image_stacking_options> & ctx)
+{
+  using S = c_image_stacking_options;
+  ctlbind(ctls, ctx(&S::accumulation));
+}
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_laplacian_pyramid_focus_stacking::options> & ctx)
+{
+  using S = c_laplacian_pyramid_focus_stacking::options;
+
+  ctlbind(ctls, "fusing_policy", ctx(&S::fusing_policy), "");// (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
+  ctlbind(ctls, "inpaint_mask_holes", ctx(&S::inpaint_mask_holes), "");// (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
+  ctlbind(ctls, "kradius", ctx(&S::kradius), "");// (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
+  ctlbind(ctls, "ksigma", ctx(&S::ksigma), "");// (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
+  ctlbind(ctls, "avgchannel", ctx(&S::avgchannel), "");// (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
+}
 
 
-          PIPELINE_CTL(ctrls, _master_options.registration.motion_type, "Motion Type:", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.interpolation, "Interpolation:", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.border_mode, "Border Mode:", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.border_value, "Border Value:", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.ecc_registration_channel, "ECC Registration Channel:", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.accumulate_and_compensate_turbulent_flow, "Compute and Compensate Turbulent Flow:", "");
-          PIPELINE_CTL(ctrls, _master_options.max_frames_to_generate_master_frame, "Max Input frames:", "Max input frames used to generate master frame");
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_accumulation_options> & ctx)
+{
+  using S = c_frame_accumulation_options;
 
-          PIPELINE_CTL_GROUPC(ctrls, "Camera Matrix", "", (_this->_master_options.registration.motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION));
-            PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
 
-          PIPELINE_CTL_GROUP(ctrls, "Feature Registration Options", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.feature_registration.enabled, "Enable Feature Registration", "");
-            PIPELINE_CTL_FEATURE_REGISTRATION_OPTIONS(ctrls, _master_options.registration.feature_registration, _this->_master_options.registration.feature_registration.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "weighted_average", "");
+    ctlbind(ctls,"max_weights_ratio", ctx(&S::max_weights_ratio), ""); // (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
+    ctlbind(ctls, ctx(&S::lpg));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL_GROUP(ctrls, "ECC Registration Options", "");
-          PIPELINE_CTL(ctrls, _master_options.registration.ecc.enabled, "Enable ECC Registration", "");
-            PIPELINE_CTL_ECC_REGISTRATION_OPTIONS(ctrls, _master_options.registration.ecc, _this->_master_options.registration.ecc.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "focus_stack", "");
+    ctlbind(ctls, ctx(&S::fs));
+  ctlbind_end_group(ctls);
+}
 
-          PIPELINE_CTL_GROUP(ctrls, "ECC Flow Registration Options", "");
-            PIPELINE_CTL(ctrls, _master_options.registration.eccflow.enabled, "Enable ECC Flow Registration", "");
-            PIPELINE_CTL_ECCFLOW_REGISTRATION_OPTIONS(ctrls, _master_options.registration.eccflow, _this->_master_options.registration.eccflow.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_options> & ctx)
+{
+  using S = c_image_processing_options;
 
-        PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "ecc_image_processor", ctx(&S::ecc_image_processor), "");
+  ctlbind(ctls, "aligned_image_processor", ctx(&S::aligned_image_processor), "");
+  ctlbind(ctls, "incremental_frame_processor", ctx(&S::incremental_frame_processor), "");
+  ctlbind(ctls, "accumulated_image_processor", ctx(&S::accumulated_image_processor), "");
+}
 
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_eccflow_output_frame_writer_options> & ctx)
+{
+  using S = c_eccflow_output_frame_writer_options;
+  ctlbind(ctls, as_base<c_output_frame_writer_options>(ctx));
+  ctlbind(ctls, "hsv_max_motion", ctx(&S::hsv_max_motion),  ""); // , (_this->_output_options.save_eccflow_frames));
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Stack Registration", "");
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_output_options> & ctx)
+{
+  using S = c_image_stacking_output_options;
 
-        PIPELINE_CTL(ctrls, _stacking_options.registration.enabled, "Enable Stack Registration:", "");
+  ctlbind(ctls, "display_type", ctx(&S::default_display_type), "display_type");
+  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "output_directory");
+  ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
+  //
+  ctlbind(ctls, "write_image_mask_as_alpha_channel", ctx(&S::write_image_mask_as_alpha_channel), "");
+  ctlbind(ctls, "dump_reference_data_for_debug", ctx(&S::dump_reference_data_for_debug), "");
+  ctlbind(ctls, "debug_frame_registration", ctx(&S::debug_frame_registration), "");
+  ctlbind(ctls, "debug_frame_registration_frame_indexes", ctx(&S::debug_frame_registration_frame_indexes), ""); // , "", (_this->_output_options.debug_frame_registration));
 
-        PIPELINE_CTL_GROUPC(ctrls, "Stack Registration Options", "",  _this->_stacking_options.registration.enabled);
+  ctlbind_expandable_group(ctls, "Save Preprocessed Frames", "");
+    ctlbind(ctls, "save_preprocessed_frames", ctx(&S::save_preprocessed_frames), "");
+    ctlbind(ctls, ctx(&S::output_preprocessed_video_options));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL(ctrls, _stacking_options.registration.motion_type, "Motion Type:", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.interpolation, "Interpolation:", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.border_mode, "Border Mode:", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.border_value, "Border Value:", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.ecc_registration_channel, "ECC Registration Channel:", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.accumulate_and_compensate_turbulent_flow, "Compute And Compensate Turbulent Flow:", "");
+  ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
+    ctlbind(ctls, "save_aligned_frames", ctx(&S::save_aligned_frames), "");
+    ctlbind(ctls, ctx(&S::output_aligned_video_options));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL_GROUPC(ctrls, "Camera Matrix", "", (_this->_stacking_options.registration.motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION));
-            PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _stacking_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save ECC Frames", "");
+  ctlbind(ctls,  "", ctx(&S::save_ecc_frames), "save_ecc_frames");
+  ctlbind(ctls, ctx(&S::output_ecc_video_options));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL_GROUP(ctrls, "Feature Registration Options", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.feature_registration.enabled, "Enable Feature Registration", "");
-            PIPELINE_CTL_FEATURE_REGISTRATION_OPTIONS(ctrls, _stacking_options.registration.feature_registration, _this->_stacking_options.registration.feature_registration.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save ACC Masks", "");
+  ctlbind(ctls,  "save_accumulation_masks", ctx(&S::save_accumulation_masks), "");
+  ctlbind(ctls, ctx(&S::output_acc_masks_video_options));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL_GROUP(ctrls, "ECC Registration Options", "");
-          PIPELINE_CTL(ctrls, _stacking_options.registration.ecc.enabled, "Enable ECC Registration", "");
-            PIPELINE_CTL_ECC_REGISTRATION_OPTIONS(ctrls, _stacking_options.registration.ecc, _this->_stacking_options.registration.ecc.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Incremental Frames", "");
+  ctlbind(ctls,  "save_incremental_frames", ctx(&S::save_incremental_frames), "");
+  ctlbind(ctls, ctx(&S::output_incremental_video_options));
+  ctlbind_end_group(ctls);
 
-          PIPELINE_CTL_GROUP(ctrls, "Planetary Disk Derotation", "");
-            PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.derotation_type, "Planetary Disk Derotation Type", "");
+  ctlbind_expandable_group(ctls, "Save eccflow maps", "");
+    ctlbind(ctls, "save_eccflow_maps", ctx(&S::save_eccflow_frames), "");
+    ctlbind(ctls, ctx(&S::output_eccflow_options));
+  ctlbind_end_group(ctls);
 
-            PIPELINE_CTL_GROUPC(ctrls, "Jovian Derotation Options", "", (_this->_stacking_options.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian));
-            //PIPELINE_CTL_JOVIAN_DEROTATION_OPTIONS(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation, (_this->_stacking_options.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_jovian));
-//              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.min_rotation, "min_rotation", "");
-//              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.max_rotation, "max_rotation", "");
-//              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.max_pyramid_level, "max_pyramid_level", "");
-//              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.num_orientations, "", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.derotate_all_frames, "derotate_all_frames", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.max_context_size, "max_context_size", "");
+  ctlbind_expandable_group(ctls, "Save sparse matches video", "");
+    ctlbind(ctls,   "save_sparse_matches_video", ctx(&S::save_sparse_matches_video), "");
+    ctlbind(ctls, ctx(&S::output_sparse_matches_video_options));
+  ctlbind_end_group(ctls);
 
-              //PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.gbsigma, "gbsigma", "");
-              //PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.stdev_factor, "stdev_factor", "");
-              //PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.pca_blur, "pca_blur", "");
-              //PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.se_close_radius, "se_close_radius", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.equatorial_radius, "equatorial_radius", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.center, "center", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.offset, "offset", "");
-              PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.pose, "pose", "");
-              //PIPELINE_CTL(ctrls, _stacking_options.registration.planetary_disk_derotation.jovian_derotation.detector_options.auto_location, "", "");
+  ctlbind_expandable_group(ctls, "Save sparse match blends", "");
+    ctlbind(ctls,   "save sparse match blends", ctx(&S::save_sparse_match_blend_frames), "");
+    ctlbind(ctls, ctx(&S::output_sparse_match_blend_options));
+  ctlbind_end_group(ctls);
 
-            PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Save Acc Weights", "");
+    ctlbind(ctls,  "save acc weights", ctx(&S::save_acc_weights), "");
+  ctlbind_end_group(ctls);
+}
 
-            PIPELINE_CTL_GROUP(ctrls, "Saturn Derotation Options", "");
-            PIPELINE_CTL_SATURN_DEROTATION_OPTIONS(ctrls, _stacking_options.registration.planetary_disk_derotation.saturn_derotation, (_this->_stacking_options.registration.planetary_disk_derotation.derotation_type == planetary_disk_derotation_saturn));
-            PIPELINE_CTL_END_GROUP(ctrls);
-          PIPELINE_CTL_END_GROUP(ctrls); // Planetary Disk Derotation
-
-          PIPELINE_CTL_GROUP(ctrls, "ECC Flow Registration Options", "");
-            PIPELINE_CTL(ctrls, _stacking_options.registration.eccflow.enabled, "Enable ECC Flow Registration", "");
-            PIPELINE_CTL_ECCFLOW_REGISTRATION_OPTIONS(ctrls, _stacking_options.registration.eccflow, _this->_stacking_options.registration.eccflow.enabled);
-          PIPELINE_CTL_END_GROUP(ctrls); // ECC Flow Registration Options
-
-        PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Frame accumulation", "");
-
-    if ( true ) {
-      PIPELINE_CTL_GROUPC(ctrls, "Master Frame accumulation", "", _this->_master_options.generate_master_frame);
-
-      PIPELINE_CTL(ctrls, _master_options.accumulation.accumulation_method, "Acc. Method", "");
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.max_weights_ratio, "max_weights_ratio", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-
-      PIPELINE_CTL_GROUP(ctrls, "weighted_average", "");
-        PIPELINE_CTLC(ctrls, _master_options.accumulation.lpg.k, "K", "Sharpness map: (k * laplacian + gradient) / (k + 1)",
-            (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _master_options.accumulation.lpg.p, "p", "Sharpness estimator: sharpness map power",
-            (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _master_options.accumulation.lpg.dscale, "dscale", "Sharpness estimator: sharpness map downscale pyramid level",
-            (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _master_options.accumulation.lpg.uscale, "uscale", "Sharpness estimator: sharpness map upscale pyramid level",
-            (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _master_options.accumulation.lpg.avgchannel, "avgchannel", "Sharpness estimator: use grayscale sharpness map",
-            (_this->_master_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_GROUP(ctrls, "focus_stack", "");
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.fs.fusing_policy, "fusing_policy", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.fs.inpaint_mask_holes, "inpaint_mask_holes", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.fs.kradius, "kradius", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.fs.ksigma, "ksigma", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _master_options.accumulation.fs.avgchannel, "avgchannel", "", (_this->_master_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    }
-
-    if ( true ) {
-      PIPELINE_CTL_GROUP(ctrls, "Stack Frame accumulation", "");
-
-      PIPELINE_CTL(ctrls, _stacking_options.accumulation.accumulation_method, "Acc. Method", "");
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.max_weights_ratio, "max_weights_ratio", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-      PIPELINE_CTL_GROUP(ctrls, "weighted_average", "");
-        PIPELINE_CTLC(ctrls, _stacking_options.accumulation.lpg.k, "K", "Sharpness map: (k * laplacian + gradient) / (k + 1)",
-            (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _stacking_options.accumulation.lpg.p, "p", "Sharpness estimator: sharpness map power",
-            (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _stacking_options.accumulation.lpg.dscale, "dscale", "Sharpness estimator: sharpness map downscale pyramid level",
-            (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _stacking_options.accumulation.lpg.uscale, "uscale", "Sharpness estimator: sharpness map upscale pyramid level",
-            (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-        PIPELINE_CTLC(ctrls, _stacking_options.accumulation.lpg.avgchannel, "avgchannel", "Sharpness estimator: use grayscale sharpness map",
-            (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_GROUP(ctrls, "focus_stack", "");
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.fs.fusing_policy, "fusing_policy", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.fs.inpaint_mask_holes, "inpaint_mask_holes", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.fs.kradius, "kradius", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.fs.ksigma, "ksigma", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTLC(ctrls, _stacking_options.accumulation.fs.avgchannel, "avgchannel", "", (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_focus_stack));
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    }
-
-    PIPELINE_CTL_END_GROUP(ctrls);
+const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-      // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_image_processor, "input_image_processor", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _image_processing_options.ecc_image_processor, "ecc_image_processor", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _image_processing_options.aligned_image_processor, "aligned_image_processor", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _image_processing_options.incremental_frame_processor, "incremental_frame_processor", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _image_processing_options.accumulated_image_processor, "accumulated_image_processor", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+    ctlbind_expandable_group(ctls, "1. Input options", "");
+      ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
 
     ////////
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-    PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
-    PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
-    PIPELINE_CTL(ctrls, _output_options.output_file_name, "output_file_name", "");
+    ctlbind_expandable_group(ctls, "2. ROI options", "");
+      ctlbind(ctls, ctx(&this_class::_roi_selection_options));
+    ctlbind_end_group(ctls);
 
-    PIPELINE_CTL(ctrls, _output_options.write_image_mask_as_alpha_channel, "write_image_mask_as_alpha_channel", "");
-    PIPELINE_CTL(ctrls, _output_options.dump_reference_data_for_debug, "dump_reference_data_for_debug", "");
-    PIPELINE_CTL(ctrls, _output_options.debug_frame_registration, "debug_frame_registration", "");
-    PIPELINE_CTLC(ctrls, _output_options.debug_frame_registration_frame_indexes, "debug_frame_registration_frame_indexes", "", (_this->_output_options.debug_frame_registration));
-
-    PIPELINE_CTL_GROUP(ctrls, "Save Preprocessed Frames", "");
-    PIPELINE_CTL(ctrls, _output_options.save_preprocessed_frames, "save_preprocessed_frames", "");
-    PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_preprocessed_video_options, (_this->_output_options.save_preprocessed_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save Aligned Frames", "");
-    PIPELINE_CTL(ctrls, _output_options.save_aligned_frames, "save_aligned_frames", "");
-    PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_aligned_video_options, (_this->_output_options.save_aligned_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save ECC Frames", "");
-      PIPELINE_CTL(ctrls, _output_options.save_ecc_frames, "save_ecc_frames", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_ecc_video_options, (_this->_output_options.save_ecc_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save ACC Masks", "");
-      PIPELINE_CTL(ctrls, _output_options.save_accumulation_masks, "save_accumulation_masks", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_acc_masks_video_options, (_this->_output_options.save_accumulation_masks));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save Incremental Frames", "");
-      PIPELINE_CTL(ctrls, _output_options.save_incremental_frames, "save_incremental_frames", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_incremental_video_options, (_this->_output_options.save_incremental_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save eccflow maps", "");
-      PIPELINE_CTL(ctrls, _output_options.save_eccflow_frames, "save_eccflow_maps", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_eccflow_options, (_this->_output_options.save_eccflow_frames));
-      PIPELINE_CTLC(ctrls,  _output_options.output_eccflow_options.hsv_max_motion, "hsv_max_motion", "", (_this->_output_options.save_eccflow_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save sparse matches video", "");
-      PIPELINE_CTL(ctrls, _output_options.save_sparse_matches_video, "save_sparse_matches_video", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_sparse_matches_video_options, (_this->_output_options.save_sparse_matches_video));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-
-    PIPELINE_CTL_GROUP(ctrls, "Save sparse match blends", "");
-      PIPELINE_CTL(ctrls, _output_options.save_sparse_match_blend_frames, "save sparse match blends", "");
-      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_sparse_match_blend_options, (_this->_output_options.save_sparse_match_blend_frames));
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Save Acc Weights", "");
-      PIPELINE_CTL(ctrls, _output_options.save_acc_weights, "save acc weights", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-
-    PIPELINE_CTL_END_GROUP(ctrls);
     ////////
+    ctlbind_expandable_group(ctls, "3. Upscale options", "");
+      ctlbind(ctls, ctx(&this_class::_upscale_options));
+    ctlbind_end_group(ctls);
+
+    ////////
+    ctlbind_expandable_group(ctls, "4. Frame Registration", "");
+      ctlbind_expandable_group(ctls, "Master Frame", "");
+        ctlbind_master_frame_generation_options(ctls,  ctx(&this_class::_master_options));
+      ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "Stack Registration", ""); // ctlbind(ctls, "Enable Stack Registration", gctx(&S::registration.enabled), "");
+        ctlbind_stack_registration_options(ctls, ctx(&this_class::_stacking_options));
+      ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "Camera Matrix", "For Epipolar geometry only");
+        ctlbind(ctls, "",  ctx(&this_class::_camera_intrinsics), "Applied for Epipolar geometry only");
+      ctlbind_end_group(ctls);
+    ctlbind_end_group(ctls);
+
+
+    ////////
+    ctlbind_expandable_group(ctls, "5. Frame accumulation", "");
+      ctlbind_expandable_group(ctls, "Master Frame accumulation", ctx(&this_class::_master_options)(&c_image_stacking_master_options::generate_master_frame)); // _this->_master_options.generate_master_frame);
+        ctlbind_master_accumulation_options(ctls, ctx(&this_class::_master_options));
+      ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "Stack Frame accumulation", "");
+        ctlbind_stack_accumulation_options(ctls, ctx(&this_class::_stacking_options));
+      ctlbind_end_group(ctls);
+    ctlbind_end_group(ctls);
+
+
+    ////////
+    ctlbind_expandable_group(ctls, "6. Image processing", "");
+      ctlbind(ctls, ctx(&this_class::_image_processing_options));
+    ctlbind_end_group(ctls);
+
+    ////////
+    ctlbind_expandable_group(ctls, "7. Output options", "");
+      ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
 
 bool c_image_stacking_pipeline::has_master_frame() const
@@ -3686,6 +3683,7 @@ bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
   p->_stacking_options = this->_stacking_options ;
   p->_output_options = this->_output_options;
   p->_image_processing_options = this->_image_processing_options;
+  p->_camera_intrinsics = this->_camera_intrinsics;
 
   p->_master_options.master_selection.master_fiename =
       backup_master_source_fiename;
@@ -4002,7 +4000,7 @@ bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & cu
 
 bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
 {
-  if ( !_output_options.save_sparse_matches_video || !_frame_registration->options().feature_registration.enabled ) {
+  if ( !_output_options.save_sparse_matches_video || !_frame_registration->options().enable_feature_registration ) {
     return true;
   }
 

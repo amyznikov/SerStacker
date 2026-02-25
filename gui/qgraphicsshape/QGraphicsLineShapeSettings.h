@@ -9,29 +9,24 @@
 #ifndef __QGraphicsLineShapeSettings_h__
 #define __QGraphicsLineShapeSettings_h__
 
-#include <gui/widgets/QSettingsWidget.h>
-#include <gui/widgets/QColorPickerButton.h>
 #include "QGraphicsLineShape.h"
+#include "QGraphicsShapeSettings.h"
+#include <gui/widgets/QColorPickerButton.h>
 
 class QGraphicsLineShapeSettings:
-    public QSettingsWidget
+    public QGraphicsShapeSettings<QGraphicsLineShape>
 {
 public:
   typedef QGraphicsLineShapeSettings ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QGraphicsShapeSettings<QGraphicsLineShape> Base;
 
   QGraphicsLineShapeSettings(QWidget * parent = nullptr);
-  QGraphicsLineShapeSettings(const QString & prefix, QWidget * parent = nullptr);
-
-  void setShape(QGraphicsLineShape * shape);
-  QGraphicsLineShape* shape() const;
 
 protected:
-  void onupdatecontrols() override;
-  void onload(QSettings & settings) override;
+  void onload(const QSettings & settings, const QString & prefix = "") override;
+  void onsave(QSettings & settings, const QString & prefix = "") override;
 
 protected:
-  QGraphicsLineShape *shape_ = nullptr;
   QCheckBox * lockP1_ctl = nullptr;
   QCheckBox * lockP2_ctl = nullptr;
   QCheckBox * snapToPixelGrid_ctl = nullptr;
@@ -42,35 +37,28 @@ protected:
 
 
 class QGraphicsLineShapeSettingsDialogBox:
-    public QDialog
+    public QGraphicsShapeSettingsDialogBox<QGraphicsLineShapeSettings>
 {
 Q_OBJECT;
 public:
   typedef QGraphicsLineShapeSettingsDialogBox ThisClass;
-  typedef QDialog Base;
+  typedef QGraphicsShapeSettingsDialogBox<QGraphicsLineShapeSettings> Base;
 
-  QGraphicsLineShapeSettingsDialogBox(QWidget * parent = nullptr);
+  QGraphicsLineShapeSettingsDialogBox(QWidget * parent = nullptr) :
+    ThisClass("Shape Options", parent)
+  {
+  }
 
-  QGraphicsLineShapeSettingsDialogBox(const QString & title,
-      QWidget * parent = nullptr);
+  QGraphicsLineShapeSettingsDialogBox(const QString & title, QWidget * parent = nullptr) :
+    ThisClass("Shape Options", nullptr, parent)
+  {
+  }
 
-  QGraphicsLineShapeSettingsDialogBox(const QString & title, QGraphicsLineShape * shape,
-      QWidget * parent = nullptr);
-
-  void setShape(QGraphicsLineShape * shape);
-  QGraphicsLineShape* shape() const;
-
-  void loadParameters();
-
-Q_SIGNALS:
-  void visibilityChanged(bool visible);
-
-protected:
-  void showEvent(QShowEvent * e) override;
-  void hideEvent(QHideEvent * e) override;
-
-protected:
-  QGraphicsLineShapeSettings *settigs_ctl = nullptr;
+  QGraphicsLineShapeSettingsDialogBox(const QString & title, QGraphicsLineShape * shape, QWidget * parent = nullptr) :
+    Base(title, parent)
+  {
+    setShape(shape);
+  }
 };
 
 #endif /* __QGraphicsLineShapeSettings_h__ */

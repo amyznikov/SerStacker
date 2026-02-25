@@ -30,34 +30,14 @@ public:
     FillAvg,
   };
 
-  void set_mode(UpjectMode v)
-  {
-    mode_ = v;
-  }
-
-  UpjectMode mode() const
-  {
-    return mode_;
-  }
-
-  void set_fill_mode(FillMode v)
-  {
-    fill_mode_ = v;
-  }
-
-  FillMode fill_mode() const
-  {
-    return fill_mode_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  UpjectMode mode_ = UpjectUneven;
-  FillMode fill_mode_ = FillAvg;
-  cv::Size dstSize_ = cv::Size (-1,-1);
+  UpjectMode _mode = UpjectUneven;
+  FillMode _fill_mode = FillAvg;
+  cv::Size _dstSize = cv::Size (-1,-1);
 };
 
 #endif /* __c_upject_routine_h__ */

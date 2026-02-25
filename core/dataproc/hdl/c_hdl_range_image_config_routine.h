@@ -21,35 +21,36 @@ public:
 
   void set_azimuthal_resolution(double v)
   {
-    azimuthal_resolution_ = v;
+    _azimuthal_resolution = v;
   }
 
   double azimuthal_resolution() const
   {
-    return azimuthal_resolution_;
+    return _azimuthal_resolution;
   }
 
   void set_start_azimuth(double v)
   {
-    start_azimuth_ = v;
+    _start_azimuth = v;
   }
 
   double start_azimuth() const
   {
-    return start_azimuth_;
+    return _start_azimuth;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_hdl_data_frame * hdl) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(c_hdl_data_frame * hdl) final;
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+    ctlbind(ctls, "azimuthal_resolution", ctx(&this_class::_azimuthal_resolution), "Range image azimuthal resolution in [deg/pix]");
+    ctlbind(ctls, "start_azimuth", ctx(&this_class::_start_azimuth), "Range image start azimuth in [deg]");
+  }
 
 protected:
-
-  double azimuthal_resolution_ =
-      c_hdl_range_image::default_azimuthal_resolution() * 180 / CV_PI; // deg
-
-  double start_azimuth_ =
-      c_hdl_range_image::default_start_azimuth() * 180 / CV_PI; // deg
+  double _azimuthal_resolution = c_hdl_range_image::default_azimuthal_resolution() * 180 / CV_PI; // deg
+  double _start_azimuth = c_hdl_range_image::default_start_azimuth() * 180 / CV_PI; // deg
 };
 
 #endif /* __c_hdl_range_image_config_routine_h__ */

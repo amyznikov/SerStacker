@@ -12,6 +12,22 @@
 #define __c_sharpness_norm_measure_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/ctrlbind/ctrlbind.h>
+
+struct c_sharpness_norm_measure_options
+{
+  double sigma = 1; // M_SQRT2;
+  cv::NormTypes norm_type = cv::NORM_L1;
+};
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_sharpness_norm_measure_options> & ctx)
+{
+  using S = c_sharpness_norm_measure_options;
+  ctlbind(ctls, "sigma", ctx(&S::sigma), "");
+  ctlbind(ctls, "norm_type", ctx(&S::norm_type), "");
+}
+
 
 class c_sharpness_norm_measure
 {
@@ -35,12 +51,16 @@ public:
   double accumulator() const;
   int counter() const;
 
-protected:
-  double sigma_ = 1; // M_SQRT2;
-  double accumulator_ = 0;
-  int counter_ = 0;
-  cv::NormTypes norm_type_ = cv::NORM_L1;
+  template<class RootObjectType>
+  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
+  {
+    ctlbind(ctls, ctx(&this_class::_opts));
+  }
 
+protected:
+  c_sharpness_norm_measure_options _opts;
+  double _accumulator = 0;
+  int _counter = 0;
 };
 
 #endif /* __c_sharpness_norm_measure_h__ */

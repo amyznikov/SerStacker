@@ -23,56 +23,15 @@ public:
     DisplayAbsdiff,
   };
 
-
-  int level() const
-  {
-    return level_;
-  }
-
-  void set_level(int v)
-  {
-    level_ = v;
-  }
-
-  double scale_factor() const
-  {
-    return scale_factor_;
-  }
-
-  void set_scale_factor(double v)
-  {
-    scale_factor_ = v;
-  }
-
-  cv::InterpolationFlags interpolation() const
-  {
-    return interpolation_;
-  }
-
-  void set_interpolation(cv::InterpolationFlags v)
-  {
-    interpolation_ = v;
-  }
-
-  DisplayType display_type() const
-  {
-    return display_type_;
-  }
-
-  void set_display_type(DisplayType v)
-  {
-    display_type_ = v;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double scale_factor_ = 0.75;
-  int level_ = 1;
-  cv::InterpolationFlags interpolation_ = cv::INTER_AREA;
-  DisplayType display_type_ = DisplayImage;
+  double _scale_factor = 0.75;
+  int _level = 1;
+  cv::InterpolationFlags _interpolation = cv::INTER_AREA;
+  DisplayType _display_type = DisplayImage;
 
 };
 

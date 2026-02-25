@@ -813,35 +813,44 @@ void QASIROIControlWidget::onupdatecontrols()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QASICameraExtraContolsWidget::QASICameraExtraContolsWidget(const QASICamera::sptr & camera, QWidget * parent) :
-    Base("QASICameraExtraSettings", parent),
-    camera_(camera)
+    Base(parent),
+    _camera(camera)
 {
 
-  if( camera_ ) {
+  if( _camera ) {
 
-    if( camera_->state() >= QImagingCamera::State_connected) {
+    if( _camera->state() >= QImagingCamera::State_connected) {
       createControls();
     }
 
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged,
         Qt::QueuedConnection);
   }
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if( _camera && _camera->state() == QImagingCamera::State_connected ) {
+          for( auto *c : _controls ) {
+            c->updateControls();
+          }
+        }
+      });
 
   updateControls();
 }
 
 QASICameraExtraContolsWidget::~QASICameraExtraContolsWidget()
 {
-  if( camera_ ) {
-    disconnect(camera_.get(), nullptr,
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
         this, nullptr);
   }
 }
 
 void QASICameraExtraContolsWidget::onCameraStateChanged()
 {
-  if ( controls_.empty() && camera_ && camera_->state() >= QImagingCamera::State_connected ) {
+  if ( _controls.empty() && _camera && _camera->state() >= QImagingCamera::State_connected ) {
     createControls();
   }
 
@@ -850,7 +859,7 @@ void QASICameraExtraContolsWidget::onCameraStateChanged()
 
 void QASICameraExtraContolsWidget::createControls()
 {
-  if ( !camera_ || camera_->state() < QImagingCamera::State_connected ) {
+  if ( !_camera || _camera->state() < QImagingCamera::State_connected ) {
     return;
   }
 
@@ -865,10 +874,10 @@ void QASICameraExtraContolsWidget::createControls()
       sizeof(ignore_controls) / sizeof(ignore_controls[0]);
 
   const ASI_CAMERA_INFO & camInfo =
-      camera_->cameraInfo();
+      _camera->cameraInfo();
 
   const int iCameraID =
-      camera_->cameraInfo().CameraID;
+      _camera->cameraInfo().CameraID;
 
   int numControls = 0;
 
@@ -918,7 +927,7 @@ void QASICameraExtraContolsWidget::createControls()
         new QASIControlWidget(iCameraID, ControlCaps, this);
 
     form->addRow(ControlCaps.Name, control);
-    controls_.append(control);
+    _controls.append(control);
 
     if ( ControlCaps.ControlType == ASI_GAMMA ) {
       gamma_ctrl_added  = true;
@@ -943,51 +952,74 @@ void QASICameraExtraContolsWidget::createControls()
         new QASIControlWidget(iCameraID, ControlCaps, this);
 
     form->addRow(ControlCaps.Name, control);
-    controls_.append(control);
+    _controls.append(control);
   }
 }
-
-void QASICameraExtraContolsWidget::onload(QSettings & settings)
-{
-}
-
-void QASICameraExtraContolsWidget::onupdatecontrols()
-{
-  if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
-    for( auto *c : controls_ ) {
-      c->updateControls();
-    }
-  }
-}
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QASICameraControls::QASICameraControls(const QASICamera::sptr & camera, QWidget * parent) :
     Base(parent),
-    camera_(camera)
+    _camera(camera)
 {
   form->setLabelAlignment(Qt::AlignLeft);
 
-  if( camera_ ) {
+  if( _camera ) {
 
-    if( camera_->state() >= QImagingCamera::State_connected ) {
+    if( _camera->state() >= QImagingCamera::State_connected ) {
       create_controls();
     }
 
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged,
         Qt::QueuedConnection);
   }
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( _camera ) {
+          switch (_camera->state()) {
+            case QImagingCamera::State_connected:
+              exposure_ctl->updateControls();
+              gain_ctl->updateControls();
+              extraSettings_ctl->updateControls();
+              break;
+            default:
+              break;
+          }
+        }
+  });
+
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        if ( !_camera ) {
+          setEnabled(false);
+        }
+        else {
+          switch (_camera->state()) {
+            case QImagingCamera::State_connected:
+              exposure_ctl->updateControls();
+              gain_ctl->updateControls();
+              extraSettings_ctl->updateControls();
+              setEnabled(true);
+              break;
+            case QImagingCamera::State_started:
+              setEnabled(true);
+              break;
+            default:
+              setEnabled(false);
+              break;
+          }
+        }
+  });
 
   updateControls();
 }
 
 QASICameraControls::~QASICameraControls()
 {
-  if( camera_ ) {
-    disconnect(camera_.get(), nullptr,
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
         this, nullptr);
   }
 }
@@ -995,22 +1027,16 @@ QASICameraControls::~QASICameraControls()
 
 void QASICameraControls::onCameraStateChanged()
 {
-  if ( !roi_ctl && camera_ && camera_->state() >= QImagingCamera::State_connected ) {
+  if ( !roi_ctl && _camera && _camera->state() >= QImagingCamera::State_connected ) {
     create_controls();
   }
 
   updateControls();
 }
 
-
-void QASICameraControls::onload(QSettings & settings)
-{
-}
-
-
 void QASICameraControls::create_controls()
 {
-  if ( !camera_ || camera_->state() < QImagingCamera::State_connected ) {
+  if ( !_camera || _camera->state() < QImagingCamera::State_connected ) {
     return;
   }
 
@@ -1019,13 +1045,13 @@ void QASICameraControls::create_controls()
   }
 
   const ASI_CAMERA_INFO & camInfo =
-      camera_->cameraInfo();
+      _camera->cameraInfo();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if( !roi_ctl ) {
     form->addRow("Format:", roi_ctl =
-        new QASIROIControlWidget(camera_,
+        new QASIROIControlWidget(_camera,
             this));
   }
 
@@ -1033,7 +1059,7 @@ void QASICameraControls::create_controls()
   if( !exposure_ctl || !gain_ctl ) {
 
     const int iCameraID =
-        camera_->cameraInfo().CameraID;
+        _camera->cameraInfo().CameraID;
 
     int numControls = 0;
 
@@ -1108,34 +1134,34 @@ void QASICameraControls::create_controls()
 
   if( !extraSettings_ctl ) {
     add_expandable_groupbox("Camera controls", extraSettings_ctl =
-        new QASICameraExtraContolsWidget(camera_, this) );
+        new QASICameraExtraContolsWidget(_camera, this) );
   }
 
 }
 
-void QASICameraControls::onupdatecontrols()
-{
-  if ( !camera_ ) {
-    setEnabled(false);
-  }
-  else {
-    switch (camera_->state()) {
-      case QImagingCamera::State_connected:
-        exposure_ctl->updateControls();
-        gain_ctl->updateControls();
-        extraSettings_ctl->updateControls();
-        setEnabled(true);
-
-        break;
-      case QImagingCamera::State_started:
-        setEnabled(true);
-        break;
-      default:
-        setEnabled(false);
-        break;
-    }
-  }
-}
+//void QASICameraControls::onupdatecontrols()
+//{
+//  if ( !camera_ ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    switch (camera_->state()) {
+//      case QImagingCamera::State_connected:
+//        exposure_ctl->updateControls();
+//        gain_ctl->updateControls();
+//        extraSettings_ctl->updateControls();
+//        setEnabled(true);
+//
+//        break;
+//      case QImagingCamera::State_started:
+//        setEnabled(true);
+//        break;
+//      default:
+//        setEnabled(false);
+//        break;
+//    }
+//  }
+//}
 
 
 } /* namespace serimager */

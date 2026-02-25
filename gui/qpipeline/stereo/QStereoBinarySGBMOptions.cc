@@ -8,7 +8,7 @@
 #include "QStereoBinarySGBMOptions.h"
 
 QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
-    Base("", parent)
+    Base(parent)
 {
   minDisparity_ctl =
       add_numeric_box<int>("minDisparity",
@@ -16,14 +16,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " Normally, it is zero but sometimes rectification algorithms can shift images,\n"
               " so this parameter needs to be adjusted accordingly.\n",
           [this](int value) {
-            if ( options_ && options_->minDisparity != value ) {
-              options_->minDisparity = value;
+            if ( _opts && _opts->minDisparity != value ) {
+              _opts->minDisparity = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->minDisparity;
+            if ( _opts ) {
+              * value = _opts->minDisparity;
               return true;
             }
             return false;
@@ -35,14 +35,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " The value is always greater than zero. \n"
               " In the current implementation, this parameter must be divisible by 16.",
           [this](int value) {
-            if ( options_ && options_->numDisparities != value ) {
-              options_->numDisparities = value;
+            if ( _opts && _opts->numDisparities != value ) {
+              _opts->numDisparities = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->numDisparities;
+            if ( _opts ) {
+              * value = _opts->numDisparities;
               return true;
             }
             return false;
@@ -54,14 +54,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               "It must be an odd number >=1.\n"
               "Normally, it should be somewhere in the 3..11 range.",
           [this](int value) {
-            if ( options_ && options_->blockSize != value ) {
-              options_->blockSize = value;
+            if ( _opts && _opts->blockSize != value ) {
+              _opts->blockSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->blockSize;
+            if ( _opts ) {
+              * value = _opts->blockSize;
               return true;
             }
             return false;
@@ -73,14 +73,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " Set it to 0 to disable speckle filtering.\n"
               " Otherwise, set it somewhere in the 50-200 range.",
           [this](int value) {
-            if ( options_ && options_->speckleWindowSize != value ) {
-              options_->speckleWindowSize = value;
+            if ( _opts && _opts->speckleWindowSize != value ) {
+              _opts->speckleWindowSize = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleWindowSize;
+            if ( _opts ) {
+              * value = _opts->speckleWindowSize;
               return true;
             }
             return false;
@@ -93,14 +93,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " it will be implicitly multiplied by 16.\n"
               " Normally, 1 or 2 is good enough.",
           [this](int value) {
-            if ( options_ && options_->speckleRange != value ) {
-              options_->speckleRange = value;
+            if ( _opts && _opts->speckleRange != value ) {
+              _opts->speckleRange = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->speckleRange;
+            if ( _opts ) {
+              * value = _opts->speckleRange;
               return true;
             }
             return false;
@@ -111,14 +111,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
           "Maximum allowed difference (in pixel units) in the left-right disparity check.\n"
               "Set it to a non-positive value to disable the check",
           [this](int value) {
-            if ( options_ && options_->disp12MaxDiff != value ) {
-              options_->disp12MaxDiff = value;
+            if ( _opts && _opts->disp12MaxDiff != value ) {
+              _opts->disp12MaxDiff = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->disp12MaxDiff;
+            if ( _opts ) {
+              * value = _opts->disp12MaxDiff;
               return true;
             }
             return false;
@@ -131,14 +131,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " clips its value by [-preFilterCap, preFilterCap] interval.\n"
               " The result values are passed to the Birchfield-Tomasi pixel cost function.",
           [this](int value) {
-            if ( options_ && options_->preFilterCap != value ) {
-              options_->preFilterCap = value;
+            if ( _opts && _opts->preFilterCap != value ) {
+              _opts->preFilterCap = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->preFilterCap;
+            if ( _opts ) {
+              * value = _opts->preFilterCap;
               return true;
             }
             return false;
@@ -150,14 +150,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               "should 'win' the second best value to consider the found match correct.\n"
               " Normally, a value within the 5-15 range is good enough.",
           [this](int value) {
-            if ( options_ && options_->uniquenessRatio != value ) {
-              options_->uniquenessRatio = value;
+            if ( _opts && _opts->uniquenessRatio != value ) {
+              _opts->uniquenessRatio = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->uniquenessRatio;
+            if ( _opts ) {
+              * value = _opts->uniquenessRatio;
               return true;
             }
             return false;
@@ -168,14 +168,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
           "The first parameter controlling the disparity smoothness.\n"
               "This parameter is used for the case of slanted surfaces (not fronto parallel)",
           [this](int value) {
-            if ( options_ && options_->P1 != value ) {
-              options_->P1 = value;
+            if ( _opts && _opts->P1 != value ) {
+              _opts->P1 = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->P1;
+            if ( _opts ) {
+              * value = _opts->P1;
               return true;
             }
             return false;
@@ -193,14 +193,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " (like 8 *number_of_image_channels * SADWindowSize * SADWindowSize and\n"
               "      32 *number_of_image_channels * SADWindowSize * SADWindowSize, respectively).",
           [this](int value) {
-            if ( options_ && options_->P2 != value ) {
-              options_->P2 = value;
+            if ( _opts && _opts->P2 != value ) {
+              _opts->P2 = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( options_ ) {
-              * value = options_->P2;
+            if ( _opts ) {
+              * value = _opts->P2;
               return true;
             }
             return false;
@@ -215,14 +215,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
               " and huge for HD-size pictures.\n"
               " By default, it is set to false .",
           [this](StereoBinarySGBMMode value) {
-            if ( options_ && options_->mode != value ) {
-              options_->mode = value;
+            if ( _opts && _opts->mode != value ) {
+              _opts->mode = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinarySGBMMode * value) {
-            if ( options_ ) {
-              * value = options_->mode;
+            if ( _opts ) {
+              * value = _opts->mode;
               return true;
             }
             return false;
@@ -233,14 +233,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinarySpeckleRemovalTechnique>("spekleRemovalTechnique",
           "spekleRemovalTechnique",
           [this](StereoBinarySpeckleRemovalTechnique value) {
-            if ( options_ && options_->spekleRemovalTechnique != value ) {
-              options_->spekleRemovalTechnique = value;
+            if ( _opts && _opts->spekleRemovalTechnique != value ) {
+              _opts->spekleRemovalTechnique = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinarySpeckleRemovalTechnique * value) {
-            if ( options_ ) {
-              * value = options_->spekleRemovalTechnique;
+            if ( _opts ) {
+              * value = _opts->spekleRemovalTechnique;
               return true;
             }
             return false;
@@ -251,14 +251,14 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinaryKernelType>("kernelType",
           "kernelType",
           [this](StereoBinaryKernelType value) {
-            if ( options_ && options_->kernelType != value ) {
-              options_->kernelType = value;
+            if ( _opts && _opts->kernelType != value ) {
+              _opts->kernelType = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinaryKernelType * value) {
-            if ( options_ ) {
-              * value = options_->kernelType;
+            if ( _opts ) {
+              * value = _opts->kernelType;
               return true;
             }
             return false;
@@ -269,40 +269,18 @@ QStereoBinarySGBMOptions::QStereoBinarySGBMOptions(QWidget * parent) :
       add_enum_combobox<StereoBinarySubpixelInterpolationMethod>("subPixelInterpolation",
           "subPixelInterpolation method",
           [this](StereoBinarySubpixelInterpolationMethod value) {
-            if ( options_ && options_->subPixelInterpolationMethod != value ) {
-              options_->subPixelInterpolationMethod = value;
+            if ( _opts && _opts->subPixelInterpolationMethod != value ) {
+              _opts->subPixelInterpolationMethod = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](StereoBinarySubpixelInterpolationMethod * value) {
-            if ( options_ ) {
-              * value = options_->subPixelInterpolationMethod;
+            if ( _opts ) {
+              * value = _opts->subPixelInterpolationMethod;
               return true;
             }
             return false;
           });
 
   updateControls();
-}
-
-void QStereoBinarySGBMOptions::set_options(c_cvStereoBinarySGBMOptions * options)
-{
-  options_ = options;
-  updateControls();
-}
-
-c_cvStereoBinarySGBMOptions* QStereoBinarySGBMOptions::options() const
-{
-  return options_;
-}
-
-void QStereoBinarySGBMOptions::onupdatecontrols()
-{
-  if( !options_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    setEnabled(true);
-  }
 }

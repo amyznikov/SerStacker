@@ -10,6 +10,7 @@
 #define __QDataFrameProcessorEditor_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QSettingsWidgetTemplate.h>
 #include <gui/widgets/UpdateControls.h>
 #include <core/dataproc/c_data_frame_processor.h>
 
@@ -60,12 +61,12 @@ protected:
 
 
 class QDataFrameRoutineOptionsControl :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_data_frame_processor_routine>
 {
   Q_OBJECT;
 public:
   typedef QDataFrameRoutineOptionsControl ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_data_frame_processor_routine> Base;
 
   static QDataFrameRoutineOptionsControl * create(const c_data_frame_processor_routine::sptr & routine,
       QWidget * parent = nullptr);
@@ -75,11 +76,9 @@ protected:
       QWidget * parent = nullptr);
 
   virtual void setupControls();
-  void onupdatecontrols() override;
 
 protected:
-  c_data_frame_processor_routine::sptr routine_;
-  std::map<QWidget*, std::function<bool()>> state_ctls_;
+  c_data_frame_processor_routine::sptr _routine;
 };
 
 

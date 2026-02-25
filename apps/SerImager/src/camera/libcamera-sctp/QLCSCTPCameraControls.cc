@@ -278,7 +278,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
   // Auto Exposure Options
   AutoExposureOptionsGroup_ctl =
       add_expandable_groupbox("Auto Exposure Options",
-          AutoExposureOptions_ctl = new QSettingsWidget("", this));
+          AutoExposureOptions_ctl = new QSettingsWidget(this));
 
   AeExposureMode_ctl =
       createComboBoxCameraControl(AutoExposureOptions_ctl, "AeExposureMode", "AeExposureMode",
@@ -326,7 +326,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
 
   ISPColorToneGroup_ctl =
       add_expandable_groupbox("ISP Color/Tone Controls",
-          ISPColorToneControls_ctl = new QSettingsWidget("", this));
+          ISPColorToneControls_ctl = new QSettingsWidget(this));
 
   AwbEnable_ctl = createCheckBoxCameraControl(ISPColorToneControls_ctl, "AwbEnable", "AwbEnable",
       "Enable/disable the AWB.\n");
@@ -353,7 +353,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
   // ISP Visual Adjustments
   ISPVisualAdjustmentsGroup_ctl =
       add_expandable_groupbox("ISP Visual Adjustments Controls",
-          ISPVisualAdjustmentsControls_ctl = new QSettingsWidget("", this));
+          ISPVisualAdjustmentsControls_ctl = new QSettingsWidget(this));
 
   Brightness_ctl = createDoubleSpinBoxCameraControl(ISPVisualAdjustmentsControls_ctl, "Brightness", "Brightness",
       "General pixel offset");
@@ -465,40 +465,40 @@ void QLCSCTPCameraControls::populateSizes()
 }
 
 
-
-void QLCSCTPCameraControls::onupdatecontrols()
-{
-  if( !_camera ) {
-    setEnabled(false);
-  }
-  else {
-    const QImagingCamera::State cameraState = _camera->state();
-    if( cameraState == QImagingCamera::State_connected ) {
-      populateCameras();
-      populateStreams();
-      populateFormats();
-      populateSizes();
-    }
-
-    Base::onupdatecontrols();
-    updateCameraControls();
-
-    url_ctl->setEnabled(cameraState == QImagingCamera::State_disconnected);
-    cameras_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-    streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-    formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-    sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-    cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-
-    ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-    AnalogueGain_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-    AutoExposureOptions_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-    ISPColorToneControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-    ISPVisualAdjustmentsControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-
-    setEnabled(true);
-  }
-}
+//
+//void QLCSCTPCameraControls::onupdatecontrols()
+//{
+//  if( !_camera ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    const QImagingCamera::State cameraState = _camera->state();
+//    if( cameraState == QImagingCamera::State_connected ) {
+//      populateCameras();
+//      populateStreams();
+//      populateFormats();
+//      populateSizes();
+//    }
+//
+//    Base::onupdatecontrols();
+//    updateCameraControls();
+//
+//    url_ctl->setEnabled(cameraState == QImagingCamera::State_disconnected);
+//    cameras_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+//    streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+//    formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+//    sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+//    cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+//
+//    ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+//    AnalogueGain_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+//    AutoExposureOptions_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+//    ISPColorToneControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+//    ISPVisualAdjustmentsControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+//
+//    setEnabled(true);
+//  }
+//}
 
 
 QCheckBox * QLCSCTPCameraControls::createCheckBoxCameraControl(QSettingsWidget * sw,

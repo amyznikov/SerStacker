@@ -19,10 +19,10 @@ const c_enum_member * members_of<c_connected_components_routine::Connectivity>()
   return members;
 }
 
-void c_connected_components_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_connected_components_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, connectivity, "");
-  BIND_PCTRL(ctls, ignore_mask, "");
+  ctlbind(ctls, "connectivity", ctx(&this_class::_connectivity), "");
+  ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "");
 }
 
 bool c_connected_components_routine::serialize(c_config_setting settings, bool save)

@@ -17,7 +17,8 @@ class QRunningAveragePipeline :
 {
 public:
   typedef QRunningAveragePipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_running_average_pipeline> Base;
+  typedef c_running_average_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QRunningAveragePipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
@@ -29,9 +30,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

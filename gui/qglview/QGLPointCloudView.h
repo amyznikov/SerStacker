@@ -39,9 +39,6 @@ public:
   typedef QGLPointCloudView ThisClass;
   typedef QGLView Base;
 
-  using Base::saveParameters;
-  using Base::loadParameters;
-
   struct CloudSettings {
     cv::Vec3f translation;
     cv::Vec3f rotation;
@@ -50,7 +47,6 @@ public:
     bool visible = true;
     bool override_color = false;
   };
-
 
   QGLPointCloudView(QWidget* parent = nullptr);
 
@@ -94,8 +90,8 @@ protected:
   void glPreDraw() override;
   void glDraw() override;
   void computeDisplayPoints();
-  void loadParameters(QSettings & settings) override;
-  void saveParameters(QSettings & settings) override;
+  void onload(const QSettings & settings, const QString & prefix) override;
+  void onsave(QSettings & settings, const QString & prefix) override;
   // void mousePressEvent(QMouseEvent *e) override;
 
 protected:
@@ -124,12 +120,12 @@ protected:
 
 
 class QGlPointCloudViewSettings :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QGLPointCloudView>
 {
   Q_OBJECT;
 public:
   typedef QGlPointCloudViewSettings ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QGLPointCloudView> Base;
 
   QGlPointCloudViewSettings(QWidget * parent = nullptr);
 
@@ -138,13 +134,8 @@ public:
 
   void refreshCloudList();
 
-
 protected:
-  //void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
-
-protected:
-  QGLPointCloudView * cloudView_ = nullptr;
+  //QGLPointCloudView * cloudView_ = nullptr;
   QEnumComboBox<QGLView::Projection> * projection_ctl = nullptr;
   QNumericBox * nearPlane_ctl = nullptr;
   QNumericBox * farPlane_ctl = nullptr;
@@ -209,12 +200,12 @@ protected:
 
 
 class QGlPointCloudSettingsWidget :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QGLPointCloudView>
 {
   Q_OBJECT;
 public:
   typedef QGlPointCloudSettingsWidget ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QGLPointCloudView> Base;
 
   QGlPointCloudSettingsWidget(QWidget * parent = nullptr);
 
@@ -222,7 +213,6 @@ public:
   QGLPointCloudView * cloudView() const;
 
 protected:
-  void onupdatecontrols() override;
   void updatecontrolstates();
   void populatecombobox();
   void onAddSettingsItem();
@@ -233,7 +223,6 @@ protected:
   QGLPointCloudView::CloudSettings * currentItem() const;
 
 protected:
-  QGLPointCloudView * _cloudView = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QLabel * itemSelectionLb_ctl = nullptr;
   QComboBox * itemSelection_ctl = nullptr;

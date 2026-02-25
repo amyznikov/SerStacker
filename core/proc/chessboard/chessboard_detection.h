@@ -13,6 +13,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/settings.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -135,5 +136,64 @@ cv::Size estimate_chessboard_size(cv::InputArray src_image,
 
 bool save_settings(c_config_setting settings, const c_chessboard_corners_detection_options & options);
 bool load_settings(c_config_setting settings, c_chessboard_corners_detection_options * options);
+
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_chessboard_corners_detection_options> & ctx)
+{
+  using S = c_chessboard_corners_detection_options;
+  ctlbind(ctls, "chessboard_size", ctx(&S::chessboard_size),  " WxH");
+  ctlbind(ctls, "chessboard_cell_size [m] ", ctx(&S::chessboard_cell_size),  ""); // [m]
+  ctlbind(ctls, "chessboard_distance [m]", ctx(&S::chessboard_distance),  ""); // [m]
+
+  ctlbind(ctls, "method", ctx(&S::method),  "Which method to use for findChessboardCorners"); // [m]
+
+  if ( true ) {
+    using S1 = std::decay_t<decltype(S::findChessboardCorners)>;
+    const auto gctx = ctx(&S::findChessboardCorners);
+
+    ctlbind_expandable_group(ctls, "findChessboardCorners options", "Parameters passed into cv::findChessboardCorners(),\n"
+        "For details see OpenCV documentation for cv::findChessboardCorners()");
+      ctlbind(ctls, "max_scales", gctx(&S1::max_scales),  "");
+      ctlbind_flags_checkbox<FindChessboardCornersFlags>(ctls, "flags", gctx(&S1::flags),  "");
+    ctlbind_end_group(ctls);
+  }
+
+  if ( true ) {
+    using S1 = std::decay_t<decltype(S::findChessboardCornersSB)>;
+    const auto gctx = ctx(&S::findChessboardCornersSB);
+
+    ctlbind_expandable_group(ctls, "findChessboardCornersSB options", "Parameters passed into cv::findChessboardCornersSB(),\n"
+        "For details see OpenCV documentation for cv::findChessboardCornersSB()");
+      ctlbind(ctls, "max_scales", gctx(&S1::max_scales),  "");
+      ctlbind_flags_checkbox<FindChessboardCornersSBFlags>(ctls, "flags", gctx(&S1::flags),  "");
+    ctlbind_end_group(ctls);
+  }
+
+  if( true ) {
+    using S1 = std::decay_t<decltype(S::cornerSubPix)>;
+    const auto gctx = ctx(&S::cornerSubPix);
+
+    ctlbind_expandable_group(ctls, "cornerSubPix options","Parameters passed into cv::cornerSubPix().\n"
+        "For details see OpenCV documentation for cv::cornerSubPix() function.");
+      ctlbind(ctls, "winSize", gctx(&S1::winSize), "");
+      ctlbind(ctls, "zeroZone", gctx(&S1::zeroZone), "");
+      ctlbind(ctls, "max_solver_iterations", gctx(&S1::max_solver_iterations), "");
+      ctlbind(ctls, "solver_eps", gctx(&S1::solver_eps), "");
+    ctlbind_end_group(ctls);
+  }
+
+  if ( true ) {
+    using S1 = std::decay_t<decltype(S::bilateralFilter)>;
+    const auto gctx = ctx(&S::bilateralFilter);
+
+    ctlbind_expandable_group(ctls, "BilateralFilter options", "");
+      ctlbind(ctls, "d", gctx(&S1::d), "");
+      ctlbind(ctls, "sigmaColor", gctx(&S1::sigmaColor), "");
+      ctlbind(ctls, "sigmaSpace", gctx(&S1::sigmaSpace), "");
+    ctlbind_end_group(ctls);
+  }
+}
+
 
 #endif /* __chessboard_detection_h__ */

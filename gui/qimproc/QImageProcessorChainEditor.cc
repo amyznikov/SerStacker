@@ -8,7 +8,6 @@
 #include "QImageProcessorChainEditor.h"
 #include "QAddRoutineDialog.h"
 #include "QRadialPolySharpSettings.h"
-#include "QMtfSettings.h"
 #include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
@@ -295,10 +294,9 @@ QTreeWidgetItem * QImageProcessorChainEditor::insertProcessorItem(int index, con
 
   tree_ctl->insertTopLevelItem(index, item);
 
-  QImageProcessorSettingsControl * ctrl =
-      QImageProcessorSettingsControl::create(routine,
+  QImageProcessorSettingsControl2 * ctrl =
+      QImageProcessorSettingsControl2::create(routine,
           this);
-
 
   if ( ctrl ) {
 
@@ -311,7 +309,7 @@ QTreeWidgetItem * QImageProcessorChainEditor::insertProcessorItem(int index, con
 
     tree_ctl->setItemWidget(subitem, 0, createScrollableWrap(ctrl));
 
-    connect(ctrl, &QImageProcessorSettingsControl::parameterChanged,
+    connect(ctrl, &QImageProcessorSettingsControl2::parameterChanged,
         this, &ThisClass::parameterChanged,
         Qt::QueuedConnection);
 
@@ -552,69 +550,118 @@ void QImageProcessorChainEditor::onRemoveCurrentProcessor()
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-QImageProcessorSettingsControl * QImageProcessorSettingsControl::create(const c_image_processor_routine::ptr & processor,
-    QWidget * parent)
-{
-  QImageProcessorSettingsControl * widget = nullptr;
-
-  if( processor->classfactory() == c_radial_polysharp_routine::class_factory_instance() ) {
-    widget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor), parent);
-  }
-//  else if( processor->classfactory() == c_fit_jovian_ellipse_routine::class_factory_instance() ) {
-//    widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
+//QImageProcessorSettingsControl * QImageProcessorSettingsControl::create(const c_image_processor_routine::ptr & processor,
+//    QWidget * parent)
+//{
+//  QImageProcessorSettingsControl * widget = nullptr;
+//
+//  if( processor->classfactory() == c_radial_polysharp_routine::class_factory_instance() ) {
+//    widget = new QRadialPolySharpSettings(std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor), parent);
 //  }
-  else if( processor->classfactory() == c_mtf_routine::class_factory_instance() ) {
-    widget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(processor), parent);
-  }
-  else {
-    widget = new QImageProcessorSettingsControl(processor, parent);
-  }
+////  else if( processor->classfactory() == c_fit_jovian_ellipse_routine::class_factory_instance() ) {
+////    widget = new QJovianEllipseSettings(std::dynamic_pointer_cast<c_fit_jovian_ellipse_routine>(processor), parent);
+////  }
+//  else if( processor->classfactory() == c_mtf_routine::class_factory_instance() ) {
+//    widget = new QMtfSettings(std::dynamic_pointer_cast<c_mtf_routine>(processor), parent);
+//  }
+//  else {
+//    widget = new QImageProcessorSettingsControl(processor, parent);
+//  }
+//
+//  widget->setupControls();
+//
+//  return widget;
+//}
+//
+//QImageProcessorSettingsControl::QImageProcessorSettingsControl(const c_image_processor_routine::ptr & processor, QWidget * parent) :
+//    Base("QImageProcessorSettingsControl", parent),
+//    processor_(processor)
+//{
+//  setFrameShape(QFrame::Shape::Box);
+//}
+//
+//void QImageProcessorSettingsControl::setupControls()
+//{
+//  if( !processor_->classfactory()->tooltip.empty() ) {
+//    QLabel *label = new QLabel(this);
+//    label->setTextFormat(Qt::RichText);
+//    label->setWordWrap(true);
+//    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+//    label->setText(processor_->classfactory()->tooltip.c_str());
+//    form->addRow(label);
+//  }
+//
+//  std::vector<c_ctrl_bind> params;
+//  processor_->get_parameters(&params);
+//  Base::setup_controls(params);
+//
+//  connect(this, &ThisClass::parameterChanged,
+//      [this]() {
+//        if ( processor_ ) {
+//          processor_->parameter_changed();
+//        }
+//      });
+//
+//  updateControls();
+//}
+//
+//void QImageProcessorSettingsControl::onupdatecontrols()
+//{
+//  if ( !processor_ ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    Q_EMIT populatecontrols();
+//    setEnabled(true);
+//  }
+//}
 
-  widget->setupControls();
+// ========================================================
 
-  return widget;
-}
-
-QImageProcessorSettingsControl::QImageProcessorSettingsControl(const c_image_processor_routine::ptr & processor, QWidget * parent) :
-    Base("QImageProcessorSettingsControl", parent),
-    processor_(processor)
+QImageProcessorSettingsControl2::QImageProcessorSettingsControl2(const c_image_processor_routine::ptr & processor, QWidget * parent) :
+    Base(parent),
+    _processor(processor)
 {
   setFrameShape(QFrame::Shape::Box);
 }
 
-void QImageProcessorSettingsControl::setupControls()
+QImageProcessorSettingsControl2 * QImageProcessorSettingsControl2::create(const c_image_processor_routine::ptr & processor, QWidget * parent)
 {
-  if( !processor_->classfactory()->tooltip.empty() ) {
+  QImageProcessorSettingsControl2 * widget = new QImageProcessorSettingsControl2(processor, parent);
+  widget->setupControls();
+  return widget;
+}
+
+void QImageProcessorSettingsControl2::setupControls()
+{
+  if( !_processor->classfactory()->tooltip.empty() ) {
     QLabel *label = new QLabel(this);
     label->setTextFormat(Qt::RichText);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    label->setText(processor_->classfactory()->tooltip.c_str());
+    label->setText(_processor->classfactory()->tooltip.c_str());
     form->addRow(label);
   }
 
-  std::vector<c_ctrl_bind> params;
-  processor_->get_parameters(&params);
-  Base::setup_controls(params);
+  c_ctlist<c_image_processor_routine> controls;
 
-  connect(this, &ThisClass::parameterChanged,
+  _processor->getcontrols(controls);
+  ::setupControls(this, controls);
+
+  QObject::connect(this, &ThisClass::parameterChanged,
       [this]() {
-        if ( processor_ ) {
-          processor_->parameter_changed();
+        if ( _processor ) {
+          _processor->parameter_changed();
         }
       });
+
+  setOpts(_processor.get());
 
   updateControls();
 }
 
-void QImageProcessorSettingsControl::onupdatecontrols()
-{
-  if ( !processor_ ) {
-    setEnabled(false);
-  }
-  else {
-    Q_EMIT populatecontrols();
-    setEnabled(true);
-  }
-}
-
+//void QImageProcessorSettingsControl2::onupdatecontrols()
+//{
+//
+//}
+//

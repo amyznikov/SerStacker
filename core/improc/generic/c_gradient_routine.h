@@ -38,130 +38,19 @@ public:
     // OutputTextureFromGradients,
   };
 
-  void set_compute_method(ComputeMethod v)
-  {
-    compute_method_ = v;
-  }
-
-  ComputeMethod compute_method() const
-  {
-    return compute_method_;
-  }
-
-  void set_border_type(cv::BorderTypes v)
-  {
-    border_type_ = v;
-  }
-
-  cv::BorderTypes border_type() const
-  {
-    return border_type_;
-  }
-
-  void set_output_type(OutputType v)
-  {
-    output_type_ = v;
-  }
-
-  OutputType output_type() const
-  {
-    return output_type_;
-  }
-
-//  void set_order_x(int  v)
-//  {
-//    order_x_ = v;
-//  }
-//
-//  int order_x() const
-//  {
-//    return order_x_;
-//  }
-//
-//  void set_order_y(int  v)
-//  {
-//    order_y_ = v;
-//  }
-//
-//  int order_y() const
-//  {
-//    return order_y_;
-//  }
-
-//  void set_kradius(int  v)
-//  {
-//    kradius_ = v;
-//  }
-//
-//  int kradius() const
-//  {
-//    return kradius_;
-//  }
-
-  void set_ddepth(PIXEL_DEPTH v)
-  {
-    ddepth_ = v;
-  }
-
-  PIXEL_DEPTH ddepth() const
-  {
-    return ddepth_;
-  }
-
-  void set_delta(double v)
-  {
-    delta_ = v;
-  }
-
-  double delta() const
-  {
-    return delta_;
-  }
-
-  void set_scale(double  v)
-  {
-    scale_ = v;
-  }
-
-  double scale() const
-  {
-    return scale_;
-  }
-
-
-  void set_erode_mask(bool v)
-  {
-    erode_mask_ = v;
-  }
-
-  bool erode_mask() const
-  {
-    return erode_mask_;
-  }
-
-  void set_squared(bool v)
-  {
-    squared_ = v;
-  }
-
-  bool squared() const
-  {
-    return squared_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  ComputeMethod compute_method_ = ComputeMethodFilter1D;
-  OutputType output_type_ = OutputGradientMagnitude;
-  PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_NO_CHANGE;
-  cv::BorderTypes border_type_  = cv::BORDER_DEFAULT;
-  double scale_ = 1;
-  double delta_ = 0;
-  bool squared_ = false;
-  bool erode_mask_ = false;
+  ComputeMethod _compute_method = ComputeMethodFilter1D;
+  OutputType _output_type = OutputGradientMagnitude;
+  PIXEL_DEPTH _ddepth = PIXEL_DEPTH_NO_CHANGE;
+  cv::BorderTypes _border_type  = cv::BORDER_DEFAULT;
+  double _scale = 1;
+  double _delta = 0;
+  bool _squared = false;
+  bool _erode_mask = false;
 };
 
 #endif /* __c_gradient_routine_h__ */

@@ -22,91 +22,90 @@ const c_enum_member * members_of<c_affine_transform_routine::image_resize_mode>(
 
 void c_affine_transform_routine::set_resize_mode(image_resize_mode v)
 {
-  resize_mode_ = v;
-  remap_.release();
+  _resize_mode = v;
+  _remap.release();
 }
 
 c_affine_transform_routine::image_resize_mode c_affine_transform_routine::resize_mode() const
 {
-  return resize_mode_;
+  return _resize_mode;
 }
 
 void c_affine_transform_routine::set_interpolation(cv::InterpolationFlags v)
 {
-  interpolation_ = v;
-  remap_.release();
+  _interpolation = v;
+  _remap.release();
 }
 
 cv::InterpolationFlags c_affine_transform_routine::interpolation() const
 {
-  return interpolation_;
+  return _interpolation;
 }
 
 void c_affine_transform_routine::set_border_type(cv::BorderTypes v)
 {
-  border_type_ = v;
-  remap_.release();
+  _border_type = v;
+  _remap.release();
 }
 
 cv::BorderTypes c_affine_transform_routine::border_type() const
 {
-  return border_type_;
+  return _border_type;
 }
 
 void c_affine_transform_routine::set_border_value(const cv::Scalar & v)
 {
-  border_value_ = v;
-  remap_.release();
+  _border_value = v;
+  _remap.release();
 }
 
 const cv::Scalar & c_affine_transform_routine::border_value() const
 {
-  return border_value_;
+  return _border_value;
 }
 
 void c_affine_transform_routine::set_rotation(double v)
 {
-  rotation_ = v;
-  remap_.release();
+  _rotation = v;
+  _remap.release();
 }
 
 double c_affine_transform_routine::rotation() const
 {
-  return rotation_;
+  return _rotation;
 }
 
 void c_affine_transform_routine::set_translation(const cv::Point2f & v)
 {
-  translation_ = v;
-  remap_.release();
+  _translation = v;
+  _remap.release();
 }
 
 const cv::Point2f & c_affine_transform_routine::translation() const
 {
-  return translation_;
+  return _translation;
 }
 
 void c_affine_transform_routine::set_scale(const cv::Size2f & v)
 {
-  scale_ = v;
-  remap_.release();
+  _scale = v;
+  _remap.release();
 }
 
-const cv::Size2f c_affine_transform_routine::scale() const
+const cv::Size2f & c_affine_transform_routine::scale() const
 {
-  return scale_;
+  return _scale;
 }
 
-void c_affine_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_affine_transform_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, translation, "image translation in pixels before rotation/scale");
-  BIND_DOUBLE_SLIDER_CTRL(ctls, rotation, -180, 180, 10, "rotation", "rotation angle in degrees");
-  //BIND_PCTRL(ctls, rotation, "rotation angle in degrees");
-  BIND_PCTRL(ctls, scale, "image scale");
-  BIND_PCTRL(ctls, resize_mode, "resize mode");
-  BIND_PCTRL(ctls, interpolation, "interpolation");
-  BIND_PCTRL(ctls, border_type, "border_type");
-  BIND_PCTRL(ctls, border_value, "border_value");
+   ctlbind(ctls, "translation", ctx, &this_class::translation, &this_class::set_translation, "image translation in pixels before rotation/scale");
+   ctlbind_slider_spinbox(ctls, "rotation", ctx, &this_class::rotation, &this_class::set_rotation, -180, 180, 0.05, "rotation angle in degrees");
+   ctlbind(ctls, "scale", ctx, &this_class::scale, &this_class::set_scale, "image scale");
+   ctlbind(ctls, "resize_mode", ctx, &this_class::resize_mode, &this_class::set_resize_mode, "resize mode");
+   ctlbind(ctls, "interpolation", ctx, &this_class::interpolation, &this_class::set_interpolation, "interpolation");
+   ctlbind(ctls, "border_type", ctx, &this_class::border_type, &this_class::set_border_type, "border_type");
+   ctlbind(ctls, "border_value", ctx, &this_class::border_value, &this_class::set_border_value, "border_value");
 }
 
 bool c_affine_transform_routine::serialize(c_config_setting settings, bool save)
@@ -128,25 +127,24 @@ bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOu
 {
   if( !image.empty() || !mask.empty() ) {
 
-    if( rotation_ || translation_.x || translation_.y || scale_.width != 1 || scale_.height != 1 ) {
+    if( _rotation || _translation.x || _translation.y || _scale.width != 1 || _scale.height != 1 ) {
 
-      if( remap_.empty() || previous_image_size_ != image.size() ) {
+      if( _remap.empty() || _previous_image_size != image.size() ) {
 
-        previous_image_size_ = image.size();
+        _previous_image_size = image.size();
 
-        if ( !create_transformation_remap(remap_, image.size(), rotation_, translation_, scale_, resize_mode_) ) {
+        if ( !create_transformation_remap(_remap, image.size(), _rotation, _translation, _scale, _resize_mode) ) {
           CF_ERROR("c_image_transform_routine: create_transformation_remap() fails");
           return false;
         }
       }
 
-
       if ( !image.empty() ) {
         cv::remap(image.getMat(), image,
-            remap_, cv::noArray(),
-            interpolation_,
-            border_type_,
-            border_value_);
+            _remap, cv::noArray(),
+            _interpolation,
+            _border_type,
+            _border_value);
       }
 
 
@@ -154,14 +152,14 @@ bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOu
 
         if ( !mask.empty() ) {
           cv::remap(mask.getMat(), mask,
-              remap_, cv::noArray(),
+              _remap, cv::noArray(),
               cv::INTER_AREA,
               cv::BORDER_CONSTANT);
 
         }
         else {
-          cv::remap(cv::Mat1b(previous_image_size_, 255), mask,
-              remap_, cv::noArray(),
+          cv::remap(cv::Mat1b(_previous_image_size, 255), mask,
+              _remap, cv::noArray(),
               cv::INTER_AREA,
               cv::BORDER_CONSTANT);
         }

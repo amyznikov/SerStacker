@@ -18,33 +18,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_blur_test_routine,
       "blur_test", "c_blur_test_routine");
 
-  void set_sigma(double v)
-  {
-    sigma_ = v;
-  }
-
-  double sigma() const
-  {
-    return sigma_;
-  }
-
-  void set_w(double v)
-  {
-    w_ = v;
-  }
-
-  double w() const
-  {
-    return w_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double sigma_ = 1;
-  double w_ = 0.5;
+  double _sigma = 1;
+  double _w = 0.5;
 };
 
 #endif /* __c_blur_test_routine_h__ */

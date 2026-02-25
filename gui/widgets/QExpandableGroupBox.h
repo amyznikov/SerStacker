@@ -37,11 +37,11 @@ Q_SIGNALS:
   void collapsed();
 
 protected:
-  QWidget * view_ = nullptr;
-  QVBoxLayout * layout_ = nullptr;
-  QVBoxLayout * frameLayout_ = nullptr;
-  QCheckBox * chkBox_ = nullptr;
-  QGroupBox * frame_ = nullptr;
+  QWidget * _view = nullptr;
+  QVBoxLayout * _layout = nullptr;
+  QVBoxLayout * _frameLayout = nullptr;
+  QCheckBox * _chkBox = nullptr;
+  QGroupBox * _frame = nullptr;
 };
 
 #endif /* __QExpandableGroupBox_h__ */

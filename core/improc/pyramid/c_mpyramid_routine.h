@@ -18,33 +18,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_mpyramid_routine,
       "mpyramid", "Display Laplacian Magnitude pyramid layers");
 
-  void set_min_image_size(int v)
-  {
-    minimum_image_size_ = v;
-  }
-
-  int min_image_size() const
-  {
-    return minimum_image_size_;
-  }
-
-  void set_display_pos(int v)
-  {
-    display_pos_ = v;
-  }
-
-  int display_pos() const
-  {
-    return display_pos_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  int minimum_image_size_ = 4;
-  int display_pos_ = 0;
+  int _minimum_image_size = 4;
+  int _display_pos = 0;
 };
 
 #endif /* __c_mpyramid_routine_h__ */

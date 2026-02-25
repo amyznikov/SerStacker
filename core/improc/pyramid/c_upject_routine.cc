@@ -32,17 +32,17 @@ const c_enum_member * members_of<c_upject_routine::FillMode>()
   return members;
 }
 
-void c_upject_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_upject_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, mode, "Which rows and columns to reject");
-  BIND_PCTRL(ctls, fill_mode, "How to fill empty pixels");
+   ctlbind(ctls, "mode", ctx(&this_class::_mode), "");
+   ctlbind(ctls, "fill_mode", ctx(&this_class::_fill_mode), "");
 }
 
 bool c_upject_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, mode);
-    SERIALIZE_PROPERTY(settings, save, *this, fill_mode);
+    SERIALIZE_OPTION(settings, save, *this, _mode);
+    SERIALIZE_OPTION(settings, save, *this, _fill_mode);
     return true;
   }
   return false;
@@ -53,13 +53,13 @@ bool c_upject_routine::process(cv::InputOutputArray image, cv::InputOutputArray 
   cv::Mat img;
   cv::Mat zmask;
 
-  switch (mode_) {
+  switch (_mode) {
     case UpjectUneven:
-      upject_uneven(image.getMat(), img, dstSize_, &zmask, CV_8U);
+      upject_uneven(image.getMat(), img, _dstSize, &zmask, CV_8U);
       image.move(img);
       break;
     case UpjectEven:
-      upject_even(image.getMat(), img, dstSize_, &zmask, CV_8U);
+      upject_even(image.getMat(), img, _dstSize, &zmask, CV_8U);
       image.move(img);
       break;
     default:
@@ -67,7 +67,7 @@ bool c_upject_routine::process(cv::InputOutputArray image, cv::InputOutputArray 
       return false;
   }
 
-  switch (fill_mode_) {
+  switch (_fill_mode) {
     case FillZero:
       break;
 

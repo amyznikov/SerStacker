@@ -8,79 +8,10 @@
 #ifndef __QFrameRegistrationSettings_h__
 #define __QFrameRegistrationSettings_h__
 
-#include <gui/widgets/UpdateControls.h>
-#include <gui/qfeature2d/QFeature2dOptions.h>
-#include <gui/qpipeline/QInputSourceSelectionControl.h>
-#include <gui/widgets/QCameraIntrinsicsEditBox.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/proc/image_registration/c_frame_registration.h>
-
-
-
-class QMasterSourceSelectionCombo :
-    public QWidget,
-    public HasUpdateControls
-{
-  Q_OBJECT;
-public:
-  typedef QMasterSourceSelectionCombo ThisClass;
-  typedef QWidget Base;
-
-  struct InputSourceData {
-    std::string source_pathfilename;
-    int source_size = 0;
-  };
-
-  QMasterSourceSelectionCombo(QWidget * parent = nullptr);
-
-  void refreshInputSources(c_image_processing_pipeline * pipeline);
-  void setEnableExternalFile(bool v);
-  bool enableExternalFile() const;
-
-  void setCurrentInputSource(const std::string & pathfilename);
-  InputSourceData currentInputSource() const;
-
-Q_SIGNALS:
-  void currentSourceChanged();
-
-protected Q_SLOTS:
-  void onBrowseButtonClicked();
-  void onComboboxCurrentIndexChanged(int index);
-
-protected:
-  QComboBox * combo_ = nullptr;
-  QToolButton * browse_ctl = nullptr;
-};
-
-// must be declared outside of any namespace
-Q_DECLARE_METATYPE(QMasterSourceSelectionCombo::InputSourceData);
-
-
-class QMasterFrameSelectionControl :
-    public QSettingsWidgetTemplate<c_master_frame_selection_options>,
-    public QInputSourceSelectionControl
-{
-  Q_OBJECT;
-public:
-  typedef QMasterFrameSelectionControl ThisClass;
-  typedef QSettingsWidgetTemplate<c_master_frame_selection_options> Base;
-
-  QMasterFrameSelectionControl(QWidget * parent = nullptr);
-
-  void refreshInputSources(c_image_processing_pipeline * pipeline) override;
-  void setEnableExternalFile(bool v) override;
-  bool enableExternalFile() const override;
-
-protected Q_SLOTS:
-  void updateMasterSourceControlStates();
-
-
-protected:
-  QEnumComboBox<master_frame_selection_method> * masterFrameSelectionMethod_ctl = nullptr;
-  QMasterSourceSelectionCombo * masterSource_ctl = nullptr;
-  QSpinBox * masterFrameIndex_ctl = nullptr;
-};
-
+#include <gui/qfeature2d/QFeature2dOptions.h>
+#include <gui/widgets/QCameraIntrinsicsEditBox.h>
 
 class QEstimateImageTransformOptionsBase :
     public QSettingsWidgetTemplate<c_estimate_image_transform_options>
@@ -239,9 +170,6 @@ public:
 
   QFeatureBasedRegistrationOptions(QWidget * parent = nullptr);
 
-protected:
-  void onupdatecontrols() override;
-
 protected Q_SLOTS:
   void onDetectorTypeChanged();
 
@@ -278,9 +206,6 @@ public:
   QEccRegistrationOptions(QWidget * parent = nullptr);
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
   QNumericBox * scale_ctl = nullptr;
   QEnumComboBox<ECC_ALIGN_METHOD> * ecc_method_ctl = nullptr;
   QNumericBox * eps_ctl = nullptr;
@@ -311,10 +236,7 @@ public:
   QEccFlowRegistrationOptions(QWidget * parent = nullptr);
 
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  QEnumComboBox<c_eccflow::DownscaleMethod> * downscale_method_ctl = nullptr;
+  QEnumComboBox<ECCFlowDownscaleMethod> * downscale_method_ctl = nullptr;
   QNumericBox * update_multiplier_ctl = nullptr;
   QNumericBox * input_smooth_sigma_ctl = nullptr;
   QNumericBox * reference_smooth_sigma_ctl = nullptr;
@@ -336,9 +258,6 @@ public:
   typedef QSettingsWidgetTemplate<c_jovian_derotation_options> Base;
 
   QJovianDerotationOptions(QWidget * parent = nullptr);
-
-protected:
-  void onupdatecontrols() override;
 
 protected:
   QNumericBox * jovian_detector_stdev_factor_ctl = nullptr;
@@ -365,7 +284,6 @@ public:
   typedef QSettingsWidgetTemplate<c_saturn_derotation_options> Base;
 
   QSaturnDerotationOptions(QWidget * parent = nullptr);
-
 
 protected:
 //  QNumericBox * jovian_detector_stdev_factor_ctl = nullptr;

@@ -7,7 +7,8 @@
 
 #include "c_transpose_image_routine.h"
 
-void c_transpose_image_routine::get_parameters(std::vector<c_ctrl_bind> * /*ctls*/)
+
+void c_transpose_image_routine::getcontrols(c_control_list & /*ctls*/, const ctlbind_context & /*ctx*/)
 {
 }
 

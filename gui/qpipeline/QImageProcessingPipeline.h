@@ -9,10 +9,10 @@
 #define __QImageProcessingPipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/pipeline/c_image_processing_pipeline_ctrl.h>
-#include "QInputSourceSelectionControl.h"
+#include <gui/widgets/QSettingsWidgetTemplate.h>
 
 class QImageProcessingPipeline;
+class QPipelineSettingsWidget;
 class QPipelineSettingsWidget;
 
 class QImageProcessingPipeline :
@@ -39,7 +39,6 @@ Q_SIGNALS:
   void frameProcessed();
 };
 
-
 class QPipelineSettingsWidget :
     public QSettingsWidget
 {
@@ -48,102 +47,70 @@ public:
   typedef QPipelineSettingsWidget ThisClass;
   typedef QSettingsWidget Base;
 
-  QPipelineSettingsWidget(QWidget * parent = nullptr);
+  QPipelineSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
+  }
 
   virtual QString pipelineClass() const = 0;
   virtual void setCurrentPipeline(QImageProcessingPipeline * pipeline) = 0;
   virtual QImageProcessingPipeline * currentPipeline() const = 0;
 
-protected:
-  void setup_controls(const std::vector<c_image_processing_pipeline_ctrl> & ctrls);
-  void update_pipeline_input_sources();
-  void update_control_states();
-
 protected Q_SLOTS:
   virtual void onPipelineStateChanged() {}
-
-protected:
-  c_image_processing_pipeline * _pipeline = nullptr;
-  std::map<QWidget*, std::function<bool(const c_image_processing_pipeline*)>> _bound_state_ctls;
-  QList<QInputSourceSelectionControl*> _inputSourceCombos;
 };
 
-
-template<class QPipelineType>
+template<class c_pipeline_type>
 class QPipelineSettingsWidgetTemplate:
-    public QPipelineSettingsWidget
+    public QSettingsWidgetTemplate<c_pipeline_type, QPipelineSettingsWidget>
 {
 public:
   typedef QPipelineSettingsWidgetTemplate ThisClass;
-  typedef QPipelineSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_pipeline_type, QPipelineSettingsWidget> Base;
 
   QPipelineSettingsWidgetTemplate(QWidget * parent = nullptr) :
       Base(parent)
   {
-    setup_controls(QPipelineType::get_controls());
-    updateControls();
+    setupControls(this, c_pipeline_type::getcontrols());
+    ThisClass::setEnabled(false);
   }
 
-  virtual QString pipelineClass() const override
+  virtual QString pipelineClass() const final
   {
-    return QPipelineType::class_name().c_str();
+    return c_pipeline_type::class_name().c_str();
   }
 
-  void setCurrentPipeline(QImageProcessingPipeline * pipeline) override
+  void setCurrentPipeline(QImageProcessingPipeline * pipeline) final
   {
-    setPipeline(dynamic_cast<QPipelineType*>(pipeline));
-  }
-
-  QImageProcessingPipeline* currentPipeline() const override
-  {
-    return dynamic_cast<QImageProcessingPipeline*>(_pipeline);
-  }
-
-  void setPipeline(QPipelineType * pipeline)
-  {
-    if( QImageProcessingPipeline *pp = dynamic_cast<QImageProcessingPipeline*>(_pipeline) ) {
+    if( QImageProcessingPipeline *pp = dynamic_cast<QImageProcessingPipeline*>(Base::_opts) ) {
       pp->disconnect(this);
     }
 
-    if( (_pipeline = pipeline) ) {
-      connect(pipeline, &QPipelineType::stateChanged,
+    if( (ThisClass::_opts = dynamic_cast<c_pipeline_type*>(pipeline)) ) {
+      QObject::connect(pipeline, &QImageProcessingPipeline::stateChanged,
           this, &ThisClass::onPipelineStateChanged,
           Qt::QueuedConnection);
     }
 
-    update_pipeline_input_sources();
-    updateControls();
+    ThisClass::updateControls();
   }
 
-  QPipelineType * pipeline() const
+  QImageProcessingPipeline* currentPipeline() const final
   {
-    return dynamic_cast<QPipelineType * >(_pipeline);
+    return dynamic_cast<QImageProcessingPipeline*>(Base::_opts);
   }
 
 protected:
-  // placeholder for overrides
-  void onupdatecontrols() override
+  void onPipelineStateChanged() final
   {
-    if( !_pipeline ) {
-      setEnabled(false);
-    }
-    else {
-      populatecontrols();
-      update_control_states();
-    }
-  }
-
-  void onPipelineStateChanged() override
-  {
-    update_control_states();
   }
 };
 
 
-template<class c_pipeline>
+template<class c_pipeline_type>
 class QImageProcessingPipelineTemplate :
     public QImageProcessingPipeline,
-    public c_pipeline
+    public c_pipeline_type
 {
 public:
 
@@ -157,38 +124,38 @@ public:
 
   QImageProcessingPipelineTemplate(const QString & name, const c_input_sequence::sptr & input_sequence, QObject * parent = nullptr) :
     Base(parent),
-    c_pipeline(name.toStdString(), input_sequence)
+    c_pipeline_type(name.toStdString(), input_sequence)
   {
   }
 
   QString className() const override
   {
-    return c_pipeline::class_name().c_str();
+    return c_pipeline_type::class_name().c_str();
   }
 
   void setName(const QString & name) override
   {
-    c_pipeline::set_name(name.toStdString());
+    c_pipeline_type::set_name(name.toStdString());
   }
 
   QString getName() const override
   {
-    return c_pipeline::cname();
+    return c_pipeline_type::cname();
   }
 
   bool serialize(c_config_setting settings, bool save) override
   {
-    return c_pipeline::serialize(settings, save);
+    return c_pipeline_type::serialize(settings, save);
   }
 
   bool run(const c_input_sequence::sptr & input_sequence = nullptr) override
   {
-    return c_pipeline::run(input_sequence);
+    return c_pipeline_type::run(input_sequence);
   }
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override
   {
-    return c_pipeline::get_display_image(frame, mask);
+    return c_pipeline_type::get_display_image(frame, mask);
   }
 
 protected:

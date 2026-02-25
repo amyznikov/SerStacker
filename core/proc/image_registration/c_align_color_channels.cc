@@ -13,126 +13,123 @@
 
 void c_align_color_channels::set_method(ECC_ALIGN_METHOD v)
 {
-  method_ = v;
+  _opts.method = v;
 }
 
 ECC_ALIGN_METHOD c_align_color_channels::method() const
 {
-  return method_;
+  return _opts.method;
 }
 
 void c_align_color_channels::set_motion_type(IMAGE_MOTION_TYPE motion_type)
 {
-  motion_type_ = motion_type;
+  _opts.motion_type = motion_type;
 }
 
 IMAGE_MOTION_TYPE  c_align_color_channels::motion_type() const
 {
-  return motion_type_;
+  return _opts.motion_type;
 }
 
 void c_align_color_channels::set_interpolation(enum ECC_INTERPOLATION_METHOD flags)
 {
-  interpolation_ = flags;
+  _opts.interpolation = flags;
 }
 
 enum ECC_INTERPOLATION_METHOD c_align_color_channels::interpolation() const
 {
-  return interpolation_;
+  return _opts.interpolation;
 }
 
 void c_align_color_channels::set_border_mode(enum ECC_BORDER_MODE border_mode)
 {
-  border_mode_ = border_mode;
+  _opts.border_mode = border_mode;
 }
 
 enum ECC_BORDER_MODE c_align_color_channels::border_mode() const
 {
-  return border_mode_;
+  return _opts.border_mode;
 }
 
 void c_align_color_channels::set_border_value(const cv::Scalar & v)
 {
-  border_value_ = v;
+  _opts.border_value = v;
 }
 
 const cv::Scalar & c_align_color_channels::border_value() const
 {
-  return border_value_;
+  return _opts.border_value;
 }
 
 
 void c_align_color_channels::set_max_iterations(int v)
 {
-  max_iterations_ = v;
+  _opts.max_iterations = v;
 }
 
 int c_align_color_channels::max_iterations() const
 {
-  return max_iterations_;
+  return _opts.max_iterations;
 }
 
 void c_align_color_channels::set_smooth_sigma(double v)
 {
-//  ecc_.set_reference_smooth_sigma(v);
-//  ecc_.set_input_smooth_sigma(v);
-  smooth_sigma_ = v;
+  _opts.smooth_sigma = v;
 }
 
 double c_align_color_channels::smooth_sigma() const
 {
-  //return ecc_.reference_smooth_sigma();
-  return smooth_sigma_;
+  return _opts.smooth_sigma;
 }
 
 void c_align_color_channels::set_update_step_scale(double v)
 {
-  update_step_scale_ = v;
+  _opts.update_step_scale = v;
 }
 
 double c_align_color_channels::update_step_scale() const
 {
-  return update_step_scale_;
+  return _opts.update_step_scale;
 }
 
 void c_align_color_channels::set_eps(double v)
 {
-  eps_ = v;
+  _opts.eps = v;
 }
 
 double c_align_color_channels::eps() const
 {
-  return eps_;
+  return _opts.eps;
 }
 
 void c_align_color_channels::set_max_level(int v)
 {
-  max_level_ = v;
+  _opts.max_level = v;
 }
 
 int c_align_color_channels::max_level() const
 {
-  return max_level_;
+  return _opts.max_level;
 }
 
 void c_align_color_channels::set_normalization_level(int v)
 {
-  normalization_level_ = v;
+  _opts.normalization_level = v;
 }
 
 int c_align_color_channels::normalization_level() const
 {
-  return normalization_level_;
+  return _opts.normalization_level;
 }
 
 void c_align_color_channels::set_normalization_eps(double v)
 {
-  normalization_eps_ = v;
+  _opts.normalization_eps = v;
 }
 
 double c_align_color_channels::normalization_eps() const
 {
-  return normalization_eps_;
+  return _opts.normalization_eps;
 }
 
 //double c_align_color_channels::computed_rho(int channel_index) const
@@ -152,7 +149,7 @@ double c_align_color_channels::normalization_eps() const
 
 const c_image_transform::sptr & c_align_color_channels::computed_transform(int channel_index) const
 {
-  return computed_transforms_[channel_index];
+  return _computed_transforms[channel_index];
 }
 
 //c_ecc_forward_additive & c_align_color_channels::ecc()
@@ -173,7 +170,7 @@ bool c_align_color_channels::align(int reference_channel,
 
 //  computed_eps_.clear();
 //  computed_rhos_.clear();
-  computed_transforms_.clear();
+  _computed_transforms.clear();
 //  computed_iterations_.clear();
 
   const int cn =
@@ -192,7 +189,7 @@ bool c_align_color_channels::align(int reference_channel,
 //    computed_eps_.emplace_back(0);
 //    computed_rhos_.emplace_back(1);
 //    computed_iterations_.emplace_back(0);
-    computed_transforms_.emplace_back(nullptr);
+    _computed_transforms.emplace_back(nullptr);
 
     return true;
   }
@@ -240,7 +237,7 @@ bool c_align_color_channels::align(int reference_channel,
     }
   }
 
-  if( normalization_level_ < 1 ) {
+  if( _opts.normalization_level < 1 ) {
     for ( int i = 0; i < cn; ++i ) {
       normalized_channels[i] =
           channels[i];
@@ -249,8 +246,8 @@ bool c_align_color_channels::align(int reference_channel,
   else {
     for ( int i = 0; i < cn; ++i ) {
       ecc_normalize_meanstdev(channels[i], masks[i], normalized_channels[i],
-          normalization_level_,
-          normalization_eps_);
+          _opts.normalization_level,
+          _opts.normalization_eps);
     }
   }
 
@@ -258,17 +255,17 @@ bool c_align_color_channels::align(int reference_channel,
 
 //  computed_eps_.resize(cn);
 //  computed_rhos_.resize(cn);
-  computed_transforms_.resize(cn);
+  _computed_transforms.resize(cn);
 //  computed_iterations_.resize(cn);
 
-  c_ecch ecc(method_);
-  ecc.set_maxlevel(max_level_);
-  ecc.set_interpolation(interpolation_);
-  ecc.set_update_step_scale(update_step_scale_);
-  ecc.set_reference_smooth_sigma(smooth_sigma_);
-  ecc.set_input_smooth_sigma(smooth_sigma_);
-  ecc.set_max_iterations(max_iterations_);
-  ecc.set_max_eps(eps_);
+  c_ecch ecc(_opts.method);
+  ecc.set_maxlevel(_opts.max_level);
+  ecc.set_interpolation(_opts.interpolation);
+  ecc.set_update_step_scale(_opts.update_step_scale);
+  ecc.set_reference_smooth_sigma(_opts.smooth_sigma);
+  ecc.set_input_smooth_sigma(_opts.smooth_sigma);
+  ecc.set_max_iterations(_opts.max_iterations);
+  ecc.set_max_eps(_opts.eps);
 
   if( !ecc.set_reference_image(normalized_channels[reference_channel], masks[reference_channel]) ) {
     CF_ERROR("ecc.set_reference_image(reference_channel=%d) fails", reference_channel);
@@ -279,8 +276,8 @@ bool c_align_color_channels::align(int reference_channel,
 
   for ( int i = 0; i < cn; ++i ) {
 
-    computed_transforms_[i] =
-        create_image_transform(motion_type_);
+    _computed_transforms[i] =
+        create_image_transform(_opts.motion_type);
 
     if ( i == reference_channel ) {
 //      computed_eps_[i] = 0;
@@ -296,7 +293,7 @@ bool c_align_color_channels::align(int reference_channel,
     }
     else {
 
-      ecc.set_image_transform(computed_transforms_[i].get());
+      ecc.set_image_transform(_computed_transforms[i].get());
 
       if( !ecc.align(normalized_channels[i], masks[i]) ) {
         CF_ERROR("ecc.align() %d-> %d fails: iterations=%d eps=%g",
@@ -306,7 +303,7 @@ bool c_align_color_channels::align(int reference_channel,
             ecc.eps());
       }
 
-      computed_transforms_[i]->create_remap(ecc.reference_image().size(),
+      _computed_transforms[i]->create_remap(ecc.reference_image().size(),
           current_remap);
 
 //      computed_rhos_[i] =
@@ -327,9 +324,9 @@ bool c_align_color_channels::align(int reference_channel,
         cv::remap(channels[i], channels[i],
             current_remap,
             cv::noArray(),
-            interpolation_,
-            border_mode_,
-            border_value_[i]);
+            _opts.interpolation,
+            _opts.border_mode,
+            _opts.border_value[i]);
 
       }
 
@@ -395,7 +392,7 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 {
 //  computed_eps_.clear();
 //  computed_rhos_.clear();
-  computed_transforms_.clear();
+  _computed_transforms.clear();
 //  computed_iterations_.clear();
 
   if( reference_image.channels() != 1 ) {
@@ -454,20 +451,20 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
 //  computed_eps_.resize(cn);
 //  computed_rhos_.resize(cn);
-  computed_transforms_.resize(cn);
+  _computed_transforms.resize(cn);
 //  computed_iterations_.resize(cn);
 
 
   cv::Mat2f current_remap;
 
-  c_ecch ecc(method_);
-  ecc.set_maxlevel(max_level_);
-  ecc.set_interpolation(interpolation_);
-  ecc.set_update_step_scale(update_step_scale_);
-  ecc.set_reference_smooth_sigma(smooth_sigma_);
-  ecc.set_input_smooth_sigma(smooth_sigma_);
-  ecc.set_max_iterations(max_iterations_);
-  ecc.set_max_eps(eps_);
+  c_ecch ecc(_opts.method);
+  ecc.set_maxlevel(_opts.max_level);
+  ecc.set_interpolation(_opts.interpolation);
+  ecc.set_update_step_scale(_opts.update_step_scale);
+  ecc.set_reference_smooth_sigma(_opts.smooth_sigma);
+  ecc.set_input_smooth_sigma(_opts.smooth_sigma);
+  ecc.set_max_iterations(_opts.max_iterations);
+  ecc.set_max_eps(_opts.eps);
 
   if( !ecc.set_reference_image(reference_image, reference_mask) ) {
     CF_ERROR("ecc.set_reference_image() fails");
@@ -477,8 +474,8 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
 
   for( int i = 0; i < cn; ++i ) {
 
-    ecc.set_image_transform((computed_transforms_[i] =
-        create_image_transform(motion_type_)).get());
+    ecc.set_image_transform((_computed_transforms[i] =
+        create_image_transform(_opts.motion_type)).get());
 
     if( !ecc.align( channels[i], masks[i]) ) {
       CF_ERROR("ecc.align_to_reference(channel=%d) fails: iterations=%d eps=%g",
@@ -506,9 +503,9 @@ bool c_align_color_channels::align(cv::InputArray reference_image,
       cv::remap(channels[i], channels[i],
           current_remap,
           cv::noArray(),
-          interpolation_,
-          border_mode_,
-          border_value_[i]);
+          _opts.interpolation,
+          _opts.border_mode,
+          _opts.border_value[i]);
 
     }
 

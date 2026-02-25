@@ -115,7 +115,8 @@ public:
   const c_enum_member * get_display_types() const override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting settings, bool save) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  static const c_ctlist<this_class> & getcontrols();
 
 
 protected:
@@ -132,28 +133,28 @@ protected:
   bool update_stereo_rectification_remap();
 
 protected:
-  c_stereo_input_source input_;
+  c_stereo_input_source _input;
   c_stereo_matcher_input_options _input_options;
-  c_stereo_matcher_stereo_rectification_options stereo_rectification_options_;
-  c_stereo_matcher_processing_options processing_options_;
-  c_stereo_matcher_image_processing_options image_processing_options_;
-  c_stereo_matcher_output_options output_options_;
+  c_stereo_matcher_stereo_rectification_options _stereo_rectification_options;
+  c_stereo_matcher_processing_options _processing_options;
+  c_stereo_matcher_image_processing_options _image_processing_options;
+  c_stereo_matcher_output_options _output_options;
 
-  c_stereo_camera_intrinsics stereo_intrinsics_;
-  c_stereo_camera_extrinsics stereo_extrinsics_;
-  c_stereo_camera_intrinsics new_intrinsics_;
-  c_stereo_camera_extrinsics new_extrinsics_;
+  c_stereo_camera_intrinsics _stereo_intrinsics;
+  c_stereo_camera_extrinsics _stereo_extrinsics;
+  c_stereo_camera_intrinsics _new_intrinsics;
+  c_stereo_camera_extrinsics _new_extrinsics;
 
-  c_regular_stereo_matcher stereo_matcher_;
+  c_regular_stereo_matcher _stereo_matcher;
 
   cv::Mat2f rmaps_[2];
-  cv::Mat current_frames_[2];
-  cv::Mat current_masks_[2];
-  cv::Mat current_disparity_;
-  cv::Matx33d R_[2];
-  cv::Matx34d P_[2];
-  cv::Matx44d Q_;
-  cv::Rect validRoi_[2];
+  cv::Mat _current_frames[2];
+  cv::Mat _current_masks[2];
+  cv::Mat _current_disparity;
+  cv::Matx33d _R[2];
+  cv::Matx34d _P[2];
+  cv::Matx44d _Q;
+  cv::Rect _validRoi[2];
 };
 
 #endif /* __c_stereo_matcher_pipeline_h__ */

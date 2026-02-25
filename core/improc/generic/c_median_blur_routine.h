@@ -18,60 +18,15 @@ class c_median_blur_routine:
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_median_blur_routine,
       "medianBlur",
-      "calls cv::medianBlur()");
+      "Apply cv::medianBlur() to image");
 
-  void set_radius(int v)
-  {
-    radius_ = v;
-  }
-
-  int radius() const
-  {
-    return radius_;
-  }
-
-  void set_iterations(int v)
-  {
-    iterations_ = v;
-  }
-
-  int iterations() const
-  {
-    return iterations_;
-  }
-
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, radius, "Filter radius [px]");
-    BIND_PCTRL(ctls, iterations, "Number of iterations");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, radius);
-      SERIALIZE_PROPERTY(settings, save, *this, iterations);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    const int r = image.depth() < CV_32F ? radius_ : 2;
-    const int ksize = 2 * radius_ + 1;
-
-    for( int i = 0; i < iterations_; ++i ) {
-      cv::medianBlur(image, image, ksize);
-    }
-
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  int radius_ = 1;
-  int iterations_ = 1;
+  int _radius = 1;
+  int _iterations = 1;
 };
 
 #endif /* __c_median_blur_routine_h__ */

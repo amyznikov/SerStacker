@@ -31,30 +31,29 @@ const c_enum_member * members_of<c_image_calc_routine::Function>()
 }
 
 
-void c_image_calc_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_image_calc_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, function, "Select function to apply\n");
-  BIND_PCTRL(ctls, argname, "Saved artifact name");
+   ctlbind(ctls, "function", ctx(&this_class::_function), "");
+   ctlbind(ctls, "arg", ctx(&this_class::_argname), "");
 }
 
 bool c_image_calc_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, function);
-    SERIALIZE_PROPERTY(settings, save, *this, argname);
+    SERIALIZE_OPTION(settings, save, *this, _function);
+    SERIALIZE_OPTION(settings, save, *this, _argname);
     return true;
   }
   return false;
 }
 
-
 bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( function_ == Function_None ) {
+  if( _function == Function_None ) {
     return true;
   }
 
-  if( argname_.empty() ) {
+  if( _argname.empty() ) {
     CF_ERROR("No second image name specified");
     return false;
   }
@@ -62,8 +61,8 @@ bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   cv::Mat second_image;
   cv::Mat second_mask;
 
-  if ( !base::get_artifact(argname_, second_image, second_mask)) {
-    CF_ERROR("get_artifact('%s') fails", argname_.c_str());
+  if ( !base::get_artifact(_argname, second_image, second_mask)) {
+    CF_ERROR("get_artifact('%s') fails", _argname.c_str());
     return false;
   }
 
@@ -79,7 +78,7 @@ bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return false;
   }
 
-  switch (function_) {
+  switch (_function) {
     case Function_None:
       break;
     case Function_add:
@@ -120,7 +119,7 @@ bool c_image_calc_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       cv::min(image.getMat(), second_image, image.getMatRef());
       break;
     default:
-      CF_ERROR("Unhandled function %d requested", function_);
+      CF_ERROR("Unhandled function %d requested", _function);
       return false;
   }
 

@@ -8,25 +8,17 @@
 #include "c_align_color_channels_routine.h"
 #include <core/proc/reduce_channels.h>
 
-
-
-void c_align_color_channels_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_align_color_channels_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, method, "");
-  BIND_PCTRL(ctls, reference_channel, "");
-  BIND_PCTRL(ctls, motion_type, "");
-  BIND_PCTRL(ctls, interpolation, "");
-  BIND_PCTRL(ctls, border_mode, "");
-  BIND_PCTRL(ctls, border_value, "");
-  BIND_PCTRL(ctls, eps, "");
-  BIND_PCTRL(ctls, max_iterations, "");
-  BIND_PCTRL(ctls, max_level, "");
-  BIND_PCTRL(ctls, normalization_level, "");
-  BIND_PCTRL(ctls, normalization_eps, "");
-  BIND_PCTRL(ctls, smooth_sigma, "");
-  BIND_PCTRL(ctls, update_step_scale, "");
-  BIND_PCTRL(ctls, enable_threshold, "");
-  BIND_PCTRL(ctls, threshold, "");
+  base::getcontrols(ctls, ctx);
+
+  ctlbind(ctls, "reference channel", ctx(&this_class::_reference_channel), "");
+  ctlbind(ctls, "enable threshold", ctx(&this_class::_enable_threshold), "");
+  ctlbind(ctls, "threshold", ctx(&this_class::_threshold), "");
+
+  ctlbind_expandable_group(ctls, "algorithm", "algorithm parameters");
+    c_align_color_channels::getcontrols(ctls, ctx(&this_class::_algorithm));
+  ctlbind_end_group(ctls);
 }
 
 bool c_align_color_channels_routine::serialize(c_config_setting settings, bool save)
@@ -54,14 +46,14 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings, bool s
 
 bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( !enable_threshold_ ) {
-    return algorithm_.align(reference_channel_, image.getMat(),
+  if ( !_enable_threshold ) {
+    return _algorithm.align(_reference_channel, image.getMat(),
         image, mask.getMat(), mask);
   }
 
   cv::Mat smask;
 
-  cv::compare(image, threshold_, smask, cv::CMP_GE);
+  cv::compare(image, _threshold, smask, cv::CMP_GE);
   if ( smask.channels() > 1 ) {
     reduce_color_channels(smask, cv::REDUCE_MAX);
   }
@@ -69,6 +61,6 @@ bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::Inp
     cv::bitwise_and(mask, smask, smask);
   }
 
-  return algorithm_.align(reference_channel_, image, image, smask);
+  return _algorithm.align(_reference_channel, image, image, smask);
 }
 

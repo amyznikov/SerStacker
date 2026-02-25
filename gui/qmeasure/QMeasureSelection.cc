@@ -171,7 +171,7 @@ QMeasureSettingsDialogBox::QMeasureSettingsDialogBox(const QString & title, QWid
 
   layout_ = new QVBoxLayout(this);
 
-  layout_->addWidget(settinngs_ctl = new QSettingsWidget("", this), 0, Qt::AlignTop);
+  layout_->addWidget(settinngs_ctl = new QSettingsWidget(this), 0, Qt::AlignTop);
   settinngs_ctl->addRow("Measure:", combobox_ctl = new QMeasureSelectionCombo());
   settinngs_ctl->addRow(tooltip_ctl = new QLabel());
 

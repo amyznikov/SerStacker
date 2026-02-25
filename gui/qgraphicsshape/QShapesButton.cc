@@ -83,7 +83,7 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
   _pen.setColor(Qt::yellow);
 
 
-  connect(this, &QToolButton::toggled,
+  QObject::connect(this, &QToolButton::toggled,
       [this](bool checked) {
         for ( QGraphicsShape * shape : _shapes ) {
           shape->setVisible(checked);

@@ -21,60 +21,40 @@ public:
 
   void set_eps(double v)
   {
-    m_.set_eps(v);
+    _m.set_eps(v);
   }
 
   double eps() const
   {
-    return m_.eps();
+    return _m.eps();
   }
 
   void set_dscale(int v)
   {
-    m_.set_dscale(v);
+    _m.set_dscale(v);
   }
 
   int dscale() const
   {
-    return m_.dscale();
+    return _m.dscale();
   }
 
   void set_avgchannel(bool v)
   {
-    m_.set_avgchannel(v);
+    _m.set_avgchannel(v);
   }
 
   bool avgchannel() const
   {
-    return m_.avgchannel();
+    return _m.avgchannel();
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, eps, "");
-    BIND_PCTRL(ctls, dscale, "");
-    BIND_PCTRL(ctls, avgchannel, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, eps);
-      SERIALIZE_PROPERTY(settings, save, *this, dscale);
-      SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    m_.create_map(image.getMat(), image);
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_local_contrast_measure m_;
+  c_local_contrast_measure _m;
 };
 
 #endif /* __c_local_contrast_map_routine_h__ */

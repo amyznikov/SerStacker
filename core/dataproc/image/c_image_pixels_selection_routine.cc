@@ -110,7 +110,7 @@ static void process_image(const cv::Mat & src, cv::Mat1b & dst, const c_math_exp
 
 
 
-std::string c_image_pixels_selection_routine::helpstring() const
+std::string c_image_pixels_selection_routine::helpstring()
 {
   static std::string _helpstring;
 
@@ -122,24 +122,24 @@ std::string c_image_pixels_selection_routine::helpstring() const
     }
 
     _helpstring.append("\nConstants:\n");
-    for ( const auto & func: math_.constants() ) {
+    for ( const auto & func: _math.constants() ) {
       _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
     }
 
     _helpstring.append("\nUnary operations:\n");
-    for ( const auto & func: math_.unary_operations() ) {
+    for ( const auto & func: _math.unary_operations() ) {
       _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
     }
 
     _helpstring.append("\nBinary operations:\n");
-    for ( int p = 0, np = math_.binary_operations().size(); p < np; ++p ) {
-      for ( const auto & func: math_.binary_operations()[p] ) {
+    for ( int p = 0, np = _math.binary_operations().size(); p < np; ++p ) {
+      for ( const auto & func: _math.binary_operations()[p] ) {
         _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
       }
     }
 
     _helpstring.append("\nFunctions:\n");
-    for ( const auto & func: math_.functions() ) {
+    for ( const auto & func: _math.functions() ) {
       _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
     }
 
@@ -148,12 +148,12 @@ std::string c_image_pixels_selection_routine::helpstring() const
   return _helpstring;
 }
 
-void c_image_pixels_selection_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
-  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
-  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
-}
+//void c_image_pixels_selection_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+//{
+//  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
+//  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
+//  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
+//}
 
 bool c_image_pixels_selection_routine::serialize(c_config_setting settings, bool save)
 {
@@ -169,40 +169,40 @@ bool c_image_pixels_selection_routine::serialize(c_config_setting settings, bool
 
 bool c_image_pixels_selection_routine::process(c_video_frame * frame)
 {
-  if( expression_.empty() ) {
-    expression_changed_ = false;
+  if( _expression.empty() ) {
+    _expression_changed = false;
     return true;
   }
 
-  if( expression_changed_ ) {
+  if( _expression_changed ) {
 
-    if( !initialized_ ) {
+    if( !_initialized ) {
       for( int i = 0, n = sizeof(processor_args) / sizeof(processor_args[0]); i < n; ++i ) {
-        math_.add_argument(i, processor_args[i].name, processor_args[i].tooldip);
+        _math.add_argument(i, processor_args[i].name, processor_args[i].tooldip);
       }
     }
 
-    if ( !math_.parse(expression_.c_str()) ) {
+    if ( !_math.parse(_expression.c_str()) ) {
 
       CF_ERROR("math_.parse() fails: %s\n"
-          "error_pos=%s", math_.error_message().c_str(),
-          math_.pointer_to_syntax_error() ? math_.pointer_to_syntax_error() : "null");
+          "error_pos=%s", _math.error_message().c_str(),
+          _math.pointer_to_syntax_error() ? _math.pointer_to_syntax_error() : "null");
 
       return false;
     }
 
-    expression_changed_ = false;
+    _expression_changed = false;
   }
 
 
-  frame->get_image("PIXEL_VALUE", current_image_, cv::noArray(), cv::noArray());
-  process_image(current_image_, current_mask_, math_);
+  frame->get_image("PIXEL_VALUE", _current_image, cv::noArray(), cv::noArray());
+  process_image(_current_image, _current_mask, _math);
 
-  if ( invert_selection_ ) {
-    cv::bitwise_not(current_mask_, current_mask_);
+  if ( _invert_selection ) {
+    cv::bitwise_not(_current_mask, _current_mask);
   }
 
-  frame->update_selection(current_mask_, mask_mode_);
+  frame->update_selection(_current_mask, _mask_mode);
 
   return true;
 }

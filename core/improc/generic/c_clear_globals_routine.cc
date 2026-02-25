@@ -7,9 +7,8 @@
 
 #include "c_clear_globals_routine.h"
 
-void c_clear_globals_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_clear_globals_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-//  BIND_PCTRL(ctls, artifact_name, "Name for this image to save");
 }
 
 bool c_clear_globals_routine::serialize(c_config_setting settings, bool save)

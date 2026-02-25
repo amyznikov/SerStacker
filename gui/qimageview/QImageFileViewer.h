@@ -48,7 +48,7 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
-  c_input_sequence::sptr input_sequence_;
+  c_input_sequence::sptr _input_sequence;
   QPlaySequenceControl * playControls = nullptr;
 };
 

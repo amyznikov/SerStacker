@@ -207,7 +207,7 @@ void MainWindow::onSaveState(QSettings & settings)
   }
 
   if ( cloudView ) {
-    cloudView->saveParameters();
+    cloudView->saveSettings(settings, "QPointCloudSourceView");
   }
 
   if ( profileGraph_ctl ) {
@@ -227,12 +227,20 @@ void MainWindow::onSaveState(QSettings & settings)
   }
 
   if ( geoView ) {
-    geoView->saveSettings(settings);
+    geoView->saveSettings(settings, "QGeoMapView");
   }
 
+  if ( imageView ) {
+    imageView->saveSettings(settings, "QImageSourceView");
+  }
+
+  if ( _roiOptionsDialogBox ) {
+    _roiOptionsDialogBox->saveSettings(settings, "QGraphicsRectShapeSettings");
+  }
+
+  _diplayImageWriter.saveSettings(settings, "QDisplayVideoWriter");
+
   saveShapes(settings);
-
-
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -248,11 +256,9 @@ void MainWindow::onRestoreState(QSettings & settings)
 
   if ( cloudView ) {
 
-    cloudView->loadParameters();
+    cloudView->loadSettings(settings, "QPointCloudSourceView");
 
-    std::vector<QGLView::PlanarGridOptions> & grids =
-        cloudView->grids();
-
+    std::vector<QGLView::PlanarGridOptions> & grids = cloudView->grids();
     if ( grids.empty() ) {
 
       grids.emplace_back();
@@ -286,15 +292,19 @@ void MainWindow::onRestoreState(QSettings & settings)
     if ( !selected_processor.isEmpty() ) {
       dataframeProcessor_ctl->set_selected_processor(selected_processor);
     }
-
   }
 
   if ( geoView ) {
-    geoView->loadSettings(settings);
+    geoView->loadSettings(settings, "QGeoMapView");
   }
 
-  loadShapes(settings);
+  if ( imageView ) {
+    imageView->loadSettings(settings, "QImageSourceView");
+  }
 
+  _diplayImageWriter.loadSettings(settings, "QDisplayVideoWriter");
+
+  loadShapes(settings);
 }
 
 void MainWindow::saveShapes(QSettings & settings)
@@ -451,7 +461,7 @@ void MainWindow::setupMainMenu()
 
   menuFile->addSeparator();
 
-  onLoadGpsTrackAction_ =
+  onLoadGpsTrackAction =
       menuFile->addAction("Load GPX Track...",
           this, &ThisClass::onLoadGpxTrack);
 
@@ -803,20 +813,20 @@ void MainWindow::onWriteDisplayVideo()
 {
   // In rare cases for some reason this call may become recursive
 
-  if( lockDiplayImageWriter_ || !diplayImageWriter_.started() || diplayImageWriter_.paused() ) {
+  if( _lockDiplayImageWriter || !_diplayImageWriter.started() || _diplayImageWriter.paused() ) {
     return;
   }
 
-  lockDiplayImageWriter_ = true;
+  _lockDiplayImageWriter = true;
 
   QWidget * currentView =
       inputSourceView->currentView();
 
   if( currentView == imageView ) {
 
-    if( !diplayImageWriter_.writeViewPort() ) {
+    if( !_diplayImageWriter.writeViewPort() ) {
       if( !imageView->displayImage().empty() ) {
-        diplayImageWriter_.write(imageView->displayImage());
+        _diplayImageWriter.write(imageView->displayImage());
       }
     }
     else {
@@ -827,7 +837,7 @@ void MainWindow::onWriteDisplayVideo()
 
       if( !image.isNull() ) {
 
-        diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
+        _diplayImageWriter.write(cv::Mat(image.height(), image.width(), CV_8UC3,
             (void*) image.constBits(),
             image.bytesPerLine()));
       }
@@ -848,13 +858,13 @@ void MainWindow::onWriteDisplayVideo()
         image.convertTo(QImage::Format_BGR888);
       }
 
-      diplayImageWriter_.write(cv::Mat(image.height(), image.width(), CV_8UC3,
+      _diplayImageWriter.write(cv::Mat(image.height(), image.width(), CV_8UC3,
           (void*) image.constBits(),
           image.bytesPerLine()));
     }
   }
 
-  lockDiplayImageWriter_ = false;
+  _lockDiplayImageWriter = false;
 }
 
 
@@ -877,9 +887,9 @@ void MainWindow::onCurrentViewVisibilityChanged()
       cloudViewSettingsDialogBox->hide();
     }
 
-    if( is_visible(glGridSettingsDialog_) ) {
-      glGridSettingsDialog_->setOptions(nullptr);
-      glGridSettingsDialog_->hide();
+    if( is_visible(_glGridSettingsDialog) ) {
+      _glGridSettingsDialog->setOptions(nullptr);
+      _glGridSettingsDialog->hide();
     }
   }
 
@@ -906,7 +916,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
       copyDisplayViewportAction->setEnabled(false);
       saveImageMaskAction->setEnabled(false);
       loadImageMaskAction->setEnabled(false);
-      displayImageVideoWriterToolButton_->setEnabled(false);
+      _displayImageVideoWriterToolButton->setEnabled(false);
     }
     else {
       const bool hasimage =
@@ -924,7 +934,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
       copyDisplayViewportAction->setEnabled(true);
       saveImageMaskAction->setEnabled(hasmask);
       loadImageMaskAction->setEnabled(hasimage);
-      displayImageVideoWriterToolButton_->setEnabled(true);
+      _displayImageVideoWriterToolButton->setEnabled(true);
     }
 
   }
@@ -938,13 +948,13 @@ void MainWindow::onCurrentViewVisibilityChanged()
       saveDisplayImageAsAction->setEnabled(false);
       copyDisplayImageAction->setEnabled(false);
       copyDisplayViewportAction->setEnabled(false);
-      displayImageVideoWriterToolButton_->setEnabled(false);
+      _displayImageVideoWriterToolButton->setEnabled(false);
     }
     else {
       saveDisplayImageAsAction->setEnabled(true);
       copyDisplayImageAction->setEnabled(true);
       copyDisplayViewportAction->setEnabled(true);
-      displayImageVideoWriterToolButton_->setEnabled(true);
+      _displayImageVideoWriterToolButton->setEnabled(true);
     }
   }
   else {
@@ -955,7 +965,7 @@ void MainWindow::onCurrentViewVisibilityChanged()
     copyDisplayViewportAction->setEnabled(false);
     saveImageMaskAction->setEnabled(false);
     loadImageMaskAction->setEnabled(false);
-    displayImageVideoWriterToolButton_->setEnabled(false);
+    _displayImageVideoWriterToolButton->setEnabled(false);
   }
 
 }
@@ -989,10 +999,10 @@ void MainWindow::onCurrentViewDisplayImageChanged()
     copyDisplayImageAction->setEnabled(isvisible && hasdisplayimage);
     copyDisplayViewportAction->setEnabled(isvisible);
 
-    if ( diplayImageWriter_.started() ) {
+    if ( _diplayImageWriter.started() ) {
 
       if ( !isvisible ) {
-        diplayImageWriter_.stop();
+        _diplayImageWriter.stop();
       }
       else {
         onWriteDisplayVideo();
@@ -1008,10 +1018,10 @@ void MainWindow::onCurrentViewDisplayImageChanged()
     copyDisplayImageAction->setEnabled(isvisible);
     copyDisplayViewportAction->setEnabled(isvisible);
 
-    if( diplayImageWriter_.started() ) {
+    if( _diplayImageWriter.started() ) {
 
       if( !isvisible ) {
-        diplayImageWriter_.stop();
+        _diplayImageWriter.stop();
       }
       else {
         onWriteDisplayVideo();
@@ -1981,29 +1991,29 @@ void MainWindow::setupInputSequenceView()
 
   ///
 
-  roiActionsMenu_.addAction(showRoiOptionsAction =
+  _roiActionsMenu.addAction(showRoiOptionsAction =
       createCheckableAction(QIcon(),
           "ROI Options..",
           "Configure ROI rectangle options",
-          is_visible(roiOptionsDialogBox_),
+          is_visible(_roiOptionsDialogBox),
           [this](bool checked) {
 
             if ( !checked ) {
-              if ( roiOptionsDialogBox_ ) {
-                roiOptionsDialogBox_->setVisible(false);
+              if ( _roiOptionsDialogBox ) {
+                _roiOptionsDialogBox->setVisible(false);
               }
             }
             else {
 
-              if ( !roiOptionsDialogBox_ ) {
+              if ( !_roiOptionsDialogBox ) {
 
-                roiOptionsDialogBox_ = new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
+                _roiOptionsDialogBox = new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
                     imageView->roiShape(),
                     this);
 
-                roiOptionsDialogBox_->loadParameters();
+                _roiOptionsDialogBox->loadSettings("QGraphicsRectShapeSettings");
 
-                connect(roiOptionsDialogBox_, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+                connect(_roiOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
                     [this](bool visible) {
                       showRoiOptionsAction->setChecked(visible);
                       if ( visible ) {
@@ -2013,14 +2023,14 @@ void MainWindow::setupInputSequenceView()
 
               }
 
-              roiOptionsDialogBox_->setVisible(checked);
+              _roiOptionsDialogBox->setVisible(checked);
             }
           }));
 
 
-  roiActionsMenu_.addAction(showMeasuresSettingsAction);
-  roiActionsMenu_.addAction(showMeasuresDisplayAction);
-  roiActionsMenu_.addAction(showMeasuresGraphAction);
+  _roiActionsMenu.addAction(showMeasuresSettingsAction);
+  _roiActionsMenu.addAction(showMeasuresDisplayAction);
+  _roiActionsMenu.addAction(showMeasuresGraphAction);
 
 
   toolbar->addWidget(createToolButtonWithPopupMenu(showRoiRectangleAction =
@@ -2031,7 +2041,7 @@ void MainWindow::setupInputSequenceView()
           [this](bool checked) {
             imageView->roiShape()->setVisible(checked);
           }),
-      &roiActionsMenu_));
+      &_roiActionsMenu));
 
 
   connect(imageView->roiShape(), &QGraphicsObject::visibleChanged,
@@ -2265,30 +2275,30 @@ void MainWindow::setupInputSequenceView()
             menu.addAction(createCheckableAction(getIcon(ICON_cloud_view_grid),
                   "Planar grid options...",
                   "Open Planar grid options modal dialog box",
-                  is_visible(glGridSettingsDialog_),
+                  is_visible(_glGridSettingsDialog),
                   [this]() {
 
-                    if ( !glGridSettingsDialog_ ) {
+                    if ( !_glGridSettingsDialog ) {
 
-                      glGridSettingsDialog_ =
+                      _glGridSettingsDialog =
                           new QGLViewPlanarGridSettingsDialogBox("Planar grid options...",
                               this);
 
-                      connect(glGridSettingsDialog_, &QGLViewPlanarGridSettingsDialogBox::parameterChanged,
+                      connect(_glGridSettingsDialog, &QGLViewPlanarGridSettingsDialogBox::parameterChanged,
                           [this]() {
                             cloudView->update();
-                            cloudView->saveParameters();
+                            cloudView->saveSettings();
                           });
                     }
 
-                    if ( !glGridSettingsDialog_->isVisible() ) {
-                      glGridSettingsDialog_->setOptions(&cloudView->grids().front());
-                      glGridSettingsDialog_->show();
-                      glGridSettingsDialog_->raise();
+                    if ( !_glGridSettingsDialog->isVisible() ) {
+                      _glGridSettingsDialog->setOptions(&cloudView->grids().front());
+                      _glGridSettingsDialog->show();
+                      _glGridSettingsDialog->raise();
                     }
                     else {
-                      glGridSettingsDialog_->setOptions(nullptr);
-                      glGridSettingsDialog_->hide();
+                      _glGridSettingsDialog->setOptions(nullptr);
+                      _glGridSettingsDialog->hide();
                     }
                   }));
         }
@@ -2436,13 +2446,12 @@ void MainWindow::setupInputSequenceView()
   toolbar = inputSourceView->rightToolbar();
   // toolbar->addSeparator();
 
-  diplayImageWriter_.loadParameters();
-  toolbar->addWidget(displayImageVideoWriterToolButton_ =
-      createDisplayVideoWriterOptionsToolButton(&diplayImageWriter_, this));
+  toolbar->addWidget(_displayImageVideoWriterToolButton =
+      createDisplayVideoWriterOptionsToolButton(&_diplayImageWriter, this));
 
-  connect(&diplayImageWriter_, &QDisplayVideoWriter::stateChanged,
+  connect(&_diplayImageWriter, &QDisplayVideoWriter::stateChanged,
       [this]() {
-        if ( diplayImageWriter_.started() ) {
+        if ( _diplayImageWriter.started() ) {
           connect(cloudView, &QGLView::displayImageChanged,
               this, &ThisClass::onCurrentViewDisplayImageChanged);
         }

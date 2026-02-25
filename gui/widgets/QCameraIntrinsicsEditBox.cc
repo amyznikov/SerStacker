@@ -153,7 +153,7 @@ public:
       list_ctl->addItem(c.name.c_str());
     }
 
-    connect(filter_ctl, &QLineEdit::textChanged,
+    QObject::connect(filter_ctl, &QLineEdit::textChanged,
         [this](const QString & text) {
 
           if ( text.isEmpty() ) {
@@ -178,10 +178,10 @@ public:
           }
         });
 
-    connect(btnCancel, &QPushButton::clicked,
+    QObject::connect(btnCancel, &QPushButton::clicked,
         this, &ThisClass::reject);
 
-    connect(btnOK, &QPushButton::clicked,
+    QObject::connect(btnOK, &QPushButton::clicked,
         [this]() {
           selectedIndex_ = list_ctl->currentRow();
           if ( selectedIndex_ >= 0 && !(list_ctl->item(selectedIndex_)->isHidden())) {
@@ -189,7 +189,7 @@ public:
           }
         });
 
-    connect(list_ctl, &QListWidget::itemDoubleClicked,
+    QObject::connect(list_ctl, &QListWidget::itemDoubleClicked,
         [this](QListWidgetItem *item) {
           if ( list_ctl->currentItem() != item ) {
             list_ctl->setCurrentItem(item);
@@ -200,7 +200,7 @@ public:
           }
         });
 
-    connect(list_ctl, &QListWidget::customContextMenuRequested,
+    QObject::connect(list_ctl, &QListWidget::customContextMenuRequested,
         [this](const QPoint & pos) {
 
           const int selectedIndex = list_ctl->indexAt(pos).row();
@@ -271,14 +271,14 @@ QCameraIntrinsicsEditBox::QCameraIntrinsicsEditBox(QWidget * parent) :
       add_numeric_box<cv::Size>("Frame size",
           "",
           [this](const cv::Size & v) {
-            if ( _options && _options->image_size != v ) {
-              _options->image_size = v;
+            if ( _camera_intrinsics && _camera_intrinsics->image_size != v ) {
+              _camera_intrinsics->image_size = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size * v) {
-            if ( _options ) {
-              *v = _options->image_size;
+            if ( _camera_intrinsics ) {
+              *v = _camera_intrinsics->image_size;
               return true;
 
             }
@@ -289,17 +289,17 @@ QCameraIntrinsicsEditBox::QCameraIntrinsicsEditBox(QWidget * parent) :
   addRow("Camera Matrix",
       cameraMatrix_ctl = new QMatrixEdit(3, 3, this));
 
-  connect(this, &ThisClass::populatecontrols,
+  QObject::connect(this, &ThisClass::populatecontrols,
       [this]() {
-        if ( _options ) {
-          cameraMatrix_ctl->setMatrix(cv::Mat(_options->camera_matrix));
+        if ( _camera_intrinsics ) {
+          cameraMatrix_ctl->setMatrix(cv::Mat(_camera_intrinsics->camera_matrix));
         }
       });
 
-  connect(cameraMatrix_ctl, &QMatrixEdit::matrixChanged,
+  QObject::connect(cameraMatrix_ctl, &QMatrixEdit::matrixChanged,
       [this]() {
-        if ( _options && !updatingControls() ) {
-          if ( cameraMatrix_ctl->getMatrix(&_options->camera_matrix) ) {
+        if ( _camera_intrinsics && !updatingControls() ) {
+          if ( cameraMatrix_ctl->getMatrix(&_camera_intrinsics->camera_matrix) ) {
             Q_EMIT parameterChanged();
           }
         }
@@ -310,14 +310,14 @@ QCameraIntrinsicsEditBox::QCameraIntrinsicsEditBox(QWidget * parent) :
       add_numeric_box<std::vector<double>> ("Dist. Coeffs:",
           "",
           [this](const std::vector<double> & v) {
-            if ( _options ) {
-              _options->dist_coeffs = v;
+            if ( _camera_intrinsics ) {
+              _camera_intrinsics->dist_coeffs = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](std::vector<double> * v) {
-            if ( _options ) {
-              *v = _options->dist_coeffs;
+            if ( _camera_intrinsics ) {
+              *v = _camera_intrinsics->dist_coeffs;
               return true;
 
             }
@@ -327,13 +327,25 @@ QCameraIntrinsicsEditBox::QCameraIntrinsicsEditBox(QWidget * parent) :
   options_ctl =
       add_tool_button("Options...",
           [this](bool /*checked*/) {
-            if ( _options ) {
+            if ( _camera_intrinsics ) {
               showOptionsMenu();
             }
           });
 
   updateControls();
 }
+
+void QCameraIntrinsicsEditBox::set_camera_intrinsics(c_camera_intrinsics * camera_intrinsics)
+{
+  _camera_intrinsics = camera_intrinsics;
+  updateControls();
+}
+
+c_camera_intrinsics * QCameraIntrinsicsEditBox::camera_intrinsics() const
+{
+  return _camera_intrinsics;
+}
+
 
 void QCameraIntrinsicsEditBox::showOptionsMenu()
 {
@@ -356,7 +368,7 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
     }
   }
 
-  if( !_options ) {
+  if( !_camera_intrinsics ) {
     return;
   }
 
@@ -377,7 +389,7 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
             CF_DEBUG("seletedIndex=%d", seletedIndex);
 
             if ( seletedIndex >= 0 ) {
-              *_options = known_cameras[seletedIndex].intrinsics;
+              *_camera_intrinsics = known_cameras[seletedIndex].intrinsics;
               updateControls();
               Q_EMIT parameterChanged();
             }
@@ -415,7 +427,7 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
 
             c_named_camera camera;
             camera.name = cname;
-            camera.intrinsics = *_options;
+            camera.intrinsics = *_camera_intrinsics;
 
             known_cameras.emplace_back(camera);
             save_known_cameras();
@@ -460,7 +472,7 @@ void QCameraIntrinsicsEditBox::showOptionsMenu()
                 "Make sure the specified YML file has correct format");
           }
           else {
-            *_options = intrinsics;
+            *_camera_intrinsics = intrinsics;
             updateControls();
             Q_EMIT parameterChanged();
           }

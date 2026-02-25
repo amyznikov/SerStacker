@@ -37,141 +37,141 @@ public:
 
   void set_filter_type(c_locate_extremes_options::neighbor_filter_type v)
   {
-    opts_.filter_type = v;
+    _opts.filter_type = v;
   }
 
   c_locate_extremes_options::neighbor_filter_type filter_type() const
   {
-    return opts_.filter_type;
+    return _opts.filter_type;
   }
 
   void set_se_shape(cv::MorphShapes v)
   {
-    opts_.se_shape = v;
+    _opts.se_shape = v;
   }
 
   cv::MorphShapes se_shape() const
   {
-    return opts_.se_shape;
+    return _opts.se_shape;
   }
 
   void set_se_size(const cv::Size & v)
   {
-    opts_.se_size = v;
+    _opts.se_size = v;
   }
 
   const cv::Size& se_size() const
   {
-    return opts_.se_size;
+    return _opts.se_size;
   }
 
   void set_anchor(const cv::Point & v)
   {
-    opts_.anchor = v;
+    _opts.anchor = v;
   }
 
   const cv::Point & anchor() const
   {
-    return opts_.anchor;
+    return _opts.anchor;
   }
 
   void set_border_type(BorderType v)
   {
-    opts_.border_type = static_cast<cv::BorderTypes>(v);
+    _opts.border_type = static_cast<cv::BorderTypes>(v);
   }
 
   BorderType border_type() const
   {
-    return static_cast<BorderType>(opts_.border_type);
+    return static_cast<BorderType>(_opts.border_type);
   }
 
   void set_border_value(const cv::Scalar & v)
   {
-    opts_.border_value = v;
+    _opts.border_value = v;
   }
 
   const cv::Scalar & border_value() const
   {
-    return opts_.border_value;
+    return _opts.border_value;
   }
 
   void set_locate_maximums(bool v)
   {
-    opts_.locate_maximums = v;
+    _opts.locate_maximums = v;
   }
 
   bool locate_maximums() const
   {
-    return opts_.locate_maximums;
+    return _opts.locate_maximums;
   }
 
   void set_locate_minimums(bool v)
   {
-    opts_.locate_minimums = v;
+    _opts.locate_minimums = v;
   }
 
   bool locate_minimums() const
   {
-    return opts_.locate_minimums;
+    return _opts.locate_minimums;
   }
 
   void set_maximums_alpha(double v)
   {
-    opts_.maximums_alpha = v;
+    _opts.maximums_alpha = v;
   }
 
   double maximums_alpha() const
   {
-    return opts_.maximums_alpha;
+    return _opts.maximums_alpha;
   }
 
   void set_maximums_beta(double v)
   {
-    opts_.maximums_beta = v;
+    _opts.maximums_beta = v;
   }
 
   double maximums_beta() const
   {
-    return opts_.maximums_beta;
+    return _opts.maximums_beta;
   }
 
   void set_minimums_alpha(double v)
   {
-    opts_.minimums_alpha = v;
+    _opts.minimums_alpha = v;
   }
 
   double minimums_alpha() const
   {
-    return opts_.minimums_alpha;
+    return _opts.minimums_alpha;
   }
 
   void set_minimums_beta(double v)
   {
-    opts_.minimums_beta = v;
+    _opts.minimums_beta = v;
   }
 
   double minimums_beta() const
   {
-    return opts_.minimums_beta;
+    return _opts.minimums_beta;
   }
 
   void set_output_channel(OUTPUT_CHANNEL v)
   {
-    output_channel_ = v;
+    _output_channel = v;
   }
 
   OUTPUT_CHANNEL output_channel() const
   {
-    return output_channel_;
+    return _output_channel;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_locate_extremes_options opts_;
-  OUTPUT_CHANNEL output_channel_ = OUTPUT_MASK;
+  c_locate_extremes_options _opts;
+  OUTPUT_CHANNEL _output_channel = OUTPUT_MASK;
 };
 
 #endif /* __c_local_minmax_routine_h__ */

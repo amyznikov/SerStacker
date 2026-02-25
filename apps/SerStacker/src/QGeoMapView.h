@@ -193,8 +193,7 @@ Q_SIGNALS:
   void deleteSelectedTrackClicked();
 
 protected:
-  void onupdatecontrols() final;
-  void update_control_states() final;
+  void update_control_states();
   void populateTrackSelectionCombo();
   void onGpxTrackSelected(int index);
   void onToggleTrackVisibilityClicked(bool visible);
@@ -261,10 +260,10 @@ public:
 
   void flyToPosition(double lat_deg, double lon_deg, double lat_size_deg, double lon_size_deg);
 
-  void loadSettings();
-  void saveSettings();
-  void loadSettings(QSettings & settings);
-  void saveSettings(QSettings & settings);
+  void loadSettings(const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
 
 
 
@@ -283,21 +282,15 @@ protected:
   bool exportGpxTrackToConfigFile(const QGpxTrackItem * item, const QString & filename) const;
   bool importGpxTrackFromConfigFile(const QString & filename);
 
-
-protected:
-//  void showEvent(QShowEvent *event) final;
-
 protected:
   void createToolbarActions() final;
   QGpxTrackItem * loadGpxTrack(const QString & filename);
-
 
 protected:
   std::vector<QGpxTrackItem*> gpxTrackItems;
   QGpxTrackViewSettingsDialogBox * viewSettingsDialogBox = nullptr;
   QAction * toggleOptionsDialogBoxAction = nullptr;
   int _currentVideoScrollpos = 0;
-//  bool _firstShow = true;
 };
 
 

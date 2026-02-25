@@ -29,17 +29,41 @@ const c_enum_member* members_of<c_unsharp_mask_routine::COLOR_CHANNEL>()
   return members;
 }
 
+void c_unsharp_mask_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "channel", ctx(&this_class::_channel), "Color channel for sharpening");
+   ctlbind(ctls, "sigma", ctx(&this_class::_sigma), "");
+   ctlbind(ctls, "alpha", ctx(&this_class::_alpha), "");
+   ctlbind(ctls, "outmin", ctx(&this_class::_outmin), "");
+   ctlbind(ctls, "outmax", ctx(&this_class::_outmax), "");
+   ctlbind(ctls, "blur_color_channels", ctx(&this_class::_blur_color_channels), "Gaussian blur sigma for color channels");
+}
+
+bool c_unsharp_mask_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _channel);
+    SERIALIZE_OPTION(settings, save, *this, _sigma);
+    SERIALIZE_OPTION(settings, save, *this, _alpha);
+    SERIALIZE_OPTION(settings, save, *this, _blur_color_channels);
+    SERIALIZE_OPTION(settings, save, *this, _outmin);
+    SERIALIZE_OPTION(settings, save, *this, _outmax);
+    return true;
+  }
+  return false;
+}
+
 bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( channel_ == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
-    return unsharp_mask(image, _ignore_mask ? cv::noArray() : mask, image, sigma_, alpha_, outmin_, outmax_);
+  if( _channel == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
+    return unsharp_mask(image, _ignore_mask ? cv::noArray() : mask, image, _sigma, _alpha, _outmin, _outmax);
   }
 
   cv::Mat tmp;
   int cc;
   double cscale = 1.0;
 
-  switch (channel_) {
+  switch (_channel) {
 
     case COLOR_CHANNEL_0:
       cc = 0;
@@ -124,25 +148,25 @@ bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutput
       break;
 
     default:
-      CF_ERROR("APP BUG: Invalid color channel requested: %d", channel_);
+      CF_ERROR("APP BUG: Invalid color channel requested: %d", _channel);
       return false;
   }
 
   cv::extractChannel(image, tmp, cc);
 
-  if( sigma_ > 0 && alpha_ > 0 && alpha_ < 1 ) {
-    unsharp_mask(tmp, _ignore_mask ? cv::noArray() : mask, tmp, sigma_, alpha_);
+  if( _sigma > 0 && _alpha > 0 && _alpha < 1 ) {
+    unsharp_mask(tmp, _ignore_mask ? cv::noArray() : mask, tmp, _sigma, _alpha);
   }
 
-  if( blur_color_channels_ > 0 ) {
+  if( _blur_color_channels > 0 ) {
     cv::GaussianBlur(image, image, cv::Size(-1, -1),
-        blur_color_channels_, blur_color_channels_,
+        _blur_color_channels, _blur_color_channels,
         cv::BORDER_REPLICATE);
   }
 
   cv::insertChannel(tmp, image, cc);
 
-  switch (channel_) {
+  switch (_channel) {
 
     case COLOR_CHANNEL_YCrCb:
       cv::cvtColor(image, image, cv::COLOR_YCrCb2BGR);
@@ -165,9 +189,9 @@ bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutput
       break;
   }
 
-  if ( outmax_ > outmin_ ) {
-    cv::max(image, outmin_, image);
-    cv::min(image, outmax_, image);
+  if ( _outmax > _outmin ) {
+    cv::max(image, _outmin, image);
+    cv::min(image, _outmax, image);
   }
 
   return true;

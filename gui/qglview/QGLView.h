@@ -71,11 +71,10 @@ public:
   explicit QGLView(QWidget * parent = nullptr);
   ~QGLView();
 
-  void loadParameters();
-  void saveParameters();
-  virtual void loadParameters(QSettings & settings);
-  virtual void saveParameters(QSettings & settings);
-
+  void loadSettings(const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
 
   void setBackgroundColor(const QColor &color);
   const QColor & backgroundColor() const;
@@ -183,8 +182,8 @@ protected:
   virtual void glDraw();
   virtual void glPostDraw();
   virtual void glCleanup();
-//  virtual void onLoadParameters(QSettings & settings);
-//  virtual void onSaveParameters(QSettings & settings);
+  virtual void onload(const QSettings & settings, const QString & prefix);
+  virtual void onsave(QSettings & settings, const QString & prefix);
 
 protected:
   void timerEvent(QTimerEvent *event) override;

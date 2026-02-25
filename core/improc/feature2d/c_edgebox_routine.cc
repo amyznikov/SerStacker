@@ -150,23 +150,63 @@ static void nms(const cv::Mat & src, cv::Mat & dst)
   imskeleton_morph(src, dst, 3, cv::MorphShapes::MORPH_RECT, 1000);
 }
 
+void c_edgebox_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "gradient_type", ctx(&this_class::_gradient_type), "Method for computing image gradients");
+  ctlbind(ctls, "gradient_pscale", ctx(&this_class::_gradient_pscale), "Gradient pyramid scale");
+  ctlbind(ctls, "gradient_threshold", ctx(&this_class::_gradient_threshold), "Gradient threshold method");
+  ctlbind(ctls, "display", ctx(&this_class::_display), "Display image");
+  ctlbind_browse_for_file(ctls, "model", ctx, &this_class::model, &this_class::set_model, "Model file for createStructuredEdgeDetection()\n" "https://github.com/opencv/opencv_extra/blob/master/testdata/cv/ximgproc/model.yml.gz\n");
+  ctlbind_expandable_group(ctls, "EdgeBoxes", "Options for cv::ximgproc::EdgeBoxes");
+    ctlbind(ctls, "MaxBoxes", ctx, &this_class::MaxBoxes, &this_class::set_MaxBoxes, "max number of boxes to detect");
+    ctlbind(ctls, "EdgeMinMag", ctx, &this_class::EdgeMinMag, &this_class::set_EdgeMinMag, "the edge min magnitude");
+    ctlbind(ctls, "EdgeMergeThr", ctx, &this_class::EdgeMergeThr, &this_class::set_EdgeMergeThr, "Sets the edge merge threshold");
+    ctlbind(ctls, "ClusterMinMag", ctx, &this_class::ClusterMinMag, &this_class::set_ClusterMinMag, "the cluster min magnitude");
+    ctlbind(ctls, "MaxAspectRatio", ctx, &this_class::MaxAspectRatio, &this_class::set_MaxAspectRatio, "the max aspect ratio of boxes");
+    ctlbind(ctls, "MinBoxArea", ctx, &this_class::MinBoxArea, &this_class::set_MinBoxArea, "the minimum area of boxes");
+    ctlbind(ctls, "Gamma", ctx, &this_class::Gamma, &this_class::set_Gamma, "the affinity sensitivity");
+    ctlbind(ctls, "Kappa", ctx, &this_class::Kappa, &this_class::set_Kappa, "the scale sensitivity");
+  ctlbind_end_group(ctls);
+}
+
+bool c_edgebox_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, gradient_type);
+    SERIALIZE_PROPERTY(settings, save, *this, gradient_pscale);
+    SERIALIZE_PROPERTY(settings, save, *this, gradient_threshold);
+    SERIALIZE_PROPERTY(settings, save, *this, model);
+    SERIALIZE_PROPERTY(settings, save, *this, display);
+    SERIALIZE_PROPERTY(settings, save, *this, MaxBoxes);
+    SERIALIZE_PROPERTY(settings, save, *this, EdgeMinMag);
+    SERIALIZE_PROPERTY(settings, save, *this, EdgeMergeThr);
+    SERIALIZE_PROPERTY(settings, save, *this, ClusterMinMag);
+    SERIALIZE_PROPERTY(settings, save, *this, MaxAspectRatio);
+    SERIALIZE_PROPERTY(settings, save, *this, MinBoxArea);
+    SERIALIZE_PROPERTY(settings, save, *this, Gamma);
+    SERIALIZE_PROPERTY(settings, save, *this, Kappa);
+    return true;
+  }
+  return false;
+}
+
 bool c_edgebox_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   try {
 
-    if( !dollar_ ) {
+    if( !_dollar ) {
 
-      if( model_.empty() ) {
+      if( _model.empty() ) {
         CF_ERROR("Model file not specified");
         return false;
       }
 
-      dollar_ =
-          cv::ximgproc::createStructuredEdgeDetection(model_);
+      _dollar =
+          cv::ximgproc::createStructuredEdgeDetection(_model);
 
-      if( !dollar_ ) {
+      if( !_dollar ) {
         CF_ERROR("cv::ximgproc::createStructuredEdgeDetection(model=%s) fails",
-            model_.c_str());
+            _model.c_str());
         return false;
       }
     }
@@ -198,66 +238,66 @@ bool c_edgebox_routine::process(cv::InputOutputArray image, cv::InputOutputArray
     }
 
     // compute edge map
-    switch (gradient_type_) {
+    switch (_gradient_type) {
       case GradientMagnitude:
-        compute_gradient(img, edges_, gradient_pscale_);
-        edges_.setTo(0, edges_ < EdgeMinMag());
+        compute_gradient(img, _edges, _gradient_pscale);
+        _edges.setTo(0, _edges < EdgeMinMag());
         break;
       case StructuredEdgeDetection:
-        dollar_->detectEdges(img, edges_);
+        _dollar->detectEdges(img, _edges);
         break;
     }
-    if( display_ == DisplayEdgeMap ) {
-      image.move(edges_);
+    if( _display == DisplayEdgeMap ) {
+      image.move(_edges);
       return true;
     }
 
 
     // compute orientation from edge map
-    switch (gradient_type_) {
+    switch (_gradient_type) {
       case GradientMagnitude:
-        compute_gradients_orientation(edges_, orientations_);
+        compute_gradients_orientation(_edges, _orientations);
         break;
       case StructuredEdgeDetection:
-        dollar_->computeOrientation(edges_, orientations_);
+        _dollar->computeOrientation(_edges, _orientations);
         break;
     }
 
-    if( display_ == DisplayEdgeOrientation ) {
-      image.move(orientations_);
+    if( _display == DisplayEdgeOrientation ) {
+      image.move(_orientations);
       return true;
     }
 
     // apply edge nms
-    switch (gradient_type_) {
+    switch (_gradient_type) {
       case GradientMagnitude:
-        nms(edges_, edgeNms_);
+        nms(_edges, _edgeNms);
         break;
       case StructuredEdgeDetection:
-        dollar_->edgesNms(edges_, orientations_, edgeNms_, 2, 0, 1, true);
+        _dollar->edgesNms(_edges, _orientations, _edgeNms, 2, 0, 1, true);
         break;
     }
 
-    if( gradient_threshold_ != THRESHOLD_TYPE_VALUE ) {
-      edgeNms_.setTo(0, edgeNms_ < get_threshold_value(edgeNms_, cv::noArray(), gradient_threshold_, 0));
+    if( _gradient_threshold != THRESHOLD_TYPE_VALUE ) {
+      _edgeNms.setTo(0, _edgeNms < get_threshold_value(_edgeNms, cv::noArray(), _gradient_threshold, 0));
     }
 
-    if( display_ == DisplayEdgeNMS ) {
-      image.move(edgeNms_);
+    if( _display == DisplayEdgeNMS ) {
+      image.move(_edgeNms);
       return true;
     }
 
 
     // apply EdgeBoxes
-    edgeboxes_->getBoundingBoxes(edgeNms_, orientations_, boxes_, scores_);
+    _edgeboxes->getBoundingBoxes(_edgeNms, _orientations, _boxes, _scores);
 
 //  CF_DEBUG("\n");
 
-    for( int i = 0, n = (int) boxes_.size(); i < n; ++i ) {
+    for( int i = 0, n = (int) _boxes.size(); i < n; ++i ) {
 
-      const cv::Point p1(boxes_[i].x, boxes_[i].y);
+      const cv::Point p1(_boxes[i].x, _boxes[i].y);
 
-      const cv::Point p2(boxes_[i].x + boxes_[i].width, boxes_[i].y + boxes_[i].height);
+      const cv::Point p2(_boxes[i].x + _boxes[i].width, _boxes[i].y + _boxes[i].height);
 
       const cv::Scalar color(std::max(32, rand() % 255),
           std::max(32, rand() % 255),

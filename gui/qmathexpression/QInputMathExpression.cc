@@ -70,12 +70,12 @@ QString QInputMathExpressionWidget::text() const
 
 void QInputMathExpressionWidget::setHelpString(const QString & s)
 {
-  helpString_ = s;
+  _helpString = s;
 }
 
 const QString & QInputMathExpressionWidget::helpString() const
 {
-  return helpString_;
+  return _helpString;
 }
 
 void QInputMathExpressionWidget::showHelpString()
@@ -96,7 +96,7 @@ void QInputMathExpressionWidget::showHelpString()
         Qt::LinksAccessibleByKeyboard);
   }
 
-  label->setText(helpString_);
+  label->setText(_helpString);
 
   if ( !w->isVisible() ) {
     w->show();
@@ -110,17 +110,17 @@ QInputMathExpressionDialogBox::QInputMathExpressionDialogBox(QWidget * parent) :
   QVBoxLayout * vbox =
       new QVBoxLayout(this);
 
-  vbox->addWidget(controlWidget_ =
+  vbox->addWidget(_controlWidget =
       new QInputMathExpressionWidget(this));
 
 }
 
 void QInputMathExpressionDialogBox::setText(const QString & text)
 {
-  controlWidget_->setText(text);
+  _controlWidget->setText(text);
 }
 
 QString QInputMathExpressionDialogBox::text() const
 {
-  return controlWidget_->text();
+  return _controlWidget->text();
 }

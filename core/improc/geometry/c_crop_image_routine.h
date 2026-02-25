@@ -18,15 +18,12 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_crop_image_routine,
       "crop", "Crop rectangle region of image");
 
-  void set_rect(const cv::Rect & rc);
-  const cv::Rect & rect() const;
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Rect rect_;
+  cv::Rect _rect;
 };
 
 #endif /* __c_crop_image_routine_h__ */

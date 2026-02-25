@@ -30,7 +30,7 @@ protected:
   void createRoiShape();
 
 protected:
-  QGraphicsRectShape * roiShape_ = nullptr;
+  QGraphicsRectShape * _roiShape = nullptr;
 };
 
 } /* namespace serstacker */

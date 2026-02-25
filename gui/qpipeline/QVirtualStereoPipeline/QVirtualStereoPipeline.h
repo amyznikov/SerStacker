@@ -18,7 +18,8 @@ class QVirtualStereoPipeline :
 {
 public:
   typedef QVirtualStereoPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_virtual_stereo_pipeline> Base;
+  typedef c_virtual_stereo_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QVirtualStereoPipeline(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)
@@ -30,9 +31,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

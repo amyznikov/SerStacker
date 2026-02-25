@@ -23,132 +23,132 @@ public:
 
   void set_ksize(const cv::Size & v)
   {
-    ksize_ = v;
-    update_filter_bank_ = true;
+    _ksize = v;
+    _update_filter_bank = true;
   }
 
   const cv::Size & ksize() const
   {
-    return ksize_;
+    return _ksize;
   }
 
   void set_sigma(double v)
   {
-    sigma_ = v;
-    update_filter_bank_ = true;
+    _sigma = v;
+    _update_filter_bank = true;
   }
 
   double sigma() const
   {
-    return sigma_;
+    return _sigma;
   }
 
   void set_min_theta(double v)
   {
-    min_theta_ = v;
-    update_filter_bank_ = true;
+    _min_theta = v;
+    _update_filter_bank = true;
   }
 
   double min_theta() const
   {
-    return min_theta_;
+    return _min_theta;
   }
 
   void set_max_theta(double v)
   {
-    max_theta_ = v;
-    update_filter_bank_ = true;
+    _max_theta = v;
+    _update_filter_bank = true;
   }
 
   double max_theta() const
   {
-    return max_theta_;
+    return _max_theta;
   }
 
   void set_num_theta(int v)
   {
-    num_theta_ = v;
-    update_filter_bank_ = true;
+    _num_theta = v;
+    _update_filter_bank = true;
   }
 
   int num_theta() const
   {
-    return num_theta_;
+    return _num_theta;
   }
 
   void set_lambd(double v)
   {
-    lambd_ = v;
-    update_filter_bank_ = true;
+    _lambd = v;
+    _update_filter_bank = true;
   }
 
   double lambd() const
   {
-    return lambd_;
+    return _lambd;
   }
 
   void set_gamma(double v)
   {
-    gamma_ = v;
-    update_filter_bank_ = true;
+    _gamma = v;
+    _update_filter_bank = true;
   }
 
   double gamma() const
   {
-    return gamma_;
+    return _gamma;
   }
 
   void set_psi(double v)
   {
-    psi_ = v;
-    update_filter_bank_ = true;
+    _psi = v;
+    _update_filter_bank = true;
   }
 
   double psi() const
   {
-    return psi_;
+    return _psi;
   }
 
   void set_ktype(PIXEL_DEPTH v)
   {
-    ktype_ = v;
-    update_filter_bank_ = true;
+    _ktype = v;
+    _update_filter_bank = true;
   }
 
   PIXEL_DEPTH ktype() const
   {
-    return ktype_;
+    return _ktype;
   }
 
   void set_display_kernels(bool v)
   {
-    display_kernels_ = v;
-    update_filter_bank_ = true;
+    _display_kernels = v;
+    _update_filter_bank = true;
   }
 
   bool display_kernels() const
   {
-    return display_kernels_;
+    return _display_kernels;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Size ksize_ = cv::Size(15, 15);
-  double sigma_ = 2.5; // [px]
-  double min_theta_ = 0;// [deg]
-  double max_theta_ = 360; // [deg]
-  int num_theta_ = 8;
-  double lambd_ = 1.0; // [px]
-  double gamma_ = 3; // [px]
-  double psi_ = 90; // [deg]
-  PIXEL_DEPTH ktype_ = PIXEL_DEPTH_32F;
-  bool display_kernels_ = false;
-  bool update_filter_bank_ = true;
+  cv::Size _ksize = cv::Size(15, 15);
+  double _sigma = 2.5; // [px]
+  double _min_theta = 0;// [deg]
+  double _max_theta = 360; // [deg]
+  int _num_theta = 8;
+  double _lambd = 1.0; // [px]
+  double _gamma = 3; // [px]
+  double _psi = 90; // [deg]
+  PIXEL_DEPTH _ktype = PIXEL_DEPTH_32F;
+  bool _display_kernels = false;
+  bool _update_filter_bank = true;
 
-  std::vector<cv::Mat> filters_;
+  std::vector<cv::Mat> _filters;
 
 };
 

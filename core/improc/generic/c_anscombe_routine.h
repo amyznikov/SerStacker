@@ -19,57 +19,13 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_anscombe_routine,
       "anscombe", "Apply anscombe transform to image");
 
-  void set_method(enum anscombe_method v)
-  {
-    anscombe_.set_method(v);
-  }
-
-  enum anscombe_method method() const
-  {
-    return anscombe_.method();
-  }
-
-  void set_invert(bool v)
-  {
-    invert_ = v;
-  }
-
-  bool invert() const
-  {
-    return invert_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
-  {
-    BIND_PCTRL(ctls, method, "");
-    BIND_PCTRL(ctls, invert, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) final
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, anscombe_, method);
-      SERIALIZE_PROPERTY(settings, save, *this, invert);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final
-  {
-    if ( invert_ ) {
-      anscombe_.inverse(image.getMatRef(), image.getMatRef());
-    }
-    else {
-      anscombe_.apply(image.getMatRef(), image.getMatRef());
-    }
-
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_anscombe_transform anscombe_;
-  bool invert_ = false;
+  c_anscombe_transform anscombe;
+  bool invert = false;
 };
 
 

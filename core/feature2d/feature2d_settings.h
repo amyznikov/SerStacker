@@ -144,8 +144,8 @@ bool load_settings(c_config_setting settings, c_flann_lsh_index_options * opts);
 bool save_settings(c_config_setting settings, const c_flann_autotuned_index_options & args);
 bool load_settings(c_config_setting settings, c_flann_autotuned_index_options  * opts);
 
-bool save_settings(c_config_setting settings, const c_flann_index_options & args);
-bool load_settings(c_config_setting settings, c_flann_index_options * opts);
+//bool save_settings(c_config_setting settings, const c_flann_index_options & args);
+//bool load_settings(c_config_setting settings, c_flann_index_options * opts);
 
 bool save_settings(c_config_setting settings, const c_hamming_distance_feature2d_matcher_options & args);
 bool load_settings(c_config_setting settings, c_hamming_distance_feature2d_matcher_options * opts);

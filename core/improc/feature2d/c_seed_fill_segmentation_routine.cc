@@ -8,15 +8,16 @@
 #include "c_seed_fill_segmentation_routine.h"
 #include <core/debug.h>
 
-void c_seed_fill_segmentation_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+
+void c_seed_fill_segmentation_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, threshold, "Threshold value for color difference");
+   ctlbind(ctls, "threshold", ctx(&this_class::_threshold), "Threshold value for color difference");
 }
 
 bool c_seed_fill_segmentation_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, threshold);
+    SERIALIZE_OPTION(settings, save, *this, _threshold);
     return true;
   }
   return false;

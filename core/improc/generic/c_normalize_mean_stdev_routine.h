@@ -19,33 +19,13 @@ public:
       "normalize_mean_stdev",
       "Test for image normalization");
 
-  void set_level(int v)
-  {
-    level_ = v;
-  }
-
-  int level() const
-  {
-    return level_;
-  }
-
-  void set_eps(double v)
-  {
-    eps_ = v;
-  }
-
-  double eps() const
-  {
-    return eps_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double eps_ = 0.1;
-  int level_ = 2;
+  double _eps = 0.1;
+  int _level = 2;
 };
 
 #endif /* __c_normalize_mean_stdev_routine_h__ */

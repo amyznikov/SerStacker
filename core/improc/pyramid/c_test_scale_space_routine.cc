@@ -7,25 +7,16 @@
 
 #include "c_test_scale_space_routine.h"
 
-void c_test_scale_space_routine::set_minimum_image_size(int v)
-{
-  minimum_image_size_ = v;
-}
 
-int c_test_scale_space_routine::minimum_image_size() const
+void c_test_scale_space_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  return minimum_image_size_;
-}
-
-void c_test_scale_space_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_PCTRL(ctls, minimum_image_size, "minimum_image_size");
+  ctlbind(ctls, "minimum_image_size",  ctx(&this_class::_minimum_image_size), "");
 }
 
 bool c_test_scale_space_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, minimum_image_size_);
+    SERIALIZE_OPTION(settings, save, *this, _minimum_image_size);
     return true;
   }
   return false;
@@ -46,7 +37,7 @@ bool c_test_scale_space_routine::process(cv::InputOutputArray image, cv::InputOu
         current_image.size();
 
     const cv::Size next_size((current_size.width + 1) / 2, (current_size.height + 1) / 2);
-    if( std::min(next_size.width, next_size.height) <= minimum_image_size_ ) {
+    if( std::min(next_size.width, next_size.height) <= _minimum_image_size ) {
       break;
     }
 

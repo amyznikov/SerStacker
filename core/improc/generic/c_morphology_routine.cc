@@ -7,31 +7,30 @@
 
 #include "c_morphology_routine.h"
 
-void c_morphology_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_morphology_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, operation, "Type of a morphological operation");
-  BIND_PCTRL(ctls, se_shape, "Shape of structuring element");
-  BIND_PCTRL(ctls, se_size, "Size of structuring element");
-  BIND_PCTRL(ctls, anchor, "Anchor position with the kernel. Negative values mean that the anchor is at the kernel center");
-  BIND_PCTRL(ctls, iterations, "Number of times erosion and dilation are applied");
-  BIND_PCTRL(ctls, borderType, "Pixel extrapolation method, see #BorderTypes. BORDER_WRAP is not supported");
-  BIND_PCTRL(ctls, borderValue, "Border value in case of a constant border");
-  BIND_PCTRL(ctls, input_channel, "Input data source");
-  BIND_PCTRL(ctls, output_channel, "Output destination");
+   ctlbind(ctls, "operation", ctx(&this_class::_operation), "");
+   ctlbind(ctls, "se_shape", ctx, &this_class::se_shape, &this_class::set_se_shape, "");
+   ctlbind(ctls, "se_size", ctx, &this_class::se_size, &this_class::set_se_size, "");
+   ctlbind(ctls, "anchor", ctx, &this_class::anchor, &this_class::set_anchor, "");
+   ctlbind(ctls, "iterations", ctx(&this_class::_iterations), "");
+   ctlbind(ctls, "borderType", ctx(&this_class::_borderType), "");
+   ctlbind(ctls, "borderValue", ctx(&this_class::_borderValue), "");
+   ctlbind(ctls, "output to", ctx(&this_class::_output_channel),  "Output image name");
 }
 
 bool c_morphology_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, operation);
     SERIALIZE_PROPERTY(settings, save, *this, se_shape);
     SERIALIZE_PROPERTY(settings, save, *this, se_size);
     SERIALIZE_PROPERTY(settings, save, *this, anchor);
-    SERIALIZE_PROPERTY(settings, save, *this, iterations);
-    SERIALIZE_PROPERTY(settings, save, *this, borderType);
-    SERIALIZE_PROPERTY(settings, save, *this, borderValue);
-    SERIALIZE_PROPERTY(settings, save, *this, input_channel);
-    SERIALIZE_PROPERTY(settings, save, *this, output_channel);
+    SERIALIZE_OPTION(settings, save, *this, _operation);
+    SERIALIZE_OPTION(settings, save, *this, _iterations);
+    SERIALIZE_OPTION(settings, save, *this, _borderType);
+    SERIALIZE_OPTION(settings, save, *this, _borderValue);
+    SERIALIZE_OPTION(settings, save, *this, _input_channel);
+    SERIALIZE_OPTION(settings, save, *this, _output_channel);
     return true;
   }
   return false;

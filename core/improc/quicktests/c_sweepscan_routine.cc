@@ -79,15 +79,15 @@ const std::vector<cv::Point>& c_sweepscan_routine::debug_points() const
   return sm_.debug_points();
 }
 
-void c_sweepscan_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_sweepscan_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, output_type, "output_type");
-  BIND_PCTRL(ctls, max_disparity, "max_disparity");
-  BIND_PCTRL(ctls, texture_threshold, "texture_threshold");
-  BIND_PCTRL(ctls, disp12maxDiff, "disp12maxDiff");
-  BIND_PCTRL(ctls, max_scale, "max_scale");
-  BIND_BROWSE_FOR_DIRECTORY_CTRL(ctls, debug_directory, "debug_directory", "debug_directory");
-  BIND_PCTRL(ctls, debug_points, "debug_points");
+  ctlbind(ctls, "output_type", ctx, &this_class::output_type, &this_class::set_output_type, "output_type");
+  ctlbind(ctls, "max_disparity", ctx, &this_class::max_disparity, &this_class::set_max_disparity, "max_disparity");
+  ctlbind(ctls, "texture_threshold", ctx, &this_class::texture_threshold, &this_class::set_texture_threshold, "texture_threshold");
+  ctlbind(ctls, "disp12maxDiff", ctx, &this_class::disp12maxDiff, &this_class::set_disp12maxDiff, "disp12maxDiff");
+  ctlbind(ctls, "max_scale", ctx, &this_class::max_scale, &this_class::set_max_scale, "max_scale");
+  ctlbind_browse_for_directory(ctls, "debug_directory", ctx, &this_class::debug_directory, &this_class::set_debug_directory, "debug_directory");
+  ctlbind(ctls, "debug_points", ctx, &this_class::debug_points, &this_class::set_debug_points, "debug_points");
 }
 
 bool c_sweepscan_routine::serialize(c_config_setting settings, bool save)

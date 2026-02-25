@@ -13,22 +13,15 @@
 #include <core/pipeline/stereo/c_stereo_rectification_options.h>
 
 class QStereoRectificationOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_stereo_rectification_options>
 {
 public:
   typedef QStereoRectificationOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_stereo_rectification_options> Base;
 
   QStereoRectificationOptions(QWidget * parent = nullptr);
 
-  void set_rectification_options(c_stereo_rectification_options * options);
-  c_stereo_rectification_options * rectification_options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_stereo_rectification_options * options_ = nullptr;
   QCheckBox * enable_stereo_rectification_ctl = nullptr;
   QBrowsePathCombo * camera_intrinsics_yml_ctl = nullptr;
   QBrowsePathCombo * camera_extrinsics_yml_ctl = nullptr;

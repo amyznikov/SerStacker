@@ -960,29 +960,29 @@ bool c_ecc_align::align_to_reference(cv::InputArray current_image, cv::InputArra
 
 
 c_ecch::c_ecch( c_image_transform * image_transform) :
-    image_transform_(image_transform)
+    _image_transform(image_transform)
 {
 }
 
 c_ecch::c_ecch(ECC_ALIGN_METHOD method) :
-    image_transform_(nullptr),
-    method_(method)
+    _image_transform(nullptr)
 {
+  _opts.method = method;
 }
 
 c_ecch::c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method) :
-    image_transform_(image_transform),
-    method_(method)
+    _image_transform(image_transform)
 {
+  _opts.method = method;
 }
 
 
 void c_ecch::set_image_transform(c_image_transform * image_transform)
 {
-  if ( image_transform_ != image_transform ) {
+  if ( _image_transform != image_transform ) {
 
-    image_transform_ = image_transform;
-    for ( const auto & m : pyramid_ ) {
+    _image_transform = image_transform;
+    for ( const auto & m : _pyramid ) {
       m->set_image_transform(image_transform);
     }
   }
@@ -990,48 +990,48 @@ void c_ecch::set_image_transform(c_image_transform * image_transform)
 
 c_image_transform * c_ecch::image_transform() const
 {
-  return image_transform_;
+  return _image_transform;
 }
 
 void c_ecch::set_method(ECC_ALIGN_METHOD v)
 {
-  if ( this->method_ != v ) {
-    this->method_ = v;
-    pyramid_.clear();
+  if ( _opts.method != v ) {
+    _opts.method = v;
+    _pyramid.clear();
   }
 }
 
 ECC_ALIGN_METHOD c_ecch::method() const
 {
-  return method_;
+  return _opts.method;
 }
 
 void c_ecch::set_maxlevel(int v)
 {
-  maxlevel_ = v;
-  pyramid_.clear();
+  _opts.maxlevel = v;
+  _pyramid.clear();
 }
 
 int c_ecch::maxlevel() const
 {
-  return maxlevel_;
+  return _opts.maxlevel;
 }
 
 void c_ecch::set_minimum_image_size(int v)
 {
-  minimum_image_size_ = v;
-  pyramid_.clear();
+  _opts.minimum_image_size = v;
+  _pyramid.clear();
 }
 
 int c_ecch::minimum_image_size() const
 {
-  return minimum_image_size_;
+  return _opts.minimum_image_size;
 }
 
 void c_ecch::set_epsx(double v)
 {
-  epsx_ = v;
-  for( const auto & m : pyramid_ ) {
+  _opts.epsx = v;
+  for( const auto & m : _pyramid ) {
     m->set_max_eps(v);
     v *= 2;
   }
@@ -1039,20 +1039,20 @@ void c_ecch::set_epsx(double v)
 
 double c_ecch::epsx() const
 {
-  return epsx_;
+  return _opts.epsx;
 }
 
 void c_ecch::set_max_iterations(int v)
 {
-  max_iterations_ = v;
-  for( const auto & m : pyramid_ ) {
+  _opts.max_iterations = v;
+  for( const auto & m : _pyramid ) {
     m->set_max_iterations(v);
   }
 }
 
 int c_ecch::max_iterations() const
 {
-  return max_iterations_;
+  return _opts.max_iterations;
 }
 
 void c_ecch::set_max_eps(double v)
@@ -1062,129 +1062,121 @@ void c_ecch::set_max_eps(double v)
 
 double c_ecch::max_eps() const
 {
-  return epsx_;
+  return _opts.epsx;
 }
 
 void c_ecch::set_min_rho(double v)
 {
-  min_rho_ = v;
+  _opts.min_rho = v;
 }
 
 double c_ecch::min_rho() const
 {
-  return min_rho_;
+  return _opts.min_rho;
 }
 
 double c_ecch::eps() const
 {
-  return pyramid_.empty() ? -1 : pyramid_.front()->eps();
+  return _pyramid.empty() ? -1 : _pyramid.front()->eps();
 }
 
 int c_ecch::num_iterations() const
 {
-  return num_iterations_;//  pyramid_.empty() ? -1 : pyramid_.front()->num_iterations();
+  return _num_iterations;//  pyramid_.empty() ? -1 : pyramid_.front()->num_iterations();
 }
 
 void c_ecch::set_interpolation(enum ECC_INTERPOLATION_METHOD v)
 {
-  interpolation_ = v;
-  for( const auto & m : pyramid_ ) {
+  _opts.interpolation = v;
+  for( const auto & m : _pyramid ) {
     m->set_interpolation(v);
   }
 }
 
 enum ECC_INTERPOLATION_METHOD c_ecch::interpolation() const
 {
-  return interpolation_;
+  return _opts.interpolation;
 }
 
 void c_ecch::set_input_smooth_sigma(double v)
 {
-  input_smooth_sigma_ = v;
+  _opts.input_smooth_sigma = v;
 }
 
 double c_ecch::input_smooth_sigma() const
 {
-  return input_smooth_sigma_;
+  return _opts.input_smooth_sigma;
 }
 
 void c_ecch::set_reference_smooth_sigma(double v)
 {
-  reference_smooth_sigma_ = v;
+  _opts.reference_smooth_sigma = v;
 }
 
 double c_ecch::reference_smooth_sigma() const
 {
-  return reference_smooth_sigma_;
+  return _opts.reference_smooth_sigma;
 }
 
 void c_ecch::set_update_step_scale(double v)
 {
-  update_step_scale_ = v;
+  _opts.update_step_scale = v;
 }
 
 double c_ecch::update_step_scale() const
 {
-  return update_step_scale_;
+  return _opts.update_step_scale;
 }
 
 void c_ecch::copy_parameters(const this_class & rhs)
 {
-  epsx_ = rhs.epsx_;
-  min_rho_ = rhs.min_rho_;
-  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
-  input_smooth_sigma_ = rhs.input_smooth_sigma_;
-  update_step_scale_ = rhs.update_step_scale_;
-  interpolation_ = rhs.interpolation_;
-  max_iterations_ = rhs.max_iterations_;
-  minimum_image_size_ = rhs.minimum_image_size_;
-  maxlevel_ = rhs.maxlevel_;
+  _opts = rhs._opts;
 }
 
 
 const cv::Mat1f & c_ecch::reference_image() const
 {
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     static const cv::Mat1f empty_image;
     return empty_image;
   }
-  return pyramid_.front()->reference_image();
+  return _pyramid.front()->reference_image();
 }
 
 const cv::Mat1b & c_ecch::reference_mask() const
 {
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     static const cv::Mat1b empty_image;
     return empty_image;
   }
-  return pyramid_.front()->reference_mask();
+  return _pyramid.front()->reference_mask();
 }
 
 const cv::Mat1f & c_ecch::current_image() const
 {
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     static const cv::Mat1f empty_image;
     return empty_image;
   }
-  return pyramid_.front()->current_image();
+  return _pyramid.front()->current_image();
 }
 
 const cv::Mat1b & c_ecch::current_mask() const
 {
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     static const cv::Mat1b empty_image;
     return empty_image;
   }
-  return pyramid_.front()->current_mask();
+  return _pyramid.front()->current_mask();
 }
 
 cv::Mat2f c_ecch::create_remap() const
 {
   cv::Mat2f rmap;
-  if ( image_transform_ ) {
+  if ( _image_transform ) {
     const cv::Mat & rimage = reference_image();
     if ( !rimage.size().empty() ) {
-      image_transform_->create_remap(rimage.size(), rmap);
+      _image_transform->create_remap(rimage.size(), rmap);
     }
   }
   return rmap;
@@ -1194,7 +1186,7 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
 {
   c_ecc_align::uptr ecc;
 
-  switch (method_) {
+  switch (_opts.method) {
     case ECC_ALIGN_FORWARD_ADDITIVE:
       ecc.reset(new c_ecc_forward_additive());
       break;
@@ -1209,10 +1201,10 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
       break;
   }
 
-  ecc->set_image_transform(image_transform_);
-  ecc->set_interpolation(interpolation_);
-  ecc->set_max_iterations(max_iterations_);
-  ecc->set_update_step_scale(update_step_scale_);
+  ecc->set_image_transform(_image_transform);
+  ecc->set_interpolation(_opts.interpolation);
+  ecc->set_max_iterations(_opts.max_iterations);
+  ecc->set_update_step_scale(_opts.update_step_scale);
   ecc->set_max_eps(epsx);
 
   return ecc;
@@ -1224,23 +1216,23 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
   cv::Mat1f image;
   cv::Mat1b mask;
 
-  pyramid_.clear();
-  num_iterations_ = -1;
+  _pyramid.clear();
+  _num_iterations = -1;
 
   if( !ecc_convert_input_image(reference_image, reference_mask, image, mask) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }
 
-  if( reference_smooth_sigma_ > 0 ) {
+  if( _opts.reference_smooth_sigma > 0 ) {
 
 
     const int ksize =
-        std::max(3, 2 * ((int) (3 * reference_smooth_sigma_)) + 1);
+        std::max(3, 2 * ((int) (3 * _opts.reference_smooth_sigma)) + 1);
 
     const cv::Mat1f G =
         cv::getGaussianKernel(ksize,
-            reference_smooth_sigma_);
+            _opts.reference_smooth_sigma);
 
     cv::sepFilter2D(image, image, -1,
         G, G,
@@ -1250,23 +1242,22 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
   }
 
 
-  double epsx =
-      epsx_;
+  double epsx = _opts.epsx;
 
-  pyramid_.emplace_back(create_ecc_align(epsx));
+  _pyramid.emplace_back(create_ecc_align(epsx));
 
-  if( !pyramid_.back()->set_reference_image(image, mask) ) {
+  if( !_pyramid.back()->set_reference_image(image, mask) ) {
     CF_ERROR("pyramid_.back()->set_reference_image() fails");
-    pyramid_.clear();
+    _pyramid.clear();
     return false;
   }
 
   const int min_image_size =
-      std::max(4, this->minimum_image_size_);
+      std::max(4, this->_opts.minimum_image_size);
 
   for( int lvl = 1; ; ++lvl ) {
 
-    if( maxlevel_ >= 0 && lvl >= std::max(0, maxlevel_) ) {
+    if( _opts.maxlevel >= 0 && lvl >= std::max(0, _opts.maxlevel) ) {
       break;
     }
 
@@ -1289,11 +1280,11 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
       cv::compare(mask, 250, mask, cv::CMP_GE);
     }
 
-    pyramid_.emplace_back(create_ecc_align(epsx *= 2));
+    _pyramid.emplace_back(create_ecc_align(epsx *= 2));
 
-    if( !pyramid_.back()->set_reference_image(image, mask) ) {
+    if( !_pyramid.back()->set_reference_image(image, mask) ) {
       CF_ERROR("L[%d] pyramid_.back()->set_reference_image() fails", lvl);
-      pyramid_.clear();
+      _pyramid.clear();
       return false;
     }
   }
@@ -1305,7 +1296,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
 bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
 {
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     CF_ERROR("Reference image must be set first");
     return false;
   }
@@ -1313,21 +1304,21 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
   cv::Mat1f image;
   cv::Mat1b mask;
 
-  num_iterations_ = -1;
+  _num_iterations = -1;
 
   if( !ecc_convert_input_image(current_image, current_mask, image, mask) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }
 
-  if( input_smooth_sigma_ > 0 ) {
+  if( _opts.input_smooth_sigma > 0 ) {
 
     const int ksize =
-        std::max(3, 2 * ((int) (3 * input_smooth_sigma_)) + 1);
+        std::max(3, 2 * ((int) (3 * _opts.input_smooth_sigma)) + 1);
 
     const cv::Mat1f G =
         cv::getGaussianKernel(ksize,
-            input_smooth_sigma_);
+            _opts.input_smooth_sigma);
 
     cv::sepFilter2D(image, image, -1,
         G, G,
@@ -1337,13 +1328,13 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
   }
 
   const int lvls =
-      pyramid_.size();
+      _pyramid.size();
 
   int lvl = 0;
 
   for( ; lvl < lvls; ++lvl ) {
 
-    if ( !pyramid_[lvl]->set_current_image(image, mask) ) {
+    if ( !_pyramid[lvl]->set_current_image(image, mask) ) {
       CF_ERROR("L[%d] pyramid_[lvl]->set_current_image() fails");
       return false;
     }
@@ -1370,7 +1361,7 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
   }
 
   for( ; lvl < lvls; ++lvl ) {
-    pyramid_[lvl]->release_current_image();
+    _pyramid[lvl]->release_current_image();
   }
 
   return true;
@@ -1391,55 +1382,55 @@ bool c_ecch::align()
 {
   // CF_DEBUG("image_transform_=%p maxlevel_=%d", image_transform_, maxlevel_);
 
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     CF_ERROR("c_ecch: no reference image was set");
     return false;
   }
 
-  if( pyramid_.front()->current_image().empty() ) {
+  if( _pyramid.front()->current_image().empty() ) {
     CF_ERROR("c_ecch: no current_image image was set");
     return false;
   }
 
   const int lvls =
-      pyramid_.size();
+      _pyramid.size();
 
   int lvl = lvls - 1;
-  while (lvl > 0 && pyramid_[lvl]->current_image().empty()) {
+  while (lvl > 0 && _pyramid[lvl]->current_image().empty()) {
     --lvl;
   }
 
   if ( lvl > 0 ) {
 
     const cv::Size size0 =
-        pyramid_[0]->reference_image().size();
+        _pyramid[0]->reference_image().size();
 
     const cv::Size size1 =
-        pyramid_[lvl]->reference_image().size();
+        _pyramid[lvl]->reference_image().size();
 
-    image_transform_->scale_transfrom((double) size1.width / (double) size0.width);
+    _image_transform->scale_transfrom((double) size1.width / (double) size0.width);
   }
 
-  num_iterations_ = 0;
+  _num_iterations = 0;
 
   for( ; lvl >= 0; --lvl ) {
 
-    if( !pyramid_[lvl]->align() ) {
+    if( !_pyramid[lvl]->align() ) {
       CF_ERROR("pyramid_[lvl=%d]->align() fails", lvl);
     }
     else if( lvl > 0 ) {
 
       const cv::Size size0 =
-          pyramid_[lvl]->reference_image().size();
+          _pyramid[lvl]->reference_image().size();
 
       const cv::Size size1 =
-          pyramid_[lvl - 1]->reference_image().size();
+          _pyramid[lvl - 1]->reference_image().size();
 
-      image_transform_->scale_transfrom((double) size1.width / (double) size0.width);
+      _image_transform->scale_transfrom((double) size1.width / (double) size0.width);
     }
 
-    num_iterations_ +=
-        pyramid_[lvl]->num_iterations();
+    _num_iterations +=
+        _pyramid[lvl]->num_iterations();
   }
 
   return true;
@@ -2521,13 +2512,13 @@ bool c_ecclm_inverse_compositional::align()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<>
-const c_enum_member* members_of<c_eccflow::DownscaleMethod>()
+const c_enum_member* members_of<ECCFlowDownscaleMethod>()
 {
   static const c_enum_member members[] = {
-      { c_eccflow::DownscaleRecursiveResize, "RecursiveResize", "Recursive cv::resize() with scale factor" },
-      { c_eccflow::DownscaleFullResize, "FullResize", "Direct cv::resize() from full to target resolution" },
-      { c_eccflow::DownscalePyramid, "Pyramid", "Recursive resize using cv::pyrDown()" },
-      { c_eccflow::DownscaleRecursiveResize },
+      { ECCFlowDownscaleRecursiveResize, "RecursiveResize", "Recursive cv::resize() with scale factor" },
+      { ECCFlowDownscaleFullResize, "FullResize", "Direct cv::resize() from full to target resolution" },
+      { ECCFlowDownscalePyramid, "Pyramid", "Recursive resize using cv::pyrDown()" },
+      { ECCFlowDownscaleRecursiveResize },
   };
 
   return members;
@@ -2535,117 +2526,109 @@ const c_enum_member* members_of<c_eccflow::DownscaleMethod>()
 
 void c_eccflow::set_support_scale(int v)
 {
-  support_scale_ = v;
+  _opts.support_scale = v;
 }
 
 int c_eccflow::support_scale() const
 {
-  return support_scale_;
+  return _opts.support_scale;
 }
 
 
 void c_eccflow::set_max_iterations(int v)
 {
-  max_iterations_ = v;
+  _opts.max_iterations = v;
 }
 
 int c_eccflow::max_iterations() const
 {
-  return max_iterations_;
+  return _opts.max_iterations;
 }
 
 void c_eccflow::set_update_multiplier(double v)
 {
-  update_multiplier_ = v;
+  _opts.update_multiplier = v;
 }
 
 double c_eccflow::update_multiplier() const
 {
-  return update_multiplier_;
+  return _opts.update_multiplier;
 }
 
 void c_eccflow::set_input_smooth_sigma(double v)
 {
-  input_smooth_sigma_ = v;
+  _opts.input_smooth_sigma = v;
 }
 
 double c_eccflow::input_smooth_sigma() const
 {
-  return input_smooth_sigma_;
+  return _opts.input_smooth_sigma;
 }
 
 
 void c_eccflow::set_reference_smooth_sigma(double v)
 {
-  reference_smooth_sigma_ = v;
+  _opts.reference_smooth_sigma = v;
 }
 
 double c_eccflow::reference_smooth_sigma() const
 {
-  return reference_smooth_sigma_;
+  return _opts.reference_smooth_sigma;
 }
 
-void c_eccflow::set_downscale_method(DownscaleMethod v)
+void c_eccflow::set_downscale_method(ECCFlowDownscaleMethod v)
 {
-  downscale_method_ = v;
+  _opts.downscale = v;
 }
 
-c_eccflow::DownscaleMethod c_eccflow::downscale_method() const
+ECCFlowDownscaleMethod c_eccflow::downscale_method() const
 {
-  return downscale_method_;
+  return _opts.downscale;
 }
 
 void c_eccflow::set_scale_factor(double v)
 {
-  scale_factor_ = v;
+  _opts.scale_factor = v;
 }
 
 double c_eccflow::scale_factor() const
 {
-  return scale_factor_;
+  return _opts.scale_factor;
 }
 
 void c_eccflow::set_min_image_size(int v)
 {
-  min_image_size_ = v;
+  _opts.min_image_size = v;
 }
 
 int c_eccflow::min_image_size() const
 {
-  return min_image_size_;
+  return _opts.min_image_size;
 }
 
 void c_eccflow::set_max_pyramid_level(int v)
 {
-  max_pyramid_level_ = v;
+  _opts.max_pyramid_level = v;
 }
 
 int c_eccflow::max_pyramid_level() const
 {
-  return max_pyramid_level_;
+  return _opts.max_pyramid_level;
 }
 
 void c_eccflow::set_noise_level(double v)
 {
-  noise_level_ = v;
+  _opts.noise_level = v;
 }
 
 double c_eccflow::noise_level() const
 {
-  return noise_level_;
+  return _opts.noise_level;
 }
 
 void c_eccflow::copy_parameters(const this_class & rhs)
 {
-  input_smooth_sigma_ = rhs.input_smooth_sigma_;
-  reference_smooth_sigma_ = rhs.reference_smooth_sigma_;
-  update_multiplier_ = rhs.update_multiplier_;
-  noise_level_ = rhs.noise_level_;
-  max_iterations_ = rhs.max_iterations_;
-  support_scale_ = rhs.support_scale_;
-  min_image_size_ = rhs.min_image_size_;
-  scale_factor_ = rhs.scale_factor_;
-  downscale_method_ = rhs.downscale_method_;
+  _opts = rhs._opts;
 }
 
 const cv::Mat2f& c_eccflow::current_uv() const
@@ -2655,7 +2638,7 @@ const cv::Mat2f& c_eccflow::current_uv() const
 
 const std::vector<c_eccflow::pyramid_entry>& c_eccflow::current_pyramid() const
 {
-  return pyramid_;
+  return _pyramid;
 }
 
 bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
@@ -2776,7 +2759,7 @@ void c_eccflow::avgdown(cv::InputArray src, cv::Mat & dst) const
   cv::Size size =
       src.size();
 
-  for ( int i = 0; i < support_scale_; ++i ) {
+  for ( int i = 0; i < _opts.support_scale; ++i ) {
     size.width = (size.width + 1) / 2;
     size.height = (size.height + 1) / 2;
   }
@@ -2810,8 +2793,8 @@ void c_eccflow::downscale(cv::InputArray src, cv::InputArray src_mask,
     const cv::Size & dst_size) const
 {
 
-  switch (downscale_method_) {
-    case DownscalePyramid:
+  switch (_opts.downscale) {
+    case ECCFlowDownscalePyramid:
       cv::pyrDown(src, dst, dst_size);
       break;
     default:
@@ -2862,13 +2845,13 @@ void c_eccflow::upscale(cv::InputArray src, cv::InputArray src_mask,
 const cv::Mat1f & c_eccflow::reference_image() const
 {
   static const cv::Mat1f empty_stub;
-  return pyramid_.empty() ?  empty_stub : pyramid_.front().reference_image;
+  return _pyramid.empty() ?  empty_stub : _pyramid.front().reference_image;
 }
 
 const cv::Mat1b & c_eccflow::reference_mask() const
 {
   static const cv::Mat1b empty_stub;
-  return pyramid_.empty() ? empty_stub : pyramid_.front().reference_mask;
+  return _pyramid.empty() ? empty_stub : _pyramid.front().reference_mask;
 }
 
 bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
@@ -2899,7 +2882,7 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   }
 
   const double noise_level =
-      noise_level_ >= 0 ? noise_level_ : 1e-3;
+      _opts.noise_level >= 0 ? _opts.noise_level : 1e-3;
 
   cv::Mat1f & Ixx = DC[0];
   cv::Mat1f & Ixy = DC[1];
@@ -2907,11 +2890,11 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   cv::Mat1f & DD = DC[3];
 
 
-  pyramid_.clear();
-  pyramid_.reserve(32);
+  _pyramid.clear();
+  _pyramid.reserve(32);
 
   const int min_image_size =
-      std::max(4, min_image_size_);
+      std::max(4, _opts.min_image_size);
 
   const cv::Size image_size =
       reference_image.size();
@@ -2923,69 +2906,69 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
 
     if ( current_level == 0 ) {
 
-      pyramid_.emplace_back();
+      _pyramid.emplace_back();
 
       convert_input_images(reference_image, reference_mask,
-          pyramid_.back().reference_image,
-          pyramid_.back().reference_mask);
+          _pyramid.back().reference_image,
+          _pyramid.back().reference_mask);
     }
     else {
 
       const cv::Size previous_size =
-          pyramid_.back().reference_image.size();
+          _pyramid.back().reference_image.size();
 
-      if( downscale_method_ == DownscaleRecursiveResize ) {
+      if( _opts.downscale == ECCFlowDownscaleRecursiveResize ) {
 
-        const cv::Size next_size(std::max(min_image_size_, (int) ((previous_size.width + 1) * scale_factor_)),
-            std::max(min_image_size_, (int) ((previous_size.height + 1) * scale_factor_)));
+        const cv::Size next_size(std::max(_opts.min_image_size, (int) ((previous_size.width + 1) * _opts.scale_factor)),
+            std::max(_opts.min_image_size, (int) ((previous_size.height + 1) * _opts.scale_factor)));
 
         if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
           break;
         }
 
-        pyramid_.emplace_back();
+        _pyramid.emplace_back();
 
         if( big_aspect_ratio && std::min(next_size.width, next_size.height) <= min_image_size + 1 ) {
-          downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
-              pyramid_.back().reference_image, pyramid_.back().reference_mask,
+          downscale(_pyramid.front().reference_image, _pyramid.front().reference_mask,
+              _pyramid.back().reference_image, _pyramid.back().reference_mask,
               next_size);
         }
         else {
-          downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
-              pyramid_.back().reference_image, pyramid_.back().reference_mask,
+          downscale(_pyramid[current_level - 1].reference_image, _pyramid[current_level - 1].reference_mask,
+              _pyramid.back().reference_image, _pyramid.back().reference_mask,
               next_size);
         }
 
       }
-      else if( downscale_method_ == DownscaleFullResize ) {
+      else if( _opts.downscale == ECCFlowDownscaleFullResize ) {
 
-        const cv::Size next_size(std::max(min_image_size_, (int) ((previous_size.width + 1) * scale_factor_)),
-            std::max(min_image_size_, (int) ((previous_size.height + 1) * scale_factor_)));
+        const cv::Size next_size(std::max(_opts.min_image_size, (int) ((previous_size.width + 1) * _opts.scale_factor)),
+            std::max(_opts.min_image_size, (int) ((previous_size.height + 1) * _opts.scale_factor)));
 
         if( previous_size == next_size || std::max(next_size.width, next_size.height) <= min_image_size ) {
           break;
         }
 
-        pyramid_.emplace_back();
+        _pyramid.emplace_back();
 
-        downscale(pyramid_.front().reference_image, pyramid_.front().reference_mask,
-            pyramid_.back().reference_image, pyramid_.back().reference_mask,
+        downscale(_pyramid.front().reference_image, _pyramid.front().reference_mask,
+            _pyramid.back().reference_image, _pyramid.back().reference_mask,
             next_size);
 
       }
       else {  // DownscalePyramid
 
-        const cv::Size next_size(std::max(min_image_size_, (previous_size.width + 1) / 2),
-            std::max(min_image_size_, (previous_size.height + 1) / 2));
+        const cv::Size next_size(std::max(_opts.min_image_size, (previous_size.width + 1) / 2),
+            std::max(_opts.min_image_size, (previous_size.height + 1) / 2));
 
         if( previous_size == next_size || std::min(next_size.width, next_size.height) <= min_image_size ) {
           break;
         }
 
-        pyramid_.emplace_back();
+        _pyramid.emplace_back();
 
-        downscale(pyramid_[current_level - 1].reference_image, pyramid_[current_level - 1].reference_mask,
-            pyramid_.back().reference_image, pyramid_.back().reference_mask,
+        downscale(_pyramid[current_level - 1].reference_image, _pyramid[current_level - 1].reference_mask,
+            _pyramid.back().reference_image, _pyramid.back().reference_mask,
             next_size);
 
       }
@@ -2993,7 +2976,7 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
     }
 
     pyramid_entry & current_scale =
-        pyramid_.back();
+        _pyramid.back();
 
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
@@ -3023,11 +3006,11 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
 
     cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
     cv::add(DD, RegularizationTerm, DD);
-    cv::divide(update_multiplier_, DD, DD);
+    cv::divide(_opts.update_multiplier, DD, DD);
 
     cv::merge(DC, 4, current_scale.D);
 
-    if ( max_pyramid_level_ >= 0 && current_level >= max_pyramid_level_ ) {
+    if ( _opts.max_pyramid_level >= 0 && current_level >= _opts.max_pyramid_level ) {
       break;
     }
 
@@ -3040,7 +3023,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
 {
   INSTRUMENT_REGION("");
 
-  if( pyramid_.empty() ) {
+  if( _pyramid.empty() ) {
     CF_ERROR("Reference pyramid is empty: set_reference_image() must be called first");
     return false;
   }
@@ -3075,39 +3058,39 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
       std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
 
   const int num_levels =
-      (int)(pyramid_.size());
+      (int)(_pyramid.size());
 
   for( int current_level = 0; current_level < num_levels; ++current_level ) {
 
     pyramid_entry & current_scale =
-        pyramid_[current_level];
+        _pyramid[current_level];
 
     if ( current_level == 0 ) {
       convert_input_images(input_image, input_mask,
           current_scale.current_image,
           current_scale.current_mask);
     }
-    else if( downscale_method_ == DownscaleFullResize ) {
+    else if( _opts.downscale == ECCFlowDownscaleFullResize ) {
 
       const pyramid_entry & base_scale =
-          pyramid_.front();
+          _pyramid.front();
 
       downscale(base_scale.current_image, base_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
           current_scale.reference_image.size());
     }
-    else if( downscale_method_ == DownscaleRecursiveResize ) {
+    else if( _opts.downscale == ECCFlowDownscaleRecursiveResize ) {
 
       const cv::Size next_size =
           current_scale.reference_image.size();
 
       const int min_image_size =
-          std::max(4, min_image_size_);
+          std::max(4, _opts.min_image_size);
 
         if( big_aspect_ratio && std::min(next_size.width, next_size.height) <= min_image_size + 1 ) {
 
           const pyramid_entry & base_scale =
-              pyramid_.front();
+              _pyramid.front();
 
           downscale(base_scale.current_image, base_scale.current_mask,
               current_scale.current_image, current_scale.current_mask,
@@ -3116,7 +3099,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
         else {
 
           const pyramid_entry & previous_scale =
-              pyramid_[current_level - 1];
+              _pyramid[current_level - 1];
 
           downscale(previous_scale.current_image, previous_scale.current_mask,
               current_scale.current_image, current_scale.current_mask,
@@ -3127,7 +3110,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     else {
 
       const pyramid_entry & previous_scale =
-          pyramid_[current_level - 1];
+          _pyramid[current_level - 1];
 
       downscale(previous_scale.current_image, previous_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
@@ -3164,24 +3147,24 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
   M.release();
 
   const int num_levels =
-      (int) (pyramid_.size());
+      (int) (_pyramid.size());
 
   if( rmap.empty() ) {
 
-    uv.create(pyramid_.back().reference_image.size());
+    uv.create(_pyramid.back().reference_image.size());
     uv.setTo(cv::Scalar::all(0));
 
   }
-  else if( rmap.size() == pyramid_.front().reference_image.size() ) {
+  else if( rmap.size() == _pyramid.front().reference_image.size() ) {
 
     const pyramid_entry & first_scale =
-        pyramid_.front();
+        _pyramid.front();
 
     const cv::Size first_size =
         first_scale.reference_image.size();
 
     const pyramid_entry & last_scale =
-        pyramid_.back();
+        _pyramid.back();
 
     const cv::Size last_size =
         last_scale.reference_image.size();
@@ -3204,12 +3187,12 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
   for( int i = num_levels - 1; i >= 0; --i ) {
 
     pyramid_entry & current_scale =
-        pyramid_[i];
+        _pyramid[i];
 
     if( i < num_levels - 1 ) {
 
       const pyramid_entry & prev_scale =
-          pyramid_[i + 1];
+          _pyramid[i + 1];
 
       const cv::Size current_size =
           current_scale.current_image.size();
@@ -3224,7 +3207,7 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
       upscale(uv, cv::noArray(), uv, cv::noArray(), current_size);
     }
 
-    for( int j = 0; j < max_iterations_; ++j ) {
+    for( int j = 0; j < _opts.max_iterations; ++j ) {
 
       ecc_flow_to_remap(uv, crmap);
 

@@ -44,22 +44,22 @@ static cv::Mat2f create_perspective_remap(const cv::Size & output_size,
 
 }
 
-void c_homography_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_PCTRL(ctls, rotation, "rotation angles in [deg]");
-  BIND_PCTRL(ctls, translation, "translation vector");
-  BIND_PCTRL(ctls, focus, "focus distance in pixels");
-  BIND_PCTRL(ctls, output_size, "output image size");
 
+void c_homography_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+   ctlbind(ctls, "rotation [deg]", ctx(&this_class::A), "rotation angles in [deg]");
+   ctlbind(ctls, "translation", ctx(&this_class::T), "translation vector");
+   ctlbind(ctls, "focus", ctx(&this_class::F), "focus distance in pixels");
+   ctlbind(ctls, "output_size", ctx(&this_class::_output_size), "output image size");
 }
 
 bool c_homography_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, rotation);
-    SERIALIZE_PROPERTY(settings, save, *this, translation);
-    SERIALIZE_PROPERTY(settings, save, *this, focus);
-    SERIALIZE_PROPERTY(settings, save, *this, output_size);
+    SERIALIZE_OPTION(settings, save, *this, A);
+    SERIALIZE_OPTION(settings, save, *this, T);
+    SERIALIZE_OPTION(settings, save, *this, F);
+    SERIALIZE_OPTION(settings, save, *this, _output_size);
     return true;
   }
   return false;
@@ -108,7 +108,7 @@ bool c_homography_test_routine::process(cv::InputOutputArray image, cv::InputOut
       image.size();
 
   const cv::Size output_size =
-      output_size_.empty() ? input_size : output_size_;
+      _output_size.empty() ? input_size : _output_size;
 
   const cv::Matx33f input_camera_matrix(
       F, 0, input_size.width / 2.,

@@ -7,17 +7,17 @@
 
 #include "c_flip_image_routine.h"
 
-void c_flip_image_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_flip_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, hflip, "flip around the Y-axis");
-  BIND_PCTRL(ctls, vflip, "flip around the X-axis");
+   ctlbind(ctls, "hflip", ctx(&this_class::_hflip), "flip around the Y-axis");
+   ctlbind(ctls, "vflip", ctx(&this_class::_vflip), "flip around the X-axis");
 }
 
 bool c_flip_image_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, hflip);
-    SERIALIZE_PROPERTY(settings, save, *this, vflip);
+    SERIALIZE_OPTION(settings, save, *this, _hflip);
+    SERIALIZE_OPTION(settings, save, *this, _vflip);
     return true;
   }
   return false;
@@ -25,14 +25,14 @@ bool c_flip_image_routine::serialize(c_config_setting settings, bool save)
 
 bool c_flip_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( !image.empty() && (hflip_ || vflip_) ) {
+  if( !image.empty() && (_hflip || _vflip) ) {
 
     int flipCode;
 
-    if( hflip_ && vflip_ ) {
+    if( _hflip && _vflip ) {
       flipCode = -1;
     }
-    else if( hflip_ ) {
+    else if( _hflip ) {
       flipCode = +1;
     }
     else {

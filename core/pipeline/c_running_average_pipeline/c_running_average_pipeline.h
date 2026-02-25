@@ -10,9 +10,10 @@
 #define __c_running_average_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/proc/image_registration/c_frame_registration.h>
+#include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 #include <core/improc/c_image_processor.h>
 #include <core/average/c_frame_accumulation.h>
-#include <core/proc/image_registration/c_frame_registration.h>
 #include <core/settings/opencv_settings.h>
 
 struct c_running_average_input_options:
@@ -24,17 +25,18 @@ struct c_running_average_input_options:
 struct c_running_average_registration_options
 {
   bool double_align_moode = false;
-  double reference_unsharp_sigma_ = 1;
-  double reference_unsharp_alpha_ = 0.95;
+  double reference_unsharp_sigma = 1;
+  double reference_unsharp_alpha = 0.95;
   //ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
 
   bool enable_ecc = false;
   bool enable_eccflow = false;
 
-  IMAGE_MOTION_TYPE ecc_motion_type =
-      IMAGE_MOTION_TRANSLATION;
-
+  IMAGE_MOTION_TYPE ecc_motion_type = IMAGE_MOTION_TRANSLATION;
   double min_rho = 0.7;
+
+  c_ecch_options ecch;
+  c_eccflow_options eccflow;
 };
 
 struct c_running_average_update_options
@@ -103,10 +105,11 @@ public:
 
   ///
 
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool copyParameters(const base::sptr & dst) const override;
+  static const c_ctlist<this_class> & getcontrols();
 
   //////
   bool ecc_ctls_enabled() const;

@@ -25,13 +25,18 @@ public:
   const std::string & output_image_name() const;
   void set_output_image_name(const std::string & v);
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(c_data_frame::sptr & dataframe) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(c_data_frame::sptr & dataframe) final;
+
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+  {
+    ctlbind(ctls, "input_image", ctx(&this_class::_input_image_name), "");
+    ctlbind(ctls, "output_image", ctx(&this_class::_output_image_name), "");
+  }
 
 protected:
-  std::string input_image_name_;
-  std::string output_image_name_;
+  std::string _input_image_name;
+  std::string _output_image_name;
 };
 
 #endif /* __c_image_gradient_routine_h__ */

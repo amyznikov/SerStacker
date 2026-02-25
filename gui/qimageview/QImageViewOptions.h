@@ -15,12 +15,12 @@
 class QPenOptionsControl;
 
 class QImageViewOptions:
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<QImageViewer>
 {
   Q_OBJECT;
 public:
   typedef QImageViewOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<QImageViewer> Base;
   typedef QEnumComboBox<QImageViewer::DisplayType> DisplayTypeCombo;
 
   QImageViewOptions(QWidget * parent = nullptr);
@@ -29,11 +29,9 @@ public:
   QImageViewer * imageViewer() const;
 
 protected:
-  void onupdatecontrols() override;
-  void hideEvent(QHideEvent *event) override;
+  void hideEvent(QHideEvent *event) final;
 
 protected:
-  QImageViewer * imageViewer_ = nullptr;
   DisplayTypeCombo * displayType_ctl = nullptr;
   QNumericBox * blendAlpha_ctl = nullptr;
   QCheckBox * transparentMask_ctl = nullptr;
@@ -43,12 +41,12 @@ protected:
 
 
 class QImageViewOptionsDlgBox :
-    public QDialog
+    public QSettingsDialogBoxTemplate<QImageViewOptions>
 {
   Q_OBJECT;
 public:
   typedef QImageViewOptionsDlgBox ThisClass;
-  typedef QDialog Base;
+  typedef QSettingsDialogBoxTemplate<QImageViewOptions> Base;
 
   QImageViewOptionsDlgBox(QWidget * parent = nullptr);
 
@@ -56,16 +54,6 @@ public:
 
   void setImageViewer(QImageViewer * imageViewer);
   QImageViewer * imageViewer() const;
-
-Q_SIGNALS:
-  void visibilityChanged(bool visible);
-
-protected:
-  void showEvent(QShowEvent *event) override;
-  void hideEvent(QHideEvent *event) override;
-
-protected:
-  QImageViewOptions * viewOptions_ctl = nullptr;
 };
 
 class QPenOptionsControl :

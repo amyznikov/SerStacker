@@ -18,23 +18,12 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_pop_image_routine,
       "pop_image", "c_pop_image_routine");
 
-  void set_artifact_name(const std::string & v)
-  {
-    artifact_name_ = v;
-  }
-
-  const std::string & artifact_name() const
-  {
-    return artifact_name_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string artifact_name_  =
-      "saved_image";
+  std::string _artifact_name  ="saved_image";
 };
 
 #endif /* __c_pop_current_image_routine_h__ */

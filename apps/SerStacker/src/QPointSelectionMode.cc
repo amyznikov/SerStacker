@@ -493,14 +493,14 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
       add_checkbox("Overwrite existing labels:",
           "",
           [this](bool checked) {
-            if ( _options && _options->overwriteExistingLabels() != checked ) {
-              _options->setOverwriteExistingLabels(checked);
+            if ( _opts && _opts->overwriteExistingLabels() != checked ) {
+              _opts->setOverwriteExistingLabels(checked);
               Q_EMIT colormapVisibilityChanged(checked);  // parameterChanged();
           }
         },
           [this](bool *checked) {
-            if ( _options ) {
-              *checked = _options->overwriteExistingLabels();
+            if ( _opts ) {
+              *checked = _opts->overwriteExistingLabels();
               return true;
             }
             return false;
@@ -528,14 +528,14 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
       add_spinbox("Brush Radius:",
           "",
           [this](int value) {
-            if ( _options && _options->brushRadius() != value ) {
-              _options->setBrushRadius(value);
+            if ( _opts && _opts->brushRadius() != value ) {
+              _opts->setBrushRadius(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int *value) {
-            if ( _options ) {
-              * value = _options->brushRadius();
+            if ( _opts ) {
+              * value = _opts->brushRadius();
               return true;
             }
             return false;
@@ -546,14 +546,14 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
       add_double_spinbox("Depth Tolerance [m]:",
           "Brush depth in [m]",
           [this](double value) {
-            if ( _options ) {
-              _options->setDepthTolerance(value);
+            if ( _opts ) {
+              _opts->setDepthTolerance(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](double *value) {
-            if ( _options ) {
-              * value = _options->depthTolerance();
+            if ( _opts ) {
+              * value = _opts->depthTolerance();
               return true;
             }
             return false;
@@ -563,14 +563,14 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
       add_double_spinbox("cdtplus [m]:",
           "cluster forwad depth tolerance in [m] ",
           [this](double value) {
-            if ( _options ) {
-              _options->setCDTPlus(value * 1e2);
+            if ( _opts ) {
+              _opts->setCDTPlus(value * 1e2);
               Q_EMIT parameterChanged();
             }
           },
           [this](double *value) {
-            if ( _options ) {
-              * value = 1e-2 * _options->cdtplus();
+            if ( _opts ) {
+              * value = 1e-2 * _opts->cdtplus();
               return true;
             }
             return false;
@@ -581,14 +581,14 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
       add_double_spinbox("cdtminus [m]:",
           "cluster backward depth tolerance in [m] ",
           [this](double value) {
-            if ( _options ) {
-              _options->setCDTMinus(value * 1e2);
+            if ( _opts ) {
+              _opts->setCDTMinus(value * 1e2);
               Q_EMIT parameterChanged();
             }
           },
           [this](double *value) {
-            if ( _options ) {
-              * value = 1e-2 * _options->cdtminus();
+            if ( _opts ) {
+              * value = 1e-2 * _opts->cdtminus();
               return true;
             }
             return false;
@@ -612,27 +612,21 @@ QDataAnnotationWidget::QDataAnnotationWidget(QWidget * parent) :
   cdtminus_ctl->setSingleStep(1e-2);
   cdtminus_ctl->setDecimals(2);
 
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        setEnabled(_opts && _data_annotation_labels);
+  });
+
   updateControls();
 }
 
-
-void QDataAnnotationWidget::onupdatecontrols()
+void QDataAnnotationWidget::setOpts(QPointSelection3DAnnotationMode * opts)
 {
-  if ( !_options || !_data_annotation_labels) {
-    setEnabled(false);
-  }
-  else {
-    Base::populatecontrols();
-    update_control_states();
-    setEnabled(true);
-  }
-}
-
-void QDataAnnotationWidget::set_options(OptionsType * options)
-{
-  Base::set_options(options);
+  _opts = opts;
   populateColormaps();
+  updateControls();
 }
+
 
 void QDataAnnotationWidget::set_data_annotation_labels(const c_data_annotation_labels *v)
 {
@@ -721,8 +715,8 @@ void QDataAnnotationWidget::onCurrentColormapMapChanged(int cursel)
   labelSelection_ctl->blockSignals(false);
   visibilty_ctl->blockSignals(false);
 
-  if (_options) {
-    _options->setCurrentColormap(colorMapSelection_ctl->currentIndex());
+  if (_opts) {
+    _opts->setCurrentColormap(colorMapSelection_ctl->currentIndex());
   }
 
 
@@ -733,7 +727,7 @@ void QDataAnnotationWidget::onCurrentColormapMapChanged(int cursel)
 
 void QDataAnnotationWidget::onCurrentLabelSelectionChanged(int currentLabelIndex)
 {
-  if (_data_annotation_labels && _options ) {
+  if (_data_annotation_labels && _opts ) {
 
     const int currentColormapIndex =
         colorMapSelection_ctl->currentIndex();
@@ -748,7 +742,7 @@ void QDataAnnotationWidget::onCurrentLabelSelectionChanged(int currentLabelIndex
         const uint8_t label_value =
             labelSelection_ctl->currentData().value<uint8_t>();
 
-        _options->setCurrentLabel(label_value);
+        _opts->setCurrentLabel(label_value);
 
         // Q_EMIT parameterChanged();
       }

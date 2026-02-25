@@ -401,8 +401,11 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
 
 inline int flagsFromString(const std::string & s, const c_enum_member *membs)
 {
-
   int flags = 0;
+
+  if( sscanf(s.c_str(), "%d", &flags) == 1 ) {
+    return flags;
+  }
 
   if( membs ) {
 
@@ -427,39 +430,10 @@ inline int flagsFromString(const std::string & s, const c_enum_member *membs)
 }
 
 template<class enum_type>
-typename std::enable_if_t<std::is_enum_v<enum_type>,
-  int> flagsFromString(const std::string & s)
+typename std::enable_if_t<std::is_enum_v<enum_type>, int>
+flagsFromString(const std::string & s)
 {
-
-  int flags = 0;
-
-  if( sscanf(s.c_str(), "%d", &flags) == 1 ) {
-    return flags;
-  }
-
-  const c_enum_member *membs =
-      members_of<enum_type>();
-
-  if( membs ) {
-
-    std::vector<std::string> tokens =
-        strsplit(s, "| \r\n\t");
-
-    for ( const std::string & token : tokens ) {
-
-      const char * s =
-          token.c_str();
-
-      for ( int i = 0; !membs[i].name.empty(); ++i ) {
-        if ( strcasecmp(membs[i].name.c_str(), s) == 0 ) {
-          flags |= membs[i].value;
-          break;
-        }
-      }
-    }
-  }
-
-  return flags;
+  return flagsFromString(s, members_of<enum_type>());
 }
 
 

@@ -30,33 +30,13 @@ public:
     Function_min,
   };
 
-  void set_function(enum Function v)
-  {
-    function_ = v;
-  }
-
-  enum Function function() const
-  {
-    return function_;
-  }
-
-  void set_argname(const std::string & v)
-  {
-    argname_ = v;
-  }
-
-  const std::string & argname() const
-  {
-    return argname_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  enum Function function_ = Function_None;
-  std::string argname_;
+  enum Function _function = Function_None;
+  std::string _argname;
 
 };
 

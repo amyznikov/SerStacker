@@ -82,31 +82,53 @@ static void stretch_channels_(cv::Mat & image, const cv::Mat & mask, const cv::S
     });
 }
 
+void c_scale_channels_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "stretch_r", ctx, &this_class::stretch_r, &this_class::set_stretch_r, "");
+  ctlbind(ctls, "bias_r", ctx, &this_class::bias_r, &this_class::set_bias_r, "");
+  ctlbind(ctls, "stretch_g", ctx, &this_class::stretch_g, &this_class::set_stretch_g, "");
+  ctlbind(ctls, "bias_g", ctx, &this_class::bias_g, &this_class::set_bias_g, "");
+  ctlbind(ctls, "stretch_b", ctx, &this_class::stretch_b, &this_class::set_stretch_b, "");
+  ctlbind(ctls, "bias_b", ctx, &this_class::bias_b, &this_class::set_bias_b, "");
+  ctlbind(ctls, "stretch_a", ctx, &this_class::stretch_a, &this_class::set_stretch_a, "");
+  ctlbind(ctls, "bias_a", ctx, &this_class::bias_a, &this_class::set_bias_a, "");
+}
+
+bool c_scale_channels_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, bias);
+    SERIALIZE_PROPERTY(settings, save, *this, stretch);
+    return true;
+  }
+  return false;
+}
+
 bool c_scale_channels_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   cv::Mat & img = image.getMatRef();
   const cv::Mat & msk = mask.getMat();
   switch (img.depth()) {
     case CV_8U:
-      stretch_channels_<uint8_t>(img, msk, bias_, stretch_);
+      stretch_channels_<uint8_t>(img, msk, _bias, _stretch);
       break;
     case CV_8S:
-      stretch_channels_<int8_t>(img, msk, bias_, stretch_);
+      stretch_channels_<int8_t>(img, msk, _bias, _stretch);
       break;
     case CV_16U:
-      stretch_channels_<uint16_t>(img, msk, bias_, stretch_);
+      stretch_channels_<uint16_t>(img, msk, _bias, _stretch);
       break;
     case CV_16S:
-      stretch_channels_<int16_t>(img, msk, bias_, stretch_);
+      stretch_channels_<int16_t>(img, msk, _bias, _stretch);
       break;
     case CV_32S:
-      stretch_channels_<int32_t>(img, msk, bias_, stretch_);
+      stretch_channels_<int32_t>(img, msk, _bias, _stretch);
       break;
     case CV_32F:
-      stretch_channels_<float>(img, msk, bias_, stretch_);
+      stretch_channels_<float>(img, msk, _bias, _stretch);
       break;
     case CV_64F:
-      stretch_channels_<double>(img, msk, bias_, stretch_);
+      stretch_channels_<double>(img, msk, _bias, _stretch);
       break;
     default:
       return false;

@@ -313,21 +313,21 @@ void QFFStreamListWidget::selectStream(const QFFMPEGCamera::sptr & camera)
 }
 
 QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
-    Base("QFFStreams", parent)
+    Base(parent)
 {
   ///
   streamName_ctl =
       add_textbox("Name:",
           "",
           [this](const QString & value) {
-            if ( selectedStream_ ) {
-              selectedStream_->setName(value);
+            if ( _selectedStream ) {
+              _selectedStream->setName(value);
               QFFStreams::save();
             }
           },
           [this](QString * value) {
-            if ( selectedStream_ ) {
-              *value = selectedStream_->name();
+            if ( _selectedStream ) {
+              *value = _selectedStream->name();
               return true;
             }
             return false;
@@ -339,8 +339,8 @@ QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
 
   connect(streamUrl_ctl, &QFFMPEGCameraUrlWidget::urlChanged,
       [this]() {
-        if ( !updatingControls() && selectedStream_ ) {
-          selectedStream_->setUrl(streamUrl_ctl->url());
+        if ( !updatingControls() && _selectedStream ) {
+          _selectedStream->setUrl(streamUrl_ctl->url());
           QFFStreams::save();
         }
       });
@@ -351,14 +351,14 @@ QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
       add_textbox("Options:",
           "",
           [this](const QString & value) {
-            if ( selectedStream_ ) {
-              selectedStream_->setOpts(value);
+            if ( _selectedStream ) {
+              _selectedStream->setOpts(value);
               QFFStreams::save();
             }
           },
           [this](QString * value) {
-            if ( selectedStream_ ) {
-              *value = selectedStream_->opts();
+            if ( _selectedStream ) {
+              *value = _selectedStream->opts();
               return true;
             }
             return false;
@@ -373,43 +373,59 @@ QFFStreamsWidget::QFFStreamsWidget(QWidget * parent) :
       this, &ThisClass::onSelectedStreamChanged);
 
   ///
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( _selectedStream ) {
+          streamUrl_ctl->setUrl(_selectedStream->url());
+        }
+        //    Base::onupdatecontrols();
+      });
+
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+          const bool enable = _selectedStream != nullptr;
+          streamName_ctl->setEnabled(enable);
+          streamUrl_ctl->setEnabled(enable);
+          streamOpts_ctl->setEnabled(enable);
+          //    Base::onupdatecontrols();
+      });
 
   updateControls();
 }
 
 void QFFStreamsWidget::onSelectedStreamChanged()
 {
-  if( selectedStream_ ) {
-    QObject::disconnect(selectedStream_.get(),
+  if( _selectedStream ) {
+    QObject::disconnect(_selectedStream.get(),
         nullptr, this, nullptr);
   }
 
-  if( (selectedStream_ = list_ctl->selectedStream()) ) {
-    QObject::connect(selectedStream_.get(), &QFFMPEGCamera::parametersChanged,
+  if( (_selectedStream = list_ctl->selectedStream()) ) {
+    QObject::connect(_selectedStream.get(), &QFFMPEGCamera::parametersChanged,
         this, &ThisClass::updateControls);
   }
 
   updateControls();
 }
 
-void QFFStreamsWidget::onupdatecontrols()
-{
-  const bool enable =
-      selectedStream_ != nullptr;
-
-  if ( enable ) {
-    streamUrl_ctl->setUrl(selectedStream_->url());
-  }
-
-  streamName_ctl->setEnabled(enable);
-  streamUrl_ctl->setEnabled(enable);
-  streamOpts_ctl->setEnabled(enable);
-
-
-
-
-  Base::onupdatecontrols();
-}
+//void QFFStreamsWidget::onupdatecontrols()
+//{
+//  const bool enable =
+//      _selectedStream != nullptr;
+//
+//  if ( enable ) {
+//    streamUrl_ctl->setUrl(_selectedStream->url());
+//  }
+//
+//  streamName_ctl->setEnabled(enable);
+//  streamUrl_ctl->setEnabled(enable);
+//  streamOpts_ctl->setEnabled(enable);
+//
+//
+//
+//
+//  Base::onupdatecontrols();
+//}
 
 } // namespace serimager
 

@@ -292,23 +292,21 @@ cv::Mat Inference::formatToSquare(const cv::Mat & source)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void c_dnn_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_dnn_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, onnx_model_path, "onnx_model_path", "Specify onnx_model_path");
-  BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, classes_text_file, "classes_text_file", "Specify classes_text_file");
-  BIND_CTRL(ctls, model_input_shape, "model_input_shape", "Specify model_input_shape");
-  BIND_CTRL(ctls, run_with_cuda, "run_with_cuda", "Spefify run_with_cuda");
+   ctlbind_browse_for_file(ctls, "onnx_model_path", ctx, &this_class::onnx_model_path, &this_class::set_onnx_model_path, "Specify onnx_model_path");
+   ctlbind_browse_for_file(ctls, "classes_text_file", ctx, &this_class::classes_text_file, &this_class::set_classes_text_file, "Specify classes_text_file");
+   ctlbind(ctls, "model_input_shape", ctx, &this_class::model_input_shape, &this_class::set_model_input_shape, "Specify model_input_shape");
+   ctlbind(ctls, "run_with_cuda", ctx, &this_class::run_with_cuda, &this_class::set_run_with_cuda, "Specify run_with_cuda");
 }
 
 bool c_dnn_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-
     SERIALIZE_PROPERTY(settings, save, *this, onnx_model_path);
     SERIALIZE_PROPERTY(settings, save, *this, classes_text_file);
     SERIALIZE_PROPERTY(settings, save, *this, model_input_shape);
     SERIALIZE_PROPERTY(settings, save, *this, run_with_cuda);
-
     return true;
   }
   return false;
@@ -316,22 +314,22 @@ bool c_dnn_test_routine::serialize(c_config_setting settings, bool save)
 
 bool c_dnn_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( !initialized_ ) {
+  if( !_initialized ) {
 
-    initialized_ =
-        inference_.initialize(onnx_model_path_,
-            model_input_shape_,
-            classes_text_file_,
-            run_with_cuda_);
+    _initialized =
+        _inference.initialize(_onnx_model_path,
+            _model_input_shape,
+            _classes_text_file,
+            _run_with_cuda);
 
-    if( !initialized_ ) {
+    if( !_initialized ) {
       CF_ERROR("inference_.initialize() fails");
       return false;
     }
   }
 
   std::vector<Detection> output =
-      inference_.runInference(image.getMat());
+      _inference.runInference(image.getMat());
 
   CF_DEBUG("output.size=%zu", output.size());
 

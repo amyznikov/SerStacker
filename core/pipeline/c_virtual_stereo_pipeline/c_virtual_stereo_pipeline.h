@@ -13,10 +13,12 @@
 #include <core/improc/c_image_processor.h>
 #include <core/settings/opencv_settings.h>
 #include <core/settings/camera_settings.h>
-#include <core/proc/camera_calibration/camera_pose.h>
-#include <core/proc/stereo/c_epipolar_matcher.h>
+#include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/image_registration/pyrflowlk2.h>
 #include <core/proc/image_registration/morph_gradient_flow.h>
+#include <core/proc/camera_calibration/camera_pose.h>
+#include <core/proc/stereo/c_epipolar_matcher.h>
+#include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 struct c_virtual_stereo_input_options :
     c_image_processing_pipeline_input_options
@@ -161,7 +163,8 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  static const c_ctlist<this_class> & getcontrols();
 
 protected:
   bool initialize_pipeline() override;
@@ -198,59 +201,52 @@ protected:
 
 protected:
   c_virtual_stereo_input_options _input_options;
-  c_virtual_stereo_camera_options camera_options_;
-  c_virtual_stereo_image_processing_options image_processing_options_;
-  c_virtual_stereo_feature2d_options feature2d_options_;
-  c_lm_camera_pose_options camera_pose_options_;
-  c_virtual_stereo_matcher_options stereo_matcher_options_;
-  c_virtual_stereo_triangulation_options triangulation_options_;
-  c_virtual_stereo_epipolar_flow_options epipolar_flow_options_;
-  c_virtual_stereo_morph_gradient_flow_options morph_gradient_flow_options_;
-  c_virtual_stereo_output_options output_options_;
+  c_virtual_stereo_camera_options _camera_options;
+  c_virtual_stereo_image_processing_options _image_processing_options;
+  c_virtual_stereo_feature2d_options _feature2d_options;
+  c_lm_camera_pose_options _camera_pose_options;
+  c_virtual_stereo_matcher_options _stereo_matcher_options;
+  c_epipolar_matcher_options _epipolar_matcher_options;
+  c_virtual_stereo_triangulation_options _triangulation_options;
+  c_virtual_stereo_epipolar_flow_options _epipolar_flow_options;
+  c_virtual_stereo_morph_gradient_flow_options _morph_gradient_flow_options;
+  c_virtual_stereo_output_options _output_options;
 
-  c_sparse_feature_extractor_and_matcher::sptr keypoints_extractor_;
-  c_regular_stereo_matcher stereo_matcher_;
-  c_epipolar_matcher epipolar_matcher_;
-  //c_epipolar_flow epipolar_flow_;
-  c_feature2d::sptr pyrflowlk_keypoints_detector_;
+  c_sparse_feature_extractor_and_matcher::sptr _keypoints_extractor;
+  c_regular_stereo_matcher _stereo_matcher;
+  c_epipolar_matcher _epipolar_matcher;
+  c_feature2d::sptr _pyrflowlk_keypoints_detector;
 
-  cv::Mat current_image_;
-  cv::Mat previous_image_;
+  cv::Mat _current_image;
+  cv::Mat _previous_image;
 
-  cv::Mat current_mask_;
-  cv::Mat previous_mask_;
+  cv::Mat _current_mask;
+  cv::Mat _previous_mask;
 
-  std::vector<cv::KeyPoint> current_keypoints_;
-  std::vector<cv::KeyPoint> previous_keypoints_;
+  std::vector<cv::KeyPoint> _current_keypoints;
+  std::vector<cv::KeyPoint> _previous_keypoints;
 
-  cv::Mat current_descriptors_;
-  cv::Mat previous_descriptors_;
+  cv::Mat _current_descriptors;
+  cv::Mat _previous_descriptors;
 
-  std::vector<cv::Point2f> matched_current_positions_;
-  std::vector<cv::Point2f> matched_previous_positions_;
+  std::vector<cv::Point2f> _matched_current_positions;
+  std::vector<cv::Point2f> _matched_previous_positions;
 
-//  c_epipolar_matcher::c_block_array current_block_array_;
-//  c_epipolar_matcher::c_block_array previous_block_array_;
+  cv::Vec3d _currentEulerAnges;
+  cv::Vec3d _currentTranslationVector;
+  cv::Matx33d _currentRotationMatrix;
+  cv::Matx33d _currentEssentialMatrix;
+  cv::Matx33d _currentFundamentalMatrix;
+  cv::Matx33d _currentDerotationHomography;
+  cv::Point2d _currentEpipoles[2];
+  cv::Point2d _currentEpipole;
+  cv::Mat1b _currentInliers;
+  cv::Mat _currentDisparity;
 
-  cv::Vec3d currentEulerAnges_;
-  cv::Vec3d currentTranslationVector_;
-  cv::Matx33d currentRotationMatrix_;
-  cv::Matx33d currentEssentialMatrix_;
-  cv::Matx33d currentFundamentalMatrix_;
-  cv::Matx33d currentDerotationHomography_;
-  cv::Point2d currentEpipoles_[2];
-  cv::Point2d currentEpipole_;
-  cv::Mat1b currentInliers_;
-  cv::Mat current_disparity_;
-
-  //cv::Matx33d camera_matrix_;
-
-  c_output_frame_writer progress_video_writer_;
-  c_output_frame_writer polar_frames_writer_;
-  c_output_frame_writer disparity_frames_writer_;
-  c_output_frame_writer homography_video_writer_;
-  //c_output_frame_writer median_hat_video_writer_;
-
+  c_output_frame_writer _progress_video_writer;
+  c_output_frame_writer _polar_frames_writer;
+  c_output_frame_writer _disparity_frames_writer;
+  c_output_frame_writer _homography_video_writer;
 };
 
 

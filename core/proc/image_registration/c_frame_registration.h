@@ -10,6 +10,7 @@
 
 #include <core/proc/extract_channel.h>
 #include <core/feature2d/feature2d.h>
+#include <core/ctrlbind/ctrlbind.h>
 //#include "c_jovian_derotation.h"
 #include "c_jovian_derotation2.h"
 #include "c_saturn_derotation.h"
@@ -24,8 +25,27 @@ struct c_feature_registration_options
   double image_scale = 0.5;
   double triangle_eps = 5; // [px]
   color_channel_type registration_channel = color_channel_gray;
-  bool enabled = false;
 };
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_feature_registration_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_feature_registration_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::FeatureRegistrationOptions;
+  c.feature_registration_options =
+      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
 
 struct c_ecc_registration_options
 {
@@ -43,14 +63,34 @@ struct c_ecc_registration_options
   int ecch_minimum_image_size = 16;
   double normalization_noise = 0.01;
   int normalization_scale = 0;
-  bool enabled = true;
   bool ecch_estimate_translation_first = true;
   bool replace_planetary_disk_with_mask = false;
 };
 
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_ecc_registration_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_ecc_registration_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::ECCRegistrationOptions;
+
+  const size_t offset = ctx.offset;
+  c.ecc_registration_options =
+      [offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
+
 struct c_eccflow_registration_options
 {
-  bool enabled = false;
   double update_multiplier = 1.5;
   double input_smooth_sigma = 0;
   double reference_smooth_sigma = 0;
@@ -60,18 +100,39 @@ struct c_eccflow_registration_options
   int support_scale = 4;
   int min_image_size = -1;
   int max_pyramid_level = -1;
-  c_eccflow::DownscaleMethod downscale_method = c_eccflow::DownscaleRecursiveResize;
+  ECCFlowDownscaleMethod downscale_method = ECCFlowDownscaleRecursiveResize;
 };
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, c_eccflow_registration_options> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = c_eccflow_registration_options;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::ECCFlowRegistrationOptions;
+
+  const size_t offset = ctx.offset;
+  c.eccflow_registration_options =
+      [offset](RootObjectType * obj) -> FieldType *  {
+        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
+      };
+
+  ctls.emplace_back(c);
+}
 
 struct c_jovian_derotation_options
 {
-  // bool enabled = false;
-  //c_jovian_ellipse_detector_options detector_options;
+  //  c_jovian_ellipse_detector_options detector_options;
   c_jovian_ellipse_detector2_options detector_options;
-//  double min_rotation = -40 * CV_PI / 180;
-//  double max_rotation = +40 * CV_PI / 180;
-//  int max_pyramid_level = -1;
-//  int num_orientations = 1;
+  //  double min_rotation = -40 * CV_PI / 180;
+  //  double max_rotation = +40 * CV_PI / 180;
+  //  int max_pyramid_level = -1;
+  //  int num_orientations = 1;
   int max_context_size = 5;
   bool derotate_all_frames = false;
 };
@@ -96,51 +157,67 @@ struct c_planetary_disk_derotation_options
   planetary_disk_derotation_type derotation_type = planetary_disk_derotation_disabled;
 };
 
-
-enum master_frame_selection_method
-{
-  master_frame_specific_index,
-  master_frame_middle_index,
-  master_frame_best_of_100_in_middle,
-};
-
-
-struct c_master_frame_selection_options
-{
-  master_frame_selection_method master_selection_method = master_frame_specific_index;
-  std::string master_fiename;
-  int master_frame_index = 0;
-};
-
-
-
 struct c_image_registration_options
 {
-  IMAGE_MOTION_TYPE motion_type =
-      IMAGE_MOTION_AFFINE;
-
-  color_channel_type ecc_registration_channel =
-      color_channel_gray;
-
-  enum ECC_INTERPOLATION_METHOD interpolation =
-      ECC_INTER_LINEAR;
-
-  enum ECC_BORDER_MODE border_mode =
-      ECC_BORDER_REFLECT101;
-
-  cv::Scalar border_value =
-      cv::Scalar(0, 0, 0);
-
+  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
+  color_channel_type ecc_registration_channel = color_channel_gray;
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+  enum ECC_BORDER_MODE border_mode = ECC_BORDER_REFLECT101;
+  cv::Scalar border_value = cv::Scalar(0, 0, 0);
 
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
   struct c_planetary_disk_derotation_options planetary_disk_derotation;
 
+  bool enable_feature_registration = true;
+  bool enable_ecc_registration = false;
+  bool enable_eccflow_registration = false;
   bool accumulate_and_compensate_turbulent_flow = false;
-
-  bool enabled = true;
 };
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_registration_options> & ctx)
+{
+  using S  = c_image_registration_options;
+
+  ctlbind(ctls, "Motion Type:", ctx(&S::motion_type), "");
+  ctlbind(ctls, "Interpolation:", ctx(&S::interpolation), "");
+  ctlbind(ctls, "Border Mode:", ctx(&S::border_mode), "");
+  ctlbind(ctls, "Border Value:", ctx(&S::border_value), "");
+  ctlbind(ctls, "ECC Registration Channel:", ctx(&S::ecc_registration_channel), "");
+  ctlbind(ctls, "Compute and Compensate Turbulent Flow:", ctx(&S::accumulate_and_compensate_turbulent_flow), "");
+  //ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
+
+  ctlbind_expandable_group(ctls, "Camera Matrix", ""); //  (_this->_master_options.registration.motion_type == IMAGE_MOTION_EPIPOLAR_DEROTATION));
+    //  PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics);
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Feature Registration Options", "");
+    ctlbind(ctls, "Enable Feature Registration", ctx(&S::enable_feature_registration), "");
+    ctlbind_group(ctls, ctx(&S::enable_feature_registration));
+    ctlbind(ctls, "", ctx(&S::feature_registration), "");
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+
+
+  ctlbind_expandable_group(ctls, "ECC Registration Options", "");
+    ctlbind(ctls, "Enable ECC Registration", ctx(&S::enable_ecc_registration), "");
+    ctlbind_group(ctls, ctx(&S::enable_ecc_registration));
+    ctlbind(ctls, "", ctx(&S::ecc), "");
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "ECC Flow Registration Options", "");
+    ctlbind(ctls, "Enable ECCFlow Registration", ctx(&S::enable_eccflow_registration), "");
+    ctlbind_group(ctls, ctx(&S::enable_eccflow_registration));
+    ctlbind(ctls, "", ctx(&S::eccflow), "");
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+
+  //  accumulate_and_compensate_turbulent_flow
+}
+
 
 struct c_image_registration_status
 {

@@ -14,6 +14,7 @@
 
 #include "QGLView.h"
 #include <gui/widgets/settings.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/io/save_image.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -148,180 +149,113 @@ QGLView::~QGLView()
   cleanupGL();
 }
 
-void QGLView::loadParameters()
+void QGLView::loadSettings(const QString & prefix)
 {
-  QSettings settings;
-  loadParameters(settings);
+  const QSettings settings;
+  loadSettings(settings, prefix);
 }
 
-void QGLView::loadParameters(QSettings & settings)
+void QGLView::loadSettings(const QSettings & settings, const QString & prefix)
 {
-  _backgroundColor =
-      settings.value("QGLView/backgroundColor_",
-          _backgroundColor).value<QColor>();
+  onload(settings, prefix);
+}
 
-  _foregroundColor =
-      settings.value("QGLView/foregroundColor_",
-          _foregroundColor).value<QColor>();
+void QGLView::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
 
-  _showMainAxes =
-      settings.value("QGLView/showMainAxes",
-          _showMainAxes).toBool();
+void QGLView::saveSettings(QSettings & settings, const QString & prefix)
+{
+  onsave(settings, prefix);
+}
 
-  _mainAxesLength =
-      settings.value("QGLView/mainAxesLength",
-          _mainAxesLength).toDouble();
+void QGLView::onload(const QSettings & settings, const QString & _prefix)
+{
+  const QString PREFIX = _prefix.isEmpty() ? "QGLView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
-  fromString(settings.value("QGLView/projection",
-      toQString(_viewParams.projection)).toString().toStdString(),
-      &_viewParams.projection);
-
-  _viewParams.fov = settings.value("QGLView/fov",
-      _viewParams.fov).value<decltype(_viewParams.fov)>();
-
-  _viewParams.nearPlane = settings.value("QGLView/nearPlane",
-      _viewParams.nearPlane).value<decltype(_viewParams.nearPlane)>();
-
-  _viewParams.farPlane = settings.value("QGLView/farPlane",
-      _viewParams.farPlane).value<decltype(_viewParams.farPlane)>();
-
-  const int numGrids =
-      settings.value("QGLView/numGrids",
-          0).value<int>();
+  _backgroundColor = settings.value(PARAM("backgroundColor"), _backgroundColor).value<QColor>();
+  _foregroundColor = settings.value(PARAM("foregroundColor"), _foregroundColor).value<QColor>();
+  _showMainAxes = settings.value(PARAM("showMainAxes"), _showMainAxes).toBool();
+  _mainAxesLength = settings.value(PARAM("mainAxesLength"), _mainAxesLength).toDouble();
+  fromString(settings.value(PARAM("projection"), toQString(_viewParams.projection)).toString().toStdString(), &_viewParams.projection);
+  _viewParams.fov = settings.value(PARAM("fov"), _viewParams.fov).value<decltype(_viewParams.fov)>();
+  _viewParams.nearPlane = settings.value(PARAM("nearPlane"), _viewParams.nearPlane).value<decltype(_viewParams.nearPlane)>();
+  _viewParams.farPlane = settings.value(PARAM("farPlane"), _viewParams.farPlane).value<decltype(_viewParams.farPlane)>();
 
   _grids.clear();
 
+  const int numGrids = settings.value(PARAM("numGrids"), 0).value<int>();
   for( int i = 0; i < numGrids; ++i ) {
 
-    const QString keyPrefix =
-        QString("QGLView/grid%1").arg(i);
+    const auto GPARAM =
+        [keyPrefix = qsprintf("%s/grid%d/", PREFIX.toUtf8().constData(), i)](const QString & name) {
+          return keyPrefix + name;
+        };
 
     _grids.emplace_back();
 
-    PlanarGridOptions & grid =
-        _grids.back();
+    PlanarGridOptions & grid = _grids.back();
 
-    grid.name =
-        settings.value(QString("%1/name").arg(keyPrefix),
-            grid.name).value<decltype(grid.name)>();
-
-    grid.maxDistance =
-        settings.value(QString("%1/max_distance").arg(keyPrefix),
-            grid.maxDistance).value<decltype(grid.maxDistance)>();
-
-    grid.step =
-        settings.value(QString("%1/step").arg(keyPrefix),
-            grid.step).value<decltype(grid.step)>();
-
-    grid.Rotation =
-        settings.value(QString("%1/Rotation").arg(keyPrefix),
-            grid.Rotation).value<decltype(grid.Rotation)>();
-
-    grid.Translation =
-        settings.value(QString("%1/Translation").arg(keyPrefix),
-            grid.Translation).value<decltype(grid.Translation)>();
-
-    grid.gridColor =
-        settings.value(QString("%1/gridColor").arg(keyPrefix),
-            grid.gridColor).value<decltype(grid.gridColor)>();
-
-    grid.fillColor =
-        settings.value(QString("%1/fillColor").arg(keyPrefix),
-            grid.fillColor).value<decltype(grid.fillColor)>();
-
-    grid.gridOpaqueness =
-        settings.value(QString("%1/gridOpaqueness").arg(keyPrefix),
-            grid.gridOpaqueness).value<decltype(grid.gridOpaqueness)>();
-
-    grid.fillOpaqueness =
-        settings.value(QString("%1/fillOpaqueness").arg(keyPrefix),
-            grid.fillOpaqueness).value<decltype(grid.fillOpaqueness)>();
-
-    grid.visible =
-        settings.value(QString("%1/visible").arg(keyPrefix),
-            grid.visible).value<decltype(grid.visible)>();
-
+    grid.name = settings.value(GPARAM("name"), grid.name).value<decltype(grid.name)>();
+    grid.maxDistance = settings.value(GPARAM("max_distance"), grid.maxDistance).value<decltype(grid.maxDistance)>();
+    grid.step = settings.value(GPARAM("step"), grid.step).value<decltype(grid.step)>();
+    grid.Rotation = settings.value(GPARAM("Rotation"), grid.Rotation).value<decltype(grid.Rotation)>();
+    grid.Translation = settings.value(GPARAM("Translation"), grid.Translation).value<decltype(grid.Translation)>();
+    grid.gridColor = settings.value(GPARAM("gridColor"), grid.gridColor).value<decltype(grid.gridColor)>();
+    grid.fillColor = settings.value(GPARAM("fillColor"), grid.fillColor).value<decltype(grid.fillColor)>();
+    grid.gridOpaqueness = settings.value(GPARAM("gridOpaqueness"), grid.gridOpaqueness).value<decltype(grid.gridOpaqueness)>();
+    grid.fillOpaqueness = settings.value(GPARAM("fillOpaqueness"), grid.fillOpaqueness).value<decltype(grid.fillOpaqueness)>();
+    grid.visible = settings.value(GPARAM("visible"), grid.visible).value<decltype(grid.visible)>();
   }
-
 }
 
-void QGLView::saveParameters()
+void QGLView::onsave(QSettings & settings, const QString & _prefix)
 {
-  QSettings settings;
-  saveParameters(settings);
-}
+  const QString PREFIX = _prefix.isEmpty() ? "QGLView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
-void QGLView::saveParameters(QSettings & settings)
-{
-  settings.setValue("QGLView/backgroundColor_",
-      _backgroundColor);
-
-  settings.setValue("QGLView/foregroundColor_",
-      _foregroundColor);
-
-  settings.setValue("QGLView/showMainAxes",
-      _showMainAxes);
-
-  settings.setValue("QGLView/mainAxesLength",
-      _mainAxesLength);
-
-  settings.setValue("QGLView/projection",
-      toQString(_viewParams.projection));
-
-  settings.setValue("QGLView/fov",
-      _viewParams.fov);
-
-  settings.setValue("QGLView/nearPlane",
-      _viewParams.nearPlane);
-
-  settings.setValue("QGLView/farPlane",
-      _viewParams.farPlane);
-
-  settings.setValue("QGLView/numGrids",
-      (int) (_grids.size()));
+  settings.setValue(PARAM("backgroundColor"), _backgroundColor);
+  settings.setValue(PARAM("foregroundColor"), _foregroundColor);
+  settings.setValue(PARAM("showMainAxes"), _showMainAxes);
+  settings.setValue(PARAM("mainAxesLength"), _mainAxesLength);
+  settings.setValue(PARAM("projection"), toQString(_viewParams.projection));
+  settings.setValue(PARAM("fov"), _viewParams.fov);
+  settings.setValue(PARAM("nearPlane"), _viewParams.nearPlane);
+  settings.setValue(PARAM("farPlane"), _viewParams.farPlane);
+  settings.setValue(PARAM("numGrids"), (int) (_grids.size()));
 
   for( int i = 0, n = _grids.size(); i < n; ++i ) {
+
+    const auto GPARAM =
+        [keyPrefix = qsprintf("%s/grid%d/", PREFIX.toUtf8().constData(), i)](const QString & name) {
+          return keyPrefix + name;
+        };
 
     const PlanarGridOptions & grid =
         _grids[i];
 
-    const QString keyPrefix =
-        QString("QGLView/grid%1").arg(i);
-
-    settings.setValue(QString("%1/name").arg(keyPrefix),
-        grid.name);
-
-    settings.setValue(QString("%1/max_distance").arg(keyPrefix),
-        grid.maxDistance);
-
-    settings.setValue(QString("%1/step").arg(keyPrefix),
-        grid.step);
-
-    settings.setValue(QString("%1/Rotation").arg(keyPrefix),
-        grid.Rotation);
-
-    settings.setValue(QString("%1/Translation").arg(keyPrefix),
-        grid.Translation);
-
-    settings.setValue(QString("%1/gridColor").arg(keyPrefix),
-        grid.gridColor);
-
-    settings.setValue(QString("%1/fillColor").arg(keyPrefix),
-        grid.fillColor);
-
-    settings.setValue(QString("%1/gridOpaqueness").arg(keyPrefix),
-        grid.gridOpaqueness);
-
-    settings.setValue(QString("%1/fillOpaqueness").arg(keyPrefix),
-        grid.fillOpaqueness);
-
-    settings.setValue(QString("%1/visible").arg(keyPrefix),
-        grid.visible);
-
-
+    settings.setValue(GPARAM("name"), grid.name);
+    settings.setValue(GPARAM("max_distance"), grid.maxDistance);
+    settings.setValue(GPARAM("step"), grid.step);
+    settings.setValue(GPARAM("Rotation"), grid.Rotation);
+    settings.setValue(GPARAM("Translation"), grid.Translation);
+    settings.setValue(GPARAM("gridColor"), grid.gridColor);
+    settings.setValue(GPARAM("fillColor"), grid.fillColor);
+    settings.setValue(GPARAM("gridOpaqueness"), grid.gridOpaqueness);
+    settings.setValue(GPARAM("fillOpaqueness"), grid.fillOpaqueness);
+    settings.setValue(GPARAM("visible"), grid.visible);
   }
-
 }
+
 
 
 void QGLView::setBackgroundColor(const QColor &color)

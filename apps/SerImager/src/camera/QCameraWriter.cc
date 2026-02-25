@@ -452,15 +452,15 @@ QCameraWriter::QCameraWriter(QObject * parent) :
 
 void QCameraWriter::setCamera(const QImagingCamera::sptr & camera)
 {
-  c_unique_lock lock(mtx_);
+  c_unique_lock lock(_mtx);
 
-  if( camera_ ) {
-    disconnect(camera_.get(), nullptr,
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
         this, nullptr);
   }
 
-  if( (camera_ = camera) ) {
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+  if( (_camera = camera) ) {
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged);
   }
 
@@ -469,139 +469,139 @@ void QCameraWriter::setCamera(const QImagingCamera::sptr & camera)
 
 const QImagingCamera::sptr& QCameraWriter::camera() const
 {
-  return camera_;
+  return _camera;
 }
 
 void QCameraWriter::set_enable_split_stereo_stream(bool v)
 {
-  enable_split_stereo_stream_ = v;
+  _enable_split_stereo_stream = v;
 }
 
 bool QCameraWriter::enable_split_stereo_stream() const
 {
-  return enable_split_stereo_stream_;
+  return _enable_split_stereo_stream;
 }
 
 c_stereo_stream_options & QCameraWriter::stereo_stream_options()
 {
-  return stereo_stream_options_;
+  return _stereo_stream_options;
 }
 
 const c_stereo_stream_options & QCameraWriter::stereo_stream_options() const
 {
-  return stereo_stream_options_;
+  return _stereo_stream_options;
 }
 
 void QCameraWriter::setCaptureLimits(const c_capture_limits & limits)
 {
-  capture_limits_ = limits;
+  _capture_limits = limits;
 }
 
 const c_capture_limits& QCameraWriter::captureLimits() const
 {
-  return capture_limits_;
+  return _capture_limits;
 }
 
 void QCameraWriter::setOutputDirectoty(const QString & path)
 {
-  output_directoty_ = path;
+  _output_directoty = path;
 }
 
 const QString& QCameraWriter::outputDirectoty() const
 {
-  return output_directoty_;
+  return _output_directoty;
 }
 
 void QCameraWriter::setOutputFormat(FORMAT v)
 {
-  output_format_ = v;
+  _output_format = v;
 }
 
 QCameraWriter::FORMAT QCameraWriter::outputFormat() const
 {
-  return output_format_;
+  return _output_format;
 }
 
 void QCameraWriter::setFFmpegOptions(const QString & opts)
 {
-  ffmpeg_options_ = opts;
+  _ffmpeg_options = opts;
 }
 
 const QString& QCameraWriter::ffmpegOptions() const
 {
-  return ffmpeg_options_;
+  return _ffmpeg_options;
 }
 
 void QCameraWriter::setFilenamePrefix(const QString & v)
 {
-  filename_prefix_ = v;
+  _filename_prefix = v;
 }
 
 const QString & QCameraWriter::filenamePrefix() const
 {
-  return filename_prefix_;
+  return _filename_prefix;
 }
 
 void QCameraWriter::setFilenameSuffix(const QString & v)
 {
-  filename_suffix_ = v;
+  _filename_suffix = v;
 }
 
 const QString & QCameraWriter::filenameSuffix() const
 {
-  return filename_suffix_;
+  return _filename_suffix;
 }
 
 void QCameraWriter::setNumRounds(int v)
 {
-  numRounds_ = v;
+  _numRounds = v;
 }
 
 int QCameraWriter::numRounds() const
 {
-  return numRounds_;
+  return _numRounds;
 }
 
 void QCameraWriter::setIntervalBetweenRounds(int v)
 {
-  interval_between_rounds_ = v;
+  _interval_between_rounds = v;
 }
 
 int QCameraWriter::intervalBetweenRounds() const
 {
-  return interval_between_rounds_;
+  return _interval_between_rounds;
 }
 
 int QCameraWriter::num_saved_frames() const
 {
-  return num_saved_frames_;
+  return _num_saved_frames;
 }
 
 int QCameraWriter::num_dropped_frames() const
 {
-  return num_dropped_frames_;
+  return _num_dropped_frames;
 }
 
 double QCameraWriter::capture_duration() const
 {
-  return capture_duration_;
+  return _capture_duration;
 }
 
 int QCameraWriter::round() const
 {
-  return round_;
+  return _round;
 }
 
 QCameraWriter::State QCameraWriter::state() const
 {
-  return current_state_;
+  return _current_state;
 }
 
 void QCameraWriter::setState(State state)
 {
-  if( current_state_ != state ) {
+  if( _current_state != state ) {
 
-    current_state_ = state;
+    _current_state = state;
 
     Q_EMIT stateChanged();
   }
@@ -614,9 +614,9 @@ void QCameraWriter::onCameraStateChanged(QImagingCamera::State oldState, QImagin
 
 void QCameraWriter::start()
 {
-  c_unique_lock lock(mtx_);
+  c_unique_lock lock(_mtx);
 
-  if( current_state_ == State::Idle ) {
+  if( _current_state == State::Idle ) {
 
     setState(State::Starting);
 
@@ -627,9 +627,9 @@ void QCameraWriter::start()
 
 void QCameraWriter::stop()
 {
-  c_unique_lock lock(mtx_);
+  c_unique_lock lock(_mtx);
 
-  if( current_state_ == State::Active ) {
+  if( _current_state == State::Active ) {
 
     setState(State::Stopping);
   }
@@ -644,24 +644,24 @@ void QCameraWriter::writerThreadProc()
 
         c_video_frame_writer * writer = nullptr;
 
-        switch (_this->output_format_) {
+        switch (_this->_output_format) {
           case QCameraWriter::FORMAT::SER: {
 
-            _this->output_file_name_ =
+            _this->_output_file_name =
                 qsprintf("%s/%s%s%s.ser",
-                    _this->output_directoty_.toUtf8().constData(),
-                    _this->filename_prefix_.toUtf8().constData(),
+                    _this->_output_directoty.toUtf8().constData(),
+                    _this->_filename_prefix.toUtf8().constData(),
                     getCurrentDateTimeString().toUtf8().constData(),
-                    _this->filename_suffix_.toUtf8().constData());
+                    _this->_filename_suffix.toUtf8().constData());
 
             c_ser_file_writer * w = new c_ser_file_writer();
 
-            if( w->create(_this->output_file_name_, frame->image().size(), frame->colorid(), frame->bpp()) ) {
+            if( w->create(_this->_output_file_name, frame->image().size(), frame->colorid(), frame->bpp()) ) {
               writer = w;
             }
             else {
               CF_ERROR("c_ser_file_writer::create('%s') fails",
-                  _this->output_file_name_.toUtf8().constData());
+                  _this->_output_file_name.toUtf8().constData());
               delete w;
             }
 
@@ -670,26 +670,26 @@ void QCameraWriter::writerThreadProc()
 
           case QCameraWriter::FORMAT::AVI: {
 
-            if ( _this->enable_split_stereo_stream_ ) {
+            if ( _this->_enable_split_stereo_stream ) {
 
-              _this->output_file_name_ =
+              _this->_output_file_name =
                   qsprintf("%s/%s%s%s",
-                      _this->output_directoty_.toUtf8().constData(),
-                      _this->filename_prefix_.toUtf8().constData(),
+                      _this->_output_directoty.toUtf8().constData(),
+                      _this->_filename_prefix.toUtf8().constData(),
                       getCurrentDateTimeString().toUtf8().constData(),
-                      _this->filename_suffix_.toUtf8().constData());
+                      _this->_filename_suffix.toUtf8().constData());
 
               //  _this->output_file_name_ =
               //    QString("%1/%2") .arg(_this->output_directoty_).arg(getCurrentDateTimeString());
 
               c_avi_stereo_writer * w = new c_avi_stereo_writer();
 
-              const bool fOk = w->create(_this->output_file_name_,
-                  _this->ffmpeg_options_,
+              const bool fOk = w->create(_this->_output_file_name,
+                  _this->_ffmpeg_options,
                   frame->image().size(),
-                  _this->stereo_stream_options_.layout_type,
-                  _this->stereo_stream_options_.swap_cameras,
-                  _this->stereo_stream_options_.downscale_panes,
+                  _this->_stereo_stream_options.layout_type,
+                  _this->_stereo_stream_options.swap_cameras,
+                  _this->_stereo_stream_options.downscale_panes,
                   frame->colorid() );
 
               if ( fOk ) {
@@ -697,18 +697,18 @@ void QCameraWriter::writerThreadProc()
               }
               else {
                 CF_ERROR("c_avi_stereo_writer::create('%s') fails",
-                    _this->output_file_name_.toUtf8().constData());
+                    _this->_output_file_name.toUtf8().constData());
                 delete w;
               }
             }
             else {
 
-              _this->output_file_name_ =
+              _this->_output_file_name =
                   qsprintf("%s/%s%s%s.avi",
-                      _this->output_directoty_.toUtf8().constData(),
-                      _this->filename_prefix_.toUtf8().constData(),
+                      _this->_output_directoty.toUtf8().constData(),
+                      _this->_filename_prefix.toUtf8().constData(),
                       getCurrentDateTimeString().toUtf8().constData(),
-                      _this->filename_suffix_.toUtf8().constData());
+                      _this->_filename_suffix.toUtf8().constData());
 
 
               // _this->output_file_name_ =
@@ -716,8 +716,8 @@ void QCameraWriter::writerThreadProc()
 
               c_avi_file_writer * w = new c_avi_file_writer();
 
-              bool fOk = w->create(_this->output_file_name_,
-                  _this->ffmpeg_options_,
+              bool fOk = w->create(_this->_output_file_name,
+                  _this->_ffmpeg_options,
                   frame->image().size(),
                   frame->colorid(),
                   frame->bpp());
@@ -727,7 +727,7 @@ void QCameraWriter::writerThreadProc()
               }
               else {
                 CF_ERROR("c_avi_file_writer::create('%s') fails",
-                    _this->output_file_name_.toUtf8().constData());
+                    _this->_output_file_name.toUtf8().constData());
                 delete w;
               }
             }
@@ -735,7 +735,7 @@ void QCameraWriter::writerThreadProc()
             break;
           }
           default:
-            CF_ERROR("Invalid output format %d requested", _this->output_format_);
+            CF_ERROR("Invalid output format %d requested", _this->_output_format);
             break;
         }
 
@@ -744,10 +744,10 @@ void QCameraWriter::writerThreadProc()
 
 
 
-  c_unique_lock lock(mtx_);
+  c_unique_lock lock(_mtx);
 
   QImagingCamera::sptr camera =
-      this->camera_;
+      this->_camera;
 
   if( !camera ) {
     CF_ERROR("No camera");
@@ -804,22 +804,22 @@ void QCameraWriter::writerThreadProc()
   const auto wakeup_condition =
       [this, c]() -> bool {
 
-        if ( current_state_ != State::Active ) {
+        if ( _current_state != State::Active ) {
           return true;
         }
         if ( c->state() != QImagingCamera::State_started ) {
           return true;
         }
-        if ( !c->deque().empty() && c->deque().back()->index() > last_index_ ) {
+        if ( !c->deque().empty() && c->deque().back()->index() > _last_index ) {
           return true;
         }
         return false;
       };
 
-  for( round_ = 0; round_ < numRounds_ ; ++round_ ) {
+  for( _round = 0; _round < _numRounds ; ++_round ) {
 
 
-    if ( enable_split_stereo_stream_ ) {
+    if ( _enable_split_stereo_stream ) {
 
     }
 
@@ -827,9 +827,9 @@ void QCameraWriter::writerThreadProc()
     c_video_frame_writer *writer =
         nullptr;
 
-    last_index_ = -1;
-    num_saved_frames_ = 0;
-    num_dropped_frames_ = 0;
+    _last_index = -1;
+    _num_saved_frames = 0;
+    _num_dropped_frames = 0;
 
     auto start_time =
         std::chrono::system_clock::now();
@@ -839,11 +839,11 @@ void QCameraWriter::writerThreadProc()
     //double last_ts = 0;
 
     int start_index = -1;
-    capture_duration_ = 0;
+    _capture_duration = 0;
 
     const double max_capture_duration =
-        capture_limits_.type == c_capture_limits::ByTime ?
-            capture_limits_.value :
+        _capture_limits.type == c_capture_limits::ByTime ?
+            _capture_limits.value :
             -1;
 
     const std::string camera_name =
@@ -859,7 +859,7 @@ void QCameraWriter::writerThreadProc()
     QString captureEndTime;
 
 
-    while (current_state_ == State::Active) {
+    while (_current_state == State::Active) {
 
       lock.unlock();
 
@@ -882,7 +882,7 @@ void QCameraWriter::writerThreadProc()
 
       lock.lock();
 
-      if( current_state_ != State::Active ) {
+      if( _current_state != State::Active ) {
         break;
       }
 
@@ -898,26 +898,26 @@ void QCameraWriter::writerThreadProc()
       if ( !deque.empty() ) {
 
         // Skip early buffered frames as they could be captured at different exposure / gain parameters
-        if( last_index_ < 0 ) {
-          last_index_ = deque.back()->index();
+        if( _last_index < 0 ) {
+          _last_index = deque.back()->index();
         }
 
         for( const QCameraFrame::sptr &frame : deque ) {
-          if( frame->index() > last_index_ ) {
+          if( frame->index() > _last_index ) {
 
             if( !writer ) {
 
               captureStartTime =
                   getHumanReadableCurrentDateTimeString();
 
-              if( output_directoty_.isEmpty() ) {
-                output_directoty_ =
+              if( _output_directoty.isEmpty() ) {
+                _output_directoty =
                     "./capture";
               }
 
-              if( !create_path(output_directoty_.toStdString()) ) {
+              if( !create_path(_output_directoty.toStdString()) ) {
                 CF_ERROR("create_path('%s') fails: %s",
-                    output_directoty_.toStdString().c_str(),
+                    _output_directoty.toStdString().c_str(),
                     strerror(errno));
                 fok = false;
                 break;
@@ -929,35 +929,35 @@ void QCameraWriter::writerThreadProc()
                 break;
               }
 
-              if( !text.open(ssprintf("%s.txt", output_file_name_.toStdString().c_str())) ) {
+              if( !text.open(ssprintf("%s.txt", _output_file_name.toStdString().c_str())) ) {
                 CF_ERROR("text.open('%s.txt') fails",
-                    output_file_name_.toStdString().c_str());
+                    _output_file_name.toStdString().c_str());
               }
             }
 
-            last_index_ = frame->index();
+            _last_index = frame->index();
             if( start_index < 0 ) {
-              start_index = last_index_;
+              start_index = _last_index;
             }
 
             //last_ts = frame->ts();
             last_ts = std::chrono::system_clock::now();
-            if( !num_saved_frames_ ) {
+            if( !_num_saved_frames ) {
               start_ts = last_ts;
             }
 
             if( !(fok = writer->write(frame)) ) {
               CF_ERROR("writer->write('%s') fails",
-                  output_file_name_.toStdString().c_str());
+                  _output_file_name.toStdString().c_str());
               break;
             }
 
-            num_dropped_frames_ =
-                last_index_ - start_index - num_saved_frames_;
+            _num_dropped_frames =
+                _last_index - start_index - _num_saved_frames;
 
-            ++num_saved_frames_;
+            ++_num_saved_frames;
 
-            capture_duration_ =
+            _capture_duration =
                 std::chrono::duration_cast<std::chrono::seconds>(last_ts - start_ts).count();
                 //last_ts - start_ts;
 
@@ -969,16 +969,16 @@ void QCameraWriter::writerThreadProc()
         break;
       }
 
-      if( capture_limits_.value > 0 ) {
+      if( _capture_limits.value > 0 ) {
 
-        if( capture_limits_.type == c_capture_limits::ByTime ) {
-          if( capture_duration_ >= max_capture_duration ) {
-            CF_DEBUG("capture_duration_=%g / %g", capture_duration_, max_capture_duration);
+        if( _capture_limits.type == c_capture_limits::ByTime ) {
+          if( _capture_duration >= max_capture_duration ) {
+            CF_DEBUG("capture_duration_=%g / %g", _capture_duration, max_capture_duration);
             break;
           }
         }
-        else if( capture_limits_.type == c_capture_limits::ByNumberOfFrames ) {
-          if( num_saved_frames_ >= capture_limits_.value ) {
+        else if( _capture_limits.type == c_capture_limits::ByNumberOfFrames ) {
+          if( _num_saved_frames >= _capture_limits.value ) {
             break;
           }
         }
@@ -990,13 +990,13 @@ void QCameraWriter::writerThreadProc()
 
     if ( text.is_open() ) {
 
-      fprintf(text.fp, "Round    = %d // Current capture round\n", round_);
-      fprintf(text.fp, "Rounds   = %d // Total capture rounds\n", (int)numRounds_);
+      fprintf(text.fp, "Round    = %d // Current capture round\n", _round);
+      fprintf(text.fp, "Rounds   = %d // Total capture rounds\n", (int)_numRounds);
       fprintf(text.fp, "Start    = %s // Capture start time YYYY-MM-DD hh mm ss\n", captureStartTime.toUtf8().constData());
       fprintf(text.fp, "End      = %s // Capture end time YYYY-MM-DD hh mm ss\n", captureEndTime.toUtf8().constData());
-      fprintf(text.fp, "Limit    = %s // Capture limit\n", toQString(capture_limits_).toUtf8().constData());
+      fprintf(text.fp, "Limit    = %s // Capture limit\n", toQString(_capture_limits).toUtf8().constData());
       fprintf(text.fp, "Camera   = %s\n", camera_name.c_str());
-      fprintf(text.fp, "Frames   = %d // Number of recorded frames\n", num_saved_frames_);
+      fprintf(text.fp, "Frames   = %d // Number of recorded frames\n", _num_saved_frames);
       fprintf(text.fp, "%s\n", camera_parameters.c_str());
       fprintf(text.fp, "\n");
 
@@ -1009,14 +1009,14 @@ void QCameraWriter::writerThreadProc()
 
     Q_EMIT statusUpdate();
 
-    for ( int i = 0; i < interval_between_rounds_; ++i ) {
-      if ( current_state_ != State::Active || c->state() != QImagingCamera::State_started ) {
+    for ( int i = 0; i < _interval_between_rounds; ++i ) {
+      if ( _current_state != State::Active || c->state() != QImagingCamera::State_started ) {
         break;
       }
       sleep(1);
     }
 
-    if ( current_state_ != State::Active || c->state() != QImagingCamera::State_started ) {
+    if ( _current_state != State::Active || c->state() != QImagingCamera::State_started ) {
       break;
     }
 

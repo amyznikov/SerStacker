@@ -44,7 +44,7 @@ AboutDialog::AboutDialog(const QString appName, const QPixmap & appIcon, QWidget
     iconLabel->setPixmap(appIcon.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
   }
 
-  auto * titleLabel = new QLabel(QString("<b>%1</b><br>v%2").arg(appName).arg(PROJECT_FULL_VERSION_STR));
+  auto * titleLabel = new QLabel(QString("<b>%1</b><br>%2").arg(appName).arg(PROJECT_FULL_VERSION_STR));
   titleLabel->setStyleSheet("font-size: 12pt;");
 
   headerLayout->addWidget(iconLabel);

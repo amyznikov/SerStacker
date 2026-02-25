@@ -14,30 +14,31 @@ c_laplacian_sharpness_measure::c_laplacian_sharpness_measure()
 
 }
 
-c_laplacian_sharpness_measure::c_laplacian_sharpness_measure(int dscale, const cv::Size & se_size) :
-    dscale_(dscale),
-    se_size_(se_size)
+c_laplacian_sharpness_measure::c_laplacian_sharpness_measure(int dscale, const cv::Size & se_size)
 {
+
+  _opts.dscale = dscale;
+  _opts.se_size = se_size;
 }
 
 void c_laplacian_sharpness_measure::set_dscale(int v)
 {
-  dscale_ = v;
+  _opts.dscale = v;
 }
 
 int c_laplacian_sharpness_measure::dscale() const
 {
-  return dscale_;
+  return _opts.dscale;
 }
 
 void c_laplacian_sharpness_measure::set_se_size(const cv::Size & v)
 {
-  se_size_ = v;
+  _opts.se_size = v;
 }
 
 const cv::Size & c_laplacian_sharpness_measure::se_size() const
 {
-  return se_size_;
+  return _opts.se_size;
 }
 
 bool c_laplacian_sharpness_measure::create_map(cv::InputArray image,
@@ -76,17 +77,13 @@ bool c_laplacian_sharpness_measure::create_map(cv::InputArray image,
 
 bool c_laplacian_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
-  return create_map(image, dscale_, se_size_, output_map);
+  return create_map(image, _opts.dscale, _opts.se_size, output_map);
 }
 
 cv::Scalar c_laplacian_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
   cv::Scalar v;
-
-  compute(image, mask,
-      dscale_, se_size_,
-      &v);
-
+  compute(image, mask, _opts.dscale,  _opts.se_size, &v);
   return v;
 }
 

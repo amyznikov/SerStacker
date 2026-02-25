@@ -13,23 +13,15 @@
 #include <core/proc/stereo/c_regular_stereo_matcher.h>
 
 class QScaleSweepOptions :
-    public QSettingsWidget
+    public QSettingsWidgetTemplate<c_ScaleSweep_options>
 {
 public:
   typedef QScaleSweepOptions ThisClass;
-  typedef QSettingsWidget Base;
+  typedef QSettingsWidgetTemplate<c_ScaleSweep_options> Base;
 
   QScaleSweepOptions(QWidget * parent = nullptr);
 
-  void set_options(c_ScaleSweep_options * options);
-  c_ScaleSweep_options* options() const;
-
 protected:
-  void onupdatecontrols() override;
-
-protected:
-  c_ScaleSweep_options *options_ = nullptr;
-
   QNumericBox * max_disparity_ctl = nullptr;
   QNumericBox * max_scale_ctl = nullptr;
   QNumericBox * texture_threshold_ctl = nullptr;

@@ -34,63 +34,63 @@ public:
 
   void set_displayType(DisplayType v)
   {
-    displayType_ = v;
+    _displayType = v;
   }
 
   DisplayType displayType() const
   {
-    return displayType_;
+    return _displayType;
   }
 
   void set_displaypos(const std::vector<int> & v)
   {
-    displaypos_ = v;
+    _displaypos = v;
   }
 
   const std::vector<int> & displaypos() const
   {
-    return displaypos_;
+    return _displaypos;
   }
 
   void set_overlay_offset(int v)
   {
-    overlay_offset_ = v;
+    _overlay_offset = v;
   }
 
   int overlay_offset() const
   {
-    return overlay_offset_;
+    return _overlay_offset;
   }
 
   void set_minimum_image_size(int v)
   {
-    m.set_minimum_image_size(v);
+    _m.set_minimum_image_size(v);
   }
 
   int minimum_image_size() const
   {
-    return m.minimum_image_size();
+    return _m.minimum_image_size();
   }
 
   void set_texture_threshold(double v)
   {
-    m.set_texture_threshold(v);
+    _m.set_texture_threshold(v);
   }
 
   double texture_threshold() const
   {
-    return m.texture_threshold();
+    return _m.texture_threshold();
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override;
-  bool serialize(c_config_setting settings, bool save) override;
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  c_melp_stereo_matcher m;
-  std::vector<int> displaypos_;
-  DisplayType displayType_ = DisplayDisparity;
-  int overlay_offset_ = 0;
+  c_melp_stereo_matcher _m;
+  std::vector<int> _displaypos;
+  DisplayType _displayType = DisplayDisparity;
+  int _overlay_offset = 0;
 };
 
 #endif /* __c_melp_stereo_matcher_routine_h__ */

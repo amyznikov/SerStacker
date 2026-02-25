@@ -44,20 +44,19 @@ static void generate_filter_bank(std::vector<cv::Mat> & filters, int num_theta,
   }
 }
 
-
-void c_gabor_filter_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_gabor_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  // BIND_PCTRL(ctls, scales, "");
-  BIND_CTRL(ctls, ksize, "ksize", "Size of the filter.");
-  BIND_CTRL(ctls, sigma, "sigma [px]", "Standard deviation of the Gaussian envelope");
-  BIND_CTRL(ctls, min_theta, "min_theta [deg]", "Orientation of the normal to the parallel stripes of a Gabor function, [deg]");
-  BIND_CTRL(ctls, max_theta, "max_theta [deg]", "Orientation of the normal to the parallel stripes of a Gabor function, [deg]");
-  BIND_CTRL(ctls, num_theta, "num_theta", "Num orientations");
-  BIND_CTRL(ctls, lambd, "lambd", "Wavelength of the sinusoidal factor");
-  BIND_CTRL(ctls, gamma, "gamma", "Spatial aspect ratio");
-  BIND_CTRL(ctls, psi, "psi [deg]", "Phase offset");
-  BIND_CTRL(ctls, ktype, "ktype", "Type of filter coefficients. It can be CV_32F or CV_64F");
-  BIND_CTRL(ctls, display_kernels, "display_kernels", "Set checked to display filters bank");
+   ctlbind(ctls, "ksize", ctx(&this_class::_ksize), "Size of the filter");
+   ctlbind(ctls, "sigma", ctx(&this_class::_sigma), "Standard deviation of the Gaussian envelope");
+   ctlbind(ctls, "min_theta", ctx(&this_class::_min_theta), "Orientation of the normal to the parallel stripes of a Gabor function, [deg]");
+   ctlbind(ctls, "max_theta", ctx(&this_class::_max_theta), "Orientation of the normal to the parallel stripes of a Gabor function, [deg]");
+   ctlbind(ctls, "num_theta", ctx(&this_class::_num_theta), "Num orientations");
+   ctlbind(ctls, "lambd", ctx(&this_class::_lambd), "Wavelength of the sinusoidal factor");
+   ctlbind(ctls, "gamma", ctx(&this_class::_gamma), "Spatial aspect ratio");
+   ctlbind(ctls, "psi", ctx(&this_class::_psi), "Phase offset");
+   ctlbind(ctls, "ktype", ctx(&this_class::_ktype), "Type of filter coefficients. It can be CV_32F or CV_64F");
+   ctlbind(ctls, "display_kernels", ctx(&this_class::_display_kernels), "");
+   ctlbind(ctls, "update_filter_bank", ctx(&this_class::_update_filter_bank), "Set checked to display filters bank");
 }
 
 bool c_gabor_filter_routine::serialize(c_config_setting settings, bool save)
@@ -81,32 +80,32 @@ bool c_gabor_filter_routine::serialize(c_config_setting settings, bool save)
 bool c_gabor_filter_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
 
-  if( update_filter_bank_ ) {
+  if( _update_filter_bank ) {
 
-    generate_filter_bank(filters_, num_theta_,
-        ksize_, sigma_, min_theta_, max_theta_,
-        lambd_, gamma_, psi_,
-        ktype_);
+    generate_filter_bank(_filters, _num_theta,
+        _ksize, _sigma, _min_theta, _max_theta,
+        _lambd, _gamma, _psi,
+        _ktype);
   }
 
 
-  if ( display_kernels_ ) {
+  if ( _display_kernels ) {
 
     mask.release();
 
-    if ( filters_.empty() ) {
+    if ( _filters.empty() ) {
       image.release();
     }
     else {
 
-      image.create(ksize_.height, ksize_.width * filters_.size(),
-          filters_.front().depth());
+      image.create(_ksize.height, _ksize.width * _filters.size(),
+          _filters.front().depth());
 
       cv::Mat & dst =
           image.getMatRef();
 
-      for ( size_t i = 0, n = filters_.size(); i < n; ++i ) {
-        filters_[i].copyTo(dst(cv::Rect(i * ksize_.width, 0, ksize_.width, ksize_.height)));
+      for ( size_t i = 0, n = _filters.size(); i < n; ++i ) {
+        _filters[i].copyTo(dst(cv::Rect(i * _ksize.width, 0, _ksize.width, _ksize.height)));
       }
     }
   }
@@ -117,14 +116,14 @@ bool c_gabor_filter_routine::process(cv::InputOutputArray image, cv::InputOutput
     const double delta = 0;
     const cv::BorderTypes borderType = cv::BORDER_REPLICATE;
 
-    for ( size_t i = 0, n = filters_.size(); i < n; ++i ) {
+    for ( size_t i = 0, n = _filters.size(); i < n; ++i ) {
 
       if( max_image.empty() ) {
-        cv::filter2D(image, max_image, -1, filters_[i], cv::Point(-1, -1), delta, borderType);
+        cv::filter2D(image, max_image, -1, _filters[i], cv::Point(-1, -1), delta, borderType);
         //max_image.copyTo(min_image);
       }
       else {
-        cv::filter2D(image, filtered_image, -1, filters_[i], cv::Point(-1,-1), delta, borderType);
+        cv::filter2D(image, filtered_image, -1, _filters[i], cv::Point(-1,-1), delta, borderType);
         cv::max(filtered_image, max_image, max_image);
         //cv::min(filtered_image, min_image, min_image);
       }

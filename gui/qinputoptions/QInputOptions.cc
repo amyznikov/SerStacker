@@ -107,7 +107,7 @@ QVideoInputOptions::QVideoInputOptions(QWidget * parent) :
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
-    Base("", parent)
+    Base(parent)
 {
   init_resources();
 
@@ -283,14 +283,20 @@ QInputOptions::QInputOptions(QWidget * parent) :
 void QInputOptions::set_options(c_input_options * options)
 {
   if ( !(this->_options = options) ) {
-    videoOptions_ctl->set_options(nullptr);
+    videoOptions_ctl->set_video_input_options(nullptr);
   }
   else {
-    videoOptions_ctl->set_options(&_options->video);
+    videoOptions_ctl->set_video_input_options(&_options->video);
   }
 
   updateControls();
 }
+
+c_input_options * QInputOptions::options() const
+{
+  return _options;
+}
+
 
 
 QInputOptionsDialogBox::QInputOptionsDialogBox(QWidget * parent) :

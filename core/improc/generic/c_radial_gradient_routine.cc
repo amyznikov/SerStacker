@@ -92,30 +92,29 @@ static bool project_to_radius_vector_(const cv::Mat & _gx, const cv::Mat & _gy, 
   return true;
 }
 
-
-void c_radial_gradient_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_radial_gradient_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, output_type, "Output type");
-  BIND_PCTRL(ctls, reference_point, "Reference point location X,Y [px]");
-  BIND_PCTRL(ctls, kradius, "kernel radius in pixels");
-  BIND_PCTRL(ctls, delta, "Optional value added to the filtered pixels before storing them in dst.");
-  BIND_PCTRL(ctls, scale, "Optional multiplier to differentiate kernel.");
-  BIND_PCTRL(ctls, magnitude, "Output gradient magnitude");
-  BIND_PCTRL(ctls, squared, "Square output");
-  BIND_PCTRL(ctls, erode_mask, "Update image mask if not empty");
+   ctlbind(ctls, "reference_point", ctx(&this_class::_reference_point), "Reference point location X,Y [px]");
+   ctlbind(ctls, "kradius", ctx(&this_class::_kradius), "kernel radius in pixels");
+   ctlbind(ctls, "scale", ctx(&this_class::_scale), "Optional value added to the filtered pixels before storing them in dst.");
+   ctlbind(ctls, "delta", ctx(&this_class::_delta), "Optional multiplier to differentiate kernel.");
+   ctlbind(ctls, "magnitude", ctx(&this_class::_magnitude), "Output gradient magnitude");
+   ctlbind(ctls, "squared", ctx(&this_class::_squared), "Square output");
+   ctlbind(ctls, "erode_mask", ctx(&this_class::_erode_mask), "Update image mask");
+   ctlbind(ctls, "output_type", ctx(&this_class::_output_type), "Output Display");
 }
 
 bool c_radial_gradient_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, output_type);
-    SERIALIZE_PROPERTY(settings, save, *this, reference_point);
-    SERIALIZE_PROPERTY(settings, save, *this, kradius);
-    SERIALIZE_PROPERTY(settings, save, *this, scale);
-    SERIALIZE_PROPERTY(settings, save, *this, delta);
-    SERIALIZE_PROPERTY(settings, save, *this, magnitude);
-    SERIALIZE_PROPERTY(settings, save, *this, squared);
-    SERIALIZE_PROPERTY(settings, save, *this, erode_mask);
+    SERIALIZE_OPTION(settings, save, *this, _output_type);
+    SERIALIZE_OPTION(settings, save, *this, _reference_point);
+    SERIALIZE_OPTION(settings, save, *this, _kradius);
+    SERIALIZE_OPTION(settings, save, *this, _scale);
+    SERIALIZE_OPTION(settings, save, *this, _delta);
+    SERIALIZE_OPTION(settings, save, *this, _magnitude);
+    SERIALIZE_OPTION(settings, save, *this, _squared);
+    SERIALIZE_OPTION(settings, save, *this, _erode_mask);
     return true;
   }
   return false;
@@ -125,35 +124,35 @@ bool c_radial_gradient_routine::process(cv::InputOutputArray image, cv::InputOut
 {
   cv::Mat gx, gy, g;
 
-  if ( !compute_gradient(image.getMat(), gx, 1, 0, kradius_, CV_32F, delta_, scale_) ) {
+  if ( !compute_gradient(image.getMat(), gx, 1, 0, _kradius, CV_32F, _delta, _scale) ) {
     CF_ERROR("compute_gradient(x) fails");
     return false;
   }
-  if ( !compute_gradient(image.getMat(), gy, 0, 1, kradius_, CV_32F, delta_, scale_) ) {
+  if ( !compute_gradient(image.getMat(), gy, 0, 1, _kradius, CV_32F, _delta, _scale) ) {
     CF_ERROR("compute_gradient(x) fails");
     return false;
   }
 
-  switch (output_type_) {
+  switch (_output_type) {
     case OutputRadialGradient:
-      project_to_radius_vector_(gx, gy, reference_point_, &g, nullptr);
+      project_to_radius_vector_(gx, gy, _reference_point, &g, nullptr);
       break;
     case OutputTangentialGradient:
-      project_to_radius_vector_(gx, gy, reference_point_, nullptr, &g);
+      project_to_radius_vector_(gx, gy, _reference_point, nullptr, &g);
       break;
   }
 
-  if( squared_ ) {
+  if( _squared ) {
     cv::multiply(g, g, g);
   }
-  else if( magnitude_ ) {
+  else if( _magnitude ) {
     cv::absdiff(g, cv::Scalar::all(0), g);
   }
 
   image.move(g);
 
   if( mask.needed() && !mask.empty() ) {
-    const int r = std::max(1, kradius_);
+    const int r = std::max(1, _kradius);
     cv::erode(mask, mask, cv::Mat1b(2 * r + 1, 2 * r + 1, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
     image.getMatRef().setTo(0, ~mask.getMat());
   }

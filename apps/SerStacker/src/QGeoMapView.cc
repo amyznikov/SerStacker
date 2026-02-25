@@ -589,14 +589,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_checkbox("Show lines",
           "Show /Hide lines",
           [this](bool checked) {
-            if ( _options && _options->showLines() != checked ) {
-              _options->setShowLines(checked);
+            if ( _opts && _opts->showLines() != checked ) {
+              _opts->setShowLines(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( _options ) {
-              * checked = _options->showLines();
+            if ( _opts ) {
+              * checked = _opts->showLines();
               return true;
             }
             return false;
@@ -605,14 +605,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   lineWidth_ctl =
       add_spinbox("Line width", "Set GPS line width",
           [this](int value) {
-            if ( _options ) {
-              _options->setLineWidth(value);
+            if ( _opts ) {
+              _opts->setLineWidth(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( _options ) {
-              * value = _options->lineWidth();
+            if ( _opts ) {
+              * value = _opts->lineWidth();
               return true;
             }
             return false;
@@ -624,14 +624,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_color_picker_button("Line Color",
           "Select color for GPS lines",
           [this](const QColor & value) {
-            if ( _options ) {
-              _options->setLineColor(value);
+            if ( _opts ) {
+              _opts->setLineColor(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](QColor * value) {
-            if ( _options ) {
-              * value = _options->lineColor();
+            if ( _opts ) {
+              * value = _opts->lineColor();
               return true;
             }
             return false;
@@ -641,14 +641,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_sliderspinbox<int>("Line opaqueness",
           "Set line opaqueness",
           [this](int value) {
-            if ( _options && _options->lineOpaqueness() != value ) {
-              _options->setLineOpaqueness(value);
+            if ( _opts && _opts->lineOpaqueness() != value ) {
+              _opts->setLineOpaqueness(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( _options ) {
-              * value = _options->lineOpaqueness();
+            if ( _opts ) {
+              * value = _opts->lineOpaqueness();
               return true;
             }
             return false;
@@ -660,14 +660,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_checkbox("Show points",
           "Show /Hide points",
           [this](bool checked) {
-            if ( _options && _options->showPoints() != checked ) {
-              _options->setShowPoints(checked);
+            if ( _opts && _opts->showPoints() != checked ) {
+              _opts->setShowPoints(checked);
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( _options ) {
-              * checked = _options->showPoints();
+            if ( _opts ) {
+              * checked = _opts->showPoints();
               return true;
             }
             return false;
@@ -677,14 +677,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_spinbox("Point size",
           "Set point radius",
           [this](int value) {
-            if ( _options && _options->pointSize() != value ) {
-              _options->setPointSize(value);
+            if ( _opts && _opts->pointSize() != value ) {
+              _opts->setPointSize(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( _options ) {
-              * value = _options->pointSize();
+            if ( _opts ) {
+              * value = _opts->pointSize();
               return true;
             }
             return false;
@@ -695,14 +695,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   pointPenWidth_ctl =
       add_spinbox("Point pen width", "Set pen width used to draw points",
           [this](int value) {
-            if ( _options && _options->pointPenWidth() != value ) {
-              _options->setPointPenWidth(value);
+            if ( _opts && _opts->pointPenWidth() != value ) {
+              _opts->setPointPenWidth(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( _options ) {
-              * value = _options->pointPenWidth();
+            if ( _opts ) {
+              * value = _opts->pointPenWidth();
               return true;
             }
             return false;
@@ -714,14 +714,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
       add_color_picker_button("Point Color",
           "Select color for GPS points",
           [this](const QColor & value) {
-            if ( _options ) {
-              _options->setPointColor(value);
+            if ( _opts ) {
+              _opts->setPointColor(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](QColor * value) {
-            if ( _options ) {
-              * value = _options->pointColor();
+            if ( _opts ) {
+              * value = _opts->pointColor();
               return true;
             }
             return false;
@@ -730,14 +730,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   pointOpaqueness_ctl =
       add_sliderspinbox<int>("Point opaqueness", "Set point opaqueness",
           [this](int value) {
-            if ( _options && _options->pointOpaqueness() != value ) {
-              _options->setPointOpaqueness(value);
+            if ( _opts && _opts->pointOpaqueness() != value ) {
+              _opts->setPointOpaqueness(value);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * value) {
-            if ( _options ) {
-              * value = _options->pointOpaqueness();
+            if ( _opts ) {
+              * value = _opts->pointOpaqueness();
               return true;
             }
             return false;
@@ -750,14 +750,14 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
           QFileDialog::AcceptOpen,
           QFileDialog::ExistingFile,
           [this](const QString & value) {
-            if ( _options ) {
-              _options ->setAssociatedVideoFileName(value);
+            if ( _opts ) {
+              _opts ->setAssociatedVideoFileName(value);
               update_control_states();
             }
           },
           [this](QString * v) {
-            if ( _options ) {
-              *v = _options->associatedVideoFileName();
+            if ( _opts ) {
+              *v = _opts->associatedVideoFileName();
               return true;
             }
             return false;
@@ -788,6 +788,17 @@ QGpxTrackViewSettings::QGpxTrackViewSettings(QWidget * parent) :
   connect(gpxTrackSelector_ctl, &QGpxTrackSelectorWidget::deleteSelectedTrackClicked,
       this, &ThisClass::deleteSelectedTrackClicked);
 
+
+//  connect(this, &ThisClass::populatecontrols,
+//      [this]() {
+//
+//  });
+
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        update_control_states();
+  });
+
   updateControls();
 }
 
@@ -815,22 +826,9 @@ void QGpxTrackViewSettings::setGpxTracks(const std::vector<QGpxTrackItem*> * gpx
   updateControls();
 }
 
-void QGpxTrackViewSettings::onupdatecontrols()
-{
-  if( !gpxTracks ) {
-    setEnabled(false);
-  }
-  else {
-    setEnabled(true);
-    Base::onupdatecontrols();
-  }
-}
-
 void QGpxTrackViewSettings::update_control_states()
 {
-  QGpxTrackItem * item =
-      selectedTrack();
-
+  QGpxTrackItem * item = selectedTrack();
   if( !item ) {
     gpxTrackSelector_ctl->openVideoControl()->setEnabled(false);
   }
@@ -861,23 +859,19 @@ void QGpxTrackViewSettings::populateTrackSelectionCombo()
 void QGpxTrackViewSettings::onGpxTrackSelected(int index)
 {
   if( !gpxTracks || index < 0 || index >= (int) gpxTracks->size() ) {
-    set_options(nullptr);
+    setOpts(nullptr);
   }
   else {
-    QGpxTrackItem * item = (*gpxTracks)[index];
-    set_options(item);
+    setOpts((*gpxTracks)[index]);
   }
 }
 
 void QGpxTrackViewSettings::onToggleTrackVisibilityClicked(bool visible)
 {
-  QGpxTrackItem * item =
-      selectedTrack();
-
+  QGpxTrackItem * item = selectedTrack();
   if( item ) {
     item->setTrackVisible(visible);
   }
-
 }
 
 void QGpxTrackViewSettings::onToggleLandmarksVisibilityClicked(bool visible)
@@ -927,28 +921,28 @@ QGpxTrackViewSettingsDialogBox::QGpxTrackViewSettingsDialogBox(QWidget * parent)
 {
   setWindowTitle("GPX track options");
 
-  connect(settings_ctl, &QGpxTrackViewSettings::showPositionOnMapClicked,
+  connect(_settings, &QGpxTrackViewSettings::showPositionOnMapClicked,
       this, &ThisClass::showPositionOnMap);
 
-  connect(settings_ctl, &QGpxTrackViewSettings::exportSelectedGPXTrackToConfigFileClicked,
+  connect(_settings, &QGpxTrackViewSettings::exportSelectedGPXTrackToConfigFileClicked,
       this, &ThisClass::exportSelectedGPXTrackToConfigFileClicked);
 
-  connect(settings_ctl, &QGpxTrackViewSettings::deleteSelectedTrackClicked,
+  connect(_settings, &QGpxTrackViewSettings::deleteSelectedTrackClicked,
       this, &ThisClass::deleteSelectedTrackClicked);
 
-  connect(settings_ctl, &QGpxTrackViewSettings::openSelectedAssociatedVideoFileClicked,
+  connect(_settings, &QGpxTrackViewSettings::openSelectedAssociatedVideoFileClicked,
       this, &ThisClass::openSelectedAssociatedVideoFileClicked);
 
 }
 
 void QGpxTrackViewSettingsDialogBox::setGpxTracks(std::vector<QGpxTrackItem*> * gpxTracks)
 {
-  settings_ctl->setGpxTracks(gpxTracks);
+  _settings->setGpxTracks(gpxTracks);
 }
 
 QGpxTrackItem* QGpxTrackViewSettingsDialogBox::selectedTrack() const
 {
-  return settings_ctl->selectedTrack();
+  return _settings->selectedTrack();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1137,79 +1131,74 @@ void QGeoMapView::onDeleteSelectedTrackClicked()
 //  }
 //}
 
-void QGeoMapView::loadSettings()
+void QGeoMapView::loadSettings(const QString & prefix)
 {
-  QSettings settings;
-  loadSettings(settings);
+  const QSettings settings;
+  loadSettings(settings, prefix);
 }
 
-void QGeoMapView::saveSettings()
+void QGeoMapView::saveSettings(const QString & prefix)
 {
   QSettings settings;
-  saveSettings(settings);
+  saveSettings(settings, prefix);
 }
 
-void QGeoMapView::loadSettings(QSettings & settings)
+void QGeoMapView::loadSettings(const QSettings & settings, const QString & _prefix)
 {
+  const QString PREFIX = _prefix.isEmpty() ? "QGeoMapView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
   const int num_tracks =
-      std::min(64, settings.value("QGeoMapView/num_tracks", 0).value<int>());
+      std::min(64, settings.value(PARAM("num_tracks"), 0).value<int>());
 
   for( int i = 0; i < num_tracks; ++i ) {
 
-    const QString prefix =
-        qsprintf("QGeoMapView/track%d_", i);
+    const auto TRACK_PARAM =
+        [trackPrefix = qsprintf("%s/track%d_", PREFIX.toUtf8().constData(), i)](const QString & name) {
+          return trackPrefix + name;
+        };
 
-    const QByteArray utf8prefix =
-        prefix.toUtf8();
-
-    const QString pathFileName =
-        settings.value(QString("%1_pathFileName").arg(prefix), "").toString();
-
+    const QString pathFileName = settings.value(TRACK_PARAM("pathFileName"), "").toString();
     if( !pathFileName.isEmpty() ) {
 
-      QGpxTrackItem * item =
-          loadGpxTrack(pathFileName);
-
+      QGpxTrackItem * item = loadGpxTrack(pathFileName);
       if ( !item ) {
         continue;
       }
 
-
-      item->setAssociatedVideoFileName(settings.value(QString("%1_videoFileName").arg(prefix)).toString());
-      item->setTrackVisible(settings.value(QString("%1_isVisible").arg(prefix)).toBool());
-      item->setShowLines(settings.value(QString("%1_showLines").arg(prefix)).toBool());
-      item->setLineWidth(settings.value(QString("%1_lineWidth").arg(prefix)).toInt());
-      item->setLineColor(settings.value(QString("%1_lineColor").arg(prefix)).value<QColor>());
-      item->setLineOpaqueness(settings.value(QString("%1_lineOpaqueness").arg(prefix)).toInt());
-      item->setShowPoints(settings.value(QString("%1_showPoints").arg(prefix)).toBool());
-      item->setPointSize(settings.value(QString("%1_pointSize").arg(prefix)).toInt());
-      item->setPointPenWidth(settings.value(QString("%1_pointPenWidth").arg(prefix)).toInt());
-      item->setPointColor(settings.value(QString("%1_pointColor").arg(prefix)).value<QColor>());
-      item->setPointOpaqueness(settings.value(QString("%1_pointOpaqueness").arg(prefix)).toInt());
+      item->setAssociatedVideoFileName(settings.value(TRACK_PARAM("videoFileName")).toString());
+      item->setTrackVisible(settings.value(TRACK_PARAM("isVisible")).toBool());
+      item->setShowLines(settings.value(TRACK_PARAM("showLines")).toBool());
+      item->setLineWidth(settings.value(TRACK_PARAM("lineWidth")).toInt());
+      item->setLineColor(settings.value(TRACK_PARAM("lineColor")).value<QColor>());
+      item->setLineOpaqueness(settings.value(TRACK_PARAM("lineOpaqueness")).toInt());
+      item->setShowPoints(settings.value(TRACK_PARAM("showPoints")).toBool());
+      item->setPointSize(settings.value(TRACK_PARAM("pointSize")).toInt());
+      item->setPointPenWidth(settings.value(TRACK_PARAM("pointPenWidth")).toInt());
+      item->setPointColor(settings.value(TRACK_PARAM("pointColor")).value<QColor>());
+      item->setPointOpaqueness(settings.value(TRACK_PARAM("pointOpaqueness")).toInt());
 
       gpxTrackItems.emplace_back(item);
       scene_->addItem(item);
 
-      const int num_gpx_keypoints =
-          settings.value(QString("%1_keypoints").arg(prefix), 0).toInt();
+      const int num_gpx_keypoints = settings.value(TRACK_PARAM("keypoints"), 0).toInt();
 
       for( int j = 0; j < num_gpx_keypoints; ++j ) {
 
-        const QString prefix2 =
-            qsprintf("%skeypoint%d_", utf8prefix.constData(), j);
+        const auto KP_PARAM =
+            [kpPrefix = TRACK_PARAM(qsprintf("keypoint%d_", j))](const QString & name) {
+              return kpPrefix + name;
+            };
 
-        const int associatedFrameIndex =
-            settings.value(QString("%1_associatedVideoFrameIndex").arg(prefix2)).value<int>();
-
-        const int gpxPointIndex =
-            settings.value(QString("%1_gpxPointIndex").arg(prefix2), -1).toInt();
+        const int associatedFrameIndex = settings.value(KP_PARAM("associatedVideoFrameIndex")).value<int>();
+        const int gpxPointIndex = settings.value(KP_PARAM("gpxPointIndex"), -1).toInt();
 
         if ( gpxPointIndex >= 0 && gpxPointIndex < (int)item->track().pts.size() ) {
           if ( !item->findGpxLandmarkItem(gpxPointIndex) )   {
-
             item->addGpxLandmarkItem(gpxPointIndex, associatedFrameIndex);
-
           }
         }
       }
@@ -1223,58 +1212,56 @@ void QGeoMapView::loadSettings(QSettings & settings)
 
 }
 
-void QGeoMapView::saveSettings(QSettings & settings)
+void QGeoMapView::saveSettings(QSettings & settings, const QString & _prefix)
 {
-  const int num_tracks =
-      (int) gpxTrackItems.size();
+  const QString PREFIX = _prefix.isEmpty() ? "QGeoMapView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
-  settings.setValue("QGeoMapView/num_tracks", num_tracks);
+  const int num_tracks = (int) gpxTrackItems.size();
+
+  settings.setValue(PARAM("num_tracks"), num_tracks);
 
   for( int i = 0; i < num_tracks; ++i ) {
 
-    const QGpxTrackItem * trackItem =
-        gpxTrackItems[i];
+    const QGpxTrackItem * trackItem = gpxTrackItems[i];
 
-    const QString prefix =
-        qsprintf("QGeoMapView/track%d_", i);
+    const auto TRACK_PARAM =
+        [trackPrefix = qsprintf("%s/track%d_", PREFIX.toUtf8().constData(), i)](const QString & name) {
+          return trackPrefix + name;
+        };
 
-    const QByteArray utf8prefix =
-        prefix.toUtf8();
+    settings.setValue(TRACK_PARAM("pathFileName"), trackItem->gpxPathFileName());
+    settings.setValue(TRACK_PARAM("videoFileName"), trackItem->associatedVideoFileName());
+    settings.setValue(TRACK_PARAM("isVisible"), trackItem->isVisible());
+    settings.setValue(TRACK_PARAM("showLines"), trackItem->showLines());
+    settings.setValue(TRACK_PARAM("lineWidth"), trackItem->lineWidth());
+    settings.setValue(TRACK_PARAM("lineColor"), trackItem->lineColor());
+    settings.setValue(TRACK_PARAM("lineOpaqueness"), trackItem->lineOpaqueness());
+    settings.setValue(TRACK_PARAM("showPoints"), trackItem->showPoints());
+    settings.setValue(TRACK_PARAM("pointSize"), trackItem->pointSize());
+    settings.setValue(TRACK_PARAM("pointPenWidth"), trackItem->pointPenWidth());
+    settings.setValue(TRACK_PARAM("pointColor"), trackItem->pointColor());
+    settings.setValue(TRACK_PARAM("pointOpaqueness"), trackItem->pointOpaqueness());
 
-
-    settings.setValue(QString("%1_pathFileName").arg(prefix), trackItem->gpxPathFileName());
-    settings.setValue(QString("%1_videoFileName").arg(prefix), trackItem->associatedVideoFileName());
-    settings.setValue(QString("%1_isVisible").arg(prefix), trackItem->isVisible());
-    settings.setValue(QString("%1_showLines").arg(prefix), trackItem->showLines());
-    settings.setValue(QString("%1_lineWidth").arg(prefix), trackItem->lineWidth());
-    settings.setValue(QString("%1_lineColor").arg(prefix), trackItem->lineColor());
-    settings.setValue(QString("%1_lineOpaqueness").arg(prefix), trackItem->lineOpaqueness());
-    settings.setValue(QString("%1_showPoints").arg(prefix), trackItem->showPoints());
-    settings.setValue(QString("%1_pointSize").arg(prefix), trackItem->pointSize());
-    settings.setValue(QString("%1_pointPenWidth").arg(prefix), trackItem->pointPenWidth());
-    settings.setValue(QString("%1_pointColor").arg(prefix), trackItem->pointColor());
-    settings.setValue(QString("%1_pointOpaqueness").arg(prefix), trackItem->pointOpaqueness());
-
-    const int num_gpx_keypoints =
-        (int) trackItem->gpxLandmarks().size();
-
-    settings.setValue(QString("%1_keypoints").arg(prefix), num_gpx_keypoints);
-
+    const int num_gpx_keypoints = (int) trackItem->gpxLandmarks().size();
+    settings.setValue(TRACK_PARAM("keypoints"), num_gpx_keypoints);
 
     for( int j = 0; j < num_gpx_keypoints; ++j ) {
 
-      const QGpxLandmarkItem * kpItem =
-          trackItem->gpxLandmarks(j);
+      const QGpxLandmarkItem * kpItem = trackItem->gpxLandmarks(j);
 
-      const QString prefix2 =
-          qsprintf("%skeypoint%d_",utf8prefix.constData(), j);
+      const auto KP_PARAM =
+          [kpPrefix = TRACK_PARAM(qsprintf("keypoint%d_", j))](const QString & name) {
+            return kpPrefix + name;
+          };
 
-      settings.setValue(QString("%1_gpxPointIndex").arg(prefix2),  kpItem->gpxPointIndex());
-      settings.setValue(QString("%1_associatedVideoFrameIndex").arg(prefix2), kpItem->associatedVideoFrameIndex());
+      settings.setValue(KP_PARAM("associatedVideoFrameIndex"), kpItem->associatedVideoFrameIndex());
+      settings.setValue(KP_PARAM("gpxPointIndex"),  kpItem->gpxPointIndex());
     }
-
   }
-
 }
 
 

@@ -69,7 +69,7 @@ const c_enum_member * members_of<QImageSaveFormat>()
 ///////////////////////////////////////////////////////////////////////////////
 
 QImageSavePNGOptions::QImageSavePNGOptions(QWidget * parent) :
-    Base("QImageSavePNGOptions", parent)
+    Base(parent)
 {
   pixtype_ctl = add_combobox("Pixel depth:", "", false);
   pixtype_ctl->addItem(toQString(PIXEL_DEPTH_8U), QVariant::fromValue((int) (PIXEL_DEPTH_8U)));
@@ -118,7 +118,7 @@ QCheckBox * QImageSavePNGOptions::embedAlphaMaskCtl() const
 }
 
 QImageSaveTIFFOptions::QImageSaveTIFFOptions(QWidget * parent) :
-    Base("QImageSaveTIFFOptions", parent)
+    Base(parent)
 {
   pixelDepth_ctl = add_enum_combobox<PIXEL_DEPTH>("Pixel type:", "");
 
@@ -172,7 +172,7 @@ int QImageSaveTIFFOptions::tiffCompression() const
 }
 
 QImageSaveJPEGOptions::QImageSaveJPEGOptions(QWidget * parent) :
-    Base("QImageSaveJPEGOptions", parent)
+    Base(parent)
 {
   quality_ctl = 
     add_numeric_box<double>("Jpeg quality",
@@ -196,7 +196,7 @@ double QImageSaveJPEGOptions::jpegQuality() const
 ///////////////////////////////////////////////////////////////////////////////
 
 QImageSaveOptions::QImageSaveOptions(QWidget * parent) :
-    Base("QImageSaveOptions", parent)
+    Base(parent)
 {
   format_ctl =
       add_enum_combobox<QImageSaveFormat>("Format:",

@@ -19,21 +19,9 @@ public:
       "color_diff",
       "Difefrence between color channels and gray");
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
-  {
-    // BIND_PCTRL(ctls, scales, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) final
-  {
-    if( base::serialize(settings, save) ) {
-      // SERIALIZE_PROPERTY(settings, save, *this, scales);
-      return true;
-    }
-    return false;
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
 };

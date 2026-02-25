@@ -46,8 +46,6 @@ signals:
   void focuserTemperatureChanged();
 
 protected:
-  void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
   void updateCurrentDeviceProperties(const indigo_property * property, const QString & message);
   void abortCurrentMotion();
   void moveFocusToPosition(int target_pos);

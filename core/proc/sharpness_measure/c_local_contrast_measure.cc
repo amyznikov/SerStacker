@@ -11,25 +11,25 @@
 #include <core/debug.h>
 
 
-static void compute_gradient(const cv::Mat & src, cv::Mat & g, double delta = 0)
-{
-  INSTRUMENT_REGION("");
-
-  static thread_local const cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
-
-  constexpr int ddepth = CV_32F;
-
-  cv::Mat gx, gy;
-
-  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
-  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
-  cv::magnitude(gx, gy, g);
-}
+//static void compute_gradient(const cv::Mat & src, cv::Mat & g, double delta = 0)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  static thread_local const cv::Matx<float, 1, 5> K(
+//      (+1.f / 12),
+//      (-8.f / 12),
+//      0.f,
+//      (+8.f / 12),
+//      (-1.f / 12));
+//
+//  constexpr int ddepth = CV_32F;
+//
+//  cv::Mat gx, gy;
+//
+//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
+//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
+//  cv::magnitude(gx, gy, g);
+//}
 
 //
 //// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
@@ -196,32 +196,32 @@ bool c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask
 
 void c_local_contrast_measure::set_dscale(int v)
 {
-  dscale_ = v;
+  _opts.dscale = v;
 }
 
 int c_local_contrast_measure::dscale() const
 {
-  return dscale_;
+  return _opts.dscale;
 }
 
 void c_local_contrast_measure::set_eps(double v)
 {
-  eps_ = v;
+  _opts.eps = v;
 }
 
 double c_local_contrast_measure::eps() const
 {
-  return eps_;
+  return _opts.eps;
 }
 
 void c_local_contrast_measure::set_avgchannel(bool v)
 {
-  avgchannel_ = v;
+  _opts.avgchannel = v;
 }
 
 bool c_local_contrast_measure::avgchannel() const
 {
-  return avgchannel_;
+  return _opts.avgchannel;
 }
 
 cv::Scalar c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask) const
@@ -230,9 +230,9 @@ cv::Scalar c_local_contrast_measure::compute(cv::InputArray image, cv::InputArra
 
   compute(image, mask,
       cv::noArray(),
-      eps_,
-      dscale_,
-      avgchannel_,
+      _opts.eps,
+      _opts.dscale,
+      _opts.avgchannel,
       &rv);
 
   return rv;
@@ -241,5 +241,5 @@ cv::Scalar c_local_contrast_measure::compute(cv::InputArray image, cv::InputArra
 bool c_local_contrast_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
 {
   return compute(image, cv::noArray(), output_map,
-      eps_, dscale_, avgchannel_);
+      _opts.eps, _opts.dscale, _opts.avgchannel);
 }

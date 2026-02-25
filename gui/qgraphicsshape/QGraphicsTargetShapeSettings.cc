@@ -8,26 +8,19 @@
 #include "QGraphicsTargetShapeSettings.h"
 
 QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(QWidget * parent) :
-  ThisClass("QGraphicsTargetShapeSettings", parent)
+  Base(parent)
 {
-}
-
-QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix, QWidget * parent) :
-  Base(prefix, parent)
-{
-
   lockPosition_ctl =
       add_checkbox("Lock position",
           "Lock object position on this scene ",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setLockPosition(checked);
+            if ( _opts ) {
+              _opts->setLockPosition(checked);
             }
-            save_parameter(PREFIX, "fixOnSceneCenter", shape_->fixOnSceneCenter());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->lockPosition();
+            if ( _opts ) {
+              * checked = _opts->lockPosition();
               return true;
 
             }
@@ -39,14 +32,13 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
           "Uncheck this button and use "
               "Shift + LeftMouseButton + MouseMove to position this object on scene.",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setFixOnSceneCenter(checked);
+            if ( _opts ) {
+              _opts->setFixOnSceneCenter(checked);
             }
-            save_parameter(PREFIX, "fixOnSceneCenter", shape_->fixOnSceneCenter());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->fixOnSceneCenter();
+            if ( _opts ) {
+              * checked = _opts->fixOnSceneCenter();
               return true;
 
             }
@@ -58,14 +50,14 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 //      add_numeric_box<double>("Base radius:",
 //          "",
 //          [this](double v) {
-//            if ( shape_ ) {
-//              shape_->setBaseRadius(v);
-//              save_parameter(PREFIX, "baseRadius", shape_->baseRadius());
+//            if ( _opts ) {
+//              _opts->setBaseRadius(v);
+//                saveSettings();
 //            }
 //          },
 //          [this](double * v) {
-//            if ( shape_ ) {
-//              *v = shape_->baseRadius();
+//            if ( _opts ) {
+//              *v = _opts->baseRadius();
 //              return true;
 //            }
 //            return false;
@@ -75,14 +67,13 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
       add_sliderspinbox<int>("Base radius:",
           "Radius of first (internal) circle",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setBaseRadius(v);
-              save_parameter(PREFIX, "baseRadius", shape_->baseRadius());
+            if ( _opts ) {
+              _opts->setBaseRadius(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->baseRadius();
+            if ( _opts ) {
+              *v = _opts->baseRadius();
               return true;
             }
             return false;
@@ -95,14 +86,13 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
       add_spinbox("Num rings:",
           "",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setNumRings(v);
-              save_parameter(PREFIX, "numRings", shape_->numRings());
+            if ( _opts ) {
+              _opts->setNumRings(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->numRings();
+            if ( _opts ) {
+              *v = _opts->numRings();
               return true;
             }
             return false;
@@ -114,14 +104,13 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
       add_checkbox("Show diagonal rays",
           "",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setShowDiagonalRays(checked);
-              save_parameter(PREFIX, "showDiagonalRays", shape_->showDiagonalRays());
+            if ( _opts ) {
+              _opts->setShowDiagonalRays(checked);
             }
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->showDiagonalRays();
+            if ( _opts ) {
+              * checked = _opts->showDiagonalRays();
               return true;
             }
             return false;
@@ -129,28 +118,32 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
 
 
   penColor_ctl =
-      add_widget<QColorPickerButton>("Pen Color");
-
-  connect(penColor_ctl, &QColorPickerButton::colorSelected,
-      [this]() {
-        if ( shape_ ) {
-          shape_->setPenColor(penColor_ctl->color());
-          save_parameter(PREFIX, "penColor", shape_->penColor());
-        }
-      });
+      add_color_picker_button("Pen Color",
+          "",
+          [this](const QColor&v) {
+            if ( _opts ) {
+              _opts->setPenColor(v);
+            }
+          },
+          [this](QColor * v) {
+            if ( _opts ) {
+              * v =  _opts->penColor();
+              return true;
+            }
+            return false;
+          });
 
   penWidth_ctl =
       add_spinbox( "Pen Width:",
           "",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setPenWidth(v);
-              save_parameter(PREFIX, "penWidth", shape_->penWidth());
+            if ( _opts ) {
+              _opts->setPenWidth(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->penWidth();
+            if ( _opts ) {
+              *v = _opts->penWidth();
               return true;
             }
             return false;
@@ -159,128 +152,67 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(const QString &prefix
   updateControls();
 }
 
-void QGraphicsTargetShapeSettings::setShape(QGraphicsTargetShape * shape)
+
+void QGraphicsTargetShapeSettings::onload(const QSettings & settings, const QString & prefix)
 {
-  shape_ = shape;
-  updateControls();
-}
+  if ( _opts ) {
 
-QGraphicsTargetShape * QGraphicsTargetShapeSettings::shape() const
-{
-  return shape_;
-}
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsTargetShapeSettings" : prefix;
 
-void QGraphicsTargetShapeSettings::onupdatecontrols()
-{
-  if ( !shape_ ) {
-    setEnabled(false);
-  }
-  else {
+    Base::onload(settings, prefix);
 
-    penColor_ctl->setColor(shape_->penColor());
-
-    Base::onupdatecontrols();
-
-    setEnabled(true);
-  }
-}
-
-void QGraphicsTargetShapeSettings::onload(QSettings & settings)
-{
-  Base::onload(settings);
-
-  if ( shape_ ) {
-
-    bool lockPosition = shape_->lockPosition();
+    bool lockPosition = _opts->lockPosition();
     if( load_parameter(settings, PREFIX, "fixOnSceneCenter", &lockPosition) ) {
-      shape_->setLockPosition(lockPosition);
+      _opts->setLockPosition(lockPosition);
     }
 
-    bool fixOnSceneCenter = shape_->fixOnSceneCenter();
+    bool fixOnSceneCenter = _opts->fixOnSceneCenter();
     if( load_parameter(settings, PREFIX, "fixOnSceneCenter", &fixOnSceneCenter) ) {
-      shape_->setFixOnSceneCenter(fixOnSceneCenter);
+      _opts->setFixOnSceneCenter(fixOnSceneCenter);
     }
 
-    double baseRadius = shape_->baseRadius();
+    double baseRadius = _opts->baseRadius();
     if ( load_parameter(settings, PREFIX, "baseRadius", &baseRadius) ) {
-      shape_->setBaseRadius(baseRadius);
+      _opts->setBaseRadius(baseRadius);
     }
 
-    int numRings = shape_->numRings();
+    int numRings = _opts->numRings();
     if ( load_parameter(settings, PREFIX, "numRings", &numRings) ) {
-      shape_->setNumRings(numRings);
+      _opts->setNumRings(numRings);
     }
 
-    bool showDiagonalRays = shape_->showDiagonalRays();
+    bool showDiagonalRays = _opts->showDiagonalRays();
     if ( load_parameter(settings, PREFIX, "showDiagonalRays", &showDiagonalRays) ) {
-      shape_->setShowDiagonalRays(showDiagonalRays);
+      _opts->setShowDiagonalRays(showDiagonalRays);
     }
 
-    int penWidth = shape_->penWidth();
+    int penWidth = _opts->penWidth();
     if ( load_parameter(settings, PREFIX, "penWidth", &penWidth) ) {
-      shape_->setPenWidth(penWidth);
+      _opts->setPenWidth(penWidth);
     }
 
-    QColor penColor = shape_->penColor();
+    QColor penColor = _opts->penColor();
     if ( load_parameter(settings, PREFIX, "penColor", &penColor) ) {
-      shape_->setPenColor(penColor);
+      _opts->setPenColor(penColor);
     }
   }
 }
 
-
-QGraphicsTargetShapeSettingsDialogBox::QGraphicsTargetShapeSettingsDialogBox(QWidget * parent) :
-    ThisClass("Shape Options", parent)
+void QGraphicsTargetShapeSettings::onsave(QSettings & settings, const QString & prefix)
 {
+  if ( _opts ) {
+
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsTargetShapeSettings" : prefix;
+
+    Base::onsave(settings, PREFIX);
+
+    save_parameter(settings, PREFIX, "fixOnSceneCenter", _opts->fixOnSceneCenter());
+    save_parameter(settings, PREFIX, "fixOnSceneCenter", _opts->fixOnSceneCenter());
+    save_parameter(settings, PREFIX, "baseRadius", _opts->baseRadius());
+    save_parameter(settings, PREFIX, "numRings", _opts->numRings());
+    save_parameter(settings, PREFIX, "showDiagonalRays", _opts->showDiagonalRays());
+    save_parameter(settings, PREFIX, "penWidth", _opts->penWidth());
+    save_parameter(settings, PREFIX, "penColor", _opts->penColor());
+  }
 }
-
-QGraphicsTargetShapeSettingsDialogBox::QGraphicsTargetShapeSettingsDialogBox(const QString & title, QWidget * parent) :
-    ThisClass("Shape Options", nullptr, parent)
-{
-}
-
-QGraphicsTargetShapeSettingsDialogBox::QGraphicsTargetShapeSettingsDialogBox(const QString & title, QGraphicsTargetShape * shape, QWidget * parent) :
-    Base(parent)
-{
-  setWindowTitle(title);
-
-  QVBoxLayout * vbox =
-      new QVBoxLayout(this);
-
-  vbox->addWidget(settigs_ctl =
-      new QGraphicsTargetShapeSettings(this));
-
-  settigs_ctl->setShape(shape);
-
-  loadParameters();
-}
-
-
-void QGraphicsTargetShapeSettingsDialogBox::setShape(QGraphicsTargetShape * shape)
-{
-  settigs_ctl->setShape(shape);
-}
-
-QGraphicsTargetShape * QGraphicsTargetShapeSettingsDialogBox::shape() const
-{
-  return settigs_ctl->shape();
-}
-
-void QGraphicsTargetShapeSettingsDialogBox::loadParameters()
-{
-  return settigs_ctl->loadParameters();
-}
-
-void QGraphicsTargetShapeSettingsDialogBox::showEvent(QShowEvent * e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QGraphicsTargetShapeSettingsDialogBox::hideEvent(QHideEvent * e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
 

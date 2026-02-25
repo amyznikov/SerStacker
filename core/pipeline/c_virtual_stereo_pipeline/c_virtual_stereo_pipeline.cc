@@ -50,10 +50,10 @@ c_virtual_stereo_pipeline::c_virtual_stereo_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
-  feature2d_options_.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
-  feature2d_options_.matcher.type = FEATURE2D_MATCHER_HAMMING;
-  feature2d_options_.matcher.hamming.max_acceptable_distance = 20;
-  feature2d_options_.matcher.hamming.octavedif = -1;
+  _feature2d_options.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+  _feature2d_options.matcher.type = FEATURE2D_MATCHER_HAMMING;
+  _feature2d_options.matcher.hamming.max_acceptable_distance = 20;
+  _feature2d_options.matcher.hamming.octavedif = -1;
 
 
   //pyrflowlk_options_.detector.type = SPARSE_FEATURE_DETECTOR_FAST;
@@ -71,52 +71,52 @@ const c_virtual_stereo_input_options & c_virtual_stereo_pipeline::input_options(
 
 c_virtual_stereo_camera_options & c_virtual_stereo_pipeline::camera_options()
 {
-  return camera_options_;
+  return _camera_options;
 }
 
 const c_virtual_stereo_camera_options & c_virtual_stereo_pipeline::camera_options() const
 {
-  return camera_options_;
+  return _camera_options;
 }
 
 c_virtual_stereo_image_processing_options & c_virtual_stereo_pipeline::image_processing_options()
 {
-  return image_processing_options_;
+  return _image_processing_options;
 }
 
 const c_virtual_stereo_image_processing_options & c_virtual_stereo_pipeline::image_processing_options() const
 {
-  return image_processing_options_;
+  return _image_processing_options;
 }
 
 c_virtual_stereo_feature2d_options & c_virtual_stereo_pipeline::feature2d_options()
 {
-  return feature2d_options_;
+  return _feature2d_options;
 }
 
 const c_virtual_stereo_feature2d_options & c_virtual_stereo_pipeline::feature2d_options() const
 {
-  return feature2d_options_;
+  return _feature2d_options;
 }
 
 c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options()
 {
-  return camera_pose_options_;
+  return _camera_pose_options;
 }
 
 const c_lm_camera_pose_options & c_virtual_stereo_pipeline::camera_pose_options() const
 {
-  return camera_pose_options_;
+  return _camera_pose_options;
 }
 
 c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options()
 {
-  return output_options_;
+  return _output_options;
 }
 
 const c_virtual_stereo_output_options & c_virtual_stereo_pipeline::output_options() const
 {
-  return output_options_;
+  return _output_options;
 }
 
 bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
@@ -132,202 +132,351 @@ bool c_virtual_stereo_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_options")) ) {
-    SERIALIZE_OPTION(section, save, camera_options_, camera_intrinsics);
+    SERIALIZE_OPTION(section, save, _camera_options, camera_intrinsics);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
-    SERIALIZE_OPTION(section, save, feature2d_options_, detector);
-    SERIALIZE_OPTION(section, save, feature2d_options_, descriptor);
-    SERIALIZE_OPTION(section, save, feature2d_options_, matcher);
+    SERIALIZE_OPTION(section, save, _feature2d_options, detector);
+    SERIALIZE_OPTION(section, save, _feature2d_options, descriptor);
+    SERIALIZE_OPTION(section, save, _feature2d_options, matcher);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_pose")) ) {
-    SERIALIZE_OPTION(section, save, camera_pose_options_, direction);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, max_iterations);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, robust_threshold);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, max_levmar_iterations);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, epsx);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, direction);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, max_iterations);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, robust_threshold);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, max_levmar_iterations);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, epsx);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, epsf);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "stereo_matcher")) ) {
-    SERIALIZE_OPTION(section, save, stereo_matcher_options_, enable_stereo_matcher);
-    stereo_matcher_.serialize(section, save);
+    SERIALIZE_OPTION(section, save, _stereo_matcher_options, enable_stereo_matcher);
+    _stereo_matcher.serialize(section, save);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "triangulation")) ) {
-    SERIALIZE_OPTION(section, save, triangulation_options_, enable_triangulation);
-    SERIALIZE_OPTION(section, save, triangulation_options_, baseline);
+    SERIALIZE_OPTION(section, save, _triangulation_options, enable_triangulation);
+    SERIALIZE_OPTION(section, save, _triangulation_options, baseline);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "epipolar_matcher")) ) {
-    epipolar_matcher_.serialize(section, save);
+    _epipolar_matcher.serialize(section, save);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "epipolar_flow")) ) {
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, enabled);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, enable_debug);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, support_scale);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, max_iterations);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, normalization_scale);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, max_pyramid_level);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, noise_level);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, update_multiplier);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, input_smooth_sigma);
-    SERIALIZE_OPTION(section, save, epipolar_flow_options_, reference_smooth_sigma);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, enabled);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, enable_debug);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, support_scale);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, max_iterations);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, normalization_scale);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, max_pyramid_level);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, noise_level);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, update_multiplier);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, input_smooth_sigma);
+    SERIALIZE_OPTION(section, save, _epipolar_flow_options, reference_smooth_sigma);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "morph_gradient_flow")) ) {
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, enabled);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, max_pyramid_level);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, block_radius);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, search_radius);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, alpha);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, beta);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, gradient_threshold);
-    SERIALIZE_OPTION(section, save, morph_gradient_flow_options_, enable_debug);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, enabled);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, max_pyramid_level);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, block_radius);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, search_radius);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, alpha);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, beta);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, gradient_threshold);
+    SERIALIZE_OPTION(section, save, _morph_gradient_flow_options, enable_debug);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "image_processing")) ) {
     // SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, input_processor);
-    SERIALIZE_IMAGE_PROCESSOR(section, save, image_processing_options_, feature2d_preprocessor);
+    SERIALIZE_IMAGE_PROCESSOR(section, save, _image_processing_options, feature2d_preprocessor);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
-    SERIALIZE_OPTION(section, save, output_options_, default_display_type);
-    SERIALIZE_OPTION(section, save, output_options_, output_directory);
-    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
-    SERIALIZE_OPTION(section, save, output_options_, progress_video_filename);
-    SERIALIZE_OPTION(section, save, output_options_, save_polar_frames);
-    SERIALIZE_OPTION(section, save, output_options_, polar_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, save_disparity_frames);
-    SERIALIZE_OPTION(section, save, output_options_, disparity_frames_filename);
-    SERIALIZE_OPTION(section, save, output_options_, save_homography_video);
-    SERIALIZE_OPTION(section, save, output_options_, homography_video_filename);
-    SERIALIZE_OPTION(section, save, output_options_, save_epipolar_flow_debug_images);
+    SERIALIZE_OPTION(section, save, _output_options, default_display_type);
+    SERIALIZE_OPTION(section, save, _output_options, output_directory);
+    SERIALIZE_OPTION(section, save, _output_options, save_progress_video);
+    SERIALIZE_OPTION(section, save, _output_options, progress_video_filename);
+    SERIALIZE_OPTION(section, save, _output_options, save_polar_frames);
+    SERIALIZE_OPTION(section, save, _output_options, polar_frames_filename);
+    SERIALIZE_OPTION(section, save, _output_options, save_disparity_frames);
+    SERIALIZE_OPTION(section, save, _output_options, disparity_frames_filename);
+    SERIALIZE_OPTION(section, save, _output_options, save_homography_video);
+    SERIALIZE_OPTION(section, save, _output_options, homography_video_filename);
+    SERIALIZE_OPTION(section, save, _output_options, save_epipolar_flow_debug_images);
   }
 
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline::get_controls()
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+  using S = c_virtual_stereo_input_options;
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+}
 
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_camera_options> & ctx)
+{
+  using S = c_virtual_stereo_camera_options;
+  ctlbind(ctls, "camera_intrinsics", ctx(&S::camera_intrinsics), "");
+}
 
-  if( ctrls.empty() ) {
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_image_processing_options> & ctx)
+{
+  using S = c_virtual_stereo_image_processing_options;
+  ctlbind(ctls, "feature2d_preprocessor", ctx(&S::feature2d_preprocessor), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_feature2d_options> & ctx)
+{
+  using S = c_virtual_stereo_feature2d_options;
+  ctlbind(ctls, as_base<c_sparse_feature_extractor_and_matcher_options>(ctx));
+}
 
-      ////////
-    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
-      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, camera_options_.camera_intrinsics);
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_matcher_options> & ctx)
+{
+  using S = c_virtual_stereo_matcher_options;
+  ctlbind(ctls, "enable_stereo_matcher", ctx(&S::enable_stereo_matcher), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Feature2D options", "");
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Detector Options", "");
-      PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, feature2d_options_.detector);
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Descriptor Options", "");
-      PIPELINE_CTL_FEATURE2D_DESCRIPTOR_OPTIONS(ctrls, feature2d_options_.descriptor);
-      PIPELINE_CTL_END_GROUP(ctrls);
-      PIPELINE_CTL_GROUP(ctrls, "Feature2D Matcher Options", "");
-      PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, feature2d_options_.matcher);
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_triangulation_options> & ctx)
+{
+  using S = c_virtual_stereo_triangulation_options;
+  ctlbind(ctls, "enable_triangulation", ctx(&S::enable_triangulation), "");
+  ctlbind(ctls, "baseline", ctx(&S::baseline), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
-      PIPELINE_CTL(ctrls, camera_pose_options_.direction, "Motion direction", "Optimize assuming a priori known motion direction");
-      PIPELINE_CTL(ctrls, camera_pose_options_.max_iterations, "max iterations", "Number of iterations for outliers removal");
-      PIPELINE_CTL(ctrls, camera_pose_options_.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
-      PIPELINE_CTL(ctrls, camera_pose_options_.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
-      PIPELINE_CTL(ctrls, camera_pose_options_.epsx, "levmar epsx", "levmar epsx parameter");
-      PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,c_virtual_stereo_epipolar_flow_options > & ctx)
+{
+  using S = c_virtual_stereo_epipolar_flow_options;
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher Options", "");
-      PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, stereo_matcher_);
-    PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind(ctls, "enabled", ctx(&S::enabled), "");
+  ctlbind(ctls, "support_scale", ctx(&S::support_scale), "");
+  ctlbind(ctls, "max_pyramid_level", ctx(&S::max_pyramid_level), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "normalization_scale", ctx(&S::normalization_scale), "");
+  ctlbind(ctls, "noise_level", ctx(&S::noise_level), "");
+  ctlbind(ctls, "update_multiplier", ctx(&S::update_multiplier), "");
+  ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
+  ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
+  ctlbind(ctls, "enable_debug", ctx(&S::enable_debug), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Triangulation", "");
-      PIPELINE_CTL(ctrls, triangulation_options_.enable_triangulation, "enable triangulation", "Set checked to enable triangulation");
-      PIPELINE_CTL(ctrls, triangulation_options_.baseline, "baseline", "Set baseline for triangulation");
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_morph_gradient_flow_options> & ctx)
+{
+  using S = c_virtual_stereo_morph_gradient_flow_options;
 
+  ctlbind(ctls, "enabled", ctx(&S::enabled), "");
+  ctlbind(ctls, "max_pyramid_level", ctx(&S::max_pyramid_level), "");
+  ctlbind(ctls, "block_radius", ctx(&S::block_radius), "");
+  ctlbind(ctls, "search_radius", ctx(&S::search_radius), "");
+  ctlbind(ctls, "alpha", ctx(&S::alpha), "");
+  ctlbind(ctls, "beta", ctx(&S::beta), "");
+  ctlbind(ctls, "gradient_threshold", ctx(&S::gradient_threshold), "");
+  ctlbind(ctls, "enable_debug", ctx(&S::enable_debug), "");
 
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Epipolar Flow", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.enabled, "Enable epipolar_flow", "Check to enable c_epipolar_flow testing");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.enable_debug, "Enable Debug images", "Check to enable c_epipolar_flow to save debg images");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.support_scale, "support_scale", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.max_pyramid_level, "max_pyramid_level", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.update_multiplier, "update_multiplier", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.input_smooth_sigma, "input_smooth_sigma", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.reference_smooth_sigma, "reference_smooth_sigma", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.normalization_scale, "normalization_scale", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.noise_level, "noise_level", "");
-      PIPELINE_CTL(ctrls, epipolar_flow_options_.max_iterations, "max_iterations", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_virtual_stereo_output_options> & ctx)
+{
+  using S = c_virtual_stereo_output_options;
 
+  ctlbind(ctls, "display_type", ctx(&S::default_display_type), "");
+  ctlbind(ctls, "output_directory", ctx(&S::output_directory), "");
+  ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+  ctlbind(ctls, "progress_video_filename", ctx(&S::progress_video_filename), "");
+  ctlbind(ctls, "save_polar_frames", ctx(&S::save_polar_frames), "");
+  ctlbind(ctls, "polar_frames_filename", ctx(&S::polar_frames_filename), "");
+  ctlbind(ctls, "save_disparity_frames", ctx(&S::save_disparity_frames), "");
+  ctlbind(ctls, "disparity_frames_filename", ctx(&S::disparity_frames_filename), "");
+  ctlbind(ctls, "save_homography_video", ctx(&S::save_homography_video), "");
+  ctlbind(ctls, "homography_video_filename", ctx(&S::homography_video_filename), "");
+  ctlbind(ctls, "save_epipolar_flow_debug_images", ctx(&S::save_epipolar_flow_debug_images), "");
+}
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "morph_gradient_flow", "");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.block_radius, "block_radius", "block_radius");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.search_radius, "search_radius", "search_radius");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.alpha, "alpha", "alpha");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.beta, "beta", "beta");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.gradient_threshold, "gradient_threshold", "gradient_threshold");
-      PIPELINE_CTL(ctrls, morph_gradient_flow_options_.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
-    PIPELINE_CTL_END_GROUP(ctrls);
-    ////////
+const c_ctlist<c_virtual_stereo_pipeline> & c_virtual_stereo_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
 
-    PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher", "");
-      PIPELINE_CTL(ctrls, epipolar_matcher_.options().enabled, "enable epipolar matcher", "");
-      PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher Options", "");
-        PIPELINE_CTL(ctrls, epipolar_matcher_.options().max_disparity, "max_disparity", "");
-        PIPELINE_CTL(ctrls, epipolar_matcher_.options().diff_threshold, "diff_threshold", "");
-        PIPELINE_CTL(ctrls, epipolar_matcher_.options().avg_scale, "avg_scale", "");
-        PIPELINE_CTL(ctrls, epipolar_matcher_.options().enable_debug, "enable_debug", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
-    PIPELINE_CTL_END_GROUP(ctrls);
-    ////////
+    ctlbind_expandable_group(ctls, "Input options", "");
+    ctlbind(ctls, ctx(&this_class::_input_options));
+    ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-      // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
-      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.feature2d_preprocessor, "Feature2D image preprocessor", "");
-    PIPELINE_CTL_END_GROUP(ctrls);
+    ctlbind_expandable_group(ctls, "Camera parameters", "");
+    ctlbind(ctls, ctx(&this_class::_camera_options));
+    ctlbind_end_group(ctls);
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-      PIPELINE_CTL(ctrls, output_options_.default_display_type, "display_type", "");
-      PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
-      PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-      PIPELINE_CTL(ctrls, output_options_.progress_video_filename, "progress_video_filename", "");
-      PIPELINE_CTL(ctrls, output_options_.save_polar_frames, "save_polar_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.polar_frames_filename, "polar_frames_filename", "");
-      PIPELINE_CTL(ctrls, output_options_.save_disparity_frames, "save_disparity_frames", "");
-      PIPELINE_CTL(ctrls, output_options_.disparity_frames_filename, "disparity_frames_filename", "");
-      PIPELINE_CTL(ctrls, output_options_.save_homography_video, "save_homography_video", "");
-      PIPELINE_CTL(ctrls, output_options_.homography_video_filename, "homography_video_filename", "");
-      PIPELINE_CTL(ctrls, output_options_.save_epipolar_flow_debug_images, "save_epipolar_flow_debug_images", "");
+    ctlbind_expandable_group(ctls, "Feature2D options", "");
+    ctlbind(ctls, ctx(&this_class::_feature2d_options));
+    ctlbind_end_group(ctls);
 
-    PIPELINE_CTL_END_GROUP(ctrls);
+    ctlbind_expandable_group(ctls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+    ctlbind(ctls, ctx(&this_class::_camera_pose_options));
+    ctlbind_end_group(ctls);
 
-    ////////
+    ctlbind_expandable_group(ctls, "Stereo Matcher Options", "");
+    ctlbind(ctls, ctx(&this_class::_stereo_matcher_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Triangulation", "");
+    ctlbind(ctls, ctx(&this_class::_triangulation_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Epipolar Flow", "");
+    ctlbind(ctls, ctx(&this_class::_epipolar_flow_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "morph_gradient_flow", "");
+    ctlbind(ctls, ctx(&this_class::_morph_gradient_flow_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Epipolar Matcher", "");
+    ctlbind(ctls, ctx(&this_class::_epipolar_matcher_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Image processing", "");
+    ctlbind(ctls, ctx(&this_class::_image_processing_options));
+    ctlbind_end_group(ctls);
+
+    ctlbind_expandable_group(ctls, "Output options", "");
+      ctlbind(ctls, ctx(&this_class::_output_options));
+    ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
+
 }
+//
+//const std::vector<c_image_processing_pipeline_ctrl> & c_virtual_stereo_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+////
+////
+////  if( ctrls.empty() ) {
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
+////      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _camera_options.camera_intrinsics);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Feature2D options", "");
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Detector Options", "");
+////      PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, _feature2d_options.detector);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Descriptor Options", "");
+////      PIPELINE_CTL_FEATURE2D_DESCRIPTOR_OPTIONS(ctrls, _feature2d_options.descriptor);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////      PIPELINE_CTL_GROUP(ctrls, "Feature2D Matcher Options", "");
+////      PIPELINE_CTL_FEATURE2D_MATCHER_OPTIONS(ctrls, _feature2d_options.matcher);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.direction, "Motion direction", "Optimize assuming a priori known motion direction");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.max_iterations, "max iterations", "Number of iterations for outliers removal");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.epsx, "levmar epsx", "levmar epsx parameter");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.epsf, "levmar epsf", "levmar epsf parameter");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Stereo Matcher Options", "");
+////      PIPELINE_CTL_STEREO_MATCHER_OPTIONS(ctrls, _stereo_matcher);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Triangulation", "");
+////      PIPELINE_CTL(ctrls, _triangulation_options.enable_triangulation, "enable triangulation", "Set checked to enable triangulation");
+////      PIPELINE_CTL(ctrls, _triangulation_options.baseline, "baseline", "Set baseline for triangulation");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Epipolar Flow", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.enabled, "Enable epipolar_flow", "Check to enable c_epipolar_flow testing");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.enable_debug, "Enable Debug images", "Check to enable c_epipolar_flow to save debg images");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.support_scale, "support_scale", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.max_pyramid_level, "max_pyramid_level", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.update_multiplier, "update_multiplier", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.input_smooth_sigma, "input_smooth_sigma", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.reference_smooth_sigma, "reference_smooth_sigma", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.normalization_scale, "normalization_scale", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.noise_level, "noise_level", "");
+////      PIPELINE_CTL(ctrls, _epipolar_flow_options.max_iterations, "max_iterations", "");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "morph_gradient_flow", "");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.enabled, "Enable pyrflowlk", "Check to enable pyrflowlk testing");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.max_pyramid_level, "max_pyramid_level", "max_pyramid_level");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.block_radius, "block_radius", "block_radius");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.search_radius, "search_radius", "search_radius");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.alpha, "alpha", "alpha");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.beta, "beta", "beta");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.gradient_threshold, "gradient_threshold", "gradient_threshold");
+////      PIPELINE_CTL(ctrls, _morph_gradient_flow_options.enable_debug, "Enable debug images", "Check to save pyrflowlk debug images");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////    ////////
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher", "");
+////      PIPELINE_CTL(ctrls, _epipolar_matcher.options().enabled, "enable epipolar matcher", "");
+////      PIPELINE_CTL_GROUP(ctrls, "Epipolar Matcher Options", "");
+////        PIPELINE_CTL(ctrls, _epipolar_matcher.options().max_disparity, "max_disparity", "");
+////        PIPELINE_CTL(ctrls, _epipolar_matcher.options().diff_threshold, "diff_threshold", "");
+////        PIPELINE_CTL(ctrls, _epipolar_matcher.options().avg_scale, "avg_scale", "");
+////        PIPELINE_CTL(ctrls, _epipolar_matcher.options().enable_debug, "enable_debug", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////    ////////
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
+////      // PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, image_processing_options_.input_processor, "Input image preprocessor", "");
+////      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _image_processing_options.feature2d_preprocessor, "Feature2D image preprocessor", "");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////      PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
+////      PIPELINE_CTL(ctrls, _output_options.progress_video_filename, "progress_video_filename", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_polar_frames, "save_polar_frames", "");
+////      PIPELINE_CTL(ctrls, _output_options.polar_frames_filename, "polar_frames_filename", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_disparity_frames, "save_disparity_frames", "");
+////      PIPELINE_CTL(ctrls, _output_options.disparity_frames_filename, "disparity_frames_filename", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_homography_video, "save_homography_video", "");
+////      PIPELINE_CTL(ctrls, _output_options.homography_video_filename, "homography_video_filename", "");
+////      PIPELINE_CTL(ctrls, _output_options.save_epipolar_flow_debug_images, "save_epipolar_flow_debug_images", "");
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////  }
+//
+//  return ctrls;
+//}
 
 bool c_virtual_stereo_pipeline::copyParameters(const base::sptr & dst) const
 {
@@ -346,12 +495,12 @@ bool c_virtual_stereo_pipeline::copyParameters(const base::sptr & dst) const
   }
 
   p->_input_options = this->_input_options;
-  p->camera_options_ = this->camera_options_;
-  p->image_processing_options_ = this->image_processing_options_;
-  p->feature2d_options_ = this->feature2d_options_;
-  p->camera_pose_options_  = this->camera_pose_options_;
-  p->stereo_matcher_options_ = this->stereo_matcher_options_;
-  p->output_options_ = this->output_options_;
+  p->_camera_options = this->_camera_options;
+  p->_image_processing_options = this->_image_processing_options;
+  p->_feature2d_options = this->_feature2d_options;
+  p->_camera_pose_options  = this->_camera_pose_options;
+  p->_stereo_matcher_options = this->_stereo_matcher_options;
+  p->_output_options = this->_output_options;
 
   return true;
 }
@@ -385,7 +534,7 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if ( !(keypoints_extractor_ = create_keypoints_extractor() ) ) {
+  if ( !(_keypoints_extractor = create_keypoints_extractor() ) ) {
     CF_ERROR("create_keypoints_extractor() fails");
     return false;
   }
@@ -400,28 +549,28 @@ bool c_virtual_stereo_pipeline::initialize_pipeline()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  current_disparity_.release();
+  _currentDisparity.release();
 
-  current_image_.release();
-  previous_image_.release();
+  _current_image.release();
+  _previous_image.release();
 
-  current_mask_.release();
-  previous_mask_.release();
+  _current_mask.release();
+  _previous_mask.release();
 
-  current_keypoints_.clear();
-  previous_keypoints_.clear();
+  _current_keypoints.clear();
+  _previous_keypoints.clear();
 
-  current_descriptors_.release();
-  previous_descriptors_.release();
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
+  _current_descriptors.release();
+  _previous_descriptors.release();
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( epipolar_flow_options_.enabled ) {
+  _matched_current_positions.clear();
+  _matched_previous_positions.clear();
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  if( _epipolar_flow_options.enabled ) {
 //    epipolar_flow_.set_support_scale(epipolar_flow_options_.support_scale);
 //    epipolar_flow_.set_max_iterations(epipolar_flow_options_.max_iterations);
 //    epipolar_flow_.set_update_multiplier(epipolar_flow_options_.update_multiplier);
@@ -445,24 +594,24 @@ void c_virtual_stereo_pipeline::cleanup_pipeline()
 
   close_input_sequence();
 
-  if ( progress_video_writer_.is_open() ) {
-    progress_video_writer_.close();
-    CF_DEBUG("SAVED '%s'", progress_video_writer_.filename().c_str());
+  if ( _progress_video_writer.is_open() ) {
+    _progress_video_writer.close();
+    CF_DEBUG("SAVED '%s'", _progress_video_writer.filename().c_str());
   }
 
-  if ( polar_frames_writer_.is_open() ) {
-    polar_frames_writer_.close();
-    CF_DEBUG("SAVED '%s'", polar_frames_writer_.filename().c_str());
+  if ( _polar_frames_writer.is_open() ) {
+    _polar_frames_writer.close();
+    CF_DEBUG("SAVED '%s'", _polar_frames_writer.filename().c_str());
   }
 
-  if ( disparity_frames_writer_.is_open() ) {
-    disparity_frames_writer_.close();
-    CF_DEBUG("SAVED '%s'", disparity_frames_writer_.filename().c_str());
+  if ( _disparity_frames_writer.is_open() ) {
+    _disparity_frames_writer.close();
+    CF_DEBUG("SAVED '%s'", _disparity_frames_writer.filename().c_str());
   }
 
-  if ( homography_video_writer_.is_open() ) {
-    homography_video_writer_.close();
-    CF_DEBUG("SAVED '%s'", homography_video_writer_.filename().c_str());
+  if ( _homography_video_writer.is_open() ) {
+    _homography_video_writer.close();
+    CF_DEBUG("SAVED '%s'", _homography_video_writer.filename().c_str());
   }
 
 //  if ( median_hat_video_writer_.is_open() ) {
@@ -531,7 +680,7 @@ bool c_virtual_stereo_pipeline::read_input_frame(cv::Mat & output_image, cv::Mat
 
 c_sparse_feature_extractor_and_matcher::sptr c_virtual_stereo_pipeline::create_keypoints_extractor() const
 {
-  return c_sparse_feature_extractor_and_matcher::create(feature2d_options_);
+  return c_sparse_feature_extractor_and_matcher::create(_feature2d_options);
 }
 
 bool c_virtual_stereo_pipeline::run_pipeline()
@@ -598,19 +747,19 @@ bool c_virtual_stereo_pipeline::run_pipeline()
 
       lock_guard lock(mutex());
 
-      if( !read_input_frame(current_image_, current_mask_) ) {
+      if( !read_input_frame(_current_image, _current_mask) ) {
         CF_DEBUG("read_input_frame() fails");
         break;
       }
 
-      if ( current_image_.empty() ) {
+      if ( _current_image.empty() ) {
         // in case of corrupted ASI frame detection the read_input_frame() returns true with empty output image.
         continue;
       }
 
 
       if( _input_options.input_image_processor ) {
-        if( !_input_options.input_image_processor->process(current_image_, current_mask_) ) {
+        if( !_input_options.input_image_processor->process(_current_image, _current_mask) ) {
           CF_ERROR("ERROR: input_processor->process() fails");
           return false;
         }
@@ -647,10 +796,10 @@ bool c_virtual_stereo_pipeline::run_pipeline()
 
       _accumulated_frames = _processed_frames;
 
-      std::swap(current_image_, previous_image_);
-      std::swap(current_mask_, previous_mask_);
-      std::swap(current_keypoints_, previous_keypoints_);
-      std::swap(current_descriptors_, previous_descriptors_);
+      std::swap(_current_image, _previous_image);
+      std::swap(_current_mask, _previous_mask);
+      std::swap(_current_keypoints, _previous_keypoints);
+      std::swap(_current_descriptors, _previous_descriptors);
     }
   }
 
@@ -705,12 +854,12 @@ bool c_virtual_stereo_pipeline::extract_keypoints()
 
   INSTRUMENT_REGION("");
 
-  if( feature2d_options_.matcher.type == FEATURE2D_MATCHER_OptFlowPyrLK ) {
-    keypoints_extractor_->detect(current_image_, current_keypoints_, current_mask_);
+  if( _feature2d_options.matcher.type == FEATURE2D_MATCHER_OptFlowPyrLK ) {
+    _keypoints_extractor->detect(_current_image, _current_keypoints, _current_mask);
   }
   else {
-    keypoints_extractor_->detectAndCompute(current_image_, current_mask_,
-        current_keypoints_, current_descriptors_);
+    _keypoints_extractor->detectAndCompute(_current_image, _current_mask,
+        _current_keypoints, _current_descriptors);
   }
 
 
@@ -729,19 +878,19 @@ bool c_virtual_stereo_pipeline::match_keypoints()
 
   INSTRUMENT_REGION("");
 
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
+  _matched_current_positions.clear();
+  _matched_previous_positions.clear();
 
-  if( !keypoints_extractor_->matcher() ) {
+  if( !_keypoints_extractor->matcher() ) {
 
-    if( !current_keypoints_.empty() && !previous_image_.empty() ) {
+    if( !_current_keypoints.empty() && !_previous_image.empty() ) {
 
       const bool fOK =
-          match_optflowpyrlk(previous_image_, current_image_,
-              previous_keypoints_,
-              feature2d_options_.matcher.optflowpyrlk,
-              matched_previous_positions_,
-              matched_current_positions_);
+          match_optflowpyrlk(_previous_image, _current_image,
+              _previous_keypoints,
+              _feature2d_options.matcher.optflowpyrlk,
+              _matched_previous_positions,
+              _matched_current_positions);
 
       if( !fOK ) {
         CF_ERROR("match_optflowpyrlk() fails");
@@ -749,16 +898,16 @@ bool c_virtual_stereo_pipeline::match_keypoints()
       }
     }
   }
-  else if( !current_keypoints_.empty() && !previous_keypoints_.empty() ) {
+  else if( !_current_keypoints.empty() && !_previous_keypoints.empty() ) {
 
     std::vector<cv::Point2f> cps, pps;
 
     const size_t num_matches =
-        ::match_keypoints(keypoints_extractor_->matcher(),
-            current_keypoints_,
-            current_descriptors_,
-            previous_keypoints_,
-            previous_descriptors_,
+        ::match_keypoints(_keypoints_extractor->matcher(),
+            _current_keypoints,
+            _current_descriptors,
+            _previous_keypoints,
+            _previous_descriptors,
             nullptr,
             &cps,
             &pps);
@@ -769,20 +918,20 @@ bool c_virtual_stereo_pipeline::match_keypoints()
       const cv::Point2f &pp = pps[i];
 //      const float d2 = (cp.x - pp.x) * (cp.x - pp.x) + (cp.y - pp.y) * (cp.y - pp.y);
 //      if( d2 > 0 ) {
-        matched_current_positions_.emplace_back(cp);
-        matched_previous_positions_.emplace_back(pp);
+        _matched_current_positions.emplace_back(cp);
+        _matched_previous_positions.emplace_back(pp);
 //      }
     }
   }
 
-  CF_DEBUG("%zu / %zu matches", matched_current_positions_.size(), current_keypoints_.size());
+  CF_DEBUG("%zu / %zu matches", _matched_current_positions.size(), _current_keypoints.size());
 
   return true;
 }
 
 bool c_virtual_stereo_pipeline::estmate_camera_pose()
 {
-  if( matched_current_positions_.size() < 6 || matched_previous_positions_.size() < 6 ) {
+  if( _matched_current_positions.size() < 6 || _matched_previous_positions.size() < 6 ) {
     return true; // ignore
   }
 
@@ -790,24 +939,24 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
   INSTRUMENT_REGION("");
 
-  currentInliers_.release();
+  _currentInliers.release();
 
-  currentEulerAnges_ = cv::Vec3d(0, 0, 0);
-  currentTranslationVector_ = cv::Vec3d(0, 0, 1);
+  _currentEulerAnges = cv::Vec3d(0, 0, 0);
+  _currentTranslationVector = cv::Vec3d(0, 0, 1);
 
   bool fOk =
       lm_camera_pose_and_derotation_homography(
-          camera_options_.camera_intrinsics.camera_matrix,
-          matched_current_positions_,
-          matched_previous_positions_,
-          currentEulerAnges_,
-          currentTranslationVector_,
-          &currentRotationMatrix_,
-          &currentEssentialMatrix_,
-          &currentFundamentalMatrix_,
-          &currentDerotationHomography_,
-          currentInliers_,
-          &camera_pose_options_);
+          _camera_options.camera_intrinsics.camera_matrix,
+          _matched_current_positions,
+          _matched_previous_positions,
+          _currentEulerAnges,
+          _currentTranslationVector,
+          &_currentRotationMatrix,
+          &_currentEssentialMatrix,
+          &_currentFundamentalMatrix,
+          &_currentDerotationHomography,
+          _currentInliers,
+          &_camera_pose_options);
 
   if ( !fOk ) {
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
@@ -817,24 +966,24 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 //      currentInliers_.rows, currentInliers_.cols,
 //      cv::countNonZero(currentInliers_));
 
-  compute_epipoles(currentFundamentalMatrix_,
-      currentEpipoles_);
+  compute_epipoles(_currentFundamentalMatrix,
+      _currentEpipoles);
 
-  currentEpipole_ =
-      0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
+  _currentEpipole =
+      0.5 * (_currentEpipoles[0] + _currentEpipoles[1]);
 
   //  CF_DEBUG("A: (%g %g %g)", currentEulerAnges_(0) * 180 / CV_PI, currentEulerAnges_(1) * 180 / CV_PI, currentEulerAnges_(2) * 180 / CV_PI);
   //  CF_DEBUG("T: (%g %g %g)", currentTranslationVector_(0), currentTranslationVector_(1), currentTranslationVector_(2));
   //  CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
   //      currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
 
-  if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
+  if ( distance_between_points(_currentEpipoles[0], _currentEpipoles[1]) > 1 ) {
     CF_WARNING("\nWARNING!\n"
         "Something looks POOR: Computed epipoles differ after derotation:\n"
         "E0 = {%g %g}\n"
         "E1 = {%g %g}\n",
-        currentEpipoles_[0].x, currentEpipoles_[0].y,
-        currentEpipoles_[1].x, currentEpipoles_[1].y);
+        _currentEpipoles[0].x, _currentEpipoles[0].y,
+        _currentEpipoles[1].x, _currentEpipoles[1].y);
   }
 
   return true;
@@ -842,7 +991,7 @@ bool c_virtual_stereo_pipeline::estmate_camera_pose()
 
 bool c_virtual_stereo_pipeline::run_polar_stereo()
 {
-  if( !output_options_.save_polar_frames && !stereo_matcher_.enabled() ) {
+  if( !_output_options.save_polar_frames && !_stereo_matcher.enabled() ) {
     return true; // ignore
   }
 
@@ -855,7 +1004,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
   }
 
   // Optionally save polar frames if requested by user
-  if( output_options_.save_polar_frames ) {
+  if( _output_options.save_polar_frames ) {
 
     cv::Mat display;
 
@@ -871,15 +1020,15 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
     frames[0].copyTo(display(dst_roi[0]));
     frames[1].copyTo(display(dst_roi[1]));
 
-    if( !polar_frames_writer_.is_open() ) {
+    if( !_polar_frames_writer.is_open() ) {
 
       const std::string output_video_filename =
-          generate_output_filename(output_options_.polar_frames_filename,
+          generate_output_filename(_output_options.polar_frames_filename,
               "polar",
               ".png");
 
       bool fOK =
-          polar_frames_writer_.open(output_video_filename);
+          _polar_frames_writer.open(output_video_filename);
 
       if( !fOK ) {
         CF_ERROR("polar_frames_writer_.open('%s') fails",
@@ -893,38 +1042,38 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
           display.rows);
     }
 
-    if( !polar_frames_writer_.write(display, cv::noArray(), false, 0) ) {
+    if( !_polar_frames_writer.write(display, cv::noArray(), false, 0) ) {
       CF_ERROR("polar_frames_writer_.write() fails: %s",
-          progress_video_writer_.filename().c_str());
+          _progress_video_writer.filename().c_str());
       return false;
     }
   }
 
   // compute stereo disparity if requested by user
-  if( stereo_matcher_.enabled() ) {
+  if( _stereo_matcher.enabled() ) {
 
-    if( !stereo_matcher_.compute(frames[0], frames[1], current_disparity_) ) {
+    if( !_stereo_matcher.compute(frames[0], frames[1], _currentDisparity) ) {
       CF_ERROR("stereo_matcher_.compute() fails");
       return false;
     }
 
-    cv::remap(current_disparity_, current_disparity_,
+    cv::remap(_currentDisparity, _currentDisparity,
         inverse_remap, cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_CONSTANT,
         cv::Scalar::all(-1));
 
-    if( output_options_.save_disparity_frames && !current_disparity_.empty() ) {
+    if( _output_options.save_disparity_frames && !_currentDisparity.empty() ) {
 
-      if( !disparity_frames_writer_.is_open() ) {
+      if( !_disparity_frames_writer.is_open() ) {
 
         const std::string output_video_filename =
-            generate_output_filename(output_options_.disparity_frames_filename,
+            generate_output_filename(_output_options.disparity_frames_filename,
                 "disparity",
                 ".tiff");
 
         bool fOK =
-            disparity_frames_writer_.open(output_video_filename);
+            _disparity_frames_writer.open(output_video_filename);
 
         if( !fOK ) {
           CF_ERROR("disparity_frames_writer_.open('%s') fails",
@@ -934,13 +1083,13 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
 
         CF_DEBUG("Created '%s' display.size()=%dx%d",
             output_video_filename.c_str(),
-            current_disparity_.cols,
-            current_disparity_.rows);
+            _currentDisparity.cols,
+            _currentDisparity.rows);
       }
 
-      if( !disparity_frames_writer_.write(current_disparity_, cv::noArray(), false, 0) ) {
+      if( !_disparity_frames_writer.write(_currentDisparity, cv::noArray(), false, 0) ) {
         CF_ERROR("disparity_frames_writer_.write() fails: %s",
-            disparity_frames_writer_.filename().c_str());
+            _disparity_frames_writer.filename().c_str());
         return false;
       }
     }
@@ -957,11 +1106,11 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
 
 bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_directory)
 {
-  if ( !triangulation_options_.enable_triangulation ) {
+  if ( !_triangulation_options.enable_triangulation ) {
     return true; // disabled, silently ignore
   }
 
-  if ( current_disparity_.empty() ) {
+  if ( _currentDisparity.empty() ) {
     // probably disabled by stereo matcher options, silently ignore
     return true;
   }
@@ -972,11 +1121,11 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
 //      current_disparity_.depth());
 
   const cv::Matx33d inverted_camera_matrix =
-      camera_options_.camera_intrinsics.camera_matrix.inv();
+      _camera_options.camera_intrinsics.camera_matrix.inv();
 
   // current epipole location in pixel coordinates on reference frame
   const cv::Point2d & E =
-      currentEpipole_;
+      _currentEpipole;
 
   // Unit vector to epipole direction in camera coordinates
   const cv::Vec3d epipole_direction_in_camera_coordinates =
@@ -985,7 +1134,7 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
           true);
 
   const cv::Mat1f disparity =
-      current_disparity_;
+      _currentDisparity;
 
   double depth;
   cv::Vec3d pos3d;
@@ -994,21 +1143,21 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
   cv::Mat3b refimg;
 
 
-  if ( previous_image_.type() == CV_8UC3 ) {
-    refimg = previous_image_;
+  if ( _previous_image.type() == CV_8UC3 ) {
+    refimg = _previous_image;
   }
-  else if ( previous_image_.type() == CV_8UC1 ) {
-    cv::cvtColor(previous_image_, refimg, cv::COLOR_BGR2GRAY);
+  else if ( _previous_image.type() == CV_8UC1 ) {
+    cv::cvtColor(_previous_image, refimg, cv::COLOR_BGR2GRAY);
   }
   else {
-    previous_image_.convertTo(refimg, refimg.depth());
+    _previous_image.convertTo(refimg, refimg.depth());
     cv::cvtColor(refimg, refimg, cv::COLOR_BGR2GRAY);
   }
 
-  cloud3d.reserve(current_disparity_.size().area());
+  cloud3d.reserve(_currentDisparity.size().area());
 
-  for ( int y = 0; y < current_disparity_.rows; ++y ) {
-    for ( int x = 0; x < current_disparity_.cols; ++x ) {
+  for ( int y = 0; y < _currentDisparity.rows; ++y ) {
+    for ( int x = 0; x < _currentDisparity.cols; ++x ) {
       if ( disparity[y][x] > 0 ) {
 
         const double epipolar_distance = hypot(x - E.x, y - E.y);
@@ -1022,7 +1171,7 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
                 current_x, current_y,
                 inverted_camera_matrix,
                 epipole_direction_in_camera_coordinates,
-                triangulation_options_.baseline,
+                _triangulation_options.baseline,
                 &depth,
                 &pos3d);
 
@@ -1052,23 +1201,23 @@ bool c_virtual_stereo_pipeline::run_triangulation(const std::string & output_dir
 
 bool c_virtual_stereo_pipeline::run_epipolar_stereo()
 {
-  if ( !epipolar_matcher_.enabled() ||  current_image_.empty() || previous_image_.empty() ) {
+  if ( !_epipolar_matcher.enabled() ||  _current_image.empty() || _previous_image.empty() ) {
     return true; // ignore
   }
 
-  if( !epipolar_matcher_.options().enable_debug ) {
-    epipolar_matcher_.set_debug_path("");
+  if( !_epipolar_matcher.options().enable_debug ) {
+    _epipolar_matcher.set_debug_path("");
   }
   else {
-    epipolar_matcher_.set_debug_path(ssprintf("%s/epipolar_debug/frame%05d", _output_path.c_str(),
+    _epipolar_matcher.set_debug_path(ssprintf("%s/epipolar_debug/frame%05d", _output_path.c_str(),
         _input_sequence->current_pos() - 1));
   }
 
   bool fOK =
-      epipolar_matcher_.match(current_image_, current_mask_,
-          previous_image_, previous_mask_,
-          currentDerotationHomography_,
-          currentEpipole_);
+      _epipolar_matcher.match(_current_image, _current_mask,
+          _previous_image, _previous_mask,
+          _currentDerotationHomography,
+          _currentEpipole);
 
   if( !fOK ) {
     CF_ERROR("epipolar_matcher_.match() fails");
@@ -1171,7 +1320,7 @@ bool c_virtual_stereo_pipeline::run_epipolar_stereo()
 
 bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 {
-  if ( !morph_gradient_flow_options_.enabled ||  current_image_.empty() || previous_image_.empty() ) {
+  if ( !_morph_gradient_flow_options.enabled ||  _current_image.empty() || _previous_image.empty() ) {
     return true; // ignore
   }
 
@@ -1182,19 +1331,19 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
   cv::Mat1f cost;
 
   const std::string debug_path =
-      morph_gradient_flow_options_.enable_debug ?
+      _morph_gradient_flow_options.enable_debug ?
           ssprintf("%s/morph_gradient_flow/%03d",
               _output_path.c_str(), _input_sequence->current_pos() - 1) :
           "";
 
 
-  current_image = current_image_;
-  current_mask = current_mask_;
-  previous_image = previous_image_;
-  previous_mask = previous_mask_;
+  current_image = _current_image;
+  current_mask = _current_mask;
+  previous_image = _previous_image;
+  previous_mask = _previous_mask;
 
   cv::warpPerspective(current_image, derotated_current_image,
-      currentDerotationHomography_,
+      _currentDerotationHomography,
       current_image.size(),
       cv::INTER_LINEAR,
       cv::BORDER_REPLICATE);
@@ -1202,7 +1351,7 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
   if ( !current_mask.empty() ) {
 
     cv::warpPerspective(current_mask, derotated_current_mask,
-        currentDerotationHomography_,
+        _currentDerotationHomography,
         current_image.size(),
         cv::INTER_LINEAR,
         cv::BORDER_CONSTANT);
@@ -1215,13 +1364,13 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
   bool fOK =
       morph_gradient_flow(derotated_current_image, derotated_current_mask,
           previous_image, previous_mask,
-          morph_gradient_flow_options_.max_pyramid_level,
-          morph_gradient_flow_options_.block_radius,
-          morph_gradient_flow_options_.search_radius,
-          morph_gradient_flow_options_.alpha,
-          morph_gradient_flow_options_.beta,
-          morph_gradient_flow_options_.gradient_threshold,
-          currentEpipole_,
+          _morph_gradient_flow_options.max_pyramid_level,
+          _morph_gradient_flow_options.block_radius,
+          _morph_gradient_flow_options.search_radius,
+          _morph_gradient_flow_options.alpha,
+          _morph_gradient_flow_options.beta,
+          _morph_gradient_flow_options.gradient_threshold,
+          _currentEpipole,
           disp,
           cost,
           debug_path);
@@ -1231,7 +1380,7 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
     return false;
   }
 
-  current_disparity_ = disp;
+  _currentDisparity = disp;
 
   if( !run_triangulation(ssprintf("%s/morph_gradient_flow", _output_path.c_str())) ) {
     CF_ERROR("run_triangulation() fails");
@@ -1244,7 +1393,7 @@ bool c_virtual_stereo_pipeline::run_morph_gradient_flow()
 
 bool c_virtual_stereo_pipeline::create_stereo_frames(cv::Mat frames[2], cv::Mat masks[2], cv::Mat2f * inverse_remap)
 {
-  if( current_image_.empty() || previous_image_.empty() ) {
+  if( _current_image.empty() || _previous_image.empty() ) {
     return false;
   }
 
@@ -1253,11 +1402,11 @@ bool c_virtual_stereo_pipeline::create_stereo_frames(cv::Mat frames[2], cv::Mat 
   cv::Mat2f rmaps[2];
 
   const cv::Size src_size =
-      current_image_.size();
+      _current_image.size();
 
   create_epipolar_remaps(src_size,
-      currentEpipole_,
-      currentDerotationHomography_.inv(),
+      _currentEpipole,
+      _currentDerotationHomography.inv(),
       rmaps[0],
       rmaps[1],
       nullptr,
@@ -1266,25 +1415,25 @@ bool c_virtual_stereo_pipeline::create_stereo_frames(cv::Mat frames[2], cv::Mat 
   const cv::Size dst_size(rmaps[0].cols * 2,
       rmaps[0].rows);
 
-  cv::remap(current_image_, frames[0],
+  cv::remap(_current_image, frames[0],
       rmaps[0], cv::noArray(),
       cv::INTER_LINEAR,
       cv::BORDER_CONSTANT);
 
-  cv::remap(previous_image_, frames[1],
+  cv::remap(_previous_image, frames[1],
       rmaps[1], cv::noArray(),
       cv::INTER_LINEAR,
       cv::BORDER_CONSTANT);
 
   const cv::Mat current_mask =
-      current_mask_.empty() ?
-          cv::Mat1b(current_image_.size(), 255) :
-          current_mask_;
+      _current_mask.empty() ?
+          cv::Mat1b(_current_image.size(), 255) :
+          _current_mask;
 
   const cv::Mat previous_mask =
-      previous_mask_.empty() ?
-          cv::Mat1b(previous_image_.size(), 255) :
-          previous_mask_;
+      _previous_mask.empty() ?
+          cv::Mat1b(_previous_image.size(), 255) :
+          _previous_mask;
 
   cv::remap(current_mask, masks[0],
       rmaps[0], cv::noArray(),
@@ -1304,7 +1453,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
 {
   lock_guard lock(mutex());
 
-  if( current_image_.empty() || previous_image_.empty() ) {
+  if( _current_image.empty() || _previous_image.empty() ) {
     return false;
   }
 
@@ -1315,42 +1464,42 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
 
   cv::Mat cimg, pimg;
 
-  if ( current_image_.channels() == 1 ) {
-    cimg = current_image_;
+  if ( _current_image.channels() == 1 ) {
+    cimg = _current_image;
   }
   else {
-    cv::cvtColor(current_image_, cimg, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(_current_image, cimg, cv::COLOR_BGR2GRAY);
   }
 
-  if ( previous_image_.channels() == 1 ) {
-    pimg = previous_image_;
+  if ( _previous_image.channels() == 1 ) {
+    pimg = _previous_image;
   }
   else {
-    cv::cvtColor(previous_image_, pimg, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(_previous_image, pimg, cv::COLOR_BGR2GRAY);
   }
 
   ecch.set_minimum_image_size(64);
   ecch.set_maxlevel(-1);
 
-  if ( !estimate_image_transform(&homography, matched_current_positions_, matched_previous_positions_) ) {
+  if ( !estimate_image_transform(&homography, _matched_current_positions, _matched_previous_positions) ) {
     CF_ERROR("estimate_image_transform() fails");
   }
 
-  if ( !ecch.set_reference_image(pimg, previous_mask_) ) {
+  if ( !ecch.set_reference_image(pimg, _previous_mask) ) {
     CF_ERROR("ecch.align() fails");
     return false;
   }
 
-  if ( !ecch.align(cimg, current_mask_) ) {
+  if ( !ecch.align(cimg, _current_mask) ) {
     CF_ERROR("ecch.align() fails");
     return false;
   }
 
-  display_frame.create(previous_image_.size(), previous_image_.type());
+  display_frame.create(_previous_image.size(), _previous_image.type());
 
   cv::Mat & dst_image = display_frame.getMatRef();
-  cv::remap(current_image_, dst_image, ecch.create_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-  cv::addWeighted(dst_image, 0.5, previous_image_, 0.5, 0, dst_image);
+  cv::remap(_current_image, dst_image, ecch.create_remap(), cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::addWeighted(dst_image, 0.5, _previous_image, 0.5, 0, dst_image);
 
   return true;
 }
@@ -1392,11 +1541,11 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   lock_guard lock(mutex());
 
-  if( current_image_.empty() || previous_image_.empty() ) {
+  if( _current_image.empty() || _previous_image.empty() ) {
     return false;
   }
 
-  const cv::Size size = current_image_.size();
+  const cv::Size size = _current_image.size();
   const cv::Size dst_size(2 * size.width, 2 * size.height);
 
   const cv::Rect cRoi(0, 0, size.width, size.height);
@@ -1406,33 +1555,33 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   cv::Mat3b cimg(dst_size);
 
-  if ( current_image_.channels() == 3 ) {
-    current_image_.copyTo(cimg(cRoi));
+  if ( _current_image.channels() == 3 ) {
+    _current_image.copyTo(cimg(cRoi));
   }
   else {
-    cv::cvtColor(current_image_, cimg(cRoi), cv::COLOR_GRAY2BGR);
+    cv::cvtColor(_current_image, cimg(cRoi), cv::COLOR_GRAY2BGR);
   }
 
-  if ( !matched_previous_positions_.empty() ) {
+  if ( !_matched_previous_positions.empty() ) {
 
     cv::Mat img = cimg(cRoi);
     draw_matched_positions(img,
-        matched_current_positions_,
-        matched_previous_positions_,
-        currentInliers_);
+        _matched_current_positions,
+        _matched_previous_positions,
+        _currentInliers);
   }
 
   cv::Mat tmp1, tmp2;
   std::vector<cv::Point2f> warped_current_positions_;
 
   /////////////////
-  if( !matched_current_positions_.empty() ) {
-    cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
-        currentDerotationHomography_);
+  if( !_matched_current_positions.empty() ) {
+    cv::perspectiveTransform(_matched_current_positions, warped_current_positions_,
+        _currentDerotationHomography);
   }
 
-  cv::warpPerspective(current_image_, tmp1,
-      currentDerotationHomography_,
+  cv::warpPerspective(_current_image, tmp1,
+      _currentDerotationHomography,
       pRoi.size(),
       cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
       cv::BORDER_CONSTANT);
@@ -1444,11 +1593,11 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
   /////////////////
 
-  if ( previous_image_.channels() == 3 ) {
-    previous_image_.copyTo(tmp2);
+  if ( _previous_image.channels() == 3 ) {
+    _previous_image.copyTo(tmp2);
   }
   else {
-    cv::cvtColor(previous_image_, tmp2, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(_previous_image, tmp2, cv::COLOR_GRAY2BGR);
   }
 
   cv::addWeighted(tmp1, 0.5, tmp2, 0.5, 0, tmp2);
@@ -1457,26 +1606,26 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   /////////////////
 
 
-  if( !warped_current_positions_.empty() && !matched_previous_positions_.empty() ) {
+  if( !warped_current_positions_.empty() && !_matched_previous_positions.empty() ) {
 
     draw_matched_positions(tmp1,
         warped_current_positions_,
-        matched_previous_positions_,
-        currentInliers_);
+        _matched_previous_positions,
+        _currentInliers);
   }
 
-  if( IS_INSIDE_IMAGE(currentEpipole_, tmp1.size()) ) {
+  if( IS_INSIDE_IMAGE(_currentEpipole, tmp1.size()) ) {
 
-    const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+    const cv::Point2f E(_currentEpipole.x, _currentEpipole.y);
 
     cv::ellipse(tmp1, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
     cv::line(tmp1, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
     cv::line(tmp1, cv::Point2f(E.x + 9, E.y - 9), cv::Point2f(E.x - 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
   }
 
-  if( IS_INSIDE_IMAGE(currentEpipole_, tmp2.size()) ) {
+  if( IS_INSIDE_IMAGE(_currentEpipole, tmp2.size()) ) {
 
-    const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+    const cv::Point2f E(_currentEpipole.x, _currentEpipole.y);
 
     cv::ellipse(tmp2, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
     cv::line(tmp2, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
@@ -1489,11 +1638,11 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   tmp1.copyTo(cimg(wRoi));
   tmp2.copyTo(cimg(pRoi));
 
-  if ( current_disparity_.empty() ) {
+  if ( _currentDisparity.empty() ) {
     cimg(dRoi).setTo(0);
   }
   else {
-    current_disparity_.convertTo(tmp1, CV_8U, 255. / stereo_matcher_.currentMaxDisparity());
+    _currentDisparity.convertTo(tmp1, CV_8U, 255. / _stereo_matcher.currentMaxDisparity());
     apply_colormap(tmp1, cimg(dRoi), COLORMAP_TURBO);
   }
 
@@ -1503,7 +1652,7 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
   display_frame.move(cimg);
 
   if ( display_mask.needed() ) {
-    current_mask_.copyTo(display_mask);
+    _current_mask.copyTo(display_mask);
   }
 
   return true;
@@ -1511,7 +1660,7 @@ bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame,
 
 bool c_virtual_stereo_pipeline::write_progress_video()
 {
-  if ( !output_options_.save_progress_video ) {
+  if ( !_output_options.save_progress_video ) {
     return true;
   }
 
@@ -1521,15 +1670,15 @@ bool c_virtual_stereo_pipeline::write_progress_video()
     return true; // ignore
   }
 
-  if ( !progress_video_writer_.is_open() ) {
+  if ( !_progress_video_writer.is_open() ) {
 
     const std::string output_video_filename =
-        generate_output_filename(output_options_.progress_video_filename,
+        generate_output_filename(_output_options.progress_video_filename,
             "progress",
             ".avi");
 
     bool fOK =
-        progress_video_writer_.open(output_video_filename);
+        _progress_video_writer.open(output_video_filename);
 
     if( !fOK ) {
       CF_ERROR("progress_video_writer_.open('%s') fails",
@@ -1543,9 +1692,9 @@ bool c_virtual_stereo_pipeline::write_progress_video()
         display.rows);
   }
 
-  if( !progress_video_writer_.write(display, cv::noArray(), false, 0) ) {
+  if( !_progress_video_writer.write(display, cv::noArray(), false, 0) ) {
     CF_ERROR("progress_video_writer_.write() fails: %s",
-        progress_video_writer_.filename().c_str());
+        _progress_video_writer.filename().c_str());
     return false;
   }
 
@@ -1555,7 +1704,7 @@ bool c_virtual_stereo_pipeline::write_progress_video()
 
 bool c_virtual_stereo_pipeline::write_homography_video()
 {
-  if ( !output_options_.save_homography_video ) {
+  if ( !_output_options.save_homography_video ) {
     return true;
   }
 
@@ -1565,15 +1714,15 @@ bool c_virtual_stereo_pipeline::write_homography_video()
     return true; // ignore
   }
 
-  if ( !homography_video_writer_.is_open() ) {
+  if ( !_homography_video_writer.is_open() ) {
 
     const std::string output_video_filename =
-        generate_output_filename(output_options_.homography_video_filename,
+        generate_output_filename(_output_options.homography_video_filename,
             "homography",
             ".avi");
 
     bool fOK =
-        homography_video_writer_.open(output_video_filename);
+        _homography_video_writer.open(output_video_filename);
 
     if( !fOK ) {
       CF_ERROR("homography_video_writer_.open('%s') fails",
@@ -1587,9 +1736,9 @@ bool c_virtual_stereo_pipeline::write_homography_video()
         display.rows);
   }
 
-  if( !homography_video_writer_.write(display, cv::noArray(), false, 0) ) {
+  if( !_homography_video_writer.write(display, cv::noArray(), false, 0) ) {
     CF_ERROR("homography_video_writer_.write() fails: %s",
-        homography_video_writer_.filename().c_str());
+        _homography_video_writer.filename().c_str());
     return false;
   }
 

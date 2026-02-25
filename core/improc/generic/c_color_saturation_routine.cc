@@ -8,27 +8,41 @@
 #include "c_color_saturation_routine.h"
 #include <core/proc/color_saturation.h>
 
+void c_color_saturation_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "scales", ctx(&this_class::_scales), "");
+}
+
+bool c_color_saturation_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _scales);
+    return true;
+  }
+  return false;
+}
+
 bool c_color_saturation_routine::process(cv::InputOutputArray _image, cv::InputOutputArray mask)
 {
   cv::Mat & image =
       _image.getMatRef();
 
-  if( image.channels() != 3 || scales_.empty() ) {
+  if( image.channels() != 3 || _scales.empty() ) {
     return true; //
   }
 
 
-  if( scales_.size() == 1 ) {
+  if( _scales.size() == 1 ) {
 
     return color_saturation_hls(image,
-        scales_[0],
+        _scales[0],
         mask);
   }
 
   std::vector<cv::Mat> layers;
   cv::Mat tmp;
 
-  cv::buildPyramid(image, layers, scales_.size() - 1);
+  cv::buildPyramid(image, layers, _scales.size() - 1);
 
   for( int i = 0, n = layers.size(); i < n; ++i ) {
 
@@ -37,7 +51,7 @@ bool c_color_saturation_routine::process(cv::InputOutputArray _image, cv::InputO
       cv::subtract(layers[i], tmp, layers[i]);
     }
 
-    color_saturation_hls(layers[i], scales_[i]);
+    color_saturation_hls(layers[i], _scales[i]);
   }
 
   for( int i = layers.size() - 1; i > 0; --i ) {

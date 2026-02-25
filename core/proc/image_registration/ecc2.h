@@ -11,6 +11,7 @@
 #define __ecc2_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/ctrlbind/ctrlbind.h>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -151,6 +152,40 @@ protected:
 
 
 // Coarse-To-Fine ECC registration using image pyramids
+
+struct c_ecch_options
+{
+  double epsx = 1e-5;
+  double min_rho = 0.8;
+  double reference_smooth_sigma = 1;
+  double input_smooth_sigma = 1;
+  double update_step_scale = 1.f;
+
+  ECC_ALIGN_METHOD method = ECC_ALIGN_FORWARD_ADDITIVE;
+  enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
+
+  int max_iterations = 50;
+  int minimum_image_size = 8;
+  int maxlevel = 0;
+};
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_ecch_options> & ctx)
+{
+  using S = c_ecch_options;
+
+  ctlbind(ctls, "ecch method",  ctx(&S::method), "");
+  ctlbind(ctls, "minimum_image_size", ctx(&S::minimum_image_size),  "");
+  ctlbind(ctls, "maxlevel",  ctx(&S::maxlevel), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "max_eps", ctx(&S::epsx), "");
+  ctlbind(ctls, "min_rho", ctx(&S::min_rho), "");
+  ctlbind(ctls, "interpolation", ctx(&S::interpolation), "");
+  ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
+  ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
+  ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
+}
+
 class c_ecch
 {
 public:
@@ -163,6 +198,17 @@ public:
   c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method);
 
   virtual ~c_ecch() = default;
+
+
+  c_ecch_options& options()
+  {
+    return _opts;
+  }
+
+  const c_ecch_options& options() const
+  {
+    return _opts;
+  }
 
   void set_image_transform(c_image_transform * image_transform);
   c_image_transform * image_transform() const;
@@ -217,8 +263,8 @@ public:
 
   void clear()
   {
-    pyramid_.clear();
-    image_transform_ = nullptr;
+    _pyramid.clear();
+    _image_transform = nullptr;
   }
 
   double eps() const;
@@ -236,21 +282,10 @@ protected:
   c_ecc_align::uptr create_ecc_align(double epsx) const;
 
 protected:
-  std::vector<c_ecc_align::uptr> pyramid_;
-  c_image_transform  * image_transform_ = nullptr;
-  ECC_ALIGN_METHOD method_ = ECC_ALIGN_FORWARD_ADDITIVE;
-
-  double epsx_ = 1e-5;
-  double min_rho_ = 0.8;
-  double reference_smooth_sigma_ = 1;
-  double input_smooth_sigma_ = 1;
-  double update_step_scale_ = 1.f;
-  enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
-
-  int max_iterations_ = 50;
-  int minimum_image_size_ = 8;
-  int maxlevel_ = 0;
-  int num_iterations_ = -1;
+  c_ecch_options _opts;
+  std::vector<c_ecc_align::uptr> _pyramid;
+  c_image_transform  * _image_transform = nullptr;
+  int _num_iterations = -1;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -432,28 +467,51 @@ protected:
 
 
 
-
-
-
-
-
-
-
-
 /**
  * Coarse-to-fine SMOOTH optical flow on image pyramids
  */
+
+enum ECCFlowDownscaleMethod {
+  ECCFlowDownscaleRecursiveResize,
+  ECCFlowDownscaleFullResize,
+  ECCFlowDownscalePyramid
+};
+
+struct c_eccflow_options
+{
+  double input_smooth_sigma = 0;
+  double reference_smooth_sigma = 0;
+  double update_multiplier = 1.5;
+  double scale_factor = 0.5;
+  double noise_level = -1;
+  int max_iterations = 1; // not used at this time
+  int support_scale = 5;
+  int min_image_size = 4;
+  int max_pyramid_level = -1;
+  ECCFlowDownscaleMethod downscale = ECCFlowDownscaleRecursiveResize;
+};
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_eccflow_options> & ctx)
+{
+  using S = c_eccflow_options;
+  ctlbind(ctls, "support_scale", ctx(&S::support_scale), "");
+  ctlbind(ctls, "downscale_method", ctx(&S::downscale), "");
+  ctlbind(ctls, "min_image_size", ctx(&S::min_image_size), "");
+  ctlbind(ctls, "max_pyramid_level", ctx(&S::max_pyramid_level), "");
+  ctlbind(ctls, "scale_factor", ctx(&S::scale_factor), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
+  ctlbind(ctls, "noise_level", ctx(&S::noise_level), "");
+  ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
+  ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
+  ctlbind(ctls, "update_multiplier", ctx(&S::update_multiplier), "");
+}
 
 class c_eccflow
 {
 public:
   typedef c_eccflow this_class;
 
-  enum DownscaleMethod {
-    DownscaleRecursiveResize,
-    DownscaleFullResize,
-    DownscalePyramid
-  };
 
   // made public for debug purposes
   struct pyramid_entry {
@@ -462,6 +520,16 @@ public:
     cv::Mat1f Ix, Iy;//, It;
     cv::Mat4f D;
   };
+
+  c_eccflow_options & options()
+  {
+    return _opts;
+  }
+
+  const c_eccflow_options & options() const
+  {
+    return _opts;
+  }
 
   void set_support_scale(int v);
   int support_scale() const;
@@ -478,8 +546,8 @@ public:
   void set_reference_smooth_sigma(double v);
   double reference_smooth_sigma() const;
 
-  void set_downscale_method(DownscaleMethod v);
-  DownscaleMethod downscale_method() const;
+  void set_downscale_method(ECCFlowDownscaleMethod v);
+  ECCFlowDownscaleMethod downscale_method() const;
 
   void set_scale_factor(double v);
   double scale_factor() const;
@@ -534,20 +602,20 @@ protected:
   void avgp(cv::InputArray src1, cv::InputArray src2, cv::Mat & dst) const;
 
 protected:
-  double input_smooth_sigma_ = 0;
-  double reference_smooth_sigma_ = 0;
-  double update_multiplier_ = 1.5;
-  double scale_factor_ = 0.5;
-  double noise_level_ = -1;
-  int max_iterations_ = 1; // not used at this time
-  int support_scale_ = 5;
-  int min_image_size_ = 4;
-  int max_pyramid_level_ = -1;
+  c_eccflow_options _opts;
 
-  DownscaleMethod downscale_method_ =
-      DownscaleRecursiveResize;
+//  double input_smooth_sigma_ = 0;
+//  double reference_smooth_sigma_ = 0;
+//  double update_multiplier_ = 1.5;
+//  double scale_factor_ = 0.5;
+//  double noise_level_ = -1;
+//  int max_iterations_ = 1; // not used at this time
+//  int support_scale_ = 5;
+//  int min_image_size_ = 4;
+//  int max_pyramid_level_ = -1;
+//  ECCFlowDownscaleMethod downscale_method_ = ECCFlowDownscaleRecursiveResize;
 
-  std::vector<pyramid_entry> pyramid_;
+  std::vector<pyramid_entry> _pyramid;
   cv::Mat2f uv;
 
   // work arrays

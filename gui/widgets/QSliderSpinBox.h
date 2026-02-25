@@ -215,6 +215,8 @@ public:
     spinBox_ctl->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
 #endif
 
+    spinBox_ctl->setDecimals(3);
+
     connect(spinBox_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
         [this](double value) {
           if ( !updatingControls_ ) {

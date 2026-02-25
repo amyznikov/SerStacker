@@ -8,26 +8,20 @@
 #include "QGraphicsRectShapeSettings.h"
 
 QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(QWidget * parent) :
-  ThisClass("QGraphicsRectShapeSettings", parent)
-{
-}
-
-QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QWidget * parent) :
-    Base(prefix, parent)
+    Base(parent)
 {
 
   snapToPixelGrid_ctl =
       add_checkbox("Snap to grid",
           "Snap to pixels grid",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setSnapToPixelGrid(checked);
+            if ( _opts ) {
+              _opts->setSnapToPixelGrid(checked);
             }
-            save_parameter(PREFIX, "snapToPixelGrid", shape_->snapToPixelGrid());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->snapToPixelGrid();
+            if ( _opts ) {
+              * checked = _opts->snapToPixelGrid();
               return true;
 
             }
@@ -40,14 +34,13 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
               "Shift + LeftMouseButton + MouseMove to position this object on scene."
               "Ctrl + LeftMouseButton + MouseMove also allows to resize the object",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setFixOnSceneCenter(checked);
+            if ( _opts ) {
+              _opts->setFixOnSceneCenter(checked);
             }
-            save_parameter(PREFIX, "fixOnSceneCenter", shape_->fixOnSceneCenter());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->fixOnSceneCenter();
+            if ( _opts ) {
+              * checked = _opts->fixOnSceneCenter();
               return true;
 
             }
@@ -55,29 +48,32 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
           });
 
   penColor_ctl =
-      add_widget<QColorPickerButton>(
-          "Pen Color");
-
-  connect(penColor_ctl, &QColorPickerButton::colorSelected,
-      [this]() {
-        if ( shape_ ) {
-          shape_->setPenColor(penColor_ctl->color());
-          save_parameter(PREFIX, "penColor", shape_->penColor());
-        }
-      });
+      add_color_picker_button("Pen Color",
+          "",
+          [this](const QColor&v) {
+            if ( _opts ) {
+              _opts->setPenColor(v);
+            }
+          },
+          [this](QColor * v) {
+            if ( _opts ) {
+              * v =  _opts->penColor();
+              return true;
+            }
+            return false;
+          });
 
   penWidth_ctl =
       add_spinbox("Pen Width:",
           "",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setPenWidth(v);
-              save_parameter(PREFIX, "penWidth", shape_->penWidth());
+            if ( _opts ) {
+              _opts->setPenWidth(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->penWidth();
+            if ( _opts ) {
+              *v = _opts->penWidth();
               return true;
             }
             return false;
@@ -87,14 +83,13 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
       add_numeric_box<QRectF>("RECT:",
           "Set Rectangle",
           [this](const QRectF & v) {
-            if ( shape_ ) {
-              shape_->setRect(v);
-              save_parameter(PREFIX, "rect", shape_->rect());
+            if ( _opts ) {
+              _opts->setRect(v);
             }
           },
           [this](QRectF * v) {
-            if ( shape_ ) {
-              *v = shape_->rect();
+            if ( _opts ) {
+              *v = _opts->rect();
               return true;
             }
             return false;
@@ -103,109 +98,46 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(const QString &prefix, QW
   updateControls();
 }
 
-void QGraphicsRectShapeSettings::setShape(QGraphicsRectShape * shape)
+
+void QGraphicsRectShapeSettings::onload(const QSettings & settings, const QString & prefix)
 {
-  shape_ = shape;
-  updateControls();
-}
+  if ( _opts ) {
 
-QGraphicsRectShape * QGraphicsRectShapeSettings::shape() const
-{
-  return shape_;
-}
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsRectShapeSettings" : prefix;
 
-void QGraphicsRectShapeSettings::onupdatecontrols()
-{
-  if ( !shape_ ) {
-    setEnabled(false);
-  }
-  else {
+    Base::onload(settings, prefix);
 
-    penColor_ctl->setColor(shape_->penColor());
-
-    Base::onupdatecontrols();
-
-    setEnabled(true);
-  }
-}
-
-void QGraphicsRectShapeSettings::onload(QSettings & settings)
-{
-  Base::onload(settings);
-
-  if ( shape_ ) {
-
-    bool fixOnSceneCenter = shape_->fixOnSceneCenter();
+    bool fixOnSceneCenter = _opts->fixOnSceneCenter();
     if( load_parameter(settings, PREFIX, "fixOnSceneCenter", &fixOnSceneCenter) ) {
-      shape_->setFixOnSceneCenter(fixOnSceneCenter);
+      _opts->setFixOnSceneCenter(fixOnSceneCenter);
     }
 
-    int penWidth = shape_->penWidth();
+    int penWidth = _opts->penWidth();
     if ( load_parameter(settings, PREFIX, "penWidth", &penWidth) ) {
-      shape_->setPenWidth(penWidth);
+      _opts->setPenWidth(penWidth);
     }
 
-    QColor penColor = shape_->penColor();
+    QColor penColor = _opts->penColor();
     if ( load_parameter(settings, PREFIX, "penColor", &penColor) ) {
-      shape_->setPenColor(penColor);
+      _opts->setPenColor(penColor);
     }
+  }
+
+}
+
+void QGraphicsRectShapeSettings::onsave(QSettings & settings, const QString & prefix)
+{
+  if ( _opts ) {
+
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsRectShapeSettings" : prefix;
+
+    Base::onsave(settings, PREFIX);
+
+    save_parameter(settings, PREFIX, "fixOnSceneCenter", _opts->fixOnSceneCenter());
+    save_parameter(settings, PREFIX, "penWidth", _opts->penWidth());
+    save_parameter(settings, PREFIX, "penColor", _opts->penColor());
   }
 }
 
 
-QGraphicsRectShapeSettingsDialogBox::QGraphicsRectShapeSettingsDialogBox(QWidget * parent) :
-    ThisClass("Shape Options", parent)
-{
-}
-
-QGraphicsRectShapeSettingsDialogBox::QGraphicsRectShapeSettingsDialogBox(const QString & title, QWidget * parent) :
-    ThisClass("Shape Options", nullptr, parent)
-{
-}
-
-QGraphicsRectShapeSettingsDialogBox::QGraphicsRectShapeSettingsDialogBox(const QString & title, QGraphicsRectShape * shape, QWidget * parent) :
-    Base(parent)
-{
-  setWindowTitle(title);
-
-  QVBoxLayout * lv =
-      new QVBoxLayout(this);
-
-  lv->setSizeConstraint(QLayout::SetFixedSize);
-
-  lv->addWidget(settigs_ctl =
-      new QGraphicsRectShapeSettings(this));
-
-  settigs_ctl->setShape(shape);
-
-  loadParameters();
-}
-
-
-void QGraphicsRectShapeSettingsDialogBox::setShape(QGraphicsRectShape * shape)
-{
-  settigs_ctl->setShape(shape);
-}
-
-QGraphicsRectShape * QGraphicsRectShapeSettingsDialogBox::shape() const
-{
-  return settigs_ctl->shape();
-}
-
-void QGraphicsRectShapeSettingsDialogBox::loadParameters()
-{
-  return settigs_ctl->loadParameters();
-}
-
-void QGraphicsRectShapeSettingsDialogBox::showEvent(QShowEvent * e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QGraphicsRectShapeSettingsDialogBox::hideEvent(QHideEvent * e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
 

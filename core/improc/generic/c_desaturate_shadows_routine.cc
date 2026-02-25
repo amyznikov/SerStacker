@@ -110,20 +110,20 @@ static void combine_images(cv::InputArray color_image, cv::InputArray gray_image
 
 }
 
-void c_desaturate_shadows_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_desaturate_shadows_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, wmin, "min gray intensity clip for unsaturated colors");
-  BIND_PCTRL(ctls, wmax, "max gray intensity clip for saturated colors");
-  BIND_PCTRL(ctls, mblur, "optional gaussian blur sigma for grayscale intensity");
-  BIND_PCTRL(ctls, ignore_mask, "");
+   ctlbind(ctls, "wmin", ctx(&this_class::_wmin), "min gray intensity clip for unsaturated colors");
+   ctlbind(ctls, "wmax", ctx(&this_class::_wmax), "max gray intensity clip for saturated colors");
+   ctlbind(ctls, "mblur", ctx(&this_class::_mblur), "optional gaussian blur sigma for grayscale intensity");
+   ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "Ignore mask when computing clips");
 }
 
 bool c_desaturate_shadows_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, wmin);
-    SERIALIZE_PROPERTY(settings, save, *this, wmax);
-    SERIALIZE_PROPERTY(settings, save, *this, mblur);
+    SERIALIZE_OPTION(settings, save, *this, _wmin);
+    SERIALIZE_OPTION(settings, save, *this, _wmax);
+    SERIALIZE_OPTION(settings, save, *this, _mblur);
     return true;
   }
   return false;

@@ -50,25 +50,27 @@ public:
   bool write(const cv::Mat & frame);
   int nbframes() const;
 
-  void loadParameters();
-  void saveParameters() const;
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "") const;
+  void saveSettings(QSettings & settings, const QString & prefix = "") const;
 
 Q_SIGNALS:
   void stateChanged();
 
 protected:
-  c_ffmpeg_writer ffmpeg_;
-  QString outputPath_;
-  QString ffoptions_ = "-c huffyuv -r 10 -f avi";
-  QString outputFilenamePrefix_;
-  QString outputFilenameSuffix_;
-  QString outputPathFileName_;
-  bool started_ = false;
-  bool paused_ = false;
-  bool writeViewPort_ = false;
-  int nbframes_ = 0;
-  cv::Size frameSize_;
-  int channels_ = 0;
+  c_ffmpeg_writer _ffmpeg;
+  QString _outputPath;
+  QString _ffoptions = "-c huffyuv -r 10 -f avi";
+  QString _outputFilenamePrefix;
+  QString _outputFilenameSuffix;
+  QString _outputPathFileName;
+  bool _started = false;
+  bool _paused = false;
+  bool _writeViewPort = false;
+  int _nbframes = 0;
+  cv::Size _frameSize;
+  int _channels = 0;
 };
 
 #endif /* __QDisplayVideoWriter_h__ */

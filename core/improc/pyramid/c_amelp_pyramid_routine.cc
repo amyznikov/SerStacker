@@ -50,19 +50,19 @@ static void build_amelp_pyramid(cv::InputArray image,
 }
 
 
-void c_amelp_pyramid_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_amelp_pyramid_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_CTRL(ctls, scale_factor,  "scale_factor", "Specify scale_factor");
-  BIND_SPINBOX_CTRL(ctls, max_level, 0, 32, 1,  "max_level", "Specify max pyramid level");
-  BIND_SPINBOX_CTRL(ctls, display_pos, 0, 32, 1, "display level", "Specify display pyramid level");
+   ctlbind(ctls, "scale_factor",  ctx(&this_class::_scale_factor), "Specify scale_factor");
+   ctlbind_spinbox(ctls, "max_level", ctx(&this_class::_max_level), 0, 32, 1,  "Specify max pyramid level");
+   ctlbind_spinbox(ctls, "display_pos", ctx(&this_class::_display_pos), 0, 32, 1, "Specify display pyramid level");
 }
 
 bool c_amelp_pyramid_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, scale_factor);
-    SERIALIZE_PROPERTY(settings, save, *this, max_level);
-    SERIALIZE_PROPERTY(settings, save, *this, display_pos);
+    SERIALIZE_OPTION(settings, save, *this, _scale_factor);
+    SERIALIZE_OPTION(settings, save, *this, _max_level);
+    SERIALIZE_OPTION(settings, save, *this, _display_pos);
     return true;
   }
   return false;
@@ -75,19 +75,19 @@ bool c_amelp_pyramid_routine::process(cv::InputOutputArray image, cv::InputOutpu
   if ( image.needed() && !image.empty() ) {
 
     build_amelp_pyramid(image,
-        pyramid_,
-        max_level_,
-        scale_factor_);
+        _pyramid,
+        _max_level,
+        _scale_factor);
 
     display_pos =
-        std::max(0, std::min(display_pos_,
-            (int) pyramid_.size() - 1));
+        std::max(0, std::min(_display_pos,
+            (int) _pyramid.size() - 1));
 
-    pyramid_[display_pos].copyTo(image);
+    _pyramid[display_pos].copyTo(image);
   }
 
   if ( mask.needed() && !mask.empty() && display_pos > 0 ) {
-    cv::resize(mask.getMat(), mask, pyramid_[display_pos].size(), 0, 0, cv::INTER_AREA);
+    cv::resize(mask.getMat(), mask, _pyramid[display_pos].size(), 0, 0, cv::INTER_AREA);
     cv::compare(mask, 250, mask, cv::CMP_GE);
   }
 

@@ -58,7 +58,7 @@ protected:
   QMathExpressionTextEdit * expressionTextBox_ctl = nullptr;
   QPushButton * apply_ctl = nullptr;
   QPushButton * showFunctions_ctl = nullptr;
-  QString helpString_;
+  QString _helpString;
 };
 
 class QInputMathExpressionDialogBox :
@@ -75,7 +75,7 @@ public:
   QString text() const;
 
 protected:
-  QInputMathExpressionWidget * controlWidget_ = nullptr;
+  QInputMathExpressionWidget * _controlWidget = nullptr;
 };
 
 #endif /* __QInputMathExpressionWidget_h__ */

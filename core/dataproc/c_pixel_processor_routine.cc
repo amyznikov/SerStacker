@@ -578,7 +578,7 @@ static bool process_point_cloud(const c_math_expression & math,
 
 
 
-std::string c_pixel_processor_routine::helpstring() const
+std::string c_pixel_processor_routine::helpstring()
 {
   static std::string _helpstring;
 
@@ -618,14 +618,14 @@ std::string c_pixel_processor_routine::helpstring() const
   return _helpstring;
 }
 
-void c_pixel_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_CTRL(ctls, input_type, "input_type", "input view type");
-  BIND_CTRL(ctls, input, "input", "input image name");
-  BIND_CTRL(ctls, output, "output", "output image name");
-  BIND_CTRL(ctls, output_depth, "output_depth", "output image depth");
-  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
-}
+//void c_pixel_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+//{
+//  BIND_CTRL(ctls, input_type, "input_type", "input view type");
+//  BIND_CTRL(ctls, input, "input", "input image name");
+//  BIND_CTRL(ctls, output, "output", "output image name");
+//  BIND_CTRL(ctls, output_depth, "output_depth", "output image depth");
+//  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
+//}
 
 bool c_pixel_processor_routine::serialize(c_config_setting settings, bool save)
 {
@@ -643,8 +643,8 @@ bool c_pixel_processor_routine::serialize(c_config_setting settings, bool save)
 
 bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
 {
-  if( expression_.empty() ) {
-    expression_changed_ = false;
+  if( _expression.empty() ) {
+    _expression_changed = false;
     return true;
   }
 
@@ -653,11 +653,11 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
     return false;
   }
 
-  if( expression_changed_ ) {
+  if( _expression_changed ) {
 
     setup_math_parser(math_);
 
-    if( !math_.parse(expression_.c_str()) ) {
+    if( !math_.parse(_expression.c_str()) ) {
 
       CF_ERROR("math_.parse() fails: %s\n"
           "error_pos=%s", math_.error_message().c_str(),
@@ -666,7 +666,7 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
       return false;
     }
 
-    expression_changed_ = false;
+    _expression_changed = false;
   }
 
 //  cv::Mat input_image, input_data, input_mask;
@@ -675,14 +675,14 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
 
 
 
-  switch (input_type_) {
+  switch (_input_type) {
 
     case DisplayType_Image: {
       cv::Mat input_image, input_data, input_mask;
       cv::Mat output_image;
 
-      if ( !dataframe->get_image(input_, input_image, input_mask, input_data) ) {
-        CF_ERROR("dataframe->get_image('%s') fails", input_.c_str());
+      if ( !dataframe->get_image(_input, input_image, input_mask, input_data) ) {
+        CF_ERROR("dataframe->get_image('%s') fails", _input.c_str());
         return false;
       }
 
@@ -691,7 +691,7 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
         return false;
       }
 
-      dataframe->add_image(output_, output_image, cv::noArray(), cv::noArray());
+      dataframe->add_image(_output, output_image, cv::noArray(), cv::noArray());
 
       break;
     }
@@ -700,8 +700,8 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
       cv::Mat input_points, input_colors, input_mask;
       cv::Mat output_colors;
 
-      if ( !dataframe->get_point_cloud(input_, input_points, input_colors, input_mask) ) {
-        CF_ERROR("dataframe->get_point_cloud('%s') fails", input_.c_str());
+      if ( !dataframe->get_point_cloud(_input, input_points, input_colors, input_mask) ) {
+        CF_ERROR("dataframe->get_point_cloud('%s') fails", _input.c_str());
         return false;
       }
 
@@ -710,12 +710,12 @@ bool c_pixel_processor_routine::process(c_data_frame::sptr & dataframe)
         return false;
       }
 
-      dataframe->add_point_cloud(output_, input_points, output_colors, input_mask);
+      dataframe->add_point_cloud(_output, input_points, output_colors, input_mask);
 
       break;
     }
     default:
-      CF_ERROR("Unsupported view type %d", input_type_);
+      CF_ERROR("Unsupported view type %d", _input_type);
       return false;
   }
 

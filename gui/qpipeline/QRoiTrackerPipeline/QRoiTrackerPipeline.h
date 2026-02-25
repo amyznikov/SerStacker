@@ -18,7 +18,8 @@ class QRoiTrackerPipeline :
 public:
 public:
   typedef QRoiTrackerPipeline ThisClass;
-  typedef QImageProcessingPipelineTemplate<c_roi_tracker_pipeline> Base;
+  typedef c_roi_tracker_pipeline PipelineClass;
+  typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
   QRoiTrackerPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
@@ -30,9 +31,9 @@ public:
   {
   }
 
-  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const final
   {
-    return new QPipelineSettingsWidgetTemplate<ThisClass>(parent);
+    return new QPipelineSettingsWidgetTemplate<PipelineClass>(parent);
   }
 };
 

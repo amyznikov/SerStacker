@@ -33,17 +33,17 @@ const c_enum_member* members_of<c_edge_test_routine::DisplayID>()
   return members;
 }
 
-void c_edge_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_edge_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, display_id, "display");
-  BIND_PCTRL(ctls, kradius, "kradius");
+   ctlbind(ctls, "kradius", ctx(&this_class::_kradius), "");
+   ctlbind(ctls, "display", ctx(&this_class::_display_id), "");
 }
 
 bool c_edge_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, display_id);
-    SERIALIZE_PROPERTY(settings, save, *this, kradius);
+    SERIALIZE_OPTION(settings, save, *this, _display_id);
+    SERIALIZE_OPTION(settings, save, *this, _kradius);
     return true;
   }
   return false;
@@ -52,7 +52,7 @@ bool c_edge_test_routine::serialize(c_config_setting settings, bool save)
 bool c_edge_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   const int r =
-      std::max(1, kradius_);
+      std::max(1, _kradius);
 
   /*
    *  [] []    []    [] []
@@ -81,7 +81,7 @@ bool c_edge_test_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     cv::boxFilter(image, a[i], -1, ksize, anhors[i], true, cv::BORDER_REPLICATE);
   }
 
-  switch (display_id_) {
+  switch (_display_id) {
     case DisplayCornerTL:
       a[0].copyTo(image);
       break;

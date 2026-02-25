@@ -8,7 +8,6 @@
 #include "c_star_extractor_routine.h"
 #include <core/proc/estimate_noise.h>
 #include <core/proc/fast_gaussian_blur.h>
-//#include <core/proc/gradient.h>
 
 template<>
 const c_enum_member * members_of<c_star_extractor_routine::DisplayType>()
@@ -44,27 +43,25 @@ static void compute_dog(cv::InputArray src, cv::OutputArray dst, double sigma1, 
   cv::subtract(gb1, gb2, dst, cv::noArray(), ddepth);
 }
 
-void c_star_extractor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_star_extractor_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, display_type, "");
-  BIND_PCTRL(ctls, median_filter_size, "");
-  BIND_PCTRL(ctls, sigma1, "");
-  BIND_PCTRL(ctls, sigma2, "");
-  BIND_PCTRL(ctls, noise_sigma, "");
-  BIND_PCTRL(ctls, noise_scale, "");
-
-
+  ctlbind(ctls, "display", ctx(&this_class::_display_type), "");
+  ctlbind(ctls, "median_filter_size", ctx(&this_class::_median_filter_size), "");
+  ctlbind(ctls, "sigma1", ctx(&this_class::_sigma1), "");
+  ctlbind(ctls, "sigma2", ctx(&this_class::_sigma2), "");
+  ctlbind(ctls, "noise_sigma", ctx(&this_class::_noise_sigma), "");
+  ctlbind(ctls, "noise_scale", ctx(&this_class::_noise_scale), "");
 }
 
 bool c_star_extractor_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, display_type);
-    SERIALIZE_PROPERTY(settings, save, *this, median_filter_size);
-    SERIALIZE_PROPERTY(settings, save, *this, sigma1);
-    SERIALIZE_PROPERTY(settings, save, *this, sigma2);
-    SERIALIZE_PROPERTY(settings, save, *this, noise_sigma);
-    SERIALIZE_PROPERTY(settings, save, *this, noise_scale);
+    SERIALIZE_OPTION(settings, save, *this, _display_type);
+    SERIALIZE_OPTION(settings, save, *this, _median_filter_size);
+    SERIALIZE_OPTION(settings, save, *this, _sigma1);
+    SERIALIZE_OPTION(settings, save, *this, _sigma2);
+    SERIALIZE_OPTION(settings, save, *this, _noise_sigma);
+    SERIALIZE_OPTION(settings, save, *this, _noise_scale);
     return true;
   }
   return false;

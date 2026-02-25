@@ -47,8 +47,7 @@ struct c_flann_kdtree_index_options
 
 struct c_flann_kmeans_index_options
 {
-  cvflann::flann_centers_init_t centers_init =
-      cvflann::FLANN_CENTERS_RANDOM;
+  cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
   int branching = 32;
   int iterations = 11;
   float cb_index = 0.2f;
@@ -56,8 +55,7 @@ struct c_flann_kmeans_index_options
 
 struct c_flann_composite_index_options
 {
-  cvflann::flann_centers_init_t centers_init =
-      cvflann::FLANN_CENTERS_RANDOM;
+  cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
   int trees = 1;
   int branching = 32;
   int iterations = 11;
@@ -66,8 +64,7 @@ struct c_flann_composite_index_options
 
 struct c_flann_hierarchical_index_options
 {
-  cvflann::flann_centers_init_t centers_init =
-      cvflann::FLANN_CENTERS_RANDOM;
+  cvflann::flann_centers_init_t centers_init = cvflann::FLANN_CENTERS_RANDOM;
   int branching = 32;
   int trees = 4;
   int leaf_size = 100;
@@ -89,17 +86,17 @@ struct c_flann_autotuned_index_options
 };
 
 
-struct c_flann_index_options
-{
-  FlannIndexType type = FlannIndex_kdtree;
-  c_flann_linear_index_options linear;
-  c_flann_kdtree_index_options kdtree;
-  c_flann_kmeans_index_options kmeans;
-  c_flann_composite_index_options composite;
-  c_flann_hierarchical_index_options hierarchical;
-  c_flann_lsh_index_options lsh;
-  c_flann_autotuned_index_options autotuned;
-};
+//struct c_flann_index_options
+//{
+//  FlannIndexType type = FlannIndex_kdtree;
+//  c_flann_linear_index_options linear;
+//  c_flann_kdtree_index_options kdtree;
+//  c_flann_kmeans_index_options kmeans;
+//  c_flann_composite_index_options composite;
+//  c_flann_hierarchical_index_options hierarchical;
+//  c_flann_lsh_index_options lsh;
+//  c_flann_autotuned_index_options autotuned;
+//};
 
 /**
  * Options for c_flann_based_feature2d_matcher
@@ -107,12 +104,18 @@ struct c_flann_index_options
 struct c_flann_based_feature2d_matcher_options :
     c_feature2d_matcher_base_options
 {
-  cvflann::flann_distance_t distance_type =
-      cvflann::FLANN_DIST_L2;
-
-  c_flann_index_options index;
-
+  FlannIndexType index_type = FlannIndex_kdtree;
+  cvflann::flann_distance_t distance_type = cvflann::FLANN_DIST_L2;
   double lowe_ratio = 0.75;
+
+  //c_flann_index_options index;
+  c_flann_linear_index_options linear;
+  c_flann_kdtree_index_options kdtree;
+  c_flann_kmeans_index_options kmeans;
+  c_flann_composite_index_options composite;
+  c_flann_hierarchical_index_options hierarchical;
+  c_flann_lsh_index_options lsh;
+  c_flann_autotuned_index_options autotuned;
 };
 
 /**

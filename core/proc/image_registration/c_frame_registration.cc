@@ -15,20 +15,6 @@
 #include <core/debug.h>
 
 
-
-template<>
-const c_enum_member * members_of<master_frame_selection_method>()
-{
-  static const c_enum_member members[] = {
-      {master_frame_specific_index, "specific_index", },
-      {master_frame_middle_index, "middle_index", },
-      {master_frame_best_of_100_in_middle, "best_of_100_in_middle", },
-      {master_frame_specific_index },
-  };
-
-  return members;
-}
-
 template<>
 const c_enum_member * members_of<planetary_disk_derotation_type>()
 {
@@ -208,7 +194,7 @@ bool c_frame_registration::create_image_transfrom()
 
     _image_transform->parameters().copyTo(_image_transform_defaut_parameters);
 
-    if( _options.ecc.enabled && _options.ecc.scale > 0 ) {
+    if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
       _ecch.set_image_transform(_image_transform.get());
     }
   }
@@ -270,7 +256,7 @@ const cv::Mat2f & c_frame_registration::current_remap() const
 
 const c_sparse_feature_extractor_and_matcher::sptr & c_frame_registration::create_sparse_feature_extractor_and_matcher()
 {
-  if ( _options.feature_registration.enabled && !_sparse_feature_extractor_and_matcher ) {
+  if ( _options.enable_feature_registration && !_sparse_feature_extractor_and_matcher ) {
 
     _sparse_feature_extractor_and_matcher =
         c_sparse_feature_extractor_and_matcher::create(_options.feature_registration.sparse_feature_extractor_and_matcher);
@@ -393,7 +379,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
   _reference_frame_size = reference_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
-  if( _options.feature_registration.enabled && _options.feature_registration.image_scale > 0 ) {
+  if( _options.enable_feature_registration && _options.feature_registration.image_scale > 0 ) {
 
     if( !create_feature_image(reference_image, reference_mask, _reference_feature_image, _reference_feature_mask) ) {
       CF_ERROR("create_feature_image() fails");
@@ -406,7 +392,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     }
   }
 
-  if( _options.eccflow.enabled || (_options.ecc.enabled && _options.ecc.scale > 0) ) {
+  if( _options.enable_eccflow_registration || (_options.enable_ecc_registration && _options.ecc.scale > 0) ) {
 
     if( !create_reference_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("create_reference_ecc_image() fails");
@@ -418,7 +404,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
     }
 
-    if( _options.ecc.enabled && _options.ecc.scale > 0 ) {
+    if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
 
       _ecch.set_method(_options.ecc.ecc_method);
       _ecch.set_max_eps(_options.ecc.eps);
@@ -457,7 +443,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
     }
 
-    if( _options.eccflow.enabled ) {
+    if( _options.enable_eccflow_registration ) {
 
       _eccflow.set_update_multiplier(_options.eccflow.update_multiplier);
       _eccflow.set_max_iterations(_options.eccflow.max_iterations);
@@ -576,7 +562,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
 
   /////////////////////////////////////////////////////////////////////////////
-  if( _options.feature_registration.enabled && _options.feature_registration.image_scale > 0 ) {
+  if( _options.enable_feature_registration && _options.feature_registration.image_scale > 0 ) {
 
     t0 = get_realtime_ms();
     if( !create_feature_image(current_image, current_mask, _current_feature_image, _current_feature_mask) ) {
@@ -605,7 +591,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
 
   /////////////////////////////////////////////////////////////////////////////
-  if( _options.eccflow.enabled || (_options.ecc.enabled && _options.ecc.scale > 0) ) {
+  if( _options.enable_eccflow_registration || (_options.enable_ecc_registration && _options.ecc.scale > 0) ) {
 
     if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
       CF_ERROR("create_current_ecc_image() fails");
@@ -627,7 +613,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( _options.ecc.enabled && _options.ecc.scale > 0 ) {
+  if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
 
     t0 = get_realtime_ms();
 
@@ -898,7 +884,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
   ///////////////
 
-  if( _options.eccflow.enabled ) {
+  if( _options.enable_eccflow_registration ) {
 
     t0 = get_realtime_ms();
 
@@ -1106,7 +1092,7 @@ bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_i
     cv::bitwise_not(planetary_disk_mask, dst_ecc_mask);
   }
 
-  if( !_options.eccflow.enabled || _options.eccflow.support_scale < 1 ) {
+  if( !_options.enable_eccflow_registration || _options.eccflow.support_scale < 1 ) {
     dst_ecc_image.setTo(1, planetary_disk_mask);
   }
   else {

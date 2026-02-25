@@ -16,7 +16,7 @@ class c_connected_components_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_connected_components_routine,
-      "connected_components", "connected components labeling");
+      "connected_components", "Apply cv::connectedComponents() for connected components labeling");
 
   enum Connectivity {
     connectivity4 = 4,
@@ -33,9 +33,9 @@ public:
     return _connectivity;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   Connectivity _connectivity = connectivity4;

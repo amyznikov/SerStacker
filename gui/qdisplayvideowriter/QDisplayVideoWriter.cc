@@ -45,77 +45,72 @@ QDisplayVideoWriter::QDisplayVideoWriter(QObject * parent) :
 
 const QString & QDisplayVideoWriter::outputPath() const
 {
-  return outputPath_;
+  return _outputPath;
 }
 
 void QDisplayVideoWriter::setOutputPath(const QString & v)
 {
-  outputPath_ = v;
-  saveParameters();
+  _outputPath = v;
 }
 
 const QString & QDisplayVideoWriter::ffoptions() const
 {
-  return ffoptions_;
+  return _ffoptions;
 }
 
 void QDisplayVideoWriter::setFfoptions(const QString & v)
 {
-  ffoptions_ = v;
-  saveParameters();
+  _ffoptions = v;
 }
 
 const QString & QDisplayVideoWriter::outputFilenamePrefix() const
 {
-  return outputFilenamePrefix_;
+  return _outputFilenamePrefix;
 }
 
 void QDisplayVideoWriter::setOutputFilenamePrefix(const QString & v)
 {
-  outputFilenamePrefix_ = v;
-  saveParameters();
+  _outputFilenamePrefix = v;
 }
 
 const QString & QDisplayVideoWriter::outputFilenameSuffix() const
 {
-  return outputFilenameSuffix_;
+  return _outputFilenameSuffix;
 }
 
 void QDisplayVideoWriter::setOutputFilenameSuffix(const QString & v)
 {
-  outputFilenameSuffix_ = v;
-  saveParameters();
+  _outputFilenameSuffix = v;
 }
 
 void QDisplayVideoWriter::setWriteViewPort(bool v)
 {
-  writeViewPort_ = v;
-  saveParameters();
+  _writeViewPort = v;
 }
 
 bool QDisplayVideoWriter::writeViewPort() const
 {
-  return writeViewPort_;
+  return _writeViewPort;
 }
 
 const QString & QDisplayVideoWriter::outputPathFileName() const
 {
-  return outputPathFileName_;
+  return _outputPathFileName;
 }
 
 bool QDisplayVideoWriter::start()
 {
-  started_ = true;
+  _started = true;
 
-  if ( !paused_ ) {
+  if ( !_paused ) {
 
-    if( ffmpeg_.is_open() ) {
+    if( _ffmpeg.is_open() ) {
       stop();
     }
 
-    nbframes_ = 0;
-    frameSize_ = cv::Size(-1, -1);
-    channels_ = 0;
+    _nbframes = 0;
+    _frameSize = cv::Size(-1, -1);
+    _channels = 0;
   }
 
   Q_EMIT stateChanged();
@@ -125,12 +120,12 @@ bool QDisplayVideoWriter::start()
 
 void QDisplayVideoWriter::stop()
 {
-  if ( ffmpeg_.is_open() ) {
-    ffmpeg_.close();
-    CF_DEBUG("Closed video file '%s' ", ffmpeg_.filename().c_str());
+  if ( _ffmpeg.is_open() ) {
+    _ffmpeg.close();
+    CF_DEBUG("Closed video file '%s' ", _ffmpeg.filename().c_str());
   }
 
-  started_ = false;
+  _started = false;
 
   Q_EMIT stateChanged();
 }
@@ -138,43 +133,43 @@ void QDisplayVideoWriter::stop()
 
 void QDisplayVideoWriter::set_paused(bool v)
 {
-  paused_ = v;
+  _paused = v;
   Q_EMIT stateChanged();
 }
 
 bool QDisplayVideoWriter::started() const
 {
-  return started_;
+  return _started;
 }
 
 bool QDisplayVideoWriter::paused() const
 {
-  return paused_;
+  return _paused;
 }
 
 
 int QDisplayVideoWriter::nbframes() const
 {
-  return nbframes_;
+  return _nbframes;
 }
 
 bool QDisplayVideoWriter::write(const cv::Mat & _frame)
 {
-  if( !started_ ) {
+  if( !_started ) {
     CF_ERROR("ERROR: Video record was not stared");
     return false;
   }
 
   cv::Mat frame;
 
-  if( nbframes_ > 0 && _frame.cols >= frameSize_.width && _frame.rows >= frameSize_.height ) {
-    frame = _frame(cv::Rect(0, 0, frameSize_.width, frameSize_.height));
+  if( _nbframes > 0 && _frame.cols >= _frameSize.width && _frame.rows >= _frameSize.height ) {
+    frame = _frame(cv::Rect(0, 0, _frameSize.width, _frameSize.height));
   }
   else {
     frame = _frame;
   }
 
-  if( nbframes_ > 0 && (frameSize_ != frame.size() || channels_ != frame.channels()) ) {
+  if( _nbframes > 0 && (_frameSize != frame.size() || _channels != frame.channels()) ) {
 
     stop();
 
@@ -185,37 +180,37 @@ bool QDisplayVideoWriter::write(const cv::Mat & _frame)
 
   }
 
-  if( !ffmpeg_.is_open() ) {
+  if( !_ffmpeg.is_open() ) {
 
-    if( outputPath_.isEmpty() ) {
-      outputPath_ = "./curremtDisplay";
+    if( _outputPath.isEmpty() ) {
+      _outputPath = "./curremtDisplay";
     }
 
-    outputPathFileName_ =
+    _outputPathFileName =
         qsprintf("%s/%s%s%s.avi",
-            outputPath_.toUtf8().constData(),
-            outputFilenamePrefix_.toUtf8().constData(),
+            _outputPath.toUtf8().constData(),
+            _outputFilenamePrefix.toUtf8().constData(),
             getCurrentDateTimeString().toUtf8().constData(),
-            outputFilenameSuffix_.toUtf8().constData());
+            _outputFilenameSuffix.toUtf8().constData());
 
-    frameSize_ = frame.size();
-    channels_ = frame.channels();
+    _frameSize = frame.size();
+    _channels = frame.channels();
 
-    if( !ffmpeg_.open(outputPathFileName_.toStdString(), frameSize_, channels_ > 1, ffoptions_.toStdString()) ) {
+    if( !_ffmpeg.open(_outputPathFileName.toStdString(), _frameSize, _channels > 1, _ffoptions.toStdString()) ) {
       CF_ERROR("ffmpeg_.open('%s') fails for frameSize_=%dx%d channels=%d options='%s'",
-          outputPathFileName_.toUtf8().constData(),
-          frameSize_.width, frameSize_.height,
+          _outputPathFileName.toUtf8().constData(),
+          _frameSize.width, _frameSize.height,
           frame.channels(),
-          ffoptions_.toUtf8().constData());
+          _ffoptions.toUtf8().constData());
 
       stop();
       return false;
     }
 
-    CF_DEBUG("Created video file '%s' ", ffmpeg_.filename().c_str());
+    CF_DEBUG("Created video file '%s' ", _ffmpeg.filename().c_str());
   }
 
-  if( !ffmpeg_.write(frame, nbframes_++) ) {
+  if( !_ffmpeg.write(frame, _nbframes++) ) {
     CF_ERROR("ffmpeg_.write() fails");
     stop();
     return false;
@@ -224,27 +219,47 @@ bool QDisplayVideoWriter::write(const cv::Mat & _frame)
   return true;
 }
 
-void QDisplayVideoWriter::loadParameters()
+void QDisplayVideoWriter::loadSettings(const QString & prefix)
 {
   QSettings settings;
-
-  outputPath_ = settings.value("QDisplayVideoWriter/outputPath", outputPath_).toString();
-  ffoptions_ = settings.value("QDisplayVideoWriter/ffoptions", ffoptions_).toString();
-  outputFilenamePrefix_ = settings.value("QDisplayVideoWriter/outputFilenamePrefix", outputFilenamePrefix_).toString();
-  outputFilenameSuffix_ = settings.value("QDisplayVideoWriter/outputFilenameSuffix", outputFilenameSuffix_).toString();
-  writeViewPort_ = settings.value("QDisplayVideoWriter/writeViewPort", writeViewPort_).toBool();
-
+  loadSettings(settings, prefix);
 }
 
-void QDisplayVideoWriter::saveParameters() const
+void QDisplayVideoWriter::saveSettings(const QString & prefix) const
 {
   QSettings settings;
-
-  settings.setValue("QDisplayVideoWriter/outputPath", outputPath_);
-  settings.setValue("QDisplayVideoWriter/ffoptions", ffoptions_);
-  settings.setValue("QDisplayVideoWriter/outputFilenamePrefix", outputFilenamePrefix_);
-  settings.setValue("QDisplayVideoWriter/outputFilenameSuffix", outputFilenameSuffix_);
-  settings.setValue("QDisplayVideoWriter/writeViewPort", writeViewPort_);
+  saveSettings(settings, prefix);
 }
+
+void QDisplayVideoWriter::loadSettings(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QDisplayVideoWriter" : prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+    return QString("%1/%2").arg(PREFIX).arg(name);
+  };
+
+  _outputPath = settings.value(PARAM("outputPath"), _outputPath).toString();
+  _ffoptions = settings.value(PARAM("ffoptions"), _ffoptions).toString();
+  _outputFilenamePrefix = settings.value(PARAM("outputFilenamePrefix"), _outputFilenamePrefix).toString();
+  _outputFilenameSuffix = settings.value(PARAM("outputFilenameSuffix"), _outputFilenameSuffix).toString();
+  _writeViewPort = settings.value(PARAM("writeViewPort"), _writeViewPort).toBool();
+}
+
+void QDisplayVideoWriter::saveSettings(QSettings & settings, const QString & prefix) const
+{
+  const QString PREFIX = prefix.isEmpty() ? "QDisplayVideoWriter" : prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+    return QString("%1/%2").arg(PREFIX).arg(name);
+  };
+
+  settings.setValue(PARAM("outputPath"), _outputPath);
+  settings.setValue(PARAM("ffoptions"), _ffoptions);
+  settings.setValue(PARAM("outputFilenamePrefix"), _outputFilenamePrefix);
+  settings.setValue(PARAM("outputFilenameSuffix"), _outputFilenameSuffix);
+  settings.setValue(PARAM("writeViewPort"), _writeViewPort);
+}
+
 
 

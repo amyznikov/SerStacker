@@ -20,133 +20,112 @@ public:
 
   const cv::Scalar & bias() const
   {
-    return bias_;
+    return _bias;
   }
 
   void set_bias(const cv::Scalar & v)
   {
-    bias_ = v;
+    _bias = v;
   }
 
   double bias_r() const
   {
-    return bias_[2];
+    return _bias[2];
   }
 
   void set_bias_r(double v)
   {
-    bias_[2] = v;
+    _bias[2] = v;
   }
 
   double bias_g() const
   {
-    return bias_[1];
+    return _bias[1];
   }
 
   void set_bias_g(double v)
   {
-    bias_[1] = v;
+    _bias[1] = v;
   }
 
   double bias_b() const
   {
-    return bias_[0];
+    return _bias[0];
   }
 
   void set_bias_b(double v)
   {
-    bias_[0] = v;
+    _bias[0] = v;
   }
 
   double bias_a() const
   {
-    return bias_[3];
+    return _bias[3];
   }
 
   void set_bias_a(double v)
   {
-    bias_[3] = v;
+    _bias[3] = v;
   }
 
   const cv::Scalar & stretch() const
   {
-    return stretch_;
+    return _stretch;
   }
 
   void set_stretch(const cv::Scalar & v)
   {
-    stretch_ = v;
+    _stretch = v;
   }
 
   double stretch_r() const
   {
-    return stretch_[2];
+    return _stretch[2];
   }
 
   void set_stretch_r(double v)
   {
-    stretch_[2] = v;
+    _stretch[2] = v;
   }
 
   double stretch_g() const
   {
-    return stretch_[1];
+    return _stretch[1];
   }
 
   void set_stretch_g(double v)
   {
-    stretch_[1] = v;
+    _stretch[1] = v;
   }
 
   double stretch_b() const
   {
-    return stretch_[0];
+    return _stretch[0];
   }
 
   void set_stretch_b(double v)
   {
-    stretch_[0] = v;
+    _stretch[0] = v;
   }
 
   double stretch_a() const
   {
-    return stretch_[3];
+    return _stretch[3];
   }
 
   void set_stretch_a(double v)
   {
-    stretch_[3] = v;
+    _stretch[3] = v;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, stretch_r, "");
-    BIND_PCTRL(ctls, bias_r, "");
-    BIND_PCTRL(ctls, stretch_g, "");
-    BIND_PCTRL(ctls, bias_g, "");
-    BIND_PCTRL(ctls, stretch_b, "");
-    BIND_PCTRL(ctls, bias_b, "");
-    BIND_PCTRL(ctls, stretch_a, "");
-    BIND_PCTRL(ctls, bias_a, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, bias);
-      SERIALIZE_PROPERTY(settings, save, *this, stretch);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override;
-
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 
 protected:
-  cv::Scalar bias_ = cv::Scalar::all(0);
-  cv::Scalar stretch_ = cv::Scalar::all(1);
+  cv::Scalar _bias = cv::Scalar::all(0);
+  cv::Scalar _stretch = cv::Scalar::all(1);
 };
 
 #endif /* __c_scale_channels_routine_h__ */

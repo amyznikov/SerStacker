@@ -9,27 +9,23 @@
 #include <core/proc/pose.h>
 
 
-
-void c_rotation_homography_test_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_rotation_homography_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, rotation, "rotation angles in [deg]");
-  BIND_PCTRL(ctls, focus, "focus distance in pixels");
-  BIND_PCTRL(ctls, center, "Camera principal point");
-  BIND_PCTRL(ctls, output_size, "output image size");
-  BIND_PCTRL(ctls, inverse_remap, "inverse_remap");
-
-
+  ctlbind(ctls, "rotation [deg]", ctx(&this_class::_rotation), "rotation angles in [deg]");
+  ctlbind(ctls, "focus", ctx(&this_class::_focus), "focus distance in pixels");
+  ctlbind(ctls, "center", ctx(&this_class::_center), "Camera principal point");
+  ctlbind(ctls, "output_size", ctx(&this_class::_output_size), "output image size");
+  ctlbind(ctls, "inverse_remap", ctx(&this_class::_inverse_remap), "inverse_remap");
 }
 
 bool c_rotation_homography_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, rotation);
-    SERIALIZE_PROPERTY(settings, save, *this, center);
-    SERIALIZE_PROPERTY(settings, save, *this, focus);
-    SERIALIZE_PROPERTY(settings, save, *this, output_size);
-    SERIALIZE_PROPERTY(settings, save, *this, inverse_remap);
-
+    SERIALIZE_OPTION(settings, save, *this, _rotation);
+    SERIALIZE_OPTION(settings, save, *this, _focus);
+    SERIALIZE_OPTION(settings, save, *this, _center);
+    SERIALIZE_OPTION(settings, save, *this, _output_size);
+    SERIALIZE_OPTION(settings, save, *this, _inverse_remap);
     return true;
   }
   return false;
@@ -44,13 +40,13 @@ bool c_rotation_homography_test_routine::process(cv::InputOutputArray image, cv:
       _output_size.empty() ? input_size : _output_size;
 
   const cv::Matx33f K(
-      _F, 0, _C(0),
-      0, _F,  _C(1),
+      _focus, 0, _center(0),
+      0, _focus,  _center(1),
       0, 0, 1
       );
 
   const cv::Matx33f H =
-      K * build_rotation(_A * (float) (CV_PI / 180)) * K.inv();
+      K * build_rotation(_rotation * (float) (CV_PI / 180)) * K.inv();
 
   const int remap_flags =
       _inverse_remap ? cv::INTER_LINEAR | cv::WARP_INVERSE_MAP :

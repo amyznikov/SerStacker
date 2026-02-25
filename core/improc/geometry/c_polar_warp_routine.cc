@@ -40,6 +40,25 @@ const c_enum_member* members_of<c_polar_warp_routine::INTERPOLATION_MODE>()
 //  return members;
 //}
 
+void c_polar_warp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "center", ctx, &this_class::center, &this_class::set_center, "");
+  ctlbind(ctls, "interpolation", ctx, &this_class::interpolation_mode, &this_class::set_interpolation_mode, "");
+}
+
+
+bool c_polar_warp_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_PROPERTY(settings, save, *this, center);
+    SERIALIZE_PROPERTY(settings, save, *this, interpolation_mode);
+    return true;
+  }
+  return false;
+}
+
+
+
 #if 1
 bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
@@ -49,26 +68,26 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         mask.empty() ? image.size() :
             mask.size();
 
-    if( rmap_.empty() || old_src_size_ != src_size ) {
-      old_src_size_ = src_size;
-      create_epipolar_remap(src_size, center_, rmap_);
+    if( _rmap.empty() || _old_src_size != src_size ) {
+      _old_src_size = src_size;
+      create_epipolar_remap(src_size, _center, _rmap);
     }
 
     if( !image.empty() ) {
-      cv::remap(image, image, rmap_, cv::noArray(),
-          interpolation_mode_,
+      cv::remap(image, image, _rmap, cv::noArray(),
+          _interpolation,
           cv::BORDER_CONSTANT);
     }
 
     if( mask.needed() ) {
       if( !mask.empty() ) {
-        cv::remap(mask, mask, rmap_, cv::noArray(),
-            interpolation_mode_,
+        cv::remap(mask, mask, _rmap, cv::noArray(),
+            _interpolation,
             cv::BORDER_CONSTANT);
       }
       else {
-        cv::remap(cv::Mat1b(src_size, 255), mask, rmap_, cv::noArray(),
-            interpolation_mode_,
+        cv::remap(cv::Mat1b(src_size, 255), mask, _rmap, cv::noArray(),
+            _interpolation,
             cv::BORDER_CONSTANT);
       }
       cv::compare(mask, 254, mask, cv::CMP_LT);
@@ -91,7 +110,7 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     cv::Mat1b msk;
     cv::warpPolar(cv::Mat1b(src_size, (uint8_t)255), msk,
         dsize_,
-        center_,
+        _center,
         maxRadius_,
         cv::INTER_LINEAR | warp_mode_);
     cv::compare(msk, 254, msk, cv::CMP_LT);
@@ -100,9 +119,9 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     if( !image.empty() ) {
       cv::warpPolar(image.getMat(), image,
           dsize_,
-          center_,
+          _center,
           maxRadius_,
-          interpolation_mode_ | warp_mode_);
+          _interpolation | warp_mode_);
       image.setTo(0, msk);
     }
 
@@ -113,7 +132,7 @@ bool c_polar_warp_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       else {
         cv::warpPolar(mask.getMat(), mask,
             dsize_,
-            center_,
+            _center,
             maxRadius_,
             cv::INTER_LINEAR | warp_mode_);
         cv::compare(mask, 254, mask, cv::CMP_GE);

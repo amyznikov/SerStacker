@@ -68,5 +68,11 @@ protected:
     static sptr create(bool enabled = false) { \
         return sptr(new this_class(enabled)); \
     } \
+    using ctlbind_context = c_ctlbind_context<c_data_frame_processor_routine, this_class>;  \
+    void getcontrols(c_control_list & ctls) override { \
+      this_class::getcontrols(ctls, ctlbind_context{}); \
+    }
+
+//this_class::getcontrols(ctls, c_ctlbind_context<this_class>{0}); \
 
 #endif /* __c_hdl_processor_routine_h__ */

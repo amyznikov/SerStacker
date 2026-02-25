@@ -834,7 +834,7 @@ void QProfileGraph::onCustomPlotMouseMove(QMouseEvent * e)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
-    Base("QProfileGraphSettings", parent)
+    Base(parent)
 {
   lineStyle_ctl =
       add_enum_combobox<QCPGraph::LineStyle>("Line Style:",
@@ -1025,10 +1025,10 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
   updateControls();
 }
 
-void QProfileGraphSettings::set_options(QProfileGraph * profileGraph)
-{
-  setProfileGraph(profileGraph);
-}
+//void QProfileGraphSettings::set_options(QProfileGraph * profileGraph)
+//{
+//  setProfileGraph(profileGraph);
+//}
 
 void QProfileGraphSettings::setProfileGraph(QProfileGraph * options)
 {

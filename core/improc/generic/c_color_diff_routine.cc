@@ -8,6 +8,19 @@
 #include "c_color_diff_routine.h"
 #include <core/proc/reduce_channels.h>
 
+
+void c_color_diff_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+}
+
+bool c_color_diff_routine::serialize(c_config_setting settings, bool save)
+{
+  if( base::serialize(settings, save) ) {
+    return true;
+  }
+  return false;
+}
+
 bool c_color_diff_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if ( image.channels() == 1 ) {

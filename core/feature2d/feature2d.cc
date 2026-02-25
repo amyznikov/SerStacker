@@ -160,7 +160,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                 obj->_options.detector.orb;
 
         obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-        obj->_options.matcher.flann.index.type = FlannIndex_lsh;
+        obj->_options.matcher.flann.index_type = FlannIndex_lsh;
         // FIXME: opts.WTA_K > 2  with flann ?
         obj->_options.matcher.flann.distance_type = cvflann::FLANN_DIST_DNAMMING;
 
@@ -174,7 +174,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                 obj->_options.detector.brisk;
 
         obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-        obj->_options.matcher.flann.index.type = FlannIndex_kdtree;
+        obj->_options.matcher.flann.index_type = FlannIndex_kdtree;
         break;
        }
 
@@ -185,7 +185,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                 obj->_options.detector.kaze;
 
         obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-        obj->_options.matcher.flann.index.type = FlannIndex_kdtree;
+        obj->_options.matcher.flann.index_type = FlannIndex_kdtree;
         break;
        }
 
@@ -202,7 +202,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
             break;
           default:
             obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-            obj->_options.matcher.flann.index.type = FlannIndex_kdtree;
+            obj->_options.matcher.flann.index_type = FlannIndex_kdtree;
             break;
         }
         break;
@@ -216,7 +216,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                obj->_options.detector.sift;
 
        obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-       obj->_options.matcher.flann.index.type = FlannIndex_kdtree;
+       obj->_options.matcher.flann.index_type = FlannIndex_kdtree;
        break;
       }
       #endif
@@ -229,7 +229,7 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                 obj->_options.detector.surf;
 
         obj->_options.matcher.type = FEATURE2D_MATCHER_FLANN;
-        obj->_options.matcher.flann.index.type = FlannIndex_kdtree;
+        obj->_options.matcher.flann.index_type = FlannIndex_kdtree;
         break;
       }
       #endif

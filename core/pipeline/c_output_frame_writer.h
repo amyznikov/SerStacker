@@ -14,6 +14,7 @@
 #include <core/io/save_image.h>
 #include <core/proc/pixtype.h>
 #include <core/improc/c_image_processor.h>
+#include <core/ctrlbind/ctrlbind.h>
 
 struct c_output_frame_writer_options
 {
@@ -81,12 +82,12 @@ protected:
   int current_input_sequence_index = 0;
   int64_t pts = 0;
 
-  c_image_processor::sptr output_image_processor_;
-  PIXEL_DEPTH output_pixel_depth_ = PIXEL_DEPTH_NO_CHANGE;
+  c_image_processor::sptr _output_image_processor;
+  PIXEL_DEPTH _output_pixel_depth = PIXEL_DEPTH_NO_CHANGE;
 
-  std::string ffmpeg_opts_;
+  std::string _ffmpeg_opts;
 
-  static std::string default_ffmpeg_opts_;
+  static std::string _default_ffmpeg_opts;
 };
 
 
@@ -113,8 +114,8 @@ public:
   void flush();
 
 protected:
-  std::string filename_;
-  FILE * fp_ = nullptr;
+  std::string _filename;
+  FILE * _fp = nullptr;
 };
 
 bool load_settings(c_config_setting settings,
@@ -122,5 +123,18 @@ bool load_settings(c_config_setting settings,
 
 bool save_settings(c_config_setting settings,
     const c_output_frame_writer_options & opts);
+
+
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_output_frame_writer_options> & ctx)
+{
+  using S = c_output_frame_writer_options;
+  ctlbind_browse_for_file(ctls, "output_filename", ctx(&S::output_filename), "");
+  ctlbind(ctls, "ffmpeg_opts", ctx(&S::ffmpeg_opts), "");
+  ctlbind(ctls, "output_image_processor", ctx(&S::output_image_processor), "");
+  ctlbind(ctls, "output_pixel_depth", ctx(&S::output_pixel_depth), "");
+  ctlbind(ctls, "save_frame_mapping", ctx(&S::save_frame_mapping), "");
+}
 
 #endif /* __c_output_frame_writer_h__ */

@@ -70,7 +70,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
 
   cv::Ptr<cv::flann::IndexParams> index_args;
 
-  switch ( options.index.type ) {
+  switch ( options.index_type ) {
 
   case FlannIndex_linear : {
     index_args.reset(new cv::flann::LinearIndexParams());
@@ -78,21 +78,13 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   }
 
   case FlannIndex_kdtree : {
-
-    const c_flann_kdtree_index_options & opts =
-        options.index.kdtree;
-
-    index_args.reset(new cv::flann::KDTreeIndexParams(
-        opts.trees));
-
+    const c_flann_kdtree_index_options & opts = options.kdtree;
+    index_args.reset(new cv::flann::KDTreeIndexParams(opts.trees));
     break;
   }
 
   case FlannIndex_kmeans : {
-
-    const c_flann_kmeans_index_options & opts =
-        options.index.kmeans;
-
+    const c_flann_kmeans_index_options & opts = options.kmeans;
     index_args.reset(new cv::flann::KMeansIndexParams(
         opts.branching,
         opts.iterations,
@@ -103,9 +95,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   }
 
   case FlannIndex_composite : {
-
-    const c_flann_composite_index_options & opts =
-        options.index.composite;
+    const c_flann_composite_index_options & opts = options.composite;
 
     index_args.reset(new cv::flann::CompositeIndexParams(
         opts.trees,
@@ -118,8 +108,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   }
 
   case FlannIndex_hierarchical : {
-    const c_flann_hierarchical_index_options & opts =
-        options.index.hierarchical;
+    const c_flann_hierarchical_index_options & opts = options.hierarchical;
 
     index_args.reset(new cv::flann::HierarchicalClusteringIndexParams(
         opts.branching,
@@ -131,9 +120,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   }
 
   case FlannIndex_lsh : {
-    const c_flann_lsh_index_options & opts =
-        options.index.lsh;
-
+    const c_flann_lsh_index_options & opts = options.lsh;
     index_args.reset(new cv::flann::LshIndexParams(
         opts.table_number,
         opts.key_size,
@@ -143,10 +130,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   }
 
   case FlannIndex_autotuned : {
-
-    const c_flann_autotuned_index_options & opts =
-        options.index.autotuned;
-
+    const c_flann_autotuned_index_options & opts = options.autotuned;
     index_args.reset(new cv::flann::AutotunedIndexParams(
         opts.target_precision,
         opts.build_weight,
@@ -159,7 +143,7 @@ c_flann_based_feature2d_matcher::ptr create_sparse_feature_matcher(
   default :
     CF_ERROR("ERROR: "
         "Unknown or not suppirted flann index type requesterd: '%d'",
-        options.index.type);
+        options.index_type);
 
     return nullptr;
   }

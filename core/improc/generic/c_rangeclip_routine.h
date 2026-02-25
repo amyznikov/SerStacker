@@ -17,52 +17,16 @@ class c_rangeclip_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_rangeclip_routine,
-      "rangeclip", "rangeclip");
+      "rangeclip", "Apply clip_range(min, max) for image");
 
-  void set_min(double v)
-  {
-    min_ = v;
-  }
 
-  double min() const
-  {
-    return min_;
-  }
-
-  void set_max(double v)
-  {
-    max_ = v;
-  }
-
-  double max() const
-  {
-    return max_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, min, "");
-    BIND_PCTRL(ctls, max, "");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, min);
-      SERIALIZE_PROPERTY(settings, save, *this, max);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    return clip_range(image.getMatRef(), min_, max_/*, mask.getMat()*/);
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double min_ = 0.0;
-  double max_ = 1.0;
+  double _min = 0.0;
+  double _max = 1.0;
 };
 
 #endif /* __c_rangeclip_routine_h__ */

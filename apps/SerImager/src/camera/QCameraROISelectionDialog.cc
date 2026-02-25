@@ -69,7 +69,7 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
 
   /////////////////////////////////////////////////////////////////////////
   vboxl->addWidget(roiOptions_ctl =
-      new QSettingsWidget("", this));
+      new QSettingsWidget(this));
 
   roiSelection_ctl =
       roiOptions_ctl->add_combobox<QComboBox>("ROI:", "Select ROI to edit ",

@@ -8,25 +8,19 @@
 #include "QGraphicsLineShapeSettings.h"
 
 QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(QWidget * parent) :
-  ThisClass("QGraphicsLineShapeSettings", parent)
-{
-}
-
-QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QWidget * parent) :
-    Base(prefix, parent)
+    Base(parent)
 {
   lockP1_ctl =
       add_checkbox("Lock P1",
           "",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setLockP1(checked);
+            if ( _opts ) {
+              _opts->setLockP1(checked);
             }
-            save_parameter(PREFIX, "lockP1", shape_->lockP1());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->lockP1();
+            if ( _opts ) {
+              * checked = _opts->lockP1();
               return true;
             }
             return false;
@@ -36,14 +30,13 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
       add_checkbox("Lock P2",
           "",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setLockP2(checked);
+            if ( _opts ) {
+              _opts->setLockP2(checked);
             }
-            save_parameter(PREFIX, "lockP2", shape_->lockP2());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->lockP2();
+            if ( _opts ) {
+              * checked = _opts->lockP2();
               return true;
             }
             return false;
@@ -54,43 +47,45 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
       add_checkbox("Snap To Pixels",
           "",
           [this](bool checked) {
-            if ( shape_ ) {
-              shape_->setSnapToPixelGrid(checked);
+            if ( _opts ) {
+              _opts->setSnapToPixelGrid(checked);
             }
-            save_parameter(PREFIX, "snapToPixelGrid", shape_->snapToPixelGrid());
           },
           [this](bool * checked) {
-            if ( shape_ ) {
-              * checked = shape_->snapToPixelGrid();
+            if ( _opts ) {
+              * checked = _opts->snapToPixelGrid();
               return true;
             }
             return false;
           });
 
   penColor_ctl =
-      add_widget<QColorPickerButton>(
-          "Pen Color");
-
-  connect(penColor_ctl, &QColorPickerButton::colorSelected,
-      [this]() {
-        if ( shape_ ) {
-          shape_->setPenColor(penColor_ctl->color());
-          save_parameter(PREFIX, "penColor", shape_->penColor());
-        }
-      });
+      add_color_picker_button("Pen Color",
+          "",
+          [this](const QColor&v) {
+            if ( _opts ) {
+              _opts->setPenColor(v);
+            }
+          },
+          [this](QColor * v) {
+            if ( _opts ) {
+              * v =  _opts->penColor();
+              return true;
+            }
+            return false;
+          });
 
   penWidth_ctl =
       add_spinbox("Pen Width:",
           "",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setPenWidth(v);
-              save_parameter(PREFIX, "penWidth", shape_->penWidth());
+            if ( _opts ) {
+              _opts->setPenWidth(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->penWidth();
+            if ( _opts ) {
+              *v = _opts->penWidth();
               return true;
             }
             return false;
@@ -100,14 +95,13 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
       add_spinbox("Arrow Size:",
           "",
           [this](int v) {
-            if ( shape_ ) {
-              shape_->setArrowSize(v);
-              save_parameter(PREFIX, "arrowSize", shape_->arrowSize());
+            if ( _opts ) {
+              _opts->setArrowSize(v);
             }
           },
           [this](int * v) {
-            if ( shape_ ) {
-              *v = shape_->arrowSize();
+            if ( _opts ) {
+              *v = _opts->arrowSize();
               return true;
             }
             return false;
@@ -117,117 +111,56 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(const QString &prefix, QW
   updateControls();
 }
 
-void QGraphicsLineShapeSettings::setShape(QGraphicsLineShape * shape)
+void QGraphicsLineShapeSettings::onload(const QSettings & settings, const QString & prefix)
 {
-  shape_ = shape;
-  updateControls();
-}
+  if ( _opts ) {
 
-QGraphicsLineShape * QGraphicsLineShapeSettings::shape() const
-{
-  return shape_;
-}
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsLineShapeSettings" : prefix;
 
-void QGraphicsLineShapeSettings::onupdatecontrols()
-{
-  if ( !shape_ ) {
-    setEnabled(false);
-  }
-  else {
+    Base::onload(settings, prefix);
 
-    penColor_ctl->setColor(shape_->penColor());
-
-    Base::onupdatecontrols();
-
-    setEnabled(true);
-  }
-}
-
-void QGraphicsLineShapeSettings::onload(QSettings & settings)
-{
-  Base::onload(settings);
-
-  if ( shape_ ) {
-
-    bool lockP1 = shape_->lockP1();
+    bool lockP1 = _opts->lockP1();
     if( load_parameter(settings, PREFIX, "lockP1", &lockP1) ) {
-      shape_->setLockP1(lockP1);
+      _opts->setLockP1(lockP1);
     }
 
-    bool lockP2 = shape_->lockP2();
+    bool lockP2 = _opts->lockP2();
     if( load_parameter(settings, PREFIX, "lockP2", &lockP2) ) {
-      shape_->setLockP2(lockP2);
+      _opts->setLockP2(lockP2);
     }
 
-    int penWidth = shape_->penWidth();
+    int penWidth = _opts->penWidth();
     if ( load_parameter(settings, PREFIX, "penWidth", &penWidth) ) {
-      shape_->setPenWidth(penWidth);
+      _opts->setPenWidth(penWidth);
     }
 
-    double arrowSize = shape_->arrowSize();
+    double arrowSize = _opts->arrowSize();
     if ( load_parameter(settings, PREFIX, "arrowSize", &arrowSize) ) {
-      shape_->setArrowSize(arrowSize);
+      _opts->setArrowSize(arrowSize);
     }
 
-    QColor penColor = shape_->penColor();
+    QColor penColor = _opts->penColor();
     if ( load_parameter(settings, PREFIX, "penColor", &penColor) ) {
-      shape_->setPenColor(penColor);
+      _opts->setPenColor(penColor);
     }
+  }
+
+}
+
+void QGraphicsLineShapeSettings::onsave(QSettings & settings, const QString & prefix)
+{
+  if ( _opts ) {
+
+    const QString PREFIX = prefix.isEmpty() ? "QGraphicsLineShapeSettings" : prefix;
+
+    Base::onsave(settings, PREFIX);
+
+    save_parameter(settings, PREFIX, "lockP1", _opts->lockP1());
+    save_parameter(settings, PREFIX, "lockP2", _opts->lockP2());
+    save_parameter(settings, PREFIX, "penWidth", _opts->penWidth());
+    save_parameter(settings, PREFIX, "arrowSize", _opts->arrowSize());
+    save_parameter(settings, PREFIX, "penColor", _opts->penColor());
   }
 }
 
 
-QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(QWidget * parent) :
-    ThisClass("Shape Options", parent)
-{
-}
-
-QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(const QString & title, QWidget * parent) :
-    ThisClass("Shape Options", nullptr, parent)
-{
-}
-
-QGraphicsLineShapeSettingsDialogBox::QGraphicsLineShapeSettingsDialogBox(const QString & title, QGraphicsLineShape * shape, QWidget * parent) :
-    Base(parent)
-{
-  setMinimumWidth(256);
-  setWindowTitle(title);
-
-  QVBoxLayout * vbox =
-      new QVBoxLayout(this);
-
-  vbox->addWidget(settigs_ctl =
-      new QGraphicsLineShapeSettings(this));
-
-  settigs_ctl->setShape(shape);
-
-  loadParameters();
-}
-
-
-void QGraphicsLineShapeSettingsDialogBox::setShape(QGraphicsLineShape * shape)
-{
-  settigs_ctl->setShape(shape);
-}
-
-QGraphicsLineShape * QGraphicsLineShapeSettingsDialogBox::shape() const
-{
-  return settigs_ctl->shape();
-}
-
-void QGraphicsLineShapeSettingsDialogBox::loadParameters()
-{
-  return settigs_ctl->loadParameters();
-}
-
-void QGraphicsLineShapeSettingsDialogBox::showEvent(QShowEvent * e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QGraphicsLineShapeSettingsDialogBox::hideEvent(QHideEvent * e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}

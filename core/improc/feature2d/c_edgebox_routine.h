@@ -36,53 +36,53 @@ public:
 
   void set_gradient_type(GradientType v)
   {
-    gradient_type_ = v;
+    _gradient_type = v;
   }
 
   GradientType gradient_type() const
   {
-    return gradient_type_;
+    return _gradient_type;
   }
 
   void set_gradient_pscale(int v)
   {
-    gradient_pscale_ = v;
+    _gradient_pscale = v;
   }
 
   int gradient_pscale() const
   {
-    return gradient_pscale_;
+    return _gradient_pscale;
   }
 
   void set_gradient_threshold(THRESHOLD_TYPE v)
   {
-    gradient_threshold_ = v;
+    _gradient_threshold = v;
   }
 
   THRESHOLD_TYPE gradient_threshold() const
   {
-    return gradient_threshold_;
+    return _gradient_threshold;
   }
 
   void set_model(const std::string & v)
   {
-    model_ = v;
-    dollar_.reset();
+    _model = v;
+    _dollar.reset();
   }
 
   const std::string& model() const
   {
-    return model_;
+    return _model;
   }
 
   void set_display(DisplayType v)
   {
-    display_ = v;
+    _display = v;
   }
 
   DisplayType display() const
   {
-    return display_;
+    return _display;
   }
 
   // Options for cv::ximgproc::EdgeBoxes
@@ -91,228 +91,186 @@ public:
    */
   float Alpha() const
   {
-    return edgeboxes_->getAlpha();
+    return _edgeboxes->getAlpha();
   }
 
   /** @brief Sets the step size of sliding window search.
    */
   void set_Alpha(float value)
   {
-    edgeboxes_->setAlpha(value);
+    _edgeboxes->setAlpha(value);
   }
 
   /** @brief Returns the nms threshold for object proposals.
    */
   float Beta() const
   {
-    return edgeboxes_->getBeta();
+    return _edgeboxes->getBeta();
   }
 
   /** @brief Sets the nms threshold for object proposals.
    */
   void set_Beta(float value)
   {
-    edgeboxes_->setBeta(value);
+    _edgeboxes->setBeta(value);
   }
 
   /** @brief Returns adaptation rate for nms threshold.
    */
   float Eta() const
   {
-    return edgeboxes_->getEta();
+    return _edgeboxes->getEta();
   }
 
   /** @brief Sets the adaptation rate for nms threshold.
    */
   void set_Eta(float value)
   {
-    edgeboxes_->setEta(value);
+    _edgeboxes->setEta(value);
   }
 
   /** @brief Returns the min score of boxes to detect.
    */
   float MinScore() const
   {
-    return edgeboxes_->getMinScore();
+    return _edgeboxes->getMinScore();
   }
 
   /** @brief Sets the min score of boxes to detect.
    */
   void set_MinScore(float value)
   {
-    edgeboxes_->setMinScore(value);
+    _edgeboxes->setMinScore(value);
   }
 
   /** @brief Returns the max number of boxes to detect.
    */
   int MaxBoxes() const
   {
-    return edgeboxes_->getMaxBoxes();
+    return _edgeboxes->getMaxBoxes();
   }
   /** @brief Sets max number of boxes to detect.
    */
   void set_MaxBoxes(int value)
   {
-    edgeboxes_->setMaxBoxes(value);
+    _edgeboxes->setMaxBoxes(value);
   }
 
   /** @brief Returns the edge min magnitude.
    */
   float EdgeMinMag() const
   {
-    return edgeboxes_->getEdgeMinMag();
+    return _edgeboxes->getEdgeMinMag();
   }
 
   /** @brief Sets the edge min magnitude.
    */
   void set_EdgeMinMag(float value)
   {
-    edgeboxes_->setEdgeMinMag(value);
+    _edgeboxes->setEdgeMinMag(value);
   }
 
   /** @brief Returns the edge merge threshold.
    */
   float EdgeMergeThr() const
   {
-    return edgeboxes_->getEdgeMergeThr();
+    return _edgeboxes->getEdgeMergeThr();
   }
 
   /** @brief Sets the edge merge threshold.
    */
   void set_EdgeMergeThr(float value)
   {
-    edgeboxes_->setEdgeMergeThr(value);
+    _edgeboxes->setEdgeMergeThr(value);
   }
 
   /** @brief Returns the cluster min magnitude.
    */
   float ClusterMinMag() const
   {
-    return edgeboxes_->getClusterMinMag();
+    return _edgeboxes->getClusterMinMag();
   }
 
   /** @brief Sets the cluster min magnitude.
    */
   void set_ClusterMinMag(float value)
   {
-    edgeboxes_->setClusterMinMag(value);
+    _edgeboxes->setClusterMinMag(value);
   }
 
   /** @brief Returns the max aspect ratio of boxes.
    */
   float MaxAspectRatio() const
   {
-    return edgeboxes_->getMaxAspectRatio();
+    return _edgeboxes->getMaxAspectRatio();
   }
 
   /** @brief Sets the max aspect ratio of boxes.
    */
   void set_MaxAspectRatio(float value)
   {
-    edgeboxes_->setMaxAspectRatio(value);
+    _edgeboxes->setMaxAspectRatio(value);
   }
 
   /** @brief Returns the minimum area of boxes.
    */
   float MinBoxArea() const
   {
-    return edgeboxes_->getMinBoxArea();
+    return _edgeboxes->getMinBoxArea();
   }
 
   /** @brief Sets the minimum area of boxes.
    */
   void set_MinBoxArea(float value)
   {
-    edgeboxes_->setMinBoxArea(value);
+    _edgeboxes->setMinBoxArea(value);
   }
 
   /** @brief Returns the affinity sensitivity.
    */
   float Gamma() const
   {
-    return edgeboxes_->getGamma();
+    return _edgeboxes->getGamma();
   }
 
   /** @brief Sets the affinity sensitivity
    */
   void set_Gamma(float value)
   {
-    edgeboxes_->setGamma(value);
+    _edgeboxes->setGamma(value);
   }
 
   /** @brief Returns the scale sensitivity.
    */
   float Kappa() const
   {
-    return edgeboxes_->getKappa();
+    return _edgeboxes->getKappa();
   }
 
   /** @brief Sets the scale sensitivity.
    */
   void set_Kappa(float value)
   {
-    edgeboxes_->setKappa(value);
+    _edgeboxes->setKappa(value);
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final
-  {
-    BIND_PCTRL(ctls, gradient_type, "Method for computing image gradients");
-    BIND_PCTRL(ctls, gradient_pscale, "Gradient pyramid scale");
-    BIND_PCTRL(ctls, gradient_threshold, "Gradient threshold method");
-    BIND_PCTRL(ctls, display, "Display image");
-
-    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, model, "model",
-        "Model file for createStructuredEdgeDetection()\n"
-            "https://github.com/opencv/opencv_extra/blob/master/testdata/cv/ximgproc/model.yml.gz\n");
-
-    BIND_CTRL_BEGIN_GROUP(ctls, "EdgeBoxes", "Options for cv::ximgproc::EdgeBoxes");
-      BIND_PCTRL(ctls, MaxBoxes, "max number of boxes to detect");
-      BIND_PCTRL(ctls, EdgeMinMag, "the edge min magnitude");
-      BIND_PCTRL(ctls, EdgeMergeThr, "Sets the edge merge threshold");
-      BIND_PCTRL(ctls, ClusterMinMag, "the cluster min magnitude");
-      BIND_PCTRL(ctls, MaxAspectRatio, "the max aspect ratio of boxes");
-      BIND_PCTRL(ctls, MinBoxArea, "the minimum area of boxes");
-      BIND_PCTRL(ctls, Gamma, "the affinity sensitivity");
-      BIND_PCTRL(ctls, Kappa, "the scale sensitivity");
-    BIND_CTRL_END_GROUP(ctls);
-  }
-
-  bool serialize(c_config_setting settings, bool save) final
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, gradient_type);
-      SERIALIZE_PROPERTY(settings, save, *this, gradient_pscale);
-      SERIALIZE_PROPERTY(settings, save, *this, gradient_threshold);
-      SERIALIZE_PROPERTY(settings, save, *this, model);
-      SERIALIZE_PROPERTY(settings, save, *this, display);
-      SERIALIZE_PROPERTY(settings, save, *this, MaxBoxes);
-      SERIALIZE_PROPERTY(settings, save, *this, EdgeMinMag);
-      SERIALIZE_PROPERTY(settings, save, *this, EdgeMergeThr);
-      SERIALIZE_PROPERTY(settings, save, *this, ClusterMinMag);
-      SERIALIZE_PROPERTY(settings, save, *this, MaxAspectRatio);
-      SERIALIZE_PROPERTY(settings, save, *this, MinBoxArea);
-      SERIALIZE_PROPERTY(settings, save, *this, Gamma);
-      SERIALIZE_PROPERTY(settings, save, *this, Kappa);
-      return true;
-    }
-    return false;
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string model_;
-  GradientType gradient_type_ = GradientMagnitude;
-  DisplayType display_ = DisplayEdgeMap;
-  THRESHOLD_TYPE gradient_threshold_ = THRESHOLD_TYPE_VALUE;
-  int gradient_pscale_ = 0;
-  cv::Ptr<cv::ximgproc::StructuredEdgeDetection> dollar_;
-  cv::Ptr<cv::ximgproc::EdgeBoxes> edgeboxes_ = cv::ximgproc::createEdgeBoxes();
-  cv::Mat edges_;
-  cv::Mat orientations_;
-  cv::Mat edgeNms_;
-  std::vector<cv::Rect> boxes_;
-  std::vector<float> scores_;
+  std::string _model;
+  GradientType _gradient_type = GradientMagnitude;
+  DisplayType _display = DisplayEdgeMap;
+  THRESHOLD_TYPE _gradient_threshold = THRESHOLD_TYPE_VALUE;
+  int _gradient_pscale = 0;
+  cv::Ptr<cv::ximgproc::StructuredEdgeDetection> _dollar;
+  cv::Ptr<cv::ximgproc::EdgeBoxes> _edgeboxes = cv::ximgproc::createEdgeBoxes();
+  cv::Mat _edges;
+  cv::Mat _orientations;
+  cv::Mat _edgeNms;
+  std::vector<cv::Rect> _boxes;
+  std::vector<float> _scores;
 
 };
 

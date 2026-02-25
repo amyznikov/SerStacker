@@ -15,7 +15,7 @@
 namespace serimager {
 
 QCameraControlsWidget::QCameraControlsWidget(QWidget * parent) :
-    Base("QCameraControlsWidget", parent)
+    Base(parent)
 {
 }
 

@@ -140,7 +140,7 @@ public:
 
   QDataAnnotationWidget(QWidget * parent = nullptr);
 
-  void set_options(OptionsType * options) final;
+  void setOpts(QPointSelection3DAnnotationMode * options) final;
 
   void set_data_annotation_labels(const c_data_annotation_labels *v);
   const c_data_annotation_labels* data_annotation_labels() const;
@@ -152,7 +152,6 @@ Q_SIGNALS:
   void colormapVisibilityChanged(bool visible);
 
 protected:
-  void onupdatecontrols() final;
   void populateColormaps();
   void onCurrentColormapMapChanged(int cursel);
   void onCurrentLabelSelectionChanged(int cursel);
@@ -180,38 +179,34 @@ public:
   typedef QSettingsDialogBoxTemplate<QDataAnnotationWidget> Base;
 
   QDataAnnotationsDialogBox(QWidget * parent = nullptr) :
-    Base(parent)
+    Base("3D Data Annotation", parent)
   {
-    setWindowTitle("3D Data Annotation");
-
-    connect(settings_ctl, &QDataAnnotationWidget::colormapVisibilityChanged,
+    QObject::connect(_settings, &QDataAnnotationWidget::colormapVisibilityChanged,
         this, &ThisClass::colormapVisibilityChanged);
   }
 
   void set_data_annotation_labels(const c_data_annotation_labels *v)
   {
-    settings_ctl->set_data_annotation_labels(v);
+    _settings->set_data_annotation_labels(v);
   }
 
   const c_data_annotation_labels* data_annotation_labels() const
   {
-    return settings_ctl->data_annotation_labels();
+    return _settings->data_annotation_labels();
   }
 
   void setInputSourceView(QInputSourceView * v)
   {
-    settings_ctl->setInputSourceView(v);
+    _settings->setInputSourceView(v);
   }
 
   QInputSourceView * inputSourceView() const
   {
-    return settings_ctl->inputSourceView();
+    return _settings->inputSourceView();
   }
 
 Q_SIGNALS:
   void colormapVisibilityChanged(bool visible);
-
-protected:
 };
 
 

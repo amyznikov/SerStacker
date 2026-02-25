@@ -81,77 +81,31 @@ static void wadd(cv::InputOutputArray image, cv::InputArray blured_image, const 
   }
 }
 
-void c_remove_sharp_artifacts_routine::set_erode_radius(const cv::Size & v)
+void c_remove_sharp_artifacts_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  erode_radius_ = v;
+   ctlbind(ctls, "erode_radius", ctx(&this_class::_erode_radius), "SE radius for erode");
+   ctlbind(ctls, "mask_blur_radius", ctx(&this_class::_mask_blur_radius), "GaussianBlur sigma");
+   ctlbind(ctls, "edge_blur_radius", ctx(&this_class::_edge_blur_radius), "GaussianBlur sigma");
+   ctlbind(ctls, "fill_holes", ctx(&this_class::_fill_holes), "Fill holes inide mask (jovian satellite shadows etc)");
+   ctlbind(ctls, "noise_scale", ctx(&this_class::_noise_scale), "noise scale");
+   ctlbind(ctls, "show_mask", ctx(&this_class::_show_mask), "show objects mask instead of processing");
+   ctlbind(ctls, "show_blured_image", ctx(&this_class::_show_blured_image), "show blured image instead of processing");
 }
 
-const cv::Size & c_remove_sharp_artifacts_routine::erode_radius() const
+bool c_remove_sharp_artifacts_routine::serialize(c_config_setting settings, bool save)
 {
-  return erode_radius_;
+  if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _erode_radius);
+    SERIALIZE_OPTION(settings, save, *this, _mask_blur_radius);
+    SERIALIZE_OPTION(settings, save, *this, _edge_blur_radius);
+    SERIALIZE_OPTION(settings, save, *this, _fill_holes);
+    SERIALIZE_OPTION(settings, save, *this, _noise_scale);
+    SERIALIZE_OPTION(settings, save, *this, _show_mask);
+    SERIALIZE_OPTION(settings, save, *this, _show_blured_image);
+    return true;
+  }
+  return false;
 }
-
-
-void c_remove_sharp_artifacts_routine::set_mask_blur_radius(double v)
-{
-  mask_blur_radius_ = v;
-}
-
-double c_remove_sharp_artifacts_routine::mask_blur_radius() const
-{
-  return mask_blur_radius_;
-}
-
-void c_remove_sharp_artifacts_routine::set_edge_blur_radius(double v)
-{
-  edge_blur_radius_ = v;
-}
-
-double c_remove_sharp_artifacts_routine::edge_blur_radius() const
-{
-  return edge_blur_radius_;
-}
-
-void c_remove_sharp_artifacts_routine::set_fill_holes(bool v)
-{
-  fill_holes_ = v;
-}
-
-bool c_remove_sharp_artifacts_routine::fill_holes() const
-{
-  return fill_holes_;
-}
-
-void c_remove_sharp_artifacts_routine::set_noise_scale(double v)
-{
-  noise_scale_ = v;
-}
-
-double c_remove_sharp_artifacts_routine::noise_scale() const
-{
-  return noise_scale_;
-}
-
-void c_remove_sharp_artifacts_routine::set_show_mask(bool v)
-{
-  show_mask_ = v;
-}
-
-bool c_remove_sharp_artifacts_routine::show_mask() const
-{
-  return show_mask_;
-}
-
-void c_remove_sharp_artifacts_routine::set_show_blured_image(bool v)
-{
-  show_blured_image_ = v;
-}
-
-bool c_remove_sharp_artifacts_routine::show_blured_image() const
-{
-  return show_blured_image_;
-}
-
 
 bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
@@ -190,7 +144,7 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
 
       cv::Mat w;
 
-      cv::compare(image, noise_scale_ * noise_value, w, cv::CMP_GT);
+      cv::compare(image, _noise_scale * noise_value, w, cv::CMP_GT);
       if( cn > 1 ) {
         reduce_color_channels(w, cv::REDUCE_MAX);
       }
@@ -198,23 +152,23 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
       component_mask = w;
     }
 
-    if( fill_holes_ ) {
+    if( _fill_holes ) {
       geo_fill_holes(component_mask, component_mask, 8);
     }
 
-    if ( erode_radius_.width > 0 || erode_radius_.height > 0 ) {
-      cv::Mat1b se(2 * erode_radius_.height + 1, 2 * erode_radius_.width + 1, 255);
+    if ( _erode_radius.width > 0 || _erode_radius.height > 0 ) {
+      cv::Mat1b se(2 * _erode_radius.height + 1, 2 * _erode_radius.width + 1, 255);
       cv::erode(component_mask, component_mask, se);
     }
 
-    if ( mask_blur_radius_ > 0 ) {
+    if ( _mask_blur_radius > 0 ) {
       cv::GaussianBlur(component_mask, component_mask, cv::Size(),
-          mask_blur_radius_, mask_blur_radius_,
+          _mask_blur_radius, _mask_blur_radius,
           cv::BORDER_DEFAULT);
     }
 
 
-    if ( show_mask_ ) {
+    if ( _show_mask ) {
       component_mask.convertTo(image, CV_32F, 1. / 255);
     }
     else {
@@ -222,12 +176,12 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
 
       cv::medianBlur(image, blured_image, 5);
 
-      if( edge_blur_radius_ > 0 ) {
+      if( _edge_blur_radius > 0 ) {
         cv::GaussianBlur(blured_image, blured_image, cv::Size(),
-            edge_blur_radius_, edge_blur_radius_);
+            _edge_blur_radius, _edge_blur_radius);
       }
 
-      if ( show_blured_image_ ) {
+      if ( _show_blured_image ) {
         blured_image.copyTo(image);
       }
       else {

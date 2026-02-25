@@ -111,16 +111,16 @@ void clearColorspace(cv4l_fmt & fmt)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 QV4L2CameraExtraSettingsWidget::QV4L2CameraExtraSettingsWidget(const QV4L2Camera::sptr & camera, QWidget * parent) :
-    Base("QV4L2CameraExtraSettings", parent),
-    camera_(camera)
+    Base(parent),
+    _camera(camera)
 {
   form->setLabelAlignment(Qt::AlignLeft);
 
-  if( camera_ ) {
-    if( camera_->state() >= QImagingCamera::State_connected ) {
+  if( _camera ) {
+    if( _camera->state() >= QImagingCamera::State_connected ) {
       createControls();
     }
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged);
   }
 
@@ -129,15 +129,15 @@ QV4L2CameraExtraSettingsWidget::QV4L2CameraExtraSettingsWidget(const QV4L2Camera
 
 QV4L2CameraExtraSettingsWidget::~QV4L2CameraExtraSettingsWidget()
 {
-//  if( camera_ ) {
-//    disconnect(camera_.get(), nullptr,
-//        this, nullptr);
-//  }
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
+        this, nullptr);
+  }
 }
 
 void QV4L2CameraExtraSettingsWidget::onCameraStateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState)
 {
-  if( camera_ ) {
+  if( _camera ) {
     if( oldSate == QImagingCamera::State_connecting && newState == QImagingCamera::State_connected ) {
       createControls();
     }
@@ -146,18 +146,21 @@ void QV4L2CameraExtraSettingsWidget::onCameraStateChanged(QImagingCamera::State 
   updateControls();
 }
 
-void QV4L2CameraExtraSettingsWidget::onload(QSettings & settings)
-{
-
-}
-
-void QV4L2CameraExtraSettingsWidget::onupdatecontrols()
-{
-}
-
 QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l2_query_ext_ctrl & c)
 {
   // c.flags & V4L2_CTRL_FLAG_UPDATE;
+
+  static const auto isConnectedState =
+      [](const QV4L2Camera::sptr & camera) {
+        const QImagingCamera::State state = camera ? camera->state() : QImagingCamera::State_disconnected;
+        return state == QImagingCamera::State_connected || state == QImagingCamera::State_started;
+  };
+
+//  static const auto isConnected =
+//      [](const QV4L2Camera::sptr & camera) {
+//        const QImagingCamera::State state = camera ? camera->state() : QImagingCamera::State_disconnected;
+//        return state != QImagingCamera::State_disconnected && state != QImagingCamera::State_disconnect;
+//  };
 
   switch (c.type) {
     case V4L2_CTRL_TYPE_INTEGER: {
@@ -166,8 +169,8 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_spinbox(c.name,
               "",
               [this, c](int value) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, value);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, value);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s=%u) fails: %d (%s) ", c.name, value,
                         status, strerror(status));
@@ -175,15 +178,14 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                 }
               },
               [this, c](int * value) -> bool {
-                if ( camera_ ) {
-                  int status = camera_->g_ext_ctrl(c.id, value);
-                  if ( status ) {
-                    CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
-                        status, strerror(status));
-                    return false;
+                if ( isConnectedState(_camera) ) {
+                  const int status = _camera->g_ext_ctrl(c.id, value);
+                  if ( !status ) {
+                    return true;
                   }
+                  CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name, status, strerror(status));
                 }
-                return true;
+                return false;
               });
 
       ctrl->setFocusPolicy(Qt::StrongFocus);
@@ -208,8 +210,8 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_checkbox(c.name,
               "",
               [this, c](bool checked) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, checked);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, checked);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s=%u) fails: %d (%s) ", c.name, checked,
                         status, strerror(status));
@@ -217,17 +219,15 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                 }
               },
               [this, c](bool * checked) -> bool {
-                if ( camera_ ) {
-                  int status = camera_->g_ext_ctrl(c.id, checked);
-                  if ( status ) {
-                    CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
-                        status, strerror(status));
-                    return false;
+                if ( isConnectedState(_camera) ) {
+                  const int status = _camera->g_ext_ctrl(c.id, checked);
+                  if ( !status ) {
+                    return true;
                   }
+                  CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name, status, strerror(status));
                 }
-                return true;
-              }
-              );
+                return false;
+              });
 
       ctrl->setChecked(c.default_value);
       ctrl->setToolTip(QString("%1: default=%2").arg(c.name)
@@ -244,9 +244,9 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
               "",
               false,
               [this, c](int index, QComboBox * combo) -> void {
-                if ( camera_ ) {
+                if ( _camera ) {
                   int value = combo->itemData(index).value<int>();
-                  int status = camera_->s_ext_ctrl(c.id, value);
+                  int status = _camera->s_ext_ctrl(c.id, value);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s=%u) fails: %d (%s) ", c.name, value,
                         status, strerror(status));
@@ -255,10 +255,10 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
               },
 
               [this, c](int * index, QComboBox * combo) -> bool {
-                if ( camera_ ) {
+                if ( isConnectedState(_camera) ) {
                   int value;
-                  int status = camera_->g_ext_ctrl(c.id, &value);
-                  if ( status == 0 ) {
+                  const int status = _camera->g_ext_ctrl(c.id, &value);
+                  if ( !status ) {
                     * index = combo->findData(QVariant::fromValue(value));
                     return true;
                   }
@@ -298,8 +298,8 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_tool_button((const char*) c.name,
               getIcon(ICON_enterbutt),
               [this, c](bool checked) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, 1);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, 1);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                         status, strerror(status));
@@ -317,8 +317,8 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_numeric_box<int64_t>(c.name,
               "",
               [this, c](int64_t value) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, (__s64)value);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, (__s64)value);
                   if ( status ) {
                     CF_ERROR("s_ext_ctrl(%s=%lld) fails: %d (%s)",
                         c.name, (long long int)value, status, strerror(status));
@@ -326,13 +326,12 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
                 }
               },
               [this, c](int64_t * value) -> bool {
-                if ( camera_ ) {
-                  int status = camera_->g_ext_ctrl(c.id, (__s64*)value);
-                  if ( status == 0 ) {
+                if ( isConnectedState(_camera) ) {
+                  const int status = _camera->g_ext_ctrl(c.id, (__s64*)value);
+                  if ( !status ) {
                     return true;
                   }
-                  CF_ERROR("g_ext_ctrl(%s) fails: %d (%s)",
-                      c.name, status, strerror(status));
+                  CF_ERROR("g_ext_ctrl(%s) fails: %d (%s)", c.name, status, strerror(status));
                 }
                 return false;
               }
@@ -347,17 +346,17 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_textbox(c.name,
               "",
               [this, c](const QString & text) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, text);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, text);
                   if ( status != 0 ) {
                     CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                         status, strerror(status));
                   }
                 }},
               [this, c](QString * text) -> bool {
-                if ( camera_ ) {
-                  int status = camera_->g_ext_ctrl(c.id, text);
-                  if ( status == 0 ) {
+                if ( isConnectedState(_camera) ) {
+                  const int status = _camera->g_ext_ctrl(c.id, text);
+                  if ( !status ) {
                     return true;
                   }
                   CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
@@ -375,8 +374,8 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
           add_textbox(c.name,
               "",
               [this, c](const QString & text) {
-                if ( camera_ ) {
-                  int status = camera_->s_ext_ctrl(c.id, text);
+                if ( _camera ) {
+                  int status = _camera->s_ext_ctrl(c.id, text);
                   if ( status != 0 ) {
                     CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                         status, strerror(status));
@@ -385,17 +384,16 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
               },
 
               [this, c](QString * text) -> bool {
-                if ( camera_ ) {
-                  int status = camera_->g_ext_ctrl(c.id, text);
-                  if ( status == 0 ) {
+                if ( isConnectedState(_camera) ) {
+                  const int status = _camera->g_ext_ctrl(c.id, text);
+                  if ( !status ) {
                     return true;
                   }
                   CF_ERROR("s_ext_ctrl(%s) fails: %d (%s) ", c.name,
                       status, strerror(status));
                 }
                 return false;
-              }
-              );
+              });
 
       ctrl->setMaxLength(c.maximum);
       return ctrl;
@@ -407,12 +405,12 @@ QWidget* QV4L2CameraExtraSettingsWidget::add_ex_ctrl(cv4l_fd & device, const v4l
 
 void QV4L2CameraExtraSettingsWidget::createControls()
 {
-  if( camera_ && controls_.empty() ) {
+  if( _camera && _controls.empty() ) {
 
     c_update_controls_lock lock(this);
 
     cv4l_fd &device =
-        camera_->device();
+        _camera->device();
 
     v4l2_query_ext_ctrl q = { 0 };
 
@@ -421,7 +419,7 @@ void QV4L2CameraExtraSettingsWidget::createControls()
 
         QWidget *ctrl = add_ex_ctrl(device, q);
         if( ctrl ) {
-          controls_.append(ctrl);
+          _controls.append(ctrl);
         }
       }
     }
@@ -432,91 +430,94 @@ void QV4L2CameraExtraSettingsWidget::createControls()
 
 QV4L2CameraControls::QV4L2CameraControls(const QV4L2Camera::sptr & camera, QWidget * parent) :
     Base(parent),
-    camera_(camera)
+    _camera(camera)
 {
   form->setLabelAlignment(Qt::AlignLeft);
 
-  if( camera_ ) {
-    if( camera_->state() >= QImagingCamera::State_connected ) {
+  if( _camera ) {
+    if( _camera->state() >= QImagingCamera::State_connected ) {
       createControls();
     }
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged);
   }
+
+
+  connect(this, &ThisClass::populatecontrols,
+      [this](){
+        if( _camera && extraControls_ctl ) {
+          extraControls_ctl->updateControls();
+        }
+  });
+
+  connect(this, &ThisClass::enablecontrols,
+      [this](){
+        if( !_camera ) {
+          setEnabled(false);
+        }
+        else {
+
+          bool enable_primary_controls = false;
+          bool enable_extended_controls = false;
+
+          switch (_camera->state()) {
+            case QImagingCamera::State_disconnected:
+              case QImagingCamera::State_connecting:
+              case QImagingCamera::State_starting:
+              case QImagingCamera::State_stop:
+              case QImagingCamera::State_disconnect:
+              enable_primary_controls = false;
+              enable_extended_controls = false;
+              break;
+
+            case QImagingCamera::State_connected:
+              enable_primary_controls = true;
+              enable_extended_controls = true;
+              break;
+
+            case QImagingCamera::State_started:
+              enable_primary_controls = false;
+              enable_extended_controls = true;
+              break;
+          }
+
+          enable_control(videoInput_ctl, enable_primary_controls);
+          enable_control(fmt_ctl, enable_primary_controls);
+          enable_control(frameSize_ctl, enable_primary_controls);
+          enable_control(frameWidth_ctl, enable_primary_controls);
+          enable_control(frameHeight_ctl, enable_primary_controls);
+          enable_control(frameRate_ctl, enable_primary_controls);
+
+          enable_control(extraControls_ctl, enable_extended_controls);
+
+          if( extraControls_ctl && extraControls_ctl->isEnabled() ) {
+            extraControls_ctl->enablecontrols();
+          }
+
+          setEnabled(true);
+        }
+  });
 
   updateControls();
 }
 
 QV4L2CameraControls::~QV4L2CameraControls()
 {
-  if( camera_ ) {
-    disconnect(camera_.get(), nullptr,
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
         this, nullptr);
   }
 }
 
 void QV4L2CameraControls::onCameraStateChanged(QImagingCamera::State oldSate, QImagingCamera::State newState)
 {
-  if( camera_ ) {
+  if( _camera ) {
     if( oldSate == QImagingCamera::State_connecting && newState == QImagingCamera::State_connected ) {
       createControls();
     }
   }
 
   updateControls();
-}
-
-void QV4L2CameraControls::onload(QSettings & settings)
-{
-
-}
-
-void QV4L2CameraControls::onupdatecontrols()
-{
-  if( !camera_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    bool enable_primary_controls = false;
-    bool enable_extended_controls = false;
-
-    switch (camera_->state()) {
-      case QImagingCamera::State_disconnected:
-        case QImagingCamera::State_connecting:
-        case QImagingCamera::State_starting:
-        case QImagingCamera::State_stop:
-        case QImagingCamera::State_disconnect:
-        enable_primary_controls = false;
-        enable_extended_controls = false;
-        break;
-
-      case QImagingCamera::State_connected:
-        enable_primary_controls = true;
-        enable_extended_controls = true;
-        break;
-
-      case QImagingCamera::State_started:
-        enable_primary_controls = false;
-        enable_extended_controls = true;
-        break;
-    }
-
-    enable_control(videoInput_ctl, enable_primary_controls);
-    enable_control(fmt_ctl, enable_primary_controls);
-    enable_control(frameSize_ctl, enable_primary_controls);
-    enable_control(frameWidth_ctl, enable_primary_controls);
-    enable_control(frameHeight_ctl, enable_primary_controls);
-    enable_control(frameRate_ctl, enable_primary_controls);
-
-    enable_control(extraControls_ctl, enable_extended_controls);
-
-    if( extraControls_ctl && extraControls_ctl->isEnabled() ) {
-      extraControls_ctl->updateControls();
-    }
-
-    setEnabled(true);
-  }
 }
 
 void QV4L2CameraControls::deleteControls()
@@ -531,14 +532,14 @@ void QV4L2CameraControls::deleteControls()
 
 void QV4L2CameraControls::createControls()
 {
-  if( !camera_ || camera_->state() != QImagingCamera::State_connected ) {
+  if( !_camera || _camera->state() != QImagingCamera::State_connected ) {
     return;
   }
 
   setUpdatingControls(true);
 
   cv4l_fd &device =
-      camera_->device();
+      _camera->device();
 
   bool needsStd = false;
   bool needsTimings = false;
@@ -580,7 +581,7 @@ void QV4L2CameraControls::createControls()
   if( !extraControls_ctl ) {
 
     add_expandable_groupbox("Camera controls",
-        extraControls_ctl = new QV4L2CameraExtraSettingsWidget(camera_, this));
+        extraControls_ctl = new QV4L2CameraExtraSettingsWidget(_camera, this));
   }
 
   setUpdatingControls(false);
@@ -589,10 +590,9 @@ void QV4L2CameraControls::createControls()
 void QV4L2CameraControls::onVideoInputChanged(int index)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
-      cv4l_fd &device =
-          camera_->device();
+      cv4l_fd &device = _camera->device();
 
       device.s_input((__u32 ) index);
 
@@ -653,10 +653,10 @@ void QV4L2CameraControls::refreshFormats(cv4l_fd & device)
 void QV4L2CameraControls::onInputFormatChanged(int index)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
       cv4l_fd &device =
-          camera_->device();
+          _camera->device();
 
       if( index < 0 ) {
         CF_ERROR("Unhandled case index=%d", index);
@@ -826,10 +826,10 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
 void QV4L2CameraControls::onFrameSizeChanged(int index)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
       cv4l_fd &device =
-          camera_->device();
+          _camera->device();
 
       const uint type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       cv4l_fmt fmt;
@@ -865,7 +865,6 @@ void QV4L2CameraControls::onFrameSizeChanged(int index)
       }
 
       c_update_controls_lock lock(this);
-      CF_DEBUG("C refreshFrameRates()");
       refreshFrameRates(device);
     }
   }
@@ -874,10 +873,10 @@ void QV4L2CameraControls::onFrameSizeChanged(int index)
 void QV4L2CameraControls::onFrameWidthChanged(int value)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
       cv4l_fd &device =
-          camera_->device();
+          _camera->device();
     }
   }
 
@@ -886,10 +885,10 @@ void QV4L2CameraControls::onFrameWidthChanged(int value)
 void QV4L2CameraControls::onFrameHeightChanged(int value)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
       cv4l_fd &device =
-          camera_->device();
+          _camera->device();
     }
   }
 }
@@ -968,10 +967,10 @@ void QV4L2CameraControls::refreshFrameRates(cv4l_fd & device)
 void QV4L2CameraControls::onFrameRateChanged(int index)
 {
   if( !updatingControls() ) {
-    if( camera_ && camera_->state() == QImagingCamera::State_connected ) {
+    if( _camera && _camera->state() == QImagingCamera::State_connected ) {
 
       cv4l_fd &device =
-          camera_->device();
+          _camera->device();
 
       const uint type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       cv4l_fmt fmt;
@@ -991,8 +990,6 @@ void QV4L2CameraControls::onFrameRateChanged(int index)
                 fmt.g_width(),
                 fmt.g_height(),
                 index);
-
-        CF_DEBUG("index=%d", index);
 
         if( status != 0 ) {
           CF_ERROR("device.enum_frameintervals(index=%d) fails: status=%d (%s)",

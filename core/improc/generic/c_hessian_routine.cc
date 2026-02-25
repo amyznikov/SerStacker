@@ -35,17 +35,17 @@ const c_enum_member* members_of<c_hessian_routine::OutputType>()
   return members;
 }
 
-void c_hessian_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_hessian_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, output_type, "Output type");
-  BIND_PCTRL(ctls, border_type, "Border type");
+   ctlbind(ctls, "output", ctx(&this_class::_output_type), "");
+   ctlbind(ctls, "border", ctx(&this_class::_border_type), "");
 }
 
 bool c_hessian_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, output_type);
-    SERIALIZE_PROPERTY(settings, save, *this, border_type);
+    SERIALIZE_OPTION(settings, save, *this, _output_type);
+    SERIALIZE_OPTION(settings, save, *this, _border_type);
     return true;
   }
   return false;
@@ -54,13 +54,13 @@ bool c_hessian_routine::serialize(c_config_setting settings, bool save)
 bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
 
-  switch (output_type_) {
+  switch (_output_type) {
     case OutputGx: {
       compute_sobel_gradients(image.getMat(),
           image,
           cv::noArray(),
           CV_32F,
-          border_type_);
+          _border_type);
       break;
     }
     case OutputGy: {
@@ -68,7 +68,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           image,
           CV_32F,
-          border_type_);
+          _border_type);
       break;
     }
     case OutputGxx: {
@@ -77,7 +77,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           cv::noArray(),
           CV_32F,
-          border_type_);
+          _border_type);
       break;
     }
 
@@ -87,7 +87,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           image,
           cv::noArray(),
           CV_32F,
-          border_type_);
+          _border_type);
       break;
     }
 
@@ -97,7 +97,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           image,
           CV_32F,
-          border_type_);
+          _border_type);
       break;
     }
     case OutputGxxGyy: {
@@ -107,7 +107,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           cv::noArray(),
           CV_32F,
-          border_type_);
+          _border_type);
       cv::multiply(gxx, gyy, image);
       break;
     }
@@ -118,7 +118,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
       cv::multiply(gxy, gxy, image);
       break;
     }
@@ -130,7 +130,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           cv::noArray(),
           CV_32F,
-          border_type_);
+          _border_type);
       cv::add(gxx, gyy, image);
       break;
     }
@@ -144,7 +144,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy), det);
       cv::add(gxx, gyy, lap);
@@ -165,7 +165,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gx,
           gy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       cv::add(gx.mul(gx), gy.mul(gy), grad);
       cv::add(grad, cv::Scalar::all(1), grad);
@@ -175,7 +175,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy), det);
 
@@ -192,7 +192,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       compute_hessian_eigenvalues(gxx, gxy, gyy,
           image,
@@ -207,7 +207,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       compute_hessian_eigenvalues(gxx, gxy, gyy,
           cv::noArray(),
@@ -225,7 +225,7 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gyy,
           gxy,
           CV_32F,
-          border_type_);
+          _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy),
           image);

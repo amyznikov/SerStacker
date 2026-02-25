@@ -33,43 +33,43 @@ static constexpr char chkbox_style[] =
 
 QExpandableGroupBox::QExpandableGroupBox(const QString & title, QWidget * view, int stretch, Qt::Alignment alignment, QWidget * parent) :
     Base(parent),
-    view_(view)
+    _view(view)
 {
   Q_INIT_RESOURCE(gui_resources);
 
-  layout_ = new QVBoxLayout(this);
+  _layout = new QVBoxLayout(this);
 
 
-  chkBox_ = new QCheckBox(title, this);
-  chkBox_->setStyleSheet(QString(chkbox_style).replace("${style}", iconStyleSelector()));
-  layout_->addWidget(chkBox_, 0, Qt::AlignTop);
+  _chkBox = new QCheckBox(title, this);
+  _chkBox->setStyleSheet(QString(chkbox_style).replace("${style}", iconStyleSelector()));
+  _layout->addWidget(_chkBox, 0, Qt::AlignTop);
 
-  frame_ = new QGroupBox(this);
-  frame_->setCheckable(false);
+  _frame = new QGroupBox(this);
+  _frame->setCheckable(false);
 
-  frameLayout_ = new QVBoxLayout(frame_);
+  _frameLayout = new QVBoxLayout(_frame);
 
-  if ( view_ ) {
-    frameLayout_->addWidget(view_);
+  if ( _view ) {
+    _frameLayout->addWidget(_view);
   }
 
-  frame_->setVisible(false);
+  _frame->setVisible(false);
 
-  QObject::connect(chkBox_, &QCheckBox::stateChanged,
+  QObject::connect(_chkBox, &QCheckBox::stateChanged,
       [this, stretch, alignment](int state) {
 
         if ( state == Qt::Checked ) {
-          layout_->addWidget(frame_, stretch, alignment);
-          frame_->setVisible(true);
+          _layout->addWidget(_frame, stretch, alignment);
+          _frame->setVisible(true);
         }
         else {
-          frame_->setVisible(false);
-          layout_->removeWidget(frame_);
+          _frame->setVisible(false);
+          _layout->removeWidget(_frame);
         }
 
         this->parentWidget()->updateGeometry();
 
-        if ( frame_->isVisible() ) {
+        if ( _frame->isVisible() ) {
           Q_EMIT expanded();
         }
         else {
@@ -81,12 +81,12 @@ QExpandableGroupBox::QExpandableGroupBox(const QString & title, QWidget * view, 
 
 void QExpandableGroupBox::setView(QWidget * view)
 {
-  if ( this->view_ ) {
-    frameLayout_->removeWidget(this->view_);
+  if ( this->_view ) {
+    _frameLayout->removeWidget(this->_view);
   }
 
-  if ( (this->view_ = view) ) {
-    frameLayout_->addWidget(this->view_);
+  if ( (this->_view = view) ) {
+    _frameLayout->addWidget(this->_view);
   }
 
   updateGeometry();
@@ -94,31 +94,31 @@ void QExpandableGroupBox::setView(QWidget * view)
 
 QWidget * QExpandableGroupBox::view() const
 {
-  return view_;
+  return _view;
 }
 
 QCheckBox * QExpandableGroupBox::checkbox() const
 {
-  return chkBox_;
+  return _chkBox;
 }
 
 QVBoxLayout * QExpandableGroupBox::boxlayout() const
 {
-  return layout_;
+  return _layout;
 }
 
 void QExpandableGroupBox::expand()
 {
-  chkBox_->setChecked(true);
+  _chkBox->setChecked(true);
 }
 
 void QExpandableGroupBox::collapse()
 {
-  chkBox_->setChecked(false);
+  _chkBox->setChecked(false);
 }
 
 void QExpandableGroupBox::toggle()
 {
-  chkBox_->toggle();
+  _chkBox->toggle();
 }
 

@@ -90,113 +90,110 @@ public:
   const char * source_file() const;
 
 
-
   bool has_parent() const;
 
   c_config_setting parent() const;
 
 
   c_config_setting add_member(const std::string & name, int type) {
-    return add_member(setting_, name.c_str(), type);
+    return add_member(_setting, name.c_str(), type);
   }
 
   c_config_setting add_element(int type) {
-    return add_element(setting_, type);
+    return add_element(_setting, type);
   }
 
   bool add_element(const std::string & value) {
-    return c_config_setting(add_element(setting_, CONFIG_TYPE_STRING)).set(value);
+    return c_config_setting(add_element(_setting, CONFIG_TYPE_STRING)).set(value);
   }
 
   c_config_setting add_group(const std::string & name = "")
   {
     return (isList() || isArray()) ? add_element(CONFIG_TYPE_GROUP) :
-        add_member(setting_, name.c_str(), CONFIG_TYPE_GROUP);
+        add_member(_setting, name.c_str(), CONFIG_TYPE_GROUP);
   }
 
   c_config_setting add_list(const std::string & name = "") {
     return (isList() || isArray()) ? add_element(CONFIG_TYPE_LIST) :
-        add_member(setting_, name.c_str(), CONFIG_TYPE_LIST);
+        add_member(_setting, name.c_str(), CONFIG_TYPE_LIST);
   }
 
   c_config_setting add_array(const std::string & name = "") {
     return (isList() || isArray()) ? add_element(CONFIG_TYPE_ARRAY) :
-        add_member(setting_, name.c_str(), CONFIG_TYPE_ARRAY);
+        add_member(_setting, name.c_str(), CONFIG_TYPE_ARRAY);
   }
 
 
 
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
-   add(const T & value) { // add element to a list or array
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
+  inline add(const T & value) { // add element to a list or array
     return add_element(c_config_type_traits<T>::type).set(value);
   }
 
   c_config_setting get(const std::string & name) const {
-    return get_member(setting_, name.c_str());
+    return get_member(_setting, name.c_str());
   }
 
   c_config_setting get_list(const std::string & name) const {
-    c_config_setting cfg = get_member(setting_, name.c_str());
+    c_config_setting cfg = get_member(_setting, name.c_str());
     return cfg.isList() ? cfg : c_config_setting();
   }
 
   c_config_setting operator [](const std::string & name) const {
-    return get_member(setting_, name.c_str());
+    return get_member(_setting, name.c_str());
   }
 
   c_config_setting operator [](const char * name) const {
-    return get_member(setting_, name);
+    return get_member(_setting, name);
   }
 
   c_config_setting get_element(uint32_t index) const {
-    return get_element(setting_ , index);
+    return get_element(_setting , index);
   }
 
   c_config_setting operator [](int index) const {
-    return get_element(setting_, index);
+    return get_element(_setting, index);
   }
 
   bool remove_element(uint32_t index) {
-    return remove_element(setting_, index);
+    return remove_element(_setting, index);
   }
 
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline get(T * value) const {
-    return get_value(setting_, value);
+    return get_value(_setting, value);
   }
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline get(const std::string & name, T * value) const {
-    return get_value(get_member(setting_, name.c_str()), value);
+    return get_value(get_member(_setting, name.c_str()), value);
   }
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline get(uint32_t index, T * value) const {
-    return get_value(get_element(setting_, index), value);
+    return get_value(get_element(_setting, index), value);
   }
-  template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<std::is_enum<T>::value, bool>
   inline get(const std::string & name, T * v) {
     std::string s;
     return get(name, &s) && (s.empty() || fromString(s, v));
   }
 
 
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline set(const T & value) {
-    return set_value(setting_, value);
+    return set_value(_setting, value);
   }
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline set(const std::string & name, const T & value) {
-    return set_value(add_member(setting_, name.c_str(), c_config_type_traits<T>::type), value);
+    return set_value(add_member(_setting, name.c_str(), c_config_type_traits<T>::type), value);
   }
-  template<class T> typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
   inline set(uint32_t index, const T & value) {
-    return set_value(get_element(setting_, index), value);
+    return set_value(get_element(_setting, index), value);
   }
-  template<class T> typename std::enable_if<std::is_enum<T>::value, bool>::type
+  template<class T> typename std::enable_if_t<std::is_enum<T>::value, bool>
   inline set(const std::string & name, T v) {
     return set(name, toString(v));
   }
-
-
 
 protected:
   friend class c_config;
@@ -234,7 +231,7 @@ protected:
   static bool set_value(config_setting_t *setting, const std::string & value);
 
 protected:
-  config_setting_t * setting_ = nullptr;
+  config_setting_t * _setting = nullptr;
 };
 
 
@@ -313,9 +310,9 @@ public:
   c_config_setting root() const;
 
 protected:
-  config_t config_;
-  c_config_setting::Format defaultFormat_ = c_config_setting::FormatDefault;
-  std::string defaultFilename_;
+  config_t _config;
+  c_config_setting::Format _defaultFormat = c_config_setting::FormatDefault;
+  std::string _defaultFilename;
 
 private:
   void construct();
@@ -323,45 +320,37 @@ private:
 
 
 template<class T>
-typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
 inline save_settings(c_config_setting cfg, const T & v) {
   return cfg.set(v);
 }
 template<class T>
-typename std::enable_if<is_config_atomic_type<T>::value, bool>::type
+typename std::enable_if_t<is_config_atomic_type<T>::value, bool>
 inline load_settings(c_config_setting cfg, T * v) {
   return cfg.get(v);
 }
 
 
-
-
-
-
 template<class T>
-typename std::enable_if<std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<std::is_enum_v<T>, bool>
 inline save_settings(c_config_setting cfg, T v) {
   return cfg.set(toString(v));
 }
 template<class T>
-typename std::enable_if<std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<std::is_enum_v<T>, bool>
 inline load_settings(c_config_setting cfg, T * v) {
   std::string s;
   return cfg.get(&s) && (s.empty() || fromString(s, v));
 }
 
 
-
-
-
-
 template<class T>
-typename std::enable_if<!std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<!std::is_enum_v<T>, bool>
 inline save_settings(c_config_setting cfg, const std::string & name, const T & v) {
   return save_settings(cfg.add_member(name, c_config_type_traits<T>::type), v);
 }
 template<class T>
-typename std::enable_if<!std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<!std::is_enum_v<T>, bool>
 inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
   return load_settings(cfg.get(name), v);
 }
@@ -369,19 +358,15 @@ inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
 
 
 template<class T>
-typename std::enable_if<std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<std::is_enum_v<T>, bool>
 inline save_settings(c_config_setting cfg, const std::string & name, const T & v) {
   return cfg.set(name, toString(v));
 }
 template<class T>
-typename std::enable_if<std::is_enum<T>::value, bool>::type
+typename std::enable_if_t<std::is_enum_v<T>, bool>
 inline load_settings(c_config_setting cfg, const std::string & name, T * v) {
   return cfg.get(name, v);
 }
-
-
-
-
 
 
 template<class T>
@@ -442,24 +427,6 @@ inline bool save_c_array(c_config_setting list, const T values[], size_t count)
   return false;
 }
 
-//template<class T>
-//inline bool load_settings(c_config_setting list, T values[], size_t max_count)
-//{
-//  if ( list.isList() || list.isArray() ) {
-//    const int n = list.length();
-//    values->resize(n);
-//    for ( int i = 0; i < n; ++i ) {
-//      if ( !load_settings(list.get_element(i), &(*values)[i]) ) {
-//        return false;
-//      }
-//    }
-//    return true;
-//  }
-//  return false;
-//}
-
-
-
 template<class T>
 inline bool save_c_array(c_config_setting cfg, const std::string &name, const T values[], size_t count)
 {
@@ -477,8 +444,6 @@ inline bool load_settings(c_config_setting settings, const std::string & propnam
   }
   return false;
 }
-
-
 
 struct c_libconfig_flag_desc {
   const char * flag;
@@ -527,12 +492,6 @@ bool libconfig_parse_flags(c_config_setting settings,
   CF_ERROR("WARNING: INVALID OR NOT SUPPORTED OPTIONS '%s.%s' in %s", \
       (cfg).name(), current_option_name, __PRETTY_FUNCTION__); \
   } \
-
-
-//#define LOAD_PROPERTY(cfg, obj, prop) \
-//  ::load_settings(cfg, #prop, (obj), \
-//      &std::remove_reference<decltype(*obj)>::type::prop, \
-//      &std::remove_reference<decltype(*obj)>::type::set_##prop)
 
 #define LOAD_PROPERTY(cfg, obj, prop) \
   if ( true ) { \

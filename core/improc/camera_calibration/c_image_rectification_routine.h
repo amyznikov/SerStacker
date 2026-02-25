@@ -31,87 +31,23 @@ public:
 
   void set_intrinsics_filename(const std::string & v)
   {
-    intrinsics_filename_  = v;
-    camera_intrinsics_initialized_ = false;
+    _intrinsics_filename  = v;
+    _camera_intrinsics_initialized = false;
   }
 
   const std::string & intrinsics_filename() const
   {
-    return intrinsics_filename_;
+    return _intrinsics_filename;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_BROWSE_FOR_EXISTING_FILE_CTRL(ctls, intrinsics_filename, "intrinsics", "Camera intrinsics YML file");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-
-      SERIALIZE_PROPERTY(settings, save, *this, intrinsics_filename);
-
-      return true;
-    }
-
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) override
-  {
-    if ( !camera_intrinsics_initialized_ ) {
-
-      if( intrinsics_filename_.empty() ) {
-        return false;
-      }
-
-      if( !read_camera_intrinsics_yml(&intrinsics_, intrinsics_filename_) ) {
-        CF_ERROR("read_camera_intrinsics_yml('%s') fails",
-            intrinsics_filename_.c_str());
-        return false;
-      }
-
-      cv::initUndistortRectifyMap(intrinsics_.camera_matrix,
-          intrinsics_.dist_coeffs,
-          cv::noArray(),
-          cv::getOptimalNewCameraMatrix(intrinsics_.camera_matrix, intrinsics_.dist_coeffs,
-              intrinsics_.image_size, 0.0, intrinsics_.image_size),
-          intrinsics_.image_size,
-          CV_32FC2,
-          rmap,
-          cv::noArray());
-
-      camera_intrinsics_initialized_ = true;
-    }
-
-    cv::remap(image, image,
-        rmap, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_CONSTANT);
-
-    if( mask.needed() ) {
-      if( !mask.empty() ) {
-        cv::remap(mask, mask,
-            rmap, cv::noArray(),
-            cv::INTER_LINEAR,
-            cv::BORDER_CONSTANT);
-      }
-      else {
-        cv::remap(cv::Mat1b(image.size(), 255), mask,
-            rmap, cv::noArray(),
-            cv::INTER_LINEAR,
-            cv::BORDER_CONSTANT);
-      }
-      cv::compare(mask, 254, mask, cv::CMP_GE);
-    }
-
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string intrinsics_filename_;
-  c_camera_intrinsics intrinsics_;
-  bool camera_intrinsics_initialized_ = false;
+  std::string _intrinsics_filename;
+  c_camera_intrinsics _intrinsics;
+  bool _camera_intrinsics_initialized = false;
   cv::Mat2f rmap;
 };
 

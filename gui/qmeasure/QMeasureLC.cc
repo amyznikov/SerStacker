@@ -30,7 +30,7 @@ QMeasureSettingsWidget* QMeasureLC::createSettingsWidget(QWidget * parent) const
 int QMeasureLC::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   *output_value = c_local_contrast_measure::compute(image);
-  return avgchannel_ ? 1 : image.channels();
+  return _opts.avgchannel ? 1 : image.channels();
 }
 
 QLCMeasureSettingsWidget::QLCMeasureSettingsWidget(QWidget * parent) :

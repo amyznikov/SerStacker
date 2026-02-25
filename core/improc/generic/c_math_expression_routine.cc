@@ -275,12 +275,9 @@ static void process_image(const cv::Mat & src, cv::Mat & dst, const c_math_expre
   }
 }
 
-void c_math_expression_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_math_expression_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_CTRL(ctls, input_channel, "input from:", "");
-  BIND_CTRL(ctls, output_channel, "output to:", "");
-  BIND_CTRL(ctls, ignore_mask, "ignore mask:", "");
-  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "expression", "formula for math expression");
+  ctlbind_math_expression_ctl(ctls, ctx, &this_class::expression, &this_class::set_expression, &this_class::helpstring);
 }
 
 bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
@@ -296,9 +293,9 @@ bool c_math_expression_routine::serialize(c_config_setting settings, bool save)
 
 bool c_math_expression_routine::initialize()
 {
-  if ( math_.arguments().empty() ) {
+  if ( _math.arguments().empty() ) {
     for( int i = 0; i < (int) (sizeof(processor_args) / sizeof(processor_args[0])); ++i ) {
-      if( !math_.add_argument(i, processor_args[i].name, processor_args[i].tooldip) ) {
+      if( !_math.add_argument(i, processor_args[i].name, processor_args[i].tooldip) ) {
         CF_ERROR("math_.add_argument('%s') fails", processor_args[i].name);
       }
     }
@@ -312,18 +309,18 @@ std::string c_math_expression_routine::helpstring()
       "Apply math formula to pixel values\n";
 
   s += "\nArguments:\n";
-  for ( const auto & c : math_.arguments() ) {
+  for ( const auto & c : _math.arguments() ) {
     s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
   }
 
   s += "\nUnary Operations:\n";
-  for ( const auto & c : math_.unary_operations() ) {
+  for ( const auto & c : _math.unary_operations() ) {
     s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
   }
 
 
   s += "\nBinary Operations:\n";
-  for( const auto & c : math_.binary_operations() ) {
+  for( const auto & c : _math.binary_operations() ) {
     s += "-------------------------\n";
     for( const auto & op : c ) {
       s += ssprintf("%s  : %s\n", op.name.c_str(), op.desc.c_str());
@@ -331,12 +328,12 @@ std::string c_math_expression_routine::helpstring()
   }
 
   s += "\nConstants:\n";
-  for ( const auto & c : math_.constants() ) {
+  for ( const auto & c : _math.constants() ) {
     s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
   }
 
   s += "\nFunctions:\n";
-  for ( const auto & c : math_.functions() ) {
+  for ( const auto & c : _math.functions() ) {
     s += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
   }
 
@@ -346,23 +343,23 @@ std::string c_math_expression_routine::helpstring()
 
 bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( expression_.empty() ) {
-    expression_changed_ = false;
+  if( _expression.empty() ) {
+    _expression_changed = false;
     return true;
   }
 
-  if( expression_changed_ ) {
+  if( _expression_changed ) {
 
-    if ( !math_.parse(expression_.c_str()) ) {
+    if ( !_math.parse(_expression.c_str()) ) {
 
       CF_ERROR("math_.parse() fails: %s\n"
-          "error_pos=%s", math_.error_message().c_str(),
-          math_.pointer_to_syntax_error() ? math_.pointer_to_syntax_error() : "null");
+          "error_pos=%s", _math.error_message().c_str(),
+          _math.pointer_to_syntax_error() ? _math.pointer_to_syntax_error() : "null");
 
       return false;
     }
 
-    expression_changed_ = false;
+    _expression_changed = false;
   }
 
   switch (_input_channel) {
@@ -370,7 +367,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (_output_channel) {
 
         case IMAGE:
-          process_image(image.getMatRef(), image.getMatRef(), math_,
+          process_image(image.getMatRef(), image.getMatRef(), _math,
               _ignore_mask ? cv::noArray() :
                   mask);
           break;
@@ -388,7 +385,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
             }
             mask.setTo(0);
           }
-          process_image(image.getMatRef(), mask.getMatRef(), math_,
+          process_image(image.getMatRef(), mask.getMatRef(), _math,
               input_mask);
           break;
         }
@@ -399,7 +396,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
       switch (_output_channel) {
 
         case MASK:
-          process_image(mask.getMatRef(), mask.getMatRef(), math_,
+          process_image(mask.getMatRef(), mask.getMatRef(), _math,
               _ignore_mask ? cv::noArray() : mask.getMat());
           break;
 
@@ -409,7 +406,7 @@ bool c_math_expression_routine::process(cv::InputOutputArray image, cv::InputOut
             if( image.size() != mask.size() || image.channels() != mask.channels() ) {
               image.create(mask.size(), CV_MAKETYPE(std::max(image.depth(), mask.depth()), mask.channels()));
             }
-            process_image(mask.getMatRef(), image.getMatRef(), math_,
+            process_image(mask.getMatRef(), image.getMatRef(), _math,
                 _ignore_mask ? cv::noArray() : mask.getMat());
           }
           break;

@@ -712,3 +712,56 @@ void QImageViewer::populateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   _view->populateContextMenu(menu, viewpos);
 }
+
+
+void QImageViewer::loadSettings(const QString & prefix)
+{
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QImageViewer::loadSettings(const QSettings & settings, const QString & _prefix)
+{
+  onload(settings, _prefix);
+}
+
+void QImageViewer::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QImageViewer::saveSettings(QSettings & settings, const QString & _prefix)
+{
+  onsave(settings, _prefix);
+}
+
+void QImageViewer::onload(const QSettings & settings, const QString & _prefix)
+{
+  const QString PREFIX = _prefix.isEmpty() ? "QImageViewer" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
+
+  _currentDisplayType = (DisplayType)settings.value(PARAM("currentDisplayType"), (int)_currentDisplayType).value<int>();
+  _maskBlendAlpha = settings.value(PARAM("maskBlendAlpha"), _maskBlendAlpha).value<double>();
+  _transparentMask = settings.value(PARAM("transparentMask"), _transparentMask).value<bool>();
+  _editMaskPenRadius = settings.value(PARAM("editMaskPenRadius"), _editMaskPenRadius).value<int>();
+  _editMaskPenShape = (PenShape)settings.value(PARAM("editMaskPenShape"), (int)_editMaskPenShape).value<int>();
+}
+
+void QImageViewer::onsave(QSettings & settings, const QString & _prefix)
+{
+  const QString PREFIX = _prefix.isEmpty() ? "QImageViewer" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
+
+  settings.setValue(PARAM("currentDisplayType"), (int)_currentDisplayType);
+  settings.setValue(PARAM("maskBlendAlpha"), _maskBlendAlpha);
+  settings.setValue(PARAM("transparentMask"), _transparentMask);
+  settings.setValue(PARAM("editMaskPenRadius"), _editMaskPenRadius);
+  settings.setValue(PARAM("editMaskPenShape"), (int)_editMaskPenShape);
+}

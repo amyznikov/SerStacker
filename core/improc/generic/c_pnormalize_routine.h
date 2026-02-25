@@ -22,57 +22,14 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_pnormalize_routine, "pnormalize",
       "Subtract local mean and divide by stdev");
 
-  void set_scale(int v)
-  {
-    scale_ = v;
-  }
-
-  int scale() const
-  {
-    return scale_;
-  }
-
-  void set_ddepth(PIXEL_DEPTH v)
-  {
-    ddepth_ = v;
-  }
-
-  PIXEL_DEPTH ddepth() const
-  {
-    return ddepth_;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, scale, "Gaussian pyramid scale (max level)");
-    BIND_PCTRL(ctls, ddepth, "Destination image depth");
-  }
-
-  bool serialize(c_config_setting settings, bool save) override
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, scale);
-      SERIALIZE_PROPERTY(settings, save, *this, ddepth);
-      return true;
-    }
-    return false;
-  }
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) override
-  {
-    if( scale_ > 0 ) {
-      pnormalize(image.getMat(), image.getMatRef(), scale_, ddepth_);
-    }
-
-    return true;
-  }
-
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void pnormalize(const cv::Mat & src, cv::Mat & dst, int pscale, PIXEL_DEPTH ddepth);
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  // cv::Mat m;
-  int scale_ = 3;
-  PIXEL_DEPTH ddepth_ = PIXEL_DEPTH_32F;
+  int _scale = 3;
+  PIXEL_DEPTH _ddepth = PIXEL_DEPTH_32F;
 
 };
 

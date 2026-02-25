@@ -38,8 +38,6 @@ public:
   typedef QGLPointCloudView ThisClass;
   typedef QGLView Base;
   typedef std::map<uint64_t, size_t, std::less<uint64_t>> PID2POSMapping;
-  using Base::loadParameters;
-  using Base::saveParameters;
 
 
   QGLPointCloudView(QWidget* parent = nullptr);
@@ -78,15 +76,14 @@ public:
   void updateDisplayPoints();
   void updateDisplayColors();
 
-  void loadParameters(QSettings & settings) final;
-  void saveParameters(QSettings & settings) final;
-
 Q_SIGNALS:
   void glPointMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
       Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
+  void onload(const QSettings & settings, const QString & prefix) final;
+  void onsave(QSettings & settings, const QString & prefix) final;
   void glInit() final;
   void glPreDraw() final;
   void glDraw() final;
@@ -129,8 +126,6 @@ class QPointCloudSourceView :
 public:
   typedef QPointCloudSourceView ThisClass;
   typedef QGLPointCloudView Base;
-  using Base::loadParameters;
-  using Base::saveParameters;
 
   QPointCloudSourceView(QWidget * parent = nullptr);
 
@@ -159,7 +154,7 @@ public:
 
 protected:
   //void onload(QSettings & settings) override;
-  void onupdatecontrols() override;
+  //void onupdatecontrols() override;
 
 protected:
   QPointCloudSourceView * cloudView_ = nullptr;

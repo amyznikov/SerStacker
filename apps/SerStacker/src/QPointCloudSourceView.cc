@@ -350,49 +350,40 @@ void QGLPointCloudView::glMouseEvent(const QPointF & mousePos, QEvent::Type mous
         objHit, objX, objY, objZ);
 }
 
-
-
-void QGLPointCloudView::loadParameters(QSettings & settings)
+void QGLPointCloudView::onload(const QSettings & settings, const QString & _prefix)
 {
-  Base::loadParameters(settings);
+  const QString PREFIX = _prefix.isEmpty() ? "QGLPointCloudView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
-  _sceneOrigin =
-      settings.value("QGLCloudViewer/sceneOrigin_",
-          _sceneOrigin).value<decltype(_sceneOrigin)>();
+  Base::onload(settings, PREFIX);
 
-  _pointSize =
-      settings.value("QGLCloudViewer/pointSize_",
-          _pointSize).value<decltype(_pointSize)>();
-
-  _pointBrightness =
-      settings.value("QGLCloudViewer/pointBrightness_",
-          _pointBrightness).value<decltype(_pointBrightness)>();
-
-  _viewPoint =
-      settings.value("QGLCloudViewer/_viewPoint",
-          _viewPoint).value<decltype(_viewPoint)>();
-
-  _viewTarget =
-      settings.value("QGLCloudViewer/_viewTarget",
-          _viewTarget).value<decltype(_viewTarget)>();
-
-  _viewUpDirection =
-      settings.value("QGLCloudViewer/_viewUpDirection",
-          _viewUpDirection).value<decltype(_viewUpDirection)>();
-
+  _sceneOrigin = settings.value(PARAM("sceneOrigin"), _sceneOrigin).value<decltype(_sceneOrigin)>();
+  _pointSize = settings.value(PARAM("pointSize"),  _pointSize).value<decltype(_pointSize)>();
+  _pointBrightness = settings.value(PARAM("pointBrightness"),  _pointBrightness).value<decltype(_pointBrightness)>();
+  _viewPoint = settings.value(PARAM("viewPoint"), _viewPoint).value<decltype(_viewPoint)>();
+  _viewTarget = settings.value(PARAM("viewTarget"), _viewTarget).value<decltype(_viewTarget)>();
+  _viewUpDirection = settings.value(PARAM("viewUpDirection"), _viewUpDirection).value<decltype(_viewUpDirection)>();
 }
 
-void QGLPointCloudView::saveParameters(QSettings & settings)
+void QGLPointCloudView::onsave(QSettings & settings, const QString & _prefix)
 {
-  Base::saveParameters(settings);
+  const QString PREFIX = _prefix.isEmpty() ? "QGLPointCloudView" : _prefix;
+  const auto PARAM =
+      [PREFIX](const QString & name) {
+        return QString("%1/%2").arg(PREFIX).arg(name);
+      };
 
-  settings.setValue("QGLCloudViewer/sceneOrigin_", _sceneOrigin);
-  settings.setValue("QGLCloudViewer/pointSize_", _pointSize);
-  settings.setValue("QGLCloudViewer/pointBrightness_", _pointBrightness);
+  Base::onsave(settings, PREFIX);
 
-  settings.setValue("QGLCloudViewer/_viewPoint", _viewPoint);
-  settings.setValue("QGLCloudViewer/_viewTarget", _viewTarget);
-  settings.setValue("QGLCloudViewer/_viewUpDirection", _viewUpDirection);
+  settings.setValue(PARAM("sceneOrigin"), _sceneOrigin);
+  settings.setValue(PARAM("pointSize"),  _pointSize);
+  settings.setValue(PARAM("pointBrightness"),  _pointBrightness);
+  settings.setValue(PARAM("viewPoint"), _viewPoint);
+  settings.setValue(PARAM("viewTarget"), _viewTarget);
+  settings.setValue(PARAM("viewUpDirection"), _viewUpDirection);
 }
 
 
@@ -445,7 +436,7 @@ static QToolButton * createToolButton(QWidget * parent,
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QPointCloudViewSettings::QPointCloudViewSettings(QWidget * parent) :
-  Base("QPointCloudViewSettings", parent)
+  Base(parent)
 {
 
   projection_ctl =
@@ -674,18 +665,18 @@ QPointCloudSourceView * QPointCloudViewSettings::cloudView() const
   return cloudView_;
 }
 
-
-void QPointCloudViewSettings::onupdatecontrols()
-{
-  if ( !cloudView_ ) {
-    setEnabled(false);
-  }
-  else {
-    Base::onupdatecontrols();
-    refreshCloudList();
-    setEnabled(true);
-  }
-}
+//
+//void QPointCloudViewSettings::onupdatecontrols()
+//{
+//  if ( !cloudView_ ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    Base::onupdatecontrols();
+//    refreshCloudList();
+//    setEnabled(true);
+//  }
+//}
 
 void QPointCloudViewSettings::refreshCloudList()
 {

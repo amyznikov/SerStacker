@@ -60,7 +60,6 @@ public:
     return _m.uscale();
   }
 
-
   void set_avgchannel(bool v)
   {
     _m.set_avgchannel(v);
@@ -71,11 +70,11 @@ public:
     return _m.avgchannel();
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   bool copy_parameters_to_clipboard();
   bool paste_parameters_from_clipboard();
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   c_lpg_sharpness_measure _m;

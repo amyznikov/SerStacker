@@ -6,24 +6,19 @@
  */
 
 #include "c_perspective_transform_routine.h"
-//#include <core/proc/birds-eye-view.h>
 #include <core/proc/pose.h>
 
-void c_perspective_transform_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+void c_perspective_transform_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  BIND_PCTRL(ctls, src_point0, "");
-  BIND_PCTRL(ctls, dst_point0, "");
-
-  BIND_PCTRL(ctls, src_point1, "");
-  BIND_PCTRL(ctls, dst_point1, "");
-
-  BIND_PCTRL(ctls, src_point2, "");
-  BIND_PCTRL(ctls, dst_point2, "");
-
-  BIND_PCTRL(ctls, src_point3, "");
-  BIND_PCTRL(ctls, dst_point3, "");
-
-  BIND_PCTRL(ctls, output_image_size, "");
+   ctlbind(ctls, "srcp0", ctx, &this_class::src_point0, &this_class::set_src_point0, "");
+   ctlbind(ctls, "srcp1", ctx, &this_class::src_point1, &this_class::set_src_point1, "");
+   ctlbind(ctls, "srcp2", ctx, &this_class::src_point2, &this_class::set_src_point2, "");
+   ctlbind(ctls, "srcp3", ctx, &this_class::src_point3, &this_class::set_src_point3, "");
+   ctlbind(ctls, "dstp0", ctx, &this_class::dst_point0, &this_class::set_dst_point0, "");
+   ctlbind(ctls, "dstp1", ctx, &this_class::dst_point1, &this_class::set_dst_point1, "");
+   ctlbind(ctls, "dstp2", ctx, &this_class::dst_point2, &this_class::set_dst_point2, "");
+   ctlbind(ctls, "dstp3", ctx, &this_class::dst_point3, &this_class::set_dst_point3, "");
+   ctlbind(ctls, "output_image_size", ctx, &this_class::output_image_size, &this_class::set_output_image_size, "");
 }
 
 bool c_perspective_transform_routine::serialize(c_config_setting settings, bool save)
@@ -51,10 +46,13 @@ bool c_perspective_transform_routine::process(cv::InputOutputArray image, cv::In
   if( !image.empty() ) {
 
     cv::Size outImageSize =
-        output_image_size_.empty() ? image.size() :
-            output_image_size_;
+        _output_image_size.empty() ? image.size() :
+            _output_image_size;
 
     if( H.empty() ) {
+
+      const cv::Point2f  src_pts[4] = {_srcp0, _srcp1, _srcp2, _srcp3};
+      const cv::Point2f  dst_pts[4] = {_dstp0, _dstp1, _dstp2, _dstp3};
 
       H =
           cv::getPerspectiveTransform(src_pts,

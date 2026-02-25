@@ -20,104 +20,35 @@ public:
 
   void set_focus(double v)
   {
-    focus_ = v;
-    rmap_.release();
+    _focus = v;
+    _rmap.release();
   }
 
   double focus() const
   {
-    return focus_;
+    return _focus;
   }
 
   void set_center(const cv::Point2d & v)
   {
-    center_ = v;
-    rmap_.release();
+    _center = v;
+    _rmap.release();
   }
 
   const cv::Point2d & center() const
   {
-    return center_;
+    return _center;
   }
 
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) override
-  {
-    BIND_PCTRL(ctls, focus, "focal distance in pixels");
-    BIND_PCTRL(ctls, center, "optical center in pixels");
-  }
-
-  bool serialize(c_config_setting settings, bool save)
-  {
-    if( base::serialize(settings, save) ) {
-      SERIALIZE_PROPERTY(settings, save, *this, focus);
-      SERIALIZE_PROPERTY(settings, save, *this, center);
-      return true;
-    }
-    return false;
-  }
-
-
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask)
-  {
-    if( !image.empty() || !mask.empty() ) {
-
-      const cv::Size image_size =
-          image.empty() ? mask.size() : image.size();
-
-      if ( rmap_.empty() || previous_image_size != image_size ) {
-
-        if ( center_.x == -1 && center_.y == -1 ) {
-          center_.x = image_size.width / 2;
-          center_.y = image_size.height / 2;
-        }
-
-        double al = atan2(0 - center_.x, focus_);
-        double at = atan2(0 - center_.y, focus_);
-        double ar = atan2(image_size.width - center_.x, focus_);
-        double ab = atan2(image_size.height - center_.y, focus_);
-
-        int l = cvRound(al * focus_);
-        int t = cvRound(at * focus_);
-        int r = cvRound(ar * focus_);
-        int b = cvRound(ab * focus_);
-
-        const cv::Size remap_size(r - l, b - t);
-
-        rmap_.create(remap_size);
-
-        for ( int y = 0; y < remap_size.height; ++y ) {
-          for ( int x = 0; x < remap_size.width; ++x ) {
-
-            double ax = (x + l) / focus_;
-            double ay = (y + t) / focus_;
-
-            rmap_[y][x][0] = tan(ax) * focus_ + center_.x;
-            rmap_[y][x][1] = tan(ay) * focus_ + center_.y;
-          }
-        }
-      }
-
-      if( !image.empty() ) {
-        cv::remap(image, image, rmap_, cv::noArray(), cv::INTER_LINEAR);
-      }
-
-      if( !mask.empty() ) {
-        cv::remap(mask, mask, rmap_, cv::noArray(), cv::INTER_LINEAR);
-        cv::compare(mask, 245, mask, cv::CMP_GE);
-      }
-
-      previous_image_size = image_size;
-
-    }
-
-    return true;
-  }
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double focus_ = 1000;
-  cv::Point2d center_ = cv::Point2d(-1, -1);
-  cv::Mat2f rmap_;
-  cv::Size previous_image_size;
+  double _focus = 1000;
+  cv::Point2d _center = cv::Point2d(-1, -1);
+  cv::Mat2f _rmap;
+  cv::Size _previous_image_size;
 };
 
 #endif /* __c_tangential_transform_routine_h__ */

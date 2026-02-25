@@ -130,10 +130,10 @@ c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(cons
   return nullptr;
 }
 
-void c_data_frame_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-{
-  BIND_CTRL(ctls, ignore_mask, "Ignore mask", "");
-}
+//void c_data_frame_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
+//{
+//  BIND_CTRL(ctls, ignore_mask, "Ignore mask", "");
+//}
 
 bool c_data_frame_processor_routine::serialize(c_config_setting settings, bool save)
 {
@@ -163,7 +163,7 @@ bool c_data_frame_processor_routine::serialize(c_config_setting settings, bool s
 
 
 c_data_frame_processor::c_data_frame_processor(const std::string & objname, const std::string & filename ):
-    name_(objname), filename_(filename)
+    _name(objname), _filename(filename)
 {
 }
 
@@ -203,7 +203,7 @@ c_data_frame_processor::sptr c_data_frame_processor::load(const std::string & fi
 
   c_data_frame_processor::sptr obj = deserialize(root);
   if ( obj ) {
-    obj->filename_ = filename;
+    obj->_filename = filename;
   }
 
   return obj;
@@ -271,27 +271,27 @@ bool c_data_frame_processor::save(const std::string & path_or_filename,
   std::string filename;
 
   if ( path_or_filename.empty() ) {
-    if ( !filename_.empty() ) {
-      filename = filename_;
+    if ( !_filename.empty() ) {
+      filename = _filename;
     }
     else {
       filename = ssprintf("%s/%s.cfg",
           c_data_frame_processor_collection::default_processor_collection_path().c_str(),
-          name_.c_str());
+          _name.c_str());
     }
   }
   else if ( path_or_filename[path_or_filename.length()-1] == '/' || is_directory(path_or_filename)) {
-    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), _name.c_str());
   }
   else if ( get_file_suffix(path_or_filename).empty() ) {
-    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), _name.c_str());
   }
   else {
     filename = path_or_filename;
   }
 
   if ( filename.empty() ) {
-    CF_ERROR("can not decide file name to save config file for '%s'", name_.c_str());
+    CF_ERROR("can not decide file name to save config file for '%s'", _name.c_str());
     return false;
   }
 
@@ -325,7 +325,7 @@ bool c_data_frame_processor::save(const std::string & path_or_filename,
     return false;
   }
 
-  filename_ = filename;
+  _filename = filename;
 
 
   return true;
@@ -338,7 +338,7 @@ bool c_data_frame_processor::serialize(c_config_setting settings, const std::str
     return false;
   }
 
-  settings.set("name",  objname.empty() ? name_ : objname);
+  settings.set("name",  objname.empty() ? _name : objname);
 
   c_config_setting chain =
       settings.add_list("chain");
@@ -362,7 +362,7 @@ bool c_data_frame_processor::process(c_data_frame::sptr & dataframe)
 {
   edit_lock lock(this);
 
-  for ( const auto &  routine : routines_ ) {
+  for ( const auto &  routine : _routines ) {
     if ( routine && routine->enabled() ) {
 
       try {
@@ -415,25 +415,25 @@ bool c_data_frame_processor::process(c_data_frame::sptr & dataframe)
 
 
 
-std::string c_data_frame_processor_collection::default_processor_collection_path_ =
+std::string c_data_frame_processor_collection::_default_processor_collection_path =
     "~/.config/SerStacker/data_processors";
 
-c_data_frame_processor_collection::sptr c_data_frame_processor_collection::default_instance_ =
+c_data_frame_processor_collection::sptr c_data_frame_processor_collection::_default_instance =
     c_data_frame_processor_collection::create();
 
 c_data_frame_processor_collection::sptr c_data_frame_processor_collection::default_instance()
 {
-  return default_instance_;
+  return _default_instance;
 }
 
 const std::string & c_data_frame_processor_collection::default_processor_collection_path()
 {
-  return default_processor_collection_path_;
+  return _default_processor_collection_path;
 }
 
 void c_data_frame_processor_collection::set_default_processor_collection_path(const std::string & v)
 {
-  default_processor_collection_path_ = v;
+  _default_processor_collection_path = v;
 }
 
 c_data_frame_processor_collection::sptr c_data_frame_processor_collection::create()
@@ -548,7 +548,7 @@ bool c_data_frame_processor_collection::save(const std::string & output_path) co
 {
   const std::string output_directory =
       expand_path(output_path.empty() ?
-          default_processor_collection_path_ :
+          _default_processor_collection_path :
           output_path);
 
   if ( !create_path(output_directory) ) {

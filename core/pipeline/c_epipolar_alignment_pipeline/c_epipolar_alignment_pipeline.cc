@@ -29,6 +29,8 @@ const c_enum_member * members_of<c_epipolar_alignment_feature2d_type>()
   return members;
 }
 
+
+
 namespace {
 
 template<class T>
@@ -152,174 +154,254 @@ bool c_epipolar_alignment_pipeline::serialize(c_config_setting settings, bool sa
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_options")) ) {
-    SERIALIZE_OPTION(section, save, camera_options_, camera_intrinsics);
+    SERIALIZE_OPTION(section, save, _camera_options, camera_intrinsics);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "feature2d")) ) {
 
-    SERIALIZE_OPTION(section, save, feature2d_options_, feature2d_type);
+    SERIALIZE_OPTION(section, save, _feature2d_options, feature2d_type);
 
     if( (subsection = SERIALIZE_GROUP(section, save, "detector")) ) {
-      SERIALIZE_OPTION(section, save, feature2d_options_, sparse_detector_options);
+      SERIALIZE_OPTION(section, save, _feature2d_options, sparse_detector_options);
     }
 
     if( (subsection = SERIALIZE_GROUP(section, save, "optflowpyrlk")) ) {
-      SERIALIZE_OPTION(section, save, feature2d_options_, optflowpyrlk_options);
+      SERIALIZE_OPTION(section, save, _feature2d_options, optflowpyrlk_options);
     }
   }
 
 
   if( (section = SERIALIZE_GROUP(settings, save, "eccflow")) ) {
-    SERIALIZE_PROPERTY(section, save, eccflow_, support_scale);
-    SERIALIZE_PROPERTY(section, save, eccflow_, max_iterations);
-    SERIALIZE_PROPERTY(section, save, eccflow_, update_multiplier);
-    SERIALIZE_PROPERTY(section, save, eccflow_, input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, eccflow_, reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, eccflow_, downscale_method);
-    SERIALIZE_PROPERTY(section, save, eccflow_, scale_factor);
-    SERIALIZE_PROPERTY(section, save, eccflow_, min_image_size);
-    SERIALIZE_PROPERTY(section, save, eccflow_, max_pyramid_level);
-    SERIALIZE_PROPERTY(section, save, eccflow_, noise_level);
+    SERIALIZE_PROPERTY(section, save, _eccflow, support_scale);
+    SERIALIZE_PROPERTY(section, save, _eccflow, max_iterations);
+    SERIALIZE_PROPERTY(section, save, _eccflow, update_multiplier);
+    SERIALIZE_PROPERTY(section, save, _eccflow, input_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, _eccflow, reference_smooth_sigma);
+    SERIALIZE_PROPERTY(section, save, _eccflow, downscale_method);
+    SERIALIZE_PROPERTY(section, save, _eccflow, scale_factor);
+    SERIALIZE_PROPERTY(section, save, _eccflow, min_image_size);
+    SERIALIZE_PROPERTY(section, save, _eccflow, max_pyramid_level);
+    SERIALIZE_PROPERTY(section, save, _eccflow, noise_level);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "camera_pose")) ) {
 
-    SERIALIZE_OPTION(section, save, *this, correlation_threshold_);
-    SERIALIZE_OPTION(section, save, *this, correlation_eps_);
-    SERIALIZE_OPTION(section, save, *this, correlation_kernel_radius_);
+    SERIALIZE_OPTION(section, save, *this, correlation_threshold);
+    SERIALIZE_OPTION(section, save, *this, correlation_eps);
+    SERIALIZE_OPTION(section, save, *this, correlation_kernel_radius);
 
-    SERIALIZE_OPTION(section, save, camera_pose_options_, direction);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, max_iterations);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, robust_threshold);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, max_levmar_iterations);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, epsx);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, epsf);
-    SERIALIZE_OPTION(section, save, camera_pose_options_, lm);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, direction);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, max_iterations);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, robust_threshold);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, max_levmar_iterations);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, epsx);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, epsf);
+    SERIALIZE_OPTION(section, save, _camera_pose_options, lm);
 
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
 
-    SERIALIZE_OPTION(section, save, output_options_, output_directory);
+    SERIALIZE_OPTION(section, save, _output_options, output_directory);
 
-    SERIALIZE_OPTION(section, save, output_options_, save_progress_video);
+    SERIALIZE_OPTION(section, save, _output_options, save_progress_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "progress_video_output_options")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, progress_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, progress_output_options);
     }
 
-    SERIALIZE_OPTION(section, save, output_options_, save_optflow_video);
+    SERIALIZE_OPTION(section, save, _output_options, save_optflow_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "save_optflow_video")) ) {
-      SERIALIZE_OPTION(subsection, save, output_options_, optflow_output_options);
+      SERIALIZE_OPTION(subsection, save, _output_options, optflow_output_options);
     }
 
 
-    SERIALIZE_OPTION(section, save, output_options_, save_matches_csv);
+    SERIALIZE_OPTION(section, save, _output_options, save_matches_csv);
 
   }
 
   return true;
 }
 
-const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeline::get_controls()
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_epipolar_alignment_input_options> & ctx)
 {
-  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-
-  if( ctrls.empty() ) {
-
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
-      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, camera_options_.camera_intrinsics);
-    PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_GROUP(ctrls, "Odometry", "");
-
-      PIPELINE_CTL(ctrls, feature2d_options_.feature2d_type, "type",
-        "Select feature2d type used for odometry estimation");
-
-      PIPELINE_CTL_GROUPC(ctrls, "Sparse feature2d Options", "", (_this->feature2d_options_.feature2d_type == c_epipolar_alignment_feature2d_sparse));
-
-        PIPELINE_CTL_GROUP(ctrls, "feature2d detector", "");
-          PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, feature2d_options_.sparse_detector_options);
-        PIPELINE_CTL_END_GROUP(ctrls);
-
-        PIPELINE_CTL_GROUP(ctrls, "optflowpyrlk", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxLevel, "maxLevel", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.winSize, "winSize", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxIterations, "maxIterations", "");
-          // PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.flags, "flags", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.eps, "eps", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.minEigThreshold, "minEigThreshold", "");
-          PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.maxErr, "maxErr", "");
-        PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-      PIPELINE_CTL_GROUPC(ctrls, "EccFlow Options", "", (_this->feature2d_options_.feature2d_type == c_epipolar_alignment_feature2d_dense));
-        PIPELINE_CTLP2(ctrls, eccflow_, support_scale, "support_scale", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, max_iterations, "max_iterations", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, update_multiplier, "update_multiplier", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, input_smooth_sigma, "input_smooth_sigma", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, reference_smooth_sigma, "reference_smooth_sigma", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, downscale_method, "downscale_method", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, scale_factor, "scale_factor", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, min_image_size, "min_image_size", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, max_pyramid_level, "max_pyramid_level", "");
-        PIPELINE_CTLP2(ctrls, eccflow_, noise_level, "noise_level", "");
-      PIPELINE_CTL_END_GROUP(ctrls);
-
-    PIPELINE_CTL_END_GROUP(ctrls);
+  using S = c_epipolar_alignment_input_options;
+  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+}
 
 
-    //    c_sparse_feature_detector_options sparse_detector_options;
-    //    c_optflowpyrlk_feature2d_matcher_options optflowpyrlk_options;
-
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
-
-      PIPELINE_CTL(ctrls, correlation_threshold_, "corr. threshold", "");
-      PIPELINE_CTL(ctrls, correlation_eps_, "corr. eps", "");
-      PIPELINE_CTL(ctrls, correlation_kernel_radius_, "corr. radius", "");
-
-      PIPELINE_CTL(ctrls, camera_pose_options_.direction, "Motion direction", "Optimize assuming a priori known motion direction");
-      PIPELINE_CTL(ctrls, camera_pose_options_.max_iterations, "max iterations", "Number of iterations for outliers removal");
-      PIPELINE_CTL(ctrls, camera_pose_options_.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
-      PIPELINE_CTL(ctrls, camera_pose_options_.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
-      PIPELINE_CTL(ctrls, camera_pose_options_.epsx, "levmar epsx", "levmar epsx parameter");
-      PIPELINE_CTL(ctrls, camera_pose_options_.epsf, "levmar epsf", "levmar epsf parameter");
-      PIPELINE_CTL(ctrls, camera_pose_options_.lm, "lm", "lm method");
-    PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_epipolar_alignment_camera_options> & ctx)
+{
+  using S = c_epipolar_alignment_camera_options;
+  ctlbind(ctls, "camera_intrinsics", ctx(&S::camera_intrinsics), "");
+}
 
 
-    ////////
-    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-      PIPELINE_CTL(ctrls, output_options_.output_directory, "output_directory", "");
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_epipolar_alignment_feature2d_options> & ctx)
+{
+  using S = c_epipolar_alignment_feature2d_options;
 
-      PIPELINE_CTL(ctrls, output_options_.save_matches_csv, "save_matches_csv", "");
+  ctlbind(ctls, "feature2d_type", ctx(&S::feature2d_type), "Select feature2d type used for odometry estimation");
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Progress video", "");
-        PIPELINE_CTL(ctrls, output_options_.save_progress_video, "save_progress_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.progress_output_options,
-            _this->output_options_.save_progress_video);
-      PIPELINE_CTL_END_GROUP(ctrls);
+  ctlbind_expandable_group(ctls, "Sparse feature2d Options", "");
+    ctlbind(ctls, "feature2d detector",  ctx(&S::sparse_detector_options), "");
+    ctlbind_expandable_group(ctls, "optflowpyrlk_options", "");
+      ctlbind(ctls, ctx(&S::optflowpyrlk_options));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
+}
 
-      PIPELINE_CTL_GROUP(ctrls, "Save Optflow video", "");
-        PIPELINE_CTL(ctrls, output_options_.save_optflow_video, "save_optflow_video", "");
-        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, output_options_.optflow_output_options,
-            _this->output_options_.save_optflow_video);
-      PIPELINE_CTL_END_GROUP(ctrls);
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, c_epipolar_alignment_output_options> & ctx)
+{
+  using S = c_epipolar_alignment_output_options;
 
+  ctlbind(ctls, "save_matches_csv", ctx(&S::save_matches_csv), "");
 
-    PIPELINE_CTL_END_GROUP(ctrls);
-    ////////
+  ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+  ctlbind(ctls, ctx(&S::progress_output_options));
+
+  ctlbind(ctls, "save_optflow_video", ctx(&S::save_optflow_video), "");
+  ctlbind(ctls, ctx(&S::optflow_output_options));
+
+  ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
+}
+
+const c_ctlist<c_epipolar_alignment_pipeline> & c_epipolar_alignment_pipeline::getcontrols()
+{
+  static c_ctlist<this_class> ctls;
+  if ( ctls.empty() ) {
+    c_ctlbind_context<this_class> ctx;
+
+     ctlbind_expandable_group(ctls, "1. Input options", "");
+     ctlbind(ctls, ctx(&this_class::_input_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "2. Camera parameters", "");
+     ctlbind(ctls, ctx(&this_class::_camera_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "3. Odometry", "");
+     ctlbind(ctls, ctx(&this_class::_feature2d_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "4. Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+     ctlbind(ctls, ctx(&this_class::_camera_pose_options));
+     ctlbind_end_group(ctls);
+
+     ctlbind_expandable_group(ctls, "5. Output options", "");
+     ctlbind(ctls, ctx(&this_class::_output_options));
+     ctlbind_end_group(ctls);
   }
 
-  return ctrls;
+  return ctls;
 }
+
+//
+//const std::vector<c_image_processing_pipeline_ctrl>& c_epipolar_alignment_pipeline::get_controls()
+//{
+//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
+////
+////  if( ctrls.empty() ) {
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
+////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Camera parameters", "");
+////      PIPELINE_CTL_CAMERA_INTRINSICS(ctrls, _camera_options.camera_intrinsics);
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_GROUP(ctrls, "Odometry", "");
+////
+////      PIPELINE_CTL(ctrls, _feature2d_options.feature2d_type, "type",
+////        "Select feature2d type used for odometry estimation");
+////
+////      PIPELINE_CTL_GROUPC(ctrls, "Sparse feature2d Options", "", (_this->_feature2d_options.feature2d_type == c_epipolar_alignment_feature2d_sparse));
+////
+////        PIPELINE_CTL_GROUP(ctrls, "feature2d detector", "");
+////          PIPELINE_CTL_FEATURE2D_DETECTOR_OPTIONS(ctrls, _feature2d_options.sparse_detector_options);
+////        PIPELINE_CTL_END_GROUP(ctrls);
+////
+////        PIPELINE_CTL_GROUP(ctrls, "optflowpyrlk", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.maxLevel, "maxLevel", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.winSize, "winSize", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.maxIterations, "maxIterations", "");
+////          // PIPELINE_CTL(ctrls, feature2d_options_.optflowpyrlk_options.flags, "flags", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.eps, "eps", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.minEigThreshold, "minEigThreshold", "");
+////          PIPELINE_CTL(ctrls, _feature2d_options.optflowpyrlk_options.maxErr, "maxErr", "");
+////        PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUPC(ctrls, "EccFlow Options", "", (_this->_feature2d_options.feature2d_type == c_epipolar_alignment_feature2d_dense));
+////        PIPELINE_CTLP2(ctrls, _eccflow, support_scale, "support_scale", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, max_iterations, "max_iterations", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, update_multiplier, "update_multiplier", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, input_smooth_sigma, "input_smooth_sigma", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, reference_smooth_sigma, "reference_smooth_sigma", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, downscale_method, "downscale_method", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, scale_factor, "scale_factor", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, min_image_size, "min_image_size", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, max_pyramid_level, "max_pyramid_level", "");
+////        PIPELINE_CTLP2(ctrls, _eccflow, noise_level, "noise_level", "");
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    //    c_sparse_feature_detector_options sparse_detector_options;
+////    //    c_optflowpyrlk_feature2d_matcher_options optflowpyrlk_options;
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Camera Pose Estimation", "Parameters for lm_refine_camera_pose2()");
+////
+////      PIPELINE_CTL(ctrls, correlation_threshold, "corr. threshold", "");
+////      PIPELINE_CTL(ctrls, correlation_eps, "corr. eps", "");
+////      PIPELINE_CTL(ctrls, correlation_kernel_radius, "corr. radius", "");
+////
+////      PIPELINE_CTL(ctrls, _camera_pose_options.direction, "Motion direction", "Optimize assuming a priori known motion direction");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.max_iterations, "max iterations", "Number of iterations for outliers removal");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.robust_threshold, "robust threshold", "Parameter for robust function in pixels");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.max_levmar_iterations, "max levmar iterations", "Number of levmar iterations");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.epsx, "levmar epsx", "levmar epsx parameter");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.epsf, "levmar epsf", "levmar epsf parameter");
+////      PIPELINE_CTL(ctrls, _camera_pose_options.lm, "lm", "lm method");
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    ////////
+////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
+////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
+////
+////      PIPELINE_CTL(ctrls, _output_options.save_matches_csv, "save_matches_csv", "");
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Progress video", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.progress_output_options,
+////            _this->_output_options.save_progress_video);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////      PIPELINE_CTL_GROUP(ctrls, "Save Optflow video", "");
+////        PIPELINE_CTL(ctrls, _output_options.save_optflow_video, "save_optflow_video", "");
+////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.optflow_output_options,
+////            _this->_output_options.save_optflow_video);
+////      PIPELINE_CTL_END_GROUP(ctrls);
+////
+////
+////    PIPELINE_CTL_END_GROUP(ctrls);
+////    ////////
+////  }
+//
+//  return ctrls;
+//}
 
 bool c_epipolar_alignment_pipeline::copyParameters(const base::sptr & dst) const
 {
@@ -338,12 +420,12 @@ bool c_epipolar_alignment_pipeline::copyParameters(const base::sptr & dst) const
   }
 
   p->_input_options = this->_input_options;
-  p->camera_options_ = this->camera_options_;
-  p->camera_pose_options_ = this->camera_pose_options_;
-  p->output_options_ = this->output_options_;
-  p->correlation_threshold_  = this->correlation_threshold_;
-  p->correlation_eps_ = this->correlation_eps_;
-  p->correlation_kernel_radius_ = this->correlation_kernel_radius_;
+  p->_camera_options = this->_camera_options;
+  p->_camera_pose_options = this->_camera_pose_options;
+  p->_output_options = this->_output_options;
+  p->correlation_threshold  = this->correlation_threshold;
+  p->correlation_eps = this->correlation_eps;
+  p->correlation_kernel_radius = this->correlation_kernel_radius;
 
   return true;
 }
@@ -424,13 +506,13 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
     }
 
     // [1][0]
-    if ( !current_correlation_.empty() ) {
+    if ( !_current_correlation.empty() ) {
       if( display.channels() == 1 ) {
-        current_correlation_.convertTo(display(roi[1][0]), display.depth(), 100);
+        _current_correlation.convertTo(display(roi[1][0]), display.depth(), 100);
       }
       else {
         cv::Mat tmp;
-        current_correlation_.convertTo(tmp, display.depth(), 100);
+        _current_correlation.convertTo(tmp, display.depth(), 100);
         cv::cvtColor(tmp, display(roi[1][0]),
             cv::COLOR_GRAY2BGR);
       }
@@ -439,14 +521,14 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
       cv::Mat dsp = display(roi[1][0]);
 
-      for( int i = 0, n = warped_current_positions_.size(); i < n; ++i ) {
+      for( int i = 0, n = _warped_current_positions.size(); i < n; ++i ) {
 
-        const auto & p1 = matched_previous_positions_[i];
+        const auto & p1 = _matched_previous_positions[i];
 
-        const auto & p2 = warped_current_positions_[i];
+        const auto & p2 = _warped_current_positions[i];
 
         const cv::Scalar c =
-            current_inliers_[i][0] ? CV_RGB(255, 255, 16) :
+            _current_inliers[i][0] ? CV_RGB(255, 255, 16) :
                 CV_RGB(255, 16, 16);
 
         cv::line(dsp, p1, p2, c, 1, cv::LINE_8);
@@ -457,7 +539,7 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
     // [1][1]
     cv::warpPerspective(current_frame, tmp,
-        currentDerotationHomography_,
+        _currentDerotationHomography,
         size,
         cv::INTER_LINEAR, // cv::INTER_LINEAR may introduce some blur on kitti images
         cv::BORDER_CONSTANT);
@@ -474,27 +556,27 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
     }
 
 
-    if ( !warped_current_positions_.empty() ) {
+    if ( !_warped_current_positions.empty() ) {
 
       cv::Mat1f radial(size, 0.0f);
       cv::Mat1f tangential(size, 0.0f);
       cv::Mat1b mask(size, (uint8_t)(255));
 
-      for ( int i = 0, n = warped_current_positions_.size(); i < n; ++i ) {
+      for ( int i = 0, n = _warped_current_positions.size(); i < n; ++i ) {
 
-        const float x1 = matched_previous_positions_[i].x;
-        const float y1 = matched_previous_positions_[i].y;
+        const float x1 = _matched_previous_positions[i].x;
+        const float y1 = _matched_previous_positions[i].y;
 
-        const float x2 = warped_current_positions_[i].x;
-        const float y2 = warped_current_positions_[i].y;
+        const float x2 = _warped_current_positions[i].x;
+        const float y2 = _warped_current_positions[i].y;
 
         const int ix = (int)(x1);
         const int iy = (int)(y1);
 
         if( ix >= 0 && ix < size.width && iy >= 0 && iy < size.height ) {
 
-          const float dX = x1 - currentEpipole_.x;
-          const float dY = y1 - currentEpipole_.y;
+          const float dX = x1 - _currentEpipole.x;
+          const float dY = y1 - _currentEpipole.y;
           const float L = cv::norm(cv::Vec2f(dX, dY));
 
           const cv::Vec2f radius_vector( dX / L, dY / L);
@@ -534,19 +616,19 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
 
     // [2][2]
-    if ( current_inliers_.rows == matched_previous_positions_.size() ) {
+    if ( _current_inliers.rows == _matched_previous_positions.size() ) {
 
       cv::Mat3b m(roi[2][2].size(), cv::Vec3b::all(0));
 
-      for ( int i = 0, n = matched_previous_positions_.size(); i < n; ++i ) {
+      for ( int i = 0, n = _matched_previous_positions.size(); i < n; ++i ) {
 
         const cv::Point2f & p =
-            matched_previous_positions_[i];
+            _matched_previous_positions[i];
 
         const int x = (int)(p.x);
         const int y = (int)(p.y);
 
-        if ( current_inliers_[i][0] ) {
+        if ( _current_inliers[i][0] ) {
           m[y][x][0] = 255;
           m[y][x][1] = 255;
           m[y][x][2] = 255;
@@ -573,14 +655,14 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
       }
     }
 
-    if( IS_INSIDE_IMAGE(currentEpipole_, size) ) {
+    if( IS_INSIDE_IMAGE(_currentEpipole, size) ) {
       for( int i = 0; i < 3; ++i ) {
         for( int j = 0; j < 3; ++j ) {
 
           cv::Mat pane =
               display(roi[i][j]);
 
-          const cv::Point2f E(currentEpipole_.x, currentEpipole_.y);
+          const cv::Point2f E(_currentEpipole.x, _currentEpipole.y);
 
           cv::ellipse(pane, E, cv::Size(11, 11), 0, 0, 360, CV_RGB(255, 60, 60), 1, cv::LINE_8);
           cv::line(pane, cv::Point2f(E.x - 9, E.y - 9), cv::Point2f(E.x + 9, E.y + 9), CV_RGB(0, 255, 0), 1, cv::LINE_8);
@@ -595,14 +677,14 @@ bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_fr
 
 bool c_epipolar_alignment_pipeline::initialize()
 {
-  feature2d_options_.sparse_detector_options.type =
+  _feature2d_options.sparse_detector_options.type =
       SPARSE_FEATURE_DETECTOR_FAST;
 
-  eccflow_.set_support_scale(3);
-  eccflow_.set_noise_level(1e-3);
-  eccflow_.set_min_image_size(4);
-  eccflow_.set_scale_factor(0.75);
-  eccflow_.set_max_iterations(3);
+  _eccflow.set_support_scale(3);
+  _eccflow.set_noise_level(1e-3);
+  _eccflow.set_min_image_size(4);
+  _eccflow.set_scale_factor(0.75);
+  _eccflow.set_max_iterations(3);
 
 
   return true;
@@ -616,42 +698,42 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
    return false;
  }
 
-  current_frame_.release();
-  current_mask_.release();
-  previous_frame_.release();
-  previous_mask_.release();
-  current_remap_.release();
-  current_inliers_.release();
-  current_correlation_mask_.release();;
+  _current_frame.release();
+  _current_mask.release();
+  _previous_frame.release();
+  _previous_mask.release();
+  _current_remap.release();
+  _current_inliers.release();
+  _current_correlation_mask.release();;
   current_mg.release();
   previous_mg.release();
   remapped_current_mg.release();;
 
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
-  current_keypoints_.clear();
-  previous_keypoints_.clear();
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
-  matched_fused_positions_.clear();
+  _matched_current_positions.clear();
+  _matched_previous_positions.clear();
+  _current_keypoints.clear();
+  _previous_keypoints.clear();
+  _matched_current_positions.clear();
+  _matched_previous_positions.clear();
+  _matched_fused_positions.clear();
 
   _output_path =
-      create_output_path(output_options_.output_directory);
+      create_output_path(_output_options.output_directory);
 
-  if( feature2d_options_.feature2d_type != c_epipolar_alignment_feature2d_sparse ) {
-    sparse_feature_detector_.reset();
+  if( _feature2d_options.feature2d_type != c_epipolar_alignment_feature2d_sparse ) {
+    _sparse_feature_detector.reset();
   }
-  else if( !(sparse_feature_detector_ = create_sparse_feature_detector(feature2d_options_.sparse_detector_options)) ) {
+  else if( !(_sparse_feature_detector = create_sparse_feature_detector(_feature2d_options.sparse_detector_options)) ) {
     CF_ERROR("create_sparse_feature_detector() fails");
     return false;
   }
 
   G =
-      cv::getGaussianKernel(2 * std::max(correlation_kernel_radius_, 1) + 1,
+      cv::getGaussianKernel(2 * std::max(correlation_kernel_radius, 1) + 1,
           0, CV_32F);
 
-  current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  current_translation_vector_ = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1
+  _current_euler_anges = cv::Vec3d(0, 0, 0);
+  _current_translation_vector = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? 1 : -1
 
   return true;
 }
@@ -659,7 +741,7 @@ bool c_epipolar_alignment_pipeline::initialize_pipeline()
 void c_epipolar_alignment_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
-  sparse_feature_detector_.reset();
+  _sparse_feature_detector.reset();
 }
 
 bool c_epipolar_alignment_pipeline::run_pipeline()
@@ -682,7 +764,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !_input_sequence->read(current_frame_, &current_mask_) ) {
+      if( !_input_sequence->read(_current_frame, &_current_mask) ) {
         CF_ERROR("input_sequence_->read() fails");
         return false;
       }
@@ -697,7 +779,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
       lock_guard lock(mutex());
 
-      if( !_input_options.input_image_processor->process(current_frame_, current_mask_) ) {
+      if( !_input_options.input_image_processor->process(_current_frame, _current_mask) ) {
         CF_ERROR("input_image_processor->process() fails");
         return false;
       }
@@ -718,9 +800,9 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
       _accumulated_frames = _processed_frames;
 
-      std::swap(current_frame_, previous_frame_);
-      std::swap(current_mask_, previous_mask_);
-      std::swap(current_keypoints_, previous_keypoints_);
+      std::swap(_current_frame, _previous_frame);
+      std::swap(_current_mask, _previous_mask);
+      std::swap(_current_keypoints, _previous_keypoints);
     }
 
     //if( !is_live_sequence )
@@ -774,44 +856,44 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_sparse()
 
   INSTRUMENT_REGION("");
 
-  if ( current_frame_.empty() ) {
+  if ( _current_frame.empty() ) {
     // silently ignore if still wait for next frame
     return true;
   }
 
-  current_keypoints_.clear();
-  sparse_feature_detector_->detect(current_frame_, current_keypoints_, current_mask_);
-  if ( current_keypoints_.size() < 10 ) { // ignore if fail
-    CF_ERROR("sparse_feature_detector_->detect(current_frame_) detects only %zu key points, skip frame", current_keypoints_.size());
+  _current_keypoints.clear();
+  _sparse_feature_detector->detect(_current_frame, _current_keypoints, _current_mask);
+  if ( _current_keypoints.size() < 10 ) { // ignore if fail
+    CF_ERROR("sparse_feature_detector_->detect(current_frame_) detects only %zu key points, skip frame", _current_keypoints.size());
     return true;
   }
 
-  if ( previous_frame_.empty() || previous_keypoints_.empty() ) {
+  if ( _previous_frame.empty() || _previous_keypoints.empty() ) {
     // silently ignore if still wait for next frame
     return true;
   }
 
   const bool fOK =
-      match_optflowpyrlk(previous_frame_, current_frame_,
-          previous_keypoints_,
-          feature2d_options_.optflowpyrlk_options,
-          matched_previous_positions_,
-          matched_current_positions_);
+      match_optflowpyrlk(_previous_frame, _current_frame,
+          _previous_keypoints,
+          _feature2d_options.optflowpyrlk_options,
+          _matched_previous_positions,
+          _matched_current_positions);
 
   if( !fOK ) {
     CF_ERROR("match_optflowpyrlk() fails");
     return false;
   }
 
-  current_mg = current_frame_;
-  previous_mg = previous_frame_;
+  current_mg = _current_frame;
+  previous_mg = _previous_frame;
 
   return true;
 }
 
 bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
 {
-  if ( previous_frame_.empty() ) {
+  if ( _previous_frame.empty() ) {
     // silently ignore if still wait for next frame
     return true;
   }
@@ -822,14 +904,14 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
 
   INSTRUMENT_REGION("");
 
-  if( current_frame_.channels() == 1 ) {
-    cv::morphologyEx(current_frame_, current_mg, cv::MORPH_GRADIENT,
+  if( _current_frame.channels() == 1 ) {
+    cv::morphologyEx(_current_frame, current_mg, cv::MORPH_GRADIENT,
         SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
   else {
-    cv::cvtColor(current_frame_, current_mg,
+    cv::cvtColor(_current_frame, current_mg,
         cv::COLOR_BGR2GRAY);
     cv::morphologyEx(current_mg, current_mg, cv::MORPH_GRADIENT,
         SE,
@@ -837,14 +919,14 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
         cv::BORDER_REPLICATE);
   }
 
-  if( previous_frame_.channels() == 1 ) {
-    cv::morphologyEx(previous_frame_, previous_mg, cv::MORPH_GRADIENT,
+  if( _previous_frame.channels() == 1 ) {
+    cv::morphologyEx(_previous_frame, previous_mg, cv::MORPH_GRADIENT,
         SE,
         cv::Point(-1, -1), 1,
         cv::BORDER_REPLICATE);
   }
   else {
-    cv::cvtColor(previous_frame_, previous_mg,
+    cv::cvtColor(_previous_frame, previous_mg,
         cv::COLOR_BGR2GRAY);
     cv::morphologyEx(previous_mg, previous_mg, cv::MORPH_GRADIENT,
         SE,
@@ -853,53 +935,53 @@ bool c_epipolar_alignment_pipeline::extract_and_match_keypoints_dense()
   }
 
 
-  current_remap_.release();
-  if( !eccflow_.compute(current_mg, previous_mg, current_remap_, current_mask_, previous_mask_) ) {
+  _current_remap.release();
+  if( !_eccflow.compute(current_mg, previous_mg, _current_remap, _current_mask, _previous_mask) ) {
     CF_ERROR("eccflow_.compute() fails");
     return false;
   }
 
   // remap current -> previous
-  cv::remap(current_mg, remapped_current_mg, current_remap_, cv::noArray(),
+  cv::remap(current_mg, remapped_current_mg, _current_remap, cv::noArray(),
       cv::INTER_AREA,
       cv::BORDER_CONSTANT);
 
-  correlate(previous_mg, remapped_current_mg, current_correlation_, G,
-      correlation_eps_);
+  correlate(previous_mg, remapped_current_mg, _current_correlation, G,
+      correlation_eps);
 
-  cv::compare(current_correlation_,
-      cv::Scalar::all(correlation_threshold_),
-      current_correlation_mask_,
+  cv::compare(_current_correlation,
+      cv::Scalar::all(correlation_threshold),
+      _current_correlation_mask,
       cv::CMP_GE);
 
-  matched_current_positions_.clear();
-  matched_previous_positions_.clear();
+  _matched_current_positions.clear();
+  _matched_previous_positions.clear();
 
   // match previous -> current
-  extract_pixel_matches(current_remap_,
-      current_correlation_mask_,
-      matched_previous_positions_,
-      matched_current_positions_);
+  extract_pixel_matches(_current_remap,
+      _current_correlation_mask,
+      _matched_previous_positions,
+      _matched_current_positions);
 
   return true;
 }
 
 bool c_epipolar_alignment_pipeline::extract_and_match_keypoints()
 {
-  switch (feature2d_options_.feature2d_type) {
+  switch (_feature2d_options.feature2d_type) {
     case c_epipolar_alignment_feature2d_sparse:
       return extract_and_match_keypoints_sparse();
     case c_epipolar_alignment_feature2d_dense:
       return extract_and_match_keypoints_dense();
   }
-  CF_ERROR("APP BUG: Invalid feature2d_type=%d requested", feature2d_options_.feature2d_type);
+  CF_ERROR("APP BUG: Invalid feature2d_type=%d requested", _feature2d_options.feature2d_type);
   return false;
 }
 
 
 bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 {
-  if( matched_current_positions_.size() < 6 || matched_previous_positions_.size() < 6 ) {
+  if( _matched_current_positions.size() < 6 || _matched_previous_positions.size() < 6 ) {
     return true; // ignore
   }
 
@@ -907,8 +989,8 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 
   INSTRUMENT_REGION("");
 
-  current_inliers_.create(matched_current_positions_.size(), 1);
-  current_inliers_.setTo(255);
+  _current_inliers.create(_matched_current_positions.size(), 1);
+  _current_inliers.setTo(255);
 
 
 //  CF_DEBUG("Initial A=(%+g %+g %+g) T=(%+g %+g %+g)",
@@ -919,41 +1001,41 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 //      current_translation_vector_(1),
 //      current_translation_vector_(2));
 
-  current_euler_anges_ = cv::Vec3d(0, 0, 0);
-  current_translation_vector_ = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? +1 : -1
+  _current_euler_anges = cv::Vec3d(0, 0, 0);
+  _current_translation_vector = cv::Vec3d(0, 0, 1); // camera_pose_options_.direction == EPIPOLAR_MOTION_FORWARD ? +1 : -1
 
   bool fOk =
       lm_camera_pose_and_derotation_homography(
-          camera_options_.camera_intrinsics.camera_matrix,
-          matched_current_positions_,
-          matched_previous_positions_,
-          current_euler_anges_,
-          current_translation_vector_,
+          _camera_options.camera_intrinsics.camera_matrix,
+          _matched_current_positions,
+          _matched_previous_positions,
+          _current_euler_anges,
+          _current_translation_vector,
           nullptr,
           nullptr,
           nullptr,
           nullptr,
-          current_inliers_,
-          &camera_pose_options_);
+          _current_inliers,
+          &_camera_pose_options);
 
   if ( !fOk ) {
     CF_ERROR("estimate_camera_pose_and_derotation_homography() fails");
   }
 
   const cv::Matx33d & camera_matrix =
-      camera_options_.camera_intrinsics.camera_matrix;
+      _camera_options.camera_intrinsics.camera_matrix;
 
   const cv::Vec3d A =
-      current_euler_anges_;
+      _current_euler_anges;
 
   const cv::Vec3d T =
-      current_translation_vector_;
+      _current_translation_vector;
 
-  currentRotationMatrix_ =
+  _currentRotationMatrix =
       build_rotation(A);
 
-  currentDerotationHomography_ =
-      camera_matrix * currentRotationMatrix_ * camera_matrix.inv();
+  _currentDerotationHomography =
+      camera_matrix * _currentRotationMatrix * camera_matrix.inv();
 
 //  currentEssentialMatrix_ =
 //      compose_essential_matrix(currentRotationMatrix_, T);
@@ -968,14 +1050,14 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 //  currentEpipole_ =
 //      0.5 * (currentEpipoles_[0] + currentEpipoles_[1]);
 
-  currentEpipole_ =
+  _currentEpipole =
       compute_epipole(camera_matrix, T);
 
-    CF_DEBUG("A: (%g %g %g)", current_euler_anges_(0) * 180 / CV_PI, current_euler_anges_(1) * 180 / CV_PI, current_euler_anges_(2) * 180 / CV_PI);
-    CF_DEBUG("T: (%g %g %g)", current_translation_vector_(0), current_translation_vector_(1), current_translation_vector_(2));
+    CF_DEBUG("A: (%g %g %g)", _current_euler_anges(0) * 180 / CV_PI, _current_euler_anges(1) * 180 / CV_PI, _current_euler_anges(2) * 180 / CV_PI);
+    CF_DEBUG("T: (%g %g %g)", _current_translation_vector(0), _current_translation_vector(1), _current_translation_vector(2));
 //    CF_DEBUG("E: (%g %g) EE: {%+g %+g} {%+g %+g}", currentEpipole_.x, currentEpipole_.y,
 //        currentEpipoles_[0].x, currentEpipoles_[0].y, currentEpipoles_[1].x, currentEpipoles_[1].y);
-    CF_DEBUG("E: (%g %g) ", currentEpipole_.x, currentEpipole_.y);
+    CF_DEBUG("E: (%g %g) ", _currentEpipole.x, _currentEpipole.y);
 
 //  if ( distance_between_points(currentEpipoles_[0], currentEpipoles_[1]) > 1 ) {
 //    CF_WARNING("\nWARNING!\n"
@@ -986,8 +1068,8 @@ bool c_epipolar_alignment_pipeline::estmate_camera_pose()
 //        currentEpipoles_[1].x, currentEpipoles_[1].y);
 //  }
 
-  cv::perspectiveTransform(matched_current_positions_, warped_current_positions_,
-      currentDerotationHomography_);
+  cv::perspectiveTransform(_matched_current_positions, _warped_current_positions,
+      _currentDerotationHomography);
 
   return true;
 }
@@ -1016,7 +1098,7 @@ bool c_epipolar_alignment_pipeline::fuse_matches()
 
 bool c_epipolar_alignment_pipeline::save_progess_videos()
 {
-  if( output_options_.save_progress_video ) {
+  if( _output_options.save_progress_video ) {
 
     cv::Mat display;
 
@@ -1026,35 +1108,35 @@ bool c_epipolar_alignment_pipeline::save_progess_videos()
     }
 
     bool fOk =
-        add_output_writer(progress_writer_,
-              output_options_.progress_output_options,
+        add_output_writer(_progress_writer,
+              _output_options.progress_output_options,
               "progress",
               ".avi");
 
     if( !fOk ) {
       CF_ERROR("add_output_writer('%s') fails",
-          progress_writer_.filename().c_str());
+          _progress_writer.filename().c_str());
       return false;
     }
 
-    if( !progress_writer_.write(display) ) {
+    if( !_progress_writer.write(display) ) {
       CF_ERROR("progress_writer_.write('%s') fails.",
-          progress_writer_.filename().c_str());
+          _progress_writer.filename().c_str());
       return false;
     }
   }
 
-  if( output_options_.save_optflow_video && !current_remap_.empty() ) {
+  if( _output_options.save_optflow_video && !_current_remap.empty() ) {
 
     bool fOk =
-        add_output_writer(optflow_writer_,
-              output_options_.optflow_output_options,
+        add_output_writer(_optflow_writer,
+              _output_options.optflow_output_options,
               "optflow",
               ".ser");
 
     if( !fOk ) {
       CF_ERROR("add_output_writer('%s') fails",
-          optflow_writer_.filename().c_str());
+          _optflow_writer.filename().c_str());
       return false;
     }
 
@@ -1062,13 +1144,13 @@ bool c_epipolar_alignment_pipeline::save_progess_videos()
     cv::Mat channels[2], mag;
     cv::Mat2f flow;
 
-    ecc_remap_to_optflow(current_remap_, flow);
+    ecc_remap_to_optflow(_current_remap, flow);
     cv::split(flow, channels);
     cv::magnitude(channels[0], channels[1], mag);
 
-    if( !optflow_writer_.write(mag) ) {
+    if( !_optflow_writer.write(mag) ) {
       CF_ERROR("optflow_writer_.write('%s') fails.",
-          optflow_writer_.filename().c_str());
+          _optflow_writer.filename().c_str());
       return false;
     }
 
@@ -1079,11 +1161,11 @@ bool c_epipolar_alignment_pipeline::save_progess_videos()
 
 bool c_epipolar_alignment_pipeline::save_matches_csv()
 {
-  if( !output_options_.save_matches_csv ) {
+  if( !_output_options.save_matches_csv ) {
     return true;
   }
 
-  if ( matched_current_positions_.empty() || matched_previous_positions_.empty() ) {
+  if ( _matched_current_positions.empty() || _matched_previous_positions.empty() ) {
     return true;
   }
 
@@ -1110,13 +1192,13 @@ bool c_epipolar_alignment_pipeline::save_matches_csv()
   }
 
   fprintf(fp, "x1\ty1\tx2\ty2\n");
-  for ( int i = 0, n = matched_current_positions_.size(); i < n; ++i ) {
+  for ( int i = 0, n = _matched_current_positions.size(); i < n; ++i ) {
 
     const cv::Point2f & cp =
-        matched_current_positions_[i];
+        _matched_current_positions[i];
 
     const cv::Point2f & pp =
-        matched_previous_positions_[i];
+        _matched_previous_positions[i];
 
     fprintf(fp, "%+12.1f\t%+12.1f\t%+12.1f\t%+12.1f\n",
         cp.x, cp.y, pp.x, pp.y);

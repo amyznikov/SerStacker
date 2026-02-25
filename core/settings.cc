@@ -10,6 +10,15 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+static const char * adjustname(const char * name)
+{
+  if ( name ) {
+    while (*name == '_' ) {
+      ++name;
+    }
+  }
+  return name;
+}
 
 c_config::c_config()
 {
@@ -17,19 +26,19 @@ c_config::c_config()
 }
 
 c_config::c_config(const std::string & filename) :
-    defaultFilename_(filename)
+    _defaultFilename(filename)
 {
   construct();
 }
 
 c_config::~c_config()
 {
-  config_destroy(&config_);
+  config_destroy(&_config);
 }
 
 void c_config::construct()
 {
-  config_init(&config_);
+  config_init(&_config);
   set_float_precision(16);
   set_auto_convert(true);
   set_option(OptionOpenBraceOnSeparateLine, false);
@@ -41,33 +50,33 @@ void c_config::construct()
 // @brief get default config file name
 const std::string & c_config::filename() const
 {
-  return defaultFilename_;
+  return _defaultFilename;
 }
 // @brief set default config file name
 void c_config::set_filename(const std::string & filename)
 {
-  defaultFilename_ = filename;
+  _defaultFilename = filename;
 }
 
 
 void c_config::set_options(int options)
 {
-  config_set_options(&config_, options);
+  config_set_options(&_config, options);
 }
 
 int c_config::options() const
 {
-  return config_get_options(&config_);
+  return config_get_options(&_config);
 }
 
 void c_config::set_option(Option option, bool flag)
 {
-  config_set_option(&config_, (int)option, flag ? CONFIG_TRUE : CONFIG_FALSE);
+  config_set_option(&_config, (int)option, flag ? CONFIG_TRUE : CONFIG_FALSE);
 }
 
 bool c_config::option(Option opt) const
 {
-  return config_get_option(&config_, (int)opt);
+  return config_get_option(&_config, (int)opt);
 }
 
 void c_config::set_auto_convert(bool v)
@@ -82,50 +91,50 @@ bool c_config::auto_convert() const
 
 void c_config::set_default_format(c_config_setting::Format format)
 {
-  if ( (defaultFormat_ = format) != c_config_setting::FormatHex ) {
-    defaultFormat_ = c_config_setting::FormatDefault;
+  if ( (_defaultFormat = format) != c_config_setting::FormatHex ) {
+    _defaultFormat = c_config_setting::FormatDefault;
   }
-  config_set_default_format(&config_, static_cast<short>(defaultFormat_));
+  config_set_default_format(&_config, static_cast<short>(_defaultFormat));
 }
 
 c_config_setting::Format c_config::default_format() const
 {
-  return defaultFormat_;
+  return _defaultFormat;
 }
 
 void c_config::set_tab_width(uint16_t width)
 {
-  config_set_tab_width(&config_, width);
+  config_set_tab_width(&_config, width);
 }
 
 uint16_t c_config::tab_width() const
 {
-  return(config_get_tab_width(&config_));
+  return(config_get_tab_width(&_config));
 }
 
 void c_config::set_float_precision(uint16_t digits)
 {
-  return (config_set_float_precision(&config_,digits));
+  return (config_set_float_precision(&_config,digits));
 }
 
 uint16_t c_config::float_precision() const
 {
-  return (config_get_float_precision(&config_));
+  return (config_get_float_precision(&_config));
 }
 
 void c_config::set_include_dir(const char *includeDir)
 {
-  config_set_include_dir(&config_, includeDir);
+  config_set_include_dir(&_config, includeDir);
 }
 
 const char * c_config:: include_dir() const
 {
-  return(config_get_include_dir(&config_));
+  return(config_get_include_dir(&_config));
 }
 
 const char ** c_config::evaluate_include_path(const char *path, const char **error)
 {
-  return(config_default_include_func(&config_, include_dir(), path, error));
+  return(config_default_include_func(&_config, include_dir(), path, error));
 }
 
 
@@ -135,7 +144,7 @@ bool c_config::write(const std::string & filename)
 
   const std::string fname =
       expand_path(filename.empty() ?
-          defaultFilename_ :
+          _defaultFilename :
           filename);
 
   if ( fname.empty() ) {
@@ -159,7 +168,7 @@ bool c_config::write(const std::string & filename)
     }
   }
 
-  if ( !config_write_file(&config_, fname.c_str()) ) {
+  if ( !config_write_file(&_config, fname.c_str()) ) {
     CF_FATAL("ERROR: config_write_file('%s') fails.\n"
         "ERRNO=%d (%s), Hope it helps)",
         fname.c_str(),
@@ -186,7 +195,7 @@ std::string c_config::write_string() const
         strerror(errno));
   }
   else {
-    config_write(&config_, fp);
+    config_write(&_config, fp);
     fclose(fp);
     s = bufloc;
     free(bufloc);
@@ -200,7 +209,7 @@ bool c_config::read(const std::string & filename)
   errno = 0;
 
   const std::string fname =
-      expand_path(filename.empty() ? defaultFilename_ :
+      expand_path(filename.empty() ? _defaultFilename :
           filename);
 
   if ( fname.empty() ) {
@@ -218,17 +227,17 @@ bool c_config::read(const std::string & filename)
     return false;
   }
 
-  if ( !config_read_file(&config_, fname.c_str()) ) {
+  if ( !config_read_file(&_config, fname.c_str()) ) {
 
-    switch ( config_error_type(&config_) )
+    switch ( config_error_type(&_config) )
     {
       case CONFIG_ERR_PARSE :
         CF_FATAL("ERROR: config_read_file('%s') fails:\n"
             "Parse error on line %d of '%s':\n(%s).\n",
             fname.c_str(),
-            config_error_line(&config_),
-            config_error_file(&config_),
-            config_error_text(&config_)
+            config_error_line(&_config),
+            config_error_file(&_config),
+            config_error_text(&_config)
             );
         break;
 
@@ -266,15 +275,15 @@ bool c_config::read_string(const std::string & s)
 // @brief read config from in-memory string
 bool c_config::read_string(const char * s)
 {
-  if( !config_read_string(&config_, s) ) {
+  if( !config_read_string(&_config, s) ) {
 
-    switch (config_error_type(&config_))
+    switch (config_error_type(&_config))
     {
     case CONFIG_ERR_PARSE:
       CF_FATAL("ERROR: config_read_string() fails: CONFIG_ERR_PARSE\n"
           "Parse error on line %d :\n(%s).\n",
-          config_error_line(&config_),
-          config_error_text(&config_)
+          config_error_line(&_config),
+          config_error_text(&_config)
           );
       break;
 
@@ -302,12 +311,12 @@ bool c_config::read_string(const char * s)
 
 void c_config::clear()
 {
-  config_clear(&config_);
+  config_clear(&_config);
 }
 
 c_config_setting c_config::root() const
 {
-  return c_config_setting(config_root_setting(&config_));
+  return c_config_setting(config_root_setting(&_config));
 }
 
 
@@ -317,89 +326,89 @@ c_config_setting c_config::root() const
 
 
 c_config_setting::c_config_setting()
-  : setting_(nullptr)
+  : _setting(nullptr)
 {
 }
 
 c_config_setting::c_config_setting(config_setting_t * setting)
-  : setting_(setting)
+  : _setting(setting)
 {
 }
 
 c_config_setting::operator bool() const
 {
-  return setting_ != nullptr;
+  return _setting != nullptr;
 }
 
 int c_config_setting::type() const
 {
-  return setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  return _setting ? config_setting_type(_setting) : CONFIG_TYPE_NONE;
 }
 
 int c_config_setting::length() const
 {
-  return setting_ ? config_setting_length(setting_) : 0;
+  return _setting ? config_setting_length(_setting) : 0;
 }
 
 const char * c_config_setting::name() const
 {
-  return setting_ ? setting_->name : "";
+  return _setting ? _setting->name : "";
 }
 
 
 bool c_config_setting::isNull() const
 {
-  return !setting_;
+  return !_setting;
 }
 
 bool c_config_setting::isRoot() const
 {
-  return setting_ && config_setting_is_root(setting_);
+  return _setting && config_setting_is_root(_setting);
 }
 
 bool c_config_setting::isGroup() const
 {
-  return setting_ && config_setting_type(setting_) == CONFIG_TYPE_GROUP;
+  return _setting && config_setting_type(_setting) == CONFIG_TYPE_GROUP;
 }
 
 bool c_config_setting::isString() const
 {
-  return setting_ && config_setting_type(setting_) == CONFIG_TYPE_STRING;
+  return _setting && config_setting_type(_setting) == CONFIG_TYPE_STRING;
 }
 
 
 bool c_config_setting::isArray() const
 {
-  return setting_ && config_setting_type(setting_) == CONFIG_TYPE_ARRAY;
+  return _setting && config_setting_type(_setting) == CONFIG_TYPE_ARRAY;
 }
 
 bool c_config_setting::isList() const
 {
-  return setting_ && config_setting_type(setting_) == CONFIG_TYPE_LIST;
+  return _setting && config_setting_type(_setting) == CONFIG_TYPE_LIST;
 }
 
 bool c_config_setting::isAggregate() const
 {
-  const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  const int type = _setting ? config_setting_type(_setting) : CONFIG_TYPE_NONE;
   return type == CONFIG_TYPE_GROUP || type == CONFIG_TYPE_LIST || type == CONFIG_TYPE_ARRAY;
 }
 
 bool c_config_setting::isScalar() const
 {
-  const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  const int type = _setting ? config_setting_type(_setting) : CONFIG_TYPE_NONE;
   return type == CONFIG_TYPE_INT || type == CONFIG_TYPE_INT64 || type == CONFIG_TYPE_FLOAT || type == CONFIG_TYPE_STRING
       || type == CONFIG_TYPE_BOOL;
 }
 
 bool c_config_setting::isNumber() const
 {
-  const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  const int type = _setting ? config_setting_type(_setting) : CONFIG_TYPE_NONE;
   return type == CONFIG_TYPE_INT || type == CONFIG_TYPE_INT64 || type == CONFIG_TYPE_FLOAT;
 }
 
 bool c_config_setting::isInteger() const
 {
-  const int type = setting_ ? config_setting_type(setting_) : CONFIG_TYPE_NONE;
+  const int type = _setting ? config_setting_type(_setting) : CONFIG_TYPE_NONE;
   return type == CONFIG_TYPE_INT || type == CONFIG_TYPE_INT64;
 }
 
@@ -408,51 +417,48 @@ bool c_config_setting::isInteger() const
 
 c_config_setting::Format c_config_setting::format() const
 {
-  return setting_ ? static_cast<c_config_setting::Format>(config_setting_get_format(setting_)) : FormatDefault;
+  return _setting ? static_cast<c_config_setting::Format>(config_setting_get_format(_setting)) : FormatDefault;
 }
 
 void c_config_setting::set_format(c_config_setting::Format format)
 {
-  if ( setting_ ) {
-    config_setting_set_format(setting_, format == FormatHex ? FormatHex : FormatDefault);
+  if ( _setting ) {
+    config_setting_set_format(_setting, format == FormatHex ? FormatHex : FormatDefault);
   }
 }
 
 uint32_t c_config_setting::source_line() const
 {
-  return setting_ ? (config_setting_source_line(setting_)) : 0;
+  return _setting ? (config_setting_source_line(_setting)) : 0;
 }
 
 const char * c_config_setting::source_file() const
 {
-  return setting_ ? (config_setting_source_file(setting_)) : nullptr;
+  return _setting ? (config_setting_source_file(_setting)) : nullptr;
 }
 
 bool c_config_setting::has_parent() const
 {
-  return setting_ ? config_setting_parent(setting_) != nullptr : false;
+  return _setting ? config_setting_parent(_setting) != nullptr : false;
 }
 
 c_config_setting c_config_setting::parent() const
 {
-  return setting_ ? config_setting_parent(setting_) : nullptr;
+  return _setting ? config_setting_parent(_setting) : nullptr;
 }
 
 
 config_setting_t * c_config_setting::get_member(const config_setting_t *setting, const char * name)
 {
-  return setting ? config_setting_get_member(setting, name) : nullptr;
-//  config_setting_t * mp  = config_setting_get_member(setting, name);
-//  if ( !mp ) {
-//    CF_ERROR("config_setting_get_member(setting=%p, name='%s') fails", (void*)setting, name);
-//  }
-//
-//  return mp;
+  if( !setting || !(name = adjustname(name)) ) {
+    return nullptr;
+  }
+  return config_setting_get_member(setting, name);
 }
 
 config_setting_t * c_config_setting::add_member(config_setting_t *setting, const char * name, int type)
 {
-  if ( !setting ) {
+  if( !setting || !(name = adjustname(name)) ) {
     return nullptr;
   }
 

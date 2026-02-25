@@ -20,19 +20,9 @@ public:
       "C++/OpenCV implementation of Connected component labeling algorithm from paper by M. Emre Celebi"
       "'A Simple and Efficient Algorithm for Connected Component Labeling in Color Images'");
 
-  void set_threshold(double v)
-  {
-    _threshold = v;
-  }
-
-  double threshold() const
-  {
-    return _threshold;
-  }
-
-  void get_parameters(std::vector<c_ctrl_bind> * ctls) final;
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   double _threshold = 1;

@@ -15,12 +15,12 @@ QRadialPolySharpSettings::QRadialPolySharpSettings(const c_radial_polysharp_rout
 void QRadialPolySharpSettings::setupControls()
 {
   const c_radial_polysharp_routine::ptr routine =
-      std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor_);
+      std::dynamic_pointer_cast<c_radial_polysharp_routine>(_processor);
 
-  profileView_ =
+  _profileView =
       add_widget<QRadialPolyProfileView>();
 
-  profileView_->
+  _profileView->
       set_polysharp_routine(routine);
 
   coeffs_ctl =
@@ -34,31 +34,47 @@ void QRadialPolySharpSettings::setupControls()
             }
           });
 
+  QObject::connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        const c_radial_polysharp_routine::ptr routine =
+        std::dynamic_pointer_cast<c_radial_polysharp_routine>(_processor);
+
+        if ( routine ) {
+          routine->set_postprocess_notify_callback(
+              [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
+                _profileView->update();
+              });
+
+          coeffs_ctl->setValue(routine->coeffs());
+          _profileView->update();
+        }
+      });
+
   updateControls();
 }
 
-void QRadialPolySharpSettings::onupdatecontrols()
-{
-  const c_radial_polysharp_routine::ptr routine =
-      std::dynamic_pointer_cast<c_radial_polysharp_routine>(processor_);
-
-  if ( !routine ) {
-    setEnabled(false);
-  }
-  else {
-    routine->set_postprocess_notify_callback(
-        [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
-          profileView_->update();
-        });
-
-    coeffs_ctl->setValue(routine->coeffs());
-    profileView_->update();
-    setEnabled(true);
-  }
-
-  Base::onupdatecontrols();
-}
-
+//void QRadialPolySharpSettings::onupdatecontrols()
+//{
+//  const c_radial_polysharp_routine::ptr routine =
+//      std::dynamic_pointer_cast<c_radial_polysharp_routine>(_processor);
+//
+//  if ( !routine ) {
+//    setEnabled(false);
+//  }
+//  else {
+//    routine->set_postprocess_notify_callback(
+//        [this](c_image_processor_routine * obj, cv::InputArray image, cv::InputArray mask) {
+//          _profileView->update();
+//        });
+//
+//    coeffs_ctl->setValue(routine->coeffs());
+//    _profileView->update();
+//    setEnabled(true);
+//  }
+//
+//  Base::onupdatecontrols();
+//}
+//
 
 static constexpr int MARGIN = 2;
 

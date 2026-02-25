@@ -13,7 +13,7 @@ namespace serimager {
 
 QFFMPEGCameraControls::QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera, QWidget * parent) :
     Base(parent),
-    camera_(camera)
+    _camera(camera)
 {
   form->setLabelAlignment(Qt::AlignLeft);
 
@@ -22,9 +22,16 @@ QFFMPEGCameraControls::QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera,
 
   connect(url_ctl, &QFFMPEGCameraUrlWidget::urlChanged,
       [this]() {
-        if ( camera_ ) {
-          camera_->setUrl(url_ctl->url());
+        if ( _camera ) {
+          _camera->setUrl(url_ctl->url());
           QFFStreams::save();
+        }
+      });
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( _camera ) {
+          url_ctl->setUrl(_camera->url());
         }
       });
 
@@ -32,27 +39,35 @@ QFFMPEGCameraControls::QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera,
       add_textbox("Options:",
           "",
           [this](const QString & value) {
-            if ( camera_ ) {
-              camera_->setOpts(value);
+            if ( _camera ) {
+              _camera->setOpts(value);
               QFFStreams::save();
             }
           },
           [this](QString * value) {
-            if ( camera_ ) {
-              * value = camera_->opts();
+            if ( _camera ) {
+              * value = _camera->opts();
               return true;
             }
             return false;
           });
 
 
-  if( camera_ ) {
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        const bool enable_controls = _camera && _camera->state() == QImagingCamera::State_disconnected;
+        url_ctl->setEnabled(enable_controls);
+        options_ctl->setEnabled(enable_controls);
+      });
 
-    connect(camera_.get(), &QImagingCamera::stateChanged,
+
+  if( _camera ) {
+
+    connect(_camera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onCameraStateChanged,
         Qt::QueuedConnection);
 
-    connect(camera_.get(), &QFFMPEGCamera::parametersChanged,
+    connect(_camera.get(), &QFFMPEGCamera::parametersChanged,
         this, &ThisClass::updateControls);
   }
 
@@ -67,27 +82,27 @@ void QFFMPEGCameraControls::onCameraStateChanged()
 {
   updateControls();
 }
-
-void QFFMPEGCameraControls::onupdatecontrols()
-{
-  if( !camera_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    Base::onupdatecontrols();
-
-    url_ctl->setUrl(camera_->url());
-
-    const bool enable_controls =
-        camera_->state() == QImagingCamera::State_disconnected;
-
-    url_ctl->setEnabled(enable_controls);
-    options_ctl->setEnabled(enable_controls);
-
-    setEnabled(true);
-  }
-
-}
+//
+//void QFFMPEGCameraControls::onupdatecontrols()
+//{
+//  if( !_camera ) {
+//    setEnabled(false);
+//  }
+//  else {
+//
+//    Base::onupdatecontrols();
+//
+//    url_ctl->setUrl(_camera->url());
+//
+//    const bool enable_controls =
+//        _camera->state() == QImagingCamera::State_disconnected;
+//
+//    url_ctl->setEnabled(enable_controls);
+//    options_ctl->setEnabled(enable_controls);
+//
+//    setEnabled(true);
+//  }
+//
+//}
 
 } /* namespace serimager */

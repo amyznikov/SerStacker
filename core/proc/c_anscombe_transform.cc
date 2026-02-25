@@ -122,37 +122,37 @@ static void apply_inverse(const cv::Mat & src, cv::Mat & dst, enum anscombe_meth
 
 void c_anscombe_transform::set_method(enum anscombe_method v)
 {
-  method_ = v;
+  _opts.method = v;
 }
 
 enum anscombe_method c_anscombe_transform::method() const
 {
-  return method_;
+  return _opts.method;
 }
 
 void c_anscombe_transform::apply(const cv::Mat & src, cv::Mat & dst) const
 {
   switch ( src.depth() ) {
   case CV_8U :
-    apply_direct<uint8_t>(src, dst, method_);
+    apply_direct<uint8_t>(src, dst, _opts.method);
     break;
   case CV_8S :
-    apply_direct<int8_t>(src, dst, method_);
+    apply_direct<int8_t>(src, dst, _opts.method);
     break;
   case CV_16U :
-    apply_direct<uint16_t>(src, dst, method_);
+    apply_direct<uint16_t>(src, dst, _opts.method);
     break;
   case CV_16S :
-    apply_direct<int16_t>(src, dst, method_);
+    apply_direct<int16_t>(src, dst, _opts.method);
     break;
   case CV_32S :
-    apply_direct<int32_t>(src, dst, method_);
+    apply_direct<int32_t>(src, dst, _opts.method);
     break;
   case CV_32F :
-    apply_direct<float>(src, dst, method_);
+    apply_direct<float>(src, dst, _opts.method);
     break;
   case CV_64F :
-    apply_direct<double>(src, dst, method_);
+    apply_direct<double>(src, dst, _opts.method);
     break;
   }
 }
@@ -161,25 +161,25 @@ void c_anscombe_transform::inverse(const cv::Mat & src, cv::Mat & dst) const
 {
   switch ( src.depth() ) {
   case CV_8U :
-    apply_inverse<uint8_t>(src, dst, method_);
+    apply_inverse<uint8_t>(src, dst, _opts.method);
     break;
   case CV_8S :
-    apply_inverse<int8_t>(src, dst, method_);
+    apply_inverse<int8_t>(src, dst, _opts.method);
     break;
   case CV_16U :
-    apply_inverse<uint16_t>(src, dst, method_);
+    apply_inverse<uint16_t>(src, dst, _opts.method);
     break;
   case CV_16S :
-    apply_inverse<int16_t>(src, dst, method_);
+    apply_inverse<int16_t>(src, dst, _opts.method);
     break;
   case CV_32S :
-    apply_inverse<int32_t>(src, dst, method_);
+    apply_inverse<int32_t>(src, dst, _opts.method);
     break;
   case CV_32F :
-    apply_inverse<float>(src, dst, method_);
+    apply_inverse<float>(src, dst, _opts.method);
     break;
   case CV_64F :
-    apply_inverse<double>(src, dst, method_);
+    apply_inverse<double>(src, dst, _opts.method);
     break;
   }
 }

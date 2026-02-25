@@ -7,7 +7,6 @@
 
 #include "QCaptureSettingsWidget.h"
 #include <gui/widgets/style.h>
-#include <gui/widgets/settings.h>
 #include <core/io/c_ffmpeg_file.h>
 
 #define ICON_start_capture        ":/serimager/icons/start-capture.png"
@@ -58,14 +57,14 @@ QCaptureLimitsControl::QCaptureLimitsControl(QWidget * parent) :
 
   init_resources();
 
-  vbox_ = new QVBoxLayout(this);
-  vbox_->setContentsMargins(0,0,0,0);
+  _vbox = new QVBoxLayout(this);
+  _vbox->setContentsMargins(0,0,0,0);
 
 
-  vbox_->addLayout(h1_ = new QHBoxLayout());
-  h1_->setContentsMargins(0, 0, 0, 0);
-  h1_->addWidget(limitsSelection_ctl = new QComboBox(this), 1000);
-  h1_->addWidget(startStop_ctl = new QToolButton(this), 1);
+  _vbox->addLayout(_h1 = new QHBoxLayout());
+  _h1->setContentsMargins(0, 0, 0, 0);
+  _h1->addWidget(limitsSelection_ctl = new QComboBox(this), 1000);
+  _h1->addWidget(startStop_ctl = new QToolButton(this), 1);
 
   limitsSelection_ctl->setEditable(false);
   limitsSelection_ctl->setFocusPolicy(Qt::StrongFocus);
@@ -203,9 +202,7 @@ void QCaptureLimitsControl::populateCaptureLimitsCombobox()
 
 bool QCaptureLimitsControl::getSelectedCaptureLimits(c_capture_limits * c)
 {
-  int cursel =
-      limitsSelection_ctl->currentIndex();
-
+  const int cursel = limitsSelection_ctl->currentIndex();
   if( cursel >= 0 ) {
     *c = limitsSelection_ctl->itemData(cursel).value<c_capture_limits>();
     return true;
@@ -214,27 +211,38 @@ bool QCaptureLimitsControl::getSelectedCaptureLimits(c_capture_limits * c)
   return false;
 }
 
+bool QCaptureLimitsControl::setSelectedCaptureLimits(const c_capture_limits & c)
+{
+  int index = limitsSelection_ctl->findData(QVariant::fromValue(c));
+  if ( index >= 0 ) {
+    QSignalBlocker block(limitsSelection_ctl);
+    limitsSelection_ctl->setCurrentIndex(index);
+    return true;
+  }
+  return false;
+}
+
 QCameraWriter * QCaptureLimitsControl::cameraWriter() const
 {
-  return writer_;
+  return _writer;
 }
 
 
 void QCaptureLimitsControl::setCameraWriter(QCameraWriter * writer)
 {
-  if ( writer_ ) {
+  if ( _writer ) {
     disconnect(writer, nullptr, this, nullptr);
   }
 
-  if( (writer_ = writer) ) {
+  if( (_writer = writer) ) {
 
     c_capture_limits c;
 
     if ( getSelectedCaptureLimits(&c) ) {
-      writer_->setCaptureLimits(c);
+      _writer->setCaptureLimits(c);
     }
 
-    connect(writer_, &QCameraWriter::stateChanged,
+    connect(_writer, &QCameraWriter::stateChanged,
         this, &ThisClass::onUpdateControls);
   }
 
@@ -248,12 +256,11 @@ void QCaptureLimitsControl::onUpdateControls()
 
 void QCaptureLimitsControl::onupdatecontrols()
 {
-  if( !writer_ ) {
+  if( !_writer ) {
     setEnabled(false);
   }
   else {
-
-    switch (writer_->state()) {
+    switch (_writer->state()) {
       case QCameraWriter::State::Active:
       case QCameraWriter::State::Starting:
       case QCameraWriter::State::Stopping:
@@ -262,11 +269,11 @@ void QCaptureLimitsControl::onupdatecontrols()
         break;
       case QCameraWriter::State::Idle:
         enableControl(limitsSelection_ctl, true);
-        if( !writer_->camera() ) {
+        if( !_writer->camera() ) {
           enableControl(startStop_ctl, false, icon_start_capture);
         }
         else {
-          switch (writer_->camera()->state()) {
+          switch (_writer->camera()->state()) {
             case QImagingCamera::State_connected:
               case QImagingCamera::State_started:
               case QImagingCamera::State_starting:
@@ -284,20 +291,20 @@ void QCaptureLimitsControl::onupdatecontrols()
 
 void QCaptureLimitsControl::onStartStopButtonClicked()
 {
-  if( writer_ ) {
+  if( _writer ) {
 
-    switch (writer_->state()) {
+    switch (_writer->state()) {
 
       case QCameraWriter::State::Active:
-        writer_->stop();
+        _writer->stop();
         break;
 
       case QCameraWriter::State::Idle: {
         c_capture_limits c;
         if( getSelectedCaptureLimits(&c) ) {
-          writer_->setCaptureLimits(c);
+          _writer->setCaptureLimits(c);
         }
-        writer_->start();
+        _writer->start();
         break;
       }
     }
@@ -306,31 +313,31 @@ void QCaptureLimitsControl::onStartStopButtonClicked()
 
 void QCaptureLimitsControl::onLimitsSelectionChanged(int)
 {
-  if( writer_ && writer_->state() == QCameraWriter::Idle ) {
+  if( _writer && _writer->state() == QCameraWriter::Idle ) {
     c_capture_limits c;
     if( getSelectedCaptureLimits(&c) ) {
-      writer_->setCaptureLimits(c);
+      _writer->setCaptureLimits(c);
       Q_EMIT captureLimitChanged();
     }
   }
 }
 
 QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
-    Base("QStereoStreamCaptureOptions", parent)
+    Base(parent)
 {
   enable_split_stereo_stream_ctl =
       add_checkbox("Split stereo stream:",
           "",
           [this](bool checked) {
-            if ( writer_ ) {
-              writer_->set_enable_split_stereo_stream(checked);
-              update_control_states();
+            if ( _opts ) {
+              _opts->set_enable_split_stereo_stream(checked);
+              //update_control_states();
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( writer_ ) {
-              * checked = writer_->enable_split_stereo_stream();
+            if ( _opts ) {
+              * checked = _opts->enable_split_stereo_stream();
               return true;
             }
             return false;
@@ -340,15 +347,15 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
       add_enum_combobox<stereo_stream_layout_type>("stereo frame layout:",
           "",
           [this](stereo_stream_layout_type v) {
-            if ( writer_ ) {
-              writer_->stereo_stream_options().layout_type = v;
+            if ( _opts ) {
+              _opts->stereo_stream_options().layout_type = v;
               Q_EMIT parameterChanged();
             }
 
           },
           [this](stereo_stream_layout_type * v) {
-            if ( writer_ ) {
-              *v = writer_->stereo_stream_options().layout_type;
+            if ( _opts ) {
+              *v = _opts->stereo_stream_options().layout_type;
               return true;
             }
             return false;
@@ -358,14 +365,14 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
       add_checkbox("Swap cameras:",
           "",
           [this](bool checked) {
-            if ( writer_ ) {
-              writer_->stereo_stream_options().swap_cameras = checked;
+            if ( _opts ) {
+              _opts->stereo_stream_options().swap_cameras = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( writer_ ) {
-              * checked = writer_->stereo_stream_options().swap_cameras;
+            if ( _opts ) {
+              * checked = _opts->stereo_stream_options().swap_cameras;
               return true;
             }
             return false;
@@ -376,63 +383,64 @@ QStereoStreamCaptureOptions::QStereoStreamCaptureOptions(QWidget * parent) :
       add_checkbox("Downscale panes:",
           "",
           [this](bool checked) {
-            if ( writer_ ) {
-              writer_->stereo_stream_options().downscale_panes = checked;
+            if ( _opts ) {
+              _opts->stereo_stream_options().downscale_panes = checked;
               Q_EMIT parameterChanged();
             }
           },
           [this](bool * checked) {
-            if ( writer_ ) {
-              * checked = writer_->stereo_stream_options().downscale_panes;
+            if ( _opts ) {
+              * checked = _opts->stereo_stream_options().downscale_panes;
               return true;
             }
             return false;
           });
 
+  QObject::connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        const bool enable_split_stereo_stream = _opts && _opts->enable_split_stereo_stream();
+        stereo_stream_layout_type_ctl->setEnabled(enable_split_stereo_stream);
+        enable_swap_cameras_ctl->setEnabled(enable_split_stereo_stream);
+        downscale_panes_ctl->setEnabled(enable_split_stereo_stream);
+      });
 
   updateControls();
 }
 
 void QStereoStreamCaptureOptions::setCameraWriter(QCameraWriter * writer)
 {
-  writer_ = writer;
-  updateControls();
+  setOpts(writer);
 }
 
 QCameraWriter * QStereoStreamCaptureOptions::cameraWriter() const
 {
-  return writer_;
+  return _opts;
 }
-
-void QStereoStreamCaptureOptions::update_control_states()
-{
-  stereo_stream_layout_type_ctl->setEnabled(writer_->enable_split_stereo_stream());
-  enable_swap_cameras_ctl->setEnabled(writer_->enable_split_stereo_stream());
-  downscale_panes_ctl->setEnabled(writer_->enable_split_stereo_stream());
-}
-
-void QStereoStreamCaptureOptions::onupdatecontrols()
-{
-  if ( !writer_  ) {
-    setEnabled(false);
-  }
-  else {
-
-    Base::onupdatecontrols();
-    update_control_states();
-
-    setEnabled(true);
-  }
-}
-
-
 
 
 QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
-    Base("QCaptureSettingsWidget", parent)
+    Base(parent)
 {
-
   form->setLabelAlignment(Qt::AlignLeft);
+
+  connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if ( _opts ) {
+          captureLimits_ctl->setSelectedCaptureLimits(_opts->captureLimits());
+        }
+    });
+
+  connect(this, &ThisClass::enablecontrols,
+      [this]() {
+        if ( _opts ) {
+          const bool is_unlimited = _opts->captureLimits().value < 0;
+          num_rounds_ctl->setEnabled(!is_unlimited);
+          interval_between_rounds_ctl->setEnabled(!is_unlimited);
+          outpuPath_ctl->setEnabled(_opts->state() == QCameraWriter::State::Idle);
+          output_format_ctl->setEnabled(_opts->state() == QCameraWriter::State::Idle);
+          avi_options_ctl->setEnabled(_opts->state() == QCameraWriter::State::Idle && _opts->outputFormat() == QCameraWriter::FORMAT::AVI);
+        }
+  });
 
   captureLimits_ctl =
       add_widget<QCaptureLimitsControl>("Limit:");
@@ -440,18 +448,24 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
   connect(captureLimits_ctl, &QCaptureLimitsControl::captureLimitChanged,
       [this]() {
         updateControls();
-        saveCaptureLimits();
+        saveSettings();
       });
 
   num_rounds_ctl =
       add_spinbox("Rounds:",
           "",
           [this](int value) {
-            if ( writer_ ) {
-              writer_->setNumRounds(value);
-              save_parameter(PREFIX, "numRounds",
-                  writer_->numRounds());
+            if ( _opts ) {
+              _opts->setNumRounds(value);
+              saveSettings();
             }
+          },
+          [this](int * value) {
+            if ( _opts ) {
+              * value = _opts->numRounds();
+              return true;
+            }
+            return false;
           });
 
   num_rounds_ctl->setRange(1, 10000);
@@ -461,75 +475,109 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
       add_spinbox("Interval [sec]:",
           "",
           [this](int value) {
-            if ( writer_ ) {
-              writer_->setIntervalBetweenRounds(value);
-              save_parameter(PREFIX, "intervalBetweenRounds",
-                  writer_->intervalBetweenRounds());
+            if ( _opts ) {
+              _opts->setIntervalBetweenRounds(value);
+              saveSettings();
             }
+          },
+          [this](int * value) {
+            if ( _opts ) {
+              * value = _opts->intervalBetweenRounds();
+              return true;
+            }
+            return false;
           });
 
   interval_between_rounds_ctl->setRange(0, 3600);
   num_rounds_ctl->setValue(1);
 
-  form->addRow(outpuPath_ctl =
-      new QBrowsePathCombo("Output path:",
+  outpuPath_ctl =
+      add_browse_for_path("Output path:",
+          "",
           QFileDialog::AcceptSave,
           QFileDialog::Directory,
-          this));
-
-  connect(outpuPath_ctl, &QBrowsePathCombo::pathChanged,
-      [this]() {
-        if ( writer_ ) {
-          writer_->setOutputDirectoty(outpuPath_ctl->currentPath());
-          save_parameter(PREFIX, "outputDirectoty",
-              writer_->outputDirectoty());
-        }
-      });
+          [this](const QString & path) {
+            if ( _opts ) {
+              _opts->setOutputDirectoty(path);
+              saveSettings();
+            }
+          },
+          [this](QString * path) {
+            if ( _opts ) {
+              *path = _opts->outputDirectoty();
+              return true;
+            }
+            return false;
+          });
 
   output_format_ctl =
       add_enum_combobox<QCameraWriter::FORMAT>("Output format:",
           "",
           [this](QCameraWriter::FORMAT value) {
-            if ( writer_ ) {
-              writer_->setOutputFormat(value);
-              avi_options_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle &&
-                  writer_->outputFormat() == QCameraWriter::FORMAT::AVI);
-              save_parameter(PREFIX, "outputFormat",
-                  writer_->outputFormat());
+            if ( _opts ) {
+              _opts->setOutputFormat(value);
+              avi_options_ctl->setEnabled(_opts->state() == QCameraWriter::State::Idle &&
+                  _opts->outputFormat() == QCameraWriter::FORMAT::AVI);
+              saveSettings();
             }
+          },
+          [this](QCameraWriter::FORMAT * value) {
+            if ( _opts ) {
+              * value  = _opts->outputFormat();
+              return true;
+            }
+            return false;
           });
 
   avi_options_ctl =
       add_ffmpeg_options_control("ffmpeg options:",
           "",
           [this](const QString & value) {
-            if ( writer_ ) {
-              writer_->setFFmpegOptions(value);
-              save_parameter(PREFIX, "ffmpegOptions",
-                  writer_->ffmpegOptions());
+            if ( _opts ) {
+              _opts->setFFmpegOptions(value);
+              saveSettings();
             }
+          },
+          [this](QString * value) {
+            if ( _opts ) {
+              * value = _opts->ffmpegOptions();
+              return true;
+            }
+            return false;
           });
 
   filenamePrefix_ctl =
       add_textbox("Prefix:",
           "Optional output file name prefix",
           [this](const QString & value) {
-            if ( writer_ ) {
-              writer_->setFilenamePrefix(value);
-              save_parameter(PREFIX, "filenamePrefix",
-                  writer_->filenamePrefix());
+            if ( _opts ) {
+              _opts->setFilenamePrefix(value);
+              saveSettings();
             }
+          },
+          [this](QString * value) {
+            if ( _opts ) {
+              * value = _opts->filenamePrefix();
+              return true;
+            }
+            return false;
           });
 
   filenameSuffix_ctl =
       add_textbox("Suffix:",
           "Optional output file name suffix",
           [this](const QString & value) {
-            if ( writer_ ) {
-              writer_->setFilenameSuffix(value);
-              save_parameter(PREFIX, "filenameSuffix",
-                  writer_->filenameSuffix());
+            if ( _opts ) {
+              _opts->setFilenameSuffix(value);
+              saveSettings();
             }
+          },
+          [this](QString * value) {
+            if ( _opts ) {
+              * value = _opts->filenameSuffix();
+              return true;
+            }
+            return false;
           });
 
   add_expandable_groupbox("Stereo",
@@ -539,136 +587,91 @@ QCaptureSettingsWidget::QCaptureSettingsWidget(QWidget * parent) :
 }
 
 
-QCameraWriter * QCaptureSettingsWidget::cameraWriter() const
-{
-  return writer_;
-}
-
 void QCaptureSettingsWidget::setCameraWriter(QCameraWriter * writer)
 {
-  if ( writer_ ) {
-    disconnect(writer, nullptr, this, nullptr);
+  if ( _opts ) {
+    disconnect(_opts, nullptr, this, nullptr);
   }
 
-  captureLimits_ctl->setCameraWriter(writer_ = writer);
-  stereo_stream_ctl->setCameraWriter(writer_);
+  _opts = writer;
 
-  if( (writer_ = writer) ) {
+  captureLimits_ctl->setCameraWriter(_opts);
+  stereo_stream_ctl->setCameraWriter(_opts);
 
-    loadParameters();
-
-    connect(writer_, &QCameraWriter::stateChanged,
+  if( _opts ) {
+    connect(_opts, &QCameraWriter::stateChanged,
         this, &ThisClass::updateControls);
   }
 
   updateControls();
 }
 
-
-void QCaptureSettingsWidget::onupdatecontrols()
+QCameraWriter * QCaptureSettingsWidget::cameraWriter() const
 {
-  if ( !writer_ ) {
-    setEnabled(false);
-  }
-  else {
-
-    const bool is_unlimited =
-        writer_->captureLimits().value < 0;
-
-    num_rounds_ctl->setValue(writer_->numRounds());
-    num_rounds_ctl->setEnabled(!is_unlimited);
-
-    interval_between_rounds_ctl->setValue(writer_->intervalBetweenRounds());
-    interval_between_rounds_ctl->setEnabled(!is_unlimited);
-
-    outpuPath_ctl->setCurrentPath(writer_->outputDirectoty(), false);
-    outpuPath_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle);
-
-    output_format_ctl->setValue(writer_->outputFormat());
-    output_format_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle);
-
-    avi_options_ctl->setValue(writer_->ffmpegOptions());
-    avi_options_ctl->setEnabled(writer_->state() == QCameraWriter::State::Idle &&
-        writer_->outputFormat() == QCameraWriter::FORMAT::AVI);
-
-    filenamePrefix_ctl->setValue(writer_->filenamePrefix());
-    filenameSuffix_ctl->setValue(writer_->filenameSuffix());
-
-    setEnabled(true);
-  }
+  return _opts;
 }
 
-void QCaptureSettingsWidget::onload(QSettings & settings)
+void QCaptureSettingsWidget::onload(const QSettings & settings, const QString & prefix)
 {
-  if( writer_ ) {
+  if( _opts ) {
 
-    QCameraWriter::FORMAT outputFormat = writer_->outputFormat();
+    const QString PREFIX = prefix.isEmpty() ? "CaptureSettings" : prefix;
+
+    QCameraWriter::FORMAT outputFormat = _opts->outputFormat();
     if( load_parameter(settings, PREFIX, "outputFormat", &outputFormat) ) {
-      writer_->setOutputFormat(outputFormat);
+      _opts->setOutputFormat(outputFormat);
     }
 
-    QString outputDirectoty = writer_->outputDirectoty();
+    QString outputDirectoty = _opts->outputDirectoty();
     if( load_parameter(settings, PREFIX, "outputDirectoty", &outputDirectoty) ) {
-      writer_->setOutputDirectoty(outputDirectoty);
+      _opts->setOutputDirectoty(outputDirectoty);
     }
 
-    QString filenamePrefix = writer_->filenamePrefix();
+    QString filenamePrefix = _opts->filenamePrefix();
     if( load_parameter(settings, PREFIX, "filenamePrefix", &filenamePrefix) ) {
-      writer_->setFilenamePrefix(filenamePrefix);
+      _opts->setFilenamePrefix(filenamePrefix);
     }
 
-    QString filenameSuffix = writer_->filenameSuffix();
+    QString filenameSuffix = _opts->filenameSuffix();
     if( load_parameter(settings, PREFIX, "filenameSuffix", &filenameSuffix) ) {
-      writer_->setFilenameSuffix(filenameSuffix);
+      _opts->setFilenameSuffix(filenameSuffix);
     }
 
-    int numRounds = writer_->numRounds();
+    int numRounds = _opts->numRounds();
     if( load_parameter(settings, PREFIX, "numRounds", &numRounds) ) {
-      writer_->setNumRounds(numRounds);
+      _opts->setNumRounds(numRounds);
     }
 
-    int intervalBetweenRounds = writer_->intervalBetweenRounds();
+    int intervalBetweenRounds = _opts->intervalBetweenRounds();
     if( load_parameter(settings, PREFIX, "intervalBetweenRounds", &intervalBetweenRounds) ) {
-      writer_->setIntervalBetweenRounds(intervalBetweenRounds);
+      _opts->setIntervalBetweenRounds(intervalBetweenRounds);
     }
 
-    loadCaptureLimits(settings);
+    c_capture_limits limits = _opts->captureLimits();
+    load_parameter(settings, PREFIX, "capture_limits_type", (int*)&limits.type);
+    load_parameter(settings, PREFIX, "capture_limits_value", &limits.value);
+    _opts->setCaptureLimits(limits);
+    updateControls();
   }
 }
 
-void QCaptureSettingsWidget::saveCaptureLimits()
+void QCaptureSettingsWidget::onsave(QSettings & settings, const QString & prefix)
 {
-  if ( writer_ ) {
+  if( _opts ) {
 
-    QSettings settings;
+    const QString PREFIX = prefix.isEmpty() ? "CaptureSettings" : prefix;
 
-    const c_capture_limits limits =
-        writer_->captureLimits();
+    save_parameter(settings, PREFIX, "outputFormat",_opts->outputFormat());
+    save_parameter(settings, PREFIX, "outputDirectoty", _opts->outputDirectoty());
+    save_parameter(settings, PREFIX, "filenamePrefix",_opts->filenamePrefix());
+    save_parameter(settings, PREFIX, "filenameSuffix",_opts->filenameSuffix());
+    save_parameter(settings, PREFIX, "numRounds",_opts->numRounds());
+    save_parameter(settings, PREFIX, "intervalBetweenRounds",_opts->intervalBetweenRounds());
 
-    settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_type"),
-        QString(toCString(limits.type)));
-
-    settings.setValue(QString("%1/%2").arg(PREFIX).arg("capture_limits_value"),
-        limits.value);
+    const c_capture_limits limits = _opts->captureLimits();
+    save_parameter(settings, PREFIX, "capture_limits_type", (int)limits.type);
+    save_parameter(settings, PREFIX, "capture_limits_value", limits.value);
   }
-}
-
-void QCaptureSettingsWidget::loadCaptureLimits(QSettings & settings)
-{
-  if ( writer_ ) {
-
-    c_capture_limits limits =
-        writer_->captureLimits();
-
-    load_parameter(settings, PREFIX, "capture_limits_type",
-        &limits.type);
-
-    load_parameter(settings, PREFIX, "capture_limits_value",
-        &limits.value);
-
-    writer_->setCaptureLimits(limits);
-  }
-
 }
 
 } /* namespace serimager */

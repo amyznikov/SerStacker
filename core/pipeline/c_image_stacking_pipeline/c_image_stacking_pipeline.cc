@@ -3497,10 +3497,10 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
 
     ////////
     ctlbind_expandable_group(ctls, "4. Frame Registration", "");
-      ctlbind_expandable_group(ctls, "Master Frame", "");
+      ctlbind_expandable_group(ctls, "4.1 Master Frame", "");
         ctlbind_master_frame_generation_options(ctls,  ctx(&this_class::_master_options));
       ctlbind_end_group(ctls);
-      ctlbind_expandable_group(ctls, "Stack Registration", ""); // ctlbind(ctls, "Enable Stack Registration", gctx(&S::registration.enabled), "");
+      ctlbind_expandable_group(ctls, "4.2 Stack Registration", "");
         ctlbind_stack_registration_options(ctls, ctx(&this_class::_stacking_options));
       ctlbind_end_group(ctls);
       ctlbind_expandable_group(ctls, "Camera Matrix", "For Epipolar geometry only");

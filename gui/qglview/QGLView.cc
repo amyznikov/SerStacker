@@ -1330,8 +1330,9 @@ void QGLView::mouseMoveEvent(QMouseEvent * e)
 #if QT_CONFIG(wheelevent)
 void QGLView::wheelEvent(QWheelEvent * e)
 {
-  const int delta =
-      e->angleDelta().y();
+  const QPoint numPixels = e->pixelDelta();
+  const QPoint numDegrees = e->angleDelta();
+  const int delta = !numPixels.isNull() ? numPixels.y() : !numDegrees.isNull() ? numDegrees.y() : 0;
 
   if( delta ) {
 

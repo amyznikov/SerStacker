@@ -58,9 +58,6 @@ public:
 
   QLCSCTPStreamsWidget(QWidget * parent);
 
-//protected:
-//  void onupdatecontrols() override;
-
 protected Q_SLOTS:
   void onSelectedStreamChanged();
 

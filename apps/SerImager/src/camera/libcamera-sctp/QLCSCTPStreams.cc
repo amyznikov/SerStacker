@@ -52,12 +52,12 @@ void QLCSCTPStreams::add(const QLCSCTPCamera::sptr & stream)
 
 void QLCSCTPStreams::remove(const QLCSCTPCamera::sptr & stream)
 {
-  QList<QImagingCamera::sptr> & streams =
-      instance()->_streams;
+  QList<QImagingCamera::sptr> & streams = instance()->_streams;
 
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
       streams.erase(ii);
+      instance()->save();
       Q_EMIT instance()->streamsChaged();
       return;
     }
@@ -66,9 +66,7 @@ void QLCSCTPStreams::remove(const QLCSCTPCamera::sptr & stream)
 
 bool QLCSCTPStreams::exist(const QImagingCamera::sptr & stream)
 {
-  const QList<QImagingCamera::sptr> & streams =
-      instance()->_streams;
-
+  const QList<QImagingCamera::sptr> & streams = instance()->_streams;
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
     if( ii->get() == stream.get() ) {
       return true;
@@ -80,9 +78,7 @@ bool QLCSCTPStreams::exist(const QImagingCamera::sptr & stream)
 
 bool QLCSCTPStreams::exist(const QString & streamName)
 {
-  const QList<QImagingCamera::sptr> & streams =
-      instance()->_streams;
-
+  const QList<QImagingCamera::sptr> & streams = instance()->_streams;
   for( auto ii = streams.begin(); ii != streams.end(); ++ii ) {
 
     const QLCSCTPCamera::sptr camera =
@@ -99,8 +95,7 @@ bool QLCSCTPStreams::exist(const QString & streamName)
 
 void QLCSCTPStreams::save()
 {
-  const QList<QImagingCamera::sptr> & streams =
-      instance()->_streams;
+  const QList<QImagingCamera::sptr> & streams = instance()->_streams;
 
   QList<QLCSCTPCameraParameters> cameras;
 
@@ -226,18 +221,10 @@ void QLCSCTPStreamListWidget::updateStreamList()
   list_ctl->clear();
 
   for( const auto &stream : QLCSCTPStreams::streams() ) {
-
-    QLCSCTPCamera::sptr camera =
-        std::dynamic_pointer_cast<QLCSCTPCamera>(stream);
-
+    QLCSCTPCamera::sptr camera = std::dynamic_pointer_cast<QLCSCTPCamera>(stream);
     if( camera ) {
-
-      QListWidgetItem *item =
-          new QListWidgetItem(camera->name());
-
-      item->setData(Qt::UserRole,
-          QVariant::fromValue(camera));
-
+      QListWidgetItem *item = new QListWidgetItem(camera->name());
+      item->setData(Qt::UserRole, QVariant::fromValue(camera));
       list_ctl->addItem(item);
     }
   }
@@ -267,7 +254,20 @@ void QLCSCTPStreamListWidget::onAddStreamClicked()
 
 void QLCSCTPStreamListWidget::onRemoveStreamClicked()
 {
+  QListWidgetItem * currentItem = list_ctl->currentItem();
+  if ( currentItem ) {
+    QLCSCTPCamera::sptr camera = currentItem->data(Qt::UserRole).value<QLCSCTPCamera::sptr>();// std::dynamic_pointer_cast<QLCSCTPCamera>();
+    if( camera ) {
 
+      const int responce =
+          QMessageBox::question(this, "Confirmation required",
+              QString("Remove stream %1?").arg(currentItem->text()));
+      if ( responce == QMessageBox::Yes ) {
+        QLCSCTPStreams::remove(camera);
+        updateStreamList();
+      }
+    }
+  }
 }
 
 void QLCSCTPStreamListWidget::onCurrentListItemChanged(QListWidgetItem * current, QListWidgetItem * previous)
@@ -333,9 +333,7 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
           });
 
   ///
-  addRow("URL:", streamUrl_ctl =
-      new QLCSCTPUrlWidget());
-
+  addRow("URL:", streamUrl_ctl = new QLCSCTPUrlWidget());
   QObject::connect(streamUrl_ctl, &QLCSCTPUrlWidget::urlChanged,
       [this]() {
         if ( !updatingControls() && _selectedStream ) {
@@ -343,7 +341,6 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
           QLCSCTPStreams::save();
         }
       });
-
   QObject::connect(this, &ThisClass::populatecontrols,
       [this]() {
         if ( _selectedStream ) {
@@ -353,9 +350,7 @@ QLCSCTPStreamsWidget::QLCSCTPStreamsWidget(QWidget * parent) :
 
 
   ///
-  addRow(list_ctl =
-      new QLCSCTPStreamListWidget());
-
+  addRow(list_ctl = new QLCSCTPStreamListWidget());
   connect(list_ctl, & QLCSCTPStreamListWidget::selectedStreamChanged,
       this, &ThisClass::onSelectedStreamChanged);
 

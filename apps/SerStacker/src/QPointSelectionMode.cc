@@ -26,8 +26,8 @@ QToolButton* createPointSelectionModeToolButton(QWidget *parent)
   QToolButton *tb = new QToolButton(parent);
   tb->setToolButtonStyle(Qt::ToolButtonIconOnly);
   tb->setIcon(getIcon(ICON_annotation));
-  tb->setText("Annotation");
-  tb->setToolTip("Point annotation options");
+  tb->setText("3D point selection");
+  tb->setToolTip("3D point selection options");
   //tb->setCheckable(true);
   //tb->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
   tb->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);

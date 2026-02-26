@@ -400,7 +400,7 @@ void MainWindow::setupMainMenu()
               this, nullptr, nullptr,
               Qt::WindowShortcut)));
 
-  menuFile->addAction(selectPreviousFileAction_ =
+  menuFile->addAction(selectPreviousFileAction =
       createAction(getIcon(ICON_prev),
           "Previous (Ctrl+PgUp)",
           "Select previous file (Ctrl+PgUp)",
@@ -1814,7 +1814,7 @@ void MainWindow::setupInputSequenceView()
     badframeIcon.addPixmap(getPixmap(ICON_badframe), QIcon::Normal, QIcon::On);
   }
 
-  toolbar->addAction(selectPreviousFileAction_);
+  toolbar->addAction(selectPreviousFileAction);
   toolbar->addAction(selectNextFileAction);
   toolbar->addAction(reloadCurrentFileAction);
 
@@ -2394,14 +2394,14 @@ void MainWindow::setupInputSequenceView()
 
 
 
-//
-//  connect(cloudView, &QPointCloudSourceView::glPointMouseEvent,
-//      [this](const QPointF & mousePos, QEvent::Type mouseEventType, Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
-//          bool objHit, double objX, double objY, double objZ) {
-//          //statusbarMousePosLabel_ctl->setText(cloudView->statusStringForPoint(cloud_index, point_index));
-//        CF_DEBUG("FIXME: Unhandled mouse event");
-//      });
-//
+
+  QObject::connect(cloudView, &QPointCloudSourceView::glPointMouseEvent,
+      [this](const QPointF & mousePos, QEvent::Type mouseEventType, Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+          bool objHit, double objX, double objY, double objZ) {
+            if ( objHit ) {
+              statusbarMousePosLabel_ctl->setText(qsprintf("3D: X=%g Y=%g Z=%g",objX, objY, objZ));
+            }
+      });
 
   ///////////////////////////////////////////////////////////////////////
 

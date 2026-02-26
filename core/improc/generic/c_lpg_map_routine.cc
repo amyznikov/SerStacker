@@ -44,25 +44,3 @@ bool c_lpg_map_routine::process(cv::InputOutputArray image, cv::InputOutputArray
   _m.create_map(image.getMat(), image);
   return true;
 }
-//
-//bool c_lpg_map_routine::copy_parameters_to_clipboard()
-//{
-//  if ( const auto & cb = get_ctrlbind_copy_to_clipboard_callback() ) {
-//    cb(_m.save_settings());
-//  }
-//  else {
-//    CF_ERROR("No clipboard callback available");
-//  }
-//  return false;
-//}
-//
-//bool c_lpg_map_routine::paste_parameters_from_clipboard()
-//{
-//  if ( const auto & cb = get_ctrlbind_get_clipboard_text_callback() ) {
-//    return _m.load_settings(cb());
-//  }
-//
-//  CF_ERROR("No clipboard callback available");
-//  return false;
-//}
-

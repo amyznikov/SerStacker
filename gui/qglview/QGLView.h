@@ -205,16 +205,23 @@ protected:
 
   virtual void cleanupGL();
 
+  // to be overridden by derived class
   virtual void glMouseEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+      bool objHit, double objX, double objY, double objZ);
+
+  // to be overridden by derived class
+  virtual void glKeyboardEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
       Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
       bool objHit, double objX, double objY, double objZ);
 
 protected:
   void showViewTarget(bool v);
-  void onGLMouseEvent(const QPointF & mousePos,
-      QEvent::Type mouseEventType,
-      Qt::MouseButtons mouseButtons,
-      Qt::KeyboardModifiers keyboardModifiers);
+  void computeEventPos(const QPointF &mousePos, bool * objHit, double * objX, double * objY, double * objZ) const;
+  void onGLMouseEvent(const QPointF & mousePos, QEvent::Type eventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers);
+  void onGLKeyboardEvent(const QPointF & mousePos, QEvent::Type eventType,
+      Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers);
 
 protected:
   QColor _backgroundColor = QColor(80, 80, 80); // QColor(32, 32, 32);

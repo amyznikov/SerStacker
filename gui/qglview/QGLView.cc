@@ -1042,6 +1042,26 @@ void QGLView::removeShape(QGLShape * shape)
   }
 }
 
+void QGLView::computeEventPos(const QPointF &mousePos, bool * objHit, double * objX, double * objY, double * objZ) const
+{
+  const GLdouble X = mousePos.x();
+  const GLdouble Y = _depthBuffer.rows - mousePos.y();
+  const int iX = qRound(X);
+  const int iY = qRound(Y);
+
+  * objHit = false;
+
+  if( iX >= 0 && iY >= 0 && iX < _depthBuffer.cols && iY < _depthBuffer.rows ) {
+
+    const GLdouble Z = _depthBuffer[iY][iX];
+
+    if ( Z < 1 ) {
+      * objHit = gluUnProject(X, Y, Z, _smodelview, _sprojection, _sviewport,
+          objX, objY, objZ) == GL_TRUE;
+    }
+  }
+}
+
 void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type eventType,
     Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
     bool objHit, double objX, double objY, double objZ)
@@ -1050,72 +1070,59 @@ void QGLView::glMouseEvent(const QPointF & mousePos, QEvent::Type eventType,
       mousePos.x(), mousePos.y(), objX, objY, objZ);
 }
 
+void QGLView::glKeyboardEvent(const QPointF & mousePos, QEvent::Type mouseEventType,
+    Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
+    bool objHit, double objX, double objY, double objZ)
+{
+//  CF_DEBUG("QGLView: x=%g y=%g obj: X=%g Y=%g Z=%g",
+//      mousePos.x(), mousePos.y(), objX, objY, objZ);
+}
 
-void QGLView::onGLMouseEvent(const QPointF &mousePos,
-    QEvent::Type eventType,
+void QGLView::onGLKeyboardEvent(const QPointF & mousePos, QEvent::Type eventType,
+    Qt::MouseButtons mouseButtons,
+    Qt::KeyboardModifiers keyboardModifiers)
+{
+  bool objHit = false;
+  double objX = 0, objY = 0, objZ = 0;
+
+  computeEventPos(mousePos, &objHit, &objX, &objY, &objZ);
+  glKeyboardEvent(mousePos, eventType, mouseButtons, keyboardModifiers,
+      objHit, objX, objY, objZ);
+}
+
+void QGLView::onGLMouseEvent(const QPointF &mousePos, QEvent::Type eventType,
     Qt::MouseButtons mouseButtons,
     Qt::KeyboardModifiers keyboardModifiers)
 {
   if( _enableGLMouseEvents ) {
 
-    const GLdouble X =
-        mousePos.x();
+    //CF_DEBUG("_enableGLMouseEvents=%d eventType=%d", _enableGLMouseEvents, eventType);
 
-    const GLdouble Y =
-        _depthBuffer.rows - mousePos.y();
+    bool objHit = false;
+    double objX = 0, objY = 0, objZ = 0;
 
-    const int iX =
-        qRound(X);
-
-    const int iY =
-        qRound(Y);
-
-    if( iX >= 0 && iY >= 0 && iX < _depthBuffer.cols && iY < _depthBuffer.rows ) {
-
-      const GLdouble Z =
-          _depthBuffer[iY][iX];
-
-      bool objHit = false;
-      GLdouble objX = 0, objY = 0, objZ = 0;
-
-      if ( Z < 1 ) {
-        objHit =
-            gluUnProject(X, Y, Z,
-                _smodelview, _sprojection, _sviewport,
-                &objX, &objY, &objZ) == GL_TRUE;
-      }
-
-      glMouseEvent(mousePos, eventType,
-          mouseButtons, keyboardModifiers,
-          objHit, objX, objY, objZ);
-    }
+    computeEventPos(mousePos, &objHit, &objX, &objY, &objZ);
+    glMouseEvent(mousePos, eventType, mouseButtons, keyboardModifiers,
+        objHit, objX, objY, objZ);
   }
 }
 
 void QGLView::keyPressEvent(QKeyEvent *event)
 {
-  //CF_DEBUG("key=%d modifiers=%d", event->key(), event->modifiers());
   Base::keyPressEvent(event);
 
-  if (_enableGLMouseEvents) {
-    onGLMouseEvent(mapFromGlobal(QCursor::pos()),
-        event->type(),
-        QApplication::mouseButtons(),
-        event->modifiers());
-  }
+  onGLKeyboardEvent(mapFromGlobal(QCursor::pos()), event->type(),
+      QApplication::mouseButtons(),
+      event->modifiers());
 }
 
 void QGLView::keyReleaseEvent(QKeyEvent *event)
 {
   Base::keyReleaseEvent(event);
 
-  if (_enableGLMouseEvents) {
-    onGLMouseEvent(mapFromGlobal(QCursor::pos()),
-        event->type(),
-        QApplication::mouseButtons(),
-        event->modifiers());
-  }
-
+  onGLKeyboardEvent(mapFromGlobal(QCursor::pos()), event->type(),
+      QApplication::mouseButtons(),
+      event->modifiers());
 }
 
 
@@ -1141,7 +1148,8 @@ void QGLView::mousePressEvent(QMouseEvent * e)
 void QGLView::mouseReleaseEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    onGLMouseEvent(e->localPos(), e->type(),
+        e->buttons(), e->modifiers());
   }
 
   e->ignore();
@@ -1150,7 +1158,8 @@ void QGLView::mouseReleaseEvent(QMouseEvent *e)
 void QGLView::mouseDoubleClickEvent(QMouseEvent *e)
 {
   if (_enableGLMouseEvents ) {
-    onGLMouseEvent(e->localPos(), e->type(), e->buttons(), e->modifiers());
+    onGLMouseEvent(e->localPos(), e->type(),
+        e->buttons(), e->modifiers());
   }
   e->ignore();
 }

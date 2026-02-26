@@ -158,7 +158,7 @@ private:
 
 
 
-  QAction * selectPreviousFileAction_ = nullptr;
+  QAction * selectPreviousFileAction = nullptr;
   QAction * selectNextFileAction = nullptr;
   QAction * reloadCurrentFileAction = nullptr;
   QAction * showImageProcessorSettingsAction = nullptr;

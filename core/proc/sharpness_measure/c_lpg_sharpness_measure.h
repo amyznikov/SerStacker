@@ -25,11 +25,10 @@ struct c_lpg_options
   int dscale = 1;
   int uscale = 3;
   bool avgchannel = true;
-
-  std::string save_settings();
-  bool load_settings(const std::string & text);
-  bool serialize(c_config_setting settings, bool save);
 };
+
+bool load_settings(c_config_setting settings, c_lpg_options * cfg);
+bool save_settings(c_config_setting settings, const c_lpg_options & c);
 
 template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_lpg_options> & ctx)
@@ -42,7 +41,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "avgchannel", ctx(&S::avgchannel), "Sharpness estimator: use grayscale sharpness map");
 }
 
-
 class c_lpg_sharpness_measure:
     public c_image_sharpness_measure
 {
@@ -52,6 +50,9 @@ public:
 
   c_lpg_sharpness_measure();
   c_lpg_sharpness_measure(const c_lpg_options & opts);
+
+  c_lpg_options & options();
+  const c_lpg_options & options() const;
 
   void set_k(double v);
   double k() const;
@@ -80,9 +81,9 @@ public:
   static bool create_map(cv::InputArray image, cv::OutputArray output_map,
       const c_lpg_options & opts);
 
-  std::string save_settings();
-  bool load_settings(const std::string & text);
-  bool serialize(c_config_setting settings, bool save);
+//  std::string save_settings();
+//  bool load_settings(const std::string & text);
+//  bool serialize(c_config_setting settings, bool save);
 
   template<class RootObjectType>
   static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)

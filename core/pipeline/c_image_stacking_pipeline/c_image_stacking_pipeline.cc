@@ -1004,7 +1004,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    if ( !_stacking_options.enable_registration ) {
+    if ( !_stacking_options.enable_registration || _master_options.stop_after_master_frame_generation ) {
       _frame_registration.reset();
     }
     else {
@@ -1708,6 +1708,30 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::sptr & input_sequence, int startpos, int endpos)
 {
   INSTRUMENT_REGION("");
+
+  class c_auto_close_video_writers
+  {
+    c_image_stacking_pipeline * _this;
+  public:
+    c_auto_close_video_writers(c_image_stacking_pipeline * _ths) :
+      _this(_ths)
+    {
+    }
+
+    ~c_auto_close_video_writers()
+    {
+      _this->_preprocessed_video_writer.close();
+      _this->_sparse_match_blend_writer.close();
+      _this->_ecc_writer.close();
+      _this->_eccflow_writer.close();
+      _this->_aligned_video_writer.close();
+      _this->_incremental_video_writer.close();
+      _this->_accumulation_masks_writer.close();
+      _this->_sparse_matches_video_writer.close();
+    }
+
+  } auto_close_video_writers(this);
+
 
   cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
@@ -3480,8 +3504,21 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
 
   ctlbind_expandable_group(ctls, "weighted_average", "");
-    ctlbind(ctls,"max_weights_ratio", ctx(&S::max_weights_ratio), ""); // (_this->_stacking_options.accumulation.accumulation_method == frame_accumulation_weighted_average));
     ctlbind(ctls, ctx(&S::lpg));
+    ctlbind(ctls,"max_weights_ratio", ctx(&S::max_weights_ratio),
+        "The pixel will NOT added to the accumulator if its sharpness is less than currently known max sharpness * max_weights_ratio");
+
+    ctlbind_menu_button(ctls, "Options...", ctx);
+      ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+          std::function([](c_frame_accumulation_options * opts) {
+            ctlbind_copy_config_to_clipboard("c_lpg_sharpness_measure", opts->lpg);
+            return false;
+          }));
+      ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+          std::function([](c_frame_accumulation_options * opts) {
+            return ctlbind_paste_config_from_clipboard("c_lpg_sharpness_measure", &opts->lpg);
+          }));
+
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "focus_stack", "");
@@ -3917,14 +3954,17 @@ bool c_image_stacking_pipeline::save_aligned_video(const cv::Mat & current_frame
     return false;
   }
 
-
-  CF_DEBUG("current_frame: %dx%d depth=%d channels=%d. current_mask: %dx%d depth=%d channels=%d. ",
-      current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
-      current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels());
-
-  return writer.write(current_frame, current_mask,
+  const bool fOk = writer.write(current_frame, current_mask,
       _output_options.write_image_mask_as_alpha_channel,
       seqindex);
+
+  if ( !fOk ) {
+    CF_ERROR("writer.write() fails. current_frame: %dx%d depth=%d channels=%d. current_mask: %dx%d depth=%d channels=%d. ",
+        current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
+        current_mask.cols, current_mask.rows, current_mask.depth(), current_mask.channels());
+  }
+
+  return fOk;
 }
 
 

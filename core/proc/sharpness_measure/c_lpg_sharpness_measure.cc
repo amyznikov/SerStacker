@@ -9,50 +9,72 @@
 #include <core/proc/lpg.h>
 #include <core/debug.h>
 
-bool c_lpg_options::serialize(c_config_setting settings, bool save)
+
+bool load_settings(c_config_setting settings, c_lpg_options * opts)
 {
-  SERIALIZE_OPTION(settings, save, *this, k);
-  SERIALIZE_OPTION(settings, save, *this, p);
-  SERIALIZE_OPTION(settings, save, *this, dscale);
-  SERIALIZE_OPTION(settings, save, *this, uscale);
-  SERIALIZE_OPTION(settings, save, *this, avgchannel);
+  LOAD_OPTION(settings, *opts, k);
+  LOAD_OPTION(settings, *opts, p);
+  LOAD_OPTION(settings, *opts, dscale);
+  LOAD_OPTION(settings, *opts, uscale);
+  LOAD_OPTION(settings, *opts, avgchannel);
   return true;
 }
 
-std::string c_lpg_options::save_settings()
+bool save_settings(c_config_setting settings, const c_lpg_options & opts)
 {
-  c_config cfg;
-
-  if( !serialize(cfg.root().add_group("c_lpg_options"), true) ) {
-    CF_FATAL("c_lpg_options::serialize() fails");
-    return "";
-  }
-
-  return cfg.write_string();
-}
-
-bool c_lpg_options::load_settings(const std::string & text)
-{
-  c_config cfg;
-
-  if ( !cfg.read_string(text.c_str()) ) {
-    CF_FATAL("c_lpg_options: cfg.read_string() fails");
-    return false;
-  }
-
-  c_config_setting section = cfg.root()["c_lpg_options"];
-  if ( !section.isGroup() ) {
-    CF_FATAL("Group 'c_lpg_options' not found");
-    return false;
-  }
-
-  if( !serialize(section, false) ) {
-    CF_FATAL("c_lpg_options::serialize(c_lpg_options) fails");
-    return false;
-  }
-
+  SAVE_OPTION(settings, opts, k);
+  SAVE_OPTION(settings, opts, p);
+  SAVE_OPTION(settings, opts, dscale);
+  SAVE_OPTION(settings, opts, uscale);
+  SAVE_OPTION(settings, opts, avgchannel);
   return true;
 }
+
+
+//bool c_lpg_options::serialize(c_config_setting settings, bool save)
+//{
+//  SERIALIZE_OPTION(settings, save, *this, k);
+//  SERIALIZE_OPTION(settings, save, *this, p);
+//  SERIALIZE_OPTION(settings, save, *this, dscale);
+//  SERIALIZE_OPTION(settings, save, *this, uscale);
+//  SERIALIZE_OPTION(settings, save, *this, avgchannel);
+//  return true;
+//}
+
+//std::string c_lpg_options::save_settings()
+//{
+//  c_config cfg;
+//
+//  if( !serialize(cfg.root().add_group("c_lpg_options"), true) ) {
+//    CF_FATAL("c_lpg_options::serialize() fails");
+//    return "";
+//  }
+//
+//  return cfg.write_string();
+//}
+//
+//bool c_lpg_options::load_settings(const std::string & text)
+//{
+//  c_config cfg;
+//
+//  if ( !cfg.read_string(text.c_str()) ) {
+//    CF_FATAL("c_lpg_options: cfg.read_string() fails");
+//    return false;
+//  }
+//
+//  c_config_setting section = cfg.root()["c_lpg_options"];
+//  if ( !section.isGroup() ) {
+//    CF_FATAL("Group 'c_lpg_options' not found");
+//    return false;
+//  }
+//
+//  if( !serialize(section, false) ) {
+//    CF_FATAL("c_lpg_options::serialize(c_lpg_options) fails");
+//    return false;
+//  }
+//
+//  return true;
+//}
 
 
 c_lpg_sharpness_measure::c_lpg_sharpness_measure()
@@ -62,6 +84,16 @@ c_lpg_sharpness_measure::c_lpg_sharpness_measure()
 c_lpg_sharpness_measure::c_lpg_sharpness_measure(const c_lpg_options & opts) :
     _opts(opts)
 {
+}
+
+c_lpg_options & c_lpg_sharpness_measure::options()
+{
+  return _opts;
+}
+
+const c_lpg_options & c_lpg_sharpness_measure::options() const
+{
+  return _opts;
 }
 
 void c_lpg_sharpness_measure::set_k(double v)
@@ -171,18 +203,18 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask,
       output_sharpness_metric);
 }
 
-bool c_lpg_sharpness_measure::serialize(c_config_setting settings, bool save)
-{
-  return _opts.serialize(settings, save);
-}
-
-std::string c_lpg_sharpness_measure::save_settings()
-{
-  return _opts.save_settings();
-}
-
-bool c_lpg_sharpness_measure::load_settings(const std::string & text)
-{
-  return _opts.load_settings(text);
-}
+//bool c_lpg_sharpness_measure::serialize(c_config_setting settings, bool save)
+//{
+//  return _opts.serialize(settings, save);
+//}
+//
+//std::string c_lpg_sharpness_measure::save_settings()
+//{
+//  return _opts.save_settings();
+//}
+//
+//bool c_lpg_sharpness_measure::load_settings(const std::string & text)
+//{
+//  return _opts.load_settings(text);
+//}
 

@@ -1021,7 +1021,7 @@ c_frame_weigthed_average::c_frame_weigthed_average()
 }
 
 c_frame_weigthed_average::c_frame_weigthed_average(double max_weights_ratio) :
-    max_weights_ratio_(max_weights_ratio)
+    _max_weights_ratio(max_weights_ratio)
 {
 }
 
@@ -1062,48 +1062,48 @@ c_frame_weigthed_average::c_frame_weigthed_average(double max_weights_ratio) :
 
 void c_frame_weigthed_average::clear()
 {
-  accumulator_.release();
-  counter_.release();
-  max_weights_.release();
+  _accumulator.release();
+  _counter.release();
+  _max_weights.release();
   accumulated_frames_ = 0;
 }
 
 cv::Size c_frame_weigthed_average::accumulator_size() const
 {
-  return accumulator_.size();
+  return _accumulator.size();
 }
 
 const cv::Mat & c_frame_weigthed_average::accumulator() const
 {
-  return accumulator_;
+  return _accumulator;
 }
 
 const cv::Mat & c_frame_weigthed_average::counter() const
 {
-  return counter_;
+  return _counter;
 }
 
 const cv::Mat & c_frame_weigthed_average::max_weights() const
 {
-  return max_weights_;
+  return _max_weights;
 }
 
 void c_frame_weigthed_average::set_max_weights_ratio(double v)
 {
-  max_weights_ratio_ = v;
+  _max_weights_ratio = v;
 }
 
 double c_frame_weigthed_average::max_weights_ratio() const
 {
-  return max_weights_ratio_;
+  return _max_weights_ratio;
 }
 
 bool c_frame_weigthed_average::reinitialize(cv::InputArray src, cv::InputArray accw)
 {
   clear();
 
-  src.getMat().copyTo(accumulator_);
-  accw.getMat().copyTo(counter_);
+  src.getMat().copyTo(_accumulator);
+  accw.getMat().copyTo(_counter);
   accumulated_frames_ = 1;
 
   return true;
@@ -1115,23 +1115,23 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 
   if ( accumulated_frames_ < 1 ) {
 
-    accumulator_.create(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
-    counter_.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
+    _accumulator.create(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
+    _counter.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
 
-    accumulator_.setTo(0);
-    counter_.setTo(0);
+    _accumulator.setTo(0);
+    _counter.setTo(0);
 
     accumulated_frames_ = 0;
   }
 
-  if ( src.size() != accumulator_.size() ) {
+  if ( src.size() != _accumulator.size() ) {
     CF_ERROR("ERROR in weigthed_frame_average: current frame (%dx%d) and accumulator (%dx%d) sizes not match",
-        src.cols(), src.rows(), accumulator_.cols, accumulator_.rows );
+        src.cols(), src.rows(), _accumulator.cols, _accumulator.rows );
     return false;
   }
-  else if ( src.channels() != accumulator_.channels() ) {
+  else if ( src.channels() != _accumulator.channels() ) {
     CF_ERROR("ERROR in weigthed_frame_average: current frame (%d) and accumulator (%d) channel count not match",
-        src.channels(), accumulator_.channels());
+        src.channels(), _accumulator.channels());
     return false;
   }
 
@@ -1145,17 +1145,17 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 
   if ( weights.empty() || weights.type() == CV_8UC1 ) {
 
-    cv::add(accumulator_, src, accumulator_, weights, accumulator_.type());
-    cv::add(counter_, cv::Scalar::all(1), counter_, weights, counter_.type());
+    cv::add(_accumulator, src, _accumulator, weights, _accumulator.type());
+    cv::add(_counter, cv::Scalar::all(1), _counter, weights, _counter.type());
   }
   else {
 
-    if( max_weights_ratio_ > 0 && max_weights_.empty() ) {
-      max_weights_.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
-      max_weights_.setTo(0);
+    if( _max_weights_ratio > 0 && _max_weights.empty() ) {
+      _max_weights.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
+      _max_weights.setTo(0);
     }
 
-    if ( !accumulate_weighted(src, weights, accumulator_, counter_, max_weights_, max_weights_ratio_) ) {
+    if ( !accumulate_weighted(src, weights, _accumulator, _counter, _max_weights, _max_weights_ratio) ) {
       CF_ERROR("ERROR in weigthed_frame_average: accumulate_weighted() fails");
       return false;
     }
@@ -1176,7 +1176,7 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
   INSTRUMENT_REGION("");
 
   cv::Mat m;
-  cv::compare(counter_, 0, m, cv::CMP_GT);
+  cv::compare(_counter, 0, m, cv::CMP_GT);
   if( m.channels() > 1 ) {
     reduce_color_channels(m, m, cv::REDUCE_MIN);
   }
@@ -1185,15 +1185,15 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
 
     cv::Mat cc;
 
-    if( counter_.channels() == accumulator_.channels() ) {
-      cc = counter_;
+    if( _counter.channels() == _accumulator.channels() ) {
+      cc = _counter;
     }
     else {
-      std::vector<cv::Mat> channels(accumulator_.channels(), counter_);
+      std::vector<cv::Mat> channels(_accumulator.channels(), _counter);
       cv::merge(channels, cc);
     }
 
-    cv::divide(accumulator_, cc, avg, dscale);
+    cv::divide(_accumulator, cc, avg, dscale);
     avg.setTo(0, ~m);
   }
 
@@ -1207,11 +1207,11 @@ bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask
 
 bool c_frame_weigthed_average::get_acc_counters(cv::Mat & accw) const
 {
-  if ( counter_.channels() == 1) {
-    counter_.copyTo(accw);
+  if ( _counter.channels() == 1) {
+    _counter.copyTo(accw);
   }
   else {
-    cv::cvtColor(counter_, accw, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(_counter, accw, cv::COLOR_BGR2GRAY);
   }
 
   return true;

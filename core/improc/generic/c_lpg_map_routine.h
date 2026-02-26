@@ -72,8 +72,8 @@ public:
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
-  bool copy_parameters_to_clipboard();
-  bool paste_parameters_from_clipboard();
+//  bool copy_parameters_to_clipboard();
+//  bool paste_parameters_from_clipboard();
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:

@@ -63,8 +63,8 @@ public:
   double max_weights_ratio() const;
 
 protected:
-  cv::Mat accumulator_, counter_, max_weights_;
-  double max_weights_ratio_ = 0;
+  cv::Mat _accumulator, _counter, _max_weights;
+  double _max_weights_ratio = 0;
 };
 
 class c_laplacian_pyramid_focus_stacking :

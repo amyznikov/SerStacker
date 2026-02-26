@@ -60,7 +60,6 @@ public:
   ~QLCSCTPCameraControls();
 
 protected :
-  //void onupdatecontrols() override;
   void populateCameras();
   void populateStreams();
   void populateFormats();

@@ -166,6 +166,47 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
 {
   form->setLabelAlignment(Qt::AlignLeft);
 
+  /* Must be called first */
+  QObject::connect(this, &ThisClass::populatecontrols,
+      [this]() {
+        if( _camera ) {
+          const QImagingCamera::State cameraState = _camera->state();
+          if( cameraState == QImagingCamera::State_connected ) {
+            populateCameras();
+            populateStreams();
+            populateFormats();
+            populateSizes();
+          }
+        }
+      });
+
+  /* Must be called first */
+  QObject::connect(this, &ThisClass::enablecontrols,
+      [this]() {
+      if( !_camera ) {
+        setEnabled(false);
+      }
+      else {
+        const QImagingCamera::State cameraState = _camera->state();
+
+        url_ctl->setEnabled(cameraState == QImagingCamera::State_disconnected);
+        cameras_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+        streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+        formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+        sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+        cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+
+        ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+        AnalogueGain_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+        AutoExposureOptions_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+        ISPColorToneControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+        ISPVisualAdjustmentsControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
+
+        setEnabled(true);
+      }
+  });
+
+
   url_ctl =
       add_widget2<QLCSCTPUrlWidget>("URL:",
           &QLCSCTPUrlWidget::urlChanged,
@@ -403,6 +444,8 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
         this, &ThisClass::updateControls);
   }
 
+
+
   updateControls();
 }
 
@@ -463,43 +506,6 @@ void QLCSCTPCameraControls::populateSizes()
     sizes_ctl->setCurrentIndex(fmt->selectedSizeIndex);
   }
 }
-
-
-//
-//void QLCSCTPCameraControls::onupdatecontrols()
-//{
-//  if( !_camera ) {
-//    setEnabled(false);
-//  }
-//  else {
-//    const QImagingCamera::State cameraState = _camera->state();
-//    if( cameraState == QImagingCamera::State_connected ) {
-//      populateCameras();
-//      populateStreams();
-//      populateFormats();
-//      populateSizes();
-//    }
-//
-//    Base::onupdatecontrols();
-//    updateCameraControls();
-//
-//    url_ctl->setEnabled(cameraState == QImagingCamera::State_disconnected);
-//    cameras_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-//    streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-//    formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-//    sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-//    cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
-//
-//    ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-//    AnalogueGain_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-//    AutoExposureOptions_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-//    ISPColorToneControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-//    ISPVisualAdjustmentsControls_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
-//
-//    setEnabled(true);
-//  }
-//}
-
 
 QCheckBox * QLCSCTPCameraControls::createCheckBoxCameraControl(QSettingsWidget * sw,
     const QString & ctlid, const QString & name, const QString & tooltip)

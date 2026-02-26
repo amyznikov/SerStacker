@@ -6,6 +6,7 @@
  */
 
 #include "c_frame_registration.h"
+#include <core/feature2d/feature2d_settings.h>
 #include <core/proc/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
@@ -26,6 +27,183 @@ const c_enum_member * members_of<planetary_disk_derotation_type>()
   };
 
   return members;
+}
+
+bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
+{
+  LOAD_OPTION(settings, *opts, scale);
+  LOAD_OPTION(settings, *opts, eps);
+  LOAD_OPTION(settings, *opts, min_rho);
+  LOAD_OPTION(settings, *opts, input_smooth_sigma);
+  LOAD_OPTION(settings, *opts, reference_smooth_sigma);
+  LOAD_OPTION(settings, *opts, update_step_scale);
+  LOAD_OPTION(settings, *opts, normalization_noise);
+  LOAD_OPTION(settings, *opts, normalization_scale);
+  LOAD_OPTION(settings, *opts, ecc_method);
+  LOAD_OPTION(settings, *opts, max_iterations);
+  LOAD_OPTION(settings, *opts, ecch_minimum_image_size);
+  LOAD_OPTION(settings, *opts, ecch_max_level);
+  LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
+  LOAD_OPTION(settings, *opts, replace_planetary_disk_with_mask);
+  LOAD_OPTION(settings, *opts, planetary_disk_mask_stdev_factor);
+  LOAD_OPTION(settings, *opts, se_close_size);
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_ecc_registration_options & opts)
+{
+  SAVE_OPTION(settings, opts, scale);
+  SAVE_OPTION(settings, opts, eps);
+  SAVE_OPTION(settings, opts, min_rho);
+  SAVE_OPTION(settings, opts, input_smooth_sigma);
+  SAVE_OPTION(settings, opts, reference_smooth_sigma);
+  SAVE_OPTION(settings, opts, update_step_scale);
+  SAVE_OPTION(settings, opts, normalization_noise);
+  SAVE_OPTION(settings, opts, normalization_scale);
+  SAVE_OPTION(settings, opts, ecc_method);
+  SAVE_OPTION(settings, opts, max_iterations);
+  SAVE_OPTION(settings, opts, ecch_minimum_image_size);
+  SAVE_OPTION(settings, opts, ecch_max_level);
+  SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
+  SAVE_OPTION(settings, opts, replace_planetary_disk_with_mask);
+  SAVE_OPTION(settings, opts, planetary_disk_mask_stdev_factor);
+  SAVE_OPTION(settings, opts, se_close_size);
+  return true;
+}
+
+bool load_settings(c_config_setting settings, c_eccflow_registration_options * opts)
+{
+  LOAD_OPTION(settings, *opts, update_multiplier);
+  LOAD_OPTION(settings, *opts, input_smooth_sigma);
+  LOAD_OPTION(settings, *opts, reference_smooth_sigma);
+  LOAD_OPTION(settings, *opts, max_iterations);
+  LOAD_OPTION(settings, *opts, support_scale);
+  LOAD_OPTION(settings, *opts, min_image_size);
+  LOAD_OPTION(settings, *opts, max_pyramid_level);
+  LOAD_OPTION(settings, *opts, noise_level);
+  LOAD_OPTION(settings, *opts, scale_factor);
+  LOAD_OPTION(settings, *opts, downscale_method);
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_eccflow_registration_options & opts)
+{
+  SAVE_OPTION(settings, opts, update_multiplier);
+  SAVE_OPTION(settings, opts, input_smooth_sigma);
+  SAVE_OPTION(settings, opts, reference_smooth_sigma);
+  SAVE_OPTION(settings, opts, max_iterations);
+  SAVE_OPTION(settings, opts, support_scale);
+  SAVE_OPTION(settings, opts, min_image_size);
+  SAVE_OPTION(settings, opts, max_pyramid_level);
+  SAVE_OPTION(settings, opts, noise_level);
+  SAVE_OPTION(settings, opts, scale_factor);
+  SAVE_OPTION(settings, opts, downscale_method);
+  return true;
+}
+
+
+bool load_settings(c_config_setting settings, c_feature_registration_options * opts)
+{
+  c_config_setting section;
+
+  LOAD_OPTION(settings, *opts, image_scale);
+  LOAD_OPTION(settings, *opts, triangle_eps);
+  LOAD_OPTION(settings, *opts, registration_channel);
+
+  if ( (section = settings["sparse_feature_detector"]).isGroup() ) {
+    load_settings(section, &opts->sparse_feature_extractor_and_matcher.detector);
+  }
+  if ( (section = settings["sparse_feature_descriptor"]).isGroup() ) {
+    load_settings(section, &opts->sparse_feature_extractor_and_matcher.descriptor);
+  }
+  if ( (section = settings["sparse_feature_matcher"]).isGroup() ) {
+    load_settings(section, &opts->sparse_feature_extractor_and_matcher.matcher);
+  }
+  if ( (section = settings["estimate_options"]).isGroup() ) {
+    load_settings(section, &opts->estimate_options);
+  }
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_feature_registration_options & opts)
+{
+  c_config_setting section;
+
+  SAVE_OPTION(settings, opts, image_scale);
+  SAVE_OPTION(settings, opts, triangle_eps);
+  SAVE_OPTION(settings, opts, registration_channel);
+
+  if ( (section = settings.add_group("sparse_feature_detector")).isGroup() ) {
+    save_settings(section, opts.sparse_feature_extractor_and_matcher.detector);
+  }
+  if ( (section = settings.add_group("sparse_feature_descriptor")).isGroup() ) {
+    save_settings(section, opts.sparse_feature_extractor_and_matcher.descriptor);
+  }
+  if ( (section = settings.add_group("sparse_feature_matcher")).isGroup() ) {
+    save_settings(section, opts.sparse_feature_extractor_and_matcher.matcher);
+  }
+  if ( (section = settings.add_group("estimate_options")).isGroup() ) {
+    save_settings(section, opts.estimate_options);
+  }
+  return true;
+}
+
+bool load_settings(c_config_setting settings, c_image_registration_options * opts)
+{
+  c_config_setting section;
+
+  LOAD_OPTION(settings, *opts, motion_type);
+  LOAD_OPTION(settings, *opts, ecc_registration_channel);
+  LOAD_OPTION(settings, *opts, interpolation);
+  LOAD_OPTION(settings, *opts, border_mode);
+  LOAD_OPTION(settings, *opts, border_value);
+  LOAD_OPTION(settings, *opts, enable_feature_registration);
+  LOAD_OPTION(settings, *opts, enable_ecc_registration);
+  LOAD_OPTION(settings, *opts, enable_eccflow_registration);
+  LOAD_OPTION(settings, *opts, accumulate_and_compensate_turbulent_flow);
+
+  if( (section = settings["feature_registration"]).isGroup() ) {
+    load_settings(section, &opts->feature_registration);
+  }
+
+  if( (section = settings["ecc"]).isGroup() ) {
+    load_settings(section, &opts->ecc);
+  }
+
+  if( (section = settings["eccflow"]).isGroup() ) {
+    load_settings(section, &opts->eccflow);
+  }
+
+  return true;
+}
+
+bool save_settings(c_config_setting settings, const c_image_registration_options & opts)
+{
+  c_config_setting section;
+
+  SAVE_OPTION(settings, opts, motion_type);
+  SAVE_OPTION(settings, opts, ecc_registration_channel);
+  SAVE_OPTION(settings, opts, interpolation);
+  SAVE_OPTION(settings, opts, border_mode);
+  SAVE_OPTION(settings, opts, border_value);
+  SAVE_OPTION(settings, opts, enable_feature_registration);
+  SAVE_OPTION(settings, opts, enable_ecc_registration);
+  SAVE_OPTION(settings, opts, enable_eccflow_registration);
+  SAVE_OPTION(settings, opts, accumulate_and_compensate_turbulent_flow);
+
+  if( (section = settings.add_group("feature_registration")).isGroup() ) {
+    save_settings(section, opts.feature_registration);
+  }
+
+  if( (section = settings.add_group("ecc")).isGroup() ) {
+    save_settings(section, opts.ecc);
+  }
+
+  if( (section = settings.add_group("eccflow")).isGroup() ) {
+    save_settings(section, opts.eccflow);
+  }
+
+  return true;
 }
 
 

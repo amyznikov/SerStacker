@@ -3017,90 +3017,13 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     }
 
     if( (subsection = get_group(section, save, "registration")) ) {
-
-      //SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
-      SERIALIZE_OPTION(subsection, save, opts.registration, motion_type);
-      SERIALIZE_OPTION(subsection, save, opts.registration, ecc_registration_channel);
-      SERIALIZE_OPTION(subsection, save, opts.registration, interpolation);
-      SERIALIZE_OPTION(subsection, save, opts.registration, border_mode);
-      SERIALIZE_OPTION(subsection, save, opts.registration, border_value);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_feature_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_ecc_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_eccflow_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
-
-
-      if( (subsubsection = get_group(subsection, save, "feature_registration")) ) {
-
-        c_feature_registration_options & feature_registration =
-            opts.registration.feature_registration;
-
-        //SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, image_scale);
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, triangle_eps);
-        SERIALIZE_OPTION(subsection, save, feature_registration, registration_channel);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_detector"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, detector);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_descriptor"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, descriptor);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_matcher"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, matcher);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "estimate_options"), save,
-            feature_registration, estimate_options);
-      }
-
-      if( (subsubsection = get_group(subsection, save, "ecc")) ) {
-
-        c_ecc_registration_options & ecc =
-            opts.registration.ecc;
-
-        //SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
-        SERIALIZE_OPTION(subsubsection, save, ecc, scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, eps);
-        SERIALIZE_OPTION(subsubsection, save, ecc, min_rho);
-        SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
-        SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_max_level);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
-        SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
-        SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, ecc, se_close_size);
-      }
-
-      if( (subsubsection = get_group(subsection, save, "eccflow")) ) {
-
-        c_eccflow_registration_options & eccflow =
-            opts.registration.eccflow;
-
-        //SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, update_multiplier);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, input_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, downscale_method);
-      }
+      SERIALIZE_OBJECT(subsection, save, opts.registration);
     }
   }
 
   if( (section = get_group(settings, save, "stacking_options")) ) {
 
-    c_image_stacking_options & opts =
-        _stacking_options;
+    c_image_stacking_options & opts = _stacking_options;
 
     SERIALIZE_OPTION(section, save, opts, unsharp_sigma);
     SERIALIZE_OPTION(section, save, opts, unsharp_alpha);
@@ -3108,83 +3031,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     // c_image_registration_options registration;
     if( (subsection = get_group(section, save, "registration")) ) {
-
-      //SERIALIZE_OPTION(subsection, save, opts.registration, enabled);
-      SERIALIZE_OPTION(subsection, save, opts.registration, motion_type);
-      SERIALIZE_OPTION(subsection, save, opts.registration, ecc_registration_channel);
-      SERIALIZE_OPTION(subsection, save, opts.registration, interpolation);
-      SERIALIZE_OPTION(subsection, save, opts.registration, border_mode);
-      SERIALIZE_OPTION(subsection, save, opts.registration, border_value);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_feature_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_ecc_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, enable_eccflow_registration);
-      SERIALIZE_OPTION(subsection, save, opts.registration, accumulate_and_compensate_turbulent_flow);
-
-      if( (subsubsection = get_group(subsection, save, "feature_registration")) ) {
-
-        c_feature_registration_options & feature_registration =
-            opts.registration.feature_registration;
-
-        //SERIALIZE_OPTION(subsubsection, save, feature_registration, enabled);
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, image_scale);
-        SERIALIZE_OPTION(subsubsection, save, feature_registration, triangle_eps);
-        SERIALIZE_OPTION(subsection, save, feature_registration, registration_channel);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_detector"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, detector);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_descriptor"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, descriptor);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "sparse_feature_matcher"), save,
-            feature_registration.sparse_feature_extractor_and_matcher, matcher);
-
-        SERIALIZE_OPTION(get_group(subsubsection, save, "estimate_options"), save,
-            feature_registration, estimate_options);
-      }
-
-      if( (subsubsection = get_group(subsection, save, "ecc")) ) {
-
-        c_ecc_registration_options & ecc =
-            opts.registration.ecc;
-
-        //SERIALIZE_OPTION(subsubsection, save, ecc, enabled);
-        SERIALIZE_OPTION(subsubsection, save, ecc, scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, eps);
-        SERIALIZE_OPTION(subsubsection, save, ecc, min_rho);
-        SERIALIZE_OPTION(subsubsection, save, ecc, input_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, ecc, reference_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, ecc, update_step_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_noise);
-        SERIALIZE_OPTION(subsubsection, save, ecc, normalization_scale);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecc_method);
-        SERIALIZE_OPTION(subsubsection, save, ecc, max_iterations);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_minimum_image_size);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_max_level);
-        SERIALIZE_OPTION(subsubsection, save, ecc, ecch_estimate_translation_first);
-        SERIALIZE_OPTION(subsubsection, save, ecc, replace_planetary_disk_with_mask);
-        SERIALIZE_OPTION(subsubsection, save, ecc, planetary_disk_mask_stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, ecc, se_close_size);
-
-      }
-
-      if( (subsubsection = get_group(subsection, save, "eccflow")) ) {
-
-        c_eccflow_registration_options & eccflow =
-            opts.registration.eccflow;
-
-        //SERIALIZE_OPTION(subsubsection, save, eccflow, enabled);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, update_multiplier);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, input_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, reference_smooth_sigma);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, max_iterations);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, support_scale);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, min_image_size);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, max_pyramid_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, noise_level);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, scale_factor);
-        SERIALIZE_OPTION(subsubsection, save, eccflow, downscale_method);
-      }
+      SERIALIZE_OBJECT(subsection, save, opts.registration);
 
       SERIALIZE_OPTION(subsection, save, opts.registration.planetary_disk_derotation, derotation_type);
 
@@ -3451,8 +3298,20 @@ static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectTy
   ctlbind_expandable_group(ctls, "Master Frame Generation", ctx(&S::generate_master_frame), ""); //  _this->_master_options.generate_master_frame);
     ctlbind(ctls, "Save Generated Master Frame:", ctx(&S::save_master_frame), ""); //  _this->_master_options.generate_master_frame);
     ctlbind(ctls, "Stop after master generation:", ctx(&S::stop_after_master_frame_generation), "Finish pipeline after master frame generation" ); //   _this->_master_options.generate_master_frame);
-     ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
-     ctlbind(ctls, ctx(&S::registration));
+    ctlbind(ctls, "Max Input frames:", ctx(&S::max_frames_to_generate_master_frame), "Max input frames used to generate master frame");
+    ctlbind(ctls, ctx(&S::registration));
+
+    ctlbind_menu_button(ctls, "Options...", ctx);
+      ctlbind_command_button(ctls, "Copy registration options to clipboard", ctx,
+          std::function([](c_image_stacking_master_options * opts) {
+            ctlbind_copy_config_to_clipboard("c_image_registration_options", opts->registration);
+            return false;
+          }));
+      ctlbind_command_button(ctls, "Paste registration options from clipboard", ctx,
+          std::function([](c_image_stacking_master_options * opts) {
+            return ctlbind_paste_config_from_clipboard("c_image_registration_options", &opts->registration);
+          }));
+
   ctlbind_end_group(ctls);
 }
 
@@ -3472,6 +3331,17 @@ static inline void ctlbind_stack_registration_options(c_ctlist<RootObjectType> &
   ctlbind(ctls, "Enable stack registration", ctx(&S::enable_registration), "");
   ctlbind_group(ctls, ctx(&S::enable_registration));
     ctlbind(ctls, ctx(&S::registration));
+
+    ctlbind_menu_button(ctls, "Options...", ctx);
+      ctlbind_command_button(ctls, "Copy registration options to clipboard", ctx,
+          std::function([](c_image_stacking_options * opts) {
+            ctlbind_copy_config_to_clipboard("c_image_registration_options", opts->registration);
+            return false;
+          }));
+      ctlbind_command_button(ctls, "Paste registration options from clipboard", ctx,
+          std::function([](c_image_stacking_options * opts) {
+            return ctlbind_paste_config_from_clipboard("c_image_registration_options", &opts->registration);
+          }));
   ctlbind_end_group(ctls);
 }
 
@@ -3509,14 +3379,14 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
         "The pixel will NOT added to the accumulator if its sharpness is less than currently known max sharpness * max_weights_ratio");
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+      ctlbind_command_button(ctls, "Copy c_lpg_options to clipboard", ctx,
           std::function([](c_frame_accumulation_options * opts) {
-            ctlbind_copy_config_to_clipboard("c_lpg_sharpness_measure", opts->lpg);
+            ctlbind_copy_config_to_clipboard("c_lpg_options", opts->lpg);
             return false;
           }));
-      ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+      ctlbind_command_button(ctls, "Paste c_lpg_options from clipboard", ctx,
           std::function([](c_frame_accumulation_options * opts) {
-            return ctlbind_paste_config_from_clipboard("c_lpg_sharpness_measure", &opts->lpg);
+            return ctlbind_paste_config_from_clipboard("c_lpg_options", &opts->lpg);
           }));
 
   ctlbind_end_group(ctls);

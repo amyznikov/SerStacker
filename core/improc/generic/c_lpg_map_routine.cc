@@ -14,14 +14,14 @@ void c_lpg_map_routine::getcontrols(c_control_list & ctls, const ctlbind_context
   c_lpg_sharpness_measure::getcontrols(ctls, ctx(&this_class::_m));
 
   ctlbind_menu_button(ctls, "Options...", ctx);
-    ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+    ctlbind_command_button(ctls, "Copy c_lpg_options to clipboard", ctx,
         std::function([](this_class * _ths) {
-          ctlbind_copy_config_to_clipboard("c_lpg_sharpness_measure", _ths->_m.options());
+          ctlbind_copy_config_to_clipboard("c_lpg_options", _ths->_m.options());
           return false;
         }));
-    ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+    ctlbind_command_button(ctls, "Paste c_lpg_options from clipboard", ctx,
         std::function([](this_class * _ths) {
-          return ctlbind_paste_config_from_clipboard("c_lpg_sharpness_measure", &_ths->_m.options());
+          return ctlbind_paste_config_from_clipboard("c_lpg_options", &_ths->_m.options());
         }));
 
 }

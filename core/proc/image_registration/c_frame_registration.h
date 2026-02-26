@@ -176,6 +176,10 @@ struct c_image_registration_options
   bool accumulate_and_compensate_turbulent_flow = false;
 };
 
+bool load_settings(c_config_setting settings, c_image_registration_options * opts);
+bool save_settings(c_config_setting settings, const c_image_registration_options & opts);
+
+
 template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_registration_options> & ctx)
 {

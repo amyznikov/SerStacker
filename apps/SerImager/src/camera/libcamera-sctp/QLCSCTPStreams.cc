@@ -182,11 +182,11 @@ QLCSCTPStreamListWidget::QLCSCTPStreamListWidget(QWidget * parent) :
   vbox->setAlignment(Qt::AlignTop);
 
   vbox->addWidget(addStream_ctl =
-      create_toolbutton(QIcon(), "Add", "Add new ffmpeg input stream"),
+      create_toolbutton(QIcon(), "Add", "Add new lcsctp input stream"),
       0, Qt::AlignTop);
 
   vbox->addWidget(removeStream_ctl =
-      create_toolbutton(QIcon(), "Remove", "Remove ffmpeg stream from list"),
+      create_toolbutton(QIcon(), "Remove", "Remove lcsctp stream from list"),
       0, Qt::AlignTop);
 
   removeStream_ctl->setEnabled(false);
@@ -297,13 +297,8 @@ QLCSCTPCamera::sptr QLCSCTPStreamListWidget::selectedStream() const
 void QLCSCTPStreamListWidget::selectStream(const QLCSCTPCamera::sptr & camera)
 {
   for ( int i = 0, n = list_ctl->count(); i < n; ++i ) {
-
-    QListWidgetItem * item =
-        list_ctl->item(i);
-
-    QImagingCamera::sptr c =
-        item->data(Qt::UserRole).value<QLCSCTPCamera::sptr>();
-
+    QListWidgetItem * item = list_ctl->item(i);
+    QImagingCamera::sptr c = item->data(Qt::UserRole).value<QLCSCTPCamera::sptr>();
     if ( c == camera ) {
       list_ctl->setCurrentItem(item);
       break;

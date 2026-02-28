@@ -59,11 +59,11 @@ protected:
   void hideEvent(QHideEvent *event) override;
 
 protected:
-  c_input_sequence::sptr input_sequence_;
+  c_input_sequence::sptr _input_sequence;
   QPlaySequenceControl * playControls = nullptr;
-  DEBAYER_ALGORITHM debayerAlgorithm_ = DEBAYER_DEFAULT;
-  bool filterBadPixels_ = false;
-  double badPixelsVariationThreshold_ = 5;
+  DEBAYER_ALGORITHM _debayerAlgorithm = DEBAYER_DEFAULT;
+  bool _filterBadPixels = false;
+  double _badPixelsVariationThreshold = 5;
 
 //  VLO_DATA_CHANNEL vlo_data_channel_ =
 //      VLO_DATA_CHANNEL_AMBIENT;

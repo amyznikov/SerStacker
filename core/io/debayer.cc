@@ -43,8 +43,8 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_NNR,   "NNR",    "DEBAYER_NNR: SerStacker nearest-neighboor interpolation with nninterpolate() and midian-bease noise reduction"},
       {DEBAYER_EA,    "EA",     "DEBAYER_EA: OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
+      {DEBAYER_AVGC,  "AVGC",    "DEBAYER_AVGC: 2x2 pixel binning"},
       {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
-
       {DEBAYER_NN, } // must  be last
   };
   return members;
@@ -810,7 +810,7 @@ bool extract_bayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID 
 }
 
 
-static bool demosaic_(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
+static bool demosaic_nnr(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
   static const auto removeBadPixels =
       [](cv::Mat & image) {
@@ -871,11 +871,13 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
     algo = DEBAYER_EA;
   }
 
-
   switch (algo) {
     case DEBAYER_NN2:
-      case DEBAYER_NNR:
-      return demosaic_(src, dst, colorid, algo);
+      return demosaic_nnr(src, dst, colorid, algo);
+    case DEBAYER_NNR:
+      return demosaic_nnr(src, dst, colorid, algo);
+    case DEBAYER_AVGC:
+        return demosaic_avgc(src, dst, colorid);
     case DEBAYER_MATRIX:
       return extract_bayer_matrix(src, dst, colorid);
     default:
@@ -961,6 +963,123 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   return true;
 }
 
+//==========
+//#include <tbb/parallel_for.h>
+//#include <tbb/blocked_range.h>
+//#include <opencv2/opencv.hpp>
+//#include <type_traits>
+//
+//enum COLORID {
+//    COLORID_BAYER_RGGB = 8,
+//    COLORID_BAYER_GRBG = 9,
+//    COLORID_BAYER_GBRG = 10,
+//    COLORID_BAYER_BGGR = 11,
+//    COLORID_BAYER_CYYM = 16,
+//    COLORID_BAYER_YCMY = 17,
+//    COLORID_BAYER_YMCY = 18,
+//    COLORID_BAYER_MYYC = 19,
+//};
+
+template<typename T>
+static bool debayer_avgc_tbb(const cv::Mat_<T> & src, cv::Mat_<cv::Vec<T, 3>> & dst, COLORID colorid)
+{
+  using CalcType =
+      typename std::conditional_t<
+        std::is_floating_point<T>::value,
+        T,
+        int64_t>;
+
+  const int outHeight = src.rows / 2;
+  const int outWidth = src.cols / 2;
+  dst.create(outHeight, outWidth);
+
+  // Channel indexes inside of 2x2 binnig blocks
+  // p00 p01
+  // p10 p11
+  int ri, g1i, g2i, bi; // индексы для (row, col)
+
+  switch (colorid) {
+    case COLORID_BAYER_RGGB: ri = 0; g1i = 1; g2i = 2; bi = 3; break; // R G1 / G2 B
+    case COLORID_BAYER_GRBG: g1i = 0; ri = 1; bi = 2; g2i = 3; break; // G1 R / B G2
+    case COLORID_BAYER_GBRG: g1i = 0; bi = 1; ri = 2; g2i = 3; break; // G1 B / R G2
+    case COLORID_BAYER_BGGR: bi = 0; g1i = 1; g2i = 2; ri = 3; break; // B G1 / G2 R
+    case COLORID_BAYER_CYYM: bi = 0; g1i = 1; g2i = 2; ri = 3; break;
+    case COLORID_BAYER_YCMY: g1i = 0; bi = 1; ri = 2; g2i = 3; break;
+    case COLORID_BAYER_YMCY: g1i = 0; ri = 1; bi = 2; g2i = 3; break;
+    case COLORID_BAYER_MYYC: ri = 0; g1i = 1; g2i = 2; bi = 3; break;
+    default: // Not supported
+      CF_ERROR("Not supported colorid = %d", colorid);
+      return false;
+  }
+
+  tbb::parallel_for(tbb::blocked_range<int>(0, outHeight),
+      [&](const tbb::blocked_range<int> & range) {
+        for (int y = range.begin(); y != range.end(); ++y) {
+          const T * r1 = src[y * 2];
+          const T * r2 = src[y * 2 + 1];
+          cv::Vec<T, 3>* dstRow = dst[y];
+
+          for (int x = 0; x < outWidth; ++x) {
+            const T p[] = {r1[x*2], r1[x*2+1], r2[x*2], r2[x*2+1]};
+            const T r = p[ri];
+            const T b = p[bi];
+            const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
+            dstRow[x] = cv::Vec<T, 3>(b, g, r);
+        }
+      }
+    }, tbb::static_partitioner());
+
+  return true;
+}
+
+
+bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid)
+{
+  if( src.empty() || src.channels() != 1 ) {
+    CF_ERROR("Single-channel input image is expected");
+    return false;
+  }
+
+  const cv::Size srcSize = src.size();
+  if( srcSize.width % 2 != 0 || srcSize.height % 2 != 0 ) {
+    CF_ERROR("Single-channel even-sized input image is expected");
+    return false;
+  }
+
+  const int depth = src.depth();
+  const int outHeight = srcSize.height / 2;
+  const int outWidth = srcSize.width / 2;
+
+  if( dst.fixedSize() && dst.size() != cv::Size(outWidth, outHeight) ) {
+    CF_ERROR("Fixed-size destination image has incorrect size");
+    return false;
+  }
+
+  if( dst.fixedType() && dst.type() != CV_MAKETYPE(depth, 3) ) {
+    CF_ERROR("Fixed-type destination image has incorrect type");
+    return false;
+  }
+
+  const cv::Mat srcMat = src.getMat();
+
+  dst.create(outHeight, outWidth, CV_MAKETYPE(depth, 3));
+  cv::Mat& dstMat = dst.getMatRef();
+
+  switch (depth) {
+    case CV_8U:  debayer_avgc_tbb<uint8_t>(srcMat, (cv::Mat_<cv::Vec<uint8_t, 3>>&)dstMat, colorid); break;
+    case CV_8S:  debayer_avgc_tbb<int8_t>(srcMat, (cv::Mat_<cv::Vec<int8_t, 3>>&)dstMat, colorid); break;
+    case CV_16U: debayer_avgc_tbb<uint16_t>(srcMat, (cv::Mat_<cv::Vec<uint16_t, 3>>&)dstMat, colorid); break;
+    case CV_16S: debayer_avgc_tbb<int16_t>(srcMat, (cv::Mat_<cv::Vec<int16_t, 3>>&)dstMat, colorid); break;
+    case CV_32S: debayer_avgc_tbb<int32_t>(srcMat, (cv::Mat_<cv::Vec<int32_t, 3>>&)dstMat, colorid); break;
+    case CV_32F: debayer_avgc_tbb<float>(srcMat, (cv::Mat_<cv::Vec<float, 3>>&)dstMat, colorid); break;
+    case CV_64F: debayer_avgc_tbb<double>(srcMat, (cv::Mat_<cv::Vec<double, 3>>&)dstMat, colorid); break;
+    default:
+      CF_ERROR("Not supported input image depth %d", depth);
+      return false;
+  }
+  return true;
+}
+
 
 /** @brief Bayer demosaicing
  */
@@ -977,7 +1096,9 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
     return true;
   }
 
-
+  if ( algo == DEBAYER_AVGC ) {
+    return demosaic_avgc(src, dst, colorid);
+  }
 
   switch ( colorid ) {
 

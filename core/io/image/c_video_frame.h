@@ -52,14 +52,13 @@ public:
 
 protected:
   friend class c_image_input_source;
-  cv::Mat input_image_, current_image_;
-  cv::Mat1b input_mask_, current_mask_;
-  //std::map<std::string, cv::Mat> computed_images_;
+  cv::Mat _input_image, _current_image;
+  cv::Mat1b _input_mask, _current_mask;
 
-  cv::Matx33f color_matrix_ = cv::Matx33f::eye();
-  COLORID colorid_ = COLORID_UNKNOWN;
-  int bpc_ = 0;
-  bool has_color_matrix_ = false;
+  cv::Matx33f _color_matrix = cv::Matx33f::eye();
+  COLORID _colorid = COLORID_UNKNOWN;
+  int _bpc = 0;
+  bool _has_color_matrix = false;
 };
 
 #endif /* __c_video_frame_h__ */

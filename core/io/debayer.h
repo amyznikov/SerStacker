@@ -44,6 +44,7 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_NNR,    // SerStacker nearest-neighboor interpolation with nninterpolate() and midian-bease noise reduction
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
+  DEBAYER_AVGC,     // 2z2 pixel binning
   DEBAYER_MATRIX,   // Don't debayer but create BGR color bayer matrix image
 };
 
@@ -86,6 +87,12 @@ bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst,
  * The output size of dst is twce large to src
  */
 bool nninterpolation(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid);
+
+/** @brief
+ * Bayer Demosaicing by 2x2 pixel binning
+ */
+bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst,
     enum COLORID colorid);
 
 /** @brief

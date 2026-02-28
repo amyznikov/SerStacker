@@ -13,9 +13,9 @@
 QImageFileEditor::QImageFileEditor(QImageScene * scene, QWidget * parent) :
   Base(scene, parent)
 {
-  input_sequence_ = c_input_sequence::create();
+  _input_sequence = c_input_sequence::create();
   //input_sequence_->set_auto_debayer(DEBAYER_DISABLE);
-  input_sequence_->set_auto_apply_color_matrix(true);
+  _input_sequence->set_auto_apply_color_matrix(true);
 
   Base::_layout->addWidget(playControls =
       new QPlaySequenceControl(this));
@@ -31,41 +31,41 @@ QImageFileEditor::QImageFileEditor(QWidget * parent) :
 
 void QImageFileEditor::setDebayerAlgorithm(DEBAYER_ALGORITHM algo)
 {
-  debayerAlgorithm_ = algo;
+  _debayerAlgorithm = algo;
   Q_EMIT debayerAlgorithmChanged();
 }
 
 DEBAYER_ALGORITHM QImageFileEditor::debayerAlgorithm() const
 {
-  return debayerAlgorithm_;
+  return _debayerAlgorithm;
 }
 
 void QImageFileEditor::setDropBadPixels(bool v)
 {
-  filterBadPixels_ = v;
+  _filterBadPixels = v;
   Q_EMIT dropBadPixelsChanged();
 }
 
 bool QImageFileEditor::dropBadPixels() const
 {
-  return filterBadPixels_;
+  return _filterBadPixels;
 }
 
 void QImageFileEditor::setBadPixelsVariationThreshold(double v)
 {
-  badPixelsVariationThreshold_ = v;
+  _badPixelsVariationThreshold = v;
   Q_EMIT badPixelsVariationThresholdChanged();
 }
 
 double QImageFileEditor::badPixelsVariationThreshold() const
 {
-  return badPixelsVariationThreshold_;
+  return _badPixelsVariationThreshold;
 }
 
 
 const c_input_sequence::sptr & QImageFileEditor::input_sequence() const
 {
-  return input_sequence_;
+  return _input_sequence;
 }
 
 void QImageFileEditor::setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/, bool make_copy /*= true*/)
@@ -82,8 +82,8 @@ void QImageFileEditor::editImage(cv::InputArray image, cv::InputArray mask, bool
 
 void QImageFileEditor::openImage(const std::string & pathfilename)
 {
-  input_sequence_->close(true);
-  input_sequence_->add_source(pathfilename);
+  _input_sequence->close(true);
+  _input_sequence->add_source(pathfilename);
   setCurrentFileName(pathfilename.c_str());
   startDisplay();
 }
@@ -95,8 +95,8 @@ void QImageFileEditor::openImage(const QString & pathfilename)
 
 void QImageFileEditor::openImages(const std::vector<std::string> & pathfilenames)
 {
-  input_sequence_->close(true);
-  input_sequence_->add_sources(pathfilenames);
+  _input_sequence->close(true);
+  _input_sequence->add_sources(pathfilenames);
   setCurrentFileName(pathfilenames.empty() ? "" : pathfilenames.front().c_str());
   startDisplay();
 }
@@ -121,8 +121,8 @@ void QImageFileEditor::closeCurrentSequence()
 
   playControls->hide();
 
-  if( input_sequence_->is_open() ) {
-    input_sequence_->close(true);
+  if( _input_sequence->is_open() ) {
+    _input_sequence->close(true);
   }
 
   clear();
@@ -139,11 +139,11 @@ void QImageFileEditor::startDisplay()
   playControls->setState(QPlaySequenceControl::Stopped);
   playControls->hide();
 
-  if ( !input_sequence_->is_open() && !input_sequence_->open() ) {
+  if ( !_input_sequence->is_open() && !_input_sequence->open() ) {
     return;
   }
 
-  const int num_frames = input_sequence_->size();
+  const int num_frames = _input_sequence->size();
   if ( num_frames < 1 ) {
     QMessageBox::critical(this, "ERROR",
         "Can not determine number of frames and seek range for given source.\n"
@@ -162,9 +162,9 @@ void QImageFileEditor::startDisplay()
 
 void QImageFileEditor::onSeek(int pos)
 {
-  if ( input_sequence_ && input_sequence_->is_open() ) {
-    if ( pos != input_sequence_->current_pos() ) {
-      input_sequence_->seek(pos);
+  if ( _input_sequence && _input_sequence->is_open() ) {
+    if ( pos != _input_sequence->current_pos() ) {
+      _input_sequence->seek(pos);
     }
     loadNextFrame();
   }
@@ -172,16 +172,16 @@ void QImageFileEditor::onSeek(int pos)
 
 void QImageFileEditor::loadNextFrame()
 {
-  if ( input_sequence_ && input_sequence_->is_open() ) {
+  if ( _input_sequence && _input_sequence->is_open() ) {
 
     c_input_source::sptr current_source =
-        input_sequence_->current_source();
+        _input_sequence->current_source();
 
     if ( current_source ) {
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      input_sequence_->read(_inputImage, &_inputMask);
+      _input_sequence->read(_inputImage, &_inputMask);
 
 //      CF_DEBUG("inputImage_: %dx%d channels=%d depth=%d inputMask_: %dx%d channels=%d depth=%d",
 //          inputImage_.cols, inputImage_.rows, inputImage_.channels(), inputImage_.depth(),
@@ -189,28 +189,33 @@ void QImageFileEditor::loadNextFrame()
 
 
       Q_EMIT onInputImageLoad(_inputImage, _inputMask,
-          input_sequence_->colorid(),
-          input_sequence_->bpp());
+          _input_sequence->colorid(),
+          _input_sequence->bpp());
 
 
-      if ( filterBadPixels_ && badPixelsVariationThreshold_ > 0 ) {
+      if ( _filterBadPixels && _badPixelsVariationThreshold > 0 ) {
 
-        if( !is_bayer_pattern(input_sequence_->colorid()) ) {
-          median_filter_hot_pixels(_inputImage, badPixelsVariationThreshold_, false);
+        if( !is_bayer_pattern(_input_sequence->colorid()) ) {
+          median_filter_hot_pixels(_inputImage, _badPixelsVariationThreshold, false);
         }
-        else if( !extract_bayer_planes(_inputImage, _inputImage, input_sequence_->colorid()) ) {
+        else if( !extract_bayer_planes(_inputImage, _inputImage, _input_sequence->colorid()) ) {
           CF_ERROR("ERROR: extract_bayer_planes() fails");
         }
         else {
-          median_filter_hot_pixels(_inputImage, badPixelsVariationThreshold_, true);
-          if( !nninterpolation(_inputImage, _inputImage, input_sequence_->colorid()) ) {
+          median_filter_hot_pixels(_inputImage, _badPixelsVariationThreshold, true);
+          if( !nninterpolation(_inputImage, _inputImage, _input_sequence->colorid()) ) {
             CF_ERROR("nninterpolation() fails");
           }
         }
       }
-      else if( is_bayer_pattern(input_sequence_->colorid()) ) {
-        debayer(_inputImage, _inputImage, input_sequence_->colorid(),
-            debayerAlgorithm_);
+      else if( is_bayer_pattern(_input_sequence->colorid()) ) {
+
+        debayer(_inputImage, _inputImage, _input_sequence->colorid(), _debayerAlgorithm);
+        // In debayer() the DEBAYER_AVGC reduces the image size twice because of 2x2 binning
+        if ( !_inputMask.empty() && _inputMask.size() != _inputImage.size() )  {
+          // FIXME: INTER_NEAREST may be bad for this
+          cv::resize(_inputMask, _inputMask, _inputImage.size(), 0, 0, cv::INTER_NEAREST);
+        }
       }
 
       setCurrentFileName(current_source->filename().c_str());

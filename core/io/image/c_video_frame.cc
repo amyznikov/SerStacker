@@ -20,14 +20,14 @@ c_video_frame::c_video_frame()
 
 void c_video_frame::cleanup()
 {
-  input_image_.copyTo(current_image_);
-  input_mask_.copyTo(current_mask_);
+  _input_image.copyTo(_current_image);
+  _input_mask.copyTo(_current_mask);
 }
 
 void c_video_frame::get_output_mask(cv::OutputArray output_mask)
 {
   if( output_mask.needed() ) {
-    this->current_mask_.copyTo(output_mask);
+    this->_current_mask.copyTo(output_mask);
   }
 }
 
@@ -43,11 +43,11 @@ bool c_video_frame::get_image(const std::string & display_name,
   if ( display_name == "PIXEL_VALUE" ) {
 
     if ( output_image.needed() ) {
-      this->current_image_.copyTo(output_image);
+      this->_current_image.copyTo(output_image);
     }
 
     if( output_mask.needed() ) {
-      this->current_mask_.copyTo(output_mask);
+      this->_current_mask.copyTo(output_mask);
     }
 
     if ( output_data.needed() ) {
@@ -87,15 +87,15 @@ bool c_video_frame::get_image(const std::string & display_name,
 
 void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode)
 {
-  if( current_mask_.empty() || mode == SELECTION_MASK_REPLACE ) {
+  if( _current_mask.empty() || mode == SELECTION_MASK_REPLACE ) {
     if( sm.empty() ) {
-      current_mask_.release();
+      _current_mask.release();
     }
     else if( sm.channels() == 1 ) {
-      sm.getMat().copyTo(current_mask_);
+      sm.getMat().copyTo(_current_mask);
     }
     else {
-      reduce_color_channels(sm, current_mask_, cv::REDUCE_MAX);
+      reduce_color_channels(sm, _current_mask, cv::REDUCE_MAX);
     }
   }
   else if( !sm.empty() ) {
@@ -111,13 +111,13 @@ void c_video_frame::update_selection(cv::InputArray sm, SELECTION_MASK_MODE mode
 
     switch (mode) {
       case SELECTION_MASK_AND:
-        cv::bitwise_and(cmask, current_mask_, current_mask_);
+        cv::bitwise_and(cmask, _current_mask, _current_mask);
         break;
       case SELECTION_MASK_OR:
-        cv::bitwise_or(cmask, current_mask_, current_mask_);
+        cv::bitwise_or(cmask, _current_mask, _current_mask);
         break;
       case SELECTION_MASK_XOR:
-        cv::bitwise_xor(cmask, current_mask_, current_mask_);
+        cv::bitwise_xor(cmask, _current_mask, _current_mask);
         break;
       default:
         CF_ERROR("Not implemented selection mode %d", mode);

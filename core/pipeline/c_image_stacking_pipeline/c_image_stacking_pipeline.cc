@@ -2414,6 +2414,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
       case DEBAYER_NN:
         case DEBAYER_VNG:
         case DEBAYER_EA:
+        case DEBAYER_AVGC:
         if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
           CF_ERROR("debayer() fails");
           return false;

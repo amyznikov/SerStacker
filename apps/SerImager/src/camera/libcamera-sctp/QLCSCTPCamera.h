@@ -90,33 +90,6 @@ public:
     const QLCCameraControl * getControl(const QString & id) const;
   };
 
-//  class c_sctp_connection
-//  {
-//  public:
-//    typedef c_sctp_connection this_class;
-//
-//    int connect(const QString & url);
-//    void disconnect();
-//    bool connected() const;
-//    bool sendmsg(const std::string & msg);
-//    int recvmsg();
-//    const std::string & smsg() const;
-//    const ImageHeader & imghdr() const;
-//    const std::vector<uint8_t> & imgdata() const;
-//    void clear_smsg();
-//    void clear_image();
-//
-//  protected:
-//    int _so = -1;
-//    struct sockaddr_in saddrs = {0};
-//    std::string _smsg;
-//    std::vector<uint8_t> _imghdr;
-//    std::vector<uint8_t> _imgdata;
-//    std::vector<uint8_t> _buf;
-//    std::deque<std::string> _smsgq;
-//    std::deque<QCameraFrame::sptr> _frmq;
-//  };
-
   ~QLCSCTPCamera();
 
   static sptr create(const QString & cameraName, const QString & url,

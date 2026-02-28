@@ -451,7 +451,7 @@ static bool bayer_planes_to_bgr__(cv::InputArray __src, cv::OutputArray __dst)
 
   typedef tbb::blocked_range<int> range;
 
-  tbb::parallel_for(range(0, dst.rows, 256),
+  tbb::parallel_for(range(0, dst.rows),
       [&](const range & rrange) {
         for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
           for ( int x = 0; x < dst.cols; ++x ) {
@@ -466,7 +466,7 @@ static bool bayer_planes_to_bgr__(cv::InputArray __src, cv::OutputArray __dst)
             dst[y][x][2] = r;
           }
         }
-      });
+      }, tbb::static_partitioner());
 
 
   if ( dst.data != __dst.getMatRef().data ) {
@@ -598,7 +598,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
     case COLORID_BAYER_RGGB: {
       //  [ R  G1 ]
       //  [ G2 B  ]
-      tbb::parallel_for(range(0, src.rows / 2, 256),
+      tbb::parallel_for(range(0, src.rows / 2),
           [&](const range & rrange) {
             for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
               for ( int x = 0; x < src.cols / 2; ++x ) {
@@ -608,14 +608,14 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
                 dst[2*y + 1][2*x + 1] = B(src[2*y + 1][2*x + 1]);
               }
             }
-          });
+          }, tbb::static_partitioner());
       break;
     }
 
   case COLORID_BAYER_GRBG : {
     //  [ G R ]
     //  [ B G ]
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
           for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
             for ( int x = 0; x < src.cols / 2; ++x ) {
@@ -625,7 +625,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
     break;
   }
 
@@ -633,7 +633,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
   case COLORID_BAYER_GBRG : {
     //  [ G B ]
     //  [ R G ]
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
           for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
             for ( int x = 0; x < src.cols / 2; ++x ) {
@@ -643,14 +643,14 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
     break;
   }
 
   case COLORID_BAYER_BGGR : {
     //  [ B G ]
     //  [ G R ]
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
           for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
             for ( int x = 0; x < src.cols / 2; ++x ) {
@@ -660,7 +660,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = R(src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
     break;
   }
 
@@ -672,7 +672,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
     //  B' =  0, 1, 0   B
     //  G' =  1, 0, 0 * G
     //  R' =  0, 0, 1   R
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
 
           constexpr T M = cvmax<T>();
@@ -685,7 +685,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = B(M - src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
     break;
   }
 
@@ -698,7 +698,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
     //  B' = 0, 1, 0  B
     //  G' = 1, 0, 0  G
     //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
 
           constexpr T M = cvmax<T>();
@@ -711,7 +711,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
 
     break;
   }
@@ -725,7 +725,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
     //  B' = 0, 1, 0  B
     //  G' = 1, 0, 0  G
     //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
 
           constexpr T M = cvmax<T>();
@@ -738,7 +738,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
 
     break;
   }
@@ -752,7 +752,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
     //  B' = 0, 1, 0  B
     //  G' = 1, 0, 0  G
     //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2, 256),
+    tbb::parallel_for(range(0, src.rows / 2),
         [&](const range & rrange) {
 
           constexpr T M = cvmax<T>();
@@ -765,7 +765,7 @@ static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, e
               dst[2*y + 1][2*x + 1] = R(M - src[2*y + 1][2*x + 1]);
             }
           }
-        });
+        }, tbb::static_partitioner());
 
     break;
   }
@@ -962,23 +962,6 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
 
   return true;
 }
-
-//==========
-//#include <tbb/parallel_for.h>
-//#include <tbb/blocked_range.h>
-//#include <opencv2/opencv.hpp>
-//#include <type_traits>
-//
-//enum COLORID {
-//    COLORID_BAYER_RGGB = 8,
-//    COLORID_BAYER_GRBG = 9,
-//    COLORID_BAYER_GBRG = 10,
-//    COLORID_BAYER_BGGR = 11,
-//    COLORID_BAYER_CYYM = 16,
-//    COLORID_BAYER_YCMY = 17,
-//    COLORID_BAYER_YMCY = 18,
-//    COLORID_BAYER_MYYC = 19,
-//};
 
 template<typename T>
 static bool debayer_avgc_tbb(const cv::Mat_<T> & src, cv::Mat_<cv::Vec<T, 3>> & dst, COLORID colorid)

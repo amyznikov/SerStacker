@@ -226,6 +226,18 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
     cv::Mat(h, w, CV_8UC3, (void*) data.data(), stride).copyTo(image);
     return true;
   }
+  if( format == formats::BGR161616 ) {
+    *colorid = COLORID_BGR;
+    *bpp = 16;
+    cv::Mat(h, w, CV_16UC3, (void*) data.data(), stride).copyTo(image);
+    return true;
+  }
+  if( format == formats::RGB161616 ) {
+    *colorid = COLORID_RGB;
+    *bpp = 16;
+    cv::Mat(h, w, CV_16UC3, (void*) data.data(), stride).copyTo(image);
+    return true;
+  }
   if( format == formats::BGRA8888 || format == formats::BGRX8888 || format == formats::ABGR8888
       || format == formats::XBGR8888 ) {
     *colorid = COLORID_BGRA;

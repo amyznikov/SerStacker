@@ -56,8 +56,8 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 
 namespace {
 
-static DEBAYER_ALGORITHM g_default_debayer_algorithm =
-    DEBAYER_NN2;
+
+static DEBAYER_ALGORITHM g_default_debayer_algorithm = DEBAYER_NN2;
 
 template<class T> inline constexpr T cvmax() { return 1; };
 template<> inline constexpr uint8_t cvmax<uint8_t>() { return UINT8_MAX; }
@@ -66,6 +66,8 @@ template<> inline constexpr uint16_t cvmax<uint16_t>() { return UINT16_MAX; }
 template<> inline constexpr int16_t cvmax<int16_t>() { return INT16_MAX; }
 template<> inline constexpr uint32_t cvmax<uint32_t>() { return UINT32_MAX; }
 template<> inline constexpr int32_t cvmax<int32_t>() { return INT32_MAX; }
+
+
 
 /** @brief
  * Max native value for given depth
@@ -90,6 +92,18 @@ inline cv::Scalar depthmax(int depth)
   }
 
   return cv::Scalar::all(0);
+}
+
+template<typename T, typename Func>
+static inline void run_loop(T start, T end, Func&& f)
+{
+#if 1 // HAVE_TBB
+    tbb::parallel_for(start, end, f, tbb::static_partitioner());
+#else
+    for (T i = start; i < end; ++i) {
+      f(i);
+    }
+#endif
 }
 
 } // namespace
@@ -979,7 +993,7 @@ static bool debayer_avgc_tbb(const cv::Mat_<T> & src, cv::Mat_<cv::Vec<T, 3>> & 
   // Channel indexes inside of 2x2 binnig blocks
   // p00 p01
   // p10 p11
-  int ri, g1i, g2i, bi; // индексы для (row, col)
+  int ri, g1i, g2i, bi; // indexes for (row, col)
 
   switch (colorid) {
     case COLORID_BAYER_RGGB: ri = 0; g1i = 1; g2i = 2; bi = 3; break; // R G1 / G2 B
@@ -995,22 +1009,38 @@ static bool debayer_avgc_tbb(const cv::Mat_<T> & src, cv::Mat_<cv::Vec<T, 3>> & 
       return false;
   }
 
-  tbb::parallel_for(tbb::blocked_range<int>(0, outHeight),
-      [&](const tbb::blocked_range<int> & range) {
-        for (int y = range.begin(); y != range.end(); ++y) {
-          const T * r1 = src[y * 2];
-          const T * r2 = src[y * 2 + 1];
-          cv::Vec<T, 3>* dstRow = dst[y];
+  run_loop(0, outHeight,
+      [&src, &dst, ri, g1i, g2i, bi, outWidth](int y) {
 
-          for (int x = 0; x < outWidth; ++x) {
-            const T p[] = {r1[x*2], r1[x*2+1], r2[x*2], r2[x*2+1]};
-            const T r = p[ri];
-            const T b = p[bi];
-            const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
-            dstRow[x] = cv::Vec<T, 3>(b, g, r);
+        const T * r1 = src[y * 2];
+        const T * r2 = src[y * 2 + 1];
+        cv::Vec<T, 3>* __restrict dstRow = dst[y];
+
+        for (int x = 0; x < outWidth; ++x) {
+          const T p[] = {r1[ x *2 ], r1[ x * 2 + 1], r2[ x * 2], r2[ x * 2 + 1]};
+          const T r = p[ri];
+          const T b = p[bi];
+          const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
+          dstRow[x] = cv::Vec<T, 3>(b, g, r);
         }
-      }
-    }, tbb::static_partitioner());
+      });
+
+//  tbb::parallel_for(tbb::blocked_range<int>(0, outHeight),
+//      [&](const tbb::blocked_range<int> & range) {
+//        for (int y = range.begin(); y != range.end(); ++y) {
+//          const T * r1 = src[y * 2];
+//          const T * r2 = src[y * 2 + 1];
+//          cv::Vec<T, 3>* dstRow = dst[y];
+//
+//          for (int x = 0; x < outWidth; ++x) {
+//            const T p[] = {r1[x*2], r1[x*2+1], r2[x*2], r2[x*2+1]};
+//            const T r = p[ri];
+//            const T b = p[bi];
+//            const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
+//            dstRow[x] = cv::Vec<T, 3>(b, g, r);
+//        }
+//      }
+//    }, tbb::static_partitioner());
 
   return true;
 }

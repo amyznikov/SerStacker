@@ -89,6 +89,7 @@ protected:
   QComboBox * streams_ctl = nullptr;
   QComboBox * formats_ctl = nullptr;
   QComboBox * sizes_ctl = nullptr;
+  QCheckBox * avc_debayer_ctl = nullptr;
   QSpinBox* cameraDeviceBuffers_ctl = nullptr;
 
   // Exposure & Sensor Hardware Controls

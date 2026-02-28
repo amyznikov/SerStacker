@@ -251,6 +251,21 @@ QLCSCTPCamera::QLCCameraControl * QLCSCTPCamera::QLCCamera::getControl(const QSt
   return nullptr;
 }
 
+void QLCSCTPCamera::setAVCDebayer(bool enable)
+{
+  QLCSCTPCamera::QLCCameraPixFormats * fmt = selectedFormat();
+  if (fmt ) {
+    fmt->avgcdebayer  = enable;
+  }
+}
+
+bool QLCSCTPCamera::avcdebayer() const
+{
+  const QLCSCTPCamera::QLCCameraPixFormats * fmt = selectedFormat();
+  return fmt ? fmt->avgcdebayer : false;
+}
+
+
 const QLCSCTPCamera::QLCCameraControl * QLCSCTPCamera::QLCCamera::getControl(const QString & id) const
 {
   for( int i = 0, n = contols.size(); i < n; ++i ) {
@@ -770,11 +785,13 @@ bool QLCSCTPCamera::device_start()
           "role=\"%s\";\n"
           "format=\"%s\";\n"
           "size=\"%s\"\n"
+          "avgcd=%s\n"
           "buffers=%d;\n",
           cam ? cam->id.toUtf8().constData() : "",
           strm ? strm->role.toUtf8().constData() : "",
           fmt ? fmt->format.toUtf8().constData() : "",
           size ? size->toUtf8().constData() : "",
+          (fmt && fmt->avgcdebayer) ? "true" : "false",
           nbuffers);
 
   if( cam ) {

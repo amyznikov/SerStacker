@@ -48,6 +48,7 @@ public:
     QString format;
     QList<QString> sizes;
     int selectedSizeIndex = -1;
+    bool avgcdebayer = false;
     QLCCameraPixFormats() = default;
     QLCCameraPixFormats(const QString & name ) : format(name) {}
   };
@@ -128,6 +129,9 @@ public:
   int selectedSizeIndex() const;
   QString * selectedSize();
   const QString * selectedSize() const;
+
+  void setAVCDebayer(bool enable);
+  bool avcdebayer() const;
 
   QLCCameraControl * getControl(const QString & id);
   const QLCCameraControl * getControl(const QString & id) const;

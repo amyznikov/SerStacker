@@ -194,6 +194,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
         streams_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
         formats_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
         sizes_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
+        avc_debayer_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
         cameraDeviceBuffers_ctl->setEnabled(cameraState == QImagingCamera::State_connected);
 
         ExposureTime_ctl->setEnabled(cameraState == QImagingCamera::State_connected || cameraState == QImagingCamera::State_started);
@@ -294,6 +295,16 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
             }
             return false;
           }*/);
+
+  avc_debayer_ctl =
+      add_checkbox("AVC debayer",
+          "Enable AVC debayer",
+          [this](bool checked) {
+            if (_camera ) {
+              _camera->setAVCDebayer(checked);
+            }
+          });
+
 
   cameraDeviceBuffers_ctl =
       add_spinbox("Buffers", "Specify max device frame buffers",
@@ -483,15 +494,23 @@ void QLCSCTPCameraControls::populateStreams()
 
 void QLCSCTPCameraControls::populateFormats()
 {
-  QSignalBlocker block(formats_ctl);
-  formats_ctl->clear();
-  const auto * strm = _camera->selectedStream();
-  if ( strm ) {
-    for ( const auto & fmt: strm->formats ) {
-      formats_ctl->addItem(fmt.format);
+  if ( true ) {
+    QSignalBlocker block(formats_ctl);
+    formats_ctl->clear();
+    const auto * strm = _camera->selectedStream();
+    if ( strm ) {
+      for ( const auto & fmt: strm->formats ) {
+        formats_ctl->addItem(fmt.format);
+      }
+      formats_ctl->setCurrentIndex(strm->selectedFormatIndex);
     }
-    formats_ctl->setCurrentIndex(strm->selectedFormatIndex);
   }
+
+  if ( true ) {
+    QSignalBlocker block(avc_debayer_ctl);
+    avc_debayer_ctl->setChecked(_camera->avcdebayer());
+  }
+
 }
 
 void QLCSCTPCameraControls::populateSizes()

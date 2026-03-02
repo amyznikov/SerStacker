@@ -32,7 +32,7 @@ public:
       QObject * parent =  nullptr);
 
   void setName(const QString & name);
-  const QString & name() const;
+  QString name() const override;
 
   void setUrl(const QString & v);
   const QString & url() const;
@@ -40,7 +40,6 @@ public:
   void setOpts(const QString & v);
   const QString & opts() const;
 
-  QString display_name() const override;
   QString parameters() const override;
 
   bool is_same_camera(const QImagingCamera::sptr & rhs) const override;

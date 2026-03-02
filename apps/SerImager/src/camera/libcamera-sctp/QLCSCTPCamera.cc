@@ -74,7 +74,7 @@ void QLCSCTPCamera::setName(const QString & name)
   Q_EMIT parametersChanged();
 }
 
-const QString& QLCSCTPCamera::name() const
+QString QLCSCTPCamera::name() const
 {
   return _name;
 }
@@ -94,11 +94,6 @@ QLCSCTPCamera::sptr QLCSCTPCamera::create(const QString & name, const QString & 
 {
   ThisClass::sptr camera(new ThisClass(name, url, parent));
   return camera;
-}
-
-QString QLCSCTPCamera::display_name() const
-{
-  return _name;
 }
 
 QString QLCSCTPCamera::parameters() const
@@ -624,6 +619,20 @@ bool QLCSCTPCamera::device_connect()
     }
   }
 
+  if ( const auto * cam = selectedCamera() ) {
+    _savedCameraID =  cam->id;
+  }
+  if ( const auto * strm = selectedStream() ) {
+    _savedStreamRole = strm->role;
+  }
+  if ( const auto * fmt = selectedFormat() ) {
+    _savedPixelFormat = fmt->format;
+    _savedAvcd = fmt->avgcdebayer;
+  }
+  if ( const auto * size = selectedSize() ) {
+    _savedCaptureSize = *size;
+  }
+
   while (_current_state == State_connecting) {
 
     _condvar.wait(lock, [this]() {
@@ -738,6 +747,70 @@ bool QLCSCTPCamera::device_connect()
     CF_DEBUG("sctp_disconnect()");
     sctp_disconnect();
     return false;
+  }
+
+  if ( !_savedCameraID.isEmpty() ) {
+
+    const auto pos =
+        std::find_if(_cameras.begin(), _cameras.end(),
+            [&](const QLCCamera & cam) {
+              return cam.id == _savedCameraID;
+            });
+
+    if ( pos != _cameras.end() ) {
+      setSelectedCameraIndex(pos - _cameras.begin());
+    }
+  }
+
+  if ( !_savedStreamRole.isEmpty() ) {
+    const auto * cam = selectedCamera();
+    if ( cam ) {
+
+      const auto pos =
+          std::find_if(cam->streams.begin(), cam->streams.end(),
+              [&](const QLCCameraStream & strm) {
+                return strm.role == _savedStreamRole;
+              });
+
+      if ( pos != cam->streams.end() ) {
+        setSelectedStreamIndex(pos - cam->streams.begin());
+      }
+    }
+  }
+
+  if ( !_savedPixelFormat.isEmpty() ) {
+    const auto * strm = selectedStream();
+    if ( strm ) {
+
+      const auto pos =
+          std::find_if(strm->formats.begin(), strm->formats.end(),
+              [&](const QLCCameraPixFormats & fmt) {
+                return fmt.format == _savedPixelFormat;
+              });
+
+      if ( pos != strm->formats.end() ) {
+        setSelectedFormatIndex(pos - strm->formats.begin());
+        if ( auto * fmt = selectedFormat() ) {
+          fmt->avgcdebayer = _savedAvcd;
+        }
+      }
+    }
+  }
+
+  if ( !_savedCaptureSize.isEmpty() ) {
+    const auto * fmt = selectedFormat();
+    if ( fmt ) {
+
+      const auto pos =
+          std::find_if(fmt->sizes.begin(), fmt->sizes.end(),
+              [&](const QString & size) {
+                return size == _savedCaptureSize;
+              });
+
+      if ( pos != fmt->sizes.end() ) {
+        setSelectedSizeIndex(pos - fmt->sizes.begin());
+      }
+    }
   }
 
   return true;
@@ -914,6 +987,45 @@ void QLCSCTPCamera::applyDeviceControls(const QLCCameraControl * ctls[], int cou
         CF_ERROR("sctp_sendmsg(set-controls) fails. errno=%d (%s)", errno, strerror(errno));
       }
     }
+  }
+}
+
+
+void QLCSCTPCamera::onload(const QSettings & settings, const QString & prefix)
+{
+  if ( !_name.isEmpty() ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_name) : prefix;
+    const auto PARAM = [PREFIX](const QString & name) {
+      return QString("%1/%2").arg(PREFIX).arg(name);
+    };
+
+    Base::onload(settings, PREFIX);
+
+    _savedCameraID = settings.value(PARAM("CameraID"), _savedCameraID).toString();
+    _savedStreamRole = settings.value(PARAM("StreamRole"), _savedStreamRole).toString();
+    _savedPixelFormat = settings.value(PARAM("PixelFormat"), _savedPixelFormat).toString();
+    _savedCaptureSize= settings.value(PARAM("CaptureSize"), _savedCaptureSize).toString();
+    _savedAvcd = settings.value(PARAM("Avcd"), _savedAvcd).toBool();
+  }
+}
+
+void QLCSCTPCamera::onsave(QSettings & settings, const QString & prefix)
+{
+  if ( !_name.isEmpty() ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_name) : prefix;
+    const auto PARAM = [PREFIX](const QString & name) {
+      return QString("%1/%2").arg(PREFIX).arg(name);
+    };
+
+    Base::onsave(settings, PREFIX);
+
+    settings.setValue(PARAM("CameraID"), _savedCameraID);
+    settings.setValue(PARAM("StreamRole"), _savedStreamRole);
+    settings.setValue(PARAM("PixelFormat"), _savedPixelFormat);
+    settings.setValue(PARAM("CaptureSize"), _savedCaptureSize);
+    settings.setValue(PARAM("Avcd"), _savedAvcd);
   }
 }
 

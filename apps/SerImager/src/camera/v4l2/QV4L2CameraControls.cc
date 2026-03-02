@@ -719,19 +719,15 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
 
     v4l2_frmsizeenum frmsize;
 
-    const int width =
-        fmt.g_width();
-
-    const int height =
-        fmt.g_height();
+    const int width = fmt.g_width();
+    const int height = fmt.g_height();
 
     if( (status = device.enum_framesizes(frmsize, fmt.g_pixelformat())) ) {
       CF_ERROR("device.enum_framesizes() fails: status=%d (%s)",
           status, strerror(status));
     }
 
-    const bool fok =
-        status == 0;
+    const bool fok = status == 0;
 
     if( fok && frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE ) {
 
@@ -785,35 +781,28 @@ void QV4L2CameraControls::refreshFrameSizes(cv4l_fd & device)
         frameWidth_ctl->clear();
       }
       else {
-        frameWidth_ctl =
-            add_spinbox("Frame Width:", "");
-
+        frameWidth_ctl = add_spinbox("Frame Width:", "");
         connect(frameWidth_ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             this, &ThisClass::onFrameWidthChanged);
-
       }
 
       if( frameHeight_ctl ) {
         frameHeight_ctl->clear();
       }
       else {
-        frameHeight_ctl =
-            add_spinbox("Frame Height:", "");
-
+        frameHeight_ctl = add_spinbox("Frame Height:", "");
         connect(frameHeight_ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             this, &ThisClass::onFrameHeightChanged);
       }
 
       frameWidth_ctl->blockSignals(true);
-      frameWidth_ctl->setMinimum(frmsize.stepwise.min_width);
-      frameWidth_ctl->setMaximum(frmsize.stepwise.max_width);
+      frameWidth_ctl->setRange(frmsize.stepwise.min_width, frmsize.stepwise.max_width);
       frameWidth_ctl->setSingleStep(frmsize.stepwise.step_width);
       frameWidth_ctl->setValue(width);
       frameWidth_ctl->blockSignals(false);
 
       frameHeight_ctl->blockSignals(true);
-      frameHeight_ctl->setMinimum(frmsize.stepwise.min_height);
-      frameHeight_ctl->setMaximum(frmsize.stepwise.max_height);
+      frameHeight_ctl->setRange(frmsize.stepwise.min_height, frmsize.stepwise.max_height);
       frameHeight_ctl->setSingleStep(frmsize.stepwise.step_height);
       frameHeight_ctl->setValue(height);
       frameHeight_ctl->blockSignals(false);

@@ -29,6 +29,7 @@ QFFMPEGCameraUrlWidget::QFFMPEGCameraUrlWidget(QWidget * parent) :
 
 void QFFMPEGCameraUrlWidget::setUrl(const QString & v)
 {
+  QSignalBlocker block(url_ctl);
   url_ctl->setText(v);
 }
 

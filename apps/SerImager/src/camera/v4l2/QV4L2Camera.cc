@@ -15,7 +15,7 @@ namespace serimager {
 
 QV4L2Camera::QV4L2Camera(const QString & filename,  QObject * parent) :
     Base(parent),
-    filename_(filename)
+    _filename(filename)
 {
 }
 
@@ -23,19 +23,19 @@ QV4L2Camera::~QV4L2Camera()
 {
   finish();
 
-  if( device_.g_fd() >= 0 ) {
-    device_.close();
+  if( _device.g_fd() >= 0 ) {
+    _device.close();
   }
 }
 
 cv4l_fd & QV4L2Camera::device()
 {
-  return device_;
+  return _device;
 }
 
 const cv4l_fd & QV4L2Camera::device() const
 {
-  return device_;
+  return _device;
 }
 
 int QV4L2Camera::g_ext_ctrl(v4l2_ext_control & c)
@@ -44,7 +44,7 @@ int QV4L2Camera::g_ext_ctrl(v4l2_ext_control & c)
   ctrls.which = V4L2_CTRL_ID2WHICH(c.id);
   ctrls.count = 1;
   ctrls.controls = &c;
-  return device_.g_ext_ctrls(ctrls);
+  return _device.g_ext_ctrls(ctrls);
 }
 
 int QV4L2Camera::s_ext_ctrl(const v4l2_ext_control & c)
@@ -53,7 +53,7 @@ int QV4L2Camera::s_ext_ctrl(const v4l2_ext_control & c)
   ctrls.which = V4L2_CTRL_ID2WHICH(c.id);
   ctrls.count = 1;
   ctrls.controls = const_cast<v4l2_ext_control*>(&c);
-  return device_.s_ext_ctrls(ctrls);
+  return _device.s_ext_ctrls(ctrls);
 }
 
 int QV4L2Camera::s_ext_ctrl(__u32 cid, __s32 value)
@@ -175,9 +175,9 @@ QList<QImagingCamera::sptr> QV4L2Camera::detectCameras()
   return devices;
 }
 
-QString QV4L2Camera::display_name() const
+QString QV4L2Camera::name() const
 {
-  return filename_;
+  return _filename;
 }
 
 QString QV4L2Camera::parameters() const
@@ -195,7 +195,7 @@ bool QV4L2Camera::is_same_camera(const QImagingCamera::sptr & rhs) const
   const ThisClass * rhsp =
       dynamic_cast<const ThisClass * >(rhs.get());
 
-  return rhsp && rhsp->filename_ == this->filename_;
+  return rhsp && rhsp->_filename == this->_filename;
 }
 
 int QV4L2Camera::drops() const
@@ -205,19 +205,19 @@ int QV4L2Camera::drops() const
 
 bool QV4L2Camera::device_is_connected() const
 {
-  return device_.is_open();
+  return _device.is_open();
 }
 
 bool QV4L2Camera::device_connect()
 {
-  if( !device_.is_open() ) {
+  if( !_device.is_open() ) {
 
     int status =
-        device_.open(filename_.toUtf8().constData());
+        _device.open(_filename.toUtf8().constData());
 
     if( status < 0 ) {
       CF_ERROR("device_.open('%s') fails: errno=%d (%s)",
-          filename_.toUtf8().constData(),
+          _filename.toUtf8().constData(),
           errno,
           strerror(errno));
 
@@ -230,8 +230,8 @@ bool QV4L2Camera::device_connect()
 
 void QV4L2Camera::device_disconnect()
 {
-  if( device_.is_open() ) {
-    device_.close();
+  if( _device.is_open() ) {
+    _device.close();
   }
 }
 
@@ -242,23 +242,23 @@ bool QV4L2Camera::device_start()
 
   int status;
 
-  if( !device_.is_open() ) {
+  if( !_device.is_open() ) {
     return false;
   }
 
-  if( device_.g_type() != devtype ) {
-    CF_ERROR("Not a video capture device. device_.g_type()=%d", device_.g_type());
+  if( _device.g_type() != devtype ) {
+    CF_ERROR("Not a video capture device. device_.g_type()=%d", _device.g_type());
     return false;
   }
 
-  if( (status = device_.g_fmt(srcFormat, devtype)) != 0 ) {
+  if( (status = _device.g_fmt(srcFormat, devtype)) != 0 ) {
     CF_ERROR("Could not obtain a source format: device_.g_fmt() fails. status=%d (%s)\n",
         status, strerror(status));
     return false;
   }
 
 
-  if( (status = device_.get_interval(interval, devtype)) ) {
+  if( (status = _device.get_interval(interval, devtype)) ) {
     CF_ERROR("device_.get_interval() fails. status=%d (%s)\n",
         status, strerror(status));
   }
@@ -287,71 +287,71 @@ bool QV4L2Camera::device_start()
       srcFormat.fmt.pix.xfer_func
       );
 
-  cvType_ = -1;
-  colorid_ = COLORID_UNKNOWN;
+  _cvType = -1;
+  _colorid = COLORID_UNKNOWN;
   // __u32 width, height, pixfmt, field;
 
   status = 0;
 
   switch (srcFormat.fmt.pix.pixelformat) {
     case V4L2_PIX_FMT_GREY: /*  8  Greyscale     */
-      cvType_ = CV_8UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 8;
+      _cvType = CV_8UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 8;
       break;
     case V4L2_PIX_FMT_Y4:/*  4  Greyscale     */
-      cvType_ = CV_8UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 4;
+      _cvType = CV_8UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 4;
       break;
     case V4L2_PIX_FMT_Y6: /*  6  Greyscale     */
-      cvType_ = CV_8UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 6;
+      _cvType = CV_8UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 6;
       break;
     case V4L2_PIX_FMT_Y10: /*  10  Greyscale     */
-      cvType_ = CV_16UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 10;
+      _cvType = CV_16UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 10;
       break;
     case V4L2_PIX_FMT_Y12:/* 12  Greyscale     */
-      cvType_ = CV_16UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 12;
+      _cvType = CV_16UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 12;
       break;
 #ifdef V4L2_PIX_FMT_Y14
     case V4L2_PIX_FMT_Y14: /* 14  Greyscale     */
-      cvType_ = CV_16UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 14;
+      _cvType = CV_16UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 14;
       break;
 #endif
     case V4L2_PIX_FMT_Y16:/* 16  Greyscale     */
-      cvType_ = CV_16UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 16;
+      _cvType = CV_16UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 16;
       break;
     case V4L2_PIX_FMT_BGR24: /* 24  BGR-8-8-8     */
-      cvType_ = CV_8UC3;
-      colorid_ = COLORID_BGR;
-      bpp_ = 8;
+      _cvType = CV_8UC3;
+      _colorid = COLORID_BGR;
+      _bpp = 8;
       break;
     case V4L2_PIX_FMT_RGB24: /* 24  RGB-8-8-8     */
-      cvType_ = CV_8UC3;
-      colorid_ = COLORID_RGB;
-      bpp_ = 8;
+      _cvType = CV_8UC3;
+      _colorid = COLORID_RGB;
+      _bpp = 8;
       break;
     case V4L2_PIX_FMT_Z16: /* Depth data 16-bit */
-      cvType_ = CV_16UC1;
-      colorid_ = COLORID_MONO;
-      bpp_ = 16;
+      _cvType = CV_16UC1;
+      _colorid = COLORID_MONO;
+      _bpp = 16;
       break;
     default:
       break;
   }
 
   const bool need_conversion =
-      cvType_ == -1;
+      _cvType == -1;
 
   dstFormat = srcFormat;
 
@@ -359,9 +359,9 @@ bool QV4L2Camera::device_start()
     // conversion required
 
     dstFormat.s_pixelformat(V4L2_PIX_FMT_BGR24);
-    cvType_ = CV_8UC3;
-    colorid_ = COLORID_BGR;
-    bpp_ = 8;
+    _cvType = CV_8UC3;
+    _colorid = COLORID_BGR;
+    _bpp = 8;
 
     const cv4l_fmt copy =
         srcFormat;
@@ -372,14 +372,14 @@ bool QV4L2Camera::device_start()
 
     dstFormat.s_sizeimage(dstFormat.g_width() * dstFormat.g_height() * 3);
 
-    if( !(convert_ = v4lconvert_create(device_.g_fd())) ) {
+    if( !(_convert = v4lconvert_create(_device.g_fd())) ) {
       CF_ERROR("v4lconvert_create() fails");
       status = -1;
     }
-    else if( (status = v4lconvert_try_format(convert_, &dstFormat, &srcFormat)) ) {
+    else if( (status = v4lconvert_try_format(_convert, &dstFormat, &srcFormat)) ) {
       CF_ERROR("v4lconvert_try_format() fails: errno=%d (%s) %s",
           errno, strerror(errno),
-          v4lconvert_get_error_message(convert_));
+          v4lconvert_get_error_message(_convert));
     }
     else {
       // v4lconvert_try_format sometimes modifies the source format if it thinks
@@ -403,10 +403,10 @@ bool QV4L2Camera::device_start()
   }
 
   if( status ) {
-    q_.free(&device_);
-    if( convert_ ) {
-      v4lconvert_destroy(convert_);
-      convert_ = nullptr;
+    _q.free(&_device);
+    if( _convert ) {
+      v4lconvert_destroy(_convert);
+      _convert = nullptr;
     }
   }
 
@@ -426,13 +426,13 @@ void QV4L2Camera::device_stop()
 
   case cap_method_mmap:
   case cap_method_userptr:
-    q_.free(&device_);
+    _q.free(&_device);
     break;
   }
 
-  if ( convert_ ) {
-    v4lconvert_destroy(convert_);
-    convert_ = nullptr;
+  if ( _convert ) {
+    v4lconvert_destroy(_convert);
+    _convert = nullptr;
   }
 
 }
@@ -449,7 +449,7 @@ bool QV4L2Camera::create_queue()
 
   int status;
 
-  q_.init(devtype, cap_method_);
+  _q.init(devtype, cap_method_);
 
   switch (cap_method_) {
     case cap_method_read:
@@ -461,48 +461,48 @@ bool QV4L2Camera::create_queue()
 
     case cap_method_mmap:
       case cap_method_userptr:
-      if( (status = q_.reqbufs(&device_, num_buffers)) ) {
+      if( (status = _q.reqbufs(&_device, num_buffers)) ) {
         CF_ERROR("queue_.reqbufs() fails: status=%d (%s)",
             status, strerror(status));
         break;
       }
 
-      if( q_.g_buffers() < 2 ) {
+      if( _q.g_buffers() < 2 ) {
         CF_ERROR("Too few buffers: %u",
-            q_.g_buffers());
+            _q.g_buffers());
         status = -1;
         break;
       }
 
-      if( (status = q_.obtain_bufs(&device_)) ) {
+      if( (status = _q.obtain_bufs(&_device)) ) {
         CF_ERROR("queue_.obtain_bufs() fails: status=%d (%s)",
             status, strerror(status));
         break;
       }
 
-      p_.clear();
+      _p.clear();
 
-      for( uint i = 0, n = q_.g_buffers(); i < n; ++i ) {
+      for( uint i = 0, n = _q.g_buffers(); i < n; ++i ) {
 
         QV4L2CameraFrame::sptr frame =
-            QV4L2CameraFrame::create(q_, i,
+            QV4L2CameraFrame::create(_q, i,
                 imageSize,
-                cvType_,
-                colorid_,
-                bpp_,
-                convert_ ? nullptr :
-                    q_.g_mmapping(i, 0));
+                _cvType,
+                _colorid,
+                _bpp,
+                _convert ? nullptr :
+                    _q.g_mmapping(i, 0));
 
-        p_.emplace_back(frame);
+        _p.emplace_back(frame);
 
-        if( (status = device_.qbuf(frame->buf())) ) {
+        if( (status = _device.qbuf(frame->buf())) ) {
           CF_ERROR("device_.qbuf(%u) fails: status=%d (%s)",
               i, status, strerror(status));
           break;
         }
       }
 
-      if( status == 0 && (status = device_.streamon()) != 0 ) {
+      if( status == 0 && (status = _device.streamon()) != 0 ) {
         CF_ERROR("device_.streamon() fails: %d (%s)",
             status, strerror(status));
       }
@@ -517,7 +517,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
 {
   int status;
 
-  if( (status = device_.dqbuf(buf)) ) {
+  if( (status = _device.dqbuf(buf)) ) {
 
     if( (status = errno) != EAGAIN ) {
       CF_ERROR("device_.dqbuf() fails: status=%d (%s)",
@@ -526,7 +526,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
     else {
 
       struct pollfd pfd = {
-          .fd = device_.g_fd(),
+          .fd = _device.g_fd(),
           .events = POLLIN | POLLPRI,
           .revents = 0
       };
@@ -542,7 +542,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
 
         if( pfd.revents & POLLIN ) {
 
-          if( (status = device_.dqbuf(buf)) ) {
+          if( (status = _device.dqbuf(buf)) ) {
             CF_ERROR("device_.dqbuf() fails with POLLIN: status=%d (%s)",
                 status,
                 strerror(status));
@@ -570,7 +570,7 @@ bool QV4L2Camera::dqbuf(cv4l_buffer & buf)
 bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 {
   //QV4L2CameraFrame::sptr frm;
-  cv4l_buffer buf(q_);
+  cv4l_buffer buf(_q);
 
   int status = 0;
 
@@ -618,17 +618,17 @@ bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
       }
       else {
 
-        frm = p_[buf.g_index()];
-        if( !convert_ ) {
+        frm = _p[buf.g_index()];
+        if( !_convert ) {
           // frm->data() is already mapped to plane[0]]
           // memcpy(frm->data(), plane[0], frm->size());
         }
         else {
 
           uint8_t *plane[3] = {
-              (__u8*) q_.g_dataptr(buf.g_index(), 0) + buf.g_data_offset(0),
-              (__u8*) q_.g_dataptr(buf.g_index(), 1),
-              (__u8*) q_.g_dataptr(buf.g_index(), 2)
+              (__u8*) _q.g_dataptr(buf.g_index(), 0) + buf.g_data_offset(0),
+              (__u8*) _q.g_dataptr(buf.g_index(), 1),
+              (__u8*) _q.g_dataptr(buf.g_index(), 2)
           };
 
           uint bytesused[3] = {
@@ -647,13 +647,13 @@ bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 
           // CF_DEBUG("dstFormat.fmt.pix.sizeimage=%u frm->size()=%d", dstFormat.fmt.pix.sizeimage, frm->size());
 
-          status = v4lconvert_convert(convert_, &srcFormat, &dstFormat,
+          status = v4lconvert_convert(_convert, &srcFormat, &dstFormat,
               plane[0], bytesused[0], (uint8_t*) frm->data(),
               dstFormat.fmt.pix.sizeimage);
 
           if( status < 0 ) {
             CF_ERROR("v4lconvert_convert() fails: errno=%d (%s) message='%s' srcFormat='%s' %ux%u",
-                errno, strerror(errno), v4lconvert_get_error_message(convert_),
+                errno, strerror(errno), v4lconvert_get_error_message(_convert),
                 fourccToString(srcFormat.g_pixelformat()).c_str(),
                 srcFormat.g_width(), srcFormat.g_height());
           }
@@ -665,7 +665,7 @@ bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 
       if( status ) {
         frm.reset();
-        if( (status = device_.qbuf(buf)) ) {
+        if( (status = _device.qbuf(buf)) ) {
           CF_ERROR("device_.qbuf() fails: status=%d (%s)",
               errno, strerror(errno));
         }
@@ -688,10 +688,10 @@ void QV4L2Camera::device_release_frame(const QCameraFrame::sptr & frame)
     if( frm ) {
 
       int status =
-          device_.qbuf(frm->buf());
+          _device.qbuf(frm->buf());
 
       if( status ) {
-        CF_ERROR("device_.qbuf() fails: status=%d (%s)",
+        CF_ERROR("device.qbuf() fails: status=%d (%s)",
             status, strerror(status));
       }
     }
@@ -700,7 +700,34 @@ void QV4L2Camera::device_release_frame(const QCameraFrame::sptr & frame)
 
 int QV4L2Camera::device_max_qsize()
 {
-  return p_.size() / 2;
+  return _p.size() / 2;
+}
+
+void QV4L2Camera::onload(const QSettings & settings, const QString & prefix)
+{
+  if ( !_filename.isEmpty() ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_filename) : prefix;
+    //    const auto PARAM = [PREFIX](const QString & name) {
+    //      return QString("%1/%2").arg(PREFIX).arg(name);
+    //    };
+
+    Base::onload(settings, PREFIX);
+  }
+
+}
+
+void QV4L2Camera::onsave(QSettings & settings, const QString & prefix)
+{
+  if ( !_filename.isEmpty() ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_filename) : prefix;
+    //    const auto PARAM = [PREFIX](const QString & name) {
+    //      return QString("%1/%2").arg(PREFIX).arg(name);
+    //    };
+
+    Base::onsave(settings, PREFIX);
+  }
 }
 
 } /* namespace serimager */

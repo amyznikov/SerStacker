@@ -28,6 +28,11 @@ public:
 
   const QImagingCamera::sptr & selectedCamera() const;
 
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix="");
+  void saveSettings(const QString & prefix="");
+  void saveSettings(QSettings & settings, const QString & prefix="");
+
 Q_SIGNALS:
   void selectedCameraChanged();
 
@@ -48,10 +53,11 @@ protected:
   void refreshCameras();
 
 protected:
-  int refreshCamerasTimerId_ = -1;
-  QImagingCamera::sptr selectedCamera_;
+  QString _camerasPrefix = "CameraSelection/cameras";
+  int _refreshCamerasTimerId = -1;
+  QImagingCamera::sptr _selectedCamera;
 
-  QHBoxLayout * layout_ = nullptr;
+  QHBoxLayout * _layout = nullptr;
   QComboBox * cameraSelection_ctl = nullptr;
   QToolButton * connectionStatus_ctl = nullptr;
   QToolButton * startStop_ctl = nullptr;

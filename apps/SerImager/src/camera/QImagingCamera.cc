@@ -94,6 +94,47 @@ QImagingCamera::~QImagingCamera()
   // don't call finish() because of pure virtual functions calls
 }
 
+void QImagingCamera::loadSettings(const QString & prefix)
+{
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QImagingCamera::loadSettings(const QSettings & settings, const QString & prefix)
+{
+  onload(settings, prefix);
+}
+
+void QImagingCamera::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QImagingCamera::saveSettings(QSettings & settings, const QString & prefix)
+{
+  onsave(settings, prefix);
+}
+
+void QImagingCamera::onload(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QImagingCamera" : prefix;
+  const auto PARAM = [PREFIX](const QString & name) {
+    return QString("%1/%2").arg(PREFIX).arg(name);
+  };
+
+  _roi = settings.value(PARAM("ROI"), _roi).toRect();
+}
+
+void QImagingCamera::onsave(QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QImagingCamera" : prefix;
+  const auto PARAM = [PREFIX](const QString & name) {
+    return QString("%1/%2").arg(PREFIX).arg(name);
+  };
+
+  settings.setValue(PARAM("ROI"), _roi);
+}
 
 
 void QImagingCamera::finish()

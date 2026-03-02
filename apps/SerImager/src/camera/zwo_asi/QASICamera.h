@@ -35,26 +35,28 @@ public:
   static sptr create(const ASI_CAMERA_INFO & camInfo,
       QObject * parent = nullptr);
 
-  QString display_name() const override;
-  QString parameters() const override;
+  QString name() const final;
+  QString parameters() const final;
 
-  bool is_same_camera(const QImagingCamera::sptr & rhs) const override;
-  int drops() const override;
-  // bool check_status() override;
+  bool is_same_camera(const QImagingCamera::sptr & rhs) const final;
+  int drops() const final;
+  // bool check_status() final;
 
   static QList<QImagingCamera::sptr> detectCameras();
 
   const ASI_CAMERA_INFO & cameraInfo() const;
 
 protected:
-  bool device_is_connected() const override;
-  bool device_connect() override;
-  void device_disconnect() override;
-  bool device_start() override;
-  void device_stop() override;
-  int device_max_qsize() override;
-  void device_release_frame(const QCameraFrame::sptr & frame) override;
-  bool device_recv_frame(QCameraFrame::sptr & frm) override;
+  bool device_is_connected() const final;
+  bool device_connect() final;
+  void device_disconnect() final;
+  bool device_start() final;
+  void device_stop() final;
+  int device_max_qsize() final;
+  void device_release_frame(const QCameraFrame::sptr & frame) final;
+  bool device_recv_frame(QCameraFrame::sptr & frm) final;
+  void onload(const QSettings & settings, const QString & prefix) final;
+  void onsave(QSettings & settings, const QString & prefix) final;
 
 protected:
   bool create_frame_buffers(const cv::Size & imageSize,

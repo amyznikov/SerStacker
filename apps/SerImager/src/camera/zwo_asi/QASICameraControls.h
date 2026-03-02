@@ -58,10 +58,10 @@ protected Q_SLOTS:
 
 
 protected:
-  ASI_CONTROL_CAPS controlCaps_;
+  ASI_CONTROL_CAPS _controlCaps;
   int iCameraID;
-  QVBoxLayout * lv_ = nullptr;
-  QHBoxLayout * lh_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
+  QHBoxLayout * _lh = nullptr;
   QSpinBox * value_ctl = nullptr;
   QComboBox * expscale_ctl = nullptr;
   QCheckBox * auto_ctl = nullptr;

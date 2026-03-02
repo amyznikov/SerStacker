@@ -38,7 +38,6 @@ static QIcon icon_connect;
 static QIcon icon_disconnect;
 static QIcon icon_menu;
 
-
 void enableControl(QAbstractButton * w, bool enabled)
 {
   if ( w->isEnabled() != enabled ) {
@@ -107,22 +106,22 @@ QCameraSelectionWidget::QCameraSelectionWidget(QWidget * parent) :
       };
 
 
-  layout_ = new QHBoxLayout(this);
+  _layout = new QHBoxLayout(this);
 
-  layout_->addWidget(cameraSelection_ctl = new QComboBox(this));
+  _layout->addWidget(cameraSelection_ctl = new QComboBox(this));
   cameraSelection_ctl->setEditable(false);
 
-  layout_->addWidget(connectionStatus_ctl =
+  _layout->addWidget(connectionStatus_ctl =
       create_toolbutton(icon_connect,
           "Connect / Disconnect selected camera",
           this));
 
-  layout_->addWidget(startStop_ctl =
+  _layout->addWidget(startStop_ctl =
       create_toolbutton(icon_start,
           "Start / Stop camera capture",
           this));
 
-  layout_->addWidget(menu_ctl =
+  _layout->addWidget(menu_ctl =
       create_toolbutton(icon_menu,
           "Options...",
           this));
@@ -142,13 +141,13 @@ QCameraSelectionWidget::QCameraSelectionWidget(QWidget * parent) :
 
   updateControls();
 
-  refreshCamerasTimerId_ =
+  _refreshCamerasTimerId =
       startTimer(1500);
 }
 
 const QImagingCamera::sptr & QCameraSelectionWidget::selectedCamera() const
 {
-  return selectedCamera_;
+  return _selectedCamera;
 }
 
 QImagingCamera::sptr QCameraSelectionWidget::getSelectedCamera()
@@ -168,17 +167,17 @@ void QCameraSelectionWidget::onCameraSelectionCurrentIndexChanged(int index)
   QImagingCamera::sptr newSelectedCamera =
       getSelectedCamera();
 
-  if( selectedCamera_ && selectedCamera_ != newSelectedCamera ) {
+  if( _selectedCamera && _selectedCamera != newSelectedCamera ) {
 
-    selectedCamera_->disconnect();
+    _selectedCamera->disconnect();
 
-    disconnect(selectedCamera_.get(), nullptr,
+    disconnect(_selectedCamera.get(), nullptr,
         this, nullptr);
   }
 
-  if( (selectedCamera_ = newSelectedCamera) ) {
+  if( (_selectedCamera = newSelectedCamera) ) {
 
-    connect(selectedCamera_.get(), &QImagingCamera::stateChanged,
+    connect(_selectedCamera.get(), &QImagingCamera::stateChanged,
         this, &ThisClass::onUpdateControls,
         Qt::QueuedConnection);
 
@@ -191,26 +190,26 @@ void QCameraSelectionWidget::onCameraSelectionCurrentIndexChanged(int index)
 
 void QCameraSelectionWidget::onConnectionStatusCtrlClicked()
 {
-  if( selectedCamera_ ) {
+  if( _selectedCamera ) {
 
-    switch (selectedCamera_->state()) {
+    switch (_selectedCamera->state()) {
       case QImagingCamera::State_disconnected:
-        selectedCamera_->connect();
+        _selectedCamera->connect();
         break;
       case QImagingCamera::State_connecting:
-        selectedCamera_->disconnect();
+        _selectedCamera->disconnect();
         break;
       case QImagingCamera::State_connected:
-        selectedCamera_->disconnect();
+        _selectedCamera->disconnect();
         break;
       case QImagingCamera::State_starting:
-        selectedCamera_->disconnect();
+        _selectedCamera->disconnect();
         break;
       case QImagingCamera::State_started:
-        selectedCamera_->disconnect();
+        _selectedCamera->disconnect();
         break;
       case QImagingCamera::State_stop:
-        selectedCamera_->disconnect();
+        _selectedCamera->disconnect();
         break;
       case QImagingCamera::State_disconnect:
         break;
@@ -221,19 +220,19 @@ void QCameraSelectionWidget::onConnectionStatusCtrlClicked()
 
 void QCameraSelectionWidget::onStartStopCtrlClicked()
 {
-  if( selectedCamera_ ) {
-    switch (selectedCamera_->state()) {
+  if( _selectedCamera ) {
+    switch (_selectedCamera->state()) {
       case QImagingCamera::State_disconnected:
         break;
       case QImagingCamera::State_connecting:
         break;
       case QImagingCamera::State_connected:
-        selectedCamera_->start();
+        _selectedCamera->start();
         break;
       case QImagingCamera::State_starting:
         break;
       case QImagingCamera::State_started:
-        selectedCamera_->stop();
+        _selectedCamera->stop();
         break;
       case QImagingCamera::State_stop:
         break;
@@ -328,7 +327,7 @@ void QCameraSelectionWidget::onMenuCtrlClicked()
 
 void QCameraSelectionWidget::timerEvent(QTimerEvent *event)
 {
-  if( selectedCamera_ && selectedCamera_->state() != QImagingCamera::State_disconnected ) {
+  if( _selectedCamera && _selectedCamera->state() != QImagingCamera::State_disconnected ) {
     /*if( !selectedCamera_->check_status() ) {
       refreshCameras();
     }*/
@@ -354,14 +353,14 @@ void QCameraSelectionWidget::onupdatecontrols()
 
   enableControl(menu_ctl, true);
 
-  if ( !selectedCamera_ ) {
+  if ( !_selectedCamera ) {
     cameraSelection_ctl->setEnabled(cameraSelection_ctl->count() > 0);
     enableControl(connectionStatus_ctl, false, icon_hourglass);
     enableControl(startStop_ctl, false, icon_hourglass);
   }
   else {
 
-    switch (selectedCamera_->state()) {
+    switch (_selectedCamera->state()) {
       case QImagingCamera::State_disconnected:
         cameraSelection_ctl->setEnabled(true);
         enableControl(connectionStatus_ctl, true, icon_connect);
@@ -434,7 +433,8 @@ void QCameraSelectionWidget::refreshCameras()
     }
 
     if( disapeared ) {
-      CF_DEBUG("Disconnected '%s'", c2->display_name().toUtf8().constData());
+      CF_DEBUG("Disconnected '%s'", c2->name().toUtf8().constData());
+      c2->saveSettings(QString("%1/%2").arg(_camerasPrefix).arg(c2->name()));
       cameraSelection_ctl->removeItem(i--);
     }
   }
@@ -462,7 +462,7 @@ void QCameraSelectionWidget::refreshCameras()
         missing = false;
 
         const QString displayName =
-            c1->display_name();
+            c1->name();
 
         if( cameraSelection_ctl->itemText(i) != displayName ) {
           cameraSelection_ctl->setItemText(i, displayName);
@@ -473,25 +473,57 @@ void QCameraSelectionWidget::refreshCameras()
     }
 
     if( missing ) {
-
-      CF_DEBUG("Connected '%s'", c1->display_name().toUtf8().constData());
-      cameraSelection_ctl->addItem(c1->display_name(),
-          QVariant::fromValue(c1));
+      CF_DEBUG("Connected '%s'", c1->name().toUtf8().constData());
+      c1->loadSettings(QString("%1/%2").arg(_camerasPrefix).arg(c1->name()));
+      cameraSelection_ctl->addItem(c1->name(), QVariant::fromValue(c1));
     }
   }
-
-
-//  int index = cameraSelection_ctl->findData(QVariant::fromValue((int) ADD_FFMPEG_STREAM));
-//  if( index >= 0 && index != cameraSelection_ctl->count() - 1 ) {
-//    cameraSelection_ctl->removeItem(index);
-//  }
-//  if( index < 0 ) {
-//    cameraSelection_ctl->addItem("FFMPEG stream ...",
-//        QVariant::fromValue((int) ADD_FFMPEG_STREAM));
-//  }
-
-
 }
 
+void QCameraSelectionWidget::loadSettings(const QString & prefix)
+{
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QCameraSelectionWidget::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QCameraSelectionWidget::loadSettings(const QSettings & settings, const QString & prefix)
+{
+  if ( !prefix.isEmpty() ) {
+    _camerasPrefix = QString("%1/cameras").arg(prefix);
+  }
+  else if (_camerasPrefix.isEmpty() ) {
+    _camerasPrefix = "CameraSelection/cameras";
+  }
+
+  for( int i = 0; i < cameraSelection_ctl->count(); ++i ) {
+    const QImagingCamera::sptr cam = cameraSelection_ctl->itemData(i).value<QImagingCamera::sptr>();
+    if( cam ) {
+      cam->loadSettings(settings, QString("%1/%2").arg(_camerasPrefix).arg(cam->name()));
+    }
+  }
+}
+
+void QCameraSelectionWidget::saveSettings(QSettings & settings, const QString & prefix)
+{
+  if ( !prefix.isEmpty() ) {
+    _camerasPrefix = QString("%1/cameras").arg(prefix);
+  }
+  else if (_camerasPrefix.isEmpty() ) {
+    _camerasPrefix = "CameraSelection/cameras";
+  }
+
+  for( int i = 0; i < cameraSelection_ctl->count(); ++i ) {
+    const QImagingCamera::sptr cam = cameraSelection_ctl->itemData(i).value<QImagingCamera::sptr>();
+    if( cam ) {
+      cam->saveSettings(settings, QString("%1/%2").arg(_camerasPrefix).arg(cam->name()));
+    }
+  }
+}
 
 } /* namespace serimager */

@@ -29,7 +29,7 @@ public:
 
   static sptr create(const QString & filename);
 
-  QString display_name() const override;
+  QString name() const override;
   QString parameters() const override;
 
   bool is_same_camera(const QImagingCamera::sptr & rhs) const override;
@@ -64,22 +64,24 @@ protected:
   int device_max_qsize() override;
   void device_release_frame(const QCameraFrame::sptr & queue) override;
   bool device_recv_frame(QCameraFrame::sptr & frm) override;
+  void onload(const QSettings & settings, const QString & prefix) final;
+  void onsave(QSettings & settings, const QString & prefix) final;
 
   bool create_queue();
   bool dqbuf(cv4l_buffer & buf);
 
 protected:
-  QString filename_;
-  cv4l_fd device_;
-  cv4l_queue q_;
-  std::vector<QV4L2CameraFrame::sptr> p_;
-  struct v4lconvert_data *convert_ = nullptr;
+  QString _filename;
+  cv4l_fd _device;
+  cv4l_queue _q;
+  std::vector<QV4L2CameraFrame::sptr> _p;
+  struct v4lconvert_data *_convert = nullptr;
   cv4l_fmt srcFormat;
   cv4l_fmt dstFormat;
   struct v4l2_fract interval;
-  int cvType_ = -1;
-  enum COLORID colorid_ = COLORID_UNKNOWN;
-  int bpp_ = 0;
+  int _cvType = -1;
+  enum COLORID _colorid = COLORID_UNKNOWN;
+  int _bpp = 0;
 
   enum cap_method
   {

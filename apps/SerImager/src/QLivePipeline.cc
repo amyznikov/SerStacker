@@ -721,7 +721,7 @@ void QLivePipelineThread::run()
       _current_source = 0;
       _current_global_pos = 0;
 
-      set_name(get_file_name(camera->display_name().toStdString()));
+      set_name(get_file_name(camera->name().toStdString()));
     }
 
     bool is_live() const override

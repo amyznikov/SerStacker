@@ -74,6 +74,7 @@ void QImagingCameraControlsWidget::loadSettings(const QString & prefix)
 void QImagingCameraControlsWidget::loadSettings(const QSettings & settings, const QString & prefix)
 {
   captureSettings_ctl->loadSettings(settings, prefix);
+  cameraSelection_ctl->loadSettings(settings, prefix);
 }
 
 void QImagingCameraControlsWidget::saveSettings(const QString & prefix)
@@ -85,6 +86,7 @@ void QImagingCameraControlsWidget::saveSettings(const QString & prefix)
 void QImagingCameraControlsWidget::saveSettings(QSettings & settings, const QString & prefix)
 {
   captureSettings_ctl->saveSettings(settings, prefix);
+  cameraSelection_ctl->saveSettings(settings, prefix);
 }
 
 void QImagingCameraControlsWidget::onSelectedCameraChanged()
@@ -104,10 +106,7 @@ void QImagingCameraControlsWidget::onSelectedCameraChanged()
     }
   }
 
-  QCameraWriter *writer =
-      captureSettings_ctl->cameraWriter();
-
-  if( writer ) {
+  if( QCameraWriter *writer = captureSettings_ctl->cameraWriter() ) {
     writer->setCamera(selectedCamera);
   }
 

@@ -157,7 +157,7 @@ const ASI_CAMERA_INFO & QASICamera::cameraInfo() const
   return _camInfo;
 }
 
-QString QASICamera::display_name() const
+QString QASICamera::name() const
 {
   return _camInfo.Name;
 }
@@ -551,7 +551,7 @@ bool QASICamera::device_start()
 {
   cv::Size frameSize;
   int iBin = 0;
-  ASI_IMG_TYPE asiType = ASI_IMG_END;
+  ASI_IMG_TYPE asiImageType = ASI_IMG_END;
   COLORID colorid = COLORID_UNKNOWN;
   int cvType = 0;
   int bpp = 0;
@@ -564,7 +564,7 @@ bool QASICamera::device_start()
       ASIGetROIFormat(_camInfo.CameraID,
           &frameSize.width, &frameSize.height,
           &iBin,
-          &asiType);
+          &asiImageType);
 
   if( status != ASI_SUCCESS ) {
     CF_ERROR("QImagingCameraASI:\n"
@@ -584,7 +584,7 @@ bool QASICamera::device_start()
     return false;
   }
 
-  switch (asiType) {
+  switch (asiImageType) {
     case ASI_IMG_RAW8:
       cvType = CV_8UC1;
       bpp = 8;
@@ -643,7 +643,7 @@ bool QASICamera::device_start()
       colorid = COLORID_MONO;
       break;
     default:
-      CF_ERROR("Unsupported asi image type %d encountered", asiType);
+      CF_ERROR("Unsupported asi image type %d encountered", asiImageType);
       return false;
   }
 
@@ -801,6 +801,34 @@ bool QASICamera::create_frame_buffers(const cv::Size & imageSize, int cvType, en
   }
 
   return true;
+}
+
+void QASICamera::onload(const QSettings & settings, const QString & prefix)
+{
+  if ( _camInfo.Name[0] ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_camInfo.Name) : prefix;
+    //    const auto PARAM = [PREFIX](const QString & name) {
+    //      return QString("%1/%2").arg(PREFIX).arg(name);
+    //    };
+
+    Base::onload(settings, PREFIX);
+  }
+
+}
+
+void QASICamera::onsave(QSettings & settings, const QString & prefix)
+{
+  if ( _camInfo.Name[0] ) {
+
+    const QString PREFIX = prefix.isEmpty() ? QString("QLCSCTPCamera/%1").arg(_camInfo.Name) : prefix;
+    //    const auto PARAM = [PREFIX](const QString & name) {
+    //      return QString("%1/%2").arg(PREFIX).arg(name);
+    //    };
+
+    Base::onsave(settings, PREFIX);
+  }
+
 }
 
 } /* namespace serimager */

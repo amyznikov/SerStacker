@@ -56,7 +56,7 @@ public:
   QImagingCamera(QObject * parent = nullptr);
   ~QImagingCamera();
 
-  virtual QString display_name() const = 0;
+  virtual QString name() const = 0;
   virtual QString parameters() const;
 
   virtual bool is_same_camera(const QImagingCamera::sptr & rhs) const = 0;
@@ -80,6 +80,11 @@ public:
   std::condition_variable_any & condvar();
   const std::deque<QCameraFrame::sptr> & deque() const;
 
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
+
 Q_SIGNALS:
   void stateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
   void exposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
@@ -95,6 +100,8 @@ protected:
   virtual int device_max_qsize() = 0;
   virtual void device_release_frame(const QCameraFrame::sptr & frame) = 0;
   virtual bool device_recv_frame(QCameraFrame::sptr & fo) = 0;
+  virtual void onload(const QSettings & settings, const QString & prefix);
+  virtual void onsave(QSettings & settings, const QString & prefix);
 
 protected:
   void finish();
@@ -111,8 +118,6 @@ protected:
   QString _stateChangeReason;
 
   QRect _roi;
-
-
 };
 
 std::string fourccToString (uint32_t fourcc);

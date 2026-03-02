@@ -27,15 +27,11 @@ public:
   QFFMPEGCameraControls(const QFFMPEGCamera::sptr & camera, QWidget * parent = nullptr);
   ~QFFMPEGCameraControls();
 
-protected :
-//  void onupdatecontrols() override;
-
 protected Q_SLOTS:
   void onCameraStateChanged();
 
 protected:
   QFFMPEGCamera::sptr _camera;
-
   QFFMPEGCameraUrlWidget * url_ctl = nullptr;
   QLineEditBox * options_ctl = nullptr;
 };

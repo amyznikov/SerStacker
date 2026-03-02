@@ -847,7 +847,7 @@ void QCameraWriter::writerThreadProc()
             -1;
 
     const std::string camera_name =
-        camera->display_name().toStdString();
+        camera->name().toStdString();
 
     const std::string camera_parameters =
         camera->parameters().toStdString();

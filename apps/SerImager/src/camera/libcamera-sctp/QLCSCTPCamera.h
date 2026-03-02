@@ -97,16 +97,15 @@ public:
       QObject * parent = nullptr);
 
   void setName(const QString & name);
-  const QString & name() const;
+  QString name() const final;
 
   void setUrl(const QString & v);
   const QString & url() const;
 
-  QString display_name() const override;
-  QString parameters() const override;
+  QString parameters() const final;
 
-  bool is_same_camera(const QImagingCamera::sptr & rhs) const override;
-  int drops() const override;
+  bool is_same_camera(const QImagingCamera::sptr & rhs) const final;
+  int drops() const final;
 
   const QList<QLCCamera> & cameras() const;
 
@@ -151,14 +150,16 @@ protected:
   QLCSCTPCamera(const QString & name, QObject * parent = nullptr);
   void onSctpThreadFinished();
 
-  bool device_is_connected() const override;
-  bool device_connect() override;
-  void device_disconnect() override;
-  bool device_start() override;
-  void device_stop() override;
-  int device_max_qsize() override;
-  void device_release_frame(const QCameraFrame::sptr & frame) override;
-  bool device_recv_frame(QCameraFrame::sptr & frm) override;
+  bool device_is_connected() const final;
+  bool device_connect() final;
+  void device_disconnect() final;
+  bool device_start() final;
+  void device_stop() final;
+  int device_max_qsize() final;
+  void device_release_frame(const QCameraFrame::sptr & frame) final;
+  bool device_recv_frame(QCameraFrame::sptr & frm) final;
+  void onload(const QSettings & settings, const QString & prefix) final;
+  void onsave(QSettings & settings, const QString & prefix) final;
 
 protected:
   QString _name;
@@ -166,6 +167,9 @@ protected:
   QList<QLCCamera> _cameras;
   int _selectedCameraIndex = -1;
   int _cameraDeviceBuffers = 2;
+
+  QString _savedCameraID, _savedStreamRole, _savedPixelFormat, _savedCaptureSize;
+  bool _savedAvcd = false;
 
 protected:
   std::unique_ptr<std::thread> _sctp_thread;

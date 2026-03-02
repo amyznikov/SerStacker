@@ -15,7 +15,7 @@ namespace serimager {
 
 QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & ControlCaps, QWidget * parent) :
     Base(parent),
-    controlCaps_(ControlCaps),
+    _controlCaps(ControlCaps),
     iCameraID(CameraID)
 {
   setFocusPolicy(Qt::FocusPolicy::StrongFocus);
@@ -41,22 +41,22 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
   }
 
   if( enable_slider_ctl ) {
-    lv_ = new QVBoxLayout(this);
-    lv_->addLayout(lh_ = new QHBoxLayout());
+    _lv = new QVBoxLayout(this);
+    _lv->addLayout(_lh = new QHBoxLayout());
   }
   else {
-    lh_ = new QHBoxLayout(this);
+    _lh = new QHBoxLayout(this);
   }
 
-  lh_->addWidget(value_ctl = new QSpinBox(this), 100);
+  _lh->addWidget(value_ctl = new QSpinBox(this), 100);
   if ( enable_scale_ctl ) {
-    lh_->addWidget(expscale_ctl = new QComboBox(this), 1);
+    _lh->addWidget(expscale_ctl = new QComboBox(this), 1);
   }
-  if ( controlCaps_.IsAutoSupported ) {
-    lh_->addWidget(auto_ctl = new QCheckBox("auto", this), 1);
+  if ( _controlCaps.IsAutoSupported ) {
+    _lh->addWidget(auto_ctl = new QCheckBox("auto", this), 1);
   }
   if ( enable_slider_ctl ) {
-    lv_->addWidget(slider_ctl = new QSlider(this));
+    _lv->addWidget(slider_ctl = new QSlider(this));
   }
 
   value_ctl->setMouseTracking(false);
@@ -65,9 +65,9 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
   value_ctl->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
 
   value_ctl->setToolTip(QString("%1\nMin=%2 Max=%3")
-      .arg(controlCaps_.Description)
-      .arg(controlCaps_.MinValue)
-      .arg(controlCaps_.MaxValue));
+      .arg(_controlCaps.Description)
+      .arg(_controlCaps.MinValue)
+      .arg(_controlCaps.MaxValue));
 
   connect(value_ctl, SIGNAL(valueChanged(int)),
       this, SLOT(onValueCtlChanged(int)),
@@ -88,9 +88,9 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
     slider_ctl->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
 
     slider_ctl->setToolTip(QString("%1\nMin=%2 Max=%3")
-        .arg(controlCaps_.Description)
-        .arg(controlCaps_.MinValue)
-        .arg(controlCaps_.MaxValue));
+        .arg(_controlCaps.Description)
+        .arg(_controlCaps.MinValue)
+        .arg(_controlCaps.MaxValue));
 
     connect(slider_ctl, SIGNAL(valueChanged(int)),
         this, SLOT(onSliderCtlChanged(int)),
@@ -102,9 +102,9 @@ QASIControlWidget::QASIControlWidget(int CameraID, const ASI_CONTROL_CAPS & Cont
     expscale_ctl->setEditable(false);
 
 
-    expscale_ctl->addItem("us ", QVariant::fromValue(QASIExposureScaleParams(controlCaps_.MinValue, 999, 1)));
+    expscale_ctl->addItem("us ", QVariant::fromValue(QASIExposureScaleParams(_controlCaps.MinValue, 999, 1)));
     expscale_ctl->addItem("ms ", QVariant::fromValue(QASIExposureScaleParams(1, 999, 1000)));
-    expscale_ctl->addItem("sec", QVariant::fromValue(QASIExposureScaleParams(1, controlCaps_.MaxValue / 1000000, 1000000)));
+    expscale_ctl->addItem("sec", QVariant::fromValue(QASIExposureScaleParams(1, _controlCaps.MaxValue / 1000000, 1000000)));
     expscale_ctl->setCurrentIndex(1);
 
     connect(expscale_ctl, SIGNAL(currentIndexChanged(int)),
@@ -153,14 +153,14 @@ void QASIControlWidget::onupdatecontrols()
   }
 
   if ( value_ctl ) {
-    value_ctl->setEnabled(!controlCaps_.IsAutoSupported || !isAuto);
+    value_ctl->setEnabled(!_controlCaps.IsAutoSupported || !isAuto);
     if ( value_ctl->value() != lValue ) {
       value_ctl->setValue(lValue);
     }
   }
 
   if ( slider_ctl ) {
-    slider_ctl->setEnabled(!controlCaps_.IsAutoSupported || !isAuto);
+    slider_ctl->setEnabled(!_controlCaps.IsAutoSupported || !isAuto);
     if ( slider_ctl->value() != lValue ) {
       slider_ctl->setValue(lValue);
     }
@@ -224,7 +224,7 @@ void QASIControlWidget::onAutoCtlStateChanged(int )
 
       ASI_ERROR_CODE status =
           ASIGetControlValue(iCameraID,
-              controlCaps_.ControlType,
+              _controlCaps.ControlType,
               &lValue,
               &bAuto);
 
@@ -294,14 +294,14 @@ void QASIControlWidget::onExpScaleCtlChanged(int)
 
       ASI_ERROR_CODE status =
           ASISetControlValue(iCameraID,
-              controlCaps_.ControlType,
+              _controlCaps.ControlType,
               newValue,
               isAuto);
 
       if( status != ASI_SUCCESS ) {
         CF_ERROR("ASISetControlValue(CameraID=%d, '%s' newValue=%ld isAuto=%d) fails: %d (%s)",
             iCameraID,
-            controlCaps_.Name,
+            _controlCaps.Name,
             newValue,
             isAuto,
             status,
@@ -318,10 +318,10 @@ void QASIControlWidget::updateCtrlRange()
   c_update_controls_lock lock(this);
 
   int minValue =
-      controlCaps_.MinValue;
+      _controlCaps.MinValue;
 
   int maxValue =
-      controlCaps_.MaxValue;
+      _controlCaps.MaxValue;
 
   if ( expscale_ctl ) {
 
@@ -361,14 +361,14 @@ void QASIControlWidget::setASIControlValue(long lValue, ASI_BOOL isAuto)
 
   ASI_ERROR_CODE status =
       ASISetControlValue(iCameraID,
-          controlCaps_.ControlType,
+          _controlCaps.ControlType,
           lValue,
           isAuto);
 
   if( status != ASI_SUCCESS ) {
     CF_ERROR("ASISetControlValue(CameraID=%d, '%s' lValue=%ld isAuto=%d) fails: %d (%s)",
         iCameraID,
-        controlCaps_.Name,
+        _controlCaps.Name,
         lValue,
         isAuto,
         status,
@@ -383,14 +383,14 @@ bool QASIControlWidget::getASIControlValue(long * lValue, ASI_BOOL * isAuto)
 {
   ASI_ERROR_CODE status =
       ASIGetControlValue(iCameraID,
-          controlCaps_.ControlType,
+          _controlCaps.ControlType,
           lValue,
           isAuto);
 
   if( status != ASI_SUCCESS ) {
     CF_ERROR("ASIGetControlValue(CameraID=%d, '%s') fails: %d (%s)",
         iCameraID,
-        controlCaps_.Name,
+        _controlCaps.Name,
         status,
         toCString(status));
 

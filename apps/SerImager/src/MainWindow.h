@@ -71,56 +71,52 @@ protected:
   IMtfDisplay * getCurrentMtfDisplay() override;
 
 protected:
-  QLivePipelineThread * liveView_ = nullptr;
-  QLiveDisplay * centralDisplay_ = nullptr;
-  QCameraWriter cameraWriter_;
-
+  QLivePipelineThread * _liveView = nullptr;
+  QLiveDisplay * _centralDisplay = nullptr;
+  QCameraWriter _cameraWriter;
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
-  QImagingCameraControlsDock * cameraControlsDock_ = nullptr;
-  QAction * showCameraControlsAction_ = nullptr;
-
+  QImagingCameraControlsDock * _cameraControlsDock = nullptr;
+  QAction * _showCameraControlsAction = nullptr;
 
   QLivePipelineSelectionWidget * pipelineSelector_ctl = nullptr;
-  QCustomDockWidget * pipelineSelectorDock_ = nullptr;
-  QAction * showPipelineSelectorAction_ = nullptr;
+  QCustomDockWidget * _pipelineSelectorDock = nullptr;
+  QAction * _showPipelineSelectorAction = nullptr;
 
-  QToolButton * measureActionsToolButton_ = nullptr;
-
+  QToolButton * _measureActionsToolButton = nullptr;
 
   QToolButton * show_log_ctl = nullptr;
   QLabel * shape_status_ctl = nullptr;
   QLabel * mouse_status_ctl = nullptr;
   QLabel * capture_status_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;
-  QMenu displayOptionsMenu_;
+  QMenu _displayOptionsMenu;
+
+  QToolBar * _mainToolbar = nullptr;
+  QMenu * _menuViewShapes = nullptr;
+
+  QAction * _showRectShapeAction = nullptr;
+  QToolButton * _rectShapeActionsButton = nullptr;
+  QGraphicsRectShapeSettingsDialogBox * _rectShapeOptionsDialogBox = nullptr;
+  QMenu _rectShapeActionsMenu;
 
 
-  QToolBar * mainToolbar_ = nullptr;
-  QMenu * menuViewShapes_ = nullptr;
-
-  QAction * showRectShapeAction_ = nullptr;
-  QToolButton * rectShapeActionsButton_ = nullptr;
-  QGraphicsRectShapeSettingsDialogBox * rectShapeOptionsDialogBox_ = nullptr;
-  QMenu rectShapeActionsMenu_;
+  QAction * _showTargetShapeAction = nullptr;
+  QToolButton * _targetShapeActionsButton = nullptr;
+  QGraphicsTargetShapeSettingsDialogBox * _targetShapeOptionsDialogBox = nullptr;
+  QMenu _targetShapeActionsMenu;
 
 
-  QAction * showTargetShapeAction_ = nullptr;
-  QToolButton * targetShapeActionsButton_ = nullptr;
-  QGraphicsTargetShapeSettingsDialogBox * targetShapeOptionsDialogBox_ = nullptr;
-  QMenu targetShapeActionsMenu_;
+  QAction * _showLineShapeAction = nullptr;
+  QToolButton * _lineShapeActionsButton = nullptr;
+  QGraphicsLineShapeSettingsDialogBox * _lineShapeOptionsDialogBox = nullptr;
+  QMenu _lineShapeActionsMenu;
 
 
-  QAction * showLineShapeAction_ = nullptr;
-  QToolButton * lineShapeActionsButton_ = nullptr;
-  QGraphicsLineShapeSettingsDialogBox * lineShapeOptionsDialogBox_ = nullptr;
-  QMenu lineShapeActionsMenu_;
+  QAction * _showLiveThreadSettingsAction = nullptr;
+  QLiveThreadSettingsDialogBox * _liveThreadSettingsDialogBox = nullptr;
 
-
-  QAction * showLiveThreadSettingsAction_ = nullptr;
-  QLiveThreadSettingsDialogBox * liveThreadSettingsDialogBox_ = nullptr;
-
-  QScaleSelectionButton * displayScaleControl_ = nullptr;
+  QScaleSelectionButton * _displayScaleControl = nullptr;
 
   QAction * copyDisplayImageAction = nullptr;
   QAction * copyDisplayViewportAction = nullptr;
@@ -133,9 +129,9 @@ protected:
 #endif // HAVE_INDIGO
 
 
-  QDisplayVideoWriter diplayImageWriter_;
-  QToolButton* displayImageVideoWriterToolButton_ = nullptr;
-  bool lockDiplayImageWriter_ = false;
+  QDisplayVideoWriter _diplayImageWriter;
+  QToolButton* _displayImageVideoWriterToolButton = nullptr;
+  bool _lockDiplayImageWriter = false;
 
 };
 

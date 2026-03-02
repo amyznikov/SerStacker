@@ -35,7 +35,7 @@ void QFFMPEGCamera::setName(const QString & name)
   Q_EMIT parametersChanged();
 }
 
-const QString& QFFMPEGCamera::name() const
+QString QFFMPEGCamera::name() const
 {
   return _name;
 }
@@ -66,11 +66,6 @@ QFFMPEGCamera::sptr QFFMPEGCamera::create(const QString & name, const QString & 
 {
   ThisClass::sptr camera(new ThisClass(name, url, opts, parent));
   return camera;
-}
-
-QString QFFMPEGCamera::display_name() const
-{
-  return _name;
 }
 
 QString QFFMPEGCamera::parameters() const

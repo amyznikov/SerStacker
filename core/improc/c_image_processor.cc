@@ -64,7 +64,14 @@
 #include "generic/c_mean_curvature_blur_routine.h"
 #include "generic/c_equalize_hist_routine.h"
 #include "generic/c_linear_interpolation_inpaint_routine.h"
+
 #include "generic/c_bilateral_filter_routine.h"
+#include "generic/c_guided_filter_routine.h"
+#include "generic/c_edge_preserving_filter_routine.h"
+#include "generic/c_anisotropic_diffusion_filter_routine.h"
+#include "generic/c_fast_nl_means_denoising_routine.h"
+#include "generic/c_adaptive_gaussian_blur_routine.h"
+
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
 #include "generic/c_fast_gaussian_blur_routine.h"
@@ -291,7 +298,14 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_extract_channel_routine::class_factory_instance());
     register_class_factory(c_absdiff_routine::class_factory_instance());
     register_class_factory(c_find_chessboard_corners_routine::class_factory_instance());
+
     register_class_factory(c_bilateral_filter_routine::class_factory_instance());
+    register_class_factory(c_guided_filter_routine::class_factory_instance());
+    register_class_factory(c_edge_preserving_filter_routine::class_factory_instance());
+    register_class_factory(c_anisotropic_diffusion_filter_routine::class_factory_instance());
+    register_class_factory(c_fast_nl_means_denoising_routine::class_factory_instance());
+    register_class_factory(c_adaptive_gaussian_blur_routine::class_factory_instance());
+
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_homography_test_routine::class_factory_instance());
     register_class_factory(c_rotation_homography_test_routine::class_factory_instance());

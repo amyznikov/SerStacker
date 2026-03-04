@@ -141,6 +141,16 @@ void texLee(cv::InputArray src, cv::OutputArray dst,
     const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
 
 
+/**
+* @brief Calculates both filters (RampLee and TexLee) simultaneously in a minimum number of passes.
+* A total of only 4 morphological operations for both methods.
+**/
+void ramptexLee(cv::InputArray src, cv::OutputArray dstRamp, cv::OutputArray dstTex,
+    cv::InputArray SE = cv::Mat1b(3, 3, 255),
+    int borderType = cv::BORDER_REFLECT_101,
+    const cv::Scalar& borderValue = cv::morphologyDefaultBorderValue());
+
+
 /** @brief Morphological line detection.
  */
 void generate_morphological_line_filter_bank(std::vector<cv::Mat> & K,

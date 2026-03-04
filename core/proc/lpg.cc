@@ -197,6 +197,7 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 
   if( dscale > 0 ) {
     downscale(s, s, dscale);
+    cv::multiply(s, cv::Scalar::all(1.0 / (1 + dscale)), s);
   }
 
   compute_gradient(s, g);
@@ -209,8 +210,11 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
   }
 
+
+
   if( uscale > 0 && uscale > dscale ) {
     downscale(m, m, uscale - std::max(0, dscale));
+    cv::multiply(m, cv::Scalar::all(uscale - std::max(0, dscale)), m);
   }
 
   cv::minMaxLoc(m, &min, &max);

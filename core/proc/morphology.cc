@@ -114,6 +114,7 @@ void morphological_laplacian_abs(cv::InputArray src, cv::OutputArray dst, cv::In
 void rampLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar& borderValue)
 {
+#if 0
   // TOD: Optimize this code
 
   cv::Mat O, C, D, E;
@@ -128,11 +129,30 @@ void rampLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
 
   dst.create(src.size(), src.type());
   cv::min(D, O, dst.getMatRef());
+#else
+    cv::Mat D, E, O, C;
+
+    cv::dilate(src, D, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+    cv::erode(src, E, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+
+    // 2. OPEN = dilate(E), CLOSE = erode(D)
+    cv::dilate(E, O, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+    cv::erode(D, C, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+
+    cv::subtract(D, C, D); // D = (D - C)
+    cv::subtract(O, E, O); // O = (O - E)
+
+    dst.create(src.size(), src.type());
+    cv::min(D, O, dst.getMatRef());
+#endif
 }
+
+
 
 void texLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
     int borderType, const cv::Scalar& borderValue)
 {
+#if 0
   // TOD: Optimize this code
   cv::Mat O, C, CG, GO;
 
@@ -144,7 +164,59 @@ void texLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
 
   dst.create(src.size(), src.type());
   cv::min(GO, CG, dst.getMatRef());
+#else
+
+  cv::Mat E, D, O, C, CG, GO;
+
+  cv::erode(src, E, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::dilate(src, D, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+
+  cv::dilate(E, O, SE, cv::Point(-1, -1), 1, borderType, borderValue); // O = dilate(erode(src))
+  cv::erode(D, C, SE, cv::Point(-1, -1), 1, borderType, borderValue);  // C = erode(dilate(src))
+
+  // CG = C - src (Black Top-hat от CLOSE)
+  // GO = src - O (Top-hat от OPEN)
+  cv::subtract(C, src, CG);
+  cv::subtract(src, O, GO);
+
+  dst.create(src.size(), src.type());
+  cv::min(GO, CG, dst.getMatRef());
+#endif
 }
+
+/**
+* @brief Calculates both filters (RampLee and TexLee) simultaneously in a minimum number of passes.
+* A total of only 4 morphological operations for both methods.
+**/
+void ramptexLee(cv::InputArray _src, cv::OutputArray dstRamp, cv::OutputArray dstTex, cv::InputArray SE,
+    int borderType, const cv::Scalar & borderValue)
+{
+  const cv::Mat src = _src.getMat();
+
+  cv::Mat E, D, O, C;
+
+  cv::erode(src, E, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::dilate(src, D, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+
+  cv::dilate(E, O, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::erode(D, C, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+
+  if( dstTex.needed() ) {
+    cv::Mat CG, GO;
+    cv::subtract(C, src, CG); // C - src
+    cv::subtract(src, O, GO); // src - O
+    dstTex.create(src.size(), src.type());
+    cv::min(GO, CG, dstTex.getMatRef());
+  }
+
+  if( dstRamp.needed() ) {
+    cv::subtract(D, C, D); // D = D - C
+    cv::subtract(O, E, O); // O = O - E
+    dstRamp.create(src.size(), src.type());
+    cv::min(D, O, dstRamp.getMatRef());
+  }
+}
+
 
 void apply_morphology(cv::InputArray src, cv::OutputArray dst,
     MORPH_OPERATION operation,

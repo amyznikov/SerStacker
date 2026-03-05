@@ -56,8 +56,9 @@ struct c_ctlbind
     FlagsCheckbox,
     EnumCombobox,
     SpinBox,
+    SliderSpinBox,
     DoubleSpinBox,
-    DoublesliderSpinBox,
+    DoubleSliderSpinBox,
     BrowseForDirectory,
     BrowseForExistingFile,
     MathExpression,
@@ -396,7 +397,7 @@ ctlbind_slider_spinbox(c_ctlist<RootObjectType> & ctls, const std::string & cnam
   BindType c;
   c.cname = cname;
   c.cdesc = cdesc;
-  c.ctype = is_normal_integer_v<FieldType> ? BindType::CtlType::SpinBox : BindType::CtlType::DoublesliderSpinBox;
+  c.ctype = is_normal_integer_v<FieldType> ? BindType::CtlType::SliderSpinBox : BindType::CtlType::DoubleSliderSpinBox;
   c.range.min = minv;
   c.range.max = maxv;
   c.range.step = step;
@@ -432,7 +433,7 @@ ctlbind_slider_spinbox(c_ctlist<RootObjectType> & ctls, const std::string & cnam
   BindType c;
   c.cname = cname;
   c.cdesc = cdesc;
-  c.ctype = is_normal_integer_v<FieldType> ? BindType::CtlType::SpinBox : BindType::CtlType::DoublesliderSpinBox;
+  c.ctype = is_normal_integer_v<FieldType> ? BindType::CtlType::SliderSpinBox : BindType::CtlType::DoubleSliderSpinBox;
   c.range.min = minv;
   c.range.max = maxv;
   c.range.step = stepv;

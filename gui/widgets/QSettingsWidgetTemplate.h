@@ -302,11 +302,38 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QSignalBlocker block(ctl);
         ctl->setRange(c.range.min, c.range.max);
         ctl->setSingleStep(c.range.step);
+        ctl->setDecimals((c.range.step > 0) ? std::max(0, (int)std::ceil(-std::log10(c.range.step))) : 2);
         break;
       }
 
       ////////////////////////////////////////////////////////////////////////
-      case CtlType::DoublesliderSpinBox : {
+      case CtlType::SliderSpinBox : {
+        QIntegerSliderSpinBox * ctl =
+          currentSettings->add_sliderspinbox<int>(c.cname.c_str(),
+            c.cdesc.c_str(),
+            [_this, c](int v) {
+              if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+                Q_EMIT _this->parameterChanged();
+              }
+            },
+            [_this, c](int * v) {
+              if ( _this->opts() && c.getvalue ) {
+                std::string s;
+                if ( c.getvalue(_this->opts(), &s) ) {
+                  return fromString(s, v);
+                }
+              }
+              return false;
+            },
+            enablefn(_this, c));
+
+        QSignalBlocker block(ctl);
+        //ctl->setSingleStep(c.range.step);
+        ctl->setRange(c.range.min, c.range.max);
+        break;
+      }
+      ////////////////////////////////////////////////////////////////////////
+      case CtlType::DoubleSliderSpinBox : {
         QDoubleSliderSpinBox * ctl =
           currentSettings->add_sliderspinbox<double>(c.cname.c_str(),
             c.cdesc.c_str(),

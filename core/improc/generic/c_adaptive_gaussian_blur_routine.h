@@ -25,7 +25,6 @@ public:
     DisplayEdges,
     DisplayLpass,
     DisplayHpass,
-    DisplayWeights,
     DisplayDetail,
   };
 
@@ -39,19 +38,17 @@ protected:
   cv::Mat edges;
   cv::Mat lpass;
   cv::Mat hpass;
-  cv::Mat weights;
   cv::Mat detail;
 
   int seRadius = 2;
   int mkRadius = 2;
-  double edgeLimit = 99;
   double gfSigma = 1.5;
   double hBoost = 1;
-  float x1 = 0.1f;
-  float a1 = 0.2f;
-  float x2 = 0.9f;
-  float a2 = 0.5f;
-
+  int sn = 6;
+  double qmin = 0.0;
+  double smin = 0.3;
+  double qmax = 0.9999;
+  double smax = 0.8;
   DisplayType displayType = DisplayFiltered;
 };
 

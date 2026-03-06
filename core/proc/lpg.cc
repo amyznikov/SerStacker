@@ -11,22 +11,6 @@
 
 static void compute_gradient(const cv::Mat & src, cv::Mat & g)
 {
-//  static const thread_local cv::Matx<float, 1, 5> K(
-//      (+1.f / 12),
-//      (-8.f / 12),
-//      0.f,
-//      (+8.f / 12),
-//      (-1.f / 12));
-//
-//  constexpr int ddepth = CV_32F;
-
-
-//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), 0,
-//      cv::BORDER_DEFAULT);
-//
-//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), 0,
-//      cv::BORDER_DEFAULT);
-
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
     cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
@@ -39,30 +23,12 @@ static void compute_gradient(const cv::Mat & src, cv::Mat & g)
   cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 
-  cv::magnitude(gx, gy, g);
-  //cv::add(gx.mul(gx), gy.mul(gy), g);
+  cv::add(gx.mul(gx), gy.mul(gy), g);
 }
 
 // https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
 static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
 {
-//  static float k[5 * 5] = {
-//      0, 0, -1, 0, 0,
-//      0, -1, -2, -1, 0,
-//      -1, -2, 16, -2, -1,
-//      0, -1, -2, -1, 0,
-//      0, 0, -1, 0, 0,
-//  };
-//
-//  static const thread_local cv::Mat1f K =
-//      cv::Mat1f(5, 5, k) / 16.;
-//
-//  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0,
-//      cv::BORDER_REPLICATE);
-//
-//
-//  cv::multiply(l, l, l);
-
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
     cv::getDerivKernels(Kx, Ky, 2, 0, 3, true, CV_32F);
@@ -75,9 +41,93 @@ static void compute_laplacian(const cv::Mat & src, cv::Mat & l)
   cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
 
-  cv::magnitude(gx, gy, l);
-
+  cv::add(gx.mul(gx), gy.mul(gy), l);
 }
+
+
+template<class T>
+static inline T square(T x)
+{
+  return x * x;
+}
+
+/**
+* Optimized local sharpening calculation (Gradient + Laplacian 5x5)
+* src: input image (already normalized and downscaled, if necessary)
+* dst: output weight map
+* alpha, beta: weights for Laplacian and gradient
+**/
+static void compute_lpg_5x5_parallel(const cv::Mat1f & src, cv::Mat1f & dst, float alpha, float beta, float eps)
+{
+  if( dst.size() != src.size() ) {
+    dst.create(src.size());
+  }
+
+  //constexpr float l_norm = 1.0f / 16.0f;
+  constexpr float l_norm = 100.0f / 4.0f;
+  constexpr float g_norm = 100.0f / 36.0f;
+
+  alpha *= (l_norm * l_norm);
+  beta *= (g_norm * g_norm);
+
+  // Row-wise parallelization via TBB
+  cv::parallel_for_(cv::Range(2, src.rows - 2),
+      [&src, &dst, alpha, beta, eps](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+
+
+          const float* r0 = src[y - 2];
+          const float* r1 = src[y - 1];
+          const float* r2 = src[y];
+          const float* r3 = src[y + 1];
+          const float* r4 = src[y + 2];
+          float* out = dst[y];
+
+          const int cols = src.cols;
+          for (int x = 2; x < cols - 2; ++x) {
+            // 1. Extended Sobol Gradient 5x5 (smoothing + derivative)
+            // Horizontal component dX
+            const float gx =
+                (r0[x+2] + 2*r1[x+2] + 4*r2[x+2] + 2*r3[x+2] + r4[x+2]) -
+                  (r0[x-2] + 2*r1[x-2] + 4*r2[x-2] + 2*r3[x-2] + r4[x-2]) +
+                  2.0f * ((r1[x+1] + 2*r2[x+1] + r3[x+1]) - (r1[x-1] + 2*r2[x-1] + r3[x-1]));
+
+            // Vertical component dY
+            const float gy =
+                (r4[x-2] + 2*r4[x-1] + 4*r4[x] + 2*r4[x+1] + r4[x+2]) -
+                  (r0[x-2] + 2*r0[x-1] + 4*r0[x] + 2*r0[x+1] + r0[x+2]) +
+                  2.0f * ((r3[x-1] + 2*r3[x] + r3[x+1]) - (r1[x-1] + 2*r1[x] + r1[x+1]));
+
+            const float grad =
+                (gx * gx + gy * gy);
+
+            // 2. 5x5 Noise-Robust Laplacian
+            // Sum with weights to highlight high-frequency details
+            const float lapl =
+                square(16.0f * r2[x] -
+                  2.0f * (r1[x] + r3[x] + r2[x-1] + r2[x+1]) -
+                  1.0f * (r1[x-1] + r1[x+1] + r3[x-1] + r3[x+1]) -
+                  1.0f * (r0[x] + r4[x] + r2[x-2] + r2[x+2]));
+
+            // 3. Linear combination "on the fly"
+            out[x] = (float)(alpha * lapl + beta * grad + eps);
+          }
+
+          // Fill the edges of the current row (copy the nearest calculated pixel)
+          out[0] = out[1] = out[2];
+          out[cols - 1] = out[cols - 2] = out[cols - 3];
+        }
+      });
+
+  // 2. Fill the top and bottom rows (copy the closest calculated ones)
+  if( src.rows > 4 ) {
+    dst.row(2).copyTo(dst.row(0));
+    dst.row(2).copyTo(dst.row(1));
+    dst.row(src.rows - 3).copyTo(dst.row(src.rows - 2));
+    dst.row(src.rows - 3).copyTo(dst.row(src.rows - 1));
+  }
+}
+
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {
@@ -158,7 +208,7 @@ static double maxval(int ddepth)
  * lpg:
  *
  *  Create the map of
- *      alpha * laplacian ^ 2 +  beta * |gradient| ^ 2
+ *      alpha * |laplacian| +  beta * |gradient|
  *
  * with
  *    alpha = k / ( k + 1)
@@ -178,10 +228,11 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     cv::Scalar * optional_output_sharpness_metric)
 {
 
-  const cv::Mat src =
-      image.getMat();
+  const cv::Mat src = image.getMat();
 
-  cv::Mat s, l, g, m;
+  //cv::Mat s, l, g, m;
+  cv::Mat s;
+  cv::Mat1f m;
   double min, max;
 
   if ( src.depth() == CV_32F ) {
@@ -191,7 +242,7 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
   }
 
-  if( average_color_channels && s.channels() > 1 ) {
+  if( s.channels() > 1 /*&& average_color_channels */) {
     reduce_color_channels(s, s, cv::REDUCE_AVG);
   }
 
@@ -200,25 +251,32 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     cv::multiply(s, cv::Scalar::all(1.0 / (1 + dscale)), s);
   }
 
+#if 1
+  compute_lpg_5x5_parallel(s, m, k / (k + 1), 1. / (k + 1), 1e-9);
+#else
+  cv::Mat l, g;
+  compute_laplacian(s, l);
   compute_gradient(s, g);
+  cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
+#endif
 
-  if( k <= 0 ) {
-    m = g;
-  }
-  else {
-    compute_laplacian(s, l);
-    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
-  }
-
-
+//  compute_gradient(s, g);
+//
+//  if( k <= 0 ) {
+//    m = g;
+//  }
+//  else {
+//    compute_laplacian(s, l);
+//    cv::addWeighted(l, k / (k + 1.), g, 1. / (k + 1), 0, m);
+//  }
 
   if( uscale > 0 && uscale > dscale ) {
     downscale(m, m, uscale - std::max(0, dscale));
     cv::multiply(m, cv::Scalar::all(uscale - std::max(0, dscale)), m);
   }
 
-  cv::minMaxLoc(m, &min, &max);
-  cv::add(m, cv::Scalar::all(1e-5 * (max - min)), m);
+  //  cv::minMaxLoc(m, &min, &max);
+  //  cv::add(m, cv::Scalar::all(1e-5 * (max - min)), m);
 
   if( p != 0 && p != 1  ) {
     cv::pow(m, p, m);
@@ -246,6 +304,8 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 
   return true;
 }
+
+
 
 //bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
 //    double k, double p, int dscale, int uscale, bool average_color_channels,

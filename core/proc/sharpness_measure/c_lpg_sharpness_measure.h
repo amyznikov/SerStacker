@@ -20,10 +20,10 @@
 
 struct c_lpg_options
 {
-  double k = 1;
-  double p = 4;
-  int dscale = 1;
-  int uscale = 3;
+  double k = 2;
+  double p = 2;
+  int dscale = 2;
+  int uscale = 6;
   bool avgchannel = true;
 };
 

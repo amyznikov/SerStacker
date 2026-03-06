@@ -141,7 +141,6 @@ bool c_adaptive_gaussian_blur_routine::process(cv::InputOutputArray image, cv::I
   if( displayType == DisplayRamp || displayType == DisplayTex || displayType == DisplayEdges ||
       displayType == DisplayDetail || displayType == DisplayFiltered ) {
 
-
     const int seSize = 2 * seRadius + 1;
 
     if ( src.channels() == 1 ) {

@@ -932,9 +932,7 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
   currentPoints.convertTo(displayPoints, CV_32F);
 
   adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMask, &a);
-  CF_DEBUG("mtf->apply");
   mtf->apply(currentColors, mtfcolors, CV_8U);
-  CF_DEBUG("mtf->apply OK");
   restoreMtfRange(mtf, a);
 
   if ( !mtfColors.fixedType() || mtfColors.type() == mtfcolors.type() ) {

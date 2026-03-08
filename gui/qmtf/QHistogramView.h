@@ -32,8 +32,9 @@ public:
 
   QHistogramView(QWidget * parent = Q_NULLPTR);
 
-  void setImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
+  //void setImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void setHistogram(cv::InputArray H, double hmin, double hmax);
+  void setMtfCurve(std::vector<float> && cy);
 
   void setLogScale(bool v);
   bool logScale() const;
@@ -62,21 +63,22 @@ protected:
   void drawBorder(QPainter & p) const;
   void drawBarChart(QPainter & p) const;
   void drawLineChart(QPainter & p) const;
+  void drawMtfCurve(QPainter & p) const;
 
 protected:
-  void updateHistogram();
 
 protected:
-  QSize sizeHint_;
-  QColor backgroundColor_ = Qt::white;
-  QColor foregroundColor_ = Qt::lightGray;
-  ChartType chartType_ = ChartType_Lines;
-  DisplayChannel displayChannel_ = DisplayChannel_RGB;
+  QSize _sizeHint;
+  QColor _backgroundColor = Qt::white;
+  QColor _foregroundColor = Qt::lightGray;
+  ChartType _chartType = ChartType_Lines;
+  DisplayChannel _displayChannel = DisplayChannel_RGB;
 
-  cv::Mat image_, mask_;
+  //cv::Mat _image, _mask;
+  std::vector<float> _cy;
   cv::Mat1f H, LH;
   double hmin = -1, hmax = -1;
-  bool logScale_ = true;
+  bool _logScale = true;
 };
 
 #endif /* __QHistogramView_h__ */

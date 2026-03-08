@@ -80,7 +80,7 @@ bool QProgressImageViewer::applyMtf(cv::InputArray currentImage, cv::InputArray 
   DisplayParams &opts =
       displayParams();
 
-  c_pixinsight_mtf *mtf =
+  c_mtf *mtf =
       &opts.mtf;
 
   c_mtf_adjustment a;
@@ -153,6 +153,11 @@ void QProgressImageViewer::getInputDataRange(double * minval, double * maxval) c
 //      false);
 //}
 
+
+void QProgressImageViewer::getMtfCurve(std::vector<float> & cy, size_t n)
+{
+  displayParams().mtf.get_mtf_curve(cy, n);
+}
 
 void QProgressImageViewer::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {

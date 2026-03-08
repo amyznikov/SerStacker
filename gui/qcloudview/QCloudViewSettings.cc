@@ -371,11 +371,11 @@ QCloudViewer * QCloudViewSettingsDialogBox::cloudViewer() const
 void QCloudViewSettingsDialogBox::showEvent(QShowEvent *e)
 {
   Base::showEvent(e);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }
 
 void QCloudViewSettingsDialogBox::hideEvent(QHideEvent *e)
 {
   Base::hideEvent(e);
-  emit visibilityChanged(isVisible());
+  Q_EMIT visibilityChanged(isVisible());
 }

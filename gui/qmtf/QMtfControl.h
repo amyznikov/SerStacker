@@ -13,8 +13,8 @@
 #include <gui/widgets/UpdateControls.h>
 #include <gui/widgets/QLineEditBox.h>
 #include "QHistogramView.h"
+#include "QMtfSliderBand.h"
 #include "QMtfDisplay.h"
-#include "QMtfSlider.h"
 
 class QMtfControl:
     public QWidget,
@@ -61,15 +61,15 @@ protected:
   void setInputDataRangeCtl(const double range[2]);
 
 protected:
-  IMtfDisplay * displaySettings_ = nullptr;
+  IMtfDisplay * _displaySettings = nullptr;
 
-  QVBoxLayout * vbox_ = nullptr;
+  QVBoxLayout * _vbox = nullptr;
   QToolBar * topToolbar_ctl = nullptr;
   QComboBox * displayChannel_ctl = nullptr;
   QNumericBox * inputDataRange_ctl = nullptr;
   QToolButton * colormap_ctl = nullptr;
 
-  QAction * resetMtfAction_ = nullptr;
+  QAction * _resetMtfAction = nullptr;
   QToolButton * autoMtf_ctl = nullptr;
   QMenu autoMtfMenu;
 
@@ -77,25 +77,31 @@ protected:
   QToolButton * chartTypeSelectorButton_ = nullptr;
 
   QHistogramView * levelsView_ctl = nullptr;
-  QMtfSlider * mtfSlider_ctl = nullptr;
+  QMtfSliderBand * mtfSliderBand_ctl = nullptr;
   QLabel * colormap_strip_ctl = nullptr;
-  QPixmap colormap_pixmap_;
+  QPixmap _colormap_pixmap;
 
   QToolBar * bottomToolbar_ctl = nullptr;
+  //QToolBar * bottomToolbar2_ctl = nullptr;
 
   enum AutoMtfAction {
     AutoMtfAction_AutoClip = 0,
     AutoMtfAction_AutoMtf = 1,
   } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
 
-  enum SPINID {
-    SPIN_SHADOWS = 0,
-    SPIN_MIDTONES = 1,
-    SPIN_HIGHLIGHTS = 2,
-  };
+  QDoubleSpinBox * lclip_ctl = nullptr;
+  QDoubleSpinBox * hclip_ctl = nullptr;
+  QDoubleSpinBox * midtones_ctl = nullptr;
+  QDoubleSpinBox * shadows_ctl = nullptr;
+  QDoubleSpinBox * highlights_ctl = nullptr;
 
-  QDoubleSpinBox * spins[3] = {
-      nullptr };
+//  enum SPINID {
+//    SPIN_SHADOWS = 0,
+//    SPIN_MIDTONES = 1,
+//    SPIN_HIGHLIGHTS = 2,
+//  };
+//
+  //  QDoubleSpinBox * spins[3] = { nullptr };
 
   // bool updatingControls_ = false;
 };

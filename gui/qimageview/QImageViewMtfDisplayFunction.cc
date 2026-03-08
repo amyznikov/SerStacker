@@ -6,34 +6,15 @@
  */
 
 #include "QImageViewMtfDisplayFunction.h"
-#include <core/mtf/mtf-histogram.h>
 #include <core/proc/histogram.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-//namespace {
-//  enum DISPLAY_TYPE {
-//    DISPLAY_PIXEL_VALUE,
-//  };
-//}
-//
-//template<>
-//const c_enum_member* members_of<DISPLAY_TYPE>()
-//{
-//  static const c_enum_member members[] = {
-//      { DISPLAY_PIXEL_VALUE, "PIXEL_VALUE" },
-//      { DISPLAY_PIXEL_VALUE }
-//  };
-//
-//  return members;
-//}
-
-
 QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageViewer, const QString & prefix) :
   QMtfDisplay(prefix, imageViewer),
-  imageViewer_(imageViewer)
+  _imageViewer(imageViewer)
 {
   QMtfDisplay::_displayChannel = "PIXEL_VALUE";
   QMtfDisplay::addDisplay(QMtfDisplay::_displayChannel, -1, -1);
@@ -41,20 +22,20 @@ QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageV
 
 QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
 {
-  return imageViewer_;
+  return _imageViewer;
 }
 
 void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
 
-  if ( imageViewer_ ) {
+  if ( _imageViewer ) {
 
     const cv::Mat & image =
-        imageViewer_->currentImage();
+        _imageViewer->currentImage();
 
     const cv::Mat & mask =
-        imageViewer_->currentMask();
+        _imageViewer->currentMask();
 
     if ( !image.empty() ) {
       getminmax(image, minval, maxval, mask);
@@ -92,7 +73,7 @@ void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * m
 
 void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-  if ( imageViewer_ ) {
+  if ( _imageViewer ) {
 
     cv::Mat image, mask;
 
@@ -100,9 +81,9 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
     double offset = 0.0;
 
     const cv::Mat & currentImage =
-        imageViewer_->mtfImage();
+        _imageViewer->mtfImage();
 
-    imageViewer_->currentMask().copyTo(mask);
+    _imageViewer->currentMask().copyTo(mask);
 
     if ( currentImage.depth() == CV_8U ) {
       currentImage.copyTo(image);
@@ -163,6 +144,14 @@ void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImag
 }
 
 
+void QImageViewMtfDisplayFunction::getMtfCurve(std::vector<float> & cy, size_t n)
+{
+  DisplayParams &opts = displayParams();
+  c_mtf *mtf = &opts.mtf;
+  mtf->get_mtf_curve(cy, n);
+
+}
+
 bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::OutputArray displayImage, int ddepth)
 {
@@ -173,7 +162,7 @@ bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::Inp
   DisplayParams &opts =
       displayParams();
 
-  c_pixinsight_mtf *mtf =
+  c_mtf *mtf =
       &opts.mtf;
 
 

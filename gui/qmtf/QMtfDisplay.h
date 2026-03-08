@@ -10,7 +10,7 @@
 #define __QMtfDisplaySettings_h__
 
 #include <QtCore/QtCore>
-#include <core/mtf/c_pixinsight_mtf.h>
+#include <core/mtf/mtf.h>
 #include <core/proc/colormap.h>
 #include <core/ssprintf.h>
 
@@ -24,7 +24,7 @@ public:
   struct DisplayParams {
     COLORMAP colormap = COLORMAP_NONE;
     cv::Mat3b lut;
-    c_pixinsight_mtf mtf;
+    c_mtf mtf;
     bool invert_colormap = false;
   };
 
@@ -41,20 +41,27 @@ public:
   virtual void setDisplayChannel(const QString & v);
   virtual const QString & displayChannel() const;
 
-  virtual void setMtfInputRange(double min, double max);
-  virtual void getMtfInputRange(double * min, double * max) const;
+  //virtual void setMtfInputRange(double min, double max);
+  //virtual void getMtfInputRange(double * min, double * max) const;
 
-  virtual void setShadows(double shadows);
+  virtual void setlclip(double v);
+  virtual double lclip() const;
+
+  virtual void sethclip(double v);
+  virtual double hclip() const;
+
+  virtual void setShadows(double v);
   virtual double shadows() const;
 
-  virtual void setHighlights(double highlights);
+  virtual void setHighlights(double v);
   virtual double highlights() const;
 
-  virtual void setMidtones(double midtones);
+  virtual void setMidtones(double v);
   virtual double midtones() const;
 
-  virtual void setMtf(double shadows, double highlights, double midtones);
-  virtual void getMtf(double * shadows, double * highlights, double * midtones) const;
+  virtual void setMtf(double imin, double imax, const c_mtf_options * opts = nullptr);
+  virtual void getMtf(c_mtf_options * opts) const;
+  virtual void getMtfInputRange(double * min, double * max) const;
 
   virtual void setColormap(COLORMAP v);
   virtual COLORMAP colormap() const;
@@ -68,15 +75,13 @@ public:
   virtual DisplayParams & displayParams();
   virtual const DisplayParams & displayParams() const;
 
-  //  virtual c_pixinsight_mtf & mtf();
-  //  virtual const c_pixinsight_mtf & mtf() const;
-
   void loadParameters();
   void saveParameters() const;
 
   virtual void getInputDataRange(double * output_minval, double * output_maxval) const = 0;
   //virtual void getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
   virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
+  virtual void getMtfCurve(std::vector<float> & cy, size_t n)  = 0;
 
   static DisplayParams & addDisplay(DisplayMap & map,
       const QString & displayChannelName, double input_min, double input_max);
@@ -97,11 +102,11 @@ protected:
     bool adjusted_outputs = false;
   };
 
-  virtual void adjustMtfRange(c_midtones_transfer_function *mtf,
+  virtual void adjustMtfRange(c_mtf *mtf,
       cv::InputArray currentImage, cv::InputArray currentMask,
       c_mtf_adjustment * adjustment) const;
 
-  virtual void restoreMtfRange(c_midtones_transfer_function *mtf,
+  virtual void restoreMtfRange(c_mtf *mtf,
       const c_mtf_adjustment & adjustment)  const;
 
   virtual void loadParameters(const QSettings & settings, const QString & prefix);

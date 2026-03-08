@@ -10,7 +10,6 @@
 #include <gui/widgets/qsprintf.h>
 #include <gui/qimageview/cv2qt.h>
 #include <core/io/image/c_image_input_source.h>
-#include <core/mtf/mtf-histogram.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
@@ -106,7 +105,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
 //  Base::getOutputHistogramm(H, output_hmin, output_hmax);
 //  INSTRUMENT_REGION("");
 
-  if ( imageViewer_ ) {
+  if ( _imageViewer ) {
 
     cv::Mat image, mask;
 
@@ -117,7 +116,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     _isBusy = true;
 
     const cv::Mat & currentImage =
-        imageViewer_->mtfImage();
+        _imageViewer->mtfImage();
 
     if ( currentImage.depth() == CV_8U ) {
       currentImage.copyTo(image);
@@ -127,7 +126,7 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
       currentImage.convertTo(image, CV_8U, scale, offset);
     }
 
-    imageViewer_->currentMask().copyTo(mask);
+    _imageViewer->currentMask().copyTo(mask);
     _mutex.unlock();
 
     create_histogram(image, mask,

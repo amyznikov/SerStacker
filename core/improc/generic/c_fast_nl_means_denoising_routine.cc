@@ -15,7 +15,7 @@ void c_fast_nl_means_denoising_routine::getcontrols(c_control_list & ctls, const
       " smaller h value preserves details but also preserves some noise");
 
   ctlbind(ctls, "hColor", ctx(&this_class::hColor),
-      "The same as h but for color components. \m"
+      "The same as h but for color components. \n"
       " For most images value equals 10");
 
   ctlbind(ctls, "templateWindowRadius", ctx(&this_class::templateWindowRadius),

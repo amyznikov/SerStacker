@@ -34,7 +34,7 @@ enum DISPLAY_TYPE {
 };
 
 template<class T>
-static bool compute_colors_(const c_pixinsight_mtf &mtf,
+static bool compute_colors_(const c_mtf &mtf,
     const cv::Mat3f & points, const cv::Mat & src_colors,
     cv::Mat3b & display_colors)
 {
@@ -89,7 +89,7 @@ static bool compute_colors_(const c_pixinsight_mtf &mtf,
   return true;
 }
 
-static bool compute_colors(const c_pixinsight_mtf &mtf,
+static bool compute_colors(const c_mtf &mtf,
     const cv::Mat3f & points, const cv::Mat & src_colors,
     cv::Mat3b & display_colors)
 {
@@ -179,7 +179,7 @@ cv::Scalar get_point_color(const cv::Mat & src, int r)
   return s;
 }
 
-cv::Scalar compute_point_color(const cv::Mat & src, int r, const c_pixinsight_mtf & mtf)
+cv::Scalar compute_point_color(const cv::Mat & src, int r, const c_mtf & mtf)
 {
   cv::Scalar s;
 
@@ -260,7 +260,7 @@ const c_enum_member* members_of<DISPLAY_TYPE>()
 
 QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
     Base("", cloudView),
-    cloudView_(cloudView)
+    _cloudView(cloudView)
 {
   QMtfDisplay::_displayChannel = "PIXEL_VALUE";
   QMtfDisplay::addDisplay(QMtfDisplay::_displayChannel, 0, 255);
@@ -268,7 +268,7 @@ QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
 
 QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
 {
-  return cloudView_;
+  return _cloudView;
 }
 
 QStringList QCloudViewMtfDisplay::displayChannels() const
@@ -289,11 +289,11 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
   *minval = HUGE_VAL;
   *maxval = 0;
 
-  if( cloudView_ ) {
+  if( _cloudView ) {
 
     double minv, maxv;
 
-    for( const QPointCloud::sptr &cloud : cloudView_->clouds() ) {
+    for( const QPointCloud::sptr &cloud : _cloudView->clouds() ) {
       if( cloud->visible && cloud->colors.rows > 0 ) {
 
         cv::minMaxLoc(cloud->colors, &minv, &maxv);
@@ -356,12 +356,17 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
 //  }
 //}
 
+void QCloudViewMtfDisplay::getMtfCurve(std::vector<float> & cy, size_t n)
+{
+  displayParams().mtf.get_mtf_curve(cy, n);
+}
+
 void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
 {
   displayParams().mtf.get_output_range(omin, omax);
   H.release();
 
-  if( !cloudView_ || cloudView_->_display_colors.empty() ) {
+  if( !_cloudView || _cloudView->_display_colors.empty() ) {
     return;
   }
 
@@ -371,7 +376,7 @@ void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin,
   builder.set_channels(3);
   builder.set_bins(256);
 
-  for ( const cv::Vec3b & color : cloudView_->_display_colors ) {
+  for ( const cv::Vec3b & color : _cloudView->_display_colors ) {
     builder.add_pixel(color);
   }
 
@@ -610,7 +615,7 @@ void QGLCloudViewer::computeDisplayPoints()
     QMtfDisplay::DisplayParams & opts =
         _mtfDisplay.displayParams();
 
-    c_pixinsight_mtf &mtf =
+    c_mtf &mtf =
         opts.mtf;
 
     double imin, imax;

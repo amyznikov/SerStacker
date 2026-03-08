@@ -29,6 +29,7 @@ public:
   void getInputDataRange(double * minval, double * maxval) const override;
   //void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getMtfCurve(std::vector<float> & cy, size_t n)  override;
 
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
@@ -40,7 +41,7 @@ public:
       cv::OutputArray colormapImage);
 
 protected:
-  QImageViewer * imageViewer_ = nullptr;
+  QImageViewer * _imageViewer = nullptr;
 };
 
 #endif /* __QImageViewMtfDisplayFunction_h__ */

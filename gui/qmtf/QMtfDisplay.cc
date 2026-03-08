@@ -110,7 +110,7 @@ void IMtfDisplay::createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colo
   }
 }
 
-void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
+void IMtfDisplay::adjustMtfRange(c_mtf * mtf,
     cv::InputArray currentImage, cv::InputArray currentMask,
     c_mtf_adjustment * a) const
 {
@@ -131,7 +131,7 @@ void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
         getminmax(currentImage, &adjusted_min, &adjusted_max, currentMask);
       }
       else {
-        c_midtones_transfer_function::suggest_levels_range(cdepth, &adjusted_min, &adjusted_max);
+        c_mtf::suggest_levels_range(cdepth, &adjusted_min, &adjusted_max);
       }
 
       mtf->set_input_range(adjusted_min, adjusted_max);
@@ -147,7 +147,7 @@ void IMtfDisplay::adjustMtfRange(c_midtones_transfer_function * mtf,
   }
 }
 
-void IMtfDisplay::restoreMtfRange(c_midtones_transfer_function *mtf, const c_mtf_adjustment & a) const
+void IMtfDisplay::restoreMtfRange(c_mtf *mtf, const c_mtf_adjustment & a) const
 {
   if ( a.adjusted_inputs ) {
     mtf->set_input_range(a.imin, a.imax);
@@ -181,168 +181,144 @@ const QString & IMtfDisplay::displayChannel() const
   return _displayChannel;
 }
 
-void IMtfDisplay::setMtfInputRange(double min, double max)
-{
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
-  if ( ii != _displays.end() ) {
-    ii->second.mtf.set_input_range(min, max);
-    Q_EMIT parameterChanged();
-  }
-}
+//void IMtfDisplay::setMtfInputRange(double min, double max)
+//{
+//  const DisplayMap::iterator ii = _displays.find(_displayChannel);
+//  if ( ii != _displays.end() ) {
+//    ii->second.mtf.set_input_range(min, max);
+//    Q_EMIT parameterChanged();
+//  }
+//}
 
 void IMtfDisplay::getMtfInputRange(double * min, double * max) const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.get_input_range(min, max);
   }
 }
 
-void IMtfDisplay::setMtf(double shadows, double highlights, double midtones)
+void IMtfDisplay::setMtf(double imin, double imax, const c_mtf_options * opts)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
-    ii->second.mtf.set_parameters(shadows,
-        highlights,
-        midtones);
-
+    ii->second.mtf.set_input_range(imin, imax);
+    if ( opts ) {
+      ii->second.mtf.set_opts(*opts);
+    }
     Q_EMIT parameterChanged();
   }
 }
 
-void IMtfDisplay::getMtf(double * shadows, double * highlights, double * midtones) const
+void IMtfDisplay::getMtf(c_mtf_options * opts) const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
-    ii->second.mtf.get_parameters(shadows,
-        highlights,
-        midtones);
+    * opts = ii->second.mtf.opts();
   }
 }
 
-void IMtfDisplay::setShadows(double shadows)
+void IMtfDisplay::setlclip(double v)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
+    ii->second.mtf.set_lclip(v);
+    Q_EMIT parameterChanged();
+  }
+}
 
-    ii->second.mtf.set_shadows(shadows);
+double IMtfDisplay::lclip() const
+{
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
+  return ii != _displays.end() ? ii->second.mtf.lclip() : 0;
+}
 
+void IMtfDisplay::sethclip(double v)
+{
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
+  if ( ii != _displays.end() ) {
+    ii->second.mtf.set_hclip(v);
+    Q_EMIT parameterChanged();
+  }
+}
+
+double IMtfDisplay::hclip() const
+{
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
+  return ii != _displays.end() ? ii->second.mtf.hclip() : 1;
+}
+
+void IMtfDisplay::setShadows(double v)
+{
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
+  if ( ii != _displays.end() ) {
+    ii->second.mtf.set_shadows(v);
     Q_EMIT parameterChanged();
   }
 }
 
 double IMtfDisplay::shadows() const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
-  return ii != _displays.end() ?
-      ii->second.mtf.shadows() :
-      0;
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
+  return ii != _displays.end() ? ii->second.mtf.shadows() : 1;
 }
 
-void IMtfDisplay::setHighlights(double highlights)
+void IMtfDisplay::setHighlights(double v)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
-    ii->second.mtf.set_highlights(highlights);
-
+    ii->second.mtf.set_highlights(v);
     Q_EMIT parameterChanged();
   }
 }
 
 double IMtfDisplay::highlights() const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
-  return ii != _displays.end() ?
-      ii->second.mtf.highlights() :
-      1;
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
+  return ii != _displays.end() ? ii->second.mtf.highlights() : 1;
 }
 
-void IMtfDisplay::setMidtones(double midtones)
+void IMtfDisplay::setMidtones(double v)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
-    ii->second.mtf.set_midtones(midtones);
-
+    ii->second.mtf.set_midtones(v);
     Q_EMIT parameterChanged();
   }
 }
 
 double IMtfDisplay::midtones() const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
-  return ii != _displays.end() ?
-      ii->second.mtf.midtones() :
-      0.5;
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
+  return ii != _displays.end() ? ii->second.mtf.midtones() : 0.5;
 }
 
 void IMtfDisplay::setColormap(COLORMAP v)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
     DisplayParams & p = ii->second;
-
-    createLut(p.colormap = v, p.lut,
-        p.invert_colormap);
-
+    createLut(p.colormap = v, p.lut, p.invert_colormap);
     Q_EMIT parameterChanged();
   }
 }
 
 COLORMAP IMtfDisplay::colormap() const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
     return ii->second.colormap;
   }
-
   return COLORMAP_NONE;
 }
 
 void IMtfDisplay::setInvertColormap(bool v)
 {
-  const DisplayMap::iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
-    DisplayParams & p =
-        ii->second;
-
+    DisplayParams & p = ii->second;
     if ( p.invert_colormap != v ) {
-
-      createLut(p.colormap, p.lut,
-          p.invert_colormap = v);
-
+      createLut(p.colormap, p.lut, p.invert_colormap = v);
       Q_EMIT parameterChanged();
     }
   }
@@ -350,14 +326,10 @@ void IMtfDisplay::setInvertColormap(bool v)
 
 bool IMtfDisplay::invertColormap() const
 {
-  const DisplayMap::const_iterator ii =
-      _displays.find(_displayChannel);
-
+  const DisplayMap::const_iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
-
     return ii->second.invert_colormap;
   }
-
   return false;
 }
 
@@ -376,9 +348,7 @@ bool IMtfDisplay::autoClip() const
 
 IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 {
-  DisplayMap::iterator pos =
-      _displays.find(_displayChannel);
-
+  DisplayMap::iterator pos = _displays.find(_displayChannel);
   if ( pos == _displays.end())  {
     CF_FATAL("FATAL APP BUG: displayType_='%s' not registered. displays_.size=%zu",
         _displayChannel.toUtf8().constData(),
@@ -391,16 +361,13 @@ IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 
 const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 {
-  DisplayMap::const_iterator pos =
-      _displays.find(_displayChannel);
-
+  DisplayMap::const_iterator pos = _displays.find(_displayChannel);
   if ( pos == _displays.end())  {
     CF_FATAL("APP BUG: displayType_='%s' not registered.displays_.size=%zu",
         _displayChannel.toUtf8().constData(),
         _displays.size());
     exit(1);
   }
-
   return pos->second;
 }
 

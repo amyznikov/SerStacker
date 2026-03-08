@@ -665,7 +665,7 @@ bool QInputSourceView::applyMtf(cv::InputArray currentImage, cv::InputArray curr
   DisplayParams &opts =
       displayParams();
 
-  c_pixinsight_mtf *mtf =
+  c_mtf *mtf =
       &opts.mtf;
 
   c_mtf_adjustment a;
@@ -729,11 +729,9 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
   switch (_currentViewType) {
     case DisplayType_Image:
       getminmax(_imageView->currentImage(), minval, maxval, _imageView->currentMask());
-      CF_DEBUG("minval=%g maxval=%g", *minval, *maxval);
       break;
     case DisplayType_PointCloud:
       getminmax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMask());
-      CF_DEBUG("minval=%g maxval=%g", *minval, *maxval);
       break;
     default:
       break;
@@ -776,6 +774,11 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 //
 //}
 
+
+void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
+{
+  displayParams().mtf.get_mtf_curve(cy, n);
+}
 
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
@@ -909,7 +912,7 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
   DisplayParams & opts =
       displayParams();
 
-  c_pixinsight_mtf *mtf =
+  c_mtf *mtf =
       &opts.mtf;
 
   c_mtf_adjustment a;
@@ -929,7 +932,9 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
   currentPoints.convertTo(displayPoints, CV_32F);
 
   adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMask, &a);
+  CF_DEBUG("mtf->apply");
   mtf->apply(currentColors, mtfcolors, CV_8U);
+  CF_DEBUG("mtf->apply OK");
   restoreMtfRange(mtf, a);
 
   if ( !mtfColors.fixedType() || mtfColors.type() == mtfcolors.type() ) {

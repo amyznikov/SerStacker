@@ -187,6 +187,7 @@ protected: // MTF
   void getInputDataRange(double * minval, double * maxval) const override;
   //void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getMtfCurve(std::vector<float> & cy, size_t n)  override;
 
 protected:
   c_input_source::sptr _currentSource;

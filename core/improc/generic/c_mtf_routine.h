@@ -9,7 +9,7 @@
 #ifndef __c_mtf_routine_h__
 #define __c_mtf_routine_h__
 
-#include <core/mtf/c_pixinsight_mtf.h>
+#include <core/mtf/mtf.h>
 #include <core/improc/c_image_processor.h>
 
 class c_mtf_routine :
@@ -29,7 +29,7 @@ protected:
   double _shadows = 0;
   double _highlights = 0;
   double _midtones = 0;
-  c_pixinsight_mtf _mtf;
+  c_mtf _mtf;
 };
 
 #endif /* __c_mtf_routine_h__ */

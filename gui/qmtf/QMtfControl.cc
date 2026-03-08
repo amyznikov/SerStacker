@@ -52,6 +52,13 @@ static void addStretch(QToolBar * toolbar)
   toolbar->addWidget(empty);
 }
 
+
+static void setValue(QDoubleSpinBox * ctl, double v)
+{
+  QSignalBlocker block(ctl);
+  ctl->setValue(v);
+}
+
 static void intit_mtfcontrol_resources()
 {
   Q_INIT_RESOURCE(qmtf_resources);
@@ -86,7 +93,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
 {
   intit_mtfcontrol_resources();
 
-  vbox_ = new QVBoxLayout(this);
+  _vbox = new QVBoxLayout(this);
 
   topToolbar_ctl = new QToolBar(this);
   topToolbar_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -108,9 +115,9 @@ QMtfControl::QMtfControl(QWidget * parent) :
       this, &ThisClass::onInputDataRangeChanged);
 
 
-  resetMtfAction_ = topToolbar_ctl->addAction(getIcon(ICON_reset), "Reset");
-  resetMtfAction_->setToolTip("Reset MTF clipping and recompute input data range");
-  connect(resetMtfAction_, &QAction::triggered,
+  _resetMtfAction = topToolbar_ctl->addAction(getIcon(ICON_reset), "Reset");
+  _resetMtfAction->setToolTip("Reset MTF clipping and recompute input data range");
+  connect(_resetMtfAction, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
 
@@ -176,97 +183,119 @@ QMtfControl::QMtfControl(QWidget * parent) :
   //displayChannel_ctl->setCurrentIndex(displayChannel_ctl->findData((int)levelsView_->displayChannel()));
 
   // configure mtf slider
-  mtfSlider_ctl = new QMtfSlider(this);
+  mtfSliderBand_ctl = new QMtfSliderBand(this);
   colormap_strip_ctl = new QLabel(this);
   //  colormap_strip_ctl->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
-  // configure toolbar2
+  // configure SpinBox toolbars
   bottomToolbar_ctl = new QToolBar(this);
   bottomToolbar_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
   bottomToolbar_ctl->setIconSize(QSize(16, 16));
 
-  for ( int i = 0; i < 3; ++i ) {
-    bottomToolbar_ctl->addWidget(spins[i] = new QDoubleSpinBox());
-    spins[i]->setKeyboardTracking(false);
-    spins[i]->setRange(0, 1);
-    spins[i]->setDecimals(3);
-    spins[i]->setSingleStep(0.01);
+  static const auto createSpinBox =
+      [](QWidget * parent, double minv, double maxv, double v) -> QDoubleSpinBox* {
+        QDoubleSpinBox * ctl = new QDoubleSpinBox(parent);
+        ctl->setKeyboardTracking(false);
+        ctl->setRange(minv, maxv);
+        ctl->setDecimals(3);
+        ctl->setSingleStep(0.001);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-    spins[i]->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
+        ctl->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
 #endif
-    if ( i < 2 ) {
-      addStretch(bottomToolbar_ctl);
-    }
-  }
+        ctl->setValue(v);
+        return ctl;
+      };
+
+
+  bottomToolbar_ctl->addWidget(lclip_ctl = createSpinBox(this, 0, 1, 0));
+  bottomToolbar_ctl->addWidget(shadows_ctl = createSpinBox(this, 0, 5, 1));
+  addStretch(bottomToolbar_ctl);
+  bottomToolbar_ctl->addWidget(midtones_ctl = createSpinBox(this, 0, 1, 0.5));
+  addStretch(bottomToolbar_ctl);
+  bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, 0, 5, 1));
+  bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1));
 
   // Combine layouts
-  vbox_->addWidget(topToolbar_ctl, 1);
-  vbox_->addWidget(levelsView_ctl, 1000);
-  vbox_->addWidget(mtfSlider_ctl, 1);
-  vbox_->addWidget(colormap_strip_ctl, 1);
-  vbox_->addWidget(bottomToolbar_ctl, 1);
+  _vbox->addWidget(topToolbar_ctl, 1);
+  _vbox->addWidget(levelsView_ctl, 1000);
+  _vbox->addWidget(mtfSliderBand_ctl, 1);
+  _vbox->addWidget(colormap_strip_ctl, 1);
+  _vbox->addWidget(bottomToolbar_ctl, 1);
 
   // Configure event handles
 
   connect(logScaleSelectionAction_, &QAction::triggered,
       levelsView_ctl, &QHistogramView::setLogScale);
 
-  connect(mtfSlider_ctl, &QMtfSlider::mtfChanged,
-      [this]() {
-        if ( displaySettings_ && !updatingControls() ) {
+  connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged,
+      [this](int slider, double value) {
+        if ( _displaySettings && !updatingControls() ) {
 
           c_update_controls_lock lock(this);
 
-          const double shadows =
-              mtfSlider_ctl->shadows();
+          const double shadows = shadows_ctl->value();
+          const double highlights = highlights_ctl->value();
 
-          const double highlights =
-              mtfSlider_ctl->highlights();
-
-          const double midtones =
-              mtfSlider_ctl->midtones();
-
-          spins[SPIN_SHADOWS]->setValue(shadows);
-          spins[SPIN_HIGHLIGHTS]->setValue(highlights);
-          spins[SPIN_MIDTONES]->setValue(midtones);
-
-          displaySettings_->setMtf(shadows, highlights, midtones);
+          if ( slider == QMtfSliderBand::SLIDER_LCLIP ) {
+            const double v = mtfSliderBand_ctl->lclip();
+            setValue(lclip_ctl, v);
+            _displaySettings->setlclip(v);
+          }
+          else if ( slider == QMtfSliderBand::SLIDER_HCLIP ) {
+            const double v = mtfSliderBand_ctl->hclip();
+            setValue(hclip_ctl, v);
+            _displaySettings->sethclip(v);
+          }
+          else if ( slider == QMtfSliderBand::SLIDER_MIDTONES ) {
+            const double v = mtfSliderBand_ctl->midtones();
+            setValue(midtones_ctl, v);
+            _displaySettings->setMidtones(v);
+          }
         }
       });
 
-  connect(spins[SPIN_SHADOWS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( displaySettings_ && !updatingControls() ) {
-
+        if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
-
-          displaySettings_->setShadows(v);
-          mtfSlider_ctl->setShadows(v);
+          mtfSliderBand_ctl->setlclip(v);
+          _displaySettings->setlclip(v);
         }
       });
 
-  connect(spins[SPIN_HIGHLIGHTS], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( displaySettings_ && !updatingControls() ) {
-
+        if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
-
-          displaySettings_->setHighlights(v);
-          mtfSlider_ctl->setHighlights(v);
+          mtfSliderBand_ctl->sethclip(v);
+          _displaySettings->sethclip(v);
         }
       });
 
-  connect(spins[SPIN_MIDTONES], static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
-        if ( displaySettings_ && !updatingControls() ) {
-
+        if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
-
-          displaySettings_->setMidtones(v);
-          mtfSlider_ctl->setMidtones(v);
+          mtfSliderBand_ctl->setMidtones(v);
+          _displaySettings->setMidtones(v);
         }
       });
 
+  connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+      [this](double v) {
+        if ( _displaySettings && !updatingControls() ) {
+          c_update_controls_lock lock(this);
+          _displaySettings->setShadows(v);
+        }
+      });
+
+  connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+      [this](double v) {
+        if ( _displaySettings && !updatingControls() ) {
+          c_update_controls_lock lock(this);
+          _displaySettings->setHighlights(v);
+        }
+      });
 
   displayChannel_ctl->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
   connect(displayChannel_ctl, &QWidget::customContextMenuRequested,
@@ -280,20 +309,20 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
 void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 {
-  if( displaySettings != this->displaySettings_ ) {
+  if( displaySettings != this->_displaySettings ) {
 
     c_update_controls_lock lock(this);
 
-    if( QObject * qobj = dynamic_cast<QObject*>(this->displaySettings_) ) {
+    if( QObject * qobj = dynamic_cast<QObject*>(this->_displaySettings) ) {
       qobj->disconnect(this);
     }
 
-    displaySettings_ = displaySettings;
+    _displaySettings = displaySettings;
     displayChannel_ctl->clear();
 
-    if( QObject * qobj = dynamic_cast<QObject*>(displaySettings_) ) {
+    if( QObject * qobj = dynamic_cast<QObject*>(_displaySettings) ) {
 
-      displayChannel_ctl->addItems(displaySettings_->displayChannels());
+      displayChannel_ctl->addItems(_displaySettings->displayChannels());
 
       connect(qobj, SIGNAL(displayImageChanged()),
           this, SLOT(onDisplayImageChanged()));
@@ -310,7 +339,7 @@ void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 
 IMtfDisplay * QMtfControl::displaySettings() const
 {
-  return displaySettings_;
+  return _displaySettings;
 }
 
 bool QMtfControl::isAutoMtfActionEnabled() const
@@ -327,16 +356,6 @@ QSize QMtfControl::historamViewSizeHint() const
 {
   return levelsView_ctl->sizeHint();
 }
-
-//bool QMtfControl::updatingControls() const
-//{
-//  return updatingControls_;
-//}
-//
-//void QMtfControl::setUpdatingControls(bool v)
-//{
-//  updatingControls_ = v;
-//}
 
 void QMtfControl::onChartTypeSelectorClicked()
 {
@@ -370,23 +389,23 @@ void QMtfControl::onChartTypeSelectorClicked()
 
 void QMtfControl::onResetMtfClicked()
 {
-  if( displaySettings_ ) {
+  if( _displaySettings ) {
 
     double imin = -1, imax = -1;
+    c_mtf_options opts;
 
-    displaySettings_->getMtfInputRange(&imin, &imax);
+    _displaySettings->getMtfInputRange(&imin, &imax);
 
     if( imin < imax ) {
       imin = imax = -1;
     }
     else {
       QWaitCursor wait(this);
-      displaySettings_->getInputDataRange(&imin, &imax);
+      _displaySettings->getInputDataRange(&imin, &imax);
     }
 
-    displaySettings_->setMtfInputRange(imin, imax);
-    displaySettings_->setMtf(0, 1, 0.5);
-    displaySettings_->saveParameters();
+    _displaySettings->setMtf(imin, imax, &opts);
+    _displaySettings->saveParameters();
 
     updateControls();
   }
@@ -394,9 +413,9 @@ void QMtfControl::onResetMtfClicked()
 
 void QMtfControl::onAutoMtfCtrlClicked()
 {
-  if ( displaySettings_ ) {
+  if ( _displaySettings ) {
 
-    displaySettings_->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
+    _displaySettings->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
 
 
     //    if ( autoMtf_ctl->isChecked() ) {
@@ -419,18 +438,18 @@ void QMtfControl::onAutoMtfCtrlClicked()
 
 void QMtfControl::onColormapCtlClicked()
 {
-  if( displaySettings_ ) {
+  if( _displaySettings ) {
 
     QMenu menu;
     QAction * invertColormapAction;
 
     const COLORMAP current_colormap =
-        displaySettings_->colormap();
+        _displaySettings->colormap();
 
 
     menu.addAction(invertColormapAction = new QAction("Invert colormap"));
     invertColormapAction->setCheckable(true);
-    invertColormapAction->setChecked(displaySettings_->invertColormap());
+    invertColormapAction->setChecked(_displaySettings->invertColormap());
     menu.addSeparator();
 
     for( const c_enum_member *colormap = members_of<COLORMAP>(); !colormap->name.empty(); ++colormap ) {
@@ -454,13 +473,13 @@ void QMtfControl::onColormapCtlClicked()
     if ( action ) {
 
       if( action == invertColormapAction ) {
-        displaySettings_->setInvertColormap(invertColormapAction->isChecked());
+        _displaySettings->setInvertColormap(invertColormapAction->isChecked());
       }
       else {
-        displaySettings_->setColormap((COLORMAP) action->data().toInt());
+        _displaySettings->setColormap((COLORMAP) action->data().toInt());
       }
 
-      displaySettings_->saveParameters();
+      _displaySettings->saveParameters();
 
       updateColormapPixmap();
     }
@@ -469,32 +488,29 @@ void QMtfControl::onColormapCtlClicked()
 
 void QMtfControl::onDisplayChannelCurrentItemChanged()
 {
-  if( displaySettings_ && !updatingControls() ) {
+  if( _displaySettings && !updatingControls() ) {
 
     c_update_controls_lock lock(this);
 
-    double shadows =
-        mtfSlider_ctl->shadows();
-
-    double highlights =
-        mtfSlider_ctl->highlights();
-
-    double midtones =
-        mtfSlider_ctl->midtones();
-
     double input_range[2] = { -1, -1 };
+    c_mtf_options opts;
 
     getInputDataRangeCtl(input_range);
 
-    displaySettings_->setDisplayChannel(displayChannel_ctl->currentText());
-    displaySettings_->saveParameters();
+    _displaySettings->setDisplayChannel(displayChannel_ctl->currentText());
+    _displaySettings->saveParameters();
 
-    displaySettings_->getMtf(&shadows, &highlights, &midtones);
-    displaySettings_->getMtfInputRange(&input_range[0], &input_range[1]);
+    _displaySettings->getMtf(&opts);
+    _displaySettings->getMtfInputRange(&input_range[0], &input_range[1]);
 
-    mtfSlider_ctl->setup(shadows, highlights, midtones);
+    setValue(lclip_ctl, opts.lclip);
+    setValue(hclip_ctl, opts.hclip);
+    setValue(midtones_ctl, opts.midtones);
+    setValue(shadows_ctl, opts.shadows);
+    setValue(highlights_ctl, opts.highlights);
+
+    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones);
     setInputDataRangeCtl(input_range);
-
   }
 }
 
@@ -511,14 +527,13 @@ void QMtfControl::setInputDataRangeCtl(const double range[2])
 
 void QMtfControl::onInputDataRangeChanged()
 {
-  if( displaySettings_ && !updatingControls() ) {
+  if( _displaySettings && !updatingControls() ) {
 
     double range[2] = {-1, -1};
 
     if( getInputDataRangeCtl(range) ) {
-
-      displaySettings_->setMtfInputRange(range[0], range[1]);
-      displaySettings_->saveParameters();
+      _displaySettings->setMtf(range[0], range[1]);
+      _displaySettings->saveParameters();
     }
   }
 }
@@ -557,7 +572,7 @@ void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
 
 void QMtfControl::findAutoHistogramClips()
 {
-  if( displaySettings_ ) {
+  if( _displaySettings ) {
 
 //    QWaitCursor wait(this);
 //
@@ -593,7 +608,7 @@ void QMtfControl::findAutoHistogramClips()
 
 void QMtfControl::findAutoMidtonesBalance()
 {
-  if( displaySettings_ ) {
+  if( _displaySettings ) {
 //    QWaitCursor wait(this);
 //
 //    c_pixinsight_mtf &mtf =
@@ -620,19 +635,22 @@ void QMtfControl::findAutoMidtonesBalance()
 
 void QMtfControl::updateHistogramLevels()
 {
-  if ( displaySettings_ && isVisible() ) {
+  if ( _displaySettings && isVisible() ) {
 
     double hmin = -1, hmax = -1;
     cv::Mat1f H;
+    std::vector<float> cy;
 
-    displaySettings_->getOutputHistogramm(H, &hmin, &hmax);
+    _displaySettings->getOutputHistogramm(H, &hmin, &hmax);
+    _displaySettings->getMtfCurve(cy, 256);
     levelsView_ctl->setHistogram(H, hmin, hmax);
+    levelsView_ctl->setMtfCurve(std::move(cy));
   }
 }
 
 void QMtfControl::updateColormapPixmap()
 {
-  if ( displaySettings_ ) {
+  if ( _displaySettings ) {
 
     cv::Mat1b gray_image(16, 256);
     QImage qimage;
@@ -644,7 +662,7 @@ void QMtfControl::updateColormapPixmap()
     }
 
     const COLORMAP cmap =
-        displaySettings_->colormap();
+        _displaySettings->colormap();
 
     if ( cmap == COLORMAP_NONE ) {
       cv2qt(gray_image, &qimage);
@@ -655,12 +673,12 @@ void QMtfControl::updateColormapPixmap()
       cv2qt(color_image, &qimage);
     }
 
-    if ( displaySettings_->invertColormap() ) {
+    if ( _displaySettings->invertColormap() ) {
 
       qimage = qimage.mirrored(true, false);
     }
 
-    colormap_pixmap_ =
+    _colormap_pixmap =
         QPixmap::fromImage(qimage);
 
   }
@@ -673,9 +691,9 @@ void QMtfControl::updateColormapStrip()
 {
   if ( colormap_strip_ctl ) {
 
-    colormap_strip_ctl->setPixmap( colormap_pixmap_.isNull() ?
-            colormap_pixmap_ :
-            colormap_pixmap_.scaled(mtfSlider_ctl->width(), colormap_pixmap_.height()));
+    colormap_strip_ctl->setPixmap( _colormap_pixmap.isNull() ?
+            _colormap_pixmap :
+            _colormap_pixmap.scaled(mtfSliderBand_ctl->width(), _colormap_pixmap.height()));
 
     colormap_strip_ctl->setMinimumSize(32, 16);
   }
@@ -701,13 +719,13 @@ void QMtfControl::hideEvent(QHideEvent *e)
 
 void QMtfControl::onDisplayChannelsChanged()
 {
-  if ( displaySettings_ ) {
+  if ( _displaySettings ) {
 
     c_update_controls_lock lock(this);
 
     displayChannel_ctl->clear();
-    displayChannel_ctl->addItems(displaySettings_->displayChannels());
-    displayChannel_ctl->setCurrentIndex(std::max(0, displayChannel_ctl->findText(displaySettings_->displayChannel())));
+    displayChannel_ctl->addItems(_displaySettings->displayChannels());
+    displayChannel_ctl->setCurrentIndex(std::max(0, displayChannel_ctl->findText(_displaySettings->displayChannel())));
   }
 }
 
@@ -719,39 +737,36 @@ void QMtfControl::onDisplayImageChanged()
 
 void QMtfControl::onupdatecontrols()
 {
-  if( !displaySettings_ ) {
+  if( !_displaySettings ) {
     setEnabled(false);
   }
   else {
 
     double input_range[2] = {-1, -1};
-    double shadows, highlights, midtones;
+    c_mtf_options opts;
+    //double shadows, highlights, midtones;
 
-    const QString & displayChannel = displaySettings_->displayChannel();
+    const QString & displayChannel = _displaySettings->displayChannel();
     int idx = displayChannel_ctl->findText(displayChannel);
-
-    // CF_DEBUG("displayChannel='%s' idx=%d", displayChannel.toUtf8().constData(), idx);
 
     displayChannel_ctl->setCurrentIndex(idx);
 
-    displaySettings_->getMtfInputRange(&input_range[0], &input_range[1]);
+    _displaySettings->getMtfInputRange(&input_range[0], &input_range[1]);
+    _displaySettings->getMtf(&opts);
+
     setInputDataRangeCtl(input_range);
 
-    displaySettings_->getMtf(&shadows, &highlights, &midtones);
-    mtfSlider_ctl->setup(shadows, highlights, midtones);
+    setValue(lclip_ctl, opts.lclip);
+    setValue(shadows_ctl, opts.shadows);
+    setValue(midtones_ctl, opts.midtones);
+    setValue(highlights_ctl, opts.highlights);
+    setValue(hclip_ctl, opts.hclip);
+    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones);
 
-    spins[SPIN_SHADOWS]->setValue(shadows);
-    spins[SPIN_HIGHLIGHTS]->setValue(highlights);
-    spins[SPIN_MIDTONES]->setValue(midtones);
     logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
 
-    const bool autoMtfChecked =
-        autoMtf_ctl->isChecked();
-
-    spins[SPIN_SHADOWS]->setEnabled(!autoMtfChecked);
-    spins[SPIN_HIGHLIGHTS]->setEnabled(!autoMtfChecked);
-    spins[SPIN_MIDTONES]->setEnabled(!autoMtfChecked);
-    mtfSlider_ctl->setEnabled(!autoMtfChecked);
+    const bool autoMtfChecked = autoMtf_ctl->isChecked();
+    mtfSliderBand_ctl->setEnabled(!autoMtfChecked);
 
     switch (selectedAutoMtfAction_) {
       case AutoMtfAction_AutoMtf:

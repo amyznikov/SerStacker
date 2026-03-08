@@ -27,17 +27,10 @@ QHistogramView::QHistogramView(QWidget * parent)
   resize(128, (int)(128 / 1.62));
 }
 
-void QHistogramView::setImage(cv::InputArray image, cv::InputArray mask)
-{
-  image_ = image.getMat();
-  mask_ = mask.getMat();
-  updateHistogram();
-}
-
 void QHistogramView::setLogScale(bool v)
 {
-  if ( logScale_ != v ) {
-    logScale_ = v;
+  if ( _logScale != v ) {
+    _logScale = v;
     if( isVisible() ) {
       //repaint();
       update();
@@ -47,14 +40,14 @@ void QHistogramView::setLogScale(bool v)
 
 bool QHistogramView::logScale() const
 {
-  return logScale_;
+  return _logScale;
 }
 
 
 void QHistogramView::setBackgroundColor(const QColor & v)
 {
-  if ( backgroundColor_ != v ) {
-    backgroundColor_ = v;
+  if ( _backgroundColor != v ) {
+    _backgroundColor = v;
     if( isVisible() ) {
       //repaint();
       update();
@@ -64,13 +57,13 @@ void QHistogramView::setBackgroundColor(const QColor & v)
 
 const QColor & QHistogramView::backgroundColor() const
 {
-  return backgroundColor_ ;
+  return _backgroundColor ;
 }
 
 void QHistogramView::setForegroundColor(const QColor & v)
 {
-  if ( foregroundColor_ != v ) {
-    foregroundColor_ = v;
+  if ( _foregroundColor != v ) {
+    _foregroundColor = v;
     if( isVisible() ) {
       //repaint();
       update();
@@ -80,13 +73,13 @@ void QHistogramView::setForegroundColor(const QColor & v)
 
 const QColor & QHistogramView::foregroundColor() const
 {
-  return foregroundColor_;
+  return _foregroundColor;
 }
 
 void QHistogramView::setChartType(ChartType v)
 {
-  if ( chartType_ != v ) {
-    chartType_ = v;
+  if ( _chartType != v ) {
+    _chartType = v;
     if ( isVisible() ) {
       //repaint();
       update();
@@ -96,13 +89,13 @@ void QHistogramView::setChartType(ChartType v)
 
 QHistogramView::ChartType QHistogramView::chartType() const
 {
-  return chartType_;
+  return _chartType;
 }
 
 void QHistogramView::setDisplayChannel(DisplayChannel v)
 {
-  if ( displayChannel_ != v ) {
-    displayChannel_ = v;
+  if ( _displayChannel != v ) {
+    _displayChannel = v;
     if ( isVisible() ) {
       //repaint();
       update();
@@ -112,7 +105,7 @@ void QHistogramView::setDisplayChannel(DisplayChannel v)
 
 QHistogramView::DisplayChannel QHistogramView::displayChannel() const
 {
-  return displayChannel_;
+  return _displayChannel;
 }
 
 void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
@@ -146,39 +139,24 @@ void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
   }
 }
 
-void QHistogramView::updateHistogram()
+void QHistogramView::setMtfCurve(std::vector<float> && cy)
 {
-  double hmin = -1;
-  double hmax = -1;
-
-  if( image_.empty() ) {
-    H.release();
-    LH.release();
+  _cy = cy;
+  if( isVisible() ) {
+    // repaint();
+    update();
   }
-  else {
-    QWaitCursor wait(this);
-    if( !create_histogram(image_, mask_, H, &hmin, &hmax) ) {
-      CF_ERROR("create_image_histogram() fails");
-      H.release();
-      LH.release();
-    }
-  }
-
-  CF_DEBUG("Call setHistogram");
-  setHistogram(H, hmin, hmax);
 }
-
 
 void QHistogramView::setSizeHint(const QSize & s)
 {
-  sizeHint_ = s;
+  _sizeHint = s;
 }
-
 
 QSize QHistogramView::sizeHint() const
 {
-  if ( !sizeHint_.isEmpty() ) {
-    return sizeHint_;
+  if ( !_sizeHint.isEmpty() ) {
+    return _sizeHint;
   }
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
@@ -247,7 +225,7 @@ void QHistogramView::drawBarChart(QPainter & p) const
   const int h = b - t;
 
   const cv::Mat1f levels =
-      logScale_ ? LH : H;
+      _logScale ? LH : H;
 
   for ( int c = 0; c < levels.cols; ++c ) {
 
@@ -300,7 +278,7 @@ void QHistogramView::drawLineChart(QPainter & p) const
 
 
   const cv::Mat1f levels =
-      logScale_ ? LH : H;
+      _logScale ? LH : H;
 
   for ( int c = 0; c < levels.cols; ++c ) {
 
@@ -326,6 +304,47 @@ void QHistogramView::drawLineChart(QPainter & p) const
   }
 }
 
+void QHistogramView::drawMtfCurve(QPainter & p) const
+{
+  if ( !_cy.empty() ) {
+
+    QPainterPath path;
+
+    QPen pen;
+    pen.setColor(Qt::black);
+    pen.setWidth(2);
+    p.setPen(pen);
+
+    const QSize size = this->size();
+    const int l = MARGIN;
+    const int t = MARGIN;
+    const int r = size.width() - MARGIN - 1;
+    const int b = size.height() - MARGIN - 1;
+    const int w = r - l;
+    const int h = b - t;
+
+    int prev_xpix = l;
+    int prev_ypix = (int)(b - _cy[0] * h);
+
+    for ( size_t i = 0, n = _cy.size(); i < n; ++i ) {
+      const float x = (float)(i) / n;
+      const float y = _cy[i];
+
+      const int xpix = (int) (l + x * w);
+      const int ypix = (int) (b - y * h);
+
+      if ( xpix != prev_xpix || ypix != prev_ypix ) {
+        path.moveTo(prev_xpix, prev_ypix);
+        path.lineTo(xpix, ypix);
+        prev_xpix = xpix;
+        prev_ypix = ypix;
+      }
+    }
+
+    p.drawPath(path);
+  }
+}
+
 void QHistogramView::paintEvent(QPaintEvent *event)
 {
   const QSize size = this->size();
@@ -333,13 +352,13 @@ void QHistogramView::paintEvent(QPaintEvent *event)
   QPainter p(this);
 
   p.fillRect(0, 0, size.width(), size.height(),
-      backgroundColor_); // palette().window().color()/**/
+      _backgroundColor); // palette().window().color()/**/
 
   if ( size.width() <= 2 * MARGIN || size.height() <= 2 * MARGIN ) {
     return;  // too small wiindow
   }
 
-  switch ( chartType_ ) {
+  switch ( _chartType ) {
   case ChartType_Lines :
     drawLineChart(p);
     break;
@@ -348,6 +367,7 @@ void QHistogramView::paintEvent(QPaintEvent *event)
     break;
   }
 
+  drawMtfCurve(p);
   drawMajorGrid(p);
   drawBorder(p);
 }

@@ -166,7 +166,7 @@ bool c_adaptive_gaussian_blur_routine::process(cv::InputOutputArray image, cv::I
       return true;
     }
 
-    cv::divide(ramp, tex, edges);
+    cv::divide(ramp, tex, edges, 1.0, CV_32F);
 
     double xmin, xmax;
     calculateSBounds(edges, &xmin, &xmax, qmin, qmax);
@@ -219,7 +219,7 @@ bool c_adaptive_gaussian_blur_routine::process(cv::InputOutputArray image, cv::I
     }
   }
 
-  cv::add(lpass, detail, image);
+  cv::add(lpass, detail, image, mask, src.depth());
 
   return true;
 }

@@ -668,7 +668,7 @@ void normalizeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst, bool isCumula
 * @param realLow - [out] low clipping levels by channel
 * @param realHigh - [out] high clipping levels by channel
 *  */
-bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
+bool computeHistogramClipLevels(cv::InputArray cumulativeNormalizedHistogram,
     double vMin, double vMax,
     double qLow, double qHigh,
     cv::Scalar & realLow,
@@ -895,7 +895,7 @@ bool histogramClipWhiteBalance(cv::InputArray srcImage, cv::InputArray srcMask, 
   }
 
   cv::Scalar lowLvl, highLvl;
-  computeClipLevels(H, minv, maxv, qlow, qhigh, lowLvl, highLvl);
+  computeHistogramClipLevels(H, minv, maxv, qlow, qhigh, lowLvl, highLvl);
 
   // Calculate the "safe" global range (covering all channels)
   double globalLow = DBL_MAX;

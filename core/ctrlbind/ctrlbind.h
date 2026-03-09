@@ -241,6 +241,25 @@ void ctlbind_group(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Root
   ctls.emplace_back(c);
 }
 
+template<class RootObjectType, class StructType>
+void ctlbind_group(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    const std::function<bool(const StructType *)> & eneblefn)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.ctype = BindType::CtlType::BeginGroup;
+  c.enabled = [offset = ctx.offset, eneblefn](const RootObjectType * obj) {
+    if ( obj ) {
+      const StructType * sobj = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+      return eneblefn(sobj);
+    }
+    return false;
+  };
+
+  ctls.emplace_back(c);
+}
+
 
 
 template<class RootObjectType>

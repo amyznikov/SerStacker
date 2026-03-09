@@ -11,19 +11,22 @@
 
 void c_histogram_normalization_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-   ctlbind(ctls, "colorid", ctx(&this_class::_colorid), "");
-   ctlbind(ctls, "normalize", ctx(&this_class::_normalization_type), "");
-   ctlbind(ctls, "offset", ctx(&this_class::_offset), "");
-   ctlbind(ctls, "stretch", ctx(&this_class::_stretch), "");
+  ctlbind(ctls, "colorid", ctx(&this_class::colorid), "");
+  ctlbind(ctls, ctx(&this_class::opts));
+  //   ctlbind(ctls, "colorid", ctx(&this_class::_colorid), "");
+  //   ctlbind(ctls, "normalize", ctx(&this_class::_normalization_type), "");
+  //   ctlbind(ctls, "offset", ctx(&this_class::_offset), "");
+  //   ctlbind(ctls, "stretch", ctx(&this_class::_stretch), "");
 }
 
 bool c_histogram_normalization_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _normalization_type);
-    SERIALIZE_OPTION(settings, save, *this, _colorid);
-    SERIALIZE_OPTION(settings, save, *this, _stretch);
-    SERIALIZE_OPTION(settings, save, *this, _offset);
+    SERIALIZE_OPTION(settings, save, *this, colorid);
+    SERIALIZE_OPTION(settings, save, opts, norm_type);
+    SERIALIZE_OPTION(settings, save, opts, stretch);
+    SERIALIZE_OPTION(settings, save, opts, offset);
+    SERIALIZE_OPTION(settings, save, opts, clipRange);
     return true;
   }
   return false;
@@ -35,7 +38,8 @@ bool c_histogram_normalization_routine::serialize(c_config_setting settings, boo
 bool c_histogram_normalization_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( !image.empty() ) {
-    nomalize_image_histogramm(image, mask, image, _normalization_type, _stretch, _offset, _colorid);
+    nomalizeImageHistogram(image.getMat(), mask.getMat(), image, opts, colorid);
+    //nomalize_image_histogramm(image, mask, image, _normalization_type, _stretch, _offset, _colorid);
   }
   return true;
 }

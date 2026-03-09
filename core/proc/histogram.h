@@ -65,7 +65,7 @@ void normalizeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst,
 * @param realLow - [out] low clipping levels by channel
 * @param realHigh - [out] high clipping levels by channel
 *  */
-bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
+bool computeHistogramClipLevels(cv::InputArray cumulativeNormalizedHistogram,
     double vMin, double vMax,
     double qLow, double qHigh,
     cv::Scalar & realLow,

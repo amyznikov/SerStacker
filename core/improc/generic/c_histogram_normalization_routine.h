@@ -25,10 +25,12 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  COLORID _colorid = COLORID_UNKNOWN;
-  histogram_normalization_type _normalization_type = histogram_normalize_mean;
-  cv::Scalar _offset = cv::Scalar::all(0);
-  cv::Scalar _stretch = cv::Scalar::all(1);
+  COLORID colorid = COLORID_UNKNOWN;
+  c_histogram_normalization_options opts;
+
+//  histogram_normalization_type _normalization_type = histogram_normalize_mean;
+//  cv::Scalar _offset = cv::Scalar::all(0);
+//  cv::Scalar _stretch = cv::Scalar::all(1);
 };
 
 #endif /* __c_histogram_normalization_routine_h__ */

@@ -19,6 +19,7 @@ const c_enum_member * members_of<histogram_normalization_type>()
       { histogram_normalize_mean, "mean" },
       { histogram_normalize_median, "median" },
       { histogram_normalize_mode, "mode" },
+      { histogram_normalize_clip_ramge, "clip" },
       { histogram_normalize_mean }  // must  be last
   };
 
@@ -106,15 +107,15 @@ static inline bool is_floating_type(int depth)
   return depth == CV_32F || depth == CV_64F;
 }
 
-static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
+static cv::Scalar computeImageMode(cv::InputArray image, cv::InputArray mask)
 {
-  const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
+  const uint32_t nbins = 0;
   double minv = -1, maxv = -1;
   cv::Mat1d H;
 
   bool fOK =
       createHistogram(image,
-          _mask,
+          mask,
           &minv,
           &maxv,
           nbins,
@@ -123,48 +124,22 @@ static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv:
           false);
 
   if( !fOK ) {
-    CF_ERROR("create_histogram() fails");
+    CF_ERROR("createHistogram() fails");
     return cv::Scalar();
   }
 
   return computeHistogramMode(H, minv, maxv);
-
-//  cv::Scalar s;
-
-//  for( int c = 0, n = (std::min)(4, H.cols); c < n; ++c ) {
-//
-//    if( H.rows < 2 ) {
-//      s[c] = minv;
-//    }
-//    else {
-//
-//      int jmax = 0;
-//
-//      float hmax = H[jmax][c];
-//
-//      for( int j = 1, m = H.rows; j < m; ++j ) {
-//        if( H[j][c] > hmax ) {
-//          jmax = j;
-//          hmax = H[j][c];
-//        }
-//      }
-//
-//      s[c] = minv + jmax * (maxv - minv) / (H.rows - 1);
-//    }
-//  }
-//
-//  return s;
 }
 
-static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
+static cv::Scalar computeImageMedian(cv::InputArray image, cv::InputArray mask)
 {
-  const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
+  const uint32_t nbins = 0;
   double minv = -1, maxv = -1;
   cv::Mat1d H;
 
   bool fOK =
       createHistogram(image,
-          _mask,
+          mask,
           &minv,
           &maxv,
           nbins,
@@ -178,42 +153,176 @@ static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = c
   }
 
   return computeHistogramMedian(H, minv, maxv);
-
-//  cv::Scalar s;
-//
-//  for( int c = 0; c < H.cols; ++c ) {
-//    if( H.rows < 2 ) {
-//      s[c] = minv;
-//      continue;
-//    }
-//
-//    // Step of one bin in data units
-//    const double binWidth = (maxv - minv) / H.rows;
-//
-//    for( int r = 0; r < H.rows; ++r ) {
-//      // Value in the current bin already normalized into 0..1
-//      const double val = H(r, c);
-//      if( val >= 0.5 ) {
-//        if( r == 0 ) {
-//          // Even if the first bin is already >= 0.5, the median is at the very beginning
-//          const double fraction = 0.5 / val;
-//          s[c] = minv + fraction * binWidth;
-//        }
-//        else {
-//          // Take the previous value for interpolation
-//          const double prevVal = H(r - 1, c);
-//          // How far 0.5 has moved from the previous bin to the current one
-//          const double fraction = (0.5 - prevVal) / (val - prevVal);
-//          // Final formula
-//          s[c] = minv + ((double) (r - 1) + fraction) * binWidth;
-//        }
-//        break;
-//      }
-//    }
-//  }
-//
-//  return s;
 }
+
+static bool computeImageClips(cv::InputArray image, cv::InputArray mask, double qLow, double qHigh,
+    cv::Scalar & lvlLow, cv::Scalar & lvlHigh)
+{
+  const uint32_t nbins = 0;
+  double minv = -1, maxv = -1;
+  cv::Mat1d H;
+
+  bool fOK =
+      createHistogram(image,
+          mask,
+          &minv,
+          &maxv,
+          nbins,
+          H,
+          true,
+          true);
+
+  if( !fOK ) {
+    CF_ERROR("createHistogram() fails");
+    return false;
+  }
+
+  return computeHistogramClipLevels(H, minv, maxv, qLow, qHigh, lvlLow, lvlHigh);
+}
+
+// dst = (src - mv) * stretch + offset
+// => dst = src * stretch + offset - mv * stretch
+
+bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
+    const c_histogram_normalization_options & opts,
+    enum COLORID src_colorid)
+{
+  cv::Mat src;
+  cv::Mat msk;
+
+  const bool isBayerPattern = is_bayer_pattern(src_colorid);
+  if ( !isBayerPattern ) {
+    src = image.getMat();
+    msk = mask.getMat();
+  }
+  else {
+    if( src.channels() != 1 ) {
+      CF_ERROR("Invalid number of image channels %d for bayer pattern %s. Must be 1",
+          src.channels(), toCString(src_colorid));
+      return false;
+    }
+
+    if( (src.rows & 0x1) || (src.cols & 0x1)  ) {
+      CF_ERROR("Invalid image size %dx%d for Bayer pattern '%s', must be even",
+          src.cols, src.rows,  toCString(src_colorid));
+      return false;
+    }
+
+    if ( !extract_bayer_planes(image, src, src_colorid) ) {
+      CF_ERROR("extract_bayer_planes() fails for colorid=%d ('%s')",
+          (int)src_colorid, toCString(src_colorid));
+      return false;
+    }
+  }
+
+  static const auto stretchLevels =
+      [](cv::InputArray src, cv::OutputArray dst, const cv::Scalar & mv,
+          const c_histogram_normalization_options & opts, bool isBayerPattern) {
+
+            switch (src.channels()) {
+              case 1: {
+                const cv::Matx12f m(opts.stretch(0), opts.offset(0) - mv(0) * opts.stretch(0));
+                cv::transform(src, dst, m);
+                break;
+              }
+              case 2: {
+                const cv::Matx23f m(opts.stretch(0), 0, opts.offset(0) - mv(0) * opts.stretch(0),
+                    0, opts.stretch(1), opts.offset(1) - mv(1) * opts.stretch(1));
+                cv::transform(src, dst, m);
+                break;
+              }
+              case 3: {
+                const cv::Matx34f m(opts.stretch(0), 0, 0, opts.offset(0) - mv(0) * opts.stretch(0),
+                    0, opts.stretch(1), 0, opts.offset(1) - mv(1) * opts.stretch(1),
+                    0, 0, opts.stretch(2), opts.offset(2) - mv(2) * opts.stretch(2));
+                cv::transform(src, dst, m);
+                break;
+              }
+              case 4: {
+                  typedef cv::Matx<float, 4, 5> Matx45f;
+                  Matx45f m = Matx45f::zeros();
+                  m(0, 0) = opts.stretch(0), m(0, 4) = opts.offset(0) - mv(0) * opts.stretch(0);
+                  m(1, 1) = opts.stretch(1), m(1, 4) = opts.offset(1) - mv(1) * opts.stretch(1);
+                  m(2, 2) = opts.stretch(2), m(2, 4) = opts.offset(2) - mv(2) * opts.stretch(2);
+                  m(3, 3) = opts.stretch(3), m(3, 4) = opts.offset(3) - mv(3) * opts.stretch(3);
+
+                  if ( !isBayerPattern ) {
+                    cv::transform(src, dst, m);
+                  }
+                  else {
+                    cv::Mat tmp;
+                    cv::transform(src, tmp, m);
+                    bayer_planes_to_bgr(tmp, dst);
+                  }
+              }
+              break;
+            }
+          };
+
+  switch (opts.norm_type) {
+
+    case histogram_normalize_mean:
+      stretchLevels(image, dst, cv::mean(src, msk), opts, isBayerPattern);
+      break;
+
+    case histogram_normalize_mode:
+      stretchLevels(image, dst, computeImageMode(src, msk), opts, isBayerPattern);
+      break;
+
+    case histogram_normalize_median:
+      stretchLevels(image, dst, computeImageMedian(src, msk), opts, isBayerPattern);
+      break;
+
+    case histogram_normalize_clip_ramge: {
+
+      std::vector<cv::Mat> channels;
+      cv::Scalar lvlLow, lvlHigh;
+      double globalLow = DBL_MAX;
+      double globalHigh = -DBL_MAX;
+
+      computeImageClips(src, msk, opts.clipRange[0], opts.clipRange[1], lvlLow, lvlHigh);
+
+      const int cn = image.channels();
+      for( int c = 0; c < cn; ++c ) {
+        if( lvlLow[c] < globalLow ) {
+          globalLow = lvlLow[c];
+        }
+        if( lvlHigh[c] > globalHigh ) {
+          globalHigh = lvlHigh[c];
+        }
+      }
+
+      cv::split(image, channels);
+
+      const double targetRange = globalHigh - globalLow;
+      for( int c = 0; c < cn; ++c ) {
+        const double channelRange = lvlHigh[c] - lvlLow[c];
+        if( channelRange > 1e-10 ) {
+          const double scale = targetRange / channelRange;
+          const double shift = globalLow - (lvlLow[c] * scale);
+          channels[c].convertTo(channels[c], -1, scale * opts.stretch[c], shift + opts.offset[c]);
+        }
+      }
+
+      if ( !isBayerPattern ) {
+        cv::merge(channels, dst);
+      }
+      else {
+        cv::merge(channels, src);
+        bayer_planes_to_bgr(src, dst);
+      }
+      break;
+    }
+
+    default:
+      CF_ERROR("Invalid norm_type=%d requested", opts.norm_type);
+      return false;
+  }
+
+  return true;
+}
+
+
 
 
 
@@ -258,22 +367,22 @@ bool nomalize_image_histogramm(cv::InputArray _src, cv::InputArray mask, cv::Out
 
     case histogram_normalize_mode:
       if( !is_bayer ) {
-        mv = compute_mode(src, mask);
+        mv = computeImageMode(src, mask);
       }
       else {
         for( int i = 0; i < 4; ++i ) {
-          mv[i] = compute_mode(src, bayer_masks[i])[0];
+          mv[i] = computeImageMode(src, bayer_masks[i])[0];
         }
       }
       break;
 
     case histogram_normalize_median:
       if( !is_bayer ) {
-        mv = compute_median(src, mask);
+        mv = computeImageMedian(src, mask);
       }
       else {
         for( int i = 0; i < 4; ++i ) {
-          mv[i] = compute_median(src, bayer_masks[i])[0];
+          mv[i] = computeImageMedian(src, bayer_masks[i])[0];
         }
       }
       break;

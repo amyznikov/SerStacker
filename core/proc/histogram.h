@@ -37,4 +37,47 @@ bool createHistogram(cv::InputArrayOfArrays src,
     int ddepth = -1);
 
 
+/**
+ * Converts a regular histogram to a cumulative one.
+ * If Hdst has a fixed type (e.g., cv::Mat1f was passed),
+ * the result will be converted to it. Otherwise, the type is inherited from Hsrc.
+ *  */
+void makeCumulativeHistogram(cv::InputArray Hsrc,
+    cv::OutputArray Hdst);
+
+
+/**
+* Normalizes each histogram column independently to the range [0, 1].
+* If isCumulative == true, normalization is performed by the last element of the column.
+* Otherwise, normalization is performed by the maximum value in the column.
+*  */
+void normalizeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst,
+    bool isCumulative = false);
+
+/**
+* Compute the actual clipping levels for each channel.
+*
+* @param cumulativeNormalizedHistogram - cumulative normalized histogram (CV_64F, nbins x cn)
+* @param vMin - minimum histogram scale (from createHistogram)
+* @param vMax - maximum histogram scale (from createHistogram)
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+* @param realLow - [out] low clipping levels by channel
+* @param realHigh - [out] high clipping levels by channel
+*  */
+bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
+    double vMin, double vMax,
+    double qLow, double qHigh,
+    cv::Scalar & realLow,
+    cv::Scalar & realHigh);
+
+
+/**
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+*  */
+bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray srcMask,
+    cv::OutputArray dst,
+    double qlow, double qhigh);
+
 #endif /* ___histogram_h___ */

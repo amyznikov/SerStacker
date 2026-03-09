@@ -6,7 +6,7 @@
  */
 
 #include "c_histogram_white_balance_routine.h"
-#include <core/proc/white_balance/histogram_white_balance.h>
+#include <core/proc/histogram.h>
 #include <core/proc/reduce_channels.h>
 
 void c_histogram_white_balance_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
@@ -52,9 +52,5 @@ bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::
     }
   }
 
-  return histogram_white_balance(image.getMatRef(),
-      objmask,
-      image.getMatRef(),
-      _lclip,
-      _hclip);
+  return histogramClipWhiteBalance(image.getMat(), objmask, image, 0.01 * _lclip, 0.01 * _hclip);
 }

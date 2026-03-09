@@ -358,7 +358,7 @@ static void findGlobalMinMax(const std::vector<cv::Mat> & srcv, const std::vecto
 }
 
 
-static bool suggest_histogram_options(int depth, const std::vector<cv::Mat> & srcv, const std::vector<cv::Mat> & maskv,
+static bool suggestHistogramOptions(int depth, const std::vector<cv::Mat> & srcv, const std::vector<cv::Mat> & maskv,
     /*in, out*/ double * minv, /*in, out*/ double * maxv, /*in, out*/ uint32_t * nbins)
 {
   const bool useFullTypeRange = (*minv < -0.5 && *maxv < -0.5);
@@ -444,8 +444,6 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
     bool scaled,
     int ddepth)
 {
-  CF_DEBUG("H");
-
   std::vector<cv::Mat> srcv, maskv;
 
   if (src.kind() == cv::_InputArray::MAT) {
@@ -510,7 +508,7 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
     }
   }
 
-  if ( !suggest_histogram_options(max_depth, srcv, maskv, minv, maxv, &nbins) ) {
+  if ( !suggestHistogramOptions(max_depth, srcv, maskv, minv, maxv, &nbins) ) {
     CF_ERROR("suggest_histogram_options() fails");
     return false;
   }
@@ -584,6 +582,219 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
 
   return true;
 }
+
+/**
+ * Converts a regular histogram to a cumulative one.
+ * If Hdst has a fixed type (e.g., cv::Mat1f was passed),
+ * the result will be converted to it. Otherwise, the type is inherited from Hsrc.
+ *  */
+void makeCumulativeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst)
+{
+  if( Hsrc.empty() ) {
+    Hdst.release();
+    return;
+  }
+
+  cv::Mat src = Hsrc.getMat();
+  const int targetDepth = Hdst.fixedType() ? Hdst.depth() : src.depth();
+
+  cv::Mat1d tmp;
+  src.convertTo(tmp, CV_64F);
+
+  const int rows = tmp.rows;
+  const int cols = tmp.cols;
+  for( int c = 0; c < cols; ++c ) {
+    double sum = 0;
+    for( int r = 0; r < rows; ++r ) {
+      sum += tmp(r, c);
+      tmp(r, c) = sum;
+    }
+  }
+
+  tmp.convertTo(Hdst, targetDepth);
+}
+
+/**
+ * Normalizes each histogram column independently to the range [0, 1].
+ * If isCumulative == true, normalization is performed by the last element of the column.
+ * Otherwise, normalization is performed by the maximum value in the column.
+ *  */
+void normalizeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst, bool isCumulative)
+{
+  if( Hsrc.empty() ) {
+    Hdst.release();
+    return;
+  }
+
+  cv::Mat src = Hsrc.getMat();
+
+  const int targetDepth = Hdst.fixedType() ? Hdst.depth() : src.depth();
+
+  cv::Mat1d tmp;
+  src.convertTo(tmp, CV_64F);
+
+  const int rows = tmp.rows;
+  const int cols = tmp.cols;
+  for( int c = 0; c < cols; ++c ) {
+    double mv = 0;
+
+    if( isCumulative && rows > 0 ) {
+      // In a cumulative histogram, the maximum is always in the last cell
+      mv = tmp(rows - 1, c);
+    }
+    else {
+      // Find the actual maximum in the column
+      cv::minMaxLoc(tmp.col(c), nullptr, &mv);
+    }
+
+    // Normalize the column if it is not empty
+    if( mv > 1e-12 ) {
+      tmp.col(c) /= mv;
+    }
+  }
+
+  tmp.convertTo(Hdst, targetDepth);
+}
+
+
+/**
+* Compute the actual clipping levels for each channel.
+*
+* @param cumulativeNormalizedHistogram - cumulative normalized histogram (CV_64F, nbins x cn)
+* @param vMin - minimum histogram scale (from createHistogram)
+* @param vMax - maximum histogram scale (from createHistogram)
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+* @param realLow - [out] low clipping levels by channel
+* @param realHigh - [out] high clipping levels by channel
+*  */
+bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
+    double vMin, double vMax,
+    double qLow, double qHigh,
+    cv::Scalar & realLow,
+    cv::Scalar & realHigh)
+{
+  if( cumulativeNormalizedHistogram.empty() ) {
+    return false;
+  }
+
+  // Need double precision for interpolation
+  cv::Mat H = cumulativeNormalizedHistogram.getMat();
+  if( H.depth() != CV_64F ) {
+    H.convertTo(H, CV_64F);
+  }
+
+  const int nbins = H.rows;
+  const int cn = (std::min)(4, H.cols); // Scalar supports up to 4 channels
+  const double binWidth = (vMax - vMin) / nbins;
+
+  realLow = cv::Scalar::all(vMin);
+  realHigh = cv::Scalar::all(vMax);
+
+  for( int c = 0; c < cn; ++c ) {
+    // Search for the lower threshold qLow
+    for( int j = 0; j < nbins; ++j ) {
+      double val = H.at<double>(j, c);
+      if( val >= qLow ) {
+        double idx;
+        if( j == 0 ) {
+          idx = (val > 1e-12) ? (qLow / val) : 0.0;
+        }
+        else {
+          double prev = H.at<double>(j - 1, c);
+          double diff = val - prev;
+          double fraction = (diff > 1e-12) ? (qLow - prev) / diff : 0.0;
+          idx = (double) (j - 1) + fraction;
+        }
+        realLow[c] = vMin + idx * binWidth;
+        break;
+      }
+    }
+
+    // Search for the upper threshold qHigh
+    for( int j = 0; j < nbins; ++j ) {
+      double val = H.at<double>(j, c);
+      if( val >= qHigh ) {
+        double idx;
+        if( j == 0 ) {
+          idx = (val > 1e-12) ? (qHigh / val) : 0.0;
+        }
+        else {
+          double prev = H.at<double>(j - 1, c);
+          double diff = val - prev;
+          double fraction = (diff > 1e-12) ? (qHigh - prev) / diff : 0.0;
+          idx = (double) (j - 1) + fraction;
+        }
+        realHigh[c] = vMin + idx * binWidth;
+        break;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+*  */
+bool histogramClipWhiteBalance(cv::InputArray srcImage, cv::InputArray srcMask, cv::OutputArray dstImage,
+    double qlow, double qhigh)
+{
+  if( srcImage.empty() || srcImage.channels() < 2 ) {
+    srcImage.copyTo(dstImage);
+    return true;
+  }
+
+  const int cn = srcImage.channels();
+  const int depth = srcImage.depth();
+
+  cv::Mat1d H;
+  double minv = -1.0, maxv = -1.0;
+  const uint32_t nbins = depth >= CV_16U ? 16384U : 0; // allow auto for 8bit
+  if( !createHistogram(srcImage, srcMask, &minv, &maxv, nbins, H, true, true) ) {
+    return false;
+  }
+
+  cv::Scalar lowLvl, highLvl;
+  computeClipLevels(H, minv, maxv, qlow, qhigh, lowLvl, highLvl);
+
+  // Calculate the "safe" global range (covering all channels)
+  double globalLow = DBL_MAX;
+  double globalHigh = -DBL_MAX;
+  for( int c = 0; c < cn; ++c ) {
+    if( lowLvl[c] < globalLow ) {
+      globalLow = lowLvl[c];
+    }
+    if( highLvl[c] > globalHigh ) {
+      globalHigh = highLvl[c];
+    }
+  }
+
+
+  // Apply the correction to each channel individually
+  // Formula for channel c: dst_c = (src_c - low_c) * (targetRange / currentRange) + avgLow
+  std::vector<cv::Mat> channels;
+  cv::split(srcImage.getMat(), channels);
+
+  const double targetRange = globalHigh - globalLow;
+
+  for( int c = 0; c < cn; ++c ) {
+    const double channelRange = highLvl[c] - lowLvl[c];
+    // If the channel is almost empty, leave it alone to avoid increasing noise
+    if( channelRange > 1e-10 ) {
+      const double scale = targetRange / channelRange;
+      const double shift = globalLow - (lowLvl[c] * scale);
+      channels[c].convertTo(channels[c], -1, scale, shift);
+    }
+  }
+
+  cv::merge(channels, dstImage);
+
+  return true;
+}
+
+
 
 //double calculateQuantile(const cv::Mat1d& Hcum, double Q, double minv, double maxv) {
 //    const int n = Hcum.rows;

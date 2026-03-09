@@ -59,7 +59,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
   if ( mask.empty() ) {
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, src_rows),
-        [&src, &dst, &math, src_rows, src_cols, src_channels, dst_channels] (const tbb_range & range) {
+        [=, &src, &dst, &math] (const tbb_range & range) {
 
       double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
@@ -87,7 +87,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
         for( int c = 0; c < dst_channels; ++c ) {
           args[6] = c;
           args[7] = srcp[x * src_channels + c];
-          dstp[x * dst_channels + c] = math.eval(args);
+          dstp[x * dst_channels + c] = cv::saturate_cast<T2>(math.eval(args));
         }
       }
 #if HAVE_TBB
@@ -101,7 +101,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
 
 #if HAVE_TBB
     tbb::parallel_for(tbb_range(0, src_rows),
-        [&src, &dst, &mask, &math, src_rows, src_cols, src_channels, dst_channels](const tbb_range & range) {
+        [=, &src, &dst, &mask, &math](const tbb_range & range) {
 
           double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
 
@@ -130,7 +130,7 @@ static void process_image_(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
                 for( int c = 0; c < dst_channels; ++c ) {
                   args[6] = c;
                   args[7] = srcp[x * src_channels + c];
-                  dstp[x * dst_channels + c] = math.eval(args);
+                  dstp[x * dst_channels + c] = cv::saturate_cast<T2>(math.eval(args));
                 }
               }
             }

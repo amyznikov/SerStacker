@@ -110,7 +110,7 @@ static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv:
 {
   const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
   double minv = -1, maxv = -1;
-  cv::Mat1f H;
+  cv::Mat1d H;
 
   bool fOK =
       createHistogram(image,
@@ -127,38 +127,40 @@ static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv:
     return cv::Scalar();
   }
 
-  cv::Scalar s;
+  return computeHistogramMode(H, minv, maxv);
 
-  for( int c = 0, n = (std::min)(4, H.cols); c < n; ++c ) {
+//  cv::Scalar s;
 
-    if( H.rows < 2 ) {
-      s[c] = minv;
-    }
-    else {
-
-      int jmax = 0;
-
-      float hmax = H[jmax][c];
-
-      for( int j = 1, m = H.rows; j < m; ++j ) {
-        if( H[j][c] > hmax ) {
-          jmax = j;
-          hmax = H[j][c];
-        }
-      }
-
-      s[c] = minv + jmax * (maxv - minv) / (H.rows - 1);
-    }
-  }
-
-  return s;
+//  for( int c = 0, n = (std::min)(4, H.cols); c < n; ++c ) {
+//
+//    if( H.rows < 2 ) {
+//      s[c] = minv;
+//    }
+//    else {
+//
+//      int jmax = 0;
+//
+//      float hmax = H[jmax][c];
+//
+//      for( int j = 1, m = H.rows; j < m; ++j ) {
+//        if( H[j][c] > hmax ) {
+//          jmax = j;
+//          hmax = H[j][c];
+//        }
+//      }
+//
+//      s[c] = minv + jmax * (maxv - minv) / (H.rows - 1);
+//    }
+//  }
+//
+//  return s;
 }
 
 static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
 {
   const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
   double minv = -1, maxv = -1;
-  cv::Mat1f H;
+  cv::Mat1d H;
 
   bool fOK =
       createHistogram(image,
@@ -171,44 +173,46 @@ static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = c
           true);
 
   if( !fOK ) {
-    CF_ERROR("create_histogram() fails");
+    CF_ERROR("createHistogram() fails");
     return cv::Scalar();
   }
 
-  cv::Scalar s;
+  return computeHistogramMedian(H, minv, maxv);
 
-  for( int c = 0; c < H.cols; ++c ) {
-    if( H.rows < 2 ) {
-      s[c] = minv;
-      continue;
-    }
-
-    // Step of one bin in data units
-    const double binWidth = (maxv - minv) / H.rows;
-
-    for( int r = 0; r < H.rows; ++r ) {
-      // Value in the current bin already normalized into 0..1
-      const double val = H(r, c);
-      if( val >= 0.5 ) {
-        if( r == 0 ) {
-          // Even if the first bin is already >= 0.5, the median is at the very beginning
-          const double fraction = 0.5 / val;
-          s[c] = minv + fraction * binWidth;
-        }
-        else {
-          // Take the previous value for interpolation
-          const double prevVal = H(r - 1, c);
-          // How far 0.5 has moved from the previous bin to the current one
-          const double fraction = (0.5 - prevVal) / (val - prevVal);
-          // Final formula
-          s[c] = minv + ((double) (r - 1) + fraction) * binWidth;
-        }
-        break;
-      }
-    }
-  }
-
-  return s;
+//  cv::Scalar s;
+//
+//  for( int c = 0; c < H.cols; ++c ) {
+//    if( H.rows < 2 ) {
+//      s[c] = minv;
+//      continue;
+//    }
+//
+//    // Step of one bin in data units
+//    const double binWidth = (maxv - minv) / H.rows;
+//
+//    for( int r = 0; r < H.rows; ++r ) {
+//      // Value in the current bin already normalized into 0..1
+//      const double val = H(r, c);
+//      if( val >= 0.5 ) {
+//        if( r == 0 ) {
+//          // Even if the first bin is already >= 0.5, the median is at the very beginning
+//          const double fraction = 0.5 / val;
+//          s[c] = minv + fraction * binWidth;
+//        }
+//        else {
+//          // Take the previous value for interpolation
+//          const double prevVal = H(r - 1, c);
+//          // How far 0.5 has moved from the previous bin to the current one
+//          const double fraction = (0.5 - prevVal) / (val - prevVal);
+//          // Final formula
+//          s[c] = minv + ((double) (r - 1) + fraction) * binWidth;
+//        }
+//        break;
+//      }
+//    }
+//  }
+//
+//  return s;
 }
 
 

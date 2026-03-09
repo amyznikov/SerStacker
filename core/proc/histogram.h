@@ -73,6 +73,27 @@ bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
 
 
 /**
+ * Estimate Median from cumulative normalized histogram
+ *
+ * @param cumulativeNormalizedHistogram - input cumulative normalized histogram (CV_32F or CV_64F, nbins x cn)
+ * @param minv - minimum histogram scale (from createHistogram)
+ * @param maxv - maximum histogram scale (from createHistogram)
+ */
+cv::Scalar computeHistogramMedian(cv::InputArray cumulativeNormalizedHistogram,
+    double minv, double maxv);
+
+
+/**
+ * Estimate Mode from image histogram
+ *
+ * @param H - input image histogram (CV_32F or CV_64F, nbins x cn)
+ * @param minv - minimum histogram scale (from createHistogram)
+ * @param maxv - maximum histogram scale (from createHistogram)
+ */
+cv::Scalar computeHistogramMode(cv::InputArray H, double minv, double maxv);
+
+
+/**
 * @param qLow - lower quantile (e.g., 0.01 for 1%)
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */

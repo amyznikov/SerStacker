@@ -735,6 +735,144 @@ bool computeClipLevels(cv::InputArray cumulativeNormalizedHistogram,
 }
 
 /**
+ * Estimate Mode from image histogram
+ *
+ * @param Hsrc - input image histogram (CV_32F or CV_64F, nbins x cn)
+ * @param minv - minimum histogram scale (from createHistogram)
+ * @param maxv - maximum histogram scale (from createHistogram)
+ */
+cv::Scalar computeHistogramMode(cv::InputArray Hist, double minv, double maxv)
+{
+  // Need double precision for interpolation
+  cv::Mat1d H;
+
+  cv::Mat Hsrc = Hist.getMat();
+  if( Hsrc.depth() == H.depth() ) {
+    H = Hsrc;
+  }
+  else {
+    Hsrc.convertTo(H, H.depth());
+  }
+
+  const int nbins = H.rows;
+  const int cn = H.cols;
+  const double bin_width = (nbins > 1) ? (maxv - minv) / (nbins - 1) : 0;
+
+  cv::Scalar mode = cv::Scalar::all(0);
+
+  for( int c = 0; c < cn; ++c ) {
+    // Find the global maximum in the channel
+    double max_val = -1.0;
+    for( int i = 0; i < nbins; ++i ) {
+      if( H(i, c) > max_val ) {
+        max_val = H(i, c);
+      }
+    }
+
+    if ( max_val > 0  ) {
+      // Find the boundaries of the FIRST plateau encountered with this maximum
+      int first_idx = -1;
+      int last_idx = -1;
+
+      for( int i = 0; i < nbins; ++i ) {
+        if( H(i, c) == max_val ) {
+          if( first_idx == -1 ) {
+            first_idx = i; // Found the beginning of the first maximum
+          }
+          last_idx = i;
+        }
+        else if( first_idx != -1 ) {
+          // If we've already found the beginning of the maximum, and the current value is lower,
+          // then the first plateau has ended. Exit the loop.
+          break;
+        }
+      }
+
+      double peak_idx = (first_idx + last_idx) / 2.0;
+
+      // Quadratic interpolation
+      // Take values ​​to the left of the plateau's beginning and to the right of its end
+      const int left_i = first_idx - 1;
+      const int right_i = last_idx + 1;
+
+      if( left_i >= 0 && right_i < nbins ) {
+        const double y_peak = max_val;
+        const double y_left = H(left_i, c);
+        const double y_right = H(right_i, c);
+        const double denom = (y_left - 2 * y_peak + y_right);
+        if( std::abs(denom) > 1e-9 ) {
+          // Offset relative to the plateau center
+          const double offset = 0.5 * (y_left - y_right) / denom;
+          peak_idx += offset;
+        }
+      }
+
+      // Convert the index into physical value
+      mode[c] = minv + peak_idx * bin_width;
+    }
+  }
+
+  return mode;
+}
+
+/**
+ * Estimate Median from cumulative normalized histogram
+ *
+ * @param cumulativeNormalizedHistogram - input cumulative normalized histogram (CV_32F or CV_64F, nbins x cn)
+ * @param minv - minimum histogram scale (from createHistogram)
+ * @param maxv - maximum histogram scale (from createHistogram)
+ */
+cv::Scalar computeHistogramMedian(cv::InputArray cumulativeNormalizedHistogram,
+    double minv, double maxv)
+{
+  // Need double precision for interpolation
+  cv::Mat1d H;
+
+  cv::Mat Hsrc = cumulativeNormalizedHistogram.getMat();
+  if( Hsrc.depth() == H.depth() ) {
+    H = Hsrc;
+  }
+  else {
+    Hsrc.convertTo(H, H.depth());
+  }
+
+  cv::Scalar s = cv::Scalar::all(0);;
+
+  for( int c = 0; c < std::min(H.cols, 4); ++c ) {
+    if( H.rows < 2 ) {
+      s[c] = minv;
+      continue;
+    }
+
+    // Step of one bin in data units
+    const double binWidth = (maxv - minv) / H.rows;
+
+    for( int r = 0; r < H.rows; ++r ) {
+      // Value in the current bin already normalized into 0..1
+      const double val = H(r, c);
+      if( val >= 0.5 ) {
+        if( r == 0 ) {
+          // Even if the first bin is already >= 0.5, the median is at the very beginning
+          const double fraction = 0.5 / val;
+          s[c] = minv + fraction * binWidth;
+        }
+        else {
+          // Take the previous value for interpolation
+          const double prevVal = H(r - 1, c);
+          // How far 0.5 has moved from the previous bin to the current one
+          const double fraction = (0.5 - prevVal) / (val - prevVal);
+          // Final formula
+          s[c] = minv + ((double) (r - 1) + fraction) * binWidth;
+        }
+        break;
+      }
+    }
+  }
+
+  return s;
+}
+
+/**
 * @param qLow - lower quantile (e.g., 0.01 for 1%)
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */
@@ -794,19 +932,3 @@ bool histogramClipWhiteBalance(cv::InputArray srcImage, cv::InputArray srcMask, 
   return true;
 }
 
-
-
-//double calculateQuantile(const cv::Mat1d& Hcum, double Q, double minv, double maxv) {
-//    const int n = Hcum.rows;
-//    const double binWidth = (maxv - minv) / n;
-//
-//    for (int j = 0; j < n; ++j) {
-//        if (Hcum(j, 0) >= Q) {
-//            if (j == 0) return minv + (Q / Hcum(j, 0)) * binWidth;
-//            double prev = Hcum(j - 1, 0);
-//            double fraction = (Q - prev) / (Hcum(j, 0) - prev);
-//            return minv + ( (double)(j - 1) + fraction ) * binWidth;
-//        }
-//    }
-//    return maxv;
-//}

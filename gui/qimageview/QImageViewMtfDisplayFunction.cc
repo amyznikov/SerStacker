@@ -105,12 +105,14 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
       currentImage.convertTo(image, CV_8U, scale, offset);
     }
 
-    create_histogram(image, mask,
-        H,
-        hmin, hmax,
-        256,
-        false,
-        false);
+    createHistogram(image, mask, hmin, hmax, 0, H);
+
+//    create_histogram(image, mask,
+//        H,
+//        hmin, hmax,
+//        256,
+//        false,
+//        false);
 
     (*hmin -= offset) /= scale;
     (*hmax -= offset) /= scale;

@@ -1,7 +1,7 @@
 /*
  * histogram.h
  *
- *  Created on: Aug 14, 2021
+ *  Created on: Mar 8, 2026
  *      Author: amyznikov
  */
 
@@ -10,77 +10,31 @@
 
 #include <opencv2/opencv.hpp>
 
-class c_histogram_builder
-{
-public:
-  void set_channels(int cn);
-  int channels() const;
-
-  void set_input_range(double minval, double maxval);
-  void get_input_range(double *minval, double *maxval) const;
-
-  void set_minval(double v);
-  double minval() const;
-
-  void set_maxval(double v);
-  double maxval() const;
-
-  void set_bins(int nbins);
-  int bins() const;
-
-  void set_cumulative(bool v);
-  bool cumulative() const;
-
-  void set_scaled(bool v);
-  bool scaled() const;
-
-  void set_logscale(bool v);
-  bool logscale() const;
-
-  void reset();
-  void add_pixel(const cv::Scalar & pix);
-  void compute(cv::OutputArray H);
-
-protected:
-  void initialize();
-
-protected:
-  cv::Mat1f H_;
-  double scale_ = 0;
-  double minval_ = -1;
-  double maxval_ = - 1;
-  int bins_ = 256;
-  int channels_ = 1;
-  bool cumulative_ = false;
-  bool scaled_ = false;
-  bool logscale_ = false;
-};
-
-
-// @brief build histogram for given multi-channel image.
-// Output is single-channel CV_32FC1 matrix of size 'nbins rows' x 'image channels columns'.
-// if input mask is not empty then it must be sigle-channel CV_8U matrix of the same size as input image.
-bool create_histogram(cv::InputArrayOfArrays images,
+/**
+ * @param src - one or more input arrays of CV kind STD_ARRAY_MAT, STD_VECTOR_VECTOR, STD_VECTOR_MAT
+ * @param masks array of a single- or multi- channel input masks of the same size as src. some of mask may be empty
+ * @param minv - range minimum
+ * @param maxv - range maximum
+ * @param number of bins in output histogram
+ * @param H - output cv::Mat1f or cv::Mat1d matrix of the size num bins x num channels,
+ *           the number of columns is set as max number of channels found in src
+ * @param cumulative
+ * @param scaled
+ * @param ddepth Depth of output histogram matrix CV_32F or CV_64F
+ *
+ * Accepted src items may be single or multi channel data of different data type independently one from other,
+ *         but all of them must have equal the number color channels
+ *
+ */
+bool createHistogram(cv::InputArrayOfArrays src,
     cv::InputArrayOfArrays masks,
-    cv::OutputArray dst,
-    /*[in, out]*/ double * minval,
-    /*[in, out]*/ double * maxval,
-    int nbins = -1,
+    double * minv,
+    double * maxv,
+    uint32_t nbins,
+    cv::OutputArray H,
     bool cumulative = false,
-    bool scaled = false);
-
-
-/// @brief  scale conventional image histogram H by it's total sum
-void scale_histogram(cv::Mat1f & H);
-
-/// @brief  scale conventional image histogram H by it's total sum
-void scale_histogram(const cv::Mat1f & Hsrc, cv::Mat1f & Hdst);
-
-/// @brief  convert conventional image histogram H into cumulative
-///         by accumulating the bin values along rows
-bool accumulate_histogram(cv::InputArray H,
-    cv::OutputArray CH);
-
+    bool scaled = false,
+    int ddepth = -1);
 
 
 #endif /* ___histogram_h___ */

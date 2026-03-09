@@ -6,12 +6,12 @@
  */
 
 #include "QInputSourceView.h"
-
 #include <gui/widgets/QWaitCursor.h>
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <core/proc/minmax.h>
+#include <core/proc/histogram.h>
 #include <core/data_annotation/c_data_annotation_labels.h>
 #include <core/debug.h>
 
@@ -782,79 +782,27 @@ void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
 
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
-
   switch (_currentViewType) {
     case DisplayType_Image:
-
-      create_histogram(_imageView->mtfImage(),
+      createHistogram(_imageView->mtfImage(),
           _imageView->currentMask(),
-          H,
           hmin, hmax,
-          256,
-          false,
-          false);
-
+          0,
+          H);
       break;
 
     case DisplayType_PointCloud:
-
-      create_histogram(_cloudView->mtfColors(),
+      createHistogram(_cloudView->mtfColors(),
           _cloudView->currentMask(),
-          H,
           hmin, hmax,
-          256,
-          false,
-          false);
-
+          0,
+          H);
       break;
 
     default:
       H.release();
       break;
   }
-
-//  if ( imageViewer_ ) {
-//
-//    cv::Mat image, mask;
-//
-//    double scale = 1.0;
-//    double offset = 0.0;
-//
-//    const cv::Mat & currentImage =
-//        imageViewer_->mtfImage();
-//
-//    imageViewer_->currentMask().copyTo(mask);
-//
-//    if ( currentImage.depth() == CV_8U ) {
-//      currentImage.copyTo(image);
-//    }
-//    else if ( currentImage.depth() == CV_32F || currentImage.depth() == CV_64F ) {
-//
-//      const double dstmin = 0, dstmax = 255;
-//      double srcmin = 0, srcmax = 1;
-//
-//      cv::minMaxLoc(currentImage, &srcmin, &srcmax, nullptr, nullptr, mask);
-//
-//      scale = (dstmax - dstmin) / (srcmax - srcmin);
-//      offset = dstmin - scale * srcmin;
-//
-//      currentImage.convertTo(image, CV_8U, scale, offset);
-//    }
-//    else {
-//      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-//      currentImage.convertTo(image, CV_8U, scale, offset);
-//    }
-//
-//    create_histogram(image, mask,
-//        H,
-//        hmin, hmax,
-//        256,
-//        false,
-//        false);
-//
-//    (*hmin -= offset) /= scale;
-//    (*hmax -= offset) /= scale;
-//  }
 }
 
 

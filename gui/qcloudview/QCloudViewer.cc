@@ -6,6 +6,7 @@
  */
 
 #include "QCloudViewer.h"
+#include <core/proc/histogram.h>
 #include <core/debug.h>
 
 QString toQString(const QVector3D & v)
@@ -366,21 +367,10 @@ void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin,
   displayParams().mtf.get_output_range(omin, omax);
   H.release();
 
-  if( !_cloudView || _cloudView->_display_colors.empty() ) {
-    return;
+  if( _cloudView && !_cloudView->_display_colors.empty() ) {
+    double minv = 0, maxv = 255;
+    createHistogram(_cloudView->_display_colors, cv::noArray(), &minv, &maxv, 256, H);
   }
-
-  c_histogram_builder builder;
-
-  builder.set_input_range(0, 255);
-  builder.set_channels(3);
-  builder.set_bins(256);
-
-  for ( const cv::Vec3b & color : _cloudView->_display_colors ) {
-    builder.add_pixel(color);
-  }
-
-  builder.compute(H);
 }
 
 

@@ -20,8 +20,8 @@ static QColor defaultChannelColors [] = {
 };
 
 
-QHistogramView::QHistogramView(QWidget * parent)
-  : Base(parent)
+QHistogramView::QHistogramView(QWidget * parent) :
+    Base(parent)
 {
   setMinimumSize( 64 + 2 * MARGIN, 64 + 2 * MARGIN);
   resize(128, (int)(128 / 1.62));
@@ -141,7 +141,7 @@ void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
 
 void QHistogramView::setMtfCurve(std::vector<float> && cy)
 {
-  _cy = cy;
+  _mtfCurve = cy;
   if( isVisible() ) {
     // repaint();
     update();
@@ -306,7 +306,7 @@ void QHistogramView::drawLineChart(QPainter & p) const
 
 void QHistogramView::drawMtfCurve(QPainter & p) const
 {
-  if ( !_cy.empty() ) {
+  if ( !_mtfCurve.empty() ) {
 
     QPainterPath path;
 
@@ -324,11 +324,11 @@ void QHistogramView::drawMtfCurve(QPainter & p) const
     const int h = b - t;
 
     int prev_xpix = l;
-    int prev_ypix = (int)(b - _cy[0] * h);
+    int prev_ypix = (int)(b - _mtfCurve[0] * h);
 
-    for ( size_t i = 0, n = _cy.size(); i < n; ++i ) {
+    for ( size_t i = 0, n = _mtfCurve.size(); i < n; ++i ) {
       const float x = (float)(i) / n;
-      const float y = _cy[i];
+      const float y = _mtfCurve[i];
 
       const int xpix = (int) (l + x * w);
       const int ypix = (int) (b - y * h);

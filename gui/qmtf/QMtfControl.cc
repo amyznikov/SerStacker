@@ -391,20 +391,20 @@ void QMtfControl::onResetMtfClicked()
 {
   if( _displaySettings ) {
 
-    double imin = -1, imax = -1;
     c_mtf_options opts;
+    double irange[2] = {-1, -1};
 
-    _displaySettings->getMtfInputRange(&imin, &imax);
+    _displaySettings->getMtfInputRange(&irange[0], &irange[1]);
 
-    if( imin < imax ) {
-      imin = imax = -1;
+    if( irange[0] < irange[1] ) {
+      irange[0] = irange[1] = -1;
     }
     else {
       QWaitCursor wait(this);
-      _displaySettings->getInputDataRange(&imin, &imax);
+      _displaySettings->getInputDataRange(&irange[0], &irange[1]);
     }
 
-    _displaySettings->setMtf(imin, imax, &opts);
+    _displaySettings->setMtf(irange[0], irange[1], &opts);
     _displaySettings->saveParameters();
 
     updateControls();
@@ -521,6 +521,7 @@ bool QMtfControl::getInputDataRangeCtl(double range[2]) const
 
 void QMtfControl::setInputDataRangeCtl(const double range[2])
 {
+  QSignalBlocker block(inputDataRange_ctl);
   inputDataRange_ctl->setText(QString("%1;%2").arg(range[0]).arg(range[1]));
 }
 
@@ -637,13 +638,14 @@ void QMtfControl::updateHistogramLevels()
 {
   if ( _displaySettings && isVisible() ) {
 
-    double hmin = -1, hmax = -1;
     cv::Mat1f H;
     std::vector<float> cy;
+    double irange[2] = {-1, -1};
 
-    _displaySettings->getOutputHistogramm(H, &hmin, &hmax);
+    //_displaySettings->getMtfInputRange(&irange[0], &irange[1]);
+    _displaySettings->getOutputHistogramm(H, &irange[0], &irange[1]);
     _displaySettings->getMtfCurve(cy, 256);
-    levelsView_ctl->setHistogram(H, hmin, hmax);
+    levelsView_ctl->setHistogram(H, irange[0], irange[1]);
     levelsView_ctl->setMtfCurve(std::move(cy));
   }
 }
@@ -742,19 +744,18 @@ void QMtfControl::onupdatecontrols()
   }
   else {
 
-    double input_range[2] = {-1, -1};
+    double irange[2] = {-1, -1};
     c_mtf_options opts;
-    //double shadows, highlights, midtones;
 
     const QString & displayChannel = _displaySettings->displayChannel();
     int idx = displayChannel_ctl->findText(displayChannel);
 
     displayChannel_ctl->setCurrentIndex(idx);
 
-    _displaySettings->getMtfInputRange(&input_range[0], &input_range[1]);
+    _displaySettings->getMtfInputRange(&irange[0], &irange[1]);
     _displaySettings->getMtf(&opts);
 
-    setInputDataRangeCtl(input_range);
+    setInputDataRangeCtl(irange);
 
     setValue(lclip_ctl, opts.lclip);
     setValue(shadows_ctl, opts.shadows);

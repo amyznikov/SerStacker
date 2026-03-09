@@ -32,7 +32,6 @@ public:
 
   QHistogramView(QWidget * parent = Q_NULLPTR);
 
-  //void setImage(cv::InputArray image, cv::InputArray mask = cv::noArray());
   void setHistogram(cv::InputArray H, double hmin, double hmax);
   void setMtfCurve(std::vector<float> && cy);
 
@@ -74,8 +73,7 @@ protected:
   ChartType _chartType = ChartType_Lines;
   DisplayChannel _displayChannel = DisplayChannel_RGB;
 
-  //cv::Mat _image, _mask;
-  std::vector<float> _cy;
+  std::vector<float> _mtfCurve;
   cv::Mat1f H, LH;
   double hmin = -1, hmax = -1;
   bool _logScale = true;

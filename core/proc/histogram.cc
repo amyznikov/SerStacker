@@ -1,774 +1,601 @@
 /*
  * histogram.cc
  *
- *  Created on: Aug 14, 2021
+ *  Created on: Mar 8, 2026
  *      Author: amyznikov
  */
+
+
 #include "histogram.h"
-#include <core/proc/reduce_channels.h>
+#include <tbb/tbb.h>
+#include <cmath>
+#include <type_traits>
 #include <core/debug.h>
 
+namespace {
 
-void c_histogram_builder::set_channels(int cn)
+struct MinMaxReducer
 {
-  channels_ = cn;
-}
+  const cv::Mat & src;
+  const cv::Mat & mask;
+  const int cn;
+  double minVal, maxVal;
+  bool found;
 
-int c_histogram_builder::channels() const
-{
-  return channels_;
-}
-
-void c_histogram_builder::set_input_range(double minval, double maxval)
-{
-  minval_ = minval;
-  maxval_ = maxval;
-}
-
-void c_histogram_builder::get_input_range(double *minval, double *maxval) const
-{
-  *minval = minval_;
-  *maxval = maxval_;
-}
-
-void c_histogram_builder::set_bins(int nbins)
-{
-  bins_ = nbins;
-}
-
-int c_histogram_builder::bins() const
-{
-  return bins_;
-}
-
-void c_histogram_builder::set_minval(double v)
-{
-  minval_ = v;
-}
-
-double c_histogram_builder::minval() const
-{
-  return minval_;
-}
-
-void c_histogram_builder::set_maxval(double v)
-{
-  maxval_ = v;
-}
-
-double c_histogram_builder::maxval() const
-{
-  return maxval_;
-}
-
-void c_histogram_builder::set_cumulative(bool v)
-{
-  cumulative_ = v;
-}
-
-bool c_histogram_builder::cumulative() const
-{
-  return cumulative_;
-}
-
-void c_histogram_builder::set_scaled(bool v)
-{
-  scaled_ = v;
-}
-
-bool c_histogram_builder::scaled() const
-{
-  return scaled_;
-}
-
-void c_histogram_builder::set_logscale(bool v)
-{
-  logscale_ = v;
-}
-
-bool c_histogram_builder::logscale() const
-{
-  return logscale_;
-}
-
-void c_histogram_builder::reset()
-{
-  H_.release();
-}
-
-void c_histogram_builder::initialize()
-{
-  if ( bins_ > 10000 ) {
-    bins_ = 10000;
+  MinMaxReducer(const cv::Mat & s, const cv::Mat & m, int c) :
+    src(s), mask(m), cn(c), minVal(DBL_MAX), maxVal(-DBL_MAX), found(false)
+  {
   }
 
-  if ( channels_ < 1 ) {
-    channels_ = 1;
+  MinMaxReducer(MinMaxReducer & x, tbb::split) :
+    src(x.src), mask(x.mask), cn(x.cn), minVal(DBL_MAX), maxVal(-DBL_MAX), found(false)
+  {
   }
 
-  if ( maxval_ <= minval_ ) {
-    minval_ = 0;
-    maxval_ = 1.0;
-  }
+  template<typename T>
+  void process(const tbb::blocked_range2d<int> & r)
+  {
+    const int _cn = cn;
+    const auto & rows = r.rows();
+    const auto & cols = r.cols();
 
-  scale_ = bins_ / (maxval_ - minval_);
+    double l_min = minVal;
+    double l_max = maxVal;
+    bool l_found = found;
 
-  H_.create(bins_, channels_);
-  H_.setTo(0);
-
-}
-
-void c_histogram_builder::add_pixel(const cv::Scalar & s)
-{
-  if( H_.empty() ) {
-    initialize();
-  }
-
-  for( int c = 0; c < channels_; ++c ) {
-    const int b =
-        std::max(0, std::min(bins_ - 1,
-            (int) ((s[c] - minval_) * scale_)));
-
-    H_[b][c] += 1;
-  }
-
-}
-
-void c_histogram_builder::compute(cv::OutputArray outputH)
-{
-  cv::Mat1f H;
-  H_.copyTo(H);
-
-  if( !H.empty() ) {
-
-    if( scaled_ ) {
-      cv::Mat1f sums;
-      cv::reduce(H, sums, 0, cv::REDUCE_SUM, sums.depth());
-      for( int y = 0; y < H.rows; ++y ) {
-        for( int x = 0; x < H.cols; ++x ) {
-          H[y][x] /= sums[0][x];
+    if( mask.empty() ) {
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          const T * pxp = srcp + x * _cn;
+          for( int c = 0; c < _cn; ++c ) {
+            if( std::isfinite(pxp[c]) ) {
+              const double v = pxp[c];
+              if( v < l_min ) {
+                l_min = v;
+              }
+              if( v > l_max ) {
+                l_max = v;
+              }
+              l_found = true;
+            }
+          }
+        }
+      }
+    }
+    else if( mask.channels() == 1 ) {
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          if( mskp[x] ) {
+            const T * pxp = srcp + x * _cn;
+            for( int c = 0; c < _cn; ++c ) {
+              if( std::isfinite(pxp[c]) ) {
+                const double v = pxp[c];
+                if( v < l_min ) {
+                  l_min = v;
+                }
+                if( v > l_max ) {
+                  l_max = v;
+                }
+                l_found = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    else { // mask.channels() == _cn
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          const T * pxp = srcp + x * _cn;
+          const uint8_t * mpxp = mskp + x * _cn;
+          for( int c = 0; c < _cn; ++c ) {
+            if( mpxp[c] && std::isfinite(pxp[c])  ) {
+              const double v = pxp[c];
+              if( v < l_min ) {
+                l_min = v;
+              }
+              if( v > l_max ) {
+                l_max = v;
+              }
+              l_found = true;
+            }
+          }
         }
       }
     }
 
-    if( cumulative_ ) {
-      accumulate_histogram(H, H);
+    minVal = l_min;
+    maxVal = l_max;
+    found = l_found;
+  }
+
+  void operator()(const tbb::blocked_range2d<int> & r)
+  {
+    switch (src.depth()) {
+      case CV_8U: process<uint8_t>(r); break;
+      case CV_8S: process<int8_t>(r); break;
+      case CV_16U:process<uint16_t>(r); break;
+      case CV_16S:process<int16_t>(r); break;
+      case CV_32S:process<int32_t>(r); break;
+      case CV_32F:process<float>(r); break;
+      case CV_64F:process<double>(r); break;
     }
+  }
 
-    if( logscale_ ) {
-      double min = 0, max = 1;
+  void join(const MinMaxReducer & y)
+  {
+    if( y.found ) {
+      if( y.minVal < minVal ) {
+        minVal = y.minVal;
+      }
+      if( y.maxVal > maxVal ) {
+        maxVal = y.maxVal;
+      }
+      found = true;
+    }
+  }
+};
 
-      cv::log(H + 1, H);
 
-      cv::minMaxLoc(H, &min, &max);
-      if( max > 0 ) {
-        cv::multiply(H, 1 / max, H);
+struct HistReducer
+{
+  const cv::Mat & src;
+  const cv::Mat & mask;
+  double minv, maxv, scale;
+  uint32_t nbins, cn;
+
+  cv::Mat1d H; // thread local histogram
+
+  HistReducer(const cv::Mat & s, const cv::Mat & m, double mi, double ma, double sc, uint32_t nb, int c) :
+    src(s), mask(m), minv(mi), maxv(ma), scale(sc), nbins(nb), cn(c),
+    H(cv::Mat1d::zeros(nbins, cn))
+  {
+  }
+
+  // Copy constructor for TBB (splitting constructor)
+  HistReducer(HistReducer & x, tbb::split) :
+    src(x.src), mask(x.mask), minv(x.minv), maxv(x.maxv), scale(x.scale), nbins(x.nbins), cn(x.cn),
+    H(cv::Mat1d::zeros(nbins, cn))
+  {
+  }
+
+  // Merge results from different streams
+  void join(const HistReducer & y)
+  {
+    H += y.H;
+  }
+
+  template<typename T>
+  void process(const tbb::blocked_range<int> & r)
+  {
+    const double _minv = minv;
+    const double _scale = scale;
+    const uint32_t _nbins = nbins;
+    const int _cn = cn;
+    const int _cols = src.cols;
+
+    double * const hp = H.ptr<double>();
+
+    if( mask.empty() ) {
+      for( int y = r.begin(); y < r.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        for( int x = 0; x < _cols; ++x ) {
+          const T * pxp = srcp + x * _cn; // Pointer to the start of the pixel
+          for( int c = 0; c < _cn; ++c ) {
+            const uint32_t bin = (uint32_t)((int) ((pxp[c] - _minv) * _scale));
+            if( bin < _nbins ) {
+              hp[bin * _cn + c] += 1.0;
+            }
+          }
+        }
+      }
+    }
+    else if( mask.channels() == 1 ) {
+      for( int y = r.begin(); y < r.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = 0; x < _cols; ++x ) {
+          if( mskp[x] ) {
+            const T * pxp = srcp + x * _cn; // Pointer to the start of the pixel
+            for( int c = 0; c < _cn; ++c ) {
+              const uint32_t bin = (uint32_t)((int) ((pxp[c] - _minv) * _scale));
+              if( bin < _nbins ) {
+                hp[bin * _cn + c] += 1.0;
+              }
+            }
+          }
+        }
+      }
+    }
+    else { // mask.channels() == _cn
+      for( int y = r.begin(); y < r.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = 0; x < _cols; ++x ) {
+          const T * spxp = srcp + x * _cn; // Pointer to the start of the pixel
+          const uint8_t * mpxp = mskp + x * _cn;
+          for( int c = 0; c < _cn; ++c ) {
+            if( mpxp[c] ) {
+              const uint32_t bin = (uint32_t )((int) ((spxp[c] - _minv) * _scale));
+              if( bin >= 0 && bin < _nbins ) {
+                hp[bin * _cn + c] += 1.0;
+              }
+            }
+          }
+        }
       }
     }
   }
 
-  if( outputH.fixedType() && outputH.depth() != H.depth() ) {
-    H.convertTo(outputH, outputH.depth());
+  template<typename T>
+  void process(const tbb::blocked_range2d<int> & r)
+  {
+    const double _minv = minv;
+    const double _scale = scale;
+    const uint32_t _nbins = nbins;
+    const int _cn = cn;
+    double * const hp = H.ptr<double>();
+
+    const auto & rows = r.rows();
+    const auto & cols = r.cols();
+
+    if( mask.empty() ) {
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          const T * pxp = srcp + x * _cn;
+          for( int c = 0; c < _cn; ++c ) {
+            const uint32_t bin = (uint32_t)((int) ((pxp[c] - _minv) * _scale));
+            if( bin < _nbins ) {
+              hp[bin * _cn + c] += 1.0;
+            }
+          }
+        }
+      }
+    }
+    else if( mask.channels() == 1 ) {
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          if( mskp[x] ) {
+            const T * pxp = srcp + x * _cn;
+            for( int c = 0; c < _cn; ++c ) {
+              const uint32_t bin = (uint32_t )((int) ((pxp[c] - _minv) * _scale));
+              if(  bin < _nbins ) {
+                hp[bin * _cn + c] += 1.0;
+              }
+            }
+          }
+        }
+      }
+    }
+    else { // mask.channels() == _cn
+      for( int y = rows.begin(); y < rows.end(); ++y ) {
+        const T * srcp = src.ptr<T>(y);
+        const uint8_t * mskp = mask.ptr<uint8_t>(y);
+        for( int x = cols.begin(); x < cols.end(); ++x ) {
+          const T * spxp = srcp + x * _cn;
+          const uint8_t * mpxp = mskp + x * _cn;
+          for( int c = 0; c < _cn; ++c ) {
+            if( mpxp[c] ) {
+              const uint32_t bin = (uint32_t )((int) ((spxp[c] - _minv) * _scale));
+              if( bin < _nbins ) {
+                hp[bin * _cn + c] += 1.0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Main loop over a range of image rows
+  void operator()(const tbb::blocked_range2d<int> & r)
+  {
+    switch (src.depth()) {
+      case CV_8U: process<uint8_t>(r); break;
+      case CV_8S: process<int8_t>(r); break;
+      case CV_16U:process<uint16_t>(r); break;
+      case CV_16S:process<int16_t>(r); break;
+      case CV_32S:process<int32_t>(r); break;
+      case CV_32F:process<float>(r); break;
+      case CV_64F:process<double>(r); break;
+    }
+  }
+
+  // Main loop over a range of image rows
+  void operator()(const tbb::blocked_range<int> & r)
+  {
+    switch (src.depth()) {
+      case CV_8U: process<uint8_t>(r); break;
+      case CV_8S: process<int8_t>(r); break;
+      case CV_16U:process<uint16_t>(r); break;
+      case CV_16S:process<int16_t>(r); break;
+      case CV_32S:process<int32_t>(r); break;
+      case CV_32F:process<float>(r); break;
+      case CV_64F:process<double>(r); break;
+    }
+  }
+
+};
+
+static void findGlobalMinMax(const std::vector<cv::Mat> & srcv, const std::vector<cv::Mat> & maskv,
+    double * minv, double * maxv)
+{
+  double gMin = DBL_MAX;
+  double gMax = -DBL_MAX;
+  bool anyFound = false;
+
+  for( size_t i = 0; i < srcv.size(); ++i ) {
+    if( !srcv[i].empty() ) {
+
+      MinMaxReducer reducer(srcv[i], maskv[i], srcv[i].channels());
+      tbb::parallel_reduce(tbb::blocked_range2d<int>(0, srcv[i].rows, 0, srcv[i].cols), reducer,
+          tbb::static_partitioner());
+
+      if( reducer.found ) {
+        gMin = std::min(gMin, reducer.minVal);
+        gMax = std::max(gMax, reducer.maxVal);
+        anyFound = true;
+      }
+    }
+  }
+
+  if( !anyFound ) {
+    *minv = 0;
+    *maxv = 255; // Default if there is no data or everything is masked
   }
   else {
-    outputH.move(H);
+    *minv = gMin;
+    *maxv = gMax;
   }
 }
 
-template<class T, int cn>
-static bool update_histogram__(cv::InputArray _src, c_histogram_builder & builder,
-    cv::InputArray _mask)
+
+static bool suggest_histogram_options(int depth, const std::vector<cv::Mat> & srcv, const std::vector<cv::Mat> & maskv,
+    /*in, out*/ double * minv, /*in, out*/ double * maxv, /*in, out*/ uint32_t * nbins)
 {
-  const double minval =
-      builder.minval();
+  const bool useFullTypeRange = (*minv < -0.5 && *maxv < -0.5);
+  const bool autoRange = useFullTypeRange || (*maxv <= *minv);
 
-  const double maxval =
-      builder.maxval();
+  // nbins is considered "automatic" if it is 0 or inappropriately large
+  const bool autoBins = (*nbins == 0 || *nbins > 65535U);
 
-  const int bn =
-      builder.bins();
+  // Determining the range (minv / maxv)
+  if ( useFullTypeRange ) {
+    switch (depth) {
+      case CV_8U:  *minv = 0; *maxv = UINT8_MAX; break;
+      case CV_8S:  *minv = INT8_MIN; *maxv = INT8_MAX; break;
+      case CV_16U: *minv = 0; *maxv = UINT16_MAX; break;
+      case CV_16S: *minv = INT16_MIN; *maxv = INT16_MAX; break;
+      case CV_32S: *minv = (double)INT_MIN; *maxv = (double)INT_MAX; break;
+      case CV_32F:
+      case CV_64F:
+        // There is no "full range" for float, we make calculations based on the data
+        findGlobalMinMax(srcv, maskv, minv, maxv);
+        break;
+    }
+  }
+  else if ( autoRange ) {
+    findGlobalMinMax(srcv, maskv, minv, maxv);
+  }
 
-  cv::Scalar s;
+  // Determining the number of bins (nbins)
+  if ( autoBins ) {
+    const double range = *maxv - *minv;
 
-  const cv::Mat_<cv::Vec<T, cn>> src =
-      _src.getMat();
+    if( depth == CV_8U || depth == CV_8S ) {
+      /*
+       * For 8-bit auto mode:
+       * If the range is narrow (e.g., 50-150), make exactly 101 bins (scale=1.0).
+       * If the range is wide (0-255), limit to 256.
+       */
+      *nbins = range < 255.5  ? (uint32_t) (std::round(range) + 1.0) : 256;
+    }
+    else {
+      /* For the rest (16-bit, Float) widget default */
+      *nbins = 256;
+    }
+  }
 
-  const cv::Vec<double, cn> mv =
-      cv::Vec<float, cn>::all(minval);
+  // If nbins was passed explicitly (e.g. 1024), we don't touch it.
+
+  // Final Sanity Check
+  if (*nbins < 2)  {
+    *nbins = 2U;
+  }
+  else if (*nbins > 16384U) { // Hard limit for Out of Memory protection
+    *nbins = 16384U;
+  }
+
+  return true;
+}
+
+}
+
+/**
+ * @param src - one or more input arrays of CV kind STD_ARRAY_MAT, STD_VECTOR_VECTOR, STD_VECTOR_MAT
+ * @param masks array of a single- or multi- channel input masks of the same size as src. some of mask may be empty
+ * @param minv - range minimum
+ * @param maxv - range maximum
+ * @param number of bins in output histogram
+ * @param H - output cv::Mat1f or cv::Mat1d matrix of the size num bins x num channels,
+ *           the number of columns is set as max number of channels found in src
+ * @param cumulative
+ * @param scaled
+ * @param ddepth Depth of output histogram matrix CV_32F or CV_64F
+ *
+ * Accepted src items may be single or multi channel data of different data type independently one from other,
+ *         but all of them must have equal the number color channels
+ *
+ */
+bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
+    double * minv,
+    double * maxv,
+    uint32_t nbins,
+    cv::OutputArray H,
+    bool cumulative,
+    bool scaled,
+    int ddepth)
+{
+  CF_DEBUG("H");
+
+  std::vector<cv::Mat> srcv, maskv;
+
+  if (src.kind() == cv::_InputArray::MAT) {
+    // If only a single matrix is ​​passed, put it entirely into the vector
+    srcv.push_back(src.getMat());
+  }
+  else {
+    // If a matrix vector is passed, we extract it normally
+    src.getMatVector(srcv);
+  }
+
+  if( masks.kind() == cv::_InputArray::MAT ) {
+    // Even if the mask is empty, it will be ONE element of the vector
+    maskv.push_back(masks.getMat());
+  }
+  else if( !masks.empty() ) {
+    // If a matrix vector is passed then extract it normally
+    masks.getMatVector(maskv);
+  }
+
+  if (maskv.empty()) {
+    // if there are no masks at all or there are fewer of them than data
+    maskv.assign(srcv.size(), cv::Mat());
+  }
+  else if (maskv.size() == 1 && srcv.size() > 1) {
+    // one mask for all images in the list
+    maskv.assign(srcv.size(), maskv[0]);
+  }
+
+  if ( srcv.size() != maskv.size() ) {
+    CF_ERROR("src.size()=%zu must be same as masks.size()=%zu", srcv.size(), maskv.size());
+    return false;
+  }
+
+  /* Sanity checking - ensure all src and mask items have acceptable types and sizes */
+  const int cn = srcv[0].channels();
+  int max_depth = -1;
+  for( size_t i = 0; i < srcv.size(); ++i ) {
+
+    // Check the number of data channels
+    if( srcv[i].channels() != cn ) {
+      CF_ERROR("All src items must have equal number of color channels");
+      return false;
+    }
+
+    // check the data depth
+    if ( srcv[i].depth() > max_depth ) {
+      max_depth = srcv[i].depth();
+    }
+
+    // Check the mask
+    if( !maskv[i].empty() ) {
+      const int mt = maskv[i].type();
+      if( mt != CV_8UC1 && mt != CV_MAKETYPE(CV_8U, cn) ) {
+        CF_ERROR("Invalid input mask type (%d) for mask index %zu", mt, i);
+        return false;
+      }
+      if( maskv[i].size() != srcv[i].size() ) {
+        CF_ERROR("Invalid input mask size (%dx%d) for mask index %zu",maskv[i].cols, maskv[i].rows, i);
+        return false;
+      }
+    }
+  }
+
+  if ( !suggest_histogram_options(max_depth, srcv, maskv, minv, maxv, &nbins) ) {
+    CF_ERROR("suggest_histogram_options() fails");
+    return false;
+  }
+
+  /**
+   * Build the histogram here
+   */
+
+  double range = *maxv - *minv;
+  if( range < 1e-12 ) { // Protection against division by 0
+    range = 1.0;
+  }
 
   const double scale =
-      bn / (maxval - minval);
+      ((max_depth <= CV_32S) && std::abs((double) nbins - (range + 1.0)) < 0.001) ? 1.0 :
+          nbins / (range + range * 1e-7);
 
-  if( _mask.empty() ) {
+  cv::Mat1d Htotal = cv::Mat1d::zeros(nbins, cn);
 
-    for( int y = 0; y < src.rows; ++y ) {
-      for( int x = 0; x < src.cols; ++x ) {
-        for( int c = 0; c < cn; ++c ) {
-          s[c] = src[y][x][c];
-        }
-        builder.add_pixel(s);
+  for ( size_t i = 0, n = srcv.size(); i < n; ++i ) {
+    const cv::Mat & s = srcv[i];
+    const cv::Mat & m = maskv[i];
+    if ( !s.empty() ) {
+      HistReducer reducer(s, m, *minv, *maxv, scale, nbins, cn);
+#if 0
+      tbb::parallel_reduce(tbb::blocked_range<int>(0, srcv[i].rows), reducer,
+          tbb::static_partitioner());
+#else
+      tbb::parallel_reduce(tbb::blocked_range2d<int>(0, srcv[i].rows, 0, srcv[i].cols),  reducer,
+          tbb::static_partitioner());
+#endif
+      Htotal += reducer.H;
+    }
+  }
+
+  if( cumulative ) {
+    for( int c = 0; c < Htotal.cols; ++c ) {
+      double sum = 0;
+      for( int r = 0; r < Htotal.rows; ++r ) {
+        sum += Htotal(r, c);
+        Htotal(r, c) = sum;
       }
     }
   }
-  else if( _mask.channels() == 1 ) {
 
-    const cv::Mat1b mask = _mask.getMat();
+  if( scaled ) {
+    for( int c = 0; c < Htotal.cols; ++c ) {
+      double mv = 0;
+      if( cumulative ) { // In a cumulative histogram, the maximum is always in the last cell
+        mv = Htotal(Htotal.rows - 1, c);
+      }
+      else { // search for the maximum in the column
+        cv::minMaxLoc(Htotal.col(c), nullptr, &mv);
+      }
 
-    for( int y = 0; y < src.rows; ++y ) {
-      for( int x = 0; x < src.cols; ++x ) {
-        if( mask[y][x] ) {
-          for( int c = 0; c < cn; ++c ) {
-            s[c] = src[y][x][c];
-          }
-          builder.add_pixel(s);
-        }
+      if( mv > 1e-12 ) {
+        Htotal.col(c) /= mv; // Scale the column to the range [0, 1]
       }
     }
   }
-  else if( _mask.channels() == cn ) {
 
-    const cv::Mat_<cv::Vec<uint8_t, cn>> mask = _mask.getMat();
-
-    for (int y = 0; y < src.rows; ++y) {
-      for (int x = 0; x < src.cols; ++x) {
-        for (int c = 0; c < cn; ++c) {
-          if (mask[y][x][c]) {
-            s[c] = src[y][x][c];
-          }
-          builder.add_pixel(s);
-        }
-      }
-    }
+  if( ddepth < 0 ) {
+    ddepth = H.fixedType() ? H.depth() : CV_32F;
+  }
+  if ( (ddepth = CV_MAT_DEPTH(ddepth)) == Htotal.depth() ) {
+    H.move(Htotal);
   }
   else {
-
-    cv::Mat1b mask;
-    reduce_color_channels(_mask.getMat(), mask, cv::REDUCE_MAX);
-    for( int y = 0; y < src.rows; ++y ) {
-      for( int x = 0; x < src.cols; ++x ) {
-        if( mask[y][x] ) {
-          for( int c = 0; c < cn; ++c ) {
-            s[c] = src[y][x][c];
-          }
-          builder.add_pixel(s);
-        }
-      }
-    }
+    Htotal.convertTo(H, ddepth);
   }
 
   return true;
 }
 
-
-static bool update_histogram_(cv::InputArray src, c_histogram_builder & builder, cv::InputArray mask)
-{
-  switch ( src.type() ) {
-
-  case CV_8UC1 : return update_histogram__<uint8_t, 1>(src, builder, mask);
-  case CV_8UC2 : return update_histogram__<uint8_t, 2>(src, builder, mask);
-  case CV_8UC3 : return update_histogram__<uint8_t, 3>(src, builder, mask);
-  case CV_8UC4 : return update_histogram__<uint8_t, 4>(src, builder, mask);
-
-  case CV_8SC1 : return update_histogram__<int8_t, 1>(src, builder, mask);
-  case CV_8SC2 : return update_histogram__<int8_t, 2>(src, builder, mask);
-  case CV_8SC3 : return update_histogram__<int8_t, 3>(src, builder, mask);
-  case CV_8SC4 : return update_histogram__<int8_t, 4>(src, builder, mask);
-
-  case CV_16UC1 : return update_histogram__<uint16_t, 1>(src, builder, mask);
-  case CV_16UC2 : return update_histogram__<uint16_t, 2>(src, builder, mask);
-  case CV_16UC3 : return update_histogram__<uint16_t, 3>(src, builder, mask);
-  case CV_16UC4 : return update_histogram__<uint16_t, 4>(src, builder, mask);
-
-  case CV_16SC1 : return update_histogram__<int16_t, 1>(src, builder, mask);
-  case CV_16SC2 : return update_histogram__<int16_t, 2>(src, builder, mask);
-  case CV_16SC3 : return update_histogram__<int16_t, 3>(src, builder, mask);
-  case CV_16SC4 : return update_histogram__<int16_t, 4>(src, builder, mask);
-
-  case CV_32SC1 : return update_histogram__<int32_t, 1>(src, builder, mask);
-  case CV_32SC2 : return update_histogram__<int32_t, 2>(src, builder, mask);
-  case CV_32SC3 : return update_histogram__<int32_t, 3>(src, builder, mask);
-  case CV_32SC4 : return update_histogram__<int32_t, 4>(src, builder, mask);
-
-  case CV_32FC1 : return update_histogram__<float, 1>(src, builder, mask);
-  case CV_32FC2 : return update_histogram__<float, 2>(src, builder, mask);
-  case CV_32FC3 : return update_histogram__<float, 3>(src, builder, mask);
-  case CV_32FC4 : return update_histogram__<float, 4>(src, builder, mask);
-
-  case CV_64FC1 : return update_histogram__<double, 1>(src, builder, mask);
-  case CV_64FC2 : return update_histogram__<double, 2>(src, builder, mask);
-  case CV_64FC3 : return update_histogram__<double, 3>(src, builder, mask);
-  case CV_64FC4 : return update_histogram__<double, 4>(src, builder, mask);
-
-  default :
-    CF_FATAL("Invalid argument: Unsupported src image type : %d", src.type());
-    break;
-  }
-
-  return false;
-}
-
-
-template<class T, int cn>
-static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
-    double minval, double maxval, int bn, cv::InputArray _mask)
-{
-  c_histogram_builder builder;
-
-  builder.set_channels(cn);
-  builder.set_bins(bn);
-  builder.set_input_range(minval, maxval);
-
-  update_histogram__<T, cn>(_src, builder, _mask);
-
+//double calculateQuantile(const cv::Mat1d& Hcum, double Q, double minv, double maxv) {
+//    const int n = Hcum.rows;
+//    const double binWidth = (maxv - minv) / n;
 //
-//  const cv::Mat_<cv::Vec<T, cn>> src =
-//      _src.getMat();
-//
-//  const cv::Vec<double, cn> mv =
-//      cv::Vec<float, cn>::all(minval);
-//
-//  const double scale =
-//      bn / (maxval - minval);
-//
-//  //  H.create(bn, cn);
-//  //  H.setTo(0);
-//
-//  if( _mask.empty() ) {
-//
-//    for( int y = 0; y < src.rows; ++y ) {
-//      for( int x = 0; x < src.cols; ++x ) {
-//        for( int c = 0; c < cn; ++c ) {
-//          s[c] = src[y][x][c];
+//    for (int j = 0; j < n; ++j) {
+//        if (Hcum(j, 0) >= Q) {
+//            if (j == 0) return minv + (Q / Hcum(j, 0)) * binWidth;
+//            double prev = Hcum(j - 1, 0);
+//            double fraction = (Q - prev) / (Hcum(j, 0) - prev);
+//            return minv + ( (double)(j - 1) + fraction ) * binWidth;
 //        }
-//        builder.add_pixel(s);
-//      }
 //    }
-//  }
-//  else {
-//
-//    const cv::Mat1b mask = _mask.getMat();
-//
-//    for( int y = 0; y < src.rows; ++y ) {
-//      for( int x = 0; x < src.cols; ++x ) {
-//        if( mask[y][x] ) {
-//          for( int c = 0; c < cn; ++c ) {
-//            s[c] = src[y][x][c];
-//          }
-//          builder.add_pixel(s);
-//        }
-//      }
-//    }
-//  }
-
-  builder.compute(H);
-
-  return true;
-}
-
-static bool create_histogram_(cv::InputArray src, cv::Mat1f & dst,
-    double minval, double maxval, int bn, cv::InputArray mask)
-{
-  switch ( src.type() ) {
-
-  case CV_8UC1 : return create_histogram__<uint8_t, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_8UC2 : return create_histogram__<uint8_t, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_8UC3 : return create_histogram__<uint8_t, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_8UC4 : return create_histogram__<uint8_t, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_8SC1 : return create_histogram__<int8_t, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_8SC2 : return create_histogram__<int8_t, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_8SC3 : return create_histogram__<int8_t, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_8SC4 : return create_histogram__<int8_t, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_16UC1 : return create_histogram__<uint16_t, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_16UC2 : return create_histogram__<uint16_t, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_16UC3 : return create_histogram__<uint16_t, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_16UC4 : return create_histogram__<uint16_t, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_16SC1 : return create_histogram__<int16_t, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_16SC2 : return create_histogram__<int16_t, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_16SC3 : return create_histogram__<int16_t, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_16SC4 : return create_histogram__<int16_t, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_32SC1 : return create_histogram__<int32_t, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_32SC2 : return create_histogram__<int32_t, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_32SC3 : return create_histogram__<int32_t, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_32SC4 : return create_histogram__<int32_t, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_32FC1 : return create_histogram__<float, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_32FC2 : return create_histogram__<float, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_32FC3 : return create_histogram__<float, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_32FC4 : return create_histogram__<float, 4>(src, dst, minval, maxval, bn, mask);
-
-  case CV_64FC1 : return create_histogram__<double, 1>(src, dst, minval, maxval, bn, mask);
-  case CV_64FC2 : return create_histogram__<double, 2>(src, dst, minval, maxval, bn, mask);
-  case CV_64FC3 : return create_histogram__<double, 3>(src, dst, minval, maxval, bn, mask);
-  case CV_64FC4 : return create_histogram__<double, 4>(src, dst, minval, maxval, bn, mask);
-
-  default :
-    CF_FATAL("Invalid argument: Unsupported src image type : %d", src.type());
-    break;
-  }
-
-  return false;
-}
-
-
-
-/// @brief  convert conventional image histogram H into cumulative
-///         by accumulating the bin values along rows
-bool accumulate_histogram(cv::InputArray H, cv::OutputArray cumulative)
-{
-  cv::Mat1f src;
-  cv::Mat1f dst;
-
-  double sums[H.cols()];
-
-  if ( H.channels() != 1 ) {
-    CF_FATAL("Invalid argument: Input histogram must be single-channel");
-    return false;
-  }
-
-  if ( cumulative.fixedType() && cumulative.channels() != 1 ) {
-    CF_FATAL("Invalid argument: output cumulative histogram must be single-channel");
-    return false;
-  }
-
-  if ( H.depth() == src.depth() ) {
-    src = H.getMat();
-  }
-  else {
-    H.getMat().convertTo(src, src.depth());
-  }
-
-
-  memset(sums, 0, sizeof(sums));
-
-  dst.create(src.size());
-
-  for ( int y = 0; y < src.rows; ++y ) {
-    for ( int x = 0; x < src.cols; ++x ) {
-      dst[y][x] = (sums[x] += src[y][x]);
-    }
-  }
-
-  if ( !cumulative.fixedType() || cumulative.depth() == dst.depth() ) {
-    cumulative.move(dst);
-  }
-  else {
-    dst.convertTo(cumulative, cumulative.depth());
-  }
-
-  return true;
-}
-
-void scale_histogram(cv::Mat1f & H)
-{
-  cv::Mat1f sums;
-  cv::reduce(H, sums, 0, cv::REDUCE_SUM, sums.depth());
-  for( int y = 0; y < H.rows; ++y ) {
-    for( int x = 0; x < H.cols; ++x ) {
-      H[y][x] /= sums[0][x];
-    }
-  }
-}
-
-/// @brief  scale conventional image histogram H by it's total sum
-void scale_histogram(const cv::Mat1f & Hsrc, cv::Mat1f & Hdst)
-{
-  if( &Hsrc == &Hdst ) {
-    scale_histogram (Hdst);
-  }
-  else {
-
-    cv::Mat1f H;
-    cv::Mat1f sums;
-
-    cv::reduce(Hsrc, sums, 0, cv::REDUCE_SUM, sums.depth());
-
-    H.create(Hsrc.size());
-
-    for( int y = 0; y < H.rows; ++y ) {
-      for( int x = 0; x < H.cols; ++x ) {
-        H[y][x] = Hsrc[y][x] / sums[0][x];
-      }
-    }
-
-    Hdst = std::move(H);
-  }
-}
-
-bool create_histogram(cv::InputArrayOfArrays images, cv::InputArrayOfArrays masks,
-    cv::OutputArray dst,
-    double * minval,
-    double * maxval,
-    int nbins,
-    bool cumulative,
-    bool scaled)
-{
-  static const auto is_vector_kind =
-      [](cv::InputArrayOfArrays a) -> bool {
-        switch (a.kind()) {
-          case cv::_InputArray::STD_VECTOR_VECTOR:
-          case cv::_InputArray::STD_VECTOR_MAT:
-          case cv::_InputArray::STD_VECTOR_UMAT:
-          case cv::_InputArray::STD_VECTOR_CUDA_GPU_MAT:
-          case cv::_InputArray::STD_ARRAY_MAT:
-          return true;
-        }
-        return false;
-      };
-
-  static const auto get_items_count =
-      [](cv::InputArrayOfArrays a) -> int {
-        return a.empty() ? 0 : is_vector_kind(a) ? a.total() : 1;
-      };
-
-  static const auto get_item_depth =
-      [](cv::InputArrayOfArrays a, int index) -> int {
-        return a.empty() ? -1 : is_vector_kind(a) ? a.depth(index) : a.depth(-1);
-      };
-
-  static const auto get_item_channels =
-      [](cv::InputArrayOfArrays a, int index) -> int {
-        return a.empty() ? 0 : is_vector_kind(a) ? a.channels(index) : a.channels(-1);
-      };
-
-  static const auto get_item =
-      [](cv::InputArrayOfArrays a, int index) -> cv::Mat {
-        return a.empty() ? cv::Mat() : is_vector_kind(a) ? a.getMat(index) : a.getMat(-1);
-      };
-
-  const int num_images =
-      get_items_count(images);
-
-  if( num_images < 1 ) {
-    dst.release();
-    return false;
-  }
-
-  int max_depth = get_item_depth(images, 0);
-  int max_cn = get_item_channels(images, 0);
-  for( int i = 1; i < num_images; ++i ) {
-    int depth = get_item_depth(images, i);
-    if( depth > max_depth ) {
-      max_depth = depth;
-    }
-    int cn = get_item_channels(images, i);
-    if( cn > max_cn ) {
-      max_cn = cn;
-    }
-  }
-
-  switch (max_depth) {
-    //
-    case CV_8U:
-      if( *minval >= *maxval ) {
-        *minval = 0;
-        *maxval = UINT8_MAX;
-      }
-      if( *minval < 0 ) {
-        *minval = 0;
-      }
-      if( *maxval > UINT8_MAX ) {
-        *maxval = UINT8_MAX;
-      }
-      if( nbins < 1 ) {
-        nbins = *maxval - *minval + 1;
-      }
-      break;
-
-    case CV_8S:
-      if( *minval >= *maxval ) {
-        *minval = INT8_MIN;
-        *maxval = INT8_MAX;
-      }
-      if( *minval < INT8_MIN ) {
-        *minval = INT8_MIN;
-      }
-      if( *maxval > INT8_MAX ) {
-        *maxval = INT8_MAX;
-      }
-      if( nbins < 1 ) {
-        nbins = *maxval - *minval + 1;
-      }
-      break;
-
-      //
-    case CV_16U:
-      if( *minval >= *maxval ) {
-        *minval = 0;
-        *maxval = UINT16_MAX;
-      }
-      if( *minval < 0 ) {
-        *minval = 0;
-      }
-      if( *maxval > UINT16_MAX ) {
-        *maxval = UINT16_MAX;
-      }
-      if( nbins < 1 ) {
-        nbins = *maxval - *minval + 1;
-      }
-      break;
-
-    case CV_16S:
-      if( *minval >= *maxval ) {
-        *minval = INT16_MIN;
-        *maxval = INT16_MAX;
-      }
-      if( *minval < INT16_MIN ) {
-        *minval = INT16_MIN;
-      }
-      if( *maxval > INT16_MAX ) {
-        *maxval = INT16_MAX;
-      }
-      if( nbins < 1 ) {
-        nbins = *maxval - *minval + 1;
-      }
-      break;
-
-      //
-    case CV_32S:
-      if( *minval >= *maxval ) {
-        *minval = INT32_MIN;
-        *maxval = INT32_MAX;
-      }
-      if( *minval < INT32_MIN ) {
-        *minval = INT32_MIN;
-      }
-      if( *maxval > INT32_MAX ) {
-        *maxval = INT32_MAX;
-      }
-      if( nbins < 1 ) {
-        nbins = *maxval - *minval + 1;
-      }
-      break;
-
-      //
-    case CV_32F:
-      case CV_64F:
-      if( *minval >= *maxval ) {
-
-        cv::minMaxLoc(get_item(images, 0), minval, maxval);
-        for( int i = 0; i < num_images; ++i ) {
-
-          double minv = *minval;
-          double maxv = *maxval;
-
-          cv::minMaxLoc(get_item(images, i), &minv, &maxv);
-          if( minv < *minval ) {
-            *minval = minv;
-          }
-          if( maxv < *maxval ) {
-            *maxval = maxv;
-          }
-        }
-      }
-      if( nbins < 1 ) {
-        nbins = (int) std::min(10000., ((*maxval - *minval) / FLT_MIN) + 1);
-      }
-      break;
-
-      //
-    default:
-      CF_FATAL("Invalid argument: Unsupported image depth %d encountered", max_depth);
-      return false;
-  }
-
-  if ( nbins > 10000 ) {
-    nbins = 10000;
-  }
-
-  cv::Mat1f H;
-  c_histogram_builder builder;
-
-  builder.set_channels(max_cn);
-  builder.set_bins(nbins);
-  builder.set_input_range(*minval, *maxval);
-
-  for ( int i = 0; i < num_images; ++i ) {
-    update_histogram_(get_item(images, i), builder, get_item(masks, i));
-  }
-
-  builder.compute(H);
-
-  if ( scaled ) {
-    scale_histogram(H);
-  }
-
-  if ( cumulative ) {
-    accumulate_histogram(H, H);
-  }
-
-  if ( dst.fixedType() && dst.depth() != H.depth() ) {
-    H.convertTo(dst, dst.depth());
-  }
-  else {
-    dst.move(H);
-  }
-
-  return true;
-}
-
-
-//
-//template<class T, int cn>
-//static bool create_histogram__(cv::InputArray _src, cv::Mat1f & H,
-//    double minval, double maxval, int bn, cv::InputArray _mask)
-//{
-//  // FIXME: implement with TBB
-//
-//  const cv::Mat_<cv::Vec<T, cn>> src =
-//      _src.getMat();
-//
-//  const cv::Vec<double, cn> mv =
-//      cv::Vec<float, cn>::all(minval);
-//
-//  const double scale =
-//      bn / (maxval - minval);
-//
-//  H.create(bn, cn);
-//  H.setTo(0);
-//
-//  if ( _mask.empty() ) {
-//
-//    for ( int y = 0; y < src.rows; ++y ) {
-//      for ( int x = 0; x < src.cols; ++x ) {
-//
-//        for( int c = 0; c < cn; ++c ) {
-//
-//          const int b = std::max(0,  std::min(bn-1,
-//                  (int)( (src[y][x][c] - mv[c]) * scale )));
-//
-//          H[b][c] += 1;
-//        }
-//
-//      }
-//    }
-//  }
-//  else {
-//
-//    const cv::Mat1b mask = _mask.getMat();
-//
-//    for ( int y = 0; y < src.rows; ++y ) {
-//      for ( int x = 0; x < src.cols; ++x ) {
-//        if ( mask[y][x] ) {
-//
-//          for( int c = 0; c < cn; ++c ) {
-//
-//            const int b = std::max(0,  std::min(bn-1,
-//                    (int)( (src[y][x][c] - mv[c]) * scale )));
-//
-//            H[b][c] += 1;
-//          }
-//
-//
-//        }
-//      }
-//    }
-//  }
-//
-//  return true;
+//    return maxv;
 //}
-
-

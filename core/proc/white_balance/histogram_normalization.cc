@@ -7,6 +7,7 @@
 
 #include "histogram_normalization.h"
 #include <core/proc/histogram.h>
+#include <core/proc/histogram.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -100,19 +101,24 @@ static void normalize_bayer_pattern(cv::Mat & _image, const cv::Scalar & mv,
   }
 }
 
+static inline bool is_floating_type(int depth)
+{
+  return depth == CV_32F || depth == CV_64F;
+}
+
 static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
 {
+  const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
+  double minv = -1, maxv = -1;
   cv::Mat1f H;
-  double minval = -1, maxval = -1;
-  int nbins = -1;
 
   bool fOK =
-      create_histogram(image,
+      createHistogram(image,
           _mask,
-          H,
-          &minval,
-          &maxval,
+          &minv,
+          &maxv,
           nbins,
+          H,
           false,
           false);
 
@@ -123,25 +129,25 @@ static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv:
 
   cv::Scalar s;
 
-  for( int i = 0, n = (std::min)(4, H.cols); i < n; ++i ) {
+  for( int c = 0, n = (std::min)(4, H.cols); c < n; ++c ) {
 
     if( H.rows < 2 ) {
-      s[i] = minval;
+      s[c] = minv;
     }
     else {
 
       int jmax = 0;
 
-      float hmax = H[jmax][i];
+      float hmax = H[jmax][c];
 
       for( int j = 1, m = H.rows; j < m; ++j ) {
-        if( H[j][i] > hmax ) {
+        if( H[j][c] > hmax ) {
           jmax = j;
-          hmax = H[j][i];
+          hmax = H[j][c];
         }
       }
 
-      s[i] = minval + jmax * (maxval - minval) / (H.rows - 1);
+      s[c] = minv + jmax * (maxv - minv) / (H.rows - 1);
     }
   }
 
@@ -150,17 +156,17 @@ static cv::Scalar compute_mode(const cv::Mat & image, cv::InputArray _mask = cv:
 
 static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = cv::noArray())
 {
+  const int nbins = is_floating_type(image.depth()) ? 1024 : -1;
+  double minv = -1, maxv = -1;
   cv::Mat1f H;
-  double minval = -1, maxval = -1;
-  int nbins = -1;
 
   bool fOK =
-      create_histogram(image,
+      createHistogram(image,
           _mask,
-          H,
-          &minval,
-          &maxval,
+          &minv,
+          &maxv,
           nbins,
+          H,
           true,
           true);
 
@@ -171,17 +177,33 @@ static cv::Scalar compute_median(const cv::Mat & image, cv::InputArray _mask = c
 
   cv::Scalar s;
 
-  for( int i = 0, n = (std::min)(4, H.cols); i < n; ++i ) {
-
+  for( int c = 0; c < H.cols; ++c ) {
     if( H.rows < 2 ) {
-      s[i] = minval;
+      s[c] = minv;
+      continue;
     }
-    else {
-      for( int j = 0, m = H.rows; j < m; ++j ) {
-        if( H[j][i] >= 0.5 ) {
-          s[i] = minval + j * (maxval - minval) / (m - 1);
-          break;
+
+    // Step of one bin in data units
+    const double binWidth = (maxv - minv) / H.rows;
+
+    for( int r = 0; r < H.rows; ++r ) {
+      // Value in the current bin already normalized into 0..1
+      const double val = H(r, c);
+      if( val >= 0.5 ) {
+        if( r == 0 ) {
+          // Even if the first bin is already >= 0.5, the median is at the very beginning
+          const double fraction = 0.5 / val;
+          s[c] = minv + fraction * binWidth;
         }
+        else {
+          // Take the previous value for interpolation
+          const double prevVal = H(r - 1, c);
+          // How far 0.5 has moved from the previous bin to the current one
+          const double fraction = (0.5 - prevVal) / (val - prevVal);
+          // Final formula
+          s[c] = minv + ((double) (r - 1) + fraction) * binWidth;
+        }
+        break;
       }
     }
   }
@@ -200,12 +222,8 @@ bool nomalize_image_histogramm(cv::InputArray _src, cv::InputArray mask, cv::Out
     const cv::Scalar & offset,
     enum COLORID src_colorid)
 {
-
-  const cv::Mat src =
-      _src.getMat();
-
-  const bool is_bayer =
-      is_bayer_pattern(src_colorid);
+  const cv::Mat src = _src.getMat();
+  const bool is_bayer = is_bayer_pattern(src_colorid);
 
   if( is_bayer && src.channels() != 1 ) {
     CF_ERROR("Invalid number of image channels %d for bayer pattern %s. Must be 1",

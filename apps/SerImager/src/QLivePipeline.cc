@@ -129,12 +129,14 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     _imageViewer->currentMask().copyTo(mask);
     _mutex.unlock();
 
-    create_histogram(image, mask,
-        H,
-        output_hmin, output_hmax,
-        256,
-        false,
-        false);
+    createHistogram(image, mask, output_hmin, output_hmax, 0, H);
+
+//    create_histogram(image, mask,
+//        H,
+//        output_hmin, output_hmax,
+//        256,
+//        false,
+//        false);
 
     (*output_hmin -= offset) /= scale;
     (*output_hmax -= offset) /= scale;

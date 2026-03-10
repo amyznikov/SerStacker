@@ -2141,7 +2141,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
 
         if( _input_options.enable_bground_normalization ) {
-          nomalize_image_histogramm(_raw_bayer_image, cv::noArray(), _raw_bayer_image,
+          nomalizeImageHistogram(_raw_bayer_image, cv::noArray(), _raw_bayer_image,
               _input_options.background_normalization_options,
               input_sequence->colorid());
         }
@@ -2170,8 +2170,9 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 //        }
 
         if ( _input_options.enable_bground_normalization && current_frame.channels() > 1 ) {
-          nomalize_image_histogramm(current_frame, current_mask, current_frame,
-              _input_options.background_normalization_options);
+          nomalizeImageHistogram(current_frame, current_mask, current_frame,
+              _input_options.background_normalization_options,
+              input_sequence->colorid());
         }
 
 

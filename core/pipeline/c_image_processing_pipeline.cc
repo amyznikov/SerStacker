@@ -923,7 +923,7 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
     }
 
     if ( input_options.enable_bground_normalization ) {
-      nomalize_image_histogramm(output_image, output_mask, output_image,
+      nomalizeImageHistogram(output_image, output_mask, output_image,
           input_options.background_normalization_options,
           input_sequence->colorid());
     }

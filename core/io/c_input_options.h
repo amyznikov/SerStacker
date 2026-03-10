@@ -10,7 +10,7 @@
 #define __c_input_options_h__
 
 #include "c_data_frame.h"
-#include <core/proc/white_balance/histogram_normalization.h>
+#include <core/proc/histogram-tools.h>
 #include <core/improc/c_image_processor.h>
 
 struct c_video_input_options

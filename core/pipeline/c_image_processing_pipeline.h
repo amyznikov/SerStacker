@@ -11,7 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <core/io/c_input_sequence.h>
-#include <core/proc/white_balance/histogram_normalization.h>
+#include <core/proc/histogram-tools.h>
 #include <core/settings/opencv_settings.h>
 #include <core/ctrlbind/ctrlbind.h>
 #include <core/improc/c_image_processor.h>

@@ -93,12 +93,4 @@ cv::Scalar computeHistogramMedian(cv::InputArray cumulativeNormalizedHistogram,
 cv::Scalar computeHistogramMode(cv::InputArray H, double minv, double maxv);
 
 
-/**
-* @param qLow - lower quantile (e.g., 0.01 for 1%)
-* @param qHigh - upper quantile (e.g., 0.99 for 99%)
-*  */
-bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray srcMask,
-    cv::OutputArray dst,
-    double qlow, double qhigh);
-
 #endif /* ___histogram_h___ */

@@ -10,8 +10,7 @@
 #define __c_histogram_normalization_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/white_balance/histogram_normalization.h>
-//#include <core/io/debayer.h>
+#include <core/proc/histogram-tools.h>
 
 class c_histogram_normalization_routine:
     public c_image_processor_routine
@@ -27,10 +26,6 @@ public:
 protected:
   COLORID colorid = COLORID_UNKNOWN;
   c_histogram_normalization_options opts;
-
-//  histogram_normalization_type _normalization_type = histogram_normalize_mean;
-//  cv::Scalar _offset = cv::Scalar::all(0);
-//  cv::Scalar _stretch = cv::Scalar::all(1);
 };
 
 #endif /* __c_histogram_normalization_routine_h__ */

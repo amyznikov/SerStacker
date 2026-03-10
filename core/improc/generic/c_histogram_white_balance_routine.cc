@@ -6,7 +6,7 @@
  */
 
 #include "c_histogram_white_balance_routine.h"
-#include <core/proc/histogram.h>
+#include <core/proc/histogram-tools.h>
 #include <core/proc/reduce_channels.h>
 
 void c_histogram_white_balance_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)

@@ -26,11 +26,11 @@ void c_mtf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & c
 {
   ctlbind(ctls, "clip input range", ctx(&this_class::inputRange), "");
   ctlbind(ctls, "stretch output range", ctx(&this_class::outputRange), "");
-  ctlbind_slider_spinbox(ctls, "lclip", ctx(&this_class::shadows), 0.0, 1.0, 0.001, "");
+  ctlbind_slider_spinbox(ctls, "lclip", ctx(&this_class::lclip), 0.0, 1.0, 0.001, "");
   ctlbind_slider_spinbox(ctls, "shadows", ctx(&this_class::shadows), 0.0, 5.0, 0.001, "");
   ctlbind_slider_spinbox(ctls, "midtones", ctx(&this_class::midtones), 0.0, 1.0, 0.001, "");
   ctlbind_slider_spinbox(ctls, "highlights", ctx(&this_class::highlights), 0.0, 5.0, 0.001, "");
-  ctlbind_slider_spinbox(ctls, "hclip", ctx(&this_class::shadows), 0.0, 1.0, 0.001, "");
+  ctlbind_slider_spinbox(ctls, "hclip", ctx(&this_class::hclip), 0.0, 1.0, 0.001, "");
 }
 
 

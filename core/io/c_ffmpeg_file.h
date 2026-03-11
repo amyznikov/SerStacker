@@ -9,6 +9,7 @@
 #define __c_ffmpeg_file_h__
 
 #include <opencv2/opencv.hpp>
+#include <deque>
 
 // Must be set from CMakeLists.txt
 // #define HAVE_AVCODEC  1
@@ -32,14 +33,6 @@ extern "C" {
 
 #if LIBAVUTIL_BUILD >= (LIBAVUTIL_VERSION_MICRO >= 100 ? AV_VERSION_INT(51, 63, 100) : AV_VERSION_INT(54, 6, 0))
 # include <libavutil/imgutils.h>
-#endif
-
-#ifndef ff_const59
-# if LIBAVFORMAT_BUILD > AV_VERSION_INT(58, 79, 100)
-#   define ff_const59  const
-# else
-#   define ff_const59
-# endif
 #endif
 }
 
@@ -87,7 +80,7 @@ public:
   int num_frames() const;
 
   ///@brief try seek to given frame
-  bool seek_frame(int index);
+  bool seek_frame(int64_t index);
 
   int64_t curpos() const;
 
@@ -109,28 +102,29 @@ public:
 
 
 protected:
-  std::string stream_name_;
-  timeout_interrupt_callback tcb;
-  int64_t rcvtmo_ = 20 * 1000000; // 10 sec
+  std::string _stream_name;
+  timeout_interrupt_callback _tcb;
+  int64_t _rcvtmo = 20 * 1000000; // 10 sec
 
-  int  video_stream_index = -1;
-  AVFormatContext * ic = nullptr;
-  ff_const59 AVCodec * codec = nullptr;
-  AVCodecContext *  cctx = nullptr;
-  AVStream *        istream = nullptr;
-  AVPacket *        avpacket = nullptr;
-  AVFrame *         avframe = nullptr;
-  AVFrame *         rgbpicture = nullptr;
-  SwsContext *      swsctx = nullptr;
-  cv::Size          scaledSize_;
+  int  _video_stream_index = -1;
+  AVFormatContext * _ic = nullptr;
+  const AVCodec * _codec = nullptr;
+  AVCodecContext *  _cctx = nullptr;
+  AVStream *        _istream = nullptr;
+  AVPacket *        _avpacket = nullptr;
+  AVFrame *         _avframe = nullptr;
+  AVFrame *         _rgbpicture = nullptr;
+  SwsContext *      _swsctx = nullptr;
+  cv::Size          _scaledSize;
 
   struct cvframe {
     cv::Mat image;
     int64_t pts; // in stream time_base units
   };
-  std::vector<cvframe> received_frames;
-  int64_t last_ts = -1;
-  double timescale_ = 0;
+  std::deque<cvframe> _received_frames;
+  int64_t _last_ts = -1;
+  mutable int64_t _frames_read = 0;
+  double _timescale = 0;
 };
 
 /**
@@ -175,37 +169,37 @@ public:
 
   int frames_written() const
   {
-    return frames_written_;
+    return _frames_written;
   }
 
 protected:
   /// write a frame with given pts in stream time_base units
-  bool write_frame(const uint8_t * data, int step, int width, int height, int cn, int origin, int64_t pts);
+//  /bool write_frame(const uint8_t * data, int step, int width, int height, int cn, int origin, int64_t pts);
   int encode_and_send_frame(AVFrame * picture);
 
 protected:
-  std::string output_filename_;
-  std::string opts_;
-  AVFormatContext * octx = nullptr;
-  AVStream * ostream = nullptr;
-  AVCodecContext * codec_ctx = nullptr;
-  AVFrame * input_frame = nullptr;
-  AVFrame * output_frame = nullptr;
-  enum AVPixelFormat input_pix_fmt = AV_PIX_FMT_NONE;
-  uint8_t * aligned_input =  nullptr;
-  size_t  aligned_input_size = 0;
-  cv::Size frame_size;
-  int64_t frames_written_ = 0;
-  int64_t start_pts_ = 0;
-  int64_t ppts_ = 0;
-  bool header_written_ = false;
+  std::string _output_filename;
+  std::string _opts;
+  AVFormatContext * _octx = nullptr;
+  AVStream * _ostream = nullptr;
+  AVCodecContext * _codec_ctx = nullptr;
+  AVFrame * _input_frame = nullptr;
+  AVFrame * _output_frame = nullptr;
+  enum AVPixelFormat _input_pix_fmt = AV_PIX_FMT_NONE;
+//  uint8_t * _aligned_input =  nullptr;
+//  size_t  _aligned_input_size = 0;
+  cv::Size _frame_size;
+  int64_t _frames_written = 0;
+  int64_t _start_pts = 0;
+  int64_t _ppts = 0;
+  bool _header_written = false;
 
-  AVPacket * encoded_pkt = nullptr;
-  SwsContext * sws_ctx = nullptr;
+  AVPacket * _encoded_pkt = nullptr;
+  SwsContext * _swsctx = nullptr;
 
 };
 
-
+#if 0
 /**
  * c_ffmpeg_encoder
  *
@@ -236,15 +230,15 @@ public:
 
 protected:
   std::string _opts;
-  AVCodecContext * codec_ctx = nullptr;
-  AVFrame * input_frame = nullptr;
-  AVFrame * output_frame = nullptr;
-  enum AVPixelFormat input_pix_fmt = AV_PIX_FMT_NONE;
-  uint8_t * aligned_input =  nullptr;
-  AVPacket * encoded_pkt = nullptr;
-  SwsContext * sws_ctx = nullptr;
-  size_t  aligned_input_size = 0;
-  cv::Size frame_size;
+  AVCodecContext * _codec_ctx = nullptr;
+  AVFrame * _input_frame = nullptr;
+  AVFrame * _output_frame = nullptr;
+  enum AVPixelFormat _input_pix_fmt = AV_PIX_FMT_NONE;
+  uint8_t * _aligned_input =  nullptr;
+  AVPacket * _encoded_pkt = nullptr;
+  SwsContext * _swsctx = nullptr;
+  size_t  _aligned_input_size = 0;
+  cv::Size _frame_size;
   int64_t pts = 0;
 };
 
@@ -279,7 +273,7 @@ public:
 
 protected:
   std::string _opts;
-  ff_const59 AVCodec * codec = nullptr;
+  const AVCodec * codec = nullptr;
   AVCodecContext *  cctx = nullptr;
   //AVStream *        istream = nullptr;
   //AVPacket *        avpacket = nullptr;
@@ -297,6 +291,7 @@ protected:
 //  double timescale_ = 0;
 };
 
+#endif
 #endif // HAVE_FFMPEG
 
 #endif /* __c_ffmpeg_file_h__ */

@@ -70,7 +70,7 @@ public:
   ///@brief set output size
   void set_frame_size(const cv::Size &size);
 
-  ///@brief get scalled output size
+  ///@brief get scaled output size
   cv::Size frame_size() const;
 
   ///@brief get coded image size
@@ -106,9 +106,9 @@ protected:
   timeout_interrupt_callback _tcb;
   int64_t _rcvtmo = 20 * 1000000; // 10 sec
 
-  int  _video_stream_index = -1;
+  int _video_stream_index = -1;
   AVFormatContext * _ic = nullptr;
-  const AVCodec * _codec = nullptr;
+  const AVCodec *   _codec = nullptr;
   AVCodecContext *  _cctx = nullptr;
   AVStream *        _istream = nullptr;
   AVPacket *        _avpacket = nullptr;
@@ -173,8 +173,6 @@ public:
   }
 
 protected:
-  /// write a frame with given pts in stream time_base units
-//  /bool write_frame(const uint8_t * data, int step, int width, int height, int cn, int origin, int64_t pts);
   int encode_and_send_frame(AVFrame * picture);
 
 protected:
@@ -186,8 +184,6 @@ protected:
   AVFrame * _input_frame = nullptr;
   AVFrame * _output_frame = nullptr;
   enum AVPixelFormat _input_pix_fmt = AV_PIX_FMT_NONE;
-//  uint8_t * _aligned_input =  nullptr;
-//  size_t  _aligned_input_size = 0;
   cv::Size _frame_size;
   int64_t _frames_written = 0;
   int64_t _start_pts = 0;
@@ -196,7 +192,6 @@ protected:
 
   AVPacket * _encoded_pkt = nullptr;
   SwsContext * _swsctx = nullptr;
-
 };
 
 #if 0

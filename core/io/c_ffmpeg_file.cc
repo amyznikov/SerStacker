@@ -803,20 +803,20 @@ const AVStream * c_ffmpeg_reader::stream() const
   return _istream;
 }
 
-bool c_ffmpeg_reader::seek_frame(int64_t frame_index)
+bool c_ffmpeg_reader::seek_frame(int64_t pts)
 {
   if ( !_istream || _istream->avg_frame_rate.num <= 0 || _istream->time_base.num <= 0 ) {
     return false;
   }
 
   // Clear the queue of already decoded frames
-  if( !_received_frames.empty() && frame_index >= _received_frames.front().pts
-      && frame_index <= _received_frames.back().pts ) {
+  if( !_received_frames.empty() && pts >= _received_frames.front().pts
+      && pts <= _received_frames.back().pts ) {
 
-    while (!_received_frames.empty() && frame_index > _received_frames.front().pts) {
+    while (!_received_frames.empty() && pts > _received_frames.front().pts) {
       _received_frames.pop_front();
     }
-    while (!_received_frames.empty() && frame_index < _received_frames.back().pts) {
+    while (!_received_frames.empty() && pts < _received_frames.back().pts) {
       _received_frames.pop_back();
     }
 
@@ -829,7 +829,7 @@ bool c_ffmpeg_reader::seek_frame(int64_t frame_index)
 
   const int64_t start_time = _istream->start_time > 0 ? _istream->start_time : 0;
   const int64_t den = ((int64_t) _istream->avg_frame_rate.num * _istream->time_base.num);
-  const int64_t timestamp = start_time + frame_index * ((int64_t) _istream->time_base.den * _istream->avg_frame_rate.den) / std::max(den, 1L);
+  const int64_t timestamp = start_time + pts * ((int64_t) _istream->time_base.den * _istream->avg_frame_rate.den) / std::max(den, int64_t(1));
   int status = av_seek_frame(_ic, _video_stream_index, timestamp, AVSEEK_FLAG_BACKWARD);
   if ( status >= 0 ) {
     _last_ts = timestamp;
@@ -838,7 +838,7 @@ bool c_ffmpeg_reader::seek_frame(int64_t frame_index)
   else  {
     CF_ERROR("av_seek_frame(video_stream_index=%d frame_index=%d timestamp=%lld start_time=%lld stream->time_base=%d/%d) fails: "
         "status=%d (%s)",
-        _video_stream_index, frame_index, (long long )(timestamp), (long long )(start_time),
+        _video_stream_index, pts, (long long )(timestamp), (long long )(start_time),
         _istream->time_base.num, _istream->time_base.den,
         status, averr2str(status));
   }

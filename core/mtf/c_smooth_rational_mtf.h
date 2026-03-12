@@ -20,8 +20,8 @@ public:
   struct Options {
     float lclip = 0.f;
     float hclip = 1.f;
-    float shadows = 1.0f;
-    float highlights = 1.0f;
+    float shadows = .0f;
+    float highlights = .0f;
     float midtones = 0.5f;
   };
 
@@ -133,8 +133,10 @@ public:
     return _opts;
   }
 
-  // Primary rational formula
-  static inline float eval(float t, float k, float s, float h )
+
+  // Primary rational formula, k-midtones, s-shadows, h-highlighs
+  // k, s, h are computed from user inputs inside of update_coeffs()
+  static inline float eval(float t, float k, float s, float h)
   {
     const float ts = std::pow(t, s);
     const float k1t_h = std::pow(k * (1.0f - t), h);
@@ -143,7 +145,23 @@ public:
 
   inline float eval(float t) const
   {
-    return eval(t, _k, _opts.shadows, _opts.highlights);
+    return eval(t, _k, _s, _h);
+  }
+
+  // The same as primary eval() above but uses log/exp to replace std::pow()
+  static inline float eeval(float t, float log_k, float s, float h)
+  {
+    // pow(t, shadow) = exp(y * log(x))
+    // pow(k * (1.0f - t), h) = exp(h * (log(k) + log(1-t)))
+    const float ts = std::exp(s* std::log(t));
+    const float log_1_minus_t = std::log(1.0f - t);
+    const float k1t_h = std::exp(h * (log_k + log_1_minus_t));
+    return ts / (ts + k1t_h + 1e-12f);
+  }
+
+  inline float eeval(float t) const
+  {
+    return eval(t, _log_k, _s, _h);
   }
 
   inline float apply(float x) const
@@ -174,6 +192,9 @@ protected:
   float _omin = 0.f;
   float _omax = 1.f;
   float _k = 1.0f;
+  float _s = 1.0f;
+  float _h = 1.0f;
+  float _log_k = 0;
   float _xmin = 0.f;
   float _xmax = 1.f;
   float _xscale = 1.f;

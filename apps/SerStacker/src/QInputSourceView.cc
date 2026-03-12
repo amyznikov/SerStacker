@@ -780,6 +780,35 @@ void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
   displayParams().mtf.get_mtf_curve(cy, n);
 }
 
+void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
+{
+  switch (_currentViewType) {
+    case DisplayType_Image:
+      createHistogram(_imageView->currentImage(),
+          _imageView->currentMask(),
+          hmin, hmax,
+          0,
+          H,
+          cumulative,
+          normalized);
+      break;
+
+    case DisplayType_PointCloud:
+      createHistogram(_cloudView->currentColors(),
+          _cloudView->currentMask(),
+          hmin, hmax,
+          0,
+          H,
+          cumulative,
+          normalized);
+      break;
+
+    default:
+      H.release();
+      break;
+  }
+}
+
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   switch (_currentViewType) {

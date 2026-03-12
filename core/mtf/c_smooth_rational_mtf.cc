@@ -9,6 +9,7 @@
 #if HAVE_TBB
 # include <tbb/tbb.h>
 #endif
+#include <core/debug.h>
 
 #if HAVE_TBB
 template<typename T, typename Func>
@@ -97,9 +98,14 @@ void c_smooth_rational_mtf::update_coeffs()
   // midtones - value at 0.5 (lightness)
   // Calculate k so that f(0.5) = midtones
   // midtones = 0.5^_shadows / (0.5^_shadows + (k * 0.5)^_highlights)
+
+  _s = std::pow(10.f, _opts.shadows);
+  _h = std::pow(10.f, _opts.highlights);
+
   // Solving the equation for k:
-  const float half_s = std::pow(0.5f, _opts.shadows);
-  _k = (std::pow((half_s / _opts.midtones) - half_s, 1.0f / _opts.highlights)) / 0.5f;
+  const float half_s = std::pow(0.5f, _s);
+  _k = (std::pow((half_s / _opts.midtones) - half_s, 1.0f / _h)) / 0.5f;
+  _log_k = std::log(_k);
 
   // Update also input / output ranges for faster computation
   if ( !(_imax > _imin) ) {
@@ -112,6 +118,7 @@ void c_smooth_rational_mtf::update_coeffs()
     _xscale = _xmax > _xmin ? 1 / std::abs(_xmax - _xmin) : 1;
   }
 
+  // release also LUT tables
   _lut8.release();
   _lut16.release();
 }
@@ -174,8 +181,9 @@ void c_smooth_rational_mtf::parallel_apply(const cv::Mat & src, cv::Mat & dst) c
     const float xmax = _xmax;
     const float xs = _xscale;
     const float k = _k;
-    const float s = _opts.shadows;
-    const float h = _opts.highlights;
+    //const float log_k = _log_k;
+    const float s = _s;// _opts.shadows;
+    const float h = _h; // _opts.highlights;
     const float omin = _omin;
     const float omax = _omax;
     const float orange = _omax - _omin;

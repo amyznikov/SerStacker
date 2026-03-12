@@ -390,17 +390,21 @@ static bool suggestHistogramOptions(int depth, const std::vector<cv::Mat> & srcv
   if ( autoBins ) {
     const double range = *maxv - *minv;
 
-    if( depth == CV_8U || depth == CV_8S ) {
+    if( depth < CV_16U ) {
       /*
        * For 8-bit auto mode:
        * If the range is narrow (e.g., 50-150), make exactly 101 bins (scale=1.0).
        * If the range is wide (0-255), limit to 256.
        */
-      *nbins = range < 255.5  ? (uint32_t) (std::round(range) + 1.0) : 256;
+      *nbins = range < 255.5  ? (uint32_t) (std::round(range) + 1.0) : 256U;
+    }
+    else if( depth < CV_32S ) { // CV_16U, CV_16S
+      // 16 bit mode
+      *nbins = range < 65536.5  ? (uint32_t) (std::round(range) + 1.0) : 65536U;
     }
     else {
-      /* For the rest (16-bit, Float) widget default */
-      *nbins = 256;
+      /* For the rest (int32, Float) use some reasonable limit */
+      *nbins = 10000U;
     }
   }
 
@@ -644,7 +648,12 @@ void normalizeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst, bool isCumula
     }
     else {
       // Find the actual maximum in the column
-      cv::minMaxLoc(tmp.col(c), nullptr, &mv);
+      cv::Point pos;
+      cv::minMaxLoc(tmp.col(c), nullptr, &mv, nullptr, &pos);
+
+      if( isCumulative && pos.y != rows - 1 ) {
+        CF_ERROR("BUG DETECTED: pos.y=%d / %d", pos.y, rows - 1);
+      }
     }
 
     // Normalize the column if it is not empty
@@ -688,6 +697,8 @@ bool computeHistogramClipLevels(cv::InputArray cumulativeNormalizedHistogram,
   const int cn = (std::min)(4, H.cols); // Scalar supports up to 4 channels
   const double binWidth = (vMax - vMin) / nbins;
 
+  // CF_DEBUG("vMax=%g vMin=%g nbins=%d binWidth=%g", vMax, vMin, nbins, binWidth);
+
   realLow = cv::Scalar::all(vMin);
   realHigh = cv::Scalar::all(vMax);
 
@@ -725,7 +736,7 @@ bool computeHistogramClipLevels(cv::InputArray cumulativeNormalizedHistogram,
           double fraction = (diff > 1e-12) ? (qHigh - prev) / diff : 0.0;
           idx = (double) (j - 1) + fraction;
         }
-        realHigh[c] = vMin + idx * binWidth;
+        realHigh[c] = vMin + (idx + 0.5) * binWidth;
         break;
       }
     }

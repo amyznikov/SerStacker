@@ -27,7 +27,7 @@ public:
 
   //QStringList displayChannels() const override;
   void getInputDataRange(double * minval, double * maxval) const override;
-  //void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
+  void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative = false, bool normalized = false) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
   void getMtfCurve(std::vector<float> & cy, size_t n)  override;
 

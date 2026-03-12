@@ -9,6 +9,8 @@
  *
  */
 
+#ifndef _WIN32
+
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE
 #endif
@@ -213,3 +215,4 @@ std::string cf_get_iface_address(const std::string & ifacename)
   return ipaddrs;
 }
 
+#endif // _WIN32

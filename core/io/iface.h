@@ -12,6 +12,8 @@
 #ifndef __cuttle_iface_h__
 #define __cuttle_iface_h__
 
+#ifndef _WIN32
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -40,4 +42,5 @@ std::string cf_get_iface_address(const std::string & ifacename);
   cf_format_iface_flags(flags, (char[256]){0})
 
 
+#endif // _WIN32
 #endif /* __cuttle_iface_h__ */

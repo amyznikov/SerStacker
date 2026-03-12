@@ -229,3 +229,106 @@ bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::Outp
 
   return true;
 }
+
+/**
+ * Histogram-based automatic adjustment of MTF parameters for c_smooth_rational_mtf
+ */
+#if 1
+void autoMtf(const cv::Mat1d & H, double realMinValue, double realMaxValue,
+    double * lclip, double * hclip, double * shadow, double * midtones, double * highlights)
+{
+    cv::Mat1d Hc;
+    makeCumulativeHistogram(H, Hc);
+    normalizeHistogram(Hc, Hc, true);
+
+    // BASIC CALIBRATION PARAMETERS
+    const double DS_DELTA_LIMIT = 0.01;   // Border of pure Dipskaya (needle)
+    const double LUNAR_DELTA_LIMIT = 0.10; // Bright surface boundary (hill)
+    const double TARGET_DS = 0.50;        // Target brightness for Deepsky
+    const double TARGET_LUNAR = 0.38;     // Target brightness for the Moon (slightly increased from 0.35)
+    const double MAX_NEG_SHADOW = -0.10;  // Maximum upward "bending" of shadows
+    const double SHADOW_DELTA_CUTOFF = 0.04; // Delta above which shadow is always 0
+    // -------------------------------------------------------
+
+    cv::Scalar lb, hb;
+    computeHistogramClipLevels(Hc, realMinValue, realMaxValue, 0.001, 0.9999, lb, hb);
+    *lclip = lb[0];
+    *hclip = hb[0];
+
+    const double medianVal = computeHistogramMedian(Hc, realMinValue, realMaxValue)[0];
+    const double range = std::max(1e-9, (realMaxValue - realMinValue));
+    const double l_norm = (*lclip - realMinValue) / range;
+    const double m_norm = (medianVal - realMinValue) / range;
+
+    const double delta = std::max(1e-9, m_norm - l_norm);
+    const double t_med_rel = std::clamp((medianVal - *lclip) / (*hclip - *lclip + 1e-9), 0.001, 0.99);
+
+    // Adaptive estimation of target brightness
+    const double weight = std::clamp((delta - DS_DELTA_LIMIT) / (LUNAR_DELTA_LIMIT - DS_DELTA_LIMIT), 0.0, 1.0);
+    const double target_val = TARGET_DS - weight * (TARGET_DS - TARGET_LUNAR);
+
+    // Estimate midtones (k_needed -> Options.midtones)
+    const double k_needed = (t_med_rel * (1.0 - target_val)) / (target_val * (1.0 - t_med_rel) + 1e-9);
+    *midtones = std::clamp(1.0 / (k_needed + 1.0), 0.05, 0.98);
+
+    // Adaptive Shadow
+    if (delta < SHADOW_DELTA_CUTOFF) {
+        *shadow = std::clamp(MAX_NEG_SHADOW * (1.0 - delta / SHADOW_DELTA_CUTOFF), MAX_NEG_SHADOW, 0.0);
+    } else {
+        *shadow = 0.0;
+    }
+
+    *highlights = 0.0;
+}
+
+#else
+void autoMtf(const cv::Mat1d & H, double realMinValue, double realMaxValue,
+    double * lclip, double * hclip, double * shadow, double * midtones, double * highlights)
+{
+  cv::Mat1d Hc;
+
+  // Estimate the histogram mode (sky background peak)
+  const double mode = computeHistogramMode(H, realMinValue, realMaxValue)[0];
+
+  // Preparing a cumulative histogram
+  // Clipping (1% below is usually sufficient, but you can try 0.005 to preserve faint nebulae)
+  makeCumulativeHistogram(H, Hc);
+  normalizeHistogram(Hc, Hc, true);
+
+  cv::Scalar lowBound, highBound;
+  computeHistogramClipLevels(Hc, realMinValue, realMaxValue, 0.0001, 0.9999, lowBound, highBound);
+  *lclip = lowBound[0];
+  *hclip = highBound[0];
+
+  // Estimate the histogram median
+  const double medianVal = computeHistogramMedian(Hc, realMinValue, realMaxValue)[0];
+
+  // Relative positions
+  const double range = std::max(1e-9, (*hclip - *lclip));
+  const double t_med = std::clamp((medianVal - *lclip) / range, 0.01, 0.99);
+  const double t_mode = std::clamp((mode - *lclip) / range, 0.0, 0.99);
+
+  // Auto-Midtones (Brightness balance)
+  *midtones = std::clamp(1.0 - t_med, 0.02, 0.98);
+
+  // Auto-Shadows (Darkening the sky background) - SOFT HEURISTICS
+  const double bg_dist = t_med - t_mode;
+  CF_DEBUG("t_med=%g t_mode=%g bg_dist=%g bg_ratio=%g", t_med, t_mode, bg_dist, bg_dist / (t_mode + t_med));
+
+  // The threshold of 0.15 is more typical for deep-pocketing.
+  const double threshold = 0.01;
+  if( bg_dist >= threshold ) {
+    // For photos with a wide histogram (moon and planets)
+    *shadow = 0.0;
+  }
+  else {
+    // The closer the median is to the mode, the more aggressively we push the background towards black.
+    // Reduce the maximum strength to 0.45 (safer for stacks)
+    const double max_shadow = 0.45;
+    *shadow = std::clamp(max_shadow * (1.0 - bg_dist / threshold), 0.0, max_shadow);
+  }
+
+  // keep zero highlights to don't loss bright details
+  *highlights = 0.0;
+}
+#endif

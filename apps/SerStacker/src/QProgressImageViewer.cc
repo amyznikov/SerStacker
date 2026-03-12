@@ -159,17 +159,14 @@ void QProgressImageViewer::getMtfCurve(std::vector<float> & cy, size_t n)
   displayParams().mtf.get_mtf_curve(cy, n);
 }
 
+void QProgressImageViewer::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
+{
+  createHistogram(currentImage(), currentMask(), hmin, hmax, 0, H, cumulative, normalized);
+}
+
 void QProgressImageViewer::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   createHistogram(mtfImage(), currentMask(), hmin, hmax, 0, H);
-//
-//  create_histogram(mtfImage(),
-//      currentMask(),
-//      H,
-//      hmin, hmax,
-//      256,
-//      false,
-//      false);
 }
 
 

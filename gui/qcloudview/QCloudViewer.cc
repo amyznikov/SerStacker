@@ -362,6 +362,13 @@ void QCloudViewMtfDisplay::getMtfCurve(std::vector<float> & cy, size_t n)
   displayParams().mtf.get_mtf_curve(cy, n);
 }
 
+void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax, bool cumulative, bool normalized)
+{
+  CF_ERROR("FIXME: Inplement getInputHistogramm() for QCloudViewMtfDisplay !!!");
+  H.release();
+}
+
+
 void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
 {
   displayParams().mtf.get_output_range(omin, omax);

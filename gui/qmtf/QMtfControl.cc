@@ -12,6 +12,7 @@
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
+#include <core/proc/histogram-tools.h>
 #include <core/debug.h>
 #include "QMtfControl.h"
 
@@ -147,7 +148,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   autoMtf_ctl = new QToolButton(this);
   autoMtf_ctl->setIconSize(QSize(16, 16));
   autoMtf_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  autoMtf_ctl->setCheckable(true);
+  autoMtf_ctl->setCheckable(false);
   autoMtf_ctl->setText("Auto MTF");
   autoMtf_ctl->setToolTip("Auto MTF adjustment");
   topToolbar_ctl->addWidget(autoMtf_ctl);
@@ -193,12 +194,12 @@ QMtfControl::QMtfControl(QWidget * parent) :
   bottomToolbar_ctl->setIconSize(QSize(16, 16));
 
   static const auto createSpinBox =
-      [](QWidget * parent, double minv, double maxv, double v) -> QDoubleSpinBox* {
+      [](QWidget * parent, double minv, double maxv, double v, int decimals) -> QDoubleSpinBox* {
         QDoubleSpinBox * ctl = new QDoubleSpinBox(parent);
         ctl->setKeyboardTracking(false);
         ctl->setRange(minv, maxv);
-        ctl->setDecimals(3);
-        ctl->setSingleStep(0.001);
+        ctl->setDecimals(decimals);
+        ctl->setSingleStep(std::pow(1.0, -decimals));
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
         ctl->setStepType(QAbstractSpinBox::AdaptiveDecimalStepType);
 #endif
@@ -206,14 +207,13 @@ QMtfControl::QMtfControl(QWidget * parent) :
         return ctl;
       };
 
-
-  bottomToolbar_ctl->addWidget(lclip_ctl = createSpinBox(this, 0, 1, 0));
-  bottomToolbar_ctl->addWidget(shadows_ctl = createSpinBox(this, 0, 5, 1));
+  bottomToolbar_ctl->addWidget(lclip_ctl = createSpinBox(this, 0, 1, 0, 3));
+  bottomToolbar_ctl->addWidget(shadows_ctl = createSpinBox(this, -2, 2, 0, 2));
   addStretch(bottomToolbar_ctl);
-  bottomToolbar_ctl->addWidget(midtones_ctl = createSpinBox(this, 0, 1, 0.5));
+  bottomToolbar_ctl->addWidget(midtones_ctl = createSpinBox(this, 0, 1, 0.5, 3));
   addStretch(bottomToolbar_ctl);
-  bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, 0, 5, 1));
-  bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1));
+  bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, -2, 2, 0, 2));
+  bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1, 3));
 
   // Combine layouts
   _vbox->addWidget(topToolbar_ctl, 1);
@@ -415,9 +415,38 @@ void QMtfControl::onAutoMtfCtrlClicked()
 {
   if ( _displaySettings ) {
 
-    _displaySettings->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
+    double hmin = -1, hmax = -1;
+    c_mtf_options opts;
+    cv::Mat1d H;
 
+    _displaySettings->getInputHistogramm(H, &hmin, &hmax);
+    if( H.empty() || !(hmax > hmin) ) {
+      CF_ERROR("_displaySettings->getInputHistogramm() fails");
+    }
+    else {
 
+      if( H.cols > 1 ) {
+        cv::reduce(H, H, 1, cv::REDUCE_AVG);
+      }
+
+      double lc, hc, s, m, h;
+
+      autoMtf(H, hmin, hmax, &lc, &hc, &s, &m, &h);
+
+      CF_DEBUG("H: %dx%d hmin=%g hmax=%g lc=%g, hc=%g, s=%g, m=%g, h=%g", H.rows, H.cols, hmin, hmax, lc, hc, s, m, h);
+
+      const double hrange = (hmax - hmin);
+      opts.lclip = (lc - hmin) / hrange;
+      opts.hclip = (hc - hmin) / hrange;
+      opts.shadows = s;
+      opts.highlights = h;
+      opts.midtones = m;
+      _displaySettings->setMtf(hmin, hmax, &opts);
+      _displaySettings->saveParameters();
+      updateControls();
+    }
+
+    //_displaySettings->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
     //    if ( autoMtf_ctl->isChecked() ) {
     //
     //      switch ( selectedAutoMtfAction_ ) {

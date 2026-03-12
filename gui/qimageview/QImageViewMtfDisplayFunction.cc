@@ -71,6 +71,24 @@ void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * m
 //  }
 //}
 
+void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
+{
+  if ( !_imageViewer ) {
+    H.release();
+  }
+  else {
+    createHistogram(_imageViewer->currentImage(),
+        _imageViewer->currentMask(),
+        hmin, hmax,
+        0,
+        H,
+        cumulative,
+        normalized);
+  }
+
+}
+
+
 void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   if ( _imageViewer ) {

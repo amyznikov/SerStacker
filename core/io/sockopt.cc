@@ -16,7 +16,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
+#ifdef _WIN32
+# include <ws2tcpip.h>
+#else
+# include <arpa/inet.h>
+#endif
 #include <netinet/tcp.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>

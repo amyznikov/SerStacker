@@ -184,11 +184,30 @@ bool c_config::write(const std::string & filename)
 // @brief write config into in-memory string
 std::string c_config::write_string() const
 {
+  std::string s;
+
+#if _WIN32
+
+  FILE * fp = tmpfile();
+  if ( fp ) {
+    config_write(&_config, fp);
+    fflush(fp);
+    rewind(fp);
+
+    while ( !feof(fp) ) {
+      int ch = fgetc(fp);
+      if( ch != EOF ) {
+        s += ch;
+      }
+    }
+    fclose(fp);
+  }
+
+#else
+
   FILE *fp = nullptr;
   char *bufloc = nullptr;
   size_t sizeloc = 0;
-
-  std::string s;
 
   if( !(fp = open_memstream(&bufloc, &sizeloc)) ) {
     CF_ERROR("ERROR: c_config: open_memstream() fails: %s",
@@ -200,6 +219,8 @@ std::string c_config::write_string() const
     s = bufloc;
     free(bufloc);
   }
+
+#endif
 
   return s;
 }

@@ -1444,19 +1444,19 @@ void c_ffmpeg_writer::close()
 }
 
 
-bool c_ffmpeg_writer::write(const cv::Mat & frame, int64_t pts)
+bool c_ffmpeg_writer::write(const cv::Mat & image, int64_t pts)
 {
   if ( !is_open() ) {
     CF_ERROR("c_ffmpeg_writer: output stream is not open");
     return false;
   }
 
-  if ( frame.empty() ) {
-    CF_ERROR("frame to write is empty");
+  if ( image.empty() ) {
+    CF_ERROR("image to write is empty");
     return false;
   }
 
-  const int cn = frame.channels();
+  const int cn = image.channels();
   if (_input_pix_fmt == AV_PIX_FMT_BGR24 && cn != 3) {
     CF_ERROR("Invalid input: Mat has %d channels, but 3 (BGR24) expected", cn);
     return false;
@@ -1467,9 +1467,16 @@ bool c_ffmpeg_writer::write(const cv::Mat & frame, int64_t pts)
     return false;
   }
 
-  if (frame.cols != _frame_size.width || frame.rows != _frame_size.height) {
+  cv::Mat F;
+  if( image.cols == _frame_size.width && image.rows == _frame_size.height ) {
+    F = image;
+  }
+  else if( image.cols >= _frame_size.width && image.rows >= _frame_size.height ) {
+    F = image(cv::Rect(0, 0, _frame_size.width, _frame_size.height));
+  }
+  else {
     CF_ERROR("Invalid input size: %dx%d, but %dx%d expected",
-        frame.cols, frame.rows, _frame_size.width, _frame_size.height);
+        image.cols, image.rows, _frame_size.width, _frame_size.height);
     return false;
   }
 
@@ -1486,7 +1493,7 @@ bool c_ffmpeg_writer::write(const cv::Mat & frame, int64_t pts)
   _ppts = pts;
 
   _swsctx = sws_getCachedContext(_swsctx,
-      frame.cols, frame.rows,
+      F.cols, F.rows,
       _input_pix_fmt,
       _codec_ctx->width,
       _codec_ctx->height
@@ -1499,10 +1506,10 @@ bool c_ffmpeg_writer::write(const cv::Mat & frame, int64_t pts)
     return false;
   }
 
-  const uint8_t* src_slice[] = { frame.data, nullptr, nullptr, nullptr };
-  int src_stride[] = { (int)frame.step, 0, 0, 0 };
+  const uint8_t* src_slice[] = { F.data, nullptr, nullptr, nullptr };
+  int src_stride[] = { (int)F.step, 0, 0, 0 };
 
-  sws_scale(_swsctx, src_slice, src_stride, 0, frame.rows,
+  sws_scale(_swsctx, src_slice, src_stride, 0, F.rows,
       _output_frame->data, _output_frame->linesize);
 
   // Setting the PTS

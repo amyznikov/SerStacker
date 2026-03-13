@@ -30,7 +30,7 @@ public:
   void setDisplaySettings(IMtfDisplay* display);
   IMtfDisplay * displaySettings() const;
 
-  bool isAutoMtfActionEnabled() const;
+  //bool isAutoMtfActionEnabled() const;
 
   void setHistoramViewSizeHint(const QSize & s);
   QSize historamViewSizeHint() const;
@@ -70,8 +70,9 @@ protected:
   QToolButton * colormap_ctl = nullptr;
 
   QAction * _resetMtfAction = nullptr;
-  QToolButton * autoMtf_ctl = nullptr;
-  QMenu autoMtfMenu;
+  QAction * _autoMtffAction = nullptr;
+  //QToolButton * autoMtf_ctl = nullptr;
+  //QMenu autoMtfMenu;
 
   QAction * logScaleSelectionAction_ = nullptr;
   QToolButton * chartTypeSelectorButton_ = nullptr;
@@ -82,12 +83,11 @@ protected:
   QPixmap _colormap_pixmap;
 
   QToolBar * bottomToolbar_ctl = nullptr;
-  //QToolBar * bottomToolbar2_ctl = nullptr;
 
-  enum AutoMtfAction {
-    AutoMtfAction_AutoClip = 0,
-    AutoMtfAction_AutoMtf = 1,
-  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
+//  enum AutoMtfAction {
+//    AutoMtfAction_AutoClip = 0,
+//    AutoMtfAction_AutoMtf = 1,
+//  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
 
   QDoubleSpinBox * lclip_ctl = nullptr;
   QDoubleSpinBox * hclip_ctl = nullptr;
@@ -95,15 +95,7 @@ protected:
   QDoubleSpinBox * shadows_ctl = nullptr;
   QDoubleSpinBox * highlights_ctl = nullptr;
 
-//  enum SPINID {
-//    SPIN_SHADOWS = 0,
-//    SPIN_MIDTONES = 1,
-//    SPIN_HIGHLIGHTS = 2,
-//  };
-//
-  //  QDoubleSpinBox * spins[3] = { nullptr };
-
-  // bool updatingControls_ = false;
+  QStatusBar * statusBar_ctl = nullptr;
 };
 
 
@@ -131,9 +123,9 @@ protected:
   void hideEvent(QHideEvent * event) override;
 
 protected:
-  QVBoxLayout *vbox_ = nullptr;
-  QMtfControl * mtfControl_ = nullptr;
-  QSize lastWidnowSize_;
-  QPoint lastWidnowPos_;
+  QVBoxLayout *_vbox = nullptr;
+  QMtfControl * _mtfControl = nullptr;
+  QSize _lastWidnowSize;
+  QPoint _lastWidnowPos;
 };
 #endif /* __QMtfControl_h__ */

@@ -592,7 +592,7 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
  * If Hdst has a fixed type (e.g., cv::Mat1f was passed),
  * the result will be converted to it. Otherwise, the type is inherited from Hsrc.
  *  */
-void makeCumulativeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst)
+void makeCumulativeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst, bool normalize)
 {
   if( Hsrc.empty() ) {
     Hdst.release();
@@ -613,6 +613,10 @@ void makeCumulativeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst)
       sum += tmp(r, c);
       tmp(r, c) = sum;
     }
+  }
+
+  if ( normalize ) {
+    normalizeHistogram(tmp, tmp, true);
   }
 
   tmp.convertTo(Hdst, targetDepth);

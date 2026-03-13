@@ -328,8 +328,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
             enablefn(_this, c));
 
         QSignalBlocker block(ctl);
-        //ctl->setSingleStep(c.range.step);
         ctl->setRange(c.range.min, c.range.max);
+        //ctl->setSingleStep(c.range.step);
         break;
       }
       ////////////////////////////////////////////////////////////////////////
@@ -354,8 +354,17 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
             enablefn(_this, c));
 
         QSignalBlocker block(ctl);
-        ctl->setSingleStep(c.range.step);
         ctl->setRange(c.range.min, c.range.max);
+        ctl->setSingleStep(c.range.step);
+
+//        double step = ctl->singleStep();
+//        double minv = ctl->minimum();
+//        double maxv = ctl->maximum();
+//
+//        CF_DEBUG("DoubleSliderSpinBox: c: min=%g max=%g step=%g ctl: min=%g max=%g step=%g ",
+//            c.range.min, c.range.max, c.range.step,
+//            minv, maxv, step);
+
         break;
       }
       ////////////////////////////////////////////////////////////////////////

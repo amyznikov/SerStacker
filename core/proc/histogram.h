@@ -42,8 +42,8 @@ bool createHistogram(cv::InputArrayOfArrays src,
  * If Hdst has a fixed type (e.g., cv::Mat1f was passed),
  * the result will be converted to it. Otherwise, the type is inherited from Hsrc.
  *  */
-void makeCumulativeHistogram(cv::InputArray Hsrc,
-    cv::OutputArray Hdst);
+void makeCumulativeHistogram(cv::InputArray Hsrc, cv::OutputArray Hdst,
+    bool normalize = false);
 
 
 /**

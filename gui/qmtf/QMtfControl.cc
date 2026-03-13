@@ -9,6 +9,7 @@
 #include <gui/widgets/style.h>
 #include <gui/widgets/settings.h>
 #include <gui/qimageview/cv2qt.h>
+#include <gui/widgets/qsprintf.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
@@ -30,8 +31,8 @@
 static QIcon log_scale_icon;
 static QIcon bar_chart_icon;
 static QIcon line_chart_icon;
-static QIcon auto_clip_icon;
-static QIcon auto_mtf_icon;
+//static QIcon auto_clip_icon;
+//static QIcon auto_mtf_icon;
 static QIcon colormap_icon;
 
 static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
@@ -74,12 +75,12 @@ static void intit_mtfcontrol_resources()
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
   }
-  if ( auto_clip_icon.isNull() ) {
-    auto_clip_icon = getIcon(ICON_contrast);
-  }
-  if ( auto_mtf_icon.isNull() ) {
-    auto_mtf_icon = getIcon(ICON_histogram_automtf);
-  }
+//  if ( auto_clip_icon.isNull() ) {
+//    auto_clip_icon = getIcon(ICON_contrast);
+//  }
+//  if ( auto_mtf_icon.isNull() ) {
+//    auto_mtf_icon = getIcon(ICON_histogram_automtf);
+//  }
   if ( colormap_icon.isNull() ) {
     colormap_icon = getIcon(ICON_colormap);
   }
@@ -121,6 +122,11 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(_resetMtfAction, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
+  _autoMtffAction = topToolbar_ctl->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
+  _autoMtffAction->setToolTip("Auto MTF adjustment");
+  connect( _autoMtffAction, &QAction::triggered,
+      this, &ThisClass::onAutoMtfCtrlClicked);
+
 
   //
   addStretch(topToolbar_ctl);
@@ -142,35 +148,22 @@ QMtfControl::QMtfControl(QWidget * parent) :
       this, &ThisClass::onChartTypeSelectorClicked );
 
 
-
-
-  //
-  autoMtf_ctl = new QToolButton(this);
-  autoMtf_ctl->setIconSize(QSize(16, 16));
-  autoMtf_ctl->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  autoMtf_ctl->setCheckable(false);
-  autoMtf_ctl->setText("Auto MTF");
-  autoMtf_ctl->setToolTip("Auto MTF adjustment");
-  topToolbar_ctl->addWidget(autoMtf_ctl);
-  connect(autoMtf_ctl, &QToolButton::clicked,
-      this, &ThisClass::onAutoMtfCtrlClicked );
-
-  autoMtfMenu.addAction(auto_clip_icon,
-      "Auto clip",
-      [this]() {
-        selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
-        onAutoMtfCtrlClicked();
-      });
-
-  autoMtfMenu.addAction(auto_mtf_icon,
-      "Auto Mtf",
-      [this]() {
-        selectedAutoMtfAction_ = AutoMtfAction_AutoMtf;
-        onAutoMtfCtrlClicked();
-      });
-
-  autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
-  autoMtf_ctl->setMenu(&autoMtfMenu);
+//  autoMtfMenu.addAction(auto_clip_icon,
+//      "Auto clip",
+//      [this]() {
+//        selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
+//        onAutoMtfCtrlClicked();
+//      });
+//
+//  autoMtfMenu.addAction(auto_mtf_icon,
+//      "Auto Mtf",
+//      [this]() {
+//        selectedAutoMtfAction_ = AutoMtfAction_AutoMtf;
+//        onAutoMtfCtrlClicked();
+//      });
+//
+//  autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
+//  autoMtf_ctl->setMenu(&autoMtfMenu);
 
   logScaleSelectionAction_ = topToolbar_ctl->addAction(log_scale_icon, "Log scale");
   logScaleSelectionAction_ ->setToolTip("Switch between linear / log scale");
@@ -215,12 +208,17 @@ QMtfControl::QMtfControl(QWidget * parent) :
   bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, -2, 2, 0, 2));
   bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1, 3));
 
+  // statusBar
+  statusBar_ctl = new QStatusBar(this);
+
   // Combine layouts
   _vbox->addWidget(topToolbar_ctl, 1);
   _vbox->addWidget(levelsView_ctl, 1000);
   _vbox->addWidget(mtfSliderBand_ctl, 1);
   _vbox->addWidget(colormap_strip_ctl, 1);
   _vbox->addWidget(bottomToolbar_ctl, 1);
+  _vbox->addWidget(statusBar_ctl, 1);
+
 
   // Configure event handles
 
@@ -342,10 +340,10 @@ IMtfDisplay * QMtfControl::displaySettings() const
   return _displaySettings;
 }
 
-bool QMtfControl::isAutoMtfActionEnabled() const
-{
-  return autoMtf_ctl && autoMtf_ctl->isChecked();
-}
+//bool QMtfControl::isAutoMtfActionEnabled() const
+//{
+//  return autoMtf_ctl && autoMtf_ctl->isChecked();
+//}
 
 void QMtfControl::setHistoramViewSizeHint(const QSize & s)
 {
@@ -667,15 +665,26 @@ void QMtfControl::updateHistogramLevels()
 {
   if ( _displaySettings && isVisible() ) {
 
-    cv::Mat1f H;
+    cv::Mat1d H;
     std::vector<float> cy;
-    double irange[2] = {-1, -1};
+    double minv = -1, maxv = -1;
 
-    //_displaySettings->getMtfInputRange(&irange[0], &irange[1]);
-    _displaySettings->getOutputHistogramm(H, &irange[0], &irange[1]);
+    _displaySettings->getOutputHistogramm(H, &minv, &maxv);
     _displaySettings->getMtfCurve(cy, 256);
-    levelsView_ctl->setHistogram(H, irange[0], irange[1]);
+    levelsView_ctl->setHistogram(H, minv, maxv);
     levelsView_ctl->setMtfCurve(std::move(cy));
+
+    if ( H.cols != 1 ) {
+      cv::reduce(H, H, 1, cv::REDUCE_AVG);
+    }
+
+    const double mode = computeHistogramMode(H, minv, maxv)[0];
+
+    makeCumulativeHistogram(H, H, true);
+
+    const double med = computeHistogramMedian(H, minv, maxv)[0];
+
+    statusBar_ctl->showMessage(qsprintf("Hx%d mode: %g median: %g", H.rows, mode, med));
   }
 }
 
@@ -795,18 +804,18 @@ void QMtfControl::onupdatecontrols()
 
     logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
 
-    const bool autoMtfChecked = autoMtf_ctl->isChecked();
-    mtfSliderBand_ctl->setEnabled(!autoMtfChecked);
+//    const bool autoMtfChecked = autoMtf_ctl->isChecked();
+//    mtfSliderBand_ctl->setEnabled(!autoMtfChecked);
 
-    switch (selectedAutoMtfAction_) {
-      case AutoMtfAction_AutoMtf:
-        autoMtf_ctl->setIcon(auto_mtf_icon);
-        break;
-      case AutoMtfAction_AutoClip:
-        default:
-        autoMtf_ctl->setIcon(auto_clip_icon);
-        break;
-    }
+//    switch (selectedAutoMtfAction_) {
+//      case AutoMtfAction_AutoMtf:
+//        autoMtf_ctl->setIcon(auto_mtf_icon);
+//        break;
+//      case AutoMtfAction_AutoClip:
+//        default:
+//        autoMtf_ctl->setIcon(auto_clip_icon);
+//        break;
+//    }
 
     updateColormapPixmap();
     setEnabled(true);
@@ -824,31 +833,31 @@ QMtfControlDialogBox::QMtfControlDialogBox(QWidget * parent) :
   setWindowIcon(getIcon(ICON_histogram));
   setWindowTitle("Select visual data and adjust display levels ...");
 
-  vbox_ = new QVBoxLayout(this);
-  mtfControl_ = new QMtfControl(this);
-  vbox_->addWidget(mtfControl_);
+  _vbox = new QVBoxLayout(this);
+  _mtfControl = new QMtfControl(this);
+  _vbox->addWidget(_mtfControl);
 }
 
 QMtfControl * QMtfControlDialogBox::mtfControl() const
 {
-  return mtfControl_;
+  return _mtfControl;
 }
 
 void QMtfControlDialogBox::setMtfDisplaySettings(IMtfDisplay * display)
 {
-  mtfControl_->setDisplaySettings(display);
+  _mtfControl->setDisplaySettings(display);
 }
 
 IMtfDisplay * QMtfControlDialogBox::mtfDisplaySettings() const
 {
-  return mtfControl_->displaySettings();
+  return _mtfControl->displaySettings();
 }
 
 void QMtfControlDialogBox::showEvent(QShowEvent *event)
 {
-  if( !lastWidnowSize_.isEmpty() ) {
-    Base::move(lastWidnowPos_);
-    Base::resize(lastWidnowSize_);
+  if( !_lastWidnowSize.isEmpty() ) {
+    Base::move(_lastWidnowPos);
+    Base::resize(_lastWidnowSize);
   }
 
   Base::showEvent(event);
@@ -857,8 +866,8 @@ void QMtfControlDialogBox::showEvent(QShowEvent *event)
 
 void QMtfControlDialogBox::hideEvent(QHideEvent *event)
 {
-  lastWidnowSize_ = this->size();
-  lastWidnowPos_ = this->pos();
+  _lastWidnowSize = this->size();
+  _lastWidnowPos = this->pos();
 
   Base::hideEvent(event);
   Q_EMIT visibilityChanged(isVisible());

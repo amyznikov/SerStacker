@@ -28,9 +28,9 @@ protected:
   cv::Vec2f outputRange = cv::Vec2f(-1.f,-1.f);
   double lclip = 0.0;
   double hclip = 1.0;
-  double shadows = 1.0;
+  double shadows = 0.0;
   double midtones = 0.5;
-  double highlights = 1.0;
+  double highlights = 0.0;
   c_mtf mtf;
 };
 

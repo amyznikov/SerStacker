@@ -10,6 +10,7 @@
 #define __QSliderSpinBox_h__
 
 #include <QtWidgets/QtWidgets>
+#include <gui/widgets/QSignalBlock.h>
 #include <type_traits>
 
 class QIntegerSliderSpinBox;
@@ -39,31 +40,12 @@ public:
   typedef typename QSliderSpinBoxTypeSelect<std::is_floating_point_v<T>>::SliderSpinBoxType Type;
   typedef typename QSliderSpinBoxTypeSelect<std::is_floating_point_v<T>>::SpinBoxType SpinBoxType;
 
-
-  class c_updating_controls_lock
-  {
-    QSliderSpinBox * obj;
-  public:
-    c_updating_controls_lock(QSliderSpinBox * _obj) : obj(_obj)
-    {
-      ++obj->updatingControls_;
-    }
-    ~c_updating_controls_lock()
-    {
-      if( --obj->updatingControls_ < 0 ) {
-        obj->updatingControls_ = 0;
-      }
-    }
-  };
-
-
-
   QSliderSpinBox(QWidget * parent = nullptr) :
       Base(parent)
   {
-    lv_ = new QVBoxLayout(this);
-    lv_->addWidget(spinBox_ctl = new SpinBoxType(this));
-    lv_->addWidget(slider_ctl = new QSlider(Qt::Orientation::Horizontal, this));
+    _lv = new QVBoxLayout(this);
+    _lv->addWidget(spinBox_ctl = new SpinBoxType(this));
+    _lv->addWidget(slider_ctl = new QSlider(Qt::Orientation::Horizontal, this));
 
     spinBox_ctl->setFocusPolicy(Qt::StrongFocus);
     spinBox_ctl->setKeyboardTracking(false);
@@ -72,6 +54,7 @@ public:
 
   void setTooltip(const QString & tooltip )
   {
+    QSignalBlock block(spinBox_ctl);
     spinBox_ctl->setTooltip(tooltip);
   }
 
@@ -82,11 +65,13 @@ public:
 
   QAbstractSpinBox::StepType stepType() const
   {
+    QSignalBlock block(spinBox_ctl);
     return spinBox_ctl->stepType();
   }
 
   void setStepType(QAbstractSpinBox::StepType stepType)
   {
+    QSignalBlock block(spinBox_ctl);
     spinBox_ctl->setStepType(stepType);
   }
 
@@ -97,6 +82,7 @@ public:
 
   void setTickPosition(QSlider::TickPosition position)
   {
+    QSignalBlock block(spinBox_ctl);
     slider_ctl->setTickPosition(position);
   }
 
@@ -107,7 +93,7 @@ public:
 
   void setMinimum(T min)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setMinimum(min);
     slider_ctl->setMinimum(min);
   }
@@ -119,7 +105,7 @@ public:
 
   void setMaximum(T max)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setMaximum(max);
     slider_ctl->setMaximum(max);
   }
@@ -135,10 +121,9 @@ public:
   }
 
 protected:
-  QVBoxLayout * lv_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
   SpinBoxType * spinBox_ctl = nullptr;
   QSlider * slider_ctl = nullptr;
-  int updatingControls_ = 0;
 };
 
 
@@ -154,26 +139,22 @@ public:
   {
     connect(spinBox_ctl, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
         [this](int value) {
-          if ( !updatingControls_ ) {
-            c_updating_controls_lock lock(this);
-            slider_ctl->setValue(value);
-            Q_EMIT valueChanged(value);
-          }
+          QSignalBlock block(slider_ctl);
+          slider_ctl->setValue(value);
+          Q_EMIT valueChanged(value);
         });
 
     connect(slider_ctl, &QSlider::valueChanged,
         [this](int value) {
-          if ( !updatingControls_ ) {
-            c_updating_controls_lock lock(this);
+            QSignalBlock block(spinBox_ctl);
             spinBox_ctl->setValue(value);
             Q_EMIT valueChanged(value);
-          }
         });
   }
 
   void setRange(int min, int max)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setRange(min, max);
     slider_ctl->setRange(min, max);
   }
@@ -185,7 +166,7 @@ public:
 
   void setValue(int val)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setValue(val);
     slider_ctl->setValue(val);
   }
@@ -219,26 +200,22 @@ public:
 
     connect(spinBox_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
         [this](double value) {
-          if ( !updatingControls_ ) {
-            c_updating_controls_lock lock(this);
+            QSignalBlock block(slider_ctl);
             slider_ctl->setValue((value - spinBox_ctl->minimum())/slider_eps());
             Q_EMIT valueChanged(value);
-          }
         });
 
     connect(slider_ctl, &QSlider::valueChanged,
         [this](int value) {
-          if ( !updatingControls_ ) {
-            c_updating_controls_lock lock(this);
+            QSignalBlock block(spinBox_ctl);
             spinBox_ctl->setValue(spinBox_ctl->minimum() + value * slider_eps());
             Q_EMIT valueChanged(spinBox_ctl->value());
-          }
         });
   }
 
-  void setRange(int min, int max)
+  void setRange(double min, double max)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setRange(min, max);
     slider_ctl->setRange(0, (max - min)/slider_eps());
     slider_ctl->setSingleStep(1);
@@ -246,6 +223,7 @@ public:
 
   void setSingleStep(double val)
   {
+    QSignalBlock block(spinBox_ctl);
     spinBox_ctl->setSingleStep(val);
   }
 
@@ -256,6 +234,7 @@ public:
 
   void setDecimals(int prec)
   {
+    QSignalBlock block(spinBox_ctl);
     spinBox_ctl->setDecimals(prec);
   }
 
@@ -271,7 +250,7 @@ public:
 
   void setValue(double value)
   {
-    c_updating_controls_lock lock(this);
+    QSignalBlock block(spinBox_ctl, slider_ctl);
     spinBox_ctl->setValue(value);
     slider_ctl->setValue((spinBox_ctl->value() - spinBox_ctl->minimum())/slider_eps());
   }
@@ -281,19 +260,6 @@ Q_SIGNALS:
   void valueChanged(double value);
 };
 
-
-//  // the partial specialization of A is enabled via a template parameter
-//  template<class A, class Enable = void>
-//  struct QSpinBoxTypeSelect {}; // primary template
-//
-//  template<class A>
-//  struct QSpinBoxTypeSelect<A, typename std::enable_if<std::is_floating_point<A>::value>::type> {
-//    typedef QDoubleSpinBox SpinBoxType;
-//  };
-//  template<class A>
-//  struct QSpinBoxTypeSelect<A, typename std::enable_if<std::is_integral<A>::value>::type> {
-//    typedef QSpinBox SpinBoxType;
-//  };
 
 
 

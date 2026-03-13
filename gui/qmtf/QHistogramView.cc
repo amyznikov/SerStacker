@@ -108,18 +108,24 @@ QHistogramView::DisplayChannel QHistogramView::displayChannel() const
   return _displayChannel;
 }
 
-void QHistogramView::setHistogram(cv::InputArray _H, double hmin, double hmax)
+void QHistogramView::setHistogram(cv::InputArray Hsrc, double hmin, double hmax)
 {
   double min = 0, max = 1;
 
   this->hmin = hmin;
   this->hmax = hmax;
 
-  if ( _H.getMat().data != this->H.data ) {
-    _H.copyTo(this->H);
+  if( Hsrc.depth() == H.depth() ) {
+    Hsrc.copyTo(H);
+  }
+  else {
+    Hsrc.getMat().convertTo(H, H.depth());
   }
 
-  if ( !this->H.empty() ) {
+  if ( H.empty() ) {
+    LH.release();
+  }
+  else {
     cv::log(H + 1, LH);
 
     cv::minMaxLoc(H, &min, &max);

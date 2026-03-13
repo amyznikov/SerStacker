@@ -745,15 +745,12 @@ bool c_ffmpeg_reader::open(const std::string & url, const std::string & input_op
 
   _timescale = (_istream->time_base.num > 0 ? (double) _istream->time_base.den / _istream->time_base.num : 1);
 
-  CF_DEBUG("[%s] %d:%s %dx%d %d/%d tbn _istream->nb_frames=%lld _ic->nb_streams=%lld", url.c_str(),
+  CF_DEBUG("[%s] %d:%s %dx%d %d/%d tbn nb_streams=%lld nb_frames=%lld ", url.c_str(),
       _video_stream_index,
-      _codec ? _codec->name : "null",
-      _cctx ? _cctx->coded_width : 0,
-      _cctx ? _cctx->coded_height : 0,
-      _istream ?  _istream->time_base.num : 0,
-      _istream? _istream->time_base.den : 0,
-      _istream ? _istream->nb_frames : 0LL,
-      _ic ? _ic->nb_streams : 0LL);
+      _codec->name ? _codec->name : "null",
+      _cctx->coded_width, _cctx->coded_height,
+      _istream->time_base.num, _istream->time_base.den,
+      _ic->nb_streams, _istream->nb_frames);
 
   if( _istream->codecpar->codec_id == AV_CODEC_ID_GIF ) {
 

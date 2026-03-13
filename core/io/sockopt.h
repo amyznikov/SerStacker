@@ -12,6 +12,8 @@
 #ifndef __cuttle_sockopt_h__
 #define __cuttle_sockopt_h__
 
+#ifndef _WIN32
+
 #include <stddef.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -30,7 +32,6 @@ union sockaddr_type {
   struct sockaddr_un un;
   struct sockaddr_storage ss;
 };
-
 
 struct so_keepalive_opts {
   bool enable;
@@ -90,4 +91,5 @@ int so_tcp_connect3(const char * addrport);
 int so_connect(struct sockaddr_in * addrs, int sock_type, int protocol);
 int so_connect(uint32_t addrs, uint16_t port, int sock_type, int protocol, struct sockaddr_in *outaddrs = nullptr);
 
+#endif // _WIN32
 #endif /* __cuttle_sockopt_h__ */

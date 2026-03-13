@@ -8,6 +8,8 @@
  *     Adapt to glddm
  */
 
+#ifndef _WIN32
+
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE
 #endif
@@ -431,3 +433,5 @@ int so_connect(uint32_t addrs, uint16_t port, int sock_type, int protocol, struc
 
   return so_connect(&sin, sock_type, protocol);
 }
+
+#endif // _WIN32

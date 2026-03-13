@@ -15,14 +15,26 @@
 # define _GNU_SOURCE
 #endif
 
+#include <stdint.h>
+#include <string.h>
+
+#ifdef _WIN32
+  #include <winsock2.h>
+  #include <iphlpapi.h>
+  #include <ws2tcpip.h>
+   // Link with : -liphlpapi -lws2_32
+#else
+  #include <ifaddrs.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #include <net/if.h>
+#endif
+
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <ifaddrs.h>
 #include <errno.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include "iface.h"
 
 #define INET_ADDR(a,b,c,d) \
@@ -38,33 +50,59 @@ static char * strappend(char * string, const char * substring)
 }
 
 
-/**
- * enumerate_ifaces()
- * @see man getifaddrs
- */
 ssize_t cf_enumerate_ifaces(struct ifaceinfo ifaces[], size_t maxifaces)
 {
-  struct ifaddrs *ifaddr, *ifa;
-  ssize_t n = 0;
+#ifdef _WIN32
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 15000;
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+    ssize_t n = 0;
 
-  if ( getifaddrs(&ifaddr) == -1 ) {
-    return -1;
-  }
-
-  /* Walk through linked list, maintaining head pointer so we can free list later */
-  for ( ifa = ifaddr; n < (ssize_t) maxifaces && ifa != 0; ifa = ifa->ifa_next ) {
-    if ( ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET ) {
-      strncpy(ifaces[n].ifname, ifa->ifa_name, sizeof(ifaces[n].ifname) - 1)[sizeof(ifaces[n].ifname) - 1] = 0;
-      ifaces[n].ifa_flags = ifa->ifa_flags;
-      ifaces[n].ifaddress = ntohl(((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr);
-      ++n;
+    pAddresses = (IP_ADAPTER_ADDRESSES*)malloc(outBufLen);
+    if (GetAdaptersAddresses(AF_INET, flags, NULL, pAddresses, &outBufLen) != NO_ERROR) {
+        free(pAddresses);
+        return -1;
     }
-  }
 
-  freeifaddrs(ifaddr);
+    for (PIP_ADAPTER_ADDRESSES pCurr = pAddresses; pCurr && (size_t)n < maxifaces; pCurr = pCurr->Next) {
+        for (PIP_ADAPTER_UNICAST_ADDRESS pUnicast = pCurr->FirstUnicastAddress; pUnicast; pUnicast = pUnicast->Next) {
+            if (pUnicast->Address.lpSockaddr->sa_family == AF_INET) {
+                snprintf(ifaces[n].ifname, sizeof(ifaces[n].ifname), "%ls", pCurr->FriendlyName);
 
-  return n;
+                sockaddr_in* sa_in = (sockaddr_in*)pUnicast->Address.lpSockaddr;
+                ifaces[n].ifaddress = ntohl(sa_in->sin_addr.s_addr);
+
+                ifaces[n].ifa_flags = 0;
+                if (pCurr->OperStatus == IfOperStatusUp) ifaces[n].ifa_flags |= 0x1; // IFF_UP
+
+                n++;
+                break;
+            }
+        }
+    }
+    free(pAddresses);
+    return n;
+#else
+    struct ifaddrs *ifaddr, *ifa;
+    ssize_t n = 0;
+
+    if (getifaddrs(&ifaddr) == -1) return -1;
+
+    for (ifa = ifaddr; n < (ssize_t)maxifaces && ifa != nullptr; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+            strncpy(ifaces[n].ifname, ifa->ifa_name, sizeof(ifaces[n].ifname) - 1);
+            ifaces[n].ifname[sizeof(ifaces[n].ifname) - 1] = 0;
+            ifaces[n].ifa_flags = ifa->ifa_flags;
+            ifaces[n].ifaddress = ntohl(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr);
+            n++;
+        }
+    }
+    freeifaddrs(ifaddr);
+    return n;
+#endif
 }
+
+
 
 /**
  * format the output string with interface state flags for comfortable reading by human

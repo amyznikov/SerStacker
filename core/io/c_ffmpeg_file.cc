@@ -131,7 +131,8 @@ static const std::vector<std::string> g_supported_output_formats = []()
         char buf[strlen(oformat->extensions) + 1];
         char * tok = strtok(strcpy(buf, oformat->extensions), delims);
         while ( tok ) {
-          tmp.emplace_back(tok);
+          //tmp.emplace_back(tok);
+          tmp.emplace_back(std::string(".") + tok);
           tok = strtok(NULL, delims);
         }
       }
@@ -888,7 +889,7 @@ bool c_ffmpeg_reader::seek_frame(int64_t pos)
 
   _received_frames.clear();
 
-  int status = av_seek_frame(_ic, _video_stream_index, pts+1, AVSEEK_FLAG_BACKWARD /*| AVSEEK_FLAG_ANY*/);
+  int status = av_seek_frame(_ic, _video_stream_index, pts, AVSEEK_FLAG_BACKWARD /*| AVSEEK_FLAG_ANY*/);
   if ( status >= 0 ) {
     _last_ts = pts;
     avcodec_flush_buffers(_cctx);
@@ -1487,7 +1488,7 @@ void c_ffmpeg_writer::close()
       //    status = encode_and_send_frame(nullptr);
       //  }
 
-      if ( status <= 0 && status != AVERROR_EOF ) {
+      if ( status < 0 && status != AVERROR_EOF ) {
         CF_ERROR("encode_and_send_frame(): status = %d (%s)",
             status, averr2str(status));
       }

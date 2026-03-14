@@ -396,11 +396,13 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
     if ( _matcher ) {
 
       detectAndCompute(current_image, current_mask, _current_keypoints, _current_descriptors);
+      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%zu", _current_keypoints.size(), _current_descriptors.rows);
 
       if( !_matcher->match(_current_keypoints, _current_descriptors, _current_matches) ) {
         CF_ERROR("matcher_->match() fails");
         return false;
       }
+
 
       for( const cv::DMatch & m : _current_matches ) {
         _matched_reference_positions.emplace_back(_reference_keypoints[m.trainIdx].pt);

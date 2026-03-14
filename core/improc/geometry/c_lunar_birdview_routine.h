@@ -18,17 +18,26 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_lunar_birdview_routine,
       "lunar_birdview", "homography transform to moon closeup image");
 
+  enum ResizeMode {
+    ResizeModeKeep,
+    ResizeModeAdjust,
+    ResizeModeCropVisible,
+  };
+
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  double _lat = 43.0; // [deg]
   double _lon = 11.0; // [deg]
-  double _rotation = 0; // [deg]
+  double _lat = 43.0; // [deg]
+  double _l = 0;             // Libration in longitude [deg]
+  double _b = 0;             // Libration in latitude [deg]
+  double _camera_rotation = 0; // [deg]
   cv::InterpolationFlags  _interpolation = cv::INTER_LINEAR;
   cv::BorderTypes _borderMode = cv::BORDER_CONSTANT;
   cv::Scalar _borderValue;
+  ResizeMode _resizeMode = ResizeModeCropVisible;
 
 };
 

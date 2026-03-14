@@ -163,43 +163,37 @@ bool c_output_frame_writer::open(const std::string & filename,
   }
 
 
-  static std::vector<std::string> ser_suffixes;
-  static std::vector<std::string> ffmpeg_suffixes;
-  static std::vector<std::string> image_suffixes;
+  static const std::vector<std::string> ser_suffixes = {".ser"};
+//  if ( ser_suffixes.empty() ) {
+//    ser_suffixes.emplace_back(".ser");
+//  }
 
-  if ( ser_suffixes.empty() ) {
-    ser_suffixes.emplace_back(".ser");
-  }
+  static std::vector<std::string> ffmpeg_suffixes =
+      c_ffmpeg_writer::supported_output_formats();
+//  if ( ffmpeg_suffixes.empty() ) {
+//    const std::vector<std::string> & ffmpeg_formats = c_ffmpeg_writer::supported_output_formats();
+//    ffmpeg_suffixes.reserve(ffmpeg_formats.size());
+//    for (const std::string & fmt : ffmpeg_formats ) {
+//      //CF_DEBUG("fmt: '%s'", fmt.c_str());
+//      ffmpeg_suffixes.emplace_back(fmt);
+//    }
+//  }
 
-  if ( ffmpeg_suffixes.empty() ) {
 
-    const std::vector<std::string> & ffmpeg_formats =
-        c_ffmpeg_writer::supported_output_formats();
-
-    ffmpeg_suffixes.reserve(ffmpeg_formats.size());
-
-    for (const std::string & fmt : ffmpeg_formats ) {
-      // ffmpeg_suffixes.emplace_back("." + fmt);
-      ffmpeg_suffixes.emplace_back(fmt);
-    }
-  }
-
-  if( image_suffixes.empty() ) {
-    image_suffixes = std::vector<std::string>( {
-        ".tif", ".tiff",
-        ".png",
-        ".exr",
-        ".hdr", ".pic",
-        ".jpg", ".jpeg", ".jp2",
-        ".bmp", ".dib",
-        ".ppm", ".pgm",
-        ".webp",
-        ".flo",
-        ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",  // Portable image format
-        ".sr", ".ras",      // Sun rasters
-        ".pfm",
-    });
-  }
+  static std::vector<std::string> image_suffixes = {
+      ".tif", ".tiff",
+      ".png",
+      ".exr",
+      ".hdr", ".pic",
+      ".jpg", ".jpeg", ".jp2",
+      ".bmp", ".dib",
+      ".ppm", ".pgm",
+      ".webp",
+      ".flo",
+      ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",  // Portable image format
+      ".sr", ".ras",      // Sun rasters
+      ".pfm",
+  };
 
   static const auto contains =
       [](const std::vector<std::string> & suffixes, const std::string & suffix) -> bool {

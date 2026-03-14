@@ -356,11 +356,11 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QSignalBlocker block(ctl);
         ctl->setRange(c.range.min, c.range.max);
         ctl->setSingleStep(c.range.step);
+        ctl->setDecimals((c.range.step > 0) ? std::max(0, (int)std::ceil(-std::log10(c.range.step))) : 2);
 
 //        double step = ctl->singleStep();
 //        double minv = ctl->minimum();
 //        double maxv = ctl->maximum();
-//
 //        CF_DEBUG("DoubleSliderSpinBox: c: min=%g max=%g step=%g ctl: min=%g max=%g step=%g ",
 //            c.range.min, c.range.max, c.range.step,
 //            minv, maxv, step);
@@ -526,7 +526,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                 c.getvalue(_this->opts(), &s);
               }
               combo->setCurrentProcessor(QString::fromStdString(s));
-              return true;
+              return false;
              },
              enablefn(_this, c));
 

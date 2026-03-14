@@ -388,6 +388,9 @@ void QSparseFeatureDetectorOptions::addStackWidget(F c_sparse_feature_detector_o
       [this, w, mp]() {
         w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
       });
+
+  QObject::connect(w, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 }
 
 
@@ -518,6 +521,9 @@ void QSparseFeatureDescriptorOptions::addStackWidget(F c_sparse_feature_descript
       [this, w, mp]() {
         w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
       });
+
+  QObject::connect(w, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 }
 
 
@@ -670,6 +676,9 @@ QFlannIndexOptions<F> * QFlannBasedFeature2dMatcherOptions::addStackWidget(F c_f
       [this, w, mp]() {
         w->setOpts(this->_opts ? &(this->_opts->*mp) : nullptr);
   });
+
+  QObject::connect(w, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
   return w;
 }

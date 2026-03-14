@@ -518,39 +518,34 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
   c.cdesc = cdesc;
   c.ctype = BindType::CtlType::ImageProcessorCombobox;
 
-  const size_t offset = ctx.offset;
+  c.getvalue = [offset = ctx.offset](const RootObjectType * obj, std::string * s) -> bool {
+    if ( obj ) {
+      const FieldType * p = reinterpret_cast<const FieldType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+      if ( (*p) ) {
+        * s = (*p)->name();
+        return true;
+      }
+    }
+    return false;
+  };
 
-  c.getvalue =
-      [offset](const RootObjectType * obj, std::string * s) -> bool {
-        if ( obj ) {
-          const FieldType * p = reinterpret_cast<const FieldType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
-          if ( (*p) ) {
-            * s = (*p)->name();
-            return true;
-          }
-        }
-        return false;
-      };
+  c.setvalue = [offset = ctx.offset](RootObjectType * obj, const std::string & s) -> bool {
+    if ( obj ) {
+      FieldType * p = reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset);
+      if ( s.empty() ) {
+        (*p).reset();
+        return true;
+      }
 
-  c.setvalue =
-      [offset](RootObjectType * obj, const std::string & v) -> bool {
-        if ( obj ) {
-          FieldType * p = reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset);
-          if ( v.empty() ) {
-            (*p).reset();
-            return true;
-          }
-
-          const auto & collection = c_image_processor_collection::default_instance();
-          const auto pos = collection->find(v);
-          if ( pos != collection->end() ) {
-            *p  = *pos;
-            return true;
-          }
-        }
-        return false;
-      };
-
+      const auto & collection = c_image_processor_collection::default_instance();
+      const auto pos = collection->find(s);
+      if ( pos != collection->end() ) {
+        *p = *pos;
+        return true;
+      }
+    }
+    return false;
+  };
 
   ctls.emplace_back(c);
 }

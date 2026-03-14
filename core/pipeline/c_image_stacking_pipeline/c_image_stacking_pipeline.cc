@@ -1095,6 +1095,8 @@ bool c_image_stacking_pipeline::run_image_stacking()
             CF_ERROR("frame_accumulation_->get_acc_counters() rerturned empty accw image");
           }
         }
+        CF_DEBUG("H: accumulated_image: %dx%d channels=%d depth=%d", accumulated_image.cols, accumulated_image.rows, accumulated_image.channels(), accumulated_image.depth());
+        CF_DEBUG("H: accumulated_mask: %dx%d channels=%d depth=%d", accumulated_mask.cols, accumulated_mask.rows, accumulated_mask.channels(), accumulated_mask.depth());
 
   #if 1
         linear_interpolation_inpaint(accumulated_image,
@@ -1112,9 +1114,6 @@ bool c_image_stacking_pipeline::run_image_stacking()
         _anscombe.inverse(accumulated_image,
             accumulated_image);
       }
-
-
-
 
 
       // Fix turbulent flow

@@ -134,7 +134,7 @@ void c_keypoins_detector_routine::getcontrols(c_control_list & ctls, const ctlbi
 {
   ctlbind(ctls, "Options", ctx(&this_class:: _opts), "Options for feature2D detector");
   ctlbind(ctls, "octave", ctx, &this_class::octave, &this_class::set_octave, "Draw key points from selected octave only");
-  ctlbind(ctls, "", ctx, &this_class::black_background, &this_class::set_black_background, "");
+  ctlbind(ctls, "black_background", ctx, &this_class::black_background, &this_class::set_black_background, "");
   ctlbind(ctls, "display", ctx, &this_class::display_type, &this_class::set_display_type, "");
   ctlbind(ctls, "rotation", ctx, &this_class::rotation, &this_class::set_rotation, "");
   ctlbind(ctls, "translation", ctx, &this_class::translation, &this_class::set_translation, "");

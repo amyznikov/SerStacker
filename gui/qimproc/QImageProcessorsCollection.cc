@@ -259,6 +259,7 @@ bool QImageProcessorSelectionCombo2::setCurrentProcessor(const QString & name)
     current_index = 0;
   }
 
+  QSignalBlocker block(this);
   setCurrentIndex(current_index);
 
   return currentIndex() > 0;
@@ -271,7 +272,7 @@ QString QImageProcessorSelectionCombo2::currentProcessor() const
 
 QString QImageProcessorSelectionCombo2::processor(int index) const
 {
-  return index > 1 ? itemText(index) : QString();
+  return index > 0 ? itemText(index) : QString();
 }
 
 void QImageProcessorSelectionCombo2::refresh()

@@ -20,6 +20,20 @@ public:
       "medianBlur",
       "Apply cv::medianBlur() to image");
 
+  enum Direction {
+    DirectionBoth = 0,
+    DirectionVert = 1,
+    DirectionHorz = 2,
+  };
+
+  enum Output {
+    OutputMedian = 0,
+    OutputAbsDiff = 1,
+    OutputDiff = 2,
+    OutputNDiff = 3,
+    OutputFillMaskHoles = 4,
+  };
+
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
@@ -27,6 +41,8 @@ public:
 protected:
   int _radius = 1;
   int _iterations = 1;
+  Direction _direction = DirectionBoth;
+  Output _output = OutputMedian;
 };
 
 #endif /* __c_median_blur_routine_h__ */

@@ -31,8 +31,6 @@
 static QIcon log_scale_icon;
 static QIcon bar_chart_icon;
 static QIcon line_chart_icon;
-//static QIcon auto_clip_icon;
-//static QIcon auto_mtf_icon;
 static QIcon colormap_icon;
 
 static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
@@ -75,12 +73,6 @@ static void intit_mtfcontrol_resources()
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_linear_scale), QIcon::Normal, QIcon::Off);
     log_scale_icon.addPixmap(getPixmap(ICON_histogram_log_scale), QIcon::Normal, QIcon::On);
   }
-//  if ( auto_clip_icon.isNull() ) {
-//    auto_clip_icon = getIcon(ICON_contrast);
-//  }
-//  if ( auto_mtf_icon.isNull() ) {
-//    auto_mtf_icon = getIcon(ICON_histogram_automtf);
-//  }
   if ( colormap_icon.isNull() ) {
     colormap_icon = getIcon(ICON_colormap);
   }
@@ -147,23 +139,6 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(chartTypeSelectorButton_, &QToolButton::clicked,
       this, &ThisClass::onChartTypeSelectorClicked );
 
-
-//  autoMtfMenu.addAction(auto_clip_icon,
-//      "Auto clip",
-//      [this]() {
-//        selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
-//        onAutoMtfCtrlClicked();
-//      });
-//
-//  autoMtfMenu.addAction(auto_mtf_icon,
-//      "Auto Mtf",
-//      [this]() {
-//        selectedAutoMtfAction_ = AutoMtfAction_AutoMtf;
-//        onAutoMtfCtrlClicked();
-//      });
-//
-//  autoMtf_ctl->setPopupMode(QToolButton::MenuButtonPopup);
-//  autoMtf_ctl->setMenu(&autoMtfMenu);
 
   logScaleSelectionAction_ = topToolbar_ctl->addAction(log_scale_icon, "Log scale");
   logScaleSelectionAction_ ->setToolTip("Switch between linear / log scale");
@@ -340,11 +315,6 @@ IMtfDisplay * QMtfControl::displaySettings() const
   return _displaySettings;
 }
 
-//bool QMtfControl::isAutoMtfActionEnabled() const
-//{
-//  return autoMtf_ctl && autoMtf_ctl->isChecked();
-//}
-
 void QMtfControl::setHistoramViewSizeHint(const QSize & s)
 {
   levelsView_ctl->setSizeHint(s);
@@ -443,21 +413,6 @@ void QMtfControl::onAutoMtfCtrlClicked()
       _displaySettings->saveParameters();
       updateControls();
     }
-
-    //_displaySettings->setAutoClip(autoMtf_ctl->isChecked() && selectedAutoMtfAction_ == AutoMtfAction_AutoClip );
-    //    if ( autoMtf_ctl->isChecked() ) {
-    //
-    //      switch ( selectedAutoMtfAction_ ) {
-    //      case AutoMtfAction_AutoMtf :
-    //        findAutoMidtonesBalance();
-    //        break;
-    //
-    //      case AutoMtfAction_AutoClip :
-    //        default :
-    //        //findAutoHistogramClips();
-    //        break;
-    //      }
-    //    }
 
     updateControls();
   }
@@ -601,63 +556,12 @@ void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
 void QMtfControl::findAutoHistogramClips()
 {
   if( _displaySettings ) {
-
-//    QWaitCursor wait(this);
-//
-//    c_pixinsight_mtf &mtf =
-//        displaySettings_->mtf();
-//
-//    double data_min = -1, data_max = -1;
-//    double range_min = -1, range_max = -1;
-//
-//    displaySettings_->getInputDataRange(&data_min, &data_max);
-//    mtf.get_input_range(&range_min, &range_max);
-//
-//    if ( data_min >= data_max ) {
-//      data_min = 0;
-//      data_max = 1;
-//    }
-//
-//    if ( range_min >= range_max ) {
-//      range_min = data_min;
-//      range_max = data_max;
-//      //c_midtones_transfer_function::suggest_levels_range(depth, minval, maxval)
-//    }
-//
-//    mtf.set_shadows((data_min - range_min) / (range_max - range_min));
-//    mtf.set_highlights((data_max - range_min) / (range_max - range_min));
-//    mtf.set_midtones(0.5);
-//
-//    if( !updatingControls() ) {
-//      Q_EMIT displaySettings_->updateDisplay();
-//    }
   }
 }
 
 void QMtfControl::findAutoMidtonesBalance()
 {
   if( _displaySettings ) {
-//    QWaitCursor wait(this);
-//
-//    c_pixinsight_mtf &mtf =
-//        displaySettings_->mtf();
-//
-//    cv::Mat1f H;
-//    double hmin = -1, hmax = -1;
-//
-//    displaySettings_->getInputHistogramm(H, &hmin, &hmax);
-//    if( H.empty() ) {
-//      CF_ERROR("currentDisplay_->create_input_histogramm() fails");
-//    }
-//    else {
-//      mtf.find_midtones_balance(H);
-//
-//      updateControls();
-//
-//      if( !updatingControls() ) {
-//        Q_EMIT displaySettings_->updateDisplay();
-//      }
-//    }
   }
 }
 

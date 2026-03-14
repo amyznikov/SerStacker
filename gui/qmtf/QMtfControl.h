@@ -30,13 +30,10 @@ public:
   void setDisplaySettings(IMtfDisplay* display);
   IMtfDisplay * displaySettings() const;
 
-  //bool isAutoMtfActionEnabled() const;
-
   void setHistoramViewSizeHint(const QSize & s);
   QSize historamViewSizeHint() const;
 
 protected Q_SLOTS:
-  //void updateControls();
   void updateHistogramLevels();
   void onChartTypeSelectorClicked();
   void onResetMtfClicked();
@@ -71,8 +68,6 @@ protected:
 
   QAction * _resetMtfAction = nullptr;
   QAction * _autoMtffAction = nullptr;
-  //QToolButton * autoMtf_ctl = nullptr;
-  //QMenu autoMtfMenu;
 
   QAction * logScaleSelectionAction_ = nullptr;
   QToolButton * chartTypeSelectorButton_ = nullptr;
@@ -83,11 +78,6 @@ protected:
   QPixmap _colormap_pixmap;
 
   QToolBar * bottomToolbar_ctl = nullptr;
-
-//  enum AutoMtfAction {
-//    AutoMtfAction_AutoClip = 0,
-//    AutoMtfAction_AutoMtf = 1,
-//  } selectedAutoMtfAction_ = AutoMtfAction_AutoClip;
 
   QDoubleSpinBox * lclip_ctl = nullptr;
   QDoubleSpinBox * hclip_ctl = nullptr;

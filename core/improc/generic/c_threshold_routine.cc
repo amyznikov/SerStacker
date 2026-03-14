@@ -47,6 +47,8 @@ void c_threshold_routine::getcontrols(c_control_list & ctls, const ctlbind_conte
    ctlbind(ctls, "threshold_scale", ctx(&this_class::_threshold_scale), "");
    ctlbind(ctls, "fill_holes", ctx(&this_class::_fill_holes), "");
    ctlbind(ctls, "invert", ctx(&this_class::_invert), "");
+   ctlbind(ctls, "input", ctx(&this_class::_input_channel), "");
+   ctlbind(ctls, "output", ctx(&this_class::_output_channel), "");
 }
 
 bool c_threshold_routine::serialize(c_config_setting settings, bool save)

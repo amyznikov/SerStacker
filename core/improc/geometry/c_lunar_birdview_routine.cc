@@ -66,7 +66,7 @@ static cv::Matx33d getMoonBirdViewHomography(const c_lunar_birdview_options & op
   const cv::Matx33d Rt = Ra * Rc;
 
   // Compute stretch factor (will become in in horz direction after total rotation)
-  const double cos_psi = std::max(0.05, std::sin(lat) * std::sin(b) + std::cos(lat) * std::cos(b) * std::cos(lon - l));
+  const double cos_psi = std::max(1e-3, std::sin(lat) * std::sin(b) + std::cos(lat) * std::cos(b) * std::cos(lon - l));
   const double s = 1./ cos_psi; // stretch factor
   const cv::Matx33d S(
       s,       0.0,     c.x * (1.0 - s),

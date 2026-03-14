@@ -63,12 +63,11 @@ bool c_median_blur_routine::process(cv::InputOutputArray image, cv::InputOutputA
     return true;
   }
 
-  const int r = image.depth() < CV_32F ? _radius : 2;
   const int ksize = 2 * _radius + 1;
 
   // Backup source image for the case if special output is requested
   const cv::Mat Src = image.getMat();
-  cv::Mat Med(image.size(), image.type());
+  cv::Mat Med(Src.size(), Src.type());
 
   for( int i = 0; i < _iterations; ++i ) {
 
@@ -76,26 +75,19 @@ bool c_median_blur_routine::process(cv::InputOutputArray image, cv::InputOutputA
 
     switch(_direction ) {
       case DirectionBoth: {
-        if ( _output == OutputMedian ) {
-          cv::medianBlur(src, image, ksize);
-        }
-        else {
-          cv::medianBlur(src, Med, ksize);
-        }
+        cv::medianBlur(src, Med, ksize);
         break;
       }
-      case DirectionVert: {
+      case DirectionVert:
         for (  int i = 0, n = src.cols; i < n; ++i ) {
           cv::medianBlur(src.col(i), Med.col(i), ksize);
         }
         break;
-      }
-      case DirectionHorz: {
+      case DirectionHorz:
         for (  int i = 0, n = src.rows; i < n; ++i ) {
           cv::medianBlur(src.row(i), Med.row(i), ksize);
         }
         break;
-      }
     }
   }
 
@@ -109,11 +101,11 @@ bool c_median_blur_routine::process(cv::InputOutputArray image, cv::InputOutputA
     case OutputNDiff:
       cv::subtract(Med, Src, image);
       break;
-    case OutputFillMaskHoles: {
+    case OutputFillMaskHoles:
       Med.copyTo(image, ~mask.getMat());
       break;
-    }
     case OutputMedian:
+      image.move(Med);
       break;
   }
 

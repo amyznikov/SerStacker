@@ -6,7 +6,6 @@
  */
 
 #include "c_median_blur_routine.h"
-#include <core/ssprintf.h>
 
 template<>
 const c_enum_member * members_of<c_median_blur_routine::Direction>()

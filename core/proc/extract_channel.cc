@@ -114,7 +114,7 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
       else {
         std::vector<cv::Mat> src_channels;
         std::vector<cv::Mat> mask_channels;
-        cv::Mat dst(src.size(), std::max(src.depth(), CV_32F), 0);
+        cv::Mat dst = cv::Mat::zeros(src.size(), src_depth == CV_64F ? CV_64F : CV_32F);
 
         cv::split(src, src_channels);
         cv::split(srcm, mask_channels);
@@ -193,8 +193,8 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
       else {
         std::vector<cv::Mat> src_channels;
         std::vector<cv::Mat> mask_channels;
-        cv::Mat dst(src.size(), std::max(src.depth(), CV_32F), 0);
-        cv::Mat counts(src.size(), std::max(src.depth(), CV_32F), 0);
+        cv::Mat dst = cv::Mat::zeros(src.size(), src_depth == CV_64F ? CV_64F : CV_32F);
+        cv::Mat counts = cv::Mat::zeros(src.size(), src_depth == CV_64F ? CV_64F : CV_32F);
 
         cv::split(src, src_channels);
         cv::split(srcm, mask_channels);
@@ -358,7 +358,7 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
         });
 
         if( _dst.needed() ) {
-          _dst.assign(dst);
+          _dst.move(dst);
         }
         if ( _dstm.needed() ) {
           _dstm.move(dstm);
@@ -393,29 +393,107 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
       break;
     }
 
-    case REDUCE_FIRST_NON_ZERO: {
+    case REDUCE_FIRST_NON_ZERO:
+      if ( srcm.empty() ) {
+        cv::Mat_<_Tp> dst = cv::Mat_<_Tp>::zeros(src.size());
+        cv::Mat1b dstm = cv::Mat1b::zeros(src.size());
 
-      std::vector<cv::Mat> channels;
-      cv::Mat is_zero;
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols = src.cols, cn = src.channels()](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            _Tp * dstp = dst[y];
+            uint8_t* dstmp = dstm[y];
 
-      cv::split(src, channels);
+            for (int x = 0; x < cols; ++x) {
+              _Tp v = 0;
+              for (int c = 0; c < cn; ++c) {
+                if ((v = srcp[x * cn + c])) {
+                  break;
+                }
+              }
+              dstp[x] = v;
+              dstmp[x] = v ? uint8_t(255U) : uint8_t(0);
+            }
+          }
+        });
 
-      cv::Mat result = channels[0].clone();
-
-      cv::compare(result, 0, is_zero, cv::CMP_EQ);
-
-      const int cn = src.channels();
-      for( int i = 1; i < cn; ++i ) {
-        if( cv::countNonZero(is_zero) == 0 ) {
-          break;
+        if( _dst.needed() ) {
+          _dst.move(dst);
         }
-        channels[i].copyTo(result, is_zero);
-        cv::compare(result, 0, is_zero, cv::CMP_EQ);
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
       }
+      else if ( srcm.channels() == 1 ) {
+        cv::Mat_<_Tp> dst = cv::Mat_<_Tp>::zeros(src.size());
+        cv::Mat1b dstm = cv::Mat1b::zeros(src.size());
 
-      convertScaleDepth(result, _dst, ddepth, autoscale);
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols = src.cols, cn = src.channels()](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            const uint8_t* mskp = srcm.ptr<const uint8_t>(y);
+            _Tp * dstp = dst[y];
+            uint8_t* dstmp = dstm[y];
+
+            for (int x = 0; x < cols; ++x) {
+              if ( mskp[x] ) {
+                _Tp v = 0;
+                for (int c = 0; c < cn; ++c) {
+                  if ((v = srcp[x * cn + c])) {
+                    break;
+                  }
+                }
+                dstp[x] = v;
+                dstmp[x] = v ? uint8_t(255U) : uint8_t(0) ;
+              }
+            }
+          }
+        });
+
+        if( _dst.needed() ) {
+          _dst.move(dst);
+        }
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+      else {
+        cv::Mat_<_Tp> dst(src.size());
+        cv::Mat1b dstm (src.size());
+
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols = src.cols, cn = src.channels()](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            const uint8_t* mskp = srcm.ptr<const uint8_t>(y);
+            _Tp * dstp = dst[y];
+            uint8_t* dstmp = dstm[y];
+
+            for (int x = 0; x < cols; ++x) {
+              _Tp v = 0;
+              for (int c = 0; c < cn; ++c) {
+                if ( mskp[x * cn + c] ) {
+                  if ((v = srcp[x * cn + c])) {
+                    break;
+                  }
+                }
+                dstp[x] = v;
+                dstmp[x] = v ? uint8_t(255U) : uint8_t(0) ;
+              }
+            }
+          }
+        });
+
+        if( _dst.needed() ) {
+          _dst.move(dst);
+        }
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+      if ( _dst.needed() ) {
+        convertScaleDepth(_dst, _dst, ddepth, autoscale);
+      }
       break;
-    }
 
     default:
       CF_ERROR("Not supported reduce type %d requestd", rtype);
@@ -444,21 +522,32 @@ static bool reduceChannels(cv::InputArray src, cv::OutputArray dst, cv::InputArr
 bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _srcm, cv::OutputArray _dstm,
     int channel, int ddepth, bool autoscale)
 {
-  if ( _src.channels() < 2 ) {
-    CF_ERROR("Invalid argument: channel extraction not supported for image with %d channels", _src.channels());
-    return false;
-  }
-
-  if (ddepth < 0 ) {
+  if( ddepth < 0 ) {
     ddepth = _dst.fixedType() ? _dst.depth() : _src.depth();
   }
 
-  if( channel == color_channel_dont_change ) {
-    _src.copyTo(_dst);
-    _srcm.copyTo(_dstm);
+  if( channel == color_channel_dont_change || _src.channels() < 2 ) {
+
+    if( _dst.needed() ) {
+      if( _src.depth() == ddepth ) {
+        _src.copyTo(_dst);
+      }
+      else {
+        convertScaleDepth(_src, _dst, ddepth, autoscale);
+      }
+    }
+
+    if( _dstm.needed() ) {
+      if( _srcm.empty() || _srcm.channels() < 2 ) {
+        _srcm.copyTo(_dstm);
+      }
+      else {
+        reduce_color_channels(_srcm, _dstm, cv::REDUCE_MAX);
+      }
+    }
+
     return true;
   }
-
 
   const cv::Mat src = _src.getMat();
   const cv::Mat srcm = _srcm.getMat();
@@ -472,6 +561,7 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
         return false;
       }
       cv::extractChannel(src, dst, coi);
+      convertScaleDepth(dst, dst, ddepth, autoscale);
     }
 
     if( _dstm.needed() ) {
@@ -479,15 +569,13 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
         srcm.copyTo(dstm);
       }
       else if ( coi < srcm.channels() ) {
-        cv::extractChannel(src, dst, coi);
+        cv::extractChannel(srcm, dstm, coi);
       }
       else {
         CF_ERROR("Bad Input/Output mask channels combination: channel=%d srcm.channels()=%d", channel, srcm.channels());
         return false;
       }
     }
-
-    convertScaleDepth(dst, dst, ddepth, autoscale);
 
     return true;
   };

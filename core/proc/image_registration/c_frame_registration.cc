@@ -1161,8 +1161,8 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
     tmp = src.getMat();
     mtmp = srcm.getMat();
   }
-  else if ( !extract_channel(src, tmp, srcm, mtmp, _options.ecc_registration_channel) ) {
-    CF_ERROR("extract_channel(ecc_registration_channel=%d) fails", _options.ecc_registration_channel);
+  else if ( !extract_channel(src, tmp, srcm, mtmp, _options.feature_registration.registration_channel) ) {
+    CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails", _options.feature_registration.registration_channel);
     return false;
   }
 

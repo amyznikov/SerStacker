@@ -20,6 +20,7 @@
 #include "generic/c_laplacian_routine.h"
 #include "generic/c_hessian_routine.h"
 #include "generic/c_ridgeness_routine.h"
+#include "generic/c_local_peak_routine.h"
 #include "generic/c_radial_gradient_routine.h"
 #include "generic/c_noisemap_routine.h"
 #include "generic/c_auto_correlation_routine.h"
@@ -207,6 +208,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_gradient_routine::class_factory_instance());
     register_class_factory(c_radial_gradient_routine::class_factory_instance());
     register_class_factory(c_ridgeness_routine::class_factory_instance());
+    register_class_factory(c_local_peak_routine::class_factory_instance());
 
     register_class_factory(c_align_color_channels_routine::class_factory_instance());
     register_class_factory(c_anscombe_routine::class_factory_instance());

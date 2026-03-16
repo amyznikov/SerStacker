@@ -119,7 +119,7 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
       currentImage.convertTo(image, CV_8U, scale, offset);
     }
     else {
-      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
+      getScaleOffset(currentImage.depth(), CV_8U, &scale, &offset);
       currentImage.convertTo(image, CV_8U, scale, offset);
     }
 

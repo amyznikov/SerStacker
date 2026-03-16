@@ -102,7 +102,7 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
           if( _display.depth() != CV_8U ) {
 
             double scale = 1, offset = 0;
-            get_scale_offset(_display.depth(), CV_8U, &scale, &offset);
+            getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
             _display.convertTo(_display, CV_8U, scale, offset);
           }
 

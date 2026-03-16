@@ -523,7 +523,7 @@ QString saveImageFileAs(QWidget * parent,
       }
       else {
         double minv, maxv;
-        get_data_range_for_pixel_depth(selectedPixelDepth, &minv, &maxv);
+        getDataRangeForPixelDepth(selectedPixelDepth, &minv, &maxv);
         normalize_minmax(currentImage, image, minv, maxv, mask);
         image.convertTo(image, selectedPixelDepth);
       }
@@ -537,7 +537,7 @@ QString saveImageFileAs(QWidget * parent,
       }
       else {
         double minv, maxv;
-        get_data_range_for_pixel_depth(selectedPixelDepth, &minv, &maxv);
+        getDataRangeForPixelDepth(selectedPixelDepth, &minv, &maxv);
         normalize_minmax(currentImage, image, minv, maxv, mask);
         image.convertTo(image, selectedPixelDepth);
       }

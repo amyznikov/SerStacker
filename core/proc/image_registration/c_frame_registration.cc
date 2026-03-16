@@ -10,6 +10,7 @@
 #include <core/proc/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
+#include <core/proc/pixtype.h>
 #include <core/proc/normalize.h>
 #include <core/io/save_image.h>
 #include <core/get_time.h>
@@ -1133,79 +1134,100 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 // Create image appropriate for sift/surf/orb/etc feature detection
 // TODO: Check the Christopher Tsai "Effects of 2-D Preprocessing on Feature Extraction"
 //    <https://pdfs.semanticscholar.org/185e/62d607becc8d0ee2409a224a36c58b084ab3.pdf>
-bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArray srcmsk,
-    cv::OutputArray dst, cv::OutputArray dstmsk) const
+bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArray srcm,
+    cv::OutputArray dst, cv::OutputArray dstm) const
 {
-  cv::Mat tmp;
+  static const auto scaleImage =
+      [](double scale, const cv::Mat & src, const cv::Mat & srcm, cv::OutputArray dst, cv::OutputArray dstm) {
+        if( std::abs(scale - 0.5) < FLT_EPSILON ) {
+          cv::pyrDown(src, dst);
+          if( !srcm.empty() ) {
+            cv::pyrDown(srcm, dstm, dst.size());
+            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+          }
+        }
+        else {
+          cv::resize(src, dst, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+          if( !srcm.empty() ) {
+            cv::resize(srcm, dstm, dst.size(), 0, 0, cv::INTER_AREA);
+            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+          }
+        }
+      };
 
-  if ( src.depth() == CV_8U ) {
+  cv::Mat tmp, mtmp;
+
+  if ( _options.feature_registration.registration_channel == color_channel_dont_change ) {
     tmp = src.getMat();
+    mtmp = srcm.getMat();
   }
-  else {
+  else if ( !extract_channel(src, tmp, srcm, mtmp, _options.ecc_registration_channel) ) {
+    CF_ERROR("extract_channel(ecc_registration_channel=%d) fails", _options.ecc_registration_channel);
+    return false;
+  }
 
+  if( _options.feature_registration.image_scale != 0 && _options.feature_registration.image_scale != 1 ) {
+    scaleImage(_options.feature_registration.image_scale, tmp, tmp, mtmp, mtmp);
+  }
+
+  if ( tmp.depth() != CV_8U ) {
     // dark frame subtraction could produce negative pixel values, star extractor may be sensitive.
-    cv::max(src, 0, tmp);
-    normalize_minmax(tmp, tmp, 0, 255, srcmsk);
-    tmp.convertTo(tmp, CV_8U);
+    cv::max(tmp, cv::Scalar(0), tmp);
+    normalize_minmax(tmp, tmp, 0, 255, mtmp);
   }
 
-  if ( _options.feature_registration.registration_channel !=  color_channel_dont_change ) {
-
-    const bool fOk =
-        extract_channel(tmp, dst, srcmsk, dstmsk,
-            _options.ecc_registration_channel,
-            _options.feature_registration.image_scale,
-            CV_8U,
-            1);
-
-    if ( !fOk ) {
-      CF_ERROR("extract_channel(channel_=%d scale=%g) fails",
-          _options.ecc_registration_channel,
-          _options.feature_registration.image_scale);
-      return false;
-    }
-  }
-  else if ( _options.feature_registration.image_scale == 0 || _options.feature_registration.image_scale == 1 ) {
-
+  if ( tmp.depth() == CV_8U ) {
     dst.move(tmp);
-    srcmsk.copyTo(dstmsk);
-
   }
   else {
+    tmp.convertTo(dst, CV_8U);
+  }
 
-    const double f =
-        _options.feature_registration.image_scale;
-
-    cv::resize(tmp, dst, cv::Size(), f, f, cv::INTER_AREA);
-
-    if ( srcmsk.empty() ) {
-      dstmsk.release();
-    }
-    else {
-      cv::resize(srcmsk.getMat(), dstmsk, cv::Size(), f, f, cv::INTER_AREA);
-      cv::compare(dstmsk.getMat(), 252, dstmsk, cv::CMP_GE);
-    }
+  if ( dstm.needed() ) {
+    dstm.move(mtmp);
   }
 
   return true;
 }
 
-bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-    cv::OutputArray dst, cv::OutputArray dstmsk,
+bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcm,
+    cv::OutputArray dst, cv::OutputArray dstm,
     double scale) const
 {
-  if( !extract_channel(src, dst, srcmsk, dstmsk, _options.ecc_registration_channel, scale, CV_32F) ) {
+  static const auto scaleImage =
+      [](double scale, const cv::Mat & src, const cv::Mat & srcm, cv::OutputArray dst, cv::OutputArray dstm) {
+        if( std::abs(scale - 0.5) < FLT_EPSILON ) {
+          cv::pyrDown(src, dst);
+          if( !srcm.empty() ) {
+            cv::pyrDown(srcm, dstm, dst.size());
+            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+          }
+        }
+        else {
+          cv::resize(src, dst, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+          if( !srcm.empty() ) {
+            cv::resize(srcm, dstm, dst.size(), 0, 0, cv::INTER_AREA);
+            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+          }
+        }
+      };
+
+
+  if( !extract_channel(src, dst, srcm, dstm, _options.ecc_registration_channel, CV_32F) ) {
     CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
     return false;
   }
 
+  if( _options.feature_registration.image_scale != 0 && _options.feature_registration.image_scale != 1 ) {
+    scaleImage(_options.feature_registration.image_scale, dst.getMat(), dstm.getMat(), dst, dstm);
+  }
+
   if ( _ecc_image_preprocessor ) {
-    _ecc_image_preprocessor(dst.getMatRef(),
-        dstmsk.getMatRef());
+    _ecc_image_preprocessor(dst.getMatRef(), dstm.getMatRef());
   }
 
   if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
-    ecc_normalize_meanstdev(dst.getMat(), dstmsk, dst,
+    ecc_normalize_meanstdev(dst.getMat(), dstm, dst,
         _options.ecc.normalization_scale,
         _options.ecc.normalization_noise);
   }

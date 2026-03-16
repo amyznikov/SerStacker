@@ -9,7 +9,24 @@
 #include <core/proc/reduce_channels.h>
 #include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
+#include <type_traits>
 #include <core/debug.h>
+
+namespace {
+
+enum REDUCE_TYPES
+{
+  REDUCE_SUM = cv::REDUCE_SUM, //!< the output is the sum of all rows/columns of the matrix.
+  REDUCE_AVG =  cv::REDUCE_AVG, //!< the output is the mean vector of all rows/columns of the matrix.
+  REDUCE_MAX = cv::REDUCE_MAX, //!< the output is the maximum (column/row-wise) of all rows/columns of the matrix.
+  REDUCE_MIN = cv::REDUCE_MIN,  //!< the output is the minimum (column/row-wise) of all rows/columns of the matrix.
+  REDUCE_SUM2 = cv::REDUCE_SUM2, //!< the output is the sum of all squared rows/columns of the matrix.
+  REDUCE_ABSMAX = cv::REDUCE_SUM2 + 1,
+  REDUCE_FIRST_NON_ZERO,
+  REDUCE_MAX_COLOR
+};
+
+}
 
 template<>
 const c_enum_member * members_of<color_channel_type>()
@@ -19,7 +36,7 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_1, "1", "cv::extractChannel(1)" },
       { color_channel_2, "2", "cv::extractChannel(2)" },
       { color_channel_3, "3", "cv::extractChannel(3)" },
-      { color_channel_4, "4", "cv::extractChannel(4)" },
+      //{ color_channel_4, "4", "cv::extractChannel(4)" },
 
       { color_channel_dont_change, "dont_change", "Don't change color channels"},
 
@@ -39,631 +56,629 @@ const c_enum_member * members_of<color_channel_type>()
       { color_channel_max_intensity, "max", "cv::reduce(cv::REDUCE_MAX)"},
       { color_channel_avg_intensity, "avg", "cv::reduce(cv::REDUCE_AVG)"},
       { color_channel_sum_intensity, "sum", "cv::reduce(cv::REDUCE_SUM)"},
+      { color_channel_sum2_intensity, "sum2", "cv::reduce(cv::REDUCE_SUM2)"},
 
       { color_channel_absmax , "absmax",  "max of absolute pixel value "},
       { color_channel_first_nonzero, "first_nonzero", "first nonzero value"},
 
       { color_channel_max_color, "max_color", "max - min"},
-      { color_channel_max_gradient, "max_gradient", "max gradient"},
+      //{ color_channel_max_gradient, "max_gradient", "max gradient"},
 
       { color_channel_unknown}
   };
   return members;
 }
 
-
-template<class T>
-static void extract_first_non_zero_channel_(cv::InputArray _src, cv::OutputArray _dst)
+static inline double square(double x)
 {
-  const int rows =
-      _src.rows();
+  return x * x;
+}
 
-  const int cols =
-      _src.cols();
-
-  const int channels =
-      _src.channels();
-
-  const cv::Mat_<T> src =
-      _src.getMat();
-
-  _dst.create(rows, cols, CV_MAKETYPE(src.depth(), 1));
-
-  cv::Mat_<T> dst =
-      _dst.getMatRef();
-
-  for( int y = 0; y < rows; ++y ) {
-
-    const T * srcp = src[y];
-    T * dstp = dst[y];
-
-    for( int x = 0; x < cols; ++x ) {
-
-      int c = 0;
-      while ( c < channels && !(dstp[x] = srcp[x * channels + c]) ) {
-        ++c;
+template<class _Tp>
+static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _srcm, cv::OutputArray _dstm, REDUCE_TYPES rtype, int ddepth, bool autoscale)
+{
+  if ( _src.empty() || _src.channels() < 2 ) {
+    // single-channel image, nothing to reduce, just copy to destination
+    if ( _dst.needed() ) {
+      convertScaleDepth(_src, _dst, ddepth, autoscale);
+    }
+    if ( _dstm.needed() ) {
+      if ( _srcm.empty() || _srcm.channels() == 1 ) {
+        _srcm.copyTo(_dstm);
+      }
+      else { // all mask channels are active
+        reduce_color_channels(_srcm, _dstm, cv::REDUCE_MAX);
       }
     }
-  }
-}
 
-static void extract_first_non_zero_channel(cv::InputArray src, cv::OutputArray dst)
-{
-  switch (src.depth()) {
-    case CV_8U:
-      return extract_first_non_zero_channel_<uint8_t>(src, dst);
-    case CV_8S:
-      return extract_first_non_zero_channel_<int8_t>(src, dst);
-    case CV_16U:
-      return extract_first_non_zero_channel_<uint16_t>(src, dst);
-    case CV_16S:
-      return extract_first_non_zero_channel_<int16_t>(src, dst);
-    case CV_32S:
-      return extract_first_non_zero_channel_<int32_t>(src, dst);
-    case CV_32F:
-      return extract_first_non_zero_channel_<float>(src, dst);
-    case CV_64F:
-      return extract_first_non_zero_channel_<double>(src, dst);
-  }
-}
-
-
-
-template<class T>
-static void extract_absmax_channel_(cv::InputArray _src, cv::OutputArray _dst)
-{
-  const int rows =
-      _src.rows();
-
-  const int cols =
-      _src.cols();
-
-  const int channels =
-      _src.channels();
-
-  const cv::Mat_<T> src =
-      _src.getMat();
-
-  _dst.create(rows, cols, CV_MAKETYPE(src.depth(), 1));
-
-  cv::Mat_<T> dst =
-      _dst.getMatRef();
-
-  for( int y = 0; y < rows; ++y ) {
-
-    const T * srcp = src[y];
-    T * dstp = dst[y];
-
-    for( int x = 0; x < cols; ++x ) {
-
-      T v1 =
-          std::abs(dstp[x] = srcp[x * channels + 0]);
-
-      for( int c = 1; c < channels; ++c ) {
-
-        const T v2 =
-            std::abs(srcp[x * channels + c]);
-
-        if( v2 > v1 ) {
-          dstp[x] = srcp[x * channels + c];
-          v1 = v2;
-        }
-      }
-
-    }
+    return true;
   }
 
-}
-
-static void extract_absmax_channel(cv::InputArray src, cv::OutputArray dst)
-{
-  switch (src.depth()) {
-    case CV_8U:
-      return extract_absmax_channel_<uint8_t>(src, dst);
-    case CV_8S:
-      return extract_absmax_channel_<int8_t>(src, dst);
-    case CV_16U:
-      return extract_absmax_channel_<uint16_t>(src, dst);
-    case CV_16S:
-      return extract_absmax_channel_<int16_t>(src, dst);
-    case CV_32S:
-      return extract_absmax_channel_<int32_t>(src, dst);
-    case CV_32F:
-      return extract_absmax_channel_<float>(src, dst);
-    case CV_64F:
-      return extract_absmax_channel_<double>(src, dst);
-  }
-}
-
-
-static void convert_image(cv::Mat & image, int dst_depth)
-{
-  if ( image.depth() != dst_depth ) {
-
-    double scale = 1;
-    double offset = 0;
-
-    get_scale_offset(image.depth(), dst_depth,
-        &scale, &offset);
-
-    image.convertTo(image, dst_depth,
-        scale, offset);
-  }
-
-}
-
-// Extract requested color channel form input color image
-bool extract_channel(cv::InputArray src, cv::OutputArray dst,
-    cv::InputArray srcmsk, cv::OutputArray dstmsk,
-    int channel,
-    double output_scale,
-    int output_depth,
-    double output_depth_scale)
-{
-  cv::Mat scaled_src, converted_src;
-  cv::Mat scaled_mask;
-
-  if ( src.channels() < 1 ) {
-    CF_ERROR("Invalid argument: channel extraction not supported for image with %d channels",
-        src.channels());
+  if( !_srcm.empty() && _srcm.channels() != 1 && _srcm.channels() != _src.channels() ) { // Bad mask
+    CF_ERROR("Invalid combination of image and masj channels: src.chaannels=%d mask.channels=%d",
+        _src.channels(), _srcm.channels());
     return false;
   }
 
+  const cv::Mat src = _src.getMat();
+  const cv::Mat srcm = _srcm.getMat();
+  const int src_depth = src.depth();
+  const int src_channels = src.channels();
 
-  if( output_depth < 0 ) {
+  // multi-channel image
+  switch(rtype) {
+    case REDUCE_SUM:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        reduce_color_channels(src, _dst, cv::REDUCE_SUM, src_depth == CV_64F ? CV_64F : CV_32F);
+      }
+      else {
+        std::vector<cv::Mat> src_channels;
+        std::vector<cv::Mat> mask_channels;
+        cv::Mat dst(src.size(), std::max(src.depth(), CV_32F), 0);
 
-    output_depth =
-        dst.fixedType() ? dst.depth() :
-            src.depth();
-  }
+        cv::split(src, src_channels);
+        cv::split(srcm, mask_channels);
 
-  if (output_scale <= 0 || std::abs(output_scale - 1.) < FLT_EPSILON) {
+        for (int i = 0, cn = src.channels(); i < cn; ++i) {
+          cv::add(dst, src_channels[i], dst, mask_channels[i], dst.depth());
+        }
+        _dst.move(dst);
+        if ( _dstm.needed() ) {
+          reduce_color_channels(srcm, _dstm, cv::REDUCE_MAX);
+        }
+      }
 
-    scaled_src =
-        src.getMat();
+      convertScaleDepth(_dst, _dst, ddepth, autoscale, 1. / ( src_channels * getMaxValForPixelDepth(src_depth)) );
+      break;
 
-    scaled_mask =
-        srcmsk.getMat();
-  }
-  else if ( std::abs(output_scale - 0.5) < FLT_EPSILON ) {
+    case REDUCE_SUM2:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        reduce_color_channels(src, _dst, cv::REDUCE_SUM2, src_depth == CV_64F ? CV_64F : CV_32F);
+      }
+      else {
+        using _dTp = std::conditional_t<std::is_same_v<_Tp, double>, double, float>;
 
-    cv::pyrDown(src, scaled_src);
+        cv::Mat_<_dTp> dst(src.size(), _dTp(0)); // must be zero by design
+        cv::Mat1b dstm(src.size(), uint8_t(0));
 
-    if ( !srcmsk.empty() ) {
+        const int cols = src.cols;
+        const int cn = src.channels();
 
-      cv::pyrDown(srcmsk, scaled_mask,
-          scaled_src.size());
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols, cn](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            _dTp * dstp = dst[y];
 
-      cv::compare(scaled_mask, cv::Scalar::all(250),
-          scaled_mask,
-          cv::CMP_GE);
+            const uint8_t * mskp = srcm.ptr<const uint8_t>(y);
+            uint8_t* dstmp = dstm.ptr<uint8_t>(y);
+
+            for (int x = 0; x < cols; ++x) {
+              _dTp sum = _dTp(0);
+              bool found = false;
+
+              for (int c = 0; c < cn; ++c) {
+                if ( mskp[x * cn + c] ) {
+                  const _dTp val = srcp[x * cn + c];
+                  sum += val * val;
+                  found = true;
+                }
+              }
+              if ( found ) {
+                dstp[x] = sum;
+                dstmp[x] = uint8_t(255U);
+              }
+            }
+          }});
+
+        if( _dst.needed() ) {
+          if( std::is_same_v<_Tp, double> ) {
+            _dst.move(dst);
+          }
+          else {
+            dst.convertTo(_dst, CV_32F);
+          }
+        }
+        if( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+
+      convertScaleDepth(_dst, _dst, ddepth, autoscale, 1. / (square(getMaxValForPixelDepth(src_depth)) * src_channels));
+      break;
+
+    case REDUCE_AVG:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        reduce_color_channels(src, _dst, cv::REDUCE_AVG, src_depth == CV_64F ? CV_64F : CV_32F);
+      }
+      else {
+        std::vector<cv::Mat> src_channels;
+        std::vector<cv::Mat> mask_channels;
+        cv::Mat dst(src.size(), std::max(src.depth(), CV_32F), 0);
+        cv::Mat counts(src.size(), std::max(src.depth(), CV_32F), 0);
+
+        cv::split(src, src_channels);
+        cv::split(srcm, mask_channels);
+
+        for (int i = 0, cn = src.channels(); i < cn; ++i) {
+          cv::add(dst, src_channels[i], dst, mask_channels[i], dst.depth());
+          cv::add(counts, 1, counts, mask_channels[i], counts.depth());
+        }
+
+        cv::max(counts, cv::Scalar(1.0), counts);
+        cv::divide(dst, counts, _dst );
+        if ( _dstm.needed() ) {
+          reduce_color_channels(srcm, _dstm, cv::REDUCE_MAX);
+        }
+      }
+      convertScaleDepth(_dst, _dst, ddepth, autoscale, 1. / getMaxValForPixelDepth(src_depth));
+      break;
+
+    case REDUCE_MAX:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        reduce_color_channels(src, _dst, cv::REDUCE_MAX);
+      }
+      else {
+        cv::Mat_<_Tp> dst(src.size(), _Tp(0));
+        cv::Mat1b dstm(src.size(), uint8_t(0));
+
+        const int cols = src.cols;
+        const int cn = src.channels();
+
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols, cn](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            _Tp * dstp = dst[y];
+
+            const uint8_t * mskp = srcm.ptr<const uint8_t>(y);
+            uint8_t* dstmp = dstm.ptr<uint8_t>(y);
+
+            for (int x = 0; x < cols; ++x) {
+              _Tp max_val = _Tp(0);
+              bool found = false;
+
+              for (int c = 0; c < cn; ++c) {
+                if ( mskp[x * cn + c] ) {
+                  const _Tp val = srcp[x * cn + c];
+                  if (!found || val > max_val) {
+                    max_val = val;
+                    found = true;
+                  }
+                }
+              }
+              if ( found ) {
+                dstp[x] = max_val;
+                dstmp[x] = uint8_t(255U);
+              }
+            }
+          }});
+
+        if ( _dst.needed() ) {
+          _dst.move(dst);
+        }
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+      convertScaleDepth(_dst, _dst, ddepth, autoscale);
+      break;
+
+    case REDUCE_MIN:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        reduce_color_channels(src, _dst, cv::REDUCE_MIN);
+      }
+      else {
+        cv::Mat_<_Tp> dst(src.size(), _Tp(0)); // must be zero by design
+        cv::Mat1b dstm(src.size(), uint8_t(0));
+
+        const int cols = src.cols;
+        const int cn = src.channels();
+
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols, cn](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            _Tp * dstp = dst[y];
+
+            const uint8_t * mskp = srcm.ptr<const uint8_t>(y);
+            uint8_t* dstmp = dstm.ptr<uint8_t>(y);
+
+            for (int x = 0; x < cols; ++x) {
+              _Tp min_val = _Tp(0);
+              bool found = false;
+
+              for (int c = 0; c < cn; ++c) {
+                if ( mskp[x * cn + c] ) {
+                  const _Tp val = srcp[x * cn + c];
+                  if (!found || val < min_val) {
+                    min_val = val;
+                    found = true;
+                  }
+                }
+              }
+              if ( found ) {
+                dstp[x] = min_val;
+                dstmp[x] = uint8_t(255U);
+              }
+            }
+          }});
+
+        if ( _dst.needed() ) {
+          _dst.move(dst);
+        }
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+      convertScaleDepth(_dst, _dst, ddepth, autoscale);
+      break;
+
+
+    case REDUCE_MAX_COLOR:
+      if ( srcm.empty() || srcm.channels() == 1 ) {
+        cv::Mat cmin, cmax;
+        reduce_color_channels(src, cmin, cv::REDUCE_MIN);
+        reduce_color_channels(src, cmax, cv::REDUCE_MAX);
+        cv::subtract(cmax, cmin, _dst);
+      }
+      else {
+        cv::Mat_<_Tp> dst = cv::Mat_<_Tp>::zeros(src.size());
+        cv::Mat1b dstm = cv::Mat1b::zeros(src.size());
+
+        cv::parallel_for_(cv::Range(0, src.rows), [&, cols = src.cols, cn = src.channels()](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            const _Tp* srcp = src.ptr<const _Tp>(y);
+            _Tp * dstp = dst[y];
+
+            const uint8_t* mskp = srcm.ptr<const uint8_t>(y);
+            uint8_t* dstmp = dstm[y];
+
+            for (int x = 0; x < cols; ++x) {
+
+              _Tp v_min = 0, v_max = 0;
+              bool found = false;
+
+              for (int c = 0; c < cn; ++c) {
+                if ( mskp[x * cn + c] ) {
+                  const _Tp val = srcp[x * cn + c];
+                  if (!found) {
+                    v_min = v_max = val;
+                    found = true;
+                  }
+                  else {
+                    v_min = std::min(v_min, val);
+                    v_max = std::max(v_max, val);
+                  }
+                }
+              }
+              if (found) {
+                dstp[x] = v_max - v_min;
+                dstmp[x] = uint8_t(255U);
+              }
+            }
+          }
+        });
+
+        if( _dst.needed() ) {
+          _dst.assign(dst);
+        }
+        if ( _dstm.needed() ) {
+          _dstm.move(dstm);
+        }
+      }
+      convertScaleDepth(_dst, _dst, ddepth, autoscale);
+      break;
+
+    case REDUCE_ABSMAX: {
+      if ( src.depth() == CV_8U || src.depth() == CV_16U ) { // fallback to REDUCE_MAX
+        reduce_color_channels(src, _dst, cv::REDUCE_MAX);
+      }
+      else {
+        std::vector<cv::Mat> channels;
+        cv::split(src, channels);
+
+        cv::Mat result = channels[0];
+        cv::Mat max_abs = cv::abs(channels[0]);
+        cv::Mat current_abs, mask;
+
+        const int cn = src.channels();
+        for (int i = 1; i < cn; ++i) {
+          current_abs = cv::abs(channels[i]);
+          cv::compare(current_abs, max_abs, mask, cv::CMP_GT);
+          channels[i].copyTo(result, mask);
+          current_abs.copyTo(max_abs, mask);
+        }
+
+        _dst.move(result);
+      }
+      convertScaleDepth(_dst, _dst, ddepth, autoscale);
+      break;
     }
-  }
-  else {
 
-    cv::resize(src, scaled_src, cv::Size(0, 0),
-        output_scale,
-        output_scale,
-        cv::INTER_AREA);
+    case REDUCE_FIRST_NON_ZERO: {
 
-    if ( !srcmsk.empty() ) {
+      std::vector<cv::Mat> channels;
+      cv::Mat is_zero;
 
-      cv::resize(srcmsk, scaled_mask, cv::Size(0, 0),
-          output_scale,
-          output_scale,
-          cv::INTER_AREA);
+      cv::split(src, channels);
 
-      cv::compare(scaled_mask, cv::Scalar::all(250),
-          scaled_mask,
-          cv::CMP_GE);
+      cv::Mat result = channels[0].clone();
 
+      cv::compare(result, 0, is_zero, cv::CMP_EQ);
+
+      const int cn = src.channels();
+      for( int i = 1; i < cn; ++i ) {
+        if( cv::countNonZero(is_zero) == 0 ) {
+          break;
+        }
+        channels[i].copyTo(result, is_zero);
+        cv::compare(result, 0, is_zero, cv::CMP_EQ);
+      }
+
+      convertScaleDepth(result, _dst, ddepth, autoscale);
+      break;
     }
+
+    default:
+      CF_ERROR("Not supported reduce type %d requestd", rtype);
+      return false;
   }
 
-  if ( channel == color_channel_dont_change ) {
-    converted_src =
-        scaled_src;
-  }
-  else if ( channel < color_channel_featured_begin ) {
+  return true;
+}
 
-    if ( channel < 0 || channel >= scaled_src.channels() ) {
-      CF_ERROR("Invalid argument: requested channel %d is out of range src.channels()=%d",
-          channel, scaled_src.channels());
+
+static bool reduceChannels(cv::InputArray src, cv::OutputArray dst, cv::InputArray srcm, cv::OutputArray dstm, REDUCE_TYPES rtype, int ddepth, bool autoscale)
+{
+  switch (src.depth()) {
+    case CV_8U: return _reduceChannels<uint8_t>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_8S: return _reduceChannels<int8_t>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_16U: return _reduceChannels<uint16_t>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_16S: return _reduceChannels<int16_t>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_32S: return _reduceChannels<int32_t>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_32F: return _reduceChannels<float>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+    case CV_64F: return _reduceChannels<double>(src, dst, srcm, dstm, rtype, ddepth, autoscale);
+  }
+
+  return false;
+}
+
+bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _srcm, cv::OutputArray _dstm,
+    int channel, int ddepth, bool autoscale)
+{
+  if ( _src.channels() < 2 ) {
+    CF_ERROR("Invalid argument: channel extraction not supported for image with %d channels", _src.channels());
+    return false;
+  }
+
+  if (ddepth < 0 ) {
+    ddepth = _dst.fixedType() ? _dst.depth() : _src.depth();
+  }
+
+  if( channel == color_channel_dont_change ) {
+    _src.copyTo(_dst);
+    _srcm.copyTo(_dstm);
+    return true;
+  }
+
+
+  const cv::Mat src = _src.getMat();
+  const cv::Mat srcm = _srcm.getMat();
+
+  cv::Mat dst, dstm;
+
+  const auto extractChannelByIndex = [&](int coi) {
+    if( _dst.needed() ) {
+      if ( coi < 0 || coi >= src.channels() ) {
+        CF_ERROR("Invalid channel index %d requested from image with %d channels ", coi, src.channels());
+        return false;
+      }
+      cv::extractChannel(src, dst, coi);
+    }
+
+    if( _dstm.needed() ) {
+      if( srcm.empty() || srcm.channels() == 1 ) {
+        srcm.copyTo(dstm);
+      }
+      else if ( coi < srcm.channels() ) {
+        cv::extractChannel(src, dst, coi);
+      }
+      else {
+        CF_ERROR("Bad Input/Output mask channels combination: channel=%d srcm.channels()=%d", channel, srcm.channels());
+        return false;
+      }
+    }
+
+    convertScaleDepth(dst, dst, ddepth, autoscale);
+
+    return true;
+  };
+
+  const auto extractLumunanceChannel = [&](int colorSpace, int coi, double lumaScale, const std::string & colorSpaceName) {
+    if( _dstm.needed() ) {
+      if( srcm.empty() || srcm.channels() == 1 ) {
+        srcm.copyTo(dstm);
+      }
+      else {
+        CF_ERROR("Conversion to %s not supported for masks with %d channels", colorSpaceName.c_str(), srcm.channels());
+        return false;
+      }
+    }
+
+    if( _dst.needed() ) {
+      if( src.channels() != 3 ) {
+        CF_ERROR("Conversion to %s not supported for images with %d channels", colorSpaceName.c_str(), src.channels());
+        return false;
+      }
+
+      cv::Mat s;
+
+      static const std::set<int> special_cases = {
+          cv::COLOR_BGR2Lab,
+          cv::COLOR_BGR2Luv,
+          cv::COLOR_BGR2HSV,
+          cv::COLOR_BGR2HLS};
+
+      const bool isSpecialCase = special_cases.find(colorSpace) != special_cases.end();
+
+      if ( !isSpecialCase ) {
+        s = src;
+      }
+      else {
+        switch(src.depth()) {
+          case CV_8U:
+          case CV_32F: {
+            s = src;
+            break;
+          }
+          default : {
+            double alpha, beta;
+            getScaleOffset(src.depth(), CV_32F, &alpha, &beta);
+            src.convertTo(s, CV_32F, alpha, beta);
+            break;
+          }
+        }
+      }
+
+      cv::cvtColor(s, dst, colorSpace);
+      if ( coi >= 0 ) {
+        cv::extractChannel(dst, dst, coi);
+      }
+
+      convertScaleDepth(dst, dst, ddepth, autoscale, lumaScale);
+    }
+
+    return true;
+  };
+
+  switch (channel) {
+    case color_channel_0:
+    case color_channel_blue:
+      if( !extractChannelByIndex(0) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_1:
+    case color_channel_green:
+      if( !extractChannelByIndex(1) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_2:
+    case color_channel_red:
+      if( !extractChannelByIndex(2) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_3:
+      if( !extractChannelByIndex(3) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_gray:
+      if( !extractLumunanceChannel(cv::COLOR_BGR2GRAY, -1, 1,  "Gray") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_luminance_YCrCb:
+      if( !extractLumunanceChannel(cv::COLOR_BGR2YCrCb, 0, 1,  "YCrCb") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_luminance_lab: {
+      if( !extractLumunanceChannel(cv::COLOR_BGR2Lab, 0, 0.01, "Lab") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_luminance_luv:
+      if( !extractLumunanceChannel(cv::COLOR_BGR2Luv, 0, 0.01, "Luv") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_luminance_hsv:
+      if( !extractLumunanceChannel(cv::COLOR_BGR2HSV, 2, 1, "HSV") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_luminance_hls:
+      if( !extractLumunanceChannel(cv::COLOR_BGR2HLS, 1, 1, "HLS") ) {
+        return false;
+      }
+      break;
+
+    case color_channel_min_inensity:
+      if ( !reduceChannels(src, dst, srcm, dstm, REDUCE_MIN, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_max_intensity:
+      if ( !reduceChannels(src, dst, srcm, dstm, REDUCE_MAX, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_avg_intensity:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_AVG, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_sum_intensity:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_SUM, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_sum2_intensity:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_SUM2, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_absmax:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_ABSMAX, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_first_nonzero:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_FIRST_NON_ZERO, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    case color_channel_max_color:
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_MAX_COLOR, ddepth, autoscale) ) {
+        return false;
+      }
+      break;
+
+    default:
+      CF_ERROR("Invalid color channel requested: %d", channel);
       return false;
     }
-
-    if ( scaled_src.channels() > 0 ) {
-      cv::extractChannel(scaled_src, scaled_src,
-          channel);
-    }
-
-    if( !scaled_mask.empty() && scaled_mask.channels() > channel ) {
-      cv::extractChannel(scaled_mask, scaled_mask,
-          channel);
-    }
-
   }
 
-  else if( scaled_src.channels() > 1 ) {
-
-    switch (channel) {
-
-      case color_channel_gray:
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to gray not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-
-        cv::cvtColor(scaled_src, converted_src,
-            cv::COLOR_BGR2GRAY);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-
-        break;
-
-      case color_channel_luminance_YCrCb:
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to YCrCb not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2YCrCb);
-        cv::extractChannel(converted_src, converted_src, 0);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-        break;
-
-      case color_channel_luminance_lab: {
-
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to Lab not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-
-        const int src_depth =
-            scaled_src.depth();
-
-        const bool conversion_required =
-            src_depth != CV_8U && src_depth != CV_32F;
-
-        if( conversion_required ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2Lab);
-        cv::extractChannel(converted_src, converted_src, 0);
-        if( converted_src.depth() == CV_32F || converted_src.depth() == CV_64F ) {
-          cv::multiply(converted_src, 1e-2, converted_src);
-        }
-
-        convert_image(converted_src,
-            output_depth);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-        break;
-      }
-
-      case color_channel_luminance_luv: {
-
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to Luv not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-
-        const int src_depth =
-            scaled_src.depth();
-
-        const bool conversion_required =
-            src_depth != CV_8U && src_depth != CV_32F;
-
-        if( conversion_required ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-
-        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2Luv);
-        cv::extractChannel(converted_src, converted_src, 0);
-        if( converted_src.depth() == CV_32F || converted_src.depth() == CV_64F ) {
-          cv::multiply(converted_src, 1e-2, converted_src);
-        }
-
-        convert_image(converted_src,
-            output_depth);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-        break;
-      }
-
-      case color_channel_luminance_hsv: {
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to HSV not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-
-        const int src_depth =
-            scaled_src.depth();
-
-        const bool conversion_required =
-            src_depth != CV_8U && src_depth != CV_32F;
-
-        if( conversion_required ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HSV);
-        cv::extractChannel(converted_src, converted_src, 2);
-
-        convert_image(converted_src,
-            output_depth);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-        break;
-      }
-
-      case color_channel_luminance_hls: {
-
-        if( scaled_src.channels() != 3 ) {
-          CF_ERROR("Invalid argument: conversion to HLS not supported for image with %d channels",
-              scaled_src.channels());
-          return false;
-        }
-
-        const int src_depth =
-            scaled_src.depth();
-
-        const bool conversion_required =
-            src_depth != CV_8U && src_depth != CV_32F;
-
-        if( conversion_required ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-        cv::cvtColor(scaled_src, converted_src, cv::COLOR_BGR2HLS);
-        cv::extractChannel(converted_src, converted_src, 1);
-
-        convert_image(converted_src,
-            output_depth);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() != 1 ) {
-          reduce_color_channels(scaled_mask, cv::REDUCE_MAX);
-        }
-        break;
-      }
-
-      case color_channel_blue:
-
-        cv::extractChannel(scaled_src, converted_src, 0);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() > 0 ) {
-          cv::extractChannel(scaled_mask, scaled_mask, 0);
-        }
-        break;
-
-
-      case color_channel_green:
-        if( scaled_src.channels() < 2 ) {
-          CF_ERROR("Invalid argument: Requested channel index 'green' (1) is out of range of input image channels %d",
-              scaled_src.channels());
-          return false;
-        }
-
-        cv::extractChannel(scaled_src, converted_src, 1);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() > 1 ) {
-          cv::extractChannel(scaled_mask, scaled_mask, 1);
-        }
-        break;
-
-
-      case color_channel_red:
-        if( scaled_src.channels() < 3 ) {
-          CF_ERROR("Invalid argument: Requested channel index 'red' (2) is out of range of input image channels %d",
-              scaled_src.channels());
-          return false;
-        }
-
-        cv::extractChannel(scaled_src, converted_src, 2);
-
-        if( !scaled_mask.empty() && scaled_mask.channels() > 2 ) {
-          cv::extractChannel(scaled_mask, scaled_mask, 2);
-        }
-        break;
-
-
-      case color_channel_min_inensity: {
-        reduce_color_channels(scaled_src, converted_src,
-            cv::REDUCE_MIN);
-        break;
-      }
-
-
-      case color_channel_max_intensity: {
-        reduce_color_channels(scaled_src, converted_src,
-            cv::REDUCE_MAX);
-        break;
-      }
-
-      case color_channel_avg_intensity: {
-
-        const int src_depth =
-            scaled_src.depth();
-
-        const bool conversion_required =
-            src_depth != CV_8U && src_depth != CV_32F;
-
-        if( conversion_required ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-        reduce_color_channels(scaled_src, converted_src,
-            cv::REDUCE_AVG);
-
-        convert_image(converted_src,
-            output_depth);
-
-        break;
-      }
-
-      case color_channel_sum_intensity: {
-
-        if( scaled_src.depth() != CV_32F ) {
-          convert_image(scaled_src, CV_32F);
-        }
-
-        reduce_color_channels(scaled_src, converted_src,
-            cv::REDUCE_SUM);
-
-        convert_image(converted_src,
-            output_depth);
-
-        break;
-      }
-
-
-      case color_channel_absmax: {
-        extract_absmax_channel(scaled_src,
-            converted_src);
-        break;
-      }
-
-      case color_channel_first_nonzero: {
-        extract_first_non_zero_channel(scaled_src,
-            converted_src);
-        break;
-      }
-
-
-      case color_channel_max_color: {
-
-        cv::Mat cmin, cmax;
-
-        reduce_color_channels(scaled_src, cmin,
-            cv::REDUCE_MIN);
-
-        reduce_color_channels(scaled_src, cmax,
-            cv::REDUCE_MAX);
-
-        cv::subtract(cmax, cmin, converted_src);
-
-        break;
-      }
-
-      case color_channel_max_gradient : {
-
-        static const auto compute_sobel_gradients =
-            [](cv::InputArray src, cv::OutputArray g, int ddepth, int borderType) -> void {
-
-              static thread_local cv::Mat Kx, Ky;
-              if( Kx.empty() ) {
-                cv::getDerivKernels(Kx, Ky, 1, 0, 5, true, CV_32F);
-                Kx *= M_SQRT2;
-                Ky *= M_SQRT2;
-              }
-
-              if( ddepth < 0 ) {
-                ddepth = std::max(src.depth(), CV_32F);
-              }
-
-              cv::Mat gx, gy;
-
-              cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
-              cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
-              cv::magnitude(gx, gy, g);
-            };
-
-
-        cv::Mat g, gm;
-        std::vector<cv::Mat> gchannels;
-        std::vector<cv::Mat> src_channels;
-        double min, max;
-
-        compute_sobel_gradients(scaled_src, g, -1, cv::BORDER_REPLICATE);
-
-        cv::split(g, gchannels);
-        cv::split(scaled_src, src_channels);
-
-        converted_src.release();
-
-        for( int c = 0, cn = gchannels.size(); c < cn; ++c ) {
-
-          cv::minMaxLoc(gm, &min, &max);
-          cv::add(gchannels[c], max > min ? 1e-3 * (max - min) : 1e-3, gchannels[c]);
-
-          if( converted_src.empty() ) {
-            cv::multiply(src_channels[c], gchannels[c],
-                converted_src);
-          }
-          else {
-            cv::multiply(src_channels[c], gchannels[c], src_channels[c]);
-            cv::add(src_channels[c], converted_src, converted_src);
-          }
-
-          if( gm.empty() ) {
-            gchannels[c].copyTo(gm);
-          }
-          else {
-            cv::add(gchannels[c], gm, gm);
-          }
-        }
-
-        cv::divide(converted_src, gm, converted_src);
-
-
-        break;
-      }
-
-      default:
-        CF_ERROR("Invalid color channel requested: %d",
-            channel);
-        return false;
-    }
-  }
-
-  if( converted_src.empty() ) {
-
-    if( output_depth == src.depth() && output_depth_scale == 1.0 ) {
-      scaled_src.copyTo(dst);
+  if( _dst.needed() ) {
+    if( ddepth == dst.depth() ) {
+      _dst.move(dst);
     }
     else {
-      scaled_src.convertTo(dst, output_depth,
-          output_depth_scale);
-    }
-
-  }
-  else {
-
-    if( output_depth == converted_src.depth() && output_depth_scale == 1.0 ) {
-      dst.move(converted_src);
-    }
-    else {
-      converted_src.convertTo(dst, output_depth,
-          output_depth_scale);
+      CF_DEBUG("APP BUG: unexpected convert!!!!");
+      dst.convertTo(_dst, ddepth);
     }
   }
 
-
-  if( dstmsk.needed() ) {
-
-    if( scaled_mask.empty() || scaled_mask.channels() == 1 ) {
-      dstmsk.move(scaled_mask);
-    }
-    else {
-      reduce_color_channels(scaled_mask, dstmsk, cv::REDUCE_MAX);
-    }
+  if ( _dstm.needed() ) {
+    _dstm.move(dstm);
   }
 
   return true;

@@ -27,8 +27,8 @@ public:
 protected:
   enum color_channel_type _output_channel = color_channel_gray;
   enum PIXEL_DEPTH _output_depth = PIXEL_DEPTH_NO_CHANGE;
-  double _output_scale = 1.;
-  double _output_depth_scale = 1.0;
+  bool _autoscale = true;
+//  double _output_depth_scale = 1.0;
 
 };
 

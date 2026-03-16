@@ -7,6 +7,7 @@
 
 #include "c_set_luminance_channel_routine.h"
 #include <core/proc/unsharp_mask.h>
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
 
 
@@ -63,9 +64,11 @@ bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::In
     return true; // silently ignore
   }
 
+  cv::Mat src;
   cv::Mat luminance;
 
-  if( !extract_channel(image, luminance, cv::noArray(), cv::noArray(), _luminance_channel) ) {
+  convertScaleDepth(image, src, CV_32F, true, 1);
+  if( !extract_channel(src, luminance, cv::noArray(), cv::noArray(), _luminance_channel, -1, true) ) {
     CF_ERROR("extract_channel('%s') fails", toString(_luminance_channel));
     return false;
   }
@@ -77,40 +80,35 @@ bool c_set_luminance_channel_routine::process(cv::InputOutputArray image, cv::In
 
   switch (_colorspace) {
     case Colorspace_Lab:
-
-      cv::cvtColor(image,  image, cv::COLOR_BGR2Lab);
-      if ( image.depth() >= CV_32F ) {
-        cv::multiply(luminance, 100, luminance);
-      }
-      cv::insertChannel(luminance, image, 0);
-      cv::cvtColor(image, image, cv::COLOR_Lab2BGR);
+      cv::cvtColor(src,  src, cv::COLOR_BGR2Lab);
+      cv::multiply(luminance, 100, luminance);
+      cv::insertChannel(luminance, src, 0);
+      cv::cvtColor(src, image, cv::COLOR_Lab2BGR);
       break;
 
     case Colorspace_Luv:
-      cv::cvtColor(image,  image, cv::COLOR_BGR2Luv);
-      if ( image.depth() >= CV_32F ) {
-        cv::multiply(luminance, 100, luminance);
-      }
-      cv::insertChannel(luminance, image, 0);
-      cv::cvtColor(image, image, cv::COLOR_Luv2BGR);
+      cv::cvtColor(src,  src, cv::COLOR_BGR2Luv);
+      cv::multiply(luminance, 100, luminance);
+      cv::insertChannel(luminance, src, 0);
+      cv::cvtColor(src, image, cv::COLOR_Luv2BGR);
       break;
 
     case Colorspace_HSV:
-      cv::cvtColor(image,  image, cv::COLOR_BGR2HSV_FULL);
-      cv::insertChannel(luminance, image, 2);
-      cv::cvtColor(image,  image, cv::COLOR_HSV2BGR_FULL);
+      cv::cvtColor(src,  src, cv::COLOR_BGR2HSV_FULL);
+      cv::insertChannel(luminance, src, 2);
+      cv::cvtColor(src,  image, cv::COLOR_HSV2BGR_FULL);
       break;
 
     case Colorspace_HLS:
-      cv::cvtColor(image,  image, cv::COLOR_BGR2HLS_FULL);
-      cv::insertChannel(luminance, image, 1);
-      cv::cvtColor(image,  image, cv::COLOR_HLS2BGR_FULL);
+      cv::cvtColor(src,  src, cv::COLOR_BGR2HLS_FULL);
+      cv::insertChannel(luminance, src, 1);
+      cv::cvtColor(src,  image, cv::COLOR_HLS2BGR_FULL);
       break;
 
     case Colorspace_YCrCb:
-      cv::cvtColor(image,  image, cv::COLOR_BGR2YCrCb);
-      cv::insertChannel(luminance, image, 0);
-      cv::cvtColor(image,  image, cv::COLOR_YCrCb2BGR);
+      cv::cvtColor(src,  src, cv::COLOR_BGR2YCrCb);
+      cv::insertChannel(luminance, src, 0);
+      cv::cvtColor(src,  image, cv::COLOR_YCrCb2BGR);
       break;
 
     default:

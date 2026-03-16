@@ -1554,8 +1554,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 
   if( reference_frame.channels() > 1 && master_options.master_channel != color_channel_dont_change ) {
 
-    if( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(),
-        master_options.master_channel) ) {
+    if( !extract_channel(reference_frame, reference_frame, cv::noArray(), cv::noArray(), master_options.master_channel) ) {
       CF_ERROR("extract_channel(master_channel=%d) fails", master_options.master_channel);
       return false;
     }
@@ -2758,7 +2757,7 @@ double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, con
   }
   else {
     cv::Mat tmp;
-    extract_channel(image, tmp, cv::noArray(), cv::noArray(), channel >= 0 ? channel : color_channel_gray);
+    extract_channel(image, tmp, cv::noArray(), cv::noArray(), channel >= 0 ? channel : color_channel_gray, -1, false);
     estimated_noise_level = estimate_noise(tmp, cv::noArray(), mask)[0];
   }
 

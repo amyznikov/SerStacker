@@ -71,7 +71,7 @@ bool c_output_frame_writer::create_output_frame(const cv::Mat & src, const cv::M
     double scale = 1;
     double offset = 0;
 
-    if( !get_scale_offset(tmp.depth(), (int) ddepth, &scale, &offset) ) {
+    if( !getScaleOffset(tmp.depth(), (int) ddepth, &scale, &offset) ) {
       CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
       return false;
     }

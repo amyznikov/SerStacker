@@ -49,7 +49,7 @@ const c_enum_member * members_of<PIXEL_DEPTH>()
 }
 
 
-bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval)
+bool getDataRangeForPixelDepth(int ddepth, double * minval, double * maxval)
 {
   switch (CV_MAT_DEPTH(ddepth)) {
   case CV_8U :
@@ -90,7 +90,7 @@ bool get_data_range_for_pixel_depth(int ddepth, double * minval, double * maxval
 }
 
 
-double get_maxval_for_pixel_depth(int ddepth)
+double getMaxValForPixelDepth(int ddepth)
 {
   switch (CV_MAT_DEPTH(ddepth)) {
   case CV_8U :
@@ -107,7 +107,7 @@ double get_maxval_for_pixel_depth(int ddepth)
   return 1;
 }
 
-int get_max_bpp_for_pixel_depth(int ddepth)
+int getMaxBppForPixelDepth(int ddepth)
 {
   switch (CV_MAT_DEPTH(ddepth)) {
   case CV_8U :
@@ -126,13 +126,13 @@ int get_max_bpp_for_pixel_depth(int ddepth)
  *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
  *  dst = src * scale  + offset;
  */
-bool get_scale_offset(int src_depth, int dst_depth, double * scale, double * offset)
+bool getScaleOffset(int src_depth, int dst_depth, double * scale, double * offset)
 {
   double srcmin, srcmax;
   double dstmin, dstmax;
 
-  get_data_range_for_pixel_depth(src_depth, &srcmin, &srcmax);
-  get_data_range_for_pixel_depth(dst_depth, &dstmin, &dstmax);
+  getDataRangeForPixelDepth(src_depth, &srcmin, &srcmax);
+  getDataRangeForPixelDepth(dst_depth, &dstmin, &dstmax);
 
   *scale = (dstmax - dstmin) / (srcmax - srcmin);
   *offset = dstmin - *scale * srcmin;
@@ -144,18 +144,13 @@ bool get_scale_offset(int src_depth, int dst_depth, double * scale, double * off
  *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
  *  dst = src * scale  + offset;
  */
-
-/**
- *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
- *  dst = src * scale  + offset;
- */
-bool get_scale_offset(int src_depth, int src_bpp, int dst_depth, double * scale, double * offset)
+bool getScaleOffset(int src_depth, int src_bpp, int dst_depth, double * scale, double * offset)
 {
   double srcmin, srcmax;
   double dstmin, dstmax;
 
-  get_data_range_for_pixel_depth(src_depth, &srcmin, &srcmax);
-  get_data_range_for_pixel_depth(dst_depth, &dstmin, &dstmax);
+  getDataRangeForPixelDepth(src_depth, &srcmin, &srcmax);
+  getDataRangeForPixelDepth(dst_depth, &dstmin, &dstmax);
 
   *scale = (dstmax - dstmin) / (srcmax - srcmin);
   *offset = dstmin - *scale * srcmin;
@@ -186,5 +181,31 @@ bool get_scale_offset(int src_depth, int src_bpp, int dst_depth, double * scale,
   }
 
   return true;
+}
+
+void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool autoscale, double s)
+{
+  const int depth = src.depth();
+
+  if ( ddepth < 0 ) {
+    ddepth = dst.fixedType() ? dst.depth() : src.depth();
+  }
+
+  if ( depth == ddepth ) {
+    if ( !autoscale ) {
+      src.copyTo(dst);
+    }
+    else {
+      src.getMat().convertTo(dst, -1, s);
+    }
+  }
+  else {
+    double alpha = 1, beta = 0;
+    if ( autoscale ) {
+      getScaleOffset(depth, ddepth, &alpha, &beta);
+      alpha *= s;
+    }
+    src.getMat().convertTo(dst, ddepth, alpha, beta);
+  }
 }
 

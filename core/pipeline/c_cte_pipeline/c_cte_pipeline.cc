@@ -93,7 +93,7 @@ static void copyimage(const cv::Mat & src, cv::Mat3b & dst)
 
     double alpha, beta;
 
-    get_scale_offset(src.depth(), CV_8U,
+    getScaleOffset(src.depth(), CV_8U,
         &alpha,
         &beta);
 

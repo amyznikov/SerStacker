@@ -41,7 +41,7 @@ bool c_type_convertor_routine::process(cv::InputOutputArray image, cv::InputOutp
     beta = _beta;
   }
   else {
-    get_scale_offset(image.depth(), _ddepth,
+    getScaleOffset(image.depth(), _ddepth,
         &alpha, &beta);
   }
 

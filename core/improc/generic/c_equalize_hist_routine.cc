@@ -20,7 +20,7 @@ bool c_equalize_hist_routine::process(cv::InputOutputArray _image, cv::InputOutp
   }
   else {
     _image.getMat().convertTo(image, CV_8U,
-        255. / get_maxval_for_pixel_depth(_image.depth()));
+        255. / getMaxValForPixelDepth(_image.depth()));
   }
 
   const int cn = image.channels();

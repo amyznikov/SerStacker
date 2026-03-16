@@ -137,7 +137,8 @@ bool c_desaturate_shadows_routine::process(cv::InputOutputArray image, cv::Input
 
     cv::cvtColor(_gray, _gray, cv::COLOR_BGR2GRAY);
 
-    convert_depth(_gray, CV_32F, _weights);
+    //convert_depth(_gray, CV_32F, _weights);
+    convertScaleDepth(_gray, _weights, CV_32F, true);
 
     if( _mblur ) {
       fast_gaussian_blur(_weights, _ignore_mask ? cv::noArray() : mask, _weights, _mblur);

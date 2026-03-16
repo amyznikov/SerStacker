@@ -648,7 +648,7 @@ void c_regular_stereo_pipeline::update_disparity_map_display_image(const cv::Mat
 
           double alpha, beta;
 
-          get_scale_offset(src.depth(), CV_8U,
+          getScaleOffset(src.depth(), CV_8U,
               &alpha,
               &beta);
 

@@ -18,7 +18,7 @@ enum color_channel_type
   color_channel_1,
   color_channel_2,
   color_channel_3,
-  color_channel_4,
+  //color_channel_4,
 
   color_channel_featured_begin = 100,
 
@@ -39,23 +39,22 @@ enum color_channel_type
   color_channel_max_intensity, // cv::reduce(max)
   color_channel_avg_intensity, // cv::reduce(avg)
   color_channel_sum_intensity, // cv::reduce(sum)
+  color_channel_sum2_intensity, // cv::reduce(sum^2)
   color_channel_absmax, // max of absolute value
   color_channel_first_nonzero, //
 
   color_channel_max_color, // cv::reduce(max) - cv::reduce(min)
-  color_channel_max_gradient,
+ // color_channel_max_gradient,
 
 };
 
 
 // Extract requested color channel form input color image
 bool extract_channel(cv::InputArray src, cv::OutputArray dst,
-    cv::InputArray srcmsk, cv::OutputArray dstmsk,
+    cv::InputArray src_mask, cv::OutputArray dst_msk,
     int channel, // channel index or enum color_channel_type
-    double output_scale = 1.,
-    int output_depth = -1,
-    double output_depth_scale = 1.0);
-
+    int ddepth = -1,
+    bool autoscale = true);
 
 
 #endif /* __extract_channel_h__ */

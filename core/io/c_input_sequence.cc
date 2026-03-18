@@ -302,6 +302,8 @@ bool c_input_sequence::open()
   _current_source = 0;
   _current_global_pos = 0;
 
+  gather_badframes();
+
   return true;
 }
 
@@ -330,6 +332,64 @@ void c_input_sequence::close(bool also_clear)
   }
 
 }
+
+const std::vector<int> & c_input_sequence::badframes() const
+{
+  return _badframes;
+}
+
+void c_input_sequence::gather_badframes()
+{
+  _badframes.clear();
+
+  if( !is_live() ) {
+
+    const bool was_open = is_open();
+    if( !was_open && !open() ) {
+      CF_ERROR("->open() fails");
+      return;
+    }
+
+    for( size_t source_index = 0, n = _all_sources.size(); source_index < n; ++source_index ) {
+
+      const c_input_source::sptr & source =  _all_sources[source_index];
+      if( source ) {
+
+        for( int source_frame_index : source->badframes() ) {
+
+          const int global_index =
+              global_pos(source_index,
+                  source_frame_index);
+
+          if( global_index >= 0 ) {
+            _badframes.emplace_back(global_index);
+          }
+        }
+      }
+    }
+
+    if( !was_open ) {
+      close(false);
+    }
+  }
+}
+
+
+bool c_input_sequence::is_bad_frame_index(int global_pos) const
+{
+  if( !_badframes.empty() ) {
+
+    const auto pos =
+        std::find(_badframes.begin(),
+            _badframes.end(),
+            global_pos);
+
+    return pos != _badframes.end();
+  }
+
+  return false;
+}
+
 
 bool c_input_sequence::open_source(int source_index)
 {

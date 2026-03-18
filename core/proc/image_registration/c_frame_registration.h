@@ -22,7 +22,7 @@ struct c_feature_registration_options
 {
   c_sparse_feature_extractor_and_matcher_options sparse_feature_extractor_and_matcher;
   c_estimate_image_transform_options estimate_options;
-  double image_scale = 0.5;
+  double scale = 0.5;
   double triangle_eps = 5; // [px]
   color_channel_type registration_channel = color_channel_gray;
 };
@@ -342,16 +342,7 @@ protected:
       cv::OutputArray dst, cv::OutputArray dstmsk) const;
 
   virtual bool create_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-      cv::OutputArray dst, cv::OutputArray dstmsk,
-      double scale) const;
-
-  virtual bool create_reference_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-      cv::OutputArray dst, cv::OutputArray dstmsk,
-      double scale) const;
-
-  virtual bool create_current_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-      cv::OutputArray dst, cv::OutputArray dstmsk,
-      double scale) const;
+      cv::OutputArray dst, cv::OutputArray dstmsk) const;
 
   bool insert_planetary_disk_shape(const cv::Mat & src_ecc_image,
       const cv::Mat & src_mask,

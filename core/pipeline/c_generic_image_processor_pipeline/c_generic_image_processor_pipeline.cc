@@ -331,9 +331,9 @@ const c_ctlist<c_generic_image_processor_pipeline> & c_generic_image_processor_p
 //  return ctrls;
 //}
 
-bool c_generic_image_processor_pipeline::copyParameters(const base::sptr & dst) const
+bool c_generic_image_processor_pipeline::copy_parameters(const base::sptr & dst) const
 {
-  if ( !base::copyParameters(dst) ) {
+  if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_generic_image_processor_pipeline::base::copyParameters() fails");
     return false;
   }

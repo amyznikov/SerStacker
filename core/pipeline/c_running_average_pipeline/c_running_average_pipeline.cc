@@ -330,9 +330,9 @@ bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame
   return fOk;
 }
 
-bool c_running_average_pipeline::copyParameters(const base::sptr & dst) const
+bool c_running_average_pipeline::copy_parameters(const base::sptr & dst) const
 {
-  if ( !base::copyParameters(dst) ) {
+  if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_running_average_pipeline::base::copyParameters() fails");
     return false;
   }

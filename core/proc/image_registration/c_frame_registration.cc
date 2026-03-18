@@ -107,7 +107,7 @@ bool load_settings(c_config_setting settings, c_feature_registration_options * o
 {
   c_config_setting section;
 
-  LOAD_OPTION(settings, *opts, image_scale);
+  LOAD_OPTION(settings, *opts, scale);
   LOAD_OPTION(settings, *opts, triangle_eps);
   LOAD_OPTION(settings, *opts, registration_channel);
 
@@ -130,7 +130,7 @@ bool save_settings(c_config_setting settings, const c_feature_registration_optio
 {
   c_config_setting section;
 
-  SAVE_OPTION(settings, opts, image_scale);
+  SAVE_OPTION(settings, opts, scale);
   SAVE_OPTION(settings, opts, triangle_eps);
   SAVE_OPTION(settings, opts, registration_channel);
 
@@ -225,6 +225,29 @@ void extract_matched_positions(const std::vector<cv::KeyPoint> & current_keypoin
   }
 }
 
+
+static void scaleImage(double scale, cv::InputArray _src, cv::InputArray _srcm,
+    cv::OutputArray dst, cv::OutputArray dstm)
+{
+  const cv::Mat src = _src.getMat();
+  const cv::Mat srcm = _srcm.getMat();
+
+  if( std::abs(scale - 0.5) < 1e-2 ) {
+    cv::pyrDown(src, dst);
+    if( !srcm.empty() ) {
+      cv::pyrDown(srcm, dstm, dst.size());
+      cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+    }
+  }
+  else {
+    cv::resize(src, dst, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
+    if( !srcm.empty() ) {
+      cv::resize(srcm, dstm, dst.size(), 0, 0, cv::INTER_AREA);
+      cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
+    }
+  }
+}
+;
 
 /*
  * Pyramid down to specific level
@@ -551,18 +574,23 @@ const std::string& c_frame_registration::debug_path() const
 
 bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  cv::Mat ecc_image;
-  cv::Mat ecc_mask;
-  cv::Mat eccflow_mask;
+  cv::Mat reference_ecc_image;
+  cv::Mat reference_ecc_mask;
+  cv::Mat reference_eccflow_mask;
 
   _reference_frame_size = reference_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
-  if( _options.enable_feature_registration && _options.feature_registration.image_scale > 0 ) {
+  if( _options.enable_feature_registration ) {
 
     if( !create_feature_image(reference_image, reference_mask, _reference_feature_image, _reference_feature_mask) ) {
       CF_ERROR("create_feature_image() fails");
       return false;
+    }
+
+    if( _options.feature_registration.scale > 0 && _options.feature_registration.scale != 1 ) {
+      scaleImage(_options.feature_registration.scale, _reference_feature_image, _reference_feature_mask,
+          _reference_feature_image, _reference_feature_mask);
     }
 
     if( !extract_reference_features(_reference_feature_image, _reference_feature_mask) ) {
@@ -571,19 +599,19 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     }
   }
 
-  if( _options.enable_eccflow_registration || (_options.enable_ecc_registration && _options.ecc.scale > 0) ) {
+  if( _options.enable_ecc_registration  || _options.enable_eccflow_registration ) {
 
-    if( !create_reference_ecc_image(reference_image, reference_mask, ecc_image, ecc_mask, 1) ) {
+    if( !create_ecc_image(reference_image, reference_mask, reference_ecc_image, reference_ecc_mask) ) {
       CF_ERROR("create_reference_ecc_image() fails");
       return false;
     }
 
-    //if( options_.jovian_derotation.enabled && options_.jovian_derotation.align_planetary_disk_masks ) {
-    if( _options.ecc.replace_planetary_disk_with_mask ) {
-      insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
-    }
+//    if( _options.ecc.replace_planetary_disk_with_mask ) {
+//      insert_planetary_disk_shape(current_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
+//    }
 
-    if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
+    CF_DEBUG("_options.enable_ecc_registration=%d", _options.enable_ecc_registration);
+    if( _options.enable_ecc_registration ) {
 
       _ecch.set_method(_options.ecc.ecc_method);
       _ecch.set_max_eps(_options.ecc.eps);
@@ -595,31 +623,22 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       _ecch.set_maxlevel(_options.ecc.ecch_max_level);
       _ecch.set_minimum_image_size(_options.ecc.ecch_minimum_image_size);
 
-      cv::Mat1f reference_ecc_image;
-      cv::Mat1b reference_ecc_mask;
+      cv::Mat1f ecc_image;
+      cv::Mat1b ecc_mask;
 
-      if( _options.ecc.scale == 1 ) {
-        reference_ecc_image = ecc_image;
-        reference_ecc_mask = ecc_mask;
-      }
-      else if( _options.ecc.scale < 1 ) {
-        cv::resize(ecc_image, reference_ecc_image, cv::Size(), _options.ecc.scale, _options.ecc.scale, cv::INTER_AREA);
+      if( _options.ecc.scale > 0 && _options.ecc.scale != 1 ) {
+        scaleImage(_options.ecc.scale, reference_ecc_image, reference_ecc_mask, ecc_image, ecc_mask);
       }
       else {
-        cv::resize(ecc_image, reference_ecc_image, cv::Size(), _options.ecc.scale, _options.ecc.scale,
-            cv::INTER_LINEAR_EXACT);
+        ecc_image = reference_ecc_image;
+        ecc_mask = reference_ecc_mask;
       }
 
-      if( !ecc_mask.empty() && reference_ecc_mask.size() != reference_ecc_image.size() ) {
-        cv::resize(ecc_mask, reference_ecc_mask, reference_ecc_image.size(), 0, 0, cv::INTER_AREA);
-        cv::compare(reference_ecc_mask, 255, reference_ecc_mask, cv::CMP_GE);
-      }
-
-      if( !_ecch.set_reference_image(reference_ecc_image, reference_ecc_mask) ) {
-        CF_ERROR("ecch_.set_reference_image() fails");
+      CF_DEBUG("_ecch.set_reference_image()");
+      if( !_ecch.set_reference_image(ecc_image, ecc_mask) ) {
+        CF_ERROR("_ecch.set_reference_image() fails");
         return false;
       }
-
     }
 
     if( _options.enable_eccflow_registration ) {
@@ -636,17 +655,15 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       _eccflow.set_noise_level(_options.eccflow.noise_level);
       _eccflow.set_scale_factor(_options.eccflow.scale_factor);
 
-
-      if (eccflow_mask.empty() ) {
-        eccflow_mask = ecc_mask;
+      if (reference_eccflow_mask.empty() ) {
+        reference_eccflow_mask = reference_ecc_mask;
       }
 
-      if( !_eccflow.set_reference_image(ecc_image, eccflow_mask) ) {
-        CF_ERROR("eccflow_.set_reference_image() fails");
+      if( !_eccflow.set_reference_image(reference_ecc_image, reference_eccflow_mask) ) {
+        CF_ERROR("_eccflow.set_reference_image() fails");
         return false;
       }
     }
-
   }
 
 
@@ -731,17 +748,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   }
 
   _image_transform->set_parameters(_image_transform_defaut_parameters);
-//  if ( true ) {
-//    cv::Vec2f  xT = image_transform_->translation();
-//    CF_DEBUG("XXXX: BEG: xT=%g %g", xT(0), xT(1));
-//  }
 
   _current_frame_size = current_image.size();
   memset(&_current_status.timings, 0, sizeof(_current_status.timings));
 
 
   /////////////////////////////////////////////////////////////////////////////
-  if( _options.enable_feature_registration && _options.feature_registration.image_scale > 0 ) {
+  if( _options.enable_feature_registration ) {
 
     t0 = get_realtime_ms();
     if( !create_feature_image(current_image, current_mask, _current_feature_image, _current_feature_mask) ) {
@@ -749,30 +762,28 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    _current_status.timings.extract_feature_image =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
+    if( _options.feature_registration.scale > 0 && _options.feature_registration.scale != 1 ) {
+      scaleImage(_options.feature_registration.scale, _current_feature_image, _current_feature_mask,
+          _current_feature_image, _current_feature_mask);
+    }
+
+    _current_status.timings.extract_feature_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if( !estimate_feature_transform(_current_feature_image, _current_feature_mask, _image_transform.get()) ) {
       CF_ERROR("estimate_feature_transform() fails");
       return false;
     }
 
-//    if ( true ) {
-//      cv::Vec2f  xT = image_transform_->translation();
-//      CF_DEBUG("XXXX: FEAT: xT=%g %g", xT(0), xT(1));
-//    }
-
-    _current_status.timings.estimate_feature_transform =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.estimate_feature_transform = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     have_transform = true;
   }
 
 
   /////////////////////////////////////////////////////////////////////////////
-  if( _options.enable_eccflow_registration || (_options.enable_ecc_registration && _options.ecc.scale > 0) ) {
+  if( _options.enable_eccflow_registration || _options.enable_ecc_registration ) {
 
-    if( !create_current_ecc_image(current_image, current_mask, ecc_image, ecc_mask, 1) ) {
+    if( !create_ecc_image(current_image, current_mask, ecc_image, ecc_mask) ) {
       CF_ERROR("create_current_ecc_image() fails");
       return false;
     }
@@ -781,64 +792,29 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     if( _options.ecc.replace_planetary_disk_with_mask ) {
       insert_planetary_disk_shape(ecc_image, ecc_mask, ecc_image, eccflow_mask);
     }
-
-//    {
-//      double min, max;
-//      cv::minMaxLoc(ecc_image, &min, &max);
-//      CF_DEBUG("ECC IMAGE: min=%g max=%g", min, max);
-//    }
-
   }
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( _options.enable_ecc_registration && _options.ecc.scale > 0 ) {
-
-    t0 = get_realtime_ms();
-
-    _current_status.timings.extract_ecc_image =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
-
-    if( have_transform && _options.ecc.scale != 1 ) {
-      _image_transform->scale_transfrom(_options.ecc.scale);
-    }
+  if( _options.enable_ecc_registration ) {
 
     cv::Mat1f current_ecc_image;
     cv::Mat1b current_ecc_mask;
 
-    if( _options.ecc.scale == 1 ) {
+    t0 = get_realtime_ms();
+
+    _current_status.timings.extract_ecc_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
+
+    if( _options.ecc.scale > 0 && _options.ecc.scale != 1 ) {
+      scaleImage(_options.ecc.scale, ecc_image, ecc_mask, current_ecc_image, current_ecc_mask);
+      if( have_transform ) {
+        _image_transform->scale_transfrom(_options.ecc.scale);
+      }
+    }
+    else {
       current_ecc_image = ecc_image;
       current_ecc_mask = ecc_mask;
     }
-    else if( _options.ecc.scale < 1 ) {
-
-      cv::resize(ecc_image, current_ecc_image,
-          cv::Size(),
-          _options.ecc.scale,
-          _options.ecc.scale,
-          cv::INTER_AREA);
-    }
-    else {
-
-      cv::resize(ecc_image, current_ecc_image,
-          cv::Size(),
-          _options.ecc.scale,
-          _options.ecc.scale,
-          cv::INTER_LINEAR_EXACT);
-    }
-
-    if( !ecc_mask.empty() && current_ecc_mask.size() != current_ecc_image.size() ) {
-
-      cv::resize(ecc_mask, current_ecc_mask,
-          current_ecc_image.size(),
-          0, 0,
-          cv::INTER_LINEAR);
-
-      cv::compare(current_ecc_mask, 255, current_ecc_mask,
-          cv::CMP_GE);
-
-    }
-
 
     const bool estimate_translation_first =
         _options.motion_type != IMAGE_MOTION_TRANSLATION &&
@@ -852,7 +828,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
       if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
 
-        CF_ERROR("ERROR: ecch_.align() fails for translation estimate: "
+        CF_ERROR("ERROR: _ecch.align() fails for translation estimate: "
             "eps=%g/%g iterations=%d/%d",
             _ecch.eps(), _ecch.max_eps(),
             _ecch.num_iterations(), _ecch.max_iterations()
@@ -863,17 +839,11 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         return false;
       }
 
-      rho =
-          compute_correlation(_ecch.current_image(), _ecch.current_mask(),
-              _ecch.reference_image(), _ecch.reference_mask(),
-              _ecch.create_remap());
+      rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
+          _ecch.reference_image(), _ecch.reference_mask(),
+          _ecch.create_remap());
 
-//      if ( true ) {
-//        const cv::Vec2f T = image_transform_->translation();
-//        CF_DEBUG("ECCH translation first:  rho = %g / %g  (%+g %+g)", rho, ecch_.min_rho(), T[0], T[1]);
-//      }
-
-      if ( rho < 0.75 * _ecch.min_rho() ) {
+      if( rho < 0.75 * _ecch.min_rho() ) {
         CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _ecch.min_rho());
         _ecch.set_image_transform(_image_transform.get());
         return false;
@@ -885,35 +855,27 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     if( !_ecch.align(current_ecc_image, current_ecc_mask) ) {
 
-      CF_ERROR("ecch_.align() fails: eps=%g/%g iterations=%d/%d",
+      CF_ERROR("_ecch.align() fails: eps=%g/%g iterations=%d/%d",
           _ecch.eps(), _ecch.max_eps(),
           _ecch.num_iterations(), _ecch.max_iterations());
 
       return false;
     }
 
-    rho =
-        compute_correlation(_ecch.current_image(), _ecch.current_mask(),
-            _ecch.reference_image(), _ecch.reference_mask(),
-            _ecch.create_remap());
-
-//    if( true ) {
-//      const cv::Vec2f T = image_transform_->translation();
-//      CF_DEBUG("ECCH translation first:  rho = %g / %g  (%+g %+g)", rho, ecch_.min_rho(), T[0], T[1]);
-//    }
+    rho = compute_correlation(_ecch.current_image(), _ecch.current_mask(),
+        _ecch.reference_image(), _ecch.reference_mask(),
+        _ecch.create_remap());
 
     if( rho < _ecch.min_rho() ) {
       CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _ecch.min_rho());
       return false;
     }
 
-
-    if( _options.ecc.scale != 1 ) {
+    if( _options.ecc.scale > 0 &&  _options.ecc.scale != 1 ) {
       _image_transform->scale_transfrom(1. / _options.ecc.scale);
     }
 
-    _current_status.timings.ecc_align =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.ecc_align = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     have_transform = true;
   }
@@ -938,8 +900,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     return false;
   }
 
-  _current_status.timings.create_remap =
-      get_realtime_ms() - t0;
+  _current_status.timings.create_remap = get_realtime_ms() - t0;
 
   ///////////////
 
@@ -999,18 +960,15 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         }
 
 
-        derotation_remap =
-            _jovian_derotation.current_derotation_remap();
+        derotation_remap = _jovian_derotation.current_derotation_remap();
 
         CF_DEBUG("derotation_remap: %dx%d", derotation_remap.cols, derotation_remap.rows);
 
-        current_wmask =
-            _jovian_derotation.current_wmask();
+        current_wmask = _jovian_derotation.current_wmask();
 
         CF_DEBUG("current_wmask: %dx%d", current_wmask.cols, current_wmask.rows);
 
-        current_bmask =
-            _jovian_derotation.current_bmask();
+        current_bmask = _jovian_derotation.current_bmask();
 
         CF_DEBUG("current_bmask: %dx%d", current_bmask.cols, current_bmask.rows);
 
@@ -1067,8 +1025,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     t0 = get_realtime_ms();
 
-    _current_status.timings.extract_smflow_image =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.extract_smflow_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if ( eccflow_mask.empty() ) {
       eccflow_mask = ecc_mask;
@@ -1079,8 +1036,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    _current_status.timings.smflow_align =
-        (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.smflow_align = (t1 = get_realtime_ms()) - t0, t0 = t1;
   }
 
   ///////////////
@@ -1095,8 +1051,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       return false;
     }
 
-    _current_status.timings.remap =
-        (t1 = get_realtime_ms()) - t0;
+    _current_status.timings.remap = (t1 = get_realtime_ms()) - t0;
   }
 
   total_time = get_realtime_ms() - start_time;
@@ -1137,24 +1092,6 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArray srcm,
     cv::OutputArray dst, cv::OutputArray dstm) const
 {
-  static const auto scaleImage =
-      [](double scale, const cv::Mat & src, const cv::Mat & srcm, cv::OutputArray dst, cv::OutputArray dstm) {
-        if( std::abs(scale - 0.5) < FLT_EPSILON ) {
-          cv::pyrDown(src, dst);
-          if( !srcm.empty() ) {
-            cv::pyrDown(srcm, dstm, dst.size());
-            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
-          }
-        }
-        else {
-          cv::resize(src, dst, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
-          if( !srcm.empty() ) {
-            cv::resize(srcm, dstm, dst.size(), 0, 0, cv::INTER_AREA);
-            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
-          }
-        }
-      };
-
   cv::Mat tmp, mtmp;
 
   if ( _options.feature_registration.registration_channel == color_channel_dont_change ) {
@@ -1164,10 +1101,6 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
   else if ( !extract_channel(src, tmp, srcm, mtmp, _options.feature_registration.registration_channel) ) {
     CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails", _options.feature_registration.registration_channel);
     return false;
-  }
-
-  if( _options.feature_registration.image_scale != 0 && _options.feature_registration.image_scale != 1 ) {
-    scaleImage(_options.feature_registration.image_scale, tmp, tmp, mtmp, mtmp);
   }
 
   if ( tmp.depth() != CV_8U ) {
@@ -1191,35 +1124,11 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
 }
 
 bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray srcm,
-    cv::OutputArray dst, cv::OutputArray dstm,
-    double scale) const
+    cv::OutputArray dst, cv::OutputArray dstm) const
 {
-  static const auto scaleImage =
-      [](double scale, const cv::Mat & src, const cv::Mat & srcm, cv::OutputArray dst, cv::OutputArray dstm) {
-        if( std::abs(scale - 0.5) < FLT_EPSILON ) {
-          cv::pyrDown(src, dst);
-          if( !srcm.empty() ) {
-            cv::pyrDown(srcm, dstm, dst.size());
-            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
-          }
-        }
-        else {
-          cv::resize(src, dst, cv::Size(0, 0), scale, scale, cv::INTER_AREA);
-          if( !srcm.empty() ) {
-            cv::resize(srcm, dstm, dst.size(), 0, 0, cv::INTER_AREA);
-            cv::compare(dstm.getMat(), cv::Scalar::all(250), dstm, cv::CMP_GE);
-          }
-        }
-      };
-
-
-  if( !extract_channel(src, dst, srcm, dstm, _options.ecc_registration_channel, CV_32F) ) {
+  if( !extract_channel(src, dst, srcm, dstm, _options.ecc_registration_channel, CV_32F, true) ) {
     CF_ERROR("extract_channel(registration_channel_=%d) fails", _options.ecc_registration_channel);
     return false;
-  }
-
-  if( _options.feature_registration.image_scale != 0 && _options.feature_registration.image_scale != 1 ) {
-    scaleImage(_options.feature_registration.image_scale, dst.getMat(), dstm.getMat(), dst, dstm);
   }
 
   if ( _ecc_image_preprocessor ) {
@@ -1233,20 +1142,6 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
   }
 
   return true;
-}
-
-bool c_frame_registration::create_reference_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-    cv::OutputArray dst, cv::OutputArray dstmsk,
-    double scale) const
-{
-  return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
-}
-
-bool c_frame_registration::create_current_ecc_image(cv::InputArray src, cv::InputArray srcmsk,
-    cv::OutputArray dst, cv::OutputArray dstmsk,
-    double scale) const
-{
-  return create_ecc_image(src, srcmsk, dst, dstmsk, scale);
 }
 
 bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_image, const cv::Mat & src_mask,
@@ -1361,8 +1256,8 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
       }
     }
 
-    if( _options.feature_registration.image_scale != 1 ) {
-      _planetary_disk_reference_centroid /= _options.feature_registration.image_scale;
+    if( _options.feature_registration.scale != 1 ) {
+      _planetary_disk_reference_centroid /= _options.feature_registration.scale;
     }
   }
   else {
@@ -1447,24 +1342,18 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
       }
     }
 
-    if( _options.feature_registration.image_scale != 1 ) {
-      _planetary_disk_current_centroid /= _options.feature_registration.image_scale;
+    if( _options.feature_registration.scale > 0 && _options.feature_registration.scale != 1 ) {
+      _planetary_disk_current_centroid /= _options.feature_registration.scale;
     }
 
-    const cv::Point2f T =
-        _planetary_disk_current_centroid - _planetary_disk_reference_centroid;
-
+    const cv::Point2f T = _planetary_disk_current_centroid - _planetary_disk_reference_centroid;
     current_transform->set_translation(cv::Vec2f(T.x, T.y));
-
 
   }
   else {
 
     // generic
-    bool fOk =
-        _sparse_feature_extractor_and_matcher->match_current_frame(current_feature_image,
-            current_feature_mask);
-
+    bool fOk = _sparse_feature_extractor_and_matcher->match_current_frame(current_feature_image, current_feature_mask);
     if( !fOk ) {
       CF_ERROR("sparse_feature_extractor_and_matcher_->match_current_frame() fails");
       return false;
@@ -1482,8 +1371,8 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
     }
 
 
-    if( _options.feature_registration.triangle_eps > 0 ) {
-      if( _sparse_feature_extractor_and_matcher->matcher_type() == FEATURE2D_MATCHER_TRIANGLES ) {
+    if( _sparse_feature_extractor_and_matcher->matcher_type() == FEATURE2D_MATCHER_TRIANGLES ) {
+      if( _options.feature_registration.triangle_eps > 0 ) {
 
         CF_DEBUG("Estimated using %zu point pairs",
             _sparse_feature_extractor_and_matcher->matched_current_positions().size());
@@ -1533,10 +1422,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
             }
           }
 
-          fOk =
-              estimate_image_transform(current_transform, mcpos, mrpos,
-                  &_options.feature_registration.estimate_options);
-
+          fOk = estimate_image_transform(current_transform, mcpos, mrpos, &_options.feature_registration.estimate_options);
           if( !fOk ) {
             CF_ERROR("estimate_image_transform(mcpos, mrpos) fails");
             return false;
@@ -1547,8 +1433,8 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
       }
     }
 
-    if( _options.feature_registration.image_scale != 1 ) {
-      current_transform->scale_transfrom(1. / _options.feature_registration.image_scale);
+    if( _options.feature_registration.scale > 0 && _options.feature_registration.scale != 1 ) {
+      current_transform->scale_transfrom(1. / _options.feature_registration.scale);
     }
   }
 

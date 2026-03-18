@@ -108,7 +108,7 @@ public:
   //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  bool copyParameters(const base::sptr & dst) const override;
+  bool copy_parameters(const base::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
 
   //////

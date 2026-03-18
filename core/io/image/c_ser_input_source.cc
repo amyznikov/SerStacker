@@ -17,7 +17,7 @@ c_ser_input_source::sptr c_ser_input_source::create(const std::string & filename
 {
   sptr obj(new this_class(filename));
   if ( obj->ser_.open(filename) ) {
-    obj->size_ = obj->ser_.num_frames();
+    obj->_size = obj->ser_.num_frames();
     obj->ser_.close();
     return obj;
   }
@@ -35,7 +35,7 @@ const std::vector<std::string> & c_ser_input_source::suffixes()
 
 bool c_ser_input_source::open()
 {
-  return ser_.open(filename_);
+  return ser_.open(_filename);
 }
 
 void c_ser_input_source::close()

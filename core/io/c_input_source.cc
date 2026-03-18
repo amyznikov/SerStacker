@@ -26,7 +26,7 @@
 
 
 c_input_source::c_input_source(const std::string & filename) :
-    filename_(filename)
+    _filename(filename)
 {
 }
 
@@ -171,18 +171,17 @@ c_input_source::sptr c_input_source::open(const std::string & filename)
 }
 
 
-const std::vector<uint> & c_input_source::badframes() const
+const std::vector<int> & c_input_source::badframes() const
 {
-  return badframes_;
+  return _badframes;
 }
 
-bool c_input_source::is_badframe(uint index) const
+bool c_input_source::is_badframe(int index) const
 {
-  if( !badframes_.empty() ) {
+  if( !_badframes.empty() ) {
 
-    const std::vector<uint>::const_iterator pos =
-        std::lower_bound(badframes_.begin(), badframes_.end(), index);
-    if( pos != badframes_.end() && *pos == index ) {
+    const auto pos = std::lower_bound(_badframes.begin(), _badframes.end(), index);
+    if( pos != _badframes.end() && *pos == index ) {
       return true;
     }
   }
@@ -190,27 +189,25 @@ bool c_input_source::is_badframe(uint index) const
   return false;
 }
 
-void c_input_source::set_badframe(uint index, bool is_bad)
+void c_input_source::set_badframe(int index, bool is_bad)
 {
-  const std::vector<uint>::const_iterator pos =
-      std::lower_bound(badframes_.begin(), badframes_.end(), index);
-
+  const auto pos = std::lower_bound(_badframes.begin(), _badframes.end(), index);
   if( is_bad ) {
-    if( pos == badframes_.end() || *pos != index ) {
-      badframes_.insert(pos, index);
+    if( pos == _badframes.end() || *pos != index ) {
+      _badframes.insert(pos, index);
     }
   }
-  else if( pos != badframes_.end() ) {
-    while (!badframes_.empty() && *pos == index) {
-      badframes_.erase(pos);
+  else if( pos != _badframes.end() ) {
+    while (!_badframes.empty() && *pos == index) {
+      _badframes.erase(pos);
     }
   }
 }
 
-void c_input_source::set_badframes(const std::vector<uint> & indexes)
+void c_input_source::set_badframes(const std::vector<int> & indexes)
 {
-  badframes_ = indexes;
-  std::sort(badframes_.begin(), badframes_.end());
+  _badframes = indexes;
+  std::sort(_badframes.begin(), _badframes.end());
 }
 
 static std::string gen_badframes_file_name(const std::string & input_source_fname)
@@ -218,7 +215,7 @@ static std::string gen_badframes_file_name(const std::string & input_source_fnam
   return input_source_fname + ".badframes.txt";
 }
 
-const std::vector<uint> & c_input_source::load_badframes(const std::string & fname)
+const std::vector<int> & c_input_source::load_badframes(const std::string & fname)
 {
   std::string badframes_file_name;
 
@@ -228,7 +225,7 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
   }
   else {
     badframes_file_name =
-        gen_badframes_file_name(this->filename_);
+        gen_badframes_file_name(this->_filename);
   }
 
   // CF_DEBUG("badframes_file_name='%s'", badframes_file_name.c_str());
@@ -240,7 +237,7 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
 
     if ( fp ) {
 
-      badframes_.clear();
+      _badframes.clear();
 
       char line[256] = "";
 
@@ -254,32 +251,32 @@ const std::vector<uint> & c_input_source::load_badframes(const std::string & fna
         // CF_DEBUG("line '%s' n=%d index1=%d, index2=%d", line, n, index1, index2);
 
         if( n == 1 ) {
-          badframes_.emplace_back(index1);
+          _badframes.emplace_back(index1);
         }
         else if( n == 2 ) {
           for( uint i = index1; i <= index2; ++i ) {
-            badframes_.emplace_back(i);
+            _badframes.emplace_back(i);
           }
         }
       }
 
       fclose(fp);
 
-      std::sort(badframes_.begin(),
-          badframes_.end());
+      std::sort(_badframes.begin(),
+          _badframes.end());
 
       const auto pos =
-          std::unique(badframes_.begin(),
-              badframes_.end());
+          std::unique(_badframes.begin(),
+              _badframes.end());
 
-      if ( pos != badframes_.end() ) {
-        badframes_.erase(pos, badframes_.end());
+      if ( pos != _badframes.end() ) {
+        _badframes.erase(pos, _badframes.end());
       }
 
     }
   }
 
-  return badframes_;
+  return _badframes;
 }
 
 void c_input_source::save_badframes(const std::string & fname) const
@@ -292,12 +289,12 @@ void c_input_source::save_badframes(const std::string & fname) const
   }
   else {
     badframes_file_name =
-        gen_badframes_file_name(this->filename_);
+        gen_badframes_file_name(this->_filename);
   }
 
   if( !badframes_file_name.empty() ) {
 
-    if( badframes_.empty() ) {
+    if( _badframes.empty() ) {
       unlink(badframes_file_name.c_str());
     }
     else {
@@ -312,18 +309,18 @@ void c_input_source::save_badframes(const std::string & fname) const
       }
       else {
 
-        for( uint32_t i1 = 0, n = badframes_.size(); i1 < n; ++i1 ) {
+        for( uint32_t i1 = 0, n = _badframes.size(); i1 < n; ++i1 ) {
 
           uint32_t i2 = i1;
-          while (i2 + 1 < n && badframes_[i2 + 1] == badframes_[i2] + 1) {
+          while (i2 + 1 < n && _badframes[i2 + 1] == _badframes[i2] + 1) {
             ++i2;
           }
 
           if( i2 == i1 ) {
-            fprintf(fp, "%u\n", badframes_[i1]);
+            fprintf(fp, "%u\n", _badframes[i1]);
           }
           else {
-            fprintf(fp, "%u-%u\n", badframes_[i1], badframes_[i2]);
+            fprintf(fp, "%u-%u\n", _badframes[i1], _badframes[i2]);
             i1 = i2;
           }
         }

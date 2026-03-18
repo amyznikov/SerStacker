@@ -36,9 +36,9 @@ const std::vector<std::string> & c_sply_input_source::suffixes()
 
 bool c_sply_input_source::open()
 {
-  if( _sply.open(filename_) && _sply.select_stream(0) ) {
+  if( _sply.open(_filename) && _sply.select_stream(0) ) {
     _sply.seek(0);
-    size_ = _sply.num_frames();
+    _size = _sply.num_frames();
     return true;
   }
   return false;

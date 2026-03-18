@@ -443,7 +443,7 @@ bool QPipelineOptionsView::cloneCurrentPipeline(const std::vector<c_image_sequen
     }
 
     if( pipeline != current_pipeline ) {
-      if( !current_pipeline->copyParameters(pipeline) ) {
+      if( !current_pipeline->copy_parameters(pipeline) ) {
         CF_ERROR("current_pipeline->copyParameters() fails for pipeline '%s'",
             pipeline->get_class_name().c_str());
         continue;

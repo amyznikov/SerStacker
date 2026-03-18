@@ -20,7 +20,7 @@ c_fits_input_source::sptr c_fits_input_source::create(const std::string & filena
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
     c_fits_input_source::sptr obj(new c_fits_input_source(filename));
-    obj->size_ = 1;
+    obj->_size = 1;
     return obj;
   }
   return nullptr;
@@ -39,17 +39,17 @@ const std::vector<std::string> & c_fits_input_source::suffixes()
 
 bool c_fits_input_source::open()
 {
-  if ( !fits_.open(filename_) ) {
+  if ( !_fits.open(_filename) ) {
     return false;
   }
-  curpos_ = 0;
+  _curpos = 0;
   return true;
 }
 
 void c_fits_input_source::close()
 {
-  fits_.close();
-  curpos_ = -1;
+  _fits.close();
+  _curpos = -1;
 }
 
 bool c_fits_input_source::seek(int pos)
@@ -57,24 +57,24 @@ bool c_fits_input_source::seek(int pos)
   if ( pos != 0 ) {
     return false;
   }
-  curpos_ = pos;
+  _curpos = pos;
   return true;
 }
 
 int c_fits_input_source::curpos()
 {
-  return curpos_;
+  return _curpos;
 }
 
 bool c_fits_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( curpos_ != 0 || !fits_.read(output_frame) ) {
+  if ( _curpos != 0 || !_fits.read(output_frame) ) {
     return false;
   }
 
-  ++curpos_;
+  ++_curpos;
 
   if ( output_colorid ) {
     *output_colorid = suggest_colorid(
@@ -91,7 +91,7 @@ bool c_fits_input_source::read(cv::Mat & output_frame,
 
 bool c_fits_input_source::is_open() const
 {
-  return curpos_ >= 0;
+  return _curpos >= 0;
 }
 
 #endif // HAVE_CFITSIO

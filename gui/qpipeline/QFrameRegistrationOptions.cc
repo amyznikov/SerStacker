@@ -560,14 +560,14 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
       add_numeric_box<double>("Image scale",
           "Scale input image before feature extraction",
           [this](double value) {
-            if ( _opts && _opts->image_scale != value ) {
-              _opts->image_scale = value;
+            if ( _opts && _opts->scale != value ) {
+              _opts->scale = value;
               Q_EMIT parameterChanged();
             }
           },
           [this](double * value) {
             if ( _opts ) {
-              * value = _opts->image_scale;
+              * value = _opts->scale;
               return true;
             }
             return false;

@@ -18,6 +18,7 @@
 #include "QRoiTrackerPipeline/QRoiTrackerPipeline.h"
 #include "QEpipolarAlignmentPipeline/QEpipolarAlignmentPipeline.h"
 #include "QCTEPipeline/QCTEPipeline.h"
+#include "QJDRPipeline/QJDRPipeline.h"
 
 #include <gui/widgets/QMatrixEdit.h>
 #include <gui/widgets/QCameraIntrinsicsEditBox.h>
@@ -49,6 +50,7 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(QRoiTrackerPipeline);
   REGISTER_PIPELINE_CLASS(QEpipolarAlignmentPipeline);
   REGISTER_PIPELINE_CLASS(QCTEPipeline);
+  REGISTER_PIPELINE_CLASS(QJDRPipeline);
 
 #undef REGISTER_PIPELINE_CLASS
 }

@@ -18,7 +18,7 @@ c_ffmpeg_input_source::sptr c_ffmpeg_input_source::create(const std::string & fi
 {
   sptr obj(new this_class(filename));
   if ( obj->ffmpeg_.open(filename) ) {
-    obj->size_ = obj->ffmpeg_.num_frames();
+    obj->_size = obj->ffmpeg_.num_frames();
     obj->ffmpeg_.close();
     return obj;
   }
@@ -36,7 +36,7 @@ const std::vector<std::string> & c_ffmpeg_input_source::suffixes()
 
 bool c_ffmpeg_input_source::open()
 {
-  return ffmpeg_.open(filename_);
+  return ffmpeg_.open(_filename);
 }
 
 void c_ffmpeg_input_source::close()

@@ -26,7 +26,7 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
   QObject::connect(this, &ThisClass::enablecontrols,
       this, &ThisClass::refreshControlStates);
 
-  master_frame_selection_method_ctl =
+  selection_method_ctl =
       add_enum_combobox<master_frame_selection_method>("Master frame selection:",
           "Specify the method how to select master frame",
           [this](master_frame_selection_method v) {

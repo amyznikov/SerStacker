@@ -19,7 +19,7 @@ c_raw_image_input_source::sptr c_raw_image_input_source::create(const std::strin
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
     c_raw_image_input_source::sptr obj(new c_raw_image_input_source(filename));
-    obj->size_ = 1;
+    obj->_size = 1;
     return obj;
   }
   return nullptr;
@@ -91,7 +91,7 @@ const std::vector<std::string>& c_raw_image_input_source::suffixes()
 
 bool c_raw_image_input_source::open()
 {
-  if ( file_readable(filename_) && !is_directory(filename_) ) {
+  if ( file_readable(_filename) && !is_directory(_filename) ) {
     curpos_ = 0;
     return true;
   }
@@ -121,14 +121,14 @@ bool c_raw_image_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( curpos_ != 0 || !raw_.read(filename_, output_frame, output_colorid, output_bpc) ) {
+  if ( curpos_ != 0 || !raw_.read(_filename, output_frame, output_colorid, output_bpc) ) {
     return false;
   }
 
   ++curpos_;
 
-  if ( (this->has_color_matrix_ = raw_.has_color_matrix()) ) {
-    this->color_matrix_ = raw_.color_matrix();
+  if ( (this->_has_color_matrix = raw_.has_color_matrix()) ) {
+    this->_color_matrix = raw_.color_matrix();
   }
 
   return true;

@@ -45,8 +45,8 @@ public:
   bool is_open() const override;
 
 protected:
-  c_fits_reader fits_;
-  int curpos_ = -1;
+  c_fits_reader _fits;
+  int _curpos = -1;
 };
 #endif // HAVE_CFITSIO
 

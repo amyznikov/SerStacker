@@ -14,6 +14,7 @@ const c_enum_member* members_of<c_local_peak_routine::Direction>()
   static const c_enum_member members[] = {
       { c_local_peak_routine::DirectionVert, "Vert", ""},
       { c_local_peak_routine::DirectionHorz, "Horz"},
+//      { c_local_peak_routine::DirectionBoth, "Both"},
       { c_local_peak_routine::DirectionVert},
   };
 
@@ -71,10 +72,12 @@ static void processPeaks(cv::InputArray src, cv::OutputArray finalResponse, int 
     cv::filter2D(src, res1, CV_32F, K, cv::Point(ksize / 2 + peak_radius, 0), 0, cv::BORDER_REPLICATE);
     cv::filter2D(src, res2, CV_32F, -K, cv::Point(ksize / 2 - peak_radius, 0), 0, cv::BORDER_REPLICATE);
   }
-  else /*if ( direction == c_local_peak_routine::DirectionVert )*/ {
+  else if ( direction == c_local_peak_routine::DirectionVert ) {
     K = K.t();
     cv::filter2D(src, res1, CV_32F, K, cv::Point(0, ksize / 2 + peak_radius), 0, cv::BORDER_REPLICATE);
     cv::filter2D(src, res2, CV_32F, -K, cv::Point(0, ksize / 2 - peak_radius), 0, cv::BORDER_REPLICATE);
+  }
+  else { // c_local_peak_routine::DirectionBoth
   }
 
   // Remove negative values ​​(we are only interested in growth on the left and decline on the right)
@@ -94,6 +97,7 @@ static void processPeaks(cv::InputArray src, cv::OutputArray finalResponse, int 
   }
   else { // OutputProduct
     cv::multiply(res1, res2, finalResponse);
+    cv::sqrt(finalResponse, finalResponse);
   }
 }
 

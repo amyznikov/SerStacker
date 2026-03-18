@@ -478,9 +478,9 @@ const c_ctlist<c_virtual_stereo_pipeline> & c_virtual_stereo_pipeline::getcontro
 //  return ctrls;
 //}
 
-bool c_virtual_stereo_pipeline::copyParameters(const base::sptr & dst) const
+bool c_virtual_stereo_pipeline::copy_parameters(const base::sptr & dst) const
 {
-  if ( !base::copyParameters(dst) ) {
+  if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
     return false;
   }

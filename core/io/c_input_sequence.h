@@ -80,18 +80,22 @@ public:
   virtual bool serialize(c_config_setting settings, bool save);
   virtual bool is_live() const;
 
+  bool is_bad_frame_index(int global_pos) const;
+  const std::vector<int> & badframes() const;
 
 protected:
   bool open_source(int source_index);
   void close_source(int source_index);
   bool seek_current_source(int relative_pos);
   bool read_current_source(cv::Mat & output_frame, cv::Mat * output_mask);
+  void gather_badframes();
 
 protected:
   std::string _name;
 
   std::vector<c_input_source::sptr> _all_sources;
   std::vector<c_input_source::sptr> _enabled_sources;
+  std::vector<int> _badframes; // global indexes
 
   bool _auto_apply_color_matrix = true;
 

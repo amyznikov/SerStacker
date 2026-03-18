@@ -87,64 +87,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind_end_group(ctls);
 }
 
-//
-//#define POPULATE_PIPELINE_INPUT_OPTIONS(ctrls) \
-//  PIPELINE_CTLC(ctrls, _input_options.start_frame_index, "start frame index", "", _this->_input_sequence != nullptr); \
-//  PIPELINE_CTL(ctrls, _input_options.max_input_frames, "max input frames", "");\
-//  PIPELINE_CTL(ctrls, _input_options.debayer_method, "debayer method", "");\
-//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.darkbayer_filename, "Dark frame", "");\
-//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.flatbayer_filename, "Flat frame", "");\
-//  PIPELINE_CTL_BROWSE_FOR_EXISTING_FILE(ctrls, _input_options.missing_pixel_mask_filename, "missing pixel mask", "");\
-//  PIPELINE_CTL(ctrls, _input_options.missing_pixels_marked_black, "missing pixels are black", "");\
-//  PIPELINE_CTL(ctrls, _input_options.inpaint_missing_pixels, "inpaint missing pixels", "");\
-//  PIPELINE_CTL(ctrls, _input_options.enable_color_maxtrix, "enable color maxtrix", "");\
-//  PIPELINE_CTL(ctrls, _input_options.detect_bad_asi_frames, "detect bad asi frames", "");\
-//  PIPELINE_CTL(ctrls, _input_options.bad_asi_frame_median_hat_threshold, "bad_asi_frame_median_hat_threshold", "");\
-//  PIPELINE_CTL(ctrls, _input_options.filter_bad_pixels, "filter bad pixels", "");\
-//  PIPELINE_CTL(ctrls, _input_options.bad_pixels_variation_threshold, "bad pixels variation", "");\
-//  PIPELINE_CTL(ctrls, _input_options.enable_bground_normalization, "bground normalization", "");\
-//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.norm_type, "norm type", "norm type", _this->_input_options.enable_bground_normalization);\
-//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.stretch, "stretch", "stretch", _this->_input_options.enable_bground_normalization);\
-//  PIPELINE_CTLC(ctrls, _input_options.background_normalization_options.offset, "offset", "offset", _this->_input_options.enable_bground_normalization);\
-//  PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _input_options.input_image_processor, "input_image_processor", "");
-//
-
-
-
-enum master_frame_selection_method
-{
-  master_frame_specific_index,
-  master_frame_middle_index,
-  master_frame_best_of_100_in_middle,
-};
-
-
-struct c_master_frame_selection_options
-{
-  c_input_sequence * input_sequence = nullptr;
-  master_frame_selection_method master_selection_method = master_frame_specific_index;
-  int master_frame_index = 0;
-  std::string master_fiename;
-};
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls,const c_ctlbind_context<RootObjectType, c_master_frame_selection_options> & ctx)
-{
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_master_frame_selection_options;
-
-  BindType c;
-  c.ctype = BindType::CtlType::MasterFrameSelection;
-  c.master_frame_selection =
-      [offset = ctx.offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
-}
-
-
-
 struct c_image_processing_pipeline_output_options
 {
   std::string output_directory;
@@ -177,7 +119,7 @@ public: // pipeline methods
   const char * cname() const;
 
   virtual const std::string & get_class_name() const = 0;
-  virtual bool copyParameters(const sptr & dst) const ;
+  virtual bool copy_parameters(const sptr & dst) const ;
 
 
   virtual bool run(const c_input_sequence::sptr & input_sequence = nullptr);
@@ -238,8 +180,8 @@ protected:
   void set_pipeline_stage(int stage);
   void set_status_msg(const std::string & msg);
   virtual std::string create_output_path(const std::string & output_directory) const;
-  virtual void gather_badframe_indexes();
-  virtual bool is_bad_frame_index(int global_pos) const;
+  //virtual void gather_badframe_indexes();
+  virtual bool is_bad_frame_index(uint32_t global_pos) const;
 
   virtual bool open_output_writer(c_output_frame_writer & writer,
       const c_output_frame_writer_options & opts,
@@ -293,7 +235,7 @@ protected:
 protected:
   std::string _name;
   c_input_sequence::sptr _input_sequence;
-  std::vector<uint32_t> _badframes; // global indexes
+  //std::vector<uint32_t> _badframes; // global indexes
   std::string _output_path;
   std::vector<c_output_frame_writer*> _opened_writers;
   std::vector<c_output_text_writer*> _opened_text_writers;

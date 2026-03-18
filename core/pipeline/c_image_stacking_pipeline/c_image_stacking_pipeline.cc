@@ -30,30 +30,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<>
-const c_enum_member * members_of<master_frame_selection_method>()
-{
-  static const c_enum_member members[] = {
-      {master_frame_specific_index, "specific_index", },
-      {master_frame_middle_index, "middle_index", },
-      {master_frame_best_of_100_in_middle, "best_of_100_in_middle", },
-      {master_frame_specific_index },
-  };
 
-  return members;
-}
-
-template<>
-const c_enum_member * members_of<roi_selection_method>()
-{
-  static const c_enum_member members[] = {
-      { roi_selection_none, "none", },
-      { roi_selection_rectange_crop, "rectangle", },
-      { roi_selection_planetary_disk, "planetary_disk", },
-      { roi_selection_none, },
-  };
-  return members;
-}
 
 template<>
 const c_enum_member* members_of<frame_accumulation_method>()
@@ -324,38 +301,15 @@ const c_roi_selection_options & c_image_stacking_pipeline::roi_selection_options
   return _roi_selection_options;
 }
 
-c_roi_selection::ptr c_image_stacking_pipeline::create_roi_selection() const
+c_roi_selection::sptr c_image_stacking_pipeline::create_roi_selection() const
 {
-  switch ( _roi_selection_options.method ) {
-    case roi_selection_rectange_crop :
-      return c_roi_rectangle_selection::create(_roi_selection_options.rectangle_roi_selection);
-
-  case roi_selection_planetary_disk :
-    return c_planetary_disk_selection::create(_roi_selection_options.planetary_disk_crop_size,
-        _roi_selection_options.planetary_disk_gbsigma,
-        _roi_selection_options.planetary_disk_stdev_factor,
-        _roi_selection_options.se_close_size);
-
-  default :
-    break;
-  }
-  return nullptr;
+  return c_roi_selection::create(_roi_selection_options);
 }
 
 c_frame_registration::sptr c_image_stacking_pipeline::create_frame_registration(const c_image_registration_options & options) const
 {
   return c_frame_registration::sptr(new c_frame_registration(options));
 }
-
-//c_frame_accumulation_options & c_image_stacking_pipeline::accumulation_options()
-//{
-//  return accumulation_options_;
-//}
-//
-//const c_frame_accumulation_options & c_image_stacking_pipeline::accumulation_options() const
-//{
-//  return accumulation_options_;
-//}
 
 c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(const c_frame_accumulation_options & opts) const
 {
@@ -459,10 +413,6 @@ bool c_image_stacking_pipeline::initialize_pipeline()
 
     lock_guard lock(mutex());
 
-    _missing_pixel_mask.release();
-
-    // ecc_normalization_noise_ = 0;
-
     _output_file_name_postfix.clear();
     _output_file_name.clear();
 
@@ -538,10 +488,6 @@ void c_image_stacking_pipeline::cleanup_pipeline()
     _frame_registration.reset();
     _flow_accumulation.reset();
   }
-
-  _missing_pixel_mask.release();
-  _darkbayer.release();
-  _flatbayer.release();
 
   set_pipeline_stage(stacking_stage_idle);
 }
@@ -1350,38 +1296,52 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
 
   _generating_master_frame = true;
 
-  CF_DEBUG("master_options.master_fiename=%s", master_filename.c_str());
+  //CF_DEBUG("master_options.master_fiename=%s", master_filename.c_str());
 
-  if ( master_filename.empty() ) {
-    master_filename =
-        _input_sequence->
-            source(master_source_index = 0)->filename();
-  }
-  else {
+  master_sequence =
+      select_master_source(_master_options.master_selection,
+          _input_sequence,
+          &master_source_index);
 
-    std::vector<c_input_source::sptr>::const_iterator source_pos =
-        std::find_if(this->input_sequence()->sources().begin(), this->input_sequence()->sources().end(),
-            [&master_options](const c_input_source::sptr & s ) -> bool {
-              return s->filename() == master_options.master_selection.master_fiename;
-            });
-
-    if ( source_pos != this->_input_sequence->sources().end() ) {
-      master_source_index = source_pos - this->_input_sequence->sources().begin();
-    }
-  }
-
-  if ( master_source_index >= 0 ) {
-    master_sequence = this->input_sequence();
-    // is_external_master_file = false;
-  }
-  else if ( !(master_sequence = c_input_sequence::create(master_filename)) ) {
-    CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_filename.c_str());
+  if( !master_sequence ) {
+    CF_ERROR("select_master_source() fails");
     return false;
   }
-  else {
-    is_external_master_file = true;
-    master_source_index = 0;
-  }
+
+  is_external_master_file =
+      _input_sequence != master_sequence;
+
+
+//  if ( master_filename.empty() ) {
+//    master_filename =
+//        _input_sequence->
+//            source(master_source_index = 0)->filename();
+//  }
+//  else {
+//
+//    std::vector<c_input_source::sptr>::const_iterator source_pos =
+//        std::find_if(this->input_sequence()->sources().begin(), this->input_sequence()->sources().end(),
+//            [&master_options](const c_input_source::sptr & s ) -> bool {
+//              return s->filename() == master_options.master_selection.master_fiename;
+//            });
+//
+//    if ( source_pos != this->_input_sequence->sources().end() ) {
+//      master_source_index = source_pos - this->_input_sequence->sources().begin();
+//    }
+//  }
+//
+//  if ( master_source_index >= 0 ) {
+//    master_sequence = this->input_sequence();
+//    // is_external_master_file = false;
+//  }
+//  else if ( !(master_sequence = c_input_sequence::create(master_filename)) ) {
+//    CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_filename.c_str());
+//    return false;
+//  }
+//  else {
+//    is_external_master_file = true;
+//    master_source_index = 0;
+//  }
 
   if ( master_source_index >= (int) master_sequence->sources().size() ) {
     CF_FATAL("ERROR: master_source_index=%d exceeds input_sequence->sources().size()=%zu",
@@ -1966,6 +1926,16 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
+      if( !save_ecc_video(input_sequence->current_pos() - 1) ) {
+        CF_ERROR("save_ecc_video() fails");
+        return false;
+      }
+
+      if( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
+
       if( !registered ) {
         CF_ERROR("[F %6d] reg->register_frame() fails\n", _processed_frames + startpos);
         continue;
@@ -2053,16 +2023,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       if( !save_aligned_video(current_frame, current_mask, input_sequence->current_pos() - 1) ) {
         CF_ERROR("save_aligned_frame() fails");
-        return false;
-      }
-
-      if( canceled() ) {
-        set_status_msg("canceled");
-        break;
-      }
-
-      if( !save_ecc_video(input_sequence->current_pos() - 1) ) {
-        CF_ERROR("save_ecc_video() fails");
         return false;
       }
 
@@ -2512,7 +2472,7 @@ bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & 
   return true;
 }
 
-bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::ptr & roi_selection,
+bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::sptr & roi_selection,
     const cv::Mat & src, const cv::Mat & srcmask,
     cv::Mat & dst, cv::Mat & dstmask)
 {
@@ -3255,24 +3215,24 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "anscombe", ctx(&S::anscombe), "");
 }
 
-template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_roi_selection_options> & ctx)
-{
-  using S = c_roi_selection_options;
-  ctlbind(ctls, "ROI selection:", ctx(&S::method), "");
-
-  ctlbind_expandable_group(ctls, "rectange crop...");
-    ctlbind(ctls, "Rectangle:", ctx(&S::rectangle_roi_selection), "");// , (_this->_roi_selection_options.method == roi_selection_rectange_crop));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "planetary disk crop...");
-    ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), ""); // , "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    ctlbind(ctls, "gbsigma", ctx(&S::planetary_disk_gbsigma), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    ctlbind(ctls, "Stdev factor", ctx(&S::planetary_disk_stdev_factor), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-    ctlbind(ctls, "se_close_size", ctx(&S::se_close_size), ""); //  (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-  ctlbind_end_group(ctls);
-}
-
+//template<class RootObjectType>
+//static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_roi_selection_options> & ctx)
+//{
+//  using S = c_roi_selection_options;
+//  ctlbind(ctls, "ROI selection:", ctx(&S::method), "");
+//
+//  ctlbind_expandable_group(ctls, "rectange crop...");
+//    ctlbind(ctls, "Rectangle:", ctx(&S::rectangle_roi_selection), "");// , (_this->_roi_selection_options.method == roi_selection_rectange_crop));
+//  ctlbind_end_group(ctls);
+//
+//  ctlbind_expandable_group(ctls, "planetary disk crop...");
+//    ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), ""); // , "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+//    ctlbind(ctls, "gbsigma", ctx(&S::planetary_disk_gbsigma), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+//    ctlbind(ctls, "Stdev factor", ctx(&S::planetary_disk_stdev_factor), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+//    ctlbind(ctls, "se_close_size", ctx(&S::se_close_size), ""); //  (_this->_roi_selection_options.method == roi_selection_planetary_disk));
+//  ctlbind_end_group(ctls);
+//}
+//
 template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_upscale_options> & ctx)
 {
@@ -3440,7 +3400,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save ECC Frames", "");
-  ctlbind(ctls,  "", ctx(&S::save_ecc_frames), "save_ecc_frames");
+  ctlbind(ctls,  "save_ecc_frames", ctx(&S::save_ecc_frames), "save_ecc_frames");
   ctlbind(ctls, ctx(&S::output_ecc_video_options));
   ctlbind_end_group(ctls);
 
@@ -3560,9 +3520,9 @@ int c_image_stacking_pipeline::master_frame_index() const
   return _master_options.master_selection.master_frame_index;
 }
 
-bool c_image_stacking_pipeline::copyParameters(const base::sptr & dst) const
+bool c_image_stacking_pipeline::copy_parameters(const base::sptr & dst) const
 {
-  if ( !base::copyParameters(dst) ) {
+  if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");
     return false;
   }
@@ -3719,6 +3679,8 @@ bool c_image_stacking_pipeline::save_ecc_video(int seqindex)
 
   const cv::Mat & current_frame =
       _frame_registration->current_ecc_image();
+
+  CF_DEBUG("current_ecc_image: %dx%d", current_frame.cols, current_frame.rows);
 
   if ( current_frame.empty() ) {
     return true;
@@ -3934,7 +3896,7 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
       sm->matched_reference_positions();
 
   const double scale =
-      _frame_registration->options().feature_registration.image_scale;
+      _frame_registration->options().feature_registration.scale;
 
   const cv::Size sizes[2] = {
       current_feature_image.size(),

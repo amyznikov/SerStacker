@@ -37,9 +37,9 @@ const std::vector<std::string> & c_hdl_input_source::suffixes()
 
 bool c_hdl_input_source::open()
 {
-  if( reader_.open(filename_, "") && reader_.select_stream(0) ) {
+  if( reader_.open(_filename, "") && reader_.select_stream(0) ) {
     reader_.seek(0);
-    size_ = reader_.num_frames();
+    _size = reader_.num_frames();
     return true;
   }
   return false;

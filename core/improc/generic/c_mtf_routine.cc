@@ -24,14 +24,6 @@ bool c_mtf_routine::serialize(c_config_setting settings, bool save)
 
 void c_mtf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "clip input range", ctx(&this_class::inputRange), "");
-  ctlbind(ctls, "stretch output range", ctx(&this_class::outputRange), "");
-  ctlbind_slider_spinbox(ctls, "lclip", ctx(&this_class::lclip), 0.0, 1.0, 0.001, "");
-  ctlbind_slider_spinbox(ctls, "shadows", ctx(&this_class::shadows), -2, 2, 0.01, "");
-  ctlbind_slider_spinbox(ctls, "midtones", ctx(&this_class::midtones), 0.001, 0.999, 0.001, "");
-  ctlbind_slider_spinbox(ctls, "highlights", ctx(&this_class::highlights), -2, 2, 0.01, "");
-  ctlbind_slider_spinbox(ctls, "hclip", ctx(&this_class::hclip), 0.0, 1.0, 0.001, "");
-
   //ctlbind_menu_button(ctls, "options", ctx);
   ctlbind_command_button(ctls, "RESET", ctx,
       std::function([](this_class * _ths) {
@@ -43,6 +35,15 @@ void c_mtf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & c
         _ths->highlights = opts.highlights;
         return true;
       }), "");
+
+  ctlbind(ctls, "clip input range", ctx(&this_class::inputRange), "");
+  ctlbind(ctls, "stretch output range", ctx(&this_class::outputRange), "");
+  ctlbind_slider_spinbox(ctls, "lclip", ctx(&this_class::lclip), 0.0, 1.0, 0.001, "");
+  ctlbind_slider_spinbox(ctls, "shadows", ctx(&this_class::shadows), -2, 2, 0.01, "");
+  ctlbind_slider_spinbox(ctls, "midtones", ctx(&this_class::midtones), 0.001, 0.999, 0.001, "");
+  ctlbind_slider_spinbox(ctls, "highlights", ctx(&this_class::highlights), -2, 2, 0.01, "");
+  ctlbind_slider_spinbox(ctls, "hclip", ctx(&this_class::hclip), 0.0, 1.0, 0.001, "");
+
 
 }
 

@@ -11,6 +11,7 @@
 
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/pipeline/c_master_frame_selection.h>
 #include <core/pipeline/stereo/c_stereo_input_options.h>
 
 class QInputSourceSelection :
@@ -45,7 +46,7 @@ protected:
   bool browseForExternalSource();
 
 protected:
-  QEnumComboBox<master_frame_selection_method> * master_frame_selection_method_ctl = nullptr;
+  QEnumComboBox<master_frame_selection_method> * selection_method_ctl = nullptr;
   QComboBox * input_source_ctl = nullptr;
   QNumericBox * master_frame_index_ctl = nullptr;
   //c_input_source::sptr _extranal_source;

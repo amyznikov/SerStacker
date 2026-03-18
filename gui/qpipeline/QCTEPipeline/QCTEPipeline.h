@@ -20,9 +20,6 @@ public:
   typedef c_cte_pipeline PipelineClass;
   typedef QImageProcessingPipelineTemplate<PipelineClass> Base;
 
-  QCTEPipeline();
-
-
   QCTEPipeline(const QString & name, QObject * parent = nullptr) :
       ThisClass(name, nullptr, parent)
   {

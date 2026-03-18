@@ -9,8 +9,9 @@
 #define __c_stacking_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/roi_selection/c_roi_rectangle_selection.h>
-#include <core/roi_selection/c_planetary_disk_selection.h>
+#include <core/pipeline/c_master_frame_selection.h>
+#include <core/roi_selection/c_roi_selection.h>
+
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/histogram-tools.h>
@@ -22,12 +23,6 @@
 #include <atomic>
 
 
-enum roi_selection_method
-{
-  roi_selection_none = 0,
-  roi_selection_rectange_crop = 1,
-  roi_selection_planetary_disk = 2,
-};
 
 enum frame_accumulation_method
 {
@@ -69,16 +64,6 @@ struct c_image_stacking_input_options :
     c_image_processing_pipeline_input_options
 {
   enum anscombe_method anscombe = anscombe_none;
-};
-
-struct c_roi_selection_options
-{
-  enum roi_selection_method method = roi_selection_none;
-  cv::Size planetary_disk_crop_size;
-  cv::Rect rectangle_roi_selection;
-  double planetary_disk_gbsigma = 1;
-  double planetary_disk_stdev_factor = 0.25;
-  int se_close_size = 2;
 };
 
 
@@ -252,7 +237,7 @@ public:
 
   c_roi_selection_options& roi_selection_options();
   const c_roi_selection_options& roi_selection_options() const;
-  c_roi_selection::ptr create_roi_selection() const;
+  c_roi_selection::sptr create_roi_selection() const;
 
   c_frame_upscale_options& upscale_options();
   const c_frame_upscale_options& upscale_options() const;
@@ -271,7 +256,7 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
-  bool copyParameters(const base::sptr & dst) const override;
+  bool copy_parameters(const base::sptr & dst) const override;
 
   static const c_ctlist<this_class> & getcontrols();
 
@@ -310,7 +295,7 @@ protected:
       bool is_external_master_frame,
       bool save_raw_bayer_image) const;
 
-  static bool select_image_roi(const c_roi_selection::ptr & roi_selection,
+  static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
       cv::Mat & dst, cv::Mat & dstmask);
 
@@ -370,7 +355,7 @@ protected:
   cv::Mat _selected_master_frame_mask;
 
   c_anscombe_transform _anscombe;
-  c_roi_selection::ptr _roi_selection;
+  c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;
   c_frame_weigthed_average::ptr _flow_accumulation;
   c_frame_accumulation::ptr _frame_accumulation;

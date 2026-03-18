@@ -127,23 +127,23 @@ public:
   //bool create_current_remap(const cv::Size & size);
 
 protected:
-  cv::Mat1f reference_image_;
-  cv::Mat1b reference_mask_;
-  cv::Mat1f current_image_;
-  cv::Mat1b current_mask_;
+  cv::Mat1f _reference_image;
+  cv::Mat1b _reference_mask;
+  cv::Mat1f _current_image;
+  cv::Mat1b _current_mask;
 
-  c_image_transform * image_transform_ = nullptr;
+  c_image_transform * _transform = nullptr;
 
-  enum ECC_INTERPOLATION_METHOD interpolation_ = ECC_INTER_LINEAR;
-  bool failed_ = false;
+  enum ECC_INTERPOLATION_METHOD _interpolation = ECC_INTER_LINEAR;
+  bool _failed = false;
 
-  int num_iterations_  = 0;
-  int max_iterations_ = 30;
-  float update_step_scale_ = 1.f;
+  int _num_iterations  = 0;
+  int _max_iterations = 30;
+  float _update_step_scale = 1.f;
 
-  float max_eps_ = 0.2f;
-  float eps_ = FLT_MAX;
-  int nparams_ = 0;
+  float _max_eps = 0.2f;
+  float _eps = FLT_MAX;
+  int _nparams = 0;
 
 };
 

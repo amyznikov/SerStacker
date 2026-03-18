@@ -138,7 +138,7 @@ std::mutex & c_image_processing_pipeline::mutex()
 }
 
 
-bool c_image_processing_pipeline::copyParameters(const sptr & dst) const
+bool c_image_processing_pipeline::copy_parameters(const sptr & dst) const
 {
   if ( !dst ) {
     return false;
@@ -496,63 +496,64 @@ std::string c_image_processing_pipeline::create_output_path(const std::string & 
 //
 //}
 
-void c_image_processing_pipeline::gather_badframe_indexes()
+//void c_image_processing_pipeline::gather_badframe_indexes()
+//{
+//  _badframes.clear();
+//
+//  if( _input_sequence && !_input_sequence->is_live() ) {
+//
+//    const bool was_open = _input_sequence->is_open();
+//    if( !was_open && !_input_sequence->open() ) {
+//      CF_ERROR("input_sequence_->open() fails");
+//      return;
+//    }
+//
+//    const std::vector<c_input_source::sptr> &sources =
+//        _input_sequence->sources();
+//
+//    for( uint source_index = 0, n = sources.size(); source_index < n; ++source_index ) {
+//
+//      const c_input_source::sptr source =
+//          _input_sequence->source(source_index);
+//
+//      if( source ) {
+//
+//        const std::vector<uint> &bad_source_frames =
+//            source->badframes();
+//
+//        for( uint source_frame_index : bad_source_frames ) {
+//
+//          const int global_index =
+//              _input_sequence->global_pos(source_index,
+//                  source_frame_index);
+//
+//          if( global_index >= 0 ) {
+//            _badframes.emplace_back(global_index);
+//          }
+//        }
+//      }
+//    }
+//
+//    if( !was_open ) {
+//      _input_sequence->close(false);
+//    }
+//  }
+//}
+
+bool c_image_processing_pipeline::is_bad_frame_index(uint32_t global_pos) const
 {
-  _badframes.clear();
-
-  if( _input_sequence && !_input_sequence->is_live() ) {
-
-    const bool was_open = _input_sequence->is_open();
-    if( !was_open && !_input_sequence->open() ) {
-      CF_ERROR("input_sequence_->open() fails");
-      return;
-    }
-
-    const std::vector<c_input_source::sptr> &sources =
-        _input_sequence->sources();
-
-    for( uint source_index = 0, n = sources.size(); source_index < n; ++source_index ) {
-
-      const c_input_source::sptr source =
-          _input_sequence->source(source_index);
-
-      if( source ) {
-
-        const std::vector<uint> &bad_source_frames =
-            source->badframes();
-
-        for( uint source_frame_index : bad_source_frames ) {
-
-          const int global_index =
-              _input_sequence->global_pos(source_index,
-                  source_frame_index);
-
-          if( global_index >= 0 ) {
-            _badframes.emplace_back(global_index);
-          }
-        }
-      }
-    }
-
-    if( !was_open ) {
-      _input_sequence->close(false);
-    }
-  }
-}
-
-bool c_image_processing_pipeline::is_bad_frame_index(int global_pos) const
-{
-  if( !_badframes.empty() ) {
-
-    const std::vector<uint>::const_iterator pos =
-        std::find(_badframes.begin(),
-            _badframes.end(),
-            global_pos);
-
-    return pos != _badframes.end();
-  }
-
-  return false;
+//  if( !_badframes.empty() ) {
+//
+//    const std::vector<uint>::const_iterator pos =
+//        std::find(_badframes.begin(),
+//            _badframes.end(),
+//            global_pos);
+//
+//    return pos != _badframes.end();
+//  }
+//
+//  return false;
+  return _input_sequence->is_bad_frame_index(global_pos);
 }
 
 bool c_image_processing_pipeline::open_output_writer(c_output_frame_writer & writer, const c_output_frame_writer_options & opts,
@@ -767,6 +768,15 @@ bool c_image_processing_pipeline::initialize_pipeline()
 
   cancel(false);
 
+  if ( true ) {
+    lock_guard lock(mutex());
+    _missing_pixel_mask.release();
+    _darkbayer.release();
+    _flatbayer.release();
+    _raw_bayer_image.release();
+  }
+
+
   if ( !_input_sequence || _input_sequence->empty() ) {
     set_status_msg("ERROR: empty input sequence specified");
     return false;
@@ -777,10 +787,7 @@ bool c_image_processing_pipeline::initialize_pipeline()
   _accumulated_frames = 0;
   _statusmsg.clear();
 
-  //  output_path_ =
-  //      create_output_path(output_directory());
-
-  gather_badframe_indexes();
+  //gather_badframe_indexes();
 
   return true;
 }
@@ -808,11 +815,10 @@ void c_image_processing_pipeline::cleanup_pipeline()
   _opened_writers.clear();
   _opened_text_writers.clear();
 
+  _missing_pixel_mask.release();
   _darkbayer.release();
   _flatbayer.release();
-  _missing_pixel_mask.release();
   _raw_bayer_image.release();
-
 }
 
 bool c_image_processing_pipeline::run_pipeline()

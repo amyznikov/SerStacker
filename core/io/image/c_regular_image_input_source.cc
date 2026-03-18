@@ -19,7 +19,7 @@ c_regular_image_input_source::sptr c_regular_image_input_source::create(const st
 {
   if ( file_exists(filename) && !is_directory(filename) ) {
     sptr obj(new this_class(filename));
-    obj->size_ = 1;
+    obj->_size = 1;
     return obj;
   }
   return nullptr;
@@ -47,7 +47,7 @@ const std::vector<std::string> & c_regular_image_input_source::suffixes()
 
 bool c_regular_image_input_source::open()
 {
-  if ( file_readable(filename_) && !is_directory(filename_) ) {
+  if ( file_readable(_filename) && !is_directory(_filename) ) {
     curpos_ = 0;
     return true;
   }
@@ -84,11 +84,11 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   }
 
   const std::string suffix =
-      get_file_suffix(filename_);
+      get_file_suffix(_filename);
 
   if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
 
-    if ( !(output_frame = cv::readOpticalFlow(filename_)).data ) {
+    if ( !(output_frame = cv::readOpticalFlow(_filename)).data ) {
       return false;
     }
 
@@ -104,7 +104,7 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   }
   else {
 
-    if ( !load_image(filename_, output_frame) ) {
+    if ( !load_image(_filename, output_frame) ) {
       return false;
     }
 

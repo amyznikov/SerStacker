@@ -11,7 +11,7 @@
 c_textfile_input_source::c_textfile_input_source(const std::string & filename) :
   base(/*source_type::TEXTFILE, */filename)
 {
-  size_ = 1;
+  _size = 1;
 }
 
 c_textfile_input_source::sptr c_textfile_input_source::create(const std::string & filename)
@@ -50,7 +50,7 @@ const std::vector<std::string> & c_textfile_input_source::suffixes()
 bool c_textfile_input_source::open()
 {
   curpos_ = 0;
-  return !filename_.empty();
+  return !_filename.empty();
 }
 
 void c_textfile_input_source::close()
@@ -72,7 +72,7 @@ bool c_textfile_input_source::read(c_data_frame::sptr & output_frame)
     output_frame.reset(f = new c_textfile_frame());
   }
 
-  f->filename_ = this->filename_;
+  f->filename_ = this->_filename;
 
   return true;
 }

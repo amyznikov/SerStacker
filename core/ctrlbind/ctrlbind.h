@@ -128,6 +128,9 @@ inline constexpr size_t offset_of(FieldType StructType::*mp)
 template<class RootObjectType, class T = RootObjectType>
 struct c_ctlbind_context
 {
+  using RootType = RootObjectType;
+  using FieldType = T;
+
   const size_t offset = 0;
 
   c_ctlbind_context()
@@ -163,12 +166,26 @@ private:
   c_ctlbind_context(size_t offs) : offset(offs) { }
 };
 
+#define CTL_CONTEXT(cctx, field) cctx(&std::decay_t<decltype(cctx)>::FieldType::field)
+
 template<class Base, class RootObjectType, class T>
 inline auto as_base(const c_ctlbind_context<RootObjectType, T>& ctx)
 {
   return ctx.template as_base<Base>();
 }
 
+/**
+ *  To be used for inlines as:
+ *
+ *  _ctlbind([&ctls, cctx = ctx(&this_class::_input_options)]() {
+ *    ctlbind(ctls, "a:", CTL_CONTEXT(cctx,a), "Specify the value for a");
+ *  });
+ */
+template<class ActualBind>
+inline void _ctlbind(ActualBind && actualBind)
+{
+  std::forward<ActualBind>(actualBind)();
+}
 
 
 template<class RootObjectType>
@@ -215,6 +232,28 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
   c.enabled = eneblefn;
   ctls.emplace_back(c);
 }
+
+/**
+ * To be as:
+ *
+ *   ctlbind_expandable_group(ctls, "3. Reference Frame Options ",
+ *       [&, cctx = ctx(&this_class::_reference_frame_options)]() {
+ *         ctlbind(ctls, "generate_reference_frame", CTL_CONTEXT(cctx, generate_reference_frame));
+ *       });
+ *   ctlbind_end_group(ctls);
+ */
+template<class RootObjectType>
+void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    std::function<void()> && bindMembers)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  BindType c;
+  c.cname = cname;
+  c.ctype = BindType::CtlType::BeginExpandableGroup;
+  ctls.emplace_back(c);
+  bindMembers();
+}
+
 
 
 template<class RootObjectType>

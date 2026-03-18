@@ -366,10 +366,11 @@ void c_sparse_feature_extractor_and_matcher::extract_positions(const std::vector
 
 bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArray image, cv::InputArray mask)
 {
+  image.copyTo(_reference_image);
+  mask.copyTo(_reference_mask);
+
   if( !_matcher ) {
     _reference_descriptors.release();
-    image.copyTo(_reference_image);
-    mask.copyTo(_reference_mask);
     detect(image, _reference_keypoints, mask);
     extract_positions(_reference_keypoints, _reference_positions);
   }
@@ -390,6 +391,11 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
   _current_matches.clear();
   _matched_reference_positions.clear();
   _matched_current_positions.clear();
+
+  CF_DEBUG("current_image: %dx%d %d channels", current_image.cols(), current_image.rows(), current_image.channels());
+  CF_DEBUG("current_mask: %dx%d %d channels", current_mask.cols(), current_mask.rows(), current_mask.channels());
+  CF_DEBUG("_reference_image: %dx%d %d channels", _reference_image.cols, _reference_image.rows, _reference_image.channels());
+  CF_DEBUG("_reference_mask: %dx%d %d channels", _reference_mask.cols, _reference_mask.rows, _reference_mask.channels());
 
   try {
 
@@ -491,14 +497,29 @@ void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray ima
     bool useProvidedKeypoints)
 {
   keypoints.clear();
+  descriptors.release();
+
+  if( !mask.empty() && (mask.size() != image.size() || mask.type() != CV_8UC1) ) {
+    CF_DEBUG("APP BUGL: invalid mask: %dx%d %d channels depth=%d for image  %dx%d %d channels depth=%d ",
+        mask.cols(), mask.rows(), mask.channels(), mask.depth(),
+        image.cols(), image.rows(), image.channels(), image.depth());
+    return;
+  }
+
   if ( _descriptor )  {
     detect(image, keypoints, mask);
     _descriptor->compute(image, keypoints, descriptors);
   }
   else {
+
+    CF_DEBUG("image: %dx%d %d channels depth=%d", image.cols(), image.rows(), image.channels(), image.depth());
+    CF_DEBUG("mask: %dx%d %d channels depth=%d", mask.cols(), mask.rows(), mask.channels(), mask.depth());
+    CF_DEBUG("useProvidedKeypoints= %d", useProvidedKeypoints);
+
+    _detector->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
+
     // FIXME: limit num keypoints by options_.detector.max_keypoints
     CF_DEBUG("FIXME: NOT LIMITING keypoints.size = %zu > max_keypoints=%d", keypoints.size(), _options.detector.max_keypoints);
-    _detector->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
   }
 
   ///////

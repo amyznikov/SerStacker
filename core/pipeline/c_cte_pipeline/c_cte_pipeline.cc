@@ -234,9 +234,9 @@ static inline cv::Vec3f unproject_point(const cv::Point2f & p, const cv::Matx<_T
   return cv::Vec3f((p.x - cx) / fx, (p.y - cy) / fy, 1);
 }
 
-bool c_cte_pipeline::copyParameters(const base::sptr & dst) const
+bool c_cte_pipeline::copy_parameters(const base::sptr & dst) const
 {
-  if ( !base::copyParameters(dst) ) {
+  if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_epipolar_alignment_pipeline::base::copyParameters() fails");
     return false;
   }

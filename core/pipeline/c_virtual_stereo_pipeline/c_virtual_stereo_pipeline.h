@@ -159,7 +159,7 @@ public:
   c_virtual_stereo_output_options & output_options();
   const c_virtual_stereo_output_options & output_options() const;
 
-  bool copyParameters(const base::sptr & dst) const override;
+  bool copy_parameters(const base::sptr & dst) const override;
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;

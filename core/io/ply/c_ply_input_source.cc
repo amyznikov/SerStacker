@@ -321,7 +321,7 @@ end:
 c_ply_input_source::c_ply_input_source(const std::string & filename) :
   base(filename)
 {
-  size_ = 1;
+  _size = 1;
 }
 
 
@@ -342,7 +342,7 @@ const std::vector<std::string> & c_ply_input_source::suffixes()
 bool c_ply_input_source::open()
 {
   curpos_ = 0;
-  return !filename_.empty();
+  return !_filename.empty();
 }
 
 void c_ply_input_source::close()
@@ -364,7 +364,7 @@ bool c_ply_input_source::read(c_data_frame::sptr & output_frame)
     output_frame.reset(f = new c_ply_frame());
   }
 
-  f->filename_ = this->filename_;
+  f->filename_ = this->_filename;
 
 
   if ( !loadPlyPointCloud(f->filename_, f->points_, f->colors_) ) {

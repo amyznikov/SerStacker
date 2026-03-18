@@ -25,42 +25,42 @@ public:
 
   const std::string & filename() const
   {
-    return filename_;
+    return _filename;
   }
 
   const char * cfilename() const
   {
-    return filename_.c_str();
+    return _filename.c_str();
   }
 
   int size() const
   {
-    return size_;
+    return _size;
   }
 
   bool empty() const
   {
-    return size_ < 1;
+    return _size < 1;
   }
 
   void set_global_pos(int pos)
   {
-    global_pos_ = pos;
+    _global_pos = pos;
   }
 
   int global_pos() const
   {
-    return global_pos_;
+    return _global_pos;
   }
 
   bool has_color_matrix() const
   {
-    return has_color_matrix_;
+    return _has_color_matrix;
   }
 
   const cv::Matx33f & color_matrix() const
   {
-    return color_matrix_;
+    return _color_matrix;
   }
 
   bool has_last_ts() const
@@ -75,12 +75,12 @@ public:
 
   void set_enabled(bool v)
   {
-    enabled_ = v;
+    _enabled = v;
   }
 
   bool enabled() const
   {
-    return enabled_;
+    return _enabled;
   }
 
   void set_input_options(const c_input_options * options)
@@ -111,11 +111,11 @@ public:
       enum COLORID * output_colorid,
       int * output_bpc) = 0;
 
-  const std::vector<uint> & badframes() const;
-  bool is_badframe(uint index) const;
-  void set_badframe(uint index, bool is_bad);
-  void set_badframes(const std::vector<uint> & indexes);
-  const std::vector<uint> & load_badframes(const std::string & fname = "");
+  const std::vector<int> & badframes() const;
+  bool is_badframe(int index) const;
+  void set_badframe(int index, bool is_bad);
+  void set_badframes(const std::vector<int> & indexes);
+  const std::vector<int> & load_badframes(const std::string & fname = "");
   void save_badframes(const std::string & fname = "") const;
 
 
@@ -126,16 +126,16 @@ public:
 protected:
   c_input_source(const std::string & filename);
 
-  std::string filename_;
-  std::vector<uint32_t> badframes_;
+  std::string _filename;
+  std::vector<int> _badframes;
   const c_input_options * _input_options = nullptr;
 
-  int size_ = 0;
-  int global_pos_ = 0;
-  bool enabled_ = true;
+  int _size = 0;
+  int _global_pos = 0;
+  bool _enabled = true;
 
-  cv::Matx33f color_matrix_ = cv::Matx33f::eye();
-  bool has_color_matrix_ = false;
+  cv::Matx33f _color_matrix = cv::Matx33f::eye();
+  bool _has_color_matrix = false;
 
   double _last_ts = 0;
   bool _has_last_ts = false;

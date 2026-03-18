@@ -21,6 +21,7 @@ public:
   enum Direction {
     DirectionVert,
     DirectionHorz,
+    DirectionBoth,
   };
 
   enum Output {

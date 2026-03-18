@@ -147,8 +147,9 @@ struct c_image_stacking_output_options  :
   std::vector<int> debug_frame_registration_frame_indexes;
 
   bool save_preprocessed_frames = false;
-  bool save_aligned_frames = false;
+  bool save_feature_frames = false;
   bool save_ecc_frames = false;
+  bool save_aligned_frames = false;
   bool save_accumulation_masks = false;
   bool save_incremental_frames = false;
   bool save_eccflow_frames = false;
@@ -157,8 +158,9 @@ struct c_image_stacking_output_options  :
   bool save_acc_weights = false;
 
   c_output_frame_writer_options output_preprocessed_video_options;
-  c_output_frame_writer_options output_aligned_video_options;
+  c_output_frame_writer_options output_feature_video_options;
   c_output_frame_writer_options output_ecc_video_options;
+  c_output_frame_writer_options output_aligned_video_options;
   c_output_frame_writer_options output_acc_masks_video_options;
   c_output_frame_writer_options output_incremental_video_options;
   c_output_frame_writer_options output_sparse_match_blend_options;
@@ -306,6 +308,7 @@ protected:
 
   bool save_preprocessed_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
   bool save_sparse_matches_blend_video(int seqindex);
+  bool save_feature_video(int seqindex);
   bool save_ecc_video(int seqindex);
   bool save_eccflow_video(int seqindex);
   bool save_aligned_video(const cv::Mat & current_frame, const cv::Mat & curren_mask, int seqindex);
@@ -364,6 +367,7 @@ protected:
 
   c_output_frame_writer _preprocessed_video_writer;
   c_output_frame_writer _sparse_match_blend_writer;
+  c_output_frame_writer _feaure_writer;
   c_output_frame_writer _ecc_writer;
   c_output_frame_writer _eccflow_writer;
   c_output_frame_writer _aligned_video_writer;

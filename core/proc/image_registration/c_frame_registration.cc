@@ -606,11 +606,10 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       return false;
     }
 
-//    if( _options.ecc.replace_planetary_disk_with_mask ) {
-//      insert_planetary_disk_shape(current_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
-//    }
+    if( _options.ecc.replace_planetary_disk_with_mask ) {
+      insert_planetary_disk_shape(reference_ecc_image, reference_ecc_mask, reference_ecc_image, reference_eccflow_mask);
+    }
 
-    CF_DEBUG("_options.enable_ecc_registration=%d", _options.enable_ecc_registration);
     if( _options.enable_ecc_registration ) {
 
       _ecch.set_method(_options.ecc.ecc_method);
@@ -634,7 +633,12 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
         ecc_mask = reference_ecc_mask;
       }
 
-      CF_DEBUG("_ecch.set_reference_image()");
+      if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
+        ecc_normalize_meanstdev(ecc_image, ecc_mask, ecc_image,
+            _options.ecc.normalization_scale,
+            _options.ecc.normalization_noise);
+      }
+
       if( !_ecch.set_reference_image(ecc_image, ecc_mask) ) {
         CF_ERROR("_ecch.set_reference_image() fails");
         return false;
@@ -815,6 +819,13 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       current_ecc_image = ecc_image;
       current_ecc_mask = ecc_mask;
     }
+
+    if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
+      ecc_normalize_meanstdev(current_ecc_image, current_ecc_mask, current_ecc_image,
+          _options.ecc.normalization_scale,
+          _options.ecc.normalization_noise);
+    }
+
 
     const bool estimate_translation_first =
         _options.motion_type != IMAGE_MOTION_TRANSLATION &&
@@ -1133,12 +1144,6 @@ bool c_frame_registration::create_ecc_image(cv::InputArray src, cv::InputArray s
 
   if ( _ecc_image_preprocessor ) {
     _ecc_image_preprocessor(dst.getMatRef(), dstm.getMatRef());
-  }
-
-  if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
-    ecc_normalize_meanstdev(dst.getMat(), dstm, dst,
-        _options.ecc.normalization_scale,
-        _options.ecc.normalization_noise);
   }
 
   return true;

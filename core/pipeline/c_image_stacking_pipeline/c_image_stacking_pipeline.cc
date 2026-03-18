@@ -1916,8 +1916,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
         break;
       }
 
-      if ( !save_sparse_matches_video(input_sequence->current_pos() - 1) )  {
-        CF_ERROR("save_sparse_matches_video() fails");
+      if ( !save_feature_video(input_sequence->current_pos() - 1) )  {
+        CF_ERROR("save_feature_video() fails");
         return false;
       }
 
@@ -1928,6 +1928,16 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
       if( !save_ecc_video(input_sequence->current_pos() - 1) ) {
         CF_ERROR("save_ecc_video() fails");
+        return false;
+      }
+
+      if( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
+
+      if ( !save_sparse_matches_video(input_sequence->current_pos() - 1) )  {
+        CF_ERROR("save_sparse_matches_video() fails");
         return false;
       }
 
@@ -3122,6 +3132,11 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, _output_options, output_aligned_video_options);
     }
 
+    SERIALIZE_OPTION(section, save, _output_options, save_feature_frames);
+    if( (subsection = get_group(section, save, "output_feature_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_feature_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, _output_options, save_ecc_frames);
     if( (subsection = get_group(section, save, "output_ecc_video_options")) ) {
       SERIALIZE_OPTION(subsection, save, _output_options, output_ecc_video_options);
@@ -3394,14 +3409,19 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
     ctlbind(ctls, ctx(&S::output_preprocessed_video_options));
   ctlbind_end_group(ctls);
 
-  ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
-    ctlbind(ctls, "save_aligned_frames", ctx(&S::save_aligned_frames), "");
-    ctlbind(ctls, ctx(&S::output_aligned_video_options));
+  ctlbind_expandable_group(ctls, "Save Feature Frames", "");
+  ctlbind(ctls,  "save_feature_frames", ctx(&S::save_feature_frames), "save_feature_frames");
+  ctlbind(ctls, ctx(&S::output_feature_video_options));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save ECC Frames", "");
   ctlbind(ctls,  "save_ecc_frames", ctx(&S::save_ecc_frames), "save_ecc_frames");
   ctlbind(ctls, ctx(&S::output_ecc_video_options));
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
+    ctlbind(ctls, "save_aligned_frames", ctx(&S::save_aligned_frames), "");
+    ctlbind(ctls, ctx(&S::output_aligned_video_options));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save ACC Masks", "");
@@ -3670,6 +3690,38 @@ bool c_image_stacking_pipeline::save_sparse_matches_blend_video(int seqindex)
   return true;
 }
 
+bool c_image_stacking_pipeline::save_feature_video(int seqindex)
+{
+  if( !_output_options.save_feature_frames || !_frame_registration ) {
+    return true;
+  }
+
+  const cv::Mat & current_frame = _frame_registration->current_feature_image();
+  const cv::Mat & current_mask = _frame_registration->current_feature_mask();
+  const c_output_frame_writer_options & output_opts = _output_options.output_feature_video_options;
+  c_output_frame_writer & writer = _feaure_writer;
+
+  if( current_frame.empty() ) {
+    return true;
+  }
+
+  const bool fOK =
+      add_output_writer(writer,
+          output_opts,
+          ssprintf("feat%s", _generating_master_frame ? "-master" : ""),
+          ".ser");
+
+  if( !fOK ) {
+    CF_ERROR("Can not open output writer '%s'", writer.filename().c_str());
+    return false;
+  }
+
+  return writer.write(current_frame, current_mask,
+      _output_options.write_image_mask_as_alpha_channel,
+      seqindex);
+}
+
+
 
 bool c_image_stacking_pipeline::save_ecc_video(int seqindex)
 {
@@ -3677,23 +3729,14 @@ bool c_image_stacking_pipeline::save_ecc_video(int seqindex)
     return true;
   }
 
-  const cv::Mat & current_frame =
-      _frame_registration->current_ecc_image();
-
-  CF_DEBUG("current_ecc_image: %dx%d", current_frame.cols, current_frame.rows);
+  const cv::Mat & current_frame = _frame_registration->current_ecc_image();
+  const cv::Mat & current_mask = _frame_registration->current_ecc_mask();
+  const c_output_frame_writer_options & output_opts = _output_options.output_ecc_video_options;
+  c_output_frame_writer & writer = _ecc_writer;
 
   if ( current_frame.empty() ) {
     return true;
   }
-
-  const cv::Mat & current_mask =
-      _frame_registration->current_ecc_mask();
-
-  c_output_frame_writer & writer =
-      _ecc_writer;
-
-  const c_output_frame_writer_options & output_opts =
-      _output_options.output_ecc_video_options;
 
   const bool fOK =
       add_output_writer(writer,
@@ -3718,18 +3761,13 @@ bool c_image_stacking_pipeline::save_eccflow_video(int seqindex)
     return true;
   }
 
-  const cv::Mat2f & uv =
-      _frame_registration->eccflow().current_uv();
+  const cv::Mat2f & uv = _frame_registration->eccflow().current_uv();
+  const c_eccflow_output_frame_writer_options & output_opts = _output_options.output_eccflow_options;
+  c_output_frame_writer & writer = _eccflow_writer;
 
   if ( uv.empty() ) {
     return true;
   }
-
-  c_output_frame_writer & writer =
-      _eccflow_writer;
-
-  const c_eccflow_output_frame_writer_options & output_opts =
-      _output_options.output_eccflow_options;
 
 
   const bool fOK =
@@ -3768,11 +3806,8 @@ bool c_image_stacking_pipeline::save_aligned_video(const cv::Mat & current_frame
     return true;
   }
 
-  c_output_frame_writer & writer =
-      _aligned_video_writer;
-
-  const c_output_frame_writer_options & output_opts =
-      _output_options.output_aligned_video_options;
+  const c_output_frame_writer_options & output_opts = _output_options.output_aligned_video_options;
+  c_output_frame_writer & writer = _aligned_video_writer;
 
   const bool fOK =
       add_output_writer(writer,
@@ -3806,11 +3841,9 @@ bool c_image_stacking_pipeline::save_incremental_video(const cv::Mat & current_f
     return true;
   }
 
-  c_output_frame_writer & writer =
-      _incremental_video_writer;
+  const c_output_frame_writer_options & output_opts = _output_options.output_incremental_video_options;
+  c_output_frame_writer & writer = _incremental_video_writer;
 
-  const c_output_frame_writer_options & output_opts =
-      _output_options.output_incremental_video_options;
 
   const bool fOK =
       add_output_writer(writer,
@@ -3835,11 +3868,8 @@ bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & cu
     return true;
   }
 
-  c_output_frame_writer & writer =
-      _accumulation_masks_writer;
-
-  const c_output_frame_writer_options & output_opts =
-      _output_options.output_acc_masks_video_options;
+  const c_output_frame_writer_options & output_opts = _output_options.output_acc_masks_video_options;
+  c_output_frame_writer & writer = _accumulation_masks_writer;
 
   const bool fOK =
       add_output_writer(writer,
@@ -3876,9 +3906,7 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
     return true;
   }
 
-  const c_sparse_feature_extractor_and_matcher::sptr & sm =
-      _frame_registration->sparse_feature_extractor_and_matcher();
-
+  const c_sparse_feature_extractor_and_matcher::sptr & sm = _frame_registration->sparse_feature_extractor_and_matcher();
   if ( !sm ) {
     return true;
   }

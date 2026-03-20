@@ -552,6 +552,30 @@ bool c_config_setting::get_value(const config_setting_t *setting, uint8_t * valu
   return false;
 }
 
+bool c_config_setting::get_value(const config_setting_t *setting, int16_t * value)
+{
+  if ( setting && config_setting_is_number(setting) ) {
+    const int v = config_setting_get_int(setting);
+    if ( v >= INT16_MIN && v <= INT16_MAX ) {
+      *value = v;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool c_config_setting::get_value(const config_setting_t *setting, uint16_t * value)
+{
+  if ( setting && config_setting_is_number(setting) ) {
+    const int v = config_setting_get_int(setting);
+    if ( v >= 0 && v <= UINT16_MAX ) {
+      *value = v;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool c_config_setting::get_value(const config_setting_t * setting, int32_t * value)
 {
   if ( setting && config_setting_is_number(setting) ) {

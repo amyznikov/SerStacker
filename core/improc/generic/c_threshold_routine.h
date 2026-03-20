@@ -36,6 +36,22 @@ public:
     THRESHOLD_CLEAR_MASK
   };
 
+  enum MULTI_CHANEL_REDUCTION {
+    MULTI_CHANEL_REDUCTION_NONE,
+    MULTI_CHANEL_REDUCTION_MAX,
+    MULTI_CHANEL_REDUCTION_MIN,
+  };
+
+  enum MASK_MODE {
+    MASK_MODE_REPLACE,
+    MASK_MODE_AND,
+    MASK_MODE_OR,
+    MASK_MODE_XOR,
+    MASK_MODE_NAND,
+    MASK_MODE_NOR,
+    MASK_MODE_NXOR,
+  };
+
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
@@ -43,6 +59,8 @@ public:
 protected:
   cv::CmpTypes _compare = cv::CMP_GT;
   THRESHOLD_TYPE _threshold_type = THRESHOLD_VALUE;
+  MASK_MODE _mask_mode = MASK_MODE_REPLACE;
+  MULTI_CHANEL_REDUCTION _reduction_mode = MULTI_CHANEL_REDUCTION_NONE;
   double _threshold_value = 0;
   double _threshold_scale = 1.0;
   bool _fill_holes = false;

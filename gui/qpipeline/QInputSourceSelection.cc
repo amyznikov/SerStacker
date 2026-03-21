@@ -92,6 +92,27 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
             return false;
           });
 
+  image_preprocessor_ctl =
+      add_combobox<QImageProcessorSelectionCombo2>("image preporcessor",
+          "apply image preprocessor before measuring sharpness metric",
+          false,
+          [this](int index, QImageProcessorSelectionCombo2 * combo) {
+            if( _opts ) {
+              const std::string name = combo->processor(index).toStdString();
+              _opts->input_image_preprocessor = c_image_processor_collection::default_instance()->get(name);
+              Q_EMIT parameterChanged();
+            }},
+          [this](int*,
+              QImageProcessorSelectionCombo2 * combo) -> bool {
+                if ( _opts ) {
+                  combo->setCurrentProcessor(QString::fromStdString(_opts->input_image_preprocessor ? _opts->input_image_preprocessor->name() : "") );
+                }
+                return false;
+              },
+          [this]() {
+            return _opts && _opts->master_selection_method == master_frame_best_of_100_in_middle;
+          });
+
 
   updateControls();
 }

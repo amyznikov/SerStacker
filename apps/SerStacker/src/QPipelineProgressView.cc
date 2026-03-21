@@ -228,44 +228,15 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
   if( _imageViewer && _imageViewer->isVisible() ) {
 
+    QWaitCursor wait(this);
+    cv::Mat currentImage, currentMask;
+
     _updatingDisplay = true;
 
-    if( const c_image_stacking_pipeline::sptr image_stacking =
-        std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
-
-      QWaitCursor wait(this);
-
-      if( image_stacking->pipeline_stage() == stacking_stage_idle ) {
-
-        std::string output_file_name =
-            image_stacking->output_file_name();
-
-        if( !output_file_name.empty() ) {
-          // imageViewer_->openImage(output_file_name);
-        }
-
-      }
-      else {
-
-        cv::Mat currentImage, currentMask;
-
-        image_stacking->get_display_image(currentImage, currentMask);
-
-        _imageViewer->setCurrentFileName(pipeline->cname());
-        _imageViewer->editImage(currentImage, currentMask);
-      }
-    }
-
-    else {
-      QWaitCursor wait(this);
-
-      cv::Mat currentImage, currentMask;
-
-      pipeline->get_display_image(currentImage, currentMask);
+    if( pipeline->get_display_image(currentImage, currentMask) ) {
       _imageViewer->setCurrentFileName(pipeline->cname());
       _imageViewer->editImage(currentImage, currentMask);
     }
-
 
     _hasStatusUpdates = false;
     _updatingDisplay = false;

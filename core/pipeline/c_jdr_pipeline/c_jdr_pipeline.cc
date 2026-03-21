@@ -8,6 +8,23 @@
 #include "c_jdr_pipeline.h"
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 
+template<>
+const c_enum_member* members_of<c_jdr_pipeline::STACKING_STAGE>()
+{
+  static const c_enum_member members[] = {
+      { c_jdr_pipeline::stacking_stage_idle, "idle", "idle" },
+      { c_jdr_pipeline::stacking_stage_initialize, "initialize", "initialize" },
+      { c_jdr_pipeline::stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
+      { c_jdr_pipeline::stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
+      { c_jdr_pipeline::stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
+      { c_jdr_pipeline::stacking_stage_finishing, "finishing", "finishing" },
+      { c_jdr_pipeline::stacking_stage_idle },
+  };
+
+  return members;
+}
+
+
 c_jdr_pipeline::c_jdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence) :
   base(name, input_sequence)
 {
@@ -67,7 +84,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
         [&, cctx = ctx(&this_class::_reference_frame_options)]() {
           ctlbind(ctls, "generate_reference_frame", CTL_CONTEXT(cctx, generate_reference_frame));
           ctlbind_browse_for_file(ctls, "reference file name", CTL_CONTEXT(cctx, reference_file_name));
-          ctlbind(ctls, "preprocess input frames", CTL_CONTEXT(cctx, input_image_preprocessor));
+          //ctlbind(ctls, "preprocess input frames", CTL_CONTEXT(cctx, input_image_preprocessor));
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
@@ -99,7 +116,7 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 }
 
 
-bool c_jdr_pipeline::copy_parameters(const base::sptr & dst) const
+bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_jdr_pipeline: base::copyParameters() fails");
@@ -159,16 +176,54 @@ int c_jdr_pipeline::master_frame_index() const
   return _master_options.master_selection.master_frame_index;
 }
 
-bool c_jdr_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
+bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputArray outputMask)
 {
-  return false;
+  lock_guard lock(mutex());
+
+  if ( outputImage.needed() ) {
+    _current_master_frame_candidate.copyTo(outputImage);
+  }
+  if ( outputMask.needed() ) {
+    _current_master_frame_candidate_mask.copyTo(outputMask);
+  }
+  return true;
+
+//  switch (_pipeline_stage) {
+//    case stacking_stage_idle:
+//      if ( outputImage.needed() ) {
+//      }
+//      if ( outputMask.needed() ) {
+//      }
+//      break;
+//    case stacking_stage_generate_reference_frame:
+//      if ( outputImage.needed() ) {
+//        _current_master_frame_candidate.copyTo(outputImage);
+//      }
+//      if ( outputMask.needed() ) {
+//        _current_master_frame_candidate_mask.copyTo(outputMask);
+//      }
+//      return true;
+//    default:
+//      break;
+//  }
+//
+//  return false;
+}
+
+void c_jdr_pipeline::set_pipeline_stage(int newstage)
+{
+  const auto oldstage = _pipeline_stage;
+  if( newstage != oldstage ) {
+    _pipeline_stage = newstage;
+    on_status_update();
+  }
 }
 
 
 bool c_jdr_pipeline::initialize_pipeline()
 {
   if( !base::initialize_pipeline() ) {
-    CF_ERROR("c_image_stacking_pipeline: base::initialize() fails");
+    CF_ERROR("c_jdr_pipeline: base::initialize() fails");
     return false;
   }
 
@@ -274,6 +329,8 @@ bool c_jdr_pipeline::run_pipeline()
   CF_DEBUG("LEAVE");
   return true;
 }
+
+
 
 #if 0
 static int select_master_frame(const c_input_sequence::sptr & input_sequence, const c_master_frame_selection_options & opts,
@@ -432,12 +489,20 @@ bool c_jdr_pipeline::create_reeference_frame()
       return false;
     }
 
-    // master_frame_index = select_master_frame(master_sequence);
+    set_pipeline_stage(stacking_stage_select_master_frame_index);
+
+    master_frame_index = base::select_master_frame(master_sequence, _input_options, _master_options.master_selection);
 
     if ( canceled() ) {
       return false;
     }
 
+    if ( master_frame_index <  0 ) {
+      CF_ERROR("select_master_frame() fails");
+      return false;
+    }
+
+    CF_DEBUG("master_frame_index=%d", master_frame_index);
   }
 
   return true;

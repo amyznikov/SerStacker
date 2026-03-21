@@ -8,6 +8,7 @@
 #include "c_image_stacking_pipeline_base.h"
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/inpaint.h>
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 bool serialize_base_image_stacking_input_options(c_config_setting section, bool save,
@@ -376,7 +377,7 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
       backup_current_pos = input_sequence->current_pos();
       input_sequence->seek(start_pos);
 
-      cv::Mat image, mask, dogs;
+      cv::Mat currentImage, currentMask;
       int current_index, best_index = 0;
       double current_metric, best_metric = 0;
 
@@ -400,14 +401,25 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
           continue;
         }
 
-        if( !read_input_frame(input_sequence, input_opts, image, mask, false, false) ) {
+        if( !read_input_frame(input_sequence, input_opts, currentImage, currentMask, false, false) ) {
           CF_ERROR("read_input_frame() fails");
           break;
         }
 
+        if ( selection_opts.input_image_preprocessor ) {
+          selection_opts.input_image_preprocessor->process(currentImage, currentMask);
+        }
+
+        if ( currentImage.channels() != 1 ) {
+          cv::cvtColor(currentImage, currentImage, cv::COLOR_BGR2GRAY);
+        }
+        if ( currentMask.channels() != 1 ) {
+          reduce_color_channels(currentMask, cv::REDUCE_MAX);
+        }
+
         current_metric =
-            measure.compute(image,
-                mask)[0];
+            measure.compute(currentImage,
+                currentMask)[0];
 
         if( current_metric > best_metric ) {
 
@@ -415,8 +427,8 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
           best_index = current_index;
 
           synchronized([&]() {
-            image.copyTo(_current_master_frame_candidate);
-            mask.copyTo(_current_master_frame_candidate_mask);
+            currentImage.copyTo(_current_master_frame_candidate);
+            currentMask.copyTo(_current_master_frame_candidate_mask);
           });
 
           set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
@@ -433,10 +445,10 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
     }
   }
 
-  synchronized([this]() {
-    _current_master_frame_candidate.release();
-    _current_master_frame_candidate_mask.release();
-  });
+//  synchronized([this]() {
+//    _current_master_frame_candidate.release();
+//    _current_master_frame_candidate_mask.release();
+//  });
 
   return selected_master_frame_index;
 }

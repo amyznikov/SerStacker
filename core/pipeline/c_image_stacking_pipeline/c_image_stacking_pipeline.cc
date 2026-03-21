@@ -85,16 +85,16 @@ const c_enum_member * members_of<frame_upscale_option>()
 }
 
 template<>
-const c_enum_member* members_of<STACKING_STAGE>()
+const c_enum_member* members_of<c_image_stacking_pipeline::STACKING_STAGE>()
 {
   static const c_enum_member members[] = {
-      { stacking_stage_idle, "idle", "idle" },
-      { stacking_stage_initialize, "initialize", "initialize" },
-      { stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
-      { stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
-      { stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
-      { stacking_stage_finishing, "finishing", "finishing" },
-      { stacking_stage_idle },
+      { c_image_stacking_pipeline::stacking_stage_idle, "idle", "idle" },
+      { c_image_stacking_pipeline::stacking_stage_initialize, "initialize", "initialize" },
+      { c_image_stacking_pipeline::stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
+      { c_image_stacking_pipeline::stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
+      { c_image_stacking_pipeline::stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
+      { c_image_stacking_pipeline::stacking_stage_finishing, "finishing", "finishing" },
+      { c_image_stacking_pipeline::stacking_stage_idle },
   };
 
   return members;

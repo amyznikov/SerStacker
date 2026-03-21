@@ -48,17 +48,6 @@ enum frame_upscale_option
   frame_upscale_x30 = 3,
 };
 
-
-enum STACKING_STAGE
-{
-  stacking_stage_idle = 0,
-  stacking_stage_initialize,
-  stacking_stage_select_master_frame_index,
-  stacking_stage_generate_reference_frame,
-  stacking_stage_in_progress,
-  stacking_stage_finishing
-};
-
 struct c_image_stacking_input_options :
     c_image_stacking_pipeline_base_input_options
 {
@@ -207,6 +196,16 @@ public:
   typedef c_image_stacking_pipeline_base base;
   typedef std::shared_ptr<this_class> sptr;
 
+  enum STACKING_STAGE
+  {
+    stacking_stage_idle = 0,
+    stacking_stage_initialize,
+    stacking_stage_select_master_frame_index,
+    stacking_stage_generate_reference_frame,
+    stacking_stage_in_progress,
+    stacking_stage_finishing
+  };
+
   c_image_stacking_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   ~c_image_stacking_pipeline();
 
@@ -316,9 +315,6 @@ protected:
 
 
   std::string _output_file_name;
-
-//  cv::Mat _selected_master_frame;
-//  cv::Mat _selected_master_frame_mask;
 
   c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;

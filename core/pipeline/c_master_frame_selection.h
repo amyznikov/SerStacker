@@ -10,6 +10,7 @@
 #define __c_master_frame_selection_h__
 
 #include <core/io/c_input_sequence.h>
+#include <core/improc/c_image_processor.h>
 #include <core/ctrlbind/ctrlbind.h>
 
 enum master_frame_selection_method
@@ -25,6 +26,7 @@ struct c_master_frame_selection_options
   std::string master_fiename;
   master_frame_selection_method master_selection_method = master_frame_specific_index;
   int master_frame_index = 0;
+  c_image_processor::sptr input_image_preprocessor;
 };
 
 template<class RootObjectType>

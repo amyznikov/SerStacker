@@ -44,12 +44,6 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   using lock_guard = std::lock_guard<std::mutex>;
 
-  struct c_scope_guard {
-    std::function<void()> _fn;
-    template<class F> c_scope_guard(F && f) : _fn(f) {}
-    ~c_scope_guard()  {if (_fn) _fn();}
-  };
-
 public: // pipeline methods
   c_image_processing_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   virtual ~c_image_processing_pipeline();
@@ -92,6 +86,36 @@ public: // pipeline methods
   virtual std::string generate_output_filename(const std::string & ufilename,
       const std::string & postfix,
       const std::string & suffix) const;
+
+
+public:
+  struct c_scope_guard
+  {
+    std::function<void()> _fn;
+
+    template<class F>
+    c_scope_guard(F && f) : _fn(f)
+    {
+    }
+    ~c_scope_guard()
+    {
+      if( _fn ) {
+        _fn();
+      }
+    }
+  };
+
+  template<typename Fn>
+  inline auto synchronized(Fn && fn)
+  {
+    std::scoped_lock lock(mutex());
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
 
 protected:
   virtual bool initialize_pipeline();

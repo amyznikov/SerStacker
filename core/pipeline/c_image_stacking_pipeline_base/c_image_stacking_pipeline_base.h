@@ -10,6 +10,7 @@
 #define __c_image_stacking_pipeline_base_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/pipeline/c_master_frame_selection.h>
 
 struct c_image_stacking_pipeline_base_input_options :
     public c_image_processing_pipeline_input_options
@@ -51,11 +52,18 @@ protected:
       bool is_external_master_frame,
       bool save_raw_bayer);
 
+  int select_master_frame(const c_input_sequence::sptr & input_sequence,
+      const c_image_stacking_pipeline_base_input_options & input_opts,
+      const c_master_frame_selection_options & selection_opts);
+
 protected:
   cv::Mat _darkbayer;
   cv::Mat _flatbayer;
   cv::Mat _raw_bayer_image;
   COLORID _raw_bayer_colorid = COLORID_UNKNOWN;
+
+  cv::Mat _current_master_frame_candidate;
+  cv::Mat _current_master_frame_candidate_mask;
 };
 
 bool serialize_base_image_stacking_input_options(c_config_setting section, bool save,

@@ -9,7 +9,6 @@
 #define __c_stacking_pipeline_h__
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
-#include <core/pipeline/c_master_frame_selection.h>
 #include <core/roi_selection/c_roi_selection.h>
 
 #include <core/average/c_frame_accumulation.h>
@@ -318,8 +317,8 @@ protected:
 
   std::string _output_file_name;
 
-  cv::Mat _selected_master_frame;
-  cv::Mat _selected_master_frame_mask;
+//  cv::Mat _selected_master_frame;
+//  cv::Mat _selected_master_frame_mask;
 
   c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;

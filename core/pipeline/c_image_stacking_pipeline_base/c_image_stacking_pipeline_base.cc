@@ -6,7 +6,9 @@
  */
 
 #include "c_image_stacking_pipeline_base.h"
+#include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/inpaint.h>
+#include <core/debug.h>
 
 bool serialize_base_image_stacking_input_options(c_config_setting section, bool save,
     c_image_stacking_pipeline_base_input_options & opts)
@@ -322,4 +324,119 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
 
 
   return true;
+}
+
+
+int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::sptr & input_sequence,
+    const c_image_stacking_pipeline_base_input_options & input_opts,
+    const c_master_frame_selection_options & selection_opts)
+{
+  INSTRUMENT_REGION("");
+
+  int selected_master_frame_index = 0;
+
+  synchronized([this]() {
+    _current_master_frame_candidate.release();
+    _current_master_frame_candidate_mask.release();
+  });
+
+
+  switch (selection_opts.master_selection_method) {
+
+    case master_frame_specific_index:
+      selected_master_frame_index = selection_opts.master_frame_index;
+      break;
+
+    case master_frame_middle_index:
+      selected_master_frame_index = input_sequence->size() / 2;
+      break;
+
+    case master_frame_best_of_100_in_middle: {
+      c_laplacian_sharpness_measure measure(2, cv::Size(5, 5));
+
+      constexpr int max_frames_to_scan = 2000;
+
+      CF_DEBUG("Scan %d frames around of middle %d",
+          max_frames_to_scan, input_sequence->size() / 2);
+
+      int start_pos, end_pos, backup_current_pos;
+
+      if( input_sequence->size() <= max_frames_to_scan ) {
+        start_pos = 0;
+        end_pos = input_sequence->size();
+      }
+      else {
+        start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
+        end_pos = std::min(input_sequence->size(), start_pos + max_frames_to_scan / 2);
+      }
+
+      //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
+      input_sequence->set_auto_apply_color_matrix(false);
+
+      backup_current_pos = input_sequence->current_pos();
+      input_sequence->seek(start_pos);
+
+      cv::Mat image, mask, dogs;
+      int current_index, best_index = 0;
+      double current_metric, best_metric = 0;
+
+      _total_frames = end_pos - start_pos;
+      _processed_frames = 0;
+      _accumulated_frames = 0;
+
+      on_frame_processed();
+
+      for( current_index = 0; _processed_frames < _total_frames;
+          _processed_frames = ++current_index, on_frame_processed() ) {
+
+        if ( canceled() ) {
+          CF_DEBUG("cancel requested");
+          return -1;
+        }
+
+        if( is_bad_frame_index(input_sequence->current_pos()) ) {
+          CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
+          input_sequence->seek(input_sequence->current_pos() + 1);
+          continue;
+        }
+
+        if( !read_input_frame(input_sequence, input_opts, image, mask, false, false) ) {
+          CF_ERROR("read_input_frame() fails");
+          break;
+        }
+
+        current_metric =
+            measure.compute(image,
+                mask)[0];
+
+        if( current_metric > best_metric ) {
+
+          best_metric = current_metric;
+          best_index = current_index;
+
+          synchronized([&]() {
+            image.copyTo(_current_master_frame_candidate);
+            mask.copyTo(_current_master_frame_candidate_mask);
+          });
+
+          set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
+              "BEST: INDEX=%d METRIC: %g",
+              best_index + start_pos,
+              best_metric));
+        }
+      }
+
+      selected_master_frame_index = best_index + start_pos;
+      input_sequence->seek(backup_current_pos);
+
+      break;
+    }
+  }
+
+  synchronized([this]() {
+    _current_master_frame_candidate.release();
+    _current_master_frame_candidate_mask.release();
+  });
+
+  return selected_master_frame_index;
 }

@@ -19,6 +19,7 @@
 struct c_camera_calibration_input_options :
     c_image_processing_pipeline_input_options
 {
+      c_image_processor::sptr input_image_processor;
 };
 
 struct c_calibrate_camera_options
@@ -98,9 +99,8 @@ public:
   c_camera_calibration_output_options & output_options();
   const c_camera_calibration_output_options & output_options() const;
 
-  bool serialize(c_config_setting setting, bool save) override;
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
+  bool serialize(c_config_setting setting, bool save) override;
   bool copy_parameters(const base::sptr & dst) const override;
 
   static const c_ctlist<this_class> & getcontrols();

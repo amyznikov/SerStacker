@@ -48,14 +48,14 @@ protected Q_SLOTS:
 //  void onSelectedMasterFrameChanged();
 
 protected:
-  QHBoxLayout * layout_ = nullptr;
-  QProgressStrip * progressStrip_ = nullptr;
-  QToolButton * menuButton_ = nullptr;
-  QImageEditor * imageViewer_ = nullptr;
+  QHBoxLayout * _layout = nullptr;
+  QProgressStrip * _progressStrip = nullptr;
+  QToolButton * _menuButton = nullptr;
+  QImageEditor * _imageViewer = nullptr;
 
   int timerId = 0;
-  std::atomic<bool> hasStatusUpdates_ = false;
-  std::atomic<bool> updatingDisplay_ = false;
+  std::atomic<bool> _hasStatusUpdates = false;
+  std::atomic<bool> _updatingDisplay = false;
   // c_slotptr on_status_update;
 };
 

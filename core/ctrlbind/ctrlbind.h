@@ -247,13 +247,42 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
     std::function<void()> && bindMembers)
 {
   using BindType = c_ctlbind<RootObjectType>;
+
   BindType c;
+
   c.cname = cname;
   c.ctype = BindType::CtlType::BeginExpandableGroup;
   ctls.emplace_back(c);
+
   bindMembers();
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
 }
 
+template<class RootObjectType>
+void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, bool> & ectx,
+    std::function<void()> && bindMembers)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+
+  c.cname = cname;
+  c.ctype = BindType::CtlType::BeginExpandableGroup;
+  c.enabled = [offset = ectx.offset](const RootObjectType * obj) {
+    return obj ? *reinterpret_cast<const bool*>( reinterpret_cast<const uint8_t*>(obj) + offset) : false;
+  };
+  ctls.emplace_back(c);
+
+  bindMembers();
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
+}
 
 
 template<class RootObjectType>

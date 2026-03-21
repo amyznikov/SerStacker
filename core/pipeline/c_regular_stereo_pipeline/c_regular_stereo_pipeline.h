@@ -155,8 +155,6 @@ public:
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
-//  c_notification<void()> on_current_frame_changed;
-//  c_notification<void()> on_accumulator_changed;
 
 protected:
   //void update_output_path() override;

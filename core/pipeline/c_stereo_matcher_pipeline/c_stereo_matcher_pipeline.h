@@ -18,6 +18,7 @@
 struct c_stereo_matcher_input_options:
     c_stereo_input_options
 {
+      c_image_processor::sptr input_image_processor;
 };
 
 struct c_stereo_matcher_stereo_rectification_options

@@ -354,27 +354,9 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
   return output_file_name;
 }
 
-
-
 bool c_image_processing_pipeline::canceled() const
 {
   return _canceled;
-}
-
-void c_image_processing_pipeline::set_pipeline_stage(int newstage)
-{
-  const auto oldstage =
-      _pipeline_stage;
-
-  if( newstage != oldstage ) {
-    _pipeline_stage = newstage;
-    on_status_update(); // (oldstage, newstage);
-  }
-}
-
-int c_image_processing_pipeline::pipeline_stage() const
-{
-  return _pipeline_stage;
 }
 
 void c_image_processing_pipeline::set_status_msg(const std::string & msg)
@@ -607,9 +589,7 @@ bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writ
     }
   }
 
-  const auto pos =
-      std::find(_opened_writers.begin(), _opened_writers.end(),
-          &writer);
+  const auto pos = std::find(_opened_writers.begin(), _opened_writers.end(), &writer);
   if( pos == _opened_writers.end() ) {
     _opened_writers.emplace_back(&writer);
   }
@@ -681,9 +661,7 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
   cancel(false);
   set_running(true);
 
-  const c_input_sequence::sptr backup_input_sequence =
-      this->_input_sequence;
-
+  const c_input_sequence::sptr backup_input_sequence = this->_input_sequence;
   if ( input_sequence ) {
     this->_input_sequence = input_sequence;
   }
@@ -717,13 +695,12 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
         );
   }
   catch (const std::exception & e) {
-
+    CF_ERROR("std::exception caught  in c_image_processing_pipeline::run(): %s\n", e.what());
     fOk = false;
-    CF_ERROR("std::exception catched in c_image_processing_pipeline::run(): %s\n", e.what());
   }
   catch (...) {
+    CF_ERROR("Unknown exception caught  in c_image_processing_pipeline::run()\n");
     fOk = false;
-    CF_ERROR("Unknown exception catched in c_image_processing_pipeline::run()\n");
   }
 
   try {
@@ -733,7 +710,7 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
 
     fOk = false;
 
-    CF_ERROR("OpenCV Exception catched in c_image_processing_pipeline::cleanup():\n"
+    CF_ERROR("OpenCV Exception caught in c_image_processing_pipeline::cleanup():\n"
         "%s\n"
         "%s() : %d\n"
         "file : %s\n",
@@ -744,12 +721,12 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
         );
   }
   catch (const std::exception & e) {
+    CF_ERROR("std::exception caught in c_image_processing_pipeline::cleanup(): %s\n", e.what());
     fOk = false;
-    CF_ERROR("std::exception catched in c_image_processing_pipeline::cleanup(): %s\n", e.what());
   }
   catch (...) {
+    CF_ERROR("Unknown exception caught in c_image_processing_pipeline::cleanup()\n");
     fOk = false;
-    CF_ERROR("Unknown exception catched in c_image_processing_pipeline::cleanup()\n");
   }
 
   if ( input_sequence ) {
@@ -768,15 +745,6 @@ bool c_image_processing_pipeline::initialize_pipeline()
 
   cancel(false);
 
-  if ( true ) {
-    lock_guard lock(mutex());
-    _missing_pixel_mask.release();
-    _darkbayer.release();
-    _flatbayer.release();
-    _raw_bayer_image.release();
-  }
-
-
   if ( !_input_sequence || _input_sequence->empty() ) {
     set_status_msg("ERROR: empty input sequence specified");
     return false;
@@ -787,17 +755,11 @@ bool c_image_processing_pipeline::initialize_pipeline()
   _accumulated_frames = 0;
   _statusmsg.clear();
 
-  //gather_badframe_indexes();
-
   return true;
 }
 
-void c_image_processing_pipeline::cleanup_pipeline()
+void c_image_processing_pipeline::close_all_writers()
 {
-  if ( _input_sequence ) {
-    _input_sequence->close();
-  }
-
   for ( c_output_frame_writer * w :  _opened_writers ) {
     if ( w->is_open() ) {
       CF_DEBUG("Closing '%s'", w->filename().c_str());
@@ -811,14 +773,19 @@ void c_image_processing_pipeline::cleanup_pipeline()
       w->close();
     }
   }
+}
+
+void c_image_processing_pipeline::cleanup_pipeline()
+{
+  if( _input_sequence ) {
+    _input_sequence->close();
+  }
+
+  close_all_writers();
 
   _opened_writers.clear();
   _opened_text_writers.clear();
-
   _missing_pixel_mask.release();
-  _darkbayer.release();
-  _flatbayer.release();
-  _raw_bayer_image.release();
 }
 
 bool c_image_processing_pipeline::run_pipeline()
@@ -826,7 +793,6 @@ bool c_image_processing_pipeline::run_pipeline()
   CF_ERROR("c_image_processing_pipeline: Abstract run_pipeline() called");
   return false;
 }
-
 
 bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_input_frames)
 {
@@ -876,12 +842,15 @@ bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_
   return true;
 }
 
+#if 0
 bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
     const c_image_processing_pipeline_input_options & input_options,
     cv::Mat & output_image, cv::Mat & output_mask,
     bool is_external_master_frame,
-    bool save_raw_bayer) const
+    bool save_raw_bayer_image) const
 {
+  INSTRUMENT_REGION("");
+
   //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
@@ -927,6 +896,228 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
       cv::divide(output_image, _flatbayer,
           output_image, output_image.depth());
     }
+
+//    if ( _input_options.enable_bground_normalization ) {
+//      nomalize_image_histogramm(output_image, output_mask, output_image,
+//          _input_options.background_normalization_options,
+//          input_sequence->colorid());
+//    }
+  }
+
+  if ( !is_bayer_pattern(input_sequence->colorid()) ) {
+
+    if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+      output_image.release();
+      return true; // return true with empty output image
+    }
+
+    if ( input_options.filter_bad_pixels ) {
+      remove_bad_pixels(output_image, input_options, false);
+    }
+
+    if( output_image.depth() != CV_32F ) {
+      output_image.convertTo(output_image, CV_32F,
+          1. / ((1 << input_sequence->bpp())));
+    }
+
+  }
+  else {
+
+    if( input_options.detect_bad_asi_frames && input_options.bad_asi_frame_median_hat_threshold ) {
+
+      if( is_corrupted_asi_bayer_frame(output_image, input_sequence->colorid(),
+          input_options.bad_asi_frame_median_hat_threshold) ) {
+        CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+        output_image.release();
+        return true; // return true with empty output image
+      }
+    }
+
+    const DEBAYER_ALGORITHM algo = input_options.debayer_method;
+
+    if ( save_raw_bayer_image /*accumulation_options_.accumulation_method == frame_accumulation_bayer_average*/ ) {
+
+      _raw_bayer_colorid =
+          input_sequence->colorid();
+
+      if( output_image.depth() == CV_32F ) {
+        output_image.copyTo(_raw_bayer_image);
+      }
+      else {
+        output_image.convertTo(_raw_bayer_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+      }
+
+      if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
+        if( !bayer_denoise(_raw_bayer_image, input_options.bad_pixels_variation_threshold) ) {
+          CF_ERROR("bayer_denoise() fails");
+          return false;
+        }
+      }
+    }
+
+
+    switch (algo) {
+
+      case DEBAYER_DISABLE:
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
+        break;
+
+      case DEBAYER_NN:
+        case DEBAYER_VNG:
+        case DEBAYER_EA:
+        case DEBAYER_AVGC:
+        if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
+          CF_ERROR("debayer() fails");
+          return false;
+        }
+//        if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+//          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+//          output_image.release();
+//          return true; // return true with empty output image
+//        }
+        if ( input_options.filter_bad_pixels ) {
+          remove_bad_pixels(output_image, input_options, true);
+        }
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
+        break;
+
+      case DEBAYER_NN2:
+        case DEBAYER_NNR:
+        if( !extract_bayer_planes(output_image, output_image, input_sequence->colorid()) ) {
+          CF_ERROR("extract_bayer_planes() fails");
+          return false;
+        }
+        if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+          output_image.release();
+          return true; // return true with empty output image
+        }
+        if( input_options.filter_bad_pixels ) {
+          remove_bad_pixels(output_image, input_options, true);
+        }
+
+        if( output_image.depth() != CV_32F ) {
+          output_image.convertTo(output_image, CV_32F,
+              1. / ((1 << input_sequence->bpp())));
+        }
+
+        if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
+          CF_ERROR("nninterpolation() fails");
+          return false;
+        }
+
+        break;
+
+      default:
+        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
+            algo, toCString(algo));
+        return false;
+    }
+  }
+
+  if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
+    cv::transform(output_image, output_image,
+        input_sequence->color_matrix());
+  }
+
+  if ( !_missing_pixel_mask.empty() ) {
+
+    if ( output_image.size() != _missing_pixel_mask.size() ) {
+
+      CF_ERROR("Invalid input: "
+          "frame and bad pixel mask sizes not match:\n"
+          "frame size: %dx%d\n"
+          "mask size : %dx%d",
+          output_image.cols, output_image.rows,
+          _missing_pixel_mask.cols, _missing_pixel_mask.rows);
+
+      return false;
+    }
+
+    if ( output_mask.empty() ) {
+      _missing_pixel_mask.copyTo(output_mask);
+    }
+    else {
+      cv::bitwise_and(output_mask, _missing_pixel_mask,
+          output_mask);
+    }
+  }
+
+  if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
+#if 1
+    linear_interpolation_inpaint(output_image, output_mask, output_image);
+#else
+    average_pyramid_inpaint(output_image, output_mask,
+        output_image);
+#endif
+  }
+
+
+  return true;
+}
+
+#elif(0)
+bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
+    const c_image_processing_pipeline_input_options & input_options,
+    cv::Mat & output_image, cv::Mat & output_mask,
+    bool is_external_master_frame,
+    bool save_raw_bayer) const
+{
+  //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
+  input_sequence->set_auto_apply_color_matrix(false);
+
+  if ( !input_sequence->read(output_image, &output_mask) ) {
+    CF_FATAL("input_sequence->read() fails\n");
+    return false;
+  }
+
+  if( !is_external_master_frame ) {
+
+    if( !_darkbayer.empty() ) {
+
+      if( _darkbayer.size() != output_image.size() || _darkbayer.channels() != output_image.channels() ) {
+        CF_FATAL("darkbayer (%dx%d*%d) and input frame (%dx%d*%d) not match",
+            _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(),
+            output_image.cols, output_image.rows, output_image.channels());
+        return false;
+      }
+
+      if( output_image.depth() != CV_32F ) {
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+      }
+
+      cv::subtract(output_image, _darkbayer,
+          output_image);
+    }
+
+
+    if( !_flatbayer.empty() ) {
+
+      if( _flatbayer.size() != output_image.size() || _flatbayer.channels() != output_image.channels() ) {
+        CF_FATAL("flatbayer_ (%dx%d*%d) and input frame (%dx%d*%d) not match",
+            _flatbayer.cols, _flatbayer.rows, _flatbayer.channels(),
+            output_image.cols, output_image.rows, output_image.channels());
+        return false;
+      }
+
+      if( output_image.depth() != CV_32F ) {
+        output_image.convertTo(output_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
+      }
+
+      cv::divide(output_image, _flatbayer,
+          output_image, output_image.depth());
+    }
+
 
     if ( input_options.enable_bground_normalization ) {
       nomalizeImageHistogram(output_image, output_mask, output_image,
@@ -1089,6 +1280,7 @@ bool c_image_processing_pipeline::read_input_frame(const c_input_sequence::sptr 
 
   return true;
 }
+#endif
 
 
 bool c_image_processing_pipeline::open_input_sequence()
@@ -1132,27 +1324,22 @@ c_image_sequence::c_image_sequence(const std::string & name)
 std::string c_image_sequence::get_display_path() const
 {
   std::string path;
-
   if( sources().size() > 0 ) {
     path = get_parent_directory(source(0)->filename());
   }
-  //  else if( current_pipeline_ ) {
-  //    path = current_pipeline_->output_directory();
-  //  }
-
   return path;
 }
 
 void c_image_sequence::set_current_pipeline(const std::string & name)
 {
   const auto pos =
-      std::find_if(pipelines_.begin(), pipelines_.end(),
+      std::find_if(_pipelines.begin(), _pipelines.end(),
           [name](const c_image_processing_pipeline::sptr & pipeline) {
             return name == pipeline->name();
           });
 
-  if( pos != pipelines_.end() ) {
-    current_pipeline_ = *pos;
+  if( pos != _pipelines.end() ) {
+    _current_pipeline = *pos;
   }
 }
 
@@ -1161,132 +1348,104 @@ void c_image_sequence::set_current_pipeline(const c_image_processing_pipeline::s
   if( pipeline ) {
 
     const auto pos =
-        std::find(pipelines_.begin(), pipelines_.end(), pipeline);
+        std::find(_pipelines.begin(), _pipelines.end(), pipeline);
 
-    if( pos == pipelines_.end() ) {
-      pipelines_.emplace_back(pipeline);
+    if( pos == _pipelines.end() ) {
+      _pipelines.emplace_back(pipeline);
     }
 
-    current_pipeline_ = pipeline;
+    _current_pipeline = pipeline;
   }
 }
 
 const c_image_processing_pipeline::sptr& c_image_sequence::current_pipeline() const
 {
-  return current_pipeline_;
+  return _current_pipeline;
 }
 
 const std::vector<c_image_processing_pipeline::sptr>& c_image_sequence::pipelines() const
 {
-  return pipelines_;
+  return _pipelines;
 }
 
 void c_image_sequence::add_pipeline(const c_image_processing_pipeline::sptr & pipeline)
 {
-  pipelines_.emplace_back(pipeline);
+  _pipelines.emplace_back(pipeline);
 
-  if( !current_pipeline_ ) {
-    current_pipeline_ = pipeline;
+  if( !_current_pipeline ) {
+    _current_pipeline = pipeline;
   }
 }
 
 void c_image_sequence::remove_pipeline(const c_image_processing_pipeline::sptr & pipeline)
 {
   const auto pos =
-      std::find(pipelines_.begin(), pipelines_.end(), pipeline);
+      std::find(_pipelines.begin(), _pipelines.end(), pipeline);
 
-  if( pos != pipelines_.end() ) {
+  if( pos != _pipelines.end() ) {
 
-    if ( *pos == current_pipeline_ ) {
-      current_pipeline_.reset();
+    if ( *pos == _current_pipeline ) {
+      _current_pipeline.reset();
     }
 
-    pipelines_.erase(pos);
+    _pipelines.erase(pos);
   }
 }
 
 void c_image_sequence::remove_pipeline(const std::string & name)
 {
   const auto pos =
-      std::find_if(pipelines_.begin(), pipelines_.end(),
+      std::find_if(_pipelines.begin(), _pipelines.end(),
           [name](const c_image_processing_pipeline::sptr & pipeline) {
             return name == pipeline->name();
           });
 
-  if( pos != pipelines_.end() ) {
+  if( pos != _pipelines.end() ) {
 
-    if ( *pos == current_pipeline_ ) {
-      current_pipeline_.reset();
+    if ( *pos == _current_pipeline ) {
+      _current_pipeline.reset();
     }
 
-    pipelines_.erase(pos);
+    _pipelines.erase(pos);
   }
 }
 
 c_image_processing_pipeline::sptr c_image_sequence::find_pipeline(const std::string & name) const
 {
   const auto pos =
-      std::find_if(pipelines_.begin(), pipelines_.end(),
+      std::find_if(_pipelines.begin(), _pipelines.end(),
           [name](const c_image_processing_pipeline::sptr & pipeline) {
             return name == pipeline->name();
           });
 
-  return pos == pipelines_.end() ? nullptr : *pos;
+  return pos == _pipelines.end() ? nullptr : *pos;
 }
 
 bool c_image_sequence::pipeline_exists(const std::string & name) const
 {
   const auto pos =
-      std::find_if(pipelines_.begin(), pipelines_.end(),
+      std::find_if(_pipelines.begin(), _pipelines.end(),
           [name](const c_image_processing_pipeline::sptr & pipeline) {
             return name == pipeline->name();
           });
 
-  return pos != pipelines_.end();
+  return pos != _pipelines.end();
 }
 
 
 bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts)
 {
-  c_config_setting subsection;
-
   SERIALIZE_OPTION(section, save, opts, debayer_method);
-  SERIALIZE_OPTION(section, save, opts, darkbayer_filename);
-  SERIALIZE_OPTION(section, save, opts, flatbayer_filename);
   SERIALIZE_OPTION(section, save, opts, missing_pixel_mask_filename);
   SERIALIZE_OPTION(section, save, opts, missing_pixels_marked_black);
   SERIALIZE_OPTION(section, save, opts, inpaint_missing_pixels);
-  SERIALIZE_OPTION(section, save, opts, filter_bad_pixels);
-  SERIALIZE_OPTION(section, save, opts, detect_bad_asi_frames);
-  SERIALIZE_OPTION(section, save, opts, bad_pixels_variation_threshold);
   SERIALIZE_OPTION(section, save, opts, enable_color_maxtrix);
   SERIALIZE_OPTION(section, save, opts, start_frame_index);
   SERIALIZE_OPTION(section, save, opts, max_input_frames);
 
-  SERIALIZE_OPTION(section, save, opts, enable_bground_normalization);
-  if( (subsection = SERIALIZE_GROUP(section, save, "bground_normalization")) ) {
-    SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, norm_type);
-    SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, stretch);
-    SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, offset);
-  }
-
-  if( save ) {
-    if( opts.input_image_processor ) {
-      save_settings(section, "input_image_processor",
-          opts.input_image_processor->name());
-    }
-  }
-  else {
-    std::string s;
-
-    if( load_settings(section, "input_image_processor", &s) && !s.empty() ) {
-      opts.input_image_processor =
-          c_image_processor_collection::default_instance()->get(s);
-    }
-  }
-
   return true;
 }
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

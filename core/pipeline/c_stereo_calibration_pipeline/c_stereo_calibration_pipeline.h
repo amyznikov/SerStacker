@@ -17,6 +17,7 @@
 struct c_stereo_calibration_input_options :
     c_stereo_input_options
 {
+      c_image_processor::sptr input_image_processor;
 };
 
 

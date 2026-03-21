@@ -20,6 +20,7 @@
 struct c_epipolar_alignment_input_options:
     c_image_processing_pipeline_input_options
 {
+      c_image_processor::sptr input_image_processor;
 };
 
 struct c_epipolar_alignment_camera_options

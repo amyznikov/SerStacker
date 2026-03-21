@@ -21,6 +21,7 @@ struct c_cte_pipeline_input_options:
     c_image_processing_pipeline_input_options
 {
    int read_step = -1;
+   c_image_processor::sptr input_image_processor;
 };
 
 
@@ -114,7 +115,6 @@ public:
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool copy_parameters(const base::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
 

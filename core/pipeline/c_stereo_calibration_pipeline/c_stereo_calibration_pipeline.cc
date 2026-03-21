@@ -143,6 +143,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_stereo_calibration_input_options;
   ctlbind(ctls, as_base<c_stereo_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
 }
 
 template<class RootObjectType>
@@ -239,104 +240,6 @@ const c_ctlist<c_stereo_calibration_pipeline> & c_stereo_calibration_pipeline::g
 
   return ctls;
 }
-
-//const std::vector<c_image_processing_pipeline_ctrl>& c_stereo_calibration_pipeline::get_controls()
-//{
-//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-////
-////  if( ctrls.empty() ) {
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-////      POPULATE_PIPELINE_STEREO_INPUT_OPTIONS(ctrls)
-////      PIPELINE_CTL_GROUP(ctrls, "Input Sequence", "");
-////        POPULATE_PIPELINE_INPUT_OPTIONS(ctrls);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Chessboard corners detection", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.method, "Method", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_size, "chessboard_size", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_cell_size, "chessboard_cell_size", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.chessboard_distance, "chessboard_distance", "distance to chessboard in [m]");
-////
-////
-////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCorners", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options. findChessboardCorners.max_scales, "max_scales", "");
-////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCorners.flags, FindChessboardCornersFlags,"flags", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "findChessboardCornersSB", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.findChessboardCornersSB.max_scales, "max_scales", "");
-////      PIPELINE_CTL_BITFLAGS(ctrls, _chessboard_detection_options.findChessboardCornersSB.flags,FindChessboardCornersSBFlags, "flags", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "cornerSubPix options", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.winSize, "winSize", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.zeroZone, "zeroZone", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.max_solver_iterations, "max_solver_iterations", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.cornerSubPix.solver_eps, "solver_eps", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "BilateralFilter options", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.d, "d", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaColor, "sigmaColor", "");
-////      PIPELINE_CTL(ctrls, _chessboard_detection_options.bilateralFilter.sigmaSpace, "sigmaSpace", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Stereo Calibration", "");
-////      PIPELINE_CTL(ctrls, _calibration_options.enable_calibration, "enable calibration", ""); \
-////      PIPELINE_CTL(ctrls, _calibration_options.min_frames, "min_frames", "");
-////      PIPELINE_CTL(ctrls, _calibration_options.max_frames, "max_frames", "");
-////      PIPELINE_CTL_BITFLAGS(ctrls, _calibration_options.calibration_flags, STEREO_CALIBRATION_FLAGS,  "calibration flags", "" );
-////      PIPELINE_CTL(ctrls, _calibration_options.auto_tune_calibration_flags, "auto_tune_calibration_flags", "")
-////      PIPELINE_CTL(ctrls, _calibration_options.init_camera_matrix_2d, "init_camera_matrix_2d", "")
-////      PIPELINE_CTL(ctrls, _calibration_options.max_iterations, "max solver iterations", "")
-////      PIPELINE_CTL(ctrls, _calibration_options.solver_eps, "solver_eps", "")
-////      PIPELINE_CTL(ctrls, _calibration_options.filter_alpha, "corners filter alpha", "")
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-////      PIPELINE_CTL(ctrls, _output_options.output_intrinsics_filename, "output_intrinsics_filename", "");
-////      PIPELINE_CTL(ctrls, _output_options.output_extrinsics_filename, "output_extrinsics_filename", "");
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Chessboard Frames", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_chessboard_frames, "save_chessboard_frames", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.chessboard_frames_output_options,
-////            _this->_output_options.save_chessboard_frames);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Rectified Frames", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_rectified_frames, "save_rectified_frames", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.rectified_frames_output_options,
-////            _this->_output_options.save_rectified_frames);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Stereo Rectified Frames", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_stereo_rectified_frames, "save_stereo_rectified_frames", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.stereo_rectified_output_options,
-////            _this->_output_options.save_stereo_rectified_frames);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Quad Rectified Frames", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_quad_rectified_frames, "save_quad_rectified_frames", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.quad_rectified_output_options,
-////            _this->_output_options.save_quad_rectified_frames);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Progress Video", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.progress_video_output_options,
-////            _this->_output_options.save_progress_video);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////  }
-//
-//  return ctrls;
-//}
-
 
 bool c_stereo_calibration_pipeline::copy_parameters(const base::sptr & dst) const
 {

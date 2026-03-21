@@ -215,6 +215,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_virtual_stereo_input_options;
   ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
 }
 
 template<class RootObjectType>
@@ -658,9 +659,14 @@ void c_virtual_stereo_pipeline::cleanup_pipeline()
 bool c_virtual_stereo_pipeline::read_input_frame(cv::Mat & output_image, cv::Mat & output_mask)
 {
   // lock_guard lock(mutex());
+  //
+  //  if( !base::read_input_frame(_input_sequence, _input_options, output_image, output_mask, false, false) ) {
+  //    CF_DEBUG("base::read_input_frame() fails");
+  //    return false;
+  //  }
 
-  if( !base::read_input_frame(_input_sequence, _input_options, output_image, output_mask, false, false) ) {
-    CF_DEBUG("base::read_input_frame() fails");
+  if( !_input_sequence->read(_current_image, &_current_mask) ) {
+    CF_DEBUG("input_sequence_->read() fails");
     return false;
   }
 

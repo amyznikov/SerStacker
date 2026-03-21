@@ -1036,18 +1036,18 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 
     t0 = get_realtime_ms();
 
-    _current_status.timings.extract_smflow_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.extract_eccflow_image = (t1 = get_realtime_ms()) - t0, t0 = t1;
 
     if ( eccflow_mask.empty() ) {
       eccflow_mask = ecc_mask;
     }
 
     if( !_eccflow.compute(ecc_image, _current_remap, eccflow_mask) ) {
-      CF_ERROR("smflow_.compute() fails");
+      CF_ERROR("_.compute() fails");
       return false;
     }
 
-    _current_status.timings.smflow_align = (t1 = get_realtime_ms()) - t0, t0 = t1;
+    _current_status.timings.eccflow_align = (t1 = get_realtime_ms()) - t0, t0 = t1;
   }
 
   ///////////////
@@ -1073,8 +1073,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       "extract_ecc_image: %g ms\n"
       "ecc: rho=%g/%g eps=%g/%g iterations=%d/%d  %g ms (%g ms/it)\n"
       "create_remap: %g ms\n"
-      "extract_smflow_image: %g ms\n"
-      "smflow_align: %g ms\n"
+      "extract__image: %g ms\n"
+      "_align: %g ms\n"
       "remap : %g ms\n"
       "",
       total_time,
@@ -1088,8 +1088,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       _current_status.timings.ecc_align, _current_status.timings.ecc_align / (_ecch.num_iterations() + 1),
 
       _current_status.timings.create_remap,
-      _current_status.timings.extract_smflow_image,
-      _current_status.timings.smflow_align,
+      _current_status.timings.extract_eccflow_image,
+      _current_status.timings.eccflow_align,
 
       _current_status.timings.remap
       );

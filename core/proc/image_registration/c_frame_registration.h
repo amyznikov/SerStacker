@@ -231,8 +231,8 @@ struct c_image_registration_status
     double extract_ecc_image = 0;
     double ecc_align = 0;
     double create_remap = 0;
-    double extract_smflow_image = 0;
-    double smflow_align = 0;
+    double extract_eccflow_image = 0;
+    double eccflow_align = 0;
     double remap = 0;
   } timings;
 

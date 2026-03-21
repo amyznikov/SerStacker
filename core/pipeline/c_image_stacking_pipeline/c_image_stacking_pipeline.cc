@@ -261,44 +261,29 @@ c_image_stacking_pipeline::~c_image_stacking_pipeline()
   cancel(true);
 }
 
+const std::string & c_image_stacking_pipeline::get_class_name() const
+{
+  return class_name();
+}
+
+const std::string & c_image_stacking_pipeline::class_name()
+{
+  static const std::string _classname = "image_stacking";
+  return _classname;
+}
+
+const std::string & c_image_stacking_pipeline::tooltip()
+{
+  static const std::string _tooltip =
+      "<strong>c_image_stacking_pipeline.</strong><br>"
+      "Generic pipeline for image stacking<br>";
+  return _tooltip;
+}
+
+
 std::string c_image_stacking_pipeline::output_file_name() const
 {
   return _output_file_name;
-}
-
-const c_anscombe_transform & c_image_stacking_pipeline::anscombe() const
-{
-  return _anscombe;
-}
-
-c_image_stacking_input_options & c_image_stacking_pipeline::input_options()
-{
-  return _input_options;
-}
-
-const c_image_stacking_input_options & c_image_stacking_pipeline::input_options() const
-{
-  return _input_options;
-}
-
-c_frame_upscale_options & c_image_stacking_pipeline::upscale_options()
-{
-  return _upscale_options;
-}
-
-const c_frame_upscale_options & c_image_stacking_pipeline::upscale_options() const
-{
-  return _upscale_options;
-}
-
-c_roi_selection_options & c_image_stacking_pipeline::roi_selection_options()
-{
-  return _roi_selection_options;
-}
-
-const c_roi_selection_options & c_image_stacking_pipeline::roi_selection_options() const
-{
-  return _roi_selection_options;
 }
 
 c_roi_selection::sptr c_image_stacking_pipeline::create_roi_selection() const
@@ -328,26 +313,6 @@ c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(c
       break;
   }
   return nullptr;
-}
-
-c_image_stacking_output_options & c_image_stacking_pipeline::output_options()
-{
-  return _output_options;
-}
-
-const c_image_stacking_output_options & c_image_stacking_pipeline::output_options() const
-{
-  return _output_options;
-}
-
-c_image_processing_options & c_image_stacking_pipeline::image_processing_options()
-{
-  return _image_processing_options;
-}
-
-const c_image_processing_options & c_image_stacking_pipeline::image_processing_options() const
-{
-  return _image_processing_options;
 }
 
 std::string c_image_stacking_pipeline::generate_output_file_name() const
@@ -396,6 +361,20 @@ std::string c_image_stacking_pipeline::generate_output_file_name() const
   return output_file_name;
 }
 
+void c_image_stacking_pipeline::set_pipeline_stage(int newstage)
+{
+  const auto oldstage = _pipeline_stage;
+  if( newstage != oldstage ) {
+    _pipeline_stage = newstage;
+    on_status_update();
+  }
+}
+
+int c_image_stacking_pipeline::pipeline_stage() const
+{
+  return _pipeline_stage;
+}
+
 bool c_image_stacking_pipeline::initialize_pipeline()
 {
   set_pipeline_stage(stacking_stage_initialize);
@@ -425,47 +404,45 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _stacking_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
   }
 
-  _anscombe.set_method(input_options().anscombe);
-
-  if ( roi_selection_options().method != roi_selection_none ) {
+  if ( _roi_selection_options.method != roi_selection_none ) {
     if ( !(_roi_selection = create_roi_selection()) ) {
       set_status_msg("ERROR: create_roi_selection() fails");
       return false;
     }
   }
 
-  if ( !input_options().darkbayer_filename.empty() ) {
+  if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(input_options().darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", input_options().darkbayer_filename.c_str());
+    if ( !load_image(_input_options.darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.darkbayer_filename.c_str());
       return false;
     }
   }
 
-  if ( !input_options().flatbayer_filename.empty() ) {
+  if ( !_input_options.flatbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
-    if ( !load_image(input_options().flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
-      CF_ERROR("load_image('%s') fails.", input_options().flatbayer_filename.c_str());
+    if ( !load_image(_input_options.flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.flatbayer_filename.c_str());
       return false;
     }
   }
 
 
 
-  if ( !input_options().missing_pixel_mask_filename.empty() ) {
+  if ( !_input_options.missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(input_options().missing_pixel_mask_filename, _missing_pixel_mask) ) {
-      CF_ERROR("load_image('%s') fails.", input_options().missing_pixel_mask_filename.c_str());
+    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask) ) {
+      CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
     if ( _missing_pixel_mask.type() != CV_8UC1 ) {
       CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-          input_options().missing_pixel_mask_filename.c_str());
+          _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }
 
-    if ( !input_options().missing_pixels_marked_black ) {
+    if ( !_input_options.missing_pixels_marked_black ) {
       cv::invert(_missing_pixel_mask, _missing_pixel_mask);
     }
   }
@@ -973,7 +950,6 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   if ( !_master_options.generate_master_frame || !_master_options.stop_after_master_frame_generation ) {
 
-
     if( _stacking_options.accumulation.accumulation_method != frame_accumulation_none ) {
       lock_guard lock(mutex());
       if( !(_frame_accumulation = create_frame_accumulation(_stacking_options.accumulation)) ) {
@@ -1053,12 +1029,6 @@ bool c_image_stacking_pipeline::run_image_stacking()
             accumulated_mask,
             accumulated_image);
   #endif
-      }
-
-
-      if ( _anscombe.method() != anscombe_none ) {
-        _anscombe.inverse(accumulated_image,
-            accumulated_image);
       }
 
 
@@ -1207,7 +1177,7 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
 
   if( upscale_required(frame_upscale_before_align, false) ) {
 
-    upscale_image(upscale_options().upscale_option,
+    upscale_image(_upscale_options.upscale_option,
         reference_frame, reference_mask,
         reference_frame, reference_mask);
   }
@@ -1261,21 +1231,6 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
   return true;
 }
 
-//bool c_image_stacking_pipeline::setup_frame_accumulation()
-//{
-//  if ( accumulation_options_.accumulation_method != frame_accumulation_none ) {
-//
-//    lock_guard lock(mutex());
-//
-//    if ( !(frame_accumulation_ = create_frame_accumulation()) ) {
-//      CF_ERROR("ERROR: create_frame_accumulation() fails");
-//      return false;
-//    }
-//  }
-//
-//  return true;
-//}
-
 bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask, double * reference_timestamp)
 {
   set_status_msg("SELECT REFERENCE FRAME ...");
@@ -1308,40 +1263,7 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
     return false;
   }
 
-  is_external_master_file =
-      _input_sequence != master_sequence;
-
-
-//  if ( master_filename.empty() ) {
-//    master_filename =
-//        _input_sequence->
-//            source(master_source_index = 0)->filename();
-//  }
-//  else {
-//
-//    std::vector<c_input_source::sptr>::const_iterator source_pos =
-//        std::find_if(this->input_sequence()->sources().begin(), this->input_sequence()->sources().end(),
-//            [&master_options](const c_input_source::sptr & s ) -> bool {
-//              return s->filename() == master_options.master_selection.master_fiename;
-//            });
-//
-//    if ( source_pos != this->_input_sequence->sources().end() ) {
-//      master_source_index = source_pos - this->_input_sequence->sources().begin();
-//    }
-//  }
-//
-//  if ( master_source_index >= 0 ) {
-//    master_sequence = this->input_sequence();
-//    // is_external_master_file = false;
-//  }
-//  else if ( !(master_sequence = c_input_sequence::create(master_filename)) ) {
-//    CF_ERROR("ERROR: c_input_sequence::create(master_file_name_=%s) fails", master_filename.c_str());
-//    return false;
-//  }
-//  else {
-//    is_external_master_file = true;
-//    master_source_index = 0;
-//  }
+  is_external_master_file = _input_sequence != master_sequence;
 
   if ( master_source_index >= (int) master_sequence->sources().size() ) {
     CF_FATAL("ERROR: master_source_index=%d exceeds input_sequence->sources().size()=%zu",
@@ -1350,14 +1272,12 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
   }
 
   if ( !master_sequence->source(master_source_index)->enabled() ) {
-    CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence",
-        master_source_index);
+    CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence", master_source_index);
     return false;
   }
 
   if ( !master_sequence->open() ) {
-    CF_FATAL("ERROR: Can not open master input source '%s'",
-        master_filename.c_str());
+    CF_FATAL("ERROR: Can not open master input source '%s'", master_filename.c_str());
     return false;
   }
 
@@ -1367,8 +1287,7 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
 
   set_pipeline_stage(stacking_stage_select_master_frame_index);
 
-  master_frame_index =
-      select_master_frame(master_sequence);
+  master_frame_index = select_master_frame(master_sequence);
 
   if ( canceled() ) {
     return false;
@@ -1455,8 +1374,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
 {
   INSTRUMENT_REGION("");
 
-  const c_image_stacking_master_options & master_options =
-      _master_options;
+  const c_image_stacking_master_options & master_options = _master_options;
 
   if( !input_sequence->seek(master_frame_pos) ) {
     CF_ERROR("ERROR: input_sequence->seek(master_frame_pos=%d) fails", master_frame_pos);
@@ -1471,7 +1389,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       _master_options.accumulation.accumulation_method ==
           frame_accumulation_bayer_average;
 
-  if( !read_input_frame(input_sequence, reference_frame, reference_mask, is_external_master_file, save_raw_bayer_image) ) {
+  if( !read_input_frame(input_sequence, _input_options, reference_frame, reference_mask, is_external_master_file, save_raw_bayer_image) ) {
     CF_FATAL("read_input_frame(reference_frame) fails for master_frame_pos=%d",
         master_frame_pos);
     return false;
@@ -1662,34 +1580,13 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   return true;
 }
 
-
 bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::sptr & input_sequence, int startpos, int endpos)
 {
   INSTRUMENT_REGION("");
 
-  class c_auto_close_video_writers
-  {
-    c_image_stacking_pipeline * _this;
-  public:
-    c_auto_close_video_writers(c_image_stacking_pipeline * _ths) :
-      _this(_ths)
-    {
-    }
-
-    ~c_auto_close_video_writers()
-    {
-      _this->_preprocessed_video_writer.close();
-      _this->_sparse_match_blend_writer.close();
-      _this->_ecc_writer.close();
-      _this->_eccflow_writer.close();
-      _this->_aligned_video_writer.close();
-      _this->_incremental_video_writer.close();
-      _this->_accumulation_masks_writer.close();
-      _this->_sparse_matches_video_writer.close();
-    }
-
-  } auto_close_video_writers(this);
-
+  c_scope_guard auto_close_video_writers([this]() {
+    close_all_writers();
+  });
 
   cv::Mat current_frame, current_mask, current_weights;
   cv::Mat2f current_remap;
@@ -1757,7 +1654,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       break;
     }
 
-    if ( !read_input_frame(input_sequence, current_frame, current_mask, false, save_raw_bayer_image) ) {
+    if ( !read_input_frame(input_sequence, _input_options, current_frame, current_mask, false, save_raw_bayer_image) ) {
       set_status_msg("read_input_frame() fails");
       break;
     }
@@ -2238,250 +2135,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 }
 
 
-bool c_image_stacking_pipeline::read_input_frame(const c_input_sequence::sptr & input_sequence,
-    cv::Mat & output_image, cv::Mat & output_mask,
-    bool is_external_master_frame,
-    bool save_raw_bayer_image) const
-{
-  INSTRUMENT_REGION("");
-
-  //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
-  input_sequence->set_auto_apply_color_matrix(false);
-
-  if ( !input_sequence->read(output_image, &output_mask) ) {
-    CF_FATAL("input_sequence->read() fails\n");
-    return false;
-  }
-
-  if( !is_external_master_frame ) {
-
-    if( !_darkbayer.empty() ) {
-
-      if( _darkbayer.size() != output_image.size() || _darkbayer.channels() != output_image.channels() ) {
-        CF_FATAL("darkbayer (%dx%d*%d) and input frame (%dx%d*%d) not match",
-            _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(),
-            output_image.cols, output_image.rows, output_image.channels());
-        return false;
-      }
-
-      if( output_image.depth() != CV_32F ) {
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
-      }
-
-      cv::subtract(output_image, _darkbayer,
-          output_image);
-    }
-
-    if( !_flatbayer.empty() ) {
-
-      if( _flatbayer.size() != output_image.size() || _flatbayer.channels() != output_image.channels() ) {
-        CF_FATAL("flatbayer_ (%dx%d*%d) and input frame (%dx%d*%d) not match",
-            _flatbayer.cols, _flatbayer.rows, _flatbayer.channels(),
-            output_image.cols, output_image.rows, output_image.channels());
-        return false;
-      }
-
-      if( output_image.depth() != CV_32F ) {
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
-      }
-
-      cv::divide(output_image, _flatbayer,
-          output_image, output_image.depth());
-    }
-
-//    if ( _input_options.enable_bground_normalization ) {
-//      nomalize_image_histogramm(output_image, output_mask, output_image,
-//          _input_options.background_normalization_options,
-//          input_sequence->colorid());
-//    }
-  }
-
-  if ( !is_bayer_pattern(input_sequence->colorid()) ) {
-
-    if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-      output_image.release();
-      return true; // return true with empty output image
-    }
-
-    if ( _input_options.filter_bad_pixels ) {
-      remove_bad_pixels(output_image, _input_options, false);
-    }
-
-    if( output_image.depth() != CV_32F ) {
-      output_image.convertTo(output_image, CV_32F,
-          1. / ((1 << input_sequence->bpp())));
-    }
-
-  }
-  else {
-
-    if( _input_options.detect_bad_asi_frames && _input_options.bad_asi_frame_median_hat_threshold ) {
-
-      if( is_corrupted_asi_bayer_frame(output_image, input_sequence->colorid(),
-          _input_options.bad_asi_frame_median_hat_threshold) ) {
-        CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-        output_image.release();
-        return true; // return true with empty output image
-      }
-
-//      cv::Mat tmp;
-//      if ( !extract_bayer_planes(output_image, tmp, input_sequence->colorid()) ) {
-//        CF_ERROR("extract_bayer_planes() fails");
-//        output_image.release();
-//        return false;
-//      }
-//
-//      CF_DEBUG("Check for corrupted_asi_frame");
-//
-//      if ( is_corrupted_asi_frame(tmp) ) {
-//        CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-//        output_image.release();
-//        return true; // return true with empty output image
-//      }
-//
-//      CF_DEBUG("Check OK");
-//
-    }
-
-    const DEBAYER_ALGORITHM algo =
-        _input_options.debayer_method;
-
-    if ( save_raw_bayer_image /*accumulation_options_.accumulation_method == frame_accumulation_bayer_average*/ ) {
-
-      _raw_bayer_colorid =
-          input_sequence->colorid();
-
-      if( output_image.depth() == CV_32F ) {
-        output_image.copyTo(_raw_bayer_image);
-      }
-      else {
-        output_image.convertTo(_raw_bayer_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
-      }
-
-      if( _input_options.filter_bad_pixels && _input_options.bad_pixels_variation_threshold > 0 ) {
-        if( !bayer_denoise(_raw_bayer_image, _input_options.bad_pixels_variation_threshold) ) {
-          CF_ERROR("bayer_denoise() fails");
-          return false;
-        }
-      }
-    }
-
-
-    switch (algo) {
-
-      case DEBAYER_DISABLE:
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
-        case DEBAYER_AVGC:
-        if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
-          CF_ERROR("debayer() fails");
-          return false;
-        }
-//        if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-//          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-//          output_image.release();
-//          return true; // return true with empty output image
-//        }
-        if ( _input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, _input_options, true);
-        }
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN2:
-        case DEBAYER_NNR:
-        if( !extract_bayer_planes(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("extract_bayer_planes() fails");
-          return false;
-        }
-        if( _input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-          output_image.release();
-          return true; // return true with empty output image
-        }
-        if( _input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, _input_options, true);
-        }
-
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-
-        if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("nninterpolation() fails");
-          return false;
-        }
-
-        break;
-
-      default:
-        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toCString(algo));
-        return false;
-    }
-  }
-
-  if( _input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
-    cv::transform(output_image, output_image,
-        input_sequence->color_matrix());
-  }
-
-  if ( _anscombe.method() != anscombe_none ) {
-    _anscombe.apply(output_image, output_image);
-  }
-
-  if ( !_missing_pixel_mask.empty() ) {
-
-    if ( output_image.size() != _missing_pixel_mask.size() ) {
-
-      CF_ERROR("Invalid input: "
-          "frame and bad pixel mask sizes not match:\n"
-          "frame size: %dx%d\n"
-          "mask size : %dx%d",
-          output_image.cols, output_image.rows,
-          _missing_pixel_mask.cols, _missing_pixel_mask.rows);
-
-      return false;
-    }
-
-    if ( output_mask.empty() ) {
-      _missing_pixel_mask.copyTo(output_mask);
-    }
-    else {
-      cv::bitwise_and(output_mask, _missing_pixel_mask,
-          output_mask);
-    }
-  }
-
-  if ( !output_mask.empty() && _input_options.inpaint_missing_pixels ) {
-#if 1
-    linear_interpolation_inpaint(output_image, output_mask,
-        output_image);
-#else
-    average_pyramid_inpaint(output_image, output_mask,
-        output_image);
-#endif
-  }
-
-
-  return true;
-}
-
 bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::sptr & roi_selection,
     const cv::Mat & src, const cv::Mat & srcmask,
     cv::Mat & dst, cv::Mat & dstmask)
@@ -2517,42 +2170,6 @@ bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::sptr & r
 
   return true;
 }
-
-
-void c_image_stacking_pipeline::remove_bad_pixels(cv::Mat & image,
-    const c_image_stacking_input_options & input_optons,
-    bool isbayer)
-{
-  INSTRUMENT_REGION("");
-
-  cv::Mat medianImage, variationImage, meanVariationImage;
-  double minimal_mean_variation_for_very_smooth_images;
-
-  // threshold = estimate_noise(image);
-  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
-    minimal_mean_variation_for_very_smooth_images = 1e-3;
-  }
-  else {
-    minimal_mean_variation_for_very_smooth_images = 1;
-  }
-
-  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
-  cv::absdiff(image, medianImage, variationImage);
-
-  static float K[3*3] = {
-      1./8, 1./8, 1./8,
-      1./8, 0.0,  1./8,
-      1./8, 1./8, 1./8,
-  };
-
-  static const cv::Mat1f SE(3,3, K);
-
-  cv::filter2D(variationImage, meanVariationImage, -1, SE);
-  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
-
-  medianImage.copyTo(image, variationImage > input_optons.bad_pixels_variation_threshold * meanVariationImage);
-}
-
 
 void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
     cv::InputArray srcmap,
@@ -2764,9 +2381,6 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
           CF_ERROR("frame_accumulation_->compute() fails");
           return false;
         }
-        if( !dst.empty() && anscombe().method() != anscombe_none ) {
-          anscombe().inverse(dst.getMatRef(), dst.getMatRef());
-        }
         return true;
       }
       break;
@@ -2783,9 +2397,7 @@ bool c_image_stacking_pipeline::upscale_required(frame_upscale_stage current_sta
     return false;
   }
 
-  const c_frame_upscale_options & opts =
-      upscale_options();
-
+  const c_frame_upscale_options & opts = _upscale_options;
   return opts.upscale_option != frame_upscale_none  && current_stage == opts.upscale_stage;
 }
 
@@ -2892,7 +2504,7 @@ int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr 
           continue;
         }
 
-        if( !read_input_frame(input_sequence, image, mask, false, false) ) {
+        if( !read_input_frame(input_sequence, _input_options, image, mask, false, false) ) {
           CF_ERROR("read_input_frame() fails");
           return false;
         }
@@ -2947,8 +2559,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   SERIALIZE_OPTION(settings, save, *this, _camera_intrinsics);
 
   if( (section = get_group(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, _input_options);
-    SERIALIZE_OPTION(section, save, _input_options, anscombe);
+    serialize_base_image_stacking_input_options(section, save, _input_options);
   }
 
   if( (section = get_group(settings, save, "roi")) ) {
@@ -3223,41 +2834,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_input_options> & ctx)
-{
-  using S = c_image_stacking_input_options;
-  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
-  ctlbind(ctls, "anscombe", ctx(&S::anscombe), "");
-}
-
-//template<class RootObjectType>
-//static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_roi_selection_options> & ctx)
-//{
-//  using S = c_roi_selection_options;
-//  ctlbind(ctls, "ROI selection:", ctx(&S::method), "");
-//
-//  ctlbind_expandable_group(ctls, "rectange crop...");
-//    ctlbind(ctls, "Rectangle:", ctx(&S::rectangle_roi_selection), "");// , (_this->_roi_selection_options.method == roi_selection_rectange_crop));
-//  ctlbind_end_group(ctls);
-//
-//  ctlbind_expandable_group(ctls, "planetary disk crop...");
-//    ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), ""); // , "", (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-//    ctlbind(ctls, "gbsigma", ctx(&S::planetary_disk_gbsigma), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-//    ctlbind(ctls, "Stdev factor", ctx(&S::planetary_disk_stdev_factor), "");// (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-//    ctlbind(ctls, "se_close_size", ctx(&S::se_close_size), ""); //  (_this->_roi_selection_options.method == roi_selection_planetary_disk));
-//  ctlbind_end_group(ctls);
-//}
-//
-template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_upscale_options> & ctx)
-{
-  using S = c_frame_upscale_options;
-  ctlbind(ctls, "Upscale:", ctx(&S::upscale_option), "");
-  ctlbind(ctls, "Stage:", ctx(&S::upscale_stage), ""); // (_this->_upscale_options.upscale_option != frame_upscale_none));
-}
-
-
-template<class RootObjectType>
 static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectType> & ctls,
     const c_ctlbind_context<RootObjectType, c_image_stacking_master_options> & ctx)
 {
@@ -3290,13 +2866,13 @@ static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectTy
   ctlbind_end_group(ctls);
 }
 
-template<class RootObjectType>
-static inline void ctlbind_master_accumulation_options(c_ctlist<RootObjectType> & ctls,
-    const c_ctlbind_context<RootObjectType, c_image_stacking_master_options> & ctx)
-{
-  using S = c_image_stacking_master_options;
-  ctlbind(ctls, ctx(&S::accumulation));
-}
+//template<class RootObjectType>
+//static inline void ctlbind_master_accumulation_options(c_ctlist<RootObjectType> & ctls,
+//    const c_ctlbind_context<RootObjectType, c_image_stacking_master_options> & ctx)
+//{
+//  using S = c_image_stacking_master_options;
+//  ctlbind(ctls, ctx(&S::accumulation));
+//}
 
 template<class RootObjectType>
 static inline void ctlbind_stack_registration_options(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_options> & ctx)
@@ -3321,15 +2897,7 @@ static inline void ctlbind_stack_registration_options(c_ctlist<RootObjectType> &
 }
 
 template<class RootObjectType>
-static inline void ctlbind_stack_accumulation_options(c_ctlist<RootObjectType> & ctls,
-    const c_ctlbind_context<RootObjectType, c_image_stacking_options> & ctx)
-{
-  using S = c_image_stacking_options;
-  ctlbind(ctls, ctx(&S::accumulation));
-}
-
-template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_laplacian_pyramid_focus_stacking::options> & ctx)
+static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_laplacian_pyramid_focus_stacking::options> & ctx)
 {
   using S = c_laplacian_pyramid_focus_stacking::options;
 
@@ -3342,7 +2910,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_accumulation_options> & ctx)
+static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_frame_accumulation_options> & ctx)
 {
   using S = c_frame_accumulation_options;
 
@@ -3372,86 +2940,11 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 }
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_options> & ctx)
-{
-  using S = c_image_processing_options;
-
-  ctlbind(ctls, "ecc_image_processor", ctx(&S::ecc_image_processor), "");
-  ctlbind(ctls, "aligned_image_processor", ctx(&S::aligned_image_processor), "");
-  ctlbind(ctls, "incremental_frame_processor", ctx(&S::incremental_frame_processor), "");
-  ctlbind(ctls, "accumulated_image_processor", ctx(&S::accumulated_image_processor), "");
-}
-
-template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_eccflow_output_frame_writer_options> & ctx)
+static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_eccflow_output_frame_writer_options> & ctx)
 {
   using S = c_eccflow_output_frame_writer_options;
   ctlbind(ctls, as_base<c_output_frame_writer_options>(ctx));
-  ctlbind(ctls, "hsv_max_motion", ctx(&S::hsv_max_motion),  ""); // , (_this->_output_options.save_eccflow_frames));
-}
-
-template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_stacking_output_options> & ctx)
-{
-  using S = c_image_stacking_output_options;
-
-  ctlbind(ctls, "display_type", ctx(&S::default_display_type), "display_type");
-  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "output_directory");
-  ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
-  //
-  ctlbind(ctls, "write_image_mask_as_alpha_channel", ctx(&S::write_image_mask_as_alpha_channel), "");
-  ctlbind(ctls, "dump_reference_data_for_debug", ctx(&S::dump_reference_data_for_debug), "");
-  ctlbind(ctls, "debug_frame_registration", ctx(&S::debug_frame_registration), "");
-  ctlbind(ctls, "debug_frame_registration_frame_indexes", ctx(&S::debug_frame_registration_frame_indexes), ""); // , "", (_this->_output_options.debug_frame_registration));
-
-  ctlbind_expandable_group(ctls, "Save Preprocessed Frames", "");
-    ctlbind(ctls, "save_preprocessed_frames", ctx(&S::save_preprocessed_frames), "");
-    ctlbind(ctls, ctx(&S::output_preprocessed_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save Feature Frames", "");
-  ctlbind(ctls,  "save_feature_frames", ctx(&S::save_feature_frames), "save_feature_frames");
-  ctlbind(ctls, ctx(&S::output_feature_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save ECC Frames", "");
-  ctlbind(ctls,  "save_ecc_frames", ctx(&S::save_ecc_frames), "save_ecc_frames");
-  ctlbind(ctls, ctx(&S::output_ecc_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
-    ctlbind(ctls, "save_aligned_frames", ctx(&S::save_aligned_frames), "");
-    ctlbind(ctls, ctx(&S::output_aligned_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save ACC Masks", "");
-  ctlbind(ctls,  "save_accumulation_masks", ctx(&S::save_accumulation_masks), "");
-  ctlbind(ctls, ctx(&S::output_acc_masks_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save Incremental Frames", "");
-  ctlbind(ctls,  "save_incremental_frames", ctx(&S::save_incremental_frames), "");
-  ctlbind(ctls, ctx(&S::output_incremental_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save eccflow maps", "");
-    ctlbind(ctls, "save_eccflow_maps", ctx(&S::save_eccflow_frames), "");
-    ctlbind(ctls, ctx(&S::output_eccflow_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save sparse matches video", "");
-    ctlbind(ctls,   "save_sparse_matches_video", ctx(&S::save_sparse_matches_video), "");
-    ctlbind(ctls, ctx(&S::output_sparse_matches_video_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save sparse match blends", "");
-    ctlbind(ctls,   "save sparse match blends", ctx(&S::save_sparse_match_blend_frames), "");
-    ctlbind(ctls, ctx(&S::output_sparse_match_blend_options));
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "Save Acc Weights", "");
-    ctlbind(ctls,  "save acc weights", ctx(&S::save_acc_weights), "");
-  ctlbind_end_group(ctls);
+  ctlbind(ctls, "hsv_max_motion", ctx(&S::hsv_max_motion),  "");
 }
 
 const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontrols()
@@ -3461,9 +2954,10 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
     c_ctlbind_context<this_class> ctx;
 
     ////////
-    ctlbind_expandable_group(ctls, "1. Input options", "");
-      ctlbind(ctls, ctx(&this_class::_input_options));
-    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "1. Input options",
+        [&, cctx = ctx(&this_class::_input_options)]() {
+          ctlbind(ctls, as_base<c_image_stacking_pipeline_base_input_options>(cctx));
+        });
 
     ////////
     ctlbind_expandable_group(ctls, "2. ROI options", "");
@@ -3471,44 +2965,114 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
     ctlbind_end_group(ctls);
 
     ////////
-    ctlbind_expandable_group(ctls, "3. Upscale options", "");
-      ctlbind(ctls, ctx(&this_class::_upscale_options));
-    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "3. Upscale options",
+        [&, cctx = ctx(&this_class::_upscale_options)]() {
+          ctlbind(ctls, "Upscale:", CTL_CONTEXT(cctx, upscale_option), "");
+          ctlbind(ctls, "Stage:", CTL_CONTEXT(cctx, upscale_stage), "");
+        });
 
     ////////
     ctlbind_expandable_group(ctls, "4. Frame Registration", "");
-      ctlbind_expandable_group(ctls, "4.1 Master Frame", "");
-        ctlbind_master_frame_generation_options(ctls,  ctx(&this_class::_master_options));
-      ctlbind_end_group(ctls);
-      ctlbind_expandable_group(ctls, "4.2 Stack Registration", "");
-        ctlbind_stack_registration_options(ctls, ctx(&this_class::_stacking_options));
-      ctlbind_end_group(ctls);
-      ctlbind_expandable_group(ctls, "Camera Matrix", "For Epipolar geometry only");
-        ctlbind(ctls, "",  ctx(&this_class::_camera_intrinsics), "Applied for Epipolar geometry only");
-      ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "4.1 Master Frame",
+          [&, cctx = ctx(&this_class::_master_options)]() {
+            ctlbind_master_frame_generation_options(ctls,  cctx);
+      });
+      ctlbind_expandable_group(ctls, "4.2 Stack Registration",
+          [&, cctx = ctx(&this_class::_stacking_options)]() {
+            ctlbind_stack_registration_options(ctls, cctx);
+      });
+      ctlbind_expandable_group(ctls, "Camera Matrix",
+          [&, cctx = ctx(&this_class::_camera_intrinsics)]() {
+            ctlbind(ctls, "",  cctx, "Applied for Epipolar geometry only");
+      });
     ctlbind_end_group(ctls);
 
 
     ////////
     ctlbind_expandable_group(ctls, "5. Frame accumulation", "");
-      ctlbind_expandable_group(ctls, "Master Frame accumulation", ctx(&this_class::_master_options)(&c_image_stacking_master_options::generate_master_frame)); // _this->_master_options.generate_master_frame);
-        ctlbind_master_accumulation_options(ctls, ctx(&this_class::_master_options));
-      ctlbind_end_group(ctls);
-      ctlbind_expandable_group(ctls, "Stack Frame accumulation", "");
-        ctlbind_stack_accumulation_options(ctls, ctx(&this_class::_stacking_options));
-      ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "Master Frame accumulation",
+          ctx(&this_class::_master_options)(&c_image_stacking_master_options::generate_master_frame),
+          [&, cctx = ctx(&this_class::_master_options)]() {
+            ctlbind(ctls, CTL_CONTEXT(cctx, accumulation));
+          });
+      ctlbind_expandable_group(ctls, "Stack Frame accumulation",
+          [&, cctx = ctx(&this_class::_stacking_options)]() {
+            ctlbind(ctls, CTL_CONTEXT(cctx, accumulation));
+          });
     ctlbind_end_group(ctls);
 
 
     ////////
-    ctlbind_expandable_group(ctls, "6. Image processing", "");
-      ctlbind(ctls, ctx(&this_class::_image_processing_options));
-    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "6. Image processing",
+        [&, cctx = ctx(&this_class::_image_processing_options)]() {
+          ctlbind(ctls, "ecc_image_processor", CTL_CONTEXT(cctx, ecc_image_processor), "");
+          ctlbind(ctls, "aligned_image_processor", CTL_CONTEXT(cctx, aligned_image_processor), "");
+          ctlbind(ctls, "incremental_frame_processor", CTL_CONTEXT(cctx, incremental_frame_processor), "");
+          ctlbind(ctls, "accumulated_image_processor", CTL_CONTEXT(cctx, accumulated_image_processor), "");
+        });
 
     ////////
-    ctlbind_expandable_group(ctls, "7. Output options", "");
-      ctlbind(ctls, ctx(&this_class::_output_options));
-    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "7. Output options",
+        [&, cctx = ctx(&this_class::_output_options)]() {
+
+          ctlbind(ctls, "display_type", CTL_CONTEXT(cctx, default_display_type), "display_type");
+          ctlbind_browse_for_directory(ctls, "output_directory",CTL_CONTEXT(cctx, output_directory), "output_directory");
+          ctlbind_browse_for_file(ctls, "output_file_name",CTL_CONTEXT(cctx, output_file_name), "output_file_name");
+
+          ctlbind(ctls, "write_image_mask_as_alpha_channel",CTL_CONTEXT(cctx, write_image_mask_as_alpha_channel), "");
+          ctlbind(ctls, "dump_reference_data_for_debug",CTL_CONTEXT(cctx, dump_reference_data_for_debug), "");
+          ctlbind(ctls, "debug_frame_registration",CTL_CONTEXT(cctx, debug_frame_registration), "");
+          ctlbind(ctls, "debug_frame_registration_frame_indexes",CTL_CONTEXT(cctx, debug_frame_registration_frame_indexes), "");
+
+          ctlbind_expandable_group(ctls, "Save Preprocessed Frames", "");
+            ctlbind(ctls, "save_preprocessed_frames",CTL_CONTEXT(cctx, save_preprocessed_frames), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_preprocessed_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save Feature Frames", "");
+            ctlbind(ctls, "save_feature_frames",CTL_CONTEXT(cctx, save_feature_frames), "save_feature_frames");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_feature_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save ECC Frames", "");
+            ctlbind(ctls, "save_ecc_frames",CTL_CONTEXT(cctx, save_ecc_frames), "save_ecc_frames");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_ecc_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
+            ctlbind(ctls, "save_aligned_frames",CTL_CONTEXT(cctx, save_aligned_frames), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_aligned_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save ACC Masks", "");
+            ctlbind(ctls, "save_accumulation_masks",CTL_CONTEXT(cctx, save_accumulation_masks), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_acc_masks_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save Incremental Frames", "");
+            ctlbind(ctls, "save_incremental_frames",CTL_CONTEXT(cctx, save_incremental_frames), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_incremental_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save eccflow maps", "");
+            ctlbind(ctls, "save_eccflow_maps",CTL_CONTEXT(cctx, save_eccflow_frames), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_eccflow_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save sparse matches video", "");
+            ctlbind(ctls, "save_sparse_matches_video",CTL_CONTEXT(cctx, save_sparse_matches_video), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_sparse_matches_video_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save sparse match blends", "");
+            ctlbind(ctls, "save sparse match blends",CTL_CONTEXT(cctx, save_sparse_match_blend_frames), "");
+            ctlbind(ctls,CTL_CONTEXT(cctx, output_sparse_match_blend_options));
+          ctlbind_end_group(ctls);
+
+          ctlbind_expandable_group(ctls, "Save Acc Weights", "");
+            ctlbind(ctls, "save acc weights",CTL_CONTEXT(cctx, save_acc_weights), "");
+          ctlbind_end_group(ctls);
+      });
   }
 
   return ctls;
@@ -3540,7 +3104,7 @@ int c_image_stacking_pipeline::master_frame_index() const
   return _master_options.master_selection.master_frame_index;
 }
 
-bool c_image_stacking_pipeline::copy_parameters(const base::sptr & dst) const
+bool c_image_stacking_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_image_stacking_pipeline::base::copyParameters() fails");

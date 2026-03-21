@@ -392,17 +392,17 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
   _matched_reference_positions.clear();
   _matched_current_positions.clear();
 
-  CF_DEBUG("current_image: %dx%d %d channels", current_image.cols(), current_image.rows(), current_image.channels());
-  CF_DEBUG("current_mask: %dx%d %d channels", current_mask.cols(), current_mask.rows(), current_mask.channels());
-  CF_DEBUG("_reference_image: %dx%d %d channels", _reference_image.cols, _reference_image.rows, _reference_image.channels());
-  CF_DEBUG("_reference_mask: %dx%d %d channels", _reference_mask.cols, _reference_mask.rows, _reference_mask.channels());
+//  CF_DEBUG("current_image: %dx%d %d channels", current_image.cols(), current_image.rows(), current_image.channels());
+//  CF_DEBUG("current_mask: %dx%d %d channels", current_mask.cols(), current_mask.rows(), current_mask.channels());
+//  CF_DEBUG("_reference_image: %dx%d %d channels", _reference_image.cols, _reference_image.rows, _reference_image.channels());
+//  CF_DEBUG("_reference_mask: %dx%d %d channels", _reference_mask.cols, _reference_mask.rows, _reference_mask.channels());
 
   try {
 
     if ( _matcher ) {
 
       detectAndCompute(current_image, current_mask, _current_keypoints, _current_descriptors);
-      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%zu", _current_keypoints.size(), _current_descriptors.rows);
+      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%d", _current_keypoints.size(), _current_descriptors.rows);
 
       if( !_matcher->match(_current_keypoints, _current_descriptors, _current_matches) ) {
         CF_ERROR("matcher_->match() fails");

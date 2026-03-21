@@ -179,6 +179,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_stereo_matcher_input_options;
   ctlbind(ctls, as_base<c_stereo_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
 }
 
 template<class RootObjectType>

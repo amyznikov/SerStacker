@@ -9,14 +9,14 @@
 #ifndef __c_live_stacking_pipeline_h__
 #define __c_live_stacking_pipeline_h__
 
-#include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/improc/c_image_processor.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/settings/opencv_settings.h>
 
 struct c_live_stacking_input_options:
-    c_image_processing_pipeline_input_options
+    c_image_stacking_pipeline_base_input_options
 {
 };
 
@@ -59,51 +59,22 @@ struct c_live_stacking_output_options:
 };
 
 class c_live_stacking_pipeline :
-    public c_image_processing_pipeline
+    public c_image_stacking_pipeline_base
 {
 public:
   typedef c_live_stacking_pipeline this_class;
-  typedef c_image_processing_pipeline base;
+  typedef c_image_stacking_pipeline_base base;
   typedef std::shared_ptr<this_class> sptr;
 
   c_live_stacking_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
-  const std::string& get_class_name() const override
-  {
-    return class_name();
-  }
-
-  static const std::string& class_name()
-  {
-    static const std::string classname_ =
-        "live_stacking";
-    return classname_;
-  }
-
-  static const std::string& tooltip()
-  {
-    static const std::string tooltip_ =
-        "<strong>c_live_stacking_pipeline.</strong><br>"
-            "This pipeline uses specified c_image_processor for generic image processing<br>";
-    return tooltip_;
-  }
-
-  const c_live_stacking_input_options & input_options() const;
-  c_live_stacking_input_options & input_options();
-
-  const c_live_stacking_registration_options & registration_options() const;
-  c_live_stacking_registration_options & registration_options() ;
-
-  const c_live_stacking_accumulation_options & accumulation_options() const;
-  c_live_stacking_accumulation_options & accumulation_options();
-
-  const c_live_stacking_output_options & output_options() const;
-  c_live_stacking_output_options & output_options();
+  const std::string& get_class_name() const override;
+  static const std::string& class_name();
+  static const std::string& tooltip();
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   static const c_ctlist<this_class> & getcontrols();
 
 protected:

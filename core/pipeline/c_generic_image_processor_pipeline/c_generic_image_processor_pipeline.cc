@@ -20,36 +20,24 @@ c_generic_image_processor_pipeline::c_generic_image_processor_pipeline(const std
 {
 }
 
-const c_generic_image_processor_input_options & c_generic_image_processor_pipeline::input_options() const
+const std::string & c_generic_image_processor_pipeline::get_class_name() const
 {
-  return _input_options;
+  return class_name();
 }
 
-c_generic_image_processor_input_options & c_generic_image_processor_pipeline::input_options()
+const std::string & c_generic_image_processor_pipeline::class_name()
 {
-  return _input_options;
+  static const std::string _class_name = "generic";
+  return _class_name;
 }
 
-const c_generic_image_processor_options & c_generic_image_processor_pipeline::processing_options() const
+const std::string & c_generic_image_processor_pipeline::tooltip()
 {
-  return _processing_options;
+  static const std::string tooltip_ =
+      "<strong>c_generic_image_processor_pipeline.</strong><br>"
+      "This pipeline uses specified c_image_processor for generic image processing<br>";
+  return tooltip_;
 }
-
-c_generic_image_processor_options & c_generic_image_processor_pipeline::processing_options()
-{
-  return _processing_options;
-}
-
-const c_generic_image_processor_output_options & c_generic_image_processor_pipeline::output_options() const
-{
-  return _output_options;
-}
-
-c_generic_image_processor_output_options & c_generic_image_processor_pipeline::output_options()
-{
-  return _output_options;
-}
-
 
 bool c_generic_image_processor_pipeline::initialize_pipeline()
 {
@@ -145,22 +133,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       break;
     }
 
-    if( _input_options.input_image_processor ) {
-
-      lock_guard lock(mutex());
-
-      if( !_input_options.input_image_processor->process(_current_image, _current_mask) ) {
-        CF_ERROR("input_image_processor->process() fails");
-        return false;
-      }
-
-      if( canceled() ) {
-        break;
-      }
-    }
-
     if( true ) {
-
       lock_guard lock(mutex());
       if( !process_current_frame() ) {
         CF_ERROR("process_current_frame() fails");
@@ -250,86 +223,37 @@ bool c_generic_image_processor_pipeline::serialize(c_config_setting settings, bo
   return true;
 }
 
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_input_options> & ctx)
-{
-  using S = c_generic_image_processor_input_options;
-  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
-}
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_options> & ctx)
-{
-  using S = c_generic_image_processor_options;
-  ctlbind(ctls, "image_processor",  ctx(&S::image_processor), "");
-}
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_generic_image_processor_output_options> & ctx)
-{
-  using S = c_generic_image_processor_output_options;
-
-  ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
-
-  ctlbind(ctls, "save_processed_frames",  ctx(&S::save_processed_frames), "");
-  ctlbind_group(ctls, ctx(&S::save_processed_frames));
-    ctlbind(ctls, ctx(&S::processed_file_options));
-  ctlbind_end_group(ctls);
-}
-
-
 const c_ctlist<c_generic_image_processor_pipeline> & c_generic_image_processor_pipeline::getcontrols()
 {
-  static c_ctlist<this_class> ctls;
-  if ( ctls.empty() ) {
-    c_ctlbind_context<this_class> ctx;
+  static const c_ctlist<this_class> _ctls = []()
+    {
+      c_ctlist<this_class> ctls;
+      c_ctlbind_context<this_class> ctx;
 
-     ctlbind_expandable_group(ctls, "1. Input options", "");
-       ctlbind(ctls, ctx(&this_class::_input_options));
-     ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "1. Input options",
+          [&, cctx = ctx(&this_class::_input_options)]() {
+            ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(cctx));
+          });
 
-     ctlbind_expandable_group(ctls, "2. Image processing", "");
-       ctlbind(ctls, ctx(&this_class::_processing_options));
-     ctlbind_end_group(ctls);
+      ctlbind_expandable_group(ctls, "2. Image processing",
+          [&, cctx = ctx(&this_class::_processing_options)]() {
+            ctlbind(ctls, "image_processor", CTL_CONTEXT(cctx, image_processor));
+          });
 
-     ctlbind_expandable_group(ctls, "3. Output options", "");
-       ctlbind(ctls, ctx(&this_class::_output_options));
-     ctlbind_end_group(ctls);
-  }
+      ctlbind_expandable_group(ctls, "3. Output options",
+          [&, cctx = ctx(&this_class::_output_options)]() {
+            ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(cctx));
+            ctlbind(ctls, "save_processed_frames", CTL_CONTEXT(cctx, save_processed_frames));
+            ctlbind_group(ctls, CTL_CONTEXT(cctx, save_processed_frames));
+            ctlbind(ctls, CTL_CONTEXT(cctx, processed_file_options));
+            ctlbind_end_group(ctls);
+          });
 
-  return ctls;
+      return ctls;
+    }();
+
+  return _ctls;
 }
-
-
-//const std::vector<c_image_processing_pipeline_ctrl>& c_generic_image_processor_pipeline::get_controls()
-//{
-//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-//
-////  if( ctrls.empty() ) {
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Image processing", "");
-////      PIPELINE_CTL_PROCESSOR_SELECTION(ctrls, _processing_options.image_processor, "image_processor", "");
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-////      PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
-////
-////      PIPELINE_CTL_GROUP(ctrls, "Save Processed Frames", "");
-////        PIPELINE_CTL(ctrls, _output_options.save_processed_frames, "save_processed_frames", "");
-////        PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.processed_file_options,
-////            _this->_output_options.save_processed_frames);
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////  }
-//
-//  return ctrls;
-//}
 
 bool c_generic_image_processor_pipeline::copy_parameters(const base::sptr & dst) const
 {
@@ -338,9 +262,7 @@ bool c_generic_image_processor_pipeline::copy_parameters(const base::sptr & dst)
     return false;
   }
 
-  this_class::sptr p =
-      std::dynamic_pointer_cast<this_class>(dst);
-
+  this_class::sptr p = std::dynamic_pointer_cast<this_class>(dst);
   if( !p ) {
     CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
         get_class_name().c_str());

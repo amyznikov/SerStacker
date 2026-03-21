@@ -52,19 +52,16 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
         [&, cctx = ctx(&this_class::_input_options)]() {
           ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(cctx));
         });
-    ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "2. ROI Selection",
         [&, cctx = ctx(&this_class::_roi_selection_options)]() {
           ctlbind(ctls, cctx);
         });
-    ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "3. Master Options",
         [&, cctx = ctx(&this_class::_master_options)]() {
           ctlbind(ctls, CTL_CONTEXT(cctx, master_selection));
         });
-    ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "4. Reference Frame Options ",
         [&, cctx = ctx(&this_class::_reference_frame_options)]() {
@@ -72,19 +69,15 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
           ctlbind_browse_for_file(ctls, "reference file name", CTL_CONTEXT(cctx, reference_file_name));
           ctlbind(ctls, "preprocess input frames", CTL_CONTEXT(cctx, input_image_preprocessor));
         });
-    ctlbind_end_group(ctls);
-
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
         [&, cctx = ctx(&this_class::_stack_options)]() {
         });
-    ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "6. Output options",
         [&, cctx = ctx(&this_class::_output_options)]() {
           ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(cctx));
         });
-    ctlbind_end_group(ctls);
   }
 
   return ctls;

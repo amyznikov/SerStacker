@@ -25,21 +25,21 @@ namespace serstacker {
 QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
     Base(parent)
 {
-  layout_ = new QHBoxLayout(this);
-  layout_->setContentsMargins(2, 2, 2, 2);
+  _layout = new QHBoxLayout(this);
+  _layout->setContentsMargins(2, 2, 2, 2);
 
-  progressStrip_ = new QProgressStrip(this);
-  progressStrip_->setNumStrips(2);
-  progressStrip_->setBrush(0, Qt::yellow);
-  progressStrip_->setBrush(1, Qt::green);
-  layout_->addWidget(progressStrip_, 100);
+  _progressStrip = new QProgressStrip(this);
+  _progressStrip->setNumStrips(2);
+  _progressStrip->setBrush(0, Qt::yellow);
+  _progressStrip->setBrush(1, Qt::green);
+  _layout->addWidget(_progressStrip, 100);
 
-  menuButton_ = new QToolButton(this);
-  menuButton_->setContentsMargins(0, 0, 0, 0);
-  menuButton_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  menuButton_->setIconSize(QSize(12, 12));
-  menuButton_->setIcon(getIcon(ICON_menu));
-  layout_->addWidget(menuButton_, 1);
+  _menuButton = new QToolButton(this);
+  _menuButton->setContentsMargins(0, 0, 0, 0);
+  _menuButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  _menuButton->setIconSize(QSize(12, 12));
+  _menuButton->setIcon(getIcon(ICON_menu));
+  _layout->addWidget(_menuButton, 1);
 
 
   //
@@ -55,7 +55,7 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
       this, &ThisClass::onPipelineThreadFinishing,
       Qt::QueuedConnection);
 
-  connect(menuButton_, &QToolButton::clicked,
+  connect(_menuButton, &QToolButton::clicked,
       this, &ThisClass::onMenuButtonClicked);
 //
 //  connect(QPipelineThread::instance(), &QPipelineThread::accumulatorChanged,
@@ -73,13 +73,13 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
 
 void QPipelineProgressView::setImageViewer(QImageEditor * imageViewer)
 {
-  this->imageViewer_ = imageViewer;
+  this->_imageViewer = imageViewer;
   updateAccumulatedImageDisplay(true);
 }
 
 QImageEditor * QPipelineProgressView::imageViewer() const
 {
-  return imageViewer_;
+  return _imageViewer;
 }
 
 void QPipelineProgressView::showEvent(QShowEvent *e)
@@ -90,7 +90,7 @@ void QPipelineProgressView::showEvent(QShowEvent *e)
 
 void QPipelineProgressView::timerEvent(QTimerEvent *event)
 {
-  if ( !updatingDisplay_ ) {
+  if ( !_updatingDisplay ) {
     updateAccumulatedImageDisplay();
   }
 }
@@ -108,7 +108,7 @@ void QPipelineProgressView::onPipelineThreadStarted()
     if( p ) {
       connect(p, &QImageProcessingPipeline::frameProcessed,
           [this]() {
-            hasStatusUpdates_ = true;
+            _hasStatusUpdates = true;
           });
     }
   }
@@ -185,7 +185,7 @@ void QPipelineProgressView::onMenuButtonClicked()
       if( items_count > 1 ) {
 
         QAction *action =
-            menu.exec(menuButton_->mapToGlobal(QPoint(menuButton_->width() / 2, menuButton_->height() / 2)));
+            menu.exec(_menuButton->mapToGlobal(QPoint(_menuButton->width() / 2, _menuButton->height() / 2)));
 
         if( action ) {
 
@@ -211,24 +211,24 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
     return;
   }
 
-  if ( !force && !hasStatusUpdates_ ) {
+  if ( !force && !_hasStatusUpdates ) {
     return;
   }
 
-  progressStrip_->setRange(0, pipeline->total_frames());
-  progressStrip_->setValue(0, pipeline->processed_frames());
-  progressStrip_->setValue(1, pipeline->accumulated_frames());
+  _progressStrip->setRange(0, pipeline->total_frames());
+  _progressStrip->setValue(0, pipeline->processed_frames());
+  _progressStrip->setValue(1, pipeline->accumulated_frames());
 
-  progressStrip_->setText(qsprintf("%d/%d/%d",
+  _progressStrip->setText(qsprintf("%d/%d/%d",
       pipeline->accumulated_frames(),
       pipeline->processed_frames(),
       pipeline->total_frames()));
 
   Q_EMIT progressTextChanged();
 
-  if( imageViewer_ && imageViewer_->isVisible() ) {
+  if( _imageViewer && _imageViewer->isVisible() ) {
 
-    updatingDisplay_ = true;
+    _updatingDisplay = true;
 
     if( const c_image_stacking_pipeline::sptr image_stacking =
         std::dynamic_pointer_cast<c_image_stacking_pipeline>(pipeline) ) {
@@ -249,14 +249,10 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
         cv::Mat currentImage, currentMask;
 
-        if( image_stacking->get_display_image(currentImage, currentMask) ) {
-          if( !currentImage.empty() && image_stacking->anscombe().method() != anscombe_none ) {
-            image_stacking->anscombe().inverse(currentImage, currentImage);
-          }
-        }
+        image_stacking->get_display_image(currentImage, currentMask);
 
-        imageViewer_->setCurrentFileName(pipeline->cname());
-        imageViewer_->editImage(currentImage, currentMask);
+        _imageViewer->setCurrentFileName(pipeline->cname());
+        _imageViewer->editImage(currentImage, currentMask);
       }
     }
 
@@ -266,13 +262,13 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
       cv::Mat currentImage, currentMask;
 
       pipeline->get_display_image(currentImage, currentMask);
-      imageViewer_->setCurrentFileName(pipeline->cname());
-      imageViewer_->editImage(currentImage, currentMask);
+      _imageViewer->setCurrentFileName(pipeline->cname());
+      _imageViewer->editImage(currentImage, currentMask);
     }
 
 
-    hasStatusUpdates_ = false;
-    updatingDisplay_ = false;
+    _hasStatusUpdates = false;
+    _updatingDisplay = false;
   }
 }
 

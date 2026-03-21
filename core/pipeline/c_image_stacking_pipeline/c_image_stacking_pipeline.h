@@ -8,7 +8,7 @@
 #ifndef __c_stacking_pipeline_h__
 #define __c_stacking_pipeline_h__
 
-#include <core/pipeline/c_image_processing_pipeline.h>
+#include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/pipeline/c_master_frame_selection.h>
 #include <core/roi_selection/c_roi_selection.h>
 
@@ -61,9 +61,8 @@ enum STACKING_STAGE
 };
 
 struct c_image_stacking_input_options :
-    c_image_processing_pipeline_input_options
+    c_image_stacking_pipeline_base_input_options
 {
-  enum anscombe_method anscombe = anscombe_none;
 };
 
 
@@ -202,63 +201,26 @@ struct c_image_stacking_options
 
 
 class c_image_stacking_pipeline :
-    public c_image_processing_pipeline
+    public c_image_stacking_pipeline_base
 {
 public:
   typedef c_image_stacking_pipeline this_class;
-  typedef c_image_processing_pipeline base;
+  typedef c_image_stacking_pipeline_base base;
   typedef std::shared_ptr<this_class> sptr;
 
   c_image_stacking_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   ~c_image_stacking_pipeline();
 
-  const std::string & get_class_name() const override
-  {
-    return class_name();
-  }
+  const std::string & get_class_name() const override;
+  static const std::string & class_name();
+  static const std::string & tooltip();
 
-  static const std::string & class_name()
-  {
-    static const std::string classname_ =
-        "image_stacking";
-    return classname_;
-  }
-
-  static const std::string & tooltip()
-  {
-    static const std::string tooltip_ =
-        "<strong>c_image_stacking_pipeline.</strong><br>"
-        "Generic pipeline for image stacking<br>";
-    return tooltip_;
-  }
-
-  const c_anscombe_transform & anscombe() const;
-
-  c_image_stacking_input_options& input_options();
-  const c_image_stacking_input_options& input_options() const;
-
-  c_roi_selection_options& roi_selection_options();
-  const c_roi_selection_options& roi_selection_options() const;
-  c_roi_selection::sptr create_roi_selection() const;
-
-  c_frame_upscale_options& upscale_options();
-  const c_frame_upscale_options& upscale_options() const;
-
-  c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
-
-  c_frame_accumulation::ptr create_frame_accumulation(const c_frame_accumulation_options & opts) const;
-
-  c_image_stacking_output_options& output_options();
-  const c_image_stacking_output_options& output_options() const;
-
-  c_image_processing_options& image_processing_options();
-  const c_image_processing_options& image_processing_options() const;
 
   std::string output_file_name() const;
 
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
-  bool copy_parameters(const base::sptr & dst) const override;
+  bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
 
   static const c_ctlist<this_class> & getcontrols();
 
@@ -268,14 +230,21 @@ public:
   void set_master_frame_index(int v) override;
   int master_frame_index() const override;
 
+  int pipeline_stage() const;
+
 protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
 
   bool run_image_stacking();
+  void set_pipeline_stage(int stage);
 
-  // bool run_planetary_disk_derotation();
+  c_roi_selection::sptr create_roi_selection() const;
+
+  c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
+
+  c_frame_accumulation::ptr create_frame_accumulation(const c_frame_accumulation_options & opts) const;
 
   bool create_reference_frame(cv::Mat & reference_frame, cv::Mat & reference_mask, double * reference_timestamp);
 
@@ -291,11 +260,6 @@ protected:
       int startpos, int endpos);
 
   int select_master_frame(const c_input_sequence::sptr & input_sequence);
-
-  bool read_input_frame(const c_input_sequence::sptr & input_sequence,
-      cv::Mat & output_image, cv::Mat & output_mask,
-      bool is_external_master_frame,
-      bool save_raw_bayer_image) const;
 
   static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
       const cv::Mat & src, const cv::Mat & srcmask,
@@ -318,9 +282,9 @@ protected:
 
   std::string generate_output_file_name() const;
 
-  static void remove_bad_pixels(cv::Mat & image,
-      const c_image_stacking_input_options & input_optons,
-      bool isbayer);
+//  static void remove_bad_pixels(cv::Mat & image,
+//      const c_image_stacking_input_options & input_optons,
+//      bool isbayer);
 
   static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,
@@ -357,11 +321,10 @@ protected:
   cv::Mat _selected_master_frame;
   cv::Mat _selected_master_frame_mask;
 
-  c_anscombe_transform _anscombe;
   c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;
-  c_frame_weigthed_average::ptr _flow_accumulation;
   c_frame_accumulation::ptr _frame_accumulation;
+  c_frame_weigthed_average::ptr _flow_accumulation;
 
   mutable std::string _output_file_name_postfix;
 
@@ -375,6 +338,7 @@ protected:
   c_output_frame_writer _accumulation_masks_writer;
   c_output_frame_writer _sparse_matches_video_writer;
 
+  int _pipeline_stage = 0;
   bool _generating_master_frame = false;
 };
 

@@ -43,37 +43,12 @@ public:
   c_generic_image_processor_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
-  const std::string & get_class_name() const override
-  {
-    return class_name();
-  }
-
-  static const std::string & class_name()
-  {
-    static const std::string _class_name = "generic";
-    return _class_name;
-  }
-
-  static const std::string & tooltip()
-  {
-    static const std::string tooltip_ =
-        "<strong>c_generic_image_processor_pipeline.</strong><br>"
-        "This pipeline uses specified c_image_processor for generic image processing<br>";
-    return tooltip_;
-  }
-
-  const c_generic_image_processor_input_options & input_options() const;
-  c_generic_image_processor_input_options & input_options();
-
-  const c_generic_image_processor_options & processing_options() const;
-  c_generic_image_processor_options & processing_options() ;
-
-  const c_generic_image_processor_output_options & output_options() const;
-  c_generic_image_processor_output_options & output_options();
+  const std::string & get_class_name() const override;
+  static const std::string & class_name();
+  static const std::string & tooltip();
 
   bool serialize(c_config_setting settings, bool save) override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   bool copy_parameters(const base::sptr & dst) const override;
 
   static const c_ctlist<this_class> & getcontrols();

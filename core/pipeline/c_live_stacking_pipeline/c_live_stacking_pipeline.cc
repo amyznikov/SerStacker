@@ -37,45 +37,63 @@ c_live_stacking_pipeline::c_live_stacking_pipeline(const std::string & name,
 {
 }
 
-const c_live_stacking_input_options& c_live_stacking_pipeline::input_options() const
+const std::string& c_live_stacking_pipeline::get_class_name() const
 {
-  return _input_options;
+  return class_name();
 }
 
-c_live_stacking_input_options& c_live_stacking_pipeline::input_options()
+const std::string & c_live_stacking_pipeline::class_name()
 {
-  return _input_options;
+  static const std::string _classname = "live_stacking";
+  return _classname;
 }
 
-const c_live_stacking_registration_options & c_live_stacking_pipeline::registration_options() const
+const std::string& c_live_stacking_pipeline::tooltip()
 {
-  return _registration_options;
+  static const std::string _tooltip =
+      "<strong>c_live_stacking_pipeline.</strong><br><br>";
+  return _tooltip;
 }
 
-c_live_stacking_registration_options & c_live_stacking_pipeline::registration_options()
-{
-  return _registration_options;
-}
-
-const c_live_stacking_accumulation_options & c_live_stacking_pipeline::accumulation_options() const
-{
-  return _accumulation_options;
-}
-
-c_live_stacking_accumulation_options & c_live_stacking_pipeline::accumulation_options()
-{
-  return _accumulation_options;
-}
-
-const c_live_stacking_output_options & c_live_stacking_pipeline::output_options() const
-{
-  return _output_options;
-}
-
-c_live_stacking_output_options & c_live_stacking_pipeline::output_options()
-{
-  return _output_options;
-}
+//const c_live_stacking_input_options& c_live_stacking_pipeline::input_options() const
+//{
+//  return _input_options;
+//}
+//
+//c_live_stacking_input_options& c_live_stacking_pipeline::input_options()
+//{
+//  return _input_options;
+//}
+//
+//const c_live_stacking_registration_options & c_live_stacking_pipeline::registration_options() const
+//{
+//  return _registration_options;
+//}
+//
+//c_live_stacking_registration_options & c_live_stacking_pipeline::registration_options()
+//{
+//  return _registration_options;
+//}
+//
+//const c_live_stacking_accumulation_options & c_live_stacking_pipeline::accumulation_options() const
+//{
+//  return _accumulation_options;
+//}
+//
+//c_live_stacking_accumulation_options & c_live_stacking_pipeline::accumulation_options()
+//{
+//  return _accumulation_options;
+//}
+//
+//const c_live_stacking_output_options & c_live_stacking_pipeline::output_options() const
+//{
+//  return _output_options;
+//}
+//
+//c_live_stacking_output_options & c_live_stacking_pipeline::output_options()
+//{
+//  return _output_options;
+//}
 
 bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
 {
@@ -92,7 +110,7 @@ bool c_live_stacking_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, _input_options);
+    serialize_base_image_stacking_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {

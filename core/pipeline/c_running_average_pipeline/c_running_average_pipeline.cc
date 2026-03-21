@@ -15,6 +15,25 @@ c_running_average_pipeline::c_running_average_pipeline(const std::string & name,
 {
 }
 
+const std::string& c_running_average_pipeline::get_class_name() const
+{
+  return class_name();
+}
+
+const std::string& c_running_average_pipeline::class_name()
+{
+  static const std::string _classname = "running_average";
+  return _classname;
+}
+
+const std::string& c_running_average_pipeline::tooltip()
+{
+  static const std::string _tooltip =
+      "<strong>c_running_average_pipeline.</strong><br>"
+          "test for running average registered frames<br>";
+  return _tooltip;
+}
+
 bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 {
 //  static const auto get_group =
@@ -29,7 +48,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "input_options")) ) {
-    serialize_base_input_options(section, save, _input_options);
+    serialize_base_image_stacking_input_options(section, save, _input_options);
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
@@ -100,15 +119,15 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
-bool c_running_average_pipeline::ecc_ctls_enabled() const
-{
-  return (_registration_options.enable_ecc || _registration_options.double_align_moode);
-}
-
-bool c_running_average_pipeline::eccflow_ctls_enabled() const
-{
-  return (_registration_options.enable_eccflow || _registration_options.double_align_moode);
-}
+//bool c_running_average_pipeline::ecc_ctls_enabled() const
+//{
+//  return (_registration_options.enable_ecc || _registration_options.double_align_moode);
+//}
+//
+//bool c_running_average_pipeline::eccflow_ctls_enabled() const
+//{
+//  return (_registration_options.enable_eccflow || _registration_options.double_align_moode);
+//}
 
 
 template<class RootObjectType>
@@ -292,15 +311,15 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 ///
 
-void c_running_average_pipeline::set_double_align_moode(bool v)
-{
-  _registration_options.double_align_moode = v;
-}
-
-bool c_running_average_pipeline::double_align_moode() const
-{
-  return _registration_options.double_align_moode;
-}
+//void c_running_average_pipeline::set_double_align_moode(bool v)
+//{
+//  _registration_options.double_align_moode = v;
+//}
+//
+//bool c_running_average_pipeline::double_align_moode() const
+//{
+//  return _registration_options.double_align_moode;
+//}
 
 ///
 
@@ -330,7 +349,7 @@ bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame
   return fOk;
 }
 
-bool c_running_average_pipeline::copy_parameters(const base::sptr & dst) const
+bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copy_parameters(dst) ) {
     CF_ERROR("c_running_average_pipeline::base::copyParameters() fails");

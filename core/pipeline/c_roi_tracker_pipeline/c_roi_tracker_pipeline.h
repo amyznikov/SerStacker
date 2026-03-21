@@ -17,6 +17,7 @@
 struct c_roi_tracker_input_options :
     c_image_processing_pipeline_input_options
 {
+      c_image_processor::sptr input_image_processor;
 };
 
 struct c_roi_tracker_pipeline_options

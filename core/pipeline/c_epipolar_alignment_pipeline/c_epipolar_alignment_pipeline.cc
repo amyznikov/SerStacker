@@ -228,6 +228,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 {
   using S = c_epipolar_alignment_input_options;
   ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
 }
 
 

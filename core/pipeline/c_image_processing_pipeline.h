@@ -23,84 +23,19 @@ struct c_image_processing_pipeline_input_options
 {
   int start_frame_index = 0;
   int max_input_frames = -1;
-
   DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
-
-  std::string darkbayer_filename;
-  std::string flatbayer_filename;
-  std::string missing_pixel_mask_filename;
-
-  bool missing_pixels_marked_black = true;
-  bool inpaint_missing_pixels = true;
   bool enable_color_maxtrix = true;
-  bool filter_bad_pixels = false;
-  bool detect_bad_asi_frames = false;
-  bool enable_bground_normalization  = false;
 
-  double bad_asi_frame_median_hat_threshold = 300;
-  double bad_pixels_variation_threshold = 15;
-  c_histogram_normalization_options background_normalization_options;
-
-  c_image_processor::sptr input_image_processor;
+  bool inpaint_missing_pixels = true;
+  bool missing_pixels_marked_black = true;
+  std::string missing_pixel_mask_filename;
 };
-
-bool serialize_base_input_options(c_config_setting section, bool save, c_image_processing_pipeline_input_options & opts);
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_input_options> & ctx)
-{
-  using S = c_image_processing_pipeline_input_options;
-
-  ctlbind(ctls, "start frame index", ctx(&S::start_frame_index), "");
-  ctlbind(ctls, "max input frames", ctx(&S::max_input_frames), "");
-  ctlbind(ctls, "debayer method", ctx(&S::debayer_method), "");
-  ctlbind(ctls, "enable color maxtrix", ctx(&S::enable_color_maxtrix), "");
-  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
-  ctlbind_browse_for_file(ctls, "Dark frame", ctx(&S::darkbayer_filename), "");
-  ctlbind_browse_for_file(ctls, "Flat frame", ctx(&S::flatbayer_filename), "");
-
-  ctlbind_expandable_group(ctls, "missing pixels...", "");
-   ctlbind_browse_for_file(ctls, "missing pixel mask", ctx(&S::missing_pixel_mask_filename), "");
-   ctlbind(ctls, "inpaint missing pixels", ctx(&S::inpaint_missing_pixels), "");
-   ctlbind(ctls, "missing pixels are black", ctx(&S::missing_pixels_marked_black ), "");
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "bad_pixels...", "");
-   ctlbind(ctls, "filter_bad_pixels", ctx(&S::filter_bad_pixels), "");
-   ctlbind_group(ctls, ctx(&S::filter_bad_pixels));
-     ctlbind(ctls, "bad_pixels_variance_threshold", ctx(&S::bad_pixels_variation_threshold), "");
-   ctlbind_end_group(ctls);
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "bad asi frames...", "");
-    ctlbind(ctls, "detect bad asi frames", ctx(&S::detect_bad_asi_frames), "");
-    ctlbind_group(ctls, ctx(&S::detect_bad_asi_frames));
-      ctlbind(ctls, "bad_asi_frame_median_hat_threshold", ctx(&S::bad_asi_frame_median_hat_threshold), "");
-    ctlbind_end_group(ctls);
-  ctlbind_end_group(ctls);
-
-  ctlbind_expandable_group(ctls, "bground normalization...", "");
-    ctlbind(ctls, "enable bground normalization ", ctx(&S::enable_bground_normalization ), "");
-    ctlbind_group(ctls, ctx(&S::enable_bground_normalization));
-     ctlbind(ctls, ctx(&S::background_normalization_options));
-    ctlbind_end_group(ctls);
-  ctlbind_end_group(ctls);
-}
 
 struct c_image_processing_pipeline_output_options
 {
   std::string output_directory;
   int default_display_type = -1;
 };
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_output_options> & ctx)
-{
-  using S = c_image_processing_pipeline_output_options;
-  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
-  ctlbind(ctls, "default_display_type", ctx(&S::default_display_type), "");
-}
-
 
 class c_image_processing_pipeline
 {
@@ -109,25 +44,22 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   using lock_guard = std::lock_guard<std::mutex>;
 
+  struct c_scope_guard {
+    std::function<void()> _fn;
+    template<class F> c_scope_guard(F && f) : _fn(f) {}
+    ~c_scope_guard()  {if (_fn) _fn();}
+  };
+
 public: // pipeline methods
   c_image_processing_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   virtual ~c_image_processing_pipeline();
   virtual bool initialize();
+  std::mutex & mutex();
 
   void set_name(const std::string & name);
   const std::string & name() const;
   const char * cname() const;
-
   virtual const std::string & get_class_name() const = 0;
-  virtual bool copy_parameters(const sptr & dst) const ;
-
-
-  virtual bool run(const c_input_sequence::sptr & input_sequence = nullptr);
-  virtual void cancel(bool v = true);
-  virtual bool canceled() const;
-  virtual bool serialize(c_config_setting settings, bool save);
-
-  std::mutex & mutex();
 
   const c_input_sequence::sptr & input_sequence() const;
   const char * csequence_name() const;
@@ -138,26 +70,28 @@ public: // pipeline methods
   virtual void set_master_frame_index(int v);
   virtual int master_frame_index() const;
 
-  virtual std::string generate_output_filename(const std::string & ufilename,
-      const std::string & postfix,
-      const std::string & suffix) const;
-
-  int total_frames() const;
-  int processed_frames() const;
-  int accumulated_frames() const;
-  int pipeline_stage() const;
-  std::string status_message() const ;
-
-  bool is_running() const;
-
   void set_display_type(int v);
   int display_type() const;
 
   virtual const c_enum_member * get_display_types() const;
   virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
+  virtual bool serialize(c_config_setting settings, bool save);
+  virtual bool copy_parameters(const sptr & dst) const ;
 
+  int total_frames() const;
+  int processed_frames() const;
+  int accumulated_frames() const;
+  std::string status_message() const ;
 
+  virtual bool run(const c_input_sequence::sptr & input_sequence = nullptr);
+  virtual void cancel(bool v = true);
+  virtual bool canceled() const;
+  bool is_running() const;
+
+  virtual std::string generate_output_filename(const std::string & ufilename,
+      const std::string & postfix,
+      const std::string & suffix) const;
 
 protected:
   virtual bool initialize_pipeline();
@@ -168,6 +102,7 @@ protected:
   virtual bool open_input_sequence();
   virtual void close_input_sequence();
   virtual bool seek_input_sequence(int pos);
+  virtual void close_all_writers();
 
 protected:
   virtual void on_frame_processed();
@@ -177,12 +112,12 @@ protected:
 protected:
   virtual bool start_pipeline(int start_frame_index, int max_input_frames);
   virtual void set_running(bool v);
-  void set_pipeline_stage(int stage);
   void set_status_msg(const std::string & msg);
   virtual std::string create_output_path(const std::string & output_directory) const;
-  //virtual void gather_badframe_indexes();
   virtual bool is_bad_frame_index(uint32_t global_pos) const;
 
+
+protected:
   virtual bool open_output_writer(c_output_frame_writer & writer,
       const c_output_frame_writer_options & opts,
       const std::string & postfix,
@@ -196,17 +131,7 @@ protected:
   virtual bool add_output_writer(c_output_text_writer & writer,
       const std::string & filename);
 
-protected:
-  bool read_input_frame(const c_input_sequence::sptr & input_sequence,
-      const c_image_processing_pipeline_input_options & input_options,
-      cv::Mat & output_image, cv::Mat & output_mask,
-      bool is_external_master_frame,
-      bool save_raw_bayer) const;
-
-
-
 public: // factory methods
-
   typedef std::function<c_image_processing_pipeline::sptr(const std::string & name,
       const c_input_sequence::sptr & input_sequence)> instance_creator;
 
@@ -235,16 +160,11 @@ protected:
 protected:
   std::string _name;
   c_input_sequence::sptr _input_sequence;
-  //std::vector<uint32_t> _badframes; // global indexes
   std::string _output_path;
   std::vector<c_output_frame_writer*> _opened_writers;
   std::vector<c_output_text_writer*> _opened_text_writers;
 
-  cv::Mat _darkbayer;
-  cv::Mat _flatbayer;
   cv::Mat _missing_pixel_mask;
-  mutable cv::Mat _raw_bayer_image;
-  mutable COLORID _raw_bayer_colorid = COLORID_UNKNOWN;
 
   int _display_type = 0;
 
@@ -255,8 +175,6 @@ protected:
   mutable std::mutex _lock;
   mutable std::mutex _status_lock; // FIXME: get rid of obsolete status_lock_
   std::string _statusmsg;
-
-  int _pipeline_stage = 0;
 
   volatile std::atomic_bool _is_running = false;
   volatile std::atomic_bool _canceled = false;
@@ -291,9 +209,37 @@ public:
   //static sptr load(const std::string & filename);
 
 protected:
-  std::vector<c_image_processing_pipeline::sptr> pipelines_;
-  c_image_processing_pipeline::sptr current_pipeline_;
+  std::vector<c_image_processing_pipeline::sptr> _pipelines;
+  c_image_processing_pipeline::sptr _current_pipeline;
 };
 
+
+bool serialize_base_input_options(c_config_setting section, bool save,
+    c_image_processing_pipeline_input_options & opts);
+
+template<class RootObjectType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_input_options> & ctx)
+{
+  using S = c_image_processing_pipeline_input_options;
+
+  ctlbind(ctls, "start frame index", ctx(&S::start_frame_index), "");
+  ctlbind(ctls, "max input frames", ctx(&S::max_input_frames), "");
+  ctlbind(ctls, "debayer method", ctx(&S::debayer_method), "");
+  ctlbind(ctls, "enable color maxtrix", ctx(&S::enable_color_maxtrix), "");
+
+  ctlbind_expandable_group(ctls, "missing pixels...", "");
+   ctlbind_browse_for_file(ctls, "missing pixel mask", ctx(&S::missing_pixel_mask_filename), "");
+   ctlbind(ctls, "inpaint missing pixels", ctx(&S::inpaint_missing_pixels), "");
+   ctlbind(ctls, "missing pixels are black", ctx(&S::missing_pixels_marked_black ), "");
+  ctlbind_end_group(ctls);
+}
+
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_output_options> & ctx)
+{
+  using S = c_image_processing_pipeline_output_options;
+  ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
+  ctlbind(ctls, "default_display_type", ctx(&S::default_display_type), "");
+}
 
 #endif /* __c_image_processing_pipeline_h__ */

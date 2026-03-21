@@ -81,6 +81,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_roi_tracker_input_options;
   ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
+  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor), "");
 }
 
 template<class RootObjectType>
@@ -263,122 +264,6 @@ const c_ctlist<c_roi_tracker_pipeline> & c_roi_tracker_pipeline::getcontrols()
 }
 
 
-//const std::vector<c_image_processing_pipeline_ctrl> & c_roi_tracker_pipeline::get_controls()
-//{
-//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-//
-////  if( ctrls.empty() ) {
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-////      POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "ROI tracking", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.enabled, "enable tracker", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.roi, "ROI Rect X;Y;WxH;", "");
-////
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.tracker_type,  "Tracker type", "Select tarcker type to use");
-////
-////      PIPELINE_CTL_GROUP(ctrls, "BOOSTING", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.boosting.numClassifiers, "numClassifiers", "the number of classifiers to use in a OnlineBoosting algorithm");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.boosting.samplerOverlap, "samplerOverlap", "search region parameters to use in a OnlineBoosting algorithm");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.boosting.samplerSearchFactor, "samplerSearchFactor", "search region parameters to use in a OnlineBoosting algorithm");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.boosting.iterationInit, "iterationInit", "the initial iterations");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.boosting.featureSetNumFeatures, "featureSetNumFeatures", "# features");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "MIL", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerInitInRadius, "samplerInitInRadius", "radius for gathering positive instances during init");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerInitMaxNegNum, "samplerInitMaxNegNum", "# negative samples to use during init");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerSearchWinSize, "samplerSearchWinSize", "size of search window");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerTrackInRadius, "samplerTrackInRadius", "radius for gathering positive instances during tracking");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerTrackMaxPosNum, "samplerTrackMaxPosNum", "# positive samples to use during tracking");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.samplerTrackMaxNegNum, "samplerTrackMaxNegNum", "# negative samples to use during tracking");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.mil.featureSetNumFeatures, "featureSetNumFeatures", "# features");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "KCF", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.detect_thresh, "detect_thresh", "detection confidence threshold");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.sigma, "sigma", "gaussian kernel bandwidth");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.lambda, "lambda", "regularization");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.interp_factor, "interp_factor", "linear interpolation factor for adaptation");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.output_sigma_factor, "output_sigma_factor", "spatial bandwidth (proportional to target)");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.pca_learning_rate, "pca_learning_rate", "compression learning rate");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.resize, "resize", "activate the resize feature to improve the processing speed");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.split_coeff, "split_coeff", "split the training coefficients into two matrices");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.wrap_kernel, "wrap_kernel", "wrap around the kernel values");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.compress_feature, "compress_feature", "activate the pca method to compress the features");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.max_patch_size, "max_patch_size", "threshold for the ROI size");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.compressed_size, "compressed_size", "feature size after compression");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.desc_pca, "desc_pca", " compressed descriptors of TrackerKCF::MODE");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.kcf.desc_npca, "desc_npca", "non-compressed descriptors of TrackerKCF::MODE");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "TLD", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "MEDIANFLOW", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.pointsInGrid, "pointsInGrid", "square root of number of keypoints used; increase it to trade accurateness for speed");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.winSize, "winSize", "window size parameter for Lucas-Kanade optical flow");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.maxLevel, "maxLevel", "maximal pyramid level number for Lucas-Kanade optical flow");
-////      PIPELINE_CTL_BITFLAGS(ctrls, _tracker_options.tracker.medianflow.termCriteria.type, cv::TermCriteria::Type, "termCriteria.type", "termination criteria for Lucas-Kanade optical flow");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.termCriteria.maxCount, "termCriteria.COUNT", "termination criteria for Lucas-Kanade optical flow");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.termCriteria.epsilon, "termCriteria.epsilon", "termination criteria for Lucas-Kanade optical flow");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.winSizeNCC, "winSizeNCC", "window size around a point for normalized cross-correlation check");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.medianflow.maxMedianLengthOfDisplacementDifference, "maxMedianLengthOfDisplacementDifference", "criterion for loosing the tracked object");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "MOSSE", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "CSRT", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_hog, "use_hog", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_color_names, "use_color_names", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_gray, "use_gray", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_rgb, "use_rgb", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_channel_weights, "use_channel_weights", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.use_segmentation, "use_segmentation", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.window_function, "window_function", "Window function: hann, cheb, kaiser");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.kaiser_alpha, "kaiser_alpha", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.cheb_attenuation, "cheb_attenuation", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.template_size, "template_size", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.gsl_sigma, "gsl_sigma", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.hog_orientations, "hog_orientations", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.hog_clip, "hog_clip", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.padding, "padding", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.filter_lr, "filter_lr", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.weights_lr, "weights_lr", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.num_hog_channels_used, "num_hog_channels_used", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.admm_iterations, "admm_iterations", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.histogram_bins, "histogram_bins", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.histogram_lr, "histogram_lr", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.background_ratio, "background_ratio", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.number_of_scales, "number_of_scales", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.scale_sigma_factor, "scale_sigma_factor", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.scale_model_max_area, "scale_model_max_area", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.scale_lr, "scale_lr", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.scale_step, "scale_step", "");
-////      PIPELINE_CTL(ctrls, _tracker_options.tracker.csrt.psr_threshold, "psr_threshold", "we lost the target, if the psr is lower than this");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////#if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-////      PIPELINE_CTL_GROUP(ctrls, "GOTURN", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////#endif
-////
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-////      PIPELINE_CTL_BROWSE_FOR_DIRECTORY(ctrls, _output_options.output_directory, "output_directory", "");
-////      PIPELINE_CTL(ctrls, _output_options.save_progress_video, "save_progress_video", "");
-////      PIPELINE_CTLC(ctrls, _output_options.progress_video_filename, "progress_video_filename", "", _this->_output_options.save_progress_video);
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////  }
-//
-//  return ctrls;
-//}
-//
 bool c_roi_tracker_pipeline::initialize_pipeline()
 {
   if ( !base::initialize_pipeline() ) {

@@ -106,7 +106,6 @@ protected:
 
 protected:
   c_roi_selection::sptr _roi_selection;
-
 };
 
 #endif /* __c_jdr_pipeline_h__ */

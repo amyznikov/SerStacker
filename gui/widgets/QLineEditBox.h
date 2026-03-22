@@ -33,107 +33,107 @@ public:
 
   void setText(const QString & text)
   {
-    lineEdit_->setText(text);
+    _lineEdit->setText(text);
   }
 
   QString text() const
   {
-    return lineEdit_->text();
+    return _lineEdit->text();
   }
 
   QString displayText() const
   {
-    return lineEdit_->displayText();
+    return _lineEdit->displayText();
   }
 
   QString placeholderText() const
   {
-    return lineEdit_->placeholderText();
+    return _lineEdit->placeholderText();
   }
 
   void setPlaceholderText(const QString & text)
   {
-    return lineEdit_->setPlaceholderText(text);
+    return _lineEdit->setPlaceholderText(text);
   }
 
   QString inputMask() const
   {
-    return lineEdit_->inputMask();
+    return _lineEdit->inputMask();
   }
 
   void setInputMask(const QString &inputMask)
   {
-    return lineEdit_->setInputMask(inputMask);
+    return _lineEdit->setInputMask(inputMask);
   }
 
   int maxLength() const
   {
-    return lineEdit_->maxLength();
+    return _lineEdit->maxLength();
   }
 
   void setMaxLength(int v)
   {
-    return lineEdit_->setMaxLength(v);
+    return _lineEdit->setMaxLength(v);
   }
 
   void setFrame(bool v)
   {
-    return lineEdit_->setFrame(v);
+    return _lineEdit->setFrame(v);
   }
 
   bool hasFrame() const
   {
-    return lineEdit_->hasFrame();
+    return _lineEdit->hasFrame();
   }
 
   void setClearButtonEnabled(bool enable)
   {
-    return lineEdit_->setClearButtonEnabled(enable);
+    return _lineEdit->setClearButtonEnabled(enable);
   }
 
   bool isClearButtonEnabled() const
   {
-    return lineEdit_->isClearButtonEnabled();
+    return _lineEdit->isClearButtonEnabled();
   }
 
   QLineEdit::EchoMode echoMode() const
   {
-    return lineEdit_->echoMode();
+    return _lineEdit->echoMode();
   }
 
   void setEchoMode(QLineEdit::EchoMode v)
   {
-    return lineEdit_->setEchoMode(v);
+    return _lineEdit->setEchoMode(v);
   }
 
   bool isReadOnly() const
   {
-    return lineEdit_->isReadOnly();
+    return _lineEdit->isReadOnly();
   }
 
   void setReadOnly(bool v)
   {
-    return lineEdit_->setReadOnly(v);
+    return _lineEdit->setReadOnly(v);
   }
 
   bool isModified() const
   {
-    return lineEdit_->isModified();
+    return _lineEdit->isModified();
   }
 
   void setModified(bool v)
   {
-    return lineEdit_->setModified(v);
+    return _lineEdit->setModified(v);
   }
 
   QHBoxLayout * layout() const
   {
-    return layout_;
+    return _layout;
   }
 
   QLineEdit * lineEdit() const
   {
-    return lineEdit_;
+    return _lineEdit;
   }
 
 Q_SIGNALS:
@@ -141,8 +141,8 @@ Q_SIGNALS:
   void returnPressed();
 
 protected:
-  QHBoxLayout * layout_ = nullptr;
-  QLineEdit * lineEdit_ = nullptr;
+  QHBoxLayout * _layout = nullptr;
+  QLineEdit * _lineEdit = nullptr;
 };
 
 class QNumericBox :
@@ -161,6 +161,41 @@ public:
   explicit QNumericBox(const QString & s, QWidget * parent = nullptr) : Base(s, parent)
   {
     //lineEdit_->setMaximumWidth(NUMERICAL_FIELD_DEFAULT_MAX_WIDTH);
+  }
+};
+
+
+class QMultiLineEditBox :
+    public QPlainTextEdit
+{
+  Q_OBJECT;
+public:
+  typedef QMultiLineEditBox ThisClass;
+  typedef QPlainTextEdit Base;
+
+  explicit QMultiLineEditBox(QWidget *parent = nullptr) :
+      Base(parent)
+  {
+  }
+
+  explicit QMultiLineEditBox(const QString & text, QWidget *parent = nullptr) :
+    Base(text, parent)
+  {
+  }
+
+Q_SIGNALS:
+  void ctrlEnterPressed();
+
+protected:
+  void keyPressEvent(QKeyEvent * e) override
+  {
+    const int key = e->key();
+    if( ( key == Qt::Key_Return || key == Qt::Key_Enter) && (e->modifiers() & Qt::ControlModifier) ) {
+      Q_EMIT ctrlEnterPressed();
+      return;
+    }
+
+    Base::keyPressEvent(e);
   }
 };
 

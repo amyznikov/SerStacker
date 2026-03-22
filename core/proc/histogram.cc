@@ -506,7 +506,8 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
         return false;
       }
       if( maskv[i].size() != srcv[i].size() ) {
-        CF_ERROR("Invalid input mask size (%dx%d) for mask index %zu",maskv[i].cols, maskv[i].rows, i);
+        CF_ERROR("Invalid mask size (%dx%d) for mask index %zu. Must be %dx%d",
+            maskv[i].cols, maskv[i].rows, i, srcv[i].cols, srcv[i].rows);
         return false;
       }
     }

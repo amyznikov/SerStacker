@@ -11,6 +11,7 @@
 #include <core/proc/planetary-disk-detection.h>
 #include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
+#include <core/debug.h>
 
 
 
@@ -127,23 +128,43 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     case DATA_CHANNEL::MASK:
       src = mask.getMat();
       break;
+    default:
+      CF_ERROR("Bad input channel %d", _input_channel);
+      return false;
   }
 
+  if ( src.empty() ) {
+    return true;
+  }
 
-  if ( _threshold_type != THRESHOLD_PLANETARY_DISK ) {
+  if( _threshold_type != THRESHOLD_PLANETARY_DISK ) {
+
+//    if ( src.empty() ) {
+//      return true;
+//    }
 
     std::vector<cv::Mat> channels;
+    std::vector<cv::Mat> mchannels;
 
+    const int cn = src.channels();
     cv::split(src, channels);
 
-    for( int i = 0, cn = src.channels(); i < cn; ++i ) {
+    const int cnm = srcm.empty() ?  0 : src.channels();
+    if( cnm > 1 ) {
+      cv::split(srcm, mchannels);
+    }
+
+    for( int i = 0; i < cn; ++i ) {
+
+      const cv::Mat s = channels[i];
+      const cv::Mat m = (cnm > 1 && i < cnm) ? mchannels[i] : srcm;
 
       const double threshold_value =
-          get_threshold_value(channels[i], mask,
+          get_threshold_value(s, m,
               (::THRESHOLD_TYPE) (_threshold_type),
               _threshold_value);
 
-      cv::compare(channels[i], threshold_value * _threshold_scale,
+      cv::compare(s, threshold_value * _threshold_scale,
           channels[i],
           _compare);
 
@@ -153,7 +174,6 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     }
 
     cv::merge(channels, dstm);
-
   }
   else {
 

@@ -55,8 +55,8 @@ QLineEditBox::QLineEditBox(QWidget *parent) :
 QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
     Base(parent)
 {
-  layout_ = new QHBoxLayout(this);
-  layout_->setContentsMargins(0, 0, 0, 0);
+  _layout = new QHBoxLayout(this);
+  _layout->setContentsMargins(0, 0, 0, 0);
 
   QCustomLineEdit * custom_edit =
       new QCustomLineEdit(s, this);
@@ -65,9 +65,9 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
   custom_edit->setSizePolicy(QSizePolicy::Expanding,
       QSizePolicy::Preferred);
 
-  layout_->addWidget(lineEdit_ = custom_edit, 1000);
+  _layout->addWidget(_lineEdit = custom_edit, 1000);
 
-  connect(custom_edit, &QLineEdit::editingFinished,
+  QObject::connect(custom_edit, &QLineEdit::editingFinished,
       [this, custom_edit]() {
         if ( custom_edit->text() != custom_edit->previousText() ) {
           custom_edit->setPreviousText(custom_edit->text());
@@ -75,7 +75,7 @@ QLineEditBox::QLineEditBox(const QString & s, QWidget *parent) :
         }
       });
 
-  connect(custom_edit, &QLineEdit::returnPressed,
+  QObject::connect(custom_edit, &QLineEdit::returnPressed,
       this, &ThisClass::returnPressed);
 
 }

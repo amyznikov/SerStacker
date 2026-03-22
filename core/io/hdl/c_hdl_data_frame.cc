@@ -128,20 +128,20 @@ c_hdl_data_frame::c_hdl_data_frame()
   cleanup();
 }
 
-void c_hdl_data_frame::cleanup()
+void c_hdl_data_frame::set_current_lidar(const c_hdl_specification & lidar)
 {
-  clean_artifacts();
+  _current_lidar = lidar;
+  _range_image.set_lidar_specifcation(&_current_lidar);
 }
 
-void c_hdl_data_frame::clean_artifacts()
-{
-  base::clean_artifacts();
-  setup_default_channels();
-}
 
 void c_hdl_data_frame::setup_default_channels()
 {
   _image_displays.clear();
+
+  add_image_display("RAY_ELEVATIONS",
+      "Raw laser ray elevations in radians (no offset correction)",
+      -CV_PI / 2, +CV_PI / 2);
 
   add_image_display("DEPTH",
       "3D Point depth",
@@ -208,8 +208,8 @@ void c_hdl_data_frame::setup_default_channels()
   _display_types.emplace(DisplayType_Image);
   _display_types.emplace(DisplayType_PointCloud);
 
-  range_image_.set_azimuthal_resolution(c_hdl_range_image::default_azimuthal_resolution());
-  range_image_.set_start_azimuth(c_hdl_range_image::default_start_azimuth());
+  _range_image.set_azimuthal_resolution(c_hdl_range_image::default_azimuthal_resolution());
+  _range_image.set_start_azimuth(c_hdl_range_image::default_start_azimuth());
 }
 
 bool c_hdl_data_frame::get_image(const std::string & display_name,
@@ -227,50 +227,53 @@ bool c_hdl_data_frame::get_image(const std::string & display_name,
 
   bool fOk = true;
 
-  range_image_.set_lidar_specifcation(&current_lidar_);
+  //_range_image.set_lidar_specifcation(&_current_lidar);
 
 
-  if ( display_name == "INTENSITY" ) {
-    range_image_.build_intensity(current_frame_->points, im1, &m);
+  if ( display_name == "RAY_ELEVATIONS" ) {
+    _range_image.build_ray_elevations(im1);
+  }
+  else if ( display_name == "INTENSITY" ) {
+    _range_image.build_intensity(_current_frame->points, im1, &m);
   }
   else if( display_name == "DISTANCES" ) {
-    range_image_.build_distances(current_frame_->points, im1, &m);
+    _range_image.build_distances(_current_frame->points, im1, &m);
   }
   else if( display_name == "X" ) {
-    range_image_.build_x(current_frame_->points, im1, &m);
+    _range_image.build_x(_current_frame->points, im1, &m);
   }
   else if( display_name == "Y" ) {
-    range_image_.build_y(current_frame_->points, im1, &m);
+    _range_image.build_y(_current_frame->points, im1, &m);
   }
   else if( display_name == "Z" ) {
-    range_image_.build_z(current_frame_->points, im1, &m);
+    _range_image.build_z(_current_frame->points, im1, &m);
   }
   else if( display_name == "HEIGHT" ) {
-    range_image_.build_heights(current_frame_->points, im1, &m);
+    _range_image.build_heights(_current_frame->points, im1, &m);
   }
   else if( display_name == "AZIMUTH" ) {
-    range_image_.build_azimuths(current_frame_->points, im1, &m);
+    _range_image.build_azimuths(_current_frame->points, im1, &m);
   }
   else if( display_name == "ELEVATION" ) {
-    range_image_.build_elevations(current_frame_->points, im1, &m);
+    _range_image.build_elevations(_current_frame->points, im1, &m);
   }
   else if( display_name == "LASER_ID" ) {
-    range_image_.build_lazerids(current_frame_->points, im2, &m);
+    _range_image.build_lazerids(_current_frame->points, im2, &m);
   }
   else if( display_name == "LASER_RING" ) {
-    range_image_.build_lazer_rings(current_frame_->points, im2, &m);
+    _range_image.build_lazer_rings(_current_frame->points, im2, &m);
   }
   else if( display_name == "DATABLOCK" ) {
-    range_image_.build_datablocks(current_frame_->points, im2, &m);
+    _range_image.build_datablocks(_current_frame->points, im2, &m);
   }
   else if( display_name == "TIMESTAMP" ) {
-    range_image_.build_timestamps(current_frame_->points, im1, &m);
+    _range_image.build_timestamps(_current_frame->points, im1, &m);
   }
   else if( display_name == "GSLOPES" ) {
-    range_image_.build_gslopes(current_frame_->points, im1, &m);
+    _range_image.build_gslopes(_current_frame->points, im1, &m);
   }
   else if( display_name == "DEPTH" ) {
-    range_image_.build_depths(current_frame_->points, im1, &m);
+    _range_image.build_depths(_current_frame->points, im1, &m);
   }
   else {
     fOk = false;
@@ -312,9 +315,14 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
     output_pids->clear();
   }
 
+  if ( base::get_point_cloud(display_name, output_points, output_colors, output_mask) ) {
+    return true;
+  }
+
+
   std::vector<cv::Vec3f> _points;
 
-  convert_to_cartesian(current_frame_->points, _points);
+  convert_to_cartesian(_current_frame->points, _points);
 
   if( output_points.needed() ) {
 
@@ -328,87 +336,87 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
 
   if( output_colors.needed() ) {
 
-    std::vector<float> colors(current_frame_->points.size());
+    std::vector<float> colors(_current_frame->points.size());
 
     //    CF_DEBUG("display_name=%s", display_name.c_str());
 
     if( display_name == "INTENSITY" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].intensity;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].intensity;
       }
 
     }
     else if( display_name == "DISTANCES" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].distance;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].distance;
       }
 
     }
     else if( display_name == "X" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
         colors[i] = _points[i][0];
       }
 
     }
     else if( display_name == "Y" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
         colors[i] = _points[i][1];
       }
     }
     else if( display_name == "Z" || display_name == "HEIGHT"  ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
         colors[i] = _points[i][2];
       }
     }
 
     else if( display_name == "AZIMUTH" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].azimuth;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].azimuth;
       }
 
     }
     else if( display_name == "ELEVATION" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].elevation;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].elevation;
       }
     }
     else if( display_name == "LASER_ID" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].laser_id;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].laser_id;
       }
     }
     else if( display_name == "LASER_RING" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].laser_ring;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].laser_ring;
       }
     }
     else if( display_name == "DATABLOCK" ) {
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].datablock;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].datablock;
       }
     }
     else if( display_name == "TIMESTAMP" ) {
 
       double tsmin = DBL_MAX;
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        const double ts = current_frame_->points[i].timestamp;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        const double ts = _current_frame->points[i].timestamp;
         if( ts < tsmin ) {
           tsmin = ts;
         }
       }
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = current_frame_->points[i].timestamp - tsmin;
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = _current_frame->points[i].timestamp - tsmin;
       }
     }
     else if( display_name == "GSLOPES" ) {
@@ -417,40 +425,36 @@ bool c_hdl_data_frame::get_point_cloud(const std::string & display_name,
       cv::Mat1b m;
       int r, c;
 
-      range_image_.set_lidar_specifcation(&current_lidar_);
-      range_image_.build_gslopes(current_frame_->points, im1, &m);
+      //_range_image.set_lidar_specifcation(&_current_lidar);
+      _range_image.build_gslopes(_current_frame->points, im1, &m);
 
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        if( range_image_.project(current_frame_->points[i], &r, &c) ) {
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        if( _range_image.project(_current_frame->points[i], &r, &c) ) {
           colors[i] = im1[r][c];
         }
       }
 
     }
-//    else if( display_name == "SELECTION_MASK" ) {
-//
-//      if( selection_mask_.rows != colors.size() ) {
-//
-//        std::fill(colors.begin(), colors.end(), 255);
-//      }
-//      else {
-//        for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-//
-//        }
-//
-//      }
-//    }
-    else // if( display_name == "DEPTH" )
-    {
-      for( int i = 0, n = current_frame_->points.size(); i < n; ++i ) {
-        colors[i] = compute_depth(current_frame_->points[i]);
+    else if ( display_name == "RAY_ELEVATIONS" ) {
+
+      const auto & lidar = _current_lidar;
+
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        const auto & p = _current_frame->points[i];
+        if ( p.laser_id >= 0 && p.laser_id < lidar.lasers.size() ) {
+          colors[i] = lidar.lasers[p.laser_id].vert_correction * CV_PI / 180;
+        }
       }
     }
 
-//    std::vector<cv::Mat> _colors(1, cv::Mat(colors));
-//    setItems("_colors", output_colors, _colors);
-    cv::Mat(colors).copyTo(output_colors);
+    else // if( display_name == "DEPTH" )
+    {
+      for( int i = 0, n = _current_frame->points.size(); i < n; ++i ) {
+        colors[i] = compute_depth(_current_frame->points[i]);
+      }
+    }
 
+    cv::Mat(colors).copyTo(output_colors);
   }
 
   if( output_mask.needed() ) {

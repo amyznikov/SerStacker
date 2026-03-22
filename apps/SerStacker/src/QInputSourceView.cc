@@ -565,6 +565,11 @@ void QInputSourceView::setViewType(DisplayType viewType)
     const auto & new_displays =
         _currentFrame->get_available_image_displays();
 
+//    for ( auto ii = new_displays.begin(); ii != new_displays.end(); ++ii ) {
+//      const std::string & name = ii->first;
+//      CF_DEBUG("display: %s", name.c_str());
+//    }
+
     auto & existing_displays =
         this->_displays;
 
@@ -617,7 +622,7 @@ void QInputSourceView::displayCurrentFrame()
 
       case DisplayType_Image: {
 
-        cv::Mat image, data, mask;
+        cv::Mat image, mask, data;
 
         _currentFrame->get_image(_displayChannel.toStdString(),
             image, mask, data);
@@ -636,6 +641,10 @@ void QInputSourceView::displayCurrentFrame()
 
         _currentFrame->get_point_cloud(_displayChannel.toStdString(),
             points, colors, mask, &pids);
+
+        CF_DEBUG("points: %dx%d channels=%d", points.rows, points.cols, points.channels());
+        CF_DEBUG("colors: %dx%d channels=%d", colors.rows, colors.cols, colors.channels());
+
 
         setCurrentView(_cloudView);
         _cloudView->setPoints(std::move(points), std::move(colors), std::move(mask), std::move(pids));

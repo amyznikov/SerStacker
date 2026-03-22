@@ -22,12 +22,12 @@ public:
 
   void set_output_name(const std::string & v)
   {
-    output_name_ = v;
+    _output_name = v;
   }
 
   const std::string& output_name() const
   {
-    return output_name_;
+    return _output_name;
   }
 
   bool process(c_data_frame::sptr & dataframe) override;
@@ -40,7 +40,7 @@ protected:
   }
 
 protected:
-  std::string output_name_;
+  std::string _output_name;
 };
 
 

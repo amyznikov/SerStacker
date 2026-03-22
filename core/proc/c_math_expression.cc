@@ -738,6 +738,17 @@ c_math_expression::~c_math_expression()
   clear_args();
 }
 
+void c_math_expression::clear()
+{
+  cleanup();
+  clear_errmsg();
+}
+
+bool c_math_expression::empty() const
+{
+  return !_root;
+}
+
 void c_math_expression::clear_args()
 {
   _args.clear();
@@ -1216,6 +1227,7 @@ bool c_math_expression::parse(const char * string)
 
   if( !parse_expression(0, &string, &_root) ) {
     _pointer_to_syntax_error = string;
+    cleanup();
     return false;
   }
 
@@ -1223,6 +1235,7 @@ bool c_math_expression::parse(const char * string)
     cleanup();
     set_errmsg("Unexpected text after end of expression: '%s'", string);
     _pointer_to_syntax_error = string;
+    cleanup();
     return false;
   }
 

@@ -37,9 +37,9 @@ const std::vector<std::string> & c_hdl_input_source::suffixes()
 
 bool c_hdl_input_source::open()
 {
-  if( reader_.open(_filename, "") && reader_.select_stream(0) ) {
-    reader_.seek(0);
-    _size = reader_.num_frames();
+  if( _reader.open(_filename, "") && _reader.select_stream(0) ) {
+    _reader.seek(0);
+    _size = _reader.num_frames();
     return true;
   }
   return false;
@@ -47,22 +47,22 @@ bool c_hdl_input_source::open()
 
 bool c_hdl_input_source::is_open() const
 {
-  return reader_.is_open();
+  return _reader.is_open();
 }
 
 void c_hdl_input_source::close()
 {
-  reader_.close();
+  _reader.close();
 }
 
 bool c_hdl_input_source::seek(int pos)
 {
-  return reader_.seek(pos);
+  return _reader.seek(pos);
 }
 
 int c_hdl_input_source::curpos()
 {
-  return reader_.curpos();
+  return _reader.curpos();
 }
 
 bool c_hdl_input_source::read(c_data_frame::sptr & output_frame)
@@ -81,12 +81,9 @@ bool c_hdl_input_source::read(c_data_frame::sptr & output_frame)
 
   hdl->cleanup();
 
-  //c_hdl_specification lidar_specification_;
-  //;
-  if( (hdl->current_frame_ = reader_.read()) ) {
+  if( (hdl->_current_frame = _reader.read()) ) {
 
-    hdl->current_lidar_ =
-        *reader_.hdl_parser().lidar_specification();
+    hdl->set_current_lidar(*_reader.hdl_parser().lidar_specification());
 
     return true;
   }
@@ -96,7 +93,7 @@ bool c_hdl_input_source::read(c_data_frame::sptr & output_frame)
 
 c_hdl_frame::sptr c_hdl_input_source::read()
 {
-  return reader_.read();
+  return _reader.read();
 }
 
 bool c_hdl_input_source::read(cv::Mat & output_frame,

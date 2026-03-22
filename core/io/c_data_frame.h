@@ -88,8 +88,8 @@ public:
 
   virtual void add_image(const std::string & display_name,
       cv::InputArray image,
-      cv::InputArray mask,
-      cv::InputArray data);
+      cv::InputArray mask = cv::noArray(),
+      cv::InputArray data = cv::noArray());
 
   virtual void add_images(const std::string & display_name,
       const std::vector<cv::Mat> & images,

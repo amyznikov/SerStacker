@@ -65,19 +65,13 @@ double get_threshold_value(cv::InputArray image, cv::InputArray mask, THRESHOLD_
       break;
 
     case THRESHOLD_TYPE_NOISE: {
-
-      const int cn =
-          image.channels();
-
-      const cv::Scalar s =
-          estimate_noise(image, cv::noArray(), mask);
-
+      const int cn = image.channels();
+      const cv::Scalar s = estimate_noise(image, cv::noArray(), mask);
       threshold_value = s[0];
       for( int i = 1; i < cn; ++i ) {
         threshold_value += s[i];
       }
       threshold_value /= cn;
-
       break;
     }
   }

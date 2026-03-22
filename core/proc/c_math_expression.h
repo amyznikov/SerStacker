@@ -109,6 +109,9 @@ public:
   const std::string & error_message() const;
   const char * pointer_to_syntax_error() const;
 
+  void clear();
+  bool empty() const;
+
   bool add_argument(int arg_index, const char * name, const char * desc);
   bool add_constant(double value, const char * name, const char * desc);
   bool add_bind(double * value, const char * name, const char * desc);

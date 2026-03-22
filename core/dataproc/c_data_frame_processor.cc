@@ -6,10 +6,13 @@
  */
 
 #include "c_data_frame_processor.h"
+
 #include "hdl/c_hdl_range_image_config_routine.h"
+#include "hdl/c_hdl_pixel_math_routine.h"
+#include "hdl/c_hdl_ground_test_routine.h"
+
 #include "image/c_image_pixels_selection_routine.h"
 #include "image/c_image_gradient_routine.h"
-
 
 #include "c_pixel_processor_routine.h"
 
@@ -23,8 +26,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-static std::vector<const c_data_frame_processor_routine::class_factory*> c_image_processor_routine_class_list_;
+static std::vector<const c_data_frame_processor_routine::class_factory*> _image_processor_routine_class_list;
 
 c_data_frame_processor_routine::class_factory::class_factory(const std::string & _class_name,
     const std::string & _display_name,
@@ -38,7 +40,7 @@ c_data_frame_processor_routine::class_factory::class_factory(const std::string &
 const std::vector<const c_data_frame_processor_routine::class_factory*> & c_data_frame_processor_routine::class_list()
 {
   register_all();
-  return c_image_processor_routine_class_list_;
+  return _image_processor_routine_class_list;
 }
 
 
@@ -52,33 +54,30 @@ void c_data_frame_processor_routine::register_class_factory(const class_factory 
   class_list_guard_lock guard_lock;
 
   std::vector<const c_data_frame_processor_routine::class_factory*>::iterator ii =
-      std::find(c_image_processor_routine_class_list_.begin(),
-          c_image_processor_routine_class_list_.end(),
+      std::find(_image_processor_routine_class_list.begin(),
+          _image_processor_routine_class_list.end(),
           class_factory);
 
-  if ( ii == c_image_processor_routine_class_list_.end() ) {
-    c_image_processor_routine_class_list_.emplace_back(class_factory);
+  if ( ii == _image_processor_routine_class_list.end() ) {
+    _image_processor_routine_class_list.emplace_back(class_factory);
   }
 }
 
 
 void c_data_frame_processor_routine::register_all()
 {
-  static std::atomic<bool> registered(false);
-  if ( !registered ) {
+  static const bool _registered = []() {
 
     register_class_factory(c_pixel_processor_routine::class_factory_instance());
 
     register_class_factory(c_hdl_range_image_config_routine::class_factory_instance());
-
+    register_class_factory(c_hdl_pixel_math_routine::class_factory_instance());
+    register_class_factory(c_hdl_ground_test_routine::class_factory_instance());
 
     register_class_factory(c_image_pixels_selection_routine::class_factory_instance());
-    register_class_factory(c_image_gradient_routine::class_factory_instance());
-
-
-    registered = true;
-  }
-
+      register_class_factory(c_image_gradient_routine::class_factory_instance());
+    return true;
+  }();
 }
 
 c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(c_config_setting settings)
@@ -121,7 +120,7 @@ c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(cons
   class_list_guard_lock lock;
 
   const char * cname = processor_name.c_str();
-  for ( const class_factory * f : c_image_processor_routine_class_list_ ) {
+  for ( const class_factory * f : _image_processor_routine_class_list ) {
     if ( strcasecmp(cname, f->class_name.c_str()) == 0 ) {
       return f->create_instance();
     }

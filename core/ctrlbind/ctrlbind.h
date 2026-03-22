@@ -51,6 +51,7 @@ struct c_ctlbind
     BeginExpandableGroup,
     EndGroup,
     Textbox,
+    MultilineTextbox,
     NumericBox,
     Checkbox,
     FlagsCheckbox,
@@ -757,42 +758,42 @@ ctlbind_flags_checkbox(c_ctlist<RootObjectType> & ctls, const std::string & cnam
 
   ctls.emplace_back(c);
 }
-//
-//template<class RootObjectType, class StructType>
-//inline void ctlbind_input_source_selection(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-//    const c_ctlbind_context<RootObjectType, std::string> & ctx,
-//    const std::function<const c_input_sequence*(StructType*)> & get_input_sequence,
-//    //const c_input_sequence * (StructType::*get_input_sequence)() const,
-//    const std::string & cdesc = "")
-//{
-//  using BindType = c_ctlbind<RootObjectType>;
-//  using FieldType = std::string;
-//
-//  BindType c;
-//  c.cname = cname;
-//  c.cdesc = cdesc;
-//  c.ctype = BindType::CtlType::InputSourceSelection;
-//
-//  c.getvalue = [offset = ctx.offset](const RootObjectType * obj, std::string * s) -> bool {
-//    return obj ? *s = *reinterpret_cast<const std::string*>(reinterpret_cast<const uint8_t*>(obj) + offset), true : false;
-//  };
-//
-//  c.setvalue = [offset = ctx.offset](RootObjectType * obj, const std::string & v) -> bool {
-//    return obj ? *reinterpret_cast<std::string*>(reinterpret_cast<uint8_t*>(obj) + offset) = v, true : false;
-//  };
-//
-//  c.input_sequence =
-//    [offset = ctx.offset, get_input_sequence](const RootObjectType * obj) -> const c_input_sequence *  {
-//      if ( obj ) {
-//        const StructType * obj2 = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
-//        return get_input_sequence(obj2);
-//      }
-//      return nullptr;
-//    };
-//
-//  ctls.emplace_back(c);
-//}
-//
+
+
+template<class RootObjectType, class StructType, class StringType>
+void ctlbind_multiline_textbox(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    StringType (StructType::*getv)() const, void (StructType::*setv)(StringType))
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FieldType = StringType;
+
+  BindType c;
+  c.cname = cname;
+  c.ctype = BindType::CtlType::MultilineTextbox;
+
+  c.getvalue = [offset = ctx.offset, getv](const RootObjectType * obj, std::string * s) -> bool {
+    if ( obj ) {
+      const StructType * obj2 = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+      *s = toString((obj2->*getv)());
+      return true;
+    }
+    return false;
+  };
+
+  c.setvalue = [offset = ctx.offset, setv](RootObjectType * obj, const std::string & s) -> bool {
+    if ( obj ) {
+      StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
+      (obj2->*setv)(s);
+      return true;
+    }
+    return false;
+  };
+
+  ctls.emplace_back(c);
+}
+
+
 
 template<class RootObjectType>
 inline void ctlbind_math_expression_ctl(c_ctlist<RootObjectType> & ctls,
@@ -863,6 +864,7 @@ void ctlbind_math_expression_ctl(c_ctlist<RootObjectType> & ctls,
 
   ctls.emplace_back(c);
 }
+
 
 
 

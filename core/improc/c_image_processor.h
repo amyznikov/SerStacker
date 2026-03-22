@@ -247,8 +247,8 @@ public:
   /////////////////////////////////////////////////////////////////////////////
   static c_image_processor_artifacts & globals()
   {
-    static c_image_processor_artifacts artifacts_;
-    return artifacts_;
+    static c_image_processor_artifacts _artifacts;
+    return _artifacts;
   }
 
   static void clear_globals()

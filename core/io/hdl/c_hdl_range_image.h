@@ -60,6 +60,14 @@ public:
   /** get azimuth for given range image column, in radians */
   double elevation(int c) const;
 
+  /** create empty range image of specified depth */
+  bool create(cv::OutputArray output_empty_range_image,
+      /* out, opt */ cv::Mat1b * output_empty_mask = nullptr,
+      int dtype = -1) const;
+
+  /** build range image where each pixel is the elevation of HDL ray in radians */
+  bool build_ray_elevations(/* out*/ cv::Mat1f & elevations) const;
+
   /** build range image where each pixel is the distance to HDL point  */
   bool build_distances(const std::vector<c_hdl_point> & points,
       /* out*/ cv::Mat1f & distances,
@@ -207,49 +215,49 @@ public:
   /** get current range image image in pixels */
   const cv::Size & size() const
   {
-    return image_size_;
+    return _image_size;
   }
 
   /** get current range image width in pixels */
   int width() const
   {
-    return image_size_.width;
+    return _image_size.width;
   }
 
   /** get current range image height in pixels */
   int height() const
   {
-    return image_size_.height;
+    return _image_size.height;
   }
 
   const std::vector<float> & sin_elevation_table() const
   {
-    return sin_elevation_table_;
+    return _sin_elevation_table;
   }
 
   const std::vector<float> & cos_elevation_table() const
   {
-    return cos_elevation_table_;
+    return _cos_elevation_table;
   }
 
   const std::vector<float> & tan_elevation_table() const
   {
-    return tan_elevation_table_;
+    return _tan_elevation_table;
   }
 
   float cos_elevation_table(int laser_ring) const
   {
-    return cos_elevation_table_[laser_ring];
+    return _cos_elevation_table[laser_ring];
   }
 
   float sin_elevation_table(int laser_ring) const
   {
-    return sin_elevation_table_[laser_ring];
+    return _sin_elevation_table[laser_ring];
   }
 
   float tan_elevation_table(int laser_ring) const
   {
-    return tan_elevation_table_[laser_ring];
+    return _tan_elevation_table[laser_ring];
   }
 
   static constexpr double default_azimuthal_resolution()
@@ -265,18 +273,14 @@ public:
 protected:
   void update_image_size();
 
-  bool create_output_images(cv::OutputArray output_range_image,
-      /* out, opt */ cv::Mat1b * mask = nullptr,
-      int dtype = -1) const;
-
 protected:
-  const c_hdl_specification * hdl_ = nullptr;
-  double azimuthal_resolution_ = default_azimuthal_resolution();
-  double start_azimuth_ = default_start_azimuth();
-  cv::Size image_size_;
-  std::vector<float> sin_elevation_table_;
-  std::vector<float> cos_elevation_table_;
-  std::vector<float> tan_elevation_table_;
+  const c_hdl_specification * _hdl = nullptr;
+  double _azimuthal_resolution = default_azimuthal_resolution();
+  double _start_azimuth = default_start_azimuth();
+  cv::Size _image_size;
+  std::vector<float> _sin_elevation_table;
+  std::vector<float> _cos_elevation_table;
+  std::vector<float> _tan_elevation_table;
 };
 
 

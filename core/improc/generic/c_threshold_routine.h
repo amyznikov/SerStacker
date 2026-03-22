@@ -52,9 +52,9 @@ public:
     MASK_MODE_NXOR,
   };
 
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   cv::CmpTypes _compare = cv::CMP_GT;

@@ -49,7 +49,7 @@ public:
       int * output_bpc) override;
 
 protected:
-  c_hdl_offline_pcap_reader reader_;
+  c_hdl_offline_pcap_reader _reader;
 };
 
 #endif // HAVE_PCAP

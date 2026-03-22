@@ -49,47 +49,47 @@ c_hdl_range_image::c_hdl_range_image()
 
 /* c'tor with lidar specifcation */
 c_hdl_range_image::c_hdl_range_image(const c_hdl_specification * lidar) :
-    hdl_(lidar)
+    _hdl(lidar)
 {
   update_image_size();
 }
 
 /* c'tor with lidar specifcation and start azimith */
 c_hdl_range_image::c_hdl_range_image(const c_hdl_specification * lidar, double start_azimuth) :
-    hdl_(lidar), start_azimuth_(start_azimuth)
+    _hdl(lidar), _start_azimuth(start_azimuth)
 {
   update_image_size();
 }
 
 c_hdl_range_image::c_hdl_range_image(const c_hdl_specification * lidar, double azimuthal_resolution, double start_azimuth) :
-    hdl_(lidar), azimuthal_resolution_(azimuthal_resolution), start_azimuth_(start_azimuth)
+    _hdl(lidar), _azimuthal_resolution(azimuthal_resolution), _start_azimuth(start_azimuth)
 {
   update_image_size();
 }
 
 void c_hdl_range_image::update_image_size()
 {
-  if( !hdl_ || azimuthal_resolution_ <= 0 ) {
-    sin_elevation_table_.clear();
-    cos_elevation_table_.clear();
-    tan_elevation_table_.clear();
-    image_size_.width = 0;
-    image_size_.height = 0;
+  if( !_hdl || _azimuthal_resolution <= 0 ) {
+    _sin_elevation_table.clear();
+    _cos_elevation_table.clear();
+    _tan_elevation_table.clear();
+    _image_size.width = 0;
+    _image_size.height = 0;
   }
   else {
 
-    image_size_ = cv::Size(hdl_->lasers.size(),
-        (int) ceil(2 * CV_PI / azimuthal_resolution_));
+    _image_size = cv::Size(_hdl->lasers.size(),
+        (int) ceil(2 * CV_PI / _azimuthal_resolution));
 
-    sin_elevation_table_.resize(hdl_->lasers.size());
-    cos_elevation_table_.resize(hdl_->lasers.size());
-    tan_elevation_table_.resize(hdl_->lasers.size());
+    _sin_elevation_table.resize(_hdl->lasers.size());
+    _cos_elevation_table.resize(_hdl->lasers.size());
+    _tan_elevation_table.resize(_hdl->lasers.size());
 
-    for( uint i = 0, n = hdl_->lasers.size(); i < n; ++i ) {
-      const c_hdl_lasers_table &laser = hdl_->lasers[i];
-      sin_elevation_table_[laser.laser_ring] = sin(laser.vert_correction * CV_PI / 180);
-      cos_elevation_table_[laser.laser_ring] = cos(laser.vert_correction * CV_PI / 180);
-      tan_elevation_table_[laser.laser_ring] = tan(laser.vert_correction * CV_PI / 180);
+    for( uint i = 0, n = _hdl->lasers.size(); i < n; ++i ) {
+      const c_hdl_lasers_table &laser = _hdl->lasers[i];
+      _sin_elevation_table[laser.laser_ring] = sin(laser.vert_correction * CV_PI / 180);
+      _cos_elevation_table[laser.laser_ring] = cos(laser.vert_correction * CV_PI / 180);
+      _tan_elevation_table[laser.laser_ring] = tan(laser.vert_correction * CV_PI / 180);
     }
   }
 }
@@ -97,59 +97,59 @@ void c_hdl_range_image::update_image_size()
 /** set current HDL parameters */
 void c_hdl_range_image::set_lidar_specifcation(const c_hdl_specification * lidar)
 {
-  hdl_ = lidar;
+  _hdl = lidar;
   update_image_size();
 }
 
 /** get current HDL parameters */
 const c_hdl_specification* c_hdl_range_image::lidar_specifcation() const
 {
-  return hdl_;
+  return _hdl;
 }
 
 /** set desired azimuthal resolution in [radians/px] */
 void c_hdl_range_image::set_azimuthal_resolution(double radians_per_pixel)
 {
-  azimuthal_resolution_ = radians_per_pixel;
+  _azimuthal_resolution = radians_per_pixel;
   update_image_size();
 }
 
 /** get current azimuthal resolution in [radians/px] */
 double c_hdl_range_image::azimuthal_resolution() const
 {
-  return azimuthal_resolution_;
+  return _azimuthal_resolution;
 }
 
 /** set start azimuth (the azimuth of very first image column) in radians. */
 void c_hdl_range_image::set_start_azimuth(double radians)
 {
-  start_azimuth_ = radians;
+  _start_azimuth = radians;
 }
 
 /** get current start azimuth (the azimuth of very first image column) in radians. */
 double c_hdl_range_image::start_azimuth() const
 {
-  return start_azimuth_;
+  return _start_azimuth;
 }
 
-bool c_hdl_range_image::create_output_images(cv::OutputArray output_range_image, cv::Mat1b * mask, int dtype) const
+bool c_hdl_range_image::create(cv::OutputArray output_range_image, cv::Mat1b * mask, int dtype) const
 {
-  if( !hdl_ ) {
+  if( !_hdl ) {
     CF_ERROR("HDL LiDAR specification pointer is not set");
     return false;
   }
 
-  if( azimuthal_resolution_ <= 0 ) {
+  if( _azimuthal_resolution <= 0 ) {
     CF_ERROR("invalid range image azimuthal resolution specified: %g [radian/pix]",
-        azimuthal_resolution_);
+        _azimuthal_resolution);
     return false;
   }
 
-  if( image_size_.empty() ) {
+  if( _image_size.empty() ) {
     CF_ERROR("APP BUG: invalid computed range image size %dx%d.\n"
         "Most probably the c_hdl_range_image::update_image_size() was not called properly\n"
         "Consult amyznikov how to fix this issue",
-        image_size_.width, image_size_.height);
+        _image_size.width, _image_size.height);
     return false;
   }
 
@@ -165,12 +165,12 @@ bool c_hdl_range_image::create_output_images(cv::OutputArray output_range_image,
       return false;
     }
 
-    output_range_image.create(image_size_, dtype);
+    output_range_image.create(_image_size, dtype);
     output_range_image.setTo(0);
   }
 
   if( mask ) {
-    mask->create(image_size_);
+    mask->create(_image_size);
     mask->setTo(0);
   }
 
@@ -184,16 +184,16 @@ bool c_hdl_range_image::project(const c_hdl_point & p, int * outr, int * outc) c
   double a;
 
   const int c = p.laser_ring;
-  if( c < 0 || c >= image_size_.width ) {
+  if( c < 0 || c >= _image_size.width ) {
     return false;
   }
 
-  if( (a = p.azimuth - start_azimuth_) < 0 ) {
+  if( (a = p.azimuth - _start_azimuth) < 0 ) {
     a += 2 * CV_PI;
   }
 
-  const int r = (int) (a / azimuthal_resolution_);
-  if( r < 0 || r >= image_size_.height ) {
+  const int r = (int) (a / _azimuthal_resolution);
+  if( r < 0 || r >= _image_size.height ) {
     return false;
   }
 
@@ -207,12 +207,12 @@ bool c_hdl_range_image::projectncr(const c_hdl_point & p, int * outr, int * outc
 {
   double a;
 
-  if( (a = p.azimuth - start_azimuth_) < 0 ) {
+  if( (a = p.azimuth - _start_azimuth) < 0 ) {
     a += 2 * CV_PI;
   }
 
-  const int r = (const int) (a / azimuthal_resolution_);
-  if( r >= 0 && r < image_size_.height ) {
+  const int r = (const int) (a / _azimuthal_resolution);
+  if( r >= 0 && r < _image_size.height ) {
     *outr = r;
     *outc = p.laser_ring;
     return true;
@@ -224,7 +224,7 @@ bool c_hdl_range_image::projectncr(const c_hdl_point & p, int * outr, int * outc
 /** get azimuth for given range image row, in radians */
 double c_hdl_range_image::azimuth(int r) const
 {
-  double a = r * azimuthal_resolution_ + start_azimuth_;
+  double a = r * _azimuthal_resolution + _start_azimuth;
   if( a >= 2 * CV_PI ) {
     a -= 2 * CV_PI;
   }
@@ -237,8 +237,8 @@ double c_hdl_range_image::azimuth(int r) const
 /** get azimuth for given range image column, in radians */
 double c_hdl_range_image::elevation(int c) const
 {
-  if ( hdl_ ) {
-    for ( const c_hdl_lasers_table & t : hdl_->lasers ) {
+  if ( _hdl ) {
+    for ( const c_hdl_lasers_table & t : _hdl->lasers ) {
       if ( t.laser_ring == c ) {
         return t.vert_correction * CV_PI / 180;
       }
@@ -247,6 +247,29 @@ double c_hdl_range_image::elevation(int c) const
   return 0;
 }
 
+
+/** build range image where each pixel is the elevation of HDL ray in radians */
+bool c_hdl_range_image::build_ray_elevations(/* out*/ cv::Mat1f & elevations) const
+{
+  if ( !create(elevations) ) {
+    CF_ERROR("create() fails");
+    return false;
+  }
+
+  const int num_lasers = _hdl->lasers.size();
+  if( elevations.cols != num_lasers ) {
+    CF_ERROR("APP BUG: elevations.cols=%d but _hdl->lasers.size()=%zu", elevations.cols, _hdl->lasers.size());
+    return false;
+  }
+
+  for ( int i = 0; i < num_lasers; ++i ) {
+    const auto & laser = _hdl->lasers[i];
+    const double e = laser.vert_correction * CV_PI / 180;
+    elevations.col(laser.laser_ring).setTo(e);
+  }
+
+  return true;
+}
 
 
 /** build range image where each pixel is the distance to HDL point  */
@@ -260,7 +283,7 @@ bool c_hdl_range_image::build_distances(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if ( !create_output_images(distances, mask) ) {
+  if ( !create(distances, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -309,7 +332,7 @@ bool c_hdl_range_image::build_depths(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if ( !create_output_images(depths, mask) ) {
+  if ( !create(depths, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -360,7 +383,7 @@ bool c_hdl_range_image::build_depths(const std::vector<c_hdl_point> & points, do
     return false;
   }
 
-  if ( !create_output_images(depths) ) {
+  if ( !create(depths) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -375,7 +398,7 @@ bool c_hdl_range_image::build_depths(const std::vector<c_hdl_point> & points, do
       if( p.distance > 0 && projectncr(p, &r, &c) ) {
 
         const uint8_t d = cv::saturate_cast<uint8_t>(
-            p.distance * distance_scale * cos_elevation_table_[p.laser_ring]);
+            p.distance * distance_scale * _cos_elevation_table[p.laser_ring]);
 
         if( !depths[r][c] || d < depths[r][c] ) {
           depths[r][c] = d;
@@ -394,7 +417,7 @@ bool c_hdl_range_image::build_depths(const std::vector<c_hdl_point> & points, do
         if( p.distance > 0 && projectncr(p, &r, &c) ) {
 
           const uint8_t d = cv::saturate_cast<uint8_t>(p.distance * distance_scale *
-              cos_elevation_table_[p.laser_ring]);
+              _cos_elevation_table[p.laser_ring]);
 
           if( !depths[r][c] || d < depths[r][c] ) {
             depths[r][c] = d;
@@ -419,7 +442,7 @@ bool c_hdl_range_image::build_x(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(values, mask) ) {
+  if( !create(values, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -474,7 +497,7 @@ bool c_hdl_range_image::build_y(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(values, mask) ) {
+  if( !create(values, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -529,7 +552,7 @@ bool c_hdl_range_image::build_z(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(values, mask) ) {
+  if( !create(values, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -586,7 +609,7 @@ bool c_hdl_range_image::build_heights(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(heights, mask) ) {
+  if( !create(heights, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -641,7 +664,7 @@ bool c_hdl_range_image::build_intensity(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(intensity, mask) ) {
+  if( !create(intensity, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -697,7 +720,7 @@ bool c_hdl_range_image::build_elevations(const std::vector<c_hdl_point> & points
     return false;
   }
 
-  if( !create_output_images(elevations, mask) ) {
+  if( !create(elevations, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -752,7 +775,7 @@ bool c_hdl_range_image::build_azimuths(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(azimuths, mask) ) {
+  if( !create(azimuths, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -807,7 +830,7 @@ bool c_hdl_range_image::build_lazerids(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(lazerids, mask) ) {
+  if( !create(lazerids, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -863,7 +886,7 @@ bool c_hdl_range_image::build_lazer_rings(const std::vector<c_hdl_point> & point
     return false;
   }
 
-  if( !create_output_images(rings, mask) ) {
+  if( !create(rings, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -920,7 +943,7 @@ bool c_hdl_range_image::build_datablocks(const std::vector<c_hdl_point> & points
     return false;
   }
 
-  if( !create_output_images(datablocks, mask) ) {
+  if( !create(datablocks, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -976,7 +999,7 @@ bool c_hdl_range_image::build_pkts(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(pkts, mask) ) {
+  if( !create(pkts, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1031,7 +1054,7 @@ bool c_hdl_range_image::build_timestamps(const std::vector<c_hdl_point> & points
     return false;
   }
 
-  if( !create_output_images(timestamps, mask) ) {
+  if( !create(timestamps, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1087,7 +1110,7 @@ bool c_hdl_range_image::build_aliasing(const std::vector<c_hdl_point> & points,
     return false;
   }
 
-  if( !create_output_images(counter) ) {
+  if( !create(counter) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1121,7 +1144,7 @@ bool c_hdl_range_image::build_cartesizan(const std::vector<c_hdl_point> & points
     /* out*/cv::Mat3f & cartesian,
     /* out, opt */cv::Mat1b * mask)
 {
-  if( !create_output_images(cartesian, mask) ) {
+  if( !create(cartesian, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1152,7 +1175,7 @@ bool c_hdl_range_image::build_cartesizan(const std::vector<c_hdl_point> & points
     /* out*/cv::Mat4f & cartesian,
     /* out, opt */cv::Mat1b * mask)
 {
-  if( !create_output_images(cartesian, mask) ) {
+  if( !create(cartesian, mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1269,7 +1292,7 @@ bool c_hdl_range_image::build_gslopes(const std::vector<c_hdl_point> & points,
     double rp, hp, rc, hc, rn, hn;
     double dh, dr, c;
 
-    const double ARES = azimuthal_resolution_;
+    const double ARES = _azimuthal_resolution;
 
 
     for ( int xc = 0; xc < distances.cols; ++xc ) {
@@ -1277,7 +1300,7 @@ bool c_hdl_range_image::build_gslopes(const std::vector<c_hdl_point> & points,
 
         if ( output_also_heights ) {
           (*output_also_heights)[yc][xc] =
-              distances[yc][xc] * sin_elevation_table_[xc];
+              distances[yc][xc] * _sin_elevation_table[xc];
         }
 
         const int xp = prev_col(xc - 1, yc, distances);
@@ -1291,12 +1314,12 @@ bool c_hdl_range_image::build_gslopes(const std::vector<c_hdl_point> & points,
         const int yn = next_row_wrapped(xc, yc, distances);
 
         if( yp >= 0 && yn >= 0 ) {
-          const double drp = (distances[yc][xc] - distances[yp][xc]) * cos_elevation_table_[xc];
-          const double drn = (distances[yn][xc] - distances[yc][xc]) * cos_elevation_table_[xc];
+          const double drp = (distances[yc][xc] - distances[yp][xc]) * _cos_elevation_table[xc];
+          const double drn = (distances[yn][xc] - distances[yc][xc]) * _cos_elevation_table[xc];
           const double wp = (1. / (0.1 + square(drp)));
           const double wn = (1. / (0.1 + square(drn)));
-          const double cp = (1. + square(drp / (distances[yc][xc] * cos_elevation_table_[xc] * ARES)));
-          const double cn = (1. + square(drn / (distances[yc][xc] * cos_elevation_table_[xc] * ARES)));
+          const double cp = (1. + square(drp / (distances[yc][xc] * _cos_elevation_table[xc] * ARES)));
+          const double cn = (1. + square(drn / (distances[yc][xc] * _cos_elevation_table[xc] * ARES)));
           c = (cp * wp + cn * wn) / (wp + wn);
         }
         else if( yp >= 0 ) {
@@ -1310,11 +1333,11 @@ bool c_hdl_range_image::build_gslopes(const std::vector<c_hdl_point> & points,
         }
 
         rc = distances[yc][xc];
-        hc = distances[yc][xc] * sin_elevation_table_[xc];
+        hc = distances[yc][xc] * _sin_elevation_table[xc];
 
         if( xp >= 0 ) {
           rp = distances[yc][xp];
-          hp = distances[yc][xp] * sin_elevation_table_[xp];
+          hp = distances[yc][xp] * _sin_elevation_table[xp];
         }
         else {
           rp = rc;
@@ -1323,11 +1346,11 @@ bool c_hdl_range_image::build_gslopes(const std::vector<c_hdl_point> & points,
 
         if( xn < distances.cols ) {
           rn = distances[yc][xn];
-          hn = distances[yc][xn] * sin_elevation_table_[xn];
+          hn = distances[yc][xn] * _sin_elevation_table[xn];
         }
         else {
           rn = distances[yc][xc];
-          hn = distances[yc][xc] * sin_elevation_table_[xc];
+          hn = distances[yc][xc] * _sin_elevation_table[xc];
         }
 
         const double wp = 1. / (0.1 + square(rc - rp));
@@ -1361,10 +1384,10 @@ bool c_hdl_range_image::depth2gslopes(const cv::Mat1f & depths,
     /* out, opt */ cv::Mat1f * output_also_heights) const
 {
 
-  if( depths.cols != sin_elevation_table_.size() ) {
+  if( depths.cols != _sin_elevation_table.size() ) {
     CF_ERROR("Input image size not match: depths=%dx%d sin_elevation_table_.size=%zu",
         depths.cols, depths.rows,
-        sin_elevation_table_.size());
+        _sin_elevation_table.size());
     return false;
   }
 
@@ -1444,7 +1467,7 @@ bool c_hdl_range_image::depth2gslopes(const cv::Mat1f & depths,
     double rp, hp, rc, hc, rn, hn;
     double dh, dr, c;
 
-    const double ARES = azimuthal_resolution_;
+    const double ARES = _azimuthal_resolution;
 
 
     for ( int xc = 0; xc < depths.cols; ++xc ) {
@@ -1452,7 +1475,7 @@ bool c_hdl_range_image::depth2gslopes(const cv::Mat1f & depths,
 
         if ( output_also_heights ) {
           (*output_also_heights)[yc][xc] =
-              depths[yc][xc] * sin_elevation_table_[xc] / cos_elevation_table_[xc];
+              depths[yc][xc] * _sin_elevation_table[xc] / _cos_elevation_table[xc];
         }
 
         const int xp = prev_col(xc - 1, yc, depths);
@@ -1485,11 +1508,11 @@ bool c_hdl_range_image::depth2gslopes(const cv::Mat1f & depths,
         }
 
         rc = depths[yc][xc];
-        hc = depths[yc][xc] * sin_elevation_table_[xc] / cos_elevation_table_[xc];
+        hc = depths[yc][xc] * _sin_elevation_table[xc] / _cos_elevation_table[xc];
 
         if( xp >= 0 ) {
           rp = depths[yc][xp];
-          hp = depths[yc][xp] * sin_elevation_table_[xp] / cos_elevation_table_[xp];
+          hp = depths[yc][xp] * _sin_elevation_table[xp] / _cos_elevation_table[xp];
         }
         else {
           rp = rc;
@@ -1498,11 +1521,11 @@ bool c_hdl_range_image::depth2gslopes(const cv::Mat1f & depths,
 
         if( xn < depths.cols ) {
           rn = depths[yc][xn];
-          hn = depths[yc][xn] * sin_elevation_table_[xn] / cos_elevation_table_[xn];
+          hn = depths[yc][xn] * _sin_elevation_table[xn] / _cos_elevation_table[xn];
         }
         else {
           rn = depths[yc][xc];
-          hn = depths[yc][xc] * sin_elevation_table_[xc] / cos_elevation_table_[xc];
+          hn = depths[yc][xc] * _sin_elevation_table[xc] / _cos_elevation_table[xc];
         }
 
         const double wp = 1. / (0.1 + square(rc - rp));
@@ -1550,7 +1573,7 @@ bool c_hdl_range_image::build_image_for_ground_detection(const std::vector<c_hdl
   }
 
 
-  if( !create_output_images(dhs, &mask) ) {
+  if( !create(dhs, &mask) ) {
     CF_ERROR("create_output_images() fails");
     return false;
   }
@@ -1613,8 +1636,8 @@ bool c_hdl_range_image::build_image_for_ground_detection(const std::vector<c_hdl
           for( int xc = 0, nc = dhs.cols; xc < nc; ++xc ) {
             const float d = dhs[yc][xc][0];
             if ( d > 0 ) {
-              dhs[yc][xc][0] = d * cos_elevation_table_[xc];
-              dhs[yc][xc][1] = d * sin_elevation_table_[xc];
+              dhs[yc][xc][0] = d * _cos_elevation_table[xc];
+              dhs[yc][xc][1] = d * _sin_elevation_table[xc];
               dhs[yc][xc][2] = (float)(CV_PI / 2);
               mask[yc][xc] = 255;
             }
@@ -1692,7 +1715,7 @@ bool c_hdl_range_image::build_images_for_ground_detection(const std::vector<c_hd
   }
 
 
-  if( !create_output_images(depths, &mask) ) {
+  if( !create(depths, &mask) ) {
     CF_ERROR("create_output_images(depths) fails");
     return false;
   }
@@ -1757,8 +1780,8 @@ bool c_hdl_range_image::build_images_for_ground_detection(const std::vector<c_hd
           for( int xc = 0, nc = depths.cols; xc < nc; ++xc ) {
             const float d = depths[yc][xc];
             if ( d > 0 ) {
-              depths[yc][xc] = d * cos_elevation_table_[xc];
-              heights[yc][xc] = d * sin_elevation_table_[xc];
+              depths[yc][xc] = d * _cos_elevation_table[xc];
+              heights[yc][xc] = d * _sin_elevation_table[xc];
               mask[yc][xc] = 255;
             }
           }

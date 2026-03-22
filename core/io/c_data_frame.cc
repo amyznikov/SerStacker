@@ -74,9 +74,7 @@ c_data_frame::CloudDisplays::iterator c_data_frame::add_cloud_display(const std:
     double minval,
     double maxval)
 {
-  auto pos =
-      _cloud_displays.find(display_name);
-
+  auto pos = _cloud_displays.find(display_name);
   if ( pos == _cloud_displays.end() ) {
 
     const CloudDisplay c = {
@@ -85,12 +83,10 @@ c_data_frame::CloudDisplays::iterator c_data_frame::add_cloud_display(const std:
         .maxval = maxval
     };
 
-    pos =
-        _cloud_displays.emplace(display_name, c).first;
+    pos = _cloud_displays.emplace(display_name, c).first;
   }
 
-  CloudDisplay & display =
-      pos->second;
+  CloudDisplay & display = pos->second;
 
   display.points.clear();
   display.colors.clear();
@@ -176,14 +172,15 @@ void c_data_frame::add_point_cloud(const std::string & display_name,
     cv::InputArray colors,
     cv::InputArray mask)
 {
-  auto &display =
-      add_cloud_display(display_name)->second;
+  auto &display = add_cloud_display(display_name)->second;
 
   if ( !points.empty() ) {
+    CF_DEBUG("Add points '%s'", display_name.c_str());
     display.points.emplace_back(points.getMat().clone());
   }
 
   if ( !colors.empty() ) {
+    CF_DEBUG("Add colors '%s'", display_name.c_str());
     display.colors.emplace_back(colors.getMat().clone());
   }
   if (!mask.empty()) {
@@ -242,26 +239,33 @@ bool c_data_frame::get_point_cloud(const std::string & display_name,
 {
   bool fOk = false;
 
-  const auto pos =
-      _cloud_displays.find(display_name);
+  CF_DEBUG("request for cloud '%s'", display_name.c_str());
+  const auto pos = _cloud_displays.find(display_name);
 
-  if (pos != _cloud_displays.end()) {
+  if (pos == _cloud_displays.end()) {
+    CF_DEBUG("cloud '%s' not found", display_name.c_str());
+  }
+  else {
 
-    const auto &display =
-        pos->second;
+    const auto &display = pos->second;
+    CF_DEBUG("cloud '%s' is found", display_name.c_str());
 
     if ( points.needed() && !display.points.empty()) {
+      CF_DEBUG("points '%s' copied", display_name.c_str());
       display.points[0].copyTo(points);
     }
 
     if ( colors.needed() && !display.colors.empty()) {
+      CF_DEBUG("colors '%s' copied", display_name.c_str());
       display.colors[0].copyTo(colors);
     }
 
     if ( mask.needed() && !display.masks.empty()) {
+      CF_DEBUG("masks '%s' copied", display_name.c_str());
       display.masks[0].copyTo(mask);
     }
 
+    CF_DEBUG("cloud '%s' leave", display_name.c_str());
     return true;
   }
   return false;

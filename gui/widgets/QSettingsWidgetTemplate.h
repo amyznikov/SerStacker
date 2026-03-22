@@ -423,6 +423,39 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       }
       ////////////////////////////////////////////////////////////////////////
 
+      case CtlType::MultilineTextbox : {
+        QMultiLineEditBox * ctl = currentSettings->add_widget<QMultiLineEditBox>(QString::fromStdString(c.cname));
+        QSignalBlocker block(ctl);
+
+        if( c.setvalue ) {
+          QObject::connect(ctl, &QMultiLineEditBox::ctrlEnterPressed, [_this, ctl, c]() {
+            if ( _this->opts() ) {
+              c.setvalue(_this->opts(), ctl->toPlainText().toStdString());
+              Q_EMIT _this->parameterChanged();
+            }
+          });
+        }
+
+        if( c.getvalue ) {
+          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
+              [_this, ctl, c]() {
+                std::string s;
+                c.getvalue(_this->opts(), &s);
+                ctl->setPlainText(QString::fromStdString(s));
+              });
+        }
+
+        if( c.enabled ) {
+          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
+              [_this, c, ctl]() {
+                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+          });
+        }
+
+        break;
+      }
+
+      ////////////////////////////////////////////////////////////////////////
       case CtlType::MathExpression: {
         QInputMathExpressionWidget * ctl =
           currentSettings->add_math_expression(c.cname.c_str(),

@@ -83,7 +83,7 @@ QFFmpegOptionsControl::QFFmpegOptionsControl(QWidget * parent) :
 {
   menubutton_ctl = new QToolButton();
   menubutton_ctl->setText("...");
-  layout_->addWidget(menubutton_ctl);
+  _layout->addWidget(menubutton_ctl);
   connect(menubutton_ctl, &QToolButton::clicked,
       this, &ThisClass::onMenuButtonClicked);
 

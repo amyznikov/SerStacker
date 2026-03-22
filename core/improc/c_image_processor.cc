@@ -20,6 +20,8 @@
 #include "generic/c_laplacian_routine.h"
 #include "generic/c_hessian_routine.h"
 #include "generic/c_ridgeness_routine.h"
+#include "generic/c_filter2d_routine.h"
+
 #include "generic/c_local_peak_routine.h"
 #include "generic/c_radial_gradient_routine.h"
 #include "generic/c_noisemap_routine.h"
@@ -37,6 +39,7 @@
 #include "generic/c_pixel_func_routine.h"
 #include "generic/c_image_calc_routine.h"
 #include "generic/c_math_expression_routine.h"
+#include "generic/c_image_arithmetic_routine.h"
 #include "generic/c_threshold_routine.h"
 #include "generic/c_normalize_mean_stdev_routine.h"
 
@@ -73,6 +76,7 @@
 #include "generic/c_fast_nl_means_denoising_routine.h"
 #include "generic/c_adaptive_gaussian_blur_routine.h"
 
+#include "generic/c_set_pixels_routine.h"
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
 #include "generic/c_fast_gaussian_blur_routine.h"
@@ -209,6 +213,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_radial_gradient_routine::class_factory_instance());
     register_class_factory(c_ridgeness_routine::class_factory_instance());
     register_class_factory(c_local_peak_routine::class_factory_instance());
+    register_class_factory(c_filter2d_routine::class_factory_instance());
 
     register_class_factory(c_align_color_channels_routine::class_factory_instance());
     register_class_factory(c_anscombe_routine::class_factory_instance());
@@ -221,6 +226,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pixel_func_routine::class_factory_instance());
     register_class_factory(c_image_calc_routine::class_factory_instance());
     register_class_factory(c_math_expression_routine::class_factory_instance());
+    register_class_factory(c_image_arithmetic_routine::class_factory_instance());
     register_class_factory(c_threshold_routine::class_factory_instance());
 
     register_class_factory(c_unsharp_mask_routine::class_factory_instance());
@@ -309,6 +315,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_anisotropic_diffusion_filter_routine::class_factory_instance());
     register_class_factory(c_fast_nl_means_denoising_routine::class_factory_instance());
     register_class_factory(c_adaptive_gaussian_blur_routine::class_factory_instance());
+
+    register_class_factory(c_set_pixels_routine::class_factory_instance());
 
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_rotation_homography_test_routine::class_factory_instance());

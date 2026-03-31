@@ -8,7 +8,6 @@
 #include "c_hdl_ground_test_routine.h"
 #include<core/debug.h>
 
-// Херня тут пока
 static void detectRoad(const cv::Mat1f & Z, const cv::Mat1b & M,
     cv::Mat1b & outputRoadMask,
     float H0,
@@ -21,11 +20,10 @@ static void detectRoad(const cv::Mat1f & Z, const cv::Mat1b & M,
   outputRoadMask.create(Z.size());
   outputRoadMask.setTo(0);
 
-  const float Z_GROUND_TARGET = -H0; // Целевое Z земли (например, -2.1)
-  const int MAX_GAP_PX = 4;          // Сколько пустых пикселей (пропусков) можем простить
+  const float Z_GROUND_TARGET = -H0;
+  const int MAX_GAP_PX = 4;
 
   for( int c = 0; c < COLS; ++c ) {
-    // Состояния: 0 - ищем выход из-под крыши, 1 - ищем землю, 2 - ведем дорогу
     int state = 0;
     float lastValidZ = Z_GROUND_TARGET;
     int gapCount = 0;
@@ -34,17 +32,15 @@ static void detectRoad(const cv::Mat1f & Z, const cv::Mat1b & M,
       bool isValid = M(r, c) > 0;
       float curZ = Z(r, c);
 
-      // Состояние 0: Пропуск крыши (все, что выше Z_roof)
       if( state == 0 ) {
         if( isValid && curZ < Zroof - 0.1f ) {
-          state = 1; // Ушли ниже крыши, начинаем искать полотно
+          state = 1;
         }
         else {
           continue;
         }
       }
 
-      // Состояние 1: Первичный захват полотна дороги (близко к -H0)
       if( state == 1 ) {
         if( isValid ) {
           if( std::abs(curZ - Z_GROUND_TARGET) < 0.25f ) {
@@ -56,7 +52,6 @@ static void detectRoad(const cv::Mat1f & Z, const cv::Mat1b & M,
         continue;
       }
 
-      // Состояние 2: Следование по дороге
       if( state == 2 ) {
         if( isValid ) {
 #if 1
@@ -64,39 +59,33 @@ static void detectRoad(const cv::Mat1f & Z, const cv::Mat1b & M,
           float diff = curZ - lastValidZ;
 
           if( (diff >= 0 && diff < gtol) || (diff < 0 && diff > -2 * gtol) ) {
-            // Точка подтверждает плоскость дороги
             outputRoadMask(r, c) = 255;
             lastValidZ = curZ;
             gapCount = 0;
           }
           else {
-            // Встретили препятствие (резкий скачок Z)
             gapCount++;
           }
 #else
           float diff = std::abs(curZ - lastValidZ);
 
           if( diff < gtol ) {
-            // Точка подтверждает плоскость дороги
             outputRoadMask(r, c) = 255;
             lastValidZ = curZ;
             gapCount = 0;
           }
           else {
-            // Встретили препятствие (резкий скачок Z)
             gapCount++;
           }
 #endif
 
         }
         else {
-          // Пропуск данных (нет ответа от лидара)
           gapCount++;
         }
 
-        // Если разрыв затянулся, сбрасываем состояние трассировки
         if( gapCount > MAX_GAP_PX ) {
-          state = 1; // Снова ищем дорогу "с нуля" по высоте H0
+          state = 1;
           gapCount = 0;
         }
       }

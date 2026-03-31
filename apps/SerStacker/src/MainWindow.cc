@@ -145,18 +145,18 @@ MainWindow::MainWindow()
 
   restoreState();
 
-  imageView->set_current_processor(imageProcessor_ctl->current_processor());
+  imageView->set_current_processor(imageProcessor_ctl->currentProcessor());
 
 
-  set_ctrlbind_copy_to_clipboard_callback([](const std::string & text) {
+  set_ctlbind_copy_to_clipboard_callback([](const std::string & text) {
     QApplication::clipboard()->setText(QString::fromStdString(text));
   });
 
-  set_ctrlbind_get_clipboard_text_callback([]() -> std::string {
+  set_ctlbind_get_clipboard_text_callback([]() -> std::string {
     return QApplication::clipboard()->text().toStdString();
   });
 
-  set_ctrlbind_update_roi_callback([this](double x, double y, double w, double h) {
+  set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
     if (imageView) {
       imageView->roiShape()->setSceneRect(QPointF(x,y), QPointF(x+w,y+h));
     }
@@ -215,15 +215,13 @@ void MainWindow::onSaveState(QSettings & settings)
   }
 
   if ( imageProcessor_ctl ) {
-
     settings.setValue(QString("imageProcessor/selected_processor"),
-        imageProcessor_ctl->selected_processor());
+        imageProcessor_ctl->selectedProcessor());
   }
 
   if ( dataframeProcessor_ctl ) {
-
     settings.setValue(QString("dataframeProcessor/selected_processor"),
-        dataframeProcessor_ctl->selected_processor());
+        dataframeProcessor_ctl->selectedProcessor());
   }
 
   if ( geoView ) {
@@ -274,23 +272,16 @@ void MainWindow::onRestoreState(QSettings & settings)
   }
 
   if ( imageProcessor_ctl ) {
-
-    const QString selected_processor =
-        settings.value(QString("imageProcessor/selected_processor")).toString();
-
-    if ( !selected_processor.isEmpty() ) {
-      imageProcessor_ctl->set_selected_processor(selected_processor);
+    const QString selectedProcessor = settings.value(QString("imageProcessor/selected_processor")).toString();
+    if ( !selectedProcessor.isEmpty() ) {
+      imageProcessor_ctl->setSelectedProcessor(selectedProcessor);
     }
-
   }
 
   if ( dataframeProcessor_ctl ) {
-
-    const QString selected_processor =
-        settings.value(QString("dataframeProcessor/selected_processor")).toString();
-
-    if ( !selected_processor.isEmpty() ) {
-      dataframeProcessor_ctl->set_selected_processor(selected_processor);
+    const QString selectedProcessor = settings.value(QString("dataframeProcessor/selected_processor")).toString();
+    if ( !selectedProcessor.isEmpty() ) {
+      dataframeProcessor_ctl->setSelectedProcessor(selectedProcessor);
     }
   }
 
@@ -1077,10 +1068,10 @@ void MainWindow::onImageProcessorParameterChanged()
 
   if( imageProcessor_ctl ) {
     if( imageView ) {
-      imageView->set_current_processor(imageProcessor_ctl->current_processor());
+      imageView->set_current_processor(imageProcessor_ctl->currentProcessor());
     }
     if( pipelineProgressImageView ) {
-      pipelineProgressImageView->set_current_processor(imageProcessor_ctl->current_processor());
+      pipelineProgressImageView->set_current_processor(imageProcessor_ctl->currentProcessor());
     }
   }
 }
@@ -1492,7 +1483,7 @@ void MainWindow::onPipelineThreadStarted()
     centralStackedWidget->setCurrentWidget(pipelineProgressImageView);
   }
 
-  pipelineProgressImageView->set_current_processor(imageProcessor_ctl->current_processor());
+  pipelineProgressImageView->set_current_processor(imageProcessor_ctl->currentProcessor());
   pipelineProgressView->setImageViewer(pipelineProgressImageView);
 
   if ( !pipelineProgressView->isVisible() ) {

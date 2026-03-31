@@ -132,13 +132,13 @@ void MainWindow::onSaveState(QSettings & settings)
   if ( imageProcessor_ctl ) {
 
     settings.setValue(QString("imageProcessor/selected_processor"),
-        imageProcessor_ctl->selected_processor());
+        imageProcessor_ctl->selectedProcessor());
   }
 
   if ( dataframeProcessor_ctl ) {
 
     settings.setValue(QString("dataframeProcessor/selected_processor"),
-        dataframeProcessor_ctl->selected_processor());
+        dataframeProcessor_ctl->selectedProcessor());
   }
 
   if ( cameraControls_ctl ) {
@@ -158,7 +158,7 @@ void MainWindow::onRestoreState(QSettings & settings)
         settings.value(QString("imageProcessor/selected_processor")).toString();
 
     if ( !selected_processor.isEmpty() ) {
-      imageProcessor_ctl->set_selected_processor(selected_processor);
+      imageProcessor_ctl->setSelectedProcessor(selected_processor);
     }
 
   }
@@ -169,7 +169,7 @@ void MainWindow::onRestoreState(QSettings & settings)
         settings.value(QString("dataframeProcessor/selected_processor")).toString();
 
     if ( !selected_processor.isEmpty() ) {
-      dataframeProcessor_ctl->set_selected_processor(selected_processor);
+      dataframeProcessor_ctl->setSelectedProcessor(selected_processor);
     }
   }
 
@@ -647,7 +647,7 @@ void MainWindow::setupPipelines()
 
 void MainWindow::onImageProcessorParameterChanged()
 {
-  _centralDisplay->setFrameProcessor(imageProcessor_ctl->current_processor());
+  _centralDisplay->setFrameProcessor(imageProcessor_ctl->currentProcessor());
 }
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)

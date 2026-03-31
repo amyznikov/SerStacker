@@ -1144,6 +1144,44 @@ void QInputSourceView::populate3DPointContextMenu(QMenu &menu,
     double objY,
     double objZ)
 {
+
+  if( objHit ) {
+
+    menu.addAction("Camera Here",
+        [this, objX, objY, objZ]() {
+          const QVector3D vt(objX, objY, objZ);
+          const QVector3D vp1 = _cloudView->viewPoint();
+          const QVector3D vp2 = 0.75 * vt;
+          const double d1 = (vt - vp1).length();
+          const double d2 = (vt - vp2).length();
+          const QVector3D vp = d1 < d2 ? vp1 : vp2;
+          _cloudView->setAutoShowViewTarget(true);
+          _cloudView->cameraTo(vp, vt, QVector3D(0,0,1));
+        });
+
+    menu.addAction("Center Here",
+        [this, objX, objY, objZ]() {
+          const QVector3D vt(objX, objY, objZ);
+          _cloudView->setAutoShowViewTarget(true);
+          _cloudView->setViewTargetPoint(vt);
+        });
+
+
+    menu.addSeparator();
+
+    const QString sdist = qsprintf("%g", std::sqrt(objX * objX + objY * objY + objZ * objZ));
+    menu.addAction(QString("Copy distance:  %1").arg(sdist),
+           [this, sdist]() {
+             QApplication::clipboard()->setText(sdist);
+           });
+
+    const QString spos = qsprintf("%g %g %g", objX, objY, objZ);
+    menu.addAction(QString("Copy pos:  %1").arg(spos),
+           [this, spos]() {
+             QApplication::clipboard()->setText(spos);
+           });
+  }
+
 }
 
 

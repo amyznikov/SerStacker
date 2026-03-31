@@ -26,7 +26,6 @@ struct c_ecc_registration_options;
 struct c_eccflow_registration_options;
 struct c_master_frame_selection_options;
 struct c_stereo_input_source_options;
-//class c_input_sequence;
 
 template <typename T>
 using is_normal_integer = std::disjunction<
@@ -990,22 +989,19 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
 
 
-typedef std::function<void(const std::string&)> ctrlbind_copy_to_clipboard_callback;
-void set_ctrlbind_copy_to_clipboard_callback(const ctrlbind_copy_to_clipboard_callback & fn);
-const ctrlbind_copy_to_clipboard_callback & get_ctrlbind_copy_to_clipboard_callback();
+typedef std::function<void(const std::string&)> ctlbind_copy_to_clipboard_callback;
+void set_ctlbind_copy_to_clipboard_callback(const ctlbind_copy_to_clipboard_callback & fn);
+const ctlbind_copy_to_clipboard_callback & get_ctlbind_copy_to_clipboard_callback();
 
-typedef std::function<std::string()> ctrlbind_get_clipboard_text_callback;
-void set_ctrlbind_get_clipboard_text_callback(const ctrlbind_get_clipboard_text_callback & fn);
-const ctrlbind_get_clipboard_text_callback & get_ctrlbind_get_clipboard_text_callback();
+typedef std::function<std::string()> ctlbind_get_clipboard_text_callback;
+void set_ctlbind_get_clipboard_text_callback(const ctlbind_get_clipboard_text_callback & fn);
+const ctlbind_get_clipboard_text_callback & get_ctlbind_get_clipboard_text_callback();
 
-typedef std::function<void(double x, double y, double w, double h)> ctrlbind_update_roi_callback;
-void set_ctrlbind_update_roi_callback(const ctrlbind_update_roi_callback & fn);
-const ctrlbind_update_roi_callback & get_ctrlbind_update_roi_callback();
 
 template<class StructType>
 bool ctlbind_copy_config_to_clipboard(const std::string & groupName, const StructType & data)
 {
-  const auto cb = get_ctrlbind_copy_to_clipboard_callback();
+  const auto cb = get_ctlbind_copy_to_clipboard_callback();
   if ( !cb ) {
     return false;
   }
@@ -1023,7 +1019,7 @@ bool ctlbind_copy_config_to_clipboard(const std::string & groupName, const Struc
 template<class StructType>
 bool ctlbind_paste_config_from_clipboard(const std::string & groupName, StructType * data)
 {
-  const auto cb = get_ctrlbind_get_clipboard_text_callback();
+  const auto cb = get_ctlbind_get_clipboard_text_callback();
   if ( !cb ) {
     return false;
   }
@@ -1053,5 +1049,47 @@ bool ctlbind_paste_config_from_clipboard(const std::string & groupName, StructTy
 
   return true;
 }
+
+
+
+typedef std::function<void(double x, double y, double w, double h)> ctlbind_update_roi_callback;
+void set_ctlbind_update_roi_callback(const ctlbind_update_roi_callback & fn);
+const ctlbind_update_roi_callback & get_ctlbind_update_roi_callback();
+
+typedef std::function<bool(double *x, double *y, double *w, double *h)> ctrlbind_get_roi_callback;
+void set_ctrlbind_get_roi_callback(const ctrlbind_get_roi_callback & fn);
+const ctrlbind_get_roi_callback & get_ctlbind_get_roi_callback();
+
+// opencv types
+#ifdef CV_VERSION
+
+template<class _Tp>
+inline bool ctlbind_update_roi(const cv::Rect_<_Tp> & rc)
+{
+  if( const auto & cb = get_ctlbind_update_roi_callback() ) {
+    if( cb(rc.x, rc.y, rc.width, rc.height) ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template<class _Tp>
+inline bool ctlbind_get_roi(cv::Rect_<_Tp> * rc)
+{
+  if( const auto & cb = get_ctlbind_get_roi_callback() ) {
+    double x = 0, y = 0, w = 0, h = 0;
+    if( cb(&x, &y, &w, &h) ) {
+      rc->x = (_Tp)x;
+      rc->y = (_Tp)y;
+      rc->w = (_Tp)w;
+      rc->h = (_Tp)h;
+      return true;
+    }
+  }
+  return false;
+}
+
+#endif // CV_VERSION
 
 #endif /* __ctrlbind_h__ */

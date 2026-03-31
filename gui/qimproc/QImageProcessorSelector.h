@@ -23,11 +23,10 @@ public:
 
   QImageProcessorSelector(QWidget * parent = nullptr);
 
-  c_image_processor::sptr current_processor() const;
+  c_image_processor::sptr currentProcessor() const;
 
-  QString selected_processor() const;
-  void set_selected_processor(const QString & name);
-
+  QString selectedProcessor() const;
+  void setSelectedProcessor(const QString & name);
 
   bool imageProcessingEnabled() const;
 

@@ -152,17 +152,17 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
   updateControls();
 }
 
-c_image_processor::sptr QImageProcessorSelector::current_processor() const
+c_image_processor::sptr QImageProcessorSelector::currentProcessor() const
 {
   return enable_ctl->isChecked() ? current_processor_ : nullptr;
 }
 
-QString QImageProcessorSelector::selected_processor() const
+QString QImageProcessorSelector::selectedProcessor() const
 {
   return selector_ctl->currentText();
 }
 
-void QImageProcessorSelector::set_selected_processor(const QString & name)
+void QImageProcessorSelector::setSelectedProcessor(const QString & name)
 {
   const int index =
       selector_ctl->findText(name);

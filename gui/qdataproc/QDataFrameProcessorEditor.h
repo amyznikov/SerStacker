@@ -96,8 +96,8 @@ public:
 
   c_data_frame_processor::sptr currentProcessor() const;
 
-  QString selected_processor() const;
-  void set_selected_processor(const QString & name);
+  QString selectedProcessor() const;
+  void setSelectedProcessor(const QString & name);
 
   bool imageProcessingEnabled() const;
 

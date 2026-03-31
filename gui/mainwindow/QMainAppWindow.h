@@ -31,6 +31,7 @@ public:
   typedef QMainWindow Base;
 
   QMainAppWindow(QWidget * parent = nullptr);
+  ~QMainAppWindow();
 
 protected:
   void saveState();

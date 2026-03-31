@@ -34,6 +34,10 @@ QMainAppWindow::QMainAppWindow(QWidget * parent) :
   QApplication::instance()->installEventFilter(this);
 }
 
+QMainAppWindow::~QMainAppWindow()
+{
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool QMainAppWindow::eventFilter(QObject * watched, QEvent * event)

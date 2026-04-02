@@ -39,10 +39,9 @@ public:
 
 protected:
   std::string _model_path;
-//#if HAVE_OpenCV_dnn
+#if HAVE_OpenCV_dnn
   cv::dnn::Net net;
-//#endif //
-
+#endif //
   bool _initialized = false;
 };
 

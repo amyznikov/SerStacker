@@ -116,8 +116,7 @@ struct c_ctlbind
 
 
 template<class RootObjectType>
-class c_ctlist :
-    public std::vector<c_ctlbind<RootObjectType>>
+class c_ctlist : public std::vector<c_ctlbind<RootObjectType>>
 {
 };
 
@@ -126,6 +125,10 @@ inline constexpr size_t offset_of(FieldType StructType::*mp)
 {
   return (size_t) &((StructType*) (nullptr)->*mp);
 }
+
+#define OFFSET_OF(T,m) \
+  ((size_t)&(((T*)nullptr)->m))
+
 
 template<class RootObjectType, class T = RootObjectType>
 struct c_ctlbind_context
@@ -163,12 +166,16 @@ struct c_ctlbind_context
     return c_ctlbind_context<RootObjectType, Base> (offset);
   }
 
+  template<typename NestedFieldType>
+  c_ctlbind_context<RootObjectType, NestedFieldType> sub_context(size_t nested_member_offset) const
+  {
+    return c_ctlbind_context<RootObjectType, NestedFieldType>(offset + nested_member_offset);
+  }
+
 private:
   template<class A, class B> friend class c_ctlbind_context;
-  c_ctlbind_context(size_t offs) : offset(offs) { }
+  c_ctlbind_context(size_t offs) : offset(offs) {}
 };
-
-#define CTL_CONTEXT(cctx, field) cctx(&std::decay_t<decltype(cctx)>::FieldType::field)
 
 template<class Base, class RootObjectType, class T>
 inline auto as_base(const c_ctlbind_context<RootObjectType, T>& ctx)
@@ -177,10 +184,21 @@ inline auto as_base(const c_ctlbind_context<RootObjectType, T>& ctx)
 }
 
 /**
- *  To be used for inlines as:
+ * For use like this:
  *
- *  _ctlbind([&ctls, cctx = ctx(&this_class::_input_options)]() {
- *    ctlbind(ctls, "a:", CTL_CONTEXT(cctx,a), "Specify the value for a");
+ *   ctlbind(ctls, "Enable Option", CTL_CONTEXT(ctx, option.enabled),
+ *     "Set checked to enable this option");
+*/
+#define CTL_CONTEXT(ctx, field) \
+  ctx.template sub_context<std::decay_t< \
+    decltype(std::declval<typename std::decay_t<decltype(ctx)>::FieldType>().field)>>\
+      (OFFSET_OF(typename std::decay_t<decltype(ctx)>::FieldType, field))
+
+/**
+ * For use like this:
+ *
+ *  _ctlbind([&ctls, ctx = ctx(&this_class::_input_options)]() {
+ *    ctlbind(ctls, "a:", CTL_CONTEXT(ctx,a), "Specify the value for a");
  *  });
  */
 template<class ActualBind>
@@ -236,13 +254,12 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
 }
 
 /**
- * To be as:
+ * For use like this:
  *
  *   ctlbind_expandable_group(ctls, "3. Reference Frame Options ",
- *       [&, cctx = ctx(&this_class::_reference_frame_options)]() {
- *         ctlbind(ctls, "generate_reference_frame", CTL_CONTEXT(cctx, generate_reference_frame));
+ *       [&, ctx = ctx(&this_class::_reference_frame_options)]() {
+ *         ctlbind(ctls, "generate_reference_frame", CTL_CONTEXT(ctx, generate_reference_frame));
  *       });
- *   ctlbind_end_group(ctls);
  */
 template<class RootObjectType>
 void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname,
@@ -438,6 +455,61 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
       return "";
     };
   }
+
+  ctls.emplace_back(c);
+}
+
+/**
+ * For use like this:
+ *
+ *    ctlbind<cv::Vec2f>(ctls, "brange", ctx,
+ *       [](const auto * obj) {return cv::Vec2f(obj->bmin, obj->bmax);},
+ *       [](auto * obj, cv::Vec2f v) {obj->bmin = v[0], obj->bmax = v[1];},
+ *       "Specify allowed range for B.\n");
+ *
+ */
+template<class FieldType, class RootObjectType, class StructType, typename Getter, typename Setter>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    Getter && getv, Setter && setv,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  using FT = std::decay_t<FieldType>;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+
+  if( std::is_enum_v<FieldType> ) {
+    c.ctype = BindType::CtlType::EnumCombobox;
+    c.get_enum_members = get_members_of<FieldType>();
+  }
+  else if( std::is_same_v<FieldType, bool>) {
+    c.ctype = BindType::CtlType::Checkbox;
+  }
+  else {
+    c.ctype = BindType::CtlType::Textbox;
+  }
+
+  c.getvalue = [offset = ctx.offset, getv](const RootObjectType *obj, std::string *s) -> bool {
+    if ( obj ) {
+      *s = toString(getv(reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset)));
+      return true;
+    }
+    return false;
+  };
+
+  c.setvalue = [offset = ctx.offset, setv](RootObjectType *obj, const std::string &s) -> bool {
+    if ( obj ) {
+      FT v;
+      if ( fromString(s, &v) ) {
+        setv(reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset), v);
+        return true;
+      }
+    }
+    return false;
+  };
 
   ctls.emplace_back(c);
 }
@@ -869,7 +941,8 @@ void ctlbind_math_expression_ctl(c_ctlist<RootObjectType> & ctls,
 
 
 template<class RootObjectType, class StructType>
-void ctlbind_data_annotation(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+void ctlbind_data_annotation(c_ctlist<RootObjectType> & ctls,
+    const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
     bool (StructType::*getv)(int cmap, int * label) const,
     bool (StructType::*setv)(int cmap, int label),
@@ -902,6 +975,7 @@ void ctlbind_data_annotation(c_ctlist<RootObjectType> & ctls, const std::string 
 }
 
 
+
 template<class RootObjectType, class StructType>
 inline void ctlbind_menu_button(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
@@ -916,10 +990,11 @@ inline void ctlbind_menu_button(c_ctlist<RootObjectType> & ctls, const std::stri
 }
 
 
-template<class RootObjectType, class StructType>
+// std::function<bool(StructType *)> & onclick
+template<class RootObjectType, class StructType, typename Func>
 inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
-    const std::function<bool(StructType *)> & onclick,
+    Func && onclick,
     const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
@@ -965,10 +1040,11 @@ inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string
 }
 
 
-template<class RootObjectType, class StructType>
+// std::function<bool(StructType *)> & onclick
+template<class RootObjectType, class StructType, typename Func>
 inline void ctlbind_command_button(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
-    const std::function<bool(StructType *)> & onclick,
+    Func && onclick,
     const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
@@ -1026,28 +1102,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 }
 
 #endif // CV_VERSION
-
-
-
-#define BIND_CONTROL_MV(ctls, S, M, ctx, desc)
-    // ctlbind(ctls, #M, ctx(&S::M), desc)
-
-#define BIND_CONTROL_MF(ctls, ctx, S, M, desc)
-    // ctlbind(ctls, #M, ctx, &S::M, &S::set_##M, desc)
-
-#define BIND_CONTROL_MF2(ctls, name, ctx, S, M, desc)
-    // ctlbind(ctls, name, ctx, &S::M, &S::set_##M, desc)
-
-#define BIND_FLAGS_CHECKBOX_MF2(ctls, name, ctx, S, M, etype, desc)
-    // ctlbind_flags_checkbox<etype>(ctls, name, ctx, &S::M, &S::set_##M, desc);
-
-#define BIND_BROWSE_FOR_FILE_MF(ctls, ctx, S, M, desc)
-    // // ctlbind_browse_for_file(ctls, #M, ctx, &S::M, &S::set_##M, desc)
-
-#define BIND_BROWSE_FOR_FILE_MF2(ctls, name, ctx, S, M, desc)
-    // // ctlbind_browse_for_file(ctls, name, ctx, &S::M, &S::set_##M, desc)
-
-
 
 typedef std::function<void(const std::string&)> ctlbind_copy_to_clipboard_callback;
 void set_ctlbind_copy_to_clipboard_callback(const ctlbind_copy_to_clipboard_callback & fn);

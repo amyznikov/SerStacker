@@ -23,11 +23,12 @@ bool c_dnn_tf_test_routine::serialize(c_config_setting settings, bool save)
 
 bool c_dnn_tf_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+#if HAVE_OpenCV_dnn
   if ( !_initialized ) {
 
     // net = cv::dnn::readNetFromTensorflow(model_path_, config);
 
   }
-
+#endif
   return true;
 }

@@ -25,16 +25,15 @@ bool c_mtf_routine::serialize(c_config_setting settings, bool save)
 void c_mtf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   //ctlbind_menu_button(ctls, "options", ctx);
-  ctlbind_command_button(ctls, "RESET", ctx,
-      std::function([](this_class * _ths) {
-        c_mtf_options opts = c_mtf_options();
-        _ths->lclip = opts.lclip;
-        _ths->hclip = opts.hclip;
-        _ths->shadows = opts.shadows;
-        _ths->midtones = opts.midtones;
-        _ths->highlights = opts.highlights;
-        return true;
-      }), "");
+  ctlbind_command_button(ctls, "RESET", ctx, [](this_class * _ths) {
+    c_mtf_options opts = c_mtf_options();
+    _ths->lclip = opts.lclip;
+    _ths->hclip = opts.hclip;
+    _ths->shadows = opts.shadows;
+    _ths->midtones = opts.midtones;
+    _ths->highlights = opts.highlights;
+    return true;
+  }, "");
 
   ctlbind(ctls, "clip input range", ctx(&this_class::inputRange), "");
   ctlbind(ctls, "stretch output range", ctx(&this_class::outputRange), "");

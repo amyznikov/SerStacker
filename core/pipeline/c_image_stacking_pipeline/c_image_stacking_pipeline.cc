@@ -2852,10 +2852,10 @@ static inline void ctlbind_master_frame_generation_options(c_ctlist<RootObjectTy
     ctlbind(ctls, ctx(&S::registration));
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_command_button(ctls, "Copy registration options to clipboard", ctx, [](c_image_stacking_master_options * opts) {
+      ctlbind_menu_item(ctls, "Copy registration options to clipboard", ctx, [](c_image_stacking_master_options * opts) {
         return ctlbind_copy_config_to_clipboard("c_image_registration_options", opts->registration), false;
       });
-      ctlbind_command_button(ctls, "Paste registration options from clipboard", ctx, [](c_image_stacking_master_options * opts) {
+      ctlbind_menu_item(ctls, "Paste registration options from clipboard", ctx, [](c_image_stacking_master_options * opts) {
         return ctlbind_paste_config_from_clipboard("c_image_registration_options", &opts->registration);
       });
 
@@ -2880,10 +2880,10 @@ static inline void ctlbind_stack_registration_options(c_ctlist<RootObjectType> &
     ctlbind(ctls, ctx(&S::registration));
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_command_button(ctls, "Copy registration options to clipboard", ctx, [](c_image_stacking_options * opts) {
+      ctlbind_menu_item(ctls, "Copy registration options to clipboard", ctx, [](c_image_stacking_options * opts) {
         return ctlbind_copy_config_to_clipboard("c_image_registration_options", opts->registration), false;
       });
-      ctlbind_command_button(ctls, "Paste registration options from clipboard", ctx, [](c_image_stacking_options * opts) {
+      ctlbind_menu_item(ctls, "Paste registration options from clipboard", ctx, [](c_image_stacking_options * opts) {
         return ctlbind_paste_config_from_clipboard("c_image_registration_options", &opts->registration);
       });
   ctlbind_end_group(ctls);
@@ -2915,10 +2915,10 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
         "The pixel will NOT added to the accumulator if its sharpness is less than currently known max sharpness * max_weights_ratio");
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_command_button(ctls, "Copy c_lpg_options to clipboard", ctx, [](c_frame_accumulation_options * opts) {
+      ctlbind_menu_item(ctls, "Copy c_lpg_options to clipboard", ctx, [](c_frame_accumulation_options * opts) {
         return ctlbind_copy_config_to_clipboard("c_lpg_options", opts->lpg), false;
       });
-      ctlbind_command_button(ctls, "Paste c_lpg_options from clipboard", ctx, [](c_frame_accumulation_options * opts) {
+      ctlbind_menu_item(ctls, "Paste c_lpg_options from clipboard", ctx, [](c_frame_accumulation_options * opts) {
         return ctlbind_paste_config_from_clipboard("c_lpg_options", &opts->lpg);
       });
 

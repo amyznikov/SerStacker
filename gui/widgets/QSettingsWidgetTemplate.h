@@ -727,70 +727,6 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       }
 
       ////////////////////////////////////////////////////////////////////////
-      case CtlType::ECCRegistrationOptions: {
-        QEccRegistrationOptions * ctl = new QEccRegistrationOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.ecc_registration_options ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.ecc_registration_options(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QFeatureBasedRegistrationOptions::parameterChanged,
-              currentSettings, &QSettingsWidget::parameterChanged);
-        }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
-          });
-        }
-
-        break;
-      }
-
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::ECCFlowRegistrationOptions: {
-        QEccFlowRegistrationOptions * ctl = new QEccFlowRegistrationOptions(_this);
-        QSignalBlocker block(ctl);
-        ctl->setToolTip(QString::fromStdString(c.cdesc));
-        if ( c.cname.empty() ) {
-          currentSettings->addRow(ctl);
-        }
-        else {
-          currentSettings->addRow(QString::fromStdString(c.cname), ctl);
-        }
-
-        if( c.eccflow_registration_options ) {
-          QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, c, ctl]() {
-                ctl->setOpts(c.eccflow_registration_options(_this->opts()));
-          });
-
-          QObject::connect(ctl, &QFeatureBasedRegistrationOptions::parameterChanged,
-              currentSettings, &QSettingsWidget::parameterChanged);
-        }
-
-        if( c.enabled ) {
-          QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
-          });
-        }
-
-        break;
-      }
-
-      ////////////////////////////////////////////////////////////////////////
       case CtlType::StereoInputSourceSelection: {
         QStereoInputSourceSelection * ctl = new QStereoInputSourceSelection(_this);
         QSignalBlocker block(ctl);
@@ -821,7 +757,6 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         break;
       }
-
 
       ////////////////////////////////////////////////////////////////////////
       case CtlType::MasterFrameSelection: {

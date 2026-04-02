@@ -194,61 +194,6 @@ protected:
   QEstimateEpipolarDerotationImageTransformOptions *estimateEpipolarDerotation_ctl = nullptr;
 };
 
-
-class QEccRegistrationOptions :
-    public QSettingsWidgetTemplate<c_ecc_registration_options>
-{
-  Q_OBJECT;
-public:
-  typedef QEccRegistrationOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_ecc_registration_options> Base;
-
-  QEccRegistrationOptions(QWidget * parent = nullptr);
-
-protected:
-  QNumericBox * scale_ctl = nullptr;
-  QEnumComboBox<ECC_ALIGN_METHOD> * ecc_method_ctl = nullptr;
-  QNumericBox * eps_ctl = nullptr;
-  QNumericBox * min_rho_ctl = nullptr;
-  QNumericBox * input_smooth_sigma_ctl = nullptr;
-  QNumericBox * reference_smooth_sigma_ctl = nullptr;
-  QNumericBox * normalization_scale_ctl = nullptr;
-  QNumericBox * normalization_noise_ctl = nullptr;
-  QNumericBox * update_step_scale_ctl = nullptr;
-  QNumericBox * max_iterations_ctl = nullptr;
-  QNumericBox * ecch_max_level_ctl = nullptr;
-  QNumericBox * ecch_minimum_image_size_ctl = nullptr;
-  QCheckBox * ecch_estimate_translation_first_ctl = nullptr;
-  QCheckBox * replace_planetary_disk_with_mask_ctl = nullptr;
-  QNumericBox * planetary_disk_mask_stdev_factor_ctl = nullptr;
-  QNumericBox * se_close_size_ctl = nullptr;
-};
-
-
-class QEccFlowRegistrationOptions :
-    public QSettingsWidgetTemplate<c_eccflow_registration_options>
-{
-  Q_OBJECT;
-public:
-  typedef QEccFlowRegistrationOptions ThisClass;
-  typedef QSettingsWidgetTemplate<c_eccflow_registration_options> Base;
-
-  QEccFlowRegistrationOptions(QWidget * parent = nullptr);
-
-protected:
-  QEnumComboBox<ECCFlowDownscaleMethod> * downscale_method_ctl = nullptr;
-  QNumericBox * update_multiplier_ctl = nullptr;
-  QNumericBox * input_smooth_sigma_ctl = nullptr;
-  QNumericBox * reference_smooth_sigma_ctl = nullptr;
-  QNumericBox * max_iterations_ctl = nullptr;
-  QNumericBox * support_scale_ctl = nullptr;
-  QNumericBox * min_image_size_ctl = nullptr;
-  QNumericBox * max_pyramid_level_ctl = nullptr;
-  QNumericBox * noise_level_ctl = nullptr;
-  QNumericBox * scale_factor_ctl = nullptr;
-};
-
-
 class QJovianDerotationOptions :
     public QSettingsWidgetTemplate<c_jovian_derotation_options>
 {

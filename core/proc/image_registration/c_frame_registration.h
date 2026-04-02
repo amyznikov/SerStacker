@@ -68,25 +68,26 @@ struct c_ecc_registration_options
 };
 
 template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_ecc_registration_options> & ctx,
-    const std::string & cdesc = "")
+void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_ecc_registration_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_ecc_registration_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::ECCRegistrationOptions;
-
-  const size_t offset = ctx.offset;
-  c.ecc_registration_options =
-      [offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
+  using S = c_ecc_registration_options;
+  ctlbind(ctls, "image scale", ctx(&S:: scale), "");
+  ctlbind(ctls, "ecc_method", ctx(&S:: ecc_method), "");
+  ctlbind(ctls, "eps", ctx(&S:: eps), "");
+  ctlbind(ctls, "min_rho", ctx(&S:: min_rho), "");
+  ctlbind(ctls, "input_smooth_sigma", ctx(&S:: input_smooth_sigma), "");
+  ctlbind(ctls, "reference_smooth_sigma", ctx(&S:: reference_smooth_sigma), "");
+  ctlbind(ctls, "normalization_scale", ctx(&S:: normalization_scale), "");
+  ctlbind(ctls, "normalization_noise", ctx(&S:: normalization_noise), "");
+  ctlbind(ctls, "update_step_scale", ctx(&S:: update_step_scale), "");
+  ctlbind(ctls, "max_iterations", ctx(&S:: max_iterations), "");
+  ctlbind(ctls, "ecch_max_level", ctx(&S:: ecch_max_level), "");
+  ctlbind(ctls, "ecch_minimum_image_size", ctx(&S:: ecch_minimum_image_size), "");
+  ctlbind(ctls, "Estimate translation first", ctx(&S:: ecch_estimate_translation_first), "");
+  ctlbind(ctls, "replace_planetary_disk_with_mask", ctx(&S:: replace_planetary_disk_with_mask), "");
+  ctlbind(ctls, "planetary_disk_stdev_factor", ctx(&S:: planetary_disk_mask_stdev_factor), "");
+  ctlbind(ctls, "planetary_disk_se_close_size", ctx(&S:: se_close_size), "");
 }
 
 struct c_eccflow_registration_options
@@ -104,25 +105,20 @@ struct c_eccflow_registration_options
 };
 
 template<class RootObjectType>
-void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
-    const c_ctlbind_context<RootObjectType, c_eccflow_registration_options> & ctx,
-    const std::string & cdesc = "")
+void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_eccflow_registration_options> & ctx)
 {
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = c_eccflow_registration_options;
-
-  BindType c;
-  c.cname = cname;
-  c.cdesc = cdesc;
-  c.ctype = BindType::CtlType::ECCFlowRegistrationOptions;
-
-  const size_t offset = ctx.offset;
-  c.eccflow_registration_options =
-      [offset](RootObjectType * obj) -> FieldType *  {
-        return obj ? reinterpret_cast<FieldType*>(reinterpret_cast<uint8_t*>(obj) + offset): nullptr;
-      };
-
-  ctls.emplace_back(c);
+  using S = c_eccflow_registration_options;
+  ctlbind(ctls, "support_scale", ctx(&S::support_scale), "");
+  ctlbind(ctls, "downscale_method", ctx(&S::downscale_method), "");
+  ctlbind(ctls, "min_image_size", ctx(&S::min_image_size), "");
+  ctlbind(ctls, "max_pyramid_level", ctx(&S::max_pyramid_level), "");
+  ctlbind(ctls, "scale_factor", ctx(&S::scale_factor), "");
+  ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
+  ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
+  ctlbind(ctls, "update_multiplier", ctx(&S::update_multiplier), "");
+  ctlbind(ctls, "noise_level", ctx(&S::noise_level), "");
+  ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
 }
 
 struct c_jovian_derotation_options
@@ -208,14 +204,14 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind_expandable_group(ctls, "ECC Registration Options", "");
     ctlbind(ctls, "Enable ECC Registration", ctx(&S::enable_ecc_registration), "");
     ctlbind_group(ctls, ctx(&S::enable_ecc_registration));
-    ctlbind(ctls, "", ctx(&S::ecc), "");
+    ctlbind(ctls, ctx(&S::ecc));
     ctlbind_end_group(ctls);
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "ECC Flow Registration Options", "");
     ctlbind(ctls, "Enable ECCFlow Registration", ctx(&S::enable_eccflow_registration), "");
     ctlbind_group(ctls, ctx(&S::enable_eccflow_registration));
-    ctlbind(ctls, "", ctx(&S::eccflow), "");
+    ctlbind(ctls, ctx(&S::eccflow));
     ctlbind_end_group(ctls);
   ctlbind_end_group(ctls);
 

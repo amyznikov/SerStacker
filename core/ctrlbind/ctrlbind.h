@@ -22,8 +22,6 @@ struct c_sparse_feature_detector_options;
 struct c_sparse_feature_descriptor_options;
 struct c_feature2d_matcher_options;
 struct c_feature_registration_options;
-struct c_ecc_registration_options;
-struct c_eccflow_registration_options;
 struct c_master_frame_selection_options;
 struct c_stereo_input_source_options;
 
@@ -71,9 +69,7 @@ struct c_ctlbind
     SparseFeatureDescriptor,
     SparseFeatureMatcher,
     FeatureRegistrationOptions,
-    ECCRegistrationOptions,
-    ECCFlowRegistrationOptions,
-    //InputSourceSelection,
+    // InputSourceSelection,
     MasterFrameSelection,
     StereoInputSourceSelection,
     DataAnnotationSelector,
@@ -102,8 +98,6 @@ struct c_ctlbind
   std::function<c_sparse_feature_descriptor_options*(RootObjectType*)> sparse_feature_descriptor;
   std::function<c_feature2d_matcher_options*(RootObjectType*)> sparse_feature_matcher;
   std::function<c_feature_registration_options *(RootObjectType *)> feature_registration_options;
-  std::function<c_ecc_registration_options *(RootObjectType *)> ecc_registration_options;
-  std::function<c_eccflow_registration_options *(RootObjectType *)> eccflow_registration_options;
   std::function<c_master_frame_selection_options*(RootObjectType*)> master_frame_selection;
   std::function<c_stereo_input_source_options*(RootObjectType*)> stereo_input_source_options;
   std::function<bool(RootObjectType*, int cmap, int * label)> get_data_annotation;
@@ -115,11 +109,6 @@ struct c_ctlbind
 };
 
 
-template<class RootObjectType>
-class c_ctlist : public std::vector<c_ctlbind<RootObjectType>>
-{
-};
-
 template<class StructType, class FieldType>
 inline constexpr size_t offset_of(FieldType StructType::*mp)
 {
@@ -129,6 +118,11 @@ inline constexpr size_t offset_of(FieldType StructType::*mp)
 #define OFFSET_OF(T,m) \
   ((size_t)&(((T*)nullptr)->m))
 
+
+template<class RootObjectType>
+class c_ctlist : public std::vector<c_ctlbind<RootObjectType>>
+{
+};
 
 template<class RootObjectType, class T = RootObjectType>
 struct c_ctlbind_context

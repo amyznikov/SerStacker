@@ -33,11 +33,11 @@ private:
   void run() override;
 
 private:
-  QMutex mtx_;
-  QString current_path_;
-  QStringList supported_suffixes_;
-  int req_id_ = -1;
-  volatile bool cancel_requested_ = false;
+  QMutex _mtx;
+  QString _currentPath;
+  QStringList _supportedSuffixes;
+  int _reqId = -1;
+  volatile bool _cancelRequested = false;
 };
 
 #endif /* __QSearchImageFiles_h__ */

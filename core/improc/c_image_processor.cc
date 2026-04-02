@@ -22,6 +22,7 @@
 #include "generic/c_ridgeness_routine.h"
 #include "generic/c_filter2d_routine.h"
 
+#include "generic/c_copy_make_border_routine.h"
 #include "generic/c_local_peak_routine.h"
 #include "generic/c_radial_gradient_routine.h"
 #include "generic/c_noisemap_routine.h"
@@ -206,6 +207,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pop_global_routine::class_factory_instance());
     register_class_factory(c_clear_globals_routine::class_factory_instance());
     register_class_factory(c_load_image_routine::class_factory_instance());
+
+    register_class_factory(c_copy_make_border_routine::class_factory_instance());
 
     register_class_factory(c_laplacian_routine::class_factory_instance());
     register_class_factory(c_hessian_routine::class_factory_instance());

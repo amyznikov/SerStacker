@@ -32,17 +32,6 @@ static QIcon badimage_icon;
 static QIcon textfile_icon;
 static QIcon plyfile_icon;
 
-
-//static QIcon getIcon(const QString & name)
-//{
-//  return QIcon(QString(":/qthumbnailsview/icons/%1").arg(name));
-//}
-
-//static QPixmap getPixmap(const QString & name)
-//{
-//  return QPixmap(QString(":/qthumbnailsview/icons/%1").arg(name));
-//}
-
 static QWidget * addSpacer(QToolBar * toolBar)
 {
   QWidget * spacer = new QWidget();
@@ -69,8 +58,6 @@ static void init_thumbnailsview_resources()
     plyfile_icon = getIcon(ICON_plyfile);
   }
 
-
-
 }
 
 
@@ -90,72 +77,58 @@ QThumbnailsListWidget::QThumbnailsListWidget(QWidget * parent)
   setSelectionMode(QAbstractItemView::ExtendedSelection);
   setSortingEnabled(true);
 
-  // set default icon sizes
   setZoom(INITIAL_ZOOM);
-
-
-
-
-//  addAction(action = new QAction("Delete Files", this));
-//  action->setShortcut(QKeySequence::StandardKey::Delete);
-//  connect(action, &QAction::triggered, [this] () {
-//    QList<QListWidgetItem*> selectedItems = this->selectedItems();
-//    if ( !selectedItems.empty() ) {
-//      deleteFiles(selectedItems, true);
-//    }
-//  });
-
 }
 
 int QThumbnailsListWidget::zoom(void) const
 {
-  return currentZoom_;
+  return _currentZoom;
 }
 
 void QThumbnailsListWidget::setZoom(int z)
 {
   int newzoom = std::max(std::min(z, MAX_ZOOM), MIN_ZOOM);
-  if ( currentZoom_ != newzoom ) {
-    currentZoom_ = newzoom;
-    setIconSize(QSize(currentZoom_ * 16, currentZoom_ * 16));
+  if ( _currentZoom != newzoom ) {
+    _currentZoom = newzoom;
+    setIconSize(QSize(_currentZoom * 16, _currentZoom * 16));
     onZoomChanged();
   }
 }
 
 const QString & QThumbnailsListWidget::quickFilter() const
 {
-  return quickFilter_;
+  return _quickFilter;
 }
 
 Qt::MatchFlags QThumbnailsListWidget::quickFilterMatchingFlags() const
 {
-  return quickFilterMatchingFlags_;
+  return _quickFilterMatchingFlags;
 }
 
 void QThumbnailsListWidget::setQuickFilter(const QString & v, Qt::MatchFlags flags, bool invertMatch)
 {
-  quickFilter_ = v;
-  quickFilterMatchingFlags_ = flags;
-  quickFilterInvertMatch_ = invertMatch;
+  _quickFilter = v;
+  _quickFilterMatchingFlags = flags;
+  _quickFilterInvertMatch = invertMatch;
   quickFilterUpdateItemsVisibility();
 }
 
 void QThumbnailsListWidget::clearQuickFilter()
 {
-  quickFilter_.clear();
+  _quickFilter.clear();
   quickFilterUpdateItemsVisibility();
 }
 
 bool QThumbnailsListWidget::matchQuickFilter(const QString & text)
 {
-  return ::matchQuickFilter(text, quickFilter_, quickFilterMatchingFlags_);
+  return ::matchQuickFilter(text, _quickFilter, _quickFilterMatchingFlags);
 }
 
 void QThumbnailsListWidget::quickFilterUpdateItemsVisibility()
 {
   QWaitCursor wait(this);
 
-  if ( quickFilter_.isEmpty() ) {
+  if ( _quickFilter.isEmpty() ) {
     for ( int  i = 0, n = this->count(); i < n; ++i ) {
       this->item(i)->setHidden(false);
     }
@@ -165,7 +138,7 @@ void QThumbnailsListWidget::quickFilterUpdateItemsVisibility()
 
       QListWidgetItem * item = this->item(i);
 
-      if ( !quickFilterInvertMatch_ ) {
+      if ( !_quickFilterInvertMatch ) {
         item->setHidden(!matchQuickFilter(item->text()));
       }
       else {
@@ -344,7 +317,7 @@ void QThumbnailsListWidget::wheelEvent(QWheelEvent *e)
   if ( e->modifiers() & Qt::ControlModifier ) {
     const int amount = e->angleDelta().y();
     if ( amount != 0 ) {
-      setZoom(currentZoom_ + (amount > 0 ? 1 : -1));
+      setZoom(_currentZoom + (amount > 0 ? 1 : -1));
       return;
     }
   }
@@ -358,14 +331,14 @@ void QThumbnailsListWidget::keyPressEvent(QKeyEvent *e)
 
   case Qt::Key_Plus :
     if ( e->modifiers() & Qt::ControlModifier ) {
-      setZoom(currentZoom_ + 1);
+      setZoom(_currentZoom + 1);
       return;
     }
     break;
 
   case Qt::Key_Minus :
     if ( e->modifiers() & Qt::ControlModifier ) {
-      setZoom(currentZoom_ - 1);
+      setZoom(_currentZoom - 1);
       return;
     }
     break;
@@ -393,7 +366,6 @@ void QThumbnailsListWidget::keyPressEvent(QKeyEvent *e)
   }
 
   Base::keyPressEvent(e);
-  //Q_EMIT keyPressed(e);
 }
 
 
@@ -443,117 +415,97 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
 {
   init_thumbnailsview_resources();
 
-  layout_ = new QVBoxLayout(this);
-  layout_->setContentsMargins(0,0,0,0);
+  _layout = new QVBoxLayout(this);
+  _layout->setContentsMargins(0,0,0,0);
 
-  layout_->addWidget(toolbar_ = new QToolBar(this));
-  layout_->addWidget(stack_ = new QStackedWidget());
-
-
-  stack_->addWidget(whiteSheet_ = new QLabel(this));
-  whiteSheet_->setFrameShape(QFrame::Box);
-  whiteSheet_->setTextFormat(Qt::RichText);
-  whiteSheet_->setAlignment(Qt::AlignCenter | Qt::AlignHCenter);
-  whiteSheet_->setWordWrap(true);
-  whiteSheet_->setText("<H2>No items to display</H2>");
+  _layout->addWidget(_toolbar = new QToolBar(this));
+  _layout->addWidget(_stack = new QStackedWidget());
 
 
-  stack_->addWidget(listWidget_ = new QThumbnailsListWidget(this));
-  listWidget_->setContextMenuPolicy(Qt::CustomContextMenu);
+  _stack->addWidget(_whiteSheet = new QLabel(this));
+  _whiteSheet->setFrameShape(QFrame::Box);
+  _whiteSheet->setTextFormat(Qt::RichText);
+  _whiteSheet->setAlignment(Qt::AlignCenter | Qt::AlignHCenter);
+  _whiteSheet->setWordWrap(true);
+  _whiteSheet->setText("<H2>No items to display</H2>");
 
-  connect(listWidget_, &QListWidget::currentItemChanged,
+
+  _stack->addWidget(_listWidget = new QThumbnailsListWidget(this));
+  _listWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+
+  connect(_listWidget, &QListWidget::currentItemChanged,
       this, &ThisClass::onCurrentItemChanged);
-  connect(listWidget_, &QListWidget::itemDoubleClicked,
+  connect(_listWidget, &QListWidget::itemDoubleClicked,
       this, &ThisClass::onItemDoubleClicked);
-  connect(listWidget_, &QThumbnailsListWidget::enterPressed,
+  connect(_listWidget, &QThumbnailsListWidget::enterPressed,
     this, &ThisClass::onItemEnterPressed);
-  connect(listWidget_, &QThumbnailsListWidget::customContextMenuRequested,
+  connect(_listWidget, &QThumbnailsListWidget::customContextMenuRequested,
     this, &ThisClass::customContextMenuRequested);
 
 
-  //onViewItemCustomContextMenuRequested
-
-//  connect(new QShortcut(QKeySequence(Qt::Key_Return), listWidget_),&QShortcut::activated,
-//      this, SLOT(deleteItem()));
-
-
-
-
-
-
-
-  stack_->setCurrentWidget(whiteSheet_);
+  _stack->setCurrentWidget(_whiteSheet);
 
 
   // Setup toolbar
-  toolbar_->setIconSize(QSize(16,16));
+  _toolbar->setIconSize(QSize(16,16));
 
-  refreshAction_ = toolbar_->addAction(getIcon(ICON_file_reload),
+  _refreshAction = _toolbar->addAction(getIcon(ICON_file_reload),
       "Refresh",
       [this] () {
         reload();
       });
 
-  showInDirTreeAction_ = toolbar_->addAction(getIcon(ICON_dirtree),
+  _showInDirTreeAction = _toolbar->addAction(getIcon(ICON_dirtree),
       "Show current path in directory tree browser",
       [this] () {
         Q_EMIT showInDirTreeRequested(currentPath());
       });
 
-  toolbar_->addSeparator();
+  _toolbar->addSeparator();
 
-  toolbar_->addWidget(currentPathLabel_ = new QLabel());
-  currentPathLabel_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  currentPathLabel_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+  _toolbar->addWidget(_currentPathLabel = new QLabel());
+  _currentPathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  _currentPathLabel->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
 
 
-  addSpacer(toolbar_);
-  toolbar_->addSeparator();
+  addSpacer(_toolbar);
+  _toolbar->addSeparator();
 
-//  quickFilterAction_= toolbar_->addAction(getIcon(ICON_filter),
-//      "Quick filter",
-//      this, &ThisClass::onShowQuickFilter);
-  toolbar_->addAction(quickFilterAction_ =
+  _toolbar->addAction(_quickFilterAction =
       new QAction(getIcon(ICON_filter),
           "Quick filter"));
-  quickFilterAction_->setCheckable(true);
-  connect(quickFilterAction_, &QAction::triggered,
+  _quickFilterAction->setCheckable(true);
+  connect(_quickFilterAction, &QAction::triggered,
       this, &ThisClass::onShowQuickFilter);
 
-//  clearFilterAction_= toolbar_->addAction(getIcon(ICON_filter_clear),
-//      "Clear filter",
-//      this, &ThisClass::clearQuickFilter);
-
-
-  thumbnailExtractor_.setThumbnailSize(MAX_ICON_LOAD_SIZE);
-
+  _thumbnailExtractor.setThumbnailSize(MAX_ICON_LOAD_SIZE);
 
   //////////////////////////////////////////////////////////////////////
 
 
-  connect(stack_, &QStackedWidget::currentChanged,
+  connect(_stack, &QStackedWidget::currentChanged,
       this, &ThisClass::onCurrentWidgetChanged);
 
 
 
-  connect(&searchImageFiles_, &QSearchImageFiles::started,
+  connect(&_searchImageFiles, &QSearchImageFiles::started,
       this, &ThisClass::onSearchImageFilesStarted,
       Qt::QueuedConnection);
-  connect(&searchImageFiles_, &QSearchImageFiles::finished,
+  connect(&_searchImageFiles, &QSearchImageFiles::finished,
       this, &ThisClass::onSearchImageFilesFinished,
       Qt::QueuedConnection);
-  connect(&searchImageFiles_, &QSearchImageFiles::imageFound,
+  connect(&_searchImageFiles, &QSearchImageFiles::imageFound,
       this, &ThisClass::onImageFileFound,
       Qt::QueuedConnection);
 
 
-  connect(&thumbnailExtractor_, &QThumbnailExtractor::started,
+  connect(&_thumbnailExtractor, &QThumbnailExtractor::started,
       this, &ThisClass::onThumbnailExtractorStarted,
       Qt::QueuedConnection);
-  connect(&thumbnailExtractor_, &QThumbnailExtractor::finished,
+  connect(&_thumbnailExtractor, &QThumbnailExtractor::finished,
       this, &ThisClass::onThumbnailExtractorFinished,
       Qt::QueuedConnection);
-  connect(&thumbnailExtractor_, &QThumbnailExtractor::extracted,
+  connect(&_thumbnailExtractor, &QThumbnailExtractor::extracted,
       this, &ThisClass::onThumbnailExtrated,
       Qt::QueuedConnection);
 
@@ -561,11 +513,11 @@ QThumbnailsView::QThumbnailsView(QWidget * parent)
 
 void QThumbnailsView::updateProgressIndicator()
 {
-  if ( thumbnailExtractor_.isRunning() || searchImageFiles_.isRunning() ) {
-    listWidget_->setCursor(Qt::WaitCursor);
+  if ( _thumbnailExtractor.isRunning() || _searchImageFiles.isRunning() ) {
+    _listWidget->setCursor(Qt::WaitCursor);
   }
   else {
-    listWidget_->setCursor(Qt::ArrowCursor);
+    _listWidget->setCursor(Qt::ArrowCursor);
   }
 }
 
@@ -573,15 +525,15 @@ void QThumbnailsView::updateCurrentStackWidget()
 {
   QWidget * w = nullptr;
 
-  if ( listWidget_->count() > 0 ) {
-    w = listWidget_;
+  if ( _listWidget->count() > 0 ) {
+    w = _listWidget;
   }
   else {
-    w = whiteSheet_;
+    w = _whiteSheet;
   }
 
-  if ( stack_->currentWidget() != w ) {
-    stack_->setCurrentWidget(w);
+  if ( _stack->currentWidget() != w ) {
+    _stack->setCurrentWidget(w);
   }
 
   updateProgressIndicator();
@@ -596,12 +548,12 @@ void QThumbnailsView::onSearchImageFilesStarted()
 
 void QThumbnailsView::onImageFileFound(int rid, const QString fullPathName)
 {
-  if ( rid == lastSearchImageFilesRID_ ) {
+  if ( rid == _lastSearchImageFilesRID ) {
 
-    listWidget_->addIcon(hourglass_icon, fullPathName, QVariant(false));
+    _listWidget->addIcon(hourglass_icon, fullPathName, QVariant(false));
 
-    if ( stack_->currentWidget() != listWidget_ ) {
-      stack_->setCurrentWidget(listWidget_);
+    if ( _stack->currentWidget() != _listWidget ) {
+      _stack->setCurrentWidget(_listWidget);
     }
 
     QCoreApplication::processEvents(); // QEventLoop::ExcludeUserInputEvents
@@ -620,8 +572,8 @@ void QThumbnailsView::extractMissingThumbiails()
   bool hasupdates = false;
   bool finished = true;
 
-  for ( int i = 0, n = listWidget_->count(); i < n; ++i ) {
-    QListWidgetItem * item = listWidget_->item(i);
+  for ( int i = 0, n = _listWidget->count(); i < n; ++i ) {
+    QListWidgetItem * item = _listWidget->item(i);
     if ( !item->data(Qt::UserRole).toBool() ) {
 
       const QString filename =
@@ -661,17 +613,17 @@ void QThumbnailsView::extractMissingThumbiails()
       }
       else {
         finished = false;
-        thumbnailExtractor_.start(filename);
+        _thumbnailExtractor.start(filename);
         break;
       }
     }
   }
 
   if ( finished ) {
-    listWidget_->updateItemsLayout();
+    _listWidget->updateItemsLayout();
   }
   else if ( hasupdates ) {
-    listWidget_->repaint();
+    _listWidget->repaint();
   }
 }
 
@@ -682,7 +634,7 @@ void QThumbnailsView::onThumbnailExtractorStarted()
 
 void QThumbnailsView::onThumbnailExtrated(int rid, const QIcon & icon, const QString & fullPathName)
 {
-  listWidget_->updateIcon(icon, fullPathName, QVariant(true));
+  _listWidget->updateIcon(icon, fullPathName, QVariant(true));
 }
 
 void QThumbnailsView::onThumbnailExtractorFinished()
@@ -700,13 +652,13 @@ bool QThumbnailsView::setCurrentPath(const QString & path, bool refreshNow)
 {
   if ( !path.isEmpty() ) {
 
-    if ( path != currentPath_ ) {
+    if ( path != _currentPath ) {
       refreshNow = true;
     }
 
     cancelPendingUpdates();
-    currentPath_ = path;
-    currentPathLabel_->setText(currentPath_);
+    _currentPath = path;
+    _currentPathLabel->setText(_currentPath);
     if ( refreshNow ) {
       reload();
     }
@@ -719,7 +671,7 @@ bool QThumbnailsView::setCurrentPath(const QString & path, bool refreshNow)
 
 const QString & QThumbnailsView::currentPath() const
 {
-  return currentPath_;
+  return _currentPath;
 }
 
 void QThumbnailsView::reload()
@@ -732,16 +684,16 @@ void QThumbnailsView::cancelPendingUpdates()
 {
 //  QWaitCursor wait(this);
 
-  searchImageFiles_.cancel();
-  thumbnailExtractor_.cancel();
+  _searchImageFiles.cancel();
+  _thumbnailExtractor.cancel();
   updateProgressIndicator();
 }
 
 void QThumbnailsView::startUpdate()
 {
-  listWidget_->clear();
-  if ( !currentPath_.isEmpty()  ) {
-    lastSearchImageFilesRID_ = searchImageFiles_.start(currentPath_);
+  _listWidget->clear();
+  if ( !_currentPath.isEmpty()  ) {
+    _lastSearchImageFilesRID = _searchImageFiles.start(_currentPath);
   }
 }
 
@@ -749,24 +701,24 @@ void QThumbnailsView::startUpdate()
 
 void QThumbnailsView::onCurrentWidgetChanged(int)
 {
-  if (  stack_->currentWidget() == whiteSheet_ ) {
+  if (  _stack->currentWidget() == _whiteSheet ) {
     refreshWhiteListTextMessage();
   }
 }
 
 void QThumbnailsView::refreshWhiteListTextMessage()
 {
-  if ( QFileInfo::exists(currentPath_) ) {
-    whiteSheet_->setText("<H2>No images to display</H2>");
+  if ( QFileInfo::exists(_currentPath) ) {
+    _whiteSheet->setText("<H2>No images to display</H2>");
   }
   else {
     QString text = QString("<H2>This folder does not exists.</H2>"
         "<p>%1</p>"
         "<p>The requested directory does not exists yet.</p>"
         "<p>Most likely it will be created automatically later</p>").
-            arg(currentPath_);
+            arg(_currentPath);
 
-    whiteSheet_->setText(text);
+    _whiteSheet->setText(text);
   }
 }
 
@@ -793,12 +745,12 @@ void QThumbnailsView::onItemEnterPressed(QListWidgetItem *item)
 
 void QThumbnailsView::selectNextIcon()
 {
-  listWidget_->selectNextIcon();
+  _listWidget->selectNextIcon();
 }
 
 void QThumbnailsView::selectPrevIcon()
 {
-  listWidget_->selectPrevIcon();
+  _listWidget->selectPrevIcon();
 }
 
 void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
@@ -807,8 +759,8 @@ void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
   QList<QListWidgetItem*> selectedItems;
   QClipboard * clipboard = nullptr;
 
-  selectedItems = listWidget_->selectedItems();
-  currentItem = listWidget_->itemAt(pos);
+  selectedItems = _listWidget->selectedItems();
+  currentItem = _listWidget->itemAt(pos);
   clipboard = QApplication::clipboard();
 
   if ( currentItem ) {
@@ -865,7 +817,7 @@ void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
     menu->addAction(getIcon(ICON_file_delete),
         QString("Delete %1 File(s) ...").arg(selectedItems.size()),
         [this, selectedItems]() {
-          listWidget_->deleteFiles(selectedItems, true);
+          _listWidget->deleteFiles(selectedItems, true);
         });
   }
 
@@ -886,7 +838,7 @@ void QThumbnailsView::populateContextMenu(QMenu * menu, const QPoint &pos)
 
 QPoint QThumbnailsView::contextMenuPosToGlobal(const QPoint & pos) const
 {
-  return listWidget_->mapToGlobal(pos);
+  return _listWidget->mapToGlobal(pos);
 }
 
 bool QThumbnailsView::moveToBads(const QString & pathfilename)
@@ -897,31 +849,31 @@ bool QThumbnailsView::moveToBads(const QString & pathfilename)
     if ( !file.exists() ) {
       CF_ERROR("File '%s' not exists", pathfilename.toStdString().c_str());
     }
-    else if ( file.path() != currentPath_ ) {
-      CF_ERROR("File '%s' not under '%s'",  pathfilename.toStdString().c_str(), currentPath_.toStdString().c_str());
+    else if ( file.path() != _currentPath ) {
+      CF_ERROR("File '%s' not under '%s'",  pathfilename.toStdString().c_str(), _currentPath.toStdString().c_str());
     }
     else {
 
-      QDir curDir(currentPath_);
-      QString newpathname = QString("%1/BAD/%2").arg(currentPath_).arg(file.fileName());
+      QDir curDir(_currentPath);
+      QString newpathname = QString("%1/BAD/%2").arg(_currentPath).arg(file.fileName());
       if ( !curDir.mkpath("BAD") ) {
-        CF_ERROR("Can not create sub-directory under %s", currentPath_.toStdString().c_str());
+        CF_ERROR("Can not create sub-directory under %s", _currentPath.toStdString().c_str());
       }
       else if ( !QFile::rename(pathfilename, newpathname) ) {
         CF_ERROR("QFile::rename() '%s' -> '%s' fails", pathfilename.toStdString().c_str(), newpathname.toStdString().c_str());
       }
       else {
 
-        for ( int i = 0, n = listWidget_->count(); i < n; ++i ) {
-          QListWidgetItem * item = listWidget_->item(i);
+        for ( int i = 0, n = _listWidget->count(); i < n; ++i ) {
+          QListWidgetItem * item = _listWidget->item(i);
           if ( item->whatsThis() == pathfilename ) {
 
-            listWidget_->removeItemWidget(item);
+            _listWidget->removeItemWidget(item);
             delete item;
 
-            QListWidgetItem * nextItem = listWidget_->item(i < n -1 ? i: 0);
+            QListWidgetItem * nextItem = _listWidget->item(i < n -1 ? i: 0);
             if ( nextItem ) {
-              listWidget_->setCurrentItem(nextItem);
+              _listWidget->setCurrentItem(nextItem);
             }
 
             break;
@@ -939,8 +891,8 @@ bool QThumbnailsView::moveToBads(const QString & pathfilename)
 
 void QThumbnailsView::onShowQuickFilter()
 {
-  if ( !ignoreQuickFilterAction_ ) {
-    if ( quickFilterAction_->isChecked() ) {
+  if ( !_ignoreQuickFilterAction ) {
+    if ( _quickFilterAction->isChecked() ) {
       showQuickFilter();
     }
     else {
@@ -952,41 +904,41 @@ void QThumbnailsView::onShowQuickFilter()
 void QThumbnailsView::showQuickFilter(const QString & wildcard)
 {
 
-  if ( !quickfilterDialogBox_ ) {
+  if ( !_quickfilterDialogBox ) {
 
-    quickfilterDialogBox_ = new QThumbnailsQuickFilterDialogBox(this);
+    _quickfilterDialogBox = new QThumbnailsQuickFilterDialogBox(this);
 
-    connect(quickfilterDialogBox_, &QThumbnailsQuickFilterDialogBox::parameterChanged,
+    connect(_quickfilterDialogBox, &QThumbnailsQuickFilterDialogBox::parameterChanged,
         [this] () {
-          if ( quickFilterAction_->isChecked() ) {
-            listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
-                quickfilterDialogBox_->matchingFlags(),
-                quickfilterDialogBox_->invertMatch());
+          if ( _quickFilterAction->isChecked() ) {
+            _listWidget->setQuickFilter(_quickfilterDialogBox->searchText(),
+                _quickfilterDialogBox->matchingFlags(),
+                _quickfilterDialogBox->invertMatch());
           }
         });
   }
 
   if ( !wildcard.isEmpty() ) {
-    quickfilterDialogBox_->setSearchText(wildcard);
+    _quickfilterDialogBox->setSearchText(wildcard);
   }
-  else if ( quickfilterDialogBox_->searchText().isEmpty() ) {
-    QListWidgetItem * currentItem = listWidget_->currentItem();
+  else if ( _quickfilterDialogBox->searchText().isEmpty() ) {
+    QListWidgetItem * currentItem = _listWidget->currentItem();
     if ( currentItem ) {
-      quickfilterDialogBox_->setSearchText(currentItem->text());
+      _quickfilterDialogBox->setSearchText(currentItem->text());
     }
   }
 
-  ignoreQuickFilterAction_ = true;
-  quickFilterAction_->setChecked(true);
-  ignoreQuickFilterAction_ = false;
+  _ignoreQuickFilterAction = true;
+  _quickFilterAction->setChecked(true);
+  _ignoreQuickFilterAction = false;
 
-  quickfilterDialogBox_->show();
-  listWidget_->setQuickFilter(quickfilterDialogBox_->searchText(),
-      quickfilterDialogBox_->matchingFlags(),
-      quickfilterDialogBox_->invertMatch());
+  _quickfilterDialogBox->show();
+  _listWidget->setQuickFilter(_quickfilterDialogBox->searchText(),
+      _quickfilterDialogBox->matchingFlags(),
+      _quickfilterDialogBox->invertMatch());
 }
 
 void QThumbnailsView::clearQuickFilter()
 {
-  listWidget_->clearQuickFilter();
+  _listWidget->clearQuickFilter();
 }

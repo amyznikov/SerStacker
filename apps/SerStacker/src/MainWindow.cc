@@ -162,6 +162,27 @@ MainWindow::MainWindow()
     }
   });
 
+  set_ctlbind_get_roi_callback([this](double * x, double * y, double * w, double * h) {
+    if ( imageView ) {
+      const auto roi = imageView->roiShape();
+      const auto rc = roi->sceneRect();
+      if ( x ) {
+        *x = rc.x();
+      }
+      if ( y ) {
+        *y = rc.y();
+      }
+      if ( w ) {
+        *w = rc.width();
+      }
+      if ( h ) {
+        *h = rc.height();
+      }
+      return imageView->isVisible() && roi->isVisible();
+    }
+    return false;
+  });
+
   //
   // Add to the end of View menu
   //

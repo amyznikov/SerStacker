@@ -1113,12 +1113,52 @@ public:
     QDataAnnotationSelectorCtrl * ctl = new QDataAnnotationSelectorCtrl(this);
     QSignalBlocker block(ctl);
     ctl->setToolTip(tooltip);
-    form->addRow(name, ctl);
+    if( name.isEmpty() ) {
+      form->addRow(ctl);
+    }
+    else {
+      form->addRow(name, ctl);
+    }
 
     if( setfn ) {
+      QObject::connect(ctl, &QDataAnnotationSelectorCtrl::annotationLabelChanged,
+          [this, ctl, setfn](int cmap, int label) {
+            if ( !updatingControls() ) {
+              c_mutex_lock lock(this);
+              setfn(cmap, label);
+            }
+          });
     }
+
     if( getfn ) {
+
+      static const auto updateAnnotationLabels =
+          [](QDataAnnotationSelectorCtrl * ctl, const auto & get_data_annotation) {
+            int lb;
+            const int cmaps = ctl->num_colormaps();
+            for ( int cmap = 0; cmap < cmaps; ++cmap ) {
+              if ( get_data_annotation(cmap, &lb) ) {
+                ctl->setAnnotationLabel(cmap, lb);
+              }
+            }
+          };
+
+      QObject::connect(this, &ThisClass::populatecontrols,
+          [ctl, getfn]() {
+            updateAnnotationLabels(ctl, getfn);
+          });
+
+      const int change_handler_id =
+          c_data_annotation_labels::default_instance().add_change_handler([ctl, getfn]() {
+            updateAnnotationLabels(ctl, getfn);
+          });
+
+      QObject::connect(this, &QObject::destroyed,
+          [change_handler_id]() {
+            c_data_annotation_labels::default_instance().remove_change_handler(change_handler_id);
+          });
     }
+
     if( enablefn ) {
       QMetaObject::Connection conn =
         QObject::connect(this, &ThisClass::enablecontrols,

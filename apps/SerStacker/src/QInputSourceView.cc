@@ -10,6 +10,7 @@
 #include <gui/widgets/createAction.h>
 #include <gui/widgets/style.h>
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
+#include <core/proc/reduce_channels.h>
 #include <core/proc/minmax.h>
 #include <core/proc/histogram.h>
 #include <core/data_annotation/c_data_annotation_labels.h>
@@ -671,18 +672,12 @@ bool QInputSourceView::applyMtf(cv::InputArray currentImage, cv::InputArray curr
     return false;
   }
 
-  DisplayParams &opts =
-      displayParams();
-
-  c_mtf *mtf =
-      &opts.mtf;
+  DisplayParams &opts = displayParams();
+  c_mtf *mtf = &opts.mtf;
 
   c_mtf_adjustment a;
-
   adjustMtfRange(mtf, currentImage, currentMask, &a);
-
   mtf->apply(currentImage, displayImage, ddepth);
-
   restoreMtfRange(mtf, a);
 
   if ( currentMask.size() == currentImage.size() ) {
@@ -718,19 +713,6 @@ bool QInputSourceView::applyColorMap(cv::InputArray displayImage, cv::InputArray
   return true;
 }
 
-//QStringList QInputSourceView::displayChannels() const
-//{
-//  QStringList sl;
-//
-//  for ( const auto & p : displays_ ) {
-//    sl.append(p.first);
-//  }
-//
-//  return sl;
-//
-//  //return displayChannels_.data();
-//}
-
 void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
@@ -747,43 +729,6 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
   }
 }
 
-//
-//void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-//{
-//  switch (_currentViewType) {
-//    case DisplayType_Image:
-//
-//      create_histogram(_imageView->currentImage(),
-//          _imageView->currentMask(),
-//          H,
-//          hmin, hmax,
-//          256,
-//          false,
-//          false);
-//
-//
-//      break;
-//
-//    case DisplayType_PointCloud:
-//
-//      create_histogram(_cloudView->currentColors(),
-//          _cloudView->currentMask(),
-//          H,
-//          hmin, hmax,
-//          256,
-//          false,
-//          false);
-//
-//      break;
-//
-//    default:
-//      H.release();
-//      break;
-//  }
-//
-//}
-
-
 void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
 {
   displayParams().mtf.get_mtf_curve(cy, n);
@@ -792,15 +737,21 @@ void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
 void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
 {
   switch (_currentViewType) {
-    case DisplayType_Image:
-      createHistogram(_imageView->currentImage(),
-          _imageView->currentMask(),
+    case DisplayType_Image: {
+      const cv::Mat image = _imageView->currentImage();
+      cv::Mat mask = _imageView->currentMask();
+      if ( !mask.empty() && mask.channels() > image.channels() ) {
+        reduce_channels(mask, cv::REDUCE_MAX);
+      }
+      createHistogram(image,
+          mask,
           hmin, hmax,
           0,
           H,
           cumulative,
           normalized);
       break;
+    }
 
     case DisplayType_PointCloud:
       createHistogram(_cloudView->currentColors(),
@@ -821,13 +772,19 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
 void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   switch (_currentViewType) {
-    case DisplayType_Image:
-      createHistogram(_imageView->mtfImage(),
-          _imageView->currentMask(),
+    case DisplayType_Image: {
+      const cv::Mat image = _imageView->mtfImage();
+      cv::Mat mask = _imageView->currentMask();
+      if ( !mask.empty() && mask.channels() > image.channels() ) {
+        reduce_channels(mask, cv::REDUCE_MAX);
+      }
+      createHistogram(image,
+          mask,
           hmin, hmax,
           0,
           H);
       break;
+    }
 
     case DisplayType_PointCloud:
       createHistogram(_cloudView->mtfColors(),
@@ -866,11 +823,6 @@ void QInputSourceView::createDisplayImage(cv::InputArray currentImage, cv::Input
     else {
       displayImage = mtfImage;
     }
-
-//    if (data_annotation_labels && _currentFrame->has_point_annotations()) {
-//
-//    }
-
   }
 }
 
@@ -895,29 +847,20 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
     return;
   }
 
-  DisplayParams & opts =
-      displayParams();
-
-  c_mtf *mtf =
-      &opts.mtf;
+  DisplayParams & opts = displayParams();
+  c_mtf *mtf = &opts.mtf;
 
   c_mtf_adjustment a;
 
   cv::Mat mtfcolors, displaycolors;
 
-  const cv::Mat & currentColors =
-      _cloudView->currentColors();
-
-  const cv::Mat & currentMask =
-      _cloudView->currentMask();
-
-  const bool needColormap =
-      opts.colormap != COLORMAP_NONE;
-
+  const cv::Mat & currentColors = _cloudView->currentColors();
+  const cv::Mat & currentMask = _cloudView->currentMask();
+  const bool needColormap = opts.colormap != COLORMAP_NONE;
 
   currentPoints.convertTo(displayPoints, CV_32F);
 
-  adjustMtfRange(mtf, needColormap ? currentColors : cv::noArray(), currentMask, &a);
+  adjustMtfRange(mtf, currentColors, currentMask, &a);
   mtf->apply(currentColors, mtfcolors, CV_8U);
   restoreMtfRange(mtf, a);
 
@@ -928,7 +871,17 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
     mtfcolors.convertTo(mtfColors, mtfColors.type());
   }
 
-  if ( needColormap ) {
+  if ( !needColormap ) {
+
+    if( mtfcolors.channels() == 1 ) {
+      cv::cvtColor(mtfcolors, mtfcolors,
+          cv::COLOR_GRAY2BGR);
+    }
+
+    mtfcolors.copyTo(displayColors);
+  }
+
+  else {
 
     if( mtfcolors.channels() != 1 ) {
       cv::cvtColor(mtfcolors, mtfcolors,
@@ -946,48 +899,24 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
     cv::cvtColor(displaycolors, displaycolors, cv::COLOR_BGR2RGB);
 
     displaycolors.copyTo(displayColors);
-
   }
 
-  else {
-
-    if( mtfcolors.channels() == 1 ) {
-      cv::cvtColor(mtfcolors, mtfcolors,
-          cv::COLOR_GRAY2BGR);
-    }
-
-    mtfcolors.copyTo(displayColors);
-  }
-
-
-  const std::vector<uint64_t> &currentPids =
-      _cloudView->currentPids();
+  const std::vector<uint64_t> &currentPids = _cloudView->currentPids();
 
   if (data_annotation_labels && !currentPids.empty() && _currentFrame->has_point_annotations()) {
 
     cv::Vec4b c;
 
-    const int num_colormaps =
-        data_annotation_labels->num_colormaps();
-
-    const double global_alpha =
-        _dataAnnotationBlendAlpha;
+    const int num_colormaps = data_annotation_labels->num_colormaps();
+    const double global_alpha = _dataAnnotationBlendAlpha;
 
     for (size_t i = 0, n = currentPids.size(); i < n; ++i) {
       for (int cmap = 0; cmap < num_colormaps; ++cmap) {
         if (data_annotation_labels->colormap(cmap)->visible()) {
-
-          const uint8_t lb =
-              _currentFrame->point_annotation(currentPids[i], cmap);
-
-          if (lb) {
-
-            if (data_annotation_labels->colormap(cmap)->color_for_label(lb, &c)) {
-
-              const double alpha = global_alpha * c[3] / 255.;
-              displayColors[i] = (1 - alpha) * displayColors[i] + alpha * cv::Vec3b(c[2], c[1], c[0]);
-
-            }
+          const uint8_t lb = _currentFrame->point_annotation(currentPids[i], cmap);
+          if (lb && data_annotation_labels->colormap(cmap)->color_for_label(lb, &c) ) {
+            const double alpha = global_alpha * c[3] / 255.;
+            displayColors[i] = (1 - alpha) * displayColors[i] + alpha * cv::Vec3b(c[2], c[1], c[0]);
           }
         }
       }

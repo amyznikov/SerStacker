@@ -536,7 +536,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
                   }
 
                   if ( !menu.isEmpty() ) {
-                    menu.exec(ctl->mapToGlobal(QPoint(6, 6)));
+                    menu.exec(ctl->mapToGlobal(QPoint(8, 8)));
                   }
                }
               });
@@ -857,6 +857,20 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
       ////////////////////////////////////////////////////////////////////////
       case CtlType::DataAnnotationSelector:{
+        currentSettings->add_data_annotation_ctl(QString::fromStdString(c.cname),
+            QString::fromStdString(c.cdesc),
+            [_this, c](int cmap, int lb) {
+              if( _this->opts() && c.set_data_annotation(_this->opts(), cmap, lb) ) {
+                Q_EMIT _this->parameterChanged();
+              }
+            },
+            [_this, c](int cmap, int * lb) {
+              if ( _this->opts() && c.get_data_annotation ) {
+                return c.get_data_annotation(_this->opts(), cmap, lb);
+              }
+              return false;
+            },
+            enablefn(_this, c));
         break;
       }
       ////////////////////////////////////////////////////////////////////////

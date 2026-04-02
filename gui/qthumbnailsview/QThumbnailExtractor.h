@@ -38,11 +38,11 @@ private:
   void run() override;
 
 private:
-  QMutex mtx_;
-  QString currentImagePathFileName_;
-  int thumbSize_ = 256;
-  int reqId_ = -1;
-  bool cancelRequested_ = false;
+  QMutex _mtx;
+  QString _currentImagePathFileName;
+  int _thumbSize = 256;
+  int _reqId = -1;
+  bool _cancelRequested = false;
 };
 
 #endif /* __QThumbnailExtractor_h__ */

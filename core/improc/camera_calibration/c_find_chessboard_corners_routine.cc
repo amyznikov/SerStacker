@@ -44,12 +44,12 @@ void c_find_chessboard_corners_routine::getcontrols(c_control_list & ctls, const
   ctlbind(ctls, ctx(&this_class::_options));
 
   ctlbind_menu_button(ctls, "Options...", ctx);
-    ctlbind_command_button(ctls, "Copy config to clipboard", ctx,
+  ctlbind_menu_item(ctls, "Copy config to clipboard", ctx,
         std::function([](this_class * _ths) {
           ctlbind_copy_config_to_clipboard("c_chessboard_corners_detection_options", _ths->_options);
           return false;
         }));
-    ctlbind_command_button(ctls, "Paste config from clipboard", ctx,
+  ctlbind_menu_item(ctls, "Paste config from clipboard", ctx,
         std::function([](this_class * _ths) {
           return ctlbind_paste_config_from_clipboard("c_chessboard_corners_detection_options", &_ths->_options);
         }));

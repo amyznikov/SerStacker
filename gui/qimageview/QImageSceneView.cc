@@ -334,19 +334,31 @@ void QImageSceneView::populateContextMenu(QMenu & menu, const QPoint & viewpos)
         if (QGraphicsShape *shape = dynamic_cast<QGraphicsShape*>(topItem)) {
 
           const QString objName = shape->name();
+//
+//          QMenu * subMenu = menu.isEmpty() ? &menu : menu.addMenu(objName.isEmpty() ? "Item" : objName);
+//          if (zItem) {
+//            subMenu->addAction("Send to back",
+//                [this, topItem, zItem]() {
+//                  topItem->stackBefore(zItem);
+//                  this->update();
+//                });
+//            subMenu->addSeparator();
+//          }
+//
+//          shape->popuateContextMenu(*subMenu, viewpos);
 
-          QMenu * subMenu = menu.isEmpty() ? &menu : menu.addMenu(objName.isEmpty() ? "Item" : objName);
-
+          menu.addSeparator();
+          menu.addAction(QString("--- %1 ---").arg(objName.isEmpty() ? "Item" : objName));
           if (zItem) {
-            subMenu->addAction("Send to back",
+            menu.addAction("Send to back",
                 [this, topItem, zItem]() {
                   topItem->stackBefore(zItem);
                   this->update();
                 });
-            subMenu->addSeparator();
           }
 
-          shape->popuateContextMenu(*subMenu, viewpos);
+          shape->popuateContextMenu(menu, viewpos);
+          menu.addSeparator();
         }
         else if (zItem) {
           menu.addAction("Send to back",

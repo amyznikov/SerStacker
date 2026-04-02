@@ -98,6 +98,8 @@ void c_segformer_routine::getcontrols(c_control_list & ctls, const ctlbind_conte
 
 bool c_segformer_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+#if HAVE_OpenCV_dnn
+
   if( onnx_model_path().empty() ) {
     release_session();
     return true;
@@ -137,6 +139,10 @@ bool c_segformer_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   }
 
   return true;
+#else
+  return false;
+#endif  // HAVE_OpenCV_dnn
+
 }
 
 

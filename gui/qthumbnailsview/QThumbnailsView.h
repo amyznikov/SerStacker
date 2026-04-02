@@ -46,7 +46,6 @@ public:
   void updateItemsLayout();
 
 Q_SIGNALS:
-  //void keyPressed(QKeyEvent * e);
   void enterPressed(QListWidgetItem * current_item);
   void zoomChanged(int z);
   void currentIconChanged();
@@ -56,7 +55,6 @@ protected:
   void mouseMoveEvent(QMouseEvent *event) override;
   void wheelEvent(QWheelEvent *e) override;
   void keyPressEvent(QKeyEvent *event) override;
-  //bool event(QEvent *e) override;
 
 protected:
   virtual void onZoomChanged(void);
@@ -64,10 +62,10 @@ protected:
   void quickFilterUpdateItemsVisibility(void);
 
 private:
-  QString quickFilter_;
-  Qt::MatchFlags quickFilterMatchingFlags_ = Qt::MatchContains;
-  bool quickFilterInvertMatch_ = false;
-  int currentZoom_ = 0;
+  QString _quickFilter;
+  Qt::MatchFlags _quickFilterMatchingFlags = Qt::MatchContains;
+  bool _quickFilterInvertMatch = false;
+  int _currentZoom = 0;
 };
 
 
@@ -104,10 +102,6 @@ Q_SIGNALS:
   void showInDirTreeRequested(const QString & abspath);
   void customContextMenuRequested(const QPoint &pos);
 
-  //void openImageSequenceRequested(const QStringList & fullPathNames);
-  //void currentDirectoryChanged();
-
-
 private:
   void updateProgressIndicator();
   void updateCurrentStackWidget();
@@ -130,35 +124,24 @@ private Q_SLOTS:
   void showQuickFilter(const QString & wildcard = "");
   void clearQuickFilter();
 
-  //  void onCustomContextMenuRequested(const QPoint &pos);
-  //  void onViewItemAdded(QIconListViewInterface * view);
-  //  void onViewItemRemoved(QIconListViewInterface * view);
-  //  void onCurrentViewChanged(QIconListViewInterface * current, QIconListViewInterface * previous);
-  //  void updateViewSelectorAction();
-
-  //  void onViewItemDoubleClicked(QIconListViewInterface * view, const QString & item);
-  //  void onViewItemCurrentIconChanged(QIconListViewInterface * view);
-  //  void onViewItemCustomContextMenuRequested(QIconListViewInterface * view, const QPoint & pos);
-
 private:
-  QString currentPath_;
-  QSearchImageFiles searchImageFiles_;
-  QThumbnailExtractor thumbnailExtractor_;
-  int lastSearchImageFilesRID_ = -1;
+  QString _currentPath;
+  QSearchImageFiles _searchImageFiles;
+  QThumbnailExtractor _thumbnailExtractor;
+  int _lastSearchImageFilesRID = -1;
 
-  QVBoxLayout * layout_ = nullptr;
-  QToolBar * toolbar_ = nullptr;
-  QStackedWidget * stack_ = nullptr;
-  QLabel * whiteSheet_ = nullptr;
-  QThumbnailsListWidget * listWidget_ = nullptr;
+  QVBoxLayout * _layout = nullptr;
+  QToolBar * _toolbar = nullptr;
+  QStackedWidget * _stack = nullptr;
+  QLabel * _whiteSheet = nullptr;
+  QThumbnailsListWidget * _listWidget = nullptr;
 
-  QAction * showInDirTreeAction_ = nullptr;
-  QAction * refreshAction_ = nullptr;
-  QLabel * currentPathLabel_ = nullptr;
-  QAction * quickFilterAction_ = nullptr;
-  //QAction * clearFilterAction_ = nullptr;
-  QThumbnailsQuickFilterDialogBox * quickfilterDialogBox_ = nullptr;
-  bool ignoreQuickFilterAction_ = false;
+  QAction * _showInDirTreeAction = nullptr;
+  QAction * _refreshAction = nullptr;
+  QLabel * _currentPathLabel = nullptr;
+  QAction * _quickFilterAction = nullptr;
+  QThumbnailsQuickFilterDialogBox * _quickfilterDialogBox = nullptr;
+  bool _ignoreQuickFilterAction = false;
 };
 
 #endif /* __QThumbnailsView_h__ */

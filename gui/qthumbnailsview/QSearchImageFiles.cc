@@ -11,8 +11,8 @@
 
 QSearchImageFiles::QSearchImageFiles()
 {
-  supported_suffixes_ = getSupportedThumbnailsExtensions();
-  for ( QString & s : supported_suffixes_ ) {
+  _supportedSuffixes = getSupportedThumbnailsExtensions();
+  for ( QString & s : _supportedSuffixes ) {
     s = QString("*%1").arg(s);
   }
 }
@@ -28,41 +28,41 @@ int QSearchImageFiles::start(const QString & directory)
 
   cancel();
 
-  ++req_id_;
-  cancel_requested_ = false;
-  current_path_ = directory;
+  ++_reqId;
+  _cancelRequested = false;
+  _currentPath = directory;
 
   QThread::start();
 
-  return req_id_;
+  return _reqId;
 }
 
 void QSearchImageFiles::cancel()
 {
   while ( isRunning() )
   {
-    mtx_.lock();
-    cancel_requested_ = true;
-    mtx_.unlock();
+    _mtx.lock();
+    _cancelRequested = true;
+    _mtx.unlock();
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
   }
 }
 
 bool QSearchImageFiles::canceled() const
 {
-  return cancel_requested_;
+  return _cancelRequested;
 }
 
 void QSearchImageFiles::run()
 {
-  const int rid = req_id_;
+  const int rid = _reqId;
 
-  QDirIterator iterator(current_path_,
-      supported_suffixes_,
+  QDirIterator iterator(_currentPath,
+      _supportedSuffixes,
       QDir::Files | QDir::Readable,
       QDirIterator::FollowSymlinks);
 
-  while ( !cancel_requested_ && iterator.hasNext() ) {
+  while ( !_cancelRequested && iterator.hasNext() ) {
     Q_EMIT imageFound(rid, iterator.next());
     QThread::yieldCurrentThread();
   }

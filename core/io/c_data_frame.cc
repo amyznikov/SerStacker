@@ -48,9 +48,7 @@ c_data_frame::ImageDisplays::iterator c_data_frame::add_image_display(const std:
     double minval,
     double maxval)
 {
-  auto pos =
-      _image_displays.find(display_name);
-
+  auto pos = _image_displays.find(display_name);
   if ( pos == _image_displays.end() ) {
 
     const ImageDisplay c = {
@@ -102,8 +100,7 @@ void c_data_frame::add_image(const std::string &display_name,
     cv::InputArray data)
 {
 
-  auto &display =
-      add_image_display(display_name)->second;
+  auto &display = add_image_display(display_name)->second;
 
   if (!image.empty()) {
     display.images.emplace_back(image.getMat().clone());
@@ -124,8 +121,7 @@ void c_data_frame::add_images(const std::string & display_name,
     const std::vector<cv::Mat> & masks,
     const std::vector<cv::Mat> & data)
 {
-  auto &display =
-      add_image_display(display_name)->second;
+  auto &display = add_image_display(display_name)->second;
 
   if (!images.empty()) {
     display.images = images;
@@ -146,8 +142,7 @@ void c_data_frame::add_images(const std::string &display_name,
     const cv::Mat masks[/*count*/],
     const cv::Mat data[/*count*/])
 {
-  auto &display =
-      add_image_display(display_name)->second;
+  auto &display = add_image_display(display_name)->second;
 
   for ( size_t i = 0; i < count; ++i ) {
 
@@ -195,15 +190,13 @@ bool c_data_frame::get_image(const std::string &display_name,
     cv::OutputArray output_mask,
     cv::OutputArray output_data)
 {
-  const auto pos =
-      _image_displays.find(display_name);
-
   bool fOk = false;
+
+  const auto pos = _image_displays.find(display_name);
 
   if (pos != _image_displays.end()) {
 
-    const auto &display =
-        pos->second;
+    const auto &display = pos->second;
 
     if (output_image.needed() && !display.images.empty()) {
 
@@ -239,33 +232,33 @@ bool c_data_frame::get_point_cloud(const std::string & display_name,
 {
   bool fOk = false;
 
-  CF_DEBUG("request for cloud '%s'", display_name.c_str());
+  //CF_DEBUG("request for cloud '%s'", display_name.c_str());
   const auto pos = _cloud_displays.find(display_name);
 
   if (pos == _cloud_displays.end()) {
-    CF_DEBUG("cloud '%s' not found", display_name.c_str());
+    // CF_DEBUG("cloud '%s' not found", display_name.c_str());
   }
   else {
 
     const auto &display = pos->second;
-    CF_DEBUG("cloud '%s' is found", display_name.c_str());
+    //CF_DEBUG("cloud '%s' is found", display_name.c_str());
 
     if ( points.needed() && !display.points.empty()) {
-      CF_DEBUG("points '%s' copied", display_name.c_str());
+      //CF_DEBUG("points '%s' copied", display_name.c_str());
       display.points[0].copyTo(points);
     }
 
     if ( colors.needed() && !display.colors.empty()) {
-      CF_DEBUG("colors '%s' copied", display_name.c_str());
+      //CF_DEBUG("colors '%s' copied", display_name.c_str());
       display.colors[0].copyTo(colors);
     }
 
     if ( mask.needed() && !display.masks.empty()) {
-      CF_DEBUG("masks '%s' copied", display_name.c_str());
+      //CF_DEBUG("masks '%s' copied", display_name.c_str());
       display.masks[0].copyTo(mask);
     }
 
-    CF_DEBUG("cloud '%s' leave", display_name.c_str());
+    //CF_DEBUG("cloud '%s' leave", display_name.c_str());
     return true;
   }
   return false;

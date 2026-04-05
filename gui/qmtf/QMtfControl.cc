@@ -114,7 +114,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(_resetMtfAction, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
-  _autoMtffAction = topToolbar_ctl->addAction(getIcon(ICON_histogram_automtf), "Auto MTF");
+  _autoMtffAction = topToolbar_ctl->addAction(getIcon(ICON_contrast), "Auto MTF");
   _autoMtffAction->setToolTip("Auto MTF adjustment");
   connect( _autoMtffAction, &QAction::triggered,
       this, &ThisClass::onAutoMtfCtrlClicked);

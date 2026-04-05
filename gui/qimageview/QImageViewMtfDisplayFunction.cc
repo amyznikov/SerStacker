@@ -98,9 +98,7 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
     double scale = 1.0;
     double offset = 0.0;
 
-    const cv::Mat & currentImage =
-        _imageViewer->mtfImage();
-
+    const cv::Mat & currentImage = _imageViewer->mtfImage();
     _imageViewer->currentMask().copyTo(mask);
 
     if ( currentImage.depth() == CV_8U ) {
@@ -124,13 +122,6 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
     }
 
     createHistogram(image, mask, hmin, hmax, 0, H);
-
-//    create_histogram(image, mask,
-//        H,
-//        hmin, hmax,
-//        256,
-//        false,
-//        false);
 
     (*hmin -= offset) /= scale;
     (*hmax -= offset) /= scale;

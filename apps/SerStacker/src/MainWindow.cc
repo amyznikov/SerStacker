@@ -10,6 +10,7 @@
 #include <gui/widgets/QToolbarSpacer.h>
 #include <gui/widgets/QMenuWidgetAction.h>
 #include <gui/widgets/QWaitCursor.h>
+#include <gui/widgets/QTextInfoDialogBox.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
@@ -147,6 +148,10 @@ MainWindow::MainWindow()
 
   imageView->set_current_processor(imageProcessor_ctl->currentProcessor());
 
+  set_ctlbind_show_info_text_callback([](const std::string & title, const std::string & text) {
+    QTextInfoDialogBox::show(QString::fromStdString(title), QString::fromStdString(text),
+        QApplication::activeWindow());
+  });
 
   set_ctlbind_copy_to_clipboard_callback([](const std::string & text) {
     QApplication::clipboard()->setText(QString::fromStdString(text));

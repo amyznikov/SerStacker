@@ -18,16 +18,19 @@ QLogWidget::QLogWidget(QWidget * parent) :
 {
   Q_INIT_RESOURCE(qlog_resources);
 
-  QVBoxLayout * vbox =
-      new QVBoxLayout(this);
+  QVBoxLayout * vbox = new QVBoxLayout(this);
 
   vbox->setContentsMargins(0, 0, 0, 0);
 
   vbox->addWidget(textbox_ctl = new QPlainTextEdit(this));
   textbox_ctl->setReadOnly(true);
+  textbox_ctl->setUndoRedoEnabled(false);
   textbox_ctl->setWordWrapMode(QTextOption::NoWrap);
-  textbox_ctl->document()->setDefaultFont(QFont("Monospace", 11));
   textbox_ctl->setMaximumBlockCount(1000);
+
+  QFont font("Monospace", 11);
+  font.setStyleHint(QFont::Monospace);
+  textbox_ctl->document()->setDefaultFont(font);
 
   connect(this, &ThisClass::appendText,
       this, &ThisClass::onAppendText,
@@ -50,9 +53,7 @@ int QLogWidget::maxLines() const
 
 void QLogWidget::cf_log_func(void * context, const char * msg)
 {
-  QLogWidget * _this =
-      static_cast<QLogWidget * >(context);
-
+  QLogWidget * _this = static_cast<QLogWidget * >(context);
   Q_EMIT _this->appendText(msg);
 }
 

@@ -144,6 +144,7 @@ public:
   static sptr create(const std::string & class_name);
   static sptr create(c_config_setting settings);
 
+  virtual bool initialize();
   virtual bool serialize(c_config_setting settings, bool save);
   virtual bool process(c_data_frame::sptr & dataframe) = 0;
 

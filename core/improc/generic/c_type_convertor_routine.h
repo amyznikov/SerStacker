@@ -16,8 +16,7 @@ class c_type_convertor_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_type_convertor_routine,
-      "convertTo",
-      "Calls image.convertTo(ddepth, alpha, beta)")  ;
+      "convertTo", "Calls image.convertTo(ddepth, alpha, beta)")  ;
 
   bool serialize(c_config_setting settings, bool save)  final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

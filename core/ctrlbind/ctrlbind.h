@@ -59,9 +59,9 @@ struct c_ctlbind
     DoubleSliderSpinBox,
     BrowseForDirectory,
     BrowseForExistingFile,
-    MathExpression,
     CommandButton,
     MenuButton,
+    ButtonStrip,
 
     ImageProcessorCombobox,
     CameraIntrinsicts,
@@ -75,11 +75,6 @@ struct c_ctlbind
     DataAnnotationSelector,
   };
 
-  struct MenuItem {
-    std::string name;
-    std::function<bool(RootObjectType * obj)> onclick;
-  };
-
   std::string cname;
   std::string cdesc;
   CtlType ctype = CtlType::None;
@@ -89,6 +84,13 @@ struct c_ctlbind
     double max = 100;
     double step = 1;
   } range;
+
+  struct Item {
+    std::string name;
+    std::string desc;
+    std::function<bool(RootObjectType * obj)> onclick;
+  };
+  std::vector<Item> items;
 
   const c_enum_member * (*get_enum_members)() = nullptr;
   std::function<bool(const RootObjectType*, std::string*)> getvalue;
@@ -103,9 +105,8 @@ struct c_ctlbind
   std::function<bool(RootObjectType*, int cmap, int * label)> get_data_annotation;
   std::function<bool(RootObjectType*, int cmap, int label)> set_data_annotation;
   std::function<bool(RootObjectType * obj)> onclick;
-  std::function<std::string(RootObjectType * obj)> helpstring;
+  //std::function<std::string(RootObjectType * obj)> helpstring;
   std::function<bool(const RootObjectType * obj)> enabled;
-  std::vector<MenuItem> menu;
 };
 
 
@@ -297,7 +298,6 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
   ctls.emplace_back(c);
 }
 
-
 template<class RootObjectType>
 void ctlbind_group(c_ctlist<RootObjectType> & ctls)
 {
@@ -398,8 +398,7 @@ template<class RootObjectType, class StructType, class FieldType>
 void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
     FieldType (StructType::*getv)() const, void (StructType::*setv)(FieldType),
-    const std::string & cdesc = "",
-    std::string (StructType::*helpstring)() = nullptr)
+    const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
   using FT = std::decay_t<FieldType>;
@@ -439,16 +438,6 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     }
     return false;
   };
-
-  if( helpstring ) {
-    c.helpstring = [offset = ctx.offset, helpstring](RootObjectType * obj) -> std::string {
-      if ( obj ) {
-        StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
-        return (obj2->*helpstring)();
-      }
-      return "";
-    };
-  }
 
   ctls.emplace_back(c);
 }
@@ -830,13 +819,15 @@ ctlbind_flags_checkbox(c_ctlist<RootObjectType> & ctls, const std::string & cnam
 template<class RootObjectType, class StructType, class StringType>
 void ctlbind_multiline_textbox(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
-    StringType (StructType::*getv)() const, void (StructType::*setv)(StringType))
+    StringType (StructType::*getv)() const, void (StructType::*setv)(StringType),
+    const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
   using FieldType = StringType;
 
   BindType c;
   c.cname = cname;
+  c.cdesc = cdesc;
   c.ctype = BindType::CtlType::MultilineTextbox;
 
   c.getvalue = [offset = ctx.offset, getv](const RootObjectType * obj, std::string * s) -> bool {
@@ -859,79 +850,6 @@ void ctlbind_multiline_textbox(c_ctlist<RootObjectType> & ctls, const std::strin
 
   ctls.emplace_back(c);
 }
-
-
-
-template<class RootObjectType>
-inline void ctlbind_math_expression_ctl(c_ctlist<RootObjectType> & ctls,
-    const c_ctlbind_context<RootObjectType, std::string> & ctx,
-    const std::function<std::string(RootObjectType *)> & helpstring)
-{
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = std::string;
-
-  BindType c;
-  c.cname = "";
-  c.cdesc = "";
-  c.ctype = BindType::CtlType::MathExpression;
-
-  c.getvalue = [offset = ctx.offset](const RootObjectType * obj, std::string * s) -> bool {
-    return obj ? *s = *reinterpret_cast<const std::string*>(reinterpret_cast<const uint8_t*>(obj) + offset), true : false;
-  };
-
-  c.setvalue = [offset = ctx.offset](RootObjectType * obj, const std::string & v) -> bool {
-    return obj ? *reinterpret_cast<std::string*>(reinterpret_cast<uint8_t*>(obj) + offset) = v, true : false;
-  };
-
-  ctx.helpstring = helpstring;
-
-  ctls.emplace_back(c);
-}
-
-
-template<class RootObjectType, class StructType, class StringType>
-void ctlbind_math_expression_ctl(c_ctlist<RootObjectType> & ctls,
-    const c_ctlbind_context<RootObjectType, StructType> & ctx,
-    StringType (StructType::*getv)() const, void (StructType::*setv)(StringType),
-    std::string (StructType::*helpstring)())
-{
-  using BindType = c_ctlbind<RootObjectType>;
-  using FieldType = StringType;
-
-  BindType c;
-  c.cname = "";
-  c.cdesc = "";
-  c.ctype = BindType::CtlType::MathExpression;
-
-  c.getvalue = [offset = ctx.offset, getv](const RootObjectType * obj, std::string * s) -> bool {
-    if ( obj ) {
-      const StructType * obj2 = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
-      *s = toString((obj2->*getv)());
-      return true;
-    }
-    return false;
-  };
-
-  c.setvalue = [offset = ctx.offset, setv](RootObjectType * obj, const std::string & s) -> bool {
-    if ( obj ) {
-      StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
-      (obj2->*setv)(s);
-      return true;
-    }
-    return false;
-  };
-
-  c.helpstring = [offset = ctx.offset, helpstring](RootObjectType * obj) -> std::string {
-    if ( obj ) {
-      StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
-      return (obj2->*helpstring)();
-    }
-    return "";
-  };
-
-  ctls.emplace_back(c);
-}
-
 
 
 template<class RootObjectType, class StructType>
@@ -969,7 +887,6 @@ void ctlbind_data_annotation(c_ctlist<RootObjectType> & ctls,
 }
 
 
-
 template<class RootObjectType, class StructType>
 inline void ctlbind_menu_button(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
@@ -983,23 +900,40 @@ inline void ctlbind_menu_button(c_ctlist<RootObjectType> & ctls, const std::stri
   ctls.emplace_back(c);
 }
 
+template<class RootObjectType, class StructType>
+inline void ctlbind_button_strip(c_ctlist<RootObjectType> & ctls,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+  BindType c;
+  c.cdesc = cdesc;
+  c.ctype = BindType::CtlType::ButtonStrip;
+  ctls.emplace_back(c);
+}
 
 // std::function<bool(StructType *)> & onclick
 template<class RootObjectType, class StructType, typename Func>
-inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+inline void ctlbind_item(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
     Func && onclick,
     const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
 
-  if( ctls.empty() || ctls.back().ctype != BindType::CtlType::MenuButton ) {
+  if( ctls.empty() ) {
     return; // App bug: not supported
   }
 
-  ctls.back().menu.emplace_back();
-  auto & item = ctls.back().menu.back();
+  auto & back = ctls.back();
+  if ( back.ctype != BindType::CtlType::MenuButton && back.ctype != BindType::CtlType::ButtonStrip) {
+    return; // App bug: not supported
+  }
+
+  back.items.emplace_back();
+  auto & item = back.items.back();
   item.name = cname;
+  item.desc = cdesc;
   item.onclick = [offset = ctx.offset, onclick](RootObjectType * obj) -> bool {
     if ( obj ) {
       StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
@@ -1010,20 +944,26 @@ inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string
 }
 
 template<class RootObjectType, class StructType>
-inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+inline void ctlbind_item(c_ctlist<RootObjectType> & ctls, const std::string & cname,
     const c_ctlbind_context<RootObjectType, StructType> & ctx,
     bool (StructType::*onclick)(),
     const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
 
-  if( ctls.empty() || ctls.back().ctype != BindType::CtlType::MenuButton ) {
+  if( ctls.empty() ) {
     return; // App bug: not supported
   }
 
-  ctls.back().menu.emplace_back();
-  auto & item = ctls.back().menu.back();
+  auto & back = ctls.back();
+  if ( back.ctype != BindType::CtlType::MenuButton && back.ctype != BindType::CtlType::ButtonStrip) {
+    return; // App bug: not supported
+  }
+
+  back.items.emplace_back();
+  auto & item = back.items.back();
   item.name = cname;
+  item.desc = cdesc;
   item.onclick = [offset = ctx.offset, onclick](RootObjectType * obj) -> bool {
     if ( obj ) {
       StructType * obj2 = reinterpret_cast<StructType*>(reinterpret_cast<uint8_t*>(obj) + offset);
@@ -1032,7 +972,6 @@ inline void ctlbind_menu_item(c_ctlist<RootObjectType> & ctls, const std::string
     return false;
   };
 }
-
 
 // std::function<bool(StructType *)> & onclick
 template<class RootObjectType, class StructType, typename Func>
@@ -1097,6 +1036,11 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
 #endif // CV_VERSION
 
+
+typedef std::function<void(const std::string&, const std::string&)> ctlbind_show_info_text_callback;
+void set_ctlbind_show_info_text_callback(const ctlbind_show_info_text_callback & fn);
+const ctlbind_show_info_text_callback & get_ctlbind_show_info_text_callback();
+
 typedef std::function<void(const std::string&)> ctlbind_copy_to_clipboard_callback;
 void set_ctlbind_copy_to_clipboard_callback(const ctlbind_copy_to_clipboard_callback & fn);
 const ctlbind_copy_to_clipboard_callback & get_ctlbind_copy_to_clipboard_callback();
@@ -1105,6 +1049,20 @@ typedef std::function<std::string()> ctlbind_get_clipboard_text_callback;
 void set_ctlbind_get_clipboard_text_callback(const ctlbind_get_clipboard_text_callback & fn);
 const ctlbind_get_clipboard_text_callback & get_ctlbind_get_clipboard_text_callback();
 
+typedef std::function<void(double x, double y, double w, double h)> ctlbind_update_roi_callback;
+void set_ctlbind_update_roi_callback(const ctlbind_update_roi_callback & fn);
+const ctlbind_update_roi_callback & get_ctlbind_update_roi_callback();
+
+typedef std::function<bool(double *x, double *y, double *w, double *h)> ctlbind_get_roi_callback;
+void set_ctlbind_get_roi_callback(const ctlbind_get_roi_callback & fn);
+const ctlbind_get_roi_callback & get_ctlbind_get_roi_callback();
+
+inline void ctlbind_show_info_text(const std::string & title, const std::string & text)
+{
+  if( const auto & cb = get_ctlbind_show_info_text_callback() ) {
+    cb(title, text);
+  }
+}
 
 template<class StructType>
 bool ctlbind_copy_config_to_clipboard(const std::string & groupName, const StructType & data)
@@ -1160,13 +1118,6 @@ bool ctlbind_paste_config_from_clipboard(const std::string & groupName, StructTy
 
 
 
-typedef std::function<void(double x, double y, double w, double h)> ctlbind_update_roi_callback;
-void set_ctlbind_update_roi_callback(const ctlbind_update_roi_callback & fn);
-const ctlbind_update_roi_callback & get_ctlbind_update_roi_callback();
-
-typedef std::function<bool(double *x, double *y, double *w, double *h)> ctlbind_get_roi_callback;
-void set_ctlbind_get_roi_callback(const ctlbind_get_roi_callback & fn);
-const ctlbind_get_roi_callback & get_ctlbind_get_roi_callback();
 
 // opencv types
 #ifdef CV_VERSION

@@ -55,56 +55,9 @@ void QLiveDisplayMtfFunction::getInputDataRange(double * minval, double * maxval
   c_unique_lock lock(_mutex);
   Base::getInputDataRange(minval, maxval);
 }
-//
-//void QLiveDisplayMtfFunction::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  if ( imageViewer_ ) {
-//
-//    cv::Mat image, mask;
-//
-//    double scale = 1.0;
-//    double offset = 0.0;
-//
-//    _mutex.lock();
-//    _isBusy = true;
-//
-//    const cv::Mat & currentImage =
-//        imageViewer_->currentImage();
-//
-//    if ( currentImage.depth() == CV_8U ) {
-//      currentImage.copyTo(image);
-//    }
-//    else {
-//      get_scale_offset(currentImage.depth(), CV_8U, &scale, &offset);
-//      currentImage.convertTo(image, CV_8U, scale, offset);
-//    }
-//
-//    imageViewer_->currentMask().copyTo(mask);
-//    _mutex.unlock();
-//
-//    create_histogram(image, mask,
-//        H,
-//        output_hmin, output_hmax,
-//        256,
-//        false,
-//        false);
-//
-//    _mutex.lock();
-//    _isBusy = false;
-//    _mutex.unlock();
-//
-//    (*output_hmin -= offset) /= scale;
-//    (*output_hmax -= offset) /= scale;
-//  }
-//}
 
 void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax)
 {
-//  Base::getOutputHistogramm(H, output_hmin, output_hmax);
-//  INSTRUMENT_REGION("");
-
   if ( _imageViewer ) {
 
     cv::Mat image, mask;
@@ -130,13 +83,6 @@ void QLiveDisplayMtfFunction::getOutputHistogramm(cv::OutputArray H, double * ou
     _mutex.unlock();
 
     createHistogram(image, mask, output_hmin, output_hmax, 0, H);
-
-//    create_histogram(image, mask,
-//        H,
-//        output_hmin, output_hmax,
-//        256,
-//        false,
-//        false);
 
     (*output_hmin -= offset) /= scale;
     (*output_hmax -= offset) /= scale;
@@ -1594,81 +1540,5 @@ void QLiveThreadSettingsDialogBox::hideEvent(QHideEvent *e)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpc) override
-{
-  cv::Mat inputImage;
-
-  while (_camera->state() == QImagingCamera::State_started) {
-
-    QThread::msleep(20);
-
-    bool haveInputImage = false;
-
-    if( 42 ) {
-
-      QImagingCamera::shared_lock lock(_camera->mutex());
-
-      const std::deque<QCameraFrame::sptr> &deque =
-          _camera->deque();
-
-      if( !deque.empty() ) {
-
-        const QCameraFrame::sptr &frame =
-            deque.back();
-
-        const int index =
-            frame->index();
-
-        if( index > last_frame_index ) {
-
-          last_frame_index = index;
-          bpp = frame->bpp();
-          colorid = frame->colorid();
-          frame->image().copyTo(inputImage);
-
-          haveInputImage = true;
-        }
-      }
-    }
-
-    if( haveInputImage ) {
-
-      _thread->_darkFrameLock.lock();
-      if( _thread->_darkFrame.size() == inputImage.size()
-          && _thread->_darkFrame.channels() == inputImage.channels() ) {
-
-        inputImage.convertTo(inputImage, _thread->_darkFrame.depth());
-
-        if( _thread->_darkFrameScale != 0 ) {
-          cv::subtract(inputImage, _thread->_darkFrame, inputImage);
-        }
-      }
-      _thread->_darkFrameLock.unlock();
-
-      if( _thread->_debayer != DEBAYER_DISABLE && is_bayer_pattern(colorid) ) {
-
-        const DEBAYER_ALGORITHM method =
-            inputImage.depth() == CV_32F ?
-                DEBAYER_NN2 :
-                (DEBAYER_ALGORITHM) _thread->_debayer;
-
-        if( ::debayer(inputImage, inputImage, colorid, method) ) {
-          colorid = COLORID_BGR;
-        }
-      }
-
-      output_frame = inputImage;
-      *output_colorid = colorid;
-      *output_bpc = bpp;
-
-      return true;
-    }
-  }
-
-  return false;
-}
-#endif
 
 } /* namespace serimager */

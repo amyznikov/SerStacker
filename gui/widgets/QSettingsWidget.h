@@ -20,7 +20,6 @@
 #include <gui/widgets/QFFmpegOptionsControl.h>
 #include <gui/widgets/QColorPickerButton.h>
 #include <gui/widgets/QDataAnnotationSelectorCtrl.h>
-#include <gui/qmathexpression/QInputMathExpression.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 #include <type_traits>
@@ -1012,95 +1011,6 @@ public:
       const std::function<bool()> & enablefn = nullptr)
   {
     return add_browse_for_path(form, name, label, acceptMode, fileMode, setfn, getfn, enablefn);
-  }
-
-  /////////////////////////////////////////////////////////////////////
-
-  QInputMathExpressionWidget* add_math_expression(QFormLayout * form, const QString & name, const QString & tooltip,
-      const std::function<void(const QString&)> & setfn = nullptr,
-      const std::function<bool(QString*)> & getfn = nullptr,
-      const std::function<bool(QString*)> & helpfn = nullptr,
-      const std::function<bool()> & enablefn = nullptr)
-  {
-    QInputMathExpressionWidget * ctl = new QInputMathExpressionWidget(this);
-    QSignalBlocker block(ctl);
-    ctl->setToolTip(tooltip);
-    if( name.isEmpty() ) {
-      form->addRow(ctl);
-    }
-    else {
-      form->addRow(name, ctl);
-    }
-
-    if( setfn ) {
-      QMetaObject::Connection conn =
-        QObject::connect(ctl, &QInputMathExpressionWidget::apply,
-          [this, ctl, setfn]() {
-            if ( !updatingControls() ) {
-              c_mutex_lock lock(this);
-              setfn(ctl->text());
-            }
-          });
-      QObject::connect(ctl, &QObject::destroyed,
-          [conn](QObject * obj) {
-            obj->disconnect(conn);
-          });
-    }
-
-    if( getfn ) {
-      QMetaObject::Connection conn =
-        QObject::connect(this, &ThisClass::populatecontrols,
-          [ctl, getfn]() {
-            QString v;
-            if ( getfn(&v) ) {
-              QSignalBlocker block(ctl);
-              ctl->setText(v);
-            }
-          });
-      QObject::connect(ctl, &QObject::destroyed,
-          [conn](QObject * obj) {
-            obj->disconnect(conn);
-          });
-    }
-
-    if( helpfn ) {
-      QMetaObject::Connection conn =
-        QObject::connect(this, &ThisClass::populatecontrols,
-          [ctl, helpfn]() {
-            QString v;
-            if ( helpfn(&v) ) {
-              QSignalBlocker block(ctl);
-              ctl->setHelpString(v);
-            }
-          });
-      QObject::connect(ctl, &QObject::destroyed,
-          [conn](QObject * obj) {
-            obj->disconnect(conn);
-          });
-    }
-
-
-    if( enablefn ) {
-      QMetaObject::Connection conn =
-        QObject::connect(this, &ThisClass::enablecontrols,
-          [ctl, enablefn]() {
-            ctl->setEnabled(enablefn());
-          });
-      QObject::connect(ctl, &QObject::destroyed,
-          [conn](QObject * obj) {
-            obj->disconnect(conn);
-          });
-    }
-    return ctl;
-  }
-
-  QInputMathExpressionWidget * add_math_expression(const QString & name, const QString & tooltip,
-      const std::function<void(const QString&)> & setfn = nullptr,
-      const std::function<bool(QString*)> & getfn = nullptr,
-      const std::function<bool(QString*)> & helpfn = nullptr,
-      const std::function<bool()> & enablefn = nullptr)
-  {
-    return add_math_expression(form, name, tooltip, setfn, getfn, helpfn, enablefn);
   }
 
 

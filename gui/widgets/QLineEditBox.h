@@ -173,30 +173,49 @@ public:
   typedef QMultiLineEditBox ThisClass;
   typedef QPlainTextEdit Base;
 
-  explicit QMultiLineEditBox(QWidget *parent = nullptr) :
-      Base(parent)
+  explicit QMultiLineEditBox(QWidget * parent = nullptr) :
+      ThisClass("", parent)
   {
   }
 
-  explicit QMultiLineEditBox(const QString & text, QWidget *parent = nullptr) :
-    Base(text, parent)
+  explicit QMultiLineEditBox(const QString & text, QWidget * parent = nullptr) :
+      Base(text, parent)
   {
+    document()->setModified(false);
+    setToolTip("Press Ctrl+Enter to apply");
+  }
+
+  void setPlainText(const QString & text)
+  {
+    Base::setPlainText(text);
+    document()->setModified(false);
   }
 
 Q_SIGNALS:
-  void ctrlEnterPressed();
+  void editFinished();
 
 protected:
   void keyPressEvent(QKeyEvent * e) override
   {
     const int key = e->key();
     if( ( key == Qt::Key_Return || key == Qt::Key_Enter) && (e->modifiers() & Qt::ControlModifier) ) {
-      Q_EMIT ctrlEnterPressed();
-      return;
+      Q_EMIT editFinished();
     }
-
-    Base::keyPressEvent(e);
+    else {
+      Base::keyPressEvent(e);
+    }
   }
+
+  void focusOutEvent(QFocusEvent * e) override
+  {
+    if( document()->isModified() ) {
+      Q_EMIT editFinished();
+      document()->setModified(false);
+    }
+    Base::focusOutEvent(e);
+  }
+
+protected:
 };
 
 #endif /* __QLineEditBox_h__ */

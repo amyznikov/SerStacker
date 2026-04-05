@@ -30,10 +30,9 @@ public:
     return _expression;
   }
 
-  std::string helpstring();
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   bool initialize() final;
@@ -41,6 +40,7 @@ protected:
 protected:
   c_math_expression _math;
   std::string _expression;
+  std::string _helpstring;
   bool _expression_changed = true;
 };
 

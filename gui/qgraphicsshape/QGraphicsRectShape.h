@@ -42,6 +42,7 @@ public:
   bool resizable() const;
 
   void setRect(const QRectF & rc);
+  void setSceneRect(const QRectF & rc);
   void setSceneRect(const QPointF & topLeft, const QPointF & bottomRight);
   const QRectF & rect() const;
   QRectF sceneRect() const;

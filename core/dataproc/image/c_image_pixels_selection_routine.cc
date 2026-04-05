@@ -17,8 +17,8 @@
 static const struct
 {
   const char * name;
-  const char * tooldip;
-} processor_args[] = {
+  const char * tooltip;
+} math_args[] = {
     { "cn", "number of image channels" },
     { "y", "y coordinate of a pixel" },
     { "x", "x coordinate of a pixel" },
@@ -31,16 +31,11 @@ static const struct
 
 
 template<class T1>
-static void process_image_(const cv::Mat & _src, cv::Mat1b & dst, const c_math_expression & math)
+static void _process_image(const cv::Mat & _src, cv::Mat1b & dst, const c_math_expression & math)
 {
-  const int src_rows =
-      _src.rows;
-
-  const int src_cols =
-      _src.cols;
-
-  const int src_channels =
-      _src.channels();
+  const int src_rows = _src.rows;
+  const int src_cols = _src.cols;
+  const int src_channels = _src.channels();
 
   const cv::Mat_<T1> src = _src;
 
@@ -52,13 +47,13 @@ static void process_image_(const cv::Mat & _src, cv::Mat1b & dst, const c_math_e
   tbb::parallel_for(tbb_range(0, src_rows),
       [&src, &dst, &math, src_rows, src_cols, src_channels](const tbb_range & range) {
 
-        double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
+        double args[sizeof(math_args) / sizeof(math_args[0])] = {0};
         args[0] = src_channels;
 
         for( int y = range.begin(); y < range.end(); ++y ) {
 
 #else
-          double args[sizeof(processor_args) / sizeof(processor_args[0])] = {0};
+          double args[sizeof(math_args) / sizeof(math_args[0])] = {0};
           args[0] = src_channels;
 
           for( int y = 0; y < src_rows; ++y ) {
@@ -92,68 +87,81 @@ static void process_image(const cv::Mat & src, cv::Mat1b & dst, const c_math_exp
 {
   switch (src.depth()) {
     case CV_8U:
-      return process_image_<uint8_t>(src, dst, math);
+      return _process_image<uint8_t>(src, dst, math);
     case CV_8S:
-      return process_image_<int8_t>(src, dst, math);
+      return _process_image<int8_t>(src, dst, math);
     case CV_16U:
-      return process_image_<uint16_t>(src, dst, math);
+      return _process_image<uint16_t>(src, dst, math);
     case CV_16S:
-      return process_image_<int16_t>(src, dst, math);
+      return _process_image<int16_t>(src, dst, math);
     case CV_32S:
-      return process_image_<int32_t>(src, dst, math);
+      return _process_image<int32_t>(src, dst, math);
     case CV_32F:
-      return process_image_<float>(src, dst, math);
+      return _process_image<float>(src, dst, math);
     case CV_64F:
-      return process_image_<double>(src, dst, math);
+      return _process_image<double>(src, dst, math);
   }
 }
 
 
-
-std::string c_image_pixels_selection_routine::helpstring()
+bool c_image_pixels_selection_routine::initialize()
 {
-  static std::string _helpstring;
+  if ( _math.arguments().empty() ) {
+    for( int i = 0; i < (int) (sizeof(math_args) / sizeof(math_args[0])); ++i ) {
+      if( !_math.add_argument(i, math_args[i].name, math_args[i].tooltip) ) {
+        CF_ERROR("math_.add_argument('%s') fails", math_args[i].name);
+      }
+    }
+  }
 
   if ( _helpstring.empty() ) {
 
-    _helpstring.append("Arguments:\n");
-    for( int i = 0, n = sizeof(processor_args) / sizeof(processor_args[0]); i < n; ++i ) {
-      _helpstring.append(ssprintf("%s %s\n", processor_args[i].name, processor_args[i].tooldip));
+    _helpstring = "Apply math formula to pixel values\n";
+
+    _helpstring += "\nArguments:\n";
+    for ( const auto & c : _math.arguments() ) {
+      _helpstring += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
     }
 
-    _helpstring.append("\nConstants:\n");
-    for ( const auto & func: _math.constants() ) {
-      _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
+    _helpstring += "\nUnary Operations:\n";
+    for ( const auto & c : _math.unary_operations() ) {
+      _helpstring += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
     }
 
-    _helpstring.append("\nUnary operations:\n");
-    for ( const auto & func: _math.unary_operations() ) {
-      _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
-    }
 
-    _helpstring.append("\nBinary operations:\n");
-    for ( int p = 0, np = _math.binary_operations().size(); p < np; ++p ) {
-      for ( const auto & func: _math.binary_operations()[p] ) {
-        _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
+    _helpstring += "\nBinary Operations:\n";
+    for( const auto & c : _math.binary_operations() ) {
+      _helpstring += "-------------------------\n";
+      for( const auto & op : c ) {
+        _helpstring += ssprintf("%s  : %s\n", op.name.c_str(), op.desc.c_str());
       }
     }
 
-    _helpstring.append("\nFunctions:\n");
-    for ( const auto & func: _math.functions() ) {
-      _helpstring.append(ssprintf("%s %s\n", func.name.c_str(), func.desc.c_str()));
+    _helpstring += "\nConstants:\n";
+    for ( const auto & c : _math.constants() ) {
+      _helpstring += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
     }
 
+    _helpstring += "\nFunctions:\n";
+    for ( const auto & c : _math.functions() ) {
+      _helpstring += ssprintf("%s  : %s\n", c.name.c_str(), c.desc.c_str());
+    }
   }
 
-  return _helpstring;
+  return true;
 }
 
-//void c_image_pixels_selection_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-//{
-//  BIND_MATH_EXPRESSION_CTRL(ctls, expression, helpstring, "", "formula for math expression");
-//  BIND_CTRL(ctls, invert_selection, "invert_selection", "invert_selection");
-//  BIND_CTRL(ctls, mask_mode, "mask_mode", "combine selection mode");
-//}
+void c_image_pixels_selection_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "expression", ctx, &this_class::expression, &this_class::set_expression, "");
+  ctlbind(ctls, "invert_selection", ctx, &this_class::invert_selection, &this_class::set_invert_selection);
+  ctlbind(ctls, "mask_mode", ctx, &this_class::mask_mode, &this_class::set_mask_mode, "Selection Combine Mode");
+  ctlbind_button_strip(ctls, ctx);
+  ctlbind_item(ctls, "Functions...", ctx, [](this_class * _ths) {
+    ctlbind_show_info_text("Math Expression", _ths->_helpstring);
+    return false;
+  });
+}
 
 bool c_image_pixels_selection_routine::serialize(c_config_setting settings, bool save)
 {
@@ -176,14 +184,7 @@ bool c_image_pixels_selection_routine::process(c_video_frame * frame)
 
   if( _expression_changed ) {
 
-    if( !_initialized ) {
-      for( int i = 0, n = sizeof(processor_args) / sizeof(processor_args[0]); i < n; ++i ) {
-        _math.add_argument(i, processor_args[i].name, processor_args[i].tooldip);
-      }
-    }
-
-    if ( !_math.parse(_expression.c_str()) ) {
-
+    if( !_math.parse(_expression.c_str()) ) {
       CF_ERROR("math_.parse() fails: %s\n"
           "error_pos=%s", _math.error_message().c_str(),
           _math.pointer_to_syntax_error() ? _math.pointer_to_syntax_error() : "null");

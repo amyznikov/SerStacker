@@ -93,9 +93,7 @@ c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(c_co
     return nullptr;
   }
 
-  c_data_frame_processor_routine::sptr routine =
-      c_data_frame_processor_routine::create(objname);
-
+  c_data_frame_processor_routine::sptr routine = c_data_frame_processor_routine::create(objname);
   if( !routine ) {
     CF_ERROR("c_data_frame_processor_routine::create(routine=%s) fails", objname.c_str());
     return nullptr;
@@ -122,17 +120,22 @@ c_data_frame_processor_routine::sptr c_data_frame_processor_routine::create(cons
   const char * cname = processor_name.c_str();
   for ( const class_factory * f : _image_processor_routine_class_list ) {
     if ( strcasecmp(cname, f->class_name.c_str()) == 0 ) {
-      return f->create_instance();
+      auto obj = f->create_instance();
+      if ( obj && !obj->initialize() ) {
+        CF_ERROR("obj->initialize() fails");
+        obj.reset();
+      }
+      return obj;
     }
   }
 
   return nullptr;
 }
 
-//void c_data_frame_processor_routine::get_parameters(std::vector<c_ctrl_bind> * ctls)
-//{
-//  BIND_CTRL(ctls, ignore_mask, "Ignore mask", "");
-//}
+bool c_data_frame_processor_routine::initialize()
+{
+  return true;
+}
 
 bool c_data_frame_processor_routine::serialize(c_config_setting settings, bool save)
 {

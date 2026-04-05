@@ -11,6 +11,7 @@
 #include "camera/libcamera-sctp/QLCSCTPStreams.h"
 #include <gui/qpipeline/QImageProcessingPipeline.h>
 #include <gui/qimproc/QImageProcessorsCollection.h>
+#include <gui/widgets/QTextInfoDialogBox.h>
 #include <gui/widgets/style.h>
 #include <gui/widgets/qsprintf.h>
 
@@ -98,6 +99,47 @@ MainWindow::MainWindow(QWidget * parent) :
           mouse_status_ctl->hide();
         }
       });
+
+  set_ctlbind_show_info_text_callback([](const std::string & title, const std::string & text) {
+    QTextInfoDialogBox::show(QString::fromStdString(title), QString::fromStdString(text),
+        QApplication::activeWindow());
+  });
+
+  set_ctlbind_copy_to_clipboard_callback([](const std::string & text) {
+    QApplication::clipboard()->setText(QString::fromStdString(text));
+  });
+
+  set_ctlbind_get_clipboard_text_callback([]() -> std::string {
+    return QApplication::clipboard()->text().toStdString();
+  });
+
+  set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
+    if (_centralDisplay) {
+      _centralDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w,y + h));
+    }
+  });
+
+  set_ctlbind_get_roi_callback([this](double * x, double * y, double * w, double * h) {
+    if ( _centralDisplay ) {
+      const auto roi = _centralDisplay->rectShape();
+      const auto rc = roi->sceneRect();
+      if ( x ) {
+        *x = rc.x();
+      }
+      if ( y ) {
+        *y = rc.y();
+      }
+      if ( w ) {
+        *w = rc.width();
+      }
+      if ( h ) {
+        *h = rc.height();
+      }
+      return _centralDisplay->isVisible() && roi->isVisible();
+    }
+    return false;
+  });
+
 
   //
   // Add to the end of View menu

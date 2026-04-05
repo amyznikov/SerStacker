@@ -61,12 +61,12 @@ public:
 
   void set_output_depth(enum PIXEL_DEPTH v)
   {
-    output_depth_ = v;
+    _output_depth = v;
   }
 
   enum PIXEL_DEPTH output_depth() const
   {
-    return output_depth_;
+    return _output_depth;
   }
 
   void set_expression(const std::string & v)
@@ -81,29 +81,23 @@ public:
   }
 
 
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool process(c_data_frame::sptr & dataframe) final;
   bool serialize(c_config_setting settings, bool save) final;
-  std::string helpstring();
 
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
-  {
-     ctlbind(ctls, "input_type", ctx, &this_class::input_type, &this_class::set_input_type, "input view type");
-     ctlbind(ctls, "input", ctx, &this_class::input, &this_class::set_input, "input image name");
-     ctlbind(ctls, "output", ctx, &this_class::output, &this_class::set_output, "output image name");
-     ctlbind(ctls, "output_depth", ctx, &this_class::output_depth, &this_class::set_output_depth, "output image depth");
-     ctlbind(ctls, "math expression", ctx, &this_class::expression, &this_class::set_expression, "", &this_class::helpstring);
-  }
+protected:
+  bool initialize() final;
 
 protected:
   std::string _input;
   std::string _output;
+  std::string _helpstring;
   InputType _input_type = InputType_Image;
-  PIXEL_DEPTH output_depth_ = PIXEL_DEPTH_NO_CHANGE;
+  PIXEL_DEPTH _output_depth = PIXEL_DEPTH_NO_CHANGE;
 
   std::string _expression;
-  mutable c_math_expression math_;
+  mutable c_math_expression _math;
   bool _expression_changed = true;
-  bool initialized_ = false;
 
 };
 

@@ -101,31 +101,31 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
 {
   setContentsMargins(0, 0, 0, 0);
 
-  lv_ = new QVBoxLayout(this);
-  lv_->setContentsMargins(0, 0, 0, 0);
+  _lv = new QVBoxLayout(this);
+  _lv->setContentsMargins(0, 0, 0, 0);
 
-  addAction(moveDownAction_ =
+  addAction(_moveDownAction =
       createAction(getIcon(ICON_move_down),
           "Move Down",
           "Move selected processor down",
           this,
           &ThisClass::onMoveCurrentProcessorDown));
 
-  addAction(moveUpAction_ =
+  addAction(_moveUpAction =
       createAction(getIcon(ICON_move_up),
           "Move Up",
           "Move selected processor up",
           this,
           &ThisClass::onMoveCurrentProcessorUp));
 
-  addAction(addProcAction_ =
+  addAction(_addProcAction =
       createAction(getIcon(ICON_add),
           "Add processor ...",
           "Add image processor",
           this,
           &ThisClass::onAddImageProcessor));
 
-  addAction(removeProcAction_ =
+  addAction(_removeProcAction =
       createAction(getIcon(ICON_delete),
           "Remove selected processor",
           "Remove selected image processor",
@@ -133,7 +133,7 @@ QDataFrameProcessorEditor::QDataFrameProcessorEditor(QWidget * parent) :
           &ThisClass::onRemoveCurrentProcessor));
 
   ///////////////////////////////////////////////////////////////////
-  lv_->addWidget(tree_ctl = new QTreeWidget(this));
+  _lv->addWidget(tree_ctl = new QTreeWidget(this));
   tree_ctl->setHeaderHidden(true);
   tree_ctl->setColumnCount(1);
   tree_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
@@ -220,18 +220,18 @@ void QDataFrameProcessorEditor::updateItemSizeHint(QTreeWidgetItem * item)
 
 void QDataFrameProcessorEditor::setCurrentProcessor(const c_data_frame_processor::sptr & p)
 {
-  currentProcessor_ = p;
+  _currentProcessor = p;
   updateControls();
 }
 
 const c_data_frame_processor::sptr & QDataFrameProcessorEditor::currentProcessor() const
 {
-  return currentProcessor_;
+  return _currentProcessor;
 }
 
 void QDataFrameProcessorEditor::onupdatecontrols()
 {
-  if ( !currentProcessor_ ) {
+  if ( !_currentProcessor ) {
     setEnabled(false);
     tree_ctl->clear();
   }
@@ -239,7 +239,7 @@ void QDataFrameProcessorEditor::onupdatecontrols()
 
     tree_ctl->clear();
 
-    for( const c_data_frame_processor_routine::sptr &routine : currentProcessor_->routines() ) {
+    for( const c_data_frame_processor_routine::sptr &routine : _currentProcessor->routines() ) {
       if( routine ) {
         insertRoutine(tree_ctl->topLevelItemCount(), routine);
       }
@@ -307,14 +307,14 @@ void QDataFrameProcessorEditor::onTreeItemChanged(QTreeWidgetItem * item, int co
 void QDataFrameProcessorEditor::onCurrentTreeItemChanged(QTreeWidgetItem * current, QTreeWidgetItem * previous)
 {
   if( !current ) {
-    removeProcAction_->setEnabled(false);
-    moveDownAction_->setEnabled(false);
-    moveUpAction_->setEnabled(false);
+    _removeProcAction->setEnabled(false);
+    _moveDownAction->setEnabled(false);
+    _moveUpAction->setEnabled(false);
   }
   else {
-    removeProcAction_->setEnabled(true);
-    moveDownAction_->setEnabled(true);
-    moveUpAction_->setEnabled(true);
+    _removeProcAction->setEnabled(true);
+    _moveDownAction->setEnabled(true);
+    _moveUpAction->setEnabled(true);
 
     current->setSelected(true);
   }
@@ -322,7 +322,7 @@ void QDataFrameProcessorEditor::onCurrentTreeItemChanged(QTreeWidgetItem * curre
 
 void QDataFrameProcessorEditor::onMoveCurrentProcessorDown()
 {
-  if( currentProcessor_ ) {
+  if( _currentProcessor ) {
 
     QRoutineItem *currentItem =
         currentRoutineItem(tree_ctl);
@@ -337,16 +337,16 @@ void QDataFrameProcessorEditor::onMoveCurrentProcessorDown()
         QWaitCursor wait(this);
 
         c_data_frame_processor::iterator pos =
-            currentProcessor_->find(currentItem->routine());
+            _currentProcessor->find(currentItem->routine());
 
-        if( pos + 1 < currentProcessor_->end() ) {
+        if( pos + 1 < _currentProcessor->end() ) {
 
           const c_data_frame_processor_routine::sptr routine = *pos;
 
           if( true ) {
-            c_data_frame_processor::edit_lock lock(currentProcessor_);
-            currentProcessor_->erase(pos);
-            currentProcessor_->insert(pos + 1, routine);
+            c_data_frame_processor::edit_lock lock(_currentProcessor);
+            _currentProcessor->erase(pos);
+            _currentProcessor->insert(pos + 1, routine);
           }
 
           const bool isExpanded =
@@ -371,7 +371,7 @@ void QDataFrameProcessorEditor::onMoveCurrentProcessorDown()
 
 void QDataFrameProcessorEditor::onMoveCurrentProcessorUp()
 {
-  if( currentProcessor_ ) {
+  if( _currentProcessor ) {
 
     QRoutineItem *currentItem =
         currentRoutineItem(tree_ctl);
@@ -387,16 +387,16 @@ void QDataFrameProcessorEditor::onMoveCurrentProcessorUp()
         QWaitCursor wait(this);
 
         c_data_frame_processor::iterator pos =
-            currentProcessor_->find(currentItem->routine());
+            _currentProcessor->find(currentItem->routine());
 
-        if ( pos != currentProcessor_->begin() && pos != currentProcessor_->end() ) {
+        if ( pos != _currentProcessor->begin() && pos != _currentProcessor->end() ) {
 
           const c_data_frame_processor_routine::sptr routine = *pos;
 
           if( true ) {
-            c_data_frame_processor::edit_lock lock(currentProcessor_);
-            currentProcessor_->erase(pos);
-            currentProcessor_->insert(pos - 1, routine);
+            c_data_frame_processor::edit_lock lock(_currentProcessor);
+            _currentProcessor->erase(pos);
+            _currentProcessor->insert(pos - 1, routine);
           }
 
           const bool isExpanded =
@@ -425,7 +425,7 @@ void QDataFrameProcessorEditor::onAddImageProcessor()
 
   c_data_frame_processor_routine::sptr current_routine, new_routine;
 
-  if( !currentProcessor_ ) {
+  if( !_currentProcessor ) {
     return;
   }
 
@@ -459,14 +459,14 @@ void QDataFrameProcessorEditor::onAddImageProcessor()
   QWaitCursor wait(this);
 
   if( true ) {
-    c_data_frame_processor::edit_lock lock(currentProcessor_);
+    c_data_frame_processor::edit_lock lock(_currentProcessor);
 
     if( !current_routine ) {
-      currentProcessor_->insert(currentProcessor_->begin(),
+      _currentProcessor->insert(_currentProcessor->begin(),
           new_routine);
     }
     else {
-      currentProcessor_->insert(currentProcessor_->find(current_routine) + 1,
+      _currentProcessor->insert(_currentProcessor->find(current_routine) + 1,
           new_routine);
     }
   }
@@ -484,7 +484,7 @@ void QDataFrameProcessorEditor::onAddImageProcessor()
 
 void QDataFrameProcessorEditor::onRemoveCurrentProcessor()
 {
-  if ( currentProcessor_ ) {
+  if ( _currentProcessor ) {
 
     QRoutineItem * currentItem =
         currentRoutineItem(tree_ctl);
@@ -494,13 +494,13 @@ void QDataFrameProcessorEditor::onRemoveCurrentProcessor()
       QWaitCursor wait(this);
 
       c_data_frame_processor::iterator pos =
-          currentProcessor_->find(currentItem->routine());
+          _currentProcessor->find(currentItem->routine());
 
-      if( pos != currentProcessor_->end() ) {
+      if( pos != _currentProcessor->end() ) {
 
         if( true ) {
-          c_data_frame_processor::edit_lock lock(currentProcessor_);
-          currentProcessor_->erase(pos);
+          c_data_frame_processor::edit_lock lock(_currentProcessor);
+          _currentProcessor->erase(pos);
         }
 
         delete currentItem;

@@ -70,6 +70,11 @@ void QGraphicsRectShape::setRect(const QRectF & rc)
   }
 }
 
+void QGraphicsRectShape::setSceneRect(const QRectF & rc)
+{
+  setRect(QRectF(mapFromScene(rc.topLeft()), mapFromScene(rc.bottomRight())));
+}
+
 void QGraphicsRectShape::setSceneRect(const QPointF & topLeft, const QPointF & bottomRight)
 {
   setRect(QRectF(mapFromScene(topLeft), mapFromScene(bottomRight)));

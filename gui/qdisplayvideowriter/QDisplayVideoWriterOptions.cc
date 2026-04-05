@@ -219,12 +219,9 @@ QToolButton* createDisplayVideoWriterOptionsToolButton(QDisplayVideoWriter * wri
       false,
       [writer, tb, parent](QAction * action) {
 
-        static QDisplayVideoWriterOptionsDialogBox * dlgbox =
-            nullptr;
+        static QDisplayVideoWriterOptionsDialogBox * dlgbox = nullptr;
 
-        const bool checked =
-            action->isChecked();
-
+        const bool checked = action->isChecked();
         if ( !checked ) {
 
           if ( dlgbox ) {

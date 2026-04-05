@@ -132,15 +132,16 @@ private:
   QGlPointCloudSettingsDialogBox * cloudSettingsDialogBox = nullptr;
   QPipelineOptionsView * pipelineOptionsView = nullptr;
 
+  // FileSystemTree
   QFileSystemTreeDock * fileSystemTreeDock = nullptr;
   QInputSequencesTree * sequencesTreeView = nullptr;
   QInputSequenceTreeDock * sequencesTreeViewDock = nullptr;
 
+  // ROI
   QGraphicsRectShapeSettingsDialogBox * _roiOptionsDialogBox = nullptr;
   QAction * showRoiOptionsAction = nullptr;
   QAction * showRoiRectangleAction = nullptr;
   QMenu _roiActionsMenu;
-
 
   QAction * quitAppAction = nullptr;
   QAction * saveImageAsAction = nullptr;
@@ -156,8 +157,6 @@ private:
   QAction * viewInputOptionsAction = nullptr;
   QShortcut * badframeActionShortcut = nullptr;
 
-
-
   QAction * selectPreviousFileAction = nullptr;
   QAction * selectNextFileAction = nullptr;
   QAction * reloadCurrentFileAction = nullptr;
@@ -170,19 +169,20 @@ private:
   QScaleSelectionButton * scaleSelection_ctl = nullptr;
   QShapesButton * shapes_ctl = nullptr;
 
+  // Status bar
   QLabel * statusbarMousePosLabel_ctl = nullptr;
   QLabel * statusbarShapesLabel_ctl = nullptr;
   QToolButton * statusbarShowLog_ctl = nullptr;
 
-  ///
+  /// DisplayVideoWriter
   QDisplayVideoWriter _diplayImageWriter;
   QToolButton* _displayImageVideoWriterToolButton = nullptr;
   bool _lockDiplayImageWriter = false;
 
-  ///
+  /// GridSettings
   QGLViewPlanarGridSettingsDialogBox * _glGridSettingsDialog = nullptr;
 
-  ///
+  /// GeoMapView
   QGeoMapView * geoView = nullptr;
   QGeoMapViewDock * geoViewDock = nullptr;
   QAction * onLoadGpsTrackAction = nullptr;

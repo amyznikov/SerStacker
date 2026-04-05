@@ -319,8 +319,8 @@ protected:
     }; \
     \
     static const c_class_factory* class_factory_instance() { \
-      static c_class_factory class_factory_instance_; \
-      return &class_factory_instance_; \
+      static c_class_factory _class_factory_instance; \
+      return &_class_factory_instance; \
     } \
     class_name(bool enabled = false) : \
       base(class_factory_instance(), enabled) { \

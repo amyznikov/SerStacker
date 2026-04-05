@@ -25,8 +25,8 @@ public:
 
   QImageProcessorChainEditor(QWidget * parent = nullptr);
 
-  void set_current_processor(const c_image_processor::sptr & p);
-  const c_image_processor::sptr & current_processor() const;
+  void setCurrentProcessor(const c_image_processor::sptr & p);
+  const c_image_processor::sptr & currentProcessor() const;
 
 Q_SIGNALS:
   void parameterChanged();
@@ -45,16 +45,16 @@ protected:
   QTreeWidgetItem * insertProcessorItem(int index, const c_image_processor_routine::ptr & routine);
 
 protected:
-  c_image_processor::sptr current_processor_;
+  c_image_processor::sptr _currentProcessor;
 
-  QVBoxLayout * lv_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QTreeWidget * tree_ctl = nullptr;
 
-  QAction * moveDownAction_ = nullptr;
-  QAction * moveUpAction_ = nullptr;
-  QAction * addProcAction_ = nullptr;
-  QAction * removeProcAction_ = nullptr;
+  QAction * _moveDownAction = nullptr;
+  QAction * _moveUpAction = nullptr;
+  QAction * _addProcAction = nullptr;
+  QAction * _removeProcAction = nullptr;
 };
 
 class QImageProcessorSettingsControl2 :

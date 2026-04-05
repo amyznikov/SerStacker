@@ -22,6 +22,7 @@
 #include "generic/c_ridgeness_routine.h"
 #include "generic/c_filter2d_routine.h"
 
+#include "generic/c_clear_mask_routine.h"
 #include "generic/c_copy_make_border_routine.h"
 #include "generic/c_local_peak_routine.h"
 #include "generic/c_radial_gradient_routine.h"
@@ -207,6 +208,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pop_global_routine::class_factory_instance());
     register_class_factory(c_clear_globals_routine::class_factory_instance());
     register_class_factory(c_load_image_routine::class_factory_instance());
+    register_class_factory(c_clear_mask_routine::class_factory_instance());
 
     register_class_factory(c_copy_make_border_routine::class_factory_instance());
 
@@ -653,10 +655,7 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
   const char * cname = processor_name.c_str();
   for ( const class_factory * f : c_image_processor_routine_class_list_ ) {
     if ( strcasecmp(cname, f->class_name.c_str()) == 0 ) {
-
-      c_image_processor_routine::ptr p =
-          f->create_instance();
-
+      c_image_processor_routine::ptr p = f->create_instance();
       if ( !p ) {
         CF_ERROR("factory->create_instance(class_name='%s') fails", cname);
       }
@@ -664,26 +663,12 @@ c_image_processor_routine::ptr c_image_processor_routine::create(const std::stri
         CF_ERROR("p->initialize() fails for object class '%s'", cname);
         p.reset();
       }
-
       return p;
     }
   }
 
   return nullptr;
 }
-
-
-//bool c_image_processor_routine::deserialize(c_config_setting settings)
-//{
-//  if ( !settings ) {
-//    CF_ERROR("c_image_processor_routine::load(c_config_setting) : settings is null");
-//    return false;
-//  }
-//
-//  settings.get("enabled", &enabled_);
-//
-//  return true;
-//}
 
 void c_image_processor_routine::parameter_changed()
 {

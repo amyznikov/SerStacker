@@ -46,16 +46,16 @@ protected:
       const c_data_frame_processor_routine::sptr & routine);
 
 protected:
-  c_data_frame_processor::sptr currentProcessor_;
+  c_data_frame_processor::sptr _currentProcessor;
 
-  QVBoxLayout * lv_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QTreeWidget * tree_ctl = nullptr;
 
-  QAction * moveDownAction_ = nullptr;
-  QAction * moveUpAction_ = nullptr;
-  QAction * addProcAction_ = nullptr;
-  QAction * removeProcAction_ = nullptr;
+  QAction * _moveDownAction = nullptr;
+  QAction * _moveUpAction = nullptr;
+  QAction * _addProcAction = nullptr;
+  QAction * _removeProcAction = nullptr;
 };
 
 

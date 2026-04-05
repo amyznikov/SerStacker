@@ -14,9 +14,6 @@
 #include <core/debug.h>
 
 
-
-
-
 template<>
 const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
 {
@@ -32,8 +29,7 @@ const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
       { c_threshold_routine::THRESHOLD_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
       { c_threshold_routine::THRESHOLD_PLANETARY_DISK, "PLANETARY_DISK", "" },
       { c_threshold_routine::THRESHOLD_NOISE, "NOISE", "" },
-      { c_threshold_routine::THRESHOLD_CLEAR_MASK, "CLEAR_MASK", "" },
-
+      //  { c_threshold_routine::THRESHOLD_CLEAR_MASK, "CLEAR_MASK", "" },
       { c_threshold_routine::THRESHOLD_OTSU }
   };
 
@@ -51,7 +47,6 @@ const c_enum_member* members_of<c_threshold_routine::MASK_MODE>()
       { c_threshold_routine::MASK_MODE_NAND, "NAND", ""},
       { c_threshold_routine::MASK_MODE_NOR, "NOR", ""},
       { c_threshold_routine::MASK_MODE_NXOR, "NXOR", ""},
-
       { c_threshold_routine::MASK_MODE_REPLACE }
   };
 
@@ -106,17 +101,17 @@ bool c_threshold_routine::serialize(c_config_setting settings, bool save)
 
 bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if( _threshold_type == THRESHOLD_CLEAR_MASK ) {
-    switch (_output_channel) {
-      case DATA_CHANNEL::IMAGE:
-        image.setTo(cv::Scalar::all(255));
-        break;
-      case DATA_CHANNEL::MASK:
-        mask.release();
-        break;
-    }
-    return true;
-  }
+//  if( _threshold_type == THRESHOLD_CLEAR_MASK ) {
+//    switch (_output_channel) {
+//      case DATA_CHANNEL::IMAGE:
+//        image.setTo(cv::Scalar::all(255));
+//        break;
+//      case DATA_CHANNEL::MASK:
+//        mask.release();
+//        break;
+//    }
+//    return true;
+//  }
 
   cv::Mat src, srcm, dstm;
 
@@ -138,10 +133,6 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   }
 
   if( _threshold_type != THRESHOLD_PLANETARY_DISK ) {
-
-//    if ( src.empty() ) {
-//      return true;
-//    }
 
     std::vector<cv::Mat> channels;
     std::vector<cv::Mat> mchannels;
@@ -294,166 +285,3 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
 
   return true;
 }
-
-//
-//bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
-//{
-//  if( _threshold_type == THRESHOLD_CLEAR_MASK ) {
-//    switch (_output_channel) {
-//      case DATA_CHANNEL::IMAGE:
-//        image.setTo(cv::Scalar::all(255));
-//        break;
-//      case DATA_CHANNEL::MASK:
-//        mask.release();
-//        break;
-//    }
-//    return true;
-//  }
-//
-//  cv::Mat src, srcm, dst, dstm;
-//
-//  if ( _threshold_type == THRESHOLD_PLANETARY_DISK ) {
-//
-//    src = image.getMat();
-//    srcm = mask.getMat();
-//
-//    bool fOK =
-//        simple_planetary_disk_detector(src, mask,
-//            1,
-//            0.25 * _threshold_scale,
-//            2,
-//            nullptr,
-//            nullptr,
-//            &dst,
-//            nullptr,
-//            nullptr);
-//
-//    if ( !fOK ) {
-//      CF_ERROR("simple_planetary_disk_detector() fails");
-//      return false;
-//    }
-//
-//    if ( _fill_holes ) {
-//      geo_fill_holes(dst, dst, 8);
-//    }
-//
-//    switch (_compare) {
-//      case cv::CMP_GT:
-//        break;
-//      case cv::CMP_LT:
-//        cv::bitwise_not(dst, dst);
-//        break;
-//      case cv::CMP_EQ:
-//        morphological_gradient(dst, dst);
-//        break;
-//      case cv::CMP_NE:
-//        morphological_gradient(dst, dst);
-//        cv::bitwise_not(dst, dst);
-//        break;
-//      case cv::CMP_GE:
-//        morphological_internal_gradient(dst, dst);
-//        break;
-//      case cv::CMP_LE:
-//        morphological_external_gradient(dst, dst);
-//        break;
-//    }
-//
-//  }
-//
-//  else {
-//
-//    std::vector<cv::Mat> channels;
-//
-//    switch (_input_channel) {
-//      case DATA_CHANNEL::IMAGE:
-//        src = image.getMat();
-//        srcm = mask.getMat();
-//        break;
-//      case DATA_CHANNEL::MASK:
-//        src = mask.getMat();
-//        break;
-//    }
-//
-//    const int cn = src.channels();
-//    const int mcn = srcm.channels();
-//
-//
-//
-//    if( cn == 1 ) {
-//      channels.emplace_back(src.clone());
-//    }
-//    else {
-//      cv::split(src, channels);
-//    }
-//
-//    for ( int i = 0; i < cn; ++i ) {
-//
-//      const double threshold_value =
-//          get_threshold_value(channels[i], mask,
-//              (::THRESHOLD_TYPE)_threshold_type,
-//              _threshold_value);
-//
-//      cv::compare(channels[i], threshold_value * _threshold_scale, channels[i],
-//          _compare);
-//
-//      if ( _fill_holes ) {
-//        geo_fill_holes(channels[i], channels[i], 8);
-//      }
-//
-//    }
-//
-//    if( cn == 1 ) {
-//      dst = channels[0];
-//    }
-//    else {
-//      cv::merge(channels, dst);
-//    }
-//
-//    if ( _fill_holes ) {
-//      geo_fill_holes(dst, dst, 8);
-//    }
-//
-//  }
-//
-//
-//  if ( _invert ) {
-//    cv::bitwise_not(dst, dst);
-//  }
-//
-//  switch (_output_channel) {
-//
-//    case DATA_CHANNEL::IMAGE:
-//      image.move(dst);
-//      break;
-//
-//    case DATA_CHANNEL::MASK:
-//      if( _input_channel == DATA_CHANNEL::MASK ) {
-//        mask.create(dst.size(), CV_8UC1);
-//        mask.setTo(cv::Scalar::all(0));
-//        mask.setTo(255, dst != 0);
-//      }
-//      else {
-//
-//        if( dst.channels() != 1 ) {
-//          reduce_color_channels(dst, dst, cv::REDUCE_MIN);
-//        }
-//
-//        if( dst.depth() != CV_8U ) {
-//          cv::compare(dst, 0, dst, cv::CMP_NE);
-//        }
-//
-//        if( mask.empty() ) {
-//          mask.move(dst);
-//        }
-//        else {
-//          cv::bitwise_and(dst, mask, mask);
-//        }
-//
-//      }
-//      break;
-//  }
-//
-//
-//  return true;
-//}
-

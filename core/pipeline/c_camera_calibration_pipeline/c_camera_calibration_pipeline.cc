@@ -294,11 +294,10 @@ const c_ctlist<c_camera_calibration_pipeline> & c_camera_calibration_pipeline::g
       ctlbind(ctls, ctx(&this_class::_chessboard_detection_options));
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_menu_item(ctls, "Copy config to clipboard", ctx, [](this_class * _ths) {
-        ctlbind_copy_config_to_clipboard("c_chessboard_corners_detection_options", _ths->_chessboard_detection_options);
-        return false;
+      ctlbind_item(ctls, "Copy config to clipboard", ctx, [](this_class * _ths) {
+        return ctlbind_copy_config_to_clipboard("c_chessboard_corners_detection_options", _ths->_chessboard_detection_options), false;
       });
-      ctlbind_menu_item(ctls, "Paste config from clipboard", ctx, [](this_class * _ths) {
+      ctlbind_item(ctls, "Paste config from clipboard", ctx, [](this_class * _ths) {
         return ctlbind_paste_config_from_clipboard("c_chessboard_corners_detection_options", &_ths->_chessboard_detection_options);
       });
 

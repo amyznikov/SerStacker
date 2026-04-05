@@ -22,8 +22,8 @@ QAction* createAction(const QIcon & icon, const QString & text, const QString & 
   QObject::connect(action, &QAction::triggered, receiver, fn);
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -39,8 +39,8 @@ QAction* createAction(const QIcon & icon, const QString & text, const QString & 
   QObject::connect(action, &QAction::triggered, slot);
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -60,8 +60,8 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   QObject::connect(action, &QAction::triggered, receiver, fn);
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -81,9 +81,8 @@ QAction* createCheckableAction(const QIcon & icon, const QString & text, const Q
   QObject::connect(action, &QAction::triggered, slot);
 
   if( shortcut ) {
-
-      QObject::connect(shortcut, &QShortcut::activated,
-          action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -110,8 +109,8 @@ QAction* createCheckableAction2(const QIcon & icon, const QString & text, const 
       });
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -134,8 +133,8 @@ QAction* createCheckableAction2(const QIcon & icon, const QString & text, const 
       });
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        action, &QAction::trigger);
+    QObject::connect(shortcut, &QShortcut::activated, action, &QAction::trigger);
+    action->setToolTip(action->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return action;
@@ -159,8 +158,8 @@ QToolButton* createToolButton(const QIcon & icon, const QString & text, const QS
       receiver, onclick);
 
   if( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        tb, &QToolButton::click);
+    QObject::connect(shortcut, &QShortcut::activated, tb, &QToolButton::click);
+    tb->setToolTip(tb->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return tb;
@@ -200,8 +199,8 @@ QToolButton* createCheckableToolButton(const QIcon & icon, const QString & text,
       receiver, onclick);
 
   if ( shortcut ) {
-    QObject::connect(shortcut, &QShortcut::activated,
-        tb, &QToolButton::click);
+    QObject::connect(shortcut, &QShortcut::activated, tb, &QToolButton::click);
+    tb->setToolTip(tb->toolTip() + "\n" + shortcut->key().toString());
   }
 
   return tb;

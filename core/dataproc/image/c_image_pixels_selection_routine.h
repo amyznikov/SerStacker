@@ -51,19 +51,16 @@ public:
     return _invert_selection;
   }
 
+  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool serialize(c_config_setting settings, bool save) final;
   bool process(c_video_frame * vlo) final;
-  std::string helpstring();
 
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
-  {
-    ctlbind(ctls, "expression", ctx, &this_class::expression, &this_class::set_expression, "", &this_class::helpstring);
-    ctlbind(ctls, "invert_selection", ctx, &this_class::invert_selection, &this_class::set_invert_selection);
-    ctlbind(ctls, "mask_mode", ctx, &this_class::mask_mode, &this_class::set_mask_mode, "selection combine mode");
-  }
+protected:
+  bool initialize() final;
 
 protected:
   std::string _expression;
+  std::string _helpstring;
   c_math_expression _math;
   cv::Mat _current_image;
   cv::Mat1b _current_mask;
@@ -71,7 +68,7 @@ protected:
   int _previous_vlo_scan_version = -1;
   bool _invert_selection = false;
   bool _expression_changed = true;
-  bool _initialized = false;
+  //bool _initialized = false;
 };
 
 #endif /* __c_image_pixels_selection_routine_h__ */

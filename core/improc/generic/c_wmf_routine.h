@@ -17,8 +17,7 @@ class c_wmf_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_wmf_routine,
-      "wmf",
-      "calls cv::ximgproc::weightedMedianFilter()");
+      "wmf", "cv::ximgproc::weightedMedianFilter()");
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

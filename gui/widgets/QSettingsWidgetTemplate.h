@@ -10,6 +10,7 @@
 #define __QSettingsWidgetTemplate2_h__
 
 #include <gui/widgets/QSettingsWidget.h>
+#include <gui/widgets/QHFlowLayout.h>
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QCameraIntrinsicsEditBox.h>
 #include <gui/qpipeline/QFrameRegistrationOptions.h>
@@ -66,10 +67,10 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         }
         else {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, newSettings, c]() {
-                const bool enabled = _this->opts() && c.enabled(_this->opts());
-                newSettings->setEnabled(enabled);
-                if ( enabled ) {
+              [_this, newSettings, enabled = c.enabled]() {
+                const bool enable = _this->opts() && enabled(_this->opts());
+                newSettings->setEnabled(enable);
+                if ( enable ) {
                   newSettings->enablecontrols();
                 }
               });
@@ -101,10 +102,10 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         }
         else {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, newSettings, c]() {
-                const bool enabled = _this->opts() && c.enabled(_this->opts());
-                newSettings->setEnabled(enabled);
-                if ( enabled ) {
+              [_this, newSettings, enabled = c.enabled]() {
+                const bool enable = _this->opts() && enabled(_this->opts());
+                newSettings->setEnabled(enable);
+                if ( enable ) {
                   newSettings->enablecontrols();
                 }
               });
@@ -146,15 +147,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       case CtlType::Textbox: {
         currentSettings->add_textbox(QString::fromStdString(c.cname),
           QString::fromStdString(c.cdesc),
-          [_this, c](const QString & v) -> void {
-            if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), v.toStdString()) ) {
+          [_this, setvalue = c.setvalue](const QString & v) -> void {
+            if ( _this->opts() && setvalue && setvalue(_this->opts(), v.toStdString()) ) {
               Q_EMIT _this->parameterChanged();
             }
           },
-          [_this, c](QString * v) -> bool {
-            if ( _this->opts() ) {
+          [_this, getvalue = c.getvalue](QString * v) -> bool {
+            if ( _this->opts() && getvalue) {
               std::string s;
-              if ( c.getvalue(_this->opts(), &s) ) {
+              if ( getvalue(_this->opts(), &s) ) {
                 *v = QString::fromStdString(s);
                 return true;
               }
@@ -170,13 +171,13 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       case CtlType::NumericBox: {
         currentSettings->add_numeric_box<std::string>(QString::fromStdString(c.cname),
           QString::fromStdString(c.cdesc),
-          [_this, c](const std::string & v) -> void {
-            if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), v) ) {
+          [_this, setvalue = c.setvalue](const std::string & v) -> void {
+            if ( _this->opts() && setvalue && setvalue(_this->opts(), v) ) {
               Q_EMIT _this->parameterChanged();
             }
           },
-          [_this, c](std::string * v) -> bool {
-            return _this->opts() && c.getvalue && c.getvalue(_this->opts(), v);
+          [_this, getvalue = c.getvalue](std::string * v) -> bool {
+            return _this->opts() && getvalue && getvalue(_this->opts(), v);
           },
           enablefn(_this, c));
         break;
@@ -186,15 +187,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       case CtlType::Checkbox: {
         currentSettings->add_checkbox(c.cname.c_str(),
           c.cdesc.c_str(),
-          [_this, c](bool checked) {
-            if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), checked ? "1" : "0") ) {
+          [_this, setvalue = c.setvalue](bool checked) {
+            if ( _this->opts() && setvalue && setvalue(_this->opts(), checked ? "1" : "0") ) {
               Q_EMIT _this->parameterChanged();
             }
           },
-          [_this, c](bool * checked) {
-            if ( _this->opts() && c.getvalue ) {
+          [_this, getvalue = c.getvalue](bool * checked) {
+            if ( _this->opts() && getvalue ) {
               std::string s;
-              if ( c.getvalue(_this->opts(), &s)) {
+              if ( getvalue(_this->opts(), &s)) {
                 return fromString(s, checked);
               }
             }
@@ -208,16 +209,16 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings->add_flags_editbox_base(c.cname.c_str(),
           c.cdesc.c_str(),
           c.get_enum_members(),
-          [_this, c](int v) {
-            if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+          [_this, setvalue = c.setvalue](int v) {
+            if ( _this->opts() && setvalue && setvalue(_this->opts(), toString(v)) ) {
               Q_EMIT _this->parameterChanged();
             }
           },
-          [_this, c](int * v) {
-            if ( _this->opts() && c.getvalue ) {
+          [_this, getvalue = c.getvalue, get_enum_members = c.get_enum_members](int * v) {
+            if ( _this->opts() && getvalue ) {
               std::string s;
-              if (  c.getvalue(_this->opts(), &s) ) {
-                *v = flagsFromString(s, c.get_enum_members());
+              if (  getvalue(_this->opts(), &s) ) {
+                *v = flagsFromString(s, get_enum_members());
                 return true;
               }
             }
@@ -231,16 +232,16 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings->add_enum_combobox_base(QString::fromStdString(c.cname),
           QString::fromStdString(c.cdesc),
           c.get_enum_members(),
-          [_this, c](int v) {
-            if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v))) {
+          [_this, setvalue = c.setvalue](int v) {
+            if (_this->opts() && setvalue && setvalue(_this->opts(), toString(v))) {
               Q_EMIT _this->parameterChanged();
             }
           },
-          [_this, c](int * v) {
-            if ( _this->opts() && c.getvalue ) {
+          [_this, getvalue = c.getvalue, get_enum_members = c.get_enum_members](int * v) {
+            if ( _this->opts() && getvalue ) {
               std::string s;
-              if ( c.getvalue(_this->opts(), &s) ) {
-                if ( const c_enum_member* m = fromString(s, c.get_enum_members()) ) {
+              if ( getvalue(_this->opts(), &s) ) {
+                if ( const c_enum_member* m = fromString(s, get_enum_members()) ) {
                   * v = m->value;
                   return true;
                 }
@@ -256,15 +257,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QSpinBox * ctl =
           currentSettings->add_spinbox(c.cname.c_str(),
             c.cdesc.c_str(),
-            [_this, c](int v) {
-              if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+            [_this, setvalue = c.setvalue](int v) {
+              if (_this->opts() && setvalue && setvalue(_this->opts(), toString(v)) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](int * v) {
-              if ( _this->opts() && c.getvalue ) {
+            [_this, getvalue = c.getvalue](int * v) {
+              if ( _this->opts() && getvalue ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   return fromString(s, v);
                 }
               }
@@ -283,15 +284,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QDoubleSpinBox * ctl =
           currentSettings->add_double_spinbox(c.cname.c_str(),
             c.cdesc.c_str(),
-            [_this, c](double v) {
-              if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+            [_this, setvalue = c.setvalue](double v) {
+              if (_this->opts() && setvalue && setvalue(_this->opts(), toString(v)) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](double * v) {
-              if ( _this->opts() && c.getvalue ) {
+            [_this, getvalue = c.getvalue](double * v) {
+              if ( _this->opts() && getvalue ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   return fromString(s, v);
                 }
               }
@@ -311,15 +312,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QIntegerSliderSpinBox * ctl =
           currentSettings->add_sliderspinbox<int>(c.cname.c_str(),
             c.cdesc.c_str(),
-            [_this, c](int v) {
-              if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+            [_this, setvalue = c.setvalue](int v) {
+              if (_this->opts() && setvalue && setvalue(_this->opts(), toString(v)) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](int * v) {
-              if ( _this->opts() && c.getvalue ) {
+            [_this, getvalue = c.getvalue](int * v) {
+              if ( _this->opts() && getvalue ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   return fromString(s, v);
                 }
               }
@@ -337,15 +338,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         QDoubleSliderSpinBox * ctl =
           currentSettings->add_sliderspinbox<double>(c.cname.c_str(),
             c.cdesc.c_str(),
-            [_this, c](double v) {
-              if (_this->opts() && c.setvalue && c.setvalue(_this->opts(), toString(v)) ) {
+            [_this, setvalue = c.setvalue](double v) {
+              if (_this->opts() && setvalue && setvalue(_this->opts(), toString(v)) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](double * v) {
-              if ( _this->opts() && c.getvalue ) {
+            [_this, getvalue = c.getvalue](double * v) {
+              if ( _this->opts() && getvalue ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   return fromString(s, v);
                 }
               }
@@ -374,15 +375,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
             "",
             QFileDialog::AcceptOpen,
             QFileDialog::Directory,
-            [_this, c](const QString & v) {
-              if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), v.toStdString()) ) {
+            [_this, setvalue = c.setvalue](const QString & v) {
+              if ( _this->opts() && setvalue && setvalue(_this->opts(), v.toStdString()) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](QString * v) {
-              if ( _this->opts() && c.getvalue  ) {
+            [_this, getvalue = c.getvalue](QString * v) {
+              if ( _this->opts() && getvalue  ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   *v = QString::fromStdString(s);
                   return true;
                 }
@@ -401,15 +402,15 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
             "",
             QFileDialog::AcceptOpen,
             QFileDialog::ExistingFile,
-            [_this, c](const QString & v) {
-              if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), v.toStdString()) ) {
+            [_this, setvalue = c.setvalue](const QString & v) {
+              if ( _this->opts() && setvalue && setvalue(_this->opts(), v.toStdString()) ) {
                 Q_EMIT _this->parameterChanged();
               }
             },
-            [_this, c](QString * v) {
-              if ( _this->opts() && c.getvalue ) {
+            [_this, getvalue = c.getvalue](QString * v) {
+              if ( _this->opts() && getvalue ) {
                 std::string s;
-                if ( c.getvalue(_this->opts(), &s) ) {
+                if ( getvalue(_this->opts(), &s) ) {
                   *v = QString::fromStdString(s);
                   return true;
                 }
@@ -426,67 +427,36 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
       case CtlType::MultilineTextbox : {
         QMultiLineEditBox * ctl = currentSettings->add_widget<QMultiLineEditBox>(QString::fromStdString(c.cname));
         QSignalBlocker block(ctl);
+        ctl->setToolTip(QString::fromStdString(c.cdesc) + "\n" + ctl->toolTip());
 
         if( c.setvalue ) {
-          QObject::connect(ctl, &QMultiLineEditBox::ctrlEnterPressed, [_this, ctl, c]() {
-            if ( _this->opts() ) {
-              c.setvalue(_this->opts(), ctl->toPlainText().toStdString());
-              Q_EMIT _this->parameterChanged();
-            }
-          });
+          QObject::connect(ctl, &QMultiLineEditBox::editFinished,
+              [_this, ctl, setvalue = c.setvalue]() {
+                if ( _this->opts() && setvalue(_this->opts(), ctl->toPlainText().toStdString()) ) {
+                  Q_EMIT _this->parameterChanged();
+                }
+              });
         }
 
         if( c.getvalue ) {
           QObject::connect(currentSettings, &QSettingsWidget::populatecontrols,
-              [_this, ctl, c]() {
+              [_this, ctl, getvalue = c.getvalue]() {
                 std::string s;
-                c.getvalue(_this->opts(), &s);
+                getvalue(_this->opts(), &s);
                 ctl->setPlainText(QString::fromStdString(s));
               });
         }
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
         break;
       }
 
-      ////////////////////////////////////////////////////////////////////////
-      case CtlType::MathExpression: {
-        QInputMathExpressionWidget * ctl =
-          currentSettings->add_math_expression(c.cname.c_str(),
-              c.cdesc.c_str(),
-
-              [_this, c](const QString & v) {
-                if ( _this->opts() && c.setvalue && c.setvalue(_this->opts(), v.toStdString()) ) {
-                  Q_EMIT _this->parameterChanged();
-                }
-              },
-
-              [_this, c](QString * v) {
-                if ( _this->opts() && c.getvalue ) {
-                  std::string s;
-                  if ( c.getvalue(_this->opts(), &s) ) {
-                    *v = QString::fromStdString(s);
-                    return true;
-                  }
-                }
-                return false;
-              },
-
-              c.helpstring ? std::function(
-                  [_this, c](QString * v) {
-                    return _this->opts() ? *v = QString::fromStdString(c.helpstring(_this->opts())), true : false;
-                  }) :  nullptr,
-
-              enablefn(_this, c));
-
-        break;
-      }
       ////////////////////////////////////////////////////////////////////////
       case CtlType::CommandButton : {
         QToolButton * ctl = new QToolButton(_this);
@@ -497,17 +467,18 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings->addRow(ctl);
 
         if (c.onclick ) {
-         QObject::connect(ctl, &QToolButton::clicked,
-             [_this, c]() {
-               if ( _this->opts() && c.onclick(_this->opts()) ) {
+          QObject::connect(ctl, &QToolButton::clicked,
+            [_this, onclick = c.onclick]() {
+               if ( _this->opts() && onclick(_this->opts()) ) {
                  _this->updateControls();
-                 Q_EMIT _this->parameterChanged();
                }
+               Q_EMIT _this->parameterChanged();
          });
         }
 
         break;
       }
+
       ////////////////////////////////////////////////////////////////////////
       case CtlType::MenuButton: {
         QToolButton * ctl = new QToolButton(_this);
@@ -519,19 +490,19 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         ctl->setToolTip(c.cdesc.c_str());
         currentSettings->addRow(ctl);
 
-        if ( !c.menu.empty() ) {
+        if ( !c.items.empty() ) {
 
           QObject::connect(ctl, &QToolButton::clicked,
               [_this, c, ctl]() {
                if ( _this->opts() ) {
                   QMenu menu;
-                  for ( const auto & item : c.menu ) {
+                  for ( const auto & item : c.items ) {
                     menu.addAction(item.name.c_str(),
                         [_this, &item]() {
                           if ( item.onclick(_this->opts()) ) {
                             _this->updateControls();
-                            Q_EMIT _this->parameterChanged();
                           }
+                          Q_EMIT _this->parameterChanged();
                         });
                   }
 
@@ -549,14 +520,14 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
         currentSettings->add_combobox<QImageProcessorSelectionCombo2>(c.cname.c_str(),
             c.cdesc.c_str(),
             false,
-            [_this, c](int index, QImageProcessorSelectionCombo2 * combo) {
-              if( _this->opts() && c.setvalue && c.setvalue(_this->opts(), combo->processor(index).toStdString()) ) {
+            [_this, setvalue = c.setvalue](int index, QImageProcessorSelectionCombo2 * combo) {
+              if( _this->opts() && setvalue && setvalue(_this->opts(), combo->processor(index).toStdString()) ) {
                 Q_EMIT _this->parameterChanged();
              }},
-            [_this, c](int * index, QImageProcessorSelectionCombo2 * combo) -> bool {
+            [_this, getvalue = c.getvalue](int * index, QImageProcessorSelectionCombo2 * combo) -> bool {
               std::string s;
-              if ( c.getvalue ) {
-                c.getvalue(_this->opts(), &s);
+              if ( getvalue ) {
+                getvalue(_this->opts(), &s);
               }
               combo->setCurrentProcessor(QString::fromStdString(s));
               return false;
@@ -591,8 +562,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
         break;
@@ -622,8 +593,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
@@ -655,8 +626,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
@@ -687,8 +658,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
@@ -719,8 +690,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
         break;
@@ -750,8 +721,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
@@ -782,8 +753,8 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
         if( c.enabled ) {
           QObject::connect(currentSettings, &QSettingsWidget::enablecontrols,
-              [_this, c, ctl]() {
-                ctl->setEnabled(_this->opts() && c.enabled(_this->opts()));
+              [_this, ctl, enabled = c.enabled]() {
+                ctl->setEnabled(_this->opts() && enabled(_this->opts()));
           });
         }
 
@@ -806,6 +777,32 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
               return false;
             },
             enablefn(_this, c));
+        break;
+      }
+      ////////////////////////////////////////////////////////////////////////
+
+      case CtlType::ButtonStrip : {
+        QWidget * w = new QWidget(_this);
+        QHFlowLayout * l = new QHFlowLayout(w);
+
+        for ( const auto & item : c.items ) {
+          QToolButton * tb = new QToolButton(_this);
+          tb->setToolButtonStyle(item.name.empty() ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextOnly);
+          tb->setText(QString::fromStdString(item.name));
+          tb->setToolTip(QString::fromStdString(item.desc));
+          if ( item.onclick ) {
+            QObject::connect(tb, &QToolButton::clicked,
+                [_this, onclick = item.onclick]() {
+                  if ( onclick(_this->opts()) ) {
+                    _this->updateControls();
+                  }
+                  Q_EMIT _this->parameterChanged();
+                });
+          }
+          l->addWidget(tb);
+        }
+
+        currentSettings->addRow(w);
         break;
       }
       ////////////////////////////////////////////////////////////////////////

@@ -135,7 +135,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
         }
 
         const c_image_processor::sptr & processor =
-            chain_ctl->current_processor();
+            chain_ctl->currentProcessor();
         if ( processor ) {
           processor->save();
         }
@@ -235,8 +235,8 @@ void QImageProcessorSelector::updatecurrentprocessor()
     current_processor_ = selected_processor;
   }
 
-  if ( current_processor_ != chain_ctl->current_processor() ) {
-    chain_ctl->set_current_processor(current_processor_);
+  if ( current_processor_ != chain_ctl->currentProcessor() ) {
+    chain_ctl->setCurrentProcessor(current_processor_);
   }
 }
 

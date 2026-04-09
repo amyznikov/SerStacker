@@ -12,12 +12,13 @@
 #include <QtCore/QtCore>
 #include <gui/widgets/UpdateControls.h>
 #include <gui/qimageview/QImageEditor.h>
-#include <gui/qimageview/QImageViewMtfDisplayFunction.h>
+#include <gui/qimageview/ImageViewMtfDisplayFunction.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
 #include <gui/qgraphicsshape/QGraphicsLineShape.h>
 #include <gui/qgraphicsshape/QGraphicsTargetShape.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
+#include <gui/qpipeline/QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h>
 #include <core/io/debayer.h>
 #include <core/settings/opencv_settings.h>
 #include "camera/QImagingCamera.h"
@@ -28,96 +29,56 @@ namespace serimager {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class QLiveDisplayMtfFunction :
-    public QImageViewMtfDisplayFunction
+class QLivePipeline :
+  public QGenericImageProcessingPipeline
 {
-  Q_OBJECT;
 public:
-  typedef QLiveDisplayMtfFunction ThisClass;
-  typedef QImageViewMtfDisplayFunction Base;
+  typedef QLivePipeline ThisClass;
+  typedef QGenericImageProcessingPipeline Base;
+  typedef Base::PipelineClass PipelineClass;
 
-  QLiveDisplayMtfFunction(QImageViewer * imageViewer);
-
-  std::mutex & mutex()
+  QLivePipeline(const QString & name, QObject * parent) :
+      Base(name, nullptr, parent)
   {
-    return _mutex;
   }
-
-  bool isBusy() const
-  {
-    return _isBusy;
-  }
-
-  void getInputDataRange(double * minval, double * maxval) const override;
-  // void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
-  void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
-
-protected:
-  mutable std::mutex _mutex;
-  bool _isBusy = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 
 class QLiveDisplay :
-    public QImageEditor
+  public QImageEditor,
+  public ImageViewMtfDisplayFunction
 {
   Q_OBJECT;
 public:
   typedef QLiveDisplay ThisClass;
   typedef QImageEditor Base;
+  typedef ImageViewMtfDisplayFunction MtfDisplayFunction;
 
   QLiveDisplay(QWidget * parent = nullptr);
   ~QLiveDisplay();
-
-  const QLiveDisplayMtfFunction * mtfDisplayFunction() const;
-  QLiveDisplayMtfFunction * mtfDisplayFunction();
-
-  void setFrameProcessor(const c_image_processor::sptr & processor);
-  void setLivePipeline(const c_image_processing_pipeline::sptr & pipeline);
 
   QGraphicsRectShape * rectShape() const;
   QGraphicsLineShape * lineShape() const;
   QGraphicsTargetShape * targetShape() const;
 
-Q_SIGNALS:
-  void pixmapChanged(QPrivateSignal * p = nullptr);
-  void startUpdateLiveDisplayTimer(QPrivateSignal * p = nullptr);
-  void stopUpdateLiveDisplayTimer(QPrivateSignal * p = nullptr);
-
-protected Q_SLOTS:
-  void onPixmapChanged();
-  void onStartUpdateLiveDisplayTimer();
-  void onStopUpdateLiveDisplayTimer();
-
 protected:
   void createShapes();
-  void showEvent(QShowEvent *event) override;
-  void hideEvent(QHideEvent *event) override;
-  void timerEvent(QTimerEvent *event) override;
 
-protected: friend class QLivePipelineThread;
-  void updateCurrentImage();
+Q_SIGNALS:
+  void inputImageReady(QPrivateSignal*p = nullptr);
 
 protected:
-  QLiveDisplayMtfFunction _mtfDisplayFunction;
-
-  QPixmap _pixmap;
-
+  friend class QLivePipelineThread;
+  std::atomic_bool _canAcceptFrame {true};
   QGraphicsRectShape * _rectShape = nullptr;
   QGraphicsLineShape * _lineShape = nullptr;
   QGraphicsTargetShape * _targetShape = nullptr;
-
-  std::atomic_int _update_display_timer_id = 0;
-  std::atomic_bool _update_display_required = false;
-  std::mutex _live_pipeline_lock;
-  c_image_processing_pipeline::sptr _live_pipeline;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class QLivePipelineThread :
-    public QThread
+class QLivePipelineThread : public QThread
 {
   Q_OBJECT;
 public:
@@ -133,7 +94,7 @@ public:
   void setCamera(const QImagingCamera::sptr & camera);
   const QImagingCamera::sptr& camera() const;
 
-  bool setPipeline(const c_image_processing_pipeline::sptr & pipeline);
+  void setPipeline(const c_image_processing_pipeline::sptr & pipeline);
   const c_image_processing_pipeline::sptr & pipeline() const;
 
   void setDebayer(DEBAYER_ALGORITHM algo);
@@ -146,35 +107,36 @@ public:
   double darkFrameScale() const;
 
 protected Q_SLOTS:
-  // void onRestartAfterException();
   void onCameraStateChanged(QImagingCamera::State oldState,
       QImagingCamera::State newState);
 
 Q_SIGNALS:
   void pipelineChanged();
+  void frameReady();
 
 protected:
+  void setCurrentPipeline(const c_image_processing_pipeline::sptr & pipeline);
   void setDarkFrame(const QString & pathfilename);
-  void load_settings();
-  void save_settings();
-  void run() override;
+  void loadSettings();
+  void saveSettings();
+  void run() final;
 
 
 protected:
-  using unique_lock = std::unique_lock<std::mutex>;
-  using lock_guard = std::lock_guard<std::mutex>;
-  std::mutex _mutex;
-  std::condition_variable _condvar;
+  QMutex _lock;
+  QWaitCondition _condvar;
 
   QImagingCamera::sptr _camera;
-  QLiveDisplay *_display = nullptr;
-  c_image_processing_pipeline::sptr _pipeline;
+  c_image_processing_pipeline::sptr _userPipeline;
+  c_image_processing_pipeline::sptr _currentPipeline;
+  QLiveDisplay * _display = nullptr;
 
   std::atomic<DEBAYER_ALGORITHM> _debayer = DEBAYER_NN;
+
+  double _darkFrameScale = 1;
   QString _darkFramePath;
   cv::Mat _darkFrame;
-  double _darkFrameScale = 1; // auto
-  std::mutex _darkFrameLock;
+  QMutex _darkFrameLock;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

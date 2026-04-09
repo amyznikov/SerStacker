@@ -48,7 +48,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   QImageProcessorsCollection::load();
 
-  setCentralWidget(_centralDisplay = new QLiveDisplay(this));
+  setCentralWidget(_liveDisplay = new QLiveDisplay(this));
 
   setDockOptions(AnimatedDocks | AllowTabbedDocks | AllowNestedDocks | GroupedDragging);
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
@@ -61,8 +61,8 @@ MainWindow::MainWindow(QWidget * parent) :
   QLCSCTPStreams::load();
 #endif //HAVE_QLCSCTPCamera
 
-  _liveView = new QLivePipelineThread(this);
-  _liveView->setDisplay(_centralDisplay);
+  _liveThread = new QLivePipelineThread(this);
+  _liveThread->setDisplay(_liveDisplay);
 
 
   setupMainMenu();
@@ -80,20 +80,19 @@ MainWindow::MainWindow(QWidget * parent) :
 
   restoreState();
 
-  connect(_centralDisplay, &QImageViewer::currentImageChanged,
+  QObject::connect(_liveDisplay, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
 
-  connect(_centralDisplay, &QImageViewer::displayImageChanged,
+  QObject::connect(_liveDisplay, &QImageViewer::displayImageChanged,
       this, &ThisClass::onCurrentDisplayImageChanged);
 
-
-  connect(_centralDisplay, &QLiveDisplay::onMouseMove,
+  QObject::connect(_liveDisplay, &QLiveDisplay::onMouseMove, this,
       [this](QMouseEvent * e) {
-        mouse_status_ctl->setText(_centralDisplay->statusStringForPixel(e->pos()));
+        mouse_status_ctl->setText(_liveDisplay->statusStringForPixel(e->pos()));
         mouse_status_ctl->show();
       });
 
-  connect(_centralDisplay, &QLiveDisplay::onMouseLeaveEvent,
+  QObject::connect(_liveDisplay, &QLiveDisplay::onMouseLeaveEvent, this,
       [this](QEvent * e) {
         if ( mouse_status_ctl->isVisible() ) {
           mouse_status_ctl->hide();
@@ -114,14 +113,14 @@ MainWindow::MainWindow(QWidget * parent) :
   });
 
   set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
-    if (_centralDisplay) {
-      _centralDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w,y + h));
+    if (_liveDisplay) {
+      _liveDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w,y + h));
     }
   });
 
   set_ctlbind_get_roi_callback([this](double * x, double * y, double * w, double * h) {
-    if ( _centralDisplay ) {
-      const auto roi = _centralDisplay->rectShape();
+    if ( _liveDisplay ) {
+      const auto roi = _liveDisplay->rectShape();
       const auto rc = roi->sceneRect();
       if ( x ) {
         *x = rc.x();
@@ -135,7 +134,7 @@ MainWindow::MainWindow(QWidget * parent) :
       if ( h ) {
         *h = rc.height();
       }
-      return _centralDisplay->isVisible() && roi->isVisible();
+      return _liveDisplay->isVisible() && roi->isVisible();
     }
     return false;
   });
@@ -196,22 +195,22 @@ void MainWindow::onRestoreState(QSettings & settings)
 
   if ( imageProcessor_ctl ) {
 
-    const QString selected_processor =
+    const QString selectedPprocessor =
         settings.value(QString("imageProcessor/selected_processor")).toString();
 
-    if ( !selected_processor.isEmpty() ) {
-      imageProcessor_ctl->setSelectedProcessor(selected_processor);
+    if ( !selectedPprocessor.isEmpty() ) {
+      imageProcessor_ctl->setSelectedProcessor(selectedPprocessor);
     }
 
   }
 
   if ( dataframeProcessor_ctl ) {
 
-    const QString selected_processor =
+    const QString selectedProcessor =
         settings.value(QString("dataframeProcessor/selected_processor")).toString();
 
-    if ( !selected_processor.isEmpty() ) {
-      dataframeProcessor_ctl->setSelectedProcessor(selected_processor);
+    if ( !selectedProcessor.isEmpty() ) {
+      dataframeProcessor_ctl->setSelectedProcessor(selectedProcessor);
     }
   }
 
@@ -236,38 +235,35 @@ void MainWindow::setupMainMenu()
 
   ///////////////////////////////////////////////////////////////////
 
-  menuEdit->addAction(copyDisplayImageAction =
-      createAction(getIcon(ICON_copy),
-          "Copy display image to clipboard (Ctrl+c)",
-          "Copy display image to clipboard (Ctrl+c)",
-          [this]() {
-            if ( _centralDisplay->rectShape()->isVisible() ) {
-              _centralDisplay->copyDisplayImageROIToClipboard(_centralDisplay->rectShape()->iSceneRect());
-            }
-            else {
-              _centralDisplay->copyDisplayImageToClipboard();
-            }
-          },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
-              _centralDisplay, nullptr, nullptr,
-              Qt::WindowShortcut)));
+  menuEdit->addAction(copyDisplayImageAction = createAction(getIcon(ICON_copy),
+      "Copy display image to clipboard (Ctrl+c)",
+      "Copy display image to clipboard (Ctrl+c)",
+      [this]() {
+        if ( _liveDisplay->rectShape()->isVisible() ) {
+          _liveDisplay->copyDisplayImageROIToClipboard(_liveDisplay->rectShape()->iSceneRect());
+        }
+        else {
+          _liveDisplay->copyDisplayImageToClipboard();
+        }
+      },
+      new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_C),
+          _liveDisplay, nullptr, nullptr,
+          Qt::WindowShortcut)));
 
-
-  menuEdit->addAction(copyDisplayViewportAction =
-      createAction(QIcon(),
-          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
-          "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
-          [this]() {
-            if ( _centralDisplay->isVisible() ) {
-              QPixmap pxmap = _centralDisplay->sceneView()->grab();
-              if ( !pxmap.isNull() ) {
-                QApplication::clipboard()->setPixmap(pxmap);
-              }
-            }
-          },
-          new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
-              _centralDisplay, nullptr, nullptr,
-              Qt::WindowShortcut)));
+  menuEdit->addAction(copyDisplayViewportAction = createAction(QIcon(),
+      "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+      "Copy display viewport to clipboard (Ctrl+SHIFT+C)",
+      [this]() {
+        if ( _liveDisplay->isVisible() ) {
+          QPixmap pxmap = _liveDisplay->sceneView()->grab();
+          if ( !pxmap.isNull() ) {
+            QApplication::clipboard()->setPixmap(pxmap);
+          }
+        }
+      },
+      new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C),
+          _liveDisplay, nullptr, nullptr,
+          Qt::WindowShortcut)));
 
   ///////////////////////////////////////////////////////////////////
 
@@ -275,50 +271,40 @@ void MainWindow::setupMainMenu()
       menuView->addMenu(getIcon(ICON_shapes),
           "Shapes");
 
-  _menuViewShapes->addAction(_showRectShapeAction =
-      createCheckableAction(getIcon(ICON_roi),
-          "ROI Rectangle",
-          "Show / Hide ROI rectangle",
-          is_visible(_centralDisplay) && _centralDisplay->rectShape()->isVisible(),
-          [this](bool checked) {
-            _centralDisplay->rectShape()->setVisible(checked);
-          }));
+  _menuViewShapes->addAction(_showRectShapeAction = createCheckableAction(getIcon(ICON_roi),
+      "ROI Rectangle",
+      "Show / Hide ROI rectangle",
+      is_visible(_liveDisplay) && _liveDisplay->rectShape()->isVisible(),
+      [this](bool checked) {
+        _liveDisplay->rectShape()->setVisible(checked);
+      }));
 
 
-  _menuViewShapes->addAction(_showLineShapeAction =
-      createCheckableAction(getIcon(ICON_line),
-          "Line Shape",
-          "Show / Hide Line Shape",
-          is_visible(_centralDisplay) && _centralDisplay->lineShape()->isVisible(),
-          [this](bool checked) {
-            _centralDisplay->lineShape()->setVisible(checked);
-          }));
+  _menuViewShapes->addAction(_showLineShapeAction = createCheckableAction(getIcon(ICON_line),
+      "Line Shape",
+      "Show / Hide Line Shape",
+      is_visible(_liveDisplay) && _liveDisplay->lineShape()->isVisible(),
+      [this](bool checked) {
+        _liveDisplay->lineShape()->setVisible(checked);
+      }));
 
 
-  _menuViewShapes->addAction(_showTargetShapeAction =
-      createCheckableAction(getIcon(ICON_target),
-          "Target Shape",
-          "Show / Hide Target Shape",
-          is_visible(_centralDisplay) && _centralDisplay->targetShape()->isVisible(),
-          [this](bool checked) {
-            _centralDisplay->targetShape()->setVisible(checked);
-          }));
-
-
-//  showRectShapeAction_->setChecked(centralDisplay_->rectShape()->isVisible());
-//  showLineShapeAction_->setChecked(centralDisplay_->lineShape()->isVisible());
-//  showTargetShapeAction_->setChecked(centralDisplay_->targetShape()->isVisible());
-
+  _menuViewShapes->addAction(_showTargetShapeAction = createCheckableAction(getIcon(ICON_target),
+      "Target Shape",
+      "Show / Hide Target Shape",
+      is_visible(_liveDisplay) && _liveDisplay->targetShape()->isVisible(),
+      [this](bool checked) {
+        _liveDisplay->targetShape()->setVisible(checked);
+      }));
 
   /////////////////////////////////////
 
-  menuView->addAction(showMtfControlAction =
-      createCheckableAction(getIcon(ICON_histogram),
-          "Display Options...",
-          "Show / Hide Display Options",
-          is_visible(mtfControl),
-          this,
-          &ThisClass::onShowMtfControlActionTriggered));
+  menuView->addAction(showMtfControlAction = createCheckableAction(getIcon(ICON_histogram),
+      "Display Options...",
+      "Show / Hide Display Options",
+      is_visible(mtfControl),
+      this,
+      &ThisClass::onShowMtfControlActionTriggered));
 
   /////////////////////////////////////
 }
@@ -332,34 +318,34 @@ void MainWindow::setupShapeOptions()
   //
   _rectShapeOptionsDialogBox =
       new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
-          _centralDisplay->rectShape(),
+          _liveDisplay->rectShape(),
           this);
 
-  _rectShapeActionsMenu.addAction(
-      action = createCheckableAction(QIcon(),
-          "Options..",
-          "Configure ROI rectangle options",
-          is_visible(_rectShapeOptionsDialogBox) && _rectShapeOptionsDialogBox->isVisible(),
-          [this](bool checked) {
-            _rectShapeOptionsDialogBox->setVisible(checked);
-          }));
+  _rectShapeActionsMenu.addAction(action = createCheckableAction(QIcon(),
+      "Options..",
+      "Configure ROI rectangle options",
+      is_visible(_rectShapeOptionsDialogBox) && _rectShapeOptionsDialogBox->isVisible(),
+      [this](bool checked) {
+        _rectShapeOptionsDialogBox->setVisible(checked);
+      }));
 
-  connect(_rectShapeOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+  QObject::connect(_rectShapeOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+      this,
       [this, action](bool visible) {
         action->setChecked(visible);
         if ( visible ) {
-          _centralDisplay->rectShape()->setVisible(true);
+          _liveDisplay->rectShape()->setVisible(true);
           _showRectShapeAction->setChecked(true);
         }
       });
 
-  connect(_centralDisplay->rectShape(), &QGraphicsShape::itemChanged,
+  QObject::connect(_liveDisplay->rectShape(), &QGraphicsShape::itemChanged,
       this, &ThisClass::onCentralDisplayROIShapeChanged);
 
-  connect(_centralDisplay->rectShape(), &QGraphicsShape::visibleChanged,
+  QObject::connect(_liveDisplay->rectShape(), &QGraphicsShape::visibleChanged,
       this, &ThisClass::onCentralDisplayROIShapeChanged);
 
-  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
+  QObject::connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
       this, &ThisClass::onCentralDisplayROIShapeChanged);
 
 
@@ -369,32 +355,32 @@ void MainWindow::setupShapeOptions()
 
   _targetShapeOptionsDialogBox =
       new QGraphicsTargetShapeSettingsDialogBox("Target shape options",
-          _centralDisplay->targetShape(),
+          _liveDisplay->targetShape(),
           this);
 
-  _targetShapeActionsMenu.addAction(
-      action = createCheckableAction(QIcon(),
-          "Options..",
-          "Configure target shape options",
-          is_visible(_targetShapeOptionsDialogBox),
-          [this](bool checked) {
-            _targetShapeOptionsDialogBox->setVisible(checked);
-          }));
+  _targetShapeActionsMenu.addAction(action = createCheckableAction(QIcon(),
+      "Options..",
+      "Configure target shape options",
+      is_visible(_targetShapeOptionsDialogBox),
+      [this](bool checked) {
+        _targetShapeOptionsDialogBox->setVisible(checked);
+      }));
 
-  connect(_targetShapeOptionsDialogBox, &QGraphicsTargetShapeSettingsDialogBox::visibilityChanged,
+  QObject::connect(_targetShapeOptionsDialogBox, &QGraphicsTargetShapeSettingsDialogBox::visibilityChanged,
+      this,
       [this, action](bool visible) {
         action->setChecked(visible);
         if ( visible ) {
-          _centralDisplay->targetShape()->setVisible(true);
+          _liveDisplay->targetShape()->setVisible(true);
           _showTargetShapeAction->setChecked(true);
         }
       });
 
 
-  connect(_centralDisplay->targetShape(), &QGraphicsShape::itemChanged,
+  QObject::connect(_liveDisplay->targetShape(), &QGraphicsShape::itemChanged,
       this, &ThisClass::onCentralDisplayTargetShapeChanged);
 
-  connect(_centralDisplay->targetShape(), &QGraphicsShape::visibleChanged,
+  QObject::connect(_liveDisplay->targetShape(), &QGraphicsShape::visibleChanged,
       this, &ThisClass::onCentralDisplayTargetShapeChanged);
 
 
@@ -403,43 +389,38 @@ void MainWindow::setupShapeOptions()
   //
   _lineShapeOptionsDialogBox =
       new QGraphicsLineShapeSettingsDialogBox("Line shape options",
-          _centralDisplay->lineShape(),
+          _liveDisplay->lineShape(),
           this);
 
-  _lineShapeActionsMenu.addAction(
-      action = createCheckableAction(QIcon(),
-          "Options..",
-          "Configure line shape options",
-          is_visible(_lineShapeOptionsDialogBox),
-          [this](bool checked) {
-            _lineShapeOptionsDialogBox->setVisible(checked);
-          }));
+  _lineShapeActionsMenu.addAction(action = createCheckableAction(QIcon(),
+      "Options..",
+      "Configure line shape options",
+      is_visible(_lineShapeOptionsDialogBox),
+      [this](bool checked) {
+        _lineShapeOptionsDialogBox->setVisible(checked);
+      }));
 
-  connect(_lineShapeOptionsDialogBox, &QGraphicsLineShapeSettingsDialogBox::visibilityChanged,
+  QObject::connect(_lineShapeOptionsDialogBox, &QGraphicsLineShapeSettingsDialogBox::visibilityChanged,
+      this,
       [this, action](bool visible) {
-
         action->setChecked(visible);
-
         if ( visible ) {
-
-          _centralDisplay->lineShape()->setVisible(true);
+          _liveDisplay->lineShape()->setVisible(true);
           _showLineShapeAction->setChecked(visible);
         }
       });
 
-
-  connect(_centralDisplay->lineShape(), &QGraphicsShape::itemChanged,
+  QObject::connect(_liveDisplay->lineShape(), &QGraphicsShape::itemChanged,
       this, &ThisClass::onCentralDisplayLineShapeChanged);
 
-  connect(_centralDisplay->lineShape(), &QGraphicsShape::visibleChanged,
+  QObject::connect(_liveDisplay->lineShape(), &QGraphicsShape::visibleChanged,
       this, &ThisClass::onCentralDisplayLineShapeChanged);
 
 }
 
 void MainWindow::onCentralDisplayROIShapeChanged()
 {
-  QGraphicsRectShape *shape =
-      _centralDisplay->rectShape();
+  QGraphicsRectShape *shape = _liveDisplay->rectShape();
 
   if( shape ) {
 
@@ -449,12 +430,8 @@ void MainWindow::onCentralDisplayROIShapeChanged()
     }
     else {
 
-      const QRectF rc =
-          shape->sceneRect();
-
-      const QImagingCamera::sptr &currentCamera =
-          cameraControls_ctl->selectedCamera();
-
+      const QRectF rc = shape->sceneRect();
+      const QImagingCamera::sptr &currentCamera = cameraControls_ctl->selectedCamera();
       if( currentCamera ) {
         currentCamera->setRoi(QRect(rc.x(), rc.y(),
             rc.width(), rc.height()));
@@ -469,14 +446,11 @@ void MainWindow::onCentralDisplayROIShapeChanged()
       updateMeasurements();
     }
   }
-
 }
 
 void MainWindow::onCentralDisplayLineShapeChanged()
 {
-  QGraphicsLineShape *shape =
-      _centralDisplay->lineShape();
-
+  QGraphicsLineShape *shape = _liveDisplay->lineShape();
   if( shape ) {
 
     if( !shape->isVisible() ) {
@@ -485,8 +459,7 @@ void MainWindow::onCentralDisplayLineShapeChanged()
     }
     else {
 
-      const QLineF line =
-          shape->sceneLine();
+      const QLineF line = shape->sceneLine();
 
       const QPointF p1 = line.p1();
       const QPointF p2 = line.p2();
@@ -502,11 +475,11 @@ void MainWindow::onCentralDisplayLineShapeChanged()
 
       if( is_visible(profileGraph_ctl) ) {
 
-        QImageViewer::current_image_lock lock(_centralDisplay);
+        QImageViewer::current_image_lock lock(_liveDisplay);
 
         profileGraph_ctl->showProfilePlot(line,
-            _centralDisplay->currentImage(),
-            _centralDisplay->currentMask());
+            _liveDisplay->currentImage(),
+            _liveDisplay->currentMask());
       }
     }
   }
@@ -514,7 +487,7 @@ void MainWindow::onCentralDisplayLineShapeChanged()
 
 void MainWindow::onCentralDisplayTargetShapeChanged()
 {
-  const QGraphicsTargetShape *shape = _centralDisplay->targetShape();
+  const QGraphicsTargetShape *shape = _liveDisplay->targetShape();
   if( !shape->isVisible() ) {
     shape_status_ctl->hide();
     _showTargetShapeAction->setChecked(false);
@@ -533,8 +506,7 @@ void MainWindow::onPlotProfileDialogBoxVisibilityChanged(bool visible)
 
   if( is_visible(profileGraph_ctl) ) {
 
-    QGraphicsLineShape *shape =
-        _centralDisplay->lineShape();
+    QGraphicsLineShape *shape = _liveDisplay->lineShape();
 
     if( shape && !shape->isVisible() ) {
       shape->setVisible(true);
@@ -579,31 +551,27 @@ void MainWindow::setupMainToolbar()
 
   _mainToolbar->addWidget(_displayScaleControl = new QScaleSelectionButton());
   _displayScaleControl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-  connect(_displayScaleControl, &QScaleSelectionButton::scaleChanged,
+  QObject::connect(_displayScaleControl, &QScaleSelectionButton::scaleChanged, this,
       [this](int currentScale) {
-        _centralDisplay->setViewScale(currentScale);
+        _liveDisplay->setViewScale(currentScale);
       });
 
 
   ///////////////////////////////////////////////////////////////////
 
-  _mainToolbar->addAction(_showLiveThreadSettingsAction =
-      createCheckableAction(getIcon(ICON_bayer),
-          "Bayer",
-          "Configure debayer options",
-          is_visible(_liveThreadSettingsDialogBox),
-          this,
-          &ThisClass::onShowLiveThreadSettingsActionTriggered));
+  _mainToolbar->addAction(_showLiveThreadSettingsAction = createCheckableAction(getIcon(ICON_bayer),
+      "Bayer",
+      "Configure debayer options",
+      is_visible(_liveThreadSettingsDialogBox),
+      this,
+      &ThisClass::onShowLiveThreadSettingsActionTriggered));
 
   ///////////////////////////////////////////////////////////////////
 
-  //manToolbar_->addAction(showMeasureDisplayDialogBoxAction_);
-
-  _mainToolbar->addWidget(_measureActionsToolButton =
-      createToolButtonWithMenu(getIcon(ICON_measures),
-          "Measures",
-          "Measures menu",
-          &measuresMenu));
+  _mainToolbar->addWidget(_measureActionsToolButton = createToolButtonWithMenu(getIcon(ICON_measures),
+      "Measures",
+      "Measures menu",
+      &measuresMenu));
 
   ///////////////////////////////////////////////////////////////////
 }
@@ -638,23 +606,21 @@ void MainWindow::setupCameraControls()
 
   cameraControls_ctl->setCameraWriter(&_cameraWriter);
 
-  connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
+  QObject::connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged, this,
       [this]() {
 
-        const QImagingCamera::sptr & camera =
-            cameraControls_ctl->selectedCamera();
+        const QImagingCamera::sptr & camera = cameraControls_ctl->selectedCamera();
 
-        _liveView->setCamera(camera);
+        _liveThread->setCamera(camera);
 
         if ( camera ) {
-
-          connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
+          QObject::connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
               this, &ThisClass::onExposureStatusUpdate,
               Qt::QueuedConnection);
         }
       });
 
-  connect(&_cameraWriter, &QCameraWriter::statusUpdate,
+  QObject::connect(&_cameraWriter, &QCameraWriter::statusUpdate,
       this, &ThisClass::onCameraWriterStatusUpdate,
       Qt::QueuedConnection);
 
@@ -684,12 +650,12 @@ void MainWindow::setupPipelines()
   //pipelineCollection_.load();
   //pipelineSelector_ctl->setPipelineCollection(&pipelineCollection_);
   pipelineSelector_ctl->loadPipelines();
-  pipelineSelector_ctl->setLiveThread(_liveView);
+  pipelineSelector_ctl->setLiveThread(_liveThread);
 }
 
 void MainWindow::onImageProcessorParameterChanged()
 {
-  _centralDisplay->setFrameProcessor(imageProcessor_ctl->currentProcessor());
+  _liveDisplay->setCurrentProcessor(imageProcessor_ctl->currentProcessor());
 }
 
 void MainWindow::onMtfControlVisibilityChanged(bool visible)
@@ -703,7 +669,7 @@ void MainWindow::onMtfControlVisibilityChanged(bool visible)
 
 IMtfDisplay * MainWindow::getCurrentMtfDisplay()
 {
-  return _centralDisplay->mtfDisplayFunction();
+  return _liveDisplay;
 }
 
 
@@ -729,55 +695,29 @@ void MainWindow::onCurrentImageChanged()
   updateMeasurements();
 }
 
-
-
-//void MainWindow::updateMeasureChannels()
-//{
-//  if ( is_visible(measureDisplay) && is_visible(measureDisplay->measureSelector())) {
-//
-//    const c_data_frame::sptr & currentDataFrame =
-//        inputSourceView->currentFrame();
-//
-//    if ( currentDataFrame ) {
-//
-//      QStringList displayNames;
-//
-//      const c_data_frame::ImageDisplays & displays =
-//          currentDataFrame->get_available_image_displays();
-//
-//      for ( auto ii = displays.begin(); ii != displays.end(); ++ii) {
-//        displayNames.append(ii->first.c_str());
-//      }
-//
-//
-//      measureDisplay->measureSelector()->updateAvailableDataChannels(displayNames);
-//    }
-//  }
-//}
-
 void MainWindow::updateMeasurements()
 {
   if( is_visible(profileGraph_ctl) ) {
 
-    QImageViewer::current_image_lock lock(_centralDisplay);
+    QImageViewer::current_image_lock lock(_liveDisplay);
 
     profileGraph_ctl->showProfilePlot(profileGraph_ctl->currentLine(),
-        _centralDisplay->currentImage(),
-        _centralDisplay->currentMask());
+        _liveDisplay->currentImage(),
+        _liveDisplay->currentMask());
   }
 
-  if( !QMeasureProvider::requested_measures().empty() && _centralDisplay->rectShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() && _liveDisplay->rectShape()->isVisible() ) {
 
-    QImageViewer::current_image_lock lock(_centralDisplay);
+    QImageViewer::current_image_lock lock(_liveDisplay);
 
     QList<QMeasureProvider::MeasuredFrame> measuredFrames;
     QMeasureProvider::MeasuredFrame frame;
 
      const bool fOK =
          QMeasureProvider::compute(&frame,
-             _centralDisplay->currentImage(),
-             _centralDisplay->currentMask(),
-             _centralDisplay->rectShape()->iSceneRect());
+             _liveDisplay->currentImage(),
+             _liveDisplay->currentMask(),
+             _liveDisplay->rectShape()->iSceneRect());
 
      if ( fOK ) {
        measuredFrames.append(frame);
@@ -787,10 +727,6 @@ void MainWindow::updateMeasurements()
        CF_DEBUG("FIXME: check if this measurement is handled correctly");
        Q_EMIT QMeasureProvider::instance()->framesMeasured(measuredFrames);
      }
-
-//    QMeasureProvider::compute(centralDisplay_->currentImage(),
-//        centralDisplay_->currentMask(),
-//        centralDisplay_->rectShape()->iSceneRect());
   }
 }
 
@@ -805,11 +741,11 @@ void MainWindow::onCurrentDisplayImageChanged()
 
     _lockDiplayImageWriter = true;
 
-    if ( !_centralDisplay->isVisible() ) {
+    if ( !_liveDisplay->isVisible() ) {
       _diplayImageWriter.stop();
     }
-    else if ( !_centralDisplay->displayImage().empty() ) {
-      _diplayImageWriter.write(_centralDisplay->displayImage());
+    else if ( !_liveDisplay->displayImage().empty() ) {
+      _diplayImageWriter.write(_liveDisplay->displayImage());
     }
 
     _lockDiplayImageWriter = false;
@@ -819,13 +755,11 @@ void MainWindow::onCurrentDisplayImageChanged()
 void MainWindow::setupIndigoFocuser()
 {
 #if HAVE_INDIGO
-
   static bool inidigo_initialized = false;
   if( !inidigo_initialized ) {
 
-    if( !indigoClient_ ) {
-      indigoClient_ =
-          new QIndigoClient("SerImager", this);
+    if( !_indigoClient ) {
+      _indigoClient = new QIndigoClient("SerImager", this);
     }
 
     /* This shall be set only before connecting */
@@ -834,27 +768,27 @@ void MainWindow::setupIndigoFocuser()
 
     indigo_result status;
 
-    if( (status = indigoClient_->start()) != INDIGO_OK ) {
+    if( (status = _indigoClient->start()) != INDIGO_OK ) {
       QMessageBox::critical(this, "ERROR",
-          "indigoClient_.start() fails");
+          "_indigoClient.start() fails");
     }
-    else if( (status = indigoClient_->load_driver("indigo_focuser_focusdreampro")) ) {
+    else if( (status = _indigoClient->load_driver("indigo_focuser_focusdreampro")) ) {
       QMessageBox::critical(this, "ERROR",
-          "indigoClient_.loadIndigoDriver(indigo_focuser_focusdreampro) fails");
+          "_indigoClient.loadIndigoDriver(indigo_focuser_focusdreampro) fails");
     }
 
     inidigo_initialized = true;
 
-    indigoFocuserDock_ =
+    _indigoFocuserDock =
         addCustomDock(this,
             Qt::RightDockWidgetArea,
             "indigoFocuserDock",
             "Indigo focuser",
-            indigoFocuser_ = new QIndigoFocuserWidget(this),
+            _indigoFocuser = new QIndigoFocuserWidget(this),
             menuView);
 
-    indigoFocuser_->setIndigoClient(indigoClient_);
-    indigoFocuserDock_->hide();
+    _indigoFocuser->setIndigoClient(_indigoClient);
+    _indigoFocuserDock->hide();
 
   }
 #endif // HAVE_INDIGO
@@ -873,9 +807,9 @@ void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
     if( !_liveThreadSettingsDialogBox ) {
 
       _liveThreadSettingsDialogBox = new QLiveThreadSettingsDialogBox(this);
-      _liveThreadSettingsDialogBox->setLiveThread(_liveView);
+      _liveThreadSettingsDialogBox->setLiveThread(_liveThread);
 
-      connect(_liveThreadSettingsDialogBox, &QLiveThreadSettingsDialogBox::visibilityChanged,
+      QObject::connect(_liveThreadSettingsDialogBox, &QLiveThreadSettingsDialogBox::visibilityChanged, this,
           [this](bool visible) {
             if ( _showLiveThreadSettingsAction ) {
               _showLiveThreadSettingsAction->setChecked(visible);

@@ -42,8 +42,7 @@ static bool read_input_frame(const c_input_source::sptr & source,
 
   if ( is_bayer_pattern(colorid) ) {
 
-    DEBAYER_ALGORITHM algo =
-        default_debayer_algorithm();
+    DEBAYER_ALGORITHM algo = default_debayer_algorithm();
 
     switch (algo) {
 

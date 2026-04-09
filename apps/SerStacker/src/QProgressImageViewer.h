@@ -18,27 +18,27 @@ namespace serstacker {
 class QProgressImageViewer :
     public QImageEditor,
     public IMtfDisplay,
-    public QImageDisplayFunction
+    public ImageDisplayFunction
 
 {
   Q_OBJECT;
-  Q_INTERFACES(IMtfDisplay)
+//  Q_INTERFACES(IMtfDisplay)
 public:
   typedef QProgressImageViewer ThisClass;
   typedef QImageEditor Base;
 
   QProgressImageViewer(QWidget * parent = nullptr);
 
-  IMtfDisplay * mtfDisplay();
-  const IMtfDisplay * mtfDisplay() const;
+//  IMtfDisplay * mtfDisplay();
+//  const IMtfDisplay * mtfDisplay() const;
 
-Q_SIGNALS:
-  void displayChannelsChanged();
-  void parameterChanged();
-  void displayImageChanged();
+//Q_SIGNALS:
+//  void displayChannelsChanged();
+//  void parameterChanged();
+//  void displayImageChanged();
 
 
-protected: // QImageDisplayFunction
+protected: // ImageDisplayFunction
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
 

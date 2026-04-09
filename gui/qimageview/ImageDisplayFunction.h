@@ -1,5 +1,5 @@
 /*
- * QImageDisplayFunction.h
+ * ImageDisplayFunction.h
  *
  *  Created on: Apr 22, 2022
  *      Author: amyznikov
@@ -12,12 +12,12 @@
 #include <QtCore/QtCore>
 #include <opencv2/opencv.hpp>
 
-class QImageDisplayFunction
+class ImageDisplayFunction
 {
 public:
-  typedef QImageDisplayFunction ThisClass;
+  typedef ImageDisplayFunction ThisClass;
 
-  virtual ~QImageDisplayFunction() = default;
+  virtual ~ImageDisplayFunction() = default;
 
   virtual void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) = 0;

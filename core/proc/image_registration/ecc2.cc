@@ -1289,8 +1289,6 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
     }
   }
 
-  CF_DEBUG("_pyramid.zize=%zu pyramid.back()-> %dx%d", _pyramid.size(), _pyramid.back()->reference_image().cols, _pyramid.back()->reference_image().rows);
-
   return true;
 }
 
@@ -1364,10 +1362,6 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
     _pyramid[lvl]->release_current_image();
   }
 
-
-  CF_DEBUG("_pyramid.zize=%zu pyramid.back()-> %dx%d", _pyramid.size(), _pyramid.back()->current_image().cols, _pyramid.back()->current_image().rows);
-
-
   return true;
 }
 
@@ -1384,8 +1378,6 @@ bool c_ecch::align(cv::InputArray current_image, cv::InputArray current_mask)
 
 bool c_ecch::align()
 {
-  // CF_DEBUG("image_transform_=%p maxlevel_=%d", image_transform_, maxlevel_);
-
   if( _pyramid.empty() ) {
     CF_ERROR("c_ecch: no reference image was set");
     return false;
@@ -1398,21 +1390,14 @@ bool c_ecch::align()
 
   const int lvls = _pyramid.size();
 
-  CF_DEBUG("lvls=%d", lvls);
-
   int lvl = lvls - 1;
   while (lvl > 0 && _pyramid[lvl]->current_image().empty()) {
     --lvl;
   }
 
   if ( lvl > 0 ) {
-
-    const cv::Size size0 =
-        _pyramid[0]->reference_image().size();
-
-    const cv::Size size1 =
-        _pyramid[lvl]->reference_image().size();
-
+    const cv::Size size0 = _pyramid[0]->reference_image().size();
+    const cv::Size size1 = _pyramid[lvl]->reference_image().size();
     _image_transform->scale_transfrom((double) size1.width / (double) size0.width);
   }
 
@@ -1424,18 +1409,12 @@ bool c_ecch::align()
       CF_ERROR("pyramid_[lvl=%d]->align() fails", lvl);
     }
     else if( lvl > 0 ) {
-
-      const cv::Size size0 =
-          _pyramid[lvl]->reference_image().size();
-
-      const cv::Size size1 =
-          _pyramid[lvl - 1]->reference_image().size();
-
+      const cv::Size size0 = _pyramid[lvl]->reference_image().size();
+      const cv::Size size1 = _pyramid[lvl - 1]->reference_image().size();
       _image_transform->scale_transfrom((double) size1.width / (double) size0.width);
     }
 
-    _num_iterations +=
-        _pyramid[lvl]->num_iterations();
+    _num_iterations += _pyramid[lvl]->num_iterations();
   }
 
   return true;
@@ -1479,12 +1458,6 @@ bool c_ecc_forward_additive::set_reference_image(cv::InputArray reference_image,
 
 bool c_ecc_forward_additive::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
 {
-
-//  if ( !precompute_jac ) {
-//    jac.clear();
-//  }
-
-
   if( !base::set_current_image(current_image, current_mask) ) {
     CF_ERROR("base::set_current_image() fails");
     return false;

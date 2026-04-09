@@ -10,12 +10,11 @@
 #include <gui/widgets/settings.h>
 #include <core/debug.h>
 
-IMtfDisplay::IMtfDisplay(const QString & prefix) :
-  _prefix(prefix.isEmpty() ? "IMtfDisplay" : prefix)
+IMtfDisplay::IMtfDisplay(QObject * parent, const QString & prefix) :
+    _events(new QMtfDisplayEvents(parent)),
+    _prefix(prefix.isEmpty() ? "IMtfDisplay" : prefix)
 {
-
 }
-
 
 
 ////////
@@ -24,9 +23,7 @@ IMtfDisplay::IMtfDisplay(const QString & prefix) :
 IMtfDisplay::DisplayParams & IMtfDisplay::addDisplay(DisplayMap & map,
     const QString & displayChannelName, double input_min, double input_max)
 {
-
-  DisplayParams & p =
-      map[displayChannelName];
+  DisplayParams & p = map[displayChannelName];
 
   p.mtf.set_input_range(input_min, input_max);
   p.mtf.set_output_range(0, 255);
@@ -172,7 +169,7 @@ void IMtfDisplay::setDisplayChannel(const QString & v)
 {
   if ( _displayChannel != v ) {
     _displayChannel = v;
-    Q_EMIT displayChannelsChanged();
+    Q_EMIT _events->displayChannelsChanged();
   }
 }
 
@@ -186,7 +183,7 @@ const QString & IMtfDisplay::displayChannel() const
 //  const DisplayMap::iterator ii = _displays.find(_displayChannel);
 //  if ( ii != _displays.end() ) {
 //    ii->second.mtf.set_input_range(min, max);
-//    Q_EMIT parameterChanged();
+//    Q_EMIT _events->parameterChanged();
 //  }
 //}
 
@@ -206,7 +203,7 @@ void IMtfDisplay::setMtf(double imin, double imax, const c_mtf_options * opts)
     if ( opts ) {
       ii->second.mtf.set_opts(*opts);
     }
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -223,7 +220,7 @@ void IMtfDisplay::setlclip(double v)
   const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.set_lclip(v);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -238,7 +235,7 @@ void IMtfDisplay::sethclip(double v)
   const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.set_hclip(v);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -253,7 +250,7 @@ void IMtfDisplay::setShadows(double v)
   const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.set_shadows(v);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -268,7 +265,7 @@ void IMtfDisplay::setHighlights(double v)
   const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.set_highlights(v);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -283,7 +280,7 @@ void IMtfDisplay::setMidtones(double v)
   const DisplayMap::iterator ii = _displays.find(_displayChannel);
   if ( ii != _displays.end() ) {
     ii->second.mtf.set_midtones(v);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -299,7 +296,7 @@ void IMtfDisplay::setColormap(COLORMAP v)
   if ( ii != _displays.end() ) {
     DisplayParams & p = ii->second;
     createLut(p.colormap = v, p.lut, p.invert_colormap);
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -319,7 +316,7 @@ void IMtfDisplay::setInvertColormap(bool v)
     DisplayParams & p = ii->second;
     if ( p.invert_colormap != v ) {
       createLut(p.colormap, p.lut, p.invert_colormap = v);
-      Q_EMIT parameterChanged();
+      Q_EMIT _events->parameterChanged();
     }
   }
 }
@@ -337,7 +334,7 @@ void IMtfDisplay::setAutoClip(bool v)
 {
   if ( _autoClip != v ) {
     _autoClip = v;
-    Q_EMIT parameterChanged();
+    Q_EMIT _events->parameterChanged();
   }
 }
 
@@ -350,37 +347,29 @@ IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 {
   DisplayMap::iterator pos = _displays.find(_displayChannel);
   if ( pos == _displays.end())  {
-    CF_FATAL("FATAL APP BUG: displayType_='%s' not registered. displays_.size=%zu",
+    CF_FATAL("FATAL APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
         _displayChannel.toUtf8().constData(),
         _displays.size());
     exit(1);
   }
 
-  return pos->second;
+  auto & res = pos->second;
+  return res;
 }
 
 const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 {
   DisplayMap::const_iterator pos = _displays.find(_displayChannel);
   if ( pos == _displays.end())  {
-    CF_FATAL("APP BUG: displayType_='%s' not registered.displays_.size=%zu",
+    CF_FATAL("FATAL APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
         _displayChannel.toUtf8().constData(),
         _displays.size());
     exit(1);
   }
-  return pos->second;
+
+  const auto & res = pos->second;
+  return res;
 }
-
-//c_pixinsight_mtf& IMtfDisplay::mtf()
-//{
-//  return displayParams_.find(displayType_)->second.mtf;
-//}
-//
-//const c_pixinsight_mtf& IMtfDisplay::mtf() const
-//{
-//  return displayParams_.find(displayType_)->second.mtf;
-//}
-
 
 void IMtfDisplay::loadParameters()
 {
@@ -453,12 +442,12 @@ void IMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) c
 }
 
 
-QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
-    Base(parent),
-    IMtfDisplay(prefix)
-{
-}
-
+//QMtfDisplay::QMtfDisplay(const QString & prefix, QObject * parent) :
+//    Base(parent),
+//    IMtfDisplay(prefix)
+//{
+//}
+//
 
 
 

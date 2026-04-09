@@ -15,6 +15,25 @@
 #include <core/ssprintf.h>
 
 
+class QMtfDisplayEvents :
+    public QObject
+{
+  Q_OBJECT;
+public:
+  typedef QMtfDisplayEvents ThisClass;
+  typedef QObject Base;
+
+Q_SIGNALS:
+  void displayChannelsChanged();
+  void displayImageChanged();
+  void parameterChanged();
+
+protected:
+  friend class IMtfDisplay;
+  explicit QMtfDisplayEvents(QObject * parent) : Base(parent) {}
+};
+
+
 /**
  * Base interface for mtf display options
  */
@@ -28,21 +47,20 @@ public:
     bool invert_colormap = false;
   };
 
-  typedef std::map<QString, DisplayParams, std::less<QString>>
-      DisplayMap;
+  typedef std::map<QString, DisplayParams, std::less<QString>> DisplayMap;
 
-  IMtfDisplay(const QString & prefix = "");
-
+  IMtfDisplay(QObject * parent, const QString & prefix = "");
   virtual ~IMtfDisplay() = default;
 
+  QMtfDisplayEvents * mtfDisplayEvents() const
+  {
+    return _events;
+  }
 
   virtual QStringList displayChannels() const;
 
   virtual void setDisplayChannel(const QString & v);
   virtual const QString & displayChannel() const;
-
-  //virtual void setMtfInputRange(double min, double max);
-  //virtual void getMtfInputRange(double * min, double * max) const;
 
   virtual void setlclip(double v);
   virtual double lclip() const;
@@ -86,11 +104,6 @@ public:
   static DisplayParams & addDisplay(DisplayMap & map,
       const QString & displayChannelName, double input_min, double input_max);
 
-public: // events
-  virtual void displayChannelsChanged() = 0;
-  virtual void parameterChanged() = 0;
-  virtual void displayImageChanged() = 0;
-
 protected:
   void addDisplay(const QString & displayChannelName, double input_min, double input_max);
   static void createLut(COLORMAP colormap, cv::Mat3b & lut, bool invert_colormap);
@@ -115,31 +128,11 @@ protected:
 
 
 protected:
+  QMtfDisplayEvents * _events = nullptr;
   QString _displayChannel;
   DisplayMap _displays;
   bool _autoClip = false;
   QString _prefix;
-};
-
-Q_DECLARE_INTERFACE(IMtfDisplay, "IMtfDisplay");
-
-
-class QMtfDisplay :
-    public QObject,
-    public IMtfDisplay
-{
-  Q_OBJECT;
-  Q_INTERFACES(IMtfDisplay)
-public:
-  typedef QMtfDisplay ThisClass;
-  typedef QObject Base;
-
-  QMtfDisplay(const QString & prefix, QObject * parent = nullptr);
-
-Q_SIGNALS:
-  void displayChannelsChanged();
-  void parameterChanged();
-  void displayImageChanged();
 };
 
 #endif /* __QMtfDisplaySettings_h__ */

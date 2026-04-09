@@ -16,15 +16,14 @@
 
 class QGLCloudViewer;
 
-class QCloudViewMtfDisplay :
-    public QMtfDisplay
+class ICloudViewMtfDisplay :
+    public IMtfDisplay
 {
-  Q_OBJECT;
 public:
-  typedef QCloudViewMtfDisplay ThisClass;
-  typedef QMtfDisplay Base;
+  typedef ICloudViewMtfDisplay ThisClass;
+  typedef IMtfDisplay Base;
 
-  QCloudViewMtfDisplay(QGLCloudViewer * cloudView);
+  ICloudViewMtfDisplay(QGLCloudViewer * cloudView);
 
   QGLCloudViewer * cloudView() const;
 
@@ -39,19 +38,15 @@ protected:
 };
 
 
-class QGLCloudViewer :
-    public QGLView
+class QGLCloudViewer : public QGLView,
+  public ICloudViewMtfDisplay
 {
   Q_OBJECT;
 public:
   typedef QGLCloudViewer ThisClass;
   typedef QGLView Base;
-  friend class QCloudViewMtfDisplay;
 
   QGLCloudViewer(QWidget* parent = nullptr);
-
-  QCloudViewMtfDisplay & mtfDisplay();
-  const QCloudViewMtfDisplay & mtfDisplay() const;
 
   void setPointSize(double v);
   double pointSize() const;
@@ -66,6 +61,8 @@ public:
 
   const std::vector<QPointCloud::sptr> & clouds() const;
   const QPointCloud::sptr & cloud(int index) const;
+
+  const std::vector<cv::Vec3b> & displayColors() const;
 
   bool openPlyFile(const QString & pathFileName);
   void add(const QPointCloud::sptr & cloud);
@@ -85,9 +82,8 @@ protected:
 
 protected:
   std::vector<QPointCloud::sptr> _clouds;
-  QCloudViewMtfDisplay _mtfDisplay;
-  std::vector<cv::Vec3f> _display_points;
-  std::vector<cv::Vec3b> _display_colors;
+  std::vector<cv::Vec3f> _displayPoints;
+  std::vector<cv::Vec3b> _displayColors;
 
   QVector3D _sceneOrigin;
   double _pointSize = 2;
@@ -111,8 +107,7 @@ public:
   QToolBar * toolbar();
   QGLCloudViewer * cloudView() const;
 
-  QCloudViewMtfDisplay & mtfDisplay();
-  const QCloudViewMtfDisplay & mtfDisplay() const;
+  //ICloudViewMtfDisplay * mtfDisplay() const;
 
   void setAutoShowViewTarget(bool v);
   bool autoShowViewTarget() const;

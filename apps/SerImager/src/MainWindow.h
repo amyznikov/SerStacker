@@ -71,8 +71,8 @@ protected:
   IMtfDisplay * getCurrentMtfDisplay() override;
 
 protected:
-  QLivePipelineThread * _liveView = nullptr;
-  QLiveDisplay * _centralDisplay = nullptr;
+  QLivePipelineThread * _liveThread = nullptr;
+  QLiveDisplay * _liveDisplay = nullptr;
   QCameraWriter _cameraWriter;
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
@@ -123,9 +123,9 @@ protected:
 
 
 #if HAVE_INDIGO
-  QIndigoClient * indigoClient_ = nullptr;
-  QIndigoFocuserWidget * indigoFocuser_ = nullptr;
-  QCustomDockWidget * indigoFocuserDock_ = nullptr;
+  QIndigoClient * _indigoClient = nullptr;
+  QIndigoFocuserWidget * _indigoFocuser = nullptr;
+  QCustomDockWidget * _indigoFocuserDock = nullptr;
 #endif // HAVE_INDIGO
 
 

@@ -14,30 +14,33 @@
  * 2x downsampling step by rejecting each EVEN row and column,
  *    keep only uneven
  * */
-void downstrike_even(cv::InputArray src, cv::Mat & dst,
-    const cv::Size & size = cv::Size());
+bool downstrike_even(cv::InputArray src, cv::OutputArray dst,
+    cv::Size size = cv::Size());
 
 /*
- * 2x upsampling step by injecting EVEN ZERO rows and columns ...
+ * 2x downsampling step by rejecting each UNEVEN row and column,
+ *    keep only even (0, 2, 4...)
  * */
-void upject_even(cv::InputArray _src, cv::Mat & dst,
-    cv::Size dstSize,
-    cv::Mat * _zmask = NULL, int zmdepth = -1);
-
+bool downstrike_uneven(cv::InputArray src, cv::OutputArray dst,
+    cv::Size size = cv::Size());
 
 /*
- * 2x downsampling step by rejecting each UNEVEN (ODD) row and column,
- *    keep only even
+ * 2x upsampling step by injecting EVEN ZERO-VALUED rows and columns ...
+ * If optionalOutputZmask output is requested,
+ * it will contain single-channel image of requested zmaskDepth (CV_8U by default)
+ * with non-zero values for pixels copied rom src and zeros for empty (injected) pixels
  * */
-void downstrike_uneven(cv::InputArray _src, cv::Mat & dst,
-    const cv::Size & size = cv::Size());
-
+bool upject_even(cv::InputArray _src, cv::OutputArray dst, cv::Size dstSize,
+    cv::OutputArray zmask = cv::noArray(),
+    int zdepth = -1);
 
 /*
- * 2x upsampling step by injecting UNEVEN ZERO rows and columns ...
+ * 2x upsampling step by injecting UNEVEN ZERO-VALUED rows and columns ...
+ * Keep only EVEN (0, 2, 4...) positions from src.
  * */
-void upject_uneven(cv::InputArray _src, cv::Mat & dst, cv::Size dstSize,
-    cv::Mat * _zmask = NULL, int zmdepth = -1);
+bool upject_uneven(cv::InputArray src, cv::OutputArray dst, cv::Size dstSize,
+    cv::OutputArray zmask = cv::noArray(),
+    int zdepth = -1);
 
 
 enum DOWNSTRIKE_MODE {

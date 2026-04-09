@@ -15,12 +15,12 @@
 
 
 
-class QCloudViewDisplayFunction
+class CloudViewDisplayFunction
 {
 public:
-  typedef QCloudViewDisplayFunction ThisClass;
+  typedef CloudViewDisplayFunction ThisClass;
 
-  virtual ~QCloudViewDisplayFunction() = default;
+  virtual ~CloudViewDisplayFunction() = default;
 
   virtual void createDisplayPoints(cv::InputArray currentPoints,
       cv::InputArray currentColors,
@@ -50,8 +50,8 @@ public:
 
   QGLPointCloudView(QWidget* parent = nullptr);
 
-  void setDisplayFunction(QCloudViewDisplayFunction * displayFunc);
-  QCloudViewDisplayFunction * displayFunction() const;
+  void setDisplayFunction(CloudViewDisplayFunction * displayFunc);
+  CloudViewDisplayFunction * displayFunction() const;
 
   void setPointSize(double v);
   double pointSize() const;
@@ -106,7 +106,7 @@ protected:
 
   std::vector<CloudSettings> _cloudSettings;
 
-  QCloudViewDisplayFunction * _displayFunction = nullptr;
+  CloudViewDisplayFunction * _displayFunction = nullptr;
 
   QVector3D _sceneOrigin;
   double _pointSize = 2;

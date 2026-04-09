@@ -192,9 +192,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
   else {
 
-    const DEBAYER_ALGORITHM algo =
-        input_options.debayer_method;
-
+    const DEBAYER_ALGORITHM algo = input_options.debayer_method;
     if ( save_raw_bayer ) {
 
       _raw_bayer_colorid =

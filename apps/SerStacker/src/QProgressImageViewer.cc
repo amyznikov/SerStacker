@@ -18,7 +18,7 @@ namespace serstacker {
 
 QProgressImageViewer::QProgressImageViewer(QWidget * parent) :
     Base(parent),
-    IMtfDisplay("QProgressImageViewer")
+    IMtfDisplay(this, "QProgressImageViewer")
 {
   scene()->setBackgroundBrush(Qt::darkGray);
 
@@ -27,22 +27,22 @@ QProgressImageViewer::QProgressImageViewer(QWidget * parent) :
   setDisplayFunction(this);
 
   connect(this, &QImageViewer::displayImageChanged,
-      this, &ThisClass::displayImageChanged);
+      mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged);
 
-  connect(this, &ThisClass::parameterChanged,
+  connect(mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged,
       this, &ThisClass::updateDisplay);
 
 }
 
-IMtfDisplay * QProgressImageViewer::mtfDisplay()
-{
-  return this;
-}
-
-const IMtfDisplay * QProgressImageViewer::mtfDisplay() const
-{
-  return this;
-}
+//IMtfDisplay * QProgressImageViewer::mtfDisplay()
+//{
+//  return this;
+//}
+//
+//const IMtfDisplay * QProgressImageViewer::mtfDisplay() const
+//{
+//  return this;
+//}
 
 void QProgressImageViewer::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth)

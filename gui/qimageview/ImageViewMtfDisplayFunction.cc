@@ -1,77 +1,44 @@
 /*
- * QImageViewMtfDisplayFunction.cc
+ * ImageViewMtfDisplayFunction.cc
  *
  *  Created on: Jan 6, 2023
  *      Author: amyznikov
  */
 
-#include "QImageViewMtfDisplayFunction.h"
+#include "ImageViewMtfDisplayFunction.h"
 #include <core/proc/histogram.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/minmax.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-QImageViewMtfDisplayFunction::QImageViewMtfDisplayFunction(QImageViewer * imageViewer, const QString & prefix) :
-  QMtfDisplay(prefix, imageViewer),
+ImageViewMtfDisplayFunction::ImageViewMtfDisplayFunction(QImageViewer * imageViewer, const QString & prefix) :
+  IMtfDisplay(imageViewer, prefix),
   _imageViewer(imageViewer)
 {
-  QMtfDisplay::_displayChannel = "PIXEL_VALUE";
-  QMtfDisplay::addDisplay(QMtfDisplay::_displayChannel, -1, -1);
+  IMtfDisplay::_displayChannel = "PIXEL_VALUE";
+  IMtfDisplay::addDisplay(IMtfDisplay::_displayChannel, -1, -1);
 }
 
-QImageViewer * QImageViewMtfDisplayFunction::imageViewer() const
+QImageViewer * ImageViewMtfDisplayFunction::imageViewer() const
 {
   return _imageViewer;
 }
 
-void QImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
+void ImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
 
   if ( _imageViewer ) {
-
-    const cv::Mat & image =
-        _imageViewer->currentImage();
-
-    const cv::Mat & mask =
-        _imageViewer->currentMask();
-
+    const cv::Mat & image = _imageViewer->currentImage();
+    const cv::Mat & mask = _imageViewer->currentMask();
     if ( !image.empty() ) {
       getminmax(image, minval, maxval, mask);
     }
   }
 }
-//
-//void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-//{
-//  if( !imageViewer_ ) {
-//    H.release();
-//  }
-//  else {
-//
-//    const cv::Mat &image =
-//        imageViewer_->currentImage();
-//
-//    const cv::Mat &mask =
-//        imageViewer_->currentMask();
-//
-//    if( image.empty() ) {
-//      H.release();
-//    }
-//    else {
-//
-//      create_histogram(image, mask,
-//          H,
-//          hmin, hmax,
-//          256,
-//          false,
-//          false);
-//    }
-//  }
-//}
 
-void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
+void ImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)
 {
   if ( !_imageViewer ) {
     H.release();
@@ -85,11 +52,10 @@ void QImageViewMtfDisplayFunction::getInputHistogramm(cv::OutputArray H, double 
         cumulative,
         normalized);
   }
-
 }
 
 
-void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
+void ImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
 {
   if ( _imageViewer ) {
 
@@ -129,13 +95,12 @@ void QImageViewMtfDisplayFunction::getOutputHistogramm(cv::OutputArray H, double
 
 }
 
-void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
+void ImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth)
 {
   if ( !currentImage.empty() ) {
 
-    const DisplayParams & opts =
-        displayParams();
+    const DisplayParams & opts = displayParams();
 
     const bool needColormap =
         opts.colormap != COLORMAP_NONE &&
@@ -155,7 +120,7 @@ void QImageViewMtfDisplayFunction::createDisplayImage(cv::InputArray currentImag
 }
 
 
-void QImageViewMtfDisplayFunction::getMtfCurve(std::vector<float> & cy, size_t n)
+void ImageViewMtfDisplayFunction::getMtfCurve(std::vector<float> & cy, size_t n)
 {
   DisplayParams &opts = displayParams();
   c_mtf *mtf = &opts.mtf;
@@ -163,19 +128,15 @@ void QImageViewMtfDisplayFunction::getMtfCurve(std::vector<float> & cy, size_t n
 
 }
 
-bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
+bool ImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::OutputArray displayImage, int ddepth)
 {
   if( currentImage.empty() ) {
     return false;
   }
 
-  DisplayParams &opts =
-      displayParams();
-
-  c_mtf *mtf =
-      &opts.mtf;
-
+  DisplayParams &opts = displayParams();
+  c_mtf *mtf = &opts.mtf;
 
   c_mtf_adjustment a;
 
@@ -192,7 +153,7 @@ bool QImageViewMtfDisplayFunction::applyMtf(cv::InputArray currentImage, cv::Inp
   return true;
 }
 
-bool QImageViewMtfDisplayFunction::applyColorMap(cv::InputArray displayImage, cv::InputArray displayMask,
+bool ImageViewMtfDisplayFunction::applyColorMap(cv::InputArray displayImage, cv::InputArray displayMask,
     cv::OutputArray colormapImage)
 {
   if( displayImage.empty() || displayImage.type() != CV_8UC1 ) {

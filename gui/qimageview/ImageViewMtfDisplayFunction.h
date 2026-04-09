@@ -1,5 +1,5 @@
 /*
- * QImageViewMtfDisplayFunction.h
+ * ImageViewMtfDisplayFunction.h
  *
  *  Created on: Jan 6, 2023
  *      Author: amyznikov
@@ -12,20 +12,18 @@
 #include <gui/qmtf/QMtfDisplay.h>
 #include "QImageViewer.h"
 
-class QImageViewMtfDisplayFunction :
-    public QMtfDisplay,
-    public QImageDisplayFunction
+class ImageViewMtfDisplayFunction :
+    public IMtfDisplay,
+    public ImageDisplayFunction
 {
-  Q_OBJECT;
 public:
-  typedef QImageViewMtfDisplayFunction ThisClass;
+  typedef ImageViewMtfDisplayFunction ThisClass;
 
-  QImageViewMtfDisplayFunction(QImageViewer * imageViewer,
+  ImageViewMtfDisplayFunction(QImageViewer * imageViewer,
       const QString & prefix = "");
 
   QImageViewer * imageViewer() const;
 
-  //QStringList displayChannels() const override;
   void getInputDataRange(double * minval, double * maxval) const override;
   void getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative = false, bool normalized = false) override;
   void getOutputHistogramm(cv::OutputArray H, double * hmin, double * hmax) override;
@@ -34,6 +32,7 @@ public:
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
 
+protected:
   bool applyMtf(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::OutputArray displayImage, int ddepth = CV_8U);
 

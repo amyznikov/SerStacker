@@ -64,11 +64,6 @@ protected:
   DEBAYER_ALGORITHM _debayerAlgorithm = DEBAYER_DEFAULT;
   bool _filterBadPixels = false;
   double _badPixelsVariationThreshold = 5;
-
-//  VLO_DATA_CHANNEL vlo_data_channel_ =
-//      VLO_DATA_CHANNEL_AMBIENT;
-
-
 };
 
 #endif /* __QImageFileEditor_h__ */

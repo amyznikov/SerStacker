@@ -5,11 +5,13 @@
  *      Author: amyznikov
  */
 #include "downstrike.h"
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
-#include <tbb/tbb.h>
 #include <core/debug.h>
 
-
+#if HAVE_TBB
+# include <tbb/tbb.h>
+#endif
 
 template<>
 const c_enum_member* members_of<DOWNSTRIKE_MODE>()
@@ -23,576 +25,348 @@ const c_enum_member* members_of<DOWNSTRIKE_MODE>()
   return members;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
-using namespace cv;
-
-
-/*
- * for single-channel images
- *  REMOVE each EVEN row and column,
- *    keep only uneven
- * */
-template<class T>
-static void downstrike_even_1c(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
+template<typename T, typename Func>
+static inline void run_loop(T start, T end, Func&& f)
 {
-  cv::Mat tmp;
-
-  if( dst_size.empty() ) {
-    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
-  }
-
-
-  cv::Mat &dst =
-      src.data == _dst.data ? tmp :
-          _dst;
-
-  dst.create(dst_size, src.type());
-  dst.setTo(0);
-
-  const int ymax = 2 * (dst.rows - 1) + 1 < src.rows ? dst.rows : dst.rows - 1;
-  const int xmax = 2 * (dst.cols - 1) + 1 < src.cols ? dst.cols : dst.cols - 1;
-
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, ymax, 64),
-      [&src, &dst, xmax] (const range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          const T * srcp = src.ptr<const T>(2 * y + 1);
-          T * dstp = dst.ptr<T>(y);
-          for ( int x = 0; x < xmax; ++x ) {
-            dstp[x] = srcp[2 * x + 1];
-          }
-        }
-      });
-
-  if ( dst.data != _dst.data ) {
-    _dst = std::move(dst);
-  }
+#if HAVE_TBB
+    tbb::parallel_for(start, end, f, tbb::static_partitioner());
+#else
+    for (T i = start; i < end; ++i) {
+      f(i);
+    }
+#endif
 }
 
-
 /*
- * for single-channel images
- *  REMOVE each UNEVEN (ODD) row and column,
- *    keep only even
+ * 2x downsampling step by rejecting each EVEN row and column, keep only uneven
  * */
-template<class T>
-static void downstrike_uneven_1c(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
+template<class _Tp>
+static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsize)
 {
-  cv::Mat tmp;
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int src_channels = _src.channels();
 
-  if( dst_size.empty() ) {
-    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  const cv::Mat_<_Tp> src = _src.getMat();
+
+  if (dsize.empty()) {
+    dsize = cv::Size((src_cols + 1) / 2, (src_rows + 1) / 2);
+  }
+  else if (std::abs(dsize.width * 2 - src_cols) > 2 || std::abs(dsize.height * 2 - src_rows) > 2) {
+    CF_ERROR("Invalid dst_size = %dx%d requested for src.size = %dx%d",
+        dsize.width, dsize.height, src_cols, src_rows);
+    return false;
   }
 
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
-  dst.create(dst_size, src.type());
-  dst.setTo(0);
+  cv::Mat tmp(dsize, _src.type());
+  cv::Mat_<_Tp> dst = tmp;
 
-  const int ymax = dst.rows;
-  const int xmax = dst.cols;
+  const int ymax = 2 * (dsize.height - 1) + 1 < src_rows ? dsize.height : dsize.height - 1;
+  const int xmax = 2 * (dsize.width - 1) + 1 < src_cols ? dsize.width : dsize.width - 1;
 
-  typedef tbb::blocked_range<int> range;
-  tbb::parallel_for(range(0, ymax, 64),
-      [&src, &dst, xmax] (const range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          const T * srcp = src.ptr<const T>(2 * y);
-          T * dstp = dst.ptr<T>(y);
-          for ( int x = 0; x < xmax; ++x ) {
-            dstp[x] = srcp[2 * x];
-          }
-        }
-      });
-
-  if ( dst.data != _dst.data ) {
-    _dst = std::move(dst);
-  }
-}
-
-
-
-
-/*
- * for multi-channel images
- *  REMOVE each EVEN row and column,
- *    keep only uneven
- * */
-static void downstrike_even_mc(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
-{
-  if( dst_size.empty() ) {
-    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
-  }
-
-  cv::Mat tmp;
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
-
-  dst.create(dst_size, src.type());
-  dst.setTo(0);
-
-  const int ymax = 2 * (dst.rows - 1) + 1 < src.rows ? dst.rows : dst.rows - 1;
-  const int xmax = 2 * (dst.cols - 1) + 1 < src.cols ? dst.cols : dst.cols - 1;
-  const size_t elem_size = src.elemSize();
-
-  for ( int y = 0; y < ymax; ++y ) {
-    const uint8_t * s = src.ptr(2 * y + 1);
-    uint8_t * d = dst.ptr(y);
+  run_loop(0, ymax, [&, src_channels, xmax](int y) {
+    const _Tp * srcp = src[2 * y + 1];
+    _Tp * dstp = dst[y];
     for ( int x = 0; x < xmax; ++x ) {
-      memcpy(d + x * elem_size, s + (2 * x + 1) * elem_size, elem_size);
+      for ( int c = 0; c < src_channels; ++c ) {
+        dstp[x * src_channels + c] = srcp[(2 * x + 1) * src_channels + c];
+      }
     }
-  }
+  });
 
-  if ( dst.data != _dst.data ) {
-    _dst = std::move(dst);
+  _dst.move(tmp);
+
+  return true;
+}
+
+/*
+ * 2x downsampling step by rejecting each EVEN row and column, keep only uneven
+ * */
+bool downstrike_even(cv::InputArray src, cv::OutputArray dst, cv::Size size)
+{
+  switch (src.depth()) {
+  case CV_8U:
+    return _downstrike_even<uint8_t>(src, dst, size);
+  case CV_8S:
+    return _downstrike_even<int8_t>(src, dst, size);
+  case CV_16U:
+    return _downstrike_even<uint16_t>(src, dst, size);
+  case CV_16S:
+    return _downstrike_even<int16_t>(src, dst, size);
+  case CV_32S:
+    return _downstrike_even<int32_t>(src, dst, size);
+  case CV_32F:
+    return _downstrike_even<float>(src, dst, size);
+  case CV_64F:
+    return _downstrike_even<double>(src, dst, size);
+  default:
+    CF_ERROR("Not supported image depth %d", src.depth());
+  break;
   }
+  return false;
 }
 
 
 
 /*
- * for multi-channel images
- *  REMOVE each UNEVEN (ODD) row and column,
- *    keep only even
+ * 2x downsampling step by rejecting each UNEVEN row and column, keep only even (0, 2, 4...)
  * */
-static void downstrike_uneven_mc(const cv::Mat & src, cv::Mat & _dst, cv::Size dst_size)
+template<class _Tp>
+static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsize)
 {
-  cv::Mat tmp;
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int src_channels = _src.channels();
 
-  if( dst_size.empty() ) {
-    dst_size = cv::Size((src.cols + 1) / 2, (src.rows + 1) / 2);
+  if (_src.empty()) {
+    return false;
   }
 
-  cv::Mat & dst =
-      src.data == _dst.data ? tmp :
-          _dst;
+  const cv::Mat_<_Tp> src = _src.getMat();
 
-  dst.create(dst_size, src.type());
-  dst.setTo(0);
+  if (dsize.empty()) {
+    dsize = cv::Size((src_cols + 1) / 2, (src_rows + 1) / 2);
+  }
+  else if (std::abs(dsize.width * 2 - src_cols) > 2 || std::abs(dsize.height * 2 - src_rows) > 2) {
+    CF_ERROR("Invalid dst_size = %dx%d requested for src.size = %dx%d",
+        dsize.width, dsize.height, src_cols, src_rows);
+    return false;
+  }
 
-  const int ymax = dst.rows;
-  const int xmax = dst.cols;
-  const size_t elem_size = src.elemSize();
+  cv::Mat tmp(dsize, _src.type());
+  cv::Mat_<_Tp> dst = tmp;
 
-  for ( int y = 0; y < ymax; ++y ) {
-    const uint8_t * s = src.ptr(2 * y);
-    uint8_t * d = dst.ptr(y);
+  const int ymax = dsize.height;
+  const int xmax = dsize.width;
+
+  run_loop(0, ymax, [&, src_channels, xmax](int y) {
+    const _Tp * srcp = src[2 * y];
+    _Tp * dstp = dst[y];
     for ( int x = 0; x < xmax; ++x ) {
-      memcpy(d + x * elem_size, s + 2 * x * elem_size, elem_size);
-    }
-  }
-
-  if ( dst.data != _dst.data ) {
-    _dst = std::move(dst);
-  }
-}
-
-
-
-
-
-/*
- * 2x downsampling step by rejecting each EVEN row and column,
- *    keep only uneven
- * */
-void downstrike_even(cv::InputArray _src, cv::Mat & dst, const cv::Size & size)
-{
-  INSTRUMENT_REGION("");
-
- const Mat src =
-     _src.getMat();
-
-  if ( src.channels() > 1 ) {
-    downstrike_even_mc(src, dst, size);
-  }
-  else {
-    switch ( src.type() ) {
-    case CV_8U:
-      return downstrike_even_1c<uint8_t>(src, dst, size);
-    case CV_8S:
-      return downstrike_even_1c<int8_t>(src, dst, size);
-    case CV_16U:
-      return downstrike_even_1c<uint16_t>(src, dst, size);
-    case CV_16S:
-      return downstrike_even_1c<int16_t>(src, dst, size);
-    case CV_32F:
-      return downstrike_even_1c<float>(src, dst, size);
-    case CV_64F:
-      return downstrike_even_1c<double>(src, dst, size);
-    default:
-      return downstrike_even_mc(src, dst, size);
-    }
-  }
-}
-
-
-/*
- * 2x downsampling step by rejecting each UNEVEN (ODD) row and column,
- *    keep only even
- * */
-void downstrike_uneven(cv::InputArray _src, cv::Mat & dst, const cv::Size & size)
-{
-  const Mat src = _src.getMat();
-
-  if ( src.channels() > 1 ) {
-    downstrike_uneven_mc(src, dst, size);
-  }
-  else {
-    switch ( src.type() ) {
-    case CV_8U:
-      return downstrike_uneven_1c<uint8_t>(src, dst, size);
-    case CV_8S:
-      return downstrike_uneven_1c<int8_t>(src, dst, size);
-    case CV_16U:
-      return downstrike_uneven_1c<uint16_t>(src, dst, size);
-    case CV_16S:
-      return downstrike_uneven_1c<int16_t>(src, dst, size);
-    case CV_32F:
-      return downstrike_uneven_1c<float>(src, dst, size);
-    case CV_64F:
-      return downstrike_uneven_1c<double>(src, dst, size);
-    default:
-      return downstrike_uneven_mc(src, dst, size);
-    }
-  }
-}
-
-
-
-/*
- * 2x upsampling step by injecting EVEN ZERO rows and columns ...
- * */
-template<class T>
-static void upject_even_1c(const Mat & src, Mat & _dst, Size dstSize, Mat * _zmask = nullptr, int zmdepth = -1)
-{
-  cv::Mat tmp;
-  cv::Mat1b zmask;
-
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
-
-  dst.create(dstSize, src.type());
-  dst.setTo(0);
-
-  if ( _zmask ) {
-    zmask = Mat::zeros(dstSize, CV_8U);
-  }
-
-
-  const int ymax = 2 * (src.rows - 1) + 1 < dst.rows ? src.rows : src.rows - 1;
-  const int xmax = 2 * (src.cols - 1) + 1 < dst.cols ? src.cols : src.cols - 1;
-
-
-  typedef tbb::blocked_range<int> range;
-
-
-  if ( !_zmask ) {
-
-    tbb::parallel_for(range(0, ymax, 64),
-        [&src, &dst, xmax](const range & r ) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-            const T * srcp = src.ptr<const T>(y);
-            T * dstp = dst.ptr<T>(2 * y + 1);
-            for ( int x = 0; x < xmax; ++x ) {
-              dstp[2 * x + 1] = srcp[x];
-            }
-          }
-        });
-  }
-  else {
-    tbb::parallel_for(range(0, ymax, 64),
-        [&src, &dst, &zmask, xmax](const range & r ) {
-      for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-        const T * srcp = src.ptr<const T>(y);
-        T * dstp = dst.ptr<T>(2 * y + 1);
-        uint8_t * mskp = zmask.ptr<uint8_t>(2 * y + 1);
-        for ( int x = 0; x < xmax; ++x ) {
-          dstp[2 * x + 1] = srcp[x];
-          mskp[2 * x + 1] = 255;
-        }
+      for ( int c = 0; c < src_channels; ++c ) {
+        dstp[x * src_channels + c] = srcp[(2 * x) * src_channels + c];
       }
-    });
+    }
+  });
+
+  _dst.move(tmp);
+
+  return true;
+}
+
+/*
+ * 2x downsampling step by rejecting each UNEVEN row and column, keep only even (0, 2, 4...)
+ * */
+bool downstrike_uneven(cv::InputArray src, cv::OutputArray dst, cv::Size size)
+{
+  switch (src.depth()) {
+  case CV_8U:  return _downstrike_uneven<uint8_t>(src, dst, size);
+  case CV_8S:  return _downstrike_uneven<int8_t>(src, dst, size);
+  case CV_16U: return _downstrike_uneven<uint16_t>(src, dst, size);
+  case CV_16S: return _downstrike_uneven<int16_t>(src, dst, size);
+  case CV_32S: return _downstrike_uneven<int32_t>(src, dst, size);
+  case CV_32F: return _downstrike_uneven<float>(src, dst, size);
+  case CV_64F: return _downstrike_uneven<double>(src, dst, size);
+  default:
+    CF_ERROR("Not supported image depth %d", src.depth());
+    break;
+  }
+  return false;
+}
+
+/*
+ * 2x upsampling step by injecting EVEN ZERO-VALUED rows and columns ...
+ * If _zmask output is requested, it will contain single-channel image of
+ * requested zdepth type (CV_8U by default) with non-zero values for pixels copied from src
+ * and zeros for empty (injected) pixels
+ * */
+template<class _Tp>
+static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst,
+    cv::Size dsize, cv::OutputArray _zmask, int zdepth)
+{
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int src_channels = _src.channels();
+
+  if (_src.empty()) {
+    return false;
   }
 
-  if ( _dst.data != dst.data ) {
-    _dst = std::move(dst);
+  const cv::Mat_<_Tp> src = _src.getMat();
+
+  if (dsize.empty()) {
+    dsize = cv::Size(src.cols * 2, src.rows * 2);
+  }
+  else if (std::abs(dsize.width - src_cols * 2) > 2 ||  std::abs(dsize.height - src_rows * 2) > 2) {
+    CF_ERROR("Invalid dsize %dx%d for src %dx%d", dsize.width, dsize.height, src_cols, src_rows);
+    return false;
   }
 
-  if ( _zmask ) {
-    if ( CV_MAT_DEPTH(zmdepth) == CV_8U ) {
-      *_zmask = std::move(zmask);
+  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
+  cv::Mat_<_Tp> dst = tmp;
+
+  const bool zmask_requested = _zmask.needed();
+  cv::Mat1b zmask = zmask_requested ? cv::Mat1b::zeros(dsize) : cv::Mat1b();
+
+  const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
+  const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
+
+  run_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
+
+    const _Tp* srcp = src[y];
+    _Tp* dstp = dst[2 * y + 1];
+
+    uint8_t * zmp = zmask_requested ? zmask[2 * y + 1] : nullptr;
+
+    for (int x = 0; x < xmax; ++x) {
+      for (int c = 0; c < src_channels; ++c) {
+        dstp[(2 * x + 1) * src_channels + c] = srcp[x * src_channels + c];
+      }
+      if ( zmask_requested ) {
+        zmp[2 * x + 1] = uint8_t(255);
+      }
+    }
+  });
+
+  _dst.move(tmp);
+
+  if (zmask_requested) {
+
+    if (zdepth < 0) {
+      zdepth = _zmask.fixedType()  ? _zmask.depth() : CV_8U;
+    }
+
+    if (zdepth == zmask.depth()) {
+      _zmask.move(zmask);
     }
     else {
-      zmask.convertTo(*_zmask, CV_MAT_DEPTH(zmdepth), 1.0 / 255);
-    }
-  }
-}
-
-
-
-/*
- * 2x upsampling step by injecting EVEN ZERO rows and columns ...
- * */
-static void upject_even_mc(const Mat & src, Mat & _dst, Size dstSize, Mat * _zmask = NULL, int zmdepth=-1)
-{
-  Mat dst, zmask;
-  const uint8_t * srcp;
-  uint8_t * dstp;
-  uint8_t * mskp;
-
-  dst.create(dstSize, src.type());
-  dst.setTo(0);
-
-  if ( _zmask ) {
-    zmask =
-        Mat::zeros(dstSize, CV_8U);
-  }
-
-  const size_t elem_size =
-      src.elemSize();
-
-  const int ymax =
-      2 * (src.rows - 1) + 1 < dst.rows ?
-          src.rows :
-          src.rows - 1;
-
-  const int xmax =
-      2 * (src.cols - 1) + 1 < dst.cols ?
-          src.cols :
-          src.cols - 1;
-
-  if ( !_zmask ) {
-    for ( int y = 0; y < ymax; ++y ) {
-      srcp = src.ptr(y);
-      dstp = dst.ptr(2 * y + 1);
-      for ( int x = 0; x < xmax; ++x ) {
-        memcpy(dstp + (2 * x + 1) * elem_size, srcp + x * elem_size, elem_size);
-      }
-    }
-  }
-  else {
-    for ( int y = 0; y < ymax; ++y ) {
-      srcp = src.ptr(y);
-      dstp = dst.ptr(2 * y + 1);
-      mskp = zmask.ptr<uint8_t>(2 * y + 1);
-      for ( int x = 0; x < xmax; ++x ) {
-        memcpy(dstp + (2 * x + 1) * elem_size, srcp + x * elem_size, elem_size);
-        mskp[2 * x + 1] = 255;
-      }
+      double scale = 1, offset = 0;
+      getScaleOffset(zmask.depth(), zdepth, &scale, &offset);
+      zmask.convertTo(_zmask, zdepth, scale, offset);
     }
   }
 
-  _dst = dst;
-
-  if ( _zmask ) {
-    if ( CV_MAT_DEPTH(zmdepth) == CV_8U ) {
-      *_zmask = zmask;
-    }
-    else {
-      zmask.convertTo(*_zmask, CV_MAT_DEPTH(zmdepth), 1.0 / 255);
-    }
-  }
+  return true;
 }
 
 /*
- * 2x upsampling step by injecting UNEVEN ZERO rows and columns ...
+ * 2x upsampling step by injecting EVEN ZERO-VALUED rows and columns ...
+ * If zmask output is requested, it will contain single-channel image of
+ * requested zdepth type (CV_8U by default) with non-zero values for pixels copied from src
+ * and zeros for empty (injected) pixels
  * */
-template<class T>
-static void upject_uneven_1c(const Mat & src, Mat & _dst, Size dstSize, Mat * _zmask = nullptr, int zmdepth=-1)
+bool upject_even(cv::InputArray src, cv::OutputArray dst, cv::Size dstSize,
+    cv::OutputArray zmask, int zdepth)
 {
-  cv::Mat tmp;
-  cv::Mat1b zmask;
-
-  cv::Mat & dst = src.data == _dst.data ? tmp : _dst;
-
-  dst.create(dstSize, src.type());
-  dst.setTo(0);
-
-  if ( _zmask ) {
-    zmask = Mat::zeros(dstSize, CV_8U);
-  }
-
-
-  const int ymax = 2 * (src.rows - 1) < dst.rows ? src.rows : src.rows - 1;
-  const int xmax = 2 * (src.cols - 1) < dst.cols ? src.cols : src.cols - 1;
-
-  typedef tbb::blocked_range<int> range;
-
-  if ( !_zmask ) {
-
-    tbb::parallel_for(range(0, ymax, 64),
-        [&src, &dst, xmax](const range & r ) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-            const T * srcp = src.ptr<const T>(y);
-            T * dstp = dst.ptr<T>(2 * y);
-            for ( int x = 0; x < xmax; ++x ) {
-              dstp[2 * x] = srcp[x];
-            }
-          }
-        });
-  }
-  else {
-    tbb::parallel_for(range(0, ymax, 64),
-        [&src, &dst, &zmask, xmax](const range & r ) {
-      for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-        const T * srcp = src.ptr<const T>(y);
-        T * dstp = dst.ptr<T>(2 * y);
-        uint8_t * mskp = zmask.ptr<uint8_t>(2 * y);
-        for ( int x = 0; x < xmax; ++x ) {
-          dstp[2 * x] = srcp[x];
-          mskp[2 * x] = 255;
-        }
-      }
-    });
-  }
-
-  if ( _dst.data != dst.data ) {
-    _dst = std::move(dst);
-  }
-
-  if ( _zmask ) {
-    if ( CV_MAT_DEPTH(zmdepth) == CV_8U ) {
-      *_zmask = std::move(zmask);
-    }
-    else {
-      zmask.convertTo(*_zmask, CV_MAT_DEPTH(zmdepth), 1.0 / 255);
-    }
-  }
-}
-
-
-
-
-/*
- * 2x upsampling step by injecting UNEVEN ZERO rows and columns ...
- * */
-static void upject_uneven_mc(const Mat & src, Mat & _dst, Size dstSize, Mat * _zmask = NULL, int zmdepth=-1)
-{
-  Mat dst, zmask;
-  const uint8_t * srcp;
-  uint8_t * dstp;
-  uint8_t * mskp;
-
-  dst.create(dstSize, src.type());
-  dst.setTo(0);
-
-  if ( _zmask ) {
-    zmask = Mat::zeros(dstSize, CV_8U);
-  }
-
-  const size_t elem_size = src.elemSize();
-
-  const int ymax = 2 * (src.rows - 1) < dst.rows ? src.rows : src.rows - 1;
-  const int xmax = 2 * (src.cols - 1) < dst.cols ? src.cols : src.cols - 1;
-
-  if ( !_zmask ) {
-    for ( int y = 0; y < ymax; ++y ) {
-      srcp = src.ptr(y);
-      dstp = dst.ptr(2 * y);
-      for ( int x = 0; x < xmax; ++x ) {
-        memcpy(dstp + 2 * x * elem_size, srcp + x * elem_size, elem_size);
-      }
-    }
-  }
-  else {
-    for ( int y = 0; y < ymax; ++y ) {
-      srcp = src.ptr(y);
-      dstp = dst.ptr(2 * y);
-      mskp = zmask.ptr<uint8_t>(2 * y);
-      for ( int x = 0; x < xmax; ++x ) {
-        memcpy(dstp + 2 * x * elem_size, srcp + x * elem_size, elem_size);
-        mskp[2 * x] = 255;
-      }
-    }
-  }
-
-  _dst = dst;
-
-  if ( _zmask ) {
-    if ( CV_MAT_DEPTH(zmdepth) == CV_8U ) {
-      *_zmask = zmask;
-    }
-    else {
-      zmask.convertTo(*_zmask, CV_MAT_DEPTH(zmdepth), 1.0 / 255);
-    }
-  }
-}
-
-
-
-
-
-
-
-/*
- * 2x upsampling step by injecting EVEN ZERO rows and columns ...
- * */
-void upject_even(cv::InputArray _src, Mat & dst, cv::Size dstSize, Mat * _zmask, int zmdepth)
-{
-  INSTRUMENT_REGION("");
-
-  const Mat src =
-      _src.getMat();
-
-  if ( dstSize.empty() ) {
-    dstSize = src.size() * 2;
-  }
-
-  if ( src.channels() > 1 ) {
-    upject_even_mc(src, dst, dstSize, _zmask, zmdepth);
-  }
-  else {
-    switch ( src.type() ) {
-    case CV_8U:
-      return upject_even_1c<uint8_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_8S:
-      return upject_even_1c<int8_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_16U:
-      return upject_even_1c<uint16_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_16S:
-      return upject_even_1c<int16_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_32F:
-      return upject_even_1c<float>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_64F:
-      return upject_even_1c<double>(src, dst, dstSize, _zmask, zmdepth);
+  if ( !src.empty() ) {
+    switch (src.depth()) {
+    case CV_8U:  return _upject_even<uint8_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_8S:  return _upject_even<int8_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_16U: return _upject_even<uint16_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_16S: return _upject_even<int16_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_32S: return _upject_even<int32_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_32F: return _upject_even<float>(src, dst, dstSize, zmask, zdepth);
+    case CV_64F: return _upject_even<double>(src, dst, dstSize, zmask, zdepth);
     default:
-      return upject_even_mc(src, dst, dstSize, _zmask, zmdepth);
+      CF_ERROR("Not supported image depth %d", src.depth());
+      break;
     }
   }
+  return false;
 }
+
 
 
 /*
- * 2x upsampling step by injecting UNEVEN ZERO rows and columns ...
+ * 2x upsampling step by injecting UNEVEN ZERO-VALUED rows and columns ...
+ * Keep only EVEN (0, 2, 4...) positions from src.
  * */
-void upject_uneven(cv::InputArray _src, Mat & dst, Size dstSize, Mat * _zmask, int zmdepth)
+template<class _Tp>
+static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
+    cv::Size dsize, cv::OutputArray _zmask, int zdepth)
 {
-  const Mat src = _src.getMat();
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int src_channels = _src.channels();
 
-  if ( dstSize.empty() ) {
-    dstSize = src.size() * 2;
+  if (_src.empty()) {
+    return false;
   }
 
-  if ( src.channels() > 1 ) {
-    upject_uneven_mc(src, dst, dstSize, _zmask, zmdepth);
+  const cv::Mat_<_Tp> src = _src.getMat();
+
+  if (dsize.empty()) {
+    dsize = cv::Size(src_cols * 2, src_rows * 2);
   }
-  else {
-    switch ( src.type() ) {
-    case CV_8U:
-      return upject_uneven_1c<uint8_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_8S:
-      return upject_uneven_1c<int8_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_16U:
-      return upject_uneven_1c<uint16_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_16S:
-      return upject_uneven_1c<int16_t>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_32F:
-      return upject_uneven_1c<float>(src, dst, dstSize, _zmask, zmdepth);
-    case CV_64F:
-      return upject_uneven_1c<double>(src, dst, dstSize, _zmask, zmdepth);
-    default:
-      return upject_uneven_mc(src, dst, dstSize, _zmask, zmdepth);
+  else if (std::abs(dsize.width - src_cols * 2) > 2 ||  std::abs(dsize.height - src_rows * 2) > 2) {
+    CF_ERROR("Invalid dsize %dx%d for src %dx%d", dsize.width, dsize.height, src_cols, src_rows);
+    return false;
+  }
+
+  cv::Mat tmp = cv::Mat::zeros(dsize, _src.type());
+  cv::Mat_<_Tp> dst = tmp;
+
+  const bool zmask_requested = _zmask.needed();
+  cv::Mat1b zmask = zmask_requested ? cv::Mat1b::zeros(dsize) : cv::Mat1b();
+
+  const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
+  const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
+
+  run_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
+
+    const _Tp* srcp = src[y];
+    _Tp* dstp = dst[2 * y];
+
+    uint8_t * zmp = zmask_requested ? zmask[2 * y] : nullptr;
+
+    for (int x = 0; x < xmax; ++x) {
+      for (int c = 0; c < src_channels; ++c) {
+        dstp[2 * x * src_channels + c] = srcp[x * src_channels + c];
+      }
+      if (zmask_requested) {
+        zmp[2 * x] = uint8_t(255);
+      }
+    }
+  });
+
+  _dst.move(tmp);
+
+  if (zmask_requested) {
+    if (zdepth < 0) {
+      zdepth = _zmask.fixedType()  ? _zmask.depth() : CV_8U;
+    }
+    if (zdepth == zmask.depth()) {
+      _zmask.move(zmask);
+    }
+    else {
+      double scale = 1, offset = 0;
+      getScaleOffset(zmask.depth(), zdepth, &scale, &offset);
+      zmask.convertTo(_zmask, zdepth, scale, offset);
     }
   }
+
+  return true;
 }
 
-
+bool upject_uneven(cv::InputArray src, cv::OutputArray dst, cv::Size dstSize,
+    cv::OutputArray zmask, int zdepth)
+{
+  if (!src.empty()) {
+    switch (src.depth()) {
+    case CV_8U:  return _upject_uneven<uint8_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_8S:  return _upject_uneven<int8_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_16U: return _upject_uneven<uint16_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_16S: return _upject_uneven<int16_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_32S: return _upject_uneven<int32_t>(src, dst, dstSize, zmask, zdepth);
+    case CV_32F: return _upject_uneven<float>(src, dst, dstSize, zmask, zdepth);
+    case CV_64F: return _upject_uneven<double>(src, dst, dstSize, zmask, zdepth);
+    default:
+      CF_ERROR("Not supported image depth %d", src.depth());
+      break;
+    }
+  }
+  return false;
+}
 
 ///////////////////////////////////////////////////////////////////////////////

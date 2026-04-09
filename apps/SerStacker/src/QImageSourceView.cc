@@ -16,7 +16,7 @@ QImageSourceView::QImageSourceView(QWidget * parent) :
 {
 //  Base::setDisplayFunction(&mtfDisplayFunction_);
 //
-//  connect(&mtfDisplayFunction_, &QImageViewMtfDisplayFunction::parameterChanged,
+//  connect(&mtfDisplayFunction_, &ImageViewMtfDisplayFunction::parameterChanged,
 //      this, &ThisClass::updateDisplay);
 //
 //  connect(this, &ThisClass::displayImageChanged,

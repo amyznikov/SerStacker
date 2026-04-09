@@ -8,7 +8,7 @@
 #ifndef __QImageSceneView_h__
 #define __QImageSceneView_h__
 
-#include "QImageDisplayFunction.h"
+#include "ImageDisplayFunction.h"
 #include "QImageScene.h"
 
 class QImageSceneView :

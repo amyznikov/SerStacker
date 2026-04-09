@@ -34,12 +34,11 @@ class QPointSelectionMode;
 class QInputSourceView :
     public QWidget,
     public IMtfDisplay,
-    public QImageDisplayFunction,
-    public QCloudViewDisplayFunction
+    public ImageDisplayFunction,
+    public CloudViewDisplayFunction
 
 {
   Q_OBJECT;
-  Q_INTERFACES(IMtfDisplay)
 public:
   typedef QInputSourceView ThisClass;
   typedef QWidget Base;
@@ -67,8 +66,8 @@ public:
 
   QString currentFileName() const;
 
-  IMtfDisplay * mtfDisplay();
-  const IMtfDisplay * mtfDisplay() const;
+//  IMtfDisplay * mtfDisplay();
+//  const IMtfDisplay * mtfDisplay() const;
 
   void setCurrentProcessor(const c_data_frame_processor::sptr & processor);
   const c_data_frame_processor::sptr & currentProcessor() const;
@@ -131,16 +130,15 @@ public:
 Q_SIGNALS:
   void visibilityChanged(bool visible);
   void currentViewChanged();
-  void displayChannelsChanged();
-  void parameterChanged();
-  void displayImageChanged();
+//  void displayChannelsChanged();
+//  void parameterChanged();
+//  void displayImageChanged();
   void currentFileNameChanged();
   void currentFrameChanged();
 
   void debayerAlgorithmChanged();
   void dropBadPixelsChanged();
   void badPixelsVariationThresholdChanged();
-  void vloDataChannelChanged();
 
   void glPointClick(uint64_t pid, const QPointF & mousePos, QEvent::Type mouseEventType,
       Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers);
@@ -173,11 +171,11 @@ protected: // QWidget
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
 
-protected: // QImageDisplayFunction
+protected: // ImageDisplayFunction
   void createDisplayImage(cv::InputArray currentImage, cv::InputArray currentMask,
       cv::Mat & mtfImage, cv::Mat & displayImage, int ddepth = CV_8U) override;
 
-protected: // QCloudViewDisplayFunction
+protected: // CloudViewDisplayFunction
   void createDisplayPoints(cv::OutputArray mtfColors,
       std::vector<cv::Vec3f> & displayPoints,
       std::vector<cv::Vec3b> & displayColors) override;

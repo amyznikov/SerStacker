@@ -39,15 +39,15 @@ cv::Mat & QImageEditor::inputMask()
   return _inputMask;
 }
 
-void QImageEditor::set_current_processor(const c_image_processor::sptr & processor)
+void QImageEditor::setCurrentProcessor(const c_image_processor::sptr & processor)
 {
-  _current_processor = processor;
+  _currentProcessor = processor;
   updateImage();
 }
 
-const c_image_processor::sptr & QImageEditor::current_processor() const
+const c_image_processor::sptr & QImageEditor::currentProcessor() const
 {
-  return _current_processor;
+  return _currentProcessor;
 }
 
 void QImageEditor::clear()
@@ -74,13 +74,13 @@ void QImageEditor::editImage(cv::InputArray image, cv::InputArray mask, bool mak
 void QImageEditor::updateImage()
 {
   if ( !isVisible() ) {
-    hasPendingUpdates_ = true;
+    _hasPendingUpdates = true;
   }
   else {
 
     //QWaitCursor wait(this);
 
-    hasPendingUpdates_ = false;
+    _hasPendingUpdates = false;
 
    // c_current_image_lock lock(this);
 
@@ -104,8 +104,8 @@ void QImageEditor::updateImage()
         _inputMask.copyTo(_currentMask);
       }
 
-      if ( _current_processor && !_current_processor->empty() ) {
-        _current_processor->process(_currentImage, _currentMask);
+      if ( _currentProcessor && !_currentProcessor->empty() ) {
+        _currentProcessor->process(_currentImage, _currentMask);
       }
     }
 
@@ -115,15 +115,12 @@ void QImageEditor::updateImage()
 
 }
 
-void QImageEditor::showEvent(QShowEvent *event)
+void QImageEditor::showEvent(QShowEvent * event)
 {
-  if ( !hasPendingUpdates_ ) {
-    Base::showEvent(event);
-  }
-  else {
+  if( _hasPendingUpdates ) {
     updateImage();
-    QWidget::showEvent(event);
-    Q_EMIT visibilityChanged(isVisible());
   }
+  Base::showEvent(event);
+  Q_EMIT visibilityChanged(isVisible());
 }
 

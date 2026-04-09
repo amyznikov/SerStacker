@@ -55,11 +55,11 @@ bool c_upject_routine::process(cv::InputOutputArray image, cv::InputOutputArray 
 
   switch (_mode) {
     case UpjectUneven:
-      upject_uneven(image.getMat(), img, _dstSize, &zmask, CV_8U);
+      upject_uneven(image.getMat(), img, _dstSize, zmask, CV_8U);
       image.move(img);
       break;
     case UpjectEven:
-      upject_even(image.getMat(), img, _dstSize, &zmask, CV_8U);
+      upject_even(image.getMat(), img, _dstSize, zmask, CV_8U);
       image.move(img);
       break;
     default:

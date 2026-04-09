@@ -259,20 +259,20 @@ const c_enum_member* members_of<DISPLAY_TYPE>()
 
 
 
-QCloudViewMtfDisplay::QCloudViewMtfDisplay(QGLCloudViewer * cloudView) :
-    Base("", cloudView),
+ICloudViewMtfDisplay::ICloudViewMtfDisplay(QGLCloudViewer * cloudView) :
+    Base(cloudView),
     _cloudView(cloudView)
 {
-  QMtfDisplay::_displayChannel = "PIXEL_VALUE";
-  QMtfDisplay::addDisplay(QMtfDisplay::_displayChannel, 0, 255);
+  IMtfDisplay::_displayChannel = "PIXEL_VALUE";
+  IMtfDisplay::addDisplay(IMtfDisplay::_displayChannel, 0, 255);
 }
 
-QGLCloudViewer * QCloudViewMtfDisplay::cloudView() const
+QGLCloudViewer * ICloudViewMtfDisplay::cloudView() const
 {
   return _cloudView;
 }
 
-QStringList QCloudViewMtfDisplay::displayChannels() const
+QStringList ICloudViewMtfDisplay::displayChannels() const
 {
   QStringList sl;
 
@@ -285,7 +285,7 @@ QStringList QCloudViewMtfDisplay::displayChannels() const
   //return members_of<DISPLAY_TYPE>();
 }
 
-void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) const
+void ICloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = HUGE_VAL;
   *maxval = 0;
@@ -310,7 +310,7 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
   }
 }
 
-//void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, double * imax)
+//void ICloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * imin, double * imax)
 //{
 //  H.release();
 //
@@ -357,26 +357,26 @@ void QCloudViewMtfDisplay::getInputDataRange(double * minval, double * maxval) c
 //  }
 //}
 
-void QCloudViewMtfDisplay::getMtfCurve(std::vector<float> & cy, size_t n)
+void ICloudViewMtfDisplay::getMtfCurve(std::vector<float> & cy, size_t n)
 {
   displayParams().mtf.get_mtf_curve(cy, n);
 }
 
-void QCloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax, bool cumulative, bool normalized)
+void ICloudViewMtfDisplay::getInputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax, bool cumulative, bool normalized)
 {
-  CF_ERROR("FIXME: Inplement getInputHistogramm() for QCloudViewMtfDisplay !!!");
+  CF_ERROR("FIXME: Inplement getInputHistogramm() for ICloudViewMtfDisplay !!!");
   H.release();
 }
 
 
-void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
+void ICloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin, double * omax)
 {
   displayParams().mtf.get_output_range(omin, omax);
   H.release();
 
-  if( _cloudView && !_cloudView->_display_colors.empty() ) {
+  if( _cloudView && !_cloudView->displayColors().empty() ) {
     double minv = 0, maxv = 255;
-    createHistogram(_cloudView->_display_colors, cv::noArray(), &minv, &maxv, 256, H);
+    createHistogram(_cloudView->displayColors(), cv::noArray(), &minv, &maxv, 256, H);
   }
 }
 
@@ -386,23 +386,14 @@ void QCloudViewMtfDisplay::getOutputHistogramm(cv::OutputArray H, double * omin,
 
 QGLCloudViewer::QGLCloudViewer(QWidget* parent) :
   Base(parent),
-  _mtfDisplay(this)
+  ICloudViewMtfDisplay(this)
 {
-  connect(&_mtfDisplay, &QMtfDisplay::displayChannelsChanged,
-      &_mtfDisplay, &QMtfDisplay::parameterChanged);
+  connect(mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
+      mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged);
 
-  connect(&_mtfDisplay, &QCloudViewMtfDisplay::parameterChanged,
+  connect(mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged,
       this, &ThisClass::updateDisplayColors);
-}
 
-QCloudViewMtfDisplay & QGLCloudViewer::mtfDisplay()
-{
-  return _mtfDisplay;
-}
-
-const QCloudViewMtfDisplay & QGLCloudViewer::mtfDisplay() const
-{
-  return _mtfDisplay;
 }
 
 const std::vector<QPointCloud::sptr> & QGLCloudViewer::clouds() const
@@ -413,6 +404,11 @@ const std::vector<QPointCloud::sptr> & QGLCloudViewer::clouds() const
 const QPointCloud::sptr & QGLCloudViewer::cloud(int index) const
 {
   return _clouds[index];
+}
+
+const std::vector<cv::Vec3b> & QGLCloudViewer::displayColors() const
+{
+  return _displayColors;
 }
 
 void QGLCloudViewer::add(const QPointCloud::sptr & cloud)
@@ -515,23 +511,23 @@ void QGLCloudViewer::glDraw()
 {
   computeDisplayPoints();
 
-  if ( !_display_points.empty() ) {
+  if ( !_displayPoints.empty() ) {
 
     glPointSize(_pointSize);
     glColor3ub(255, 255, 255);
 
     // activate vertex arrays before array drawing
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, _display_points.data());
+    glVertexPointer(3, GL_FLOAT, 0, _displayPoints.data());
 
-    if ( !_display_colors.empty() ) {
+    if ( !_displayColors.empty() ) {
       glEnableClientState(GL_COLOR_ARRAY);
-      glColorPointer(3, GL_UNSIGNED_BYTE, 3, _display_colors.data());
+      glColorPointer(3, GL_UNSIGNED_BYTE, 3, _displayColors.data());
     }
 
-    glDrawArrays(GL_POINTS, 0, _display_points.size());
+    glDrawArrays(GL_POINTS, 0, _displayPoints.size());
 
-    if ( !_display_colors.empty() ) {
+    if ( !_displayColors.empty() ) {
       glDisableClientState(GL_COLOR_ARRAY);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -553,7 +549,7 @@ void QGLCloudViewer::updateDisplayColors()
 
 void QGLCloudViewer::computeDisplayPoints()
 {
-  if( _update_display_points || _display_points.empty() ) {
+  if( _update_display_points || _displayPoints.empty() ) {
 
     int total_points_to_display = 0;
 
@@ -564,11 +560,11 @@ void QGLCloudViewer::computeDisplayPoints()
       }
     }
 
-    _display_points.clear();
+    _displayPoints.clear();
 
     if( total_points_to_display > 0 ) {
 
-      _display_points.reserve(total_points_to_display);
+      _displayPoints.reserve(total_points_to_display);
 
       for( const auto &cloud : _clouds ) {
         if( cloud->visible && cloud->points.rows > 0 ) {
@@ -593,7 +589,7 @@ void QGLCloudViewer::computeDisplayPoints()
             const cv::Vec3f & srcp =
                 points[i][0];
 
-            _display_points.emplace_back(srcp[0] * Sx - Tx - _sceneOrigin.x(),
+            _displayPoints.emplace_back(srcp[0] * Sx - Tx - _sceneOrigin.x(),
                 srcp[1] * Sy - Ty - _sceneOrigin.y(),
                 srcp[2] * Sz - Tz - _sceneOrigin.z());
 
@@ -605,15 +601,12 @@ void QGLCloudViewer::computeDisplayPoints()
     _update_display_colors = true;
   }
 
-  if( _update_display_colors || _display_colors.size() != _display_points.size() ) {
+  if( _update_display_colors || _displayColors.size() != _displayPoints.size() ) {
 
-    _display_colors.clear();
+    _displayColors.clear();
 
-    QMtfDisplay::DisplayParams & opts =
-        _mtfDisplay.displayParams();
-
-    c_mtf &mtf =
-        opts.mtf;
+    auto & opts = displayParams();
+    c_mtf &mtf = opts.mtf;
 
     double imin, imax;
 
@@ -631,7 +624,7 @@ void QGLCloudViewer::computeDisplayPoints()
           int gray = mtf.apply(255);
 
           for( int i = 0, n = cloud->points.rows; i < n; ++i ) {
-            _display_colors.emplace_back(gray, gray, gray);
+            _displayColors.emplace_back(gray, gray, gray);
           }
 
         }
@@ -655,7 +648,7 @@ void QGLCloudViewer::computeDisplayPoints()
                   std::max(0, std::min(255,
                       (int) (color[0] + _pointBrightness)));
 
-              _display_colors.emplace_back(gray, gray, gray);
+              _displayColors.emplace_back(gray, gray, gray);
             }
             else {
 
@@ -671,7 +664,7 @@ void QGLCloudViewer::computeDisplayPoints()
                   std::max(0, std::min(255,
                       (int) (color[0] + _pointBrightness)));
 
-              _display_colors.emplace_back(red, green, blue);
+              _displayColors.emplace_back(red, green, blue);
             }
           }
         }
@@ -684,7 +677,7 @@ void QGLCloudViewer::computeDisplayPoints()
   }
 
   if ( _update_display_colors ) {
-    Q_EMIT _mtfDisplay.displayImageChanged();
+    Q_EMIT mtfDisplayEvents()->displayImageChanged();
   }
 
   _update_display_points = false;
@@ -788,15 +781,20 @@ void QCloudViewer::hideEvent(QHideEvent * e)
   Q_EMIT visibilityChanged(isVisible());
 }
 
-QCloudViewMtfDisplay & QCloudViewer::mtfDisplay()
-{
-  return _glViewer->mtfDisplay();
-}
+//ICloudViewMtfDisplay * QCloudViewer::mtfDisplay() const
+//{
+//  return _glViewer;
+//}
 
-const QCloudViewMtfDisplay & QCloudViewer::mtfDisplay() const
-{
-  return _glViewer->mtfDisplay();
-}
+//ICloudViewMtfDisplay & QCloudViewer::mtfDisplay()
+//{
+//  return _glViewer->mtfDisplay();
+//}
+//
+//const ICloudViewMtfDisplay & QCloudViewer::mtfDisplay() const
+//{
+//  return _glViewer->mtfDisplay();
+//}
 
 QToolBar* QCloudViewer::toolbar()
 {

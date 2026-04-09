@@ -42,7 +42,7 @@ static inline bool isOpen(const c_input_source::sptr & source)
 
 QInputSourceView::QInputSourceView(QWidget * parent) :
     Base(parent),
-    IMtfDisplay("QInputSourceView")
+    IMtfDisplay(this, "QInputSourceView")
 {
   init_resources();
 
@@ -145,9 +145,7 @@ void QInputSourceView::hideEvent(QHideEvent *event)
 {
   Base::hideEvent(event);
 
-  const bool isVisible =
-      Base::isVisible();
-
+  const bool isVisible = Base::isVisible();
   if ( !isVisible ) {
     // closeInputSequence();
   }
@@ -216,12 +214,12 @@ void QInputSourceView::setupMtfDisplayFunction()
   _cloudView->setDisplayFunction(this);
 
   connect(_imageView, &QImageViewer::displayImageChanged,
-      this, &ThisClass::displayImageChanged);
+      mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged);
 
-  connect(this, &ThisClass::displayChannelsChanged,
+  connect(mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
       this, &ThisClass::displayCurrentFrame);
 
-  connect(this, &ThisClass::parameterChanged,
+  connect(mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged,
       [this]() {
         if ( _imageView->isVisible() ) {
           _imageView->updateDisplay();
@@ -302,15 +300,15 @@ QString QInputSourceView::currentFileName() const
   return _currentSource ? _currentSource->cfilename() : QString();
 }
 
-IMtfDisplay * QInputSourceView::mtfDisplay()
-{
-  return this;
-}
-
-const IMtfDisplay * QInputSourceView::mtfDisplay() const
-{
-  return this;
-}
+//IMtfDisplay * QInputSourceView::mtfDisplay()
+//{
+//  return this;
+//}
+//
+//const IMtfDisplay * QInputSourceView::mtfDisplay() const
+//{
+//  return this;
+//}
 
 void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & processor)
 {
@@ -563,16 +561,14 @@ void QInputSourceView::setViewType(DisplayType viewType)
 
   if( _currentFrame ) {
 
-    const auto & new_displays =
-        _currentFrame->get_available_image_displays();
+    const auto & new_displays = _currentFrame->get_available_image_displays();
+    auto & existing_displays = this->_displays;
 
 //    for ( auto ii = new_displays.begin(); ii != new_displays.end(); ++ii ) {
 //      const std::string & name = ii->first;
 //      CF_DEBUG("display: %s", name.c_str());
 //    }
 
-    auto & existing_displays =
-        this->_displays;
 
     bool haschages = false;
 
@@ -601,7 +597,7 @@ void QInputSourceView::setViewType(DisplayType viewType)
     }
 
     if ( haschages ) {
-      Q_EMIT displayChannelsChanged();
+      Q_EMIT mtfDisplayEvents()->displayChannelsChanged();
     }
 
     displayCurrentFrame();
@@ -625,10 +621,10 @@ void QInputSourceView::displayCurrentFrame()
 
         cv::Mat image, mask, data;
 
-        _currentFrame->get_image(_displayChannel.toStdString(),
-            image, mask, data);
+        _currentFrame->get_image(_displayChannel.toStdString(), image, mask, data);
 
         setCurrentView(_imageView);
+
         _imageView->inputImage() = image;
         _imageView->inputMask() = mask;
         _imageView->updateImage();
@@ -806,8 +802,7 @@ void QInputSourceView::createDisplayImage(cv::InputArray currentImage, cv::Input
 {
   if ( !currentImage.empty() ) {
 
-    const DisplayParams & opts =
-        displayParams();
+    const DisplayParams & opts = displayParams();
 
     const bool needColormap =
         opts.colormap != COLORMAP_NONE &&
@@ -842,7 +837,7 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
     displayPoints.clear();
     displayColors.clear();
 
-    Q_EMIT displayImageChanged();
+    Q_EMIT mtfDisplayEvents()->displayImageChanged();
 
     return;
   }
@@ -924,7 +919,7 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
 
   }
 
-  Q_EMIT displayImageChanged();
+  Q_EMIT mtfDisplayEvents()->displayImageChanged();
 }
 
 

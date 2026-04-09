@@ -8,7 +8,7 @@
 #ifndef __QImageViewer_h__
 #define __QImageViewer_h__
 
-#include "QImageDisplayFunction.h"
+#include "ImageDisplayFunction.h"
 #include "QImageSceneView.h"
 
 class QImageViewer:
@@ -20,14 +20,14 @@ public:
   typedef QWidget Base;
 
   class current_image_lock:
-      public std::lock_guard<std::mutex>
+      public QMutexLocker
   {
   public:
     typedef current_image_lock this_class;
-    typedef std::lock_guard<std::mutex> base;
+    typedef QMutexLocker base;
 
     current_image_lock(QImageViewer * view) :
-        base(view->_currentImageLock)
+        base(&view->_currentImageLock)
     {
     }
   };
@@ -57,8 +57,8 @@ public:
   QStatusBar* embedStatusbar(QStatusBar * statusBar = nullptr);
   QStatusBar* statusbar() const;
 
-  void setDisplayFunction(QImageDisplayFunction * displayfunc);
-  QImageDisplayFunction* displayFunction() const;
+  void setDisplayFunction(ImageDisplayFunction * displayfunc);
+  ImageDisplayFunction* displayFunction() const;
 
   void setViewScale(int scale, const QPoint * centerPos = nullptr);
   int viewScale() const;
@@ -72,11 +72,14 @@ public:
   void setTransparentMask(bool v);
   bool transparentMask() const;
 
-  virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/,
-      bool make_copy /*= true*/);
-  virtual void setMask(cv::InputArray mask, bool make_copy /*= true*/);
-  virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData /*= cv::noArray()*/,
-      bool make_copy /*= true*/);
+  virtual void setImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy);
+  virtual void setMask(cv::InputArray mask, bool make_copy);
+  virtual void setCurrentImage(cv::InputArray image, cv::InputArray mask, cv::InputArray imageData, bool make_copy);
+
+  QMutex & currentImageLock()
+  {
+    return _currentImageLock;
+  }
 
   const cv::Mat& currentImage() const;
   const cv::Mat& currentMask() const;
@@ -158,7 +161,7 @@ protected:
   QToolBar *_toolbar = nullptr;
   QStatusBar *_statusbar = nullptr;
 
-  QImageDisplayFunction *_displayFunction = nullptr;
+  ImageDisplayFunction *_displayFunction = nullptr;
   DisplayType _currentDisplayType = DisplayImage;
   double _maskBlendAlpha  = 0.9;
 
@@ -179,7 +182,7 @@ protected:
   QShortcut *_undoEditMaskActionShortcut = nullptr;
   QStack<cv::Mat> _editMaskUndoQueue;
 
-  std::mutex _currentImageLock;
+  mutable QMutex _currentImageLock;
 
 };
 

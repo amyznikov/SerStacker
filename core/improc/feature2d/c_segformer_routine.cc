@@ -72,11 +72,8 @@ bool c_segformer_routine::serialize(c_config_setting settings, bool save)
 
 bool c_segformer_routine::initialize()
 {
-//  CF_DEBUG("H");
 //  _env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "SegFormer");
-//  CF_DEBUG("H");
 //  //_session_options.SetIntraOpNumThreads(1);
-//  CF_DEBUG("H");
 
   return true;
 }

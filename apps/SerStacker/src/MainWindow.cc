@@ -146,7 +146,7 @@ MainWindow::MainWindow()
 
   restoreState();
 
-  imageView->set_current_processor(imageProcessor_ctl->currentProcessor());
+  imageView->setCurrentProcessor(imageProcessor_ctl->currentProcessor());
 
   set_ctlbind_show_info_text_callback([](const std::string & title, const std::string & text) {
     QTextInfoDialogBox::show(QString::fromStdString(title), QString::fromStdString(text),
@@ -1094,10 +1094,10 @@ void MainWindow::onImageProcessorParameterChanged()
 
   if( imageProcessor_ctl ) {
     if( imageView ) {
-      imageView->set_current_processor(imageProcessor_ctl->currentProcessor());
+      imageView->setCurrentProcessor(imageProcessor_ctl->currentProcessor());
     }
     if( pipelineProgressImageView ) {
-      pipelineProgressImageView->set_current_processor(imageProcessor_ctl->currentProcessor());
+      pipelineProgressImageView->setCurrentProcessor(imageProcessor_ctl->currentProcessor());
     }
   }
 }
@@ -1113,11 +1113,11 @@ void MainWindow::onDataframeProcessorParameterChanged()
 IMtfDisplay * MainWindow::getCurrentMtfDisplay()
 {
   if ( is_visible(inputSourceView) ) {
-    return inputSourceView->mtfDisplay();
+    return inputSourceView;
   }
 
   if ( is_visible(pipelineProgressImageView) ) {
-    return pipelineProgressImageView->mtfDisplay();
+    return pipelineProgressImageView;
   }
 
   return nullptr;
@@ -1418,7 +1418,6 @@ void MainWindow::onStackTreeCurrentItemChanged(const c_image_sequence::sptr & se
       centralStackedWidget->setCurrentWidget(pipelineOptionsView);
     }
   }
-
 }
 
 void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & sequence, const c_input_source::sptr & source)
@@ -1509,7 +1508,7 @@ void MainWindow::onPipelineThreadStarted()
     centralStackedWidget->setCurrentWidget(pipelineProgressImageView);
   }
 
-  pipelineProgressImageView->set_current_processor(imageProcessor_ctl->currentProcessor());
+  pipelineProgressImageView->setCurrentProcessor(imageProcessor_ctl->currentProcessor());
   pipelineProgressView->setImageViewer(pipelineProgressImageView);
 
   if ( !pipelineProgressView->isVisible() ) {
@@ -1547,7 +1546,7 @@ void MainWindow::onSaveCurrentImageAs()
           saveImageFileAs(this,
               imageView->currentImage(),
               imageView->currentMask(),
-              imageView->current_processor(),
+              imageView->currentProcessor(),
               inputSourceView->currentFileName());
 
       if( !savedFileName.isEmpty() ) {

@@ -132,12 +132,12 @@ QStatusBar * QImageViewer::statusbar() const
 }
 
 
-void QImageViewer::setDisplayFunction(QImageDisplayFunction *  displayfunction)
+void QImageViewer::setDisplayFunction(ImageDisplayFunction *  displayfunction)
 {
   _displayFunction = displayfunction;
 }
 
-QImageDisplayFunction * QImageViewer::displayFunction() const
+ImageDisplayFunction * QImageViewer::displayFunction() const
 {
   return this->_displayFunction;
 }

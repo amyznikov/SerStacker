@@ -275,8 +275,6 @@ QMtfControl::QMtfControl(QWidget * parent) :
       this, &ThisClass::onDisplayChannelCustomContextMenuRequested);
 
 
-  //displayChannel_ctl->customContextMenuRequested(pos)
-
   updateControls();
 }
 
@@ -286,22 +284,22 @@ void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 
     c_update_controls_lock lock(this);
 
-    if( QObject * qobj = dynamic_cast<QObject*>(this->_displaySettings) ) {
-      qobj->disconnect(this);
+    if ( _displaySettings ) {
+      _displaySettings->mtfDisplayEvents()->disconnect(this);
     }
 
     _displaySettings = displaySettings;
     displayChannel_ctl->clear();
 
-    if( QObject * qobj = dynamic_cast<QObject*>(_displaySettings) ) {
+    if( _displaySettings ) {
 
       displayChannel_ctl->addItems(_displaySettings->displayChannels());
 
-      connect(qobj, SIGNAL(displayImageChanged()),
-          this, SLOT(onDisplayImageChanged()));
+      QObject::connect(_displaySettings->mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged,
+          this, &ThisClass::onDisplayImageChanged);
 
-      connect(qobj, SIGNAL(displayChannelsChanged()),
-          this, SLOT(onDisplayChannelsChanged()));
+      QObject::connect(_displaySettings->mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
+          this, &ThisClass::onDisplayChannelsChanged);
 
     }
 

@@ -71,14 +71,14 @@ QGLPointCloudView::QGLPointCloudView(QWidget * parent) :
 {
 }
 
-void QGLPointCloudView::setDisplayFunction(QCloudViewDisplayFunction * displayFunc)
+void QGLPointCloudView::setDisplayFunction(CloudViewDisplayFunction * displayFunc)
 {
   _displayFunction = displayFunc;
   _updateDisplayPoints = true;
   update();
 }
 
-QCloudViewDisplayFunction * QGLPointCloudView::displayFunction() const
+CloudViewDisplayFunction * QGLPointCloudView::displayFunction() const
 {
   return _displayFunction;
 }

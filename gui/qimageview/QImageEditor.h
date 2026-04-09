@@ -22,8 +22,8 @@ public:
   QImageEditor(QWidget * parent = nullptr);
   QImageEditor(QImageScene * scene, QWidget * parent = nullptr);
 
-  void set_current_processor(const c_image_processor::sptr & processor);
-  const c_image_processor::sptr & current_processor() const;
+  void setCurrentProcessor(const c_image_processor::sptr & processor);
+  const c_image_processor::sptr & currentProcessor() const;
 
   virtual void editImage(cv::InputArray image, cv::InputArray mask = cv::noArray(), bool make_copy = false);
   void clear();
@@ -41,10 +41,10 @@ protected:
   void showEvent(QShowEvent *event) override;
 
 protected:
-  c_image_processor::sptr _current_processor;
+  c_image_processor::sptr _currentProcessor;
   cv::Mat _inputImage;
   cv::Mat _inputMask;
-  bool hasPendingUpdates_ = false;
+  bool _hasPendingUpdates = false;
 };
 
 #endif /* __QImageEditor_h__ */

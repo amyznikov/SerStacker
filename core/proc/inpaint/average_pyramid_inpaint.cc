@@ -127,7 +127,7 @@ static inline void average_pyramid_pyrup(cv::Mat & image, cv::Size dst_size)
 //  cv::pyrUp(image, image, dst_size);
   INSTRUMENT_REGION("");
   cv::Mat1f zmask;
-  upject(image, image, dst_size, &zmask, CV_32F );
+  upject(image, image, dst_size, zmask, CV_32F );
   average_pyramid_filter(image, zmask, image, zmask);
 }
 

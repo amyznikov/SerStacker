@@ -18,7 +18,8 @@
 #include <gui/qgraphicsshape/QGraphicsTargetShape.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-#include <gui/qpipeline/QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h>
+//#include <gui/qpipeline/QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h>
+#include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
 #include <core/io/debayer.h>
 #include <core/settings/opencv_settings.h>
 #include "camera/QImagingCamera.h"
@@ -30,15 +31,15 @@ namespace serimager {
 ///////////////////////////////////////////////////////////////////////////////
 
 class QLivePipeline :
-  public QGenericImageProcessingPipeline
+  public QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline>
 {
 public:
   typedef QLivePipeline ThisClass;
-  typedef QGenericImageProcessingPipeline Base;
+  typedef QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline> Base;
   typedef Base::PipelineClass PipelineClass;
 
   QLivePipeline(const QString & name, QObject * parent) :
-      Base(name, nullptr, parent)
+      Base(name, parent)
   {
   }
 };

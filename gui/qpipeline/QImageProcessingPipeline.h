@@ -116,6 +116,7 @@ public:
 
   typedef QImageProcessingPipelineTemplate ThisClass;
   typedef QImageProcessingPipeline Base;
+  typedef c_pipeline_type PipelineClass;
 
   QImageProcessingPipelineTemplate(const QString & name, QObject * parent = nullptr) :
     ThisClass(name, nullptr, parent)
@@ -156,6 +157,11 @@ public:
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override
   {
     return c_pipeline_type::get_display_image(frame, mask);
+  }
+
+  QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const override
+  {
+    return new QPipelineSettingsWidgetTemplate<c_pipeline_type>(parent);
   }
 
 protected:

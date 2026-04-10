@@ -654,7 +654,7 @@ QFeatureBasedRegistrationOptions::QFeatureBasedRegistrationOptions(QWidget * par
 
   ///
 
-  QObject::connect(this, &ThisClass::populatecontrols,
+  QObject::connect(this, &ThisClass::populatecontrols, this,
       [this]() {
         sparseFeatureDetectorOptions_ctl->setOpts(_opts ? &_opts->sparse_feature_extractor_and_matcher.detector : nullptr);
         sparseFeatureDescriptorOptions_ctl->setOpts(_opts ? &_opts->sparse_feature_extractor_and_matcher.descriptor : nullptr);
@@ -787,25 +787,6 @@ QJovianDerotationOptions::QJovianDerotationOptions(QWidget * parent) :
 
   updateControls();
 }
-//void QJovianDerotationOptions::onupdatecontrols()
-//{
-//  if( !_opts ) {
-//    setEnabled(false);
-//  }
-//  else {
-//    jovian_detector_stdev_factor_ctl->setValue(_opts->detector_options.stdev_factor);
-//    jovian_detector_pca_blur_ctl->setValue(_opts->detector_options.pca_blur);
-//    jovian_detector_ellipse_offset_ctl->setValue(_opts->detector_options.offset);
-////    max_pyramid_level_ctl->setValue(_opts->max_pyramid_level);
-////    min_rotation_ctl->setValue(_opts->min_rotation * 180 / M_PI);
-////    max_rotation_ctl->setValue(_opts->max_rotation * 180 / M_PI);
-////    num_orientations_ctl->setValue(_opts->num_orientations);
-//    max_context_size_ctl->setValue(_opts->max_context_size);
-//    derotate_all_frames_ctl->setChecked(_opts->derotate_all_frames);
-//
-//    setEnabled(true);
-//  }
-//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

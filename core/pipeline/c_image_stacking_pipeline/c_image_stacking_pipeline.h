@@ -216,7 +216,6 @@ public:
 
   std::string output_file_name() const;
 
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
   bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
 
@@ -234,6 +233,7 @@ protected:
   bool initialize_pipeline() override;
   void cleanup_pipeline() override;
   bool run_pipeline() override;
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
   bool run_image_stacking();
   void set_pipeline_stage(int stage);

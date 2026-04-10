@@ -448,6 +448,10 @@ void MainWindow::onCentralDisplayROIShapeChanged()
 
       updateMeasurements();
     }
+
+    if ( is_visible(_rectShapeOptionsDialogBox)) {
+      _rectShapeOptionsDialogBox->updateControls();
+    }
   }
 }
 

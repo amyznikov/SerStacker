@@ -108,7 +108,6 @@ public:
   c_stereo_calibration_output_options & output_options();
   const c_stereo_calibration_output_options & output_options() const;
 
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
   bool copy_parameters(const base::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
@@ -117,6 +116,7 @@ protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
 protected:
   bool open_input_source();

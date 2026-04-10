@@ -433,8 +433,6 @@ bool c_epipolar_alignment_pipeline::copy_parameters(const base::sptr & dst) cons
 
 bool c_epipolar_alignment_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if( current_mg.empty() || previous_mg.empty() ) {
     return false;
   }

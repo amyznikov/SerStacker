@@ -75,8 +75,6 @@ public:
   c_roi_tracker_output_options & output_options();
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   static const c_ctlist<this_class> & getcontrols();
 
 protected:
@@ -85,6 +83,7 @@ protected:
   void cleanup_pipeline() override;
   bool process_current_frame();
   bool write_progress_video();
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
 
 protected:
   c_roi_tracker_input_options _input_options;

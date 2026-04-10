@@ -8,6 +8,7 @@
 #include "QImageProcessingPipeline.h"
 #include "QOutputFrameWriterOptions.h"
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
+#include <core/pipeline/c_dkgen_pipeline/c_dkgen_pipeline.h>
 #include <core/pipeline/c_image_stacking_pipeline/c_image_stacking_pipeline.h>
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
@@ -31,6 +32,7 @@ void registerPipelineClasses()
         });
 
   REGISTER_PIPELINE_CLASS(c_generic_image_processor_pipeline);
+  REGISTER_PIPELINE_CLASS(c_dkgen_pipeline);
   REGISTER_PIPELINE_CLASS(c_image_stacking_pipeline);
   REGISTER_PIPELINE_CLASS(c_camera_calibration_pipeline);
   REGISTER_PIPELINE_CLASS(c_stereo_calibration_pipeline);

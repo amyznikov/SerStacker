@@ -153,7 +153,6 @@ public:
 
   bool serialize(c_config_setting setting, bool save) override;
 
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
 
 protected:
@@ -163,6 +162,7 @@ protected:
   bool run_pipeline() override;
   bool run_calibration();
   bool run_stereo_matching();
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
   void reset_input_frames();
   bool open_input_streams();

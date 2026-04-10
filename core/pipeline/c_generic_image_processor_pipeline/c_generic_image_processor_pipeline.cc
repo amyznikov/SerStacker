@@ -6,12 +6,10 @@
  */
 
 #include "c_generic_image_processor_pipeline.h"
-#include <core/proc/unsharp_mask.h>
 #include <core/ssprintf.h>
-#include <core/debug.h>
-#include <type_traits>
 #include <chrono>
 #include <thread>
+#include <core/debug.h>
 
 
 c_generic_image_processor_pipeline::c_generic_image_processor_pipeline(const std::string & name,
@@ -278,8 +276,6 @@ bool c_generic_image_processor_pipeline::copy_parameters(const base::sptr & dst)
 
 bool c_generic_image_processor_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if( display_frame.needed() ) {
     _current_image.copyTo(display_frame);
   }

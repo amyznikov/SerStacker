@@ -48,7 +48,6 @@ public:
   static const std::string & tooltip();
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool copy_parameters(const base::sptr & dst) const override;
 
   static const c_ctlist<this_class> & getcontrols();
@@ -58,6 +57,7 @@ protected:
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frame();
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
 
 protected:
   c_generic_image_processor_input_options _input_options;

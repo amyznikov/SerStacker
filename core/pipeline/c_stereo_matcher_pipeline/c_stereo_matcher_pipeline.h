@@ -114,9 +114,7 @@ public:
   const c_stereo_matcher_output_options & output_options() const;
 
   const c_enum_member * get_display_types() const override;
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting settings, bool save) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   static const c_ctlist<this_class> & getcontrols();
 
 
@@ -125,6 +123,7 @@ protected:
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frames();
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
 protected:
   bool open_input_source();

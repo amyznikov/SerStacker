@@ -846,8 +846,6 @@ const c_enum_member * c_stereo_matcher_pipeline::get_display_types() const
 
 bool c_stereo_matcher_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if( _current_frames[0].empty() || _current_frames[1].empty() ) {
     return false;
   }

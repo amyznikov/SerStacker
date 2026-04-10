@@ -233,7 +233,7 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
     _updatingDisplay = true;
 
-    if( pipeline->get_display_image(currentImage, currentMask) ) {
+    if( pipeline->get_display(currentImage, currentMask) ) {
       _imageViewer->setCurrentFileName(pipeline->cname());
       _imageViewer->editImage(currentImage, currentMask);
     }

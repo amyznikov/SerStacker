@@ -74,7 +74,6 @@ public:
   static const std::string& tooltip();
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   static const c_ctlist<this_class> & getcontrols();
 
 protected:
@@ -82,6 +81,7 @@ protected:
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool process_current_frame();
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
 
 protected:
   static c_image_transform::sptr create_image_transfrom(const c_live_stacking_registration_options & opts);

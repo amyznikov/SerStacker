@@ -2032,8 +2032,9 @@ void MainWindow::setupInputSequenceView()
                 connect(_roiOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
                     [this](bool visible) {
                       showRoiOptionsAction->setChecked(visible);
-                      if ( visible ) {
-                        imageView->roiShape()->setVisible(true);
+                      imageView->roiShape()->setVisible(visible);
+                      if ( visible && _roiOptionsDialogBox->isVisible() ) {
+                        _roiOptionsDialogBox->updateControls();
                       }
                     });
 
@@ -2071,11 +2072,8 @@ void MainWindow::setupInputSequenceView()
 
         onWriteDisplayVideo();
 
-        QGraphicsRectShape * shape =
-            imageView->roiShape();
-
-        const QRectF rc =
-            shape->sceneRect();
+        QGraphicsRectShape * shape = imageView->roiShape();
+        const QRectF rc = shape->sceneRect();
 
         const QPointF p1 = rc.topLeft();
         const QPointF p2 = rc.bottomRight();
@@ -2087,12 +2085,11 @@ void MainWindow::setupInputSequenceView()
           statusbarShapesLabel_ctl->setVisible(true);
         }
 
-        statusbarShapesLabel_ctl->setText(
-            qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
-                p1.x(), p1.y(),
-                p2.x(), p2.y(),
-                width, height,
-                center.x(), center.y()));
+        statusbarShapesLabel_ctl->setText(qsprintf("ROI: p1=(%g %g) p2=(%g %g) size=(%g x %g) center=(%g %g)",
+            p1.x(), p1.y(),
+            p2.x(), p2.y(),
+            width, height,
+            center.x(), center.y()));
 
         updateMeasurements();
       });

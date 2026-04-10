@@ -738,6 +738,36 @@ bool c_image_processing_pipeline::run(const c_input_sequence::sptr & input_seque
   return fOk;
 }
 
+bool c_image_processing_pipeline::get_display(cv::OutputArray displayImage, cv::OutputArray displayMask)
+{
+  lock_guard lock(mutex());
+
+  try {
+    return get_display_image(displayImage, displayMask);
+  }
+  catch (const cv::Exception & e) {
+
+    CF_ERROR("OpenCV Exception in get_display_image():\n"
+        "%s\n"
+        "%s\n"
+        "%s() : %d\n"
+        "file : %s\n",
+        e.what(),
+        e.err.c_str(), ///< error description
+        e.func.c_str(),///< function name. Available only when the compiler supports getting it
+        e.line,///< line number in the source file where the error has occurred
+        e.file.c_str()///< source file name where the error has occurred
+        );
+  }
+  catch (const std::exception & e) {
+    CF_ERROR("std::exception in get_display_image(): %s\n", e.what());
+  }
+  catch (...) {
+    CF_ERROR("Unknown exception get_display_image()\n");
+  }
+
+  return false;
+}
 
 bool c_image_processing_pipeline::initialize_pipeline()
 {

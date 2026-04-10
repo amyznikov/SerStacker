@@ -264,8 +264,6 @@ bool c_live_stacking_pipeline::get_display_image(cv::OutputArray display_frame, 
     display_scale = 1;
   }
 
-  lock_guard lock(mutex());
-
   if( _frame_accumulation ) {
     return _frame_accumulation->compute(display_frame, display_mask, display_scale);
   }

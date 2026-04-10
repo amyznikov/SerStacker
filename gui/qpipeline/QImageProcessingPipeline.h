@@ -32,7 +32,7 @@ public:
   virtual QString getName() const = 0;
   virtual void setName(const QString & name) = 0;
   virtual QPipelineSettingsWidget * createSettingsWidget(QWidget * parent = nullptr) const = 0;
-  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) = 0;
+  virtual bool get_display(cv::OutputArray frame, cv::OutputArray mask) = 0;
 
 Q_SIGNALS:
   void stateChanged();
@@ -154,9 +154,9 @@ public:
     return c_pipeline_type::run(input_sequence);
   }
 
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override
+  bool get_display(cv::OutputArray frame, cv::OutputArray mask) override
   {
-    return c_pipeline_type::get_display_image(frame, mask);
+    return c_pipeline_type::get_display(frame, mask);
   }
 
   QPipelineSettingsWidget* createSettingsWidget(QWidget * parent = nullptr) const override

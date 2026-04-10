@@ -90,7 +90,6 @@ public:
   static const c_ctlist<this_class> & getcontrols();
   bool serialize(c_config_setting settings, bool save) override;
   bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
 public:
   bool has_master_frame() const  final;
@@ -104,6 +103,7 @@ protected:
   void cleanup_pipeline() final;
   bool run_pipeline() final;
   void set_pipeline_stage(int stage);
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
   bool create_reeference_frame();
 

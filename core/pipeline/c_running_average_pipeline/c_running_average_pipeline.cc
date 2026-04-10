@@ -327,18 +327,14 @@ bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame
 {
   bool fOk = false;
 
-  if ( true ) {
-    lock_guard lock(mutex());
-
-    if ( _registration_options.double_align_moode ) {
-      if ( _average2.compute(display_frame, display_mask) ) {
-        fOk = true;
-      }
+  if ( _registration_options.double_align_moode ) {
+    if ( _average2.compute(display_frame, display_mask) ) {
+      fOk = true;
     }
-    else {
-      if ( _average1.compute(display_frame, display_mask) ) {
-        fOk = true;
-      }
+  }
+  else {
+    if ( _average1.compute(display_frame, display_mask) ) {
+      fOk = true;
     }
   }
 

@@ -200,10 +200,6 @@ bool c_regular_stereo_pipeline::serialize(c_config_setting settings, bool save)
 
 bool c_regular_stereo_pipeline::get_display_image(cv::OutputArray frame, cv::OutputArray mask)
 {
-  lock_guard lock(display_lock_);
-
-  //update_display_image(applyHomography, drawmatches, stream_pos)
-
   display_frame_.copyTo(frame);
   mask.release();
   return true;

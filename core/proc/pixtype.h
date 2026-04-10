@@ -23,12 +23,8 @@ enum PIXEL_DEPTH
   PIXEL_DEPTH_NO_CHANGE = -1,
 };
 
-bool getDataRangeForPixelDepth(int ddepth,
-    double * minv,
-    double * maxv);
-
+bool getDataRangeForPixelDepth(int ddepth,double * minv, double * maxv);
 double getMaxValForPixelDepth(int ddepth);
-
 int getMaxBppForPixelDepth(int ddepth);
 
 
@@ -36,19 +32,11 @@ int getMaxBppForPixelDepth(int ddepth);
  *  dst = (src - srcmin) * (dstmax-dstmin) / (srcmax - srcmin) + dstmin;
  *  dst = src * scale  + offset;
  */
-bool getScaleOffset(int src_depth, int dst_depth,
-    double * scale, double * offset);
-
-bool getScaleOffset(int src_depth, int src_bpp,
-    int dst_depth, double * scale, double * offset);
-
-//inline void convert_depth(cv::InputArray src, int ddepth, cv::OutputArray dst)
-//{
-//  double scale = 1, offset = 0;
-//  get_scale_offset(src.depth(), ddepth, &scale, &offset);
-//  src.getMat().convertTo(dst, CV_MAKETYPE(ddepth, src.channels()), scale, offset);
-//}
+bool getScaleOffset(int src_depth, int dst_depth, double * scale, double * offset);
+bool getScaleOffset(int src_depth, int src_bpp, int dst_depth, double * scale, double * offset);
 
 void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool autoscale, double s = 1);
+
+const char * pixtype2str(int ddepth);
 
 #endif /* __pixtype_h__ */

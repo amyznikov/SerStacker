@@ -64,11 +64,10 @@ public: // pipeline methods
   virtual void set_master_frame_index(int v);
   virtual int master_frame_index() const;
 
+  virtual const c_enum_member * get_display_types() const;
   void set_display_type(int v);
   int display_type() const;
-
-  virtual const c_enum_member * get_display_types() const;
-  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
+  bool get_display(cv::OutputArray displayImage, cv::OutputArray displayMask);
 
   virtual bool serialize(c_config_setting settings, bool save);
   virtual bool copy_parameters(const sptr & dst) const ;
@@ -121,6 +120,7 @@ protected:
   virtual bool initialize_pipeline();
   virtual void cleanup_pipeline();
   virtual bool run_pipeline();
+  virtual bool get_display_image(cv::OutputArray frame, cv::OutputArray mask);
 
 protected:
   virtual bool open_input_sequence();

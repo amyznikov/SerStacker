@@ -101,6 +101,9 @@ public:
   void setDebayer(DEBAYER_ALGORITHM algo);
   DEBAYER_ALGORITHM debayer() const;
 
+  void setEnableDarkFrame(bool v);
+  bool enableDarkFrame() const;
+
   void setDarkFramePath(const QString & pathfilename);
   const QString & darkFramePath() const;
 
@@ -134,6 +137,7 @@ protected:
 
   std::atomic<DEBAYER_ALGORITHM> _debayer = DEBAYER_NN;
 
+  std::atomic_bool _enableDarkFrame {false};
   double _darkFrameScale = 1;
   QString _darkFramePath;
   cv::Mat _darkFrame;
@@ -210,6 +214,7 @@ public:
 
 protected:
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+  QCheckBox * enable_darkframe_ctl = nullptr;
   QBrowsePathCombo * darkframe_ctl = nullptr;
   QNumericBox * darkFrameScale_ctl  = nullptr;
 };

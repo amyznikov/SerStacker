@@ -209,3 +209,20 @@ void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool
   }
 }
 
+
+const char * pixtype2str(int ddepth)
+{
+  switch(ddepth)
+  {
+    case CV_8U: return "8U";
+    case CV_8S: return "8S";
+    case CV_16U: return "16U";
+    case CV_16S: return "16S";
+    case CV_32S: return "32S";
+    case CV_32F: return "32F";
+    case CV_64F: return "64F";
+    case CV_16F: return "16F";
+  }
+
+  return "";
+}

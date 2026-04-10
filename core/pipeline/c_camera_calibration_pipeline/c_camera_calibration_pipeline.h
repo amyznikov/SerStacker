@@ -99,7 +99,6 @@ public:
   c_camera_calibration_output_options & output_options();
   const c_camera_calibration_output_options & output_options() const;
 
-  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
   bool serialize(c_config_setting setting, bool save) override;
   bool copy_parameters(const base::sptr & dst) const override;
 
@@ -109,6 +108,7 @@ protected:
   bool initialize_pipeline()override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
+  bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
 protected:
   //bool run_chessboard_corners_collection();

@@ -72,8 +72,6 @@ const c_camera_calibration_output_options& c_camera_calibration_pipeline::output
 
 bool c_camera_calibration_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if ( _current_frame.empty() ) {
     return false;
   }

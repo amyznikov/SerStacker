@@ -83,7 +83,6 @@ public:
   static const std::string& tooltip();
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
 
@@ -91,6 +90,7 @@ protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool process_current_frame1();
   bool process_current_frame2();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;

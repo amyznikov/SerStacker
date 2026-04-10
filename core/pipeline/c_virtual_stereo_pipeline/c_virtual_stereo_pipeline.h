@@ -163,17 +163,13 @@ public:
   bool copy_parameters(const base::sptr & dst) const override;
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  //static const std::vector<c_image_processing_pipeline_ctrl> & get_controls();
   static const c_ctlist<this_class> & getcontrols();
 
 protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
-//  bool open_input_sequence();
-//  void close_input_sequence();
-//  bool seek_input_sequence(int pos);
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool read_input_frame(cv::Mat & output_image, cv::Mat & output_mask);
   bool write_progress_video();
   c_sparse_feature_extractor_and_matcher::sptr create_keypoints_extractor() const;

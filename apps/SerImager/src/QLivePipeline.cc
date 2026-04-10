@@ -169,6 +169,19 @@ DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
   return _debayer;
 }
 
+void QLivePipelineThread::setEnableDarkFrame(bool v)
+{
+  _enableDarkFrame = v;
+  if ( _darkFrame.empty() && !_darkFramePath.isEmpty() ) {
+    setDarkFrame(_darkFramePath);
+  }
+}
+
+bool QLivePipelineThread::enableDarkFrame() const
+{
+  return _enableDarkFrame;
+}
+
 void QLivePipelineThread::setDarkFramePath(const QString & pathfilename)
 {
   setDarkFrame(pathfilename);
@@ -188,13 +201,25 @@ void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
 
   if( !(_darkFramePath = pathfilename).isEmpty() ) {
 
-    cv::Mat ignoreMaskIfExists;
-    if( !load_image(_darkFramePath.toStdString(), _darkFrame, ignoreMaskIfExists) ) {
+    CF_DEBUG("load darkFrame");
+
+    cv::Mat unusedMask;
+    if( !load_image(_darkFramePath.toStdString(), _darkFrame, unusedMask) ) {
       CF_ERROR("load_image('%s') fails", _darkFramePath.toUtf8().constData());
     }
-    else if( _darkFrameScale != 0 && _darkFrameScale != 1 ) {
+    else if( _darkFrame.depth() != CV_32F ) {
+      CF_DEBUG("_darkFrame.convertTo");
+      _darkFrame.convertTo(_darkFrame, CV_32F, _darkFrameScale);
+    }
+    else if( _darkFrameScale != 1 ) {
+      CF_DEBUG("cv::multiply");
       cv::multiply(_darkFrame, _darkFrameScale, _darkFrame);
     }
+
+    CF_DEBUG("_darkFrame: %dx%d %d channels depth=%d",
+        _darkFrame.cols, _darkFrame.rows,
+        _darkFrame.channels(),
+        _darkFrame.depth());
   }
 }
 
@@ -314,7 +339,7 @@ void QLivePipelineThread::setCurrentPipeline(const c_image_processing_pipeline::
       QObject::connect(qpp, &QImageProcessingPipeline::frameProcessed, this,
           [this]() {
             if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock(5) ) {
-              if ( _currentPipeline->get_display_image(_display->inputImage(), _display->inputMask()) ) {
+              if ( _currentPipeline->get_display(_display->inputImage(), _display->inputMask()) ) {
                 _display->_canAcceptFrame = false;
                 Q_EMIT _display->inputImageReady();
               }
@@ -385,7 +410,7 @@ void QLivePipelineThread::run()
             last_frame_index = index;
             frame->image().copyTo(output_frame);
 
-            if ( true ) {
+            if ( _liveThread->_enableDarkFrame ) {
               QMutexLocker lock(&_liveThread->_darkFrameLock);
 
               const cv::Mat & darkFrame = _liveThread->_darkFrame;
@@ -1115,11 +1140,19 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
             }
           },
           [this](DEBAYER_ALGORITHM * v) {
+            return _opts ? *v = _opts->debayer(), true : false;
+          });
+
+  enable_darkframe_ctl =
+      add_checkbox("Subtract dark frame",
+          "Enable dark frame subtraction",
+          [this](bool checked) {
             if ( _opts ) {
-              *v = _opts->debayer();
-              return true;
+              _opts->setEnableDarkFrame(checked);
             }
-            return false;
+          },
+          [this](bool * checked) {
+            return _opts ? * checked = _opts->enableDarkFrame(), true : false;
           });
 
   darkframe_ctl =
@@ -1133,11 +1166,7 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
             }
           },
           [this](QString * v) {
-            if ( _opts ) {
-              *v = _opts->darkFramePath();
-              return true;
-            }
-            return false;
+            return _opts ? *v = _opts->darkFramePath(),  true : false;
           });
 
   darkFrameScale_ctl =
@@ -1149,11 +1178,7 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
             }
           },
           [this](double * v) {
-            if ( _opts ) {
-              *v = _opts->darkFrameScale();
-              return true;
-            }
-            return false;
+            return _opts ? *v = _opts->darkFrameScale(), true : false;
           });
 
   updateControls();

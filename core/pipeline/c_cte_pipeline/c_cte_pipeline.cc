@@ -793,8 +793,6 @@ bool c_cte_pipeline::get_display_image(cv::OutputArray display_frame, cv::Output
     display_mask.release();
   }
 
-  lock_guard lock(mutex());
-
   if ( _output_options.save_progress_video ) {
     lastDisplayImage.copyTo(display_frame);
   }

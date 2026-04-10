@@ -114,7 +114,6 @@ public:
   }
 
   bool serialize(c_config_setting settings, bool save) override;
-  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool copy_parameters(const base::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
 
@@ -128,6 +127,7 @@ protected:
   bool save_progress_video();
   bool save_current_pose();
   bool create_display_image(size_t back_frame_index, cv::OutputArray display_frame);
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
 
 protected:
   c_cte_pipeline_input_options _input_options;

@@ -178,8 +178,6 @@ int c_jdr_pipeline::master_frame_index() const
 
 bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputArray outputMask)
 {
-  lock_guard lock(mutex());
-
   if ( outputImage.needed() ) {
     _current_master_frame_candidate.copyTo(outputImage);
   }

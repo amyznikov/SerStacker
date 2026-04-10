@@ -1544,9 +1544,6 @@ void c_virtual_stereo_pipeline::draw_matched_positions(cv::Mat & image,
 bool c_virtual_stereo_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   //////////////////
-
-  lock_guard lock(mutex());
-
   if( _current_image.empty() || _previous_image.empty() ) {
     return false;
   }

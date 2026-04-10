@@ -432,8 +432,6 @@ bool c_roi_tracker_pipeline::process_current_frame()
 
 bool c_roi_tracker_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if ( _current_image.empty() ) {
     return false;
   }

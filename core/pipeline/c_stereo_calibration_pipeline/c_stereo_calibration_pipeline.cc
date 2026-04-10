@@ -487,8 +487,6 @@ void c_stereo_calibration_pipeline::cleanup_pipeline()
 
 bool c_stereo_calibration_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  lock_guard lock(mutex());
-
   if ( _current_frames[0].empty() || _current_frames[0].empty() ) {
     return false;
   }

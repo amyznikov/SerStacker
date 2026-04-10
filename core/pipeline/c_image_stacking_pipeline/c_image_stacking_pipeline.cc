@@ -2352,8 +2352,6 @@ double c_image_stacking_pipeline::compute_image_noise(const cv::Mat & image, con
 
 bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::OutputArray dst_mask)
 {
-  lock_guard lock(mutex());
-
   switch (_pipeline_stage) {
     case stacking_stage_idle:
       break;

@@ -1485,6 +1485,11 @@ public:
     _settings->saveSettings(settings, prefix);
   }
 
+  void updateControls()
+  {
+    _settings->updateControls();
+  }
+
 protected:
   QVBoxLayout * _layout;
   QSettingsWidgetType * _settings = nullptr;

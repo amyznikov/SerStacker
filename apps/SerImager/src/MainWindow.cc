@@ -327,6 +327,9 @@ void MainWindow::setupShapeOptions()
       is_visible(_rectShapeOptionsDialogBox) && _rectShapeOptionsDialogBox->isVisible(),
       [this](bool checked) {
         _rectShapeOptionsDialogBox->setVisible(checked);
+        if ( _rectShapeOptionsDialogBox->isVisible() ) {
+          _rectShapeOptionsDialogBox->updateControls();
+        }
       }));
 
   QObject::connect(_rectShapeOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,

@@ -418,10 +418,8 @@ bool c_roi_tracker_pipeline::process_current_frame()
       return false;
     }
 
-
-    CF_DEBUG("hasUpdates: %d objbox_: %d;%d %dx%d", hasUpdates,
-        _objbox.x, _objbox.y, _objbox.width, _objbox.height);
-
+//    CF_DEBUG("hasUpdates: %d objbox_: %d;%d %dx%d", hasUpdates,
+//        _objbox.x, _objbox.y, _objbox.width, _objbox.height);
   }
 
   if ( !write_progress_video() ) {

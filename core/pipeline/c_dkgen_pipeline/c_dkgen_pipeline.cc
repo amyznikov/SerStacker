@@ -194,12 +194,8 @@ bool c_dkgen_pipeline::compute_average(cv::OutputArray avgframe, cv::OutputArray
   }
 
   if( avgframe.needed() ) {
-    // No special conversion to CV_8U is required here,
-    // GUI will convert it itself as required after MTF postproc
-
     cv::Mat tmp;
     cv::max(1.0, _avg_mask, tmp);
-
     if( _avg_image.channels() != tmp.channels() ) {
       const std::vector<cv::Mat> channels(_avg_image.channels(), tmp);
       cv::merge(channels, tmp);

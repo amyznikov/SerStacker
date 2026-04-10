@@ -201,18 +201,14 @@ void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
 
   if( !(_darkFramePath = pathfilename).isEmpty() ) {
 
-    CF_DEBUG("load darkFrame");
-
     cv::Mat unusedMask;
     if( !load_image(_darkFramePath.toStdString(), _darkFrame, unusedMask) ) {
       CF_ERROR("load_image('%s') fails", _darkFramePath.toUtf8().constData());
     }
     else if( _darkFrame.depth() != CV_32F ) {
-      CF_DEBUG("_darkFrame.convertTo");
       _darkFrame.convertTo(_darkFrame, CV_32F, _darkFrameScale);
     }
     else if( _darkFrameScale != 1 ) {
-      CF_DEBUG("cv::multiply");
       cv::multiply(_darkFrame, _darkFrameScale, _darkFrame);
     }
 
@@ -335,10 +331,10 @@ void QLivePipelineThread::setCurrentPipeline(const c_image_processing_pipeline::
 
   if( (_currentPipeline = pipeline) ) {
     if( QImageProcessingPipeline * qpp = dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get()) ) {
-      // Copy image from pipeline and Notify QLiveDisplay on frame ready
       QObject::connect(qpp, &QImageProcessingPipeline::frameProcessed, this,
           [this]() {
-            if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock(5) ) {
+            // Copy image from pipeline and Notify QLiveDisplay on frame ready
+            if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock(2) ) {
               if ( _currentPipeline->get_display(_display->inputImage(), _display->inputMask()) ) {
                 _display->_canAcceptFrame = false;
                 Q_EMIT _display->inputImageReady();
@@ -393,47 +389,43 @@ void QLivePipelineThread::run()
     {
       while (_camera->state() == QImagingCamera::State_started) {
 
-        bool haveInputImage = false;
+        QImagingCamera::shared_lock lock(_camera->mutex());
+        const auto & deque = _camera->deque();
+        if( !deque.empty() ) {
 
-        if( 42 ) {
-
-          QImagingCamera::shared_lock lock(_camera->mutex());
-          const auto &deque = _camera->deque();
-          if( !deque.empty() ) {
-
-            const QCameraFrame::sptr &frame = deque.back();
-            const int index = frame->index();
-            if( index <= last_frame_index ) {
-              continue;
-            }
-
-            last_frame_index = index;
-            frame->image().copyTo(output_frame);
-
-            if ( _liveThread->_enableDarkFrame ) {
-              QMutexLocker lock(&_liveThread->_darkFrameLock);
-
-              const cv::Mat & darkFrame = _liveThread->_darkFrame;
-              if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
-                if ( output_frame.depth() != darkFrame.depth() ) {
-                  output_frame.convertTo(output_frame, darkFrame.depth());
-                }
-                cv::subtract(output_frame, darkFrame, output_frame);
-              }
-            }
-
-            const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
-            if ( is_bayer_pattern(frame->colorid()) && algo != DEBAYER_DISABLE  ) {
-              ::debayer(output_frame, output_frame, frame->colorid(), algo);
-              * output_colorid = colorid = COLORID_BGR;
-            }
-            else {
-              * output_colorid = colorid = frame->colorid();
-            }
-
-            * output_bpp = bpp = frame->bpp();
-            return true;
+          const QCameraFrame::sptr & frame = deque.back();
+          const int index = frame->index();
+          if( index <= last_frame_index ) {
+            continue;
           }
+
+          last_frame_index = index;
+          frame->image().copyTo(output_frame);
+
+          if( _liveThread->_enableDarkFrame ) {
+
+            QMutexLocker lock(&_liveThread->_darkFrameLock);
+
+            const cv::Mat & darkFrame = _liveThread->_darkFrame;
+            if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
+              if( output_frame.depth() != darkFrame.depth() ) {
+                output_frame.convertTo(output_frame, darkFrame.depth());
+              }
+              cv::subtract(output_frame, darkFrame, output_frame);
+            }
+          }
+
+          const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
+          if( is_bayer_pattern(frame->colorid()) && algo != DEBAYER_DISABLE ) {
+            ::debayer(output_frame, output_frame, frame->colorid(), algo);
+            *output_colorid = colorid = COLORID_BGR;
+          }
+          else {
+            *output_colorid = colorid = frame->colorid();
+          }
+
+          *output_bpp = bpp = frame->bpp();
+          return true;
         }
       }
       return false;

@@ -18,7 +18,6 @@
 #include <gui/qgraphicsshape/QGraphicsTargetShape.h>
 #include <gui/widgets/QSettingsWidget.h>
 #include <gui/qpipeline/QImageProcessingPipeline.h>
-//#include <gui/qpipeline/QGenericImageProcessingPipeline/QGenericImageProcessingPipeline.h>
 #include <core/pipeline/c_generic_image_processor_pipeline/c_generic_image_processor_pipeline.h>
 #include <core/io/debayer.h>
 #include <core/settings/opencv_settings.h>

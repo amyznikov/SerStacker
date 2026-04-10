@@ -27,6 +27,7 @@ int main(int argc, char * argv[])
   app.setOrganizationName(MY_COMPANY);
   app.setApplicationName(MY_APP);
 
+
   QFFStreams::registerMetaTypes();
 
 #if HAVE_QLCSCTPCamera
@@ -63,6 +64,7 @@ int main(int argc, char * argv[])
   else {
 
     setIconStyleSelector("light");
+    QIcon::setThemeName("breeze-dark");
 
     //  QFont font("SansSerif", 16, QFont::Medium);
     //  font.setStyleHint(QFont::SansSerif);

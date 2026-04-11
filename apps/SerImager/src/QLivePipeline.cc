@@ -30,6 +30,20 @@ namespace serimager {
 #define ICON_rename           ":/serimager/icons/rename.png"
 #define ICON_bayer            ":/gui/icons/bayer.png"
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<typename Predicate>
+static inline bool waitUntil(QWaitCondition & cond, QMutex & mutex, Predicate && pred, unsigned long timeout = ULONG_MAX)
+{
+  while (!pred()) {
+    if( !cond.wait(&mutex, timeout) ) {
+      return pred();
+    }
+  }
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLiveDisplay::QLiveDisplay(QWidget * parent) :
@@ -296,17 +310,6 @@ void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, Q
   }
 }
 
-template<typename Predicate>
-static inline bool waitUntil(QWaitCondition & cond, QMutex & mutex, Predicate && pred, unsigned long timeout = ULONG_MAX)
-{
-  while (!pred()) {
-    if( !cond.wait(&mutex, timeout) ) {
-      return pred();
-    }
-  }
-  return true;
-}
-
 void QLivePipelineThread::setPipeline(const c_image_processing_pipeline::sptr & pipeline)
 {
   QMutexLocker lock(&_lock);
@@ -390,44 +393,49 @@ void QLivePipelineThread::run()
       while (_camera->state() == QImagingCamera::State_started) {
 
         QImagingCamera::shared_lock lock(_camera->mutex());
+
         const auto & deque = _camera->deque();
-        if( !deque.empty() ) {
-
-          const QCameraFrame::sptr & frame = deque.back();
-          const int index = frame->index();
-          if( index <= last_frame_index ) {
-            continue;
-          }
-
-          last_frame_index = index;
-          frame->image().copyTo(output_frame);
-
-          if( _liveThread->_enableDarkFrame ) {
-
-            QMutexLocker lock(&_liveThread->_darkFrameLock);
-
-            const cv::Mat & darkFrame = _liveThread->_darkFrame;
-            if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
-              if( output_frame.depth() != darkFrame.depth() ) {
-                output_frame.convertTo(output_frame, darkFrame.depth());
-              }
-              cv::subtract(output_frame, darkFrame, output_frame);
-            }
-          }
-
-          const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
-          if( is_bayer_pattern(frame->colorid()) && algo != DEBAYER_DISABLE ) {
-            ::debayer(output_frame, output_frame, frame->colorid(), algo);
-            *output_colorid = colorid = COLORID_BGR;
-          }
-          else {
-            *output_colorid = colorid = frame->colorid();
-          }
-
-          *output_bpp = bpp = frame->bpp();
-          return true;
+        if( deque.empty() ) {
+          _camera->condvar().wait(lock);
+          continue;
         }
+
+        const QCameraFrame::sptr & frame = deque.back();
+        const int index = frame->index();
+        if( index <= last_frame_index ) {
+          _camera->condvar().wait(lock);
+          continue;
+        }
+
+        last_frame_index = index;
+        frame->image().copyTo(output_frame);
+        *output_bpp = bpp = frame->bpp();
+
+        if( _liveThread->_enableDarkFrame ) {
+
+          QMutexLocker lock(&_liveThread->_darkFrameLock);
+
+          const cv::Mat & darkFrame = _liveThread->_darkFrame;
+          if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
+            if( output_frame.depth() != darkFrame.depth() ) {
+              output_frame.convertTo(output_frame, darkFrame.depth());
+            }
+            cv::subtract(output_frame, darkFrame, output_frame);
+          }
+        }
+
+        const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
+        if( is_bayer_pattern(frame->colorid()) && algo != DEBAYER_DISABLE ) {
+          ::debayer(output_frame, output_frame, frame->colorid(), algo);
+          *output_colorid = colorid = COLORID_BGR;
+        }
+        else {
+          *output_colorid = colorid = frame->colorid();
+        }
+
+        return true;
       }
+
       return false;
     }
   };

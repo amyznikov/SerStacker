@@ -72,9 +72,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
     return false;
   }
 
-  const bool is_live_sequence =
-      _input_sequence->is_live();
-
+  const bool is_live_sequence = _input_sequence->is_live();
   if( is_live_sequence ) {
     _total_frames = INT_MAX;
   }
@@ -123,7 +121,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       lock_guard lock(mutex());
       if( !_input_sequence->read(_current_image, &_current_mask) ) {
         CF_DEBUG("input_sequence_->read() fails");
-        return false;
+        break;
       }
     }
 
@@ -148,7 +146,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
   }
 
-  return true;
+  return !canceled();
 }
 
 bool c_generic_image_processor_pipeline::process_current_frame()

@@ -172,15 +172,14 @@ void QImagingCamera::setState(State newState, const QString & reason)
 {
   if( _current_state != newState ) {
 
-    const State oldState =
-        _current_state;
-
+    const State oldState = _current_state;
     _current_state = newState;
 
     if( !reason.isEmpty() ) {
       _stateChangeReason = reason;
     }
 
+    _condvar.notify_all();
     onStateCanged(oldState, newState);
   }
 }

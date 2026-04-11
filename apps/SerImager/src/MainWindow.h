@@ -62,15 +62,15 @@ protected Q_SLOTS:
   void toggleUpdateTimer();
 
 protected:
-  void timerEvent(QTimerEvent *event) override;
-  void closeEvent(QCloseEvent *event) override;
-  void onSaveState(QSettings & settings) override;
-  void onRestoreState(QSettings & settings) override;
-  void onMtfControlVisibilityChanged(bool visible) override;
-  void onPlotProfileDialogBoxVisibilityChanged(bool visible) override;
-  void onImageProcessorParameterChanged() override;
-  void onMeasureRightNowRequested() override;
-  IMtfDisplay * getCurrentMtfDisplay() override;
+  void timerEvent(QTimerEvent *event) final;
+  void closeEvent(QCloseEvent *event) final;
+  void onSaveState(QSettings & settings) final;
+  void onRestoreState(QSettings & settings) final;
+  void onMtfControlVisibilityChanged(bool visible) final;
+  void onPlotProfileDialogBoxVisibilityChanged(bool visible) final;
+  void onImageProcessorParameterChanged() final;
+  void onMeasureRightNowRequested() final;
+  IMtfDisplay * getCurrentMtfDisplay() final;
 
 protected:
   QLivePipelineThread * _liveThread = nullptr;

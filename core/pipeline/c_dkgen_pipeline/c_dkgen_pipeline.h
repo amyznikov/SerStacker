@@ -23,6 +23,8 @@ struct c_dkgen_pipeline_output_options:
 {
   std::string output_file_name;
   PIXEL_DEPTH output_depth = PIXEL_DEPTH_32F;
+  bool make_flat_field = false;
+  bool separate_channel_normalization = true;
   bool append_timestamp = true;
   bool append_imagesize = true;
   bool append_pixtype = true;

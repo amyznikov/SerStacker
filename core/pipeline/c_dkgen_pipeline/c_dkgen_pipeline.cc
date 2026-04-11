@@ -75,6 +75,8 @@ bool c_dkgen_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
     SERIALIZE_OPTION(section, save, _output_options, output_file_name);
+    SERIALIZE_OPTION(section, save, _output_options, make_flat_field);
+    SERIALIZE_OPTION(section, save, _output_options, separate_channel_normalization);
     SERIALIZE_OPTION(section, save, _output_options, append_timestamp);
     SERIALIZE_OPTION(section, save, _output_options, append_imagesize);
     SERIALIZE_OPTION(section, save, _output_options, append_pixtype);
@@ -102,6 +104,8 @@ const c_ctlist<c_dkgen_pipeline> & c_dkgen_pipeline::getcontrols()
           ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
           ctlbind(ctls, "output file name:", CTL_CONTEXT(ctx, output_file_name));
           ctlbind(ctls, "output depth:", CTL_CONTEXT(ctx, output_depth));
+          ctlbind(ctls, "make flat field:", CTL_CONTEXT(ctx, make_flat_field));
+          ctlbind(ctls, "separate channel normalization:", CTL_CONTEXT(ctx, separate_channel_normalization));
           ctlbind(ctls, "append timestamp:", CTL_CONTEXT(ctx, append_timestamp));
           ctlbind(ctls, "append imagesize:", CTL_CONTEXT(ctx, append_imagesize));
           ctlbind(ctls, "append pixtype:", CTL_CONTEXT(ctx, append_pixtype));
@@ -190,7 +194,8 @@ bool c_dkgen_pipeline::compute_average(cv::OutputArray avgframe, cv::OutputArray
   }
 
   if( avgmask.needed() ) {
-    cv::compare(_avg_mask, cv::Scalar::all(0), avgmask, cv::CMP_GT);
+    cv::compare(_avg_mask, cv::Scalar::all(0), avgmask,
+        cv::CMP_GT);
   }
 
   if( avgframe.needed() ) {
@@ -200,7 +205,6 @@ bool c_dkgen_pipeline::compute_average(cv::OutputArray avgframe, cv::OutputArray
       const std::vector<cv::Mat> channels(_avg_image.channels(), tmp);
       cv::merge(channels, tmp);
     }
-
     cv::divide(_avg_image, tmp, avgframe, 255.0);
   }
 
@@ -283,6 +287,7 @@ bool c_dkgen_pipeline::run_pipeline()
   set_status_msg("RUNNING ...");
 
   int input_depth = -1;
+  bool fOK = true;
 
   _processed_frames = 0;
   _accumulated_frames = 0;
@@ -304,7 +309,17 @@ bool c_dkgen_pipeline::run_pipeline()
         break;
       }
 
-      if( _avg_image.empty() ) {
+      if( !_avg_image.empty() ) {
+        if( _current_image.size() != _avg_image.size() || _current_image.channels() != _avg_image.channels() ) {
+          CF_ERROR("EERROR: Invalid input image size %dx%d %d channels. Expected %dx%d %d channels.\n"
+              "Camera was restarted on different resolution with no restarting pipeline?",
+              _current_image.cols, _current_image.rows, _current_image.channels(),
+              _avg_image.cols, _avg_image.rows, _avg_image.channels());
+          fOK = false;
+          break;
+        }
+      }
+      else {
         input_depth = _current_image.depth();
         const int ddepth = std::max(_current_image.depth(), CV_32F);
         const int dtype = CV_MAKETYPE(ddepth, _current_image.channels());
@@ -336,10 +351,31 @@ bool c_dkgen_pipeline::run_pipeline()
     cv::Mat avgimage, avgmask;
     if( compute_average(avgimage, avgmask) ) {
 
+      // Must be CV_8UC1 from compute_average()
       if( cv::countNonZero(avgmask) == avgmask.size().area() ) {
         avgmask.release();
       }
 
+      std::string info_suffix =
+          _output_options.make_flat_field ? ".flat" : ".avg";
+
+      if( _output_options.make_flat_field ) {
+
+        cv::Scalar mv = cv::mean(avgimage, avgmask);
+
+        if( !_output_options.separate_channel_normalization ) {
+          if( avgimage.channels() > 1 ) {
+            double sum = 0;
+            for( int i = 0, n = avgimage.channels(); i < n; ++i ) {
+              sum += mv[i];
+            }
+            mv = cv::Scalar::all(sum / avgimage.channels());
+          }
+        }
+        cv::divide(avgimage, mv, avgimage);
+      }
+
+      // Must be CV_32F from compute_average()
       int ddepth = avgimage.depth();
       if ( _output_options.output_depth >= 0 ) {
         ddepth = _output_options.output_depth;
@@ -349,18 +385,28 @@ bool c_dkgen_pipeline::run_pipeline()
       }
 
       if( ddepth != avgimage.depth() ) {
-        avgimage.convertTo(avgimage, ddepth);
+        if ( !_output_options.make_flat_field ) {
+          avgimage.convertTo(avgimage, ddepth);
+        }
+        else {
+          // Normally should prefer CV_32F for FF always,
+          // but we allow the option for re-normalization and pixel type change
+          double minv = 0, maxv = 1;
+          cv::minMaxLoc(avgimage, &minv, &maxv, nullptr, nullptr, avgmask);
+          avgimage.convertTo(avgimage, ddepth, getMaxValForPixelDepth(ddepth) / maxv);
+        }
       }
 
-      std::string avgsuffix = ".avg";
       if ( _output_options.append_imagesize ) {
-        avgsuffix += ssprintf(".%dx%d", avgimage.cols, avgimage.rows);
+        info_suffix += ssprintf(".%dx%d", avgimage.cols, avgimage.rows);
       }
       if ( _output_options.append_pixtype ) {
-        avgsuffix += ssprintf(".%s", pixtype2str(avgimage.depth()));
+        info_suffix += ssprintf(".%s", pixtype2str(avgimage.depth()));
       }
 
-      const std::string output_filename = generate_output_file_name(avgsuffix);
+      const std::string output_filename =
+          generate_output_file_name(info_suffix);
+
       CF_DEBUG("Saving %s ...", output_filename.c_str());
 
       if( !save_image(avgimage, avgmask, output_filename) ) {
@@ -370,6 +416,6 @@ bool c_dkgen_pipeline::run_pipeline()
     }
   }
 
-  return true;
+  return fOK;
 }
 

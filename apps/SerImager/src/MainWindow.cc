@@ -102,7 +102,6 @@ MainWindow::MainWindow(QWidget * parent) :
         }
       });
 
-
   set_ctlbind_show_info_text_callback([](const std::string & title, const std::string & text) {
     QTextInfoDialogBox::show(QString::fromStdString(title), QString::fromStdString(text),
         QApplication::activeWindow());
@@ -118,7 +117,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
     if (_liveDisplay) {
-      _liveDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w,y + h));
+      _liveDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w, y + h));
     }
   });
 

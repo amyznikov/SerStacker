@@ -487,43 +487,29 @@ void QLivePipelineThread::run()
 
     while (camera->state() == QImagingCamera::State_started) {
 
-      try {
+      if( true ) {
+        // Check if pipeline switch requested
+        QMutexLocker lock(&_lock);
 
-        if ( true ) {
-          QMutexLocker lock(&_lock);
-
-          if ( _userPipeline ) {
+        if( _userPipeline  ) {
+          if ( _userPipeline != _currentPipeline ) {
             setCurrentPipeline(_userPipeline);
           }
-          else if ( _currentPipeline != dummyPipeline ) {
-            setCurrentPipeline(dummyPipeline);
-          }
         }
+        else if( _currentPipeline != dummyPipeline ) {
+          setCurrentPipeline(dummyPipeline);
+        }
+      }
 
-        try {
-          // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
-          if( _currentPipeline->run(input_sequence) ) {
-            CF_DEBUG("_currentPipeline finished");
-          }
-          else {
-            CF_ERROR("_currentPipeline->run() fails");
-          }
-        }
-        catch( const std::exception &e ) {
-          CF_ERROR("Exception in activePipeline->run() : %s", e.what());
-        }
-        catch (...) {
-          CF_ERROR("Unknown Exception in activePipeline->run()");
-        }
+      // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
+      if( _currentPipeline->run(input_sequence) ) {
+        CF_DEBUG("_currentPipeline finished");
+      }
+      else {
+        CF_ERROR("_currentPipeline->run() fails");
+      }
 
-        _condvar.wakeAll();
-      }
-      catch( const std::exception &e ) {
-        CF_ERROR("Exception in live thread : %s", e.what());
-      }
-      catch (...) {
-        CF_ERROR("Unknown Exception in live thread");
-      }
+      _condvar.wakeAll();
     }
 
     setCurrentPipeline(nullptr);

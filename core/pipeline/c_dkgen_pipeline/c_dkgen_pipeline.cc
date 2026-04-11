@@ -340,8 +340,16 @@ bool c_dkgen_pipeline::run_pipeline()
         avgmask.release();
       }
 
-      if ( _output_options.output_depth >= 0 && input_depth >= 0 ) {
-        avgimage.convertTo(avgimage, _output_options.output_depth);
+      int ddepth = avgimage.depth();
+      if ( _output_options.output_depth >= 0 ) {
+        ddepth = _output_options.output_depth;
+      }
+      else if ( input_depth >= 0 ) {
+        ddepth = input_depth;
+      }
+
+      if( ddepth != avgimage.depth() ) {
+        avgimage.convertTo(avgimage, ddepth);
       }
 
       std::string avgsuffix = ".avg";

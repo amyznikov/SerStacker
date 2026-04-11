@@ -50,17 +50,19 @@ protected:
 protected Q_SLOTS:
   void onCurrentImageChanged();
   void onCurrentDisplayImageChanged();
-  void onCameraWriterStatusUpdate();
   void onShowLiveThreadSettingsActionTriggered(bool checked);
   void onExposureStatusUpdate(QImagingCamera::ExposureStatus status, double exposure, double elapsed);
+  void onCameraWriterStatusUpdate();
+  void onPipelineStatusUpdate();
   void onCentralDisplayROIShapeChanged();
   void onCentralDisplayLineShapeChanged();
   void onCentralDisplayTargetShapeChanged();
   //void updateMeasureChannels();
   void updateMeasurements();
-
+  void toggleUpdateTimer();
 
 protected:
+  void timerEvent(QTimerEvent *event) override;
   void closeEvent(QCloseEvent *event) override;
   void onSaveState(QSettings & settings) override;
   void onRestoreState(QSettings & settings) override;
@@ -90,6 +92,7 @@ protected:
   QLabel * mouse_status_ctl = nullptr;
   QLabel * capture_status_ctl = nullptr;
   QLabel * exposure_status_ctl = nullptr;
+  QLabel * pipeline_status_ctl = nullptr;
   QMenu _displayOptionsMenu;
 
   QToolBar * _mainToolbar = nullptr;
@@ -100,18 +103,15 @@ protected:
   QGraphicsRectShapeSettingsDialogBox * _rectShapeOptionsDialogBox = nullptr;
   QMenu _rectShapeActionsMenu;
 
-
   QAction * _showTargetShapeAction = nullptr;
   QToolButton * _targetShapeActionsButton = nullptr;
   QGraphicsTargetShapeSettingsDialogBox * _targetShapeOptionsDialogBox = nullptr;
   QMenu _targetShapeActionsMenu;
 
-
   QAction * _showLineShapeAction = nullptr;
   QToolButton * _lineShapeActionsButton = nullptr;
   QGraphicsLineShapeSettingsDialogBox * _lineShapeOptionsDialogBox = nullptr;
   QMenu _lineShapeActionsMenu;
-
 
   QAction * _showLiveThreadSettingsAction = nullptr;
   QLiveThreadSettingsDialogBox * _liveThreadSettingsDialogBox = nullptr;
@@ -121,18 +121,18 @@ protected:
   QAction * copyDisplayImageAction = nullptr;
   QAction * copyDisplayViewportAction = nullptr;
 
-
 #if HAVE_INDIGO
   QIndigoClient * _indigoClient = nullptr;
   QIndigoFocuserWidget * _indigoFocuser = nullptr;
   QCustomDockWidget * _indigoFocuserDock = nullptr;
 #endif // HAVE_INDIGO
 
-
   QDisplayVideoWriter _diplayImageWriter;
   QToolButton* _displayImageVideoWriterToolButton = nullptr;
   bool _lockDiplayImageWriter = false;
 
+  // pp status update timer
+  int _updateTimerId = -1;
 };
 
 } /* namespace serimager */

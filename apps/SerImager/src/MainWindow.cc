@@ -80,6 +80,9 @@ MainWindow::MainWindow(QWidget * parent) :
 
   restoreState();
 
+  QObject::connect(_liveThread, &QLivePipelineThread::pipelineChanged,
+      this, &ThisClass::toggleUpdateTimer, Qt::QueuedConnection);
+
   QObject::connect(_liveDisplay, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
 
@@ -98,6 +101,7 @@ MainWindow::MainWindow(QWidget * parent) :
           mouse_status_ctl->hide();
         }
       });
+
 
   set_ctlbind_show_info_text_callback([](const std::string & title, const std::string & text) {
     QTextInfoDialogBox::show(QString::fromStdString(title), QString::fromStdString(text),
@@ -153,6 +157,9 @@ MainWindow::MainWindow(QWidget * parent) :
 
 MainWindow::~MainWindow()
 {
+  if ( _updateTimerId >= 0 ) {
+    killTimer(_updateTimerId);
+  }
   saveState();
 }
 
@@ -592,6 +599,7 @@ void MainWindow::setupStatusbar()
   sb->addWidget(mouse_status_ctl = new QLabel(this));
   sb->addPermanentWidget(exposure_status_ctl = new QLabel(this));
   sb->addPermanentWidget(capture_status_ctl = new QLabel("", this));
+  sb->addPermanentWidget(pipeline_status_ctl = new QLabel("", this));
 
   show_log_ctl->setDefaultAction(showLogWidgetAction);
 }
@@ -678,24 +686,6 @@ IMtfDisplay * MainWindow::getCurrentMtfDisplay()
 {
   return _liveDisplay;
 }
-
-
-void MainWindow::onCameraWriterStatusUpdate()
-{
-  const int capture_drops = _cameraWriter.camera() ?
-      _cameraWriter.camera()->drops() : 0;
-
-  const int write_drops =
-      _cameraWriter.num_dropped_frames();
-
-  capture_status_ctl->setText(QString("|R: %1 |T: %2 s |F: %3 |D: %4:%5")
-      .arg(_cameraWriter.round())
-      .arg(cvRound(_cameraWriter.capture_duration()))
-      .arg(_cameraWriter.num_saved_frames())
-      .arg(write_drops)
-      .arg(capture_drops));
-}
-
 
 void MainWindow::onCurrentImageChanged()
 {
@@ -854,7 +844,68 @@ void MainWindow::onExposureStatusUpdate(QImagingCamera::ExposureStatus status, d
   }
 }
 
+void MainWindow::onCameraWriterStatusUpdate()
+{
+  const int capture_drops = _cameraWriter.camera() ?
+      _cameraWriter.camera()->drops() : 0;
 
+  const int write_drops =
+      _cameraWriter.num_dropped_frames();
+
+  capture_status_ctl->setText(QString("|R: %1 |T: %2 s |F: %3 |D: %4:%5")
+      .arg(_cameraWriter.round())
+      .arg(cvRound(_cameraWriter.capture_duration()))
+      .arg(_cameraWriter.num_saved_frames())
+      .arg(write_drops)
+      .arg(capture_drops));
+}
+
+
+void MainWindow::toggleUpdateTimer()
+{
+  bool activateUpdateTimer = false;
+
+  if ( _liveThread ) {
+    // Safe, as pipeline can be changed from GUI thread only
+    const auto & pipeline = _liveThread->pipeline();
+    if ( pipeline ) {
+      activateUpdateTimer = true;
+    }
+  }
+
+  if ( activateUpdateTimer ) {
+    if( _updateTimerId < 0 ) {
+      _updateTimerId = startTimer(1000);
+    }
+  }
+  else if( _updateTimerId >= 0 ) {
+    killTimer(_updateTimerId);
+    _updateTimerId = -1;
+  }
+}
+
+void MainWindow::timerEvent(QTimerEvent * event)
+{
+  if( event->timerId() == _updateTimerId ) {
+    onPipelineStatusUpdate();
+  }
+  else {
+    Base::timerEvent(event);
+  }
+}
+
+void MainWindow::onPipelineStatusUpdate()
+{
+  if ( _liveThread ) {
+    // Safe, as it can be changed from GUI thread only
+    const auto & pipeline = _liveThread->pipeline();
+    if ( pipeline ) {
+      const int accumulated_frames = pipeline->accumulated_frames();
+      const int processed_frames = pipeline->processed_frames();
+      pipeline_status_ctl->setText(QString("| P: %1 A: %2").arg(processed_frames).arg(accumulated_frames));
+    }
+  }
+}
 
 
 } /* namespace serimager */

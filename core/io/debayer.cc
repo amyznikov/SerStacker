@@ -6,7 +6,7 @@
  */
 
 #include "debayer.h"
-#include <tbb/tbb.h>
+#include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -51,9 +51,6 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
 }
 
 
-
-
-
 namespace {
 
 
@@ -66,7 +63,6 @@ template<> inline constexpr uint16_t cvmax<uint16_t>() { return UINT16_MAX; }
 template<> inline constexpr int16_t cvmax<int16_t>() { return INT16_MAX; }
 template<> inline constexpr uint32_t cvmax<uint32_t>() { return UINT32_MAX; }
 template<> inline constexpr int32_t cvmax<int32_t>() { return INT32_MAX; }
-
 
 
 /** @brief
@@ -92,18 +88,6 @@ inline cv::Scalar depthmax(int depth)
   }
 
   return cv::Scalar::all(0);
-}
-
-template<typename T, typename Func>
-static inline void run_loop(T start, T end, Func&& f)
-{
-#if 1 // HAVE_TBB
-    tbb::parallel_for(start, end, f, tbb::static_partitioner());
-#else
-    for (T i = start; i < end; ++i) {
-      f(i);
-    }
-#endif
 }
 
 } // namespace
@@ -145,266 +129,110 @@ bool is_bayer_pattern(enum COLORID colorid)
   return false;
 }
 
-/** @brief
- * Extract src into 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ]
- * The output size of dst is twice smaller than src
- */
-template<class T>
-static bool extract_bayer_planes_(cv::InputArray __src, cv::OutputArray __dst, enum COLORID colorid)
+template<class _Tp>
+static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
-  typedef tbb::blocked_range<int> range;
-
-  if( (__src.cols() & 0x1) || (__src.rows() & 0x1) || __src.channels() != 1 ) {
-    CF_ERROR("Can not make debayer4planes_ for Uneven image size %dx%dx%d",
-        __src.cols(), __src.rows(), __src.channels());
+  if( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 ) {
+    CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
+        _src.cols(), _src.rows(), _src.channels());
     return false;
   }
 
-  const cv::Mat_<T> src = __src.getMat();
-  cv::Mat_<cv::Vec<T, 4>> dst(src.size() / 2);
+  using Vec4T = cv::Vec<_Tp, 4>;
+  const cv::Mat_<_Tp> src = _src.getMat();
+  cv::Mat_<Vec4T> dst(_src.size() / 2);
 
   switch (colorid) {
+    case COLORID_BAYER_MYYC:
     case COLORID_BAYER_RGGB: {
-      //  [ R  G1 ]
-      //  [ G2 B  ]
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-              const int src_y = y * 2;
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = src[src_y][src_x];
-                const T src_g1 = src[src_y][src_x + 1];
-                const T src_g2 = src[src_y + 1][src_x];
-                const T src_b = src[src_y + 1][src_x + 1];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp * r0 = src[y * 2 + 0];
+          const _Tp * r1 = src[y * 2 + 1];
+          Vec4T * dstp = dst[y];
+          // RGGB -> [R G1 B G2]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][0] = r0[2 * x + 0];
+            dstp[x][1] = r0[2 * x + 1];
+            dstp[x][3] = r1[2 * x + 0];
+            dstp[x][2] = r1[2 * x + 1];
+          }
+        }
+      });
       break;
     }
 
-    case COLORID_BAYER_GRBG: {
-      //  [ G R ]
-      //  [ B G ]
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-              const int src_y = y * 2;
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = src[src_y][src_x + 1];
-                const T src_g1 = src[src_y][src_x];
-                const T src_g2 = src[src_y + 1][src_x + 1];
-                const T src_b = src[src_y + 1][src_x];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
+    case COLORID_BAYER_YMCY:
+    case COLORID_BAYER_GRBG:{
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp * r0 = src[y * 2 + 0];
+          const _Tp * r1 = src[y * 2 + 1];
+          Vec4T * dstp = dst[y];
+          // GRBG -> [R G1 B G2]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][1] = r0[2 * x + 0];
+            dstp[x][0] = r0[2 * x + 1];
+            dstp[x][2] = r1[2 * x + 0];
+            dstp[x][3] = r1[2 * x + 1];
+          }
+        }
+      });
       break;
     }
 
+    case COLORID_BAYER_YCMY:
     case COLORID_BAYER_GBRG: {
-      //  [ G B ]
-      //  [ R G ]
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-              const int src_y = y * 2;
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = src[src_y+1][src_x];
-                const T src_g1 = src[src_y][src_x];
-                const T src_g2 = src[src_y + 1][src_x + 1];
-                const T src_b = src[src_y][src_x+1];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp * r0 = src[y * 2 + 0];
+          const _Tp * r1 = src[y * 2 + 1];
+          Vec4T * dstp = dst[y];
+          // GBRG -> [R G1 B G2]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][1] = r0[2 * x + 0];
+            dstp[x][2] = r0[2 * x + 1];
+            dstp[x][0] = r1[2 * x + 0];
+            dstp[x][3] = r1[2 * x + 1];
+          }
+        }
+      });
       break;
     }
 
+    case COLORID_BAYER_CYYM:
     case COLORID_BAYER_BGGR: {
-      //  [ B G ]
-      //  [ G R ]
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-              const int src_y = y * 2;
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = src[src_y+1][src_x+1];
-                const T src_g1 = src[src_y][src_x+1];
-                const T src_g2 = src[src_y + 1][src_x];
-                const T src_b = src[src_y][src_x];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
-      break;
-    }
-
-    case COLORID_BAYER_CYYM: {
-      //  [ R G ]
-      //  [ G B ]
-      //  cv::subtract(depthmax(src.depth()), src, dst);
-      //  cv::cvtColor(dst, dst, cv::COLOR_BayerRG2RGB);
-      //  B' =  0, 1, 0   B
-      //  G' =  1, 0, 0 * G
-      //  R' =  0, 0, 1   R
-
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-
-            constexpr T dmax = cvmax<T>();
-
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-
-              const int src_y = y * 2;
-
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = dmax - src[src_y][src_x];
-                const T src_g1 = dmax - src[src_y][src_x + 1];
-                const T src_g2 = dmax - src[src_y + 1][src_x];
-                const T src_b = dmax - src[src_y + 1][src_x + 1];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
-
-      break;
-    }
-
-    case COLORID_BAYER_YCMY: {
-      //  [ G R ]
-      //  [ B G ]
-      //  cv::subtract(depthmax(src.depth()), src, dst);
-      //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-      //  B' = 0, 1, 0  B
-      //  G' = 1, 0, 0  G
-      //  R' = 0, 0, 1  R
-
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-
-            constexpr T dmax = cvmax<T>();
-
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-
-              const int src_y = y * 2;
-
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = dmax - src[src_y][src_x + 1];
-                const T src_g1 = dmax - src[src_y][src_x];
-                const T src_g2 = dmax - src[src_y + 1][src_x + 1];
-                const T src_b = dmax - src[src_y + 1][src_x];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
-
-      break;
-    }
-
-    case COLORID_BAYER_YMCY: {
-      //  [ G B ]
-      //  [ R G ]
-      //  cv::subtract(depthmax(src.depth()), src, dst);
-      //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-      //  B' = 0, 1, 0  B
-      //  G' = 1, 0, 0  G
-      //  R' = 0, 0, 1  R
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-
-            constexpr T dmax = cvmax<T>();
-
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-
-              const int src_y = y * 2;
-
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = dmax - src[src_y+1][src_x];
-                const T src_g1 = dmax - src[src_y][src_x];
-                const T src_g2 = dmax - src[src_y + 1][src_x + 1];
-                const T src_b = dmax - src[src_y][src_x+1];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
-      break;
-    }
-
-    case COLORID_BAYER_MYYC: {
-      //  [ B G ]
-      //  [ G R ]
-      //   cv::subtract(depthmax(src.depth()), src, dst);
-      //   cv::cvtColor(dst, dst, cv::COLOR_BayerBG2RGB);
-      //  B' = 0, 1, 0  B
-      //  G' = 1, 0, 0  G
-      //  R' = 0, 0, 1  R
-      tbb::parallel_for(range(0, dst.rows, 256),
-          [&](const range & rrange) {
-
-            constexpr T dmax = cvmax<T>();
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-
-              const int src_y = y * 2;
-
-              for ( int x = 0; x < dst.cols; ++x ) {
-                const int src_x = x * 2;
-                const T src_r = dmax - src[src_y+1][src_x+1];
-                const T src_g1 = dmax - src[src_y][src_x+1];
-                const T src_g2 = dmax - src[src_y + 1][src_x];
-                const T src_b = dmax - src[src_y][src_x];
-                dst[y][x][0] = src_r;
-                dst[y][x][1] = src_g1;
-                dst[y][x][2] = src_b;
-                dst[y][x][3] = src_g2;
-              }
-            }
-          });
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp * r0 = src[y * 2 + 0];
+          const _Tp * r1 = src[y * 2 + 1];
+          Vec4T * dstp = dst[y];
+          // BGGR -> [R G1 B G2]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][2] = r0[2 * x + 0];
+            dstp[x][1] = r0[2 * x + 1];
+            dstp[x][3] = r1[2 * x + 0];
+            dstp[x][0] = r1[2 * x + 1];
+          }
+        }
+      });
       break;
     }
 
     default:
+      CF_ERROR("Not supported colorid = %d", colorid);
       return false;
   }
 
-  if( __dst.fixedType() ) {
-    dst.convertTo(__dst, __dst.depth());
+  if( _dst.fixedType() ) {
+    dst.convertTo(_dst, _dst.depth());
   }
   else {
-    __dst.move(dst);
+    _dst.move(dst);
   }
 
   return true;
 }
-
 
 /** @brief
  * Extract src into 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ]
@@ -422,19 +250,19 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID 
 
   switch ( src.depth() ) {
   case CV_8U :
-    return extract_bayer_planes_<uint8_t>(src, dst, colorid);
+    return _extract_bayer_planes<uint8_t>(src, dst, colorid);
   case CV_8S :
-    return extract_bayer_planes_<int8_t>(src, dst, colorid);
+    return _extract_bayer_planes<int8_t>(src, dst, colorid);
   case CV_16U :
-    return extract_bayer_planes_<uint16_t>(src, dst, colorid);
+    return _extract_bayer_planes<uint16_t>(src, dst, colorid);
   case CV_16S :
-    return extract_bayer_planes_<int16_t>(src, dst, colorid);
+    return _extract_bayer_planes<int16_t>(src, dst, colorid);
   case CV_32S :
-    return extract_bayer_planes_<int32_t>(src, dst, colorid);
+    return _extract_bayer_planes<int32_t>(src, dst, colorid);
   case CV_32F :
-    return extract_bayer_planes_<float>(src, dst, colorid);
+    return _extract_bayer_planes<float>(src, dst, colorid);
   case CV_64F :
-    return extract_bayer_planes_<double>(src, dst, colorid);
+    return _extract_bayer_planes<double>(src, dst, colorid);
   }
 
   return false;
@@ -443,104 +271,39 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID 
 
 
 
-
 /** @brief
  * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.
  * The output size of dst is the same as src
  */
-template<class SrcType, class DstType>
-static bool bayer_planes_to_bgr__(cv::InputArray __src, cv::OutputArray __dst)
+template<class _Tp1, class _Tp2>
+static bool _bayer_planes_to_bgr(cv::InputArray _src, cv::OutputArray _dst)
 {
-  const cv::Mat_<cv::Vec<SrcType, 4>> src = __src.getMat();
-  cv::Mat_<cv::Vec<DstType, 3>> dst;
+  using CalcType = typename std::conditional_t<std::is_floating_point<_Tp2>::value, _Tp2, int32_t>;
 
-  if ( __dst.getMatRef().data == src.data ) {
-    dst.create(src.size());
-  }
-  else {
-    __dst.create(src.size(), CV_MAKETYPE(cv::DataType<DstType>::depth, 3));
-    dst = __dst.getMatRef();
-  }
+  using Vec4T = cv::Vec<_Tp1, 4>;
+  using Vec3T = cv::Vec<_Tp2, 3>;
 
+  const int w = _src.cols();
+  const int h = _src.rows();
 
-  typedef tbb::blocked_range<int> range;
+  const cv::Mat_<Vec4T> src = _src.getMat();
+  cv::Mat_<Vec3T> dst(h, w);
 
-  tbb::parallel_for(range(0, dst.rows),
-      [&](const range & rrange) {
-        for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-          for ( int x = 0; x < dst.cols; ++x ) {
-
-            const SrcType & r   = src[y][x][0];
-            const SrcType & g1  = src[y][x][1];
-            const SrcType & b   = src[y][x][2];
-            const SrcType & g2  = src[y][x][3];
-
-            dst[y][x][0] = b;
-            dst[y][x][1] = 0.5 * ((double)g1 + (double)g2);
-            dst[y][x][2] = r;
-          }
-        }
-      }, tbb::static_partitioner());
-
-
-  if ( dst.data != __dst.getMatRef().data ) {
-    if ( __dst.fixedType() ) {
-      dst.convertTo(__dst, __dst.depth());
+  parallel_for(0, h, [&, w](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      const Vec4T * srcp = src[y];
+      Vec3T * __restrict dstp = dst[y];
+      for ( int x = 0; x < w; ++x ) {
+        dstp[x][0] = srcp[x][2];
+        dstp[x][1] = _Tp2((CalcType(srcp[x][1]) + CalcType(srcp[x][3])) / 2);
+        dstp[x][2] = srcp[x][0];
+      }
     }
-    else {
-      __dst.move(dst);
-    }
-  }
+  });
+
+  _dst.move(dst);
 
   return true;
-}
-
-
-
-/** @brief
- * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.
- * The output size of dst is the same as src
- */
-template<class T>
-static bool bayer_planes_to_bgr_(cv::InputArray src, cv::OutputArray dst, int ddepth)
-{
-  if ( src.channels() != 4 ) {
-    CF_ERROR("Invalid argument: 4-channel input image expected but src.channels=%d",
-        src.channels());
-    return false;
-  }
-
-  if ( dst.fixedType() && dst.channels() != 3 ) {
-    CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
-        dst.channels());
-    return false;
-  }
-
-  if ( dst.fixedType() ) {
-    ddepth = dst.depth();
-  }
-  else if ( ddepth < 0 ) {
-    ddepth = src.depth();
-  }
-
-  switch ( ddepth ) {
-  case CV_8U :
-    return bayer_planes_to_bgr__<T, uint8_t>(src, dst);
-  case CV_8S :
-    return bayer_planes_to_bgr__<T, int8_t>(src, dst);
-  case CV_16U :
-    return bayer_planes_to_bgr__<T, uint16_t>(src, dst);
-  case CV_16S :
-    return bayer_planes_to_bgr__<T, int16_t>(src, dst);
-  case CV_32S :
-    return bayer_planes_to_bgr__<T, int32_t>(src, dst);
-  case CV_32F :
-    return bayer_planes_to_bgr__<T, float>(src, dst);
-  case CV_64F :
-    return bayer_planes_to_bgr__<T, double>(src, dst);
-  }
-
-  return false;
 }
 
 /** @brief
@@ -549,280 +312,309 @@ static bool bayer_planes_to_bgr_(cv::InputArray src, cv::OutputArray dst, int dd
  */
 bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst, int ddepth)
 {
-  switch ( src.depth() ) {
-  case CV_8U :
-    return bayer_planes_to_bgr_<uint8_t>(src, dst, ddepth);
-  case CV_8S :
-    return bayer_planes_to_bgr_<int8_t>(src, dst, ddepth);
-  case CV_16U :
-    return bayer_planes_to_bgr_<uint16_t>(src, dst, ddepth);
-  case CV_16S :
-    return bayer_planes_to_bgr_<int16_t>(src, dst, ddepth);
-  case CV_32S :
-    return bayer_planes_to_bgr_<int32_t>(src, dst, ddepth);
-  case CV_32F :
-    return bayer_planes_to_bgr_<float>(src, dst, ddepth);
-  case CV_64F :
-    return bayer_planes_to_bgr_<double>(src, dst, ddepth);
+  INSTRUMENT_REGION("");
+
+  if( src.channels() != 4 ) {
+    CF_ERROR("Invalid argument: 4-channel input image expected but src.channels=%d",
+        src.channels());
+    return false;
+  }
+
+  if( dst.fixedType() && dst.channels() != 3 ) {
+    CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
+        dst.channels());
+    return false;
+  }
+
+  if( dst.fixedType() ) {
+    ddepth = dst.depth();
+  }
+  else if( ddepth < 0 ) {
+    ddepth = src.depth();
+  }
+
+  switch (src.depth()) {
+    case CV_8U:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<uint8_t, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<uint8_t, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<uint8_t, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<uint8_t, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<uint8_t, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<uint8_t, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<uint8_t, double>(src, dst);
+      }
+      break;
+
+    case CV_8S:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<int8_t, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<int8_t, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<int8_t, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<int8_t, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<int8_t, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<int8_t, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<int8_t, double>(src, dst);
+      }
+      break;
+    case CV_16U:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<uint16_t, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<uint16_t, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<uint16_t, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<uint16_t, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<uint16_t, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<uint16_t, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<uint16_t, double>(src, dst);
+      }
+      break;
+    case CV_16S:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<int16_t, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<int16_t, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<int16_t, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<int16_t, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<int16_t, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<int16_t, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<int16_t, double>(src, dst);
+      }
+      break;
+    case CV_32S:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<int32_t, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<int32_t, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<int32_t, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<int32_t, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<int32_t, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<int32_t, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<int32_t, double>(src, dst);
+      }
+      break;
+    case CV_32F:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<float, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<float, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<float, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<float, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<float, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<float, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<float, double>(src, dst);
+      }
+      break;
+    case CV_64F:
+      switch (ddepth) {
+        case CV_8U:
+          return _bayer_planes_to_bgr<double, uint8_t>(src, dst);
+        case CV_8S:
+          return _bayer_planes_to_bgr<double, int8_t>(src, dst);
+        case CV_16U:
+          return _bayer_planes_to_bgr<double, uint16_t>(src, dst);
+        case CV_16S:
+          return _bayer_planes_to_bgr<double, int16_t>(src, dst);
+        case CV_32S:
+          return _bayer_planes_to_bgr<double, int32_t>(src, dst);
+        case CV_32F:
+          return _bayer_planes_to_bgr<double, float>(src, dst);
+        case CV_64F:
+          return _bayer_planes_to_bgr<double, double>(src, dst);
+      }
+      break;
   }
 
   return false;
 }
-
-
 
 /** @brief
  * Extract bayer src into dense 3-channel BGR dst matrix with .
  * The output size of dst is the same as src
  */
 
-template<class T>
-static bool extract_bayer_matrix_(cv::InputArray __src, cv::OutputArray __dst, enum COLORID colorid)
+template<class _Tp>
+static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
   typedef tbb::blocked_range<int> range;
 
-  if ( (__src.cols() & 0x1) || (__src.rows() & 0x1) || __src.channels() != 1 )  {
-    CF_ERROR("Can not make debayer4planes_ for Uneven image size %dx%dx%d",
-        __src.cols(), __src.rows(), __src.channels());
+  if ( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 )  {
+    CF_ERROR("Can not make extract_bayer_matrix for Uneven image size %dx%dx%d",
+        _src.cols(), _src.rows(), _src.channels());
     return false;
   }
 
-  const cv::Mat_<T> src =
-      __src.getMat();
+  using Vec3T = cv::Vec<_Tp,3>;
+  using Mat3T = cv::Mat_<Vec3T>;
+  using Mat1T = cv::Mat_<_Tp>;
 
-  cv::Mat_<cv::Vec<T,3>>
-      dst(src.size());
+  const Mat1T src = _src.getMat();
+  Mat3T dst(src.size());
 
   static const auto R =
-      [](const T & v) {
-        return cv::Vec<T, 3>(0, 0, v);
+      [](const _Tp & v) {
+        return Vec3T(0, 0, v);
       };
 
   static const auto G =
-      [](const T & v) {
-        return cv::Vec<T, 3>(0, v, 0);
+      [](const _Tp & v) {
+        return Vec3T(0, v, 0);
       };
 
   static const auto B =
-      [](const T & v) {
-        return cv::Vec<T, 3>(v, 0, 0);
+      [](const _Tp & v) {
+        return Vec3T(v, 0, 0);
       };
 
   switch (colorid) {
-    case COLORID_BAYER_RGGB: {
-      //  [ R  G1 ]
-      //  [ G2 B  ]
-      tbb::parallel_for(range(0, src.rows / 2),
-          [&](const range & rrange) {
-            for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-              for ( int x = 0; x < src.cols / 2; ++x ) {
-                dst[2*y + 0][2*x + 0] = R(src[2*y + 0][2*x + 0]);
-                dst[2*y + 0][2*x + 1] = G(src[2*y + 0][2*x + 1]);
-                dst[2*y + 1][2*x + 0] = G(src[2*y + 1][2*x + 0]);
-                dst[2*y + 1][2*x + 1] = B(src[2*y + 1][2*x + 1]);
-              }
-            }
-          }, tbb::static_partitioner());
-      break;
-    }
+    case COLORID_BAYER_MYYC:
+    case COLORID_BAYER_RGGB:
+    //  [ R  G1 ]
+    //  [ G2 B  ]
+    parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
+        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        for ( int x = 0; x < xmax; ++x ) {
+          dst0[2 * x + 0] = R(src0[2 * x + 0]);
+          dst0[2 * x + 1] = G(src0[2 * x + 1]);
+          dst1[2 * x + 0] = G(src1[2 * x + 0]);
+          dst1[2 * x + 1] = B(src1[2 * x + 1]);
+        }
+      }
+    });
+    break;
 
-  case COLORID_BAYER_GRBG : {
+    case COLORID_BAYER_YMCY:
+    case COLORID_BAYER_GRBG:
     //  [ G R ]
     //  [ B G ]
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = G(src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = R(src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = B(src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
+    parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
+        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        for ( int x = 0; x < xmax; ++x ) {
+          dst0[2 * x + 0] = G(src0[2 * x + 0]);
+          dst0[2 * x + 1] = R(src0[2 * x + 1]);
+          dst1[2 * x + 0] = B(src1[2 * x + 0]);
+          dst1[2 * x + 1] = G(src1[2 * x + 1]);
+        }
+      }
+    });
     break;
-  }
 
-
-  case COLORID_BAYER_GBRG : {
+    case COLORID_BAYER_YCMY:
+    case COLORID_BAYER_GBRG:
     //  [ G B ]
     //  [ R G ]
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = G(src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = B(src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = R(src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = G(src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
+    parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
+        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        for ( int x = 0; x < xmax; ++x ) {
+          dst0[2 * x + 0] = G(src0[2 * x + 0]);
+          dst0[2 * x + 1] = B(src0[2 * x + 1]);
+          dst1[2 * x + 0] = R(src1[2 * x + 0]);
+          dst1[2 * x + 1] = G(src1[2 * x + 1]);
+        }
+      }
+    });
     break;
-  }
 
-  case COLORID_BAYER_BGGR : {
+    case COLORID_BAYER_CYYM:
+    case COLORID_BAYER_BGGR:
     //  [ B G ]
     //  [ G R ]
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = B(src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = G(src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = G(src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = R(src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
+    parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
+        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        for ( int x = 0; x < xmax; ++x ) {
+          dst0[2 * x + 0] = B(src0[2 * x + 0]);
+          dst0[2 * x + 1] = G(src0[2 * x + 1]);
+          dst1[2 * x + 0] = G(src1[2 * x + 0]);
+          dst1[2 * x + 1] = R(src1[2 * x + 1]);
+        }
+      }
+    });
     break;
-  }
-
-  case COLORID_BAYER_CYYM : {
-    //  [ R G ]
-    //  [ G B ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerRG2RGB);
-    //  B' =  0, 1, 0   B
-    //  G' =  1, 0, 0 * G
-    //  R' =  0, 0, 1   R
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-
-          constexpr T M = cvmax<T>();
-
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = R(M - src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = G(M - src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = G(M - src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = B(M - src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
-    break;
-  }
-
-
-  case COLORID_BAYER_YCMY : {
-    //  [ G R ]
-    //  [ B G ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-
-          constexpr T M = cvmax<T>();
-
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = G(M - src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = R(M - src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = B(M - src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
-
-    break;
-  }
-
-
-  case COLORID_BAYER_YMCY : {
-    //  [ G B ]
-    //  [ R G ]
-    //  cv::subtract(depthmax(src.depth()), src, dst);
-    //  cv::cvtColor(dst, dst, cv::COLOR_BayerGR2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-
-          constexpr T M = cvmax<T>();
-
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = G(M - src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = B(M - src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = R(M - src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = G(M - src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
-
-    break;
-  }
-
-
-  case COLORID_BAYER_MYYC : {
-    //  [ B G ]
-    //  [ G R ]
-    //   cv::subtract(depthmax(src.depth()), src, dst);
-    //   cv::cvtColor(dst, dst, cv::COLOR_BayerBG2RGB);
-    //  B' = 0, 1, 0  B
-    //  G' = 1, 0, 0  G
-    //  R' = 0, 0, 1  R
-    tbb::parallel_for(range(0, src.rows / 2),
-        [&](const range & rrange) {
-
-          constexpr T M = cvmax<T>();
-
-          for ( int y = rrange.begin(), ny = rrange.end(); y < ny; ++y ) {
-            for ( int x = 0; x < src.cols / 2; ++x ) {
-              dst[2*y + 0][2*x + 0] = B(M - src[2*y + 0][2*x + 0]);
-              dst[2*y + 0][2*x + 1] = G(M - src[2*y + 0][2*x + 1]);
-              dst[2*y + 1][2*x + 0] = G(M - src[2*y + 1][2*x + 0]);
-              dst[2*y + 1][2*x + 1] = R(M - src[2*y + 1][2*x + 1]);
-            }
-          }
-        }, tbb::static_partitioner());
-
-    break;
-  }
 
   default :
     return false;
   }
 
-  if ( __dst.fixedType() ) {
-    dst.convertTo(__dst, __dst.depth());
+  if ( _dst.fixedType() ) {
+    dst.convertTo(_dst, _dst.depth());
   }
   else {
-    __dst.move(dst);
+    _dst.move(dst);
   }
 
   return true;
 }
 
 /** @brief
- * Extract bayer src into dense 3-channel BGR dst matrix with .
+ * Extract bayer src into dense 3-channel BGR dst matrix with
  * The output size of dst is the same as src
  */
 bool extract_bayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
 {
   switch (src.depth()) {
     case CV_8U:
-      return extract_bayer_matrix_<uint8_t>(src, dst, colorid);
+      return _extract_bayer_matrix<uint8_t>(src, dst, colorid);
     case CV_8S:
-      return extract_bayer_matrix_<int8_t>(src, dst, colorid);
+      return _extract_bayer_matrix<int8_t>(src, dst, colorid);
     case CV_16U:
-      return extract_bayer_matrix_<uint16_t>(src, dst, colorid);
+      return _extract_bayer_matrix<uint16_t>(src, dst, colorid);
     case CV_16S:
-      return extract_bayer_matrix_<int16_t>(src, dst, colorid);
+      return _extract_bayer_matrix<int16_t>(src, dst, colorid);
     case CV_32S:
-      return extract_bayer_matrix_<int32_t>(src, dst, colorid);
+      return _extract_bayer_matrix<int32_t>(src, dst, colorid);
     case CV_32F:
-      return extract_bayer_matrix_<float>(src, dst, colorid);
+      return _extract_bayer_matrix<float>(src, dst, colorid);
     case CV_64F:
-      return extract_bayer_matrix_<double>(src, dst, colorid);
+      return _extract_bayer_matrix<double>(src, dst, colorid);
   }
   return false;
 }
-
 
 static bool demosaic_nnr(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
@@ -977,120 +769,257 @@ static bool demosaic(cv::InputArray src, cv::OutputArray dst, enum COLORID color
   return true;
 }
 
-template<typename T>
-static bool debayer_avgc_tbb(const cv::Mat_<T> & src, cv::Mat_<cv::Vec<T, 3>> & dst, COLORID colorid)
+template<typename _Tp1, typename _Tp2>
+static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID colorid)
 {
-  using CalcType =
-      typename std::conditional_t<
-        std::is_floating_point<T>::value,
-        T,
-        int64_t>;
+  using T = typename std::conditional_t<std::is_floating_point_v<_Tp2>, _Tp2,
+    std::conditional_t<sizeof(_Tp2) == 1, int16_t,
+    std::conditional_t<sizeof(_Tp2) == 2, int32_t,
+    std::conditional_t<sizeof(_Tp2) == 4, float,
+    double >>>>;
 
-  const int outHeight = src.rows / 2;
-  const int outWidth = src.cols / 2;
-  dst.create(outHeight, outWidth);
+  using Vec3T = cv::Vec<_Tp2, 3>;
+  using Mat3T = cv::Mat_<Vec3T>;
 
-  // Channel indexes inside of 2x2 binnig blocks
-  // p00 p01
-  // p10 p11
-  int ri, g1i, g2i, bi; // indexes for (row, col)
+  const int h = _src.rows() / 2;
+  const int w = _src.cols() / 2;
+
+  const cv::Mat_<_Tp1> src = _src.getMat();
+
+  Mat3T dst(h, w);
 
   switch (colorid) {
-    case COLORID_BAYER_RGGB: ri = 0; g1i = 1; g2i = 2; bi = 3; break; // R G1 / G2 B
-    case COLORID_BAYER_GRBG: g1i = 0; ri = 1; bi = 2; g2i = 3; break; // G1 R / B G2
-    case COLORID_BAYER_GBRG: g1i = 0; bi = 1; ri = 2; g2i = 3; break; // G1 B / R G2
-    case COLORID_BAYER_BGGR: bi = 0; g1i = 1; g2i = 2; ri = 3; break; // B G1 / G2 R
-    case COLORID_BAYER_CYYM: bi = 0; g1i = 1; g2i = 2; ri = 3; break;
-    case COLORID_BAYER_YCMY: g1i = 0; bi = 1; ri = 2; g2i = 3; break;
-    case COLORID_BAYER_YMCY: g1i = 0; ri = 1; bi = 2; g2i = 3; break;
-    case COLORID_BAYER_MYYC: ri = 0; g1i = 1; g2i = 2; bi = 3; break;
+    case COLORID_BAYER_MYYC:
+    case COLORID_BAYER_RGGB:
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp1 * r0 = src[y * 2 + 0];
+          const _Tp1 * r1 = src[y * 2 + 1];
+          Vec3T * dstp = dst[y];
+          // RGGB -> [B G R]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][0] = cv::saturate_cast<_Tp2>(r1[2 * x + 1]);
+            dstp[x][1] = cv::saturate_cast<_Tp2>((T(r0[2 * x + 1]) + T(r1[2 * x + 0])) / 2);
+            dstp[x][2] = cv::saturate_cast<_Tp2>(r0[2 * x + 0]);
+          }
+        }
+      });
+      break;
+
+    case COLORID_BAYER_YMCY:
+    case COLORID_BAYER_GRBG:
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp1 * r0 = src[y * 2 + 0];
+          const _Tp1 * r1 = src[y * 2 + 1];
+          Vec3T * dstp = dst[y];
+          // GRBG -> [B G R]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][0] = cv::saturate_cast<_Tp2>(r1[2 * x + 0]);
+            dstp[x][1] = cv::saturate_cast<_Tp2>((T(r0[2 * x + 0]) + T(r1[2 * x + 1])) / 2);
+            dstp[x][2] = cv::saturate_cast<_Tp2>(r0[2 * x + 1]);
+          }
+        }
+      });
+      break;
+
+    case COLORID_BAYER_YCMY:
+    case COLORID_BAYER_GBRG:
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp1 * r0 = src[y * 2 + 0];
+          const _Tp1 * r1 = src[y * 2 + 1];
+          Vec3T * dstp = dst[y];
+          // GBRG -> [B G R]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][0] = cv::saturate_cast<_Tp2>(r0[2 * x + 1]);
+            dstp[x][1] = cv::saturate_cast<_Tp2>((T(r0[2 * x + 0]) + T(r1[2 * x + 1])) / 2);
+            dstp[x][2] = cv::saturate_cast<_Tp2>(r1[2 * x + 0]);
+          }
+        }
+      });
+      break;
+
+    case COLORID_BAYER_CYYM:
+    case COLORID_BAYER_BGGR:
+      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+          const _Tp1 * r0 = src[y * 2 + 0];
+          const _Tp1 * r1 = src[y * 2 + 1];
+          Vec3T * dstp = dst[y];
+          // BGGR -> [B G R]
+          for (int x = 0; x < cols; ++x) {
+            dstp[x][0] = cv::saturate_cast<_Tp2>(r0[2 * x + 0]);
+            dstp[x][1] = cv::saturate_cast<_Tp2>((T(r0[2 * x + 1]) + T(r1[2 * x + 0])) / 2);
+            dstp[x][2] = cv::saturate_cast<_Tp2>(r1[2 * x + 1]);
+          }
+        }
+      });
+      break;
+
     default: // Not supported
       CF_ERROR("Not supported colorid = %d", colorid);
       return false;
   }
 
-  run_loop(0, outHeight,
-      [&src, &dst, ri, g1i, g2i, bi, outWidth](int y) {
-
-        const T * r1 = src[y * 2];
-        const T * r2 = src[y * 2 + 1];
-        cv::Vec<T, 3>* __restrict dstRow = dst[y];
-
-        for (int x = 0; x < outWidth; ++x) {
-          const T p[] = {r1[ x *2 ], r1[ x * 2 + 1], r2[ x * 2], r2[ x * 2 + 1]};
-          const T r = p[ri];
-          const T b = p[bi];
-          const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
-          dstRow[x] = cv::Vec<T, 3>(b, g, r);
-        }
-      });
-
-//  tbb::parallel_for(tbb::blocked_range<int>(0, outHeight),
-//      [&](const tbb::blocked_range<int> & range) {
-//        for (int y = range.begin(); y != range.end(); ++y) {
-//          const T * r1 = src[y * 2];
-//          const T * r2 = src[y * 2 + 1];
-//          cv::Vec<T, 3>* dstRow = dst[y];
-//
-//          for (int x = 0; x < outWidth; ++x) {
-//            const T p[] = {r1[x*2], r1[x*2+1], r2[x*2], r2[x*2+1]};
-//            const T r = p[ri];
-//            const T b = p[bi];
-//            const T g = static_cast<T>((static_cast<CalcType>(p[g1i]) + static_cast<CalcType>(p[g2i])) / 2);
-//            dstRow[x] = cv::Vec<T, 3>(b, g, r);
-//        }
-//      }
-//    }, tbb::static_partitioner());
-
+  _dst.move(dst);
   return true;
 }
 
-
-bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid)
+bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int ddepth)
 {
-  if( src.empty() || src.channels() != 1 ) {
-    CF_ERROR("Single-channel input image is expected");
+  INSTRUMENT_REGION("");
+
+  if( (src.cols() & 0x1) || (src.rows() & 0x1) || src.channels() != 1 ) {
+    CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
+        src.cols(), src.rows(), src.channels());
     return false;
   }
 
-  const cv::Size srcSize = src.size();
-  if( srcSize.width % 2 != 0 || srcSize.height % 2 != 0 ) {
-    CF_ERROR("Single-channel even-sized input image is expected");
+  if( dst.fixedType() && dst.channels() != 3 ) {
+    CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
+        dst.channels());
     return false;
   }
 
-  const int depth = src.depth();
-  const int outHeight = srcSize.height / 2;
-  const int outWidth = srcSize.width / 2;
-
-  if( dst.fixedSize() && dst.size() != cv::Size(outWidth, outHeight) ) {
-    CF_ERROR("Fixed-size destination image has incorrect size");
-    return false;
+  if ( dst.fixedType() ) {
+    ddepth = dst.depth();
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = src.depth();
   }
 
-  if( dst.fixedType() && dst.type() != CV_MAKETYPE(depth, 3) ) {
-    CF_ERROR("Fixed-type destination image has incorrect type");
-    return false;
+  switch (src.depth()) {
+    case CV_8U:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<uint8_t, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<uint8_t, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<uint8_t, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<uint8_t, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<uint8_t, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<uint8_t, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<uint8_t, double>(src, dst, colorid);
+      }
+      break;
+
+    case CV_8S:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<int8_t, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<int8_t, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<int8_t, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<int8_t, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<int8_t, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<int8_t, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<int8_t, double>(src, dst, colorid);
+      }
+      break;
+    case CV_16U:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<uint16_t, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<uint16_t, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<uint16_t, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<uint16_t, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<uint16_t, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<uint16_t, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<uint16_t, double>(src, dst, colorid);
+      }
+      break;
+    case CV_16S:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<int16_t, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<int16_t, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<int16_t, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<int16_t, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<int16_t, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<int16_t, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<int16_t, double>(src, dst, colorid);
+      }
+      break;
+    case CV_32S:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<int32_t, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<int32_t, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<int32_t, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<int32_t, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<int32_t, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<int32_t, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<int32_t, double>(src, dst, colorid);
+      }
+      break;
+    case CV_32F:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<float, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<float, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<float, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<float, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<float, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<float, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<float, double>(src, dst, colorid);
+      }
+      break;
+    case CV_64F:
+      switch (ddepth) {
+        case CV_8U:
+          return _debayer_avgc<double, uint8_t>(src, dst, colorid);
+        case CV_8S:
+          return _debayer_avgc<double, int8_t>(src, dst, colorid);
+        case CV_16U:
+          return _debayer_avgc<double, uint16_t>(src, dst, colorid);
+        case CV_16S:
+          return _debayer_avgc<double, int16_t>(src, dst, colorid);
+        case CV_32S:
+          return _debayer_avgc<double, int32_t>(src, dst, colorid);
+        case CV_32F:
+          return _debayer_avgc<double, float>(src, dst, colorid);
+        case CV_64F:
+          return _debayer_avgc<double, double>(src, dst, colorid);
+      }
+      break;
   }
 
-  const cv::Mat srcMat = src.getMat();
-
-  dst.create(outHeight, outWidth, CV_MAKETYPE(depth, 3));
-  cv::Mat& dstMat = dst.getMatRef();
-
-  switch (depth) {
-    case CV_8U:  debayer_avgc_tbb<uint8_t>(srcMat, (cv::Mat_<cv::Vec<uint8_t, 3>>&)dstMat, colorid); break;
-    case CV_8S:  debayer_avgc_tbb<int8_t>(srcMat, (cv::Mat_<cv::Vec<int8_t, 3>>&)dstMat, colorid); break;
-    case CV_16U: debayer_avgc_tbb<uint16_t>(srcMat, (cv::Mat_<cv::Vec<uint16_t, 3>>&)dstMat, colorid); break;
-    case CV_16S: debayer_avgc_tbb<int16_t>(srcMat, (cv::Mat_<cv::Vec<int16_t, 3>>&)dstMat, colorid); break;
-    case CV_32S: debayer_avgc_tbb<int32_t>(srcMat, (cv::Mat_<cv::Vec<int32_t, 3>>&)dstMat, colorid); break;
-    case CV_32F: debayer_avgc_tbb<float>(srcMat, (cv::Mat_<cv::Vec<float, 3>>&)dstMat, colorid); break;
-    case CV_64F: debayer_avgc_tbb<double>(srcMat, (cv::Mat_<cv::Vec<double, 3>>&)dstMat, colorid); break;
-    default:
-      CF_ERROR("Not supported input image depth %d", depth);
-      return false;
-  }
-  return true;
+  return false;
 }
 
 
@@ -1173,37 +1102,32 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
 /////////////////
 
 /** @brief
- * Bayer interpolation using nearest neighbors.
- * Expected input channels are [ R G1 B G2 ]
+ * Bayer interpolation of 4 bayer planes using nearest neighbors.
+ * Expected order of input channels are [ R G1 B G2 ]
  */
-template<class SrcType, class DstType>
-static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum COLORID colorid)
+template<class _Tp1, class _Tp2>
+static bool __nninterpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
-  if ( __src.channels() != 4 ) {
+  if ( _src.channels() != 4 ) {
     CF_ERROR("Invalid arg: 4-channel input image expected, but src.channels=%d",
-        __src.channels());
+        _src.channels());
     return false;
   }
 
-  if ( __dst.fixedType() && __dst.channels() != 3 ) {
+  if ( _dst.fixedType() && _dst.channels() != 3 ) {
     CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
-        __dst.channels());
+        _dst.channels());
     return false;
   }
 
-  typedef cv::Vec<SrcType, 4> SrcVec;
-  typedef cv::Vec<DstType, 3> DstVec;
+  typedef cv::Vec<_Tp1, 4> SrcVec;
+  typedef cv::Vec<_Tp2, 3> DstVec;
 
-  const cv::Mat_<SrcVec> src =
-      __src.getMat();
+  const cv::Mat_<SrcVec> src = _src.getMat();
+  const cv::Size src_size = src.size();
+  const cv::Size dst_size = src_size * 2;
 
-  const cv::Size src_size =
-      src.size();
-
-  const cv::Size dst_size =
-      src_size * 2;
-
-  cv::Mat_<DstVec> dst(dst_size, DstVec::all(0));
+  cv::Mat_<DstVec> dst(dst_size); // , DstVec::all(0)
 
   enum {
     SR = 0,
@@ -1218,28 +1142,25 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
     DR = 2,
   };
 
-  int x, y;
-
-#define D(yy, xx, cc) dst[2 * y + (yy)][2 * x + (xx)][(cc)]
 #define S(yy, xx, cc) src[y+(yy)][x+(xx)][(cc)]
+#define D(yy, xx, cc) dst[2 * y + (yy)][2 * x + (xx)][(cc)]
 
   switch (colorid) {
+    case COLORID_BAYER_MYYC:
     case COLORID_BAYER_RGGB:
-      // [R G   R G   R G   R G   R G   R G ]
-      // [G B   G B   G B   G B   G B   G B ]
+    // [R G   R G   R G   R G   R G   R G ]
+    // [G B   G B   G B   G B   G B   G B ]
 
-      // [R G   R G   R G   R G   R G   R G ]
-      // [G B   G B   G B   G B   G B   G B ]
+    // [R G   R G   R G   R G   R G   R G ]
+    // [G B   G B   G B   G B   G B   G B ]
 
-      // [R G   R G   R G   R G   R G   R G ]
-      // [G B   G B   G B   G B   G B   G B ]
-
-      for( y = 0; y < src_size.height; ++y ) {
-
-        x = 0;
+    // [R G   R G   R G   R G   R G   R G ]
+    // [G B   G B   G B   G B   G B   G B ]
+    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
+      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+        int x = 0;
 
         if( y == 0 ) {
-
           D(0, 0, DB)= (S(0, 0, SB));
           D(0, 1, DB)= (S(0, 0, SB));
           D(1, 0, DB)= (S(0, 0, SB));
@@ -1256,7 +1177,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 1, DR)= (S(0, 0, SR) + S(0,1,SR) + S(1,0,SR) + S(1,1,SR)) / 4;
 
           //
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0,0,DB) = (S(0,-1, SB) + S(0,0,SB)) / 2;
             D(0,1,DB) = (S(0, 0, SB));
@@ -1292,7 +1213,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           continue;
         }
 
-        if( y == src_size.height - 1 ) {
+        if( y == ymax - 1 ) {
 
           D(0,0,DB)= (S( 0, 0, SB) + S(-1, 0, SB)) / 2;
           D(0,1,DB)= (S( 0, 0, SB)+ S(-1, 0, SB)) / 2;
@@ -1309,7 +1230,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1,0,DR)= (S( 0, 0, SR));
           D(1,1,DR)= (S( 0, 0, SR)+ S(0,1,SR)) / 2;
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0,0,DB) = (S(-1, -1, SB) + S(0,-1,SB) + S(0,0,SB) + S(-1, 0, SB)) / 4;
             D(0,1,DB) = (S(-1, 0, SB) + S(0,0,SB)) / 2;
@@ -1360,7 +1281,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DR)= (S(0,0, SR) + S(1,0, SR) ) /2;
         D(1, 1, DR)= (S(0,0, SR) + S(1,0, SR) + S(1,1, SR) + S(0,1, SR)) / 4;
 
-        for( x = 1; x < src_size.width - 1; ++x ) {
+        for( x = 1; x < xmax - 1; ++x ) {
 
           D(0, 0, DB) = (S(-1,-1, SB) + S(-1,0, SB) + S(0, -1, SB) + S(0,0, SB)) / 4;
           D(0, 1, DB) = (S(-1,0, SB) + S(0,0, SB)) / 2;
@@ -1394,24 +1315,26 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DR)= (S(0,0, SR) + S(0,-1, SR) + S(1,0, SR)) / 3;
         D(1, 1, DR)= (S(0,0, SR) + S(1,0, SR)) / 2;
       }
-      break;
+    });
+    break;
 
+    case COLORID_BAYER_YMCY:
     case COLORID_BAYER_GRBG:
-      //  [ G R    G R    G R    G R    G R   ]
-      //  [ B G    B G    B G    B G    B G   ]
+    //  [ G R    G R    G R    G R    G R   ]
+    //  [ B G    B G    B G    B G    B G   ]
 
-      //  [ G R    G R    G R    G R    G R   ]
-      //  [ B G    B G    B G    B G    B G   ]
+    //  [ G R    G R    G R    G R    G R   ]
+    //  [ B G    B G    B G    B G    B G   ]
 
-      //  [ G R    G R    G R    G R    G R   ]
-      //  [ B G    B G    B G    B G    B G   ]
+    //  [ G R    G R    G R    G R    G R   ]
+    //  [ B G    B G    B G    B G    B G   ]
 
-      //  [ G R    G R    G R    G R    G R   ]
-      //  [ B G    B G    B G    B G    B G   ]
+    //  [ G R    G R    G R    G R    G R   ]
+    //  [ B G    B G    B G    B G    B G   ]
+    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
+      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
 
-      for( y = 0; y < src_size.height - 1; ++y ) {
-
-        x = 0;
+        int x = 0;
 
         if ( y == 0 ) {
 
@@ -1431,7 +1354,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
 
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DB) = (S( 0, 0, SB));
             D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
@@ -1467,7 +1390,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           continue;
         }
 
-        if ( y == src_size.height - 1 ) {
+        if ( y == ymax - 1 ) {
 
           D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
           D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
@@ -1484,7 +1407,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 0, DR) = (S( 0, 0, SR));
           D(1, 1, DR) = (S( 0, 0, SR));
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
             D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
@@ -1535,7 +1458,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
         D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
 
-        for( x = 1; x < src_size.width - 1; ++x ) {
+        for( x = 1; x < xmax - 1; ++x ) {
 
           D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
           D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
@@ -1568,27 +1491,28 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DR) = (S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4;
         D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
       }
-      break;
+    });
+    break;
 
+    case COLORID_BAYER_YCMY:
     case COLORID_BAYER_GBRG:
-      //  [ G B   G B   G B   G B   G B   G B]
-      //  [ R G   R G   R G   R G   R G   R G]
+    //  [ G B   G B   G B   G B   G B   G B]
+    //  [ R G   R G   R G   R G   R G   R G]
 
-      //  [ G B   G B   G B   G B   G B   G B]
-      //  [ R G   R G   R G   R G   R G   R G]
+    //  [ G B   G B   G B   G B   G B   G B]
+    //  [ R G   R G   R G   R G   R G   R G]
 
-      //  [ G B   G B   G B   G B   G B   G B]
-      //  [ R G   R G   R G   R G   R G   R G]
+    //  [ G B   G B   G B   G B   G B   G B]
+    //  [ R G   R G   R G   R G   R G   R G]
 
-      //  [ G B   G B   G B   G B   G B   G B]
-      //  [ R G   R G   R G   R G   R G   R G]
+    //  [ G B   G B   G B   G B   G B   G B]
+    //  [ R G   R G   R G   R G   R G   R G]
+    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
+      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
 
-      for( y = 0; y < src_size.height; ++y ) {
-
-        x = 0;
+        int x = 0;
 
         if ( y == 0 ) {
-
           D(0, 0, DR) = (S( 0, 0, SR));
           D(0, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
           D(1, 0, DR) = (S( 0, 0, SR));
@@ -1604,7 +1528,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
           D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DR) = (S( 0, 0, SR));
             D(0, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
@@ -1640,7 +1564,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           continue;
         }
 
-        if ( y == src_size.height - 1 ) {
+        if ( y == ymax - 1 ) {
 
           D(0, 0, DR) = (S( 0, 0, SR));
           D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
@@ -1657,7 +1581,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 0, DB) = (S( 0, 0, SB));
           D(1, 1, DB) = (S( 0, 0, SB));
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
             D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
@@ -1709,7 +1633,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
         D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
 
-        for( x = 1; x < src_size.width - 1; ++x ) {
+        for( x = 1; x < xmax - 1; ++x ) {
 
           D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
           D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
@@ -1741,29 +1665,29 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(0, 1, DB) = (S( 0, 0, SB));
         D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4;
         D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
-
       }
-      break;
+    });
+    break;
 
+    case COLORID_BAYER_CYYM:
     case COLORID_BAYER_BGGR:
-      //  [ B G   B G   B G   B G   B G]
-      //  [ G R   G R   G R   G R   G R]
+    //  [ B G   B G   B G   B G   B G]
+    //  [ G R   G R   G R   G R   G R]
 
-      //  [ B G   B G   B G   B G   B G]
-      //  [ G R   G R   G R   G R   G R]
+    //  [ B G   B G   B G   B G   B G]
+    //  [ G R   G R   G R   G R   G R]
 
-      //  [ B G   B G   B G   B G   B G]
-      //  [ G R   G R   G R   G R   G R]
+    //  [ B G   B G   B G   B G   B G]
+    //  [ G R   G R   G R   G R   G R]
 
-      //  [ B G   B G   B G   B G   B G]
-      //  [ G R   G R   G R   G R   G R]
+    //  [ B G   B G   B G   B G   B G]
+    //  [ G R   G R   G R   G R   G R]
+    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
+      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
 
-      for( y = 0; y < src_size.height; ++y ) {
-
-        x = 0;
+        int x = 0;
 
         if( y == 0 ) {
-
           D(0, 0, DR) = (S(0, 0, SR));
           D(0, 1, DR) = (S(0, 0, SR));
           D(1, 0, DR) = (S(0, 0, SR));
@@ -1779,7 +1703,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 0, DB) = (S(0, 0, SB) + S(1, 0, SB)) / 2;
           D(1, 1, DB) = (S(0, 0, SB) + S(1, 0, SB) + S(1, 1, SB) + S(0, 1, SB)) / 4;
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DR) = (S(0,-1, SR) + S(0, 0, SR)) / 2;
             D(0, 1, DR) = (S(0, 0, SR));
@@ -1816,7 +1740,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           continue;
         }
 
-        if( y == src_size.height - 1 ) {
+        if( y == ymax - 1 ) {
 
           D(0, 0, DR) = (S(-1, 0, SR) + S(0, 0, SR)) / 2;
           D(0, 1, DR) = (S(-1, 0, SR) + S(0, 0, SR)) / 2;
@@ -1833,7 +1757,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
           D(1, 0, DB) = (S( 0, 0, SB));
           D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
 
-          for( x = 1; x < src_size.width - 1; ++x ) {
+          for( x = 1; x < xmax - 1; ++x ) {
 
             D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
             D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
@@ -1884,7 +1808,7 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 0, DB) = (S( 0, 0, SB) + S(1, 0, SB)) / 2;
         D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4;
 
-        for( x = 1; x < src_size.width - 1; ++x ) {
+        for( x = 1; x < xmax - 1; ++x ) {
 
           D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
           D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
@@ -1918,7 +1842,8 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
         D(1, 1, DB) = (S( 0, 0, SB) + S(1, 0, SB) ) / 2;
 
       }
-      break;
+    });
+    break;
 
     default:
       CF_ERROR("Unsupported colorid=%d requested", colorid);
@@ -1928,20 +1853,20 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
 #undef D
 #undef S
 
-  if( __dst.fixedType() ) {
-    if( __dst.depth() == dst.depth() ) {
-      __dst.move(dst);
+  if( _dst.fixedType() ) {
+    if( _dst.depth() == dst.depth() ) {
+      _dst.move(dst);
     }
     else {
-      dst.convertTo(__dst, dst.depth());
+      dst.convertTo(_dst, dst.depth());
     }
   }
   else {
-    if( __src.depth() == dst.depth() ) {
-      __dst.move(dst);
+    if( _src.depth() == dst.depth() ) {
+      _dst.move(dst);
     }
     else {
-      dst.convertTo(__dst, src.depth());
+      dst.convertTo(_dst, src.depth());
     }
   }
 
@@ -1950,25 +1875,25 @@ static bool nninterpolation__(cv::InputArray __src, cv::OutputArray __dst, enum 
 
 
 template<class T>
-static bool nninterpolation_(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
+static bool _nninterpolation(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
 {
   const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
 
   switch ( ddepth ) {
   case CV_8U :
-    return nninterpolation__<T, uint8_t>(src, dst, colorid);
+    return __nninterpolation<T, uint8_t>(src, dst, colorid);
   case CV_8S :
-    return nninterpolation__<T, int8_t>(src, dst, colorid);
+    return __nninterpolation<T, int8_t>(src, dst, colorid);
   case CV_16U :
-    return nninterpolation__<T, uint16_t>(src, dst, colorid);
+    return __nninterpolation<T, uint16_t>(src, dst, colorid);
   case CV_16S :
-    return nninterpolation__<T, int16_t>(src, dst, colorid);
+    return __nninterpolation<T, int16_t>(src, dst, colorid);
   case CV_32S :
-    return nninterpolation__<T, int32_t>(src, dst, colorid);
+    return __nninterpolation<T, int32_t>(src, dst, colorid);
   case CV_32F :
-    return nninterpolation__<T, float>(src, dst, colorid);
+    return __nninterpolation<T, float>(src, dst, colorid);
   case CV_64F :
-    return nninterpolation__<T, double>(src, dst, colorid);
+    return __nninterpolation<T, double>(src, dst, colorid);
   }
 
   CF_ERROR("Invalid argument: Unsuppoted ddepth=%d requested", ddepth);
@@ -1982,19 +1907,19 @@ bool nninterpolation(cv::InputArray src, cv::OutputArray dst, enum COLORID color
 
   switch ( src.depth() ) {
   case CV_8U :
-    return nninterpolation_<uint8_t>(src, dst, colorid);
+    return _nninterpolation<uint8_t>(src, dst, colorid);
   case CV_8S :
-    return nninterpolation_<int8_t>(src, dst, colorid);
+    return _nninterpolation<int8_t>(src, dst, colorid);
   case CV_16U :
-    return nninterpolation_<uint16_t>(src, dst, colorid);
+    return _nninterpolation<uint16_t>(src, dst, colorid);
   case CV_16S :
-    return nninterpolation_<int16_t>(src, dst, colorid);
+    return _nninterpolation<int16_t>(src, dst, colorid);
   case CV_32S :
-    return nninterpolation_<int32_t>(src, dst, colorid);
+    return _nninterpolation<int32_t>(src, dst, colorid);
   case CV_32F :
-    return nninterpolation_<float>(src, dst, colorid);
+    return _nninterpolation<float>(src, dst, colorid);
   case CV_64F :
-    return nninterpolation_<double>(src, dst, colorid);
+    return _nninterpolation<double>(src, dst, colorid);
   }
 
   CF_ERROR("Invalid argument: Unsuppoted src.depth()=%d requested", src.depth());
@@ -2120,89 +2045,5 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, COLORID bayer_pat
       cv::CMP_GE);
 
   return cv::countNonZero(tmp) > 0;
-}
-
-
-template<class T>
-static bool bayer_denoise_(cv::Mat & bayer_image, double k)
-{
-  cv::Mat_<T> src_image = bayer_image;
-
-  cv::Mat_<cv::Vec<T, 4>> planes_image;
-  cv::Mat_<cv::Vec<T, 4>> median_image;
-  cv::Mat_<cv::Vec<T, 4>> variation_image;
-  cv::Mat_<cv::Vec<T, 4>> mean_variation_image;
-
-  static const cv::Matx33f SE(
-      1. / 8, 1. / 8, 1. / 8,
-      1. / 8, 0.0, 1. / 8,
-      1. / 8, 1. / 8, 1. / 8);
-
-  const double minimal_mean_variation_for_very_smooth_images =
-      src_image.depth() >= CV_32F ? 1e-3 : 1;
-
-  planes_image.create(src_image.rows / 2, src_image.cols / 2);
-
-  for( int y = 0; y < src_image.rows / 2; ++y ) {
-    for( int x = 0; x < src_image.cols / 2; ++x ) {
-      planes_image[y][x][0] = src_image[2 * y + 0][2 * x + 0];
-      planes_image[y][x][1] = src_image[2 * y + 0][2 * x + 1];
-      planes_image[y][x][2] = src_image[2 * y + 1][2 * x + 0];
-      planes_image[y][x][3] = src_image[2 * y + 1][2 * x + 1];
-    }
-  }
-
-  cv::medianBlur(planes_image, median_image, 3);
-
-  cv::absdiff(planes_image, median_image, variation_image);
-  cv::filter2D(variation_image, mean_variation_image, -1, SE * k, cv::Point(-1, -1),
-      minimal_mean_variation_for_very_smooth_images);
-
-  for( int y = 0; y < src_image.rows / 2; ++y ) {
-    for( int x = 0; x < src_image.cols / 2; ++x ) {
-
-      if( variation_image[y][x][0] > mean_variation_image[y][x][0] ) {
-        src_image[2 * y + 0][2 * x + 0] = median_image[y][x][0];
-      }
-      if( variation_image[y][x][1] > mean_variation_image[y][x][1] ) {
-        src_image[2 * y + 0][2 * x + 1] = median_image[y][x][1];
-      }
-      if( variation_image[y][x][2] > mean_variation_image[y][x][2] ) {
-        src_image[2 * y + 1][2 * x + 0] = median_image[y][x][2];
-      }
-      if( variation_image[y][x][3] > mean_variation_image[y][x][3] ) {
-        src_image[2 * y + 1][2 * x + 1] = median_image[y][x][3];
-      }
-    }
-  }
-
-  return true;
-}
-
-/**
- *
- */
-bool bayer_denoise(cv::Mat & bayer_image, double k)
-{
-  switch (bayer_image.depth()) {
-    case CV_8U:
-      return bayer_denoise_<uint8_t>(bayer_image, k);
-    case CV_8S:
-      return bayer_denoise_<int8_t>(bayer_image, k);
-    case CV_16U:
-      return bayer_denoise_<uint16_t>(bayer_image, k);
-    case CV_16S:
-      return bayer_denoise_<int16_t>(bayer_image, k);
-    case CV_32S:
-      return bayer_denoise_<int32_t>(bayer_image, k);
-    case CV_32F:
-      return bayer_denoise_<float>(bayer_image, k);
-    case CV_64F:
-      return bayer_denoise_<double>(bayer_image, k);
-  }
-
-  CF_ERROR("APP BUG: Unexpected bayer_image.depth()=%d", bayer_image.depth());
-
-  return false;
 }
 

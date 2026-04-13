@@ -183,32 +183,16 @@ void QImageFileEditor::loadNextFrame()
 
       _input_sequence->read(_inputImage, &_inputMask);
 
-//      CF_DEBUG("inputImage_: %dx%d channels=%d depth=%d inputMask_: %dx%d channels=%d depth=%d",
-//          inputImage_.cols, inputImage_.rows, inputImage_.channels(), inputImage_.depth(),
-//          inputMask_.cols, inputMask_.rows, inputMask_.channels(), inputMask_.depth());
-
-
       Q_EMIT onInputImageLoad(_inputImage, _inputMask,
           _input_sequence->colorid(),
           _input_sequence->bpp());
 
-
-      if ( _filterBadPixels && _badPixelsVariationThreshold > 0 ) {
-
-        if( !is_bayer_pattern(_input_sequence->colorid()) ) {
-          median_filter_hot_pixels(_inputImage, _badPixelsVariationThreshold, false);
-        }
-        else if( !extract_bayer_planes(_inputImage, _inputImage, _input_sequence->colorid()) ) {
-          CF_ERROR("ERROR: extract_bayer_planes() fails");
-        }
-        else {
-          median_filter_hot_pixels(_inputImage, _badPixelsVariationThreshold, true);
-          if( !nninterpolation(_inputImage, _inputImage, _input_sequence->colorid()) ) {
-            CF_ERROR("nninterpolation() fails");
-          }
-        }
+      if( _filterBadPixels && _badPixelsVariationThreshold > 0 ) {
+        median_filter_bad_pixels(_inputImage, _badPixelsVariationThreshold,
+            is_bayer_pattern(_input_sequence->colorid()));
       }
-      else if( is_bayer_pattern(_input_sequence->colorid()) ) {
+
+      if( is_bayer_pattern(_input_sequence->colorid()) ) {
 
         debayer(_inputImage, _inputImage, _input_sequence->colorid(), _debayerAlgorithm);
         // In debayer() the DEBAYER_AVGC reduces the image size twice because of 2x2 binning

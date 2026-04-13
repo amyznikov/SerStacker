@@ -6,41 +6,8 @@
  */
 
 #include "c_smooth_rational_mtf.h"
-#if HAVE_TBB
-# include <tbb/tbb.h>
-#endif
+#include <core/proc/run-loop.h>
 #include <core/debug.h>
-
-#if HAVE_TBB
-template<typename T, typename Func>
-static inline void run_loop(T start, T end, Func && f)
-{
-  tbb::parallel_for(tbb::blocked_range<int>(start, end), f, tbb::static_partitioner());
-}
-static inline int rbegin(const tbb::blocked_range<int> & range)
-{
-  return range.begin();
-}
-static inline int rend(const tbb::blocked_range<int> & range)
-{
-  return range.end();
-}
-#else
-template<typename T, typename Func>
-static inline void run_loop(T start, T end, Func && f)
-{
-  cv::parallel_for_(cv::Range(start, end), f);
-}
-static inline int rbegin(const cv::Range & range)
-{
-  return range.start;
-}
-static inline int rend(const cv::Range & range)
-{
-  return range.end;
-}
-#endif
-
 
 template<class _Tp>
 static bool suggest_levels_range(int depth, _Tp * minv, _Tp * maxv)
@@ -163,7 +130,7 @@ void c_smooth_rational_mtf::parallel_apply(const cv::Mat & src, cv::Mat & dst) c
     const uint16_t * lutp = _lut16.ptr<uint16_t>();
     const int width = src.cols * src.channels();
 
-    run_loop(0, src.rows,
+    parallel_for(0, src.rows,
         [&src, &dst, lutp, width](const auto & range) {
           const int beg = rbegin(range), end = rend(range);
           for ( int r = beg; r != end; ++r ) {
@@ -189,7 +156,7 @@ void c_smooth_rational_mtf::parallel_apply(const cv::Mat & src, cv::Mat & dst) c
     const float orange = _omax - _omin;
     const int width = src.cols * src.channels();
 
-    run_loop(0, src.rows,
+    parallel_for(0, src.rows,
         [=, &src, &dst](const auto & range) {
           const int beg = rbegin(range), end = rend(range);
           for ( int r = beg; r != end; ++r ) {

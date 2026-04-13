@@ -43,8 +43,6 @@ protected:
   QCheckBox * enable_color_maxtrix_ctl = nullptr;
   QCheckBox * filter_bad_pixels_ctl = nullptr;
   QNumericBox * bad_pixels_variation_threshold_ctl = nullptr;
-  //  QBrowsePathCombo * darkframe_ctl = nullptr;
-  //  QNumericBox * darkFrameScale_ctl  = nullptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -91,9 +91,10 @@ bool nninterpolation(cv::InputArray src, cv::OutputArray dst,
 
 /** @brief
  * Bayer Demosaicing by 2x2 pixel binning
+ * Output dst image size is twice smaller than input src image size
  */
 bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst,
-    enum COLORID colorid);
+    enum COLORID colorid, int ddepth = -1);
 
 /** @brief
  * Bayer Demosaicing
@@ -117,12 +118,5 @@ bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
 bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image,
     COLORID bayer_pattern,
     double median_hat_threshold);
-
-/**
- *
- */
-bool bayer_denoise(cv::Mat & bayer_image,
-    double k);
-
 
 #endif /* __debayer_h__ */

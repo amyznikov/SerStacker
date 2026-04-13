@@ -16,7 +16,6 @@
 #define ICON_gps            ":/qinputoptions/icons/gps3.png"
 #define ICON_lidar          ":/qinputoptions/icons/lidar64.png"
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void init_resources()

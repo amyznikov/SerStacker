@@ -11,8 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 
-void median_filter_hot_pixels(cv::Mat & image,
-    double hot_pixels_variation_threshold,
+void median_filter_bad_pixels(cv::Mat & image, double variation_threshold,
     bool is_bayer_pattern);
 
 #endif /* __bad_pixels_h__ */

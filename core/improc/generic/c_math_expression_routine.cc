@@ -6,43 +6,8 @@
  */
 
 #include "c_math_expression_routine.h"
+#include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
-
-#if HAVE_TBB
-  #include <tbb/tbb.h>
-
-  template<typename T, typename Func>
-  static inline void run_loop(T start, T end, Func && f)
-  {
-    tbb::parallel_for(tbb::blocked_range<int>(start, end), f, tbb::static_partitioner());
-  }
-  static inline int rbegin(const tbb::blocked_range<int> & range)
-  {
-    return range.begin();
-  }
-  static inline int rend(const tbb::blocked_range<int> & range)
-  {
-    return range.end();
-  }
-
-#else
-
-  template<typename T, typename Func>
-  static inline void run_loop(T start, T end, Func && f)
-  {
-    cv::parallel_for_(cv::Range(start, end), f);
-  }
-  static inline int rbegin(const cv::Range & range)
-  {
-    return range.start;
-  }
-  static inline int rend(const cv::Range & range)
-  {
-    return range.end;
-  }
-
-#endif
-
 
 static constexpr struct
 {
@@ -86,7 +51,7 @@ static bool _process_image(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
 
   if( _dst_mask.empty() ) {
 
-    run_loop(0, src.rows, [=, &src, &dst, &math](const auto & range) {
+    parallel_for(0, src.rows, [=, &src, &dst, &math](const auto & range) {
 
       double args[num_args] = {0};
 
@@ -119,7 +84,7 @@ static bool _process_image(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
 
     const cv::Mat1b mask = _dst_mask.getMat();
 
-    run_loop(0, src.rows, [=, &src, &dst, &mask, &math](const auto & range) {
+    parallel_for(0, src.rows, [=, &src, &dst, &mask, &math](const auto & range) {
 
       double args[num_args] = {0};
 
@@ -156,7 +121,7 @@ static bool _process_image(const cv::Mat & _src, cv::Mat & _dst, const c_math_ex
 
     const cv::Mat_<uint8_t> mask = _dst_mask.getMat();
 
-    run_loop(0, src.rows, [=, &src, &dst, &mask, &math](const auto & range) {
+    parallel_for(0, src.rows, [=, &src, &dst, &mask, &math](const auto & range) {
 
       double args[num_args] = {0};
 

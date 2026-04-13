@@ -6,6 +6,7 @@
  */
 
 #include "c_image_stacking_pipeline_base.h"
+#include <core/proc/bad_pixels.h>
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/inpaint.h>
 #include <core/proc/reduce_channels.h>
@@ -38,41 +39,41 @@ bool serialize_base_image_stacking_input_options(c_config_setting section, bool 
 
   return true;
 }
-
-static void remove_bad_pixels(cv::Mat & image,
-    double bad_pixels_variation_threshold,
-    bool isbayer)
-{
-  INSTRUMENT_REGION("");
-
-  cv::Mat medianImage, variationImage, meanVariationImage;
-  double minimal_mean_variation_for_very_smooth_images;
-
-  // threshold = estimate_noise(image);
-  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
-    minimal_mean_variation_for_very_smooth_images = 1e-3;
-  }
-  else {
-    minimal_mean_variation_for_very_smooth_images = 1;
-  }
-
-  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
-  cv::absdiff(image, medianImage, variationImage);
-
-  static float K[3*3] = {
-      1./8, 1./8, 1./8,
-      1./8, 0.0,  1./8,
-      1./8, 1./8, 1./8,
-  };
-
-  static const cv::Mat1f SE(3,3, K);
-
-  cv::filter2D(variationImage, meanVariationImage, -1, SE);
-  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
-
-  medianImage.copyTo(image, variationImage > bad_pixels_variation_threshold * meanVariationImage);
-}
-
+//
+//static void remove_bad_pixels(cv::Mat & image,
+//    double bad_pixels_variation_threshold,
+//    bool isbayer)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  cv::Mat medianImage, variationImage, meanVariationImage;
+//  double minimal_mean_variation_for_very_smooth_images;
+//
+//  // threshold = estimate_noise(image);
+//  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
+//    minimal_mean_variation_for_very_smooth_images = 1e-3;
+//  }
+//  else {
+//    minimal_mean_variation_for_very_smooth_images = 1;
+//  }
+//
+//  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
+//  cv::absdiff(image, medianImage, variationImage);
+//
+//  static float K[3*3] = {
+//      1./8, 1./8, 1./8,
+//      1./8, 0.0,  1./8,
+//      1./8, 1./8, 1./8,
+//  };
+//
+//  static const cv::Mat1f SE(3,3, K);
+//
+//  cv::filter2D(variationImage, meanVariationImage, -1, SE);
+//  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
+//
+//  medianImage.copyTo(image, variationImage > bad_pixels_variation_threshold * meanVariationImage);
+//}
+//
 
 c_image_stacking_pipeline_base::c_image_stacking_pipeline_base(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -181,7 +182,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     }
 
     if ( input_options.filter_bad_pixels ) {
-      remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, false);
+      median_filter_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, false);
     }
 
     if( output_image.depth() != CV_32F ) {
@@ -192,90 +193,34 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
   else {
 
-    const DEBAYER_ALGORITHM algo = input_options.debayer_method;
+    if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
+      median_filter_bad_pixels(_raw_bayer_image, input_options.bad_pixels_variation_threshold, true);
+    }
+
+// FIXME: detect_bad_asi_frames
+//    if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+//      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
+//      output_image.release();
+//      return true; // return true with empty output image
+//    }
+
     if ( save_raw_bayer ) {
-
-      _raw_bayer_colorid =
-          input_sequence->colorid();
-
+      _raw_bayer_colorid = input_sequence->colorid();
       if( output_image.depth() == CV_32F ) {
         output_image.copyTo(_raw_bayer_image);
       }
       else {
-        output_image.convertTo(_raw_bayer_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
-      }
-
-      if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
-        if( !bayer_denoise(_raw_bayer_image, input_options.bad_pixels_variation_threshold) ) {
-          CF_ERROR("bayer_denoise() fails");
-          return false;
-        }
+        output_image.convertTo(_raw_bayer_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
       }
     }
 
+    if( !debayer(output_image, output_image, input_sequence->colorid(), input_options.debayer_method) ) {
+      CF_ERROR("debayer() fails");
+      return false;
+    }
 
-    switch (algo) {
-
-      case DEBAYER_DISABLE:
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
-        if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
-          CF_ERROR("debayer() fails");
-          return false;
-        }
-        if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-          output_image.release();
-          return true; // return true with empty output image
-        }
-        if ( input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, true);
-        }
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN2:
-        case DEBAYER_NNR:
-        if( !extract_bayer_planes(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("extract_bayer_planes() fails");
-          return false;
-        }
-        if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-          CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-          output_image.release();
-          return true; // return true with empty output image
-        }
-        if( input_options.filter_bad_pixels ) {
-          remove_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, true);
-        }
-
-        if( output_image.depth() != CV_32F ) {
-          output_image.convertTo(output_image, CV_32F,
-              1. / ((1 << input_sequence->bpp())));
-        }
-
-        if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("nninterpolation() fails");
-          return false;
-        }
-
-        break;
-
-      default:
-        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toCString(algo));
-        return false;
+    if( output_image.depth() != CV_32F ) {
+      output_image.convertTo(_raw_bayer_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
     }
   }
 
@@ -283,10 +228,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     cv::transform(output_image, output_image,
         input_sequence->color_matrix());
   }
-
-//  if ( anscombe_.method() != anscombe_none ) {
-//    anscombe_.apply(output_image, output_image);
-//  }
 
   if ( !_missing_pixel_mask.empty() ) {
 

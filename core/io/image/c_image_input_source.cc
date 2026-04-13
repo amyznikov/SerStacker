@@ -59,21 +59,11 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
         _input_options->video;
 
     if( opts.filter_bad_pixels && opts.bad_pixels_variation_threshold > 0 ) {
-
-      if( !is_bayer_pattern(f->_colorid) ) {
-        median_filter_hot_pixels(f->_input_image, opts.bad_pixels_variation_threshold, false);
-      }
-      else if( !extract_bayer_planes(f->_input_image, f->_input_image, f->_colorid) ) {
-        CF_ERROR("ERROR: extract_bayer_planes() fails");
-      }
-      else {
-        median_filter_hot_pixels(f->_input_image, opts.bad_pixels_variation_threshold, true);
-        if( !nninterpolation(f->_input_image, f->_input_image, f->_colorid) ) {
-          CF_ERROR("nninterpolation() fails");
-        }
-      }
+      median_filter_bad_pixels(f->_input_image, opts.bad_pixels_variation_threshold,
+          is_bayer_pattern(f->_colorid));
     }
-    else if( is_bayer_pattern(f->_colorid) ) {
+
+    if( is_bayer_pattern(f->_colorid) ) {
       // In debayer() the DEBAYER_AVGC reduces the image size twice because of 2x2 binning
       debayer(f->_input_image, f->_input_image, f->_colorid, opts.debayer_method);
       if ( !f->_input_mask.empty() && f->_input_mask.size() != f->_input_image.size() ) {

@@ -6,6 +6,7 @@
  */
 #include "downstrike.h"
 #include <core/proc/pixtype.h>
+#include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -26,17 +27,6 @@ const c_enum_member* members_of<DOWNSTRIKE_MODE>()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-template<typename T, typename Func>
-static inline void run_loop(T start, T end, Func&& f)
-{
-#if HAVE_TBB
-    tbb::parallel_for(start, end, f, tbb::static_partitioner());
-#else
-    for (T i = start; i < end; ++i) {
-      f(i);
-    }
-#endif
-}
 
 /*
  * 2x downsampling step by rejecting each EVEN row and column, keep only uneven

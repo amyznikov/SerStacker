@@ -197,13 +197,6 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
       median_filter_bad_pixels(_raw_bayer_image, input_options.bad_pixels_variation_threshold, true);
     }
 
-// FIXME: detect_bad_asi_frames
-//    if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
-//      CF_ERROR("CORRUPTED ASI FRAME DETECTED");
-//      output_image.release();
-//      return true; // return true with empty output image
-//    }
-
     if ( save_raw_bayer ) {
       _raw_bayer_colorid = input_sequence->colorid();
       if( output_image.depth() == CV_32F ) {

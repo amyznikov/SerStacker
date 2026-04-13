@@ -26,7 +26,7 @@ struct c_image_stacking_pipeline_base_input_options :
   bool enable_bground_normalization  = false;
 
   double bad_asi_frame_median_hat_threshold = 300;
-  double bad_pixels_variation_threshold = 15;
+  double bad_pixels_variation_threshold = 9;
   c_histogram_normalization_options background_normalization_options;
   c_image_processor::sptr input_image_processor;
 };

@@ -352,56 +352,14 @@ bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::spt
 
   if ( is_bayer_pattern(input_sequence->colorid()) ) {
 
-    DEBAYER_ALGORITHM algo =
-        default_debayer_algorithm();
+    if( !debayer(output_image, output_image, input_sequence->colorid(), _input_options.debayer_method) ) {
+      CF_ERROR("debayer() fails");
+      return false;
+    }
 
-    switch (algo) {
-
-      case DEBAYER_DISABLE:
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
-        if( !debayer(output_image, output_image, input_sequence->colorid(), algo) ) {
-          CF_ERROR("debayer() fails");
-          return false;
-        }
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      case DEBAYER_NN2:
-        case DEBAYER_NNR:
-        if( !extract_bayer_planes(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("extract_bayer_planes() fails");
-          return false;
-        }
-
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << input_sequence->bpp())));
-
-        if ( !nninterpolation(output_image, output_image, input_sequence->colorid()) ) {
-          CF_ERROR("nninterpolation() fails");
-          return false;
-        }
-
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << input_sequence->bpp())));
-        }
-        break;
-
-      default:
-        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toCString(algo));
-        return false;
+    if( output_image.depth() != CV_8U ) {
+      output_image.convertTo(output_image, CV_8U,
+          255. / ((1 << input_sequence->bpp())));
     }
   }
 
@@ -409,10 +367,6 @@ bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::spt
     cv::transform(output_image, output_image,
         input_sequence->color_matrix());
   }
-
-//  if ( anscombe_.method() != anscombe_none ) {
-//    anscombe_.apply(output_image, output_image);
-//  }
 
   if ( !_missing_pixel_mask.empty() ) {
 

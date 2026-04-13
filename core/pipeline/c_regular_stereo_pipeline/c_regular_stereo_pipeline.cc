@@ -323,13 +323,13 @@ bool c_regular_stereo_pipeline::read_stereo_frame()
     return false;
   }
 
-  if( intrinsics_.image_size.empty() ) {
-    intrinsics_.image_size =
+  if( _intrinsics.image_size.empty() ) {
+    _intrinsics.image_size =
         current_frame_->images[0].size();
   }
-  else if( intrinsics_.image_size != current_frame_->images[0].size() ) {
+  else if( _intrinsics.image_size != current_frame_->images[0].size() ) {
     CF_ERROR("INPUT ERROR: Frame size change (%dx%d) -> (%dx%d) not supported\n",
-        intrinsics_.image_size.width, intrinsics_.image_size.height,
+        _intrinsics.image_size.width, _intrinsics.image_size.height,
         current_frame_->images[0].cols, current_frame_->images[0].rows);
     return false;
   }
@@ -405,57 +405,14 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
   }
 
   if ( is_bayer_pattern(colorid) ) {
+    if( !debayer(output_image, output_image, colorid) ) {
+      CF_ERROR("debayer() fails");
+      return false;
+    }
 
-    DEBAYER_ALGORITHM algo =
-        default_debayer_algorithm();
-
-    switch (algo) {
-
-      case DEBAYER_DISABLE:
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      case DEBAYER_NN:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
-        if( !debayer(output_image, output_image, colorid, algo) ) {
-          CF_ERROR("debayer() fails");
-          return false;
-        }
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      case DEBAYER_NN2:
-        case DEBAYER_NNR:
-        if( !extract_bayer_planes(output_image, output_image, colorid) ) {
-          CF_ERROR("extract_bayer_planes() fails");
-          return false;
-        }
-
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << bpp)));
-
-        if ( !nninterpolation(output_image, output_image, colorid) ) {
-          CF_ERROR("nninterpolation() fails");
-          return false;
-        }
-
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      default:
-        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toCString(algo));
-        return false;
+    if( output_image.depth() != CV_8U ) {
+      output_image.convertTo(output_image, CV_8U,
+          255. / ((1 << bpp)));
     }
   }
   else if ( colorid == COLORID_OPTFLOW || (output_image.channels() != 4 && output_image.channels() != 2) ) {
@@ -471,29 +428,25 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
         source->color_matrix());
   }
 
-//  if ( anscombe_.method() != anscombe_none ) {
-//    anscombe_.apply(output_image, output_image);
-//  }
+  if ( !_missing_pixel_mask.empty() ) {
 
-  if ( !missing_pixel_mask_.empty() ) {
-
-    if ( output_image.size() != missing_pixel_mask_.size() ) {
+    if ( output_image.size() != _missing_pixel_mask.size() ) {
 
       CF_ERROR("Invalid input: "
           "frame and bad pixel mask sizes not match:\n"
           "frame size: %dx%d\n"
           "mask size : %dx%d",
           output_image.cols, output_image.rows,
-          missing_pixel_mask_.cols, missing_pixel_mask_.rows);
+          _missing_pixel_mask.cols, _missing_pixel_mask.rows);
 
       return false;
     }
 
     if ( output_mask.empty() ) {
-      missing_pixel_mask_.copyTo(output_mask);
+      _missing_pixel_mask.copyTo(output_mask);
     }
     else {
-      cv::bitwise_and(output_mask, missing_pixel_mask_,
+      cv::bitwise_and(output_mask, _missing_pixel_mask,
           output_mask);
     }
   }
@@ -767,9 +720,9 @@ bool c_regular_stereo_pipeline::save_calibration_config_file() const
 
   fs << "calibrationDate" << buf;
 
-  fs << "cameraResolution" << intrinsics_.image_size;
-  fs << "cameraMatrix" << intrinsics_.camera_matrix;
-  fs << "dist_coeffs" << intrinsics_.dist_coeffs;
+  fs << "cameraResolution" << _intrinsics.image_size;
+  fs << "cameraMatrix" << _intrinsics.camera_matrix;
+  fs << "dist_coeffs" << _intrinsics.dist_coeffs;
   fs << "rectificationHomography0" << rectificationHomography[0];
   fs << "rectificationHomography1" << rectificationHomography[1];
 
@@ -805,9 +758,9 @@ bool c_regular_stereo_pipeline::load_calibration_config_file()
     }
     else {
 
-      fs["cameraResolution"] >> intrinsics_.image_size;
-      fs["cameraMatrix"] >> intrinsics_.camera_matrix;
-      fs["dist_coeffs"] >> intrinsics_.dist_coeffs;
+      fs["cameraResolution"] >> _intrinsics.image_size;
+      fs["cameraMatrix"] >> _intrinsics.camera_matrix;
+      fs["dist_coeffs"] >> _intrinsics.dist_coeffs;
       fs["rectificationHomography0"] >> rectificationHomography[0];
       fs["rectificationHomography1"] >> rectificationHomography[1];
 
@@ -891,13 +844,13 @@ bool c_regular_stereo_pipeline::initialize_pipeline()
   const cv::Matx23d & C =
       _input_options.cameraMatrix;
 
-  intrinsics_.camera_matrix = cv::Matx33d(
+  _intrinsics.camera_matrix = cv::Matx33d(
       C(0, 0), C(0, 1), C(0, 2),
       C(1, 0), C(1, 1), C(1, 2),
       0, 0, 1);
 
-  intrinsics_.image_size.width =
-      intrinsics_.image_size.height = -1;
+  _intrinsics.image_size.width =
+      _intrinsics.image_size.height = -1;
 
   if ( calibration_options_.enable_calibration && output_options_.save_motion_poses ) {
 
@@ -1134,7 +1087,7 @@ bool c_regular_stereo_pipeline::compute_motion_pose(int camera_index, c_motion_p
 
   bool fOK =
       estimate_camera_pose_and_derotation_homography(
-          intrinsics_.camera_matrix,
+          _intrinsics.camera_matrix,
           current_positions,
           previous_positions,
           EMM_LMEDS,
@@ -1518,7 +1471,7 @@ bool c_regular_stereo_pipeline::run_calibration()
 
       bool fOK =
           estimate_camera_pose_and_derotation_homography(
-              intrinsics_.camera_matrix,
+              _intrinsics.camera_matrix,
               matched_stereo_positions[0],
               matched_stereo_positions[1],
               EMM_LMEDS,
@@ -1537,7 +1490,7 @@ bool c_regular_stereo_pipeline::run_calibration()
 
       Fbefore =
           compose_fundamental_matrix(Ebefore,
-              intrinsics_.camera_matrix);
+              _intrinsics.camera_matrix);
 
       compute_epipoles(Fbefore, EpipolesBefore);
       compute_epipoles(Fafter, EpipolesAfter);
@@ -1559,8 +1512,8 @@ bool c_regular_stereo_pipeline::run_calibration()
       cv::Matx33d Rr =
           build_rotation(0., -asin(T(2)), 0.);
 
-      const cv::Matx33d &C = intrinsics_.camera_matrix;
-      const cv::Matx33d Ci = intrinsics_.camera_matrix.inv();
+      const cv::Matx33d &C = _intrinsics.camera_matrix;
+      const cv::Matx33d Ci = _intrinsics.camera_matrix.inv();
 
       cv::Matx33d H[2] = {
           C * Rr * R * Ci,
@@ -1597,7 +1550,7 @@ bool c_regular_stereo_pipeline::run_calibration()
 
         fOK =
             estimate_camera_pose_and_derotation_homography(
-                intrinsics_.camera_matrix,
+                _intrinsics.camera_matrix,
                 matched_stereo_positions[0],
                 matched_stereo_positions[1],
                 EMM_LMEDS,
@@ -1616,7 +1569,7 @@ bool c_regular_stereo_pipeline::run_calibration()
 
         Fbefore =
             compose_fundamental_matrix(Ebefore,
-                intrinsics_.camera_matrix);
+                _intrinsics.camera_matrix);
 
         compute_epipoles(Fbefore, EpipolesBefore);
         compute_epipoles(Fafter, EpipolesAfter);

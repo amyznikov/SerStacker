@@ -1350,18 +1350,6 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
       reference_mask.depth(),
       reference_mask.channels());
 
-//  ecc_normalization_noise_ =
-//      compute_image_noise(reference_frame, reference_mask,
-//          master_options.registration.registration_channel);
-
-//  if ( master_options.save_master_frame ) {
-//    write_image(ssprintf("%s/%s-master.tiff", output_path_.c_str(), csequence_name()),
-//        output_options_,
-//        reference_frame,
-//        reference_mask);
-//  }
-
-
   return true;
 }
 

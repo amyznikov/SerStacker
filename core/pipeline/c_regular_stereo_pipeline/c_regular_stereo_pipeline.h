@@ -212,8 +212,6 @@ protected:
 
   std::vector<c_motion_pose> motion_poses_;
 
-
-  cv::Mat missing_pixel_mask_;
   c_regular_stereo_input_options _input_options;
   c_regular_stereo_feature2d_options feature2d_options_;
   c_regular_stereo_calibratie_options calibration_options_;
@@ -221,7 +219,7 @@ protected:
   c_regular_stereo_image_processing_options image_processing_options_;
   c_regular_stereo_output_options output_options_;
 
-  c_camera_intrinsics intrinsics_;
+  c_camera_intrinsics _intrinsics;
   //cv::Matx33d cameraMatrix;
 
   mutable std::mutex accumulator_lock_;

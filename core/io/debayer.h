@@ -41,7 +41,6 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_DISABLE,  // Don't debayer
   DEBAYER_NN,       // Use OpenCV nearest-neighboor interpolation with cv::demosaicing()
   DEBAYER_NN2,      // SerStacker nearest-neighboor interpolation with nninterpolate()
-  DEBAYER_NNR,    // SerStacker nearest-neighboor interpolation with nninterpolate() and midian-bease noise reduction
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
   DEBAYER_AVGC,     // 2z2 pixel binning
@@ -58,6 +57,31 @@ DEBAYER_ALGORITHM default_debayer_algorithm();
  */
 bool is_bayer_pattern(enum COLORID colorid);
 
+/** @brief
+ * Bayer Demosaicing
+ */
+bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
+    enum DEBAYER_ALGORITHM algo = DEBAYER_NN2);
+
+
+/** @brief
+ * Bayer Demosaicing by 2x2 pixel binning
+ * Output dst image size is twice smaller than input src image size
+ */
+bool debayer_avgc(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid, int ddepth = -1);
+
+/** @brief
+ * Extract bayer src into dense 3-channel BGR dst matrix with .
+ * The output size of dst is the same as src
+ */
+bool debayer_matrix(cv::InputArray src, cv::OutputArray dst,
+    enum COLORID colorid);
+
+/** @brief
+ * Debayer using nearest neighbour linear interpolation
+ */
+bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth = -1);
 
 /** @brief
  * Extract src into dense 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ].
@@ -68,39 +92,20 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst,
 
 
 /** @brief
- * Extract bayer src into dense 3-channel BGR dst matrix with .
- * The output size of dst is the same as src
+ * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using NN2 interpolaton.
+ * The output size of dst is twce large to src size
  */
-bool extract_bayer_matrix(cv::InputArray src, cv::OutputArray dst,
-    enum COLORID colorid);
-
-/** @brief
- * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.
- * The output size of dst is the same as src
- */
-bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst,
+bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
     int ddepth = -1);
 
 
 /** @brief
- * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using NN2 interpolaton.
- * The output size of dst is twce large to src
+ * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.
+ * The output size of dst is the same as src (half or former bayer pattern)
  */
-bool nninterpolation(cv::InputArray src, cv::OutputArray dst,
-    enum COLORID colorid);
+bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst,
+    int ddepth = -1);
 
-/** @brief
- * Bayer Demosaicing by 2x2 pixel binning
- * Output dst image size is twice smaller than input src image size
- */
-bool demosaic_avgc(cv::InputArray src, cv::OutputArray dst,
-    enum COLORID colorid, int ddepth = -1);
-
-/** @brief
- * Bayer Demosaicing
- */
-bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
-    enum DEBAYER_ALGORITHM algo = DEBAYER_NN);
 
 /** @brief
  * Check for ZWO ASI specific horizontal stripe artifact

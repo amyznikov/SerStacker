@@ -42,55 +42,14 @@ static bool read_input_frame(const c_input_source::sptr & source,
 
   if ( is_bayer_pattern(colorid) ) {
 
-    DEBAYER_ALGORITHM algo = default_debayer_algorithm();
+    if( !debayer(output_image, output_image, colorid) ) {
+      CF_ERROR("debayer() fails");
+      return false;
+    }
 
-    switch (algo) {
-
-      case DEBAYER_DISABLE:
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      case DEBAYER_NN:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
-        if( !debayer(output_image, output_image, colorid, algo) ) {
-          CF_ERROR("debayer() fails");
-          return false;
-        }
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      case DEBAYER_NN2:
-        case DEBAYER_NNR:
-        if( !extract_bayer_planes(output_image, output_image, colorid) ) {
-          CF_ERROR("extract_bayer_planes() fails");
-          return false;
-        }
-
-        output_image.convertTo(output_image, CV_32F,
-            1. / ((1 << bpp)));
-
-        if ( !nninterpolation(output_image, output_image, colorid) ) {
-          CF_ERROR("nninterpolation() fails");
-          return false;
-        }
-
-        if( output_image.depth() != CV_8U ) {
-          output_image.convertTo(output_image, CV_8U,
-              255. / ((1 << bpp)));
-        }
-        break;
-
-      default:
-        CF_ERROR("APP BUG: unknown debayer algorithm %d ('%s') specified",
-            algo, toCString(algo));
-        return false;
+    if( output_image.depth() != CV_8U ) {
+      output_image.convertTo(output_image, CV_8U,
+          255. / ((1 << bpp)));
     }
   }
   else if ( colorid == COLORID_OPTFLOW || (output_image.channels() != 4 && output_image.channels() != 2) ) {

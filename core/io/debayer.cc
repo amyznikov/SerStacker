@@ -7,9 +7,9 @@
 
 #include "debayer.h"
 #include <core/proc/run-loop.h>
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
-
 
 template<>
 const c_enum_member* members_of<COLORID>()
@@ -85,7 +85,7 @@ bool is_bayer_pattern(enum COLORID colorid)
 }
 
 template<class _Tp>
-static bool _debayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
   if( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 ) {
     CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
@@ -100,12 +100,12 @@ static bool _debayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLO
   switch (colorid) {
     case COLORID_BAYER_MYYC:
     case COLORID_BAYER_RGGB: {
+      // RGGB -> [R G1 B G2]
       parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
           const _Tp * r0 = src[y * 2 + 0];
           const _Tp * r1 = src[y * 2 + 1];
           Vec4T * dstp = dst[y];
-          // RGGB -> [R G1 B G2]
           for (int x = 0; x < cols; ++x) {
             dstp[x][0] = r0[2 * x + 0];
             dstp[x][1] = r0[2 * x + 1];
@@ -119,12 +119,12 @@ static bool _debayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLO
 
     case COLORID_BAYER_YMCY:
     case COLORID_BAYER_GRBG:{
+      // GRBG -> [R G1 B G2]
       parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
           const _Tp * r0 = src[y * 2 + 0];
           const _Tp * r1 = src[y * 2 + 1];
           Vec4T * dstp = dst[y];
-          // GRBG -> [R G1 B G2]
           for (int x = 0; x < cols; ++x) {
             dstp[x][1] = r0[2 * x + 0];
             dstp[x][0] = r0[2 * x + 1];
@@ -138,12 +138,12 @@ static bool _debayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLO
 
     case COLORID_BAYER_YCMY:
     case COLORID_BAYER_GBRG: {
+      // GBRG -> [R G1 B G2]
       parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
           const _Tp * r0 = src[y * 2 + 0];
           const _Tp * r1 = src[y * 2 + 1];
           Vec4T * dstp = dst[y];
-          // GBRG -> [R G1 B G2]
           for (int x = 0; x < cols; ++x) {
             dstp[x][1] = r0[2 * x + 0];
             dstp[x][2] = r0[2 * x + 1];
@@ -157,12 +157,12 @@ static bool _debayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLO
 
     case COLORID_BAYER_CYYM:
     case COLORID_BAYER_BGGR: {
+      // BGGR -> [R G1 B G2]
       parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
           const _Tp * r0 = src[y * 2 + 0];
           const _Tp * r1 = src[y * 2 + 1];
           Vec4T * dstp = dst[y];
-          // BGGR -> [R G1 B G2]
           for (int x = 0; x < cols; ++x) {
             dstp[x][2] = r0[2 * x + 0];
             dstp[x][1] = r0[2 * x + 1];
@@ -203,22 +203,7 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID 
     return false;
   }
 
-  switch ( src.depth() ) {
-  case CV_8U :
-    return _debayer_planes<uint8_t>(src, dst, colorid);
-  case CV_8S :
-    return _debayer_planes<int8_t>(src, dst, colorid);
-  case CV_16U :
-    return _debayer_planes<uint16_t>(src, dst, colorid);
-  case CV_16S :
-    return _debayer_planes<int16_t>(src, dst, colorid);
-  case CV_32S :
-    return _debayer_planes<int32_t>(src, dst, colorid);
-  case CV_32F :
-    return _debayer_planes<float>(src, dst, colorid);
-  case CV_64F :
-    return _debayer_planes<double>(src, dst, colorid);
-  }
+  CV_DISPATCH(src.depth(), _extract_bayer_planes, src, dst, colorid);
 
   return false;
 }
@@ -233,8 +218,6 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID 
 template<class _Tp1, class _Tp2>
 static bool _bayer_planes_to_bgr(cv::InputArray _src, cv::OutputArray _dst)
 {
-  //using CalcType = typename std::conditional_t<std::is_floating_point<_Tp2>::value, _Tp2, int32_t>;
-
   using Vec4T = cv::Vec<_Tp1, 4>;
   using Vec3T = cv::Vec<_Tp2, 3>;
 
@@ -246,12 +229,12 @@ static bool _bayer_planes_to_bgr(cv::InputArray _src, cv::OutputArray _dst)
 
   parallel_for(0, h, [&, w](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      const Vec4T * srcp = src[y];
+      const Vec4T * __restrict srcp = src[y];
       Vec3T * __restrict dstp = dst[y];
       for ( int x = 0; x < w; ++x ) {
-        dstp[x][0] = cv::saturate_cast<_Tp2>(srcp[x][2]);
-        dstp[x][1] = cv::saturate_cast<_Tp2>((srcp[x][1] + srcp[x][3]) / 2);
-        dstp[x][2] = cv::saturate_cast<_Tp2>(srcp[x][0]);
+        dstp[x][0] = _Tp2(srcp[x][2]);
+        dstp[x][1] = _Tp2((1 + srcp[x][1] + srcp[x][3]) / 2);
+        dstp[x][2] = _Tp2(srcp[x][0]);
       }
     }
   });
@@ -288,107 +271,10 @@ bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst, int ddepth)
     ddepth = src.depth();
   }
 
-  switch (src.depth()) {
-    case CV_8U:
-      switch (ddepth) {
-        case CV_8U : return _bayer_planes_to_bgr<uint8_t, uint8_t>(src, dst);
-        case CV_8S : return _bayer_planes_to_bgr<uint8_t, int8_t>(src, dst);
-        case CV_16U: return _bayer_planes_to_bgr<uint8_t, uint16_t>(src, dst);
-        case CV_16S: return _bayer_planes_to_bgr<uint8_t, int16_t>(src, dst);
-        case CV_32S: return _bayer_planes_to_bgr<uint8_t, int32_t>(src, dst);
-        case CV_32F: return _bayer_planes_to_bgr<uint8_t, float>(src, dst);
-        case CV_64F: return _bayer_planes_to_bgr<uint8_t, double>(src, dst);
-      }
-      break;
+  CV_DISPATCH2(src.depth(), ddepth, _bayer_planes_to_bgr, src, dst);
 
-    case CV_8S:
-      switch (ddepth) {
-        case CV_8U : return _bayer_planes_to_bgr<int8_t, uint8_t>(src, dst);
-        case CV_8S : return _bayer_planes_to_bgr<int8_t, int8_t>(src, dst);
-        case CV_16U: return _bayer_planes_to_bgr<int8_t, uint16_t>(src, dst);
-        case CV_16S: return _bayer_planes_to_bgr<int8_t, int16_t>(src, dst);
-        case CV_32S: return _bayer_planes_to_bgr<int8_t, int32_t>(src, dst);
-        case CV_32F: return _bayer_planes_to_bgr<int8_t, float>(src, dst);
-        case CV_64F: return _bayer_planes_to_bgr<int8_t, double>(src, dst);
-      }
-      break;
-    case CV_16U:
-      switch (ddepth) {
-        case CV_8U : return _bayer_planes_to_bgr<uint16_t, uint8_t>(src, dst);
-        case CV_8S : return _bayer_planes_to_bgr<uint16_t, int8_t>(src, dst);
-        case CV_16U: return _bayer_planes_to_bgr<uint16_t, uint16_t>(src, dst);
-        case CV_16S: return _bayer_planes_to_bgr<uint16_t, int16_t>(src, dst);
-        case CV_32S: return _bayer_planes_to_bgr<uint16_t, int32_t>(src, dst);
-        case CV_32F: return _bayer_planes_to_bgr<uint16_t, float>(src, dst);
-        case CV_64F: return _bayer_planes_to_bgr<uint16_t, double>(src, dst);
-      }
-      break;
-    case CV_16S:
-      switch (ddepth) {
-        case CV_8U: return _bayer_planes_to_bgr<int16_t, uint8_t>(src, dst);
-        case CV_8S: return _bayer_planes_to_bgr<int16_t, int8_t>(src, dst);
-        case CV_16U: return _bayer_planes_to_bgr<int16_t, uint16_t>(src, dst);
-        case CV_16S: return _bayer_planes_to_bgr<int16_t, int16_t>(src, dst);
-        case CV_32S: return _bayer_planes_to_bgr<int16_t, int32_t>(src, dst);
-        case CV_32F: return _bayer_planes_to_bgr<int16_t, float>(src, dst);
-        case CV_64F: return _bayer_planes_to_bgr<int16_t, double>(src, dst);
-      }
-      break;
-    case CV_32S:
-      switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<int32_t, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<int32_t, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<int32_t, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<int32_t, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<int32_t, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<int32_t, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<int32_t, double>(src, dst);
-      }
-      break;
-    case CV_32F:
-      switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<float, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<float, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<float, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<float, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<float, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<float, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<float, double>(src, dst);
-      }
-      break;
-    case CV_64F:
-      switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<double, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<double, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<double, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<double, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<double, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<double, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<double, double>(src, dst);
-      }
-      break;
-  }
+  CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",
+      src.depth(), ddepth);
 
   return false;
 }
@@ -399,7 +285,7 @@ bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst, int ddepth)
  */
 
 template<class _Tp>
-static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+static bool _debayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
   if ( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 )  {
     CF_ERROR("Can not make extract_bayer_matrix for Uneven image size %dx%dx%d",
@@ -436,8 +322,8 @@ static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enu
     //  [ G2 B  ]
     parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
       for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
-        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        const auto * __restrict src0 = src[2 * y + 0], * __restrict src1 = src[2 * y + 1];
+        auto * __restrict dst0 = dst[2 * y + 0], * __restrict dst1 = dst[2 * y + 1];
         for ( int x = 0; x < xmax; ++x ) {
           dst0[2 * x + 0] = R(src0[2 * x + 0]);
           dst0[2 * x + 1] = G(src0[2 * x + 1]);
@@ -454,8 +340,8 @@ static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enu
     //  [ B G ]
     parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
       for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
-        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        const auto * __restrict src0 = src[2 * y + 0], * __restrict src1 = src[2 * y + 1];
+        auto * __restrict dst0 = dst[2 * y + 0], * __restrict dst1 = dst[2 * y + 1];
         for ( int x = 0; x < xmax; ++x ) {
           dst0[2 * x + 0] = G(src0[2 * x + 0]);
           dst0[2 * x + 1] = R(src0[2 * x + 1]);
@@ -472,8 +358,8 @@ static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enu
     //  [ R G ]
     parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
       for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
-        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        const auto * __restrict src0 = src[2 * y + 0], * __restrict src1 = src[2 * y + 1];
+        auto * __restrict dst0 = dst[2 * y + 0], * __restrict dst1 = dst[2 * y + 1];
         for ( int x = 0; x < xmax; ++x ) {
           dst0[2 * x + 0] = G(src0[2 * x + 0]);
           dst0[2 * x + 1] = B(src0[2 * x + 1]);
@@ -490,8 +376,8 @@ static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enu
     //  [ G R ]
     parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & range) {
       for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-        const auto * src0 = src[2 * y + 0], * src1 = src[2 * y + 1];
-        auto * dst0 = dst[2 * y + 0], * dst1 = dst[2 * y + 1];
+        const auto * __restrict src0 = src[2 * y + 0], * __restrict src1 = src[2 * y + 1];
+        auto * __restrict dst0 = dst[2 * y + 0], * __restrict dst1 = dst[2 * y + 1];
         for ( int x = 0; x < xmax; ++x ) {
           dst0[2 * x + 0] = B(src0[2 * x + 0]);
           dst0[2 * x + 1] = G(src0[2 * x + 1]);
@@ -522,52 +408,32 @@ static bool _extract_bayer_matrix(cv::InputArray _src, cv::OutputArray _dst, enu
  */
 bool debayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
 {
-  switch (src.depth()) {
-    case CV_8U:
-      return _extract_bayer_matrix<uint8_t>(src, dst, colorid);
-    case CV_8S:
-      return _extract_bayer_matrix<int8_t>(src, dst, colorid);
-    case CV_16U:
-      return _extract_bayer_matrix<uint16_t>(src, dst, colorid);
-    case CV_16S:
-      return _extract_bayer_matrix<int16_t>(src, dst, colorid);
-    case CV_32S:
-      return _extract_bayer_matrix<int32_t>(src, dst, colorid);
-    case CV_32F:
-      return _extract_bayer_matrix<float>(src, dst, colorid);
-    case CV_64F:
-      return _extract_bayer_matrix<double>(src, dst, colorid);
-  }
+  CV_DISPATCH(src.depth(), _debayer_matrix, src, dst, colorid);
   return false;
 }
-
 
 template<typename _Tp1, typename _Tp2>
 static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID colorid)
 {
-  using Vec3T = cv::Vec<_Tp2, 3>;
-  using Mat3T = cv::Mat_<Vec3T>;
-
   const int h = _src.rows() / 2;
   const int w = _src.cols() / 2;
 
   const cv::Mat_<_Tp1> src = _src.getMat();
 
-  Mat3T dst(h, w);
+  cv::Mat_<cv::Vec<_Tp2, 3>> dst(h, w);
 
   switch (colorid) {
     case COLORID_BAYER_MYYC:
     case COLORID_BAYER_RGGB:
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+      // RGGB -> [B G R]
+      parallel_for(0, h, [&, w](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * r0 = src[y * 2 + 0];
-          const _Tp1 * r1 = src[y * 2 + 1];
-          Vec3T * dstp = dst[y];
-          // RGGB -> [B G R]
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][0] = cv::saturate_cast<_Tp2>(r1[2 * x + 1]);
-            dstp[x][1] = cv::saturate_cast<_Tp2>((r0[2 * x + 1] + r1[2 * x + 0]) / 2);
-            dstp[x][2] = cv::saturate_cast<_Tp2>(r0[2 * x + 0]);
+          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+          for (int x = 0; x < w; ++x, dstp += 3) {
+            dstp[0] = _Tp2(s1[2 * x + 1]);
+            dstp[1] = _Tp2((1 + s0[2 * x + 1] + s1[2 * x + 0]) / 2);
+            dstp[2] = _Tp2(s0[2 * x + 0]);
           }
         }
       });
@@ -575,16 +441,15 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
 
     case COLORID_BAYER_YMCY:
     case COLORID_BAYER_GRBG:
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+      // GRBG -> [B G R]
+      parallel_for(0, h, [&, w](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * r0 = src[y * 2 + 0];
-          const _Tp1 * r1 = src[y * 2 + 1];
-          Vec3T * dstp = dst[y];
-          // GRBG -> [B G R]
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][0] = cv::saturate_cast<_Tp2>(r1[2 * x + 0]);
-            dstp[x][1] = cv::saturate_cast<_Tp2>((r0[2 * x + 0] + r1[2 * x + 1]) / 2);
-            dstp[x][2] = cv::saturate_cast<_Tp2>(r0[2 * x + 1]);
+          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+          for (int x = 0; x < w; ++x, dstp += 3) {
+            dstp[0] = _Tp2(s1[2 * x + 0]);
+            dstp[1] = _Tp2((1 + s0[2 * x + 0] + s1[2 * x + 1]) / 2);
+            dstp[2] = _Tp2(s0[2 * x + 1]);
           }
         }
       });
@@ -592,16 +457,15 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
 
     case COLORID_BAYER_YCMY:
     case COLORID_BAYER_GBRG:
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+      // GBRG -> [B G R]
+      parallel_for(0, h, [&, w](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * r0 = src[y * 2 + 0];
-          const _Tp1 * r1 = src[y * 2 + 1];
-          Vec3T * dstp = dst[y];
-          // GBRG -> [B G R]
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][0] = cv::saturate_cast<_Tp2>(r0[2 * x + 1]);
-            dstp[x][1] = cv::saturate_cast<_Tp2>((r0[2 * x + 0] + r1[2 * x + 1]) / 2);
-            dstp[x][2] = cv::saturate_cast<_Tp2>(r1[2 * x + 0]);
+          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+          for (int x = 0; x < w; ++x, dstp += 3) {
+            dstp[0] = _Tp2(s0[2 * x + 1]);
+            dstp[1] = _Tp2((1 + s0[2 * x + 0] + s1[2 * x + 1]) / 2);
+            dstp[2] = _Tp2(s1[2 * x + 0]);
           }
         }
       });
@@ -609,16 +473,15 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
 
     case COLORID_BAYER_CYYM:
     case COLORID_BAYER_BGGR:
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
+      // BGGR -> [B G R]
+      parallel_for(0, h, [&, w](const auto & range) {
         for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * r0 = src[y * 2 + 0];
-          const _Tp1 * r1 = src[y * 2 + 1];
-          Vec3T * dstp = dst[y];
-          // BGGR -> [B G R]
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][0] = cv::saturate_cast<_Tp2>(r0[2 * x + 0]);
-            dstp[x][1] = cv::saturate_cast<_Tp2>((r0[2 * x + 1] + r1[2 * x + 0]) / 2);
-            dstp[x][2] = cv::saturate_cast<_Tp2>(r1[2 * x + 1]);
+          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+          for (int x = 0; x < w; ++x, dstp += 3) {
+            dstp[0] = _Tp2(s0[2 * x + 0]);
+            dstp[1] = _Tp2((1 + s0[2 * x + 1] + s1[2 * x + 0]) / 2);
+            dstp[2] = _Tp2(s1[2 * x + 1]);
           }
         }
       });
@@ -656,249 +519,16 @@ bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int 
     ddepth = src.depth();
   }
 
-  switch (src.depth()) {
-    case CV_8U:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<uint8_t, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<uint8_t, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<uint8_t, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<uint8_t, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<uint8_t, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<uint8_t, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<uint8_t, double>(src, dst, colorid);
-      }
-      break;
+  CV_DISPATCH2(src.depth(), ddepth, _debayer_avgc, src, dst, colorid);
 
-    case CV_8S:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<int8_t, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<int8_t, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<int8_t, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<int8_t, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<int8_t, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<int8_t, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<int8_t, double>(src, dst, colorid);
-      }
-      break;
-    case CV_16U:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<uint16_t, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<uint16_t, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<uint16_t, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<uint16_t, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<uint16_t, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<uint16_t, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<uint16_t, double>(src, dst, colorid);
-      }
-      break;
-    case CV_16S:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<int16_t, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<int16_t, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<int16_t, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<int16_t, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<int16_t, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<int16_t, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<int16_t, double>(src, dst, colorid);
-      }
-      break;
-    case CV_32S:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<int32_t, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<int32_t, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<int32_t, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<int32_t, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<int32_t, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<int32_t, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<int32_t, double>(src, dst, colorid);
-      }
-      break;
-    case CV_32F:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<float, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<float, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<float, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<float, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<float, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<float, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<float, double>(src, dst, colorid);
-      }
-      break;
-    case CV_64F:
-      switch (ddepth) {
-        case CV_8U:
-          return _debayer_avgc<double, uint8_t>(src, dst, colorid);
-        case CV_8S:
-          return _debayer_avgc<double, int8_t>(src, dst, colorid);
-        case CV_16U:
-          return _debayer_avgc<double, uint16_t>(src, dst, colorid);
-        case CV_16S:
-          return _debayer_avgc<double, int16_t>(src, dst, colorid);
-        case CV_32S:
-          return _debayer_avgc<double, int32_t>(src, dst, colorid);
-        case CV_32F:
-          return _debayer_avgc<double, float>(src, dst, colorid);
-        case CV_64F:
-          return _debayer_avgc<double, double>(src, dst, colorid);
-      }
-      break;
-  }
+  CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",
+      src.depth(), ddepth);
 
   return false;
 }
 
-
-/** @brief Bayer demosaicing
- */
-bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
-{
-  if ( algo == DEBAYER_DEFAULT ) {
-    algo = default_debayer_algorithm();
-  }
-
-  switch (algo) {
-    case DEBAYER_DISABLE:
-      src.copyTo(dst);
-      return true;
-    case DEBAYER_NN:
-      if( src.depth() != CV_8U && src.depth() != CV_16U ) {
-        return debayer_nn(src, dst, colorid);
-      }
-      break;
-    case DEBAYER_NN2:
-      return debayer_nn(src, dst, colorid);
-    case DEBAYER_AVGC:
-      return debayer_avgc(src, dst, colorid);
-    case DEBAYER_MATRIX:
-      return debayer_matrix(src, dst, colorid);
-    default:
-      break;
-  }
-
-  switch ( colorid ) {
-  case COLORID_BAYER_MYYC:
-  case COLORID_BAYER_RGGB:
-    switch ( algo ) {
-    case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR);
-      break;
-    case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_VNG);
-      break;
-    case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_EA);
-      break;
-    default :
-      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
-      return false;
-    }
-    break;
-
-  case COLORID_BAYER_YMCY:
-  case COLORID_BAYER_GRBG:
-    switch ( algo ) {
-    case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR);
-      break;
-    case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_VNG);
-      break;
-    case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_EA);
-      break;
-    default :
-      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
-      return false;
-    }
-    break;
-
-  case COLORID_BAYER_YCMY:
-  case COLORID_BAYER_GBRG:
-    switch ( algo ) {
-    case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR);
-      break;
-    case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_VNG);
-      break;
-    case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_EA);
-      break;
-    default :
-      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
-      return false;
-    }
-    break;
-
-  case COLORID_BAYER_CYYM:
-  case COLORID_BAYER_BGGR:
-    switch ( algo ) {
-    case DEBAYER_NN :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR);
-      break;
-    case DEBAYER_VNG :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_VNG);
-      break;
-    case DEBAYER_EA :
-      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_EA);
-      break;
-    default :
-      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
-      return false;
-    }
-    break;
-  default :
-    CF_DEBUG("Unknown colorid=%d requested", colorid);
-    return false;
-  }
-
-  return true;
-}
-
 template<class _Tp1, class _Tp2>
-bool __debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+bool _debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
   if ( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 )  {
     CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
@@ -1070,861 +700,144 @@ bool __debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
   return true;
 }
 
-
-template<class _Tp1>
-bool _debayer_nn_interpolation(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
+bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
 {
-  if ( dst.fixedType() ) {
-    ddepth = dst.depth();
+  if ( !is_bayer_pattern(colorid) ) {
+    CF_ERROR("colorid=%d (%s) is not bayer pattern", (int)colorid, toCString(colorid));
+    return false;
   }
-  else if ( ddepth < 0 ) {
+
+  if ( src.channels() != 1 ) {
+    CF_ERROR("Input image channels=%d. Must be 1", src.channels());
+    return false;
+  }
+
+  if( dst.fixedType() ) {
+    ddepth = dst.depth();
+    if (dst.channels() != 3 ) {
+      CF_ERROR("Output image channels=%d. Must be 3", dst.channels());
+      return false;
+    }
+  }
+  else if( ddepth < 0 ) {
     ddepth = src.depth();
   }
 
-  switch ( ddepth ) {
-  case CV_8U : return __debayer_nn_interpolation<_Tp1, uint8_t>(src, dst, colorid);
-  case CV_8S : return __debayer_nn_interpolation<_Tp1, int8_t>(src, dst, colorid);
-  case CV_16U: return __debayer_nn_interpolation<_Tp1, uint16_t>(src, dst, colorid);
-  case CV_16S: return __debayer_nn_interpolation<_Tp1, int16_t>(src, dst, colorid);
-  case CV_32S: return __debayer_nn_interpolation<_Tp1, int32_t>(src, dst, colorid);
-  case CV_32F: return __debayer_nn_interpolation<_Tp1, float>(src, dst, colorid);
-  case CV_64F: return __debayer_nn_interpolation<_Tp1, double>(src, dst, colorid);
-  }
+  CV_DISPATCH2(src.depth(), ddepth, _debayer_nn_interpolation, src, dst, colorid);
 
-  CF_ERROR("Invalid argument: Not supported ddepth=%d", ddepth);
+  CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",
+      src.depth(), ddepth);
+
   return false;
 }
 
-/////////////////
-/** @brief
- * Bayer interpolation of 4 bayer planes using nearest neighbors.
- * Expected order of input channels are [ R G1 B G2 ]
+
+/** @brief Bayer demosaicing
  */
-template<class _Tp1, class _Tp2>
-static bool __interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
-  if ( _src.channels() != 4 ) {
-    CF_ERROR("Invalid arg: 4-channel input image expected, but src.channels=%d",
-        _src.channels());
-    return false;
+  if ( algo == DEBAYER_DEFAULT ) {
+    algo = default_debayer_algorithm();
   }
 
-  if ( _dst.fixedType() && _dst.channels() != 3 ) {
-    CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
-        _dst.channels());
-    return false;
-  }
-
-  const cv::Size src_size = _src.size();
-  const cv::Size dst_size = src_size * 2;
-
-  const cv::Mat_<cv::Vec<_Tp1, 4> > src = _src.getMat();
-  cv::Mat_<cv::Vec<_Tp2, 3>> dst(dst_size);
-
-  enum {
-    SR = 0,
-    SG1 = 1,
-    SB = 2,
-    SG2 = 3,
-  };
-
-  enum {
-    DB = 0,
-    DG = 1,
-    DR = 2,
-  };
-
-#define S(yy, xx, cc) src[y+(yy)][x+(xx)][(cc)]
-#define D(yy, xx, cc) dst[2 * y + (yy)][2 * x + (xx)][(cc)]
-#define C(x)  cv::saturate_cast<_Tp2>(x)
-
-  switch (colorid) {
-    case COLORID_BAYER_MYYC:
-    case COLORID_BAYER_RGGB:
-    // [R G   R G   R G   R G   R G   R G ]
-    // [G B   G B   G B   G B   G B   G B ]
-
-    // [R G   R G   R G   R G   R G   R G ]
-    // [G B   G B   G B   G B   G B   G B ]
-
-    // [R G   R G   R G   R G   R G   R G ]
-    // [G B   G B   G B   G B   G B   G B ]
-    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
-      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-        int x = 0;
-
-        if( y == 0 ) {
-          D(0, 0, DB) = C(S(0, 0, SB));
-          D(0, 1, DB) = C(S(0, 0, SB));
-          D(1, 0, DB) = C(S(0, 0, SB));
-          D(1, 1, DB) = C(S(0, 0, SB));
-
-          D(0, 0, DG) = C((S(0, 0, SG1) + S(0,0,SG2)) / 2);
-          D(0, 1, DG) = C(S(0, 0, SG1));
-          D(1, 0, DG) = C(S(0, 0, SG2));
-          D(1, 1, DG) = C((S(0, 0, SG1) + S(0,0,SG2) + S(0,1,SG2) + S(1, 0, SG1)) / 4);
-
-          D(0, 0, DR) = C(S(0, 0, SR));
-          D(0, 1, DR) = C((S(0, 0, SR) + S(0,1,SR)) / 2);
-          D(1, 0, DR) = C(S(0, 0, SR) + S(1,0,SR)) / 2;
-          D(1, 1, DR) = C((S(0, 0, SR) + S(0,1,SR) + S(1,0,SR) + S(1,1,SR)) / 4);
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0,0,DB) = C((S(0,-1, SB) + S(0,0,SB)) / 2);
-            D(0,1,DB) = C(S(0, 0, SB));
-            D(1,0,DB) = C((S(0,-1, SB) + S(0,0,SB)) / 2);
-            D(1,1,DB) = C(S(0, 0, SB));
-
-            D(0,0,DG) = C((S(0,-1, SG1) + S(0,0,SG1) + S(1,0,SG2)) / 3);
-            D(0,1,DG) = C(S(0, 0, SG1));
-            D(1,0,DG) = C(S(0, 0, SG2));
-            D(1,1,DG) = C((S(0, 0, SG1) + S(0,0,SG2) + S(0,1,SG2)) / 3);
-
-            D(0,0,DR) = C(S(0, 0, SR));
-            D(0,1,DR) = C((S(0, 0, SR) + S(0,1,SR)) / 2);
-            D(1,0,DR) = C((S(0, 0, SR) + S(1,0,SR)) / 2);
-            D(1,1,DR) = C((S(0, 0, SR) + S(0,1,SR) + S(1,0,SR) + S(1,1,SR)) / 4);
-          }
-
-          D(0,0,DB) = C((S(0, 0, SB) + S(0,-1,SB)) / 2);
-          D(0,1,DB) = C(S(0, 0, SB));
-          D(1,0,DB) = C((S(0,-1, SB)+ S(1,0,SB) + S(0,0,SB)) / 3);
-          D(1,1,DB) = C(S(0, 0, SB));
-
-          D(0,0,DG) = C((S(0,-1, SG1) + S(0,0,SG1) + S(0,0,SG2)) / 3);
-          D(0,1,DG) = C(S(0, 0, SG1));
-          D(1,0,DG) = C(S(0, 0, SG2));
-          D(1,1,DG) = C((S(0, 0, SG1)+ S(0,0,SG2) + S(1,0,SG1)) / 3);
-
-          D(0,0,DR) = C(S(0, 0, SR));
-          D(0,1,DR) = C(S(0, 0, SR));
-          D(1,0,DR) = C((S(0, 0, SR)+ S(1,0,SR)) / 2);
-          D(1,1,DR) = C((S(0, 0, SR)+ S(1,0,SR)) / 2);
-
-          continue;
-        }
-
-        if( y == ymax - 1 ) {
-          D(0,0,DB) = C((S( 0, 0, SB) + S(-1, 0, SB)) / 2);
-          D(0,1,DB) = C((S( 0, 0, SB) + S(-1, 0, SB)) / 2);
-          D(1,0,DB) = C(S( 0, 0, SB));
-          D(1,1,DB) = C(S( 0, 0, SB));
-
-          D(0,0,DG) = C((S(-1, 0, SG2) + S(0,0,SG1) + S(0,0,SG2)) / 3);
-          D(0,1,DG) = C(S( 0, 0, SG1));
-          D(1,0,DG) = C(S( 0, 0, SG2));
-          D(1,1,DG) = C((S( 0, 0, SG1)+ S(0,0,SG2) + S(0,1,SG2)) / 3);
-
-          D(0,0,DR) = C(S( 0, 0, SR));
-          D(0,1,DR) = C((S( 0, 0, SR)+ S(0,1,SR)) / 2);
-          D(1,0,DR) = C((S( 0, 0, SR)));
-          D(1,1,DR) = C((S( 0, 0, SR)+ S(0,1,SR)) / 2);
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0,0,DB) = C((S(-1, -1, SB) + S(0,-1,SB) + S(0,0,SB) + S(-1, 0, SB)) / 4);
-            D(0,1,DB) = C((S(-1, 0, SB) + S(0,0,SB)) / 2);
-            D(1,0,DB) = C((S(0,-1,SB) + S(0,0,SB)) / 2);
-            D(1,1,DB) = C(S(0,0,SB));
-
-            D(0,0,DG) = C((S(0,0,SG1) + S(0,0,SG2) + S(-1,0,SG2) + S(0,-1,SG1)) / 4);
-            D(0,1,DG) = C(S(0,0,SG1));
-            D(1,0,DG) = C(S(0,0,SG2));
-            D(1,1,DG) = C((S(0,0,SG1) + S(0,0,SG2) + S(0,1,SG2) ) / 3);
-
-            D(0,0,DR) = C(S(0,0,SR));
-            D(0,1,DR) = C((S(0,0,SR) + S(0,1,SR)) /2);
-            D(1,0,DR) = C(S(0,0,SR));
-            D(1,1,DR) = C((S(0,0,SR) + S(0,1,SR)) /2);
-          }
-
-          D(0,0,DB) = C((S(-1, -1, SB) + S(-1, 0, SB) + S(0,-1,SB) + S(0,0,SB)) / 4);
-          D(0,1,DB) = C((S(-1, 0, SB) + S(0, 0, SB)) / 2);
-          D(1,0,DB) = C((S(0,-1,SB)+ S(0,0,SB)) / 2);
-          D(1,1,DB) = C(S(0, 0, SB));
-
-          D(0,0,DG) = C((S(0,-1,SG1) + S(0,0,SG2) + S(0,0,SG1) + S(-1, 0, SG2)) / 4);
-          D(0,1,DG) = C(S(0, 0, SG1));
-          D(1,0,DG) = C(S(0, 0, SG2));
-          D(1,1,DG) = C((S(0,0,SG1)+ S(0,0,SG2)) / 2);
-
-          D(0,0,DR)= C(S(0,0,SR));
-          D(0,1,DR)= C(S(0, 0, SR));
-          D(1,0,DR)= C(S(0, 0, SR));
-          D(1,1,DR)= C(S(0, 0, SR));
-
-          continue;
-        }
-
-        D(0, 0, DB) = C((S(-1,0, SB) + S(0,0, SB) ) / 2);
-        D(0, 1, DB) = C((S(-1,0, SB) + S(0,0, SB) ) / 2);
-        D(1, 0, DB) = C(S(0,0, SB));
-        D(1, 1, DB) = C(S(0,0, SB));
-
-        D(0, 0, DG) = C((S(-1,0, SG2) + S(0,0, SG1) + S(0,0, SG2)) / 3);
-        D(0, 1, DG) = C(S(0,0, SG1));
-        D(1, 0, DG) = C(S(0,0, SG2));
-        D(1, 1, DG) = C((S(0,0, SG1) + S(0,0, SG2) + S(1,0, SG1) + S(0,1, SG2)) / 4);
-
-        D(0, 0, DR) = C(S(0,0, SR));
-        D(0, 1, DR) = C((S(0,0, SR) + S(0,1, SR)) / 2);
-        D(1, 0, DR) = C((S(0,0, SR) + S(1,0, SR) ) /2);
-        D(1, 1, DR) = C((S(0,0, SR) + S(1,0, SR) + S(1,1, SR) + S(0,1, SR)) / 4);
-
-        for( x = 1; x < xmax - 1; ++x ) {
-          D(0, 0, DB) = C((S(-1,-1, SB) + S(-1,0, SB) + S(0, -1, SB) + S(0,0, SB)) / 4);
-          D(0, 1, DB) = C((S(-1,0, SB) + S(0,0, SB)) / 2);
-          D(1, 0, DB) = C((S(0, -1, SB) + S(0,0, SB)) / 2);
-          D(1, 1, DB) = C(S(0,0, SB));
-
-          D(0, 0, DG) = C((S(-1,0, SG2) + S(0, -1, SG1) + S(0,0, SG1) + S(0,0, SG2)) / 4);
-          D(0, 1, DG) = C(S(0,0, SG1));
-          D(1, 0, DG) = C(S(0,0, SG2));
-          D(1, 1, DG) = C((S(0,0, SG1) + S(0,0, SG2) + S(0, 1, SG2) + +S(1, 0, SG1)) / 4);
-
-          D(0, 0, DR) = C(S(0,0, SR));
-          D(0, 1, DR) = C((S(0,0, SR) + S(0, 1, SR)) / 2);
-          D(1, 0, DR) = C((S(0,0, SR) + S(1, 0, SR)) / 2);
-          D(1, 1, DR) = C((S(0,0, SR) + S(0, 1, SR) + S(1, 0, SR) + S(1,1,SR)) / 4);
-        }
-
-
-        D(0, 0, DB) = C((S(-1,-1, SB) + S(-1,0, SB) + S(0,-1, SB) + S(0,0, SB)) / 4);
-        D(0, 1, DB) = C((S(-1,0, SB) + S(0,0, SB)) / 2);
-        D(1, 0, DB) = C((S(0,-1, SB) + S(0,0, SB)) / 2);
-        D(1, 1, DB) = C(S(0,0, SB));
-
-        D(0, 0, DG) = C((S(1,0, SG2) + S(0,-1, SG1) + S(0,0, SG1) + S(0,0, SG2)) / 4);
-        D(0, 1, DG) = C(S(0,0, SG1));
-        D(1, 0, DG) = C(S(0,0, SG2));
-        D(1, 1, DG) = C((S(0,0, SG1) + S(0,0, SG2) + S(1,0, SG1) ) / 3);
-
-        D(0, 0, DR) = C(S(0,0, SR));
-        D(0, 1, DR) = C(S(0,0, SR));
-        D(1, 0, DR) = C((S(0,0, SR) + S(0,-1, SR) + S(1,0, SR)) / 3);
-        D(1, 1, DR) = C((S(0,0, SR) + S(1,0, SR)) / 2);
+  switch (algo) {
+    case DEBAYER_DISABLE:
+      src.copyTo(dst);
+      return true;
+    case DEBAYER_NN:
+      if( src.depth() != CV_8U && src.depth() != CV_16U ) {
+        return debayer_nn(src, dst, colorid);
       }
-    });
-    break;
-
-    case COLORID_BAYER_YMCY:
-    case COLORID_BAYER_GRBG:
-    //  [ G R    G R    G R    G R    G R   ]
-    //  [ B G    B G    B G    B G    B G   ]
-
-    //  [ G R    G R    G R    G R    G R   ]
-    //  [ B G    B G    B G    B G    B G   ]
-
-    //  [ G R    G R    G R    G R    G R   ]
-    //  [ B G    B G    B G    B G    B G   ]
-
-    //  [ G R    G R    G R    G R    G R   ]
-    //  [ B G    B G    B G    B G    B G   ]
-    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
-      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-
-        int x = 0;
-
-        if ( y == 0 ) {
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S( 0, 1, SG1)) / 3);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S(1, 0, SG1) + S( 0, 0, SG2)) / 3);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DR) = C(S( 0, 0, SR));
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C((S( 1, 0, SR) + S( 0, 0, SR)) / 2);
-          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-
-
-          for( x = 1; x < xmax - 1; ++x ) {
-
-            D(0, 0, DB) = C(S( 0, 0, SB));
-            D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-            D(1, 0, DB) = C(S( 0, 0, SB));
-            D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-            D(0, 0, DG) = C(S( 0, 0, SG1));
-            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
-            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4);
-            D(1, 1, DG) = C(S( 0, 0, SG2));
-
-            D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-            D(0, 1, DR) = C(S( 0, 0, SR));
-            D(1, 0, DR) = C((S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4);
-            D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-          }
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C(S( 0, 0, SB));
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C((S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4);
-          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-
-          continue;
-        }
-
-        if ( y == ymax - 1 ) {
-
-          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
-          D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-          D(0, 0, DR) = C(S( 0, 0, SR));
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C(S( 0, 0, SR));
-
-          for( x = 1; x < xmax - 1; ++x ) {
-
-            D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-            D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
-            D(1, 0, DB) = C(S( 0, 0, SB));
-            D(1, 1, DB) = C((S( 0, 0, SB) + S( 0, 1, SB)) / 2);
-
-            D(0, 0, DG) = C(S( 0, 0, SG1));
-            D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
-            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
-            D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-            D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-            D(0, 1, DR) = C(S( 0, 0, SR));
-            D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-            D(1, 1, DR) = C(S( 0, 0, SR));
-          }
-
-          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C(S( 0, 0, SB));
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2)) / 3);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
-          D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-          D(1, 1, DR) = C(S( 0, 0, SR));
-
-          continue;
-        }
-
-        D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-        D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
-        D(1, 0, DB) = C(S( 0, 0, SB));
-        D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-        D(0, 0, DG) = C(S( 0, 0, SG1));
-        D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
-        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 3);
-        D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-        D(0, 0, DR) = C(S( 0, 0, SR));
-        D(0, 1, DR) = C(S( 0, 0, SR));
-        D(1, 0, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-        D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-
-        for( x = 1; x < xmax - 1; ++x ) {
-          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4);
-          D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4);
-          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-        }
-
-        D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-        D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
-        D(1, 0, DB) = C(S( 0, 0, SB));
-        D(1, 1, DB) = C(S( 0, 0, SB));
-
-        D(0, 0, DG) = C(S( 0, 0, SG1));
-        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG2) ) / 3);
-        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
-        D(1, 1, DG) = C(S( 0 ,0, SG2));
-
-        D(0, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR)) / 2);
-        D(0, 1, DR) = C(S( 0, 0, SR));
-        D(1, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4);
-        D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
-      }
-    });
-    break;
-
-    case COLORID_BAYER_YCMY:
-    case COLORID_BAYER_GBRG:
-    //  [ G B   G B   G B   G B   G B   G B]
-    //  [ R G   R G   R G   R G   R G   R G]
-
-    //  [ G B   G B   G B   G B   G B   G B]
-    //  [ R G   R G   R G   R G   R G   R G]
-
-    //  [ G B   G B   G B   G B   G B   G B]
-    //  [ R G   R G   R G   R G   R G   R G]
-
-    //  [ G B   G B   G B   G B   G B   G B]
-    //  [ R G   R G   R G   R G   R G   R G]
-    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
-      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-
-        int x = 0;
-
-        if ( y == 0 ) {
-          D(0, 0, DR) = C(S( 0, 0, SR));
-          D(0, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0, 0, DR) = C(S( 0, 0, SR));
-            D(0, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-            D(1, 0, DR) = C(S( 0, 0, SR));
-            D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-            D(0, 0, DG) = C(S( 0, 0, SG1));
-            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
-            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
-            D(1, 1, DG) = C(S( 0, 0, SG2));
-
-            D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-            D(0, 1, DB) = C(S( 0, 0, SB));
-            D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
-            D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-          }
-
-          D(0, 0, DR) = C(S( 0, 0, SR));
-          D(0, 1, DR) = C(S( 0, 0, SR));
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C(S( 0, 0, SR));
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
-          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-
-          continue;
-        }
-
-        if ( y == ymax - 1 ) {
-          D(0, 0, DR) = C(S( 0, 0, SR));
-          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C(S( 0, 0, SB));
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-            D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
-            D(1, 0, DR) = C(S( 0, 0, SR));
-            D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-            D(0, 0, DG) = C(S( 0, 0, SG1));
-            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
-            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3);
-            D(1, 1, DG) = C(S( 0, 0, SG2));
-
-            D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-            D(0, 1, DB) = C(S( 0, 0, SB));
-            D(1, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-            D(1, 1, DB) = C(S( 0, 0, SB));
-          }
-
-          D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C(S( 0, 0, SR));
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-          D(1, 1, DB) = C(S( 0, 0, SB));
-
-          continue;
-        }
-
-
-        D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-        D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
-        D(1, 0, DR) = C(S( 0, 0, SR));
-        D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-        D(0, 0, DG) = C(S( 0, 0, SG1));
-        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
-        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3);
-        D(1, 1, DG) = C(S( 0, 0, SG2));
-
-        D(0, 0, DB) = C(S( 0, 0, SB));
-        D(0, 1, DB) = C(S( 0, 0, SB));
-        D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-        D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-
-        for( x = 1; x < xmax - 1; ++x ) {
-          D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
-
-          D(0, 0, DG) = C(S( 0, 0, SG1));
-          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
-          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
-          D(1, 1, DG) = C(S( 0, 0, SG2));
-
-          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
-          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-        }
-
-        D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-        D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
-        D(1, 0, DR) = C(S( 0, 0, SR));
-        D(1, 1, DR) = C(S( 0, 0, SR));
-
-        D(0, 0, DG) = C(S( 0, 0, SG1));
-        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3);
-        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
-        D(1, 1, DG) = C(S( 0, 0, SG2));
-
-        D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
-        D(0, 1, DB) = C(S( 0, 0, SB));
-        D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
-        D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
-      }
-    });
-    break;
-
-    case COLORID_BAYER_CYYM:
-    case COLORID_BAYER_BGGR:
-    //  [ B G   B G   B G   B G   B G]
-    //  [ G R   G R   G R   G R   G R]
-
-    //  [ B G   B G   B G   B G   B G]
-    //  [ G R   G R   G R   G R   G R]
-
-    //  [ B G   B G   B G   B G   B G]
-    //  [ G R   G R   G R   G R   G R]
-
-    //  [ B G   B G   B G   B G   B G]
-    //  [ G R   G R   G R   G R   G R]
-    parallel_for(0, src_size.height, [&, xmax = src_size.width, ymax = src_size.height](const auto & range) {
-      for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-
-        int x = 0;
-
-        if( y == 0 ) {
-          D(0, 0, DR) = C(S(0, 0, SR));
-          D(0, 1, DR) = C(S(0, 0, SR));
-          D(1, 0, DR) = C(S(0, 0, SR));
-          D(1, 1, DR) = C(S(0, 1, SR));
-
-          D(0, 0, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) ) / 2);
-          D(0, 1, DG) = C(S(0, 0, SG1));
-          D(1, 0, DG) = C(S(0, 0, SG2));
-          D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) + S(1, 0, SG1) + S(0, 1, SG2)) / 4);
-
-          D(0, 0, DB) = C(S(0, 0, SB));
-          D(0, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB)) / 2);
-          D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
-          D(1, 1, DB) = C((S(0, 0, SB) + S(1, 0, SB) + S(1, 1, SB) + S(0, 1, SB)) / 4);
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
-            D(0, 1, DR) = C(S(0, 0, SR));
-            D(1, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
-            D(1, 1, DR) = C(S(0, 0, SR));
-
-            D(0, 0, DG) = C((S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
-            D(0, 1, DG) = C(S(0, 0, SG1));
-            D(1, 0, DG) = C(S(0, 0, SG2));
-            D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) + +S(1, 0, SG1)) / 4);
-
-            D(0, 0, DB) = C(S(0, 0, SB));
-            D(0, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB)) / 2);
-            D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
-            D(1, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4);
-          }
-
-          D(0, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
-          D(0, 1, DR) = C(S(0, 0, SR));
-          D(1, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
-          D(1, 1, DR) = C(S(0, 0, SR));
-
-          D(0, 0, DG) = C((S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
-          D(0, 1, DG) = C(S(0, 0, SG1));
-          D(1, 0, DG) = C(S(0, 0, SG2));
-          D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2)  + S(1, 0, SG1)) / 3);
-
-          D(0, 0, DB) = C(S(0, 0, SB));
-          D(0, 1, DB) = C(S(0, 0, SB));
-          D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
-          D(1, 1, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
-
-          continue;
-        }
-
-        if( y == ymax - 1 ) {
-
-          D(0, 0, DR) = C((S(-1, 0, SR) + S(0, 0, SR)) / 2);
-          D(0, 1, DR) = C((S(-1, 0, SR) + S(0, 0, SR)) / 2);
-          D(1, 0, DR) = C(S( 0, 0, SR));
-          D(1, 1, DR) = C(S( 0, 0, SR));
-
-          D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
-          D(0, 1, DG) = C(S( 0, 0, SG1));
-          D(1, 0, DG) = C(S( 0, 0, SG2));
-          D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2)) / 3);
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-
-          for( x = 1; x < xmax - 1; ++x ) {
-            D(0, 0, DR) = C((S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4);
-            D(0, 1, DR) = C((S(-1, 0, SR) + S( 0, 0, SR)) / 2);
-            D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-            D(1, 1, DR) = C(S( 0, 0, SR));
-
-            D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4);
-            D(0, 1, DG) = C(S( 0, 0, SG1));
-            D(1, 0, DG) = C(S( 0, 0, SG2));
-            D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) ) / 3);
-
-            D(0, 0, DB) = C(S( 0, 0, SB));
-            D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-            D(1, 0, DB) = C(S( 0, 0, SB));
-            D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
-          }
-
-          D(0, 0, DR) = C((S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4);
-          D(0, 1, DR) = C((S(-1, 0, SR) + S( 0, 0, SR)) / 2);
-          D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
-          D(1, 1, DR) = C((S( 0, 0, SR)));
-
-          D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4);
-          D(0, 1, DG) = C((S( 0, 0, SG1)));
-          D(1, 0, DG) = C((S( 0, 0, SG2)));
-          D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) ) / 2);
-
-          D(0, 0, DB) = C(S( 0, 0, SB));
-          D(0, 1, DB) = C(S( 0, 0, SB));
-          D(1, 0, DB) = C(S( 0, 0, SB));
-          D(1, 1, DB) = C(S( 0, 0, SB));
-
-          continue;
-        }
-
-        D(0, 0, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-        D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-        D(1, 0, DR) = (S( 0, 0, SR));
-        D(1, 1, DR) = (S( 0, 0, SR));
-
-        D(0, 0, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2)) / 3;
-        D(0, 1, DG) = (S( 0, 0, SG1));
-        D(1, 0, DG) = (S( 0, 0, SG2));
-        D(1, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) + S(1, 0, SG1)) / 4;
-
-        D(0, 0, DB) = (S( 0, 0, SB));
-        D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-        D(1, 0, DB) = (S( 0, 0, SB) + S(1, 0, SB)) / 2;
-        D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4;
-
-        for( x = 1; x < xmax - 1; ++x ) {
-
-          D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
-          D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-          D(1, 0, DR) = (S( 0,-1, SR) + S(0, 0, SR)) / 2;
-          D(1, 1, DR) = (S( 0, 0, SR));
-
-          D(0, 0, DG) = (S(-1, 0, SG2) + S(0, -1, SG1) + S(0,0, SG1) + S(0,0, SG2)) / 4;
-          D(0, 1, DG) = (S( 0, 0, SG1));
-          D(1, 0, DG) = (S( 0, 0, SG2));
-          D(1, 1, DG) = (S( 0, 0, SG1) + S(0,0, SG2) + S(0, 1, SG2) + S(1, 0, SG1)) / 4;
-
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-          D(1, 0, DB) = (S( 0, 0, SB) + S(1, 0, SB)) / 2;
-          D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4;
-        }
-
-        D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
-        D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-        D(1, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-        D(1, 1, DR) = (S( 0, 0, SR));
-
-        D(0, 0, DG) = (S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4;
-        D(0, 1, DG) = (S( 0, 0, SG1));
-        D(1, 0, DG) = (S( 0, 0, SG2));
-        D(1, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) + S(1, 0, SG1)) / 3;
-
-        D(0, 0, DB) = (S( 0, 0, SB));
-        D(0, 1, DB) = (S( 0, 0, SB));
-        D(1, 0, DB) = (S( 0, 0, SB) + S(1, 0, SB)) / 2;
-        D(1, 1, DB) = (S( 0, 0, SB) + S(1, 0, SB) ) / 2;
-
-      }
-    });
-    break;
-
+      break;
+    case DEBAYER_NN2:
+      return debayer_nn(src, dst, colorid);
+    case DEBAYER_AVGC:
+      return debayer_avgc(src, dst, colorid);
+    case DEBAYER_MATRIX:
+      return debayer_matrix(src, dst, colorid);
     default:
-      CF_ERROR("Unsupported colorid=%d requested", colorid);
+      break;
+  }
+
+  switch ( colorid ) {
+  case COLORID_BAYER_MYYC:
+  case COLORID_BAYER_RGGB:
+    switch ( algo ) {
+    case DEBAYER_NN :
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR);
+      break;
+    case DEBAYER_VNG :
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_VNG);
+      break;
+    case DEBAYER_EA :
+      cv::demosaicing(src, dst, cv::COLOR_BayerRGGB2BGR_EA);
+      break;
+    default :
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
       return false;
-  }
+    }
+    break;
 
-#undef S
-#undef D
-#undef C
+  case COLORID_BAYER_YMCY:
+  case COLORID_BAYER_GRBG:
+    switch ( algo ) {
+    case DEBAYER_NN :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR);
+      break;
+    case DEBAYER_VNG :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_VNG);
+      break;
+    case DEBAYER_EA :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGRBG2BGR_EA);
+      break;
+    default :
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
+      return false;
+    }
+    break;
 
-  if( _dst.fixedType() ) {
-    if( _dst.depth() == dst.depth() ) {
-      _dst.move(dst);
+  case COLORID_BAYER_YCMY:
+  case COLORID_BAYER_GBRG:
+    switch ( algo ) {
+    case DEBAYER_NN :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR);
+      break;
+    case DEBAYER_VNG :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_VNG);
+      break;
+    case DEBAYER_EA :
+      cv::demosaicing(src, dst, cv::COLOR_BayerGBRG2BGR_EA);
+      break;
+    default :
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
+      return false;
     }
-    else {
-      dst.convertTo(_dst, dst.depth());
+    break;
+
+  case COLORID_BAYER_CYYM:
+  case COLORID_BAYER_BGGR:
+    switch ( algo ) {
+    case DEBAYER_NN :
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR);
+      break;
+    case DEBAYER_VNG :
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_VNG);
+      break;
+    case DEBAYER_EA :
+      cv::demosaicing(src, dst, cv::COLOR_BayerBGGR2BGR_EA);
+      break;
+    default :
+      CF_DEBUG("Unknown debayer algorithm=%d requested", algo);
+      return false;
     }
-  }
-  else {
-    if( _src.depth() == dst.depth() ) {
-      _dst.move(dst);
-    }
-    else {
-      dst.convertTo(_dst, src.depth());
-    }
+    break;
+  default :
+    CF_DEBUG("Unknown colorid=%d requested", colorid);
+    return false;
   }
 
   return true;
 }
-
-
-template<class _Tp1>
-static bool _interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
-{
-  if ( dst.fixedType() ) {
-    ddepth = dst.depth();
-  }
-  else if ( ddepth < 0 ) {
-    ddepth = src.depth();
-  }
-
-  switch ( ddepth ) {
-  case CV_8U : return __interpolate_bayer_planes<_Tp1, uint8_t>(src, dst, colorid);
-  case CV_8S : return __interpolate_bayer_planes<_Tp1, int8_t>(src, dst, colorid);
-  case CV_16U: return __interpolate_bayer_planes<_Tp1, uint16_t>(src, dst, colorid);
-  case CV_16S: return __interpolate_bayer_planes<_Tp1, int16_t>(src, dst, colorid);
-  case CV_32S: return __interpolate_bayer_planes<_Tp1, int32_t>(src, dst, colorid);
-  case CV_32F: return __interpolate_bayer_planes<_Tp1, float>(src, dst, colorid);
-  case CV_64F: return __interpolate_bayer_planes<_Tp1, double>(src, dst, colorid);
-  }
-
-  CF_ERROR("Invalid argument: Not supported ddepth=%d", ddepth);
-  return false;
-}
-
-
-bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
-{
-  INSTRUMENT_REGION("");
-
-  switch ( src.depth() ) {
-  case CV_8U : return _interpolate_bayer_planes<uint8_t>(src, dst, colorid, ddepth);
-  case CV_8S : return _interpolate_bayer_planes<int8_t>(src, dst, colorid, ddepth);
-  case CV_16U: return _interpolate_bayer_planes<uint16_t>(src, dst, colorid, ddepth);
-  case CV_16S: return _interpolate_bayer_planes<int16_t>(src, dst, colorid, ddepth);
-  case CV_32S: return _interpolate_bayer_planes<int32_t>(src, dst, colorid, ddepth);
-  case CV_32F: return _interpolate_bayer_planes<float>(src, dst, colorid, ddepth);
-  case CV_64F : return _interpolate_bayer_planes<double>(src, dst, colorid, ddepth);
-  }
-
-  CF_ERROR("Invalid argument: Not supported src.depth()=%d", src.depth());
-  return false;
-}
-
-bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
-{
-  if ( src.channels() == 4 ) {
-    if( !interpolate_bayer_planes(src, dst, colorid, ddepth) ) {
-      CF_DEBUG("interpolate_bayer_planes() fails");
-      return false;
-    }
-    return true;
-  }
-
-  if ( src.channels() == 1 ) {
-    switch ( src.depth() ) {
-    case CV_8U : return _debayer_nn_interpolation<uint8_t>(src, dst, colorid, ddepth);
-    case CV_8S : return _debayer_nn_interpolation<int8_t>(src, dst, colorid, ddepth);
-    case CV_16U: return _debayer_nn_interpolation<uint16_t>(src, dst, colorid, ddepth);
-    case CV_16S: return _debayer_nn_interpolation<int16_t>(src, dst, colorid, ddepth);
-    case CV_32S: return _debayer_nn_interpolation<int32_t>(src, dst, colorid, ddepth);
-    case CV_32F: return _debayer_nn_interpolation<float>(src, dst, colorid, ddepth);
-    case CV_64F: return _debayer_nn_interpolation<double>(src, dst, colorid, ddepth);
-    default: CF_ERROR("invalid input image depth=%d", src.depth()); return false;
-    }
-  }
-
-  CF_ERROR("Invalid input image channels=%d must be 1 or 4", src.channels());
-  return false;
-}
-
 
 /** @brief
  * Check for ZWO ASI specific horizontal stripe artifact

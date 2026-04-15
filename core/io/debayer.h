@@ -90,12 +90,12 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst,
     enum COLORID colorid);
 
 
-/** @brief
- * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using NN2 interpolaton.
- * The output size of dst is twce large to src size
- */
-bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
-    int ddepth = -1);
+///** @brief
+// * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix using NN2 interpolaton.
+// * The output size of dst is twce large to src size
+// */
+//bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
+//    int ddepth = -1);
 
 
 /** @brief

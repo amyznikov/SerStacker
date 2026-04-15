@@ -58,11 +58,10 @@ DEBAYER_ALGORITHM default_debayer_algorithm();
 bool is_bayer_pattern(enum COLORID colorid);
 
 /** @brief
- * Bayer Demosaicing
+ * Bayer Demosaic
  */
 bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
     enum DEBAYER_ALGORITHM algo = DEBAYER_NN2);
-
 
 /** @brief
  * Bayer Demosaicing by 2x2 pixel binning
@@ -81,7 +80,7 @@ bool debayer_matrix(cv::InputArray src, cv::OutputArray dst,
 /** @brief
  * Debayer using nearest neighbour linear interpolation
  */
-bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth = -1);
+bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth = -1);
 
 /** @brief
  * Extract src into dense 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ].

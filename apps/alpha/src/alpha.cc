@@ -17,61 +17,18 @@
 
 #include <core/debug.h>
 
-struct S1
-{
-  int a;
-  int b;
-};
-
-
-class c_pp_base
-{
-public:
-
-  using c_control_list = c_ctlist<c_pp_base> ;
-  using ctlbind_context = c_ctlbind_context<c_pp_base>;
-
-  virtual ~c_pp_base() = default;
-
-  virtual void getcontrols(c_control_list & ctls)
-  {
-    c_pp_base::getcontrols(ctls, ctlbind_context());
-  }
-
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
-  {
-  }
-};
-
-
-class c_pp_derived : public c_pp_base
-{
-public:
-
-  using ctlbind_context = c_ctlbind_context<c_pp_base, c_pp_derived>;
-
-  virtual void getcontrols(c_control_list & ctls)
-  {
-    c_pp_derived::getcontrols(ctls, ctlbind_context());
-  }
-
-  static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
-  {
-    c_pp_base::getcontrols(ctls, ctx);
-  }
-};
-
 
 int main(int argc, char *argv[])
 {
-  cf_set_logfile(stderr);
-  cf_set_loglevel(CF_LOG_DEBUG);
+  uint8_t a = 100, b = 200;
+  uint8_t c = (a + b) / 2;
 
-  c_pp_base::c_control_list ctls;
+  printf("a=%u b=%u c=%u\n", a, b, c);
 
-  c_pp_derived pp;
-  pp.getcontrols(ctls);
+  uint8_t x1 = 150, x2 = 150, x3 = 150, x4 = 200;
+  uint8_t y = (x1 + x2 + x3 + x4) / 4;
 
+  printf("x1=%u x2=%u x3=%u x4=%u y=%u\n", x1, x2, x3, x4, y);
 
   return 0;
 }

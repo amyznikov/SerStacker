@@ -49,48 +49,7 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
   return members;
 }
 
-
-namespace {
-
-
 static DEBAYER_ALGORITHM g_default_debayer_algorithm = DEBAYER_NN2;
-
-template<class T> inline constexpr T cvmax() { return 1; };
-template<> inline constexpr uint8_t cvmax<uint8_t>() { return UINT8_MAX; }
-template<> inline constexpr int8_t cvmax<int8_t>() { return INT8_MAX; }
-template<> inline constexpr uint16_t cvmax<uint16_t>() { return UINT16_MAX; }
-template<> inline constexpr int16_t cvmax<int16_t>() { return INT16_MAX; }
-template<> inline constexpr uint32_t cvmax<uint32_t>() { return UINT32_MAX; }
-template<> inline constexpr int32_t cvmax<int32_t>() { return INT32_MAX; }
-
-
-/** @brief
- * Max native value for given depth
- */
-inline cv::Scalar depthmax(int depth)
-{
-  switch ( depth ) {
-  case CV_8U :
-    return cv::Scalar::all(UINT8_MAX);
-  case CV_8S :
-    return cv::Scalar::all(INT8_MAX);
-  case CV_16U :
-    return cv::Scalar::all(UINT16_MAX);
-  case CV_16S :
-    return cv::Scalar::all(INT16_MAX);
-  case CV_32S :
-    return cv::Scalar::all(INT32_MAX);
-  case CV_32F :
-    return cv::Scalar::all(1);
-  case CV_64F :
-    return cv::Scalar::all(1);
-  }
-
-  return cv::Scalar::all(0);
-}
-
-} // namespace
-
 
 void set_default_debayer_algorithm(DEBAYER_ALGORITHM algo)
 {
@@ -104,9 +63,6 @@ DEBAYER_ALGORITHM default_debayer_algorithm()
 {
   return g_default_debayer_algorithm;
 }
-
-
-
 
 /** @brief
  * Return true if colorid is one from
@@ -335,75 +291,47 @@ bool bayer_planes_to_bgr(cv::InputArray src, cv::OutputArray dst, int ddepth)
   switch (src.depth()) {
     case CV_8U:
       switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<uint8_t, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<uint8_t, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<uint8_t, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<uint8_t, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<uint8_t, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<uint8_t, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<uint8_t, double>(src, dst);
+        case CV_8U : return _bayer_planes_to_bgr<uint8_t, uint8_t>(src, dst);
+        case CV_8S : return _bayer_planes_to_bgr<uint8_t, int8_t>(src, dst);
+        case CV_16U: return _bayer_planes_to_bgr<uint8_t, uint16_t>(src, dst);
+        case CV_16S: return _bayer_planes_to_bgr<uint8_t, int16_t>(src, dst);
+        case CV_32S: return _bayer_planes_to_bgr<uint8_t, int32_t>(src, dst);
+        case CV_32F: return _bayer_planes_to_bgr<uint8_t, float>(src, dst);
+        case CV_64F: return _bayer_planes_to_bgr<uint8_t, double>(src, dst);
       }
       break;
 
     case CV_8S:
       switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<int8_t, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<int8_t, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<int8_t, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<int8_t, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<int8_t, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<int8_t, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<int8_t, double>(src, dst);
+        case CV_8U : return _bayer_planes_to_bgr<int8_t, uint8_t>(src, dst);
+        case CV_8S : return _bayer_planes_to_bgr<int8_t, int8_t>(src, dst);
+        case CV_16U: return _bayer_planes_to_bgr<int8_t, uint16_t>(src, dst);
+        case CV_16S: return _bayer_planes_to_bgr<int8_t, int16_t>(src, dst);
+        case CV_32S: return _bayer_planes_to_bgr<int8_t, int32_t>(src, dst);
+        case CV_32F: return _bayer_planes_to_bgr<int8_t, float>(src, dst);
+        case CV_64F: return _bayer_planes_to_bgr<int8_t, double>(src, dst);
       }
       break;
     case CV_16U:
       switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<uint16_t, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<uint16_t, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<uint16_t, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<uint16_t, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<uint16_t, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<uint16_t, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<uint16_t, double>(src, dst);
+        case CV_8U : return _bayer_planes_to_bgr<uint16_t, uint8_t>(src, dst);
+        case CV_8S : return _bayer_planes_to_bgr<uint16_t, int8_t>(src, dst);
+        case CV_16U: return _bayer_planes_to_bgr<uint16_t, uint16_t>(src, dst);
+        case CV_16S: return _bayer_planes_to_bgr<uint16_t, int16_t>(src, dst);
+        case CV_32S: return _bayer_planes_to_bgr<uint16_t, int32_t>(src, dst);
+        case CV_32F: return _bayer_planes_to_bgr<uint16_t, float>(src, dst);
+        case CV_64F: return _bayer_planes_to_bgr<uint16_t, double>(src, dst);
       }
       break;
     case CV_16S:
       switch (ddepth) {
-        case CV_8U:
-          return _bayer_planes_to_bgr<int16_t, uint8_t>(src, dst);
-        case CV_8S:
-          return _bayer_planes_to_bgr<int16_t, int8_t>(src, dst);
-        case CV_16U:
-          return _bayer_planes_to_bgr<int16_t, uint16_t>(src, dst);
-        case CV_16S:
-          return _bayer_planes_to_bgr<int16_t, int16_t>(src, dst);
-        case CV_32S:
-          return _bayer_planes_to_bgr<int16_t, int32_t>(src, dst);
-        case CV_32F:
-          return _bayer_planes_to_bgr<int16_t, float>(src, dst);
-        case CV_64F:
-          return _bayer_planes_to_bgr<int16_t, double>(src, dst);
+        case CV_8U: return _bayer_planes_to_bgr<int16_t, uint8_t>(src, dst);
+        case CV_8S: return _bayer_planes_to_bgr<int16_t, int8_t>(src, dst);
+        case CV_16U: return _bayer_planes_to_bgr<int16_t, uint16_t>(src, dst);
+        case CV_16S: return _bayer_planes_to_bgr<int16_t, int16_t>(src, dst);
+        case CV_32S: return _bayer_planes_to_bgr<int16_t, int32_t>(src, dst);
+        case CV_32F: return _bayer_planes_to_bgr<int16_t, float>(src, dst);
+        case CV_64F: return _bayer_planes_to_bgr<int16_t, double>(src, dst);
       }
       break;
     case CV_32S:
@@ -876,11 +804,11 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
       return true;
     case DEBAYER_NN:
       if( src.depth() != CV_8U && src.depth() != CV_16U ) {
-        return debayer_nn2(src, dst, colorid);
+        return debayer_nn(src, dst, colorid);
       }
       break;
     case DEBAYER_NN2:
-      return debayer_nn2(src, dst, colorid);
+      return debayer_nn(src, dst, colorid);
     case DEBAYER_AVGC:
       return debayer_avgc(src, dst, colorid);
     case DEBAYER_MATRIX:
@@ -969,10 +897,205 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
   return true;
 }
 
+template<class _Tp1, class _Tp2>
+bool __debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+{
+  if ( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 )  {
+    CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
+        _src.cols(), _src.rows(), _src.channels());
+    return false;
+  }
 
+  using Vec3T = cv::Vec<_Tp2, 3>;
+  using Mat3T = cv::Mat_<Vec3T>;
+
+  const cv::Size size = _src.size();
+
+  Mat3T dst(_src.size());
+
+  cv::Mat_<_Tp1> src;
+  cv::copyMakeBorder(_src, src, 1, 1, 1, 1, cv::BORDER_REFLECT101);
+
+  switch (colorid) {
+    case COLORID_BAYER_MYYC:
+    case COLORID_BAYER_RGGB: {
+      // R G R G R G
+      // G B G B G B
+      // R G R G R G
+      // G B G B G B
+
+      parallel_for(0, size.height, [=, &dst](const auto & range) {
+        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+          const _Tp1 * __restrict s0 = src[y + 0] + 1;
+          const _Tp1 * __restrict s1 = src[y + 1] + 1;
+          const _Tp1 * __restrict s2 = src[y + 2] + 1;
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+
+          if ( !(y & 0x1) ) { // R G
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2((2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[1] = _Tp2((2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = _Tp2(s1[x]);
+              dstp[3] = _Tp2((1 + s0[x+1] + s2[x+1]) / 2);
+              dstp[4] = _Tp2(s1[x+1]);
+              dstp[5] = _Tp2((1 + s1[x-1+1] + s1[x+1+1]) / 2);
+            }
+          }
+          else { // G B
+            for( int x = 0; x < size.width; x += 2, dstp += 6  ) {
+              dstp[0] = _Tp2((1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[1] = _Tp2(s1[x]);
+              dstp[2] = _Tp2((1 + s0[x] + s2[x]) / 2);
+              dstp[3] = _Tp2(s1[x+1]);
+              dstp[4] = _Tp2((2 + s0[x+1] + s1[x-1+1] + s1[x+1+1] + s2[x+1]) / 4);
+              dstp[5] = _Tp2((2 + s0[x-1+1] + s0[x+1+1] + s2[x-1+1] + s2[x+1+1]) / 4);
+            }
+          }
+        }
+      });
+
+      break;
+    }
+
+    case COLORID_BAYER_YMCY:
+    case COLORID_BAYER_GRBG: {
+      parallel_for(0, size.height, [=, &dst](const auto & range) {
+        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+          const _Tp1 * __restrict s0 = src[y + 0] + 1;
+          const _Tp1 * __restrict s1 = src[y + 1] + 1;
+          const _Tp1 * __restrict s2 = src[y + 2] + 1;
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+
+          if ( !(y & 0x1) ) { // G R
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2((1 + s0[x] + s2[x]) / 2); // B
+              dstp[1] = _Tp2(s1[x]); // G
+              dstp[2] = _Tp2((1 + s1[x-1] + s1[x+1]) / 2); // R
+              dstp[3] = _Tp2((2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // B
+              dstp[4] = _Tp2((2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
+              dstp[5] = _Tp2(s1[x+1]); // R
+            }
+          }
+          else { // B G
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2(s1[x]); // B
+              dstp[1] = _Tp2((2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
+              dstp[2] = _Tp2((2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // R
+              dstp[3] = _Tp2((1 + s1[x] + s1[x+2]) / 2); // B
+              dstp[4] = _Tp2(s1[x+1]); // G
+              dstp[5] = _Tp2((1 + s0[x+1] + s2[x+1]) / 2); // R
+            }
+          }
+        }
+      });
+      break;
+    }
+
+    case COLORID_BAYER_YCMY:
+    case COLORID_BAYER_GBRG: {
+      parallel_for(0, size.height, [=, &dst](const auto & range) {
+        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+          const _Tp1 * __restrict s0 = src[y + 0] + 1;
+          const _Tp1 * __restrict s1 = src[y + 1] + 1;
+          const _Tp1 * __restrict s2 = src[y + 2] + 1;
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+
+          if ( !(y & 0x1) ) { // G B
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2((1 + s1[x-1] + s1[x+1]) / 2); // B
+              dstp[1] = _Tp2(s1[x]); // G
+              dstp[2] = _Tp2((1 + s0[x] + s2[x]) / 2); // R
+              dstp[3] = _Tp2(s1[x+1]); // B
+              dstp[4] = _Tp2((2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
+              dstp[5] = _Tp2((2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // R
+            }
+          }
+          else { // R G
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2((2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // B
+              dstp[1] = _Tp2((2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
+              dstp[2] = _Tp2(s1[x]); // R
+              dstp[3] = _Tp2((1 + s0[x+1] + s2[x+1]) / 2); // B
+              dstp[4] = _Tp2(s1[x+1]); // G
+              dstp[5] = _Tp2((1 + s1[x] + s1[x+2]) / 2); // R
+            }
+          }
+        }
+      });
+      break;
+    }
+
+    case COLORID_BAYER_CYYM:
+    case COLORID_BAYER_BGGR: {
+      parallel_for(0, size.height, [=, &dst](const auto & range) {
+        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+          const _Tp1 * __restrict s0 = src[y + 0] + 1;
+          const _Tp1 * __restrict s1 = src[y + 1] + 1;
+          const _Tp1 * __restrict s2 = src[y + 2] + 1;
+          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+
+          if ( !(y & 0x1) ) { // B G
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2(s1[x]); // B
+              dstp[1] = _Tp2((2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
+              dstp[2] = _Tp2((2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // R
+              dstp[3] = _Tp2((1 + s1[x] + s1[x+2]) / 2); // B
+              dstp[4] = _Tp2(s1[x+1]); // G
+              dstp[5] = _Tp2((1 + s0[x+1] + s2[x+1]) / 2); // R
+            }
+          }
+          else { // G R
+            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
+              dstp[0] = _Tp2((1 + s0[x] + s2[x]) / 2); // B
+              dstp[1] = _Tp2(s1[x]); // G
+              dstp[2] = _Tp2((1 + s1[x-1] + s1[x+1]) / 2); // R
+              dstp[3] = _Tp2((2 + s0[x] + s1[x] + s1[x+2] + s2[x]) / 4); // B
+              dstp[4] = _Tp2((2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
+              dstp[5] = _Tp2(s1[x+1]); // R
+            }
+          }
+        }
+      });
+      break;
+    }
+
+    default:
+      CF_ERROR("Not supported colorid=%d (%s) for debayer",
+          (int)(colorid), toCString(colorid));
+      return false;
+  }
+
+  _dst.move(dst);
+
+  return true;
+}
+
+
+template<class _Tp1>
+bool _debayer_nn_interpolation(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
+{
+  if ( dst.fixedType() ) {
+    ddepth = dst.depth();
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = src.depth();
+  }
+
+  switch ( ddepth ) {
+  case CV_8U : return __debayer_nn_interpolation<_Tp1, uint8_t>(src, dst, colorid);
+  case CV_8S : return __debayer_nn_interpolation<_Tp1, int8_t>(src, dst, colorid);
+  case CV_16U: return __debayer_nn_interpolation<_Tp1, uint16_t>(src, dst, colorid);
+  case CV_16S: return __debayer_nn_interpolation<_Tp1, int16_t>(src, dst, colorid);
+  case CV_32S: return __debayer_nn_interpolation<_Tp1, int32_t>(src, dst, colorid);
+  case CV_32F: return __debayer_nn_interpolation<_Tp1, float>(src, dst, colorid);
+  case CV_64F: return __debayer_nn_interpolation<_Tp1, double>(src, dst, colorid);
+  }
+
+  CF_ERROR("Invalid argument: Not supported ddepth=%d", ddepth);
+  return false;
+}
 
 /////////////////
-
 /** @brief
  * Bayer interpolation of 4 bayer planes using nearest neighbors.
  * Expected order of input channels are [ R G1 B G2 ]
@@ -1041,10 +1164,10 @@ static bool __interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst
           D(1, 0, DG) = C(S(0, 0, SG2));
           D(1, 1, DG) = C((S(0, 0, SG1) + S(0,0,SG2) + S(0,1,SG2) + S(1, 0, SG1)) / 4);
 
-          D(0, 0, DR)= C(S(0, 0, SR));
-          D(0, 1, DR)= C((S(0, 0, SR) + S(0,1,SR)) / 2);
-          D(1, 0, DR)= C(S(0, 0, SR) + S(1,0,SR)) / 2;
-          D(1, 1, DR)= C((S(0, 0, SR) + S(0,1,SR) + S(1,0,SR) + S(1,1,SR)) / 4);
+          D(0, 0, DR) = C(S(0, 0, SR));
+          D(0, 1, DR) = C((S(0, 0, SR) + S(0,1,SR)) / 2);
+          D(1, 0, DR) = C(S(0, 0, SR) + S(1,0,SR)) / 2;
+          D(1, 1, DR) = C((S(0, 0, SR) + S(0,1,SR) + S(1,0,SR) + S(1,1,SR)) / 4);
 
           for( x = 1; x < xmax - 1; ++x ) {
             D(0,0,DB) = C((S(0,-1, SB) + S(0,0,SB)) / 2);
@@ -1203,158 +1326,157 @@ static bool __interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst
 
         if ( y == 0 ) {
 
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) + S( 0, 1, SG1)) / 3;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S(1, 0, SG1) + S( 0, 0, SG2)) / 3;
-          D(1, 1, DG) = (S( 0, 0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S( 0, 1, SG1)) / 3);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S(1, 0, SG1) + S( 0, 0, SG2)) / 3);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DR) = (S( 0, 0, SR));
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 1, 0, SR) + S( 0, 0, SR)) / 2;
-          D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+          D(0, 0, DR) = C(S( 0, 0, SR));
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C((S( 1, 0, SR) + S( 0, 0, SR)) / 2);
+          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
 
 
           for( x = 1; x < xmax - 1; ++x ) {
 
-            D(0, 0, DB) = (S( 0, 0, SB));
-            D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-            D(1, 0, DB) = (S( 0, 0, SB));
-            D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+            D(0, 0, DB) = C(S( 0, 0, SB));
+            D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
+            D(1, 0, DB) = C(S( 0, 0, SB));
+            D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
-            D(0, 0, DG) = (S( 0, 0, SG1));
-            D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3;
-            D(1, 0, DG) = (S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4;
-            D(1, 1, DG) = (S( 0, 0, SG2));
+            D(0, 0, DG) = C(S( 0, 0, SG1));
+            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
+            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4);
+            D(1, 1, DG) = C(S( 0, 0, SG2));
 
-            D(0, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-            D(0, 1, DR) = (S( 0, 0, SR));
-            D(1, 0, DR) = (S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4;
-            D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+            D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+            D(0, 1, DR) = C(S( 0, 0, SR));
+            D(1, 0, DR) = C((S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4);
+            D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
           }
 
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB));
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C(S( 0, 0, SB));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2)) / 2;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3;
-          D(1, 1, DG) = (S( 0, 0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4;
-          D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C((S( 0,-1, SR) + S( 1, -1, SR) + S( 1, 0, SR) + S( 0, 0, SR)) / 4);
+          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
 
           continue;
         }
 
         if ( y == ymax - 1 ) {
 
-          D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-          D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2)) / 2;
-          D(1, 1, DG) = (S( 0 ,0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
+          D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-          D(0, 0, DR) = (S( 0, 0, SR));
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C(S( 0, 0, SR));
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C(S( 0, 0, SR));
 
           for( x = 1; x < xmax - 1; ++x ) {
 
-            D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-            D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
-            D(1, 0, DB) = (S( 0, 0, SB));
-            D(1, 1, DB) = (S( 0, 0, SB) + S( 0, 1, SB)) / 2;
+            D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+            D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
+            D(1, 0, DB) = C(S( 0, 0, SB));
+            D(1, 1, DB) = C((S( 0, 0, SB) + S( 0, 1, SB)) / 2);
 
-            D(0, 0, DG) = (S( 0, 0, SG1));
-            D(0, 1, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4;
-            D(1, 0, DG) = (S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3;
-            D(1, 1, DG) = (S( 0 ,0, SG2));
+            D(0, 0, DG) = C(S( 0, 0, SG1));
+            D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
+            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
+            D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-            D(0, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-            D(0, 1, DR) = (S( 0, 0, SR));
-            D(1, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-            D(1, 1, DR) = (S( 0, 0, SR));
+            D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+            D(0, 1, DR) = C(S( 0, 0, SR));
+            D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+            D(1, 1, DR) = C(S( 0, 0, SR));
           }
 
-          D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-          D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB));
+          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C(S( 0, 0, SB));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2)) / 3;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3;
-          D(1, 1, DG) = (S( 0 ,0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2)) / 3);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 0, 0, SG2)) / 3);
+          D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-          D(0, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+          D(1, 1, DR) = C(S( 0, 0, SR));
 
           continue;
         }
 
-        D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-        D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
-        D(1, 0, DB) = (S( 0, 0, SB));
-        D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+        D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+        D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
+        D(1, 0, DB) = C(S( 0, 0, SB));
+        D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
-        D(0, 0, DG) = (S( 0, 0, SG1));
-        D(0, 1, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4;
-        D(1, 0, DG) = (S( 0, 0, SG1) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 3;
-        D(1, 1, DG) = (S( 0 ,0, SG2));
+        D(0, 0, DG) = C(S( 0, 0, SG1));
+        D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
+        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 3);
+        D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-        D(0, 0, DR) = (S( 0, 0, SR));
-        D(0, 1, DR) = (S( 0, 0, SR));
-        D(1, 0, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
-        D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+        D(0, 0, DR) = C(S( 0, 0, SR));
+        D(0, 1, DR) = C(S( 0, 0, SR));
+        D(1, 0, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
+        D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
 
         for( x = 1; x < xmax - 1; ++x ) {
+          D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+          D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4);
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
-          D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-          D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB) + S(0, 1, SB) + S(-1, 1, SB)) / 4;
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4);
+          D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S(-1, 0, SG2) + S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 4;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0,-1, SG2) + S( 1, 0, SG1) + S( 0, 0, SG2)) / 4;
-          D(1, 1, DG) = (S( 0 ,0, SG2));
-
-          D(0, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4;
-          D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+          D(0, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4);
+          D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
         }
 
-        D(0, 0, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-        D(0, 1, DB) = (S(-1, 0, SB) + S( 0, 0, SB)) / 2;
-        D(1, 0, DB) = (S( 0, 0, SB));
-        D(1, 1, DB) = (S( 0, 0, SB));
+        D(0, 0, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+        D(0, 1, DB) = C((S(-1, 0, SB) + S( 0, 0, SB)) / 2);
+        D(1, 0, DB) = C(S( 0, 0, SB));
+        D(1, 1, DB) = C(S( 0, 0, SB));
 
-        D(0, 0, DG) = (S( 0, 0, SG1));
-        D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG2) ) / 3;
-        D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4;
-        D(1, 1, DG) = (S( 0 ,0, SG2));
+        D(0, 0, DG) = C(S( 0, 0, SG1));
+        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG2) ) / 3);
+        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
+        D(1, 1, DG) = C(S( 0 ,0, SG2));
 
-        D(0, 0, DR) = (S( 0, 0, SR) + S( 0,-1, SR)) / 2;
-        D(0, 1, DR) = (S( 0, 0, SR));
-        D(1, 0, DR) = (S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4;
-        D(1, 1, DR) = (S( 0, 0, SR) + S( 1, 0, SR)) / 2;
+        D(0, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR)) / 2);
+        D(0, 1, DR) = C(S( 0, 0, SR));
+        D(1, 0, DR) = C((S( 0, 0, SR) + S( 0,-1, SR) + S( 1,-1, SR) + S( 1, 0, SR)) / 4);
+        D(1, 1, DR) = C((S( 0, 0, SR) + S( 1, 0, SR)) / 2);
       }
     });
     break;
@@ -1378,158 +1500,154 @@ static bool __interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst
         int x = 0;
 
         if ( y == 0 ) {
-          D(0, 0, DR) = (S( 0, 0, SR));
-          D(0, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+          D(0, 0, DR) = C(S( 0, 0, SR));
+          D(0, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3;
-          D(1, 1, DG) = (S( 0, 0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
-          D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
+          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
 
           for( x = 1; x < xmax - 1; ++x ) {
+            D(0, 0, DR) = C(S( 0, 0, SR));
+            D(0, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
+            D(1, 0, DR) = C(S( 0, 0, SR));
+            D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-            D(0, 0, DR) = (S( 0, 0, SR));
-            D(0, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
-            D(1, 0, DR) = (S( 0, 0, SR));
-            D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+            D(0, 0, DG) = C(S( 0, 0, SG1));
+            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3);
+            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
+            D(1, 1, DG) = C(S( 0, 0, SG2));
 
-            D(0, 0, DG) = (S( 0, 0, SG1));
-            D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0, 1, SG1)) / 3;
-            D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4;
-            D(1, 1, DG) = (S( 0, 0, SG2));
-
-            D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-            D(0, 1, DB) = (S( 0, 0, SB));
-            D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4;
-            D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+            D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+            D(0, 1, DB) = C(S( 0, 0, SB));
+            D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
+            D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
           }
 
-          D(0, 0, DR) = (S( 0, 0, SR));
-          D(0, 1, DR) = (S( 0, 0, SR));
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C(S( 0, 0, SR));
+          D(0, 1, DR) = C(S( 0, 0, SR));
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C(S( 0, 0, SR));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2)) / 2;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4;
-          D(1, 1, DG) = (S( 0, 0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4;
-          D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
+          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
 
           continue;
         }
 
         if ( y == ymax - 1 ) {
+          D(0, 0, DR) = C(S( 0, 0, SR));
+          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-          D(0, 0, DR) = (S( 0, 0, SR));
-          D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2)) / 2);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2)) / 2;
-          D(1, 1, DG) = (S( 0, 0, SG2));
-
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB));
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C(S( 0, 0, SB));
 
           for( x = 1; x < xmax - 1; ++x ) {
+            D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+            D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
+            D(1, 0, DR) = C(S( 0, 0, SR));
+            D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-            D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-            D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
-            D(1, 0, DR) = (S( 0, 0, SR));
-            D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+            D(0, 0, DG) = C(S( 0, 0, SG1));
+            D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
+            D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3);
+            D(1, 1, DG) = C(S( 0, 0, SG2));
 
-            D(0, 0, DG) = (S( 0, 0, SG1));
-            D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4;
-            D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3;
-            D(1, 1, DG) = (S( 0, 0, SG2));
-
-            D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-            D(0, 1, DB) = (S( 0, 0, SB));
-            D(1, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-            D(1, 1, DB) = (S( 0, 0, SB));
+            D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+            D(0, 1, DB) = C(S( 0, 0, SB));
+            D(1, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+            D(1, 1, DB) = C(S( 0, 0, SB));
           }
 
-          D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-          D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C(S( 0, 0, SR));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3;
-          D(1, 1, DG) = (S( 0, 0, SG2));
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2)) / 3);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-          D(1, 1, DB) = (S( 0, 0, SB));
+          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+          D(1, 1, DB) = C(S( 0, 0, SB));
 
           continue;
         }
 
 
-        D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-        D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
-        D(1, 0, DR) = (S( 0, 0, SR));
-        D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+        D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+        D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
+        D(1, 0, DR) = C(S( 0, 0, SR));
+        D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-        D(0, 0, DG) = (S( 0, 0, SG1));
-        D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4;
-        D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3;
-        D(1, 1, DG) = (S( 0, 0, SG2));
+        D(0, 0, DG) = C(S( 0, 0, SG1));
+        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
+        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 1, 0, SG1)) / 3);
+        D(1, 1, DG) = C(S( 0, 0, SG2));
 
-        D(0, 0, DB) = (S( 0, 0, SB));
-        D(0, 1, DB) = (S( 0, 0, SB));
-        D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
-        D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+        D(0, 0, DB) = C(S( 0, 0, SB));
+        D(0, 1, DB) = C(S( 0, 0, SB));
+        D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
+        D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
 
         for( x = 1; x < xmax - 1; ++x ) {
+          D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+          D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4);
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C((S( 0, 0, SR) + S(0, 1, SR)) / 2);
 
-          D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-          D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR) + S(0, 1, SR) + S(-1, 1, SR)) / 4;
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR) + S(0, 1, SR)) / 2;
+          D(0, 0, DG) = C(S( 0, 0, SG1));
+          D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4);
+          D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
+          D(1, 1, DG) = C(S( 0, 0, SG2));
 
-          D(0, 0, DG) = (S( 0, 0, SG1));
-          D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1) + S( 0, 1, SG1)) / 4;
-          D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4;
-          D(1, 1, DG) = (S( 0, 0, SG2));
-
-          D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4;
-          D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+          D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
+          D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
         }
 
-        D(0, 0, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-        D(0, 1, DR) = (S( 0, 0, SR) + S(-1, 0, SR)) / 2;
-        D(1, 0, DR) = (S( 0, 0, SR));
-        D(1, 1, DR) = (S( 0, 0, SR));
+        D(0, 0, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+        D(0, 1, DR) = C((S( 0, 0, SR) + S(-1, 0, SR)) / 2);
+        D(1, 0, DR) = C(S( 0, 0, SR));
+        D(1, 1, DR) = C(S( 0, 0, SR));
 
-        D(0, 0, DG) = (S( 0, 0, SG1));
-        D(0, 1, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3;
-        D(1, 0, DG) = (S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4;
-        D(1, 1, DG) = (S( 0, 0, SG2));
+        D(0, 0, DG) = C(S( 0, 0, SG1));
+        D(0, 1, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S(-1, 0, SG1)) / 3);
+        D(1, 0, DG) = C((S( 0, 0, SG1) + S( 0, 0, SG2) + S( 0,-1, SG2) + S( 1, 0, SG1)) / 4);
+        D(1, 1, DG) = C(S( 0, 0, SG2));
 
-        D(0, 0, DB) = (S( 0, 0, SB) + S( 0,-1, SB)) / 2;
-        D(0, 1, DB) = (S( 0, 0, SB));
-        D(1, 0, DB) = (S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4;
-        D(1, 1, DB) = (S( 0, 0, SB) + S( 1, 0, SB)) / 2;
+        D(0, 0, DB) = C((S( 0, 0, SB) + S( 0,-1, SB)) / 2);
+        D(0, 1, DB) = C(S( 0, 0, SB));
+        D(1, 0, DB) = C((S( 0, 0, SB) + S( 1, 0, SB) + S( 0,-1, SB) + S( 1,-1, SB)) / 4);
+        D(1, 1, DB) = C((S( 0, 0, SB) + S( 1, 0, SB)) / 2);
       }
     });
     break;
@@ -1553,107 +1671,104 @@ static bool __interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst
         int x = 0;
 
         if( y == 0 ) {
-          D(0, 0, DR) = (S(0, 0, SR));
-          D(0, 1, DR) = (S(0, 0, SR));
-          D(1, 0, DR) = (S(0, 0, SR));
-          D(1, 1, DR) = (S(0, 1, SR));
+          D(0, 0, DR) = C(S(0, 0, SR));
+          D(0, 1, DR) = C(S(0, 0, SR));
+          D(1, 0, DR) = C(S(0, 0, SR));
+          D(1, 1, DR) = C(S(0, 1, SR));
 
-          D(0, 0, DG) = (S(0, 0, SG1) + S(0, 0, SG2) ) / 2;
-          D(0, 1, DG) = (S(0, 0, SG1));
-          D(1, 0, DG) = (S(0, 0, SG2));
-          D(1, 1, DG) = (S(0, 0, SG1) + S(0, 0, SG2) + S(1, 0, SG1) + S(0, 1, SG2)) / 4;
+          D(0, 0, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) ) / 2);
+          D(0, 1, DG) = C(S(0, 0, SG1));
+          D(1, 0, DG) = C(S(0, 0, SG2));
+          D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) + S(1, 0, SG1) + S(0, 1, SG2)) / 4);
 
-          D(0, 0, DB) = (S(0, 0, SB));
-          D(0, 1, DB) = (S(0, 0, SB) + S(0, 1, SB)) / 2;
-          D(1, 0, DB) = (S(0, 0, SB) + S(1, 0, SB)) / 2;
-          D(1, 1, DB) = (S(0, 0, SB) + S(1, 0, SB) + S(1, 1, SB) + S(0, 1, SB)) / 4;
+          D(0, 0, DB) = C(S(0, 0, SB));
+          D(0, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB)) / 2);
+          D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
+          D(1, 1, DB) = C((S(0, 0, SB) + S(1, 0, SB) + S(1, 1, SB) + S(0, 1, SB)) / 4);
 
           for( x = 1; x < xmax - 1; ++x ) {
+            D(0, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
+            D(0, 1, DR) = C(S(0, 0, SR));
+            D(1, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
+            D(1, 1, DR) = C(S(0, 0, SR));
 
-            D(0, 0, DR) = (S(0,-1, SR) + S(0, 0, SR)) / 2;
-            D(0, 1, DR) = (S(0, 0, SR));
-            D(1, 0, DR) = (S(0,-1, SR) + S(0, 0, SR)) / 2;
-            D(1, 1, DR) = (S(0, 0, SR));
+            D(0, 0, DG) = C((S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
+            D(0, 1, DG) = C(S(0, 0, SG1));
+            D(1, 0, DG) = C(S(0, 0, SG2));
+            D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) + +S(1, 0, SG1)) / 4);
 
-            D(0, 0, DG) = (S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3;
-            D(0, 1, DG) = (S(0, 0, SG1));
-            D(1, 0, DG) = (S(0, 0, SG2));
-            D(1, 1, DG) = (S(0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) + +S(1, 0, SG1)) / 4;
-
-            D(0, 0, DB) = (S(0, 0, SB));
-            D(0, 1, DB) = (S(0, 0, SB) + S(0, 1, SB)) / 2;
-            D(1, 0, DB) = (S(0, 0, SB) + S(1, 0, SB)) / 2;
-            D(1, 1, DB) = (S(0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4;
+            D(0, 0, DB) = C(S(0, 0, SB));
+            D(0, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB)) / 2);
+            D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
+            D(1, 1, DB) = C((S(0, 0, SB) + S(0, 1, SB) + S(1, 0, SB) + S(1, 1, SB)) / 4);
           }
 
+          D(0, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
+          D(0, 1, DR) = C(S(0, 0, SR));
+          D(1, 0, DR) = C((S(0,-1, SR) + S(0, 0, SR)) / 2);
+          D(1, 1, DR) = C(S(0, 0, SR));
 
-          D(0, 0, DR) = (S(0,-1, SR) + S(0, 0, SR)) / 2;
-          D(0, 1, DR) = (S(0, 0, SR)) / 2;
-          D(1, 0, DR) = (S(0,-1, SR) + S(0, 0, SR)) / 2;
-          D(1, 1, DR) = (S(0, 0, SR));
+          D(0, 0, DG) = C((S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
+          D(0, 1, DG) = C(S(0, 0, SG1));
+          D(1, 0, DG) = C(S(0, 0, SG2));
+          D(1, 1, DG) = C((S(0, 0, SG1) + S(0, 0, SG2)  + S(1, 0, SG1)) / 3);
 
-          D(0, 0, DG) = (S(0,-1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 3;
-          D(0, 1, DG) = (S(0, 0, SG1));
-          D(1, 0, DG) = (S(0, 0, SG2));
-          D(1, 1, DG) = (S(0, 0, SG1) + S(0, 0, SG2)  + S(1, 0, SG1)) / 3;
-
-          D(0, 0, DB) = (S(0, 0, SB));
-          D(0, 1, DB) = (S(0, 0, SB));
-          D(1, 0, DB) = (S(0, 0, SB) + S(1, 0, SB)) / 2;
-          D(1, 1, DB) = (S(0, 0, SB) + S(1, 0, SB)) / 2;
+          D(0, 0, DB) = C(S(0, 0, SB));
+          D(0, 1, DB) = C(S(0, 0, SB));
+          D(1, 0, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
+          D(1, 1, DB) = C((S(0, 0, SB) + S(1, 0, SB)) / 2);
 
           continue;
         }
 
         if( y == ymax - 1 ) {
 
-          D(0, 0, DR) = (S(-1, 0, SR) + S(0, 0, SR)) / 2;
-          D(0, 1, DR) = (S(-1, 0, SR) + S(0, 0, SR)) / 2;
-          D(1, 0, DR) = (S( 0, 0, SR));
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C((S(-1, 0, SR) + S(0, 0, SR)) / 2);
+          D(0, 1, DR) = C((S(-1, 0, SR) + S(0, 0, SR)) / 2);
+          D(1, 0, DR) = C(S( 0, 0, SR));
+          D(1, 1, DR) = C(S( 0, 0, SR));
 
-          D(0, 0, DG) = (S(-1, 0, SG2) + S(0, 0, SG1) + S(0, 0, SG2)) / 3;
-          D(0, 1, DG) = (S( 0, 0, SG1));
-          D(1, 0, DG) = (S( 0, 0, SG2));
-          D(1, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2)) / 3;
+          D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, 0, SG1) + S(0, 0, SG2)) / 3);
+          D(0, 1, DG) = C(S( 0, 0, SG1));
+          D(1, 0, DG) = C(S( 0, 0, SG2));
+          D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2)) / 3);
 
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
 
           for( x = 1; x < xmax - 1; ++x ) {
+            D(0, 0, DR) = C((S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4);
+            D(0, 1, DR) = C((S(-1, 0, SR) + S( 0, 0, SR)) / 2);
+            D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+            D(1, 1, DR) = C(S( 0, 0, SR));
 
-            D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
-            D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-            D(1, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-            D(1, 1, DR) = (S( 0, 0, SR));
+            D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4);
+            D(0, 1, DG) = C(S( 0, 0, SG1));
+            D(1, 0, DG) = C(S( 0, 0, SG2));
+            D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) ) / 3);
 
-            D(0, 0, DG) = (S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4;
-            D(0, 1, DG) = (S( 0, 0, SG1));
-            D(1, 0, DG) = (S( 0, 0, SG2));
-            D(1, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) + S(0, 1, SG2) ) / 3;
-
-            D(0, 0, DB) = (S( 0, 0, SB));
-            D(0, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
-            D(1, 0, DB) = (S( 0, 0, SB));
-            D(1, 1, DB) = (S( 0, 0, SB) + S(0, 1, SB)) / 2;
+            D(0, 0, DB) = C(S( 0, 0, SB));
+            D(0, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
+            D(1, 0, DB) = C(S( 0, 0, SB));
+            D(1, 1, DB) = C((S( 0, 0, SB) + S(0, 1, SB)) / 2);
           }
 
-          D(0, 0, DR) = (S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4;
-          D(0, 1, DR) = (S(-1, 0, SR) + S( 0, 0, SR)) / 2;
-          D(1, 0, DR) = (S( 0,-1, SR) + S( 0, 0, SR)) / 2;
-          D(1, 1, DR) = (S( 0, 0, SR));
+          D(0, 0, DR) = C((S(-1,-1, SR) + S(-1, 0, SR) + S(0, -1, SR) + S(0, 0, SR)) / 4);
+          D(0, 1, DR) = C((S(-1, 0, SR) + S( 0, 0, SR)) / 2);
+          D(1, 0, DR) = C((S( 0,-1, SR) + S( 0, 0, SR)) / 2);
+          D(1, 1, DR) = C((S( 0, 0, SR)));
 
-          D(0, 0, DG) = (S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4;
-          D(0, 1, DG) = (S( 0, 0, SG1));
-          D(1, 0, DG) = (S( 0, 0, SG2));
-          D(1, 1, DG) = (S( 0, 0, SG1) + S(0, 0, SG2) ) / 2;
+          D(0, 0, DG) = C((S(-1, 0, SG2) + S(0, -1, SG1) + S(0, 0, SG1) + S(0, 0, SG2)) / 4);
+          D(0, 1, DG) = C((S( 0, 0, SG1)));
+          D(1, 0, DG) = C((S( 0, 0, SG2)));
+          D(1, 1, DG) = C((S( 0, 0, SG1) + S(0, 0, SG2) ) / 2);
 
-          D(0, 0, DB) = (S( 0, 0, SB));
-          D(0, 1, DB) = (S( 0, 0, SB));
-          D(1, 0, DB) = (S( 0, 0, SB));
-          D(1, 1, DB) = (S( 0, 0, SB));
+          D(0, 0, DB) = C(S( 0, 0, SB));
+          D(0, 1, DB) = C(S( 0, 0, SB));
+          D(1, 0, DB) = C(S( 0, 0, SB));
+          D(1, 1, DB) = C(S( 0, 0, SB));
 
           continue;
         }
@@ -1783,7 +1898,7 @@ bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLO
   return false;
 }
 
-bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
+bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
 {
   if ( src.channels() == 4 ) {
     if( !interpolate_bayer_planes(src, dst, colorid, ddepth) ) {
@@ -1794,25 +1909,19 @@ bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, 
   }
 
   if ( src.channels() == 1 ) {
-
-    cv::Mat tmp;
-
-    if( !extract_bayer_planes(src, tmp, colorid) ) {
-      CF_DEBUG("extract_bayer_planes() fails");
-      return false;
+    switch ( src.depth() ) {
+    case CV_8U : return _debayer_nn_interpolation<uint8_t>(src, dst, colorid, ddepth);
+    case CV_8S : return _debayer_nn_interpolation<int8_t>(src, dst, colorid, ddepth);
+    case CV_16U: return _debayer_nn_interpolation<uint16_t>(src, dst, colorid, ddepth);
+    case CV_16S: return _debayer_nn_interpolation<int16_t>(src, dst, colorid, ddepth);
+    case CV_32S: return _debayer_nn_interpolation<int32_t>(src, dst, colorid, ddepth);
+    case CV_32F: return _debayer_nn_interpolation<float>(src, dst, colorid, ddepth);
+    case CV_64F: return _debayer_nn_interpolation<double>(src, dst, colorid, ddepth);
+    default: CF_ERROR("invalid input image depth=%d", src.depth()); return false;
     }
-
-    if( !interpolate_bayer_planes(tmp, dst, colorid, ddepth) ) {
-      CF_DEBUG("interpolate_bayer_planes() fails");
-      return false;
-    }
-
-    return true;
   }
 
-  CF_ERROR("Invalid input image channels=%d. "
-      "1- or 4- channel input image expected",
-      src.channels());
+  CF_ERROR("Invalid input image channels=%d must be 1 or 4", src.channels());
   return false;
 }
 
@@ -1919,19 +2028,15 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, COLORID bayer_pat
       tmp(cv::Rect(0, 1, tmp.cols, tmp.rows - 1)),
       tmp);
 
-  const cv::Size size =
-      tmp.size();
-
-  cv::reduce(tmp, tmp, 1, cv::REDUCE_AVG,
-      CV_32F);
+  const cv::Size size = tmp.size();
+  cv::reduce(tmp, tmp, 1, cv::REDUCE_AVG, CV_32F);
 
   cv::medianBlur(tmp, mb, 5);
   cv::absdiff(tmp, mb, tmp);
   cv::reduce(tmp.reshape(1, tmp.total()), tmp, 1, cv::REDUCE_MAX);
   tmp = tmp.reshape(0, size.height);
 
-  cv::compare(tmp, median_hat_threshold, tmp,
-      cv::CMP_GE);
+  cv::compare(tmp, median_hat_threshold, tmp, cv::CMP_GE);
 
   return cv::countNonZero(tmp) > 0;
 }

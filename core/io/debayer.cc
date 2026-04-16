@@ -229,12 +229,12 @@ static bool _bayer_planes_to_bgr(cv::InputArray _src, cv::OutputArray _dst)
 
   parallel_for(0, h, [&, w](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      const Vec4T * __restrict srcp = src[y];
-      Vec3T * __restrict dstp = dst[y];
-      for ( int x = 0; x < w; ++x ) {
-        dstp[x][0] = _Tp2(srcp[x][2]);
-        dstp[x][1] = _Tp2((1 + srcp[x][1] + srcp[x][3]) / 2);
-        dstp[x][2] = _Tp2(srcp[x][0]);
+      const _Tp1 * __restrict srcp = (const _Tp1 *)(src[y]);
+      _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+      for ( int x = 0; x < w; ++x, dstp += 3, srcp += 4 ) {
+        dstp[0] = _Tp2(srcp[2]);
+        dstp[1] = _Tp2((1 + srcp[1] + srcp[3]) / 2);
+        dstp[2] = _Tp2(srcp[0]);
       }
     }
   });

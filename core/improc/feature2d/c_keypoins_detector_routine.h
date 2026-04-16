@@ -41,6 +41,7 @@ protected:
   int _octave = -1;
   DisplayType _display_type = DisplayRichKeypoints;
   bool _black_background = false;
+  bool _normalize_display = false;
 };
 
 #endif /* __c_keypoins_detector_routine_h__ */

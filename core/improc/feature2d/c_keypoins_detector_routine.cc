@@ -9,6 +9,7 @@
 #include <core/feature2d/feature2d_settings.h>
 #include <core/proc/pose.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/normalize.h>
 #include <core/debug.h>
 
 template<>
@@ -25,8 +26,9 @@ const c_enum_member * members_of<c_keypoins_detector_routine::DisplayType>()
 void c_keypoins_detector_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", ctx(&this_class::_display_type), "");
-  ctlbind(ctls, "octave", ctx(&this_class::_octave), "Draw key points from selected octave only");
+  ctlbind(ctls, "normalize_display", ctx(&this_class::_normalize_display), "");
   ctlbind(ctls, "black_background", ctx(&this_class::_black_background), "");
+  ctlbind(ctls, "octave", ctx(&this_class::_octave), "Draw key points from selected octave only");
   ctlbind(ctls, "Options", ctx(&this_class:: _opts), "Options for feature2D detector");
 }
 
@@ -35,8 +37,9 @@ bool c_keypoins_detector_routine::serialize(c_config_setting settings, bool save
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _opts);
     SERIALIZE_OPTION(settings, save, *this, _octave);
-    SERIALIZE_OPTION(settings, save, *this, _black_background);
     SERIALIZE_OPTION(settings, save, *this, _display_type);
+    SERIALIZE_OPTION(settings, save, *this, _black_background);
+    SERIALIZE_OPTION(settings, save, *this, _normalize_display);
     return true;
   }
   return false;
@@ -102,7 +105,14 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
           if( _display.depth() != CV_8U ) {
 
             double scale = 1, offset = 0;
-            getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
+
+            if ( _normalize_display ) {
+              normalize_meanStdDev(_display, 7, 0, 255);
+            }
+            else {
+              getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
+            }
+
             _display.convertTo(_display, CV_8U, scale, offset);
           }
 

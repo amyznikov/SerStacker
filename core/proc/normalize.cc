@@ -339,22 +339,20 @@ bool normalize_minmax(cv::InputArray src, cv::OutputArray dst, double omin, doub
 }
 
 
+// Rescale pixel values from range [mean - k * stdev: mean + k * stdev] to [omin:omax].
+// Saturate cast will happen for integer pixel types only
 bool normalize_meanStdDev(cv::Mat & image, double k,
     double omin, double omax,
     cv::InputArray mask,
-    cv::BorderTypes maskBorderMode,
-    const cv::Scalar & unmaskedPixelsValue)
+    int ddepth)
 {
   cv::Scalar m, s;
+  cv::meanStdDev(image, m, s, mask);
 
   double mv = 0;
   double sv = 0;
 
-  const int cn =
-      image.channels();
-
-  cv::meanStdDev(image, m, s, mask);
-
+  const int cn = image.channels();
   for( int i = 0; i < cn; ++i ) {
     mv += m[i];
     sv += s[i];
@@ -363,30 +361,35 @@ bool normalize_meanStdDev(cv::Mat & image, double k,
   mv /= cn;
   sv /= cn;
 
-  return normalize_image(image,
-      mv - k * sv, mv + k * sv,
-      omin, omax,
-      mask.getMat(),
-      maskBorderMode,
-      unmaskedPixelsValue);
+  const double imin = mv - k * sv;
+  const double imax = mv + k * sv;
+  const double S = (omax - omin) / (imax - imin + FLT_EPSILON);
+  image.convertTo(image, ddepth, S, omin - imin * S);
+
+  return true;
 }
 
-bool normalize_meanStdDev(const cv::Mat & src, cv::Mat & dst, double k,
+// Rescale pixel values from range [mean - k * stdev: mean + k * stdev] to [omin:omax].
+// Saturate cast will happen for integer pixel types only
+bool normalize_meanStdDev(cv::InputArray src, cv::OutputArray dst, double k,
     double omin, double omax,
-    cv::InputArray mask,
-    enum cv::BorderTypes maskBorderMode,
-    const cv::Scalar & unmaskedPixelsValue)
+    cv::InputArray mask, int ddepth)
 {
   cv::Scalar m, s;
 
-  double mv = 0;
-  double sv = 0;
-
-  const int cn =
-      src.channels();
+  if ( dst.fixedType() ) {
+    ddepth = dst.depth();
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = src.depth();
+  }
 
   cv::meanStdDev(src, m, s, mask);
 
+  double mv = 0;
+  double sv = 0;
+
+  const int cn = src.channels();
   for( int i = 0; i < cn; ++i ) {
     mv += m[i];
     sv += s[i];
@@ -395,10 +398,10 @@ bool normalize_meanStdDev(const cv::Mat & src, cv::Mat & dst, double k,
   mv /= cn;
   sv /= cn;
 
-  return normalize_image(src, dst,
-      mv - k * sv, mv + k * sv,
-      omin, omax,
-      mask.getMat(),
-      maskBorderMode,
-      unmaskedPixelsValue);
+  const double imin = mv - k * sv;
+  const double imax = mv + k * sv;
+  const double S = (omax - omin) / (imax - imin + FLT_EPSILON);
+  src.getMat().convertTo(dst, ddepth, S, omin - imin * S);
+
+  return true;
 }

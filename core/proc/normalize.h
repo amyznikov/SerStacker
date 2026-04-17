@@ -42,16 +42,18 @@ bool normalize_minmax(cv::InputArray src,
     const cv::Scalar & unmaskedPixelsValue  = cv::Scalar::all(0));
 
 
+// Rescale pixel values from range [mean - k * stdev: mean + k * stdev] to [omin:omax].
+// Saturate cast will happen for integer pixel types only
 bool normalize_meanStdDev(cv::Mat & image, double k,
     double omin, double omax,
     cv::InputArray mask = cv::noArray(),
-    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
-    const cv::Scalar & unmaskedPixelsValue = cv::Scalar::all(0));
+    int ddepth = -1);
 
-bool normalize_meanStdDev(const cv::Mat & src, cv::Mat & dst, double k,
+// Rescale pixel values from range [mean - k * stdev: mean + k * stdev] to [omin:omax].
+// Saturate cast will happen for integer pixel types only
+bool normalize_meanStdDev(cv::InputArray src, cv::OutputArray dst, double k,
     double omin, double omax,
     cv::InputArray mask = cv::noArray(),
-    enum cv::BorderTypes maskBorderMode = cv::BORDER_TRANSPARENT,
-    const cv::Scalar & unmaskedPixelsValue = cv::Scalar::all(0));
+    int ddepth = -1);
 
 #endif /* __normalize_h__ */

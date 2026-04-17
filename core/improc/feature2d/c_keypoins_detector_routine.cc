@@ -101,19 +101,15 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
       }
 
       if( _display.depth() != CV_8U ) {
-
-        double scale = 1, offset = 0;
-
         if( _normalize_display ) {
-          normalize_meanStdDev(_display, 7, 0, 255);
+          normalize_meanStdDev(_display, 7, 0, 255, cv::noArray(), CV_8U);
         }
         else {
+          double scale = 1, offset = 0;
           getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
+          _display.convertTo(_display, CV_8U, scale, offset);
         }
-
-        _display.convertTo(_display, CV_8U, scale, offset);
       }
-
 
       switch (_display_type) {
         case DisplayWhiteCircles: {
@@ -125,7 +121,7 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
         }
 
         case DisplayRichKeypoints:
-          default:
+        default:
           cv::drawKeypoints(_display, _keypoints, _display,
               cv::Scalar::all(-1),
               cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);

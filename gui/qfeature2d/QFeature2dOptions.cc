@@ -188,7 +188,7 @@ static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2
 #if HAVE_STAR_EXTRACTOR
 static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2d_star_extractor::options > * w)
 {
-  ADDCTL2(median_filter_size);
+  ADDCTL2(median_filter_radius);
   ADDCTL2(sigma1);
   ADDCTL2(sigma2);
   ADDCTL2(noise_blur);

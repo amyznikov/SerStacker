@@ -197,8 +197,8 @@ void c_star_extractor::detect(cv::InputArray src, std::vector<cv::KeyPoint> & ke
       cv::BORDER_DEFAULT,
       CV_32F);
 
-  if( _median_filter_size > 1 ) {
-    cv::medianBlur(_image, _image, _median_filter_size);
+  if( _median_filter_radius > 0 ) {
+    cv::medianBlur(_image, _image, 2 * _median_filter_radius + 1);
   }
 
   compute_dog(_image, _image, _sigma1, _sigma2, CV_32F);

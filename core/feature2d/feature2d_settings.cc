@@ -577,7 +577,7 @@ bool save_settings(c_config_setting settings, const c_feature2d_boost::options &
 bool load_settings(c_config_setting settings, c_feature2d_star_extractor::options * args)
 {
   BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *args, median_filter_size);
+  LOAD_OPTIONS(settings, *args, median_filter_radius);
   LOAD_OPTIONS(settings, *args, sigma1);
   LOAD_OPTIONS(settings, *args, sigma2);
   LOAD_OPTIONS(settings, *args, noise_blur);
@@ -593,7 +593,7 @@ bool load_settings(c_config_setting settings, c_feature2d_star_extractor::option
 
 bool save_settings(c_config_setting settings, const c_feature2d_star_extractor::options & args)
 {
-  SAVE_SETINGS(median_filter_size);
+  SAVE_SETINGS(median_filter_radius);
   SAVE_SETINGS(sigma1);
   SAVE_SETINGS(sigma2);
   SAVE_SETINGS(noise_blur);

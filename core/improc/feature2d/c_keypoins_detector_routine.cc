@@ -17,6 +17,7 @@ const c_enum_member * members_of<c_keypoins_detector_routine::DisplayType>()
 {
   static const c_enum_member members[] = {
     {c_keypoins_detector_routine::DisplayRichKeypoints, "RichKeypoints", "Display Rich Keypoints"},
+    {c_keypoins_detector_routine::DisplayWhiteCircles, "WhiteCircles", "Display White Circles"},
     {c_keypoins_detector_routine::DisplayRichKeypoints}
   };
 
@@ -99,28 +100,36 @@ bool c_keypoins_detector_routine::process(cv::InputOutputArray image, cv::InputO
         cv::cvtColor(image, _display, cv::COLOR_GRAY2BGR);
       }
 
+      if( _display.depth() != CV_8U ) {
+
+        double scale = 1, offset = 0;
+
+        if( _normalize_display ) {
+          normalize_meanStdDev(_display, 7, 0, 255);
+        }
+        else {
+          getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
+        }
+
+        _display.convertTo(_display, CV_8U, scale, offset);
+      }
+
+
       switch (_display_type) {
-        case DisplayRichKeypoints:
-        default: {
-          if( _display.depth() != CV_8U ) {
-
-            double scale = 1, offset = 0;
-
-            if ( _normalize_display ) {
-              normalize_meanStdDev(_display, 7, 0, 255);
-            }
-            else {
-              getScaleOffset(_display.depth(), CV_8U, &scale, &offset);
-            }
-
-            _display.convertTo(_display, CV_8U, scale, offset);
+        case DisplayWhiteCircles: {
+          const cv::Scalar color = cv::Scalar::all(255);
+          for ( const auto & kp : _keypoints ) {
+            cv::circle(_display, kp.pt, kp.size, color, 1, cv::LINE_8);
           }
+          break;
+        }
 
+        case DisplayRichKeypoints:
+          default:
           cv::drawKeypoints(_display, _keypoints, _display,
               cv::Scalar::all(-1),
               cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
           break;
-        }
       }
 
       image.move(_display);

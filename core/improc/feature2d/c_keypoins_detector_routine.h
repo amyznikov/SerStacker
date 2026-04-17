@@ -21,12 +21,8 @@ public:
 
   enum DisplayType {
     DisplayRichKeypoints,
+    DisplayWhiteCircles,
   };
-
-//  c_sparse_feature_detector_options * options()
-//  {
-//    return &_opts;
-//  }
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

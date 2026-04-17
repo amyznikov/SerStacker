@@ -1337,7 +1337,7 @@ public:
       public base::options
   {
     using feature2d_class = this_class;
-    int median_filter_size = 0;
+    int median_filter_radius = 0;
     double sigma1 = 2;
     double sigma2 = 5;
     double noise_blur = 100;
@@ -1362,7 +1362,7 @@ protected:
     const cv::Ptr<c_star_extractor> obj =
         c_star_extractor::create();
 
-    obj->set_median_filter_size(opts_.median_filter_size);
+    obj->set_median_filter_radius(opts_.median_filter_radius);
     obj->set_sigma1(opts_.sigma1);
     obj->set_sigma2(opts_.sigma2);
     obj->set_noise_blur(opts_.noise_blur);

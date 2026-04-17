@@ -35,14 +35,14 @@ public:
 
   static cv::Ptr<this_class> create();
 
-  void set_median_filter_size(int v)
+  void set_median_filter_radius(int v)
   {
-    _median_filter_size = v;
+    _median_filter_radius = v;
   }
 
-  int median_filter_size() const
+  int median_filter_radius() const
   {
-    return _median_filter_size;
+    return _median_filter_radius;
   }
 
   void set_sigma1(double v)
@@ -129,7 +129,7 @@ public:
 
 protected:
   // detector opts
-  int _median_filter_size = 0;
+  int _median_filter_radius = 0;
   double _sigma1 = 2;
   double _sigma2 = 5;
   double _noise_blur = 100;

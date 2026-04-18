@@ -698,7 +698,6 @@ void QMtfControl::hideEvent(QHideEvent *e)
   Base::hideEvent(e);
 }
 
-
 void QMtfControl::onDisplayChannelsChanged()
 {
   if ( _displaySettings ) {

@@ -94,20 +94,17 @@ protected Q_SLOTS:
   void onUpdateControls();
   void onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState);
   void onFrameSizeCtlCurrentIndexChanged();
-//  void onImageFormatCtlCurrentIndexChanged();
-//  void onBinningCtlCurrentIndexChanged();
 
 protected:
-  QASICamera::sptr camera_;
-  QHBoxLayout * layout_ = nullptr;
+  QASICamera::sptr _camera;
+  QHBoxLayout * _layout = nullptr;
   QComboBox * frameSize_ctl = nullptr;
   QComboBox * imageFormat_ctl = nullptr;
   QComboBox * binning_ctl = nullptr;
 
-  QList<QCameraROI> predefinedROIs_;
-  QList<QCameraROI> userDefinedROIs_;
-
-  QImagingCamera::PreStartProc prestartproc_;
+  QList<QCameraROI> _predefinedROIs;
+  QList<QCameraROI> _userDefinedROIs;
+  QImagingCamera::PreStartProc _prestartproc;
 };
 
 class QASICameraExtraContolsWidget :

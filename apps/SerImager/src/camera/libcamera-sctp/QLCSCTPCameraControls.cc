@@ -7,22 +7,32 @@
 
 #include "QLCSCTPCameraControls.h"
 #include "QLCSCTPStreams.h"
+#include <core/debug.h>
 
 namespace serimager {
 
-QLCExposureTimeTimeControlWidget::QLCExposureTimeTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent) :
+QLCExposureTimeControlWidget::QLCExposureTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent) :
     Base(parent),
     _camera(camera)
 {
+  _timeScale_ctl = new QComboBox(this);
+  _timeScale_ctl->setEditable(false);
+  _timeScale_ctl->addItem(" us ");
+  _timeScale_ctl->addItem(" ms ");
+  _timeScale_ctl->addItem(" s  ");
+  _timeScale_ctl->setCurrentIndex(1);
+
   _layout = new QHBoxLayout(this);
   _layout->addWidget(_spinbox_ctl = new QSpinBox(this), 100);
+  _layout->addWidget(_timeScale_ctl, 1);
   _layout->addWidget(_chkbox_ctl = new QCheckBox("Auto", this), 1);
   _spinbox_ctl->setKeyboardTracking(false);
-  _spinbox_ctl->setRange(1, 60 * 1000000);
+  _spinbox_ctl->setRange(1, 1000);
 
   const auto applyChanges = [this]() {
     const bool isAuto = _chkbox_ctl->isChecked();
     _spinbox_ctl->setEnabled(!isAuto);
+    _timeScale_ctl->setEnabled(!isAuto);
 
     auto * cam = _camera ? _camera->selectedCamera() : nullptr;
     if ( cam ) {
@@ -37,7 +47,19 @@ QLCExposureTimeTimeControlWidget::QLCExposureTimeTimeControlWidget(QLCSCTPCamera
         ExposureTimeMode->value = isAuto ? "0" : "1";
       }
       if ( ExposureTime ) {
-        ExposureTime->value = toQString(_spinbox_ctl->value());
+        double cval = _spinbox_ctl->value();
+        switch( _timeScale_ctl->currentIndex() ) {
+          case 0: // us
+          break;
+          case 1: // ms
+            cval *= 1e3;
+          break;
+          case 2: // s
+            cval *= 1e6;
+          break;
+        }
+
+        ExposureTime->value = toQString(cval);
       }
       _camera->applyDeviceControls((const QLCSCTPCamera::QLCCameraControl*[]) {
             AeEnable, ExposureTimeMode, ExposureTime},
@@ -47,9 +69,12 @@ QLCExposureTimeTimeControlWidget::QLCExposureTimeTimeControlWidget(QLCSCTPCamera
 
   QObject::connect(_chkbox_ctl, &QCheckBox::stateChanged, applyChanges);
   QObject::connect(_spinbox_ctl, QOverload<int>::of(&QSpinBox::valueChanged), applyChanges);
+  QObject::connect(_timeScale_ctl, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ThisClass::updateControls);
+
+  updateControls();
 }
 
-void QLCExposureTimeTimeControlWidget::updateControls()
+void QLCExposureTimeControlWidget::updateControls()
 {
   const auto * cam = _camera ? _camera->selectedCamera() : nullptr;
   if( !cam ) {
@@ -72,14 +97,33 @@ void QLCExposureTimeTimeControlWidget::updateControls()
 
   if( !ExposureTime ) {
     _spinbox_ctl->setEnabled(false);
+    _timeScale_ctl->setEnabled(false);
   }
   else {
     uint32_t cval;
     if( fromString(ExposureTime->value, &cval) ) {
       QSignalBlocker block(_spinbox_ctl);
-      _spinbox_ctl->setValue(cval);
+
+      switch(_timeScale_ctl->currentIndex())
+      {
+        case 0: // us
+          _spinbox_ctl->setRange(1, 1000);
+          _spinbox_ctl->setValue(cval);
+          break;
+
+        case 1: // ms
+          _spinbox_ctl->setRange(1, 1000);
+          _spinbox_ctl->setValue(cval * 1e-3);
+          break;
+
+        case 2: // s
+          _spinbox_ctl->setRange(1, 60);
+          _spinbox_ctl->setValue(cval * 1e-6);
+          break;
+      }
     }
     _spinbox_ctl->setEnabled(!_chkbox_ctl->isChecked());
+    _timeScale_ctl->setEnabled(!_chkbox_ctl->isChecked());
   }
   setEnabled(true);
 }
@@ -177,6 +221,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
             populateFormats();
             populateSizes();
           }
+          updateCameraControls();
         }
       });
 
@@ -323,7 +368,7 @@ QLCSCTPCameraControls::QLCSCTPCameraControls(const QLCSCTPCamera::sptr & camera,
           });
 
   ////////////////////////////////////////////
-  addRow("Exposure [us]:", ExposureTime_ctl = new QLCExposureTimeTimeControlWidget(camera.get(), this));
+  addRow("Exposure [us]:", ExposureTime_ctl = new QLCExposureTimeControlWidget(camera.get(), this));
   addRow("AnalogueGain :", AnalogueGain_ctl = new QLCAnalogueGainControlWidget(camera.get(), this));
 
   ////////////////////////////////////////////

@@ -16,19 +16,20 @@
 
 namespace serimager {
 
-class QLCExposureTimeTimeControlWidget :
+class QLCExposureTimeControlWidget :
     public QWidget
 {
   Q_OBJECT;
 public:
-  typedef QLCExposureTimeTimeControlWidget ThisClass;
+  typedef QLCExposureTimeControlWidget ThisClass;
   typedef QWidget Base;
-  QLCExposureTimeTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent = nullptr);
+  QLCExposureTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent = nullptr);
   void updateControls();
 protected:
   QLCSCTPCamera* _camera;
   QHBoxLayout * _layout = nullptr;
   QSpinBox * _spinbox_ctl = nullptr;
+  QComboBox * _timeScale_ctl = nullptr;
   QCheckBox * _chkbox_ctl = nullptr;
 };
 
@@ -93,7 +94,7 @@ protected:
   QSpinBox* cameraDeviceBuffers_ctl = nullptr;
 
   // Exposure & Sensor Hardware Controls
-  QLCExposureTimeTimeControlWidget * ExposureTime_ctl = nullptr;
+  QLCExposureTimeControlWidget * ExposureTime_ctl = nullptr;
   QLCAnalogueGainControlWidget * AnalogueGain_ctl = nullptr;
 
   // Auto Exposure Options

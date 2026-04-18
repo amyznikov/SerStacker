@@ -276,7 +276,7 @@ QStringList ICloudViewMtfDisplay::displayChannels() const
 {
   QStringList sl;
 
-  for ( const auto & p : _displays ) {
+  for ( const auto & p : _currentDisplays ) {
     sl.append(p.first);
   }
 

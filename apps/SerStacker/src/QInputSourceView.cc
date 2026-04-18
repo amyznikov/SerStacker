@@ -234,8 +234,7 @@ void QInputSourceView::setupMtfDisplayFunction()
 
 void QInputSourceView::onStackedWidgetCurrentIndexChanged()
 {
-  const QWidget *currentWidget =
-      currentView();
+  const QWidget *currentWidget = currentView();
 
   if( currentWidget == _imageView ) {
     setCurrentToolbar(_imageViewToolbar);
@@ -385,15 +384,12 @@ bool QInputSourceView::openSource(const QString & abspath)
 
   if ( !abspath.isEmpty() ) {
 
-    const std::string filename =
-        abspath.toStdString();
+    const std::string filename = abspath.toStdString();
 
     if( !(_currentSource = c_input_source::create(filename)) ) {
       CF_ERROR("c_input_source::open('%s') fails", filename.c_str());
       return false;
     }
-
-    // CF_DEBUG("typeid(currentSource_)=%s",  typeid(*currentSource_.get()).name());
 
     _currentSource->set_input_options(&_inputOptions);
 
@@ -561,37 +557,32 @@ void QInputSourceView::setViewType(DisplayType viewType)
 
   if( _currentFrame ) {
 
-    const auto & new_displays = _currentFrame->get_available_image_displays();
-    auto & existing_displays = this->_displays;
-
-//    for ( auto ii = new_displays.begin(); ii != new_displays.end(); ++ii ) {
-//      const std::string & name = ii->first;
-//      CF_DEBUG("display: %s", name.c_str());
-//    }
-
-
     bool haschages = false;
 
-    for( auto ii = existing_displays.begin(); ii != existing_displays.end(); ) {
-      if( new_displays.find(ii->first.toStdString()) != new_displays.end() ) {
+    const auto & availableDisplays =
+        _currentFrame->get_available_image_displays();
+
+    for( auto ii = _currentDisplays.begin(); ii != _currentDisplays.end(); ) {
+      if( availableDisplays.find(ii->first.toStdString()) != availableDisplays.end() ) {
         ++ii;
       }
       else {
-        ii = existing_displays.erase(ii);
+        ii = _currentDisplays.erase(ii);
         haschages = true;
       }
     }
 
-    for( auto ii = new_displays.begin(); ii != new_displays.end(); ++ii ) {
-      if( existing_displays.find(ii->first.c_str()) == existing_displays.end() ) {
-
-        const auto & c =
-            ii->second;
-
-        addDisplay(existing_displays, ii->first.c_str(),
-            c.minval,
-            c.maxval);
-
+    for( auto ii : availableDisplays) {
+      const QString name = QString::fromStdString(ii.first);
+      if( _currentDisplays.find(name) == _currentDisplays.end() ) {
+        auto pos = _allDisplays.find(name);
+        if( pos != _allDisplays.end() ) {
+          _currentDisplays.emplace(name, pos->second);
+        }
+        else {
+          _currentDisplays.emplace(name, addDisplay(_allDisplays, name,
+              ii.second.minval, ii.second.maxval));
+        }
         haschages = true;
       }
     }
@@ -609,8 +600,8 @@ void QInputSourceView::displayCurrentFrame()
 {
   // CF_DEBUG("displayCurrentFrame()");
 
-  if( !_displays.empty() && _displays.find(_displayChannel) == _displays.end() ) {
-    _displayChannel = _displays.begin()->first;
+  if( !_currentDisplays.empty() && _currentDisplays.find(_displayChannel) == _currentDisplays.end() ) {
+    _displayChannel = _currentDisplays.begin()->first;
   }
 
   if( _currentFrame ) {
@@ -715,10 +706,10 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 
   switch (_currentViewType) {
     case DisplayType_Image:
-      getminmax(_imageView->currentImage(), minval, maxval, _imageView->currentMask());
+      getMinMax(_imageView->currentImage(), minval, maxval, _imageView->currentMask());
       break;
     case DisplayType_PointCloud:
-      getminmax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMask());
+      getMinMax(_cloudView->currentColors(), minval, maxval, _cloudView->currentMask());
       break;
     default:
       break;
@@ -727,7 +718,14 @@ void QInputSourceView::getInputDataRange(double * minval, double * maxval) const
 
 void QInputSourceView::getMtfCurve(std::vector<float> & cy, size_t n)
 {
-  displayParams().mtf.get_mtf_curve(cy, n);
+  const DisplayMap::iterator pos = _currentDisplays.find(_displayChannel);
+  if ( pos != _currentDisplays.end() ) {
+    pos->second->mtf.get_mtf_curve(cy, n);
+  }
+  else {
+    cy.clear();
+    CF_ERROR("_displayChannel='%s' not found", _displayChannel.toUtf8().constData());
+  }
 }
 
 void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax, bool cumulative, bool normalized)

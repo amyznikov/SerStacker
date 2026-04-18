@@ -17,27 +17,30 @@ static constexpr int CTRL_WIDTH  = 16;
 QMtfSliderBand::QMtfSliderBand(QWidget * parent) :
     Base(parent)
 {
-  setMinimumHeight(CTRL_HEIGHT);
-  setMaximumHeight(CTRL_HEIGHT);
+  setMinimumHeight(CTRL_HEIGHT + 1);
+  setMaximumHeight(CTRL_HEIGHT + 1);
 
-  _lclip.value = 0;
-  _hclip.value = 1;
-  _midtones.value = 0.5;
+  _lclip.v = 0;
+  _hclip.v = 1;
+  _midtones.v = 0.5;
+  _shadows.v = 0.0;
+  _highlights.v = 0.0;
 
   resize(sizeHint());
 }
 
 QSize QMtfSliderBand::sizeHint() const
 {
-  return QSize(CTRL_HEIGHT, 256);
+  return QSize(256, CTRL_HEIGHT + 1);
 }
 
-void QMtfSliderBand::setOpts(double lclip, double hclip, double midtones)
+void QMtfSliderBand::setOpts(double lclip, double hclip, double midtones, double shadows, double highlights)
 {
-  _lclip.value = lclip;
-  _hclip.value = hclip;
-  _midtones.value = midtones;
-
+  _lclip.v = std::clamp(lclip, _lclip.minv, _lclip.maxv);
+  _hclip.v = std::clamp(hclip, _hclip.minv, _hclip.maxv);
+  _midtones.v = std::clamp(midtones, _midtones.minv, _midtones.maxv);
+  _shadows.v = std::clamp(shadows, _shadows.minv, _shadows.maxv);
+  _highlights.v = std::clamp(highlights, _highlights.minv, _highlights.maxv);
   updateSliderRects();
   update();
 }
@@ -53,82 +56,151 @@ int QMtfSliderBand::sliderIndex(const Slider * s) const
   if ( s == &_midtones ) {
     return SLIDER_MIDTONES;
   }
+  if ( s == &_shadows ) {
+    return SLIDER_SHADOWS;
+  }
+  if ( s == &_highlights ) {
+    return SLIDER_HIGHLIGHTS;
+  }
   return -1;
+}
+
+void QMtfSliderBand::setlclipRange(double minv, double maxv, double v)
+{
+  _lclip.minv = minv;
+  _lclip.maxv = maxv;
+  _lclip.v = std::clamp(v, minv, maxv);
+  updateSliderRects();
+  update();
 }
 
 void QMtfSliderBand::setlclip(double v)
 {
-  _lclip.value = v;
+  _lclip.v = std::clamp(v, _lclip.minv, _lclip.maxv);
   updateSliderRects();
   update();
 }
 
 double QMtfSliderBand::lclip() const
 {
-  return _lclip.value;
+  return _lclip.v;
+}
+
+void QMtfSliderBand::sethclipRange(double minv, double maxv, double v)
+{
+  _hclip.minv = minv;
+  _hclip.maxv = maxv;
+  _hclip.v = std::clamp(v, minv, maxv);
+  updateSliderRects();
+  update();
 }
 
 void QMtfSliderBand::sethclip(double v)
 {
-  _hclip.value = v;
+  _hclip.v = std::clamp(v, _hclip.minv, _hclip.maxv);
   updateSliderRects();
   update();
 }
 
 double QMtfSliderBand::hclip() const
 {
-  return _hclip.value;
+  return _hclip.v;
+}
+
+void QMtfSliderBand::setMidtonesRange(double minv, double maxv, double v)
+{
+  _midtones.minv = minv;
+  _midtones.maxv = maxv;
+  _midtones.v = std::clamp(v, minv, maxv);
+  updateSliderRects();
+  update();
 }
 
 void QMtfSliderBand::setMidtones(double v)
 {
-  _midtones.value = v;
+  _midtones.v = std::clamp(v, _midtones.minv, _midtones.maxv);
   updateSliderRects();
   update();
 }
 
 double QMtfSliderBand::midtones() const
 {
-  return _midtones.value;
+  return _midtones.v;
+}
+
+void QMtfSliderBand::setShadowsRange(double minv, double maxv, double v)
+{
+  _shadows.minv = minv;
+  _shadows.maxv = maxv;
+  _shadows.v = std::clamp(v, minv, maxv);
+  updateSliderRects();
+  update();
+}
+
+void QMtfSliderBand::setShadows(double v)
+{
+  _shadows.v = std::clamp(v, _shadows.minv, _shadows.maxv);
+  updateSliderRects();
+  update();
+
+}
+
+double QMtfSliderBand::shadows() const
+{
+  return _shadows.v;
+}
+
+void QMtfSliderBand::setHighlightsRange(double minv, double maxv, double v)
+{
+  _highlights.minv = minv;
+  _highlights.maxv = maxv;
+  _highlights.v = std::clamp(v, minv, maxv);
+  updateSliderRects();
+  update();
+}
+
+void QMtfSliderBand::setHighlights(double v)
+{
+  _highlights.v = std::clamp(v, _highlights.minv, _highlights.maxv);
+  updateSliderRects();
+  update();
+}
+
+double QMtfSliderBand::highlights() const
+{
+  return _highlights.v;
 }
 
 void QMtfSliderBand::updateSliderRects()
 {
-  _lclip.rc.setRect(_lclip.value * this->width() - CTRL_WIDTH / 2 - 1, 1, CTRL_WIDTH - 2, CTRL_HEIGHT - 2);
-  _hclip.rc.setRect(_hclip.value * this->width() - CTRL_WIDTH / 2 - 1, 1, CTRL_WIDTH - 2, CTRL_HEIGHT - 2);
-  _midtones.rc.setRect(_midtones.value * this->width() - CTRL_WIDTH / 2 - 1, 1, CTRL_WIDTH - 2, CTRL_HEIGHT - 2);
+  const int w = this->width();
+  const int h = this->height();
+  const int w2 = w / 2;
+//  const int h2 = h / 2;
+
+  _lclip.brc.setRect(0, 0, w, h);
+  _hclip.brc.setRect(0, 0, w, h);
+  _midtones.brc.setRect(0,0, w, h);
+  _shadows.brc.setRect(0, 0, w2, h);
+  _highlights.brc.setRect(w2, 0, w2, h);
+
+  static const auto updateRC =
+      [](Slider & s, int ch) {
+        const int w = s.brc.width();
+        s.rc.setRect(s.brc.x() + (s.v - s.minv) * w / (s.maxv - s.minv) - CTRL_WIDTH / 2 - 1, s.brc.bottom() - ch - 1,
+            CTRL_WIDTH - 2, ch);
+      };
+
+  updateRC(_lclip, CTRL_HEIGHT - 2);
+  updateRC(_midtones, CTRL_HEIGHT - 2);
+  updateRC(_hclip, CTRL_HEIGHT - 2);
+  updateRC(_shadows, CTRL_HEIGHT / 2);
+  updateRC(_highlights, CTRL_HEIGHT / 2);
 }
 
 double QMtfSliderBand::computeSliderValue(int sliding_pos) const
 {
   return (double)sliding_pos/ this->width();
-}
-
-
-void QMtfSliderBand::drawSlider(QPainter & p, const Slider & s, const QColor & color)
-{
-  const QPoint points[] = {
-      QPoint(s.rc.left(), s.rc.bottom()),
-      QPoint(s.rc.right(), s.rc.bottom()),
-      QPoint((s.rc.left() + s.rc.right()) / 2, s.rc.top()),
-  };
-
-
-//  switch ( slider_side ) {
-//  case SLIDER_SHADOWS :
-//    p.setBrush(Qt::darkGray);
-//    break;
-//  case SLIDER_HIGHLIGHTS :
-//    p.setBrush(Qt::white);
-//    break;
-//  case SLIDER_MIDTONES :
-//    p.setBrush(Qt::lightGray);
-//    break;
-//  }
-
-  p.setBrush(color);
-  p.setPen(Qt::black);
-  p.drawConvexPolygon(points, 3);
 }
 
 void QMtfSliderBand::resizeEvent(QResizeEvent *e)
@@ -138,16 +210,30 @@ void QMtfSliderBand::resizeEvent(QResizeEvent *e)
   update();
 }
 
-void QMtfSliderBand::paintEvent(QPaintEvent *e)
+void QMtfSliderBand::paintEvent(QPaintEvent * e)
 {
   QPainter p(this);
 
-  const QSize size = this->size();
+  static const auto drawSlider =
+      [](QPainter & p, const Slider & s, const QColor & color) {
+        const QPoint points[] = {
+          QPoint(s.rc.left(), s.rc.bottom()),
+          QPoint(s.rc.right(), s.rc.bottom()),
+          QPoint((s.rc.left() + s.rc.right()) / 2, s.rc.top()),
+        };
 
+        p.setBrush(color);
+        p.setPen(Qt::black);
+        p.drawConvexPolygon(points, 3);
+      };
+
+  const QSize size = this->size();
   p.fillRect(0, 0, size.width() - 1, size.height() - 1, QBrush(Qt::white));
   drawSlider(p, _lclip, Qt::black);
   drawSlider(p, _hclip, Qt::white);
   drawSlider(p, _midtones, Qt::lightGray);
+  drawSlider(p, _shadows, Qt::darkGray);
+  drawSlider(p, _highlights, Qt::lightGray);
 }
 
 void QMtfSliderBand::mousePressEvent(QMouseEvent *e)
@@ -163,21 +249,27 @@ void QMtfSliderBand::mousePressEvent(QMouseEvent *e)
 #endif
       const QPoint pos(posf.x(), posf.y());
 
-      Slider * search_order[3] = {nullptr};
+      Slider * search_order[5] = {nullptr};
 
-      if ( pos.x() < this->width() / 2  ) {
+      const int w  = this->width();
+
+      if ( pos.x() < w / 2  ) {
         search_order[0] = &_hclip;
         search_order[1] = &_lclip;
         search_order[2] = &_midtones;
+        search_order[3] = &_highlights;
+        search_order[4] = &_shadows;
       }
       else {
         search_order[0] = &_lclip;
         search_order[1] = &_hclip;
         search_order[2] = &_midtones;
+        search_order[3] = &_shadows;
+        search_order[4] = &_highlights;
       }
 
       Slider * found_slider = nullptr;
-      for ( uint j = 0; j < 3; ++j ) {
+      for ( uint j = 0; j < 5; ++j ) {
         if ( search_order[j]->rc.contains(pos) ) {
           found_slider = search_order[j];
           break;
@@ -188,8 +280,8 @@ void QMtfSliderBand::mousePressEvent(QMouseEvent *e)
 
         if ( e->buttons() == Qt::LeftButton  ) {
           _currentSlider = found_slider;
-          sliding_pos = pos.x();
-          sliding_hit_offset = sliding_pos - found_slider->rc.x();
+          sliding_mouse_pos = pos.x();
+          sliding_hit_offset = sliding_mouse_pos - found_slider->rc.x();
           return;
         }
 
@@ -198,22 +290,30 @@ void QMtfSliderBand::mousePressEvent(QMouseEvent *e)
           int slider_index = -1;
 
           if ( found_slider == &_lclip ) {
-            found_slider->value = 0;
+            found_slider->v = 0;
             slider_index = SLIDER_LCLIP;
           }
           else if ( found_slider == &_hclip ) {
-            found_slider->value = 1;
+            found_slider->v = 1;
             slider_index = SLIDER_HCLIP;
           }
           else if ( found_slider == &_midtones ) {
-            found_slider->value = 0.5;
+            found_slider->v = 0.5;
             slider_index = SLIDER_MIDTONES;
+          }
+          else if ( found_slider == &_shadows ) {
+            found_slider->v = 0;
+            slider_index = SLIDER_SHADOWS;
+          }
+          else if ( found_slider == &_highlights ) {
+            found_slider->v = 0;
+            slider_index = SLIDER_HIGHLIGHTS;
           }
 
           if ( slider_index >= 0 ) {
             updateSliderRects();
             update();
-            Q_EMIT positonChanged(slider_index, found_slider->value);
+            Q_EMIT positonChanged(slider_index, found_slider->v);
           }
           return;
         }
@@ -238,32 +338,29 @@ void QMtfSliderBand::mouseMoveEvent(QMouseEvent *e)
   }
 
   int new_sliding_pos;
-  double new_value;
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-  if ( (new_sliding_pos = e->position().x()) == sliding_pos ) {
+  if ( (new_sliding_pos = e->position().x()) == sliding_mouse_pos ) {
     return;
   }
 #else
-  if ( (new_sliding_pos = e->localPos().x()) == sliding_pos ) {
+  if ( (new_sliding_pos = e->localPos().x()) == sliding_mouse_pos ) {
     return;
   }
 #endif
 
-  const int w  = this->width();
-
-  if ( new_sliding_pos < 0 || new_sliding_pos >= w ) {
+  if( new_sliding_pos < _currentSlider->brc.left() || new_sliding_pos >= _currentSlider->brc.right() ) {
     return;
   }
 
-  new_value = (double) (new_sliding_pos - sliding_hit_offset + CTRL_WIDTH / 2) / w;
-  //  const double relpos = new_sliding_pos - sliding_hit_offset - shadows.rc.x();
-  //  new_value = std::max(0., std::min(1., relpos / (highlights.rc.x() - shadows.rc.x())));
+  sliding_mouse_pos = new_sliding_pos;
 
-  sliding_pos = new_sliding_pos;
-  _currentSlider->value = new_value;
+  const double relative_offset = (new_sliding_pos - _currentSlider->brc.left()) / (double) _currentSlider->brc.width();
+  _currentSlider->v = std::clamp(_currentSlider->minv + relative_offset * (_currentSlider->maxv - _currentSlider->minv),
+      _currentSlider->minv, _currentSlider->maxv);
+
   updateSliderRects();
   update();
 
-  Q_EMIT positonChanged(sliderIndex(_currentSlider),  _currentSlider->value);
+  Q_EMIT positonChanged(sliderIndex(_currentSlider),  _currentSlider->v);
 }

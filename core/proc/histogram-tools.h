@@ -12,7 +12,6 @@
 #include "histogram.h"
 #include <core/io/debayer.h>
 #include <core/ctrlbind/ctrlbind.h>
-//#include <core/mtf/mtf.h>
 
 enum histogram_normalization_type {
   normalize_histogram_mean,
@@ -51,6 +50,10 @@ bool nomalizeImageHistogram(cv::InputArray src, cv::InputArray mask, cv::OutputA
 *  */
 bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
     double qlow, double qhigh);
+
+void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue,
+    double * lclip,
+    double * hclip);
 
 void autoMtf(const cv::Mat1d & H, double realMinValue, double realMaxValue,
     double * lclip,

@@ -23,6 +23,7 @@
 #define ICON_histogram_log_scale      ":/qmtf/icons/histogram-log-scale2"
 #define ICON_histogram_automtf        ":/qmtf/icons/histogram-automtf"
 #define ICON_reset                    ":/qmtf/icons/reset"
+#define ICON_scurve                   ":/qmtf/icons/scurve"
 #define ICON_contrast                 ":/qmtf/icons/contrast"
 #define ICON_bar_chart                ":/qmtf/icons/bar_chart"
 #define ICON_line_chart               ":/qmtf/icons/line_chart"
@@ -114,7 +115,12 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(_resetMtfAction, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
-  _autoMtffAction = topToolbar_ctl->addAction(getIcon(ICON_contrast), "Auto MTF");
+  _autoClipAction = topToolbar_ctl->addAction(getIcon(ICON_contrast), "Auto Clip");
+  _autoClipAction->setToolTip("Auto Clip adjustment");
+  connect(_autoClipAction, &QAction::triggered,
+      this, &ThisClass::onAutoClipCtrlClicked);
+
+  _autoMtffAction = topToolbar_ctl->addAction(getIcon(ICON_scurve), "Auto MTF");
   _autoMtffAction->setToolTip("Auto MTF adjustment");
   connect( _autoMtffAction, &QAction::triggered,
       this, &ThisClass::onAutoMtfCtrlClicked);
@@ -183,6 +189,12 @@ QMtfControl::QMtfControl(QWidget * parent) :
   bottomToolbar_ctl->addWidget(highlights_ctl = createSpinBox(this, -2, 2, 0, 2));
   bottomToolbar_ctl->addWidget(hclip_ctl = createSpinBox(this, 0, 1, 1, 3));
 
+  mtfSliderBand_ctl->setlclipRange(lclip_ctl->minimum(), lclip_ctl->maximum(), lclip_ctl->value());
+  mtfSliderBand_ctl->sethclipRange(hclip_ctl->minimum(), hclip_ctl->maximum(), hclip_ctl->value());
+  mtfSliderBand_ctl->setMidtonesRange(midtones_ctl->minimum(), midtones_ctl->maximum(), midtones_ctl->value());
+  mtfSliderBand_ctl->setShadowsRange(shadows_ctl->minimum(), shadows_ctl->maximum(), shadows_ctl->value());
+  mtfSliderBand_ctl->setHighlightsRange(highlights_ctl->minimum(), highlights_ctl->maximum(), highlights_ctl->value());
+
   // statusBar
   statusBar_ctl = new QStatusBar(this);
 
@@ -224,6 +236,16 @@ QMtfControl::QMtfControl(QWidget * parent) :
             setValue(midtones_ctl, v);
             _displaySettings->setMidtones(v);
           }
+          else if ( slider == QMtfSliderBand::SLIDER_SHADOWS ) {
+            const double v = mtfSliderBand_ctl->shadows();
+            setValue(shadows_ctl, v);
+            _displaySettings->setShadows(v);
+          }
+          else if ( slider == QMtfSliderBand::SLIDER_HIGHLIGHTS ) {
+            const double v = mtfSliderBand_ctl->highlights();
+            setValue(highlights_ctl, v);
+            _displaySettings->setHighlights(v);
+          }
         }
       });
 
@@ -258,6 +280,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
+          mtfSliderBand_ctl->setShadows(v);
           _displaySettings->setShadows(v);
         }
       });
@@ -266,6 +289,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
+          mtfSliderBand_ctl->setHighlights(v);
           _displaySettings->setHighlights(v);
         }
       });
@@ -377,6 +401,39 @@ void QMtfControl::onResetMtfClicked()
   }
 }
 
+void QMtfControl::onAutoClipCtrlClicked()
+{
+  if ( _displaySettings ) {
+    double hmin = -1, hmax = -1;
+    cv::Mat1d H;
+
+    _displaySettings->getInputDataRange(&hmin, &hmax);
+    _displaySettings->getInputHistogramm(H, &hmin, &hmax);
+    if( H.empty() || !(hmax > hmin) ) {
+      CF_ERROR("_displaySettings->getInputHistogramm() fails");
+    }
+    else {
+
+      c_mtf_options opts;
+      double lc, hc;
+
+      autoClip(H, hmin, hmax, &lc, &hc);
+
+      CF_DEBUG("H: %dx%d hmin=%g hmax=%g lc=%g, hc=%g", H.rows, H.cols, hmin, hmax, lc, hc);
+
+      const double hrange = (hmax - hmin);
+      opts.lclip = (lc - hmin) / hrange;
+      opts.hclip = (hc - hmin) / hrange;
+      opts.shadows = 0;
+      opts.highlights = 0;
+      opts.midtones = 0.5;
+      _displaySettings->setMtf(hmin, hmax, &opts);
+      _displaySettings->saveParameters();
+      updateControls();
+    }
+  }
+}
+
 void QMtfControl::onAutoMtfCtrlClicked()
 {
   if ( _displaySettings ) {
@@ -385,15 +442,12 @@ void QMtfControl::onAutoMtfCtrlClicked()
     c_mtf_options opts;
     cv::Mat1d H;
 
+    _displaySettings->getInputDataRange(&hmin, &hmax);
     _displaySettings->getInputHistogramm(H, &hmin, &hmax);
     if( H.empty() || !(hmax > hmin) ) {
       CF_ERROR("_displaySettings->getInputHistogramm() fails");
     }
     else {
-
-      if( H.cols > 1 ) {
-        cv::reduce(H, H, 1, cv::REDUCE_AVG);
-      }
 
       double lc, hc, s, m, h;
 
@@ -411,8 +465,6 @@ void QMtfControl::onAutoMtfCtrlClicked()
       _displaySettings->saveParameters();
       updateControls();
     }
-
-    updateControls();
   }
 }
 
@@ -489,7 +541,7 @@ void QMtfControl::onDisplayChannelCurrentItemChanged()
     setValue(shadows_ctl, opts.shadows);
     setValue(highlights_ctl, opts.highlights);
 
-    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones);
+    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones, opts.shadows, opts.highlights);
     setInputDataRangeCtl(input_range);
   }
 }
@@ -550,18 +602,6 @@ void QMtfControl::onDisplayChannelCustomContextMenuRequested(const QPoint & pos)
   }
 }
 
-
-void QMtfControl::findAutoHistogramClips()
-{
-  if( _displaySettings ) {
-  }
-}
-
-void QMtfControl::findAutoMidtonesBalance()
-{
-  if( _displaySettings ) {
-  }
-}
 
 void QMtfControl::updateHistogramLevels()
 {
@@ -702,7 +742,7 @@ void QMtfControl::onupdatecontrols()
     setValue(midtones_ctl, opts.midtones);
     setValue(highlights_ctl, opts.highlights);
     setValue(hclip_ctl, opts.hclip);
-    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones);
+    mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones, opts.shadows, opts.highlights);
 
     logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
 

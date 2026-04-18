@@ -41,13 +41,16 @@ class IMtfDisplay
 {
 public:
   struct DisplayParams {
+    typedef DisplayParams ThisClass;
+    typedef std::shared_ptr<ThisClass> sptr;
+
     COLORMAP colormap = COLORMAP_NONE;
     cv::Mat3b lut;
     c_mtf mtf;
     bool invert_colormap = false;
   };
 
-  typedef std::map<QString, DisplayParams, std::less<QString>> DisplayMap;
+  typedef std::map<QString, DisplayParams::sptr, std::less<QString>> DisplayMap;
 
   IMtfDisplay(QObject * parent, const QString & prefix = "");
   virtual ~IMtfDisplay() = default;
@@ -101,7 +104,7 @@ public:
   virtual void getOutputHistogramm(cv::OutputArray H, double * output_hmin, double * output_hmax) = 0;
   virtual void getMtfCurve(std::vector<float> & cy, size_t n)  = 0;
 
-  static DisplayParams & addDisplay(DisplayMap & map,
+  static DisplayParams::sptr addDisplay(DisplayMap & map,
       const QString & displayChannelName, double input_min, double input_max);
 
 protected:
@@ -130,7 +133,8 @@ protected:
 protected:
   QMtfDisplayEvents * _events = nullptr;
   QString _displayChannel;
-  DisplayMap _displays;
+  DisplayMap _allDisplays;
+  DisplayMap _currentDisplays;
   bool _autoClip = false;
   QString _prefix;
 };

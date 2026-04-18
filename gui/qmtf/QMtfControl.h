@@ -37,6 +37,7 @@ protected Q_SLOTS:
   void updateHistogramLevels();
   void onChartTypeSelectorClicked();
   void onResetMtfClicked();
+  void onAutoClipCtrlClicked();
   void onAutoMtfCtrlClicked();
   void onColormapCtlClicked();
   void onDisplayChannelCurrentItemChanged();
@@ -50,8 +51,6 @@ protected:
   void resizeEvent(QResizeEvent *event) override;
   void showEvent(QShowEvent *event) override;
   void hideEvent(QHideEvent *event) override;
-  void findAutoHistogramClips();
-  void findAutoMidtonesBalance();
   void updateColormapStrip();
   void updateColormapPixmap();
   bool getInputDataRangeCtl(double range[2]) const;
@@ -67,6 +66,7 @@ protected:
   QToolButton * colormap_ctl = nullptr;
 
   QAction * _resetMtfAction = nullptr;
+  QAction * _autoClipAction = nullptr;
   QAction * _autoMtffAction = nullptr;
 
   QAction * logScaleSelectionAction_ = nullptr;

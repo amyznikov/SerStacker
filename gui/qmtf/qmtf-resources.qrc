@@ -33,6 +33,9 @@
 	<file>icons/light/line_chart.png</file>
 	<file>icons/dark/line_chart.png</file>
 
+	<file>icons/light/scurve.png</file>
+	<file>icons/dark/scurve.png</file>
+
 	<file>icons/colormap.png</file>	
 	<file>icons/colormap2.png</file>	
 </qresource>

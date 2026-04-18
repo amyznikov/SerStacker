@@ -33,7 +33,7 @@ void ImageViewMtfDisplayFunction::getInputDataRange(double * minval, double * ma
     const cv::Mat & image = _imageViewer->currentImage();
     const cv::Mat & mask = _imageViewer->currentMask();
     if ( !image.empty() ) {
-      getminmax(image, minval, maxval, mask);
+      getMinMax(image, minval, maxval, mask);
     }
   }
 }
@@ -160,8 +160,7 @@ bool ImageViewMtfDisplayFunction::applyColorMap(cv::InputArray displayImage, cv:
     return false;
   }
 
-  DisplayParams &opts =
-      displayParams();
+  DisplayParams &opts = displayParams();
 
   if( opts.colormap == COLORMAP_NONE || opts.lut.empty() ) {
     return false;

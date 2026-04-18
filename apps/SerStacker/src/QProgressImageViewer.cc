@@ -124,34 +124,11 @@ bool QProgressImageViewer::applyColorMap(cv::InputArray displayImage, cv::InputA
   return true;
 }
 
-
-//const QStringList QProgressImageViewer::displayChannels() const
-//{
-//  static const c_enum_member members[] = {
-//      {0, "VALUE", "PIXEL VALUE"},
-//      {0}
-//  };
-//
-//  return members;
-//}
-
 void QProgressImageViewer::getInputDataRange(double * minval, double * maxval) const
 {
   *minval = *maxval = 0;
-  getminmax(currentImage(), minval, maxval, currentMask());
+  getMinMax(currentImage(), minval, maxval, currentMask());
 }
-
-//
-//void QProgressImageViewer::getInputHistogramm(cv::OutputArray H, double * hmin, double * hmax)
-//{
-//  create_histogram(currentImage(),
-//      currentMask(),
-//      H,
-//      hmin, hmax,
-//      256,
-//      false,
-//      false);
-//}
 
 
 void QProgressImageViewer::getMtfCurve(std::vector<float> & cy, size_t n)

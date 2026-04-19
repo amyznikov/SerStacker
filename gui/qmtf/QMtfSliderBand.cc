@@ -9,16 +9,18 @@
 
 #include <core/debug.h>
 
-static constexpr int CTRL_HEIGHT = 16;
-static constexpr int CTRL_WIDTH  = 16;
+static constexpr int CTRL_HEIGHT1 = 14;
+static constexpr int CTRL_HEIGHT2 = 10;
+static constexpr int CTRL_WIDTH1  = 14;
+static constexpr int CTRL_WIDTH2  = 12;
 
 
 
 QMtfSliderBand::QMtfSliderBand(QWidget * parent) :
     Base(parent)
 {
-  setMinimumHeight(CTRL_HEIGHT + 1);
-  setMaximumHeight(CTRL_HEIGHT + 1);
+  setMinimumHeight(CTRL_HEIGHT1 + CTRL_HEIGHT2 + 2);
+  setMaximumHeight(CTRL_HEIGHT1 + CTRL_HEIGHT2 + 2);
 
   _lclip.v = 0;
   _hclip.v = 1;
@@ -31,7 +33,14 @@ QMtfSliderBand::QMtfSliderBand(QWidget * parent) :
 
 QSize QMtfSliderBand::sizeHint() const
 {
-  return QSize(256, CTRL_HEIGHT + 1);
+  return QSize(256, minimumHeight());
+}
+
+void QMtfSliderBand::resizeEvent(QResizeEvent *e)
+{
+  Base::resizeEvent(e);
+  updateSliderRects();
+  update();
 }
 
 void QMtfSliderBand::setOpts(double lclip, double hclip, double midtones, double shadows, double highlights)
@@ -173,41 +182,29 @@ double QMtfSliderBand::highlights() const
 
 void QMtfSliderBand::updateSliderRects()
 {
-  const int w = this->width();
-  const int h = this->height();
+  const int w = width();
+  const int h = height();
   const int w2 = w / 2;
-//  const int h2 = h / 2;
+  const int h1 = CTRL_HEIGHT1;
+  const int h2 = CTRL_HEIGHT2;
 
-  _lclip.brc.setRect(0, 0, w, h);
-  _hclip.brc.setRect(0, 0, w, h);
-  _midtones.brc.setRect(0,0, w, h);
-  _shadows.brc.setRect(0, 0, w2, h);
-  _highlights.brc.setRect(w2, 0, w2, h);
+  _lclip.brc.setRect(0, 0, w, h1);
+  _hclip.brc.setRect(0, 0, w, h1);
+  _midtones.brc.setRect(0,0, w, h1);
+  _shadows.brc.setRect(0, h - h2, w2, h2);
+  _highlights.brc.setRect(w2, h - h2, w2, h2);
 
   static const auto updateRC =
-      [](Slider & s, int ch) {
+      [](Slider & s, int cw, int ch) {
         const int w = s.brc.width();
-        s.rc.setRect(s.brc.x() + (s.v - s.minv) * w / (s.maxv - s.minv) - CTRL_WIDTH / 2 - 1, s.brc.bottom() - ch - 1,
-            CTRL_WIDTH - 2, ch);
+        s.rc.setRect(s.brc.x() + (s.v - s.minv) * w / (s.maxv - s.minv) - cw / 2, s.brc.bottom() - ch, cw, ch);
       };
 
-  updateRC(_lclip, CTRL_HEIGHT - 2);
-  updateRC(_midtones, CTRL_HEIGHT - 2);
-  updateRC(_hclip, CTRL_HEIGHT - 2);
-  updateRC(_shadows, CTRL_HEIGHT / 2);
-  updateRC(_highlights, CTRL_HEIGHT / 2);
-}
-
-double QMtfSliderBand::computeSliderValue(int sliding_pos) const
-{
-  return (double)sliding_pos/ this->width();
-}
-
-void QMtfSliderBand::resizeEvent(QResizeEvent *e)
-{
-  Base::resizeEvent(e);
-  updateSliderRects();
-  update();
+  updateRC(_lclip, CTRL_WIDTH1, CTRL_HEIGHT1);
+  updateRC(_midtones, CTRL_WIDTH1, CTRL_HEIGHT1);
+  updateRC(_hclip, CTRL_WIDTH1, CTRL_HEIGHT1);
+  updateRC(_shadows, CTRL_WIDTH2, CTRL_HEIGHT2);
+  updateRC(_highlights, CTRL_WIDTH2, CTRL_HEIGHT2);
 }
 
 void QMtfSliderBand::paintEvent(QPaintEvent * e)
@@ -229,6 +226,11 @@ void QMtfSliderBand::paintEvent(QPaintEvent * e)
 
   const QSize size = this->size();
   p.fillRect(0, 0, size.width() - 1, size.height() - 1, QBrush(Qt::white));
+  p.setPen(Qt::darkGray);
+  p.drawLine(size.width() / 2, size.height(), size.width() / 2, size.height() - CTRL_HEIGHT2 - 1);
+  p.drawLine(0, size.height() - CTRL_HEIGHT2 - 2, size.width(), size.height() - CTRL_HEIGHT2 - 2);
+  //p.drawLine(0, size.height()-1, size.width(), size.height()-1);
+
   drawSlider(p, _lclip, Qt::black);
   drawSlider(p, _hclip, Qt::white);
   drawSlider(p, _midtones, Qt::lightGray);
@@ -257,15 +259,15 @@ void QMtfSliderBand::mousePressEvent(QMouseEvent *e)
         search_order[0] = &_hclip;
         search_order[1] = &_lclip;
         search_order[2] = &_midtones;
-        search_order[3] = &_highlights;
-        search_order[4] = &_shadows;
+        search_order[3] = &_shadows;
+        search_order[4] = &_highlights;
       }
       else {
         search_order[0] = &_lclip;
         search_order[1] = &_hclip;
         search_order[2] = &_midtones;
-        search_order[3] = &_shadows;
-        search_order[4] = &_highlights;
+        search_order[3] = &_highlights;
+        search_order[4] = &_shadows;
       }
 
       Slider * found_slider = nullptr;

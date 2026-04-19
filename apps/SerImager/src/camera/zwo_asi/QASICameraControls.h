@@ -129,7 +129,6 @@ protected Q_SLOTS:
 protected:
   QASICamera::sptr _camera;
   QList<QASIControlWidgetBase*> _controls;
-
 };
 
 class QASICameraControls:

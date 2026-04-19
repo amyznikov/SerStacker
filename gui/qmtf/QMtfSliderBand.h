@@ -70,7 +70,6 @@ protected:
   void mouseReleaseEvent(QMouseEvent *e) final;
   void mouseMoveEvent(QMouseEvent *e) final;
   void updateSliderRects();
-  double computeSliderValue(int sliding_pos) const;
   int sliderIndex(const Slider * s) const;
 
 protected:

@@ -212,7 +212,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(logScaleSelectionAction_, &QAction::triggered,
       levelsView_ctl, &QHistogramView::setLogScale);
 
-  connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged,
+  connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged, this,
       [this](int slider, double value) {
         if ( _displaySettings && !updatingControls() ) {
 
@@ -249,7 +249,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -258,7 +258,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -267,7 +267,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -276,7 +276,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -285,7 +285,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+  connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);

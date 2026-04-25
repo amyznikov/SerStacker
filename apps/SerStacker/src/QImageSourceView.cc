@@ -14,29 +14,10 @@ namespace serstacker {
 QImageSourceView::QImageSourceView(QWidget * parent) :
   Base(parent)
 {
-//  Base::setDisplayFunction(&mtfDisplayFunction_);
-//
-//  connect(&mtfDisplayFunction_, &ImageViewMtfDisplayFunction::parameterChanged,
-//      this, &ThisClass::updateDisplay);
-//
-//  connect(this, &ThisClass::displayImageChanged,
-//      &mtfDisplayFunction_, &QMtfDisplay::displayImageChanged,
-//      Qt::QueuedConnection);
-
   scene()->setBackgroundBrush(Qt::darkGray);
 
   createRoiShape();
 }
-//
-//QCloudViewMtfDisplayFunction * QInputImageSourceView::mtfDisplayFunction()
-//{
-//  return &mtfDisplayFunction_;
-//}
-//
-//const QCloudViewMtfDisplayFunction * QInputImageSourceView::mtfDisplayFunction() const
-//{
-//  return &mtfDisplayFunction_;
-//}
 
 QGraphicsRectShape * QImageSourceView::roiShape() const
 {

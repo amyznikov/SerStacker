@@ -75,7 +75,7 @@ MainWindow::MainWindow()
   cloudView = inputSourceView->cloudView();
   textView = inputSourceView->textView();
 
-  connect(centralStackedWidget, &QStackedWidget::currentChanged,
+  connect(centralStackedWidget, &QStackedWidget::currentChanged, this,
       [this]() {
 
         if ( is_visible(cloudViewSettingsDialogBox) ) {
@@ -202,6 +202,12 @@ MainWindow::MainWindow()
 
 MainWindow::~MainWindow()
 {
+  imageView->scene()->disconnect(this);
+  imageView->disconnect(this);
+  cloudView->disconnect(this);
+  textView->disconnect(this);
+  inputSourceView->disconnect(this);
+
   saveState();
 }
 
@@ -603,7 +609,7 @@ void MainWindow::setupGeoView()
   connect(geoView, &QGeoMapView::openVideoFileRequested,
       this, &ThisClass::onOpenVideoFileRequested);
 
-  connect(geoViewDock, &QGeoMapViewDock::visibilityChanged,
+  connect(geoViewDock, &QGeoMapViewDock::visibilityChanged, this,
       [this](bool visible) {
 
         if ( visible ) {
@@ -664,7 +670,7 @@ void MainWindow::setupFileSystemTreeView()
 
   fileSystemTreeDock->raise();
 
-  connect(fileSystemTreeDock, &QFileSystemTreeDock::currentDirectoryChanged,
+  connect(fileSystemTreeDock, &QFileSystemTreeDock::currentDirectoryChanged, this,
       [this](const QString & abspath) {
 
         if ( pipelineProgressView ) {
@@ -675,7 +681,7 @@ void MainWindow::setupFileSystemTreeView()
         thumbnailsView->displayPath(abspath);
       });
 
-  connect(fileSystemTreeDock, &QFileSystemTreeDock::directoryItemPressed,
+  connect(fileSystemTreeDock, &QFileSystemTreeDock::directoryItemPressed, this,
       [this](const QString & abspath) {
 
         if ( pipelineProgressView ) {
@@ -698,7 +704,7 @@ void MainWindow::setupFileSystemTreeView()
 void MainWindow::setupThumbnailsView()
 {
 
-  connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested,
+  connect(thumbnailsView, &QThumbnailsView::showInDirTreeRequested, this,
       [this](const QString & abspath) {
 
         if ( pipelineProgressView ) {
@@ -712,7 +718,7 @@ void MainWindow::setupThumbnailsView()
         }
       });
 
-  connect(thumbnailsView, &QThumbnailsView::currentIconChanged,
+  connect(thumbnailsView, &QThumbnailsView::currentIconChanged, this,
       [this](const QString & abspath) {
         if ( !is_visible(thumbnailsView) ) {
           openImage(abspath);
@@ -756,7 +762,7 @@ void MainWindow::setupStackTreeView()
   connect(sequencesTreeView, &QInputSequencesTree::imageSequenceCollectionChanged,
         this, &ThisClass::saveCurrentWork );
 
-  connect(sequencesTreeView, &QInputSequencesTree::imageSequenceSourcesChanged,
+  connect(sequencesTreeView, &QInputSequencesTree::imageSequenceSourcesChanged, this,
       [this](const c_image_sequence::sptr & sequence) {
         if ( pipelineOptionsView->isVisible() && pipelineOptionsView->current_sequence() == sequence ) {
           // fixme: temporary hack to force update options views
@@ -772,7 +778,7 @@ void MainWindow::setupStackTreeView()
 
 void MainWindow::setupStackOptionsView()
 {
-  connect(pipelineOptionsView, &QPipelineOptionsView::closeWindowRequested,
+  connect(pipelineOptionsView, &QPipelineOptionsView::closeWindowRequested, this,
       [this]() {
         if ( !QPipelineThread::isRunning() ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -786,7 +792,7 @@ void MainWindow::setupStackOptionsView()
   connect(pipelineOptionsView, &QPipelineOptionsView::parameterChanged,
       this, &ThisClass::saveCurrentWork);
 
-  connect(pipelineOptionsView, &QPipelineOptionsView::cloneCurrentPipelineRequested,
+  connect(pipelineOptionsView, &QPipelineOptionsView::cloneCurrentPipelineRequested, this,
       [this]() {
 
         QWaitCursor wait (this);
@@ -1347,14 +1353,14 @@ void MainWindow::showImageViewOptions(bool show)
       imageViewOptionsDlgBox = new QImageViewOptionsDlgBox(this);
       imageViewOptionsDlgBox->setImageViewer(imageView);
 
-      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged,
+      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::visibilityChanged, this,
           [this](bool visible) {
             if ( editMaskAction->isChecked() != visible ) {
               editMaskAction->setChecked(visible);
             }
           });
 
-      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished,
+      connect(imageViewOptionsDlgBox, &QImageViewOptionsDlgBox::finished, this,
           [this](int) {
             delete imageViewOptionsDlgBox;
             imageViewOptionsDlgBox = nullptr;
@@ -1931,7 +1937,7 @@ void MainWindow::setupInputSequenceView()
   toolbar->addWidget(currentFileNameLabel_ctl = new QLabel(""));
   currentFileNameLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
 
-  connect(inputSourceView, &QInputSourceView::currentFileNameChanged,
+  connect(inputSourceView, &QInputSourceView::currentFileNameChanged, this,
       [this, toolbar]() {
         const QString abspath = inputSourceView->currentFileName();
         currentFileNameLabel_ctl->setText(abspath.isEmpty() ? "" : QFileInfo(abspath).fileName());
@@ -2029,7 +2035,7 @@ void MainWindow::setupInputSequenceView()
 
                 _roiOptionsDialogBox->loadSettings("QGraphicsRectShapeSettings");
 
-                connect(_roiOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged,
+                connect(_roiOptionsDialogBox, &QGraphicsRectShapeSettingsDialogBox::visibilityChanged, this,
                     [this](bool visible) {
                       showRoiOptionsAction->setChecked(visible);
                       imageView->roiShape()->setVisible(visible);
@@ -2061,13 +2067,13 @@ void MainWindow::setupInputSequenceView()
       &_roiActionsMenu));
 
 
-  connect(imageView->roiShape(), &QGraphicsObject::visibleChanged,
+  connect(imageView->roiShape(), &QGraphicsObject::visibleChanged, this,
       [this]() {
         onWriteDisplayVideo();
         showRoiRectangleAction->setChecked(imageView->roiShape()->isVisible());
       });
 
-  connect(imageView->roiShape(), &QGraphicsShape::itemChanged,
+  connect(imageView->roiShape(), &QGraphicsShape::itemChanged, this,
       [this]() {
 
         onWriteDisplayVideo();
@@ -2094,7 +2100,7 @@ void MainWindow::setupInputSequenceView()
         updateMeasurements();
       });
 
-  connect(imageView->roiShape(), &QGraphicsShape::visibleChanged,
+  connect(imageView->roiShape(), &QGraphicsShape::visibleChanged, this,
       [this]() {
         onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl ) {
@@ -2106,7 +2112,7 @@ void MainWindow::setupInputSequenceView()
 
   toolbar->addWidget(scaleSelection_ctl = new QScaleSelectionButton(this));
   scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
+  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged, this,
       [this](int v) {
         imageView->setViewScale(v);
       });
@@ -2118,12 +2124,12 @@ void MainWindow::setupInputSequenceView()
       this, &ThisClass::onWriteDisplayVideo);
 
 
-  connect(imageView, &QImageFileEditor::onMouseMove,
+  connect(imageView, &QImageFileEditor::onMouseMove, this,
       [this](QMouseEvent * e) {
         statusbarMousePosLabel_ctl->setText(imageView->statusStringForPixel(e->pos()));
       });
 
-  connect(imageView->scene(), &QImageScene::graphicsItemChanged,
+  connect(imageView->scene(), &QImageScene::graphicsItemChanged, this,
       [this](QGraphicsItem * item) {
 
         onWriteDisplayVideo();
@@ -2175,7 +2181,7 @@ void MainWindow::setupInputSequenceView()
         }
       });
 
-  connect(imageView->scene(), &QImageScene::graphicsItemVisibleChanged,
+  connect(imageView->scene(), &QImageScene::graphicsItemVisibleChanged, this,
       [this]() {
         onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl->isVisible() ) {
@@ -2183,7 +2189,7 @@ void MainWindow::setupInputSequenceView()
         }
       });
 
-  connect(imageView->scene(), &QImageScene::graphicsItemDestroyed,
+  connect(imageView->scene(), &QImageScene::graphicsItemDestroyed, this,
       [this]() {
         onWriteDisplayVideo();
         if ( statusbarShapesLabel_ctl->isVisible() ) {
@@ -2216,9 +2222,9 @@ void MainWindow::setupInputSequenceView()
                   spinBox->setKeyboardTracking(false);
                   spinBox->setRange(1, 32);
                   spinBox->setValue((int)cloudView->pointSize());
-                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
                       [this](int value) {
-                    cloudView->setPointSize(value);
+                        cloudView->setPointSize(value);
                       });
                 }));
 
@@ -2230,7 +2236,7 @@ void MainWindow::setupInputSequenceView()
                   spinBox->setKeyboardTracking(false);
                   spinBox->setRange(-128, 128);
                   spinBox->setValue((int)cloudView->pointBrightness());
-                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+                  connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
                       [this](int value) {
                         if ( is_visible(cloudView) ) {
                           cloudView->setPointBrightness(value);
@@ -2244,7 +2250,7 @@ void MainWindow::setupInputSequenceView()
                   action->icon()->setPixmap(getPixmap(ICON_bgcolor)); // .scaled(QSize(16,16))
                   QColorPickerButton * colorPicker = action->control();
                   colorPicker->setColor(cloudView->backgroundColor());
-                  connect(colorPicker, &QColorPickerButton::colorSelected,
+                  connect(colorPicker, &QColorPickerButton::colorSelected, this,
                       [this, colorPicker]() {
                         if ( cloudView ) {
                           cloudView->setBackgroundColor(colorPicker->color());
@@ -2297,7 +2303,7 @@ void MainWindow::setupInputSequenceView()
                           new QGLViewPlanarGridSettingsDialogBox("Planar grid options...",
                               this);
 
-                      connect(_glGridSettingsDialog, &QGLViewPlanarGridSettingsDialogBox::parameterChanged,
+                      connect(_glGridSettingsDialog, &QGLViewPlanarGridSettingsDialogBox::parameterChanged, this,
                           [this]() {
                             cloudView->update();
                             cloudView->saveSettings();
@@ -2374,7 +2380,7 @@ void MainWindow::setupInputSequenceView()
         }
         else {
 
-          connect(&_pointSelection3DRulerMode, &QPointSelection3DRulerMode::rulerChanged,
+          connect(&_pointSelection3DRulerMode, &QPointSelection3DRulerMode::rulerChanged, this,
               [this]() {
                 if ( is_visible(logWidget_ctl) ) {
 
@@ -2408,7 +2414,7 @@ void MainWindow::setupInputSequenceView()
 
 
 
-  QObject::connect(cloudView, &QPointCloudSourceView::glPointMouseEvent,
+  QObject::connect(cloudView, &QPointCloudSourceView::glPointMouseEvent, this,
       [this](const QPointF & mousePos, QEvent::Type mouseEventType, Qt::MouseButtons mouseButtons, Qt::KeyboardModifiers keyboardModifiers,
           bool objHit, double objX, double objY, double objZ) {
             if ( objHit ) {
@@ -2462,7 +2468,7 @@ void MainWindow::setupInputSequenceView()
   toolbar->addWidget(_displayImageVideoWriterToolButton =
       createDisplayVideoWriterOptionsToolButton(&_diplayImageWriter, this));
 
-  connect(&_diplayImageWriter, &QDisplayVideoWriter::stateChanged,
+  connect(&_diplayImageWriter, &QDisplayVideoWriter::stateChanged, this,
       [this]() {
         if ( _diplayImageWriter.started() ) {
           connect(cloudView, &QGLView::displayImageChanged,
@@ -2501,7 +2507,7 @@ void MainWindow::setupPipelineProgressView()
   QLabel * imageSizeLabel_ctl = new QLabel("");
   imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
   toolbar->addWidget(imageSizeLabel_ctl);
-  connect(pipelineProgressImageView, &QProgressImageViewer::currentImageChanged,
+  connect(pipelineProgressImageView, &QProgressImageViewer::currentImageChanged, this,
       [this, imageSizeLabel_ctl]() {
         imageSizeLabel_ctl->setText(toQString(pipelineProgressImageView->currentImage().size()));
       });
@@ -2511,7 +2517,7 @@ void MainWindow::setupPipelineProgressView()
   QScaleSelectionButton * scaleSelection_ctl = new QScaleSelectionButton(this);
   scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
   toolbar->addWidget(scaleSelection_ctl);
-  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged,
+  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged, this,
       [this](int v) {
         pipelineProgressImageView->setViewScale(v);
       });
@@ -2534,7 +2540,7 @@ void MainWindow::setupPipelineProgressView()
           Qt::WindowShortcut)));
 
 
-  connect(pipelineProgressImageView, &QImageFileEditor::onMouseMove,
+  connect(pipelineProgressImageView, &QImageFileEditor::onMouseMove, this,
       [this](QMouseEvent * e) {
         statusbarMousePosLabel_ctl->setText(pipelineProgressImageView->statusStringForPixel(e->pos()));
       });
@@ -2557,7 +2563,7 @@ void MainWindow::toggleFindTextDialogBox(bool fshow)
       connect(findTextDialog, &QFindTextDialog::visibilityChanged,
           showFindTextDialogAction, &QAction::setChecked);
 
-      connect(findTextDialog, &QFindTextDialog::findTextRequested,
+      connect(findTextDialog, &QFindTextDialog::findTextRequested, this,
           [this](const QString &text, bool caseSensitive, bool wholeWords, bool backward) {
             if ( is_visible(textView) ) {
               textView->findString(text, caseSensitive, wholeWords, backward);

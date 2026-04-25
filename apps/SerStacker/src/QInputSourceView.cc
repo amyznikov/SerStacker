@@ -735,7 +735,7 @@ void QInputSourceView::getInputHistogramm(cv::OutputArray H, double * hmin, doub
       const cv::Mat image = _imageView->currentImage();
       cv::Mat mask = _imageView->currentMask();
       if ( !mask.empty() && mask.channels() > image.channels() ) {
-        reduce_channels(mask, cv::REDUCE_MAX);
+        reduce_color_channels(mask, cv::REDUCE_MAX);
       }
       createHistogram(image,
           mask,
@@ -770,7 +770,7 @@ void QInputSourceView::getOutputHistogramm(cv::OutputArray H, double * hmin, dou
       const cv::Mat image = _imageView->mtfImage();
       cv::Mat mask = _imageView->currentMask();
       if ( !mask.empty() && mask.channels() > image.channels() ) {
-        reduce_channels(mask, cv::REDUCE_MAX);
+        reduce_color_channels(mask, cv::REDUCE_MAX);
       }
       createHistogram(image,
           mask,

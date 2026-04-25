@@ -66,9 +66,6 @@ public:
 
   QString currentFileName() const;
 
-//  IMtfDisplay * mtfDisplay();
-//  const IMtfDisplay * mtfDisplay() const;
-
   void setCurrentProcessor(const c_data_frame_processor::sptr & processor);
   const c_data_frame_processor::sptr & currentProcessor() const;
 
@@ -130,9 +127,6 @@ public:
 Q_SIGNALS:
   void visibilityChanged(bool visible);
   void currentViewChanged();
-//  void displayChannelsChanged();
-//  void parameterChanged();
-//  void displayImageChanged();
   void currentFileNameChanged();
   void currentFrameChanged();
 

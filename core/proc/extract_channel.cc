@@ -476,9 +476,9 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
                     break;
                   }
                 }
-                dstp[x] = v;
-                dstmp[x] = v ? uint8_t(255U) : uint8_t(0) ;
               }
+              dstp[x] = v;
+              dstmp[x] = v ? uint8_t(255U) : uint8_t(0) ;
             }
           }
         });

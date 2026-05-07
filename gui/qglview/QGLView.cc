@@ -701,32 +701,31 @@ void QGLView::glPostDraw()
   }
 
 
-  const bool showViewTarget =
-      _hideViewTargetTimerId > 0;
-
+  const bool showViewTarget = _hideViewTargetTimerId > 0;
   if ( showViewTarget ) {
+    drawViewTarget();
 
-    const qreal length =
-        _mainAxesLength > 0 ? _mainAxesLength :
-            0.0025 * std::abs(_viewParams.farPlane - _viewParams.nearPlane);
-
-    const QVector3D arrow_start[3] = {
-        QVector3D(_viewTarget.x() - length, _viewTarget.y(), _viewTarget.z()),
-        QVector3D(_viewTarget.x(), _viewTarget.y() - length, _viewTarget.z()),
-        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() - length),
-    };
-
-    const QVector3D arrow_end[3] = {
-        QVector3D(_viewTarget.x() + 2 * length, _viewTarget.y(), _viewTarget.z()),
-        QVector3D(_viewTarget.x(), _viewTarget.y() + 2 * length, _viewTarget.z()),
-        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() + 2 * length),
-    };
-
-    glColor3ub(255, 255, 64);
-
-    for ( int i = 0; i < 3; ++i ) {
-      drawArrow(arrow_start[i], arrow_end[i], length / 64, 4);
-    }
+//    const qreal length =
+//        _mainAxesLength > 0 ? _mainAxesLength :
+//            0.0025 * std::abs(_viewParams.farPlane - _viewParams.nearPlane);
+//
+//    const QVector3D arrow_start[3] = {
+//        QVector3D(_viewTarget.x() - length, _viewTarget.y(), _viewTarget.z()),
+//        QVector3D(_viewTarget.x(), _viewTarget.y() - length, _viewTarget.z()),
+//        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() - length),
+//    };
+//
+//    const QVector3D arrow_end[3] = {
+//        QVector3D(_viewTarget.x() + 2 * length, _viewTarget.y(), _viewTarget.z()),
+//        QVector3D(_viewTarget.x(), _viewTarget.y() + 2 * length, _viewTarget.z()),
+//        QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() + 2 * length),
+//    };
+//
+//    glColor3ub(255, 255, 64);
+//
+//    for ( int i = 0; i < 3; ++i ) {
+//      drawArrow(arrow_start[i], arrow_end[i], length / 64, 4);
+//    }
   }
 
   // For transparency (blend) to work it is important to draw the solid things first,
@@ -1025,6 +1024,34 @@ void QGLView::drawMainAxes()
   drawText(QVector3D(length, 0, 0), font, "X");
   drawText(QVector3D(0, length, 0), font, "Y");
   drawText(QVector3D(0, 0, length), font, "Z");
+}
+
+void QGLView::drawViewTarget()
+{
+  const qreal length =
+      _mainAxesLength > 0 ? _mainAxesLength :
+          0.0025 * std::abs(_viewParams.farPlane - _viewParams.nearPlane);
+
+  const qreal viewDistance = (_viewTarget - _viewPoint).length();
+  const qreal lineWidth = viewDistance * 0.004;
+
+  const QVector3D arrow_start[3] = {
+      QVector3D(_viewTarget.x() - length, _viewTarget.y(), _viewTarget.z()),
+      QVector3D(_viewTarget.x(), _viewTarget.y() - length, _viewTarget.z()),
+      QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() - length),
+  };
+
+  const QVector3D arrow_end[3] = {
+      QVector3D(_viewTarget.x() + 2 * length, _viewTarget.y(), _viewTarget.z()),
+      QVector3D(_viewTarget.x(), _viewTarget.y() + 2 * length, _viewTarget.z()),
+      QVector3D(_viewTarget.x(), _viewTarget.y(), _viewTarget.z() + 2 * length),
+  };
+
+  glColor3ub(255, 255, 64);
+
+  for ( int i = 0; i < 3; ++i ) {
+    drawArrow(arrow_start[i], arrow_end[i], lineWidth, 4);
+  }
 }
 
 void QGLView::addShape(QGLShape * shape)

@@ -149,6 +149,7 @@ public:
   void drawArrow(qreal length, qreal radius, int nbSubdivisions);
   void drawArrow(const QVector3D & start, const QVector3D & end, qreal radius, int nbSubdivisions );
   void drawMainAxes();
+  void drawViewTarget();
 
 
   // Dynamic shapes

@@ -118,7 +118,9 @@ MainWindow::MainWindow(QWidget * parent) :
   set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
     if (_liveDisplay) {
       _liveDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w, y + h));
+      return true;
     }
+    return false;
   });
 
   set_ctlbind_get_roi_callback([this](double * x, double * y, double * w, double * h) {

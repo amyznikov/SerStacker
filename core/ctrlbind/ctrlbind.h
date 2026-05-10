@@ -1049,7 +1049,7 @@ typedef std::function<std::string()> ctlbind_get_clipboard_text_callback;
 void set_ctlbind_get_clipboard_text_callback(const ctlbind_get_clipboard_text_callback & fn);
 const ctlbind_get_clipboard_text_callback & get_ctlbind_get_clipboard_text_callback();
 
-typedef std::function<void(double x, double y, double w, double h)> ctlbind_update_roi_callback;
+typedef std::function<bool(double x, double y, double w, double h)> ctlbind_update_roi_callback;
 void set_ctlbind_update_roi_callback(const ctlbind_update_roi_callback & fn);
 const ctlbind_update_roi_callback & get_ctlbind_update_roi_callback();
 

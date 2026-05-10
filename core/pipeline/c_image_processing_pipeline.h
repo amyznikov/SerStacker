@@ -17,7 +17,6 @@
 #include <core/improc/c_image_processor.h>
 #include "c_output_frame_writer.h"
 #include <atomic>
-//#include "c_image_processing_pipeline_ctrl.h"
 
 struct c_image_processing_pipeline_input_options
 {

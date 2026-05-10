@@ -130,33 +130,13 @@ c_roi_tracker::c_roi_tracker()
 {
 }
 
-//c_roi_tracker::c_roi_tracker(const c_roi_tracker_options & options) :
-//    options_(options)
-//{
-//}
-//
-//const c_roi_tracker_options & c_roi_tracker::options() const
-//{
-//  return options_;
-//}
-//
-//c_roi_tracker_options & c_roi_tracker::options()
-//{
-//  return options_;
-//}
-//
-//bool c_roi_tracker::serialize(c_config_setting settings, bool save)
-//{
-//  return ::serialize(options_, settings, save);
-//}
-
 void c_roi_tracker::release()
 {
-  initialized = false;
+  _initialized = false;
 
-  tracker_.reset();
+  _tracker.reset();
 #if CV_VERSION_CURRRENT >= CV_VERSION_INT(4, 5, 1)
-  legacy_tracker_.reset();
+  _legacy_tracker.reset();
 #endif
 }
 
@@ -166,52 +146,52 @@ bool c_roi_tracker::initialize(const c_roi_tracker_options & options)
 
   switch (options.tracker_type) {
     case ROI_TRACKER_MIL:
-      tracker_ = TrackerMIL::create(options.mil);
+      _tracker = TrackerMIL::create(options.mil);
       break;
 
     case ROI_TRACKER_KCF:
-      tracker_ = TrackerKCF::create(options.kcf);
+      _tracker = TrackerKCF::create(options.kcf);
       break;
 
     case ROI_TRACKER_CSRT:
-      tracker_ = TrackerCSRT::create(options.csrt);
+      _tracker = TrackerCSRT::create(options.csrt);
       break;
 
     case ROI_TRACKER_BOOSTING:
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-      tracker_ = TrackerBoosting::create(options.boosting);
+      _tracker = TrackerBoosting::create(options.boosting);
 #else
-      legacy_tracker_ = TrackerBoosting::create(options.boosting);
+      _legacy_tracker = TrackerBoosting::create(options.boosting);
 #endif
       break;
 
     case ROI_TRACKER_TLD:
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-      tracker_ = TrackerTLD::create(options.tld);
+      _tracker = TrackerTLD::create(options.tld);
 #else
-      legacy_tracker_ = TrackerTLD::create(options.tld);
+      _legacy_tracker = TrackerTLD::create(options.tld);
 #endif
       break;
 
     case ROI_TRACKER_MEDIANFLOW:
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-      tracker_ = TrackerMedianFlow::create(options.medianflow);
+      _tracker = TrackerMedianFlow::create(options.medianflow);
 #else
-      legacy_tracker_ = TrackerMedianFlow::create(options.medianflow);
+      _legacy_tracker = TrackerMedianFlow::create(options.medianflow);
 #endif
       break;
 
     case ROI_TRACKER_MOSSE:
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-      tracker_ = TrackerMOSSE::create();
+      _tracker = TrackerMOSSE::create();
 #else
-      legacy_tracker_ = TrackerMOSSE::create();
+      _legacy_tracker = TrackerMOSSE::create();
 #endif
       break;
 
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
       case ROI_TRACKER_GOTURN:
-        tracker_ = TrackerGOTURN::create(options_.goturn);
+        _tracker = TrackerGOTURN::create(options_.goturn);
       break;
 #endif
 
@@ -223,13 +203,13 @@ bool c_roi_tracker::initialize(const c_roi_tracker_options & options)
 
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
 
-  if( !tracker_ ) {
+  if( !_tracker ) {
     CF_ERROR("Tracker create fails");
     return false;
   }
 
 #else
-  if( !tracker_ && !legacy_tracker_ ) {
+  if( !_tracker && !_legacy_tracker ) {
     CF_ERROR("Tracker create fails");
     return false;
   }
@@ -238,14 +218,19 @@ bool c_roi_tracker::initialize(const c_roi_tracker_options & options)
   return true;
 }
 
+bool c_roi_tracker::initialized() const
+{
+  return _initialized;
+}
+
 bool c_roi_tracker::track(cv::InputArray image, CV_OUT cv::Rect & boundingBox, bool * updated)
 {
 #if CV_VERSION_CURRRENT < CV_VERSION_INT(4, 5, 1)
-  if( tracker_ ) {
+  if( _tracker ) {
 
-    if( !initialized ) {
-      tracker_->init(image, cv::Rect2d(boundingBox));
-      initialized = true;
+    if( !_initialized ) {
+      _tracker->init(image, cv::Rect2d(boundingBox));
+      _initialized = true;
       *updated = true;
     }
     else {
@@ -253,7 +238,7 @@ bool c_roi_tracker::track(cv::InputArray image, CV_OUT cv::Rect & boundingBox, b
           boundingBox;
 
       *updated =
-          tracker_->update(image,
+          _tracker->update(image,
               rc2d);
 
       boundingBox =
@@ -265,25 +250,25 @@ bool c_roi_tracker::track(cv::InputArray image, CV_OUT cv::Rect & boundingBox, b
 
 #else
 
-  if( tracker_ ) {
-    if( !initialized ) {
-      tracker_->init(image, boundingBox);
-      initialized = true;
+  if( _tracker ) {
+    if( !_initialized ) {
+      _tracker->init(image, boundingBox);
+      _initialized = true;
       *updated = true;
     }
     else {
       *updated =
-          tracker_->update(image,
+          _tracker->update(image,
               boundingBox);
     }
     return true;
   }
 
-  if( legacy_tracker_ ) {
+  if( _legacy_tracker ) {
 
-    if( !initialized ) {
-      legacy_tracker_->init(image, cv::Rect2d(boundingBox));
-      initialized = true;
+    if( !_initialized ) {
+      _legacy_tracker->init(image, cv::Rect2d(boundingBox));
+      _initialized = true;
       *updated = true;
     }
     else {
@@ -292,7 +277,7 @@ bool c_roi_tracker::track(cv::InputArray image, CV_OUT cv::Rect & boundingBox, b
           boundingBox;
 
       *updated =
-          legacy_tracker_->update(image,
+          _legacy_tracker->update(image,
               rc2d);
 
       boundingBox =

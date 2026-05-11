@@ -90,8 +90,8 @@ public:
   virtual void setInvertColormap(bool v);
   virtual bool invertColormap() const;
 
-  virtual void setAutoClip(bool v);
-  virtual bool autoClip() const;
+//  virtual void setAutoClip(bool v);
+//  virtual bool autoClip() const;
 
   virtual DisplayParams & displayParams();
   virtual const DisplayParams & displayParams() const;
@@ -106,6 +106,8 @@ public:
 
   static DisplayParams::sptr addDisplay(DisplayMap & map,
       const QString & displayChannelName, double input_min, double input_max);
+
+  virtual bool makeAutoClip();
 
 protected:
   void addDisplay(const QString & displayChannelName, double input_min, double input_max);
@@ -135,7 +137,7 @@ protected:
   QString _displayChannel;
   DisplayMap _allDisplays;
   DisplayMap _currentDisplays;
-  bool _autoClip = false;
+  //bool _autoClip = false;
   QString _prefix;
 };
 

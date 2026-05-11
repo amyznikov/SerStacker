@@ -67,6 +67,7 @@ protected:
   virtual void onShowMtfControlActionTriggered(bool checked);
   virtual void onShowMtfControlActionContextMenuRequested(QToolButton * tb, const QPoint & pos);
   virtual void onMtfControlVisibilityChanged(bool visible);
+  virtual void onMtfAutoClipRequested();
 
   virtual void onShowMeasureSettingsActionTriggered(bool checked);
   virtual void onMeasureSettingsVisibilityChanged(bool visible);
@@ -84,7 +85,8 @@ protected:
   virtual IMtfDisplay * getCurrentMtfDisplay();
 
 protected:
-  QToolButton * createMtfControlButton();
+  QToolButton * createMtfControlToolButton();
+  QToolButton * createMtfAutoClipToolButton();
   static QToolButton* createToolButtonWithPopupMenu(QAction * defaultAction, QMenu * menu);
   static QToolButton* createToolButtonWithMenu(const QIcon & icon, const QString & text, const QString & tooltip, QMenu * menu);
   static QWidget* addStretch(QToolBar * toolbar);

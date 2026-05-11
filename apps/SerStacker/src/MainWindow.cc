@@ -2010,8 +2010,8 @@ void MainWindow::setupInputSequenceView()
       new QShapesButton(imageView->sceneView(),
           this));
 
-  //toolbar->addAction(showMtfControlAction_);
-  toolbar->addWidget(createMtfControlButton());
+  toolbar->addWidget(createMtfControlToolButton());
+  toolbar->addWidget(createMtfAutoClipToolButton());
 
   ///
 
@@ -2206,8 +2206,8 @@ void MainWindow::setupInputSequenceView()
 
   toolbar = inputSourceView->cloudViewToolbar();
 
-//  toolbar->addAction(showMtfControlAction_);
-  toolbar->addWidget(createMtfControlButton());
+  toolbar->addWidget(createMtfControlToolButton());
+  toolbar->addWidget(createMtfAutoClipToolButton());
 
   toolbar->addWidget(createToolButton(getIcon(ICON_options),
       "Options",
@@ -2525,8 +2525,8 @@ void MainWindow::setupPipelineProgressView()
       });
 
 
-//  toolbar->addAction(showMtfControlAction_);
-  toolbar->addWidget(createMtfControlButton());
+  toolbar->addWidget(createMtfControlToolButton());
+  toolbar->addWidget(createMtfAutoClipToolButton());
 
 
   toolbar->addSeparator();

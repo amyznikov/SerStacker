@@ -377,7 +377,7 @@ void QMainAppWindow::onUpdateAvailableMeasureDataChannelsRequired()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QToolButton* QMainAppWindow::createMtfControlButton()
+QToolButton* QMainAppWindow::createMtfControlToolButton()
 {
   QToolButton * tb =
       createCheckableToolButtonWithContextMenu(getIcon(ICON_histogram),
@@ -397,11 +397,30 @@ QToolButton* QMainAppWindow::createMtfControlButton()
   if( showMtfControlAction ) {
     connect(showMtfControlAction, &QAction::changed,
         [this, tb]() {
-          if ( showMtfControlAction ) {
-            tb->blockSignals(true);
-            tb->setChecked(showMtfControlAction->isChecked());
-            tb->blockSignals(false);
-          }
+          tb->blockSignals(true);
+          tb->setChecked(showMtfControlAction->isChecked());
+          tb->blockSignals(false);
+        });
+  }
+
+  return tb;
+}
+
+QToolButton * QMainAppWindow::createMtfAutoClipToolButton()
+{
+  QToolButton *tb =
+      createToolButton(QMtfControl::getMtfAutoClipIcon(),
+          "Auto Clip",
+          "Auto clip histogram leves",
+          this,
+          &ThisClass::onMtfAutoClipRequested);
+
+  if (showMtfControlAction) {
+    connect(showMtfControlAction, &QAction::changed,
+        [this, tb]() {
+          tb->blockSignals(true);
+          tb->setEnabled(!showMtfControlAction->isChecked());
+          tb->blockSignals(false);
         });
   }
 
@@ -493,6 +512,14 @@ void QMainAppWindow::onMtfControlVisibilityChanged(bool visible)
 {
   if( showMtfControlAction ) {
     showMtfControlAction->setChecked(visible);
+  }
+}
+
+void QMainAppWindow::onMtfAutoClipRequested()
+{
+  IMtfDisplay * display = getCurrentMtfDisplay();
+  if ( display ) {
+    display->makeAutoClip();
   }
 }
 

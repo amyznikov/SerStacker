@@ -33,6 +33,7 @@ static QIcon log_scale_icon;
 static QIcon bar_chart_icon;
 static QIcon line_chart_icon;
 static QIcon colormap_icon;
+static QIcon mtf_auto_clip_icon;
 
 static const QIcon & selectChartTypeIcon(QHistogramView::ChartType chartType)
 {
@@ -78,6 +79,11 @@ static void intit_mtfcontrol_resources()
     colormap_icon = getIcon(ICON_colormap);
   }
 
+  if ( mtf_auto_clip_icon.isNull() ) {
+    mtf_auto_clip_icon = getIcon(ICON_contrast);
+  }
+
+
 }
 
 
@@ -115,7 +121,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(_resetMtfAction, &QAction::triggered,
       this, &ThisClass::onResetMtfClicked);
 
-  _autoClipAction = topToolbar_ctl->addAction(getIcon(ICON_contrast), "Auto Clip");
+  _autoClipAction = topToolbar_ctl->addAction(mtf_auto_clip_icon/*getIcon(ICON_contrast)*/, "Auto Clip");
   _autoClipAction->setToolTip("Auto Clip adjustment");
   connect(_autoClipAction, &QAction::triggered,
       this, &ThisClass::onAutoClipCtrlClicked);
@@ -212,7 +218,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
   connect(logScaleSelectionAction_, &QAction::triggered,
       levelsView_ctl, &QHistogramView::setLogScale);
 
-  connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged, this,
+  connect(mtfSliderBand_ctl, &QMtfSliderBand::positonChanged,
       [this](int slider, double value) {
         if ( _displaySettings && !updatingControls() ) {
 
@@ -249,7 +255,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+  connect(lclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -258,7 +264,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+  connect(hclip_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -267,7 +273,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+  connect(midtones_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -276,7 +282,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+  connect(shadows_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -285,7 +291,7 @@ QMtfControl::QMtfControl(QWidget * parent) :
         }
       });
 
-  connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+  connect(highlights_ctl, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
       [this](double v) {
         if ( _displaySettings && !updatingControls() ) {
           c_update_controls_lock lock(this);
@@ -301,6 +307,13 @@ QMtfControl::QMtfControl(QWidget * parent) :
 
   updateControls();
 }
+
+const QIcon & QMtfControl::getMtfAutoClipIcon()
+{
+  intit_mtfcontrol_resources();
+  return mtf_auto_clip_icon;
+}
+
 
 void QMtfControl::setDisplaySettings(IMtfDisplay * displaySettings)
 {
@@ -403,34 +416,37 @@ void QMtfControl::onResetMtfClicked()
 
 void QMtfControl::onAutoClipCtrlClicked()
 {
-  if ( _displaySettings ) {
-    double hmin = -1, hmax = -1;
-    cv::Mat1d H;
+  if ( _displaySettings && _displaySettings->makeAutoClip() ) {
+    updateControls();
 
-    _displaySettings->getInputDataRange(&hmin, &hmax);
-    _displaySettings->getInputHistogramm(H, &hmin, &hmax);
-    if( H.empty() || !(hmax > hmin) ) {
-      CF_ERROR("_displaySettings->getInputHistogramm() fails");
-    }
-    else {
-
-      c_mtf_options opts;
-      double lc, hc;
-
-      autoClip(H, hmin, hmax, &lc, &hc);
-
-      CF_DEBUG("H: %dx%d hmin=%g hmax=%g lc=%g, hc=%g", H.rows, H.cols, hmin, hmax, lc, hc);
-
-      const double hrange = (hmax - hmin);
-      opts.lclip = (lc - hmin) / hrange;
-      opts.hclip = (hc - hmin) / hrange;
-      opts.shadows = 0;
-      opts.highlights = 0;
-      opts.midtones = 0.5;
-      _displaySettings->setMtf(hmin, hmax, &opts);
-      _displaySettings->saveParameters();
-      updateControls();
-    }
+//    double hmin = -1, hmax = -1;
+//    cv::Mat1d H;
+//
+//    _displaySettings->getInputDataRange(&hmin, &hmax);
+//    _displaySettings->getInputHistogramm(H, &hmin, &hmax);
+//    if( H.empty() || !(hmax > hmin) ) {
+//      CF_ERROR("_displaySettings->getInputHistogramm() fails: H.empty()=%d hmin=%g hmax=%g",
+//          H.empty(), hmin, hmax);
+//    }
+//    else {
+//
+//      c_mtf_options opts;
+//      double lc, hc;
+//
+//      autoClip(H, hmin, hmax, &lc, &hc);
+//
+//      CF_DEBUG("H: %dx%d hmin=%g hmax=%g lc=%g, hc=%g", H.rows, H.cols, hmin, hmax, lc, hc);
+//
+//      const double hrange = (hmax - hmin);
+//      opts.lclip = (lc - hmin) / hrange;
+//      opts.hclip = (hc - hmin) / hrange;
+//      opts.shadows = 0;
+//      opts.highlights = 0;
+//      opts.midtones = 0.5;
+//      _displaySettings->setMtf(hmin, hmax, &opts);
+//      _displaySettings->saveParameters();
+//      updateControls();
+//    }
   }
 }
 
@@ -626,7 +642,7 @@ void QMtfControl::updateHistogramLevels()
 
     const double med = computeHistogramMedian(H, minv, maxv)[0];
 
-    statusBar_ctl->showMessage(qsprintf("Hx%d mode: %g median: %g", H.rows, mode, med));
+    statusBar_ctl->showMessage(qsprintf("Hx%d Mode: %g Median: %g", H.rows, mode, med));
   }
 }
 
@@ -744,19 +760,6 @@ void QMtfControl::onupdatecontrols()
     mtfSliderBand_ctl->setOpts(opts.lclip, opts.hclip, opts.midtones, opts.shadows, opts.highlights);
 
     logScaleSelectionAction_->setChecked(levelsView_ctl->logScale());
-
-//    const bool autoMtfChecked = autoMtf_ctl->isChecked();
-//    mtfSliderBand_ctl->setEnabled(!autoMtfChecked);
-
-//    switch (selectedAutoMtfAction_) {
-//      case AutoMtfAction_AutoMtf:
-//        autoMtf_ctl->setIcon(auto_mtf_icon);
-//        break;
-//      case AutoMtfAction_AutoClip:
-//        default:
-//        autoMtf_ctl->setIcon(auto_clip_icon);
-//        break;
-//    }
 
     updateColormapPixmap();
     setEnabled(true);

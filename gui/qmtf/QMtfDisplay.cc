@@ -7,6 +7,7 @@
 
 #include "QMtfDisplay.h"
 #include <core/proc/minmax.h>
+#include <core/proc/histogram-tools.h>
 #include <gui/widgets/settings.h>
 #include <csignal>
 #include <core/debug.h>
@@ -78,16 +79,15 @@ void IMtfDisplay::adjustMtfRange(c_mtf * mtf,
 
     mtf->get_input_range(&a->imin, &a->imax);
 
-    if( _autoClip || a->imin >= a->imax ) {
+    if( /*_autoClip || */a->imin >= a->imax ) {
 
       a->adjusted_inputs = true;
 
       double adjusted_min, adjusted_max;
 
-      const int cdepth =
-          currentImage.depth();
+      const int cdepth = currentImage.depth();
 
-      if( _autoClip || cdepth == CV_32F || cdepth == CV_64F ) {
+      if( /*_autoClip || */cdepth == CV_32F || cdepth == CV_64F ) {
         getMinMax(currentImage, &adjusted_min, &adjusted_max, currentMask);
       }
       else {
@@ -283,28 +283,28 @@ bool IMtfDisplay::invertColormap() const
   }
   return false;
 }
-
-void IMtfDisplay::setAutoClip(bool v)
-{
-  if ( _autoClip != v ) {
-    _autoClip = v;
-    Q_EMIT _events->parameterChanged();
-  }
-}
-
-bool IMtfDisplay::autoClip() const
-{
-  return _autoClip;
-}
+//
+//void IMtfDisplay::setAutoClip(bool v)
+//{
+//  if ( _autoClip != v ) {
+//    _autoClip = v;
+//    Q_EMIT _events->parameterChanged();
+//  }
+//}
+//
+//bool IMtfDisplay::autoClip() const
+//{
+//  return _autoClip;
+//}
 
 IMtfDisplay::DisplayParams & IMtfDisplay::displayParams()
 {
   DisplayMap::iterator pos = _currentDisplays.find(_displayChannel);
   if ( pos == _currentDisplays.end())  {
-    CF_FATAL("FATAL APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
+    CF_FATAL("APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
         _displayChannel.toUtf8().constData(),
         _currentDisplays.size());
-    std::raise(SIGTRAP); // Trapped by GDB/LLDB
+    //std::raise(SIGTRAP); // Trapped by GDB/LLDB
     //exit(1);
   }
 
@@ -316,10 +316,10 @@ const IMtfDisplay::DisplayParams & IMtfDisplay::displayParams() const
 {
   DisplayMap::const_iterator pos = _currentDisplays.find(_displayChannel);
   if ( pos == _currentDisplays.end())  {
-    CF_FATAL("FATAL APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
+    CF_FATAL("APP BUG: _displayChannel='%s' was not registered. _displays.size=%zu",
         _displayChannel.toUtf8().constData(),
         _currentDisplays.size());
-    std::raise(SIGTRAP); // Trapped by GDB/LLDB
+    //std::raise(SIGTRAP); // Trapped by GDB/LLDB
     //exit(1);
   }
 
@@ -392,4 +392,37 @@ void IMtfDisplay::saveParameters(QSettings & settings, const QString & prefix) c
     settings.setValue(QString("%1/cmap").arg(prefix2), toQString(p->colormap));
     settings.setValue(QString("%1/invert_colormap").arg(prefix2), p->invert_colormap);
   }
+}
+
+bool IMtfDisplay::makeAutoClip()
+{
+  double hmin = -1, hmax = -1;
+  cv::Mat1d H;
+
+  getInputDataRange(&hmin, &hmax);
+  getInputHistogramm(H, &hmin, &hmax);
+
+  if( H.empty() || !(hmax > hmin) ) {
+    CF_ERROR("getInputHistogramm() fails: H.empty()=%d hmin=%g hmax=%g",
+        H.empty(), hmin, hmax);
+    return false;
+  }
+
+  c_mtf_options opts;
+  double lc, hc;
+
+  ::autoClip(H, hmin, hmax, &lc, &hc);
+
+  CF_DEBUG("H: %dx%d hmin=%g hmax=%g lc=%g, hc=%g", H.rows, H.cols, hmin, hmax, lc, hc);
+
+  const double hrange = (hmax - hmin);
+  opts.lclip = (lc - hmin) / hrange;
+  opts.hclip = (hc - hmin) / hrange;
+  opts.shadows = 0;
+  opts.highlights = 0;
+  opts.midtones = 0.5;
+  setMtf(hmin, hmax, &opts);
+  saveParameters();
+
+  return true;
 }

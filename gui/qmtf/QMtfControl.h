@@ -33,6 +33,8 @@ public:
   void setHistoramViewSizeHint(const QSize & s);
   QSize historamViewSizeHint() const;
 
+  static const QIcon & getMtfAutoClipIcon();
+
 protected Q_SLOTS:
   void updateHistogramLevels();
   void onChartTypeSelectorClicked();

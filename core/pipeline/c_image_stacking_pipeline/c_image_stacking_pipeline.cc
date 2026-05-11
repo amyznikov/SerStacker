@@ -1027,7 +1027,9 @@ bool c_image_stacking_pipeline::run_image_stacking()
   #else
         average_pyramid_inpaint(accumulated_image,
             accumulated_mask,
-            accumulated_image);
+            accumulated_image,
+            accumulated_mask,
+            100);
   #endif
       }
 

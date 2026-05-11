@@ -131,9 +131,9 @@ static inline void average_pyramid_pyrup(cv::Mat & image, cv::Size dst_size)
   average_pyramid_filter(image, zmask, image, zmask);
 }
 
-static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask)
+static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask, int max_levels)
 {
-  if ( std::min(image.cols, image.rows) > 1 ) {
+  if ( std::min(image.cols, image.rows) > 1 && max_levels > 0 ) {
 
     INSTRUMENT_REGION("");
 
@@ -143,38 +143,44 @@ static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask)
     average_pyramid_pyrdown(image, mask, filtered_image, filtered_mask);
 
     if ( cv::countNonZero(filtered_mask) < filtered_mask.size().area() ) {
-      average_pyramid_recurse(filtered_image, filtered_mask);
+      average_pyramid_recurse(filtered_image, filtered_mask, max_levels - 1);
     }
 
     average_pyramid_pyrup(filtered_image, image.size());
+
     filtered_image.copyTo(image, mask == 0);
+
+    mask.setTo(1.0f, mask == 0);
   }
 }
 
 void average_pyramid_inpaint(cv::InputArray _src, cv::InputArray _mask,
-    cv::OutputArray dst)
+    cv::OutputArray dst, cv::OutputArray _dstmask, int max_levels)
 {
   INSTRUMENT_REGION("");
 
   const cv::Mat1b mask = _mask.getMat();
 
-  if ( mask.empty() || countNonZero(mask) == mask.size().area() ) {
-    if ( !dst.fixedType() || dst.type() == _src.type() ) {
-      _src.copyTo(dst);
-    }
-    else {
-      _src.getMat().convertTo(dst, dst.type());
-    }
+  if ( mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
+    _src.copyTo(dst);
+    if (_dstmask.needed()) mask.copyTo(_dstmask);
+    return;
   }
-  else {
-    cv::Mat src;
-    cv::Mat1f msk;
 
-    _src.copyTo(src, mask);
-    mask.convertTo(msk, CV_32F, 1. / 255);
-    average_pyramid_recurse(src, msk);
+  cv::Mat src;
+  cv::Mat1f msk;
 
-    src.convertTo(dst, dst.fixedType() ? dst.type() : _src.type());
+  _src.getMat().copyTo(src);
+  src.setTo(0, ~mask);
+
+  mask.convertTo(msk, CV_32F, 1.0 / 255.0);
+
+  average_pyramid_recurse(src, msk, max_levels);
+
+  src.convertTo(dst, dst.fixedType() ? dst.type() : _src.type());
+
+  if (_dstmask.needed()) {
+    msk.convertTo(_dstmask, CV_8U, 255.0);
   }
 }
 

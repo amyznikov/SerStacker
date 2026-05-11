@@ -7,9 +7,6 @@
 
 #include "c_roi_tracker_routine.h"
 
-//static const bool
-
-
 void c_roi_tracker_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind_command_button(ctls, "Grab ROI", ctx, [](this_class * _this) {

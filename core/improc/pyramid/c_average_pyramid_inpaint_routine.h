@@ -19,9 +19,12 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_average_pyramid_inpaint_routine,
       "average_pyramid_inpaint", "inpaint missing pixels in image");
 
-  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
+  bool serialize(c_config_setting settings, bool save) final;
+  bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
 
+protected:
+  int max_levels = 1;
 };
 
 #endif /* __c_average_pyramid_inpaint_routine_h__ */

@@ -37,6 +37,8 @@ public:
   bool mouseScrollEnabled() const;
 
   void scrollView(int dx, int dy);
+  void centerOnScene(const QPointF & scenePos);
+  void centerOnScene(double sceneX, double sceneY);
 
   virtual void populateContextMenu(QMenu & menu, const QPoint & mpos);
 

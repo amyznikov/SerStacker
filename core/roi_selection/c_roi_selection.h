@@ -62,5 +62,8 @@ public:
       cv::Rect & outputROIRectangle ) = 0;
 };
 
+bool select_image_roi(const c_roi_selection::sptr & roi_selection,
+    const cv::Mat & src, const cv::Mat & srcmask,
+    cv::Mat & dst, cv::Mat & dstmask);
 
 #endif /* __c_roi_selection_h__ */

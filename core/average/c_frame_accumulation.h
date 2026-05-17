@@ -29,11 +29,11 @@ public:
 
   int accumulated_frames() const
   {
-    return accumulated_frames_;
+    return _accumulated_frames;
   }
 
 protected:
-  int accumulated_frames_ = 0;
+  int _accumulated_frames = 0;
 };
 
 class c_frame_weigthed_average :
@@ -101,12 +101,12 @@ protected:
   static cv::Mat duplicate_channels(const cv::Mat & src, int cn);
 
 protected:
-  options opts_;
+  options _opts;
   std::vector<cv::Mat> acc;
   std::vector<cv::Mat> wwp;
-  cv::Size image_size_;
-  int acctype_ = CV_32F;
-  int weightstype_ = CV_8U;
+  cv::Size _image_size;
+  int _acctype = CV_32F;
+  int _weightstype = CV_8U;
   cv::Mat1f G;
 };
 
@@ -136,14 +136,14 @@ protected:
   static double square(double x);
 
 protected:
-  std::vector<cv::Mat> accumulators_;
-  std::vector<cv::Mat> weights_;
-  cv::Rect rc_;
-  cv::Size fftSize_;
-  int border_top_ = 0;
-  int border_bottom_ = 0;
-  int border_left_ = 0;
-  int border_right_ = 0;
+  std::vector<cv::Mat> _accumulators;
+  std::vector<cv::Mat> _weights;
+  cv::Rect _rc;
+  cv::Size _fftSize;
+  int _border_top = 0;
+  int _border_bottom = 0;
+  int _border_left = 0;
+  int _border_right = 0;
 };
 
 

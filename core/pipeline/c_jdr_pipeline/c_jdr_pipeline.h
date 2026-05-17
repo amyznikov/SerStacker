@@ -42,6 +42,12 @@ struct c_jdr_pipeline_reference_frame_options
   std::string reference_file_name;
   bool generate_reference_frame = true;
   color_channel_type reference_channel = color_channel_gray;
+  struct c_regerence_frame_generator_options {
+    c_image_processor::sptr input_image_preprocessor;
+    c_ecch_options ecch_opts;
+
+  } generate_opts;
+
 //  c_image_processor::sptr input_image_preprocessor;
 
   //  bool stop_after_master_frame_generation = false;
@@ -105,7 +111,7 @@ protected:
   void set_pipeline_stage(int stage);
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
-  bool create_reeference_frame();
+  bool create_reference_frame();
 
 protected:
   c_jdr_pipeline_input_options _input_options;

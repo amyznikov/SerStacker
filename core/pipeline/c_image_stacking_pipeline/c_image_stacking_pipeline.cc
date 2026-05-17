@@ -2123,43 +2123,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
   return true;
 }
 
-
-bool c_image_stacking_pipeline::select_image_roi(const c_roi_selection::sptr & roi_selection,
-    const cv::Mat & src, const cv::Mat & srcmask,
-    cv::Mat & dst, cv::Mat & dstmask)
-{
-  if ( !roi_selection ) {
-    if ( &src != &dst  ) {
-      dst = src;
-    }
-    if ( &srcmask != &dstmask ) {
-      dstmask = srcmask;
-    }
-    return true;
-  }
-
-  INSTRUMENT_REGION("");
-
-  cv::Rect ROI;
-
-  if ( !roi_selection->select(src, srcmask, ROI) || ROI.empty() ) {
-    CF_ERROR("roi_selection->select_roi() fails");
-    return false;
-  }
-
-
-  dst = src(ROI);
-
-  if ( !srcmask.empty() ) {
-    dstmask = srcmask(ROI);
-  }
-  else {
-    dstmask.release();
-  }
-
-  return true;
-}
-
 void c_image_stacking_pipeline::upscale_remap(enum frame_upscale_option scale,
     cv::InputArray srcmap,
     cv::OutputArray dstmap)

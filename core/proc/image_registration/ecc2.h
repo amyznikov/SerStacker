@@ -195,7 +195,9 @@ public:
 
   c_ecch(c_image_transform * image_transform = nullptr);
   c_ecch(ECC_ALIGN_METHOD method);
+  c_ecch(const c_ecch_options& opts);
   c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method);
+  c_ecch(c_image_transform * image_transform, const c_ecch_options& opts);
 
   virtual ~c_ecch() = default;
 
@@ -276,6 +278,7 @@ public:
   const cv::Mat1f & current_image() const;
   const cv::Mat1b & current_mask() const;
 
+  bool create_remap(cv::Mat2f & rmap) const;
   cv::Mat2f create_remap() const;
 
 protected:

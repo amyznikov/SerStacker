@@ -162,6 +162,17 @@ void QImageSceneView::scrollView(int dx, int dy)
   Q_EMIT viewScrolled();
 }
 
+void QImageSceneView::centerOnScene(const QPointF & scenePos)
+{
+  Base::centerOn(scenePos);
+  Q_EMIT viewScrolled();
+}
+
+void QImageSceneView::centerOnScene(double sceneX, double sceneY)
+{
+  centerOnScene(QPointF(sceneX, sceneY));
+}
+
 void QImageSceneView::wheelEvent(QWheelEvent* e)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)

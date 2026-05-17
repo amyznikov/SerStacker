@@ -81,10 +81,16 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
         });
 
     ctlbind_expandable_group(ctls, "4. Reference Frame Options ",
-        [&, cctx = ctx(&this_class::_reference_frame_options)]() {
-          ctlbind(ctls, "generate_reference_frame", CTL_CONTEXT(cctx, generate_reference_frame));
-          ctlbind_browse_for_file(ctls, "reference file name", CTL_CONTEXT(cctx, reference_file_name));
-          //ctlbind(ctls, "preprocess input frames", CTL_CONTEXT(cctx, input_image_preprocessor));
+        [&, ctx = ctx(&this_class::_reference_frame_options)]() {
+          ctlbind_browse_for_file(ctls, "Reference file name", CTL_CONTEXT(ctx, reference_file_name));
+          ctlbind(ctls, "Generate reference frame", CTL_CONTEXT(ctx, generate_reference_frame));
+
+          ctlbind_expandable_group(ctls, "Generate Options", [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
+            ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
+            ctlbind_expandable_group(ctls, "ECCH", [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
+              ctlbind(ctls, ctx);
+            });
+          });
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
@@ -318,8 +324,8 @@ bool c_jdr_pipeline::run_pipeline()
 {
   CF_DEBUG("ENTER");
 
-  if ( !create_reeference_frame() ) {
-    CF_ERROR("create_reeference_frame() fails");
+  if ( !create_reference_frame() ) {
+    CF_ERROR("create_reference_frame() fails");
     return false;
   }
 
@@ -440,67 +446,191 @@ static int select_master_frame(const c_input_sequence::sptr & input_sequence, co
 #endif
 
 
-bool c_jdr_pipeline::create_reeference_frame()
+bool c_jdr_pipeline::create_reference_frame()
 {
+  int master_source_index = -1;
+  int master_frame_index = -1;
+  bool is_external_master_file = false;
+  std::string master_filename;
+
+  c_input_sequence::sptr master_sequence =
+      select_master_source(_master_options.master_selection,
+          _input_sequence,
+          &master_source_index);
+
+  if( !master_sequence ) {
+    CF_ERROR("select_master_source() fails");
+    return false;
+  }
+
+  is_external_master_file = _input_sequence != master_sequence;
+
+  CF_DEBUG("master_source_index: %d master_frame_index: %d is_external_master_file=%d",
+      master_source_index,
+      master_frame_index,
+      is_external_master_file);
+
+  if ( !master_sequence->source(master_source_index)->enabled() ) {
+    CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence",
+        master_source_index);
+    return false;
+  }
+
+  if ( canceled() ) {
+    return false;
+  }
+
+  master_filename = master_sequence->source(master_source_index)->filename();
+  if ( !master_sequence->is_open() && !master_sequence->open() ) {
+    CF_FATAL("ERROR: Can not open master input source '%s'",
+        master_filename.c_str());
+    return false;
+  }
+
+  set_pipeline_stage(stacking_stage_select_master_frame_index);
+
+  master_frame_index = base::select_master_frame(master_sequence, _input_options, _master_options.master_selection);
+
+  if ( canceled() ) {
+    return false;
+  }
+
+  if ( master_frame_index <  0 ) {
+    CF_ERROR("select_master_frame() fails");
+    return false;
+  }
+
+  CF_DEBUG("master_frame_index=%d", master_frame_index);
+
+  if ( !master_sequence->seek(master_frame_index) ) {
+    CF_ERROR("master_sequence->seek(master_frame_index=%d) fails", master_frame_index);
+    return false;
+  }
+
+
+  cv::Mat master_frame;
+  cv::Mat master_mask;
+
+  if ( !read_input_frame(master_sequence, _input_options, master_frame, master_mask, is_external_master_file, false) ) {
+    CF_ERROR("read_input_frame() fails");
+    return false;
+  }
+
+  CF_DEBUG("master_frame: %dx%d channels=%d depth=%d",
+      master_frame.cols, master_frame.rows,
+      master_frame.channels(), master_frame.depth());
+
+  CF_DEBUG("master_mask : %dx%d channels=%d depth=%d",
+      master_mask.cols, master_mask.rows,
+      master_mask.channels(), master_mask.depth());
+
+
   if( !_reference_frame_options.generate_reference_frame ) {
-    CF_DEBUG("NOT CREATIMG REFERENCE FRAME");
+    CF_DEBUG("NOT GENERATING REFERENCE FRAME");
   }
   else {
-    CF_DEBUG("CREATIMG REFERENCE FRAME");
+    CF_DEBUG("GENERATING REFERENCE FRAME");
 
-    int master_source_index = -1;
-    int master_frame_index = -1;
-    bool is_external_master_file = false;
-    std::string master_filename;
+    const int master_sequence_size = master_sequence->size();
+    const int max_input_frames = _input_options.max_input_frames < 0 ? master_sequence_size : std::clamp(_input_options.max_input_frames, 0, master_sequence_size);
+    const int start_frame_index = std::clamp(_input_options.start_frame_index, 0, master_sequence_size - 1);
+    const int end_frame_index = std::min(start_frame_index + max_input_frames, max_input_frames);
 
-    c_input_sequence::sptr master_sequence =
-        select_master_source(_master_options.master_selection,
-            _input_sequence,
-            &master_source_index);
+    CF_DEBUG("start_frame_index=%d end_frame_index=%d / %d", start_frame_index, end_frame_index, master_sequence_size);
 
-    if( !master_sequence ) {
-      CF_ERROR("select_master_source() fails");
+    if ( !master_sequence->seek(start_frame_index) ) {
+      CF_ERROR("master_sequence->seek(start_frame_index=%d) fails", start_frame_index);
       return false;
     }
 
-    is_external_master_file = _input_sequence != master_sequence;
+    if( const auto & proc = _reference_frame_options.generate_opts.input_image_preprocessor ) {
+      if( !proc->process(master_frame, master_mask) ) {
+        CF_ERROR("input_image_preprocessor->process(master_frame, master_mask) fails");
+        return false;
+      }
+    }
 
-    CF_DEBUG("master_source_index: %d master_frame_index: %d is_external_master_file=%d",
-        master_source_index,
-        master_frame_index,
-        is_external_master_file);
+    cv::Mat current_frame;
+    cv::Mat current_mask;
+    cv::Mat2f rmap;
 
-    if ( !master_sequence->source(master_source_index)->enabled() ) {
-      CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence",
-          master_source_index);
+    c_translation_image_transform transform;
+    c_ecch ecch(&transform, _reference_frame_options.generate_opts.ecch_opts);
+
+    c_frame_weigthed_average avg;
+
+
+    if ( !ecch.set_reference_image(master_frame, master_mask) ) {
+      CF_ERROR("ecch.align() fails");
       return false;
     }
 
-    if ( canceled() ) {
-      return false;
+    _processed_frames = 0;
+    _accumulated_frames = 0;
+
+    for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
+
+      if( is_bad_frame_index(master_sequence->current_pos()) ) {
+        CF_DEBUG("Skip frame %d as blacklisted", master_sequence->current_pos());
+        master_sequence->seek(master_sequence->current_pos() + 1);
+        continue;
+      }
+
+      if ( !read_input_frame(master_sequence, _input_options, current_frame, current_mask, is_external_master_file, false) ) {
+        CF_ERROR("read_input_frame(master_sequence->current_pos()=%d) fails", master_sequence->current_pos());
+        return false;
+      }
+
+      if ( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
+
+      CF_DEBUG("[F %d] frame: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d", i,
+          current_frame.cols, current_frame.rows, current_frame.channels(), current_frame.depth(),
+          current_mask.cols, current_mask.rows, current_mask.channels(), current_mask.depth());
+
+      if( const auto & proc = _reference_frame_options.generate_opts.input_image_preprocessor ) {
+        if( !proc->process(master_frame, master_mask) ) {
+          CF_ERROR("input_image_preprocessor->process(current_frame, current_mask) fails");
+          return false;
+        }
+      }
+
+      if ( !ecch.align(current_frame, current_mask) ) {
+        CF_ERROR("[F %d] ecch.align() fails", i);
+        return false;
+      }
+
+      CF_DEBUG("[F %d] ALIGNED", i);
+
+      if ( !ecch.create_remap(rmap) ) {
+        CF_ERROR("[F %d] ecch.create_remap() fails", i);
+        return false;
+      }
+
+      cv::remap(current_frame, current_frame,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_REPLICATE);
+      cv::remap(current_mask, current_mask,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+      cv::compare(current_mask, 250, current_mask,
+          cv::CMP_GE);
+
+      CF_DEBUG("[F %d] REMAPPED", i);
+
+      if ( !avg.add(current_frame, current_mask) ) {
+        CF_ERROR("[F %d]  avg.add() fails", i);
+        return false;
+      }
+
+      CF_DEBUG("[F %d] ACCUMULATED", i);
+
+      ++_accumulated_frames;
     }
-
-    master_filename = master_sequence->source(master_source_index)->filename();
-    if ( !master_sequence->is_open() && !master_sequence->open() ) {
-      CF_FATAL("ERROR: Can not open master input source '%s'",
-          master_filename.c_str());
-      return false;
-    }
-
-    set_pipeline_stage(stacking_stage_select_master_frame_index);
-
-    master_frame_index = base::select_master_frame(master_sequence, _input_options, _master_options.master_selection);
-
-    if ( canceled() ) {
-      return false;
-    }
-
-    if ( master_frame_index <  0 ) {
-      CF_ERROR("select_master_frame() fails");
-      return false;
-    }
-
-    CF_DEBUG("master_frame_index=%d", master_frame_index);
   }
 
   return true;

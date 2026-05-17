@@ -43,3 +43,32 @@ c_roi_selection::sptr c_roi_selection::create(const c_roi_selection_options & op
 
   return nullptr;
 }
+
+
+bool select_image_roi(const c_roi_selection::sptr & roi_selection,
+    const cv::Mat & src, const cv::Mat & srcmask,
+    cv::Mat & dst, cv::Mat & dstmask)
+{
+  if ( !roi_selection ) {
+    dst = src;
+    dstmask = srcmask;
+    return true;
+  }
+
+  cv::Rect ROI;
+  if ( !roi_selection->select(src, srcmask, ROI) || ROI.empty() ) {
+    CF_ERROR("roi_selection->select_roi() fails");
+    return false;
+  }
+
+  dst = src(ROI);
+
+  if ( !srcmask.empty() ) {
+    dstmask = srcmask(ROI);
+  }
+  else {
+    dstmask.release();
+  }
+
+  return true;
+}

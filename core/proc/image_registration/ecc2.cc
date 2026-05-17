@@ -964,10 +964,20 @@ c_ecch::c_ecch( c_image_transform * image_transform) :
 {
 }
 
-c_ecch::c_ecch(ECC_ALIGN_METHOD method) :
-    _image_transform(nullptr)
+c_ecch::c_ecch(ECC_ALIGN_METHOD method)
 {
   _opts.method = method;
+}
+
+c_ecch::c_ecch(const c_ecch_options& opts) :
+    _opts(opts)
+{
+}
+
+c_ecch::c_ecch(c_image_transform * image_transform, const c_ecch_options& opts) :
+    _image_transform(image_transform),
+    _opts(opts)
+{
 }
 
 c_ecch::c_ecch(c_image_transform * image_transform, ECC_ALIGN_METHOD method) :
@@ -1168,6 +1178,17 @@ const cv::Mat1b & c_ecch::current_mask() const
     return empty_image;
   }
   return _pyramid.front()->current_mask();
+}
+
+bool c_ecch::create_remap(cv::Mat2f & rmap) const
+{
+  if( _image_transform ) {
+    const cv::Mat & rimage = reference_image();
+    if( !rimage.size().empty() ) {
+      return _image_transform->create_remap(rimage.size(), rmap);
+    }
+  }
+  return false;
 }
 
 cv::Mat2f c_ecch::create_remap() const

@@ -61,8 +61,7 @@ public:
   virtual void close(bool clear = false);
   virtual int size();
   virtual bool seek(int pos);
-  virtual bool read(cv::Mat & output_frame,
-      cv::Mat * output_mask = nullptr);
+  virtual bool read(cv::Mat & output_frame, cv::Mat * output_mask = nullptr);
 
   c_input_source::sptr current_source() const;
   int current_pos() const;

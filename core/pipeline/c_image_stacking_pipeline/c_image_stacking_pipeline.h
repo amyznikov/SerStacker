@@ -259,9 +259,9 @@ protected:
 
   int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
-  static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
-      const cv::Mat & src, const cv::Mat & srcmask,
-      cv::Mat & dst, cv::Mat & dstmask);
+//  static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
+//      const cv::Mat & src, const cv::Mat & srcmask,
+//      cv::Mat & dst, cv::Mat & dstmask);
 
   static bool write_image(const std::string & output_file_name,
       const c_image_stacking_output_options & output_options,

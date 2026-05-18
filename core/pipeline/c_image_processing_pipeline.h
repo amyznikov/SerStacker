@@ -240,6 +240,9 @@ protected:
 bool serialize_base_input_options(c_config_setting section, bool save,
     c_image_processing_pipeline_input_options & opts);
 
+bool serialize_base_output_options(c_config_setting section, bool save,
+    c_image_processing_pipeline_output_options & opts);
+
 template<class RootObjectType>
 void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_image_processing_pipeline_input_options> & ctx)
 {

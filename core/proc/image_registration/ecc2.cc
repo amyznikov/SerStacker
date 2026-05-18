@@ -7,6 +7,7 @@
 #include "ecc2.h"
 #include <core/proc/downstrike.h>
 #include <core/io/save_image.h>
+#include <core/settings/opencv_settings.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -3223,3 +3224,17 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
 }
 
 
+bool serialize_ecch_options(c_config_setting section, bool save, c_ecch_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, epsx);
+  SERIALIZE_OPTION(section, save, opts, min_rho);
+  SERIALIZE_OPTION(section, save, opts, reference_smooth_sigma);
+  SERIALIZE_OPTION(section, save, opts, input_smooth_sigma);
+  SERIALIZE_OPTION(section, save, opts, update_step_scale);
+  SERIALIZE_OPTION(section, save, opts, method);
+  SERIALIZE_OPTION(section, save, opts, interpolation);
+  SERIALIZE_OPTION(section, save, opts, max_iterations);
+  SERIALIZE_OPTION(section, save, opts, minimum_image_size);
+  SERIALIZE_OPTION(section, save, opts, maxlevel);
+  return false;
+}

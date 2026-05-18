@@ -28,7 +28,7 @@ const c_enum_member* members_of<c_jdr_pipeline::STACKING_STAGE>()
 c_jdr_pipeline::c_jdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence) :
   base(name, input_sequence)
 {
-  _master_options.master_selection.input_sequence = input_sequence.get();
+  _reference_frame_options.master_selection.input_sequence = input_sequence.get();
   if( input_sequence && !input_sequence->sources().empty() ) {
     set_master_source(input_sequence->source(input_sequence->sources().size() / 2)->filename());
     set_master_frame_index(0);
@@ -66,31 +66,34 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
     c_ctlbind_context<this_class> ctx;
 
     ctlbind_expandable_group(ctls, "1. Input options",
-        [&, cctx = ctx(&this_class::_input_options)]() {
-          ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(cctx));
+        [&, ctx = ctx(&this_class::_input_options)]() {
+          ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
         });
 
     ctlbind_expandable_group(ctls, "2. ROI Selection",
-        [&, cctx = ctx(&this_class::_roi_selection_options)]() {
-          ctlbind(ctls, cctx);
+        [&, ctx = ctx(&this_class::_roi_selection_options)]() {
+          ctlbind(ctls, ctx);
         });
 
-    ctlbind_expandable_group(ctls, "3. Master Options",
-        [&, cctx = ctx(&this_class::_master_options)]() {
-          ctlbind(ctls, CTL_CONTEXT(cctx, master_selection));
-        });
-
-    ctlbind_expandable_group(ctls, "4. Reference Frame Options ",
+    ctlbind_expandable_group(ctls, "3. Reference Frame Options ",
         [&, ctx = ctx(&this_class::_reference_frame_options)]() {
+
           ctlbind_browse_for_file(ctls, "Reference file name", CTL_CONTEXT(ctx, reference_file_name));
           ctlbind(ctls, "Generate reference frame", CTL_CONTEXT(ctx, generate_reference_frame));
 
-          ctlbind_expandable_group(ctls, "Generate Options", [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
-            ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
-            ctlbind_expandable_group(ctls, "ECCH", [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
-              ctlbind(ctls, ctx);
-            });
-          });
+          ctlbind_expandable_group(ctls, "Master Frame Selection",
+              [&, ctx = CTL_CONTEXT(ctx, master_selection)]() {
+                ctlbind(ctls, ctx);
+              });
+
+          ctlbind_expandable_group(ctls, "Reference Frame Generate Options",
+              [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
+                ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
+                ctlbind_expandable_group(ctls, "ECCH",
+                    [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
+                      ctlbind(ctls, ctx);
+                    });
+              });
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
@@ -108,14 +111,46 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
 
 bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 {
-  static const auto get_group =
-      [](c_config_setting setting, bool save, const std::string & name) {
-        return save ? setting.add_group(name) : setting[name];
-      };
-
   if ( !base::serialize(settings, save) ) {
     CF_ERROR("base::serialize(save=%d) fails", save);
     return false;
+  }
+
+  if( auto input_opts = SERIALIZE_GROUP(settings, save, "input_opts") ) {
+    serialize_base_input_options(input_opts, save, _input_options);
+  }
+
+  if( auto roi_opts = SERIALIZE_GROUP(settings, save, "roi_opts") ) {
+    serialize_base_roi_selection_options(roi_opts, save, _roi_selection_options);
+  }
+
+  if( auto reference_frame_opts = SERIALIZE_GROUP(settings, save, "reference_frame_opts") ) {
+    auto & opts = _reference_frame_options;
+
+    if( auto master_selection_opts = SERIALIZE_GROUP(reference_frame_opts, save, "master_selection") ) {
+      serialize_base_master_frame_selection_options(master_selection_opts, save, opts.master_selection);
+    }
+
+    SERIALIZE_OPTION(reference_frame_opts, save, opts, reference_file_name);
+    SERIALIZE_OPTION(reference_frame_opts, save, opts, generate_reference_frame);
+    SERIALIZE_OPTION(reference_frame_opts, save, opts, reference_channel);
+
+    if( auto generate_opts = SERIALIZE_GROUP(reference_frame_opts, save, "generate_opts") ) {
+      SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, input_image_preprocessor);
+
+      if( auto ecch_opts = SERIALIZE_GROUP(generate_opts, save, "ecch") ) {
+        serialize_ecch_options(ecch_opts, save, opts.generate_opts.ecch_opts);
+      }
+    }
+  }
+
+  if( auto stack_opts = SERIALIZE_GROUP(settings, save, "stack_opts") ) {
+    //  c_jdr_pipeline_stack_options _stack_options;
+  }
+
+  if( auto output_opts = SERIALIZE_GROUP(settings, save, "output_opts") ) {
+    //  c_jdr_pipeline_output_options _output_options;
+    serialize_base_output_options(output_opts, save, _output_options);
   }
 
   return true;
@@ -136,21 +171,17 @@ bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & d
     return false;
   }
 
-  const std::string backup_master_source_fiename = p->_master_options.master_selection.master_fiename;
-  const int backup_master_frame_index = p->_master_options.master_selection.master_frame_index;
-
+  const std::string backup_master_source_fiename = p->_reference_frame_options.master_selection.master_fiename;
+  const int backup_master_frame_index = p->_reference_frame_options.master_selection.master_frame_index;
 
   p->_input_options = this->_input_options;
   p->_roi_selection_options = this->_roi_selection_options;
-//  p->_upscale_options = this->_upscale_options;
-  p->_master_options = this->_master_options;
-//  p->_stacking_options = this->_stacking_options ;
-//  p->_output_options = this->_output_options;
-//  p->_image_processing_options = this->_image_processing_options;
-//  p->_camera_intrinsics = this->_camera_intrinsics;
+  p->_reference_frame_options = this->_reference_frame_options;
+  p->_stack_options = this->_stack_options ;
+  p->_output_options = this->_output_options;
 
-  p->_master_options.master_selection.master_fiename = backup_master_source_fiename;
-  p->_master_options.master_selection.master_frame_index = backup_master_frame_index;
+  p->_reference_frame_options.master_selection.master_fiename = backup_master_source_fiename;
+  p->_reference_frame_options.master_selection.master_frame_index = backup_master_frame_index;
 
   return true;
 
@@ -163,55 +194,53 @@ bool c_jdr_pipeline::has_master_frame() const
 
 void c_jdr_pipeline::set_master_source(const std::string & master_source_path)
 {
-  _master_options.master_selection.master_fiename = master_source_path;
+  _reference_frame_options.master_selection.master_fiename = master_source_path;
 }
 
 std::string c_jdr_pipeline::master_source() const
 {
-  return _master_options.master_selection.master_fiename;
+  return _reference_frame_options.master_selection.master_fiename;
 }
 
 void c_jdr_pipeline::set_master_frame_index(int v)
 {
-  _master_options.master_selection.master_selection_method = master_frame_specific_index;
-  _master_options.master_selection.master_frame_index = v;
+  _reference_frame_options.master_selection.master_selection_method = master_frame_specific_index;
+  _reference_frame_options.master_selection.master_frame_index = v;
 }
 
 int c_jdr_pipeline::master_frame_index() const
 {
-  return _master_options.master_selection.master_frame_index;
+  return _reference_frame_options.master_selection.master_frame_index;
 }
 
 bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputArray outputMask)
 {
-  if ( outputImage.needed() ) {
-    _current_master_frame_candidate.copyTo(outputImage);
-  }
-  if ( outputMask.needed() ) {
-    _current_master_frame_candidate_mask.copyTo(outputMask);
-  }
-  return true;
+  switch (_pipeline_stage) {
+    case stacking_stage_idle:
+      if ( outputImage.needed() ) {
+      }
+      if ( outputMask.needed() ) {
+      }
+      break;
 
-//  switch (_pipeline_stage) {
-//    case stacking_stage_idle:
-//      if ( outputImage.needed() ) {
-//      }
-//      if ( outputMask.needed() ) {
-//      }
-//      break;
-//    case stacking_stage_generate_reference_frame:
-//      if ( outputImage.needed() ) {
-//        _current_master_frame_candidate.copyTo(outputImage);
-//      }
-//      if ( outputMask.needed() ) {
-//        _current_master_frame_candidate_mask.copyTo(outputMask);
-//      }
-//      return true;
-//    default:
-//      break;
-//  }
-//
-//  return false;
+    case stacking_stage_select_master_frame_index: {
+      if ( outputImage.needed() ) {
+        _current_master_frame_candidate.copyTo(outputImage);
+      }
+      if ( outputMask.needed() ) {
+        _current_master_frame_candidate_mask.copyTo(outputMask);
+      }
+      return true;
+    }
+
+    case stacking_stage_generate_reference_frame: {
+      return _reference_frame_avg.compute(outputImage, outputMask);
+    }
+    default:
+      break;
+  }
+
+  return false;
 }
 
 void c_jdr_pipeline::set_pipeline_stage(int newstage)
@@ -454,7 +483,7 @@ bool c_jdr_pipeline::create_reference_frame()
   std::string master_filename;
 
   c_input_sequence::sptr master_sequence =
-      select_master_source(_master_options.master_selection,
+      select_master_source(_reference_frame_options.master_selection,
           _input_sequence,
           &master_source_index);
 
@@ -489,7 +518,9 @@ bool c_jdr_pipeline::create_reference_frame()
 
   set_pipeline_stage(stacking_stage_select_master_frame_index);
 
-  master_frame_index = base::select_master_frame(master_sequence, _input_options, _master_options.master_selection);
+  master_frame_index =
+      base::select_master_frame(master_sequence, _input_options,
+          _reference_frame_options.master_selection);
 
   if ( canceled() ) {
     return false;
@@ -527,9 +558,31 @@ bool c_jdr_pipeline::create_reference_frame()
 
   if( !_reference_frame_options.generate_reference_frame ) {
     CF_DEBUG("NOT GENERATING REFERENCE FRAME");
+
+    const std::string reference_file_name =
+        generate_output_filename(_reference_frame_options.reference_file_name,
+            "_reference",
+            ".tiff");
+    if( !load_image(reference_file_name, _reference_frame, _reference_mask) ) {
+      CF_ERROR("load_image('%s') fails\n"
+          "Check if file exists or (Re)Generate new reference frame",
+          reference_file_name.c_str());
+      return false;
+    }
+
+    CF_DEBUG("reference frame: %s\n"
+        "image: %dx%d channels=%d depth=%d\n"
+        "mask : %dx%d channels=%d depth=%d",
+        reference_file_name.c_str(),
+        _reference_frame.cols, _reference_frame.rows, _reference_frame.channels(), _reference_frame.depth(),
+        _reference_mask.cols, _reference_mask.rows, _reference_mask.channels(), _reference_mask.depth());
   }
   else {
     CF_DEBUG("GENERATING REFERENCE FRAME");
+
+    _reference_frame_avg.clear();
+    set_pipeline_stage(stacking_stage_generate_reference_frame);
+
 
     const int master_sequence_size = master_sequence->size();
     const int max_input_frames = _input_options.max_input_frames < 0 ? master_sequence_size : std::clamp(_input_options.max_input_frames, 0, master_sequence_size);
@@ -556,9 +609,6 @@ bool c_jdr_pipeline::create_reference_frame()
 
     c_translation_image_transform transform;
     c_ecch ecch(&transform, _reference_frame_options.generate_opts.ecch_opts);
-
-    c_frame_weigthed_average avg;
-
 
     if ( !ecch.set_reference_image(master_frame, master_mask) ) {
       CF_ERROR("ecch.align() fails");
@@ -591,10 +641,11 @@ bool c_jdr_pipeline::create_reference_frame()
           current_mask.cols, current_mask.rows, current_mask.channels(), current_mask.depth());
 
       if( const auto & proc = _reference_frame_options.generate_opts.input_image_preprocessor ) {
-        if( !proc->process(master_frame, master_mask) ) {
+        if( !proc->process(current_frame, current_mask) ) {
           CF_ERROR("input_image_preprocessor->process(current_frame, current_mask) fails");
           return false;
         }
+        CF_DEBUG("[F %d] PREPROCESSED", i);
       }
 
       if ( !ecch.align(current_frame, current_mask) ) {
@@ -622,15 +673,46 @@ bool c_jdr_pipeline::create_reference_frame()
 
       CF_DEBUG("[F %d] REMAPPED", i);
 
-      if ( !avg.add(current_frame, current_mask) ) {
-        CF_ERROR("[F %d]  avg.add() fails", i);
+      if ( true ) {
+
+        lock_guard lock(mutex());
+        if ( !_reference_frame_avg.add(current_frame, current_mask) ) {
+          CF_ERROR("[F %d]  _reference_frame_avg.add() fails", i);
+          return false;
+        }
+
+        CF_DEBUG("[F %d] ACCUMULATED", i);
+        ++_accumulated_frames;
+      }
+    }
+
+    if( true ) {
+      lock_guard lock(mutex());
+      if( !_reference_frame_avg.compute(current_frame, current_mask) ) {
+        CF_ERROR("_reference_frame_avg.compute() fails");
         return false;
       }
-
-      CF_DEBUG("[F %d] ACCUMULATED", i);
-
-      ++_accumulated_frames;
     }
+
+    const std::string output_file_name =
+        generate_output_filename(_reference_frame_options.reference_file_name,
+            "_reference",
+            ".tiff");
+
+    if ( !save_image(current_frame, current_mask, output_file_name) ) {
+      CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+      return false;
+    }
+
+
+    _reference_frame = std::move(current_frame);
+    _reference_mask = std::move(current_mask);
+
+    CF_DEBUG("reference frame: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d",
+        _reference_frame.cols, _reference_frame.rows, _reference_frame.channels(), _reference_frame.depth(),
+        _reference_mask.cols, _reference_mask.rows, _reference_mask.channels(), _reference_mask.depth());
+
+    CF_DEBUG("Saved as %s", output_file_name.c_str());
   }
 
   return true;

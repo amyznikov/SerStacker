@@ -186,6 +186,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
 }
 
+bool serialize_ecch_options(c_config_setting section, bool save,
+    c_ecch_options & opts);
+
 class c_ecch
 {
 public:

@@ -66,4 +66,7 @@ bool select_image_roi(const c_roi_selection::sptr & roi_selection,
     const cv::Mat & src, const cv::Mat & srcmask,
     cv::Mat & dst, cv::Mat & dstmask);
 
+bool serialize_base_roi_selection_options(c_config_setting section, bool save,
+    c_roi_selection_options & opts);
+
 #endif /* __c_roi_selection_h__ */

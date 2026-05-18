@@ -8,6 +8,7 @@
 #include "c_roi_selection.h"
 #include "c_roi_rectangle_selection.h"
 #include "c_planetary_disk_selection.h"
+#include <core/settings/opencv_settings.h>
 #include <core/ssprintf.h>
 
 template<>
@@ -69,6 +70,19 @@ bool select_image_roi(const c_roi_selection::sptr & roi_selection,
   else {
     dstmask.release();
   }
+
+  return true;
+}
+
+bool serialize_base_roi_selection_options(c_config_setting section, bool save,
+    c_roi_selection_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, method);
+  SERIALIZE_OPTION(section, save, opts, rectangle_roi_selection);
+  SERIALIZE_OPTION(section, save, opts, planetary_disk_crop_size);
+  SERIALIZE_OPTION(section, save, opts, planetary_disk_gbsigma);
+  SERIALIZE_OPTION(section, save, opts, planetary_disk_stdev_factor);
+  SERIALIZE_OPTION(section, save, opts, se_close_size);
 
   return true;
 }

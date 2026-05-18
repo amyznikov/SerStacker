@@ -1472,10 +1472,16 @@ bool serialize_base_input_options(c_config_setting section, bool save, c_image_p
   SERIALIZE_OPTION(section, save, opts, enable_color_maxtrix);
   SERIALIZE_OPTION(section, save, opts, start_frame_index);
   SERIALIZE_OPTION(section, save, opts, max_input_frames);
-
   return true;
 }
 
+bool serialize_base_output_options(c_config_setting section, bool save,
+    c_image_processing_pipeline_output_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, output_directory);
+  SERIALIZE_OPTION(section, save, opts, default_display_type);
+  return true;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -61,3 +61,13 @@ c_input_sequence::sptr select_master_source(const c_master_frame_selection_optio
 
   return master_sequence;
 }
+
+bool serialize_base_master_frame_selection_options(c_config_setting section, bool save,
+    c_master_frame_selection_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, master_fiename);
+  SERIALIZE_OPTION(section, save, opts, master_selection_method);
+  SERIALIZE_OPTION(section, save, opts, master_frame_index);
+  SERIALIZE_OPTION(section, save, opts, input_image_preprocessor);
+  return true;
+}

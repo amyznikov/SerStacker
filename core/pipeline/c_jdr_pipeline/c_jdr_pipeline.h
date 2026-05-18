@@ -32,13 +32,10 @@ struct c_jdr_pipeline_roi_options
 };
 
 
-struct c_jdr_pipeline_master_options
-{
-  c_master_frame_selection_options master_selection;
-};
-
 struct c_jdr_pipeline_reference_frame_options
 {
+  c_master_frame_selection_options master_selection;
+
   std::string reference_file_name;
   bool generate_reference_frame = true;
   color_channel_type reference_channel = color_channel_gray;
@@ -49,7 +46,6 @@ struct c_jdr_pipeline_reference_frame_options
   } generate_opts;
 
 //  c_image_processor::sptr input_image_preprocessor;
-
   //  bool stop_after_master_frame_generation = false;
   //  bool save_master_frame = true;
   //  double unsharp_sigma = 0;
@@ -116,14 +112,17 @@ protected:
 protected:
   c_jdr_pipeline_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
-  c_jdr_pipeline_master_options _master_options;
   c_jdr_pipeline_reference_frame_options  _reference_frame_options;
   c_jdr_pipeline_stack_options _stack_options;
   c_jdr_pipeline_output_options _output_options;
 
 protected:
   c_roi_selection::sptr _roi_selection;
+  c_frame_weigthed_average _reference_frame_avg;
   int _pipeline_stage = 0;
+
+  cv::Mat _reference_frame;
+  cv::Mat _reference_mask;
 };
 
 #endif /* __c_jdr_pipeline_h__ */

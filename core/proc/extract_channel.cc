@@ -189,6 +189,9 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
     case REDUCE_AVG:
       if ( srcm.empty() || srcm.channels() == 1 ) {
         reduce_color_channels(src, _dst, cv::REDUCE_AVG, src_depth == CV_64F ? CV_64F : CV_32F);
+        if ( _dstm.needed() ) {
+          srcm.copyTo(_dstm);
+        }
       }
       else {
         std::vector<cv::Mat> src_channels;
@@ -216,6 +219,9 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
     case REDUCE_MAX:
       if ( srcm.empty() || srcm.channels() == 1 ) {
         reduce_color_channels(src, _dst, cv::REDUCE_MAX);
+        if ( _dstm.needed() ) {
+          srcm.copyTo(_dstm);
+        }
       }
       else {
         cv::Mat_<_Tp> dst(src.size(), _Tp(0));
@@ -265,6 +271,9 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
     case REDUCE_MIN:
       if ( srcm.empty() || srcm.channels() == 1 ) {
         reduce_color_channels(src, _dst, cv::REDUCE_MIN);
+        if ( _dstm.needed() ) {
+          srcm.copyTo(_dstm);
+        }
       }
       else {
         cv::Mat_<_Tp> dst(src.size(), _Tp(0)); // must be zero by design
@@ -318,6 +327,14 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
         reduce_color_channels(src, cmin, cv::REDUCE_MIN);
         reduce_color_channels(src, cmax, cv::REDUCE_MAX);
         cv::subtract(cmax, cmin, _dst);
+        if ( _dstm.needed() ) {
+          if ( srcm.channels() > 1 ) {
+            reduce_color_channels(srcm, _dstm, cv::REDUCE_MAX);
+          }
+          else {
+            srcm.copyTo(_dstm);
+          }
+        }
       }
       else {
         cv::Mat_<_Tp> dst = cv::Mat_<_Tp>::zeros(src.size());
@@ -370,6 +387,14 @@ static bool _reduceChannels(cv::InputArray _src, cv::OutputArray _dst, cv::Input
     case REDUCE_ABSMAX: {
       if ( src.depth() == CV_8U || src.depth() == CV_16U ) { // fallback to REDUCE_MAX
         reduce_color_channels(src, _dst, cv::REDUCE_MAX);
+        if ( _dstm.needed() ) {
+          if ( srcm.channels() > 1 ) {
+            reduce_color_channels(srcm, _dstm, cv::REDUCE_MAX);
+          }
+          else {
+            srcm.copyTo(_dstm);
+          }
+        }
       }
       else {
         std::vector<cv::Mat> channels;

@@ -16,7 +16,8 @@ void c_morphology_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
    ctlbind(ctls, "iterations", ctx(&this_class::_iterations), "");
    ctlbind(ctls, "borderType", ctx(&this_class::_borderType), "");
    ctlbind(ctls, "borderValue", ctx(&this_class::_borderValue), "");
-   ctlbind(ctls, "output to", ctx(&this_class::_output_channel),  "Output image name");
+   ctlbind(ctls, "input", ctx(&this_class::_input_channel),  "Input from");
+   ctlbind(ctls, "output", ctx(&this_class::_output_channel),  "Output to");
 }
 
 bool c_morphology_routine::serialize(c_config_setting settings, bool save)

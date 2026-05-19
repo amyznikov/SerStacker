@@ -717,3 +717,13 @@ bool c_jdr_pipeline::create_reference_frame()
 
   return true;
 }
+
+bool c_jdr_pipeline::estimate_jovian_ellipse()
+{
+  if ( _reference_frame.empty() ) {
+    CF_ERROR("APP BUG: No jovian reference frame available");
+    return false;
+  }
+
+  return true;
+}

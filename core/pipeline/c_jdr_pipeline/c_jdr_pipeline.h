@@ -108,6 +108,7 @@ protected:
   bool get_display_image(cv::OutputArray frame, cv::OutputArray mask) override;
 
   bool create_reference_frame();
+  bool estimate_jovian_ellipse();
 
 protected:
   c_jdr_pipeline_input_options _input_options;

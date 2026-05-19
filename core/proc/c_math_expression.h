@@ -168,6 +168,7 @@ protected:
 
 protected:
   void cleanup();
+  bool parse_expression(const char ** curpos, abstract_node ** ppnode);
   bool parse_expression(size_t priority_level, const char ** curpos, abstract_node ** ppnode);
   bool parse_terminal_token(const char ** curpos, abstract_node ** ppnode);
   const unary_operation * lookup_unary_operator(const char *curpos) const;

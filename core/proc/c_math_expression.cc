@@ -953,7 +953,7 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
 
     ++*curpos;
 
-    if ( !parse_expression(0, curpos, ppnode) ) {
+    if ( !parse_expression(curpos, ppnode) ) {
       return 0;
     }
 
@@ -1030,7 +1030,7 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
         break;
       }
 
-      if( !(success = parse_expression(0, curpos, &arg)) ) {
+      if( !(success = parse_expression(curpos, &arg)) ) {
         break;
       }
 
@@ -1166,6 +1166,41 @@ bool c_math_expression::parse_terminal_token(const char ** curpos, abstract_node
 }
 
 
+bool c_math_expression::parse_expression(const char ** curpos, abstract_node ** ppnode)
+{
+  /*
+  * expression:
+  *  arg1 ? arg2 : arg3
+  */
+  std::vector<c_abstract_node*> args(3, nullptr);
+  bool have_ternary_operator = false ;
+  *ppnode = nullptr;
+
+  if( !parse_expression(0, curpos, &args[0]) ) {
+    return false;
+  }
+
+  if ( (have_ternary_operator = (*skip_white_spaces(curpos) == '?')) ) {
+    ++*curpos;
+    if( !parse_expression(curpos, &args[1]) ) {
+      return false;
+    }
+    if ( *skip_white_spaces(curpos) != ':' ) {
+      return false;
+    }
+    ++*curpos;
+    if( !parse_expression(curpos, &args[2]) ) {
+      return false;
+    }
+  }
+
+  *ppnode = have_ternary_operator ?
+      new c_functional_node(&if_func, args) :
+      args[0];
+
+  return true;
+}
+
 bool c_math_expression::parse_expression(size_t priority_level, const char ** curpos, abstract_node ** ppnode)
 {
   /*
@@ -1191,27 +1226,19 @@ bool c_math_expression::parse_expression(size_t priority_level, const char ** cu
 
   while ((binop = lookup_binary_operator(priority_level, skip_white_spaces(curpos)))) {
 
-    *curpos +=
-        binop->name.size();
+    *curpos += binop->name.size();
 
     if( !parse_expression(priority_level + 1, curpos, &args[1]) ) {
       delete args[0];
       return false;
     }
 
-    args[0] =
-        new c_functional_node(binop->fn,
-            args);
+    args[0] = new c_functional_node(binop->fn, args);
 
     if( args[0]->is_const_expression() ) {
-
-      const double value =
-          args[0]->eval(nullptr);
-
+      const double value = args[0]->eval(nullptr);
       delete args[0];
-
-      args[0] =
-          new c_value_node(value);
+      args[0] = new c_value_node(value);
     }
   }
 
@@ -1225,7 +1252,7 @@ bool c_math_expression::parse(const char * string)
   cleanup();
   clear_errmsg();
 
-  if( !parse_expression(0, &string, &_root) ) {
+  if( !parse_expression(&string, &_root) ) {
     _pointer_to_syntax_error = string;
     cleanup();
     return false;
@@ -1262,9 +1289,7 @@ bool c_math_expression::add_argument(int arg_index, const char * name, const cha
   }
 
   _args.emplace_back();
-
-  arg_desc & f =
-      _args.back();
+  arg_desc & f = _args.back();
 
   f.name = name;
   f.index = arg_index;
@@ -1289,9 +1314,7 @@ bool c_math_expression::add_constant(double value, const char * name, const char
   }
 
   _constants.emplace_back();
-
-  const_desc & f =
-      _constants.back();
+  const_desc & f = _constants.back();
 
   f.name = name;
   f.value = value;
@@ -1319,9 +1342,7 @@ bool c_math_expression::add_bind(double * value, const char * name, const char *
   }
 
   _bindings.emplace_back();
-
-  binding_desc & f =
-      _bindings.back();
+  binding_desc & f = _bindings.back();
 
   f.name = name;
   f.value = value;
@@ -1346,9 +1367,7 @@ bool c_math_expression::add_function(func00 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f00 = fn;
@@ -1402,9 +1421,7 @@ bool c_math_expression::add_function(func02 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f02 = fn;
@@ -1430,9 +1447,7 @@ bool c_math_expression::add_function(func03 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f03 = fn;
@@ -1458,9 +1473,7 @@ bool c_math_expression::add_function(func04 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f04 = fn;
@@ -1486,9 +1499,7 @@ bool c_math_expression::add_function(func05 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f05 = fn;
@@ -1514,9 +1525,7 @@ bool c_math_expression::add_function(func06 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f06 = fn;
@@ -1542,9 +1551,7 @@ bool c_math_expression::add_function(func07 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f07 = fn;
@@ -1570,9 +1577,7 @@ bool c_math_expression::add_function(func08 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f08 = fn;
@@ -1598,9 +1603,7 @@ bool c_math_expression::add_function(func09 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f09 = fn;
@@ -1626,9 +1629,7 @@ bool c_math_expression::add_function(func10 fn, const char * name, const char * 
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.f10 = fn;
@@ -1654,9 +1655,7 @@ bool c_math_expression::add_function(funcfn fn, void * param, int numargs, const
   }
 
   _functions.emplace_back();
-
-  function_desc & f =
-      _functions.back();
+  function_desc & f = _functions.back();
 
   f.name = name;
   f.ffn = fn;
@@ -1684,9 +1683,7 @@ bool c_math_expression::add_unary_operation(func01 fn, const char * name, const 
   }
 
   _unops.emplace_back();
-
-  unary_operation & f =
-      _unops.back();
+  unary_operation & f = _unops.back();
 
   f.name = name;
   f.fn = fn;
@@ -1720,9 +1717,7 @@ bool c_math_expression::add_binary_operation(int priority, func02 fn, const char
   }
 
   _binops[priority].emplace_back();
-
-  binary_operation & f =
-      _binops[priority].back();
+  binary_operation & f = _binops[priority].back();
 
   f.fn = fn;
   f.name = name;

@@ -7,7 +7,7 @@
 
 #include "c_remove_sharp_artifacts_routine.h"
 #include <core/proc/geo-reconstruction.h>
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/reduce_channels.h>
 

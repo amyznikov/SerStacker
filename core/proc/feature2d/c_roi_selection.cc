@@ -34,9 +34,9 @@ c_roi_selection::sptr c_roi_selection::create(const c_roi_selection_options & op
     case roi_selection_planetary_disk:
       return sptr(new c_planetary_disk_selection(
           opts.planetary_disk_crop_size,
-          opts.planetary_disk_gbsigma,
-          opts.planetary_disk_stdev_factor,
-          opts.se_close_size));
+          opts.planetary_disk_options.gbsigma,
+          opts.planetary_disk_options.stdev_factor,
+          opts.planetary_disk_options.se_close_radius));
 
     default:
       break;
@@ -80,9 +80,8 @@ bool serialize_base_roi_selection_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, method);
   SERIALIZE_OPTION(section, save, opts, rectangle_roi_selection);
   SERIALIZE_OPTION(section, save, opts, planetary_disk_crop_size);
-  SERIALIZE_OPTION(section, save, opts, planetary_disk_gbsigma);
-  SERIALIZE_OPTION(section, save, opts, planetary_disk_stdev_factor);
-  SERIALIZE_OPTION(section, save, opts, se_close_size);
-
+  if( auto planetary_disk_opts = SERIALIZE_GROUP(section, save, "planetary_disk") ) {
+    serialize_base_planetary_disk_detector_options(planetary_disk_opts, save, opts.planetary_disk_options);
+  }
   return true;
 }

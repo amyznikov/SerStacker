@@ -41,19 +41,15 @@ public:
       cv::Rect & outputROIRectangle ) override;
 
   const cv::Point2f & detected_object_position() const;
-  const cv::Rect & detected_object_roi()  const;
-
-//  bool detect_object_roi(cv::InputArray image, cv::InputArray image_mask,
-//      cv::Point2f & outputObjectLocation,
-//      cv::Rect & outputCropRect ) override;
+  const cv::Rect & detected_object_roi() const;
 
 protected:
-  cv::Size crop_size_;
-  double gbsigma_ = 1;
-  double stdev_factor_ = 0.5;
-  int se_close_size_ = 2;
-  cv::Point2f objpos_;
-  cv::Rect objrect_;
+  cv::Size _crop_size;
+  double _gbsigma = 1;
+  double _stdev_factor = 0.5;
+  int _se_close_size = 2;
+  cv::Point2f _objpos;
+  cv::Rect _objrect;
 };
 
 #endif /* __c_planetary_disk_selection__ */

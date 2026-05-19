@@ -6,8 +6,8 @@
  */
 
 #include "c_jovian_ellipse_detector2.h"
-#include <core/proc/ellipsoid.h>
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/ellipsoid.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/fitEllipseLM.h>
 #include <core/proc/pose.h>

@@ -4,11 +4,11 @@
  *  Created on: Sep 13, 2019
  *      Author: amyznikov
  */
-#include "autoclip.h"
-#include "threshold.h"
-#include "morphology.h"
-#include "estimate_noise.h"
-#include "geo-reconstruction.h"
+#include <core/proc/autoclip.h>
+#include <core/proc/threshold.h>
+#include <core/proc/morphology.h>
+#include <core/proc/estimate_noise.h>
+#include <core/proc/geo-reconstruction.h>
 #include "planetary-disk-detection.h"
 #include <core/debug.h>
 
@@ -380,75 +380,11 @@ bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect &
 }
 
 
-#if 0
-
-
-static bool get_maximal_connected_component(const Mat1b & src, cv::Rect * rc, cv::Mat * cmponent_mask, cv::Point2f * geometrical_center)
+bool serialize_base_planetary_disk_detector_options(c_config_setting section, bool save,
+    c_simple_planetary_disk_detector_options & opts)
 {
-  Mat1i labels, stats;
-  Mat1d centroids;
-  int N;
-
-  if ( (N = connectedComponentsWithStats(src, labels, stats, centroids, 8, labels.type())) < 2 ) {
-    return false;
-  }
-
-  // CF_DEBUG("N=%d", N);
-
-  struct ss {
-    int label, area;
-  };
-  std::vector<ss> cstats;
-
-  for ( int i = 1; i < N; ++i ) {
-    cstats.emplace_back();
-    cstats.back().label = i;
-    cstats.back().area = stats[i][CC_STAT_AREA];
-  }
-
-  if ( cstats.size() > 1 ) {
-    std::sort(cstats.begin(), cstats.end(),
-        [](const ss & p, const ss & n) {
-          return p.area > n.area;
-        });
-  }
-
-  if ( cstats[0].area < 4 ) {
-    CF_DEBUG("Small area: %d", cstats[0].area);
-    return false;
-  }
-
-  rc->x = stats[cstats[0].label][CC_STAT_LEFT];
-  rc->y = stats[cstats[0].label][CC_STAT_TOP];
-  rc->width = stats[cstats[0].label][CC_STAT_WIDTH];
-  rc->height = stats[cstats[0].label][CC_STAT_HEIGHT];
-
-  if( cmponent_mask ) {
-    cv::compare(labels, cstats[0].label, *cmponent_mask, cv::CMP_EQ);
-  }
-
-  if ( geometrical_center ) {
-
-    geometrical_center->x = 0;
-    geometrical_center->y = 0;
-    int n = 0;
-
-    for ( int y = 0; y < rc->height; ++y ) {
-      for ( int x = 0; x < rc->width; ++x ) {
-        if ( labels[rc->y + y][rc->x + x] == cstats[0].label ) {
-
-          geometrical_center->x += (rc->x + x);
-          geometrical_center->y = (rc->y + y);
-          ++n;
-        }
-      }
-    }
-
-    geometrical_center->x /= n;
-    geometrical_center->y /= n;
-
-  }
-
+  SERIALIZE_OPTION(section, save, opts, gbsigma);
+  SERIALIZE_OPTION(section, save, opts, stdev_factor);
+  SERIALIZE_OPTION(section, save, opts, se_close_radius);
   return true;
 }
-#endif

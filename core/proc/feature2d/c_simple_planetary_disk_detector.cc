@@ -6,7 +6,7 @@
  */
 
 #include "c_simple_planetary_disk_detector.h"
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/debug.h>
 
 c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma, double stdev_factor, int se_close_radius) :

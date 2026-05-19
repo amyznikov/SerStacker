@@ -10,7 +10,7 @@
 #define __c_keypoins_detector_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/feature2d/feature2d.h>
+#include <core/proc/feature2d/feature2d.h>
 
 class c_keypoins_detector_routine :
     public c_image_processor_routine

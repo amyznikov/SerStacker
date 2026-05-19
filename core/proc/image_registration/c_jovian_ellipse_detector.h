@@ -41,7 +41,7 @@ public:
   bool detect_jovian_disk(cv::InputArray _image,
       cv::InputArray mask = cv::noArray());
 
-      const cv::Mat& gray_image() const;
+  const cv::Mat& gray_image() const;
   const cv::Mat1f pca_gx() const;
   const cv::Mat1f pca_gy() const;
 

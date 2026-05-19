@@ -6,8 +6,8 @@
  */
 
 #include "c_frame_registration.h"
-#include <core/feature2d/feature2d_settings.h>
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/pixtype.h>

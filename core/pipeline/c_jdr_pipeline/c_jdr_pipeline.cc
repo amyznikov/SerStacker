@@ -6,7 +6,6 @@
  */
 
 #include "c_jdr_pipeline.h"
-#include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 
 template<>
 const c_enum_member* members_of<c_jdr_pipeline::STACKING_STAGE>()
@@ -96,6 +95,14 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
               });
         });
 
+    ctlbind_expandable_group(ctls, "4. Jovian Ellipse Estimation Options",
+        [ctx = CTL_CONTEXT(ctx, _ellipse_estimation_options)]() {
+          ctlbind_expandable_group(ctls, "Planetary disk detection",
+              [ctx = CTL_CONTEXT(ctx, planetary_disk_detector_opts)]() {
+                ctlbind(ctls, ctx);
+              });
+        });
+
     ctlbind_expandable_group(ctls, "5. Stack Options",
         [&, cctx = ctx(&this_class::_stack_options)]() {
         });
@@ -144,6 +151,14 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
     }
   }
 
+  if( auto ellipse_opts = SERIALIZE_GROUP(settings, save, "ellipse_opts") ) {
+    if( auto planetary_disk_opts = SERIALIZE_GROUP(ellipse_opts, save, "planetary_disk") ) {
+      serialize_base_planetary_disk_detector_options(planetary_disk_opts, save,
+          _ellipse_estimation_options.planetary_disk_detector_opts);
+    }
+  }
+
+
   if( auto stack_opts = SERIALIZE_GROUP(settings, save, "stack_opts") ) {
     //  c_jdr_pipeline_stack_options _stack_options;
   }
@@ -177,6 +192,7 @@ bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & d
   p->_input_options = this->_input_options;
   p->_roi_selection_options = this->_roi_selection_options;
   p->_reference_frame_options = this->_reference_frame_options;
+  p->_ellipse_estimation_options = this->_ellipse_estimation_options;
   p->_stack_options = this->_stack_options ;
   p->_output_options = this->_output_options;
 
@@ -358,6 +374,10 @@ bool c_jdr_pipeline::run_pipeline()
     return false;
   }
 
+  if ( !estimate_jovian_ellipse() ) {
+    CF_ERROR("estimate_jovian_ellipse() fails");
+    return false;
+  }
 
   CF_DEBUG("LEAVE");
   return true;
@@ -722,6 +742,40 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
 {
   if ( _reference_frame.empty() ) {
     CF_ERROR("APP BUG: No jovian reference frame available");
+    return false;
+  }
+
+  cv::Point2f geometrical_center;
+  cv::Point2f centroid;
+  cv::Rect component_rect;
+  cv::Mat cmponent_mask;
+  cv::Mat debug_image;
+
+  bool fOK =
+      simple_planetary_disk_detector(_reference_frame, _reference_mask,
+          _ellipse_estimation_options.planetary_disk_detector_opts,
+          &centroid,
+          &component_rect,
+          &cmponent_mask,
+          &geometrical_center,
+          &debug_image);
+
+  if ( !fOK ) {
+    CF_ERROR("simple_planetary_disk_detector fails");
+    return false;
+  }
+
+  CF_DEBUG("simple_planetary_disk_detector: \n"
+      "geometrical_center: %g,%g  centroid: %g,%g rect: %d;%d;%dx%d",
+      geometrical_center.x, geometrical_center.y,
+      centroid.x, centroid.y,
+      component_rect.x, component_rect.y, component_rect.width, component_rect.height);
+
+  const std::string output_component_mask_file_name =
+      generate_output_filename("component_mask", "", ".png");
+
+  if( !save_image(cmponent_mask, cv::noArray(), output_component_mask_file_name) ) {
+    CF_ERROR("save_image('%s') fails", output_component_mask_file_name.c_str());
     return false;
   }
 

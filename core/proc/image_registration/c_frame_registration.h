@@ -9,7 +9,7 @@
 #define __c_frame_registration_h__
 
 #include <core/proc/extract_channel.h>
-#include <core/feature2d/feature2d.h>
+#include <core/proc/feature2d/feature2d.h>
 #include <core/ctrlbind/ctrlbind.h>
 //#include "c_jovian_derotation.h"
 #include "c_jovian_derotation2.h"

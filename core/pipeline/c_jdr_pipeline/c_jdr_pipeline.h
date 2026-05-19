@@ -11,7 +11,7 @@
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/pipeline/c_master_frame_selection.h>
-#include <core/roi_selection/c_roi_selection.h>
+#include <core/proc/feature2d/c_roi_selection.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/average/c_frame_accumulation.h>
 
@@ -34,9 +34,8 @@ struct c_jdr_pipeline_roi_options
 
 struct c_jdr_pipeline_reference_frame_options
 {
-  c_master_frame_selection_options master_selection;
-
   std::string reference_file_name;
+  c_master_frame_selection_options master_selection;
   bool generate_reference_frame = true;
   color_channel_type reference_channel = color_channel_gray;
   struct c_regerence_frame_generator_options {
@@ -44,14 +43,12 @@ struct c_jdr_pipeline_reference_frame_options
     c_ecch_options ecch_opts;
 
   } generate_opts;
-
-//  c_image_processor::sptr input_image_preprocessor;
-  //  bool stop_after_master_frame_generation = false;
-  //  bool save_master_frame = true;
-  //  double unsharp_sigma = 0;
-  //  double unsharp_alpha = 0.8;
 };
 
+struct c_jdr_pipeline_jovian_ellipse_estimation_options
+{
+  c_simple_planetary_disk_detector_options planetary_disk_detector_opts;
+};
 
 struct c_jdr_pipeline_stack_options {
 
@@ -114,6 +111,7 @@ protected:
   c_jdr_pipeline_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
   c_jdr_pipeline_reference_frame_options  _reference_frame_options;
+  c_jdr_pipeline_jovian_ellipse_estimation_options _ellipse_estimation_options;
   c_jdr_pipeline_stack_options _stack_options;
   c_jdr_pipeline_output_options _output_options;
 

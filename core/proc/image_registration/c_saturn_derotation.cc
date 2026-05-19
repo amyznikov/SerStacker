@@ -6,7 +6,7 @@
  */
 
 #include "c_saturn_derotation.h"
-#include <core/proc/ellipsoid.h>
+#include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/pose.h>
 #include <core/debug.h>
 

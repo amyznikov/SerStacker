@@ -6,7 +6,7 @@
  */
 
 #include "c_regular_stereo_pipeline.h"
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/pixtype.h>

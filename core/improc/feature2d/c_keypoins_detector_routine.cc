@@ -6,7 +6,7 @@
  */
 
 #include "c_keypoins_detector_routine.h"
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/pose.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/normalize.h>

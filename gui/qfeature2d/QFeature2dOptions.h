@@ -10,7 +10,7 @@
 #define __QFeature2dOptions_h__
 
 #include <gui/widgets/QSettingsWidget.h>
-#include <core/feature2d/feature2d.h>
+#include <core/proc/feature2d/feature2d.h>
 
 
 template<class Feature2DDetectorType>

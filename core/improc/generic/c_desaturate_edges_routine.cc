@@ -6,7 +6,7 @@
  */
 
 #include "c_desaturate_edges_routine.h"
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/debug.h>

@@ -10,7 +10,7 @@
 #define __c_roi_selection_h__
 
 #include <opencv2/opencv.hpp>
-#include <core/ctrlbind/ctrlbind.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 
 enum roi_selection_method
 {
@@ -23,10 +23,8 @@ struct c_roi_selection_options
 {
   enum roi_selection_method method = roi_selection_none;
   cv::Rect rectangle_roi_selection;
+  c_simple_planetary_disk_detector_options planetary_disk_options;
   cv::Size planetary_disk_crop_size;
-  double planetary_disk_gbsigma = 1;
-  double planetary_disk_stdev_factor = 0.25;
-  int se_close_size = 2;
 };
 
 template<class RootObjectType>
@@ -41,9 +39,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind_expandable_group(ctls, "Planetary Disk Crop...");
     ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), "");
-    ctlbind(ctls, "gbsigma", ctx(&S::planetary_disk_gbsigma), "");
-    ctlbind(ctls, "Stdev factor", ctx(&S::planetary_disk_stdev_factor), "");
-    ctlbind(ctls, "se_close_size", ctx(&S::se_close_size), "");
+    ctlbind(ctls, ctx(&S::planetary_disk_options));
   ctlbind_end_group(ctls);
 }
 

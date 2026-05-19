@@ -9,7 +9,7 @@
 #define __c_stacking_pipeline_h__
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
-#include <core/roi_selection/c_roi_selection.h>
+#include <core/proc/feature2d/c_roi_selection.h>
 
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/image_registration/c_frame_registration.h>
@@ -17,7 +17,7 @@
 #include <core/proc/c_anscombe_transform.h>
 #include <core/proc/focus.h>
 #include <core/improc/c_image_processor.h>
-#include <core/feature2d/feature2d.h>
+#include <core/proc/feature2d/feature2d.h>
 #include <core/settings.h>
 #include <atomic>
 

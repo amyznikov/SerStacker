@@ -10,7 +10,7 @@
 #define __c_regular_stereo_pipeline_h__
 
 #include <core/pipeline/c_image_processing_pipeline.h>
-#include <core/feature2d/feature2d.h>
+#include <core/proc/feature2d/feature2d.h>
 #include <core/proc/camera_calibration/camera_calibration.h>
 #include <core/proc/stereo/c_sweepscan_stereo_matcher.h>
 

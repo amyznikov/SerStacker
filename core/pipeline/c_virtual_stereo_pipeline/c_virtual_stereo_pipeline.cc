@@ -6,7 +6,7 @@
  */
 
 #include "c_virtual_stereo_pipeline.h"
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/polar_trasform.h>
 #include <core/proc/stereo/triangulate.h>
 #include <core/proc/image_registration/ecc2.h>

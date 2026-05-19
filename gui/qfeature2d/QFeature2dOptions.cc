@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 #include "QFeature2dOptions.h"
-#include <core/feature2d/feature_extraction.h>
+#include <core/proc/feature2d/feature_extraction.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 

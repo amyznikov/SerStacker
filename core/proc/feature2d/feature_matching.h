@@ -9,11 +9,11 @@
 #ifndef __feature_matching_h__
 #define __feature_matching_h__
 
-#include <core/feature2d/feature_matching/c_flann_based_feature2d_matcher.h>
-#include <core/feature2d/feature_matching/c_hamming_distance_feature2d_matcher.h>
-#include <core/feature2d/feature_matching/c_optflowpyrlk_feature2d_matcher.h>
-#include <core/feature2d/feature_matching/c_triangle_matcher.h>
-#include <core/feature2d/feature_matching/c_snorm_based_feature2d_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_flann_based_feature2d_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_hamming_distance_feature2d_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_optflowpyrlk_feature2d_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_triangle_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_snorm_based_feature2d_matcher.h>
 
 #include <core/ssprintf.h>
 

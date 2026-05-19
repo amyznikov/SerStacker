@@ -8,7 +8,7 @@
 #include "c_image_stacking_pipeline.h"
 #include <core/settings/opencv_settings.h>
 #include <core/settings/camera_settings.h>
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/estimate_noise.h>
 #include <core/proc/extract_channel.h>
@@ -2513,12 +2513,13 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = get_group(settings, save, "roi")) ) {
-    SERIALIZE_OPTION(section, save, _roi_selection_options, method);
-    SERIALIZE_OPTION(section, save, _roi_selection_options, rectangle_roi_selection);
-    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_crop_size);
-    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_gbsigma);
-    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_stdev_factor);
-    SERIALIZE_OPTION(section, save, _roi_selection_options, se_close_size);
+    serialize_base_roi_selection_options(section, save, _roi_selection_options);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, method);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, rectangle_roi_selection);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_crop_size);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_gbsigma);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_stdev_factor);
+    //    SERIALIZE_OPTION(section, save, _roi_selection_options, se_close_size);
   }
 
   // c_frame_upscale_options upscale_options_;

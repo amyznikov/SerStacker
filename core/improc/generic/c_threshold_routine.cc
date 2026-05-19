@@ -8,7 +8,7 @@
 #include "c_threshold_routine.h"
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>

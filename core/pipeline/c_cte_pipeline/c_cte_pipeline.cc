@@ -7,7 +7,7 @@
 
 #include "c_cte_pipeline.h"
 #include <core/settings/camera_settings.h>
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/levmar.h>
 //#include <core/proc/c_lse2_estimate.h>
 #include <thread>

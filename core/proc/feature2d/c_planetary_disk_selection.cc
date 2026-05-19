@@ -6,7 +6,7 @@
  */
 
 #include "c_planetary_disk_selection.h"
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/debug.h>
 
 
@@ -45,51 +45,51 @@ c_planetary_disk_selection::c_planetary_disk_selection()
 }
 
 c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size) :
-    crop_size_(crop_size),
-    gbsigma_(gbsigma),
-    stdev_factor_(stdev_factor),
-    se_close_size_(se_close_size)
+    _crop_size(crop_size),
+    _gbsigma(gbsigma),
+    _stdev_factor(stdev_factor),
+    _se_close_size(se_close_size)
 {
 }
 
 const cv::Size & c_planetary_disk_selection::crop_size() const
 {
-  return crop_size_;
+  return _crop_size;
 }
 
 void c_planetary_disk_selection::set_crop_size(const cv::Size & size)
 {
-  crop_size_ = size;
+  _crop_size = size;
 }
 
 void c_planetary_disk_selection::set_gbsigma(double v)
 {
-  gbsigma_ = v;
+  _gbsigma = v;
 }
 
 double c_planetary_disk_selection::gbsigma() const
 {
-  return gbsigma_;
+  return _gbsigma;
 }
 
 void c_planetary_disk_selection::set_stdev_factor(double v)
 {
-  stdev_factor_ = v;
+  _stdev_factor = v;
 }
 
 double c_planetary_disk_selection::stdev_factor() const
 {
-  return stdev_factor_;
+  return _stdev_factor;
 }
 
 void c_planetary_disk_selection::set_se_close_size(int v)
 {
-  se_close_size_ = v;
+  _se_close_size = v;
 }
 
 int c_planetary_disk_selection::se_close_size() const
 {
-  return se_close_size_;
+  return _se_close_size;
 }
 
 c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
@@ -105,60 +105,35 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Siz
 bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mask,
     cv::Rect & outputROIRectangle )
 {
-  if ( !simple_planetary_disk_detector(image, mask, gbsigma_, stdev_factor_, se_close_size_, &objpos_, &objrect_) ) {
+  if ( !simple_planetary_disk_detector(image, mask, _gbsigma, _stdev_factor, _se_close_size, &_objpos, &_objrect) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }
 
-  if ( crop_size_.empty() ) {
-    crop_size_ = objrect_.size() * 2;
+  if ( _crop_size.empty() ) {
+    _crop_size = _objrect.size() * 2;
   }
 
-  if ( crop_size_ == image.size() ) {
-    objrect_ = cv::Rect(0,0, crop_size_.width, crop_size_.height);
+  if ( _crop_size == image.size() ) {
+    _objrect = cv::Rect(0,0, _crop_size.width, _crop_size.height);
   }
-  else if ( !select_crop_rectangle(image.size(), crop_size_, objpos_, &objrect_) ) {
+  else if ( !select_crop_rectangle(image.size(), _crop_size, _objpos, &_objrect) ) {
     CF_FATAL("select_crop_rectangle() fails");
     return false;
   }
 
-  outputROIRectangle = objrect_;
+  outputROIRectangle = _objrect;
 
   return true;
 }
 
 const cv::Point2f & c_planetary_disk_selection::detected_object_position() const
 {
-  return objpos_;
+  return _objpos;
 }
 
 const cv::Rect & c_planetary_disk_selection::detected_object_roi() const
 {
-  return objrect_;
+  return _objrect;
 }
-
-
-//bool c_planetary_disk_selection::detect_object_roi(cv::InputArray image, cv::InputArray mask,
-//    cv::Point2f & outputObjectLocation,
-//    cv::Rect & outputCropRect )
-//{
-//  if ( !simple_planetary_disk_detector(image, mask, &outputObjectLocation, 0, &outputCropRect) ) {
-//    CF_FATAL("simple_small_planetary_disk_detector() fails");
-//    return false;
-//  }
-//
-//  if ( crop_size_.empty() ) {
-//    crop_size_ = outputCropRect.size() * 2;
-//  }
-//
-//  if ( crop_size_ == image.size() ) {
-//    outputCropRect = cv::Rect(0,0, crop_size_.width, crop_size_.height);
-//  }
-//  else if ( !select_crop_rectangle(image.size(), crop_size_, outputObjectLocation, &outputCropRect) ) {
-//    CF_FATAL("select_crop_rectangle() fails");
-//    return false;
-//  }
-//
-//  return true;
-//}
 

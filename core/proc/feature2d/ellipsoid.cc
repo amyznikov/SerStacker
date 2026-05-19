@@ -5,8 +5,8 @@
  *      Author: amyznikov
  */
 
-#include <core/proc/ellipsoid.h>
-#include <core/proc/planetary-disk-detection.h>
+#include <core/proc/feature2d/ellipsoid.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/pose.h>
 #include <core/debug.h>
 

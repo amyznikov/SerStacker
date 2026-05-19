@@ -11,7 +11,7 @@
 
 #include <core/pipeline/c_image_processing_pipeline.h>
 #include <core/improc/c_image_processor.h>
-#include <core/feature2d/feature2d_settings.h>
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/proc/camera_calibration/camera_pose.h>
 #include <core/proc/image_registration/ecc2.h>
 #include <core/settings/opencv_settings.h>

@@ -78,6 +78,7 @@
 #include "generic/c_fast_nl_means_denoising_routine.h"
 #include "generic/c_adaptive_gaussian_blur_routine.h"
 
+
 #include "generic/c_set_pixels_routine.h"
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
@@ -116,6 +117,8 @@
 #include "feature2d/c_seed_fill_segmentation_routine.h"
 #include "feature2d/c_connected_components_routine.h"
 #include "feature2d/c_roi_tracker_routine.h"
+#include "feature2d/c_draw_jovian_ellipse_routine.h"
+#include "feature2d/c_draw_saturn_ellipse_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -138,8 +141,6 @@
 #include "quicktests/c_edge_test_routine.h"
 #include "quicktests/c_dnn_test_routine.h"
 #include "quicktests/c_blur_test_routine.h"
-#include "quicktests/c_draw_saturn_ellipse_routine.h"
-#include "quicktests/c_draw_jovian_ellipse_routine.h"
 
 #include <atomic>
 
@@ -332,8 +333,8 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_edge_test_routine::class_factory_instance());
     register_class_factory(c_dnn_test_routine::class_factory_instance());
     register_class_factory(c_blur_test_routine::class_factory_instance());
-    register_class_factory(c_draw_saturn_ellipse_routine::class_factory_instance());
     register_class_factory(c_draw_jovian_ellipse_routine::class_factory_instance());
+    register_class_factory(c_draw_saturn_ellipse_routine::class_factory_instance());
 
     register_class_factory(c_image_rectification_routine::class_factory_instance());
     register_class_factory(c_stereo_rectification_routine::class_factory_instance());

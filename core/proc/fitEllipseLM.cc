@@ -14,19 +14,15 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
     double fixed_orientation, // radians
     cv::RotatedRect * rc)
 {
+  typedef c_levmard_solver c_lm_solver;
 
-  typedef c_levmard_solver
-    c_lm_solver;
-
-  class c_lm_solver_callback:
-      public c_lm_solver::callback
+  class c_lm_solver_callback: public c_lm_solver::callback
   {
     double axis_ratio;
     double orientation;
     const std::vector<cv::Point2f> & points;
 
   public:
-
     c_lm_solver_callback(double _axis_ratio, double _orientation, const std::vector<cv::Point2f> & _points) :
         axis_ratio(_axis_ratio),
         orientation(_orientation),
@@ -67,7 +63,6 @@ bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
   std::vector<double> params;
 
   cv::meanStdDev(edge_points, center, size);
-
 
   params.emplace_back(center[0]); // x0
   params.emplace_back(center[1]); // y0

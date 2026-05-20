@@ -27,6 +27,7 @@ public:
 
     // display_detected_ellipseAMS,
 
+    display_pca_channel,
     display_pca_gx,
     display_pca_gy,
 
@@ -39,24 +40,13 @@ public:
   void set_display(display_type v);
   display_type display() const;
 
-  void set_stdev_factor(double v);
-  double stdev_factor() const;
-
-  void set_pca_blur(double v);
-  double pca_blur() const;
-
-  void set_offset(const cv::Point2f & v);
-  const cv::Point2f & offset() const;
-
-  c_jovian_ellipse_detector * detector();
-  const c_jovian_ellipse_detector * detector() const;
-
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   display_type _display_type = display_final_ellipse_fit;
+  c_jovian_ellipse_detector_options _opts;
   c_jovian_ellipse_detector _detector;
 };
 

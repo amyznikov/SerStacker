@@ -10,8 +10,7 @@
 #define __c_saturn_derotation_h__
 
 #include <opencv2/opencv.hpp>
-#include "c_saturn_ellipse_detector.h"
-// #include "ecc2.h"
+#include <core/proc/feature2d/c_saturn_ellipse_detector.h>
 
 class c_saturn_derotation
 {

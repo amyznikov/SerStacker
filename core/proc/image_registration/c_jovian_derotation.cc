@@ -332,7 +332,7 @@ bool c_jovian_derotation::detect_jovian_ellipse(cv::InputArray reference_image, 
   INSTRUMENT_REGION("");
 
 
-  if( !jovian_detector_.detect_jovian_disk(reference_image, reference_mask) ) {
+  if( !jovian_detector_.detect_jovian_ellipse(reference_image, reference_mask) ) {
     CF_ERROR("ellipse_detector_.detect_jovian_ellipse(reference_image) fails");
     return false;
   }
@@ -355,7 +355,7 @@ bool c_jovian_derotation::detect_jovian_ellipse(cv::InputArray reference_image, 
     std::string fname;
     cv::Mat tmp;
 
-    cv::cvtColor(jovian_detector_.gray_image(), tmp, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(jovian_detector_.grayscale_image(), tmp, cv::COLOR_GRAY2BGR);
     drawRotatedRectange(tmp, jovian_ellipse_, CV_RGB(0, 1, 0));
 
     if( !save_image(tmp, reference_mask_,

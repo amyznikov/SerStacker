@@ -340,8 +340,7 @@ double c_jovian_ellipse_detector2::compute_jovian_orientation_pca(const cv::Mat 
   _pca_gx.setTo(0, ~mask);
   _pca_gy.setTo(0, ~mask);
 
-  const int npts =
-      cv::countNonZero(mask);
+  const int npts = cv::countNonZero(mask);
 
   cv::Mat1f data_pts(npts, 2);
 

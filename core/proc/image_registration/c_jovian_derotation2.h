@@ -10,7 +10,7 @@
 #define __c_jovian_derotation2_h__
 
 #include <opencv2/opencv.hpp>
-#include "c_jovian_ellipse_detector2.h"
+#include <core/proc/feature2d/c_jovian_ellipse_detector2.h>
 
 class c_jovian_derotation2
 {

@@ -10,7 +10,7 @@
 #define __jupiter_h__
 
 #include <opencv2/opencv.hpp>
-#include "c_jovian_ellipse_detector.h"
+#include <core/proc/feature2d/c_jovian_ellipse_detector.h>
 #include "ecc2.h"
 
 /**

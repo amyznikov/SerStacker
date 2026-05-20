@@ -10,7 +10,7 @@
 #define __c_draw_saturn_ellipse_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/image_registration/c_saturn_ellipse_detector.h>
+#include <core/proc/feature2d/c_saturn_ellipse_detector.h>
 
 
 class c_draw_saturn_ellipse_routine :

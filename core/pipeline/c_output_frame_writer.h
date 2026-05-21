@@ -37,6 +37,7 @@ public:
   static const std::string & default_ffmpeg_opts();
 
   const std::string & filename() const;
+  const char * cfilename() const;
   const std::string & ffmpeg_opts() const;
 
   bool open(const std::string & filename,

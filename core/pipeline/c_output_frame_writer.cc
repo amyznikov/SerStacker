@@ -101,6 +101,11 @@ const std::string & c_output_frame_writer::filename() const
   return output_file_name;
 }
 
+const char * c_output_frame_writer::cfilename() const
+{
+  return output_file_name.c_str();
+}
+
 const std::string & c_output_frame_writer::ffmpeg_opts() const
 {
   return _ffmpeg_opts;

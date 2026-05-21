@@ -51,13 +51,15 @@ struct c_jdr_pipeline_jovian_ellipse_detector_options
   c_jovian_ellipse_detector_options jovian_ellipse_detector_options;
 };
 
-struct c_jdr_pipeline_stack_options {
-
+struct c_jdr_pipeline_stack_options
+{
+  c_image_processor::sptr input_image_preprocessor;
 };
 
-struct c_jdr_pipeline_output_options  :
-    c_image_processing_pipeline_output_options
+struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
+  bool save_aligned_frames = false;
+  c_output_frame_writer_options save_aligned_frames_opts;
 };
 
 
@@ -107,6 +109,7 @@ protected:
 
   bool create_reference_frame();
   bool estimate_jovian_ellipse();
+  bool derotate_jovian_frames();
 
 protected:
   c_jdr_pipeline_input_options _input_options;
@@ -125,6 +128,10 @@ protected:
 
   cv::Mat _reference_frame;
   cv::Mat _reference_mask;
+  cv::Mat _current_aligned_frame;
+  cv::Mat _current_aligned_mask;
+
+  c_output_frame_writer _current_aligned_frame_writer;
 };
 
 #endif /* __c_jdr_pipeline_h__ */

@@ -103,12 +103,19 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
-        [&, cctx = ctx(&this_class::_stack_options)]() {
+        [&, ctx = ctx(&this_class::_stack_options)]() {
+          ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor));
         });
 
     ctlbind_expandable_group(ctls, "6. Output options",
-        [&, cctx = ctx(&this_class::_output_options)]() {
-          ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(cctx));
+        [&, ctx = ctx(&this_class::_output_options)]() {
+          ctlbind(ctls, as_base<c_image_processing_pipeline_output_options>(ctx));
+
+          ctlbind_expandable_group(ctls, "Save Aligned Frames", "");
+          ctlbind(ctls, "save_aligned_frames",CTL_CONTEXT(ctx, save_aligned_frames), "");
+          ctlbind(ctls,CTL_CONTEXT(ctx, save_aligned_frames_opts));
+          ctlbind_end_group(ctls);
+
         });
   }
 
@@ -159,12 +166,17 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 
 
   if( auto stack_opts = SERIALIZE_GROUP(settings, save, "stack_opts") ) {
-    //  c_jdr_pipeline_stack_options _stack_options;
+    SERIALIZE_OPTION(stack_opts, save, _stack_options, input_image_preprocessor);
   }
 
   if( auto output_opts = SERIALIZE_GROUP(settings, save, "output_opts") ) {
-    //  c_jdr_pipeline_output_options _output_options;
     serialize_base_output_options(output_opts, save, _output_options);
+
+    SERIALIZE_OPTION(output_opts, save, _output_options, save_aligned_frames);
+    if( auto group = SERIALIZE_GROUP(output_opts, save, "save_aligned_frames_opts") ) {
+      SERIALIZE_OPTION(group, save, _output_options, save_aligned_frames_opts);
+    }
+
   }
 
   return true;
@@ -239,6 +251,7 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
       break;
 
     case stacking_stage_select_master_frame_index: {
+      CF_DEBUG("stacking_stage_select_master_frame_index");
       if ( outputImage.needed() ) {
         _current_master_frame_candidate.copyTo(outputImage);
       }
@@ -249,9 +262,18 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
     }
 
     case stacking_stage_generate_reference_frame: {
+      CF_DEBUG("stacking_stage_generate_reference_frame : accumulated_frames=%d ", _reference_frame_avg.accumulated_frames());
       return _reference_frame_avg.compute(outputImage, outputMask);
     }
+
+    case stacking_stage_in_progress: {
+      CF_DEBUG("stacking_stage_in_progress");
+      _current_aligned_frame.copyTo(outputImage);
+      _current_aligned_mask.copyTo(outputMask);
+      return true;
+    }
     default:
+      CF_DEBUG("BAD _pipeline_stage=%d", _pipeline_stage);
       break;
   }
 
@@ -378,121 +400,14 @@ bool c_jdr_pipeline::run_pipeline()
     return false;
   }
 
+  if ( !derotate_jovian_frames() ) {
+    CF_ERROR("derotate_jovian_frames() fails");
+    return false;
+  }
+
   CF_DEBUG("LEAVE");
   return true;
 }
-
-
-
-#if 0
-static int select_master_frame(const c_input_sequence::sptr & input_sequence, const c_master_frame_selection_options & opts,
-    const std::function<bool()> & canceled )
-{
-  INSTRUMENT_REGION("");
-
-  int selected_master_frame_index = 0;
-
-//  _selected_master_frame.release();
-//  _selected_master_frame_mask.release();
-
-  switch (opts.master_selection_method) {
-
-    case master_frame_specific_index:
-      selected_master_frame_index = opts.master_frame_index;
-      break;
-
-    case master_frame_middle_index:
-      selected_master_frame_index = input_sequence->size() / 2;
-      break;
-
-    case master_frame_best_of_100_in_middle: {
-
-      c_laplacian_sharpness_measure measure(2, cv::Size(5, 5));
-
-      constexpr int max_frames_to_scan = 2000;
-
-      CF_DEBUG("Scan %d frames around of middle %d",
-          max_frames_to_scan, input_sequence->size() / 2);
-
-      int start_pos, end_pos, backup_current_pos;
-
-      if( input_sequence->size() <= max_frames_to_scan ) {
-        start_pos = 0;
-        end_pos = input_sequence->size();
-      }
-      else {
-        start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
-        end_pos = std::min(input_sequence->size(), start_pos + max_frames_to_scan / 2);
-      }
-
-      //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
-      input_sequence->set_auto_apply_color_matrix(false);
-
-      backup_current_pos = input_sequence->current_pos();
-      input_sequence->seek(start_pos);
-
-      cv::Mat image, mask, dogs;
-      int current_index, best_index = 0;
-      double current_metric, best_metric = 0;
-
-      int total_frames = end_pos - start_pos;
-      int processed_frames = 0;
-      int accumulated_frames = 0;
-
-      on_frame_processed();
-
-      for( current_index = 0; processed_frames < total_frames;
-          processed_frames = ++current_index, on_frame_processed() ) {
-
-        if ( canceled && canceled() ) {
-          CF_DEBUG("cancel requested");
-          return -1;
-        }
-
-        if( input_sequence->is_bad_frame_index(input_sequence->current_pos()) ) {
-          CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
-          input_sequence->seek(input_sequence->current_pos() + 1);
-          continue;
-        }
-
-        if( !read_input_frame(input_sequence, image, mask, false, false) ) {
-          CF_ERROR("read_input_frame() fails");
-          return false;
-        }
-
-        current_metric =
-            measure.compute(image,
-                mask)[0];
-
-        if( current_metric > best_metric ) {
-
-          best_metric = current_metric;
-          best_index = current_index;
-
-          if( true ) {
-            lock_guard lock(mutex());
-            image.copyTo(_selected_master_frame);
-            mask.copyTo(_selected_master_frame_mask);
-          }
-
-          set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
-              "BEST: INDEX=%d METRIC: %g",
-              best_index + start_pos,
-              best_metric));
-        }
-      }
-
-      selected_master_frame_index = best_index + start_pos;
-      input_sequence->seek(backup_current_pos);
-
-      break;
-    }
-  }
-
-  return selected_master_frame_index;
-}
-#endif
-
 
 bool c_jdr_pipeline::create_reference_frame()
 {
@@ -599,7 +514,7 @@ bool c_jdr_pipeline::create_reference_frame()
   else {
     CF_DEBUG("GENERATING REFERENCE FRAME");
 
-    _reference_frame_avg.clear();
+    synchronized([this]() {_reference_frame_avg.clear();});
     set_pipeline_stage(stacking_stage_generate_reference_frame);
 
 
@@ -656,6 +571,7 @@ bool c_jdr_pipeline::create_reference_frame()
 
     _processed_frames = 0;
     _accumulated_frames = 0;
+    _total_frames = end_frame_index - start_frame_index;
 
     for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
 
@@ -695,7 +611,7 @@ bool c_jdr_pipeline::create_reference_frame()
         return false;
       }
 
-      if ( !ecch.align(current_grayscale_frame, current_mask) ) {
+      if( !ecch.align(current_grayscale_frame, current_mask) ) {
         CF_ERROR("[F %d] ecch.align() fails", i);
         return false;
       }
@@ -711,26 +627,25 @@ bool c_jdr_pipeline::create_reference_frame()
           rmap, cv::noArray(),
           cv::INTER_LINEAR,
           cv::BORDER_REPLICATE);
-      cv::remap(current_mask, current_mask,
+      cv::remap(current_mask.empty() ? cv::Mat1b(current_frame.size(), uint8_t(255)) : current_mask, current_mask,
           rmap, cv::noArray(),
           cv::INTER_LINEAR,
           cv::BORDER_CONSTANT);
       cv::compare(current_mask, 250, current_mask,
           cv::CMP_GE);
 
-      CF_DEBUG("[F %d] REMAPPED", i);
+      CF_DEBUG("[F %d] REMAPPED mask nnz = %d ", i, cv::countNonZero(current_mask));
 
-      if ( true ) {
-
+      if( true ) {
         lock_guard lock(mutex());
-        if ( !_reference_frame_avg.add(current_frame, current_mask) ) {
+        if( !_reference_frame_avg.add(current_frame, current_mask) ) {
           CF_ERROR("[F %d]  _reference_frame_avg.add() fails", i);
           return false;
         }
-
-        CF_DEBUG("[F %d] ACCUMULATED", i);
         ++_accumulated_frames;
       }
+
+      CF_DEBUG("[F %d] ACCUMULATED", i);
     }
 
     if( true ) {
@@ -830,3 +745,155 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
 
   return true;
 }
+
+bool c_jdr_pipeline::derotate_jovian_frames()
+{
+  const int input_sequence_size = _input_sequence->size();
+  const int max_input_frames = _input_options.max_input_frames < 0 ? input_sequence_size : std::clamp(_input_options.max_input_frames, 0, input_sequence_size);
+  const int start_frame_index = std::clamp(_input_options.start_frame_index, 0, input_sequence_size - 1);
+  const int end_frame_index = std::min(start_frame_index + max_input_frames, max_input_frames);
+
+  CF_DEBUG("start_frame_index=%d end_frame_index=%d / %d", start_frame_index, end_frame_index, input_sequence_size);
+
+  if ( !_input_sequence->seek(start_frame_index) ) {
+    CF_ERROR("_input_sequence->seek(start_frame_index=%d) fails", start_frame_index);
+    return false;
+  }
+
+
+  const c_image_transform::sptr transform =
+      create_image_transform(_reference_frame_options.generate_opts.motion_type);
+  if( !transform ) {
+    CF_ERROR("create_image_transform(motion_type = %d (%s) ) fails",
+        (int )(_reference_frame_options.generate_opts.motion_type),
+        toCString(_reference_frame_options.generate_opts.motion_type));
+    return false;
+  }
+
+  const color_channel_type & reference_channel =
+      color_channel_gray;
+
+  cv::Mat current_frame;
+  cv::Mat current_grayscale_frame;
+  cv::Mat current_mask;
+  cv::Mat2f rmap;
+
+  set_pipeline_stage(stacking_stage_in_progress);
+
+  c_ecch ecch(transform.get(), _reference_frame_options.generate_opts.ecch_opts);
+
+  if ( _reference_frame.channels() == 1 ) {
+    current_grayscale_frame = _reference_frame;
+  }
+  else if ( !extract_channel(_reference_frame, current_grayscale_frame, cv::noArray(), cv::noArray(), reference_channel) ) {
+    CF_ERROR("extract_channel(reference_channel=%d (%s)) fails", reference_channel, toCString(reference_channel));
+    return false;
+  }
+
+  if ( !ecch.set_reference_image(current_grayscale_frame, _reference_mask) ) {
+    CF_ERROR("ecch.set_reference_image() fails");
+    return false;
+  }
+
+  _processed_frames = 0;
+  _accumulated_frames = 0;
+  _total_frames = end_frame_index - start_frame_index;
+
+  if( _output_options.save_aligned_frames ) {
+    const bool fOK =
+        add_output_writer(_current_aligned_frame_writer,
+            _output_options.save_aligned_frames_opts,
+            "aligned", ".avi");
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          _current_aligned_frame_writer.cfilename());
+      return false;
+    }
+  }
+
+
+  for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
+
+    if( is_bad_frame_index(_input_sequence->current_pos()) ) {
+      CF_DEBUG("Skip frame %d as blacklisted", _input_sequence->current_pos());
+      _input_sequence->seek(_input_sequence->current_pos() + 1);
+      continue;
+    }
+
+    if ( !read_input_frame(_input_sequence, _input_options, current_frame, current_mask, false, false) ) {
+      CF_ERROR("read_input_frame(_input_sequence->current_pos()=%d) fails", _input_sequence->current_pos());
+      return false;
+    }
+
+    if ( canceled() ) {
+      set_status_msg("canceled");
+      break;
+    }
+
+    CF_DEBUG("[F %d] frame: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d", i,
+        current_frame.cols, current_frame.rows, current_frame.channels(), current_frame.depth(),
+        current_mask.cols, current_mask.rows, current_mask.channels(), current_mask.depth());
+
+    if( const auto & proc = _stack_options.input_image_preprocessor) {
+      if( !proc->process(current_frame, current_mask) ) {
+        CF_ERROR("input_image_processor->process(current_frame, current_mask) fails");
+        return false;
+      }
+      CF_DEBUG("[F %d] PREPROCESSED", i);
+    }
+
+    if ( current_frame.channels() == 1 ) {
+      current_grayscale_frame = current_frame;
+    }
+    else if ( !extract_channel(current_frame, current_grayscale_frame, cv::noArray(), cv::noArray(), reference_channel) ) {
+      CF_ERROR("extract_channel(reference_channel=%d (%s)) fails", reference_channel, toCString(reference_channel));
+      return false;
+    }
+
+    if( !ecch.align(current_grayscale_frame, current_mask) ) {
+      CF_ERROR("[F %d] ecch.align() fails", i);
+      return false;
+    }
+
+    CF_DEBUG("[F %d] ALIGNED", i);
+
+    if ( !ecch.create_remap(rmap) ) {
+      CF_ERROR("[F %d] ecch.create_remap() fails", i);
+      return false;
+    }
+
+    if ( true ) {
+      lock_guard lock(mutex());
+
+      cv::remap(current_frame, _current_aligned_frame,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_REPLICATE);
+      cv::remap(current_mask, _current_aligned_mask,
+          rmap, cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_CONSTANT);
+      cv::compare(_current_aligned_mask, 250, _current_aligned_mask,
+          cv::CMP_GE);
+    }
+
+    CF_DEBUG("[F %d] REMAPPED", i);
+
+    if ( true ) {
+      lock_guard lock(mutex());
+      ++_accumulated_frames;
+    }
+
+    CF_DEBUG("[F %d] ACCUMULATED", i);
+
+    if ( _current_aligned_frame_writer.is_open() ) {
+      if ( !_current_aligned_frame_writer.write(_current_aligned_frame, _current_aligned_mask) ) {
+        CF_ERROR("[F %d] _current_aligned_frame_writer.write() fails for %s", i, _current_aligned_frame_writer.cfilename());
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+

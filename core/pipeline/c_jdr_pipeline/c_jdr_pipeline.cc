@@ -97,10 +97,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
 
     ctlbind_expandable_group(ctls, "4. Jovian Ellipse Estimation Options",
         [ctx = CTL_CONTEXT(ctx, _ellipse_estimation_options)]() {
-          ctlbind_expandable_group(ctls, "Planetary disk detection",
-              [ctx = CTL_CONTEXT(ctx, planetary_disk_detector_opts)]() {
-                ctlbind(ctls, ctx);
-              });
+          ctlbind(ctls, CTL_CONTEXT(ctx, jovian_ellipse_detector_options));
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
@@ -152,9 +149,9 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( auto ellipse_opts = SERIALIZE_GROUP(settings, save, "ellipse_opts") ) {
-    if( auto planetary_disk_opts = SERIALIZE_GROUP(ellipse_opts, save, "planetary_disk") ) {
-      serialize_base_planetary_disk_detector_options(planetary_disk_opts, save,
-          _ellipse_estimation_options.planetary_disk_detector_opts);
+    if( auto jovian_ellipse_detector_opts = SERIALIZE_GROUP(ellipse_opts, save, "jovian_ellipse_detector") ) {
+      serialize_base_jovian_ellipse_detector_options(jovian_ellipse_detector_opts, save,
+          _ellipse_estimation_options.jovian_ellipse_detector_options);
     }
   }
 
@@ -745,38 +742,60 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     return false;
   }
 
-  cv::Point2f geometrical_center;
-  cv::Point2f centroid;
-  cv::Rect component_rect;
-  cv::Mat cmponent_mask;
-  cv::Mat debug_image;
-
-  bool fOK =
-      simple_planetary_disk_detector(_reference_frame, _reference_mask,
-          _ellipse_estimation_options.planetary_disk_detector_opts,
-          &centroid,
-          &component_rect,
-          &cmponent_mask,
-          &geometrical_center,
-          &debug_image);
-
-  if ( !fOK ) {
-    CF_ERROR("simple_planetary_disk_detector fails");
+  _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
+  if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
+    CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
     return false;
   }
 
-  CF_DEBUG("simple_planetary_disk_detector: \n"
-      "geometrical_center: %g,%g  centroid: %g,%g rect: %d;%d;%dx%d",
-      geometrical_center.x, geometrical_center.y,
-      centroid.x, centroid.y,
-      component_rect.x, component_rect.y, component_rect.width, component_rect.height);
+  if ( true ) {
+    // create illustration image
+    cv::Mat display;
+    double minv = 0, maxv = 1;
+    cv::minMaxLoc(_reference_frame, &minv, &maxv, nullptr, nullptr);
 
-  const std::string output_component_mask_file_name =
-      generate_output_filename("component_mask", "", ".png");
+    if ( _reference_frame.channels() == 3 ) {
+      _reference_frame.convertTo(display, CV_8UC3, 255./maxv);
+    }
+    else {
+      cv::cvtColor(_reference_frame, display, cv::COLOR_GRAY2BGR);
+      display.convertTo(display, CV_8UC3, 255./maxv);
+    }
 
-  if( !save_image(cmponent_mask, cv::noArray(), output_component_mask_file_name) ) {
-    CF_ERROR("save_image('%s') fails", output_component_mask_file_name.c_str());
-    return false;
+    static const auto drawRotatedRect =
+        [](cv::InputOutputArray image, const cv::RotatedRect & rc,
+        const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
+    {
+      cv::rectangle(image, compute_ellipse_bounding_box(rc), cv::Scalar(0, 0, 200), 1);
+      cv::Point2f pts[4];
+      rc.points(pts);
+      for( int i = 0; i < 4; i++ ) {
+        cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
+      }
+      cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
+      cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
+    };
+
+
+    drawRotatedRect(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 255, 0), 1);
+    display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.detected_planetary_disk_edge());
+    cv::ellipse(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
+
+    const std::string output_display_file_name =
+        generate_output_filename("jovian_ellipse_fit", "", ".png");
+    if( !save_image(display, cv::noArray(), output_display_file_name) ) {
+      CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
+      return false;
+    }
+    CF_DEBUG("Saved %s", output_display_file_name.c_str());
+
+    const std::string output_planetary_disk_mask_file_name =
+        generate_output_filename("reference_planetary_disk_mask", "", ".png");
+    if( !save_image(_jovian_ellipse_detector.detected_planetary_disk_mask(), cv::noArray(), output_planetary_disk_mask_file_name) ) {
+      CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_file_name.c_str());
+      return false;
+    }
+    CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
   }
 
   return true;

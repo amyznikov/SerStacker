@@ -117,7 +117,7 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
   return false;
 }
 
-static void rotatedRectange(cv::InputOutputArray image, const cv::RotatedRect & rc,
+static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & rc,
     const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
 {
 
@@ -201,7 +201,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
-      rotatedRectange(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
+      drawRotatedRect(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
       image.setTo(cv::Scalar::all(1), _detector.detected_planetary_disk_edge());
       cv::ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
       mask.release();

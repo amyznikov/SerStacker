@@ -12,6 +12,7 @@
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/pipeline/c_master_frame_selection.h>
 #include <core/proc/feature2d/c_roi_selection.h>
+#include <core/proc/feature2d/c_jovian_ellipse_detector.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/average/c_frame_accumulation.h>
 
@@ -45,9 +46,9 @@ struct c_jdr_pipeline_reference_frame_options
   } generate_opts;
 };
 
-struct c_jdr_pipeline_jovian_ellipse_estimation_options
+struct c_jdr_pipeline_jovian_ellipse_detector_options
 {
-  c_simple_planetary_disk_detector_options planetary_disk_detector_opts;
+  c_jovian_ellipse_detector_options jovian_ellipse_detector_options;
 };
 
 struct c_jdr_pipeline_stack_options {
@@ -111,13 +112,15 @@ protected:
   c_jdr_pipeline_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
   c_jdr_pipeline_reference_frame_options  _reference_frame_options;
-  c_jdr_pipeline_jovian_ellipse_estimation_options _ellipse_estimation_options;
+  c_jdr_pipeline_jovian_ellipse_detector_options _ellipse_estimation_options;
   c_jdr_pipeline_stack_options _stack_options;
   c_jdr_pipeline_output_options _output_options;
 
 protected:
   c_roi_selection::sptr _roi_selection;
   c_frame_weigthed_average _reference_frame_avg;
+  c_jovian_ellipse_detector _jovian_ellipse_detector;
+
   int _pipeline_stage = 0;
 
   cv::Mat _reference_frame;

@@ -87,7 +87,9 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
 
           ctlbind_expandable_group(ctls, "Reference Frame Generate Options",
               [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
+                ctlbind(ctls, "motion_type", CTL_CONTEXT(ctx, motion_type), "");
                 ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
+                ctlbind(ctls, "reference_channel", CTL_CONTEXT(ctx, reference_channel), "");
                 ctlbind_expandable_group(ctls, "ECCH",
                     [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
                       ctlbind(ctls, ctx);
@@ -137,11 +139,11 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(reference_frame_opts, save, opts, reference_file_name);
     SERIALIZE_OPTION(reference_frame_opts, save, opts, generate_reference_frame);
-    SERIALIZE_OPTION(reference_frame_opts, save, opts, reference_channel);
 
     if( auto generate_opts = SERIALIZE_GROUP(reference_frame_opts, save, "generate_opts") ) {
+      SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, reference_channel);
+      SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, motion_type);
       SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, input_image_preprocessor);
-
       if( auto ecch_opts = SERIALIZE_GROUP(generate_opts, save, "ecch") ) {
         serialize_ecch_options(ecch_opts, save, opts.generate_opts.ecch_opts);
       }
@@ -620,15 +622,35 @@ bool c_jdr_pipeline::create_reference_frame()
       }
     }
 
-    cv::Mat current_frame;
+    const c_image_transform::sptr transform =
+        create_image_transform(_reference_frame_options.generate_opts.motion_type);
+    if( !transform ) {
+      CF_ERROR("create_image_transform(motion_type = %d (%s) ) fails",
+          (int )(_reference_frame_options.generate_opts.motion_type),
+          toCString(_reference_frame_options.generate_opts.motion_type));
+      return false;
+    }
+
+
+    cv::Mat current_frame, current_grayscale_frame;
     cv::Mat current_mask;
     cv::Mat2f rmap;
 
-    c_translation_image_transform transform;
-    c_ecch ecch(&transform, _reference_frame_options.generate_opts.ecch_opts);
+    const color_channel_type & reference_channel =
+        _reference_frame_options.generate_opts.reference_channel;
 
-    if ( !ecch.set_reference_image(master_frame, master_mask) ) {
-      CF_ERROR("ecch.align() fails");
+    c_ecch ecch(transform.get(), _reference_frame_options.generate_opts.ecch_opts);
+
+    if ( master_frame.channels() == 1 ) {
+      current_grayscale_frame = master_frame;
+    }
+    else if ( !extract_channel(master_frame, current_grayscale_frame, cv::noArray(), cv::noArray(), reference_channel) ) {
+      CF_ERROR("extract_channel(reference_channel=%d (%s)) fails", reference_channel, toCString(reference_channel));
+      return false;
+    }
+
+    if ( !ecch.set_reference_image(current_grayscale_frame, master_mask) ) {
+      CF_ERROR("ecch.set_reference_image() fails");
       return false;
     }
 
@@ -665,7 +687,15 @@ bool c_jdr_pipeline::create_reference_frame()
         CF_DEBUG("[F %d] PREPROCESSED", i);
       }
 
-      if ( !ecch.align(current_frame, current_mask) ) {
+      if ( current_frame.channels() == 1 ) {
+        current_grayscale_frame = current_frame;
+      }
+      else if ( !extract_channel(current_frame, current_grayscale_frame, cv::noArray(), cv::noArray(), reference_channel) ) {
+        CF_ERROR("extract_channel(reference_channel=%d (%s)) fails", reference_channel, toCString(reference_channel));
+        return false;
+      }
+
+      if ( !ecch.align(current_grayscale_frame, current_mask) ) {
         CF_ERROR("[F %d] ecch.align() fails", i);
         return false;
       }

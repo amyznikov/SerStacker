@@ -38,11 +38,11 @@ struct c_jdr_pipeline_reference_frame_options
   std::string reference_file_name;
   c_master_frame_selection_options master_selection;
   bool generate_reference_frame = true;
-  color_channel_type reference_channel = color_channel_gray;
   struct c_regerence_frame_generator_options {
+    IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
+    color_channel_type reference_channel = color_channel_gray;
     c_image_processor::sptr input_image_preprocessor;
     c_ecch_options ecch_opts;
-
   } generate_opts;
 };
 

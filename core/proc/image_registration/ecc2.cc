@@ -585,25 +585,16 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
 
 
   if( src.channels() == 1 ) {
-
-    src.getMat().convertTo(dst,
-        dst.depth());
-
+    src.getMat().convertTo(dst, dst.depth());
   }
   else {
     cv::Mat tmp;
-
-    cv::cvtColor(src, tmp,
-        cv::COLOR_BGR2GRAY);
-
+    cv::cvtColor(src, tmp, cv::COLOR_BGR2GRAY);
     if( tmp.depth() == dst.depth() ) {
-
       dst = tmp;
     }
     else {
-
-      tmp.convertTo(dst,
-          dst.depth());
+      tmp.convertTo(dst, dst.depth());
     }
   }
 

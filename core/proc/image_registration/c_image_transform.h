@@ -58,7 +58,7 @@ public:
 
   cv::Mat1f parameters() const
   {
-    return parameters_.clone();
+    return _parameters.clone();
   }
 
   bool create_remap(const cv::Size & size, cv::Mat2f & map) const
@@ -94,7 +94,7 @@ public:
   }
 
 protected:
-  cv::Mat1f parameters_;
+  cv::Mat1f _parameters;
 };
 
 
@@ -204,13 +204,13 @@ protected:
   void update_parameters();
 
 protected:
-  cv::Vec2f T_;
-  cv::Vec2f C_;
-  float angle_ = 0;
-  float scale_ = 1;
-  bool fix_translation_ = false;
-  bool fix_rotation_ = false;
-  bool fix_scale_ = false;
+  cv::Vec2f _T;
+  cv::Vec2f _C;
+  float _angle = 0;
+  float _scale = 1;
+  bool _fix_translation = false;
+  bool _fix_rotation = false;
+  bool _fix_scale = false;
 };
 
 inline cv::Matx23f create_euclidean_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle = 0, float scale = 1)
@@ -331,7 +331,7 @@ protected:
   void update_parameters();
 
 protected:
-  cv::Matx33f matrix_;
+  cv::Matx33f _matrix;
 };
 
 

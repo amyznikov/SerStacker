@@ -1830,193 +1830,103 @@ bool c_ecclm::align()
   cv::Mat1f H, Hp, v, deltap, temp_d;
   cv::Mat1f params, newparams;
 
-  params =
-      _transform->parameters();
+  params = _transform->parameters();
 
-  const int M =
-      params.rows;
+  const int M = params.rows;
+  constexpr double eps = std::numeric_limits<double>::epsilon();
 
-  constexpr double eps =
-      std::numeric_limits<double>::epsilon();
+  const double epsx = _max_eps;
+  const double epsy = _max_epsy;
+  const int max_iterations = _max_iterations;
 
-  double lambda = 0.01;
-  double err = 0, newerr = 0, dp = 0;
-
+  double lambda = 0.1;
   int iteration = 0;
-
-//  CF_DEBUG("\n---------------------------------------------");
-
-//  CF_DEBUG("initial parameters: T={\n"
-//      "%+g %+g\n"
-//      "}\n",
-//      params[0][0],
-//      params[1][0]
-//      );
-
-//  CF_DEBUG("initial parameters: T={\n"
-//      "%+g %+g %+g\n"
-//      "%+g %+g %+g\n"
-//      "}\n",
-//      params[0][0],
-//      params[1][0],
-//      params[2][0],
-//      params[3][0],
-//      params[4][0],
-//      params[5][0]
-//  );
-
-//  CF_DEBUG("initial parameters: T={\n"
-//      "%+g %+g %+g\n"
-//      "%+g %+g %+g\n"
-//      "%+g %+g\n"
-//      "}\n",
-//      params[0][0],
-//      params[1][0],
-//      params[2][0],
-//      params[3][0],
-//      params[4][0],
-//      params[5][0],
-//      params[6][0],
-//      params[7][0]
-//  );
-
+  bool converged = false;
   bool recompute_remap = true;
 
   J.clear();
 
-  while (iteration < _max_iterations) {
+  while (iteration < max_iterations) {
 
-    //CF_DEBUG("> IT %d model_->compute_jac()", iteration);
-
-    err =
-        compute_jac(params, recompute_remap, H, v);
-
-//    CF_DEBUG("* JJ > IT %d lambda=%g err=%g\n",
-//        iteration,
-//        lambda,
-//        err);
-
+    //  CF_DEBUG("> IT %d model_->compute_jac()", iteration);
+    const double err = compute_jac(params, recompute_remap, H, v);
     H.copyTo(Hp);
 
     /*
      * Solve normal equation for given Jacobian and lambda
      * */
-    do {
+    while (iteration++ < max_iterations) {
 
-      ++iteration;
       recompute_remap = true;
 
-      /*
-       * Increase diagonal elements by lambda
-       * */
+      /* Increase diagonal elements by lambda */
       for( int i = 0; i < M; ++i ) {
         H[i][i] = (1 + lambda) * Hp[i][i];
       }
 
-      /* Solve system to define delta and define new value of params */
+      /* Solve system to compute parameters update
+       *  deltap = H.inv() * v
+       *  */
       cv::solve(H, v, deltap, cv::DECOMP_CHOLESKY);
       cv::scaleAdd(deltap, -_update_step_scale, params, newparams);
 
-
-//      CF_DEBUG("IT %d Compute function for newparams: \n"
-//          "deltap = { \n"
-//          "  %+20g %+20g\n"
-//          "}\n"
-//          "newparams = {\n"
-//          "  %+20g %+20g\n"
-//          "}"
-//          "\n",
-//          iteration,
-//          deltap[0][0], deltap[1][0],
-//          newparams[0][0], newparams[1][0]);
-
-      /* Compute function for newparams */
-      newerr =
-          compute_rhs(newparams);
-
-      /* Check for increments in parameters  */
-      if ((dp = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
-        // CF_DEBUG("BREAK by eps= %g / %g ", dp, max_eps_);
+      /* Check for increment in parameters  */
+      const double dp = _transform->eps(deltap, _reference_image.size());
+      _eps = dp;
+      if( dp <= epsx ) {
+        _transform->set_parameters(newparams);
+        params = _transform->parameters();
+        converged = true;
         break;
       }
 
-      /*
-       * Compute update to lambda
-       * */
-
-      cv::gemm(Hp, deltap, -1, v, 2,
-          temp_d);
-
-      const double dS =
-          deltap.dot(temp_d);
-
-      const double rho =
-          (err - newerr) / (std::abs(dS) > eps ? dS : 1);
-
-
-//      CF_DEBUG("IT %d err=%g newerr=%g dp=%g lambda=%g rho=%+g\n",
-//          iteration,
-//          err, newerr,
-//          dp,
-//          lambda,
-//          rho);
-
-
-      if( rho > 0.25 ) {
-        /* Accept new params and decrease lambda ==> Gauss-Newton method */
-        if( lambda > 1e-6 ) {
-          lambda = std::max(1e-6, lambda / 5);
-        }
-        // CF_DEBUG("  lambda->%g", lambda);
-      }
-      else if( rho > 0.1 ) {
-        // CF_DEBUG(" NO CHANGE lambda->%g", lambda);
-
-      }
-      else if( lambda < 1 ) {       /** Try increase lambda ==> gradient descend */
-        lambda = 1;
-        // CF_DEBUG("  lambda->%g", lambda);
-      }
-      else {
-        lambda *= 10;
-        // CF_DEBUG("  lambda->%g", lambda);
+      /* Compute error function for new parameters */
+      const double newerr = compute_rhs(newparams);
+      if( newerr > err ) {
+        lambda *= 10.0f;
+        continue;
       }
 
-      if ( newerr < err ) {
-        // CF_DEBUG("  ACCEPT");
-        break;
-      }
-
-    } while (iteration < _max_iterations);
-
-    if( newerr < err ) {
-      /*
-       * Accept new params if were not yet accepted
-       * */
-      err = newerr;
-      recompute_remap = false;
+      /* Accept new parameters */
       _transform->set_parameters(newparams);
       params = _transform->parameters();
+      recompute_remap = false;
+
+      /* Check Function Tolerance */
+      const double diff = err - newerr;
+      if (diff < err * epsy ) {
+        converged = true;
+        break;
+      }
+
+      /*
+       * Compute step quality (rho) and update to lambda
+       * Predicted improvement dS
+       * rho = (actual improvement) / (predicted improvement)
+       * */
+      cv::gemm(Hp, deltap, -1, v, 2, temp_d);
+      const double dS = deltap.dot(temp_d);
+      //const double rho = (err - newerr) / (std::abs(dS) > eps ? dS : 1);
+      const double rho = std::abs(dS) > 1e-9f ? diff / std::abs(dS)  : diff;
+      if (rho > 0.25 ) { /* Good step, decrease lambda ==> Gauss-Newton */
+        lambda = std::max(1e-6, 0.2 * lambda);
+      }
+      else if (rho < 0.1) { /* The Taylor model looks poor ==> gradient descend*/
+        lambda = (lambda < 1.0) ? 1.0 : lambda * 10.0;
+      }
+      else {
+      }
+
+      break;
     }
 
-    if( dp < _max_eps ) {
-      // CF_DEBUG("BREAK2 by dp");
+    if (converged) {
       break;
     }
   }
 
-
-//  CF_DEBUG("newparams: T={%+g %+g}\n",
-//      params[0][0],
-//      params[1][0]);
-
-  _eps = dp;
   _num_iterations = iteration;
-//  dp = cv::norm(deltap, cv::NORM_INF);
-//  CF_DEBUG("RET: iteration=%d err=%g eps_=%g dp=%g", iteration, err, eps_, dp);
-
-//  CF_DEBUG("\n---------------------------------------------");
-  return true;
+  return converged;
 }
 
 

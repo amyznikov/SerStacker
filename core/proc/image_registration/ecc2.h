@@ -141,8 +141,10 @@ protected:
   int _max_iterations = 30;
   float _update_step_scale = 1.f;
 
-  float _max_eps = 0.2f;
-  float _eps = FLT_MAX;
+  double _max_eps = 0.2f;
+  double _max_epsy = 1e-5;
+
+  double _eps = FLT_MAX;
   int _nparams = 0;
 
 };

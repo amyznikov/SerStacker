@@ -95,29 +95,29 @@ void c_translation_image_transform::reset()
 
 void c_translation_image_transform::set_translation(const cv::Vec2f & T)
 {
-  if ( parameters_.rows != 2 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(2, 1);
+  if ( _parameters.rows != 2 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(2, 1);
   }
 
-  parameters_(0, 0) = T(0);
-  parameters_(1, 0) = T(1);
+  _parameters(0, 0) = T(0);
+  _parameters(1, 0) = T(1);
 }
 
 void c_translation_image_transform::set_translation(float x, float y)
 {
-  if ( parameters_.rows != 2 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(2, 1);
+  if ( _parameters.rows != 2 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(2, 1);
   }
 
-  parameters_(0, 0) = x;
-  parameters_(1, 0) = y;
+  _parameters(0, 0) = x;
+  _parameters(1, 0) = y;
 }
 
 cv::Vec2f c_translation_image_transform::translation() const
 {
-  return cv::Vec2f((const float*)parameters_.data);
+  return cv::Vec2f((const float*)_parameters.data);
 }
 
 bool c_translation_image_transform::set_parameters(const cv::Mat1f & p)
@@ -127,15 +127,15 @@ bool c_translation_image_transform::set_parameters(const cv::Mat1f & p)
     return false;
   }
 
-  p.copyTo(parameters_);
+  p.copyTo(_parameters);
 
   return true;
 }
 
 void c_translation_image_transform::scale_transfrom(double factor)
 {
-  parameters_(0, 0) *= factor;
-  parameters_(1, 0) *= factor;
+  _parameters(0, 0) *= factor;
+  _parameters(1, 0) *= factor;
 }
 
 double c_translation_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -251,15 +251,15 @@ int c_euclidean_image_transform::num_adjustable_parameters() const
 {
   int np = 0;
 
-  if( !fix_translation_ ) {
+  if( !_fix_translation ) {
     np += 2;
   }
 
-  if( !fix_rotation_ ) {
+  if( !_fix_rotation ) {
     np += 1;
   }
 
-  if( !fix_scale_ ) {
+  if( !_fix_scale ) {
     np += 1;
   }
 
@@ -268,32 +268,31 @@ int c_euclidean_image_transform::num_adjustable_parameters() const
 
 void c_euclidean_image_transform::update_parameters()
 {
-  const int np =
-      num_adjustable_parameters();
+  const int np = num_adjustable_parameters();
 
   if ( np < 1 ) {
     CF_ERROR("c_euclidean_image_transform: No adjusteble parameters");
-    parameters_.release();
+    _parameters.release();
   }
   else {
-    if ( parameters_.rows != np || parameters_.cols != 1 ) {
-      parameters_.release();
-      parameters_.create(np, 1);
+    if ( _parameters.rows != np || _parameters.cols != 1 ) {
+      _parameters.release();
+      _parameters.create(np, 1);
     }
 
     int ip = 0;
 
-    if( !fix_translation_ ) {
-      parameters_(ip++, 0) = T_(0);
-      parameters_(ip++, 0) = T_(1);
+    if( !_fix_translation ) {
+      _parameters(ip++, 0) = _T(0);
+      _parameters(ip++, 0) = _T(1);
     }
 
-    if( !fix_rotation_ ) {
-      parameters_(ip++, 0) = angle_;
+    if( !_fix_rotation ) {
+      _parameters(ip++, 0) = _angle;
     }
 
-    if( !fix_scale_ ) {
-      parameters_(ip++, 0) = scale_;
+    if( !_fix_scale ) {
+      _parameters(ip++, 0) = _scale;
     }
   }
 }
@@ -301,21 +300,19 @@ void c_euclidean_image_transform::update_parameters()
 
 void c_euclidean_image_transform::set_parameters(float Tx, float Ty, float angle, float scale, float Cx, float Cy)
 {
-  T_(0) = Tx;
-  T_(1) = Ty;
-  C_(0) = Cx;
-  C_(1) = Cy;
-  angle_ = angle;
-  scale_ = scale;
+  _T(0) = Tx;
+  _T(1) = Ty;
+  _C(0) = Cx;
+  _C(1) = Cy;
+  _angle = angle;
+  _scale = scale;
 
   update_parameters() ;
 }
 
 bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
 {
-  const int np =
-      num_adjustable_parameters();
-
+  const int np = num_adjustable_parameters();
   if( p.rows != np || p.cols != 1 ) {
     CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
     return false;
@@ -323,17 +320,17 @@ bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
 
   int i = 0;
 
-  if( !fix_translation_ ) {
-    T_(0) = p(i++, 0);
-    T_(1) = p(i++, 0);
+  if( !_fix_translation ) {
+    _T(0) = p(i++, 0);
+    _T(1) = p(i++, 0);
   }
 
-  if( !fix_rotation_ ) {
-    angle_ = p(i++, 0);
+  if( !_fix_rotation ) {
+    _angle = p(i++, 0);
   }
 
-  if( !fix_scale_ ) {
-    scale_ = p(i++, 0);
+  if( !_fix_scale ) {
+    _scale = p(i++, 0);
   }
 
   update_parameters();
@@ -344,37 +341,36 @@ bool c_euclidean_image_transform::set_parameters(const cv::Mat1f & p)
 bool c_euclidean_image_transform::get_parameters(const cv::Mat1f & p, float * Tx, float * Ty, float * angle,
     float * scale, float * Cx, float * Cy) const
 {
-  const int np =
-      num_adjustable_parameters();
+  const int np = num_adjustable_parameters();
 
   if( p.rows != np || p.cols != 1 ) {
     CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
     return false;
   }
 
-  *Cx = C_[0];
-  *Cy = C_[1];
+  *Cx = _C[0];
+  *Cy = _C[1];
 
   int ip = 0;
 
-  if( fix_translation_ ) {
-    *Tx = T_(0);
-    *Ty = T_(1);
+  if( _fix_translation ) {
+    *Tx = _T(0);
+    *Ty = _T(1);
   }
   else {
     *Tx = p(ip++, 0);
     *Ty = p(ip++, 0);
   }
 
-  if( fix_rotation_ ) {
-    *angle = angle_;
+  if( _fix_rotation ) {
+    *angle = _angle;
   }
   else {
     *angle = p(ip++, 0);
   }
 
-  if( fix_scale_ ) {
-    *scale = scale_;
+  if( _fix_scale ) {
+    *scale = _scale;
   }
   else {
     *scale = p(ip++, 0);
@@ -388,85 +384,85 @@ bool c_euclidean_image_transform::get_parameters(const cv::Mat1f & p, float * Tx
 
 void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
 {
-  T_ = v;
+  _T = v;
   update_parameters() ;
 }
 
 cv::Vec2f c_euclidean_image_transform::translation() const
 {
-  return T_;
+  return _T;
 }
 
 void c_euclidean_image_transform::set_center(const cv::Vec2f & v)
 {
-  C_ = v;
+  _C = v;
 }
 
 cv::Vec2f c_euclidean_image_transform::center() const
 {
-  return C_;
+  return _C;
 }
 
 void c_euclidean_image_transform::set_rotation(float angle)
 {
-  angle_ = angle;
+  _angle = angle;
   update_parameters();
 }
 
 float c_euclidean_image_transform::rotation() const
 {
-  return parameters_(2,0);
+  return _parameters(2,0);
 }
 
 void c_euclidean_image_transform::set_scale(float scale)
 {
-  scale_ = scale;
+  _scale = scale;
   update_parameters();
 }
 
 float c_euclidean_image_transform::scale() const
 {
-  return scale_;
+  return _scale;
 }
 
 void c_euclidean_image_transform::set_fix_translation(bool v)
 {
-  fix_translation_ = v;
+  _fix_translation = v;
   update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_translation() const
 {
-  return fix_translation_;
+  return _fix_translation;
 }
 
 void c_euclidean_image_transform::set_fix_rotation(bool v)
 {
-  fix_rotation_ = v;
+  _fix_rotation = v;
   update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_rotation() const
 {
-  return fix_rotation_;
+  return _fix_rotation;
 }
 
 void c_euclidean_image_transform::set_fix_scale(bool v)
 {
-  fix_scale_ = v;
+  _fix_scale = v;
   update_parameters();
 }
 
 bool c_euclidean_image_transform::fix_scale() const
 {
-  return fix_scale_;
+  return _fix_scale;
 }
 
 
 void c_euclidean_image_transform::scale_transfrom(double factor)
 {
-  T_ *= factor;
-  C_ *= factor;
+  _T *= factor;
+  _C *= factor;
   update_parameters();
 }
 
@@ -605,13 +601,13 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
       gx.size();
 
   const bool fix_translation =
-      fix_translation_;
+      _fix_translation;
 
   const bool fix_rotation =
-      fix_rotation_;
+      _fix_rotation;
 
   const bool fix_scale =
-      fix_scale_;
+      _fix_scale;
 
   const float sa =
       std::sin(angle);
@@ -711,28 +707,28 @@ void c_affine_image_transform::reset()
 
 void c_affine_image_transform::set_translation(const cv::Vec2f & v)
 {
-  parameters_(2, 0) = v(0);
-  parameters_(5, 0) = v(1);
+  _parameters(2, 0) = v(0);
+  _parameters(5, 0) = v(1);
 }
 
 cv::Vec2f c_affine_image_transform::translation() const
 {
-  return cv::Vec2f(parameters_(2, 0), parameters_(5, 0));
+  return cv::Vec2f(_parameters(2, 0), _parameters(5, 0));
 }
 
 void c_affine_image_transform::set_matrix(const cv::Matx23f & a)
 {
-  if ( parameters_.rows != 6 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(6, 1);
+  if ( _parameters.rows != 6 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(6, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = a(1, 0);
-  parameters_(4, 0) = a(1, 1);
-  parameters_(5, 0) = a(1, 2);
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = a(1, 0);
+  _parameters(4, 0) = a(1, 1);
+  _parameters(5, 0) = a(1, 2);
 }
 
 cv::Matx23f c_affine_image_transform::matrix(const cv::Mat1f & p) const
@@ -742,7 +738,7 @@ cv::Matx23f c_affine_image_transform::matrix(const cv::Mat1f & p) const
 
 cv::Matx23f c_affine_image_transform::matrix() const
 {
-  return matrix(parameters_);
+  return matrix(_parameters);
 }
 
 bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
@@ -752,14 +748,14 @@ bool c_affine_image_transform::set_parameters(const cv::Mat1f & p)
     return false;
   }
 
-  p.copyTo(parameters_);
+  p.copyTo(_parameters);
   return true;
 }
 
 void c_affine_image_transform::scale_transfrom(double scale)
 {
-  parameters_(2, 0) *= scale;
-  parameters_(5, 0) *= scale;
+  _parameters(2, 0) *= scale;
+  _parameters(5, 0) *= scale;
 }
 
 double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -965,44 +961,44 @@ void c_homography_image_transform::reset()
 
 void c_homography_image_transform::update_parameters()
 {
-  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(8, 1);
+  if ( _parameters.rows != 8 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(8, 1);
   }
 
-  parameters_(0, 0) = matrix_(0, 0);
-  parameters_(1, 0) = matrix_(0, 1);
-  parameters_(2, 0) = matrix_(0, 2);
-  parameters_(3, 0) = matrix_(1, 0);
-  parameters_(4, 0) = matrix_(1, 1);
-  parameters_(5, 0) = matrix_(1, 2);
-  parameters_(6, 0) = matrix_(2, 0);
-  parameters_(7, 0) = matrix_(2, 1);
+  _parameters(0, 0) = _matrix(0, 0);
+  _parameters(1, 0) = _matrix(0, 1);
+  _parameters(2, 0) = _matrix(0, 2);
+  _parameters(3, 0) = _matrix(1, 0);
+  _parameters(4, 0) = _matrix(1, 1);
+  _parameters(5, 0) = _matrix(1, 2);
+  _parameters(6, 0) = _matrix(2, 0);
+  _parameters(7, 0) = _matrix(2, 1);
   //parameters_(8, 0) = matrix_(2, 2);
 }
 
 void c_homography_image_transform::set_translation(const cv::Vec2f & v)
 {
-  matrix_(0, 2) = v(0);
-  matrix_(1, 2) = v(1);
+  _matrix(0, 2) = v(0);
+  _matrix(1, 2) = v(1);
   update_parameters();
 }
 
 cv::Vec2f c_homography_image_transform::translation() const
 {
-  return cv::Vec2f(matrix_(0, 2), matrix_(1, 2));
+  return cv::Vec2f(_matrix(0, 2), _matrix(1, 2));
 }
 
 
 void c_homography_image_transform::set_matrix(const cv::Matx33f & a)
 {
-  matrix_ = a;
+  _matrix = a;
   update_parameters();
 }
 
 const cv::Matx33f & c_homography_image_transform::matrix() const
 {
-  return matrix_;
+  return _matrix;
 }
 
 cv::Matx33f c_homography_image_transform::matrix(const cv::Mat1f & p) const
@@ -1014,7 +1010,7 @@ cv::Matx33f c_homography_image_transform::matrix(const cv::Mat1f & p) const
 
   return cv::Matx33f(p(0, 0), p(1, 0), p(2, 0),
       p(3, 0), p(4, 0), p(5, 0),
-      p(6, 0), p(7, 0), matrix_(2, 2));
+      p(6, 0), p(7, 0), _matrix(2, 2));
 }
 
 cv::Matx33f c_homography_image_transform::dmatrix(const cv::Mat1f & dp) const
@@ -1039,10 +1035,10 @@ bool c_homography_image_transform::set_parameters(const cv::Mat1f & p)
 
 void c_homography_image_transform::scale_transfrom(double factor)
 {
-  matrix_(0, 2) *= factor;
-  matrix_(1, 2) *= factor;
-  matrix_(2, 0) /= factor;
-  matrix_(2, 1) /= factor;
+  _matrix(0, 2) *= factor;
+  _matrix(1, 2) *= factor;
+  _matrix(2, 0) /= factor;
+  _matrix(2, 1) /= factor;
 
   update_parameters();
 }
@@ -1229,30 +1225,30 @@ void c_semi_quadratic_image_transform::reset()
 
 void c_semi_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 {
-  parameters_(2, 0) = v(0);
-  parameters_(6, 0) = v(1);
+  _parameters(2, 0) = v(0);
+  _parameters(6, 0) = v(1);
 }
 
 cv::Vec2f c_semi_quadratic_image_transform::translation() const
 {
-  return cv::Vec2f ((const float*)parameters_.data);
+  return cv::Vec2f ((const float*)_parameters.data);
 }
 
 void c_semi_quadratic_image_transform::set_matrix(const cv::Matx24f & a)
 {
-  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(8, 1);
+  if ( _parameters.rows != 8 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(8, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = a(0, 3);
-  parameters_(4, 0) = a(1, 0);
-  parameters_(5, 0) = a(1, 1);
-  parameters_(6, 0) = a(1, 2);
-  parameters_(7, 0) = a(1, 3);
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = a(0, 3);
+  _parameters(4, 0) = a(1, 0);
+  _parameters(5, 0) = a(1, 1);
+  _parameters(6, 0) = a(1, 2);
+  _parameters(7, 0) = a(1, 3);
 }
 
 void c_semi_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
@@ -1262,24 +1258,24 @@ void c_semi_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
     return;
   }
 
-  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(8, 1);
+  if ( _parameters.rows != 8 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(8, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = a(0, 3);
-  parameters_(4, 0) = a(1, 0);
-  parameters_(5, 0) = a(1, 1);
-  parameters_(6, 0) = a(1, 2);
-  parameters_(7, 0) = a(1, 3);
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = a(0, 3);
+  _parameters(4, 0) = a(1, 0);
+  _parameters(5, 0) = a(1, 1);
+  _parameters(6, 0) = a(1, 2);
+  _parameters(7, 0) = a(1, 3);
 }
 
 cv::Matx24f c_semi_quadratic_image_transform::matrix() const
 {
-  return cv::Matx24f((const float*)parameters_.data);
+  return cv::Matx24f((const float*)_parameters.data);
 }
 
 cv::Matx24f c_semi_quadratic_image_transform::matrix(const cv::Mat1f & p) const
@@ -1290,25 +1286,25 @@ cv::Matx24f c_semi_quadratic_image_transform::matrix(const cv::Mat1f & p) const
 
 void c_semi_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
 {
-  if ( parameters_.rows != 8 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(8, 1);
+  if ( _parameters.rows != 8 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(8, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = 0;
-  parameters_(4, 0) = a(1, 0);
-  parameters_(5, 0) = a(1, 1);
-  parameters_(6, 0) = a(1, 2);
-  parameters_(7, 0) = 0;
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = 0;
+  _parameters(4, 0) = a(1, 0);
+  _parameters(5, 0) = a(1, 1);
+  _parameters(6, 0) = a(1, 2);
+  _parameters(7, 0) = 0;
 }
 
 cv::Matx23f c_semi_quadratic_image_transform::affine_matrix() const
 {
   const cv::Mat1f & a =
-      parameters_;
+      _parameters;
 
   return cv::Matx23f(a(0, 0), a(1, 0), a(2, 0),
       a(4, 0), a(5, 0), a(6, 0));
@@ -1321,17 +1317,17 @@ bool c_semi_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
     return false;
   }
 
-  p.copyTo(parameters_);
+  p.copyTo(_parameters);
   return true;
 }
 
 void c_semi_quadratic_image_transform::scale_transfrom(double factor)
 {
-  parameters_(2, 0) *= factor;
-  parameters_(3, 0) /= factor;
+  _parameters(2, 0) *= factor;
+  _parameters(3, 0) /= factor;
 
-  parameters_(6, 0) *= factor;
-  parameters_(7, 0) /= factor;
+  _parameters(6, 0) *= factor;
+  _parameters(7, 0) /= factor;
 }
 
 double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -1492,35 +1488,35 @@ void c_quadratic_image_transform::reset()
 
 void c_quadratic_image_transform::set_translation(const cv::Vec2f & v)
 {
-  parameters_(2, 0) = v(0);
-  parameters_(8, 0) = v(1);
+  _parameters(2, 0) = v(0);
+  _parameters(8, 0) = v(1);
 }
 
 cv::Vec2f c_quadratic_image_transform::translation() const
 {
-  return cv::Vec2f(parameters_(2, 0), parameters_(8, 0));
+  return cv::Vec2f(_parameters(2, 0), _parameters(8, 0));
 }
 
 void c_quadratic_image_transform::set_matrix(const cv::Matx26f & a)
 {
-  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(12, 1);
+  if ( _parameters.rows != 12 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(12, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = a(0, 3);
-  parameters_(4, 0) = a(0, 4);
-  parameters_(5, 0) = a(0, 5);
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = a(0, 3);
+  _parameters(4, 0) = a(0, 4);
+  _parameters(5, 0) = a(0, 5);
 
-  parameters_(6, 0) = a(1, 0);
-  parameters_(7, 0) = a(1, 1);
-  parameters_(8, 0) = a(1, 2);
-  parameters_(9, 0) = a(1, 3);
-  parameters_(10, 0) = a(1, 4);
-  parameters_(11, 0) = a(1, 5);
+  _parameters(6, 0) = a(1, 0);
+  _parameters(7, 0) = a(1, 1);
+  _parameters(8, 0) = a(1, 2);
+  _parameters(9, 0) = a(1, 3);
+  _parameters(10, 0) = a(1, 4);
+  _parameters(11, 0) = a(1, 5);
 }
 
 void c_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
@@ -1530,29 +1526,29 @@ void c_quadratic_image_transform::set_matrix(const cv::Mat1f & a)
     return;
   }
 
-  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(12, 1);
+  if ( _parameters.rows != 12 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(12, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = a(0, 3);
-  parameters_(4, 0) = a(0, 4);
-  parameters_(5, 0) = a(0, 5);
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = a(0, 3);
+  _parameters(4, 0) = a(0, 4);
+  _parameters(5, 0) = a(0, 5);
 
-  parameters_(6, 0) = a(1, 0);
-  parameters_(7, 0) = a(1, 1);
-  parameters_(8, 0) = a(1, 2);
-  parameters_(9, 0) = a(1, 3);
-  parameters_(10, 0) = a(1, 4);
-  parameters_(11, 0) = a(1, 5);
+  _parameters(6, 0) = a(1, 0);
+  _parameters(7, 0) = a(1, 1);
+  _parameters(8, 0) = a(1, 2);
+  _parameters(9, 0) = a(1, 3);
+  _parameters(10, 0) = a(1, 4);
+  _parameters(11, 0) = a(1, 5);
 }
 
 cv::Matx26f c_quadratic_image_transform::matrix() const
 {
-  return cv::Matx26f((const float*) parameters_.data);
+  return cv::Matx26f((const float*) _parameters.data);
 }
 
 cv::Matx26f c_quadratic_image_transform::matrix(const cv::Mat1f & p) const
@@ -1562,30 +1558,30 @@ cv::Matx26f c_quadratic_image_transform::matrix(const cv::Mat1f & p) const
 
 void c_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
 {
-  if ( parameters_.rows != 12 || parameters_.cols != 1 ) {
-    parameters_.release();
-    parameters_.create(12, 1);
+  if ( _parameters.rows != 12 || _parameters.cols != 1 ) {
+    _parameters.release();
+    _parameters.create(12, 1);
   }
 
-  parameters_(0, 0) = a(0, 0);
-  parameters_(1, 0) = a(0, 1);
-  parameters_(2, 0) = a(0, 2);
-  parameters_(3, 0) = 0;
-  parameters_(4, 0) = 0;
-  parameters_(5, 0) = 0;
+  _parameters(0, 0) = a(0, 0);
+  _parameters(1, 0) = a(0, 1);
+  _parameters(2, 0) = a(0, 2);
+  _parameters(3, 0) = 0;
+  _parameters(4, 0) = 0;
+  _parameters(5, 0) = 0;
 
-  parameters_(6, 0) = a(1, 0);
-  parameters_(7, 0) = a(1, 1);
-  parameters_(8, 0) = a(1, 2);
-  parameters_(9, 0) = 0;
-  parameters_(10, 0) = 0;
-  parameters_(11, 0) = 0;
+  _parameters(6, 0) = a(1, 0);
+  _parameters(7, 0) = a(1, 1);
+  _parameters(8, 0) = a(1, 2);
+  _parameters(9, 0) = 0;
+  _parameters(10, 0) = 0;
+  _parameters(11, 0) = 0;
 }
 
 cv::Matx23f c_quadratic_image_transform::affine_matrix() const
 {
   const cv::Mat1f & a =
-      parameters_;
+      _parameters;
 
   return cv::Matx23f(a(0, 0), a(1, 0), a(2, 0),
       a(6, 0), a(7, 0), a(8, 0));
@@ -1598,20 +1594,20 @@ bool c_quadratic_image_transform::set_parameters(const cv::Mat1f & p)
     return false;
   }
 
-  p.copyTo(parameters_);
+  p.copyTo(_parameters);
   return true;
 }
 
 void c_quadratic_image_transform::scale_transfrom(double factor)
 {
-  parameters_(2, 0) *= factor;
-  parameters_(3, 0) /= factor;
-  parameters_(4, 0) /= factor;
-  parameters_(5, 0) /= factor;
-  parameters_(8, 0) *= factor;
-  parameters_(9, 0) /= factor;
-  parameters_(10, 0) /= factor;
-  parameters_(11, 0) /= factor;
+  _parameters(2, 0) *= factor;
+  _parameters(3, 0) /= factor;
+  _parameters(4, 0) /= factor;
+  _parameters(5, 0) /= factor;
+  _parameters(8, 0) *= factor;
+  _parameters(9, 0) /= factor;
+  _parameters(10, 0) /= factor;
+  _parameters(11, 0) /= factor;
 }
 
 double c_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)

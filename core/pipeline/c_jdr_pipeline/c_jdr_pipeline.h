@@ -126,6 +126,8 @@ protected:
 
   int _pipeline_stage = 0;
 
+  cv::Mat _master_frame;
+  cv::Mat _master_mask;
   cv::Mat _reference_frame;
   cv::Mat _reference_mask;
   cv::Mat _current_aligned_frame;

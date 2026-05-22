@@ -135,6 +135,11 @@ const cv::Mat1b & c_jovian_ellipse_detector::maxcolor_mask() const
   return _maxcolor_mask;
 }
 
+const cv::Mat1f & c_jovian_ellipse_detector::g_image() const
+{
+  return _g;
+}
+
 const cv::Mat1f & c_jovian_ellipse_detector::gx_image() const
 {
   return _gx;
@@ -184,10 +189,11 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
   }
 
   const cv::Size size = _detected_component_rect.size();
-  const int mask_erode_size = std::max(3, 2 * (int) (0.06 * std::min(size.width, size.height)) + 1);
 
-  const double sigma_bground_normalization = 0.06 * std::max(size.width, size.height);
+  const double sigma_bground_normalization = 0.2 * std::max(size.width, size.height);
   const int ksize_bground_normalization = 2 * int(1 + (sigma_bground_normalization - 0.8) / 0.3) + 1;
+  const int mask_erode_size = std::max(23, 2 * int(1 + (_opts.sigma_noise - 0.8) / 0.3) + 1);
+
 
   static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
   static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
@@ -195,7 +201,9 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
 
   // Smooth background and noise filtering
   if( _opts.sigma_noise <= 0 ) {
-    const cv::Mat1f G = -cv::getGaussianKernel(ksize_bground_normalization, sigma_bground_normalization, CV_32F);
+    const cv::Mat1f G1 = cv::getGaussianKernel(ksize_bground_normalization, 0.5, CV_32F);
+    const cv::Mat1f G2 = cv::getGaussianKernel(ksize_bground_normalization, sigma_bground_normalization, CV_32F);
+    const cv::Mat1f G = G1 - G2;
     cv::sepFilter2D(_maxcolor_image, _maxcolor_image, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   }
   else {
@@ -211,6 +219,16 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
   // Compute derivatives
   cv::filter2D(_maxcolor_image, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   cv::filter2D(_maxcolor_image, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::magnitude(_gx, _gy, _g);
+  if( _opts.g2 ) {
+    cv::filter2D(_g, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    cv::filter2D(_g, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    cv::magnitude(_gx, _gy, _g);
+  }
+  if( _opts.gweighted ) {
+    cv::multiply(_gx, _g, _gx);
+    cv::multiply(_gy, _g, _gy);
+  }
 
   // Erode planetary disk mask to avoid edge effects
   cv::erode(_detected_planetary_disk_mask, _maxcolor_mask,
@@ -290,11 +308,6 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
   cv::multiply(_gy, _gy, jyy);
   cv::multiply(_gx, _gy, jxy);
 
-  const cv::Mat1f w = jxx + jyy;
-  cv::multiply(jxx, w, jxx);
-  cv::multiply(jyy, w, jyy);
-  cv::multiply(jxy, w, jxy);
-
   const cv::Mat1b imask = ~_maxcolor_mask;
   jxx.setTo(0, imask);
   jyy.setTo(0, imask);
@@ -324,6 +337,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_pca()
   cv::Mat1f data_pts(npts, 2);
 
   int ii = 0;
+
   for( int y = 0; y < _maxcolor_mask.rows; ++y ) {
     const float * gxp = _gx[y];
     const float * gyp = _gy[y];
@@ -332,9 +346,8 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_pca()
       if( mskp[x] ) {
         const float gx = gxp[x];
         const float gy = gyp[x];
-        const float w = std::sqrt(gx * gx + gy * gy);
-        data_pts[ii][0] = gx * w;
-        data_pts[ii][1] = gy * w;
+        data_pts[ii][0] = gx;
+        data_pts[ii][1] = gy;
         ++ii;
       }
     }
@@ -354,6 +367,8 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
 {
   SERIALIZE_OPTION(section, save, opts, method);
   SERIALIZE_OPTION(section, save, opts, maxcolor_channel);
+  SERIALIZE_OPTION(section, save, opts, g2);
+  SERIALIZE_OPTION(section, save, opts, gweighted);
   SERIALIZE_OPTION(section, save, opts, sigma_noise);
   SERIALIZE_OPTION(section, save, opts, offset);
   serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);

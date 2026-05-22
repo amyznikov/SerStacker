@@ -28,8 +28,9 @@ public:
     // display_detected_ellipseAMS,
 
     display_pca_channel,
-    display_pca_gx,
-    display_pca_gy,
+    display_gx,
+    display_gy,
+    display_g,
 
     // display_final_planetary_disk_ellipse,
     display_final_planetary_disk_mask,

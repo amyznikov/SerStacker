@@ -21,10 +21,12 @@ enum JOVIAN_ELLIPSE_DETECTION_METHOD {
 struct c_jovian_ellipse_detector_options
 {
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_STENSOR;
-  color_channel_type maxcolor_channel = color_channel_max_color;
+  color_channel_type maxcolor_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double sigma_noise = 5;
   cv::Point2f offset;
+  bool g2 = true;
+  bool gweighted = true;
 };
 
 template<class RootObjectType>
@@ -35,6 +37,8 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, "method", ctx(&S::method), "");
   ctlbind(ctls, "gradient_channel", ctx(&S::maxcolor_channel), "");
+  ctlbind(ctls, "g2", ctx(&S::g2), "");
+  ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
   ctlbind(ctls, "sigma_noise", ctx(&S::sigma_noise), "");
   ctlbind(ctls, "offset", ctx(&S::offset), "");
   ctlbind_expandable_group(ctls, "planetary disk detection",
@@ -61,6 +65,7 @@ public:
   const cv::Mat& grayscale_image() const;
   const cv::Mat& maxcolor_image() const;
   const cv::Mat1b & maxcolor_mask() const;
+  const cv::Mat1f & g_image() const;
   const cv::Mat1f & gx_image() const;
   const cv::Mat1f & gy_image() const;
   const cv::Mat1b& detected_planetary_disk_mask() const;
@@ -79,7 +84,7 @@ protected:
   cv::Mat1b _detected_planetary_disk_mask;
   cv::Mat1b _maxcolor_mask;
   cv::Mat1f _kderiv, _ksmooth;
-  cv::Mat1f _gx, _gy;
+  cv::Mat1f _gx, _gy, _g;
 
   cv::Mat1b _detected_planetary_disk_edge;
   cv::Mat1b _final_planetary_disk_mask;

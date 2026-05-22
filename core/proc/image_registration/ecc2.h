@@ -142,7 +142,7 @@ protected:
   float _update_step_scale = 1.f;
 
   double _max_eps = 0.2f;
-  double _max_epsy = 1e-5;
+  double _max_epse = 1e-4;
 
   double _eps = FLT_MAX;
   int _nparams = 0;
@@ -418,7 +418,7 @@ protected:
   double compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
 
 protected:
-  cv::Mat1f gx_, gy_;
+  cv::Mat1f _gx, _gy;
   std::vector<cv::Mat1f> J;
   cv::Mat1f remapped_image;
   cv::Mat1b remapped_mask;

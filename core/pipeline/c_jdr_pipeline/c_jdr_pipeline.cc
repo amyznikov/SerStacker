@@ -569,9 +569,11 @@ bool c_jdr_pipeline::create_reference_frame()
       return false;
     }
 
+    current_grayscale_frame.release();
     _processed_frames = 0;
     _accumulated_frames = 0;
     _total_frames = end_frame_index - start_frame_index;
+
 
     for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
 

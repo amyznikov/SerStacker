@@ -1702,9 +1702,7 @@ bool c_ecclm::align_to_reference(cv::InputArray current_image, cv::InputArray cu
 double c_ecclm::compute_remap(const cv::Mat1f & params,
     cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
 {
-  const int M =
-      params.rows;
-
+  const int M = params.rows;
   const cv::Size size(_reference_image.size());
 
   ecc_remap(_transform, params, size,
@@ -1730,7 +1728,6 @@ double c_ecclm::compute_remap(const cv::Mat1f & params,
           cv::countNonZero(remapped_mask);
 
   // cv::multiply(rhs, 1./nrms, rhs);
-
   // CF_DEBUG("nrms= %g / %d", nrms, size.area());
 
   return nrms;
@@ -1754,33 +1751,23 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 {
 
   if( recompute_remap ) {
-
-    // nrms =
-        compute_remap(params, remapped_image, remapped_mask,
-            rhs);
-
+    compute_remap(params, remapped_image, remapped_mask, rhs);
     rms = cv::norm(rhs, cv::NORM_L2SQR);
-        //rhs.dot(rhs);// / nrms;
   }
 
-  const int M =
-      params.rows;
-
+  const int M = params.rows;
   if( J.size() != M ) {
     J.resize(M);
   }
 
-  ecc_differentiate(remapped_image, gx_, gy_, remapped_mask);
-  //  gx_ /= nrms;
-  //  gy_ /= nrms;
+  ecc_differentiate(remapped_image, _gx, _gy, remapped_mask);
 
-  _transform->create_steepest_descent_images(params, gx_, gy_, J.data());
+  _transform->create_steepest_descent_images(params, _gx, _gy, J.data());
 
   v.create(M, 1);
 
   tbb::parallel_for(tbb_range(0, M),
       [&](const tbb_range & r) {
-
         for( int i = r.begin(); i < r.end(); ++i ) {
           v[i][0] = J[i].dot(rhs);// / nrms;
         }
@@ -1790,7 +1777,6 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 
   tbb::parallel_for(tbb_range(0, M),
       [&](const tbb_range & r) {
-
         for( int i = r.begin(); i < r.end(); ++i ) {
           for( int j = 0; j <= i; ++j ) {
             H[i][j] = J[i].dot(J[j]);// / nrms;
@@ -1836,7 +1822,7 @@ bool c_ecclm::align()
   constexpr double eps = std::numeric_limits<double>::epsilon();
 
   const double epsx = _max_eps;
-  const double epsy = _max_epsy;
+  const double epse = _max_epse;
   const int max_iterations = _max_iterations;
 
   double lambda = 0.1;
@@ -1848,8 +1834,12 @@ bool c_ecclm::align()
 
   while (iteration < max_iterations) {
 
-    //  CF_DEBUG("> IT %d model_->compute_jac()", iteration);
     const double err = compute_jac(params, recompute_remap, H, v);
+    if ( err < 1 ) {
+      converged = true;
+      break;
+    }
+
     H.copyTo(Hp);
 
     /*
@@ -1871,9 +1861,7 @@ bool c_ecclm::align()
       cv::scaleAdd(deltap, -_update_step_scale, params, newparams);
 
       /* Check for increment in parameters  */
-      const double dp = _transform->eps(deltap, _reference_image.size());
-      _eps = dp;
-      if( dp <= epsx ) {
+      if( (_eps = _transform->eps(deltap, _reference_image.size())) <= epsx ) {
         _transform->set_parameters(newparams);
         params = _transform->parameters();
         converged = true;
@@ -1883,6 +1871,9 @@ bool c_ecclm::align()
       /* Compute error function for new parameters */
       const double newerr = compute_rhs(newparams);
       if( newerr > err ) {
+        if ( lambda > 1e6 ) {
+          break; // no convergence
+        }
         lambda *= 10.0f;
         continue;
       }
@@ -1894,7 +1885,7 @@ bool c_ecclm::align()
 
       /* Check Function Tolerance */
       const double diff = err - newerr;
-      if (diff < err * epsy ) {
+      if (diff < err * epse ) {
         converged = true;
         break;
       }
@@ -1909,7 +1900,7 @@ bool c_ecclm::align()
       //const double rho = (err - newerr) / (std::abs(dS) > eps ? dS : 1);
       const double rho = std::abs(dS) > 1e-9f ? diff / std::abs(dS)  : diff;
       if (rho > 0.25 ) { /* Good step, decrease lambda ==> Gauss-Newton */
-        lambda = std::max(1e-6, 0.2 * lambda);
+        lambda = std::max(1e-8, 0.2 * lambda);
       }
       else if (rho < 0.1) { /* The Taylor model looks poor ==> gradient descend*/
         lambda = (lambda < 1.0) ? 1.0 : lambda * 10.0;
@@ -2164,9 +2155,7 @@ bool c_ecclm_inverse_compositional::align_to_reference(cv::InputArray current_im
 void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
     cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
 {
-  const int M =
-      params.rows;
-
+  const int M = params.rows;
   const cv::Size size(_reference_image.size());
 
   ecc_remap(_transform, params, size,

@@ -159,8 +159,6 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
   //  x' =  x + tx
   //  y' =  y + ty
 
-  // CF_DEBUG("T={%g %g} size=%dx%d", T(0), T(1), size.width, size.height);
-
   rmap.create(size);
 
 #if HAVE_TBB
@@ -244,7 +242,7 @@ c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & C, co
 
 void c_euclidean_image_transform::reset()
 {
-  set_parameters(0, 0, 0, 0, 0, 0);
+  set_parameters(0, 0, 0, 1, 0, 0);
 }
 
 int c_euclidean_image_transform::num_adjustable_parameters() const
@@ -411,7 +409,7 @@ void c_euclidean_image_transform::set_rotation(float angle)
 
 float c_euclidean_image_transform::rotation() const
 {
-  return _parameters(2,0);
+  return _parameters(2, 0);
 }
 
 void c_euclidean_image_transform::set_scale(float scale)
@@ -496,6 +494,7 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
     return false;
   }
 
+
   const float sa = std::sin(angle);
   const float ca = std::cos(angle);
 
@@ -510,13 +509,9 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
 #endif // TBB
 
           cv::Vec2f * mp = rmap[y];
-
           const float yy = y - Cy;
-
           for ( int x = 0; x < rmap.cols; ++x ) {
-
             const float xx = x - Cx;
-
             mp[x][0] = scale * (ca * xx - sa * yy) + Tx;
             mp[x][1] = scale * (sa * xx + ca * yy) + Ty;
           }
@@ -562,9 +557,7 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
 {
   INSTRUMENT_REGION("");
 
-  const int np =
-      num_adjustable_parameters();
-
+  const int np = num_adjustable_parameters();
   if( p.rows != np || p.cols != 1 ) {
     CF_ERROR("Invalid size of parameters matrix %dx%d. Must be %dx1", p.rows, p.cols, np);
     return false;
@@ -597,23 +590,13 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
     return false;
   }
 
-  const cv::Size size =
-      gx.size();
 
-  const bool fix_translation =
-      _fix_translation;
-
-  const bool fix_rotation =
-      _fix_rotation;
-
-  const bool fix_scale =
-      _fix_scale;
-
-  const float sa =
-      std::sin(angle);
-
-  const float ca =
-      std::cos(angle);
+  const cv::Size size = gx.size();
+  const bool fix_translation = _fix_translation;
+  const bool fix_rotation = _fix_rotation;
+  const bool fix_scale = _fix_scale;
+  const float sa = std::sin(angle);
+  const float ca = std::cos(angle);
 
   for ( int i = 0; i < np; ++i ) {
     J[i].create(size);
@@ -621,9 +604,7 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
 
 #if HAVE_TBB && !defined(Q_MOC_RUN)
   tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [ fix_translation, fix_rotation, fix_scale,
-        size, Cx, Cy, Tx, Ty, ca, sa, scale, &gx, &gy, &J]
-        (const tbb_range & r) {
+      [ fix_translation, fix_rotation, fix_scale, size, Cx, Cy, Tx, Ty, ca, sa, scale, &gx, &gy, &J]  (const tbb_range & r) {
         for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
 #else
         for ( int y = 0; y < size.height; ++y ) {
@@ -632,37 +613,26 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
           int i = 0;
 
           if( !fix_translation ) {
-
             for ( int x = 0; x < size.width; ++x ) {
               J[0][y][x] = gx[y][x];
               J[1][y][x] = gy[y][x];
             }
-
             i += 2;
           }
 
           if( !fix_rotation ) {
-
             const float yy = y - Cy;
-
             for ( int x = 0; x < size.width; ++x ) {
-
               const float xx = x - Cx;
-
               J[i][y][x] = scale * ( -gx[y][x] * (sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy));
             }
-
             i += 1;
           }
 
           if( !fix_scale ) {
-
             const float yy = y - Cy;
-
             for ( int x = 0; x < size.width; ++x ) {
-
               const float xx = x - Cx;
-
               J[i][y][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
             }
           }
@@ -673,7 +643,7 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
   );
 #endif
 
-  return false;
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

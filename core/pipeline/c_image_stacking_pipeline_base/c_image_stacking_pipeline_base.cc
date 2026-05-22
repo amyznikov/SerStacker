@@ -260,7 +260,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
 }
 
 
-int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::sptr & input_sequence,
+int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::sptr & master_sequence, int master_source_index,
     const c_image_stacking_pipeline_base_input_options & input_opts,
     const c_master_frame_selection_options & selection_opts)
 {
@@ -273,15 +273,16 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
     _current_master_frame_candidate_mask.release();
   });
 
+  master_source_index = std::clamp(master_source_index, 0, (int)master_sequence->sources().size() - 1);
 
   switch (selection_opts.master_selection_method) {
 
     case master_frame_specific_index:
-      selected_master_frame_index = selection_opts.master_frame_index;
+      selected_master_frame_index = master_sequence->global_pos(master_source_index, selection_opts.master_frame_index);
       break;
 
     case master_frame_middle_index:
-      selected_master_frame_index = input_sequence->size() / 2;
+      selected_master_frame_index = master_sequence->global_pos(master_source_index, master_sequence->size() / 2);
       break;
 
     case master_frame_best_of_100_in_middle: {
@@ -290,24 +291,24 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
       constexpr int max_frames_to_scan = 2000;
 
       CF_DEBUG("Scan %d frames around of middle %d",
-          max_frames_to_scan, input_sequence->size() / 2);
+          max_frames_to_scan, master_sequence->size() / 2);
 
       int start_pos, end_pos, backup_current_pos;
 
-      if( input_sequence->size() <= max_frames_to_scan ) {
+      if( master_sequence->size() <= max_frames_to_scan ) {
         start_pos = 0;
-        end_pos = input_sequence->size();
+        end_pos = master_sequence->size();
       }
       else {
-        start_pos = input_sequence->size() / 2 - max_frames_to_scan / 2;
-        end_pos = std::min(input_sequence->size(), start_pos + max_frames_to_scan / 2);
+        start_pos = master_sequence->size() / 2 - max_frames_to_scan / 2;
+        end_pos = std::min(master_sequence->size(), start_pos + max_frames_to_scan / 2);
       }
 
       //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
-      input_sequence->set_auto_apply_color_matrix(false);
+      master_sequence->set_auto_apply_color_matrix(false);
 
-      backup_current_pos = input_sequence->current_pos();
-      input_sequence->seek(start_pos);
+      backup_current_pos = master_sequence->current_pos();
+      master_sequence->seek(start_pos);
 
       cv::Mat currentImage, currentMask;
       int current_index, best_index = 0;
@@ -327,13 +328,13 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
           return -1;
         }
 
-        if( is_bad_frame_index(input_sequence->current_pos()) ) {
-          CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
-          input_sequence->seek(input_sequence->current_pos() + 1);
+        if( is_bad_frame_index(master_sequence->current_pos()) ) {
+          CF_DEBUG("Skip frame %d as blacklisted", master_sequence->current_pos());
+          master_sequence->seek(master_sequence->current_pos() + 1);
           continue;
         }
 
-        if( !read_input_frame(input_sequence, input_opts, currentImage, currentMask, false, false) ) {
+        if( !read_input_frame(master_sequence, input_opts, currentImage, currentMask, false, false) ) {
           CF_ERROR("read_input_frame() fails");
           break;
         }
@@ -371,7 +372,7 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
       }
 
       selected_master_frame_index = best_index + start_pos;
-      input_sequence->seek(backup_current_pos);
+      master_sequence->seek(backup_current_pos);
 
       break;
     }

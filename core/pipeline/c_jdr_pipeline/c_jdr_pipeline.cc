@@ -453,14 +453,14 @@ bool c_jdr_pipeline::create_reference_frame()
   set_pipeline_stage(stacking_stage_select_master_frame_index);
 
   master_frame_index =
-      base::select_master_frame(master_sequence, _input_options,
+      select_master_frame(master_sequence, master_source_index, _input_options,
           _reference_frame_options.master_selection);
 
   if ( canceled() ) {
     return false;
   }
 
-  if ( master_frame_index <  0 ) {
+  if ( master_frame_index < 0 ) {
     CF_ERROR("select_master_frame() fails");
     return false;
   }

@@ -53,6 +53,7 @@ protected:
       bool save_raw_bayer);
 
   int select_master_frame(const c_input_sequence::sptr & input_sequence,
+      int master_source_index,
       const c_image_stacking_pipeline_base_input_options & input_opts,
       const c_master_frame_selection_options & selection_opts);
 

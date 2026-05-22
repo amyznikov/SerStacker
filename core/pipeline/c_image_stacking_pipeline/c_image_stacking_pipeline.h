@@ -257,7 +257,7 @@ protected:
   bool process_input_sequence(const c_input_sequence::sptr & input_sequence,
       int startpos, int endpos);
 
-  int select_master_frame(const c_input_sequence::sptr & input_sequence);
+//  int select_master_frame(const c_input_sequence::sptr & input_sequence);
 
 //  static bool select_image_roi(const c_roi_selection::sptr & roi_selection,
 //      const cv::Mat & src, const cv::Mat & srcmask,

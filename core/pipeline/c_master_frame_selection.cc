@@ -30,10 +30,12 @@ c_input_sequence::sptr select_master_source(const c_master_frame_selection_optio
   * master_source_index = -1;
 
   std::string master_filename = opts.master_fiename;
+  CF_DEBUG("master_filename='%s'", master_filename.c_str());
 
   if ( master_filename.empty() ) {
     if ( input_sequence && !input_sequence->empty() ) {
       master_filename = input_sequence-> source(*master_source_index = 0)->filename();
+      CF_DEBUG("master_filename='%s'", master_filename.c_str());
     }
   }
   else if ( input_sequence && !input_sequence->empty() ) {
@@ -47,13 +49,16 @@ c_input_sequence::sptr select_master_source(const c_master_frame_selection_optio
     if ( source_pos != input_sequence->sources().end() ) {
       *master_source_index = source_pos - input_sequence->sources().begin();
     }
+    CF_DEBUG("*master_source_index ='%d'", *master_source_index );
   }
 
   if ( *master_source_index >= 0 ) {
     master_sequence = input_sequence;
+    CF_DEBUG("master_sequence = input_sequence" );
   }
   else if( !master_filename.empty() && (master_sequence = c_input_sequence::create(master_filename)) ) {
     *master_source_index = 0;
+    CF_DEBUG("*master_source_index = 0" );
   }
   else {
     CF_ERROR("ERROR: c_input_sequence::create(master_file_name_='%s') fails", master_filename.c_str());

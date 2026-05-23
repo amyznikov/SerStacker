@@ -84,12 +84,12 @@ QGraphicsRectShapeSettings::QGraphicsRectShapeSettings(QWidget * parent) :
           "Set Rectangle",
           [this](const QRectF & v) {
             if ( _opts ) {
-              _opts->setRect(v);
+              _opts->setSceneRect(v);
             }
           },
           [this](QRectF * v) {
             if ( _opts ) {
-              *v = _opts->rect();
+              *v = _opts->sceneRect();
               return true;
             }
             return false;

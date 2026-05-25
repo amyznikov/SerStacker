@@ -1009,8 +1009,18 @@ bool c_jdr_pipeline::derotate_jovian_frames()
 
       CF_DEBUG("[F %d] DEROTATED", i);
 
-      cv::Mat1f current_weights(current_frame.size(), 1.f);
-      _jovian_derotation_remap.wmap().copyTo(current_weights, _jovian_derotation_remap.rmask());
+//      cv::Mat1f current_weights(current_frame.size(), 1.f);
+//      _jovian_derotation_remap.wmap().copyTo(current_weights, _jovian_derotation_remap.rmask());
+//      _frame_average.add(current_frame, current_weights);
+
+      cv::Mat1f current_weights;
+      if ( current_mask.empty() ) {
+        current_weights = _jovian_derotation_remap.wmap();
+      }
+      else {
+        _jovian_derotation_remap.wmap().copyTo(current_weights);
+        current_weights.setTo(0, ~current_mask);
+      }
       _frame_average.add(current_frame, current_weights);
 
       CF_DEBUG("[F %d] ACCUMULATED", i);
@@ -1020,7 +1030,6 @@ bool c_jdr_pipeline::derotate_jovian_frames()
       current_frame.copyTo(_current_aligned_frame);
       current_mask.copyTo(_current_aligned_mask);
     });
-
 
     ++_accumulated_frames;
   }

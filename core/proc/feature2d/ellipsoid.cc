@@ -223,7 +223,7 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
     cv::Mat1f * rcounter)
 {
   rmap = cv::Mat2f::zeros(size);
-  wmap = cv::Mat1f::zeros(size);
+  wmap = cv::Mat1f::ones(size);
   cv::Mat1f counter(size, 0.0f);
 
   const double A = axes(0); // Equatorial radius X
@@ -302,19 +302,18 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
       }
 
       // WEIGHT CALCULATION
-      // Локальная нормаль на эллипсоиде
+
+      // Local normal on the ellipsoid
       const double nx_loc = x_loc * invA2;
       const double nz_loc = z_loc * invC2;
 
-      // 1. Нормаль в системе целевой камеры R2
+      // Normal in the target camera system R2
       const double nc2_x = R2(0, 0) * nx_loc + R2_col1_ny(0) + R2(0, 2) * nz_loc;
       const double nc2_y = R2(1, 0) * nx_loc + R2_col1_ny(1) + R2(1, 2) * nz_loc;
       const double nc2_z = R2(2, 0) * nx_loc + R2_col1_ny(2) + R2(2, 2) * nz_loc;
       const double n2_len = std::sqrt(nc2_x * nc2_x + nc2_y * nc2_y + nc2_z * nc2_z);
 
-      // 2. Нормаль в системе исходной камеры R1
-      // Предвычисляем вклад полярной нормали R1 аналогично R2 за пределами цикла для идеальной скорости:
-      // (добавьте const cv::Vec3d R1_col1_ny = cv::Vec3d(R1(0, 1), R1(1, 1), R1(2, 1)) * ny_loc; во внешний цикл)
+      // Normal in the source camera system R1
       const double nc1_x = R1(0, 0) * nx_loc + R1_col1_ny(0) + R1(0, 2) * nz_loc;
       const double nc1_y = R1(1, 0) * nx_loc + R1_col1_ny(1) + R1(1, 2) * nz_loc;
       const double nc1_z = R1(2, 0) * nx_loc + R1_col1_ny(2) + R1(2, 2) * nz_loc;
@@ -324,10 +323,6 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
       if( n2_len > 1e-6 && n1_len > 1e-6 ) {
         const double cos_theta_target = std::abs(nc2_z) / n2_len;
         const double cos_theta_source = std::abs(nc1_z) / n1_len;
-
-        // Итоговый вес — произведение косинусов.
-        // Если точка была деформирована на исходном кадре (cos_source -> 0), вес падает.
-        // Степень можно настраивать, например cos(target)^2 * cos(source)^2
         weight = (cos_theta_target * cos_theta_target) * (cos_theta_source * cos_theta_source);
       }
 

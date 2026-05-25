@@ -10,6 +10,11 @@
 #include <core/readdir.h>
 
 
+#if defined(_WIN32) || defined(_WIN64)
+# define timegm(x) _mkgmtime(x)
+#endif
+
+
 c_regular_image_input_source::c_regular_image_input_source(const std::string & filename) :
     base(/*c_input_source::REGULAR_IMAGE, */filename)
 {
@@ -125,35 +130,70 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
   if ( true ) {
     _has_last_ts = false;
 
-    // JUP1.20230815_010015_GMT.32F.tiff
-    const std::string marker = "_GMT";
-    const size_t timestamp_length = 15;
-    const size_t marker_pos = _filename.find(marker);
-    if (marker_pos != std::string::npos && marker_pos >= timestamp_length) {
-      const size_t start_pos = marker_pos - timestamp_length;
-      const std::string timestamp = _filename.substr(start_pos, timestamp_length);
+    bool timestamp_found = false;
 
-      int year = 0, month = 0, day = 0;
-      int hour = 0, minute = 0, second = 0;
-      int parsed = sscanf(timestamp.c_str(), "%4d%2d%2d_%2d%2d%2d", &year, &month, &day, &hour, &minute, &second);
 
-      if( parsed == 6 ) {
-        std::tm t = {};
-        t.tm_year = year - 1900; // Years in tm are counted from 1900
-        t.tm_mon = month - 1;    // Months are counted from 0 (January = 0)
-        t.tm_mday = day;
-        t.tm_hour = hour;
-        t.tm_min = minute;
-        t.tm_sec = second;
-        t.tm_isdst = -1;
+    if ( !timestamp_found ) {
+      // JUP1.20230815_010015_GMT.32F.tiff
+      const std::string marker = "_GMT";
+      const size_t timestamp_length = 15;
+      const size_t marker_pos = _filename.find(marker);
 
-#if defined(_WIN32) || defined(_WIN64)
-        time_t ts = _mkgmtime(&t);
-#else
-        time_t ts = timegm(&t);
-#endif
-        _has_last_ts = true;
-        _last_ts = 1000.0 * ts;
+      if (marker_pos != std::string::npos && marker_pos >= timestamp_length) {
+        timestamp_found = true;
+
+        const size_t start_pos = marker_pos - timestamp_length;
+        const std::string timestamp = _filename.substr(start_pos, timestamp_length);
+
+        int year = 0, month = 0, day = 0;
+        int hour = 0, minute = 0, second = 0;
+        int parsed = sscanf(timestamp.c_str(), "%4d%2d%2d_%2d%2d%2d", &year, &month, &day, &hour, &minute, &second);
+
+        if( parsed == 6 ) {
+          std::tm t = {};
+          t.tm_year = year - 1900; // Years in tm are counted from 1900
+          t.tm_mon = month - 1;    // Months are counted from 0 (January = 0)
+          t.tm_mday = day;
+          t.tm_hour = hour;
+          t.tm_min = minute;
+          t.tm_sec = second;
+          t.tm_isdst = -1;
+
+          _last_ts = 1000.0 * timegm(&t);
+          _has_last_ts = true;
+        }
+      }
+    }
+
+    if ( !timestamp_found ) {
+      //2021-09-16-2110_8-CapObj-32F.tiff
+      const std::string marker = "-CapObj";
+      const size_t timestamp_length = 17;
+      const size_t marker_pos = _filename.find(marker);
+
+      if (marker_pos != std::string::npos && marker_pos >= timestamp_length) {
+        timestamp_found = true;
+
+        const size_t start_pos = marker_pos - timestamp_length;
+        const std::string timestamp = _filename.substr(start_pos, timestamp_length);
+
+        int year = 0, month = 0, day = 0;
+        int hour = 0, minute = 0, sfraq = 0;
+        int parsed = sscanf(timestamp.c_str(), "%4d-%2d-%2d-%2d%2d_%1d", &year, &month, &day, &hour, &minute, &sfraq);
+
+        if( parsed == 6 ) {
+          std::tm t = {};
+          t.tm_year = year - 1900; // Years in tm are counted from 1900
+          t.tm_mon = month - 1;    // Months are counted from 0 (January = 0)
+          t.tm_mday = day;
+          t.tm_hour = hour;
+          t.tm_min = minute;
+          t.tm_sec = (int)(6.0 * sfraq);
+          t.tm_isdst = -1;
+
+          _last_ts = 1000.0 * timegm(&t);
+          _has_last_ts = true;
+        }
       }
     }
   }

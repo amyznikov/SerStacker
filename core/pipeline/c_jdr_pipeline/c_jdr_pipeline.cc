@@ -121,6 +121,10 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
           ctlbind(ctls,CTL_CONTEXT(ctx, save_derotated_frames_opts));
           ctlbind_end_group(ctls);
 
+          ctlbind_expandable_group(ctls, "Save accumulation weights", "");
+          ctlbind(ctls, "save_accumulation_weights",CTL_CONTEXT(ctx, save_accumulation_weights), "");
+          ctlbind(ctls,CTL_CONTEXT(ctx, save_accumulation_weights_opts));
+          ctlbind_end_group(ctls);
         });
   }
 
@@ -186,6 +190,12 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
     if( auto group = SERIALIZE_GROUP(output_opts, save, "save_derotated_frames_opts") ) {
       SERIALIZE_OPTION(group, save, _output_options, save_derotated_frames_opts);
     }
+
+    SERIALIZE_OPTION(output_opts, save, _output_options, save_accumulation_weights);
+    if( auto group = SERIALIZE_GROUP(output_opts, save, "save_accumulation_weights_opts") ) {
+      SERIALIZE_OPTION(group, save, _output_options, save_accumulation_weights_opts);
+    }
+
   }
 
   return true;
@@ -394,6 +404,51 @@ void c_jdr_pipeline::cleanup_pipeline()
   }
 
   //set_pipeline_stage(stacking_stage_idle);
+}
+
+bool c_jdr_pipeline::open_output_writers()
+{
+  if( _output_options.save_aligned_frames ) {
+
+    const bool fOK =
+        add_output_writer(_current_aligned_frame_writer,
+            _output_options.save_aligned_frames_opts,
+            "aligned", ".avi");
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          _current_aligned_frame_writer.cfilename());
+      return false;
+    }
+  }
+
+
+  if( _output_options.save_derotated_frames ) {
+
+    const bool fOK =
+        add_output_writer(_current_derotated_frame_writer,
+            _output_options.save_derotated_frames_opts,
+            "derotated", ".avi");
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          _current_derotated_frame_writer.cfilename());
+      return false;
+    }
+  }
+
+  if( _output_options.save_accumulation_weights ) {
+
+    const bool fOK =
+        add_output_writer(_accumulation_weights_writer,
+            _output_options.save_accumulation_weights_opts,
+            "accweights", ".ser");
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          _accumulation_weights_writer.cfilename());
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool c_jdr_pipeline::run_pipeline()
@@ -713,10 +768,22 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     return false;
   }
 
+  _jovian_ellipse_detector.detected_planetary_disk_mask().copyTo(_reference_planetary_disk_mask);
+  if ( true ) {
+    const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
+    if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_file_name) ) {
+      CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_file_name.c_str());
+      return false;
+    }
+    CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
+  }
+
+
   _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
       _jovian_ellipse_detector.center(),
       _jovian_ellipse_detector.axes(),
       _jovian_ellipse_detector.pose());
+
 
   if ( true ) {
     // Create ellipse 2D illustration image
@@ -758,13 +825,6 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
       return false;
     }
     CF_DEBUG("Saved %s", output_display_file_name.c_str());
-
-    const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
-    if( !save_image(_jovian_ellipse_detector.detected_planetary_disk_mask(), cv::noArray(), output_planetary_disk_mask_file_name) ) {
-      CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_file_name.c_str());
-      return false;
-    }
-    CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
   }
 
   if ( true ) {
@@ -919,36 +979,13 @@ bool c_jdr_pipeline::derotate_jovian_frames()
   }
   CF_ERROR("SAVED reference_master_frame=%s", output_master_frame_file_name.c_str());
 
-
   _processed_frames = 0;
   _accumulated_frames = 0;
   _total_frames = end_frame_index - start_frame_index;
 
-  if( _output_options.save_aligned_frames ) {
-
-    const bool fOK =
-        add_output_writer(_current_aligned_frame_writer,
-            _output_options.save_aligned_frames_opts,
-            "aligned", ".avi");
-    if( !fOK ) {
-      CF_ERROR("Can not open output writer '%s'",
-          _current_aligned_frame_writer.cfilename());
-      return false;
-    }
-  }
-
-
-  if( _output_options.save_derotated_frames ) {
-
-    const bool fOK =
-        add_output_writer(_current_derotated_frame_writer,
-            _output_options.save_derotated_frames_opts,
-            "derotated", ".avi");
-    if( !fOK ) {
-      CF_ERROR("Can not open output writer '%s'",
-          _current_derotated_frame_writer.cfilename());
-      return false;
-    }
+  if ( !open_output_writers() ) {
+    CF_ERROR("open_output_writers() fails");
+    return false;
   }
 
   for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
@@ -1009,21 +1046,25 @@ bool c_jdr_pipeline::derotate_jovian_frames()
 
       CF_DEBUG("[F %d] DEROTATED", i);
 
-//      cv::Mat1f current_weights(current_frame.size(), 1.f);
-//      _jovian_derotation_remap.wmap().copyTo(current_weights, _jovian_derotation_remap.rmask());
-//      _frame_average.add(current_frame, current_weights);
+      cv::Mat1f current_weights(current_frame.size(), 1.f);
+      current_weights.setTo(0, _reference_planetary_disk_mask);
 
-      cv::Mat1f current_weights;
-      if ( current_mask.empty() ) {
-        current_weights = _jovian_derotation_remap.wmap();
-      }
-      else {
-        _jovian_derotation_remap.wmap().copyTo(current_weights);
+      cv::Mat1b tmp;
+      cv::erode(_jovian_derotation_remap.rmask(), tmp, cv::Mat1b(3,3, 255));
+
+      _jovian_derotation_remap.wmap().copyTo(current_weights, tmp/*_jovian_derotation_remap.rmask()*/);
+      if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);
       }
       _frame_average.add(current_frame, current_weights);
-
       CF_DEBUG("[F %d] ACCUMULATED", i);
+
+      if ( _accumulation_weights_writer.is_open() ) {
+        if ( !_accumulation_weights_writer.write(current_weights) ) {
+          CF_ERROR("[F %d] _accumulation_weights_writer.write() fails for %s", i, _accumulation_weights_writer.cfilename());
+          return false;
+        }
+      }
     }
 
     synchronized([&]() {

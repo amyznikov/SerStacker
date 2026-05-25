@@ -236,7 +236,7 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
 
   const double L = std::max({A, B, C});
   const double lat_step = 0.25 / L;
-  const double base_lon_step = 0.5 / L;
+  const double base_lon_step = 0.25 / L;
 
   const double CV_PI_2 = CV_PI / 2.0;
 
@@ -323,7 +323,7 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
       if( n2_len > 1e-6 && n1_len > 1e-6 ) {
         const double cos_theta_target = std::abs(nc2_z) / n2_len;
         const double cos_theta_source = std::abs(nc1_z) / n1_len;
-        weight = (cos_theta_target * cos_theta_target) * (cos_theta_source * cos_theta_source);
+        weight = (cos_theta_target * cos_theta_target);// * (cos_theta_source * cos_theta_source);
       }
 
       // Accumulate remap
@@ -338,10 +338,11 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
   // and fill the empty areas with default values ​​to preserve the frame's background.
   for (int y = 0; y < size.height; ++y) {
     for (int x = 0; x < size.width; ++x) {
-      float cnt = counter[y][x];
+      const float cnt = counter[y][x];
       if (cnt < 1) {
         rmap[y][x][0] = x;
         rmap[y][x][1] = y;
+        //wmap[y][x] = 0;
       }
       else {
         rmap[y][x][0] /= cnt;

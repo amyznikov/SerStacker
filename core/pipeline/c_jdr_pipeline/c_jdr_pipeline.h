@@ -61,8 +61,10 @@ struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
   bool save_aligned_frames = false;
   bool save_derotated_frames = false;
+  bool save_accumulation_weights = false;
   c_output_frame_writer_options save_aligned_frames_opts;
   c_output_frame_writer_options save_derotated_frames_opts;
+  c_output_frame_writer_options save_accumulation_weights_opts;
 };
 
 
@@ -113,6 +115,7 @@ protected:
   bool create_reference_frame();
   bool estimate_jovian_ellipse();
   bool derotate_jovian_frames();
+  bool open_output_writers();
 
 protected:
   c_jdr_pipeline_input_options _input_options;
@@ -135,12 +138,14 @@ protected:
   cv::Mat _master_mask;
   cv::Mat _reference_frame;
   cv::Mat _reference_mask;
+  cv::Mat _reference_planetary_disk_mask;
   cv::Mat _current_aligned_frame;
   cv::Mat _current_aligned_mask;
   double _master_ts = 0;
 
   c_output_frame_writer _current_aligned_frame_writer;
   c_output_frame_writer _current_derotated_frame_writer;
+  c_output_frame_writer _accumulation_weights_writer;
 };
 
 #endif /* __c_jdr_pipeline_h__ */

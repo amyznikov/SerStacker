@@ -132,7 +132,7 @@
 #include "geometry/c_transpose_image_routine.h"
 #include "geometry/c_resize_image_routine.h"
 #include "geometry/c_lunar_birdview_routine.h"
-
+#include "geometry/c_ellipsoid_zrotation_remap_routine.h"
 
 #include "quicktests/c_census_transfrom_routine.h"
 #include "quicktests/c_rotation_homography_test_routine.h"
@@ -271,6 +271,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_transpose_image_routine::class_factory_instance());
     register_class_factory(c_resize_image_routine::class_factory_instance());
     register_class_factory(c_lunar_birdview_routine::class_factory_instance());
+    register_class_factory(c_ellipsoid_zrotation_remap_routine::class_factory_instance());
 
     register_class_factory(c_histogram_normalization_routine::class_factory_instance());
 

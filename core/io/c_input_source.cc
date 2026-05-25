@@ -220,21 +220,17 @@ const std::vector<int> & c_input_source::load_badframes(const std::string & fnam
   std::string badframes_file_name;
 
   if ( !fname.empty() ) {
-    badframes_file_name =
-        gen_badframes_file_name(fname);
+    badframes_file_name = gen_badframes_file_name(fname);
   }
   else {
-    badframes_file_name =
-        gen_badframes_file_name(this->_filename);
+    badframes_file_name = gen_badframes_file_name(this->_filename);
   }
 
   // CF_DEBUG("badframes_file_name='%s'", badframes_file_name.c_str());
 
   if ( !badframes_file_name.empty() ) {
 
-    FILE * fp =
-        fopen(badframes_file_name.c_str(), "r");
-
+    FILE * fp = fopen(badframes_file_name.c_str(), "r");
     if ( fp ) {
 
       _badframes.clear();
@@ -245,8 +241,7 @@ const std::vector<int> & c_input_source::load_badframes(const std::string & fnam
 
         int index1 = -1, index2 = -1;
 
-        const int n =
-            sscanf(line, "%d-%d", &index1, &index2);
+        const int n = sscanf(line, "%d-%d", &index1, &index2);
 
         // CF_DEBUG("line '%s' n=%d index1=%d, index2=%d", line, n, index1, index2);
 

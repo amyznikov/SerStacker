@@ -48,7 +48,7 @@ const std::vector<std::string> & c_regular_image_input_source::suffixes()
 bool c_regular_image_input_source::open()
 {
   if ( file_readable(_filename) && !is_directory(_filename) ) {
-    curpos_ = 0;
+    _curpos = 0;
     return true;
   }
   return false;
@@ -57,7 +57,7 @@ bool c_regular_image_input_source::open()
 
 void c_regular_image_input_source::close()
 {
-  curpos_ = -1;
+  _curpos = -1;
 }
 
 
@@ -66,26 +66,24 @@ bool c_regular_image_input_source::seek(int pos)
   if ( pos != 0 ) {
     return false;
   }
-  curpos_ = pos;
+  _curpos = pos;
   return true;
 }
 
 int c_regular_image_input_source::curpos()
 {
-  return curpos_;
+  return _curpos;
 }
 
 bool c_regular_image_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( curpos_ != 0 ) {
+  if ( _curpos != 0 ) {
     return false;
   }
 
-  const std::string suffix =
-      get_file_suffix(_filename);
-
+  const std::string suffix = get_file_suffix(_filename);
   if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
 
     if ( !(output_frame = cv::readOpticalFlow(_filename)).data ) {
@@ -123,13 +121,50 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
 
   }
 
-  ++curpos_;
+  // Try to parse file name for encoded time stamp
+  if ( true ) {
+    _has_last_ts = false;
+
+    // JUP1.20230815_010015_GMT.32F.tiff
+    const std::string marker = "_GMT";
+    const size_t timestamp_length = 15;
+    const size_t marker_pos = _filename.find(marker);
+    if (marker_pos != std::string::npos && marker_pos >= timestamp_length) {
+      const size_t start_pos = marker_pos - timestamp_length;
+      const std::string timestamp = _filename.substr(start_pos, timestamp_length);
+
+      int year = 0, month = 0, day = 0;
+      int hour = 0, minute = 0, second = 0;
+      int parsed = sscanf(timestamp.c_str(), "%4d%2d%2d_%2d%2d%2d", &year, &month, &day, &hour, &minute, &second);
+
+      if( parsed == 6 ) {
+        std::tm t = {};
+        t.tm_year = year - 1900; // Years in tm are counted from 1900
+        t.tm_mon = month - 1;    // Months are counted from 0 (January = 0)
+        t.tm_mday = day;
+        t.tm_hour = hour;
+        t.tm_min = minute;
+        t.tm_sec = second;
+        t.tm_isdst = -1;
+
+#if defined(_WIN32) || defined(_WIN64)
+        time_t ts = _mkgmtime(&t);
+#else
+        time_t ts = timegm(&t);
+#endif
+        _has_last_ts = true;
+        _last_ts = 1000.0 * ts;
+      }
+    }
+  }
+
+  ++_curpos;
 
   return true;
 }
 
 bool c_regular_image_input_source::is_open() const
 {
-  return curpos_ >= 0;
+  return _curpos >= 0;
 }
 

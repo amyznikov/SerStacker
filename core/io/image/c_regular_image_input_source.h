@@ -42,7 +42,7 @@ public:
   bool is_open() const override;
 
 protected:
-  int curpos_ = -1;
+  int _curpos = -1;
 };
 
 #endif /* __c_regular_image_input_source_h__ */

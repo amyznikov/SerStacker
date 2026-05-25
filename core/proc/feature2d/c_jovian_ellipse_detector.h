@@ -23,7 +23,7 @@ struct c_jovian_ellipse_detector_options
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_STENSOR;
   color_channel_type maxcolor_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
-  double sigma_noise = 5;
+  double sigma_noise = 7;
   cv::Point2f offset;
   bool g2 = true;
   bool gweighted = true;
@@ -72,6 +72,19 @@ public:
   const cv::Mat1b& detected_planetary_disk_edge() const;
   const cv::Mat1b& final_planetary_disk_mask() const;
 
+  const cv::Point2d & center() const
+  {
+    return _center;
+  }
+  const cv::Vec3d & axes() const
+  {
+    return _axes;
+  }
+  const cv::Vec3d & pose() const
+  {
+    return _pose;
+  }
+
 protected:
   double compute_jovian_orientation_stensor();
   double compute_jovian_orientation_pca();
@@ -92,6 +105,10 @@ protected:
   //cv::RotatedRect _ellipseAMS;
   cv::Rect _detected_component_rect;
   cv::RotatedRect _final_planetary_disk_ellipse;
+
+  cv::Point2d _center;
+  cv::Vec3d _axes;
+  cv::Vec3d _pose;
 };
 
 cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc);

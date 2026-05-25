@@ -542,16 +542,6 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     return false;
   }
 
-//  if ( is_bayer_pattern(last_colorid_) ) {
-//    if ( output_mask ) { // not clear the meaning of alpha mask with bayer pattern
-//      output_mask->release();
-//    }
-//
-//    if ( auto_debayer_ != DEBAYER_DISABLE && debayer(output_frame, output_frame, last_colorid_, auto_debayer_) ) {
-//      last_colorid_ = COLORID_BGR;
-//    }
-//  }
-//  else
   if ( output_mask  ) {
 
     if ( _last_colorid == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {

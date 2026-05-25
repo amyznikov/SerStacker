@@ -6,6 +6,7 @@
  */
 
 #include "c_jovian_ellipse_detector.h"
+#include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
@@ -296,6 +297,27 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
   _final_planetary_disk_mask.setTo(0);
   cv::ellipse(_final_planetary_disk_mask, _final_planetary_disk_ellipse, 255, -1, cv::LINE_8);
   cv::erode(_final_planetary_disk_mask, _final_planetary_disk_mask, cv::Mat1b(3, 3, 255));
+
+  const double A = _final_planetary_disk_ellipse.size.width / 2;
+  const double B = _final_planetary_disk_ellipse.size.width * jovian_axis_ratio / 2;
+  const double C = _final_planetary_disk_ellipse.size.width / 2;
+
+  _center = _final_planetary_disk_ellipse.center;
+  _axes = cv::Vec3d(A, B, C);
+  _pose = build_ellipsoid_pose(0., 0., _final_planetary_disk_ellipse.angle * CV_PI / 180);
+
+  if( true ) {
+
+    CF_DEBUG("FIT:\n"
+        "center = %g;%g\n"
+        "axes = %g;%g;%g\n"
+        "pose = %g;%g;%g\n",
+        _center.x, _center.y,
+        _axes(0), _axes(1), _axes(2),
+        _pose(0) * 180/ CV_PI,
+        _pose(1) * 180/ CV_PI,
+        _pose(2) * 180/ CV_PI);
+  }
 
   return true;
 }

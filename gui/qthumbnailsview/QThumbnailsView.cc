@@ -10,7 +10,7 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <core/debug.h>
 
-#define MAX_ICON_LOAD_SIZE 384
+#define MAX_ICON_LOAD_SIZE (384*2)
 #define INITIAL_ZOOM  8
 #define MAX_ZOOM  24
 #define MIN_ZOOM  1

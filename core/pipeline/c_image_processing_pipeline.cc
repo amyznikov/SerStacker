@@ -272,8 +272,7 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
     };
 
 
-  std::string output_file_name =
-      ufilename;
+  std::string output_file_name = ufilename;
 
   if( output_file_name.empty() ) {
 

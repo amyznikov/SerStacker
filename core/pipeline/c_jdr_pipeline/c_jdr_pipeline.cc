@@ -116,6 +116,11 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
           ctlbind(ctls,CTL_CONTEXT(ctx, save_aligned_frames_opts));
           ctlbind_end_group(ctls);
 
+          ctlbind_expandable_group(ctls, "Save Derotated Frames", "");
+          ctlbind(ctls, "save_derotated_frames",CTL_CONTEXT(ctx, save_derotated_frames), "");
+          ctlbind(ctls,CTL_CONTEXT(ctx, save_derotated_frames_opts));
+          ctlbind_end_group(ctls);
+
         });
   }
 
@@ -177,6 +182,10 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(group, save, _output_options, save_aligned_frames_opts);
     }
 
+    SERIALIZE_OPTION(output_opts, save, _output_options, save_derotated_frames);
+    if( auto group = SERIALIZE_GROUP(output_opts, save, "save_derotated_frames_opts") ) {
+      SERIALIZE_OPTION(group, save, _output_options, save_derotated_frames_opts);
+    }
   }
 
   return true;
@@ -299,6 +308,7 @@ bool c_jdr_pipeline::initialize_pipeline()
 
 //  set_pipeline_stage(stacking_stage_initialize);
   _output_path = create_output_path(_output_options.output_directory);
+  _frame_average.clear();
 
 //
 //
@@ -476,6 +486,9 @@ bool c_jdr_pipeline::create_reference_frame()
     CF_ERROR("read_input_frame() fails");
     return false;
   }
+
+  _master_ts = master_sequence->has_last_ts() ? master_sequence->last_ts() : 0;
+  CF_DEBUG("_master_ts=%lf [ms]", _master_ts);
 
   CF_DEBUG("master_frame: %dx%d channels=%d depth=%d",
       _master_frame.cols, _master_frame.rows,
@@ -700,8 +713,13 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     return false;
   }
 
+  _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
+      _jovian_ellipse_detector.center(),
+      _jovian_ellipse_detector.axes(),
+      _jovian_ellipse_detector.pose());
+
   if ( true ) {
-    // create illustration image
+    // Create ellipse 2D illustration image
     cv::Mat display;
     double minv = 0, maxv = 1;
     cv::minMaxLoc(_reference_frame, &minv, &maxv, nullptr, nullptr);
@@ -741,13 +759,52 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     }
     CF_DEBUG("Saved %s", output_display_file_name.c_str());
 
-    const std::string output_planetary_disk_mask_file_name =
-        generate_output_filename("reference_planetary_disk_mask", "", ".png");
+    const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
     if( !save_image(_jovian_ellipse_detector.detected_planetary_disk_mask(), cv::noArray(), output_planetary_disk_mask_file_name) ) {
       CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_file_name.c_str());
       return false;
     }
     CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
+  }
+
+  if ( true ) {
+    // Create ellipsoid 3D illustration image
+    cv::Mat display, mask;
+    double minv = 0, maxv = 1;
+
+    _master_frame.copyTo(display);
+    _master_mask.copyTo(mask);
+
+    if( const auto & preproc = _stack_options.input_image_preprocessor ) {
+      preproc->process(display, mask);
+    }
+
+    cv::minMaxLoc(display, &minv, &maxv, nullptr, nullptr);
+
+    if ( display.channels() == 3 ) {
+      display.convertTo(display, CV_8UC3, 255./maxv);
+    }
+    else {
+      cv::cvtColor(display, display, cv::COLOR_GRAY2BGR);
+      display.convertTo(display, CV_8UC3, 255./maxv);
+    }
+
+    draw_ellipoid(display,
+        _jovian_derotation_remap.center(),
+        _jovian_derotation_remap.axes(),
+        _jovian_derotation_remap.Rtarget(),
+        30 * CV_PI / 180,
+        30 * CV_PI / 180,
+        cv::Scalar::all(255),
+        1,
+        cv::LINE_AA);
+
+    const std::string output_display_file_name = generate_output_filename("jovian_ellipsoid_fit", "", ".png");
+    if( !save_image(display, cv::noArray(), output_display_file_name) ) {
+      CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
+      return false;
+    }
+    CF_DEBUG("Saved %s", output_display_file_name.c_str());
   }
 
   return true;
@@ -868,6 +925,7 @@ bool c_jdr_pipeline::derotate_jovian_frames()
   _total_frames = end_frame_index - start_frame_index;
 
   if( _output_options.save_aligned_frames ) {
+
     const bool fOK =
         add_output_writer(_current_aligned_frame_writer,
             _output_options.save_aligned_frames_opts,
@@ -875,6 +933,20 @@ bool c_jdr_pipeline::derotate_jovian_frames()
     if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
           _current_aligned_frame_writer.cfilename());
+      return false;
+    }
+  }
+
+
+  if( _output_options.save_derotated_frames ) {
+
+    const bool fOK =
+        add_output_writer(_current_derotated_frame_writer,
+            _output_options.save_derotated_frames_opts,
+            "derotated", ".avi");
+    if( !fOK ) {
+      CF_ERROR("Can not open output writer '%s'",
+          _current_derotated_frame_writer.cfilename());
       return false;
     }
   }
@@ -906,22 +978,69 @@ bool c_jdr_pipeline::derotate_jovian_frames()
       return false;
     }
 
-    synchronized([&]() {
-      current_frame.copyTo(_current_aligned_frame);
-      current_mask.copyTo(_current_aligned_mask);
-    });
-
-    CF_DEBUG("[F %d] PROCESSED", i);
+    CF_DEBUG("[F %d] PREPROCESSED", i);
 
     if ( _current_aligned_frame_writer.is_open() ) {
-      if ( !_current_aligned_frame_writer.write(_current_aligned_frame, _current_aligned_mask) ) {
+      if ( !_current_aligned_frame_writer.write(current_frame, current_mask) ) {
         CF_ERROR("[F %d] _current_aligned_frame_writer.write() fails for %s", i, _current_aligned_frame_writer.cfilename());
         return false;
       }
     }
 
+    if( _input_sequence->has_last_ts() ) {
+
+      const double ts = _input_sequence->last_ts();
+      const double dt = ts - _master_ts;
+      CF_DEBUG("[F %d] ts = %lf [ms] dt = %lf [ms] ", i, ts, dt);
+
+      _jovian_derotation_remap.compute_derotation_for_time(-dt);
+
+      cv::remap(current_frame, current_frame,
+          _jovian_derotation_remap.rmap(), cv::noArray(),
+          cv::INTER_LINEAR,
+          cv::BORDER_TRANSPARENT);
+
+      if ( _current_derotated_frame_writer.is_open() ) {
+        if ( !_current_derotated_frame_writer.write(current_frame, current_mask) ) {
+          CF_ERROR("[F %d] _current_derotated_frame_writer.write() fails for %s", i, _current_derotated_frame_writer.cfilename());
+          return false;
+        }
+      }
+
+      CF_DEBUG("[F %d] DEROTATED", i);
+
+      cv::Mat1f current_weights(current_frame.size(), 1.f);
+      _jovian_derotation_remap.wmap().copyTo(current_weights, _jovian_derotation_remap.rmask());
+      _frame_average.add(current_frame, current_weights);
+
+      CF_DEBUG("[F %d] ACCUMULATED", i);
+    }
+
+    synchronized([&]() {
+      current_frame.copyTo(_current_aligned_frame);
+      current_mask.copyTo(_current_aligned_mask);
+    });
+
+
     ++_accumulated_frames;
-    CF_DEBUG("[F %d] ACCUMULATED", i);
+  }
+
+  if ( _frame_average.accumulated_frames() > 0 )  {
+
+    cv::Mat avg, mask;
+
+    if ( !_frame_average.compute(avg, mask) ) {
+      CF_ERROR("_frame_average.compute() fails");
+      return false;
+    }
+
+    const std::string output_avg_file_name = generate_output_filename("averaged", "", ".tiff");
+    if( !save_image(avg, mask, output_avg_file_name) ) {
+      CF_ERROR("save_image(%s) fails", output_avg_file_name.c_str());
+      return false;
+    }
+
+    CF_ERROR("SAVED output_avg_file_name=%s", output_avg_file_name.c_str());
   }
 
   return true;

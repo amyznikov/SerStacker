@@ -13,6 +13,7 @@
 #include <core/pipeline/c_master_frame_selection.h>
 #include <core/proc/feature2d/c_roi_selection.h>
 #include <core/proc/feature2d/c_jovian_ellipse_detector.h>
+#include <core/proc/feature2d/c_jovian_derotation_remap.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/average/c_frame_accumulation.h>
 
@@ -59,7 +60,9 @@ struct c_jdr_pipeline_stack_options
 struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
   bool save_aligned_frames = false;
+  bool save_derotated_frames = false;
   c_output_frame_writer_options save_aligned_frames_opts;
+  c_output_frame_writer_options save_derotated_frames_opts;
 };
 
 
@@ -123,6 +126,8 @@ protected:
   c_roi_selection::sptr _roi_selection;
   c_frame_weigthed_average _reference_frame_avg;
   c_jovian_ellipse_detector _jovian_ellipse_detector;
+  c_jovian_derotation_remap _jovian_derotation_remap;
+  c_frame_weigthed_average _frame_average;
 
   int _pipeline_stage = 0;
 
@@ -132,8 +137,10 @@ protected:
   cv::Mat _reference_mask;
   cv::Mat _current_aligned_frame;
   cv::Mat _current_aligned_mask;
+  double _master_ts = 0;
 
   c_output_frame_writer _current_aligned_frame_writer;
+  c_output_frame_writer _current_derotated_frame_writer;
 };
 
 #endif /* __c_jdr_pipeline_h__ */

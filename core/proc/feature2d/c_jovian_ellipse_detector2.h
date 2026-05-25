@@ -39,13 +39,8 @@ struct c_jovian_ellipse_detector2_options
     double latidute_step = 30; // [deg]
     double longitude_step = 30; // [deg]
     double deltat = 0; // [sec]
-
-    cv::Scalar line_color =
-        cv::Scalar::all(255);
-
-    cv::Scalar outline_color =
-        cv::Scalar::all(255);
-
+    cv::Scalar line_color = cv::Scalar::all(255);
+    cv::Scalar outline_color = cv::Scalar::all(255);
 
     bool show_smask = false;
     bool show_bmask = false;

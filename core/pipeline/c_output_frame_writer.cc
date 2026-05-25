@@ -218,11 +218,11 @@ bool c_output_frame_writer::open(const std::string & filename,
   if( contains(ser_suffixes, suffix) ) {
     output_type = output_type_ser;
   }
-  else if( contains(ffmpeg_suffixes, suffix) ) {
-    output_type = output_type_video;
-  }
   else if( contains(image_suffixes, suffix) ) {
     output_type = output_type_images;
+  }
+  else if( contains(ffmpeg_suffixes, suffix) ) {
+    output_type = output_type_video;
   }
   else {
     CF_ERROR("c_output_frame_writer: Can not suggest output type from file suffix '%s'",
@@ -362,11 +362,8 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
         return false;
       }
 
-      std::string fname =
-          output_file_name;
-
-      const std::string suffix =
-          get_file_suffix(fname);
+      std::string fname = output_file_name;
+      const std::string suffix = get_file_suffix(fname);
 
       set_file_suffix(fname, ssprintf("-%06d%s",
           current_frame_index,

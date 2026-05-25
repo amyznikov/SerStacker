@@ -239,8 +239,7 @@ bool c_align_color_channels::align(int reference_channel,
 
   if( _opts.normalization_level < 1 ) {
     for ( int i = 0; i < cn; ++i ) {
-      normalized_channels[i] =
-          channels[i];
+      normalized_channels[i] = channels[i];
     }
   }
   else {

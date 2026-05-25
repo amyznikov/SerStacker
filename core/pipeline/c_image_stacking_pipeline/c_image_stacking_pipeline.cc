@@ -2458,48 +2458,48 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     if( (subsection = get_group(section, save, "registration")) ) {
       SERIALIZE_OBJECT(subsection, save, opts.registration);
 
-      SERIALIZE_OPTION(subsection, save, opts.registration.planetary_disk_derotation, derotation_type);
+//      SERIALIZE_OPTION(subsection, save, opts.registration.planetary_disk_derotation, derotation_type);
 
-      if( (subsubsection = get_group(subsection, save, "jovian_derotation")) ) {
+//      if( (subsubsection = get_group(subsection, save, "jovian_derotation")) ) {
+//
+//        struct c_jovian_derotation_options & jovian_derotation =
+//            opts.registration.planetary_disk_derotation.jovian_derotation;
+//
+//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
+////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, min_rotation);
+////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_rotation);
+////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_pyramid_level);
+////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, num_orientations);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
+//
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, gbsigma);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, stdev_factor);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pca_blur);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, se_close_radius);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, equatorial_radius);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pose);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, center);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, offset);
+//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, auto_location);
+//      }
 
-        struct c_jovian_derotation_options & jovian_derotation =
-            opts.registration.planetary_disk_derotation.jovian_derotation;
-
-        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, min_rotation);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_rotation);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_pyramid_level);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, num_orientations);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
-
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, gbsigma);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pca_blur);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, se_close_radius);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, equatorial_radius);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pose);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, center);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, offset);
-        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, auto_location);
-      }
-
-      if( (subsubsection = get_group(subsection, save, "saturn_derotation")) ) {
-
-        struct c_saturn_derotation_options & saturn_derotation =
-            opts.registration.planetary_disk_derotation.saturn_derotation;
-
-        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, min_rotation);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_rotation);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_pyramid_level);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, num_orientations);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, derotate_all_frames);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_context_size);
-        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, stdev_factor);
-        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, se_close_radius);
-        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
-      }
+//      if( (subsubsection = get_group(subsection, save, "saturn_derotation")) ) {
+//
+//        struct c_saturn_derotation_options & saturn_derotation =
+//            opts.registration.planetary_disk_derotation.saturn_derotation;
+//
+//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, min_rotation);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_rotation);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_pyramid_level);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, num_orientations);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, derotate_all_frames);
+////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_context_size);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, stdev_factor);
+//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, se_close_radius);
+//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
+//      }
 
     }
   }

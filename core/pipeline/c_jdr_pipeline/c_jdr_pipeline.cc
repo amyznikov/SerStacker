@@ -1047,12 +1047,15 @@ bool c_jdr_pipeline::derotate_jovian_frames()
       CF_DEBUG("[F %d] DEROTATED", i);
 
       cv::Mat1f current_weights(current_frame.size(), 1.f);
+      cv::Mat1f wmap;
       current_weights.setTo(0, _reference_planetary_disk_mask);
 
       cv::Mat1b tmp;
       cv::erode(_jovian_derotation_remap.rmask(), tmp, cv::Mat1b(3,3, 255));
 
-      _jovian_derotation_remap.wmap().copyTo(current_weights, tmp/*_jovian_derotation_remap.rmask()*/);
+      cv::multiply(_jovian_derotation_remap.wmap(), 1 / (1 + std::abs(dt) / 600000.), wmap);
+      wmap.copyTo(current_weights, tmp/*_jovian_derotation_remap.rmask()*/);
+
       if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);
       }

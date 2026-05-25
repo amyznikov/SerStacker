@@ -10,6 +10,8 @@
 #include <core/proc/pose.h>
 #include <core/debug.h>
 
+#if 0
+
 void c_saturn_derotation::set_detector_options(const c_saturn_ellipse_detector_options & v)
 {
   _detector.options() = v;
@@ -81,3 +83,4 @@ bool c_saturn_derotation::compute(double current_tstamp_sec, double target_tstam
   return compute(rotation_angle_deg);
 }
 
+#endif // 0

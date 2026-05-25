@@ -9,6 +9,7 @@
 //#include <core/proc/ellipsoid.h>
 //#include <core/proc/pose.h>
 
+#if 0
 
 void c_draw_saturn_ellipse_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
@@ -70,3 +71,5 @@ bool c_draw_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
 
   return false;
 }
+
+#endif // 0

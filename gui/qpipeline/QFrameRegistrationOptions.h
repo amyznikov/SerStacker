@@ -194,6 +194,8 @@ protected:
   QEstimateEpipolarDerotationImageTransformOptions *estimateEpipolarDerotation_ctl = nullptr;
 };
 
+#if 0
+
 class QJovianDerotationOptions :
     public QSettingsWidgetTemplate<c_jovian_derotation_options>
 {
@@ -245,6 +247,7 @@ protected:
 //  QCheckBox * align_jovian_disk_horizontally_ctl = nullptr;
 };
 
+#endif // 0
 
 
 

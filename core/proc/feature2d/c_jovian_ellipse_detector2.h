@@ -11,6 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 
+#if 0
 struct c_jovian_ellipse_detector2_options
 {
   double gbsigma = 1; // optional gaussian blur input image for planetary detection
@@ -149,5 +150,6 @@ protected:
 
   bool _detected = false;
 };
+#endif
 
 #endif /* __c_jovian_ellipse_detector2_h__ */

@@ -13,6 +13,7 @@
 #include <core/proc/pose.h>
 #include <core/debug.h>
 
+#if 0
 static constexpr double jovian_axis_ratio =
     0.93512560845968779724;
 
@@ -456,3 +457,6 @@ bool c_jovian_ellipse_detector2::compute_derotation_for_time(double deltat_sec)
 
   return compute_derotation_for_angle(rotation_angle_deg);
 }
+
+#endif
+

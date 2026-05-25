@@ -11,6 +11,8 @@
 #include <core/proc/pose.h>
 #include <core/debug.h>
 
+#if 0
+
 bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask)
 {
   static constexpr double radius_ratio =
@@ -219,3 +221,4 @@ bool c_saturn_ellipse_detector::draw_detected(cv::InputOutputArray image) const
   return true;
 }
 
+#endif // 0

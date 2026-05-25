@@ -12,6 +12,7 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/feature2d/c_saturn_ellipse_detector.h>
 
+#if 0
 
 class c_draw_saturn_ellipse_routine :
     public c_image_processor_routine
@@ -198,5 +199,7 @@ public:
 protected:
   c_saturn_ellipse_detector _detector;
 };
+
+#endif // 0
 
 #endif /* __c_draw_saturn_ellipse_routine_h__ */

@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/feature2d/c_jovian_ellipse_detector2.h>
 
+#if 0
 class c_jovian_derotation2
 {
 public:
@@ -78,5 +79,6 @@ protected:
 //  cv::Mat1f _current_wmask;
 
 };
+#endif // 0
 
 #endif /* __c_jovian_derotation2_h__ */

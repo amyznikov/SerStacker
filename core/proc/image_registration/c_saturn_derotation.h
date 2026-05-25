@@ -12,6 +12,8 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/feature2d/c_saturn_ellipse_detector.h>
 
+#if 0
+
 class c_saturn_derotation
 {
 public:
@@ -54,5 +56,6 @@ protected:
   cv::Mat1f _current_wmask;
 
 };
+#endif //0
 
 #endif /* __c_saturn_derotation_h__ */

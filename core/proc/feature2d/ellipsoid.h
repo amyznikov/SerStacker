@@ -115,19 +115,24 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type);
 
-
-void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
-    const cv::Vec3d & axes, const cv::Vec3d & pose, double zrotation,
-    double lat_step, double lon_step,
-    const cv::Scalar & color, int thickness, int line_type);
+//
+//void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
+//    const cv::Vec3d & axes, const cv::Vec3d & pose, double zrotation,
+//    double lat_step, double lon_step,
+//    const cv::Scalar & color, int thickness, int line_type);
 
 
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,
-    cv::Mat1f & wmap,
     cv::Mat1b & rmask,
     cv::Mat1f * rcounter = nullptr);
+
+bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
+    const cv::Vec3d & axes,  const cv::Vec3d & target_pose,
+    const cv::Mat2f & rmap,
+    cv::Mat1f & wmap);
+
 /**
  * Compute rotated 2D ellipse outline bound box,
  * appropriate to draw Saturn rings with cv::ellipse()
@@ -149,82 +154,10 @@ void ellipse_poly(const cv::Point2f & center,
 void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type);
 
-
 /*
  * Draw cv::RotatedRect
  * */
 void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type = cv::LINE_8);
-
-/**
- * Convert 3D ellipsoid coordinates to Cartesian XYZ
- * */
-inline cv::Vec3d ellipsoid_to_cart3d(double lat, double lon, double A, double B, double C)
-{
-  return cv::Vec3d(A * std::cos(lat) * std::cos(lon),
-      B * std::cos(lat) * std::sin(lon),
-      C * std::sin(lat));
-}
-
-/**
- * Convert 3D ellipsoid coordinates to Cartesian XY plane.
- * Return point visibility flag computed based on rotated surface normal direction.
- * */
-inline bool ellipsoid_to_cart2d(double lat, double lon,
-    double A, double B, double C,
-    const cv::Matx33d & R,
-    const cv::Point2d & center,
-    cv::Point2d * pos)
-{
-  const cv::Vec3d v0 = ellipsoid_to_cart3d(lat, lon, A, B, C);
-  const cv::Vec3d v1 = R * v0;
-  pos->x = v1(0) + center.x;
-  pos->y = v1(1) + center.y;
-
-  /*
-   * check point visibility based on rotated surface normal direction
-   * */
-  const double zr =
-      R(2, 0) * v0(0) / (A * A) +
-      R(2, 1) * v0(1) / (B * B) +
-      R(2, 2) * v0(2) / (C * C);
-
-  return  zr >= 0;
-}
-
-
-/**
- * Convert 3D ellipsoid coordinates to Cartesian XY plane.
- * Return point visibility flag computed based on rotated surface normal direction.
- * */
-inline bool ellipsoid_to_cart2d(const cv::Vec3d & cart3d_pos,
-    double A, double B, double C,
-    const cv::Matx33d & R,
-    const cv::Point2d & center,
-    cv::Point2d * pos)
-{
-  const cv::Vec3d v1 = R * cart3d_pos;
-  pos->x = v1(0) + center.x;
-  pos->y = v1(1) + center.y;
-
-  /*
-   * check point visibility based on rotated surface normal direction
-   * */
-  const double zr =
-      R(2, 0) * cart3d_pos(0) / (A * A) +
-      R(2, 1) * cart3d_pos(1) / (B * B) +
-      R(2, 2) * cart3d_pos(2) / (C * C);
-
-  return  zr >= 0;
-}
-
-
-bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
-    const cv::Vec3d & axes, const cv::Vec3d & orientation, double zrotation,
-    cv::Mat2f & output_rmap, cv::Mat1b & output_mask);
-
-bool compute_saturn_zrotation_deltat_remap(const cv::Size & size, const cv::Point2d & center,
-    const cv::Vec3d & axes, const cv::Vec3d & orientation, double deltat_sec,
-    cv::Mat2f & output_rmap, cv::Mat1b & output_mask);
 
 #endif /* __ellipsoid_h__ */

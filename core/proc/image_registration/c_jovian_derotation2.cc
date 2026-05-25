@@ -10,6 +10,8 @@
 #include <core/proc/pose.h>
 #include <core/debug.h>
 
+#if 0
+
 bool c_jovian_derotation2::detect(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
@@ -47,3 +49,4 @@ bool c_jovian_derotation2::compute(double zrotation_deg)
   return _detector.compute_derotation_for_angle(zrotation_deg);
 }
 
+#endif //0

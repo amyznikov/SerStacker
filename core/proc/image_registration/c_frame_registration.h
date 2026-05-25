@@ -121,37 +121,37 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
 }
 
-struct c_jovian_derotation_options
-{
-  //  c_jovian_ellipse_detector_options detector_options;
-  c_jovian_ellipse_detector2_options detector_options;
-  //  double min_rotation = -40 * CV_PI / 180;
-  //  double max_rotation = +40 * CV_PI / 180;
-  //  int max_pyramid_level = -1;
-  //  int num_orientations = 1;
-  int max_context_size = 5;
-  bool derotate_all_frames = false;
-};
+//struct c_jovian_derotation_options
+//{
+//  //  c_jovian_ellipse_detector_options detector_options;
+//  c_jovian_ellipse_detector2_options detector_options;
+//  //  double min_rotation = -40 * CV_PI / 180;
+//  //  double max_rotation = +40 * CV_PI / 180;
+//  //  int max_pyramid_level = -1;
+//  //  int num_orientations = 1;
+//  int max_context_size = 5;
+//  bool derotate_all_frames = false;
+//};
 
-struct c_saturn_derotation_options
-{
-  c_saturn_ellipse_detector_options detector_options;
-};
+//struct c_saturn_derotation_options
+//{
+//  c_saturn_ellipse_detector_options detector_options;
+//};
+//
 
-
-enum planetary_disk_derotation_type
-{
-  planetary_disk_derotation_disabled,
-  planetary_disk_derotation_jovian,
-  planetary_disk_derotation_saturn,
-};
-
-struct c_planetary_disk_derotation_options
-{
-  c_jovian_derotation_options jovian_derotation;
-  c_saturn_derotation_options saturn_derotation;
-  planetary_disk_derotation_type derotation_type = planetary_disk_derotation_disabled;
-};
+//enum planetary_disk_derotation_type
+//{
+//  planetary_disk_derotation_disabled,
+//  planetary_disk_derotation_jovian,
+//  planetary_disk_derotation_saturn,
+//};
+//
+//struct c_planetary_disk_derotation_options
+//{
+//  c_jovian_derotation_options jovian_derotation;
+//  c_saturn_derotation_options saturn_derotation;
+//  planetary_disk_derotation_type derotation_type = planetary_disk_derotation_disabled;
+//};
 
 struct c_image_registration_options
 {
@@ -164,7 +164,7 @@ struct c_image_registration_options
   struct c_feature_registration_options feature_registration;
   struct c_ecc_registration_options ecc;
   struct c_eccflow_registration_options eccflow;
-  struct c_planetary_disk_derotation_options planetary_disk_derotation;
+  //struct c_planetary_disk_derotation_options planetary_disk_derotation;
 
   bool enable_feature_registration = true;
   bool enable_ecc_registration = false;
@@ -282,11 +282,11 @@ public:
 //  const c_jovian_derotation & jovian_derotation() const;
 //  c_jovian_derotation & jovian_derotation();
 
-  const c_jovian_derotation2 & jovian_derotation() const;
-  c_jovian_derotation2 & jovian_derotation();
+//  const c_jovian_derotation2 & jovian_derotation() const;
+//  c_jovian_derotation2 & jovian_derotation();
 
-  const c_saturn_derotation & saturn_derotation() const;
-  c_saturn_derotation & saturn_derotation();
+//  const c_saturn_derotation & saturn_derotation() const;
+//  c_saturn_derotation & saturn_derotation();
 
   void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
   const ecc_image_preprocessor_function & ecc_image_preprocessor() const;
@@ -388,8 +388,8 @@ protected:
   c_eccflow _eccflow;
 
   //c_jovian_derotation jovian_derotation_;
-  c_jovian_derotation2 _jovian_derotation;
-  c_saturn_derotation _saturn_derotation;
+//  c_jovian_derotation2 _jovian_derotation;
+//  c_saturn_derotation _saturn_derotation;
   ecc_image_preprocessor_function _ecc_image_preprocessor;
 
   cv::Mat2f _current_remap;

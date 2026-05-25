@@ -23,7 +23,7 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Point2f _center; // [pix]
+  cv::Point2d _center; // [pix]
   cv::Vec3d _axes;  // [pix]
   cv::Vec3d _pose; // [deg]
   double _zrotation = 0; // [deg]
@@ -38,7 +38,7 @@ protected:
   struct c_remap_options {
     bool display_counter = false;
     bool display_weights = false;
-    bool display_distance_transform = false;
+    //bool display_distance_transform = false;
     bool enabled = true;
   } _remap;
 };

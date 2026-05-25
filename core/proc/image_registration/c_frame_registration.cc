@@ -17,6 +17,7 @@
 #include <core/debug.h>
 
 
+#if 0
 template<>
 const c_enum_member * members_of<planetary_disk_derotation_type>()
 {
@@ -29,6 +30,7 @@ const c_enum_member * members_of<planetary_disk_derotation_type>()
 
   return members;
 }
+#endif // 0
 
 bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
 {
@@ -516,25 +518,25 @@ const c_eccflow & c_frame_registration::eccflow() const
 //  return this->jovian_derotation_;
 //}
 
-const c_jovian_derotation2 & c_frame_registration::jovian_derotation() const
-{
-  return this->_jovian_derotation;
-}
-
-c_jovian_derotation2 & c_frame_registration::jovian_derotation()
-{
-  return this->_jovian_derotation;
-}
-
-const c_saturn_derotation & c_frame_registration::saturn_derotation() const
-{
-  return this->_saturn_derotation;
-}
-
-c_saturn_derotation & c_frame_registration::saturn_derotation()
-{
-  return this->_saturn_derotation;
-}
+//const c_jovian_derotation2 & c_frame_registration::jovian_derotation() const
+//{
+//  return this->_jovian_derotation;
+//}
+//
+//c_jovian_derotation2 & c_frame_registration::jovian_derotation()
+//{
+//  return this->_jovian_derotation;
+//}
+//
+//const c_saturn_derotation & c_frame_registration::saturn_derotation() const
+//{
+//  return this->_saturn_derotation;
+//}
+//
+//c_saturn_derotation & c_frame_registration::saturn_derotation()
+//{
+//  return this->_saturn_derotation;
+//}
 
 void c_frame_registration::set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func)
 {
@@ -669,60 +671,60 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       }
     }
   }
-
-
-  switch (_options.planetary_disk_derotation.derotation_type) {
-    case planetary_disk_derotation_jovian: {
-
-      const c_jovian_derotation_options & opts =
-          _options.planetary_disk_derotation.jovian_derotation;
-
-//      jovian_derotation_.set_detector_options(opts.detector_options);
-//      jovian_derotation_.set_min_rotation(opts.min_rotation);
-//      jovian_derotation_.set_max_rotation(opts.max_rotation);
-//      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
-//      jovian_derotation_.set_num_orientations(opts.num_orientations);
 //
-//      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-//          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
-//      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-//        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
-//        return false;
-//      }
-
-      _jovian_derotation.detector_options() = opts.detector_options;
-      _jovian_derotation.detector_options().auto_location = false;
-      if( !_jovian_derotation.detect(reference_image, reference_mask) ) {
-        CF_ERROR("jovian_derotation_.detect() fails");
-        return false;
-      }
-
-
-      break;
-    }
-
-
-    case planetary_disk_derotation_saturn : {
-
-      const c_saturn_derotation_options & opts =
-          _options.planetary_disk_derotation.saturn_derotation;
-
-//      saturn_derotation_.set_detector_options(opts.detector_options);
 //
-//      if( !saturn_derotation_.setup_reference_image(reference_image, reference_mask) ) {
-//        CF_ERROR("saturn_derotation_.setup_reference_image() fails");
+//  switch (_options.planetary_disk_derotation.derotation_type) {
+//    case planetary_disk_derotation_jovian: {
+//
+//      const c_jovian_derotation_options & opts =
+//          _options.planetary_disk_derotation.jovian_derotation;
+//
+////      jovian_derotation_.set_detector_options(opts.detector_options);
+////      jovian_derotation_.set_min_rotation(opts.min_rotation);
+////      jovian_derotation_.set_max_rotation(opts.max_rotation);
+////      jovian_derotation_.set_max_pyramid_level(opts.max_pyramid_level);
+////      jovian_derotation_.set_num_orientations(opts.num_orientations);
+////
+////      jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+////          ssprintf("%s/derotation-reference-frame", debug_path_.c_str()));
+////      if( !jovian_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+////        CF_ERROR("jovian_derotation_.setup_reference_image() fails");
+////        return false;
+////      }
+//
+//      _jovian_derotation.detector_options() = opts.detector_options;
+//      _jovian_derotation.detector_options().auto_location = false;
+//      if( !_jovian_derotation.detect(reference_image, reference_mask) ) {
+//        CF_ERROR("jovian_derotation_.detect() fails");
 //        return false;
 //      }
 //
-//      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
-
-      break;
-    }
-
-    case planetary_disk_derotation_disabled:
-    default:
-      break;
-  }
+//
+//      break;
+//    }
+//
+//
+//    case planetary_disk_derotation_saturn : {
+//
+//      const c_saturn_derotation_options & opts =
+//          _options.planetary_disk_derotation.saturn_derotation;
+//
+////      saturn_derotation_.set_detector_options(opts.detector_options);
+////
+////      if( !saturn_derotation_.setup_reference_image(reference_image, reference_mask) ) {
+////        CF_ERROR("saturn_derotation_.setup_reference_image() fails");
+////        return false;
+////      }
+////
+////      CF_ERROR("ERROR: planetary_disk_derotation_saturn still not implemented");
+//
+//      break;
+//    }
+//
+//    case planetary_disk_derotation_disabled:
+//    default:
+//      break;
+//  }
 
 
   return true;
@@ -914,120 +916,120 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   _current_status.timings.create_remap = get_realtime_ms() - t0;
 
   ///////////////
-
-  if( _options.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
-
-    cv::Mat tmp_image, tmp_mask;
-
-    cv::remap(current_image,
-        tmp_image,
-        _current_remap,
-        cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REFLECT101);
-
-    cv::remap(current_mask.empty() ? cv::Mat1b(current_image.size(), 255) : current_mask,
-        tmp_mask,
-        _current_remap,
-        cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_REFLECT101);
-
-    cv::compare(tmp_mask, 250, tmp_mask,
-        cv::CMP_GE);
-
-    cv::Mat2f derotation_remap;
-    cv::Mat1f current_wmask;
-    cv::Mat1b current_bmask;
-
-    switch (_options.planetary_disk_derotation.derotation_type) {
-      case planetary_disk_derotation_jovian: {
-
-//        jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
-//            ssprintf("%s/derotation", debug_path_.c_str()));
-
-//        if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
+//
+//  if( _options.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
+//
+//    cv::Mat tmp_image, tmp_mask;
+//
+//    cv::remap(current_image,
+//        tmp_image,
+//        _current_remap,
+//        cv::noArray(),
+//        cv::INTER_LINEAR,
+//        cv::BORDER_REFLECT101);
+//
+//    cv::remap(current_mask.empty() ? cv::Mat1b(current_image.size(), 255) : current_mask,
+//        tmp_mask,
+//        _current_remap,
+//        cv::noArray(),
+//        cv::INTER_LINEAR,
+//        cv::BORDER_REFLECT101);
+//
+//    cv::compare(tmp_mask, 250, tmp_mask,
+//        cv::CMP_GE);
+//
+//    cv::Mat2f derotation_remap;
+//    cv::Mat1f current_wmask;
+//    cv::Mat1b current_bmask;
+//
+//    switch (_options.planetary_disk_derotation.derotation_type) {
+//      case planetary_disk_derotation_jovian: {
+//
+////        jovian_derotation_.set_debug_path(debug_path_.empty() ? "" :
+////            ssprintf("%s/derotation", debug_path_.c_str()));
+//
+////        if ( !jovian_derotation_.compute(tmp_image, tmp_mask) ) {
+////          CF_ERROR("jovian_derotation_.compute() fails");
+////          return false;
+////        }
+//
+////        derotation_remap =
+////            jovian_derotation_.current_derotation_remap();
+////
+////        current_wmask =
+////            jovian_derotation_.current_wmask();
+//
+//        const double current_tstamp_sec =
+//            _current_timestamp;
+//
+//        const double reference_tstamp_sec =
+//            _reference_timestamp;
+//
+//        CF_DEBUG("current_tstamp_sec=%g reference_tstamp_sec=%g", current_tstamp_sec, reference_tstamp_sec);
+//
+//        if ( !_jovian_derotation.compute(current_tstamp_sec, reference_tstamp_sec) ) {
 //          CF_ERROR("jovian_derotation_.compute() fails");
 //          return false;
 //        }
-
+//
+//
+//        derotation_remap = _jovian_derotation.current_derotation_remap();
+//
+//        CF_DEBUG("derotation_remap: %dx%d", derotation_remap.cols, derotation_remap.rows);
+//
+//        current_wmask = _jovian_derotation.current_wmask();
+//
+//        CF_DEBUG("current_wmask: %dx%d", current_wmask.cols, current_wmask.rows);
+//
+//        current_bmask = _jovian_derotation.current_bmask();
+//
+//        CF_DEBUG("current_bmask: %dx%d", current_bmask.cols, current_bmask.rows);
+//
+//        break;
+//      }
+//
+//      case planetary_disk_derotation_saturn: {
+//
+//        const double current_tstamp_sec = _current_timestamp;
+//        const double reference_tstamp_sec = _reference_timestamp;
+//
+//        if ( !_saturn_derotation.compute(current_tstamp_sec, reference_tstamp_sec) ) {
+//          CF_ERROR("saturn_derotation_.compute() fails");
+//          return false;
+//        }
+//
+//
 //        derotation_remap =
-//            jovian_derotation_.current_derotation_remap();
+//            _saturn_derotation.current_derotation_remap();
 //
 //        current_wmask =
-//            jovian_derotation_.current_wmask();
-
-        const double current_tstamp_sec =
-            _current_timestamp;
-
-        const double reference_tstamp_sec =
-            _reference_timestamp;
-
-        CF_DEBUG("current_tstamp_sec=%g reference_tstamp_sec=%g", current_tstamp_sec, reference_tstamp_sec);
-
-        if ( !_jovian_derotation.compute(current_tstamp_sec, reference_tstamp_sec) ) {
-          CF_ERROR("jovian_derotation_.compute() fails");
-          return false;
-        }
-
-
-        derotation_remap = _jovian_derotation.current_derotation_remap();
-
-        CF_DEBUG("derotation_remap: %dx%d", derotation_remap.cols, derotation_remap.rows);
-
-        current_wmask = _jovian_derotation.current_wmask();
-
-        CF_DEBUG("current_wmask: %dx%d", current_wmask.cols, current_wmask.rows);
-
-        current_bmask = _jovian_derotation.current_bmask();
-
-        CF_DEBUG("current_bmask: %dx%d", current_bmask.cols, current_bmask.rows);
-
-        break;
-      }
-
-      case planetary_disk_derotation_saturn: {
-
-        const double current_tstamp_sec = _current_timestamp;
-        const double reference_tstamp_sec = _reference_timestamp;
-
-        if ( !_saturn_derotation.compute(current_tstamp_sec, reference_tstamp_sec) ) {
-          CF_ERROR("saturn_derotation_.compute() fails");
-          return false;
-        }
-
-
-        derotation_remap =
-            _saturn_derotation.current_derotation_remap();
-
-        current_wmask =
-            _saturn_derotation.current_wmask();
-
-        break;
-      }
-
-      default:
-        break;
-    }
-
-    for( int y = 0; y < _current_remap.rows; ++y ) {
-      for( int x = 0; x < _current_remap.cols; ++x ) {
-        if( current_wmask[y][x] > 0 ) {
-          _current_remap[y][x][0] += derotation_remap[y][x][0] - x;
-          _current_remap[y][x][1] += derotation_remap[y][x][1] - y;
-        }
-      }
-    }
-
-    if ( !_debug_path.empty() ) {
-      save_image(_current_remap,
-          ssprintf("%s/remap_debug/current_remap_after_derotation.flo",
-              _debug_path.c_str()));
-    }
-
-  }
-
-
+//            _saturn_derotation.current_wmask();
+//
+//        break;
+//      }
+//
+//      default:
+//        break;
+//    }
+//
+//    for( int y = 0; y < _current_remap.rows; ++y ) {
+//      for( int x = 0; x < _current_remap.cols; ++x ) {
+//        if( current_wmask[y][x] > 0 ) {
+//          _current_remap[y][x][0] += derotation_remap[y][x][0] - x;
+//          _current_remap[y][x][1] += derotation_remap[y][x][1] - y;
+//        }
+//      }
+//    }
+//
+//    if ( !_debug_path.empty() ) {
+//      save_image(_current_remap,
+//          ssprintf("%s/remap_debug/current_remap_after_derotation.flo",
+//              _debug_path.c_str()));
+//    }
+//
+//  }
+//
+//
 
 
   ///////////////
@@ -1521,47 +1523,47 @@ bool c_frame_registration::base_remap(const cv::Mat2f & rmap,
           cv::BORDER_CONSTANT, cv::Scalar::all(255));
     }
 
-    if ( _options.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
-
-      // size must be referece_image.size()
-      cv::Mat new_mask;
-
-      if ( out_mask.depth() == CV_32F ) {
-        out_mask.copyTo(new_mask);
-      }
-      else {
-        out_mask.convertTo(new_mask, CV_32F, 1./255);
-      }
-
-      switch (_options.planetary_disk_derotation.derotation_type) {
-        case planetary_disk_derotation_jovian:
-          _jovian_derotation.current_wmask().copyTo(new_mask,
-              _jovian_derotation.planetary_disk_ellipse_mask());
-          break;
-        case planetary_disk_derotation_saturn:
-          _saturn_derotation.current_wmask().copyTo(new_mask,
-              _saturn_derotation.planetary_disk_ellipse_mask());
-          break;
-      }
-
-
-      static int iitest = 0;
-
-      if ( !_debug_path.empty() ) {
-        save_image(out_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", _debug_path.c_str(), iitest));
-        save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", _debug_path.c_str(), iitest));
-      }
-
-      cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
-      new_mask.setTo(0, ~out_mask);
-      if ( !_debug_path.empty() ) {
-        save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", _debug_path.c_str(), iitest));
-      }
-
-      dst_mask.move(new_mask);
-
-      ++iitest;
-    }
+//    if ( _options.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled ) {
+//
+//      // size must be referece_image.size()
+//      cv::Mat new_mask;
+//
+//      if ( out_mask.depth() == CV_32F ) {
+//        out_mask.copyTo(new_mask);
+//      }
+//      else {
+//        out_mask.convertTo(new_mask, CV_32F, 1./255);
+//      }
+//
+//      switch (_options.planetary_disk_derotation.derotation_type) {
+//        case planetary_disk_derotation_jovian:
+//          _jovian_derotation.current_wmask().copyTo(new_mask,
+//              _jovian_derotation.planetary_disk_ellipse_mask());
+//          break;
+//        case planetary_disk_derotation_saturn:
+//          _saturn_derotation.current_wmask().copyTo(new_mask,
+//              _saturn_derotation.planetary_disk_ellipse_mask());
+//          break;
+//      }
+//
+//
+//      static int iitest = 0;
+//
+//      if ( !_debug_path.empty() ) {
+//        save_image(out_mask, ssprintf("%s/remap_debug/orig_mask.%03d.tiff", _debug_path.c_str(), iitest));
+//        save_image(new_mask, ssprintf("%s/remap_debug/new_mask.%03d.tiff", _debug_path.c_str(), iitest));
+//      }
+//
+//      cv::GaussianBlur(new_mask, new_mask, cv::Size(), 2, 2);
+//      new_mask.setTo(0, ~out_mask);
+//      if ( !_debug_path.empty() ) {
+//        save_image(new_mask, ssprintf("%s/remap_debug/new_maskz.%03d.tiff", _debug_path.c_str(), iitest));
+//      }
+//
+//      dst_mask.move(new_mask);
+//
+//      ++iitest;
+//    }
 
 
   }

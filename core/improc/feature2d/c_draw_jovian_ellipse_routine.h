@@ -12,6 +12,8 @@
 #include <core/improc/c_image_processor.h>
 #include <core/proc/image_registration/c_jovian_derotation2.h>
 
+#if 0
+
 class c_draw_jovian_ellipse_routine :
     public c_image_processor_routine
 {
@@ -237,5 +239,6 @@ public:
 protected:
   c_jovian_derotation2 _derotation;
 };
+#endif //0
 
 #endif /* __c_draw_jovian_ellipse_routine_h__ */

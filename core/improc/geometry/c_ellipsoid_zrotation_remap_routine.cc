@@ -21,8 +21,6 @@ void c_ellipsoid_zrotation_remap_routine::getcontrols(c_control_list & ctls, con
         ctlbind(ctls, "enable remap ", CTL_CONTEXT(ctx, enabled), "Enable remap");
         ctlbind(ctls, "display counter", CTL_CONTEXT(ctx, display_counter), "");
         ctlbind(ctls, "display weights", CTL_CONTEXT(ctx, display_weights), "");
-        ctlbind(ctls, "display dist. transform", CTL_CONTEXT(ctx, display_distance_transform), "");
-
       });
 
   ctlbind_expandable_group(ctls, "Draw Options ",
@@ -48,7 +46,6 @@ bool c_ellipsoid_zrotation_remap_routine::serialize(c_config_setting settings, b
       SERIALIZE_OPTION(subsection, save, _remap, enabled);
       SERIALIZE_OPTION(subsection, save, _remap, display_counter);
       SERIALIZE_OPTION(subsection, save, _remap, display_weights);
-      SERIALIZE_OPTION(subsection, save, _remap, display_distance_transform);
     }
 
     if ( auto subsection = SERIALIZE_GROUP(settings, save, "draw_ellipoid") ) {
@@ -76,16 +73,15 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
 
   if( _remap.enabled ) {
 
-    const cv::Vec3d initia_pose(_pose(0) * CV_PI / 180,
+    const cv::Vec3d initial_pose(_pose(0) * CV_PI / 180,
         _pose(1) * CV_PI / 180,
         _pose(2) * CV_PI / 180);
 
     const cv::Matx33d Rinitial =
-        build_ellipsoid_rotation(initia_pose);
+        build_ellipsoid_rotation(initial_pose);
 
     cv::Mat2f rmap;
     cv::Mat1b rmask;
-    cv::Mat1f wmap;
     cv::Mat1f counter;
 
     compute_ellipsoid_zrotation_remap(image.size(),
@@ -94,29 +90,32 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
         Rinitial,
         Rtarget,
         rmap,
-        wmap,
         rmask,
         &counter);
 
     if( _remap.display_counter ) {
       counter.copyTo(image);
+      rmask.copyTo(mask);
     }
     else if( _remap.display_weights ) {
+
+      cv::Mat1f wmap;
+
+      compute_ellipsoid_zrotation_wmap(_center,
+          _axes,  target_pose,
+          rmap,
+          wmap);
+
+      wmap.setTo(cv::Scalar::all(1), ~rmask);
       wmap.copyTo(image);
-    }
-    else if( _remap.display_distance_transform ) {
-      cv::distanceTransform(rmask, image,
-          cv::DIST_L2, cv::DIST_MASK_PRECISE,
-          CV_32F);
+      rmask.copyTo(mask);
     }
 
     else {
-      cv::remap(image.getMat(), image, rmap, cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_TRANSPARENT);
+      cv::remap(image.getMat(), image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+      rmask.copyTo(mask);
     }
 
-    rmask.copyTo(mask);
   }
 
   if ( _draw_ellipoid.enabled ) {
@@ -138,62 +137,5 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
         cv::LINE_AA);
   }
 
-//  const cv::RotatedRect _planetary_disk_ellipse =
-//      ellipsoid_bbox(_center, A, B, C,
-//          build_rotation2(_pose).t());
-//
-//  cv::Mat1b _planetary_disk_ellipse_mask = cv::Mat1b::zeros(image_size);
-//
-//  draw_ellipse(_planetary_disk_ellipse_mask,
-//      _planetary_disk_ellipse,
-//      cv::Scalar::all(255), -1,
-//      cv::LINE_8);
-//
-//  cv::Mat2f _current_remap;
-//  cv::Mat1b _current_bmask;
-//  compute_ellipsoid_zrotation_remap(image_size,
-//      _center,
-//      _axes,
-//      _pose * CV_PI / 180,
-//      zrotation_deg * CV_PI / 180,
-//      _current_remap,
-//      _current_bmask);
-//
-//  cv::remap(image.getMat(), image,
-//      _current_remap, cv::noArray(),
-//      cv::INTER_LINEAR);
-//
-//  _current_bmask.copyTo(mask);
-
-
-  ///////////
-
-//  _current_bmask =
-//      cv::Mat1b(_current_remap.size(),
-//          (uint8_t)(0));
-//
-//  draw_ellipse(_current_bmask,
-//      _planetary_disk_ellipse,
-//      cv::Scalar::all(255),
-//      -1,
-//      cv::LINE_8);
-
-  //  _current_bmask.convertTo(_current_wmask,
-  //      CV_32F);
-
-//  cv::distanceTransform(_current_bmask, _current_wmask,
-//      cv::DIST_L2, cv::DIST_MASK_PRECISE,
-//      _current_wmask.depth() );
-//
-//  cv::remap(_current_wmask, _current_wmask,
-//      _current_remap, cv::noArray(),
-//      cv::INTER_LINEAR,
-//      cv::BORDER_CONSTANT);
-//
-//  double min, max;
-//  cv::minMaxLoc(_current_wmask, &min, &max);
-//  cv::multiply(_current_wmask, 1. / max, _current_wmask);
-
   return true;
-
 }

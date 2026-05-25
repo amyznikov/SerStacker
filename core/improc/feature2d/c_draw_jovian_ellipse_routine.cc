@@ -7,6 +7,8 @@
 
 #include "c_draw_jovian_ellipse_routine.h"
 
+#if 0
+
 void c_draw_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "auto_location", ctx, &this_class::auto_location, &this_class::set_auto_location, "");
@@ -96,3 +98,4 @@ bool c_draw_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Inpu
   CF_DEBUG("_derotation.detect(image, mask) fails");
   return false;
 }
+#endif // 0

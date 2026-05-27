@@ -87,12 +87,12 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & v,
     const cv::Matx33d & R,
     cv::Point2d & pos)
 {
-  const cv::Vec3d pt_cam = R * v;
-  pos.x = pt_cam(0) + center.x;
-  pos.y = pt_cam(1) + center.y;
+  const cv::Vec3d vcam = R * v;
+  pos.x = vcam(0) + center.x;
+  pos.y = vcam(1) + center.y;
 
   // Visibility status
-  return (pt_cam(2) <= 0.0);
+  return (vcam(2) <= 0.0);
 }
 
 
@@ -153,22 +153,28 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type);
 
-//
-//void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
-//    const cv::Vec3d & axes, const cv::Vec3d & pose, double zrotation,
-//    double lat_step, double lon_step,
-//    const cv::Scalar & color, int thickness, int line_type);
-
-
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,
-    cv::Mat1b & rmask);
+    cv::Mat1f & wmap,
+    cv::Mat1b & rmask,
+    double wscale = 1 );
 
-bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
-    const cv::Vec3d & axes,  const cv::Vec3d & target_pose,
-    const cv::Mat2f & rmap,
-    cv::Mat1f & wmap);
+
+//bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
+//    const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
+//    cv::Mat2f & rmap,
+//    cv::Mat1b & rmask);
+
+//bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
+//    const cv::Vec3d & axes,  const cv::Vec3d & target_pose,
+//    const cv::Mat2f & rmap,
+//    cv::Mat1f & wmap);
+//
+cv::Rect ellipse_bounding_box(const cv::RotatedRect & rc);
+
+cv::Rect ellipse_crop_box(const cv::RotatedRect & rc, const cv::Size & total_image_size, int margin = 1);
+
 
 /**
  * Compute rotated 2D ellipse outline bound box,

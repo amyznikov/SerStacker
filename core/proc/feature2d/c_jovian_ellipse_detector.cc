@@ -6,7 +6,6 @@
  */
 
 #include "c_jovian_ellipse_detector.h"
-#include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/autoclip.h>
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
@@ -28,57 +27,6 @@ const c_enum_member* members_of<JOVIAN_ELLIPSE_DETECTION_METHOD>()
   };
 
   return members;
-}
-
-cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc)
-{
-  const float a = rc.angle * CV_PI / 180;
-  const float ca = std::cos(a);
-  const float sa = std::sin(a);
-
-  const float ux = rc.size.width * ca / 2;
-  const float uy = -rc.size.width * sa / 2;
-  const float vx = rc.size.height * sa / 2;
-  const float vy = rc.size.height * ca / 2;
-
-  const float halfwidth = sqrt(ux * ux + vx * vx);
-  const float halfheight = sqrt(uy * uy + vy * vy);
-
-  float left = rc.center.x - halfwidth;
-  float top = rc.center.y - halfheight;
-
-  return cv::Rect(left, top, 2 * halfwidth, 2 * halfheight);
-}
-
-cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Size & image_size, int margin)
-{
-  cv::Rect rc = compute_ellipse_bounding_box(ellipse);
-  if( margin < 0 ) {
-    margin = std::max(16, (int) (ellipse.size.width / 5));
-  }
-
-  rc.x -= margin;
-  rc.y -= margin;
-  rc.width += 2 * margin;
-  rc.height += 2 * margin;
-
-  if( rc.x < 0 ) {
-    rc.x = 0;
-  }
-  if( rc.y < 0 ) {
-    rc.y = 0;
-  }
-  if( rc.x + rc.width >= image_size.width ) {
-    rc.width = image_size.width - rc.x;
-  }
-  if( rc.y + rc.height >= image_size.height ) {
-    rc.height = image_size.height - rc.y;
-  }
-
-//  CF_DEBUG("final rc: x=%d y=%d w=%d h=%d margin=%d image_size=%dx%d",
-//      rc.x, rc.y, rc.width, rc.height, margin, image_size.width, image_size.height);
-
-  return rc;
 }
 
 void c_jovian_ellipse_detector::set_options(const c_jovian_ellipse_detector_options & v)

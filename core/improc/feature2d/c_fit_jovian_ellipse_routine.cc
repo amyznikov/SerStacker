@@ -115,7 +115,7 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
 {
 
   if ( 1 ) {
-    cv::rectangle(image, compute_ellipse_bounding_box(rc),
+    cv::rectangle(image, ellipse_bounding_box(rc),
         cv::Scalar(0, 0, 1),
         3);
   }

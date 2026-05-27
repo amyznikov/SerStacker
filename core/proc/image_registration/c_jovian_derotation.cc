@@ -339,7 +339,7 @@ bool c_jovian_derotation::detect_jovian_ellipse(cv::InputArray reference_image, 
 
   jovian_ellipse_mask_ = jovian_detector_.final_planetary_disk_mask();
   jovian_ellipse_ = jovian_detector_.final_planetary_disk_ellipse();
-  jovian_crop_ = compute_ellipse_crop_box(jovian_ellipse_, reference_image.size());
+  jovian_crop_ = ellipse_crop_box(jovian_ellipse_, reference_image.size());
 
 //  CF_DEBUG("jovian_crop_: x=%d y=%d w=%d h=%d",
 //      jovian_crop_.x, jovian_crop_.y,

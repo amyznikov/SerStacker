@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/extract_channel.h>
 #include <core/proc/feature2d/planetary-disk-detection.h>
+#include <core/proc/feature2d/ellipsoid.h>
 
 enum JOVIAN_ELLIPSE_DETECTION_METHOD {
   JOVIAN_ELLIPSE_DETECTION_PCA,
@@ -124,8 +125,7 @@ protected:
   cv::Vec3d _pose;
 };
 
-cv::Rect compute_ellipse_bounding_box(const cv::RotatedRect & rc);
-cv::Rect compute_ellipse_crop_box(const cv::RotatedRect & rc, const cv::Size & total_image_size, int margin = -1);
+
 
 
 #endif /* __c_jovian_ellipse_detector_h__ */

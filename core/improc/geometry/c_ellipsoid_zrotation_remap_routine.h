@@ -37,6 +37,8 @@ protected:
 
   struct c_remap_options {
     bool display_weights = false;
+    bool display_rmapx = false;
+    bool display_rmapy = false;
     bool enabled = true;
   } _remap;
 };

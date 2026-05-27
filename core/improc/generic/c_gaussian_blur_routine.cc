@@ -27,6 +27,7 @@ void c_gaussian_blur_routine::getcontrols(c_control_list & ctls, const ctlbind_c
    ctlbind(ctls, "sigmay", ctx(&this_class::_sigmay), "");
    ctlbind(ctls, "ksizex", ctx(&this_class::_ksizex), "");
    ctlbind(ctls, "ksizey", ctx(&this_class::_ksizey), "");
+   ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "Ignore mask");
    ctlbind(ctls, "stereo_mode", ctx(&this_class::_stereo_mode), "");
    ctlbind(ctls, "border_type", ctx(&this_class::_border_type), "");
    // ctlbind(ctls, "border_value", ctx(&this_class::_border_value), "");
@@ -66,14 +67,9 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
     case StereoHLayout: {
 
-      const cv::Mat src_image =
-          image.getMat();
-
-      const cv::Mat src_mask =
-          mask.getMat();
-
-      const cv::Size size =
-          src_image.size();
+      const cv::Mat src_image = image.getMat();
+      const cv::Mat src_mask = mask.getMat();
+      const cv::Size size = src_image.size();
 
       cv::Mat frames[2];
       cv::Mat masks[2];
@@ -102,14 +98,9 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
     case StereoVLayout: {
 
-      const cv::Mat src_image =
-          image.getMat();
-
-      const cv::Mat src_mask =
-          mask.getMat();
-
-      const cv::Size size =
-          src_image.size();
+      const cv::Mat src_image = image.getMat();
+      const cv::Mat src_mask = mask.getMat();
+      const cv::Size size = src_image.size();
 
       cv::Mat frames[2];
       cv::Mat masks[2];

@@ -20,11 +20,14 @@ void c_ellipsoid_zrotation_remap_routine::getcontrols(c_control_list & ctls, con
       [&, ctx = CTL_CONTEXT(ctx, _remap)]() {
         ctlbind(ctls, "enable remap ", CTL_CONTEXT(ctx, enabled), "Enable remap");
         ctlbind(ctls, "display weights", CTL_CONTEXT(ctx, display_weights), "");
+        ctlbind(ctls, "display rmapx", CTL_CONTEXT(ctx, display_rmapx), "");
+        ctlbind(ctls, "display rmapy", CTL_CONTEXT(ctx, display_rmapy), "");
+
       });
 
   ctlbind_expandable_group(ctls, "Draw Options ",
       [&, ctx = CTL_CONTEXT(ctx, _draw_ellipoid)]() {
-        ctlbind(ctls, "draw_ellipoid", CTL_CONTEXT(ctx, enabled), "Enable draw ellipsoid coordinate grid");
+        ctlbind(ctls, "draw grid", CTL_CONTEXT(ctx, enabled), "Enable draw ellipsoid coordinate grid");
         ctlbind(ctls, "lat_step [deg]", CTL_CONTEXT(ctx, lat_step_deg), "Latitude step in degrees");
         ctlbind(ctls, "lon_step [deg]", CTL_CONTEXT(ctx, lon_step_deg), "Longitude step in degrees");
       });
@@ -44,6 +47,8 @@ bool c_ellipsoid_zrotation_remap_routine::serialize(c_config_setting settings, b
     if ( auto subsection = SERIALIZE_GROUP(settings, save, "remap") ) {
       SERIALIZE_OPTION(subsection, save, _remap, enabled);
       SERIALIZE_OPTION(subsection, save, _remap, display_weights);
+      SERIALIZE_OPTION(subsection, save, _remap, display_rmapx);
+      SERIALIZE_OPTION(subsection, save, _remap, display_rmapy);
     }
 
     if ( auto subsection = SERIALIZE_GROUP(settings, save, "draw_ellipoid") ) {
@@ -79,6 +84,7 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
         build_ellipsoid_rotation(initial_pose);
 
     cv::Mat2f rmap;
+    cv::Mat1f wmap;
     cv::Mat1b rmask;
 
     compute_ellipsoid_zrotation_remap(image.size(),
@@ -87,20 +93,21 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
         Rinitial,
         Rtarget,
         rmap,
-        rmask);
+        wmap,
+        rmask,
+        1);
 
     if( _remap.display_weights ) {
-
-      cv::Mat1f wmap;
-
-      compute_ellipsoid_zrotation_wmap(_center,
-          _axes,  target_pose,
-          rmap,
-          wmap);
-
-      //wmap.setTo(cv::Scalar::all(1), ~rmask);
+      wmap.setTo(1, ~rmask);
       wmap.copyTo(image);
-      //cv::compare(image, 0, mask, cv::CMP_GT);
+      rmask.copyTo(mask);
+    }
+    else if ( _remap.display_rmapx ) {
+      cv::extractChannel(rmap, image, 0);
+      rmask.copyTo(mask);
+    }
+    else if ( _remap.display_rmapy ) {
+      cv::extractChannel(rmap, image, 1);
       rmask.copyTo(mask);
     }
 

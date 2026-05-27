@@ -16,8 +16,8 @@ class c_jovian_derotation_remap
 {
 public:
   void set_reference_pose(const cv::Size & image_size, const cv::Point2d & center, const cv::Vec3d & axes, const cv::Vec3d & pose);
-  void compute_derotation_for_angle(double longitude_rotation_radians);
-  void compute_derotation_for_time(double deltat_msec);
+  void compute_derotation_for_angle(double longitude_rotation_radians, double wscale = 1);
+  void compute_derotation_for_time(double deltat_msec, double wscale = 1);
 
   const cv::Mat2f & rmap() const
   {

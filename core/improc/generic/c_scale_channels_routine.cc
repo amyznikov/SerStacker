@@ -28,10 +28,7 @@ static void stretch_channels_(cv::Mat & image, const cv::Mat & mask, const cv::S
 
           for ( int x = 0, nx = image.cols; x < nx; ++x ) {
             for ( int c = 0; c < cnmax; ++c ) {
-
-              imgp[x * cn + c] = cv::saturate_cast<T>(
-                  (imgp[x * cn + c] * stretch[c] + bias[c]));
-
+              imgp[x * cn + c] = cv::saturate_cast<T>((imgp[x * cn + c] * stretch[c] + bias[c]));
             }
 
           }

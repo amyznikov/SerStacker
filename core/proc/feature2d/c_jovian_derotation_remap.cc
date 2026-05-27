@@ -19,18 +19,18 @@ void c_jovian_derotation_remap::set_reference_pose(const cv::Size & image_size,
   _Rcurrent = _Rtarget = build_ellipsoid_rotation(_target_pose);
 }
 
-void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_msec)
+void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_msec, double wscale)
 {
   // Jupiter daily rotation period is 9h 55m 30s.
   static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 30.;
   const double rotation_angle_deg = 0.360 * deltat_msec / rotation_period_sec;
   const double rotation_angle_radians = rotation_angle_deg * CV_PI / 180;
-  return compute_derotation_for_angle(rotation_angle_radians);
+  return compute_derotation_for_angle(rotation_angle_radians, wscale);
 }
 
 
 
-void c_jovian_derotation_remap::compute_derotation_for_angle(double longitude_rotation_radians)
+void c_jovian_derotation_remap::compute_derotation_for_angle(double longitude_rotation_radians, double wscale)
 {
   _current_pose = cv::Vec3d(_target_pose(0) + longitude_rotation_radians, _target_pose(1), _target_pose(2));
   _Rcurrent = build_ellipsoid_rotation(_current_pose);
@@ -41,8 +41,10 @@ void c_jovian_derotation_remap::compute_derotation_for_angle(double longitude_ro
       _Rcurrent,
       _Rtarget,
       _rmap,
-      _rmask);
+      _wmap,
+      _rmask,
+      wscale);
 
-  compute_ellipsoid_zrotation_wmap(_center, _axes,  _target_pose, _rmap, _wmap);
+  //compute_ellipsoid_zrotation_wmap(_center, _axes,  _target_pose, _rmap, _wmap);
 }
 

@@ -11,7 +11,7 @@
 
 /**
  *
- * Given 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R
+ * Given 3D ellipsoid with semi-axes A, B, C and pose specified by rotation matrix R
  * compute its outline (shadow) bounding box, appropriate for drawing
  * with cv::ellipse()
  *
@@ -85,7 +85,13 @@ cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
 
   // Extract the major axis angle (line 1 in eigenvectors corresponds to eigenvalues(1))
   // In OpenCV, the Y axis points downwards, atan2(y, x) gives the correct direction
-  const double t0 = std::atan2(eigenvectors(1, 1), eigenvectors(1, 0));
+  double t0 = std::atan2(eigenvectors(1, 1), eigenvectors(1, 0));
+  if( t0 > CV_PI ) {
+    t0 -= CV_2PI;
+  }
+  if( t0 < -CV_PI ) {
+    t0 += CV_PI;
+  }
   return cv::RotatedRect(center, cv::Size2f(eigen_axis_x, eigen_axis_y), t0 * 180 / CV_PI);
 }
 
@@ -119,7 +125,6 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
           static_cast<float>(pt_cam(1) + center.y)
       );
     };
-
 
   std::vector<cv::Point> curve_pts;
 
@@ -222,10 +227,8 @@ bool ellipsoid_from_cart2d(const cv::Point2d & pos,
   const double xs = pos.x - center.x;
   const double ys = pos.y - center.y;
 
-  // Find zs:
-
-  // Ellipsoid equation:
-  // (Xp/A)^2 + (Yp/B)^2 + (Zp/C)^2 = 1.
+  // Find zs from ellipsoid equation:
+  //  (Xp/A)^2 + (Yp/B)^2 + (Zp/C)^2 = 1.
   const double x_stat = R(0, 0) * xs + R(1, 0) * ys;
   const double y_stat = R(0, 1) * xs + R(1, 1) * ys;
   const double z_stat = R(0, 2) * xs + R(1, 2) * ys;
@@ -282,91 +285,121 @@ bool ellipsoid_from_cart2d(const cv::Point2d & pos,
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,
-    cv::Mat1b & rmask)
+    cv::Mat1f & wmap,
+    cv::Mat1b & rmask,
+    double wscale)
 {
   const double A = axes(0); // Equatorial radius X
   const double B = axes(1); // Polar radius Y (Rotation axis)
   const double C = axes(2); // Equatorial radius Z
 
-  const cv::RotatedRect ebox =
-      ellipsoid_bbox(center,
-          A, B, C,
-          R2);
+  const cv::RotatedRect ebox = ellipsoid_bbox(center, A, B, C, R2);
+  const cv::Rect cbox = ellipse_crop_box(ebox, size);
+  const double angle = ebox.angle * CV_PI/ 180;
 
   rmask = cv::Mat1b::zeros(size);
   rmap = cv::Mat2f(size, cv::Vec2f(-1, -1));
+  wmap = cv::Mat1f::zeros(size);
+
   draw_ellipse(rmask, ebox, cv::Scalar::all(255), -1, cv::LINE_8);
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [&, size, A, B, C, R1, R2](const cv::Range & range) {
-
+  cv::parallel_for_(cv::Range(cbox.y, cbox.y + cbox.height),
+      [&, cbox, A, B, C, R1, R2](const cv::Range & range) {
         cv::Point2d pos;
         cv::Vec3d v;
         for ( int iy = range.start; iy < range.end; ++iy ) {
           const uint8_t * mp = rmask[iy];
           cv::Vec2f * __restrict rmp = rmap[iy];
-          for ( int ix = 0; ix < size.width; ++ix ) {
-            if ( mp[ix] ) {
-              if( ellipsoid_from_cart2d(cv::Point2d(ix, iy), center, A, B, C, R2, v) ) {
-                if ( ellipsoid_to_cart2d(v, center, A, B, C, R1, pos) ) {
-                  rmp[ix][0] = pos.x;
-                  rmp[ix][1] = pos.y;
-                }
+          for ( int ix = cbox.x; ix < cbox.x + cbox.width; ++ix ) {
+            if ( !mp[ix] ) {
+              rmp[ix][0] = ix;
+              rmp[ix][1] = iy;
+            }
+            else if( ellipsoid_from_cart2d(cv::Point2d(ix, iy), center, A, B, C, R2, v) ) {
+              if ( ellipsoid_to_cart2d(v, center, A, B, C, R1, pos) ) {
+                rmp[ix][0] = pos.x;
+                rmp[ix][1] = pos.y;
               }
             }
           }
         }
       });
 
-  return true;
-}
-
-bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
-    const cv::Vec3d & axes,  const cv::Vec3d & target_pose,
-    const cv::Mat2f & rmap,
-    cv::Mat1f & wmap)
-{
-
-  static const auto drawDistancesToEllipseHorizonatEdges =
-      [](cv::Mat1f & image, const cv::Point2d & center, double A, double B) {
-
-        const int ystart = std::max(0, (int)(center.y - B - 1));
-        const int yend = std::min(image.rows, (int)(center.y + B + 1));
-
-        const int xstart = std::max(0, (int)(center.x - A - 1));
-        const int xend = std::min(image.cols, (int)(center.x + A + 1));
-
-        image.setTo(0.0f);
-
-        for ( int y = ystart; y < yend; ++y ) {
-          const double dy = (y - center.y) / B;
-          const double dx = A * std::sqrt(1.0 - (dy * dy));
-          const double x_left = center.x - dx;
-          const double x_right = center.x + dx;
-          if (std::abs(dy) > 1.0 || dx < 1e-6) {
-            continue;
-          }
-          for ( int x = xstart; x < xend; ++x ) {
-            if ( x >= x_left && x <= x_right ) {
-              const double dist_to_edge = std::min(x - x_left, x_right - x);
-              const double rel_dist_to_edge = dist_to_edge / A;
-              image[y][x] = static_cast<float>(rel_dist_to_edge);
+  cv::parallel_for_(cv::Range(cbox.y, cbox.y + cbox.height),
+      [&, cbox, wscale, a = 1.0 / A, b = 1.0 / B, sa = std::sin(angle), ca = std::cos(angle) ](const cv::Range & range) {
+        for ( int y = range.start; y < range.end; ++y ) {
+          const double dy = y - center.y;
+          const uint8_t * mp = rmask[y];
+          float * __restrict wp = wmap[y];
+          for ( int x = cbox.x; x < cbox.x + cbox.width; ++x ) {
+            if ( mp[x] ) {
+              const double dx = x - center.x;
+              const double xx = ( dx * ca + dy * sa) * a;
+              const double yy = (-dx * sa + dy * ca) * b;
+              const double rr = xx * xx + yy * yy;
+              if ( rr <= 1.0 ) {
+                wp[x] = wscale * std::sqrt(std::max(0.0, 1.0 - rr));
+              }
             }
           }
         }
-      };
+      });
 
-  cv::Mat1f w = cv::Mat1f::zeros(rmap.size());
-  drawDistancesToEllipseHorizonatEdges(w, center, axes(0), axes(1));
-  const cv::Mat M = cv::getRotationMatrix2D(center, -target_pose(2) * 180 / CV_PI, 1);
-  cv::warpAffine(w, w, M, w.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-  cv::remap(w, w, rmap, cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_CONSTANT);
-  //cv::compare(w, 0, emask, cv::CMP_GT);
-
-  wmap = std::move(w);
-
+  cv::remap(wmap, wmap, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
   return true;
 }
+
+cv::Rect ellipse_bounding_box(const cv::RotatedRect & rc)
+{
+  const float a = rc.angle * CV_PI / 180;
+  const float ca = std::cos(a);
+  const float sa = std::sin(a);
+
+  const float ux = rc.size.width * ca / 2;
+  const float uy = -rc.size.width * sa / 2;
+  const float vx = rc.size.height * sa / 2;
+  const float vy = rc.size.height * ca / 2;
+
+  const float halfwidth = sqrt(ux * ux + vx * vx);
+  const float halfheight = sqrt(uy * uy + vy * vy);
+
+  const float left = rc.center.x - halfwidth;
+  const float top = rc.center.y - halfheight;
+
+  return cv::Rect(left, top, 2 * halfwidth, 2 * halfheight);
+}
+
+cv::Rect ellipse_crop_box(const cv::RotatedRect & ellipse, const cv::Size & image_size, int margin)
+{
+  cv::Rect rc = ellipse_bounding_box(ellipse);
+  if( margin < 0 ) {
+    margin = std::max(16, (int) (ellipse.size.width / 5));
+  }
+
+  rc.x -= margin;
+  rc.y -= margin;
+  rc.width += 2 * margin;
+  rc.height += 2 * margin;
+
+  if( rc.x < 0 ) {
+    rc.x = 0;
+  }
+  if( rc.y < 0 ) {
+    rc.y = 0;
+  }
+  if( rc.x + rc.width >= image_size.width ) {
+    rc.width = image_size.width - rc.x;
+  }
+  if( rc.y + rc.height >= image_size.height ) {
+    rc.height = image_size.height - rc.y;
+  }
+
+//  CF_DEBUG("final rc: x=%d y=%d w=%d h=%d margin=%d image_size=%dx%d",
+//      rc.x, rc.y, rc.width, rc.height, margin, image_size.width, image_size.height);
+
+  return rc;
+}
+
 cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center, double A, double B, const cv::Matx33d & R)
 {
   const double AA = 1 / (A * A);

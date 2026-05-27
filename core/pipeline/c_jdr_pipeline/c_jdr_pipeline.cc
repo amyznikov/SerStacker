@@ -813,7 +813,7 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
         [](cv::InputOutputArray image, const cv::RotatedRect & rc,
         const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
     {
-      cv::rectangle(image, compute_ellipse_bounding_box(rc), cv::Scalar(0, 0, 200), 1);
+      cv::rectangle(image, ellipse_bounding_box(rc), cv::Scalar(0, 0, 200), 1);
       cv::Point2f pts[4];
       rc.points(pts);
       for( int i = 0; i < 4; i++ ) {
@@ -1040,7 +1040,7 @@ bool c_jdr_pipeline::derotate_jovian_frames()
       const double dt = ts - _master_ts;
       CF_DEBUG("[F %d] ts = %lf [ms] dt = %lf [ms] ", i, ts, dt);
 
-      _jovian_derotation_remap.compute_derotation_for_time(-dt);
+      _jovian_derotation_remap.compute_derotation_for_time(-dt, 1. / (1. + std::abs(dt) / 1200000.));
 
       cv::remap(current_frame, current_frame,
           _jovian_derotation_remap.rmap(), cv::noArray(),
@@ -1056,15 +1056,10 @@ bool c_jdr_pipeline::derotate_jovian_frames()
 
       CF_DEBUG("[F %d] DEROTATED", i);
 
-      cv::Mat1f current_weights(current_frame.size(), 1.f);
-      cv::Mat1f wmap;
-      current_weights.setTo(0, _reference_planetary_disk_mask);
-
-      cv::Mat1b tmp;
-      cv::erode(_jovian_derotation_remap.rmask(), tmp, cv::Mat1b(3,3, 255));
-
-      cv::multiply(_jovian_derotation_remap.wmap(), 1 / (1 + std::abs(dt) / 600000.), wmap);
-      wmap.copyTo(current_weights, tmp/*_jovian_derotation_remap.rmask()*/);
+      cv::Mat1f current_weights;
+      _jovian_derotation_remap.wmap().copyTo(current_weights);
+      current_weights.setTo(1,~ _jovian_derotation_remap.rmask());
+      cv::medianBlur(current_weights, current_weights, 3);
 
       if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);

@@ -95,7 +95,6 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & v,
   return (vcam(2) <= 0.0);
 }
 
-
 /**
 * Back projection from a 2D screen point to a 3D point on the planet's ellipsoid surface.
 *
@@ -108,11 +107,56 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & v,
 * @param cart3d_pos Output vector of 3D coordinates on the planet (XYZplanet).
 *   If the point is outside the disk, it is set to zero.
 */
-bool ellipsoid_from_cart2d(const cv::Point2d & pos,
+inline bool ellipsoid_from_cart2d(const cv::Point2d & pos,
     const cv::Point2d & center,
     double A, double B, double C,
     const cv::Matx33d & R,
-    cv::Vec3d & cart3d_pos);
+    cv::Vec3d & cart3d_pos )
+{
+  // XYZplanet = R.t() * XYZscreen.
+  // Xp = R(0,0)*xs + R(1,0)*ys + R(2,0)*zs
+  // Yp = R(0,1)*xs + R(1,1)*ys + R(2,1)*zs
+  // Zp = R(0,2)*xs + R(1,2)*ys + R(2,2)*zs
+
+  const double xs = pos.x - center.x;
+  const double ys = pos.y - center.y;
+
+  // Find zs from ellipsoid equation:
+  //  (Xp/A)^2 + (Yp/B)^2 + (Zp/C)^2 = 1.
+  const double x_stat = R(0, 0) * xs + R(1, 0) * ys;
+  const double y_stat = R(0, 1) * xs + R(1, 1) * ys;
+  const double z_stat = R(0, 2) * xs + R(1, 2) * ys;
+  const double r_z_x = R(2, 0);
+  const double r_z_y = R(2, 1);
+  const double r_z_z = R(2, 2);
+  const double invA2 = 1.0 / (A * A);
+  const double invB2 = 1.0 / (B * B);
+  const double invC2 = 1.0 / (C * C);
+
+  // Quadratic equation
+  // K2*zs^2 + 2*K1*zs + K0 = 0
+  const double K2 = (r_z_x * r_z_x) * invA2 + (r_z_y * r_z_y) * invB2 + (r_z_z * r_z_z) * invC2;
+  const double K1 = (x_stat * r_z_x) * invA2 + (y_stat * r_z_y) * invB2 + (z_stat * r_z_z) * invC2;
+  const double K0 = (x_stat * x_stat) * invA2 + (y_stat * y_stat) * invB2 + (z_stat * z_stat) * invC2 - 1.0;
+  const double discriminant = K1 * K1 - K2 * K0;
+  if( discriminant < 0.0 ) {
+    return false; // no hit the planet
+  }
+
+  // draw_ellipoid() considers points with pt_cam(2) <= 0 as visible,
+  // Select the root that is closer to the observer (lower value along the Zscreen axis)
+  const double sqrt_d = std::sqrt(discriminant);
+  const double zs1 = (-K1 - sqrt_d) / K2;
+  const double zs2 = (-K1 + sqrt_d) / K2;
+  const double zs = std::min(zs1, zs2);
+
+  // Convert a 3D point to screen coordinates and transform it into local planet coordinates
+  cart3d_pos = R.t() * cv::Vec3d(xs, ys, zs);
+
+  return true;
+}
+
+
 
 /**
  *

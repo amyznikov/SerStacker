@@ -41,8 +41,7 @@ void c_jovian_derotation_remap::compute_derotation_for_angle(double longitude_ro
       _Rcurrent,
       _Rtarget,
       _rmap,
-      _rmask,
-      nullptr);
+      _rmask);
 
   compute_ellipsoid_zrotation_wmap(_center, _axes,  _target_pose, _rmap, _wmap);
 }

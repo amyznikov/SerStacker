@@ -197,6 +197,70 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
 }
 
 /**
+* Back projection from a 2D screen point to a 3D point on the planet's ellipsoid surface.
+*
+* @param pos Current 2D point on the screen (in pixels).
+* @param center 2D center of the planet on the screen (in pixels).
+* @param A Planet radius along the local X-axis (equatorial).
+* @param B Planet radius along the local Y-axis (polar).
+* @param C Planet radius along the local Z-axis (equatorial).
+* @param R 3x3 rotation matrix (XYZscreen = R * XYZplanet).
+* @param cart3d_pos Output vector of 3D coordinates on the planet (XYZplanet).
+*   If the point is outside the disk, it is set to zero.
+*/
+bool ellipsoid_from_cart2d(const cv::Point2d & pos,
+    const cv::Point2d & center,
+    double A, double B, double C,
+    const cv::Matx33d & R,
+    cv::Vec3d & cart3d_pos )
+{
+  // XYZplanet = R.t() * XYZscreen.
+  // Xp = R(0,0)*xs + R(1,0)*ys + R(2,0)*zs
+  // Yp = R(0,1)*xs + R(1,1)*ys + R(2,1)*zs
+  // Zp = R(0,2)*xs + R(1,2)*ys + R(2,2)*zs
+
+  const double xs = pos.x - center.x;
+  const double ys = pos.y - center.y;
+
+  // Find zs:
+
+  // Ellipsoid equation:
+  // (Xp/A)^2 + (Yp/B)^2 + (Zp/C)^2 = 1.
+  const double x_stat = R(0, 0) * xs + R(1, 0) * ys;
+  const double y_stat = R(0, 1) * xs + R(1, 1) * ys;
+  const double z_stat = R(0, 2) * xs + R(1, 2) * ys;
+  const double r_z_x = R(2, 0);
+  const double r_z_y = R(2, 1);
+  const double r_z_z = R(2, 2);
+  const double invA2 = 1.0 / (A * A);
+  const double invB2 = 1.0 / (B * B);
+  const double invC2 = 1.0 / (C * C);
+
+  // Quadratic equation
+  // K2*zs^2 + 2*K1*zs + K0 = 0
+  const double K2 = (r_z_x * r_z_x) * invA2 + (r_z_y * r_z_y) * invB2 + (r_z_z * r_z_z) * invC2;
+  const double K1 = (x_stat * r_z_x) * invA2 + (y_stat * r_z_y) * invB2 + (z_stat * r_z_z) * invC2;
+  const double K0 = (x_stat * x_stat) * invA2 + (y_stat * y_stat) * invB2 + (z_stat * z_stat) * invC2 - 1.0;
+  const double discriminant = K1 * K1 - K2 * K0;
+  if( discriminant < 0.0 ) {
+    return false; // no hit the planet
+  }
+
+  // draw_ellipoid() considers points with pt_cam(2) <= 0 as visible,
+  // Select the root that is closer to the observer (lower value along the Zscreen axis)
+  const double sqrt_d = std::sqrt(discriminant);
+  const double zs1 = (-K1 - sqrt_d) / K2;
+  const double zs2 = (-K1 + sqrt_d) / K2;
+  const double zs = std::min(zs1, zs2);
+
+  // Convert a 3D point to screen coordinates and transform it into local planet coordinates
+  cart3d_pos = R.t() * cv::Vec3d(xs, ys, zs);
+
+  return true;
+}
+
+
+/**
  * Given 2D image of 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R1.
  *
  * Compute image remap matrix of type cv::Mat1f to be used with cv::remap() to
@@ -218,116 +282,41 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,
-    //cv::Mat1f & wmap,
-    cv::Mat1b & rmask,
-    cv::Mat1f * rcounter)
+    cv::Mat1b & rmask)
 {
-  rmap = cv::Mat2f::zeros(size);
-  cv::Mat1f counter(size, 0.0f);
-
-  const double CV_PI_2 = CV_PI / 2.0;
-
   const double A = axes(0); // Equatorial radius X
   const double B = axes(1); // Polar radius Y (Rotation axis)
   const double C = axes(2); // Equatorial radius Z
 
-  const double invB2 = 1.0 / (B * B);
+  const cv::RotatedRect ebox =
+      ellipsoid_bbox(center,
+          A, B, C,
+          R2);
 
-  const double L = std::max({A, B, C});
-  const double lat_step = 0.5 / L;
-  const double lon_step = 0.5 / L;
+  rmask = cv::Mat1b::zeros(size);
+  rmap = cv::Mat2f(size, cv::Vec2f(-1, -1));
+  draw_ellipse(rmask, ebox, cv::Scalar::all(255), -1, cv::LINE_8);
 
-  const auto process_lat =
-      [&](double lat) {
-        const double sin_lat = std::sin(lat);
-        const double cos_lat = std::cos(lat);
-
-        const double y_loc = B * sin_lat;
-        const double A_cos = A * cos_lat;
-        const double C_cos = C * cos_lat;
-        const double current_lon_step = cos_lat > 0.01 ? lon_step / cos_lat : CV_2PI;
-
-        // The Y-coordinate contribution to matrices R1 and R2
-        const cv::Vec3d R1_col1_y = cv::Vec3d(R1(0, 1), R1(1, 1), R1(2, 1)) * y_loc;
-        const cv::Vec3d R2_col1_y = cv::Vec3d(R2(0, 1), R2(1, 1), R2(2, 1)) * y_loc;
-
-        for( double lon = 0; lon < CV_2PI; lon += current_lon_step ) {
-
-          const double sin_lon = std::sin(lon);
-          const double cos_lon = std::cos(lon);
-
-          const double x_loc = A_cos * sin_lon;
-          const double z_loc = C_cos * cos_lon;
-
-          // Project to R2
-          const double pt2_x = R2(0, 0) * x_loc + R2_col1_y(0) + R2(0, 2) * z_loc;
-          const double pt2_y = R2(1, 0) * x_loc + R2_col1_y(1) + R2(1, 2) * z_loc;
-          const double pt2_z = R2(2, 0) * x_loc + R2_col1_y(2) + R2(2, 2) * z_loc;
-          if (pt2_z > 0) {
-            continue; // Back (invisible) side in target pose
-          }
-
-          const int ix2 = cvRound(pt2_x + center.x);
-          const int iy2 = cvRound(pt2_y + center.y);
-          if (ix2 < 0 || ix2 >= size.width || iy2 < 0 || iy2 >= size.height) {
-            continue;
-          }
-
-          // Project to R1
-          const double pt1_x = R1(0, 0) * x_loc + R1_col1_y(0) + R1(0, 2) * z_loc;
-          const double pt1_y = R1(1, 0) * x_loc + R1_col1_y(1) + R1(1, 2) * z_loc;
-          const double pt1_z = R1(2, 0) * x_loc + R1_col1_y(2) + R1(2, 2) * z_loc;
-          if (pt1_z > 0) {
-            continue; // Back (invisible) side in initial  pose
-          }
-
-          const double pos1_x = pt1_x + center.x;
-          const double pos1_y = pt1_y + center.y;
-          if (pos1_x < 0 || pos1_x >= size.width || pos1_y < 0 || pos1_y >= size.height) {
-            continue;
-          }
-
-          // Accumulate remap
-          rmap[iy2][ix2][0] += (float)(pos1_x);
-          rmap[iy2][ix2][1] += (float)(pos1_y);
-          ++counter[iy2][ix2];
-        }
-      };
-
-  process_lat(0);
-  for( double lat = lat_step; lat <= CV_PI_2; lat += lat_step ) {
-    process_lat(lat);
-    process_lat(-lat);
-  }
-
-  // Final pass: average the pixels where there were intersections,
-  // and fill the empty areas with default values ​​to preserve the frame's background.
   cv::parallel_for_(cv::Range(0, size.height),
-      [&](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          const float * cnp = counter[y];
-          cv::Vec2f * __restrict rmp = rmap[y];
-          for (int x = 0; x < size.width; ++x) {
-            const float c = cnp[x];
-            if (c < 1) {
-              rmp[x][0] = -1; //x;
-          rmp[x][1] = -1;// y;
+      [&, size, A, B, C, R1, R2](const cv::Range & range) {
+
+        cv::Point2d pos;
+        cv::Vec3d v;
+        for ( int iy = range.start; iy < range.end; ++iy ) {
+          const uint8_t * mp = rmask[iy];
+          cv::Vec2f * __restrict rmp = rmap[iy];
+          for ( int ix = 0; ix < size.width; ++ix ) {
+            if ( mp[ix] ) {
+              if( ellipsoid_from_cart2d(cv::Point2d(ix, iy), center, A, B, C, R2, v) ) {
+                if ( ellipsoid_to_cart2d(v, center, A, B, C, R1, pos) ) {
+                  rmp[ix][0] = pos.x;
+                  rmp[ix][1] = pos.y;
+                }
+              }
+            }
+          }
         }
-        else {
-          rmp[x][0] /= c;
-          rmp[x][1] /= c;
-        }
-      }
-    }
-  });
-
-
-  // Planetary disk mask after remap
-  cv::compare(counter, 0, rmask, cv::CMP_GT);
-
-  if ( rcounter ) {
-    * rcounter = std::move(counter);
-  }
+      });
 
   return true;
 }
@@ -337,45 +326,43 @@ bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
     const cv::Mat2f & rmap,
     cv::Mat1f & wmap)
 {
-  static const auto distanceTransformRowsOnly =
-      [](cv::InputArray _src, cv::OutputArray _dst) {
-        const int src_rows = _src.rows();
-        const cv::Mat src = _src.getMat();
-        cv::Mat dst = cv::Mat::zeros(_src.size(), CV_MAKETYPE(CV_32F, _src.channels()));
-        cv::parallel_for_(cv::Range(0, src_rows),
-            [&](const cv::Range & range) {
-              for (int y = range.start; y < range.end; ++y) {
-                cv::distanceTransform(src.row(y), dst.row(y),
-                    cv::DIST_L2, cv::DIST_MASK_PRECISE,
-                    CV_32F);
-              }
-            });
 
-        _dst.move(dst);
+  static const auto drawDistancesToEllipseHorizonatEdges =
+      [](cv::Mat1f & image, const cv::Point2d & center, double A, double B) {
+
+        const int ystart = std::max(0, (int)(center.y - B - 1));
+        const int yend = std::min(image.rows, (int)(center.y + B + 1));
+
+        const int xstart = std::max(0, (int)(center.x - A - 1));
+        const int xend = std::min(image.cols, (int)(center.x + A + 1));
+
+        image.setTo(0.0f);
+
+        for ( int y = ystart; y < yend; ++y ) {
+          const double dy = (y - center.y) / B;
+          const double dx = A * std::sqrt(1.0 - (dy * dy));
+          const double x_left = center.x - dx;
+          const double x_right = center.x + dx;
+          if (std::abs(dy) > 1.0 || dx < 1e-6) {
+            continue;
+          }
+          for ( int x = xstart; x < xend; ++x ) {
+            if ( x >= x_left && x <= x_right ) {
+              const double dist_to_edge = std::min(x - x_left, x_right - x);
+              const double rel_dist_to_edge = dist_to_edge / A;
+              image[y][x] = static_cast<float>(rel_dist_to_edge);
+            }
+          }
+        }
       };
 
-  cv::RotatedRect rrc;
-  cv::Mat w = cv::Mat::zeros(rmap.size(), CV_8UC1);
-  cv::Mat1b emask;
-
-  rrc.center = center;
-  rrc.size.width = 2 * axes(0);
-  rrc.size.height = 2 * axes(1);
-  rrc.angle = 0;
-
-  cv::ellipse(w, rrc, cv::Scalar::all(255), -1, cv::LINE_AA);
-  w.copyTo(emask);
-
-  distanceTransformRowsOnly(w, w);
-  cv::normalize(w, w, 0, 1, cv::NORM_MINMAX);
-
+  cv::Mat1f w = cv::Mat1f::zeros(rmap.size());
+  drawDistancesToEllipseHorizonatEdges(w, center, axes(0), axes(1));
   const cv::Mat M = cv::getRotationMatrix2D(center, -target_pose(2) * 180 / CV_PI, 1);
   cv::warpAffine(w, w, M, w.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-  cv::remap(w, w, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+  cv::remap(w, w, rmap, cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_CONSTANT);
+  //cv::compare(w, 0, emask, cv::CMP_GT);
 
-  cv::warpAffine(emask, emask, M, emask.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-  cv::compare(emask, 250, emask, cv::CMP_GE);
-  //w.setTo(cv::Scalar::all(1), ~emask);
   wmap = std::move(w);
 
   return true;

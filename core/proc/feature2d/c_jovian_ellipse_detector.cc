@@ -304,7 +304,7 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
 
   _center = _final_planetary_disk_ellipse.center;
   _axes = cv::Vec3d(A, B, C);
-  _pose = build_ellipsoid_pose(0., 0., _final_planetary_disk_ellipse.angle * CV_PI / 180);
+  _pose = build_ellipsoid_pose(0., _opts.planetary_disk_tilt * CV_PI / 180, _final_planetary_disk_ellipse.angle * CV_PI / 180);
 
   if( true ) {
 
@@ -314,9 +314,9 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
         "pose = %g;%g;%g\n",
         _center.x, _center.y,
         _axes(0), _axes(1), _axes(2),
-        _pose(0) * 180/ CV_PI,
-        _pose(1) * 180/ CV_PI,
-        _pose(2) * 180/ CV_PI);
+        _pose(0) * 180 / CV_PI,
+        _pose(1) * 180 / CV_PI,
+        _pose(2) * 180 / CV_PI);
   }
 
   return true;
@@ -392,6 +392,7 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
   SERIALIZE_OPTION(section, save, opts, g2);
   SERIALIZE_OPTION(section, save, opts, gweighted);
   SERIALIZE_OPTION(section, save, opts, sigma_noise);
+  SERIALIZE_OPTION(section, save, opts, planetary_disk_tilt);
   SERIALIZE_OPTION(section, save, opts, offset);
   serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);
   return true;

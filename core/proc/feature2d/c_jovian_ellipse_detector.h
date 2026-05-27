@@ -23,6 +23,7 @@ struct c_jovian_ellipse_detector_options
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_STENSOR;
   color_channel_type maxcolor_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
+  double planetary_disk_tilt = 0; // [deg]
   double sigma_noise = 7;
   cv::Point2f offset;
   bool g2 = true;
@@ -40,7 +41,8 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "g2", ctx(&S::g2), "");
   ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
   ctlbind(ctls, "sigma_noise", ctx(&S::sigma_noise), "");
-  ctlbind(ctls, "offset", ctx(&S::offset), "");
+  ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
+  ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
   ctlbind_expandable_group(ctls, "planetary disk detection",
       [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector_options)]() {
         ctlbind(ctls, ctx);
@@ -49,6 +51,17 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
 bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bool save,
     c_jovian_ellipse_detector_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_jovian_ellipse_detector_options & opts)
+{
+  return serialize_base_jovian_ellipse_detector_options(section, true,
+      const_cast<c_jovian_ellipse_detector_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_jovian_ellipse_detector_options * opts)
+{
+  return serialize_base_jovian_ellipse_detector_options(section, false, *opts);
+}
 
 class c_jovian_ellipse_detector
 {

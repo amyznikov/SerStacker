@@ -36,9 +36,7 @@ protected:
 
 
   struct c_remap_options {
-    bool display_counter = false;
     bool display_weights = false;
-    //bool display_distance_transform = false;
     bool enabled = true;
   } _remap;
 };

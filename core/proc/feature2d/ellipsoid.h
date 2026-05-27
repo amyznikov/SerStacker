@@ -76,6 +76,44 @@ inline cv::Matx<_Tp, 3, 3> build_ellipsoid_rotation(const cv::Vec<_Tp, 3> & pose
       );
 }
 
+
+/**
+ * Direct projection: from a 3D point on the planet to a 2D point on the screen.
+ * Returns true if the point is on the visible (facing us) side of the planet.
+ *  */
+inline bool ellipsoid_to_cart2d(const cv::Vec3d & v,
+    const cv::Point2d & center,
+    double A, double B, double C,
+    const cv::Matx33d & R,
+    cv::Point2d & pos)
+{
+  const cv::Vec3d pt_cam = R * v;
+  pos.x = pt_cam(0) + center.x;
+  pos.y = pt_cam(1) + center.y;
+
+  // Visibility status
+  return (pt_cam(2) <= 0.0);
+}
+
+
+/**
+* Back projection from a 2D screen point to a 3D point on the planet's ellipsoid surface.
+*
+* @param pos Current 2D point on the screen (in pixels).
+* @param center 2D center of the planet on the screen (in pixels).
+* @param A Planet radius along the local X-axis (equatorial).
+* @param B Planet radius along the local Y-axis (polar).
+* @param C Planet radius along the local Z-axis (equatorial).
+* @param R 3x3 rotation matrix (XYZscreen = R * XYZplanet).
+* @param cart3d_pos Output vector of 3D coordinates on the planet (XYZplanet).
+*   If the point is outside the disk, it is set to zero.
+*/
+bool ellipsoid_from_cart2d(const cv::Point2d & pos,
+    const cv::Point2d & center,
+    double A, double B, double C,
+    const cv::Matx33d & R,
+    cv::Vec3d & cart3d_pos);
+
 /**
  *
  * Given 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R
@@ -125,8 +163,7 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,
-    cv::Mat1b & rmask,
-    cv::Mat1f * rcounter = nullptr);
+    cv::Mat1b & rmask);
 
 bool compute_ellipsoid_zrotation_wmap(const cv::Point2d & center,
     const cv::Vec3d & axes,  const cv::Vec3d & target_pose,

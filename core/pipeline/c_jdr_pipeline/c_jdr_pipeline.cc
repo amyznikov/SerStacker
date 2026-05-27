@@ -100,6 +100,16 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
     ctlbind_expandable_group(ctls, "4. Jovian Ellipse Estimation Options",
         [ctx = CTL_CONTEXT(ctx, _ellipse_estimation_options)]() {
           ctlbind(ctls, CTL_CONTEXT(ctx, jovian_ellipse_detector_options));
+
+          ctlbind_menu_button(ctls, "Options >>", ctx);
+          ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
+            return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",
+                obj->jovian_ellipse_detector_options), false;
+          });
+          ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
+              return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options",
+                  &obj->jovian_ellipse_detector_options);
+            });
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",

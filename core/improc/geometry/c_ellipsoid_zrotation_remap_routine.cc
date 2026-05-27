@@ -19,7 +19,6 @@ void c_ellipsoid_zrotation_remap_routine::getcontrols(c_control_list & ctls, con
   ctlbind_expandable_group(ctls, "Remap Options ",
       [&, ctx = CTL_CONTEXT(ctx, _remap)]() {
         ctlbind(ctls, "enable remap ", CTL_CONTEXT(ctx, enabled), "Enable remap");
-        ctlbind(ctls, "display counter", CTL_CONTEXT(ctx, display_counter), "");
         ctlbind(ctls, "display weights", CTL_CONTEXT(ctx, display_weights), "");
       });
 
@@ -44,7 +43,6 @@ bool c_ellipsoid_zrotation_remap_routine::serialize(c_config_setting settings, b
 
     if ( auto subsection = SERIALIZE_GROUP(settings, save, "remap") ) {
       SERIALIZE_OPTION(subsection, save, _remap, enabled);
-      SERIALIZE_OPTION(subsection, save, _remap, display_counter);
       SERIALIZE_OPTION(subsection, save, _remap, display_weights);
     }
 
@@ -82,7 +80,6 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
 
     cv::Mat2f rmap;
     cv::Mat1b rmask;
-    cv::Mat1f counter;
 
     compute_ellipsoid_zrotation_remap(image.size(),
         _center,
@@ -90,14 +87,9 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
         Rinitial,
         Rtarget,
         rmap,
-        rmask,
-        &counter);
+        rmask);
 
-    if( _remap.display_counter ) {
-      counter.copyTo(image);
-      rmask.copyTo(mask);
-    }
-    else if( _remap.display_weights ) {
+    if( _remap.display_weights ) {
 
       cv::Mat1f wmap;
 
@@ -106,13 +98,14 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
           rmap,
           wmap);
 
-      wmap.setTo(cv::Scalar::all(1), ~rmask);
+      //wmap.setTo(cv::Scalar::all(1), ~rmask);
       wmap.copyTo(image);
+      //cv::compare(image, 0, mask, cv::CMP_GT);
       rmask.copyTo(mask);
     }
 
     else {
-      cv::remap(image.getMat(), image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+      cv::remap(image.getMat(), image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
       rmask.copyTo(mask);
     }
 

@@ -11,8 +11,6 @@
 #include <core/proc/extract_channel.h>
 #include <core/proc/feature2d/feature2d.h>
 #include <core/ctrlbind/ctrlbind.h>
-//#include "c_jovian_derotation.h"
-#include "c_jovian_derotation2.h"
 #include "c_saturn_derotation.h"
 #include "image_transform.h"
 #include "ecc2.h"

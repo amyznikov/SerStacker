@@ -13,7 +13,7 @@ void c_pnormalize_routine::pnormalize(const cv::Mat & src, cv::Mat & dst, int ps
   cv::Scalar mean, stdev;
   double f = 0;
 
-  if( m.channels() == 1 ) {
+  if( src.channels() == 1 ) {
     pyramid_downscale(src, m, pscale, cv::BORDER_REPLICATE);
     pyramid_upscale(m, src.size());
   }

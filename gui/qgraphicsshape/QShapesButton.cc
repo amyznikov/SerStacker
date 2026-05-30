@@ -96,22 +96,13 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
         if ( _sceneView ) {
           if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
-            QRect rc1 =
-                _sceneView->rect();
-
-            QPoint center =
-                rc1.center();
-
-            const int w =
-                std::max(10, rc1.width() / 2);
-
-            const int h =
-                std::max(10, rc1.height() / 2);
+            QRect rc1 = _sceneView->rect();
+            QPoint center = rc1.center();
+            const int w = std::max(10, rc1.width() / 2);
+            const int h = std::max(10, rc1.height() / 2);
 
             QRect rc2(center.x() - w/2, center.y() - h/2, w, h);
-
-            QGraphicsRectShape *shape =
-                new QGraphicsRectShape(_sceneView->mapToScene(rc2).boundingRect());
+            QGraphicsRectShape *shape = new QGraphicsRectShape(_sceneView->mapToScene(rc2).boundingRect());
 
             shape->setVisible(true);
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
@@ -137,26 +128,13 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
         if ( _sceneView ) {
           if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
-            const QRect rc1 =
-                _sceneView->rect();
+            const QRect rc1 = _sceneView->rect();
+            const QPoint center = rc1.center();
+            const double L = std::max(20, std::max( rc1.width(), rc1.height()) / 6 );
+            const QPointF p1 = _sceneView->mapToScene(QPoint(center.x() - L, center.y() - L));
+            const QPointF p2 = _sceneView->mapToScene(QPoint(center.x() + L, center.y() + L));
 
-            const QPoint center =
-                rc1.center();
-
-
-            const double L =
-                std::max(20, std::max( rc1.width(), rc1.height()) / 6 );
-
-            const QPointF p1 =
-                _sceneView->mapToScene(QPoint(center.x() - L, center.y() - L));
-
-            const QPointF p2 =
-                _sceneView->mapToScene(QPoint(center.x() + L, center.y() + L));
-
-
-            QGraphicsLineShape *shape =
-                new QGraphicsLineShape(p1, p2);
-
+            QGraphicsLineShape *shape = new QGraphicsLineShape(p1, p2);
             shape->setVisible(true);
             shape->setFlag(QGraphicsItem::ItemIsMovable, true);
             shape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
@@ -181,15 +159,10 @@ QShapesButton::QShapesButton(QGraphicsView * view, QWidget * parent) :
         if ( _sceneView ) {
           if ( QGraphicsScene * scene = _sceneView->scene() ) {
 
-            const QRectF rc1 =
-                _sceneView->sceneRect();
+            const QRectF rc1 = _sceneView->sceneRect();
+            const QPointF center(rc1.width()/2, rc1.height()/2);
 
-            const QPointF center(rc1.width()/2,
-                rc1.height()/2);
-
-            QGraphicsTargetShape *shape =
-                new QGraphicsTargetShape();
-
+            QGraphicsTargetShape *shape = new QGraphicsTargetShape();
             shape->setCenter(center);
 
             shape->setVisible(true);

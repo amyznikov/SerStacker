@@ -1057,6 +1057,11 @@ typedef std::function<bool(double *x, double *y, double *w, double *h)> ctlbind_
 void set_ctlbind_get_roi_callback(const ctlbind_get_roi_callback & fn);
 const ctlbind_get_roi_callback & get_ctlbind_get_roi_callback();
 
+typedef std::function<bool(double x, double y)> ctlbind_update_arrow_callback;
+void set_ctlbind_update_arrow_callback(const ctlbind_update_arrow_callback & fn);
+const ctlbind_update_arrow_callback & get_ctlbind_update_arrow_callback();
+
+
 inline void ctlbind_show_info_text(const std::string & title, const std::string & text)
 {
   if( const auto & cb = get_ctlbind_show_info_text_callback() ) {
@@ -1116,6 +1121,13 @@ bool ctlbind_paste_config_from_clipboard(const std::string & groupName, StructTy
   return true;
 }
 
+inline bool ctlbind_update_arrow(double x, double y)
+{
+  if ( const auto cb = get_ctlbind_update_arrow_callback() ) {
+    return cb(x,y);
+  }
+  return false;
+}
 
 
 

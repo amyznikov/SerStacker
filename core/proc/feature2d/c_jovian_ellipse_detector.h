@@ -22,33 +22,15 @@ enum JOVIAN_ELLIPSE_DETECTION_METHOD {
 struct c_jovian_ellipse_detector_options
 {
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_STENSOR;
-  color_channel_type maxcolor_channel = color_channel_min_inensity;
+  color_channel_type gradient_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double planetary_disk_tilt = 0; // [deg]
-  double sigma_noise = 7;
+  double sigma_noise = 3;
+  int nscale = 2;
+  double neps = 1e-3;
   cv::Point2f offset;
-  bool g2 = true;
   bool gweighted = true;
 };
-
-template<class RootObjectType>
-inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
-    c_jovian_ellipse_detector_options> & ctx)
-{
-  using S = c_jovian_ellipse_detector_options;
-
-  ctlbind(ctls, "method", ctx(&S::method), "");
-  ctlbind(ctls, "gradient_channel", ctx(&S::maxcolor_channel), "");
-  ctlbind(ctls, "g2", ctx(&S::g2), "");
-  ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
-  ctlbind(ctls, "sigma_noise", ctx(&S::sigma_noise), "");
-  ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
-  ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
-  ctlbind_expandable_group(ctls, "planetary disk detection",
-      [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector_options)]() {
-        ctlbind(ctls, ctx);
-      });
-}
 
 bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bool save,
     c_jovian_ellipse_detector_options & opts);
@@ -64,6 +46,35 @@ inline bool load_settings(c_config_setting section, c_jovian_ellipse_detector_op
   return serialize_base_jovian_ellipse_detector_options(section, false, *opts);
 }
 
+template<class RootObjectType>
+inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType,
+    c_jovian_ellipse_detector_options> & ctx)
+{
+  using S = c_jovian_ellipse_detector_options;
+
+  ctlbind(ctls, "method", ctx(&S::method), "");
+  ctlbind(ctls, "gradient_channel", ctx(&S::gradient_channel), "");
+  ctlbind(ctls, "sigma_noise", ctx(&S::sigma_noise), "");
+  ctlbind(ctls, "nscale", ctx(&S::nscale), "");
+  ctlbind(ctls, "neps", ctx(&S::neps), "");
+  ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
+  ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
+  ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
+
+  ctlbind_expandable_group(ctls, "planetary disk detection",
+      [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector_options)]() {
+        ctlbind(ctls, ctx);
+      });
+
+  ctlbind_menu_button(ctls, "Options >>", ctx);
+  ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
+    return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",*obj), false;
+  });
+  ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
+      return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options", obj);
+    });
+}
+
 class c_jovian_ellipse_detector
 {
 public:
@@ -77,8 +88,8 @@ public:
 
   // for debug / visualization
   const cv::Mat& grayscale_image() const;
-  const cv::Mat& maxcolor_image() const;
-  const cv::Mat1b & maxcolor_mask() const;
+  const cv::Mat& normalized_image() const;
+  const cv::Mat1b & gradient_mask() const;
   const cv::Mat1f & g_image() const;
   const cv::Mat1f & gx_image() const;
   const cv::Mat1f & gy_image() const;
@@ -107,9 +118,9 @@ protected:
   c_jovian_ellipse_detector_options _opts;
 
   cv::Mat _grayscale_image;
-  cv::Mat _maxcolor_image;
+  cv::Mat _normalized_image;
   cv::Mat1b _detected_planetary_disk_mask;
-  cv::Mat1b _maxcolor_mask;
+  cv::Mat1b _gradient_mask;
   cv::Mat1f _kderiv, _ksmooth;
   cv::Mat1f _gx, _gy, _g;
 

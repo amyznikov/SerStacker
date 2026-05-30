@@ -201,7 +201,7 @@ void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
   draw_ellipse(image, ellipsoid_bbox(center, A, B, C, R), color, thickness, cv::LINE_AA);
 }
 
-
+//////////////////
 
 /**
  * Given 2D image of 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R1.

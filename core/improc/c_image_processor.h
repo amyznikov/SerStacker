@@ -228,16 +228,30 @@ public:
 
   static bool get_artifact(const std::string & name, cv::OutputArray image, cv::OutputArray mask)
   {
-    const auto ii =
-        artifacts().find(name);
-
-    if ( ii != artifacts().end() ) {
-      ii->second.image.copyTo(image);
-      ii->second.mask.copyTo(mask);
+    if( !image.needed() && !mask.needed() ) {
+      CF_ERROR("WARNING: No one of image or mask requested");
       return true;
     }
 
-    if ( load_image(name, image, mask) ) {
+    const auto ii = artifacts().find(name);
+    if ( ii != artifacts().end() ) {
+      if ( image.needed() ) {
+        ii->second.image.copyTo(image);
+      }
+      if ( mask.needed() ) {
+        ii->second.mask.copyTo(mask);
+      }
+      return true;
+    }
+
+    cv::Mat tmp_image,  tmp_mask;
+    if ( load_image(name, tmp_image, tmp_mask) ) {
+      if ( image.needed() ) {
+        tmp_image.copyTo(image);
+      }
+      if ( mask.needed() ) {
+        tmp_mask.copyTo(mask);
+      }
       return true;
     }
 
@@ -258,8 +272,7 @@ public:
 
   static void add_global(const std::string & name, cv::InputArray image, cv::InputArray mask = cv::noArray())
   {
-    auto ii =
-        globals().find(name);
+    auto ii = globals().find(name);
 
     if( ii == artifacts().end() ) {
       ii = globals().emplace(name, std::move(c_image_processor_artifact())).first;
@@ -271,12 +284,19 @@ public:
 
   static bool get_global(const std::string & name, cv::OutputArray image, cv::OutputArray mask)
   {
-    const auto ii =
-        globals().find(name);
+    if( !image.needed() && !mask.needed() ) {
+      CF_ERROR("WARNING: No one of image or mask requested");
+      return true;
+    }
 
+    const auto ii = globals().find(name);
     if ( ii != globals().end() ) {
-      ii->second.image.copyTo(image);
-      ii->second.mask.copyTo(mask);
+      if ( image.needed() ) {
+        ii->second.image.copyTo(image);
+      }
+      if ( mask.needed() ) {
+        ii->second.mask.copyTo(mask);
+      }
       return true;
     }
 

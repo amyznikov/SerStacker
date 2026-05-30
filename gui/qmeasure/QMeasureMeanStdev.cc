@@ -20,8 +20,7 @@ QMeasureSettingsWidget* QMeasureMeanValue::createSettingsWidget(QWidget * parent
 int QMeasureMeanValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
 {
   if ( mask.empty() || mask.channels() == 1 ) {
-    *output_value =
-        cv::mean(image, mask);
+    *output_value = cv::mean(image, mask);
   }
   else if ( mask.channels() == image.channels() ) {
 

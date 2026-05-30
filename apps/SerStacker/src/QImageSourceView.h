@@ -11,6 +11,7 @@
 
 #include <gui/qimageview/QImageFileEditor.h>
 #include <gui/qgraphicsshape/QGraphicsRectShape.h>
+#include <gui/qgraphicsshape/QGraphicsLineShape.h>
 
 namespace serstacker {
 
@@ -25,6 +26,7 @@ public:
   QImageSourceView(QWidget * parent = nullptr);
 
   QGraphicsRectShape * roiShape() const;
+  QGraphicsLineShape * lineShape() const;
 
 protected:
   void createRoiShape();

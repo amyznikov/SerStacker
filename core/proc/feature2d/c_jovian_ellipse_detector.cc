@@ -11,6 +11,7 @@
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/pyrscale.h>
 #include <core/proc/unsharp_mask.h>
+#include <core/proc/pyrscale.h>
 #include <core/proc/gradient.h>
 #include <core/proc/fitEllipseLM.h>
 #include <core/ssprintf.h>
@@ -28,6 +29,24 @@ const c_enum_member* members_of<JOVIAN_ELLIPSE_DETECTION_METHOD>()
 
   return members;
 }
+
+
+static void pnormalize(cv::InputArray _src, cv::OutputArray _dst, int lvl, double eps)
+{
+  cv::Mat m, s;
+
+  const cv::Mat src = _src.getMat();
+  const cv::Size src_size = _src.size();
+
+  pyramid_downscale(src, m, lvl, cv::BORDER_REPLICATE);
+  pyramid_downscale(src.mul(src), s, lvl, cv::BORDER_REPLICATE);
+  cv::add(s, cv::Scalar::all(eps), s, cv::noArray(), s.depth());
+  pyramid_upscale(m, src_size);
+  pyramid_upscale(s, src_size);
+  cv::subtract(src, m, _dst, cv::noArray(), CV_32F);
+  cv::divide(_dst.getMat(), s, _dst);
+}
+
 
 void c_jovian_ellipse_detector::set_options(const c_jovian_ellipse_detector_options & v)
 {
@@ -74,14 +93,14 @@ const cv::Mat& c_jovian_ellipse_detector::grayscale_image() const
   return _grayscale_image;
 }
 
-const cv::Mat& c_jovian_ellipse_detector::maxcolor_image() const
+const cv::Mat& c_jovian_ellipse_detector::normalized_image() const
 {
-  return _maxcolor_image;
+  return _normalized_image;
 }
 
-const cv::Mat1b & c_jovian_ellipse_detector::maxcolor_mask() const
+const cv::Mat1b & c_jovian_ellipse_detector::gradient_mask() const
 {
-  return _maxcolor_mask;
+  return _gradient_mask;
 }
 
 const cv::Mat1f & c_jovian_ellipse_detector::g_image() const
@@ -125,67 +144,52 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
     return false;
   }
 
-  // Compute image gradients for initial orientation estimate based on max color image
-  _maxcolor_image.create(_grayscale_image.size(), _grayscale_image.type());
-  _maxcolor_image.setTo(cv::Scalar::all(0));
-  if( _image.channels() == 1 ) {
-    _grayscale_image.copyTo(_maxcolor_image, _detected_planetary_disk_mask);
+  extract_channel(_image, _normalized_image, cv::noArray(), cv::noArray(), _opts.gradient_channel);
+  if ( _opts.nscale > 0 ) {
+    pnormalize(_normalized_image, _normalized_image, _opts.nscale, _opts.neps);
   }
-  else {
-    cv::Mat tmp;
-    extract_channel(_image, tmp, cv::noArray(), cv::noArray(), _opts.maxcolor_channel);
-    tmp.copyTo(_maxcolor_image, _detected_planetary_disk_mask);
+
+  if( _opts.sigma_noise > 0 ) {
+    cv::GaussianBlur(_normalized_image, _normalized_image, cv::Size(0, 0),
+        _opts.sigma_noise, _opts.sigma_noise,
+        cv::BORDER_REPLICATE);
   }
 
   const cv::Size size = _detected_component_rect.size();
+  const int max_size = std::max(size.width, size.height);
+  const int mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
 
-  const double sigma_bground_normalization = 0.2 * std::max(size.width, size.height);
-  const int ksize_bground_normalization = 2 * int(1 + (sigma_bground_normalization - 0.8) / 0.3) + 1;
-  const int mask_erode_size = std::max(23, 2 * int(1 + (_opts.sigma_noise - 0.8) / 0.3) + 1);
+
+  // Erode planetary disk mask to avoid edge effects
+  cv::erode(_detected_planetary_disk_mask, _gradient_mask,
+      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(mask_erode_size, mask_erode_size)),
+      cv::Point(-1, -1),
+      1,
+      cv::BORDER_CONSTANT,
+      cv::Scalar::all(0));
 
 
   static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
   static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
   static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
 
-  // Smooth background and noise filtering
-  if( _opts.sigma_noise <= 0 ) {
-    const cv::Mat1f G1 = cv::getGaussianKernel(ksize_bground_normalization, 0.5, CV_32F);
-    const cv::Mat1f G2 = cv::getGaussianKernel(ksize_bground_normalization, sigma_bground_normalization, CV_32F);
-    const cv::Mat1f G = G1 - G2;
-    cv::sepFilter2D(_maxcolor_image, _maxcolor_image, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-  else {
-    const int ksize1 = 2 * int(1 + (_opts.sigma_noise - 0.8) / 0.3) + 1;
-    const int ksize2 = ksize_bground_normalization;
-    const int ksize = std::max(ksize1, ksize2);
-    const cv::Mat1f G1 = cv::getGaussianKernel(ksize, _opts.sigma_noise, CV_32F);
-    const cv::Mat1f G2 = cv::getGaussianKernel(ksize, sigma_bground_normalization, CV_32F);
-    const cv::Mat1f G = G1 - G2;
-    cv::sepFilter2D(_maxcolor_image, _maxcolor_image, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-
   // Compute derivatives
-  cv::filter2D(_maxcolor_image, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(_maxcolor_image, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+
+  cv::filter2D(_normalized_image, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+  cv::filter2D(_normalized_image, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   cv::magnitude(_gx, _gy, _g);
-  if( _opts.g2 ) {
-    cv::filter2D(_g, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(_g, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::magnitude(_gx, _gy, _g);
-  }
+
+  const cv::Mat imask = ~_gradient_mask;
+  _g.setTo(0, imask);
   if( _opts.gweighted ) {
     cv::multiply(_gx, _g, _gx);
     cv::multiply(_gy, _g, _gy);
   }
+  else {
+    _gx.setTo(0, imask);
+    _gy.setTo(0, imask);
+  }
 
-  // Erode planetary disk mask to avoid edge effects
-  cv::erode(_detected_planetary_disk_mask, _maxcolor_mask,
-      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(mask_erode_size, mask_erode_size)),
-      cv::Point(-1, -1),
-      1,
-      cv::BORDER_CONSTANT,
-      cv::Scalar::all(0));
 
   // Compute orientation angle
   switch (_opts.method) {
@@ -278,10 +282,10 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
   cv::multiply(_gy, _gy, jyy);
   cv::multiply(_gx, _gy, jxy);
 
-  const cv::Mat1b imask = ~_maxcolor_mask;
-  jxx.setTo(0, imask);
-  jyy.setTo(0, imask);
-  jxy.setTo(0, imask);
+//  const cv::Mat1b imask = ~_maxcolor_mask;
+//  jxx.setTo(0, imask);
+//  jyy.setTo(0, imask);
+//  jxy.setTo(0, imask);
 
   const double Jxx = cv::sum(jxx)[0];
   const double Jyy = cv::sum(jyy)[0];
@@ -303,16 +307,16 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
 
 double c_jovian_ellipse_detector::compute_jovian_orientation_pca()
 {
-  const int npts = cv::countNonZero(_maxcolor_mask);
+  const int npts = cv::countNonZero(_gradient_mask);
   cv::Mat1f data_pts(npts, 2);
 
   int ii = 0;
 
-  for( int y = 0; y < _maxcolor_mask.rows; ++y ) {
+  for( int y = 0; y < _gradient_mask.rows; ++y ) {
     const float * gxp = _gx[y];
     const float * gyp = _gy[y];
-    const uint8_t * mskp = _maxcolor_mask[y];
-    for( int x = 0; x < _maxcolor_mask.cols; ++x ) {
+    const uint8_t * mskp = _gradient_mask[y];
+    for( int x = 0; x < _gradient_mask.cols; ++x ) {
       if( mskp[x] ) {
         const float gx = gxp[x];
         const float gy = gyp[x];
@@ -336,10 +340,11 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
     c_jovian_ellipse_detector_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, method);
-  SERIALIZE_OPTION(section, save, opts, maxcolor_channel);
-  SERIALIZE_OPTION(section, save, opts, g2);
-  SERIALIZE_OPTION(section, save, opts, gweighted);
+  SERIALIZE_OPTION(section, save, opts, gradient_channel);
   SERIALIZE_OPTION(section, save, opts, sigma_noise);
+  SERIALIZE_OPTION(section, save, opts, nscale);
+  SERIALIZE_OPTION(section, save, opts, neps);
+  SERIALIZE_OPTION(section, save, opts, gweighted);
   SERIALIZE_OPTION(section, save, opts, planetary_disk_tilt);
   SERIALIZE_OPTION(section, save, opts, offset);
   serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);

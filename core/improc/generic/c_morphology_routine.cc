@@ -40,10 +40,7 @@ bool c_morphology_routine::serialize(c_config_setting settings, bool save)
 bool c_morphology_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( SE.empty() ) {
-    SE =
-        cv::getStructuringElement(_se_shape,
-            _se_size,
-            _anchor);
+    SE = cv::getStructuringElement(_se_shape, _se_size, _anchor);
   }
 
   cv::Mat src, dst;

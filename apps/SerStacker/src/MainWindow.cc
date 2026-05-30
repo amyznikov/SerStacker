@@ -190,6 +190,17 @@ MainWindow::MainWindow()
     return false;
   });
 
+
+  set_ctlbind_update_arrow_callback([this](double x, double y) {
+    if (imageView) {
+      if ( QGraphicsLineShape *line = imageView->lineShape() ) {
+        line->pointToScene(x, y);
+        return true;
+      }
+    }
+    return false;
+  });
+
   //
   // Add to the end of View menu
   //
@@ -1301,19 +1312,10 @@ void MainWindow::updateProfileGraph(QGraphicsItem * lineItem)
     }
     else {
 
-      QLine line =
-          profileGraph_ctl->currentLine();
-
+      QLine line = profileGraph_ctl->currentLine();
       if ( line.isNull() && is_visible(imageView) ) {
-
-        const QList<QGraphicsItem *> items =
-            imageView->scene()->items();
-
-        for ( const QGraphicsItem * item : items ) {
-          if( const QGraphicsLineShape *lineShape = dynamic_cast<const QGraphicsLineShape*>(item) ) {
-            line = lineShape->sceneLine().toLine();
-            break;
-          }
+        if ( QGraphicsLineShape * lineShape = imageView->lineShape() ) {
+          line = lineShape->sceneLine().toLine();
         }
       }
 

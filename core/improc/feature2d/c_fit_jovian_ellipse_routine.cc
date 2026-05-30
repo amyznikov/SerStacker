@@ -15,7 +15,7 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
   static const c_enum_member members[] = {
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
-      { c_fit_jovian_ellipse_routine::display_pca_channel, "pca_channel", },
+      { c_fit_jovian_ellipse_routine::display_normalized_image, "normalized_image", },
       { c_fit_jovian_ellipse_routine::display_g, "g", },
       { c_fit_jovian_ellipse_routine::display_gx, "gx", },
       { c_fit_jovian_ellipse_routine::display_gy, "gy", },
@@ -38,67 +38,11 @@ c_fit_jovian_ellipse_routine::display_type c_fit_jovian_ellipse_routine::display
   return _display_type;
 }
 
-//void c_fit_jovian_ellipse_routine::set_stdev_factor(double v)
-//{
-//  _detector.set_stdev_factor(v);
-//}
-//
-//double c_fit_jovian_ellipse_routine::stdev_factor() const
-//{
-//  return _detector.stdev_factor();
-//}
-//
-//void c_fit_jovian_ellipse_routine::set_pca_channel(color_channel_type v)
-//{
-//  _detector.set_pca_channel(v);
-//}
-//
-//color_channel_type c_fit_jovian_ellipse_routine::pca_channel() const
-//{
-//  return _detector.pca_channel();
-//}
-//
-//void c_fit_jovian_ellipse_routine::set_pca_blur(double v)
-//{
-//  _detector.set_pca_blur(v);
-//}
-//
-//double c_fit_jovian_ellipse_routine::pca_blur() const
-//{
-//  return _detector.pca_blur();
-//}
-//
-//void c_fit_jovian_ellipse_routine::set_offset(const cv::Point2f & v)
-//{
-//  _detector.set_offset(v);
-//}
-//
-//const cv::Point2f & c_fit_jovian_ellipse_routine::offset() const
-//{
-//  return _detector.offset();
-//}
-//
-//c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector()
-//{
-//  return &_detector;
-//}
-//
-//const c_jovian_ellipse_detector * c_fit_jovian_ellipse_routine::detector() const
-//{
-//  return &_detector;
-//}
-
 void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", ctx, &this_class::display, &this_class::set_display, "display image type");
   ctlbind(ctls, ctx(&this_class::_opts));
-
-//  ctlbind(ctls, "stdev_factor", ctx, &this_class::stdev_factor, &this_class::set_stdev_factor, "stdev_factor");
-//  ctlbind(ctls, "pca_channel", ctx, &this_class::pca_channel, &this_class::set_pca_channel, "pca_channel");
-//  ctlbind(ctls, "pca_blur", ctx, &this_class::pca_blur, &this_class::set_pca_blur, "pca_blur");
-//  ctlbind(ctls, "offset", ctx, &this_class::offset, &this_class::set_offset, "offset");
 }
-
 
 bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)
 {
@@ -159,24 +103,24 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       mask.release();
       break;
 
-    case display_pca_channel:
-      _detector.maxcolor_image().copyTo(image);
-      _detector.maxcolor_mask().copyTo(mask);
+    case display_normalized_image:
+      _detector.normalized_image().copyTo(image);
+      _detector.gradient_mask().copyTo(mask);
       break;
 
     case display_gx:
       _detector.gx_image().copyTo(image);
-      _detector.maxcolor_mask().copyTo(mask);
+      _detector.gradient_mask().copyTo(mask);
       break;
 
     case display_gy:
       _detector.gy_image().copyTo(image);
-      _detector.maxcolor_mask().copyTo(mask);
+      _detector.gradient_mask().copyTo(mask);
       break;
 
     case display_g:
       _detector.g_image().copyTo(image);
-      _detector.maxcolor_mask().copyTo(mask);
+      _detector.gradient_mask().copyTo(mask);
       break;
 
     case display_final_ellipse_fit:

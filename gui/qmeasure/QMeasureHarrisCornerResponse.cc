@@ -40,14 +40,14 @@ QHarrisCornerResponseSettingsWidget::QHarrisCornerResponseSettingsWidget(QWidget
       add_numeric_box<int>("dscale:",
           "",
           [this](int v) {
-            if ( measure_ && v != measure_->dscale() ) {
-              measure_->set_dscale(v);
+            if ( _measure && v != _measure->dscale() ) {
+              _measure->set_dscale(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( measure_ ) {
-              *v = measure_->dscale();
+            if ( _measure ) {
+              *v = _measure->dscale();
               return true;
             }
             return false;
@@ -57,14 +57,14 @@ QHarrisCornerResponseSettingsWidget::QHarrisCornerResponseSettingsWidget(QWidget
       add_numeric_box<int>("uscale:",
           "",
           [this](int v) {
-            if ( measure_ && v != measure_->uscale() ) {
-              measure_->set_uscale(v);
+            if ( _measure && v != _measure->uscale() ) {
+              _measure->set_uscale(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( measure_ ) {
-              *v = measure_->uscale();
+            if ( _measure ) {
+              *v = _measure->uscale();
               return true;
             }
             return false;
@@ -74,14 +74,14 @@ QHarrisCornerResponseSettingsWidget::QHarrisCornerResponseSettingsWidget(QWidget
       add_numeric_box<double>("K:",
           "",
           [this](double v) {
-            if ( measure_ && v != measure_->k() ) {
-              measure_->set_k(v);
+            if ( _measure && v != _measure->k() ) {
+              _measure->set_k(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( measure_ ) {
-              *v = measure_->k();
+            if ( _measure ) {
+              *v = _measure->k();
               return true;
             }
             return false;

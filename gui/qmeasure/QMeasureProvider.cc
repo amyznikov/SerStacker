@@ -15,6 +15,7 @@
 #include "QMeasureSharpnessNorm.h"
 #include "QMeasureNoise.h"
 #include "QMeasureLAP.h"
+#include "QMeasureBaryCenter.h"
 
 #include <core/debug.h>
 
@@ -59,6 +60,8 @@ const std::vector<QMeasure*>& QMeasureProvider::available_measures()
     _available_measures.emplace_back(new QMeasureNormalizedVariance());
     _available_measures.emplace_back(new QMeasureSharpnessNorm());
     _available_measures.emplace_back(new QMeasureNoise());
+    _available_measures.emplace_back(new QMeasureBaryCenterX());
+    _available_measures.emplace_back(new QMeasureBaryCenterY());
   }
 
   return _available_measures;
@@ -96,20 +99,11 @@ void QMeasureProvider::remove_measure_request(const MeasuresCollection * r)
 
 bool QMeasureProvider::adjust_roi(const cv::Rect & src_roi, const cv::Size & image_size, cv::Rect * dst_roi)
 {
-  const int l =
-      (std::min)(image_size.width - 1, (std::max)(0, src_roi.x));
-
-  const int t =
-      (std::min)(image_size.height - 1, (std::max)(0, src_roi.y));
-
-  const int r =
-      (std::min)(image_size.width - 1, (std::max)(0, src_roi.x + src_roi.width - 1));
-
-  const int b =
-      (std::min)(image_size.height - 1, (std::max)(0, src_roi.y + src_roi.height - 1));
-
+  const int l = (std::min)(image_size.width - 1, (std::max)(0, src_roi.x));
+  const int t = (std::min)(image_size.height - 1, (std::max)(0, src_roi.y));
+  const int r = (std::min)(image_size.width - 1, (std::max)(0, src_roi.x + src_roi.width - 1));
+  const int b = (std::min)(image_size.height - 1, (std::max)(0, src_roi.y + src_roi.height - 1));
   *dst_roi = cv::Rect(l, t, r - l + 1, b - t + 1);
-
   return !dst_roi->empty();
 }
 

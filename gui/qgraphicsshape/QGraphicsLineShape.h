@@ -38,6 +38,8 @@ public:
   void setSceneLine(qreal x1, qreal y1, qreal x2, qreal y2);
   QLineF sceneLine() const;
 
+  void pointToScene(qreal x, qreal y);
+
   void setPen(const QPen & pen);
   void setCosmeticPen(const QColor & color, int width = 1);
   const QPen& pen() const;

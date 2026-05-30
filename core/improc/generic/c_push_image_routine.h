@@ -24,9 +24,8 @@ public:
 
 protected:
   std::string _artifact_name  = "saved_image";
-  bool _push_image = true;
-  bool _push_mask = true;
-
+//  bool _push_image = true;
+//  bool _push_mask = true;
 };
 
 #endif /* __c_push_current_image_routine_h__ */

@@ -52,14 +52,14 @@ QMeasureLAPSettingsWidget::QMeasureLAPSettingsWidget(QWidget * parent) :
       add_numeric_box<int>("dscale:",
           "",
           [this](int v) {
-            if ( measure_ && v != measure_->dscale() ) {
-              measure_->set_dscale(v);
+            if ( _measure && v != _measure->dscale() ) {
+              _measure->set_dscale(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( measure_ ) {
-              *v = measure_->dscale();
+            if ( _measure ) {
+              *v = _measure->dscale();
               return true;
             }
             return false;
@@ -69,14 +69,14 @@ QMeasureLAPSettingsWidget::QMeasureLAPSettingsWidget(QWidget * parent) :
       add_numeric_box<cv::Size>("SE size:",
           "",
           [this](const cv::Size & v) {
-            if ( measure_ && v != measure_->se_size() ) {
-              measure_->set_se_size(v);
+            if ( _measure && v != _measure->se_size() ) {
+              _measure->set_se_size(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](cv::Size * v) {
-            if ( measure_ ) {
-              *v = measure_->se_size();
+            if ( _measure ) {
+              *v = _measure->se_size();
               return true;
             }
             return false;

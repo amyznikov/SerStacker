@@ -24,7 +24,7 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string _artifact_name  ="saved_image";
+  std::string _artifact_name  ="gsrc";
 };
 
 #endif /* __c_push_global_routine_h__ */

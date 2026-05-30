@@ -39,8 +39,7 @@ bool pyramid_downscale(cv::InputArray src, cv::Mat & dst, int max_levels, int bo
 
 bool pyramid_upscale(cv::Mat & image, const cv::Size & dstSize, int borderType)
 {
-  const cv::Size inputSize =
-      image.size();
+  const cv::Size inputSize = image.size();
 
   if( inputSize != dstSize ) {
 

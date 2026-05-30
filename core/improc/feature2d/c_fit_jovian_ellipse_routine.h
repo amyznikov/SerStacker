@@ -21,20 +21,13 @@ public:
 
   enum display_type {
     display_gray_image,
-
-    display_detected_planetary_disk_mask,
-    display_detected_planetary_disk_edge,
-
-    // display_detected_ellipseAMS,
-
-    display_pca_channel,
+    display_normalized_image,
+    display_g,
     display_gx,
     display_gy,
-    display_g,
-
-    // display_final_planetary_disk_ellipse,
+    display_detected_planetary_disk_mask,
+    display_detected_planetary_disk_edge,
     display_final_planetary_disk_mask,
-
     display_final_ellipse_fit,
   };
 

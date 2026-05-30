@@ -24,6 +24,18 @@ QGraphicsRectShape * QImageSourceView::roiShape() const
   return _roiShape;
 }
 
+QGraphicsLineShape * QImageSourceView::lineShape() const
+{
+  const QList<QGraphicsItem *> items = scene()->items();
+  for ( QGraphicsItem * item : items ) {
+    if( QGraphicsLineShape *line = dynamic_cast<QGraphicsLineShape*>(item) ) {
+      return line;
+    }
+  }
+  return nullptr;
+}
+
+
 void QImageSourceView::createRoiShape()
 {
   if( !_roiShape ) {

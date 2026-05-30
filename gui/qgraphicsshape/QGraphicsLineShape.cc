@@ -96,6 +96,22 @@ QLineF QGraphicsLineShape::sceneLine() const
   return QLineF(mapToScene(_line.p1()), mapToScene(_line.p2()));
 }
 
+
+void QGraphicsLineShape::pointToScene(qreal x, qreal y)
+{
+  prepareGeometryChange();
+
+  _line.setP2(mapFromScene(QPointF(x, y)));
+
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
+}
+
+
 void QGraphicsLineShape::setPen(const QPen & pen)
 {
   if ( _pen != pen ) {

@@ -40,14 +40,14 @@ QLCMeasureSettingsWidget::QLCMeasureSettingsWidget(QWidget * parent) :
       add_numeric_box<int>("dscale:",
           "",
           [this](int v) {
-            if ( measure_ && v != measure_->dscale() ) {
-              measure_->set_dscale(v);
+            if ( _measure && v != _measure->dscale() ) {
+              _measure->set_dscale(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
-            if ( measure_ ) {
-              *v = measure_->dscale();
+            if ( _measure ) {
+              *v = _measure->dscale();
               return true;
             }
             return false;
@@ -57,14 +57,14 @@ QLCMeasureSettingsWidget::QLCMeasureSettingsWidget(QWidget * parent) :
       add_numeric_box<double>("eps:",
           "",
           [this](double v) {
-            if ( measure_ && v != measure_->eps() ) {
-              measure_->set_eps(v);
+            if ( _measure && v != _measure->eps() ) {
+              _measure->set_eps(v);
               Q_EMIT parameterChanged();
             }
           },
           [this](double * v) {
-            if ( measure_ ) {
-              *v = measure_->eps();
+            if ( _measure ) {
+              *v = _measure->eps();
               return true;
             }
             return false;

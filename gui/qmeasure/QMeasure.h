@@ -78,50 +78,17 @@ public:
   QMeasureSettingsWidgetTemplate(QWidget * parent = nullptr) :
       Base(parent)
   {
-//    averageColorChannels_ctl =
-//        add_checkbox("Average Color Channels",
-//            "",
-//            [this](bool checked) {
-//              if ( measure_ && measure_->averageColorChannels() != checked ) {
-//                measure_->setAverageColorChannels(checked);
-//                Q_EMIT parameterChanged();
-//              }
-//            },
-//            [this](bool * checked) {
-//              if ( measure_ ) {
-//                * checked = measure_->averageColorChannels();
-//                return true;
-//              }
-//              return false;
-//            });
-//
-//    skipZeroPixels_ctl =
-//        add_checkbox("Skip zero pixels",
-//            "",
-//            [this](bool checked) {
-//              if ( measure_ && measure_->skipZeroPixels() != checked ) {
-//                measure_->setSkipZeroPixels(checked);
-//                Q_EMIT parameterChanged();
-//              }
-//            },
-//            [this](bool * checked) {
-//              if ( measure_ ) {
-//                * checked =measure_->skipZeroPixels();
-//                return true;
-//              }
-//              return false;
-//            });
   }
 
   void setMeasure(MeasureType * m)
   {
-    measure_ = m;
+    _measure = m;
     updateControls();
   }
 
   MeasureType* measure() const
   {
-    return measure_;
+    return _measure;
   }
 
   void setCurrentMeasure(QMeasure * m) override
@@ -131,7 +98,7 @@ public:
 
   QMeasure* currentMeasure() const override
   {
-    return measure_;
+    return _measure;
   }
 
 protected:
@@ -142,21 +109,8 @@ protected:
     setEnabled(true);
   }
 
-//  void onupdatecontrols() override
-//  {
-//    if( !measure_ ) {
-//      setEnabled(false);
-//    }
-//    else {
-//      Q_EMIT Base::populatecontrols();
-//      update_measure_controls();
-//    }
-//  }
-
 protected:
-  MeasureType *measure_ = nullptr;
-//  QCheckBox * averageColorChannels_ctl = nullptr;
-//  QCheckBox * skipZeroPixels_ctl = nullptr;
+  MeasureType *_measure = nullptr;
 };
 
 class QMeasureCentralPixelValue:
@@ -184,8 +138,6 @@ public:
   QMeasureCentralPixelValueSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-//    averageColorChannels_ctl->setEnabled(false);
-//    skipZeroPixels_ctl->setEnabled(false);
     updateControls();
   }
 };

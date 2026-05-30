@@ -55,6 +55,8 @@ struct c_jdr_pipeline_jovian_ellipse_detector_options
 struct c_jdr_pipeline_stack_options
 {
   c_image_processor::sptr input_image_preprocessor;
+  int derotate_context_size = -1;
+  bool derotate_all_frames = false;
 };
 
 struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options

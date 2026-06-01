@@ -37,23 +37,6 @@ const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
 }
 
 template<>
-const c_enum_member* members_of<c_threshold_routine::MASK_MODE>()
-{
-  static const c_enum_member members[] = {
-      { c_threshold_routine::MASK_MODE_REPLACE, "REPLACE", ""},
-      { c_threshold_routine::MASK_MODE_AND, "AND", ""},
-      { c_threshold_routine::MASK_MODE_OR, "OR", ""},
-      { c_threshold_routine::MASK_MODE_XOR, "XOR", ""},
-      { c_threshold_routine::MASK_MODE_NAND, "NAND", ""},
-      { c_threshold_routine::MASK_MODE_NOR, "NOR", ""},
-      { c_threshold_routine::MASK_MODE_NXOR, "NXOR", ""},
-      { c_threshold_routine::MASK_MODE_REPLACE }
-  };
-
-  return members;
-}
-
-template<>
 const c_enum_member* members_of<c_threshold_routine::MULTI_CHANEL_REDUCTION>()
 {
   static const c_enum_member members[] = {
@@ -233,46 +216,50 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   }
 
   if( !srcm.empty() ) {
-
-    if( srcm.channels() != dstm.channels() ) {
-      if( dstm.channels() == 1 ) {
-        cv::merge(std::vector<cv::Mat>(srcm.channels(), dstm), dstm);
-      }
-      else if( srcm.channels() == 1 ) {
-        cv::merge(std::vector<cv::Mat>(srcm.channels(), srcm), srcm);
-      }
-      else {
-        CF_ERROR("Not supported combination of srcm.channels=%d and dstm,channels=%d",
-            srcm.channels(), dstm.channels());
-        return false;
-      }
-    }
-
-    switch (_mask_mode) {
-      case MASK_MODE_REPLACE:
-        break;
-      case MASK_MODE_NAND:
-        cv::bitwise_and(~srcm, dstm, dstm);
-        break;
-      case MASK_MODE_AND:
-        cv::bitwise_and(srcm, dstm, dstm);
-        break;
-      case MASK_MODE_NOR:
-        cv::bitwise_or(~srcm, dstm, dstm);
-        break;
-      case MASK_MODE_OR:
-        cv::bitwise_or(srcm, dstm, dstm);
-        break;
-      case MASK_MODE_NXOR:
-        cv::bitwise_xor(~srcm, dstm, dstm);
-        break;
-      case MASK_MODE_XOR:
-        cv::bitwise_xor(srcm, dstm, dstm);
-        break;
-      default:
-        break;
-    }
+    combine_masks(_mask_mode, dstm, srcm, dstm);
   }
+
+//  if( !srcm.empty() ) {
+//
+//    if( srcm.channels() != dstm.channels() ) {
+//      if( dstm.channels() == 1 ) {
+//        cv::merge(std::vector<cv::Mat>(srcm.channels(), dstm), dstm);
+//      }
+//      else if( srcm.channels() == 1 ) {
+//        cv::merge(std::vector<cv::Mat>(srcm.channels(), srcm), srcm);
+//      }
+//      else {
+//        CF_ERROR("Not supported combination of srcm.channels=%d and dstm,channels=%d",
+//            srcm.channels(), dstm.channels());
+//        return false;
+//      }
+//    }
+//
+//    switch (_mask_mode) {
+//      case MASK_MODE_REPLACE:
+//        break;
+//      case MASK_MODE_NAND:
+//        cv::bitwise_and(~srcm, dstm, dstm);
+//        break;
+//      case MASK_MODE_AND:
+//        cv::bitwise_and(srcm, dstm, dstm);
+//        break;
+//      case MASK_MODE_NOR:
+//        cv::bitwise_or(~srcm, dstm, dstm);
+//        break;
+//      case MASK_MODE_OR:
+//        cv::bitwise_or(srcm, dstm, dstm);
+//        break;
+//      case MASK_MODE_NXOR:
+//        cv::bitwise_xor(~srcm, dstm, dstm);
+//        break;
+//      case MASK_MODE_XOR:
+//        cv::bitwise_xor(srcm, dstm, dstm);
+//        break;
+//      default:
+//        break;
+//    }
+//  }
 
   switch (_output_channel) {
     case DATA_CHANNEL::IMAGE:

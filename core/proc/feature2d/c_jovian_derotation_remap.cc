@@ -21,8 +21,12 @@ void c_jovian_derotation_remap::set_reference_pose(const cv::Size & image_size,
 
 void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_msec, double wscale)
 {
-  // Jupiter daily rotation period is 9h 55m 30s.
-  static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 30.;
+  // Jupiter daily rotation periods are
+  // System III : 9h 55m 30s.
+  // System II  : 9ч 55м 40.632s
+  // System I   : 9ч 50м 30.003s
+  //static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 30.;
+  static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 40.632;
   const double rotation_angle_deg = 0.360 * deltat_msec / rotation_period_sec;
   const double rotation_angle_radians = rotation_angle_deg * CV_PI / 180;
   return compute_derotation_for_angle(rotation_angle_radians, wscale);

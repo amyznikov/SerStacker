@@ -611,21 +611,8 @@ protected:
 
 protected:
   c_eccflow_options _opts;
-
-//  double input_smooth_sigma_ = 0;
-//  double reference_smooth_sigma_ = 0;
-//  double update_multiplier_ = 1.5;
-//  double scale_factor_ = 0.5;
-//  double noise_level_ = -1;
-//  int max_iterations_ = 1; // not used at this time
-//  int support_scale_ = 5;
-//  int min_image_size_ = 4;
-//  int max_pyramid_level_ = -1;
-//  ECCFlowDownscaleMethod downscale_method_ = ECCFlowDownscaleRecursiveResize;
-
   std::vector<pyramid_entry> _pyramid;
   cv::Mat2f uv;
-
   // work arrays
   mutable cv::Mat1b M;
   mutable cv::Mat1f W, It, Itx, Ity;

@@ -25,11 +25,13 @@ struct c_jovian_ellipse_detector_options
   color_channel_type gradient_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double planetary_disk_tilt = 0; // [deg]
-  double sigma_noise = 3;
+  double sigma_contour = 3;
+  double sigma_clouds = 3;
   int nscale = 2;
   double neps = 1e-3;
   cv::Point2f offset;
   bool gweighted = true;
+  bool lmweighted = true;
 };
 
 bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bool save,
@@ -54,10 +56,13 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind(ctls, "method", ctx(&S::method), "");
   ctlbind(ctls, "gradient_channel", ctx(&S::gradient_channel), "");
-  ctlbind(ctls, "sigma_noise", ctx(&S::sigma_noise), "");
+  ctlbind(ctls, "sigma_contour", ctx(&S::sigma_contour), "");
+  ctlbind(ctls, "sigma_clouds", ctx(&S::sigma_clouds), "");
   ctlbind(ctls, "nscale", ctx(&S::nscale), "");
   ctlbind(ctls, "neps", ctx(&S::neps), "");
   ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
+  ctlbind(ctls, "lmweighted", ctx(&S::lmweighted), "");
+
   ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
   ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
 
@@ -93,8 +98,10 @@ public:
   const cv::Mat1f & g_image() const;
   const cv::Mat1f & gx_image() const;
   const cv::Mat1f & gy_image() const;
-  const cv::Mat1b& detected_planetary_disk_mask() const;
-  const cv::Mat1b& detected_planetary_disk_edge() const;
+  const cv::Mat1f & gr_image() const;
+  const cv::Mat1f & grth_image() const;
+  const cv::Mat1b& disk_mask() const;
+  const cv::Mat1b& disk_edge() const;
   const cv::Mat1b& final_planetary_disk_mask() const;
 
   const cv::Point2d & center() const
@@ -119,15 +126,16 @@ protected:
 
   cv::Mat _grayscale_image;
   cv::Mat _normalized_image;
-  cv::Mat1b _detected_planetary_disk_mask;
+  cv::Mat1b _disk_mask;
+  cv::Mat1b _disk_edge;
   cv::Mat1b _gradient_mask;
   cv::Mat1f _kderiv, _ksmooth;
-  cv::Mat1f _gx, _gy, _g;
+  cv::Mat1f _gx, _gy, _g, _gr, _grth;
 
-  cv::Mat1b _detected_planetary_disk_edge;
   cv::Mat1b _final_planetary_disk_mask;
 
   //cv::RotatedRect _ellipseAMS;
+  cv::Point2f _detected_component_centroid;
   cv::Rect _detected_component_rect;
   cv::RotatedRect _final_planetary_disk_ellipse;
 

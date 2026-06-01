@@ -12,11 +12,13 @@
 
 #include <opencv2/opencv.hpp>
 
-bool fitEllipseLM1(const std::vector<cv::Point2f> & edge_points,
+// cv::Point3f::x => x coordinate
+// cv::Point3f::y => y coordinate
+// cv::Point3f::z => weight of the point
+bool fitEllipseLMW(const std::vector<cv::Point3f> & edge_points,
     double fixed_axis_ratio, // b / a
     double fixed_orientation, // radians
     cv::RotatedRect * rc);
-
 
 
 

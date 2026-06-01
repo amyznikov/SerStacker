@@ -236,4 +236,13 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc,
 void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type = cv::LINE_8);
 
+std::string serialize_ellipsoid_to_string(const cv::Point2d & center,
+    const cv::Vec3d & axes,  const cv::Vec3d & pose);
+
+bool parse_ellipsoid_from_string(const std::string & s,
+    cv::Point2d * center, cv::Vec3d * axes, cv::Vec3d * pose,
+    bool * have_center,
+    bool * have_axes,
+    bool * have_pose);
+
 #endif /* __ellipsoid_h__ */

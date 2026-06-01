@@ -74,11 +74,7 @@ bool c_local_minmax_routine::process(cv::InputOutputArray image, cv::InputOutput
 {
   cv::Mat M;
 
-  locate_extremes(image,
-      _ignore_mask ? cv::noArray() :
-          mask.getMat(),
-      M,
-      _opts);
+  locate_extremes(image, _ignore_mask ? cv::noArray() : mask.getMat(), M, _opts);
 
   if ( _output_channel == OUTPUT_IMAGE ) {
     image.move(M);

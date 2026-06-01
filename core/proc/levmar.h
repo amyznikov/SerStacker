@@ -36,7 +36,6 @@ public:
     tbb_range;
 #endif
 
-
   struct callback
   {
     virtual ~callback() = default;
@@ -68,8 +67,17 @@ public:
     }
   };
 
-
-  virtual ~c_levmar_solver() = default;
+  enum STOP_REASON {
+    STOP_REASON_UNKNOW,
+    STOP_REASON_CONVERGED_RHS,
+    STOP_REASON_CONVERGED_DP,
+    STOP_REASON_CONVERGED_ERR,
+    STOP_REASON_BAD_HESSIAN,
+    STOP_REASON_BAD_RHS,
+    STOP_REASON_BAD_DP,
+    STOP_REASON_BAD_LAMBDA,
+    STOP_REASON_MAX_ITERATIONS,
+  };
 
   c_levmar_solver()
   {
@@ -81,6 +89,8 @@ public:
     _epsx(eps)
   {
   }
+
+  virtual ~c_levmar_solver() = default;
 
   void set_max_iterations(int v)
   {
@@ -142,6 +152,16 @@ public:
     return _decomp_type;
   }
 
+  bool converged() const
+  {
+    return _converged;
+  }
+
+  STOP_REASON stop_reason() const
+  {
+    return _stop_reason;
+  }
+
   _Tp rmse() const
   {
     return _rmse;
@@ -152,15 +172,13 @@ public:
     return _rhs;
   }
 
+#if 0
   virtual int run(callback & cb, std::vector<_Tp> & params)
   {
     INSTRUMENT_REGION("");
 
-    const int M =
-        params.size();
-
-    constexpr _Tp  machine_eps =
-        std::numeric_limits<_Tp >::epsilon();
+    const int M = params.size();
+    constexpr _Tp  machine_eps = std::numeric_limits<_Tp >::epsilon();
 
     _Tp lambda = _initial_lambda;
 
@@ -274,6 +292,153 @@ public:
 
     return _iteration;
   }
+#else
+  virtual int run(callback & cb, std::vector<_Tp> & params)
+  {
+    INSTRUMENT_REGION("");
+
+    const int M = params.size();
+    constexpr _Tp  machine_eps = std::numeric_limits<_Tp >::epsilon();
+
+    _Tp lambda = _initial_lambda;
+
+    cv::Mat_<_Tp> H, Hp, v, deltap, temp_d;
+    std::vector<_Tp > newparams;
+
+    const double epsx = _epsx;
+    const double epsfn = _epsfn;
+    const int max_iterations = std::max(1, _max_iterations);
+
+    int iteration = 0;
+    double dp = -1;
+    double err = -1;
+
+    _converged = false;
+    _stop_reason = STOP_REASON_UNKNOW;
+
+    while (iteration < max_iterations) {
+
+      if( (err = compute_hessian(cb, params, H, v)) < 0 || !std::isfinite(err) ) {
+        _stop_reason = STOP_REASON_BAD_HESSIAN;
+        CF_ERROR("compute_hessian() fails: err=%g at iteration %d", err, iteration);
+        break;
+      }
+
+      if ( err <= machine_eps ) {
+        _converged = true;
+        _stop_reason = STOP_REASON_CONVERGED_RHS;
+        break;
+      }
+
+      H.copyTo(Hp);
+
+      /*
+       * Solve normal equation for given Jacobian and lambda
+       * */
+      while (iteration++ < max_iterations) {
+
+        /*
+         * Increase diagonal elements by lambda
+         * */
+        for( int i = 0; i < M; ++i ) {
+          H[i][i] = (1 + lambda) * Hp[i][i];
+        }
+
+        /* Solve system to compute parameters update
+         *  deltap = H.inv() * v
+         *  */
+        if( !cv::solve(H, v, deltap, _decomp_type) ) {
+          CF_ERROR("cv::solve() fails at iteration %d", iteration);
+          break;
+        }
+
+        cv::scaleAdd(deltap, -_update_step_scale, cv::Mat(params), newparams);
+
+        /* Check for increment in parameters  */
+        dp = cv::norm(deltap, cv::NORM_INF);
+        if ( !isfinite(dp) ) {
+          _converged = false;
+          _stop_reason = STOP_REASON_BAD_DP;
+          CF_ERROR("BAD dp=%g at iteration %d", dp, iteration);
+          break;
+        }
+        if( dp <= epsx ) {
+          // accept new params
+          std::swap(params, newparams);
+          _converged = true;
+          _stop_reason = STOP_REASON_CONVERGED_DP;
+          CF_ERROR("CONVERGED_DP dp=%g <= epsx=%g at iteration %d", dp, epsx, iteration);
+          break;
+        }
+
+        const double newerr = compute_rhs(cb, newparams);
+        if ( newerr < 0 || !std::isfinite(err) ) {
+          CF_ERROR("compute_rhs() fails: err=%g at iteration %d", newerr, iteration);
+          _stop_reason = STOP_REASON_BAD_RHS;
+          break; // no convergence
+        }
+
+        if( newerr > err ) {
+          if ( lambda > _Tp(1e8) ) {
+            CF_ERROR("lambda too big =%g at iteration %d", lambda, iteration);
+            _stop_reason = STOP_REASON_BAD_LAMBDA;
+            break; // no convergence
+          }
+          err = newerr;
+          lambda *= 10;
+          continue;
+        }
+
+        const _Tp diff = err - newerr;
+
+        // accept new params
+        std::swap(params, newparams);
+        err = newerr;
+
+        /* Check Function Tolerance */
+        if (diff < err * epsfn ) {
+          CF_DEBUG("diff=%lf", diff);
+          _converged = true;
+          _stop_reason = STOP_REASON_CONVERGED_ERR;
+          break;
+        }
+
+        /*
+         * Compute step quality (rho) and update to lambda
+         * Predicted improvement dS
+         * rho = (actual improvement) / (predicted improvement)
+         * */
+        cv::gemm(Hp, deltap, -1, v, 2, temp_d);
+        const double dS = deltap.dot(temp_d);
+        const double rho = std::abs(dS) > _Tp(1e-9f) ? diff / std::abs(dS)  : diff;
+        if (rho > 0.25 ) { /* Good step, decrease lambda ==> Gauss-Newton */
+          lambda = std::max(1e-8, 0.2 * lambda);
+        }
+        else if (rho < 0.1) { /* The Taylor model looks poor ==> gradient descend*/
+          lambda = (lambda < 1.0) ? 1.0 : lambda * 10.0;
+        }
+        else {
+        }
+
+        break;
+      }
+
+      if (_converged || _stop_reason != STOP_REASON_UNKNOW ) {
+        break;
+      }
+    }
+
+    _errx = dp;
+    _errfn = err;
+    _rmse = std::sqrt(err / (_rhs.size() - M));
+
+    if ( _stop_reason == STOP_REASON_UNKNOW  &&  iteration >= max_iterations ) {
+      _stop_reason = STOP_REASON_MAX_ITERATIONS;
+    }
+
+    return (_iteration = iteration);
+  }
+#endif
 
 protected:
   static bool compute(callback & cb, const std::vector<_Tp> & params, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * J)
@@ -440,11 +605,8 @@ protected:
       return -1;
     }
 
-    const int N =
-        _rhs.size();
-
-    const int M =
-        params.size();
+    const int N = _rhs.size();
+    const int M = params.size();
 
     v.create(M, 1);
 
@@ -511,7 +673,7 @@ protected:
   _Tp _epsfn = (_Tp)(1e-6);
   _Tp _epsx = (_Tp)(1e-6);
   _Tp _update_step_scale = (_Tp)(1);
-  _Tp _initial_lambda = (_Tp)(1e-2);
+  _Tp _initial_lambda = (_Tp)(1e-1);
 
   _Tp _errx = -1;
   _Tp _errfn = -1;
@@ -519,6 +681,8 @@ protected:
 
   int _max_iterations = 100;
   int _iteration = -1;
+  bool _converged = false;
+  STOP_REASON _stop_reason = STOP_REASON_UNKNOW;
   cv::DecompTypes _decomp_type = cv::DECOMP_EIG;
 };
 

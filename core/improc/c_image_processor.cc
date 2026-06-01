@@ -162,6 +162,27 @@ const c_enum_member* members_of<c_image_processor_routine::DATA_CHANNEL>()
   return members;
 }
 
+template<>
+const c_enum_member* members_of<c_image_processor_routine::MASK_MODE>()
+{
+  static const c_enum_member members[] = {
+      { c_image_processor_routine::MASK_MODE_KEEP, "KEEP", "" },
+      { c_image_processor_routine::MASK_MODE_REPLACE, "REPLACE", "oldmask = newmask" },
+      { c_image_processor_routine::MASK_MODE_AND, "AND", "oldmask = newmask & oldmask" },
+      { c_image_processor_routine::MASK_MODE_OR, "OR", "oldmask = newmask | oldmask" },
+      { c_image_processor_routine::MASK_MODE_XOR, "XOR", "oldmask = newmask ^ oldmask" },
+      { c_image_processor_routine::MASK_MODE_NAND, "NAND", "oldmask = ~(newmask & oldmask)" },
+      { c_image_processor_routine::MASK_MODE_NOR, "NOR", "oldmask = ~(newmask | oldmask)" },
+      { c_image_processor_routine::MASK_MODE_NXOR, "XOR", "oldmask = ~(newmask ^ oldmask)" },
+      { c_image_processor_routine::MASK_MODE_ANDN, "ANDN", "oldmask = newmask & ~oldmask" },
+      { c_image_processor_routine::MASK_MODE_ORN, "ORN", "oldmask = newmask | ~oldmask" },
+      { c_image_processor_routine::MASK_MODE_XORN, "XORN", "oldmask = newmask ^ ~oldmask" },
+      { c_image_processor_routine::MASK_MODE_REPLACE },
+  };
+
+  return members;
+}
+
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 

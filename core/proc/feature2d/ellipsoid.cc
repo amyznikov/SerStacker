@@ -7,6 +7,8 @@
 
 #include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/feature2d/planetary-disk-detection.h>
+//#include <core/settings.h>
+#include <core/settings/opencv_settings.h>
 #include <core/debug.h>
 
 /**
@@ -455,4 +457,55 @@ void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, co
     const int npts[] = { 4 };
     cv::polylines(_img, ppts, npts, 1, true, color, thickness, line_type, 0);
   }
+}
+
+std::string serialize_ellipsoid_to_string(const cv::Point2d & center,
+    const cv::Vec3d & axes, const cv::Vec3d & pose)
+{
+  c_config cfg;
+  const auto group = cfg.root().add_group("ellipsoid");
+  save_settings(group, "center", center);
+  save_settings(group, "axes", axes);
+  save_settings(group, "pose", pose);
+  return cfg.write_string();
+}
+
+bool parse_ellipsoid_from_string(const std::string & s,
+    cv::Point2d * center, cv::Vec3d * axes, cv::Vec3d * pose,
+    bool * have_center,
+    bool * have_axes,
+    bool * have_pose)
+{
+  c_config cfg;
+  if ( !cfg.read_string(s)) {
+    return false;
+  }
+
+  auto group = cfg.root().get("ellipsoid");
+  if ( !group.isGroup() ) {
+    return false;
+  }
+
+  if ( center ) {
+    const bool fok = load_settings(group, "center", center);
+    if ( have_center ) {
+      *have_center = fok;
+    }
+  }
+
+  if ( axes ) {
+    const bool fok = load_settings(group, "axes", axes);
+    if ( have_axes ) {
+      *have_axes = fok;
+    }
+  }
+
+  if ( center ) {
+    const bool fok = load_settings(group, "pose", pose);
+    if ( have_pose ) {
+      *have_pose = fok;
+    }
+  }
+
+  return true;
 }

@@ -71,6 +71,19 @@ public:
     MASK
   };
 
+  enum MASK_MODE {
+    MASK_MODE_KEEP,
+    MASK_MODE_REPLACE,
+    MASK_MODE_AND,
+    MASK_MODE_OR,
+    MASK_MODE_XOR,
+    MASK_MODE_NAND,
+    MASK_MODE_NOR,
+    MASK_MODE_NXOR,
+    MASK_MODE_ANDN,
+    MASK_MODE_ORN,
+    MASK_MODE_XORN,
+  };
 
   static void register_class_factory(const class_factory * class_factory);
   static void register_all();
@@ -302,6 +315,164 @@ public:
 
     return false;
   }
+  /////////////////////////////////////////////////////////////////////////////
+
+  static void combine_masks(MASK_MODE mode, cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst)
+  {
+    static const auto cdup =
+        [](cv::InputArray src, int cn) -> cv::Mat {
+          const std::vector<cv::Mat> channels(cn, src.getMat());
+          cv::Mat tmp;
+          cv::merge(channels, tmp);
+          return tmp;
+        };
+
+    switch(mode) {
+      case MASK_MODE_REPLACE:
+        src1.copyTo(dst);
+        break;
+
+      case MASK_MODE_AND:
+      case MASK_MODE_NAND: {
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_and(src1, src2, dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_and(cdup(src1, src2.channels()), src2, dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_and(src1, cdup(src2, src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          src2.copyTo(dst);
+        }
+        if( !dst.empty() && mode == MASK_MODE_NAND ) {
+          cv::bitwise_not(dst, dst);
+        }
+        break;
+      }
+
+      case MASK_MODE_OR:
+      case MASK_MODE_NOR: {
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_or(src1, src2, dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_or(cdup(src1, src2.channels()), src2, dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_or(src1, cdup(src2, src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          src2.copyTo(dst);
+        }
+        if( !dst.empty() && mode == MASK_MODE_NOR ) {
+          cv::bitwise_not(dst, dst);
+        }
+        break;
+      }
+
+      case MASK_MODE_XOR:
+      case MASK_MODE_NXOR:{
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_xor(src1, src2, dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_xor(cdup(src1, src2.channels()), src2, dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_xor(src1, cdup(src2, src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          src2.copyTo(dst);
+        }
+        if( !dst.empty() && mode == MASK_MODE_NXOR ) {
+          cv::bitwise_not(dst, dst);
+        }
+        break;
+      }
+
+      case MASK_MODE_ANDN: {
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_and(src1, ~src2.getMat(), dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_and(cdup(src1, src2.channels()), ~src2.getMat(), dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_and(src1, cdup(~src2.getMat(), src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          cv::bitwise_not(src2, dst);
+        }
+        break;
+      }
+      case MASK_MODE_ORN: {
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_or(src1, ~src2.getMat(), dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_or(cdup(src1, src2.channels()), ~src2.getMat(), dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_or(src1, cdup(~src2.getMat(), src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          cv::bitwise_not(src2, dst);
+        }
+        break;
+      }
+      case MASK_MODE_XORN: {
+        if( !src1.empty() && !src2.empty() ) {
+          if( src1.channels() == src2.channels() ) {
+            cv::bitwise_xor(src1, ~src2.getMat(), dst);
+          }
+          else if( src1.channels() == 1 ) {
+            cv::bitwise_xor(cdup(src1, src2.channels()), ~src2.getMat(), dst);
+          }
+          else if( src2.channels() == 1 ) {
+            cv::bitwise_xor(src1, cdup(~src2.getMat(), src1.channels()), dst);
+          }
+        }
+        else if( !src1.empty() ) {
+          src1.copyTo(dst);
+        }
+        else if( !src2.empty() ) {
+          cv::bitwise_not(src2, dst);
+        }
+        break;
+      }
+      case MASK_MODE_KEEP:
+      default:
+        break;
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////
 
 protected:

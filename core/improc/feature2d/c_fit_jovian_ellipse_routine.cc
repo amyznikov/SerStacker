@@ -16,9 +16,12 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
       { c_fit_jovian_ellipse_routine::display_normalized_image, "normalized_image", },
-      { c_fit_jovian_ellipse_routine::display_g, "g", },
       { c_fit_jovian_ellipse_routine::display_gx, "gx", },
       { c_fit_jovian_ellipse_routine::display_gy, "gy", },
+      { c_fit_jovian_ellipse_routine::display_g, "g", },
+      { c_fit_jovian_ellipse_routine::display_gr, "gr", },
+      { c_fit_jovian_ellipse_routine::display_grth, "grth", },
+      { c_fit_jovian_ellipse_routine::display_grthc, "grthc", },
       { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_mask, "detected_planetary_disk_mask", },
       { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_edge, "detected_planetary_disk_edge", },
       { c_fit_jovian_ellipse_routine::display_final_planetary_disk_mask, "final_planetary_disk_mask", },
@@ -42,6 +45,12 @@ void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlb
 {
   ctlbind(ctls, "display", ctx, &this_class::display, &this_class::set_display, "display image type");
   ctlbind(ctls, ctx(&this_class::_opts));
+  ctlbind_command_button(ctls, "Copy pose", ctx, [](const this_class * obj) {
+    if ( const auto & cb = get_ctlbind_copy_to_clipboard_callback() ) {
+      cb(serialize_ellipsoid_to_string(obj->_detector.center(), obj->_detector.axes(), obj->_detector.pose() * 180 / CV_PI));
+    }
+    return false;
+  });
 }
 
 bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)
@@ -61,7 +70,7 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
   if ( 1 ) {
     cv::rectangle(image, ellipse_bounding_box(rc),
         cv::Scalar(0, 0, 1),
-        3);
+        1);
   }
 
   cv::Point2f pts[4];
@@ -85,11 +94,11 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
 
     case display_gray_image:
       _detector.grayscale_image().copyTo(image);
-      _detector.detected_planetary_disk_mask().copyTo(mask);
+      _detector.disk_mask().copyTo(mask);
       break;
 
     case display_detected_planetary_disk_mask:
-      image.setTo(cv::Scalar::all(1), _detector.detected_planetary_disk_mask());
+      image.setTo(cv::Scalar::all(1), _detector.disk_mask());
       mask.release();
       break;
 
@@ -99,7 +108,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       break;
 
     case display_detected_planetary_disk_edge:
-      image.setTo(cv::Scalar::all(1), _detector.detected_planetary_disk_edge());
+      image.setTo(cv::Scalar::all(1), _detector.disk_edge());
       mask.release();
       break;
 
@@ -107,6 +116,26 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       _detector.normalized_image().copyTo(image);
       _detector.gradient_mask().copyTo(mask);
       break;
+
+    case display_gr:
+      _detector.gr_image().copyTo(image);
+      _detector.disk_edge().copyTo(mask);
+      break;
+
+    case display_grth:
+      _detector.grth_image().copyTo(image);
+      _detector.disk_edge().copyTo(mask);
+      break;
+
+    case display_grthc: {
+      double minv=0, maxv=1;
+      cv::minMaxLoc(_detector.grth_image(), &minv, &maxv, nullptr, nullptr, _detector.disk_edge() );
+      _detector.grth_image().copyTo(image);
+      _detector.disk_edge().copyTo(mask);
+      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
+    }
+      break;
+
 
     case display_gx:
       _detector.gx_image().copyTo(image);
@@ -128,7 +157,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
       drawRotatedRect(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
-      image.setTo(cv::Scalar::all(1), _detector.detected_planetary_disk_edge());
+      //image.setTo(cv::Scalar::all(1), _detector.disk_edge());
       cv::ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
       mask.release();
       break;

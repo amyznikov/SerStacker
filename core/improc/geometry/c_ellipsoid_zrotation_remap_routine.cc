@@ -31,6 +31,29 @@ void c_ellipsoid_zrotation_remap_routine::getcontrols(c_control_list & ctls, con
         ctlbind(ctls, "lat_step [deg]", CTL_CONTEXT(ctx, lat_step_deg), "Latitude step in degrees");
         ctlbind(ctls, "lon_step [deg]", CTL_CONTEXT(ctx, lon_step_deg), "Longitude step in degrees");
       });
+
+  ctlbind_command_button(ctls, "Paste pose", ctx, [](this_class * ths) {
+    if ( const auto & cb = get_ctlbind_get_clipboard_text_callback() ) {
+      bool have_center = false, have_axes = false, have_pose = false;
+      cv::Point2d center;
+      cv::Vec3d axes;
+      cv::Vec3d pose;
+      if ( parse_ellipsoid_from_string(cb(), &center, &axes, &pose, &have_center, &have_axes, &have_pose) ) {
+        if ( have_center ) {
+          ths->_center = center;
+        }
+        if ( have_axes ) {
+          ths->_axes = axes;
+        }
+        if ( have_pose ) {
+          ths->_pose = pose;
+        }
+        return true;
+      }
+    }
+    return false;
+  });
+
 }
 
 

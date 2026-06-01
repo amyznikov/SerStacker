@@ -87,11 +87,8 @@ bool locate_extremes(cv::InputArray image, cv::InputArray input_mask, cv::Output
     return true;
   }
 
-  cv::Size se_size =
-      opts.se_size;
-
-  cv::Point anchor =
-      opts.anchor;
+  cv::Size se_size = opts.se_size;
+  cv::Point anchor = opts.anchor;
 
   if ( se_size.width < 1 ) {
     se_size.width = 1;
@@ -172,9 +169,7 @@ bool locate_extremes(cv::InputArray image, cv::InputArray input_mask, cv::Output
 
       cv::Mat D;
 
-      cv::dilate(image, D, SE, anchor, 1, opts.border_type,
-            opts.border_value);
-
+      cv::dilate(image, D, SE, anchor, 1, opts.border_type, opts.border_value);
       if( opts.maximums_alpha == 1 && opts.maximums_beta == 0 ) {
         cv::compare(image, D, DM, cv::CMP_GT);
       }
@@ -188,9 +183,7 @@ bool locate_extremes(cv::InputArray image, cv::InputArray input_mask, cv::Output
           tmp = image.getMat();
         }
 
-        D.convertTo(D, tmp.depth(),
-            opts.maximums_alpha,
-            opts.maximums_beta);
+        D.convertTo(D, tmp.depth(), opts.maximums_alpha, opts.maximums_beta);
 
         cv::compare(tmp, D, DM, cv::CMP_GT);
       }

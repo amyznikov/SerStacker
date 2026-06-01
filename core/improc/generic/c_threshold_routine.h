@@ -42,16 +42,6 @@ public:
     MULTI_CHANEL_REDUCTION_MIN,
   };
 
-  enum MASK_MODE {
-    MASK_MODE_REPLACE,
-    MASK_MODE_AND,
-    MASK_MODE_OR,
-    MASK_MODE_XOR,
-    MASK_MODE_NAND,
-    MASK_MODE_NOR,
-    MASK_MODE_NXOR,
-  };
-
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

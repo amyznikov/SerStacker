@@ -296,9 +296,36 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
     }
 
     case stacking_stage_in_progress: {
-      CF_DEBUG("stacking_stage_in_progress");
-      _current_aligned_frame.copyTo(outputImage);
-      _current_aligned_mask.copyTo(outputMask);
+      bool draw_ellipsoid = true;
+      if( !draw_ellipsoid ) {
+        _current_aligned_frame.copyTo(outputImage);
+        _current_aligned_mask.copyTo(outputMask);
+      }
+      else {
+
+        cv::Mat display;
+
+        double minv, maxv;
+        cv::minMaxLoc(_current_aligned_frame, &minv, &maxv);
+        if( !(maxv > minv) ) {
+          maxv = 255;
+        }
+
+        _current_aligned_frame.copyTo(display);
+        draw_ellipoid(display,
+            _jovian_ellipse_detector.center(),
+            _jovian_ellipse_detector.axes(),
+            build_ellipsoid_rotation(_jovian_ellipse_detector.pose()) ,
+            30 * CV_PI / 180,
+            30 * CV_PI / 180,
+            cv::Scalar::all(maxv * 1.01),
+            1,
+            cv::LINE_8);
+
+        display.copyTo(outputImage);
+        _current_aligned_mask.copyTo(outputMask);
+      }
+
       return true;
     }
     default:
@@ -781,7 +808,7 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     return false;
   }
 
-  _jovian_ellipse_detector.detected_planetary_disk_mask().copyTo(_reference_planetary_disk_mask);
+  _jovian_ellipse_detector.disk_mask().copyTo(_reference_planetary_disk_mask);
   if ( true ) {
     const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
     if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_file_name) ) {
@@ -828,7 +855,7 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
 
 
     drawRotatedRect(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 255, 0), 1);
-    display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.detected_planetary_disk_edge());
+    display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.disk_edge());
     cv::ellipse(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
 
     const std::string output_display_file_name =

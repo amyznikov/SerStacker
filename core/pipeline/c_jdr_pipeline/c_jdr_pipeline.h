@@ -128,6 +128,10 @@ protected:
   bool derotate_jovian_frames();
   bool open_output_writers();
 
+  static bool preproc_align_and_remap(const c_image_processor::sptr & proc, c_ecch & ecch,
+      cv::Mat & current_frame, cv::Mat & current_mask,
+      color_channel_type reference_channel);
+
 protected:
   c_jdr_pipeline_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
@@ -153,6 +157,7 @@ protected:
   cv::Mat _current_aligned_frame;
   cv::Mat _current_aligned_mask;
   double _master_ts = 0;
+  int _master_pos = 0;
   c_jdr_pipeline_ellipsoid_pose _jovian_pose;
 
   c_output_frame_writer _current_aligned_frame_writer;

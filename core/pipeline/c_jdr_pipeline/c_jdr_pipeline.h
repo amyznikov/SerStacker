@@ -47,9 +47,18 @@ struct c_jdr_pipeline_reference_frame_options
   } generate_opts;
 };
 
+struct c_jdr_pipeline_ellipsoid_pose {
+  cv::Point2d center;
+  cv::Vec3d axes;
+  cv::Vec3d orientation;
+};
+
 struct c_jdr_pipeline_jovian_ellipse_detector_options
 {
+  c_jdr_pipeline_ellipsoid_pose pose;
   c_jovian_ellipse_detector_options jovian_ellipse_detector_options;
+  bool auto_pose_estimation = true;
+  bool update_estimated_pose = true;
 };
 
 struct c_jdr_pipeline_stack_options
@@ -144,6 +153,7 @@ protected:
   cv::Mat _current_aligned_frame;
   cv::Mat _current_aligned_mask;
   double _master_ts = 0;
+  c_jdr_pipeline_ellipsoid_pose _jovian_pose;
 
   c_output_frame_writer _current_aligned_frame_writer;
   c_output_frame_writer _current_derotated_frame_writer;

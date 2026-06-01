@@ -98,18 +98,45 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
         });
 
     ctlbind_expandable_group(ctls, "4. Jovian Ellipse Estimation Options",
-        [ctx = CTL_CONTEXT(ctx, _ellipse_estimation_options)]() {
-          ctlbind(ctls, CTL_CONTEXT(ctx, jovian_ellipse_detector_options));
+        [&, ctx = CTL_CONTEXT(ctx, _ellipse_estimation_options)]() {
+          ctlbind(ctls, "Auto pose estimation", CTL_CONTEXT(ctx, auto_pose_estimation));
+          ctlbind(ctls, "Update estimated pose", CTL_CONTEXT(ctx, update_estimated_pose));
 
-//          ctlbind_menu_button(ctls, "Options >>", ctx);
-//          ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
-//            return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",
-//                obj->jovian_ellipse_detector_options), false;
-//          });
-//          ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
-//              return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options",
-//                  &obj->jovian_ellipse_detector_options);
-//            });
+          ctlbind_expandable_group(ctls, "Jovian pose",
+              [&, ctx = CTL_CONTEXT(ctx, pose)]() {
+                ctlbind(ctls, "Center [pix]:", CTL_CONTEXT(ctx, center), "Jovian ellipse center in pixels");
+                ctlbind(ctls, "Axes [pix]:", CTL_CONTEXT(ctx, axes), "Jovian ellipse axes in pixels");
+                ctlbind(ctls, "Orientation [deg]:", CTL_CONTEXT(ctx, orientation), "Jovian ellipsoid orientation in degrees");
+              });
+
+          ctlbind_expandable_group(ctls, "Jovian ellipsoid detection and pose estimation",
+              [&, ctx]() {
+                ctlbind(ctls, CTL_CONTEXT(ctx, jovian_ellipse_detector_options));
+              });
+
+          ctlbind_menu_button(ctls, "Options >>", ctx);
+          ctlbind_item(ctls, "Copy ellipse detector options", ctx, [](const auto * obj) {
+            return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",
+                obj->jovian_ellipse_detector_options), false;
+          });
+          ctlbind_item(ctls, "Paste ellipse detector options", ctx, [](auto * obj) {
+              return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options",
+                  &obj->jovian_ellipse_detector_options);
+            });
+          ctlbind_item(ctls, "Copy pose", ctx, [](const auto * obj) {
+            if ( const auto & cb = get_ctlbind_copy_to_clipboard_callback() ) {
+              cb(serialize_ellipsoid_to_string(obj->pose.center, obj->pose.axes, obj->pose.orientation));
+            }
+            return false;
+          });
+          ctlbind_item(ctls, "Paste pose", ctx, [](auto * obj) {
+            if ( const auto & cb = get_ctlbind_get_clipboard_text_callback() ) {
+              if ( parse_ellipsoid_from_string(cb(), &obj->pose.center, &obj->pose.axes, &obj->pose.orientation) ) {
+                return true;
+              }
+            }
+            return false;
+          });
         });
 
     ctlbind_expandable_group(ctls, "5. Stack Options",
@@ -177,6 +204,13 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( auto ellipse_opts = SERIALIZE_GROUP(settings, save, "ellipse_opts") ) {
+    SERIALIZE_OPTION(ellipse_opts, save, _ellipse_estimation_options, auto_pose_estimation);
+    SERIALIZE_OPTION(ellipse_opts, save, _ellipse_estimation_options, update_estimated_pose);
+    if( auto pose_opts = SERIALIZE_GROUP(ellipse_opts, save, "pose") ) {
+      SERIALIZE_OPTION(pose_opts, save, _ellipse_estimation_options.pose, center);
+      SERIALIZE_OPTION(pose_opts, save, _ellipse_estimation_options.pose, axes);
+      SERIALIZE_OPTION(pose_opts, save, _ellipse_estimation_options.pose, orientation);
+    }
     if( auto jovian_ellipse_detector_opts = SERIALIZE_GROUP(ellipse_opts, save, "jovian_ellipse_detector") ) {
       serialize_base_jovian_ellipse_detector_options(jovian_ellipse_detector_opts, save,
           _ellipse_estimation_options.jovian_ellipse_detector_options);
@@ -311,11 +345,17 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
           maxv = 255;
         }
 
-        _current_aligned_frame.copyTo(display);
+        if ( _current_aligned_mask.empty() ) {
+          _current_aligned_frame.copyTo(display);
+        }
+        else {
+          _current_aligned_frame.copyTo(display,  _current_aligned_mask > 0 );
+        }
+
         draw_ellipoid(display,
-            _jovian_ellipse_detector.center(),
-            _jovian_ellipse_detector.axes(),
-            build_ellipsoid_rotation(_jovian_ellipse_detector.pose()) ,
+            _jovian_pose.center,
+            _jovian_pose.axes,
+            build_ellipsoid_rotation(_jovian_pose.orientation) ,
             30 * CV_PI / 180,
             30 * CV_PI / 180,
             cv::Scalar::all(maxv * 1.01),
@@ -356,75 +396,8 @@ bool c_jdr_pipeline::initialize_pipeline()
 //  set_pipeline_stage(stacking_stage_initialize);
   _output_path = create_output_path(_output_options.output_directory);
   _frame_average.clear();
+  _jovian_ellipse_detector.clear();
 
-//
-//
-//  if (true ) {
-//
-//    lock_guard lock(mutex());
-//
-//    // ecc_normalization_noise_ = 0;
-//
-//    _output_file_name_postfix.clear();
-//    _output_file_name.clear();
-//
-//    _roi_selection.reset();
-//    _frame_registration.reset();
-//    _frame_accumulation.reset();
-//    _flow_accumulation.reset();
-//    _generating_master_frame = false;
-//    _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
-//    _stacking_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
-//  }
-//
-//  _anscombe.set_method(input_options().anscombe);
-//
-//  if ( roi_selection_options().method != roi_selection_none ) {
-//    if ( !(_roi_selection = create_roi_selection()) ) {
-//      set_status_msg("ERROR: create_roi_selection() fails");
-//      return false;
-//    }
-//  }
-//
-//  if ( !input_options().darkbayer_filename.empty() ) {
-//    cv::Mat ignored_optional_mask;
-//    if ( !load_image(input_options().darkbayer_filename, _darkbayer, ignored_optional_mask) ) {
-//      CF_ERROR("load_image('%s') fails.", input_options().darkbayer_filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//  if ( !input_options().flatbayer_filename.empty() ) {
-//    cv::Mat ignored_optional_mask;
-//    if ( !load_image(input_options().flatbayer_filename, _flatbayer, ignored_optional_mask) ) {
-//      CF_ERROR("load_image('%s') fails.", input_options().flatbayer_filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//
-//
-//  if ( !input_options().missing_pixel_mask_filename.empty() ) {
-//
-//    if ( !load_image(input_options().missing_pixel_mask_filename, _missing_pixel_mask) ) {
-//      CF_ERROR("load_image('%s') fails.", input_options().missing_pixel_mask_filename.c_str());
-//      return false;
-//    }
-//
-//    if ( _missing_pixel_mask.type() != CV_8UC1 ) {
-//      CF_ERROR("Invalid bad pixels mask %s : \nMust be CV_8UC1 type",
-//          input_options().missing_pixel_mask_filename.c_str());
-//      return false;
-//    }
-//
-//    if ( !input_options().missing_pixels_marked_black ) {
-//      cv::invert(_missing_pixel_mask, _missing_pixel_mask);
-//    }
-//  }
-//
-//  CF_DEBUG("Output path='%s'", this->_output_path.c_str());
-//
-//
   return true;
 }
 
@@ -432,6 +405,7 @@ void c_jdr_pipeline::cleanup_pipeline()
 {
   //set_pipeline_stage(stacking_stage_finishing);
   base::cleanup_pipeline();
+  _jovian_ellipse_detector.clear();
 
   //_roi_selection.reset();
 
@@ -802,13 +776,83 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     return false;
   }
 
-  _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
-  if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
-    CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
-    return false;
+  if ( !_ellipse_estimation_options.auto_pose_estimation ) {
+    _jovian_pose.center = _ellipse_estimation_options.pose.center;
+    _jovian_pose.axes = _ellipse_estimation_options.pose.axes;
+    _jovian_pose.orientation = _ellipse_estimation_options.pose.orientation * CV_PI / 180;
+  }
+  else {
+    _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
+    if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
+      CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
+      return false;
+    }
+
+    _jovian_pose.center = _jovian_ellipse_detector.center();
+    _jovian_pose.axes = _jovian_ellipse_detector.axes();
+    _jovian_pose.orientation = _jovian_ellipse_detector.pose();
+
+    if ( _ellipse_estimation_options.update_estimated_pose ) {
+      _ellipse_estimation_options.pose.center = _jovian_pose.center;
+      _ellipse_estimation_options.pose.axes = _jovian_pose.axes;
+      _ellipse_estimation_options.pose.orientation = _jovian_pose.orientation * 180 / CV_PI;
+      on_parameters_update();
+    }
+
+    if ( true ) {
+      // Create ellipse 2D illustration image
+      cv::Mat display;
+      double minv = 0, maxv = 1;
+      cv::minMaxLoc(_reference_frame, &minv, &maxv, nullptr, nullptr);
+
+      if ( _reference_frame.channels() == 3 ) {
+        _reference_frame.convertTo(display, CV_8UC3, 255./maxv);
+      }
+      else {
+        cv::cvtColor(_reference_frame, display, cv::COLOR_GRAY2BGR);
+        display.convertTo(display, CV_8UC3, 255./maxv);
+      }
+
+      static const auto drawRotatedRect =
+          [](cv::InputOutputArray image, const cv::RotatedRect & rc,
+          const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
+      {
+        cv::rectangle(image, ellipse_bounding_box(rc), cv::Scalar(0, 0, 200), 1);
+        cv::Point2f pts[4];
+        rc.points(pts);
+        for( int i = 0; i < 4; i++ ) {
+          cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
+        }
+        cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
+        cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
+      };
+
+      drawRotatedRect(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 255, 0), 1);
+      // display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.disk_edge());
+      cv::ellipse(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
+
+      const std::string output_display_file_name =
+          generate_output_filename("jovian_ellipse_fit", "", ".png");
+      if( !save_image(display, cv::noArray(), output_display_file_name) ) {
+        CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
+        return false;
+      }
+      CF_DEBUG("Saved %s", output_display_file_name.c_str());
+    }
+
+    _jovian_ellipse_detector.clear();
   }
 
-  _jovian_ellipse_detector.disk_mask().copyTo(_reference_planetary_disk_mask);
+  draw_ellipsoid_mask(_reference_planetary_disk_mask, _reference_frame.size(),
+      _jovian_pose.center, _jovian_pose.axes, _jovian_pose.orientation);
+
+//  _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
+//  if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
+//    CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
+//    return false;
+//  }
+//  _jovian_ellipse_detector.disk_mask().copyTo(_reference_planetary_disk_mask);
+
   if ( true ) {
     const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
     if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_file_name) ) {
@@ -819,53 +863,17 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
   }
 
 
-  _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
-      _jovian_ellipse_detector.center(),
-      _jovian_ellipse_detector.axes(),
-      _jovian_ellipse_detector.pose());
+//  _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
+//      _jovian_ellipse_detector.center(),
+//      _jovian_ellipse_detector.axes(),
+//      _jovian_ellipse_detector.pose());
+
+    _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
+        _jovian_pose.center,
+        _jovian_pose.axes,
+        _jovian_pose.orientation);
 
 
-  if ( true ) {
-    // Create ellipse 2D illustration image
-    cv::Mat display;
-    double minv = 0, maxv = 1;
-    cv::minMaxLoc(_reference_frame, &minv, &maxv, nullptr, nullptr);
-
-    if ( _reference_frame.channels() == 3 ) {
-      _reference_frame.convertTo(display, CV_8UC3, 255./maxv);
-    }
-    else {
-      cv::cvtColor(_reference_frame, display, cv::COLOR_GRAY2BGR);
-      display.convertTo(display, CV_8UC3, 255./maxv);
-    }
-
-    static const auto drawRotatedRect =
-        [](cv::InputOutputArray image, const cv::RotatedRect & rc,
-        const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
-    {
-      cv::rectangle(image, ellipse_bounding_box(rc), cv::Scalar(0, 0, 200), 1);
-      cv::Point2f pts[4];
-      rc.points(pts);
-      for( int i = 0; i < 4; i++ ) {
-        cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
-      }
-      cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
-      cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
-    };
-
-
-    drawRotatedRect(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 255, 0), 1);
-    display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.disk_edge());
-    cv::ellipse(display, _jovian_ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
-
-    const std::string output_display_file_name =
-        generate_output_filename("jovian_ellipse_fit", "", ".png");
-    if( !save_image(display, cv::noArray(), output_display_file_name) ) {
-      CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
-      return false;
-    }
-    CF_DEBUG("Saved %s", output_display_file_name.c_str());
-  }
 
   if ( true ) {
     // Create ellipsoid 3D illustration image
@@ -1077,13 +1085,6 @@ bool c_jdr_pipeline::derotate_jovian_frames()
           cv::INTER_LINEAR,
           cv::BORDER_TRANSPARENT);
 
-      if ( _current_derotated_frame_writer.is_open() ) {
-        if ( !_current_derotated_frame_writer.write(current_frame, current_mask) ) {
-          CF_ERROR("[F %d] _current_derotated_frame_writer.write() fails for %s", i, _current_derotated_frame_writer.cfilename());
-          return false;
-        }
-      }
-
       CF_DEBUG("[F %d] DEROTATED", i);
 
       cv::Mat1f current_weights;
@@ -1093,9 +1094,19 @@ bool c_jdr_pipeline::derotate_jovian_frames()
 
       if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);
+        current_mask.setTo(0, current_weights < 1e-6);
       }
       _frame_average.add(current_frame, current_weights);
       CF_DEBUG("[F %d] ACCUMULATED", i);
+
+      current_frame.setTo(0, ~current_mask);
+
+      if ( _current_derotated_frame_writer.is_open() ) {
+        if ( !_current_derotated_frame_writer.write(current_frame, current_mask) ) {
+          CF_ERROR("[F %d] _current_derotated_frame_writer.write() fails for %s", i, _current_derotated_frame_writer.cfilename());
+          return false;
+        }
+      }
 
       if ( _accumulation_weights_writer.is_open() ) {
         if ( !_accumulation_weights_writer.write(current_weights) ) {

@@ -13,6 +13,7 @@
 #include <core/proc/feature2d/c_jovian_ellipse_detector.h>
 #include "ecc2.h"
 
+#if 0
 /**
  *
  */
@@ -143,5 +144,5 @@ void create_jovian_rotation_remap(double longitude_rotation_angle,
     cv::Mat2f & output_remap,
     cv::Mat1f & output_wmask);
 
-
+#endif
 #endif /* __jupiter_h__ */

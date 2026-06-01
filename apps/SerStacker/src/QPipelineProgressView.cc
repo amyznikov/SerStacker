@@ -97,9 +97,7 @@ void QPipelineProgressView::timerEvent(QTimerEvent *event)
 
 void QPipelineProgressView::onPipelineThreadStarted()
 {
-  c_image_processing_pipeline::sptr pipeline =
-      QPipelineThread::currentPipeline();
-
+  c_image_processing_pipeline::sptr pipeline = QPipelineThread::currentPipeline();
   if( pipeline ) {
 
     QImageProcessingPipeline *p =

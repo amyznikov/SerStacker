@@ -11,26 +11,6 @@
 #include <core/settings/opencv_settings.h>
 #include <core/debug.h>
 
-/**
- *
- * Given 3D ellipsoid with semi-axes A, B, C and pose specified by rotation matrix R
- * compute its outline (shadow) bounding box, appropriate for drawing
- * with cv::ellipse()
- *
- * https://math.stackexchange.com/questions/573055/projection-of-ellipsoid
- * https://www.r-5.org/files/books/computers/algo-list/image-processing/vision/Richard_Hartley_Andrew_Zisserman-Multiple_View_Geometry_in_Computer_Vision-EN.pdf
- * Hartley & Zisserman’s Multiple View Geometry In Computer Vision. Result 8.9 on page 201
- *
- * Example :
- *   const cv::Size image_size = image.size();
- *   const cv::Matx33d R = build_ellipsoid_pose(longitude_rotation, tilt_to_earth, position_angle);
- *   const double A = equatorial_radius1(); // Along screen X axis
- *   const double B = polar_radius();  // Along screen Y axis
- *   const double C = equatorial_radius2(); // Along screen Z axis
- *   const cv::Point2f center = cv::Point2f(image_size.width / 2, image_size.height / 2);
- *   const cv::RotatedRect bbox = ellipsoid_bbox(center, A, B, C, R));
- *   cv::ellipse(image, bbox, cv::Scalar::all(255), 1, cv::LINE_AA);
- */
 cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
     double A, double B, double C,
     const cv::Matx33d & R)
@@ -108,7 +88,7 @@ cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
  *
  * The lat_step and lon_step are in radians.
  */
-void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
+void draw_ellipoid(cv::InputOutputArray image, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type)
@@ -436,6 +416,23 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc, const c
     cv::polylines(_img, ppts, npts, 1, true, color, thickness, line_type, 0);
   }
 }
+
+/*
+ * Create ellipse-shaped mask
+ * */
+void draw_ellipse_mask(cv::OutputArray image, const cv::Size & image_size, const cv::RotatedRect & rc)
+{
+  image.create(image_size, CV_8UC1);
+  image.setTo(0);
+  draw_ellipse(image.getMatRef(), rc, cv::Scalar::all(255), -1, cv::LINE_8);
+}
+
+void draw_ellipsoid_mask(cv::OutputArray image, const cv::Size & image_size,
+    const cv::Point2d & center, const cv::Vec3d & axes, const cv::Vec3d & pose)
+{
+  draw_ellipse_mask(image, image_size, ellipsoid_bbox(center, axes, pose));
+}
+
 
 void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc, const cv::Scalar & color, int thickness, int line_type)
 {

@@ -14,10 +14,8 @@
 class QPipelineThread:
     public QThread
 {
-Q_OBJECT;
-
+  Q_OBJECT;
 public:
-
   typedef QPipelineThread ThisClass;
   typedef QThread Base;
 
@@ -49,14 +47,15 @@ public:
 Q_SIGNALS:
   void starting();
   void finishing();
+  void currentPipelineParametersUpdate();
 
 protected:
   QPipelineThread();
   void run() override;
 
 protected:
-  c_image_processing_pipeline::sptr currentPipeline_;
-  static std::mutex lock_;
+  c_image_processing_pipeline::sptr _currentPipeline;
+  static std::mutex _lock;
 };
 
 #endif /* __QPipelineThread_h__ */

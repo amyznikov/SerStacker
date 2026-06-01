@@ -37,6 +37,7 @@ public:
 Q_SIGNALS:
   void stateChanged();
   void frameProcessed();
+  void parametersUpdate();
 };
 
 class QPipelineSettingsWidget :
@@ -173,6 +174,11 @@ protected:
   void on_frame_processed()  override
   {
     Q_EMIT frameProcessed();
+  }
+
+  void on_parameters_update() override
+  {
+    Q_EMIT parametersUpdate();
   }
 
 };

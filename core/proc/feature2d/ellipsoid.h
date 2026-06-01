@@ -159,7 +159,6 @@ inline bool ellipsoid_from_cart2d(const cv::Point2d & pos,
 
 
 /**
- *
  * Given 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R
  * compute its outline (shadow) bounding box, appropriate for drawing
  * with cv::ellipse()
@@ -170,17 +169,20 @@ inline bool ellipsoid_from_cart2d(const cv::Point2d & pos,
  *
  * Example :
  *   const cv::Size image_size = image.size();
- *   const cv::Matx33d R = build_ellipsoid_pose(longitude_rotation, tilt_to_earth, position_angle);
+ *   const cv::Matx33d R = build_ellipsoid_rotation(longitude_rotation, tilt_to_earth, position_angle);
  *   const double A = equatorial_radius1();
  *   const double B = equatorial_radius2();
  *   const double C = polar_radius();
  *   const cv::Point2f center = cv::Point2f(image_size.width / 2, image_size.height / 2);
- *   const cv::RotatedRect bbox = ellipsoid_bbox(center, A, B, C, R.t());
+ *   const cv::RotatedRect bbox = ellipsoid_bbox(center, A, B, C, R);
  *   cv::ellipse(image, bbox, cv::Scalar::all(255), 1, cv::LINE_AA);
  */
-cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
-    double A, double B, double C,
-    const cv::Matx33d & R);
+cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center, double A, double B, double C, const cv::Matx33d & R);
+
+inline cv::RotatedRect ellipsoid_bbox(const cv::Point2d & center, const cv::Vec3d & axes, const cv::Vec3d & pose)
+{
+  return ellipsoid_bbox(center, axes(0), axes(1), axes(2), build_ellipsoid_rotation(pose));
+}
 
 /**
  * Given 3D ellipsoid with sem-axes A, B, C and pose specified by rotation matrix R
@@ -192,7 +194,7 @@ cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
  *
  * The lat_step and lon_step are in radians.
  */
-void draw_ellipoid(cv::InputOutputArray image, const cv::Point2f & center,
+void draw_ellipoid(cv::InputOutputArray image, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type);
@@ -205,7 +207,6 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
     double wscale = 1 );
 
 cv::Rect ellipse_bounding_box(const cv::RotatedRect & rc);
-
 cv::Rect ellipse_crop_box(const cv::RotatedRect & rc, const cv::Size & total_image_size, int margin = 1);
 
 
@@ -213,8 +214,8 @@ cv::Rect ellipse_crop_box(const cv::RotatedRect & rc, const cv::Size & total_ima
  * Compute rotated 2D ellipse outline bound box,
  * appropriate to draw Saturn rings with cv::ellipse()
  * */
-cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center, double A, double B,
-    const cv::Matx33d & R);
+cv::RotatedRect rotated_ellipse_bbox(const cv::Point2f & center,
+    double A, double B, const cv::Matx33d & R);
 
 /**
  * Replacement for cv::ellipsePoly() with better angular precision
@@ -231,6 +232,13 @@ void draw_ellipse(cv::InputOutputArray _img, const cv::RotatedRect & rc,
     const cv::Scalar & color, int thickness, int line_type);
 
 /*
+ * Create ellipse-shaped masks
+ * */
+void draw_ellipse_mask(cv::OutputArray image, const cv::Size & image_size, const cv::RotatedRect & rc);
+void draw_ellipsoid_mask(cv::OutputArray image, const cv::Size & image_size,
+    const cv::Point2d & center, const cv::Vec3d & axes, const cv::Vec3d & pose);
+
+/*
  * Draw cv::RotatedRect
  * */
 void draw_rotated_rect(cv::InputOutputArray _img, const cv::RotatedRect & rc,
@@ -241,8 +249,8 @@ std::string serialize_ellipsoid_to_string(const cv::Point2d & center,
 
 bool parse_ellipsoid_from_string(const std::string & s,
     cv::Point2d * center, cv::Vec3d * axes, cv::Vec3d * pose,
-    bool * have_center,
-    bool * have_axes,
-    bool * have_pose);
+    bool * have_center = nullptr,
+    bool * have_axes = nullptr,
+    bool * have_pose = nullptr);
 
 #endif /* __ellipsoid_h__ */

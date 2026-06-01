@@ -8,7 +8,7 @@
 #include "QPipelineThread.h"
 #include <core/debug.h>
 
-std::mutex QPipelineThread::lock_;
+std::mutex QPipelineThread::_lock;
 
 QPipelineThread::QPipelineThread(QObject * parent) :
     Base(parent)
@@ -30,17 +30,17 @@ QPipelineThread* QPipelineThread::instance()
 
 void QPipelineThread::lock()
 {
-  lock_.lock();
+  _lock.lock();
 }
 
 void QPipelineThread::unlock()
 {
-  lock_.unlock();
+  _lock.unlock();
 }
 
 const c_image_processing_pipeline::sptr & QPipelineThread::currentPipeline()
 {
-  return instance()->currentPipeline_;
+  return instance()->_currentPipeline;
 }
 
 bool QPipelineThread::isRunning()
@@ -57,7 +57,7 @@ bool QPipelineThread::start(const c_image_processing_pipeline::sptr & pipeline)
     return false;
   }
 
-  instance()->currentPipeline_ = pipeline;
+  instance()->_currentPipeline = pipeline;
   Q_EMIT instance()->starting();
   ((QThread*) instance())->start(QThread::LowPriority);
 
@@ -68,9 +68,9 @@ void QPipelineThread::cancel()
 {
   auto_lock lock;
 
-  if( instance()->currentPipeline_ ) {
+  if( instance()->_currentPipeline ) {
     CF_DEBUG("currentPipeline_->cancel(true)");
-    instance()->currentPipeline_->cancel(true);
+    instance()->_currentPipeline->cancel(true);
   }
 }
 
@@ -78,8 +78,20 @@ void QPipelineThread::run()
 {
   CF_DEBUG("enter");
 
-  if( currentPipeline_ && !currentPipeline_->run() ) {
+  QImageProcessingPipeline * qppline =
+      dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get());
+  if ( qppline ) {
+    QObject::connect(qppline, &QImageProcessingPipeline::parametersUpdate,
+        this, &ThisClass::currentPipelineParametersUpdate,
+        Qt::QueuedConnection);
+  }
+
+  if( _currentPipeline && !_currentPipeline->run() ) {
     CF_ERROR("currentPipeline_->run() fails");
+  }
+
+  if ( qppline ) {
+    qppline->disconnect(this);
   }
 
   Q_EMIT finishing();

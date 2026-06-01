@@ -1,0 +1,50 @@
+MINUS
+
+METHOD: STENSOR angle = 14.2809 deg
+|D|130910|20:25:25.304| fitEllipseLM.cc fitEllipseLMW()  293 : iws=0.633367 wmin=0 wmax=25.3687
+|D|130910|20:25:25.319| levmar.h run()  400 : diff=0.000000
+|D|130910|20:25:25.319| fitEllipseLM.cc fitEllipseLMW()  311 : solver.run(): iterations=6 rmse=7.4889 converged=1 stop_reason=3
+x0 = 624.296 (initial=721.624) | y0 = 453.585 (initial=652.631) | A = 434.152 (initial=440.13)
+edge_points.size=69350
+
+|D|130910|20:25:25.319| c_jovian_ellipse_detector.cc detect_jovian_ellipse()  294 :
+fitEllipseLMW:
+center = 624.296;453.585
+axes = 434.152;405.987;434.152
+pose = 0;3;14.2809
+
+
+
+
+Analytical JAC:
+METHOD: STENSOR angle = 14.2809 deg
+|D|132370|20:31:28.797| fitEllipseLM.cc fitEllipseLMW()  294 : iws=0.633367 wmin=0 wmax=25.3687
+|D|132370|20:31:28.797| fitEllipseLM.cc fitEllipseLMW()  310 : solver beg
+|D|132370|20:31:28.810| levmar.h run()  400 : diff=0.000003
+|D|132370|20:31:28.810| fitEllipseLM.cc fitEllipseLMW()  312 : solver end
+|D|132370|20:31:28.810| fitEllipseLM.cc fitEllipseLMW()  314 : solver.run(): iterations=19 rmse=7.48895 converged=1 stop_reason=3
+x0 = 624.296 (initial=721.624) | y0 = 453.57 (initial=652.631) | A = 434.151 (initial=440.13)
+edge_points.size=69350
+
+|D|132370|20:31:28.810| c_jovian_ellipse_detector.cc detect_jovian_ellipse()  294 :
+fitEllipseLMW:
+center = 624.296;453.57
+axes = 434.151;405.985;434.151
+pose = 0;3;14.2809
+
+
+Numeric JAC:
+METHOD: STENSOR angle = 14.2809 deg
+|D|131942|20:30:24.766| fitEllipseLM.cc fitEllipseLMW()  294 : iws=0.633367 wmin=0 wmax=25.3687
+|D|131942|20:30:24.766| fitEllipseLM.cc fitEllipseLMW()  310 : solver beg
+|D|131942|20:30:24.781| levmar.h run()  400 : diff=0.000000
+|D|131942|20:30:24.782| fitEllipseLM.cc fitEllipseLMW()  312 : solver end
+|D|131942|20:30:24.782| fitEllipseLM.cc fitEllipseLMW()  314 : solver.run(): iterations=6 rmse=7.4889 converged=1 stop_reason=3
+x0 = 624.296 (initial=721.624) | y0 = 453.585 (initial=652.631) | A = 434.152 (initial=440.13)
+edge_points.size=69350
+
+|D|131942|20:30:24.782| c_jovian_ellipse_detector.cc detect_jovian_ellipse()  294 :
+fitEllipseLMW:
+center = 624.296;453.585
+axes = 434.152;405.987;434.152
+pose = 0;3;14.2809

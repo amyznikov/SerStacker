@@ -143,6 +143,9 @@ MainWindow::MainWindow()
   connect(QPipelineThread::instance(), &QPipelineThread::finished,
       this, &ThisClass::onPipelineThreadFinished);
 
+  connect(QPipelineThread::instance(), &QPipelineThread::currentPipelineParametersUpdate,
+      this, &ThisClass::saveCurrentWork,
+      Qt::QueuedConnection);
 
   restoreState();
 
@@ -786,7 +789,6 @@ void MainWindow::setupStackTreeView()
 
   connect(sequencesTreeView, &QInputSequencesTree::imageSequenceNameChanged,
       this, &ThisClass::saveCurrentWork);
-
 }
 
 void MainWindow::setupStackOptionsView()

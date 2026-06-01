@@ -56,7 +56,6 @@ protected:
   int timerId = 0;
   std::atomic<bool> _hasStatusUpdates = false;
   std::atomic<bool> _updatingDisplay = false;
-  // c_slotptr on_status_update;
 };
 
 

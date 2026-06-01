@@ -24,8 +24,8 @@ struct c_jovian_ellipse_detector_options
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_STENSOR;
   color_channel_type gradient_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
-  double planetary_disk_tilt = 0; // [deg]
-  double sigma_contour = 3;
+  double planetary_disk_tilt = 3; // [deg]
+  double sigma_contour = 2;
   double sigma_clouds = 3;
   int nscale = 2;
   double neps = 1e-3;
@@ -71,13 +71,13 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
         ctlbind(ctls, ctx);
       });
 
-  ctlbind_menu_button(ctls, "Options >>", ctx);
-  ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
-    return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",*obj), false;
-  });
-  ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
-      return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options", obj);
-    });
+//  ctlbind_menu_button(ctls, "Options >>", ctx);
+//  ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
+//    return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",*obj), false;
+//  });
+//  ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
+//      return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options", obj);
+//    });
 }
 
 class c_jovian_ellipse_detector
@@ -87,9 +87,10 @@ public:
   const c_jovian_ellipse_detector_options& options() const;
   c_jovian_ellipse_detector_options& options();
 
-  // main method
+  // main methods
   bool detect_jovian_ellipse(cv::InputArray _image, cv::InputArray mask = cv::noArray());
   const cv::RotatedRect& final_planetary_disk_ellipse() const;
+  void clear();
 
   // for debug / visualization
   const cv::Mat& grayscale_image() const;
@@ -118,6 +119,7 @@ public:
   }
 
 protected:
+  bool detect_planetary_disk_mask(cv::InputArray _input_image, cv::InputArray _input_mask);
   double compute_jovian_orientation_stensor();
   double compute_jovian_orientation_pca();
 
@@ -129,15 +131,16 @@ protected:
   cv::Mat1b _disk_mask;
   cv::Mat1b _disk_edge;
   cv::Mat1b _gradient_mask;
-  cv::Mat1f _kderiv, _ksmooth;
   cv::Mat1f _gx, _gy, _g, _gr, _grth;
 
   cv::Mat1b _final_planetary_disk_mask;
 
-  //cv::RotatedRect _ellipseAMS;
   cv::Point2f _detected_component_centroid;
   cv::Rect _detected_component_rect;
   cv::RotatedRect _final_planetary_disk_ellipse;
+
+  int _skirt_size = 0;
+  int _gradient_mask_erode_size = 0;
 
   cv::Point2d _center;
   cv::Vec3d _axes;

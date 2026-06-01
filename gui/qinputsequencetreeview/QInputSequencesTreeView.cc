@@ -145,7 +145,7 @@ QInputSequencesTreeView::QInputSequencesTreeView(QWidget * parent) :
   //setEnabled(false);
 }
 
-std::string QInputSequencesTreeView::default_config_filename_ =
+std::string QInputSequencesTreeView::_default_config_filename =
     "~/.config/SerStacker/corrent_work.cfg";
 
 void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
@@ -157,11 +157,11 @@ void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
   if( !cfgfilename.empty() ) {
     filename = cfgfilename;
   }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
+  else if( !_config_filename.empty() ) {
+    filename = _config_filename;
   }
   else {
-    filename = default_config_filename_;
+    filename = _default_config_filename;
   }
 
   if( (filename = expand_path(filename)).empty() ) {
@@ -201,14 +201,10 @@ void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
 
   Base::clear();
 
-
-  const int N =
-      section.length();
-
+  const int N = section.length();
   for( int i = 0; i < N; ++i ) {
 
-    c_config_setting item =
-        section.get_element(i);
+    c_config_setting item = section.get_element(i);
 
     if( !item || !item.isGroup() ) {
       CF_DEBUG("items[%d] is not a group", i);
@@ -228,14 +224,10 @@ void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
 
       if( (subsection = item["pipelines"]) && subsection.isList() ) {
 
-        const int n =
-            subsection.length();
-
+        const int n = subsection.length();
         for( int i = 0; i < n; ++i ) {
 
-          c_config_setting ppitem =
-              subsection[i];
-
+          c_config_setting ppitem = subsection[i];
           if( !ppitem.isGroup() ) {
             CF_ERROR("pipeline item %d is not a libconfig group", i);
             continue;
@@ -281,7 +273,7 @@ void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
     }
   }
 
-  config_filename_ = filename;
+  _config_filename = filename;
 }
 
 void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
@@ -291,11 +283,11 @@ void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
   if( !cfgfilename.empty() ) {
     filename = cfgfilename;
   }
-  else if( !config_filename_.empty() ) {
-    filename = config_filename_;
+  else if( !_config_filename.empty() ) {
+    filename = _config_filename;
   }
   else {
-    filename = default_config_filename_;
+    filename = _default_config_filename;
   }
 
   if( (filename = expand_path(filename)).empty() ) {
@@ -320,12 +312,9 @@ void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
     return;
   }
 
-  c_config_setting list =
-      cfg.root().add_list("items");
+  c_config_setting list = cfg.root().add_list("items");
 
-  const int N =
-      Base::topLevelItemCount();
-
+  const int N = Base::topLevelItemCount();
   for( int i = 0; i < N; ++i ) {
 
     const QInputSequenceTreeItem *item =
@@ -333,13 +322,10 @@ void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
 
     if( item ) {
 
-      const c_image_sequence::sptr &sequence =
-          item->input_sequence();
-
+      const c_image_sequence::sptr &sequence = item->input_sequence();
       if( sequence ) {
 
-        c_config_setting sequence_item =
-            list.add_group();
+        c_config_setting sequence_item = list.add_group();
 
         sequence->serialize(sequence_item.add_group("input_sequence"), true);
 
@@ -368,45 +354,8 @@ void QInputSequencesTreeView::saveSequences(const std::string & cfgfilename)
     return;
   }
 
-  config_filename_ = filename;
+  _config_filename = filename;
 }
-
-//void QImageSequencesTreeView::set_image_sequence_collection(const c_image_sequence_collection::sptr & collection)
-//{
-//  setEnabled((this->image_sequence_collection_ = collection) != nullptr);
-//  populateTreeView();
-//}
-//
-//const c_image_sequence_collection::sptr& QImageSequencesTreeView::image_sequence_collection() const
-//{
-//  return this->image_sequence_collection_;
-//}
-
-//void QImageSequencesTreeView::refresh()
-//{
-//  setEnabled(this->image_sequence_collection_ != nullptr);
-//  populateTreeView();
-//}
-
-//void QImageSequencesTreeView::populateTreeView()
-//{
-//  QTreeWidgetItem *item;
-//
-//  const bool oldValue =
-//      setUpdatingControls(true);
-//
-//  while ((item = takeTopLevelItem(0))) {
-//    delete item;
-//  }
-//
-//  if( image_sequence_collection_ ) {
-//    for( uint i = 0, n = image_sequence_collection_->size(); i < n; ++i ) {
-//      addImageSequenceItem(image_sequence_collection_->item(i));
-//    }
-//  }
-//
-//  setUpdatingControls(oldValue);
-//}
 
 QInputSequenceTreeItem * QInputSequencesTreeView::addImageSequenceItem(const c_image_sequence::sptr & image_sequence)
 {
@@ -420,17 +369,13 @@ QInputSequenceTreeItem * QInputSequencesTreeView::addNewImageSequence(const QStr
 
   QTreeWidgetItem *item = nullptr;
 
-  std::string cname =
-      name.toStdString();
+  std::string cname = name.toStdString();
 
   /* generate new name for new stacking pipeline */
   if( cname.empty() ) {
 
     for( int i = 0; i < 1000; ++i ) {
-
-      const QString tmp =
-          qsprintf("stack%03d", i);
-
+      const QString tmp = qsprintf("stack%03d", i);
       if ( !findImageSequenceItem(tmp) ) {
         cname = tmp.toStdString();
         break;
@@ -565,19 +510,11 @@ void QInputSequencesTreeView::onAddSourcesToCurrentImageSequence()
 
 void QInputSequencesTreeView::onDeleteSelectedItems()
 {
-//  if ( QImageProcessingPipeline::isRunning() ) {
-//    //running_stack = QStackingThread::currentStack();
-//    return;
-//  }
-
   QList<QTreeWidgetItem*> cursel = selectedItems();
   if( !cursel.empty() ) {
 
     if( cursel.size() == 1 ) {
-
-      const QInputSequenceTreeItem *sequenceItem =
-          getImageSequenceItem(cursel[0]);
-
+      const QInputSequenceTreeItem *sequenceItem = getImageSequenceItem(cursel[0]);
       if( !sequenceItem || sequenceItem->isRunnng() ) {
         return;
       }
@@ -613,23 +550,6 @@ void QInputSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
           if( image_sequence->current_pipeline() && image_sequence->current_pipeline()->is_running() ) {
             continue;
           }
-
-//          for( int i = 0, n = item->childCount(); i < n; ++i ) {
-//            if( (inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(item->child(i))) ) {
-//
-//              if( image_sequence ) {
-//                image_sequence->remove_source(inputSourceItem->input_source());
-//              }
-//
-//              inputSourceItem->set_input_source(nullptr);
-//            }
-//          }
-//
-//          if( image_sequence ) {
-//            imageSequenceItem->set_input_sequence(nullptr);
-//            image_sequence_collection_->remove(image_sequence);
-//          }
-
         }
         break;
 
@@ -642,12 +562,9 @@ void QInputSequencesTreeView::deleteItems(QList<QTreeWidgetItem*> & items)
             }
           }
 
-          c_input_source::sptr input_source =
-              inputSourceItem->input_source();
-
+          c_input_source::sptr input_source = inputSourceItem->input_source();
           if( input_source ) {
             inputSourceItem->set_input_source(nullptr);
-
             if( imageSequenceItem && imageSequenceItem->input_sequence() ) {
               imageSequenceItem->input_sequence()->remove_source(input_source);
             }
@@ -1427,9 +1344,7 @@ const QList<QAction*>& QInputSequencesTree::toolbarActions() const
 
 c_input_source::sptr QInputSequencesTree::getCurrentInputSource(c_image_sequence::sptr * parent_sequence) const
 {
-  QTreeWidgetItem *currentItem =
-      treeView_->currentItem();
-
+  QTreeWidgetItem *currentItem = treeView_->currentItem();
   if( currentItem ) {
 
     switch (currentItem->type()) {
@@ -1438,18 +1353,13 @@ c_input_source::sptr QInputSequencesTree::getCurrentInputSource(c_image_sequence
 
         c_input_source::sptr inputSource;
 
-        QInputSourceTreeItem *inputSourceItem =
-            dynamic_cast<QInputSourceTreeItem*>(currentItem);
-
+        QInputSourceTreeItem *inputSourceItem = dynamic_cast<QInputSourceTreeItem*>(currentItem);
         if( inputSourceItem ) {
 
           inputSource = inputSourceItem->input_source();
 
           if( parent_sequence ) {
-
-            QInputSequenceTreeItem *sequenceItem =
-                dynamic_cast<QInputSequenceTreeItem*>(inputSourceItem->parent());
-
+            QInputSequenceTreeItem *sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(inputSourceItem->parent());
             if( !sequenceItem ) {
               parent_sequence->reset();
             }
@@ -1464,10 +1374,7 @@ c_input_source::sptr QInputSequencesTree::getCurrentInputSource(c_image_sequence
 
       case QInputSequenceTreeItemType:
         if( parent_sequence ) {
-
-          QInputSequenceTreeItem *sequenceItem =
-              dynamic_cast<QInputSequenceTreeItem*>(currentItem);
-
+          QInputSequenceTreeItem *sequenceItem = dynamic_cast<QInputSequenceTreeItem*>(currentItem);
           if( !sequenceItem ) {
             parent_sequence->reset();
           }

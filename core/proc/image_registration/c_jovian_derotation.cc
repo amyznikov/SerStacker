@@ -11,6 +11,8 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
+#if 0
+
 #if HAVE_TBB && !defined(Q_MOC_RUN)
 # include <tbb/tbb.h>
 #endif
@@ -746,3 +748,4 @@ bool c_jovian_derotation::compute(double zrotation_deg)
 }
 
 
+#endif // 0

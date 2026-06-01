@@ -112,8 +112,8 @@ protected:
 
 
 protected:
-  std::string config_filename_;
-  static std::string default_config_filename_;
+  std::string _config_filename;
+  static std::string _default_config_filename;
 };
 
 class QInputSequencesTree :

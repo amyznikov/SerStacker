@@ -131,6 +131,7 @@ protected:
   virtual void on_frame_processed();
   virtual void on_state_changed();
   virtual void on_status_update();
+  virtual void on_parameters_update();
 
 protected:
   virtual bool start_pipeline(int start_frame_index, int max_input_frames);

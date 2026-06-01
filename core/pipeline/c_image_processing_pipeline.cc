@@ -200,6 +200,10 @@ void c_image_processing_pipeline::on_status_update()
 {
 }
 
+void c_image_processing_pipeline::on_parameters_update()
+{
+}
+
 
 bool c_image_processing_pipeline::has_master_frame() const
 {

@@ -846,13 +846,6 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
   draw_ellipsoid_mask(_reference_planetary_disk_mask, _reference_frame.size(),
       _jovian_pose.center, _jovian_pose.axes, _jovian_pose.orientation);
 
-//  _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
-//  if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
-//    CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
-//    return false;
-//  }
-//  _jovian_ellipse_detector.disk_mask().copyTo(_reference_planetary_disk_mask);
-
   if ( true ) {
     const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
     if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_file_name) ) {
@@ -862,17 +855,10 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
     CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
   }
 
-
-//  _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
-//      _jovian_ellipse_detector.center(),
-//      _jovian_ellipse_detector.axes(),
-//      _jovian_ellipse_detector.pose());
-
-    _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
-        _jovian_pose.center,
-        _jovian_pose.axes,
-        _jovian_pose.orientation);
-
+  _jovian_derotation_remap.set_reference_pose(_reference_frame.size(),
+      _jovian_pose.center,
+      _jovian_pose.axes,
+      _jovian_pose.orientation);
 
 
   if ( true ) {

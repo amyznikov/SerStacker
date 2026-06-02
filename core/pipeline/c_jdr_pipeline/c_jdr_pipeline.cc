@@ -142,6 +142,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
     ctlbind_expandable_group(ctls, "5. Stack Options",
         [&, ctx = ctx(&this_class::_stack_options)]() {
           ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor));
+          ctlbind(ctls, "wts [ms]", CTL_CONTEXT(ctx, wts), "w = 1. / (1. + std::abs(dt) / wts)");
           ctlbind(ctls, "derotate_all_frames", CTL_CONTEXT(ctx, derotate_all_frames));
         });
 
@@ -221,6 +222,7 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 
   if( auto stack_opts = SERIALIZE_GROUP(settings, save, "stack_opts") ) {
     SERIALIZE_OPTION(stack_opts, save, _stack_options, input_image_preprocessor);
+    SERIALIZE_OPTION(stack_opts, save, _stack_options, wts);
     SERIALIZE_OPTION(stack_opts, save, _stack_options, derotate_all_frames);
   }
 
@@ -1124,9 +1126,11 @@ bool c_jdr_pipeline::derotate_jovian_frames()
     else {
       const double ts = _input_sequence->last_ts();
       const double dt = ts - _master_ts;
-      CF_DEBUG("[F %d] ts = %lf [ms] dt = %lf [ms] ", i, ts, dt);
+      const double wts = _stack_options.wts > 0 ? _stack_options.wts : 30000.;
+      const double w = 1. / (1. + std::abs(dt) / wts);
+      CF_DEBUG("[F %d] ts = %lf [ms] dt = %lf [ms] w=%g ", i, ts, dt, w);
 
-      _jovian_derotation_remap.compute_derotation_for_time(-dt, 1. / (1. + std::abs(dt) / 1200000.));
+      _jovian_derotation_remap.compute_derotation_for_time(-dt, w);
 
       cv::remap(current_frame, current_frame,
           _jovian_derotation_remap.rmap(), cv::noArray(),

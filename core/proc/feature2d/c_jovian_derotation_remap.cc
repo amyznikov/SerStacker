@@ -7,6 +7,16 @@
 
 #include "c_jovian_derotation_remap.h"
 
+void c_jovian_derotation_remap::set_opts(const c_jovian_derotation_remap_options & opts)
+{
+  _opts = opts;
+}
+
+const c_jovian_derotation_remap_options & c_jovian_derotation_remap::opts() const
+{
+  return _opts;
+}
+
 void c_jovian_derotation_remap::set_reference_pose(const cv::Size & image_size,
     const cv::Point2d & center,
     const cv::Vec3d & axes,
@@ -19,16 +29,17 @@ void c_jovian_derotation_remap::set_reference_pose(const cv::Size & image_size,
   _Rcurrent = _Rtarget = build_ellipsoid_rotation(_target_pose);
 }
 
-void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_msec, double wscale)
+void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_sec, double wscale)
 {
   // Jupiter daily rotation periods are
+  // System I   : 9h 50m 30.003s
+  // System II  : 9h 55m 40.632s
   // System III : 9h 55m 30s.
-  // System II  : 9ч 55м 40.632s
-  // System I   : 9ч 50м 30.003s
-  //static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 30.;
-  static constexpr double rotation_period_sec = 9. * 3600 + 55. * 60 + 40.632;
-  const double rotation_angle_deg = 0.360 * deltat_msec / rotation_period_sec;
-  const double rotation_angle_radians = rotation_angle_deg * CV_PI / 180;
+  static constexpr double default_rotation_period_sec = 9. * 3600 + 55. * 60 + 40.632;
+  const double rotation_period_sec = _opts.jovian_rotation_period_sec > 0 ? _opts.jovian_rotation_period_sec : default_rotation_period_sec;
+  //  const double rotation_angle_deg = 360 * deltat_sec / rotation_period_sec;
+  //  const double rotation_angle_radians = rotation_angle_deg * CV_PI / 180;
+  const double rotation_angle_radians = CV_2PI * deltat_sec / rotation_period_sec;
   return compute_derotation_for_angle(rotation_angle_radians, wscale);
 }
 

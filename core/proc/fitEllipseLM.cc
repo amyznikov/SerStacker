@@ -116,8 +116,8 @@ bool fitEllipseLMW(const std::vector<cv::Point3f> & edge_points,
   cv::meanStdDev(cv::Mat(edge_points), mean_center, std_dev);
 
   std::vector<double> initial_params;
-  initial_params.emplace_back(mean_center[0]+100);
-  initial_params.emplace_back(mean_center[1]+200);
+  initial_params.emplace_back(mean_center[0]);
+  initial_params.emplace_back(mean_center[1]);
   initial_params.emplace_back(1.44 * std::max(std_dev[0], std_dev[1]));
 
   std::vector<double> params = initial_params;

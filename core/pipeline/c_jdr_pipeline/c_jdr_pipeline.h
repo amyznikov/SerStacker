@@ -16,6 +16,7 @@
 #include <core/proc/feature2d/c_jovian_derotation_remap.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/average/c_frame_accumulation.h>
+#include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 
 
 struct c_jdr_pipeline_input_options :
@@ -64,9 +65,21 @@ struct c_jdr_pipeline_jovian_ellipse_detector_options
 struct c_jdr_pipeline_stack_options
 {
   c_image_processor::sptr input_image_preprocessor;
-  double wts = 120000; // [ms]
+  double wts = 120; // [s]
   int derotate_context_size = -1;
+
+  c_lpg_options lpg = {
+      .k = 1, // k;
+      .p = 4, // p = 2;
+      .dscale = 4, // dscale = 2;
+      .uscale = 7, // uscale = 6;
+      .avgchannel = true // // avgchannel = true;
+  };
+
+  c_jovian_derotation_remap_options remap;
+
   bool enable_image_stacking = true;
+  bool enable_weighted_average = true;
   bool derotate_all_frames = false;
 };
 
@@ -74,11 +87,13 @@ struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
   bool save_aligned_frames = false;
   bool save_derotated_frames = false;
-  bool save_derotated_all_frames = false;
+  bool save_derotated_avg_frames = false;
+  bool save_derotated_avg_weights = false;
   bool save_accumulation_weights = false;
   c_output_frame_writer_options save_aligned_frames_opts;
   c_output_frame_writer_options save_derotated_frames_opts;
-  c_output_frame_writer_options save_derotated_all_frames_opts;
+  c_output_frame_writer_options save_derotated_avg_frames_opts;
+  c_output_frame_writer_options save_derotated_avg_weights_opts;
   c_output_frame_writer_options save_accumulation_weights_opts;
 };
 
@@ -166,7 +181,8 @@ protected:
 
   c_output_frame_writer _aligned_frames_writer;
   c_output_frame_writer _derotated_frames_writer;
-  c_output_frame_writer _derotated_all_frames_writer;
+  c_output_frame_writer _derotated_avg_frames_writer;
+  c_output_frame_writer _derotated_avg_weights_writer;
   c_output_frame_writer _accumulation_weights_writer;
 };
 

@@ -16,6 +16,7 @@
 
 #include "c_image_sharpness_measure.h"
 #include <core/ctrlbind/ctrlbind.h>
+#include <core/proc/lpg.h>
 #include <core/settings.h>
 
 struct c_lpg_options
@@ -94,5 +95,10 @@ public:
 protected:
   c_lpg_options _opts;
 };
+
+inline bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map, const c_lpg_options & opts )
+{
+  return lpg(image, mask, output_map, opts.k, opts.p, opts.dscale, opts.uscale, opts.avgchannel);
+}
 
 #endif /* __c_lpg_sharpness_measure_h__ */

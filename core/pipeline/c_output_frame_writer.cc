@@ -366,7 +366,7 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       const std::string suffix = get_file_suffix(fname);
 
       set_file_suffix(fname, ssprintf("-%06d%s",
-          current_frame_index,
+          seqindex >= 0 ? seqindex : current_frame_index,
           suffix.c_str()));
 
       if( with_alpha_mask ) {

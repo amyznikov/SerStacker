@@ -208,7 +208,7 @@ bool c_jovian_ellipse_detector::detect_planetary_disk_mask(cv::InputArray _input
 
   const cv::Size size = _detected_component_rect.size();
   const int max_size = std::max(size.width, size.height);
-  _skirt_size = std::max(9, 2 * (max_size / 64) + 1);
+  _skirt_size = std::max(11, 2 * (max_size / 48) + 1);
   _gradient_mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
 
   morphological_gradient(_disk_mask, _disk_edge,

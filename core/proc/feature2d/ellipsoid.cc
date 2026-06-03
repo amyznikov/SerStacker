@@ -230,13 +230,13 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
         for ( int iy = range.start; iy < range.end; ++iy ) {
           uint8_t * __restrict mp = rmask[iy];
           cv::Vec2f * __restrict rmp = rmap[iy];
-          for ( int ix = 0; ix < size.width; ++ix ) {
+          for ( int ix = 0; ix < size.width; ++ix, ++mp ) {
             rmp[ix][0] = ix;
             rmp[ix][1] = iy;
             if( iy >= cbox.y && iy <= cbox.y + cbox.height ) {
               if( ix >= cbox.x && ix <= cbox.x + cbox.width ) {
                 if ( ellipsoid_from_cart2d(cv::Point2d(ix, iy), center, A, B, C, R2, v) ) {
-                  mp[ix] = 255;
+                  *mp = 255;
                   if ( ellipsoid_to_cart2d(v, center, A, B, C, R1, pos) ) {
                     rmp[ix][0] = pos.x;
                     rmp[ix][1] = pos.y;
@@ -251,6 +251,7 @@ bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d 
           }
         }
       });
+
 
   cv::parallel_for_(cv::Range(cbox.y, cbox.y + cbox.height),
       [&, cbox, wscale, a = 1.0 / A, b = 1.0 / B, sa = std::sin(angle), ca = std::cos(angle) ](const cv::Range & range) {

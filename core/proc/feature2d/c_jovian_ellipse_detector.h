@@ -70,14 +70,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
       [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector_options)]() {
         ctlbind(ctls, ctx);
       });
-
-//  ctlbind_menu_button(ctls, "Options >>", ctx);
-//  ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](const auto * obj) {
-//    return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",*obj), false;
-//  });
-//  ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](auto * obj) {
-//      return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options", obj);
-//    });
 }
 
 class c_jovian_ellipse_detector

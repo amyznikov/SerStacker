@@ -45,11 +45,19 @@ void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlb
 {
   ctlbind(ctls, "display", ctx, &this_class::display, &this_class::set_display, "display image type");
   ctlbind(ctls, ctx(&this_class::_opts));
-  ctlbind_command_button(ctls, "Copy pose", ctx, [](const this_class * obj) {
+
+  ctlbind_menu_button(ctls, "Options >>", ctx);
+  ctlbind_item(ctls, "Copy pose", ctx, [](const this_class * ths) {
     if ( const auto & cb = get_ctlbind_copy_to_clipboard_callback() ) {
-      cb(serialize_ellipsoid_to_string(obj->_detector.center(), obj->_detector.axes(), obj->_detector.pose() * 180 / CV_PI));
+      cb(serialize_ellipsoid_to_string(ths->_detector.center(), ths->_detector.axes(), ths->_detector.pose() * 180 / CV_PI));
     }
     return false;
+  });
+  ctlbind_item(ctls, "Copy parameters", ctx, [](const auto * ths) {
+    return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options", ths->_opts), false;
+  });
+  ctlbind_item(ctls, "Paste parameters", ctx, [](auto * ths) {
+    return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options", &ths->_opts);
   });
 }
 

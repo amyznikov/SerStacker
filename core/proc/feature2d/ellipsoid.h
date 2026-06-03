@@ -88,9 +88,7 @@ inline bool ellipsoid_to_cart2d(const cv::Vec3d & v,
     cv::Point2d & pos)
 {
   const cv::Vec3d vcam = R * v;
-  pos.x = vcam(0) + center.x;
-  pos.y = vcam(1) + center.y;
-
+  pos = cv::Point2d(vcam(0) + center.x, vcam(1) + center.y);
   // Visibility status
   return (vcam(2) <= 0.0);
 }

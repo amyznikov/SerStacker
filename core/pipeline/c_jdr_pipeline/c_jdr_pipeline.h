@@ -66,6 +66,7 @@ struct c_jdr_pipeline_stack_options
   c_image_processor::sptr input_image_preprocessor;
   double wts = 120000; // [ms]
   int derotate_context_size = -1;
+  bool enable_image_stacking = true;
   bool derotate_all_frames = false;
 };
 
@@ -73,9 +74,11 @@ struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
   bool save_aligned_frames = false;
   bool save_derotated_frames = false;
+  bool save_derotated_all_frames = false;
   bool save_accumulation_weights = false;
   c_output_frame_writer_options save_aligned_frames_opts;
   c_output_frame_writer_options save_derotated_frames_opts;
+  c_output_frame_writer_options save_derotated_all_frames_opts;
   c_output_frame_writer_options save_accumulation_weights_opts;
 };
 
@@ -126,7 +129,7 @@ protected:
 
   bool create_reference_frame();
   bool estimate_jovian_ellipse();
-  bool derotate_jovian_frames();
+  bool derotate_jovian_frames(int start_frame_index,  int end_frame_index);
   bool open_output_writers();
 
   static bool preproc_align_and_remap(const c_image_processor::sptr & proc, c_ecch & ecch,
@@ -161,8 +164,9 @@ protected:
   int _master_pos = 0;
   c_jdr_pipeline_ellipsoid_pose _jovian_pose;
 
-  c_output_frame_writer _current_aligned_frame_writer;
-  c_output_frame_writer _current_derotated_frame_writer;
+  c_output_frame_writer _aligned_frames_writer;
+  c_output_frame_writer _derotated_frames_writer;
+  c_output_frame_writer _derotated_all_frames_writer;
   c_output_frame_writer _accumulation_weights_writer;
 };
 

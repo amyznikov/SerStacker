@@ -149,7 +149,7 @@ bool c_ellipsoid_zrotation_remap_routine::process(cv::InputOutputArray image, cv
       maxv = 255;
     }
 
-    draw_ellipoid(image,
+    draw_ellipsoid(image,
         _center,
         _axes,
         Rtarget,

@@ -75,13 +75,13 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 class c_jovian_ellipse_detector
 {
 public:
+  static constexpr double k_jovian_axis_ratio = 0.93512560845968779724;
+
   void set_options(const c_jovian_ellipse_detector_options & v);
   const c_jovian_ellipse_detector_options& options() const;
-  c_jovian_ellipse_detector_options& options();
 
   // main methods
-  bool detect_jovian_ellipse(cv::InputArray _image, cv::InputArray mask = cv::noArray());
-  const cv::RotatedRect& final_planetary_disk_ellipse() const;
+  bool detect(cv::InputArray _image, cv::InputArray mask = cv::noArray());
   void clear();
 
   // for debug / visualization
@@ -96,6 +96,11 @@ public:
   const cv::Mat1b& disk_mask() const;
   const cv::Mat1b& disk_edge() const;
   const cv::Mat1b& final_planetary_disk_mask() const;
+
+  const cv::RotatedRect & final_planetary_disk_ellipse() const
+  {
+    return _final_planetary_disk_ellipse;
+  }
 
   const cv::Point2d & center() const
   {
@@ -128,7 +133,7 @@ protected:
   cv::Mat1b _final_planetary_disk_mask;
 
   cv::Point2f _detected_component_centroid;
-  cv::Rect _detected_component_rect;
+  cv::Rect _detected_component_roi;
   cv::RotatedRect _final_planetary_disk_ellipse;
 
   int _skirt_size = 0;

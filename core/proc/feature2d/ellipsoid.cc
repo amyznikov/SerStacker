@@ -88,7 +88,7 @@ cv::RotatedRect ellipsoid_bbox(const cv::Point2f & center,
  *
  * The lat_step and lon_step are in radians.
  */
-void draw_ellipoid(cv::InputOutputArray image, const cv::Point2d & center,
+void draw_ellipsoid(cv::InputOutputArray image, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type)
@@ -384,7 +384,7 @@ void ellipse_poly(const cv::Point2f & center, const cv::Size2f & axes, double an
 {
   const double a = 0.5 * axes.width;
   const double b = 0.5 * axes.height;
-  const double step = 2. / std::max(a, b);
+  const double step = 1. / std::max(a, b);
   const int nsteps = 2 * CV_PI / step;
   const double ca = std::cos(angle);
   const double sa = std::sin(angle);

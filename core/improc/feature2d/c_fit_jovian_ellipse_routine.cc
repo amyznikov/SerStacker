@@ -6,7 +6,7 @@
  */
 
 #include "c_fit_jovian_ellipse_routine.h"
-#include <core/proc/cdiffs.h>
+//#include <core/proc/cdiffs.h>
 #include <core/ssprintf.h>
 
 template<>
@@ -31,19 +31,9 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
   return members;
 }
 
-void c_fit_jovian_ellipse_routine::set_display(display_type v)
-{
-  _display_type = v;
-}
-
-c_fit_jovian_ellipse_routine::display_type c_fit_jovian_ellipse_routine::display() const
-{
-  return _display_type;
-}
-
 void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "display", ctx, &this_class::display, &this_class::set_display, "display image type");
+  ctlbind(ctls, "display", ctx(&this_class::_display_type), "Select image to display");
   ctlbind(ctls, ctx(&this_class::_opts));
 
   ctlbind_menu_button(ctls, "Options >>", ctx);
@@ -64,7 +54,7 @@ void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlb
 bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, display);
+    SERIALIZE_OPTION(settings, save, *this, _display_type);
     serialize_base_jovian_ellipse_detector_options(settings, save, _opts);
     return true;
   }
@@ -74,7 +64,6 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
 static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & rc,
     const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
 {
-
   if ( 1 ) {
     cv::rectangle(image, ellipse_bounding_box(rc),
         cv::Scalar(0, 0, 1),
@@ -96,7 +85,7 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   _detector.set_options(_opts);
-  _detector.detect_jovian_ellipse(image, mask);
+  _detector.detect(image, mask);
 
   switch (_display_type) {
 
@@ -140,9 +129,10 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       cv::minMaxLoc(_detector.grth_image(), &minv, &maxv, nullptr, nullptr, _detector.disk_edge() );
       _detector.grth_image().copyTo(image);
       _detector.disk_edge().copyTo(mask);
-      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
-    }
+      //draw_ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
+      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
       break;
+    }
 
 
     case display_gx:

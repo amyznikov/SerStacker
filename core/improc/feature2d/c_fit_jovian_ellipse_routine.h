@@ -34,9 +34,6 @@ public:
     display_final_ellipse_fit,
   };
 
-  void set_display(display_type v);
-  display_type display() const;
-
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);

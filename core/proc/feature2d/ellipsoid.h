@@ -192,7 +192,7 @@ inline cv::RotatedRect ellipsoid_bbox(const cv::Point2d & center, const cv::Vec3
  *
  * The lat_step and lon_step are in radians.
  */
-void draw_ellipoid(cv::InputOutputArray image, const cv::Point2d & center,
+void draw_ellipsoid(cv::InputOutputArray image, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type);

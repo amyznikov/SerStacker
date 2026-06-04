@@ -99,11 +99,6 @@ const c_jovian_ellipse_detector_options& c_jovian_ellipse_detector::options() co
   return _opts;
 }
 
-c_jovian_ellipse_detector_options& c_jovian_ellipse_detector::options()
-{
-  return _opts;
-}
-
 const cv::Mat1b& c_jovian_ellipse_detector::final_planetary_disk_mask() const
 {
   return _final_planetary_disk_mask;
@@ -117,16 +112,6 @@ const cv::Mat1b& c_jovian_ellipse_detector::disk_mask() const
 const cv::Mat1b& c_jovian_ellipse_detector::disk_edge() const
 {
   return _disk_edge;
-}
-
-//const cv::RotatedRect& c_jovian_ellipse_detector::ellipseAMS() const
-//{
-//  return ellipseAMS_;
-//}
-
-const cv::RotatedRect& c_jovian_ellipse_detector::final_planetary_disk_ellipse() const
-{
-  return _final_planetary_disk_ellipse;
 }
 
 const cv::Mat& c_jovian_ellipse_detector::grayscale_image() const
@@ -199,14 +184,14 @@ bool c_jovian_ellipse_detector::detect_planetary_disk_mask(cv::InputArray _input
       simple_planetary_disk_detector(_grayscale_image, _input_mask,
           _opts.planetary_disk_detector_options,
           &_detected_component_centroid,
-          &_detected_component_rect,
+          &_detected_component_roi,
           &_disk_mask);
   if( !fOk ) {
     CF_ERROR("simple_planetary_disk_detector() fails");
     return false;
   }
 
-  const cv::Size size = _detected_component_rect.size();
+  const cv::Size size = _detected_component_roi.size();
   const int max_size = std::max(size.width, size.height);
   _skirt_size = std::max(11, 2 * (max_size / 48) + 1);
   _gradient_mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
@@ -226,7 +211,7 @@ bool c_jovian_ellipse_detector::detect_planetary_disk_mask(cv::InputArray _input
 }
 
 
-bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv::InputArray _mask)
+bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _mask)
 {
   INSTRUMENT_REGION("");
 
@@ -290,17 +275,16 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
   // Use orientation from PCA or HESSIAN above to improve
   // jovian disk fit based on extracted planetary disk edge
 
-  static constexpr double jovian_axis_ratio = 0.93512560845968779724;
-  //const double fixed_axis_ratio = jovian_axis_ratio;
+  constexpr double axis_ratio = k_jovian_axis_ratio;
   const double tilt_to_earth = _opts.planetary_disk_tilt * CV_PI / 180;
   const double cos_tilt = cos(tilt_to_earth);
   const double sin_tilt = sin(tilt_to_earth);
-  const double fixed_axis_ratio = std::sqrt(jovian_axis_ratio * jovian_axis_ratio * cos_tilt * cos_tilt + sin_tilt * sin_tilt);
+  const double fixed_axis_ratio = std::sqrt(axis_ratio * axis_ratio * cos_tilt * cos_tilt + sin_tilt * sin_tilt);
 
   std::vector<cv::Point3f> ellipse_edge_points;
 
   extract_points(_grth, _disk_edge,
-      safeExpandROI(_detected_component_rect, _grth.size(), _skirt_size),
+      safeExpandROI(_detected_component_roi, _grth.size(), _skirt_size),
       ellipse_edge_points,
       _opts.lmweighted);
 
@@ -316,7 +300,7 @@ bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv:
   draw_ellipse_mask(_final_planetary_disk_mask, _image.size(), _final_planetary_disk_ellipse);
 
   const double A = _final_planetary_disk_ellipse.size.width / 2;
-  const double B = _final_planetary_disk_ellipse.size.width * jovian_axis_ratio / 2;
+  const double B = _final_planetary_disk_ellipse.size.width * axis_ratio / 2;
   const double C = _final_planetary_disk_ellipse.size.width / 2;
   _center = _final_planetary_disk_ellipse.center;
   _axes = cv::Vec3d(A, B, C);
@@ -403,162 +387,3 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
   serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);
   return true;
 }
-
-
-#if 0
-bool c_jovian_ellipse_detector::detect_jovian_ellipse(cv::InputArray _image, cv::InputArray _mask)
-{
-  INSTRUMENT_REGION("");
-
-  cv::RotatedRect ellipse;
-
-  // Convert input image to gray scale
-  if( _image.channels() == 1 ) {
-    _image.getMat().copyTo(_grayscale_image);
-  }
-  else {
-    cv::cvtColor(_image, _grayscale_image, cv::COLOR_BGR2GRAY);
-  }
-
-  // Detect planetary disk and extract pixel mask covering planetary disk shape
-  bool fOk =
-      simple_planetary_disk_detector(_grayscale_image, _mask,
-          _opts.planetary_disk_detector_options,
-          nullptr,
-          &_detected_component_rect,
-          &_disk_mask);
-  if( !fOk ) {
-    CF_ERROR("simple_planetary_disk_detector() fails");
-    return false;
-  }
-
-  extract_channel(_image, _normalized_image, cv::noArray(), cv::noArray(), _opts.gradient_channel);
-  if ( _opts.nscale > 0 ) {
-    pnormalize(_normalized_image, _normalized_image, _opts.nscale, _opts.neps);
-  }
-
-  if( _opts.sigma_clouds > 0 ) {
-    cv::GaussianBlur(_normalized_image, _normalized_image, cv::Size(0, 0),
-        _opts.sigma_clouds, _opts.sigma_clouds,
-        cv::BORDER_REPLICATE);
-  }
-
-  const cv::Size size = _detected_component_rect.size();
-  const int max_size = std::max(size.width, size.height);
-  const int mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
-
-
-  // Erode planetary disk mask to avoid edge effects
-  cv::erode(_disk_mask, _gradient_mask,
-      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(mask_erode_size, mask_erode_size)),
-      cv::Point(-1, -1),
-      1,
-      cv::BORDER_CONSTANT,
-      cv::Scalar::all(0));
-
-
-  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
-  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
-  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
-
-  // Compute derivatives
-
-  cv::filter2D(_normalized_image, _gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(_normalized_image, _gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::magnitude(_gx, _gy, _g);
-
-  const cv::Mat imask = ~_gradient_mask;
-  _g.setTo(0, imask);
-  if( _opts.gweighted ) {
-    cv::multiply(_gx, _g, _gx);
-    cv::multiply(_gy, _g, _gy);
-  }
-  else {
-    _gx.setTo(0, imask);
-    _gy.setTo(0, imask);
-  }
-
-
-  // Compute orientation angle
-  switch (_opts.method) {
-    case JOVIAN_ELLIPSE_DETECTION_PCA:
-      ellipse.angle = compute_jovian_orientation_pca();
-      break;
-    case JOVIAN_ELLIPSE_DETECTION_STENSOR:
-      ellipse.angle = compute_jovian_orientation_stensor();
-      break;
-    default:
-      CF_ERROR("APP BUG: Not supported method %d requested", _opts.method);
-      return false;
-  }
-
-  if( ellipse.angle > 90 ) {
-    ellipse.angle -= 180;
-  }
-  else if( ellipse.angle < -90 ) {
-    ellipse.angle += 180;
-  }
-
-  CF_DEBUG("\nMETHOD: %s angle = %g deg", toCString(_opts.method), ellipse.angle);
-
-  // Use orientation from PCA or HESSIAN above  to compute precise
-  // jovian disk fit based on extracted planetary disk edge
-
-  static constexpr double jovian_axis_ratio =
-      0.93512560845968779724;
-
-  std::vector<cv::Point2f> ellipse_edge_points;
-
-  morphological_gradient(_disk_mask,
-      _disk_edge,
-      cv::Mat1b(3, 3, 255),
-      cv::BORDER_CONSTANT);
-
-  cv::findNonZero(_disk_edge,
-      ellipse_edge_points);
-
-  fOk =
-      fitEllipseLM1(ellipse_edge_points,
-          jovian_axis_ratio, // b / a
-          ellipse.angle * CV_PI / 180, // radians
-          &_final_planetary_disk_ellipse);
-
-  // Add optional offset if requested by user
-  _final_planetary_disk_ellipse.center += _opts.offset;
-
-  CF_DEBUG("\n"
-      "fitEllipseLM1: width=%g height=%g angle=%g",
-      _final_planetary_disk_ellipse.size.width,
-      _final_planetary_disk_ellipse.size.height,
-      _final_planetary_disk_ellipse.angle);
-
-  // create also filed binary ellipse mask
-  _final_planetary_disk_mask.create(_image.size());
-  _final_planetary_disk_mask.setTo(0);
-  cv::ellipse(_final_planetary_disk_mask, _final_planetary_disk_ellipse, 255, -1, cv::LINE_8);
-  cv::erode(_final_planetary_disk_mask, _final_planetary_disk_mask, cv::Mat1b(3, 3, 255));
-
-  const double A = _final_planetary_disk_ellipse.size.width / 2;
-  const double B = _final_planetary_disk_ellipse.size.width * jovian_axis_ratio / 2;
-  const double C = _final_planetary_disk_ellipse.size.width / 2;
-
-  _center = _final_planetary_disk_ellipse.center;
-  _axes = cv::Vec3d(A, B, C);
-  _pose = build_ellipsoid_pose(0., _opts.planetary_disk_tilt * CV_PI / 180, _final_planetary_disk_ellipse.angle * CV_PI / 180);
-
-  if( true ) {
-
-    CF_DEBUG("FIT:\n"
-        "center = %g;%g\n"
-        "axes = %g;%g;%g\n"
-        "pose = %g;%g;%g\n",
-        _center.x, _center.y,
-        _axes(0), _axes(1), _axes(2),
-        _pose(0) * 180 / CV_PI,
-        _pose(1) * 180 / CV_PI,
-        _pose(2) * 180 / CV_PI);
-  }
-
-  return true;
-}
-#endif

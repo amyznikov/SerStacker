@@ -145,7 +145,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
           ctlbind(ctls, "derotate_all_frames", CTL_CONTEXT(ctx, derotate_all_frames));
           ctlbind(ctls, "derotate_context_size", CTL_CONTEXT(ctx, derotate_context_size));
           ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor));
-          ctlbind(ctls, "wts [ms]", CTL_CONTEXT(ctx, wts), "w = 1. / (1. + std::abs(dt) / wts)");
+          ctlbind(ctls, "wts [s]", CTL_CONTEXT(ctx, wts), "w = 1. / (1. + std::abs(dt) / wts)");
           ctlbind(ctls, "enable_weighted_average", CTL_CONTEXT(ctx, enable_weighted_average));
 
           ctlbind_expandable_group(ctls, "LPG Options", [&, ctx = CTL_CONTEXT(ctx,lpg)] () {
@@ -387,8 +387,8 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
     }
 
     case stacking_stage_in_progress: {
-      bool draw_ellipsoid = true;
-      if( !draw_ellipsoid ) {
+      bool enable_draw_ellipsoid = true;
+      if( !enable_draw_ellipsoid ) {
         _current_aligned_frame.copyTo(outputImage);
         _current_aligned_mask.copyTo(outputMask);
       }
@@ -409,7 +409,7 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
           _current_aligned_frame.copyTo(display,  _current_aligned_mask > 0 );
         }
 
-        draw_ellipoid(display,
+        draw_ellipsoid(display,
             _jovian_pose.center,
             _jovian_pose.axes,
             build_ellipsoid_rotation(_jovian_pose.orientation) ,
@@ -978,7 +978,7 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
   }
   else {
     _jovian_ellipse_detector.set_options(_ellipse_estimation_options.jovian_ellipse_detector_options);
-    if( !_jovian_ellipse_detector.detect_jovian_ellipse(_reference_frame, _reference_mask) ) {
+    if( !_jovian_ellipse_detector.detect(_reference_frame, _reference_mask) ) {
       CF_ERROR("_jovian_ellipse_detector.detect_jovian_ellipse() fails");
       return false;
     }
@@ -1078,7 +1078,7 @@ bool c_jdr_pipeline::estimate_jovian_ellipse()
       display.convertTo(display, CV_8UC3, 255./maxv);
     }
 
-    draw_ellipoid(display,
+    draw_ellipsoid(display,
         _jovian_derotation_remap.center(),
         _jovian_derotation_remap.axes(),
         _jovian_derotation_remap.Rtarget(),

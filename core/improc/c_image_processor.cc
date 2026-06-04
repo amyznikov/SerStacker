@@ -112,6 +112,7 @@
 #include "feature2d/c_edgebox_routine.h"
 #include "feature2d/c_selective_search_segmentation_routine.h"
 #include "feature2d/c_fit_jovian_ellipse_routine.h"
+#include "feature2d/c_fit_saturn_ellipse_routine.h"
 #include "feature2d/c_segformer_routine.h"
 #include "feature2d/c_segformer2_routine.h"
 #include "feature2d/c_seed_fill_segmentation_routine.h"
@@ -321,6 +322,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_remove_sharp_artifacts_routine::class_factory_instance());
     register_class_factory(c_mean_curvature_blur_routine::class_factory_instance());
     register_class_factory(c_fit_jovian_ellipse_routine::class_factory_instance());
+    register_class_factory(c_fit_saturn_ellipse_routine::class_factory_instance());
     register_class_factory(c_desaturate_edges_routine::class_factory_instance());
     register_class_factory(c_local_contrast_map_routine::class_factory_instance());
     register_class_factory(c_lpg_map_routine::class_factory_instance());

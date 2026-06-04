@@ -37,8 +37,6 @@ void c_jovian_derotation_remap::compute_derotation_for_time(double deltat_sec, d
   // System III : 9h 55m 30s.
   static constexpr double default_rotation_period_sec = 9. * 3600 + 55. * 60 + 40.632;
   const double rotation_period_sec = _opts.jovian_rotation_period_sec > 0 ? _opts.jovian_rotation_period_sec : default_rotation_period_sec;
-  //  const double rotation_angle_deg = 360 * deltat_sec / rotation_period_sec;
-  //  const double rotation_angle_radians = rotation_angle_deg * CV_PI / 180;
   const double rotation_angle_radians = CV_2PI * deltat_sec / rotation_period_sec;
   return compute_derotation_for_angle(rotation_angle_radians, wscale);
 }
@@ -59,7 +57,5 @@ void c_jovian_derotation_remap::compute_derotation_for_angle(double longitude_ro
       _wmap,
       _rmask,
       wscale);
-
-  //compute_ellipsoid_zrotation_wmap(_center, _axes,  _target_pose, _rmap, _wmap);
 }
 

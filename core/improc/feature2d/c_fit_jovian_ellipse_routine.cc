@@ -6,7 +6,6 @@
  */
 
 #include "c_fit_jovian_ellipse_routine.h"
-//#include <core/proc/cdiffs.h>
 #include <core/ssprintf.h>
 
 template<>

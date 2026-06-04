@@ -1,30 +1,30 @@
 /*
- * c_jdr_pipeline.h
+ * c_sdr_pipeline.h
  *
- *  Created on: Mar 17, 2026
+ *  Created on: Jun 4, 2026
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_jdr_pipeline_h__
-#define __c_jdr_pipeline_h__
+#ifndef __c_sdr_pipeline_h__
+#define __c_sdr_pipeline_h__
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/pipeline/c_master_frame_selection.h>
 #include <core/proc/feature2d/c_roi_selection.h>
-#include <core/proc/feature2d/c_jovian_ellipse_detector.h>
-#include <core/proc/feature2d/c_jovian_derotation_remap.h>
+#include <core/proc/feature2d/c_saturn_ellipse_detector.h>
+#include <core/proc/feature2d/c_saturn_derotation_remap.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
 
 
-struct c_jdr_pipeline_input_options :
+struct c_sdr_pipeline_input_options :
     c_image_stacking_pipeline_base_input_options
 {
 };
 
-struct c_jdr_pipeline_roi_options
+struct c_sdr_pipeline_roi_options
 {
   enum roi_selection_method method = roi_selection_none;
   cv::Size planetary_disk_crop_size;
@@ -34,8 +34,7 @@ struct c_jdr_pipeline_roi_options
   int se_close_size = 2;
 };
 
-
-struct c_jdr_pipeline_reference_frame_options
+struct c_sdr_pipeline_reference_frame_options
 {
   std::string reference_file_name;
   c_master_frame_selection_options master_selection;
@@ -48,22 +47,22 @@ struct c_jdr_pipeline_reference_frame_options
   } generate_opts;
 };
 
-struct c_jdr_pipeline_ellipsoid_pose
+struct c_sdr_pipeline_ellipsoid_pose
 {
   cv::Point2d center;
   cv::Vec3d axes;
   cv::Vec3d orientation;
 };
 
-struct c_jdr_pipeline_ellipse_detector_options
+struct c_sdr_pipeline_ellipse_detector_options
 {
-  c_jdr_pipeline_ellipsoid_pose pose;
-  c_jovian_ellipse_detector_options ellipse_detector_options;
+  c_sdr_pipeline_ellipsoid_pose pose;
+  c_saturn_ellipse_detector_options ellipse_detector_options;
   bool auto_pose_estimation = true;
   bool update_estimated_pose = true;
 };
 
-struct c_jdr_pipeline_stack_options
+struct c_sdr_pipeline_stack_options
 {
   c_image_processor::sptr input_image_preprocessor;
   double wts = 190; // [s]
@@ -77,14 +76,14 @@ struct c_jdr_pipeline_stack_options
       .avgchannel = true // // avgchannel = true;
   };
 
-  c_jovian_derotation_remap_options remap;
+  c_saturn_derotation_remap_options remap;
 
   bool enable_image_stacking = true;
   bool enable_weighted_average = true;
   bool derotate_all_frames = false;
 };
 
-struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
+struct c_sdr_pipeline_output_options: c_image_processing_pipeline_output_options
 {
   bool save_aligned_frames = false;
   bool save_derotated_frames = false;
@@ -99,11 +98,11 @@ struct c_jdr_pipeline_output_options: c_image_processing_pipeline_output_options
 };
 
 
-class c_jdr_pipeline :
+class c_sdr_pipeline :
     public c_image_stacking_pipeline_base
 {
 public:
-  typedef c_jdr_pipeline this_class;
+  typedef c_sdr_pipeline this_class;
   typedef c_image_stacking_pipeline_base base;
   typedef std::shared_ptr<this_class> sptr;
 
@@ -117,8 +116,8 @@ public:
     stacking_stage_finishing
   };
 
-  c_jdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
-  ~c_jdr_pipeline();
+  c_sdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
+  ~c_sdr_pipeline();
 
   static const std::string & class_name();
   static const std::string & tooltip();
@@ -153,18 +152,18 @@ protected:
       color_channel_type reference_channel);
 
 protected:
-  c_jdr_pipeline_input_options _input_options;
+  c_sdr_pipeline_input_options _input_options;
   c_roi_selection_options _roi_selection_options;
-  c_jdr_pipeline_reference_frame_options  _reference_frame_options;
-  c_jdr_pipeline_ellipse_detector_options _ellipse_estimation_options;
-  c_jdr_pipeline_stack_options _stack_options;
-  c_jdr_pipeline_output_options _output_options;
+  c_sdr_pipeline_reference_frame_options  _reference_frame_options;
+  c_sdr_pipeline_ellipse_detector_options _ellipse_estimation_options;
+  c_sdr_pipeline_stack_options _stack_options;
+  c_sdr_pipeline_output_options _output_options;
 
 protected:
   c_roi_selection::sptr _roi_selection;
   c_frame_weigthed_average _reference_frame_avg;
-  c_jovian_ellipse_detector _ellipse_detector;
-  c_jovian_derotation_remap _ellipsoid_derotation_remap;
+  c_saturn_ellipse_detector _ellipse_detector;
+  c_saturn_derotation_remap _ellipsoid_derotation_remap;
   c_frame_weigthed_average _frame_average;
 
   int _pipeline_stage = 0;
@@ -178,7 +177,7 @@ protected:
   cv::Mat _current_aligned_mask;
   double _master_ts = 0;
   int _master_pos = 0;
-  c_jdr_pipeline_ellipsoid_pose _planetary_disk_pose;
+  c_sdr_pipeline_ellipsoid_pose _planetary_disk_pose;
 
   c_output_frame_writer _aligned_frames_writer;
   c_output_frame_writer _derotated_frames_writer;
@@ -187,4 +186,4 @@ protected:
   c_output_frame_writer _accumulation_weights_writer;
 };
 
-#endif /* __c_jdr_pipeline_h__ */
+#endif /* __c_sdr_pipeline_h__ */

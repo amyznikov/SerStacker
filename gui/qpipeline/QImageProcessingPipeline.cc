@@ -20,6 +20,7 @@
 #include <core/pipeline/c_epipolar_alignment_pipeline/c_epipolar_alignment_pipeline.h>
 #include <core/pipeline/c_cte_pipeline/c_cte_pipeline.h>
 #include <core/pipeline/c_jdr_pipeline/c_jdr_pipeline.h>
+#include <core/pipeline/c_sdr_pipeline/c_sdr_pipeline.h>
 
 
 void registerPipelineClasses()
@@ -44,6 +45,7 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(c_epipolar_alignment_pipeline);
   REGISTER_PIPELINE_CLASS(c_cte_pipeline);
   REGISTER_PIPELINE_CLASS(c_jdr_pipeline);
+  REGISTER_PIPELINE_CLASS(c_sdr_pipeline);
 
 #undef REGISTER_PIPELINE_CLASS
 }

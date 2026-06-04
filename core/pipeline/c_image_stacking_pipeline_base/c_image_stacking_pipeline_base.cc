@@ -126,6 +126,10 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     return false;
   }
 
+//  CF_DEBUG("image: %dx%d channels=%d depth=%d  colorid=%d (%s)",
+//      output_image.cols, output_image.rows, output_image.channels(), output_image.depth(),
+//      int(input_sequence->colorid()), toCString(input_sequence->colorid()));
+
   if( !is_external_master_frame ) {
 
     if( !_darkbayer.empty() ) {
@@ -212,8 +216,10 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
       return false;
     }
 
+    //CF_DEBUG("output_image.depth()=%d input_sequence->bpp()=%d", output_image.depth(), input_sequence->bpp());
     if( output_image.depth() != CV_32F ) {
-      output_image.convertTo(_raw_bayer_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
+      output_image.convertTo(output_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
+      //CF_DEBUG("converted to output_image.depth()=%d", output_image.depth());
     }
   }
 

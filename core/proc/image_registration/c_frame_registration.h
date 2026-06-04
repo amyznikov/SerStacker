@@ -11,7 +11,6 @@
 #include <core/proc/extract_channel.h>
 #include <core/proc/feature2d/feature2d.h>
 #include <core/ctrlbind/ctrlbind.h>
-#include "c_saturn_derotation.h"
 #include "image_transform.h"
 #include "ecc2.h"
 
@@ -385,9 +384,6 @@ protected:
   c_ecch _ecch;
   c_eccflow _eccflow;
 
-  //c_jovian_derotation jovian_derotation_;
-//  c_jovian_derotation2 _jovian_derotation;
-//  c_saturn_derotation _saturn_derotation;
   ecc_image_preprocessor_function _ecc_image_preprocessor;
 
   cv::Mat2f _current_remap;

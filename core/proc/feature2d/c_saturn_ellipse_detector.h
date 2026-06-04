@@ -121,6 +121,7 @@ protected:
   cv::Mat1b _skirt_mask;
   cv::Mat1f _gx, _gy, _gr, _grth;
 
+  double _apparent_axis_ratio = k_saturn_axis_ratio;
   cv::Point2f _detected_component_centroid;
   cv::Rect _detected_component_roi;
   cv::Rect _pca_roi;

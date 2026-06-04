@@ -9,8 +9,8 @@
 #ifndef __c_fit_jovian_ellipse_routine_h__
 #define __c_fit_jovian_ellipse_routine_h__
 
-#include <core/proc/image_registration/c_jovian_derotation.h>
 #include <core/improc/c_image_processor.h>
+#include <core/proc/feature2d/c_jovian_ellipse_detector.h>
 
 class c_fit_jovian_ellipse_routine :
     public c_image_processor_routine

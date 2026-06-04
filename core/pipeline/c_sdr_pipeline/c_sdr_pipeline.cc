@@ -1,30 +1,30 @@
 /*
- * c_jdr_pipeline.cc
+ * c_sdr_pipeline.cc
  *
- *  Created on: Mar 17, 2026
+ *  Created on: Jun 4, 2026
  *      Author: amyznikov
  */
 
-#include "c_jdr_pipeline.h"
+#include "c_sdr_pipeline.h"
 
 template<>
-const c_enum_member* members_of<c_jdr_pipeline::STACKING_STAGE>()
+const c_enum_member* members_of<c_sdr_pipeline::STACKING_STAGE>()
 {
   static const c_enum_member members[] = {
-      { c_jdr_pipeline::stacking_stage_idle, "idle", "idle" },
-      { c_jdr_pipeline::stacking_stage_initialize, "initialize", "initialize" },
-      { c_jdr_pipeline::stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
-      { c_jdr_pipeline::stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
-      { c_jdr_pipeline::stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
-      { c_jdr_pipeline::stacking_stage_finishing, "finishing", "finishing" },
-      { c_jdr_pipeline::stacking_stage_idle },
+      { c_sdr_pipeline::stacking_stage_idle, "idle", "idle" },
+      { c_sdr_pipeline::stacking_stage_initialize, "initialize", "initialize" },
+      { c_sdr_pipeline::stacking_stage_select_master_frame_index, "select_master_frame_index", "select master frame index" },
+      { c_sdr_pipeline::stacking_stage_generate_reference_frame, "generate_reference_frame", "generate reference frame" },
+      { c_sdr_pipeline::stacking_stage_in_progress, "stacking_in_progress", "stacking in progress" },
+      { c_sdr_pipeline::stacking_stage_finishing, "finishing", "finishing" },
+      { c_sdr_pipeline::stacking_stage_idle },
   };
 
   return members;
 }
 
 
-c_jdr_pipeline::c_jdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence) :
+c_sdr_pipeline::c_sdr_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence) :
   base(name, input_sequence)
 {
   _reference_frame_options.master_selection.input_sequence = input_sequence.get();
@@ -34,31 +34,31 @@ c_jdr_pipeline::c_jdr_pipeline(const std::string & name, const c_input_sequence:
   }
 }
 
-c_jdr_pipeline::~c_jdr_pipeline()
+c_sdr_pipeline::~c_sdr_pipeline()
 {
 
 }
 
-const std::string & c_jdr_pipeline::get_class_name() const
+const std::string & c_sdr_pipeline::get_class_name() const
 {
   return class_name();
 }
 
-const std::string & c_jdr_pipeline::class_name()
+const std::string & c_sdr_pipeline::class_name()
 {
-  static const std::string _classname = "jdr";
+  static const std::string _classname = "sdr";
   return _classname;
 }
 
-const std::string & c_jdr_pipeline::tooltip()
+const std::string & c_sdr_pipeline::tooltip()
 {
   static const std::string _tooltip =
-      "<strong>c_jdr_pipeline.</strong><br>"
+      "<strong>c_sdr_pipeline.</strong><br>"
       "<br>";
   return _tooltip;
 }
 
-const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
+const c_ctlist<c_sdr_pipeline::this_class> & c_sdr_pipeline::getcontrols()
 {
   static c_ctlist<this_class> ctls;
   if ( ctls.empty() ) {
@@ -109,18 +109,18 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
                 ctlbind(ctls, "Orientation [deg]:", CTL_CONTEXT(ctx, orientation), "Jovian ellipsoid orientation in degrees");
               });
 
-          ctlbind_expandable_group(ctls, "Jovian ellipsoid detection and pose estimation",
+          ctlbind_expandable_group(ctls, "Planet ellipsoid detection and pose estimation",
               [&, ctx]() {
                 ctlbind(ctls, CTL_CONTEXT(ctx, ellipse_detector_options));
               });
 
           ctlbind_menu_button(ctls, "Options >>", ctx);
           ctlbind_item(ctls, "Copy ellipse detector options", ctx, [](const auto * obj) {
-            return ctlbind_copy_config_to_clipboard("c_jovian_ellipse_detector_options",
+            return ctlbind_copy_config_to_clipboard("c_saturn_ellipse_detector_options",
                 obj->ellipse_detector_options), false;
           });
           ctlbind_item(ctls, "Paste ellipse detector options", ctx, [](auto * obj) {
-              return ctlbind_paste_config_from_clipboard("c_jovian_ellipse_detector_options",
+              return ctlbind_paste_config_from_clipboard("c_saturn_ellipse_detector_options",
                   &obj->ellipse_detector_options);
             });
           ctlbind_item(ctls, "Copy pose", ctx, [](const auto * obj) {
@@ -199,7 +199,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
   return ctls;
 }
 
-bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
+bool c_sdr_pipeline::serialize(c_config_setting settings, bool save)
 {
   if ( !base::serialize(settings, save) ) {
     CF_ERROR("base::serialize(save=%d) fails", save);
@@ -242,8 +242,8 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(pose_opts, save, _ellipse_estimation_options.pose, axes);
       SERIALIZE_OPTION(pose_opts, save, _ellipse_estimation_options.pose, orientation);
     }
-    if( auto jovian_ellipse_detector_opts = SERIALIZE_GROUP(ellipse_opts, save, "jovian_ellipse_detector") ) {
-      serialize_base_jovian_ellipse_detector_options(jovian_ellipse_detector_opts, save,
+    if( auto ellipse_detector_opts = SERIALIZE_GROUP(ellipse_opts, save, "planetary_ellipse_detector") ) {
+      serialize_base_saturn_ellipse_detector_options(ellipse_detector_opts, save,
           _ellipse_estimation_options.ellipse_detector_options);
     }
   }
@@ -262,7 +262,7 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
     }
 
     if( auto remap_opts = SERIALIZE_GROUP(stack_opts, save, "remap") ) {
-      SERIALIZE_OPTION(remap_opts , save, _stack_options.remap, jovian_rotation_period_sec);
+      SERIALIZE_OPTION(remap_opts , save, _stack_options.remap, saturn_rotation_period_sec);
     }
 
   }
@@ -301,10 +301,10 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
 }
 
 
-bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
+bool c_sdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copy_parameters(dst) ) {
-    CF_ERROR("c_jdr_pipeline: base::copyParameters() fails");
+    CF_ERROR("c_sdr_pipeline: base::copyParameters() fails");
     return false;
   }
 
@@ -317,7 +317,7 @@ bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & d
 
   const std::string backup_master_source_fiename = p->_reference_frame_options.master_selection.master_fiename;
   const int backup_master_frame_index = p->_reference_frame_options.master_selection.master_frame_index;
-  const c_jdr_pipeline_ellipsoid_pose backup_pose = p->_ellipse_estimation_options.pose;
+  const c_sdr_pipeline_ellipsoid_pose backup_pose = p->_ellipse_estimation_options.pose;
 
   p->_input_options = this->_input_options;
   p->_roi_selection_options = this->_roi_selection_options;
@@ -334,33 +334,33 @@ bool c_jdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & d
 
 }
 
-bool c_jdr_pipeline::has_master_frame() const
+bool c_sdr_pipeline::has_master_frame() const
 {
   return true;
 }
 
-void c_jdr_pipeline::set_master_source(const std::string & master_source_path)
+void c_sdr_pipeline::set_master_source(const std::string & master_source_path)
 {
   _reference_frame_options.master_selection.master_fiename = master_source_path;
 }
 
-std::string c_jdr_pipeline::master_source() const
+std::string c_sdr_pipeline::master_source() const
 {
   return _reference_frame_options.master_selection.master_fiename;
 }
 
-void c_jdr_pipeline::set_master_frame_index(int v)
+void c_sdr_pipeline::set_master_frame_index(int v)
 {
   _reference_frame_options.master_selection.master_selection_method = master_frame_specific_index;
   _reference_frame_options.master_selection.master_frame_index = v;
 }
 
-int c_jdr_pipeline::master_frame_index() const
+int c_sdr_pipeline::master_frame_index() const
 {
   return _reference_frame_options.master_selection.master_frame_index;
 }
 
-bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputArray outputMask)
+bool c_sdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputArray outputMask)
 {
   switch (_pipeline_stage) {
     case stacking_stage_idle:
@@ -433,7 +433,7 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
   return false;
 }
 
-void c_jdr_pipeline::set_pipeline_stage(int newstage)
+void c_sdr_pipeline::set_pipeline_stage(int newstage)
 {
   const auto oldstage = _pipeline_stage;
   if( newstage != oldstage ) {
@@ -443,10 +443,10 @@ void c_jdr_pipeline::set_pipeline_stage(int newstage)
 }
 
 
-bool c_jdr_pipeline::initialize_pipeline()
+bool c_sdr_pipeline::initialize_pipeline()
 {
   if( !base::initialize_pipeline() ) {
-    CF_ERROR("c_jdr_pipeline: base::initialize() fails");
+    CF_ERROR("c_sdr_pipeline: base::initialize() fails");
     return false;
   }
 
@@ -459,7 +459,7 @@ bool c_jdr_pipeline::initialize_pipeline()
   return true;
 }
 
-void c_jdr_pipeline::cleanup_pipeline()
+void c_sdr_pipeline::cleanup_pipeline()
 {
   //set_pipeline_stage(stacking_stage_finishing);
   base::cleanup_pipeline();
@@ -475,7 +475,7 @@ void c_jdr_pipeline::cleanup_pipeline()
   //set_pipeline_stage(stacking_stage_idle);
 }
 
-bool c_jdr_pipeline::open_output_writers()
+bool c_sdr_pipeline::open_output_writers()
 {
   if( _output_options.save_aligned_frames ) {
 
@@ -543,7 +543,7 @@ bool c_jdr_pipeline::open_output_writers()
   return true;
 }
 
-bool c_jdr_pipeline::preproc_align_and_remap(const c_image_processor::sptr & proc, c_ecch & ecch,
+bool c_sdr_pipeline::preproc_align_and_remap(const c_image_processor::sptr & proc, c_ecch & ecch,
     cv::Mat & current_frame, cv::Mat & current_mask,
     color_channel_type reference_channel)
 {
@@ -589,7 +589,7 @@ bool c_jdr_pipeline::preproc_align_and_remap(const c_image_processor::sptr & pro
    return true;
 }
 
-bool c_jdr_pipeline::run_pipeline()
+bool c_sdr_pipeline::run_pipeline()
 {
   CF_DEBUG("ENTER");
 
@@ -682,7 +682,7 @@ bool c_jdr_pipeline::run_pipeline()
   return true;
 }
 
-bool c_jdr_pipeline::create_reference_frame()
+bool c_sdr_pipeline::create_reference_frame()
 {
   int master_source_index = -1;
   int master_frame_index = -1;
@@ -964,10 +964,10 @@ bool c_jdr_pipeline::create_reference_frame()
   return true;
 }
 
-bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
+bool c_sdr_pipeline::estimate_planetary_disk_ellipse()
 {
   if ( _reference_frame.empty() ) {
-    CF_ERROR("APP BUG: No reference frame available");
+    CF_ERROR("APP BUG: No jovian reference frame available");
     return false;
   }
 
@@ -1027,7 +1027,7 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
       cv::ellipse(display, _ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
 
       const std::string output_display_file_name =
-          generate_output_filename("jovian_ellipse_fit", "", ".png");
+          generate_output_filename("ellipse_fit", "", ".png");
       if( !save_image(display, cv::noArray(), output_display_file_name) ) {
         CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
         return false;
@@ -1099,15 +1099,9 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
   return true;
 }
 
-bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end_frame_index)
+bool c_sdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end_frame_index)
 {
   _frame_average.clear();
-
-//  const int input_sequence_size = _input_sequence->size();
-//  const int max_input_frames = _input_options.max_input_frames < 0 ? input_sequence_size : std::clamp(_input_options.max_input_frames, 0, input_sequence_size);
-//  const int start_frame_index = std::clamp(_input_options.start_frame_index, 0, input_sequence_size - 1);
-//  const int end_frame_index = std::min(start_frame_index + max_input_frames, max_input_frames);
-//  CF_DEBUG("start_frame_index=%d end_frame_index=%d / %d", start_frame_index, end_frame_index, input_sequence_size);
 
   if ( !_input_sequence->seek(start_frame_index) ) {
     CF_ERROR("_input_sequence->seek(start_frame_index=%d) fails", start_frame_index);

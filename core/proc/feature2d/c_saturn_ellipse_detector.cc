@@ -241,6 +241,52 @@ static bool extract_points(const cv::Mat1f & gr_image, const cv::Mat1b & mask,
   return pts.size() > 5;
 }
 
+static bool filter_skirt_mask(cv::Mat1b & skirt_mask, const cv::RotatedRect & roi)
+{
+  const cv::Rect safe_roi = roi.boundingRect() & cv::Rect(0, 0, skirt_mask.cols, skirt_mask.rows);
+  if( safe_roi.empty() ) {
+    return false;
+  }
+
+  const double xc = roi.center.x;
+  const double yc = roi.center.y;
+  const double alpha = roi.angle * CV_PI / 180.0;
+  const double sa = std::sin(alpha);
+  const double ca = std::cos(alpha);
+  const double max_xr = roi.size.width / 2.0 + 1.0;
+  const double max_yr = roi.size.height / 2.0 + 1.0;
+
+  // Pixels inside the ROI
+  // Transform current point into the local coordinate system of the oriented ROI
+  // Double geometric filter: the point must be inside the red rectangle
+  for( int y = safe_roi.y; y < safe_roi.y + safe_roi.height; ++y ) {
+    uint8_t * mskp = skirt_mask[y];
+    const double dy = y - yc;
+    for( int x = safe_roi.x; x < safe_roi.x + safe_roi.width; ++x ) {
+      if( mskp[x] ) {
+        const double dx = x - xc;
+        const double xr = dx * ca + dy * sa;
+        const double yr = -dx * sa + dy * ca;
+        double theta = std::atan2(yr, xr);
+        if( theta < 0 ) {
+          theta += CV_2PI;
+        }
+
+        // Zero out vertical cones (poles), where rings are guaranteed to interfere.
+        // Leave only lateral sectors around the equator (for example, from -45° to +45° on each side)
+        // Sector ABOVE: [225°, 315°], Sector BELOW: [45°, 135°]
+        if( (theta >= 45 * CV_PI / 180 && theta <= 135 * CV_PI / 180) ||
+            (theta >= 225 * CV_PI / 180 && theta <= 315 * CV_PI / 180) ) {
+          mskp[x] = 0;
+        }
+
+      }
+    }
+  }
+
+  return true;
+}
+
 void c_saturn_ellipse_detector::set_options(const c_saturn_ellipse_detector_options & opts)
 {
   _opts = opts;
@@ -303,9 +349,29 @@ const cv::RotatedRect & c_saturn_ellipse_detector::skirt_roi() const
   return _skirt_roi;
 }
 
+void c_saturn_ellipse_detector::clear()
+{
+  _grayscale_image.release();
+  _gradient_image.release();
+  _initial_mask.release();
+  _pca_mask.release();
+  _skirt_mask.release();
+  _gx.release();
+  _gy.release();
+  _gr.release();
+  _grth.release();
+}
+
 bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask)
 {
   INSTRUMENT_REGION("");
+
+  constexpr double axis_ratio = k_saturn_axis_ratio;
+  const double tilt_to_earth = _opts.planetary_disk_tilt * CV_PI / 180;
+  const double cos_tilt = cos(tilt_to_earth);
+  const double sin_tilt = sin(tilt_to_earth);
+  _apparent_axis_ratio = std::sqrt(axis_ratio * axis_ratio * cos_tilt * cos_tilt + sin_tilt * sin_tilt);
+
 
   if ( !detect_initial_mask(image, mask) ) {
     CF_ERROR("detect_total_mask() fails");
@@ -341,15 +407,8 @@ bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask
     return false;
   }
 
-
-  constexpr double axis_ratio = k_saturn_axis_ratio;
-  const double tilt_to_earth = _opts.planetary_disk_tilt * CV_PI / 180;
-  const double cos_tilt = cos(tilt_to_earth);
-  const double sin_tilt = sin(tilt_to_earth);
-  const double fixed_axis_ratio = std::sqrt(axis_ratio * axis_ratio * cos_tilt * cos_tilt + sin_tilt * sin_tilt);
-
   fitEllipseLMW(edge_points,
-      fixed_axis_ratio, // b / a
+      _apparent_axis_ratio, // b / a
       _skirt_roi.angle * CV_PI / 180, // radians
       &_final_planetary_disk_ellipse);
 
@@ -424,12 +483,20 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   // Prepare mask for radial gradient based planetary edge detection
   const cv::Size size(_pca_rect.size.width, _pca_rect.size.height);
   const int max_size = std::max(size.width, size.height);
-  const int min_size = std::max(size.width, size.height);
-  const int _skirt_size = std::max(11, 2 * (min_size / 48) + 1);
+  const int min_size = std::min(size.width, size.height);
+  const int skirt_size = std::max(11, 2 * (min_size / 32) + 1);
+  _skirt_roi  = _pca_rect;
+  _skirt_roi.size.width = _skirt_roi.size.height / _apparent_axis_ratio;
 
-  morphological_gradient(_initial_mask, _skirt_mask,
-      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(_skirt_size, _skirt_size)),
-      cv::BORDER_REPLICATE);
+  _skirt_mask = cv::Mat1b::zeros(_input_image.size());
+  cv::RotatedRect _skirt_ellipse = _skirt_roi;
+  _skirt_ellipse.size.width -= 3 * skirt_size / 2;
+  _skirt_ellipse.size.height -= 3 * skirt_size / 2;
+  cv::ellipse(_skirt_mask, _skirt_ellipse,  cv::Scalar::all(255), skirt_size, cv::LINE_8);
+  if (std::abs(_opts.planetary_disk_tilt) > 15.0) {
+    filter_skirt_mask(_skirt_mask, _skirt_roi);
+  }
+
 
 
   // Prepare gr and grth images for contour detection
@@ -443,8 +510,6 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   _gr.setTo(0, ~_skirt_mask);
   //cv::sqrt(_gr, _gr);
 
-  _skirt_roi  = _pca_rect;
-  _skirt_roi.size.width = _skirt_roi.size.height / k_saturn_axis_ratio;
   return true;
 }
 

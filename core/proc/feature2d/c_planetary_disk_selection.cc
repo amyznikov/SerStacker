@@ -115,7 +115,7 @@ bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mas
   }
 
   if ( _crop_size == image.size() ) {
-    _objrect = cv::Rect(0,0, _crop_size.width, _crop_size.height);
+    _objrect = cv::Rect(0, 0, _crop_size.width, _crop_size.height);
   }
   else if ( !select_crop_rectangle(image.size(), _crop_size, _objpos, &_objrect) ) {
     CF_FATAL("select_crop_rectangle() fails");

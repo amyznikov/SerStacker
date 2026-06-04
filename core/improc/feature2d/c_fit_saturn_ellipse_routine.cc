@@ -109,7 +109,7 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       }
       double minv = 0, maxv = 1;
       cv::minMaxLoc(image, &minv, &maxv);
-      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
+      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 1);
       cv::ellipse(image, _detector.pca_rect(), CV_RGB(0, 0, maxv * 1.05), 1);
       mask.release();
       break;
@@ -140,10 +140,10 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
     case display_grth: {
       cv::cvtColor(_detector.grth_image(), image, cv::COLOR_GRAY2BGR);
       _detector.skirt_mask().copyTo(mask);
-      double minv = 0, maxv = 1;
-      cv::minMaxLoc(image, &minv, &maxv);
-      //drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
-      drawRotatedRect(image, _detector.skirt_roi(), CV_RGB(maxv * 1.05, 0, 0), 2);
+//      double minv = 0, maxv = 1;
+//      cv::minMaxLoc(image, &minv, &maxv);
+//      //drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
+//      drawRotatedRect(image, _detector.skirt_roi(), CV_RGB(maxv * 1.05, 0, 0), 1);
       break;
     }
 
@@ -152,7 +152,7 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       _detector.skirt_mask().copyTo(mask);
       double minv = 0, maxv = 1;
       cv::minMaxLoc(image, &minv, &maxv);
-      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(maxv * 1.1, 0, 0), 2, cv::LINE_8);
+      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(maxv * 1.1, 0, 0), 1, cv::LINE_8);
       //drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
       //drawRotatedRect(image, _detector.skirt_roi(), CV_RGB(maxv * 1.05, 0, 0), 2);
       break;
@@ -165,7 +165,7 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       }
       double minv = 0, maxv = 1;
       cv::minMaxLoc(image, &minv, &maxv);
-      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.1, 0, 0), 2);
+      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.1, 0, 0), 1);
       cv::ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, maxv * 1.1), 1);
       mask.release();
       break;

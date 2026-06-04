@@ -8,8 +8,9 @@
 #pragma once
 #ifndef __c_fit_saturn_ellipse_routine_h__
 #define __c_fit_saturn_ellipse_routine_h__
-#include <core/proc/image_registration/c_saturn_derotation.h>
+
 #include <core/improc/c_image_processor.h>
+#include <core/proc/feature2d/c_saturn_ellipse_detector.h>
 
 class c_fit_saturn_ellipse_routine :
     public c_image_processor_routine

@@ -171,8 +171,7 @@ struct c_image_stacking_master_options
   bool stop_after_master_frame_generation = false;
   bool save_master_frame = true;
 
-
-  double unsharp_sigma = 0;
+  double unsharp_sigma = 1;
   double unsharp_alpha = 0.8;
 
 };

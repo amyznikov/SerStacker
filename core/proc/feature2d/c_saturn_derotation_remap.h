@@ -16,6 +16,10 @@
 struct c_saturn_derotation_remap_options
 {
   // Saturn daily rotation period
+  // System I (10h 14m 00s): The equatorial zone (approximately from 10deg south latitude to 10deg north latitude.
+  // System II (10h 38m 25s): All other latitudes (temperate zones and polar caps, except the equator).
+  // System III (10h 33m 38s): The period determined by the rotation of the planet's magnetic field (radio emission)
+  //  by the Voyager and Cassini spacecraft. It is considered the "true" rotation period of the planet's solid core.
   double saturn_rotation_period_sec = 10 * 3600. + 33 * 60. + 38;
 };
 
@@ -26,10 +30,16 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   using S = c_saturn_derotation_remap_options;
   ctlbind(ctls, "Rotation Period [sec]", ctx(&S::saturn_rotation_period_sec),
       "Set Saturn daily rotation period in sec");
-  ctlbind_menu_button(ctls, "Standard roration periods >>", ctx);
-  ctlbind_item(ctls, "Standard: 10h 33m 38s", ctx, [](auto * obj) {
-      obj->saturn_rotation_period_sec = 10 * 3600. + 33 * 60. + 38;
-      return true;
+
+  ctlbind_menu_button(ctls, "Standard rotation periods >>", ctx);
+  ctlbind_item(ctls, "System I  : 10h 14m 00s", ctx, [](auto * obj) {
+      return obj->saturn_rotation_period_sec = 10 * 3600. + 14 * 60. + 00, true;
+    });
+  ctlbind_item(ctls, "System II : 10h 38m 25s", ctx, [](auto * obj) {
+      return obj->saturn_rotation_period_sec = 10 * 3600. + 38 * 60. + 25, true;
+    });
+  ctlbind_item(ctls, "System III: 10h 33m 38s", ctx, [](auto * obj) {
+      return obj->saturn_rotation_period_sec = 10 * 3600. + 33 * 60. + 38, true;
     });
 }
 

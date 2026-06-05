@@ -13,6 +13,7 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
 {
   static const c_enum_member members[] = {
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
+      { c_fit_jovian_ellipse_routine::display_grid, "grid", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
       { c_fit_jovian_ellipse_routine::display_normalized_image, "normalized_image", },
       { c_fit_jovian_ellipse_routine::display_gx, "gx", },
@@ -34,6 +35,10 @@ void c_fit_jovian_ellipse_routine::getcontrols(c_control_list & ctls, const ctlb
 {
   ctlbind(ctls, "display", ctx(&this_class::_display_type), "Select image to display");
   ctlbind(ctls, ctx(&this_class::_opts));
+  ctlbind_expandable_group(ctls, "grid options", [&, ctx = CTL_CONTEXT(ctx, _grid)]() {
+      ctlbind(ctls, "lat_step [deg]", CTL_CONTEXT(ctx, lat_step_deg), "" );
+      ctlbind(ctls, "lon_step [deg]", CTL_CONTEXT(ctx, lon_step_deg), "" );
+  });
 
   ctlbind_menu_button(ctls, "Options >>", ctx);
   ctlbind_item(ctls, "Copy pose", ctx, [](const this_class * ths) {
@@ -54,6 +59,8 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display_type);
+    SERIALIZE_OPTION(settings, save, _grid, lat_step_deg);
+    SERIALIZE_OPTION(settings, save, _grid, lon_step_deg);
     serialize_base_jovian_ellipse_detector_options(settings, save, _opts);
     return true;
   }
@@ -83,8 +90,18 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  static const auto genrgb =
+      [](cv::InputArray img, double r, double g, double b) -> cv::Scalar {
+        double minv = 0, maxv = 1;
+        cv::minMaxLoc(img, &minv, &maxv);
+        return CV_RGB(1.05 * r * maxv, 1.05 * g * maxv, 1.05 * b * maxv);
+      };
+
+  CF_DEBUG("H");
   _detector.set_options(_opts);
+  CF_DEBUG("H");
   _detector.detect(image, mask);
+  CF_DEBUG("H");
 
   switch (_display_type) {
 
@@ -124,15 +141,11 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       break;
 
     case display_grthc: {
-      double minv=0, maxv=1;
-      cv::minMaxLoc(_detector.grth_image(), &minv, &maxv, nullptr, nullptr, _detector.disk_edge() );
       _detector.grth_image().copyTo(image);
       _detector.disk_edge().copyTo(mask);
-      //draw_ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), cv::Scalar::all(maxv * 1.2), 1, cv::LINE_8);
+      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 0, 0.5), 1, cv::LINE_8);
       break;
     }
-
 
     case display_gx:
       _detector.gx_image().copyTo(image);
@@ -149,13 +162,19 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       _detector.gradient_mask().copyTo(mask);
       break;
 
+    case display_grid: {
+      draw_ellipsoid(image, _detector.center(), _detector.axes(), _detector.pose(),
+          _grid.lat_step_deg * CV_PI / 180, _grid.lon_step_deg * CV_PI / 180,
+          genrgb(image, 1, 1, 1), 1, cv::LINE_AA);
+      break;
+    }
+
     case display_final_ellipse_fit:
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
-      drawRotatedRect(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 1, 0), 1);
-      //image.setTo(cv::Scalar::all(1), _detector.disk_edge());
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 1), 1);
+      drawRotatedRect(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 1, 0), 1);
+      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 0, 1), 1);
       mask.release();
       break;
   }

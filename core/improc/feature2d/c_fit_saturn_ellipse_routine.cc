@@ -23,6 +23,7 @@ const c_enum_member * members_of<c_fit_saturn_ellipse_routine::display_type>()
       { c_fit_saturn_ellipse_routine::display_gr, "gr", },
       { c_fit_saturn_ellipse_routine::display_grth, "grth", },
       { c_fit_saturn_ellipse_routine::display_grth_fit, "grth_fit", },
+      { c_fit_saturn_ellipse_routine::display_grid, "grid", },
       { c_fit_saturn_ellipse_routine::display_final_fit, },
   };
 
@@ -35,6 +36,10 @@ void c_fit_saturn_ellipse_routine::getcontrols(c_control_list & ctls, const ctlb
 {
   ctlbind(ctls, "display", ctx(&this_class::_display_type), "Select image to display");
   ctlbind(ctls, ctx(&this_class::_opts));
+  ctlbind_expandable_group(ctls, "grid options", [&, ctx = CTL_CONTEXT(ctx, _grid)]() {
+      ctlbind(ctls, "lat_step [deg]", CTL_CONTEXT(ctx, lat_step_deg), "" );
+      ctlbind(ctls, "lon_step [deg]", CTL_CONTEXT(ctx, lon_step_deg), "" );
+  });
 
   ctlbind_menu_button(ctls, "Options >>", ctx);
   ctlbind_item(ctls, "Copy pose", ctx, [](const this_class * ths) {
@@ -55,6 +60,8 @@ bool c_fit_saturn_ellipse_routine::serialize(c_config_setting settings, bool sav
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display_type);
+    SERIALIZE_OPTION(settings, save, _grid, lat_step_deg);
+    SERIALIZE_OPTION(settings, save, _grid, lon_step_deg);
     serialize_base_saturn_ellipse_detector_options(settings, save, _opts);
     return true;
   }
@@ -84,6 +91,14 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
 
 bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  static const auto genrgb =
+      [](cv::InputArray img, double r, double g, double b) -> cv::Scalar {
+        double minv = 0, maxv = 1;
+        cv::minMaxLoc(img, &minv, &maxv);
+        return CV_RGB(1.05 * r * maxv, 1.05 * g * maxv, 1.05 * b * maxv);
+      };
+
+
   _detector.set_options(_opts);
   _detector.detect(image, mask);
 
@@ -104,13 +119,8 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       break;
 
     case display_pca_fit: {
-      if( image.channels() == 1 ) {
-        cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
-      }
-      double minv = 0, maxv = 1;
-      cv::minMaxLoc(image, &minv, &maxv);
-      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 1);
-      cv::ellipse(image, _detector.pca_rect(), CV_RGB(0, 0, maxv * 1.05), 1);
+      drawRotatedRect(image, _detector.pca_rect(), genrgb(image, 1, 0, 0), 1);
+      cv::ellipse(image, _detector.pca_rect(), genrgb(image, 0, 0, 1), 1);
       mask.release();
       break;
     }
@@ -140,38 +150,32 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
     case display_grth: {
       cv::cvtColor(_detector.grth_image(), image, cv::COLOR_GRAY2BGR);
       _detector.skirt_mask().copyTo(mask);
-//      double minv = 0, maxv = 1;
-//      cv::minMaxLoc(image, &minv, &maxv);
-//      //drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
-//      drawRotatedRect(image, _detector.skirt_roi(), CV_RGB(maxv * 1.05, 0, 0), 1);
       break;
     }
 
     case display_grth_fit: {
       cv::cvtColor(_detector.grth_image(), image, cv::COLOR_GRAY2BGR);
       _detector.skirt_mask().copyTo(mask);
-      double minv = 0, maxv = 1;
-      cv::minMaxLoc(image, &minv, &maxv);
-      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(maxv * 1.1, 0, 0), 1, cv::LINE_8);
-      //drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.05, 0, 0), 2);
-      //drawRotatedRect(image, _detector.skirt_roi(), CV_RGB(maxv * 1.05, 0, 0), 2);
+      draw_ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0.5, 0, 0), 1, cv::LINE_8);
       break;
     }
 
+    case display_grid: {
+      draw_ellipsoid(image, _detector.center(), _detector.axes(), _detector.pose(),
+          _grid.lat_step_deg * CV_PI / 180, _grid.lon_step_deg * CV_PI / 180,
+          genrgb(image, 1, 1, 1), 1, cv::LINE_AA);
+      break;
+    }
 
     case display_final_fit: {
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
-      double minv = 0, maxv = 1;
-      cv::minMaxLoc(image, &minv, &maxv);
-      drawRotatedRect(image, _detector.pca_rect(), CV_RGB(maxv * 1.1, 0, 0), 1);
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, maxv * 1.1), 1);
+      drawRotatedRect(image, _detector.pca_rect(), genrgb(image, 1, 0, 0), 1);
+      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 0, 1), 1);
       mask.release();
       break;
     }
-
-
   }
   return true;
 }

@@ -31,6 +31,7 @@ public:
     display_detected_planetary_disk_mask,
     display_detected_planetary_disk_edge,
     display_final_planetary_disk_mask,
+    display_grid,
     display_final_ellipse_fit,
   };
 
@@ -42,6 +43,12 @@ protected:
   display_type _display_type = display_final_ellipse_fit;
   c_jovian_ellipse_detector_options _opts;
   c_jovian_ellipse_detector _detector;
+
+  struct c_grid_options {
+    double lat_step_deg = 30;
+    double lon_step_deg = 30;
+  } _grid;
+
 };
 
 #endif /* __c_fit_jovian_ellipse_routine_h__ */

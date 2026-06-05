@@ -30,6 +30,7 @@ public:
     display_gr,
     display_grth,
     display_grth_fit,
+    display_grid,
     display_final_fit,
   };
 
@@ -41,6 +42,12 @@ protected:
   display_type _display_type = display_final_fit;
   c_saturn_ellipse_detector_options _opts;
   c_saturn_ellipse_detector _detector;
+
+  struct c_grid_options {
+    double lat_step_deg = 30;
+    double lon_step_deg = 30;
+  } _grid;
+
 };
 
 #endif /* __c_fit_saturn_ellipse_routine_h__ */

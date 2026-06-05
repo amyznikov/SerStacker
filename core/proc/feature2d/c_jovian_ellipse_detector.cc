@@ -53,7 +53,8 @@ static void pnormalize(cv::InputArray _src, cv::OutputArray _dst, int lvl, doubl
   pyramid_upscale(m, src_size);
   pyramid_upscale(s, src_size);
   cv::subtract(src, m, _dst, cv::noArray(), CV_32F);
-  cv::divide(_dst.getMat(), s, _dst);
+  s.convertTo(s, CV_32F, 1, 1e-6);
+  cv::divide(_dst.getMat(), s, _dst, 1, CV_32F);
 }
 
 // Compute first-order derivatives
@@ -220,6 +221,7 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
     return false;
   }
 
+  CF_DEBUG("H");
   // Prepare gr, grth images for contour detection
   static const cv::Mat1b THSE(5, 5, uint8_t(255));
   extract_channel(_image, _normalized_image, cv::noArray(), cv::noArray(), _opts.gradient_channel);
@@ -230,14 +232,21 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
   cv::morphologyEx(_grth, _grth, cv::MORPH_TOPHAT, THSE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   _gr.setTo(0, ~_disk_edge);
   cv::sqrt(_gr, _gr);
+  CF_DEBUG("H");
 
   // Prepare gx, gy, g images for orientation detection
   if ( _opts.nscale > 0 ) {
+    CF_DEBUG("H");
     pnormalize(_normalized_image, _normalized_image, _opts.nscale, _opts.neps);
+    CF_DEBUG("H");
   }
+  CF_DEBUG("H");
   differentiate(_normalized_image, _gx, _gy, _opts.sigma_clouds);
+  CF_DEBUG("H");
   cv::magnitude(_gx, _gy, _g);
+  CF_DEBUG("H");
 
+  CF_DEBUG("H");
   // Compute orientation angle
   const cv::Mat imask = ~_gradient_mask;
   _g.setTo(0, imask);
@@ -251,13 +260,18 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
   }
 
   double ellipse_angle_deg = 0;
+  CF_DEBUG("H");
 
   switch (_opts.method) {
     case JOVIAN_ELLIPSE_DETECTION_PCA:
+      CF_DEBUG("H");
       ellipse_angle_deg = compute_jovian_orientation_pca();
+      CF_DEBUG("H");
       break;
     case JOVIAN_ELLIPSE_DETECTION_STENSOR:
+      CF_DEBUG("H");
       ellipse_angle_deg = compute_jovian_orientation_stensor();
+      CF_DEBUG("H");
       break;
     default:
       CF_ERROR("APP BUG: Not supported method %d requested", _opts.method);

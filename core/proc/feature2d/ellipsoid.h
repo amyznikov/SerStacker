@@ -197,6 +197,15 @@ void draw_ellipsoid(cv::InputOutputArray image, const cv::Point2d & center,
     double lat_step, double lon_step,
     const cv::Scalar & color, int thickness, int line_type);
 
+inline void draw_ellipsoid(cv::InputOutputArray image, const cv::Point2d & center,
+    const cv::Vec3d & axes, const cv::Vec3d & pose,
+    double lat_step, double lon_step,
+    const cv::Scalar & color, int thickness, int line_type)
+{
+  return draw_ellipsoid(image, center, axes, build_ellipsoid_rotation(pose),
+      lat_step, lon_step, color, thickness, line_type);
+}
+
 bool compute_ellipsoid_zrotation_remap(const cv::Size & size, const cv::Point2d & center,
     const cv::Vec3d & axes, const cv::Matx33d & R1, const cv::Matx33d & R2,
     cv::Mat2f & rmap,

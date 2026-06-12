@@ -42,7 +42,7 @@ void create_noise_map(cv::InputArray src, cv::OutputArray dst, cv::InputArray ma
 
   if ( !mask.empty() ) {
     cv::Mat mtmp;
-    cv::dilate(~mask.getMat(), mtmp, cv::Mat1b(3, 3, 255));
+    cv::dilate(~mask.getMat(), mtmp, cv::Mat1b(5, 5, 255));
     dst.setTo(0, mtmp);
   }
 }

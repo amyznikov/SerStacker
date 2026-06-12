@@ -14,17 +14,16 @@ static inline double hyp(double x, double y)
   return sqrt(x * x + y * y);
 }
 
-static inline double square (double x)
-{
-  return x * x;
-}
+//static inline double square (double x)
+//{
+//  return x * x;
+//}
 
 
-cv::Size fftGetOptimalSize(cv::Size imageSize, cv::Size psfSize, bool forceEvenSize )
+cv::Size fftGetOptimalSize(const cv::Size & srcSize, cv::Size psfSize, cv::Rect * roirc, bool forceEvenSize)
 {
+  const cv::Size imageSize = psfSize.empty() ? srcSize : srcSize + psfSize * 2;
   int w, h;
-
-  imageSize += psfSize * 2;
 
   if ( !forceEvenSize ) {
     w = cv::getOptimalDFTSize(imageSize.width);
@@ -48,11 +47,21 @@ cv::Size fftGetOptimalSize(cv::Size imageSize, cv::Size psfSize, bool forceEvenS
     }
   }
 
-  return cv::Size(w, h);
+  const cv::Size fftSize(w, h);
+  if( roirc ) {
+    const int border_top = (fftSize.height - srcSize.height) / 2;
+    const int border_bottom = (fftSize.height - srcSize.height - border_top);
+    const int border_left = (fftSize.width - srcSize.width) / 2;
+    const int border_right = (fftSize.width - srcSize.width - border_left);
+    *roirc = cv::Rect(border_left, border_top, srcSize.width, srcSize.height);
+  }
+
+  return fftSize;
 }
 
 
-bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, cv::Size fftSize, cv::Rect * outrc)
+bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size & fftSize,
+    cv::Rect * outrc)
 {
   const cv::Size src_size = src.size();
 
@@ -103,6 +112,39 @@ void fftImageToSpectrum(cv::InputArray src, std::vector<cv::Mat2f> & complex_cha
 }
 
 
+bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst, const cv::Size & fftSize,
+    bool swapQuadrants)
+{
+  // Single-channel CV_32F image is expected on input
+  if ( _src.type() != CV_32FC1 ) {
+    CF_ERROR("Invalid argument: Single-channel CV_32F image is expected on input");
+    return false;
+  }
+
+  cv::Mat src_padded;
+  if ( _src.size() == fftSize ) {
+    src_padded = _src.getMat();
+  }
+  else {
+    fftCopyMakeBorder(_src, src_padded, fftSize);
+  }
+
+  const cv::Mat src_planes[] = { src_padded,
+      cv::Mat::zeros(_src.size(), _src.depth())
+  };
+
+  // complex_I at the output will contain a spectrum in CV_32FC2 format
+  cv::Mat complex_image;
+  cv::merge(src_planes, 2, complex_image);
+  cv::dft(complex_image, _dst);
+  if ( swapQuadrants ) {
+    fftSwapQuadrants(_dst.getMatRef());
+  }
+
+  return true;
+}
+
+
 void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::OutputArray dst)
 {
   const int cn = complex_channels.size();
@@ -147,7 +189,7 @@ void fftImageToSpectrum(cv::InputArray image,
     fftCopyMakeBorder(image, tmp,
         fftGetOptimalSize(image.size(),
             psfSize),
-        &rc);
+            &rc);
 
     fftImageToSpectrum(tmp,
         complex_channels);
@@ -243,6 +285,7 @@ void fftSwapQuadrants(cv::InputOutputArray _spec)
 }
 
 
+/* Power = Re^2 + Im^2 */
 bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
 {
   if ( _src.type() != CV_32FC2 ) {
@@ -251,37 +294,46 @@ bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
   }
 
   if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid output argument: CV_32FC1 output image expected ");
+    CF_ERROR("Invalid fixed type output argument: CV_32FC1 output image expected ");
     return false;
   }
 
   const cv::Mat2f src = _src.getMat();
+  const cv::Size size = _src.size();
+  cv::Mat1f dst(size);
 
-  cv::Mat1f tmp;
-  cv::Mat1f dst;
-  if ( src.data != _dst.getMatRef().data ) {
-    _dst.create(src.size(), CV_32F);
-    dst = _dst.getMatRef();
-  }
-  else {
-    tmp.create(src.size());
-    dst = tmp;
-  }
-
-
-  tbb::parallel_for(0, src.rows,
-      [&src, &dst](int y) {
-        for ( int x = 0; x < src.cols; ++x ) {
-          const double a = src[y][x][0];
-          const double b = src[y][x][1];
-          dst[y][x] = (a * a + b * b);
+  cv::parallel_for_(cv::Range(0, size.height),
+      [&, size](const auto & range) {
+        for ( int y = range.start; y < range.end; ++y ) {
+          const float * srcp = (const float * )src[y];
+          float * __restrict dstp = dst[y];
+          for ( int x = 0; x < size.width; ++x, srcp += 2 ) {
+            * dstp ++ = srcp[0] * srcp[0] + srcp[1] * srcp[1];
+          }
         }
       });
 
-  if ( !tmp.empty() ) {
-    _dst.move(tmp);
+  _dst.move(dst);
+
+  return true;
+}
+
+/* Module = sqrt(Re^2 + Im^2) */
+bool fftSpectrumModule(cv::InputArray _src, cv::OutputArray _dst)
+{
+  if ( _src.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 input image expected ");
+    return false;
   }
 
+  if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
+    CF_ERROR("Invalid fixed type output argument: CV_32FC1 output image expected ");
+    return false;
+  }
+
+  std::vector<cv::Mat> planes;
+  cv::split(_src, planes);
+  cv::magnitude(planes[0], planes[1], _dst);
   return true;
 }
 
@@ -325,47 +377,6 @@ bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
 }
 
 
-bool fftSpectrumModule(cv::InputArray _src, cv::OutputArray _dst)
-{
-  if ( _src.type() != CV_32FC2 ) {
-    CF_ERROR("Invalid argument: CV_32FC2 input image expected ");
-    return false;
-  }
-
-  if ( _dst.fixedType() && _dst.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid output argument: CV_32FC1 output image expected ");
-    return false;
-  }
-
-  const cv::Mat2f src = _src.getMat();
-
-  cv::Mat1f tmp;
-  cv::Mat1f dst;
-  if ( src.data != _dst.getMatRef().data ) {
-    _dst.create(src.size(), CV_32F);
-    dst = _dst.getMatRef();
-  }
-  else {
-    tmp.create(src.size());
-    dst = tmp;
-  }
-
-
-  tbb::parallel_for(0, src.rows,
-      [&src, &dst](int y) {
-        for ( int x = 0; x < src.cols; ++x ) {
-          const double a = src[y][x][0];
-          const double b = src[y][x][1];
-          dst[y][x] = sqrt(a * a + b * b);
-        }
-      });
-
-  if ( !tmp.empty() ) {
-    _dst.move(tmp);
-  }
-
-  return true;
-}
 
 
 bool fftSpectrumToPolar(const cv::Mat & src, cv::Mat & magnitude, cv::Mat & phase)
@@ -415,6 +426,367 @@ bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::
   return true;
 }
 
+bool fftRadialProfile(const cv::Mat1f & spectrum, std::vector<float> & output_profile, bool includeCorners)
+{
+  const int cx = spectrum.cols / 2;
+  const int cy = spectrum.rows / 2;
+
+  // Deformation (stretchimg) coefficients: convert spectral pixels into dimensionless radial units
+  const double R = std::min(cx, cy);
+  const double scaleX = spectrum.cols / (2.0 * R);
+  const double scaleY = spectrum.rows / (2.0 * R);
+
+  // Maximum radius in physical pixels of the matrix
+  const double maxRadiusPx = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+  const int numBins = std::max(1, static_cast<int>(std::ceil(maxRadiusPx)));
+  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
+
+
+  // Sampling step: how many bins are there per 1 pixel of the spectrum radius
+
+  std::vector<double> radialSum(numBins, 0.0);
+  std::vector<int> radialCount(numBins, 0);
+
+  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
+  for( int y = 0; y <= cy; ++y ) {
+    const float * srcp = spectrum[y];
+
+    // normalize the vertical step
+    const double dy = (y - cy) * scaleY;
+    const double dy2 = dy * dy;
+
+    const int xmax = (y == cy) ? cx : spectrum.cols;
+    for( int x = 0; x < xmax; ++x ) {
+      // normalize the horizontal step
+      const double dx = (x - cx) * scaleX;
+      const double dx2 = dx * dx;
+
+      // True isotropic frequency radius consistent with space
+      const double radiusPx = std::sqrt(dx2 + dy2);
+      const int bin = static_cast<int>(radiusPx * invMaxRadiusPx);
+
+      if( bin >= 0 && bin < numBins ) {
+        // Symmetry:
+        // For regular rows (y < cy) — always 2 (top mirrors bottom).
+        // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
+        // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
+        const int weight = (y < cy || x != cx) ? 2 : 1;
+        radialSum[bin] += (srcp[x] * weight);
+        radialCount[bin] += weight;
+      }
+    }
+  }
+
+  output_profile.resize(numBins);
+  for( int i = 0; i < numBins; ++i ) {
+    output_profile[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0);
+  }
+
+  return true;
+}
+
+//bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
+//{
+//  const int cx = spectrum.cols / 2;
+//  const int cy = spectrum.rows / 2;
+//
+//  // Deformation (stretchimg) coefficients: convert spectral pixels into dimensionless radial units
+//  const double R = std::min(cx, cy);
+//  const double scaleX = spectrum.cols / (2.0 * R);
+//  const double scaleY = spectrum.rows / (2.0 * R);
+//
+//  // Maximum radius in physical pixels of the matrix
+//  const double maxRadiusPx = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+//
+//  // Sampling step: how many bins are there per 1 pixel of the spectrum radius
+//  const int numBins = std::max(1, static_cast<int>(std::ceil(maxRadiusPx)));
+//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
+//
+//
+//  // Hitogram accumulators
+//  std::vector<double> radialSum(numBins, 0.0);
+//  std::vector<int> radialCount(numBins, 0);
+//
+//
+//  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
+//  for( int y = 0; y <= cy; ++y ) {
+//    const float * srcp = spectrum[y];
+//
+//    // normalize the vertical step
+//    const double dy = (y - cy) * scaleY;
+//    const double dy2 = dy * dy;
+//
+//    const int xmax = (y == cy) ? cx : spectrum.cols;
+//    for( int x = 0; x < xmax; ++x ) {
+//      // normalize the horizontal step
+//      const double dx = (x - cx) * scaleX;
+//      const double dx2 = dx * dx;
+//
+//      // True isotropic frequency radius consistent with space
+//      const double radiusPx = std::sqrt(dx2 + dy2);
+//      const int bin = static_cast<int>(radiusPx * invMaxRadiusPx);
+//
+//      if( bin >= 0 && bin < numBins ) {
+//        // Symmetry:
+//        // For regular rows (y < cy) — always 2 (top mirrors bottom).
+//        // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
+//        // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
+//        const int weight = (y < cy || x != cx) ? 2 : 1;
+//        radialSum[bin] += (srcp[x] * weight);
+//        radialCount[bin] += weight;
+//      }
+//    }
+//  }
+//
+//  output_profile.create(1, numBins);
+//  float * __restrict dstp = output_profile[0];
+//  for( int i = 0; i < numBins; ++i ) {
+//    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0);
+//  }
+//
+//  return true;
+//}
+
+//bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
+//{
+//  // Maximum radius in physical pixels of the matrix
+//  const int cx = spectrum.cols / 2;
+//  const int cy = spectrum.rows / 2;
+//  const double maxRadiusPx = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+//
+//  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
+//  const double R = std::min(cx, cy);
+//  const double scaleX = spectrum.cols / (2.0 * R);
+//  const double scaleY = spectrum.rows / (2.0 * R);
+//
+//
+//  // Sampling step: how many bins are there per 1 pixel of the spectrum radius
+//  const int numBins = std::max(1, static_cast<int>(std::ceil(maxRadiusPx)));
+//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
+//
+//  // Histogram accumulators
+//  std::vector<double> radialSum(numBins, 0.0);
+//  std::vector<double> radialCount(numBins, 0.0);
+//
+//  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
+//  for( int y = 0; y <= cy; ++y ) {
+//    const float * srcp = spectrum[y];
+//
+//    // normalize the vertical step
+//    const double dy = (y - cy) * scaleY;
+//    const double dy2 = dy * dy;
+//
+//    const int xmax = (y == cy) ? cx : spectrum.cols;
+//    for( int x = 0; x < xmax; ++x ) {
+//      // normalize the horizontal step
+//      const double dx = (x - cx) * scaleX;
+//      const double dx2 = dx * dx;
+//
+//      // True isotropic frequency radius consistent with space
+//      const double radiusPx = std::sqrt(dx2 + dy2);
+//      const double binCont = radiusPx * invMaxRadiusPx;
+//
+//      const int binLeft = static_cast<int>(std::floor(binCont));
+//      const int binRight = binLeft + 1;
+//
+//      // Symmetry:
+//      // For regular rows (y < cy) — always 2 (top mirrors bottom).
+//      // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
+//      // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
+//      const int symmetryWeight = (y < cy || x != cx) ? 2 : 1;
+//      const double pixelValue = srcp[x] * symmetryWeight;
+//
+//      const double wRight = binCont - binLeft;
+//      const double wLeft = 1.0 - wRight;
+//      if( binLeft >= 0 && binLeft < numBins ) {
+//        radialSum[binLeft]   += pixelValue * wLeft;
+//        radialCount[binLeft] += symmetryWeight * wLeft;
+//      }
+//      if( binRight >= 0 && binRight < numBins ) {
+//        radialSum[binRight]   += pixelValue * wRight;
+//        radialCount[binRight] += symmetryWeight * wRight;
+//      }
+//    }
+//  }
+//
+//  output_profile.create(1, numBins);
+//  float * __restrict dstp = output_profile[0];
+//  for( int i = 0; i < numBins; ++i ) {
+//    dstp[i] = (float)(radialCount[i] > 1e-9 ? radialSum[i] / radialCount[i] : 0.0);
+//  }
+//
+//  return true;
+//}
+//void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
+//    const cv::Size & outputImageSize,
+//    bool cornersIncluded,
+//    cv::Mat1f & outputImage)
+//{
+//  const cv::Size & size = outputImageSize;
+//  outputImage.create(size);
+//
+//  const int cx = size.width / 2;
+//  const int cy = size.height / 2;
+//
+//  // Deformation (stretch) factors: convert spectral pixels into dimensionless radial units
+//  const double R = std::min(cx, cy);
+//  const double scaleX = size.width / (2.0 * R);
+//  const double scaleY = size.height / (2.0 * R);
+//
+//  // Maximum radius in physical pixels of the matrix (exactly the same as when collecting a profile)
+//  // Sampling step: how many bins are there per 1 pixel of radius
+//  const int numBins = radialProfile.cols;
+//  const double maxRadiusPx = cornersIncluded ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
+//
+//  cv::parallel_for_(cv::Range(0, size.height),
+//      [=, &radialProfile, &outputImage](const cv::Range & range) {
+//
+//        const float * bins = radialProfile[0];
+//
+//        for (int y = range.start; y < range.end; ++y) {
+//          float * __restrict dstp = outputImage[y];
+//
+//          // normalize the vertical step
+//          const double dy = (y - cy) * scaleY;
+//          const double dy2 = dy * dy;
+//
+//          for (int x = 0; x < size.width; ++x) {
+//
+//            // normalize the horizontal step
+//            const double dx = (x - cx) * scaleX;
+//            const double dx2 = dx * dx;
+//
+//            // Radial radius in pixels (metrically perfect circle)
+//            const double radiusPx = std::sqrt(dx2 + dy2);
+//            const int bin = static_cast<int>(radiusPx * invMaxRadiusPx);
+//            if (bin >= 0 && bin < numBins) {
+//              dstp[x] = bins[bin];
+//            }
+//            else {
+//              // If cornersIncluded = false, all pixels from the corner zones of the matrix will fall outside numBins.
+//              dstp[x] = 0; /*  can be also radialProfile.back(); */
+//            }
+//          }
+//        }
+//    });
+//}
+
+bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
+{
+  // Maximum radius in physical pixels of the matrix
+  const int cx = spectrum.cols / 2;
+  const int cy = spectrum.rows / 2;
+  const double R = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+  const int numBins = std::max(1, (int)(R));
+
+  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
+  const double scaleX = R / cx;
+  const double scaleY = R / cy;
+
+  // Histogram accumulators
+  std::vector<double> radialSum(numBins, 0.0);
+  std::vector<double> radialCount(numBins, 0.0);
+
+  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
+  for( int y = 0; y <= cy; ++y ) {
+    const float * srcp = spectrum[y];
+
+    // normalize the vertical step
+    const double dy = (y - cy) * scaleY;
+    const double dy2 = dy * dy;
+
+    const int xmax = (y == cy) ? cx : spectrum.cols;
+    for( int x = 0; x < xmax; ++x ) {
+      // normalize the horizontal step
+      const double dx = (x - cx) * scaleX;
+      const double dx2 = dx * dx;
+
+      // True isotropic frequency radius consistent with space
+      const double r = std::sqrt(dx2 + dy2);
+      const double binCont = r;//  /  R;
+
+      const int binLeft = static_cast<int>(std::floor(binCont));
+      const int binRight = binLeft + 1;
+
+      // Symmetry:
+      // For regular rows (y < cy) — always 2 (top mirrors bottom).
+      // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
+      // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
+      const int symmetryWeight = (y < cy || x != cx) ? 2 : 1;
+      const double pixelValue = srcp[x] * symmetryWeight;
+
+      const double wRight = binCont - binLeft;
+      const double wLeft = 1.0 - wRight;
+      if( binLeft >= 0 && binLeft < numBins ) {
+        radialSum[binLeft]   += pixelValue * wLeft;
+        radialCount[binLeft] += symmetryWeight * wLeft;
+      }
+      if( binRight >= 0 && binRight < numBins ) {
+        radialSum[binRight]   += pixelValue * wRight;
+        radialCount[binRight] += symmetryWeight * wRight;
+      }
+    }
+  }
+
+  output_profile.create(1, numBins);
+  float * __restrict dstp = output_profile[0];
+  for( int i = 0; i < numBins; ++i ) {
+    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
+  }
+
+  return true;
+}
+
+void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
+    const cv::Size & outputImageSize,
+    bool cornersIncluded,
+    cv::Mat1f & outputImage)
+{
+  const cv::Size & size = outputImageSize;
+  outputImage.create(size);
+
+  const double cx = size.width / 2;
+  const double cy = size.height / 2;
+  const double R = cornersIncluded ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
+  const int numBins = radialProfile.cols;
+
+  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
+  const double scaleX = R / cx;
+  const double scaleY = R / cy;
+
+  cv::parallel_for_(cv::Range(0, size.height),
+      [=, &radialProfile, &outputImage](const cv::Range & range) {
+
+        const float * bins = radialProfile[0];
+
+        for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = outputImage[y];
+
+          // normalize the vertical step
+          const double dy = (y - cy) * scaleY;
+          const double dy2 = dy * dy;
+
+          for (int x = 0; x < size.width; ++x) {
+
+            // normalize the horizontal step
+            const double dx = (x - cx) * scaleX;
+            const double dx2 = dx * dx;
+
+            // Radial radius in pixels (metrically perfect circle)
+            const double r = std::sqrt(dx2 + dy2);
+            const int bin = static_cast<int>(r); //  / R
+            if (bin >= 0 && bin < numBins) {
+              dstp[x] = bins[bin];
+            }
+            else {
+              // If cornersIncluded = false, all pixels from the corner zones of the matrix will fall outside numBins.
+              dstp[x] = 0; /*  can be also radialProfile.back(); */
+            }
+          }
+        }
+    });
+}
 
 void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs,
@@ -438,6 +810,7 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
   const cv::Size fftSize =
       fftGetOptimalSize(src.size(),
           cv::Size(64, 64),
+          nullptr,
           true);
 
   if ( src.size() == fftSize ) {
@@ -781,7 +1154,7 @@ void fftComputeAutoCorrelation(cv::InputArray src, cv::OutputArray dst, bool log
     image = src.getMat();
   }
   else {
-    fftCopyMakeBorder(src, image, fftGetOptimalSize(src.size(), cv::Size(), true), &rc);
+    fftCopyMakeBorder(src, image, fftGetOptimalSize(src.size(), cv::Size(), nullptr, true), &rc);
   }
 
 
@@ -818,3 +1191,132 @@ void fftComputeAutoCorrelation(cv::InputArray src, cv::OutputArray dst, bool log
   dst.move(image);
 }
 
+
+cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma, double gain,
+    bool swapQuadrants)
+{
+  // Isotropic Gaussian
+  // The frequency step is tied to the physical dimensions of the matrix
+  //  fx = dx / width, fy = dy / height
+
+  cv::Mat1f FILTER(fftSize);
+
+  const bool inverseFilter = sigma < 0;
+  if( inverseFilter ) {
+    sigma = -sigma;
+  }
+
+  const double scaleX = CV_2PI / fftSize.width;
+  const double scaleY = CV_2PI / fftSize.height;
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+  //  const double scaleX = CV_PI * CV_PI * (sigma * sigma) / (2 * cx * cx);
+  //  const double scaleY = CV_PI * CV_PI * (sigma * sigma) / (2 * cy * cy);
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          const double dy = (y - cy) * scaleY;
+          const double dy2 = dy * dy;
+          float * dstp = FILTER[y];
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * scaleX;
+            const double dx2 = dx * dx;
+
+            // Isotropic radius
+            const double gaussLPF = gain * std::exp(-(dx2 + dy2));
+            dstp[x] = float(inverseFilter ? gain - gaussLPF : gaussLPF);
+          }
+        }
+      });
+
+  if( swapQuadrants ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}
+
+cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool squareRoot,
+    bool swapQuadrants)
+{
+  // Isotropic Laplacian
+  // The frequency step is tied to the physical dimensions of the matrix
+  // fx = dx / width, fy = dy / height
+  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
+
+  cv::Mat1f FILTER(fftSize);
+
+//  const double scaleX = CV_PI * CV_PI / (2 * cx * cx);
+//  const double scaleY = CV_PI * CV_PI / (2 * cy * cy);
+  const double scaleX = CV_2PI / fftSize.width;
+  const double scaleY = CV_2PI / fftSize.height;
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          const double dy = (y - cy) * scaleY;
+          const double dy2 = dy * dy;
+          float * __restrict dstp = FILTER[y];
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * scaleX;
+            const double dx2 = dx * dx;
+            const double dr2 = dx2 + dy2;
+
+            dstp[x] = float(gain * (squareRoot ? sqrt(dr2) : dr2));
+          }
+        }
+      });
+
+  if( swapQuadrants ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}
+
+// Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
+cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
+    double rc, int order, double gain,
+    bool swapQuadrants)
+{
+  // Isotropic Butterworth
+  // The frequency step is tied to the physical dimensions of the matrix
+  // fx = dx / width, fy = dy / height
+
+  cv::Mat1f FILTER(fftSize);
+
+  const double scaleX = CV_2PI / fftSize.width;
+  const double scaleY = CV_2PI / fftSize.height;
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          const double dy = (y - cy) * scaleY;
+          const double dy2 = dy * dy;
+
+          float* __restrict dstp = FILTER[y];
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * scaleX;
+            const double dx2 = dx * dx;
+
+            const double r = std::sqrt(dx2 + dy2);
+
+            dstp[x] = float(gain / (1.0 + std::pow(r / rc, order)));
+          }
+        }
+      });
+
+  if( swapQuadrants ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}

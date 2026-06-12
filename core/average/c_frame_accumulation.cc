@@ -1546,7 +1546,7 @@ bool c_frame_accumulation_with_fft::add(cv::InputArray src, cv::InputArray _w)
 
   if ( _accumulators.empty() ) {
 
-    _fftSize = fftGetOptimalSize(src_size, cv::Size(0,0), false);
+    _fftSize = fftGetOptimalSize(src_size, cv::Size(0,0), nullptr, false);
 
     CF_DEBUG("src_size=%dx%d fftSize_=%dx%d",
         src_size.width, src_size.height,

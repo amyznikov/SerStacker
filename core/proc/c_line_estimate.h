@@ -207,6 +207,119 @@ protected:
   int n = 0;
 };
 
+/**
+ * The Weighted Least Squares One-Parameter Regression (No intercept)
+ *  appropriate for running estimation of scale / decay coefficients
+ *
+ *  y  = k * x
+ *
+ * */
+template<class T = double>
+class c_weighted_slope_estimate
+{
+public:
+  // Reset all accumulators and the point counter
+  void reset()
+  {
+    swx2 = swxy = swy2 = swy = sw = 0;
+    n = 0;
+  }
+
+  // Add a new point with weight w (default 1)
+  void update(T x, T y, T w = 1)
+  {
+    const T wx = w * x;
+    const T wy = w * y;
+    swx2 += wx * x;
+    swxy += wx * y;
+    swy2 += wy * y;
+    swy  += wy;
+    sw   += w;
+    n    += 1;
+  }
+
+  // Remove a point (useful for implementing a sliding window)
+  void remove(T x, T y, T w = 1)
+  {
+    const T wx = w * x;
+    const T wy = w * y;
+    swx2 -= wx * x;
+    swxy -= wx * y;
+    swy2 -= wy * y;
+    swy  -= wy;
+    sw   -= w;
+    n    -= 1;
+  }
+
+  // Compute the main coefficient: k
+  bool compute(T &_k) const
+  {
+    if (n > 0 && swx2 > 0 && sw > 0) {
+      _k = swxy / swx2;
+      return true;
+    }
+    return false;
+  }
+
+  // Compute the parameter k and the square of the standard deviation (stdev^2)
+  bool compute(T &_k, T &_stdev2) const
+  {
+    if (n > 0 && swx2 > 0 && sw > 0) {
+      _k = swxy / swx2;
+
+      // Residual Sum of Squares (RSS) for y = k * z
+      const T rss = swy2 - _k * swxy;
+      _stdev2 = (rss > 0) ? (rss / sw) : 0;
+      return true;
+    }
+    return false;
+  }
+
+  // Compute all, including the coefficient of determination R2.
+  // Note: For regression without intercept, R2 is calculated relative to the zero-model.
+  bool compute(T &_k, T &_stdev2, T &_r2) const
+  {
+    if (n > 0 && swx2 > 0 && sw > 0) {
+      _k = swxy / swx2;
+
+      const T rss = swy2 - _k * swxy;
+      _stdev2 = (rss > 0) ? (rss / sw) : 0;
+
+      // Total Sum of Squares (TSS) relative to the mean value of y
+      const T tss_denom = sw * swy2 - swy * swy;
+      if (tss_denom > 0 && rss > 0) {
+        _r2 = T(1) - (rss * sw / tss_denom);
+      } else {
+        _r2 = T(1); // Perfect match or data variation is zero
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // Fast coefficient calculation without extra statistics
+  T k() const
+  {
+    return (swx2 > 0) ? swxy / swx2 : 0;
+  }
+
+  // Number of processed points
+  int pts() const
+  {
+    return n;
+  }
+
+  // Total weight of all points
+  T total_weight() const
+  {
+    return sw;
+  }
+
+protected:
+  T swx2 = 0, swxy = 0, swy2 = 0, swy = 0, sw = 0;
+  int n = 0;
+};
+
 
 /**
  * Exponentially Weighted Linear Regression

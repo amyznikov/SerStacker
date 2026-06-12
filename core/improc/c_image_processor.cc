@@ -77,7 +77,10 @@
 #include "generic/c_anisotropic_diffusion_filter_routine.h"
 #include "generic/c_fast_nl_means_denoising_routine.h"
 #include "generic/c_adaptive_gaussian_blur_routine.h"
-
+#include "generic/c_fft_routine.h"
+#include "generic/c_fft_radial_profile_routine.h"
+#include "generic/c_fft_gaussian_filter_routine.h"
+#include "generic/c_fft_profile_test1_routine.h"
 
 #include "generic/c_set_pixels_routine.h"
 #include "generic/c_pnormalize_routine.h"
@@ -85,7 +88,6 @@
 #include "generic/c_fast_gaussian_blur_routine.h"
 #include "generic/c_neighbourhood_average_routine.h"
 #include "generic/c_morphology_routine.h"
-#include "generic/c_fft_routine.h"
 #include "generic/c_local_minmax_routine.h"
 #include "generic/c_asi_frame_check_routine.h"
 
@@ -369,9 +371,12 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
     register_class_factory(c_fft_routine::class_factory_instance());
+    register_class_factory(c_fft_gaussian_filter_routine::class_factory_instance());
+    register_class_factory(c_fft_radial_profile_routine::class_factory_instance());
+    register_class_factory(c_fft_profile_test1_routine::class_factory_instance());
+
     register_class_factory(c_local_minmax_routine::class_factory_instance());
     register_class_factory(c_asi_frame_check_routine::class_factory_instance());
-
     register_class_factory(c_keypoins_detector_routine::class_factory_instance());
     register_class_factory(c_star_extractor_routine::class_factory_instance());
     register_class_factory(c_edgebox_routine::class_factory_instance());

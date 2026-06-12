@@ -17,7 +17,7 @@ class c_fft_profile_test1_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_profile_test1_routine,
-      "wiener_tikhonov_deconv", "c_fft_profile_test1_routine");
+      "fft_profile_test1", "c_fft_profile_test1_routine");
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE = 0,

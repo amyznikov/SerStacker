@@ -1196,8 +1196,6 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma, doub
     bool swapQuadrants)
 {
   // Isotropic Gaussian
-  // The frequency step is tied to the physical dimensions of the matrix
-  //  fx = dx / width, fy = dy / height
 
   cv::Mat1f FILTER(fftSize);
 
@@ -1205,26 +1203,27 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma, doub
   if( inverseFilter ) {
     sigma = -sigma;
   }
+  else if( sigma == 0 ) {
+    sigma = 1;
+  }
 
-  const double scaleX = CV_2PI / fftSize.width;
-  const double scaleY = CV_2PI / fftSize.height;
+  const double scaleX = CV_2PI / (fftSize.width * sigma * M_SQRT2);
+  const double scaleY = CV_2PI / (fftSize.height * sigma * M_SQRT2);
   const double cx = fftSize.width / 2.0;
   const double cy = fftSize.height / 2.0;
-  //  const double scaleX = CV_PI * CV_PI * (sigma * sigma) / (2 * cx * cx);
-  //  const double scaleY = CV_PI * CV_PI * (sigma * sigma) / (2 * cy * cy);
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+
           const double dy = (y - cy) * scaleY;
           const double dy2 = dy * dy;
-          float * dstp = FILTER[y];
 
           for (int x = 0; x < fftSize.width; ++x) {
             const double dx = (x - cx) * scaleX;
             const double dx2 = dx * dx;
 
-            // Isotropic radius
             const double gaussLPF = gain * std::exp(-(dx2 + dy2));
             dstp[x] = float(inverseFilter ? gain - gaussLPF : gaussLPF);
           }
@@ -1248,8 +1247,6 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool
 
   cv::Mat1f FILTER(fftSize);
 
-//  const double scaleX = CV_PI * CV_PI / (2 * cx * cx);
-//  const double scaleY = CV_PI * CV_PI / (2 * cy * cy);
   const double scaleX = CV_2PI / fftSize.width;
   const double scaleY = CV_2PI / fftSize.height;
   const double cx = fftSize.width / 2.0;
@@ -1258,13 +1255,15 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+
           const double dy = (y - cy) * scaleY;
           const double dy2 = dy * dy;
-          float * __restrict dstp = FILTER[y];
 
           for (int x = 0; x < fftSize.width; ++x) {
             const double dx = (x - cx) * scaleX;
             const double dx2 = dx * dx;
+
             const double dr2 = dx2 + dy2;
 
             dstp[x] = float(gain * (squareRoot ? sqrt(dr2) : dr2));
@@ -1298,10 +1297,10 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
+          float* __restrict dstp = FILTER[y];
+
           const double dy = (y - cy) * scaleY;
           const double dy2 = dy * dy;
-
-          float* __restrict dstp = FILTER[y];
 
           for (int x = 0; x < fftSize.width; ++x) {
             const double dx = (x - cx) * scaleX;

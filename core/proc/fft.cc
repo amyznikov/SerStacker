@@ -209,75 +209,71 @@ void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
   }
 }
 
-
-void fftSwapQuadrants(cv::InputOutputArray _spec)
+void fftSwapQuadrants(cv::InputArray _src, cv::OutputArray _dst)
 {
-  using namespace cv;
-
-  Mat spec = _spec.getMat();
-
-  if ( spec.rows < 2 && spec.cols < 2 ) {
-    // empty or trivially shifted.
+  const cv::Mat src = _src.getMat();
+  if (src.empty()) {
+    _dst.release();
     return;
   }
 
-  int xMid = spec.cols >> 1;
-  int yMid = spec.rows >> 1;
+  cv::Mat dst(src.size(), src.type());
 
-  const bool is_1d = xMid == 0 || yMid == 0;
+  const int cx = (src.cols + 1) >> 1;
+  const int cy = (src.rows + 1) >> 1;
+  const int inv_cx = src.cols - cx;
+  const int inv_cy = src.rows - cy;
 
-  if ( is_1d ) {
+  cv::Mat src_q0(src, cv::Rect(0, 0, cx, cy));
+  cv::Mat src_q1(src, cv::Rect(cx, 0, inv_cx, cy));
+  cv::Mat src_q2(src, cv::Rect(0, cy, cx, inv_cy));
+  cv::Mat src_q3(src, cv::Rect(cx, cy, inv_cx, inv_cy));
 
-    const int is_odd = (xMid > 0 && spec.cols % 2 == 1) || (yMid > 0 && spec.rows % 2 == 1);
+  cv::Mat dst_q0(dst, cv::Rect(inv_cx, inv_cy, cx, cy));  // q0 -> q3
+  cv::Mat dst_q1(dst, cv::Rect(0, inv_cy, inv_cx, cy));   // q1 -> q2
+  cv::Mat dst_q2(dst, cv::Rect(inv_cx, 0, cx, inv_cy)); // q2 -> q1
+  cv::Mat dst_q3(dst, cv::Rect(0, 0, inv_cx, inv_cy));  // q3 -> q0
 
-    xMid = xMid + yMid;
+  src_q0.copyTo(dst_q0);
+  src_q1.copyTo(dst_q1);
+  src_q2.copyTo(dst_q2);
+  src_q3.copyTo(dst_q3);
 
-    Mat half0(spec, Rect(0, 0, xMid + is_odd, 1));
-    Mat half1(spec, Rect(xMid + is_odd, 0, xMid, 1));
-
-    Mat tmp;
-    half0.copyTo(tmp);
-    half1.copyTo(spec(Rect(0, 0, xMid, 1)));
-    tmp.copyTo(spec(Rect(xMid, 0, xMid + is_odd, 1)));
-
-  }
-  else {
-
-    const int isXodd = spec.cols % 2 == 1;
-    const int isYodd = spec.rows % 2 == 1;
-
-    // perform quadrant swaps...
-    Mat q0(spec, Rect(0, 0, xMid + isXodd, yMid + isYodd));
-    Mat q1(spec, Rect(xMid + isXodd, 0, xMid, yMid + isYodd));
-    Mat q2(spec, Rect(0, yMid + isYodd, xMid + isXodd, yMid));
-    Mat q3(spec, Rect(xMid + isXodd, yMid + isYodd, xMid, yMid));
-
-    if ( !(isXodd || isYodd) ) {
-      Mat tmp;
-      q0.copyTo(tmp);
-      q3.copyTo(q0);
-      tmp.copyTo(q3);
-
-      q1.copyTo(tmp);
-      q2.copyTo(q1);
-      tmp.copyTo(q2);
-    }
-    else {
-      Mat tmp0, tmp1, tmp2, tmp3;
-      q0.copyTo(tmp0);
-      q1.copyTo(tmp1);
-      q2.copyTo(tmp2);
-      q3.copyTo(tmp3);
-
-      tmp0.copyTo(spec(Rect(xMid, yMid, xMid + isXodd, yMid + isYodd)));
-      tmp3.copyTo(spec(Rect(0, 0, xMid, yMid)));
-
-      tmp1.copyTo(spec(Rect(0, yMid, xMid, yMid + isYodd)));
-      tmp2.copyTo(spec(Rect(xMid, 0, xMid + isXodd, yMid)));
-    }
-  }
+  _dst.move(dst);
 }
 
+
+void fftSwapQuadrants(cv::InputOutputArray _spec)
+{
+  const cv::Mat src = _spec.getMat();
+  if (src.empty()) {
+    return;
+  }
+
+  cv::Mat dst(src.size(), src.type());
+
+  const int cx = (src.cols + 1) >> 1;
+  const int cy = (src.rows + 1) >> 1;
+  const int inv_cx = src.cols - cx;
+  const int inv_cy = src.rows - cy;
+
+  cv::Mat src_q0(src, cv::Rect(0, 0, cx, cy));
+  cv::Mat src_q1(src, cv::Rect(cx, 0, inv_cx, cy));
+  cv::Mat src_q2(src, cv::Rect(0, cy, cx, inv_cy));
+  cv::Mat src_q3(src, cv::Rect(cx, cy, inv_cx, inv_cy));
+
+  cv::Mat dst_q0(dst, cv::Rect(inv_cx, inv_cy, cx, cy));  // q0 -> q3
+  cv::Mat dst_q1(dst, cv::Rect(0, inv_cy, inv_cx, cy));   // q1 -> q2
+  cv::Mat dst_q2(dst, cv::Rect(inv_cx, 0, cx, inv_cy)); // q2 -> q1
+  cv::Mat dst_q3(dst, cv::Rect(0, 0, inv_cx, inv_cy));  // q3 -> q0
+
+  src_q0.copyTo(dst_q0);
+  src_q1.copyTo(dst_q1);
+  src_q2.copyTo(dst_q2);
+  src_q3.copyTo(dst_q3);
+
+  _spec.move(dst);
+}
 
 /* Power = Re^2 + Im^2 */
 bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
@@ -987,36 +983,34 @@ void fftComputeAutoCorrelation(cv::InputArray src, cv::OutputArray dst, bool log
 }
 
 
-cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma, double gain,
-    bool swapQuadrants)
+// Space Isotropic Gaussian
+cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space, double gain, bool centerDC)
 {
-  // Isotropic Gaussian
-
   cv::Mat1f FILTER(fftSize);
 
-  const bool inverseFilter = sigma < 0;
+  const bool inverseFilter = sigma_space < 0;
   if( inverseFilter ) {
-    sigma = -sigma;
+    sigma_space = -sigma_space;
   }
-  else if( sigma == 0 ) {
-    sigma = 1;
+  else if( sigma_space == 0 ) {
+    sigma_space = 1;
   }
 
-  const double scaleX = CV_2PI / (fftSize.width * sigma * M_SQRT2);
-  const double scaleY = CV_2PI / (fftSize.height * sigma * M_SQRT2);
   const double cx = fftSize.width / 2.0;
   const double cy = fftSize.height / 2.0;
+  const double sx = sigma_space * CV_PI * M_SQRT2 / fftSize.width;
+  const double sy = sigma_space * CV_PI * M_SQRT2 / fftSize.height;
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
           float * __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * scaleY;
+          const double dy = (y - cy) * sy;
           const double dy2 = dy * dy;
 
           for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * scaleX;
+            const double dx = (x - cx) * sx;
             const double dx2 = dx * dx;
 
             const double gaussLPF = gain * std::exp(-(dx2 + dy2));
@@ -1025,7 +1019,7 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma, doub
         }
       });
 
-  if( swapQuadrants ) {
+  if( !centerDC ) {
     fftSwapQuadrants(FILTER);
   }
 
@@ -1073,32 +1067,31 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool
   return FILTER;
 }
 
-// Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
+// Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     double rc, int order, double gain,
     bool swapQuadrants)
 {
-  // Isotropic Butterworth
   // The frequency step is tied to the physical dimensions of the matrix
   // fx = dx / width, fy = dy / height
 
   cv::Mat1f FILTER(fftSize);
 
-  const double scaleX = CV_2PI / fftSize.width;
-  const double scaleY = CV_2PI / fftSize.height;
   const double cx = fftSize.width / 2.0;
   const double cy = fftSize.height / 2.0;
+  const double sx = CV_2PI / fftSize.width;
+  const double sy = CV_2PI / fftSize.height;
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
           float* __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * scaleY;
+          const double dy = (y - cy) * sy;
           const double dy2 = dy * dy;
 
           for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * scaleX;
+            const double dx = (x - cx) * sx;
             const double dx2 = dx * dx;
 
             const double r = std::sqrt(dx2 + dy2);
@@ -1109,6 +1102,102 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
       });
 
   if( swapQuadrants ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}
+
+// Space Isotropic Gaussian-Based unsharp mask filter
+cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
+    double sigma_space, double gain, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  const bool inverseFilter = sigma_space < 0;
+  if (inverseFilter) {
+    sigma_space = -sigma_space;
+  }
+  else if (sigma_space == 0) {
+    sigma_space = 1;
+  }
+
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+  const double sx = sigma_space * CV_PI * M_SQRT2 / fftSize.width;
+  const double sy = sigma_space * CV_PI * M_SQRT2 / fftSize.height;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+
+          const double dy = (y - cy) * sy;
+          const double dy2 = dy * dy;
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * sx;
+            const double dx2 = dx * dx;
+
+            const double gaussLPF = std::exp(-(dx2 + dy2));
+            const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
+
+            // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
+            dstp[x] = float(inverseFilter ? (1.0 + gain) - unsharpHPF : unsharpHPF);
+          }
+        }
+      });
+
+  if( !centerDC ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}
+
+// Space Isotropic Butterworth-Based unsharp mask filter
+cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
+    double rc_space, double order, double gain, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  if (rc_space <= 0.0) {
+    rc_space = 1.0;
+  }
+
+  const double rc = CV_2PI / rc_space;
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+  const double sx = CV_2PI / fftSize.width;
+  const double sy = CV_2PI / fftSize.height;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          float* __restrict dstp = FILTER[y];
+
+          const double dy = (y - cy) * sy;
+          const double dy2 = dy * dy;
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * sx;
+            const double dx2 = dx * dx;
+
+            const double r2 = dx2 + dy2;
+            double butterworthLPF = 1.0;
+
+            if (r2 > 0.0) {
+              const double r = std::sqrt(r2);
+              butterworthLPF = 1.0 / (1.0 + std::pow(r / rc, order));
+            }
+
+            // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
+            dstp[x] = float(1.0 + gain * (1.0 - butterworthLPF));
+          }
+        }
+      });
+
+  if (!centerDC) {
     fftSwapQuadrants(FILTER);
   }
 

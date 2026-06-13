@@ -40,8 +40,8 @@ void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
     cv::OutputArray dst,
     const cv::Rect & rc);
 
-
 void fftSwapQuadrants(cv::InputOutputArray spec);
+void fftSwapQuadrants(cv::InputArray src, cv::OutputArray dst);
 
 /* Power = Re^2 + Im^2 */
 bool fftSpectrumPower(cv::InputArray src,
@@ -91,9 +91,10 @@ void fftComputeAutoCorrelation(cv::InputArray src,
     cv::OutputArray dst,
     bool logscale = true);
 
+// Space Isotropic Gaussian
 cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
-    double sigma = 2.0, double gain = 1.0,
-    bool swapQuadrants = false);
+    double sigma_space = 2.0, double gain = 1.0,
+    bool centerDC = true);
 
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     double gain = 1.0, bool squareRoot = false,
@@ -103,5 +104,14 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     double cutoff, int order = 2, double gain = 1,
     bool swapQuadrants = false);
+
+// Space Isotropic Gaussian-Based unsharp mask filter
+cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
+    double sigma_space, double gain, bool centerDC = true);
+
+// Space Isotropic Butterworth-Based unsharp mask filter
+// Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
+cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
+    double rc, double order, double gain, bool centerDC = true);
 
 #endif /* __fft_h__ */

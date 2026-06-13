@@ -160,7 +160,7 @@ public:
 
   inline double compute(double x) const
   {
-    return x <= _lxmax ? 0 : std::min(_max_blur, (_lymax - _S0 - _S1 * x - _S2 * x * x));
+    return x <= _lxmax ? 0 : 1.5 * std::min(_max_blur, (_lymax - _S0 - _S1 * x - _S2 * x * x));
   }
 
 private:
@@ -394,7 +394,7 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
       const double y = yv(i);
       const double l = lop(i) + y; // l = lop(i) + y;
       const double la = blur_model.lapprox(x);
-      const double ll = blur_model.lapproxl(x);
+      const double ll = 2 * std::log(i > 0 ? i : 1) + y;
       const double dl = blur_model.compute(x);
       const double lc = l + dl;
       const double yc = y + dl;

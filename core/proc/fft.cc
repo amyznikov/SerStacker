@@ -14,12 +14,6 @@ static inline double hyp(double x, double y)
   return sqrt(x * x + y * y);
 }
 
-//static inline double square (double x)
-//{
-//  return x * x;
-//}
-
-
 cv::Size fftGetOptimalSize(const cv::Size & srcSize, cv::Size psfSize, cv::Rect * roirc, bool forceEvenSize)
 {
   const cv::Size imageSize = psfSize.empty() ? srcSize : srcSize + psfSize * 2;
@@ -485,193 +479,6 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, std::vector<float> & output_pr
   return true;
 }
 
-//bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
-//{
-//  const int cx = spectrum.cols / 2;
-//  const int cy = spectrum.rows / 2;
-//
-//  // Deformation (stretchimg) coefficients: convert spectral pixels into dimensionless radial units
-//  const double R = std::min(cx, cy);
-//  const double scaleX = spectrum.cols / (2.0 * R);
-//  const double scaleY = spectrum.rows / (2.0 * R);
-//
-//  // Maximum radius in physical pixels of the matrix
-//  const double maxRadiusPx = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
-//
-//  // Sampling step: how many bins are there per 1 pixel of the spectrum radius
-//  const int numBins = std::max(1, static_cast<int>(std::ceil(maxRadiusPx)));
-//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
-//
-//
-//  // Hitogram accumulators
-//  std::vector<double> radialSum(numBins, 0.0);
-//  std::vector<int> radialCount(numBins, 0);
-//
-//
-//  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
-//  for( int y = 0; y <= cy; ++y ) {
-//    const float * srcp = spectrum[y];
-//
-//    // normalize the vertical step
-//    const double dy = (y - cy) * scaleY;
-//    const double dy2 = dy * dy;
-//
-//    const int xmax = (y == cy) ? cx : spectrum.cols;
-//    for( int x = 0; x < xmax; ++x ) {
-//      // normalize the horizontal step
-//      const double dx = (x - cx) * scaleX;
-//      const double dx2 = dx * dx;
-//
-//      // True isotropic frequency radius consistent with space
-//      const double radiusPx = std::sqrt(dx2 + dy2);
-//      const int bin = static_cast<int>(radiusPx * invMaxRadiusPx);
-//
-//      if( bin >= 0 && bin < numBins ) {
-//        // Symmetry:
-//        // For regular rows (y < cy) — always 2 (top mirrors bottom).
-//        // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
-//        // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
-//        const int weight = (y < cy || x != cx) ? 2 : 1;
-//        radialSum[bin] += (srcp[x] * weight);
-//        radialCount[bin] += weight;
-//      }
-//    }
-//  }
-//
-//  output_profile.create(1, numBins);
-//  float * __restrict dstp = output_profile[0];
-//  for( int i = 0; i < numBins; ++i ) {
-//    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0);
-//  }
-//
-//  return true;
-//}
-
-//bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
-//{
-//  // Maximum radius in physical pixels of the matrix
-//  const int cx = spectrum.cols / 2;
-//  const int cy = spectrum.rows / 2;
-//  const double maxRadiusPx = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
-//
-//  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
-//  const double R = std::min(cx, cy);
-//  const double scaleX = spectrum.cols / (2.0 * R);
-//  const double scaleY = spectrum.rows / (2.0 * R);
-//
-//
-//  // Sampling step: how many bins are there per 1 pixel of the spectrum radius
-//  const int numBins = std::max(1, static_cast<int>(std::ceil(maxRadiusPx)));
-//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
-//
-//  // Histogram accumulators
-//  std::vector<double> radialSum(numBins, 0.0);
-//  std::vector<double> radialCount(numBins, 0.0);
-//
-//  // Scan only the upper half of the matrix up to the central row (y = cy) inclusive
-//  for( int y = 0; y <= cy; ++y ) {
-//    const float * srcp = spectrum[y];
-//
-//    // normalize the vertical step
-//    const double dy = (y - cy) * scaleY;
-//    const double dy2 = dy * dy;
-//
-//    const int xmax = (y == cy) ? cx : spectrum.cols;
-//    for( int x = 0; x < xmax; ++x ) {
-//      // normalize the horizontal step
-//      const double dx = (x - cx) * scaleX;
-//      const double dx2 = dx * dx;
-//
-//      // True isotropic frequency radius consistent with space
-//      const double radiusPx = std::sqrt(dx2 + dy2);
-//      const double binCont = radiusPx * invMaxRadiusPx;
-//
-//      const int binLeft = static_cast<int>(std::floor(binCont));
-//      const int binRight = binLeft + 1;
-//
-//      // Symmetry:
-//      // For regular rows (y < cy) — always 2 (top mirrors bottom).
-//      // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
-//      // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
-//      const int symmetryWeight = (y < cy || x != cx) ? 2 : 1;
-//      const double pixelValue = srcp[x] * symmetryWeight;
-//
-//      const double wRight = binCont - binLeft;
-//      const double wLeft = 1.0 - wRight;
-//      if( binLeft >= 0 && binLeft < numBins ) {
-//        radialSum[binLeft]   += pixelValue * wLeft;
-//        radialCount[binLeft] += symmetryWeight * wLeft;
-//      }
-//      if( binRight >= 0 && binRight < numBins ) {
-//        radialSum[binRight]   += pixelValue * wRight;
-//        radialCount[binRight] += symmetryWeight * wRight;
-//      }
-//    }
-//  }
-//
-//  output_profile.create(1, numBins);
-//  float * __restrict dstp = output_profile[0];
-//  for( int i = 0; i < numBins; ++i ) {
-//    dstp[i] = (float)(radialCount[i] > 1e-9 ? radialSum[i] / radialCount[i] : 0.0);
-//  }
-//
-//  return true;
-//}
-//void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
-//    const cv::Size & outputImageSize,
-//    bool cornersIncluded,
-//    cv::Mat1f & outputImage)
-//{
-//  const cv::Size & size = outputImageSize;
-//  outputImage.create(size);
-//
-//  const int cx = size.width / 2;
-//  const int cy = size.height / 2;
-//
-//  // Deformation (stretch) factors: convert spectral pixels into dimensionless radial units
-//  const double R = std::min(cx, cy);
-//  const double scaleX = size.width / (2.0 * R);
-//  const double scaleY = size.height / (2.0 * R);
-//
-//  // Maximum radius in physical pixels of the matrix (exactly the same as when collecting a profile)
-//  // Sampling step: how many bins are there per 1 pixel of radius
-//  const int numBins = radialProfile.cols;
-//  const double maxRadiusPx = cornersIncluded ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
-//  const double invMaxRadiusPx = (numBins - 1) / maxRadiusPx;
-//
-//  cv::parallel_for_(cv::Range(0, size.height),
-//      [=, &radialProfile, &outputImage](const cv::Range & range) {
-//
-//        const float * bins = radialProfile[0];
-//
-//        for (int y = range.start; y < range.end; ++y) {
-//          float * __restrict dstp = outputImage[y];
-//
-//          // normalize the vertical step
-//          const double dy = (y - cy) * scaleY;
-//          const double dy2 = dy * dy;
-//
-//          for (int x = 0; x < size.width; ++x) {
-//
-//            // normalize the horizontal step
-//            const double dx = (x - cx) * scaleX;
-//            const double dx2 = dx * dx;
-//
-//            // Radial radius in pixels (metrically perfect circle)
-//            const double radiusPx = std::sqrt(dx2 + dy2);
-//            const int bin = static_cast<int>(radiusPx * invMaxRadiusPx);
-//            if (bin >= 0 && bin < numBins) {
-//              dstp[x] = bins[bin];
-//            }
-//            else {
-//              // If cornersIncluded = false, all pixels from the corner zones of the matrix will fall outside numBins.
-//              dstp[x] = 0; /*  can be also radialProfile.back(); */
-//            }
-//          }
-//        }
-//    });
-//}
-
 bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bool includeCorners)
 {
   // Maximum radius in physical pixels of the matrix
@@ -696,7 +503,7 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bo
     const double dy = (y - cy) * scaleY;
     const double dy2 = dy * dy;
 
-    const int xmax = (y == cy) ? cx : spectrum.cols;
+    const int xmax = (y == cy) ? (cx + 1) : spectrum.cols;
     for( int x = 0; x < xmax; ++x ) {
       // normalize the horizontal step
       const double dx = (x - cx) * scaleX;
@@ -704,27 +511,15 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bo
 
       // True isotropic frequency radius consistent with space
       const double r = std::sqrt(dx2 + dy2);
-      const double binCont = r;//  /  R;
-
-      const int binLeft = static_cast<int>(std::floor(binCont));
-      const int binRight = binLeft + 1;
-
-      // Symmetry:
-      // For regular rows (y < cy) — always 2 (top mirrors bottom).
-      // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
-      // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
-      const int symmetryWeight = (y < cy || x != cx) ? 2 : 1;
-      const double pixelValue = srcp[x] * symmetryWeight;
-
-      const double wRight = binCont - binLeft;
-      const double wLeft = 1.0 - wRight;
-      if( binLeft >= 0 && binLeft < numBins ) {
-        radialSum[binLeft]   += pixelValue * wLeft;
-        radialCount[binLeft] += symmetryWeight * wLeft;
-      }
-      if( binRight >= 0 && binRight < numBins ) {
-        radialSum[binRight]   += pixelValue * wRight;
-        radialCount[binRight] += symmetryWeight * wRight;
+      const int bin = (int)(r);
+      if( bin < numBins ) {
+        // Symmetry:
+        // For regular rows (y < cy) — always 2 (top mirrors bottom).
+        // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
+        // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
+        const int weight = (y < cy || x != cx) ? 2 : 1;
+        radialSum[bin] += srcp[x] * weight;
+        radialCount[bin] += weight;
       }
     }
   }

@@ -111,16 +111,196 @@ static bool fftMulSpectrum(const cv::Mat1f & filter, cv::Mat2f & complexSpectrum
   return true;
 }
 
-static const double blur_model(double x)
+//static const double blur_model(double x)
+//{
+//  return x * x * x;
+//}
+
+namespace {
+
+class c_blur_model
 {
-  return x * x * x;
+public:
+  inline void setup(double S0, double S1, double S2, double xlim)
+  {
+    _S0 = S0;
+    _S1 = S1;
+    _S2 = S2;
+    _lxmax = -0.5 * S1 / S2;
+    _lymax = S0 - 0.25 * S1 * S1 / S2;
+    _max_blur = _lymax - lapprox(xlim);
+  }
+
+  inline double lxmax() const
+  {
+    return _lxmax;
+  }
+
+  inline double lymax() const
+  {
+    return _lymax;
+  }
+
+  inline double lapprox(double x) const
+  {
+    return _S0 + _S1 * x + _S2 * x * x;
+  }
+
+  inline double lapproxl(double x) const
+  {
+    return _S0 + _S1 * x;
+  };
+
+//  inline double slim(double l)
+//  {
+//    //  = [xmax = max_blur_value, A = 1/(max_blur_value * std::sqrt(std::sqrt(5)))]
+//    return v >= _lmax ? _lmax : 1.25 * l * (1 - std::pow(l * A, 4));
+//  };
+//
+
+  inline double compute(double x) const
+  {
+    return x <= _lxmax ? 0 : std::min(_max_blur, (_lymax - _S0 - _S1 * x - _S2 * x * x));
+  }
+
+private:
+  double _lxmax = 0;
+  double _lymax = 0;
+  double _S0 = 0;
+  double _S1 = 0;
+  double _S2 = 0;
+  double _max_blur = 0;
+};
+
 }
+
+//static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
+//    double & output_profile_x0,
+//    double & output_profile_y0,
+//    c_blur_model & blur_model,
+//    bool writeFile = false)
+//{
+//  c_stdio_file fp;
+//
+//  const int n_bins = SRC_profile.cols;
+//  const float * src = SRC_profile[0];
+//
+//  const double x0 = std::log(0.5 / n_bins);
+//  const double y0 = std::log(src[0]);
+//  const double L0 = 2 * std::log(CV_PI / n_bins);
+//
+//  static const auto wlap = [](int i) -> double {
+//    return 1;//./(i + 1);
+//  };
+//
+//  static const auto w_blur = [](int i) -> double {
+//    return 1;
+//  };
+//
+//  const auto xv = [&](int i) -> double {
+//    return std::log(0.5 * (i + 1) / n_bins) - x0;
+//  };
+//  const auto yv = [&](int i) -> double {
+//    return std::log(src[i]) - y0;
+//  };
+//  const auto lop = [&](int i) -> double {
+//    return L0 + 2 * std::log(i > 0 ? i : 1);
+//  };
+//
+//  int ilmax = 0;
+//  double maxta = 0;
+//  for( int i = 1; i < n_bins; ++i ) {
+//    if( src[i] > 0 ) {
+//      const double x = xv(i);
+//      if ( x > 3 ) {
+//        const double y = yv(i);
+//        const double l = lop(i) + y;
+//        if ( l > y + 0.01 ) {
+//          break;
+//        }
+//
+//        const double ta = - y / x;
+//        if ( ta > maxta ) {
+//          maxta = ta;
+//          ilmax = i;
+//        }
+//      }
+//    }
+//  }
+//
+//  /*
+//   * Approximate LAP
+//   * lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
+//   * lxmax = -0.5 * S1_lap / S2_lap;
+//   * lymax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap;
+//   */
+//
+//  double S0_lap = 0;
+//  double S1_lap = 0;
+//  double S2_lap = 0;
+//
+//  c_weighted_linear_regression3 reg_lap;
+//  for( int i = 2; i < ilmax; ++i ) {
+//    if( src[i] > 0 ) {
+//      const double x = xv(i);
+//      const double y = yv(i);
+//      const double l = lop(i) + y;
+//      reg_lap.update(1, x, x * x, l, wlap(i));
+//    }
+//  }
+//
+//  reg_lap.compute(S0_lap, S1_lap, S2_lap);
+//  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(ilmax));
+//
+//  /*
+//   * RESTORE Y from L
+//   */
+//
+//  output_profile_x0 = x0;
+//  output_profile_y0 = y0;
+//
+//  if ( writeFile ) {
+//    if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
+//      CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
+//      return false;
+//    }
+//    fprintf(fp, "I\tX\tY\tL\tLA\tDL\tLC\tY_RESTORED\n");
+//  }
+//
+//  for( int i = 0; i < n_bins; ++i ) {
+//    //if( src[i] > 0 )
+//    {
+//      const double x = xv(i);
+//      const double y = yv(i);
+//      const double l = lop(i) + y; // l = lop(i) + y;
+//      const double la = blur_model.lapprox(x);
+//      const double dl = blur_model.compute(x);
+//      const double lc = l + dl;
+//      const double yc = y + dl;
+//
+//      if( fp.is_open() ) {
+//        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
+//            i, x, y, l, la, dl, lc, yc);
+//      }
+//    }
+//  }
+//
+//  CF_DEBUG("Saved file: '%s'\n"
+//      "x0=%g y0=%g imaxl = %d (x = %g) \n"
+//      "S0 = %g S1 = %g S2 = %g\n"
+//      "lap_xmax = %g lap_ymax=%g",
+//      fp.cfilename(),
+//      x0, y0, ilmax, xv(ilmax),
+//      S0_lap, S1_lap, S2_lap,
+//      blur_model.lxmax(), blur_model.lymax());
+//
+//  return true;
+//}
 
 static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     double & output_profile_x0,
     double & output_profile_y0,
-    double & output_S_blur,
-    double & output_max_blur_value,
+    c_blur_model & blur_model,
     bool writeFile = false)
 {
   c_stdio_file fp;
@@ -132,7 +312,7 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
   const double y0 = std::log(src[0]);
   const double L0 = 2 * std::log(CV_PI / n_bins);
 
-  static const auto w_nature = [](int i) -> double {
+  static const auto wlap = [](int i) -> double {
     return 1;//./(i + 1);
   };
 
@@ -140,130 +320,254 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     return 1;
   };
 
-  const auto xpos = [x0, n_bins](int i) -> double {
+  const auto xv = [&](int i) -> double {
     return std::log(0.5 * (i + 1) / n_bins) - x0;
   };
+  const auto yv = [&](int i) -> double {
+    return std::log(src[i]) - y0;
+  };
+  const auto lop = [&](int i) -> double {
+    return L0 + 2 * std::log(i > 0 ? i : 1);
+  };
 
-  //const int T_nature_pixels = 64;
-  int imin_nature = 1;
-  int imax_nature = 1; // 2 * n_bins / T_nature_pixels;
-  int imax_blur = 1;
-  double lmin = DBL_MAX;
-  double smin = DBL_MAX;
+  /*
+   * Approximate LAP
+   * lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
+   * lxmax = -0.5 * S1_lap / S2_lap;
+   * lymax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap;
+   */
 
+  double S0_lap = 0;
+  double S1_lap = 0;
+  double S2_lap = 0;
+  int ilmax = 0;
+
+  c_weighted_linear_regression3 reg_lap;
   for( int i = 1; i < n_bins; ++i ) {
-    const double x = xpos(i);
-    const double y = std::log(src[i]) - y0;
-    const double lap = L0 + 2 * std::log(i) + y;
-    if ( y >= -1) {
-      imin_nature = i;
-    }
-    if ( y >= -4.5 ) {
-      imax_nature = i;
-    }
-    if( lap < y + 0.25 && lap < lmin ) {
-      smin = y;
-      lmin = lap;
-      imax_blur = i;
+    if( src[i] > 0 ) {
+
+      const double x = xv(i);
+      const double y = yv(i);
+      const double l = lop(i) + y;
+      if ( l > y + 0.01 ) {
+        break;
+      }
+
+      reg_lap.update(1, x, x * x, l, wlap(i));
+
+      if ( x > 3 ) {
+
+        double S0_temp = 0, S1_temp = 0, S2_temp = 0;
+        reg_lap.compute(S0_temp, S1_temp, S2_temp);
+
+        if ( S2_temp < S2_lap ) {
+          S0_lap = S0_temp;
+          S1_lap = S1_temp;
+          S2_lap = S2_temp;
+          ilmax = i;
+        }
+      }
     }
   }
 
-  double S0_nature = 0;
-  double S1_nature = 0;
-  double S_blur = 0;
-  double max_blur_value = 0;
-
+  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(ilmax));
 
   /*
-   * y(x) = S0_nature + S1_nature * x
+   * RESTORE Y from L
    */
-  c_weighted_line_estimate<double> reg_nature;
-  reg_nature.update(xpos(0), std::log(src[0]) - y0);
-  for( int i = imin_nature; i < imax_nature; ++i ) {
-    if( src[i] > 0 ) {
-      const double x = xpos(i);
-      const double y = std::log(src[i]) - y0;
-      reg_nature.update(x, y, w_nature(i));
-    }
-  }
-  reg_nature.compute(S0_nature, S1_nature);
-
-  /*
-   * y(x) = y_nature + S_blur * blur_model(x)
-   * y(x) - y_nature = S_blur * blur_model(x)
-   */
-
-  c_weighted_slope_estimate<double> reg_blur;
-  for( int i = 0; i < imax_blur; ++i ) {
-    if( src[i] > 0 ) {
-      const double x = xpos(i);
-      const double y = std::log(src[i]) - y0;
-      const double y_nature = S0_nature + S1_nature * x;
-      reg_blur.update(blur_model(x), y - y_nature, w_blur(i));
-    }
-  }
-  reg_blur.compute(S_blur);
-  max_blur_value = blur_model(std::log(0.5 * (imax_blur + 1) / n_bins) - x0);
 
   output_profile_x0 = x0;
   output_profile_y0 = y0;
-  output_S_blur = S_blur;
-  output_max_blur_value = max_blur_value;
 
   if ( writeFile ) {
     if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
       CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
       return false;
     }
-    fprintf(fp, "I\tX\tSRC\tLAP\tY_NATURE\tY_TOTAL\tBLUR_CORRECTION\tSRC_CORRECTED\tW1\tW2\n");
+    fprintf(fp, "I\tX\tS\tY\tL\tLA\tLL\tDL\tLC\tY_RESTORED\n");
   }
 
-
-
-  double MAD = 0;
-  int NMAD = 0;
   for( int i = 0; i < n_bins; ++i ) {
-    if( src[i] > 0 ) {
-      const double x = xpos(i);
-      const double y = std::log(src[i]) - y0;
-      const double lap = L0 +  2 * std::log(i > 0 ? i : 1) + y;
-      const double w1 = w_nature(i);
-      const double w2 = w_blur(i);
-
-      // Predict: y = S0_nature + S1_nature * x + S_blur * blur_model(x)
-      const double y_nature = S0_nature + S1_nature * x;
-      const double y_blur = S_blur * std::min(blur_model(x), max_blur_value);
-      const double y_total = y_nature + y_blur;
-      const double y_corrected = y - y_blur;
-      const double dyn = y - y_nature;
-      const double dyt = y - y_total;
-      if ( i < imax_blur ) {
-        MAD += std::abs(dyt);
-        NMAD += 1;
-      }
+    //if( src[i] > 0 )
+    {
+      const double x = xv(i);
+      const double y = yv(i);
+      const double l = lop(i) + y; // l = lop(i) + y;
+      const double la = blur_model.lapprox(x);
+      const double ll = blur_model.lapproxl(x);
+      const double dl = blur_model.compute(x);
+      const double lc = l + dl;
+      const double yc = y + dl;
 
       if( fp.is_open() ) {
         fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-            i, x, y, lap, y_nature, y_total, y_blur, y_corrected, w1, w2);
+            i, x, src[i], y, l, la, ll, dl, lc, yc);
       }
     }
   }
 
-
   CF_DEBUG("Saved file: '%s'\n"
-      "imin_nature = %d (x=%g) imax_nature = %d (x=%g) imax_blur = %d (%g)\n"
-      "lmin = %g smin = %g S0_nature=%g S1_nature=%g S_blur=%g max_blur_value=%g",
+      "x0=%g y0=%g imaxl = %d (x = %g) \n"
+      "S0 = %g S1 = %g S2 = %g\n"
+      "lap_xmax = %g lap_ymax=%g",
       fp.cfilename(),
-      imin_nature, xpos(imin_nature), imax_nature, xpos(imax_nature), imax_blur, xpos(imax_blur),
-      lmin, smin,
-      S0_nature, S1_nature, S_blur, max_blur_value);
+      x0, y0, ilmax, xv(ilmax),
+      S0_lap, S1_lap, S2_lap,
+      blur_model.lxmax(), blur_model.lymax());
 
   return true;
 }
 
+//static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
+//    double & output_profile_x0,
+//    double & output_profile_y0,
+//    double & output_S_blur,
+//    double & output_max_blur_value,
+//    bool writeFile = false)
+//{
+//  c_stdio_file fp;
+//
+//  const int n_bins = SRC_profile.cols;
+//  const float * src = SRC_profile[0];
+//
+//  const double x0 = std::log(0.5 / n_bins);
+//  const double y0 = std::log(src[0]);
+//  const double L0 = 2 * std::log(CV_PI / n_bins);
+//
+//  static const auto w_nature = [](int i) -> double {
+//    return 1;//./(i + 1);
+//  };
+//
+//  static const auto w_blur = [](int i) -> double {
+//    return 1;
+//  };
+//
+//  const auto xpos = [x0, n_bins](int i) -> double {
+//    return std::log(0.5 * (i + 1) / n_bins) - x0;
+//  };
+//
+//  //const int T_nature_pixels = 64;
+//  int imin_nature = 1;
+//  int imax_nature = 1; // 2 * n_bins / T_nature_pixels;
+//  int imax_blur = 1;
+//  double lmin = DBL_MAX;
+//  double smin = DBL_MAX;
+//
+//  for( int i = 1; i < n_bins; ++i ) {
+//    const double x = xpos(i);
+//    const double y = std::log(src[i]) - y0;
+//    const double lap = L0 + 2 * std::log(i) + y;
+//    // y = lap - L0 - 2 * log(i)
+//
+//    if ( y >= -1) {
+//      imin_nature = i;
+//    }
+//    if ( y >= -4.5 ) {
+//      imax_nature = i;
+//    }
+//    if( lap < y + 0.25 && lap < lmin ) {
+//      smin = y;
+//      lmin = lap;
+//      imax_blur = i;
+//    }
+//  }
+//
+//  double S0_nature = 0;
+//  double S1_nature = 0;
+//  double S_blur = 0;
+//  double max_blur_value = 0;
+//
+//
+//  /*
+//   * y(x) = S0_nature + S1_nature * x
+//   */
+//  c_weighted_line_estimate<double> reg_nature;
+//  reg_nature.update(xpos(0), std::log(src[0]) - y0);
+//  for( int i = imin_nature; i < imax_nature; ++i ) {
+//    if( src[i] > 0 ) {
+//      const double x = xpos(i);
+//      const double y = std::log(src[i]) - y0;
+//      reg_nature.update(x, y, w_nature(i));
+//    }
+//  }
+//  reg_nature.compute(S0_nature, S1_nature);
+//
+//  /*
+//   * y(x) = y_nature + S_blur * blur_model(x)
+//   * y(x) - y_nature = S_blur * blur_model(x)
+//   */
+//
+//  c_weighted_slope_estimate<double> reg_blur;
+//  for( int i = 0; i < imax_blur; ++i ) {
+//    if( src[i] > 0 ) {
+//      const double x = xpos(i);
+//      const double y = std::log(src[i]) - y0;
+//      const double y_nature = S0_nature + S1_nature * x;
+//      reg_blur.update(blur_model(x), y - y_nature, w_blur(i));
+//    }
+//  }
+//  reg_blur.compute(S_blur);
+//  max_blur_value = blur_model(std::log(0.5 * (imax_blur + 1) / n_bins) - x0);
+//
+//  output_profile_x0 = x0;
+//  output_profile_y0 = y0;
+//  output_S_blur = S_blur;
+//  output_max_blur_value = max_blur_value;
+//
+//  if ( writeFile ) {
+//    if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
+//      CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
+//      return false;
+//    }
+//    fprintf(fp, "I\tX\tSRC\tLAP\tY_NATURE\tY_TOTAL\tBLUR_CORRECTION\tSRC_CORRECTED\tW1\tW2\n");
+//  }
+//
+//
+//
+//  double MAD = 0;
+//  int NMAD = 0;
+//  for( int i = 0; i < n_bins; ++i ) {
+//    if( src[i] > 0 ) {
+//      const double x = xpos(i);
+//      const double y = std::log(src[i]) - y0;
+//      const double lap = L0 +  2 * std::log(i > 0 ? i : 1) + y;
+//      const double w1 = w_nature(i);
+//      const double w2 = w_blur(i);
+//
+//      // Predict: y = S0_nature + S1_nature * x + S_blur * blur_model(x)
+//      const double y_nature = S0_nature + S1_nature * x;
+//      const double y_blur = S_blur * std::min(blur_model(x), max_blur_value);
+//      const double y_total = y_nature + y_blur;
+//      const double y_corrected = y - y_blur;
+//      const double dyn = y - y_nature;
+//      const double dyt = y - y_total;
+//      if ( i < imax_blur ) {
+//        MAD += std::abs(dyt);
+//        NMAD += 1;
+//      }
+//
+//      if( fp.is_open() ) {
+//        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
+//            i, x, y, lap, y_nature, y_total, y_blur, y_corrected, w1, w2);
+//      }
+//    }
+//  }
+//
+//
+//  CF_DEBUG("Saved file: '%s'\n"
+//      "imin_nature = %d (x=%g) imax_nature = %d (x=%g) imax_blur = %d (%g)\n"
+//      "lmin = %g smin = %g S0_nature=%g S1_nature=%g S_blur=%g max_blur_value=%g",
+//      fp.cfilename(),
+//      imin_nature, xpos(imin_nature), imax_nature, xpos(imax_nature), imax_blur, xpos(imax_blur),
+//      lmin, smin,
+//      S0_nature, S1_nature, S_blur, max_blur_value);
+//
+//  return true;
+//}
+
 static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
     double x0,
-    double S_blur,
+    const c_blur_model & blur_model,
     double max_blur_value,
     double k_target,
     double maxGain,
@@ -283,10 +587,10 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
   const double scaleX = R / cx;
   const double scaleY = R / cy;
 
-  const double correction = (k_target - S_blur);
+  //const double correction = (k_target - S_blur);
 
-  CF_DEBUG("S_blur=%g max_blur_value = %g k_target=%g correction=%g",
-      S_blur, max_blur_value, k_target, correction);
+//  CF_DEBUG("S_blur=%g max_blur_value = %g k_target=%g correction=%g",
+//      S_blur, max_blur_value, k_target, correction);
 
   const auto slim = [xmax = max_blur_value, A = 1/(max_blur_value * std::sqrt(std::sqrt(5)))](double x) -> double {
     return x >= xmax ? xmax : 1.25 * x * (1 - std::pow(x * A, 4));
@@ -309,7 +613,9 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
 
             const double r = sqrt(dx2 + dy2);
             const double xx = std::log(0.5 * (r + 1) / R) - x0;
-            const double gain = std::exp(correction * slim(blur_model(xx)));
+            const double correction = blur_model.compute(xx);
+            const double gain = std::exp(correction);
+            //const double gain = std::exp(correction * slim(blur_model(xx)));
             dstp[x] = float(gain);
           }
         }
@@ -394,11 +700,12 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   //double noise_level = 0;
   double profile_x0 = 0;
   double profile_y0 = 0;
-  double S0_Nature = 0;
-  double S1_Nature = 0;
-  double S2_Nature = 0;
-  double S_blur = 0;
+//  double S0_Nature = 0;
+//  double S1_Nature = 0;
+//  double S2_Nature = 0;
+//  double S_blur = 0;
   double imax_blur = 0;
+  c_blur_model blur_model;
 
   if ( src.type() == CV_32FC1 ) {
     if ( src.size() == fftSize ) {
@@ -469,8 +776,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   analyzeRadialProfile(SRC_profile,
       profile_x0,
       profile_y0,
-      S_blur,
-      imax_blur,
+      blur_model,
       _write_file);
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
@@ -566,7 +872,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   const cv::Mat1f FILTER =
       fftCreateRadialCorrectionFilter(fftSize,
           profile_x0,
-          S_blur,
+          blur_model,
           imax_blur,
           _k_target,
           _maxGain,

@@ -121,14 +121,15 @@ namespace {
 class c_blur_model
 {
 public:
-  inline void setup(double S0, double S1, double S2, double xlim)
+  inline void setup(double S0, double S1, double S2, double lxlim)
   {
     _S0 = S0;
     _S1 = S1;
     _S2 = S2;
     _lxmax = -0.5 * S1 / S2;
-    _lymax = S0 - 0.25 * S1 * S1 / S2;
-    _max_blur = _lymax - lapprox(xlim);
+    _llmax = S0 - 0.25 * S1 * S1 / S2;
+    _max_blur = _llmax - lapprox(lxlim);
+    A = 1. / (_max_blur * std::sqrt(std::sqrt(5)));
   }
 
   inline double lxmax() const
@@ -136,9 +137,9 @@ public:
     return _lxmax;
   }
 
-  inline double lymax() const
+  inline double llmax() const
   {
-    return _lymax;
+    return _llmax;
   }
 
   inline double lapprox(double x) const
@@ -149,153 +150,30 @@ public:
   inline double lapproxl(double x) const
   {
     return _S0 + _S1 * x;
-  };
+  }
 
-//  inline double slim(double l)
-//  {
-//    //  = [xmax = max_blur_value, A = 1/(max_blur_value * std::sqrt(std::sqrt(5)))]
-//    return v >= _lmax ? _lmax : 1.25 * l * (1 - std::pow(l * A, 4));
-//  };
-//
+  inline double slim(double blur) const
+  {
+    return blur >= _max_blur? _max_blur : 1.25 * blur * (1 - std::pow(blur * A, 4));
+  }
 
   inline double compute(double x) const
   {
-    return x <= _lxmax ? 0 : 1.5 * std::min(_max_blur, (_lymax - _S0 - _S1 * x - _S2 * x * x));
+    return x <= _lxmax ? 0 : slim(_llmax - _S0 - _S1 * x - _S2 * x * x);
   }
+
 
 private:
   double _lxmax = 0;
-  double _lymax = 0;
+  double _llmax = 0;
   double _S0 = 0;
   double _S1 = 0;
   double _S2 = 0;
   double _max_blur = 0;
+  double A = 0;
 };
 
 }
-
-//static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
-//    double & output_profile_x0,
-//    double & output_profile_y0,
-//    c_blur_model & blur_model,
-//    bool writeFile = false)
-//{
-//  c_stdio_file fp;
-//
-//  const int n_bins = SRC_profile.cols;
-//  const float * src = SRC_profile[0];
-//
-//  const double x0 = std::log(0.5 / n_bins);
-//  const double y0 = std::log(src[0]);
-//  const double L0 = 2 * std::log(CV_PI / n_bins);
-//
-//  static const auto wlap = [](int i) -> double {
-//    return 1;//./(i + 1);
-//  };
-//
-//  static const auto w_blur = [](int i) -> double {
-//    return 1;
-//  };
-//
-//  const auto xv = [&](int i) -> double {
-//    return std::log(0.5 * (i + 1) / n_bins) - x0;
-//  };
-//  const auto yv = [&](int i) -> double {
-//    return std::log(src[i]) - y0;
-//  };
-//  const auto lop = [&](int i) -> double {
-//    return L0 + 2 * std::log(i > 0 ? i : 1);
-//  };
-//
-//  int ilmax = 0;
-//  double maxta = 0;
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if( src[i] > 0 ) {
-//      const double x = xv(i);
-//      if ( x > 3 ) {
-//        const double y = yv(i);
-//        const double l = lop(i) + y;
-//        if ( l > y + 0.01 ) {
-//          break;
-//        }
-//
-//        const double ta = - y / x;
-//        if ( ta > maxta ) {
-//          maxta = ta;
-//          ilmax = i;
-//        }
-//      }
-//    }
-//  }
-//
-//  /*
-//   * Approximate LAP
-//   * lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
-//   * lxmax = -0.5 * S1_lap / S2_lap;
-//   * lymax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap;
-//   */
-//
-//  double S0_lap = 0;
-//  double S1_lap = 0;
-//  double S2_lap = 0;
-//
-//  c_weighted_linear_regression3 reg_lap;
-//  for( int i = 2; i < ilmax; ++i ) {
-//    if( src[i] > 0 ) {
-//      const double x = xv(i);
-//      const double y = yv(i);
-//      const double l = lop(i) + y;
-//      reg_lap.update(1, x, x * x, l, wlap(i));
-//    }
-//  }
-//
-//  reg_lap.compute(S0_lap, S1_lap, S2_lap);
-//  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(ilmax));
-//
-//  /*
-//   * RESTORE Y from L
-//   */
-//
-//  output_profile_x0 = x0;
-//  output_profile_y0 = y0;
-//
-//  if ( writeFile ) {
-//    if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
-//      CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
-//      return false;
-//    }
-//    fprintf(fp, "I\tX\tY\tL\tLA\tDL\tLC\tY_RESTORED\n");
-//  }
-//
-//  for( int i = 0; i < n_bins; ++i ) {
-//    //if( src[i] > 0 )
-//    {
-//      const double x = xv(i);
-//      const double y = yv(i);
-//      const double l = lop(i) + y; // l = lop(i) + y;
-//      const double la = blur_model.lapprox(x);
-//      const double dl = blur_model.compute(x);
-//      const double lc = l + dl;
-//      const double yc = y + dl;
-//
-//      if( fp.is_open() ) {
-//        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-//            i, x, y, l, la, dl, lc, yc);
-//      }
-//    }
-//  }
-//
-//  CF_DEBUG("Saved file: '%s'\n"
-//      "x0=%g y0=%g imaxl = %d (x = %g) \n"
-//      "S0 = %g S1 = %g S2 = %g\n"
-//      "lap_xmax = %g lap_ymax=%g",
-//      fp.cfilename(),
-//      x0, y0, ilmax, xv(ilmax),
-//      S0_lap, S1_lap, S2_lap,
-//      blur_model.lxmax(), blur_model.lymax());
-//
-//  return true;
-//}
 
 static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     double & output_profile_x0,
@@ -330,90 +208,159 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     return L0 + 2 * std::log(i > 0 ? i : 1);
   };
 
+  // Kneedle distances to Y[i] curve
+
+  const int KDXbeg = 2;
+  const int KDXend = n_bins - 1;
+  const double KDYbeg = yv(KDXbeg);
+  const double KDYend = yv(KDXend);
+  double KDmaxValue = 0;
+  int KDmaxIndex = 0;
+
+  cv::Mat1f kneedle_distances(1, n_bins, 0.f);
+
+  for( int i = KDXbeg; i < n_bins; ++i ) {
+    const double y = yv(i);
+    const double Kx = double(i - KDXbeg) / (KDXend - KDXbeg);
+    const double Ky = (y - KDYbeg) / (KDYend - KDYbeg);
+    const double KD = Ky - Kx;
+    if( KD > KDmaxValue ) {
+      KDmaxValue = KD;
+      KDmaxIndex = i;
+    }
+    kneedle_distances[0][i] = float(KD);
+  }
+
+  const double KDmaxThreshold = 0.98 * KDmaxValue;
+  double KDmaxAverageValue = 0;
+  double KDmaxAverageIndex = 0;
+  double KDmaxAverageWeight = 0;
+  for( int i = KDXbeg; i < n_bins; ++i ) {
+    const double KD = kneedle_distances[0][i];
+    if ( KD >= KDmaxThreshold ) {
+      const double w = KD;
+      KDmaxAverageValue += w * KD;
+      KDmaxAverageIndex += i * w;
+      KDmaxAverageWeight += w;
+    }
+  }
+
+  KDmaxAverageValue /= KDmaxAverageWeight;
+  KDmaxAverageIndex /= KDmaxAverageWeight;
+  const int noiseStartIndex = cvRound(KDmaxAverageIndex);
+
+
   /*
    * Approximate LAP
-   * lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
-   * lxmax = -0.5 * S1_lap / S2_lap;
-   * lymax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap;
+   * L(x) = S0_lap + S1_lap * x + S2_lap * x  * x
+   * lxmax = -0.5 * S1_lap / S2_lap; (x coordinate of the extremum)
+   * llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; (L value at extremum)
    */
 
   double S0_lap = 0;
   double S1_lap = 0;
   double S2_lap = 0;
-  int ilmax = 0;
+  int LYIntesectIndex = 2;
+
+  double LMaxValue = -DBL_MAX;
+  int LMaxIndex = 2;
+
+  for( int i = 1; i < n_bins; ++i ) {
+    if( src[i] > 0 ) {
+      const double y = yv(i);
+      const double l = lop(i) + y;
+      if ( l > y + 0.01 ) {
+        // don't allow to intersect Y line anyway independently on noiseStartIndex
+        LYIntesectIndex = i;
+        break;
+      }
+      if ( l >= LMaxValue ) {
+        LMaxValue = l;
+        LMaxIndex = i;
+      }
+    }
+  }
 
   c_weighted_linear_regression3 reg_lap;
-  for( int i = 1; i < n_bins; ++i ) {
+  for( int i = 1; i < std::min(noiseStartIndex, LYIntesectIndex); ++i ) {
     if( src[i] > 0 ) {
 
       const double x = xv(i);
       const double y = yv(i);
       const double l = lop(i) + y;
-      if ( l > y + 0.01 ) {
-        break;
-      }
 
       reg_lap.update(1, x, x * x, l, wlap(i));
 
-      if ( x > 3 ) {
-
+      if ( i > LMaxIndex && x > 3 ) {
         double S0_temp = 0, S1_temp = 0, S2_temp = 0;
         reg_lap.compute(S0_temp, S1_temp, S2_temp);
-
-        if ( S2_temp < S2_lap ) {
+        if( S2_temp < S2_lap ) {
           S0_lap = S0_temp;
           S1_lap = S1_temp;
           S2_lap = S2_temp;
-          ilmax = i;
         }
       }
     }
   }
+  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(noiseStartIndex));
 
-  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(ilmax));
-
-  /*
-   * RESTORE Y from L
-   */
-
-  output_profile_x0 = x0;
-  output_profile_y0 = y0;
 
   if ( writeFile ) {
     if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
       CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
       return false;
     }
-    fprintf(fp, "I\tX\tS\tY\tL\tLA\tLL\tDL\tLC\tY_RESTORED\n");
+    fprintf(fp, "I\tX\tS\tY\tL\tLA\tKD\tYP\tLP\n");
   }
 
   for( int i = 0; i < n_bins; ++i ) {
     //if( src[i] > 0 )
     {
-      const double x = xv(i);
-      const double y = yv(i);
-      const double l = lop(i) + y; // l = lop(i) + y;
-      const double la = blur_model.lapprox(x);
-      const double ll = 2 * std::log(i > 0 ? i : 1) + y;
-      const double dl = blur_model.compute(x);
-      const double lc = l + dl;
-      const double yc = y + dl;
+      const double x = xv(i); // log of frequency
+      const double y = yv(i); // log of spectrum intensity
+      const double l = lop(i) + y; // L for given y at bin index i
+      const double la = blur_model.lapprox(x); // Predict L for given x using model from above
+      const double yp = y + blur_model.compute(x);
+      const double lp = l + blur_model.compute(x);
+      const double KD = kneedle_distances[0][i];
 
       if( fp.is_open() ) {
-        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-            i, x, src[i], y, l, la, ll, dl, lc, yc);
+        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
+            i, x, src[i], y, l, la, KD, yp, lp);
       }
     }
   }
 
+  output_profile_x0 = x0;
+  output_profile_y0 = y0;
+
+  const double blur_zone = double(noiseStartIndex - LMaxIndex);
+  const double denominator = CV_PI * std::sqrt(double(LMaxIndex) * blur_zone);
+  const double auto_sigma = 0.5 * (double(n_bins) / denominator);
+  const double l_noise = blur_model.lapprox(xv(noiseStartIndex));
+  const double laplacian_drop = blur_model.llmax() - l_noise;
+  const double auto_gain = std::exp(1.5 * laplacian_drop);
+
   CF_DEBUG("Saved file: '%s'\n"
-      "x0=%g y0=%g imaxl = %d (x = %g) \n"
-      "S0 = %g S1 = %g S2 = %g\n"
-      "lap_xmax = %g lap_ymax=%g",
+      "x0 = %g y0 = %g \n"
+      "noiseStartIndex = %d (x = %g Y = %g)\n"
+      "LYIntesectIndex = %d (x = %g Y = %g)\n"
+      "LMaxIndex = %d (x = %g) LMaxValue = %g\n"
+      "S0_lap = %g S1_lap = %g S2_lap = %g\n"
+      "lxmax = %g llmax = %g\n"
+      "blur_zone = %g denominator = %g\n"
+      "l_noise = %g laplacian_drop = %g\n"
+      "auto_sigma = %g auto_gain = %g\n",
       fp.cfilename(),
-      x0, y0, ilmax, xv(ilmax),
+      x0, y0,
+      noiseStartIndex, xv(noiseStartIndex), yv(noiseStartIndex),
+      LYIntesectIndex, xv(LYIntesectIndex), yv(LYIntesectIndex),
+      LMaxIndex, xv(LMaxIndex),  LMaxValue,
       S0_lap, S1_lap, S2_lap,
-      blur_model.lxmax(), blur_model.lymax());
+      blur_model.lxmax(), blur_model.llmax(),
+      blur_zone, denominator,
+      l_noise, laplacian_drop,
+      auto_sigma, auto_gain);
 
   return true;
 }
@@ -615,7 +562,6 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
             const double xx = std::log(0.5 * (r + 1) / R) - x0;
             const double correction = blur_model.compute(xx);
             const double gain = std::exp(correction);
-            //const double gain = std::exp(correction * slim(blur_model(xx)));
             dstp[x] = float(gain);
           }
         }
@@ -636,7 +582,7 @@ void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbi
 
   ctlbind(ctls, "bw_cutoff: ", CTL_CONTEXT(ctx, _bw_cutoff), "");
   ctlbind(ctls, "bw_order: ", CTL_CONTEXT(ctx, _bw_order), "");
-  ctlbind(ctls, "write_file ", CTL_CONTEXT(ctx, _write_file), "");
+  ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
 }
 
 bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save)
@@ -898,95 +844,6 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
     mask.release();
     return true;
   }
-
-
-
-//  approxRadialProfile(S_profile, N_profile,
-//      profile_x0, profile_y0,
-//      S0_Nature,
-//      S1_Nature,
-//      S_blur,
-//      _write_file);
-//
-//
-//
-//
-//  if ( _display == DISPLAY_NOISE_POWER ) { // no further computation requested
-//    mask.release();
-//    return fftMagnituteDisplay(NP, image);
-//  }
-//
-//  if ( _display == DISPLAY_NOISE ) { // no further computation requested
-//    cv::Mat panes[2] = {LAPL, LAPL};
-//    cv::Mat LAPLC;
-//    cv::merge(panes, 2, LAPLC);
-//    cv::multiply(LAPLC, NC, NC);
-//  fftSwapQuadrants(NC);
-//    cv::idft(NC, N, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-//    N(rc).copyTo(image);
-//    mask.release();
-//    return true;
-//  }
-//
-//
-//
-//
-//  if ( _display == DISPLAY_NOISE_PROFILE ) { // no further computation requested
-//    mask.release();
-//    return fftMagnituteDisplay(NOISE_PROFILE, image);
-//  }
-//
-//  if ( _display == DISPLAY_LAPL_PROFILE) { // no further computation requested
-//    mask.release();
-//    return fftMagnituteDisplay(LAPL_PROFILE, image);
-//  }
-//
-//  if ( _display == DISPLAY_NORMALIZED_NOISE_PROFILE ) { // no further computation requested
-//    cv::divide(NOISE_PROFILE, LAPL_PROFILE, NORMALIZED_NOISE_PROFILE);
-//    NORMALIZED_NOISE_PROFILE.setTo(0, LAPL_PROFILE < 1e-10);
-//    mask.release();
-//    return fftMagnituteDisplay(NORMALIZED_NOISE_PROFILE, image);
-//  }
-//
-//  if ( _display == DISPLAY_CLEAN_SP ) { // no further computation requested
-//    cv::Mat1f CLEAN_SP;
-//    cv::subtract(SRC_PROFILE, NOISE_PROFILE, CLEAN_SP);
-//    CLEAN_SP.setTo(0, CLEAN_SP < 0);
-//    mask.release();
-//    return fftMagnituteDisplay(CLEAN_SP, image);
-//  }
-
-
-//  const cv::Mat1f FILTER =
-//      fftCreateRadialCorrectionFilter(fftSize,
-//          profile_x0,
-//          profile_k,
-//          _k_target,
-//          _maxGain,
-//          _bw_order,
-//          _bw_cutoff);
-//
-//  if ( _display == DISPLAY_FILTER ) { // no further computation requested
-//    mask.release();
-//    return fftMagnituteDisplay(FILTER, image);
-//  }
-
-  // DISPLAY_RESTORED_IMAGE
-
-//  cv::Mat1f F_planes[2], F_restored;
-//  cv::split(SC, F_planes);
-//  cv::multiply(FILTER, F_planes[0], F_planes[0]);
-//  cv::multiply(FILTER, F_planes[1], F_planes[1]);
-//  cv::merge(F_planes, 2, SC);
-//  if ( _display == DISPLAY_RESTORED_PROFILE ) { // no further computation requested
-//    mask.release();
-//    return fftMagnituteDisplay(SC, image);
-//  }
-//
-//  fftSwapQuadrants(SC);
-//  cv::idft(SC, F_restored, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-//
-//  F_restored(rc).copyTo(image);
 
   return true;
 }

@@ -129,6 +129,7 @@ public:
     _S1_lap = S1_lap;
     _S2_lap = S2_lap;
     _max_correction = max_correction;
+    _applyBlurLimit = applyBlurLimit;
   }
 
   inline double xlt() const
@@ -172,30 +173,7 @@ public:
     }
     return std::min(_applyBlurLimit ? _max_correction : 1e12,
         lnature(x) - llap(x));
-
-//    if (x <= _lx_nature) {
-//      return 0.0;
-//    }
-//
-//    const double L_nature = lnature(x);
-//    const double L_blur =  lapprox(x);
-//    const double blur = L_nature - L_blur;
-//    const double max_blur =  x > _xly ? _max_blur : std::max(_ynoise, L_nature) - lapprox(_xnoise);
-//    return slim(blur, _applyBlurLimit ?  max_blur : 1e12 );
   }
-
-//  inline double compute_ulim(double x) const
-//  {
-//    if (x <= _lx_nature) {
-//      return 0.0;
-//    }
-//
-//    const double L_nature = lnature(x);
-//    const double L_blur =  lapprox(x);
-//    const double blur = L_nature - L_blur;
-//    const double max_blur =  x > _xly ? _max_blur : std::max(_ynoise, L_nature) - lapprox(_xnoise);
-//    return std::min(blur, _applyBlurLimit ?  max_blur : 1e12 );
-//  }
 
 private:
   double _S0_nature = 0, _S1_nature = 0;
@@ -316,7 +294,7 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
   for( int i = 1; i < LYIntesectIndex; ++i ) {
     if( src[i] > 0 ) {
       const double x = xv(i);
-      if ( x > lxmax + 1 ) { // FIXME: get rid of this hard coded value later
+      if ( x > lxmax + 0.5 ) { // FIXME: get rid of this hard coded value later
         break;
       }
       const double y = yv(i);

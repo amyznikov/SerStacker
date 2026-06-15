@@ -24,23 +24,23 @@ public:
     DISPLAY_SRC_MODULE,
     DISPLAY_SRC_PROFILE,
 
-    DISPLAY_GAUSS_MODULE,
-    DISPLAY_GAUSS_PROFILE,
-    DISPLAY_GAUSS_FILTERED_MODULE,
-    DISPLAY_GAUSS_FILTERED_PROFILE,
-    DISPLAY_GAUSS_FILTERED_IMAGE,
+//    DISPLAY_GAUSS_MODULE,
+//    DISPLAY_GAUSS_PROFILE,
+//    DISPLAY_GAUSS_FILTERED_MODULE,
+//    DISPLAY_GAUSS_FILTERED_PROFILE,
+//    DISPLAY_GAUSS_FILTERED_IMAGE,
 
-    DISPLAY_LAPL_MODULE,
-    DISPLAY_LAPL_PROFILE,
-    DISPLAY_LAPL_FILTERED_MODULE,
-    DISPLAY_LAPL_FILTERED_PROFILE,
-    DISPLAY_LAPL_FILTERED_IMAGE,
+//    DISPLAY_LAPL_MODULE,
+//    DISPLAY_LAPL_PROFILE,
+//    DISPLAY_LAPL_FILTERED_MODULE,
+//    DISPLAY_LAPL_FILTERED_PROFILE,
+//    DISPLAY_LAPL_FILTERED_IMAGE,
 
-    DISPLAY_GLAP_MODULE,
-    DISPLAY_GLAP_PROFILE,
-    DISPLAY_GLAP_FILTERED_MODULE,
-    DISPLAY_GLAP_FILTERED_PROFILE,
-    DISPLAY_GLAP_FILTERED_IMAGE,
+//    DISPLAY_GLAP_MODULE,
+//    DISPLAY_GLAP_PROFILE,
+//    DISPLAY_GLAP_FILTERED_MODULE,
+//    DISPLAY_GLAP_FILTERED_PROFILE,
+//    DISPLAY_GLAP_FILTERED_IMAGE,
 
     DISPLAY_FILTER,
     DISPLAY_RESTORED_MODULE,
@@ -53,13 +53,14 @@ public:
 
 protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
-  double _gsigma = 1.5;
-  bool _lapSQRT =  false;
-  double _gamma = 1;
-  double _k_target = 0.04;
-  double _maxGain = 6.0;
-  double _bw_cutoff = 0.85; // 180;
-  int _bw_order = 2;
+//  double _gsigma = 1.5;
+//  bool _lapSQRT =  false;
+//  double _gamma = 1;
+//  double _k_target = 0.04;
+//  double _maxGain = 6.0;
+//  double _bw_cutoff = 0.85; // 180;
+//  int _bw_order = 2;
+  bool _applyBlurLimit = true;
   bool _write_file = false;
 };
 

@@ -22,23 +22,23 @@ const c_enum_member * members_of<c_fft_profile_test1_routine::DISPLAY>()
       { c_fft_profile_test1_routine::DISPLAY_SRC_MODULE, "SRC_MODULE" },
       { c_fft_profile_test1_routine::DISPLAY_SRC_PROFILE, "SRC_PROFILE" },
 
-      { c_fft_profile_test1_routine::DISPLAY_GAUSS_MODULE, "GAUSS_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_GAUSS_PROFILE, "GAUSS_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_MODULE, "GAUSS_FILTERED_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_PROFILE, "GAUSS_FILTERED_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_IMAGE, "GAUSS_FILTERED_IMAGE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_MODULE, "GAUSS_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_PROFILE, "GAUSS_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_MODULE, "GAUSS_FILTERED_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_PROFILE, "GAUSS_FILTERED_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_IMAGE, "GAUSS_FILTERED_IMAGE", },
 
-      { c_fft_profile_test1_routine::DISPLAY_LAPL_MODULE, "LAPL_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_LAPL_PROFILE, "LAPL_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_MODULE, "LAPL_FILTERED_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_PROFILE, "LAPL_FILTERED_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_IMAGE, "LAPL_FILTERED_IMAGE", },
+//      { c_fft_profile_test1_routine::DISPLAY_LAPL_MODULE, "LAPL_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_LAPL_PROFILE, "LAPL_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_MODULE, "LAPL_FILTERED_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_PROFILE, "LAPL_FILTERED_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_IMAGE, "LAPL_FILTERED_IMAGE", },
 
-      { c_fft_profile_test1_routine::DISPLAY_GLAP_MODULE, "GLAP_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_GLAP_PROFILE, "GLAP_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_MODULE, "GLAP_FILTERED_MODULE", },
-      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_PROFILE, "GLAP_FILTERED_PROFILE", },
-      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_IMAGE, "GLAP_FILTERED_IMAGE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GLAP_MODULE, "GLAP_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GLAP_PROFILE, "GLAP_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_MODULE, "GLAP_FILTERED_MODULE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_PROFILE, "GLAP_FILTERED_PROFILE", },
+//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_IMAGE, "GLAP_FILTERED_IMAGE", },
 
       { c_fft_profile_test1_routine::DISPLAY_FILTER, "FILTER", },
       { c_fft_profile_test1_routine::DISPLAY_RESTORED_MODULE, "RESTORED_MODULE", },
@@ -118,68 +118,410 @@ static bool fftMulSpectrum(const cv::Mat1f & filter, cv::Mat2f & complexSpectrum
 
 namespace {
 
+//class c_blur_model
+//{
+//public:
+//  inline void setup(double S0, double S1, double S2, double xnoise, double ynoise)
+//  {
+//    _S0 = S0;
+//    _S1 = S1;
+//    _S2 = S2;
+//    _lxmax = -0.5 * S1 / S2;
+//    _llmax = S0 - 0.25 * S1 * S1 / S2;
+//    if ( ynoise < _llmax + 0.1 ) {
+//      ynoise = _llmax + 0.1;
+//    }
+//
+//    const double inside_sqrt = xnoise * xnoise - (ynoise - _S0 - _S1 * xnoise) / _S2;
+//    if (inside_sqrt >= 0.0) {
+//      _lx_nature = xnoise - std::sqrt(inside_sqrt);
+//    }
+//    else {
+//      _lx_nature = _lxmax * 0.85;
+//    }
+//
+//    _ll_nature = lapprox(_lx_nature);
+//    _lslope_nature = _S1 + 2.0 * _S2 * _lx_nature;
+//    _max_blur = 1e12; // no limit
+//    //_max_blur = ynoise - lapprox(xnoise);
+//    A = 1.0 / (_max_blur * std::sqrt(std::sqrt(5)));
+//  }
+//
+//  inline double lxmax() const { return _lxmax; }
+//  inline double llmax() const { return _llmax; }
+//  inline double lapprox(double x) const { return _S0 + _S1 * x + _S2 * x * x; }
+//  inline double max_blur() const { return _max_blur; }
+//
+//  inline double slim(double blur) const
+//  {
+//    return blur >= _max_blur ? _max_blur : 1.25 * blur * (1.0 - std::pow(blur * A, 4));
+//  }
+//
+//  inline double lnature(double x) const
+//  {
+//    return _ll_nature + _lslope_nature * (x - _lx_nature);
+//  }
+//
+//  inline double compute(double x) const
+//  {
+//    if (x <= _lx_nature) {
+//      return 0.0;
+//    }
+//
+//    const double L_target = lnature(x);
+//    const double L_blur = lapprox(x);
+//    const double blur = L_target - L_blur;
+//    return slim(blur);
+//  }
+//
+//private:
+//  double _lxmax = 0, _llmax = 0, _S0 = 0, _S1 = 0, _S2 = 0, _max_blur = 0, A = 0;
+//  double _lx_nature = 0, _ll_nature = 0, _lslope_nature = 0;
+//};
+
+//class c_blur_model
+//{
+//public:
+//  inline void setup(double S0, double S1, double S2, double xnoise, double ynoise)
+//  {
+//    _S0 = S0;
+//    _S1 = S1;
+//    _S2 = S2;
+//    _xnoise = xnoise;
+//    _ynoise = ynoise;
+//    _lxmax = -0.5 * S1 / S2;
+//    _llmax = S0 - 0.25 * S1 * S1 / S2;
+//
+//    if ( _ynoise < _llmax + 0.1 ) {
+//      _ynoise = _llmax + 0.1;
+//    }
+//
+//    const double inside_sqrt = _xnoise * _xnoise - (_ynoise - _S0 - _S1 * _xnoise) / _S2;
+//    if (inside_sqrt >= 0.0) {
+//      _lx_nature = _xnoise - std::sqrt(inside_sqrt);
+//    }
+//    else {
+//      _lx_nature = _lxmax * 0.85;
+//    }
+//
+//    _ll_nature = lapprox(_lx_nature);
+//    _lslope_nature = _S1 + 2.0 * _S2 * _lx_nature;
+//  }
+//
+//  inline double lxmax() const { return _lxmax; }
+//  inline double llmax() const { return _llmax; }
+//  inline double lapprox(double x) const { return _S0 + _S1 * x + _S2 * x * x; }
+//
+//  inline double lnature(double x) const
+//  {
+//    return _ll_nature + _lslope_nature * (x - _lx_nature);
+//  }
+//
+//  inline double compute(double x) const
+//  {
+//    if (x <= _lx_nature) {
+//      return 0.0;
+//    }
+//
+//    const double L_target = lnature(x);
+//    const double L_blur = lapprox(x);
+//    const double blur = L_target - L_blur;
+//
+//    // ДИНАМИЧЕСКИЙ НАКЛОННЫЙ ЛИМИТ (Защита от взрыва параболы)
+//    // Истинный предел блура на частоте x — это расстояние от нашей наклонной
+//    // природной линии до горизонтального уровня шума _ynoise.
+//    double dynamic_max_blur = L_target - _ynoise;
+//
+////    // Предохранитель на случай сверхнизких частот у самого старта
+////    if (dynamic_max_blur <= 1e-5) dynamic_max_blur = 1e-5;
+//
+//    // Используем ваш полином 4-й степени (slim), но с динамическим радиусом насыщения!
+//    double local_A = 1.0 / (dynamic_max_blur * std::sqrt(std::sqrt(5)));
+//
+//    if (blur >= dynamic_max_blur) {
+//      return dynamic_max_blur;
+//    }
+//
+//    return 1.25 * blur * (1.0 - std::pow(blur * local_A, 4));
+//  }
+//
+//private:
+//  double _lxmax = 0, _llmax = 0, _S0 = 0, _S1 = 0, _S2 = 0;
+//  double _lx_nature = 0, _ll_nature = 0, _lslope_nature = 0;
+//  double _xnoise = 0, _ynoise = 0; // Сохраняем координаты шума
+//};
+//
+
+//class c_blur_model
+//{
+//public:
+//  inline void setup(double S0, double S1, double S2, double xnoise, double ynoise, double xly,
+//      bool applyBlurLimit)
+//  {
+//    _S0 = S0;
+//    _S1 = S1;
+//    _S2 = S2;
+//    _lxmax = -0.5 * S1 / S2;
+//    _llmax = S0 - 0.25 * S1 * S1 / S2;
+//    if ( ynoise < _llmax + 0.2 ) {
+//      ynoise = _llmax + 0.2;
+//    }
+//    _xnoise = xnoise;
+//    _ynoise = ynoise;
+//    _xly = xly;
+//
+//    const double inside_sqrt = xnoise * xnoise - (ynoise - _S0 - _S1 * xnoise) / _S2;
+//    if (inside_sqrt >= 0.0) {
+//      _lx_nature = xnoise - std::sqrt(inside_sqrt);
+//    }
+//    else {
+//      CF_DEBUG("bad _lx_nature: inside_sqrt=%g", inside_sqrt);
+//      _lx_nature = _lxmax * 0.85;
+//    }
+//
+//    _applyBlurLimit = applyBlurLimit;
+//    _ll_nature = lapprox(_lx_nature);
+//    _lslope_nature = _S1 + 2.0 * _S2 * _lx_nature;
+//    _max_blur = std::max(_ynoise, lnature(_xly)) - lapprox(_xnoise);
+//  }
+//
+//  inline double lxmax() const { return _lxmax; }
+//  inline double llmax() const { return _llmax; }
+//  inline double lapprox(double x) const { return _S0 + _S1 * x + _S2 * x * x; }
+//  inline double max_blur() const { return _max_blur; }
+//
+//  inline double slim(double blur, double max_blur) const
+//  {
+//    if( blur >= max_blur ) {
+//      return max_blur;
+//    }
+//    const double A = 1.0 / (max_blur * std::sqrt(std::sqrt(5)));
+//    return 1.25 * blur * (1.0 - std::pow(blur * A, 4));
+//  }
+//
+//  inline double lnature(double x) const
+//  {
+//    return _ll_nature + _lslope_nature * (x - _lx_nature);
+//  }
+//
+//  inline double compute(double x) const
+//  {
+//    if (x <= _lx_nature) {
+//      return 0.0;
+//    }
+//
+//    const double L_nature = lnature(x);
+//    const double L_blur =  lapprox(x);
+//    const double blur = L_nature - L_blur;
+//    const double max_blur =  x > _xly ? _max_blur : std::max(_ynoise, L_nature) - lapprox(_xnoise);
+//    return slim(blur, _applyBlurLimit ?  max_blur : 1e12 );
+//  }
+//
+//private:
+//  double _lxmax = 0, _llmax = 0, _S0 = 0, _S1 = 0, _S2 = 0, _max_blur = 0;//, A = 0;
+//  double _lx_nature = 0, _ll_nature = 0, _lslope_nature = 0, _xly = 0;
+//  double _xnoise = 0, _ynoise = 0;
+//  bool _applyBlurLimit = true;
+//};
+
+
+//class c_blur_model
+//{
+//public:
+//  void setup(double S0, double S1, double S2, double xnoise, double ynoise,
+//      double noise_power_factor, bool applyBlurLimit)
+//  {
+//    _S0 = S0;
+//    _S1 = S1;
+//    _S2 = S2;
+//    _lxmax = -0.5 * S1 / S2;
+//    _llmax = S0 - 0.25 * S1 * S1 / S2;
+//    if ( ynoise < _llmax + 0.2 ) {
+//      ynoise = _llmax + 0.2;
+//    }
+//
+//    _xnoise = xnoise;
+//    _ynoise = ynoise;
+//    _applyBlurLimit = applyBlurLimit;
+//
+//    const double inside_sqrt = _xnoise * _xnoise - (_ynoise - _S0 - _S1 * _xnoise) / _S2;
+//    if ( inside_sqrt < 0 ) {
+//      CF_DEBUG("bad _lx_nature: inside_sqrt=%g", inside_sqrt);
+//    }
+//
+//    _lx_nature = _xnoise - std::sqrt(inside_sqrt);
+//    _ll_nature = lapprox(_lx_nature);
+//    _lslope_nature = _S1 + 2.0 * _S2 * _lx_nature;
+//
+//    const double base_max_blur = lnature(_xnoise) - lapprox(_xnoise);
+//    const double noise_to_signal_ratio = std::sqrt(noise_power_factor) / base_max_blur;
+//    _max_blur = base_max_blur * std::exp(-noise_to_signal_ratio);
+//    A = 1.0 / (_max_blur * std::sqrt(std::sqrt(5)));
+//  }
+//
+//
+//  inline double lxmax() const { return _lxmax; }
+//  inline double llmax() const { return _llmax; }
+//  inline double lapprox(double x) const { return _S0 + _S1 * x + _S2 * x * x; }
+//
+//  inline double slim(double blur) const
+//  {
+//    if (blur >= _max_blur) {
+//      return _max_blur;
+//    }
+//    return 1.25 * blur * (1.0 - std::pow(blur * A, 4));
+//  }
+//
+//  inline double lnature(double x) const
+//  {
+//    return _ll_nature + _lslope_nature * (x - _lx_nature);
+//  }
+//
+//  inline double compute(double x) const
+//  {
+//    if (x <= _lx_nature) {
+//      return 0.0;
+//    }
+//
+//    const double L_target = lnature(x);
+//    const double L_blur = lapprox(x);
+//    const double blur = L_target - L_blur;
+//
+//    return _applyBlurLimit ? slim(blur) : blur;
+//  }
+//
+//private:
+//  double _lxmax = 0, _llmax = 0, _S0 = 0, _S1 = 0, _S2 = 0, _max_blur = 0, A = 0;
+//  double _lx_nature = 0, _ll_nature = 0, _lslope_nature = 0;
+//  double _xnoise = 0, _ynoise = 0;
+//  bool _applyBlurLimit = true;
+//};
+
 class c_blur_model
 {
 public:
-  inline void setup(double S0, double S1, double S2, double lxlim)
+  inline void setup(double S0, double S1, double S2, double xnoise, double ynoise, double xly,
+      bool applyBlurLimit)
   {
     _S0 = S0;
     _S1 = S1;
     _S2 = S2;
     _lxmax = -0.5 * S1 / S2;
     _llmax = S0 - 0.25 * S1 * S1 / S2;
-    _max_blur = _llmax - lapprox(lxlim);
-    A = 1. / (_max_blur * std::sqrt(std::sqrt(5)));
+    if ( ynoise < _llmax + 0.01 ) {
+      ynoise = _llmax + 0.01;
+    }
+    _xnoise = xnoise;
+    _ynoise = ynoise;
+    _xly = xly;
+
+    const double inside_sqrt = xnoise * xnoise - (ynoise - _S0 - _S1 * xnoise) / _S2;
+    if (inside_sqrt >= 0.0) {
+      _lx_nature = xnoise - std::sqrt(inside_sqrt);
+    }
+    else {
+      CF_DEBUG("bad _lx_nature: inside_sqrt=%g", inside_sqrt);
+      _lx_nature = _lxmax * 0.85;
+    }
+
+    _applyBlurLimit = applyBlurLimit;
+    _ll_nature = lapprox(_lx_nature);
+    _lslope_nature = _S1 + 2.0 * _S2 * _lx_nature;
+    _max_blur = std::max(_ynoise, lnature(_xly)) - lapprox(_xnoise);
   }
 
-  inline double lxmax() const
+  inline double lxmax() const { return _lxmax; }
+  inline double llmax() const { return _llmax; }
+  inline double lapprox(double x) const { return _S0 + _S1 * x + _S2 * x * x; }
+  inline double max_blur() const { return _max_blur; }
+
+  inline double slim(double blur, double max_blur) const
   {
-    return _lxmax;
+    if( blur >= max_blur ) {
+      return max_blur;
+    }
+    const double A = 1.0 / (max_blur * std::sqrt(std::sqrt(5)));
+    return 1.25 * blur * (1.0 - std::pow(blur * A, 4));
   }
 
-  inline double llmax() const
+  inline double lnature(double x) const
   {
-    return _llmax;
-  }
-
-  inline double lapprox(double x) const
-  {
-    return _S0 + _S1 * x + _S2 * x * x;
-  }
-
-  inline double lapproxl(double x) const
-  {
-    return _S0 + _S1 * x;
-  }
-
-  inline double slim(double blur) const
-  {
-    return blur >= _max_blur? _max_blur : 1.25 * blur * (1 - std::pow(blur * A, 4));
+    return _ll_nature + _lslope_nature * (x - _lx_nature);
   }
 
   inline double compute(double x) const
   {
-    return x <= _lxmax ? 0 : slim(_llmax - _S0 - _S1 * x - _S2 * x * x);
+    if (x <= _lx_nature) {
+      return 0.0;
+    }
+
+    const double L_nature = lnature(x);
+    const double L_blur =  lapprox(x);
+    const double blur = L_nature - L_blur;
+    const double max_blur =  x > _xly ? _max_blur : std::max(_ynoise, L_nature) - lapprox(_xnoise);
+    return slim(blur, _applyBlurLimit ?  max_blur : 1e12 );
   }
 
+  inline double compute_ulim(double x) const
+  {
+    if (x <= _lx_nature) {
+      return 0.0;
+    }
+
+    const double L_nature = lnature(x);
+    const double L_blur =  lapprox(x);
+    const double blur = L_nature - L_blur;
+    const double max_blur =  x > _xly ? _max_blur : std::max(_ynoise, L_nature) - lapprox(_xnoise);
+    return std::min(blur, _applyBlurLimit ?  max_blur : 1e12 );
+  }
 
 private:
-  double _lxmax = 0;
-  double _llmax = 0;
-  double _S0 = 0;
-  double _S1 = 0;
-  double _S2 = 0;
-  double _max_blur = 0;
-  double A = 0;
+  double _lxmax = 0, _llmax = 0, _S0 = 0, _S1 = 0, _S2 = 0, _max_blur = 0;//, A = 0;
+  double _lx_nature = 0, _ll_nature = 0, _lslope_nature = 0, _xly = 0;
+  double _xnoise = 0, _ynoise = 0;
+  bool _applyBlurLimit = true;
 };
 
 }
+
+//static int searchNoiseStartIndex(const cv::Mat1f & profile_kneedle_distances,
+//    int KDXBeg, int KDmaxIndex)
+//{
+//  // --- SECOND KNEEDLE PASS (Finding the left knee / plateau entry) ---
+//  // Draw the chord on the KD chart from the start to the plateau peak
+//
+//  const cv::Mat1f & KD = profile_kneedle_distances;
+//  const double KDx0 = double(KDXBeg);
+//  const double KDy0 = double(KD[0][KDXBeg]);
+//  const double KDx1 = double(KDmaxIndex);
+//  const double KDy1 = double(KD[0][KDmaxIndex]);
+//
+//  double secondKDmax = -DBL_MAX;
+//  int subNoiseIndex = KDXBeg;
+//
+//  for (int i = KDXBeg; i <= KDmaxIndex; ++i) {
+//    // Normalized X and Y for the second pass inside the left slope
+//    const double tx = (i - KDx0) / (KDx1 - KDx0);
+//    const double ty = (double(KD[0][i]) - KDy0) / (KDy1 - KDy0);
+//    // maximum deviation of the actual KD graph upwards above the ascent chord
+//    const double secondKD = ty - tx;
+//    if (secondKD > secondKDmax) {
+//      secondKDmax = secondKD;
+//      subNoiseIndex = i;
+//    }
+//  }
+//
+//  return subNoiseIndex;
+//}
+
+
 
 static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     double & output_profile_x0,
     double & output_profile_y0,
     c_blur_model & blur_model,
-    bool writeFile = false)
+    bool applyBlurLimit,
+    bool writeFile)
 {
   c_stdio_file fp;
 
@@ -231,24 +573,14 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     kneedle_distances[0][i] = float(KD);
   }
 
-  const double KDmaxThreshold = 0.98 * KDmaxValue;
-  double KDmaxAverageValue = 0;
-  double KDmaxAverageIndex = 0;
-  double KDmaxAverageWeight = 0;
-  for( int i = KDXbeg; i < n_bins; ++i ) {
+  int noiseStartIndex = KDmaxIndex;
+  for( int i = KDXbeg; i <= KDmaxIndex; ++i ) {
     const double KD = kneedle_distances[0][i];
-    if ( KD >= KDmaxThreshold ) {
-      const double w = KD;
-      KDmaxAverageValue += w * KD;
-      KDmaxAverageIndex += i * w;
-      KDmaxAverageWeight += w;
+    if ( KD >= 0.98 * KDmaxValue ) {
+      noiseStartIndex = i;
+      break;
     }
   }
-
-  KDmaxAverageValue /= KDmaxAverageWeight;
-  KDmaxAverageIndex /= KDmaxAverageWeight;
-  const int noiseStartIndex = cvRound(KDmaxAverageIndex);
-
 
   /*
    * Approximate LAP
@@ -282,7 +614,7 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
   }
 
   c_weighted_linear_regression3 reg_lap;
-  for( int i = 1; i < std::min(noiseStartIndex, LYIntesectIndex); ++i ) {
+  for( int i = 1; i < std::min(KDmaxIndex, LYIntesectIndex); ++i ) {
     if( src[i] > 0 ) {
 
       const double x = xv(i);
@@ -302,16 +634,45 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
       }
     }
   }
-  blur_model.setup(S0_lap, S1_lap, S2_lap, xv(noiseStartIndex));
 
+  /*
+   * NOISE ENERGY STATISTICS FROM THE LAPLACIAN TAIL
+   */
+  double total_noise_energy = 0.0;
+  int noise_bins_count = 0;
+  for (int i = noiseStartIndex; i < n_bins; ++i) {
+    if (src[i] > 0) {
+      const double x = xv(i);
+      const double l = lop(i) + yv(i);
+      const double la =  S0_lap + S1_lap * x + S2_lap * x * x;
+      if (l > la) {
+        const double delta_noise = l - la;
+        total_noise_energy += delta_noise * delta_noise;
+      }
+      // TODO: double check this way of counting
+      ++noise_bins_count;
+    }
+  }
+  const double noise_power_factor =
+      (noise_bins_count > 0) ? (total_noise_energy / noise_bins_count) : 0.0;
+
+//  blur_model.setup(S0_lap, S1_lap, S2_lap,
+//                   xv(noiseStartIndex), yv(noiseStartIndex),
+//                   noise_power_factor, applyBlurLimit);
+
+  blur_model.setup(S0_lap, S1_lap, S2_lap,
+      xv(noiseStartIndex), yv(noiseStartIndex),
+      xv(LYIntesectIndex),
+      applyBlurLimit);
 
   if ( writeFile ) {
     if ( !fp.open("/home/projects/temp/analyze_profile.txt", "w") ) {
       CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
       return false;
     }
-    fprintf(fp, "I\tX\tS\tY\tL\tLA\tKD\tYP\tLP\n");
+    fprintf(fp, "I\tX\tS\tY\tL\tLA\tKD\tYP\tLP\tLL\tBC\tBU\n");
   }
+
 
   for( int i = 0; i < n_bins; ++i ) {
     //if( src[i] > 0 )
@@ -319,14 +680,18 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
       const double x = xv(i); // log of frequency
       const double y = yv(i); // log of spectrum intensity
       const double l = lop(i) + y; // L for given y at bin index i
+      //const double ll = ll_nature + lslope_nature * (x - lx_nature);
+      const double ll = blur_model.lnature(x);
       const double la = blur_model.lapprox(x); // Predict L for given x using model from above
-      const double yp = y + blur_model.compute(x);
-      const double lp = l + blur_model.compute(x);
+      const double bc = blur_model.compute(x);
+      const double bu = blur_model.compute_ulim(x);
+      const double yp = y + bu;
+      const double lp = l + bu;
       const double KD = kneedle_distances[0][i];
 
       if( fp.is_open() ) {
-        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-            i, x, src[i], y, l, la, KD, yp, lp);
+        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
+            i, x, src[i], y, l, la, KD, yp, lp, ll, bc, bu);
       }
     }
   }
@@ -334,33 +699,24 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
   output_profile_x0 = x0;
   output_profile_y0 = y0;
 
-  const double blur_zone = double(noiseStartIndex - LMaxIndex);
-  const double denominator = CV_PI * std::sqrt(double(LMaxIndex) * blur_zone);
-  const double auto_sigma = 0.5 * (double(n_bins) / denominator);
-  const double l_noise = blur_model.lapprox(xv(noiseStartIndex));
-  const double laplacian_drop = blur_model.llmax() - l_noise;
-  const double auto_gain = std::exp(1.5 * laplacian_drop);
-
   CF_DEBUG("Saved file: '%s'\n"
-      "x0 = %g y0 = %g \n"
-      "noiseStartIndex = %d (x = %g Y = %g)\n"
+      "x0 = %g y0 = %g\n"
+      "KDmaxIndex = %d (x=%g y=%g KD=%g)\n"
+      "noiseStartIndex = %d (x = %g Y = %g L = %g)\n"
       "LYIntesectIndex = %d (x = %g Y = %g)\n"
       "LMaxIndex = %d (x = %g) LMaxValue = %g\n"
       "S0_lap = %g S1_lap = %g S2_lap = %g\n"
       "lxmax = %g llmax = %g\n"
-      "blur_zone = %g denominator = %g\n"
-      "l_noise = %g laplacian_drop = %g\n"
-      "auto_sigma = %g auto_gain = %g\n",
+      "noise_power_factor=%g noise_bins_count=%d\n",
       fp.cfilename(),
       x0, y0,
-      noiseStartIndex, xv(noiseStartIndex), yv(noiseStartIndex),
+      KDmaxIndex, xv(KDmaxIndex), yv(KDmaxIndex), kneedle_distances[0][KDmaxIndex],
+      noiseStartIndex, xv(noiseStartIndex), yv(noiseStartIndex), lop(noiseStartIndex) + yv(noiseStartIndex),
       LYIntesectIndex, xv(LYIntesectIndex), yv(LYIntesectIndex),
       LMaxIndex, xv(LMaxIndex),  LMaxValue,
       S0_lap, S1_lap, S2_lap,
       blur_model.lxmax(), blur_model.llmax(),
-      blur_zone, denominator,
-      l_noise, laplacian_drop,
-      auto_sigma, auto_gain);
+      noise_power_factor, noise_bins_count);
 
   return true;
 }
@@ -512,14 +868,8 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
 //  return true;
 //}
 
-static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
-    double x0,
-    const c_blur_model & blur_model,
-    double max_blur_value,
-    double k_target,
-    double maxGain,
-    int butterworthOrder,
-    double cutoffRatio)
+static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize, double x0,
+    const c_blur_model & blur_model)
 {
   // Isotropic correction
   // The frequency step is tied to the physical dimensions of the matrix
@@ -539,9 +889,9 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
 //  CF_DEBUG("S_blur=%g max_blur_value = %g k_target=%g correction=%g",
 //      S_blur, max_blur_value, k_target, correction);
 
-  const auto slim = [xmax = max_blur_value, A = 1/(max_blur_value * std::sqrt(std::sqrt(5)))](double x) -> double {
-    return x >= xmax ? xmax : 1.25 * x * (1 - std::pow(x * A, 4));
-  };
+//  const auto slim = [xmax = max_blur_value, A = 1/(max_blur_value * std::sqrt(std::sqrt(5)))](double x) -> double {
+//    return x >= xmax ? xmax : 1.25 * x * (1 - std::pow(x * A, 4));
+//  };
 
   cv::Mat1f FILTER(size);
 
@@ -560,7 +910,7 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
 
             const double r = sqrt(dx2 + dy2);
             const double xx = std::log(0.5 * (r + 1) / R) - x0;
-            const double correction = blur_model.compute(xx);
+            const double correction = blur_model.compute_ulim(xx);
             const double gain = std::exp(correction);
             dstp[x] = float(gain);
           }
@@ -570,18 +920,21 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+// /mnt/data/scope/2022-11-13/s7/CapObj/2022-11-13Z/s2
 void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "gsigma: ", CTL_CONTEXT(ctx, _gsigma), "Gaussian blur sigma");
-  ctlbind(ctls, "lapSQRT: ", CTL_CONTEXT(ctx, _lapSQRT), "");
+  ctlbind(ctls, "applyBlurLimit: ", CTL_CONTEXT(ctx, _applyBlurLimit), "");
 
-  ctlbind(ctls, "gamma: ", CTL_CONTEXT(ctx, _gamma), "Noise scale");
-  ctlbind(ctls, "k_target: ", CTL_CONTEXT(ctx, _k_target), "");
-  ctlbind(ctls, "maxGain: ", CTL_CONTEXT(ctx, _maxGain), "");
-
-  ctlbind(ctls, "bw_cutoff: ", CTL_CONTEXT(ctx, _bw_cutoff), "");
-  ctlbind(ctls, "bw_order: ", CTL_CONTEXT(ctx, _bw_order), "");
+//  ctlbind(ctls, "gsigma: ", CTL_CONTEXT(ctx, _gsigma), "Gaussian blur sigma");
+//  ctlbind(ctls, "lapSQRT: ", CTL_CONTEXT(ctx, _lapSQRT), "");
+//
+//  ctlbind(ctls, "gamma: ", CTL_CONTEXT(ctx, _gamma), "Noise scale");
+//  ctlbind(ctls, "k_target: ", CTL_CONTEXT(ctx, _k_target), "");
+//  ctlbind(ctls, "maxGain: ", CTL_CONTEXT(ctx, _maxGain), "");
+//
+//  ctlbind(ctls, "bw_cutoff: ", CTL_CONTEXT(ctx, _bw_cutoff), "");
+//  ctlbind(ctls, "bw_order: ", CTL_CONTEXT(ctx, _bw_order), "");
   ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
 }
 
@@ -589,13 +942,15 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _gsigma);
-    SERIALIZE_OPTION(settings, save, *this, _lapSQRT);
-    SERIALIZE_OPTION(settings, save, *this, _gamma);
-    SERIALIZE_OPTION(settings, save, *this, _k_target);
-    SERIALIZE_OPTION(settings, save, *this, _maxGain);
-    SERIALIZE_OPTION(settings, save, *this, _bw_cutoff);
-    SERIALIZE_OPTION(settings, save, *this, _bw_order);
+    SERIALIZE_OPTION(settings, save, *this, _applyBlurLimit);
+//
+//    SERIALIZE_OPTION(settings, save, *this, _gsigma);
+//    SERIALIZE_OPTION(settings, save, *this, _lapSQRT);
+//    SERIALIZE_OPTION(settings, save, *this, _gamma);
+//    SERIALIZE_OPTION(settings, save, *this, _k_target);
+//    SERIALIZE_OPTION(settings, save, *this, _maxGain);
+//    SERIALIZE_OPTION(settings, save, *this, _bw_cutoff);
+//    SERIALIZE_OPTION(settings, save, *this, _bw_order);
     return true;
   }
   return false;
@@ -620,28 +975,28 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   cv::Mat1f SRC_MODULE; // Spectrum module of source image
   cv::Mat1f SRC_PROFILE;
 
-  cv::Mat1f GAUSS_MODULE;
-  cv::Mat1f GAUSS_PROFILE;
-  cv::Mat1f GAUSS_FILTERED_MODULE;
-  cv::Mat1f GAUSS_FILTERED_PROFILE;
+//  cv::Mat1f GAUSS_MODULE;
+//  cv::Mat1f GAUSS_PROFILE;
+//  cv::Mat1f GAUSS_FILTERED_MODULE;
+//  cv::Mat1f GAUSS_FILTERED_PROFILE;
 
-  cv::Mat1f LAPL_MODULE;
-  cv::Mat1f LAPL_PROFILE;
-  cv::Mat1f LAPL_FILTERED_MODULE;
-  cv::Mat1f LAPL_FILTERED_PROFILE;
+//  cv::Mat1f LAPL_MODULE;
+//  cv::Mat1f LAPL_PROFILE;
+//  cv::Mat1f LAPL_FILTERED_MODULE;
+//  cv::Mat1f LAPL_FILTERED_PROFILE;
 
-  cv::Mat1f GLAP_MODULE;
-  cv::Mat1f GLAP_PROFILE;
-  cv::Mat1f GLAP_FILTERED_MODULE;
-  cv::Mat1f GLAP_FILTERED_PROFILE;
+//  cv::Mat1f GLAP_MODULE;
+//  cv::Mat1f GLAP_PROFILE;
+//  cv::Mat1f GLAP_FILTERED_MODULE;
+//  cv::Mat1f GLAP_FILTERED_PROFILE;
 
   cv::Mat1f SRC_profile;
-  cv::Mat1f GAUSS_profile;
-  cv::Mat1f LAPL_profile;
-  cv::Mat1f GLAP_profile;
-  cv::Mat1f GAUSS_FILTERED_profile;
-  cv::Mat1f LAPL_FILTERED_profile;
-  cv::Mat1f GLAP_FILTERED_profile;
+//  cv::Mat1f GAUSS_profile;
+//  cv::Mat1f LAPL_profile;
+//  cv::Mat1f GLAP_profile;
+//  cv::Mat1f GAUSS_FILTERED_profile;
+//  cv::Mat1f LAPL_FILTERED_profile;
+//  cv::Mat1f GLAP_FILTERED_profile;
 
   //double noise_level = 0;
   double profile_x0 = 0;
@@ -693,36 +1048,37 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   fftRadialProfile(SRC_MODULE, SRC_profile, false);
   fftRadialProfileToImage(SRC_profile, SRC_MODULE.size(), false, SRC_PROFILE);
 
-  GAUSS_MODULE = fftGenerateGaussianFilter(fftSize, _gsigma);
-  fftRadialProfile(GAUSS_MODULE, GAUSS_profile, false);
-  fftRadialProfileToImage(GAUSS_profile, GAUSS_MODULE.size(), false, GAUSS_PROFILE);
+//  GAUSS_MODULE = fftGenerateGaussianFilter(fftSize, _gsigma);
+//  fftRadialProfile(GAUSS_MODULE, GAUSS_profile, false);
+//  fftRadialProfileToImage(GAUSS_profile, GAUSS_MODULE.size(), false, GAUSS_PROFILE);
 
-  cv::multiply(SRC_MODULE, GAUSS_MODULE, GAUSS_FILTERED_MODULE);
-  fftRadialProfile(GAUSS_FILTERED_MODULE, GAUSS_FILTERED_profile, false);
-  fftRadialProfileToImage(GAUSS_FILTERED_profile, GAUSS_FILTERED_MODULE.size(), false, GAUSS_FILTERED_PROFILE);
+//  cv::multiply(SRC_MODULE, GAUSS_MODULE, GAUSS_FILTERED_MODULE);
+//  fftRadialProfile(GAUSS_FILTERED_MODULE, GAUSS_FILTERED_profile, false);
+//  fftRadialProfileToImage(GAUSS_FILTERED_profile, GAUSS_FILTERED_MODULE.size(), false, GAUSS_FILTERED_PROFILE);
 
-  LAPL_MODULE = fftGenerateLaplacianFilter(fftSize, 1., _lapSQRT);
-  fftRadialProfile(LAPL_MODULE, LAPL_profile, false);
-  fftRadialProfileToImage(LAPL_profile, LAPL_MODULE.size(), false, LAPL_PROFILE);
+//  LAPL_MODULE = fftGenerateLaplacianFilter(fftSize, 1., _lapSQRT);
+//  fftRadialProfile(LAPL_MODULE, LAPL_profile, false);
+//  fftRadialProfileToImage(LAPL_profile, LAPL_MODULE.size(), false, LAPL_PROFILE);
 
-  cv::multiply(SRC_MODULE, LAPL_MODULE, LAPL_FILTERED_MODULE);
-  fftRadialProfile(LAPL_FILTERED_MODULE, LAPL_FILTERED_profile, false);
-  fftRadialProfileToImage(LAPL_FILTERED_profile, LAPL_FILTERED_MODULE.size(), false, LAPL_FILTERED_PROFILE);
+//  cv::multiply(SRC_MODULE, LAPL_MODULE, LAPL_FILTERED_MODULE);
+//  fftRadialProfile(LAPL_FILTERED_MODULE, LAPL_FILTERED_profile, false);
+//  fftRadialProfileToImage(LAPL_FILTERED_profile, LAPL_FILTERED_MODULE.size(), false, LAPL_FILTERED_PROFILE);
 
 
-  cv::multiply(LAPL_MODULE, GAUSS_MODULE, GLAP_MODULE);
-  fftRadialProfile(GLAP_MODULE, GLAP_profile, false);
-  fftRadialProfileToImage(GLAP_profile, GLAP_MODULE.size(), false, GLAP_PROFILE);
+//  cv::multiply(LAPL_MODULE, GAUSS_MODULE, GLAP_MODULE);
+//  fftRadialProfile(GLAP_MODULE, GLAP_profile, false);
+//  fftRadialProfileToImage(GLAP_profile, GLAP_MODULE.size(), false, GLAP_PROFILE);
 
-  cv::multiply(SRC_MODULE, GLAP_MODULE, GLAP_FILTERED_MODULE);
-  fftRadialProfile(GLAP_FILTERED_MODULE, GLAP_FILTERED_profile, false);
-  fftRadialProfileToImage(GLAP_FILTERED_profile, GLAP_FILTERED_MODULE.size(), false, GLAP_FILTERED_PROFILE);
+//  cv::multiply(SRC_MODULE, GLAP_MODULE, GLAP_FILTERED_MODULE);
+//  fftRadialProfile(GLAP_FILTERED_MODULE, GLAP_FILTERED_profile, false);
+//  fftRadialProfileToImage(GLAP_FILTERED_profile, GLAP_FILTERED_MODULE.size(), false, GLAP_FILTERED_PROFILE);
 
 
   analyzeRadialProfile(SRC_profile,
       profile_x0,
       profile_y0,
       blur_model,
+      _applyBlurLimit,
       _write_file);
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
@@ -737,93 +1093,88 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
     return fftMagnituteDisplay(SRC_PROFILE, image);
   }
 
-  if ( _display == DISPLAY_GAUSS_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(GAUSS_MODULE, image);
-  }
-  if( _display == DISPLAY_GAUSS_PROFILE ) {
-    mask.release();
-    return fftMagnituteDisplay(GAUSS_PROFILE, image);
-  }
-  if ( _display == DISPLAY_GAUSS_FILTERED_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(GAUSS_FILTERED_MODULE, image);
-  }
-  if ( _display == DISPLAY_GAUSS_FILTERED_PROFILE) {
-    mask.release();
-    return fftMagnituteDisplay(GAUSS_FILTERED_PROFILE, image);
-  }
-  if ( _display == DISPLAY_GAUSS_FILTERED_IMAGE) {
-    cv::Mat SRC_SPECTRUM_FILTERED;
-    fftMulSpectrum(GAUSS_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
-    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
-    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
-    mask.release();
-    return true;
-  }
+//  if ( _display == DISPLAY_GAUSS_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GAUSS_MODULE, image);
+//  }
+//  if( _display == DISPLAY_GAUSS_PROFILE ) {
+//    mask.release();
+//    return fftMagnituteDisplay(GAUSS_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_GAUSS_FILTERED_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GAUSS_FILTERED_MODULE, image);
+//  }
+//  if ( _display == DISPLAY_GAUSS_FILTERED_PROFILE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GAUSS_FILTERED_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_GAUSS_FILTERED_IMAGE) {
+//    cv::Mat SRC_SPECTRUM_FILTERED;
+//    fftMulSpectrum(GAUSS_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
+//    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
+//    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+//    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
+//    mask.release();
+//    return true;
+//  }
 
-  if ( _display == DISPLAY_LAPL_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(LAPL_MODULE, image);
-  }
-  if( _display == DISPLAY_LAPL_PROFILE ) {
-    mask.release();
-    return fftMagnituteDisplay(LAPL_PROFILE, image);
-  }
-  if ( _display == DISPLAY_LAPL_FILTERED_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(LAPL_FILTERED_MODULE, image);
-  }
-  if ( _display == DISPLAY_LAPL_FILTERED_PROFILE) {
-    mask.release();
-    return fftMagnituteDisplay(LAPL_FILTERED_PROFILE, image);
-  }
-  if ( _display == DISPLAY_LAPL_FILTERED_IMAGE) {
-    cv::Mat SRC_SPECTRUM_FILTERED;
-    fftMulSpectrum(LAPL_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
-    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
-    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
-    mask.release();
-    return true;
-  }
+//  if ( _display == DISPLAY_LAPL_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(LAPL_MODULE, image);
+//  }
+//  if( _display == DISPLAY_LAPL_PROFILE ) {
+//    mask.release();
+//    return fftMagnituteDisplay(LAPL_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_LAPL_FILTERED_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(LAPL_FILTERED_MODULE, image);
+//  }
+//  if ( _display == DISPLAY_LAPL_FILTERED_PROFILE) {
+//    mask.release();
+//    return fftMagnituteDisplay(LAPL_FILTERED_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_LAPL_FILTERED_IMAGE) {
+//    cv::Mat SRC_SPECTRUM_FILTERED;
+//    fftMulSpectrum(LAPL_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
+//    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
+//    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+//    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
+//    mask.release();
+//    return true;
+//  }
 
-  if ( _display == DISPLAY_GLAP_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(GLAP_MODULE, image);
-  }
-  if( _display == DISPLAY_GLAP_PROFILE ) {
-    mask.release();
-    return fftMagnituteDisplay(GLAP_PROFILE, image);
-  }
-  if ( _display == DISPLAY_GLAP_FILTERED_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(GLAP_FILTERED_MODULE, image);
-  }
-  if ( _display == DISPLAY_GLAP_FILTERED_PROFILE) {
-    mask.release();
-    return fftMagnituteDisplay(GLAP_FILTERED_PROFILE, image);
-  }
-  if ( _display == DISPLAY_GLAP_FILTERED_IMAGE) {
-    cv::Mat SRC_SPECTRUM_FILTERED;
-    fftMulSpectrum(GLAP_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
-    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
-    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
-    mask.release();
-    return true;
-  }
+//  if ( _display == DISPLAY_GLAP_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GLAP_MODULE, image);
+//  }
+//  if( _display == DISPLAY_GLAP_PROFILE ) {
+//    mask.release();
+//    return fftMagnituteDisplay(GLAP_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_GLAP_FILTERED_MODULE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GLAP_FILTERED_MODULE, image);
+//  }
+//  if ( _display == DISPLAY_GLAP_FILTERED_PROFILE) {
+//    mask.release();
+//    return fftMagnituteDisplay(GLAP_FILTERED_PROFILE, image);
+//  }
+//  if ( _display == DISPLAY_GLAP_FILTERED_IMAGE) {
+//    cv::Mat SRC_SPECTRUM_FILTERED;
+//    fftMulSpectrum(GLAP_MODULE, SRC_SPECTRUM, SRC_SPECTRUM_FILTERED);
+//    fftSwapQuadrants(SRC_SPECTRUM_FILTERED);
+//    cv::idft(SRC_SPECTRUM_FILTERED, SRC_SPECTRUM_FILTERED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+//    SRC_SPECTRUM_FILTERED(rc).copyTo(image);
+//    mask.release();
+//    return true;
+//  }
 
   const cv::Mat1f FILTER =
       fftCreateRadialCorrectionFilter(fftSize,
           profile_x0,
-          blur_model,
-          imax_blur,
-          _k_target,
-          _maxGain,
-          _bw_order,
-          _bw_cutoff);
+          blur_model);
 
   if ( _display == DISPLAY_FILTER) {
     mask.release();

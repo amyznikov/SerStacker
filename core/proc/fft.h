@@ -98,7 +98,12 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
 
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     double gain = 1.0, bool squareRoot = false,
-    bool swapQuadrants = false);
+    bool centerDC = true);
+
+// Discrete Laplacian Filter for Periodic+Smooth Decomposition
+cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
+    bool centerDC = true);
+
 
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
@@ -113,5 +118,7 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     double rc, double order, double gain, bool centerDC = true);
+
+void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
 
 #endif /* __fft_h__ */

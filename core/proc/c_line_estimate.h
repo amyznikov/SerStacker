@@ -447,4 +447,110 @@ protected:
   int n = 0;
 };
 
+
+/**
+ * Fast Log-Scale Adaptive Slide Average (Rational Approximation).
+ * Automatically widens the smoothing window where points are sparse (low frequencies)
+ * and narrows it where points are dense (high frequencies).
+
+//  const auto smooth_lap = [&](cv::Mat1f & LAP_profile) {
+//    std::vector<double> forward_res(n_bins, 0.0);
+//    std::vector<double> backward_res(n_bins, 0.0);
+//
+//    const double K_BASE = 0.1;
+//    c_sliding_average_adaptive_log<double> filter(K_BASE);
+//
+//    // force ignore DC point
+//    for (int i = 1; i < n_bins; ++i) {
+//      const double x = xv(i);
+//      const double y = yv(i);
+//      filter.update(i, x, lop(i) + y);
+//      forward_res[i] = filter.average();
+//    }
+//
+//    filter.reset(K_BASE);
+//    // force ignore DC point
+//    for (int i = n_bins - 1; i > 0; --i) {
+//      const double x = xv(i);
+//      const double y = yv(i);
+//      filter.update(static_cast<double>(n_bins - i), -x, lop(i) + y);
+//      backward_res[i] = filter.average();
+//    }
+//
+//    LAP_profile.create(1, n_bins);
+//    float * __restrict smoothed = LAP_profile[0];
+//    for (int i = 0; i < n_bins; ++i) {
+//      smoothed[i] = 0.5 * (forward_res[i] + backward_res[i]);
+//    }
+//  };
+ */
+template<class T = double>
+class c_sliding_average_adaptive_log
+{
+public:
+  // k_base adjusts the overall smoothing strength.
+  // Optimal range for logarithmic profiles: 0.02 - 0.08
+  explicit c_sliding_average_adaptive_log(T k_base = T(0.05))
+  {
+    reset(k_base);
+  }
+
+  inline void reset(T k_base)
+  {
+    sw = swy = last_x_log = T(0);
+    k_smooth_factor = k_base;
+    n = 0;
+  }
+
+  /**
+  * @param x_index Current linear bin index (1, 2, 3... 1000) - used as "time"
+  * @param x_log Current coordinate in logarithmic scale (std::log(i)) - used for density estimation
+  * @param y Laplacian value L
+  * @param w Additional point weight (optional)
+  */
+  inline void update(T x_index, T x_log, T y, T w = T(1))
+  {
+    if (n > 0) {
+      // The index step is always 1 for sequential traversal, or greater for skips
+      // The geometric distance between points on a logarithmic graph
+      // The main adaptivity invariant:
+      // The more empty space between points (dt_log is large), the LESS effective k.
+      // The 1e-6 padding prevents division by zero in ultra-dense areas.
+      const T dt_index = x_index - last_x_index;
+      const T delta = x_log - last_x_log;
+      const T dt_log = delta >= 0 ? delta : -delta;
+      const T gamma = T(1) / (T(1) + dt_log / k_smooth_factor);
+
+      sw  *= gamma;
+      swy *= gamma;
+    }
+
+    // Add the current point
+    // Remember the coordinates for the next step
+    sw  += w;
+    swy += w * y;
+    last_x_index = x_index;
+    last_x_log   = x_log;
+    ++n;
+  }
+
+  inline T average() const
+  {
+    return sw > T(0) ? (swy / sw) : T(0);
+  }
+
+  inline int pts() const
+  {
+    return n;
+  }
+
+protected:
+  T sw = 0;
+  T swy = 0;
+  T last_x_index = 0;
+  T last_x_log = 0;
+  T k_smooth_factor = 0;
+  int n = 0;
+};
+
 #endif /* __c_running_line_estimate_h__ */

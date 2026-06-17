@@ -24,6 +24,11 @@ public:
     DISPLAY_SRC_MODULE,
     DISPLAY_SRC_PROFILE,
 
+    DISPLAY_V_MATRIX,
+    DISPLAY_V_MODULE,
+    DISPLAY_VLAP_FILTER,
+    DISPLAY_S_MODULE,
+
 //    DISPLAY_GAUSS_MODULE,
 //    DISPLAY_GAUSS_PROFILE,
 //    DISPLAY_GAUSS_FILTERED_MODULE,
@@ -60,6 +65,8 @@ protected:
 //  double _maxGain = 6.0;
 //  double _bw_cutoff = 0.85; // 180;
 //  int _bw_order = 2;
+  bool _includeCorners = true;
+  bool _cleanSpectrum = false;
   bool _applyBlurLimit = true;
   bool _write_file = false;
 };

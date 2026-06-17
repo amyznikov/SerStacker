@@ -483,6 +483,8 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bo
   const double R = includeCorners ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
   const int numBins = std::max(1, (int)(R));
 
+  CF_DEBUG("includeCorners=%d R=%g numBins=%d", includeCorners, R, numBins);
+
   // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
   const double scaleX = R / cx;
   const double scaleY = R / cy;
@@ -524,6 +526,9 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & output_profile, bo
   float * __restrict dstp = output_profile[0];
   for( int i = 0; i < numBins; ++i ) {
     dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
+    if( !(dstp[i] > 0) ) {
+      CF_DEBUG("zero at bin %d count=%g sum=%g", i, radialCount[i], radialSum[i]);
+    }
   }
 
   return true;
@@ -542,14 +547,18 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
   const double R = cornersIncluded ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
   const int numBins = radialProfile.cols;
 
+  CF_DEBUG("cornersIncluded =%d R=%g numBins=%d", cornersIncluded, R, numBins);
+
   // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
-  const double scaleX = R / cx;
-  const double scaleY = R / cy;
+  const double scaleX = 1; //R / cx;
+  const double scaleY = 1; // R / cy;
 
   cv::parallel_for_(cv::Range(0, size.height),
       [=, &radialProfile, &outputImage](const cv::Range & range) {
 
         const float * bins = radialProfile[0];
+
+        bool reported = false;
 
         for (int y = range.start; y < range.end; ++y) {
           float * __restrict dstp = outputImage[y];
@@ -566,11 +575,18 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
 
             // Radial radius in pixels (metrically perfect circle)
             const double r = std::sqrt(dx2 + dy2);
-            const int bin = static_cast<int>(r); //  / R
-            if (bin >= 0 && bin < numBins) {
+            const int bin = cvRound(r);
+            if (bin < numBins) {
               dstp[x] = bins[bin];
             }
             else {
+
+              if ( cornersIncluded && !reported ) {
+                reported = true;
+                CF_DEBUG("Bad bin %d numBins=%d x=%d y=%d cx=%g cy=%g dx=%g dy=%g r=%g scaleX=%g scaleY=%g",
+                    bin, numBins, x, y, cx, cy, dx, dy, r, scaleX, scaleY);
+              }
+
               // If cornersIncluded = false, all pixels from the corner zones of the matrix will fall outside numBins.
               dstp[x] = 0; /*  can be also radialProfile.back(); */
             }
@@ -1026,8 +1042,10 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
   return FILTER;
 }
 
-cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool squareRoot,
-    bool swapQuadrants)
+cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
+    double gain /* =1*/,
+    bool squareRoot /* =false*/,
+    bool centerDC /* =true */)
 {
   // Isotropic Laplacian
   // The frequency step is tied to the physical dimensions of the matrix
@@ -1060,12 +1078,91 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain, bool
         }
       });
 
-  if( swapQuadrants ) {
+  if( !centerDC ) {
     fftSwapQuadrants(FILTER);
   }
 
   return FILTER;
 }
+
+//// Discrete Laplacian in the frequency domain
+//cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC = true)
+//{
+//  cv::Mat1f FILTER(fftSize);
+//
+//  // Frequency step for discrete cosine grid
+//  const double scaleX = CV_2PI / fftSize.width;
+//  const double scaleY = CV_2PI / fftSize.height;
+//  const double cx = centerDC ? (fftSize.width / 2.0)  : 0.0;
+//  const double cy = centerDC ? (fftSize.height / 2.0) : 0.0;
+//
+//  cv::parallel_for_(cv::Range(0, fftSize.height),
+//      [=, &FILTER](const cv::Range & range) {
+//        for (int y = range.start; y < range.end; ++y) {
+//          float * __restrict dstp = FILTER[y];
+//
+//          // Frequency shift y relative to the position of the DC component
+//          const double wy = (y - cy) * scaleY;
+//          const double cos_y = std::cos(wy);
+//
+//          for (int x = 0; x < fftSize.width; ++x) {
+//            const double wx = (x - cx) * scaleX;
+//            const double cos_x = std::cos(wx);
+//
+//            const double denom = 2.0 * (2.0 - cos_x - cos_y);
+//            dstp[x] = float(denom);
+//          }
+//        }
+//      });
+//
+//  if( centerDC ) {
+//    FILTER(int(cy), int(cx)) = 1.0f;
+//  }
+//  else {
+//    FILTER(0, 0) = 1.0f;
+//  }
+//
+//  return FILTER;
+//}
+
+// Discrete Laplacian Filter for Periodic+Smooth Decomposition
+cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)
+{
+  cv::Mat1f FILTER(fftSize);
+
+  // Frequency step for discrete cosine grid
+  const double scaleX = CV_2PI / fftSize.width;
+  const double scaleY = CV_2PI / fftSize.height;
+  const double cx = centerDC ? (fftSize.width / 2.0) : 0.0;
+  const double cy = centerDC ? (fftSize.height / 2.0) : 0.0;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+          // Frequency shift y relative to the position of the DC component
+          const double wy = (y - cy) * scaleY;
+          const double cos_y = std::cos(wy);
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double wx = (x - cx) * scaleX;
+            const double cos_x = std::cos(wx);
+            const double denom = 2.0 * (2.0 - cos_x - cos_y);
+            dstp[x] = float(1.0 / denom);
+          }
+        }
+      });
+
+  if( centerDC ) {
+    FILTER(int(cy), int(cx)) = 0.0f;
+  }
+  else {
+    FILTER(0, 0) = 0.0f;
+  }
+
+  return FILTER;
+}
+
 
 // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
@@ -1203,3 +1300,88 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
 
   return FILTER;
 }
+
+void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
+{
+  const cv::Mat src = _src.getMat();
+  const int rows = src.rows;
+  const int cols = src.cols;
+
+  cv::Mat dst = cv::Mat::zeros(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
+
+  cv::Mat d;
+  cv::subtract(src.row(0), src.row(rows - 1), d, cv::noArray(), CV_32F);
+  cv::add(dst.row(0), d, dst.row(0), cv::noArray(), CV_32F);
+  cv::subtract(dst.row(rows - 1), d, dst.row(rows - 1), cv::noArray(), CV_32F);
+
+  cv::subtract(src.col(0), src.col(cols - 1), d, cv::noArray(), CV_32F);
+  cv::add(dst.col(0), d, dst.col(0), cv::noArray(), CV_32F);
+  cv::subtract(dst.col(cols - 1), d, dst.col(cols - 1), cv::noArray(), CV_32F);
+
+  _dst.move(dst);
+}
+
+#if 0
+
+Этот метод в англоязычной литературе чаще всего называют Periodic plus Smooth Decomposition (P+S).
+Математический фундамент для него заложил французский математик Жан-Мишель Морель (Jean-Michel Morel)
+с коллегами (в частности, Лионелем Мойшеном), развивая классические идеи аппроксимации функций
+(включая труды Селима Крейна).
+
+
+cv::Mat getPeriodicComponent(const cv::Mat& I) {
+    // Исходное изображение должно быть типа CV_32FC1 или CV_64FC1
+    cv::Mat img;
+    I.convertTo(img, CV_32F);
+
+    int rows = img.rows;
+    int cols = img.cols;
+
+    // 1. Создаем матрицу граничных перепадов V
+    cv::Mat V = cv::Mat::zeros(rows, cols, CV_32F);
+
+    // Вычисляем разницу между противоположными краями
+    for (int col = 0; col < cols; ++col) {
+        float diff_top_bottom = img.at<float>(0, col) - img.at<float>(rows - 1, col);
+        V.at<float>(0, col) += diff_top_bottom;
+        V.at<float>(rows - 1, col) -= diff_top_bottom;
+    }
+
+    for (int row = 0; row < rows; ++row) {
+        float diff_left_right = img.at<float>(row, 0) - img.at<float>(row, cols - 1);
+        V.at<float>(row, 0) += diff_left_right;
+        V.at<float>(row, cols - 1) -= diff_left_right;
+    }
+
+    // 2. Переходим в частотную область для решения уравнения Пуассона
+    cv::Mat dft_V;
+    cv::dft(V, dft_V, cv::DFT_COMPLEX_OUTPUT);
+
+    // 3. Создаем фильтр оператора Лапласа в частотной области
+    cv::Mat S_freq = cv::Mat::zeros(rows, cols, CV_32FC2);
+
+    for (int u = 0; u < rows; ++u) {
+        for (int v = 0; v < cols; ++v) {
+            if (u == 0 && v == 0) {
+                // Игнорируем DC-компоненту во избежание деления на ноль
+                continue;
+            }
+
+            // Знаменатель оператора Лапласа в частотной сетке
+            float denom = 2.0f * (2.0f - std::cos(2.0f * M_PI * u / rows) - std::cos(2.0f * M_PI * v / cols));
+
+            cv::Vec2f complex_v = dft_V.at<cv::Vec2f>(u, v);
+            S_freq.at<cv::Vec2f>(u, v) = complex_v / denom;
+        }
+    }
+
+    // 4. Возвращаемся во временную область — получаем гладкую компоненту S
+    cv::Mat S;
+    cv::idft(S_freq, S, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+
+    // 5. Периодическая часть P = I - S
+    cv::Mat P = img - S;
+
+    return P;
+}
+#endif

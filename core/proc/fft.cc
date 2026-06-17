@@ -1247,6 +1247,7 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+// Create V-Matrix for Periodic+Smooth Decomposition
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
 {
   const cv::Mat src = _src.getMat();

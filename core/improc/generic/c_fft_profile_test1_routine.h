@@ -27,6 +27,7 @@ public:
     DISPLAY_V_MATRIX,
     DISPLAY_V_MODULE,
     DISPLAY_VLAP_FILTER,
+    DISPLAY_S_MATRIX,
     DISPLAY_S_MODULE,
 
 //    DISPLAY_GAUSS_MODULE,
@@ -58,15 +59,7 @@ public:
 
 protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
-//  double _gsigma = 1.5;
-//  bool _lapSQRT =  false;
-//  double _gamma = 1;
-//  double _k_target = 0.04;
-//  double _maxGain = 6.0;
-//  double _bw_cutoff = 0.85; // 180;
-//  int _bw_order = 2;
   bool _cleanSpectrum = false;
-  bool _applyBlurLimit = true;
   bool _write_file = false;
 };
 

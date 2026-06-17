@@ -554,104 +554,6 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
     fprintf(fp, "I\tX\tS\tY\tL\tL_QUAD\tL_NATURE\tCORRECTION\tL_RESORED\tY_RESORED\t_LSMOOTH\n");
   }
 
-//  cv::Mat1f LSM;
-
-//  const auto smooth_lap = [&]() {
-//    LSM.create(1, n_bins);
-//
-//
-//    // Skip DC
-//    const int N_uniform = 100;
-//    const double x_min = xv(1);
-//    const double x_max = xv(n_bins - 1);
-//    const double x_range = x_max - x_min;
-//
-//    std::vector<double> bin_sums(N_uniform, 0.0);
-//    std::vector<int> bin_counts(N_uniform, 0);
-//
-//    for (int i = 1; i < n_bins; ++i) {
-//      const double x = xv(i);
-//      const double l = lop(i) + yv(i);
-//      const int bin_idx = std::max(0, std::min(N_uniform - 1,
-//          int((x - x_min) * (N_uniform - 1) / x_range)));
-//      bin_sums[bin_idx] += l;
-//      bin_counts[bin_idx]+= 1;
-//    }
-//    for (int i = 0; i < N_uniform; ++i) {
-//      if ( bin_counts[i] > 1 ) {
-//        bin_sums[i] /= bin_counts[i];
-//      }
-//    }
-//
-//    cv::Mat1f uniform_L(1, N_uniform);
-//    float* src_uniform = uniform_L[0];
-//
-//    // Gap Filling
-//    for (int j = 0; j < N_uniform; ++j) {
-//      if (bin_counts[j] > 0) {
-//        src_uniform[j] = bin_sums[j];
-//      }
-//      else {
-//        int left_valid = -1;
-//        int right_valid = -1;
-//
-//        for (int k = j - 1; k >= 0; --k) {
-//          if (bin_counts[k] > 0) {
-//            left_valid = k;
-//            break;
-//          }
-//        }
-//
-//        for (int k = j + 1; k < N_uniform; ++k) {
-//          if (bin_counts[k] > 0) {
-//            right_valid = k;
-//            break;
-//          }
-//        }
-//
-//        if (left_valid != -1 && right_valid != -1) {
-//          const float y_left = bin_sums[left_valid];
-//          const float y_right = bin_sums[right_valid];
-//          const float t = float(j - left_valid) / (right_valid - left_valid);
-//          src_uniform[j] = (1.0f - t) * y_left + t * y_right;
-//        }
-//        else if (left_valid != -1) {
-//          src_uniform[j] = float(bin_sums[left_valid]);
-//        }
-//        else if (right_valid != -1) {
-//          src_uniform[j] = float(bin_sums[right_valid]);
-//        }
-//        else {
-//          src_uniform[j] = 0.0f;
-//        }
-//      }
-//    }
-//
-//    cv::GaussianBlur(uniform_L, uniform_L, cv::Size(15, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//    float* dst_profile = LSM[0];
-//    dst_profile[0] = lop(0) + yv(0); //  0.0f; // DC
-//
-//    const float* smoothed_uniform_ptr = uniform_L[0];
-//    for (int i = 1; i < n_bins; ++i) {
-//      const double orig_x = xv(i);
-//      const double uniform_idx = (orig_x - x_min) * (N_uniform - 1) / x_range;
-//      //const int k = int(std::floor(uniform_idx));
-//      const int k = int(uniform_idx);
-//
-//      if (k < 0) {
-//        dst_profile[i] = smoothed_uniform_ptr[0];
-//      }
-//      else if (k >= N_uniform - 1) {
-//        dst_profile[i] = smoothed_uniform_ptr[N_uniform - 1];
-//      }
-//      else {
-//        double t = uniform_idx - k;
-//        dst_profile[i] = (1.0f - t) * smoothed_uniform_ptr[k] + t * smoothed_uniform_ptr[k + 1];
-//      }
-//    }
-//  };
-
   const cv::Mat1f LSM = smooth_laplace(sp);
 
   for( int i = 0; i < n_bins; ++i ) {
@@ -704,37 +606,27 @@ static bool analyzeRadialProfile(const cv::Mat1f & SRC_profile,
 
 
 static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize, double x0,
-    const c_blur_model & blur_model, bool cornersIncluded)
+    const c_blur_model & blur_model)
 {
   // Isotropic correction
   // The frequency step is tied to the physical dimensions of the matrix
   // fx = dx / width, fy = dy / height
 
   const cv::Size size = fftSize;
-  const double cx = size.width / 2.0;
-  const double cy = size.height / 2.0;
-
-//  const double R = std::min(cx, cy);
-//  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
-//  const double scaleX = R / cx;
-//  const double scaleY = R / cy;
-
   cv::Mat1f FILTER(size);
 
-  const double R = cornersIncluded ? std::sqrt(cx * cx + cy * cy) : std::min(cx, cy);
-  const double scaleX = R / cx;
-  const double scaleY = R / cy;
-  //const int numBins = radialProfile.cols;
-  //CF_DEBUG("cornersIncluded =%d R=%g numBins=%d", cornersIncluded, R, numBins);
+  const double cx = size.width / 2;
+  const double cy = size.height / 2;
+  const double R = std::sqrt(cx * cx + cy * cy);
+  const int numBins = std::max(1, int(R));
+  const double maxNormalizedR = std::sqrt(2.0);
 
-  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
-  //const double scaleX = 1; //R / cx;
-  //const double scaleY = 1; // R / cy;
+  const double scaleX = 1. / cx;
+  const double scaleY = 1. / cy;
 
   cv::parallel_for_(cv::Range(0, size.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
-
           float * __restrict dstp = FILTER[y];
 
           const double dy = (y - cy) * scaleY;
@@ -744,8 +636,9 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize, doubl
             const double dx = (x - cx) * scaleX;
             const double dx2 = dx * dx;
 
-            const double r = sqrt(dx2 + dy2);
-            const double xx = std::log(0.5 * (r + 1) / R) - x0;
+            const double r = std::sqrt(dx2 + dy2);
+            const double continuousBinIdx = r * numBins / maxNormalizedR; //  - 0.5;
+            const double xx = std::log(0.5 * (continuousBinIdx + 1) / R) - x0;
             const double correction = blur_model.compute(xx);
             const double gain = std::exp(correction);
             dstp[x] = float(gain);
@@ -756,13 +649,65 @@ static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize, doubl
   return FILTER;
 }
 
+//static cv::Mat1f fftCreateRadialCorrectionFilter(const cv::Size & fftSize, double x0,
+//    const c_blur_model & blur_model)
+//{
+//  // Isotropic correction
+//  // The frequency step is tied to the physical dimensions of the matrix
+//  // fx = dx / width, fy = dy / height
+//
+//  const cv::Size size = fftSize;
+//  const double cx = size.width / 2.0;
+//  const double cy = size.height / 2.0;
+//
+////  const double R = std::min(cx, cy);
+////  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
+////  const double scaleX = R / cx;
+////  const double scaleY = R / cy;
+//
+//  cv::Mat1f FILTER(size);
+//
+//  const double R = std::sqrt(cx * cx + cy * cy);
+//  const double scaleX = R / cx;
+//  const double scaleY = R / cy;
+//  //const int numBins = radialProfile.cols;
+//  //CF_DEBUG("cornersIncluded =%d R=%g numBins=%d", cornersIncluded, R, numBins);
+//
+//  // Deformation (stretching) coefficients: convert spectral pixels into dimensionless radial units
+//  //const double scaleX = 1; //R / cx;
+//  //const double scaleY = 1; // R / cy;
+//
+//  cv::parallel_for_(cv::Range(0, size.height),
+//      [=, &FILTER](const cv::Range & range) {
+//        for (int y = range.start; y < range.end; ++y) {
+//
+//          float * __restrict dstp = FILTER[y];
+//
+//          const double dy = (y - cy) * scaleY;
+//          const double dy2 = dy * dy;
+//
+//          for (int x = 0; x < size.width; ++x) {
+//            const double dx = (x - cx) * scaleX;
+//            const double dx2 = dx * dx;
+//
+//            const double r = sqrt(dx2 + dy2);
+//            const double xx = std::log(0.5 * (r + 1) / R) - x0;
+//            const double correction = blur_model.compute(xx);
+//            const double gain = std::exp(correction);
+//            dstp[x] = float(gain);
+//          }
+//        }
+//      });
+//
+//  return FILTER;
+//}
+
 // moon:  /mnt/data/scope/2023-08-04/MOON3/image_stacking1
 // mars: /mnt/data/scope/2022-11-13/s7/CapObj/2022-11-13Z/s2
 void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "cleanSpectrum: ", CTL_CONTEXT(ctx, _cleanSpectrum), "Set checked to clean spectrum from spikes");
-  ctlbind(ctls, "includeCorners: ", CTL_CONTEXT(ctx, _includeCorners), "");
   ctlbind(ctls, "applyBlurLimit: ", CTL_CONTEXT(ctx, _applyBlurLimit), "");
 
 
@@ -783,13 +728,8 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _cleanSpectrum);
-    SERIALIZE_OPTION(settings, save, *this, _includeCorners);
     SERIALIZE_OPTION(settings, save, *this, _applyBlurLimit);
-//    SERIALIZE_OPTION(settings, save, *this, _gamma);
-//    SERIALIZE_OPTION(settings, save, *this, _k_target);
-//    SERIALIZE_OPTION(settings, save, *this, _maxGain);
-//    SERIALIZE_OPTION(settings, save, *this, _bw_cutoff);
-//    SERIALIZE_OPTION(settings, save, *this, _bw_order);
+    //    SERIALIZE_OPTION(settings, save, *this, _gamma);
     return true;
   }
   return false;
@@ -918,8 +858,8 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   }
 
   fftSpectrumModule(SRC_SPECTRUM, SRC_MODULE);
-  fftRadialProfile(SRC_MODULE, SRC_profile, _includeCorners);
-  fftRadialProfileToImage(SRC_profile, SRC_MODULE.size(), _includeCorners, SRC_PROFILE);
+  fftRadialProfile(SRC_MODULE, SRC_profile);
+  fftRadialProfileToImage(SRC_profile, SRC_MODULE.size(), SRC_PROFILE);
 
 //  GAUSS_MODULE = fftGenerateGaussianFilter(fftSize, _gsigma);
 //  fftRadialProfile(GAUSS_MODULE, GAUSS_profile, false);
@@ -1047,8 +987,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   const cv::Mat1f FILTER =
       fftCreateRadialCorrectionFilter(fftSize,
           profile_x0,
-          blur_model,
-          _includeCorners);
+          blur_model);
 
   if ( _display == DISPLAY_FILTER) {
     mask.release();

@@ -65,7 +65,6 @@ protected:
 //  double _maxGain = 6.0;
 //  double _bw_cutoff = 0.85; // 180;
 //  int _bw_order = 2;
-  bool _includeCorners = true;
   bool _cleanSpectrum = false;
   bool _applyBlurLimit = true;
   bool _write_file = false;

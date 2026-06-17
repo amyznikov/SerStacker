@@ -12,14 +12,12 @@
 
 void c_fft_radial_profile_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-  ctlbind(ctls, "includeCorners", CTL_CONTEXT(ctx, _includeCorners), "");
   ctlbind(ctls, "profileToImage", CTL_CONTEXT(ctx, _profileToImage), "");
 }
 
 bool c_fft_radial_profile_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _includeCorners);
     SERIALIZE_OPTION(settings, save, *this, _profileToImage);
     return true;
   }
@@ -46,8 +44,8 @@ bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::Input
     fftImageToSpectrum(channels[i], channels[i], fftSize, true);
     fftSpectrumModule(channels[i], channels[i]);
     if ( _profileToImage) {
-      fftRadialProfile(channels[i], radial_profile, _includeCorners);
-      fftRadialProfileToImage(radial_profile, fftSize, _includeCorners, (cv::Mat1f&) channels[i]);
+      fftRadialProfile(channels[i], radial_profile);
+      fftRadialProfileToImage(radial_profile, fftSize, (cv::Mat1f&) channels[i]);
     }
   }
 

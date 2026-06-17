@@ -23,7 +23,6 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  bool _includeCorners = false;
   bool _profileToImage = false;
 };
 

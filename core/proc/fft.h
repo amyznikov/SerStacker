@@ -55,12 +55,10 @@ bool fftSpectrumPhase(cv::InputArray src,
     cv::OutputArray dst);
 
 bool fftRadialProfile(const cv::Mat1f & spectrum,
-    cv::Mat1f & output_profile,
-    bool includeCorners = false);
+    cv::Mat1f & output_profile);
 
 void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
     const cv::Size & outputImageSize,
-    bool cornersIncluded,
     cv::Mat1f & outputImage);
 
 bool fftSpectrumToPolar(const cv::Mat & src,

@@ -497,9 +497,8 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
 
   cv::Rect rc;
   const cv::Mat src = image.getMat();
-  const cv::Size srcSize = image.size();
+  const cv::Size fftSize = fftGetOptimalSize(image.size(), cv::Size(63,63));
   const int cn = image.channels();
-  const cv::Size fftSize = fftGetOptimalSize(srcSize, cv::Size(63,63));
 
   double wB = 0, wG = 0, wR = 0;
 

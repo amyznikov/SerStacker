@@ -106,6 +106,8 @@ bool c_fft_gaussian_filter_routine::process(cv::InputOutputArray image, cv::Inpu
   const int cn = src.channels();
   const cv::Size fftSize = fftGetOptimalSize(src.size());
 
+  // CF_DEBUG("fftSize= %dx%d", fftSize.width, fftSize.height);
+
   const cv::Mat1f GAUSSIAN =
       fftGenerateGaussianFilter(fftSize, _gsigma);
 

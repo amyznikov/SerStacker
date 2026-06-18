@@ -29,25 +29,6 @@ const c_enum_member * members_of<c_fft_profile_test1_routine::DISPLAY>()
       { c_fft_profile_test1_routine::DISPLAY_S_MATRIX, "S_MATRIX" },
       { c_fft_profile_test1_routine::DISPLAY_S_MODULE, "S_MODULE" },
 
-
-//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_MODULE, "GAUSS_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_PROFILE, "GAUSS_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_MODULE, "GAUSS_FILTERED_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_PROFILE, "GAUSS_FILTERED_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GAUSS_FILTERED_IMAGE, "GAUSS_FILTERED_IMAGE", },
-
-//      { c_fft_profile_test1_routine::DISPLAY_LAPL_MODULE, "LAPL_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_LAPL_PROFILE, "LAPL_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_MODULE, "LAPL_FILTERED_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_PROFILE, "LAPL_FILTERED_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_LAPL_FILTERED_IMAGE, "LAPL_FILTERED_IMAGE", },
-
-//      { c_fft_profile_test1_routine::DISPLAY_GLAP_MODULE, "GLAP_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GLAP_PROFILE, "GLAP_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_MODULE, "GLAP_FILTERED_MODULE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_PROFILE, "GLAP_FILTERED_PROFILE", },
-//      { c_fft_profile_test1_routine::DISPLAY_GLAP_FILTERED_IMAGE, "GLAP_FILTERED_IMAGE", },
-
       { c_fft_profile_test1_routine::DISPLAY_FILTER, "FILTER", },
       { c_fft_profile_test1_routine::DISPLAY_RESTORED_MODULE, "RESTORED_MODULE", },
       { c_fft_profile_test1_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", },
@@ -106,7 +87,7 @@ static bool fftPowerDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swa
   return false;
 }
 
-static bool fftMulSpectrum(const cv::Mat1f & filter, cv::Mat2f & complexSpectrum,
+static bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
     cv::OutputArray dst)
 {
   cv::Mat2f F;
@@ -299,7 +280,6 @@ cv::Mat1f createRadialBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const 
     bool write_debug_file = false)
 {
 
-
   const c_radial_spectrum_profile sp(SRC_profile);
   const cv::Mat1f LSM = smooth_laplace(sp);
 
@@ -390,13 +370,6 @@ cv::Mat1f createRadialBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const 
       const double nature = S0_nature + S1_nature * x; // L_NATURE
       const double laplace = LSM(0, i); // L_SMOOTH
       const double corr = nature - laplace;
-//      const double snr = (y - laplace);
-//      if (i > anti_aliasing_start_bin) {
-//        double delta_bin = i - anti_aliasing_start_bin;
-//        // Вычитаем квадратичную параболу из ЛОГАРИФМА коррекции.
-//        // В спектре это эквивалентно умножению на Гауссиану (идеальный Blur для углов)
-//        corr = corr - (drop_speed * delta_bin * delta_bin);
-//      }
       correction(0, i) = corr;
     }
   }
@@ -522,7 +495,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   const cv::Size fftSize = fftGetOptimalSize(srcSize, cv::Size(63,63));
 
   cv::Mat SRC;
-  cv::Mat2f SRC_SPECTRUM; // Complex spectrum of source image
+  cv::Mat SRC_SPECTRUM; // Complex spectrum of source image
   cv::Mat1f SRC_MODULE; // Spectrum module of source image
   cv::Mat1f SRC_RadialProfile;
   cv::Mat1f SRC_PROFILE;

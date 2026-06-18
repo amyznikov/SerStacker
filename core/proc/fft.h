@@ -22,15 +22,11 @@ bool fftCopyMakeBorder(cv::InputArray src,
 
 bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst,
     const cv::Size & fftSize,
-    bool swapQuadrants = true);
+    bool centerDC = true);
 
-void fftImageToSpectrum(cv::InputArray image,
-    std::vector<cv::Mat2f> & complex_channels);
-
-void fftImageToSpectrum(cv::InputArray image,
-    std::vector<cv::Mat2f> & complex_channels,
-    const cv::Size & psfSize,
-    cv::Rect * rc);
+bool fftImageToSpectrum(cv::InputArray image, std::vector<cv::Mat2f> & output_complex_channels,
+    const cv::Size & fftSize = cv::Size(0, 0),
+    bool centerDC = true);
 
 void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
     cv::OutputArray dst);
@@ -68,9 +64,9 @@ bool fftSpectrumToPolar(const cv::Mat & src,
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
     cv::Mat & dst );
 
-void fftSharpenR1(cv::InputArray image, cv::OutputArray dst,
-    double scale,
-    bool preserve_l2_norm = true);
+//void fftSharpenR1(cv::InputArray image, cv::OutputArray dst,
+//    double scale,
+//    bool preserve_l2_norm = true);
 
 bool fftAccumulatePowerSpectrum(const cv::Mat & src,
     cv::Mat & acc,

@@ -87,52 +87,53 @@ bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size &
   return true;
 }
 
-void fftImageToSpectrum(cv::InputArray src, std::vector<cv::Mat2f> & complex_channels)
+bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst, const cv::Size & fftSize, bool centerDC)
 {
-  const int cn = src.channels();
-  complex_channels.resize(cn);
-
-  if ( cn == 1 ) {
-    cv::dft(src, complex_channels[0], cv::DFT_COMPLEX_OUTPUT);
-  }
-  else {
-    cv::Mat channels[cn];
-    cv::split(src.getMat(), channels);
-
-    for ( int i = 0; i < cn; ++i ) {
-      cv::dft(channels[i], complex_channels[i], cv::DFT_COMPLEX_OUTPUT);
-    }
-  }
-}
-
-
-bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst, const cv::Size & fftSize,
-    bool swapQuadrants)
-{
-  // Single-channel CV_32F image is expected on input
-  if ( _src.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid argument: Single-channel CV_32F image is expected on input");
+  if( _src.type() != CV_32FC1 && _src.type() != CV_32FC2  ) {
+    CF_ERROR("Invalid argument: CV_32FC1 or CV_32FC2 input image expected");
     return false;
   }
 
   cv::Mat src_padded;
-  if ( _src.size() == fftSize ) {
+  if( fftSize.empty() || _src.size() == fftSize ) {
     src_padded = _src.getMat();
   }
   else {
     fftCopyMakeBorder(_src, src_padded, fftSize);
   }
 
-  const cv::Mat src_planes[] = { src_padded,
-      cv::Mat::zeros(_src.size(), _src.depth())
-  };
-
-  // complex_I at the output will contain a spectrum in CV_32FC2 format
-  cv::Mat complex_image;
-  cv::merge(src_planes, 2, complex_image);
-  cv::dft(complex_image, _dst);
-  if ( swapQuadrants ) {
+  cv::dft(src_padded, _dst, cv::DFT_COMPLEX_OUTPUT);
+  if( centerDC ) {
     fftSwapQuadrants(_dst.getMatRef());
+  }
+
+  return true;
+}
+
+bool fftImageToSpectrum(cv::InputArray _src, std::vector<cv::Mat2f> & complex_channels,
+    const cv::Size & fftSize, bool centerDC)
+{
+  if( _src.depth() != CV_32F ) {
+    CF_ERROR("Invalid argument: CV_32F input image expected");
+    return false;
+  }
+
+  cv::Mat src_padded;
+  if( fftSize.empty() ||  _src.size() == fftSize ) {
+    src_padded = _src.getMat();
+  }
+  else {
+    fftCopyMakeBorder(_src, src_padded, fftSize);
+  }
+
+  const int cn = _src.channels();
+  complex_channels.resize(cn);
+
+  for( int i = 0; i < cn; ++i ) {
+    cv::dft(src_padded, complex_channels[i], cv::DFT_COMPLEX_OUTPUT);
+    if( centerDC ) {
+      fftSwapQuadrants(complex_channels[i]);
+    }
   }
 
   return true;
@@ -157,43 +158,42 @@ void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::O
   }
 }
 
-
-void fftImageToSpectrum(cv::InputArray image,
-    std::vector<cv::Mat2f> & complex_channels,
-    const cv::Size & psfSize,
-    cv::Rect * outrc)
-{
-  if ( psfSize.empty() ) {
-
-    fftImageToSpectrum(image,
-        complex_channels);
-
-    if ( outrc ) {
-      *outrc = cv::Rect(0, 0,
-          image.cols(),
-          image.rows());
-    }
-
-  }
-  else {
-
-    cv::Mat tmp;
-    cv::Rect rc;
-
-    fftCopyMakeBorder(image, tmp,
-        fftGetOptimalSize(image.size(),
-            psfSize),
-            &rc);
-
-    fftImageToSpectrum(tmp,
-        complex_channels);
-
-    if ( outrc ) {
-      *outrc = rc;
-    }
-  }
-
-}
+//void fftImageToSpectrum(cv::InputArray image,
+//    std::vector<cv::Mat2f> & complex_channels,
+//    const cv::Size & psfSize,
+//    cv::Rect * outrc)
+//{
+//  if ( psfSize.empty() ) {
+//
+//    fftImageToSpectrum(image,
+//        complex_channels);
+//
+//    if ( outrc ) {
+//      *outrc = cv::Rect(0, 0,
+//          image.cols(),
+//          image.rows());
+//    }
+//
+//  }
+//  else {
+//
+//    cv::Mat tmp;
+//    cv::Rect rc;
+//
+//    fftCopyMakeBorder(image, tmp,
+//        fftGetOptimalSize(image.size(),
+//            psfSize),
+//            &rc);
+//
+//    fftImageToSpectrum(tmp,
+//        complex_channels);
+//
+//    if ( outrc ) {
+//      *outrc = rc;
+//    }
+//  }
+//
+//}
 
 void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
     cv::OutputArray dst,
@@ -725,72 +725,72 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
 }
 
 
-void fftSharpenR1(cv::InputArray image, cv::OutputArray dst, double scale, bool preserve_l2_norm)
-{
-  typedef tbb::blocked_range<int> range;
-
-  std::vector<cv::Mat2f> channels;
-  double saved_image_norm = 1;
-  cv::Rect rc;
-
-  if ( preserve_l2_norm ) {
-    saved_image_norm = cv::norm(image, cv::NORM_L2);
-  }
-
-  fftImageToSpectrum(image, channels, cv::Size(32, 32), &rc);
-
-  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
-
-    cv::Mat2f & spec = channels[c];
-
-    fftSwapQuadrants(spec);
-
-    if ( scale >= 0 ) {
-      // sharpen
-
-      tbb::parallel_for(range(0, spec.rows, 64),
-          [&spec, scale] (const range & r) {
-
-            const double x0 = spec.cols / 2;
-            const double y0 = spec.rows / 2;
-
-            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-              for ( int x = 0; x < spec.cols; ++x ) {
-                const double r1 = 1. + scale * hyp((x - x0) / x0, (y - y0) / y0);
-                spec[y][x][0] *= r1;
-                spec[y][x][1] *= r1;
-              }
-            }
-          });
-    }
-    else {
-      // smoothing
-
-      tbb::parallel_for(range(0, spec.rows, 64),
-          [&spec, scale] (const range & r) {
-
-            const double x0 = spec.cols / 2;
-            const double y0 = spec.rows / 2;
-
-            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-              for ( int x = 0; x < spec.cols; ++x ) {
-                const double r1 = 1./(1. - scale * hyp((x - x0) / x0, (y - y0) / y0));
-                spec[y][x][0] *= r1;
-                spec[y][x][1] *= r1;
-              }
-            }
-          });
-    }
-
-    fftSwapQuadrants(spec);
-  }
-
-  fftImageFromSpectrum(channels, dst, rc);
-
-  if ( preserve_l2_norm ) {
-    cv::multiply(dst, saved_image_norm / cv::norm(image, cv::NORM_L2), dst);
-  }
-}
+//void fftSharpenR1(cv::InputArray image, cv::OutputArray dst, double scale, bool preserve_l2_norm)
+//{
+//  typedef tbb::blocked_range<int> range;
+//
+//  std::vector<cv::Mat2f> channels;
+//  double saved_image_norm = 1;
+//  cv::Rect rc;
+//
+//  if ( preserve_l2_norm ) {
+//    saved_image_norm = cv::norm(image, cv::NORM_L2);
+//  }
+//
+//  fftImageToSpectrum(image, channels, cv::Size(32, 32), &rc);
+//
+//  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
+//
+//    cv::Mat2f & spec = channels[c];
+//
+//    fftSwapQuadrants(spec);
+//
+//    if ( scale >= 0 ) {
+//      // sharpen
+//
+//      tbb::parallel_for(range(0, spec.rows, 64),
+//          [&spec, scale] (const range & r) {
+//
+//            const double x0 = spec.cols / 2;
+//            const double y0 = spec.rows / 2;
+//
+//            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+//              for ( int x = 0; x < spec.cols; ++x ) {
+//                const double r1 = 1. + scale * hyp((x - x0) / x0, (y - y0) / y0);
+//                spec[y][x][0] *= r1;
+//                spec[y][x][1] *= r1;
+//              }
+//            }
+//          });
+//    }
+//    else {
+//      // smoothing
+//
+//      tbb::parallel_for(range(0, spec.rows, 64),
+//          [&spec, scale] (const range & r) {
+//
+//            const double x0 = spec.cols / 2;
+//            const double y0 = spec.rows / 2;
+//
+//            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
+//              for ( int x = 0; x < spec.cols; ++x ) {
+//                const double r1 = 1./(1. - scale * hyp((x - x0) / x0, (y - y0) / y0));
+//                spec[y][x][0] *= r1;
+//                spec[y][x][1] *= r1;
+//              }
+//            }
+//          });
+//    }
+//
+//    fftSwapQuadrants(spec);
+//  }
+//
+//  fftImageFromSpectrum(channels, dst, rc);
+//
+//  if ( preserve_l2_norm ) {
+//    cv::multiply(dst, saved_image_norm / cv::norm(image, cv::NORM_L2), dst);
+//  }
+//}
 
 
 

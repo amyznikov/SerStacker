@@ -143,8 +143,9 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
 
   switch (_filter) {
     case FILTER_BUTTERWORTH: {
-      const int ksize = std::max(3, 2 * (int) (3 * std::abs(butterworth_filter.rc)) + 1);
+      const int ksize = std::min(63, std::max(3, 2 * (int) (3 * std::abs(butterworth_filter.rc)) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      //CF_DEBUG("fftSize= %dx%d", fftSize.width, fftSize.height);
       FILTER = fftGenerateButterworthUnsharpFilter(fftSize,
           butterworth_filter.rc,
           butterworth_filter.order,
@@ -155,8 +156,9 @@ bool c_fft_unsharp_filter_routine::process(cv::InputOutputArray image, cv::Input
 
     case FILTER_GAUSSIAN:
       default: {
-      const int ksize = std::max(3, 2 * (int) (3 * std::abs(gaussian_filter.sigma)) + 1);
+      const int ksize = std::min(63, std::max(3, 2 * (int) (3 * std::abs(gaussian_filter.sigma)) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      //CF_DEBUG("fftSize= %dx%d", fftSize.width, fftSize.height);
       FILTER = fftGenerateGaussianUnsharpFilter(fftSize,
           gaussian_filter.sigma,
           gaussian_filter.gain,

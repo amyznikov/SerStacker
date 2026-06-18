@@ -10,7 +10,8 @@
 #define __c_fft_profile_test1_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/cdiffs.h>
+#include <core/proc/extract_channel.h>
+#include <core/proc/pixtype.h>
 
 class c_fft_profile_test1_routine :
     public c_image_processor_routine
@@ -21,17 +22,6 @@ public:
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE = 0,
-    DISPLAY_SRC_MODULE,
-    DISPLAY_SRC_PROFILE,
-
-    DISPLAY_V_MATRIX,
-    DISPLAY_V_MODULE,
-    DISPLAY_VLAP_FILTER,
-    DISPLAY_S_MATRIX,
-    DISPLAY_S_MODULE,
-
-    DISPLAY_FILTER,
-    DISPLAY_RESTORED_MODULE,
     DISPLAY_RESTORED_IMAGE,
   };
 
@@ -41,7 +31,7 @@ public:
 
 protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
-  bool _cleanSpectrum = false;
+  enum color_channel_type _intensity_channel = color_channel_gray;
   bool _write_file = false;
 };
 

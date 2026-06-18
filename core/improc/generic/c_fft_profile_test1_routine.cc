@@ -3,10 +3,30 @@
  *
  *  Created on: Jun 5, 2026
  *      Author: amyznikov
+ *
+ *      ┌─────────────── SRC_IMAGE (B, G, R) ───────────────┐
+ *      │                                                   │
+ *      ▼                                                   ▼
+ * [ INTENSITY Channel ]                              [ B, G, R Channels ]
+ *      │                                                   │
+ * Periodic+Smooth Decomposition                   Periodic+Smooth Decomposition
+ *      │                                           (for each channel separately)
+ *      ▼                                                   │
+ *  P_intensity Spectrum                                     ▼
+ *      │                                          Split into P_c and S_c
+ * [ Generate FILTER ]                                      │
+ *      │                                                   │
+ *      └───────────────────► Apply FILTER to P_c only ─────┤
+ *                                                          │
+ *                                                          ▼
+ *                                                Assembly: P_c_filtered + S_c
+ *                                                          │
+ *                                                          ▼
+ *                                                  IFFT(P_c_filtered + S_c)
+ *
  */
 
 #include "c_fft_profile_test1_routine.h"
-
 #include <core/proc/estimate_noise.h>
 #include <core/proc/c_line_estimate.h>
 #include <core/proc/c_linear_regression.h>
@@ -19,86 +39,61 @@ const c_enum_member * members_of<c_fft_profile_test1_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
       { c_fft_profile_test1_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
-      { c_fft_profile_test1_routine::DISPLAY_SRC_MODULE, "SRC_MODULE" },
-      { c_fft_profile_test1_routine::DISPLAY_SRC_PROFILE, "SRC_PROFILE" },
-
-      { c_fft_profile_test1_routine::DISPLAY_V_MATRIX, "V_MATRIX" },
-      { c_fft_profile_test1_routine::DISPLAY_V_MODULE, "V_MODULE" },
-      { c_fft_profile_test1_routine::DISPLAY_VLAP_FILTER, "V_FILTER" },
-
-      { c_fft_profile_test1_routine::DISPLAY_S_MATRIX, "S_MATRIX" },
-      { c_fft_profile_test1_routine::DISPLAY_S_MODULE, "S_MODULE" },
-
-      { c_fft_profile_test1_routine::DISPLAY_FILTER, "FILTER", },
-      { c_fft_profile_test1_routine::DISPLAY_RESTORED_MODULE, "RESTORED_MODULE", },
       { c_fft_profile_test1_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", },
-
-      { c_fft_profile_test1_routine::DISPLAY_SRC_IMAGE, },
+      { c_fft_profile_test1_routine::DISPLAY_RESTORED_IMAGE, },
   };
 
   return members;
 }
 
 // Magnitude: sqrt(Re^2 + Im^2)
-static bool fftMagnituteDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-{
-  if( _spec.type() == CV_32FC1 ) {
-    _spec.getMat().copyTo(_dst);
-    if( swapQuadrants ) {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
-
-  if ( _spec.type() == CV_32FC2 ) {
-    cv::Mat1f magnitude;
-    fftSpectrumModule(_spec, _dst);
-    if ( swapQuadrants )  {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-  return false;
-}
+//static bool fftMagnituteDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
+//{
+//  if( _spec.type() == CV_32FC1 ) {
+//    _spec.getMat().copyTo(_dst);
+//    if( swapQuadrants ) {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  if ( _spec.type() == CV_32FC2 ) {
+//    cv::Mat1f magnitude;
+//    fftSpectrumModule(_spec, _dst);
+//    if ( swapQuadrants )  {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
+//  return false;
+//}
 
 // Power: Re^2 + Im^2
-static bool fftPowerDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-{
-  if( _spec.type() == CV_32FC1 ) {
-    _spec.getMat().copyTo(_dst);
-    if( swapQuadrants ) {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
+//static bool fftPowerDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
+//{
+//  if( _spec.type() == CV_32FC1 ) {
+//    _spec.getMat().copyTo(_dst);
+//    if( swapQuadrants ) {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  if ( _spec.type() == CV_32FC2 ) {
+//    cv::Mat1f pow;
+//    fftSpectrumPower(_spec, _dst);
+//    if ( swapQuadrants )  {
+//      fftSwapQuadrants(_dst.getMatRef());
+//    }
+//    return true;
+//  }
+//
+//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
+//  return false;
+//}
 
-  if ( _spec.type() == CV_32FC2 ) {
-    cv::Mat1f pow;
-    fftSpectrumPower(_spec, _dst);
-    if ( swapQuadrants )  {
-      fftSwapQuadrants(_dst.getMatRef());
-    }
-    return true;
-  }
-
-  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-  return false;
-}
-
-static bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
-    cv::OutputArray dst)
-{
-  cv::Mat2f F;
-  const cv::Mat planes[] {
-      filter, filter
-  };
-  cv::merge(planes, 2, F);
-  cv::multiply(F, complexSpectrum, dst);
-
-  return true;
-}
 
 namespace {
 
@@ -276,7 +271,7 @@ static cv::Mat1f smooth_laplace(const c_radial_spectrum_profile & p)
   return output_lap;
 }
 
-cv::Mat1f createRadialBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const cv::Size & fftSize,
+cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const cv::Size & fftSize,
     bool write_debug_file = false)
 {
 
@@ -458,6 +453,7 @@ cv::Mat1f createRadialBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const 
   return FILTER;
 }
 
+
 }
 
 
@@ -466,7 +462,7 @@ cv::Mat1f createRadialBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const 
 void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "cleanSpectrum: ", CTL_CONTEXT(ctx, _cleanSpectrum), "Set checked to clean spectrum from spikes");
+  ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
   ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
 }
 
@@ -474,7 +470,7 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _cleanSpectrum);
+    SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
     return true;
   }
   return false;
@@ -482,161 +478,89 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
 
 bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
-  // Single-channel CV_32F image is expected on input
-  if ( image.type() != CV_32FC1 ) {
-    CF_ERROR("Invalid argument: Single-channel CV_32F image is expected on input");
-    return false;
+  if ( _display == DISPLAY_SRC_IMAGE ) {
+    // no processing requested
+    return true;
   }
 
   cv::Rect rc;
-
   const cv::Mat src = image.getMat();
   const cv::Size srcSize = image.size();
+  const int cn = image.channels();
   const cv::Size fftSize = fftGetOptimalSize(srcSize, cv::Size(63,63));
 
-  cv::Mat SRC;
-  cv::Mat SRC_SPECTRUM; // Complex spectrum of source image
-  cv::Mat1f SRC_MODULE; // Spectrum module of source image
-  cv::Mat1f SRC_RadialProfile;
-  cv::Mat1f SRC_PROFILE;
-  cv::Mat2f S;
-  cv::Mat1f V;
-  cv::Mat2f V_SPECTRUM;
-  cv::Mat2f SRC_CLEAN_SPECTRUM; // Complex spectrum of source image after Periodic+Smooth Decomposition
-  cv::Mat1f FILTER;
+  cv::Mat SRC_IMAGE;
+  std::vector<cv::Mat2f> SRC_P, SRC_S;
+  cv::Mat INTENSITY_CHANNEL, INTENSITY_P, INTENSITY_S;
+  cv::Mat1f INTENSITY_RadialProfile;
+  std::vector<cv::Mat> SRC_CHANNELS_RESTORED;
+  cv::Mat SRC_RESTORED;
 
-  if ( src.type() == CV_32FC1 ) {
-    if ( src.size() == fftSize ) {
-      SRC = src;
-      rc = cv::Rect(0, 0, src.cols, src.rows );
-    }
-    else {
-      fftCopyMakeBorder(src, SRC, fftSize, &rc);
-    }
-  }
-  else if ( src.channels() == 1 ) {
-    if ( src.size() == fftSize ) {
-      SRC = src;
-      rc = cv::Rect(0, 0, src.cols, src.rows );
-    }
-    else {
-      fftCopyMakeBorder(src, SRC, fftSize, &rc);
-    }
-    if ( SRC.depth() != CV_32F ) {
-      SRC.convertTo(SRC, CV_32F);
-    }
-  }
-  else if ( src.channels() == 1 ) {
-    cv::cvtColor(src, SRC, cv::COLOR_BGR2GRAY);
-    if ( SRC.size() == fftSize ) {
-      rc = cv::Rect(0, 0, SRC.cols, SRC.rows );
-    }
-    else {
-      fftCopyMakeBorder(SRC, SRC, fftSize, &rc);
-    }
-    if ( SRC.depth() != CV_32F ) {
-      SRC.convertTo(SRC, CV_32F);
-    }
-  }
-
-  fftImageToSpectrum(SRC, SRC_SPECTRUM, fftSize);
-
-  if ( !_cleanSpectrum ) {
-    SRC_CLEAN_SPECTRUM = SRC_SPECTRUM;
+  if ( src.size() == fftSize ) {
+    SRC_IMAGE = src, rc = cv::Rect(0, 0, src.cols, src.rows);
   }
   else {
-    // Periodic + Smooth Decomposition
-
-    fftCreateVMatrix(SRC, V);
-    if ( _display == DISPLAY_V_MATRIX ) {
-      mask.release();
-      V.copyTo(image);
-      return true;
-    }
-
-    fftImageToSpectrum(V, V_SPECTRUM, fftSize);
-    if ( _display == DISPLAY_V_MODULE ) {
-      mask.release();
-      return fftMagnituteDisplay(V_SPECTRUM, image);
-    }
-
-    const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(V.size(), true);
-    if ( _display == DISPLAY_VLAP_FILTER ) {
-      mask.release();
-      VLAP.copyTo(image);
-      return true;
-    }
-
-    fftMulSpectrum(VLAP, V_SPECTRUM, S);
-    if ( _display == DISPLAY_S_MODULE ) {
-      mask.release();
-      return fftMagnituteDisplay(S, image);
-    }
-
-    if ( _display == DISPLAY_S_MATRIX) {
-      cv::Mat1f S_RESTORED;
-      fftSwapQuadrants(S);
-      cv::idft(S, S_RESTORED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-      S_RESTORED.copyTo(image);
-      mask.release();
-      return true;
-    }
-
-    cv::subtract(SRC_SPECTRUM, S, SRC_CLEAN_SPECTRUM);
+    fftCopyMakeBorder(src, SRC_IMAGE, fftSize, &rc);
   }
 
-  fftSpectrumModule(SRC_CLEAN_SPECTRUM, SRC_MODULE);
-  fftRadialProfile(SRC_MODULE, SRC_RadialProfile);
-  fftRadialProfileToImage(SRC_RadialProfile, SRC_MODULE.size(), SRC_PROFILE);
+  if ( SRC_IMAGE.depth() != CV_32F ) {
+    SRC_IMAGE.convertTo(SRC_IMAGE, CV_32F);
+  }
 
-  FILTER =
-      createRadialBlurCorrectionFilter(SRC_RadialProfile, fftSize,
+  if( cn == 1 ) {
+    INTENSITY_CHANNEL = SRC_IMAGE;
+  }
+  else {
+    extract_channel(SRC_IMAGE, INTENSITY_CHANNEL, cv::noArray(), cv::noArray(),
+        _intensity_channel);
+  }
+
+  // DFT with Periodic + Smooth Decomposition.
+
+  const cv::Mat1f VLAP =
+      fftGenerateDiscreteLaplacianFilter(fftSize,
+          true);
+
+  fftPPSDecomposition(INTENSITY_CHANNEL, VLAP,
+      INTENSITY_P, INTENSITY_S,
+      true);
+
+
+  fftSpectrumModule(INTENSITY_P, INTENSITY_P);
+  fftRadialProfile(INTENSITY_P, INTENSITY_RadialProfile);
+
+  const cv::Mat1f INVERSE_FILTER =
+      createInverseBlurCorrectionFilter(INTENSITY_RadialProfile, fftSize,
           _write_file);
 
-  if ( _display == DISPLAY_SRC_IMAGE ) {
-    return true;
-  }
-  if ( _display == DISPLAY_SRC_MODULE ) {
-    mask.release();
-    return fftMagnituteDisplay(SRC_MODULE, image);
-  }
-  if ( _display == DISPLAY_SRC_PROFILE ) {
-    mask.release();
-    return fftMagnituteDisplay(SRC_PROFILE, image);
+  fftPPSDecomposition(SRC_IMAGE, VLAP,
+      &SRC_P, &SRC_S,
+      true);
+
+  SRC_CHANNELS_RESTORED.resize(cn);
+  for ( int i = 0; i < cn; ++i ) {
+
+    // Apply inverse filter to each color channel periodic component
+    fftMulSpectrum(INVERSE_FILTER, SRC_P[i], SRC_P[i]);
+
+    // Restore SRC channel spectrum with S component,
+    // reuse existing Mat's
+    cv::add(SRC_P[i], SRC_S[i], SRC_P[i]);
+
+    // Perform idft
+    fftSwapQuadrants(SRC_P[i]);
+    cv::idft(SRC_P[i], SRC_CHANNELS_RESTORED[i], cv::DFT_SCALE |
+        cv::DFT_REAL_OUTPUT);
   }
 
-  if ( _display == DISPLAY_FILTER) {
-    mask.release();
-    return fftMagnituteDisplay(FILTER, image);
+  if (cn == 1 ) {
+    SRC_RESTORED = SRC_CHANNELS_RESTORED[0];
+  }
+  else {
+    cv::merge(SRC_CHANNELS_RESTORED, SRC_RESTORED);
   }
 
-  if ( _display == DISPLAY_RESTORED_MODULE) {
-    mask.release();
-    return fftMagnituteDisplay(FILTER.mul(SRC_MODULE), image);
-  }
-
-  if ( _display == DISPLAY_RESTORED_IMAGE) {
-    cv::Mat SRC_SPECTRUM_RESTORED;
-
-    if ( !_cleanSpectrum ) {
-      fftMulSpectrum(FILTER, SRC_SPECTRUM, SRC_SPECTRUM_RESTORED);
-     }
-     else {
-       // Filter only the clean spectrum without spikes
-       // to not over-amplify the crosshairs in the original frame
-       // Returning the smooth part: add the S spectrum back as is, without amplification.
-       // This will preserve the overall macro-energy and remove the "ghost stripes" from the craters.
-       cv::Mat P_RESTORED;
-       fftMulSpectrum(FILTER, SRC_CLEAN_SPECTRUM, P_RESTORED);
-       cv::add(P_RESTORED, S, SRC_SPECTRUM_RESTORED);
-     }
-
-    fftSwapQuadrants(SRC_SPECTRUM_RESTORED);
-    cv::idft(SRC_SPECTRUM_RESTORED, SRC_SPECTRUM_RESTORED, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-    SRC_SPECTRUM_RESTORED(rc).copyTo(image);
-    mask.release();
-    return true;
-  }
+  SRC_RESTORED(rc).copyTo(image);
 
   return true;
 }

@@ -1247,6 +1247,19 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
+    cv::OutputArray dst)
+{
+  cv::Mat2f F;
+  const cv::Mat planes[] {
+      filter, filter
+  };
+  cv::merge(planes, 2, F);
+  cv::multiply(F, complexSpectrum, dst);
+
+  return true;
+}
+
 // Create V-Matrix for Periodic+Smooth Decomposition
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
 {
@@ -1268,3 +1281,77 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst)
   _dst.move(dst);
 }
 
+// DFT with Periodic + Smooth Decomposition.
+// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
+// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+// The target fftSize (FFT padding) is defined by the VLAP.size()
+void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
+    bool centerDC)
+{
+  cv::Mat SRC, SRC_SPECTRUM, V;
+
+  const cv::Size fftSize = VLAP.size();
+
+  if ( src_image.size() == fftSize ) {
+    SRC = src_image.getMat();
+  }
+  else {
+    fftCopyMakeBorder(src_image, SRC, fftSize);
+  }
+
+  fftCreateVMatrix(SRC, V);
+
+  cv::dft(SRC, SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+  cv::dft(V, V, cv::DFT_COMPLEX_OUTPUT);
+  if( centerDC ) {
+    fftSwapQuadrants(SRC_SPECTRUM);
+    fftSwapQuadrants(V);
+  }
+
+  fftMulSpectrum(VLAP, V, S_SPECTRUM);
+  cv::subtract(SRC_SPECTRUM, S_SPECTRUM, P_SPECTRUM);
+}
+
+void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
+    bool centerDC)
+{
+  cv::Mat SRC, SRC_SPECTRUM, V;
+
+  const cv::Size fftSize = VLAP.size();
+  const int cn = src_image.channels();
+  std::vector<cv::Mat> src_channels(cn);
+
+  if ( src_image.size() == fftSize ) {
+    SRC = src_image.getMat();
+  }
+  else {
+    fftCopyMakeBorder(src_image, SRC, fftSize);
+  }
+
+  if ( cn == 1 ) {
+    src_channels[0] = SRC;
+  }
+  else {
+    cv::split(SRC, src_channels);
+  }
+
+  P_SPECTRUMS->resize(cn);
+  S_SPECTRUMS->resize(cn);
+
+  for ( int i = 0; i < cn; ++i ) {
+    fftCreateVMatrix(src_channels[i], V);
+
+    cv::dft(V, V, cv::DFT_COMPLEX_OUTPUT);
+    cv::dft(src_channels[i], SRC_SPECTRUM, cv::DFT_COMPLEX_OUTPUT);
+
+    if( centerDC ) {
+      fftSwapQuadrants(SRC_SPECTRUM);
+      fftSwapQuadrants(V);
+    }
+
+    fftMulSpectrum(VLAP, V, S_SPECTRUMS->at(i));
+    cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(i), P_SPECTRUMS->at(i));
+  }
+}

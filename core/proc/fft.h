@@ -64,10 +64,6 @@ bool fftSpectrumToPolar(const cv::Mat & src,
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
     cv::Mat & dst );
 
-//void fftSharpenR1(cv::InputArray image, cv::OutputArray dst,
-//    double scale,
-//    bool preserve_l2_norm = true);
-
 bool fftAccumulatePowerSpectrum(const cv::Mat & src,
     cv::Mat & acc,
     float & cnt);
@@ -113,7 +109,22 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);
 
+bool fftMulSpectrum(const cv::Mat1f & filter,
+    cv::InputArray complexSpectrum,
+    cv::OutputArray dst);
+
 // Create V-Matrix for Periodic+Smooth Decomposition
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
+
+// DFT with Periodic + Smooth Decomposition.
+// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
+// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+// The target fftSize (FFT padding) is defined by the VLAP.size()
+void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
+    bool centerDC = true);
+void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
+    bool centerDC = true);
 
 #endif /* __fft_h__ */

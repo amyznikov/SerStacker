@@ -664,21 +664,21 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
 
   switch (channel) {
     case color_channel_0:
-    case color_channel_blue:
+      case color_channel_blue:
       if( !extractChannelByIndex(0) ) {
         return false;
       }
       break;
 
     case color_channel_1:
-    case color_channel_green:
+      case color_channel_green:
       if( !extractChannelByIndex(1) ) {
         return false;
       }
       break;
 
     case color_channel_2:
-    case color_channel_red:
+      case color_channel_red:
       if( !extractChannelByIndex(2) ) {
         return false;
       }
@@ -691,18 +691,18 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
       break;
 
     case color_channel_gray:
-      if( !extractLumunanceChannel(cv::COLOR_BGR2GRAY, -1, 1,  "Gray") ) {
+      if( !extractLumunanceChannel(cv::COLOR_BGR2GRAY, -1, 1, "Gray") ) {
         return false;
       }
       break;
 
     case color_channel_luminance_YCrCb:
-      if( !extractLumunanceChannel(cv::COLOR_BGR2YCrCb, 0, 1,  "YCrCb") ) {
+      if( !extractLumunanceChannel(cv::COLOR_BGR2YCrCb, 0, 1, "YCrCb") ) {
         return false;
       }
       break;
 
-    case color_channel_luminance_lab: {
+    case color_channel_luminance_lab:
       if( !extractLumunanceChannel(cv::COLOR_BGR2Lab, 0, 0.01, "Lab") ) {
         return false;
       }
@@ -727,13 +727,13 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
       break;
 
     case color_channel_min_inensity:
-      if ( !reduceChannels(src, dst, srcm, dstm, REDUCE_MIN, ddepth, autoscale) ) {
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_MIN, ddepth, autoscale) ) {
         return false;
       }
       break;
 
     case color_channel_max_intensity:
-      if ( !reduceChannels(src, dst, srcm, dstm, REDUCE_MAX, ddepth, autoscale) ) {
+      if( !reduceChannels(src, dst, srcm, dstm, REDUCE_MAX, ddepth, autoscale) ) {
         return false;
       }
       break;
@@ -777,7 +777,6 @@ bool extract_channel(cv::InputArray _src, cv::OutputArray _dst, cv::InputArray _
     default:
       CF_ERROR("Invalid color channel requested: %d", channel);
       return false;
-    }
   }
 
   if( _dst.needed() ) {

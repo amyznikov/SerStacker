@@ -46,55 +46,6 @@ const c_enum_member * members_of<c_fft_profile_test1_routine::DISPLAY>()
   return members;
 }
 
-// Magnitude: sqrt(Re^2 + Im^2)
-//static bool fftMagnituteDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-//{
-//  if( _spec.type() == CV_32FC1 ) {
-//    _spec.getMat().copyTo(_dst);
-//    if( swapQuadrants ) {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  if ( _spec.type() == CV_32FC2 ) {
-//    cv::Mat1f magnitude;
-//    fftSpectrumModule(_spec, _dst);
-//    if ( swapQuadrants )  {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-//  return false;
-//}
-
-// Power: Re^2 + Im^2
-//static bool fftPowerDisplay(cv::InputArray _spec, cv::OutputArray _dst, bool swapQuadrants = false)
-//{
-//  if( _spec.type() == CV_32FC1 ) {
-//    _spec.getMat().copyTo(_dst);
-//    if( swapQuadrants ) {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  if ( _spec.type() == CV_32FC2 ) {
-//    cv::Mat1f pow;
-//    fftSpectrumPower(_spec, _dst);
-//    if ( swapQuadrants )  {
-//      fftSwapQuadrants(_dst.getMatRef());
-//    }
-//    return true;
-//  }
-//
-//  CF_ERROR("Invalid argument: Single or Two channel CV_32F complex image is expected on input");
-//  return false;
-//}
-
-
 namespace {
 
 class c_radial_spectrum_profile
@@ -167,7 +118,7 @@ protected:
   double _L0 = 0;
 };
 
-static cv::Mat1f smooth_laplace(const c_radial_spectrum_profile & p)
+static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
 {
   const int N_uniform = 100;
   const int n_bins = p.size();
@@ -276,7 +227,7 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
 {
 
   const c_radial_spectrum_profile sp(SRC_profile);
-  const cv::Mat1f LSM = smooth_laplace(sp);
+  const cv::Mat1f LSM = smoothLaplace(sp);
 
   const int n_bins = sp.size();
   const float * src = sp.values();
@@ -353,10 +304,6 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
    *   CORRECTION  = NATURE - LSM;
    */
   cv::Mat1f correction(1, n_bins, 0.f);
-
-//  const int anti_aliasing_start_bin = static_cast<int>(0.88 * n_bins);
-//  const double drop_speed = 0.5;
-
 
   for( int i = 2; i < n_bins; ++i ) {
     const double x = sp.xv(i);
@@ -453,6 +400,72 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
   return FILTER;
 }
 
+// Returns true if the channel is linear and fills the weights (in order B, G, R)
+static bool getLinearIntensityWeights(int channel_type, double & wB, double & wG, double & wR)
+{
+  switch (channel_type) {
+    case color_channel_blue:
+      wB = 1.0;
+      wG = 0.0;
+      wR = 0.0;
+      return true;
+    case color_channel_green:
+      wB = 0.0;
+      wG = 1.0;
+      wR = 0.0;
+      return true;
+    case color_channel_red:
+      wB = 0.0;
+      wG = 0.0;
+      wR = 1.0;
+      return true;
+    case color_channel_gray:
+      wB = 0.114;
+      wG = 0.587;
+      wR = 0.299;
+      return true;
+    case color_channel_luminance_YCrCb:
+      wB = 0.114;
+      wG = 0.587;
+      wR = 0.299;
+      return true;
+    default:
+      // All others (Lab, Luv, HSV, HLS, MIN/MAX) are nonlinear
+      break;
+  }
+  return false;
+}
+
+static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_Magnitude,
+    const cv::Mat2f & SRC_P_B, double wB,
+    const cv::Mat2f & SRC_P_G, double wG,
+    const cv::Mat2f & SRC_P_R, double wR)
+{
+  const cv::Size fftSize = SRC_P_B.size();
+
+  INTENSITY_Magnitude.create(fftSize);
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [&, fftSize, wB, wG, wR](const cv::Range & range) {
+
+        const int cx = fftSize.width;
+
+        for (int y = range.start; y < range.end; ++y) {
+          const float * __restrict bp = reinterpret_cast<const float*>(SRC_P_B[y]);
+          const float * __restrict gp = reinterpret_cast<const float*>(SRC_P_G[y]);
+          const float * __restrict rp = reinterpret_cast<const float*>(SRC_P_R[y]);
+          float * __restrict dstp = INTENSITY_Magnitude[y];
+
+          for (int x = 0; x < cx; ++x, bp += 2, gp += 2, rp += 2) {
+            constexpr int xre = 0;
+            constexpr int xim = 1;
+            const float re = bp[xre] * wB + gp[xre] * wG + rp[xre] * wR;
+            const float im = bp[xim] * wB + gp[xim] * wG + rp[xim] * wR;
+            *dstp++ = std::sqrt(re * re + im * im);
+          }
+        }
+      });
+}
 
 }
 
@@ -479,7 +492,6 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
 bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
   if ( _display == DISPLAY_SRC_IMAGE ) {
-    // no processing requested
     return true;
   }
 
@@ -489,12 +501,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   const int cn = image.channels();
   const cv::Size fftSize = fftGetOptimalSize(srcSize, cv::Size(63,63));
 
-  cv::Mat SRC_IMAGE;
-  std::vector<cv::Mat2f> SRC_P, SRC_S;
-  cv::Mat INTENSITY_CHANNEL, INTENSITY_P, INTENSITY_S;
-  cv::Mat1f INTENSITY_RadialProfile;
-  std::vector<cv::Mat> SRC_CHANNELS_RESTORED;
-  cv::Mat SRC_RESTORED;
+  double wB = 0, wG = 0, wR = 0;
 
   if ( src.size() == fftSize ) {
     SRC_IMAGE = src, rc = cv::Rect(0, 0, src.cols, src.rows);
@@ -507,47 +514,45 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
     SRC_IMAGE.convertTo(SRC_IMAGE, CV_32F);
   }
 
-  if( cn == 1 ) {
-    INTENSITY_CHANNEL = SRC_IMAGE;
+  if( VLAP.size() != fftSize ) {
+    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
   }
-  else {
-    extract_channel(SRC_IMAGE, INTENSITY_CHANNEL, cv::noArray(), cv::noArray(),
-        _intensity_channel);
-  }
-
-  // DFT with Periodic + Smooth Decomposition.
-
-  const cv::Mat1f VLAP =
-      fftGenerateDiscreteLaplacianFilter(fftSize,
-          true);
-
-  fftPPSDecomposition(INTENSITY_CHANNEL, VLAP,
-      INTENSITY_P, INTENSITY_S,
-      true);
-
-
-  fftSpectrumModule(INTENSITY_P, INTENSITY_P);
-  fftRadialProfile(INTENSITY_P, INTENSITY_RadialProfile);
-
-  const cv::Mat1f INVERSE_FILTER =
-      createInverseBlurCorrectionFilter(INTENSITY_RadialProfile, fftSize,
-          _write_file);
 
   fftPPSDecomposition(SRC_IMAGE, VLAP,
       &SRC_P, &SRC_S,
       true);
 
+  if ( cn == 1 ) {
+    fftSpectrumModule(SRC_P[0], INTENSITY_Magnitude);
+  }
+  else if ( getLinearIntensityWeights(_intensity_channel, wB, wG, wR) ) {
+    computeLinearIntensityMathitude(INTENSITY_Magnitude,
+        SRC_P[0], wB,
+        SRC_P[1], wG,
+        SRC_P[2], wR);
+  }
+  else {
+    // Nonlinear channel: Lab, HSV, etc
+    extract_channel(SRC_IMAGE, INTENSITY_CHANNEL, cv::noArray(), cv::noArray(),
+        _intensity_channel);
+
+    fftPPSDecomposition(INTENSITY_CHANNEL, VLAP,
+        INTENSITY_P, INTENSITY_S,
+        true);
+
+    fftSpectrumModule(INTENSITY_P, INTENSITY_Magnitude);
+  }
+
+  fftRadialProfile(INTENSITY_Magnitude, INTENSITY_RadialProfile);
+
+  const cv::Mat1f INVERSE_FILTER =
+      createInverseBlurCorrectionFilter(INTENSITY_RadialProfile, fftSize,
+          _write_file);
+
   SRC_CHANNELS_RESTORED.resize(cn);
   for ( int i = 0; i < cn; ++i ) {
-
-    // Apply inverse filter to each color channel periodic component
     fftMulSpectrum(INVERSE_FILTER, SRC_P[i], SRC_P[i]);
-
-    // Restore SRC channel spectrum with S component,
-    // reuse existing Mat's
     cv::add(SRC_P[i], SRC_S[i], SRC_P[i]);
-
-    // Perform idft
     fftSwapQuadrants(SRC_P[i]);
     cv::idft(SRC_P[i], SRC_CHANNELS_RESTORED[i], cv::DFT_SCALE |
         cv::DFT_REAL_OUTPUT);

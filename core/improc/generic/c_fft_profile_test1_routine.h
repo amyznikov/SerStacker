@@ -33,6 +33,16 @@ protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
   enum color_channel_type _intensity_channel = color_channel_gray;
   bool _write_file = false;
+
+  // work arrays
+  cv::Mat SRC_IMAGE;
+  std::vector<cv::Mat2f> SRC_P, SRC_S;
+  cv::Mat INTENSITY_CHANNEL;
+  cv::Mat2f INTENSITY_P, INTENSITY_S;
+  cv::Mat1f INTENSITY_Magnitude, INTENSITY_RadialProfile;
+  std::vector<cv::Mat> SRC_CHANNELS_RESTORED;
+  cv::Mat SRC_RESTORED;
+  cv::Mat1f VLAP;
 };
 
 #endif /* __c_fft_profile_test1_routine_h__ */

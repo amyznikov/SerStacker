@@ -25,7 +25,7 @@ public:
 
 protected:
   c_anscombe_transform anscombe;
-  bool invert = false;
+  bool inverse = false;
 };
 
 

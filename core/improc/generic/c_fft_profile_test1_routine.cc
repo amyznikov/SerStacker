@@ -51,7 +51,7 @@ namespace {
 class c_radial_spectrum_profile
 {
 public:
-  inline c_radial_spectrum_profile(const cv::Mat1f & mx)
+  inline c_radial_spectrum_profile(const cv::Mat1f & mx /* [1][n_bins]*/)
   {
     init(mx);
   }
@@ -70,41 +70,54 @@ public:
     return _m.cols;
   }
 
-  inline const float * values() const
-  {
-    return _v;
-  }
-
   inline const cv::Mat1f & mx() const
   {
     return _m;
   }
 
+  // raw linear intensity values from radial spectrum profile
+  inline const float * values() const
+  {
+    return _v;
+  }
+
+  // raw linear intensity value from radial spectrum profile at bin i
+  inline double y(int i) const
+  {
+    return _v[i];
+  }
+
+  // zero point for x (log of frequency)
   inline double x0() const
   {
     return _x0;
   }
 
+  // zero point for log of relative intensity
   inline double y0() const
   {
     return _y0;
   }
 
+  // log of frequency
   inline double xv(int i) const
   {
     return std::log(0.5 * (i + 1) / _m.cols) - _x0;
   }
 
+  // log of relative intensity
   inline double yv(int i) const
   {
     return std::log(_v[i]) - _y0;
   };
 
+  // log of laplacian operator in log space
   inline double lop(int i) const
   {
     return _L0 + 2 * std::log(i > 0 ? i : 1);
   }
 
+  // log of laplacian at bin index i
   inline double lv(int i) const
   {
     return lop(i) + yv(i);
@@ -222,18 +235,48 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
   return output_lap;
 }
 
-cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const cv::Size & fftSize,
+cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
+    const cv::Size & fftSize,
+    double S1_nature_gain,
     bool write_debug_file = false)
 {
 
-  const c_radial_spectrum_profile sp(SRC_profile);
+  const c_radial_spectrum_profile sp(RadialSpectrumProfile);
   const cv::Mat1f LSM = smoothLaplace(sp);
 
   const int n_bins = sp.size();
   const float * src = sp.values();
 
+  /**
+   * Search the point of intersection  of L and Y curves,
+   * as well as the index of of Maximum of Laplacian
+   */
+  double MaxLValue = -DBL_MAX;
+  int LYIntersectionIndex = 0;
+  int YKneedleIndex = 0;
+  for ( int i = 1; i < n_bins; ++i ) {
+    const double y = sp.yv(i);
+    const double l = sp.lop(i) + y;
+    if ( l > y + 0.05 ) {
+      LYIntersectionIndex = i;
+      break;
+    }
+
+    if ( l > MaxLValue * 1.05 ) {
+      YKneedleIndex = i;
+    }
+
+    if ( l > MaxLValue ) {
+      MaxLValue = l;
+    }
+  }
+
+  CF_DEBUG("\nLYIntersectionIndex=%d (x=%g y=%g) yKneedleIndex=%d (x=%g y=%g)",
+      LYIntersectionIndex, sp.xv(LYIntersectionIndex), sp.yv(LYIntersectionIndex),
+      YKneedleIndex, sp.xv(YKneedleIndex), sp.yv(YKneedleIndex));
+
   /*
-   * Approximate LAP
+   * Approximate LAP to find start of the blur
    * L(x) = S0_lap + S1_lap * x + S2_lap * x  * x
    * lxmax = -0.5 * S1_lap / S2_lap; (x coordinate of the extremum)
    * llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; (L value at extremum)
@@ -243,7 +286,7 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
   double lxmax = 0, llmax = 0;
 
   c_linear_regression3 reg_lap;
-  for( int i = 3; i < n_bins; ++i ) {
+  for( int i = 1; i < n_bins; ++i ) {
     if( src[i] > 0 ) {
 
       const double x = sp.xv(i);
@@ -256,7 +299,7 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
 
       reg_lap.update(1, x, x * x, l);
 
-      if ( x > 3 ) { // i > LMaxIndex &&
+      if ( i > YKneedleIndex ) {
         double S0_temp = 0, S1_temp = 0, S2_temp = 0;
         reg_lap.compute(S0_temp, S1_temp, S2_temp);
         if( S2_temp < S2_lap ) {
@@ -275,10 +318,14 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
    * Approximate NATURE
    * LNATURE(x) = S0_nature + S1_nature * x
    */
+
+  // Not robust stuff temporary disabled for manual experimentation
   double S0_nature = 0, S1_nature = 0;
   int NatureMaxPtIndex = 0;
+  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
+
   c_line_estimate reg_nature;
-  for( int i = 2; i < n_bins; ++i ) {
+  for( int i = 1; i < n_bins; ++i ) {
     if( src[i] > 0 ) {
       const double x = sp.xv(i);
       if ( x > lxmax + 0.5 ) { // FIXME: get rid of this hard coded value later
@@ -290,11 +337,15 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
     }
   }
   reg_nature.compute(S0_nature, S1_nature);
-  if ( S1_nature < 0.15 ) {
+
+  if ( S1_nature < 0.1 ) {
     // FIXME: negative S1_nature may happen, consider better how to deal with
     CF_DEBUG("Fixing negative S1_nature=%g", S1_nature);
-    S1_nature = 0.15;
+    S1_nature = 0.1;
   }
+
+  S1_nature *= S1_nature_gain;
+
   const double xlt = 0.5 * (S1_nature - S1_lap) / S2_lap;
   const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
   S0_nature += ylt - S0_nature - S1_nature * xlt;
@@ -308,14 +359,12 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
   for( int i = 2; i < n_bins; ++i ) {
     const double x = sp.xv(i);
     if ( x > xlt ) {
-      const double y = sp.yv(i); // Y
       const double nature = S0_nature + S1_nature * x; // L_NATURE
       const double laplace = LSM(0, i); // L_SMOOTH
       const double corr = nature - laplace;
       correction(0, i) = corr;
     }
   }
-
 
   if( write_debug_file ) {
 
@@ -393,7 +442,7 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & SRC_profile, const
       "xlt = %g ylt = %g\n",
       sp.x0(), sp.y0(),
       S0_lap, S1_lap, S2_lap,
-      S0_nature, S1_nature, reg_nature.pts(), NatureMaxPtIndex,
+      S0_nature, S1_nature, 0/*, reg_nature.pts()*/, NatureMaxPtIndex,
       lxmax, llmax,
       xlt, ylt);
 
@@ -476,6 +525,8 @@ void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbi
 {
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
+  ctlbind(ctls, "S1_nature: ", CTL_CONTEXT(ctx, _S1_nature), "");
+  c_anscombe_transform::getcontrols(ctls, ctx(&this_class::_anscombe));
   ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
 }
 
@@ -484,6 +535,17 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
+    SERIALIZE_OPTION(settings, save, *this, _S1_nature);
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "anscombe") ) {
+      c_anscombe_transform_options & opts = _anscombe.opts();
+      SERIALIZE_OPTION(settings, save, opts, method);
+      SERIALIZE_OPTION(settings, save, opts.generalized, g);
+      SERIALIZE_OPTION(settings, save, opts.generalized, c);
+      SERIALIZE_OPTION(settings, save, opts.generalized, auto_estimate);
+      SERIALIZE_OPTION(settings, save, opts.generalized, dump_estimated_params);
+    }
+
     return true;
   }
   return false;
@@ -499,6 +561,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
   const cv::Mat src = image.getMat();
   const cv::Size fftSize = fftGetOptimalSize(image.size(), cv::Size(63,63));
   const int cn = image.channels();
+  const double fftArea = fftSize.area();
 
   double wB = 0, wG = 0, wR = 0;
 
@@ -511,6 +574,10 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
 
   if ( SRC_IMAGE.depth() != CV_32F ) {
     SRC_IMAGE.convertTo(SRC_IMAGE, CV_32F);
+  }
+
+  if ( _anscombe.method() != anscombe_none ) {
+    _anscombe.apply(SRC_IMAGE, SRC_IMAGE);
   }
 
   if( VLAP.size() != fftSize ) {
@@ -546,6 +613,7 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
 
   const cv::Mat1f INVERSE_FILTER =
       createInverseBlurCorrectionFilter(INTENSITY_RadialProfile, fftSize,
+          _S1_nature,
           _write_file);
 
   SRC_CHANNELS_RESTORED.resize(cn);
@@ -564,7 +632,119 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
     cv::merge(SRC_CHANNELS_RESTORED, SRC_RESTORED);
   }
 
+  if ( _anscombe.method() != anscombe_none ) {
+    _anscombe.inverse(SRC_RESTORED, SRC_RESTORED);
+  }
+
   SRC_RESTORED(rc).copyTo(image);
 
   return true;
 }
+
+
+#if 0
+Расчет меры разреженности (Kurtosis)
+через теорему ПарсеваляНам нужно посчитать Эксцесс полученного сигнала градиентов.
+Классическая формула эксцесса в пространстве изображения.
+
+// ... [Ваш код аппроксимации LAP и NATURE до расчета S1_nature] ...
+reg_nature.compute(S0_nature, S1_nature);
+
+if ( S1_nature < 0.1 ) {
+  CF_DEBUG("Fixing negative S1_nature=%g", S1_nature);
+  S1_nature = 0.1;
+}
+
+// --- НАЧАЛО БЛОКА АВТОМАТИЧЕСКОГО ПОИСКА ОПТИМАЛЬНОГО НАКЛОНА ---
+
+// Лямбда для вычисления энтропии восстановленного СЧ/ВЧ профиля при заданном gain
+auto compute_profile_entropy = [&](double test_gain) -> double {
+    double test_S1_nature = S1_nature * test_gain;
+
+    // Пересчитываем точку стыковки и смещение для текущего наклона
+    double test_xlt = 0.5 * (test_S1_nature - S1_lap) / S2_lap;
+    double test_ylt = S0_lap + S1_lap * test_xlt + S2_lap * test_xlt * test_xlt;
+    double test_S0_nature = S0_nature + test_ylt - S0_nature - test_S1_nature * test_xlt;
+
+    // Массив энергий для информативных колец (от точки излома xlt до начала углов corners)
+    std::vector<double> energies;
+    double total_energy = 0.0;
+
+    for (int i = 2; i < startCornersBin; ++i) {
+        const double x = sp.xv(i);
+        if (x > test_xlt) {
+            const double nature = test_S0_nature + test_S1_nature * x;
+            // Восстановленный логарифм интенсивности: Y_RESTORED
+            const double y_restored = sp.yv(i) + (nature - LSM(0, i));
+
+            // Переходим из логарифмического масштаба в реальную энергию полосы
+            double energy = std::exp(y_restored);
+
+            energies.push_back(energy);
+            total_energy += energy;
+        }
+    }
+
+    if (total_energy <= 0.0 || energies.empty()) return DBL_MAX;
+
+    // Считаем Шенноновскую энтропию нормированного распределения энергий
+    double entropy = 0.0;
+    for (double e : energies) {
+        double p = e / total_energy;
+        if (p > 1e-12) {
+            entropy -= p * std::log(p);
+        }
+    }
+    return entropy;
+};
+
+// Одномерный поиск минимума энтропии (Метод золотого сечения)
+// Ищем оптимальный S1_nature_gain в разумных физических пределах [0.5, 3.0]
+double a = 0.5;
+double b = 3.0;
+const double tau = 0.6180339887498949; // Золотое сечение
+
+double k1 = b - tau * (b - a);
+double k2 = a + tau * (b - a);
+
+double f1 = compute_profile_entropy(k1);
+double f2 = compute_profile_entropy(k2);
+
+// Итерируемся до желаемой точности (например, 20 шагов хватит за глаза)
+for (int iter = 0; iter < 20; ++iter) {
+    if (f1 < f2) {
+        b = k2;
+        k2 = k1;
+        f2 = f1;
+        k1 = b - tau * (b - a);
+        f1 = compute_profile_entropy(k1);
+    } else {
+        a = k1;
+        k1 = k2;
+        f1 = f2;
+        k2 = a + tau * (b - a);
+        f2 = compute_profile_entropy(k2);
+    }
+}
+
+// Фиксируем оптимальный коэффициент усиления наклона
+S1_nature_gain = 0.5 * (a + b);
+CF_DEBUG("Automatically selected S1_nature_gain = %g", S1_nature_gain);
+
+// Применяем найденный оптимальный наклон
+S1_nature *= S1_nature_gain;
+
+// Заново вычисляем финальные геометрические параметры для построения фильтра
+const double xlt = 0.5 * (S1_nature - S1_lap) / S2_lap;
+const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
+S0_nature += ylt - S0_nature - S1_nature * xlt;
+
+// --- КОНЕЦ БЛОКА АВТОМАТИЧЕСКОГО ПОИСКА ---
+
+/*
+ * COMPUTE CORRECTION for x > xlt:
+ *   CORRECTION  = NATURE - LSM;
+ */
+// ... [Далее ваш оригинальный код без изменений] ...
+
+#endif

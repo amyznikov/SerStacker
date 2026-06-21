@@ -63,6 +63,11 @@ cv::Scalar estimate_noise(cv::InputArray src, cv::OutputArray dst, cv::InputArra
 
   create_noise_map(src, H, cv::noArray());
 
+  // FIXME:
+  //  double total_noise_energy = cv::norm(H, cv::NORM_L2SQR);
+  //  double mean_noise_power = total_noise_energy / H.total();
+  //  double sigma_noise = std::sqrt(mean_noise_power);
+
 
   if ( H.depth() != CV_8U && H.depth() != CV_16U ) {
     absdiff(H, 0, H);

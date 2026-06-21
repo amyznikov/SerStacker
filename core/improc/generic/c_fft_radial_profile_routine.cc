@@ -12,12 +12,14 @@
 
 void c_fft_radial_profile_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
+  ctlbind(ctls, "ppsDecomposition", CTL_CONTEXT(ctx, _ppsDecomposition), "");
   ctlbind(ctls, "profileToImage", CTL_CONTEXT(ctx, _profileToImage), "");
 }
 
 bool c_fft_radial_profile_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
+    SERIALIZE_OPTION(settings, save, *this, _ppsDecomposition);
     SERIALIZE_OPTION(settings, save, *this, _profileToImage);
     return true;
   }
@@ -27,21 +29,34 @@ bool c_fft_radial_profile_routine::serialize(c_config_setting settings, bool sav
 
 bool c_fft_radial_profile_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  cv::Rect rc;
   const cv::Mat src = image.getMat();
   const int cn = src.channels();
-  const cv::Size fftSize = fftGetOptimalSize(src.size());
-
+  const cv::Size fftSize = fftGetOptimalSize(src.size(), cv::Size(0, 0), &rc);
 
   std::vector<cv::Mat> channels(cn);
   cv::Mat1f radial_profile;
-  cv::Rect rc;
 
   cv::split(src, channels);
 
+  if( !_ppsDecomposition ) {
+    VLAP.release();
+  }
+  else if( VLAP.size() != fftSize ) {
+    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+  }
+
   for ( int i = 0; i < cn; ++i ) {
-    fftCopyMakeBorder(channels[i], channels[i], fftSize, &rc);
+    fftCopyMakeBorder(channels[i], channels[i], fftSize);
     channels[i].convertTo(channels[i], CV_32F);
-    fftImageToSpectrum(channels[i], channels[i], fftSize, true);
+
+    if ( ! _ppsDecomposition ) {
+      fftImageToSpectrum(channels[i], channels[i], fftSize, true);
+    }
+    else {
+      fftPPSDecomposition(channels[i], VLAP, channels[i], cv::noArray(), true);
+    }
+
     fftSpectrumModule(channels[i], channels[i]);
     if ( _profileToImage) {
       fftRadialProfile(channels[i], radial_profile);

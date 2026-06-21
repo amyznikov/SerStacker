@@ -86,8 +86,7 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
     double sigma_space = 2.0, double gain = 1.0,
     bool centerDC = true);
 
-cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
-    double gain = 1.0, bool squareRoot = false,
+cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
 
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))

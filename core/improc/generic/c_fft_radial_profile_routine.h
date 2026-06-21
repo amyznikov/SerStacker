@@ -23,7 +23,9 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  bool _ppsDecomposition = false;
   bool _profileToImage = false;
+  cv::Mat1f VLAP;
 };
 
 #endif /* __c_fft_radial_profile_routine_h__ */

@@ -204,7 +204,8 @@ inline void _ctlbind(ActualBind && actualBind)
 
 
 template<class RootObjectType>
-void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname, const std::string & cdesc = "")
+void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const std::string & cdesc = "")
 {
   using BindType = c_ctlbind<RootObjectType>;
 
@@ -247,6 +248,34 @@ void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string
   c.enabled = eneblefn;
   ctls.emplace_back(c);
 }
+
+template<class RootObjectType, class StructType>
+void ctlbind_expandable_group(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, StructType> & ctx,
+    const std::function<bool(const StructType *)> & eneblefn,
+    std::function<void()> && bindMembers)
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.cname = cname;
+  c.ctype = BindType::CtlType::BeginExpandableGroup;
+  c.enabled = [offset = ctx.offset, eneblefn](const RootObjectType * obj) {
+    if ( obj ) {
+      const StructType * sobj = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+      return eneblefn(sobj);
+    }
+    return false;
+  };
+  ctls.emplace_back(c);
+
+  bindMembers();
+
+  c.cname = "";
+  c.ctype = BindType::CtlType::EndGroup;
+  ctls.emplace_back(c);
+}
+
 
 /**
  * For use like this:

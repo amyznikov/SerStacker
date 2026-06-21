@@ -475,22 +475,21 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, std::vector<float> & output_pr
   return true;
 }
 
-// fftRadialProfileEllipticCorrect
 bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & outputProfile)
 {
   // Include corners
   // The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
-  const double cx = spectrum.cols / 2;
-  const double cy = spectrum.rows / 2;
+  const int cx = spectrum.cols / 2;
+  const int cy = spectrum.rows / 2;
   const double R = std::sqrt(cx * cx + cy * cy);
   const int numBins = std::max(1, int(R));
-  const double maxNormalizedR = M_SQRT2; // std::sqrt(2.0);
 
   std::vector<double> radialSum(numBins, 0.0);
   std::vector<double> radialCount(numBins, 0.0);
 
   const double scaleX = 1. / cx;
   const double scaleY = 1. / cy;
+  const double binScale = numBins * M_SQRT1_2;
 
   for( int y = 0; y <= cy; ++y ) {
     const double dy = (y - cy) * scaleY;
@@ -504,16 +503,11 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & outputProfile)
 
       // Dimensionless radius of the ellipse:
       // 0.0 at the center, 1.0 at the sides of the matrix, ~1.414 at the corners
-      const double rNormalized = std::sqrt(dx2 + dy2);
-      const int binIdx = std::clamp(int((rNormalized * numBins / maxNormalizedR)), 0, numBins - 1);
-
-      // Symmetry:
-      // For regular rows (y < cy) — always 2 (top mirrors bottom).
-      // For the center row (y == cy) — 2 for all pixels except the very center (left mirrors right).
-      // For the DC component itself (y == cy, x == cx) — 1, since it is unique.
-      const int weight = (y < cy || x != cx) ? 2 : 1;
-      radialSum[binIdx] += srcp[x] * weight;
-      radialCount[binIdx] += weight;
+      const double r = std::sqrt(dx2 + dy2);
+      const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
+      const int w = (y < cy ? 2 : (x == cx ? 1 : 2));
+      radialSum[bin] += srcp[x] * w;
+      radialCount[bin] += w;
     }
   }
 
@@ -526,8 +520,6 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & outputProfile)
   return true;
 }
 
-
-// reconstruct2DEllipticCorrect
 void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
     cv::Mat1f & outputImage)
 {
@@ -536,10 +528,11 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
   const double cx = size.width / 2;
   const double cy = size.height / 2;
   const int numBins = radialProfile.cols;
-  const double maxNormalizedR = std::sqrt(2.0);
+  //const double maxNormalizedR = std::sqrt(2.0);
 
   const double scaleX = 1. / cx;
   const double scaleY = 1. / cy;
+  const double binScale = numBins * M_SQRT1_2;
 
   outputImage.create(size);
 
@@ -562,24 +555,67 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
             const double dx2 = dx * dx;
 
             const double r = std::sqrt(dx2 + dy2);
-            const double continuousBinIdx = r * numBins / maxNormalizedR - 0.5;
-            if( continuousBinIdx >= numBins - 1 ) {
-              dstp[x] = bins[numBins - 1];
-            }
-            else if( continuousBinIdx < 0.0 ) {
-              dstp[x] = bins[0];
-            }
-            else {
-              const int idx0 = static_cast<int>(std::floor(continuousBinIdx));
-              const int idx1 = idx0 + 1;
-              const double w1 = continuousBinIdx - idx0;
-              const double w0 = 1.0 - w1;
-              dstp[x] = float(w0 * bins[idx0] + w1 * bins[idx1]);
-            }
+            const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
+            dstp[x] = bins[bin];
           }
         }
       });
 }
+
+
+// reconstruct2DEllipticCorrect
+//void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
+//    cv::Mat1f & outputImage)
+//{
+//  const cv::Size & size = outputImageSize;
+//
+//  const double cx = size.width / 2;
+//  const double cy = size.height / 2;
+//  const int numBins = radialProfile.cols;
+//  const double maxNormalizedR = std::sqrt(2.0);
+//
+//  const double scaleX = 1. / cx;
+//  const double scaleY = 1. / cy;
+//
+//  outputImage.create(size);
+//
+//  cv::parallel_for_(cv::Range(0, size.height),
+//      [=, &radialProfile, &outputImage](const cv::Range & range) {
+//
+//        const float * bins = radialProfile[0];
+//
+//        bool reported = false;
+//
+//        for (int y = range.start; y < range.end; ++y) {
+//          float * __restrict dstp = outputImage[y];
+//
+//          const double dy = (y - cy) * scaleY;
+//          const double dy2 = dy * dy;
+//
+//          for (int x = 0; x < size.width; ++x) {
+//
+//            const double dx = (x - cx) * scaleX;
+//            const double dx2 = dx * dx;
+//
+//            const double r = std::sqrt(dx2 + dy2);
+//            const double continuousBinIdx = r * numBins / maxNormalizedR - 0.5;
+//            if( continuousBinIdx >= numBins - 1 ) {
+//              dstp[x] = bins[numBins - 1];
+//            }
+//            else if( continuousBinIdx < 0.0 ) {
+//              dstp[x] = bins[0];
+//            }
+//            else {
+//              const int idx0 = static_cast<int>(std::floor(continuousBinIdx));
+//              const int idx1 = idx0 + 1;
+//              const double w1 = continuousBinIdx - idx0;
+//              const double w0 = 1.0 - w1;
+//              dstp[x] = float(w0 * bins[idx0] + w1 * bins[idx1]);
+//            }
+//          }
+//        }
+//      });
+//}
 
 void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs,
@@ -1030,7 +1066,6 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
 
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
     double gain /* =1*/,
-    bool squareRoot /* =false*/,
     bool centerDC /* =true */)
 {
   // Isotropic Laplacian
@@ -1059,7 +1094,7 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
 
             const double dr2 = dx2 + dy2;
 
-            dstp[x] = float(gain * (squareRoot ? sqrt(dr2) : dr2));
+            dstp[x] = float(gain * dr2);
           }
         }
       });
@@ -1309,8 +1344,15 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     fftSwapQuadrants(V);
   }
 
-  fftMulSpectrum(VLAP, V, S_SPECTRUM);
-  cv::subtract(SRC_SPECTRUM, S_SPECTRUM, P_SPECTRUM);
+  if ( S_SPECTRUM.needed() ) {
+    fftMulSpectrum(VLAP, V, S_SPECTRUM);
+    cv::subtract(SRC_SPECTRUM, S_SPECTRUM, P_SPECTRUM);
+  }
+  else {
+    cv::Mat S_SPECTRUM_TMP;
+    fftMulSpectrum(VLAP, V, S_SPECTRUM_TMP);
+    cv::subtract(SRC_SPECTRUM, S_SPECTRUM_TMP, P_SPECTRUM);
+  }
 }
 
 void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,

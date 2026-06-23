@@ -33,7 +33,7 @@ public:
 protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
   enum color_channel_type _intensity_channel = color_channel_gray;
-  double _S1_nature = 0.75;
+  double _S1_gain = 1;
   c_anscombe_transform _anscombe;
 
   bool _write_file = false;

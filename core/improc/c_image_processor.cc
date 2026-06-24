@@ -79,7 +79,7 @@
 #include "generic/c_adaptive_gaussian_blur_routine.h"
 #include "generic/c_fft_routine.h"
 #include "generic/c_fft_radial_profile_routine.h"
-#include "generic/c_fft_gaussian_filter_routine.h"
+#include "generic/c_fft_filter_routine.h"
 #include "generic/c_fft_unsharp_filter_routine.h"
 #include "generic/c_fft_profile_test1_routine.h"
 
@@ -372,7 +372,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_pnormalize_routine::class_factory_instance());
     register_class_factory(c_census_transfrom_routine::class_factory_instance());
     register_class_factory(c_fft_routine::class_factory_instance());
-    register_class_factory(c_fft_gaussian_filter_routine::class_factory_instance());
+    register_class_factory(c_fft_filter_routine::class_factory_instance());
     register_class_factory(c_fft_radial_profile_routine::class_factory_instance());
     register_class_factory(c_fft_profile_test1_routine::class_factory_instance());
     register_class_factory(c_fft_unsharp_filter_routine::class_factory_instance());

@@ -35,7 +35,7 @@ protected:
   enum color_channel_type _intensity_channel = color_channel_gray;
   double _S1_gain = 1;
   c_anscombe_transform _anscombe;
-
+  std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";
   bool _write_file = false;
 
 

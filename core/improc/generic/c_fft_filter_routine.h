@@ -11,19 +11,25 @@
 
 #include <core/improc/c_image_processor.h>
 
-class c_fft_gaussian_filter_routine :
+class c_fft_filter_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_gaussian_filter_routine,
-      "fft_gaussian_filter", "");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_filter_routine,
+      "fft_filter", "");
+
+  enum FILTER {
+    FILTER_GAUSSIAN,
+    FILTER_LAPLACIAN,
+    FILTER_GRADIENT,
+  };
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE,
     DISPLAY_SRC_SPECTRUM_MODULE,
     DISPLAY_SRC_SPECTRUM_POWER,
-    DISPLAY_GAUSSIAN_MODULE,
-    DISPLAY_GAUSSIAN_POWER,
+    DISPLAY_FILTER_MODULE,
+    DISPLAY_FILTER_POWER,
     DISPLAY_FILTERED_SPECTRUM_MODULE,
     DISPLAY_FILTERED_SPECTRUM_POWER,
     DISPLAY_FILTERED_IMAGE
@@ -34,10 +40,22 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  FILTER _filterType = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
-  double _gsigma = 1;
-  double _gain = 1;
-  double _gain_cutoff = 0.7;
+
+  struct c_gaussian_filter_opts {
+    double sigma = 1;
+    double gain = 1;
+  } gaussian_filter;
+
+  struct c_laplacian_filter_opts {
+    double gain = 1;
+  } laplacian_filter;
+
+  struct c_gradient_filter_opts {
+    double gain = 1;
+  } gradient_filter;
+
 };
 
 #endif /* __c_fft_gaussian_filter_routine_h__ */

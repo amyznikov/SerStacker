@@ -1106,6 +1106,48 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+cv::Mat1f fftGenerateGradientFilter(const cv::Size & fftSize, double gain, bool centerDC)
+{
+  // Isotropic Gradient
+  // The frequency step is tied to the physical dimensions of the matrix
+  // fx = dx / width, fy = dy / height
+  // Gradient: 2 * PI * sqrt(fx^2 + fy^2)
+
+  cv::Mat1f FILTER(fftSize);
+
+  const double scaleX = CV_2PI / fftSize.width;
+  const double scaleY = CV_2PI / fftSize.height;
+  const double cx = fftSize.width / 2.0;
+  const double cy = fftSize.height / 2.0;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+
+          const double dy = (y - cy) * scaleY;
+          const double dy2 = dy * dy;
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const double dx = (x - cx) * scaleX;
+            const double dx2 = dx * dx;
+
+            const double dr2 = sqrt(dx2 + dy2);
+
+            dstp[x] = float(gain * dr2);
+          }
+        }
+      });
+
+  if( !centerDC ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+
+}
+
+
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)
 {

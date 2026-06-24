@@ -173,9 +173,7 @@ bool c_align_color_channels::align(int reference_channel,
   _computed_transforms.clear();
 //  computed_iterations_.clear();
 
-  const int cn =
-      src.channels();
-
+  const int cn = src.channels();
   if ( cn < 2 ) {
 
     if ( dst.needed() ) {
@@ -348,28 +346,20 @@ bool c_align_color_channels::align(int reference_channel,
   if( dst.needed() ) {
 
     if( cn == 1 ) {
-
-      cumulative_image =
-          channels[0];
+      cumulative_image = channels[0];
     }
     else {
-
-      cv::merge(channels, cn,
-          cumulative_image);
+      cv::merge(channels, cn, cumulative_image);
     }
 
     dst.move(cumulative_image);
   }
 
   if( dstmask.needed() ) {
-
     if( cn == 1 ) {
-
-      cumulative_mask =
-          masks[0];
+      cumulative_mask = masks[0];
     }
     else {
-
       cv::bitwise_and(masks[0], masks[1], cumulative_mask);
       for( int i = 2; i < cn; ++i ) {
         cv::bitwise_and(masks[i], cumulative_mask, cumulative_mask);

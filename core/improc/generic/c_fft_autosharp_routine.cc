@@ -1,5 +1,5 @@
 /*
- * c_fft_profile_test1_routine.cc
+ * c_fft_autosharp_routine.cc
  *
  *  Created on: Jun 5, 2026
  *      Author: amyznikov
@@ -26,9 +26,7 @@
  *
  */
 
-#include "c_fft_profile_test1_routine.h"
-#include <core/proc/estimate_noise.h>
-#include <core/proc/c_line_estimate.h>
+#include "c_fft_autosharp_routine.h"
 #include <core/proc/c_linear_regression.h>
 #include <core/io/c_stdio_file.h>
 #include <core/proc/fft.h>
@@ -36,12 +34,12 @@
 #include <core/readdir.h>
 
 template<>
-const c_enum_member * members_of<c_fft_profile_test1_routine::DISPLAY>()
+const c_enum_member * members_of<c_fft_autosharp_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
-      { c_fft_profile_test1_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
-      { c_fft_profile_test1_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", },
-      { c_fft_profile_test1_routine::DISPLAY_RESTORED_IMAGE, },
+      { c_fft_autosharp_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
+      { c_fft_autosharp_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", },
+      { c_fft_autosharp_routine::DISPLAY_RESTORED_IMAGE, },
   };
 
   return members;
@@ -59,10 +57,9 @@ public:
 
   inline void init(const cv::Mat1f & mx)
   {
-    _m = mx;
-
     // exclude DC from energy normalization
     const int startCornersBin = int((mx.cols - 1) * M_SQRT1_2);
+    _m = mx;
     _y0 = 0.5 * std::log(cv::norm(mx(cv::Rect(1, 0, startCornersBin - 1, 1)), cv::NORM_L2SQR) / (startCornersBin - 1));
     _L0 = 2 * std::log(1. / mx.cols);
   }
@@ -105,7 +102,8 @@ public:
   // log of laplacian at bin index i
   inline double lv(int i) const
   {
-    return lop(i) + yv(i);
+    //return lop(i) + yv(i);
+    return _L0 - _y0 + std::log((1.0 + i) * (1.0 + i) * _m(0, i));
   }
 
 protected:
@@ -218,13 +216,16 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
   return output_lap;
 }
 
-static int searchLaplaceExtreme(const c_radial_spectrum_profile sp,
+static int estimateNature(const c_radial_spectrum_profile sp,
+    double S1_nature_gain,
     const cv::Mat1f & LSM,
     double & output_S0_lap,
     double & output_S1_lap,
     double & output_S2_lap,
     double & output_S0_nature,
-    double & output_S1_nature)
+    double & output_S1_nature,
+    double & output_xt,
+    double & output_yt )
 {
   /*
    * Approximate lap(x) to find start of the blur
@@ -269,42 +270,87 @@ static int searchLaplaceExtreme(const c_radial_spectrum_profile sp,
    *  nature(x) = S0_nature + S1_nature * x
    */
 
-
   // Search for the blur start point (LS separation from LQ) when moving left from curvatureEndPoint
   const double lxmax = -0.5 * S1_lap / S2_lap; // x coordinate of the laplacian extremum
-  const double threshold = 0.25;
-  double x_start_blur = sp.xv(1);
-  double delta_start_blur = 0;
-  int index_start_blur = 1;
-  for( int i = curvatureEndPoint; i >= 1; --i ) {
+  const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
+  double xStartMF = 0;
+  double yStartMF = 0;
+  int indexOfStartMF = -1;
+  for ( int i = 1; i < curvatureEndPoint; ++i ) {
     const double x = sp.xv(i);
-    const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
-    const double ls = LSM(0, i);
-    if( (ls - lq) >= threshold ) {
-      x_start_blur = x;
-      delta_start_blur = ls - lq;
-      index_start_blur = i;
+    const double y = sp.yv(i);
+    if ( y <= 0  && sp.yv(i + 1) <= 0 ) {
+      indexOfStartMF = i;
+      xStartMF = x;
+      yStartMF = y;
       break;
     }
   }
 
-  if ( x_start_blur >= lxmax - 0.1 ) {
-    x_start_blur = lxmax - 0.5;
+  if ( indexOfStartMF < 2 ) {
+    CF_ERROR("\nBad input data: indexOfStartMF=%d lxmax=%g S0_lap=%g S1_lap=%g S2_lap=%g",
+        indexOfStartMF, lxmax,
+        S0_lap, S1_lap, S2_lap);
+
+    return -1;
   }
 
-  // Radius of the active blur dome and the application of the 0.42 invariant
-  const double R = lxmax - x_start_blur;
-  const double xlt = lxmax - 0.42 * R;
 
-  // The value of the parabola ordinate at the calculated point of contact xlt
-  const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
+  if( lxmax < xStartMF ) { // lxmax is in low frequency region
 
-  // Coefficients of the LT line according to the requirement of equality of derivatives
-  output_S1_nature = 2.0 * S2_lap * xlt + S1_lap;
-  output_S0_nature = ylt - output_S1_nature * xlt;
+    const double xlt = xStartMF;
+    const double ylt = LSM(0, indexOfStartMF);
+    const double dx = xStartMF - lxmax;
+    const double dy = llmax - (S0_lap + S1_lap * xlt + S2_lap * xlt * xlt);
+    output_S1_nature = std::max(0.3, dy / dx) * S1_nature_gain;
+    output_S0_nature = ylt - output_S1_nature * xlt;
+    output_xt = xlt;
+    output_yt = ylt;
+    CF_DEBUG("\nLF: "
+        "indexOfStartMF=%d xlt=%g ylt=%g dx=%g dy=%g output_S0_nature = %g output_S1_nature = %g",
+        indexOfStartMF, xlt, ylt, dx, dy, output_S0_nature, output_S1_nature);
+  }
+  else {
 
-  CF_DEBUG("\nx_start_blur=%g delta_start_blur=%g index_start_blur=%d",
-      x_start_blur, delta_start_blur, index_start_blur);
+    const double threshold = 0.25;
+    double x_start_blur = sp.xv(1);
+    double delta_start_blur = 0;
+    int index_start_blur = 1;
+    for( int i = indexOfStartMF; i > 0; --i ) {
+      const double x = sp.xv(i);
+      const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
+      const double ls = LSM(0, i);
+      if( (ls - lq) >= threshold ) {
+        x_start_blur = x;
+        delta_start_blur = ls - lq;
+        index_start_blur = i;
+        break;
+      }
+    }
+
+    if ( x_start_blur >= lxmax - 0.1 ) {
+      CF_DEBUG("\nFixing x_start_blur=%g lxmax=%g", x_start_blur, lxmax);
+      x_start_blur = lxmax - 0.5;
+    }
+
+    // Radius of the active blur dome and the application of the 0.42 invariant
+    const double R = lxmax - x_start_blur;
+    const double xlt = lxmax - 0.42 * R;
+    // The value of the parabola ordinate at the calculated point of contact xlt
+    const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
+
+    // Coefficients of the LT line according to the requirement of equality of derivatives
+    output_S1_nature = std::max(0.3, (2.0 * S2_lap * xlt + S1_lap)) * S1_nature_gain;
+    output_S0_nature = ylt - output_S1_nature * xlt;
+    output_xt = xlt;
+    output_yt = ylt;
+
+    CF_DEBUG("\nMF: "
+        "indexOfStartMF=%d x_start_blur=%g delta_start_blur=%g index_start_blur=%d",
+        indexOfStartMF, x_start_blur, delta_start_blur, index_start_blur);
+  }
+
+
 
   return curvatureEndPoint;
 }
@@ -322,10 +368,12 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProf
 
   double S0_lap, S1_lap, S2_lap;
   double S0_nature = 0, S1_nature = -500;
+  double xlt = 0, ylt = 0;
 
   const int curvatureEndPoint =
-      searchLaplaceExtreme(sp, LSM, S0_lap, S1_lap, S2_lap,
-          S0_nature, S1_nature);
+      estimateNature(sp, S1_nature_gain, LSM, S0_lap, S1_lap, S2_lap,
+          S0_nature, S1_nature,
+          xlt, ylt);
 
   if ( curvatureEndPoint < 1 ) {
     CF_ERROR("searchLaplaceExtreme() fails");
@@ -334,52 +382,30 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProf
 
   const double lxmax = -0.5 * S1_lap / S2_lap; // (x coordinate of the laplacian extremum)
   const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
-
   if ( S1_nature < 0.05 ) {
     CF_ERROR("BAD S1_nature=%g", S1_nature);
-    S1_nature = 0.05;
+    //S1_nature = 0.05;
   }
 
-  S1_nature *= S1_nature_gain;
-  const double xlt = 0.5 * (S1_nature - S1_lap) / S2_lap;
-  const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
-  S0_nature += ylt - S0_nature - S1_nature * xlt;
+//  S1_nature *= S1_nature_gain;
+//  const double xlt = 0.5 * (S1_nature - S1_lap) / S2_lap;
+//  const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
+//  S0_nature += ylt - S0_nature - S1_nature * xlt;
 
   /*
    * COMPUTE CORRECTION for x > xlt:
    *   CORRECTION  = NATURE - SMY;
    */
   cv::Mat1f correction(1, sp.size(), 1.0f);
+  const int startBin = 4;
+  const double startX = std::max(sp.xv(startBin), xlt);
 
-  for( int i = 4; i < sp.size(); ++i ) {
+  for( int i = startBin; i < sp.size(); ++i ) {
     const double x = sp.xv(i);
     const double nature = S0_nature + S1_nature * x;
     const double laplace = LSM(0, i); // L_SMOOTH
     const double full_corr = std::max(0., nature - laplace);
-    const double weight = 1. / (1. + std::exp(-5 * ((x - xlt))));
-    correction(0, i) = float(std::exp(full_corr * weight));
-
-//    constexpr double delta_x = 0.25;
-//    if ( x >= xlt + delta_x ) {
-//      // Zone 1: Blur is fully active, take 100% of the correction
-//      correction(0, i) = float(full_corr);
-//    }
-//    else if ( x <= xlt - delta_x ) {
-//      // Zone 2: Clean low frequencies, correction strictly zero (gain = 1.0)
-//      correction(0, i) = 0.f;
-//    }
-//    else {
-//      // Zone 3: Smooth stitching interval [xlt - delta_x, xlt + delta_x]
-//      // Normalize the x-coordinate to the range [0.0, 1.0] within the transition window
-//      //const double t = (x - (xlt - delta_x)) / (2.0 * delta_x);
-//
-//      // Smooth transition function (Smoothstep / cosine weighting factor)
-//      // Ensures that the first derivative is zero at the edges of the joint
-//      //const double weight = 0.5 * (1.0 - std::cos(t * M_PI));
-//
-//      const double weight = 1. / (1. + std::exp(-5 * ((x - xlt))));
-//      correction(0, i) = float(std::exp(full_corr * weight));
-//    }
+    correction(0, i) = float(std::exp(full_corr / (1. + std::exp( -5 * (x - startX)))));
   }
 
   /*
@@ -544,7 +570,7 @@ static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_Magnitude,
 
 // moon:  /mnt/data/scope/2023-08-04/MOON3/image_stacking1
 // mars: /mnt/data/scope/2022-11-13/s7/CapObj/2022-11-13Z/s2
-void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+void c_fft_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
@@ -554,7 +580,7 @@ void c_fft_profile_test1_routine::getcontrols(c_control_list & ctls, const ctlbi
   c_anscombe_transform::getcontrols(ctls, ctx(&this_class::_anscombe));
 }
 
-bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save)
+bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
@@ -576,7 +602,7 @@ bool c_fft_profile_test1_routine::serialize(c_config_setting settings, bool save
   return false;
 }
 
-bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
+bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
   if ( _display == DISPLAY_SRC_IMAGE ) {
     return true;
@@ -584,11 +610,15 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
 
   cv::Rect rc;
   const cv::Mat src = image.getMat();
-  const cv::Size fftSize = fftGetOptimalSize(image.size(), cv::Size(63,63));
+  const cv::Size srcSize = src.size();
+  const cv::Size psfSize(std::max(15, 2 * (srcSize.width / 32) + 1), std::max(15, 2 * (srcSize.height / 32) + 1));
+  const cv::Size fftSize = fftGetOptimalSize(image.size(), psfSize);
   const int cn = image.channels();
   const double fftArea = fftSize.area();
 
   double wB = 0, wG = 0, wR = 0;
+
+  CF_DEBUG("select psfSize=%dx%d", psfSize.width, psfSize.height);
 
   if ( src.size() == fftSize ) {
     SRC_IMAGE = src, rc = cv::Rect(0, 0, src.cols, src.rows);
@@ -669,31 +699,3 @@ bool c_fft_profile_test1_routine::process(cv::InputOutputArray image, cv::InputO
 
   return true;
 }
-
-#if 0
-
-// a priori scene coefficient based on the first bins of the original profile
-// (It is assumed that RadialSpectrumProfile contains the original non-logarithmic values)
-double fill_factor = 1.0;
-if (RadialSpectrumProfile.cols > 2) {
-  double dc = RadialSpectrumProfile(0, 0);
-  double bin1 = RadialSpectrumProfile(0, 1);
-  double bin2 = RadialSpectrumProfile(0, 2);
-  if (dc > 0) {
-    fill_factor = (bin1 + bin2) / (2.0 * dc);
-  }
-}
-
-// Scene Prior-based tilt correction
-// If we have a huge, filled disk (high fill_factor),
-// and early blur (lxmax < 2.5), then the scene is guaranteed to be fractal
-// and requires a steep tilt. We set a safe floor for S1_nature.
-if (fill_factor > 0.5 && lxmax < 2.5) {
-  if (output_S1_nature < 0.35) {
-    output_S1_nature = 0.35;
-    // Recalculate S0_nature for the new slope so as not to break the xlt joint point
-    output_S0_nature = ylt - output_S1_nature * xlt;
-  }
-}
-// If the fill_factor is low (Saturn in space), we trust the native calculation,
-#endif

@@ -15,7 +15,6 @@ const c_enum_member * members_of<anscombe_method>()
   static const c_enum_member members[] = {
       { anscombe_none, "none" },
       { anscombe_native, "native", "2 * sqrt(v + 3/8)"},
-      { anscombe_sqrt, "sqrt", "sqrt(v)"},
       { anscombe_generalized, "generalized", "2 * sqrt(g * v + c)"},
       { anscombe_none }  // must  be last
   };
@@ -95,11 +94,6 @@ bool c_anscombe_transform::apply(cv::InputArray _src, cv::OutputArray _dst) cons
       g = 1;
       c = 3./8.;
       break;
-    case anscombe_sqrt:
-      g = 0.25;
-      c = 0;
-      break;
-
     case anscombe_generalized:
       if ( !_opts.generalized.auto_estimate ) {
         g = _opts.generalized.g;
@@ -175,10 +169,6 @@ bool c_anscombe_transform::inverse(cv::InputArray _src, cv::OutputArray _dst) co
     case anscombe_native:
       g = 1;
       c = 3./8.;
-      break;
-    case anscombe_sqrt:
-      g = 0.25;
-      c = 0;
       break;
 
     case anscombe_generalized:

@@ -15,13 +15,12 @@ enum anscombe_method
 {
   anscombe_none = 0,
   anscombe_native = 1, // formulas from <https://en.wikipedia.org/wiki/Anscombe_transform>
-  anscombe_sqrt = 2, // stupid sqrt
-  anscombe_generalized = 3, // 2 * sqrt(g * v + c)
+  anscombe_generalized = 2, // 2 * sqrt(g * v + c)
 };
 
 struct c_anscombe_transform_options
 {
-  enum anscombe_method method = anscombe_sqrt;
+  enum anscombe_method method = anscombe_native;
   struct c_generalized_anscombe_transform_params {
     double g = 1; // stupid default stub
     double c = 3.0 / 8.0; // stupid default stub

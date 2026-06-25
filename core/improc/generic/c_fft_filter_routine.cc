@@ -16,7 +16,7 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
   static const c_enum_member members[] = {
       { c_fft_filter_routine::FILTER_GAUSSIAN, "GAUSSIAN", },
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
-      { c_fft_filter_routine::FILTER_GRADIENT, "GRADIENT", },
+      { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_GAUSSIAN, },
 
   };
@@ -57,7 +57,7 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
       });
 
   ctlbind_expandable_group(ctls, "Gradient filter options",
-      [&, ctx = CTL_CONTEXT(ctx, gradient_filter)]() {
+      [&, ctx = CTL_CONTEXT(ctx, ramp_filter)]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
@@ -80,7 +80,7 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GradientFilter")) {
-      SERIALIZE_OPTION(settings, save, gradient_filter, gain);
+      SERIALIZE_OPTION(settings, save, ramp_filter, gain);
     }
 
     return true;
@@ -165,10 +165,10 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
     }
 
-    case FILTER_GRADIENT: {
+    case FILTER_RAMP: {
       const int ksize = 0;
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateGradientFilter(fftSize, gradient_filter.gain, true);
+      FILTER = fftGenerateRampFilter(fftSize, ramp_filter.gain, true);
       break;
     }
 

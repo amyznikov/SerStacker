@@ -1106,7 +1106,7 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
-cv::Mat1f fftGenerateGradientFilter(const cv::Size & fftSize, double gain, bool centerDC)
+cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool centerDC)
 {
   // Isotropic Gradient
   // The frequency step is tied to the physical dimensions of the matrix

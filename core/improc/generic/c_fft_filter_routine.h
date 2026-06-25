@@ -21,7 +21,7 @@ public:
   enum FILTER {
     FILTER_GAUSSIAN,
     FILTER_LAPLACIAN,
-    FILTER_GRADIENT,
+    FILTER_RAMP,
   };
 
   enum DISPLAY {
@@ -52,9 +52,9 @@ protected:
     double gain = 1;
   } laplacian_filter;
 
-  struct c_gradient_filter_opts {
+  struct c_ramp_filter_opts {
     double gain = 1;
-  } gradient_filter;
+  } ramp_filter;
 
 };
 

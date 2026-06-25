@@ -84,18 +84,6 @@ bool c_threshold_routine::serialize(c_config_setting settings, bool save)
 
 bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-//  if( _threshold_type == THRESHOLD_CLEAR_MASK ) {
-//    switch (_output_channel) {
-//      case DATA_CHANNEL::IMAGE:
-//        image.setTo(cv::Scalar::all(255));
-//        break;
-//      case DATA_CHANNEL::MASK:
-//        mask.release();
-//        break;
-//    }
-//    return true;
-//  }
-
   cv::Mat src, srcm, dstm;
 
   switch (_input_channel) {
@@ -121,6 +109,7 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     std::vector<cv::Mat> mchannels;
 
     const int cn = src.channels();
+
     cv::split(src, channels);
 
     const int cnm = srcm.empty() ?  0 : src.channels();
@@ -218,48 +207,6 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
   if( !srcm.empty() ) {
     combine_masks(_mask_mode, dstm, srcm, dstm);
   }
-
-//  if( !srcm.empty() ) {
-//
-//    if( srcm.channels() != dstm.channels() ) {
-//      if( dstm.channels() == 1 ) {
-//        cv::merge(std::vector<cv::Mat>(srcm.channels(), dstm), dstm);
-//      }
-//      else if( srcm.channels() == 1 ) {
-//        cv::merge(std::vector<cv::Mat>(srcm.channels(), srcm), srcm);
-//      }
-//      else {
-//        CF_ERROR("Not supported combination of srcm.channels=%d and dstm,channels=%d",
-//            srcm.channels(), dstm.channels());
-//        return false;
-//      }
-//    }
-//
-//    switch (_mask_mode) {
-//      case MASK_MODE_REPLACE:
-//        break;
-//      case MASK_MODE_NAND:
-//        cv::bitwise_and(~srcm, dstm, dstm);
-//        break;
-//      case MASK_MODE_AND:
-//        cv::bitwise_and(srcm, dstm, dstm);
-//        break;
-//      case MASK_MODE_NOR:
-//        cv::bitwise_or(~srcm, dstm, dstm);
-//        break;
-//      case MASK_MODE_OR:
-//        cv::bitwise_or(srcm, dstm, dstm);
-//        break;
-//      case MASK_MODE_NXOR:
-//        cv::bitwise_xor(~srcm, dstm, dstm);
-//        break;
-//      case MASK_MODE_XOR:
-//        cv::bitwise_xor(srcm, dstm, dstm);
-//        break;
-//      default:
-//        break;
-//    }
-//  }
 
   switch (_output_channel) {
     case DATA_CHANNEL::IMAGE:

@@ -1,5 +1,5 @@
 /*
- * canscombetransform.cc
+ * c_anscombe_transform.cc
  *
  *  Created on: Oct 25, 2020
  *      Author: amyznikov
@@ -64,7 +64,7 @@ static bool apply_inverse(cv::InputArray _src, cv::OutputArray _dst, double g, d
   cv::parallel_for_(cv::Range(0, size.height),
       [=, &src, &dst](const auto & range) {
         const int nx = size.width * channels;
-        const double bias_correction = -c+ 0.25 * g * g;
+        const double bias_correction = -c;
         const double inv_g = 1.0 / g;
 
         for ( int y = range.start; y < range.end; ++y ) {
@@ -185,6 +185,10 @@ bool c_anscombe_transform::inverse(cv::InputArray _src, cv::OutputArray _dst) co
     default:
       CF_ERROR("Invalid anscombe method requested: %d", _opts.method);
       return false;
+  }
+
+  if ( _opts.generalized.dump_estimated_params ) {
+    CF_DEBUG("\nANSCOMBE_INVERSE: g = %g c = %g", g, c);
   }
 
   CV_DISPATCH(_src.depth(), apply_inverse, _src, _dst, g, c);

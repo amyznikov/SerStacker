@@ -56,7 +56,7 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Gradient filter options",
+  ctlbind_expandable_group(ctls, "Ramp filter options",
       [&, ctx = CTL_CONTEXT(ctx, ramp_filter)]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });

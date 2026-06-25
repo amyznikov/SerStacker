@@ -109,26 +109,32 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     std::vector<cv::Mat> mchannels;
 
     const int cn = src.channels();
+    if ( cn < 2 ) {
+      channels.emplace_back(src);
+    }
+    else {
+      cv::split(src, channels);
+    }
 
-    cv::split(src, channels);
-
-    const int cnm = srcm.empty() ?  0 : src.channels();
-    if( cnm > 1 ) {
+    const int cnm = srcm.empty() ?  0 : srcm.channels();
+    if( cnm < 2 ) {
+      mchannels.emplace_back(srcm);
+    }
+    else {
       cv::split(srcm, mchannels);
     }
 
     for( int i = 0; i < cn; ++i ) {
 
-      const cv::Mat s = channels[i];
-      const cv::Mat m = (cnm > 1 && i < cnm) ? mchannels[i] : srcm;
+      const cv::Mat & s = channels[i];
+      const cv::Mat & m = i < cnm ? mchannels[i] : mchannels[0];
 
       const double threshold_value =
           get_threshold_value(s, m,
               (::THRESHOLD_TYPE) (_threshold_type),
               _threshold_value);
 
-      cv::compare(s, threshold_value * _threshold_scale,
-          channels[i],
+      cv::compare(s, threshold_value * _threshold_scale, channels[i],
           _compare);
 
       if( _fill_holes ) {
@@ -185,7 +191,6 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
         break;
     }
   }
-
 
   if( dstm.channels() > 1 ) {
     switch (_reduction_mode) {

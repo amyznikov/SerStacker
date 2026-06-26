@@ -63,42 +63,21 @@ cv::Scalar estimate_noise(cv::InputArray src, cv::OutputArray dst, cv::InputArra
 
   create_noise_map(src, H, cv::noArray());
 
-  // FIXME:
-  //  double total_noise_energy = cv::norm(H, cv::NORM_L2SQR);
-  //  double mean_noise_power = total_noise_energy / H.total();
-  //  double sigma_noise = std::sqrt(mean_noise_power);
-
-
-  if ( H.depth() != CV_8U && H.depth() != CV_16U ) {
-    absdiff(H, 0, H);
+  if (mask.empty()) {
+    sigma = cv::mean(cv::abs(H));
+  }
+  else {
+    cv::Mat emask;
+    cv::erode(mask, emask, cv::Mat1b(5, 5, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+    sigma = cv::mean(cv::abs(H), emask);
   }
 
-  if ( dst.needed() ) {
-    if ( dst.fixedType() ) {
+  if (dst.needed()) {
+    if ( dst.fixedType() && dst.depth() != H.depth() ) {
       H.convertTo(dst, dst.depth());
     }
     else {
-      H.copyTo(dst);
-    }
-  }
-
-
-  if ( mask.empty() ) {
-    // sigma = cv::sum(H) / ((H.cols - 2) * (H.rows - 2));
-    sigma = cv::mean(H);
-  }
-  else {
-
-    cv::Mat emask;
-
-    cv::erode(mask, emask, cv::Mat1b(5, 5, 255),
-        cv::Point(-1,-1), 1,
-        cv::BORDER_REPLICATE);
-
-    sigma = cv::mean(H, emask);
-
-    if ( dst.needed() ) {
-      dst.setTo(0, ~emask);
+      dst.move(H);
     }
   }
 

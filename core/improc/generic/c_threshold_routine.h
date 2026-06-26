@@ -32,6 +32,7 @@ public:
     THRESHOLD_MEAN = THRESHOLD_TYPE_MEAN,
     THRESHOLD_MINIMUM = THRESHOLD_TYPE_MINIMUM,
     THRESHOLD_NOISE = THRESHOLD_TYPE_NOISE,
+    THRESHOLD_MEAN_STDEV,
     THRESHOLD_PLANETARY_DISK,
 //    THRESHOLD_CLEAR_MASK
   };
@@ -55,6 +56,7 @@ protected:
   double _threshold_scale = 1.0;
   bool _fill_holes = false;
   bool _invert = false;
+  bool _print_threshold_value = false;
 };
 
 #endif /* __c_threshold_routine_h__ */

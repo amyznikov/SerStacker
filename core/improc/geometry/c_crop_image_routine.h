@@ -24,6 +24,7 @@ public:
 
 protected:
   cv::Rect _rect;
+  bool _useROISelection = false;
 };
 
 #endif /* __c_crop_image_routine_h__ */

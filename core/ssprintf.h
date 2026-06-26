@@ -895,6 +895,21 @@ inline const c_enum_member * members_of<cv::MorphShapes>()
 }
 
 template<>
+inline const c_enum_member * members_of<cv::ReduceTypes>()
+{
+  static const c_enum_member members[] = {
+      {cv::REDUCE_AVG, "REDUCE_AVG", "the output is the mean vector of all rows/columns of the matrix"},
+      {cv::REDUCE_SUM, "REDUCE_SUM", "the output is the sum of all rows/columns of the matrix"},
+      {cv::REDUCE_MAX, "REDUCE_MAX", "the output is the maximum (column/row-wise) of all rows/columns of the matrix"},
+      {cv::REDUCE_MIN, "REDUCE_MIN", "the output is the minimum (column/row-wise) of all rows/columns of the matrix"},
+      {cv::REDUCE_SUM2, "REDUCE_SUM2", "the output is the sum of all squared rows/columns of the matrix"},
+      {cv::REDUCE_AVG},
+  };
+
+  return members;
+}
+
+template<>
 inline const c_enum_member * members_of<cv::TermCriteria::Type>()
 {
   static const c_enum_member members[] = {

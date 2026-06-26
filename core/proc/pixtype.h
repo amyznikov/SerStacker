@@ -37,6 +37,10 @@ bool getScaleOffset(int src_depth, int src_bpp, int dst_depth, double * scale, d
 
 void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool autoscale, double s = 1);
 
+void convertScaleClamp(cv::InputArray src, cv::OutputArray dst,
+    double imin, double imax, double omin, double omax,
+    int ddepth = -1);
+
 const char * pixtype2str(int ddepth);
 
 

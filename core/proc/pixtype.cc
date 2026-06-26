@@ -183,8 +183,9 @@ bool getScaleOffset(int src_depth, int src_bpp, int dst_depth, double * scale, d
   return true;
 }
 
-void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool autoscale, double s)
+void convertScaleDepth(cv::InputArray _src, cv::OutputArray dst, int ddepth, bool autoscale, double s)
 {
+  const cv::Mat src = _src.getMat();
   const int depth = src.depth();
 
   if ( ddepth < 0 ) {
@@ -196,7 +197,7 @@ void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool
       src.copyTo(dst);
     }
     else {
-      src.getMat().convertTo(dst, -1, s);
+      src.convertTo(dst, -1, s);
     }
   }
   else {
@@ -205,8 +206,58 @@ void convertScaleDepth(cv::InputArray src, cv::OutputArray dst, int ddepth, bool
       getScaleOffset(depth, ddepth, &alpha, &beta);
       alpha *= s;
     }
-    src.getMat().convertTo(dst, ddepth, alpha, beta);
+    src.convertTo(dst, ddepth, alpha, beta);
   }
+}
+
+
+template<class _Tp1, class _Tp2>
+static void _convertScaleClamp(cv::InputArray _src, cv::OutputArray _dst,
+    double imin, double imax, double omin, double omax, int ddepth)
+{
+  const cv::Mat_<_Tp1> src = _src.getMat();
+  const cv::Size size = _src.size();
+  const int cn = _src.channels();
+
+  if( _dst.fixedType() ) {
+    ddepth = _dst.depth();
+  }
+  else if( ddepth < 0 ) {
+    ddepth = _src.depth();
+  }
+
+  cv::Mat dst(size, CV_MAKETYPE(ddepth, cn));
+
+  const double scale = (omax - omin) / (imax - imin);
+  const double offset = omin - scale * imin;
+
+  cv::parallel_for_(cv::Range(0, size.height),
+      [=, &src, &dst](const auto & range) {
+        for ( int y = range.start; y < range.end; ++y ) {
+          const _Tp1 * srcp = src[y];
+          _Tp2 * __restrict dstp = dst.ptr<_Tp2>(y);
+          for ( int x = 0, n = size.width * cn; x < n; ++x) {
+            const double v = (*srcp++) * scale + offset;
+            *dstp++ = cv::saturate_cast<_Tp2>(std::clamp(v, omin, omax));
+          }
+        }
+      });
+
+  _dst.move(dst);
+}
+
+void convertScaleClamp(cv::InputArray src, cv::OutputArray dst,
+    double imin, double imax, double omin, double omax, int ddepth)
+{
+  if (  dst.fixedType() ) {
+    ddepth = dst.depth();
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = src.depth();
+  }
+
+  CV_DISPATCH2(src.depth(), ddepth, _convertScaleClamp, src, dst,
+      imin, imax, omin, omax, ddepth);
 }
 
 

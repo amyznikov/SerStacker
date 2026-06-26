@@ -83,6 +83,7 @@
 #include "generic/c_fft_unsharp_filter_routine.h"
 #include "generic/c_fft_autosharp_routine.h"
 
+#include "generic/c_reduce_image_routine.h"
 #include "generic/c_set_pixels_routine.h"
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
@@ -122,10 +123,6 @@
 #include "feature2d/c_connected_components_routine.h"
 #include "feature2d/c_roi_tracker_routine.h"
 #include "feature2d/c_barycenter_routine.h"
-
-
-//#include "feature2d/c_draw_jovian_ellipse_routine.h"
-//#include "feature2d/c_draw_saturn_ellipse_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -355,6 +352,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_adaptive_gaussian_blur_routine::class_factory_instance());
 
     register_class_factory(c_set_pixels_routine::class_factory_instance());
+    register_class_factory(c_reduce_image_routine::class_factory_instance());
 
     register_class_factory(c_color_transform_routine::class_factory_instance());
     register_class_factory(c_rotation_homography_test_routine::class_factory_instance());

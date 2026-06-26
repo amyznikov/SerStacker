@@ -567,9 +567,7 @@ bool compute_clip_levels(cv::InputArray image, cv::InputArray mask, double plo, 
     cv::cvtColor(image, src, cv::COLOR_BGR2GRAY);
   }
   else {
-    reduce_color_channels(image, src,
-        cv::REDUCE_AVG,
-        CV_32F);
+    reduce_color_channels(image, src, cv::REDUCE_AVG, CV_32F);
   }
 
 

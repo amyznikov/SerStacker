@@ -51,15 +51,35 @@ bool nomalizeImageHistogram(cv::InputArray src, cv::InputArray mask, cv::OutputA
 bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
     double qlow, double qhigh);
 
-void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue,
-    double * lclip,
-    double * hclip);
-
+/**
+ * Histogram-based automatic adjustment of MTF parameters for c_smooth_rational_mtf
+ */
 void autoMtf(const cv::Mat1d & H, double realMinValue, double realMaxValue,
     double * lclip,
     double * hclip,
     double * shadow,
     double * midtones,
     double * highlights);
+
+
+/**
+ * Compute histogram clip levels
+ * @param qLow - lower quantile (e.g., 0.01 for 1%)
+ * @param qHigh - upper quantile (e.g., 0.99 for 99%)
+ * */
+void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue,
+    double * lclip,
+    double * hclip);
+
+/**
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+*  */
+bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
+    double qlow, double qhigh,
+    double omin, double omax,
+    double * minval = nullptr,
+    double * maxval = nullptr,
+    int ddepth = -1);
 
 #endif /* __histogram_tools_h__ */

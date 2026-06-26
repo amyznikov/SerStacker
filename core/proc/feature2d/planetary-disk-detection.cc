@@ -133,14 +133,14 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
     GaussianBlur(gray, gray, cv::Size(0, 0), gbsigma);
   }
 
-  autoclip(gray, mask, gray, 1, 99, 0, 255);
+  autoclip(gray, mask, gray, 1, 99.99, 0, 255);
   gray.convertTo(gray, CV_8U);
   if ( optional_output_debug_image ) {
     gray.copyTo(*optional_output_debug_image);
   }
 
 
-  cv::threshold(gray, comp, 0, 255, cv::THRESH_TRIANGLE);
+  //cv::threshold(gray, comp, 0, 255, cv::THRESH_TRIANGLE);
 
   if ( close_radius > 0 ) {
 

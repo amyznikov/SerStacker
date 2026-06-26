@@ -29,6 +29,7 @@ const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
       { c_threshold_routine::THRESHOLD_MINIMUM, "MINIMUM", "Use MINIMUM algorithm to choose the optimal threshold value" },
       { c_threshold_routine::THRESHOLD_PLANETARY_DISK, "PLANETARY_DISK", "" },
       { c_threshold_routine::THRESHOLD_NOISE, "NOISE", "" },
+      { c_threshold_routine::THRESHOLD_MEAN_STDEV, "MEAN_STDEV", "mean + scale * stdev" },
       //  { c_threshold_routine::THRESHOLD_CLEAR_MASK, "CLEAR_MASK", "" },
       { c_threshold_routine::THRESHOLD_OTSU }
   };
@@ -61,6 +62,8 @@ void c_threshold_routine::getcontrols(c_control_list & ctls, const ctlbind_conte
    ctlbind(ctls, "mask_mode", ctx(&this_class::_mask_mode), "");
    ctlbind(ctls, "input", ctx(&this_class::_input_channel), "");
    ctlbind(ctls, "output", ctx(&this_class::_output_channel), "");
+   ctlbind(ctls, "print_threshold", ctx(&this_class::_print_threshold_value), "");
+
 }
 
 bool c_threshold_routine::serialize(c_config_setting settings, bool save)
@@ -76,6 +79,7 @@ bool c_threshold_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _mask_mode);
     SERIALIZE_OPTION(settings, save, *this, _input_channel);
     SERIALIZE_OPTION(settings, save, *this, _output_channel);
+    SERIALIZE_OPTION(settings, save, *this, _print_threshold_value);
     return true;
   }
   return false;
@@ -129,13 +133,26 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
       const cv::Mat & s = channels[i];
       const cv::Mat & m = i < cnm ? mchannels[i] : mchannels[0];
 
-      const double threshold_value =
-          get_threshold_value(s, m,
-              (::THRESHOLD_TYPE) (_threshold_type),
-              _threshold_value);
+      double threshold_value = 0;
 
-      cv::compare(s, threshold_value * _threshold_scale, channels[i],
-          _compare);
+      if( _threshold_type == THRESHOLD_MEAN_STDEV ) {
+        cv::Scalar mv, sv;
+        cv::meanStdDev(s, mv, sv, m);
+        threshold_value = mv[0] + _threshold_scale * sv[0];
+      }
+      else {
+        threshold_value =
+            get_threshold_value(s, m, (::THRESHOLD_TYPE) (_threshold_type),
+                _threshold_value);
+
+        threshold_value *= _threshold_scale;
+      }
+
+      if( _print_threshold_value ) {
+        CF_DEBUG("THRESHOLD[%d]: %g", i, threshold_value);
+      }
+
+      cv::compare(s, threshold_value, channels[i], _compare);
 
       if( _fill_holes ) {
         geo_fill_holes(channels[i], channels[i], 8);

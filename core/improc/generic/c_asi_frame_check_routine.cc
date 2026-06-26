@@ -95,27 +95,16 @@ bool c_asi_frame_check_routine::process(cv::InputOutputArray image, cv::InputOut
 
   if ( _differentiate ) {
 
-    const cv::Mat src =
-        tmp;
-
-    const cv::Mat src1 =
-        src(cv::Rect(0, 0, src.cols, src.rows-1));
-
-    const cv::Mat src2 =
-        src(cv::Rect(0, 1, src.cols, src.rows-1));
-
-    cv::absdiff(src1, src2,
-        tmp);
+    const cv::Mat src = tmp;
+    const cv::Mat src1 = src(cv::Rect(0, 0, src.cols, src.rows-1));
+    const cv::Mat src2 = src(cv::Rect(0, 1, src.cols, src.rows-1));
+    cv::absdiff(src1, src2, tmp);
   }
 
-  const cv::Size size =
-      tmp.size();
+  const cv::Size size = tmp.size();
 
   if ( _reduce ) {
-
-    cv::reduce(tmp, tmp, 1,
-        cv::REDUCE_AVG,
-        CV_32F);
+    cv::reduce(tmp, tmp, 1, cv::REDUCE_AVG, CV_32F);
   }
 
   if( _medianhat ) {
@@ -133,7 +122,6 @@ bool c_asi_frame_check_routine::process(cv::InputOutputArray image, cv::InputOut
 
 
   if ( _threshold > 0 ) {
-
     cv::compare(tmp, _threshold, tmp,
         cv::CMP_GE);
   }
@@ -143,9 +131,7 @@ bool c_asi_frame_check_routine::process(cv::InputOutputArray image, cv::InputOut
     image.move(tmp);
   }
   else {
-    cv::repeat(tmp, 1,
-        size.width,
-        image);
+    cv::repeat(tmp, 1, size.width, image);
   }
 
 

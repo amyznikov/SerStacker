@@ -5,6 +5,7 @@
  *      Author: amyznikov
  */
 #include "histogram-tools.h"
+#include <core/proc/pixtype.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -52,16 +53,7 @@ static cv::Scalar computeImageMedian(cv::InputArray image, cv::InputArray mask)
   double minv = -1, maxv = -1;
   cv::Mat1d H;
 
-  bool fOK =
-      createHistogram(image,
-          mask,
-          &minv,
-          &maxv,
-          nbins,
-          H,
-          true,
-          true);
-
+  bool fOK = createHistogram(image, mask, &minv, &maxv, nbins, H, true, true);
   if( !fOK ) {
     CF_ERROR("createHistogram() fails");
     return cv::Scalar();
@@ -248,6 +240,41 @@ void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue, dou
   *lclip = lb[0];
   *hclip = hb[0];
 }
+
+bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
+    double qlow, double qhigh, double omin, double omax,
+    double * minval, double * maxval,
+    int ddepth)
+{
+  cv::Mat1d H;
+  cv::Scalar lb, hb;
+  double gmin = -1, gmax = -1;
+
+  if( !createHistogram(image, mask, &gmin, &gmax, 0, H, true, true) ) {
+    CF_ERROR("createHistogram() fails");
+    return false;
+  }
+
+  if( !computeHistogramClipLevels(H, gmin, gmax, qlow, qhigh, lb, hb) ) {
+    CF_ERROR("computeHistogramClipLevels() fails");
+    return false;
+  }
+
+  const double imin = lb[0];
+  const double imax = hb[0];
+
+  if( minval ) {
+    *minval = imin;
+  }
+  if( maxval ) {
+    *maxval = imax;
+  }
+
+  convertScaleClamp(image, dst, imin, imax, omin, omax, ddepth);
+
+  return true;
+}
+
 
 /**
  * Histogram-based automatic adjustment of MTF parameters for c_smooth_rational_mtf

@@ -6,10 +6,8 @@
  */
 
 #include "median.h"
-#include "normalize.h"
+// #include "normalize.h"
 #include <core/debug.h>
-
-
 
 #define CV_MTYPE_SWITCH_1(m, call, args) \
     switch ( (m).type() ) { \
@@ -27,7 +25,7 @@
 
 
 template<class T>
-static T median_(const cv::Mat & image, cv::InputArray _mask)
+static T _median(const cv::Mat & image, cv::InputArray _mask)
 {
   std::vector<T> vec;
   cv::Mat mask;
@@ -71,13 +69,10 @@ double median(const cv::Mat & image, cv::InputArray _mask)
   CV_Assert(!image.empty());
   CV_Assert(image.channels() == 1);
 
-  CV_MTYPE_SWITCH_1(image, median_, (image, _mask));
+  CV_MTYPE_SWITCH_1(image, _median, (image, _mask));
 
-  cv::error(cv::Error::BadDepth,
-      "Unsupported image type",
-      CV_Func,
-      __FILE__,
-      __LINE__);
+  cv::error(cv::Error::BadDepth, "Unsupported image type",
+      CV_Func, __FILE__, __LINE__);
 
   return 0;
 }

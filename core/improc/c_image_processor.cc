@@ -123,6 +123,7 @@
 #include "feature2d/c_connected_components_routine.h"
 #include "feature2d/c_roi_tracker_routine.h"
 #include "feature2d/c_barycenter_routine.h"
+#include "feature2d/c_planetary_disk_detection_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -335,6 +336,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_connected_components_routine::class_factory_instance());
     register_class_factory(c_roi_tracker_routine::class_factory_instance());
     register_class_factory(c_barycenter_routine::class_factory_instance());
+    register_class_factory(c_planetary_disk_detection_routine::class_factory_instance());
 
     register_class_factory(c_normalize_mean_stdev_routine::class_factory_instance());
 

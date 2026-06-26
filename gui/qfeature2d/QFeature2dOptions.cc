@@ -232,9 +232,8 @@ static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2
 #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
 static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2d_planetary_disk_detector::options> * w)
 {
-  ADDCTL2(gbsigma);
-  ADDCTL2(stdev_factor);
-  ADDCTL2(se_close_size);
+  ADDCTL2(gsigma);
+  ADDCTL2(se_radius);
   ADDCTL2(align_planetary_disk_masks);
 }
 #endif

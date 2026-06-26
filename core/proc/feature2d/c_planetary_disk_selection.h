@@ -20,19 +20,16 @@ public:
   typedef std::shared_ptr<this_class> ptr;
 
   c_planetary_disk_selection();
-  c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size);
+  c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, int se_radius);
 
   static this_class::ptr create();
-  static this_class::ptr create(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size);
+  static this_class::ptr create(const cv::Size & crop_size, double gbsigma, int se_radius);
 
   const cv::Size & crop_size() const;
   void set_crop_size(const cv::Size & size) ;
 
   void set_gbsigma(double v);
   double gbsigma() const;
-
-  void set_stdev_factor(double v);
-  double stdev_factor() const;
 
   void set_se_close_size(int v);
   int se_close_size() const;
@@ -46,8 +43,7 @@ public:
 protected:
   cv::Size _crop_size;
   double _gbsigma = 1;
-  double _stdev_factor = 0.5;
-  int _se_close_size = 2;
+  int _se_radius = 5;
   cv::Point2f _objpos;
   cv::Rect _objrect;
 };

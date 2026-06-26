@@ -48,8 +48,7 @@ bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
   LOAD_OPTION(settings, *opts, ecch_max_level);
   LOAD_OPTION(settings, *opts, ecch_estimate_translation_first);
   LOAD_OPTION(settings, *opts, replace_planetary_disk_with_mask);
-  LOAD_OPTION(settings, *opts, planetary_disk_mask_stdev_factor);
-  LOAD_OPTION(settings, *opts, se_close_size);
+  LOAD_OPTION(settings, *opts, se_radius);
   return true;
 }
 
@@ -69,8 +68,7 @@ bool save_settings(c_config_setting settings, const c_ecc_registration_options &
   SAVE_OPTION(settings, opts, ecch_max_level);
   SAVE_OPTION(settings, opts, ecch_estimate_translation_first);
   SAVE_OPTION(settings, opts, replace_planetary_disk_with_mask);
-  SAVE_OPTION(settings, opts, planetary_disk_mask_stdev_factor);
-  SAVE_OPTION(settings, opts, se_close_size);
+  SAVE_OPTION(settings, opts, se_radius);
   return true;
 }
 
@@ -1158,9 +1156,7 @@ bool c_frame_registration::insert_planetary_disk_shape(const cv::Mat & src_ecc_i
 
   bool fOk =
       simple_planetary_disk_detector(src_ecc_image, src_mask,
-          2,
-          _options.ecc.planetary_disk_mask_stdev_factor,
-          _options.ecc.se_close_size,
+          1, _options.ecc.se_radius,
           nullptr,
           nullptr,
           &planetary_disk_mask);
@@ -1228,9 +1224,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
 
       const bool fOk =
           simple_planetary_disk_detector(reference_feature_image, reference_feature_mask,
-              detector_opts.gbsigma,
-              0.5,
-              2,
+              detector_opts.gsigma, detector_opts.se_radius,
               &_planetary_disk_reference_centroid);
 
       if( !fOk ) {
@@ -1243,9 +1237,7 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_f
 
       const bool fOk =
           simple_planetary_disk_detector(reference_feature_image, reference_feature_mask,
-              detector_opts.gbsigma,
-              detector_opts.stdev_factor,
-              detector_opts.se_close_size,
+              detector_opts.gsigma, detector_opts.se_radius,
               nullptr,
               &_planetary_disk_reference_component_rect,
               &_planetary_disk_reference_component_mask,
@@ -1315,9 +1307,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
       const bool fOk =
           simple_planetary_disk_detector(current_feature_image, current_feature_mask,
-              detector_opts.gbsigma,
-              0.5,
-              2,
+              detector_opts.gsigma, detector_opts.se_radius,
               &_planetary_disk_current_centroid);
 
       if( !fOk ) {
@@ -1329,9 +1319,8 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_fea
 
       const bool fOk =
           simple_planetary_disk_detector(current_feature_image, current_feature_mask,
-              detector_opts.gbsigma,
-              detector_opts.stdev_factor,
-              detector_opts.se_close_size,
+              detector_opts.gsigma,
+              detector_opts.se_radius,
               nullptr,
               &_planetary_disk_current_component_rect,
               &_planetary_disk_current_component_mask,

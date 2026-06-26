@@ -78,8 +78,8 @@ void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue,
 bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
     double qlow, double qhigh,
     double omin, double omax,
+    int ddepth = -1,
     double * minval = nullptr,
-    double * maxval = nullptr,
-    int ddepth = -1);
+    double * maxval = nullptr);
 
 #endif /* __histogram_tools_h__ */

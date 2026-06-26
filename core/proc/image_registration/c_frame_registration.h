@@ -52,8 +52,7 @@ struct c_ecc_registration_options
   double input_smooth_sigma = 1.0;
   double reference_smooth_sigma = 1.0;
   double update_step_scale = 1.5;
-  double planetary_disk_mask_stdev_factor = 0.5;
-  int se_close_size = 2;
+  int se_radius = 5;
   ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
   int max_iterations = 50;
   int ecch_max_level = 0;
@@ -83,8 +82,7 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   ctlbind(ctls, "ecch_minimum_image_size", ctx(&S:: ecch_minimum_image_size), "");
   ctlbind(ctls, "Estimate translation first", ctx(&S:: ecch_estimate_translation_first), "");
   ctlbind(ctls, "replace_planetary_disk_with_mask", ctx(&S:: replace_planetary_disk_with_mask), "");
-  ctlbind(ctls, "planetary_disk_stdev_factor", ctx(&S:: planetary_disk_mask_stdev_factor), "");
-  ctlbind(ctls, "planetary_disk_se_close_size", ctx(&S:: se_close_size), "");
+  ctlbind(ctls, "planetary_disk_se_close_size", ctx(&S:: se_radius), "");
 }
 
 struct c_eccflow_registration_options

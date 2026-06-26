@@ -44,11 +44,10 @@ c_planetary_disk_selection::c_planetary_disk_selection()
 {
 }
 
-c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size) :
+c_planetary_disk_selection::c_planetary_disk_selection(const cv::Size & crop_size, double gbsigma, int se_radius) :
     _crop_size(crop_size),
     _gbsigma(gbsigma),
-    _stdev_factor(stdev_factor),
-    _se_close_size(se_close_size)
+    _se_radius(se_radius)
 {
 }
 
@@ -72,24 +71,14 @@ double c_planetary_disk_selection::gbsigma() const
   return _gbsigma;
 }
 
-void c_planetary_disk_selection::set_stdev_factor(double v)
-{
-  _stdev_factor = v;
-}
-
-double c_planetary_disk_selection::stdev_factor() const
-{
-  return _stdev_factor;
-}
-
 void c_planetary_disk_selection::set_se_close_size(int v)
 {
-  _se_close_size = v;
+  _se_radius = v;
 }
 
 int c_planetary_disk_selection::se_close_size() const
 {
-  return _se_close_size;
+  return _se_radius;
 }
 
 c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
@@ -97,15 +86,15 @@ c_planetary_disk_selection::ptr c_planetary_disk_selection::create()
   return ptr(new this_class());
 }
 
-c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Size & crop_size, double gbsigma, double stdev_factor, int se_close_size)
+c_planetary_disk_selection::ptr c_planetary_disk_selection::create(const cv::Size & crop_size, double gbsigma, int se_close_size)
 {
-  return ptr(new this_class(crop_size, gbsigma, stdev_factor, se_close_size));
+  return ptr(new this_class(crop_size, gbsigma, se_close_size));
 }
 
 bool c_planetary_disk_selection::select(cv::InputArray image, cv::InputArray mask,
     cv::Rect & outputROIRectangle )
 {
-  if ( !simple_planetary_disk_detector(image, mask, _gbsigma, _stdev_factor, _se_close_size, &_objpos, &_objrect) ) {
+  if ( !simple_planetary_disk_detector(image, mask, _gbsigma, _se_radius, &_objpos, &_objrect) ) {
     CF_FATAL("simple_small_planetary_disk_detector() fails");
     return false;
   }

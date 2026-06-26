@@ -180,13 +180,17 @@ bool c_jovian_ellipse_detector::detect_planetary_disk_mask(cv::InputArray _input
     cv::cvtColor(_input_image, _grayscale_image, cv::COLOR_BGR2GRAY);
   }
 
+  cv::Point2f geometrical_center;
+
   // Detect planetary disk and extract pixel mask covering planetary disk shape
   bool fOk =
       simple_planetary_disk_detector(_grayscale_image, _input_mask,
           _opts.planetary_disk_detector_options,
           &_detected_component_centroid,
           &_detected_component_roi,
-          &_disk_mask);
+          &_disk_mask,
+          &geometrical_center);
+
   if( !fOk ) {
     CF_ERROR("simple_planetary_disk_detector() fails");
     return false;
@@ -194,19 +198,45 @@ bool c_jovian_ellipse_detector::detect_planetary_disk_mask(cv::InputArray _input
 
   const cv::Size size = _detected_component_roi.size();
   const int max_size = std::max(size.width, size.height);
-  _skirt_size = std::max(11, 2 * (max_size / 48) + 1);
-  _gradient_mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
-
-  morphological_gradient(_disk_mask, _disk_edge,
-      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(_skirt_size, _skirt_size)),
-      cv::BORDER_REPLICATE);
+  const int min_size = std::min(size.width, size.height);
+  const int gradient_mask_erode_size = std::max(7, 2 * (max_size / 16) + 1);
 
   cv::erode(_disk_mask, _gradient_mask,
-      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(_gradient_mask_erode_size, _gradient_mask_erode_size)),
+      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(gradient_mask_erode_size, gradient_mask_erode_size)),
       cv::Point(-1, -1),
       1,
       cv::BORDER_CONSTANT,
       cv::Scalar::all(0));
+
+
+  // Prepare also mask for radial gradient based planetary edge detection
+//  const cv::Size size = _detected_component_roi.size();
+//  const int max_size = std::max(size.width, size.height);
+//  _skirt_size = std::max(11, 2 * (max_size / 48) + 1);
+//
+//  morphological_gradient(_disk_mask, _disk_edge,
+//      cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(_skirt_size, _skirt_size)),
+//      cv::BORDER_REPLICATE);
+
+  _skirt_size = std::max(11, 2 * (min_size / 32) + 1);
+  //  _skirt_roi  = _pca_rect;
+  //  _skirt_roi.size.width = _skirt_roi.size.height / _apparent_axis_ratio;
+
+  _disk_edge = cv::Mat1b::zeros(_input_image.size());
+
+  const cv::Point roi_center(_detected_component_roi.x + _detected_component_roi.width / 2,
+      _detected_component_roi.y + _detected_component_roi.height / 2);
+
+  CF_DEBUG("\n"
+      "CENTER: roi: %d;%d  geom: %g;%g centroid: %g;%g",
+      roi_center.x, roi_center.y,
+      geometrical_center.x, geometrical_center.y,
+      _detected_component_centroid.x, _detected_component_centroid.y);
+
+  //const cv::Point center = _detected_component_centroid;
+  const cv::Point center = geometrical_center;
+  const int radius = max_size / 2 - _skirt_size / 2 + 1;
+  cv::circle(_disk_edge, center, radius, cv::Scalar::all(255), 2 * _skirt_size, cv::LINE_8);
 
   return true;
 }
@@ -221,7 +251,6 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
     return false;
   }
 
-  CF_DEBUG("H");
   // Prepare gr, grth images for contour detection
   static const cv::Mat1b THSE(5, 5, uint8_t(255));
   extract_channel(_image, _normalized_image, cv::noArray(), cv::noArray(), _opts.gradient_channel);
@@ -232,21 +261,14 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
   cv::morphologyEx(_grth, _grth, cv::MORPH_TOPHAT, THSE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   _gr.setTo(0, ~_disk_edge);
   cv::sqrt(_gr, _gr);
-  CF_DEBUG("H");
 
   // Prepare gx, gy, g images for orientation detection
   if ( _opts.nscale > 0 ) {
-    CF_DEBUG("H");
     pnormalize(_normalized_image, _normalized_image, _opts.nscale, _opts.neps);
-    CF_DEBUG("H");
   }
-  CF_DEBUG("H");
   differentiate(_normalized_image, _gx, _gy, _opts.sigma_clouds);
-  CF_DEBUG("H");
   cv::magnitude(_gx, _gy, _g);
-  CF_DEBUG("H");
 
-  CF_DEBUG("H");
   // Compute orientation angle
   const cv::Mat imask = ~_gradient_mask;
   _g.setTo(0, imask);
@@ -260,18 +282,13 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray _image, cv::InputArray _ma
   }
 
   double ellipse_angle_deg = 0;
-  CF_DEBUG("H");
 
   switch (_opts.method) {
     case JOVIAN_ELLIPSE_DETECTION_PCA:
-      CF_DEBUG("H");
       ellipse_angle_deg = compute_jovian_orientation_pca();
-      CF_DEBUG("H");
       break;
     case JOVIAN_ELLIPSE_DETECTION_STENSOR:
-      CF_DEBUG("H");
       ellipse_angle_deg = compute_jovian_orientation_stensor();
-      CF_DEBUG("H");
       break;
     default:
       CF_ERROR("APP BUG: Not supported method %d requested", _opts.method);

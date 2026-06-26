@@ -18,9 +18,8 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
 
   bool fOk =
       simple_planetary_disk_detector(src_image, src_mask,
-          _gbsigma,
-          _stdev_factor,
-          _se_close_radius,
+          _gsigma,
+          _se_radius,
           nullptr,
           nullptr,
           &planetary_disk_mask);
@@ -54,8 +53,7 @@ bool c_desaturate_edges_routine::compute_planetary_disk_weights(const cv::Mat & 
         planetary_disk_mask);
   }
 
-  dst_image =
-      std::move(planetary_disk_mask);
+  dst_image = std::move(planetary_disk_mask);
 
   return true;
 }
@@ -94,10 +92,9 @@ static void combine_images(const cv::Mat_<cv::Vec<T, 3>> & color_image, const cv
 void c_desaturate_edges_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
    ctlbind(ctls, "alpha", ctx(&this_class::_alpha), "");
-   ctlbind(ctls, "gbsigma", ctx(&this_class::_gbsigma), "");
-   ctlbind(ctls, "stdev_factor", ctx(&this_class::_stdev_factor), "");
+   ctlbind(ctls, "gsigma", ctx(&this_class::_gsigma), "");
+   ctlbind(ctls, "se_radius", ctx(&this_class::_se_radius), "");
    ctlbind(ctls, "blur_radius", ctx(&this_class::_blur_radius), "");
-   ctlbind(ctls, "se_close_radius", ctx(&this_class::_se_close_radius), "");
    ctlbind(ctls, "show_weights", ctx(&this_class::_show_weights), "");
    ctlbind(ctls, "l1norm", ctx(&this_class::_l1norm), "");
 }
@@ -106,8 +103,7 @@ bool c_desaturate_edges_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _alpha);
-    SERIALIZE_OPTION(settings, save, *this, _gbsigma);
-    SERIALIZE_OPTION(settings, save, *this, _stdev_factor);
+    SERIALIZE_OPTION(settings, save, *this, _gsigma);
     SERIALIZE_OPTION(settings, save, *this, _blur_radius);
     SERIALIZE_OPTION(settings, save, *this, _l1norm);
     SERIALIZE_OPTION(settings, save, *this, _show_weights);

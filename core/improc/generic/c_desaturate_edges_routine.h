@@ -28,10 +28,9 @@ public:
 
 protected:
   double _alpha = 0.5;
-  double _gbsigma = 1;
-  double _stdev_factor = 0.25;
+  double _gsigma = 1;
   double _blur_radius = 1;
-  int _se_close_radius = 2;
+  int _se_radius = 5;
   bool _show_weights = false;
   bool _l1norm = false;
 };

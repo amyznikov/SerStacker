@@ -97,11 +97,8 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
         return CV_RGB(1.05 * r * maxv, 1.05 * g * maxv, 1.05 * b * maxv);
       };
 
-  CF_DEBUG("H");
   _detector.set_options(_opts);
-  CF_DEBUG("H");
   _detector.detect(image, mask);
-  CF_DEBUG("H");
 
   switch (_display_type) {
 
@@ -141,9 +138,9 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       break;
 
     case display_grthc: {
-      _detector.grth_image().copyTo(image);
+      cv::cvtColor(_detector.grth_image(), image, cv::COLOR_GRAY2BGR);
       _detector.disk_edge().copyTo(mask);
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 0, 0.5), 1, cv::LINE_8);
+      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0.5, 0, 0), 1, cv::LINE_8);
       break;
     }
 

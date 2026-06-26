@@ -115,14 +115,11 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
 
     bool planetary_disk_detected =
         simple_planetary_disk_detector(image, mask,
-            1,
-            0.25,
-            2,
+            1, 5,
             nullptr,
             nullptr,
             &component_mask,
-            nullptr/* &geometrical_center_*/,
-            nullptr/* &debug_image*/);
+            nullptr);
 
     if( planetary_disk_detected ) {
 

@@ -169,13 +169,10 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
 
     const bool fOK =
         simple_planetary_disk_detector(src, srcm,
-            1,
-            0.25 * _threshold_scale,
-            2,
+            1, 5,
             nullptr,
             nullptr,
             &dstm,
-            nullptr,
             nullptr);
 
     if( !fOK ) {

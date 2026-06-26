@@ -457,7 +457,7 @@ bool c_saturn_ellipse_detector::detect_initial_mask(cv::InputArray _input_image,
     return false;
   }
 
-  const int pca_mask_dilate_size = 2 * 7 + 1;
+  const int pca_mask_dilate_size = 2 * 2 + 1;
 
   cv::dilate(_initial_mask, _pca_mask,
       cv::Mat1b(pca_mask_dilate_size, pca_mask_dilate_size, 255),
@@ -478,6 +478,8 @@ bool c_saturn_ellipse_detector::detect_pca_rect()
   return detect_primary_orientation_pcaw(_grayscale_image, _pca_mask, _pca_roi, &_pca_rect);
 }
 
+// SATURN1.20230825_230034_GMT.32F
+
 bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_image, cv::InputArray _input_mask)
 {
   // Prepare mask for radial gradient based planetary edge detection
@@ -492,7 +494,7 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   cv::RotatedRect _skirt_ellipse = _skirt_roi;
   _skirt_ellipse.size.width -= 3 * skirt_size / 2;
   _skirt_ellipse.size.height -= 3 * skirt_size / 2;
-  cv::ellipse(_skirt_mask, _skirt_ellipse,  cv::Scalar::all(255), skirt_size, cv::LINE_8);
+  cv::ellipse(_skirt_mask, _skirt_ellipse, cv::Scalar::all(255), 3 * skirt_size / 2, cv::LINE_8);
   if (std::abs(_opts.planetary_disk_tilt) > 15.0) {
     filter_skirt_mask(_skirt_mask, _skirt_roi);
   }

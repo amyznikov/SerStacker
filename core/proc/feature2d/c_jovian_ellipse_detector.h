@@ -25,7 +25,7 @@ struct c_jovian_ellipse_detector_options
   color_channel_type gradient_channel = color_channel_min_inensity;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double planetary_disk_tilt = 3; // [deg]
-  double sigma_contour = 2;
+  double sigma_contour = 4;
   double sigma_clouds = 3;
   int nscale = 2;
   double neps = 1e-3;
@@ -131,13 +131,11 @@ protected:
   cv::Mat1f _gx, _gy, _g, _gr, _grth;
 
   cv::Mat1b _final_planetary_disk_mask;
+  int _skirt_size = 0;
 
   cv::Point2f _detected_component_centroid;
   cv::Rect _detected_component_roi;
   cv::RotatedRect _final_planetary_disk_ellipse;
-
-  int _skirt_size = 0;
-  int _gradient_mask_erode_size = 0;
 
   cv::Point2d _center;
   cv::Vec3d _axes;

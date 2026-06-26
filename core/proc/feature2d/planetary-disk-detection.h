@@ -14,8 +14,7 @@
 struct c_simple_planetary_disk_detector_options
 {
   double gbsigma = 1;
-  double stdev_factor = 0.25;
-  int se_close_radius = 2;
+  int se_radius = 5;
 };
 
 template<class RootObjectType>
@@ -24,8 +23,7 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 {
   using S = c_simple_planetary_disk_detector_options;
   ctlbind(ctls, "gbsigma", ctx(&S::gbsigma), "");
-  ctlbind(ctls, "stdev factor", ctx(&S::stdev_factor), "");
-  ctlbind(ctls, "se_close_size", ctx(&S::se_close_radius), "");
+  ctlbind(ctls, "se_radius", ctx(&S::se_radius), "");
 }
 
 bool serialize_base_planetary_disk_detector_options(c_config_setting section, bool save,
@@ -37,34 +35,25 @@ bool serialize_base_planetary_disk_detector_options(c_config_setting section, bo
  */
 bool simple_planetary_disk_detector(cv::InputArray image, cv::InputArray mask,
     double gbsigma = 0,
-    double stdev_factor = 0.5,
-    int se_close_radius = 2,
+    int se_radius = 5,
     cv::Point2f * optional_output_centroid = nullptr,
     cv::Rect * optional_output_component_rect = nullptr,
     cv::Mat * optional_output_cmponent_mask = nullptr,
-    cv::Point2f * optional_output_geometrical_center = nullptr,
-    cv::Mat * optional_output_debug_image = nullptr);
+    cv::Point2f * optional_output_geometrical_center = nullptr);
 
 inline bool simple_planetary_disk_detector(cv::InputArray image, cv::InputArray mask,
     const c_simple_planetary_disk_detector_options & opts,
     cv::Point2f * optional_output_centroid = nullptr,
     cv::Rect * optional_output_component_rect = nullptr,
     cv::Mat * optional_output_cmponent_mask = nullptr,
-    cv::Point2f * optional_output_geometrical_center = nullptr,
-    cv::Mat * optional_output_debug_image = nullptr)
+    cv::Point2f * optional_output_geometrical_center = nullptr)
 {
   return simple_planetary_disk_detector(image, mask,
-      opts.gbsigma, opts.stdev_factor, opts.se_close_radius,
+      opts.gbsigma, opts.se_radius,
       optional_output_centroid,
       optional_output_component_rect,
       optional_output_cmponent_mask,
-      optional_output_geometrical_center,
-      optional_output_debug_image);
+      optional_output_geometrical_center);
 }
-
-
-bool detect_saturn(cv::InputArray _image, int se_close_radius, cv::RotatedRect & output_bbox,
-    cv::OutputArray output_mask = cv::noArray(),
-    double gbsigma = 1, double stdev_factor = 0.5);
 
 #endif /* __planetary_disk_detection_h__ */

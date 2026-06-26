@@ -242,9 +242,8 @@ void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue, dou
 }
 
 bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
-    double qlow, double qhigh, double omin, double omax,
-    double * minval, double * maxval,
-    int ddepth)
+    double qlow, double qhigh, double omin, double omax, int ddepth,
+    double * minval, double * maxval)
 {
   cv::Mat1d H;
   cv::Scalar lb, hb;

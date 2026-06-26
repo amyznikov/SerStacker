@@ -9,16 +9,15 @@
 #include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/debug.h>
 
-c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gbsigma, double stdev_factor, int se_close_radius) :
-  gbsigma_(gbsigma),
-  stdev_factor_(stdev_factor),
-  se_close_radius_(se_close_radius_)
+c_simple_planetary_disk_detector::c_simple_planetary_disk_detector(double gsigma, int se_radius) :
+  _gsigma(gsigma),
+  _se_radius(_se_radius)
 {
 }
 
-cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gbsigma, double stdev_factor, int se_close_radius)
+cv::Ptr<c_simple_planetary_disk_detector> c_simple_planetary_disk_detector::create(double gsigma, int se_radius)
 {
-  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gbsigma, stdev_factor, se_close_radius));
+  return cv::Ptr<this_class>(new c_simple_planetary_disk_detector(gsigma, se_radius));
 }
 
 void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints,
@@ -30,21 +29,19 @@ void c_simple_planetary_disk_detector::detect(cv::InputArray _src, std::vector<c
       simple_planetary_disk_detector(
           _src,
           _mask,
-          gbsigma_,
-          stdev_factor_,
-          se_close_radius_,
+          _gsigma,
+          _se_radius,
           &centrold,
-          &component_rect_,
-          nullptr/* &cmponent_mask_*/,
-          nullptr/* &geometrical_center_*/,
-          nullptr/* &debug_image*/);
+          &_component_rect,
+          nullptr,
+          nullptr);
 
   if( !fOk ) {
     CF_ERROR("simple_planetary_disk_detector() fails. Can not detect planetary disk on given image");
   }
   else {
     //float angle=-1, float response=0, int octave=0, int class_id=-1
-    keypoints.emplace_back(cv::KeyPoint(centrold, std::max(component_rect_.width, component_rect_.height)));
+    keypoints.emplace_back(cv::KeyPoint(centrold, std::max(_component_rect.width, _component_rect.height)));
   }
 }
 

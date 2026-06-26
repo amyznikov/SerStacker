@@ -42,7 +42,6 @@ bool c_autoclip_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
   return autoClip(image.getMat(), mask, image,
       qlow, qhigh, omin, omax,
-      nullptr, nullptr,
       ddepth);
 }
 

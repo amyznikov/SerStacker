@@ -1439,3 +1439,4 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     cv::subtract(SRC_SPECTRUM, S_SPECTRUMS->at(i), P_SPECTRUMS->at(i));
   }
 }
+

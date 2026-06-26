@@ -344,26 +344,26 @@ public:
 
   FEATURE2D_TYPE type() const
   {
-    return options_->type;
+    return _opts->type;
   }
 
   const struct options * opts() const
   {
-    return options_;
+    return _opts;
   }
 
   void detect(cv::InputArray image,
       CV_OUT std::vector<cv::KeyPoint>& keypoints,
       cv::InputArray mask = cv::noArray()) const
   {
-    feature2d_->detect(image, keypoints, mask);
+    _feature2d->detect(image, keypoints, mask);
   }
 
   void compute(cv::InputArray image,
       CV_OUT CV_IN_OUT std::vector<cv::KeyPoint>& keypoints,
       cv::OutputArray descriptors)
   {
-    feature2d_->compute(image, keypoints, descriptors);
+    _feature2d->compute(image, keypoints, descriptors);
   }
 
   void detectAndCompute(cv::InputArray image, cv::InputArray mask,
@@ -371,34 +371,34 @@ public:
       cv::OutputArray descriptors,
       bool useProvidedKeypoints = false)
   {
-    feature2d_->detectAndCompute(image, mask,
+    _feature2d->detectAndCompute(image, mask,
         keypoints, descriptors,
         useProvidedKeypoints);
   }
 
   int descriptorSize() const
   {
-    return feature2d_->descriptorSize();
+    return _feature2d->descriptorSize();
   }
 
   int descriptorType() const
   {
-    return feature2d_->descriptorType();
+    return _feature2d->descriptorType();
   }
 
   int defaultNorm() const
   {
-    return feature2d_->defaultNorm();
+    return _feature2d->defaultNorm();
   }
 
 protected:
   c_feature2d(const struct options * options) :
-      options_(options)
+      _opts(options)
   {
   }
 
-  const struct options * const options_;
-  cv::Ptr<cv::Feature2D> feature2d_;
+  const struct options * const _opts;
+  cv::Ptr<cv::Feature2D> _feature2d;
 };
 
 template<class cvFeature2D_type>
@@ -454,23 +454,23 @@ public:
 
 protected:
   c_feature2d_orb(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::ORB::create(opts_.nfeatures,
-            opts_.scaleFactor,
-            opts_.nlevels,
-            opts_.edgeThreshold,
-            opts_.firstLevel,
-            opts_.WTA_K,
-            opts_.scoreType,
-            opts_.patchSize,
-            opts_.fastThreshold);
+    _feature2d =
+        cv::ORB::create(_opts.nfeatures,
+            _opts.scaleFactor,
+            _opts.nlevels,
+            _opts.edgeThreshold,
+            _opts.firstLevel,
+            _opts.WTA_K,
+            _opts.scoreType,
+            _opts.patchSize,
+            _opts.fastThreshold);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 
 template<> struct feature2d_traits<c_feature2d_orb> { static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB; };
@@ -499,17 +499,17 @@ public:
 
 protected:
   c_feature2d_brisk(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::BRISK::create(opts_.thresh,
-            opts_.octaves,
-            opts_.patternScale);
+    _feature2d =
+        cv::BRISK::create(_opts.thresh,
+            _opts.octaves,
+            _opts.patternScale);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_brisk> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
 
@@ -542,23 +542,23 @@ public:
 
 protected:
   c_feature2d_mser(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::MSER::create(opts_.delta,
-            opts_.min_area,
-            opts_.max_area,
-            opts_.max_variation,
-            opts_.min_diversity,
-            opts_.max_evolution,
-            opts_.area_threshold,
-            opts_.min_margin,
-            opts_.edge_blur_size);
+    _feature2d =
+        cv::MSER::create(_opts.delta,
+            _opts.min_area,
+            _opts.max_area,
+            _opts.max_variation,
+            _opts.min_diversity,
+            _opts.max_evolution,
+            _opts.area_threshold,
+            _opts.min_margin,
+            _opts.edge_blur_size);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_mser> { static constexpr FEATURE2D_TYPE type = FEATURE2D_MSER;};
 
@@ -586,17 +586,17 @@ public:
 
 protected:
   c_feature2d_fast(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::FastFeatureDetector::create(opts_.threshold,
-            opts_.nonmaxSuppression,
-            opts_.type);
+    _feature2d =
+        cv::FastFeatureDetector::create(_opts.threshold,
+            _opts.nonmaxSuppression,
+            _opts.type);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_fast> { static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;};
 
@@ -624,17 +624,17 @@ public:
 
 protected:
   c_feature2d_agast(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::AgastFeatureDetector::create(opts_.threshold,
-            opts_.nonmaxSuppression,
-            opts_.type);
+    _feature2d =
+        cv::AgastFeatureDetector::create(_opts.threshold,
+            _opts.nonmaxSuppression,
+            _opts.type);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_agast> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
 
@@ -666,21 +666,21 @@ public:
 
 protected:
   c_feature2d_gftt(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::GFTTDetector::create(opts_.maxCorners,
-            opts_.qualityLevel,
-            opts_.minDistance,
-            opts_.blockSize,
-            opts_.gradiantSize,
-            opts_.useHarrisDetector,
-            opts_.k);
+    _feature2d =
+        cv::GFTTDetector::create(_opts.maxCorners,
+            _opts.qualityLevel,
+            _opts.minDistance,
+            _opts.blockSize,
+            _opts.gradiantSize,
+            _opts.useHarrisDetector,
+            _opts.k);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_gftt> {static constexpr FEATURE2D_TYPE type = FEATURE2D_GFTT; };
 
@@ -705,15 +705,15 @@ public:
 
 protected:
   c_feature2d_blob(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::SimpleBlobDetector::create(opts_);
+    _feature2d =
+        cv::SimpleBlobDetector::create(_opts);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_blob> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;};
 
@@ -744,20 +744,20 @@ public:
 
 protected:
   c_feature2d_kaze(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::KAZE::create(opts_.extended,
-            opts_.upright,
-            opts_.threshold,
-            opts_.nOctaves,
-            opts_.nOctaveLayers,
-            opts_.diffusivity);
+    _feature2d =
+        cv::KAZE::create(_opts.extended,
+            _opts.upright,
+            _opts.threshold,
+            _opts.nOctaves,
+            _opts.nOctaveLayers,
+            _opts.diffusivity);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_kaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
 
@@ -790,21 +790,21 @@ public:
 
 protected:
   c_feature2d_akaze(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::AKAZE::create(opts_.descriptor_type,
-            opts_.descriptor_size,
-            opts_.descriptor_channels,
-            opts_.threshold,
-            opts_.nOctaves,
-            opts_.nOctaveLayers,
-            opts_.diffusivity);
+    _feature2d =
+        cv::AKAZE::create(_opts.descriptor_type,
+            _opts.descriptor_size,
+            _opts.descriptor_channels,
+            _opts.threshold,
+            _opts.nOctaves,
+            _opts.nOctaveLayers,
+            _opts.diffusivity);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_akaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
 
@@ -835,19 +835,19 @@ public:
 
 protected:
   c_feature2d_sift(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        SIFT::create(opts_.nfeatures,
-            opts_.nOctaveLayers,
-            opts_.contrastThreshold,
-            opts_.edgeThreshold,
-            opts_.sigma);
+    _feature2d =
+        SIFT::create(_opts.nfeatures,
+            _opts.nOctaveLayers,
+            _opts.contrastThreshold,
+            _opts.edgeThreshold,
+            _opts.sigma);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_sift> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SIFT;};
 #endif // HAVE_FEATURE2D_SIFT
@@ -878,19 +878,19 @@ public:
 
 protected:
   c_feature2d_surf(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        SURF::create(opts_.hessianThreshold,
-            opts_.nOctaves,
-            opts_.nOctaveLayers,
-            opts_.extended,
-            opts_.upright);
+    _feature2d =
+        SURF::create(_opts.hessianThreshold,
+            _opts.nOctaves,
+            _opts.nOctaveLayers,
+            _opts.extended,
+            _opts.upright);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_surf> {static constexpr FEATURE2D_TYPE type = FEATURE2D_SURF;};
 #endif // HAVE_SURF
@@ -921,21 +921,21 @@ public:
 
 protected:
   c_feature2d_freak(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::FREAK::create(opts_.orientationNormalized,
-            opts_.scaleNormalized,
-            opts_.patternScale,
-            opts_.nOctaves,
-            opts_.selectedPairs ?
-                *opts_.selectedPairs :
+    _feature2d =
+        cv::xfeatures2d::FREAK::create(_opts.orientationNormalized,
+            _opts.scaleNormalized,
+            _opts.patternScale,
+            _opts.nOctaves,
+            _opts.selectedPairs ?
+                *_opts.selectedPairs :
                 std::vector<int>());
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_freak> {static constexpr FEATURE2D_TYPE type = FEATURE2D_FREAK;};
 #endif
@@ -966,19 +966,19 @@ public:
 
 protected:
   c_feature2d_star(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::StarDetector::create(opts_.maxSize,
-            opts_.responseThreshold,
-            opts_.lineThresholdProjected,
-            opts_.lineThresholdBinarized,
-            opts_.suppressNonmaxSize);
+    _feature2d =
+        cv::xfeatures2d::StarDetector::create(_opts.maxSize,
+            _opts.responseThreshold,
+            _opts.lineThresholdProjected,
+            _opts.lineThresholdBinarized,
+            _opts.suppressNonmaxSize);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_star> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR;};
 #endif
@@ -1006,16 +1006,16 @@ public:
 
 protected:
   c_feature2d_brief(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::BriefDescriptorExtractor::create(opts_.bytes,
-            opts_.use_orientation);
+    _feature2d =
+        cv::xfeatures2d::BriefDescriptorExtractor::create(_opts.bytes,
+            _opts.use_orientation);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_brief> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BRIEF;};
 #endif
@@ -1043,16 +1043,16 @@ public:
 
 protected:
   c_feature2d_lucid(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::LUCID::create(opts_.lucid_kernel,
-            opts_.blur_kernel);
+    _feature2d =
+        cv::xfeatures2d::LUCID::create(_opts.lucid_kernel,
+            _opts.blur_kernel);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_lucid> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LUCID;};
 #endif
@@ -1082,18 +1082,18 @@ public:
 
 protected:
   c_feature2d_latch(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::LATCH::create(opts_.bytes,
-            opts_.rotationInvariance,
-            opts_.half_ssd_size,
-            opts_.sigma);
+    _feature2d =
+        cv::xfeatures2d::LATCH::create(_opts.bytes,
+            _opts.rotationInvariance,
+            _opts.half_ssd_size,
+            _opts.sigma);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_latch> {static constexpr FEATURE2D_TYPE type = FEATURE2D_LATCH;};
 #endif
@@ -1127,22 +1127,22 @@ public:
 
 protected:
   c_feature2d_daisy(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::DAISY::create(opts_.radius,
-            opts_.q_radius,
-            opts_.q_theta,
-            opts_.q_hist,
-            opts_.norm,
-            opts_.H,
-            opts_.interpolation,
-            opts_.use_orientation);
+    _feature2d =
+        cv::xfeatures2d::DAISY::create(_opts.radius,
+            _opts.q_radius,
+            _opts.q_theta,
+            _opts.q_hist,
+            _opts.norm,
+            _opts.H,
+            _opts.interpolation,
+            _opts.use_orientation);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_daisy> {static constexpr FEATURE2D_TYPE type = FEATURE2D_DAISY;};
 #endif
@@ -1177,23 +1177,23 @@ public:
 
 protected:
   c_feature2d_msd(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::MSDDetector::create(opts_.m_patch_radius,
-            opts_.m_search_area_radius,
-            opts_.m_nms_radius,
-            opts_.m_nms_scale_radius,
-            opts_.m_th_saliency,
-            opts_.m_kNN,
-            opts_.m_scale_factor,
-            opts_.m_n_scales,
-            opts_.m_compute_orientation);
+    _feature2d =
+        cv::xfeatures2d::MSDDetector::create(_opts.m_patch_radius,
+            _opts.m_search_area_radius,
+            _opts.m_nms_radius,
+            _opts.m_nms_scale_radius,
+            _opts.m_th_saliency,
+            _opts.m_kNN,
+            _opts.m_scale_factor,
+            _opts.m_n_scales,
+            _opts.m_compute_orientation);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_msd> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MSD;};
 #endif
@@ -1225,20 +1225,20 @@ public:
 
 protected:
   c_feature2d_vgg(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::VGG::create(opts_.desc,
-            opts_.isigma,
-            opts_.img_normalize,
-            opts_.use_scale_orientation,
-            opts_.scale_factor,
-            opts_.dsc_normalize);
+    _feature2d =
+        cv::xfeatures2d::VGG::create(_opts.desc,
+            _opts.isigma,
+            _opts.img_normalize,
+            _opts.use_scale_orientation,
+            _opts.scale_factor,
+            _opts.dsc_normalize);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_vgg> {static constexpr FEATURE2D_TYPE type = FEATURE2D_VGG;};
 #endif
@@ -1267,17 +1267,17 @@ public:
 
 protected:
   c_feature2d_boost(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::BoostDesc::create(opts_.desc,
-            opts_.use_scale_orientation,
-            opts_.scale_factor);
+    _feature2d =
+        cv::xfeatures2d::BoostDesc::create(_opts.desc,
+            _opts.use_scale_orientation,
+            _opts.scale_factor);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_boost> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BOOST;};
 #endif
@@ -1308,19 +1308,19 @@ public:
 
 protected:
   c_feature2d_hl(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        cv::xfeatures2d::HarrisLaplaceFeatureDetector::create(opts_.numOctaves,
-            opts_.corn_thresh,
-            opts_.DOG_thresh,
-            opts_.maxCorners,
-            opts_.num_layers);
+    _feature2d =
+        cv::xfeatures2d::HarrisLaplaceFeatureDetector::create(_opts.numOctaves,
+            _opts.corn_thresh,
+            _opts.DOG_thresh,
+            _opts.maxCorners,
+            _opts.num_layers);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_hl> {static constexpr FEATURE2D_TYPE type = FEATURE2D_HL;};
 #endif
@@ -1356,27 +1356,27 @@ public:
 
 protected:
   c_feature2d_star_extractor(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
     const cv::Ptr<c_star_extractor> obj =
         c_star_extractor::create();
 
-    obj->set_median_filter_radius(opts_.median_filter_radius);
-    obj->set_sigma1(opts_.sigma1);
-    obj->set_sigma2(opts_.sigma2);
-    obj->set_noise_blur(opts_.noise_blur);
-    obj->set_noise_threshold(opts_.noise_threshold);
-    obj->set_min_b(opts_.min_b);
-    obj->set_min_ba_ratio(opts_.min_ba_ratio);
-    obj->set_min_pts(opts_.min_pts);
-    obj->set_min_score(opts_.min_score);
+    obj->set_median_filter_radius(_opts.median_filter_radius);
+    obj->set_sigma1(_opts.sigma1);
+    obj->set_sigma2(_opts.sigma2);
+    obj->set_noise_blur(_opts.noise_blur);
+    obj->set_noise_threshold(_opts.noise_threshold);
+    obj->set_min_b(_opts.min_b);
+    obj->set_min_ba_ratio(_opts.min_ba_ratio);
+    obj->set_min_pts(_opts.min_pts);
+    obj->set_min_score(_opts.min_score);
 
-    feature2d_ = obj;
+    _feature2d = obj;
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_star_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;};
 template<> struct feature2d_traits<c_feature2d_star_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_STAR_EXTRACTOR;};
@@ -1405,16 +1405,16 @@ public:
 
 protected:
   c_feature2d_morph_extractor(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
+    _feature2d =
         c_morph_features_extractor::create(
-            opts_);
+            _opts);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_morph_features_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;};
 template<> struct feature2d_traits<c_feature2d_morph_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_MORPH;};
@@ -1433,9 +1433,8 @@ public:
       public base::options
   {
     using feature2d_class = this_class;
-    double gbsigma = 1;
-    double stdev_factor = 0.5;
-    int se_close_size = 2;
+    double gsigma = 1;
+    int se_radius = 5;
     bool align_planetary_disk_masks = false;
   };
 
@@ -1446,18 +1445,16 @@ public:
 
 protected:
   c_feature2d_planetary_disk_detector(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        c_simple_planetary_disk_detector::create(
-            opts_.gbsigma,
-            opts_.stdev_factor,
-            opts_.se_close_size);
+    _feature2d =
+        c_simple_planetary_disk_detector::create(_opts.gsigma,
+            _opts.se_radius);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_simple_planetary_disk_detector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;};
 template<> struct feature2d_traits<c_feature2d_planetary_disk_detector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_PLANETARY_DISK;};
@@ -1487,16 +1484,16 @@ public:
 
 protected:
   c_feature2d_triangle_extractor(const options * opts) :
-      base(&this->opts_),
-          opts_(opts ? *opts : options())
+      base(&this->_opts),
+          _opts(opts ? *opts : options())
   {
-    feature2d_ =
-        c_triangle_extractor::create(opts_.max_points,
-            opts_.min_side_size);
+    _feature2d =
+        c_triangle_extractor::create(_opts.max_points,
+            _opts.min_side_size);
   }
 
 protected:
-  const options opts_;
+  const options _opts;
 };
 template<> struct feature2d_traits<c_triangle_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;};
 template<> struct feature2d_traits<c_feature2d_triangle_extractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_TRIANGLE_EXTRACTOR;};

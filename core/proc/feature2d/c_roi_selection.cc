@@ -35,8 +35,7 @@ c_roi_selection::sptr c_roi_selection::create(const c_roi_selection_options & op
       return sptr(new c_planetary_disk_selection(
           opts.planetary_disk_crop_size,
           opts.planetary_disk_options.gbsigma,
-          opts.planetary_disk_options.stdev_factor,
-          opts.planetary_disk_options.se_close_radius));
+          opts.planetary_disk_options.se_radius));
 
     default:
       break;

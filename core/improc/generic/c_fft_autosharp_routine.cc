@@ -614,7 +614,6 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   const cv::Size psfSize(std::max(15, 2 * (srcSize.width / 32) + 1), std::max(15, 2 * (srcSize.height / 32) + 1));
   const cv::Size fftSize = fftGetOptimalSize(image.size(), psfSize);
   const int cn = image.channels();
-  const double fftArea = fftSize.area();
 
   double wB = 0, wG = 0, wR = 0;
 

@@ -15,6 +15,10 @@ cv::Size fftGetOptimalSize(const cv::Size & imageSize,
     cv::Rect * roirc  = nullptr,
     bool forceEvenSize = true);
 
+// Adjust rectangular ROI of the planet to an optimal square shape for FFT
+cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize,
+    const cv::Rect & rawROI);
+
 bool fftCopyMakeBorder(cv::InputArray src,
     cv::OutputArray dst,
     const cv::Size & fftSize,
@@ -106,7 +110,6 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
     double rc, double order, double gain, bool centerDC = true);
 
-
 // Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize,
     bool centerDC = true);
@@ -118,6 +121,9 @@ bool fftMulSpectrum(const cv::Mat1f & filter,
 // Create V-Matrix for Periodic+Smooth Decomposition
 void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
 
+// Create smooth circular cosine window to mask the corners of a planetary disk ROIs
+cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size);
+
 // DFT with Periodic + Smooth Decomposition.
 // The Inverse Discrete Laplacian Filter VLAP must be prepared before this call.
 // const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
@@ -125,8 +131,16 @@ void fftCreateVMatrix(cv::InputArray _src, cv::OutputArray _dst);
 void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
     bool centerDC = true);
+
 void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
     std::vector<cv::Mat2f> * P_SPECTRUMS, std::vector<cv::Mat2f> * S_SPECTRUMS,
     bool centerDC = true);
+
+/**
+* @brief Function for automatically determining the position angle from the FFT spectrum module
+* @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
+* @return double Polar axis position angle in degrees [0, 180)
+*/
+double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum);
 
 #endif /* __fft_h__ */

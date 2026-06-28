@@ -12,7 +12,8 @@
 template<class _Tp>
 static bool _project_to_radius_vector(const cv::Point2f & rp,
     cv::InputArray _gx, cv::InputArray _gy,
-    cv::OutputArray _gr, cv::OutputArray _gt)
+    cv::OutputArray _gr, cv::OutputArray _gt,
+    double scale)
 {
   const int rows = _gx.rows();
   const int cols = _gx.cols();
@@ -30,7 +31,7 @@ static bool _project_to_radius_vector(const cv::Point2f & rp,
     gt = cv::Mat::zeros(rows, cols, _gx.type());
   }
 
-  cv::parallel_for_(cv::Range(0, rows), [&, cols, cn](const cv::Range & range) {
+  cv::parallel_for_(cv::Range(0, rows), [&, scale, cols, cn](const cv::Range & range) {
     for ( int y = range.start; y < range.end; ++y ) {
 
       const _Tp * gxp = gx[y];
@@ -42,8 +43,8 @@ static bool _project_to_radius_vector(const cv::Point2f & rp,
         const float dx = x - rp.x;
         const float dy = y - rp.y;
         const float dr = std::max(2 * FLT_EPSILON, std::sqrt(dx * dx + dy * dy));
-        const float ca = dx / dr;
-        const float sa = dy / dr;
+        const float ca = dx * scale / dr;
+        const float sa = dy * scale / dr;
         for ( int c = 0; c < cn; ++c ) {
           const float & gxv = gxp[x * cn + c];
           const float & gyv = gyp[x * cn + c];
@@ -67,10 +68,10 @@ static bool _project_to_radius_vector(const cv::Point2f & rp,
   return true;
 }
 
-bool project_to_radius_vector(const cv::Point2f & rp,
-    cv::InputArray gx, cv::InputArray gy,
-    cv::OutputArray gr, cv::OutputArray gt)
+bool project_to_radius_vector(const cv::Point2f & rp, cv::InputArray gx, cv::InputArray gy,
+    cv::OutputArray gr, cv::OutputArray gt,
+    double scale)
 {
-  CV_DISPATCH(gx.depth(), _project_to_radius_vector, rp, gx, gy, gr, gt);
+  CV_DISPATCH(gx.depth(), _project_to_radius_vector, rp, gx, gy, gr, gt, scale);
   return false;
 }

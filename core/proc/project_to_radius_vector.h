@@ -11,10 +11,10 @@
 
 #include <opencv2/opencv.hpp>
 
-bool project_to_radius_vector(const cv::Point2f & rp,
-    cv::InputArray gx, cv::InputArray gy,
+bool project_to_radius_vector(const cv::Point2f & rp,cv::InputArray gx, cv::InputArray gy,
     cv::OutputArray gr,
-    cv::OutputArray gt = cv::noArray());
+    cv::OutputArray gt = cv::noArray(),
+    double scale = 1.0);
 
 
 

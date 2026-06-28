@@ -15,16 +15,20 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, "final_ellipse_fit", },
       { c_fit_jovian_ellipse_routine::display_grid, "grid", },
       { c_fit_jovian_ellipse_routine::display_gray_image, "gray_image", },
-      { c_fit_jovian_ellipse_routine::display_normalized_image, "normalized_image", },
+      { c_fit_jovian_ellipse_routine::display_gray_crop, "gray_crop", },
       { c_fit_jovian_ellipse_routine::display_gx, "gx", },
       { c_fit_jovian_ellipse_routine::display_gy, "gy", },
       { c_fit_jovian_ellipse_routine::display_g, "g", },
       { c_fit_jovian_ellipse_routine::display_gr, "gr", },
       { c_fit_jovian_ellipse_routine::display_grth, "grth", },
       { c_fit_jovian_ellipse_routine::display_grthc, "grthc", },
-      { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_mask, "detected_planetary_disk_mask", },
-      { c_fit_jovian_ellipse_routine::display_detected_planetary_disk_edge, "detected_planetary_disk_edge", },
+      { c_fit_jovian_ellipse_routine::display_edge_points, "edge_points", },
+      { c_fit_jovian_ellipse_routine::display_detected_disk_mask, "detected_disk_mask", },
+      { c_fit_jovian_ellipse_routine::display_skirt_mask, "skirt_mask", },
       { c_fit_jovian_ellipse_routine::display_final_planetary_disk_mask, "final_planetary_disk_mask", },
+      { c_fit_jovian_ellipse_routine::display_vlap, "vlap", },
+      { c_fit_jovian_ellipse_routine::display_apodization_window, "apodization", },
+      { c_fit_jovian_ellipse_routine::display_radon_magnitude, "radon_magnitude", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, },
   };
 
@@ -103,12 +107,17 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
   switch (_display_type) {
 
     case display_gray_image:
-      _detector.grayscale_image().copyTo(image);
-      _detector.disk_mask().copyTo(mask);
+      _detector.grayscaleImage().copyTo(image);
+      _detector.detectedPlanetaryDiskMask().copyTo(mask);
       break;
 
-    case display_detected_planetary_disk_mask:
-      image.setTo(cv::Scalar::all(1), _detector.disk_mask());
+    case display_gray_crop:
+      _detector.grayscaleCrop().copyTo(image);
+      _detector.detectedPlanetaryDiskMask()(_detector.cropRC()).copyTo(mask);
+      break;
+
+    case display_detected_disk_mask:
+      image.setTo(cv::Scalar::all(1), _detector.detectedPlanetaryDiskMask());
       mask.release();
       break;
 
@@ -117,52 +126,85 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       mask.release();
       break;
 
-    case display_detected_planetary_disk_edge:
-      image.setTo(cv::Scalar::all(1), _detector.disk_edge());
+    case display_skirt_mask: {
+      _detector.skirtMask().copyTo(image);
       mask.release();
       break;
-
-    case display_normalized_image:
-      _detector.normalized_image().copyTo(image);
-      _detector.gradient_mask().copyTo(mask);
-      break;
+    }
 
     case display_gr:
-      _detector.gr_image().copyTo(image);
-      _detector.disk_edge().copyTo(mask);
+      _detector.radialGradientImage().copyTo(image);
+      _detector.skirtMask().copyTo(mask);
       break;
 
     case display_grth:
-      _detector.grth_image().copyTo(image);
-      _detector.disk_edge().copyTo(mask);
+      _detector.radialGradientTopHatImage().copyTo(image);
+      _detector.skirtMask().copyTo(mask);
       break;
 
     case display_grthc: {
-      cv::cvtColor(_detector.grth_image(), image, cv::COLOR_GRAY2BGR);
-      _detector.disk_edge().copyTo(mask);
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0.5, 0, 0), 1, cv::LINE_8);
+      const cv::Rect & rc = _detector.cropRC();
+      cv::RotatedRect rrc = _detector.final_planetary_disk_ellipse();
+      rrc.center.x -= rc.x;
+      rrc.center.y -= rc.y;
+      cv::cvtColor(_detector.radialGradientTopHatImage(), image, cv::COLOR_GRAY2BGR);
+      cv::ellipse(image, rrc, genrgb(image, 0.5, 0, 0), 1, cv::LINE_8);
+      _detector.skirtMask().copyTo(mask);
+      break;
+    }
+
+    case display_edge_points: {
+      cv::cvtColor(_detector.radialGradientTopHatImage(), image, cv::COLOR_GRAY2BGR);
+
+      cv::Mat3f display = image.getMatRef();
+      for ( const auto & p : _detector.edge_points() ) {
+        const int x = p.x;
+        const int y = p.y;
+        const float z = p.z;
+        display[y][x] = cv::Vec3f(0, z, z);
+      }
+
+      _detector.skirtMask().copyTo(mask);
       break;
     }
 
     case display_gx:
-      _detector.gx_image().copyTo(image);
-      _detector.gradient_mask().copyTo(mask);
+      _detector.gxImage().copyTo(image);
+      mask.release();
       break;
 
     case display_gy:
-      _detector.gy_image().copyTo(image);
-      _detector.gradient_mask().copyTo(mask);
+      _detector.gyImage().copyTo(image);
+      mask.release();
       break;
 
     case display_g:
-      _detector.g_image().copyTo(image);
-      _detector.gradient_mask().copyTo(mask);
+      _detector.gradientImage().copyTo(image);
+      mask.release();
       break;
 
     case display_grid: {
       draw_ellipsoid(image, _detector.center(), _detector.axes(), _detector.pose(),
           _grid.lat_step_deg * CV_PI / 180, _grid.lon_step_deg * CV_PI / 180,
           genrgb(image, 1, 1, 1), 1, cv::LINE_AA);
+      break;
+    }
+
+    case display_vlap: {
+      _detector.vlap().copyTo(image);
+      mask.release();
+      break;
+    }
+
+    case display_apodization_window: {
+      _detector.apodizationWindow().copyTo(image);
+      mask.release();
+      break;
+    }
+
+    case display_radon_magnitude: {
+      _detector.radonMagnitude().copyTo(image);
+      mask.release();
       break;
     }
 

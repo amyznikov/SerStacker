@@ -21,18 +21,23 @@ public:
 
   enum display_type {
     display_gray_image,
-    display_normalized_image,
+    display_gray_crop,
     display_gx,
     display_gy,
     display_g,
     display_gr,
     display_grth,
     display_grthc,
-    display_detected_planetary_disk_mask,
-    display_detected_planetary_disk_edge,
+    display_edge_points,
+    display_detected_disk_mask,
+    display_skirt_mask,
     display_final_planetary_disk_mask,
     display_grid,
     display_final_ellipse_fit,
+
+    display_vlap,
+    display_apodization_window,
+    display_radon_magnitude
   };
 
   bool serialize(c_config_setting settings, bool save) final;

@@ -99,7 +99,7 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain = 1.0,
 // Butterworth's formula: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     double cutoff, int order = 2, double gain = 1,
-    bool swapQuadrants = false);
+    bool centerDC = true);
 
 // Space Isotropic Gaussian-Based unsharp mask filter
 cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,

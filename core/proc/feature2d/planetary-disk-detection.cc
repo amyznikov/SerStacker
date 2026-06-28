@@ -129,7 +129,8 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
   }
   cv::morphologyEx(gray, mgrad, cv::MORPH_GRADIENT, SE1, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
   cv::compare(mgrad, get_otsu_threshold(mgrad, mask), comp, cv::CMP_GE);
-  cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE1, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
+  morphological_smooth_close(comp, comp, SE1, cv::BORDER_REPLICATE);
+  //cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE1, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
 
   geo_fill_holes(comp, comp, 8);
   if ( !mask.empty() ) {

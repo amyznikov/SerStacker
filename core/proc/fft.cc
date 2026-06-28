@@ -63,12 +63,19 @@ cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize, const cv::Rect & ra
   const int centerY = rawROI.y + rawROI.height / 2;
   const int maxSide = std::max(rawROI.width, rawROI.height);
 
+  // Search for the optimal size strictly a multiple of 2
   int optimalSide = cv::getOptimalDFTSize(maxSide);
+  while (optimalSide % 2 != 0) {
+    optimalSide = cv::getOptimalDFTSize(optimalSide + 1);
+  }
+
+  // Protect against exceeding the physical frame dimensions
   if( optimalSide > imageSize.width || optimalSide > imageSize.height ) {
     const int absoluteMaxSide = std::min(imageSize.width, imageSize.height);
     int safeSide = absoluteMaxSide;
     while (safeSide > 0) {
-      if( cv::getOptimalDFTSize(safeSide) == safeSide ) {
+      // Find an even size that is optimal for DFT
+      if( safeSide % 2 == 0 && cv::getOptimalDFTSize(safeSide) == safeSide ) {
         break;
       }
       --safeSide;
@@ -76,6 +83,7 @@ cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize, const cv::Rect & ra
     optimalSide = safeSide;
   }
 
+  // Safe position of a square with an even size
   int newX = centerX - optimalSide / 2;
   if (newX + optimalSide > imageSize.width) {
     newX = imageSize.width - optimalSide;
@@ -94,7 +102,6 @@ cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize, const cv::Rect & ra
 
   return cv::Rect(newX, newY, optimalSide, optimalSide);
 }
-
 
 bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size & fftSize,
     cv::Rect * outrc)
@@ -1232,7 +1239,7 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool cent
 // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
     double rc, int order, double gain,
-    bool swapQuadrants)
+    bool centerDC)
 {
   // The frequency step is tied to the physical dimensions of the matrix
   // fx = dx / width, fy = dy / height
@@ -1263,7 +1270,7 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
         }
       });
 
-  if( swapQuadrants ) {
+  if( !centerDC ) {
     fftSwapQuadrants(FILTER);
   }
 
@@ -1610,5 +1617,6 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
   CF_DEBUG("\n-> [RADON FIXED] Polar Axis Angle: %g° | Bins: %d | Step: %g | R: [%d ... %d]",
       final_polar_angle, num_bins, bin_step, Rmin, Rmax);
 
+  // return final_polar_angle;
   return final_polar_angle - 90.0;
 }

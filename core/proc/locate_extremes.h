@@ -55,12 +55,12 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "se_shape", ctx(&S::se_shape), "se_shape");
   ctlbind(ctls, "se_size", ctx(&S::se_size), "se_size");
   ctlbind(ctls, "anchor", ctx(&S::anchor), "anchor");
-  ctlbind(ctls, "locate_maximums", ctx(&S::locate_maximums), "locate_maximums");
-  ctlbind(ctls, "maximums_alpha", ctx(&S::maximums_alpha), "maximums_alpha");
-  ctlbind(ctls, "maximums_beta", ctx(&S::maximums_beta), "maximums_beta");
-  ctlbind(ctls, "locate_minimums", ctx(&S::locate_minimums), "locate_minimums");
-  ctlbind(ctls, "minimums_alpha", ctx(&S::minimums_alpha), "minimums_alpha");
-  ctlbind(ctls, "minimums_beta", ctx(&S::minimums_beta), "minimums_beta");
+  ctlbind(ctls, "locate_maximums", ctx(&S::locate_maximums), "local_max = image > alpha * dilate(image) + beta");
+  ctlbind(ctls, "maximums_alpha", ctx(&S::maximums_alpha), "local_max = image > alpha * dilate(image) + beta");
+  ctlbind(ctls, "maximums_beta", ctx(&S::maximums_beta), "local_max = image > alpha * dilate(image) + beta");
+  ctlbind(ctls, "locate_minimums", ctx(&S::locate_minimums), "local_min = image < alpha * erode(image) + beta");
+  ctlbind(ctls, "minimums_alpha", ctx(&S::minimums_alpha), "local_min = image < alpha * erode(image) + beta");
+  ctlbind(ctls, "minimums_beta", ctx(&S::minimums_beta), "local_min = image < alpha * erode(image) + beta");
   ctlbind(ctls, "border_type", ctx(&S::border_type), "border_type");
   ctlbind(ctls, "border_value", ctx(&S::border_value), "border_value");
 }

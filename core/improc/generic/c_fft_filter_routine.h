@@ -22,6 +22,8 @@ public:
     FILTER_GAUSSIAN,
     FILTER_LAPLACIAN,
     FILTER_RAMP,
+    FILTER_BUTTERWORTH,
+    FILTER_GAUSSIAN_UNSHARP
   };
 
   enum DISPLAY {
@@ -32,7 +34,11 @@ public:
     DISPLAY_FILTER_POWER,
     DISPLAY_FILTERED_SPECTRUM_MODULE,
     DISPLAY_FILTERED_SPECTRUM_POWER,
-    DISPLAY_FILTERED_IMAGE
+    DISPLAY_FILTERED_IMAGE,
+
+    DISPLAY_VLAP,
+    //DISPLAY_PPS,
+
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -42,20 +48,34 @@ public:
 protected:
   FILTER _filterType = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
+  bool _ppsDecomposition = false;
 
   struct c_gaussian_filter_opts {
     double sigma = 1;
     double gain = 1;
-  } gaussian_filter;
+  } gaussian;
 
   struct c_laplacian_filter_opts {
     double gain = 1;
-  } laplacian_filter;
+  } laplacian;
 
   struct c_ramp_filter_opts {
     double gain = 1;
-  } ramp_filter;
+  } ramp;
 
+  struct c_butterworth_filter_opts {
+    double rc = 1;
+    double gain = 1;
+    int order = 4;
+  } butterworth;
+
+  struct c_gaussian_unsharp_filter_opts {
+    double sigma = 1;
+    double gain = 1;
+  } gaussian_unsharp;
+
+
+  cv::Mat1f VLAP;
 };
 
 #endif /* __c_fft_gaussian_filter_routine_h__ */

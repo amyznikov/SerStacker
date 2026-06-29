@@ -1606,7 +1606,7 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
   const double denom = y1 - 2.0 * y2 + y3;
 
   double final_polar_angle = best_bin * bin_step;
-  if( std::abs(denom) > 1e-6 ) {
+  if( std::abs(denom) > 0 ) {
     const double delta_bin = 0.5 * (y1 - y3) / denom;
     double subpixel_bin = best_bin + delta_bin;
     if( subpixel_bin < 0.0 ) {
@@ -1619,4 +1619,112 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
       final_polar_angle, num_bins, bin_step, Rmin, Rmax);
 
   return final_polar_angle - 90.0;
+}
+
+
+/**
+* @brief Spatial Radon via gradient tensor projection (Option 2)
+* @param spatialCrop Cropped square ROI from the image
+* @return double Dominant axis angle in degrees [0, 180)
+*/
+double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
+{
+  cv::Mat1f grad_x, grad_y;
+  cv::Scharr(spatialCrop, grad_x, CV_32FC1, 1, 0);
+  cv::Scharr(spatialCrop, grad_y, CV_32FC1, 0, 1);
+
+  const int cx = spatialCrop.cols / 2;
+  const int cy = spatialCrop.rows / 2;
+  const int Rmax = std::min(cx, cy);
+  const int Rmin = 5; // Cut off the unstable center
+  const float Rmin2 = Rmin * Rmin;
+  const float Rmax2 = Rmax * Rmax;
+  const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
+  const double bin_step = 180.0 / num_bins;
+
+  std::vector<float> histogram(num_bins, 0.0f);
+
+  // Limit the scanning area to the circle boundaries
+  const int y_start = std::max(0, cy - Rmax);
+  const int y_end = std::min(spatialCrop.rows, cy + Rmax);
+  const int x_start = std::max(0, cx - Rmax);
+  const int x_end = std::min(spatialCrop.cols, cx + Rmax);
+
+  for( int y = y_start; y < y_end; ++y ) {
+    const float * gxp = grad_x[y];
+    const float * gyp = grad_y[y];
+
+    const float dy = (y - cy);
+    const float dy2 = dy * dy;
+
+    for( int x = x_start; x < x_end; ++x ) {
+      const float dx = (x - cx);
+      const float dx2 = dx * dx;
+      const float r2 = dx2 + dy2;
+
+      if( r2 >= Rmin2 && r2 <= Rmax2 ) {
+
+        const float gx = gxp[x];
+        const float gy = gyp[x];
+
+        // gradient module to cut off flat areas
+        const float g_mag2 = gx * gx + gy * gy;
+        if( g_mag2 <= 0  ) {
+          continue;
+        }
+
+        double angle = std::atan2(dy, dx) * 180.0 / CV_PI;
+        if( angle < 0 ) {
+          angle += 180.0;
+        }
+
+        const int bin_idx = static_cast<int>(angle / bin_step);
+        if( bin_idx >= 0 && bin_idx < num_bins ) {
+
+          // Dot product: gradient vector (gx, gy) * ray unit vector (dx/r, dy/r)
+          const float r = std::sqrt(r2);
+          const float dot = (gx * dx + gy * dy) / r;
+
+          // Weights:
+          // If a line is directed along a ray (from the center), its gradient
+          // is directed strictly PERPENDICULAR to the ray. Therefore, the dot product of the arrows points to 0.
+          // Accordingly, the weight of a line along a ray is: Gradient_Module - |Projection_on_Ray|
+          const float g_mag = std::sqrt(g_mag2);
+          const float weight = std::max(0.0f, g_mag - std::abs(dot));
+          histogram[bin_idx] += weight;
+        }
+      }
+    }
+  }
+
+  // Gaussian histogram smoothing (sampling noise)
+  cv::Mat histMat(num_bins, 1, CV_32FC1, histogram.data());
+  cv::GaussianBlur(histMat, histMat, cv::Size(1, 9), 0, 0, cv::BORDER_REPLICATE);
+
+  // Search for the peak
+  const auto maxpos = std::max_element(histogram.begin(), histogram.end());
+  const int best_bin = static_cast<int>(std::distance(histogram.begin(), maxpos));
+
+  // 3-point cyclic subpixel parabolic interpolation
+  const int left_bin = (best_bin - 1 + num_bins) % num_bins;
+  const int right_bin = (best_bin + 1) % num_bins;
+  const double y1 = histogram[left_bin];
+  const double y2 = histogram[best_bin];
+  const double y3 = histogram[right_bin];
+  const double denom = y1 - 2.0 * y2 + y3;
+
+  double final_angle = best_bin * bin_step;
+  if( std::abs(denom) > 0 ) {
+    const double delta_bin = 0.5 * (y1 - y3) / denom;
+    double subpixel_bin = best_bin + delta_bin;
+    if( subpixel_bin < 0.0 ) {
+      subpixel_bin += num_bins;
+    }
+    if( subpixel_bin >= num_bins ) {
+      subpixel_bin -= num_bins;
+    }
+    final_angle = subpixel_bin * bin_step;
+  }
+
+  return final_angle;// - 90.0;
 }

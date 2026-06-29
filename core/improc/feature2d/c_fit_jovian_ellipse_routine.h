@@ -37,7 +37,8 @@ public:
 
     display_vlap,
     display_apodization_window,
-    display_radon_magnitude
+    display_radon_magnitude,
+    display_skirt_polar,
   };
 
   bool serialize(c_config_setting settings, bool save) final;

@@ -36,8 +36,9 @@ protected:
       cv::Size & ksize, double sigma1, double sigma2, double scale);
 
 protected:
-  double sigmaX_ = 0, sigmaY_ = 0, scale_ = 1.0;
-  cv::Size ksize_;
-  cv::Mat Kx_, Ky_;
+  double _sigmaX = 0, _sigmaY = 0;
+  double _scale = 1.0;
+  cv::Size _ksize;
+  cv::Mat _Kx, _Ky;
 };
 #endif /* __c_gaussian_filter_h__ */

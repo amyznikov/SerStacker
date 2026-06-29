@@ -1022,9 +1022,9 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
         cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
       };
 
-      drawRotatedRect(display, _ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 255, 0), 1);
+      drawRotatedRect(display, _ellipse_detector.finalPlanetaryDiskEllipse(), CV_RGB(0, 255, 0), 1);
       // display.setTo(cv::Scalar::all(255), _jovian_ellipse_detector.disk_edge());
-      cv::ellipse(display, _ellipse_detector.final_planetary_disk_ellipse(), CV_RGB(0, 0, 255), 1);
+      cv::ellipse(display, _ellipse_detector.finalPlanetaryDiskEllipse(), CV_RGB(0, 0, 255), 1);
 
       const std::string output_display_file_name =
           generate_output_filename("jovian_ellipse_fit", "", ".png");

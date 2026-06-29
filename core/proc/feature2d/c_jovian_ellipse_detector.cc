@@ -6,16 +6,12 @@
  */
 
 #include "c_jovian_ellipse_detector.h"
-#include <core/proc/autoclip.h>
-#include <core/proc/morphology.h>
-#include <core/proc/geo-reconstruction.h>
-#include <core/proc/pyrscale.h>
-#include <core/proc/unsharp_mask.h>
-#include <core/proc/pyrscale.h>
-#include <core/proc/gradient.h>
-#include <core/proc/project_to_radius_vector.h>
-#include <core/proc/fitEllipseLM.h>
 #include <core/proc/fft.h>
+#include <core/proc/morphology.h>
+#include <core/proc/pyrscale.h>
+#include <core/proc/project_to_radius_vector.h>
+#include <core/proc/feature2d/ellipsoid.h>
+#include <core/proc/fitEllipseLM.h>
 #include <core/ssprintf.h>
 #include <core/settings/opencv_settings.h>
 #include <core/debug.h>
@@ -57,32 +53,227 @@ static void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArr
   }
   else {
     cv::Mat tmp;
-    cv::GaussianBlur(_src, tmp, cv::Size(0, 0), gsigma, gsigma, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+
+    const int border = cvRound(gsigma * 4.0) + 2;
+    const cv::Rect rc(border, border, _src.cols(), _src.rows());
+
+    cv::copyMakeBorder(_src, tmp, border, border, border, border, cv::BORDER_REPLICATE);
+    cv::GaussianBlur(tmp, tmp, cv::Size(0, 0), gsigma, gsigma, cv::BORDER_REPLICATE);
+    cv::filter2D(tmp(rc), gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    cv::filter2D(tmp(rc), gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   }
 }
 
-static void extract_points(const cv::Mat1f & image, const cv::Mat1b & mask,
-    std::vector<cv::Point3f> & pts, double threshold,  bool weighted = true)
+static void skirtToPolar(cv::InputArray srcImage, cv::OutputArray dstImage, cv::OutputArray outputMask2D,
+    const cv::RotatedRect & baseEllipse,
+    int skirtIndentInside,              // Indentation INSIDE the outline
+    int skirtIndentOutside )            // Indentation OUTWARD the outline
 {
-  const int cx = image.cols / 2;
-  const int cy = image.rows / 2;
+  const cv::Mat src = srcImage.getMat();
+  if( src.empty() ) {
+    dstImage.release();
+    outputMask2D.release();
+    return;
+  }
 
-  for( int y = 0; y < image.rows; ++y ) {
-    const float * srcp = image[y];
-    const uint8_t * mp = mask[y];
-    for( int x = 0; x < image.cols; ++x ) {
-      if( mp[x] ) {
-        const double w = srcp[x] - threshold;
-        if( w > 0 ) {
-          const double r2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-          pts.emplace_back(x, y, r2 * ( weighted ? w * w : w) );
+  const cv::Point2f center = baseEllipse.center;
+  const double A_base = baseEllipse.size.width / 2.0;
+  const double B_base = baseEllipse.size.height / 2.0;
+  const double axisRatio = (A_base > 1e-4) ? (B_base / A_base) : 1.0;
+  const double angle_rad = baseEllipse.angle * CV_PI / 180.0;
+  const double cos_alpha = std::cos(angle_rad);
+  const double sin_alpha = std::sin(angle_rad);
+
+  // azimuths along rows, distances along columns
+  const int polarWidth = std::max(1, skirtIndentOutside - skirtIndentInside + 1);
+  const double max_A = A_base + skirtIndentOutside;
+  const int polarHeight = cvRound(2.0 * CV_PI * max_A);
+
+  dstImage.create(polarHeight, polarWidth, src.type());
+  cv::Mat1f dst = dstImage.getMat();
+
+  outputMask2D.create(src.size(), CV_8UC1);
+  cv::Mat1b mask2D = outputMask2D.getMat();
+  mask2D.setTo(0);
+
+  const double dw = double(skirtIndentOutside - skirtIndentInside) / std::max(1, polarWidth - 1);
+  const double dtheta = 2.0 * CV_PI / polarHeight;
+
+  cv::parallel_for_(cv::Range(0, polarHeight),
+      [=, &dst, &src, &mask2D](const cv::Range & range) {
+
+        std::vector<float> mapX(polarWidth);
+        std::vector<float> mapY(polarWidth);
+
+        for (int y = range.start; y < range.end; ++y) {
+          const double theta = y * dtheta;
+          const double cos_t = std::cos(theta);
+          const double sin_t = std::sin(theta);
+          const double r_base = (A_base * axisRatio) / std::sqrt(axisRatio * axisRatio * cos_t * cos_t + sin_t * sin_t);
+
+          for (int x = 0; x < polarWidth; ++x) {
+            const double w = skirtIndentInside + x * dw;
+            const double r_current = r_base + w;
+
+            const double local_x = r_current * cos_t;
+            const double local_y = r_current * sin_t;
+
+            const float px = float(center.x + local_x * cos_alpha - local_y * sin_alpha);
+            const float py = float(center.y + local_x * sin_alpha + local_y * cos_alpha);
+
+            mapX[x] = px;
+            mapY[x] = py;
+
+            const int ix = cvRound(px);
+            const int iy = cvRound(py);
+            if (ix >= 0 && ix < mask2D.cols && iy >= 0 && iy < mask2D.rows) {
+              mask2D(iy, ix) = 255;
+            }
+          }
+
+          cv::Mat mapX_row(1, polarWidth, CV_32FC1, mapX.data());
+          cv::Mat mapY_row(1, polarWidth, CV_32FC1, mapY.data());
+          cv::Mat dst_row = dst.row(y);
+
+          cv::remap(src, dst_row, mapX_row, mapY_row, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
         }
+      });
+}
+
+static void edgePointsFromPolar(const cv::Mat1f & polarSkirtProfile,
+    const cv::RotatedRect & baseEllipse,
+    int skirtIndentInside,              // Indentation INSIDE the outline
+    int skirtIndentOutside,             // Indentation OUTWARD the outline
+    std::vector<cv::Point3f> & pts)
+{
+  if( polarSkirtProfile.empty() ) {
+    return;
+  }
+
+  const int width = polarSkirtProfile.cols;
+  const int height = polarSkirtProfile.rows;
+
+  const cv::Point2f center = baseEllipse.center;
+  const double A_base = baseEllipse.size.width / 2.0;
+  const double B_base = baseEllipse.size.height / 2.0;
+  const double axisRatio = (A_base > 1e-4) ? (B_base / A_base) : 1.0;
+
+  const double angle_rad = baseEllipse.angle * CV_PI / 180.0;
+  const double cos_alpha = std::cos(angle_rad);
+  const double sin_alpha = std::sin(angle_rad);
+
+  const double dw = double(skirtIndentOutside - skirtIndentInside) / std::max(1, width - 1);
+  const double dtheta = 2.0 * CV_PI / height;
+
+  // Fixed size because for parallel execution
+  pts.resize(height);
+
+  // Search for the global maximum in a ROW (along distances)
+  // azimuths along rows, distances along columns
+  cv::parallel_for_(cv::Range(0, height),
+      [=, &polarSkirtProfile, &pts](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+
+          const float* srcp = polarSkirtProfile[y];
+
+          float max_val = 0;
+          int best_x = -1;
+          for (int x = 0; x < width; ++x) {
+            const float val = srcp[x];
+            if (val > max_val ) {
+              max_val = val;
+              best_x = x;
+            }
+          }
+
+          // If the maximum is on the edge or is not valid, we write zero weight
+          if (best_x < 0 || best_x >= width ) {
+            pts[y] = cv::Point3f(0,0,0);
+            continue;
+          }
+
+          // Subpixel parabolic interpolation along the line (along the X coordinate)
+          const float alpha = srcp[best_x - 1];
+          const float beta = srcp[best_x];
+          const float gamma = srcp[best_x + 1];
+
+          double sub_x = best_x;
+          if (beta > alpha && beta > gamma) {
+            double denominator = 2.0 * (alpha - 2.0 * beta + gamma);
+            if (std::abs(denominator) > 1e-6) {
+              sub_x += (alpha - gamma) / denominator;
+            }
+          }
+
+          const double w_current = skirtIndentInside + sub_x * dw;
+          const double theta = y * dtheta;
+          const double cos_t = std::cos(theta);
+          const double sin_t = std::sin(theta);
+          const double r_base = (A_base * axisRatio) / std::sqrt(axisRatio * axisRatio * cos_t * cos_t + sin_t * sin_t);
+          const double r_current = r_base + w_current;
+          const double local_x = r_current * cos_t;
+          const double local_y = r_current * sin_t;
+          const float real_x = float(center.x + local_x * cos_alpha - local_y * sin_alpha);
+          const float real_y = float(center.y + local_x * sin_alpha + local_y * cos_alpha);
+
+          pts[y] = cv::Point3f(real_x, real_y, max_val * max_val);
+        }
+      });
+}
+
+static void edgePointsFromPolar2(const cv::Mat1f & polarSkirtProfile,
+    const cv::RotatedRect & baseEllipse,
+    int skirtIndentInside,              // Indentation INSIDE the outline
+    int skirtIndentOutside,             // Indentation OUTWARD the outline
+    std::vector<cv::Point3f> & pts)
+{
+  if (polarSkirtProfile.empty()) {
+    return;
+  }
+
+  // azimuths along rows, distances along columns
+
+  const int width = polarSkirtProfile.cols;
+  const int height = polarSkirtProfile.rows;
+  const cv::Point2f center = baseEllipse.center;
+  const double A_base = baseEllipse.size.width / 2.0;
+  const double B_base = baseEllipse.size.height / 2.0;
+  const double axisRatio = (A_base > 1e-4) ? (B_base / A_base) : 1.0;
+
+  const double angle_rad = baseEllipse.angle * CV_PI / 180.0;
+  const double cos_alpha = std::cos(angle_rad);
+  const double sin_alpha = std::sin(angle_rad);
+
+  const double dw = double(skirtIndentOutside - skirtIndentInside) / std::max(1, width - 1);
+  const double dtheta = 2.0 * CV_PI / height;
+
+  pts.clear();
+  pts.reserve(height * width / 2);
+
+  for (int y = 0; y < height; ++y) {
+    const double theta = y * dtheta;
+    const double cos_t = std::cos(theta);
+    const double sin_t = std::sin(theta);
+    const double r_base = (A_base * axisRatio) / std::sqrt(axisRatio * axisRatio * cos_t * cos_t + sin_t * sin_t);
+
+    const float* srcp = polarSkirtProfile[y];
+
+    for (int x = 0; x < width; ++x) {
+      const float w = srcp[x];
+      if (w > 0 ) {
+        const double w_current = skirtIndentInside + x * dw;
+        const double r_current = r_base + w_current;
+        const double local_x = r_current * cos_t;
+        const double local_y = r_current * sin_t;
+
+        const float real_x = float(center.x + local_x * cos_alpha - local_y * sin_alpha);
+        const float real_y = float(center.y + local_x * sin_alpha + local_y * cos_alpha);
+        pts.emplace_back(real_x, real_y, w * w);
       }
     }
   }
 }
+
 
 void c_jovian_ellipse_detector::clear()
 {
@@ -96,10 +287,11 @@ void c_jovian_ellipse_detector::clear()
   _planetaryDiskMask.release();
   _skirtMask.release();
   _edge_points.clear();
-  _final_planetary_disk_mask.release();
+  _finalPlanetaryDiskMask.release();
   _apodizationWindow.release();
   _radonMagnitude.release();
   VLAP.release();
+  _skirtPolar.release();
 }
 
 
@@ -148,23 +340,31 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
 
   _cropRC = fftGetOptimalSquaredROI(srcSize,  _planetaryDiskROI);
   const cv::Size cropSize = _cropRC.size();
+  const cv::Point2f coarseSkirtCenter(cropSize.width / 2.f, cropSize.height / 2.f);
+
+  _grayscaleInputImage(_cropRC).copyTo(_grayscaleImageCrop);
 
   CF_DEBUG("CROP = {x=%d y=%d w=%d h=%d}", _cropRC.x, _cropRC.y, _cropRC.width, _cropRC.height);
 
+  //
+  // Prepare skirt data for contour detection.
+  // This must be done before applying the apodization to _grayscaleImageCrop
+
+  differentiate(_grayscaleImageCrop, _gx, _gy, 0);
+  project_to_radius_vector(coarseSkirtCenter, _gx, _gy, _gr, cv::noArray(), -1e4);
+
+  if( _enableDebugImages ) {
+    static const cv::Mat1b THSE(5, 5, uint8_t(255));
+    cv::GaussianBlur(_gr, _grth, cv::Size(0, 0), 5, 5, cv::BORDER_REPLICATE);
+    cv::max(_grth, 0.f, _grth);
+    cv::morphologyEx(_grth, _grth, cv::MORPH_TOPHAT, THSE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+  }
+
+  // Apply apodization window for orientation detection
   if (_apodizationWindow.size() != cropSize ) {
     _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.325 * CV_2PI, 10);
   }
-
-  _grayscaleInputImage(_cropRC).copyTo(_grayscaleImageCrop);
-  differentiate(_grayscaleImageCrop, _gx, _gy, _opts.sigma_contour);
-
-  const cv::Point skirtCenter(cropSize.width / 2, cropSize.height / 2);
-  static const cv::Mat1b THSE(5, 5, uint8_t(255));
-  project_to_radius_vector(skirtCenter, _gx, _gy, _gr, cv::noArray(), -1e4);
-  cv::max(_gr, 0.f, _grth);
-  cv::morphologyEx(_grth, _grth, cv::MORPH_TOPHAT, THSE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
-
 
   //
   // Detect Jovian orientation using one from available methods
@@ -189,11 +389,10 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
     ellipse_angle_deg += 180;
   }
 
+  //
+  // Use orientation and iniutial skirt from above to improve jovian disk fit
+  // using points from extracted planetary disk edge
   CF_DEBUG("\nORIENTATION: %s angle = %g deg", toCString(_opts.method), ellipse_angle_deg);
-
-
-  // Use orientation from above to improve jovian disk fit
-  // based on extracted planetary disk edge
 
   constexpr double axis_ratio = k_jovian_axis_ratio;
   const double tilt_to_earth = _opts.planetary_disk_tilt * CV_PI / 180;
@@ -201,55 +400,69 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
   const double sin_tilt = sin(tilt_to_earth);
   const double fixed_axis_ratio = std::sqrt(axis_ratio * axis_ratio * cos_tilt * cos_tilt + sin_tilt * sin_tilt);
 
+  const double R_estimated = 0.45 * cropSize.width;
+  const int coarseSkirtIndentInside = -cvRound(R_estimated * 0.2);
+  const int coarseSkirtIndentOutside =  cvRound(R_estimated * 0.02);
+  const cv::RotatedRect coarseSkirtEllipse(coarseSkirtCenter, cropSize, 0.0f);
 
+  skirtToPolar(_gr, _skirtPolar, _skirtMask, coarseSkirtEllipse,
+      coarseSkirtIndentInside, coarseSkirtIndentOutside);
 
-  double skirtThreshold = 0;
+  cv::GaussianBlur(_skirtPolar, _skirtPolar, cv::Size(5, 15),
+      0, 0, cv::BORDER_DEFAULT);
 
-  for ( int iteration = 0; iteration < _opts.skirt_iterations; ++iteration ) {
-    int skirtSize, skirtRadius;
+  edgePointsFromPolar(_skirtPolar, coarseSkirtEllipse,
+      coarseSkirtIndentInside, coarseSkirtIndentOutside,
+      _edge_points);
 
-    _skirtMask.create(cropSize), _skirtMask.setTo(0);
+  fitEllipseLMW(_edge_points,
+      fixed_axis_ratio, // b / a
+      ellipse_angle_deg * CV_PI / 180, // radians
+      &_finalPlanetaryDiskEllipse);
 
-    if ( iteration == 0 ) {
-      skirtSize = 2 * std::max(11, 2 * (cropSize.width / 32) + 1) + 1;
-      skirtRadius = cropSize.width / 2 - skirtSize / 2;
-      cv::circle(_skirtMask, skirtCenter, skirtRadius, cv::Scalar::all(255), skirtSize, cv::LINE_8);
+  if ( _opts.skirt_iterations > 1 ) {
 
-      cv::Scalar mv, sv;
-      cv::meanStdDev(_grth, mv, sv, _skirtMask);
-      skirtThreshold = mv[0];
-      CF_DEBUG("skirt: mean=%g stdev=%g", mv[0], sv[0]);
-    }
-    else {
-      skirtSize = 31;
-      cv::ellipse(_skirtMask, _final_planetary_disk_ellipse, cv::Scalar::all(255), skirtSize, cv::LINE_8);
-    }
+    static const cv::Mat1b TOPHAT_SE(3, 7, uint8_t(255));
 
-    _edge_points.clear();
-    extract_points(_grth, _skirtMask, _edge_points, skirtThreshold, _opts.lmweighted);
-    CF_DEBUG("[iteration %d] edge_points.size=%zu skirtSize=%d skirtRadius=%d", iteration, _edge_points.size(), skirtSize, skirtRadius);
+    const int fineSkirtIndentInside = -9;
+    const int fineSkirtIndentOutside = +9;
+    const cv::RotatedRect fineSkirtEllipse = _finalPlanetaryDiskEllipse;
+
+    skirtToPolar(_gr, _skirtPolar, _skirtMask, fineSkirtEllipse,
+        fineSkirtIndentInside, fineSkirtIndentOutside);
+
+    cv::GaussianBlur(_skirtPolar, _skirtPolar, cv::Size(3, 11),
+        0, 0, cv::BORDER_DEFAULT);
+
+    cv::max(_skirtPolar, 0.f, _skirtPolar);
+    cv::morphologyEx(_skirtPolar, _skirtPolar, cv::MORPH_TOPHAT, TOPHAT_SE,
+        cv::Point(-1, -1), 1,
+        cv::BORDER_REPLICATE);
+
+    edgePointsFromPolar2(_skirtPolar, fineSkirtEllipse,
+        fineSkirtIndentInside, fineSkirtIndentOutside,
+        _edge_points);
 
     fitEllipseLMW(_edge_points,
         fixed_axis_ratio, // b / a
         ellipse_angle_deg * CV_PI / 180, // radians
-        &_final_planetary_disk_ellipse);
-
+        &_finalPlanetaryDiskEllipse);
   }
 
   // Add optional offset if requested by user
-  _final_planetary_disk_ellipse.center.x += _cropRC.x + _opts.offset.x;
-  _final_planetary_disk_ellipse.center.y += _cropRC.y + _opts.offset.y;
+  _finalPlanetaryDiskEllipse.center.x += _cropRC.x + _opts.offset.x;
+  _finalPlanetaryDiskEllipse.center.y += _cropRC.y + _opts.offset.y;
 
   // Create also filed binary ellipse mask
-  draw_ellipse_mask(_final_planetary_disk_mask, srcSize, _final_planetary_disk_ellipse);
+  draw_ellipse_mask(_finalPlanetaryDiskMask, srcSize, _finalPlanetaryDiskEllipse);
 
-  const double A = _final_planetary_disk_ellipse.size.width / 2;
-  const double B = _final_planetary_disk_ellipse.size.width * axis_ratio / 2;
-  const double C = _final_planetary_disk_ellipse.size.width / 2;
-  _center = _final_planetary_disk_ellipse.center;
+  const double A = _finalPlanetaryDiskEllipse.size.width / 2;
+  const double B = _finalPlanetaryDiskEllipse.size.width * axis_ratio / 2;
+  const double C = _finalPlanetaryDiskEllipse.size.width / 2;
+  _center = _finalPlanetaryDiskEllipse.center;
   _axes = cv::Vec3d(A, B, C);
   _pose = build_ellipsoid_pose(0., _opts.planetary_disk_tilt * CV_PI / 180,
-      _final_planetary_disk_ellipse.angle * CV_PI / 180);
+      _finalPlanetaryDiskEllipse.angle * CV_PI / 180);
 
   if( true ) {
     const std::string s = serialize_ellipsoid_to_string(_center, _axes, _pose * 180 / CV_PI);
@@ -266,6 +479,10 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
   const cv::Size cropSize = _cropRC.size();
   if( VLAP.size() != cropSize ) {
     VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, true);
+  }
+
+  if ( _opts.nscale > 0 ) {
+    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
   }
 
   fftPPSDecomposition(_grayscaleImageCrop, VLAP,
@@ -308,11 +525,8 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
   cv::multiply(_gx, scale_map, _gx);
   cv::multiply(_gy, scale_map, _gy);
   cv::multiply(_g, scale_map, _g);
-
-  if( _opts.gweighted ) {
-    cv::multiply(_gx, _g, _gx);
-    cv::multiply(_gy, _g, _gy);
-  }
+  cv::multiply(_gx, _g, _gx);
+  cv::multiply(_gy, _g, _gy);
 
   cv::multiply(_gx, _gx, jxx);
   cv::multiply(_gy, _gy, jyy);
@@ -337,13 +551,9 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
     c_jovian_ellipse_detector_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, method);
-  SERIALIZE_OPTION(section, save, opts, sigma_contour);
   SERIALIZE_OPTION(section, save, opts, sigma_clouds);
   SERIALIZE_OPTION(section, save, opts, nscale);
   SERIALIZE_OPTION(section, save, opts, skirt_iterations);
-  SERIALIZE_OPTION(section, save, opts, neps);
-  SERIALIZE_OPTION(section, save, opts, gweighted);
-  SERIALIZE_OPTION(section, save, opts, lmweighted);
   SERIALIZE_OPTION(section, save, opts, planetary_disk_tilt);
   SERIALIZE_OPTION(section, save, opts, offset);
   serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);

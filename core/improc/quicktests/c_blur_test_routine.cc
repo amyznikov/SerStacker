@@ -26,12 +26,8 @@ bool c_blur_test_routine::serialize(c_config_setting settings, bool save)
 
 bool c_blur_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-
   cv::Mat gx, gy, g;
-  compute_sobel_gradients(image,
-      gx,
-      gy,
-      CV_32F);
+  compute_sobel_gradients(image, gx, gy, CV_32F);
   // g = gx.mul(gx) + gy.mul(gy);
   cv::magnitude(gx, gy, g);
   if( g.channels() == 3 ) {
@@ -39,28 +35,19 @@ bool c_blur_test_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     cv::cvtColor(g, g, cv::COLOR_GRAY2BGR);
   }
 
-  const int ksize =
-      2 * (int) ((3 * _sigma + 1)) + 1;
+  const int ksize = 2 * (int) ((3 * _sigma + 1)) + 1;
 
-  cv::Mat1f G =
-      cv::getGaussianKernel(ksize, _sigma, CV_32F);
+  cv::Mat1f G = cv::getGaussianKernel(ksize, _sigma, CV_32F);
 
   cv::sepFilter2D(image, gx, CV_32F, G, G, cv::Point(-1, -1), 0,
       cv::BORDER_REPLICATE);
 
   image.getMat().convertTo(gy, CV_32F);
 
-  const int ddepth =
-      image.depth();
-
-  const int rows =
-      image.rows();
-
-  const int cols =
-      image.cols();
-
-  const int cn =
-      image.channels();
+  const int ddepth = image.depth();
+  const int rows = image.rows();
+  const int cols = image.cols();
+  const int cn = image.channels();
 
   for( int y = 0; y < rows; ++y ) {
 

@@ -1544,8 +1544,8 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
 
   // Step over only the very core (15 px) and
   // take the entire beam up to the mid frequencies (150 px)
-  const int Rmin = 15;
-  const int Rmax = 150;
+  const int Rmin = 5;
+  const int Rmax = 0.33 * cx;
   const float Rmin2 = Rmin * Rmin;
   const float Rmax2 = Rmax * Rmax;
 
@@ -1581,7 +1581,7 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
 
         const int bin_idx = int(angle / bin_step);
         if (bin_idx >= 0 && bin_idx < num_bins) {
-          histogram[bin_idx] += srcp[x];
+          histogram[bin_idx] += std::sqrt(srcp[x]);
         }
       }
     }
@@ -1617,6 +1617,5 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
   CF_DEBUG("\n-> [RADON FIXED] Polar Axis Angle: %g° | Bins: %d | Step: %g | R: [%d ... %d]",
       final_polar_angle, num_bins, bin_step, Rmin, Rmax);
 
-  // return final_polar_angle;
   return final_polar_angle - 90.0;
 }

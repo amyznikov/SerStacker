@@ -7,7 +7,6 @@
 
 #include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/feature2d/planetary-disk-detection.h>
-//#include <core/settings.h>
 #include <core/settings/opencv_settings.h>
 #include <core/debug.h>
 

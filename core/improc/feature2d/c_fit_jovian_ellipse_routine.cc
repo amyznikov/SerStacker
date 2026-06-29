@@ -6,6 +6,7 @@
  */
 
 #include "c_fit_jovian_ellipse_routine.h"
+#include <core/proc/feature2d/ellipsoid.h>
 #include <core/ssprintf.h>
 
 template<>
@@ -29,6 +30,7 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_vlap, "vlap", },
       { c_fit_jovian_ellipse_routine::display_apodization_window, "apodization", },
       { c_fit_jovian_ellipse_routine::display_radon_magnitude, "radon_magnitude", },
+      { c_fit_jovian_ellipse_routine::display_skirt_polar, "skirt_polar", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, },
   };
 
@@ -122,7 +124,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       break;
 
     case display_final_planetary_disk_mask:
-      image.setTo(cv::Scalar::all(1), _detector.final_planetary_disk_mask());
+      image.setTo(cv::Scalar::all(1), _detector.finalPlanetaryDiskMask());
       mask.release();
       break;
 
@@ -144,7 +146,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
 
     case display_grthc: {
       const cv::Rect & rc = _detector.cropRC();
-      cv::RotatedRect rrc = _detector.final_planetary_disk_ellipse();
+      cv::RotatedRect rrc = _detector.finalPlanetaryDiskEllipse();
       rrc.center.x -= rc.x;
       rrc.center.y -= rc.y;
       cv::cvtColor(_detector.radialGradientTopHatImage(), image, cv::COLOR_GRAY2BGR);
@@ -154,7 +156,13 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
     }
 
     case display_edge_points: {
-      cv::cvtColor(_detector.radialGradientTopHatImage(), image, cv::COLOR_GRAY2BGR);
+
+      if ( _opts.skirt_iterations < 2 ) {
+        cv::cvtColor(_detector.radialGradientImage(), image, cv::COLOR_GRAY2BGR);
+      }
+      else {
+        cv::cvtColor(_detector.radialGradientTopHatImage(), image, cv::COLOR_GRAY2BGR);
+      }
 
       cv::Mat3f display = image.getMatRef();
       for ( const auto & p : _detector.edge_points() ) {
@@ -207,13 +215,18 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       mask.release();
       break;
     }
+    case display_skirt_polar: {
+      _detector.skirtPolar().copyTo(image);
+      mask.release();
+      break;
+    }
 
     case display_final_ellipse_fit:
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
-      drawRotatedRect(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 1, 0), 1);
-      cv::ellipse(image, _detector.final_planetary_disk_ellipse(), genrgb(image, 0, 0, 1), 1);
+      drawRotatedRect(image, _detector.finalPlanetaryDiskEllipse(), genrgb(image, 0, 1, 0), 1);
+      cv::ellipse(image, _detector.finalPlanetaryDiskEllipse(), genrgb(image, 0, 0, 1), 1);
       mask.release();
       break;
   }

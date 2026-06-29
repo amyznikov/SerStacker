@@ -33,6 +33,7 @@ protected:
   double _sigmay = -1;
   int _ksizex = -1;
   int _ksizey = -1;
+  double _scale = 1.0;
   StereoMode _stereo_mode = StereoNone;
   cv::BorderTypes _border_type = cv::BORDER_REFLECT101;
   //  cv::Scalar _border_value = cv::Scalar::all(0);

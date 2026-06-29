@@ -10,9 +10,9 @@
 #define __c_jovian_ellipse_detector_h__
 
 #include <opencv2/opencv.hpp>
-#include <core/proc/extract_channel.h>
-#include <core/proc/feature2d/planetary-disk-detection.h>
-#include <core/proc/feature2d/ellipsoid.h>
+#include <core/ctrlbind/ctrlbind.h>
+#include <core/settings.h>
+#include "planetary-disk-detection.h"
 
 enum JOVIAN_ELLIPSE_DETECTION_METHOD {
   JOVIAN_ELLIPSE_DETECTION_RADON_FFT,
@@ -24,14 +24,10 @@ struct c_jovian_ellipse_detector_options
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_RADON_FFT;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double planetary_disk_tilt = 3; // [deg]
-  double sigma_contour = 4;
   double sigma_clouds = 3;
   int nscale = 2;
   int skirt_iterations = 2;
-  double neps = 1e-3;
   cv::Point2f offset;
-  bool gweighted = true;
-  bool lmweighted = true;
 };
 
 bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bool save,
@@ -55,14 +51,9 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   using S = c_jovian_ellipse_detector_options;
 
   ctlbind(ctls, "method", ctx(&S::method), "");
-  ctlbind(ctls, "sigma_contour", ctx(&S::sigma_contour), "");
   ctlbind(ctls, "sigma_clouds", ctx(&S::sigma_clouds), "");
   ctlbind(ctls, "nscale", ctx(&S::nscale), "");
   ctlbind(ctls, "skirt_iterations", ctx(&S::skirt_iterations), "");
-  ctlbind(ctls, "neps", ctx(&S::neps), "");
-  ctlbind(ctls, "gweighted", ctx(&S::gweighted), "");
-  ctlbind(ctls, "lmweighted", ctx(&S::lmweighted), "");
-
   ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
   ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
 
@@ -91,14 +82,24 @@ public:
     return _opts;
   }
 
-  const cv::RotatedRect & final_planetary_disk_ellipse() const
+  void setEnableDebugImages(bool v)
   {
-    return _final_planetary_disk_ellipse;
+    _enableDebugImages = v;
   }
 
-  const cv::Mat1b& final_planetary_disk_mask() const
+  bool enableDebugImages() const
   {
-    return _final_planetary_disk_mask;
+    return _enableDebugImages;
+  }
+
+  const cv::RotatedRect & finalPlanetaryDiskEllipse() const
+  {
+    return _finalPlanetaryDiskEllipse;
+  }
+
+  const cv::Mat1b& finalPlanetaryDiskMask() const
+  {
+    return _finalPlanetaryDiskMask;
   }
 
   const cv::Point2d & center() const
@@ -193,12 +194,19 @@ public:
     return _skirtMask;
   }
 
+  const cv::Mat1f & skirtPolar ()const
+  {
+    return _skirtPolar;
+  }
+
+
 protected:
   double compute_jovian_orientation_radon_fft();
   double compute_jovian_orientation_stensor();
 
 protected:
   c_jovian_ellipse_detector_options _opts;
+  bool _enableDebugImages = false;
 
   cv::Point2d _center;
   cv::Vec3d _axes;
@@ -208,20 +216,21 @@ protected:
   cv::Mat1f _grayscaleImageCrop;
   cv::Mat1f _gx, _gy, _g, _gr, _grth;
   cv::Mat1b _planetaryDiskMask;
+  cv::Mat1b _finalPlanetaryDiskMask;
   cv::Mat1b _skirtMask;
   std::vector<cv::Point3f> _edge_points;
   cv::Rect _cropRC;
 
-  cv::Mat1b _final_planetary_disk_mask;
-
   cv::Point2f _planetaryDiskGeometricalCenter;
   cv::Point2f _planetaryDiskCentroid;
   cv::Rect _planetaryDiskROI;
-  cv::RotatedRect _final_planetary_disk_ellipse;
+  cv::RotatedRect _finalPlanetaryDiskEllipse;
 
   cv::Mat1f _apodizationWindow;
   cv::Mat1f _radonMagnitude;
   cv::Mat1f VLAP;
+
+  cv::Mat1f _skirtPolar;
 };
 
 

@@ -28,9 +28,10 @@ const c_enum_member * members_of<c_fit_jovian_ellipse_routine::display_type>()
       { c_fit_jovian_ellipse_routine::display_skirt_mask, "skirt_mask", },
       { c_fit_jovian_ellipse_routine::display_final_planetary_disk_mask, "final_planetary_disk_mask", },
       { c_fit_jovian_ellipse_routine::display_vlap, "vlap", },
+      { c_fit_jovian_ellipse_routine::display_skirt_polar, "skirt_polar", },
       { c_fit_jovian_ellipse_routine::display_apodization_window, "apodization", },
       { c_fit_jovian_ellipse_routine::display_radon_magnitude, "radon_magnitude", },
-      { c_fit_jovian_ellipse_routine::display_skirt_polar, "skirt_polar", },
+      { c_fit_jovian_ellipse_routine::display_radon_histogram, "radon_histogram", },
       { c_fit_jovian_ellipse_routine::display_final_ellipse_fit, },
   };
 
@@ -215,6 +216,15 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       mask.release();
       break;
     }
+
+    case display_radon_histogram: {
+      cv::Mat H = cv::repeat(_detector.radonHistogram(), 1, 64);
+      image.move(H);
+      mask.release();
+      break;
+    }
+
+
     case display_skirt_polar: {
       _detector.skirtPolar().copyTo(image);
       mask.release();

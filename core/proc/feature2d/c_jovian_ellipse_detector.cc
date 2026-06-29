@@ -21,7 +21,7 @@ const c_enum_member* members_of<JOVIAN_ELLIPSE_DETECTION_METHOD>()
 {
   static const c_enum_member members[] = {
       { JOVIAN_ELLIPSE_DETECTION_RADON_FFT, "RADON_FFT", "" },
-      { JOVIAN_ELLIPSE_DETECTION_STENSOR, "STENSOR", "" },
+      { JOVIAN_ELLIPSE_DETECTION_RADON_STENSOR, "RADON_STENSOR", "" },
       { JOVIAN_ELLIPSE_DETECTION_RADON_FFT }
   };
 
@@ -292,6 +292,7 @@ void c_jovian_ellipse_detector::clear()
   _radonMagnitude.release();
   VLAP.release();
   _skirtPolar.release();
+  _radonHistogram.release();
 }
 
 
@@ -375,8 +376,8 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
     case JOVIAN_ELLIPSE_DETECTION_RADON_FFT:
       ellipse_angle_deg = compute_jovian_orientation_radon_fft();
       break;
-    case JOVIAN_ELLIPSE_DETECTION_STENSOR:
-      ellipse_angle_deg = compute_jovian_orientation_stensor();
+    case JOVIAN_ELLIPSE_DETECTION_RADON_STENSOR:
+      ellipse_angle_deg = compute_jovian_orientation_radon_stensor();
       break;
     default:
       CF_ERROR("APP BUG: Not supported method %d requested", _opts.method);
@@ -476,6 +477,10 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
 {
   cv::Mat2f INTENSITY_P;
 
+  if ( _opts.nscale > 0 ) {
+    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
+  }
+
   const cv::Size cropSize = _cropRC.size();
   if( VLAP.size() != cropSize ) {
     VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, true);
@@ -488,57 +493,26 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
   fftSpectrumModule(INTENSITY_P, _radonMagnitude);
 
   const double angle =
-      fftEstimateRadonOrientation(_radonMagnitude);
+      fftEstimateRadonOrientation(_radonMagnitude,
+          _enableDebugImages ? _radonHistogram : cv::noArray());
 
-  CF_DEBUG(" -> Detected Polar Axis Position Angle: %g°", angle );
+  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
 
   return angle;
 }
 
 
-double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
+double c_jovian_ellipse_detector::compute_jovian_orientation_radon_stensor()
 {
-  // Tensor components:Jxx = gx*gx, Jyy = gy*gy, Jxy = gx*gy
-  // Analytical computation of the angle of least change (direction ALONG the stripes).
-  // The formula calculates the angle of the leading eigenvector (normal),
-  // so to rotate along the equator, we add 90 degrees.
-
-  cv::Mat1f jxx, jyy, jxy;
-  cv::Mat1f scale_map;
-  cv::Scalar mean_g, stdev_g;
-
-  if ( _opts.stensor.nscale > 0 ) {
-    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.stensor.nscale);
+  if ( _opts.nscale > 0 ) {
+    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
   }
 
-  differentiate(_grayscaleImageCrop, _gx, _gy, _opts.stensor.gsigma);
+  const double angle =
+      spatialEstimateRadonOrientation(_grayscaleImageCrop,
+          _enableDebugImages ? _radonHistogram : cv::noArray());
 
-  cv::magnitude(_gx, _gy, _g);
-  cv::meanStdDev(_g, mean_g, stdev_g);
-  cv::min(_g, mean_g[0] + 3 * stdev_g[0], scale_map);
-  cv::divide(scale_map, _g + 1e-3 * stdev_g[0], scale_map);
-
-  cv::multiply(_gx, scale_map, _gx);
-  cv::multiply(_gy, scale_map, _gy);
-  cv::multiply(_g, scale_map, _g);
-  cv::multiply(_gx, _g, _gx);
-  cv::multiply(_gy, _g, _gy);
-
-  cv::multiply(_gx, _gx, jxx);
-  cv::multiply(_gy, _gy, jyy);
-  cv::multiply(_gx, _gy, jxy);
-
-  const double Jxx = cv::sum(jxx)[0];
-  const double Jyy = cv::sum(jyy)[0];
-  const double Jxy = cv::sum(jxy)[0];
-
-  double angle = 0.5 * std::atan2(2.0 * Jxy, Jxx - Jyy) * 180.0 / CV_PI + 90.0;
-  if( angle > 180.0 ) {
-    angle -= 360.0;
-  }
-  if( angle < -180.0 ) {
-    angle += 360.0;
-  }
+  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
 
   return angle;
 }
@@ -547,14 +521,10 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
     c_jovian_ellipse_detector_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, method);
+  SERIALIZE_OPTION(section, save, opts, nscale);
   SERIALIZE_OPTION(section, save, opts, skirt_iterations);
   SERIALIZE_OPTION(section, save, opts, planetary_disk_tilt);
   SERIALIZE_OPTION(section, save, opts, offset);
-
-  if ( auto group = SERIALIZE_GROUP(section, save, "stensor") ) {
-    SERIALIZE_OPTION(group, save, opts.stensor, gsigma);
-    SERIALIZE_OPTION(group, save, opts.stensor, nscale);
-  }
 
   if ( auto group = SERIALIZE_GROUP(section, save, "planetary_disk_detection") ) {
     serialize_base_planetary_disk_detector_options(group, save, opts.planetary_disk_detector_options);

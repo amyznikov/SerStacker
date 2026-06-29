@@ -13,7 +13,7 @@
 
 struct c_simple_planetary_disk_detector_options
 {
-  double gbsigma = 1;
+  double gbsigma = 2;
   int se_radius = 5;
 };
 

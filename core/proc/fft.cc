@@ -1536,7 +1536,8 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
 * @param fftSpectrum Cleaned FFT spectrum (after ppsDecomposition and morphological smoothing)
 * @return double Polar axis position angle in degrees [0, 180)
 */
-double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
+double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
+    cv::OutputArray outputDebugHistogram /*= cv::noArray()*/)
 {
   const cv::Size fftSize = fftSpectrum.size();
   const int cx = fftSize.width / 2;
@@ -1546,8 +1547,8 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
   // take the entire beam up to the mid frequencies (150 px)
   const int Rmin = 5;
   const int Rmax = 0.33 * cx;
-  const float Rmin2 = Rmin * Rmin;
-  const float Rmax2 = Rmax * Rmax;
+  const double Rmin2 = Rmin * Rmin;
+  const double Rmax2 = Rmax * Rmax;
 
   // Resolution of Nyquist histogram
   const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
@@ -1563,46 +1564,52 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
 
   for (int y = y_start; y < y_end; ++y) {
     const float * srcp = fftSpectrum[y];
-    const float dy = y - cy;
-    const float dy2 = dy * dy;
+    const double dy = y - cy;
+    const double dy2 = dy * dy;
 
     for (int x = x_start; x < x_end; ++x) {
-      const float dx = x - cx;
-      const float dx2 = dx * dx;
-      const float r2 = dx2 + dy2;
+      const double dx = x - cx;
+      const double dx2 = dx * dx;
+      const double r2 = dx2 + dy2;
 
-      if (r2 >= Rmin2 && r2 <= Rmax2) {
+      if( r2 >= Rmin2 && r2 <= Rmax2 ) {
 
         // Collapse symmetric FFT spectrum into a hemisphere [0, 180)
         double angle = std::atan2(dy, dx) * 180.0 / CV_PI;
-        if (angle < 0) {
+        if( angle < 0 ) {
           angle += 180;
         }
 
         const int bin_idx = int(angle / bin_step);
-        if (bin_idx >= 0 && bin_idx < num_bins) {
-          const float w = std::sqrt(srcp[x] * r2);
+        if( bin_idx >= 0 && bin_idx < num_bins ) {
+          const float w = float(srcp[x] * sqrt(r2));
           histogram[bin_idx] += w;
         }
       }
     }
   }
 
-  // Gaussian smooth (kernel size 7 or 9 for smoothness)
-  cv::Mat histMat(num_bins, 1, CV_32FC1, histogram.data());
-  cv::GaussianBlur(histMat, histMat, cv::Size(1, 9), 0, 0, cv::BORDER_REPLICATE);
+  // Gaussian smooth
+  cv::Mat1f H;
 
-  // Search for the peak
-  const auto maxpos = std::max_element(histogram.begin(), histogram.end());
-  const int best_bin = std::distance(histogram.begin(), maxpos);
+  cv::GaussianBlur(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), H,
+      cv::Size(15, 1), 0, 0, cv::BORDER_DEFAULT);
 
-  // 3-point cyclic subpixel parabolic interpolation
+  if ( outputDebugHistogram.needed() ) {
+    cv::transpose(H, outputDebugHistogram);
+  }
+
+  // Search for the peak and apply 3-point cyclic subpixel parabolic interpolation
   // Formula for the parabola vertex: x_opt = x_center + 0.5 * (y1 - y3) / (y1 - 2*y2 + y3)
+
+  const float * hp = H[0];
+  const auto maxpos = std::max_element(hp, hp + num_bins);
+  const int best_bin = maxpos - hp;
   const int left_bin  = (best_bin - 1 + num_bins) % num_bins;
   const int right_bin = (best_bin + 1) % num_bins;
-  const double y1 = histogram[left_bin];
-  const double y2 = histogram[best_bin];
-  const double y3 = histogram[right_bin];
+  const double y1 = hp[left_bin];
+  const double y2 = hp[best_bin];
+  const double y3 = hp[right_bin];
   const double denom = y1 - 2.0 * y2 + y3;
 
   double final_polar_angle = best_bin * bin_step;
@@ -1621,13 +1628,13 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
   return final_polar_angle - 90.0;
 }
 
-
 /**
-* @brief Spatial Radon via gradient tensor projection (Option 2)
+* @brief Spatial Radon via gradient tensor projection
 * @param spatialCrop Cropped square ROI from the image
 * @return double Dominant axis angle in degrees [0, 180)
 */
-double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
+double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop,
+    cv::OutputArray outputDebugHistogram /*= cv::noArray()*/)
 {
   cv::Mat1f grad_x, grad_y;
   cv::Scharr(spatialCrop, grad_x, CV_32FC1, 1, 0);
@@ -1636,7 +1643,7 @@ double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
   const int cx = spatialCrop.cols / 2;
   const int cy = spatialCrop.rows / 2;
   const int Rmax = std::min(cx, cy);
-  const int Rmin = 5; // Cut off the unstable center
+  const int Rmin = 5;
   const float Rmin2 = Rmin * Rmin;
   const float Rmax2 = Rmax * Rmax;
   const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
@@ -1644,7 +1651,14 @@ double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
 
   std::vector<float> histogram(num_bins, 0.0f);
 
-  // Limit the scanning area to the circle boundaries
+  std::vector<double> cos_theta(num_bins);
+  std::vector<double> sin_theta(num_bins);
+  for (int b = 0; b < num_bins; ++b) {
+    const double rad = (b * bin_step) * CV_PI / 180.0;
+    cos_theta[b] = std::cos(rad);
+    sin_theta[b] = std::sin(rad);
+  }
+
   const int y_start = std::max(0, cy - Rmax);
   const int y_end = std::min(spatialCrop.rows, cy + Rmax);
   const int x_start = std::max(0, cx - Rmax);
@@ -1663,49 +1677,36 @@ double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
       const float r2 = dx2 + dy2;
 
       if( r2 >= Rmin2 && r2 <= Rmax2 ) {
+        const double gx = gxp[x];
+        const double gy = gyp[x];
+        const double g_mag2 = gx * gx + gy * gy;
 
-        const float gx = gxp[x];
-        const float gy = gyp[x];
-
-        // gradient module to cut off flat areas
-        const float g_mag2 = gx * gx + gy * gy;
-        if( g_mag2 <= 0  ) {
-          continue;
-        }
-
-        double angle = std::atan2(dy, dx) * 180.0 / CV_PI;
-        if( angle < 0 ) {
-          angle += 180.0;
-        }
-
-        const int bin_idx = static_cast<int>(angle / bin_step);
-        if( bin_idx >= 0 && bin_idx < num_bins ) {
-
-          // Dot product: gradient vector (gx, gy) * ray unit vector (dx/r, dy/r)
-          const float r = std::sqrt(r2);
-          const float dot = (gx * dx + gy * dy) / r;
-
-          // Weights:
-          // If a line is directed along a ray (from the center), its gradient
-          // is directed strictly PERPENDICULAR to the ray. Therefore, the dot product of the arrows points to 0.
-          // Accordingly, the weight of a line along a ray is: Gradient_Module - |Projection_on_Ray|
-          const float g_mag = std::sqrt(g_mag2);
-          const float weight = std::max(0.0f, g_mag - std::abs(dot));
-          histogram[bin_idx] += weight;
+        if( g_mag2 > 0 ) {
+          const double g_mag = std::sqrt(g_mag2);
+          for( int b = 0; b < num_bins; ++b ) {
+            const double dot_normal = -gx * sin_theta[b] + gy * cos_theta[b];
+            const double cos_diff = dot_normal / g_mag;
+            const double sharpness = std::pow(cos_diff, 4);
+            const double weight = sharpness;
+            const int shift_bins = cvRound(45.0 / bin_step);
+            const int shifted_b = (b + shift_bins) % num_bins;
+            histogram[shifted_b] += weight;
+          }
         }
       }
     }
   }
 
-  // Gaussian histogram smoothing (sampling noise)
-  cv::Mat histMat(num_bins, 1, CV_32FC1, histogram.data());
-  cv::GaussianBlur(histMat, histMat, cv::Size(1, 9), 0, 0, cv::BORDER_REPLICATE);
+  // Histogram smoothing (sampling noise)
+  cv::Mat H(num_bins, 1, CV_32FC1, histogram.data());
+  cv::GaussianBlur(H, H, cv::Size(1, 9), 0, 0, cv::BORDER_REPLICATE);
+  if ( outputDebugHistogram.needed() ) {
+    H.copyTo(outputDebugHistogram);
+  }
 
-  // Search for the peak
+  // Search for the peak and apply 3-point cyclic subpixel parabolic interpolation
   const auto maxpos = std::max_element(histogram.begin(), histogram.end());
-  const int best_bin = static_cast<int>(std::distance(histogram.begin(), maxpos));
-
-  // 3-point cyclic subpixel parabolic interpolation
+  int best_bin = static_cast<int>(std::distance(histogram.begin(), maxpos));
   const int left_bin = (best_bin - 1 + num_bins) % num_bins;
   const int right_bin = (best_bin + 1) % num_bins;
   const double y1 = histogram[left_bin];
@@ -1713,18 +1714,24 @@ double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop)
   const double y3 = histogram[right_bin];
   const double denom = y1 - 2.0 * y2 + y3;
 
-  double final_angle = best_bin * bin_step;
-  if( std::abs(denom) > 0 ) {
+  double shifted_angle = best_bin * bin_step;
+  if( denom != 0.0 ) {
     const double delta_bin = 0.5 * (y1 - y3) / denom;
     double subpixel_bin = best_bin + delta_bin;
-    if( subpixel_bin < 0.0 ) {
+    if( subpixel_bin < 0.0 )  {
       subpixel_bin += num_bins;
     }
     if( subpixel_bin >= num_bins ) {
       subpixel_bin -= num_bins;
     }
-    final_angle = subpixel_bin * bin_step;
+    shifted_angle = subpixel_bin * bin_step;
   }
 
-  return final_angle;// - 90.0;
+  // RESTORE PHASE: subtract the added 45 degrees back
+  double final_angle = shifted_angle - 45.0;
+  if (final_angle < 0.0) {
+    final_angle += 180.0;
+  }
+
+  return final_angle;
 }

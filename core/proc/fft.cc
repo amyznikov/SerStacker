@@ -1181,9 +1181,9 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
             const double dx = (x - cx) * scaleX;
             const double dx2 = dx * dx;
 
-            const double dr2 = sqrt(dx2 + dy2);
+            const double dr = sqrt(dx2 + dy2);
 
-            dstp[x] = float(gain * dr2);
+            dstp[x] = float(gain * dr);
           }
         }
       });
@@ -1581,7 +1581,8 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum)
 
         const int bin_idx = int(angle / bin_step);
         if (bin_idx >= 0 && bin_idx < num_bins) {
-          histogram[bin_idx] += std::sqrt(srcp[x]);
+          const float w = std::sqrt(srcp[x] * r2);
+          histogram[bin_idx] += w;
         }
       }
     }

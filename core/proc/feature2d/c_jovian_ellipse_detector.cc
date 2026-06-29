@@ -481,10 +481,6 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
     VLAP = fftGenerateDiscreteLaplacianFilter(cropSize, true);
   }
 
-  if ( _opts.nscale > 0 ) {
-    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
-  }
-
   fftPPSDecomposition(_grayscaleImageCrop, VLAP,
       INTENSITY_P, cv::noArray(),
       true);
@@ -511,11 +507,11 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_stensor()
   cv::Mat1f scale_map;
   cv::Scalar mean_g, stdev_g;
 
-  if ( _opts.nscale > 0 ) {
-    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
+  if ( _opts.stensor.nscale > 0 ) {
+    pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.stensor.nscale);
   }
 
-  differentiate(_grayscaleImageCrop, _gx, _gy, _opts.sigma_clouds);
+  differentiate(_grayscaleImageCrop, _gx, _gy, _opts.stensor.gsigma);
 
   cv::magnitude(_gx, _gy, _g);
   cv::meanStdDev(_g, mean_g, stdev_g);
@@ -551,11 +547,18 @@ bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bo
     c_jovian_ellipse_detector_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, method);
-  SERIALIZE_OPTION(section, save, opts, sigma_clouds);
-  SERIALIZE_OPTION(section, save, opts, nscale);
   SERIALIZE_OPTION(section, save, opts, skirt_iterations);
   SERIALIZE_OPTION(section, save, opts, planetary_disk_tilt);
   SERIALIZE_OPTION(section, save, opts, offset);
-  serialize_base_planetary_disk_detector_options(section, save, opts.planetary_disk_detector_options);
+
+  if ( auto group = SERIALIZE_GROUP(section, save, "stensor") ) {
+    SERIALIZE_OPTION(group, save, opts.stensor, gsigma);
+    SERIALIZE_OPTION(group, save, opts.stensor, nscale);
+  }
+
+  if ( auto group = SERIALIZE_GROUP(section, save, "planetary_disk_detection") ) {
+    serialize_base_planetary_disk_detector_options(group, save, opts.planetary_disk_detector_options);
+  }
+
   return true;
 }

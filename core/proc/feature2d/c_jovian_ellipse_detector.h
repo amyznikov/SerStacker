@@ -24,10 +24,13 @@ struct c_jovian_ellipse_detector_options
   JOVIAN_ELLIPSE_DETECTION_METHOD method = JOVIAN_ELLIPSE_DETECTION_RADON_FFT;
   c_simple_planetary_disk_detector_options planetary_disk_detector_options;
   double planetary_disk_tilt = 3; // [deg]
-  double sigma_clouds = 3;
-  int nscale = 2;
   int skirt_iterations = 2;
   cv::Point2f offset;
+
+  struct c_stensor_options {
+    double gsigma = 3;
+    int nscale = 2;
+  } stensor;
 };
 
 bool serialize_base_jovian_ellipse_detector_options(c_config_setting section, bool save,
@@ -50,12 +53,16 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 {
   using S = c_jovian_ellipse_detector_options;
 
-  ctlbind(ctls, "method", ctx(&S::method), "");
-  ctlbind(ctls, "sigma_clouds", ctx(&S::sigma_clouds), "");
-  ctlbind(ctls, "nscale", ctx(&S::nscale), "");
-  ctlbind(ctls, "skirt_iterations", ctx(&S::skirt_iterations), "");
-  ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "");
-  ctlbind(ctls, "offset [px]", ctx(&S::offset), "");
+  ctlbind(ctls, "method", ctx(&S::method), "Select algorithm for Jovian orientation estimate");
+  ctlbind(ctls, "skirt_iterations", ctx(&S::skirt_iterations), "Set > 1 for two-pass contour detection");
+  ctlbind(ctls, "tilt [deg]", ctx(&S::planetary_disk_tilt), "Planetary disk tilt in deg");
+  ctlbind(ctls, "offset [px]", ctx(&S::offset), "Optional additional offset applied after ellipse center detection");
+
+  ctlbind_expandable_group(ctls, "STENSOR options",
+      [&, ctx = CTL_CONTEXT(ctx, stensor)]() {
+        ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, gsigma), "Gaussian blur sigma");
+        ctlbind(ctls, "nscale", CTL_CONTEXT(ctx, nscale), "Normalization scale");
+      });
 
   ctlbind_expandable_group(ctls, "planetary disk detection",
       [&, ctx = CTL_CONTEXT(ctx, planetary_disk_detector_options)]() {

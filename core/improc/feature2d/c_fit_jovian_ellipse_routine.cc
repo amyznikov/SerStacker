@@ -74,12 +74,11 @@ bool c_fit_jovian_ellipse_routine::serialize(c_config_setting settings, bool sav
 }
 
 static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & rc,
-    const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
+    const cv::Scalar & color1, const cv::Scalar  & color2,
+    int thickness = 1, int lineType = cv::LINE_8, int shift = 0)
 {
   if ( 1 ) {
-    cv::rectangle(image, ellipse_bounding_box(rc),
-        cv::Scalar(0, 0, 1),
-        1);
+    cv::rectangle(image, ellipse_bounding_box(rc), color1, 1);
   }
 
   cv::Point2f pts[4];
@@ -87,11 +86,11 @@ static void drawRotatedRect(cv::InputOutputArray image, const cv::RotatedRect & 
 
 
   for( int i = 0; i < 4; i++ ) {
-    cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
+    cv::line(image, pts[i], pts[(i + 1) % 4], color2, thickness, lineType, shift);
   }
 
-  cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
-  cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
+  cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color2, thickness, lineType, shift);
+  cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color2, thickness, lineType, shift);
 }
 
 bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
@@ -104,6 +103,7 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       };
 
   _detector.set_options(_opts);
+  _detector.setEnableDebugImages(true);
   _detector.detect(image, mask);
 
   switch (_display_type) {
@@ -225,7 +225,10 @@ bool c_fit_jovian_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       if( image.channels() == 1 ) {
         cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
       }
-      drawRotatedRect(image, _detector.finalPlanetaryDiskEllipse(), genrgb(image, 0, 1, 0), 1);
+
+      drawRotatedRect(image, _detector.finalPlanetaryDiskEllipse(),
+          genrgb(image, 1, 0, 0), genrgb(image, 0, 1, 0), 1);
+
       cv::ellipse(image, _detector.finalPlanetaryDiskEllipse(), genrgb(image, 0, 0, 1), 1);
       mask.release();
       break;

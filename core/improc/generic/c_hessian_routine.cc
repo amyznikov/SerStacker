@@ -59,7 +59,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
       compute_sobel_gradients(image.getMat(),
           image,
           cv::noArray(),
-          CV_32F,
           _border_type);
       break;
     }
@@ -67,7 +66,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
       compute_sobel_gradients(image.getMat(),
           cv::noArray(),
           image,
-          CV_32F,
           _border_type);
       break;
     }
@@ -76,7 +74,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           image,
           cv::noArray(),
           cv::noArray(),
-          CV_32F,
           _border_type);
       break;
     }
@@ -86,7 +83,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           image,
           cv::noArray(),
-          CV_32F,
           _border_type);
       break;
     }
@@ -96,7 +92,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           cv::noArray(),
           image,
-          CV_32F,
           _border_type);
       break;
     }
@@ -106,7 +101,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           cv::noArray(),
-          CV_32F,
           _border_type);
       cv::multiply(gxx, gyy, image);
       break;
@@ -117,7 +111,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           cv::noArray(),
           cv::noArray(),
           gxy,
-          CV_32F,
           _border_type);
       cv::multiply(gxy, gxy, image);
       break;
@@ -129,7 +122,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           cv::noArray(),
-          CV_32F,
           _border_type);
       cv::add(gxx, gyy, image);
       break;
@@ -143,7 +135,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           gxy,
-          CV_32F,
           _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy), det);
@@ -164,7 +155,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
       compute_sobel_gradients(image.getMat(),
           gx,
           gy,
-          CV_32F,
           _border_type);
 
       cv::add(gx.mul(gx), gy.mul(gy), grad);
@@ -174,7 +164,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           gxy,
-          CV_32F,
           _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy), det);
@@ -191,7 +180,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           gxy,
-          CV_32F,
           _border_type);
 
       compute_hessian_eigenvalues(gxx, gxy, gyy,
@@ -206,7 +194,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           gxy,
-          CV_32F,
           _border_type);
 
       compute_hessian_eigenvalues(gxx, gxy, gyy,
@@ -224,7 +211,6 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
           gxx,
           gyy,
           gxy,
-          CV_32F,
           _border_type);
 
       cv::subtract(gxx.mul(gyy), gxy.mul(gxy),

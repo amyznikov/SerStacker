@@ -27,7 +27,7 @@ bool c_blur_test_routine::serialize(c_config_setting settings, bool save)
 bool c_blur_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   cv::Mat gx, gy, g;
-  compute_sobel_gradients(image, gx, gy, CV_32F);
+  compute_sobel_gradients(image, gx, gy);
   // g = gx.mul(gx) + gy.mul(gy);
   cv::magnitude(gx, gy, g);
   if( g.channels() == 3 ) {

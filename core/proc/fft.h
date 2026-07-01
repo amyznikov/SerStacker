@@ -144,12 +144,4 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
 double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
     cv::OutputArray outputDebugHistogram = cv::noArray());
 
-/**
-* @brief Spatial Radon via gradient tensor projection (Option 2)
-* @param spatialCrop Cropped square ROI from the image
-* @return double Dominant axis angle in degrees [0, 180)
-*/
-double spatialEstimateRadonOrientation(const cv::Mat1f & spatialCrop,
-    cv::OutputArray outputDebugHistogram = cv::noArray());
-
 #endif /* __fft_h__ */

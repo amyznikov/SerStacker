@@ -210,10 +210,10 @@ static cv::Mat select_kernel(int order, int kradius)
 bool compute_gradient(cv::InputArray src, cv::OutputArray dst,
     int dx, int dy,
     int kradius,
-    int ddepth ,
-    double delta,
-    double scale)
+    double scale,
+    double delta)
 {
+  const int ddepth = dst.fixedType() ? dst.depth() : std::max(src.depth(), CV_32F);
 
   cv::Mat Kx, Ky;
 
@@ -248,7 +248,7 @@ bool compute_gradient(cv::InputArray src, cv::OutputArray dst,
       cv::sepFilter2D(src, dst, ddepth, Kx, Ky.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
     }
     else {
-      cv::sepFilter2D(src, dst, ddepth, Kx * scale, Ky.t() * scale, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+      cv::sepFilter2D(src, dst, ddepth, Kx * scale, Ky.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
     }
   }
   else {
@@ -263,10 +263,10 @@ bool compute_gradient(cv::InputArray src, cv::OutputArray dst,
 bool compute_sobel_gradients(cv::InputArray src,
     cv::OutputArray gx,
     cv::OutputArray gy,
-    int ddepth,
-    int borderType)
+    int borderType,
+    double scale,
+    double delta)
 {
-
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
     cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
@@ -274,51 +274,27 @@ bool compute_sobel_gradients(cv::InputArray src,
     Ky *= M_SQRT2;
   }
 
-  if( ddepth < 0 ) {
-    ddepth = std::max(src.depth(), CV_32F);
+  const int ddepth = gx.fixedType() ? gx.depth() : std::max(src.depth(), CV_32F);
+
+  if ( scale == 1  ) {
+    if ( gx.needed() ) {
+      cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), delta, borderType);
+    }
+    if ( gy.needed() ) {
+      cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), delta, borderType);
+    }
   }
+  else {
+    const cv::Mat Kxs = Kx * scale;
 
-  if ( gx.needed() ) {
-    cv::sepFilter2D(src, gx, ddepth, Kx, Ky, cv::Point(-1, -1), 0, borderType);
+    if ( gx.needed() ) {
+      cv::sepFilter2D(src, gx, ddepth, Kxs, Ky, cv::Point(-1, -1), delta, borderType);
+    }
+
+    if ( gy.needed() ) {
+      cv::sepFilter2D(src, gy, ddepth, Ky, Kxs, cv::Point(-1, -1), delta, borderType);
+    }
   }
-
-  if ( gy.needed() ) {
-    cv::sepFilter2D(src, gy, ddepth, Ky, Kx, cv::Point(-1, -1), 0, borderType);
-  }
-
-  return true;
-}
-
-// Image gradient estimate using Diagonal differences in 3x3 window
-// https://bartwronski.com/2021/02/28/computing-gradients-on-grids-forward-central-and-diagonal-differences/
-bool compute_diagonal_gradients(cv::InputArray src, cv::OutputArray gx, cv::OutputArray gy, int ddepth, int borderType)
-{
-  static const float S = M_SQRT1_2 / 2;
-
-  static const thread_local cv::Matx33f K1(
-      -S,  -S,   0,
-      -S,   0,  +S,
-       0,  +S,  +S);
-
-  static const thread_local cv::Matx33f K2(
-       0,   +S,   +S,
-      -S,    0,   +S,
-      -S,   -S,    0);
-
-  cv::Mat g1, g2;
-
-  cv::filter2D(src, g1, ddepth, K1, cv::Point(1, 1), 0, borderType);
-  cv::filter2D(src, g2, ddepth, K2, cv::Point(1, 1), 0, borderType);
-
-//  [gx] = [ca -sa]  [g1]
-//  [gy]   [sa  ca]  [g2]
-
-  static const float sa = sin(-M_PI_4);
-  static const float ca = cos(-M_PI_4);
-
-  cv::addWeighted(g1, ca, g2, -sa, 0, gx); // gx = ca * g1 - sa * g2
-  cv::addWeighted(g1, -sa, g2, -ca, 0, gy); //  gy = -(sa * g1 + ca * g2)
-
 
   return true;
 }
@@ -327,7 +303,6 @@ bool compute_second_sobel_derivatives(cv::InputArray src,
     cv::OutputArray gxx,
     cv::OutputArray gyy,
     cv::OutputArray gxy,
-    int ddepth,
     int borderType,
     double scale,
     double delta)
@@ -341,9 +316,7 @@ bool compute_second_sobel_derivatives(cv::InputArray src,
     //    Ky1 *= M_SQRT2;
   }
 
-  if( ddepth < 0 ) {
-    ddepth = std::max(src.depth(), CV_32F);
-  }
+  const int ddepth = gxx.fixedType() ? gxx.depth() : std::max(src.depth(), CV_32F);
 
   if( scale == 0 || scale == 1 ) {
     if ( gxx.needed() ) {
@@ -488,17 +461,10 @@ static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gx
 
         for( int c = 0; c < cn; ++c ) {
 
-          const int i =
-              x * cn + c;
-
-          const float a =
-              gxxp[i];
-
-          const float b =
-              gxyp[i];
-
-          const float d =
-              gyyp[i];
+          const int i = x * cn + c;
+          const float a = gxxp[i];
+          const float b = gxyp[i];
+          const float d = gyyp[i];
 
           float mu1, mu2;
 
@@ -517,11 +483,8 @@ static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gx
   }
   else if( _mu2.needed() ) {
 
-    _mu2.create(image_size,
-        CV_MAKETYPE(CV_32F, cn));
-
-    cv::Mat_<float> mu2 =
-        _mu2.getMatRef();
+    _mu2.create(image_size, CV_MAKETYPE(CV_32F, cn));
+    cv::Mat_<float> mu2 = _mu2.getMatRef();
 
     for( int y = 0; y < image_size.height; ++y ) {
 
@@ -534,17 +497,10 @@ static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gx
 
         for( int c = 0; c < cn; ++c ) {
 
-          const int i =
-              x * cn + c;
-
-          const float a =
-              gxxp[i];
-
-          const float b =
-              gxyp[i];
-
-          const float d =
-              gyyp[i];
+          const int i = x * cn + c;
+          const float a = gxxp[i];
+          const float b = gxyp[i];
+          const float d = gyyp[i];
 
           float mu1, mu2;
 
@@ -605,4 +561,191 @@ bool compute_hessian_eigenvalues(cv::InputArray gxx, cv::InputArray gxy, cv::Inp
   }
 
   return true;
+}
+
+// Compute first-order derivatives
+void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double scale, double delta)
+{
+  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
+  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
+  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
+
+  cv::filter2D(_src, gx, CV_32F, Kx * scale, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+  cv::filter2D(_src, gy, CV_32F, Ky * scale, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+}
+
+bool compute_histogram_of_gradient_directions(cv::InputArray _gx, cv::InputArray _gy,
+    cv::OutputArray outputHistogram,
+     int gkradius )
+{
+  if ( _gx.depth() != CV_32F || _gy.depth() != CV_32F ) {
+    CF_ERROR("Invalid args: CV_32F input gradients gx and gy expected");
+    return false;
+  }
+
+  if ( _gx.channels() != _gy.channels() ) {
+    CF_ERROR("Invalid args: different number of channels in input gradients gx and gy");
+    return false;
+  }
+
+  if ( _gx.size() != _gy.size() ) {
+    CF_ERROR("Invalid args: different sizes in input gradients gx and gy");
+    return false;
+  }
+
+  const int cn = _gx.channels();
+  const cv::Size size = _gx.size();
+
+  const cv::Mat_<float> gx = _gx.getMat();
+  const cv::Mat_<float> gy = _gy.getMat();
+
+  // 180 deg with 0.5 deg resolution
+  const int num_bins = 360;
+  const double bin_step = 180.0 / num_bins;
+
+  // Phase shift at index level (just constant)
+  const int shift_bins = cvRound(45.0 / bin_step);
+
+  std::vector<cv::Mat1f> H(cn);
+  std::vector<float*> hptrs(cn);
+
+// for debug test
+  std::vector<cv::Mat1f> C(cn);
+  std::vector<float*> cptrs(cn);
+
+  for ( int c = 0; c < cn; ++c ) {
+    H[c].create(1, num_bins), H[c].setTo(0);
+    hptrs[c] = H[c][0];
+    C[c].create(1, num_bins), C[c].setTo(0);
+    cptrs[c] = C[c][0];
+  }
+
+  for( int y = 1; y < size.height - 1; ++y ) {
+    const float * gxp = gx[y];
+    const float * gyp = gy[y];
+
+    for( int x = 1; x < size.width - 1; ++x ) {
+      for( int c = 0; c < cn; ++c ) {
+
+        const double gx = gxp[x * cn + c];
+        const double gy = gyp[x * cn + c];
+        const double g2 = gx * gx + gy * gy;
+
+        if( g2 > 0.0 ) {
+          // Normalize to range [0, 180)
+          double angle = std::atan2(gy, gx) * 180.0 / CV_PI;
+          if( angle < 0.0 ) {
+            angle += 180.0;
+          }
+          if( angle >= 180.0 ) {
+            angle -= 180.0;
+          }
+
+          // apply the 45° phase shift to the bin
+          const int b = static_cast<int>(angle / bin_step);
+          const int shifted_b = (b + shift_bins) % num_bins;
+          if( shifted_b >= 0 && shifted_b < num_bins ) {
+            hptrs[c][shifted_b] += sqrt(g2);
+// for debug test
+            cptrs[c][shifted_b] += 1;
+          }
+        }
+      }
+    }
+  }
+
+// for debug test
+  for (int c = 0; c < cn; ++c ) {
+    float * hp = hptrs[c];
+    float * cp = cptrs[c];
+    for (int x = 0; x < num_bins; ++x ) {
+      if ( cp[x] > 1 ) {
+        hp[c] /= cp[x];
+      }
+    }
+  }
+
+  if( gkradius < 1 ) {
+    cv::merge(H, outputHistogram);
+  }
+  else {
+    // Smooth
+
+    cv::Mat tmp;
+    const int gksize = 2 * gkradius + 1;
+    const int border = gkradius;
+
+    if ( cn == 1 ) {
+      tmp = H[0];
+    }
+    else {
+      cv::merge(H, tmp);
+    }
+
+    cv::copyMakeBorder(tmp, tmp, 0, 0, border, border, cv::BORDER_WRAP);
+    cv::GaussianBlur(tmp, tmp, cv::Size(gksize, 1), 0, 0, cv::BORDER_DEFAULT);
+
+    tmp(cv::Rect(border, 0, num_bins, 1)).copyTo(outputHistogram);
+  }
+  return true;
+}
+
+bool compute_histogram_of_gradient_directions(cv::InputArray _image,
+    cv::OutputArray outputHistogram,
+    int gkradius )
+{
+  cv::Mat gx, gy;
+  //differentiate(_image, gx, gy);
+  compute_sobel_gradients(_image, gx, gy, cv::BORDER_REPLICATE, 1, 0);
+  return compute_histogram_of_gradient_directions(gx, gy, outputHistogram, gkradius);
+}
+
+/**
+* @brief Spatial Radon via gradient tensor projection (Option 2)
+* @param spatialCrop Cropped square ROI from the image
+* @return double Dominant axis angle in degrees [0, 180)
+*/
+double gradientEstimateRadonOrientation(const cv::Mat1f & spatialCrop,
+    cv::OutputArray outputDebugHistogram )
+{
+  cv::Mat1f H;
+
+  compute_histogram_of_gradient_directions(spatialCrop, H, 55);
+
+  const int num_bins = H.cols;
+  const double bin_step = 180.0 / num_bins;
+
+  const float * hp = H[0];
+  const float * maxpos = std::max_element(hp, hp + num_bins);
+  const int best_bin = maxpos - hp;
+  const int left_bin = (best_bin - 1 + num_bins) % num_bins;
+  const int right_bin = (best_bin + 1) % num_bins;
+  const double y1 = hp[left_bin];
+  const double y2 = hp[best_bin];
+  const double y3 = hp[right_bin];
+  const double denom = y1 - 2.0 * y2 + y3;
+
+  double angle = best_bin * bin_step;
+  if( denom != 0 ) {
+    const double delta_bin = 0.5 * (y1 - y3) / denom;
+    double subpixel_bin = best_bin + delta_bin;
+    if( subpixel_bin < 0.0 ) {
+      subpixel_bin += num_bins;
+    }
+    if( subpixel_bin >= num_bins ) {
+      subpixel_bin -= num_bins;
+    }
+    angle = subpixel_bin * bin_step;
+  }
+
+    // RESTORE PHASE: subtract the added 45 degrees back
+  if( (angle -= 45.0) < 0.0 ) {
+    angle += 180.0;
+  }
+
+  if ( outputDebugHistogram.needed() ) {
+    cv::transpose(H, outputDebugHistogram);
+  }
+
+  return angle;
 }

@@ -10,6 +10,7 @@
 #define __c_planetary_disk_detection_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/extract_channel.h>
 #include <core/proc/pixtype.h>
 
@@ -26,15 +27,20 @@ public:
     DISPLAY_SPECTRUM_MODULE
   };
 
+  enum ORIENTATION_METHOD {
+    ORIENTATION_RADON_FFT,
+    ORIENTATION_RADON_STENSOR,
+  };
+
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
   DISPLAY _display = DISPLAY_SRC_IMAGE;
-  double gsigma = 1;
-  int se_radius = 5;
   enum color_channel_type _intensity_channel = color_channel_gray;
+  c_simple_planetary_disk_detector_options _planetary_disk_opts;
+  ORIENTATION_METHOD _orientation_method = ORIENTATION_RADON_FFT;
   bool updateROI = false;
 
   // work arrays

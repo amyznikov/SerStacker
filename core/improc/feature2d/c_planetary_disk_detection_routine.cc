@@ -7,6 +7,7 @@
 
 #include "c_planetary_disk_detection_routine.h"
 #include <core/proc/feature2d/planetary-disk-detection.h>
+#include <core/proc/gradient.h>
 #include <core/proc/fft.h>
 #include <core/ssprintf.h>
 
@@ -22,24 +23,40 @@ const c_enum_member * members_of<c_planetary_disk_detection_routine::DISPLAY>()
   return members;
 }
 
+template<>
+const c_enum_member * members_of<c_planetary_disk_detection_routine::ORIENTATION_METHOD>()
+{
+  static const c_enum_member members[] = {
+      { c_planetary_disk_detection_routine::ORIENTATION_RADON_FFT, "RADON_FFT", "" },
+      { c_planetary_disk_detection_routine::ORIENTATION_RADON_STENSOR, "RADON_STENSOR", "" },
+      { c_planetary_disk_detection_routine::ORIENTATION_RADON_FFT}
+  };
+  return members;
+}
 
 
 void c_planetary_disk_detection_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "intensity_channel", CTL_CONTEXT(ctx, _intensity_channel), "");
-  ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, gsigma), "");
-  ctlbind(ctls, "se_radius", CTL_CONTEXT(ctx, se_radius), "");
+  ctlbind(ctls, "orientation_method", CTL_CONTEXT(ctx, _orientation_method), "");
   ctlbind(ctls, "updateROI", CTL_CONTEXT(ctx, updateROI), "");
+  ctlbind_expandable_group(ctls, "planetary disk detection",
+      [&, ctx = CTL_CONTEXT(ctx, _planetary_disk_opts)]() {
+        ctlbind(ctls, ctx);
+      });
 }
 
 bool c_planetary_disk_detection_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, gsigma);
-    SERIALIZE_OPTION(settings, save, *this, se_radius);
+    SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
+    SERIALIZE_OPTION(settings, save, *this, _orientation_method);
     SERIALIZE_OPTION(settings, save, *this, updateROI);
+    if ( auto group = SERIALIZE_GROUP(settings, save, "planetary_disk_detection") ) {
+      serialize_base_planetary_disk_detector_options(group, save, _planetary_disk_opts);
+    }
     return true;
   }
   return false;
@@ -70,7 +87,7 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
 
   bool fOk =
       simple_planetary_disk_detector(grayImage, mask,
-          gsigma, se_radius,
+          _planetary_disk_opts,
           &centroid,
           &component_rect,
           &cmponent_mask,
@@ -105,21 +122,37 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
 
   cv::multiply(grayImage(rc), ApodizationWindow, grayImage);
 
-  if( VLAP.size() != fftSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+  double orientation_angle = 0;
+
+  if ( _orientation_method == ORIENTATION_RADON_STENSOR ) {
+
+    orientation_angle =
+        gradientEstimateRadonOrientation(grayImage);
+  }
+  else {
+
+    if( VLAP.size() != fftSize ) {
+      VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, true);
+    }
+
+    fftPPSDecomposition(grayImage, VLAP,
+        INTENSITY_P, cv::noArray(),
+        true);
+
+    fftSpectrumModule(INTENSITY_P, INTENSITY_Magnitude);
+
+    orientation_angle =
+        fftEstimateRadonOrientation(INTENSITY_Magnitude);
   }
 
-  fftPPSDecomposition(grayImage, VLAP,
-      INTENSITY_P, cv::noArray(),
-      true);
+  if( orientation_angle > 90 ) {
+    orientation_angle -= 180;
+  }
+  else if( orientation_angle < -90 ) {
+    orientation_angle += 180;
+  }
 
-  fftSpectrumModule(INTENSITY_P, INTENSITY_Magnitude);
-
-  // Find orientation here
-  const double angle =
-      fftEstimateRadonOrientation(INTENSITY_Magnitude);
-
-  CF_DEBUG(" -> Detected Polar Axis Position Angle: %g°", angle );
+  CF_DEBUG("\n -> Detected orientation angle: %g°", orientation_angle );
 
   // Make some simple output debug display here
 
@@ -147,11 +180,11 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
     cv::RotatedRect rrc;
-    rrc.size.width = 2 * fftSize.width / 3;
-    rrc.size.height = 2 * fftSize.width / 6;
-    rrc.angle = angle;
-    rrc.center.x = rc.x + rc.width / 2;
-    rrc.center.y = rc.y + rc.height / 2;
+    rrc.size.width = fftSize.width;
+    rrc.size.height = fftSize.height / 2;
+    rrc.angle = orientation_angle;
+    rrc.center.x = geometrical_center.x;
+    rrc.center.y = geometrical_center.y;
 
     if( image.channels() != 3 ) {
       cv::cvtColor(image.getMat(), image, cv::COLOR_GRAY2BGR);
@@ -174,7 +207,6 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
     return true;
   }
 
-  CF_DEBUG("H");
   return fOk;
 }
 

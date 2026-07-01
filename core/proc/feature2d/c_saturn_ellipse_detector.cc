@@ -6,6 +6,7 @@
  */
 
 #include "c_saturn_ellipse_detector.h"
+#include <core/proc/gradient.h>
 #include <core/proc/pixtype.h>
 #include <core/proc/feature2d/ellipsoid.h>
 #include <core/proc/feature2d/planetary-disk-detection.h>
@@ -180,24 +181,24 @@ static bool detect_primary_orientation_pcaw(cv::InputArray image, cv::InputArray
   return true;
 }
 
-// Compute first-order derivatives
-static void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double gbsigma = 0)
-{
-  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
-  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
-  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
-
-  if( !(gbsigma > 0) ) {
-    cv::filter2D(_src, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(_src, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-  else {
-    cv::Mat tmp;
-    cv::GaussianBlur(_src, tmp, cv::Size(0, 0), gbsigma, gbsigma, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-}
+//// Compute first-order derivatives
+//static void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double gbsigma = 0)
+//{
+//  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
+//  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
+//  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
+//
+//  if( !(gbsigma > 0) ) {
+//    cv::filter2D(_src, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//    cv::filter2D(_src, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  }
+//  else {
+//    cv::Mat tmp;
+//    cv::GaussianBlur(_src, tmp, cv::Size(0, 0), gbsigma, gbsigma, cv::BORDER_REPLICATE);
+//    cv::filter2D(tmp, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//    cv::filter2D(tmp, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+//  }
+//}
 
 static bool extract_points(const cv::Mat1f & gr_image, const cv::Mat1b & mask,
     const cv::RotatedRect & roi, std::vector<cv::Point3f> & pts, bool weighted = true)
@@ -504,7 +505,7 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   // Prepare gr and grth images for contour detection
   static const cv::Mat1b THSE(5, 5, uint8_t(255));
   extract_channel(_input_image, _gradient_image, cv::noArray(), cv::noArray(), _opts.gradient_channel, CV_32F);
-  differentiate(_gradient_image, _gx, _gy, _opts.sigma_contour);
+  differentiate(_gradient_image, _gx, _gy);
   project_to_radius_vector(_detected_component_centroid, _gx, _gy, _gr, cv::noArray());
   cv::multiply(_gr, cv::Scalar::all(-1e4), _gr);
   cv::max(_gr, 0.f, _grth);

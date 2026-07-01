@@ -23,7 +23,7 @@ public:
   {
     ComputeMethodFilter1D,
     ComputeMethodSobel,
-    ComputeMethodDiagonalGradient,
+    ComputeMethodScharr,
   };
 
   enum OutputType {
@@ -32,10 +32,11 @@ public:
     OutputGradientY,
     OutputGradientMagnitude,
     OutputGradientPhase,
-    OutputGradientPhaseW,
-    OutputGradientPhase90,
-    OutputGradientPhase90W,
+//    OutputGradientPhaseW,
+//    OutputGradientPhase90,
+//    OutputGradientPhase90W,
     // OutputTextureFromGradients,
+    OutputHistogram
   };
 
   bool serialize(c_config_setting settings, bool save) final;

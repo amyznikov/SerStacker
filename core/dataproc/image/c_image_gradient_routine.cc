@@ -57,9 +57,7 @@ bool c_image_gradient_routine::process(c_data_frame::sptr & frame)
     return false;
   }
 
-  compute_gradient(input_image, output_image,
-      1, 0,
-      2);
+  compute_gradient(input_image, output_image, 1, 0, 2);
 
   frame->add_image(_output_image_name.empty() ? "GRADIENT" :
       _output_image_name,

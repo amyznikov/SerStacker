@@ -6,6 +6,7 @@
  */
 
 #include "c_jovian_ellipse_detector.h"
+#include <core/proc/gradient.h>
 #include <core/proc/fft.h>
 #include <core/proc/morphology.h>
 #include <core/proc/pyrscale.h>
@@ -39,30 +40,17 @@ static void pnormalize(cv::InputArray _src, cv::OutputArray _dst, int lvl)
   cv::subtract(src, m, _dst, cv::noArray(), CV_32F);
 }
 
-// 2022-08-09-2336_8-CapObj-32F
-// Compute first-order derivatives
-static void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double gsigma = 0)
-{
-  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
-  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
-  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
-
-  if( !(gsigma > 0) ) {
-    cv::filter2D(_src, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(_src, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-  else {
-    cv::Mat tmp;
-
-    const int border = cvRound(gsigma * 4.0) + 2;
-    const cv::Rect rc(border, border, _src.cols(), _src.rows());
-
-    cv::copyMakeBorder(_src, tmp, border, border, border, border, cv::BORDER_REPLICATE);
-    cv::GaussianBlur(tmp, tmp, cv::Size(0, 0), gsigma, gsigma, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp(rc), gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-    cv::filter2D(tmp(rc), gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  }
-}
+//// 2022-08-09-2336_8-CapObj-32F
+//// Compute first-order derivatives
+//void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double scale = 1, double delta = 0)
+//{
+//  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
+//  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
+//  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
+//
+//  cv::filter2D(_src, gx, CV_32F, Kx * scale, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+//  cv::filter2D(_src, gy, CV_32F, Ky * scale, cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
+//}
 
 static void skirtToPolar(cv::InputArray srcImage, cv::OutputArray dstImage, cv::OutputArray outputMask2D,
     const cv::RotatedRect & baseEllipse,
@@ -351,7 +339,7 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
   // Prepare skirt data for contour detection.
   // This must be done before applying the apodization to _grayscaleImageCrop
 
-  differentiate(_grayscaleImageCrop, _gx, _gy, 0);
+  differentiate(_grayscaleImageCrop, _gx, _gy);
   project_to_radius_vector(coarseSkirtCenter, _gx, _gy, _gr, cv::noArray(), -1e4);
 
   if( _enableDebugImages ) {
@@ -363,9 +351,8 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
 
   // Apply apodization window for orientation detection
   if (_apodizationWindow.size() != cropSize ) {
-    _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.325 * CV_2PI, 10);
+    _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.35 * CV_2PI, 12);
   }
-  cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
 
   //
   // Detect Jovian orientation using one from available methods
@@ -480,6 +467,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
   if ( _opts.nscale > 0 ) {
     pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
   }
+  cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
 
   const cv::Size cropSize = _cropRC.size();
   if( VLAP.size() != cropSize ) {
@@ -507,10 +495,11 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_stensor()
   if ( _opts.nscale > 0 ) {
     pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
   }
+  cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
 
   const double angle =
-      spatialEstimateRadonOrientation(_grayscaleImageCrop,
-          _enableDebugImages ? _radonHistogram : cv::noArray());
+      gradientEstimateRadonOrientation(_grayscaleImageCrop,
+          _enableDebugImages ? _radonHistogram : cv::noArray()) + 90;
 
   CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
 

@@ -106,11 +106,11 @@ bool c_radial_gradient_routine::process(cv::InputOutputArray image, cv::InputOut
 {
   cv::Mat gx, gy, g;
 
-  if ( !compute_gradient(image, gx, 1, 0, _kradius, CV_32F, _delta, _scale) ) {
+  if ( !compute_gradient(image, gx, 1, 0, _kradius, _scale, _delta) ) {
     CF_ERROR("compute_gradient(x) fails");
     return false;
   }
-  if ( !compute_gradient(image, gy, 0, 1, _kradius, CV_32F, _delta, _scale) ) {
+  if ( !compute_gradient(image, gy, 0, 1, _kradius, _scale, _delta) ) {
     CF_ERROR("compute_gradient(x) fails");
     return false;
   }

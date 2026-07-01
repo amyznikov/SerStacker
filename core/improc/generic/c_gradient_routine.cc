@@ -15,7 +15,7 @@ const c_enum_member* members_of<c_gradient_routine::ComputeMethod>()
   static const c_enum_member members[] = {
       { c_gradient_routine::ComputeMethodFilter1D, "Filter1D", "Filter1D" },
       { c_gradient_routine::ComputeMethodSobel, "Sobel", "Use cv::getDerivKernels()" },
-      { c_gradient_routine::ComputeMethodDiagonalGradient, "DiagonalGradient", "DiagonalGradient" },
+      { c_gradient_routine::ComputeMethodScharr, "Scharr", "Use cv::Scharr()" },
       { c_gradient_routine::ComputeMethodFilter1D },
   };
 
@@ -31,10 +31,7 @@ const c_enum_member* members_of<c_gradient_routine::OutputType>()
       { c_gradient_routine::OutputGradientY, "GradientY", "Gradient along Y direction" },
       { c_gradient_routine::OutputGradientMagnitude, "Magnitude", "Gradient Magnitude" },
       { c_gradient_routine::OutputGradientPhase, "Phase", "Gradient Phase in range 0..360" },
-      { c_gradient_routine::OutputGradientPhaseW, "PhaseW", "Weighted Gradient Phase" },
-      { c_gradient_routine::OutputGradientPhase90, "Phase90", "Gradient Phase in range 0..90" },
-      { c_gradient_routine::OutputGradientPhase90W, "Phase90W", "Weighted Gradient Phase in range 0..90" },
-//      { c_gradient_routine::OutputTextureFromGradients, "Texture", "Texture from Gradients" },
+      { c_gradient_routine::OutputHistogram, "Histogram", "Histogram of Gradient directions" },
       { c_gradient_routine::OutputGradient },
   };
 
@@ -75,25 +72,23 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
   switch (_compute_method) {
     case ComputeMethodSobel:
-      if ( !compute_sobel_gradients(image, gx, gy, _ddepth, _border_type) ) {
+      if ( !compute_sobel_gradients(image, gx, gy, _border_type, _scale, _delta) ) {
         CF_ERROR("compute_sobel_gradients() fails");
         return false;
       }
       break;
 
-    case ComputeMethodDiagonalGradient:
-      if ( !compute_diagonal_gradients(image, gx, gy, _ddepth, _border_type) ) {
-        CF_ERROR("compute_diagonal_gradients() fails");
-        return false;
-      }
+    case ComputeMethodScharr:
+      cv::Scharr(image, gx, CV_32F, 1, 0, _scale, _delta, _border_type);
+      cv::Scharr(image, gy, CV_32F, 0, 1, _scale, _delta, _border_type);
       break;
 
     case ComputeMethodFilter1D:
-      if ( !compute_gradient(image, gx, 1, 0, 1, _ddepth, _delta, _scale) ) {
+      if ( !compute_gradient(image, gx, 1, 0, 2, _scale, _delta) ) {
         CF_ERROR("compute_gradient(gx) fails");
         return false;
       }
-      if ( !compute_gradient(image, gy, 0, 1, 1, _ddepth, _delta, _scale) ) {
+      if ( !compute_gradient(image, gy, 0, 1, 2, _scale, _delta) ) {
         CF_ERROR("compute_gradient(gx) fails");
         return false;
       }
@@ -106,8 +101,6 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       return false;
   }
 
-
-
   switch (_output_type) {
     case OutputGradientX:
       image.move(gx);
@@ -118,7 +111,7 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       break;
 
     case OutputGradient: {
-      cv::Mat channels[2] = {gx, gy};
+      cv::Mat channels[2] = { gx, gy };
       cv::merge(channels, 2, image);
       break;
     }
@@ -134,37 +127,21 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
       cv::phase(gx, gy, image, true);
       break;
 
-    case OutputGradientPhaseW: {
-      cv::phase(gx, gy, image, true);
+    case OutputHistogram : {
+      cv::Mat H;
+      compute_histogram_of_gradient_directions(gx, gy, H, 0);
+//
+//
+//      CF_DEBUG("1: H(0,0)=%g H(0,1)=%g", H(0,0), H(0,1));
+//
+      cv::transpose(H, H);
+//      CF_DEBUG("2: H(0,0)=%g H(1,0)=%g", H(0,0), H(1,0));
 
-      cv::Mat g;
-      cv::magnitude(gx, gy, g);
-      if ( _squared ) {
-        cv::multiply(g,  g,  g);
-      }
-      cv::multiply(image,  g,  image);
-      break;
-    }
+      H = cv::repeat(H, 1, 64);
 
-    case OutputGradientPhase90:
-      cv::absdiff(gx, 0, gx);
-      cv::absdiff(gy, 0, gy);
-      cv::phase(gx, gy, image, true);
-      break;
-
-    case OutputGradientPhase90W: {
-      cv::Mat g;
-
-      cv::absdiff(gx, 0, gx);
-      cv::absdiff(gy, 0, gy);
-      cv::magnitude(gx, gy, g);
-      if ( _squared ) {
-        cv::multiply(g,  g,  g);
-      }
-
-      cv::phase(gx, gy, image, true);
-      cv::multiply(image,  g,  image);
-      break;
+      image.move(H);
+      mask.release();
+      return true;
     }
 
     default:
@@ -179,121 +156,6 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
     cv::erode(mask, mask, cv::Mat1b(2 * r + 1, 2 * r + 1, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
     image.getMatRef().setTo(0, ~mask.getMat());
   }
-
-
-//
-//  if ( output_type_ == OutputGradient ) {
-//
-//    if ( !compute_gradient(image.getMat(), image, order_x_, order_y_, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient() fails");
-//      return false;
-//    }
-//
-//    if ( squared_ ) {
-//      cv::multiply(image.getMat(), image.getMat(), image);
-//    }
-//  }
-//  else if( output_type_ == OutputTextureFromGradients ) {
-//
-//    cv::Mat gx, gy, g;
-//    cv::Mat gxx, gyy, gg;
-//
-//    if ( !compute_gradient(image.getMat(), gx, 1, 0, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(x) fails");
-//      return false;
-//    }
-//    if ( !compute_gradient(image.getMat(), gy, 0, 1, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(x) fails");
-//      return false;
-//    }
-//    if ( !compute_gradient(image.getMat(), gxx, 2, 0, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(x) fails");
-//      return false;
-//    }
-//    if ( !compute_gradient(image.getMat(), gyy, 0, 2, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(x) fails");
-//      return false;
-//    }
-//
-//    cv::magnitude(gx, gy, g);
-//    cv::magnitude(gxx, gyy, gg);
-//    cv::addWeighted(g, 0.25, gg, 0.75, 0, image);
-//    if ( squared_ ) {
-//      cv::multiply(image.getMat(), image.getMat(), image);
-//    }
-//  }
-//
-//  else if( output_type_ == OutputGradientMagnitude ) {
-//
-//    cv::Mat gx, gy;
-//
-//    if( order_x_ > 0 && !compute_gradient(image.getMat(), gx, order_x_, 0, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(gx) fails");
-//      return false;
-//    }
-//
-//    if( order_y_ > 0 && !compute_gradient(image.getMat(), gy, 0, order_y_, kradius_, ddepth_, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(gy) fails");
-//      return false;
-//    }
-//
-//    if ( !gx.empty() && !gy.empty() ) {
-//      cv::magnitude(gx, gy, image);
-//    }
-//    else if ( !gx.empty() ) {
-//      cv::absdiff(gx, cv::Scalar::all(0), image);
-//    }
-//    else if ( !gy.empty() ) {
-//      cv::absdiff(gy, cv::Scalar::all(0), image);
-//    }
-//    if ( squared_ ) {
-//      cv::multiply(image.getMat(), image.getMat(), image);
-//    }
-//  }
-//
-//  else if( output_type_ == OutputGradientPhase || output_type_ == OutputGradientPhase90 || output_type_ == OutputGradientPhase90W ) {
-//
-//    cv::Mat gx, gy;
-//
-//    const int order =
-//        std::max(order_x_, order_y_);
-//
-//    if( !compute_gradient(image.getMat(), gx, order, 0, kradius_, CV_32F, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(gx) fails");
-//      return false;
-//    }
-//
-//    if( !compute_gradient(image.getMat(), gy, 0, order, kradius_, CV_32F, delta_, scale_) ) {
-//      CF_ERROR("compute_gradient(gy) fails");
-//      return false;
-//    }
-//
-//    switch (output_type_) {
-//      case OutputGradientPhase90:
-//        case OutputGradientPhase90W:
-//        cv::absdiff(gx, 0, gx);
-//        cv::absdiff(gy, 0, gy);
-//        break;
-//    }
-//
-//    cv::phase(gx, gy, image, true);
-//
-//    if (  output_type_ == OutputGradientPhase90W  ) {
-//      cv::Mat g;
-//      cv::magnitude(gx, gy,g);
-//      if ( squared_ ) {
-//        cv::multiply(gy,  g,  g);
-//      }
-//      cv::multiply(image,  g,  image);
-//    }
-//  }
-//
-//
-//  if( mask.needed() && !mask.empty() ) {
-//    const int r = std::max(1, kradius_);
-//    cv::erode(mask, mask, cv::Mat1b(2 * r + 1, 2 * r + 1, 255), cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
-//    image.getMatRef().setTo(0, ~mask.getMat());
-//  }
 
   return true;
 }

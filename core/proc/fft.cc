@@ -1589,11 +1589,16 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
     }
   }
 
-  // Gaussian smooth
-  cv::Mat1f H;
+  // Smooth
+  //  cv::GaussianBlur(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), H,
+  //      cv::Size(15, 1), 0, 0, cv::BORDER_DEFAULT);
+  cv::Mat1f H, tmp;
+  const int border = 11;
+  const int gksize = 2 * border + 1;
 
-  cv::GaussianBlur(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), H,
-      cv::Size(15, 1), 0, 0, cv::BORDER_DEFAULT);
+  cv::copyMakeBorder(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), tmp, 0, 0, border, border, cv::BORDER_WRAP);
+  cv::GaussianBlur(tmp, tmp, cv::Size(gksize, 1), 0, 0, cv::BORDER_DEFAULT);
+  tmp(cv::Rect(border, 0, num_bins, 1)).copyTo(H);
 
   if ( outputDebugHistogram.needed() ) {
     cv::transpose(H, outputDebugHistogram);

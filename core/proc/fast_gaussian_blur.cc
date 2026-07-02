@@ -92,3 +92,4 @@ void fast_gaussian_blur(cv::InputArray _src, cv::InputArray _mask, cv::OutputArr
     cv::divide(gsrc, gmask, _dst, 1, ddepth);
   }
 }
+

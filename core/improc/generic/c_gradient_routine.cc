@@ -129,17 +129,8 @@ bool c_gradient_routine::process(cv::InputOutputArray image, cv::InputOutputArra
 
     case OutputHistogram : {
       cv::Mat H;
-      compute_histogram_of_gradient_directions(gx, gy, H, 0);
-//
-//
-//      CF_DEBUG("1: H(0,0)=%g H(0,1)=%g", H(0,0), H(0,1));
-//
-      cv::transpose(H, H);
-//      CF_DEBUG("2: H(0,0)=%g H(1,0)=%g", H(0,0), H(1,0));
-
-      H = cv::repeat(H, 1, 64);
-
-      image.move(H);
+      compute_histogram_of_gradient_directions(gx, gy, H);
+      image.assign(cv::repeat(H.t(), 1, 64));
       mask.release();
       return true;
     }

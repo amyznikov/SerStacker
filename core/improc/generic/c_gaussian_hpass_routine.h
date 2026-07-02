@@ -1,28 +1,23 @@
 /*
- * c_gaussian_filter_routine.h
+ * c_gaussian_hpass_routine.h
  *
- *  Created on: Oct 9, 2021
+ *  Created on: Jul 1, 2026
  *      Author: amyznikov
  */
 
-#ifndef __c_gaussian_filter_routine_h__
-#define __c_gaussian_filter_routine_h__
+#pragma once
+#ifndef __c_gaussian_hpass_routine_h__
+#define __c_gaussian_hpass_routine_h__
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/c_gaussian_filter.h>
 
-class c_gaussian_blur_routine:
+class c_gaussian_hpass_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_blur_routine,
-      "gaussian_blur", "Gaussian Blur");
-
-  enum StereoMode {
-    StereoNone,
-    StereoHLayout,
-    StereoVLayout,
-  };
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_gaussian_hpass_routine,
+      "gaussian_hpass", "Subtract Gaussian Blured version from source image");
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -34,10 +29,9 @@ protected:
   int _ksizex = -1;
   int _ksizey = -1;
   double _scale = 1.0;
-  double _delta = 1.0;
-  StereoMode _stereo_mode = StereoNone;
+  double _delta = 0.0;
   cv::BorderTypes _border_type = cv::BORDER_REFLECT101;
   cv::Scalar _border_value = cv::Scalar::all(0);
 };
 
-#endif /* __c_gaussian_filter_routine_h__ */
+#endif /* __c_gaussian_hpass_routine_h__ */

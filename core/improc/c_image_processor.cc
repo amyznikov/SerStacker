@@ -87,6 +87,7 @@
 #include "generic/c_set_pixels_routine.h"
 #include "generic/c_pnormalize_routine.h"
 #include "generic/c_gaussian_blur_routine.h"
+#include "generic/c_gaussian_hpass_routine.h"
 #include "generic/c_fast_gaussian_blur_routine.h"
 #include "generic/c_neighbourhood_average_routine.h"
 #include "generic/c_morphology_routine.h"
@@ -281,6 +282,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
+    register_class_factory(c_gaussian_hpass_routine::class_factory_instance());
     register_class_factory(c_fast_gaussian_blur_routine::class_factory_instance());
     register_class_factory(c_neighbourhood_average_routine::class_factory_instance());
 

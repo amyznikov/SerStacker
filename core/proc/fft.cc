@@ -1554,7 +1554,8 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
   const int num_bins = std::max(180, cvRound(CV_PI * Rmax));
   const double bin_step = 180.0 / num_bins;
 
-  std::vector<float> histogram(num_bins, 0.0f);
+  cv::Mat1f HIST(1, num_bins, 0.0f);
+  float * __restrict histp = HIST[0];
 
   // Scan range
   const int y_start = std::max(0, cy - Rmax);
@@ -1582,54 +1583,55 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
 
         const int bin_idx = int(angle / bin_step);
         if( bin_idx >= 0 && bin_idx < num_bins ) {
-          const float w = float(srcp[x] * sqrt(r2));
-          histogram[bin_idx] += w;
+          //const float w = float(srcp[x] * sqrt(r2));
+          const float w = float(srcp[x]);
+          histp[bin_idx] += w;
         }
       }
     }
   }
 
-  // Smooth
-  //  cv::GaussianBlur(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), H,
-  //      cv::Size(15, 1), 0, 0, cv::BORDER_DEFAULT);
-  cv::Mat1f H, tmp;
-  const int border = 11;
-  const int gksize = 2 * border + 1;
+  cv::Mat1f H, Hp;
+  double globalMin, globalMax, globalRange;
+  cv::Point globalMaxPos;
 
-  cv::copyMakeBorder(cv::Mat(1, num_bins, CV_32FC1, histogram.data()), tmp, 0, 0, border, border, cv::BORDER_WRAP);
-  cv::GaussianBlur(tmp, tmp, cv::Size(gksize, 1), 0, 0, cv::BORDER_DEFAULT);
-  tmp(cv::Rect(border, 0, num_bins, 1)).copyTo(H);
+  const int border = num_bins / 2;
+  const cv::Rect roi(border, 0, num_bins, 1);
+  const int hksize = 55;
+  const int hpksize = 25;
 
-  if ( outputDebugHistogram.needed() ) {
-    cv::transpose(H, outputDebugHistogram);
+  cv::copyMakeBorder(HIST, H, 0, 0, border, border, cv::BORDER_WRAP);
+  cv::GaussianBlur(H, H, cv::Size(hksize, 1), 0, 0);
+  cv::GaussianBlur(H, Hp, cv::Size(hpksize, 1), 0, 0);
+  cv::subtract(H, Hp, Hp);
+
+  if( outputDebugHistogram.needed() ) {
+    cv::transpose(H(roi), outputDebugHistogram);
   }
 
-  // Search for the peak and apply 3-point cyclic subpixel parabolic interpolation
-  // Formula for the parabola vertex: x_opt = x_center + 0.5 * (y1 - y3) / (y1 - 2*y2 + y3)
-
-  const float * hp = H[0];
-  const auto maxpos = std::max_element(hp, hp + num_bins);
-  const int best_bin = maxpos - hp;
-  const int left_bin  = (best_bin - 1 + num_bins) % num_bins;
-  const int right_bin = (best_bin + 1) % num_bins;
-  const double y1 = hp[left_bin];
-  const double y2 = hp[best_bin];
-  const double y3 = hp[right_bin];
-  const double denom = y1 - 2.0 * y2 + y3;
-
-  double final_polar_angle = best_bin * bin_step;
-  if( std::abs(denom) > 0 ) {
-    const double delta_bin = 0.5 * (y1 - y3) / denom;
-    double subpixel_bin = best_bin + delta_bin;
-    if( subpixel_bin < 0.0 ) {
-      subpixel_bin += num_bins;
-    }
-    final_polar_angle = subpixel_bin * bin_step;
+  cv::minMaxLoc(H(roi), &globalMin, &globalMax, nullptr, &globalMaxPos);
+  if( !((globalRange = globalMax - globalMin) > 0) ) {
+    return 0;
   }
 
-  CF_DEBUG("\n-> [RADON FIXED] Polar Axis Angle: %g° | Bins: %d | Step: %g | R: [%d ... %d]",
-      final_polar_angle, num_bins, bin_step, Rmin, Rmax);
+  const int center = globalMaxPos.x + border;
+  double X = center * H(0, center);
+  double W = H(0, center);
 
-  return final_polar_angle - 90.0;
+  for( int i = center - 1; i >= 0 && Hp(0, i) > 0; --i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+  for( int i = center + 1; i < H.cols && Hp(0, i) > 0; ++i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+
+  const double angle = (X / W - border) * bin_step;
+  //CF_DEBUG("FFT: angle=%g", angle);
+
+  return angle;
 }
 

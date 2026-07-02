@@ -51,9 +51,9 @@ bool compute_hessian_eigenvalues(cv::InputArray gxx, cv::InputArray gxy, cv::Inp
  *    }
  */
 bool compute_histogram_of_gradient_directions(cv::InputArray _gx, cv::InputArray _gy,
-    cv::OutputArray outputHistogram, int gkradius = 25);
+    cv::OutputArray outputHistogram);
 bool compute_histogram_of_gradient_directions(cv::InputArray _image,
-    cv::OutputArray outputHistogram, int gkradius = 25);
+    cv::OutputArray outputHistogram);
 
 /**
 * @brief Spatial Radon via gradient tensor projection (Option 2)

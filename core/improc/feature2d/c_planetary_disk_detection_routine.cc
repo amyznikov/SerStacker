@@ -127,7 +127,7 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
   if ( _orientation_method == ORIENTATION_RADON_STENSOR ) {
 
     orientation_angle =
-        gradientEstimateRadonOrientation(grayImage);
+        gradientEstimateRadonOrientation(grayImage) + 90;
   }
   else {
 
@@ -142,7 +142,7 @@ bool c_planetary_disk_detection_routine::process(cv::InputOutputArray image, cv:
     fftSpectrumModule(INTENSITY_P, INTENSITY_Magnitude);
 
     orientation_angle =
-        fftEstimateRadonOrientation(INTENSITY_Magnitude);
+        fftEstimateRadonOrientation(INTENSITY_Magnitude) + 90;
   }
 
   if( orientation_angle > 90 ) {

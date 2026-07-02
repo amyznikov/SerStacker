@@ -575,8 +575,7 @@ void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, 
 }
 
 bool compute_histogram_of_gradient_directions(cv::InputArray _gx, cv::InputArray _gy,
-    cv::OutputArray outputHistogram,
-     int gkradius )
+    cv::OutputArray outputHistogram)
 {
   if ( _gx.depth() != CV_32F || _gy.depth() != CV_32F ) {
     CF_ERROR("Invalid args: CV_32F input gradients gx and gy expected");
@@ -609,15 +608,9 @@ bool compute_histogram_of_gradient_directions(cv::InputArray _gx, cv::InputArray
   std::vector<cv::Mat1f> H(cn);
   std::vector<float*> hptrs(cn);
 
-// for debug test
-  std::vector<cv::Mat1f> C(cn);
-  std::vector<float*> cptrs(cn);
-
   for ( int c = 0; c < cn; ++c ) {
     H[c].create(1, num_bins), H[c].setTo(0);
     hptrs[c] = H[c][0];
-    C[c].create(1, num_bins), C[c].setTo(0);
-    cptrs[c] = C[c][0];
   }
 
   for( int y = 1; y < size.height - 1; ++y ) {
@@ -634,71 +627,36 @@ bool compute_histogram_of_gradient_directions(cv::InputArray _gx, cv::InputArray
         if( g2 > 0.0 ) {
           // Normalize to range [0, 180)
           double angle = std::atan2(gy, gx) * 180.0 / CV_PI;
-          if( angle < 0.0 ) {
-            angle += 180.0;
-          }
-          if( angle >= 180.0 ) {
-            angle -= 180.0;
+          if( angle < 0 ) {
+            angle += 180;
           }
 
           // apply the 45° phase shift to the bin
-          const int b = static_cast<int>(angle / bin_step);
+          const int b = int(angle / bin_step);
           const int shifted_b = (b + shift_bins) % num_bins;
           if( shifted_b >= 0 && shifted_b < num_bins ) {
             hptrs[c][shifted_b] += sqrt(g2);
-// for debug test
-            cptrs[c][shifted_b] += 1;
           }
         }
       }
     }
   }
 
-// for debug test
-  for (int c = 0; c < cn; ++c ) {
-    float * hp = hptrs[c];
-    float * cp = cptrs[c];
-    for (int x = 0; x < num_bins; ++x ) {
-      if ( cp[x] > 1 ) {
-        hp[c] /= cp[x];
-      }
-    }
-  }
+  cv::merge(H, outputHistogram);
 
-  if( gkradius < 1 ) {
-    cv::merge(H, outputHistogram);
-  }
-  else {
-    // Smooth
-
-    cv::Mat tmp;
-    const int gksize = 2 * gkradius + 1;
-    const int border = gkradius;
-
-    if ( cn == 1 ) {
-      tmp = H[0];
-    }
-    else {
-      cv::merge(H, tmp);
-    }
-
-    cv::copyMakeBorder(tmp, tmp, 0, 0, border, border, cv::BORDER_WRAP);
-    cv::GaussianBlur(tmp, tmp, cv::Size(gksize, 1), 0, 0, cv::BORDER_DEFAULT);
-
-    tmp(cv::Rect(border, 0, num_bins, 1)).copyTo(outputHistogram);
-  }
   return true;
 }
 
 bool compute_histogram_of_gradient_directions(cv::InputArray _image,
-    cv::OutputArray outputHistogram,
-    int gkradius )
+    cv::OutputArray outputHistogram)
 {
   cv::Mat gx, gy;
   //differentiate(_image, gx, gy);
   compute_sobel_gradients(_image, gx, gy, cv::BORDER_REPLICATE, 1, 0);
-  return compute_histogram_of_gradient_directions(gx, gy, outputHistogram, gkradius);
+  return compute_histogram_of_gradient_directions(gx, gy, outputHistogram);
 }
+
+
 
 /**
 * @brief Spatial Radon via gradient tensor projection (Option 2)
@@ -708,44 +666,56 @@ bool compute_histogram_of_gradient_directions(cv::InputArray _image,
 double gradientEstimateRadonOrientation(const cv::Mat1f & spatialCrop,
     cv::OutputArray outputDebugHistogram )
 {
-  cv::Mat1f H;
+  cv::Mat1f H, Hp;
+  double angle = 0;
+  double globalMin, globalMax, globalRange;
+  cv::Point globalMaxPos;
 
-  compute_histogram_of_gradient_directions(spatialCrop, H, 55);
-
+  compute_histogram_of_gradient_directions(spatialCrop, H);
   const int num_bins = H.cols;
   const double bin_step = 180.0 / num_bins;
 
-  const float * hp = H[0];
-  const float * maxpos = std::max_element(hp, hp + num_bins);
-  const int best_bin = maxpos - hp;
-  const int left_bin = (best_bin - 1 + num_bins) % num_bins;
-  const int right_bin = (best_bin + 1) % num_bins;
-  const double y1 = hp[left_bin];
-  const double y2 = hp[best_bin];
-  const double y3 = hp[right_bin];
-  const double denom = y1 - 2.0 * y2 + y3;
+  const int border = num_bins / 2;
+  const cv::Rect roi(border, 0, num_bins, 1);
 
-  double angle = best_bin * bin_step;
-  if( denom != 0 ) {
-    const double delta_bin = 0.5 * (y1 - y3) / denom;
-    double subpixel_bin = best_bin + delta_bin;
-    if( subpixel_bin < 0.0 ) {
-      subpixel_bin += num_bins;
-    }
-    if( subpixel_bin >= num_bins ) {
-      subpixel_bin -= num_bins;
-    }
-    angle = subpixel_bin * bin_step;
+  const int hksize = 55;
+  const int hpksize = 25;
+
+  cv::copyMakeBorder(H, H, 0, 0, border, border, cv::BORDER_WRAP);
+  cv::GaussianBlur(H, H, cv::Size(hksize, 1), 0, 0);
+  if( outputDebugHistogram.needed() ) {
+    cv::transpose(H(roi), outputDebugHistogram);
   }
 
-    // RESTORE PHASE: subtract the added 45 degrees back
-  if( (angle -= 45.0) < 0.0 ) {
+  cv::minMaxLoc(H(roi), &globalMin, &globalMax, nullptr, &globalMaxPos);
+  if( !((globalRange = globalMax - globalMin) > 0) ) {
+    return 0;
+  }
+
+  cv::GaussianBlur(H, Hp, cv::Size(hpksize, 1), 0, 0);
+  cv::subtract(H, Hp, Hp);
+
+  const int center = globalMaxPos.x + border;
+  double X = center * H(0, center);
+  double W = H(0, center);
+
+  for( int i = center - 1; i >= 0 && Hp(0, i) > 0; --i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+  for( int i = center + 1; i < H.cols && Hp(0, i) > 0; ++i ) {
+    const double h = H(0, i);
+    X += i * h;
+    W += h;
+  }
+
+  // RESTORE PHASE: subtract the added 45 degrees back
+  if( ((angle = (X / W - border) * bin_step) -= 45.0) < 0.0 ) {
     angle += 180.0;
   }
 
-  if ( outputDebugHistogram.needed() ) {
-    cv::transpose(H, outputDebugHistogram);
-  }
+  // CF_DEBUG("Gradient: angle=%g", angle);
 
   return angle;
 }

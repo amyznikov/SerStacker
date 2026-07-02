@@ -20,7 +20,6 @@ class c_gaussian_filter
 {
 public:
   c_gaussian_filter();
-
   c_gaussian_filter(double sigmaX, double sigmaY, const cv::Size & ksize = cv::Size(), double scale = 1.0);
 
 
@@ -28,8 +27,20 @@ public:
   void apply(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
       int borderType = cv::BORDER_DEFAULT, int ddepth=-1) const;
 
-  double sigmax() const;
-  double sigmay() const;
+  double sigmax() const
+  {
+    return _sigmaX;
+  }
+
+  double sigmay() const
+  {
+    return _sigmaY;
+  }
+
+  const cv::Size & ksize() const
+  {
+    return _ksize;
+  }
 
 protected:
   static void create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype,
@@ -41,4 +52,18 @@ protected:
   cv::Size _ksize;
   cv::Mat _Kx, _Ky;
 };
+
+void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
+    const cv::Size2f & sigma, const cv::Size & ksize,
+    double scale = 1, double delta = 0,
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT,
+    const cv::Scalar & borderValue = cv::Scalar());
+
+void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
+    const cv::Size2f & sigma, const cv::Size & ksize,
+    double scale = 1, double delta = 0,
+    cv::BorderTypes borderType = cv::BORDER_DEFAULT,
+    const cv::Scalar & borderValue = cv::Scalar());
+
+
 #endif /* __c_gaussian_filter_h__ */

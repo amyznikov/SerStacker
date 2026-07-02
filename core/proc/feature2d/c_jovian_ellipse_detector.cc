@@ -351,7 +351,7 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
 
   // Apply apodization window for orientation detection
   if (_apodizationWindow.size() != cropSize ) {
-    _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.35 * CV_2PI, 12);
+    _apodizationWindow = fftGenerateButterworthFilter(cropSize, 0.4 * CV_2PI, 12);
   }
 
   //
@@ -361,10 +361,14 @@ bool c_jovian_ellipse_detector::detect(cv::InputArray inputImage, cv::InputArray
 
   switch (_opts.method) {
     case JOVIAN_ELLIPSE_DETECTION_RADON_FFT:
+      CF_DEBUG("C compute_jovian_orientation_radon_fft");
       ellipse_angle_deg = compute_jovian_orientation_radon_fft();
+      CF_DEBUG("R compute_jovian_orientation_radon_fft");
       break;
     case JOVIAN_ELLIPSE_DETECTION_RADON_STENSOR:
+      CF_DEBUG("C compute_jovian_orientation_radon_stensor");
       ellipse_angle_deg = compute_jovian_orientation_radon_stensor();
+      CF_DEBUG("R compute_jovian_orientation_radon_stensor");
       break;
     default:
       CF_ERROR("APP BUG: Not supported method %d requested", _opts.method);
@@ -466,6 +470,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
 
   if ( _opts.nscale > 0 ) {
     pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
+    cv::GaussianBlur(_grayscaleImageCrop, _grayscaleImageCrop, cv::Size(0, 0), 1, 1, cv::BORDER_REPLICATE);
   }
   cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
 
@@ -482,9 +487,9 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_fft()
 
   const double angle =
       fftEstimateRadonOrientation(_radonMagnitude,
-          _enableDebugImages ? _radonHistogram : cv::noArray());
+          _enableDebugImages ? _radonHistogram : cv::noArray()) + 90;
 
-  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
+//  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
 
   return angle;
 }
@@ -494,6 +499,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_stensor()
 {
   if ( _opts.nscale > 0 ) {
     pnormalize(_grayscaleImageCrop, _grayscaleImageCrop, _opts.nscale);
+    cv::GaussianBlur(_grayscaleImageCrop, _grayscaleImageCrop, cv::Size(0, 0), 7, 7, cv::BORDER_REPLICATE);
   }
   cv::multiply(_grayscaleImageCrop, _apodizationWindow, _grayscaleImageCrop);
 
@@ -501,7 +507,7 @@ double c_jovian_ellipse_detector::compute_jovian_orientation_radon_stensor()
       gradientEstimateRadonOrientation(_grayscaleImageCrop,
           _enableDebugImages ? _radonHistogram : cv::noArray()) + 90;
 
-  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
+//  CF_DEBUG("\n--> Polar Axis Position Angle: %g°", angle);
 
   return angle;
 }

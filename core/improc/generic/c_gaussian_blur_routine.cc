@@ -28,10 +28,11 @@ void c_gaussian_blur_routine::getcontrols(c_control_list & ctls, const ctlbind_c
    ctlbind(ctls, "ksizex", ctx(&this_class::_ksizex), "");
    ctlbind(ctls, "ksizey", ctx(&this_class::_ksizey), "");
    ctlbind(ctls, "scale", ctx(&this_class::_scale), "");
+   ctlbind(ctls, "delta", ctx(&this_class::_delta), "");
    ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "Ignore mask");
    ctlbind(ctls, "stereo_mode", ctx(&this_class::_stereo_mode), "");
    ctlbind(ctls, "border_type", ctx(&this_class::_border_type), "");
-   // ctlbind(ctls, "border_value", ctx(&this_class::_border_value), "");
+   ctlbind(ctls, "border_value", ctx(&this_class::_border_value), "");
 }
 
 bool c_gaussian_blur_routine::serialize(c_config_setting settings, bool save)
@@ -42,7 +43,9 @@ bool c_gaussian_blur_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _ksizex);
     SERIALIZE_OPTION(settings, save, *this, _ksizey);
     SERIALIZE_OPTION(settings, save, *this, _scale);
+    SERIALIZE_OPTION(settings, save, *this, _delta);
     SERIALIZE_OPTION(settings, save, *this, _border_type);
+    SERIALIZE_OPTION(settings, save, *this, _border_value);
     SERIALIZE_OPTION(settings, save, *this, _stereo_mode);
     return true;
   }
@@ -53,20 +56,28 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
 {
   switch (_stereo_mode) {
     case StereoNone:
-      if( _ignore_mask || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
-        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
-            apply(image.getMat(), cv::noArray(), image, _border_type);
-      }
-      else {
-        cv::Mat tmp;
-        image.getMat().copyTo(tmp);
-        tmp.setTo(0, ~mask.getMat());
-        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
-            apply(tmp, mask, image, _border_type);
-      }
+      gaussian_filter(image, mask, image,
+          cv::Size2f(_sigmax, _sigmay),
+          cv::Size(_ksizex, _ksizey),
+          _scale, _delta,
+          _border_type, _border_value);
+
+//      ();
+//      if( _ignore_mask || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
+//        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
+//            apply(image.getMat(), cv::noArray(), image, _border_type);
+//      }
+//      else {
+//        cv::Mat tmp;
+//        image.getMat().copyTo(tmp);
+//        tmp.setTo(0, ~mask.getMat());
+//        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
+//            apply(tmp, mask, image, _border_type);
+//      }
       break;
 
     case StereoHLayout: {
+      // FIXME: add support for BORDER_WRAP ansd _border_value also for StereoHLayout
 
       const cv::Mat src_image = image.getMat();
       const cv::Mat src_mask = mask.getMat();
@@ -98,6 +109,7 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
     }
 
     case StereoVLayout: {
+      // FIXME: add support for BORDER_WRAP ansd _border_value also for StereoVLayout
 
       const cv::Mat src_image = image.getMat();
       const cv::Mat src_mask = mask.getMat();

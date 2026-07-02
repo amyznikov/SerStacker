@@ -18,21 +18,11 @@ c_gaussian_filter::c_gaussian_filter(double sigmaX, double sigmaY, const cv::Siz
   create_gaussian_kernels(_Kx, _Ky, CV_32F, _ksize, _sigmaX, _sigmaY, _scale);
 }
 
-double c_gaussian_filter::sigmax() const
-{
-  return _sigmaX;
-}
-
-double c_gaussian_filter::sigmay() const
-{
-  return _sigmaY;
-}
-
 void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype, cv::Size & ksize, double sigmax, double sigmay, double scale)
 {
-  const int kdepth = CV_MAT_DEPTH(ktype);
+  // Auto setup kernel size from sigma if not specified explicitly
 
-  // Automatic detection of kernel size from sigma if not specified
+  const int kdepth = ktype < 0 ? CV_32F : CV_MAT_DEPTH(ktype);
 
   if( sigmax < 0 ) {
     sigmax = sigmay > 0 ? sigmay : 0;
@@ -43,7 +33,7 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
   if ( ksize.width <= 0 ) {
     if ( sigmax > 0 ) {
-      ksize.width = cvRound(sigmax * (kdepth == CV_8U ? 3 : 4) * 2 + 1) | 1;
+      ksize.width = std::max(3, 2 * cvRound(sigmax * (kdepth == CV_8U ? 3 : 4)) + 1);
     }
     else {
       ksize.width = 1;
@@ -52,7 +42,7 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
   if ( ksize.height <= 0 ) {
     if ( sigmay > 0  ) {
-      ksize.height = cvRound(sigmay * (kdepth == CV_8U ? 3 : 4) * 2 + 1) | 1;
+      ksize.height = std::max(3, 2 * cvRound(sigmay * (kdepth == CV_8U ? 3 : 4)) + 1);
     }
     else {
       ksize.height = 1;
@@ -120,7 +110,7 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
       CV_32F,
       (1.0 / 255) * _Kx, _Ky,
       cv::Point(-1, -1),
-      1e-12, // set to some small number to prevent division by zero below
+      0,
       borderType);
 
   if( gsrc.channels() != gmask.channels() ) {
@@ -128,4 +118,111 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
   }
 
   cv::divide(gsrc, gmask, _dst, 1, ddepth);
+  cv::compare(gmask, cv::Scalar::all(1e-5), gmask, cv::CMP_LE);
+  _dst.setTo(0, gmask);
+}
+
+
+void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
+    const cv::Size2f & sigma, const cv::Size & _ksize,
+    double scale, double delta,
+    cv::BorderTypes borderType,
+    const cv::Scalar & borderValue)
+{
+  cv::Mat src, mask, blured;
+
+  const c_gaussian_filter G(sigma.width, sigma.height, _ksize, scale);
+  const cv::Size ksize = G.ksize();
+  const cv::Size srcSize = _src.size();
+  const int ddepth = _dst.fixedType() ? _dst.depth() : std::max(_src.depth(), CV_32F);
+
+  int borderx = 0, bordery = 0;
+
+  if( borderType != cv::BORDER_WRAP ) {
+    if( _mask.empty() ) {
+      src = _src.getMat();
+    }
+    else {
+      mask = _mask.getMat();
+      _src.getMat().copyTo(src, mask);
+    }
+  }
+  else {
+    borderx = ksize.width > 1 ? ksize.width / 2 : 0;
+    bordery = ksize.height > 1 ? ksize.height / 2 : 0;
+    cv::copyMakeBorder(_src, src, bordery, bordery, borderx, borderx, borderType, borderValue);
+    if( !_mask.empty() ) {
+      cv::copyMakeBorder(_mask, mask, bordery, bordery, borderx, borderx, cv::BORDER_REPLICATE);
+      src.setTo(0, ~mask);
+    }
+    borderType = cv::BORDER_DEFAULT;
+  }
+
+  G.apply(src, mask, blured, borderType, ddepth);
+
+  if( borderx >= 1 || bordery >= 1 ) {
+    blured = blured(cv::Rect(borderx, bordery, srcSize.width, srcSize.height));
+  }
+
+  if( delta != 0 ) {
+    cv::add(blured, cv::Scalar::all(delta), _dst, cv::noArray(), ddepth);
+  }
+  else if( ddepth != blured.depth() ) {
+    blured.convertTo(_dst, ddepth);
+  }
+  else if( borderx >= 1 || bordery >= 1 ) {
+    blured.copyTo(_dst);
+  }
+  else {
+    _dst.assign(blured);
+  }
+}
+
+void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
+    const cv::Size2f & sigma, const cv::Size & _ksize,
+    double scale, double delta,
+    cv::BorderTypes borderType,
+    const cv::Scalar & borderValue)
+{
+  cv::Mat src, mask, blured, filtered;
+
+  const c_gaussian_filter G(sigma.width, sigma.height, _ksize, scale);
+  const cv::Size ksize = G.ksize();
+  const cv::Size srcSize = _src.size();
+  const int ddepth = _dst.fixedType() ? _dst.depth() : std::max(_src.depth(), CV_32F);
+
+  int borderx = 0, bordery = 0;
+
+  if( borderType != cv::BORDER_WRAP ) {
+    if( _mask.empty() ) {
+      src = _src.getMat();
+    }
+    else {
+      mask = _mask.getMat();
+      _src.getMat().copyTo(src, mask);
+    }
+  }
+  else {
+    borderx = ksize.width > 1 ? ksize.width / 2 : 0;
+    bordery = ksize.height > 1 ? ksize.height / 2 : 0;
+    cv::copyMakeBorder(_src, src, bordery, bordery, borderx, borderx, borderType, borderValue);
+    if( !_mask.empty() ) {
+      cv::copyMakeBorder(_mask, mask, bordery, bordery, borderx, borderx, cv::BORDER_REPLICATE);
+      src.setTo(0, ~mask);
+    }
+    borderType = cv::BORDER_DEFAULT;
+  }
+
+  G.apply(src, mask, blured, borderType, ddepth);
+  cv::subtract(src, blured, filtered);
+  if( delta != 0 ) {
+    cv::add(filtered, cv::Scalar::all(delta), filtered);
+  }
+
+  if( borderx < 1 && bordery < 1 ) {
+    _dst.assign(filtered);
+  }
+  else {
+    filtered(cv::Rect(borderx, bordery, srcSize.width, srcSize.height)).copyTo(_dst);
+  }
 }

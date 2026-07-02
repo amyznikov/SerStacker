@@ -34,49 +34,49 @@ const c_enum_member* members_of<THRESHOLD_TYPE>()
   return members;
 }
 
-double get_threshold_value(cv::InputArray image, cv::InputArray mask, THRESHOLD_TYPE threshold_type, double value)
+double get_threshold_value(cv::InputArray image, cv::InputArray mask, THRESHOLD_TYPE threshold_type, double defaultValue)
 {
-  double threshold_value = value;
+  double thresholdValue = defaultValue;
 
   switch (threshold_type) {
     case THRESHOLD_TYPE_OTSU:
-      threshold_value = get_otsu_threshold(image, mask);
+      thresholdValue = get_otsu_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_TRIANGLE:
-      threshold_value = get_triangle_threshold(image, mask);
+      thresholdValue = get_triangle_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_MOMENTS:
-      threshold_value = get_moments_threshold(image, mask);
+      thresholdValue = get_moments_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_ISODATA:
-      threshold_value = get_isodata_threshold(image, mask);
+      thresholdValue = get_isodata_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_HUANG:
-      threshold_value = get_huang_threshold(image, mask);
+      thresholdValue = get_huang_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_YEN:
-      threshold_value = get_yen_threshold(image, mask);
+      thresholdValue = get_yen_threshold(image, mask);
       break;
     case THRESHOLD_TYPE_MEAN:
-      threshold_value = cv::mean(image, mask)[0];
+      thresholdValue = cv::mean(image, mask)[0];
       break;
     case THRESHOLD_TYPE_MINIMUM:
-      threshold_value = get_minimum_threshold(image, mask);
+      thresholdValue = get_minimum_threshold(image, mask);
       break;
 
     case THRESHOLD_TYPE_NOISE: {
       const int cn = image.channels();
       const cv::Scalar s = estimate_noise(image, cv::noArray(), mask);
-      threshold_value = s[0];
+      thresholdValue = s[0];
       for( int i = 1; i < cn; ++i ) {
-        threshold_value += s[i];
+        thresholdValue += s[i];
       }
-      threshold_value /= cn;
+      thresholdValue /= cn;
       break;
     }
   }
 
-  return threshold_value;
+  return thresholdValue;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

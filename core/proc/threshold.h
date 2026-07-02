@@ -55,7 +55,7 @@ enum THRESHOLD_TYPE {
 
 double get_threshold_value(cv::InputArray image, cv::InputArray mask,
     THRESHOLD_TYPE threshold_type,
-    double value = 0);
+    double defaultValue = 0);
 
 ///////////////////////////////////////////////////////////////////////////////
 #endif /* __glv_threshold_h__*/

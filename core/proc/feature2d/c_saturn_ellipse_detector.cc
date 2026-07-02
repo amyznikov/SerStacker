@@ -361,6 +361,7 @@ void c_saturn_ellipse_detector::clear()
   _gy.release();
   _gr.release();
   _grth.release();
+  _debugImage.release();
 }
 
 bool c_saturn_ellipse_detector::detect(cv::InputArray image, cv::InputArray mask)
@@ -447,13 +448,16 @@ bool c_saturn_ellipse_detector::detect_initial_mask(cv::InputArray _input_image,
   }
 
   // Detect planetary disk and extract pixel mask covering planetary disk shape
-  bool fOk =
+  const bool planetaryDiskDetected =
       simple_planetary_disk_detector(_grayscale_image, _input_mask,
           _opts.planetary_disk_detector_options,
           &_detected_component_centroid,
           &_detected_component_roi,
-          &_initial_mask);
-  if( !fOk ) {
+          &_initial_mask,
+          nullptr,
+          _debugImage);
+
+  if( !planetaryDiskDetected ) {
     CF_ERROR("simple_planetary_disk_detector() fails");
     return false;
   }

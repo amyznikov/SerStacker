@@ -97,7 +97,8 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
     cv::Point2f * output_centroid,
     cv::Rect * optional_output_component_rect,
     cv::Mat * optional_output_cmponent_mask,
-    cv::Point2f * optional_output_geometrical_center)
+    cv::Point2f * optional_output_geometrical_center,
+    cv::OutputArray outputDebugImage)
 {
   cv::Mat src, gray, mgrad;
   cv::Mat1b comp;
@@ -122,16 +123,26 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
     GaussianBlur(gray, gray, cv::Size(0, 0), gsigma, gsigma);
   }
 
+  se_radius = std::max(1, se_radius);
   const cv::Size se1_size(2 * se_radius + 1, 2 * se_radius + 1);
   static thread_local cv::Mat1b SE1;
   if ( SE1.size() != se1_size ) {
     SE1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, se1_size);
   }
   cv::morphologyEx(gray, mgrad, cv::MORPH_GRADIENT, SE1, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
-  cv::compare(mgrad, get_otsu_threshold(mgrad, mask), comp, cv::CMP_GE);
-  morphological_smooth_close(comp, comp, SE1, cv::BORDER_REPLICATE);
-  //cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE1, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
 
+  const double T = get_otsu_threshold(mgrad, mask);
+  cv::compare(mgrad, T, comp, cv::CMP_GE);
+  if ( outputDebugImage.needed() ) {
+    mgrad.copyTo(outputDebugImage);
+  }
+
+  const cv::Size se2_size(4 * se_radius + 1, 4 * se_radius + 1);
+  static thread_local cv::Mat1b SE2;
+  if ( SE2.size() != se2_size ) {
+    SE1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, se1_size);
+  }
+  cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE2, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   geo_fill_holes(comp, comp, 8);
   if ( !mask.empty() ) {
     comp.setTo(0, ~mask.getMat());

@@ -39,21 +39,24 @@ bool simple_planetary_disk_detector(cv::InputArray image, cv::InputArray mask,
     cv::Point2f * optional_output_centroid = nullptr,
     cv::Rect * optional_output_component_rect = nullptr,
     cv::Mat * optional_output_cmponent_mask = nullptr,
-    cv::Point2f * optional_output_geometrical_center = nullptr);
+    cv::Point2f * optional_output_geometrical_center = nullptr,
+    cv::OutputArray outputDebugImage = cv::noArray());
 
 inline bool simple_planetary_disk_detector(cv::InputArray image, cv::InputArray mask,
     const c_simple_planetary_disk_detector_options & opts,
     cv::Point2f * optional_output_centroid = nullptr,
     cv::Rect * optional_output_component_rect = nullptr,
     cv::Mat * optional_output_cmponent_mask = nullptr,
-    cv::Point2f * optional_output_geometrical_center = nullptr)
+    cv::Point2f * optional_output_geometrical_center = nullptr,
+    cv::OutputArray outputDebugImage = cv::noArray())
 {
   return simple_planetary_disk_detector(image, mask,
       opts.gbsigma, opts.se_radius,
       optional_output_centroid,
       optional_output_component_rect,
       optional_output_cmponent_mask,
-      optional_output_geometrical_center);
+      optional_output_geometrical_center,
+      outputDebugImage);
 }
 
 #endif /* __planetary_disk_detection_h__ */

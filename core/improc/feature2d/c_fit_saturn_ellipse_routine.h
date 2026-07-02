@@ -32,6 +32,7 @@ public:
     display_grth_fit,
     display_grid,
     display_final_fit,
+    display_debug_image,
   };
 
   bool serialize(c_config_setting settings, bool save) final;

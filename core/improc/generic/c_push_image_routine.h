@@ -23,9 +23,7 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  std::string _artifact_name  = "saved_image";
-//  bool _push_image = true;
-//  bool _push_mask = true;
+  std::string _artifact_name  = "src";
 };
 
 #endif /* __c_push_current_image_routine_h__ */

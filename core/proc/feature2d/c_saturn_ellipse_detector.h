@@ -107,6 +107,11 @@ public:
     return _pose;
   }
 
+  const cv::Mat & debugImage() const
+  {
+    return _debugImage;
+  }
+
 protected:
   bool detect_initial_mask(cv::InputArray input_image, cv::InputArray input_mask);
   bool detect_pca_rect();
@@ -120,6 +125,7 @@ protected:
   cv::Mat1b _pca_mask;
   cv::Mat1b _skirt_mask;
   cv::Mat1f _gx, _gy, _gr, _grth;
+  cv::Mat _debugImage;
 
   double _apparent_axis_ratio = k_saturn_axis_ratio;
   cv::Point2f _detected_component_centroid;

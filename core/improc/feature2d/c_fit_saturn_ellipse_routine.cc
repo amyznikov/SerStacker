@@ -24,6 +24,8 @@ const c_enum_member * members_of<c_fit_saturn_ellipse_routine::display_type>()
       { c_fit_saturn_ellipse_routine::display_grth, "grth", },
       { c_fit_saturn_ellipse_routine::display_grth_fit, "grth_fit", },
       { c_fit_saturn_ellipse_routine::display_grid, "grid", },
+      { c_fit_saturn_ellipse_routine::display_debug_image, "debug_image", },
+
       { c_fit_saturn_ellipse_routine::display_final_fit, },
   };
 
@@ -105,7 +107,7 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
   switch (_display_type) {
     case display_gray_image:
       _detector.grayscale_image().copyTo(image);
-      _detector.pca_mask().copyTo(mask);
+      //_detector.pca_mask().copyTo(mask);
       break;
 
     case display_initial_mask:
@@ -176,6 +178,13 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
       mask.release();
       break;
     }
+
+    case display_debug_image: {
+      _detector.debugImage().copyTo(image);
+      //mask.release();
+      break;
+    }
+
   }
   return true;
 }

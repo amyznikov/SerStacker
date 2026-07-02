@@ -264,6 +264,15 @@ QGraphicsLineShape::AlignMode QGraphicsLineShape::alignMode() const
   return _alignMode;
 }
 
+void QGraphicsLineShape::setMoveMode(MoveMode v)
+{
+  _moveMode = v;
+}
+
+QGraphicsLineShape::MoveMode QGraphicsLineShape::moveMode() const
+{
+  return _moveMode;
+}
 
 QRectF QGraphicsLineShape::boundingRect() const
 {
@@ -544,22 +553,22 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
 
         }
         else {
-          currentMouseAction_ =
-              MouseAction_MoveWholeLine;
+          currentMouseAction_ = MouseAction_MoveWholeLine;
 
           /////////////////////
 
-          const QPointF delta =
-              e->pos() - (_snapToPixelGrid ? _lastPos : e->lastPos());
+          const QPointF delta = e->pos() - (_snapToPixelGrid ? _lastPos : e->lastPos());
+          const qreal delta_x = _moveMode == MoveAny || _moveMode == MoveHorz ? delta.x() : 0;
+          const qreal delta_y = _moveMode == MoveAny || _moveMode == MoveVert ? delta.y() : 0;
 
-          if ( delta.x() || delta.y() ) {
+          if ( delta_x || delta_y ) {
 
             if( !_snapToPixelGrid ) {
 
               prepareGeometryChange();
 
-              _line.setP1(_line.p1() + delta);
-              _line.setP2(_line.p2() + delta);
+              _line.setP1(_line.p1() + QPointF(delta_x, delta_y));
+              _line.setP2(_line.p2() + QPointF(delta_x, delta_y));
 
               updateGeometry();
               update();
@@ -574,8 +583,8 @@ void QGraphicsLineShape::mouseMoveEvent(QGraphicsSceneMouseEvent * e)
               const QPointF p1 = _line.p1();
               const QPointF p2 = _line.p2();
 
-              const QPointF p3(qRound(p1.x() + delta.x()) + 0.5, qRound(p1.y() + delta.y()) + 0.5);
-              const QPointF p4(qRound(p2.x() + delta.x()) + 0.5, qRound(p2.y() + delta.y()) + 0.5);
+              const QPointF p3(qRound(p1.x() + delta_x) + 0.5, qRound(p1.y() + delta_y) + 0.5);
+              const QPointF p4(qRound(p2.x() + delta_x) + 0.5, qRound(p2.y() + delta_y) + 0.5);
 
               if( p3.x() != p1.x() || p3.y() != p1.y() || p4.x() != p2.x() || p4.y() != p2.y() ) {
 
@@ -628,7 +637,7 @@ static QAction * createAction(const QString & text, Fn && fn)
   return action;
 }
 
-void QGraphicsLineShape::popuateContextMenu(QMenu &menu, const QPoint &viewpos)
+void QGraphicsLineShape::populateContextMenu(QMenu &menu, const QPoint &viewpos)
 {
   menu.addAction(createCheckableAction("Options...", false,
       [this](bool checked) {
@@ -655,17 +664,7 @@ void QGraphicsLineShape::popuateContextMenu(QMenu &menu, const QPoint &viewpos)
         setSnapToPixelGrid(checked);
       }));
 
-  menu.addAction(createCheckableAction("Align Vertically",
-      _alignMode == AlignVert,
-      [this](bool checked) {
-        if ( !checked ) {
-          _alignMode = AlignNone;
-        }
-        else {
-          alignVertically();
-          _alignMode = AlignVert;
-        }
-      }));
+  menu.addSeparator();
 
   menu.addAction(createCheckableAction("Align Horizontally",
       _alignMode == AlignHorz,
@@ -679,8 +678,34 @@ void QGraphicsLineShape::popuateContextMenu(QMenu &menu, const QPoint &viewpos)
         }
       }));
 
+  menu.addAction(createCheckableAction("Align Vertically",
+      _alignMode == AlignVert,
+      [this](bool checked) {
+        if ( !checked ) {
+          _alignMode = AlignNone;
+        }
+        else {
+          alignVertically();
+          _alignMode = AlignVert;
+        }
+      }));
+
+  menu.addAction(createCheckableAction("Move Horizontally",
+      _moveMode == MoveHorz,
+      [this](bool checked) {
+        setMoveMode(checked ? MoveHorz : MoveAny);
+      }));
+
+
+  menu.addAction(createCheckableAction("Move Vertically",
+      _moveMode == MoveVert,
+      [this](bool checked) {
+        setMoveMode(checked ? MoveVert : MoveAny);
+      }));
+
   menu.addSeparator();
-  Base::popuateContextMenu(menu, viewpos);
+
+  Base::populateContextMenu(menu, viewpos);
 }
 
 void QGraphicsLineShape::showShapeSettings()

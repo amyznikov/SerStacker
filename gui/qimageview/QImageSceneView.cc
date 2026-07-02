@@ -368,7 +368,7 @@ void QImageSceneView::populateContextMenu(QMenu & menu, const QPoint & viewpos)
                 });
           }
 
-          shape->popuateContextMenu(menu, viewpos);
+          shape->populateContextMenu(menu, viewpos);
           menu.addSeparator();
         }
         else if (zItem) {

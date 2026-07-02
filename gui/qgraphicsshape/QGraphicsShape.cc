@@ -140,7 +140,7 @@ bool QGraphicsShape::inUpdatingPos() const
   return _inUpdatingPos;
 }
 
-void QGraphicsShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
+void QGraphicsShape::populateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   Q_EMIT populateContextMenuReuested(this, menu, viewpos);
 }

@@ -53,7 +53,7 @@ public:
   static QGraphicsShape * load(const QSettings & settings,
       const QString & sectionName);
 
-  virtual void popuateContextMenu(QMenu & menu, const QPoint & viewpos);
+  virtual void populateContextMenu(QMenu & menu, const QPoint & viewpos);
 
 Q_SIGNALS:
   void itemChanged(QGraphicsShape* _this);

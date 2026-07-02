@@ -708,7 +708,7 @@ void QGraphicsRectShape::showShapeSettings()
   dialogBox.exec();
 }
 
-void QGraphicsRectShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
+void QGraphicsRectShape::populateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   QAction * action;
   QMenu * subMenu;
@@ -769,5 +769,5 @@ void QGraphicsRectShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos
       });
 
   menu.addSeparator();
-  Base::popuateContextMenu(menu, viewpos);
+  Base::populateContextMenu(menu, viewpos);
 }

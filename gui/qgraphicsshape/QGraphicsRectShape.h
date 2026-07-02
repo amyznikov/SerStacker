@@ -69,7 +69,7 @@ public:
 
   void showShapeSettings();
 
-  void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
+  void populateContextMenu(QMenu & menu, const QPoint & viewpos) override;
 
 protected:
   QRectF boundingRect() const override;

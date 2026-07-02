@@ -25,6 +25,12 @@ public:
     AlignHorz,
   };
 
+  enum MoveMode {
+    MoveAny,
+    MoveVert,
+    MoveHorz,
+  };
+
   explicit QGraphicsLineShape(QGraphicsItem * parent = nullptr);
   explicit QGraphicsLineShape(const QLineF & line, QGraphicsItem * parent = nullptr);
   explicit QGraphicsLineShape(const QPointF & p1, const QPointF & p2,  QGraphicsItem * parent = nullptr);
@@ -65,7 +71,10 @@ public:
   void setAlignMode(AlignMode v);
   AlignMode alignMode() const;
 
-  void popuateContextMenu(QMenu & menu, const QPoint & viewpos) override;
+  void setMoveMode(MoveMode v);
+  MoveMode moveMode() const;
+
+  void populateContextMenu(QMenu & menu, const QPoint & viewpos) override;
 
 protected:
   QRectF boundingRect() const override;
@@ -93,6 +102,7 @@ protected:
   } currentMouseAction_ = MouseAction_None;
 
   AlignMode _alignMode = AlignNone;
+  MoveMode _moveMode = MoveAny;
   bool _lockP1 = false;
   bool _lockP2 = false;
 };

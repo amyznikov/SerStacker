@@ -316,7 +316,7 @@ void QGraphicsTargetShape::onSceneRectChanged(const QRectF &rect)
   }
 }
 
-void QGraphicsTargetShape::popuateContextMenu(QMenu & menu, const QPoint & viewpos)
+void QGraphicsTargetShape::populateContextMenu(QMenu & menu, const QPoint & viewpos)
 {
   QAction * action;
 
@@ -345,7 +345,7 @@ void QGraphicsTargetShape::popuateContextMenu(QMenu & menu, const QPoint & viewp
       });
 
   menu.addSeparator();
-  Base::popuateContextMenu(menu, viewpos);
+  Base::populateContextMenu(menu, viewpos);
 }
 
 void QGraphicsTargetShape::showShapeSettings()

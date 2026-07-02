@@ -181,25 +181,6 @@ static bool detect_primary_orientation_pcaw(cv::InputArray image, cv::InputArray
   return true;
 }
 
-//// Compute first-order derivatives
-//static void differentiate(cv::InputArray _src, cv::OutputArray gx, cv::OutputArray gy, double gbsigma = 0)
-//{
-//  static float deriv_kernel[] = { +1. / 12, -2. / 3, +0., +2. / 3, -1. / 12 };
-//  static const cv::Matx<float, 1, 5> Kx = cv::Matx<float, 1, 5>(deriv_kernel);
-//  static const cv::Matx<float, 5, 1> Ky = cv::Matx<float, 5, 1>(deriv_kernel);
-//
-//  if( !(gbsigma > 0) ) {
-//    cv::filter2D(_src, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//    cv::filter2D(_src, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  }
-//  else {
-//    cv::Mat tmp;
-//    cv::GaussianBlur(_src, tmp, cv::Size(0, 0), gbsigma, gbsigma, cv::BORDER_REPLICATE);
-//    cv::filter2D(tmp, gx, CV_32F, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//    cv::filter2D(tmp, gy, CV_32F, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  }
-//}
-
 static bool extract_points(const cv::Mat1f & gr_image, const cv::Mat1b & mask,
     const cv::RotatedRect & roi, std::vector<cv::Point3f> & pts, bool weighted = true)
 {
@@ -499,7 +480,7 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   cv::RotatedRect _skirt_ellipse = _skirt_roi;
   _skirt_ellipse.size.width -= 3 * skirt_size / 2;
   _skirt_ellipse.size.height -= 3 * skirt_size / 2;
-  cv::ellipse(_skirt_mask, _skirt_ellipse, cv::Scalar::all(255), 3 * skirt_size / 2, cv::LINE_8);
+  cv::ellipse(_skirt_mask, _skirt_ellipse, cv::Scalar::all(255), 2 * skirt_size, cv::LINE_8);
   if (std::abs(_opts.planetary_disk_tilt) > 15.0) {
     filter_skirt_mask(_skirt_mask, _skirt_roi);
   }
@@ -510,8 +491,11 @@ bool c_saturn_ellipse_detector::compute_radial_gradient(cv::InputArray _input_im
   static const cv::Mat1b THSE(5, 5, uint8_t(255));
   extract_channel(_input_image, _gradient_image, cv::noArray(), cv::noArray(), _opts.gradient_channel, CV_32F);
   differentiate(_gradient_image, _gx, _gy);
-  project_to_radius_vector(_detected_component_centroid, _gx, _gy, _gr, cv::noArray());
-  cv::multiply(_gr, cv::Scalar::all(-1e4), _gr);
+  project_to_radius_vector(_detected_component_centroid, _gx, _gy, _gr, cv::noArray(), -1e4);
+  if ( _opts.sigma_contour > 0 ) {
+    cv::GaussianBlur(_gr, _gr, cv::Size(), _opts.sigma_contour, _opts.sigma_contour, cv::BORDER_REPLICATE);
+  }
+
   cv::max(_gr, 0.f, _grth);
   cv::morphologyEx(_grth, _grth, cv::MORPH_TOPHAT, THSE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   _gr.setTo(0, ~_skirt_mask);

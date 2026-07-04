@@ -1271,19 +1271,20 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool cent
   for (int x = 0; x < fftSize.width; ++x) {
     cosX[x] = std::cos((x - cx) * scaleX);
   }
+
   for (int y = 0; y < fftSize.height; ++y) {
     cosY[y] = std::cos((y - cy) * scaleY);
   }
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, cosX_ptr = cosX.data(), cosY_ptr = cosY.data(), &cosY, &FILTER](const cv::Range & range) {
+      [=, cosx = cosX.data(), cosy = cosY.data(), &FILTER](const cv::Range & range) {
 
         for (int y = range.start; y < range.end; ++y) {
           float * __restrict dstp = FILTER[y];
-          const double cos_y = cosY_ptr[y];
+          const double cos_y = cosy[y];
 
           for (int x = 0; x < fftSize.width; ++x) {
-            const double denom = 2.0 * (2.0 - cosX_ptr[x] - cos_y);
+            const double denom = 2.0 * (2.0 - cosx[x] - cos_y);
             dstp[x] = float(1.0 / denom);
           }
         }

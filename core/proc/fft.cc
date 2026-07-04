@@ -611,61 +611,6 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
       });
 }
 
-
-// reconstruct2DEllipticCorrect
-//void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
-//    cv::Mat1f & outputImage)
-//{
-//  const cv::Size & size = outputImageSize;
-//
-//  const double cx = size.width / 2;
-//  const double cy = size.height / 2;
-//  const int numBins = radialProfile.cols;
-//  const double maxNormalizedR = std::sqrt(2.0);
-//
-//  const double scaleX = 1. / cx;
-//  const double scaleY = 1. / cy;
-//
-//  outputImage.create(size);
-//
-//  cv::parallel_for_(cv::Range(0, size.height),
-//      [=, &radialProfile, &outputImage](const cv::Range & range) {
-//
-//        const float * bins = radialProfile[0];
-//
-//        bool reported = false;
-//
-//        for (int y = range.start; y < range.end; ++y) {
-//          float * __restrict dstp = outputImage[y];
-//
-//          const double dy = (y - cy) * scaleY;
-//          const double dy2 = dy * dy;
-//
-//          for (int x = 0; x < size.width; ++x) {
-//
-//            const double dx = (x - cx) * scaleX;
-//            const double dx2 = dx * dx;
-//
-//            const double r = std::sqrt(dx2 + dy2);
-//            const double continuousBinIdx = r * numBins / maxNormalizedR - 0.5;
-//            if( continuousBinIdx >= numBins - 1 ) {
-//              dstp[x] = bins[numBins - 1];
-//            }
-//            else if( continuousBinIdx < 0.0 ) {
-//              dstp[x] = bins[0];
-//            }
-//            else {
-//              const int idx0 = static_cast<int>(std::floor(continuousBinIdx));
-//              const int idx1 = idx0 + 1;
-//              const double w1 = continuousBinIdx - idx0;
-//              const double w0 = 1.0 - w1;
-//              dstp[x] = float(w0 * bins[idx0] + w1 * bins[idx1]);
-//            }
-//          }
-//        }
-//      });
-//}
-
 void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     const std::vector<double> & coeffs,
     std::vector<double> & profile_before,
@@ -808,76 +753,6 @@ void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
     dst.move(image);
   }
 }
-
-
-//void fftSharpenR1(cv::InputArray image, cv::OutputArray dst, double scale, bool preserve_l2_norm)
-//{
-//  typedef tbb::blocked_range<int> range;
-//
-//  std::vector<cv::Mat2f> channels;
-//  double saved_image_norm = 1;
-//  cv::Rect rc;
-//
-//  if ( preserve_l2_norm ) {
-//    saved_image_norm = cv::norm(image, cv::NORM_L2);
-//  }
-//
-//  fftImageToSpectrum(image, channels, cv::Size(32, 32), &rc);
-//
-//  for ( int c = 0, cn = channels.size(); c < cn; ++c ) {
-//
-//    cv::Mat2f & spec = channels[c];
-//
-//    fftSwapQuadrants(spec);
-//
-//    if ( scale >= 0 ) {
-//      // sharpen
-//
-//      tbb::parallel_for(range(0, spec.rows, 64),
-//          [&spec, scale] (const range & r) {
-//
-//            const double x0 = spec.cols / 2;
-//            const double y0 = spec.rows / 2;
-//
-//            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-//              for ( int x = 0; x < spec.cols; ++x ) {
-//                const double r1 = 1. + scale * hyp((x - x0) / x0, (y - y0) / y0);
-//                spec[y][x][0] *= r1;
-//                spec[y][x][1] *= r1;
-//              }
-//            }
-//          });
-//    }
-//    else {
-//      // smoothing
-//
-//      tbb::parallel_for(range(0, spec.rows, 64),
-//          [&spec, scale] (const range & r) {
-//
-//            const double x0 = spec.cols / 2;
-//            const double y0 = spec.rows / 2;
-//
-//            for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-//              for ( int x = 0; x < spec.cols; ++x ) {
-//                const double r1 = 1./(1. - scale * hyp((x - x0) / x0, (y - y0) / y0));
-//                spec[y][x][0] *= r1;
-//                spec[y][x][1] *= r1;
-//              }
-//            }
-//          });
-//    }
-//
-//    fftSwapQuadrants(spec);
-//  }
-//
-//  fftImageFromSpectrum(channels, dst, rc);
-//
-//  if ( preserve_l2_norm ) {
-//    cv::multiply(dst, saved_image_norm / cv::norm(image, cv::NORM_L2), dst);
-//  }
-//}
-
-
 
 bool fftAccumulatePowerSpectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
 {
@@ -1168,7 +1043,7 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
 
   cv::Mat1f FILTER(fftSize);
 
-  cv::parallel_for_(cv::Range(0, fftSize.height / 2 + 1),
+  cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
 
         const float bworder2 = bworder / 2.;
@@ -1180,29 +1055,19 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
         const float cx = fftSize.width / 2.0;
         const float cy = fftSize.height / 2.0;
 
-        const int xmax = fftSize.width / 2; // + 1;
-
         for (int y = range.start; y < range.end; ++y) {
-          const int mirrorY = (y == 0) ? 0 : fftSize.height - y;
 
-          float * __restrict row_top = FILTER[y];
-          float * __restrict row_bot = FILTER[mirrorY];
+          float * __restrict dstp = FILTER[y];
 
           const float dy = (y - cy) * scaleY;
           const float dy2 = dy * dy;
 
-          for (int x = 0; x <= xmax; ++x) {
-            const int mirrorX = (x == 0) ? 0 : fftSize.width - x;
-
+          for (int x = 0; x < fftSize.width; ++x) {
             const float dx = (x - cx) * scaleX;
-            const float dr2 = (dx * dx) + dy2;
-
+            const float dx2 = dx * dx;
+            const float dr2 = dx2 + dy2;
             const float v = 1.f + gainf * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
-
-            row_top[x] = v;
-            row_top[mirrorX] = v;
-            row_bot[x] = v;
-            row_bot[mirrorX] = v;
+            dstp[x] = v;
           }
         }
       });

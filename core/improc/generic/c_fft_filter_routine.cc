@@ -238,12 +238,9 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   }
 
   if ( _display == DISPLAY_VLAP ) {
-    // No further processing requested
     mask.release();
     return fftDisplay(VLAP, image);
   }
-
-
 
   std::vector<cv::Mat> real_channels(cn);
   std::vector<cv::Mat> complex_channels(cn);

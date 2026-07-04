@@ -1159,6 +1159,13 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,
     bool centerDC)
 {
+  // Isotropic Laplacian
+  // The frequency step is tied to the physical dimensions of the matrix
+  // fx = dx / width, fy = dy / height
+  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
+
+  // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
+
   cv::Mat1f FILTER(fftSize);
 
   cv::parallel_for_(cv::Range(0, fftSize.height / 2 + 1),
@@ -1173,7 +1180,7 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
         const float cx = fftSize.width / 2.0;
         const float cy = fftSize.height / 2.0;
 
-        const int xmax = fftSize.width / 2 + 1;
+        const int xmax = fftSize.width / 2; // + 1;
 
         for (int y = range.start; y < range.end; ++y) {
           const int mirrorY = (y == 0) ? 0 : fftSize.height - y;
@@ -1184,7 +1191,7 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
           const float dy = (y - cy) * scaleY;
           const float dy2 = dy * dy;
 
-          for (int x = 0; x < xmax; ++x) {
+          for (int x = 0; x <= xmax; ++x) {
             const int mirrorX = (x == 0) ? 0 : fftSize.width - x;
 
             const float dx = (x - cx) * scaleX;
@@ -1245,48 +1252,47 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
   }
 
   return FILTER;
-
 }
 
 
-// Discrete Laplacian Filter for Periodic+Smooth Decomposition
+// Multiplicative Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)
 {
   cv::Mat1f FILTER(fftSize);
 
-  // Frequency step for discrete cosine grid
   const double scaleX = CV_2PI / fftSize.width;
   const double scaleY = CV_2PI / fftSize.height;
-  const double cx = centerDC ? (fftSize.width / 2.0) : 0.0;
-  const double cy = centerDC ? (fftSize.height / 2.0) : 0.0;
+  const int cx = centerDC ? fftSize.width / 2 : 0;
+  const int cy = centerDC ? fftSize.height / 2 : 0;
+
+  std::vector<double> cosX(fftSize.width);
+  std::vector<double> cosY(fftSize.height);
+
+  for (int x = 0; x < fftSize.width; ++x) {
+    cosX[x] = std::cos((x - cx) * scaleX);
+  }
+  for (int y = 0; y < fftSize.height; ++y) {
+    cosY[y] = std::cos((y - cy) * scaleY);
+  }
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
+      [=, cosX_ptr = cosX.data(), cosY_ptr = cosY.data(), &cosY, &FILTER](const cv::Range & range) {
+
         for (int y = range.start; y < range.end; ++y) {
           float * __restrict dstp = FILTER[y];
-          // Frequency shift y relative to the position of the DC component
-          const double wy = (y - cy) * scaleY;
-          const double cos_y = std::cos(wy);
+          const double cos_y = cosY_ptr[y];
 
           for (int x = 0; x < fftSize.width; ++x) {
-            const double wx = (x - cx) * scaleX;
-            const double cos_x = std::cos(wx);
-            const double denom = 2.0 * (2.0 - cos_x - cos_y);
+            const double denom = 2.0 * (2.0 - cosX_ptr[x] - cos_y);
             dstp[x] = float(1.0 / denom);
           }
         }
       });
 
-  if( centerDC ) {
-    FILTER(int(cy), int(cx)) = 0.0f;
-  }
-  else {
-    FILTER(0, 0) = 0.0f;
-  }
+  FILTER(cy, cx) = 0.f;
 
   return FILTER;
 }
-
 
 // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
 cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,

@@ -22,15 +22,17 @@ public:
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
-  bool compute_planetary_disk_weights(const cv::Mat & src_ecc_image,
-      const cv::Mat & src_mask,
-      cv::Mat1f & weights) const;
+//  bool compute_planetary_disk_weights(const cv::Mat & src_ecc_image,
+//      const cv::Mat & src_mask,
+//      cv::Mat & planetary_disk_mask,
+//      cv::Mat1f & weights) const;
 
 protected:
   double _alpha = 0.5;
   double _gsigma = 1;
   double _blur_radius = 1;
   int _se_radius = 5;
+  bool _show_mask = false;
   bool _show_weights = false;
   bool _l1norm = false;
 };

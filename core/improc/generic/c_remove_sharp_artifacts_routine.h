@@ -24,11 +24,9 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Size _erode_radius = cv::Size(5, 5);
-  double _noise_scale = 10;
+  cv::Size _mask_erode_radius = cv::Size(5, 5);
   double _mask_blur_radius = 3;
   double _edge_blur_radius = 1.5;
-  bool _fill_holes = true;
   bool _show_mask = false;
   bool _show_blured_image = false;
 };

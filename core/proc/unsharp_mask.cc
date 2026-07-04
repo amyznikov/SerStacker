@@ -186,7 +186,7 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
 
 
 template<class TSRC, class TDST>
-static void do_unsharp_mask_(cv::InputArray _src, cv::InputArray srcmask,
+static void _do_unsharp_mask(cv::InputArray _src, cv::InputArray srcmask,
     cv::OutputArray _dst,
     double sigma, double w,
     double outmin,
@@ -291,25 +291,25 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
       }
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
@@ -320,25 +320,25 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
       }
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
@@ -348,25 +348,25 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
       }
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
@@ -376,25 +376,25 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
       }
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
@@ -404,75 +404,75 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
       }
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
     case CV_32F :
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;
     case CV_64F :
       switch ( src.depth() ) {
       case CV_8U :
-        do_unsharp_mask_<uint8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_8S :
-        do_unsharp_mask_<int8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16U :
-        do_unsharp_mask_<uint16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<uint16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_16S :
-        do_unsharp_mask_<int16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32S :
-        do_unsharp_mask_<int32_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<int32_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_32F :
-        do_unsharp_mask_<float, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<float, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       case CV_64F :
-        do_unsharp_mask_<double, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
+        _do_unsharp_mask<double, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
         break;
       }
       break;

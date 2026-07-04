@@ -18,7 +18,9 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_LAPLACIAN, "LAPLACIAN", },
       { c_fft_filter_routine::FILTER_RAMP, "RAMP", },
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
-      { c_fft_filter_routine::FILTER_GAUSSIAN_UNSHARP, "GAUSSIAN_UNSHARP", },
+      { c_fft_filter_routine::FILTER_GAUSSIAN_SHARP, "GAUSSIAN_SHARP", },
+      { c_fft_filter_routine::FILTER_LAPLACIAN_SHARP, "LAPLACIAN_SHARP", },
+
       { c_fft_filter_routine::FILTER_GAUSSIAN, },
 
   };
@@ -72,10 +74,17 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Gaussian unsharp filter options",
-      [&, ctx = CTL_CONTEXT(ctx, gaussian_unsharp)]() {
+  ctlbind_expandable_group(ctls, "Gaussian sharp filter options",
+      [&, ctx = CTL_CONTEXT(ctx, gaussian_sharp)]() {
         ctlbind(ctls, "sigma [px]: ", CTL_CONTEXT(ctx, sigma), "Gaussian unsharp sigma in image space domain");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+      });
+
+  ctlbind_expandable_group(ctls, "Laplacian sharp filter options",
+      [&, ctx = CTL_CONTEXT(ctx, laplacian_sharp )]() {
+        ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+        ctlbind(ctls, "bwrc: ", CTL_CONTEXT(ctx, bwrc), "Butterworth cutoff");
+        ctlbind(ctls, "bworder: ", CTL_CONTEXT(ctx, bworder), "Butterworth order");
       });
 
 }
@@ -107,9 +116,16 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(settings, save, butterworth, gain);
     }
 
-    if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianUnsharpFilter")) {
-      SERIALIZE_OPTION(settings, save, gaussian_unsharp, sigma);
-      SERIALIZE_OPTION(settings, save, gaussian_unsharp, gain);
+    if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianSharpFilter")) {
+      SERIALIZE_OPTION(settings, save, gaussian_sharp, sigma);
+      SERIALIZE_OPTION(settings, save, gaussian_sharp, gain);
+    }
+
+    if ( auto group = SERIALIZE_GROUP(settings, save, "LaplacianSharpFilter")) {
+      SERIALIZE_OPTION(settings, save, laplacian_sharp, gain);
+      SERIALIZE_OPTION(settings, save, laplacian_sharp, bwrc);
+      SERIALIZE_OPTION(settings, save, laplacian_sharp, bworder);
+
     }
 
     return true;
@@ -183,10 +199,18 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
     }
 
-    case FILTER_GAUSSIAN_UNSHARP: {
-      const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian_unsharp.sigma) + 1));
+    case FILTER_GAUSSIAN_SHARP: {
+      const int ksize = std::max(3, std::min(63, 2 * int(3 * gaussian_sharp.sigma) + 1));
       fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
-      FILTER = fftGenerateGaussianUnsharpFilter(fftSize, gaussian_unsharp.sigma, gaussian_unsharp.gain);
+      FILTER = fftGenerateGaussianUnsharpFilter(fftSize, gaussian_sharp.sigma, gaussian_sharp.gain);
+      break;
+    }
+
+    case FILTER_LAPLACIAN_SHARP: {
+      const int ksize = 0;
+      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      FILTER = fftGenerateLaplacianUnsharpFilter(fftSize, laplacian_sharp.gain,
+          laplacian_sharp.bwrc, laplacian_sharp.bworder, true);
       break;
     }
 
@@ -250,6 +274,7 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     }
 
     fftMulSpectrum(FILTER, complex_channels[i], complex_channels[i]);
+
     if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE ) {
       fftSpectrumModule(complex_channels[i], real_channels[i]);
       continue;

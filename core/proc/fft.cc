@@ -1155,6 +1155,50 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,bool centerDC)
+{
+  // Isotropic Laplacian
+  // The frequency step is tied to the physical dimensions of the matrix
+  // fx = dx / width, fy = dy / height
+  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
+
+  cv::Mat1f FILTER(fftSize);
+
+  const float scaleX = CV_2PI / fftSize.width;
+  const float scaleY = CV_2PI / fftSize.height;
+  const float cx = fftSize.width / 2.0;
+  const float cy = fftSize.height / 2.0;
+
+  const float bwrc2 = 1./ (bwrc * bwrc);
+  const float bworder2 = bworder / 2.0;
+
+  cv::parallel_for_(cv::Range(0, fftSize.height),
+      [=, &FILTER](const cv::Range & range) {
+        for (int y = range.start; y < range.end; ++y) {
+          float * __restrict dstp = FILTER[y];
+
+          const float dy = (y - cy) * scaleY;
+          const float dy2 = dy * dy;
+
+          for (int x = 0; x < fftSize.width; ++x) {
+            const float dx = (x - cx) * scaleX;
+            const float dx2 = dx * dx;
+
+            const float dr2 = dx2 + dy2;
+            dstp[x] =  1.f + gain * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
+            //const double r = std::sqrt(dr2);
+            //dstp[x] = float(1 + gain * dr2 / (1 + std::pow(r / bwrc, bworder)));
+          }
+        }
+      });
+
+  if( !centerDC ) {
+    fftSwapQuadrants(FILTER);
+  }
+
+  return FILTER;
+}
+
 cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool centerDC)
 {
   // Isotropic Gradient

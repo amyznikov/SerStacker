@@ -23,7 +23,8 @@ public:
     FILTER_LAPLACIAN,
     FILTER_RAMP,
     FILTER_BUTTERWORTH,
-    FILTER_GAUSSIAN_UNSHARP
+    FILTER_GAUSSIAN_SHARP,
+    FILTER_LAPLACIAN_SHARP
   };
 
   enum DISPLAY {
@@ -69,11 +70,16 @@ protected:
     int order = 4;
   } butterworth;
 
-  struct c_gaussian_unsharp_filter_opts {
+  struct c_gaussian_sharp_filter_opts {
     double sigma = 1;
     double gain = 1;
-  } gaussian_unsharp;
+  } gaussian_sharp;
 
+  struct c_laplacian_sharp_filter_opts {
+    double gain = 50;
+    double bwrc = 1;
+    double bworder = 4;
+  } laplacian_sharp;
 
   cv::Mat1f VLAP;
 };

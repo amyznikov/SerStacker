@@ -93,6 +93,10 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
 cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
 
+cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain = 1.0,
+    double bwrc = 1, int bworder = 4,
+    bool centerDC = true);
+
 cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain = 1.0,
     bool centerDC = true);
 

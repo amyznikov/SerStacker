@@ -1156,38 +1156,46 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
-cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,bool centerDC)
+cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gain, double bwrc, int bworder,
+    bool centerDC)
 {
-  // Isotropic Laplacian
-  // The frequency step is tied to the physical dimensions of the matrix
-  // fx = dx / width, fy = dy / height
-  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
-
   cv::Mat1f FILTER(fftSize);
 
-  const float scaleX = CV_2PI / fftSize.width;
-  const float scaleY = CV_2PI / fftSize.height;
-  const float cx = fftSize.width / 2.0;
-  const float cy = fftSize.height / 2.0;
-
-  const float bwrc2 = 1. / (bwrc * bwrc);
-  const float bworder2 = bworder / 2.0;
-  const float gainf = (float)(gain);
-
-  cv::parallel_for_(cv::Range(0, fftSize.height),
+  cv::parallel_for_(cv::Range(0, fftSize.height / 2 + 1),
       [=, &FILTER](const cv::Range & range) {
+
+        const float bworder2 = bworder / 2.;
+        const float bwrc2 = 1. / (bwrc * bwrc);
+        const float gainf = (float) (gain);
+
+        const float scaleX = CV_2PI / fftSize.width;
+        const float scaleY = CV_2PI / fftSize.height;
+        const float cx = fftSize.width / 2.0;
+        const float cy = fftSize.height / 2.0;
+
+        const int xmax = fftSize.width / 2 + 1;
+
         for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
+          const int mirrorY = (y == 0) ? 0 : fftSize.height - y;
+
+          float * __restrict row_top = FILTER[y];
+          float * __restrict row_bot = FILTER[mirrorY];
 
           const float dy = (y - cy) * scaleY;
           const float dy2 = dy * dy;
 
-          for (int x = 0; x < fftSize.width; ++x) {
-            const float dx = (x - cx) * scaleX;
-            const float dx2 = dx * dx;
+          for (int x = 0; x < xmax; ++x) {
+            const int mirrorX = (x == 0) ? 0 : fftSize.width - x;
 
-            const float dr2 = dx2 + dy2;
-            dstp[x] = 1.f + gainf * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
+            const float dx = (x - cx) * scaleX;
+            const float dr2 = (dx * dx) + dy2;
+
+            const float v = 1.f + gainf * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
+
+            row_top[x] = v;
+            row_top[mirrorX] = v;
+            row_bot[x] = v;
+            row_bot[mirrorX] = v;
           }
         }
       });

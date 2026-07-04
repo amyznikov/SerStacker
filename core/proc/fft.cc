@@ -1124,26 +1124,27 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
 
   cv::Mat1f FILTER(fftSize);
 
-  const double scaleX = CV_2PI / fftSize.width;
-  const double scaleY = CV_2PI / fftSize.height;
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
+  const float scaleX = CV_2PI / fftSize.width;
+  const float scaleY = CV_2PI / fftSize.height;
+  const float cx = fftSize.width / 2.0;
+  const float cy = fftSize.height / 2.0;
+  const float gainf = gain;
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
         for (int y = range.start; y < range.end; ++y) {
           float * __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * scaleY;
-          const double dy2 = dy * dy;
+          const float  dy = (y - cy) * scaleY;
+          const float  dy2 = dy * dy;
 
           for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * scaleX;
-            const double dx2 = dx * dx;
+            const float dx = (x - cx) * scaleX;
+            const float dx2 = dx * dx;
 
-            const double dr2 = dx2 + dy2;
+            const float dr2 = dx2 + dy2;
 
-            dstp[x] = float(gain * dr2);
+            dstp[x] = gainf * dr2;
           }
         }
       });
@@ -1169,8 +1170,9 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
   const float cx = fftSize.width / 2.0;
   const float cy = fftSize.height / 2.0;
 
-  const float bwrc2 = 1./ (bwrc * bwrc);
+  const float bwrc2 = 1. / (bwrc * bwrc);
   const float bworder2 = bworder / 2.0;
+  const float gainf = (float)(gain);
 
   cv::parallel_for_(cv::Range(0, fftSize.height),
       [=, &FILTER](const cv::Range & range) {
@@ -1185,9 +1187,7 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
             const float dx2 = dx * dx;
 
             const float dr2 = dx2 + dy2;
-            dstp[x] =  1.f + gain * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
-            //const double r = std::sqrt(dr2);
-            //dstp[x] = float(1 + gain * dr2 / (1 + std::pow(r / bwrc, bworder)));
+            dstp[x] = 1.f + gainf * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
           }
         }
       });

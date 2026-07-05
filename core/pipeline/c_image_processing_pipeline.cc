@@ -81,37 +81,37 @@ c_image_processing_pipeline::sptr c_image_processing_pipeline::create_instance(c
 }
 
 
-static void remove_bad_pixels(cv::Mat & image, double hot_pixels_variation_threshold, bool isbayer)
-{
-  INSTRUMENT_REGION("");
-
-  cv::Mat medianImage, variationImage, meanVariationImage;
-  double minimal_mean_variation_for_very_smooth_images;
-
-  // threshold = estimate_noise(image);
-  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
-    minimal_mean_variation_for_very_smooth_images = 1e-3;
-  }
-  else {
-    minimal_mean_variation_for_very_smooth_images = 1;
-  }
-
-  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
-  cv::absdiff(image, medianImage, variationImage);
-
-  static float K[3*3] = {
-      1./8, 1./8, 1./8,
-      1./8, 0.0,  1./8,
-      1./8, 1./8, 1./8,
-  };
-
-  static const cv::Mat1f SE(3,3, K);
-
-  cv::filter2D(variationImage, meanVariationImage, -1, SE);
-  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
-
-  medianImage.copyTo(image, variationImage > hot_pixels_variation_threshold * meanVariationImage);
-}
+//static void remove_bad_pixels(cv::Mat & image, double hot_pixels_variation_threshold, bool isbayer)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  cv::Mat medianImage, variationImage, meanVariationImage;
+//  double minimal_mean_variation_for_very_smooth_images;
+//
+//  // threshold = estimate_noise(image);
+//  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
+//    minimal_mean_variation_for_very_smooth_images = 1e-3;
+//  }
+//  else {
+//    minimal_mean_variation_for_very_smooth_images = 1;
+//  }
+//
+//  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
+//  cv::absdiff(image, medianImage, variationImage);
+//
+//  static float K[3*3] = {
+//      1./8, 1./8, 1./8,
+//      1./8, 0.0,  1./8,
+//      1./8, 1./8, 1./8,
+//  };
+//
+//  static const cv::Mat1f SE(3,3, K);
+//
+//  cv::filter2D(variationImage, meanVariationImage, -1, SE);
+//  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
+//
+//  medianImage.copyTo(image, variationImage > hot_pixels_variation_threshold * meanVariationImage);
+//}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

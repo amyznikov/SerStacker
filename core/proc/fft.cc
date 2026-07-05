@@ -207,43 +207,6 @@ void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels, cv::O
   }
 }
 
-//void fftImageToSpectrum(cv::InputArray image,
-//    std::vector<cv::Mat2f> & complex_channels,
-//    const cv::Size & psfSize,
-//    cv::Rect * outrc)
-//{
-//  if ( psfSize.empty() ) {
-//
-//    fftImageToSpectrum(image,
-//        complex_channels);
-//
-//    if ( outrc ) {
-//      *outrc = cv::Rect(0, 0,
-//          image.cols(),
-//          image.rows());
-//    }
-//
-//  }
-//  else {
-//
-//    cv::Mat tmp;
-//    cv::Rect rc;
-//
-//    fftCopyMakeBorder(image, tmp,
-//        fftGetOptimalSize(image.size(),
-//            psfSize),
-//            &rc);
-//
-//    fftImageToSpectrum(tmp,
-//        complex_channels);
-//
-//    if ( outrc ) {
-//      *outrc = rc;
-//    }
-//  }
-//
-//}
-
 void fftImageFromSpectrum(const std::vector<cv::Mat2f> & complex_channels,
     cv::OutputArray dst,
     const cv::Rect & rc)

@@ -394,7 +394,7 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProf
 
   /*
    * COMPUTE CORRECTION for x > xlt:
-   *   CORRECTION  = NATURE - SMY;
+   *   correction  = nature - laplace;
    */
   cv::Mat1f correction(1, sp.size(), 1.0f);
   const int startBin = 4;
@@ -440,10 +440,6 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProf
             const double continuousBinIdx = r * numBins / maxNormalizedR; //  - 0.5;
             const int binIndex = std::clamp((int)(continuousBinIdx), 0, N - 1);
             dstp[x] = correction(0, binIndex);
-            //              const double corr = correction(0, binIndex);
-            //              const double gain = std::exp(corr);
-            //              dstp[x] = float(gain);
-
           }
         }
       });

@@ -70,10 +70,10 @@ struct c_jdr_pipeline_stack_options
   int derotate_context_size = -1;
 
   c_lpg_options lpg = {
-      .k = 1, // k;
-      .p = 4, // p = 2;
-      .dscale = 4, // dscale = 2;
-      .uscale = 7, // uscale = 6;
+      .k = 2, // k;
+      .p = 2, // p = 2;
+      .dscale = 2, // dscale = 2;
+      .uscale = 6, // uscale = 6;
   };
 
   c_jovian_derotation_remap_options remap;

@@ -160,12 +160,12 @@ static bool upscale(cv::Mat & image, cv::Size dstSize)
 
   if( inputSize != dstSize ) {
 
-    std::vector<cv::Size> spyramid;
+    std::vector<cv::Size> sizes;
 
-    spyramid.emplace_back(dstSize);
+    sizes.emplace_back(dstSize);
 
     while (42) {
-      const cv::Size nextSize((spyramid.back().width + 1) / 2, (spyramid.back().height + 1) / 2);
+      const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
       if( nextSize == inputSize ) {
         break;
       }
@@ -175,11 +175,11 @@ static bool upscale(cv::Mat & image, cv::Size dstSize)
             inputSize.width, inputSize.height);
         return false;
       }
-      spyramid.emplace_back(nextSize);
+      sizes.emplace_back(nextSize);
     }
 
-    for( int i = spyramid.size() - 1; i >= 0; --i ) {
-      cv::pyrUp(image, image, spyramid[i]);
+    for( int i = sizes.size() - 1; i >= 0; --i ) {
+      cv::pyrUp(image, image, sizes[i]);
     }
   }
 
@@ -219,12 +219,9 @@ static double maxval(int ddepth)
  * For noise filtering purposes the input image can be optionally downscaled using cv::pyrDown(),
  * and the output map can be upscaled using cv::pyrUp().
  *
- * When average_color_channels is true the color channels of input image are averaged into
- * single channel before processing.
- *
  */
 bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_output_map,
-    double k, double p, int dscale, int uscale, bool average_color_channels,
+    double k, double p, int dscale, int uscale,
     cv::Scalar * optional_output_sharpness_metric)
 {
 
@@ -242,7 +239,7 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
     src.convertTo(s, CV_32F, 1. / maxval(src.depth()));
   }
 
-  if( s.channels() > 1 /*&& average_color_channels */) {
+  if( s.channels() > 1 ) {
     reduce_color_channels(s, s, cv::REDUCE_AVG);
   }
 
@@ -261,8 +258,8 @@ bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray optional_out
 #endif
 
   if( uscale > 0 && uscale > dscale ) {
-    downscale(m, m, uscale - std::max(0, dscale));
-    cv::multiply(m, cv::Scalar::all(uscale - std::max(0, dscale)), m);
+    downscale(m, m, uscale - dscale);
+    cv::multiply(m, cv::Scalar::all(uscale - dscale), m);
   }
 
   if( p != 0 && p != 1  ) {

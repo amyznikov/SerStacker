@@ -75,12 +75,6 @@ bool fftAccumulatePowerSpectrum(const cv::Mat & src,
 bool fftMaxPowerSpectrum(const cv::Mat & src,
     cv::Mat & acc);
 
-void fftRadialPolySharp(cv::InputArray src, cv::OutputArray dst,
-    const std::vector<double> & coeffs,
-    std::vector<double> & output_profile_before,
-    std::vector<double> & output_profile_after,
-    std::vector<double> & output_profile_poly);
-
 void fftComputeAutoCorrelation(cv::InputArray src,
     cv::OutputArray dst,
     bool logscale = true);

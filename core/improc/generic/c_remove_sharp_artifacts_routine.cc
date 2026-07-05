@@ -79,8 +79,8 @@ bool c_remove_sharp_artifacts_routine::process(cv::InputOutputArray image, cv::I
 {
   if( image.empty() ) {
     return true;
-
   }
+
   cv::Mat planetary_disk_mask;
 
   const bool planetaryDiskDetected =

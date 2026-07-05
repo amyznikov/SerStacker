@@ -73,7 +73,6 @@ struct c_sdr_pipeline_stack_options
       .p = 4, // p = 2;
       .dscale = 4, // dscale = 2;
       .uscale = 7, // uscale = 6;
-      .avgchannel = true // // avgchannel = true;
   };
 
   c_saturn_derotation_remap_options remap;

@@ -69,7 +69,10 @@ public: // pipeline methods
   bool get_display(cv::OutputArray displayImage, cv::OutputArray displayMask);
 
   virtual bool serialize(c_config_setting settings, bool save);
-  virtual bool copy_parameters(const sptr & dst) const ;
+  virtual bool copy_parameters(const sptr & dst) const;
+
+  const std::vector<std::string> & presets() const;
+  virtual bool preset(const std::string & preset_name);
 
   int total_frames() const;
   int processed_frames() const;
@@ -187,6 +190,7 @@ protected:
   std::string _output_path;
   std::vector<c_output_frame_writer*> _opened_writers;
   std::vector<c_output_text_writer*> _opened_text_writers;
+  std::vector<std::string> _presets;
 
   cv::Mat _missing_pixel_mask;
 

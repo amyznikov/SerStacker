@@ -7,7 +7,6 @@
 
 #include "QImageProcessorChainEditor.h"
 #include "QAddRoutineDialog.h"
-#include "QRadialPolySharpSettings.h"
 #include <gui/qfeature2d/QFeature2dOptions.h>
 #include <gui/widgets/QBrowsePathCombo.h>
 #include <gui/widgets/QSliderSpinBox.h>

@@ -137,6 +137,15 @@ std::mutex & c_image_processing_pipeline::mutex()
   return _lock;
 }
 
+const std::vector<std::string> & c_image_processing_pipeline::presets() const
+{
+  return _presets;
+}
+
+bool c_image_processing_pipeline::preset(const std::string & preset_name)
+{
+  return false;
+}
 
 bool c_image_processing_pipeline::copy_parameters(const sptr & dst) const
 {

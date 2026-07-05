@@ -48,7 +48,7 @@ bool c_camera_focus_measure::avgchannel() const
       return local_contrast_measure_.avgchannel();
 
     case SHARPNESS_MEASURE_LPG:
-      return lpg_measure_.avgchannel();
+      return true; // lpg_measure_.avgchannel();
 
     case SHARPNESS_MEASURE_HARRIS:
       return harris_measure_.avgchannel();

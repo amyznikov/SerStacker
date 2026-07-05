@@ -25,7 +25,6 @@ struct c_lpg_options
   double p = 2;
   int dscale = 2;
   int uscale = 6;
-  bool avgchannel = true;
 };
 
 bool load_settings(c_config_setting settings, c_lpg_options * cfg);
@@ -39,7 +38,6 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "p", ctx(&S::p), "Sharpness estimator: sharpness map power");
   ctlbind(ctls, "dscale", ctx(&S::dscale), "Sharpness estimator: sharpness map downscale pyramid level");
   ctlbind(ctls, "uscale", ctx(&S::uscale), "Sharpness estimator: sharpness map upscale pyramid level");
-  ctlbind(ctls, "avgchannel", ctx(&S::avgchannel), "Sharpness estimator: use grayscale sharpness map");
 }
 
 class c_lpg_sharpness_measure:
@@ -67,12 +65,9 @@ public:
   void set_uscale(int v);
   int uscale() const;
 
-  void set_avgchannel(bool v);
-  bool avgchannel() const;
-
   cv::Scalar compute(cv::InputArray image, cv::InputArray mask = cv::noArray()) const override;
   static bool compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
-      double k, double p, int dscale, int uscale, bool avgchannel,
+      double k, double p, int dscale, int uscale,
       cv::Scalar * output_sharpness_metric);
   static bool compute(cv::InputArray image, cv::InputArray mask , cv::OutputArray output_map,
       const c_lpg_options & opts,
@@ -98,7 +93,7 @@ protected:
 
 inline bool lpg(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map, const c_lpg_options & opts )
 {
-  return lpg(image, mask, output_map, opts.k, opts.p, opts.dscale, opts.uscale, opts.avgchannel);
+  return lpg(image, mask, output_map, opts.k, opts.p, opts.dscale, opts.uscale);
 }
 
 #endif /* __c_lpg_sharpness_measure_h__ */

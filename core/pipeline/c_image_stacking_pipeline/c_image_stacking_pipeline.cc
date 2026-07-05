@@ -281,6 +281,115 @@ const std::string & c_image_stacking_pipeline::tooltip()
 }
 
 
+bool c_image_stacking_pipeline::initialize()
+{
+  if ( !base::initialize() ) {
+    CF_ERROR("c_image_stacking_pipeline::base::initialize() fails");
+    return false;
+  }
+
+  _presets.emplace_back("Planetary Disk Stacking");
+  _presets.emplace_back("Lunar Closeup");
+
+  return true;
+}
+
+bool c_image_stacking_pipeline::preset(const std::string & preset_name)
+{
+  if ( preset_name == "Planetary Disk Stacking" ) {
+    _master_options.master_selection.master_selection_method = master_frame_best_of_100_in_middle;
+    _master_options.generate_master_frame = false;
+    _master_options.unsharp_sigma = 1;
+    _master_options.unsharp_alpha = 0;
+
+    _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
+    _master_options.registration.enable_feature_registration = false;
+    _master_options.registration.enable_ecc_registration = true;
+    _master_options.registration.enable_eccflow_registration = false;
+    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+
+    _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
+    _master_options.accumulation.lpg.k = 2;
+    _master_options.accumulation.lpg.p = 4;
+    _master_options.accumulation.lpg.dscale = 2;
+    _master_options.accumulation.lpg.uscale = 6;
+    _master_options.accumulation.max_weights_ratio = 0.25;
+
+    _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
+    _stack_options.accumulation.lpg.k = 2;
+    _stack_options.accumulation.lpg.p = 4;
+    _stack_options.accumulation.lpg.dscale = 2;
+    _stack_options.accumulation.lpg.uscale = 6;
+    _stack_options.accumulation.max_weights_ratio = 0.25;
+
+    _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
+    _stack_options.registration.enable_feature_registration = false;
+    _stack_options.registration.enable_ecc_registration = true;
+    _stack_options.registration.enable_eccflow_registration = false;
+    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+
+    _upscale_options.upscale_option = frame_upscale_x15;
+    _upscale_options.upscale_stage = frame_upscale_after_align;
+    return true;
+  }
+
+  if ( preset_name == "Lunar Closeup" ) {
+    _master_options.master_selection.master_selection_method = master_frame_best_of_100_in_middle;
+    _master_options.generate_master_frame = true;
+    _master_options.unsharp_sigma = 1;
+    _master_options.unsharp_alpha = 0.85;
+
+    _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
+    _master_options.registration.enable_feature_registration = true;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
+
+    _master_options.registration.enable_ecc_registration = true;
+    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+
+    _master_options.registration.enable_eccflow_registration = false;
+
+    _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
+    _master_options.accumulation.lpg.k = 2;
+    _master_options.accumulation.lpg.p = 4;
+    _master_options.accumulation.lpg.dscale = 2;
+    _master_options.accumulation.lpg.uscale = 7;
+    _master_options.accumulation.max_weights_ratio = 0.25;
+
+
+
+    _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
+    _stack_options.registration.enable_feature_registration = true;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
+
+    _stack_options.registration.enable_ecc_registration = true;
+    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+
+    _stack_options.registration.enable_eccflow_registration = true;
+    _stack_options.registration.eccflow.downscale_method = ECCFlowDownscalePyramid;
+    _stack_options.registration.eccflow.support_scale = 4;
+    _stack_options.registration.eccflow.max_pyramid_level = 5;
+    _stack_options.registration.eccflow.min_image_size = -1;
+
+    _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
+    _stack_options.accumulation.lpg.k = 2;
+    _stack_options.accumulation.lpg.p = 4;
+    _stack_options.accumulation.lpg.dscale = 2;
+    _stack_options.accumulation.lpg.uscale = 7;
+    _stack_options.accumulation.max_weights_ratio = 0.25;
+
+    _upscale_options.upscale_option = frame_upscale_x15;
+    _upscale_options.upscale_stage = frame_upscale_after_align;
+    return true;
+
+  }
+
+  return false;
+}
+
 std::string c_image_stacking_pipeline::output_file_name() const
 {
   return _output_file_name;
@@ -401,7 +510,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _flow_accumulation.reset();
     _generating_master_frame = false;
     _master_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
-    _stacking_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
+    _stack_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
   }
 
   if ( _roi_selection_options.method != roi_selection_none ) {
@@ -500,406 +609,6 @@ bool c_image_stacking_pipeline::run_pipeline()
 
   return fOk;
 }
-//
-//bool c_image_stacking_pipeline::run_planetary_disk_derotation()
-//{
-//  CF_DEBUG("Starting '%s: %s' ...",
-//      csequence_name(), cname());
-//
-//
-//  static const auto drawRotatedRectange =
-//      [](cv::InputOutputArray image, const cv::RotatedRect & rc,
-//          const cv::Scalar color, int thickness = 1, int lineType = cv::LINE_8, int shift = 0) {
-//            cv::Point2f pts[4];
-//            rc.points(pts);
-//
-//            cv::ellipse(image, rc, color, thickness, lineType);
-//
-//            for( int i = 0; i < 4; i++ ) {
-//              cv::line(image, pts[i], pts[(i + 1) % 4], color, thickness, lineType, shift);
-//            }
-//
-//            cv::line(image, (pts[0] + pts[1]) * 0.5, (pts[2] + pts[3]) * 0.5, color, thickness, lineType, shift);
-//            cv::line(image, (pts[1] + pts[2]) * 0.5, (pts[0] + pts[3]) * 0.5, color, thickness, lineType, shift);
-//          };
-//
-//
-//  cv::Mat master_frame;
-//  cv::Mat master_mask;
-//
-//  if( !create_reference_frame(master_frame, master_mask) ) {
-//    CF_FATAL("create_reference_frame() fails");
-//    return false;
-//  }
-//
-//  if( _master_options.save_master_frame ) {
-//
-//    const std::string filename =
-//        ssprintf("%s/%s-jovian-master.tiff",
-//            output_path_.c_str(),
-//            csequence_name());
-//
-//    if( !write_image(filename, _output_options, master_frame, master_mask) ) {
-//      CF_FATAL("write_image('%s') fails", filename.c_str());
-//      return false;
-//    }
-//  }
-//
-//  if ( !(frame_registration_ = create_frame_registration(_stacking_options.registration)) ) {
-//    CF_FATAL("create_frame_registration() fails");
-//    return false;
-//  }
-//
-//  if( _stacking_options.accumulation.accumulation_method != frame_accumulation_none ) {
-//    lock_guard lock(mutex());
-//    if( !(frame_accumulation_ = create_frame_accumulation(_stacking_options.accumulation)) ) {
-//      CF_ERROR("ERROR: create_frame_accumulation(stack_accumulation_options_) fails");
-//      return false;
-//    }
-//  }
-//
-//
-//  switch (_stacking_options.registration.planetary_disk_derotation.derotation_type) {
-//    case planetary_disk_derotation_jovian: {
-//
-//      c_jovian_derotation & jovian_derotation =
-//          frame_registration_->jovian_derotation();
-//
-//      if( _output_options.debug_frame_registration ) {
-//        jovian_derotation.set_debug_path(ssprintf("%s/debug/jovian_derotation",
-//            output_path_.c_str()));
-//      }
-//
-//      if( !jovian_derotation.detect_jovian_ellipse(master_frame, master_mask) ) {
-//        CF_FATAL("jovian_derotation.setup_jovian_ellipse() fails");
-//        return false;
-//      }
-//
-//      break;
-//    }
-//
-//    case planetary_disk_derotation_saturn: {
-//
-//      c_saturn_derotation & saturn_derotation =
-//          frame_registration_->saturn_derotation();
-//
-//      saturn_derotation.set_detector_options(_stacking_options.registration.planetary_disk_derotation.saturn_derotation.detector_options);
-//
-//      if( !saturn_derotation.detect(master_frame, master_mask) ) {
-//        CF_FATAL("saturn_derotation.detect_saturn() fails");
-//        return false;
-//      }
-//
-//      break;
-//    }
-//
-//    default:
-//      CF_ERROR("Invalid derotation_type=%d requested", _stacking_options.registration.planetary_disk_derotation.derotation_type);
-//      return false;
-//  }
-//
-//
-//
-//
-//  if( !input_sequence_->is_open() && !input_sequence_->open() ) {
-//    CF_ERROR("input_sequence_->open() fails");
-//    return false;
-//  }
-//
-//
-//  std::vector<int> reference_frames;
-//
-//  if ( !_stacking_options.registration.planetary_disk_derotation.jovian_derotation.derotate_all_frames ) {
-//
-//    const int master_source_index =
-//        input_sequence_->indexof(_master_options.master_selection.master_fiename);
-//
-//    if( master_source_index < 0 ) {
-//      CF_ERROR("ERROR: Master source '%s' is outside of input sequence",
-//          _master_options.master_selection.master_fiename.c_str());
-//      return false;
-//    }
-//
-//    reference_frames.emplace_back(input_sequence_->global_pos(master_source_index,
-//        _master_options.master_selection.master_frame_index));
-//  }
-//  else {
-//
-//    const int start_pos =
-//        std::max(0, _input_options.start_frame_index);
-//
-//    const int end_pos =
-//        _input_options.max_input_frames > 0 ?
-//            start_pos + _input_options.max_input_frames :
-//            INT_MAX;
-//
-//    for( int i = 0, n = input_sequence_->sources().size(); i < n; ++i ) {
-//
-//      const c_input_source::sptr &source =
-//          input_sequence_->source(i);
-//
-//      if( source->enabled() ) {
-//
-//        for( int j = 0, m = source->size(); j < m; ++j ) {
-//
-//          const int global_pos =
-//              input_sequence_->global_pos(i, j);
-//
-//          if( global_pos >= start_pos && global_pos < end_pos && !is_bad_frame_index(global_pos) ) {
-//            reference_frames.emplace_back(global_pos);
-//          }
-//        }
-//      }
-//    }
-//  }
-//
-//  c_translation_image_transform image_transform;
-//  //c_translation_ecc_motion_model model(&image_transform);
-//
-////  c_euclidean_image_transform image_transform;
-////  c_euclidean_ecc_motion_model model(&image_transform);
-//
-////  c_affine_image_transform image_transform;
-////  c_affine_ecc_motion_model model(&image_transform);
-//
-//  //c_ecc_forward_additive ecc(&model);
-//  //c_ecc_forward_additive ecc(&image_transform);
-//
-//
-//  c_ecch ecch(&image_transform, ECC_ALIGN_LM);
-//
-//  ecch.set_epsx(0.1);
-//  ecch.set_minimum_image_size(16);
-//  ecch.set_maxlevel(-1);
-//
-//  if( !ecch.set_reference_image(master_frame, master_mask) ) {
-//    CF_FATAL("ecch.set_reference_image() fails");
-//    return false;
-//  }
-//
-//  cv::Mat reference_frame, reference_mask;
-//
-//  const color_channel_type master_channel =
-//      _stacking_options.registration.ecc_registration_channel;
-//
-//  const int context_size =
-//      std::min(input_sequence_->size(),
-//          std::max(_stacking_options.registration.planetary_disk_derotation.jovian_derotation.max_context_size, 1));
-//
-//  const bool save_raw_bayer_image =
-//      _stacking_options.accumulation.accumulation_method ==
-//          frame_accumulation_bayer_average;
-//
-//
-//  cv::Mat2f current_remap;
-//
-//  for( int i = 0, n = reference_frames.size(); i < n; ++i ) {
-//
-//    if( !input_sequence_->seek(reference_frames[i]) ) {
-//      CF_ERROR("input_sequence_->seek(pos=%d) fails", reference_frames[i]);
-//      return false;
-//    }
-//
-//    const int cpos =
-//        input_sequence_->current_pos();
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    if( !read_input_frame(input_sequence_, reference_frame, reference_mask, false, save_raw_bayer_image) ) {
-//      CF_ERROR("read_input_frame(pos=%d) fails", cpos);
-//      continue;
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    if ( !select_image_roi(roi_selection_, reference_frame, reference_mask, reference_frame, reference_mask) ) {
-//      CF_FATAL("select_image_roi(reference_frame) fails");
-//      return false;
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    if( _input_options.input_image_processor ) {
-//      // lock_guard lock(mutex());
-//      if( !_input_options.input_image_processor->process(reference_frame, reference_mask) ) {
-//        CF_ERROR("input_image_processor->process(reference_frame) fails");
-//        return false;
-//      }
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    if( reference_frame.channels() != 1 ) {
-//      if( !extract_channel(reference_frame, reference_frame, reference_mask, reference_mask, master_channel) ) {
-//        CF_ERROR("extract_channel(pos=%d, master_channel='%s') fails", cpos, toCString(master_channel));
-//        return false;
-//      }
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    image_transform.reset();
-//
-//    if ( !ecch.align(reference_frame, reference_mask) ) {
-//      CF_ERROR("ecch.align(pos=%d) fails", cpos);
-//      continue;
-//    }
-//
-//    CF_DEBUG("frame %d: %d/%d iterations eps=%g/%g", cpos,
-//        ecch.num_iterations(), ecch.max_iterations(),
-//        ecch.eps(), ecch.epsx());
-//
-//
-//    current_remap =
-//        ecch.create_remap();
-//
-//    cv::remap(reference_frame, reference_frame,
-//        current_remap, cv::noArray(),
-//        cv::INTER_LINEAR,
-//        cv::BORDER_REFLECT101);
-//
-//    cv::remap(reference_mask, reference_mask,
-//        current_remap, cv::noArray(),
-//        cv::INTER_LINEAR,
-//        cv::BORDER_REFLECT101);
-//
-//    cv::compare(reference_mask, 250, reference_mask,
-//        cv::CMP_GE);
-//
-//    if( _output_options.debug_frame_registration ) {
-//
-//      const std::string filename =
-//          ssprintf("%s/debug/jovian_derotation/reference.%03d.tiff",
-//              output_path_.c_str(),
-//              cpos);
-//
-//      cv::Mat tmp;
-//
-//      cv::cvtColor(reference_frame, tmp, cv::COLOR_GRAY2BGR);
-//
-//      switch (_stacking_options.registration.planetary_disk_derotation.derotation_type) {
-//        case planetary_disk_derotation_jovian: {
-//          drawRotatedRectange(tmp, frame_registration_->jovian_derotation().planetary_disk_ellipse(), CV_RGB(0, 1, 0));
-//          break;
-//        }
-//        case planetary_disk_derotation_saturn: {
-//          CF_DEBUG("FIXME: planetary_disk_derotation_saturn still not implemented");
-//          drawRotatedRectange(tmp, frame_registration_->saturn_derotation().planetary_disk_ellipse(), CV_RGB(0, 1, 0));
-//          break;
-//        }
-//      }
-//
-//
-//      if( !save_image(tmp, reference_mask, filename) ) {
-//        CF_ERROR("save_image(%s) fails", filename.c_str());
-//        return false;
-//      }
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    frame_registration_->set_reference_timestamp(input_sequence_->last_ts(),
-//        input_sequence_->has_last_ts());
-//
-//    // CF_DEBUG("setup_frame_registration()");
-//    if ( !setup_frame_registration(frame_registration_, reference_frame, reference_mask) ) {
-//      CF_ERROR("setup_frame_registration(pos=%d) fails", cpos);
-//      return false;
-//    }
-//
-//
-//
-//    if ( frame_accumulation_ ) {
-//      frame_accumulation_->clear();
-//    }
-//
-//
-//    int startpos, endpos;
-//
-//    if( (startpos = cpos - context_size / 2) < 0 ) {
-//      startpos = 0;
-//      endpos = std::min(startpos + context_size, input_sequence_->size());
-//    }
-//    else if( (endpos = cpos + context_size / 2) > input_sequence_->size() ) {
-//      endpos = input_sequence_->size();
-//      startpos = std::max(0, endpos - context_size);
-//    }
-//    else {
-//      endpos = startpos + context_size;
-//    }
-//
-//    CF_DEBUG("cpos=%d startpos=%d endpos=%d",
-//        cpos, startpos, endpos);
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//
-//    if ( !process_input_sequence(input_sequence_, startpos, endpos) ) {
-//      CF_ERROR("process_input_sequence() fails");
-//      return false;
-//    }
-//
-//    if ( frame_accumulation_ ) {
-//
-//      cv::Mat accumulated_image;
-//      cv::Mat1b accumulated_mask;
-//
-//      if ( true ) {
-//        lock_guard lock(mutex());
-//
-//        if ( !frame_accumulation_->compute(accumulated_image, accumulated_mask) ) {
-//          CF_ERROR("ERROR: frame_accumulation_->compute() fails");
-//          return false;
-//        }
-//
-//  #if 0
-//        linear_interpolation_inpaint(accumulated_image,
-//            accumulated_mask,
-//            accumulated_image);
-//  #else
-//        average_pyramid_inpaint(accumulated_image,
-//            accumulated_mask,
-//            accumulated_image);
-//  #endif
-//      }
-//
-//      std::string filename =
-//          ssprintf("%s/jovian/%s%s.%03d.32F.tiff",
-//              output_path_.c_str(),
-//              csequence_name(),
-//              output_file_name_postfix_.c_str(),
-//              cpos);
-//
-//      CF_DEBUG("Saving '%s'", filename.c_str());
-//      if( !write_image(_output_file_name = filename, _output_options, accumulated_image, accumulated_mask) ) {
-//        CF_ERROR("write_image('%s') fails", filename.c_str());
-//        return false;
-//      }
-//    }
-//
-//    if ( canceled() ) {
-//      return false;
-//    }
-//  }
-//
-//
-//  CF_DEBUG("Finished");
-//
-//  return true;
-//}
 
 bool c_image_stacking_pipeline::run_image_stacking()
 {
@@ -915,7 +624,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   /////////////////////////////////////////////////////////////////////////////
 
-  if( _stacking_options.enable_registration || _master_options.generate_master_frame ) {
+  if( _stack_options.enable_registration || _master_options.generate_master_frame ) {
 
     // SETUP FRAME REGISTRATION
 
@@ -927,12 +636,12 @@ bool c_image_stacking_pipeline::run_image_stacking()
       return false;
     }
 
-    if ( !_stacking_options.enable_registration || _master_options.stop_after_master_frame_generation ) {
+    if ( !_stack_options.enable_registration || _master_options.stop_after_master_frame_generation ) {
       _frame_registration.reset();
     }
     else {
 
-      if ( !(_frame_registration = create_frame_registration(_stacking_options.registration)) ) {
+      if ( !(_frame_registration = create_frame_registration(_stack_options.registration)) ) {
         CF_FATAL("create_frame_registration() fails");
         return false;
       }
@@ -950,9 +659,9 @@ bool c_image_stacking_pipeline::run_image_stacking()
 
   if ( !_master_options.generate_master_frame || !_master_options.stop_after_master_frame_generation ) {
 
-    if( _stacking_options.accumulation.accumulation_method != frame_accumulation_none ) {
+    if( _stack_options.accumulation.accumulation_method != frame_accumulation_none ) {
       lock_guard lock(mutex());
-      if( !(_frame_accumulation = create_frame_accumulation(_stacking_options.accumulation)) ) {
+      if( !(_frame_accumulation = create_frame_accumulation(_stack_options.accumulation)) ) {
         CF_ERROR("ERROR: create_frame_accumulation(stack_accumulation_options_) fails");
         return false;
       }
@@ -1585,11 +1294,11 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
   const c_image_registration_options & registration_options =
       _generating_master_frame ? _master_options.registration :
-          _stacking_options.registration;
+          _stack_options.registration;
 
   const c_frame_accumulation_options & accopts =
       _generating_master_frame ? _master_options.accumulation :
-          _stacking_options.accumulation;
+          _stack_options.accumulation;
 
   const bool save_raw_bayer_image =
       accopts.accumulation_method == frame_accumulation_bayer_average;
@@ -2377,14 +2086,6 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
   return save_image(image_to_write, output_file_name);
 }
 
-
-//int c_image_stacking_pipeline::select_master_frame(const c_input_sequence::sptr & input_sequence)
-//{
-//  return base::select_master_frame(input_sequence, _input_options, _master_options.master_selection);
-//
-//}
-//
-
 bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 {
   static const auto get_group =
@@ -2407,12 +2108,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "roi")) ) {
     serialize_base_roi_selection_options(section, save, _roi_selection_options);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, method);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, rectangle_roi_selection);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_crop_size);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_gbsigma);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, planetary_disk_stdev_factor);
-    //    SERIALIZE_OPTION(section, save, _roi_selection_options, se_close_size);
   }
 
   // c_frame_upscale_options upscale_options_;
@@ -2448,7 +2143,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = get_group(settings, save, "stacking_options")) ) {
 
-    c_image_stacking_options & opts = _stacking_options;
+    c_image_stacking_options & opts = _stack_options;
 
     SERIALIZE_OPTION(section, save, opts, unsharp_sigma);
     SERIALIZE_OPTION(section, save, opts, unsharp_alpha);
@@ -2457,78 +2152,30 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     // c_image_registration_options registration;
     if( (subsection = get_group(section, save, "registration")) ) {
       SERIALIZE_OBJECT(subsection, save, opts.registration);
-
-//      SERIALIZE_OPTION(subsection, save, opts.registration.planetary_disk_derotation, derotation_type);
-
-//      if( (subsubsection = get_group(subsection, save, "jovian_derotation")) ) {
-//
-//        struct c_jovian_derotation_options & jovian_derotation =
-//            opts.registration.planetary_disk_derotation.jovian_derotation;
-//
-//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
-////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, min_rotation);
-////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_rotation);
-////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_pyramid_level);
-////        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, num_orientations);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, derotate_all_frames);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation, max_context_size);
-//
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, gbsigma);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, stdev_factor);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pca_blur);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, se_close_radius);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, equatorial_radius);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, pose);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, center);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, offset);
-//        SERIALIZE_OPTION(subsubsection, save, jovian_derotation.detector_options, auto_location);
-//      }
-
-//      if( (subsubsection = get_group(subsection, save, "saturn_derotation")) ) {
-//
-//        struct c_saturn_derotation_options & saturn_derotation =
-//            opts.registration.planetary_disk_derotation.saturn_derotation;
-//
-//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation, enabled);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, min_rotation);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_rotation);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_pyramid_level);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, num_orientations);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, derotate_all_frames);
-////        SERIALIZE_OPTION(subsubsection, save, saturn_derotation, max_context_size);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, stdev_factor);
-//        SERIALIZE_OPTION(subsubsection, save, saturn_derotation.detector_options, se_close_radius);
-//        //SERIALIZE_OPTION(subsubsection, save, jovian_derotation.ellipse, force_reference_ellipse);
-//      }
-
     }
   }
 
   // c_frame_accumulation_options accumulation_options_;
   if( (section = get_group(settings, save, "master_accumulation")) ) {
 
-    c_frame_accumulation_options & opts =
-        _master_options.accumulation;
+    c_frame_accumulation_options & opts = _master_options.accumulation;
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
 
     if( (subsection = get_group(section, save, "c_lpg_sharpness_measure")) ) {
 
-      c_lpg_options &m =
-          opts.lpg;
+      c_lpg_options &m = opts.lpg;
 
       SERIALIZE_OPTION(subsection, save, m, k);
       SERIALIZE_OPTION(subsection, save, m, p);
       SERIALIZE_OPTION(subsection, save, m, dscale);
       SERIALIZE_OPTION(subsection, save, m, uscale);
-      SERIALIZE_OPTION(subsection, save, m, avgchannel);
     }
 
     if( (subsection = get_group(section, save, "c_laplacian_pyramid_focus_stacking")) ) {
 
-      c_laplacian_pyramid_focus_stacking::options &fs =
-          opts.fs;
+      c_laplacian_pyramid_focus_stacking::options &fs = opts.fs;
 
       SERIALIZE_OPTION(subsection, save, fs, fusing_policy);
       SERIALIZE_OPTION(subsection, save, fs, inpaint_mask_holes);
@@ -2541,7 +2188,7 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = get_group(settings, save, "stack_accumulation")) ) {
 
     c_frame_accumulation_options & opts =
-        _stacking_options.accumulation;
+        _stack_options.accumulation;
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
@@ -2555,7 +2202,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, m, p);
       SERIALIZE_OPTION(subsection, save, m, dscale);
       SERIALIZE_OPTION(subsection, save, m, uscale);
-      SERIALIZE_OPTION(subsection, save, m, avgchannel);
     }
 
     if( (subsection = get_group(section, save, "c_laplacian_pyramid_focus_stacking")) ) {
@@ -2813,7 +2459,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
             ctlbind_master_frame_generation_options(ctls,  cctx);
       });
       ctlbind_expandable_group(ctls, "4.2 Stack Registration",
-          [&, cctx = ctx(&this_class::_stacking_options)]() {
+          [&, cctx = ctx(&this_class::_stack_options)]() {
             ctlbind_stack_registration_options(ctls, cctx);
       });
       ctlbind_expandable_group(ctls, "Camera Matrix",
@@ -2831,7 +2477,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
             ctlbind(ctls, CTL_CONTEXT(cctx, accumulation));
           });
       ctlbind_expandable_group(ctls, "Stack Frame accumulation",
-          [&, cctx = ctx(&this_class::_stacking_options)]() {
+          [&, cctx = ctx(&this_class::_stack_options)]() {
             ctlbind(ctls, CTL_CONTEXT(cctx, accumulation));
           });
     ctlbind_end_group(ctls);
@@ -2966,7 +2612,7 @@ bool c_image_stacking_pipeline::copy_parameters(const c_image_processing_pipelin
   p->_roi_selection_options = this->_roi_selection_options;
   p->_upscale_options = this->_upscale_options;
   p->_master_options = this->_master_options;
-  p->_stacking_options = this->_stacking_options ;
+  p->_stack_options = this->_stack_options ;
   p->_output_options = this->_output_options;
   p->_image_processing_options = this->_image_processing_options;
   p->_camera_intrinsics = this->_camera_intrinsics;
@@ -2979,6 +2625,7 @@ bool c_image_stacking_pipeline::copy_parameters(const c_image_processing_pipelin
 
   return true;
 }
+
 
 bool c_image_stacking_pipeline::save_preprocessed_video(const cv::Mat & current_frame, const cv::Mat & current_mask, int seqindex)
 {

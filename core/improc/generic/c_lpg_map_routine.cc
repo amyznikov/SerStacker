@@ -30,7 +30,6 @@ bool c_lpg_map_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(settings, save, *this, p);
     SERIALIZE_PROPERTY(settings, save, *this, dscale);
     SERIALIZE_PROPERTY(settings, save, *this, uscale);
-    SERIALIZE_PROPERTY(settings, save, *this, avgchannel);
     return true;
   }
   return false;

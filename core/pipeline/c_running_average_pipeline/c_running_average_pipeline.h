@@ -49,8 +49,7 @@ struct c_running_average_update_options
   c_running_average_update_options()
   {
     lpg.dscale = 2;
-    lpg.uscale = 7;
-    lpg.avgchannel = true;
+    lpg.uscale = 6;
   }
 
 };

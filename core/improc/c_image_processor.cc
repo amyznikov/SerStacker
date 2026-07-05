@@ -62,7 +62,6 @@
 #include "generic/c_autoclip_routine.h"
 #include "generic/c_unsharp_mask_routine.h"
 #include "generic/c_auto_unsharp_mask_routine.h"
-#include "generic/c_radial_polysharp_routine.h"
 #include "generic/c_median_blur_routine.h"
 #include "generic/c_median_hat_routine.h"
 #include "generic/c_wmf_routine.h"
@@ -279,7 +278,6 @@ void c_image_processor_routine::register_all()
 
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());
-    register_class_factory(c_radial_polysharp_routine::class_factory_instance());
     register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
     register_class_factory(c_gaussian_hpass_routine::class_factory_instance());

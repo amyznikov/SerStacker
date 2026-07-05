@@ -1730,7 +1730,7 @@ int c_frame_accumulation_with_fft::countNaNs(const cv::Mat & image)
     const float * p = image.ptr<const float>(y);
 
     for ( int x = 0; x < image.cols * nc; ++x ) {
-      if ( isnan(p[x]) ) {
+      if ( std::isnan(p[x]) ) {
         ++cnt;
       }
     }

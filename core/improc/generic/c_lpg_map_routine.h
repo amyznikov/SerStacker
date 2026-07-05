@@ -60,16 +60,6 @@ public:
     return _m.uscale();
   }
 
-  void set_avgchannel(bool v)
-  {
-    _m.set_avgchannel(v);
-  }
-
-  bool avgchannel() const
-  {
-    return _m.avgchannel();
-  }
-
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);

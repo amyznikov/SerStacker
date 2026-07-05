@@ -57,7 +57,7 @@ protected:
   QScrollArea * scrollArea_ctl = nullptr;
   QList<QPipelineSettingsWidget *> _pipelineSettingsWidgets;
 
-  QMenu _menu;
+  //QMenu _menu;
   bool _updatingControls = false;
 };
 

@@ -56,22 +56,17 @@ struct c_image_stacking_input_options :
 
 struct c_frame_upscale_options
 {
-  enum frame_upscale_option upscale_option =
-      frame_upscale_none;
-
-  enum frame_upscale_stage upscale_stage =
-      frame_upscale_after_align;
+  enum frame_upscale_option upscale_option = frame_upscale_none;
+  enum frame_upscale_stage upscale_stage = frame_upscale_after_align;
 
   bool need_upscale_before_align() const
   {
-    return  upscale_option != frame_upscale_none &&
-        upscale_stage == frame_upscale_before_align;
+    return  upscale_option != frame_upscale_none && upscale_stage == frame_upscale_before_align;
   }
 
   bool need_upscale_after_align() const
   {
-    return upscale_option != frame_upscale_none &&
-        upscale_stage == frame_upscale_after_align;
+    return upscale_option != frame_upscale_none && upscale_stage == frame_upscale_after_align;
   }
 
   double image_scale() const
@@ -207,6 +202,7 @@ public:
 
   c_image_stacking_pipeline(const std::string & name, const c_input_sequence::sptr & input_sequence = nullptr);
   ~c_image_stacking_pipeline();
+  bool initialize() override;
 
   const std::string & get_class_name() const override;
   static const std::string & class_name();
@@ -217,6 +213,7 @@ public:
 
   bool serialize(c_config_setting setting, bool save) override;
   bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
+  bool preset(const std::string & preset_name) override;
 
   static const c_ctlist<this_class> & getcontrols();
 
@@ -307,7 +304,7 @@ protected:
   c_roi_selection_options _roi_selection_options;
   c_frame_upscale_options _upscale_options;
   c_image_stacking_master_options _master_options;
-  c_image_stacking_options _stacking_options;
+  c_image_stacking_options _stack_options;
   c_camera_intrinsics _camera_intrinsics;
   c_image_stacking_output_options _output_options;
   c_image_processing_options _image_processing_options;

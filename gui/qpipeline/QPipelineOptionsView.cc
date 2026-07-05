@@ -151,8 +151,7 @@ void QPipelineOptionsView::updateCurrentSettingsWidget(const c_image_processing_
 
   if( pp ) {
 
-    const QString className =
-        pp->className();
+    const QString className = pp->className();
 
     for( int i = 0, n = _pipelineSettingsWidgets.size(); i < n; ++i ) {
       if( className == _pipelineSettingsWidgets[i]->pipelineClass() ) {
@@ -260,13 +259,36 @@ void QPipelineOptionsView::onMenuButtonClicked()
 {
   if( _current_sequence ) {
 
-    if ( _menu.isEmpty() ) {
-      _menu.addAction("Add pipeline ...", this, &ThisClass::onAddPipeline);
-      _menu.addAction("Rename pipeline ...", this, &ThisClass::onRenamePipeline);
-      _menu.addAction("Remove pipeline ...", this, &ThisClass::onRemovePipeline);
+    QMenu menu;
+
+    menu.addAction("Add pipeline ...", this, &ThisClass::onAddPipeline);
+    menu.addAction("Rename pipeline ...", this, &ThisClass::onRenamePipeline);
+    menu.addAction("Remove pipeline ...", this, &ThisClass::onRemovePipeline);
+
+    if ( const auto & pipeline = _current_sequence->current_pipeline() ) {
+      const auto & presets = pipeline->presets();
+      if ( !presets.empty() ) {
+
+        QMenu *subMenu = menu.addMenu("Current Pipeline");
+
+        for (const std::string & preset : presets ) {
+          subMenu->addAction(QString::fromStdString(preset), [this, pipeline, preset]() {
+            if ( pipeline->preset(preset) ) {
+
+              Q_EMIT parameterChanged();
+
+              QPipelineSettingsWidget * w = dynamic_cast<QPipelineSettingsWidget*>(scrollArea_ctl->widget());
+              if ( w ) {
+                w->updateControls();
+              }
+            }
+          });
+        }
+
+      }
     }
 
-    _menu.exec(menuButton_ctl->mapToGlobal(QPoint(
+    menu.exec(menuButton_ctl->mapToGlobal(QPoint(
         menuButton_ctl->width() / 2,
         menuButton_ctl->height() / 2)));
   }

@@ -23,7 +23,9 @@ public:
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE,
-    DISPLAY_LAP_IMAGE,
+    DISPLAY_K_IMAGE,
+    DISPLAY_BLURRED_IMAGE,
+    DISPLAY_DETAIL_IMAGE,
     DISPLAY_FILTERED_IMAGE,
   };
 
@@ -33,9 +35,10 @@ public:
 
 protected:
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
-  double _sigma = 1;
-  //double _scale = 1;
-  double _target_snr = 30;
+  int _radius = 3;
+  double _sigma = 2;
+  double _noise_std = 0.1;
+  bool _sqrt = false;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

@@ -23,9 +23,13 @@ public:
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE,
-    DISPLAY_K_IMAGE,
-    DISPLAY_BLURRED_IMAGE,
-    DISPLAY_DETAIL_IMAGE,
+//    DISPLAY_TEXLEE_IMAGE,
+    DISPLAY_RAMPLEE_IMAGE,
+    DISPLAY_BLUR1_IMAGE,
+    DISPLAY_BLUR2_IMAGE,
+//    DISPLAY_TEXLEE_BLURED_IMAGE,
+    DISPLAY_RAMPLEE_BLURED_IMAGE,
+    DISPLAY_RK_IMAGE,
     DISPLAY_FILTERED_IMAGE,
   };
 
@@ -35,10 +39,11 @@ public:
 
 protected:
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
-  int _radius = 3;
-  double _sigma = 2;
-  double _noise_std = 0.1;
-  bool _sqrt = false;
+  int _se_radius = 4;
+  double _sigma_se = 1;
+  double _ramplee_scale = 1;
+  double _sigma1 = 0.8;
+  double _sigma2 = 5;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

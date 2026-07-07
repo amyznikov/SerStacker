@@ -20,6 +20,7 @@ const c_enum_member* members_of<c_fft_filter_routine::FILTER>()
       { c_fft_filter_routine::FILTER_BUTTERWORTH, "BUTTERWORTH", },
       { c_fft_filter_routine::FILTER_GAUSSIAN_SHARP, "GAUSSIAN_SHARP", },
       { c_fft_filter_routine::FILTER_LAPLACIAN_SHARP, "LAPLACIAN_SHARP", },
+      { c_fft_filter_routine::FILTER_LAPLACIAN_LPASS, "LAPLACIAN_LPASS", },
 
       { c_fft_filter_routine::FILTER_GAUSSIAN, },
 
@@ -50,43 +51,48 @@ void c_fft_filter_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
   ctlbind(ctls, "Display: ", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "Filter: ", CTL_CONTEXT(ctx, _filterType), "Select filter type");
   ctlbind(ctls, "ppsDecomposition", CTL_CONTEXT(ctx, _ppsDecomposition), "");
+  ctlbind(ctls, "radialProfile", CTL_CONTEXT(ctx, _showRadialProfile), "");
 
-  ctlbind_expandable_group(ctls, "Gaussian filter options",
+  ctlbind_expandable_group(ctls, "Gaussian options",
       [&, ctx = CTL_CONTEXT(ctx, gaussian)]() {
         ctlbind(ctls, "sigma [px]: ", CTL_CONTEXT(ctx, sigma), "Gaussian blur sigma");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Laplacian filter options",
+  ctlbind_expandable_group(ctls, "Laplacian options",
       [&, ctx = CTL_CONTEXT(ctx, laplacian)]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Ramp filter options",
+  ctlbind_expandable_group(ctls, "Ramp options",
       [&, ctx = CTL_CONTEXT(ctx, ramp)]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Butterworth filter options",
+  ctlbind_expandable_group(ctls, "Butterworth options",
       [&, ctx = CTL_CONTEXT(ctx, butterworth)]() {
         ctlbind(ctls, "rc [pix]: ", CTL_CONTEXT(ctx, rc), "Butterworth cutoff in image space domain:\n FILTER = 1.0 / (1.0 + (r / rc)^(order))");
         ctlbind(ctls, "order: ", CTL_CONTEXT(ctx, order), "Butterworth filter order:\n FILTER = 1.0 / (1.0 + (r / rc)^(order))");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Gaussian sharp filter options",
+  ctlbind_expandable_group(ctls, "Gaussian sharp options",
       [&, ctx = CTL_CONTEXT(ctx, gaussian_sharp)]() {
         ctlbind(ctls, "sigma [px]: ", CTL_CONTEXT(ctx, sigma), "Gaussian unsharp sigma in image space domain");
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
       });
 
-  ctlbind_expandable_group(ctls, "Laplacian sharp filter options",
+  ctlbind_expandable_group(ctls, "Laplacian sharp options",
       [&, ctx = CTL_CONTEXT(ctx, laplacian_sharp )]() {
         ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
         ctlbind(ctls, "bwrc: ", CTL_CONTEXT(ctx, bwrc), "Butterworth cutoff");
         ctlbind(ctls, "bworder: ", CTL_CONTEXT(ctx, bworder), "Butterworth order");
       });
 
+  ctlbind_expandable_group(ctls, "Laplacian lpass options",
+      [&, ctx = CTL_CONTEXT(ctx, laplacian_lpass )]() {
+        ctlbind(ctls, "gain: ", CTL_CONTEXT(ctx, gain), "");
+      });
 }
 
 bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
@@ -96,36 +102,40 @@ bool c_fft_filter_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _filterType);
     SERIALIZE_OPTION(settings, save, *this, _ppsDecomposition);
+    SERIALIZE_OPTION(settings, save, *this, _showRadialProfile);
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianFilter")) {
-      SERIALIZE_OPTION(settings, save, gaussian, sigma);
-      SERIALIZE_OPTION(settings, save, gaussian, gain);
+      SERIALIZE_OPTION(group, save, gaussian, sigma);
+      SERIALIZE_OPTION(group, save, gaussian, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "LaplacianFilter")) {
-      SERIALIZE_OPTION(settings, save, laplacian, gain);
+      SERIALIZE_OPTION(group, save, laplacian, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GradientFilter")) {
-      SERIALIZE_OPTION(settings, save, ramp, gain);
+      SERIALIZE_OPTION(group, save, ramp, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "ButterworthFilter")) {
-      SERIALIZE_OPTION(settings, save, butterworth, rc);
-      SERIALIZE_OPTION(settings, save, butterworth, order);
-      SERIALIZE_OPTION(settings, save, butterworth, gain);
+      SERIALIZE_OPTION(group, save, butterworth, rc);
+      SERIALIZE_OPTION(group, save, butterworth, order);
+      SERIALIZE_OPTION(group, save, butterworth, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "GaussianSharpFilter")) {
-      SERIALIZE_OPTION(settings, save, gaussian_sharp, sigma);
-      SERIALIZE_OPTION(settings, save, gaussian_sharp, gain);
+      SERIALIZE_OPTION(group, save, gaussian_sharp, sigma);
+      SERIALIZE_OPTION(group, save, gaussian_sharp, gain);
     }
 
     if ( auto group = SERIALIZE_GROUP(settings, save, "LaplacianSharpFilter")) {
-      SERIALIZE_OPTION(settings, save, laplacian_sharp, gain);
-      SERIALIZE_OPTION(settings, save, laplacian_sharp, bwrc);
-      SERIALIZE_OPTION(settings, save, laplacian_sharp, bworder);
+      SERIALIZE_OPTION(group, save, laplacian_sharp, gain);
+      SERIALIZE_OPTION(group, save, laplacian_sharp, bwrc);
+      SERIALIZE_OPTION(group, save, laplacian_sharp, bworder);
+    }
 
+    if ( auto group = SERIALIZE_GROUP(settings, save, "LaplacianLpassFilter")) {
+      SERIALIZE_OPTION(group, save, laplacian_lpass, gain);
     }
 
     return true;
@@ -214,20 +224,16 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
     }
 
+    case FILTER_LAPLACIAN_LPASS: {
+      const int ksize = 0;
+      fftSize = fftGetOptimalSize(src.size(), cv::Size(ksize, ksize), &rc);
+      FILTER = fftGenerateLaplacianFilter(fftSize, 1, true);
+      break;
+    }
+
     default:
       CF_ERROR("Not supported filter=%d requested", _filterType);
       break;
-  }
-
-  if ( _display == DISPLAY_FILTER_MODULE ) {
-    // No further processing requested
-    mask.release();
-    return fftDisplay(FILTER, image);
-  }
-  if ( _display == DISPLAY_FILTER_POWER ) {
-    // No further processing requested
-    mask.release();
-    return fftDisplay(FILTER.mul(FILTER), image);
   }
 
   if( !_ppsDecomposition ) {
@@ -248,7 +254,6 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   cv::split(src, real_channels);
 
   for ( int i = 0; i < cn; ++i ) {
-
     fftCopyMakeBorder(real_channels[i], real_channels[i], fftSize);
     real_channels[i].convertTo(real_channels[i], CV_32F);
 
@@ -258,28 +263,102 @@ bool c_fft_filter_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     else {
       fftPPSDecomposition(real_channels[i], VLAP, complex_channels[i], complex_channels_s[i]);
     }
+  }
+
+  if( _filterType == FILTER_LAPLACIAN_LPASS ) {
+    cv::Mat1f radialProfile, F, FAVG;
+
+    for( int i = 0; i < cn; ++i ) {
+      fftSpectrumModule(complex_channels[i], radialProfile);
+      cv::multiply(FILTER, radialProfile, radialProfile);
+      fftRadialProfile(radialProfile, radialProfile);
+      for( int j = 0, n = radialProfile.cols; j < n; ++j ) {
+        const float v = radialProfile(0, j);
+        radialProfile(0, j) = 1 / (1 + laplacian_lpass.gain * v * v * v * v);
+      }
+      if( cn == 1 ) {
+        fftRadialProfileToImage(radialProfile, fftSize, FAVG);
+      }
+      else if( i == 0 ) {
+        fftRadialProfileToImage(radialProfile, fftSize, FAVG);
+      }
+      else {
+        fftRadialProfileToImage(radialProfile, fftSize, F);
+        cv::add(F, FAVG, FAVG);
+      }
+    }
+
+    if( cn > 1 ) {
+      cv::multiply(FAVG, 1.0 / cn, FILTER);
+    }
+    else {
+      FILTER = std::move(FAVG);
+    }
+  }
+
+  if ( _display == DISPLAY_FILTER_MODULE ) {
+    // No further processing requested
+    mask.release();
+    return fftDisplay(FILTER, image);
+  }
+  if ( _display == DISPLAY_FILTER_POWER ) {
+    // No further processing requested
+    mask.release();
+    return fftDisplay(FILTER.mul(FILTER), image);
+  }
+
+  for ( int i = 0; i < cn; ++i ) {
 
     if ( _display == DISPLAY_SRC_SPECTRUM_MODULE ) {
       fftSpectrumModule(complex_channels[i], real_channels[i]);
+
+      if ( _showRadialProfile ) {
+        cv::Mat1f radialProfile;
+        fftRadialProfile(real_channels[i], radialProfile);
+        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
+      }
+
       continue;
     }
 
     if ( _display == DISPLAY_SRC_SPECTRUM_POWER ) {
       fftSpectrumModule(complex_channels[i], real_channels[i]);
       cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
+
+      if ( _showRadialProfile ) {
+        cv::Mat1f radialProfile;
+        fftRadialProfile(real_channels[i], radialProfile);
+        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
+      }
+
       continue;
     }
 
     fftMulSpectrum(FILTER, complex_channels[i], complex_channels[i]);
 
     if ( _display == DISPLAY_FILTERED_SPECTRUM_MODULE ) {
+
       fftSpectrumModule(complex_channels[i], real_channels[i]);
+
+      if ( _showRadialProfile ) {
+        cv::Mat1f radialProfile;
+        fftRadialProfile(real_channels[i], radialProfile);
+        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
+      }
+
       continue;
     }
 
     if ( _display == DISPLAY_FILTERED_SPECTRUM_POWER ) {
       fftSpectrumModule(complex_channels[i], real_channels[i]);
       cv::multiply(real_channels[i], real_channels[i], real_channels[i]);
+
+      if ( _showRadialProfile ) {
+        cv::Mat1f radialProfile;
+        fftRadialProfile(real_channels[i], radialProfile);
+        fftRadialProfileToImage(radialProfile, fftSize, (cv::Mat1f&)real_channels[i]);
+      }
+
       continue;
     }
 

@@ -24,7 +24,8 @@ public:
     FILTER_RAMP,
     FILTER_BUTTERWORTH,
     FILTER_GAUSSIAN_SHARP,
-    FILTER_LAPLACIAN_SHARP
+    FILTER_LAPLACIAN_SHARP,
+    FILTER_LAPLACIAN_LPASS,
   };
 
   enum DISPLAY {
@@ -50,6 +51,7 @@ protected:
   FILTER _filterType = FILTER_GAUSSIAN;
   DISPLAY _display = DISPLAY_FILTERED_IMAGE;
   bool _ppsDecomposition = false;
+  bool _showRadialProfile = false;
 
   struct c_gaussian_filter_opts {
     double sigma = 1;
@@ -80,6 +82,10 @@ protected:
     double bwrc = 1;
     double bworder = 4;
   } laplacian_sharp;
+
+  struct c_laplacian_lpass_filter_opts {
+    double gain = 1;
+  } laplacian_lpass;
 
   cv::Mat1f VLAP;
 };

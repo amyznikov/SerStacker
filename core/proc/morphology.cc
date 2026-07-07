@@ -112,59 +112,31 @@ void morphological_laplacian_abs(cv::InputArray src, cv::OutputArray dst, cv::In
 }
 
 void rampLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
-    int borderType, const cv::Scalar& borderValue)
+    int borderType, const cv::Scalar & borderValue)
 {
-#if 0
-  // TOD: Optimize this code
+  // TODO:  Can this code be optimized more ?
+  cv::Mat D, E, O, C;
 
-  cv::Mat O, C, D, E;
+  cv::dilate(src, D, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::erode(src, E, SE, cv::Point(-1, -1), 1, borderType, borderValue);
 
-  cv::morphologyEx(src, O, cv::MORPH_OPEN, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-  cv::morphologyEx(src, C, cv::MORPH_CLOSE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-  cv::morphologyEx(src, D, cv::MORPH_DILATE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-  cv::morphologyEx(src, E, cv::MORPH_ERODE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  // 2. OPEN = dilate(E), CLOSE = erode(D)
+  cv::dilate(E, O, SE, cv::Point(-1, -1), 1, borderType, borderValue);
+  cv::erode(D, C, SE, cv::Point(-1, -1), 1, borderType, borderValue);
 
-  cv::subtract(D, C, D);
-  cv::subtract(O, E, O);
+  cv::subtract(D, C, D); // D = (D - C)
+  cv::subtract(O, E, O); // O = (O - E)
 
   dst.create(src.size(), src.type());
   cv::min(D, O, dst.getMatRef());
-#else
-    cv::Mat D, E, O, C;
-
-    cv::dilate(src, D, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-    cv::erode(src, E, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-
-    // 2. OPEN = dilate(E), CLOSE = erode(D)
-    cv::dilate(E, O, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-    cv::erode(D, C, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-
-    cv::subtract(D, C, D); // D = (D - C)
-    cv::subtract(O, E, O); // O = (O - E)
-
-    dst.create(src.size(), src.type());
-    cv::min(D, O, dst.getMatRef());
-#endif
 }
 
 
 
 void texLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
-    int borderType, const cv::Scalar& borderValue)
+    int borderType, const cv::Scalar & borderValue)
 {
-#if 0
-  // TOD: Optimize this code
-  cv::Mat O, C, CG, GO;
-
-  cv::morphologyEx(src, O, cv::MORPH_OPEN, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-  cv::morphologyEx(src, C, cv::MORPH_CLOSE, SE, cv::Point(-1, -1), 1, borderType, borderValue);
-
-  cv::subtract(C, src, CG);
-  cv::subtract(src, O, GO);
-
-  dst.create(src.size(), src.type());
-  cv::min(GO, CG, dst.getMatRef());
-#else
+  // TODO:  Can this code be optimized more ?
 
   cv::Mat E, D, O, C, CG, GO;
 
@@ -181,7 +153,6 @@ void texLee(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE,
 
   dst.create(src.size(), src.type());
   cv::min(GO, CG, dst.getMatRef());
-#endif
 }
 
 /**

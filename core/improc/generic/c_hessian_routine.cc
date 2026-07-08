@@ -28,6 +28,7 @@ const c_enum_member* members_of<c_hessian_routine::OutputType>()
 
       { c_hessian_routine::OutputMaxEigenValues, "MaxEigenValues", "Max Eigen Values" },
       { c_hessian_routine::OutputMinEigenValues, "MinEigenValues", "Min Eigen Values" },
+      { c_hessian_routine::OutputModuleEigenValues, "ModuleEigenValues", "Module of both Eigen Values" },
 
       { c_hessian_routine::OutputDet },
   };
@@ -199,6 +200,24 @@ bool c_hessian_routine::process(cv::InputOutputArray image, cv::InputOutputArray
       compute_hessian_eigenvalues(gxx, gxy, gyy,
           cv::noArray(),
           image);
+      break;
+    }
+
+    case OutputModuleEigenValues: {
+      cv::Mat gxx, gyy, gxy;
+      cv::Mat mu1, mu2;
+
+      compute_second_sobel_derivatives(image.getMat(),
+          gxx,
+          gyy,
+          gxy,
+          _border_type);
+
+      compute_hessian_eigenvalues(gxx, gxy, gyy,
+          mu1, mu2);
+
+      cv::magnitude(mu1, mu2, image);
+
       break;
     }
 

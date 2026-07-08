@@ -355,51 +355,28 @@ static inline void compute_eigen_values(const float a, const float b, const floa
   // A = | a b |
   //     | b d |
   //
-  const float T =
-      a + d;
-
-  const float D =
-       std::sqrt((a - d) * (a - d) + 4 * b * b);
-
-  mu1 =
-      (T + D) * 0.5f;
-
-  mu2 =
-      (T - D) * 0.5f;
+  const float T = a + d;
+  const float D = std::sqrt((a - d) * (a - d) + 4 * b * b);
+  mu1 = (T + D) * 0.5f;
+  mu2 = (T - D) * 0.5f;
 }
 
 template<class _Tp>
 static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gxy, cv::InputArray _gyy,
     cv::OutputArray _mu1, cv::OutputArray _mu2)
 {
-  const cv::Size image_size =
-      _gxx.size();
-
-  const int cn =
-      _gxx.channels();
-
-  const cv::Mat_<_Tp> gxx =
-      _gxx.getMat();
-
-  const cv::Mat_<_Tp> gxy =
-      _gxy.getMat();
-
-  const cv::Mat_<_Tp> gyy =
-      _gyy.getMat();
+  const cv::Size image_size = _gxx.size();
+  const int cn = _gxx.channels();
+  const cv::Mat_<_Tp> gxx = _gxx.getMat();
+  const cv::Mat_<_Tp> gxy = _gxy.getMat();
+  const cv::Mat_<_Tp> gyy = _gyy.getMat();
 
   if( _mu1.needed() && _mu2.needed() ) {
 
-    _mu1.create(image_size,
-        CV_MAKETYPE(CV_32F, cn));
-
-    _mu2.create(image_size,
-        CV_MAKETYPE(CV_32F, cn));
-
-    cv::Mat_<float> mu1 =
-        _mu1.getMatRef();
-
-    cv::Mat_<float> mu2 =
-        _mu2.getMatRef();
+    _mu1.create(image_size, CV_MAKETYPE(CV_32F, cn));
+    _mu2.create(image_size, CV_MAKETYPE(CV_32F, cn));
+    cv::Mat_<float> mu1 = _mu1.getMatRef();
+    cv::Mat_<float> mu2 = _mu2.getMatRef();
 
     for( int y = 0; y < image_size.height; ++y ) {
 
@@ -413,20 +390,12 @@ static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gx
 
         for( int c = 0; c < cn; ++c ) {
 
-          const int i =
-              x * cn + c;
-
-          const float a =
-              gxxp[i];
-
-          const float b =
-              gxyp[i];
-
-          const float d =
-              gyyp[i];
+          const int i = x * cn + c;
+          const float a = gxxp[i];
+          const float b = gxyp[i];
+          const float d = gyyp[i];
 
           float mu1, mu2;
-
           compute_eigen_values(a, b, d, mu1, mu2);
 
           if( std::abs(mu1) > std::abs(mu2) ) {
@@ -444,11 +413,8 @@ static void compute_hessian_eigenvalues_(cv::InputArray _gxx, cv::InputArray _gx
   }
   else if( _mu1.needed() ) {
 
-    _mu1.create(image_size,
-        CV_MAKETYPE(CV_32F, cn));
-
-    cv::Mat_<float> mu1 =
-        _mu1.getMatRef();
+    _mu1.create(image_size, CV_MAKETYPE(CV_32F, cn));
+    cv::Mat_<float> mu1 = _mu1.getMatRef();
 
     for( int y = 0; y < image_size.height; ++y ) {
 

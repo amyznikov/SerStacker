@@ -741,7 +741,7 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
     const double max_epipole_distance =
         std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
-            abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+            std::abs(epipole_location.y), std::abs(epipole_location.y - reference_image_size.height - 1) });
 
     for( int y = 0; y < reference_image_size.height; ++y ) {
       for( int x = 0; x < reference_image_size.width; ++x ) {
@@ -1090,26 +1090,26 @@ bool morph_gradient_flow(cv::InputArray current_image, cv::InputArray current_ma
 
 #if 0
 #if 1
-    const double max_epipole_distance =
-           std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
-               abs(epipole_location.y), abs(epipole_location.y - reference_image_size.height - 1) });
+  const double max_epipole_distance =
+        std::max( { std::abs(epipole_location.x), std::abs(epipole_location.x - reference_image_size.width - 1),
+            std::abs(epipole_location.y), std::abs(epipole_location.y - reference_image_size.height - 1) });
 
-    for( int y = 0; y < reference_image_size.height; ++y ) {
-      for( int x = 0; x < reference_image_size.width; ++x ) {
+  for( int y = 0; y < reference_image_size.height; ++y ) {
+    for( int x = 0; x < reference_image_size.width; ++x ) {
 
-        c_best_extremum &pix =
-            best_grid[y][x];
+      c_best_extremum &pix =
+          best_grid[y][x];
 
-        for( int i = 0; i < pix.num_best_extremums; ++i ) {
+      for( int i = 0; i < pix.num_best_extremums; ++i ) {
 
-          const double K =
-              max_epipole_distance / (max_epipole_distance - pix.e[i].I);
+        const double K =
+            max_epipole_distance / (max_epipole_distance - pix.e[i].I);
 
-          // cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
-          // cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
-        }
+        // cmap[y][x][0] = (x - epipole_location.x) * K + epipole_location.x;
+        // cmap[y][x][1] = (y - epipole_location.y) * K + epipole_location.y;
       }
     }
+  }
 #endif
 
 

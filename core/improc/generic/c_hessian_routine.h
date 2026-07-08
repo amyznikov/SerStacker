@@ -33,6 +33,7 @@ public:
     OutputGaussianCurvature,
     OutputMaxEigenValues,
     OutputMinEigenValues,
+    OutputModuleEigenValues,
   };
 
   bool serialize(c_config_setting settings, bool save) final;

@@ -10,6 +10,7 @@
 #define __c_adaptive_blend_filter_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/adaptive_gaussian_blur.h>
 
 class c_adaptive_gaussian_blur_routine :
     public c_image_processor_routine
@@ -18,38 +19,18 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_adaptive_gaussian_blur_routine,
       "c_adaptive_gaussian_blur_routine", "Apply adaptive denoise filter");
 
-  enum DisplayType {
-    DisplayFiltered,
-    DisplayRamp,
-    DisplayTex,
-    DisplayEdges,
-    DisplayLpass,
-    DisplayHpass,
-    DisplayDetail,
-  };
+  using DisplayType = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_TYPE;
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  cv::Mat ramp;
-  cv::Mat tex;
-  cv::Mat edges;
-  cv::Mat lpass;
-  cv::Mat hpass;
-  cv::Mat detail;
-
-  int seRadius = 2;
-  int mkRadius = 2;
-  double gfSigma = 1.5;
-  double hBoost = 1;
-  int sn = 6;
-  double qmin = 0.0;
-  double smin = 0.3;
-  double qmax = 0.9999;
-  double smax = 0.8;
-  DisplayType displayType = DisplayFiltered;
+  double sigma_hpass = 0.75;
+  double sigma_lpass = 2.0;
+  double lpg_scale = 100;
+  double lpgk = 0.5;
+  DisplayType displayType = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_FILTERED;
 };
 
 #endif /* __c_adaptive_blend_filter_routine_h__ */

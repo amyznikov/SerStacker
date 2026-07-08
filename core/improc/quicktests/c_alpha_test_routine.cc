@@ -95,12 +95,12 @@ static void compute_lpg(cv::InputArray _src, cv::OutputArray _dst, double gsigma
   compute_gradient(src, g);
   cv::GaussianBlur(g, g, cv::Size(), gsigma, gsigma);
 
-  if ( lpgk > 0 ) {
-    compute_modlaplace(src, l, lpgk);
-    cv::add(l, g, _dst);
+  if ( !(lpgk > 0) ) {
+    _dst.move(g);
   }
   else {
-    _dst.move(g);
+    compute_modlaplace(src, l, lpgk);
+    cv::add(l, g, _dst);
   }
 }
 

@@ -18,19 +18,33 @@
 
 struct c_align_color_channels_options
 {
-  ECC_ALIGN_METHOD method = ECC_ALIGN_LM;
+  ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
   enum ECC_BORDER_MODE border_mode = ECC_BORDER_REPLICATE;
   cv::Scalar border_value = cv::Scalar();
   double smooth_sigma = 0;
   double eps = 0.1;
-  double update_step_scale = 1;
-  double normalization_eps = 1;
+  double update_step_scale = 1.25;
   int max_iterations = 30;
   int max_level = 0;
   int normalization_level = 3;
 };
+
+
+bool serialize_align_color_channels_options(c_config_setting section, bool save,
+    c_align_color_channels_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_align_color_channels_options & opts)
+{
+  return serialize_align_color_channels_options(section, true,
+      const_cast<c_align_color_channels_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_align_color_channels_options * opts)
+{
+  return serialize_align_color_channels_options(section, false, *opts);
+}
 
 template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_align_color_channels_options> & ctx)
@@ -46,90 +60,33 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "update_step_scale", ctx(&S::update_step_scale), "");
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
   ctlbind(ctls, "max_level", ctx(&S::max_level), "");
-  ctlbind(ctls, "normalization_eps", ctx(&S::normalization_eps), "");
   ctlbind(ctls, "normalization_level", ctx(&S::normalization_level), "");
 }
 
 
 /**
- *  Use of ECC for color channels alignment in multi-channel images
+ *  Use of ECCH for color channels alignment in multi-channel images
  *  */
 class c_align_color_channels
 {
 public:
   typedef c_align_color_channels this_class;
 
-  c_align_color_channels() = default;
-
-  c_align_color_channels_options & options()
-  {
-    return _opts;
-  }
-
-  const c_align_color_channels_options & options() const
-  {
-    return _opts;
-  }
-
-  void set_method(ECC_ALIGN_METHOD v);
-  ECC_ALIGN_METHOD method() const;
-
-  void set_motion_type(IMAGE_MOTION_TYPE motion_type);
-  IMAGE_MOTION_TYPE motion_type() const;
-
-  void set_interpolation(enum ECC_INTERPOLATION_METHOD method);
-  enum ECC_INTERPOLATION_METHOD interpolation() const;
-
-  void set_border_mode(enum ECC_BORDER_MODE border_mode);
-  enum ECC_BORDER_MODE border_mode() const;
-
-  void set_border_value(const cv::Scalar & border_value);
-  const cv::Scalar & border_value() const;
-
-  void set_max_iterations(int v);
-  int max_iterations() const;
-
-  void set_smooth_sigma(double v);
-  double smooth_sigma() const;
-
-  void set_update_step_scale(double v);
-  double update_step_scale() const;
-
-  void set_eps(double v);
-  double eps() const;
-
-  void set_max_level(int v);
-  int max_level() const;
-
-  void set_normalization_level(int v);
-  int normalization_level() const;
-
-  void set_normalization_eps(double v);
-  double normalization_eps() const;
-
   const c_image_transform::sptr & computed_transform(int channel_index) const;
 
-  bool align(int reference_channel_index,
-      cv::InputArray src,
-      cv::OutputArray dst,
+  bool align(cv::InputArray src, cv::OutputArray dst,
+      const c_align_color_channels_options & opts,
+      int reference_channel_index,
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );
 
-  bool align(cv::InputArray single_channel_reference_image,
-      cv::InputArray src,
-      cv::OutputArray dst,
-      cv::InputArray reference_mask = cv::noArray(),
+  bool align(cv::InputArray src, cv::OutputArray dst,
+      cv::InputArray reference_image, cv::InputArray reference_mask,
+      const c_align_color_channels_options & opts,
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );
-
-  template<class RootObjectType>
-  static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)
-  {
-    ctlbind(ctls, ctx(&this_class::_opts));
-  }
 
 protected:
-  c_align_color_channels_options _opts;
   std::vector<c_image_transform::sptr> _computed_transforms;
 };
 

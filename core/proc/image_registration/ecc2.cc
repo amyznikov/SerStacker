@@ -609,30 +609,44 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
 }
 
 
-void ecc_normalize_meanstdev(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray dst, int lvl, double eps)
+void ecc_normalize(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray _dst, int lvl, double /*eps*/)
 {
   const cv::Mat src = _src.getMat();
-  const cv::Size src_size = src.size();
+  const cv::Size src_size = _src.size();
 
-  cv::Mat m, s;
-
+  cv::Mat m;
   ecc_downscale(src, m, lvl, cv::BORDER_REPLICATE);
-  ecc_downscale(src.mul(src), s, lvl, cv::BORDER_REPLICATE);
-
-  cv::add(s, eps, s, cv::noArray(), s.type());
-
   ecc_upscale(m, src_size);
-  ecc_upscale(s, src_size);
-
-  cv::subtract(src, m, dst, cv::noArray(), CV_32F);
-  cv::divide(dst, s, dst);
-
+  cv::subtract(src, m, _dst, cv::noArray(), CV_32F);
   if ( !_src_mask.empty() ) {
-    dst.setTo(0, ~_src_mask.getMat());
+    _dst.getMatRef().setTo(0, ~_src_mask.getMat());
   }
-
 }
 
+//void ecc_normalize(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray dst, int lvl, double eps)
+//{
+//  const cv::Mat src = _src.getMat();
+//  const cv::Size src_size = src.size();
+//
+//  cv::Mat m, s;
+//
+//  ecc_downscale(src, m, lvl, cv::BORDER_REPLICATE);
+//  ecc_downscale(src.mul(src), s, lvl, cv::BORDER_REPLICATE);
+//
+//  cv::add(s, eps, s, cv::noArray(), s.type());
+//
+//  ecc_upscale(m, src_size);
+//  ecc_upscale(s, src_size);
+//
+//  cv::subtract(src, m, dst, cv::noArray(), CV_32F);
+//  cv::divide(dst, s, dst);
+//
+//  if ( !_src_mask.empty() ) {
+//    dst.setTo(0, ~_src_mask.getMat());
+//  }
+//
+//}
+//
 
 /* Remap to Flow
  * */

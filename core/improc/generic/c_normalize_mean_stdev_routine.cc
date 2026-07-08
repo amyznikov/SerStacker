@@ -109,6 +109,6 @@ bool c_normalize_mean_stdev_routine::serialize(c_config_setting settings, bool s
 
 bool c_normalize_mean_stdev_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  ecc_normalize_meanstdev(image.getMat(), mask, image, _level, _eps);
+  ecc_normalize(image.getMat(), mask, image, _level, _eps);
   return true;
 }

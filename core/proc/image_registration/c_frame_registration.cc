@@ -634,7 +634,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
       }
 
       if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
-        ecc_normalize_meanstdev(ecc_image, ecc_mask, ecc_image,
+        ecc_normalize(ecc_image, ecc_mask, ecc_image,
             _options.ecc.normalization_scale,
             _options.ecc.normalization_noise);
       }
@@ -821,7 +821,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
     }
 
     if( _options.ecc.normalization_scale > 0 && _options.ecc.normalization_noise > 0 ) {
-      ecc_normalize_meanstdev(current_ecc_image, current_ecc_mask, current_ecc_image,
+      ecc_normalize(current_ecc_image, current_ecc_mask, current_ecc_image,
           _options.ecc.normalization_scale,
           _options.ecc.normalization_noise);
     }

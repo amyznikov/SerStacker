@@ -807,10 +807,10 @@ bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Siz
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      cv::Vec2f * mp = rmap[y];
-      for( int x = 0; x < rmap.cols; ++x ) {
-        mp[x][0] = a(0, 0) * x + a(0, 1) * y + a(0, 2);
-        mp[x][1] = a(1, 0) * x + a(1, 1) * y + a(1, 2);
+      float * __restrict mp = (float * )rmap[y];
+      for( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+        mp[0] = a(0, 0) * x + a(0, 1) * y + a(0, 2);
+        mp[1] = a(1, 0) * x + a(1, 1) * y + a(1, 2);
       }
     }
   });
@@ -1294,10 +1294,10 @@ bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const
 
   parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
     for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      cv::Vec2f * mp = rmap[y];
-      for ( int x = 0; x < rmap.cols; ++x ) {
-        mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
-        mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
+      float * __restrict mp = (float * )rmap[y];
+      for ( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+        mp[0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
+        mp[1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
       }
     }
   });

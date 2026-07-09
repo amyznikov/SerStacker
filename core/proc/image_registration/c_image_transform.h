@@ -51,7 +51,6 @@ public:
   virtual bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const = 0;
   virtual double eps(const cv::Mat1f & dp, const cv::Size & image_size) = 0;
 
-
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
@@ -200,6 +199,13 @@ public:
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
 
+  bool invertible() const final
+  {
+    return true;
+  }
+
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
+
 protected:
   void update_parameters();
 
@@ -262,7 +268,6 @@ public:
   bool remap(const cv::Matx23f & a, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const;
   bool remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts, std::vector<cv::Point2f> & cpts) const final;
   bool create_steepest_descent_images(const cv::Mat1f & p, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const final;
-
 
   bool invertible() const final
   {
@@ -333,7 +338,6 @@ protected:
 protected:
   cv::Matx33f _matrix;
 };
-
 
 
 
@@ -501,9 +505,6 @@ public:
   cv::Matx33f matrix() const;
   cv::Matx33f matrix(const cv::Mat1f & p) const;
   cv::Matx33f dmatrix(const cv::Mat1f & dp) const;
-
-  //  void set_translation(const cv::Vec2f & v) final;
-  //  cv::Vec2f translation() const final;
 
   bool set_parameters(const cv::Mat1f & p) final;
   void scale_transfrom(double factor) final;

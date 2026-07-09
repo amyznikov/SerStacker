@@ -13,7 +13,7 @@
 
 const c_image_transform::sptr & c_align_color_channels::computed_transform(int channel_index) const
 {
-  return _computed_transforms[channel_index];
+  return _image_transforms[channel_index];
 }
 
 bool c_align_color_channels::align(cv::InputArray _src, cv::OutputArray _dst,
@@ -51,7 +51,7 @@ bool c_align_color_channels::align(cv::InputArray _src, cv::OutputArray _dst,
     cv::InputArray _srcmask,
     cv::OutputArray _dstmask)
 {
-  _computed_transforms.clear();
+  _image_transforms.clear();
 
   if( reference_image.channels() != 1 ) {
     CF_ERROR("Invalid arg: single channel reference image is expected");
@@ -108,7 +108,7 @@ bool c_align_color_channels::align(cv::InputArray _src, cv::OutputArray _dst,
     }
   }
 
-  _computed_transforms.resize(cn);
+  _image_transforms.resize(cn);
 
   c_ecch ecc(opts.method);
   ecc.set_maxlevel(opts.max_level);
@@ -126,7 +126,7 @@ bool c_align_color_channels::align(cv::InputArray _src, cv::OutputArray _dst,
 
   for( int i = 0; i < cn; ++i ) {
 
-    ecc.set_image_transform((_computed_transforms[i] =
+    ecc.set_image_transform((_image_transforms[i] =
         create_image_transform(opts.motion_type)).get());
 
     if( !ecc.align( channels[i], masks[i]) ) {

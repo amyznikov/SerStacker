@@ -87,7 +87,7 @@ public:
       cv::OutputArray dstmask = cv::noArray() );
 
 protected:
-  std::vector<c_image_transform::sptr> _computed_transforms;
+  std::vector<c_image_transform::sptr> _image_transforms;
 };
 
 

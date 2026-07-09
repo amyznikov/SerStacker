@@ -5,26 +5,14 @@
  *      Author: amyznikov
  */
 #include "ecc2.h"
-#include <core/proc/downstrike.h>
-#include <core/io/save_image.h>
+#include <core/proc/run-loop.h>
 #include <core/settings/opencv_settings.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
 #if HAVE_TBB
 # include <tbb/tbb.h>
-
-# define ECC_USE_TBB 1
-
-typedef tbb::blocked_range<int>
-  tbb_range;
-
-constexpr int tbb_block_size =
-    256;
-
 #endif
-
-
 
 template<>
 const c_enum_member * members_of<ECC_INTERPOLATION_METHOD>()
@@ -73,16 +61,10 @@ const c_enum_member * members_of<ECC_ALIGN_METHOD>()
   return members;
 }
 
-
-
-
 double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputArray mask)
 {
-  const cv::Size size =
-      src1.size();
-
-  const int cn =
-      src1.channels();
+  const cv::Size size = src1.size();
+  const int cn = src1.channels();
 
   cv::Mat img1, img2;
 //  cv::Mat img1(size, CV_MAKETYPE(CV_32F, cn), cv::Scalar::all(0));
@@ -90,9 +72,7 @@ double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputAr
 
   cv::Scalar m1, m2, s1, s2;
 
-  const int npix =
-      mask.empty() ? size.area() :
-          cv::countNonZero(mask);
+  const int npix = mask.empty() ? size.area() : cv::countNonZero(mask);
 
   cv::meanStdDev(src1, m1, s1, mask);
   cv::meanStdDev(src2, m2, s2, mask);
@@ -105,9 +85,7 @@ double compute_correlation(cv::InputArray src1, cv::InputArray src2, cv::InputAr
     img2.setTo(0, ~mask.getMat());
   }
 
-  const double covar =
-      img1.dot(img2) / (npix);
-
+  const double covar = img1.dot(img2) / (npix);
   double std1 = 0, std2 = 0;
 
   for( int i = 0; i < cn; ++i ) {
@@ -160,11 +138,11 @@ double compute_correlation(cv::InputArray current_image, cv::InputArray current_
 
 namespace {
 
-template<class T>
-inline T square(T x)
-{
-  return x * x;
-}
+//template<class T>
+//static inline T square(T x)
+//{
+//  return x * x;
+//}
 
 static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv::InputArray mask = cv::noArray() )
 {
@@ -189,84 +167,9 @@ static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv
 }
 
 
-static void ecc_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap, cv::BorderTypes borderType = cv::BORDER_REPLICATE)
+static inline void ecc_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap, cv::BorderTypes borderType = cv::BORDER_REPLICATE)
 {
-#if 1 // !ECC_USE_TBB
-  INSTRUMENT_REGION("cv::remap");
-  cv::remap(_src.getMat(), _dst,
-      rmap, cv::noArray(),
-      cv::INTER_LINEAR,
-      borderType);
-#else
-
-  if( _src.type() != CV_32FC1 ) {
-
-    INSTRUMENT_REGION("cv::remap");
-
-    cv::remap(_src.getMat(), _dst,
-        rmap, cv::noArray(),
-        cv::INTER_LINEAR,
-        cv::BORDER_CONSTANT);
-  }
-  else {
-
-    INSTRUMENT_REGION("ecc_remap");
-
-    const cv::Mat1f src =
-        _src.getMat();
-
-    const cv::Size src_size =
-        src.size();
-
-    const cv::Size dst_size =
-        rmap.size();
-
-    _dst.create(dst_size, CV_32FC1);
-
-    cv::Mat1f dst =
-        _dst.getMatRef();
-
-    tbb::parallel_for(tbb_range(0, dst_size.height),
-        [&](const tbb_range & r) {
-
-          const int w = src_size.width;
-          const int h = src_size.height;
-
-          for ( int dst_y = r.begin(); dst_y < r.end(); ++dst_y ) {
-
-            float * dstp = dst[dst_y];
-
-            const cv::Vec2f * m = rmap[dst_y];
-
-            for ( int dst_x = 0; dst_x < dst_size.width; ++dst_x ) {
-
-              const float x = m[dst_x][0];
-              const float y = m[dst_x][1];
-
-              const int x1 = std::min(w - 1, std::max(0, (int) x));
-              const int y1 = std::min(h - 1, std::max(0, (int) y));
-
-              const int x2 = x1 + 1;
-              const int y2 = y1 + 1;
-
-              const float dx1 = x - x1;
-              const float dx2 = x2 - x;
-
-              const float dy1 = y - y1;
-              const float dy2 = y2 - y;
-
-              const float & Q11 = src[y1][x1];
-              const float & Q12 = src[std::min(y1 + 1, h - 1)][x1];
-              const float & Q21 = src[y1][std::min(x1 + 1, w - 1)];
-              const float & Q22 = src[std::min(y1 + 1, h - 1)][std::min(x1 + 1, w - 1)];
-
-              dstp[dst_x] = dx1 * (dy2 * Q21 + dy1 * Q22) + dx2 * (dy2 * Q11 + dy1 * Q12);
-
-            }
-          }
-        });
-  }
-#endif
+  cv::remap(_src.getMat(), _dst, rmap, cv::noArray(), cv::INTER_LINEAR, borderType);
 }
 
 static bool ecc_remap(const c_image_transform * image_transform,
@@ -287,8 +190,6 @@ static bool ecc_remap(const c_image_transform * image_transform,
 
   if( !src_mask.empty() ) {
 
-    INSTRUMENT_REGION("src_mask");
-
     cv::remap(src_mask.getMat(), dst_mask,
         rmap, cv::noArray(),
         cv::INTER_LINEAR,
@@ -298,8 +199,6 @@ static bool ecc_remap(const c_image_transform * image_transform,
   }
   else {
 
-    INSTRUMENT_REGION("dummy_mask");
-
     cv::remap(cv::Mat1b(src.size(), (uint8_t) (255)), dst_mask,
         rmap, cv::noArray(),
         cv::INTER_LINEAR,
@@ -308,64 +207,10 @@ static bool ecc_remap(const c_image_transform * image_transform,
 
   }
 
-  if( true ) {
-
-    INSTRUMENT_REGION("compare");
-
-    cv::compare(dst_mask.getMat(), 250, dst_mask,
-        cv::CMP_GE);
-  }
+  cv::compare(dst_mask.getMat(), 250, dst_mask,
+      cv::CMP_GE);
 
   return true;
-}
-
-
-/**
- * Five-point approximation to first order image derivative along epipolar lines.
- *  <https://en.wikipedia.org/wiki/Numerical_differentiation>
- * */
-static void ecc_epipolar_gradient(cv::InputArray src, cv::Mat1f & g, const cv::Point2f & e)
-{
-  static thread_local const cv::Matx<float, 1, 5> K(
-      (+1.f / 12),
-      (-8.f / 12),
-      0.f,
-      (+8.f / 12),
-      (-1.f / 12));
-
-  cv::Mat1f gx, gy;
-
-  cv::filter2D(src, gx, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::filter2D(src, gy, CV_32F, K.t(), cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-
-  g.create(src.size());
-
-#if ECC_USE_TBB
-  tbb::parallel_for(tbb_range(0, g.rows, tbb_block_size),
-      [&gx, &gy, &g, e](const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-        for ( int y = 0; y < g.rows; ++y ) {
-#endif
-          const float * gxp = gx[y];
-          const float * gyp = gy[y];
-          float * gp = g[y];
-
-          for ( int x = 0; x < g.cols; ++x ) {
-
-            const float dx = x - e.x;
-            const float dy = y - e.y;
-            const float dr = std::max(2 * FLT_EPSILON, std::sqrt(dx * dx + dy * dy));
-            const float ca = dx / dr;
-            const float sa = dy / dr;
-
-            gp[x] = (gxp[x] * ca + gyp[x] * sa);
-          }
-        }
-#if ECC_USE_TBB
-      });
-#endif
-
 }
 
 /*
@@ -374,7 +219,6 @@ static void ecc_epipolar_gradient(cv::InputArray src, cv::Mat1f & g, const cv::P
 bool ecc_downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode)
 {
   cv::pyrDown(src, dst, cv::Size(), border_mode);
-
   for( int l = 1; l < level; ++l ) {
     cv::pyrDown(dst, dst, cv::Size(), border_mode);
   }
@@ -422,118 +266,39 @@ bool ecc_upscale(cv::Mat & image, cv::Size dstSize)
   return true;
 }
 
-//void gaussian_average(const cv::Mat & src, cv::Mat & dst, double delta)
-//{
-//  static constexpr double sigma = 2;
-//  static constexpr int ksize = 2 * ((int) (sigma * 4)) + 1;
-//  static const thread_local cv::Mat1f G = cv::getGaussianKernel(ksize, sigma, CV_32F);
-//  cv::sepFilter2D(src, dst, -1, G, G.t(), cv::Point(-1, -1), delta, cv::BORDER_REPLICATE);
-//}
-
-
-/*
- * Estimate the standard deviation of the noise in a gray-scale image.
- *  J. Immerkr, Fast Noise Variance Estimation,
- *    Computer Vision and Image Understanding,
- *    Vol. 64, No. 2, pp. 300-302, Sep. 1996
- *
- * Matlab code:
- *  https://www.mathworks.com/matlabcentral/fileexchange/36941-fast-noise-estimation-in-images
- */
-double ecc_estimate_image_noise(cv::InputArray src, cv::InputArray mask = cv::noArray())
-{
-  cv::Mat H, m;
-
-  /* Compute sum of absolute values of special laplacian */
-
-  // sqrt(M_PI_2) / 6.0
-  constexpr double S = 0.20888568955258338;
-
-  static thread_local float C[3 * 3] = {
-      +1 * S, -2 * S, +1 * S,
-      -2 * S, +4 * S, -2 * S,
-      +1 * S, -2 * S, +1 * S
-  };
-
-  static thread_local cv::Mat1f K(3, 3, C);
-
-  cv::filter2D(src, H,
-  CV_32F,
-      K,
-      cv::Point(-1, -1),
-      0,
-      cv::BORDER_REPLICATE);
-
-  cv::absdiff(H, 0, H);
-
-  if( !mask.empty() ) {
-    cv::dilate(~mask.getMat(), m, cv::Mat1b(3, 3, 255));
-  }
-
-  const cv::Scalar sigma =
-      cv::mean(H, m);
-
-  // Select max value over channels
-  double max_noise = sigma[0];
-  for( int i = 1, cn = src.channels(); i < cn; ++i ) {
-    max_noise = std::max(max_noise, sigma[i]);
-  }
-
-  return max_noise;
-}
-
-
-
 /*
  * Create identity remap
  */
-void ecc_create_identity_remap(cv::Mat2f & map, const cv::Size & size)
+void ecc_create_identity_remap(cv::Mat2f & rmap, const cv::Size & size)
 {
-  map.create(size);
+  rmap.create(size);
 
-#if  ECC_USE_TBB
-  tbb::parallel_for(tbb_range(0, map.rows, tbb_block_size),
-      [&map](const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-        for ( int y = 0; y < map.rows; ++y ) {
-#endif
-          cv::Vec2f * m = map[y];
-          for ( int x = 0; x < map.cols; ++x ) {
-            m[x][0] = x;
-            m[x][1] = y;
-          }
-        }
-#if  ECC_USE_TBB
-     });
-#endif
+  parallel_for(0, rmap.rows, [&rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      float * __restrict mp = (float * )rmap[y];
+      for ( int x = 0; x < rmap.cols; ++x, mp += 2) {
+        mp[0] = x;
+        mp[1] = y;
+      }
+    }
+  });
 }
-
 
 /**
  * Compute Hessian matrix for ECC image alignment
  */
 void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/*, int nparams*/)
 {
-  const int M =
-      J.size();
-
+  const int M = J.size();
   H.create(M, M);
 
-#if  ECC_USE_TBB
-  tbb::parallel_for(tbb_range(0, M),
-      [&](const tbb_range & r) {
-        for( int i = r.begin(); i < r.end(); ++i ) {
-#else
-        for( int i = 0; i < M; ++i ) {
-#endif
-          for( int j = 0; j <= i; ++j ) {
-            H[i][j] = J[i].dot(J[j]);
-          }
-        }
-#if  ECC_USE_TBB
-        });
-#endif
+  parallel_for(0, M, [&](const auto & range) {
+    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
+      for( int j = 0; j <= i; ++j ) {
+        H[i][j] = J[i].dot(J[j]);
+      }
+    }
+  });
 
   for( int i = 0; i < M; ++i ) {
     for( int j = i + 1; j < M; ++j ) {
@@ -548,23 +313,13 @@ void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/
  * */
 void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & rhs, cv::Mat1f & v)
 {
-  const int M =
-      J.size();
-
+  const int M = J.size();
   v.create(M, 1);
-
-#if ECC_USE_TBB
-  tbb::parallel_for(tbb_range(0, M),
-      [&](const tbb_range & r) {
-        for( int i = r.begin(); i < r.end(); ++i ) {
-#else
-        for( int i = 0; i < M; ++i ) {
-#endif
-          v[i][0] = J[i].dot(rhs);
-        }
-#if ECC_USE_TBB
-      });
-#endif
+  parallel_for(0, M, [&](const auto & range) {
+    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
+      v[i][0] = J[i].dot(rhs);
+    }
+  });
 }
 
 } // namespace
@@ -623,148 +378,104 @@ void ecc_normalize(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArra
   }
 }
 
-//void ecc_normalize(cv::InputArray _src, cv::InputArray _src_mask, cv::OutputArray dst, int lvl, double eps)
-//{
-//  const cv::Mat src = _src.getMat();
-//  const cv::Size src_size = src.size();
-//
-//  cv::Mat m, s;
-//
-//  ecc_downscale(src, m, lvl, cv::BORDER_REPLICATE);
-//  ecc_downscale(src.mul(src), s, lvl, cv::BORDER_REPLICATE);
-//
-//  cv::add(s, eps, s, cv::noArray(), s.type());
-//
-//  ecc_upscale(m, src_size);
-//  ecc_upscale(s, src_size);
-//
-//  cv::subtract(src, m, dst, cv::noArray(), CV_32F);
-//  cv::divide(dst, s, dst);
-//
-//  if ( !_src_mask.empty() ) {
-//    dst.setTo(0, ~_src_mask.getMat());
-//  }
-//
-//}
-//
 
 /* Remap to Flow
  * */
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow)
 {
-  typedef tbb::blocked_range<int> range;
-
   if( &flow == &rmap ) {
 
-#if ECC_USE_TBB
-    tbb::parallel_for(range(0, rmap.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
-#endif
-            for( int x = 0; x < rmap.cols; ++x ) {
-              flow[y][x][0] -= x;
-              flow[y][x][1] -= y;
-            }
-          }
-#if ECC_USE_TBB
-        });
-#endif
-
+    parallel_for(0, flow.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        float * __restrict fp = (float * )flow[y];
+        for( int x = 0; x < flow.cols; ++x, fp += 2 ) {
+          fp[0] -= x;
+          fp[1] -= y;
+        }
+      }
+    });
   }
   else if( flow.data != rmap.data ) {
 
     flow.create(rmap.size());
 
-#if ECC_USE_TBB
-    tbb::parallel_for(range(0, rmap.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
-#endif
-            for( int x = 0; x < rmap.cols; ++x ) {
-              flow[y][x][0] = rmap[y][x][0] - x;
-              flow[y][x][1] = rmap[y][x][1] - y;
-            }
-          }
-#if ECC_USE_TBB
-        });
-#endif
+    parallel_for(0, rmap.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const float * mp = (const float * )rmap[y];
+        float * __restrict fp = (float * )flow[y];
+        for( int x = 0; x < rmap.cols; ++x, mp += 2, fp += 2 ) {
+          fp[0] = mp[0] - x;
+          fp[1] = mp[1] - y;
+        }
+      }
+    });
   }
   else {
 
     cv::Mat2f tmp(rmap.size());
 
-#if ECC_USE_TBB
-    tbb::parallel_for(range(0, rmap.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-          for ( int y = 0, ny = rmap.rows; y < ny; ++y ) {
-#endif
-            for( int x = 0; x < rmap.cols; ++x ) {
-              tmp[y][x][0] = rmap[y][x][0] - x;
-              tmp[y][x][1] = rmap[y][x][1] - y;
-            }
-          }
-#if ECC_USE_TBB
-        });
-#endif
+    parallel_for(0, rmap.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const float * mp = (const float * )rmap[y];
+        float * __restrict fp = (float * )tmp[y];
+        for( int x = 0; x < rmap.cols; ++x, mp += 2, fp += 2 ) {
+          fp[0] = mp[0] - x;
+          fp[1] = mp[1] - y;
+        }
+      }
+    });
 
     flow = std::move(tmp);
   }
-
 }
 
 /* Flow to Remap
  * */
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap)
 {
-  typedef tbb::blocked_range<int> range;
-
   if( &flow == &rmap ) {
 
-    tbb::parallel_for(range(0, rmap.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-            for( int x = 0; x < rmap.cols; ++x ) {
-              rmap[y][x][0] += x;
-              rmap[y][x][1] += y;
-            }
-          }
-        });
+    parallel_for(0, rmap.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        float * mp = (float * )rmap[y];
+        for( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+          mp[0] += x;
+          mp[1] += y;
+        }
+      }
+    });
 
   }
   else if( flow.data != rmap.data ) {
 
     rmap.create(flow.size());
 
-    tbb::parallel_for(range(0, rmap.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-            for( int x = 0; x < rmap.cols; ++x ) {
-              rmap[y][x][0] = flow[y][x][0] + x;
-              rmap[y][x][1] = flow[y][x][1] + y;
-            }
-          }
-        });
+    parallel_for(0, rmap.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const float * fp = (const float * )flow[y];
+        float * mp = (float * )rmap[y];
+        for( int x = 0; x < rmap.cols; ++x, mp += 2, fp += 2 ) {
+          mp[0] = fp[0] + x;
+          mp[1] = fp[1] + y;
+        }
+      }
+    });
 
   }
   else {
 
     cv::Mat2f tmp(flow.size());
 
-    tbb::parallel_for(range(0, tmp.rows, 256),
-        [&](const range & r) {
-          for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-            for( int x = 0; x < tmp.cols; ++x ) {
-              tmp[y][x][0] = flow[y][x][0] + x;
-              tmp[y][x][1] = flow[y][x][1] + y;
-            }
-          }
-        });
+    parallel_for(0, tmp.rows, [&](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const float * fp = (const float * )flow[y];
+        float * mp = (float * )tmp[y];
+        for( int x = 0; x < tmp.cols; ++x, mp += 2, fp += 2 ) {
+          mp[0] = fp[0] + x;
+          mp[1] = fp[1] + y;
+        }
+      }
+    });
 
     rmap = std::move(tmp);
   }
@@ -1738,23 +1449,14 @@ double c_ecclm::compute_remap(const cv::Mat1f & params,
       remapped_mask.empty() ? size.area() :
           cv::countNonZero(remapped_mask);
 
-  // cv::multiply(rhs, 1./nrms, rhs);
-  // CF_DEBUG("nrms= %g / %d", nrms, size.area());
-
   return nrms;
 
 }
 
 double c_ecclm::compute_rhs(const cv::Mat1f & params)
 {
-  //nrms =
-      compute_remap(params, remapped_image, remapped_mask,
-          rhs);
-
-  rms = cv::norm(rhs, cv::NORM_L2SQR);
-      //rhs.dot(rhs);// / nrms;
-
-  return rms;
+  compute_remap(params, remapped_image, remapped_mask, rhs);
+  return (rms = cv::norm(rhs, cv::NORM_L2SQR));
 }
 
 double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
@@ -1777,23 +1479,21 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 
   v.create(M, 1);
 
-  tbb::parallel_for(tbb_range(0, M),
-      [&](const tbb_range & r) {
-        for( int i = r.begin(); i < r.end(); ++i ) {
-          v[i][0] = J[i].dot(rhs);// / nrms;
-        }
-      });
+  parallel_for(0, M, [&](const auto & range) {
+    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
+      v[i][0] = J[i].dot(rhs);
+    }
+  });
 
   H.create(M, M);
 
-  tbb::parallel_for(tbb_range(0, M),
-      [&](const tbb_range & r) {
-        for( int i = r.begin(); i < r.end(); ++i ) {
-          for( int j = 0; j <= i; ++j ) {
-            H[i][j] = J[i].dot(J[j]);// / nrms;
-          }
-        }
-      });
+  parallel_for(0, M, [&](const auto & range) {
+    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
+      for( int j = 0; j <= i; ++j ) {
+        H[i][j] = J[i].dot(J[j]);
+      }
+    }
+  });
 
   for( int i = 0; i < M; ++i ) {
     for( int j = i + 1; j < M; ++j ) {
@@ -1807,8 +1507,6 @@ double c_ecclm::compute_jac(const cv::Mat1f & params, bool recompute_remap,
 
 bool c_ecclm::align()
 {
-  INSTRUMENT_REGION("");
-
   if ( !_transform ) {
     CF_ERROR("c_ecclm: image_transform_ is null");
     return false;
@@ -2005,16 +1703,9 @@ bool c_ecc_inverse_compositional::align()
 
   double rmsold, rmsnew;
 
-  params =
-      _transform->parameters();
-
-  const int M =
-      params.rows;
-
-  const double RMA =
-      _reference_mask.empty() ?
-          _reference_image.size().area() :
-          cv::countNonZero(_reference_mask);
+  params = _transform->parameters();
+  const int M = params.rows;
+  const double RMA = _reference_mask.empty() ? _reference_image.size().area() : cv::countNonZero(_reference_mask);
 
   /**
    * PreCompute
@@ -2033,15 +1724,15 @@ bool c_ecc_inverse_compositional::align()
 
   rmsold = FLT_MAX;
 
-  const double lambda =
-      _update_step_scale;
+  const double lambda = _update_step_scale;
 
   while ( _num_iterations++ < _max_iterations ) {
 
     params = _transform->parameters();
 
     ecc_remap(_transform, params, reference_image().size(),
-        _current_image, _current_mask, remapped_image, remapped_mask, cv::BORDER_CONSTANT);
+        _current_image, _current_mask, remapped_image, remapped_mask,
+        cv::BORDER_CONSTANT);
 
     cv::subtract(remapped_image, _reference_image, rhs);
     if ( !remapped_mask.empty() ) {
@@ -2052,78 +1743,27 @@ bool c_ecc_inverse_compositional::align()
         remapped_mask.empty() ? rhs.size().area() :
             cv::countNonZero(remapped_mask);
 
-#if ECC_USE_TBB
     tbb::parallel_invoke(
-        [&] () {
-#endif
-          //rmsnew = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+        [&]() {
           rmsnew = cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
-
-#if ECC_USE_TBB
         },
         [&]() {
-#endif
           ecc_project_error_image(jac, rhs, v);
           cv::solve(H, v * (RMA / CMA), deltap, cv::DECOMP_CHOLESKY);
-#if ECC_USE_TBB
         });
-#endif
 
     if ( rmsnew >= rmsold ) {
-      // CF_DEBUG("BREAK by rmsnew = %g rmsold = %g ", rmsnew, rmsold);
       break;
     }
 
-    newparams =
-        _transform->invert_and_compose(params,
-            lambda * deltap);
-
-//    CF_DEBUG("[i %d] CMA=%g rms=%g rmsnew=%g drms=%g\n"
-//        "params = {\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g \n"
-//        "}\n"
-//        "deltap = {\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g \n"
-//        "}\n"
-//        "newparams = {\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g %+20g\n"
-//        "      %+20g %+20g \n"
-//        "}\n"
-//        "\n",
-//        num_iterations_,
-//        CMA, rmsold, rmsnew, rmsold - rmsnew,
-//
-//        params(0, 0), params(1, 0), params(2, 0),
-//        params(3, 0), params(4, 0), params(5, 0),
-//        params(6, 0), params(7, 0),
-//
-//        deltap(0, 0), deltap(1, 0), deltap(2, 0),
-//        deltap(3, 0), deltap(4, 0), deltap(5, 0),
-//        deltap(6, 0), deltap(7, 0),
-//
-//        newparams(0, 0), newparams(1, 0), newparams(2, 0),
-//        newparams(3, 0), newparams(4, 0), newparams(5, 0),
-//        newparams(6, 0), newparams(7, 0)
-//        );
-//
-
+    newparams = _transform->invert_and_compose(params, lambda * deltap);
     rmsold = rmsnew;
     _transform->set_parameters(newparams);
 
     if ( (_eps = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
-      // CF_DEBUG("BREAK by eps= %g / %g ", eps_, max_eps_);
       break;
     }
-
-    //CF_DEBUG("[i %d] eps_= %g / %g", num_iterations_, eps_, max_eps_);
   }
-
-  //CF_DEBUG("RET num_iterations_=%d / %d eps=%g / %g", num_iterations_, max_iterations_, eps_, max_eps_);
 
   return true;
 }
@@ -2191,10 +1831,8 @@ void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
     rhs.setTo(0, ~remapped_mask);
   }
 
-//  rms =
-//      rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
-  rms =
-      cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
+//  rms = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
+  rms = cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
 }
 
 double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)
@@ -2244,25 +1882,15 @@ bool c_ecclm_inverse_compositional::align()
 
   double err, newerr;
 
-  params =
-      _transform->parameters();
+  params = _transform->parameters();
+  const int M = params.rows;
 
-  const int M =
-      params.rows;
-
-  constexpr double eps =
-      std::numeric_limits<double>::epsilon();
-
+  constexpr double eps = std::numeric_limits<double>::epsilon();
   double lambda = 0.001;
   double dp = 0;
   bool recompute_remap = true;
 
-  RMA =
-      _reference_mask.empty() ?
-          _reference_image.size().area() :
-          cv::countNonZero(_reference_mask);
-
-//  CF_DEBUG("\n---------------------------------------------");
+  RMA = _reference_mask.empty() ? _reference_image.size().area() : cv::countNonZero(_reference_mask);
 
   /**
    * PreCompute
@@ -2280,10 +1908,6 @@ bool c_ecclm_inverse_compositional::align()
 
 
   while (_num_iterations < _max_iterations) {
-
-    //CF_DEBUG("> IT %d model_->compute_jac()", num_iterations_);
-
-    // CF_DEBUG("recompute_remap=%d", recompute_remap);
 
     err = compute_v(params, recompute_remap, v);
 
@@ -2306,26 +1930,10 @@ bool c_ecclm_inverse_compositional::align()
 
       /* Solve system to define delta and define new value of params */
       cv::solve(H, v, deltap, cv::DECOMP_CHOLESKY);
-
-      newparams =
-          _transform->invert_and_compose(params,
-              _update_step_scale * deltap);
-
-//      CF_DEBUG("IT %d Compute function for newparams: \n"
-//          "deltap = { \n"
-//          "  %+20g %+20g\n"
-//          "}\n"
-//          "newparams = {\n"
-//          "  %+20g %+20g\n"
-//          "}"
-//          "\n",
-//          num_iterations_,
-//          deltap[0][0], deltap[1][0],
-//          newparams[0][0], newparams[1][0]);
+      newparams = _transform->invert_and_compose(params, _update_step_scale * deltap);
 
       /* Compute function for newparams */
-      newerr =
-          compute_rhs(newparams);
+      newerr = compute_rhs(newparams);
 
       /* Check for increments in parameters  */
       if( (dp = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
@@ -2337,42 +1945,24 @@ bool c_ecclm_inverse_compositional::align()
        * Compute update to lambda
        * */
 
-      cv::gemm(Hp, deltap, -1, v, 2,
-          temp_d);
+      cv::gemm(Hp, deltap, -1, v, 2, temp_d);
 
-      const double dS =
-          deltap.dot(temp_d);
-
-      const double rho =
-          (err - newerr) / (std::abs(dS) > eps ? dS : 1);
-
-
-//      CF_DEBUG("IT %d err=%g newerr=%g dp=%g lambda=%g rho=%+g\n",
-//          num_iterations_,
-//          err, newerr,
-//          dp,
-//          lambda,
-//          rho);
-
+      const double dS = deltap.dot(temp_d);
+      const double rho = (err - newerr) / (std::abs(dS) > eps ? dS : 1);
 
       if( rho > 0.25 ) {
         /* Accept new params and decrease lambda ==> Gauss-Newton method */
         if( lambda > 1e-6 ) {
           lambda = std::max(1e-6, lambda / 5);
         }
-        // CF_DEBUG("  lambda->%g", lambda);
       }
       else if( rho > 0.1 ) {
-        // CF_DEBUG(" NO CHANGE lambda->%g", lambda);
-
       }
       else if( lambda < 1 ) {       /** Try increase lambda ==> gradient descend */
         lambda = 1;
-        // CF_DEBUG("  lambda->%g", lambda);
       }
       else {
         lambda *= 10;
-        // CF_DEBUG("  lambda->%g", lambda);
       }
 
       if ( newerr < err ) {
@@ -2398,15 +1988,8 @@ bool c_ecclm_inverse_compositional::align()
     }
   }
 
-
-//  CF_DEBUG("newparams: T={%+g %+g}\n",
-//      params[0][0],
-//      params[1][0]);
-
   _eps = dp;
   dp = cv::norm(deltap, cv::NORM_INF);
-//  CF_DEBUG("RET: iteration=%d err=%g eps_=%g dp=%g", num_iterations_, err, eps_, dp);
-//  CF_DEBUG("\n---------------------------------------------");
   return true;
 }
 
@@ -2591,20 +2174,15 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
     }
   }
 
-  const cv::Mat1f & I1 =
-      W;
-
-  const cv::Mat1f & I2 =
-      e.reference_image;
+  const cv::Mat1f & I1 = W;
+  const cv::Mat1f & I2 = e.reference_image;
 
   cv::subtract(I2, I1, It, M);
 
   tbb::parallel_invoke(
-
     [this, &e]() {
       avgp(e.Ix, It, Itx);
     },
-
     [this, &e]() {
       avgp(e.Iy, It, Ity);
     }
@@ -2622,29 +2200,22 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
 
   uv.create(e.D.size());
 
-  typedef tbb::blocked_range<int> range;
-
-  tbb::parallel_for(range(0, uv.rows, 256),
-      [this, &e, &uv](const range & r) {
-
-        const cv::Mat4f & D =
-            e.D;
-
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-          for ( int x = 0, nx = uv.cols; x < nx; ++x ) {
-            const float & a00 = D[y][x][0];
-            const float & a01 = D[y][x][1];
-            const float & a10 = D[y][x][1];
-            const float & a11 = D[y][x][2];
-            const float & det = D[y][x][3];
-
-            const float & b0 = Itx[y][x];
-            const float & b1 = Ity[y][x];
-            uv[y][x][0] = det * (a11 * b0 - a01 * b1);
-            uv[y][x][1] = det * (a00 * b1 - a10 * b0);
-          }
-        }
-      });
+  parallel_for(0, uv.rows, [this, &e, &uv](const auto & range) {
+    const cv::Mat4f & D = e.D;
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      for ( int x = 0, nx = uv.cols; x < nx; ++x ) {
+        const float & a00 = D[y][x][0];
+        const float & a01 = D[y][x][1];
+        const float & a10 = D[y][x][1];
+        const float & a11 = D[y][x][2];
+        const float & det = D[y][x][3];
+        const float & b0  = Itx[y][x];
+        const float & b1  = Ity[y][x];
+        uv[y][x][0] = det * (a11 * b0 - a01 * b1);
+        uv[y][x][1] = det * (a00 * b1 - a10 * b0);
+      }
+    }
+  });
 
   avgup(uv, I1.size());
   if ( uv.size() != I1.size() ) {
@@ -2873,7 +2444,6 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
             next_size);
 
       }
-
     }
 
     pyramid_entry & current_scale =
@@ -2956,15 +2526,13 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
       input_image.size();
 
   const bool big_aspect_ratio =
-      std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
+      std::max(image_size.width, image_size.height) /
+        std::min(image_size.width, image_size.height) >= 2;
 
-  const int num_levels =
-      (int)(_pyramid.size());
-
+  const int num_levels = (int)(_pyramid.size());
   for( int current_level = 0; current_level < num_levels; ++current_level ) {
 
-    pyramid_entry & current_scale =
-        _pyramid[current_level];
+    pyramid_entry & current_scale = _pyramid[current_level];
 
     if ( current_level == 0 ) {
       convert_input_images(input_image, input_mask,
@@ -2973,8 +2541,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     }
     else if( _opts.downscale == ECCFlowDownscaleFullResize ) {
 
-      const pyramid_entry & base_scale =
-          _pyramid.front();
+      const pyramid_entry & base_scale = _pyramid.front();
 
       downscale(base_scale.current_image, base_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
@@ -2982,16 +2549,12 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     }
     else if( _opts.downscale == ECCFlowDownscaleRecursiveResize ) {
 
-      const cv::Size next_size =
-          current_scale.reference_image.size();
-
-      const int min_image_size =
-          std::max(4, _opts.min_image_size);
+      const cv::Size next_size = current_scale.reference_image.size();
+      const int min_image_size = std::max(4, _opts.min_image_size);
 
         if( big_aspect_ratio && std::min(next_size.width, next_size.height) <= min_image_size + 1 ) {
 
-          const pyramid_entry & base_scale =
-              _pyramid.front();
+          const pyramid_entry & base_scale = _pyramid.front();
 
           downscale(base_scale.current_image, base_scale.current_mask,
               current_scale.current_image, current_scale.current_mask,
@@ -2999,8 +2562,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
         }
         else {
 
-          const pyramid_entry & previous_scale =
-              _pyramid[current_level - 1];
+          const pyramid_entry & previous_scale = _pyramid[current_level - 1];
 
           downscale(previous_scale.current_image, previous_scale.current_mask,
               current_scale.current_image, current_scale.current_mask,
@@ -3010,8 +2572,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     }
     else {
 
-      const pyramid_entry & previous_scale =
-          _pyramid[current_level - 1];
+      const pyramid_entry & previous_scale = _pyramid[current_level - 1];
 
       downscale(previous_scale.current_image, previous_scale.current_mask,
           current_scale.current_image, current_scale.current_mask,
@@ -3058,17 +2619,11 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
   }
   else if( rmap.size() == _pyramid.front().reference_image.size() ) {
 
-    const pyramid_entry & first_scale =
-        _pyramid.front();
+    const pyramid_entry & first_scale = _pyramid.front();
+    const cv::Size first_size = first_scale.reference_image.size();
 
-    const cv::Size first_size =
-        first_scale.reference_image.size();
-
-    const pyramid_entry & last_scale =
-        _pyramid.back();
-
-    const cv::Size last_size =
-        last_scale.reference_image.size();
+    const pyramid_entry & last_scale = _pyramid.back();
+    const cv::Size last_size = last_scale.reference_image.size();
 
     const cv::Scalar size_ratio((double) last_size.width / (double) first_size.width,
         (double) last_size.height / (double) first_size.height);
@@ -3087,19 +2642,14 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
 
   for( int i = num_levels - 1; i >= 0; --i ) {
 
-    pyramid_entry & current_scale =
-        _pyramid[i];
+    pyramid_entry & current_scale = _pyramid[i];
 
     if( i < num_levels - 1 ) {
 
-      const pyramid_entry & prev_scale =
-          _pyramid[i + 1];
+      const pyramid_entry & prev_scale = _pyramid[i + 1];
 
-      const cv::Size current_size =
-          current_scale.current_image.size();
-
-      const cv::Size prev_size =
-          prev_scale.current_image.size();
+      const cv::Size current_size = current_scale.current_image.size();
+      const cv::Size prev_size = prev_scale.current_image.size();
 
       const cv::Scalar size_ratio((double) current_size.width / (double) prev_size.width,
           (double) current_size.height / (double) prev_size.height);

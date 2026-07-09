@@ -6,20 +6,8 @@
  */
 
 #include "c_image_transform.h"
-
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-#include <tbb/tbb.h>
-#endif
-
+#include <core/proc/run-loop.h>
 #include <core/debug.h>
-
-namespace {
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-typedef tbb::blocked_range<int> tbb_range;
-constexpr int tbb_block_size = 256;
-#endif
-} // namespace
-
 
 template<class T>
 static inline T square(T x)
@@ -47,7 +35,6 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
       dst.release();
     }
     else {
-
       cv::remap(src, dst, rmap, cv::noArray(), interpolation,
           borderMode, borderValue);
     }
@@ -56,14 +43,12 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
   if( dst_mask.needed() ) {
 
     if( src_mask.empty() ) {
-
       cv::remap(cv::Mat1b(size, (uint8_t) 255), dst_mask,
           rmap, cv::noArray(),
           cv::INTER_LINEAR,
           cv::BORDER_CONSTANT);
     }
     else {
-
       cv::remap(src_mask, dst_mask,
           rmap, cv::noArray(),
           cv::INTER_LINEAR,
@@ -154,30 +139,21 @@ bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::
 
 bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  INSTRUMENT_REGION("");
-
   //  x' =  x + tx
   //  y' =  y + ty
 
   rmap.create(size);
 
-#if HAVE_TBB
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [&rmap, T](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for( int y = 0; y < rmap.rows; ++y ) {
-#endif
-          cv::Vec2f * mp = rmap[y];
-
-          for( int x = 0; x < rmap.cols; ++x ) {
-            mp[x][0] = x + T[0];
-            mp[x][1] = y + T[1];
-          }
-        }
-#if HAVE_TBB
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    const float t0 = T[0], t1 = T[1];
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      float * __restrict mp = (float *)(rmap[y]);
+      for( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+        mp[0] = x + t0;
+        mp[1] = y + t1;
+      }
+    }
   });
-#endif
 
   return true;
 }
@@ -214,9 +190,6 @@ bool c_translation_image_transform::remap(const cv::Mat1f & p, const std::vector
 bool c_translation_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/,
     const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
-  //gx.copyTo(J[0]);
-  //gy.copyTo(J[1]);
-
   J[0] = gx;
   J[1] = gy;
 
@@ -377,9 +350,6 @@ bool c_euclidean_image_transform::get_parameters(const cv::Mat1f & p, float * Tx
   return true;
 }
 
-
-
-
 void c_euclidean_image_transform::set_translation(const cv::Vec2f & v)
 {
   _T = v;
@@ -482,43 +452,32 @@ double c_euclidean_image_transform::eps(const cv::Mat1f & dp,
 
 bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
-  INSTRUMENT_REGION("");
-
   //  Wx =  s * ( ca * x  - sa * y ) + tx
   //  Wy =  s * ( sa * x  + ca * y ) + ty
 
   float Tx, Ty, angle, scale, Cx, Cy;
 
-  if ( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+  if( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
     CF_ERROR("get_parameters() fails");
     return false;
   }
-
 
   const float sa = std::sin(angle);
   const float ca = std::cos(angle);
 
   rmap.create(size);
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [Cx, Cy, Tx, Ty, ca, sa, scale, &rmap] (const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-        for ( int y = 0; y < rmap.rows; ++y ) {
-#endif // TBB
-
-          cv::Vec2f * mp = rmap[y];
-          const float yy = y - Cy;
-          for ( int x = 0; x < rmap.cols; ++x ) {
-            const float xx = x - Cx;
-            mp[x][0] = scale * (ca * xx - sa * yy) + Tx;
-            mp[x][1] = scale * (sa * xx + ca * yy) + Ty;
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-     });
-#endif // TBB
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      float * __restrict mp = (float*)rmap[y];
+      const float yy = y - Cy;
+      for ( int x = 0; x < rmap.cols; ++x, mp += 2 ) {
+        const float xx = x - Cx;
+        mp[0] = scale * (ca * xx - sa * yy) + Tx;
+        mp[1] = scale * (sa * xx + ca * yy) + Ty;
+      }
+    }
+  });
 
   return true;
 }
@@ -602,48 +561,137 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
     J[i].create(size);
   }
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [ fix_translation, fix_rotation, fix_scale, size, Cx, Cy, Tx, Ty, ca, sa, scale, &gx, &gy, &J]  (const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for ( int y = 0; y < size.height; ++y ) {
-#endif // TBB
+  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      int i = 0;
 
-          int i = 0;
+      if( !fix_translation ) {
+        for ( int x = 0; x < size.width; ++x ) {
+          J[0][y][x] = gx[y][x];
+          J[1][y][x] = gy[y][x];
+        }
+        i += 2;
+      }
 
-          if( !fix_translation ) {
-            for ( int x = 0; x < size.width; ++x ) {
-              J[0][y][x] = gx[y][x];
-              J[1][y][x] = gy[y][x];
-            }
-            i += 2;
-          }
+      if( !fix_rotation ) {
+        const float yy = y - Cy;
+        for ( int x = 0; x < size.width; ++x ) {
+          const float xx = x - Cx;
+          J[i][y][x] = scale * ( -gx[y][x] * (sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy));
+        }
+        i += 1;
+      }
 
-          if( !fix_rotation ) {
-            const float yy = y - Cy;
-            for ( int x = 0; x < size.width; ++x ) {
-              const float xx = x - Cx;
-              J[i][y][x] = scale * ( -gx[y][x] * (sa * xx + ca * yy) + gy[y][x] * (ca * xx - sa * yy));
-            }
-            i += 1;
-          }
-
-          if( !fix_scale ) {
-            const float yy = y - Cy;
-            for ( int x = 0; x < size.width; ++x ) {
-              const float xx = x - Cx;
-              J[i][y][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
-            }
-          }
-
+      if( !fix_scale ) {
+        const float yy = y - Cy;
+        for ( int x = 0; x < size.width; ++x ) {
+          const float xx = x - Cx;
+          J[i][y][x] = gx[y][x] * (ca * xx - sa * yy) + gy[y][x] * (sa * xx + ca * yy);
         }
       }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  );
-#endif
+    }
+  });
 
   return true;
+}
+
+cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+{
+  // current parameters p
+  float Tx, Ty, angle, scale, Cx, Cy;
+  if( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+    CF_ERROR("invert_and_compose: get_parameters(p) failed");
+    return cv::Mat1f();
+  }
+
+  // dp increments
+  float dTx, dTy, dAngle, dScale, dCx, dCy;
+  if( !get_parameters(dp, &dTx, &dTy, &dAngle, &dScale, &dCx, &dCy) ) {
+    CF_ERROR("invert_and_compose: get_parameters(dp) failed");
+    return cv::Mat1f();
+  }
+
+  // If a parameter is FIXED, its increment in the dp increment must be exactly zero
+  // (for translation/angle) or one (for scale),
+  // even if get_parameters returned the absolute value of the field.
+  if (_fix_translation) {
+    dTx = 0.0f;
+    dTy = 0.0f;
+  }
+  if (_fix_rotation)    {
+    dAngle = 0.0f;
+  }
+
+  // CRITICAL MAGIC: The base increment scale is always 1.0.
+  // If the scale is not fixed, add the dScale increment to it.
+  const float scale_dp = _fix_scale ? 1.0f : (1.0f + dScale);
+
+  // Lambda for matrix assembly
+  static const auto get_matrix3x3 =
+      [](float tX, float tY, float ang, float scl, float cX, float cY) {
+        const float sa = std::sin(ang);
+        const float ca = std::cos(ang);
+
+        cv::Matx33f M = cv::Matx33f::eye();
+        M(0, 0) = scl * ca;
+        M(0, 1) = -scl * sa;
+        M(0, 2) = tX - scl * ca * cX + scl * sa * cY;
+
+        M(1, 0) = scl * sa;
+        M(1, 1) = scl * ca;
+        M(1, 2) = tY - scl * sa * cX - scl * ca * cY;
+        return M;
+      };
+
+  // Mp uses absolute scale, Mdp uses incremental scale (around 1.0)
+  const cv::Matx33f Mp  = get_matrix3x3(Tx, Ty, angle, scale, Cx, Cy);
+  const cv::Matx33f Mdp = get_matrix3x3(dTx, dTy, dAngle, scale_dp, Cx, Cy);
+
+  // Invert the incremental matrix Mdp (it is now guaranteed NOT to be singular)
+  const cv::Matx23f Mdp_2x3(Mdp(0, 0), Mdp(0, 1), Mdp(0, 2), Mdp(1, 0), Mdp(1, 1), Mdp(1, 2));
+  cv::Matx23f Mdp_inv_2x3;
+  cv::invertAffineTransform(Mdp_2x3, Mdp_inv_2x3);
+
+  cv::Matx33f Mdp_inv = cv::Matx33f::eye();
+  for( int r = 0; r < 2; ++r ) {
+    for( int c = 0; c < 3; ++c ) {
+      Mdp_inv(r, c) = Mdp_inv_2x3(r, c);
+    }
+  }
+
+  // Composition: Mp_new = Mp * (Mdp^-1)
+  const cv::Matx33f M_res = Mp * Mdp_inv;
+
+  // Extraction of parameters
+  const float m00 = M_res(0, 0);
+  const float m10 = M_res(1, 0);
+
+  const float res_scale = _fix_scale ? scale : std::sqrt(m00 * m00 + m10 * m10);
+  const float res_angle = _fix_rotation ? angle : std::atan2(m10, m00);
+
+  const float res_ca = std::cos(res_angle);
+  const float res_sa = std::sin(res_angle);
+
+  const float res_Tx = _fix_translation ? Tx : M_res(0, 2) + res_scale * res_ca * Cx - res_scale * res_sa * Cy;
+  const float res_Ty = _fix_translation ? Ty : M_res(1, 2) + res_scale * res_sa * Cx + res_scale * res_ca * Cy;
+
+  // Pack back
+  const int np = num_adjustable_parameters();
+  cv::Mat1f res_p(np, 1);
+  int ip = 0;
+
+  if( !_fix_translation ) {
+    res_p(ip++, 0) = res_Tx;
+    res_p(ip++, 0) = res_Ty;
+  }
+  if( !_fix_rotation ) {
+    res_p(ip++, 0) = res_angle;
+  }
+  if( !_fix_scale ) {
+    res_p(ip++, 0) = res_scale;
+  }
+
+  return res_p;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -757,23 +805,15 @@ bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Siz
 
   rmap.create(size);
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [a, &rmap](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for( int y = 0; y < rmap.rows; ++y ) {
-#endif
-          cv::Vec2f * mp = rmap[y];
-
-          for( int x = 0; x < rmap.cols; ++x ) {
-            mp[x][0] = a(0, 0) * x + a(0, 1) * y + a(0, 2);
-            mp[x][1] = a(1, 0) * x + a(1, 1) * y + a(1, 2);
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      cv::Vec2f * mp = rmap[y];
+      for( int x = 0; x < rmap.cols; ++x ) {
+        mp[x][0] = a(0, 0) * x + a(0, 1) * y + a(0, 2);
+        mp[x][1] = a(1, 0) * x + a(1, 1) * y + a(1, 2);
+      }
+    }
   });
-#endif
 
   return true;
 }
@@ -815,82 +855,29 @@ bool c_affine_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::
   return remap(matrix(p), rpts, cpts);
 }
 
-bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy, cv::Mat1f J[]) const
+bool c_affine_image_transform::create_steepest_descent_images(const cv::Mat1f& /*p*/, const cv::Mat1f & gx,
+    const cv::Mat1f & gy, cv::Mat1f J[]) const
 {
   const cv::Size size = gx.size();
 
-#if 0
-  if ( xx.size() != size || yy.size() != size ) {
-
-    xx.create(size);
-    yy.create(size);
-
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [&](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for( int y = 0; y < size.height; ++y ) {
-#endif
-          for( int x = 0; x < size.width; ++x ) {
-            xx[y][x] =  x;
-            yy[y][x] =  y;
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-   });
-#endif
-  }
-
-  tbb::parallel_invoke(
-    [&]() {
-      cv::multiply(gx, xx, J[0]); // a00
-    },
-    [&]() {
-      cv::multiply(gx, yy, J[1]); // a01
-    },
-    [&]() {
-      gx.copyTo(J[2]); // a02
-    },
-
-    [&]() {
-      cv::multiply(gy, xx, J[3]); // a10
-    },
-    [&]() {
-      cv::multiply(gy, yy, J[4]); // a11
-    },
-    [&]() {
-      gy.copyTo(J[5]); // a12
-    });
-
-#else
-  for ( int i = 0; i < 6; ++i ) {
+  for( int i = 0; i < 6; ++i ) {
     J[i].create(size);
   }
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [size, &gx, &gy, &J](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for( int y = 0; y < size.height; ++y ) {
-#endif
-          for( int x = 0; x < size.width; ++x ) {
+  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      for( int x = 0; x < size.width; ++x ) {
 
-            J[0][y][x] = gx[y][x] * x;   // a00
-            J[1][y][x] = gx[y][x] * y;// a01
-            J[2][y][x] = gx[y][x];     // a02
+        J[0][y][x] = gx[y][x] * x;   // a00
+        J[1][y][x] = gx[y][x] * y;// a01
+        J[2][y][x] = gx[y][x];// a02
 
-            J[3][y][x] = gy[y][x] * x;// a10
-            J[4][y][x] = gy[y][x] * y;// a11
-            J[5][y][x] = gy[y][x];     // a12
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-   });
-#endif
-
-#endif
+        J[3][y][x] = gy[y][x] * x;// a10
+        J[4][y][x] = gy[y][x] * y;// a11
+        J[5][y][x] = gy[y][x];// a12
+      }
+    }
+  });
 
   return true;
 }
@@ -1015,9 +1002,7 @@ void c_homography_image_transform::scale_transfrom(double factor)
 
 cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
-  cv::Matx33f aii =
-      (matrix(p).inv() + dmatrix(dp)).inv();
-
+  cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
   return cv::Mat1f(8, 1, (float*)aii.val).clone();
 }
 
@@ -1025,7 +1010,6 @@ cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, 
 double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
 {
   // FIXME?: this estimate does not account for w
-
   const float eps =
       sqrt(square(dp(2, 0)) + square(dp(5, 0)) +
           square(image_size.width * dp(0, 0)) + square(image_size.height * dp(1, 0)) +
@@ -1038,27 +1022,16 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
 {
   rmap.create(size);
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [a, &rmap](const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-          for( int y = 0; y < map.rows; ++y ) {
-
-#endif
-          cv::Vec2f * mp = rmap[y];
-
-          for ( int x = 0; x < rmap.cols; ++x ) {
-
-            const float w = a(2,0) * x + a(2,1) * y + a(2,2);
-
-            mp[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) / w;
-            mp[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) / w;
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-        });
-#endif
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      cv::Vec2f * mp = rmap[y];
+      for ( int x = 0; x < rmap.cols; ++x ) {
+        const float w = a(2,0) * x + a(2,1) * y + a(2,2);
+        mp[x][0] = (a(0,0) * x + a(0,1) * y + a(0,2)) / w;
+        mp[x][1] = (a(1,0) * x + a(1,1) * y + a(1,2)) / w;
+      }
+    }
+  });
 
   return true;
 }
@@ -1122,41 +1095,31 @@ bool c_homography_image_transform::create_steepest_descent_images(const cv::Mat1
     J[i].create(size);
   }
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [a, size, &gx, &gy, &J](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for ( int y = 0; y < size.height; ++y ) {
-#endif
+  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      for ( int x = 0; x < size.width; ++x ) {
 
-          for ( int x = 0; x < size.width; ++x ) {
+        const float den = 1.f / (x * a(2,0) + y * a(2,1) + 1.f );
+        const float hatX = -(x * a(0,0) + y * a(0,1) + a(0,2)) * den;
+        const float hatY = -(x * a(1,0) + y * a(1,1) + a(1,2)) * den;
 
-            const float den = 1.f / (x * a(2,0) + y * a(2,1) + 1.f );
-            const float hatX = -(x * a(0,0) + y * a(0,1) + a(0,2)) * den;
-            const float hatY = -(x * a(1,0) + y * a(1,1) + a(1,2)) * den;
+        const float ggx = gx[y][x] * den;
+        const float ggy = gy[y][x] * den;
+        const float gg = hatX * ggx + hatY * ggy;
 
-            const float ggx = gx[y][x] * den;
-            const float ggy = gy[y][x] * den;
-            const float gg = hatX * ggx + hatY * ggy;
+        J[0][y][x] = ggx * x;
+        J[1][y][x] = ggx * y;
+        J[2][y][x] = ggx;
 
-            J[0][y][x] = ggx * x;
-            J[1][y][x] = ggx * y;
-            J[2][y][x] = ggx;
+        J[3][y][x] = ggy * x;
+        J[4][y][x] = ggy * y;
+        J[5][y][x] = ggy;
 
-            J[3][y][x] = ggy * x;
-            J[4][y][x] = ggy * y;
-            J[5][y][x] = ggy;
-
-            J[6][y][x] = gg * x;
-            J[7][y][x] = gg * y;
-
-          }
-        }
+        J[6][y][x] = gg * x;
+        J[7][y][x] = gg * y;
       }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  );
-#endif
+    }
+  });
 
   return true;
 }
@@ -1305,14 +1268,14 @@ double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Siz
   // x' =  a00 * x + a01 * y + a02 + a03 * x * y
   // y' =  a10 * x + a11 * y + a12 + a13 * x * y
 
-//  dp(0, 0) = a(0, 0);
-//  dp(1, 0) = a(0, 1);
-//  dp(2, 0) = a(0, 2);
-//  dp(3, 0) = a(0, 3);
-//  dp(4, 0) = a(1, 0);
-//  dp(5, 0) = a(1, 1);
-//  dp(6, 0) = a(1, 2);
-//  dp(7, 0) = a(1, 3);
+  //  dp(0, 0) = a(0, 0);
+  //  dp(1, 0) = a(0, 1);
+  //  dp(2, 0) = a(0, 2);
+  //  dp(3, 0) = a(0, 3);
+  //  dp(4, 0) = a(1, 0);
+  //  dp(5, 0) = a(1, 1);
+  //  dp(6, 0) = a(1, 2);
+  //  dp(7, 0) = a(1, 3);
 
   const float eps =
       std::sqrt( square(dp(2, 0)) + square(dp(6, 0)) +
@@ -1324,28 +1287,21 @@ double c_semi_quadratic_image_transform::eps(const cv::Mat1f & dp, const cv::Siz
   return eps;
 }
 
-bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const cv::Size & size, cv::Mat2f & rmap) const
+bool c_semi_quadratic_image_transform::create_remap(const cv::Matx24f & a, const cv::Size & size,
+    cv::Mat2f & rmap) const
 {
   rmap.create(size);
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [a, &rmap](const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-        for( int y = 0; y < map.rows; ++y ) {
-#endif // TBB
-
-          cv::Vec2f * mp = rmap[y];
-
-          for ( int x = 0; x < rmap.cols; ++x ) {
-            mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
-            mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      cv::Vec2f * mp = rmap[y];
+      for ( int x = 0; x < rmap.cols; ++x ) {
+        mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y;
+        mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y;
+      }
+    }
   });
-#endif // TBB
+
   return true;
 }
 
@@ -1386,41 +1342,30 @@ bool c_semi_quadratic_image_transform::remap(const cv::Mat1f & p, const std::vec
 bool c_semi_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
     cv::Mat1f J[]) const
 {
-  INSTRUMENT_REGION("");
-
   // x' =  a00 * x + a01 * y + a02 + a03 * x * y
   // y' =  a10 * x + a11 * y + a12 + a13 * x * y
 
-  const cv::Size size =
-      gx.size();
+  const cv::Size size = gx.size();
 
   for( int i = 0; i < 8; ++i ) {
     J[i].create(size);
   }
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [size, &gx, &gy, &J](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for ( int y = 0; y < size.height; ++y ) {
-#endif
-          for ( int x = 0; x < size.width; ++x ) {
-            J[0][y][x] = gx[y][x] * x; // a00
-            J[1][y][x] = gx[y][x] * y; // a01
-            J[2][y][x] = gx[y][x]; // a02
-            J[3][y][x] = gx[y][x] * x * y; // a03
+  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      for ( int x = 0; x < size.width; ++x ) {
+        J[0][y][x] = gx[y][x] * x; // a00
+        J[1][y][x] = gx[y][x] * y;// a01
+        J[2][y][x] = gx[y][x];// a02
+        J[3][y][x] = gx[y][x] * x * y;// a03
 
-            J[4][y][x] = gy[y][x] * x; // a10
-            J[5][y][x] = gy[y][x] * y; // a11
-            J[6][y][x] = gy[y][x]; // a12
-            J[7][y][x] = gy[y][x] * x * y; // a13
-          }
-        }
+        J[4][y][x] = gy[y][x] * x;// a10
+        J[5][y][x] = gy[y][x] * y;// a11
+        J[6][y][x] = gy[y][x];// a12
+        J[7][y][x] = gy[y][x] * x * y;// a13
       }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  );
-#endif
+    }
+  });
 
   return true;
 }
@@ -1550,9 +1495,7 @@ void c_quadratic_image_transform::set_affine_matrix(const cv::Matx23f & a)
 
 cv::Matx23f c_quadratic_image_transform::affine_matrix() const
 {
-  const cv::Mat1f & a =
-      _parameters;
-
+  const cv::Mat1f & a = _parameters;
   return cv::Matx23f(a(0, 0), a(1, 0), a(2, 0),
       a(6, 0), a(7, 0), a(8, 0));
 }
@@ -1600,24 +1543,16 @@ bool c_quadratic_image_transform::create_remap(const cv::Matx26f & a, const cv::
 {
   rmap.create(size);
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, rmap.rows, tbb_block_size),
-      [a, &rmap](const tbb_range & r) {
-        for ( int y = r.begin(); y < r.end(); ++y ) {
-#else
-        for( int y = 0; y < map.rows; ++y ) {
-#endif // TBB
+  parallel_for(0, rmap.rows, [=, &rmap](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      cv::Vec2f * mp = rmap[y];
+      for ( int x = 0; x < rmap.cols; ++x ) {
+        mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
+        mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
+      }
+    }
+  });
 
-          cv::Vec2f * mp = rmap[y];
-
-          for ( int x = 0; x < rmap.cols; ++x ) {
-            mp[x][0] = a(0,0) * x + a(0,1) * y + a(0,2) + a(0,3) * x * y + a(0,4) * x * x + a(0,5) * y * y;
-            mp[x][1] = a(1,0) * x + a(1,1) * y + a(1,2) + a(1,3) * x * y + a(1,4) * x * x + a(1,5) * y * y;
-          }
-        }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-      });
-#endif // TBB
   return true;
 }
 
@@ -1658,52 +1593,38 @@ bool c_quadratic_image_transform::remap(const cv::Mat1f & p, const std::vector<c
 bool c_quadratic_image_transform::create_steepest_descent_images(const cv::Mat1f & /*p*/, const cv::Mat1f & gx, const cv::Mat1f & gy,
     cv::Mat1f J[]) const
 {
-  INSTRUMENT_REGION("");
-
   // x' =  a00 * x + a01 * y + a02 + a03 * x * y + a04 * x * x + a05 * y * y
   // y' =  a10 * x + a11 * y + a12 + a13 * x * y + a14 * x * x + a15 * y * y
 
-  const cv::Size size =
-      gx.size();
+  const cv::Size size = gx.size();
 
   for( int i = 0; i < 12; ++i ) {
     J[i].create(size);
   }
 
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  tbb::parallel_for(tbb_range(0, size.height, tbb_block_size),
-      [size, &gx, &gy, &J](const tbb_range & r) {
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-#else
-        for ( int y = 0; y < size.height; ++y ) {
-#endif
-          for ( int x = 0; x < size.width; ++x ) {
+  parallel_for(0, size.height, [=, &gx, &gy, &J](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      for ( int x = 0; x < size.width; ++x ) {
 
-            J[0][y][x] = gx[y][x] * x;
-            J[1][y][x] = gx[y][x] * y;
-            J[2][y][x] = gx[y][x];
-            J[3][y][x] = gx[y][x] * x * y;
-            J[4][y][x] = gx[y][x] * x * x;
-            J[5][y][x] = gx[y][x] * y * y;
+        J[0][y][x] = gx[y][x] * x;
+        J[1][y][x] = gx[y][x] * y;
+        J[2][y][x] = gx[y][x];
+        J[3][y][x] = gx[y][x] * x * y;
+        J[4][y][x] = gx[y][x] * x * x;
+        J[5][y][x] = gx[y][x] * y * y;
 
-            J[6][y][x] = gy[y][x] * x;
-            J[7][y][x] = gy[y][x] * y;
-            J[8][y][x] = gy[y][x];
-            J[9][y][x] = gy[y][x] * x * y;
-            J[10][y][x] = gy[y][x] * x * x;
-            J[11][y][x] = gy[y][x] * y * y;
-          }
-        }
+        J[6][y][x] = gy[y][x] * x;
+        J[7][y][x] = gy[y][x] * y;
+        J[8][y][x] = gy[y][x];
+        J[9][y][x] = gy[y][x] * x * y;
+        J[10][y][x] = gy[y][x] * x * x;
+        J[11][y][x] = gy[y][x] * y * y;
       }
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-  );
-#endif
+    }
+  });
 
   return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////////////////////////

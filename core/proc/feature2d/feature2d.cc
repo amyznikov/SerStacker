@@ -500,7 +500,7 @@ void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray ima
   descriptors.release();
 
   if( !mask.empty() && (mask.size() != image.size() || mask.type() != CV_8UC1) ) {
-    CF_DEBUG("APP BUGL: invalid mask: %dx%d %d channels depth=%d for image  %dx%d %d channels depth=%d ",
+    CF_DEBUG("APP BUG: invalid mask: %dx%d %d channels depth=%d for image  %dx%d %d channels depth=%d ",
         mask.cols(), mask.rows(), mask.channels(), mask.depth(),
         image.cols(), image.rows(), image.channels(), image.depth());
     return;

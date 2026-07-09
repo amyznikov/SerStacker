@@ -55,7 +55,7 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
   const int ymax = 2 * (dsize.height - 1) + 1 < src_rows ? dsize.height : dsize.height - 1;
   const int xmax = 2 * (dsize.width - 1) + 1 < src_cols ? dsize.width : dsize.width - 1;
 
-  run_loop(0, ymax, [&, src_channels, xmax](int y) {
+  parallel_loop(0, ymax, [&, src_channels, xmax](int y) {
     const _Tp * srcp = src[2 * y + 1];
     _Tp * dstp = dst[y];
     for ( int x = 0; x < xmax; ++x ) {
@@ -130,7 +130,7 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
   const int ymax = dsize.height;
   const int xmax = dsize.width;
 
-  run_loop(0, ymax, [&, src_channels, xmax](int y) {
+  parallel_loop(0, ymax, [&, src_channels, xmax](int y) {
     const _Tp * srcp = src[2 * y];
     _Tp * dstp = dst[y];
     for ( int x = 0; x < xmax; ++x ) {
@@ -202,7 +202,7 @@ static bool _upject_even(cv::InputArray _src, cv::OutputArray _dst,
   const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
   const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
 
-  run_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
+  parallel_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
 
     const _Tp* srcp = src[y];
     _Tp* dstp = dst[2 * y + 1];
@@ -303,7 +303,7 @@ static bool _upject_uneven(cv::InputArray _src, cv::OutputArray _dst,
   const int ymax = 2 * (src_rows - 1) + 1 < dsize.height ? src_rows : src_rows - 1;
   const int xmax = 2 * (src_cols - 1) + 1 < dsize.width ? src_cols : src_cols - 1;
 
-  run_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
+  parallel_loop(0, ymax, [&, xmax, src_channels, zmask_requested](int y) {
 
     const _Tp* srcp = src[y];
     _Tp* dstp = dst[2 * y];

@@ -46,7 +46,7 @@ static inline int rend(const cv::Range & range)
 #endif
 
 template<typename T, typename Func>
-static inline void run_loop(T start, T end, Func&& f)
+static inline void parallel_loop(T start, T end, Func&& f)
 {
 #if HAVE_TBB
     tbb::parallel_for(start, end, f, tbb::static_partitioner());

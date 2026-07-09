@@ -305,8 +305,8 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _master_options.registration.enable_feature_registration = false;
     _master_options.registration.enable_ecc_registration = true;
-    _master_options.registration.enable_eccflow_registration = false;
     _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _master_options.registration.enable_eccflow_registration = false;
 
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
     _master_options.accumulation.lpg.k = 2;
@@ -325,8 +325,12 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _stack_options.registration.enable_feature_registration = false;
     _stack_options.registration.enable_ecc_registration = true;
-    _stack_options.registration.enable_eccflow_registration = false;
     _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+
+    _stack_options.registration.enable_eccflow_registration = true;
+    _stack_options.registration.eccflow.downscale_method = ECCFlowDownscalePyramid;
+    _stack_options.registration.eccflow.support_scale = 4;
+    _stack_options.registration.eccflow.max_pyramid_level = 3;
 
     _upscale_options.upscale_option = frame_upscale_x15;
     _upscale_options.upscale_stage = frame_upscale_after_align;
@@ -371,7 +375,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.enable_eccflow_registration = true;
     _stack_options.registration.eccflow.downscale_method = ECCFlowDownscalePyramid;
     _stack_options.registration.eccflow.support_scale = 4;
-    _stack_options.registration.eccflow.max_pyramid_level = 5;
+    _stack_options.registration.eccflow.max_pyramid_level = 3;
     _stack_options.registration.eccflow.min_image_size = -1;
 
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;

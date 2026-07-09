@@ -546,25 +546,9 @@ const c_frame_registration::ecc_image_preprocessor_function & c_frame_registrati
   return _ecc_image_preprocessor;
 }
 
-//void c_frame_registration::set_enable_debug(bool v)
-//{
-//  enable_debug_ = v;
-//}
-//
-//bool c_frame_registration::enable_debug() const
-//{
-//  return enable_debug_;
-//}
-
 void c_frame_registration::set_debug_path(const std::string & v)
 {
   _debug_path = v;
-//  if ( !debug_path_.empty() && options_.eccflow.enable_debug ) {
-//    eccflow_.set_debug_path(ssprintf("%s/eccflow", debug_path_.c_str()));
-//  }
-//  else {
-//    eccflow_.set_debug_path("");
-//  }
 }
 
 const std::string& c_frame_registration::debug_path() const

@@ -138,19 +138,13 @@ double compute_correlation(cv::InputArray current_image, cv::InputArray current_
 
 namespace {
 
-//template<class T>
-//static inline T square(T x)
-//{
-//  return x * x;
-//}
-
 static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv::InputArray mask = cv::noArray() )
 {
   INSTRUMENT_REGION("");
 
   static thread_local cv::Mat Kx, Ky;
   if( Kx.empty() ) {
-    cv::getDerivKernels(Kx, Ky, 1, 0, 3, true, CV_32F);
+    cv::getDerivKernels(Kx, Ky, 1, 0, 7, true, CV_32F);
     Kx *= M_SQRT2;
     Ky *= M_SQRT2;
   }

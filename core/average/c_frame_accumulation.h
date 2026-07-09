@@ -182,11 +182,11 @@ protected:
   void generate_bayer_pattern_mask();
 
 protected:
-  cv::Mat1b bayer_pattern_;
-  cv::Mat3f accumulator_;
-  cv::Mat3f counter_;
-  cv::Mat2f rmap_;
-  COLORID colorid_ = COLORID_UNKNOWN;
+  cv::Mat1b _bayer_pattern;
+  cv::Mat3f _accumulator;
+  cv::Mat3f _counter;
+  cv::Mat2f _rmap;
+  COLORID _colorid = COLORID_UNKNOWN;
 };
 
 
@@ -198,22 +198,22 @@ public:
 
   int accumulated_frames() const
   {
-    return accumulated_frames_;
+    return _accumulated_frames;
   }
 
   cv::Size accumulator_size() const
   {
-    return accumulator_.size();
+    return _accumulator.size();
   }
 
   const cv::Mat & accumulator() const
   {
-    return accumulator_;
+    return _accumulator;
   }
 
   const cv::Mat1f & counter() const
   {
-    return counter_;
+    return _counter;
   }
 
   bool remap(const cv::Mat2f & rmap);
@@ -223,9 +223,9 @@ public:
 
 
 protected:
-  cv::Mat accumulator_;
-  cv::Mat1f counter_;
-  int accumulated_frames_ = 0;
+  cv::Mat _accumulator;
+  cv::Mat1f _counter;
+  int _accumulated_frames = 0;
 };
 
 

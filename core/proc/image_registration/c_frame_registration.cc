@@ -11,6 +11,7 @@
 #include <core/proc/morphology.h>
 #include <core/proc/geo-reconstruction.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/histogram-tools.h>
 #include <core/proc/normalize.h>
 #include <core/io/save_image.h>
 #include <core/get_time.h>
@@ -536,12 +537,22 @@ const c_eccflow & c_frame_registration::eccflow() const
 //  return this->_saturn_derotation;
 //}
 
-void c_frame_registration::set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func)
+void c_frame_registration::set_feature_image_preprocessor(const image_preprocessor_function & func)
+{
+  _feature_image_preprocessor = func;
+}
+
+const c_frame_registration::image_preprocessor_function & c_frame_registration::feature_image_preprocessor() const
+{
+  return _feature_image_preprocessor;
+}
+
+void c_frame_registration::set_ecc_image_preprocessor(const image_preprocessor_function & func)
 {
   _ecc_image_preprocessor = func;
 }
 
-const c_frame_registration::ecc_image_preprocessor_function & c_frame_registration::ecc_image_preprocessor() const
+const c_frame_registration::image_preprocessor_function & c_frame_registration::ecc_image_preprocessor() const
 {
   return _ecc_image_preprocessor;
 }
@@ -1084,14 +1095,25 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
 // Create image appropriate for sift/surf/orb/etc feature detection
 // TODO: Check the Christopher Tsai "Effects of 2-D Preprocessing on Feature Extraction"
 //    <https://pdfs.semanticscholar.org/185e/62d607becc8d0ee2409a224a36c58b084ab3.pdf>
-bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArray srcm,
+bool c_frame_registration::create_feature_image(cv::InputArray _src, cv::InputArray _srcm,
     cv::OutputArray dst, cv::OutputArray dstm) const
 {
   cv::Mat tmp, mtmp;
+  cv::Mat src, srcm;
+
+  if ( !_feature_image_preprocessor ) {
+    src = _src.getMat();
+    srcm = _srcm.getMat();
+  }
+  else {
+    _src.copyTo(src);
+    _srcm.copyTo(srcm);
+    _feature_image_preprocessor(src, srcm);
+  }
 
   if ( _options.feature_registration.registration_channel == color_channel_dont_change ) {
-    tmp = src.getMat();
-    mtmp = srcm.getMat();
+    tmp = src;
+    mtmp = srcm;
   }
   else if ( !extract_channel(src, tmp, srcm, mtmp, _options.feature_registration.registration_channel) ) {
     CF_ERROR("extract_channel(feature_registration.registration_channel=%d) fails", _options.feature_registration.registration_channel);
@@ -1101,7 +1123,7 @@ bool c_frame_registration::create_feature_image(cv::InputArray src, cv::InputArr
   if ( tmp.depth() != CV_8U ) {
     // dark frame subtraction could produce negative pixel values, star extractor may be sensitive.
     cv::max(tmp, cv::Scalar(0), tmp);
-    normalize_minmax(tmp, tmp, 0, 255, mtmp);
+    autoClip(tmp, mtmp, tmp, 0.01, 0.9999, 0, 255, CV_8U);
   }
 
   if ( tmp.depth() == CV_8U ) {

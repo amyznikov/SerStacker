@@ -221,7 +221,6 @@ public:
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const;
   void clear();
 
-
 protected:
   cv::Mat _accumulator;
   cv::Mat1f _counter;

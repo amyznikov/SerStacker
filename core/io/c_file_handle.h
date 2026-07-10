@@ -70,8 +70,7 @@ public:
   }
 
 protected:
-  FILE_DESCRIPTOR _fd =
-      INVALID_FILE_DESCRIPTOR;
+  FILE_DESCRIPTOR _fd = INVALID_FILE_DESCRIPTOR;
 };
 
 #endif /* __c_file_handle_h__ */

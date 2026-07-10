@@ -43,7 +43,7 @@ public:
   bool is_open() const override;
 
 protected:
-  c_ser_reader ser_;
+  c_ser_reader _ser;
 };
 
 #endif /* __c_ser_input_source_h__ */

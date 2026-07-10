@@ -120,14 +120,12 @@ protected:
   /// @brief use one from derived classes to instantiate SER reader or writer
   c_ser_file();
 
-  c_ser_file::file_header header_;
-  std::vector<uint64_t> timestamps_;
+  c_ser_file::file_header _header;
+  std::vector<uint64_t> _timestamps;
 
 protected:
-  static_assert(sizeof(enum COLORID) == sizeof(int32_t),
-      "enum COLORID must have size 32 bits");
-  static_assert(sizeof(header_) == 178,
-      "APP BUG: Wrong SER Header size");
+  static_assert(sizeof(enum COLORID) == sizeof(int32_t), "enum COLORID must have size 32 bits");
+  static_assert(sizeof(_header) == 178, "APP BUG: Wrong SER Header size");
 };
 
 
@@ -171,8 +169,8 @@ public:
   void close();
 
 protected:
-  c_file_handle fd_;  // file descriptor
-  int32_t curpos_ = -1; // current frame read position counter
+  c_file_handle _fd;  // file descriptor
+  int32_t _curpos = -1; // current frame read position counter
 };
 
 
@@ -211,7 +209,7 @@ public:
   bool close();
 
 protected:
-  c_file_handle fd_;  // file descriptor
+  c_file_handle _fd;  // file descriptor
 };
 
 #endif /* __c_ser_file_h__ */

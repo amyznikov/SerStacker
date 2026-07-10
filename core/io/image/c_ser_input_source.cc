@@ -7,7 +7,6 @@
 
 #include "c_ser_input_source.h"
 
-
 c_ser_input_source::c_ser_input_source(const std::string & filename) :
     base(/*c_input_source::SER, */filename)
 {
@@ -16,9 +15,9 @@ c_ser_input_source::c_ser_input_source(const std::string & filename) :
 c_ser_input_source::sptr c_ser_input_source::create(const std::string & filename)
 {
   sptr obj(new this_class(filename));
-  if ( obj->ser_.open(filename) ) {
-    obj->_size = obj->ser_.num_frames();
-    obj->ser_.close();
+  if ( obj->_ser.open(filename) ) {
+    obj->_size = obj->_ser.num_frames();
+    obj->_ser.close();
     return obj;
   }
   return nullptr;
@@ -35,36 +34,36 @@ const std::vector<std::string> & c_ser_input_source::suffixes()
 
 bool c_ser_input_source::open()
 {
-  return ser_.open(_filename);
+  return _ser.open(_filename);
 }
 
 void c_ser_input_source::close()
 {
-  ser_.close();
+  _ser.close();
 }
 
 bool c_ser_input_source::seek(int pos)
 {
-  return ser_.seek(pos);
+  return _ser.seek(pos);
 }
 
 int c_ser_input_source::curpos()
 {
-  return ser_.curpos();
+  return _ser.curpos();
 }
 
 bool c_ser_input_source::read(cv::Mat & output_frame,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( ser_.read(output_frame) ) {
+  if ( _ser.read(output_frame) ) {
 
     if ( output_colorid ) {
-      *output_colorid = ser_.color_id();
+      *output_colorid = _ser.color_id();
     }
 
     if ( output_bpc ) {
-      *output_bpc = ser_.bits_per_plane();
+      *output_bpc = _ser.bits_per_plane();
     }
 
     return true;
@@ -75,5 +74,5 @@ bool c_ser_input_source::read(cv::Mat & output_frame,
 
 bool c_ser_input_source::is_open() const
 {
-  return ser_.is_open();
+  return _ser.is_open();
 }

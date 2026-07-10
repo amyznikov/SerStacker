@@ -27,7 +27,7 @@ public:
 
   void compute( cv::InputArray /*image*/,
       CV_OUT CV_IN_OUT std::vector<cv::KeyPoint>& keypoints,
-      cv::OutputArray descriptors ) override;
+      cv::OutputArray descriptors) override;
 
   int descriptorSize() const override;
   int descriptorType() const override;

@@ -102,6 +102,7 @@ struct c_frame_accumulation_options
 
 struct c_image_processing_options
 {
+  c_image_processor::sptr feature_image_processor;
   c_image_processor::sptr ecc_image_processor;
   c_image_processor::sptr aligned_image_processor;
   c_image_processor::sptr incremental_frame_processor;
@@ -162,7 +163,6 @@ struct c_image_stacking_master_options
 
   bool apply_input_image_processor = true;
   bool generate_master_frame = true;
-//  bool enable_registration = true;
   bool stop_after_master_frame_generation = false;
   bool save_master_frame = true;
 

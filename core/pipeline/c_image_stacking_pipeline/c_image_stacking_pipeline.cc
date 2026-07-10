@@ -217,26 +217,16 @@ static cv::Mat2f compute_turbulent_flow(const c_image_transform * current_transf
 }
 
 
-c_frame_registration::ecc_image_preprocessor_function create_ecc_image_preprocessor(
-    const c_image_processing_options & image_processing_options)
+c_frame_registration::image_preprocessor_function create_image_preprocessor(const c_image_processor::sptr &processor)
 {
-  c_frame_registration::ecc_image_preprocessor_function ecc_preprocessor;
-
-  if( image_processing_options.ecc_image_processor ) {
-
-    const c_image_processor::sptr &processor =
-        image_processing_options.ecc_image_processor;
-
-    if( processor ) {
-
-      ecc_preprocessor =
-          [processor](cv::InputOutputArray image, cv::InputOutputArray mask) {
-            processor->process(image, mask);
-          };
-    }
+  c_frame_registration::image_preprocessor_function preprocessor_func;
+  if( processor ) {
+    preprocessor_func = [processor](cv::InputOutputArray image, cv::InputOutputArray mask) {
+      processor->process(image, mask);
+    };
   }
 
-  return ecc_preprocessor;
+  return preprocessor_func;
 }
 
 }
@@ -290,6 +280,7 @@ bool c_image_stacking_pipeline::initialize()
 
   _presets.emplace_back("Planetary Disk Stacking");
   _presets.emplace_back("Lunar Closeup");
+  _presets.emplace_back("Deep Sky");
 
   return true;
 }
@@ -346,14 +337,12 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _master_options.registration.enable_feature_registration = true;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
-
     _master_options.registration.enable_ecc_registration = true;
     _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
-
     _master_options.registration.enable_eccflow_registration = false;
-
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
     _master_options.accumulation.lpg.k = 2;
     _master_options.accumulation.lpg.p = 4;
@@ -366,6 +355,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _stack_options.registration.enable_feature_registration = true;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
 
@@ -388,7 +378,46 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _upscale_options.upscale_option = frame_upscale_x15;
     _upscale_options.upscale_stage = frame_upscale_after_align;
     return true;
+  }
 
+  if ( preset_name == "Deep Sky" ) {
+    _input_options.filter_bad_pixels = true;
+    _input_options.bad_pixels_variation_threshold = 6;
+
+    _master_options.master_selection.master_selection_method = master_frame_specific_index;
+    _master_options.master_selection.master_frame_index = 0;
+    _master_options.generate_master_frame = false;
+    _master_options.unsharp_sigma = 1;
+    _master_options.unsharp_alpha = 0.85;
+    _master_options.registration.motion_type = IMAGE_MOTION_AFFINE;
+    _master_options.registration.enable_feature_registration = true;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
+    _master_options.registration.enable_ecc_registration = false;
+    _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _master_options.registration.enable_eccflow_registration = false;
+    _master_options.accumulation.accumulation_method = frame_accumulation_average;
+    _master_options.accumulation.lpg.k = 2;
+    _master_options.accumulation.lpg.p = 2;
+    _master_options.accumulation.lpg.dscale = 1;
+    _master_options.accumulation.lpg.uscale = 7;
+    _master_options.accumulation.max_weights_ratio = 0;
+
+    _stack_options.registration.motion_type = IMAGE_MOTION_AFFINE;
+    _stack_options.registration.enable_feature_registration = true;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+    _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
+    _stack_options.registration.enable_ecc_registration = false;
+    _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
+    _stack_options.registration.enable_eccflow_registration = false;
+    _stack_options.accumulation.accumulation_method = frame_accumulation_average;
+    _stack_options.accumulation.lpg.k = 2;
+    _stack_options.accumulation.lpg.p = 2;
+    _stack_options.accumulation.lpg.dscale = 1;
+    _stack_options.accumulation.lpg.uscale = 7;
+    _stack_options.accumulation.max_weights_ratio = 0;
   }
 
   return false;
@@ -406,7 +435,16 @@ c_roi_selection::sptr c_image_stacking_pipeline::create_roi_selection() const
 
 c_frame_registration::sptr c_image_stacking_pipeline::create_frame_registration(const c_image_registration_options & options) const
 {
-  return c_frame_registration::sptr(new c_frame_registration(options));
+  c_frame_registration::sptr frame_registration =
+      c_frame_registration::sptr(new c_frame_registration(options));
+
+  frame_registration->set_feature_image_preprocessor(create_image_preprocessor(
+      _image_processing_options.feature_image_processor));
+
+  frame_registration->set_ecc_image_preprocessor(create_image_preprocessor(
+      _image_processing_options.ecc_image_processor));
+
+  return frame_registration;
 }
 
 c_frame_accumulation::ptr c_image_stacking_pipeline::create_frame_accumulation(const c_frame_accumulation_options & opts) const
@@ -902,17 +940,9 @@ bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registrat
         _output_path.c_str()));
   }
 
-  if( _image_processing_options.ecc_image_processor && master_options.apply_input_image_processor  ) {
-    _frame_registration->set_ecc_image_preprocessor(create_ecc_image_preprocessor(_image_processing_options));
-  }
-
   if ( !_frame_registration->setup_reference_frame(reference_frame, reference_mask) ) {
     CF_ERROR("ERROR: frame_registration_->setup_reference_frame() fails");
     return false;
-  }
-
-  if( _image_processing_options.ecc_image_processor && !master_options.apply_input_image_processor ) {
-    _frame_registration->set_ecc_image_preprocessor(create_ecc_image_preprocessor(_image_processing_options));
   }
 
   if( _output_options.debug_frame_registration ) {
@@ -1124,7 +1154,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
   if( master_options.apply_input_image_processor && _input_options.input_image_processor ) {
-    // lock_guard lock(mutex());
     if( !_input_options.input_image_processor->process(reference_frame, reference_mask) ) {
       CF_ERROR("input_image_processor->process(reference_frame) fails");
       return false;
@@ -1160,17 +1189,12 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       return false;
     }
 
-    if( _image_processing_options.ecc_image_processor && master_options.apply_input_image_processor ) {
-      _frame_registration->set_ecc_image_preprocessor(create_ecc_image_preprocessor(_image_processing_options));
-    }
+//    if( master_options.apply_input_image_processors ) {
+//    }
 
     if( !_frame_registration->setup_reference_frame(reference_frame, reference_mask) ) {
       CF_FATAL("frame_registration_->setup_referece_frame() fails");
       return false;
-    }
-
-    if( _image_processing_options.ecc_image_processor && !master_options.apply_input_image_processor ) {
-      _frame_registration->set_ecc_image_preprocessor(create_ecc_image_preprocessor(_image_processing_options));
     }
 
     if( true ) {
@@ -1185,9 +1209,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       return false;
     }
 
-    const int start_frame_index =
-        std::max(0, _input_options.start_frame_index);
-
+    const int start_frame_index = std::max(0, _input_options.start_frame_index);
     int startpos, endpos;
 
     if( start_frame_index + max_frames_to_stack >= input_sequence->size() ) {
@@ -1195,10 +1217,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
       endpos = input_sequence->size();
     }
     else {
-
-      startpos =
-          std::max(start_frame_index,
-              master_frame_pos - max_frames_to_stack / 2);
+      startpos = std::max(start_frame_index, master_frame_pos - max_frames_to_stack / 2);
 
       if( (endpos = startpos + max_frames_to_stack) >= input_sequence->size() ) {
         startpos = std::max(start_frame_index, input_sequence->size() - max_frames_to_stack);
@@ -1386,7 +1405,6 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
 
     if( _input_options.input_image_processor ) {
       if( !_generating_master_frame || _master_options.apply_input_image_processor ) {
-        // lock_guard lock(mutex());
         if( !_input_options.input_image_processor->process(current_frame, current_mask) ) {
           CF_ERROR("input_image_processor->process(current_frame) fails");
           return false;
@@ -2283,27 +2301,34 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = get_group(settings, save, "image_processing")) ) {
     if( save ) {
 
-      if( _image_processing_options.ecc_image_processor ) {
-        save_settings(settings, "ecc_image_processor",
-            _image_processing_options.ecc_image_processor->name());
-      }
-      if( _image_processing_options.aligned_image_processor ) {
-        save_settings(settings, "aligned_image_processor",
-            _image_processing_options.aligned_image_processor->name());
-      }
-      if( _image_processing_options.incremental_frame_processor ) {
-        save_settings(settings, "incremental_frame_processor",
-            _image_processing_options.incremental_frame_processor->name());
-      }
-      if( _image_processing_options.accumulated_image_processor ) {
-        save_settings(settings, "accumulated_image_processor",
-            _image_processing_options.accumulated_image_processor->name());
-      }
+      save_settings(settings, "feature_image_processor",
+          _image_processing_options.feature_image_processor ?
+              _image_processing_options.feature_image_processor->name() : "");
+
+      save_settings(settings, "ecc_image_processor",
+          _image_processing_options.ecc_image_processor ?
+              _image_processing_options.ecc_image_processor->name() : "");
+
+      save_settings(settings, "aligned_image_processor",
+          _image_processing_options.aligned_image_processor ?
+              _image_processing_options.aligned_image_processor->name() : "");
+
+      save_settings(settings, "incremental_frame_processor",
+          _image_processing_options.incremental_frame_processor ?
+              _image_processing_options.incremental_frame_processor->name() : "");
+
+      save_settings(settings, "accumulated_image_processor",
+          _image_processing_options.accumulated_image_processor ?
+              _image_processing_options.accumulated_image_processor->name() : "");
     }
     else {
 
       std::string s;
 
+      if( load_settings(settings, "feature_image_processor", &s) && !s.empty() ) {
+        _image_processing_options.feature_image_processor =
+            c_image_processor_collection::default_instance()->get(s);
+      }
       if( load_settings(settings, "ecc_image_processor", &s) && !s.empty() ) {
         _image_processing_options.ecc_image_processor =
             c_image_processor_collection::default_instance()->get(s);
@@ -2490,6 +2515,7 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
     ////////
     ctlbind_expandable_group(ctls, "6. Image processing",
         [&, cctx = ctx(&this_class::_image_processing_options)]() {
+          ctlbind(ctls, "feature_image_processor", CTL_CONTEXT(cctx, feature_image_processor), "");
           ctlbind(ctls, "ecc_image_processor", CTL_CONTEXT(cctx, ecc_image_processor), "");
           ctlbind(ctls, "aligned_image_processor", CTL_CONTEXT(cctx, aligned_image_processor), "");
           ctlbind(ctls, "incremental_frame_processor", CTL_CONTEXT(cctx, incremental_frame_processor), "");

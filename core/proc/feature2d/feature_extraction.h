@@ -772,8 +772,7 @@ public:
       public base::options
   {
     using feature2d_class = this_class;
-    decltype (cv::AKAZE::DESCRIPTOR_MLDB) descriptor_type =
-        cv::AKAZE::DESCRIPTOR_MLDB;
+    decltype (cv::AKAZE::DESCRIPTOR_MLDB) descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB;
     int descriptor_size = 256;
     int descriptor_channels = 3;
     float threshold = 0.001f;
@@ -1391,9 +1390,8 @@ public:
   typedef c_feature2d_morph_extractor this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options,
-      public c_morph_features_extractor::Options
+  struct options : public base::options,
+  public c_morph_features_extractor::Options
   {
     using feature2d_class = this_class;
   };
@@ -1405,12 +1403,9 @@ public:
 
 protected:
   c_feature2d_morph_extractor(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
-    _feature2d =
-        c_morph_features_extractor::create(
-            _opts);
+    _feature2d = c_morph_features_extractor::create(_opts);
   }
 
 protected:
@@ -1445,12 +1440,9 @@ public:
 
 protected:
   c_feature2d_planetary_disk_detector(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
-    _feature2d =
-        c_simple_planetary_disk_detector::create(_opts.gsigma,
-            _opts.se_radius);
+    _feature2d = c_simple_planetary_disk_detector::create(_opts.gsigma, _opts.se_radius);
   }
 
 protected:
@@ -1469,8 +1461,7 @@ public:
   typedef c_feature2d_triangle_extractor this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int max_points = 20;
@@ -1484,12 +1475,9 @@ public:
 
 protected:
   c_feature2d_triangle_extractor(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
-    _feature2d =
-        c_triangle_extractor::create(_opts.max_points,
-            _opts.min_side_size);
+    _feature2d = c_triangle_extractor::create(_opts.max_points, _opts.min_side_size);
   }
 
 protected:

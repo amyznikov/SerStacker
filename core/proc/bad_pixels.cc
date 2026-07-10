@@ -48,7 +48,7 @@ static void _bayer_denoise(cv::Mat & bayer_image, double k)
   /* Create 4-pane image with separate panes for bayer colors */
   bayer_planes.create(src.rows / 2, src.cols / 2);
 
-  parallel_for(0, src.rows / 2, [&, xmax = src.cols/2](const auto & r) {
+  parallel_for(0, src.rows / 2, [&, xmax = src.cols / 2](const auto & r) {
     for( int y = rbegin(r); y < rend(r); ++y ) {
 
       const T * srcp0 = src[2 * y + 0];

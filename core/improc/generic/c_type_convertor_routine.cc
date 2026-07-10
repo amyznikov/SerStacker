@@ -29,6 +29,10 @@ bool c_type_convertor_routine::serialize(c_config_setting settings, bool save)
 
 bool c_type_convertor_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  if ( _ddepth == PIXEL_DEPTH_NO_CHANGE && _auto_scale ) {
+    return true; // no action requested
+  }
+
   const int ddepth =
       (_ddepth == PIXEL_DEPTH_NO_CHANGE || image.fixedType()) ?
           image.depth() :

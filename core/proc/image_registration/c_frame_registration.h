@@ -116,38 +116,6 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObject
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
 }
 
-//struct c_jovian_derotation_options
-//{
-//  //  c_jovian_ellipse_detector_options detector_options;
-//  c_jovian_ellipse_detector2_options detector_options;
-//  //  double min_rotation = -40 * CV_PI / 180;
-//  //  double max_rotation = +40 * CV_PI / 180;
-//  //  int max_pyramid_level = -1;
-//  //  int num_orientations = 1;
-//  int max_context_size = 5;
-//  bool derotate_all_frames = false;
-//};
-
-//struct c_saturn_derotation_options
-//{
-//  c_saturn_ellipse_detector_options detector_options;
-//};
-//
-
-//enum planetary_disk_derotation_type
-//{
-//  planetary_disk_derotation_disabled,
-//  planetary_disk_derotation_jovian,
-//  planetary_disk_derotation_saturn,
-//};
-//
-//struct c_planetary_disk_derotation_options
-//{
-//  c_jovian_derotation_options jovian_derotation;
-//  c_saturn_derotation_options saturn_derotation;
-//  planetary_disk_derotation_type derotation_type = planetary_disk_derotation_disabled;
-//};
-
 struct c_image_registration_options
 {
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_AFFINE;
@@ -245,7 +213,7 @@ public:
   typedef c_frame_registration this_class;
   typedef std::shared_ptr<this_class> sptr;
   typedef std::unique_ptr<this_class> uptr;
-  typedef std::function<void(cv::InputOutputArray image, cv::InputOutputArray mask)> ecc_image_preprocessor_function;
+  typedef std::function<void(cv::InputOutputArray image, cv::InputOutputArray mask)> image_preprocessor_function;
 
   c_frame_registration();
   c_frame_registration(const c_image_registration_options & options);
@@ -270,21 +238,14 @@ public:
   const c_sparse_feature_extractor_and_matcher::sptr & create_sparse_feature_extractor_and_matcher();
   const c_sparse_feature_extractor_and_matcher::sptr & sparse_feature_extractor_and_matcher() const;
 
-  // const c_ecc_forward_additive & ecc() const;
   const c_ecch & ecch() const;
   const c_eccflow & eccflow() const;
 
-//  const c_jovian_derotation & jovian_derotation() const;
-//  c_jovian_derotation & jovian_derotation();
+  void set_feature_image_preprocessor(const image_preprocessor_function & func);
+  const image_preprocessor_function & feature_image_preprocessor() const;
 
-//  const c_jovian_derotation2 & jovian_derotation() const;
-//  c_jovian_derotation2 & jovian_derotation();
-
-//  const c_saturn_derotation & saturn_derotation() const;
-//  c_saturn_derotation & saturn_derotation();
-
-  void set_ecc_image_preprocessor(const ecc_image_preprocessor_function & func);
-  const ecc_image_preprocessor_function & ecc_image_preprocessor() const;
+  void set_ecc_image_preprocessor(const image_preprocessor_function & func);
+  const image_preprocessor_function & ecc_image_preprocessor() const;
 
   const c_image_registration_status & status() const;
 
@@ -382,7 +343,8 @@ protected:
   c_ecch _ecch;
   c_eccflow _eccflow;
 
-  ecc_image_preprocessor_function _ecc_image_preprocessor;
+  image_preprocessor_function _feature_image_preprocessor;
+  image_preprocessor_function _ecc_image_preprocessor;
 
   cv::Mat2f _current_remap;
 

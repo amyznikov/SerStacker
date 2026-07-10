@@ -44,7 +44,7 @@ public:
 
 protected:
   static void create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype,
-      cv::Size & ksize, double sigma1, double sigma2, double scale);
+      cv::Size & ksize, double sigma1, double sigma2);
 
 protected:
   double _sigmaX = 0, _sigmaY = 0;

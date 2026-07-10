@@ -23,12 +23,10 @@ public:
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE,
-    DISPLAY_BLUR1_IMAGE,
-    DISPLAY_BLUR2_IMAGE,
-    DISPLAY_TEXTURE_IMAGE,
-    DISPLAY_BLURED_TEXTURE,
-    DISPLAY_K_IMAGE,
-    DISPLAY_FILTERED_IMAGE,
+    DISPLAY_MEAN_IMAGE,
+    DISPLAY_STDEV_IMAGE,
+    DISPLAY_MEANSTDEV_IMAGE,
+    DISPLAY_TOPHAT_IMAGE,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -36,13 +34,10 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DISPLAY _display = DISPLAY_FILTERED_IMAGE;
-  //int _se_radius = 4;
-  double _sigma1 = 0.8;
-  double _sigma2 = 2;
-  double _sigma_se = 1.5;
-  double _lpgk = 0.2;
-  double _tex_scale = 1;
+  DISPLAY _display = DISPLAY_MEANSTDEV_IMAGE;
+  double _gsigma = 15;
+  double _kmean = 1;
+  double _kstdev = 1;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

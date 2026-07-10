@@ -729,7 +729,6 @@ bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, i
     ddepth = src.depth();
   }
 
-  CF_DEBUG("call _debayer_nn_interpolation: src.depth()=%d ddepth=%d colorid=%s", src.depth(), ddepth, toCString(colorid));
   CV_DISPATCH2(src.depth(), ddepth, _debayer_nn_interpolation, src, dst, colorid);
 
   CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",

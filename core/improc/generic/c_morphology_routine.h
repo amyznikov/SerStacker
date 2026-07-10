@@ -11,7 +11,6 @@
 
 #include <core/improc/c_image_processor.h>
 #include <core/proc/morphology.h>
-//#include <core/proc/geo-reconstruction.h>
 
 
 class c_morphology_routine :

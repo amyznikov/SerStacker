@@ -15,10 +15,10 @@ c_gaussian_filter::c_gaussian_filter()
 c_gaussian_filter::c_gaussian_filter(double sigmaX, double sigmaY, const cv::Size & ksize, double scale) :
   _sigmaX(sigmaX), _sigmaY(sigmaY), _ksize(ksize), _scale(scale)
 {
-  create_gaussian_kernels(_Kx, _Ky, CV_32F, _ksize, _sigmaX, _sigmaY, _scale);
+  create_gaussian_kernels(_Kx, _Ky, CV_32F, _ksize, _sigmaX, _sigmaY);
 }
 
-void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype, cv::Size & ksize, double sigmax, double sigmay, double scale)
+void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int ktype, cv::Size & ksize, double sigmax, double sigmay)
 {
   // Auto setup kernel size from sigma if not specified explicitly
 
@@ -53,18 +53,18 @@ void c_gaussian_filter::create_gaussian_kernels(cv::Mat & kx, cv::Mat & ky, int 
 
   if( ksize.width > 1 ) {
     kx = cv::getGaussianKernel(ksize.width, sigmax,
-        std::max(kdepth, CV_32F)) * scale;
+        std::max(kdepth, CV_32F));
   }
   else {
-    kx = cv::Mat1f::ones(1, 1) * scale;
+    kx = cv::Mat1f::ones(1, 1);
   }
 
   if ( ksize.height > 1 ) {
     ky = cv::getGaussianKernel(ksize.height, sigmay,
-        std::max(kdepth, CV_32F)) * scale;
+        std::max(kdepth, CV_32F));
   }
   else {
-    ky = cv::Mat1f::ones(1, 1) * scale;
+    ky = cv::Mat1f::ones(1, 1);
   }
 }
 
@@ -81,7 +81,7 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
   }
 
   if ( _Kx.rows == 1 &&  _Ky.rows == 1 ) {
-    _src.getMat().convertTo(_dst, ddepth);
+    _src.getMat().convertTo(_dst, ddepth, _scale);
     return;
   }
 
@@ -89,7 +89,7 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
 
     cv::sepFilter2D(_src, _dst,
         ddepth,
-        _Kx, _Ky,
+        _scale * _Kx, _Ky,
         cv::Point(-1, -1),
         0,
         borderType);
@@ -101,7 +101,7 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
 
   cv::sepFilter2D(_src, gsrc,
       CV_32F,
-      _Kx, _Ky,
+      _scale * _Kx, _Ky,
       cv::Point(-1, -1),
       0,
       borderType);

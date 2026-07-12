@@ -14,6 +14,7 @@
 #include <core/proc/feature2d/feature_matching/c_optflowpyrlk_feature2d_matcher.h>
 #include <core/proc/feature2d/feature_matching/c_triangle_matcher.h>
 #include <core/proc/feature2d/feature_matching/c_snorm_based_feature2d_matcher.h>
+#include <core/proc/feature2d/feature_matching/c_planetary_disk_matcher.h>
 
 #include <core/ssprintf.h>
 
@@ -25,6 +26,7 @@ enum FEATURE2D_MATCHER_TYPE {
   FEATURE2D_MATCHER_SNORM,
   FEATURE2D_MATCHER_TRIANGLES,
   FEATURE2D_MATCHER_OptFlowPyrLK,
+  FEATURE2D_MATCHER_PLANETARY_DISK,
 };
 
 template<> const c_enum_member *
@@ -38,6 +40,7 @@ struct c_feature2d_matcher_options {
   c_hamming_distance_feature2d_matcher_options hamming;
   c_flann_based_feature2d_matcher_options flann;
   c_triangle_matcher_options triangles;
+  c_planetary_disk_matcher_options planetary_disk;
   c_optflowpyrlk_feature2d_matcher_options optflowpyrlk;
   c_snorm_based_feature2d_matcher_options snorm;
 };

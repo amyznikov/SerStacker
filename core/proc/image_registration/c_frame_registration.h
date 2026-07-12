@@ -330,12 +330,12 @@ protected:
 
   c_sparse_feature_extractor_and_matcher::sptr _sparse_feature_extractor_and_matcher;
 
-  cv::Point2f _planetary_disk_reference_centroid;
-  cv::Point2f _planetary_disk_current_centroid;
-  cv::Rect _planetary_disk_reference_component_rect;
-  cv::Rect _planetary_disk_current_component_rect;
-  cv::Mat _planetary_disk_reference_component_mask;
-  cv::Mat _planetary_disk_current_component_mask;
+//  cv::Point2f _planetary_disk_reference_centroid;
+//  cv::Point2f _planetary_disk_current_centroid;
+//  cv::Rect _planetary_disk_reference_component_rect;
+//  cv::Rect _planetary_disk_current_component_rect;
+//  cv::Mat _planetary_disk_reference_component_mask;
+//  cv::Mat _planetary_disk_current_component_mask;
 
   c_image_transform::sptr _image_transform;
   cv::Mat1f _image_transform_defaut_parameters;

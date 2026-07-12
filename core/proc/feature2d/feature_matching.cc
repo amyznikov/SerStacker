@@ -19,6 +19,7 @@ const c_enum_member * members_of<FEATURE2D_MATCHER_TYPE>()
       { FEATURE2D_MATCHER_OptFlowPyrLK, "OptFlowPyrLK", "Use cv::calcOpticalFlowPyrLK() for matching proposals"},
       { FEATURE2D_MATCHER_TRIANGLES, "triangle_matcher", "" },
       { FEATURE2D_MATCHER_SNORM, "snorm", "" },
+      { FEATURE2D_MATCHER_PLANETARY_DISK, "PLANETARY_DISK", "Special stub for planetary disk pseudo-matching" },
       { FEATURE2D_MATCHER_UNKNOWN},
   };
 
@@ -37,10 +38,14 @@ c_feature2d_matcher::sptr create_sparse_feature_matcher(
     return create_sparse_feature_matcher(options.snorm);
   case FEATURE2D_MATCHER_TRIANGLES :
     return create_sparse_feature_matcher(options.triangles);
+  case FEATURE2D_MATCHER_PLANETARY_DISK:
+    return create_sparse_feature_matcher(options.planetary_disk);
   case FEATURE2D_MATCHER_OptFlowPyrLK :
     //return create_sparse_feature_matcher(options.optflowpyrlk);
     CF_ERROR("ERROR: OptFlowPyrLK requires specialized matcher not supported by generic interface");
     return nullptr;
+
+
   case FEATURE2D_MATCHER_UNKNOWN :
     CF_ERROR("ERROR: c_feature2d_matcher type not specified");
     return nullptr;

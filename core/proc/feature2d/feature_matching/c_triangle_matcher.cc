@@ -228,14 +228,11 @@ int c_triangle_extractor::defaultNorm() const
 
 c_triangle_matcher::ptr create_sparse_feature_matcher(const c_triangle_matcher_options & options)
 {
-  c_triangle_matcher::ptr obj(new
-      c_triangle_matcher(options.eps));
-
-  return obj;
+  return c_triangle_matcher::create(options.eps);
 }
 
 c_triangle_matcher::c_triangle_matcher(double eps) :
-    eps_(eps)
+    _eps(eps)
 {
 }
 
@@ -310,7 +307,7 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & /*query_keypoin
   cv::Mat1i votes(n1, n2, 0);
 
   // Use exact search
-  cvflann::RadiusUniqueResultSet<DistanceType::ResultType> searchResult(eps_ * eps_);
+  cvflann::RadiusUniqueResultSet<DistanceType::ResultType> searchResult(_eps * _eps);
   cvflann::SearchParams searchParams(cvflann::FLANN_CHECKS_UNLIMITED, 0, false);
 
   std::vector<int> indices;

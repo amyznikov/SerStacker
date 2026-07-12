@@ -71,7 +71,7 @@ protected:
   cv::Mat1b _reference_triangles;
   cvflann::Matrix<DistanceType::ElementType> _reference_features;
   cv::Ptr<cvflann::KDTreeIndex<DistanceType>> _index;
-  double eps_ = 1e-4;
+  double _eps = 1e-4;
 };
 
 c_triangle_matcher::ptr create_sparse_feature_matcher(

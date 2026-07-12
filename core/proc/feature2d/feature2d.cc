@@ -105,26 +105,31 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
 
   //////////////
   if( obj->_options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
+    switch (obj->_options.detector.type) {
+#if HAVE_STAR_EXTRACTOR
+      case SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR:
+        obj->_options.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
+        break;
+#endif
+      default:
+        break;
+    }
+  }
+
+  if( obj->_options.descriptor.type == SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT ) {
 
     switch (obj->_options.matcher.type) {
       case FEATURE2D_MATCHER_OptFlowPyrLK:
         break;
-
       case FEATURE2D_MATCHER_TRIANGLES:
         obj->_options.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
         break;
-
-      case FEATURE2D_MATCHER_AUTO_SELECT:
       default:
-        if( obj->_detector->type() == FEATURE2D_STAR_EXTRACTOR ) {
-          obj->_options.descriptor.type = SPARSE_FEATURE_DESCRIPTOR_TRIANGLE;
-        }
-        else if( !can_compute_decriptors(obj->_detector->type()) ) {
+        if( !can_compute_decriptors(obj->_detector->type()) ) {
           obj->_options.matcher.type = FEATURE2D_MATCHER_OptFlowPyrLK;
         }
         else {
-          obj->_options.descriptor.type =
-              (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->_detector->type();
+          obj->_options.descriptor.type = (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->_detector->type();
         }
         break;
     }
@@ -133,14 +138,11 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
 
   if( obj->_options.descriptor.type != SPARSE_FEATURE_DESCRIPTOR_UNKNOWN ) {
     if( (int)obj->_options.descriptor.type != (int)obj->_detector->type() ) {
-
       if( !(obj->_descriptor = create_sparse_descriptor_extractor(obj->_options.descriptor)) ) {
         CF_ERROR("create_sparse_descriptor_extractor(type=%s) fails", toCString(obj->_options.descriptor.type));
         return nullptr;
       }
-
-      obj->_options.descriptor.type =
-          (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->_detector->type();
+      obj->_options.descriptor.type = (SPARSE_FEATURE_DESCRIPTOR_TYPE) obj->_detector->type();
     }
   }
   //////////////
@@ -318,29 +320,35 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
       #endif
       #if HAVE_TRIANGLE_EXTRACTOR
       case SPARSE_FEATURE_DESCRIPTOR_TRIANGLE:{
-
-        const c_feature2d_triangle_extractor::options &opts =
-            obj->_options.descriptor.triangles;
-
         obj->_options.matcher.type = FEATURE2D_MATCHER_TRIANGLES;
         break;
       }
-
       #endif
+      #if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+      case SPARSE_FEATURE_DESCRIPTOR_PLANETARY_DISK:{
+        obj->_options.matcher.type = FEATURE2D_MATCHER_PLANETARY_DISK;
+        break;
+      }
+      #endif
+
       default:
         break;
     }
   }
 
-  switch ( obj->_options.matcher.type ) {
-    case FEATURE2D_MATCHER_OptFlowPyrLK:
-      break;
-    default:
-      if( !(obj->_matcher = create_sparse_feature_matcher(obj->_options.matcher)) ) {
-        CF_ERROR("create_sparse_feature_matcher(type='%s') fails", toCString(obj->_options.matcher.type));
-        return nullptr;
-      }
-      break;
+  CF_DEBUG("obj->_options.matcher.type=%d (%s)", obj->_options.matcher.type, toCString(obj->_options.matcher.type));
+
+  if( obj->_options.matcher.type != FEATURE2D_MATCHER_UNKNOWN ) {
+    switch (obj->_options.matcher.type) {
+      case FEATURE2D_MATCHER_OptFlowPyrLK:
+        break;
+      default:
+        if( !(obj->_matcher = create_sparse_feature_matcher(obj->_options.matcher)) ) {
+          CF_ERROR("create_sparse_feature_matcher(type='%s') fails", toCString(obj->_options.matcher.type));
+          return nullptr;
+        }
+        break;
+    }
   }
 
   CF_DEBUG("c_sparse_feature_extractor_and_matcher: \n"
@@ -370,11 +378,13 @@ bool c_sparse_feature_extractor_and_matcher::setup_reference_frame(cv::InputArra
   mask.copyTo(_reference_mask);
 
   if( !_matcher ) {
+    // Special case for cv::calcOpticalFlowPyrLK() position matching
     _reference_descriptors.release();
     detect(image, _reference_keypoints, mask);
     extract_positions(_reference_keypoints, _reference_positions);
   }
   else {
+    // Regular case with descriptor matcher
     detectAndCompute(image, mask, _reference_keypoints, _reference_descriptors);
     _matcher->train(_reference_keypoints, _reference_descriptors);
     _reference_positions.clear();
@@ -392,60 +402,70 @@ bool c_sparse_feature_extractor_and_matcher::match_current_frame(cv::InputArray 
   _matched_reference_positions.clear();
   _matched_current_positions.clear();
 
-//  CF_DEBUG("current_image: %dx%d %d channels", current_image.cols(), current_image.rows(), current_image.channels());
-//  CF_DEBUG("current_mask: %dx%d %d channels", current_mask.cols(), current_mask.rows(), current_mask.channels());
-//  CF_DEBUG("_reference_image: %dx%d %d channels", _reference_image.cols, _reference_image.rows, _reference_image.channels());
-//  CF_DEBUG("_reference_mask: %dx%d %d channels", _reference_mask.cols, _reference_mask.rows, _reference_mask.channels());
-
   try {
 
     if ( _matcher ) {
+      // Regular case for normal feature detection/description/matching
+
+      CF_DEBUG("_matcher=%d (%s)", _matcher->type(), toCString((FEATURE2D_MATCHER_TYPE) _matcher->type()));
 
       detectAndCompute(current_image, current_mask, _current_keypoints, _current_descriptors);
-      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%d", _current_keypoints.size(), _current_descriptors.rows);
+      CF_DEBUG("_current_keypoints.size=%zu _current_descriptors.rows=%d",
+          _current_keypoints.size(), _current_descriptors.rows);
 
       if( !_matcher->match(_current_keypoints, _current_descriptors, _current_matches) ) {
         CF_ERROR("matcher_->match() fails");
         return false;
       }
 
-
       for( const cv::DMatch & m : _current_matches ) {
         _matched_reference_positions.emplace_back(_reference_keypoints[m.trainIdx].pt);
         _matched_current_positions.emplace_back(_current_keypoints[m.queryIdx].pt);
       }
+
+      fOk = true;
     }
-    else {
+    else if ( _options.matcher.type == FEATURE2D_MATCHER_OptFlowPyrLK ) {
+      // Special case for cv::calcOpticalFlowPyrLK() position matching
+      CF_DEBUG("_options.matcher.type=%d (%s)", _options.matcher.type, toCString(_options.matcher.type));
 
-      std::vector<uint8_t> status;
-      std::vector<float> err;
+        std::vector<uint8_t> status;
+        std::vector<float> err;
 
-      const c_optflowpyrlk_feature2d_matcher_options & opts =
-          _options.matcher.optflowpyrlk;
+        const c_optflowpyrlk_feature2d_matcher_options & opts =
+            _options.matcher.optflowpyrlk;
 
-      cv::calcOpticalFlowPyrLK(_reference_image, current_image,
-          _reference_positions, _current_positions,
-          status, err,
-          opts.winSize,
-          opts.maxLevel,
-          cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
-              opts.maxIterations,
-              opts.eps),
-          opts.flags,
-          opts.minEigThreshold);
+        cv::calcOpticalFlowPyrLK(_reference_image, current_image,
+            _reference_positions, _current_positions,
+            status, err,
+            opts.winSize,
+            opts.maxLevel,
+            cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
+                opts.maxIterations,
+                opts.eps),
+            opts.flags,
+            opts.minEigThreshold);
 
-      for( int i = 0, n = _reference_positions.size(); i < n; ++i ) {
-        if( status[i] && (opts.maxErr <= 0 || err[i] < opts.maxErr) ) {
-
-          _matched_reference_positions.emplace_back(_reference_positions[i]);
-          _matched_current_positions.emplace_back(_current_positions[i]);
+        for( int i = 0, n = _reference_positions.size(); i < n; ++i ) {
+          if( status[i] && (opts.maxErr <= 0 || err[i] < opts.maxErr) ) {
+            _matched_reference_positions.emplace_back(_reference_positions[i]);
+            _matched_current_positions.emplace_back(_current_positions[i]);
+          }
         }
-      }
-
+        fOk = true;
     }
-
-    fOk = true;
-
+//    else if ( _options.detector.type == SPARSE_FEATURE_DETECTOR_PLANETARY_DISK ) {
+//      CF_DEBUG("_options.detector.type=%d (%s)", _options.detector.type, toCString(_options.detector.type));
+//
+//      if (!_reference_positions.empty() && !_current_positions.empty() ) {
+//        _matched_reference_positions.emplace_back(_reference_positions.front());
+//        _matched_current_positions.emplace_back(_current_positions.front());
+//        fOk = true;
+//      }
+//    }
+    else {
+      CF_ERROR("Invalid combination of feature2d detector and matcher");
+    }
   }
 
   catch( const cv::Exception & e ) {
@@ -478,7 +498,14 @@ void c_sparse_feature_extractor_and_matcher::detect(cv::InputArray image,
     cv::InputArray mask) const
 {
   keypoints.clear();
+
+  CF_DEBUG("_detector->type=%d (%s) image: %dx%d channels=%d depth=%d mask: %dx%d channels=%d depth=%d ",
+      _detector->type(), toCString(_detector->type()),
+      image.cols(), image.rows(), image.channels(), image.depth(),
+      mask.cols(), mask.rows(), mask.channels(), mask.depth());
+
   _detector->detect(image, keypoints, mask);
+  CF_DEBUG("keypoints.size=%zu", keypoints.size());
 
   if( _options.detector.max_keypoints > 0 && (int) (keypoints.size()) > _options.detector.max_keypoints ) {
 
@@ -507,22 +534,29 @@ void c_sparse_feature_extractor_and_matcher::detectAndCompute(cv::InputArray ima
   }
 
   if ( _descriptor )  {
+    // The case of descriptor separated from detector
     detect(image, keypoints, mask);
     _descriptor->compute(image, keypoints, descriptors);
   }
   else {
+    // The case of the same singe  detector and descriptor object
 
-    CF_DEBUG("image: %dx%d %d channels depth=%d", image.cols(), image.rows(), image.channels(), image.depth());
-    CF_DEBUG("mask: %dx%d %d channels depth=%d", mask.cols(), mask.rows(), mask.channels(), mask.depth());
-    CF_DEBUG("useProvidedKeypoints= %d", useProvidedKeypoints);
+    CF_DEBUG("image: %dx%d %d channels %d depth",
+        image.cols(), image.rows(),
+        image.channels(),
+        image.depth());
+
+    CF_DEBUG("mask: %dx%d %d channels %d depth",
+        mask.cols(), mask.rows(),
+        mask.channels(),
+        mask.depth());
 
     _detector->detectAndCompute(image, mask, keypoints, descriptors, useProvidedKeypoints);
 
-    // FIXME: limit num keypoints by options_.detector.max_keypoints
-    CF_DEBUG("FIXME: NOT LIMITING keypoints.size = %zu > max_keypoints=%d", keypoints.size(), _options.detector.max_keypoints);
+    // FIXME: limit number of keypoints by _options.detector.max_keypoints if set
+    CF_DEBUG("FIXME: NOT LIMITING keypoints.size = %zu > max_keypoints=%d",
+        keypoints.size(), _options.detector.max_keypoints);
   }
-
-  ///////
 }
 
 

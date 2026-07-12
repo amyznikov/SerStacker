@@ -946,85 +946,12 @@ bool save_settings(c_config_setting section, const c_feature2d::sptr & obj)
 
 
 
-bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * options)
-{
-  BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *options, detector);
-  LOAD_OPTIONS(settings, *options, descriptor);
-  END_LOAD_OPTIONS(settings)
-
-  return true;
-}
-//
-//c_sparse_feature_extractor::sptr create_sparse_feature_extractor(c_config_setting settings)
+//bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * options)
 //{
-//  INSTRUMENT_REGION("");
-//
-//  c_sparse_feature_extractor_options options;
-//  if ( !load_settings(settings, &options) ) {
-//    CF_ERROR("load_settings(c_sparse_feature_extractor_options) fails");
-//    return nullptr;
-//  }
-//
-//  return create_sparse_feature_extractor(options);
-//}
-//
-//bool save_settings(c_config_setting settings, const c_flann_index_options & args)
-//{
-//  SAVE_SETINGS(type);
-//  SAVE_SETINGS(linear);
-//  SAVE_SETINGS(kdtree);
-//  SAVE_SETINGS(kmeans);
-//  SAVE_SETINGS(composite);
-//  SAVE_SETINGS(hierarchical);
-//  SAVE_SETINGS(lsh);
-//  SAVE_SETINGS(autotuned);
-//  return true;
-//}
-//
-//bool load_settings(c_config_setting settings, c_flann_index_options * options)
-//{
-//  if ( !settings ) {
-//    CF_ERROR("settings pointer is NULL");
-//    return false;
-//  }
-//
-//  std::string objtype;
-//  if ( !load_settings(settings, "type", &objtype) || objtype.empty() ) {
-//    if ( options->type == FlannIndex_unknown ) {
-//      CF_ERROR("No flann index type specified");
-//      return false;
-//    }
-//  }
-//  else if ( !fromString(objtype, &options->type) || options->type == FlannIndex_unknown ) {
-//    CF_ERROR("Unknown or not supported flann index type specified: '%s'",
-//        objtype.c_str());
-//    return false;
-//  }
-//
-//  c_config_setting subsection;
-//
-//  if( (subsection = settings[toString(FlannIndex_linear)]).isGroup() ) {
-//    load_settings(subsection, &options->linear);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_kdtree)]).isGroup() ) {
-//    load_settings(subsection, &options->kdtree);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_kmeans)]).isGroup() ) {
-//    load_settings(subsection, &options->kmeans);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_composite)]).isGroup() ) {
-//    load_settings(subsection, &options->composite);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_hierarchical)]).isGroup() ) {
-//    load_settings(subsection, &options->hierarchical);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_lsh)]).isGroup() ) {
-//    load_settings(subsection, &options->lsh);
-//  }
-//  if( (subsection = settings[toString(FlannIndex_autotuned)]).isGroup() ) {
-//    load_settings(subsection, &options->autotuned);
-//  }
+//  BEGIN_LOAD_OPTIONS(settings)
+//  LOAD_OPTIONS(settings, *options, detector);
+//  LOAD_OPTIONS(settings, *options, descriptor);
+//  END_LOAD_OPTIONS(settings)
 //
 //  return true;
 //}
@@ -1910,16 +1837,16 @@ bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_
 }
 
 
-bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & options)
-{
-  save_settings(settings.add_group("detector"),
-      options.detector);
-
-  save_settings(settings.add_group("descriptor"),
-      options.descriptor);
-
-  return true;
-}
-
+//bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & options)
+//{
+//  save_settings(settings.add_group("detector"),
+//      options.detector);
+//
+//  save_settings(settings.add_group("descriptor"),
+//      options.descriptor);
+//
+//  return true;
+//}
+//
 
 

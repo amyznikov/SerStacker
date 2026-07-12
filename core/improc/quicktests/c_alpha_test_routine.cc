@@ -23,6 +23,7 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
       { c_alpha_test_routine::DISPLAY_STDEV_IMAGE, "STDEV", "" },
       { c_alpha_test_routine::DISPLAY_MEANSTDEV_IMAGE, "MEANSTDEV", "" },
       { c_alpha_test_routine::DISPLAY_TOPHAT_IMAGE, "TOPHAT", "" },
+      { c_alpha_test_routine::DISPLAY_BGMAP_IMAGE, "BGMAP", "" },
       { c_alpha_test_routine::DISPLAY_MEANSTDEV_IMAGE}
   };
   return members;
@@ -40,12 +41,34 @@ static void create_meansdtdev_map(cv::InputArray _src, cv::OutputArray _dst,
   cv::addWeighted(m, kmean, s, kstdev, 0, _dst);
 }
 
+static void create_median_background_map(cv::InputArray _src, cv::OutputArray _dst, int lvls)
+{
+  cv::Mat src;
+  std::vector<cv::Size> sizes;
+
+  sizes.emplace_back(_src.size());
+  cv::medianBlur(_src, src, 5);
+  cv::pyrDown(src, src);
+  for ( int i = 1; i < lvls; ++i ) {
+    sizes.emplace_back(src.size());
+    cv::medianBlur(src, src, 5);
+    cv::pyrDown(src, src);
+  }
+
+  for ( int i = sizes.size()-1; i >= 0; --i ) {
+    cv::pyrUp(src, src, sizes[i]);
+  }
+
+  _dst.move(src);
+}
+
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, _gsigma), "");
   ctlbind(ctls, "kmean", CTL_CONTEXT(ctx, _kmean), "");
   ctlbind(ctls, "kstdev", CTL_CONTEXT(ctx, _kstdev), "");
+  ctlbind(ctls, "bgmaplvls", CTL_CONTEXT(ctx, _bgmaplvls), "");
 }
 
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
@@ -55,6 +78,7 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _gsigma);
     SERIALIZE_OPTION(settings, save, *this, _kmean);
     SERIALIZE_OPTION(settings, save, *this, _kstdev);
+    SERIALIZE_OPTION(settings, save, *this, _bgmaplvls);
     return true;
   }
   return false;
@@ -66,15 +90,16 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return true;
   }
 
+  if ( _display == DISPLAY_BGMAP_IMAGE ) {
+    create_median_background_map(image.getMat(), image, _bgmaplvls);
+    return true;
+  }
+
+
   const int cn = image.channels();
   cv::Mat src, blur1, blur2, detail, gray, texture, K, filtered;
 
-  if ( image.depth() == CV_32F ) {
-    src = image.getMat();
-  }
-  else {
-    image.getMat().convertTo(src, CV_32F);
-  }
+  image.getMat().convertTo(src, CV_32F);
 
   const double kmean = _display == DISPLAY_STDEV_IMAGE ? 0 : _kmean;
   const double kstdev = _display == DISPLAY_MEAN_IMAGE ? 0 : _kstdev;

@@ -119,8 +119,8 @@ bool load_settings(c_config_setting settings, c_sparse_feature_detector_options 
 bool save_settings(c_config_setting settings, const c_sparse_feature_descriptor_options & args);
 bool load_settings(c_config_setting settings, c_sparse_feature_descriptor_options * opts);
 
-bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & args);
-bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * opts);
+//bool save_settings(c_config_setting settings, const c_sparse_feature_extractor_options & args);
+//bool load_settings(c_config_setting settings, c_sparse_feature_extractor_options * opts);
 
 
 bool save_settings(c_config_setting settings, const c_flann_linear_index_options & args);
@@ -171,8 +171,8 @@ bool save_settings(c_config_setting settings, const c_feature2d_matcher::sptr & 
 
 ///////////////////////////////////////////////////////////////////////
 
-c_feature2d_matcher::sptr create_sparse_feature_matcher(
-    const c_sparse_feature_extractor::sptr & extractor,
-    const std::string & matcher_spec);
+//c_feature2d_matcher::sptr create_sparse_feature_matcher(
+//    const c_sparse_feature_extractor::sptr & extractor,
+//    const std::string & matcher_spec);
 
 #endif /* __feature2d_settings_h__ */

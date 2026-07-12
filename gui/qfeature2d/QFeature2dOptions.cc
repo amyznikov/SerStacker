@@ -234,7 +234,7 @@ static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2
 {
   ADDCTL2(gsigma);
   ADDCTL2(se_radius);
-  ADDCTL2(align_planetary_disk_masks);
+  // ADDCTL2(align_planetary_disk_masks);
 }
 #endif
 
@@ -1044,6 +1044,14 @@ QTriangleMatcherOptions::QTriangleMatcherOptions(QWidget * parent) :
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+QPlanetaryDiskMatcherOptions::QPlanetaryDiskMatcherOptions(QWidget * parent) :
+    Base(parent)
+{
+  updateControls();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 QSnormBasedFeature2dMatcherOptions::QSnormBasedFeature2dMatcherOptions(QWidget * parent) :
     Base(parent)
@@ -1118,12 +1126,15 @@ QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
   _stack->addWidget(optFlowPyrLKMatcherOptions_ctl = new QOptFlowPyrLKMatcherOptions(this));
   _stack->addWidget(triangleMatcherOptions_ctl = new QTriangleMatcherOptions(this));
   _stack->addWidget(snormBasedFeature2dMatcherOptions_ctl = new QSnormBasedFeature2dMatcherOptions(this));
+  _stack->addWidget(planetaryDiskMatcherOptions_ctl = new QPlanetaryDiskMatcherOptions(this));
 
   connect(hammingDistanceFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
   connect(flannBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
   connect(optFlowPyrLKMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
   connect(triangleMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
   connect(snormBasedFeature2dMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+  connect(planetaryDiskMatcherOptions_ctl, &QSettingsWidget::parameterChanged, this, &ThisClass::parameterChanged);
+
 
   QObject::connect(this, &ThisClass::enablecontrols,
       [this]() {
@@ -1143,6 +1154,7 @@ QSparseFeatureMatcherOptions::QSparseFeatureMatcherOptions(QWidget * parent) :
         optFlowPyrLKMatcherOptions_ctl->setOpts(_opts? &_opts->optflowpyrlk : nullptr);
         triangleMatcherOptions_ctl->setOpts(_opts? &_opts->triangles : nullptr);
         snormBasedFeature2dMatcherOptions_ctl->setOpts(_opts? &_opts->snorm : nullptr);
+        planetaryDiskMatcherOptions_ctl->setOpts(_opts? &_opts->planetary_disk : nullptr);
         showMatcherSpecificControls();
       });
 
@@ -1167,6 +1179,9 @@ void QSparseFeatureMatcherOptions::showMatcherSpecificControls()
         break;
       case FEATURE2D_MATCHER_SNORM:
         _stack->setCurrentWidget(snormBasedFeature2dMatcherOptions_ctl);
+        break;
+      case FEATURE2D_MATCHER_PLANETARY_DISK:
+        _stack->setCurrentWidget(planetaryDiskMatcherOptions_ctl);
         break;
       default:
         _stack->setEnabled(false);

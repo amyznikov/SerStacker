@@ -27,6 +27,7 @@ public:
     DISPLAY_STDEV_IMAGE,
     DISPLAY_MEANSTDEV_IMAGE,
     DISPLAY_TOPHAT_IMAGE,
+    DISPLAY_BGMAP_IMAGE,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -38,6 +39,7 @@ protected:
   double _gsigma = 15;
   double _kmean = 1;
   double _kstdev = 1;
+  int _bgmaplvls = 5;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

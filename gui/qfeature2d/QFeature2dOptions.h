@@ -176,6 +176,20 @@ protected:
   QNumericBox * eps_ctl = nullptr;
 };
 
+class QPlanetaryDiskMatcherOptions :
+    public QSettingsWidgetTemplate<c_planetary_disk_matcher_options>
+{
+  Q_OBJECT;
+public:
+  typedef QPlanetaryDiskMatcherOptions ThisClass;
+  typedef QSettingsWidgetTemplate<c_planetary_disk_matcher_options> Base;
+
+  QPlanetaryDiskMatcherOptions(QWidget * parent = nullptr);
+
+protected:
+  // QNumericBox * eps_ctl = nullptr;
+};
+
 class QSnormBasedFeature2dMatcherOptions :
     public QSettingsWidgetTemplate<c_snorm_based_feature2d_matcher_options>
 {
@@ -213,6 +227,7 @@ protected:
   QOptFlowPyrLKMatcherOptions * optFlowPyrLKMatcherOptions_ctl = nullptr;
   QTriangleMatcherOptions * triangleMatcherOptions_ctl = nullptr;
   QSnormBasedFeature2dMatcherOptions * snormBasedFeature2dMatcherOptions_ctl = nullptr;
+  QPlanetaryDiskMatcherOptions * planetaryDiskMatcherOptions_ctl = nullptr;
   QStackedWidget * _stack = nullptr;
 };
 

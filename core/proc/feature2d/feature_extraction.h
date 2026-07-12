@@ -14,6 +14,8 @@
 #define __feature_detection_h__
 
 #include <opencv2/opencv.hpp>
+#include <algorithm>
+#include <initializer_list>
 
 #if HAVE_OpenCV_xfeatures2d
 # include <opencv2/xfeatures2d.hpp>
@@ -184,7 +186,6 @@ enum SPARSE_FEATURE_DETECTOR_TYPE
 #if HAVE_MORPH_EXTRACTOR
   SPARSE_FEATURE_DETECTOR_MORPH = FEATURE2D_MORPH,
 #endif
-
 };
 
 enum SPARSE_FEATURE_DESCRIPTOR_TYPE
@@ -224,6 +225,9 @@ enum SPARSE_FEATURE_DESCRIPTOR_TYPE
 #endif
 #if HAVE_TRIANGLE_EXTRACTOR
   SPARSE_FEATURE_DESCRIPTOR_TRIANGLE = FEATURE2D_TRIANGLE_EXTRACTOR,
+#endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+  SPARSE_FEATURE_DESCRIPTOR_PLANETARY_DISK = FEATURE2D_PLANETARY_DISK,
 #endif
 };
 
@@ -768,8 +772,7 @@ public:
   typedef c_feature2d_akaze this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     decltype (cv::AKAZE::DESCRIPTOR_MLDB) descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB;
@@ -789,8 +792,7 @@ public:
 
 protected:
   c_feature2d_akaze(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::AKAZE::create(_opts.descriptor_type,
@@ -902,8 +904,7 @@ public:
   typedef c_feature2d_freak this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     bool orientationNormalized = true;
@@ -920,8 +921,7 @@ public:
 
 protected:
   c_feature2d_freak(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::FREAK::create(_opts.orientationNormalized,
@@ -947,8 +947,7 @@ public:
   typedef c_feature2d_star this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int maxSize = 45;
@@ -965,8 +964,7 @@ public:
 
 protected:
   c_feature2d_star(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::StarDetector::create(_opts.maxSize,
@@ -990,8 +988,7 @@ public:
   typedef c_feature2d_brief this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int bytes = 32;
@@ -1005,8 +1002,7 @@ public:
 
 protected:
   c_feature2d_brief(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::BriefDescriptorExtractor::create(_opts.bytes,
@@ -1027,8 +1023,7 @@ public:
   typedef c_feature2d_lucid this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int lucid_kernel = 1;
@@ -1042,8 +1037,7 @@ public:
 
 protected:
   c_feature2d_lucid(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::LUCID::create(_opts.lucid_kernel,
@@ -1064,8 +1058,7 @@ public:
   typedef c_feature2d_latch this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int bytes = 32;
@@ -1081,8 +1074,7 @@ public:
 
 protected:
   c_feature2d_latch(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::LATCH::create(_opts.bytes,
@@ -1105,8 +1097,7 @@ public:
   typedef c_feature2d_daisy this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     float radius = 15;
@@ -1126,8 +1117,7 @@ public:
 
 protected:
   c_feature2d_daisy(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::DAISY::create(_opts.radius,
@@ -1154,8 +1144,7 @@ public:
   typedef c_feature2d_msd this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int m_patch_radius = 3;
@@ -1176,8 +1165,7 @@ public:
 
 protected:
   c_feature2d_msd(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::MSDDetector::create(_opts.m_patch_radius,
@@ -1205,8 +1193,7 @@ public:
   typedef c_feature2d_vgg this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int desc = cv::xfeatures2d::VGG::VGG_120;
@@ -1224,8 +1211,7 @@ public:
 
 protected:
   c_feature2d_vgg(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::VGG::create(_opts.desc,
@@ -1250,8 +1236,7 @@ public:
   typedef c_feature2d_boost this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     decltype(cv::xfeatures2d::BoostDesc::BINBOOST_256) desc = cv::xfeatures2d::BoostDesc::BINBOOST_256;
@@ -1266,8 +1251,7 @@ public:
 
 protected:
   c_feature2d_boost(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::BoostDesc::create(_opts.desc,
@@ -1289,8 +1273,7 @@ public:
   typedef c_feature2d_hl this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int numOctaves = 6;
@@ -1307,8 +1290,7 @@ public:
 
 protected:
   c_feature2d_hl(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
     _feature2d =
         cv::xfeatures2d::HarrisLaplaceFeatureDetector::create(_opts.numOctaves,
@@ -1332,8 +1314,7 @@ public:
   typedef c_feature2d_star_extractor this_class;
   typedef c_feature2d_base base;
 
-  struct options :
-      public base::options
+  struct options : public base::options
   {
     using feature2d_class = this_class;
     int median_filter_radius = 0;
@@ -1345,7 +1326,6 @@ public:
     double min_b = 1;
     double min_ba_ratio = 0.7;
     int min_pts = 5;
-
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1355,12 +1335,9 @@ public:
 
 protected:
   c_feature2d_star_extractor(const options * opts) :
-      base(&this->_opts),
-          _opts(opts ? *opts : options())
+      base(&this->_opts), _opts(opts ? *opts : options())
   {
-    const cv::Ptr<c_star_extractor> obj =
-        c_star_extractor::create();
-
+    const cv::Ptr<c_star_extractor> obj = c_star_extractor::create();
     obj->set_median_filter_radius(_opts.median_filter_radius);
     obj->set_sigma1(_opts.sigma1);
     obj->set_sigma2(_opts.sigma2);
@@ -1430,7 +1407,6 @@ public:
     using feature2d_class = this_class;
     double gsigma = 1;
     int se_radius = 5;
-    bool align_planetary_disk_masks = false;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1573,6 +1549,9 @@ inline constexpr bool can_compute_decriptors(enum FEATURE2D_TYPE type)
 #if HAVE_FEATURE2D_BOOST
     case FEATURE2D_BOOST :
 #endif
+#if HAVE_SIMPLE_PLANETARY_DISK_DETECTOR
+    case FEATURE2D_PLANETARY_DISK:
+#endif
     return true;
   default :
     break;
@@ -1594,9 +1573,7 @@ inline constexpr bool can_detect_features_and_compute_descriptors(enum FEATURE2D
 
 struct c_sparse_feature_detector_options
 {
-  SPARSE_FEATURE_DETECTOR_TYPE type =
-      SPARSE_FEATURE_DETECTOR_AKAZE;
-
+  SPARSE_FEATURE_DETECTOR_TYPE type = SPARSE_FEATURE_DETECTOR_AKAZE;
   int max_keypoints = 1000;
 
   c_feature2d_orb::options orb;
@@ -1660,10 +1637,7 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
 
 struct c_sparse_feature_descriptor_options
 {
-  SPARSE_FEATURE_DESCRIPTOR_TYPE type =
-      SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
-
-//  bool use_detector_options = true;
+  SPARSE_FEATURE_DESCRIPTOR_TYPE type = SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
 
   c_feature2d_orb::options orb;
   c_feature2d_brisk::options brisk;
@@ -1725,96 +1699,28 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
   ctls.emplace_back(c);
 }
 
-
-
-struct c_sparse_feature_extractor_options
-{
-  // Detector options
-  c_sparse_feature_detector_options detector;
-
-  // Decriptor options
-  c_sparse_feature_descriptor_options descriptor;
-};
-
-
-
-class c_sparse_feature_extractor
-{
-public:
-  typedef c_sparse_feature_extractor this_class;
-  typedef std::shared_ptr<this_class> sptr;
-
-  static sptr create(const c_feature2d::sptr & feature_detector,
-      const c_feature2d::sptr & descriptor_extrator = nullptr,
-      int max_keypoints = -1)
-  {
-    return sptr(new this_class(feature_detector, descriptor_extrator, max_keypoints));
-  }
-
-
-  enum SPARSE_FEATURE_DETECTOR_TYPE detector_type() const
-  {
-    return (SPARSE_FEATURE_DETECTOR_TYPE) _detector->type();
-  }
-
-  enum SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type() const
-  {
-    return _descriptor ? (SPARSE_FEATURE_DESCRIPTOR_TYPE)_descriptor->type() : SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
-  }
-
-  void set_max_keypoints(int v)
-  {
-    _max_keypoints = v;
-  }
-
-  int max_keypoints() const
-  {
-    return _max_keypoints;
-  }
-
-  const c_feature2d::sptr & detector() const
-  {
-    return _detector;
-  }
-
-  const c_feature2d::sptr & descriptor() const
-  {
-    return _descriptor ? _descriptor : _detector;
-  }
-
-  bool detect(cv::InputArray image,
-      CV_OUT std::vector<cv::KeyPoint>& keypoints,
-      cv::InputArray mask = cv::noArray()) const;
-
-  bool compute(cv::InputArray image,
-      CV_OUT CV_IN_OUT std::vector<cv::KeyPoint>& keypoints,
-      cv::OutputArray descriptors);
-
-  bool detectAndCompute(cv::InputArray image, cv::InputArray mask,
-      CV_OUT std::vector<cv::KeyPoint>& keypoints,
-      cv::OutputArray descriptors,
-      bool useProvidedKeypoints = false);
-
-protected:
-  c_sparse_feature_extractor(const c_feature2d::sptr & detector,
-      const c_feature2d::sptr & descriptor = nullptr,
-      int max_keypoints = -1);
-
-protected:
-  c_feature2d::sptr _detector;
-  c_feature2d::sptr _descriptor;
-  int _max_keypoints;
-};
-
-
-c_feature2d::sptr create_sparse_feature_detector(
-    const c_sparse_feature_detector_options & options);
-
-c_feature2d::sptr create_sparse_descriptor_extractor(
-    const c_sparse_feature_descriptor_options & options);
-
+c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector_options & options);
+c_feature2d::sptr create_sparse_descriptor_extractor(const c_sparse_feature_descriptor_options & options);
 c_feature2d::sptr create_sparse_descriptor_extractor(const c_feature2d::sptr & detector,
     const c_sparse_feature_descriptor_options & options);
+
+const std::initializer_list<int> & detector_supported_depths(SPARSE_FEATURE_DETECTOR_TYPE detector_type);
+const std::initializer_list<int> & descriptor_supported_depths(SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type);
+
+inline bool is_depth_supported(const std::initializer_list<int> & allowed_depths, int depth)
+{
+  return std::find(allowed_depths.begin(), allowed_depths.end(), depth) != allowed_depths.end();
+}
+
+inline bool is_detector_supported_depth(SPARSE_FEATURE_DETECTOR_TYPE detector_type, int depth)
+{
+  return is_depth_supported(detector_supported_depths(detector_type), depth);
+}
+
+inline bool is_descriptor_supported_depth(SPARSE_FEATURE_DESCRIPTOR_TYPE descriptor_type, int depth)
+{
+  return is_depth_supported(descriptor_supported_depths(descriptor_type), depth);
+}
 
 
 #endif /* __feature_detection_h__ */

@@ -12,6 +12,7 @@
 #include <core/settings/opencv_settings.h>
 #include <core/ctrlbind/ctrlbind.h>
 #include <core/io/load_image.h>
+#include <core/proc/combine_masks.h>
 #include <map>
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -71,19 +72,19 @@ public:
     MASK
   };
 
-  enum MASK_MODE {
-    MASK_MODE_KEEP,
-    MASK_MODE_REPLACE,
-    MASK_MODE_AND,
-    MASK_MODE_OR,
-    MASK_MODE_XOR,
-    MASK_MODE_NAND,
-    MASK_MODE_NOR,
-    MASK_MODE_NXOR,
-    MASK_MODE_ANDN,
-    MASK_MODE_ORN,
-    MASK_MODE_XORN,
-  };
+//  enum MASK_MODE {
+//    MASK_MODE_KEEP,
+//    MASK_MODE_REPLACE,
+//    MASK_MODE_AND,
+//    MASK_MODE_OR,
+//    MASK_MODE_XOR,
+//    MASK_MODE_NAND,
+//    MASK_MODE_NOR,
+//    MASK_MODE_NXOR,
+//    MASK_MODE_ANDN,
+//    MASK_MODE_ORN,
+//    MASK_MODE_XORN,
+//  };
 
   static void register_class_factory(const class_factory * class_factory);
   static void register_all();
@@ -315,171 +316,12 @@ public:
 
     return false;
   }
-  /////////////////////////////////////////////////////////////////////////////
-
-  static void combine_masks(MASK_MODE mode, cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst)
-  {
-    static const auto cdup =
-        [](cv::InputArray src, int cn) -> cv::Mat {
-          const std::vector<cv::Mat> channels(cn, src.getMat());
-          cv::Mat tmp;
-          cv::merge(channels, tmp);
-          return tmp;
-        };
-
-    switch(mode) {
-      case MASK_MODE_REPLACE:
-        src1.copyTo(dst);
-        break;
-
-      case MASK_MODE_AND:
-      case MASK_MODE_NAND: {
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_and(src1, src2, dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_and(cdup(src1, src2.channels()), src2, dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_and(src1, cdup(src2, src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          src2.copyTo(dst);
-        }
-        if( !dst.empty() && mode == MASK_MODE_NAND ) {
-          cv::bitwise_not(dst, dst);
-        }
-        break;
-      }
-
-      case MASK_MODE_OR:
-      case MASK_MODE_NOR: {
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_or(src1, src2, dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_or(cdup(src1, src2.channels()), src2, dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_or(src1, cdup(src2, src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          src2.copyTo(dst);
-        }
-        if( !dst.empty() && mode == MASK_MODE_NOR ) {
-          cv::bitwise_not(dst, dst);
-        }
-        break;
-      }
-
-      case MASK_MODE_XOR:
-      case MASK_MODE_NXOR:{
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_xor(src1, src2, dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_xor(cdup(src1, src2.channels()), src2, dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_xor(src1, cdup(src2, src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          src2.copyTo(dst);
-        }
-        if( !dst.empty() && mode == MASK_MODE_NXOR ) {
-          cv::bitwise_not(dst, dst);
-        }
-        break;
-      }
-
-      case MASK_MODE_ANDN: {
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_and(src1, ~src2.getMat(), dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_and(cdup(src1, src2.channels()), ~src2.getMat(), dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_and(src1, cdup(~src2.getMat(), src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          cv::bitwise_not(src2, dst);
-        }
-        break;
-      }
-      case MASK_MODE_ORN: {
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_or(src1, ~src2.getMat(), dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_or(cdup(src1, src2.channels()), ~src2.getMat(), dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_or(src1, cdup(~src2.getMat(), src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          cv::bitwise_not(src2, dst);
-        }
-        break;
-      }
-      case MASK_MODE_XORN: {
-        if( !src1.empty() && !src2.empty() ) {
-          if( src1.channels() == src2.channels() ) {
-            cv::bitwise_xor(src1, ~src2.getMat(), dst);
-          }
-          else if( src1.channels() == 1 ) {
-            cv::bitwise_xor(cdup(src1, src2.channels()), ~src2.getMat(), dst);
-          }
-          else if( src2.channels() == 1 ) {
-            cv::bitwise_xor(src1, cdup(~src2.getMat(), src1.channels()), dst);
-          }
-        }
-        else if( !src1.empty() ) {
-          src1.copyTo(dst);
-        }
-        else if( !src2.empty() ) {
-          cv::bitwise_not(src2, dst);
-        }
-        break;
-      }
-      case MASK_MODE_KEEP:
-      default:
-        break;
-    }
-  }
 
   /////////////////////////////////////////////////////////////////////////////
 
 protected:
   c_image_processor_routine(const class_factory * cfactory, bool enabled = false) :
-      _class_factory(cfactory),
-      _enabled(enabled),
-      _display_name(_class_factory->display_name)
+      _class_factory(cfactory), _enabled(enabled), _display_name(_class_factory->display_name)
   {
   }
 
@@ -569,54 +411,54 @@ public:
 
   void set_name(const std::string & v)
   {
-    name_ = v;
+    _name = v;
   }
 
   const std::string & name() const
   {
-    return name_;
+    return _name;
   }
 
   const char * cname() const
   {
-    return name_.c_str();
+    return _name.c_str();
   }
 
   void set_filename(const std::string & v)
   {
-    filename_ = v;
+    _filename = v;
   }
 
   const std::string & filename() const
   {
-    return filename_;
+    return _filename;
   }
 
   const char * cfilename() const
   {
-    return filename_.c_str();
+    return _filename.c_str();
   }
 
   void set_enable_debug_messages(bool v)
   {
-    enable_debug_messages_ = v;
+    _enable_debug_messages = v;
   }
 
   bool enable_debug_messages() const
   {
-    return enable_debug_messages_;
+    return _enable_debug_messages;
   }
 
   static std::mutex & emutex()
   {
-    static std::mutex emutex_;
-    return emutex_;
+    static std::mutex _emutex;
+    return _emutex;
   }
 
 protected:
-  std::string name_;
-  mutable std::string filename_;
-  bool enable_debug_messages_ = false;
+  std::string _name;
+  mutable std::string _filename;
+  bool _enable_debug_messages = false;
 };
 
 

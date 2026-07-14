@@ -50,7 +50,7 @@ public:
 protected:
   cv::CmpTypes _compare = cv::CMP_GT;
   THRESHOLD_TYPE _threshold_type = THRESHOLD_VALUE;
-  MASK_MODE _mask_mode = MASK_MODE_REPLACE;
+  COMBINE_MASK_MODE _mask_mode = COMBINE_MASK_MODE_REPLACE;
   MULTI_CHANEL_REDUCTION _reduction_mode = MULTI_CHANEL_REDUCTION_NONE;
   double _threshold_value = 0;
   double _threshold_scale = 1.0;

@@ -81,7 +81,7 @@ c_morph_features_extractor::c_morph_features_extractor()
 }
 
 c_morph_features_extractor::c_morph_features_extractor(const Options & opts) :
-    options_(opts)
+    _opts(opts)
 {
 }
 
@@ -98,7 +98,7 @@ cv::Ptr<c_morph_features_extractor> c_morph_features_extractor::create(const Opt
 void c_morph_features_extractor::detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints, cv::InputArray mask)
 {
   const int ksize =
-      2 * std::max(1, options_.se_radius) + 1;
+      2 * std::max(1, _opts.se_radius) + 1;
 
   static thread_local cv::Mat1b SE;
 
@@ -108,7 +108,7 @@ void c_morph_features_extractor::detect(cv::InputArray _src, std::vector<cv::Key
 
   cv::Mat lap, lapm;
 
-  switch (options_.morph_type) {
+  switch (_opts.morph_type) {
     case MORPH_GRADIENT:
       morphological_gradient(_src, lap, SE, cv::BORDER_REPLICATE);
       break;
@@ -124,7 +124,7 @@ void c_morph_features_extractor::detect(cv::InputArray _src, std::vector<cv::Key
   keypoints.clear();
 
   extract_keypoints(lap, mask.getMat(),
-      options_.threshold,
+      _opts.threshold,
       ksize,
       keypoints);
 }

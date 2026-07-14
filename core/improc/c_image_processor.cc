@@ -123,6 +123,7 @@
 #include "feature2d/c_connected_components_routine.h"
 #include "feature2d/c_roi_tracker_routine.h"
 #include "feature2d/c_barycenter_routine.h"
+#include "feature2d/c_connected_component_selection_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -163,28 +164,6 @@ const c_enum_member* members_of<c_image_processor_routine::DATA_CHANNEL>()
 
   return members;
 }
-
-template<>
-const c_enum_member* members_of<c_image_processor_routine::MASK_MODE>()
-{
-  static const c_enum_member members[] = {
-      { c_image_processor_routine::MASK_MODE_KEEP, "KEEP", "" },
-      { c_image_processor_routine::MASK_MODE_REPLACE, "REPLACE", "oldmask = newmask" },
-      { c_image_processor_routine::MASK_MODE_AND, "AND", "oldmask = newmask & oldmask" },
-      { c_image_processor_routine::MASK_MODE_OR, "OR", "oldmask = newmask | oldmask" },
-      { c_image_processor_routine::MASK_MODE_XOR, "XOR", "oldmask = newmask ^ oldmask" },
-      { c_image_processor_routine::MASK_MODE_NAND, "NAND", "oldmask = ~(newmask & oldmask)" },
-      { c_image_processor_routine::MASK_MODE_NOR, "NOR", "oldmask = ~(newmask | oldmask)" },
-      { c_image_processor_routine::MASK_MODE_NXOR, "XOR", "oldmask = ~(newmask ^ oldmask)" },
-      { c_image_processor_routine::MASK_MODE_ANDN, "ANDN", "oldmask = newmask & ~oldmask" },
-      { c_image_processor_routine::MASK_MODE_ORN, "ORN", "oldmask = newmask | ~oldmask" },
-      { c_image_processor_routine::MASK_MODE_XORN, "XORN", "oldmask = newmask ^ ~oldmask" },
-      { c_image_processor_routine::MASK_MODE_REPLACE },
-  };
-
-  return members;
-}
-
 
 static std::vector<const c_image_processor_routine::class_factory*> c_image_processor_routine_class_list_;
 
@@ -336,6 +315,9 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_connected_components_routine::class_factory_instance());
     register_class_factory(c_roi_tracker_routine::class_factory_instance());
     register_class_factory(c_barycenter_routine::class_factory_instance());
+    register_class_factory(c_connected_component_selection_routine::class_factory_instance());
+
+
     register_class_factory(c_alpha_test_routine::class_factory_instance());
 
     register_class_factory(c_normalize_mean_stdev_routine::class_factory_instance());
@@ -388,7 +370,7 @@ void c_image_processor_routine::register_all()
 }
 
 c_image_processor::c_image_processor(const std::string & objname, const std::string & filename ):
-    name_(objname), filename_(filename)
+    _name(objname), _filename(filename)
 {
 }
 
@@ -428,7 +410,7 @@ c_image_processor::sptr c_image_processor::load(const std::string & filename)
 
   c_image_processor::sptr obj = deserialize(root);
   if ( obj ) {
-    obj->filename_ = filename;
+    obj->_filename = filename;
   }
 
   return obj;
@@ -496,27 +478,27 @@ bool c_image_processor::save(const std::string & path_or_filename,
   std::string filename;
 
   if ( path_or_filename.empty() ) {
-    if ( !filename_.empty() ) {
-      filename = filename_;
+    if ( !_filename.empty() ) {
+      filename = _filename;
     }
     else {
       filename = ssprintf("%s/%s.cfg",
           c_image_processor_collection::default_processor_collection_path().c_str(),
-          name_.c_str());
+          _name.c_str());
     }
   }
   else if ( path_or_filename[path_or_filename.length()-1] == '/' || is_directory(path_or_filename)) {
-    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), _name.c_str());
   }
   else if ( get_file_suffix(path_or_filename).empty() ) {
-    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), name_.c_str());
+    filename = ssprintf("%s/%s.cfg", path_or_filename.c_str(), _name.c_str());
   }
   else {
     filename = path_or_filename;
   }
 
   if ( filename.empty() ) {
-    CF_ERROR("can not decide file name to save config file for '%s'", name_.c_str());
+    CF_ERROR("can not decide file name to save config file for '%s'", _name.c_str());
     return false;
   }
 
@@ -548,7 +530,7 @@ bool c_image_processor::save(const std::string & path_or_filename,
     return false;
   }
 
-  filename_ = filename;
+  _filename = filename;
 
 
   return true;
@@ -561,7 +543,7 @@ bool c_image_processor::serialize(c_config_setting settings, const std::string &
     return false;
   }
 
-  settings.set("name",  objname.empty() ? name_ : objname);
+  settings.set("name",  objname.empty() ? _name : objname);
 
   c_config_setting chain =
       settings.add_list("chain");

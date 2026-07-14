@@ -28,44 +28,42 @@ public:
     MORPH_TYPE morph_type = MORPH_GRADIENT;
     double threshold = 10;
     int se_radius = 1;
-    // int numOctaves = 4;
   };
 
   MORPH_TYPE morph_type() const
   {
-    return options_.morph_type;
+    return _opts.morph_type;
   }
 
   void set_morph_type(MORPH_TYPE v)
   {
-    options_.morph_type = v;
+    _opts.morph_type = v;
   }
 
   int se_radius() const
   {
-    return options_.se_radius;
+    return _opts.se_radius;
   }
 
   void set_se_radius(int v)
   {
-    options_.se_radius = v;
+    _opts.se_radius = v;
   }
 
   const Options & options() const
   {
-    return options_;
+    return _opts;
   }
 
   Options & options()
   {
-    return options_;
+    return _opts;
   }
 
   void set_options(const Options & v)
   {
-    options_ = v;
+    _opts = v;
   }
-
 
   c_morph_features_extractor();
   c_morph_features_extractor(const Options & opts);
@@ -77,7 +75,7 @@ public:
 
 
 protected:
-  Options options_;
+  Options _opts;
 };
 
 #endif /* __c_morph_features_extractor_h__ */

@@ -12,7 +12,7 @@
 #include <QtWidgets/QtWidgets>
 #include <gui/widgets/QProgressStrip.h>
 #include <gui/qimageview/QImageEditor.h>
-#include <core/notification.h>
+//#include <core/notification.h>
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////

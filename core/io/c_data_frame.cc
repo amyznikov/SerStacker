@@ -22,22 +22,6 @@ const c_enum_member* members_of<DisplayType>()
   return members;
 }
 
-
-//template<>
-//const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
-//{
-//  static const c_enum_member members[] = {
-//      { c_data_frame::SELECTION_MASK_DISABLE, "DISABLE", "DISABLE" },
-//      { c_data_frame::SELECTION_MASK_REPLACE, "REPLACE", "REPLACE" },
-//      { c_data_frame::SELECTION_MASK_AND, "AND", "AND" },
-//      { c_data_frame::SELECTION_MASK_OR, "OR", "OR" },
-//      { c_data_frame::SELECTION_MASK_XOR, "XOR", "XOR" },
-//      { c_data_frame::SELECTION_MASK_REPLACE }
-//  };
-//
-//  return members;
-//}
-
 void c_data_frame::copy_output_mask(cv::InputArray src, cv::OutputArray dst)
 {
   src.copyTo(dst);

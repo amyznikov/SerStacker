@@ -121,10 +121,6 @@ public:
   HDLReturnMode return_mode() const;
   const c_hdl_specification * lidar_specification() const;
 
-//  c_notification<void()> state_chagned;
-//  c_notification<void(const c_lidar_frame::sptr & frame)> frame_received;
-//  c_notification<void()> sensor_changed;
-
 protected:
   friend class c_hdl_source;
   void reset();
@@ -204,12 +200,6 @@ public:
   void stop();
   void step();
   void close(bool sync = false);
-
-
-public: // notifications
-//  c_notification<void(this_class *, State)> state_chagned;
-//  c_notification<void(const c_hdl_connection::sptr & connection)> connection_created;
-//  c_notification<void(const c_hdl_connection::sptr & connection)> connection_destroyed;
 
 protected:
 

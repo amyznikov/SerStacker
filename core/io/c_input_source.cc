@@ -89,12 +89,6 @@ c_input_source::sptr c_input_source::create(const std::string & filename)
     }
 #endif
 
-#if have_vlo_input_source
-    if( contains(c_vlo_input_source::suffixes(), suffix) && (obj = c_vlo_input_source::create(filename)) ) {
-      goto end;
-    }
-#endif
-
 #if have_hdl_input_source
     if( contains(c_hdl_input_source::suffixes(), suffix) && (obj = c_hdl_input_source::create(filename)) ) {
       goto end;

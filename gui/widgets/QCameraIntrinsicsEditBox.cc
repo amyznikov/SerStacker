@@ -9,6 +9,7 @@
 #include <gui/widgets/QWaitCursor.h>
 #include <core/settings/camera_settings.h>
 #include <core/readdir.h>
+#include <core/configpath.h>
 
 
 namespace {
@@ -22,7 +23,7 @@ struct c_named_camera
 static std::vector<c_named_camera> known_cameras;
 
 static const std::string config_path =
-    "~/.config/SerStacker/known_cameras.cfg";
+    get_default_config_path() + "/known_cameras.cfg";
 
 
 void load_known_cameras()

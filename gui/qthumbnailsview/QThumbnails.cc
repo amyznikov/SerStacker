@@ -97,12 +97,6 @@ QStringList getSupportedThumbnailsExtensions()
   }
 #endif
 
-#if have_vlo_input_source
-  for ( const std::string & s : c_vlo_input_source::suffixes() ) {
-    suffixes.append(s.c_str());
-  }
-#endif
-
 #if have_hdl_input_source
   for ( const std::string & s : c_hdl_input_source::suffixes() ) {
     suffixes.append(s.c_str());
@@ -135,56 +129,6 @@ QStringList getSupportedThumbnailsExtensions()
 
   return suffixes;
 }
-//
-///*
-// * Create flow BGR image using HSV color space
-// *  flow: 2-channel input flow matrix
-// *  dst : output BRG image
-// *
-// *  The code is extracted from OpenCV example dis_opticalflow.cpp
-// * */
-//static bool flow2HSV(cv::InputArray flow, cv::Mat & dst, double maxmotion, bool invert_y)
-//{
-//  if ( flow.channels() != 2 ) {
-//    CF_FATAL("Unsupported number of channels: %d. 2-channel image expected", flow.channels());
-//    return false;
-//  }
-//
-//  cv::Mat uv[2], mag, ang;
-//
-//  cv::split(flow.getMat(), uv);
-//
-//  if ( flow.depth() == CV_32F || flow.depth() == CV_64F ) {
-//    if ( invert_y ) {
-//      cv::multiply(uv[1], -1, uv[1]);
-//    }
-//  }
-//  else {
-//    uv[0].convertTo(uv[0], CV_32F);
-//    uv[1].convertTo(uv[1], CV_32F, invert_y ? -1 : 1);
-//  }
-//
-//  cv::cartToPolar(uv[0], uv[1], mag, ang, true);
-//
-//  if ( maxmotion > 0 ) {
-//    cv::threshold(mag, mag, maxmotion, maxmotion, cv::THRESH_TRUNC);
-//  }
-//
-//  cv::normalize(mag, mag, 0, 1, cv::NORM_MINMAX);
-//
-//  const cv::Mat hsv[3] = {
-//      ang,
-//      mag,
-//      mag/*cv::Mat::ones(ang.size(), ang.type())*/
-//  };
-//
-//  cv::merge(hsv, 3, dst);
-//  cv::cvtColor(dst, dst, cv::COLOR_HSV2RGB);
-//  dst.convertTo(dst, CV_8U, 255);
-//
-//  return true;
-//}
-//
 
 static bool cv2qimage(const cv::Mat & _src, QImage * dst, bool rgbswap)
 {
@@ -450,46 +394,6 @@ QImage loadThumbnailImage(const QString & pathFileName, int thumb_size)
 
   ///////////////////////////////////////////////////////////////
 
-
-#if have_vlo_input_source
-  if( match_suffix(suffix, c_vlo_input_source::suffixes()) ) {
-
-    c_vlo_reader vlo;
-
-    if( vlo.open(pathFileName.toStdString()) ) {
-
-      std::unique_ptr<c_vlo_scan> scan(new c_vlo_scan());
-
-      if( vlo.read(scan.get()) ) {
-        if( !(cvimage = c_vlo_file::get_thumbnail_image(*scan)).empty() ) {
-
-          const QSize thumbSize =
-              compute_thumbnail_size(QSize(cvimage.cols, cvimage.rows),
-                  thumb_size);
-
-          if( !thumbSize.isEmpty() && (thumbSize.width() != cvimage.cols || thumbSize.height() != cvimage.rows) ) {
-
-            cv::resize(cvimage, cvimage,
-                cv::Size(thumbSize.width(), thumbSize.height()),
-                0, 0,
-                cv::INTER_AREA);
-          }
-
-          autoclip(cvimage, cv::noArray(),
-              0.5, 99.5,
-              0, 255);
-          cvimage.convertTo(cvimage,
-              CV_8U);
-
-          cv2qimage(cvimage, &qimage, true);
-          return qimage;
-        }
-      }
-    }
-  }
-#endif
-
-  ///////////////////////////////////////////////////////////////
 #if have_hdl_input_source
   if( match_suffix(suffix, c_hdl_input_source::suffixes()) ) {
     return QImage(HDL_image);

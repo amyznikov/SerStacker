@@ -9,6 +9,7 @@
 #include <core/settings/opencv_settings.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
+#include <core/configpath.h>
 
 namespace {
 
@@ -45,10 +46,10 @@ static const c_data_annotation_enum_member * default_data_annotation_point_types
 
 }
 
-
-const std::string & default_data_annotation_config_filename()
+const std::string& default_data_annotation_config_filename()
 {
-  static const std::string config_filename = "~/.config/SerStacker/data_annotation_labels.conf";
+  static const std::string config_filename =
+      get_default_config_path() + "/data_annotation_labels.conf";
   return config_filename;
 }
 

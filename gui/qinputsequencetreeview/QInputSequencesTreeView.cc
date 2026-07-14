@@ -15,6 +15,7 @@
 #include <core/io/image/c_regular_image_input_source.h>
 #include <core/io/image/c_ser_input_source.h>
 #include <core/readdir.h>
+#include <core/configpath.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +147,7 @@ QInputSequencesTreeView::QInputSequencesTreeView(QWidget * parent) :
 }
 
 std::string QInputSequencesTreeView::_default_config_filename =
-    "~/.config/SerStacker/corrent_work.cfg";
+    get_default_config_path() + "/current_work.cfg";
 
 void QInputSequencesTreeView::loadSequences(const std::string & cfgfilename)
 {

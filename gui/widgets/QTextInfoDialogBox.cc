@@ -10,7 +10,7 @@
 QTextInfoDialogBox * QTextInfoDialogBox::_singleton = nullptr;
 
 QTextInfoDialogBox::QTextInfoDialogBox(QWidget * parent) :
-  Base(parent)
+  Base(parent, Qt::Window | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint)
 {
   QVBoxLayout * vbox = new QVBoxLayout(this);
 

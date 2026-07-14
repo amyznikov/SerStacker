@@ -494,8 +494,8 @@ public:
   static c_image_processor_collection::sptr default_instance();
 
 protected:
-  static std::string default_processor_collection_path_;
-  static c_image_processor_collection::sptr default_instance_;
+  static std::string _default_processor_collection_path;
+  static c_image_processor_collection::sptr _default_instance;
 };
 
 

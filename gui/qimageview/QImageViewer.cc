@@ -152,6 +152,16 @@ int QImageViewer::viewScale() const
   return _view->viewScale();
 }
 
+void QImageViewer::centerOnScene(const QPointF & scenePos)
+{
+  _view->centerOnScene(scenePos);
+}
+
+void QImageViewer::centerOnScene(double sceneX, double sceneY)
+{
+  _view->centerOnScene(sceneX, sceneY);
+}
+
 void QImageViewer::setDisplayType(DisplayType v)
 {
   _currentDisplayType = v;

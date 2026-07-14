@@ -6,6 +6,7 @@
  */
 
 #include "c_image_processor.h"
+#include <core/configpath.h>
 
 #include "generic/c_push_image_routine.h"
 #include "generic/c_pop_image_routine.h"
@@ -721,7 +722,7 @@ bool c_image_processor_collection::save(const std::string & output_path) const
 {
   const std::string output_directory =
       expand_path(output_path.empty() ?
-        default_processor_collection_path_ :
+        _default_processor_collection_path :
         output_path);
 
   if ( !create_path(output_directory) ) {
@@ -778,15 +779,15 @@ bool c_image_processor_collection::load(const std::string & input_directrory)
 }
 
 
-std::string c_image_processor_collection::default_processor_collection_path_ =
-    "~/.config/SerStacker/image_processors";
+std::string c_image_processor_collection::_default_processor_collection_path =
+    get_default_config_path() +"/image_processors";
 
-c_image_processor_collection::sptr c_image_processor_collection::default_instance_ =
+c_image_processor_collection::sptr c_image_processor_collection::_default_instance =
     c_image_processor_collection::create();
 
 c_image_processor_collection::sptr c_image_processor_collection::default_instance()
 {
-  return default_instance_;
+  return _default_instance;
 }
 
 c_image_processor_collection::sptr c_image_processor_collection::create()
@@ -899,10 +900,10 @@ c_image_processor::sptr c_image_processor_collection::get(const std::string & na
 
 const std::string & c_image_processor_collection::default_processor_collection_path()
 {
-  return default_processor_collection_path_;
+  return _default_processor_collection_path;
 }
 
 void c_image_processor_collection::set_default_processor_collection_path(const std::string & v)
 {
-  default_processor_collection_path_ = v;
+  _default_processor_collection_path = v;
 }

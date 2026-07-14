@@ -19,6 +19,7 @@
 #include <atomic>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
+#include <core/configpath.h>
 #include <core/debug.h>
 
 
@@ -418,7 +419,7 @@ bool c_data_frame_processor::process(c_data_frame::sptr & dataframe)
 
 
 std::string c_data_frame_processor_collection::_default_processor_collection_path =
-    "~/.config/SerStacker/data_processors";
+    get_default_config_path() + "/data_processors";
 
 c_data_frame_processor_collection::sptr c_data_frame_processor_collection::_default_instance =
     c_data_frame_processor_collection::create();

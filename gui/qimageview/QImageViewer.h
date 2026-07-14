@@ -63,6 +63,9 @@ public:
   void setViewScale(int scale, const QPoint * centerPos = nullptr);
   int viewScale() const;
 
+  void centerOnScene(const QPointF & scenePos);
+  void centerOnScene(double sceneX, double sceneY);
+
   void setDisplayType(DisplayType v);
   DisplayType displayType() const;
 

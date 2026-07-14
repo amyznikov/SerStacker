@@ -10,12 +10,12 @@
 #include <gui/widgets/qsprintf.h>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
+#include <core/configpath.h>
 #include <core/debug.h>
 
+
 static const std::string config_path =
-    "~/.config/SerStacker/saved_cameras.cfg";
-
-
+    get_default_config_path() + "/saved_cameras.cfg";
 
 QCameraMatrixDialogBox::QCameraMatrixDialogBox(QWidget * parent) :
   Base(parent)
@@ -23,46 +23,7 @@ QCameraMatrixDialogBox::QCameraMatrixDialogBox(QWidget * parent) :
 
   QVBoxLayout * mainLayout = new QVBoxLayout(this);
 
-//  QHBoxLayout * l1 = new QHBoxLayout();
-//  QHBoxLayout * l2 = new QHBoxLayout();
-//  QVBoxLayout * l3 = new QVBoxLayout();
-
-
-  // Bottom button box layout
-//  l2->addWidget(btnOK = new QPushButton("Select"));
-//  l2->addWidget(btnCancel = new QPushButton("Close"));
-//  btnOK->setDefault(true);
-//
-//
-//  l1->addLayout(l3);
-//  mainLayout->addLayout(l1, 100);
-//  mainLayout->addLayout(l2, 1);
-
-  ////////////
-
-//  QVBoxLayout * listBox =
-//      new QVBoxLayout();
-//
-//  listBox->addWidget(filter_ctl = new QLineEdit(this));
-//  listBox->addWidget(list_ctl = new QListWidget(this));
-//
-//  QHBoxLayout * buttonHBox = new QHBoxLayout();
-//  buttonHBox->addWidget(btnOK = new QPushButton("Select"));
-//  buttonHBox->addWidget(btnCancel = new QPushButton("Close"));
-//  btnOK->setDefault(true);
-//
-//
-//  QVBoxLayout * mainLayout = new QVBoxLayout(this);
-//  mainLayout->addLayout(listBox);
-//  mainLayout->addLayout(buttonHBox);
-//
-//  list_ctl->setViewMode(QListView::ViewMode::ListMode);
-//  list_ctl->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
-//  list_ctl->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
-//  list_ctl->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
-
   /////////////
-
 
   load_cameras();
 

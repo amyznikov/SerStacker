@@ -23,20 +23,20 @@ const c_enum_member* members_of<DisplayType>()
 }
 
 
-template<>
-const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
-{
-  static const c_enum_member members[] = {
-      { c_data_frame::SELECTION_MASK_DISABLE, "DISABLE", "DISABLE" },
-      { c_data_frame::SELECTION_MASK_REPLACE, "REPLACE", "REPLACE" },
-      { c_data_frame::SELECTION_MASK_AND, "AND", "AND" },
-      { c_data_frame::SELECTION_MASK_OR, "OR", "OR" },
-      { c_data_frame::SELECTION_MASK_XOR, "XOR", "XOR" },
-      { c_data_frame::SELECTION_MASK_REPLACE }
-  };
-
-  return members;
-}
+//template<>
+//const c_enum_member* members_of<c_data_frame::SELECTION_MASK_MODE>()
+//{
+//  static const c_enum_member members[] = {
+//      { c_data_frame::SELECTION_MASK_DISABLE, "DISABLE", "DISABLE" },
+//      { c_data_frame::SELECTION_MASK_REPLACE, "REPLACE", "REPLACE" },
+//      { c_data_frame::SELECTION_MASK_AND, "AND", "AND" },
+//      { c_data_frame::SELECTION_MASK_OR, "OR", "OR" },
+//      { c_data_frame::SELECTION_MASK_XOR, "XOR", "XOR" },
+//      { c_data_frame::SELECTION_MASK_REPLACE }
+//  };
+//
+//  return members;
+//}
 
 void c_data_frame::copy_output_mask(cv::InputArray src, cv::OutputArray dst)
 {
@@ -270,67 +270,15 @@ std::string c_data_frame::get_filename()
 }
 
 
-void c_data_frame::update_selection(cv::InputArray mask, SELECTION_MASK_MODE mode)
+void c_data_frame::update_selection(cv::InputArray mask, COMBINE_MASK_MODE mode)
 {
-  if ( mode != SELECTION_MASK_DISABLE ) {
+  if ( mode != COMBINE_MASK_MODE_KEEP ) {
 
-    static const auto dup_channels =
-      [](const cv::Mat & src, cv::Mat & dst, int cn) -> bool {
-
-        std::vector<cv::Mat> channels(cn);
-
-        for( int i = 0; i < cn; ++i ) {
-          channels[i] = src;
-        }
-
-        cv::merge(channels, dst);
-        return true;
-      };
-
-
-    if( _selection_mask.empty() || mode == SELECTION_MASK_REPLACE ) {
-      mask.getMat().copyTo(_selection_mask);
+    if ( !mask.empty()  ) {
+      combine_masks(mode, mask, _selection_mask, _selection_mask);
     }
-    else if ( !mask.empty() ) {
-
-      cv::Mat cmask;
-
-      if ( _selection_mask.channels() == mask.channels() ) {
-        cmask = mask.getMat();
-      }
-      else if ( _selection_mask.channels() == 1 ) {
-        dup_channels(_selection_mask, _selection_mask, mask.channels());
-        cmask = mask.getMat();
-      }
-      else if ( mask.channels() == 1 ) {
-        dup_channels(mask.getMat(), cmask, _selection_mask.channels());
-      }
-      else {
-
-        CF_ERROR("Unsupported combination of mask channels:\n"
-            "selection_mask: %dx%d channels=%d\n"
-            "mask: %dx%d channels=%d\n"
-            "",
-            _selection_mask.cols, _selection_mask.rows, _selection_mask.channels(),
-            mask.cols(), mask.rows(), mask.channels());
-
-        return;
-      }
-
-      switch (mode) {
-        case SELECTION_MASK_AND:
-          cv::bitwise_and(cmask, _selection_mask, _selection_mask);
-          break;
-        case SELECTION_MASK_OR:
-          cv::bitwise_or(cmask, _selection_mask, _selection_mask);
-          break;
-        case SELECTION_MASK_XOR:
-          cv::bitwise_xor(cmask, _selection_mask, _selection_mask);
-          break;
-        default:
-          CF_ERROR("Not implemented mask operation detected: mode=%d", mode);
-          break;
-      }
+    else if ( mode == COMBINE_MASK_MODE_REPLACE ) {
+      mask.copyTo(_selection_mask);
     }
   }
 }

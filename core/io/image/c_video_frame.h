@@ -34,18 +34,6 @@ public:
       cv::OutputArray output_mask,
       cv::OutputArray output_data ) override;
 
-//  void set_image(const std::string & name, cv::InputArray image,
-//      cv::InputArray mask = cv::noArray());
-//
-//  bool get_image(int id, cv::OutputArray image,
-//      cv::OutputArray mask = cv::noArray()) ;
-
-//  bool get_image(const std::string & name, cv::OutputArray image,
-//      cv::OutputArray mask = cv::noArray());
-
-  void update_selection(cv::InputArray seletion_mask,
-      SELECTION_MASK_MODE mode);
-
   void cleanup() override;
 
   void get_output_mask(cv::OutputArray output_mask);
@@ -53,7 +41,7 @@ public:
 protected:
   friend class c_image_input_source;
   cv::Mat _input_image, _current_image;
-  cv::Mat1b _input_mask, _current_mask;
+  cv::Mat1b _input_mask;//, _current_mask;
 
   cv::Matx33f _color_matrix = cv::Matx33f::eye();
   COLORID _colorid = COLORID_UNKNOWN;

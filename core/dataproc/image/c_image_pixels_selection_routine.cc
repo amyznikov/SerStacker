@@ -8,7 +8,6 @@
 #include "c_image_pixels_selection_routine.h"
 #include <core/ssprintf.h>
 
-// TODO: is c_math_parser thread-safe ?
 #if HAVE_TBB
  #include <tbb/tbb.h>
  typedef tbb::blocked_range<int> tbb_range;
@@ -154,8 +153,8 @@ bool c_image_pixels_selection_routine::initialize()
 void c_image_pixels_selection_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "expression", ctx, &this_class::expression, &this_class::set_expression, "");
-  ctlbind(ctls, "invert_selection", ctx, &this_class::invert_selection, &this_class::set_invert_selection);
-  ctlbind(ctls, "mask_mode", ctx, &this_class::mask_mode, &this_class::set_mask_mode, "Selection Combine Mode");
+  ctlbind(ctls, "invert_selection", ctx(&this_class::_invert_selection));
+  ctlbind(ctls, "mask_mode", ctx(&this_class::_mask_mode), "Selection Combine Mode");
   ctlbind_button_strip(ctls, ctx);
   ctlbind_item(ctls, "Functions...", ctx, [](this_class * _ths) {
     ctlbind_show_info_text("Math Expression", _ths->_helpstring);
@@ -166,9 +165,9 @@ void c_image_pixels_selection_routine::getcontrols(c_control_list & ctls, const 
 bool c_image_pixels_selection_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_PROPERTY(settings, save, *this, expression);
-    SERIALIZE_PROPERTY(settings, save, *this, invert_selection);
-    SERIALIZE_PROPERTY(settings, save, *this, mask_mode);
+    SERIALIZE_OPTION(settings, save, *this, _expression);
+    SERIALIZE_OPTION(settings, save, *this, _invert_selection);
+    SERIALIZE_OPTION(settings, save, *this, _mask_mode);
     return true;
   }
 

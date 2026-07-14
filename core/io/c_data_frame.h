@@ -10,6 +10,7 @@
 #define __c_cloudview_data_frame_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/proc/combine_masks.h>
 #include <memory>
 #include <vector>
 #include <set>
@@ -43,16 +44,6 @@ public:
   typedef std::shared_ptr<this_class> sptr;
   typedef std::map<std::string, ImageDisplay, std::less<std::string>> ImageDisplays;
   typedef std::map<std::string, CloudDisplay, std::less<std::string>> CloudDisplays;
-
-
-  enum SELECTION_MASK_MODE
-  {
-    SELECTION_MASK_DISABLE,
-    SELECTION_MASK_REPLACE,
-    SELECTION_MASK_AND,
-    SELECTION_MASK_OR,
-    SELECTION_MASK_XOR,
-  };
 
 
   c_data_frame() = default;
@@ -123,11 +114,10 @@ public:
   }
 
   void update_selection(cv::InputArray mask,
-      SELECTION_MASK_MODE mode);
+      COMBINE_MASK_MODE mode);
 
   static void copy_output_mask(cv::InputArray src,
       cv::OutputArray dst);
-
 
   ///
   virtual bool supports_point_annotations()

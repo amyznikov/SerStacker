@@ -31,26 +31,6 @@ public:
     return _expression;
   }
 
-  void set_mask_mode(c_data_frame::SELECTION_MASK_MODE v)
-  {
-    _mask_mode = v;
-  }
-
-  c_data_frame::SELECTION_MASK_MODE mask_mode() const
-  {
-    return _mask_mode;
-  }
-
-  void set_invert_selection(bool v)
-  {
-    _invert_selection = v;
-  }
-
-  bool invert_selection() const
-  {
-    return _invert_selection;
-  }
-
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
   bool serialize(c_config_setting settings, bool save) final;
   bool process(c_video_frame * vlo) final;
@@ -64,8 +44,7 @@ protected:
   c_math_expression _math;
   cv::Mat _current_image;
   cv::Mat1b _current_mask;
-  c_data_frame::SELECTION_MASK_MODE _mask_mode = c_data_frame::SELECTION_MASK_AND;
-  int _previous_vlo_scan_version = -1;
+  COMBINE_MASK_MODE _mask_mode = COMBINE_MASK_MODE_AND;
   bool _invert_selection = false;
   bool _expression_changed = true;
   //bool _initialized = false;

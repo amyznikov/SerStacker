@@ -167,7 +167,9 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::Outpu
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */
 bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
-    double qlow, double qhigh)
+    double qlow, double qhigh,
+    cv::Scalar * outputScales /*= nullptr*/,
+    cv::Scalar * outputShifts /*= = nullptr*/)
 {
   if( src.empty() || src.channels() < 2 ) {
     src.copyTo(dst);
@@ -207,13 +209,29 @@ bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::Outp
 
   const double targetRange = globalHigh - globalLow;
 
+  if ( outputScales ) {
+    *outputScales = cv::Scalar::all(1);
+  }
+  if ( outputShifts ) {
+    *outputShifts = cv::Scalar::all(1);
+  }
+
   for( int c = 0; c < cn; ++c ) {
     const double channelRange = highLvl[c] - lowLvl[c];
     // If the channel is almost empty, leave it alone to avoid increasing noise
     if( channelRange > 1e-10 ) {
+
       const double scale = targetRange / channelRange;
       const double shift = globalLow - (lowLvl[c] * scale);
+
       channels[c].convertTo(channels[c], -1, scale, shift);
+
+      if ( outputScales ) {
+        outputScales->val[c] = scale;
+      }
+      if ( outputShifts ) {
+        outputShifts->val[c] = shift;
+      }
     }
   }
 

@@ -26,8 +26,7 @@ public:
 protected:
   double _lclip = 1;
   double _hclip = 99;
-  double _threshold = 0;
-  bool _enable_threshold = false;
+  bool _dump_adjusted_parameters = false;
 };
 
 #endif /* __c_histogram_white_balance_routine_h__ */

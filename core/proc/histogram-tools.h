@@ -49,7 +49,9 @@ bool nomalizeImageHistogram(cv::InputArray src, cv::InputArray mask, cv::OutputA
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */
 bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
-    double qlow, double qhigh);
+    double qlow, double qhigh,
+    cv::Scalar * outputScales = nullptr,
+    cv::Scalar * outputShifts = nullptr);
 
 /**
  * Histogram-based automatic adjustment of MTF parameters for c_smooth_rational_mtf

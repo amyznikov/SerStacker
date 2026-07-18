@@ -11,10 +11,10 @@
 
 void c_histogram_white_balance_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
-   ctlbind(ctls, "lclip", ctx(&this_class::_lclip), "");
-   ctlbind(ctls, "hclip", ctx(&this_class::_hclip), "");
-   ctlbind(ctls, "enable_threshold", ctx(&this_class::_enable_threshold), "");
-   ctlbind(ctls, "threshold", ctx(&this_class::_threshold), "");
+   ctlbind(ctls, "lclip [%%]", ctx(&this_class::_lclip), "lower quantile in percents");
+   ctlbind(ctls, "hclip [%%]", ctx(&this_class::_hclip), "upper quantile in percents");
+   ctlbind(ctls, "ignore mask", ctx(&this_class::_ignore_mask), "");
+   ctlbind(ctls, "dump_parameters", ctx(&this_class::_dump_adjusted_parameters), "Dump adjusted parameters to debug log");
 }
 
 bool c_histogram_white_balance_routine::serialize(c_config_setting settings, bool save)
@@ -22,8 +22,9 @@ bool c_histogram_white_balance_routine::serialize(c_config_setting settings, boo
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _lclip);
     SERIALIZE_OPTION(settings, save, *this, _hclip);
-    SERIALIZE_OPTION(settings, save, *this, _enable_threshold);
-    SERIALIZE_OPTION(settings, save, *this, _threshold);
+    SERIALIZE_OPTION(settings, save, *this, _ignore_mask);
+    //SERIALIZE_OPTION(settings, save, *this, _dump_adjusted_parameters);
+
     return true;
   }
   return false;
@@ -35,22 +36,17 @@ bool c_histogram_white_balance_routine::process(cv::InputOutputArray image, cv::
     return true;
   }
 
-  cv::Mat objmask;
+  cv::Scalar scales, shifts;
 
-  if ( !_enable_threshold ) {
-    objmask = mask.getMat();
-  }
-  else {
-    cv::compare(image, _threshold, objmask, cv::CMP_GE);
+  histogramClipWhiteBalance(image, _ignore_mask ? cv::noArray() : mask, image,
+      0.01 * _lclip, 0.01 * _hclip,
+      &scales, &shifts);
 
-    if ( objmask.channels() > 1 ) {
-      reduce_color_channels(objmask, cv::REDUCE_MIN);
-    }
-
-    if ( !mask.empty() ) {
-      cv::bitwise_and(mask, objmask, objmask);
-    }
+  if ( _dump_adjusted_parameters ) {
+    CF_DEBUG("\nhistogram_white_balance: Scales={ %g %g %g %g } shifts={ %g %g %g %g }",
+        scales[0], scales[1], scales[2], scales[3],
+        shifts[0], shifts[1], shifts[2], shifts[3]);
   }
 
-  return histogramClipWhiteBalance(image.getMat(), objmask, image, 0.01 * _lclip, 0.01 * _hclip);
+  return true;
 }

@@ -188,15 +188,25 @@ static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2
 #if HAVE_STAR_EXTRACTOR
 static inline void populate_feature2d_options(QSettingsWidgetTemplate<c_feature2d_star_extractor::options > * w)
 {
-  ADDCTL2(median_filter_radius);
-  ADDCTL2(sigma1);
-  ADDCTL2(sigma2);
-  ADDCTL2(noise_blur);
-  ADDCTL2(noise_threshold);
-  ADDCTL2(min_score);
-  ADDCTL2(min_pts);
-  ADDCTL2(min_b);
-  ADDCTL2(min_ba_ratio);
+  ADDCTL2(sigma);
+  ADDCTL2(weight_decay);
+  ADDCTL2(kmad);
+  ADDCTL2(lvls);
+  ADDCTL2(se_radius);
+  ADDCTL2(min_a);
+  ADDCTL2(max_a);
+  ADDCTL2(max_elongation);
+  ADDCTL2(min_compactness);
+
+//  ADDCTL2(median_filter_radius);
+//  ADDCTL2(sigma1);
+//  ADDCTL2(sigma2);
+//  ADDCTL2(noise_blur);
+//  ADDCTL2(noise_threshold);
+//  ADDCTL2(min_score);
+//  ADDCTL2(min_pts);
+//  ADDCTL2(min_b);
+//  ADDCTL2(min_ba_ratio);
 }
 #endif
 

@@ -35,7 +35,7 @@ public:
 
 protected:
   int _max_points = 20;
-  int _min_side_size = 10;
+  int _min_side_size = 20;
 };
 
 

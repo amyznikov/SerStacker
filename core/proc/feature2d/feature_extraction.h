@@ -1314,18 +1314,10 @@ public:
   typedef c_feature2d_star_extractor this_class;
   typedef c_feature2d_base base;
 
-  struct options : public base::options
+  struct options :public base::options,
+      public c_star_extractor::Options
   {
     using feature2d_class = this_class;
-    int median_filter_radius = 0;
-    double sigma1 = 2;
-    double sigma2 = 5;
-    double noise_blur = 100;
-    double noise_threshold = 10;
-    double min_score = 0.4;
-    double min_b = 1;
-    double min_ba_ratio = 0.7;
-    int min_pts = 5;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1337,18 +1329,7 @@ protected:
   c_feature2d_star_extractor(const options * opts) :
       base(&this->_opts), _opts(opts ? *opts : options())
   {
-    const cv::Ptr<c_star_extractor> obj = c_star_extractor::create();
-    obj->set_median_filter_radius(_opts.median_filter_radius);
-    obj->set_sigma1(_opts.sigma1);
-    obj->set_sigma2(_opts.sigma2);
-    obj->set_noise_blur(_opts.noise_blur);
-    obj->set_noise_threshold(_opts.noise_threshold);
-    obj->set_min_b(_opts.min_b);
-    obj->set_min_ba_ratio(_opts.min_ba_ratio);
-    obj->set_min_pts(_opts.min_pts);
-    obj->set_min_score(_opts.min_score);
-
-    _feature2d = obj;
+    _feature2d = c_star_extractor::create(_opts);
   }
 
 protected:
@@ -1441,7 +1422,7 @@ public:
   {
     using feature2d_class = this_class;
     int max_points = 20;
-    int min_side_size = 10;
+    int min_side_size = 20;
   };
 
   static sptr create(const options * opts = nullptr)

@@ -65,7 +65,7 @@ static void build_distances(const std::vector<cv::Point2f> & keypoints, cv::Mat1
 }
 
 template<class PointType>
-static bool build_triangles_(const std::vector<PointType> & keypoints,
+static bool _build_triangles(const std::vector<PointType> & keypoints,
     std::vector<c_triangle_descriptor> & descriptors,
     size_t max_keypoints_to_use,
     float min_side_size)
@@ -161,7 +161,7 @@ static bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
 {
   std::vector<c_triangle_descriptor> triangles;
 
-  if ( !build_triangles_(keypoints, triangles, max_keypoints_to_use, min_side_size) ) {
+  if ( !_build_triangles(keypoints, triangles, max_keypoints_to_use, min_side_size) ) {
     CF_DEBUG("build_triangles_() fails");
     return false;
   }

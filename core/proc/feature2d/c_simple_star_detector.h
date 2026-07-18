@@ -23,7 +23,7 @@ struct c_simple_star_detector_options
   double min_a = 0.7;
   double max_a = 10;
   double max_elongation = 1.5;
-  double min_compactness = 3;
+  double min_compactness = 2;
 };
 
 bool serialize_simple_star_detector_options(c_config_setting section, bool save,
@@ -56,6 +56,13 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "max_elongation", ctx(&S::max_elongation), "");
   ctlbind(ctls, "min_compactness", ctx(&S::min_compactness), "");
 
+  ctlbind_menu_button(ctls, "Options...", ctx);
+  ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](S * _ths) {
+    return ctlbind_copy_config_to_clipboard("c_simple_star_detector_options", *_ths), false;
+  });
+  ctlbind_item(ctls, "Paste parameters from clipboard", ctx, [](S * _ths) {
+    return ctlbind_paste_config_from_clipboard("c_simple_star_detector_options", _ths);
+  });
 }
 
 class c_simple_star_detector

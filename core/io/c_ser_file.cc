@@ -13,6 +13,7 @@
 #include <tbb/tbb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <core/ssprintf.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -278,8 +279,7 @@ bool c_ser_reader::open(const std::string & filename)
     return false;
   }
 
-  const ssize_t current_file_size =
-      _fd.size();
+  const ssize_t current_file_size = _fd.size();
 
   if ( current_file_size < sizeof(file_header) ) {
     CF_ERROR("Too small file size: %zd < sizeof(HEADER)", current_file_size);
@@ -362,11 +362,11 @@ bool c_ser_reader::open(const std::string & filename)
   const ssize_t timestamps_array_size_required =
       _header.frames_count * sizeof(_timestamps[0]);
 
-//  CF_DEBUG("timestamps_array_offset=%zd timestamps_array_size_required=%zd sum=%zd current_file_size=%zd",
-//      timestamps_array_offset,
-//      timestamps_array_size_required,
-//      timestamps_array_offset + timestamps_array_size_required,
-//      current_file_size);
+  //  CF_DEBUG("timestamps_array_offset=%zd timestamps_array_size_required=%zd sum=%zd current_file_size=%zd",
+  //      timestamps_array_offset,
+  //      timestamps_array_size_required,
+  //      timestamps_array_offset + timestamps_array_size_required,
+  //      current_file_size);
 
   if ( !(current_file_size >= timestamps_array_offset + timestamps_array_size_required) ) {
     // CF_DEBUG("No valid timestamps found");
@@ -375,19 +375,15 @@ bool c_ser_reader::open(const std::string & filename)
 
     // CF_DEBUG("timestamps found");
 
-    const ssize_t backup_pos =
-        _fd.whence();
-
+    const ssize_t backup_pos = _fd.whence();
     if ( _fd.seek(timestamps_array_offset, SEEK_SET) != timestamps_array_offset ) {
-      CF_ERROR("fd_.seek(timestamps_array_offset) fails");
+      // CF_ERROR("fd_.seek(timestamps_array_offset) fails");
     }
     else {
 
       _timestamps.resize(_header.frames_count, 0);
 
-      const ssize_t bytest_to_read =
-          sizeof(_timestamps[0]) * _timestamps.size();
-
+      const ssize_t bytest_to_read = sizeof(_timestamps[0]) * _timestamps.size();
       if ( _fd.read(_timestamps.data(), bytest_to_read) != bytest_to_read ) {
         CF_ERROR("::read(timestamps_) fails : %s", strerror(errno));
         return false;
@@ -404,7 +400,12 @@ bool c_ser_reader::open(const std::string & filename)
     }
   }
 
-  //  CF_DEBUG("timestamps_.size=%zu", timestamps_.size());
+  CF_DEBUG("%s: %d frames %dx%d %dbpp color_id=%d (%s) %zu tstamps",
+      filename.c_str(),
+      _header.frames_count, _header.image_width, _header.image_height, _header.bits_per_plane,
+      (int)_header.color_id, toCString(_header.color_id),
+      _timestamps.size()
+  );
 
   return true;
 }
@@ -584,9 +585,6 @@ bool c_ser_writer::create(const std::string & filename, int image_width, int ima
   _header.date_time = 0;
   _header.date_time_utc = 0;
 
-//  const int openflags =
-//      O_CREAT | O_TRUNC | O_WRONLY;
-
   if ( !_fd.create(filename) ) {
     CF_FATAL("open('%s') fails: %s", filename.c_str(), strerror(errno));
     return false;
@@ -623,11 +621,9 @@ bool c_ser_writer::close()
         swap_endianess(_timestamps.data(), _timestamps.size());
       }
 
-      const size_t cb =
-          _timestamps.size() * sizeof(_timestamps[0]);
-
       _fd.seek(0, SEEK_END);
 
+      const size_t cb = _timestamps.size() * sizeof(_timestamps[0]);
       if( _fd.write(_timestamps.data(), cb) != cb ) {
         CF_ERROR("write(timestamps) fails: %s", strerror(errno));
       }
@@ -704,15 +700,11 @@ bool c_ser_writer::write(cv::InputArray _image, uint64_t ts)
   }
 
   if( _header.frames_count < 1 ) {
-    _header.date_time =
-        _header.date_time_utc =
-            ts;
+    _header.date_time = _header.date_time_utc = ts;
   }
 
-  _header.frames_count++;
-
+  ++_header.frames_count;
   _timestamps.emplace_back(ts);
-
 
 
 

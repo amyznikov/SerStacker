@@ -30,7 +30,7 @@ const c_enum_member* members_of<c_threshold_routine::THRESHOLD_TYPE>()
       { c_threshold_routine::THRESHOLD_PLANETARY_DISK, "PLANETARY_DISK", "" },
       { c_threshold_routine::THRESHOLD_NOISE, "NOISE", "" },
       { c_threshold_routine::THRESHOLD_MEAN_STDEV, "MEAN_STDEV", "mean + scale * stdev" },
-      //  { c_threshold_routine::THRESHOLD_CLEAR_MASK, "CLEAR_MASK", "" },
+      { c_threshold_routine::THRESHOLD_MEAN_MAD, "MEAN_MAD", "" },
       { c_threshold_routine::THRESHOLD_OTSU }
   };
 
@@ -138,6 +138,13 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
       if( _threshold_type == THRESHOLD_MEAN_STDEV ) {
         cv::Scalar mv, sv;
         cv::meanStdDev(s, mv, sv, m);
+        threshold_value = mv[0] + _threshold_scale * sv[0];
+      }
+      else if( _threshold_type == THRESHOLD_MEAN_MAD ) {
+        cv::Scalar mv, sv;
+        cv::Mat a;
+        cv::absdiff(s, mv = cv::mean(s, m), a);
+        sv = cv::mean(a, m);
         threshold_value = mv[0] + _threshold_scale * sv[0];
       }
       else {

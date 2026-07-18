@@ -20,7 +20,7 @@ const c_enum_member * members_of<MORPH_OPERATION>()
       {MORPH_CLOSE, "CLOSE", "closing operation"},
       {MORPH_GRADIENT, "GRADIENT", "morphological gradient:  the difference between dilation and erosion of an image."},
       {MORPH_TOPHAT, "TOPHAT", "top hat: difference between image and its opening"},
-      {MORPH_BLACKHAT, "BLACKHAT", "black hat"},
+      {MORPH_BLACKHAT, "BLACKHAT", "The difference between the image closing and the source image"},
       {MORPH_HITMISS, "HITMISS", "hit or miss"},
       {MORPH_SMOOTH_OPEN, "SMOOTH_OPEN", "morphological_smooth_open"},
       {MORPH_SMOOTH_CLOSE, "SMOOTH_CLOSE", "morphological_smooth_close"},

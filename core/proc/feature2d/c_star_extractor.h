@@ -16,7 +16,7 @@ class c_star_extractor:
 {
 public:
   typedef c_star_extractor this_class;
-  typedef cv::Feature2D bae;
+  typedef cv::Feature2D base;
 
   struct Blob {
     double x = 0;

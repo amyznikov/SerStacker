@@ -10,6 +10,8 @@
 #define __c_star_extractor_routine_h__
 
 #include <core/improc/c_image_processor.h>
+#include <core/proc/feature2d/c_simple_star_detector.h>
+
 
 class c_star_extractor_routine :
     public c_image_processor_routine
@@ -19,9 +21,8 @@ public:
       "star_extractor", "Extract stars on sky image");
 
   enum DisplayType {
-    DisplayRichKeypoints,
     DisplaySourceImage,
-    DisplayFilteredImage,
+    DisplayDogImage,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -29,12 +30,10 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DisplayType _display_type = DisplayRichKeypoints;
-  int _median_filter_size = 3;
-  double _sigma1 = 10;
-  double _sigma2 = 2;
-  double _noise_sigma = 100;
-  double _noise_scale = 10;
+  DisplayType _display_type = DisplayDogImage;
+  bool _display_blobs = true;
+  c_simple_star_detector_options _opts;
+  c_simple_star_detector _detector;
 };
 
 #endif /* __c_star_extractor_routine_h__ */

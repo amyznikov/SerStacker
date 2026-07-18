@@ -36,7 +36,7 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
 {
   const int src_cols = _src.cols();
   const int src_rows = _src.rows();
-  const int src_channels = _src.channels();
+  const int channels = _src.channels();
 
   const cv::Mat_<_Tp> src = _src.getMat();
 
@@ -52,23 +52,28 @@ static bool _downstrike_even(cv::InputArray _src, cv::OutputArray _dst, cv::Size
   cv::Mat tmp(dsize, _src.type());
   cv::Mat_<_Tp> dst = tmp;
 
-  const int ymax = 2 * (dsize.height - 1) + 1 < src_rows ? dsize.height : dsize.height - 1;
-  const int xmax = 2 * (dsize.width - 1) + 1 < src_cols ? dsize.width : dsize.width - 1;
+  const int ymax = dsize.height;
+  const int xmax = dsize.width;
 
-  parallel_loop(0, ymax, [&, src_channels, xmax](int y) {
-    const _Tp * srcp = src[2 * y + 1];
-    _Tp * dstp = dst[y];
-    for ( int x = 0; x < xmax; ++x ) {
-      for ( int c = 0; c < src_channels; ++c ) {
-        dstp[x * src_channels + c] = srcp[(2 * x + 1) * src_channels + c];
+  parallel_for(0, ymax, [&, channels, xmax, src_rows, src_cols](const auto & range) {
+    for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+      const int src_y = std::min(2 * y + 1, src_rows - 1);
+      const _Tp * srcp = src[src_y] + channels;
+      const _Tp * srce = src[src_y] + (src_cols - 1) * channels;
+      _Tp * __restrict dstp = dst[y];
+
+      for ( int x = 0; x < xmax; ++x, srcp = std::min(srcp + channels, srce) ) {
+        for ( int c = 0; c < channels; ++c ) {
+          *dstp++ = *srcp++;
+        }
       }
     }
   });
 
   _dst.move(tmp);
-
   return true;
 }
+
 
 /*
  * 2x downsampling step by rejecting each EVEN row and column, keep only uneven
@@ -105,13 +110,13 @@ bool downstrike_even(cv::InputArray src, cv::OutputArray dst, cv::Size size)
 template<class _Tp>
 static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Size dsize)
 {
-  const int src_cols = _src.cols();
-  const int src_rows = _src.rows();
-  const int src_channels = _src.channels();
-
   if (_src.empty()) {
     return false;
   }
+
+  const int src_cols = _src.cols();
+  const int src_rows = _src.rows();
+  const int channels = _src.channels();
 
   const cv::Mat_<_Tp> src = _src.getMat();
 
@@ -130,20 +135,27 @@ static bool _downstrike_uneven(cv::InputArray _src, cv::OutputArray _dst, cv::Si
   const int ymax = dsize.height;
   const int xmax = dsize.width;
 
-  parallel_loop(0, ymax, [&, src_channels, xmax](int y) {
-    const _Tp * srcp = src[2 * y];
-    _Tp * dstp = dst[y];
-    for ( int x = 0; x < xmax; ++x ) {
-      for ( int c = 0; c < src_channels; ++c ) {
-        dstp[x * src_channels + c] = srcp[(2 * x) * src_channels + c];
+  parallel_for(0, ymax, [&, channels, xmax, src_rows, src_cols](const auto & range) {
+    for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
+      const int src_y = std::min(2 * y, src_rows - 1);
+      const _Tp * srcp = src[src_y];
+      const _Tp * srce = src[src_y] + (src_cols - 1) * channels;
+      _Tp * __restrict dstp = dst[y];
+
+      for ( int x = 0; x < xmax; ++x, srcp = std::min(srcp + channels, srce) ) {
+        for ( int c = 0; c < channels; ++c ) {
+          *dstp++ = *srcp++;
+        }
       }
     }
   });
+
 
   _dst.move(tmp);
 
   return true;
 }
+
 
 /*
  * 2x downsampling step by rejecting each UNEVEN row and column, keep only even (0, 2, 4...)

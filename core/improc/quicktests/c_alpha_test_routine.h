@@ -22,12 +22,9 @@ public:
       "alpha_test", "Alpha Test");
 
   enum DISPLAY {
-    DISPLAY_SRC_IMAGE,
-    DISPLAY_MEAN_IMAGE,
-    DISPLAY_STDEV_IMAGE,
-    DISPLAY_MEANSTDEV_IMAGE,
-    DISPLAY_TOPHAT_IMAGE,
-    DISPLAY_BGMAP_IMAGE,
+    DISPLAY_SRC,
+    DISPLAY_DOG,
+    DISPLAY_MASK,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -35,11 +32,12 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DISPLAY _display = DISPLAY_MEANSTDEV_IMAGE;
-  double _gsigma = 15;
-  double _kmean = 1;
-  double _kstdev = 1;
-  int _bgmaplvls = 5;
+  DISPLAY _display = DISPLAY_DOG;
+  int lvls = 5;
+  int se_radius = 2;
+  double sigma = 1;
+  double weight_decay = 0.5;
+  double kmad = 9;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

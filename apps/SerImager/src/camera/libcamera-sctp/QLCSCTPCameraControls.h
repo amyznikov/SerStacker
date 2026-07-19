@@ -26,6 +26,8 @@ public:
   QLCExposureTimeControlWidget(QLCSCTPCamera* camera, QWidget * parent = nullptr);
   void updateControls();
 protected:
+  void applyChanges();
+protected:
   QLCSCTPCamera* _camera;
   QHBoxLayout * _layout = nullptr;
   QSpinBox * _spinbox_ctl = nullptr;

@@ -29,49 +29,53 @@ QLCExposureTimeControlWidget::QLCExposureTimeControlWidget(QLCSCTPCamera* camera
   _spinbox_ctl->setKeyboardTracking(false);
   _spinbox_ctl->setRange(1, 1000);
 
-  const auto applyChanges = [this]() {
-    const bool isAuto = _chkbox_ctl->isChecked();
-    _spinbox_ctl->setEnabled(!isAuto);
-    _timeScale_ctl->setEnabled(!isAuto);
-
-    auto * cam = _camera ? _camera->selectedCamera() : nullptr;
-    if ( cam ) {
-      auto * AeEnable = cam->getControl("AeEnable");
-      auto * ExposureTimeMode = cam->getControl("ExposureTimeMode");
-      auto * ExposureTime = cam->getControl("ExposureTime");
-
-      if ( AeEnable ) {
-        AeEnable->value = isAuto ? "true" : "false";
-      }
-      if ( ExposureTimeMode ) {
-        ExposureTimeMode->value = isAuto ? "0" : "1";
-      }
-      if ( ExposureTime ) {
-        double cval = _spinbox_ctl->value();
-        switch( _timeScale_ctl->currentIndex() ) {
-          case 0: // us
-          break;
-          case 1: // ms
-            cval *= 1e3;
-          break;
-          case 2: // s
-            cval *= 1e6;
-          break;
-        }
-
-        ExposureTime->value = toQString(cval);
-      }
-      _camera->applyDeviceControls((const QLCSCTPCamera::QLCCameraControl*[]) {
-            AeEnable, ExposureTimeMode, ExposureTime},
-          3);
-    }
-  };
-
-  QObject::connect(_chkbox_ctl, &QCheckBox::stateChanged, applyChanges);
-  QObject::connect(_spinbox_ctl, QOverload<int>::of(&QSpinBox::valueChanged), applyChanges);
-  QObject::connect(_timeScale_ctl, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ThisClass::updateControls);
+  QObject::connect(_chkbox_ctl, &QCheckBox::stateChanged, this, &ThisClass::applyChanges);
+  QObject::connect(_spinbox_ctl, QOverload<int>::of(&QSpinBox::valueChanged), this, &ThisClass::applyChanges);
+  QObject::connect(_timeScale_ctl, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int) {
+    updateControls();
+    applyChanges();
+  });
 
   updateControls();
+}
+
+void QLCExposureTimeControlWidget::applyChanges()
+{
+  const bool isAuto = _chkbox_ctl->isChecked();
+  _spinbox_ctl->setEnabled(!isAuto);
+  _timeScale_ctl->setEnabled(!isAuto);
+
+  auto * cam = _camera ? _camera->selectedCamera() : nullptr;
+  if( cam ) {
+    auto * AeEnable = cam->getControl("AeEnable");
+    auto * ExposureTimeMode = cam->getControl("ExposureTimeMode");
+    auto * ExposureTime = cam->getControl("ExposureTime");
+
+    if( AeEnable ) {
+      AeEnable->value = isAuto ? "true" : "false";
+    }
+    if( ExposureTimeMode ) {
+      ExposureTimeMode->value = isAuto ? "0" : "1";
+    }
+    if( ExposureTime ) {
+      int cval = _spinbox_ctl->value();
+      switch (_timeScale_ctl->currentIndex()) {
+        case 0: // us
+          break;
+        case 1: // ms
+          cval *= 1000;
+          break;
+        case 2: // s
+          cval *= 1000000;
+          break;
+      }
+
+      ExposureTime->value = qsprintf("%d", (int) (cval)); // toQString(cval);
+      CF_DEBUG("ExposureTime->value=%s", ExposureTime->value.toUtf8().constData());
+    }
+
+    _camera->applyDeviceControls( { AeEnable, ExposureTimeMode, ExposureTime });
+  }
 }
 
 void QLCExposureTimeControlWidget::updateControls()
@@ -153,9 +157,7 @@ QLCAnalogueGainControlWidget::QLCAnalogueGainControlWidget(QLCSCTPCamera* camera
         AnalogueGain->value = toQString(_spinbox_ctl->value());
       }
 
-      _camera->applyDeviceControls((const QLCSCTPCamera::QLCCameraControl*[]) {
-            AnalogueGain, AnalogueGainMode},
-          2);
+      _camera->applyDeviceControls({AnalogueGain, AnalogueGainMode});
     }
   };
 

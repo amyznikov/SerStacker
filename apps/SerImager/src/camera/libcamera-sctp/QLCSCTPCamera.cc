@@ -958,15 +958,25 @@ void QLCSCTPCamera::applyDeviceControl(const QLCCameraControl & ctl)
   }
 }
 
-void QLCSCTPCamera::applyDeviceControls(const QLCCameraControl * ctls[], int count)
+void QLCSCTPCamera::applyDeviceControls(const std::initializer_list<const QLCCameraControl * > & ctls)
+//void QLCSCTPCamera::applyDeviceControls(const QLCCameraControl * ctls[], int count)
 {
   if ( _so >= -1 )  {
 
     std::string controls;
     int nctls = 0;
 
-    for( int i = 0; i < count; ++i ) {
-      const QLCCameraControl * ctl = ctls[i];
+//    for( int i = 0; i < count; ++i ) {
+//      const QLCCameraControl * ctl = ctls[i];
+//      if( ctl ) {
+//        controls += ssprintf("%s{ id=\"%s\"; value=\"%s\"; }",
+//            nctls++ ? ",\n" : "",
+//            ctl->id.toUtf8().constData(),
+//            ctl->value.toUtf8().constData());
+//      }
+//    }
+
+    for( const QLCCameraControl * ctl : ctls ) {
       if( ctl ) {
         controls += ssprintf("%s{ id=\"%s\"; value=\"%s\"; }",
             nctls++ ? ",\n" : "",
@@ -981,7 +991,8 @@ void QLCSCTPCamera::applyDeviceControls(const QLCCameraControl * ctls[], int cou
           ssprintf("command=\"set-controls\";\n"
               "controls=(\n%s\n);", controls.c_str());
 
-      CF_DEBUG("sctp_sendmsg(set-controls)");
+      //CF_DEBUG("sctp_sendmsg(set-controls)");
+      CF_DEBUG("sctp_sendmsg():%s\n", command.c_str());
 
       if( !sctp_sendmsg(command) ) {
         CF_ERROR("sctp_sendmsg(set-controls) fails. errno=%d (%s)", errno, strerror(errno));

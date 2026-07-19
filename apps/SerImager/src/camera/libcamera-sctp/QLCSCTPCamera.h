@@ -139,7 +139,8 @@ public:
   void setCameraDeviceBuffers(int v);
 
   void applyDeviceControl(const QLCCameraControl & ctl);
-  void applyDeviceControls(const QLCCameraControl * ctls[], int count);
+  // void applyDeviceControls(const QLCCameraControl * ctls[], int count);
+  void applyDeviceControls(const std::initializer_list<const QLCCameraControl * > & ctls);
 
 Q_SIGNALS:
   void parametersChanged();

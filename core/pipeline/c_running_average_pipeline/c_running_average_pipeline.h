@@ -24,25 +24,24 @@ struct c_running_average_input_options:
 
 struct c_running_average_registration_options
 {
-  bool double_align_moode = false;
-  double reference_unsharp_sigma = 1;
-  double reference_unsharp_alpha = 0.95;
-  //ECC_ALIGN_METHOD ecc_method = ECC_ALIGN_LM;
+  bool enable_star_registration = false;
+  bool enable_ecc_registration = false;
+  bool enable_eccflow_registration = false;
 
-  bool enable_ecc = false;
-  bool enable_eccflow = false;
+  IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 
-  IMAGE_MOTION_TYPE ecc_motion_type = IMAGE_MOTION_TRANSLATION;
-  double min_rho = 0.7;
+  c_simple_star_detector_options star_detection;
+  c_triangle_extractor_options triangle_extractor;
+  c_triangle_matcher_options triangle_matcher;
 
   c_ecch_options ecch;
   c_eccflow_options eccflow;
+  c_estimate_image_transform_options transform_estimation;
 };
 
 struct c_running_average_update_options
 {
-  double reference_weight = 15;
-  double running_weight = 2;
+  double running_weight = 15;
 
   c_lpg_options lpg;
 
@@ -90,8 +89,7 @@ protected:
   bool run_pipeline() override;
   void cleanup_pipeline() override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
-  bool process_current_frame1();
-  bool process_current_frame2();
+  bool process_current_frame();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   bool average_add(c_running_frame_average & average, const cv::Mat & src, const cv::Mat & srcmask,
       double avgw, const cv::Mat2f * rmap = nullptr);
@@ -104,11 +102,12 @@ protected:
   int _input_bpp = 0;
 
   c_ecch _ecch;
-  c_image_transform::sptr _ecc_tramsform;
   c_eccflow _eccflow;
-
-  c_running_frame_average _average1;
-  c_running_frame_average _average2;
+  c_star_extractor _star_extractor;
+  c_triangle_extractor _triangle_extractor;
+  c_triangle_matcher _triangle_matcher;
+  c_image_transform::sptr _image_transform;
+  c_running_frame_average _average;
 
   cv::Mat _current_image;
   cv::Mat _current_mask;

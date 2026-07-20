@@ -1990,7 +1990,7 @@ bool c_running_frame_average::add(cv::InputArray current_image, cv::InputArray c
   }
 
   if( _accumulator.size() != current_image.size() ) {
-    CF_ERROR("current_image.size=%dx%d not match to accumulator_.size=%dx%d",
+    CF_ERROR("current_image.size=%dx%d not match to accumulator.size=%dx%d",
         current_image.cols(), current_image.rows(),
         _accumulator.cols, _accumulator.rows);
 
@@ -2026,3 +2026,4 @@ bool c_running_frame_average::compute(cv::OutputArray avg, cv::OutputArray mask,
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

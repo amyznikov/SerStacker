@@ -177,36 +177,45 @@ static bool build_triangles(const std::vector<cv::KeyPoint> & keypoints,
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_triangle_extractor::c_triangle_extractor(int max_points, int min_side_size) :
-    _max_points(max_points),
-    _min_side_size(min_side_size)
+c_triangle_extractor::c_triangle_extractor()
 {
 }
 
-cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(int max_points, int min_side_size)
+c_triangle_extractor::c_triangle_extractor(const c_triangle_extractor_options & opts) :
+    _opts(opts)
 {
-  return cv::Ptr<this_class>(new this_class(max_points, min_side_size));
+}
+
+cv::Ptr<c_triangle_extractor> c_triangle_extractor::create()
+{
+  return cv::Ptr<this_class>(new this_class());
+}
+
+cv::Ptr<c_triangle_extractor> c_triangle_extractor::create(const c_triangle_extractor_options & opts)
+{
+  return cv::Ptr<this_class>(new this_class(opts));
 }
 
 void c_triangle_extractor::compute(cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
 {
   size_t max_points_to_use = keypoints.size();
 
-  if( _max_points > 0 && (int) keypoints.size() > _max_points ) {
+  if( _opts.max_points > 0 && (int) keypoints.size() > _opts.max_points ) {
     std::sort(keypoints.begin(), keypoints.end(),
         [](const cv::KeyPoint & prev, const cv::KeyPoint & next) -> bool {
           return prev.response > next.response;
         });
 
-    max_points_to_use = (size_t)_max_points;
+    max_points_to_use = (size_t)_opts.max_points;
   }
 
-  if ( !build_triangles(keypoints, descriptors, max_points_to_use, _min_side_size) ) {
+  if ( !build_triangles(keypoints, descriptors, max_points_to_use, _opts.min_side_size) ) {
     CF_ERROR("build_triangles() fails");
     descriptors.release();
   }
 
-  CF_DEBUG("c_triangle_extractor: Use %zu/%zu points. descriptors.rows=%d", max_points_to_use, keypoints.size(), descriptors.rows());
+  CF_DEBUG("c_triangle_extractor: Use %zu/%zu points. descriptors.rows=%d",
+      max_points_to_use, keypoints.size(), descriptors.rows());
 }
 
 int c_triangle_extractor::descriptorSize() const
@@ -226,19 +235,28 @@ int c_triangle_extractor::defaultNorm() const
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_triangle_matcher::ptr create_sparse_feature_matcher(const c_triangle_matcher_options & options)
+c_triangle_matcher::ptr create_sparse_feature_matcher(const c_triangle_matcher_options & opts)
 {
-  return c_triangle_matcher::create(options.eps);
+  return c_triangle_matcher::create(opts);
 }
 
-c_triangle_matcher::c_triangle_matcher(double eps) :
-    _eps(eps)
+c_triangle_matcher::c_triangle_matcher()
 {
 }
 
-c_triangle_matcher::ptr c_triangle_matcher::create(double eps)
+c_triangle_matcher::c_triangle_matcher(const c_triangle_matcher_options & opts) :
+    _opts(opts)
 {
-  return ptr(new this_class(eps));
+}
+
+c_triangle_matcher::ptr c_triangle_matcher::create()
+{
+  return ptr(new this_class());
+}
+
+c_triangle_matcher::ptr c_triangle_matcher::create(const c_triangle_matcher_options & opts)
+{
+  return ptr(new this_class(opts));
 }
 
 bool c_triangle_matcher::train(const std::vector<cv::KeyPoint> & train_keypoints, cv::InputArray reference_triangles)
@@ -307,7 +325,8 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & /*query_keypoin
   cv::Mat1i votes(n1, n2, 0);
 
   // Use exact search
-  cvflann::RadiusUniqueResultSet<DistanceType::ResultType> searchResult(_eps * _eps);
+  const double eps = _opts.eps;
+  cvflann::RadiusUniqueResultSet<DistanceType::ResultType> searchResult(eps * eps);
   cvflann::SearchParams searchParams(cvflann::FLANN_CHECKS_UNLIMITED, 0, false);
 
   std::vector<int> indices;
@@ -374,5 +393,18 @@ bool c_triangle_matcher::match(const std::vector<cv::KeyPoint> & /*query_keypoin
     matches.emplace_back(cv::DMatch(i, best_j, 1.f / best_vote_i2j));
   }
 
+  return true;
+}
+
+bool serialize_triangle_extractor_options(c_config_setting section, bool save, c_triangle_extractor_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, max_points);
+  SERIALIZE_OPTION(section, save, opts, min_side_size);
+  return true;
+}
+
+bool serialize_triangle_matcher_options(c_config_setting section, bool save, c_triangle_matcher_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, eps);
   return true;
 }

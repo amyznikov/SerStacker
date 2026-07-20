@@ -122,8 +122,7 @@ public:
     return cc;
   }
 
-  const std::vector<Blob> & detect(cv::InputArray image,
-      cv::InputArray mask);
+  const std::vector<Blob> & detect(cv::InputArray image, cv::InputArray mask);
 
 protected:
   c_simple_star_detector_options _opts;

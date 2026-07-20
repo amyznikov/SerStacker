@@ -331,6 +331,7 @@ protected:
 
   int _pipeline_stage = 0;
   bool _generating_master_frame = false;
+  int _input_bpp = 0;
 };
 
 #endif /* __c_stacking_pipeline_h__ */

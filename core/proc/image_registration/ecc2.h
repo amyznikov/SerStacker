@@ -158,12 +158,12 @@ protected:
 struct c_ecch_options
 {
   double epsx = 1e-5;
-  double min_rho = 0.8;
+  //double min_rho = 0.8;
   double reference_smooth_sigma = 1;
   double input_smooth_sigma = 1;
   double update_step_scale = 1.f;
 
-  ECC_ALIGN_METHOD method = ECC_ALIGN_FORWARD_ADDITIVE;
+  ECC_ALIGN_METHOD method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
   enum ECC_INTERPOLATION_METHOD interpolation = ECC_INTER_LINEAR;
 
   int max_iterations = 50;
@@ -181,7 +181,6 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "maxlevel",  ctx(&S::maxlevel), "");
   ctlbind(ctls, "max_iterations", ctx(&S::max_iterations), "");
   ctlbind(ctls, "max_eps", ctx(&S::epsx), "");
-  ctlbind(ctls, "min_rho", ctx(&S::min_rho), "");
   ctlbind(ctls, "interpolation", ctx(&S::interpolation), "");
   ctlbind(ctls, "input_smooth_sigma", ctx(&S::input_smooth_sigma), "");
   ctlbind(ctls, "reference_smooth_sigma", ctx(&S::reference_smooth_sigma), "");
@@ -217,6 +216,11 @@ public:
     return _opts;
   }
 
+  void set_options(const c_ecch_options& opts)
+  {
+    _opts = opts;
+  }
+
   void set_image_transform(c_image_transform * image_transform);
   c_image_transform * image_transform() const;
 
@@ -237,9 +241,6 @@ public:
 
   void set_max_eps(double v);
   double max_eps() const;
-
-  void set_min_rho(double v);
-  double min_rho() const;
 
   void set_interpolation(enum ECC_INTERPOLATION_METHOD v);
   enum ECC_INTERPOLATION_METHOD interpolation() const;
@@ -515,6 +516,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "update_multiplier", ctx(&S::update_multiplier), "");
 }
 
+bool serialize_eccflow_options(c_config_setting section, bool save,
+    c_eccflow_options & opts);
+
 class c_eccflow
 {
 public:
@@ -537,6 +541,11 @@ public:
   const c_eccflow_options & options() const
   {
     return _opts;
+  }
+
+  void set_options(const c_eccflow_options & opts)
+  {
+    _opts = opts;
   }
 
   void set_support_scale(int v);

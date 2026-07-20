@@ -36,11 +36,6 @@ const std::string& c_running_average_pipeline::tooltip()
 
 bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 {
-//  static const auto get_group =
-//      [](c_config_setting setting, bool save, const std::string & name) {
-//        return save ? setting.add_group(name) : setting[name];
-//      };
-
   c_config_setting section, subsection;
 
   if( !base::serialize(settings, save) ) {
@@ -52,51 +47,39 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
-    SERIALIZE_OPTION(section, save, _registration_options, double_align_moode);
-    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_sigma);
-    SERIALIZE_OPTION(section, save, _registration_options, reference_unsharp_alpha);
-    SERIALIZE_OPTION(section, save, _registration_options, enable_ecc);
-    SERIALIZE_OPTION(section, save, _registration_options, ecc_motion_type);
-    SERIALIZE_OPTION(section, save, _registration_options, min_rho);
 
-    SERIALIZE_PROPERTY(section, save, _ecch, method);
-    SERIALIZE_PROPERTY(section, save, _ecch, minimum_image_size);
-    SERIALIZE_PROPERTY(section, save, _ecch, maxlevel);
-    SERIALIZE_PROPERTY(section, save, _ecch, max_iterations);
-    SERIALIZE_PROPERTY(section, save, _ecch, epsx);
-    SERIALIZE_PROPERTY(section, save, _ecch, min_rho);
-    SERIALIZE_PROPERTY(section, save, _ecch, interpolation);
-    SERIALIZE_PROPERTY(section, save, _ecch, input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, _ecch, reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, _ecch, update_step_scale);
+    SERIALIZE_OPTION(section, save, _registration_options, motion_type);
+    SERIALIZE_OPTION(section, save, _registration_options, enable_star_registration);
+    SERIALIZE_OPTION(section, save, _registration_options, enable_ecc_registration);
+    SERIALIZE_OPTION(section, save, _registration_options, enable_eccflow_registration);
 
-    SERIALIZE_OPTION(section, save, _registration_options, enable_eccflow);
-    SERIALIZE_PROPERTY(section, save, _eccflow, downscale_method);
-    SERIALIZE_PROPERTY(section, save, _eccflow, min_image_size);
-    SERIALIZE_PROPERTY(section, save, _eccflow, max_pyramid_level);
-    SERIALIZE_PROPERTY(section, save, _eccflow, noise_level);
-    SERIALIZE_PROPERTY(section, save, _eccflow, support_scale);
-    SERIALIZE_PROPERTY(section, save, _eccflow, max_iterations);
-    SERIALIZE_PROPERTY(section, save, _eccflow, input_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, _eccflow, reference_smooth_sigma);
-    SERIALIZE_PROPERTY(section, save, _eccflow, update_multiplier);
-    SERIALIZE_PROPERTY(section, save, _eccflow, scale_factor);
+    if ( auto group = SERIALIZE_GROUP(section, save, "star_registration") ) {
+      if( auto g = SERIALIZE_GROUP(group, save, "star_detection") ) {
+        serialize_simple_star_detector_options(g, save, _registration_options.star_detection);
+      }
+      if( auto g = SERIALIZE_GROUP(group, save, "triangle_extractor") ) {
+        serialize_triangle_extractor_options(g, save, _registration_options.triangle_extractor);
+      }
+      if( auto g = SERIALIZE_GROUP(group, save, "triangle_matcher") ) {
+        serialize_triangle_matcher_options(g, save, _registration_options.triangle_matcher);
+      }
+    }
 
-  }
+    if ( auto group = SERIALIZE_GROUP(section, save, "ecch") ) {
+      serialize_ecch_options(group, save, _registration_options.ecch);
+    }
 
-  if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
-
-    SERIALIZE_OPTION(section, save, _average_options, running_weight);
-    SERIALIZE_OPTION(section, save, _average_options, reference_weight);
-
-    if( (subsection = SERIALIZE_GROUP(section, save, "lpg")) ) {
-      SERIALIZE_OPTION(subsection, save, _average_options.lpg, k);
-      SERIALIZE_OPTION(subsection, save, _average_options.lpg, p);
-      SERIALIZE_OPTION(subsection, save, _average_options.lpg, dscale);
-      SERIALIZE_OPTION(subsection, save, _average_options.lpg, uscale);
+    if ( auto group = SERIALIZE_GROUP(section, save, "eccflow") ) {
+      serialize_eccflow_options(group, save, _registration_options.eccflow);
     }
   }
 
+  if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
+    SERIALIZE_OPTION(section, save, _average_options, running_weight);
+    if( auto group = SERIALIZE_GROUP(section, save, "lpg") ) {
+      serialize_lpg_options(group, save, _average_options.lpg);
+    }
+  }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, _output_options, default_display_type);
@@ -144,22 +127,30 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_running_average_registration_options;
 
-  ctlbind(ctls, "double_align_moode", ctx(&S::double_align_moode), "");
-  ctlbind(ctls, "ref_unsharp_sigma", ctx(&S::reference_unsharp_sigma), ""); // _this->_registration_options.double_align_moode);
-  ctlbind(ctls, "ref_unsharp_alpha", ctx(&S::reference_unsharp_alpha), ""); // _this->_registration_options.double_align_moode);
+  ctlbind(ctls, "motion_type", ctx(&S::motion_type), "");
+
+  ctlbind_expandable_group(ctls, "Stars", "");
+    ctlbind(ctls, "Enable star registration", ctx(&S::enable_star_registration), "");
+    ctlbind_expandable_group(ctls, "Star Detection", "");
+      ctlbind(ctls, ctx(&S::star_detection));
+    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "Triangle extraction", "");
+      ctlbind(ctls, ctx(&S::triangle_extractor));
+    ctlbind_end_group(ctls);
+    ctlbind_expandable_group(ctls, "Triangle Matching", "");
+      ctlbind(ctls, ctx(&S::triangle_matcher));
+    ctlbind_end_group(ctls);
+  ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "ECC", "");
-    ctlbind(ctls, "enable ecc", ctx(&S::enable_ecc), "");
-    ctlbind(ctls, "motion_type", ctx(&S::ecc_motion_type), "");
+    ctlbind(ctls, "Enable ecc", ctx(&S::enable_ecc_registration), "");
     ctlbind(ctls, ctx(&S::ecch));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "ECCFLOW", "");
-    ctlbind(ctls, "enable eccflow", ctx(&S::enable_eccflow), "");
+    ctlbind(ctls, "Enable eccflow", ctx(&S::enable_eccflow_registration), "");
     ctlbind(ctls, ctx(&S::eccflow));
   ctlbind_end_group(ctls);
-
-  ctlbind(ctls, "min_rho", ctx(&S::min_rho), "");// , (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
 }
 
 template<class RootObjectType>
@@ -167,7 +158,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_running_average_update_options;
 
-  ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
+  //ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
   ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
   ctlbind_expandable_group(ctls, "Shapness measure", "");
     ctlbind(ctls, ctx(&S::lpg));
@@ -220,122 +211,12 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
   return ctls;
 }
 
-//
-//const std::vector<c_image_processing_pipeline_ctrl> & c_running_average_pipeline::get_controls()
-//{
-//  static std::vector<c_image_processing_pipeline_ctrl> ctrls;
-//
-////  if( ctrls.empty() ) {
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Input options", "");
-////    POPULATE_PIPELINE_INPUT_OPTIONS(ctrls)
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Image registration", "");
-////
-////      PIPELINE_CTL(ctrls, _registration_options.double_align_moode, "double_align_moode", "");
-////      PIPELINE_CTLC(ctrls, _registration_options.reference_unsharp_sigma, "ref_unsharp_sigma", "", _this->_registration_options.double_align_moode);
-////      PIPELINE_CTLC(ctrls,  _registration_options.reference_unsharp_alpha, "ref_unsharp_alpha", "", _this->_registration_options.double_align_moode);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "ECC", "");
-////        PIPELINE_CTL(ctrls, _registration_options.enable_ecc, "enabled", "");
-////
-////        PIPELINE_CTLC(ctrls, _registration_options.ecc_motion_type, "motion_type", "", (_this->ecc_ctls_enabled()));
-////
-////        PIPELINE_CTLPC2(ctrls, _ecch, method, "ecch method", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, minimum_image_size, "ecch_minimum_image_size", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, maxlevel, "maxlevel ", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, max_iterations, "max_iterations", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, max_eps, "ecc_max_eps", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, min_rho, "ecc_min_rho", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, interpolation, "ecc_interpolation", "", (_this->ecc_ctls_enabled()));
-////
-////        PIPELINE_CTLPC2(ctrls, _ecch, input_smooth_sigma, "input_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->ecc_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _ecch, update_step_scale, "update_step_scale", "", (_this->ecc_ctls_enabled()));
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTL_GROUP(ctrls, "ECCFLOW", "");
-////        PIPELINE_CTL(ctrls, _registration_options.enable_eccflow, "enabled", "");
-////        PIPELINE_CTLPC2(ctrls, _eccflow, support_scale, "support_scale", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, downscale_method, "downscale_method", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, min_image_size, "min_image_size", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, max_pyramid_level, "max_pyramid_level", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, scale_factor, "scale_factor", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, max_iterations, "max_iterations", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, noise_level, "noise_level", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, input_smooth_sigma, "input_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, reference_smooth_sigma, "reference_smooth_sigma", "", (_this->eccflow_ctls_enabled()));
-////        PIPELINE_CTLPC2(ctrls, _eccflow, update_multiplier, "update_multiplier", "", (_this->eccflow_ctls_enabled()));
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////
-////      PIPELINE_CTLC(ctrls, _registration_options.min_rho, "min_rho", "", (_this->ecc_ctls_enabled() || _this->eccflow_ctls_enabled()));
-////
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Average options", "");
-////    PIPELINE_CTLC(ctrls, _average_options.reference_weight, "reference running_weight", "", (_this->_registration_options.double_align_moode));
-////    PIPELINE_CTL(ctrls, _average_options.running_weight, "running_weight", "");
-////      PIPELINE_CTL_GROUP(ctrls, "Shapness measure", "");
-////        PIPELINE_CTL(ctrls, _average_options.lpg.k, "k", "");
-////        PIPELINE_CTL(ctrls, _average_options.lpg.p, "p", "power");
-////        PIPELINE_CTL(ctrls, _average_options.lpg.dscale, "dscale", "");
-////        PIPELINE_CTL(ctrls, _average_options.lpg.uscale, "uscale", "");
-////      PIPELINE_CTL_END_GROUP(ctrls);
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Output options", "");
-////    PIPELINE_CTL(ctrls, _output_options.default_display_type, "display_type", "");
-////    PIPELINE_CTL(ctrls, _output_options.display_scale, "display_scale", "");
-////    PIPELINE_CTL(ctrls, _output_options.output_directory, "output_directory", "");
-////
-////
-////    PIPELINE_CTL_GROUP(ctrls, "Save accumulated video", "");
-////      PIPELINE_CTL(ctrls, _output_options.save_accumulated_video, "save_accumulated_video", "");
-////      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_accumulated_video_options,
-////          (_this->_output_options.save_accumulated_video));
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////    PIPELINE_CTL_GROUP(ctrls, "save_reference_video", "");
-////      PIPELINE_CTL(ctrls, _output_options.save_reference_video, "save_reference_video", "");
-////      PIPELINE_CTL_OUTPUT_WRITER_OPTIONS(ctrls, _output_options.output_reference_video_options,
-////          (_this->_output_options.save_reference_video));
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////
-////
-////    PIPELINE_CTL_END_GROUP(ctrls);
-////  }
-//
-//  return ctrls;
-//}
-
-///
-
-//void c_running_average_pipeline::set_double_align_moode(bool v)
-//{
-//  _registration_options.double_align_moode = v;
-//}
-//
-//bool c_running_average_pipeline::double_align_moode() const
-//{
-//  return _registration_options.double_align_moode;
-//}
-
-///
-
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   bool fOk = false;
 
-  if ( _registration_options.double_align_moode ) {
-    if ( _average2.compute(display_frame, display_mask) ) {
-      fOk = true;
-    }
-  }
-  else {
-    if ( _average1.compute(display_frame, display_mask) ) {
-      fOk = true;
-    }
+  if( _average.compute(display_frame, display_mask) ) {
+    fOk = true;
   }
 
   if ( fOk && _input_bpp > 1 ) {
@@ -383,8 +264,7 @@ bool c_running_average_pipeline::initialize_pipeline()
   _output_path =
       create_output_path(_output_options.output_directory);
 
-  _average1.clear();
-  _average2.clear();
+  _average.clear();
   _current_image.release();
   _current_mask.release();
 
@@ -424,15 +304,29 @@ bool c_running_average_pipeline::initialize_pipeline()
     }
   }
 
+  const bool enable_registration =
+      _registration_options.enable_star_registration ||
+          _registration_options.enable_ecc_registration ||
+          _registration_options.enable_eccflow_registration;
 
-  if ( _registration_options.enable_ecc ) {
-    _ecc_tramsform = create_image_transform(_registration_options.ecc_motion_type);
-    _ecch.set_image_transform(_ecc_tramsform.get());
-    _ecch.options() = _registration_options.ecch;
-  }
 
-  if( _registration_options.enable_eccflow ) {
-    _eccflow.options() = _registration_options.eccflow;
+  if ( enable_registration ) {
+    _image_transform = create_image_transform(_registration_options.motion_type);
+
+    if ( _registration_options.enable_star_registration ) {
+      _star_extractor.set_options(_registration_options.star_detection);
+      _triangle_extractor.set_options(_registration_options.triangle_extractor);
+      _triangle_matcher.set_options(_registration_options.triangle_matcher);
+    }
+
+    if ( _registration_options.enable_ecc_registration ) {
+      _ecch.set_image_transform(_image_transform.get());
+      _ecch.set_options(_registration_options.ecch);
+    }
+
+    if( _registration_options.enable_eccflow_registration ) {
+      _eccflow.set_options(_registration_options.eccflow);
+    }
   }
 
   CF_DEBUG("Output path='%s'", this->_output_path.c_str());
@@ -446,12 +340,11 @@ void c_running_average_pipeline::cleanup_pipeline()
   base::cleanup_pipeline();
 
   _ecch.clear();
-  _ecc_tramsform.reset();
+  _image_transform.reset();
+  //_image_average.clear();
 
   _current_image.release();
   _current_mask.release();
-
-
 }
 
 bool c_running_average_pipeline::run_pipeline()
@@ -470,8 +363,7 @@ bool c_running_average_pipeline::run_pipeline()
     }
 
     const bool fOk =
-        read_input_frame(_input_sequence,
-            _input_options,
+        read_input_frame(_input_sequence, _input_options,
             _current_image, _current_mask,
             false,
             false);
@@ -499,22 +391,10 @@ bool c_running_average_pipeline::run_pipeline()
       }
     }
 
-    if ( _registration_options.double_align_moode ) {
-
-      if( !process_current_frame2() ) {
-        CF_ERROR("process_current_frame2() fails");
-        return false;
-      }
-
+    if( !process_current_frame() ) {
+      CF_ERROR("process_current_frame1() fails");
+      return false;
     }
-    else {
-
-      if( !process_current_frame1() ) {
-        CF_ERROR("process_current_frame1() fails");
-        return false;
-      }
-    }
-
   }
 
   return true;
@@ -548,88 +428,88 @@ bool c_running_average_pipeline::average_add(c_running_frame_average & average, 
   return true;
 }
 
-bool c_running_average_pipeline::process_current_frame1()
+bool c_running_average_pipeline::process_current_frame()
 {
-  cv::Mat image1, mask1, image2, mask2;
-  cv::Mat2f rmap;
-
   bool has_updates = true;
 
   const bool enable_registration =
-      _registration_options.enable_ecc ||
-      _registration_options.enable_eccflow;
+      _registration_options.enable_star_registration ||
+          _registration_options.enable_ecc_registration ||
+          _registration_options.enable_eccflow_registration;
 
-  static const auto mkgrayscale =
-      [](const cv::Mat & src, cv::Mat & dst) {
-        if( src.channels() != 1 ) {
-          cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
-        }
-        else if ( &src != &dst ) {
-          dst = src;
-        }
-      };
-
-
-  if( !enable_registration || _average1.accumulated_frames() < 1 ) {
-
-    if( !average_add(_average1, _current_image, _current_mask, _average_options.running_weight) ) {
+  if( !enable_registration || _average.accumulated_frames() < 1 ) {
+    if ( !average_add(_average, _current_image, _current_mask, _average_options.running_weight) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
   }
   else {
 
-
-    rmap.release();
-
-    if( enable_registration ) {
-      _average1.compute(image1, mask1);
-      mkgrayscale(image1, image1);
-      mkgrayscale(_current_image, image2);
-    }
-
-
-    if ( _registration_options.enable_ecc ) {
-
-      _ecch.set_reference_image(image2, mask2);
-
-      if( (has_updates = _ecch.align(image1, mask1)) ) {
-        _ecch.image_transform()->create_remap(_ecch.reference_image().size(), rmap);
+    static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
+      if( src.channels() != 1 ) {
+        cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
       }
-    }
+      else if ( &src != &dst ) {
+        dst = src;
+      }
+    };
 
+    cv::Mat current_image, current_mask, reference_image, reference_mask;
+    cv::Mat2f rmap;
 
-    if( _registration_options.enable_eccflow ) {
-      _eccflow.set_reference_image(image2, mask2);
-      has_updates = _eccflow.compute(image1, rmap, mask1);
-    }
+    mkgrayscale(_current_image, reference_image);
+    reference_mask = _current_mask;
 
-    if( has_updates ) {
-      if( !average_add(_average1, _current_image, _current_mask, _average_options.running_weight, &rmap) ) {
-        CF_ERROR("average_add() fails");
+    _average.compute(current_image, current_mask);
+
+    if( _registration_options.enable_star_registration ) {
+
+      std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
+      cv::Mat current_descriptors, reference_descriptors;
+      std::vector<cv::DMatch> triangle_matches;
+
+      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
+      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
+      _triangle_matcher.train(reference_keypoints, reference_descriptors);
+
+      _star_extractor.detect(current_image, current_keypoints, current_mask);
+      _triangle_extractor.compute(current_image, current_keypoints, current_descriptors);
+      _triangle_matcher.match(current_keypoints, current_descriptors, triangle_matches);
+
+      const bool transformEstimated =
+          estimate_image_transform(_image_transform.get(),
+              current_keypoints, reference_keypoints, triangle_matches,
+              _registration_options.transform_estimation);
+
+      if( !transformEstimated ) {
+        CF_ERROR("estimate_image_transform() fails");
         return false;
       }
     }
-  }
 
-  if ( has_updates && _output_options.save_accumulated_video  ) {
+    if( _registration_options.enable_ecc_registration ) {
 
-    const bool fOK =
-        add_output_writer(_accumulated_video_writer,
-            _output_options.output_accumulated_video_options,
-            "accw",
-            ".ser");
+      _ecch.set_reference_image(reference_image, reference_mask);
+      if( !_ecch.align(current_image, current_mask) ) {
+        CF_ERROR("_ecch.align() fails");
+        return false;
+      }
 
-    if( !fOK ) {
-      CF_ERROR("Can not open output writer '%s'",
-          _accumulated_video_writer.filename().c_str());
-      return false;
+      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
-    _average1.compute(image1, mask1);
+    _image_transform->create_remap(_current_image.size(), rmap);
+    if( _registration_options.enable_eccflow_registration ) {
 
-    if( !_accumulated_video_writer.write(image1, mask1) ) {
-      CF_ERROR("accumulated_video_writer_.write() fails");
+      _eccflow.set_reference_image(reference_image, reference_mask);
+      if( !_eccflow.compute(current_image, rmap, current_mask) ) {
+        CF_ERROR("_eccflow.compute() fails");
+        return false;
+      }
+    }
+
+    if ( !average_add(_average, _current_image, _current_mask, _average_options.running_weight, &rmap) ) {
+      CF_ERROR("average_add() fails");
       return false;
     }
   }
@@ -637,200 +517,117 @@ bool c_running_average_pipeline::process_current_frame1()
   return true;
 }
 
-bool c_running_average_pipeline::process_current_frame2()
-{
+//bool c_running_average_pipeline::process_current_frame()
+//{
+//  bool has_updates = true;
+//
+//  const bool enable_registration =
+//      _registration_options.enable_star_registration ||
+//          _registration_options.enable_ecc_registration ||
+//          _registration_options.enable_eccflow_registration;
+//
+//  if( !enable_registration || _average.accumulated_frames() < 1 ) {
+//
+//    lock_guard lock(mutex());
+//    _rmap_to_current.release();
+//    if( !_average.add(_current_image, _current_mask, _average_options.running_weight) ) {
+//      CF_ERROR("average_add() fails");
+//      return false;
+//    }
+//  }
+//  else {
+//
+//    static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
+//      if( src.channels() != 1 ) {
+//        cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+//      }
+//      else if ( &src != &dst ) {
+//        dst = src;
+//      }
+//    };
+//
+//
+//    cv::Mat current_image, current_mask, reference_image, reference_mask;
+//    cv::Mat base_avg, base_mask;
+//    cv::Mat2f rmap_to_current;
+//
+//    _average.compute_base(base_avg, base_mask);
+//    _image_transform->create_remap(base_avg.size(), rmap_to_current);
+//    cv::remap(base_avg, current_image, rmap_to_current, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+//    cv::remap(base_mask, current_mask, rmap_to_current, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+//
+//
+//    mkgrayscale(current_image, current_image);
+//
+//    mkgrayscale(_current_image, reference_image);
+//    reference_mask = _current_mask;
+//
+//    if( _registration_options.enable_star_registration ) {
+//
+//      std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
+//      cv::Mat current_descriptors, reference_descriptors;
+//      std::vector<cv::DMatch> triangle_matches;
+//
+//      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
+//      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
+//      _triangle_matcher.train(reference_keypoints, reference_descriptors);
+//
+//      _star_extractor.detect(current_image, current_keypoints, current_mask);
+//      _triangle_extractor.compute(current_image, current_keypoints, current_descriptors);
+//
+//      _triangle_matcher.match(current_keypoints, current_descriptors, triangle_matches);
+//
+//      const bool transformEstimated =
+//          estimate_image_transform(_image_transform.get(),
+//              current_keypoints, reference_keypoints, triangle_matches,
+//              _registration_options.transform_estimation);
+//
+//      if( !transformEstimated ) {
+//        CF_ERROR("estimate_image_transform() fails");
+//        return false;
+//      }
+//    }
+//
+//    if( _registration_options.enable_ecc_registration ) {
+//
+//      _ecch.set_reference_image(reference_image, reference_mask);
+//      if( !_ecch.align(current_image, current_mask) ) {
+//        CF_ERROR("_ecch.align() fails");
+//        return false;
+//      }
+//
+//      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
+//    }
+//
+//
+//    cv::Mat1f inv_p = _image_transform->invert_and_compose(cv::Mat1f::zeros(2, 1), _image_transform->parameters());
+//    cv::Mat2f rmap_to_base;
+//    _image_transform->create_remap(inv_p, _current_image.size(), rmap_to_base);
+//    cv::Mat aligned_current_image, aligned_current_mask;
+//    cv::remap(_current_image, aligned_current_image, rmap_to_base, cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REPLICATE);
+//    cv::remap(_current_mask, aligned_current_mask, rmap_to_base, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+//
+//    if ( true ) {
+//      // must be locked for display update
+//      lock_guard lock(mutex());
+//      _rmap_to_current = rmap_to_current;
+//      _average.add(aligned_current_image, aligned_current_mask, _average_options.running_weight);
+//    }
+//
+////    Temporary disable this eccflow stuff
+////    if( _registration_options.enable_eccflow_registration ) {
+////
+////      _eccflow.set_reference_image(reference_image, reference_mask);
+////      if( !_eccflow.compute(current_image, rmap, current_mask) ) {
+////        CF_ERROR("_eccflow.compute() fails");
+////        return false;
+////      }
+////    }
+//  }
+//
+//  return true;
+//}
 
-  cv::Mat image1, mask1, image2, mask2;
-  cv::Mat2f rmap;
-
-  bool has_updates = true;
-
-  const double W1 =
-      _average_options.reference_weight;
-
-  const double W2 =
-      _average_options.running_weight;
-
-  static const auto mkgrayscale =
-      [](const cv::Mat & src, const cv::Mat & src_mask, cv::Mat & dst, cv::Mat & dst_mask) {
-        if( src.channels() != 1 ) {
-          cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
-        }
-        else if ( &src != &dst ) {
-          dst = src;
-        }
-        if ( &src_mask != &dst_mask) {
-          dst_mask = src_mask;
-        }
-  };
-
-
-  if ( !_registration_options.enable_ecc ) {
-    CF_ERROR("ECC must be enabled for double align mode");
-    return false;
-  }
-
-  ////
-  mkgrayscale(_current_image, _current_mask,
-      image2, mask2);
-
-  if( _average1.accumulated_frames() < 1 ) {
-
-    if( !average_add(_average1, image2, mask2, W1) ) {
-      CF_ERROR("average_add() fails");
-      return false;
-    }
-
-  }
-  else {
-    _average1.compute(image1, mask1);
-
-    _ecch.set_reference_image(image2, mask2);
-    if( !_ecch.align(image1, mask1) ) {
-      has_updates = false;
-    }
-    else {
-
-      if( !average_add(_average1, image2, mask2, W1, &(rmap = _ecch.create_remap())) ) {
-        CF_ERROR("average_add() fails");
-        return false;
-      }
-
-    }
-  }
-
-  ////
-
-  if ( has_updates && _average1.accumulated_frames() > W1 )  {
-
-    cv::Mat2f rmap2;
-
-    if( _registration_options.enable_eccflow ) {
-
-      _average1.compute(image1, mask1);
-
-      mkgrayscale(image1, mask1,
-          image1, mask1);
-
-      if( _registration_options.reference_unsharp_sigma > 0 && _registration_options.reference_unsharp_alpha > 0 ) {
-
-        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma,
-            _registration_options.reference_unsharp_alpha);
-      }
-
-
-      if ( image2.empty() ) {
-        mkgrayscale(_current_image, _current_mask,
-            image2, mask2);
-      }
-
-
-      rmap2 = rmap.clone();
-
-      _eccflow.set_reference_image(image1, mask1);
-
-      if( !_eccflow.compute(image2, rmap2, mask2) ) {
-        has_updates = false;
-      }
-
-    }
-
-    if ( has_updates ) {
-
-      if ( rmap2.empty() ) {
-       if ( !average_add(_average2, _current_image, _current_mask, W2, &rmap) ) {
-          CF_ERROR("average_add(average2_) fails");
-          return false;
-        }
-      }
-      else {
-
-        cv::remap(_current_image, image2, rmap2, cv::noArray(), cv::INTER_LINEAR,
-            cv::BORDER_CONSTANT);
-
-        CF_DEBUG("current_mask_: %dx%d nnz = %d / %d", _current_mask.cols, _current_mask.rows,
-            cv::countNonZero(_current_mask),
-            _current_mask.size().area());
-
-        if ( _current_mask.empty() ) {
-          mask2.release();
-          //          cv::remap(cv::Mat1b(current_image_.size(), 255), mask2, rmap2, cv::noArray(),
-          //              cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-        }
-        else {
-
-          cv::remap(_current_mask, mask2, rmap2, cv::noArray(),
-              cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-
-          cv::compare(mask2,  254, mask2, cv::CMP_GE);
-        }
-
-
-        if ( !average_add(_average2, image2, mask2, W2, &rmap) ) {
-          CF_ERROR("average_add() fails");
-          return false;
-        }
-
-      }
-    }
-  }
-
-  if ( has_updates ) {
-
-    if ( _output_options.save_reference_video && _average1.accumulated_frames() > 0 ) {
-
-      const bool fOK =
-          add_output_writer(_reference_video_writer,
-              _output_options.output_reference_video_options,
-              "accr",
-              ".ser");
-
-      if( !fOK ) {
-        CF_ERROR("Can not open output writer '%s'",
-            _reference_video_writer.filename().c_str());
-        return false;
-      }
-
-      _average1.compute(image1, mask1);
-
-      if( _registration_options.reference_unsharp_sigma > 0 && _registration_options.reference_unsharp_alpha > 0 ) {
-
-        unsharp_mask(image1, mask1, image1, _registration_options.reference_unsharp_sigma,
-            _registration_options.reference_unsharp_alpha);
-      }
-
-      if( !_reference_video_writer.write(image1, mask1) ) {
-        CF_ERROR("reference_video_writer_.write() fails");
-        return false;
-      }
-    }
-
-    if ( _output_options.save_accumulated_video && _average2.accumulated_frames() > 0 ) {
-
-      const bool fOK =
-          add_output_writer(_accumulated_video_writer,
-              _output_options.output_accumulated_video_options,
-              "accw",
-              ".ser");
-
-      if( !fOK ) {
-        CF_ERROR("Can not open output writer '%s'",
-            _accumulated_video_writer.filename().c_str());
-        return false;
-      }
-
-      _average2.compute(image1, mask1);
-
-      if( !_accumulated_video_writer.write(image1, mask1) ) {
-        CF_ERROR("accumulated_video_writer_.write() fails");
-        return false;
-      }
-    }
-
-  }
-
-  return true;
-}
 
 void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {

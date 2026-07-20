@@ -31,6 +31,13 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  bool initialize() final
+  {
+    _anscombe.set_method(anscombe_none);
+    return true;
+  }
+
+protected:
   DISPLAY _display = DISPLAY_RESTORED_IMAGE;
   enum color_channel_type _intensity_channel = color_channel_gray;
   double _S1_gain = 1;

@@ -1418,11 +1418,10 @@ public:
   typedef c_feature2d_triangle_extractor this_class;
   typedef c_feature2d_base base;
 
-  struct options : public base::options
+  struct options : public base::options,
+    public c_triangle_extractor_options
   {
     using feature2d_class = this_class;
-    int max_points = 20;
-    int min_side_size = 20;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -1434,7 +1433,7 @@ protected:
   c_feature2d_triangle_extractor(const options * opts) :
       base(&this->_opts), _opts(opts ? *opts : options())
   {
-    _feature2d = c_triangle_extractor::create(_opts.max_points, _opts.min_side_size);
+    _feature2d = c_triangle_extractor::create(_opts);
   }
 
 protected:

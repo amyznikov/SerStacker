@@ -72,20 +72,6 @@ public:
     MASK
   };
 
-//  enum MASK_MODE {
-//    MASK_MODE_KEEP,
-//    MASK_MODE_REPLACE,
-//    MASK_MODE_AND,
-//    MASK_MODE_OR,
-//    MASK_MODE_XOR,
-//    MASK_MODE_NAND,
-//    MASK_MODE_NOR,
-//    MASK_MODE_NXOR,
-//    MASK_MODE_ANDN,
-//    MASK_MODE_ORN,
-//    MASK_MODE_XORN,
-//  };
-
   static void register_class_factory(const class_factory * class_factory);
   static void register_all();
 

@@ -46,12 +46,12 @@ FEATURE2D_MATCHER_TYPE c_sparse_feature_extractor_and_matcher::matcher_type() co
   return _options.matcher.type;
 }
 
-const cv::Mat & c_sparse_feature_extractor_and_matcher::referece_descriptors() const
+const cv::Mat & c_sparse_feature_extractor_and_matcher::reference_descriptors() const
 {
   return _reference_descriptors;
 }
 
-const std::vector<cv::KeyPoint> & c_sparse_feature_extractor_and_matcher::referece_keypoints() const
+const std::vector<cv::KeyPoint> & c_sparse_feature_extractor_and_matcher::reference_keypoints() const
 {
   return _reference_keypoints;
 }

@@ -10,6 +10,16 @@
 #include <core/debug.h>
 
 
+bool serialize_lpg_options(c_config_setting section, bool save, c_lpg_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, k);
+  SERIALIZE_OPTION(section, save, opts, p);
+  SERIALIZE_OPTION(section, save, opts, dscale);
+  SERIALIZE_OPTION(section, save, opts, uscale);
+  return true;
+}
+
+
 bool load_settings(c_config_setting settings, c_lpg_options * opts)
 {
   LOAD_OPTION(settings, *opts, k);

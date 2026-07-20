@@ -227,5 +227,4 @@ protected:
   int _accumulated_frames = 0;
 };
 
-
 #endif /* __c_frame_stacking_h__ */

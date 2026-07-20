@@ -783,20 +783,25 @@ double c_ecch::max_eps() const
   return _opts.epsx;
 }
 
-void c_ecch::set_min_rho(double v)
-{
-  _opts.min_rho = v;
-}
-
-double c_ecch::min_rho() const
-{
-  return _opts.min_rho;
-}
+//void c_ecch::set_min_rho(double v)
+//{
+//  _opts.min_rho = v;
+//}
+//
+//double c_ecch::min_rho() const
+//{
+//  return _opts.min_rho;
+//}
 
 double c_ecch::eps() const
 {
   return _pyramid.empty() ? -1 : _pyramid.front()->eps();
 }
+
+//double c_ecch::rho() const
+//{
+//  return _pyramid.empty() ? -1 : _pyramid.front()->();
+//}
 
 int c_ecch::num_iterations() const
 {
@@ -2672,7 +2677,7 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
 bool serialize_ecch_options(c_config_setting section, bool save, c_ecch_options & opts)
 {
   SERIALIZE_OPTION(section, save, opts, epsx);
-  SERIALIZE_OPTION(section, save, opts, min_rho);
+  // SERIALIZE_OPTION(section, save, opts, min_rho);
   SERIALIZE_OPTION(section, save, opts, reference_smooth_sigma);
   SERIALIZE_OPTION(section, save, opts, input_smooth_sigma);
   SERIALIZE_OPTION(section, save, opts, update_step_scale);
@@ -2681,5 +2686,20 @@ bool serialize_ecch_options(c_config_setting section, bool save, c_ecch_options 
   SERIALIZE_OPTION(section, save, opts, max_iterations);
   SERIALIZE_OPTION(section, save, opts, minimum_image_size);
   SERIALIZE_OPTION(section, save, opts, maxlevel);
-  return false;
+  return true;
+}
+
+bool serialize_eccflow_options(c_config_setting section, bool save, c_eccflow_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, downscale);
+  SERIALIZE_OPTION(section, save, opts, min_image_size);
+  SERIALIZE_OPTION(section, save, opts, max_pyramid_level);
+  SERIALIZE_OPTION(section, save, opts, noise_level);
+  SERIALIZE_OPTION(section, save, opts, support_scale);
+  SERIALIZE_OPTION(section, save, opts, max_iterations);
+  SERIALIZE_OPTION(section, save, opts, input_smooth_sigma);
+  SERIALIZE_OPTION(section, save, opts, reference_smooth_sigma);
+  SERIALIZE_OPTION(section, save, opts, update_multiplier);
+  SERIALIZE_OPTION(section, save, opts, scale_factor);
+  return true;
 }

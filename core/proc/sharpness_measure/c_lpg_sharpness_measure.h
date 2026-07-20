@@ -27,6 +27,7 @@ struct c_lpg_options
   int uscale = 6;
 };
 
+bool serialize_lpg_options(c_config_setting section, bool save, c_lpg_options & opts);
 bool load_settings(c_config_setting settings, c_lpg_options * cfg);
 bool save_settings(c_config_setting settings, const c_lpg_options & c);
 

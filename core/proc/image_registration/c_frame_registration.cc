@@ -601,7 +601,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
 
       _ecch.set_method(_options.ecc.ecc_method);
       _ecch.set_max_eps(_options.ecc.eps);
-      _ecch.set_min_rho(_options.ecc.min_rho);
+      // _ecch.set_min_rho(_options.ecc.min_rho);
       _ecch.set_input_smooth_sigma(_options.ecc.input_smooth_sigma);
       _ecch.set_reference_smooth_sigma(_options.ecc.reference_smooth_sigma);
       _ecch.set_update_step_scale(_options.ecc.update_step_scale);
@@ -836,8 +836,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
           _ecch.reference_image(), _ecch.reference_mask(),
           _ecch.create_remap());
 
-      if( rho < 0.75 * _ecch.min_rho() ) {
-        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _ecch.min_rho());
+      if( rho < 0.75 * _options.ecc.min_rho ) {
+        CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
         _ecch.set_image_transform(_image_transform.get());
         return false;
       }
@@ -859,8 +859,8 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
         _ecch.reference_image(), _ecch.reference_mask(),
         _ecch.create_remap());
 
-    if( rho < _ecch.min_rho() ) {
-      CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _ecch.min_rho());
+    if( rho < _options.ecc.min_rho ) {
+      CF_ERROR("Poor image correlation after align : rho = %g / %g", rho, _options.ecc.min_rho);
       return false;
     }
 
@@ -944,7 +944,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
       _current_status.timings.estimate_feature_transform,
       _current_status.timings.extract_ecc_image,
 
-      rho, _ecch.min_rho(),
+      rho, _options.ecc.min_rho,
       _ecch.eps(), _ecch.max_eps(),
       _ecch.num_iterations(), _ecch.max_iterations(),
       _current_status.timings.ecc_align, _current_status.timings.ecc_align / (_ecch.num_iterations() + 1),
@@ -1133,8 +1133,8 @@ bool c_frame_registration::extract_reference_features(cv::InputArray reference_i
       return false;
     }
 
-    CF_DEBUG("reference_keypoints: %zu", _sparse_feature_extractor_and_matcher->referece_keypoints().size());
-    if ( _sparse_feature_extractor_and_matcher->referece_keypoints().empty() ) {
+    CF_DEBUG("reference_keypoints: %zu", _sparse_feature_extractor_and_matcher->reference_keypoints().size());
+    if ( _sparse_feature_extractor_and_matcher->reference_keypoints().empty() ) {
       CF_ERROR("No sparse keypoints extracted");
       return false;
     }
@@ -1180,7 +1180,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
       estimate_image_transform(current_transform,
           _sparse_feature_extractor_and_matcher->matched_current_positions(),
           _sparse_feature_extractor_and_matcher->matched_reference_positions(),
-          &_options.feature_registration.estimate_options);
+          _options.feature_registration.estimate_options);
   if( !transformEstimated ) {
     CF_ERROR("estimate_image_transform() fails");
     return false;
@@ -1195,7 +1195,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
 
       // Get more matches if possible
 
-      const size_t num_referece_keypoints = _sparse_feature_extractor_and_matcher->referece_keypoints().size();
+      const size_t num_referece_keypoints = _sparse_feature_extractor_and_matcher->reference_keypoints().size();
       const size_t num_current_keypoints = _sparse_feature_extractor_and_matcher->current_keypoints().size();
       const size_t available_pts = std::min(num_referece_keypoints, num_current_keypoints);
 
@@ -1204,8 +1204,8 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
         std::vector<cv::Point2f> rpos, rrpos;
         std::vector<cv::Point2f> mrpos, mcpos;
 
-        rpos.reserve(_sparse_feature_extractor_and_matcher->referece_keypoints().size());
-        for( const cv::KeyPoint & kp : _sparse_feature_extractor_and_matcher->referece_keypoints() ) {
+        rpos.reserve(_sparse_feature_extractor_and_matcher->reference_keypoints().size());
+        for( const cv::KeyPoint & kp : _sparse_feature_extractor_and_matcher->reference_keypoints() ) {
           rpos.emplace_back(kp.pt);
         }
 
@@ -1240,7 +1240,7 @@ bool c_frame_registration::estimate_feature_transform(cv::InputArray current_ima
 
         transformEstimated =
             estimate_image_transform(current_transform, mcpos, mrpos,
-                &_options.feature_registration.estimate_options);
+                _options.feature_registration.estimate_options);
         if( !transformEstimated ) {
           CF_ERROR("estimate_image_transform(mcpos, mrpos) fails");
           return false;

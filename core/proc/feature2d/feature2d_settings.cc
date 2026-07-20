@@ -688,19 +688,19 @@ bool load_settings(c_config_setting settings, c_snorm_based_feature2d_matcher_op
   return true;
 }
 
-bool save_settings(c_config_setting settings, const c_triangle_matcher_options & args)
-{
-  SAVE_SETINGS(eps);
-  return true;
-}
-
-bool load_settings(c_config_setting settings, c_triangle_matcher_options * args)
-{
-  BEGIN_LOAD_OPTIONS(settings)
-  LOAD_OPTIONS(settings, *args, eps);
-  END_LOAD_OPTIONS(settings)
-  return true;
-}
+//bool save_settings(c_config_setting settings, const c_triangle_matcher_options & args)
+//{
+//  SAVE_SETINGS(eps);
+//  return true;
+//}
+//
+//bool load_settings(c_config_setting settings, c_triangle_matcher_options * args)
+//{
+//  BEGIN_LOAD_OPTIONS(settings)
+//  LOAD_OPTIONS(settings, *args, eps);
+//  END_LOAD_OPTIONS(settings)
+//  return true;
+//}
 
 
 bool save_settings(c_config_setting settings, const c_flann_linear_index_options & args)

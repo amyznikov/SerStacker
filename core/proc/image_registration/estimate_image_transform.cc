@@ -39,7 +39,7 @@ const c_enum_member * members_of<ROBUST_METHOD>()
 bool estimate_translation(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
   cv::Vec2f T;
 
@@ -67,7 +67,7 @@ bool estimate_translation(c_image_transform * transform,
     double mx = 0, my = 0, sx = 0, sy = 0;
     int c = 0;
 
-    for( int iteration = 0; iteration < opts->scaled_euclidean.maxIters; ++iteration ) {
+    for( int iteration = 0; iteration < opts.translation.max_iterations; ++iteration ) {
 
       mx = 0, my = 0, sx = 0, sy = 0;
       c = 0;
@@ -101,8 +101,7 @@ bool estimate_translation(c_image_transform * transform,
 
       int blacklisted = 0;
 
-      const double f =
-          opts->translation.rmse_factor;
+      const double f = opts.translation.rmse_factor;
 
       for( uint i = 0; i < n; ++i ) {
         if( !blacklist[i] ) {
@@ -139,7 +138,7 @@ bool estimate_translation(c_image_transform * transform,
 bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
 
   if( matched_current_positions.size() < 2 ) {
@@ -150,11 +149,11 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
   const cv::Mat affine_matrix =
       cv::estimateAffinePartial2D(matched_reference_positions, matched_current_positions,
           cv::noArray(),
-          opts->scaled_euclidean.method,
-          opts->scaled_euclidean.ransacReprojThreshold,
-          opts->scaled_euclidean.maxIters,
-          opts->scaled_euclidean.confidence,
-          opts->scaled_euclidean.refineIters);
+          opts.scaled_euclidean.method,
+          opts.scaled_euclidean.ransacReprojThreshold,
+          opts.scaled_euclidean.maxIters,
+          opts.scaled_euclidean.confidence,
+          opts.scaled_euclidean.refineIters);
 
   if( affine_matrix.empty() ) {
     CF_ERROR("estimateAffinePartial2D() fails");
@@ -203,7 +202,7 @@ bool estimate_total_euclidean_transform(c_euclidean_image_transform * transform,
 bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
   // matched_current_positions[i] =
   //  Rotation * matched_reference_positions[i] + Translation
@@ -222,7 +221,7 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
   inliers.create(matched_current_positions.size(), 1);
   inliers.setTo(255);
 
-  for ( int iteration = 0; iteration < opts->euclidean.max_iterations; ++iteration ) {
+  for ( int iteration = 0; iteration < opts.euclidean.max_iterations; ++iteration ) {
 
     static const auto toVec2f =
         [](const cv::Scalar & s) -> cv::Vec2f {
@@ -344,8 +343,7 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
         sqrt(cloud_scale), sqrt(rmse));
 
 
-    const double rmse_threshold =
-        opts->euclidean.rmse_threshold;
+    const double rmse_threshold = opts.euclidean.rmse_threshold;
 
     if( rmse / cloud_scale < rmse_threshold ) {
       CF_DEBUG("[%d] break on small rmss  %g on threshold %g", iteration,
@@ -377,7 +375,7 @@ bool estimate_translation_and_rotation(c_euclidean_image_transform * transform,
 bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
 
   const bool estimate_translation_only =
@@ -440,7 +438,7 @@ bool estimate_euclidean_transform(c_euclidean_image_transform * transform,
 bool estimate_affine_transform(c_affine_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
 
   if( matched_current_positions_.size() < 3 ) {
@@ -450,11 +448,11 @@ bool estimate_affine_transform(c_affine_image_transform * transform,
 
   const cv::Mat affine_matrix =
       cv::estimateAffine2D(matched_reference_positions, matched_current_positions_,
-          cv::noArray(), opts->affine.method,
-          opts->affine.ransacReprojThreshold,
-          opts->affine.maxIters,
-          opts->affine.confidence,
-          opts->affine.refineIters);
+          cv::noArray(), opts.affine.method,
+          opts.affine.ransacReprojThreshold,
+          opts.affine.maxIters,
+          opts.affine.confidence,
+          opts.affine.refineIters);
 
   if( affine_matrix.empty() ) {
     CF_ERROR("estimateAffine2D() fails");
@@ -469,7 +467,7 @@ bool estimate_affine_transform(c_affine_image_transform * transform,
 bool estimate_homography_transform(c_homography_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
 
   if( matched_current_positions_.size() < 3 ) {
@@ -479,11 +477,11 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
 
   const cv::Mat homography =
       cv::findHomography(matched_reference_positions, matched_current_positions_,
-          opts->homography.method,
-          opts->homography.ransacReprojThreshold,
+          opts.homography.method,
+          opts.homography.ransacReprojThreshold,
           cv::noArray(),
-          opts->homography.maxIters,
-          opts->homography.confidence);
+          opts.homography.maxIters,
+          opts.homography.confidence);
 
   if( homography.empty() ) {
     CF_ERROR("findHomography() fails");
@@ -500,7 +498,7 @@ bool estimate_homography_transform(c_homography_image_transform * transform,
 bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
   const int N =
       matched_current_positions.size();
@@ -589,7 +587,7 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
         s = s / (2 * n);
 
         const double f =
-            opts->semi_quadratic.rmse_factor * opts->semi_quadratic.rmse_factor;
+            opts.semi_quadratic.rmse_factor * opts.semi_quadratic.rmse_factor;
 
         for( int i = 0, j = 0; i < n; ++i ) {
           if( inliers[i] ) {
@@ -624,7 +622,7 @@ bool estimate_semi_quadratic_transform(c_semi_quadratic_image_transform * transf
 bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
   const int N =
       matched_current_positions.size();
@@ -716,8 +714,7 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
 
         s = s / (2 * n);
 
-        const double f =
-            opts->quadratic.rmse_factor * opts->quadratic.rmse_factor;
+        const double f = opts.quadratic.rmse_factor * opts.quadratic.rmse_factor;
 
         for( int i = 0, j = 0; i < n; ++i ) {
           if( inliers[i] ) {
@@ -751,21 +748,21 @@ bool estimate_quadratic_transform(c_quadratic_image_transform * transform,
 bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions_,
     const std::vector<cv::Point2f> & matched_reference_positions_,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
+//
+//  if ( !opts ) {
+//    CF_ERROR("No camera matrix specified, the estimation of epipolar derotation requires known camera matrix");
+//    return false;
+//  }
+//
 
-  if ( !opts ) {
-    CF_ERROR("No camera matrix specified, the estimation of epipolar derotation requires known camera matrix");
-    return false;
-  }
-
-
-  cv::Vec3d A = opts->epipolar_derotation.initial_rotation * CV_PI / 180; //(0, 0, 0);
-  cv::Vec3d T = opts->epipolar_derotation.initial_translation; // (0,0, 1);
+  cv::Vec3d A = opts.epipolar_derotation.initial_rotation * CV_PI / 180; //(0, 0, 0);
+  cv::Vec3d T = opts.epipolar_derotation.initial_translation; // (0,0, 1);
   cv::Mat1b inliers;
 
   const cv::Matx33d & camera_matrix =
-      opts->epipolar_derotation.camera_intrinsics.camera_matrix;
+      opts.epipolar_derotation.camera_intrinsics.camera_matrix;
 
   bool fOk =
       lm_refine_camera_pose(A, T,
@@ -773,7 +770,7 @@ bool estimate_epipolar_derotation(c_epipolar_derotation_image_transform * transf
           matched_current_positions_,
           matched_reference_positions_,
           inliers,
-          &opts->epipolar_derotation.camera_pose);
+          &opts.epipolar_derotation.camera_pose);
 
   if ( !fOk ) {
     CF_ERROR("lm_refine_camera_pose2() fails");
@@ -804,7 +801,7 @@ bool estimate_prh_transform(c_epipolar_derotation_image_transform * transform,
 bool estimate_image_transform(c_image_transform * transform,
     const std::vector<cv::Point2f> & matched_current_positions,
     const std::vector<cv::Point2f> & matched_reference_positions,
-    const c_estimate_image_transform_options * opts)
+    const c_estimate_image_transform_options & opts)
 {
   if ( !transform ) {
     CF_ERROR("No image transform specified");
@@ -867,6 +864,88 @@ bool estimate_image_transform(c_image_transform * transform,
   }
 
   return false;
+}
+
+bool estimate_image_transform(c_image_transform * transform,
+    const std::vector<cv::KeyPoint> & current_keypoints,
+    const std::vector<cv::KeyPoint> & reference_keypoints,
+    const std::vector<cv::DMatch> & sparse_matches,
+    const c_estimate_image_transform_options & opts)
+{
+  std::vector<cv::Point2f> current_positions, reference_positions;
+
+  for( const cv::DMatch &m : sparse_matches ) {
+    const cv::KeyPoint & ckp = current_keypoints[m.queryIdx];
+    const cv::KeyPoint & rkp = reference_keypoints[m.trainIdx];
+    current_positions.emplace_back(ckp.pt);
+    reference_positions.emplace_back(rkp.pt);
+  }
+
+  bool transformEstimated =
+      estimate_image_transform(transform,
+          current_positions, reference_positions,
+          opts);
+
+  if ( transformEstimated ) {
+
+    const size_t num_current_keypoints = current_keypoints.size();
+    const size_t num_referece_keypoints = reference_keypoints.size();
+    const size_t available_pts = std::min(num_current_keypoints, num_referece_keypoints);
+    if( available_pts > sparse_matches.size() ) {
+
+      std::vector<cv::Point2f> rpos, rrpos;
+
+      rpos.reserve(reference_keypoints.size());
+      for( const cv::KeyPoint & kp : reference_keypoints ) {
+        rpos.emplace_back(kp.pt);
+      }
+
+      if( !transform->remap(rpos, rrpos) ) {
+        CF_ERROR("transform->remap(rpos, rrpos) fails");
+        return false;
+      }
+
+      const std::vector<cv::KeyPoint> & cpts = current_keypoints;
+      const double eps = 1.5 * 1.5;
+
+      current_positions.clear();
+      reference_positions.clear();
+
+      for( int i = 0, ni = (int) rrpos.size(); i < ni; ++i ) {
+        const cv::Point2f rrp = rrpos[i];
+
+        double d2min = DBL_MAX;
+        int jmin = -1;
+
+        for( int j = 0, nj = (int) cpts.size(); j < nj; ++j ) {
+          const cv::Point2f cp = cpts[j].pt;
+          const double d2 = (cp.x - rrp.x) * (cp.x - rrp.x) + (cp.y - rrp.y) * (cp.y - rrp.y);
+          if( d2 < d2min ) {
+            d2min = d2;
+            jmin = j;
+          }
+        }
+
+        if( jmin >= 0 && d2min < eps ) {
+          current_positions.emplace_back(cpts[jmin].pt);
+          reference_positions.emplace_back(rpos[i]);
+        }
+      }
+
+      transformEstimated =
+          estimate_image_transform(transform,
+              current_positions, reference_positions,
+              opts);
+      if( !transformEstimated ) {
+        CF_ERROR("Re-estimate image transform using %zu points fails", current_positions.size());
+      }
+      else {
+        CF_DEBUG("Re-estimated using %zu point pairs", current_positions.size());
+      }
+    }
+  }
+
+  return transformEstimated;
 }
 
 bool save_settings(c_config_setting settings, const c_estimate_image_transform_options& opts)

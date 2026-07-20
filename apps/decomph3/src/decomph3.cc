@@ -365,8 +365,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  CF_DEBUG("reference_keypoints: %zu", matcher->referece_keypoints().size());
-  if ( matcher->referece_keypoints().size() < 4 ) {
+  CF_DEBUG("reference_keypoints: %zu", matcher->reference_keypoints().size());
+  if ( matcher->reference_keypoints().size() < 4 ) {
     CF_ERROR("No enough reference keypoints extracted");
     return 1;
   }

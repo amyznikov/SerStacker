@@ -630,21 +630,6 @@ bool c_image_stacking_pipeline::run_pipeline()
   //      output_path_.c_str(),
   //      cname()));
 
-//  const bool do_planetary_disk_derotation =
-//      _stacking_options.registration.enabled &&
-//      _stacking_options.registration.planetary_disk_derotation.derotation_type != planetary_disk_derotation_disabled;
-//
-//  if ( do_planetary_disk_derotation ) {
-//    if( !(fOk = run_planetary_disk_derotation()) ) {
-//      CF_ERROR("run_planetary_disk_derotation() fails");
-//    }
-//  }
-//  else {
-//    if( !(fOk = run_image_stacking()) ) {
-//      CF_ERROR("run_image_stacking() fails");
-//    }
-//  }
-
   if( !(fOk = run_image_stacking()) ) {
     CF_ERROR("run_image_stacking() fails");
   }
@@ -980,6 +965,31 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
 {
   set_status_msg("SELECT REFERENCE FRAME ...");
 
+  if ( _input_sequence->is_live() ) {
+
+    // Select first available frame as master
+    if( !read_input_frame(_input_sequence, _input_options, reference_frame, reference_mask, false, true) ) {
+      CF_ERROR("read_input_frame() fails");
+      return false;
+    }
+
+    _input_bpp = _input_sequence->bpp();
+
+    if ( reference_timestamp ) {
+      * reference_timestamp = _input_sequence->last_ts();
+    }
+
+    if( !select_image_roi(_roi_selection, reference_frame, reference_mask, reference_frame, reference_mask) ) {
+      CF_FATAL("select_image_roi(reference_frame) fails");
+      return false;
+    }
+
+    return true;
+  }
+
+
+
+
   c_input_sequence::sptr master_sequence;
 
   int master_source_index = -1;
@@ -1130,8 +1140,8 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     return false;
   }
 
-  * output_reference_timestamp =
-      input_sequence->last_ts();
+  _input_bpp = input_sequence->bpp();
+  * output_reference_timestamp = input_sequence->last_ts();
 
   if( canceled() ) {
     return false;
@@ -1382,6 +1392,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       set_status_msg("read_input_frame() fails");
       break;
     }
+
+    _input_bpp = input_sequence->bpp();
 
     time_read = (t1 = get_realtime_ms()) - t0, t0 = t1;
     if ( canceled() ) {
@@ -2063,6 +2075,10 @@ bool c_image_stacking_pipeline::get_display_image(cv::OutputArray dst, cv::Outpu
           CF_ERROR("frame_accumulation_->compute() fails");
           return false;
         }
+        if ( _input_bpp > 1 ) {
+          cv::multiply(dst, cv::Scalar::all(1 << _input_bpp), dst);
+        }
+
         return true;
       }
       break;

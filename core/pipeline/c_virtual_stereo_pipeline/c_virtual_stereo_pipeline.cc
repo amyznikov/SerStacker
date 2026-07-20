@@ -1464,6 +1464,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   }
 
   c_homography_image_transform homography;
+  c_estimate_image_transform_options default_opts;
   //c_homography_ecc_motion_model model(&homography);
   //c_ecc_forward_additive ecc(&homography);
   c_ecch ecch(&homography);
@@ -1487,7 +1488,7 @@ bool c_virtual_stereo_pipeline::create_homography_display(cv::OutputArray displa
   ecch.set_minimum_image_size(64);
   ecch.set_maxlevel(-1);
 
-  if ( !estimate_image_transform(&homography, _matched_current_positions, _matched_previous_positions) ) {
+  if ( !estimate_image_transform(&homography, _matched_current_positions, _matched_previous_positions, default_opts) ) {
     CF_ERROR("estimate_image_transform() fails");
   }
 

@@ -31,6 +31,21 @@ public:
 
   void detect(cv::InputArray _src, std::vector<cv::KeyPoint> & keypoints, cv::InputArray _mask) final;
 
+  const c_simple_star_detector & detector() const
+  {
+    return _detector;
+  }
+
+  const c_simple_star_detector_options & options() const
+  {
+    return _detector.options();
+  }
+
+  void set_options(const c_simple_star_detector_options & opts)
+  {
+    _detector.set_options(opts);
+  }
+
 protected:
   c_simple_star_detector _detector;
 };

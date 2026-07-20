@@ -20,7 +20,7 @@ enum anscombe_method
 
 struct c_anscombe_transform_options
 {
-  enum anscombe_method method = anscombe_native;
+  enum anscombe_method method = anscombe_none;
   struct c_generalized_anscombe_transform_params {
     double g = 1; // stupid default stub
     double c = 3.0 / 8.0; // stupid default stub

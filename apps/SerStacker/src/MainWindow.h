@@ -52,7 +52,6 @@ private:
   void setupStackTreeView();
   void setupStackOptionsView();
   void setupInputSequenceView();
-  void setupPipelineProgressView();
   void setupStatusbar();
   void setupGeoView();
   void showImageViewOptions(bool show);

@@ -8,6 +8,8 @@
 #include "c_running_average_pipeline.h"
 #include <core/proc/unsharp_mask.h>
 #include <core/io/load_image.h>
+#include <core/io/save_image.h>
+#include <core/readdir.h>
 
 c_running_average_pipeline::c_running_average_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
@@ -84,6 +86,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
     SERIALIZE_OPTION(section, save, _output_options, default_display_type);
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
+    SERIALIZE_OPTION(section, save, _output_options, output_file_name);
 
     SERIALIZE_OPTION(section, save, _output_options, save_accumulated_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "output_incremental_video_options")) ) {
@@ -162,6 +165,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "display_type", ctx(&S::default_display_type), "");
   ctlbind(ctls, "display_scale", ctx(&S::display_scale), "");
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
+  ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
   ctlbind_expandable_group(ctls, "Save accumulated video");
     ctlbind(ctls, "save_accumulated_video", ctx(&S::save_accumulated_video), "");
@@ -227,6 +231,52 @@ bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeli
   p->_eccflow.copy_parameters(_eccflow);
 
   return true;
+}
+
+std::string c_running_average_pipeline::generate_output_file_name() const
+{
+  std::string output_file_name_postfix = ".accumulator";
+
+  std::string output_file_name = _output_options.output_file_name;
+  if( output_file_name.empty() ) {
+
+    output_file_name =
+        ssprintf("%s/%s%s.32F.tiff",
+            _output_path.c_str(),
+            csequence_name(),
+            output_file_name_postfix.c_str());
+  }
+  else {
+
+    std::string path, name, suffix;
+
+    split_pathfilename(output_file_name, &path, &name, &suffix);
+
+    if( path.empty() ) {
+      path = _output_path;
+    }
+    else if( !is_absolute_path(path) ) {
+      path = ssprintf("%s/%s", _output_path.c_str(), path.c_str());
+    }
+
+    if( name.empty() ) {
+      name = ssprintf("%s%s", csequence_name(),
+          output_file_name_postfix.c_str());
+    }
+
+    if( suffix.empty() || suffix.back() == '.' ) {
+      suffix = ".tiff";
+    }
+
+    output_file_name =
+        ssprintf("%s/%s%s",
+            path.c_str(),
+            name.c_str(),
+            suffix.c_str());
+  }
+
+
+  return output_file_name;
 }
 
 
@@ -375,6 +425,21 @@ bool c_running_average_pipeline::run_pipeline()
     }
   }
 
+  if ( _average.accumulated_frames() > 0 ) {
+    if ( !_average.compute(_current_image, _current_mask) ) {
+      CF_ERROR("_average.compute() fails for output image");
+    }
+    else {
+      const std::string output_file_name = generate_output_file_name();
+      if ( save_image(_current_image, _current_mask, output_file_name) ) {
+        CF_DEBUG("Saved %s", output_file_name.c_str());
+      }
+      else {
+        CF_ERROR("save_image() fails for %s", output_file_name.c_str());
+      }
+    }
+  }
+
   return true;
 }
 
@@ -409,6 +474,7 @@ bool c_running_average_pipeline::process_current_frame()
 
     cv::Mat current_image, current_mask, reference_image, reference_mask;
     cv::Mat reference_image_crop, reference_mask_crop;
+    cv::Mat weights;
     cv::Mat2f rmap;
 
     if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
@@ -429,6 +495,8 @@ bool c_running_average_pipeline::process_current_frame()
 
     reference_image_crop = reference_image(bbox);
     reference_mask_crop = reference_mask(bbox);
+
+    _image_transform->reset();
 
     if( _registration_options.enable_star_registration ) {
 
@@ -493,9 +561,16 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
+
+    if ( _average_options.lpg.k >= 0 ) {
+      compute_weights(_current_image, _current_mask, weights);
+    }
+
     if ( true ) {
+      const cv::Mat w = weights.empty() ? _current_mask : weights;
+
       lock_guard lock(mutex());
-      if ( !_average.add(_current_image, _current_mask, _average_options.running_weight, &rmap) ) {
+      if ( !_average.add(_current_image, w, _average_options.running_weight, &rmap) ) {
         CF_ERROR("average_add() fails");
         return false;
       }

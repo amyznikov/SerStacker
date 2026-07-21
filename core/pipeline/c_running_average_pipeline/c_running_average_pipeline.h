@@ -62,6 +62,7 @@ struct c_running_average_output_options:
   bool save_reference_video = false;
   c_output_frame_writer_options output_accumulated_video_options;
   c_output_frame_writer_options output_reference_video_options;
+  std::string output_file_name;
 
 };
 
@@ -91,6 +92,7 @@ protected:
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool process_current_frame();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
+  std::string generate_output_file_name() const;
 
 protected:
   c_running_average_input_options _input_options;

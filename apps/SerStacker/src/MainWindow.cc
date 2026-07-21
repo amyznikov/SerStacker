@@ -125,7 +125,6 @@ MainWindow::MainWindow()
   setupMeasures();
   setupProfileGraph();
   setupInputSequenceView();
-  setupPipelineProgressView();
   setupGeoView();
 
 
@@ -641,11 +640,11 @@ void MainWindow::onOpenVideoFileRequested(const QString & filename, int scrollTo
 
   if ( pipelineProgressView ) {
     pipelineProgressView->setImageView(nullptr);
-    inputSourceView->toolbar()->setEnabled(true);
+    // inputSourceView->toolbar()->setEnabled(true);
   }
 
   centralStackedWidget->setCurrentWidget(inputSourceView);
-  inputSourceView->toolbar()->setEnabled(true);
+  //inputSourceView->toolbar()->setEnabled(true);
 
   if( filename == inputSourceView->currentFileName() || inputSourceView->openSource(filename) ) {
     if( scrollToIndex >= 0 && inputSourceView->currentScrollpos() != scrollToIndex ) {
@@ -681,7 +680,7 @@ void MainWindow::setupFileSystemTreeView()
       [this](const QString & abspath) {
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageView(nullptr);
-          inputSourceView->toolbar()->setEnabled(true);
+          //inputSourceView->toolbar()->setEnabled(true);
         }
         centralStackedWidget->setCurrentWidget(thumbnailsView);
         thumbnailsView->displayPath(abspath);
@@ -691,7 +690,7 @@ void MainWindow::setupFileSystemTreeView()
       [this](const QString & abspath) {
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageView(nullptr);
-          inputSourceView->toolbar()->setEnabled(true);
+          // inputSourceView->toolbar()->setEnabled(true);
         }
         if ( centralStackedWidget->currentWidget() != thumbnailsView ) {
           centralStackedWidget->setCurrentWidget(thumbnailsView);
@@ -714,7 +713,7 @@ void MainWindow::setupThumbnailsView()
 
         if ( pipelineProgressView ) {
           pipelineProgressView->setImageView(nullptr);
-          inputSourceView->toolbar()->setEnabled(true);
+          //inputSourceView->toolbar()->setEnabled(true);
         }
 
         if ( fileSystemTreeDock ) {
@@ -791,7 +790,7 @@ void MainWindow::setupStackOptionsView()
         else {
           centralStackedWidget->setCurrentWidget(inputSourceView);
           pipelineProgressView->setImageView(inputSourceView);
-          inputSourceView->toolbar()->setEnabled(false);
+          //inputSourceView->toolbar()->setEnabled(false);
         }
       });
 
@@ -1370,7 +1369,7 @@ void MainWindow::openImage(const QString & abspath)
 
   if ( pipelineProgressView ) {
     pipelineProgressView->setImageView(nullptr);
-    inputSourceView->toolbar()->setEnabled(true);
+    //inputSourceView->toolbar()->setEnabled(true);
   }
 
   centralStackedWidget->setCurrentWidget(inputSourceView);
@@ -1456,7 +1455,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
     if ( source ) {
 
       pipelineProgressView->setImageView(nullptr);
-      inputSourceView->toolbar()->setEnabled(true);
+      //inputSourceView->toolbar()->setEnabled(true);
 
       if ( currentCentralWidget != inputSourceView ) {
         openImage(source->cfilename());
@@ -1471,7 +1470,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
 
       if( currentCentralWidget == inputSourceView/*pipelineProgressImageView*/ ) {
         pipelineProgressView->setImageView(nullptr);
-        inputSourceView->toolbar()->setEnabled(true);
+        //inputSourceView->toolbar()->setEnabled(true);
         pipelineOptionsView->set_current_sequence(sequence);
         centralStackedWidget->setCurrentWidget(pipelineOptionsView);
       }
@@ -1484,7 +1483,7 @@ void MainWindow::onStackTreeItemDoubleClicked(const c_image_sequence::sptr & seq
       else {
         centralStackedWidget->setCurrentWidget(inputSourceView);
         pipelineProgressView->setImageView(inputSourceView);
-        inputSourceView->toolbar()->setEnabled(false);
+        //inputSourceView->toolbar()->setEnabled(false);
       }
     }
   }
@@ -1498,7 +1497,7 @@ void MainWindow::onShowImageSequenceOptions(const c_image_sequence::sptr & seque
 
     if ( pipelineProgressView ) {
       pipelineProgressView->setImageView(nullptr);
-      inputSourceView->toolbar()->setEnabled(true);
+      //inputSourceView->toolbar()->setEnabled(true);
     }
 
     pipelineOptionsView->set_current_sequence(sequence);
@@ -1510,7 +1509,7 @@ void MainWindow::onPipelineThreadStarted()
 {
   centralStackedWidget->setCurrentWidget(inputSourceView);
   pipelineProgressView->setImageView(inputSourceView);
-  inputSourceView->toolbar()->setEnabled(false);
+  //inputSourceView->toolbar()->setEnabled(false);
 
   if ( !pipelineProgressView->isVisible() ) {
     pipelineProgressView->show();
@@ -1896,7 +1895,6 @@ void MainWindow::setupInputSequenceView()
             }
 
             if ( !currentPipeline->has_master_frame() ) {
-
               QMessageBox::warning(this, "warning",
                   "Current pipeline don not use of masster frames,\n"
                   "master frame is not assigned");
@@ -1904,16 +1902,12 @@ void MainWindow::setupInputSequenceView()
             }
 
 
-            const c_input_source::sptr & currentSource =
-                inputSourceView->currentSource();
-
+            const c_input_source::sptr & currentSource = inputSourceView->currentSource();
             if ( !currentSource ) {
               return;
             }
 
-            const int source_index =
-                selectedSequence->indexof(currentSource->filename());
-
+            const int source_index = selectedSequence->indexof(currentSource->filename());
             if ( source_index < 0 ) {
               QMessageBox::warning(this, "warning",
                   "Current source is not in selected sequence,\n"
@@ -2490,55 +2484,6 @@ void MainWindow::setupInputSequenceView()
 
 
   ///////////////////////////////////////////////////////////////////////
-}
-
-void MainWindow::setupPipelineProgressView()
-{
-//  QToolBar * toolbar = pipelineProgressImageView->embedToolbar();
-//
-//  addStretch(toolbar);
-//
-//  QLabel * imageSizeLabel_ctl = new QLabel("");
-//  imageSizeLabel_ctl->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
-//  toolbar->addWidget(imageSizeLabel_ctl);
-//  connect(pipelineProgressImageView, &QProgressImageViewer::currentImageChanged, this,
-//      [this, imageSizeLabel_ctl]() {
-//        imageSizeLabel_ctl->setText(toQString(pipelineProgressImageView->currentImage().size()));
-//      });
-//
-//  toolbar->addSeparator();
-//
-//  QScaleSelectionButton * scaleSelection_ctl = new QScaleSelectionButton(this);
-//  scaleSelection_ctl->setScaleRange(QImageSceneView::MIN_SCALE, QImageSceneView::MAX_SCALE);
-//  toolbar->addWidget(scaleSelection_ctl);
-//  connect(scaleSelection_ctl, &QScaleSelectionButton::scaleChanged, this,
-//      [this](int v) {
-//        pipelineProgressImageView->setViewScale(v);
-//      });
-//
-//
-//  toolbar->addWidget(createMtfControlToolButton());
-//  toolbar->addWidget(createMtfAutoClipToolButton());
-//
-//
-//  toolbar->addSeparator();
-//
-//  toolbar->addAction(createAction(getIcon(ICON_close),
-//      "Close",
-//      "Close window",
-//      [this]() {
-//        centralStackedWidget->setCurrentWidget(thumbnailsView);
-//      },
-//      new QShortcut(QKeySequence::Cancel,
-//          pipelineProgressImageView, nullptr, nullptr,
-//          Qt::WindowShortcut)));
-//
-//
-//  connect(pipelineProgressImageView, &QImageFileEditor::onMouseMove, this,
-//      [this](QMouseEvent * e) {
-//        statusbarMousePosLabel_ctl->setText(pipelineProgressImageView->statusStringForPixel(e->pos()));
-//      });
-
 }
 
 

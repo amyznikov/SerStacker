@@ -190,10 +190,10 @@ protected:
 };
 
 
-class c_running_frame_average
+class c_running_average
 {
 public:
-  typedef c_running_frame_average this_class;
+  typedef c_running_average this_class;
   typedef std::shared_ptr<this_class> ptr;
 
   int accumulated_frames() const

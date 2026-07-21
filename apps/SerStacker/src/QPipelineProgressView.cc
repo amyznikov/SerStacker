@@ -73,7 +73,14 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
 
 void QPipelineProgressView::setImageView(QInputSourceView * imageView)
 {
-  this->_imageView = imageView;
+  if ( _imageView ) {
+    _imageView->toolbar()->setEnabled(true);
+  }
+
+  if ( (_imageView = imageView) ) {
+    _imageView->toolbar()->setEnabled(false);
+  }
+
   updateAccumulatedImageDisplay(true);
 }
 

@@ -852,9 +852,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
   //    }
 
 
-      output_file_name =
-          generate_output_file_name();
-
+      output_file_name = generate_output_file_name();
       CF_DEBUG("Saving '%s'", output_file_name.c_str());
       if ( !write_image(_output_file_name = output_file_name, _output_options, accumulated_image, accumulated_mask) ) {
         CF_ERROR("write_image('%s') fails", output_file_name.c_str());

@@ -6,6 +6,7 @@
  */
 
 #include "c_frame_accumulation.h"
+#include <core/proc/pixtype.h>
 #include <core/proc/fft.h>
 #include <core/proc/run-loop.h>
 #include <core/proc/reduce_channels.h>
@@ -1937,29 +1938,12 @@ static bool _running_average_update(cv::InputArray _src, cv::InputArray _srcmask
   return true;
 }
 
-static bool running_average_update(cv::InputArray _src, cv::InputArray _srcmask,
-    cv::Mat & _dst, cv::Mat1f & cnt,
-    double _avgw)
+static bool running_average_update(cv::InputArray src, cv::InputArray srcmask,
+    cv::Mat & acc, cv::Mat1f & cnt,
+    double avgw)
 {
-  switch (_src.depth()) {
-    case CV_8U:
-      return _running_average_update<uint8_t>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_8S:
-      return _running_average_update<int8_t>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_16U:
-      return _running_average_update<uint16_t>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_16S:
-      return _running_average_update<int16_t>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_32S:
-      return _running_average_update<int32_t>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_32F:
-      return _running_average_update<float>(_src, _srcmask, _dst, cnt, _avgw);
-    case CV_64F:
-      return _running_average_update<double>(_src, _srcmask, _dst, cnt, _avgw);
-  }
-
-  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", _src.depth());
-
+  CV_DISPATCH(src.depth(), _running_average_update, src, srcmask, acc, cnt, avgw);
+  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", src.depth());
   return false;
 }
 
@@ -2025,5 +2009,221 @@ bool c_running_frame_average::compute(cv::OutputArray avg, cv::OutputArray mask,
 }
 
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//template<typename _Tp>
+//static bool _safeDivide(cv::InputArray _src, const cv::Mat1f & counter, cv::OutputArray _dst, cv::OutputArray _dstmask,
+//    double dscale)
+//{
+//  const cv::Mat_<_Tp> src = _src.getMat();
+//  const int rows = _src.rows();
+//  const int cols = _src.cols();
+//  const int cn = _src.channels();
+//
+//  _dst.create(rows, cols, _src.type());
+//  _dstmask.create(rows, cols, CV_8UC1);
+//
+//  cv::Mat_<_Tp> dst = _dst.getMatRef();
+//  cv::Mat1b dstmask = _dstmask.getMatRef();
+//
+//  parallel_for(0, rows, [&, cols, cn, dscale ](const auto & range) {
+//    const float scale = dscale;
+//    for (int y = rbegin(range); y < rend(range); ++y) {
+//      const _Tp* srcp = src[y];
+//      const float* cntp = counter[y];
+//      _Tp* __restrict dstp = dst[y];
+//      uint8_t * __restrict mskp = dstmask[y];
+//
+//      for (int x = 0; x < cols; ++x) {
+//        const float cval = cntp[x];
+//        mskp[x] = cval ? 255 : 0;
+//        for (int c = 0; c < cn; ++c, ++srcp) {
+//          *dstp++ = cv::saturate_cast<_Tp>( cval ? *srcp * scale / cval : 0 );
+//        }
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
+//
+//static bool safeDivide(cv::InputArray src, const cv::Mat1f & counter, cv::OutputArray dst, cv::OutputArray dstmask,
+//    double dscale)
+//{
+//  CV_DISPATCH(src.depth(), _safeDivide, src, counter, dst, dstmask, dscale);
+//  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", src.depth());
+//  return false;
+//}
+
+
+cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
+{
+  const int W = inputFrameSize.width;
+  const int H = inputFrameSize.height;
+  return cv::Size(3 * W / 2, 3 * H / 2);
+}
+
+void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap, cv::Mat1b & full_mask)
+{
+  if (_accumulator.empty() || bbox.width <= 0) {
+    return;
+  }
+
+  const int margin = 32;
+
+  if (bbox.x < margin || bbox.y < margin ||
+      (bbox.x + bbox.width) > _accumulator.cols - margin ||
+      (bbox.y + bbox.height) > _accumulator.rows - margin)
+  {
+    const int shift_x = _target_x - bbox.x;
+    const int shift_y = _target_y - bbox.y;
+
+    cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
+    cv::Mat1f new_count = cv::Mat1f::zeros(_counter.size());
+    cv::Mat2f new_rmap = cv::Mat2f::zeros(rmap.size());
+    cv::Mat1b new_mask = cv::Mat1b::zeros(full_mask.size());
+
+    const cv::Rect src_roi(std::max(0, -shift_x), std::max(0, -shift_y),
+        _accumulator.cols - std::abs(shift_x), _accumulator.rows - std::abs(shift_y));
+
+    if( !src_roi.empty() ) {
+
+      const cv::Rect dst_roi(std::max(0, shift_x), std::max(0, shift_y),
+          src_roi.width, src_roi.height);
+
+      _accumulator(src_roi).copyTo(new_accum(dst_roi));
+      _counter(src_roi).copyTo(new_count(dst_roi));
+      rmap(src_roi).copyTo(new_rmap(dst_roi));
+      full_mask(src_roi).copyTo(new_mask(dst_roi));
+    }
+
+    _accumulator = new_accum;
+    _counter = new_count;
+    rmap = new_rmap;
+    full_mask = new_mask;
+
+    bbox.x += shift_x;
+    bbox.y += shift_y;
+  }
+}
+
+
+bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap)
+{
+  if( rmap && rmap->size() != _accumulator.size() ) {
+    CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
+        rmap->cols, rmap->rows,
+        _accumulator.cols, _accumulator.rows);
+    return false;
+  }
+
+  if( _accumulator.empty() ) {
+    // very first frame
+    const cv::Size frameSize = current_image.size();
+    const cv::Size canvasSize = computeCanvasSize(frameSize);
+    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
+    _counter = cv::Mat1f::zeros(canvasSize);
+    _target_x = frameSize.width / 4;
+    _target_y = frameSize.height / 4;
+
+    const cv::Rect ROI(_target_x, _target_y, frameSize.width, frameSize.height);
+    current_image.copyTo(_accumulator(ROI));
+    _counter(ROI).setTo(1, current_mask);
+  }
+  else {
+    // not a first frame
+    cv::Mat src, mask;
+    cv::Rect bbox;
+
+    if( rmap ) {
+
+      cv::Mat1b full_mask;
+
+      cv::remap(current_mask.empty() ? cv::Mat1b(current_image.size(), 255) : current_mask, full_mask,
+          *rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+
+      bbox = cv::boundingRect(full_mask) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+      if( bbox.width <= 5 || bbox.height <= 5 ) {
+        CF_ERROR("Sanity check failed: Frame is outside the canvas boundaries!");
+        return false;
+      }
+
+      cv::Mat2f wmap = *rmap;
+      maintainCanvasBoundaries(bbox, current_image.size(), wmap, full_mask);
+
+      const int padding = 2;
+      bbox.x = std::max(0, bbox.x - padding);
+      bbox.y = std::max(0, bbox.y - padding);
+      bbox.width = std::min(_accumulator.cols - bbox.x, bbox.width + 2 * padding);
+      bbox.height = std::min(_accumulator.rows - bbox.y, bbox.height + 2 * padding);
+
+      cv::remap(current_image, src, wmap(bbox), cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
+      mask = full_mask(bbox);
+    }
+    else if( current_image.size() == _accumulator.size() ) {
+      src = current_image.getMat();
+      mask = current_mask.getMat();
+      bbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+    }
+    else {
+      CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
+          rmap->cols, rmap->rows, _accumulator.cols, _accumulator.rows);
+      return false;
+    }
+
+    cv::Mat sub_accum = _accumulator(bbox);
+    cv::Mat1f sub_counter = _counter(bbox);
+    running_average_update(src, mask, sub_accum, sub_counter, w);
+    _last_bbox = bbox;
+  }
+
+  ++_accumulated_frames;
+  return true;
+}
+
+bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
+    double dscale, int ddepth, bool return_full_canvas) const
+{
+  if ( _accumulated_frames < 1 ) {
+    return false;
+  }
+
+  const cv::Rect bbox = (return_full_canvas || _last_bbox.empty()) ?
+      cv::Rect(0, 0, _accumulator.cols, _accumulator.rows) :
+      (_last_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows));
+
+//  cv::Rect bbox;
+//  if ( return_full_canvas || _last_bbox.empty() ) {
+//    bbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+//  }
+//  else {
+//    bbox = _last_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+//  }
+
+  if ( bbox.empty() ) {
+    return false;
+  }
+
+  if ( avg.needed() ) {
+    if ( ddepth < 0 ) {
+      ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
+    }
+    _accumulator(bbox).convertTo(avg, ddepth, dscale);
+  }
+
+  if ( mask.needed() ) {
+    cv::compare(_counter(bbox), 0, mask, cv::CMP_GT);
+  }
+
+  return true;
+}
+
+void c_canvas_average::clear()
+{
+  _accumulator.release();
+  _counter.release();
+  _accumulated_frames = 0;
+  _last_bbox = cv::Rect();
+}
 

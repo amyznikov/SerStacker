@@ -61,7 +61,7 @@ static inline void computeMAD(cv::InputArray _src, cv::Scalar &outputMean, cv::S
 const std::vector<Blob> & c_simple_star_detector::detect(cv::InputArray _image,
     cv::InputArray _mask)
 {
-  cv::Mat src;
+  cv::Mat src, mask;
   cv::Mat1i labels;
   cv::Scalar Mean, MAD;
 
@@ -79,7 +79,13 @@ const std::vector<Blob> & c_simple_star_detector::detect(cv::InputArray _image,
 
 
   build_dog(src, dog, G, _opts.lvls, _opts.weight_decay);
-  computeMAD(dog, Mean, MAD, _mask);
+  if ( !_mask.empty() ) {
+    const int ksize = 2 * (1 << _opts.lvls) + 1;
+    cv::erode(_mask, mask, cv::Mat1b(ksize, ksize, 255), cv::Point(-1,-1),  1, cv::BORDER_REPLICATE);
+  }
+
+
+  computeMAD(dog, Mean, MAD, mask);
   cv::compare(dog, Mean + _opts.kmad * MAD, cc, cv::CMP_GT);
 
   if( _opts.se_radius > 0 ) {
@@ -90,8 +96,8 @@ const std::vector<Blob> & c_simple_star_detector::detect(cv::InputArray _image,
     cv::dilate(cc, cc, SE);
   }
 
-  if( !_mask.empty() ) {
-    cv::bitwise_and(_mask, cc, cc);
+  if( !mask.empty() ) {
+    cv::bitwise_and(mask, cc, cc);
   }
 
   const int N = cv::connectedComponents(cc, labels, 8, labels.type());

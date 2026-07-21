@@ -19,7 +19,7 @@
 struct c_running_average_input_options:
     c_image_stacking_pipeline_base_input_options
 {
-      c_image_processor::sptr ecc_image_processor;
+ //     c_image_processor::sptr ecc_image_processor;
 };
 
 struct c_running_average_registration_options
@@ -91,8 +91,6 @@ protected:
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool process_current_frame();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
-  bool average_add(c_running_frame_average & average, const cv::Mat & src, const cv::Mat & srcmask,
-      double avgw, const cv::Mat2f * rmap = nullptr);
 
 protected:
   c_running_average_input_options _input_options;
@@ -107,7 +105,7 @@ protected:
   c_triangle_extractor _triangle_extractor;
   c_triangle_matcher _triangle_matcher;
   c_image_transform::sptr _image_transform;
-  c_running_frame_average _average;
+  c_canvas_average _average;
 
   cv::Mat _current_image;
   cv::Mat _current_mask;

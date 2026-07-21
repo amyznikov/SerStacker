@@ -227,4 +227,59 @@ protected:
   int _accumulated_frames = 0;
 };
 
+
+class c_canvas_average
+{
+public:
+  typedef c_canvas_average this_class;
+  typedef std::shared_ptr<this_class> ptr;
+
+  int accumulated_frames() const
+  {
+    return _accumulated_frames;
+  }
+
+  cv::Size accumulator_size() const
+  {
+    return _accumulator.size();
+  }
+
+  const cv::Mat & accumulator() const
+  {
+    return _accumulator;
+  }
+
+  const cv::Mat1f & counter() const
+  {
+    return _counter;
+  }
+
+  const cv::Rect & last_bbox() const
+  {
+    return _last_bbox;
+  }
+
+  static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
+
+  bool add(cv::InputArray current_image, cv::InputArray current_mask,  double w, const cv::Mat2f * rmap = nullptr);
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
+      bool return_full_canvas = true) const;
+
+  void clear();
+
+protected:
+  //void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
+  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap, cv::Mat1b & full_mask);
+
+protected:
+  cv::Mat _accumulator;
+  cv::Mat1f _counter;
+  cv::Rect _last_bbox;
+  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4
+  int _accumulated_frames = 0;
+  int _target_x = 0;
+  int _target_y = 0;
+};
+
+
 #endif /* __c_frame_stacking_h__ */

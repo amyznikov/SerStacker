@@ -167,8 +167,8 @@ public:
 
   void reset() final;
 
-  void set_translation(const cv::Vec2f & v) override;
-  cv::Vec2f translation() const  override;
+  void set_translation(const cv::Vec2f & v) final;
+  cv::Vec2f translation() const final;
 
   void set_center(const cv::Vec2f & v);
   cv::Vec2f center() const;

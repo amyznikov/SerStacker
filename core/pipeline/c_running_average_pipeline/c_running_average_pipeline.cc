@@ -102,23 +102,12 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   return true;
 }
 
-//bool c_running_average_pipeline::ecc_ctls_enabled() const
-//{
-//  return (_registration_options.enable_ecc || _registration_options.double_align_moode);
-//}
-//
-//bool c_running_average_pipeline::eccflow_ctls_enabled() const
-//{
-//  return (_registration_options.enable_eccflow || _registration_options.double_align_moode);
-//}
-
-
 template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_input_options> & ctx)
 {
   using S = c_running_average_input_options;
-  ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
-  ctlbind(ctls, "input_image_processor", ctx(&S::input_image_processor));
+  ctlbind(ctls, as_base<c_image_stacking_pipeline_base_input_options>(ctx));
+  //ctlbind(ctls, "ecc_image_processor", ctx(&S::ecc_image_processor));
 }
 
 
@@ -213,17 +202,7 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  bool fOk = false;
-
-  if( _average.compute(display_frame, display_mask) ) {
-    fOk = true;
-  }
-
-  if ( fOk && _input_bpp > 1 ) {
-    cv::multiply(display_frame, cv::Scalar::all(1 << _input_bpp), display_frame);
-  }
-
-  return fOk;
+  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, true);
 }
 
 bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
@@ -261,12 +240,14 @@ bool c_running_average_pipeline::initialize_pipeline()
     return false;
   }
 
-  _output_path =
-      create_output_path(_output_options.output_directory);
+  _output_path = create_output_path(_output_options.output_directory);
 
   _average.clear();
   _current_image.release();
   _current_mask.release();
+  _image_transform.reset();
+  _star_extractor.clear();
+  _triangle_extractor.clear();
 
   if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
@@ -341,7 +322,7 @@ void c_running_average_pipeline::cleanup_pipeline()
 
   _ecch.clear();
   _image_transform.reset();
-  //_image_average.clear();
+  //_average.clear();
 
   _current_image.release();
   _current_mask.release();
@@ -400,34 +381,6 @@ bool c_running_average_pipeline::run_pipeline()
   return true;
 }
 
-bool c_running_average_pipeline::average_add(c_running_frame_average & average, const cv::Mat & src, const cv::Mat & srcmask,
-    double avgw, const cv::Mat2f * rmap)
-{
-  if( _average_options.lpg.k < 0 ) {
-
-    lock_guard lock(mutex());
-
-    if( !average.add(src, srcmask, avgw, rmap) ) {
-      CF_ERROR("average.add() fails");
-      return false;
-    }
-  }
-  else {
-    cv::Mat1f w;
-
-    compute_weights(src, srcmask, w);
-
-    lock_guard lock(mutex());
-
-    if( !average.add(src, w, avgw, rmap) ) {
-      CF_ERROR("average.add() fails");
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool c_running_average_pipeline::process_current_frame()
 {
   bool has_updates = true;
@@ -438,7 +391,10 @@ bool c_running_average_pipeline::process_current_frame()
           _registration_options.enable_eccflow_registration;
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
-    if ( !average_add(_average, _current_image, _current_mask, _average_options.running_weight) ) {
+
+    lock_guard lock(mutex());
+
+    if ( !_average.add(_current_image, _current_mask, _average_options.running_weight) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
@@ -457,10 +413,14 @@ bool c_running_average_pipeline::process_current_frame()
     cv::Mat current_image, current_mask, reference_image, reference_mask;
     cv::Mat2f rmap;
 
-    mkgrayscale(_current_image, reference_image);
-    reference_mask = _current_mask;
+    if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
+      CF_ERROR("_average.compute() fails");
+      return !canceled();
+    }
 
-    _average.compute(current_image, current_mask);
+    mkgrayscale(reference_image, reference_image);
+    mkgrayscale(_current_image, current_image);
+    current_mask = _current_mask;
 
     if( _registration_options.enable_star_registration ) {
 
@@ -469,12 +429,27 @@ bool c_running_average_pipeline::process_current_frame()
       std::vector<cv::DMatch> triangle_matches;
 
       _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
+      if ( reference_keypoints.size() < 3 ) {
+        CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", reference_keypoints.size());
+        return !canceled();
+      }
+
       _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
       _triangle_matcher.train(reference_keypoints, reference_descriptors);
 
+
       _star_extractor.detect(current_image, current_keypoints, current_mask);
+      if ( reference_keypoints.size() < 3 ) {
+        CF_ERROR("_star_extractor.detect(current_image) fails: current_keypoints.size=%zu", current_keypoints.size());
+        return !canceled();
+      }
+
       _triangle_extractor.compute(current_image, current_keypoints, current_descriptors);
       _triangle_matcher.match(current_keypoints, current_descriptors, triangle_matches);
+      if ( triangle_matches.size() < 1 ) {
+        CF_ERROR("_triangle_matcher.match() fails: triangle_matches.size()=%zu", triangle_matches.size());
+        return !canceled();
+      }
 
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
@@ -483,7 +458,7 @@ bool c_running_average_pipeline::process_current_frame()
 
       if( !transformEstimated ) {
         CF_ERROR("estimate_image_transform() fails");
-        return false;
+        return !canceled();
       }
     }
 
@@ -498,9 +473,8 @@ bool c_running_average_pipeline::process_current_frame()
       CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
-    _image_transform->create_remap(_current_image.size(), rmap);
+    _image_transform->create_remap(reference_image.size(), rmap);
     if( _registration_options.enable_eccflow_registration ) {
-
       _eccflow.set_reference_image(reference_image, reference_mask);
       if( !_eccflow.compute(current_image, rmap, current_mask) ) {
         CF_ERROR("_eccflow.compute() fails");
@@ -508,125 +482,17 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
-    if ( !average_add(_average, _current_image, _current_mask, _average_options.running_weight, &rmap) ) {
-      CF_ERROR("average_add() fails");
-      return false;
+    if ( true ) {
+      lock_guard lock(mutex());
+      if ( !_average.add(_current_image, _current_mask, _average_options.running_weight, &rmap) ) {
+        CF_ERROR("average_add() fails");
+        return false;
+      }
     }
   }
 
   return true;
 }
-
-//bool c_running_average_pipeline::process_current_frame()
-//{
-//  bool has_updates = true;
-//
-//  const bool enable_registration =
-//      _registration_options.enable_star_registration ||
-//          _registration_options.enable_ecc_registration ||
-//          _registration_options.enable_eccflow_registration;
-//
-//  if( !enable_registration || _average.accumulated_frames() < 1 ) {
-//
-//    lock_guard lock(mutex());
-//    _rmap_to_current.release();
-//    if( !_average.add(_current_image, _current_mask, _average_options.running_weight) ) {
-//      CF_ERROR("average_add() fails");
-//      return false;
-//    }
-//  }
-//  else {
-//
-//    static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
-//      if( src.channels() != 1 ) {
-//        cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
-//      }
-//      else if ( &src != &dst ) {
-//        dst = src;
-//      }
-//    };
-//
-//
-//    cv::Mat current_image, current_mask, reference_image, reference_mask;
-//    cv::Mat base_avg, base_mask;
-//    cv::Mat2f rmap_to_current;
-//
-//    _average.compute_base(base_avg, base_mask);
-//    _image_transform->create_remap(base_avg.size(), rmap_to_current);
-//    cv::remap(base_avg, current_image, rmap_to_current, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
-//    cv::remap(base_mask, current_mask, rmap_to_current, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-//
-//
-//    mkgrayscale(current_image, current_image);
-//
-//    mkgrayscale(_current_image, reference_image);
-//    reference_mask = _current_mask;
-//
-//    if( _registration_options.enable_star_registration ) {
-//
-//      std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
-//      cv::Mat current_descriptors, reference_descriptors;
-//      std::vector<cv::DMatch> triangle_matches;
-//
-//      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
-//      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
-//      _triangle_matcher.train(reference_keypoints, reference_descriptors);
-//
-//      _star_extractor.detect(current_image, current_keypoints, current_mask);
-//      _triangle_extractor.compute(current_image, current_keypoints, current_descriptors);
-//
-//      _triangle_matcher.match(current_keypoints, current_descriptors, triangle_matches);
-//
-//      const bool transformEstimated =
-//          estimate_image_transform(_image_transform.get(),
-//              current_keypoints, reference_keypoints, triangle_matches,
-//              _registration_options.transform_estimation);
-//
-//      if( !transformEstimated ) {
-//        CF_ERROR("estimate_image_transform() fails");
-//        return false;
-//      }
-//    }
-//
-//    if( _registration_options.enable_ecc_registration ) {
-//
-//      _ecch.set_reference_image(reference_image, reference_mask);
-//      if( !_ecch.align(current_image, current_mask) ) {
-//        CF_ERROR("_ecch.align() fails");
-//        return false;
-//      }
-//
-//      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
-//    }
-//
-//
-//    cv::Mat1f inv_p = _image_transform->invert_and_compose(cv::Mat1f::zeros(2, 1), _image_transform->parameters());
-//    cv::Mat2f rmap_to_base;
-//    _image_transform->create_remap(inv_p, _current_image.size(), rmap_to_base);
-//    cv::Mat aligned_current_image, aligned_current_mask;
-//    cv::remap(_current_image, aligned_current_image, rmap_to_base, cv::noArray(), cv::INTER_LANCZOS4, cv::BORDER_REPLICATE);
-//    cv::remap(_current_mask, aligned_current_mask, rmap_to_base, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-//
-//    if ( true ) {
-//      // must be locked for display update
-//      lock_guard lock(mutex());
-//      _rmap_to_current = rmap_to_current;
-//      _average.add(aligned_current_image, aligned_current_mask, _average_options.running_weight);
-//    }
-//
-////    Temporary disable this eccflow stuff
-////    if( _registration_options.enable_eccflow_registration ) {
-////
-////      _eccflow.set_reference_image(reference_image, reference_mask);
-////      if( !_eccflow.compute(current_image, rmap, current_mask) ) {
-////        CF_ERROR("_eccflow.compute() fails");
-////        return false;
-////      }
-////    }
-//  }
-//
-//  return true;
-//}
 
 
 void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const

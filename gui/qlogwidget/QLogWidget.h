@@ -35,11 +35,11 @@ protected Q_SLOTS:
   void onAppendText(const QString & text);
 
 protected:
+  bool eventFilter(QObject *obj, QEvent *event) override;
   static void cf_log_func(void * context, const char * msg);
 
 protected:
   QPlainTextEdit * textbox_ctl = nullptr;
-  bool ppmark = false;
 };
 
 

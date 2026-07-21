@@ -202,7 +202,7 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, true);
+  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, false);
 }
 
 bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
@@ -212,9 +212,7 @@ bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeli
     return false;
   }
 
-  this_class::sptr p =
-      std::dynamic_pointer_cast<this_class>(dst);
-
+  const this_class::sptr p = std::dynamic_pointer_cast<this_class>(dst);
   if( !p ) {
     CF_ERROR("std::dynamic_pointer_cast<this_class=%s>(dst) fails",
         get_class_name().c_str());
@@ -226,7 +224,6 @@ bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeli
   p->_average_options = this->_average_options;
   p->_output_options = this->_output_options;
   p->_ecch.copy_parameters(_ecch);
-  //p->ecc_.copy_parameters(ecc_);
   p->_eccflow.copy_parameters(_eccflow);
 
   return true;
@@ -411,6 +408,7 @@ bool c_running_average_pipeline::process_current_frame()
     };
 
     cv::Mat current_image, current_mask, reference_image, reference_mask;
+    cv::Mat reference_image_crop, reference_mask_crop;
     cv::Mat2f rmap;
 
     if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
@@ -422,19 +420,29 @@ bool c_running_average_pipeline::process_current_frame()
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
 
+    cv::Rect bbox = _average.last_bbox();
+    if ( bbox.empty() ) {
+      bbox = cv::Rect(0, 0, reference_image.cols, reference_image.rows);
+    }
+
+    CF_DEBUG("bbox: x=%d y=%d w=%d h=%d", bbox.x, bbox.y, bbox.width, bbox.height);
+
+    reference_image_crop = reference_image(bbox);
+    reference_mask_crop = reference_mask(bbox);
+
     if( _registration_options.enable_star_registration ) {
 
       std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
       cv::Mat current_descriptors, reference_descriptors;
       std::vector<cv::DMatch> triangle_matches;
 
-      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
+      _star_extractor.detect(reference_image_crop, reference_keypoints, reference_mask_crop);
       if ( reference_keypoints.size() < 3 ) {
         CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", reference_keypoints.size());
         return !canceled();
       }
 
-      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
+      _triangle_extractor.compute(reference_image_crop, reference_keypoints, reference_descriptors);
       _triangle_matcher.train(reference_keypoints, reference_descriptors);
 
 
@@ -464,7 +472,7 @@ bool c_running_average_pipeline::process_current_frame()
 
     if( _registration_options.enable_ecc_registration ) {
 
-      _ecch.set_reference_image(reference_image, reference_mask);
+      _ecch.set_reference_image(reference_image_crop, reference_mask_crop);
       if( !_ecch.align(current_image, current_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
@@ -473,7 +481,10 @@ bool c_running_average_pipeline::process_current_frame()
       CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
+
+    _image_transform->set_translation(_image_transform->translation() - cv::Vec2f(bbox.x, bbox.y));
     _image_transform->create_remap(reference_image.size(), rmap);
+
     if( _registration_options.enable_eccflow_registration ) {
       _eccflow.set_reference_image(reference_image, reference_mask);
       if( !_eccflow.compute(current_image, rmap, current_mask) ) {

@@ -503,12 +503,14 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
       const int mt = maskv[i].type();
       if( mt != CV_8UC1 && mt != CV_MAKETYPE(CV_8U, cn) ) {
         CF_ERROR("Invalid input mask type (%d) for mask index %zu", mt, i);
-        return false;
+        maskv[i].release();
+        //return false;
       }
-      if( maskv[i].size() != srcv[i].size() ) {
+      else if( maskv[i].size() != srcv[i].size() ) {
         CF_ERROR("Invalid mask size (%dx%d) for mask index %zu. Must be %dx%d",
             maskv[i].cols, maskv[i].rows, i, srcv[i].cols, srcv[i].rows);
-        return false;
+        maskv[i].release();
+        //return false;
       }
     }
   }

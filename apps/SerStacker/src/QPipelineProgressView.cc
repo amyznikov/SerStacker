@@ -71,15 +71,15 @@ QPipelineProgressView::QPipelineProgressView(QWidget * parent) :
   }
 }
 
-void QPipelineProgressView::setImageViewer(QImageEditor * imageViewer)
+void QPipelineProgressView::setImageView(QInputSourceView * imageView)
 {
-  this->_imageViewer = imageViewer;
+  this->_imageView = imageView;
   updateAccumulatedImageDisplay(true);
 }
 
-QImageEditor * QPipelineProgressView::imageViewer() const
+QInputSourceView * QPipelineProgressView::imageView() const
 {
-  return _imageViewer;
+  return _imageView;
 }
 
 void QPipelineProgressView::showEvent(QShowEvent *e)
@@ -224,7 +224,7 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
 
   Q_EMIT progressTextChanged();
 
-  if( _imageViewer && _imageViewer->isVisible() ) {
+  if( _imageView && _imageView->isVisible() ) {
 
     QWaitCursor wait(this);
     cv::Mat currentImage, currentMask;
@@ -232,8 +232,16 @@ void QPipelineProgressView::updateAccumulatedImageDisplay(bool force)
     _updatingDisplay = true;
 
     if( pipeline->get_display(currentImage, currentMask) ) {
-      _imageViewer->setCurrentFileName(pipeline->cname());
-      _imageViewer->editImage(currentImage, currentMask);
+
+      if ( !_dataframe ) {
+        _dataframe.reset(new c_data_frame());
+      }
+
+      _dataframe->add_image("PROGRESS", std::move(currentImage), std::move(currentMask));
+      _imageView->showFrame(_dataframe);
+
+      //_imageViewer->setCurrentFileName(pipeline->cname());
+      //_imageViewer->editImage(currentImage, currentMask);
     }
 
     _hasStatusUpdates = false;

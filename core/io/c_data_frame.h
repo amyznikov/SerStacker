@@ -27,14 +27,16 @@ struct ImageDisplay
 {
   std::string tooltip;
   double minval, maxval;
-  std::vector<cv::Mat> images, data, masks;
+  //std::vector<cv::Mat> images, data, masks;
+  cv::Mat image, mask, data;
 };
 
 struct CloudDisplay
 {
   std::string tooltip;
   double minval, maxval;
-  std::vector<cv::Mat> points, colors, masks;
+  //std::vector<cv::Mat> points, colors, masks;
+  cv::Mat points, colors, mask;
 };
 
 class c_data_frame
@@ -82,16 +84,20 @@ public:
       cv::InputArray mask = cv::noArray(),
       cv::InputArray data = cv::noArray());
 
-  virtual void add_images(const std::string & display_name,
-      const std::vector<cv::Mat> & images,
-      const std::vector<cv::Mat> & masks = std::vector<cv::Mat>(),
-      const std::vector<cv::Mat> & data = std::vector<cv::Mat>());
+  virtual void set_image(const std::string & display_name,
+      cv::Mat && image,
+      cv::Mat && mask);
 
-  virtual void add_images(const std::string & display_name,
-      size_t count,
-      const cv::Mat images[/*count*/],
-      const cv::Mat masks[/*count*/],
-      const cv::Mat data[/*count*/]);
+//  virtual void add_images(const std::string & display_name,
+//      const std::vector<cv::Mat> & images,
+//      const std::vector<cv::Mat> & masks = std::vector<cv::Mat>(),
+//      const std::vector<cv::Mat> & data = std::vector<cv::Mat>());
+
+//  virtual void add_images(const std::string & display_name,
+//      size_t count,
+//      const cv::Mat images[/*count*/],
+//      const cv::Mat masks[/*count*/],
+//      const cv::Mat data[/*count*/]);
 
   virtual void add_point_cloud(const std::string & display_name,
       cv::InputArray points,

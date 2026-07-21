@@ -299,16 +299,6 @@ QString QInputSourceView::currentFileName() const
   return _currentSource ? _currentSource->cfilename() : QString();
 }
 
-//IMtfDisplay * QInputSourceView::mtfDisplay()
-//{
-//  return this;
-//}
-//
-//const IMtfDisplay * QInputSourceView::mtfDisplay() const
-//{
-//  return this;
-//}
-
 void QInputSourceView::setCurrentProcessor(const c_data_frame_processor::sptr & processor)
 {
   _currentProcessor = processor;
@@ -324,7 +314,6 @@ const c_data_frame_processor::sptr & QInputSourceView::currentProcessor() const
 {
   return _currentProcessor;
 }
-
 
 void QInputSourceView::setPointSelectionMode(QPointSelectionMode *selectionMode)
 {
@@ -474,9 +463,7 @@ void QInputSourceView::startDisplay()
     return;
   }
 
-  const int num_frames =
-      _currentSource->size();
-
+  const int num_frames = _currentSource->size();
   if ( num_frames < 1 ) {
     QMessageBox::critical(this, "ERROR",
         "Can not determine number of frames and seek range for given source.\n"
@@ -544,9 +531,25 @@ void QInputSourceView::closeCurrentSource()
 {
   if ( _currentSource ) {
     _currentSource->close();
+    _currentSource.reset();
   }
 
   _currentFrame.reset();
+}
+
+void QInputSourceView::showFrame(const c_data_frame::sptr & frame)
+{
+  closeCurrentSource();
+  _playControls->setState(QPlaySequenceControl::Stopped);
+  _playControls->hide();
+
+  _currentFrame = frame;
+  processCurrentFrame();
+  setViewType(_currentViewType);
+  Q_EMIT currentFrameChanged();
+
+  //loadNextFrame();
+  Q_EMIT currentFileNameChanged();
 }
 
 void QInputSourceView::setViewType(DisplayType viewType)

@@ -202,7 +202,7 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, false);
+  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, true);
 }
 
 bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const

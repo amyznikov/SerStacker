@@ -25,7 +25,7 @@
 
 #include "QPipelineProgressView.h"
 #include "QInputSourceView.h"
-#include "QProgressImageViewer.h"
+// #include "QProgressImageViewer.h"
 #include "QGeoMapView.h"
 #include "QPointSelectionMode.h"
 
@@ -123,7 +123,6 @@ private:
   QTextSourceView * textView = nullptr;
 
   QPipelineProgressView * pipelineProgressView = nullptr;
-  QProgressImageViewer * pipelineProgressImageView = nullptr;
 
   QInputOptionsDialogBox * inputOptionsDlgBox = nullptr;
 

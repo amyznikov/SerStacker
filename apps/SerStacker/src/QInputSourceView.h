@@ -90,7 +90,6 @@ public:
       double objZ);
 
 
-  //void setInputSource(const c_input_source::sptr & current_source);
   const c_input_source::sptr & inputSource() const;
 
   const c_input_options * inputOptions() const;
@@ -98,6 +97,7 @@ public:
 
   bool openSource(const QString & abspath);
   void closeCurrentSource();
+  void showFrame(const c_data_frame::sptr & frame);
 
   bool scrollToFrame(int frameIndex);
   int currentScrollpos() const;

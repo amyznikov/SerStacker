@@ -44,9 +44,9 @@ c_data_frame::ImageDisplays::iterator c_data_frame::add_image_display(const std:
     pos = _image_displays.emplace(display_name, c).first;
   }
 
-  pos->second.images.clear();
-  pos->second.data.clear();
-  pos->second.masks.clear();
+  pos->second.image.release();
+  pos->second.mask.release();
+  pos->second.data.release();
 
   return pos;
 }
@@ -70,9 +70,9 @@ c_data_frame::CloudDisplays::iterator c_data_frame::add_cloud_display(const std:
 
   CloudDisplay & display = pos->second;
 
-  display.points.clear();
-  display.colors.clear();
-  display.masks.clear();
+  display.points.release();
+  display.colors.release();
+  display.mask.release();
 
   return pos;
 
@@ -83,68 +83,70 @@ void c_data_frame::add_image(const std::string &display_name,
     cv::InputArray mask,
     cv::InputArray data)
 {
-
   auto &display = add_image_display(display_name)->second;
-
-  if (!image.empty()) {
-    display.images.emplace_back(image.getMat().clone());
-  }
-  if (!data.empty()) {
-    display.data.emplace_back(data.getMat().clone());
-  }
-  if (!mask.empty()) {
-    display.masks.emplace_back(mask.getMat().clone());
-  }
-
+  display.image = image.getMat().clone();
+  display.data = data.getMat().clone();
+  display.mask = mask.getMat().clone();
   _display_types.emplace(DisplayType_Image);
 }
 
-
-void c_data_frame::add_images(const std::string & display_name,
-    const std::vector<cv::Mat> & images,
-    const std::vector<cv::Mat> & masks,
-    const std::vector<cv::Mat> & data)
+void c_data_frame::set_image(const std::string & display_name, cv::Mat && image, cv::Mat && mask)
 {
   auto &display = add_image_display(display_name)->second;
 
-  if (!images.empty()) {
-    display.images = images;
-  }
-  if (!data.empty()) {
-    display.data = data;
-  }
-  if (!masks.empty()) {
-    display.masks = masks;
-  }
+  display.image = std::move(image);
+  display.mask = std::move(mask);
+  display.data = std::move(cv::Mat());
 
   _display_types.emplace(DisplayType_Image);
 }
 
-void c_data_frame::add_images(const std::string &display_name,
-    size_t count,
-    const cv::Mat images[/*count*/],
-    const cv::Mat masks[/*count*/],
-    const cv::Mat data[/*count*/])
-{
-  auto &display = add_image_display(display_name)->second;
+//
+//void c_data_frame::add_images(const std::string & display_name,
+//    const std::vector<cv::Mat> & images,
+//    const std::vector<cv::Mat> & masks,
+//    const std::vector<cv::Mat> & data)
+//{
+//  auto &display = add_image_display(display_name)->second;
+//
+//  if (!images.empty()) {
+//    display.images = images;
+//  }
+//  if (!data.empty()) {
+//    display.data = data;
+//  }
+//  if (!masks.empty()) {
+//    display.masks = masks;
+//  }
+//
+//  _display_types.emplace(DisplayType_Image);
+//}
 
-  for ( size_t i = 0; i < count; ++i ) {
-
-    if ( images ) {
-      display.images.emplace_back(images[i]);
-    }
-
-    if ( masks ) {
-      display.masks.emplace_back(masks[i]);
-    }
-
-    if ( data ) {
-      display.data.emplace_back(data[i]);
-    }
-  }
-
-  _display_types.emplace(DisplayType_Image);
-}
+//void c_data_frame::add_images(const std::string &display_name,
+//    size_t count,
+//    const cv::Mat images[/*count*/],
+//    const cv::Mat masks[/*count*/],
+//    const cv::Mat data[/*count*/])
+//{
+//  auto &display = add_image_display(display_name)->second;
+//
+//  for ( size_t i = 0; i < count; ++i ) {
+//
+//    if ( images ) {
+//      display.images.emplace_back(images[i]);
+//    }
+//
+//    if ( masks ) {
+//      display.masks.emplace_back(masks[i]);
+//    }
+//
+//    if ( data ) {
+//      display.data.emplace_back(data[i]);
+//    }
+//  }
+//
+//  _display_types.emplace(DisplayType_Image);
+//}
 
 void c_data_frame::add_point_cloud(const std::string & display_name,
     cv::InputArray points,
@@ -152,20 +154,9 @@ void c_data_frame::add_point_cloud(const std::string & display_name,
     cv::InputArray mask)
 {
   auto &display = add_cloud_display(display_name)->second;
-
-  if ( !points.empty() ) {
-    CF_DEBUG("Add points '%s'", display_name.c_str());
-    display.points.emplace_back(points.getMat().clone());
-  }
-
-  if ( !colors.empty() ) {
-    CF_DEBUG("Add colors '%s'", display_name.c_str());
-    display.colors.emplace_back(colors.getMat().clone());
-  }
-  if (!mask.empty()) {
-    display.masks.emplace_back(mask.getMat().clone());
-  }
-
+  display.points = points.getMat().clone();
+  display.colors = colors.getMat().clone();
+  display.mask = mask.getMat().clone();
   _display_types.emplace(DisplayType_PointCloud);
 }
 
@@ -182,24 +173,21 @@ bool c_data_frame::get_image(const std::string &display_name,
 
     const auto &display = pos->second;
 
-    if (output_image.needed() && !display.images.empty()) {
+    if (output_image.needed() && !display.image.empty()) {
 
       if (_selection_mask.size() == output_image.size() && _selection_mask.channels() == 3) {
         CF_DEBUG("WARNING: Special case for selection_mask_ not handled");
-        display.images[0].copyTo(output_image);
-      }
-      else {
-        display.images[0].copyTo(output_image);
       }
 
+      display.image.copyTo(output_image);
       fOk = true;
     }
-    if (output_mask.needed() && !display.masks.empty()) {
-      copy_output_mask(display.masks[0], output_mask);
+    if (output_mask.needed() && !display.mask.empty()) {
+      copy_output_mask(display.mask, output_mask);
       fOk = true;
     }
     if (output_data.needed() && !display.data.empty()) {
-      display.data[0].copyTo(output_data);
+      display.data.copyTo(output_data);
       fOk = true;
     }
   }
@@ -229,17 +217,17 @@ bool c_data_frame::get_point_cloud(const std::string & display_name,
 
     if ( points.needed() && !display.points.empty()) {
       //CF_DEBUG("points '%s' copied", display_name.c_str());
-      display.points[0].copyTo(points);
+      display.points.copyTo(points);
     }
 
     if ( colors.needed() && !display.colors.empty()) {
       //CF_DEBUG("colors '%s' copied", display_name.c_str());
-      display.colors[0].copyTo(colors);
+      display.colors.copyTo(colors);
     }
 
-    if ( mask.needed() && !display.masks.empty()) {
+    if ( mask.needed() && !display.mask.empty()) {
       //CF_DEBUG("masks '%s' copied", display_name.c_str());
-      display.masks[0].copyTo(mask);
+      display.mask.copyTo(mask);
     }
 
     //CF_DEBUG("cloud '%s' leave", display_name.c_str());

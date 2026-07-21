@@ -12,11 +12,12 @@
 #include <QtWidgets/QtWidgets>
 #include <gui/widgets/QProgressStrip.h>
 #include <gui/qimageview/QImageEditor.h>
-//#include <core/notification.h>
+#include "QInputSourceView.h"
 
 namespace serstacker {
 ///////////////////////////////////////////////////////////////////////////////
 
+// QInputSourceView::showFrame(const c_data_frame::sptr & frame)
 class QPipelineProgressView:
     public QFrame
 {
@@ -27,15 +28,15 @@ public:
 
   QPipelineProgressView(QWidget * parent = nullptr);
 
-  void setImageViewer(QImageEditor * imageViewer);
-  QImageEditor * imageViewer() const;
+  void setImageView(QInputSourceView * view);
+  QInputSourceView * imageView() const;
 
 Q_SIGNALS:
   void progressTextChanged();
 
 protected:
-  void showEvent(QShowEvent *event) override;
-  void timerEvent(QTimerEvent *event) override;
+  void showEvent(QShowEvent *event) final;
+  void timerEvent(QTimerEvent *event) final;
   void updateAccumulatedImageDisplay(bool force = false);
 
 protected Q_SLOTS:
@@ -51,7 +52,8 @@ protected:
   QHBoxLayout * _layout = nullptr;
   QProgressStrip * _progressStrip = nullptr;
   QToolButton * _menuButton = nullptr;
-  QImageEditor * _imageViewer = nullptr;
+  QInputSourceView * _imageView = nullptr;
+  c_data_frame::sptr _dataframe;
 
   int timerId = 0;
   std::atomic<bool> _hasStatusUpdates = false;

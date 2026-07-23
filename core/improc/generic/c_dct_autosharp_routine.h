@@ -1,28 +1,26 @@
 /*
- * c_alpha_test_routine.h
+ * c_dct_autosharp_routine.h
  *
- *  Created on: Jun 26, 2026
+ *  Created on: Jul 23, 2026
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_alpha_test_routine_h__
-#define __c_alpha_test_routine_h__
+#ifndef __c_dct_autosharp_routine_h__
+#define __c_dct_autosharp_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/feature2d/planetary-disk-detection.h>
 #include <core/proc/extract_channel.h>
-#include <core/proc/pixtype.h>
 
-class c_alpha_test_routine :
+class c_dct_autosharp_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_alpha_test_routine,
-      "alpha_test", "Alpha Test");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_dct_autosharp_routine,
+      "dct_autosharp", "Auto sharpen raw stack with CDT");
 
   enum DISPLAY {
-    DISPLAY_SRC,
+    DISPLAY_SRC_IMAGE,
     DISPLAY_RESTORED_IMAGE,
     DISPLAY_FILL_SRC_VOIDS,
     DISPLAY_SRC_SPECTRUM,
@@ -35,7 +33,7 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DISPLAY _display = DISPLAY_SRC_SPECTRUM;
+  DISPLAY _display = DISPLAY_RESTORED_IMAGE;
   enum color_channel_type _intensity_channel = color_channel_gray;
   double _S1_gain = 1;
   bool _inpaint_missing_pixels = true;
@@ -43,4 +41,4 @@ protected:
   std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";
 };
 
-#endif /* __c_alpha_test_routine_h__ */
+#endif /* __c_dct_autosharp_routine_h__ */

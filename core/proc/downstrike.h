@@ -31,8 +31,7 @@ bool downstrike_uneven(cv::InputArray src, cv::OutputArray dst,
  * with non-zero values for pixels copied rom src and zeros for empty (injected) pixels
  * */
 bool upject_even(cv::InputArray _src, cv::OutputArray dst, cv::Size dstSize,
-    cv::OutputArray zmask = cv::noArray(),
-    int zdepth = -1);
+    cv::Mat1f * zmask = nullptr);
 
 /*
  * 2x upsampling step by injecting UNEVEN ZERO-VALUED rows and columns ...

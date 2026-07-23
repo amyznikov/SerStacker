@@ -295,6 +295,18 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  _logTicker.reset(new QCPAxisTickerLog());
+  _linearTicker.reset(new QCPAxisTicker());
+  _logTicker->setLogBase(10);
+
+  _plot->yAxis->setTicker(_linearTicker);
+  _plot->xAxis->setTicker(_linearTicker);
+
+  _plot->xAxis->setNumberFormat("g");
+  _plot->yAxis->setNumberFormat("g");
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
 void QProfileGraph::showEvent(QShowEvent * event)
@@ -419,7 +431,6 @@ void QProfileGraph::setSkipMaskedPixels(bool v)
   if ( _skipMaskedPixels != v ) {
     _skipMaskedPixels = v;
     replot();
-    // Q_EMIT parameterChanged();
   }
 }
 
@@ -472,6 +483,45 @@ double QProfileGraph::yRangeMax() const
   return _plot->yAxis->range().upper;
 }
 
+void QProfileGraph::setLogScaleX(bool v)
+{
+  if ( v != logScaleX() ) {
+    const QCPAxis::ScaleType scaleType = v ? QCPAxis::stLogarithmic : QCPAxis::stLinear;
+    _plot->xAxis->setScaleType(scaleType);
+    if ( scaleType == QCPAxis::stLogarithmic ) {
+      _plot->xAxis->setTicker(_logTicker);
+    }
+    else {
+      _plot->xAxis->setTicker(_linearTicker);
+    }
+    replot();
+  }
+}
+
+bool QProfileGraph::logScaleX() const
+{
+  return _plot->xAxis->scaleType() == QCPAxis::stLogarithmic;
+}
+
+void QProfileGraph::setLogScaleY(bool v)
+{
+  if( v != logScaleY() ) {
+    const QCPAxis::ScaleType scaleType = v ? QCPAxis::stLogarithmic : QCPAxis::stLinear;
+    _plot->yAxis->setScaleType(scaleType);
+    if( scaleType == QCPAxis::stLogarithmic ) {
+      _plot->yAxis->setTicker(_logTicker);
+    }
+    else {
+      _plot->yAxis->setTicker(_linearTicker);
+    }
+    replot();
+  }
+}
+
+bool QProfileGraph::logScaleY() const
+{
+  return _plot->yAxis->scaleType() == QCPAxis::stLogarithmic;
+}
 
 void QProfileGraph::saveParameters(const QString & profileName)
 {
@@ -492,6 +542,8 @@ void QProfileGraph::saveParameters(const QString & profileName)
   settings.setValue(QString("%1/xRangeMax").arg(profile), xRangeMax());
   settings.setValue(QString("%1/yRangeMin").arg(profile), yRangeMin());
   settings.setValue(QString("%1/yRangeMax").arg(profile), yRangeMax());
+  settings.setValue(QString("%1/logScaleX").arg(profile), logScaleX());
+  settings.setValue(QString("%1/logScaleY").arg(profile), logScaleY());
 }
 
 void QProfileGraph::loadParameters(const QString & profileName)
@@ -513,6 +565,8 @@ void QProfileGraph::loadParameters(const QString & profileName)
   setXRangeMax (settings.value(QString("%1/xRangeMax").arg(profile), xRangeMax()).toDouble());
   setYRangeMin (settings.value(QString("%1/yRangeMin").arg(profile), yRangeMin()).toDouble());
   setYRangeMax (settings.value(QString("%1/yRangeMax").arg(profile), yRangeMax()).toDouble());
+  setLogScaleX(settings.value(QString("%1/logScaleX").arg(profile), logScaleX()).toBool());
+  setLogScaleY(settings.value(QString("%1/logScaleY").arg(profile), logScaleY()).toBool());
 }
 
 
@@ -852,6 +906,23 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
             return false;
           });
 
+  logScaleX_ctl =
+      add_checkbox("Log Scale X:",
+          "Set checked to apply log scale to X axis",
+          [this](bool checked) {
+            if ( _options ) {
+              _options->setLogScaleX(checked);
+            }
+          },
+          [this](bool * checked) {
+            if ( _options ) {
+              *checked = _options->logScaleX();
+              return true;
+            }
+            return false;
+          });
+
+
   fixXMin_ctl =
       add_checkbox("Fix X min:",
           "Set checked to fix X min range of the plot",
@@ -918,6 +989,22 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
           });
 
   ///
+
+  logScaleY_ctl =
+      add_checkbox("Log Scale Y:",
+          "Set checked to apply log scale to Y axis",
+          [this](bool checked) {
+            if ( _options ) {
+              _options->setLogScaleY(checked);
+            }
+          },
+          [this](bool * checked) {
+            if ( _options ) {
+              *checked = _options->logScaleY();
+              return true;
+            }
+            return false;
+          });
 
   fixYMin_ctl =
       add_checkbox("Fix Y min:",

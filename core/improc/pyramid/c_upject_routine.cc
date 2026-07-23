@@ -58,10 +58,13 @@ bool c_upject_routine::process(cv::InputOutputArray image, cv::InputOutputArray 
       upject_uneven(image.getMat(), img, _dstSize, zmask, CV_8U);
       image.move(img);
       break;
-    case UpjectEven:
-      upject_even(image.getMat(), img, _dstSize, zmask, CV_8U);
+    case UpjectEven: {
+      cv::Mat1f zzmask;
+      upject_even(image.getMat(), img, _dstSize, &zzmask);
+      zzmask.convertTo(zmask, CV_8U, 255);
       image.move(img);
       break;
+    }
     default:
       CF_ERROR("Invalid downstrike mode specified");
       return false;

@@ -1,37 +1,30 @@
 /*
- * c_alpha_test_routine.cc
+ * c_dct_autosharp_routine.cc
  *
- *  Created on: Jun 26, 2026
+ *  Created on: Jul 23, 2026
  *      Author: amyznikov
  */
 
-#include "c_alpha_test_routine.h"
-#include <core/proc/feature2d/planetary-disk-detection.h>
-#include <core/proc/estimate_noise.h>
-#include <core/proc/morphology.h>
-#include <core/proc/gradient.h>
-#include <core/proc/fft.h>
-#include <core/proc/fast_gaussian_blur.h>
-#include <core/proc/histogram-tools.h>
-#include <core/proc/downstrike.h>
+#include "c_dct_autosharp_routine.h"
 #include <core/ssprintf.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
 #include <core/io/c_stdio_file.h>
 #include <core/proc/c_linear_regression.h>
 #include <core/readdir.h>
+#include <core/debug.h>
 
 
 template<>
-const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
+const c_enum_member * members_of<c_dct_autosharp_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
-      { c_alpha_test_routine::DISPLAY_SRC, "SRC", "" },
-      { c_alpha_test_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_FILL_SRC_VOIDS, "FILL_SRC_VOIDS", "" },
-      { c_alpha_test_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM", "" },
-      { c_alpha_test_routine::DISPLAY_RADIAL_PROFILE, "RADIAL_PROFILE", "" },
-      { c_alpha_test_routine::DISPLAY_FILTER, "FILTER", "" },
-      { c_alpha_test_routine::DISPLAY_SRC_SPECTRUM}
+      { c_dct_autosharp_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", "" },
+      { c_dct_autosharp_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", "" },
+      { c_dct_autosharp_routine::DISPLAY_FILL_SRC_VOIDS, "FILL_SRC_VOIDS", "" },
+      { c_dct_autosharp_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM", "" },
+      { c_dct_autosharp_routine::DISPLAY_RADIAL_PROFILE, "RADIAL_PROFILE", "" },
+      { c_dct_autosharp_routine::DISPLAY_FILTER, "FILTER", "" },
+      { c_dct_autosharp_routine::DISPLAY_RESTORED_IMAGE}
   };
   return members;
 }
@@ -621,7 +614,7 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
 }
 } // namespace
 
-void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
@@ -631,7 +624,7 @@ void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
 }
 
-bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
+bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
@@ -645,11 +638,11 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 }
 
 
-bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  CF_DEBUG("c_alpha_test_routine: ENTER");
+  CF_DEBUG("c_dct_autosharp_routine: ENTER");
 
-  if ( _display == DISPLAY_SRC ) {
+  if ( _display == DISPLAY_SRC_IMAGE ) {
     // nothing to process requested
     return true;
   }
@@ -673,6 +666,7 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   cv::Mat1f intensity_img;
   cv::Mat1f intensity_dct;
   cv::Mat1f dct_radial_profile;
+  std::vector<cv::Mat1f> src_channels(cn);
 
   double wB = 0, wG = 0, wR = 0;
 
@@ -680,9 +674,8 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     intensity_img = src;
   }
   else if ( getLinearIntensityWeights(_intensity_channel, wB, wG, wR) ) {
-    cv::Mat1f channels[3];
-    cv::split(src, channels);
-    intensity_img = wB * channels[0] + wG * channels[1] + wR * channels[2];
+    cv::split(src, src_channels);
+    intensity_img = wB * src_channels[0] + wG * src_channels[1] + wR * src_channels[2];
   }
   else {
     extract_channel(src, intensity_img, cv::noArray(), cv::noArray(), _intensity_channel);
@@ -718,12 +711,13 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
     return false;
   }
 
-  std::vector<cv::Mat1f> src_channels(cn);
-  if ( cn == 1 ) {
-    src_channels[0] = src;
-  }
-  else {
-    cv::split(src, src_channels);
+  if( src_channels.empty() ) {
+    if ( cn == 1 ) {
+      src_channels[0] = src;
+    }
+    else {
+      cv::split(src, src_channels);
+    }
   }
 
   for ( int i = 0; i < cn; ++i ) {
@@ -733,15 +727,13 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
   }
 
   if ( cn == 1 ) {
-    src = src_channels[0];
+    image.move(src_channels[0]);
   }
   else {
-    cv::merge(src_channels, src);
+    cv::merge(src_channels, image);
   }
 
-  image.move(src);
-
-  CF_DEBUG("c_alpha_test_routine: LEAVE");
+  CF_DEBUG("c_dct_autosharp_routine: LEAVE");
   return true;
 }
 

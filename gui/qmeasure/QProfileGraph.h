@@ -63,6 +63,12 @@ public:
   void setYRangeMax(double v);
   double yRangeMax() const;
 
+  void setLogScaleX(bool v);
+  bool logScaleX() const;
+
+  void setLogScaleY(bool v);
+  bool logScaleY() const;
+
   void saveParameters(const QString & profileName);
   void loadParameters(const QString & profileName);
 
@@ -95,6 +101,8 @@ protected:
   QCustomPlot *_plot = nullptr;
   QCPGraph *_graphs[4] = { nullptr };
   QCPGraph::LineStyle _lineStyle = QCPGraph::lsLine;
+  QSharedPointer<QCPAxisTickerLog> _logTicker;
+  QSharedPointer<QCPAxisTicker> _linearTicker;
 
   QVector<double> _current_keys;
   QVector<double> _current_values[4];
@@ -105,6 +113,8 @@ protected:
   bool _fixXMax = false;
   bool _fixYMin = false;
   bool _fixYMax = false;
+//  bool _logScaleX = false;
+  //  bool _logScaleY = false;
 
   bool _skipZeroPixels = false;
   bool _skipMaskedPixels = false;
@@ -130,11 +140,13 @@ protected:
 
   QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
 
+  QCheckBox * logScaleX_ctl = nullptr;
   QCheckBox * fixXMin_ctl = nullptr;
   QNumericBox * xRangeMin_ctl = nullptr;
   QCheckBox * fixXMax_ctl = nullptr;
   QNumericBox * xRangeMax_ctl = nullptr;
 
+  QCheckBox * logScaleY_ctl = nullptr;
   QCheckBox * fixYMin_ctl = nullptr;
   QNumericBox * yRangeMin_ctl = nullptr;
   QCheckBox * fixYMax_ctl = nullptr;

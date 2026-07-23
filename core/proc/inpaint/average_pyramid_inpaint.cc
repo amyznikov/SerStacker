@@ -7,128 +7,63 @@
 
 #include "average_pyramid_inpaint.h"
 #include <core/proc/downstrike.h>
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-#include <tbb/tbb.h>
-#endif
+#include <core/proc/pixtype.h>
+#include <core/proc/run-loop.h>
 #include <core/debug.h>
 
 #define downstrike  downstrike_even
 #define upject      upject_even
 
-
-template<class T>
-static void average_pyramid_filter_(const cv::Mat & src, const cv::Mat1f & srcmask,
-    cv::Mat & dst, cv::Mat1f & dstmask)
+template<class _Tp>
+static bool _average_pyramid_filter2(
+    const cv::Mat & src, const cv::Mat1f & srcmask,
+    cv::Mat & dst, cv::Mat1f & dstmask,
+    const cv::Mat & fallback_src, const cv::Mat1f & fallback_mask)
 {
-  constexpr enum cv::BorderTypes border_mode =
-      cv::BORDER_REPLICATE;
+  constexpr enum cv::BorderTypes border_mode = cv::BORDER_REPLICATE;
+  const cv::Size ksize(3, 3);
 
-  static thread_local const cv::Mat1f K =
-      cv::Mat1f::ones(5, 1);
+  cv::boxFilter(src, dst, src.type(), ksize, cv::Point(-1, -1), false, border_mode);
+  cv::boxFilter(srcmask, dstmask, dstmask.type(), ksize, cv::Point(-1, -1), false, border_mode);
 
-  cv::sepFilter2D(src, dst, src.depth(), K, K, cv::Point(1, 1),
-      0, border_mode);
+  parallel_for(0, dst.rows, [&](const auto & range) {
+    const int cn = dst.channels();
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
 
-  cv::sepFilter2D(srcmask, dstmask, dstmask.depth(), K, K, cv::Point(1, 1),
-      0, border_mode);
+      _Tp * __restrict dstp = dst.ptr<_Tp>(y);
+      float * __restrict mskp = dstmask.ptr<float>(y);
 
+      const _Tp* __restrict fbk_src = fallback_src.ptr<_Tp>(y);
+      const float* __restrict fbk_msk = fallback_mask.ptr<float>(y);
 
-  // Don't use cv::divide() because result of division by zero differs between OpenCV versions
-  // Manually divide and handle zeros instead
-
-#if HAVE_TBB && !defined(Q_MOC_RUN)
-
-  typedef tbb::blocked_range<int> range;
-
-  tbb::parallel_for(range(0, dst.rows, 512),
-      [&dst, &dstmask](const range & r) {
-
-        const int cn = dst.channels();
-
-        for ( int y = r.begin(), ny = r.end(); y < ny; ++y ) {
-
-          T * dstp = dst.ptr<T>(y);
-          float * mskp = dstmask.ptr<float>(y);
-
-          for ( int x = 0; x < dst.cols; ++x, ++mskp, dstp += cn ) {
-            if ( *mskp ) {
-              for ( int c = 0; c < cn; ++c ) {
-                dstp[c] /= *mskp;
-              }
-              *mskp = 1;
-            }
+      for ( int x = 0; x < dst.cols; ++x, ++mskp, ++fbk_msk, dstp += cn, fbk_src += cn ) {
+        if ( *fbk_msk ) {
+          *mskp = 1;
+          for ( int c = 0; c < cn; ++c ) {
+            dstp[c] = fbk_src[c];
           }
-
         }
-      });
-
-#else
-  const int cn = dst.channels();
-
-  for ( int y = 0; y < dst.rows; ++y ) {
-
-    T * dstp = dst.ptr<T>(y);
-    float * mskp = dstmask.ptr<float>(y);
-
-    for ( int x = 0; x < dst.cols; ++x, ++mskp, dstp += cn ) {
-      if ( *mskp ) {
-        for ( int c = 0; c < cn; ++c ) {
-          dstp[c] /= *mskp;
+        else if ( *mskp ) {
+          const float scale = 1.0f / *mskp;
+          *mskp = 1;
+          for ( int c = 0; c < cn; ++c ) {
+            dstp[c] = cv::saturate_cast<_Tp>(dstp[c] * scale);
+          }
         }
-        *mskp = 1;
       }
     }
-  }
+  });
 
-#endif
+  return true;
 }
 
-static void average_pyramid_filter(const cv::Mat & src, const cv::Mat1f & srcmask,
-    cv::Mat & dst, cv::Mat1f & dstmask)
+static bool average_pyramid_filter2(const cv::Mat & src, const cv::Mat1f & srcmask,
+    cv::Mat & dst, cv::Mat1f & dstmask,
+    const cv::Mat & fallback_src, const cv::Mat1f & fallback_mask)
 {
-  INSTRUMENT_REGION("");
-
-  switch ( src.depth() ) {
-  case CV_8U :
-    average_pyramid_filter_<uint8_t>(src, srcmask, dst, dstmask);
-    break;
-  case CV_8S :
-    average_pyramid_filter_<int8_t>(src, srcmask, dst, dstmask);
-    break;
-  case CV_16U :
-    average_pyramid_filter_<uint16_t>(src, srcmask, dst, dstmask);
-    break;
-  case CV_16S :
-    average_pyramid_filter_<int16_t>(src, srcmask, dst, dstmask);
-    break;
-  case CV_32S :
-    average_pyramid_filter_<int32_t>(src, srcmask, dst, dstmask);
-    break;
-  case CV_32F :
-    average_pyramid_filter_<float>(src, srcmask, dst, dstmask);
-    break;
-  case CV_64F :
-    average_pyramid_filter_<double>(src, srcmask, dst, dstmask);
-    break;
-  }
-}
-
-static void average_pyramid_pyrdown(const cv::Mat & src, const cv::Mat1f & srcmask,
-    cv::Mat & dst, cv::Mat1f & dstmask)
-{
-  INSTRUMENT_REGION("");
-  average_pyramid_filter(src, srcmask, dst, dstmask);
-  downstrike(dst, dst);
-  downstrike(dstmask, dstmask);
-}
-
-static inline void average_pyramid_pyrup(cv::Mat & image, cv::Size dst_size)
-{
-//  cv::pyrUp(image, image, dst_size);
-  INSTRUMENT_REGION("");
-  cv::Mat1f zmask;
-  upject(image, image, dst_size, zmask, CV_32F );
-  average_pyramid_filter(image, zmask, image, zmask);
+  CV_DISPATCH(src.depth(), _average_pyramid_filter2, src, srcmask, dst, dstmask, fallback_src, fallback_mask);
+  CF_ERROR("Invalid src.depth()=%d", src.depth());
+  return false;
 }
 
 static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask, int max_levels)
@@ -140,17 +75,21 @@ static void average_pyramid_recurse(cv::Mat & image, cv::Mat1f & mask, int max_l
     cv::Mat filtered_image;
     cv::Mat1f filtered_mask;
 
-    average_pyramid_pyrdown(image, mask, filtered_image, filtered_mask);
+    average_pyramid_filter2(image, mask, filtered_image, filtered_mask, image, mask);
+    downstrike(filtered_image, filtered_image);
+    downstrike(filtered_mask, filtered_mask);
 
     if ( cv::countNonZero(filtered_mask) < filtered_mask.size().area() ) {
       average_pyramid_recurse(filtered_image, filtered_mask, max_levels - 1);
     }
 
-    average_pyramid_pyrup(filtered_image, image.size());
+    upject(filtered_image, filtered_image, image.size(), &filtered_mask);
+    average_pyramid_filter2(filtered_image, filtered_mask,
+        filtered_image, filtered_mask,
+        image, mask);
 
-    filtered_image.copyTo(image, mask == 0);
-
-    mask.setTo(1.0f, mask == 0);
+    image = std::move(filtered_image);
+    mask = std::move(filtered_mask);
   }
 }
 
@@ -163,21 +102,23 @@ void average_pyramid_inpaint(cv::InputArray _src, cv::InputArray _mask,
 
   if ( mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
     _src.copyTo(dst);
-    if (_dstmask.needed()) mask.copyTo(_dstmask);
+    if (_dstmask.needed()) {
+      mask.copyTo(_dstmask);
+    }
     return;
   }
 
   cv::Mat src;
   cv::Mat1f msk;
 
-  _src.getMat().copyTo(src);
-  src.setTo(0, ~mask);
-
+  _src.getMat().copyTo(src, mask);
   mask.convertTo(msk, CV_32F, 1.0 / 255.0);
 
   average_pyramid_recurse(src, msk, max_levels);
 
-  src.convertTo(dst, dst.fixedType() ? dst.type() : _src.type());
+  const int ddepth = dst.fixedType() ? dst.type() : _src.type();
+
+  src.convertTo(dst, ddepth);
 
   if (_dstmask.needed()) {
     msk.convertTo(_dstmask, CV_8U, 255.0);

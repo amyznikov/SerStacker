@@ -387,11 +387,6 @@ cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProf
     //S1_nature = 0.05;
   }
 
-//  S1_nature *= S1_nature_gain;
-//  const double xlt = 0.5 * (S1_nature - S1_lap) / S2_lap;
-//  const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
-//  S0_nature += ylt - S0_nature - S1_nature * xlt;
-
   /*
    * COMPUTE CORRECTION for x > xlt:
    *   correction  = nature - laplace;
@@ -600,6 +595,8 @@ bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
 
 bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
+  CF_DEBUG("c_fft_autosharp_routine: ENTER");
+
   if ( _display == DISPLAY_SRC_IMAGE ) {
     return true;
   }
@@ -692,5 +689,7 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   SRC_RESTORED(rc).copyTo(image);
 
+  CF_DEBUG("c_fft_autosharp_routine: LEAVE");
   return true;
 }
+

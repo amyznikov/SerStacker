@@ -19,7 +19,7 @@ class c_fft_autosharp_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_autosharp_routine,
-      "fft_autosharp", "Try to auto sharpen raw stack");
+      "fft_autosharp", "Auto sharpen raw stack with FFT");
 
   enum DISPLAY {
     DISPLAY_SRC_IMAGE = 0,

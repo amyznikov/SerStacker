@@ -15,24 +15,24 @@ static bool applyChannelTransform(cv::InputArray src, cv::OutputArray dst,
   switch (channels) {
     case 1: {
       const cv::Matx12f M(
-          stretch[0], shift[0]
+          (float)stretch[0], (float)shift[0]
           );
       cv::transform(src, dst, M);
       break;
     }
     case 2: {
       const cv::Matx23f M(
-          stretch[0], 0.0f, shift[0],
-          0.0f, stretch[1], shift[1]
+          float(stretch[0]), 0.0f, float(shift[0]),
+          0.0f, float(stretch[1]), float(shift[1])
           );
       cv::transform(src, dst, M);
       break;
     }
     case 3: {
       const cv::Matx34f M(
-          stretch[0], 0.0f, 0.0f, shift[0],
-          0.0f, stretch[1], 0.0f, shift[1],
-          0.0f, 0.0f, stretch[2], shift[2]
+          float(stretch[0]), 0.0f, 0.0f, float(shift[0]),
+          0.0f, float(stretch[1]), 0.0f, float(shift[1]),
+          0.0f, 0.0f, float(stretch[2]), float(shift[2])
           );
       cv::transform(src, dst, M);
       break;
@@ -40,10 +40,10 @@ static bool applyChannelTransform(cv::InputArray src, cv::OutputArray dst,
     case 4: {
       using Matx45f = cv::Matx<float, 4, 5>;
       const float data[20] = {
-          stretch[0],   0.0f,       0.0f,       0.0f,      shift[0],
-          0.0f,         stretch[1], 0.0f,       0.0f,      shift[1],
-          0.0f,         0.0f,       stretch[2], 0.0f,       shift[2],
-          0.0f,         0.0f,       0.0f,       stretch[3], shift[3]
+          float(stretch[0]),   0.0f,       0.0f,       0.0f,       float(shift[0]),
+          0.0f,         float(stretch[1]), 0.0f,       0.0f,       float(shift[1]),
+          0.0f,         0.0f,       float(stretch[2]), 0.0f,       float(shift[2]),
+          0.0f,         0.0f,       0.0f,       float(stretch[3]), float(shift[3])
       };
       cv::transform(src, dst, Matx45f(data));
       break;

@@ -101,53 +101,6 @@ void c_data_frame::set_image(const std::string & display_name, cv::Mat && image,
   _display_types.emplace(DisplayType_Image);
 }
 
-//
-//void c_data_frame::add_images(const std::string & display_name,
-//    const std::vector<cv::Mat> & images,
-//    const std::vector<cv::Mat> & masks,
-//    const std::vector<cv::Mat> & data)
-//{
-//  auto &display = add_image_display(display_name)->second;
-//
-//  if (!images.empty()) {
-//    display.images = images;
-//  }
-//  if (!data.empty()) {
-//    display.data = data;
-//  }
-//  if (!masks.empty()) {
-//    display.masks = masks;
-//  }
-//
-//  _display_types.emplace(DisplayType_Image);
-//}
-
-//void c_data_frame::add_images(const std::string &display_name,
-//    size_t count,
-//    const cv::Mat images[/*count*/],
-//    const cv::Mat masks[/*count*/],
-//    const cv::Mat data[/*count*/])
-//{
-//  auto &display = add_image_display(display_name)->second;
-//
-//  for ( size_t i = 0; i < count; ++i ) {
-//
-//    if ( images ) {
-//      display.images.emplace_back(images[i]);
-//    }
-//
-//    if ( masks ) {
-//      display.masks.emplace_back(masks[i]);
-//    }
-//
-//    if ( data ) {
-//      display.data.emplace_back(data[i]);
-//    }
-//  }
-//
-//  _display_types.emplace(DisplayType_Image);
-//}
-
 void c_data_frame::add_point_cloud(const std::string & display_name,
     cv::InputArray points,
     cv::InputArray colors,

@@ -125,32 +125,21 @@ QGraphicsShape* QGraphicsShape::load(const QSettings & settings, const QString &
   if( !shapeType.isEmpty() ) {
 
     if( shapeType == "line" ) {
-
-      QGraphicsLineShape * line =
-          new QGraphicsLineShape();
-
+      QGraphicsLineShape * line = new QGraphicsLineShape();
       load(line, settings, sectionName);
-
       return line;
     }
 
     if( shapeType == "rect" ) {
-
-      QGraphicsRectShape * rect =
-          new QGraphicsRectShape();
-
+      QGraphicsRectShape * rect = new QGraphicsRectShape();
       load(rect, settings, sectionName);
 
       return rect;
     }
 
     if( shapeType == "target" ) {
-
-      QGraphicsTargetShape * target =
-          new QGraphicsTargetShape();
-
+      QGraphicsTargetShape * target = new QGraphicsTargetShape();
       load(target, settings, sectionName);
-
       return target;
     }
 

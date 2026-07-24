@@ -349,17 +349,13 @@ void QGraphicsTargetShape::populateContextMenu(QMenu & menu, const QPoint & view
   action->setCheckable(true);
   action->setChecked(_lockPosition);
   connect(action, &QAction::triggered,
-      [this](bool checked) {
-        setLockPosition(checked);
-      });
+      this, &ThisClass::setLockPosition);
 
   menu.addAction(action = new QAction("Center on scene"));
   action->setCheckable(true);
   action->setChecked(_fixOnSceneCenter);
   connect(action, &QAction::triggered,
-      [this](bool checked) {
-        setFixOnSceneCenter(checked);
-      });
+      this, &ThisClass::setFixOnSceneCenter);
 
   menu.addSeparator();
   Base::populateContextMenu(menu, viewpos);

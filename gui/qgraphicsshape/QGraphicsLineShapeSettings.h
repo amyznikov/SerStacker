@@ -33,6 +33,8 @@ protected:
   QColorPickerButton *penColor_ctl = nullptr;
   QSpinBox *penWidth_ctl = nullptr;
   QSpinBox *arrowSize_ctl = nullptr;
+  QNumericBox * startPoint_ctl = nullptr;
+  QNumericBox * endPoint_ctl = nullptr;
 };
 
 

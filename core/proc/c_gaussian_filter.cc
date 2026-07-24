@@ -138,7 +138,7 @@ void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray 
 
   int borderx = 0, bordery = 0;
 
-  if( borderType != cv::BORDER_WRAP ) {
+  if( borderType != cv::BORDER_WRAP && borderType != cv::BORDER_TRANSPARENT ) {
     if( _mask.empty() ) {
       src = _src.getMat();
     }

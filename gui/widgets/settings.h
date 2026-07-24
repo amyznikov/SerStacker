@@ -508,6 +508,39 @@ inline QString toQString(const QPoint & v)
   return QString("%1;%2").arg(v.x()).arg(v.y());
 }
 
+inline bool fromString(const QString & text, QPointF * v)
+{
+  std::vector<std::string> tokens;
+
+  strsplit(text.toUtf8().constData(),
+      tokens,
+      "[ ;:\t\n]");
+
+  if( tokens.size() != 2 ) {
+    return false;
+  }
+
+  double x, y;
+
+  if( sscanf(tokens[0].c_str(), "%lf", &x) != 1 ) {
+    return false;
+  }
+
+  if( sscanf(tokens[1].c_str(), "%lf", &y) != 1 ) {
+    return false;
+  }
+
+  v->setX(x);
+  v->setY(y);
+
+  return true;
+}
+
+inline QString toQString(const QPointF & v)
+{
+  return QString("%1;%2").arg(v.x()).arg(v.y());
+}
+
 inline bool fromString(const QString & text, QVector3D * v)
 {
   std::vector<std::string> tokens;

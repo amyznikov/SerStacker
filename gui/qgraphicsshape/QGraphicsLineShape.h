@@ -44,6 +44,12 @@ public:
   void setSceneLine(qreal x1, qreal y1, qreal x2, qreal y2);
   QLineF sceneLine() const;
 
+  void setSceneStartPoint(const QPointF & v);
+  QPointF sceneStartPoint() const;
+
+  void setSceneEndPoint(const QPointF & v);
+  QPointF sceneEndPoint() const;
+
   void pointToScene(qreal x, qreal y);
 
   void setPen(const QPen & pen);

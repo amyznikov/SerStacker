@@ -6,6 +6,7 @@
  */
 
 #include "c_dct_autosharp_routine.h"
+#include <core/proc/fft.h>
 #include <core/ssprintf.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
 #include <core/io/c_stdio_file.h>
@@ -22,162 +23,13 @@ const c_enum_member * members_of<c_dct_autosharp_routine::DISPLAY>()
       { c_dct_autosharp_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", "" },
       { c_dct_autosharp_routine::DISPLAY_FILL_SRC_VOIDS, "FILL_SRC_VOIDS", "" },
       { c_dct_autosharp_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM", "" },
-      { c_dct_autosharp_routine::DISPLAY_RADIAL_PROFILE, "RADIAL_PROFILE", "" },
+      { c_dct_autosharp_routine::DISPLAY_SRC_RADIAL_PROFILE, "SRC_RADIAL_PROFILE", "" },
       { c_dct_autosharp_routine::DISPLAY_FILTER, "FILTER", "" },
+      { c_dct_autosharp_routine::DISPLAY_RESTORED_SPECTRUM, "RESTORED_SPECTRUM", "" },
+      { c_dct_autosharp_routine::DISPLAY_RESTORED_PROFILE, "RESTORED_PROFILE", "" },
       { c_dct_autosharp_routine::DISPLAY_RESTORED_IMAGE}
   };
   return members;
-}
-
-// Returns true if the channel is linear and fills the weights (in order B, G, R)
-static bool getLinearIntensityWeights(int channel_type, double & wB, double & wG, double & wR)
-{
-  switch (channel_type) {
-    case color_channel_blue:
-      wB = 1.0;
-      wG = 0.0;
-      wR = 0.0;
-      return true;
-    case color_channel_green:
-      wB = 0.0;
-      wG = 1.0;
-      wR = 0.0;
-      return true;
-    case color_channel_red:
-      wB = 0.0;
-      wG = 0.0;
-      wR = 1.0;
-      return true;
-    case color_channel_gray:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    case color_channel_luminance_YCrCb:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    default:
-      // All others (Lab, Luv, HSV, HLS, MIN/MAX) are nonlinear
-      break;
-  }
-  return false;
-}
-
-static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_Magnitude,
-    const cv::Mat2f & SRC_P_B, double wB,
-    const cv::Mat2f & SRC_P_G, double wG,
-    const cv::Mat2f & SRC_P_R, double wR)
-{
-  const cv::Size fftSize = SRC_P_B.size();
-
-  INTENSITY_Magnitude.create(fftSize);
-
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [&, fftSize, wB, wG, wR](const cv::Range & range) {
-
-        const int cx = fftSize.width;
-
-        for (int y = range.start; y < range.end; ++y) {
-          const float * __restrict bp = reinterpret_cast<const float*>(SRC_P_B[y]);
-          const float * __restrict gp = reinterpret_cast<const float*>(SRC_P_G[y]);
-          const float * __restrict rp = reinterpret_cast<const float*>(SRC_P_R[y]);
-          float * __restrict dstp = INTENSITY_Magnitude[y];
-
-          for (int x = 0; x < cx; ++x, bp += 2, gp += 2, rp += 2) {
-            constexpr int xre = 0;
-            constexpr int xim = 1;
-            const float re = bp[xre] * wB + gp[xre] * wG + rp[xre] * wR;
-            const float im = bp[xim] * wB + gp[xim] * wG + rp[xim] * wR;
-            *dstp++ = std::sqrt(re * re + im * im);
-          }
-        }
-      });
-}
-
-static bool dctRadialProfile(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
-{
-  if( dctSpectrum.empty() ) {
-    return false;
-  }
-
-  const int maxW = dctSpectrum.cols;
-  const int maxH = dctSpectrum.rows;
-
-  const double R = std::sqrt(maxW * maxW + maxH * maxH);
-  const int numBins = std::max(1, int(R));
-  const double binScale = numBins * M_SQRT1_2;
-
-  std::vector<double> radialSum(numBins, 0.0);
-  std::vector<double> radialCount(numBins, 0.0);
-
-  const double scaleX = 1.0 / maxW;
-  const double scaleY = 1.0 / maxH;
-
-  for( int y = 0; y < maxH; ++y ) {
-    const double dy = y * scaleY;
-    const double dy2 = dy * dy;
-    const float * srcp = dctSpectrum[y];
-
-    for( int x = 0; x < maxW; ++x ) {
-      const double dx = x * scaleX;
-      const double dx2 = dx * dx;
-      const double r = std::sqrt(dx2 + dy2);
-
-      const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-      radialSum[bin] += std::abs(srcp[x]);
-      radialCount[bin] += 1.0;
-    }
-  }
-
-  outputProfile.create(1, numBins);
-  float * __restrict dstp = outputProfile[0];
-  for( int i = 0; i < numBins; ++i ) {
-    dstp[i] = (float) (radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
-  }
-
-  return true;
-}
-
-
-static void dctRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & outputImageSize,
-    cv::Mat1f & outputImage)
-{
-  const cv::Size & size = outputImageSize;
-
-  const int numBins = radialProfile.cols;
-  const double binScale = numBins * M_SQRT1_2;
-
-  const double scaleX = 1. / size.width;
-  const double scaleY = 1. / size.height;
-
-  outputImage.create(size);
-
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &radialProfile, &outputImage](const cv::Range & range) {
-
-        const float * bins = radialProfile[0];
-
-        bool reported = false;
-
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = outputImage[y];
-
-          const double dy = y * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < size.width; ++x) {
-
-            const double dx = x * scaleX;
-            const double dx2 = dx * dx;
-
-            const double r = std::sqrt(dx2 + dy2);
-            const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-            dstp[x] = bins[bin];
-          }
-        }
-      });
 }
 
 namespace {
@@ -194,9 +46,9 @@ public:
   {
     // exclude DC from energy normalization
     const int startCornersBin = int((mx.cols - 1) * M_SQRT1_2);
-    _m = mx;
     _y0 = 0.5 * std::log(cv::norm(mx(cv::Rect(1, 0, startCornersBin - 1, 1)), cv::NORM_L2SQR) / (startCornersBin - 1));
     _L0 = 2 * std::log(1. / mx.cols);
+    _m = mx;
   }
 
   inline int size() const
@@ -332,7 +184,7 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
 
 static int estimateNature(const c_radial_spectrum_profile sp,
     double S1_nature_gain,
-    const cv::Mat1f & LSM,
+    const cv::Mat1f & LSM, // smoothed laplacian
     double & output_S0_lap,
     double & output_S1_lap,
     double & output_S2_lap,
@@ -640,15 +492,20 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
 
 bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  CF_DEBUG("c_dct_autosharp_routine: ENTER");
-
   if ( _display == DISPLAY_SRC_IMAGE ) {
     // nothing to process requested
     return true;
   }
 
-  cv::Mat src = image.getMat();
-  const int cn = src.channels();
+  cv::Mat src;
+  cv::Mat1f intensity_img;
+  cv::Mat1f intensity_dct;
+  cv::Mat1f dct_radial_profile;
+  std::vector<cv::Mat1f> src_channels;
+
+  const int cn = image.channels();
+
+  image.getMat().convertTo(src, CV_32F);
 
   if ( !mask.empty() && _inpaint_missing_pixels ) {
     average_pyramid_inpaint(src, mask, src, cv::noArray(), 7);
@@ -659,26 +516,12 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     return true;
   }
 
-  if ( src.depth() != CV_32F ) {
-    src.convertTo(src, CV_32F);
-  }
-
-  cv::Mat1f intensity_img;
-  cv::Mat1f intensity_dct;
-  cv::Mat1f dct_radial_profile;
-  std::vector<cv::Mat1f> src_channels(cn);
-
-  double wB = 0, wG = 0, wR = 0;
-
   if ( cn == 1 ) {
     intensity_img = src;
   }
-  else if ( getLinearIntensityWeights(_intensity_channel, wB, wG, wR) ) {
-    cv::split(src, src_channels);
-    intensity_img = wB * src_channels[0] + wG * src_channels[1] + wR * src_channels[2];
-  }
   else {
-    extract_channel(src, intensity_img, cv::noArray(), cv::noArray(), _intensity_channel);
+    extract_channel(src, intensity_img, cv::noArray(), cv::noArray(),
+        _intensity_channel);
   }
 
   cv::dct(intensity_img, intensity_dct);
@@ -689,7 +532,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   dctRadialProfile(intensity_dct, dct_radial_profile);
-  if( _display == DISPLAY_RADIAL_PROFILE) {
+  if( _display == DISPLAY_SRC_RADIAL_PROFILE) {
     dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
     image.move(intensity_dct);
     mask.release();
@@ -713,7 +556,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   if( src_channels.empty() ) {
     if ( cn == 1 ) {
-      src_channels[0] = src;
+      src_channels.emplace_back(src);
     }
     else {
       cv::split(src, src_channels);
@@ -723,6 +566,16 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   for ( int i = 0; i < cn; ++i ) {
     cv::dct(src_channels[i], src_channels[i]);
     cv::multiply(src_channels[i], INVERSE_FILTER, src_channels[i]);
+    if( _display == DISPLAY_RESTORED_SPECTRUM) {
+      continue;
+    }
+
+    if( _display == DISPLAY_RESTORED_PROFILE) {
+      dctRadialProfile(src_channels[i], dct_radial_profile);
+      dctRadialProfileToImage(dct_radial_profile, src_channels[i].size(), src_channels[i]);
+      continue;
+    }
+
     cv::idct(src_channels[i], src_channels[i]);
   }
 
@@ -733,7 +586,10 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     cv::merge(src_channels, image);
   }
 
-  CF_DEBUG("c_dct_autosharp_routine: LEAVE");
+  if( _display == DISPLAY_RESTORED_SPECTRUM || _display == DISPLAY_RESTORED_PROFILE ) {
+    mask.release();
+  }
+
   return true;
 }
 

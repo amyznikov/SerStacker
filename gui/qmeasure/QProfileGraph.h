@@ -33,6 +33,9 @@ public:
   void setLineStyle(QCPGraph::LineStyle v);
   QCPGraph::LineStyle lineStyle() const;
 
+  void setPointSize(int v);
+  int pointSize() const;
+
   void setFixXMin(bool v);
   bool fixXMin() const;
 
@@ -101,6 +104,7 @@ protected:
   QCustomPlot *_plot = nullptr;
   QCPGraph *_graphs[4] = { nullptr };
   QCPGraph::LineStyle _lineStyle = QCPGraph::lsLine;
+  int _pointSize  = 3;
   QSharedPointer<QCPAxisTickerLog> _logTicker;
   QSharedPointer<QCPAxisTicker> _linearTicker;
 
@@ -139,6 +143,7 @@ protected:
   QProfileGraph * _options = nullptr;
 
   QEnumComboBox<QCPGraph::LineStyle> * lineStyle_ctl = nullptr;
+  QSpinBox * pointSize_ctl = nullptr;
 
   QCheckBox * logScaleX_ctl = nullptr;
   QCheckBox * fixXMin_ctl = nullptr;

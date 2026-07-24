@@ -65,8 +65,7 @@ void QGraphicsLineShape::setSceneLine(const QLineF &line)
 {
   prepareGeometryChange();
 
-  _line.setPoints(mapFromScene(line.p1()),
-      mapFromScene(line.p1()));
+  _line.setPoints(mapFromScene(line.p1()), mapFromScene(line.p2()));
 
   updateGeometry();
   update();
@@ -96,6 +95,39 @@ QLineF QGraphicsLineShape::sceneLine() const
   return QLineF(mapToScene(_line.p1()), mapToScene(_line.p2()));
 }
 
+void QGraphicsLineShape::setSceneStartPoint(const QPointF & p)
+{
+  prepareGeometryChange();
+  _line.setPoints(mapFromScene(p), _line.p2());
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
+}
+
+QPointF QGraphicsLineShape::sceneStartPoint() const
+{
+  return mapToScene(_line.p1());
+}
+
+void QGraphicsLineShape::setSceneEndPoint(const QPointF & p)
+{
+  prepareGeometryChange();
+  _line.setPoints(_line.p1(), mapFromScene(p));
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
+}
+
+QPointF QGraphicsLineShape::sceneEndPoint() const
+{
+  return mapToScene(_line.p2());
+}
 
 void QGraphicsLineShape::pointToScene(qreal x, qreal y)
 {

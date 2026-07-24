@@ -856,7 +856,8 @@ inline const c_enum_member * members_of<cv::BorderTypes>()
     {cv::BORDER_WRAP, "BORDER_WRAP", "cdefgh|abcdefgh|abcdefg"},
     {cv::BORDER_REFLECT_101, "BORDER_REFLECT_101", "gfedcb|abcdefgh|gfedcba"},
     {cv::BORDER_TRANSPARENT, "BORDER_TRANSPARENT", "uvwxyz|abcdefgh|ijklmno"},
-    {cv::BORDER_ISOLATED, "BORDER_ISOLATED", "do not look outside of ROI"},
+    // BORDER_ISOLATED is Operation Flag, not a Border Type
+    // {cv::BORDER_ISOLATED, "BORDER_ISOLATED", "do not look outside of ROI"},
     {cv::BORDER_REFLECT_101}
   };
 

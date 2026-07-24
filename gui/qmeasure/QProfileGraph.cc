@@ -55,7 +55,7 @@ const c_enum_member* members_of<QCPGraph::LineStyle>()
 namespace {
 
 template<class T>
-void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
+void _get_pixels(const cv::Mat & image, const cv::Mat & mask,
     const QVector<cv::Point> & pts,
     QVector<double> & keys,
     QVector<double> values[4],
@@ -69,11 +69,8 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
     ptmasks[c].clear();
   }
 
-  const cv::Mat_<T> src =
-      image;
-
-  const int cn =
-      image.channels();
+  const cv::Mat_<T> src = image;
+  const int cn = image.channels();
 
   if (mask.empty()) {
 
@@ -135,7 +132,7 @@ void get_pixels_(const cv::Mat & image, const cv::Mat & mask,
   }
   else if (image.channels() == 1 && mask.channels() > 1 ) {
 
-    const cv::Mat1b M   = reduce_channels(mask, cv::REDUCE_MAX);
+    const cv::Mat1b M = reduce_channels(mask, cv::REDUCE_MAX);
 
     for( int i = 0, n = pts.size(); i < n; ++i ) {
 
@@ -164,25 +161,25 @@ void get_pixels(const cv::Mat & image, const cv::Mat & mask,
 {
   switch (image.depth()) {
     case CV_8U:
-      get_pixels_<uint8_t>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<uint8_t>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_8S:
-      get_pixels_<int8_t>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<int8_t>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_16U:
-      get_pixels_<uint16_t>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<uint16_t>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_16S:
-      get_pixels_<int16_t>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<int16_t>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_32S:
-      get_pixels_<int32_t>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<int32_t>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_32F:
-      get_pixels_<float>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<float>(image, mask, pts, keys, values, ptmasks);
       break;
     case CV_64F:
-      get_pixels_<double>(image, mask, pts, keys, values, ptmasks);
+      _get_pixels<double>(image, mask, pts, keys, values, ptmasks);
       break;
   }
 }
@@ -261,10 +258,8 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
     _graphs[i]->setPen(pen);
     _graphs[i]->setLineStyle(_lineStyle);
 
-    QCPScatterStyle scatterStyle =
-        _graphs[i]->scatterStyle();
-
-    scatterStyle.setSize(3);
+    QCPScatterStyle scatterStyle = _graphs[i]->scatterStyle();
+    scatterStyle.setSize(_pointSize);
     scatterStyle.setShape(_lineStyle == QCPGraph::lsNone ?
         QCPScatterStyle::ScatterShape::ssSquare :
         QCPScatterStyle::ScatterShape::ssNone);
@@ -352,9 +347,7 @@ void QProfileGraph::setLineStyle(QCPGraph::LineStyle v)
 
       _graphs[i]->setLineStyle(_lineStyle);
 
-      QCPScatterStyle scatterStyle =
-          _graphs[i]->scatterStyle();
-
+      QCPScatterStyle scatterStyle = _graphs[i]->scatterStyle();
       scatterStyle.setShape(_lineStyle == QCPGraph::lsNone ?
           QCPScatterStyle::ScatterShape::ssSquare :
           QCPScatterStyle::ScatterShape::ssNone);
@@ -370,6 +363,27 @@ void QProfileGraph::setLineStyle(QCPGraph::LineStyle v)
 QCPGraph::LineStyle QProfileGraph::lineStyle() const
 {
   return _lineStyle;
+}
+
+void QProfileGraph::setPointSize(int v)
+{
+  if ( _pointSize != v ) {
+
+    _pointSize = v;
+
+    for( int i = 0; i < 4; ++i ) {
+      QCPScatterStyle scatterStyle = _graphs[i]->scatterStyle();
+      scatterStyle.setSize(_pointSize);
+      _graphs[i]->setScatterStyle(scatterStyle);
+    }
+
+    _plot->replot();
+  }
+}
+
+int QProfileGraph::pointSize() const
+{
+  return _pointSize;
 }
 
 void QProfileGraph::setFixXMin(bool v)
@@ -532,6 +546,7 @@ void QProfileGraph::saveParameters(const QString & profileName)
   QSettings settings;
 
   settings.setValue(QString("%1/lineStyle").arg(profile), (int)lineStyle());
+  settings.setValue(QString("%1/pointSize").arg(profile), pointSize());
   settings.setValue(QString("%1/fixXMin").arg(profile), fixXMin());
   settings.setValue(QString("%1/fixXMax").arg(profile), fixXMax());
   settings.setValue(QString("%1/fixYMin").arg(profile), fixYMin());
@@ -555,6 +570,7 @@ void QProfileGraph::loadParameters(const QString & profileName)
   QSettings settings;
 
   setLineStyle((QCPGraph::LineStyle)settings.value(QString("%1/lineStyle").arg(profile), lineStyle()).toInt());
+  setPointSize(settings.value(QString("%1/pointSize").arg(profile), pointSize()).toInt());
   setFixXMin(settings.value(QString("%1/fixXMin").arg(profile), fixXMin()).toBool());
   setFixXMax (settings.value(QString("%1/fixXMax").arg(profile), fixXMax()).toBool());
   setFixYMin (settings.value(QString("%1/fixYMin").arg(profile), fixYMin()).toBool());
@@ -603,17 +619,14 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image, c
 
       if( std::abs(x2 - x1) >= std::abs(y2 - y1) ) {
 
-        const double s =
-            (double) (y2 - y1) / (double) (x2 - x1);
+        const double s = (double) (y2 - y1) / (double) (x2 - x1);
 
         if( x2 >= x1 ) {
-
           for( int x = x1; x <= x2; ++x ) {
             pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
           }
         }
         else {
-
           for( int x = x1; x >= x2; --x ) {
             pts.append(cv::Point(x, qRound(y1 + (x - x1) * s)));
           }
@@ -622,17 +635,14 @@ void QProfileGraph::showProfilePlot(const QLine & line, const cv::Mat & image, c
       }
       else {
 
-        const double s =
-            (double) (x2 - x1) / (double) (y2 - y1);
+        const double s = (double) (x2 - x1) / (double) (y2 - y1);
 
         if( y2 >= y1 ) {
-
           for( int y = y1; y <= y2; ++y ) {
             pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
           }
         }
         else {
-
           for( int y = y1; y >= y2; --y ) {
             pts.append(cv::Point(qRound(x1 + (y - y1) * s), y));
           }
@@ -690,40 +700,23 @@ void QProfileGraph::replot()
 
   if( !(_fixXMin && _fixXMax) ) {
 
-    const double xmin =
-        _fixXMin ? _plot->xAxis->range().lower :
-            0;
-
-    const double xmax =
-        _fixXMax ? _plot->xAxis->range().upper :
-            _current_keys.size();
-
+    const double xmin = _fixXMin ? _plot->xAxis->range().lower : 0;
+    const double xmax = _fixXMax ? _plot->xAxis->range().upper : _current_keys.size();
     _plot->xAxis->setRange(xmin, xmax);
     Q_EMIT xRangeRescaled();
   }
 
   if( !(_fixYMin && _fixYMax) ) {
 
-    double ymin =
-        _plot->yAxis->range().lower;
-
-    double ymax =
-        _plot->yAxis->range().upper;
+    const double ymin = _plot->yAxis->range().lower;
+    const double ymax = _plot->yAxis->range().upper;
 
     _plot->yAxis->rescale();
+    _plot->yAxis->scaleRange(1.1, _plot->yAxis->range().center());
 
-    const double adjust =
-        0.05 * std::abs(_plot->yAxis->range().upper - _plot->yAxis->range().lower);
-
-    if ( !_fixYMin ) {
-      ymin = _plot->yAxis->range().lower - adjust;
-    }
-
-    if ( !_fixYMax ) {
-      ymax = _plot->yAxis->range().upper + adjust;
-    }
-
-    _plot->yAxis->setRange(ymin, ymax);
+    const double finalMin = _fixYMin ? ymin : _plot->yAxis->range().lower;
+    const double finalMax = _fixYMax ? ymax : _plot->yAxis->range().upper;
+    _plot->yAxis->setRange(finalMin, finalMax);
 
     Q_EMIT yRangeRescaled();
   }
@@ -905,6 +898,23 @@ QProfileGraphSettings::QProfileGraphSettings(QWidget * parent) :
             }
             return false;
           });
+
+  pointSize_ctl =
+      add_spinbox("Point size", "Set point size",
+          [this](int v) {
+            if ( _options ) {
+              _options->setPointSize(v);
+            }
+          },
+          [this](int * v) -> bool {
+            if ( _options ) {
+              *v = _options->pointSize();
+              return true;
+            }
+            return false;
+          });
+
+  pointSize_ctl->setRange(1, 31);
 
   logScaleX_ctl =
       add_checkbox("Log Scale X:",

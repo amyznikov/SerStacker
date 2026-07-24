@@ -114,103 +114,82 @@ protected:
 
 static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
 {
-  const int N_uniform = 100;
+  constexpr int N_uniform = 100;
   const int n_bins = p.size();
 
   std::vector<double> bin_sums(N_uniform, 0.0);
   std::vector<int> bin_counts(N_uniform, 0);
 
-  // Skip DC
+  // Initialize the frequency range (skip DC)
   const double x_min = p.xv(1);
   const double x_max = p.xv(n_bins - 1);
-  const double x_range = x_max - x_min;
+  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
 
+  // Uniform accumulation (resampling)
   for( int i = 1; i < n_bins; ++i ) {
-    const double x = p.xv(i);
-    const double l = p.lv(i);
-    const int bin_idx = std::clamp(int((x - x_min) * (N_uniform - 1) / x_range), 0, N_uniform - 1);
-    bin_sums[bin_idx] += l;
-    bin_counts[bin_idx] += 1;
+    const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
+    bin_sums[bin_idx] += p.lv(i);
+    bin_counts[bin_idx]++;
   }
+
+  // Average non-empty cells
   for( int i = 0; i < N_uniform; ++i ) {
     if( bin_counts[i] > 1 ) {
       bin_sums[i] /= bin_counts[i];
     }
   }
 
+  // Gap Filling
   cv::Mat1f U(1, N_uniform);
   float * __restrict up = U[0];
 
-  // Gap Filling
+  int last_valid_idx = -1;
   for( int j = 0; j < N_uniform; ++j ) {
     if( bin_counts[j] > 0 ) {
-      up[j] = bin_sums[j];
-    }
-    else {
-      int left_valid = -1;
-      int right_valid = -1;
+      up[j] = static_cast<float>(bin_sums[j]);
 
-      for( int k = j - 1; k >= 0; --k ) {
-        if( bin_counts[k] > 0 ) {
-          left_valid = k;
-          break;
+      // If there were holes before, interpolate them from the last valid one to the current one
+      if (last_valid_idx != j - 1) {
+        const int left = std::max(0, last_valid_idx);
+        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
+        const float y_right = up[j];
+        const float inv_step = 1.0f / (j - left);
+
+        for (int k = left + 1; k < j; ++k) {
+          const float t = (k - left) * inv_step;
+          up[k] = (1.0f - t) * y_left + t * y_right;
         }
       }
-
-      for( int k = j + 1; k < N_uniform; ++k ) {
-        if( bin_counts[k] > 0 ) {
-          right_valid = k;
-          break;
-        }
-      }
-
-      if( left_valid != -1 && right_valid != -1 ) {
-        const float y_left = bin_sums[left_valid];
-        const float y_right = bin_sums[right_valid];
-        const float t = float(j - left_valid) / (right_valid - left_valid);
-        up[j] = (1.0f - t) * y_left + t * y_right;
-      }
-      else if( left_valid != -1 ) {
-        up[j] = float(bin_sums[left_valid]);
-      }
-      else if( right_valid != -1 ) {
-        up[j] = float(bin_sums[right_valid]);
-      }
-      else {
-        up[j] = 0.0f;
-      }
+      last_valid_idx = j;
     }
   }
 
+  // Extrapolate the right edge if the last bins remain empty
+  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
+    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
+  }
+
+  // Freezing the tail (Spectrum Matrix Angle Region)
   const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-  const double startCornersX = p.xv(startCornersBin);
-  const int uniformStartCornersBin = std::clamp(int((startCornersX - x_min) * (N_uniform - 1) / x_range), 0, N_uniform - 1);
-  const double startCornersValue = up[uniformStartCornersBin];
-  for ( int i = uniformStartCornersBin; i < N_uniform; ++i ) {
-    up[i] = startCornersValue;
-  }
+  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
+  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
+
+  // Smoothing the uniform profile
   cv::GaussianBlur(U, U, cv::Size(21, 1), 0, 0, cv::BORDER_REPLICATE);
 
+  // Back interpolation into the original bin grid
+  // DC is kept unchanged
   cv::Mat1f output_lap(1, n_bins);
   float * __restrict dstp = output_lap[0];
-  dstp[0] = p.lv(0); //  0.0f; // DC
+  dstp[0] = float(p.lv(0));
 
   const float * smup = U[0];
   for( int i = 1; i < n_bins; ++i ) {
-    const double orig_x = p.xv(i);
-    const double uniform_idx = (orig_x - x_min) * (N_uniform - 1) / x_range;
-    const int k = int(uniform_idx);
-
-    if( k < 0 ) {
-      dstp[i] = smup[0];
-    }
-    else if( k >= N_uniform - 1 ) {
-      dstp[i] = smup[N_uniform - 1];
-    }
-    else {
-      double t = uniform_idx - k;
-      dstp[i] = (1.0f - t) * smup[k] + t * smup[k + 1];
-    }
+    // Safe index clamp eliminates crashes and branches in the loop
+    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
+    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
+    const double t = uniform_idx - k;
+    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
   }
 
   return output_lap;
@@ -595,8 +574,6 @@ bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
 
 bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask )
 {
-  CF_DEBUG("c_fft_autosharp_routine: ENTER");
-
   if ( _display == DISPLAY_SRC_IMAGE ) {
     return true;
   }
@@ -689,7 +666,6 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   SRC_RESTORED(rc).copyTo(image);
 
-  CF_DEBUG("c_fft_autosharp_routine: LEAVE");
   return true;
 }
 

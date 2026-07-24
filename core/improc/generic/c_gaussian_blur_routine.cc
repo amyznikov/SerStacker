@@ -56,24 +56,11 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
 {
   switch (_stereo_mode) {
     case StereoNone:
-      gaussian_filter(image, mask, image,
+      gaussian_filter(image, _ignore_mask ? cv::noArray() : mask, image,
           cv::Size2f(_sigmax, _sigmay),
           cv::Size(_ksizex, _ksizey),
           _scale, _delta,
           _border_type, _border_value);
-
-//      ();
-//      if( _ignore_mask || mask.empty() || cv::countNonZero(mask) == mask.size().area() ) {
-//        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
-//            apply(image.getMat(), cv::noArray(), image, _border_type);
-//      }
-//      else {
-//        cv::Mat tmp;
-//        image.getMat().copyTo(tmp);
-//        tmp.setTo(0, ~mask.getMat());
-//        c_gaussian_filter(_sigmax, _sigmay, cv::Size(_ksizex, _ksizey), _scale).
-//            apply(tmp, mask, image, _border_type);
-//      }
       break;
 
     case StereoHLayout: {

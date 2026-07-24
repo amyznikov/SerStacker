@@ -61,6 +61,13 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
     const cv::Size & outputImageSize,
     cv::Mat1f & outputImage);
 
+bool dctRadialProfile(const cv::Mat1f & dctSpectrum,
+    cv::Mat1f & outputProfile);
+
+void dctRadialProfileToImage(const cv::Mat1f & radialProfile,
+    const cv::Size & outputImageSize,
+    cv::Mat1f & outputImage);
+
 bool fftSpectrumToPolar(const cv::Mat & src,
     cv::Mat & magnitude,
     cv::Mat & phase);

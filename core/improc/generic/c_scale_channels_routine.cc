@@ -39,17 +39,17 @@ static bool applyChannelTransform(cv::InputArray src, cv::OutputArray dst,
     }
     case 4: {
       using Matx45f = cv::Matx<float, 4, 5>;
-      const float data[20] = {
+      const Matx45f M( {
           float(stretch[0]),   0.0f,       0.0f,       0.0f,       float(shift[0]),
           0.0f,         float(stretch[1]), 0.0f,       0.0f,       float(shift[1]),
           0.0f,         0.0f,       float(stretch[2]), 0.0f,       float(shift[2]),
           0.0f,         0.0f,       0.0f,       float(stretch[3]), float(shift[3])
-      };
-      cv::transform(src, dst, Matx45f(data));
+        });
+      cv::transform(src, dst, M);
       break;
     }
     default: {
-      CF_ERROR("Unsupported number of channels: %d" ,channels);
+      CF_ERROR("NOT supported number of channels: %d" ,channels);
       return false;
     }
   }

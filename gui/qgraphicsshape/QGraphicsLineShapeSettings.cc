@@ -110,7 +110,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(QWidget * parent) :
 
   startPoint_ctl =
     add_numeric_box<QPointF>("Start Point [px]",
-        "Set Start point as x;y",
+        "Set Start Point as x;y",
         [this](const QPointF & v) {
           if ( _opts ) {
             _opts->setSceneStartPoint(v);
@@ -126,7 +126,7 @@ QGraphicsLineShapeSettings::QGraphicsLineShapeSettings(QWidget * parent) :
 
   endPoint_ctl =
     add_numeric_box<QPointF>("End Point [px]",
-        "Set Start point as x;y",
+        "Set End Point as x;y",
         [this](const QPointF & v) {
           if ( _opts ) {
             _opts->setSceneEndPoint(v);

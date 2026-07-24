@@ -33,6 +33,23 @@ const QPointF & QGraphicsTargetShape::center() const
   return _center;
 }
 
+void QGraphicsTargetShape::setSceneCenter(const QPointF & p)
+{
+  prepareGeometryChange();
+  _center = mapFromScene(p);
+  updateGeometry();
+  update();
+
+  if( flags() & ItemSendsGeometryChanges ) {
+    Q_EMIT itemChanged(this);
+  }
+}
+
+QPointF QGraphicsTargetShape::sceneCenter() const
+{
+  return mapToScene(_center);
+}
+
 void QGraphicsTargetShape::setBaseRadius(double v)
 {
   if ( v < 1 ) {

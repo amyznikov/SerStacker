@@ -45,24 +45,6 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(QWidget * parent) :
             return false;
           });
 
-
-//  baseRadius_ctl =
-//      add_numeric_box<double>("Base radius:",
-//          "",
-//          [this](double v) {
-//            if ( _opts ) {
-//              _opts->setBaseRadius(v);
-//                saveSettings();
-//            }
-//          },
-//          [this](double * v) {
-//            if ( _opts ) {
-//              *v = _opts->baseRadius();
-//              return true;
-//            }
-//            return false;
-//          });
-
   baseRadius_ctl =
       add_sliderspinbox<int>("Base radius:",
           "Radius of first (internal) circle",
@@ -144,6 +126,22 @@ QGraphicsTargetShapeSettings::QGraphicsTargetShapeSettings(QWidget * parent) :
           [this](int * v) {
             if ( _opts ) {
               *v = _opts->penWidth();
+              return true;
+            }
+            return false;
+          });
+
+  centerPoint_ctl =
+      add_numeric_box<QPointF>("Center [px]",
+          "Set Center Point as x;y",
+          [this](const QPointF & v) {
+            if ( _opts ) {
+              _opts->setSceneCenter(v);
+            }
+          },
+          [this](QPointF * v) {
+            if ( _opts ) {
+              *v = _opts->sceneCenter();
               return true;
             }
             return false;

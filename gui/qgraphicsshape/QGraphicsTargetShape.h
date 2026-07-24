@@ -24,6 +24,9 @@ public:
   void setCenter(const QPointF & p);
   const QPointF & center() const;
 
+  void setSceneCenter(const QPointF & p);
+  QPointF sceneCenter() const;
+
   void setFixOnSceneCenter(bool v);
   bool fixOnSceneCenter() const;
 

@@ -5,7 +5,7 @@
  *      Author: amyznikov
  */
 
-#include "configpath.h"
+#include <core/configpath.h>
 #include <core/readdir.h>
 
 const std::string & get_default_config_path()

@@ -10,6 +10,7 @@
 #include <core/ssprintf.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
 #include <core/io/c_stdio_file.h>
+#include <core/proc/c_line_estimate.h>
 #include <core/proc/c_linear_regression.h>
 #include <core/readdir.h>
 #include <core/debug.h>
@@ -44,10 +45,9 @@ public:
 
   inline void init(const cv::Mat1f & mx)
   {
-    // exclude DC from energy normalization
-    const int startCornersBin = int((mx.cols - 1) * M_SQRT1_2);
-    _y0 = 0.5 * std::log(cv::norm(mx(cv::Rect(1, 0, startCornersBin - 1, 1)), cv::NORM_L2SQR) / (startCornersBin - 1));
-    _L0 = 2 * std::log(1. / mx.cols);
+    const int total_bins = mx.cols;
+    const double total_energy = cv::norm(mx(cv::Rect(1, 0, total_bins - 1, 1)), cv::NORM_L2SQR);
+    _y0 = 0.5 * std::log(total_energy);
     _m = mx;
   }
 
@@ -56,50 +56,34 @@ public:
     return _m.cols;
   }
 
-  // raw linear intensity values from radial spectrum profile
-  inline const float * intensity() const
-  {
-    return _m[0];
-  }
-
-  // zero point for log of relative intensity
   inline double y0() const
   {
     return _y0;
   }
 
-  // log of frequency
   inline double xv(int i) const
   {
-    return std::log(1.0 + i);
+    return std::log(std::max(1,i));
   }
 
-  // log of relative intensity
+  inline double sv(int i) const
+  {
+    return _m[0][i];
+  }
+
   inline double yv(int i) const
   {
-    return std::log(_m(0, i)) - _y0;
-  }
-
-  // log of laplacian operator in log space
-  inline double lop(int i) const
-  {
-    return _L0 + 2 * std::log(1.0 + i);
-  }
-
-  // log of laplacian at bin index i
-  inline double lv(int i) const
-  {
-    //return lop(i) + yv(i);
-    return _L0 - _y0 + std::log((1.0 + i) * (1.0 + i) * _m(0, i));
+    return std::log(_m[0][i]) - _y0;
   }
 
 protected:
   cv::Mat1f _m; // [1][n_bins]
   double _y0 = 0;
-  double _L0 = 0;
 };
 
-static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
+
+
+static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p)
 {
   constexpr int N_uniform = 100;
   const int n_bins = p.size();
@@ -115,8 +99,11 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
   // Uniform accumulation (resampling)
   for( int i = 1; i < n_bins; ++i ) {
     const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-    bin_sums[bin_idx] += p.lv(i);
-    bin_counts[bin_idx]++;
+    const double m = p.sv(i);
+    if ( m > 0 ) {
+      bin_sums[bin_idx] += p.yv(i);
+      bin_counts[bin_idx]++;
+    }
   }
 
   // Average non-empty cells
@@ -162,13 +149,14 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
   std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
 
   // Smoothing the uniform profile
-  cv::GaussianBlur(U, U, cv::Size(21, 1), 0, 0, cv::BORDER_REPLICATE);
+  cv::medianBlur(U, U, 5);
+  cv::GaussianBlur(U, U, cv::Size(31, 1), 0, 0, cv::BORDER_REPLICATE);
 
   // Back interpolation into the original bin grid
   // DC is kept unchanged
-  cv::Mat1f output_lap(1, n_bins);
-  float * __restrict dstp = output_lap[0];
-  dstp[0] = float(p.lv(0));
+  cv::Mat1f output(1, n_bins);
+  float * __restrict dstp = output[0];
+  dstp[0] = float(p.yv(0));
 
   const float * smup = U[0];
   for( int i = 1; i < n_bins; ++i ) {
@@ -179,252 +167,275 @@ static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
     dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
   }
 
-  return output_lap;
+  return output;
 }
 
-static int estimateNature(const c_radial_spectrum_profile sp,
-    double S1_nature_gain,
-    const cv::Mat1f & LSM, // smoothed laplacian
-    double & output_S0_lap,
-    double & output_S1_lap,
-    double & output_S2_lap,
+static int estimateNature2(const c_radial_spectrum_profile &sp,
+    const cv::Mat1f & SDCT,
     double & output_S0_nature,
     double & output_S1_nature,
-    double & output_xt,
-    double & output_yt )
+    double & output_S0_maxline,
+    double & output_S1_maxline,
+    int & output_inflectionPoint,
+    cv::Mat1f & kx)
 {
-  /*
-   * Approximate lap(x) to find start of the blur
-   *  lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
-   */
-
   const int N = sp.size();
   const int startCornersBin = int((N - 1) * M_SQRT1_2);
+  const double startCornersLog = std::log((N - 1) * M_SQRT1_2);
 
-  int curvatureEndPoint = -1;
-  double S0_lap = 0, S1_lap = 0, S2_lap = 0;
-  double S2_best = 0;
+  kx.create(1, N);
+  kx.setTo(0);
 
-  c_linear_regression3 reg3;
-
-  for( int i = 1, n = 0; i < startCornersBin; ++i ) {
-    const double x = sp.xv(i);
-    const double y = sp.yv(i);
-    if ( y <= 0 ) {
-
-      const double l = LSM(0, i);
-      reg3.update(1, x, x * x, l);
-
-      if ( ++n > 15 ) {
-        double S0_tmp = 0, S1_tmp = 0, S2_tmp = 0;
-        reg3.compute(S0_tmp, S1_tmp, S2_tmp);
-        if( S2_tmp < S2_best ) {
-          S2_best = S2_tmp;
-          S0_lap = S0_tmp, S1_lap = S1_tmp, S2_lap = S2_tmp;
-          curvatureEndPoint = i;
-        }
-      }
+  int startSearchBin = 1;
+  for ( ; startSearchBin < startCornersBin; ++startSearchBin) {
+    const double xrel = startCornersLog - std::log(startSearchBin);
+    if ( xrel < 6 ) {
+      break;
     }
   }
+  if( startSearchBin >= startCornersBin ) {
+    CF_ERROR("Bad startSearchBin=%d >= startCornersBin=%d", startSearchBin, startCornersBin);
+    return -1;
+  }
 
-  output_S0_lap = S0_lap;
-  output_S1_lap = S1_lap;
-  output_S2_lap = S2_lap;
+  CF_DEBUG("Initial startSearchBin=%d (x=%g y=%g)", startSearchBin, sp.xv(startSearchBin), SDCT(0, startSearchBin));
 
-  /*
-   * Approximate nature(x) to find nature slope using Gaussian Dome Invariant
-   *  nature(x) = S0_nature + S1_nature * x
-   */
-
-  // Search for the blur start point (LS separation from LQ) when moving left from curvatureEndPoint
-  const double lxmax = -0.5 * S1_lap / S2_lap; // x coordinate of the laplacian extremum
-  const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
-  double xStartMF = 0;
-  double yStartMF = 0;
-  int indexOfStartMF = -1;
-  for ( int i = 1; i < curvatureEndPoint; ++i ) {
-    const double x = sp.xv(i);
-    const double y = sp.yv(i);
-    if ( y <= 0  && sp.yv(i + 1) <= 0 ) {
-      indexOfStartMF = i;
-      xStartMF = x;
-      yStartMF = y;
+  for ( ; startSearchBin < startCornersBin - 4; ++ startSearchBin) {
+    const double x0 = sp.xv(startSearchBin + 0);
+    const double y0 = SDCT(0, startSearchBin + 0);
+    const double x1 = sp.xv(startSearchBin + 1);
+    const double y1 = SDCT(0, startSearchBin + 1);
+    const double x2 = sp.xv(startSearchBin + 2);
+    const double y2 = SDCT(0, startSearchBin + 2);
+    const double x3 = sp.xv(startSearchBin + 3);
+    const double y3 = SDCT(0, startSearchBin + 3);
+    const double d0 = (y1 - y0) / (x1 - x0);
+    const double d1 = (y2 - y1) / (x2 - x1);
+    const double d2 = (y3 - y2) / (x3 - x2);
+    if ( d0 <= -0.5 && d1 <= -0.5 && d2 <= -0.5 ) {
       break;
     }
   }
 
-  if ( indexOfStartMF < 2 ) {
-    CF_ERROR("\nBad input data: indexOfStartMF=%d lxmax=%g S0_lap=%g S1_lap=%g S2_lap=%g",
-        indexOfStartMF, lxmax,
-        S0_lap, S1_lap, S2_lap);
+  const double startX = sp.xv(startSearchBin);
+  const double startY = SDCT(0, startSearchBin);
 
+  int endSearchBin = -1;
+  double Kx = DBL_MAX;
+  double Kx_best = DBL_MAX;
+
+  CF_DEBUG("startSearchBin=%d (x=%g y=%g)", startSearchBin, startX, startY);
+
+  for( int i = startSearchBin; i < startCornersBin; ++i ) {
+    const double x = sp.xv(i) - startX;
+    const double y = SDCT(0, i) - startY;
+    const double Kx_temp = y / (x + 0.1);
+    kx(0, i) = Kx_temp; // save also for debug / visualization
+    if( i > startSearchBin + 3 && Kx_temp < Kx_best ) {
+      Kx_best = Kx_temp;
+      Kx = y / x;
+      endSearchBin = i;
+    }
+  }
+
+  if( endSearchBin <= startSearchBin ) {
+    CF_ERROR("ERROR: endSearchBin=%d <= startSearchBin=%d", endSearchBin, startSearchBin);
     return -1;
   }
+  CF_DEBUG("endSearchBin=%d (x=%g y=%g) Kx=%g Kx_best=%g", endSearchBin, sp.xv(endSearchBin), SDCT(0, endSearchBin), Kx, Kx_best);
 
 
-  if( lxmax < xStartMF ) { // lxmax is in low frequency region
+  const double S0_maxline = startY - Kx * startX;
+  const double S1_maxline = Kx;
+  output_S0_maxline = S0_maxline;
+  output_S1_maxline = S1_maxline;
 
-    const double xlt = xStartMF;
-    const double ylt = LSM(0, indexOfStartMF);
-    const double dx = xStartMF - lxmax;
-    const double dy = llmax - (S0_lap + S1_lap * xlt + S2_lap * xlt * xlt);
-    output_S1_nature = std::max(0.3, dy / dx) * S1_nature_gain;
-    output_S0_nature = ylt - output_S1_nature * xlt;
-    output_xt = xlt;
-    output_yt = ylt;
-    CF_DEBUG("\nLF: "
-        "indexOfStartMF=%d xlt=%g ylt=%g dx=%g dy=%g output_S0_nature = %g output_S1_nature = %g",
-        indexOfStartMF, xlt, ylt, dx, dy, output_S0_nature, output_S1_nature);
-  }
-  else {
+  int inflectionBin = -1;
+#if 1
+  double max_distance = 0.0;
+  const double xMid = 0.5 * (sp.xv(startSearchBin) + sp.xv(endSearchBin));
 
-    const double threshold = 0.25;
-    double x_start_blur = sp.xv(1);
-    double delta_start_blur = 0;
-    int index_start_blur = 1;
-    for( int i = indexOfStartMF; i > 0; --i ) {
-      const double x = sp.xv(i);
-      const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
-      const double ls = LSM(0, i);
-      if( (ls - lq) >= threshold ) {
-        x_start_blur = x;
-        delta_start_blur = ls - lq;
-        index_start_blur = i;
-        break;
+  // Knee method: looking for the maximum positive vertical distance (curve above the line)
+  for (int i = startSearchBin + 3; i < endSearchBin; ++i) {
+    const double x = sp.xv(i);
+    if ( x > 2.0 ) {
+      const double line_val = S1_maxline * x  + S0_maxline;
+      const double curve_val = SDCT(0, i);
+      const double distance = (curve_val - line_val) / std::sqrt(1.0 + 0.25 * std::abs(x-xMid));
+      if (distance > max_distance) {
+        max_distance = distance;
+        inflectionBin = i;
       }
     }
-
-    if ( x_start_blur >= lxmax - 0.1 ) {
-      CF_DEBUG("\nFixing x_start_blur=%g lxmax=%g", x_start_blur, lxmax);
-      x_start_blur = lxmax - 0.5;
-    }
-
-    // Radius of the active blur dome and the application of the 0.42 invariant
-    const double R = lxmax - x_start_blur;
-    const double xlt = lxmax - 0.42 * R;
-    // The value of the parabola ordinate at the calculated point of contact xlt
-    const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
-
-    // Coefficients of the LT line according to the requirement of equality of derivatives
-    output_S1_nature = std::max(0.3, (2.0 * S2_lap * xlt + S1_lap)) * S1_nature_gain;
-    output_S0_nature = ylt - output_S1_nature * xlt;
-    output_xt = xlt;
-    output_yt = ylt;
-
-    CF_DEBUG("\nMF: "
-        "indexOfStartMF=%d x_start_blur=%g delta_start_blur=%g index_start_blur=%d",
-        indexOfStartMF, x_start_blur, delta_start_blur, index_start_blur);
   }
 
-  return curvatureEndPoint;
+  if( inflectionBin <= startSearchBin ) {
+    CF_ERROR("BAD inflectionBin=%d <= startSearchBin=%d endSearchBin=%d", inflectionBin, startSearchBin, endSearchBin);
+    return -1;
+  }
+#endif
+#if 0
+  c_line_estimate line;
+  output_S0_nature = 0;
+  output_S1_nature = -DBL_MAX;
+  for (int i = startSearchBin; i < endSearchBin; ++i) {
+    const double xrel = startCornersLog - std::log(i);
+    if ( xrel < 5.5 ) {
+      const double x = sp.xv(i);
+      const double y = SDCT(0, i);
+      line.update(x, y);
+      if ( line.pts() > 15 ) {
+        double S0_nature = 0, S1_nature= -DBL_MAX;
+        line.compute(S0_nature, S1_nature);
+        if ( S1_nature  > output_S1_nature ) {
+          output_S0_nature = S0_nature;
+          output_S1_nature = S1_nature;
+          inflectionBin = i;
+        }
+      }
+    }
+  }
+#endif
+
+  CF_DEBUG("inflectionBin=%d (x=%g y=%g)", inflectionBin, sp.xv(inflectionBin), SDCT(0, inflectionBin) );
+
+  c_line_estimate line;
+  c_linear_regression3 reg3;
+  double s2_best = DBL_MAX;
+  output_inflectionPoint = -1;
+
+  for ( int i = startSearchBin; i < inflectionBin; ++i ) {
+    const double x = sp.xv(i);
+    const double y = SDCT(0, i);
+    reg3.update(1, x, x * x, y);
+    line.update(x, y);
+    if ( line.pts() > 15 ) {
+      double s0, s1, s2;
+      reg3.compute(s0, s1, s2);
+      if ( std::abs(s2) < s2_best ) {
+        s2_best = std::abs(s2);
+        line.compute(output_S0_nature, output_S1_nature);
+        output_inflectionPoint = i;
+      }
+    }
+  }
+
+  if ( output_inflectionPoint < 0 ) {
+    line.compute(output_S0_nature, output_S1_nature);
+    output_inflectionPoint = inflectionBin;
+  }
+
+  return startSearchBin;
 }
 
 static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
     const cv::Size & dctSize,
-    double S1_nature_gain,
+    double S1_target,
     const std::string & debug_file_name = "")
 {
-
   const c_radial_spectrum_profile sp(RadialSpectrumProfile);
+  cv::Mat1f correction(1, sp.size(), 1.0f);
+  cv::Mat1f kx(1, sp.size());
+  cv::Mat1f FILTER;
+  const double wsf = 2;
 
   const int N = sp.size();
-  const cv::Mat1f LSM = smoothLaplace(sp);
+  const cv::Mat1f SDCT = smoothDCT(sp);
 
-  double S0_lap, S1_lap, S2_lap;
   double S0_nature = 0, S1_nature = -500;
-  double xlt = 0, ylt = 0;
+  double inflection_x = 0;//, inflection_y = 0;
+  int corrStartBin = 0;
 
-  const int curvatureEndPoint =
-      estimateNature(sp, S1_nature_gain, LSM, S0_lap, S1_lap, S2_lap,
+  double S0_maxline = 0, S1_maxline = 0;
+  int inflectionBin = 0;
+
+  corrStartBin =
+      estimateNature2(sp, SDCT,
           S0_nature, S1_nature,
-          xlt, ylt);
+          S0_maxline, S1_maxline,
+          inflectionBin,
+          kx);
 
-  if ( curvatureEndPoint < 1 ) {
-    CF_ERROR("searchLaplaceExtreme() fails");
-    return cv::Mat1f();
+  if ( corrStartBin < 1 ) {
+    CF_ERROR("estimateNature2() fails");
+    inflectionBin = 0;
   }
+  else {
 
-  const double lxmax = -0.5 * S1_lap / S2_lap; // (x coordinate of the laplacian extremum)
-  const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
-  if ( S1_nature < 0.05 ) {
-    CF_ERROR("BAD S1_nature=%g", S1_nature);
-    //S1_nature = 0.05;
-  }
+    /**
+     * COMPUTE CORRECTION WITH TARGET SLOPE ADJUSMENT:
+     * correction  = nature - sdct;
+     *  S1_target - entered by user (e.g., -1.5)
+     *  S1_nature - calculated in estimateNature2()
+     **/
 
-  /*
-   * COMPUTE CORRECTION for x > xlt:
-   *   correction  = nature - laplace;
-   */
-  cv::Mat1f correction(1, sp.size(), 1.0f);
-  const int startBin = 4;
-  const double startX = std::max(sp.xv(startBin), xlt);
+    // Logarithm of frequency at the conjugation point (support point for changing the slope)
+    const double x_start = sp.xv(corrStartBin);
 
-  for( int i = startBin; i < sp.size(); ++i ) {
-    const double x = sp.xv(i);
-    const double nature = S0_nature + S1_nature * x;
-    const double laplace = LSM(0, i);
-    double full_corr = nature - laplace;
+    inflection_x = sp.xv(inflectionBin);
+    //inflection_y = SDCT(0, inflectionPoint);
 
-    // STITCHING:
-    // If x is to the left of the starting point (x < startX) or if the difference is negative (a dent),
-    // we protect std::max() via a soft window attenuation to ensure the graph
-    // goes to zero at low frequencies.
-    // If the slope of nature has risen (full_corr > 0), we allow the sigmoid to smoothly open the filter.
-    if( x < startX && full_corr < 0.0 ) {
-      full_corr = 0.0;
-    }
-    else {
-      // Force smooth zeroing at the startX point if the nature line is too high
-      // This will remove the vertical jump (step) on "bad" frames
-      const double window = 1.0 / (1.0 + std::exp(-5 * (x - startX)));
-      const double smooth_gate = 1.0 - std::exp(-5.0 * std::max(0.0, x - startX));
-      full_corr = (nature - laplace) * window * smooth_gate;
+    for( int i = corrStartBin + 1; i < sp.size(); ++i ) {
+      // Original "natural" trend of the spectrum
+      const double x = sp.xv(i);
+      const double nature = S0_nature + S1_nature * x;
+      const double y = SDCT(0, i);
+
+      // Local whitening additive (pure elimination of subsidence relative to nature)
+      const double corr = std::max(0.0, nature - y);
+
+      // Correction for the change in the global slope of the spectrum relative to the x_start point
+      // If S1_target > S1_nature (e.g. -2.0 > -2.24), slope_diff will be positive at high frequencies (gain)
+      const double slope_diff = (S1_target - S1_nature) * (x - x_start);
+
+      // Total logarithmic correction under the sigmoid smoothing window
+      const double total_corr = (corr + slope_diff) / (1.0 + std::exp(-wsf * (x - inflection_x)));
+      correction(0, i) = float(std::exp(total_corr));
     }
 
-    correction(0, i) = float(std::exp(full_corr));
-  }
+    /*
+     * Create the DCT FILTER
+     */
 
-  /*
-   * Create DCT FILTER
-   */
+    const cv::Size size = dctSize;
+    FILTER.create(size);
 
-  const cv::Size size = dctSize;
-  cv::Mat1f FILTER(size);
+    const double R = std::sqrt(size.width * size.width + size.height * size.height);
+    const int numBins = std::max(1, int(R));
+    const double maxNormalizedR = std::sqrt(2.0);
+    const double scaleX = 1.0 / size.width;
+    const double scaleY = 1.0 / size.height;
 
-  const double R = std::sqrt(size.width * size.width + size.height * size.height);
-  const int numBins = std::max(1, int(R));
-  const double maxNormalizedR = std::sqrt(2.0);
-  const double scaleX = 1.0 / size.width;
-  const double scaleY = 1.0 / size.height;
+    cv::parallel_for_(cv::Range(0, size.height),
+        [=, &FILTER](const cv::Range & range) {
+          for (int y = range.start; y < range.end; ++y) {
+            float * __restrict dstp = FILTER[y];
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
+            const double dy = y * scaleY;
+            const double dy2 = dy * dy;
 
-          const double dy = y * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < size.width; ++x) {
-            const double dx = x * scaleX;
-            const double dx2 = dx * dx;
-            const double r = std::sqrt(dx2 + dy2);
-            const double continuousBinIdx = r * numBins / maxNormalizedR;
-            const int binIndex = std::clamp((int)(continuousBinIdx), 0, N - 1);
-            dstp[x] = correction(0, binIndex);
+            for (int x = 0; x < size.width; ++x) {
+              const double dx = x * scaleX;
+              const double dx2 = dx * dx;
+              const double r = std::sqrt(dx2 + dy2);
+              const double continuousBinIdx = r * numBins / maxNormalizedR;
+              const int binIndex = std::clamp((int)(continuousBinIdx), 0, N - 1);
+              dstp[x] = correction(0, binIndex);
+            }
           }
-        }
-      });
+        });
+
+  }
 
   CF_DEBUG("\n"
-      "S0_lap = %g S1_lap = %g S2_lap = %g\n"
+      "corrStartBin=%d (x = %g y = %g)\n"
+      "S0_maxline = %g S1_maxline = %g\n"
       "S0_nature = %g S1_nature = %g\n"
-      "lxmax = %g llmax=%g\n"
-      "xlt = %g ylt = %g\n",
-      S0_lap, S1_lap, S2_lap,
+      "inflectionPoint = %d (x = %g y = %g)\n",
+      corrStartBin, sp.xv(corrStartBin), sp.yv(corrStartBin),
+      S0_maxline, S1_maxline,
       S0_nature, S1_nature,
-      lxmax, llmax,
-      xlt, ylt);
+      inflectionBin, sp.xv(inflectionBin), SDCT(0, inflectionBin));
 
   // "/home/projects/temp/analyze_profile.txt"
   if( !debug_file_name.empty() ) {
@@ -439,23 +450,27 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
       CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
     }
     else {
-      fprintf(fp, "I\tX\tS\tY\tL\tLS\tLQ\tLN\tCORRECTION\tLP\tYP\n");
+      fprintf(fp, "I\tX\tS\tDCT\tSDCT\tSDCT_LINEAR_APPROXIMATION\tCORRECTION\tDCT_WHITENED\tW\tMAXL\tXIP\tDCT_RESORED\tDYS\tXREL\tKx\n");
 
-      const float * src_y = sp.intensity();
-
+      const double startCornersLog = std::log((N - 1) * M_SQRT1_2);
       for( int i = 0; i < N; ++i ) {
+        const double src_y = sp.sv(i);
         const double x = sp.xv(i); // log of frequency
         const double y = sp.yv(i); // log of spectrum intensity
-        const double l = sp.lop(i) + y; // laplace
-        const double ls = LSM(0, i);
-        const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
-        const double ln = S0_nature + S1_nature * x;
+        const double ys = SDCT(0, i);
+        const double yn = S0_nature + S1_nature * x;
         const double corr = std::log(correction(0, i));
         const double yp = y + corr;
-        const double lp = l + corr;
+        const double wc = 1.0 / (1.0 + std::exp(-wsf * (x - inflection_x)));
+        const double ymaxl = S0_maxline + S1_maxline * x;
+        const double xip = sp.xv(inflectionBin);
+        const double yip = ys;
+        const double dys = i == 0 ? 0 : (ys - SDCT(0, i - 1)) / (x - sp.xv(i - 1));
+        const double Kx = kx(0, i);
+        const double xrel = -std::log(std::max(1, i)) + startCornersLog;
 
-        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-            i, x, src_y[i], y, l, ls, lq, ln, corr, lp, yp);
+        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
+            i, x, src_y, y, ys, yn, corr, yp, wc, ymaxl, xip, yip, dys, xrel, Kx);
       }
 
       CF_DEBUG("Saved file '%s'", fp.cfilename());
@@ -471,7 +486,7 @@ void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
   ctlbind(ctls, "inpaint_missing_pixels", CTL_CONTEXT(ctx, _inpaint_missing_pixels), "");
-  ctlbind(ctls, "S1_gain: ", CTL_CONTEXT(ctx, _S1_gain), "");
+  ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target), "");
   ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
 }
@@ -482,7 +497,7 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
     SERIALIZE_OPTION(settings, save, *this, _inpaint_missing_pixels);
-    SERIALIZE_OPTION(settings, save, *this, _S1_gain);
+    SERIALIZE_OPTION(settings, save, *this, _S1_target);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     return true;
   }
@@ -540,7 +555,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   cv::Mat1f INVERSE_FILTER =
-      createInverseBlurCorrectionFilter(dct_radial_profile, src.size(), _S1_gain,
+      createInverseBlurCorrectionFilter(dct_radial_profile, src.size(), _S1_target,
           _write_file ? _debug_file_name : "");
 
   if( _display == DISPLAY_FILTER) {

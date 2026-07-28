@@ -38,7 +38,7 @@ protected:
   DISPLAY _display = DISPLAY_RESTORED_IMAGE;
   enum color_channel_type _intensity_channel = color_channel_gray;
   double _S1_target = -1.2;
-  bool _forceS1_target = false;
+  bool _useS1_target = true;
   bool _inpaint_missing_pixels = true;
   bool _write_file = false;
   std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";

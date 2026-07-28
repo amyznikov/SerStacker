@@ -96,7 +96,7 @@ template<class T = double>
 class c_weighted_line_estimate
 {
 public:
-  // Reset all accumulators and the point counter
+  // Reset all accumulators
   void reset()
   {
     swx = swy = swxy = swx2 = swy2 = sw = 0;

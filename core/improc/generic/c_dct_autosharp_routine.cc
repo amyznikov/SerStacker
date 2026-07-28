@@ -48,12 +48,14 @@ public:
     const int total_bins = mx.cols;
     const double total_energy = cv::norm(mx(cv::Rect(1, 0, total_bins - 1, 1)), cv::NORM_L2SQR);
     _y0 = 0.5 * std::log(total_energy);
-    _m = mx;
+    _sp = mx;
+    cv::log(mx, _lsp);
+    cv::subtract(_lsp, _y0, _lsp);
   }
 
   inline int size() const
   {
-    return _m.cols;
+    return _sp.cols;
   }
 
   inline double y0() const
@@ -68,16 +70,18 @@ public:
 
   inline double sv(int i) const
   {
-    return _m[0][i];
+    return _sp[0][i];
   }
 
   inline double yv(int i) const
   {
-    return std::log(_m[0][i]) - _y0;
+    return _lsp[0][i];
+    // return std::log(_sp[0][i]) - _y0;
   }
 
 protected:
-  cv::Mat1f _m; // [1][n_bins]
+  cv::Mat1f _sp; // [1][n_bins]
+  cv::Mat1f _lsp; // log(_sp)
   double _y0 = 0;
 };
 
@@ -98,9 +102,8 @@ static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p)
 
   // Uniform accumulation (resampling)
   for( int i = 1; i < n_bins; ++i ) {
-    const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-    const double m = p.sv(i);
-    if ( m > 0 ) {
+    if ( p.sv(i) > 0 ) {
+      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
       bin_sums[bin_idx] += p.yv(i);
       bin_counts[bin_idx]++;
     }
@@ -156,7 +159,7 @@ static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p)
   // DC is kept unchanged
   cv::Mat1f output(1, n_bins);
   float * __restrict dstp = output[0];
-  dstp[0] = float(p.yv(0));
+  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
 
   const float * smup = U[0];
   for( int i = 1; i < n_bins; ++i ) {
@@ -314,14 +317,9 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
   return startSearchBin;
 }
 
-static inline double square(double x)
-{
-  return x * x;
-}
-
 static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
     const cv::Size & dctSize,
-    bool userS1_target,
+    bool useS1_target,
     double S1_target,
     const std::string & debug_file_name = "")
 {
@@ -330,8 +328,6 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
   cv::Mat1f kx(1, sp.size());
   cv::Mat1f FILTER;
   const double wsf = 2;
-  double signal_energy = 0;
-  double noise_energy = 0;
 
   const int N = sp.size();
   const cv::Mat1f SDCT = smoothDCT(sp);
@@ -371,35 +367,28 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
     const double corrStartX = sp.xv(corrStartBin);
     const double kneeX = sp.xv(kneeIndex);
 
+    if ( !useS1_target ) {
+      S1_target = S1_nature;
+    }
+
     for( int i = 1; i < sp.size(); ++i ) {
       // Original "natural" trend of the spectrum
       const double x = sp.xv(i);
       const double ysmooth = SDCT(0, i);
-      const double yraw = sp.sv(i);
-
       const double nature = S0_nature + S1_nature * x;
 
       // Local whitening additive (pure elimination of subsidence relative to nature)
-      const double whitening_corr = nature - ysmooth; // std::max(0.0, nature - ysmooth);
+      const double wcorr = nature - ysmooth;
 
       // Correction for the change in the global slope of the spectrum relative to the x_start point
       // If S1_target > S1_nature (e.g. -2.0 > -2.24), slope_diff will be positive at high frequencies (gain)
-      const double slope_corr = userS1_target ? (S1_target - S1_nature) * (x - corrStartX) : 0;
+      const double slope_corr = (S1_target - S1_nature) * (x - corrStartX);
 
       // Total logarithmic correction under the sigmoid smoothing window
-      const double total_corr = std::max(0.0, (whitening_corr + slope_corr) / (1.0 + std::exp(-wsf * (x - corrStartX))));
+      const double total_corr = std::max(0.0, (wcorr + slope_corr) / (1.0 + std::exp(-wsf * (x - corrStartX))));
       const double linear_corr = std::exp(total_corr);
       if ( i > corrStartBin ) {
         correction(0, i) = float(linear_corr);
-      }
-
-      const double linear_energy = square(yraw *  linear_corr);
-      const double xrel = startCornersLog - std::log(i);
-      if ( xrel < 2.5 ) {
-        noise_energy += linear_energy;
-      }
-      else {
-        signal_energy += linear_energy;
       }
     }
 
@@ -442,14 +431,12 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
       "S0_maxline = %g S1_maxline = %g\n"
       "S0_nature = %g S1_nature = %g\n"
       "kneeIndex = %d (x = %g y = %g)\n"
-      "curvatureStartIndex = %d (x = %g y = %g)\n"
-      "signal_energy = %g noise_energy = %g SNR = %g\n",
+      "curvatureStartIndex = %d (x = %g y = %g)\n",
       startSearchBin, sp.xv(startSearchBin), sp.yv(startSearchBin),
       S0_maxline, S1_maxline,
       S0_nature, S1_nature,
       kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex),
-      curvatureStartIndex, sp.xv(curvatureStartIndex), SDCT(0, curvatureStartIndex),
-      signal_energy, noise_energy, std::sqrt(signal_energy / noise_energy)
+      curvatureStartIndex, sp.xv(curvatureStartIndex), SDCT(0, curvatureStartIndex)
       );
 
   // "/home/projects/temp/analyze_profile.txt"
@@ -502,7 +489,7 @@ void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
   ctlbind(ctls, "inpaint_missing_pixels", CTL_CONTEXT(ctx, _inpaint_missing_pixels), "");
-  ctlbind(ctls, "force S1_target: ", CTL_CONTEXT(ctx, _forceS1_target), "");
+  ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _useS1_target), "");
   ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target), "");
   ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
@@ -514,7 +501,7 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
     SERIALIZE_OPTION(settings, save, *this, _inpaint_missing_pixels);
-    SERIALIZE_OPTION(settings, save, *this, _forceS1_target);
+    SERIALIZE_OPTION(settings, save, *this, _useS1_target);
     SERIALIZE_OPTION(settings, save, *this, _S1_target);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     return true;
@@ -574,7 +561,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   cv::Mat1f INVERSE_FILTER =
       createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
-          _forceS1_target, _S1_target,
+          _useS1_target, _S1_target,
           _write_file ? _debug_file_name : "");
 
   if( _display == DISPLAY_FILTER) {

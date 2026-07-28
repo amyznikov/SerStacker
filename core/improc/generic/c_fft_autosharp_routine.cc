@@ -55,7 +55,7 @@ public:
     init(mx);
   }
 
-  inline void init(const cv::Mat1f & mx)
+  inline void init(const cv::Mat1f & mx /*[1][n_bins]*/)
   {
     // exclude DC from energy normalization
     const int startCornersBin = int((mx.cols - 1) * M_SQRT1_2);

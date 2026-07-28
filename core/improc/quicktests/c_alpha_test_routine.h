@@ -37,10 +37,9 @@ public:
 protected:
   DISPLAY _display = DISPLAY_SRC_SPECTRUM;
   enum color_channel_type _intensity_channel = color_channel_gray;
-  double _S1_gain = 1;
-  bool _inpaint_missing_pixels = true;
-  bool _write_file = false;
-  std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";
+  int _maxH = 64;
+  int _samplesPerH = 50000;
+  std::string _debug_file_name = "/home/projects/temp/Variogram.txt";
 };
 
 #endif /* __c_alpha_test_routine_h__ */

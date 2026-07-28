@@ -19,6 +19,8 @@
 #include <core/io/c_stdio_file.h>
 #include <core/proc/c_linear_regression.h>
 #include <core/readdir.h>
+#include <random>
+#include <core/io/c_stdio_file.h>
 
 
 template<>
@@ -36,514 +38,143 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
   return members;
 }
 
-// Returns true if the channel is linear and fills the weights (in order B, G, R)
-static bool getLinearIntensityWeights(int channel_type, double & wB, double & wG, double & wR)
-{
-  switch (channel_type) {
-    case color_channel_blue:
-      wB = 1.0;
-      wG = 0.0;
-      wR = 0.0;
-      return true;
-    case color_channel_green:
-      wB = 0.0;
-      wG = 1.0;
-      wR = 0.0;
-      return true;
-    case color_channel_red:
-      wB = 0.0;
-      wG = 0.0;
-      wR = 1.0;
-      return true;
-    case color_channel_gray:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    case color_channel_luminance_YCrCb:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    default:
-      // All others (Lab, Luv, HSV, HLS, MIN/MAX) are nonlinear
-      break;
-  }
-  return false;
-}
-
-static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_Magnitude,
-    const cv::Mat2f & SRC_P_B, double wB,
-    const cv::Mat2f & SRC_P_G, double wG,
-    const cv::Mat2f & SRC_P_R, double wR)
-{
-  const cv::Size fftSize = SRC_P_B.size();
-
-  INTENSITY_Magnitude.create(fftSize);
-
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [&, fftSize, wB, wG, wR](const cv::Range & range) {
-
-        const int cx = fftSize.width;
-
-        for (int y = range.start; y < range.end; ++y) {
-          const float * __restrict bp = reinterpret_cast<const float*>(SRC_P_B[y]);
-          const float * __restrict gp = reinterpret_cast<const float*>(SRC_P_G[y]);
-          const float * __restrict rp = reinterpret_cast<const float*>(SRC_P_R[y]);
-          float * __restrict dstp = INTENSITY_Magnitude[y];
-
-          for (int x = 0; x < cx; ++x, bp += 2, gp += 2, rp += 2) {
-            constexpr int xre = 0;
-            constexpr int xim = 1;
-            const float re = bp[xre] * wB + gp[xre] * wG + rp[xre] * wR;
-            const float im = bp[xim] * wB + gp[xim] * wG + rp[xim] * wR;
-            *dstp++ = std::sqrt(re * re + im * im);
-          }
-        }
-      });
-}
 
 namespace {
 
-class c_radial_spectrum_profile
-{
-public:
-  inline c_radial_spectrum_profile(const cv::Mat1f & mx /* [1][n_bins]*/)
-  {
-    init(mx);
-  }
-
-  inline void init(const cv::Mat1f & mx)
-  {
-    // exclude DC from energy normalization
-    const int startCornersBin = int((mx.cols - 1) * M_SQRT1_2);
-    _m = mx;
-    _y0 = 0.5 * std::log(cv::norm(mx(cv::Rect(1, 0, startCornersBin - 1, 1)), cv::NORM_L2SQR) / (startCornersBin - 1));
-    _L0 = 2 * std::log(1. / mx.cols);
-  }
-
-  inline int size() const
-  {
-    return _m.cols;
-  }
-
-  // raw linear intensity values from radial spectrum profile
-  inline const float * intensity() const
-  {
-    return _m[0];
-  }
-
-  // zero point for log of relative intensity
-  inline double y0() const
-  {
-    return _y0;
-  }
-
-  // log of frequency
-  inline double xv(int i) const
-  {
-    return std::log(1.0 + i);
-  }
-
-  // log of relative intensity
-  inline double yv(int i) const
-  {
-    return std::log(_m(0, i)) - _y0;
-  }
-
-  // log of laplacian operator in log space
-  inline double lop(int i) const
-  {
-    return _L0 + 2 * std::log(1.0 + i);
-  }
-
-  // log of laplacian at bin index i
-  inline double lv(int i) const
-  {
-    //return lop(i) + yv(i);
-    return _L0 - _y0 + std::log((1.0 + i) * (1.0 + i) * _m(0, i));
-  }
-
-protected:
-  cv::Mat1f _m; // [1][n_bins]
-  double _y0 = 0;
-  double _L0 = 0;
+struct VariogramPoint {
+  double h; // Distance between pixels (in pixels)
+  double gamma; // Variogram value (half the variance of the difference)
+  double log_h; // ln(h) for the graph axes
+  double log_gamma; // ln(gamma) for the graph axes
 };
 
-static cv::Mat1f smoothLaplace(const c_radial_spectrum_profile & p)
+/**
+* @brief Calculate the experimental variogram of the image texture
+* @param image Input raw image (preferably CV_32FC1, but the method converts it automatically)
+* @param outputPoints Vector of points for plotting the graph
+* @param maxH Maximum analysis step (default is 64 pixels; more is not needed for the midrange structure)
+* @param samplesPerH Number of random pixel pairs for evaluating each distance
+*/
+static void computeTextureVariogram(cv::InputArray image,
+    std::vector<VariogramPoint>& outputPoints,
+    int maxH = 64,
+    int samplesPerH = 50000)
 {
-  constexpr int N_uniform = 100;
-  const int n_bins = p.size();
+    outputPoints.clear();
 
-  std::vector<double> bin_sums(N_uniform, 0.0);
-  std::vector<int> bin_counts(N_uniform, 0);
-
-  // Initialize the frequency range (skip DC)
-  const double x_min = p.xv(1);
-  const double x_max = p.xv(n_bins - 1);
-  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-
-  // Uniform accumulation (resampling)
-  for( int i = 1; i < n_bins; ++i ) {
-    const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-    bin_sums[bin_idx] += p.lv(i);
-    bin_counts[bin_idx]++;
-  }
-
-  // Average non-empty cells
-  for( int i = 0; i < N_uniform; ++i ) {
-    if( bin_counts[i] > 1 ) {
-      bin_sums[i] /= bin_counts[i];
-    }
-  }
-
-  // Gap Filling
-  cv::Mat1f U(1, N_uniform);
-  float * __restrict up = U[0];
-
-  int last_valid_idx = -1;
-  for( int j = 0; j < N_uniform; ++j ) {
-    if( bin_counts[j] > 0 ) {
-      up[j] = static_cast<float>(bin_sums[j]);
-
-      // If there were holes before, interpolate them from the last valid one to the current one
-      if (last_valid_idx != j - 1) {
-        const int left = std::max(0, last_valid_idx);
-        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-        const float y_right = up[j];
-        const float inv_step = 1.0f / (j - left);
-
-        for (int k = left + 1; k < j; ++k) {
-          const float t = (k - left) * inv_step;
-          up[k] = (1.0f - t) * y_left + t * y_right;
-        }
-      }
-      last_valid_idx = j;
-    }
-  }
-
-  // Extrapolate the right edge if the last bins remain empty
-  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-  }
-
-  // Freezing the tail (Spectrum Matrix Angle Region)
-  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-
-  // Smoothing the uniform profile
-  cv::GaussianBlur(U, U, cv::Size(21, 1), 0, 0, cv::BORDER_REPLICATE);
-
-  // Back interpolation into the original bin grid
-  // DC is kept unchanged
-  cv::Mat1f output_lap(1, n_bins);
-  float * __restrict dstp = output_lap[0];
-  dstp[0] = float(p.lv(0));
-
-  const float * smup = U[0];
-  for( int i = 1; i < n_bins; ++i ) {
-    // Safe index clamp eliminates crashes and branches in the loop
-    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-    const double t = uniform_idx - k;
-    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-  }
-
-  return output_lap;
-}
-
-static int estimateNature(const c_radial_spectrum_profile sp,
-    double S1_nature_gain,
-    const cv::Mat1f & LSM,
-    double & output_S0_lap,
-    double & output_S1_lap,
-    double & output_S2_lap,
-    double & output_S0_nature,
-    double & output_S1_nature,
-    double & output_xt,
-    double & output_yt )
-{
-  /*
-   * Approximate lap(x) to find start of the blur
-   *  lap(x) = S0_lap + S1_lap * x + S2_lap * x  * x
-   */
-
-  const int N = sp.size();
-  const int startCornersBin = int((N - 1) * M_SQRT1_2);
-
-  int curvatureEndPoint = -1;
-  double S0_lap = 0, S1_lap = 0, S2_lap = 0;
-  double S2_best = 0;
-
-  c_linear_regression3 reg3;
-
-  for( int i = 1, n = 0; i < startCornersBin; ++i ) {
-    const double x = sp.xv(i);
-    const double y = sp.yv(i);
-    if ( y <= 0 ) {
-
-      const double l = LSM(0, i);
-      reg3.update(1, x, x * x, l);
-
-      if ( ++n > 15 ) {
-        double S0_tmp = 0, S1_tmp = 0, S2_tmp = 0;
-        reg3.compute(S0_tmp, S1_tmp, S2_tmp);
-        if( S2_tmp < S2_best ) {
-          S2_best = S2_tmp;
-          S0_lap = S0_tmp, S1_lap = S1_tmp, S2_lap = S2_tmp;
-          curvatureEndPoint = i;
-        }
-      }
-    }
-  }
-
-  output_S0_lap = S0_lap;
-  output_S1_lap = S1_lap;
-  output_S2_lap = S2_lap;
-
-  /*
-   * Approximate nature(x) to find nature slope using Gaussian Dome Invariant
-   *  nature(x) = S0_nature + S1_nature * x
-   */
-
-  // Search for the blur start point (LS separation from LQ) when moving left from curvatureEndPoint
-  const double lxmax = -0.5 * S1_lap / S2_lap; // x coordinate of the laplacian extremum
-  const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
-  double xStartMF = 0;
-  double yStartMF = 0;
-  int indexOfStartMF = -1;
-  for ( int i = 1; i < curvatureEndPoint; ++i ) {
-    const double x = sp.xv(i);
-    const double y = sp.yv(i);
-    if ( y <= 0  && sp.yv(i + 1) <= 0 ) {
-      indexOfStartMF = i;
-      xStartMF = x;
-      yStartMF = y;
-      break;
-    }
-  }
-
-  if ( indexOfStartMF < 2 ) {
-    CF_ERROR("\nBad input data: indexOfStartMF=%d lxmax=%g S0_lap=%g S1_lap=%g S2_lap=%g",
-        indexOfStartMF, lxmax,
-        S0_lap, S1_lap, S2_lap);
-
-    return -1;
-  }
-
-
-  if( lxmax < xStartMF ) { // lxmax is in low frequency region
-
-    const double xlt = xStartMF;
-    const double ylt = LSM(0, indexOfStartMF);
-    const double dx = xStartMF - lxmax;
-    const double dy = llmax - (S0_lap + S1_lap * xlt + S2_lap * xlt * xlt);
-    output_S1_nature = std::max(0.3, dy / dx) * S1_nature_gain;
-    output_S0_nature = ylt - output_S1_nature * xlt;
-    output_xt = xlt;
-    output_yt = ylt;
-    CF_DEBUG("\nLF: "
-        "indexOfStartMF=%d xlt=%g ylt=%g dx=%g dy=%g output_S0_nature = %g output_S1_nature = %g",
-        indexOfStartMF, xlt, ylt, dx, dy, output_S0_nature, output_S1_nature);
-  }
-  else {
-
-    const double threshold = 0.25;
-    double x_start_blur = sp.xv(1);
-    double delta_start_blur = 0;
-    int index_start_blur = 1;
-    for( int i = indexOfStartMF; i > 0; --i ) {
-      const double x = sp.xv(i);
-      const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
-      const double ls = LSM(0, i);
-      if( (ls - lq) >= threshold ) {
-        x_start_blur = x;
-        delta_start_blur = ls - lq;
-        index_start_blur = i;
-        break;
-      }
-    }
-
-    if ( x_start_blur >= lxmax - 0.1 ) {
-      CF_DEBUG("\nFixing x_start_blur=%g lxmax=%g", x_start_blur, lxmax);
-      x_start_blur = lxmax - 0.5;
-    }
-
-    // Radius of the active blur dome and the application of the 0.42 invariant
-    const double R = lxmax - x_start_blur;
-    const double xlt = lxmax - 0.42 * R;
-    // The value of the parabola ordinate at the calculated point of contact xlt
-    const double ylt = S0_lap + S1_lap * xlt + S2_lap * xlt * xlt;
-
-    // Coefficients of the LT line according to the requirement of equality of derivatives
-    output_S1_nature = std::max(0.3, (2.0 * S2_lap * xlt + S1_lap)) * S1_nature_gain;
-    output_S0_nature = ylt - output_S1_nature * xlt;
-    output_xt = xlt;
-    output_yt = ylt;
-
-    CF_DEBUG("\nMF: "
-        "indexOfStartMF=%d x_start_blur=%g delta_start_blur=%g index_start_blur=%d",
-        indexOfStartMF, x_start_blur, delta_start_blur, index_start_blur);
-  }
-
-  return curvatureEndPoint;
-}
-
-static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
-    const cv::Size & dctSize,
-    double S1_nature_gain,
-    const std::string & debug_file_name = "")
-{
-
-  const c_radial_spectrum_profile sp(RadialSpectrumProfile);
-
-  const int N = sp.size();
-  const cv::Mat1f LSM = smoothLaplace(sp);
-
-  double S0_lap, S1_lap, S2_lap;
-  double S0_nature = 0, S1_nature = -500;
-  double xlt = 0, ylt = 0;
-
-  const int curvatureEndPoint =
-      estimateNature(sp, S1_nature_gain, LSM, S0_lap, S1_lap, S2_lap,
-          S0_nature, S1_nature,
-          xlt, ylt);
-
-  if ( curvatureEndPoint < 1 ) {
-    CF_ERROR("searchLaplaceExtreme() fails");
-    return cv::Mat1f();
-  }
-
-  const double lxmax = -0.5 * S1_lap / S2_lap; // (x coordinate of the laplacian extremum)
-  const double llmax = S0_lap - 0.25 * S1_lap * S1_lap / S2_lap; // (L value at laplacian extremum)
-  if ( S1_nature < 0.05 ) {
-    CF_ERROR("BAD S1_nature=%g", S1_nature);
-    //S1_nature = 0.05;
-  }
-
-  /*
-   * COMPUTE CORRECTION for x > xlt:
-   *   correction  = nature - laplace;
-   */
-  cv::Mat1f correction(1, sp.size(), 1.0f);
-  const int startBin = 4;
-  const double startX = std::max(sp.xv(startBin), xlt);
-
-  for( int i = startBin; i < sp.size(); ++i ) {
-    const double x = sp.xv(i);
-    const double nature = S0_nature + S1_nature * x;
-    const double laplace = LSM(0, i);
-    double full_corr = nature - laplace;
-
-    // STITCHING:
-    // If x is to the left of the starting point (x < startX) or if the difference is negative (a dent),
-    // we protect std::max() via a soft window attenuation to ensure the graph
-    // goes to zero at low frequencies.
-    // If the slope of nature has risen (full_corr > 0), we allow the sigmoid to smoothly open the filter.
-    if( x < startX && full_corr < 0.0 ) {
-      full_corr = 0.0;
+    // Преобразуем во float для точности и непрерывности вычислений
+    cv::Mat1f img;
+    if (image.depth() == CV_32F) {
+        img = image.getMat();
     }
     else {
-      // Force smooth zeroing at the startX point if the nature line is too high
-      // This will remove the vertical jump (step) on "bad" frames
-      const double window = 1.0 / (1.0 + std::exp(-5 * (x - startX)));
-      const double smooth_gate = 1.0 - std::exp(-5.0 * std::max(0.0, x - startX));
-      full_corr = (nature - laplace) * window * smooth_gate;
+        image.getMat().convertTo(img, CV_32F);
     }
 
-    correction(0, i) = float(std::exp(full_corr));
-  }
+    const int width = img.cols;
+    const int height = img.rows;
 
-  /*
-   * Create DCT FILTER
-   */
-
-  const cv::Size size = dctSize;
-  cv::Mat1f FILTER(size);
-
-  const double R = std::sqrt(size.width * size.width + size.height * size.height);
-  const int numBins = std::max(1, int(R));
-  const double maxNormalizedR = std::sqrt(2.0);
-  const double scaleX = 1.0 / size.width;
-  const double scaleY = 1.0 / size.height;
-
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
-
-          const double dy = y * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < size.width; ++x) {
-            const double dx = x * scaleX;
-            const double dx2 = dx * dx;
-            const double r = std::sqrt(dx2 + dy2);
-            const double continuousBinIdx = r * numBins / maxNormalizedR;
-            const int binIndex = std::clamp((int)(continuousBinIdx), 0, N - 1);
-            dstp[x] = correction(0, binIndex);
-          }
+    // Генерируем массив шагов h по логарифмической (экспоненциальной) шкале,
+    // чтобы получить равномерный шаг точек на лог-графике.
+    std::vector<double> h_steps;
+    double current_h = 1.0;
+    const double step_multiplier = 1.15; // Шаг геометрической прогрессии
+    while (current_h <= maxH) {
+        h_steps.push_back(current_h);
+        current_h *= step_multiplier;
+        // Страховка от зависания
+        if (std::abs(step_multiplier - 1.0) < 0.001) {
+          break;
         }
-      });
-
-  CF_DEBUG("\n"
-      "S0_lap = %g S1_lap = %g S2_lap = %g\n"
-      "S0_nature = %g S1_nature = %g\n"
-      "lxmax = %g llmax=%g\n"
-      "xlt = %g ylt = %g\n",
-      S0_lap, S1_lap, S2_lap,
-      S0_nature, S1_nature,
-      lxmax, llmax,
-      xlt, ylt);
-
-  // "/home/projects/temp/analyze_profile.txt"
-  if( !debug_file_name.empty() ) {
-
-    c_stdio_file fp;
-
-    const std::string path = get_parent_directory(debug_file_name);
-    if ( !create_path(path) ) {
-      CF_ERROR("create_path('%s') fails: %s", strerror(errno));
     }
-    else if( !fp.open(debug_file_name, "w") ) {
-      CF_ERROR("Can not create '%s': %s", fp.cfilename(), strerror(errno));
+
+    // Настройка быстрого генератора случайных чисел
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dist_angle(0.0, 2.0 * M_PI);
+
+    outputPoints.reserve(h_steps.size());
+
+    // Основной цикл по всем дистанциям h
+    for (double h : h_steps) {
+        double sum_sq_diff = 0.0;
+        int valid_pairs = 0;
+
+        // Чтобы не привязываться к осям X и Y (изотропия), для каждой пары
+        // мы выбираем случайную точку и случайный угол направления вектора h
+        for (int s = 0; s < samplesPerH; ++s) {
+            // Случайный угол направления вектора
+            double angle = dist_angle(gen);
+            double dx = h * std::cos(angle);
+            double dy = h * std::sin(angle);
+
+            // Определяем безопасные границы для выбора первой точки
+            double min_x = std::max(0.0, -dx);
+            double max_x = std::min(double(width - 1), double(width - 1) - dx);
+            double min_y = std::max(0.0, -dy);
+            double max_y = std::min(double(height - 1), double(height - 1) - dy);
+
+            if (max_x <= min_x || max_y <= min_y) {
+              continue;
+            }
+
+            std::uniform_real_distribution<double> dist_x(min_x, max_x);
+            std::uniform_real_distribution<double> dist_y(min_y, max_y);
+
+            // Координаты первой точки
+            double x1 = dist_x(gen);
+            double y1 = dist_y(gen);
+
+            // Координаты второй точки, удаленной ровно на расстояние h под углом angle
+            double x2 = x1 + dx;
+            double y2 = y1 + dy;
+
+            // Билинейная интерполяция яркости (важно для нецелочисленных h)
+            // Реализация инлайном для обеспечения максимальной скорости рендеринга
+            const auto getInterpolatedPix = [&](double x, double y) -> float {
+                int px = static_cast<int>(x);
+                int py = static_cast<int>(y);
+                int ax = std::clamp(px, 0, width - 2);
+                int ay = std::clamp(py, 0, height - 2);
+                double fx = x - ax;
+                double fy = y - ay;
+
+                return (1.0 - fx) * (1.0 - fy) * img(ay, ax) +
+                       fx * (1.0 - fy) * img(ay, ax + 1) +
+                       (1.0 - fx) * fy * img(ay + 1, ax) +
+                       fx * fy * img(ay + 1, ax + 1);
+            };
+
+            float val1 = getInterpolatedPix(x1, y1);
+            float val2 = getInterpolatedPix(x2, y2);
+
+            double diff = val1 - val2;
+            sum_sq_diff += diff * diff;
+            valid_pairs++;
+        }
+
+        if (valid_pairs > 100) {
+            VariogramPoint pt;
+            pt.h = h;
+            // Вариаграмма по определению — это половина среднего квадрата разностей
+            pt.gamma = sum_sq_diff / (2.0 * valid_pairs);
+            pt.log_h = std::log(pt.h);
+            // Защита логарифма от нулевой дисперсии на абсолютно пустых кадрах
+            pt.log_gamma = std::log(pt.gamma + 1e-12);
+
+            outputPoints.push_back(pt);
+        }
     }
-    else {
-      fprintf(fp, "I\tX\tS\tY\tL\tLS\tLQ\tLN\tCORRECTION\tLP\tYP\n");
-
-      const float * src_y = sp.intensity();
-
-      for( int i = 0; i < N; ++i ) {
-        const double x = sp.xv(i); // log of frequency
-        const double y = sp.yv(i); // log of spectrum intensity
-        const double l = sp.lop(i) + y; // laplace
-        const double ls = LSM(0, i);
-        const double lq = S0_lap + S1_lap * x + S2_lap * x * x;
-        const double ln = S0_nature + S1_nature * x;
-        const double corr = std::log(correction(0, i));
-        const double yp = y + corr;
-        const double lp = l + corr;
-
-        fprintf(fp, "%4d\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\t%9.5f\n",
-            i, x, src_y[i], y, l, ls, lq, ln, corr, lp, yp);
-      }
-
-      CF_DEBUG("Saved file '%s'", fp.cfilename());
-    }
-  }
-
-  return FILTER;
 }
+
 } // namespace
 
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
-  ctlbind(ctls, "inpaint_missing_pixels", CTL_CONTEXT(ctx, _inpaint_missing_pixels), "");
-  ctlbind(ctls, "S1_gain: ", CTL_CONTEXT(ctx, _S1_gain), "");
-  ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
+  ctlbind(ctls, "maxH: ", CTL_CONTEXT(ctx, _maxH), "");
+  ctlbind(ctls, "samplesPerH", CTL_CONTEXT(ctx, _samplesPerH), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
 }
 
@@ -552,8 +183,8 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
-    SERIALIZE_OPTION(settings, save, *this, _inpaint_missing_pixels);
-    SERIALIZE_OPTION(settings, save, *this, _S1_gain);
+    SERIALIZE_OPTION(settings, save, *this, _maxH);
+    SERIALIZE_OPTION(settings, save, *this, _samplesPerH);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     return true;
   }
@@ -565,97 +196,41 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
 {
   CF_DEBUG("c_alpha_test_routine: ENTER");
 
-  if ( _display == DISPLAY_SRC ) {
-    // nothing to process requested
-    return true;
-  }
+  std::vector<VariogramPoint> outputPoints;
 
-  cv::Mat src = image.getMat();
-  const int cn = src.channels();
+  cv::Mat src;
+  extract_channel(image, src, cv::noArray(), cv::noArray(), _intensity_channel, CV_32F, false);
 
-  if ( !mask.empty() && _inpaint_missing_pixels ) {
-    average_pyramid_inpaint(src, mask, src, cv::noArray(), 7);
-  }
+  computeTextureVariogram(src,
+      outputPoints,
+      _maxH,
+      _samplesPerH);
 
-  if ( _display == DISPLAY_FILL_SRC_VOIDS ) {
-    image.move(src);
-    return true;
-  }
+  CF_DEBUG("outputPoints.size=%zu", outputPoints.size());
 
-  if ( src.depth() != CV_32F ) {
-    src.convertTo(src, CV_32F);
-  }
+  if ( !_debug_file_name.empty() ) {
 
-  cv::Mat1f intensity_img;
-  cv::Mat1f intensity_dct;
-  cv::Mat1f dct_radial_profile;
+    const std::string outpath = get_parent_directory(_debug_file_name);
+    if ( !create_path(outpath) ) {
+      CF_ERROR("create_path(outpath='%s') fails: %s", outpath.c_str(), strerror(errno));
+      return false;
+    }
 
-  double wB = 0, wG = 0, wR = 0;
+    c_stdio_file fp;
+    if ( !fp.open(_debug_file_name, "wb") ) {
+      CF_ERROR("fp.open(_debug_file_name='%s') fails: %s", _debug_file_name.c_str(), strerror(errno));
+      return false;
+    }
 
-  if ( cn == 1 ) {
-    intensity_img = src;
-  }
-  else if ( getLinearIntensityWeights(_intensity_channel, wB, wG, wR) ) {
-    cv::Mat1f channels[3];
-    cv::split(src, channels);
-    intensity_img = wB * channels[0] + wG * channels[1] + wR * channels[2];
-  }
-  else {
-    extract_channel(src, intensity_img, cv::noArray(), cv::noArray(), _intensity_channel);
-  }
+    fprintf(fp, "I\th\tgamma\tlog_h\tlog_gamma\n");
+    for ( size_t i = 0, n = outputPoints.size(); i < n; ++i ) {
+      const auto & p = outputPoints[i];
+      fprintf(fp, "%4zu\t%12f\t%12f\t%12f\t%12f\n", i, p.h, p.gamma, p.log_h, p.log_gamma);
+    }
 
-  cv::dct(intensity_img, intensity_dct);
-  if( _display == DISPLAY_SRC_SPECTRUM ) {
-    image.move(intensity_dct);
-    mask.release();
-    return true;
+    fp.close();
+    CF_DEBUG("Saved %s", _debug_file_name.c_str());
   }
-
-  dctRadialProfile(intensity_dct, dct_radial_profile);
-  if( _display == DISPLAY_RADIAL_PROFILE) {
-    dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
-    image.move(intensity_dct);
-    mask.release();
-    return true;
-  }
-
-  cv::Mat1f INVERSE_FILTER =
-      createInverseBlurCorrectionFilter(dct_radial_profile, src.size(), _S1_gain,
-          _write_file ? _debug_file_name : "");
-
-  if( _display == DISPLAY_FILTER) {
-    image.move(INVERSE_FILTER);
-    mask.release();
-    return true;
-  }
-
-  if ( INVERSE_FILTER.empty() ) {
-    CF_ERROR("createInverseBlurCorrectionFilter() fails");
-    return false;
-  }
-
-  std::vector<cv::Mat1f> src_channels(cn);
-  if ( cn == 1 ) {
-    src_channels[0] = src;
-  }
-  else {
-    cv::split(src, src_channels);
-  }
-
-  for ( int i = 0; i < cn; ++i ) {
-    cv::dct(src_channels[i], src_channels[i]);
-    cv::multiply(src_channels[i], INVERSE_FILTER, src_channels[i]);
-    cv::idct(src_channels[i], src_channels[i]);
-  }
-
-  if ( cn == 1 ) {
-    src = src_channels[0];
-  }
-  else {
-    cv::merge(src_channels, src);
-  }
-
-  image.move(src);
 
   CF_DEBUG("c_alpha_test_routine: LEAVE");
   return true;

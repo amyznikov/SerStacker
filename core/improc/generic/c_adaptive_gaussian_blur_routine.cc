@@ -11,8 +11,8 @@ void c_adaptive_gaussian_blur_routine::getcontrols(c_control_list & ctls, const 
 {
   ctlbind(ctls, "sigma_hpass", CTL_CONTEXT(ctx, sigma_hpass), "");
   ctlbind(ctls, "sigma_lpass", CTL_CONTEXT(ctx, sigma_lpass), "");
-  ctlbind(ctls, "lpg_scale", CTL_CONTEXT(ctx, lpg_scale), "");
-  ctlbind(ctls, "lpgk", CTL_CONTEXT(ctx, lpgk), "");
+  ctlbind(ctls, "kscale", CTL_CONTEXT(ctx, kscale), "");
+  ctlbind(ctls, "kradius", CTL_CONTEXT(ctx, kradius), "");
   ctlbind(ctls, "display", ctx(&this_class::displayType), "Select output image");
 }
 
@@ -22,8 +22,8 @@ bool c_adaptive_gaussian_blur_routine::serialize(c_config_setting settings, bool
     SERIALIZE_OPTION(settings, save, *this, displayType);
     SERIALIZE_OPTION(settings, save, *this, sigma_hpass);
     SERIALIZE_OPTION(settings, save, *this, sigma_lpass);
-    SERIALIZE_OPTION(settings, save, *this, lpg_scale);
-    SERIALIZE_OPTION(settings, save, *this, lpgk);
+    SERIALIZE_OPTION(settings, save, *this, kscale);
+    SERIALIZE_OPTION(settings, save, *this, kradius);
     return true;
   }
   return false;
@@ -32,7 +32,7 @@ bool c_adaptive_gaussian_blur_routine::serialize(c_config_setting settings, bool
 bool c_adaptive_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   adaptive_gaussian_blur(image, image,
-      sigma_hpass, sigma_lpass, lpg_scale, lpgk,
+      sigma_hpass, sigma_lpass, kscale, kradius,
       displayType);
 
   return true;

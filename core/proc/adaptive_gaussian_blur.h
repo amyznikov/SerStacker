@@ -18,9 +18,12 @@ enum ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_TYPE {
   ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_LPG,
 };
 
-void adaptive_gaussian_blur(cv::InputArray src, cv::OutputArray dst,
-    double sigma_hpass, double sigma_lpass, double lpg_scale, double lpgk = 0.5,
-    ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_TYPE outputDisplay = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_FILTERED);
+//void adaptive_gaussian_blur(cv::InputArray src, cv::OutputArray dst,
+//    double sigma_hpass, double sigma_lpass, double lpg_scale, double lpgk = 0.5,
+//    ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_TYPE outputDisplay = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_FILTERED);
 
+void adaptive_gaussian_blur(cv::InputArray src, cv::OutputArray dst,
+    double sigma_hpass, double sigma_lpass, double kscale, int kradius,
+    ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_TYPE outputDisplay = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_FILTERED);
 
 #endif /* __adaptive_gaussian_blur_h__ */

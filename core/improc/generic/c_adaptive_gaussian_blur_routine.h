@@ -28,8 +28,8 @@ public:
 protected:
   double sigma_hpass = 0.75;
   double sigma_lpass = 2.0;
-  double lpg_scale = 100;
-  double lpgk = 0.5;
+  double kscale = 20;
+  int kradius = 4;
   DisplayType displayType = ADAPTIVE_GAUSSIAN_BLUR_OUTPUT_FILTERED;
 };
 

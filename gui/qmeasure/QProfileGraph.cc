@@ -257,15 +257,9 @@ QProfileGraph::QProfileGraph(QWidget * parent) :
     _graphs[i] = _plot->addGraph();
     _graphs[i]->setPen(pen);
     _graphs[i]->setLineStyle(_lineStyle);
-
-    QCPScatterStyle scatterStyle = _graphs[i]->scatterStyle();
-    scatterStyle.setSize(_pointSize);
-    scatterStyle.setShape(_lineStyle == QCPGraph::lsNone ?
-        QCPScatterStyle::ScatterShape::ssSquare :
-        QCPScatterStyle::ScatterShape::ssNone);
-
-    _graphs[i]->setScatterStyle(scatterStyle);
-
+    _graphs[i]->setScatterStyle(QCPScatterStyle(_lineStyle == QCPGraph::lsNone ?
+        QCPScatterStyle::ScatterShape::ssSquare : QCPScatterStyle::ScatterShape::ssNone,
+        colors[i], colors[i], _pointSize));
   }
 
 

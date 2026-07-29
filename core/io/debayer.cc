@@ -531,7 +531,7 @@ bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int 
 }
 
 template<class _Tp1, class _Tp2>
-bool _debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
 {
   if ( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 )  {
     CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
@@ -685,7 +685,7 @@ bool _debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum C
               dstp[0] = _Tp2((c1 + s0[x] + s2[x]) / 2); // B
               dstp[1] = _Tp2(s1[x]); // G
               dstp[2] = _Tp2((c1 + s1[x-1] + s1[x+1]) / 2); // R
-              dstp[3] = _Tp2((c2 + s0[x] + s1[x] + s1[x+2] + s2[x]) / 4); // B
+              dstp[3] = _Tp2((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // B
               dstp[4] = _Tp2((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
               dstp[5] = _Tp2(s1[x+1]); // R
             }
@@ -706,7 +706,7 @@ bool _debayer_nn_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum C
   return true;
 }
 
-bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
+bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
 {
   if ( !is_bayer_pattern(colorid) ) {
     CF_ERROR("colorid=%d (%s) is not bayer pattern", (int)colorid, toCString(colorid));
@@ -729,7 +729,7 @@ bool debayer_nn(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, i
     ddepth = src.depth();
   }
 
-  CV_DISPATCH2(src.depth(), ddepth, _debayer_nn_interpolation, src, dst, colorid);
+  CV_DISPATCH2(src.depth(), ddepth, _debayer_nn2_interpolation, src, dst, colorid);
 
   CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",
       src.depth(), ddepth);
@@ -752,11 +752,11 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
       return true;
     case DEBAYER_NN:
       if( src.depth() != CV_8U && src.depth() != CV_16U ) {
-        return debayer_nn(src, dst, colorid);
+        return debayer_nn2(src, dst, colorid);
       }
       break;
     case DEBAYER_NN2:
-      return debayer_nn(src, dst, colorid);
+      return debayer_nn2(src, dst, colorid);
     case DEBAYER_AVGC:
       return debayer_avgc(src, dst, colorid);
     case DEBAYER_MATRIX:

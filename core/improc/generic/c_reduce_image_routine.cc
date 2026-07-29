@@ -55,7 +55,7 @@ bool c_reduce_image_routine::process(cv::InputOutputArray image, cv::InputOutput
   }
 
   rc &= cv::Rect(0, 0, size.width, size.height);
-  if ( rc.empty() ) {
+  if( rc.empty() && (rc = cv::Rect(0, 0, size.width, size.height)).empty()  ) {
     CF_ERROR("c_reduce_image_routine: adjusted Rect is empty");
     return false;
   }

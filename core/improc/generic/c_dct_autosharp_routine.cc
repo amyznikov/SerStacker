@@ -25,6 +25,7 @@ const c_enum_member * members_of<c_dct_autosharp_routine::DISPLAY>()
       { c_dct_autosharp_routine::DISPLAY_FILL_SRC_VOIDS, "FILL_SRC_VOIDS", "" },
       { c_dct_autosharp_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM", "" },
       { c_dct_autosharp_routine::DISPLAY_SRC_RADIAL_PROFILE, "SRC_RADIAL_PROFILE", "" },
+      { c_dct_autosharp_routine::DISPLAY_SRC_RADIAL_PROFILE_LOG, "SRC_RADIAL_PROFILE_LOG", "" },
       { c_dct_autosharp_routine::DISPLAY_FILTER, "FILTER", "" },
       { c_dct_autosharp_routine::DISPLAY_RESTORED_SPECTRUM, "RESTORED_SPECTRUM", "" },
       { c_dct_autosharp_routine::DISPLAY_RESTORED_PROFILE, "RESTORED_PROFILE", "" },
@@ -482,6 +483,52 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
 
   return FILTER;
 }
+
+static bool dctRadialProfile2(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
+{
+  if( dctSpectrum.empty() ) {
+    return false;
+  }
+
+  const int maxW = dctSpectrum.cols;
+  const int maxH = dctSpectrum.rows;
+
+  const double R = std::sqrt(maxW * maxW + maxH * maxH);
+  const int numBins = std::max(1, int(R));
+  const double binScale = numBins * M_SQRT1_2;
+
+  std::vector<double> radialSum(numBins, 0.0);
+  std::vector<double> radialCount(numBins, 0.0);
+
+  const double scaleX = 1.0 / maxW;
+  const double scaleY = 1.0 / maxH;
+
+  for( int y = 0; y < maxH; ++y ) {
+    const double dy = y * scaleY;
+    const double dy2 = dy * dy;
+    const float * srcp = dctSpectrum[y];
+
+    for( int x = 0; x < maxW; ++x ) {
+      const double dx = x * scaleX;
+      const double dx2 = dx * dx;
+      const double r = std::sqrt(dx2 + dy2);
+
+      const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
+      radialSum[bin] += srcp[x];
+      //radialSum[bin] += std::abs(srcp[x]);
+      radialCount[bin] += 1.0;
+    }
+  }
+
+  outputProfile.create(1, numBins);
+  float * __restrict dstp = outputProfile[0];
+  for( int i = 0; i < numBins; ++i ) {
+    dstp[i] = (float) (radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
+  }
+
+  return true;
+}
+
 } // namespace
 
 void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
@@ -551,6 +598,18 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     return true;
   }
 
+  if( _display == DISPLAY_SRC_RADIAL_PROFILE_LOG) {
+    // Quick temporary test to visually inspect the shape of radial profile of log(abs(dct))
+    cv::absdiff(intensity_dct, cv::Scalar::all(0), intensity_dct);
+    intensity_dct.setTo(1, intensity_dct == 0);
+    cv::log(intensity_dct, intensity_dct);
+    dctRadialProfile2(intensity_dct, dct_radial_profile);
+    dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
+    image.move(intensity_dct);
+    mask.release();
+    return true;
+  }
+
   dctRadialProfile(intensity_dct, dct_radial_profile);
   if( _display == DISPLAY_SRC_RADIAL_PROFILE) {
     dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
@@ -558,6 +617,8 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     mask.release();
     return true;
   }
+
+
 
   cv::Mat1f INVERSE_FILTER =
       createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),

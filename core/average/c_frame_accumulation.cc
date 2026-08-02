@@ -1890,6 +1890,17 @@ cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
   return cv::Size(3 * W / 2, 3 * H / 2);
 }
 
+void c_canvas_average::setCanvasSize(const cv::Size & v)
+{
+  _canvasSize = v;
+  _accumulator.release();
+  _counter.release();
+  _last_bbox = cv::Rect();
+  _accumulated_frames = 0;
+  _target_x = 0;
+  _target_y = 0;
+}
+
 void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap, cv::Mat1b & full_mask)
 {
   if (_accumulator.empty() || bbox.width <= 0) {
@@ -1947,11 +1958,15 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
   if( _accumulator.empty() ) {
     // very first frame
     const cv::Size frameSize = current_image.size();
-    const cv::Size canvasSize = computeCanvasSize(frameSize);
+
+    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
+    const cv::Size canvasSize( std::max(_canvasSize.width, computedCanvasSize.width),
+        std::max(_canvasSize.height, computedCanvasSize.height));
+
     _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
     _counter = cv::Mat1f::zeros(canvasSize);
-    _target_x = frameSize.width / 4;
-    _target_y = frameSize.height / 4;
+    _target_x = canvasSize.width / 2 - frameSize.width / 2;
+    _target_y = canvasSize.height / 2 - frameSize.height / 2;
 
     const cv::Rect ROI(_target_x, _target_y, frameSize.width, frameSize.height);
     current_image.copyTo(_accumulator(ROI));

@@ -31,11 +31,7 @@ public:
   typedef c_image_processor_routine this_class;
   typedef std::shared_ptr<this_class> ptr;
   typedef std::function<this_class::ptr()> factory;
-
-  typedef std::function<void(this_class *,
-      cv::InputOutputArray image,
-      cv::InputOutputArray mask)>
-  notify_callback;
+  using notify_callback = std::function<void(this_class *, cv::InputOutputArray image, cv::InputOutputArray mask)>;
 
   struct class_factory
   {
@@ -61,8 +57,8 @@ public:
     }
 
     static std::mutex & mutex() {
-      static std::mutex mtx_;
-      return mtx_;
+      static std::mutex _mtx;
+      return _mtx;
     }
   };
 
@@ -151,6 +147,16 @@ public:
   bool ignore_mask() const
   {
     return _ignore_mask;
+  }
+
+  void set_has_contol_changes(bool v)
+  {
+    _has_contol_changes = v;
+  }
+
+  bool has_contol_changes() const
+  {
+    return _has_contol_changes;
   }
 
   void set_preprocess_notify_callback(const notify_callback & preprocess_notify)
@@ -324,6 +330,7 @@ protected:
   std::mutex _mtx;
   DATA_CHANNEL _input_channel = IMAGE;
   DATA_CHANNEL _output_channel = IMAGE;
+  bool _has_contol_changes = false;
   bool _ignore_mask = false;
   bool _enabled = false;
 };
@@ -360,6 +367,7 @@ public:
   typedef c_image_processor this_class;
   typedef std::vector<c_image_processor_routine::ptr> base;
   typedef std::shared_ptr<this_class> sptr;
+  using update_controls_notify_callback = std::function<void(const this_class *)>;
 
   struct edit_lock:
       public std::unique_lock<std::mutex>
@@ -435,6 +443,23 @@ public:
     return _enable_debug_messages;
   }
 
+  void set_update_controls_notify(const update_controls_notify_callback & cb)
+  {
+    _update_controls_notify = cb;
+  }
+
+  const update_controls_notify_callback & update_controls_notify() const
+  {
+    return _update_controls_notify;
+  }
+
+  void emit_update_controls_notify() const
+  {
+    if ( _update_controls_notify ) {
+      _update_controls_notify(this);
+    }
+  }
+
   static std::mutex & emutex()
   {
     static std::mutex _emutex;
@@ -444,6 +469,7 @@ public:
 protected:
   std::string _name;
   mutable std::string _filename;
+  update_controls_notify_callback _update_controls_notify;
   bool _enable_debug_messages = false;
 };
 

@@ -166,14 +166,13 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::Outpu
 * @param qLow - lower quantile (e.g., 0.01 for 1%)
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */
-bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
+bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask,
     double qlow, double qhigh,
-    cv::Scalar * outputScales /*= nullptr*/,
-    cv::Scalar * outputShifts /*= = nullptr*/)
+    cv::Scalar & outputScales,
+    cv::Scalar & outputShifts)
 {
   if( src.empty() || src.channels() < 2 ) {
-    src.copyTo(dst);
-    return true;
+    return false;
   }
 
   const int cn = src.channels();
@@ -204,41 +203,124 @@ bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::Outp
 
   // Apply the correction to each channel individually
   // Formula for channel c: dst_c = (src_c - low_c) * (targetRange / currentRange) + avgLow
-  std::vector<cv::Mat> channels;
-  cv::split(src.getMat(), channels);
+  outputScales = cv::Scalar::all(1);
+  outputShifts = cv::Scalar::all(1);
 
   const double targetRange = globalHigh - globalLow;
-
-  if ( outputScales ) {
-    *outputScales = cv::Scalar::all(1);
-  }
-  if ( outputShifts ) {
-    *outputShifts = cv::Scalar::all(1);
-  }
-
   for( int c = 0; c < cn; ++c ) {
     const double channelRange = highLvl[c] - lowLvl[c];
     // If the channel is almost empty, leave it alone to avoid increasing noise
     if( channelRange > 1e-10 ) {
-
       const double scale = targetRange / channelRange;
-      const double shift = globalLow - (lowLvl[c] * scale);
-
-      channels[c].convertTo(channels[c], -1, scale, shift);
-
-      if ( outputScales ) {
-        outputScales->val[c] = scale;
-      }
-      if ( outputShifts ) {
-        outputShifts->val[c] = shift;
-      }
+      const double shift = globalLow - lowLvl[c] * scale;
+      outputScales.val[c] = scale;
+      outputShifts.val[c] = shift;
     }
   }
 
-  cv::merge(channels, dst);
-
   return true;
+
 }
+
+/**
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+*  */
+bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
+    double qlow, double qhigh,
+    cv::Scalar * outputScales /*= nullptr*/,
+    cv::Scalar * outputShifts /*= = nullptr*/)
+{
+  if( src.empty() || src.channels() < 2 ) {
+    src.copyTo(dst);
+    return true;
+  }
+
+  cv::Scalar scales, shifts;
+  if ( histogramClipWhiteBalance(src, mask, qlow, qhigh, scales, shifts) ) {
+    return applyChannelTransform(src, dst, scales, shifts);
+  }
+
+  return false;
+}
+
+///**
+//* @param qLow - lower quantile (e.g., 0.01 for 1%)
+//* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+//*  */
+//bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
+//    double qlow, double qhigh,
+//    cv::Scalar * outputScales /*= nullptr*/,
+//    cv::Scalar * outputShifts /*= = nullptr*/)
+//{
+//  if( src.empty() || src.channels() < 2 ) {
+//    src.copyTo(dst);
+//    return true;
+//  }
+//
+//  const int cn = src.channels();
+//  const int depth = src.depth();
+//
+//  cv::Mat1d H;
+//  double minv = -1.0, maxv = -1.0;
+//  const uint32_t nbins = depth >= CV_16U ? 16384U : 0; // allow auto for 8bit
+//  if( !createHistogram(src, mask, &minv, &maxv, nbins, H, true, true) ) {
+//    return false;
+//  }
+//
+//  cv::Scalar lowLvl, highLvl;
+//  computeHistogramClipLevels(H, minv, maxv, qlow, qhigh, lowLvl, highLvl);
+//
+//  // Calculate the "safe" global range (covering all channels)
+//  double globalLow = DBL_MAX;
+//  double globalHigh = -DBL_MAX;
+//  for( int c = 0; c < cn; ++c ) {
+//    if( lowLvl[c] < globalLow ) {
+//      globalLow = lowLvl[c];
+//    }
+//    if( highLvl[c] > globalHigh ) {
+//      globalHigh = highLvl[c];
+//    }
+//  }
+//
+//
+//  // Apply the correction to each channel individually
+//  // Formula for channel c: dst_c = (src_c - low_c) * (targetRange / currentRange) + avgLow
+//  std::vector<cv::Mat> channels;
+//  cv::split(src.getMat(), channels);
+//
+//  const double targetRange = globalHigh - globalLow;
+//
+//  if ( outputScales ) {
+//    *outputScales = cv::Scalar::all(1);
+//  }
+//  if ( outputShifts ) {
+//    *outputShifts = cv::Scalar::all(1);
+//  }
+//
+//  for( int c = 0; c < cn; ++c ) {
+//    const double channelRange = highLvl[c] - lowLvl[c];
+//    // If the channel is almost empty, leave it alone to avoid increasing noise
+//    if( channelRange > 1e-10 ) {
+//
+//      const double scale = targetRange / channelRange;
+//      const double shift = globalLow - (lowLvl[c] * scale);
+//
+//      channels[c].convertTo(channels[c], -1, scale, shift);
+//
+//      if ( outputScales ) {
+//        outputScales->val[c] = scale;
+//      }
+//      if ( outputShifts ) {
+//        outputShifts->val[c] = shift;
+//      }
+//    }
+//  }
+//
+//  cv::merge(channels, dst);
+//
+//  return true;
+//}
 
 
 void autoClip(const cv::Mat1d & H, double realMinValue, double realMaxValue, double * lclip, double * hclip)
@@ -349,3 +431,53 @@ void autoMtf(const cv::Mat1d & H, double realMinValue, double realMaxValue,
   *highlights = 0.0;
 }
 
+
+bool applyChannelTransform(cv::InputArray src, cv::OutputArray dst,
+    const cv::Scalar& stretch, const cv::Scalar& shift)
+{
+  const int channels = src.channels();
+
+  switch (channels) {
+    case 1: {
+      const cv::Matx12f M(
+          (float)stretch[0], (float)shift[0]
+          );
+      cv::transform(src, dst, M);
+      break;
+    }
+    case 2: {
+      const cv::Matx23f M(
+          float(stretch[0]), 0.0f, float(shift[0]),
+          0.0f, float(stretch[1]), float(shift[1])
+          );
+      cv::transform(src, dst, M);
+      break;
+    }
+    case 3: {
+      const cv::Matx34f M(
+          float(stretch[0]), 0.0f, 0.0f, float(shift[0]),
+          0.0f, float(stretch[1]), 0.0f, float(shift[1]),
+          0.0f, 0.0f, float(stretch[2]), float(shift[2])
+          );
+      cv::transform(src, dst, M);
+      break;
+    }
+    case 4: {
+      using Matx45f = cv::Matx<float, 4, 5>;
+      const Matx45f M( {
+          float(stretch[0]),   0.0f,       0.0f,       0.0f,       float(shift[0]),
+          0.0f,         float(stretch[1]), 0.0f,       0.0f,       float(shift[1]),
+          0.0f,         0.0f,       float(stretch[2]), 0.0f,       float(shift[2]),
+          0.0f,         0.0f,       0.0f,       float(stretch[3]), float(shift[3])
+        });
+      cv::transform(src, dst, M);
+      break;
+    }
+    default: {
+      CF_ERROR("NOT supported number of channels: %d" ,channels);
+      return false;
+    }
+  }
+
+  return true;
+}

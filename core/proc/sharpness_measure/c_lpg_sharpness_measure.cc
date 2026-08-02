@@ -137,16 +137,27 @@ bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask,
     double k, double p, int dscale, int uscale,
     cv::Scalar * output_sharpness_metric)
 {
-  return lpg(image, mask, output_map,
+  CF_DEBUG("lpg: Start");
+
+  const bool fOK = lpg(image, mask, output_map,
     k, p, dscale, uscale,
     output_sharpness_metric);
+
+  CF_DEBUG("lpg: Finish");
+
+  return fOK;
 }
 
 bool c_lpg_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
     const c_lpg_options & opts,
     cv::Scalar * output_sharpness_metric)
 {
-  return lpg(image, mask, output_map,
+  CF_DEBUG("lpg: Start");
+
+  const bool fOK = lpg(image, mask, output_map,
       opts.k, opts.p, opts.dscale, opts.uscale,
       output_sharpness_metric);
+
+  CF_DEBUG("lpg: Finish");
+  return fOK;
 }

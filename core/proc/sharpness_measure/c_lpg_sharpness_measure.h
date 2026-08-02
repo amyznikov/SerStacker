@@ -66,7 +66,7 @@ public:
   void set_uscale(int v);
   int uscale() const;
 
-  cv::Scalar compute(cv::InputArray image, cv::InputArray mask = cv::noArray()) const override;
+  cv::Scalar compute(cv::InputArray image, cv::InputArray mask = cv::noArray()) const final;
   static bool compute(cv::InputArray image, cv::InputArray mask, cv::OutputArray output_map,
       double k, double p, int dscale, int uscale,
       cv::Scalar * output_sharpness_metric);
@@ -74,13 +74,9 @@ public:
       const c_lpg_options & opts,
       cv::Scalar * output_sharpness_metric);
 
-  bool create_map(cv::InputArray image, cv::OutputArray output_map) const override;
+  bool create_map(cv::InputArray image, cv::OutputArray output_map) const final;
   static bool create_map(cv::InputArray image, cv::OutputArray output_map,
       const c_lpg_options & opts);
-
-//  std::string save_settings();
-//  bool load_settings(const std::string & text);
-//  bool serialize(c_config_setting settings, bool save);
 
   template<class RootObjectType>
   static inline void getcontrols(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, this_class> & ctx)

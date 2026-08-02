@@ -124,8 +124,7 @@ bool c_local_contrast_measure::compute(cv::InputArray image, cv::InputArray mask
   const cv::Mat src =
       image.getMat();
 
-  const cv::Size src_size =
-      src.size();
+  const cv::Size src_size = src.size();
 
   static const cv::Mat1b SE(5, 5, 255);
 

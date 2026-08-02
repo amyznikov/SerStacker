@@ -420,7 +420,7 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
 
   connect(this, &ThisClass::enablecontrols,
       [this]() {
-        if ( !client_ || currentDeviceName_.isEmpty() ) {
+        if ( !_client || _currentDeviceName.isEmpty() ) {
           setEnabled(false);
         }
         else {
@@ -485,7 +485,7 @@ QIndigoFocuserWidget::QIndigoFocuserWidget(QWidget * parent) :
 
   connect(this, &ThisClass::populatecontrols,
       [this]() {
-        if ( client_ && !currentDeviceName_.isEmpty() ) {
+        if ( _client && !_currentDeviceName.isEmpty() ) {
 
           QString statusText;
 
@@ -516,24 +516,24 @@ QIndigoFocuserWidget::~QIndigoFocuserWidget()
 
 void QIndigoFocuserWidget::setIndigoClient(QIndigoClient * client)
 {
-  if( (client_ = client) ) {
+  if( (_client = client) ) {
 
-    connect(client_, &QIndigoClient::clientAttach,
+    connect(_client, &QIndigoClient::clientAttach,
         this, &ThisClass::onIndigoClientAttach);
 
-    connect(client_, &QIndigoClient::clientDefineProperty,
+    connect(_client, &QIndigoClient::clientDefineProperty,
         this, &ThisClass::onIndigoClientDefineProperty);
 
-    connect(client_, &QIndigoClient::clientUpdateProperty,
+    connect(_client, &QIndigoClient::clientUpdateProperty,
         this, &ThisClass::onIndigoClientUpdateProperty);
 
-    connect(client_, &QIndigoClient::clientDeleteProperty,
+    connect(_client, &QIndigoClient::clientDeleteProperty,
         this, &ThisClass::onIndigoClientDeleteProperty);
 
-    connect(client_, &QIndigoClient::clientSendMessage,
+    connect(_client, &QIndigoClient::clientSendMessage,
         this, &ThisClass::onIndigoClientSendMessage);
 
-    connect(client_, &QIndigoClient::clientDetach,
+    connect(_client, &QIndigoClient::clientDetach,
         this, &ThisClass::onIndigoClientDetach);
 
   }
@@ -543,7 +543,7 @@ void QIndigoFocuserWidget::setIndigoClient(QIndigoClient * client)
 
 QIndigoClient * QIndigoFocuserWidget::indigoClient() const
 {
-  return client_;
+  return _client;
 }
 
 bool QIndigoFocuserWidget::isConnected() const
@@ -571,8 +571,7 @@ void QIndigoFocuserWidget::on_indigo_log_message(indigo_log_levels level, const 
 {
   if( ThisClass::logWidget_ctl ) {
 
-    const QString msg =
-        message;
+    const QString msg = message;
 
     QMetaObject::invokeMethod(logWidget_ctl, [msg]() {
       if( ThisClass::logWidget_ctl ) {
@@ -766,16 +765,16 @@ void QIndigoFocuserWidget::onFocuserTemperatureChanged()
 
 void QIndigoFocuserWidget::enumerateCurrentDeviceProperties()
 {
-  if( client_ && !currentDeviceName_.isEmpty() ) {
+  if( _client && !_currentDeviceName.isEmpty() ) {
 
     indigo_property device_properties = { 0 };
 
     strncpy(device_properties.device,
-        currentDeviceName_.toUtf8().constData(),
+        _currentDeviceName.toUtf8().constData(),
         INDIGO_NAME_SIZE);
 
     indigo_result status =
-        client_->enumerate_properties(
+        _client->enumerate_properties(
             &device_properties);
 
     if( status != INDIGO_OK ) {
@@ -802,7 +801,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
       bool has_changes = false;
 
       if( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         has_changes =
             focuser_connection.connection_status != new_connection_status ||
@@ -818,7 +817,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
       }
 
       if ( has_changes ) {
-        emit focuserConnectionStateChanged();
+        Q_EMIT focuserConnectionStateChanged();
       }
     }
   }
@@ -829,14 +828,14 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if ( get_focuser_move_direction(property, &direction)) {
 
       if( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         focuser_direction.value = direction;
         focuser_direction.state = property->state;
         focuser_direction.defined = true;
       }
 
-      emit focuserMoveDirectionChanged();
+      Q_EMIT focuserMoveDirectionChanged();
     }
 
   }
@@ -849,7 +848,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if( get_focuser_position(property, &current_value, &min_value, &max_value) ) {
 
       if ( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         focuser_position.value = current_value;
         focuser_position.min_value = min_value;
@@ -859,7 +858,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
         focuser_position.defined = true;
       }
 
-      emit focuserPositionChanged();
+      Q_EMIT focuserPositionChanged();
     }
 
   }
@@ -871,7 +870,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if( get_focuser_limits(property, &minpos, &maxpos) ) {
 
       if( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         focuser_limits.min_value = minpos;
         focuser_limits.max_value = maxpos;
@@ -880,7 +879,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
         focuser_limits.defined = true;
       }
 
-      emit focuserLimitsChanged();
+      Q_EMIT focuserLimitsChanged();
     }
   }
 
@@ -894,7 +893,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if( get_focuser_steps(property, &steps, &min_value, &max_value) ) {
 
       if ( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         focuser_steps.value = steps;
         focuser_steps.min_value = min_value;
@@ -904,7 +903,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
         focuser_steps.defined = true;
       }
 
-      emit focuserStepsChanged();
+      Q_EMIT focuserStepsChanged();
 
     }
 
@@ -919,7 +918,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if ( get_focuser_speed(property, &current_value, &min_value, &max_value) ) {
 
       if( true ) {
-        c_guard_lock lock(mtx_);
+        c_guard_lock lock(_lock);
 
         focuser_speed.value = current_value;
         focuser_speed.min_value = min_value;
@@ -929,7 +928,7 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
         focuser_speed.defined = true;
       }
 
-      emit focuserSpeedChanged();
+      Q_EMIT focuserSpeedChanged();
     }
 
   }
@@ -941,13 +940,12 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
     if( get_focuser_temperature(property, &temperature) ) {
 
       if( true ) {
-        c_guard_lock lock(mtx_);
-
+        c_guard_lock lock(_lock);
         focuser_temperature.value = temperature;
         focuser_temperature.defined = true;
       }
 
-      emit focuserTemperatureChanged();
+      Q_EMIT focuserTemperatureChanged();
     }
 
   }
@@ -962,9 +960,9 @@ void QIndigoFocuserWidget::updateCurrentDeviceProperties(const indigo_property *
 
 void QIndigoFocuserWidget::abortCurrentMotion()
 {
-  if( client_ && !currentDeviceName_.isEmpty() ) {
-    client_->change_switch_property(
-        currentDeviceName_.toUtf8().constData(),
+  if( _client && !_currentDeviceName.isEmpty() ) {
+    _client->change_switch_property(
+        _currentDeviceName.toUtf8().constData(),
         FOCUSER_ABORT_MOTION_PROPERTY_NAME,
         FOCUSER_ABORT_MOTION_ITEM_NAME,
         true);
@@ -976,16 +974,15 @@ void QIndigoFocuserWidget::moveFocusToPosition(int target_pos)
   if ( target_pos != focuser_position.value ) {
 
     indigo_result status =
-        client_->change_number_property(
-            currentDeviceName_.toUtf8().constData(),
+        _client->change_number_property(
+            _currentDeviceName.toUtf8().constData(),
             FOCUSER_POSITION_PROPERTY_NAME,
             FOCUSER_POSITION_ITEM_NAME,
             target_pos);
 
     if( status != INDIGO_OK ) {
       INDIGO_ERROR("%s(): client_->change_number_property(%s:%s) fails: "
-          "status=%d\n",
-          __func__,
+          "status=%d\n", __func__,
           FOCUSER_POSITION_PROPERTY_NAME,
           FOCUSER_POSITION_ITEM_NAME,
           status);
@@ -997,15 +994,14 @@ bool QIndigoFocuserWidget::setMovingDirection(INDIGO_FOCUSER_MOVE_DIRECTION dire
 {
   if( focuser_direction.defined && focuser_direction.state != INDIGO_BUSY_STATE ) {
 
-    indigo_result status =
-        INDIGO_OK;
+    indigo_result status = INDIGO_OK;
 
     if( direction != focuser_direction.value ) {
       switch (direction) {
       case INDIGO_FOCUSER_MOVE_DIRECTION_INWARD:
         status =
-            client_->change_switch_property(
-                currentDeviceName_.toUtf8().constData(),
+            _client->change_switch_property(
+                _currentDeviceName.toUtf8().constData(),
                 FOCUSER_DIRECTION_PROPERTY_NAME,
                 FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME,
                 true);
@@ -1013,8 +1009,8 @@ bool QIndigoFocuserWidget::setMovingDirection(INDIGO_FOCUSER_MOVE_DIRECTION dire
 
       case INDIGO_FOCUSER_MOVE_DIRECTION_OUTWARD:
         status =
-            client_->change_switch_property(
-                currentDeviceName_.toUtf8().constData(),
+            _client->change_switch_property(
+                _currentDeviceName.toUtf8().constData(),
                 FOCUSER_DIRECTION_PROPERTY_NAME,
                 FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME,
                 true);
@@ -1029,8 +1025,7 @@ bool QIndigoFocuserWidget::setMovingDirection(INDIGO_FOCUSER_MOVE_DIRECTION dire
     }
 
     INDIGO_ERROR("%s(): client_->change_switch_property('%s') fails: "
-        "status=%d\n",
-        __func__,
+        "status=%d\n", __func__,
         FOCUSER_DIRECTION_PROPERTY_NAME,
         status);
   }
@@ -1045,14 +1040,13 @@ void QIndigoFocuserWidget::moveFocusInward(int steps)
   if( steps > 0 ) {
 
     if( !setMovingDirection(INDIGO_FOCUSER_MOVE_DIRECTION_INWARD) ) {
-      INDIGO_ERROR("%s(): setMovingDirection(INWARD) fails",
-          __func__);
+      INDIGO_ERROR("%s(): setMovingDirection(INWARD) fails", __func__);
       return;
     }
 
     indigo_result status =
-        client_->change_number_property(
-            currentDeviceName_.toUtf8().constData(),
+        _client->change_number_property(
+            _currentDeviceName.toUtf8().constData(),
             FOCUSER_STEPS_PROPERTY_NAME,
             FOCUSER_STEPS_ITEM_NAME,
             steps);
@@ -1060,9 +1054,8 @@ void QIndigoFocuserWidget::moveFocusInward(int steps)
     if( status != INDIGO_OK ) {
 
       INDIGO_ERROR("%s(): client_->change_number_property('%s', %s, %s) fails: "
-          "status=%d\n",
-          __func__,
-          currentDeviceName_.toUtf8().constData(),
+          "status=%d\n", __func__,
+          _currentDeviceName.toUtf8().constData(),
           FOCUSER_STEPS_PROPERTY_NAME,
           FOCUSER_STEPS_ITEM_NAME,
           status);
@@ -1077,14 +1070,13 @@ void QIndigoFocuserWidget::moveFocusOutward(int steps)
   if( steps > 0 ) {
 
     if( !setMovingDirection(INDIGO_FOCUSER_MOVE_DIRECTION_OUTWARD) ) {
-      INDIGO_ERROR("%s(): setMovingDirection(OUTWARD) fails",
-          __func__);
+      INDIGO_ERROR("%s(): setMovingDirection(OUTWARD) fails", __func__);
       return;
     }
 
     indigo_result status =
-        client_->change_number_property(
-            currentDeviceName_.toUtf8().constData(),
+        _client->change_number_property(
+            _currentDeviceName.toUtf8().constData(),
             FOCUSER_STEPS_PROPERTY_NAME,
             FOCUSER_STEPS_ITEM_NAME,
             steps);
@@ -1092,9 +1084,8 @@ void QIndigoFocuserWidget::moveFocusOutward(int steps)
     if( status != INDIGO_OK ) {
 
       INDIGO_ERROR("%s(): client_->change_number_property('%s', %s, %s) fails: "
-          "status=%d\n",
-          __func__,
-          currentDeviceName_.toUtf8().constData(),
+          "status=%d\n", __func__,
+          _currentDeviceName.toUtf8().constData(),
           FOCUSER_STEPS_PROPERTY_NAME,
           FOCUSER_STEPS_ITEM_NAME,
           status);
@@ -1122,7 +1113,7 @@ void QIndigoFocuserWidget::onIndigoClientDefineProperty(const indigo_device * de
         message.toUtf8().constData());
   }
 
-  if( match_device_name(property, currentDeviceName_) ) {
+  if( match_device_name(property, _currentDeviceName) ) {
     updateCurrentDeviceProperties(property, message);
   }
 }
@@ -1139,7 +1130,7 @@ void QIndigoFocuserWidget::onIndigoClientUpdateProperty(const indigo_device * de
         message.toUtf8().constData());
   }
 
-  if( match_device_name(property, currentDeviceName_) ) {
+  if( match_device_name(property, _currentDeviceName) ) {
     updateCurrentDeviceProperties(property, message);
   }
 }
@@ -1164,17 +1155,17 @@ void QIndigoFocuserWidget::onIndigoClientDetach()
 void QIndigoFocuserWidget::onDeviceSelectorCurrentIndexChanged(int cursel)
 {
   if ( cursel >= 0 ) {
-    currentDeviceName_ =
+    _currentDeviceName =
         deviceSelector_ctl->currentText();
   }
   else {
-    currentDeviceName_.clear();
+    _currentDeviceName.clear();
   }
 }
 
 void QIndigoFocuserWidget::onConnectDiconnectButtonClicked()
 {
-  if( client_ && !currentDeviceName_.isEmpty() ) {
+  if( _client && !_currentDeviceName.isEmpty() ) {
 
     const char *propertyItemName =
         focuser_connection.connection_status == INDIGO_CONNECTION_STATUS_CONNECTED ?
@@ -1182,8 +1173,8 @@ void QIndigoFocuserWidget::onConnectDiconnectButtonClicked()
         CONNECTION_CONNECTED_ITEM_NAME;
 
     indigo_result status =
-        client_->change_switch_property(
-            currentDeviceName_.toUtf8().constData(),
+        _client->change_switch_property(
+            _currentDeviceName.toUtf8().constData(),
             CONNECTION_PROPERTY_NAME,
             propertyItemName,
             true);
@@ -1193,7 +1184,7 @@ void QIndigoFocuserWidget::onConnectDiconnectButtonClicked()
       INDIGO_ERROR("%s(): client_->change_switch_property('%s', %s:%s) fails: "
           "status=%d\n",
           __func__,
-          currentDeviceName_.toUtf8().constData(),
+          _currentDeviceName.toUtf8().constData(),
           CONNECTION_PROPERTY_NAME,
           propertyItemName,
           status);
@@ -1221,9 +1212,7 @@ void QIndigoFocuserWidget::onApplyFocusLimitsClicked()
 #endif
 
   if ( tokens.size() != 2 ) {
-    INDIGO_ERROR("%s(): n=%d s='%s'",
-        __func__,
-        tokens.size(),
+    INDIGO_ERROR("%s(): n=%d s='%s'", __func__, tokens.size(),
         focuserLimits_ctl->text().toUtf8().constData());
     return;
   }
@@ -1231,15 +1220,13 @@ void QIndigoFocuserWidget::onApplyFocusLimitsClicked()
   int minval, maxval;
 
   if ( sscanf(tokens[0].toUtf8().constData(), "%d", &minval) != 1 ) {
-    INDIGO_ERROR("%s(): sscanf() fails: %s'",
-        __func__,
+    INDIGO_ERROR("%s(): sscanf() fails: %s'", __func__,
         tokens[0].toUtf8().constData());
     return;
   }
 
   if ( sscanf(tokens[1].toUtf8().constData(), "%d", &maxval) != 1 ) {
-    INDIGO_ERROR("%s(): sscanf() fails: %s'",
-        __func__,
+    INDIGO_ERROR("%s(): sscanf() fails: %s'", __func__,
         tokens[0].toUtf8().constData());
     return;
   }
@@ -1255,8 +1242,8 @@ void QIndigoFocuserWidget::onApplyFocusLimitsClicked()
   };
 
   indigo_result status =
-      client_->change_number_property(
-          currentDeviceName_.toUtf8().constData(),
+      _client->change_number_property(
+          _currentDeviceName.toUtf8().constData(),
           FOCUSER_LIMITS_PROPERTY_NAME,
           2,
           items,
@@ -1281,10 +1268,7 @@ void QIndigoFocuserWidget::onFocuserPositionMoveToAbsolutePositionClicked()
     abortCurrentMotion();
   }
   else if ( canMoveFocusNow() ) {
-
-    const int target_pos =
-        focuserPosition_ctl->value();
-
+    const int target_pos = focuserPosition_ctl->value();
     moveFocusToPosition(target_pos);
   }
 }
@@ -1296,13 +1280,8 @@ void QIndigoFocuserWidget::onFocuserPositionMoveToMinPositionClicked()
     abortCurrentMotion();
   }
   else if( canMoveFocusNow() ) {
-
-    focuserPosition_ctl->setValue(
-        focuserPosition_ctl->minimum());
-
-    const int target_pos =
-        focuserPosition_ctl->value();
-
+    focuserPosition_ctl->setValue(focuserPosition_ctl->minimum());
+    const int target_pos = focuserPosition_ctl->value();
     moveFocusToPosition(target_pos);
   }
 }
@@ -1313,13 +1292,8 @@ void QIndigoFocuserWidget::onFocuserPositionMoveToMaxPositionClicked()
     abortCurrentMotion();
   }
   else if( canMoveFocusNow() ) {
-
-    focuserPosition_ctl->setValue(
-        focuserPosition_ctl->maximum());
-
-    const int target_pos =
-        focuserPosition_ctl->value();
-
+    focuserPosition_ctl->setValue(focuserPosition_ctl->maximum());
+    const int target_pos = focuserPosition_ctl->value();
     moveFocusToPosition(target_pos);
   }
 }
@@ -1330,13 +1304,8 @@ void QIndigoFocuserWidget::onFocuserPositionMoveToMiddlePositionClicked()
     abortCurrentMotion();
   }
   else if( canMoveFocusNow() ) {
-
-    focuserPosition_ctl->setValue((focuserPosition_ctl->maximum() +
-        focuserPosition_ctl->minimum()) / 2);
-
-    const int target_pos =
-        focuserPosition_ctl->value();
-
+    focuserPosition_ctl->setValue((focuserPosition_ctl->maximum() + focuserPosition_ctl->minimum()) / 2);
+    const int target_pos = focuserPosition_ctl->value();
     moveFocusToPosition(target_pos);
   }
 }
@@ -1392,14 +1361,13 @@ void QIndigoFocuserWidget::setFocuserSpeed(int value)
   if( value != focuser_speed.value ) {
 
     indigo_result status =
-        client_->change_number_property(
-            currentDeviceName_.toUtf8().constData(),
+        _client->change_number_property(
+            _currentDeviceName.toUtf8().constData(),
             FOCUSER_SPEED_PROPERTY_NAME,
             FOCUSER_SPEED_ITEM_NAME,
             value);
 
     if( status != INDIGO_OK ) {
-
       INDIGO_ERROR("%s(): client_->change_number_property('%s') fails: "
           "status=%d\n",
           __func__,
@@ -1422,66 +1390,12 @@ void QIndigoFocuserWidget::onFocuserSpeedControlValueChanged(int value)
 
 //////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-
-//void QIndigoFocuserWidget::mousePressEvent(QMouseEvent *event)
-//{
-////  
-//
-//  if ( enableMouse_ctl->isChecked() && canMoveFocusNow() ) {
-//
-//    if ( event->button() == Qt::MouseButton::LeftButton ) {
-//
-//      moveFocusToPosition(focuserPosition_ctl->minimum());
-//
-//      return;
-//    }
-//
-//    if ( event->button() == Qt::MouseButton::RightButton ) {
-//
-//      moveFocusToPosition(focuserPosition_ctl->maximum());
-//
-//      return;
-//
-//    }
-//
-//  }
-//
-//  Base::mousePressEvent(event);
-//}
-
-//void QIndigoFocuserWidget::mouseReleaseEvent(QMouseEvent *event)
-//{
-//  //
-//
-//  if ( isMovingFocusNow() ) {
-//    abortCurrentMotion();
-//    return;
-//  }
-//
-//  Base::mouseReleaseEvent(event);
-//}
-
-//void QIndigoFocuserWidget::mouseDoubleClickEvent(QMouseEvent *event)
-//{
-//  Base::mouseDoubleClickEvent(event);
-//}
-//
-//void QIndigoFocuserWidget::mouseMoveEvent(QMouseEvent *event)
-//{
-//  Base::mouseMoveEvent(event);
-//}
-
 #if QT_CONFIG(wheelevent)
 void QIndigoFocuserWidget::wheelEvent(QWheelEvent * event)
 {
   if( isConnected() && focuser_speed.defined && focuser_speed.state != INDIGO_BUSY_STATE ) {
 
-    const int steps =
-        event->angleDelta().y() / QWheelEvent::DefaultDeltasPerStep;
+    const int steps = event->angleDelta().y() / QWheelEvent::DefaultDeltasPerStep;
 
     if( steps > 0 ) {
       if( focuser_speed.value < focuser_speed.max_value ) {
@@ -1505,26 +1419,22 @@ void QIndigoFocuserWidget::wheelEvent(QWheelEvent * event)
 
 QIndigoFocuserMouseClickControl::QIndigoFocuserMouseClickControl(QIndigoFocuserWidget * parent) :
     Base(parent),
-    focuser_(parent)
+    _focuser(parent)
 {
   setPixmap(QPixmap(ICON_mc));
 }
 
 void QIndigoFocuserMouseClickControl::mousePressEvent(QMouseEvent * e)
 {
-  if( focuser_->enableMouse_ctl->isChecked() && focuser_->canMoveFocusNow() ) {
+  if( _focuser->enableMouse_ctl->isChecked() && _focuser->canMoveFocusNow() ) {
 
     if( e->button() == Qt::MouseButton::LeftButton ) {
-
-      focuser_->moveFocusToPosition(focuser_->focuserPosition_ctl->minimum());
-
+      _focuser->moveFocusToPosition(_focuser->focuserPosition_ctl->minimum());
       return;
     }
 
     if( e->button() == Qt::MouseButton::RightButton ) {
-
-      focuser_->moveFocusToPosition(focuser_->focuserPosition_ctl->maximum());
-
+      _focuser->moveFocusToPosition(_focuser->focuserPosition_ctl->maximum());
       return;
     }
   }
@@ -1535,8 +1445,8 @@ void QIndigoFocuserMouseClickControl::mousePressEvent(QMouseEvent * e)
 
 void QIndigoFocuserMouseClickControl::mouseReleaseEvent(QMouseEvent *e)
 {
-  if ( focuser_->isMovingFocusNow() ) {
-    focuser_->abortCurrentMotion();
+  if ( _focuser->isMovingFocusNow() ) {
+    _focuser->abortCurrentMotion();
   }
 
   e->ignore();

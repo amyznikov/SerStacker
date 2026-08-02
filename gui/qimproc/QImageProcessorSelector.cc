@@ -44,9 +44,9 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
     QImageProcessorsCollection::load();
   }
 
-  lv_ = new QVBoxLayout(this);
+  _lv = new QVBoxLayout(this);
 
-  lv_->addWidget(toolbar_ctl = new QToolBar(this));
+  _lv->addWidget(toolbar_ctl = new QToolBar(this));
   toolbar_ctl->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
   toolbar_ctl->setIconSize(QSize(16, 16));
 
@@ -64,7 +64,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
 
   //lv_->addWidget(createScrollableWrap(chain_ctl = new QImageProcessorChainEditor(this), this));
-  lv_->addWidget(chain_ctl = new QImageProcessorChainEditor(this));
+  _lv->addWidget(chain_ctl = new QImageProcessorChainEditor(this));
 
 
   connect(enable_ctl, &QCheckBox::stateChanged,
@@ -84,7 +84,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
             new QAction(getIcon(ICON_add),
                 "Add chain ..."));
 
-        if ( current_processor_ ) {
+        if ( _current_processor ) {
 
           // Depp copy is not implemented yet
           //  menu.addAction(copy_processor_action =
@@ -154,7 +154,7 @@ QImageProcessorSelector::QImageProcessorSelector(QWidget * parent) :
 
 c_image_processor::sptr QImageProcessorSelector::currentProcessor() const
 {
-  return enable_ctl->isChecked() ? current_processor_ : nullptr;
+  return enable_ctl->isChecked() ? _current_processor : nullptr;
 }
 
 QString QImageProcessorSelector::selectedProcessor() const
@@ -192,11 +192,11 @@ void QImageProcessorSelector::onupdatecontrols()
 
   if ( selector_ctl->count() > 0 ) {
 
-    if ( !current_processor_ ) {
+    if ( !_current_processor ) {
       selector_ctl->setCurrentIndex(0);
     }
     else {
-      const int index = selector_ctl->findText(current_processor_->cname());
+      const int index = selector_ctl->findText(_current_processor->cname());
       selector_ctl->setCurrentIndex(index >= 0 ? index : 0);
     }
   }
@@ -231,12 +231,12 @@ void QImageProcessorSelector::updatecurrentprocessor()
     }
   }
 
-  if ( current_processor_ != selected_processor  ) {
-    current_processor_ = selected_processor;
+  if ( _current_processor != selected_processor  ) {
+    _current_processor = selected_processor;
   }
 
-  if ( current_processor_ != chain_ctl->currentProcessor() ) {
-    chain_ctl->setCurrentProcessor(current_processor_);
+  if ( _current_processor != chain_ctl->currentProcessor() ) {
+    chain_ctl->setCurrentProcessor(_current_processor);
   }
 }
 
@@ -270,8 +270,8 @@ void QImageProcessorSelector::addProcessor()
       return;
     }
 
-    QImageProcessorsCollection::add(current_processor_ = processor);
-    current_processor_->save();
+    QImageProcessorsCollection::add(_current_processor = processor);
+    _current_processor->save();
     updateControls();
 
     return;
@@ -281,14 +281,14 @@ void QImageProcessorSelector::addProcessor()
 
 void QImageProcessorSelector::deleteCurrentProcessor()
 {
-  if ( !current_processor_ ) {
+  if ( !_current_processor ) {
     return;
   }
 
   const int reply = QMessageBox::question(this,
       "Confirmation required",
       QString("Are you sure to deletec current processor '%1' ?").
-          arg(current_processor_->cname()),
+          arg(_current_processor->cname()),
       QMessageBox::Yes | QMessageBox::No);
 
 
@@ -296,18 +296,18 @@ void QImageProcessorSelector::deleteCurrentProcessor()
     return;
   }
 
-  const int pos = QImageProcessorsCollection::indexof(current_processor_);
+  const int pos = QImageProcessorsCollection::indexof(_current_processor);
   if( pos < 0 ) {
     return;
   }
 
   QImageProcessorsCollection::remove_at(pos);
 
-  if ( !current_processor_->filename().empty() ) {
+  if ( !_current_processor->filename().empty() ) {
 
-    if ( QFile::exists(current_processor_->cfilename()) ) {
+    if ( QFile::exists(_current_processor->cfilename()) ) {
 
-      if ( !QFile::remove(current_processor_->cfilename()) ) {
+      if ( !QFile::remove(_current_processor->cfilename()) ) {
 
         QMessageBox::warning(this, "WARNING",
             QString("Failed to remove the file from disk:\n"
@@ -317,17 +317,17 @@ void QImageProcessorSelector::deleteCurrentProcessor()
     }
   }
 
-  current_processor_.reset();
+  _current_processor.reset();
   updateControls();
 }
 
 void QImageProcessorSelector::renameCurrentProcessor()
 {
-  if ( !current_processor_ ) {
+  if ( !_current_processor ) {
     return;
   }
 
-  QString processorName = current_processor_->cname();
+  QString processorName = _current_processor->cname();
 
   while ( 42 ) {
 
@@ -338,7 +338,7 @@ void QImageProcessorSelector::renameCurrentProcessor()
             QLineEdit::EchoMode::Normal,
             processorName);
 
-    if ( processorName.isEmpty() || processorName.compare(current_processor_->cname()) == 0 ) {
+    if ( processorName.isEmpty() || processorName.compare(_current_processor->cname()) == 0 ) {
       return;
     }
 
@@ -350,19 +350,19 @@ void QImageProcessorSelector::renameCurrentProcessor()
       }
     }
 
-    current_processor_->set_name(processorName.toStdString());
+    _current_processor->set_name(processorName.toStdString());
 
-    if ( !current_processor_->filename().empty() ) {
+    if ( !_current_processor->filename().empty() ) {
 
-      QFile::remove(current_processor_->cfilename());
+      QFile::remove(_current_processor->cfilename());
 
-      const QString abspath = QFileInfo(current_processor_->cfilename()).absolutePath();
+      const QString abspath = QFileInfo(_current_processor->cfilename()).absolutePath();
       if ( !abspath.isEmpty() ) {
-        current_processor_->set_filename(QString("%1/%2.cfg").arg(abspath).arg(processorName).toStdString());
+        _current_processor->set_filename(QString("%1/%2.cfg").arg(abspath).arg(processorName).toStdString());
       }
     }
 
-    current_processor_->save();
+    _current_processor->save();
 
     updateControls();
 

@@ -123,6 +123,8 @@ bool c_generic_image_processor_pipeline::run_pipeline()
         CF_DEBUG("input_sequence_->read() fails");
         break;
       }
+
+      _current_colorid = _input_sequence->colorid();
     }
 
     if( canceled() ) {

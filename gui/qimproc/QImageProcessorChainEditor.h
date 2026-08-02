@@ -14,8 +14,7 @@
 #include <gui/widgets/UpdateControls.h>
 #include <core/improc/c_image_processor.h>
 
-class QImageProcessorChainEditor :
-    public QFrame,
+class QImageProcessorChainEditor : public QFrame,
     public HasUpdateControls
 {
   Q_OBJECT;

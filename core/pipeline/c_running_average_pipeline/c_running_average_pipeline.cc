@@ -50,6 +50,10 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "registration_options")) ) {
 
+    SERIALIZE_OPTION(section, save, _registration_options, canvasSize);
+    SERIALIZE_OPTION(section, save, _registration_options, eccUnsharpMaskSigma);
+    SERIALIZE_OPTION(section, save, _registration_options, eccUnsharpMaskAlpha);
+
     SERIALIZE_OPTION(section, save, _registration_options, motion_type);
     SERIALIZE_OPTION(section, save, _registration_options, enable_star_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_ecc_registration);
@@ -78,9 +82,14 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
     SERIALIZE_OPTION(section, save, _average_options, running_weight);
-    if( auto group = SERIALIZE_GROUP(section, save, "lpg") ) {
-      serialize_lpg_options(group, save, _average_options.lpg);
+    //    if( auto group = SERIALIZE_GROUP(section, save, "lpg") ) {
+    //      serialize_lpg_options(group, save, _average_options.lpg);
+    //    }
+
+    if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
+      serialize_local_variance_map_options(group, save, _average_options.sharpness_measure);
     }
+
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -88,9 +97,9 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
     SERIALIZE_OPTION(section, save, _output_options, output_file_name);
 
-    SERIALIZE_OPTION(section, save, _output_options, save_accumulated_video);
-    if( (subsection = SERIALIZE_GROUP(section, save, "output_incremental_video_options")) ) {
-      SERIALIZE_OPTION(subsection, save, _output_options, output_accumulated_video_options);
+    SERIALIZE_OPTION(section, save, _output_options, save_progress_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_progress_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_progress_video_options);
     }
 
     SERIALIZE_OPTION(section, save, _output_options, save_reference_video);
@@ -118,6 +127,10 @@ template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_registration_options> & ctx)
 {
   using S = c_running_average_registration_options;
+
+  ctlbind(ctls, "canvasSize", ctx(&S::canvasSize), "");
+  ctlbind(ctls, "eccUnsharpMaskSigma", ctx(&S::eccUnsharpMaskSigma), "");
+  ctlbind(ctls, "eccUnsharpMaskAlpha", ctx(&S::eccUnsharpMaskAlpha), "");
 
   ctlbind(ctls, "motion_type", ctx(&S::motion_type), "");
 
@@ -153,7 +166,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   //ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
   ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
   ctlbind_expandable_group(ctls, "Shapness measure", "");
-    ctlbind(ctls, ctx(&S::lpg));
+    //ctlbind(ctls, ctx(&S::lpg));
+    ctlbind(ctls, ctx(&S::sharpness_measure));
   ctlbind_end_group(ctls);
 }
 
@@ -167,9 +181,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
   ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
-  ctlbind_expandable_group(ctls, "Save accumulated video");
-    ctlbind(ctls, "save_accumulated_video", ctx(&S::save_accumulated_video), "");
-    ctlbind(ctls, ctx(&S::output_accumulated_video_options));//  (_this->_output_options.save_accumulated_video));
+  ctlbind_expandable_group(ctls, "Save progress video");
+    ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+    ctlbind(ctls, ctx(&S::output_progress_video_options));//  (_this->_output_options.save_accumulated_video));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save reference video", "");
@@ -332,13 +346,15 @@ bool c_running_average_pipeline::initialize_pipeline()
     }
   }
 
+  _average.setCanvasSize(_registration_options.canvasSize);
+
   const bool enable_registration =
       _registration_options.enable_star_registration ||
           _registration_options.enable_ecc_registration ||
           _registration_options.enable_eccflow_registration;
 
-
   if ( enable_registration ) {
+
     _image_transform = create_image_transform(_registration_options.motion_type);
 
     if ( _registration_options.enable_star_registration ) {
@@ -356,6 +372,7 @@ bool c_running_average_pipeline::initialize_pipeline()
       _eccflow.set_options(_registration_options.eccflow);
     }
   }
+
 
   CF_DEBUG("Output path='%s'", this->_output_path.c_str());
 
@@ -482,6 +499,14 @@ bool c_running_average_pipeline::process_current_frame()
       return !canceled();
     }
 
+    if( _output_options.save_progress_video ) {
+      if( !write_progress_video(reference_image, reference_mask) ) {
+        CF_ERROR("write_progress_video() fails");
+        return false;
+      }
+    }
+
+
     mkgrayscale(reference_image, reference_image);
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
@@ -490,8 +515,12 @@ bool c_running_average_pipeline::process_current_frame()
     if ( bbox.empty() ) {
       bbox = cv::Rect(0, 0, reference_image.cols, reference_image.rows);
     }
+    else {
+      bbox.width = current_image.cols;
+      bbox.height = current_image.rows;
+    }
 
-    CF_DEBUG("bbox: x=%d y=%d w=%d h=%d", bbox.x, bbox.y, bbox.width, bbox.height);
+    // CF_DEBUG("bbox: x=%d y=%d w=%d h=%d", bbox.x, bbox.y, bbox.width, bbox.height);
 
     reference_image_crop = reference_image(bbox);
     reference_mask_crop = reference_mask(bbox);
@@ -540,29 +569,63 @@ bool c_running_average_pipeline::process_current_frame()
 
     if( _registration_options.enable_ecc_registration ) {
 
+      if ( _average.accumulated_frames() > 7 ) {
+        const double sigma = _registration_options.eccUnsharpMaskSigma;
+        const double alpha = _registration_options.eccUnsharpMaskAlpha;
+        if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
+          unsharp_mask(reference_image_crop, reference_mask_crop, reference_image_crop,
+              sigma, alpha);
+        }
+      }
+
+
+//      CF_DEBUG("ECCH: reference_image_crop=%dx%d", reference_image_crop.cols, reference_image_crop.rows);
+//      CF_DEBUG("ECCH: reference_mask_crop=%dx%d", reference_mask_crop.cols, reference_mask_crop.rows);
+//      CF_DEBUG("ECCH: current_image=%dx%d", current_image.cols, current_image.rows);
+//      CF_DEBUG("ECCH: current_mask=%dx%d", current_mask.cols, current_mask.rows);
+
       _ecch.set_reference_image(reference_image_crop, reference_mask_crop);
       if( !_ecch.align(current_image, current_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
       }
 
-      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
+//      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
 
-    _image_transform->set_translation(_image_transform->translation() - cv::Vec2f(bbox.x, bbox.y));
-    _image_transform->create_remap(reference_image.size(), rmap);
 
-    if( _registration_options.enable_eccflow_registration ) {
-      _eccflow.set_reference_image(reference_image, reference_mask);
-      if( !_eccflow.compute(current_image, rmap, current_mask) ) {
+    if( !_registration_options.enable_eccflow_registration ) {
+      _image_transform->set_translation(_image_transform->translation() - cv::Vec2f(bbox.x, bbox.y));
+      _image_transform->create_remap(reference_image.size(), rmap);
+    }
+    else {
+      cv::Mat2f temp_rmap;
+      _image_transform->create_remap(current_image.size(), temp_rmap);
+
+//      CF_DEBUG("ECCFLOW: reference_image_crop=%dx%d", reference_image_crop.cols, reference_image_crop.rows);
+//      CF_DEBUG("ECCFLOW: reference_mask_crop=%dx%d", reference_mask_crop.cols, reference_mask_crop.rows);
+//      CF_DEBUG("ECCFLOW: current_image=%dx%d", current_image.cols, current_image.rows);
+//      CF_DEBUG("ECCFLOW: current_mask=%dx%d", current_mask.cols, current_mask.rows);
+
+      _eccflow.set_reference_image(reference_image_crop, reference_mask_crop);
+      if( !_eccflow.compute(current_image, temp_rmap, current_mask) ) {
         CF_ERROR("_eccflow.compute() fails");
         return false;
       }
+
+//      CF_DEBUG("ECCFLOW OK");
+
+      rmap.create(reference_image.size());
+      rmap.setTo(cv::Vec2f::all(-1));
+      temp_rmap.copyTo(rmap(bbox));
     }
 
 
-    if ( _average_options.lpg.k >= 0 ) {
+//    if ( _average_options.lpg.k >= 0 ) {
+//      compute_weights(_current_image, _current_mask, weights);
+//    }
+    if ( _average_options.sharpness_measure.kradius > 0 ) {
       compute_weights(_current_image, _current_mask, weights);
     }
 
@@ -583,10 +646,39 @@ bool c_running_average_pipeline::process_current_frame()
 
 void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {
-  c_lpg_sharpness_measure::create_map(src, dst, _average_options.lpg);
+  //  c_lpg_sharpness_measure::create_map(src, dst, _average_options.lpg);
+  c_local_variance_sharpness_measure::create_map(src, dst, _average_options.sharpness_measure);
   if( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);
   }
 }
 
 
+bool c_running_average_pipeline::write_progress_video(cv::InputArray image, cv::InputArray mask)
+{
+  if( _output_options.save_progress_video && !image.empty() ) {
+
+    if( !_progress_writer.is_open() ) {
+
+      bool fOk =
+          add_output_writer(_progress_writer,
+              _output_options.output_progress_video_options,
+              "progress",
+              ".avi");
+
+      if( !fOk ) {
+        CF_ERROR("add_output_writer('%s') fails",
+            _progress_writer.filename().c_str());
+        return false;
+      }
+    }
+
+    if( !_progress_writer.write(image, mask) ) {
+      CF_ERROR("_progress_writer.write('%s') fails.",
+          _progress_writer.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}

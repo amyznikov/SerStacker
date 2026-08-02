@@ -24,8 +24,12 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  bool copy_scales_to_clipboard();
+
+protected:
   double _lclip = 1;
   double _hclip = 99;
+  cv::Scalar _computed_scales, _computed_shifts;
   bool _dump_adjusted_parameters = false;
 };
 

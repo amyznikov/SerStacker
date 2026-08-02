@@ -1098,6 +1098,33 @@ inline void ctlbind_show_info_text(const std::string & title, const std::string 
   }
 }
 
+inline bool ctlbind_copy_config_to_clipboard(const c_config & cfg)
+{
+  const auto cb = get_ctlbind_copy_to_clipboard_callback();
+  return cb ? cb(cfg.write_string()), true : false;
+}
+
+inline bool ctlbind_paste_config_to_clipboard(c_config & cfg)
+{
+  const auto cb = get_ctlbind_get_clipboard_text_callback();
+  if ( !cb ) {
+    return false;
+  }
+
+  const std::string text = cb();
+  if ( text.empty() ) {
+    CF_ERROR("No clipboard text available");
+    return false;
+  }
+
+  if ( !cfg.read_string(text.c_str()) ) {
+    CF_ERROR("Can not parse clipboard texrt: cfg.read_string() fails");
+    return false;
+  }
+
+  return true;
+}
+
 template<class StructType>
 bool ctlbind_copy_config_to_clipboard(const std::string & groupName, const StructType & data)
 {

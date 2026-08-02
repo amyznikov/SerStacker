@@ -12,8 +12,7 @@
 #include <gui/widgets/UpdateControls.h>
 
 
-class QImageProcessorSelector :
-    public QFrame,
+class QImageProcessorSelector : public QFrame,
     public HasUpdateControls
 {
   Q_OBJECT;
@@ -45,9 +44,9 @@ protected Q_SLOTS:
   void addCopyOfCurrentProcessor();
 
 protected:
-  c_image_processor::sptr current_processor_;
+  c_image_processor::sptr _current_processor;
 
-  QVBoxLayout * lv_ = nullptr;
+  QVBoxLayout * _lv = nullptr;
   QToolBar * toolbar_ctl = nullptr;
   QImageProcessorChainEditor * chain_ctl = nullptr;
 

@@ -31,8 +31,8 @@ public:
   typedef QImageProcessorItem ThisClass;
   typedef QTreeWidgetItem Base;
 
-  QImageProcessorItem(const c_image_processor_routine::ptr &routine) :
-    _routine(routine)
+  QImageProcessorItem(const c_image_processor_routine::ptr &routine, QImageProcessorSettingsControl2 * ctrl) :
+    _routine(routine), _ctrl(ctrl)
   {
     setText(0, routine->display_name().c_str());
     setToolTip(0, routine->tooltip().c_str());
@@ -44,8 +44,14 @@ public:
     return _routine;
   }
 
+  QImageProcessorSettingsControl2 * ctrl() const
+  {
+    return _ctrl;
+  }
+
 protected:
   c_image_processor_routine::ptr _routine;
+  QImageProcessorSettingsControl2 * _ctrl;
 };
 
 class QImageProcessorOptionsItem :
@@ -256,7 +262,33 @@ void QImageProcessorChainEditor::updateItemSizeHint(QTreeWidgetItem * item)
 
 void QImageProcessorChainEditor::setCurrentProcessor(const c_image_processor::sptr & p)
 {
-  _currentProcessor = p;
+  using update_controls_notify_callback = c_image_processor::update_controls_notify_callback;
+  if ( _currentProcessor ) {
+    _currentProcessor->set_update_controls_notify(update_controls_notify_callback());
+  }
+
+  if( (_currentProcessor = p) ) {
+
+    _currentProcessor->set_update_controls_notify(
+        update_controls_notify_callback([this](const c_image_processor*) {
+
+          for ( int i = 0, n = tree_ctl->topLevelItemCount(); i < n; ++i ) {
+
+            const QImageProcessorItem * item = dynamic_cast<const QImageProcessorItem * >(
+                tree_ctl->topLevelItem(i));
+
+            if ( item ) {
+              const c_image_processor_routine::ptr & routine = item->routine();
+              if ( routine && routine->has_contol_changes() ) {
+                if ( QImageProcessorSettingsControl2 * ctrl = item->ctrl() ) {
+                  ctrl->updateControls();
+                }
+              }
+            }
+          }
+        }));
+  }
+
   updateControls();
 }
 
@@ -287,10 +319,10 @@ void QImageProcessorChainEditor::onupdatecontrols()
 
 QTreeWidgetItem * QImageProcessorChainEditor::insertProcessorItem(int index, const c_image_processor_routine::ptr & routine)
 {
-  QImageProcessorItem * item = new QImageProcessorItem(routine);
+  QImageProcessorSettingsControl2 * ctrl = QImageProcessorSettingsControl2::create(routine, this);
+  QImageProcessorItem * item = new QImageProcessorItem(routine, ctrl);
   tree_ctl->insertTopLevelItem(index, item);
 
-  QImageProcessorSettingsControl2 * ctrl = QImageProcessorSettingsControl2::create(routine, this);
   if ( ctrl ) {
 
     QImageProcessorOptionsItem * subitem = new QImageProcessorOptionsItem(routine);

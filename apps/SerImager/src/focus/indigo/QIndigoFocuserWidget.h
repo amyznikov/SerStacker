@@ -192,12 +192,12 @@ protected: // overrides
 #endif
 
 protected:
-  QIndigoClient * client_ = nullptr;
-  QString currentDeviceName_;
+  QIndigoClient * _client = nullptr;
+  QString _currentDeviceName;
   QIndigoFocuserMouseClickControl * mouseclick_ctl = nullptr;
   QLabel * status_ctl = nullptr;
   QLabel * temperature_ctl = nullptr;
-  std::mutex mtx_;
+  std::mutex _lock;
 
 #if QT_CONFIG(wheelevent)
   QCheckBox * enableMouse_ctl = nullptr;
@@ -223,7 +223,7 @@ protected:
   void mouseReleaseEvent(QMouseEvent *event) override;
 
 protected:
-  QIndigoFocuserWidget * focuser_ = nullptr;
+  QIndigoFocuserWidget * _focuser = nullptr;
 };
 
 #endif /* __QIndigoFocuserWidget_h__ */

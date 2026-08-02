@@ -75,7 +75,6 @@ std::string dump_indigo_property(const indigo_property * property)
     s = "property: nullptr\n";
   }
   else {
-
     s =
         ssprintf("property: device='%s' name='%s' group='%s' label='%s' hints='%s' state=%d type=%d perm=%d\n",
             property->device,
@@ -189,8 +188,7 @@ bool get_focuser_move_direction(const indigo_property * focuser_direction_proper
       if( match_item_name(focuser_direction_property->items[i], FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME) ) {
         if( focuser_direction_property->items[i].sw.value ) {
           if( direction ) {
-            *direction =
-                INDIGO_FOCUSER_MOVE_DIRECTION_INWARD;
+            *direction = INDIGO_FOCUSER_MOVE_DIRECTION_INWARD;
           }
           return true;
         }
@@ -198,8 +196,7 @@ bool get_focuser_move_direction(const indigo_property * focuser_direction_proper
       else if( match_item_name(focuser_direction_property->items[i], FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME) ) {
         if( focuser_direction_property->items[i].sw.value ) {
           if( direction ) {
-            * direction =
-                INDIGO_FOCUSER_MOVE_DIRECTION_OUTWARD;
+            * direction = INDIGO_FOCUSER_MOVE_DIRECTION_OUTWARD;
           }
           return true;
         }
@@ -220,21 +217,15 @@ bool get_focuser_limits(const indigo_property * focuser_limits_property, int * m
 
     for( int i = 0; i < focuser_limits_property->count; ++i ) {
       if( match_item_name(focuser_limits_property->items[i], FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME) ) {
-
         if ( minpos ) {
-          *minpos =
-              focuser_limits_property->items[i].number.value;
+          *minpos = focuser_limits_property->items[i].number.value;
         }
-
         haveMinPos = true;
       }
       else if( match_item_name(focuser_limits_property->items[i], FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME) ) {
-
         if ( maxpos ) {
-          *maxpos =
-              focuser_limits_property->items[i].number.value;
+          *maxpos = focuser_limits_property->items[i].number.value;
         }
-
         haveMaxPos = true;
       }
 
@@ -253,22 +244,15 @@ bool get_focuser_position(const indigo_property * focuser_position_property,
 
     for( int i = 0; i < focuser_position_property->count; ++i ) {
       if( match_item_name(focuser_position_property->items[i], FOCUSER_POSITION_ITEM_NAME) ) {
-
         if ( current_value ) {
-          * current_value =
-              focuser_position_property->items[i].number.value;
+          * current_value = focuser_position_property->items[i].number.value;
         }
-
         if ( min_value ) {
-          * min_value =
-              focuser_position_property->items[i].number.min;
+          * min_value = focuser_position_property->items[i].number.min;
         }
-
         if ( max_value ) {
-          * max_value =
-              focuser_position_property->items[i].number.max;
+          * max_value = focuser_position_property->items[i].number.max;
         }
-
         return true;
       }
 
@@ -288,25 +272,17 @@ bool get_focuser_steps(const indigo_property * focuser_steps_property,
 
     for( int i = 0; i < focuser_steps_property->count; ++i ) {
       if( match_item_name(focuser_steps_property->items[i], FOCUSER_STEPS_ITEM_NAME) ) {
-
         if ( steps ) {
-          * steps =
-              focuser_steps_property->items[i].number.value;
+          * steps = focuser_steps_property->items[i].number.value;
         }
-
         if ( min_value ) {
-          * min_value =
-              focuser_steps_property->items[i].number.min;
+          * min_value = focuser_steps_property->items[i].number.min;
         }
-
         if ( max_value ) {
-          * max_value =
-              focuser_steps_property->items[i].number.max;
+          * max_value = focuser_steps_property->items[i].number.max;
         }
-
         return true;
       }
-
     }
   }
 
@@ -323,22 +299,15 @@ bool get_focuser_speed(const indigo_property * focuser_speed_property,
 
     for( int i = 0; i < focuser_speed_property->count; ++i ) {
       if( match_item_name(focuser_speed_property->items[i], FOCUSER_SPEED_ITEM_NAME) ) {
-
         if ( current_value ) {
-          * current_value =
-              focuser_speed_property->items[i].number.value;
+          * current_value = focuser_speed_property->items[i].number.value;
         }
-
         if ( min_value ) {
-          * min_value =
-              focuser_speed_property->items[i].number.min;
+          * min_value = focuser_speed_property->items[i].number.min;
         }
-
         if ( max_value ) {
-          * max_value =
-              focuser_speed_property->items[i].number.max;
+          * max_value = focuser_speed_property->items[i].number.max;
         }
-
         return true;
       }
     }
@@ -369,7 +338,7 @@ QIndigoClient::QIndigoClient(const QString & name, QObject * parent)
   : Base(parent)
 {
   // client name
-  strncpy(indigo_client_.name,
+  strncpy(_indigo.name,
       name.toUtf8().data(),
       INDIGO_NAME_SIZE - 1);
 }
@@ -381,55 +350,49 @@ QIndigoClient::~QIndigoClient()
 
 void QIndigoClient::setEnableBlobs(bool v)
 {
-  enableBlobs_ = v;
+  _enableBlobs = v;
 }
 
 bool QIndigoClient::enableBlobs() const
 {
-  return enableBlobs_;
+  return _enableBlobs;
 }
 
 
 bool QIndigoClient::started() const
 {
-  return started_;
+  return _started;
 }
 
 indigo_result QIndigoClient::start()
 {
-  indigo_result status =
-      INDIGO_OK;
+  indigo_result status = INDIGO_OK;
 
-  if ( !started_ ) {
-
-    indigo_client_.is_remote = false; // is remote client
-    indigo_client_.client_context = this;   // any client specific data
-    indigo_client_.last_result = INDIGO_OK; // result of last bus operation
-    indigo_client_.version = INDIGO_VERSION_CURRENT;  // client version
-    indigo_client_.enable_blob_mode_records  = nullptr; // enable blob mode
-    indigo_client_.attach = &ThisClass::indigo_client_attach; // callback called when client is attached to the bus
-    indigo_client_.define_property = &ThisClass::indigo_client_define_property; // callback called when device broadcast property definition
-    indigo_client_.update_property = &ThisClass::indigo_client_update_property; // callback called when device broadcast property value change
-    indigo_client_.delete_property = &ThisClass::indigo_client_delete_property; // callback called when device broadcast property removal
-    indigo_client_.send_message = &ThisClass::indigo_client_send_message; // callback called when device broadcast a message
-    indigo_client_.detach = &ThisClass::indigo_client_detach; // callback called when client is detached from the bus
+  if ( !_started ) {
+    _indigo.is_remote = false; // is remote client
+    _indigo.client_context = this;   // any client specific data
+    _indigo.last_result = INDIGO_OK; // result of last bus operation
+    _indigo.version = INDIGO_VERSION_CURRENT;  // client version
+    _indigo.enable_blob_mode_records  = nullptr; // enable blob mode
+    _indigo.attach = &ThisClass::indigo_client_attach; // callback called when client is attached to the bus
+    _indigo.define_property = &ThisClass::indigo_client_define_property; // callback called when device broadcast property definition
+    _indigo.update_property = &ThisClass::indigo_client_update_property; // callback called when device broadcast property value change
+    _indigo.delete_property = &ThisClass::indigo_client_delete_property; // callback called when device broadcast property removal
+    _indigo.send_message = &ThisClass::indigo_client_send_message; // callback called when device broadcast a message
+    _indigo.detach = &ThisClass::indigo_client_detach; // callback called when client is detached from the bus
 
 
     if( (status = indigo_start()) != INDIGO_OK ) {
-      INDIGO_ERROR("%s(): indigo_start() fails: status=%d\n",
-          __func__,
-          status);
+      INDIGO_ERROR("%s(): indigo_start() fails: status=%d\n", __func__, status);
       return status;
     }
 
-    if( (status = indigo_attach_client(&indigo_client_))!= INDIGO_OK ) {
-      INDIGO_ERROR("%s(): indigo_attach_client() fails: status=%d\n",
-          __func__,
-          status);
+    if( (status = indigo_attach_client(&_indigo))!= INDIGO_OK ) {
+      INDIGO_ERROR("%s(): indigo_attach_client() fails: status=%d\n", __func__, status);
       return status;
     }
 
-    started_ = true;
+    _started = true;
   }
 
   return status;
@@ -437,11 +400,11 @@ indigo_result QIndigoClient::start()
 
 void QIndigoClient::stop()
 {
-  if ( started_ ) {
+  if ( _started ) {
     INDIGO_DEBUG("Shutting down client...\n");
-    indigo_detach_client(&indigo_client_);
+    indigo_detach_client(&_indigo);
     // indigo_stop();
-    started_ = false;
+    _started = false;
   }
 }
 
@@ -468,14 +431,8 @@ indigo_result QIndigoClient::indigo_client_define_property(indigo_client *client
     indigo_property *property,
     const char *message)
 {
-  QIndigoClient *_this =
-      reinterpret_cast<QIndigoClient*>(
-          client->client_context);
-
-  return _this->onClientDefineProperty( device,
-      property,
-      message);
-
+  QIndigoClient *_this = reinterpret_cast<QIndigoClient*>(client->client_context);
+  return _this->onClientDefineProperty( device, property, message);
 }
 
 // callback called when device broadcast property definition
@@ -483,7 +440,6 @@ indigo_result QIndigoClient::onClientDefineProperty(indigo_device *device,
      indigo_property *property,
      const char *message)
 {
-
   Q_EMIT clientDefineProperty(device, property, message);
   return INDIGO_OK;
 }
@@ -494,13 +450,8 @@ indigo_result QIndigoClient::indigo_client_update_property(indigo_client * clien
     indigo_property * property,
     const char * message)
 {
-  QIndigoClient *_this =
-      reinterpret_cast<QIndigoClient*>(
-      client->client_context);
-
-  return _this->onClientUpdateProperty(device,
-      property,
-      message);
+  QIndigoClient *_this = reinterpret_cast<QIndigoClient*>(client->client_context);
+  return _this->onClientUpdateProperty(device, property, message);
 }
 
 // callback called when device broadcast property value change
@@ -518,12 +469,8 @@ indigo_result QIndigoClient::indigo_client_delete_property(indigo_client *client
     indigo_property *property,
     const char *message)
 {
-  QIndigoClient * _this =
-      reinterpret_cast<QIndigoClient * >(client->client_context);
-
-  return _this->onClientDeleteProperty(device,
-      property,
-      message);
+  QIndigoClient * _this = reinterpret_cast<QIndigoClient * >(client->client_context);
+  return _this->onClientDeleteProperty(device, property, message);
 }
 
 // callback called when device broadcast property removal
@@ -540,11 +487,8 @@ indigo_result QIndigoClient::indigo_client_send_message(indigo_client *client,
     indigo_device *device,
     const char *message)
 {
-  QIndigoClient * _this =
-      reinterpret_cast<QIndigoClient * >(client->client_context);
-
-  return _this->onClientSendMessage(device,
-      message);
+  QIndigoClient * _this = reinterpret_cast<QIndigoClient * >(client->client_context);
+  return _this->onClientSendMessage(device, message);
 }
 
 // callback called when device broadcast a message
@@ -558,9 +502,7 @@ indigo_result QIndigoClient::onClientSendMessage(indigo_device *device,
 // callback called when client is detached from the bus
 indigo_result QIndigoClient::indigo_client_detach(indigo_client *client)
 {
-  QIndigoClient * _this =
-      reinterpret_cast<QIndigoClient * >(client->client_context);
-
+  QIndigoClient * _this = reinterpret_cast<QIndigoClient * >(client->client_context);
   return _this->onClientDetach();
 }
 
@@ -576,11 +518,9 @@ indigo_result QIndigoClient::load_driver(const QString & name)
 {
   ////////////
 
-  for( const indigo_driver_entry *driver : drivers_ ) {
+  for( const indigo_driver_entry *driver : _drivers ) {
     if( name.compare(driver->name) == 0 ) {
-      INDIGO_DEBUG("%s(): Request to load diver '%s' which is already loaded\n",
-          __func__,
-          driver->name);
+      INDIGO_DEBUG("%s(): Request to load diver '%s' which is already loaded\n", __func__, driver->name);
       return INDIGO_OK;
     }
   }
@@ -588,22 +528,14 @@ indigo_result QIndigoClient::load_driver(const QString & name)
   ////////////
 
 
-  indigo_driver_entry * driver =
-      nullptr;
-
-  indigo_result status =
-      indigo_load_driver(name.toUtf8().constData(),
-          true,
-          &driver);
+  indigo_driver_entry * driver = nullptr;
+  indigo_result status =  indigo_load_driver(name.toUtf8().constData(), true, &driver);
 
   if( status == INDIGO_OK ) {
-
-    drivers_.append(driver);
-
+    _drivers.append(driver);
   }
   else {
-    INDIGO_ERROR("%s(): indigo_load_driver('%s') fails: status=%d\n",
-        __func__,
+    INDIGO_ERROR("%s(): indigo_load_driver('%s') fails: status=%d\n", __func__,
         name.toUtf8().constData(),
         status);
   }
@@ -615,16 +547,12 @@ indigo_result QIndigoClient::load_driver(const QString & name)
 
 indigo_result QIndigoClient::remove_driver(const QString & name)
 {
-  indigo_result status =
-      INDIGO_NOT_FOUND;
+  indigo_result status = INDIGO_NOT_FOUND;
 
-  for( int i = 0, n = drivers_.size(); i < n; ++i ) {
-    if( name.compare(drivers_[i]->name) == 0 ) {
-
-      status =
-          indigo_remove_driver(drivers_[i]);
-
-      drivers_.removeAt(i);
+  for( int i = 0, n = _drivers.size(); i < n; ++i ) {
+    if( name.compare(_drivers[i]->name) == 0 ) {
+      status = indigo_remove_driver(_drivers[i]);
+      _drivers.removeAt(i);
       break;
     }
   }
@@ -636,27 +564,21 @@ indigo_result QIndigoClient::enumerate_properties(indigo_property * property)
 {
   indigo_result status;
 
-  if ( !started_ ) {
-
-    INDIGO_ERROR("%s(): Client not started\n",
-        __func__);
-
-    status =
-        INDIGO_FAILED;
+  if ( !_started ) {
+    INDIGO_ERROR("%s(): Client not started\n", __func__);
+    status = INDIGO_FAILED;
   }
   else {
 
     status =
-        indigo_enumerate_properties(&indigo_client_,
+        indigo_enumerate_properties(&_indigo,
             property ?
                 property :
                 &INDIGO_ALL_PROPERTIES);
 
     if ( status != INDIGO_OK ) {
-      INDIGO_ERROR("%s(): indigo_enumerate_properties(property=%p) fails: status=%d\n",
-          __func__,
-          property,
-          status);
+      INDIGO_ERROR("%s(): indigo_enumerate_properties(property=%p) fails: status=%d\n", __func__,
+          property, status);
     }
 
   }
@@ -671,28 +593,21 @@ indigo_result QIndigoClient::change_switch_property(const char * deviceName,
 {
   indigo_result status;
 
-  if( !started_ ) {
-
-    INDIGO_ERROR("%s(): Client not started\n",
-        __func__);
-
+  if( !_started ) {
+    INDIGO_ERROR("%s(): Client not started\n", __func__);
     status = INDIGO_FAILED;
   }
   else {
 
     status =
-        indigo_change_switch_property_1(&indigo_client_,
+        indigo_change_switch_property_1(&_indigo,
             deviceName,
             propertyName,
             itemName,
             value);
 
     if( status != INDIGO_OK ) {
-
-      INDIGO_ERROR("%s(): indigo_change_switch_property_1() fails: status = %d\n",
-          __func__,
-          status);
-
+      INDIGO_ERROR("%s(): indigo_change_switch_property_1() fails: status = %d\n", __func__, status);
     }
   }
 
@@ -706,26 +621,21 @@ indigo_result QIndigoClient::change_number_property(const char * deviceName,
 {
   indigo_result status;
 
-  if( !started_ ) {
-
-    INDIGO_ERROR("%s(): Client not started\n",
-        __func__);
-
-    status =
-        INDIGO_FAILED;
+  if( !_started ) {
+    INDIGO_ERROR("%s(): Client not started\n", __func__);
+    status = INDIGO_FAILED;
   }
   else {
 
     status =
-        indigo_change_number_property_1(&indigo_client_,
+        indigo_change_number_property_1(&_indigo,
             deviceName,
             propertyName,
             itemName,
             value);
 
     if( status != INDIGO_OK ) {
-      INDIGO_ERROR("%s(): indigo_change_number_property_1(%s:%s = %g) fails: status = %d\n",
-          __func__,
+      INDIGO_ERROR("%s(): indigo_change_number_property_1(%s:%s = %g) fails: status = %d\n", __func__,
           propertyName,
           itemName,
           value,
@@ -745,17 +655,13 @@ indigo_result QIndigoClient::change_number_property(const char * deviceName,
 {
   indigo_result status;
 
-  if( !started_ ) {
-
-    INDIGO_ERROR("%s(): Client not started\n",
-        __func__);
-
-    status =
-        INDIGO_FAILED;
+  if( !_started ) {
+    INDIGO_ERROR("%s(): Client not started\n", __func__);
+    status = INDIGO_FAILED;
   }
   else {
     status =
-        indigo_change_number_property(&indigo_client_,
+        indigo_change_number_property(&_indigo,
             deviceName,
             propertyName,
             count,

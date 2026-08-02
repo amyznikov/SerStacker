@@ -12,6 +12,7 @@
 #include "QMeasureLC.h"
 #include "QMeasureHarrisCornerResponse.h"
 #include "QMeasureNormalizedVariance.h"
+#include "QMeasureLocalVariance.h"
 #include "QMeasureSharpnessNorm.h"
 #include "QMeasureNoise.h"
 #include "QMeasureLAP.h"
@@ -56,6 +57,7 @@ const std::vector<QMeasure*>& QMeasureProvider::available_measures()
     _available_measures.emplace_back(new QMeasureLPG());
     _available_measures.emplace_back(new QMeasureLC());
     _available_measures.emplace_back(new QMeasureLAP());
+    _available_measures.emplace_back(new QMeasureLocalVariance());
     _available_measures.emplace_back(new QMeasureHarrisCornerResponse());
     _available_measures.emplace_back(new QMeasureNormalizedVariance());
     _available_measures.emplace_back(new QMeasureSharpnessNorm());

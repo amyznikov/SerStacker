@@ -12,6 +12,7 @@
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/proc/image_registration/c_frame_registration.h>
 #include <core/proc/sharpness_measure/c_lpg_sharpness_measure.h>
+#include <core/proc/sharpness_measure/c_local_variance_sharpness_measure.h>
 #include <core/improc/c_image_processor.h>
 #include <core/average/c_frame_accumulation.h>
 #include <core/settings/opencv_settings.h>
@@ -28,6 +29,11 @@ struct c_running_average_registration_options
   bool enable_ecc_registration = false;
   bool enable_eccflow_registration = false;
 
+  cv::Size canvasSize;
+  double eccUnsharpMaskSigma = 1;
+  double eccUnsharpMaskAlpha = 0.9;
+
+
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 
   c_simple_star_detector_options star_detection;
@@ -43,12 +49,13 @@ struct c_running_average_update_options
 {
   double running_weight = 15;
 
-  c_lpg_options lpg;
+  //c_lpg_options lpg;
+  c_local_variance_map_options sharpness_measure;
 
   c_running_average_update_options()
   {
-    lpg.dscale = 2;
-    lpg.uscale = 6;
+    //    lpg.dscale = 2;
+    //    lpg.uscale = 6;
   }
 
 };
@@ -58,9 +65,9 @@ struct c_running_average_output_options:
 {
   double display_scale = -1;
 
-  bool save_accumulated_video = false;
+  bool save_progress_video = false;
   bool save_reference_video = false;
-  c_output_frame_writer_options output_accumulated_video_options;
+  c_output_frame_writer_options output_progress_video_options;
   c_output_frame_writer_options output_reference_video_options;
   std::string output_file_name;
 
@@ -93,6 +100,7 @@ protected:
   bool process_current_frame();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
   std::string generate_output_file_name() const;
+  bool write_progress_video(cv::InputArray image, cv::InputArray mask);
 
 protected:
   c_running_average_input_options _input_options;
@@ -112,7 +120,7 @@ protected:
   cv::Mat _current_image;
   cv::Mat _current_mask;
 
-  c_output_frame_writer _accumulated_video_writer;
+  c_output_frame_writer _progress_writer;
   c_output_frame_writer _reference_video_writer;
 };
 

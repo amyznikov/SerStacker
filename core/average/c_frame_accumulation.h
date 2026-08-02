@@ -234,6 +234,13 @@ public:
   typedef c_canvas_average this_class;
   typedef std::shared_ptr<this_class> ptr;
 
+  void setCanvasSize(const cv::Size & v);
+
+  const cv::Size & canvasSize() const
+  {
+    return _canvasSize;
+  }
+
   int accumulated_frames() const
   {
     return _accumulated_frames;
@@ -275,10 +282,12 @@ protected:
   cv::Mat _accumulator;
   cv::Mat1f _counter;
   cv::Rect _last_bbox;
-  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4
   int _accumulated_frames = 0;
   int _target_x = 0;
   int _target_y = 0;
+
+  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4
+  cv::Size _canvasSize;
 };
 
 

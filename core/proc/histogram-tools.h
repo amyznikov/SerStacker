@@ -48,6 +48,15 @@ bool nomalizeImageHistogram(cv::InputArray src, cv::InputArray mask, cv::OutputA
 * @param qLow - lower quantile (e.g., 0.01 for 1%)
 * @param qHigh - upper quantile (e.g., 0.99 for 99%)
 *  */
+bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask,
+    double qlow, double qhigh,
+    cv::Scalar & outputScales,
+    cv::Scalar & outputShifts);
+
+/**
+* @param qLow - lower quantile (e.g., 0.01 for 1%)
+* @param qHigh - upper quantile (e.g., 0.99 for 99%)
+*  */
 bool histogramClipWhiteBalance(cv::InputArray src, cv::InputArray mask, cv::OutputArray dst,
     double qlow, double qhigh,
     cv::Scalar * outputScales = nullptr,
@@ -83,5 +92,11 @@ bool autoClip(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
     int ddepth = -1,
     double * minval = nullptr,
     double * maxval = nullptr);
+
+/**
+ * Use of cv::transform(src, dst) to stretch and shift channel intensities
+ */
+bool applyChannelTransform(cv::InputArray src, cv::OutputArray dst,
+    const cv::Scalar& stretch, const cv::Scalar& shifts);
 
 #endif /* __histogram_tools_h__ */

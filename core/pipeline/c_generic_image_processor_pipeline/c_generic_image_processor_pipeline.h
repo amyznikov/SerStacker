@@ -66,6 +66,7 @@ protected:
 
   cv::Mat _current_image;
   cv::Mat _current_mask;
+  COLORID _current_colorid = COLORID_UNKNOWN;
 
   c_output_frame_writer _processed_file_writer;
 };

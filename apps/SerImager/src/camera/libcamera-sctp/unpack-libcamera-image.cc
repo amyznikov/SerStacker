@@ -158,6 +158,7 @@ static void unpackScanlineRaw12_CSI2P(uint16_t *dst, const uint8_t *src, int wid
   }
 }
 
+// Unknown format: fourcc=808535874 modifier=0
 bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int stride, uint32_t fourcc, uint64_t modifier,
     cv::Mat & image, COLORID * colorid, int * bpp)
 {
@@ -345,6 +346,12 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
     }
     return true;
   }
+  if( format == formats::SBGGR10 ) {
+    *colorid = COLORID_BAYER_BGGR;
+    *bpp = 10;
+    cv::Mat(h, w, CV_16UC1, (void*) data.data(), stride).copyTo(image);
+    return true;
+  }
   if( format == formats::SBGGR10_CSI2P ) {
     *colorid = COLORID_BAYER_BGGR;
     *bpp = 10;
@@ -394,6 +401,12 @@ bool unpack_libcamera_image(const std::vector<uint8_t> & data, int w, int h, int
     for( int y = 0; y < h; ++y ) {
       unpackScanlineRaw12_CSI2P(image.ptr<uint16_t>(y), data.data() + y * stride, w);
     }
+    return true;
+  }
+  if( format == formats::SBGGR14 ) {
+    *colorid = COLORID_BAYER_BGGR;
+    *bpp = 14;
+    cv::Mat(h, w, CV_16UC1, (void*) data.data(), stride).copyTo(image);
     return true;
   }
 

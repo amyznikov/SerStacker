@@ -120,11 +120,11 @@ private:
   static indigo_result indigo_client_detach(indigo_client *client);
 
 protected:
-  indigo_client indigo_client_ = {0};
-  QList<indigo_driver_entry*> drivers_;
-  bool started_ = false;
-  bool enableBlobs_ = false;
-  int guider_save_bandwidth_ = 1;
+  indigo_client _indigo = {0};
+  QList<indigo_driver_entry*> _drivers;
+  bool _started = false;
+  bool _enableBlobs = false;
+  int _guiderSaveBandwidth = 1;
 
 };
 

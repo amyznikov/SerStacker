@@ -12,12 +12,14 @@
 #include "sharpness_measure/c_local_contrast_measure.h"
 #include "sharpness_measure/c_lpg_sharpness_measure.h"
 #include "sharpness_measure/c_harris_sharpness_measure.h"
+#include "sharpness_measure/c_local_variance_sharpness_measure.h"
 #include "sharpness_measure/c_normalized_variance_measure.h"
 #include "sharpness_measure/c_sharpness_norm_measure.h"
 
 enum SHARPNESS_MEASURE {
   SHARPNESS_MEASURE_LCM = 0,
   SHARPNESS_MEASURE_LPG = 1,
+  SHARPNESS_MEASURE_MGMAP,
   SHARPNESS_MEASURE_HARRIS,
   SHARPNESS_MEASURE_NORMALIZED_VARIANCE,
   SHARPNESS_MEASURE_SHARPNESS_NORM,
@@ -52,14 +54,14 @@ public:
   cv::Scalar measure(cv::InputArray image) const;
 
 protected:
-  SHARPNESS_MEASURE method_ = SHARPNESS_MEASURE_LCM;
-  //bool avgchannel_ = false;
+  SHARPNESS_MEASURE _method = SHARPNESS_MEASURE_LCM;
 
-  c_local_contrast_measure local_contrast_measure_;
-  c_lpg_sharpness_measure lpg_measure_;
-  c_harris_sharpness_measure harris_measure_;
-  c_normalized_variance_measure normalized_variance_measure_;
-  c_sharpness_norm_measure sharpness_norm_measure_;
+  c_local_contrast_measure _local_contrast_measure;
+  c_lpg_sharpness_measure _lpg_measure;
+  c_local_variance_sharpness_measure _mgmap_measure;
+  c_harris_sharpness_measure _harris_measure;
+  c_normalized_variance_measure _normalized_variance_measure;
+  c_sharpness_norm_measure _sharpness_norm_measure;
 };
 
 #endif /* __focus_h__ */

@@ -31,7 +31,9 @@
 #include "generic/c_auto_correlation_routine.h"
 #include "generic/c_local_contrast_map_routine.h"
 #include "generic/c_lpg_map_routine.h"
+#include "generic/c_local_variance_map_routine.h"
 #include "generic/c_laplacian_map_routine.h"
+#include "generic/c_dog_routine.h"
 #include "generic/c_harris_map_routine.h"
 #include "generic/c_gabor_filter_routine.h"
 #include "generic/c_absdiff_routine.h"
@@ -45,7 +47,6 @@
 #include "generic/c_image_arithmetic_routine.h"
 #include "generic/c_threshold_routine.h"
 #include "generic/c_normalize_mean_stdev_routine.h"
-
 
 #include "generic/c_histogram_white_balance_routine.h"
 #include "generic/c_color_saturation_routine.h"
@@ -308,7 +309,9 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_desaturate_edges_routine::class_factory_instance());
     register_class_factory(c_local_contrast_map_routine::class_factory_instance());
     register_class_factory(c_lpg_map_routine::class_factory_instance());
+    register_class_factory(c_local_variance_map_routine::class_factory_instance());
     register_class_factory(c_laplacian_map_routine::class_factory_instance());
+    register_class_factory(c_dog_routine::class_factory_instance());
     register_class_factory(c_harris_map_routine::class_factory_instance());
     register_class_factory(c_gabor_filter_routine::class_factory_instance());
     register_class_factory(c_segformer_routine::class_factory_instance());
@@ -580,11 +583,14 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
 
   c_image_processor_routine::clear_artifacts();
 
+  bool has_control_changes = false;
+
   for ( const c_image_processor_routine::ptr & routine : *this ) {
     if ( routine && routine->enabled() ) {
 
       try {
 
+        routine->set_has_contol_changes(false);
         routine->emit_preprocess_notify(image, mask);
 
         if ( true ) {
@@ -599,6 +605,10 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
         }
 
         routine->emit_postprocess_notify(image, mask);
+
+        if ( routine->has_contol_changes() ) {
+          has_control_changes = true;
+        }
       }
 
       catch( const cv::Exception &e ) {
@@ -625,6 +635,10 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
             routine->class_name().c_str());
       }
     }
+  }
+
+  if ( has_control_changes ) {
+    emit_update_controls_notify();
   }
 
   c_image_processor_routine::clear_artifacts();

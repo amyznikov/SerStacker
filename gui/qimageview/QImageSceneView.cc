@@ -321,64 +321,45 @@ void QImageSceneView::populateContextMenu(QMenu & menu, const QPoint & viewpos)
     const QPointF scenePos = mapToScene(viewpos);
     QList<QGraphicsItem*> items = scene->items(scenePos);
 
-    if (items.size() > 0) {
+    if (items.size() > 0 ) {
 
       QGraphicsItem *topItem = items.front();
-
       const QGraphicsItem *groundImageItem = scene->image();
       if (topItem != groundImageItem) {
-
-        const qreal zvalue = topItem->zValue();
-        QGraphicsItem *zItem = nullptr;
-
-        for (int i = 1, n = items.size(); i < n; ++i) {
-          QGraphicsItem *item = items[i];
-          if (item == groundImageItem) {
-            break;
-          }
-          if (item->zValue() >= zvalue) {
-            zItem = item;
-            break;
-          }
-        }
 
         if (QGraphicsShape *shape = dynamic_cast<QGraphicsShape*>(topItem)) {
 
           const QString objName = shape->name();
-//
-//          QMenu * subMenu = menu.isEmpty() ? &menu : menu.addMenu(objName.isEmpty() ? "Item" : objName);
-//          if (zItem) {
-//            subMenu->addAction("Send to back",
-//                [this, topItem, zItem]() {
-//                  topItem->stackBefore(zItem);
-//                  this->update();
-//                });
-//            subMenu->addSeparator();
-//          }
-//
-//          shape->popuateContextMenu(*subMenu, viewpos);
 
-          menu.addSeparator();
           menu.addAction(QString("--- %1 ---").arg(objName.isEmpty() ? "Item" : objName));
-          if (zItem) {
-            menu.addAction("Send to back",
-                [this, topItem, zItem]() {
-                  topItem->stackBefore(zItem);
-                  this->update();
-                });
-          }
-
           shape->populateContextMenu(menu, viewpos);
           menu.addSeparator();
         }
-        else if (zItem) {
-          menu.addAction("Send to back",
-              [this, topItem, zItem]() {
-                topItem->stackBefore(zItem);
-                this->update();
-              });
 
-          menu.addSeparator();
+
+
+        QList<QGraphicsItem*> all_items = scene->items(Qt::AscendingOrder);
+        if ( all_items.size() > 1) {
+
+          QGraphicsItem * bottomItem = nullptr;
+          for (int i = 0, n = all_items.size(); i < n; ++i) {
+            QGraphicsItem *item = all_items[i];
+            if (item != topItem && item != groundImageItem ) {
+              bottomItem = item;
+              break;
+            }
+          }
+
+          if( bottomItem ) {
+            menu.addAction("Send to back",
+                [this, topItem, bottomItem]() {
+                  topItem->stackBefore(bottomItem);
+                  this->update();
+                });
+
+            menu.addSeparator();
+          }
+
         }
       }
     }

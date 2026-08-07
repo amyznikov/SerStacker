@@ -1897,51 +1897,63 @@ void c_canvas_average::setCanvasSize(const cv::Size & v)
   _counter.release();
   _last_bbox = cv::Rect();
   _accumulated_frames = 0;
-  _target_x = 0;
-  _target_y = 0;
 }
 
 void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap, cv::Mat1b & full_mask)
 {
-  if (_accumulator.empty() || bbox.width <= 0) {
+  if (_accumulator.empty() || bbox.width <= 0 || bbox.height <= 0) {
     return;
   }
 
   const int margin = 32;
 
-  if (bbox.x < margin || bbox.y < margin ||
-      (bbox.x + bbox.width) > _accumulator.cols - margin ||
-      (bbox.y + bbox.height) > _accumulator.rows - margin)
-  {
-    const int shift_x = _target_x - bbox.x;
-    const int shift_y = _target_y - bbox.y;
+  int shift_x = 0;
+  int shift_y = 0;
 
-    cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
-    cv::Mat1f new_count = cv::Mat1f::zeros(_counter.size());
-    cv::Mat2f new_rmap = cv::Mat2f::zeros(rmap.size());
-    cv::Mat1b new_mask = cv::Mat1b::zeros(full_mask.size());
+  if( bbox.x < margin ) {
+    shift_x = 2 * margin;
+  }
+  else if( (bbox.x + bbox.width) >= _accumulator.cols - margin ) {
+    shift_x = -2 * margin;
+  }
 
-    const cv::Rect src_roi(std::max(0, -shift_x), std::max(0, -shift_y),
-        _accumulator.cols - std::abs(shift_x), _accumulator.rows - std::abs(shift_y));
+  if( bbox.y < margin ) {
+    shift_y = 2 * margin;
+  }
+  else if( (bbox.y + bbox.height) >= _accumulator.rows - margin ) {
+    shift_y = -2 * margin;
+  }
 
-    if( !src_roi.empty() ) {
+  if ( shift_x || shift_y ) {
 
-      const cv::Rect dst_roi(std::max(0, shift_x), std::max(0, shift_y),
-          src_roi.width, src_roi.height);
+    const int copy_w = _accumulator.cols - std::abs(shift_x);
+    const int copy_h = _accumulator.rows - std::abs(shift_y);
+    if (copy_w > 0 && copy_h > 0)  {
+
+      const int src_x = (shift_x > 0) ? 0 : -shift_x;
+      const int src_y = (shift_y > 0) ? 0 : -shift_y;
+      const int dst_x = (shift_x > 0) ? shift_x : 0;
+      const int dst_y = (shift_y > 0) ? shift_y : 0;
+      const cv::Rect src_roi(src_x, src_y, copy_w, copy_h);
+      const cv::Rect dst_roi(dst_x, dst_y, copy_w, copy_h);
+
+      cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
+      cv::Mat1f new_counter = cv::Mat1f::zeros(_counter.size());
+      cv::Mat2f new_rmap = cv::Mat2f(rmap.size(), cv::Vec2f(-1, -1));
+      cv::Mat1b new_mask = cv::Mat1b::zeros(full_mask.size());
 
       _accumulator(src_roi).copyTo(new_accum(dst_roi));
-      _counter(src_roi).copyTo(new_count(dst_roi));
+      _counter(src_roi).copyTo(new_counter(dst_roi));
       rmap(src_roi).copyTo(new_rmap(dst_roi));
       full_mask(src_roi).copyTo(new_mask(dst_roi));
+
+      _accumulator = new_accum;
+      _counter = new_counter;
+      rmap = new_rmap;
+      full_mask = new_mask;
+      bbox.x += shift_x;
+      bbox.y += shift_y;
     }
-
-    _accumulator = new_accum;
-    _counter = new_count;
-    rmap = new_rmap;
-    full_mask = new_mask;
-
-    bbox.x += shift_x;
-    bbox.y += shift_y;
   }
 }
 
@@ -1963,12 +1975,12 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     const cv::Size canvasSize( std::max(_canvasSize.width, computedCanvasSize.width),
         std::max(_canvasSize.height, computedCanvasSize.height));
 
+    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
+    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
+    const cv::Rect ROI(target_x, target_y, frameSize.width, frameSize.height);
+
     _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
     _counter = cv::Mat1f::zeros(canvasSize);
-    _target_x = canvasSize.width / 2 - frameSize.width / 2;
-    _target_y = canvasSize.height / 2 - frameSize.height / 2;
-
-    const cv::Rect ROI(_target_x, _target_y, frameSize.width, frameSize.height);
     current_image.copyTo(_accumulator(ROI));
     _counter(ROI).setTo(1, current_mask);
     _last_bbox = ROI;
@@ -1981,7 +1993,8 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     if( rmap ) {
 
       cv::Mat cmask;
-      cv::Mat1b full_mask;
+      cv::Mat full_mask;
+      cv::Mat1b full_mask_b;
 
       if ( current_mask.empty() ) {
         cmask = cv::Mat1b(current_image.size(), 255);
@@ -1994,15 +2007,21 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
       }
 
       cv::remap(cmask, full_mask, *rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+      if ( full_mask.depth() == CV_8U ) {
+        full_mask_b = full_mask;
+      }
+      else {
+        cv::compare(full_mask, 0, full_mask_b, cv::CMP_GT);
+      }
 
-      bbox = cv::boundingRect(full_mask) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+      bbox = cv::boundingRect(full_mask_b) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
       if( bbox.width <= 5 || bbox.height <= 5 ) {
         CF_ERROR("Sanity check failed: Frame is outside the canvas boundaries!");
         return false;
       }
 
       cv::Mat2f wmap = *rmap;
-      maintainCanvasBoundaries(bbox, current_image.size(), wmap, full_mask);
+      maintainCanvasBoundaries(bbox, current_image.size(), wmap, full_mask_b);
 
       const int padding = 2;
       bbox.x = std::max(0, bbox.x - padding);

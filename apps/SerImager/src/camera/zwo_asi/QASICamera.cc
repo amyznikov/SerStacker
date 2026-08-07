@@ -647,7 +647,7 @@ bool QASICamera::device_start()
       return false;
   }
 
-  if( !create_frame_buffers(frameSize, cvType, colorid, bpp, 8) ) {
+  if( !create_frame_buffers(frameSize, cvType, colorid, bpp, 10) ) {
     CF_ERROR("create_frame_buffers() fails");
     return false;
   }

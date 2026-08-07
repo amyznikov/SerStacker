@@ -63,6 +63,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   _liveThread = new QLivePipelineThread(this);
   _liveThread->setDisplay(_liveDisplay);
+  _liveThread->setFrameQualityEstimator(&_frameQualityEstimator);
 
 
   setupMainMenu();
@@ -117,7 +118,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   set_ctlbind_update_roi_callback([this](double x, double y, double w, double h) {
     if (_liveDisplay) {
-      _liveDisplay->rectShape()->setSceneRect(QPointF(x,y), QPointF(x + w, y + h));
+      _liveDisplay->roiShape()->setSceneRect(QPointF(x,y), QPointF(x + w, y + h));
       return true;
     }
     return false;
@@ -125,7 +126,7 @@ MainWindow::MainWindow(QWidget * parent) :
 
   set_ctlbind_get_roi_callback([this](double * x, double * y, double * w, double * h) {
     if ( _liveDisplay ) {
-      const auto roi = _liveDisplay->rectShape();
+      const auto roi = _liveDisplay->roiShape();
       const auto rc = roi->sceneRect();
       if ( x ) {
         *x = rc.x();
@@ -247,8 +248,8 @@ void MainWindow::setupMainMenu()
       "Copy display image to clipboard (Ctrl+c)",
       "Copy display image to clipboard (Ctrl+c)",
       [this]() {
-        if ( _liveDisplay->rectShape()->isVisible() ) {
-          _liveDisplay->copyDisplayImageROIToClipboard(_liveDisplay->rectShape()->iSceneRect());
+        if ( _liveDisplay->roiShape()->isVisible() ) {
+          _liveDisplay->copyDisplayImageROIToClipboard(_liveDisplay->roiShape()->iSceneRect());
         }
         else {
           _liveDisplay->copyDisplayImageToClipboard();
@@ -282,9 +283,9 @@ void MainWindow::setupMainMenu()
   _menuViewShapes->addAction(_showRectShapeAction = createCheckableAction(getIcon(ICON_roi),
       "ROI Rectangle",
       "Show / Hide ROI rectangle",
-      is_visible(_liveDisplay) && _liveDisplay->rectShape()->isVisible(),
+      is_visible(_liveDisplay) && _liveDisplay->roiShape()->isVisible(),
       [this](bool checked) {
-        _liveDisplay->rectShape()->setVisible(checked);
+        _liveDisplay->roiShape()->setVisible(checked);
       }));
 
 
@@ -326,7 +327,7 @@ void MainWindow::setupShapeOptions()
   //
   _rectShapeOptionsDialogBox =
       new QGraphicsRectShapeSettingsDialogBox("ROI rectangle options",
-          _liveDisplay->rectShape(),
+          _liveDisplay->roiShape(),
           this);
 
   _rectShapeActionsMenu.addAction(action = createCheckableAction(QIcon(),
@@ -345,15 +346,15 @@ void MainWindow::setupShapeOptions()
       [this, action](bool visible) {
         action->setChecked(visible);
         if ( visible ) {
-          _liveDisplay->rectShape()->setVisible(true);
+          _liveDisplay->roiShape()->setVisible(true);
           _showRectShapeAction->setChecked(true);
         }
       });
 
-  QObject::connect(_liveDisplay->rectShape(), &QGraphicsShape::itemChanged,
+  QObject::connect(_liveDisplay->roiShape(), &QGraphicsShape::itemChanged,
       this, &ThisClass::onCentralDisplayROIShapeChanged);
 
-  QObject::connect(_liveDisplay->rectShape(), &QGraphicsShape::visibleChanged,
+  QObject::connect(_liveDisplay->roiShape(), &QGraphicsShape::visibleChanged,
       this, &ThisClass::onCentralDisplayROIShapeChanged);
 
   QObject::connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged,
@@ -431,7 +432,7 @@ void MainWindow::setupShapeOptions()
 
 void MainWindow::onCentralDisplayROIShapeChanged()
 {
-  QGraphicsRectShape *shape = _liveDisplay->rectShape();
+  QGraphicsRectShape *shape = _liveDisplay->roiShape();
 
   if( shape ) {
 
@@ -615,12 +616,11 @@ void MainWindow::setupCameraControls()
   _cameraControlsDock->setObjectName("imagerSettingsDock_");
   _cameraControlsDock->titleBar()->setWindowIcon(getIcon(ICON_camera));
 
-  menuView->addAction(_showCameraControlsAction =
-      _cameraControlsDock->toggleViewAction());
-
+  menuView->addAction(_showCameraControlsAction = _cameraControlsDock->toggleViewAction());
   _showCameraControlsAction->setIcon(getIcon(ICON_camera));
 
   cameraControls_ctl->setCameraWriter(&_cameraWriter);
+  cameraControls_ctl->setFrameQualityEstimator(&_frameQualityEstimator);
 
   QObject::connect(cameraControls_ctl, &QImagingCameraControlsWidget::selectedCameraChanged, this,
       [this]() {
@@ -639,7 +639,6 @@ void MainWindow::setupCameraControls()
   QObject::connect(&_cameraWriter, &QCameraWriter::statusUpdate,
       this, &ThisClass::onCameraWriterStatusUpdate,
       Qt::QueuedConnection);
-
 }
 
 void MainWindow::setupPipelines()
@@ -704,18 +703,23 @@ void MainWindow::updateMeasurements()
         _liveDisplay->currentMask());
   }
 
-  if( !QMeasureProvider::requested_measures().empty() && _liveDisplay->rectShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() ) {
 
     QImageViewer::current_image_lock lock(_liveDisplay);
 
     QList<QMeasureProvider::MeasuredFrame> measuredFrames;
     QMeasureProvider::MeasuredFrame frame;
 
+    const QRect rc = _liveDisplay->roiShape()->isVisible() ?
+        _liveDisplay->roiShape()->iSceneRect() :
+        QRect(0, 0, _liveDisplay->currentImage().cols, _liveDisplay->currentImage().rows);
+
+
      const bool fOK =
          QMeasureProvider::compute(&frame,
              _liveDisplay->currentImage(),
              _liveDisplay->currentMask(),
-             _liveDisplay->rectShape()->iSceneRect());
+             rc);
 
      if ( fOK ) {
        measuredFrames.append(frame);

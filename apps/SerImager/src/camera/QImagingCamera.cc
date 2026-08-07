@@ -348,8 +348,7 @@ bool QImagingCamera::start()
 
     setState(State_started);
 
-    const int qsize =
-        device_max_qsize();
+    const int qsize = device_max_qsize();
 
     while ( _current_state == State_started ) {
 

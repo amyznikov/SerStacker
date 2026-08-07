@@ -24,9 +24,14 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
+  bool copy_transfrom_parameters_to_clipboard();
+  bool paste_transfrom_parameters_from_clipboard();
+
+protected:
   c_align_color_channels _algorithm;
   c_align_color_channels_options _opts;
-  int reference_channel = 1;
+  int referenceChannel = 1;
+  bool reEstimate = true;
 };
 
 #endif /* __c_align_color_channels_routine_h__ */

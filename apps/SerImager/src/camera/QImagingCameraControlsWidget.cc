@@ -30,16 +30,14 @@ QImagingCameraControlsWidget::QImagingCameraControlsWidget(QWidget * parent) :
     Base(parent)
 {
   _layout = new QVBoxLayout(this);
-
-  _layout->addWidget(cameraSelection_ctl =
-      new QCameraSelectionWidget(this));
-
-  _layout->addWidget(createScrollableWrap(
-      settings_ctl = new QSettingsWidget(this),
-      this));
+  _layout->addWidget(cameraSelection_ctl = new QCameraSelectionWidget(this));
+  _layout->addWidget(createScrollableWrap(settings_ctl = new QSettingsWidget(this), this));
 
   settings_ctl->add_expandable_groupbox("Capture",
       captureSettings_ctl = new QCaptureSettingsWidget(this));
+
+  settings_ctl->add_expandable_groupbox("Smart frame dropping",
+      frameQualityEstimatorSettings_ctl = new QFrameQualityEstimatorSettingsWidget(this));
 
   connect(cameraSelection_ctl, &QCameraSelectionWidget::selectedCameraChanged,
       this, &ThisClass::onSelectedCameraChanged);
@@ -63,6 +61,16 @@ void QImagingCameraControlsWidget::setCameraWriter(QCameraWriter * writer)
 QCameraWriter * QImagingCameraControlsWidget::cameraWriter() const
 {
   return captureSettings_ctl->cameraWriter();
+}
+
+void QImagingCameraControlsWidget::setFrameQualityEstimator(QFrameQualityEstimation * estimator)
+{
+  frameQualityEstimatorSettings_ctl->setFrameQualityEstimator(estimator);
+}
+
+QFrameQualityEstimation * QImagingCameraControlsWidget::frameQualityEstimator() const
+{
+  return frameQualityEstimatorSettings_ctl->frameQualityEstimator();
 }
 
 void QImagingCameraControlsWidget::loadSettings(const QString & prefix)

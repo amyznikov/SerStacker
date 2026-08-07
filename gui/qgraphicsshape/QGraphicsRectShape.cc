@@ -740,29 +740,31 @@ void QGraphicsRectShape::populateContextMenu(QMenu & menu, const QPoint & viewpo
 
   subMenu = menu.addMenu("Copy");
 
-  copyText = qsprintf("%gx%g", _rect.width(), _rect.height());
+  const QRectF srect = sceneRect();
+
+  copyText = qsprintf("%gx%g", srect.width(), srect.height());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);
       });
 
-  copyText = qsprintf("%d;%d;%dx%d", (int) _rect.x(), (int) _rect.y(), (int) _rect.width(), (int) _rect.height());
+  copyText = qsprintf("%d;%d;%dx%d", (int) srect.x(), (int) srect.y(), (int) srect.width(), (int) srect.height());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);
       });
 
-  if( std::abs(_rect.width()-(int) _rect.width()) || std::abs(_rect.height() -(int) _rect.height()) ||
-      std::abs(_rect.x() -(int) _rect.x()) || std::abs(_rect.y() -(int) _rect.y()) ) {
+  if( std::abs(srect.width()-(int) srect.width()) || std::abs(srect.height() -(int) srect.height()) ||
+      std::abs(srect.x() -(int) srect.x()) || std::abs(srect.y() -(int) srect.y()) ) {
 
-    copyText = qsprintf("%g;%g;%gx%g", _rect.x(), _rect.y(), _rect.width(), _rect.height());
+    copyText = qsprintf("%g;%g;%gx%g", srect.x(), srect.y(), srect.width(), srect.height());
     subMenu->addAction(copyText,
         [copyText]() {
           QApplication::clipboard()->setText(copyText);
         });
   }
 
-  copyText = qsprintf("%g;%g;%g;%g", _rect.left(), _rect.top(), _rect.right(), _rect.bottom());
+  copyText = qsprintf("%g;%g;%g;%g", srect.left(), srect.top(), srect.right(), srect.bottom());
   subMenu->addAction(copyText,
       [copyText]() {
         QApplication::clipboard()->setText(copyText);

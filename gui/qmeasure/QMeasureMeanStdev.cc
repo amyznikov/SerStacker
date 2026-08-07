@@ -7,6 +7,8 @@
 
 #include "QMeasureMeanStdev.h"
 
+///////////////////////////////////////////////////////////////////////////////////////
+
 QMeasureMeanValue::QMeasureMeanValue() :
   Base("Mean", "Compute mean value over image ROI")
 {
@@ -42,6 +44,8 @@ int QMeasureMeanValue::compute(const cv::Mat & image, const cv::Mat & mask, cv::
   return image.channels();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+
 QMeasureStdevValue::QMeasureStdevValue() :
     Base("Stdev", "Compute stdev value over image ROI")
 {
@@ -72,6 +76,47 @@ int QMeasureStdevValue::compute(const cv::Mat & image, const cv::Mat & mask, cv:
       cv::meanStdDev(image_channels[c], m, s, mask_channels[c]);
 
       (*output_value)[c] = s[0];
+    }
+  }
+  else {
+    return 0;
+  }
+
+  return image.channels();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+QMeasureSum::QMeasureSum() :
+    Base("Sum", "Compute sum of pixels over image ROI")
+{
+}
+
+QMeasureSettingsWidget* QMeasureSum::createSettingsWidget(QWidget * parent) const
+{
+  return new QMeasureSumSettingsWidget(parent);
+}
+
+int QMeasureSum::compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const
+{
+  if( mask.empty() ) {
+    *output_value = cv::sum(image);
+  }
+  else if( mask.channels() == 1 ) {
+    const int area = cv::countNonZero(mask);
+    *output_value = area > 0 ? cv::mean(image, mask) * area : 0;
+  }
+  else if( mask.channels() == image.channels() ) {
+
+    std::vector<cv::Mat> image_channels;
+    std::vector<cv::Mat> mask_channels;
+
+    cv::split(image, image_channels);
+    cv::split(mask, mask_channels);
+
+    for( int c = 0; c < image_channels.size(); ++c ) {
+      const int area = cv::countNonZero(mask_channels[c]);
+      (*output_value)[c] = area > 0 ? cv::mean(image_channels[c], mask_channels[c])[0] * area : 0;
     }
   }
   else {

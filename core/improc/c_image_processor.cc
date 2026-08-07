@@ -322,7 +322,6 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_barycenter_routine::class_factory_instance());
     register_class_factory(c_connected_component_selection_routine::class_factory_instance());
 
-
     register_class_factory(c_alpha_test_routine::class_factory_instance());
 
     register_class_factory(c_normalize_mean_stdev_routine::class_factory_instance());

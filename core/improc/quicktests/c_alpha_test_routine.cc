@@ -28,144 +28,96 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
       { c_alpha_test_routine::DISPLAY_SRC, "SRC", "" },
-      { c_alpha_test_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_FILL_SRC_VOIDS, "FILL_SRC_VOIDS", "" },
-      { c_alpha_test_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM", "" },
-      { c_alpha_test_routine::DISPLAY_RADIAL_PROFILE, "RADIAL_PROFILE", "" },
-      { c_alpha_test_routine::DISPLAY_FILTER, "FILTER", "" },
-      { c_alpha_test_routine::DISPLAY_SRC_SPECTRUM}
+      { c_alpha_test_routine::DISPLAY_G0, "G0", "" },
+//      { c_alpha_test_routine::DISPLAY_DIFF, "DIFF", "" },
+//      { c_alpha_test_routine::DISPLAY_SUMM, "SUMM", "" },
+//      { c_alpha_test_routine::DISPLAY_RATIO, "RATIO", "" },
+      { c_alpha_test_routine::DISPLAY_SRC}
   };
   return members;
 }
 
 
 namespace {
-
-struct VariogramPoint {
-  double h; // Distance between pixels (in pixels)
-  double gamma; // Variogram value (half the variance of the difference)
-  double log_h; // ln(h) for the graph axes
-  double log_gamma; // ln(gamma) for the graph axes
-};
-
-/**
-* @brief Calculate the experimental variogram of the image texture
-* @param image Input raw image (preferably CV_32FC1, but the method converts it automatically)
-* @param outputPoints Vector of points for plotting the graph
-* @param maxH Maximum analysis step (default is 64 pixels; more is not needed for the midrange structure)
-* @param samplesPerH Number of random pixel pairs for evaluating each distance
-*/
-static void computeTextureVariogram(cv::InputArray image,
-    std::vector<VariogramPoint>& outputPoints,
-    int maxH = 64,
-    int samplesPerH = 50000)
+static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {
-    outputPoints.clear();
+  if( std::min(src.cols(), src.rows()) < 4 ) {
+    src.copyTo(dst);
+  }
+  else {
 
-    // Преобразуем во float для точности и непрерывности вычислений
-    cv::Mat1f img;
-    if (image.depth() == CV_32F) {
-        img = image.getMat();
-    }
-    else {
-        image.getMat().convertTo(img, CV_32F);
-    }
+    cv::pyrDown(src, dst, cv::Size(), border_mode);
 
-    const int width = img.cols;
-    const int height = img.rows;
+    if( std::min(dst.cols, dst.rows) >= 4 ) {
 
-    // Генерируем массив шагов h по логарифмической (экспоненциальной) шкале,
-    // чтобы получить равномерный шаг точек на лог-графике.
-    std::vector<double> h_steps;
-    double current_h = 1.0;
-    const double step_multiplier = 1.15; // Шаг геометрической прогрессии
-    while (current_h <= maxH) {
-        h_steps.push_back(current_h);
-        current_h *= step_multiplier;
-        // Страховка от зависания
-        if (std::abs(step_multiplier - 1.0) < 0.001) {
+      for( int l = 1; l < level; ++l ) {
+
+        cv::pyrDown(dst, dst, cv::Size(), border_mode);
+
+        if( std::min(dst.cols, dst.rows) < 4 ) {
           break;
         }
+      }
     }
+  }
 
-    // Настройка быстрого генератора случайных чисел
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dist_angle(0.0, 2.0 * M_PI);
-
-    outputPoints.reserve(h_steps.size());
-
-    // Основной цикл по всем дистанциям h
-    for (double h : h_steps) {
-        double sum_sq_diff = 0.0;
-        int valid_pairs = 0;
-
-        // Чтобы не привязываться к осям X и Y (изотропия), для каждой пары
-        // мы выбираем случайную точку и случайный угол направления вектора h
-        for (int s = 0; s < samplesPerH; ++s) {
-            // Случайный угол направления вектора
-            double angle = dist_angle(gen);
-            double dx = h * std::cos(angle);
-            double dy = h * std::sin(angle);
-
-            // Определяем безопасные границы для выбора первой точки
-            double min_x = std::max(0.0, -dx);
-            double max_x = std::min(double(width - 1), double(width - 1) - dx);
-            double min_y = std::max(0.0, -dy);
-            double max_y = std::min(double(height - 1), double(height - 1) - dy);
-
-            if (max_x <= min_x || max_y <= min_y) {
-              continue;
-            }
-
-            std::uniform_real_distribution<double> dist_x(min_x, max_x);
-            std::uniform_real_distribution<double> dist_y(min_y, max_y);
-
-            // Координаты первой точки
-            double x1 = dist_x(gen);
-            double y1 = dist_y(gen);
-
-            // Координаты второй точки, удаленной ровно на расстояние h под углом angle
-            double x2 = x1 + dx;
-            double y2 = y1 + dy;
-
-            // Билинейная интерполяция яркости (важно для нецелочисленных h)
-            // Реализация инлайном для обеспечения максимальной скорости рендеринга
-            const auto getInterpolatedPix = [&](double x, double y) -> float {
-                int px = static_cast<int>(x);
-                int py = static_cast<int>(y);
-                int ax = std::clamp(px, 0, width - 2);
-                int ay = std::clamp(py, 0, height - 2);
-                double fx = x - ax;
-                double fy = y - ay;
-
-                return (1.0 - fx) * (1.0 - fy) * img(ay, ax) +
-                       fx * (1.0 - fy) * img(ay, ax + 1) +
-                       (1.0 - fx) * fy * img(ay + 1, ax) +
-                       fx * fy * img(ay + 1, ax + 1);
-            };
-
-            float val1 = getInterpolatedPix(x1, y1);
-            float val2 = getInterpolatedPix(x2, y2);
-
-            double diff = val1 - val2;
-            sum_sq_diff += diff * diff;
-            valid_pairs++;
-        }
-
-        if (valid_pairs > 100) {
-            VariogramPoint pt;
-            pt.h = h;
-            // Вариаграмма по определению — это половина среднего квадрата разностей
-            pt.gamma = sum_sq_diff / (2.0 * valid_pairs);
-            pt.log_h = std::log(pt.h);
-            // Защита логарифма от нулевой дисперсии на абсолютно пустых кадрах
-            pt.log_gamma = std::log(pt.gamma + 1e-12);
-
-            outputPoints.push_back(pt);
-        }
-    }
+  return true;
 }
+
+static bool pupscale(cv::Mat & image, cv::Size dstSize)
+{
+  const cv::Size inputSize = image.size();
+
+  if( inputSize != dstSize ) {
+
+    std::vector<cv::Size> sizes;
+
+    sizes.emplace_back(dstSize);
+
+    while (42) {
+      const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
+      if( nextSize == inputSize ) {
+        break;
+      }
+      if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+        CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+            nextSize.width, nextSize.height,
+            inputSize.width, inputSize.height);
+        return false;
+      }
+      sizes.emplace_back(nextSize);
+    }
+
+    for( int i = sizes.size() - 1; i >= 0; --i ) {
+      cv::pyrUp(image, image, sizes[i]);
+    }
+  }
+
+  return true;
+}
+
+//static inline void computeMorphGradient(cv::InputArray src, cv::OutputArray dst, cv::InputArray SE)
+//{
+//  cv::morphologyEx(src, dst, cv::MORPH_GRADIENT,
+//      SE, cv::Point(-1, -1), 1,
+//      cv::BORDER_REPLICATE);
+//}
+
+//static double computeMichelsonQuality(cv::InputArray src, cv::InputArray SE)
+//{
+//  cv::Mat imax, imin, num, den;
+//
+//  cv::dilate(src, imax, SE);
+//  cv::erode(src, imin, SE);
+//  cv::absdiff(imax, imin, num);
+//  cv::add(imax, imin, den);
+//
+//  double total_gradient = cv::sum(num)[0];
+//  double total_energy = cv::sum(den)[0];
+//
+//  return total_gradient / total_energy;
+//}
+
 
 } // namespace
 
@@ -173,9 +125,10 @@ void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
-  ctlbind(ctls, "maxH: ", CTL_CONTEXT(ctx, _maxH), "");
-  ctlbind(ctls, "samplesPerH", CTL_CONTEXT(ctx, _samplesPerH), "");
-  ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
+  ctlbind(ctls, "l0: ", CTL_CONTEXT(ctx, _l0), "");
+  ctlbind(ctls, "l0: ", CTL_CONTEXT(ctx, _l2), "");
+  ctlbind(ctls, "kradius0:", CTL_CONTEXT(ctx, _kradius0), "");
+  ctlbind(ctls, "kradius1:", CTL_CONTEXT(ctx, _kradius1), "");
 }
 
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
@@ -183,56 +136,195 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
-    SERIALIZE_OPTION(settings, save, *this, _maxH);
-    SERIALIZE_OPTION(settings, save, *this, _samplesPerH);
-    SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
+    SERIALIZE_OPTION(settings, save, *this, _l0);
+    SERIALIZE_OPTION(settings, save, *this, _l2);
+    SERIALIZE_OPTION(settings, save, *this, _kradius0);
+    SERIALIZE_OPTION(settings, save, *this, _kradius1);
+
     return true;
   }
   return false;
 }
 
-
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  CF_DEBUG("c_alpha_test_routine: ENTER");
+//  CF_DEBUG("c_alpha_test_routine: ENTER");
 
-  std::vector<VariogramPoint> outputPoints;
+  cv::Mat src, m, g0;
 
-  cv::Mat src;
   extract_channel(image, src, cv::noArray(), cv::noArray(), _intensity_channel, CV_32F, false);
-
-  computeTextureVariogram(src,
-      outputPoints,
-      _maxH,
-      _samplesPerH);
-
-  CF_DEBUG("outputPoints.size=%zu", outputPoints.size());
-
-  if ( !_debug_file_name.empty() ) {
-
-    const std::string outpath = get_parent_directory(_debug_file_name);
-    if ( !create_path(outpath) ) {
-      CF_ERROR("create_path(outpath='%s') fails: %s", outpath.c_str(), strerror(errno));
-      return false;
-    }
-
-    c_stdio_file fp;
-    if ( !fp.open(_debug_file_name, "wb") ) {
-      CF_ERROR("fp.open(_debug_file_name='%s') fails: %s", _debug_file_name.c_str(), strerror(errno));
-      return false;
-    }
-
-    fprintf(fp, "I\th\tgamma\tlog_h\tlog_gamma\n");
-    for ( size_t i = 0, n = outputPoints.size(); i < n; ++i ) {
-      const auto & p = outputPoints[i];
-      fprintf(fp, "%4zu\t%12f\t%12f\t%12f\t%12f\n", i, p.h, p.gamma, p.log_h, p.log_gamma);
-    }
-
-    fp.close();
-    CF_DEBUG("Saved %s", _debug_file_name.c_str());
+  if( _l0 > 0 ) {
+    pdownscale(src, src, _l0);
   }
 
-  CF_DEBUG("c_alpha_test_routine: LEAVE");
+  // kurtosis
+  const cv::Size ksize0(2 * std::max(1, _kradius0) + 1, 2 * std::max(1, _kradius0) + 1);
+  cv::boxFilter(src, m, CV_32F, ksize0, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+  cv::subtract(src, m, g0);
+  cv::multiply(g0, g0, g0);
+
+  const double W = cv::sum(g0)[0];
+  cv::multiply(g0, g0, g0, 1. / W);
+
+  const double Q = cv::sum(g0)[0] ;
+  CF_DEBUG("Q = %g", Q);
+
+  if ( _l2 > 0 ) {
+    pdownscale(g0, g0, _l2);
+  }
+
+  switch (_display)
+  {
+    case DISPLAY_SRC: {
+      if( src.size() != image.size() ) {
+        pupscale(src, image.size());
+      }
+      image.move(src);
+      break;
+    }
+    case DISPLAY_G0: {
+      if( g0.size() != image.size() ) {
+        pupscale(g0, image.size());
+      }
+      image.move(g0);
+      break;
+    }
+  }
+
   return true;
 }
 
+
+//bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+//{
+//  CF_DEBUG("c_alpha_test_routine: ENTER");
+//
+//  cv::Mat src, imax, imin, num, den, ratio;
+//
+//  extract_channel(image, src, cv::noArray(), cv::noArray(), _intensity_channel, CV_32F, false);
+//  if( _display == DISPLAY_SRC ) {
+//    image.move(src);
+//    return true;
+//  }
+//
+//  if ( _l0 > 0 ) {
+//    pdownscale(src, src, _l0);
+//  }
+//
+//  const cv::Size ksize0(2 * std::max(1, _kradius0) + 1, 2 * std::max(1, _kradius0) + 1);
+//  const cv::Mat1b SE(ksize0, 255);
+//
+//  cv::dilate(src, imax, SE);
+//  cv::erode(src, imin, SE);
+//  cv::subtract(imax, imin, num);
+//  cv::add(imax, imin, den);
+//
+//  if ( _l2 > 0 ) {
+//    pdownscale(num, num, _l2);
+//    pdownscale(den, den, _l2);
+//  }
+//
+//  cv::divide(num, den, ratio);
+//
+//  switch (_display)
+//  {
+//    case DISPLAY_DIFF: {
+//      if( num.size() != image.size() ) {
+//        pupscale(num, image.size());
+//      }
+//      image.move(num);
+//      break;
+//    }
+//    case DISPLAY_SUMM: {
+//      if( den.size() != image.size() ) {
+//        pupscale(den, image.size());
+//      }
+//      image.move(den);
+//      break;
+//    }
+//    case DISPLAY_RATIO: {
+//      if( ratio.size() != image.size() ) {
+//        pupscale(ratio, image.size());
+//      }
+//      image.move(ratio);
+//
+//      break;
+//    }
+//  }
+//
+//  return true;
+//}
+//
+
+//bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+//{
+//  CF_DEBUG("c_alpha_test_routine: ENTER");
+//
+//  cv::Mat src, m0, m1, g0, g1;
+//
+//  const cv::Size ksize0(2 * std::max(1, _kradius0) + 1, 2 * std::max(1, _kradius0) + 1);
+//  const cv::Size ksize1(2 * std::max(1, _kradius1) + 1, 2 * std::max(1, _kradius1) + 1);
+//
+//  extract_channel(image, src, cv::noArray(), cv::noArray(), _intensity_channel, CV_32F, false);
+//  if ( _l0 > 0 ) {
+//    pdownscale(src, src, _l0);
+//  }
+//
+//  cv::boxFilter(src, m0, CV_32F, ksize0, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+//  cv::absdiff(src, m0, g0);
+//
+//  cv::boxFilter(src, m1, CV_32F, ksize1, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+//  cv::absdiff(src, m1, g1);
+//
+//  if ( _display != DISPLAY_SRC ){
+//
+//    switch (_display)
+//    {
+//      case DISPLAY_G0: {
+//        // for the visualization only: restore original scale
+//        if ( g0.size() != image.size() ) {
+//          pupscale(g0, image.size());
+//        }
+//        image.move(g0);
+//        break;
+//      }
+//      case DISPLAY_MORPH1: {
+//        // for the visualization only: restore original scale
+//        if ( g1.size() != image.size() ) {
+//          pupscale(g1, image.size());
+//        }
+//        image.move(g1);
+//        break;
+//      }
+//      case DISPLAY_MORPH_ABSDIFF: {
+//        cv::Mat mid;
+//        cv::absdiff(g0, g1, mid);
+//        cv::boxFilter(mid, mid, CV_32F, ksize1, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+//        // for the visualization only: restore original scale
+//        if ( mid.size() != image.size() ) {
+//          pupscale(mid, image.size());
+//        }
+//        image.move(mid);
+//        break;
+//      }
+//      case DISPLAY_MORPH_RATIO: {
+//        cv::Mat num, den;
+//        const cv::Size ksize_big(5 * std::max(1, _kradius1) + 1, 5 * std::max(1, _kradius1) + 1);
+//
+//        cv::multiply(g0, g1, num);
+//        cv::boxFilter(num, num, CV_32F, ksize_big, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+//        cv::boxFilter(g1, den, CV_32F, ksize_big, cv::Point(-1, -1), true, cv::BORDER_REPLICATE);
+//        cv::divide(g0, mid + 1e-6, ratio);
+//
+//        // for the visualization only: restore original scale
+//        if ( ratio.size() != image.size() ) {
+//          pupscale(ratio, image.size());
+//        }
+//        image.move(ratio);
+//        break;
+//      }
+//    }
+//  }
+//
+//  return true;
+//}

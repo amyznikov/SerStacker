@@ -6,8 +6,11 @@
  */
 
 #include "c_local_variance_sharpness_measure.h"
-
 #include <core/proc/pixtype.h>
+#include <core/proc/run-loop.h>
+#include <atomic>
+
+namespace {
 
 static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {
@@ -66,147 +69,162 @@ static bool pupscale(cv::Mat & image, cv::Size dstSize)
   return true;
 }
 
-static inline void computeMorphGradient(cv::InputArray src, cv::OutputArray dst, int kradius)
+template<typename _Tp>
+static double _compute_sharpness_norm(cv::InputArray src, double depthScale, double W)
 {
+  const int rows = src.rows();
+  const int cols = src.cols();
+  const cv::Mat_<_Tp> G = src.getMat();
+
+  std::atomic<float> total_sum(0.0f);
+
+  parallel_for(0, rows, [&, cols](const auto& range) {
+    float local_sum = 0.0;
+
+    for (int y = rbegin(range); y != rend(range); ++y) {
+      const _Tp* gp = G[y];
+
+      for (int x = 0; x < cols; ++x) {
+        const float val = gp[x];
+        local_sum += val * val * val * val; // val^4
+      }
+    }
+
+    float current = total_sum.load(std::memory_order_relaxed);
+    while (!total_sum.compare_exchange_weak(current, current + local_sum,
+        std::memory_order_relaxed));
+  });
+
+  const double scale3 = depthScale * depthScale * depthScale / W;
+  return total_sum.load() * scale3;
 }
 
-static void downscaleLocalVariance(cv::InputArray src, cv::OutputArray outputVarianceMap,
-    int downscale_levels, int morph_gradient_radius)
+static double compute_sharpness_norm(cv::InputArray src, double depthScale, double W)
 {
-  const cv::Mat1b SE(2 * morph_gradient_radius + 1,
-      2 * morph_gradient_radius + 1, 255);
-
-  if( downscale_levels <= 0 ) {
-    cv::morphologyEx(src, outputVarianceMap, cv::MORPH_GRADIENT,
-        SE, cv::Point(-1, -1), 1,
-        cv::BORDER_REPLICATE);
-    return;
-  }
-
-  cv::Mat current_img = src.getMat();
-  cv::Mat current_grad;
-  cv::Mat accumulated_variance;
-
-  for( int level = 0; level < downscale_levels; ++level ) {
-
-    cv::morphologyEx(current_img, current_grad, cv::MORPH_GRADIENT,
-        SE, cv::Point(-1, -1), 1,
-        cv::BORDER_REPLICATE);
-
-    if( accumulated_variance.empty() ) {
-      current_grad.copyTo(accumulated_variance);
-    }
-    else {
-      cv::pyrDown(accumulated_variance, accumulated_variance, current_grad.size());
-      cv::add(current_grad, accumulated_variance, accumulated_variance);
-    }
-
-    if( level < downscale_levels - 1 ) {
-      cv::pyrDown(current_img, current_img);
-    }
-  }
-
-  outputVarianceMap.move(accumulated_variance);
+  CV_DISPATCH(src.depth(), _compute_sharpness_norm, src, depthScale, W);
+  return 0.0;
 }
 
-bool create_morph_gradient_map(cv::InputArray _src, cv::OutputArray dst,
+/**
+ * Can not work in-place, dst must not refer to src
+ * */
+template<typename _Tp>
+static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, double depthScale, double W)
+{
+  const int rows = _src.rows();
+  const int cols = _src.cols();
+  const cv::Mat_<_Tp> G = _src.getMat();
+
+  _dst.create(rows, cols, CV_32FC1);
+  cv::Mat1f dst = _dst.getMatRef();
+
+  const float mapScale = float (depthScale * depthScale * depthScale);
+
+  std::atomic<float> total_sum(0.0f);
+
+  parallel_for(0, rows, [&, cols, mapScale](const auto& range) {
+    float local_sum = 0.0f;
+
+    for (int y = rbegin(range); y != rend(range); ++y) {
+      const _Tp* g_row = G[y];
+      float* __restrict dstp = dst[y];
+
+      for (int x = 0; x < cols; ++x) {
+        const float val = g_row[x];
+        dstp[x] = val * val * val * mapScale;
+        local_sum += val * val * val * val;
+      }
+    }
+
+    float current = total_sum.load(std::memory_order_relaxed);
+    while (!total_sum.compare_exchange_weak(current, current + local_sum,
+        std::memory_order_relaxed));
+  });
+
+  const double scale3 = depthScale * depthScale * depthScale / W;
+  return scale3 * total_sum.load();
+}
+
+static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, double depthScale, double W)
+{
+  CV_DISPATCH(src.depth(), _compute_sharpness_map, src, dst, depthScale, W);
+  return 0.0;
+}
+
+} // namespace
+
+// Return frame quality metric to allow compare consecutive frames for live stacking
+// MAP(x,y) = G(x,y) ^ n / sum(G)
+// Q = sum(G(x,y) ^ n) / sum(G)
+// The reasoning is to compute weighted average of morph gradient cubic
+// using gradient module as the weight, thus estimate gradient cubics
+// in the regions where the gradients are exists
+double compute_local_variance_map(cv::InputArray image, const c_local_variance_map_options & opts,
+    cv::OutputArray outputMap /*= cv::noArray()*/)
+{
+  cv::Mat M, G;
+
+  const int ksize = 2 * std::max(1, opts.kradius) + 1;
+  const cv::Mat1b SE(ksize, ksize, 255);
+  const double depthScale = 20 * getMaxValForPixelDepth(CV_32F) / getMaxValForPixelDepth(image.depth());
+
+  extract_channel(image, M, cv::noArray(), cv::noArray(), opts.channel, -1, false);
+  if( opts.dscale > 0 ) {
+    pdownscale(M, M, opts.dscale);
+  }
+
+  cv::morphologyEx(M, G, cv::MORPH_GRADIENT, SE, cv::Point(-1, -1), 1,
+      cv::BORDER_REPLICATE);
+
+  const double W = cv::norm(G, cv::NORM_L1);
+  if( !(W > 0) ) {
+    if( outputMap.needed() ) {
+      outputMap.create(image.size(), CV_32F);
+      outputMap.setTo(0);
+    }
+    return 0;
+  }
+
+  // Optimized path for Q without map
+  if( !outputMap.needed() ) {
+    return compute_sharpness_norm(G, depthScale, W);
+  }
+
+  // Little slower path path for Q with map
+  // Add some minimal feasible weight to the map for totally flat areas
+  const double Q = compute_sharpness_map(G, M, depthScale, W);
+  if( opts.uscale > 0 ) {
+    pdownscale(M, M, opts.uscale);
+  }
+  cv::add(M, 0.05 * Q, M);
+  if( G.size() != image.size() ) {
+    pupscale(M, image.size());
+  }
+  outputMap.move(M);
+
+  return Q;
+}
+
+bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray outputMap,
     const c_local_variance_map_options & opts)
 {
-  cv::Mat src, g;
-
-  if ( _src.channels() == 1  ) {
-    src = _src.getMat();
-  }
-  else {
-    cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
-  }
-
-  downscaleLocalVariance(src, g, opts.dscale, std::max(1, opts.kradius));
-
-  if( opts.uscale > 0 && opts.uscale > opts.dscale ) {
-    pdownscale(g, g, opts.uscale - opts.dscale);
-  }
-
-  if( opts.p == 2 ) {
-    cv::multiply(g, g, g);
-  }
-  else if ( opts.p != 0 && opts.p != 1 ) {
-    cv::pow(g, opts.p, g);
-  }
-
-  if( g.size() != src.size() ) {
-    pupscale(g, src.size());
-  }
-
-  dst.move(g);
-
+  compute_local_variance_map(image, opts, outputMap);
   return true;
 }
 
-bool create_local_variance_map(cv::InputArray _src, cv::OutputArray dst, const c_local_variance_map_options & opts)
+bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray outputMap) const
 {
-  cv::Mat src;
-  cv::Mat m, s;
-
-  if (_src.channels() == 1) {
-    _src.getMat().convertTo(src, CV_32F);
-  }
-  else {
-    cv::cvtColor(_src, src, cv::COLOR_BGR2GRAY);
-    src.convertTo(src, CV_32F);
-  }
-
-  if ( opts.dscale > 0 ) {
-    pdownscale(src, src, opts.dscale);
-  }
-
-  const int winSize = 2 * std::max(1, opts.kradius) + 1;
-  const cv::Size ksize(winSize, winSize);
-
-  cv::boxFilter(src, m, CV_32F, ksize, cv::Point(-1,-1), false, cv::BORDER_REPLICATE);
-  cv::boxFilter(src.mul(src), s, CV_32F, ksize, cv::Point(-1,-1), false, cv::BORDER_REPLICATE);
-  cv::absdiff(s, m.mul(m), s);
-
-  if( opts.uscale > 0 && opts.uscale > opts.dscale ) {
-    pdownscale(s, s, opts.uscale - opts.dscale);
-  }
-
-  if( opts.p == 2 ) {
-    cv::multiply(s, s, s);
-  }
-  else if( opts.p != 0 && opts.p != 1 ) {
-    cv::pow(s, opts.p, s);
-  }
-
-  if( s.size() != _src.size() ) {
-    pupscale(s, _src.size());
-  }
-
-  dst.move(s);
-  return true;
-}
-
-bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map,
-    const c_local_variance_map_options & opts)
-{
-  return create_morph_gradient_map(image, output_map, opts);
-}
-
-bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray output_map) const
-{
-  return create_map(image, output_map, _opts);
+  return create_map(image, outputMap, opts);
 }
 
 cv::Scalar c_local_variance_sharpness_measure::compute(cv::InputArray image, cv::InputArray mask) const
 {
-  cv::Mat map;
-  create_map(image, map);
-  return cv::mean(map, mask);
+  return cv::Scalar::all(compute_local_variance_map(image, opts));
 }
 
 bool serialize_local_variance_map_options(c_config_setting section, bool save, c_local_variance_map_options & opts)
 {
-  SERIALIZE_OPTION(section, save, opts, p);
+  SERIALIZE_OPTION(section, save, opts, channel);
   SERIALIZE_OPTION(section, save, opts, kradius);
   SERIALIZE_OPTION(section, save, opts, dscale);
   SERIALIZE_OPTION(section, save, opts, uscale);

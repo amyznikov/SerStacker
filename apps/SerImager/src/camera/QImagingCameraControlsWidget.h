@@ -15,7 +15,9 @@
 #include "QCameraSelectionWidget.h"
 #include "QCameraControlsWidget.h"
 #include "QCaptureSettingsWidget.h"
+#include "QFrameQualityEstimatorSettingsWidget.h"
 #include "QCameraWriter.h"
+
 
 namespace serimager {
 
@@ -35,6 +37,9 @@ public:
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
 
+  void setFrameQualityEstimator(QFrameQualityEstimation * estimator);
+  QFrameQualityEstimation * frameQualityEstimator() const;
+
   void loadSettings(const QString & prefix = "");
   void loadSettings(const QSettings & settings, const QString & prefix = "");
   void saveSettings(const QString & prefix = "");
@@ -53,6 +58,7 @@ protected:
 
   QCameraControlsWidget * cameraControls_ctl = nullptr;
   QCaptureSettingsWidget * captureSettings_ctl = nullptr;
+  QFrameQualityEstimatorSettingsWidget * frameQualityEstimatorSettings_ctl = nullptr;
 };
 
 

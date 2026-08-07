@@ -54,6 +54,7 @@ const std::vector<QMeasure*>& QMeasureProvider::available_measures()
     _available_measures.emplace_back(new QMeasureMaxValue());
     _available_measures.emplace_back(new QMeasureMeanValue());
     _available_measures.emplace_back(new QMeasureStdevValue());
+    _available_measures.emplace_back(new QMeasureSum());
     _available_measures.emplace_back(new QMeasureLPG());
     _available_measures.emplace_back(new QMeasureLC());
     _available_measures.emplace_back(new QMeasureLAP());

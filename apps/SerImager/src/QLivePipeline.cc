@@ -86,7 +86,7 @@ QLiveDisplay::~QLiveDisplay()
 
 void QLiveDisplay::createShapes()
 {
-  if( !_rectShape ) {
+  if( !_roiShape ) {
 
     QRectF rect;
 
@@ -108,14 +108,14 @@ void QLiveDisplay::createShapes()
       }
     }
 
-    _rectShape = new QGraphicsRectShape(rect);
-    _rectShape->setResizable(true);
-    _rectShape->setSnapToPixelGrid(true);
-    _rectShape->setFlag(QGraphicsItem::ItemIsMovable, true);
-    _rectShape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-    _rectShape->setCosmeticPen(Qt::red);
-    _rectShape->setVisible(false);
-    _scene->addItem(_rectShape);
+    _roiShape = new QGraphicsRectShape(rect);
+    _roiShape->setResizable(true);
+    _roiShape->setSnapToPixelGrid(true);
+    _roiShape->setFlag(QGraphicsItem::ItemIsMovable, true);
+    _roiShape->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    _roiShape->setCosmeticPen(Qt::red);
+    _roiShape->setVisible(false);
+    _scene->addItem(_roiShape);
   }
 
   if( !_lineShape ) {
@@ -138,9 +138,9 @@ void QLiveDisplay::createShapes()
   }
 }
 
-QGraphicsRectShape * QLiveDisplay::rectShape() const
+QGraphicsRectShape * QLiveDisplay::roiShape() const
 {
-  return _rectShape;
+  return _roiShape;
 }
 
 QGraphicsLineShape * QLiveDisplay::lineShape() const
@@ -245,6 +245,18 @@ void QLivePipelineThread::setDarkFrameScale(double v)
 double QLivePipelineThread::darkFrameScale() const
 {
   return _darkFrameScale;
+}
+
+void QLivePipelineThread::setFrameQualityEstimator(QFrameQualityEstimation * estimator)
+{
+  QMutexLocker lock(&_lock);
+  _qualityEstimator = estimator;
+}
+
+QFrameQualityEstimation* QLivePipelineThread::frameQualityEstimator() const
+{
+  // QMutexLocker lock(&_lock);
+  return _qualityEstimator;
 }
 
 void QLivePipelineThread::loadSettings()
@@ -356,10 +368,10 @@ const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
   return _userPipeline;
 }
 
+#if 0
 void QLivePipelineThread::run()
 {
-  struct c_camera_input_source :
-      public c_image_input_source
+  struct c_camera_input_source : public c_image_input_source
   {
     typedef c_camera_input_source this_class;
     typedef c_image_input_source base;
@@ -440,8 +452,7 @@ void QLivePipelineThread::run()
     }
   };
 
-  struct c_camera_input_sequence :
-      public c_input_sequence
+  struct c_camera_input_sequence : public c_input_sequence
   {
     typedef c_camera_input_sequence this_class;
     typedef c_input_sequence base;
@@ -520,6 +531,228 @@ void QLivePipelineThread::run()
   CF_DEBUG("leave");
 }
 
+#else
+void QLivePipelineThread::run()
+{
+  struct c_camera_input_source : public c_image_input_source
+  {
+    typedef c_camera_input_source this_class;
+    typedef c_image_input_source base;
+    typedef std::shared_ptr<this_class> sptr;
+
+    QLivePipelineThread * _liveThread;
+    QImagingCamera::sptr _camera;
+    int last_frame_index = -1;
+    int bpp = -1;
+    COLORID colorid = COLORID_UNKNOWN;
+
+    c_camera_input_source(QLivePipelineThread * thread, const QImagingCamera::sptr & camera) :
+      base(""), _liveThread(thread),_camera(camera)
+    {}
+    bool open() final {
+      return _camera->state() == QImagingCamera::State_started;
+    }
+    void close() final {
+    }
+    bool seek(int pos) final {
+      return true;
+    }
+    int curpos() final {
+      return 0;
+    }
+    bool is_open() const final {
+      return _camera->state() == QImagingCamera::State_started;
+    }
+    bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpp) final
+    {
+      while (_camera->state() == QImagingCamera::State_started) {
+
+        std::vector<QCameraFrame::sptr> local_frames;
+        int freshest_index = -1;
+
+        // Quick grab of camera frames under a short shared_lock
+        if( true ) {
+          QImagingCamera::shared_lock lock(_camera->mutex());
+          const auto & deque = _camera->deque();
+          if( deque.empty() ) {
+            _camera->condvar().wait(lock);
+            continue;
+          }
+
+          const QCameraFrame::sptr & freshest_frame = deque.back();
+          freshest_index = freshest_frame->index();
+
+          if( freshest_index <= last_frame_index ) {
+            _camera->condvar().wait(lock);
+            continue;
+          }
+
+          // Activate the estimator only if a lag is detected AND this option is enabled from GUI
+          QFrameQualityEstimation * estimator = _liveThread->frameQualityEstimator();
+
+          const int LAG_THRESHOLD = 2;
+          const int frames_in_queue = freshest_index - last_frame_index;
+
+          if( frames_in_queue <= LAG_THRESHOLD  || !estimator || !estimator->isEnabled() ) {
+            // no lags detected or estimator is disabled - just take the most recent frame
+            local_frames.push_back(freshest_frame);
+          }
+          else {
+            local_frames.reserve(deque.size());
+            for( const auto & frame : deque ) {
+              if( frame->index() > last_frame_index ) {
+                local_frames.emplace_back(frame);
+              }
+            }
+          }
+        }
+
+        if (local_frames.empty()) {
+          continue;
+        }
+
+        // Select target frame
+        QCameraFrame::sptr selected_frame = nullptr;
+
+        if( local_frames.size() < 2 ) {
+          // Standard mode without lags - take the single available frame
+          selected_frame = local_frames.front();
+        }
+        else {
+          // Request the pointer again (in case the user switched it to the GUI in a split second)
+          QFrameQualityEstimation * estimator = _liveThread->frameQualityEstimator();
+
+          if( estimator && estimator->isEnabled() ) {
+            // Heavy quality calculation is performed here without blocking the camera queue
+            //CF_DEBUG("BEG ESTIMATE: %zu frames", local_frames.size());
+            int best_local_idx = estimator->estimateFrameQuality(local_frames);
+            //CF_DEBUG("END ESTIMATE: best_local_idx=%d", best_local_idx);
+
+            if( best_local_idx >= 0 && best_local_idx < (int) local_frames.size() ) {
+              selected_frame = local_frames[best_local_idx];
+            }
+          }
+
+          // If the estimator suddenly returns an error, take the latest one from the pack
+          if( !selected_frame ) {
+            selected_frame = local_frames.back();
+          }
+        }
+
+        // Advance the index to the most recent frame,
+        // thereby discarding (dropping) all the missed ones
+        last_frame_index = freshest_index;
+
+        selected_frame->image().copyTo(output_frame);
+        *output_bpp = bpp = selected_frame->bpp();
+
+        if( _liveThread->_enableDarkFrame ) {
+          QMutexLocker lock(&_liveThread->_darkFrameLock);
+
+          const cv::Mat & darkFrame = _liveThread->_darkFrame;
+          if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
+            if( output_frame.depth() != darkFrame.depth() ) {
+              output_frame.convertTo(output_frame, darkFrame.depth());
+            }
+            cv::subtract(output_frame, darkFrame, output_frame);
+          }
+        }
+
+        const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
+        if( is_bayer_pattern(selected_frame->colorid()) && algo != DEBAYER_DISABLE ) {
+          ::debayer(output_frame, output_frame, selected_frame->colorid(), algo);
+          *output_colorid = colorid = COLORID_BGR;
+        }
+        else {
+          *output_colorid = colorid = selected_frame->colorid();
+        }
+
+        return true;
+      }
+
+      return false;
+    }
+  };
+
+  struct c_camera_input_sequence : public c_input_sequence
+  {
+    typedef c_camera_input_sequence this_class;
+    typedef c_input_sequence base;
+    typedef std::shared_ptr<this_class> sptr;
+
+    c_camera_input_source::sptr camera_source;
+
+    c_camera_input_sequence(QLivePipelineThread * thread, const QImagingCamera::sptr & camera)
+    {
+      camera_source.reset(new c_camera_input_source(thread, camera));
+      _all_sources.emplace_back(camera_source);
+      _enabled_sources.emplace_back(camera_source);
+      _current_source = 0;
+      _current_global_pos = 0;
+      set_name(get_file_name(camera->name().toStdString()));
+    }
+    bool is_live() const final {
+      return true;
+    }
+    bool open() final {
+      return camera_source->is_open();
+    }
+    void close(bool /*clear */= false) final {
+    }
+    bool seek(int pos) final {
+      return true;
+    }
+    bool is_open() const final {
+      return camera_source->is_open();
+    }
+  };
+
+  CF_DEBUG("enter");
+  /////////////////////
+
+  const QImagingCamera::sptr camera = this->_camera;
+
+  if( camera ) {
+
+    QLivePipeline::sptr dummyPipeline(new QLivePipeline("dummyPipeline", this));
+
+    c_camera_input_sequence::sptr input_sequence(new c_camera_input_sequence(this, camera));
+
+    while (camera->state() == QImagingCamera::State_started) {
+
+      if( true ) {
+        // Check if pipeline switch requested
+        QMutexLocker lock(&_lock);
+
+        if( _userPipeline  ) {
+          if ( _userPipeline != _currentPipeline ) {
+            setCurrentPipeline(_userPipeline);
+          }
+        }
+        else if( _currentPipeline != dummyPipeline ) {
+          setCurrentPipeline(dummyPipeline);
+        }
+      }
+
+      // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
+      if( _currentPipeline->run(input_sequence) ) {
+        CF_DEBUG("_currentPipeline finished");
+      }
+      else {
+        CF_ERROR("_currentPipeline->run() fails");
+      }
+
+      _condvar.wakeAll();
+    }
+
+    setCurrentPipeline(nullptr);
+  }
+
+  QThread::msleep(100);
+
+  CF_DEBUG("leave");
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace {
@@ -750,8 +983,7 @@ void QLivePipelineSelectionWidget::loadPipelines(const std::string & cfgfilename
       }
 
       c_image_processing_pipeline::sptr obj =
-          c_image_processing_pipeline::create_instance(class_name,
-              "",
+          c_image_processing_pipeline::create_instance(class_name, "",
               nullptr);
 
       if ( !obj ) {

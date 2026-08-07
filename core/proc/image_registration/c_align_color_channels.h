@@ -27,7 +27,7 @@ struct c_align_color_channels_options
   double eps = 0.1;
   double update_step_scale = 1.25;
   int max_iterations = 30;
-  int max_level = 0;
+  int max_level = 2;
   int normalization_level = 3;
 };
 
@@ -73,6 +73,8 @@ public:
   typedef c_align_color_channels this_class;
 
   const c_image_transform::sptr & computed_transform(int channel_index) const;
+  const std::vector<c_image_transform::sptr> & computed_transforms() const;
+  IMAGE_MOTION_TYPE estimated_motion_type() const;
 
   bool align(cv::InputArray src, cv::OutputArray dst,
       const c_align_color_channels_options & opts,
@@ -86,8 +88,25 @@ public:
       cv::InputArray srcmask = cv::noArray(),
       cv::OutputArray dstmask = cv::noArray() );
 
+  bool estimate(cv::InputArray src, cv::InputArray srcmask,
+      int reference_channel_index,
+      const c_align_color_channels_options & opts);
+
+  bool estimate(cv::InputArray src, cv::InputArray srcmask,
+      cv::InputArray reference_image, cv::InputArray reference_mask,
+      const c_align_color_channels_options & opts);
+
+  bool apply(cv::InputArray src, cv::InputArray srcmask,
+      const c_align_color_channels_options & opts,
+      cv::OutputArray dst, cv::OutputArray dstmask) const;
+
+  bool setImageTransform(IMAGE_MOTION_TYPE motionType,
+      const std::vector<float> parameters[4]);
+
 protected:
   std::vector<c_image_transform::sptr> _image_transforms;
+  mutable std::vector<cv::Mat2f> _remaps;
+  IMAGE_MOTION_TYPE _estimated_motion_type = IMAGE_MOTION_UNKNOWN;
 };
 
 

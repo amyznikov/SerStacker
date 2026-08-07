@@ -47,17 +47,8 @@ struct c_running_average_registration_options
 
 struct c_running_average_update_options
 {
-  double running_weight = 15;
-
-  //c_lpg_options lpg;
+  double running_weight = 15000;
   c_local_variance_map_options sharpness_measure;
-
-  c_running_average_update_options()
-  {
-    //    lpg.dscale = 2;
-    //    lpg.uscale = 6;
-  }
-
 };
 
 struct c_running_average_output_options:
@@ -119,6 +110,7 @@ protected:
 
   cv::Mat _current_image;
   cv::Mat _current_mask;
+  mutable cv::Mat1f _apodizationWindow;
 
   c_output_frame_writer _progress_writer;
   c_output_frame_writer _reference_video_writer;

@@ -23,40 +23,21 @@ int QMeasureLocalVariance::compute(const cv::Mat & image, const cv::Mat & mask, 
   return 1;
 }
 
-// TODO: implement via setupControls()
-// #include <gui/widgets/QSettingsWidgetTemplate.h>
 QLocalVarianceMeasureSettingsWidget::QLocalVarianceMeasureSettingsWidget(QWidget * parent) :
     Base(parent)
 {
-  p_ctl =
-      add_numeric_box<double>("p:",
-          "power",
-          [this](double v) {
-            if ( _measure && _measure->opts().p != v ) {
-              _measure->opts().p = v;
+  color_channel_ctl =
+      add_enum_combobox<color_channel_type>("channel:",
+          "Select reference channel for computation",
+          [this](color_channel_type v) {
+            if ( _measure && v != _measure->opts.channel ) {
+              _measure->opts.channel = v;
               Q_EMIT parameterChanged();
             }
           },
-          [this](double * checked) {
+          [this](color_channel_type * v) {
             if ( _measure ) {
-              * checked = _measure->opts().p;
-              return true;
-            }
-            return false;
-          });
-
-  kradius_ctl =
-      add_numeric_box<int>("kradius:",
-          "",
-          [this](int v) {
-            if ( _measure && v != _measure->opts().kradius ) {
-              _measure->opts().kradius = v;
-              Q_EMIT parameterChanged();
-            }
-          },
-          [this](int * v) {
-            if ( _measure ) {
-              *v = _measure->opts().kradius;
+              *v = _measure->opts.channel;
               return true;
             }
             return false;
@@ -67,33 +48,50 @@ QLocalVarianceMeasureSettingsWidget::QLocalVarianceMeasureSettingsWidget(QWidget
       add_numeric_box<int>("dscale:",
           "",
           [this](int v) {
-            if ( _measure && v != _measure->opts().dscale ) {
-              _measure->opts().dscale = v;
+            if ( _measure && v != _measure->opts.dscale ) {
+              _measure->opts.dscale = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
             if ( _measure ) {
-              *v = _measure->opts().dscale;
+              *v = _measure->opts.dscale;
               return true;
             }
             return false;
           });
 
-  uscale_ctl =
-      add_numeric_box<int>("uscale:",
+  kradius_ctl =
+      add_numeric_box<int>("kradius:",
           "",
           [this](int v) {
-            if ( _measure && v != _measure->opts().uscale ) {
-              _measure->opts().uscale = v;
+            if ( _measure && v != _measure->opts.kradius ) {
+              _measure->opts.kradius = v;
               Q_EMIT parameterChanged();
             }
           },
           [this](int * v) {
             if ( _measure ) {
-              *v = _measure->opts().uscale;
+              *v = _measure->opts.kradius;
               return true;
             }
             return false;
           });
+
+//  uscale_ctl =
+//      add_numeric_box<int>("uscale:",
+//          "",
+//          [this](int v) {
+//            if ( _measure && v != _measure->opts.uscale ) {
+//              _measure->opts.uscale = v;
+//              Q_EMIT parameterChanged();
+//            }
+//          },
+//          [this](int * v) {
+//            if ( _measure ) {
+//              *v = _measure->opts.uscale;
+//              return true;
+//            }
+//            return false;
+//          });
 }

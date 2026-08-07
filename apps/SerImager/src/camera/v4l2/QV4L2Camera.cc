@@ -415,7 +415,7 @@ bool QV4L2Camera::device_start()
 
 void QV4L2Camera::device_stop()
 {
-  switch (cap_method_) {
+  switch (_cap_method) {
   case cap_method_read:
 //    if (v4l_type_is_capture(device.g_type())) {
 //      memset(&cmd, 0, sizeof(cmd));
@@ -439,19 +439,15 @@ void QV4L2Camera::device_stop()
 
 bool QV4L2Camera::create_queue()
 {
-  const uint devtype =
-      V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
+  const uint devtype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  const cv::Size imageSize(dstFormat.g_width(), dstFormat.g_height());
   const int num_buffers = 8;
-
-  const cv::Size imageSize(dstFormat.g_width(),
-      dstFormat.g_height());
 
   int status;
 
-  _q.init(devtype, cap_method_);
+  _q.init(devtype, _cap_method);
 
-  switch (cap_method_) {
+  switch (_cap_method) {
     case cap_method_read:
       // device_.s_priority(m_genTab->usePrio());
       /* Nothing to do. */
@@ -574,7 +570,7 @@ bool QV4L2Camera::device_recv_frame(QCameraFrame::sptr & frm)
 
   int status = 0;
 
-  switch (cap_method_) {
+  switch (_cap_method) {
 
     case cap_method_read:
       //    int s = read(m_frameData, m_capSrcFormat.g_sizeimage(0));

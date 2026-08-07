@@ -22,6 +22,7 @@
 #include <core/io/debayer.h>
 #include <core/settings/opencv_settings.h>
 #include "camera/QImagingCamera.h"
+#include "camera/QFrameQualityEstimation.h"
 #include <thread>
 #include <condition_variable>
 
@@ -58,7 +59,7 @@ public:
   QLiveDisplay(QWidget * parent = nullptr);
   ~QLiveDisplay();
 
-  QGraphicsRectShape * rectShape() const;
+  QGraphicsRectShape * roiShape() const;
   QGraphicsLineShape * lineShape() const;
   QGraphicsTargetShape * targetShape() const;
 
@@ -71,7 +72,7 @@ Q_SIGNALS:
 protected:
   friend class QLivePipelineThread;
   std::atomic_bool _canAcceptFrame {true};
-  QGraphicsRectShape * _rectShape = nullptr;
+  QGraphicsRectShape * _roiShape = nullptr;
   QGraphicsLineShape * _lineShape = nullptr;
   QGraphicsTargetShape * _targetShape = nullptr;
 };
@@ -109,6 +110,9 @@ public:
   void setDarkFrameScale(double v);
   double darkFrameScale() const;
 
+  void setFrameQualityEstimator(QFrameQualityEstimation * estimator);
+  QFrameQualityEstimation* frameQualityEstimator() const;
+
 protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldState,
       QImagingCamera::State newState);
@@ -133,6 +137,7 @@ protected:
   c_image_processing_pipeline::sptr _userPipeline;
   c_image_processing_pipeline::sptr _currentPipeline;
   QLiveDisplay * _display = nullptr;
+  QFrameQualityEstimation * _qualityEstimator = nullptr;
 
   std::atomic<DEBAYER_ALGORITHM> _debayer = DEBAYER_NN;
 

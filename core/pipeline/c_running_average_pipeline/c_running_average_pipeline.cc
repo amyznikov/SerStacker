@@ -88,6 +88,7 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, _average_options.sharpness_measure);
+      //serialize_gkurtmap_options_options(group, save, _average_options.sharpness_measure.opts);
     }
 
   }
@@ -167,7 +168,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
   ctlbind_expandable_group(ctls, "Shapness measure", "");
     //ctlbind(ctls, ctx(&S::lpg));
-    ctlbind(ctls, ctx(&S::sharpness_measure));
+    ctlbind(ctls, CTL_CONTEXT(ctx, sharpness_measure));
   ctlbind_end_group(ctls);
 }
 
@@ -249,16 +250,45 @@ bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeli
 
 std::string c_running_average_pipeline::generate_output_file_name() const
 {
+  static const auto get_current_date_time_string =
+      []() -> std::string
+      {
+        struct timespec t;
+        struct tm *tm;
+
+        int year;
+        int month;
+        int day;
+        int hour;
+        int min;
+        int sec;
+
+        clock_gettime(CLOCK_REALTIME, &t);
+        tm = localtime(&t.tv_sec);
+
+        year = tm->tm_year + 1900;
+        month = tm->tm_mon + 1;
+        day = tm->tm_mday;
+        hour = tm->tm_hour;
+        min = tm->tm_min;
+        sec = tm->tm_sec;
+        // msec = t.tv_nsec / 1000000;
+
+      return ssprintf("%0.4d%0.2d%0.2d_%0.2d%0.2d%0.2d",
+          year, month, day, hour, min, sec);
+    };
+
   std::string output_file_name_postfix = ".accumulator";
 
   std::string output_file_name = _output_options.output_file_name;
   if( output_file_name.empty() ) {
 
     output_file_name =
-        ssprintf("%s/%s%s.32F.tiff",
+        ssprintf("%s/%s%s.%s.32F.tiff",
             _output_path.c_str(),
             csequence_name(),
-            output_file_name_postfix.c_str());
+            output_file_name_postfix.c_str(),
+            get_current_date_time_string().c_str());
   }
   else {
 
@@ -283,9 +313,10 @@ std::string c_running_average_pipeline::generate_output_file_name() const
     }
 
     output_file_name =
-        ssprintf("%s/%s%s",
+        ssprintf("%s/%s.%s.32F%s",
             path.c_str(),
             name.c_str(),
+            get_current_date_time_string().c_str(),
             suffix.c_str());
   }
 
@@ -306,6 +337,7 @@ bool c_running_average_pipeline::initialize_pipeline()
   _average.clear();
   _current_image.release();
   _current_mask.release();
+  _apodizationWindow.release();
   _image_transform.reset();
   _star_extractor.clear();
   _triangle_extractor.clear();
@@ -390,6 +422,7 @@ void c_running_average_pipeline::cleanup_pipeline()
 
   _current_image.release();
   _current_mask.release();
+  _apodizationWindow.release();
 }
 
 bool c_running_average_pipeline::run_pipeline()
@@ -569,12 +602,12 @@ bool c_running_average_pipeline::process_current_frame()
 
     if( _registration_options.enable_ecc_registration ) {
 
-      if ( _average.accumulated_frames() > 7 ) {
+      if ( _average.accumulated_frames() > 50 ) {
         const double sigma = _registration_options.eccUnsharpMaskSigma;
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
           unsharp_mask(reference_image_crop, reference_mask_crop, reference_image_crop,
-              sigma, alpha);
+              sigma, alpha, 0, 1.5);
         }
       }
 
@@ -646,11 +679,37 @@ bool c_running_average_pipeline::process_current_frame()
 
 void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {
-  //  c_lpg_sharpness_measure::create_map(src, dst, _average_options.lpg);
-  c_local_variance_sharpness_measure::create_map(src, dst, _average_options.sharpness_measure);
-  if( !srcmask.empty() ) {
+//  if( _apodizationWindow.size() != src.size() ) {
+//
+//    const int B = 40;
+//    const float P = 4.0f;
+//    const float min_weight = 0.1f;
+//
+//    cv::Mat1f lut_x(1, src.cols, 1.0f);
+//    cv::Mat1f lut_y(src.rows, 1, 1.0f);
+//
+//    for( int x = 0, xmax = std::min(B, src.cols / 2); x < xmax; ++x ) {
+//      const float shaped = std::pow((float) x / B, P);
+//      const float factor = min_weight + (1.0f - min_weight) * shaped;
+//      lut_x(0, x) = lut_x(0, src.cols - 1 - x) = factor;
+//    }
+//    for( int y = 0, ymax = std::min(B, src.rows / 2); y < ymax; ++y ) {
+//      const float shaped = std::pow((float) y / B, P);
+//      const float factor = min_weight + (1.0f - min_weight) * shaped;
+//      lut_y(y, 0) = lut_y(src.rows - 1 - y, 0) = factor;
+//    }
+//
+//    _apodizationWindow = lut_y * lut_x;
+//  }
+
+  //c_local_variance_sharpness_measure::create_map(src, dst, _average_options.sharpness_measure);
+  //const double Q = _average_options.sharpness_measure.compute_map(src, dst)[0];
+  compute_local_variance_map(src, _average_options.sharpness_measure, dst);
+  if ( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);
   }
+  //cv::multiply(dst, _apodizationWindow, dst);
+  //CF_DEBUG("Q=%g", Q);
 }
 
 

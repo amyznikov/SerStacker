@@ -11,8 +11,9 @@
 
 #include "QMeasure.h"
 
-class QMeasureMeanValue:
-    public QMeasure
+///////////////////////////////////////////////////////////////////////////////////////
+
+class QMeasureMeanValue: public QMeasure
 {
 public:
   typedef QMeasureMeanValue ThisClass;
@@ -35,13 +36,13 @@ public:
   QMeanValueMeasureSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-    //averageColorChannels_ctl->setEnabled(false);
     updateControls();
   }
 };
 
-class QMeasureStdevValue:
-    public QMeasure
+///////////////////////////////////////////////////////////////////////////////////////
+
+class QMeasureStdevValue: public QMeasure
 {
 public:
   typedef QMeasureStdevValue ThisClass;
@@ -65,7 +66,34 @@ public:
   QStdevValueMeasureSettingsWidget(QWidget * parent = nullptr) :
     Base(parent)
   {
-    //averageColorChannels_ctl->setEnabled(false);
+    updateControls();
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////
+class QMeasureSum: public QMeasure
+{
+public:
+  typedef QMeasureSum ThisClass;
+  typedef QMeasure Base;
+
+  QMeasureSum();
+
+  QMeasureSettingsWidget* createSettingsWidget(QWidget * parent) const final;
+
+  int compute(const cv::Mat & image, const cv::Mat & mask, cv::Scalar * output_value) const final;
+};
+
+class QMeasureSumSettingsWidget :
+    public QMeasureSettingsWidgetTemplate<QMeasureMeanValue>
+{
+public:
+  typedef QMeasureSumSettingsWidget ThisClass;
+  typedef QMeasureSettingsWidgetTemplate<QMeasureType> Base;
+
+  QMeasureSumSettingsWidget(QWidget * parent = nullptr) :
+    Base(parent)
+  {
     updateControls();
   }
 };

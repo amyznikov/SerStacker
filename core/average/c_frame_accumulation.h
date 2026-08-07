@@ -283,10 +283,8 @@ protected:
   cv::Mat1f _counter;
   cv::Rect _last_bbox;
   int _accumulated_frames = 0;
-  int _target_x = 0;
-  int _target_y = 0;
 
-  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4
+  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LANCZOS4; // cv::INTER_LINEAR; //
   cv::Size _canvasSize;
 };
 

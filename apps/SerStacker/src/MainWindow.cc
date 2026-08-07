@@ -1229,13 +1229,17 @@ void MainWindow::updateMeasurements()
 {
   updateMeasureChannels();
 
-  if( !QMeasureProvider::requested_measures().empty() && is_visible(imageView) && imageView->roiShape()->isVisible() ) {
+  if( !QMeasureProvider::requested_measures().empty() && is_visible(imageView) ) {
 
     QImageViewer::current_image_lock lock(imageView);
 
     if ( !imageView->currentImage().empty() ) {
 
       QList<QMeasureProvider::MeasuredFrame> measuredFrames;
+
+      const QRect rc = imageView->roiShape()->isVisible() ?
+          imageView->roiShape()->iSceneRect() :
+          QRect(0, 0, imageView->currentImage().cols, imageView->currentImage().rows);
 
       if (true) {
         QMeasureProvider::MeasuredFrame frame;
@@ -1244,7 +1248,7 @@ void MainWindow::updateMeasurements()
             QMeasureProvider::compute(&frame,
                 imageView->currentImage(),
                 imageView->currentMask(),
-                imageView->roiShape()->iSceneRect());
+                rc);
 
         if ( fOK ) {
           measuredFrames.append(std::move(frame));
@@ -1268,9 +1272,7 @@ void MainWindow::updateMeasurements()
 
               QMeasureProvider::MeasuredFrame frame;
 
-              const bool fOK = QMeasureProvider::compute(&frame, image, mask,
-                  imageView->roiShape()->iSceneRect());
-
+              const bool fOK = QMeasureProvider::compute(&frame, image, mask, rc);
               if ( fOK ) {
                 frame.dataChannel = displayName;
                 measuredFrames.append(std::move(frame));

@@ -38,7 +38,7 @@ void setupControls(QSettingsWidgetType * _this, const c_ctlist<RootObjectType> &
 
   for ( const auto & c : controls ) {
 
-    using  CtlType = typename c_ctlbind<RootObjectType>::CtlType;
+    using CtlType = typename c_ctlbind<RootObjectType>::CtlType;
 
     switch(c.ctype) {
       ////////////////////////////////////////////////////////////////////////

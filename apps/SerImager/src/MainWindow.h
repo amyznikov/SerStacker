@@ -76,6 +76,7 @@ protected:
   QLivePipelineThread * _liveThread = nullptr;
   QLiveDisplay * _liveDisplay = nullptr;
   QCameraWriter _cameraWriter;
+  QFrameQualityEstimation _frameQualityEstimator;
 
   QImagingCameraControlsWidget * cameraControls_ctl = nullptr;
   QImagingCameraControlsDock * _cameraControlsDock = nullptr;

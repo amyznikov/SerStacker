@@ -746,9 +746,7 @@ void QCameraWriter::writerThreadProc()
 
   c_unique_lock lock(_mtx);
 
-  QImagingCamera::sptr camera =
-      this->_camera;
-
+  QImagingCamera::sptr camera = this->_camera;
   if( !camera ) {
     CF_ERROR("No camera");
     setState(State::Idle);
@@ -794,16 +792,11 @@ void QCameraWriter::writerThreadProc()
 
   setState(State::Active);
 
-  QImagingCamera *c =
-      camera.get();
-
-  std::condition_variable_any &condvar =
-      c->condvar();
-
+  QImagingCamera *c = camera.get();
+  std::condition_variable_any &condvar = c->condvar();
 
   const auto wakeup_condition =
       [this, c]() -> bool {
-
         if ( _current_state != State::Active ) {
           return true;
         }
@@ -823,16 +816,13 @@ void QCameraWriter::writerThreadProc()
 
     }
 
-
-    c_video_frame_writer *writer =
-        nullptr;
+    c_video_frame_writer *writer = nullptr;
 
     _last_index = -1;
     _num_saved_frames = 0;
     _num_dropped_frames = 0;
 
-    auto start_time =
-        std::chrono::system_clock::now();
+    auto start_time = std::chrono::system_clock::now();
 
     std::chrono::system_clock::time_point start_ts, last_ts;
     //double start_ts = 0;
@@ -846,11 +836,8 @@ void QCameraWriter::writerThreadProc()
             _capture_limits.value :
             -1;
 
-    const std::string camera_name =
-        camera->name().toStdString();
-
-    const std::string camera_parameters =
-        camera->parameters().toStdString();
+    const std::string camera_name = camera->name().toStdString();
+    const std::string camera_parameters = camera->parameters().toStdString();
 
     Q_EMIT statusUpdate();
 
@@ -858,27 +845,21 @@ void QCameraWriter::writerThreadProc()
     QString captureStartTime;
     QString captureEndTime;
 
-
     while (_current_state == State::Active) {
 
       lock.unlock();
 
-      QImagingCamera::shared_lock slock(
-          camera->mutex());
+      QImagingCamera::shared_lock slock(camera->mutex());
 
-      const auto now =
-          std::chrono::system_clock::now();
+      const auto now = std::chrono::system_clock::now();
 
       if( std::chrono::duration_cast<std::chrono::seconds>(now - start_time) >= std::chrono::seconds(1) ) {
         start_time = now;
         Q_EMIT statusUpdate();
       }
 
-      const auto timeout =
-          std::chrono::milliseconds(100);
-
-      condvar.wait_until(slock, now + timeout,
-          wakeup_condition);
+      const auto timeout = std::chrono::milliseconds(100);
+      condvar.wait_until(slock, now + timeout, wakeup_condition);
 
       lock.lock();
 
@@ -890,8 +871,7 @@ void QCameraWriter::writerThreadProc()
         break;
       }
 
-      const std::deque<QCameraFrame::sptr> &deque =
-          c->deque();
+      const std::deque<QCameraFrame::sptr> &deque = c->deque();
 
       bool fok = true;
 
@@ -907,9 +887,7 @@ void QCameraWriter::writerThreadProc()
 
             if( !writer ) {
 
-              captureStartTime =
-                  getHumanReadableCurrentDateTimeString();
-
+              captureStartTime = getHumanReadableCurrentDateTimeString();
               if( _output_directoty.isEmpty() ) {
                 _output_directoty =
                     "./capture";
@@ -952,15 +930,10 @@ void QCameraWriter::writerThreadProc()
               break;
             }
 
-            _num_dropped_frames =
-                _last_index - start_index - _num_saved_frames;
-
+            _num_dropped_frames = _last_index - start_index - _num_saved_frames;
             ++_num_saved_frames;
-
-            _capture_duration =
-                std::chrono::duration_cast<std::chrono::seconds>(last_ts - start_ts).count();
+            _capture_duration = std::chrono::duration_cast<std::chrono::seconds>(last_ts - start_ts).count();
                 //last_ts - start_ts;
-
           }
         }
       }

@@ -23,11 +23,10 @@ public:
 
   enum DISPLAY {
     DISPLAY_SRC,
-    DISPLAY_RESTORED_IMAGE,
-    DISPLAY_FILL_SRC_VOIDS,
-    DISPLAY_SRC_SPECTRUM,
-    DISPLAY_RADIAL_PROFILE,
-    DISPLAY_FILTER,
+    DISPLAY_G0,
+//    DISPLAY_DIFF,
+//    DISPLAY_SUMM,
+//    DISPLAY_RATIO,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -35,11 +34,12 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  DISPLAY _display = DISPLAY_SRC_SPECTRUM;
+  DISPLAY _display = DISPLAY_SRC;
   enum color_channel_type _intensity_channel = color_channel_gray;
-  int _maxH = 64;
-  int _samplesPerH = 50000;
-  std::string _debug_file_name = "/home/projects/temp/Variogram.txt";
+  int _l0 = 1;
+  int _l2 = 6;
+  int _kradius0 = 3;
+  int _kradius1 = 6;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <core/io/debayer.h>
 #include <memory>
+#include <atomic>
 
 namespace serimager {
 
@@ -22,6 +23,9 @@ class QCameraFrame
 public:
   typedef QCameraFrame ThisClass;
   typedef std::shared_ptr<ThisClass> sptr;
+
+  static constexpr float QUALITY_UNKNOWN = -1.0f;
+  static constexpr float QUALITY_ESTIMATING = -2.0f;
 
   virtual ~QCameraFrame() = default;
 
@@ -88,6 +92,24 @@ public:
     return _size;
   }
 
+
+  float quality() const
+  {
+    return _quality.load(std::memory_order_relaxed);
+  }
+
+  void set_quality(float q)
+  {
+    _quality.store(q, std::memory_order_release);
+  }
+
+  bool try_start_quality_etimate()
+  {
+    float expected = QUALITY_UNKNOWN;
+    return _quality.compare_exchange_strong(expected, QUALITY_ESTIMATING,
+        std::memory_order_acquire, std::memory_order_relaxed);
+  }
+
 protected:
   QCameraFrame(const cv::Size & imageSize, int cvType, enum COLORID colorid, int bpp,
       void * data = nullptr, size_t step = cv::Mat::AUTO_STEP) :
@@ -119,6 +141,11 @@ protected:
   int _index = 0;
   enum COLORID _colorid = COLORID_UNKNOWN;
   int _bpp = 0;
+
+  //   -1.0f = Not Calculated (UNKNOWN),
+  //   -2.0f = Calculating (ESTIMATING)
+  // >= 0.0f = Valid quality
+  std::atomic<float> _quality {QUALITY_UNKNOWN};
 };
 
 } /* namespace serimager */

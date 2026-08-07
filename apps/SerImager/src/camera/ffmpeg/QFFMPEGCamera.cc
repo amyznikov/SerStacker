@@ -75,9 +75,7 @@ QString QFFMPEGCamera::parameters() const
 
 bool QFFMPEGCamera::is_same_camera(const QImagingCamera::sptr & rhs) const
 {
-  const ThisClass *rhsp =
-      dynamic_cast<const ThisClass*>(rhs.get());
-
+  const ThisClass *rhsp = dynamic_cast<const ThisClass*>(rhs.get());
   return rhsp == this;
 }
 
@@ -94,13 +92,10 @@ bool QFFMPEGCamera::device_is_connected() const
 bool QFFMPEGCamera::device_connect()
 {
   if( !_ffmpeg.is_open() ) {
-
-    bool fOk =
-        _ffmpeg.open(_url.toStdString(),
-            _opts.toStdString());
+    const bool fOk = _ffmpeg.open(_url.toStdString(), _opts.toStdString());
 
     if( !fOk ) {
-      CF_ERROR("ffmpeg_.open() fails");
+      CF_ERROR("ffmpeg.open() fails");
       return false;
     }
   }

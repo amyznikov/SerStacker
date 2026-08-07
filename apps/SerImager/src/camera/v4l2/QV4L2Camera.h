@@ -90,7 +90,7 @@ protected:
     cap_method_userptr = V4L2_MEMORY_USERPTR,
     cap_method_overlay = V4L2_MEMORY_OVERLAY,
     cap_method_dmabuf = V4L2_MEMORY_DMABUF,
-  } cap_method_ = cap_method_mmap;
+  } _cap_method = cap_method_mmap;
 
 };
 

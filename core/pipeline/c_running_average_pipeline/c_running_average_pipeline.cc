@@ -216,7 +216,7 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
-  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1, true);
+  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1);
 }
 
 bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
@@ -489,9 +489,114 @@ bool c_running_average_pipeline::run_pipeline()
   return fOK;
 }
 
+static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
+    const cv::Rect & last_canvas_bbox,
+    const cv::Size & current_image_size,
+    const cv::Size & global_canvas_size)
+{
+  if( transform->invertible() ) {
+
+    const cv::Mat1f inv_p = transform->invert(transform->parameters());
+
+    std::vector<cv::Point2f> current_corners = {
+        cv::Point2f(0.f, 0.f),
+        cv::Point2f(static_cast<float>(current_image_size.width), 0.f),
+        cv::Point2f(static_cast<float>(current_image_size.width), static_cast<float>(current_image_size.height)),
+        cv::Point2f(0.f, static_cast<float>(current_image_size.height))
+    };
+
+    std::vector<cv::Point2f> ref_corners_local;
+
+    if( transform->remap(inv_p, current_corners, ref_corners_local) && ref_corners_local.size() == 4 ) {
+
+      cv::Point2f global_offset = last_canvas_bbox.tl();
+      std::vector<cv::Point2f> ref_corners_global(4);
+      for( size_t i = 0; i < 4; ++i ) {
+        ref_corners_global[i] = ref_corners_local[i] + global_offset;
+      }
+
+      cv::RotatedRect rbox = cv::minAreaRect(ref_corners_global);
+      cv::Rect new_global_bbox = rbox.boundingRect();
+      return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+    }
+  }
+
+  // FALLBACK for non-invertibla transformations
+  int margin = 32;
+  cv::Rect test_rect = cv::Rect(
+      last_canvas_bbox.x - margin,
+      last_canvas_bbox.y - margin,
+      last_canvas_bbox.width + 2 * margin,
+      last_canvas_bbox.height + 2 * margin
+          ) & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+
+  if( test_rect.empty() ) {
+    return last_canvas_bbox;
+  }
+
+  cv::Mat2f test_rmap;
+  transform->create_remap(test_rect.size(), test_rmap);
+
+  int min_x = test_rect.width, max_x = 0;
+  int min_y = test_rect.height, max_y = 0;
+  bool found_any = false;
+  const int step = 4;
+
+  for( int y = 0; y < test_rmap.rows; y += step ) {
+    const cv::Point2f * row_ptr = test_rmap.ptr<cv::Point2f>(y);
+    for( int x = 0; x < test_rmap.cols; x += step ) {
+      cv::Point2f src_pt = row_ptr[x];
+      if( src_pt.x >= 0 && src_pt.x < current_image_size.width &&
+          src_pt.y >= 0 && src_pt.y < current_image_size.height ) {
+        if( x < min_x ) {
+          min_x = x;
+        }
+        if( x > max_x ) {
+          max_x = x;
+        }
+        if( y < min_y ) {
+          min_y = y;
+        }
+        if( y > max_y ) {
+          max_y = y;
+        }
+        found_any = true;
+      }
+    }
+  }
+
+  if( !found_any ) {
+    return last_canvas_bbox;
+  }
+
+  min_x = std::max(0, min_x - step);
+  min_y = std::max(0, min_y - step);
+  max_x = std::min(test_rect.width - 1, max_x + step);
+  max_y = std::min(test_rect.height - 1, max_y + step);
+
+  cv::Rect new_global_bbox(
+      test_rect.x + min_x,
+      test_rect.y + min_y,
+      max_x - min_x + 1,
+      max_y - min_y + 1
+          );
+
+  return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
+}
+
 bool c_running_average_pipeline::process_current_frame()
 {
-  CF_DEBUG("ENTER");
+//  CF_DEBUG("ENTER");
+
+  static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
+    if( src.channels() != 1 ) {
+      cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
+    }
+    else if ( &src != &dst ) {
+      dst = src;
+    }
+  };
+
   bool has_updates = true;
 
   const bool enable_registration =
@@ -500,79 +605,50 @@ bool c_running_average_pipeline::process_current_frame()
           _registration_options.enable_eccflow_registration;
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
-
+    // Very first frame
     lock_guard lock(mutex());
-
-    if ( !_average.add(_current_image, _current_mask, _average_options.running_weight) ) {
+    if ( !_average.add(_current_image, _current_mask, cv::Mat2f(), cv::Rect()) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
   }
   else {
-
-    // CF_DEBUG("CP");
-
-    static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
-      if( src.channels() != 1 ) {
-        cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
-      }
-      else if ( &src != &dst ) {
-        dst = src;
-      }
-    };
-
-    cv::Mat current_image, current_mask;//, reference_image, reference_mask;
-    cv::Mat reference_image_crop, reference_mask_crop;
+    // Not a first frame
+    cv::Mat current_image, current_mask, reference_image, reference_mask;
     cv::Mat weights;
     cv::Mat2f rmap;
 
-    CF_DEBUG("CP");
-    cv::Rect bbox = _average.last_bbox();
-    if ( !_average.compute(reference_image_crop, reference_mask_crop, 1, -1, false) ) {
+    if ( !_average.compute(reference_image, reference_mask, 1, -1, _average.last_bbox()) ) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
-    CF_DEBUG("CP");
 
-//    if( _output_options.save_progress_video ) {
-//      if( !write_progress_video(reference_image_crop, reference_mask_crop) ) {
-//        CF_ERROR("write_progress_video() fails");
-//        return false;
-//      }
-//    }
-
+    const cv::Rect bbox(0, 0, reference_image.cols, reference_image.rows);
     if( bbox.empty() ) {
-      bbox = cv::Rect(0, 0, reference_image_crop.cols, reference_image_crop.rows);
-    }
-    else {
-      bbox.width = _current_image.cols;
-      bbox.height = _current_image.rows;
+      CF_ERROR("BAD Bounding Box from _average.compute()");
+      return false;
     }
 
-//    reference_image_crop = reference_image(bbox);
-//    reference_mask_crop = reference_mask(bbox);
-    mkgrayscale(reference_image_crop, reference_image_crop);
+    mkgrayscale(reference_image, reference_image);
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
 
     _image_transform->reset();
 
-    CF_DEBUG("CP");
     if( _registration_options.enable_star_registration ) {
 
       std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
       cv::Mat current_descriptors, reference_descriptors;
       std::vector<cv::DMatch> triangle_matches;
 
-      _star_extractor.detect(reference_image_crop, reference_keypoints, reference_mask_crop);
+      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
       if ( reference_keypoints.size() < 3 ) {
         CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", reference_keypoints.size());
         return !canceled();
       }
 
-      _triangle_extractor.compute(reference_image_crop, reference_keypoints, reference_descriptors);
+      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
       _triangle_matcher.train(reference_keypoints, reference_descriptors);
-
 
       _star_extractor.detect(current_image, current_keypoints, current_mask);
       if ( reference_keypoints.size() < 3 ) {
@@ -598,77 +674,54 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
-    CF_DEBUG("CP");
     if( _registration_options.enable_ecc_registration ) {
 
       if ( _average.accumulated_frames() > 50 ) {
         const double sigma = _registration_options.eccUnsharpMaskSigma;
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
-          CF_DEBUG("BegUSM");
-          unsharp_mask(reference_image_crop, reference_mask_crop, reference_image_crop,
+          unsharp_mask(reference_image, reference_mask, reference_image,
               sigma, alpha, 0, 1.5);
-          CF_DEBUG("EndUSM");
         }
       }
 
-      _ecch.set_reference_image(reference_image_crop, reference_mask_crop);
+      /* This will compute _image_transform parameters as it has the active pointer to _image_transform set */
+      _ecch.set_reference_image(reference_image, reference_mask);
       if( !_ecch.align(current_image, current_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
       }
-
-      //      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
-    CF_DEBUG("CP");
+    const cv::Rect newCanvasBBox =
+        computeNewCanvasBBox(_image_transform,
+            _average.last_bbox(),
+            _current_image.size(),
+            _average.accumulator_size());
 
-
-    if( !_registration_options.enable_eccflow_registration ) {
-      _image_transform->set_translation(_image_transform->translation() - cv::Vec2f(bbox.x, bbox.y));
-      _image_transform->create_remap(_average.accumulator_size(), rmap);
-    }
-    else {
-      cv::Mat2f temp_rmap;
-      _image_transform->create_remap(current_image.size(), temp_rmap);
-
-//      CF_DEBUG("ECCFLOW: reference_image_crop=%dx%d", reference_image_crop.cols, reference_image_crop.rows);
-//      CF_DEBUG("ECCFLOW: reference_mask_crop=%dx%d", reference_mask_crop.cols, reference_mask_crop.rows);
-//      CF_DEBUG("ECCFLOW: current_image=%dx%d", current_image.cols, current_image.rows);
-//      CF_DEBUG("ECCFLOW: current_mask=%dx%d", current_mask.cols, current_mask.rows);
-
-      _eccflow.set_reference_image(reference_image_crop, reference_mask_crop);
-      if( !_eccflow.compute(current_image, temp_rmap, current_mask) ) {
-        CF_ERROR("_eccflow.compute() fails");
-        return false;
-      }
-
-//      CF_DEBUG("ECCFLOW OK");
-
-      rmap.create(_average.accumulator_size());
-      rmap.setTo(cv::Vec2f::all(-1));
-      temp_rmap.copyTo(rmap(bbox));
+    if( newCanvasBBox.empty() ) {
+      CF_ERROR("BAD Bounding Box from computeNewCanvasBBox()");
+      return false;
     }
 
+    const cv::Point old_global_offset = _average.last_bbox().tl();
+    const cv::Vec2f delta_T = cv::Vec2f(newCanvasBBox.x - old_global_offset.x,
+        newCanvasBBox.y - old_global_offset.y);
 
-    CF_DEBUG("CP");
+    _image_transform->set_translation(_image_transform->translation() + delta_T);
+    _image_transform->create_remap(newCanvasBBox.size(), rmap);
+
     compute_weights(_current_image, _current_mask, weights);
-    CF_DEBUG("CP");
+    const cv::Mat & w = weights.empty() ? _current_mask : weights;
 
-    if ( true ) {
-      const cv::Mat w = weights.empty() ? _current_mask : weights;
-
-      lock_guard lock(mutex());
-      CF_DEBUG("CP");
-      if ( !_average.add(_current_image, w, _average_options.running_weight, &rmap) ) {
-        CF_ERROR("average_add() fails");
-        return false;
-      }
-      CF_DEBUG("CP");
+    lock_guard lock(mutex());
+    if ( !_average.add(_current_image, w, rmap, newCanvasBBox) ) {
+      CF_ERROR("average_add() fails");
+      return false;
     }
   }
 
-  CF_DEBUG("LEAVE");
+//  CF_DEBUG("LEAVE");
   return true;
 }
 
@@ -698,12 +751,13 @@ void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::
 //    _apodizationWindow = lut_y * lut_x;
 //  }
 
-  compute_local_variance_map(src, _average_options.sharpness_measure, dst);
-  if ( !srcmask.empty() ) {
-    dst.setTo(0, ~srcmask);
+  if ( _average_options.sharpness_measure.kradius > 0 ) {
+    compute_local_variance_map(src, _average_options.sharpness_measure, dst);
+    if ( !srcmask.empty() ) {
+      dst.setTo(0, ~srcmask);
+    }
+    //cv::multiply(dst, _apodizationWindow, dst);
   }
-  //cv::multiply(dst, _apodizationWindow, dst);
-  //CF_DEBUG("Q=%g", Q);
 }
 
 

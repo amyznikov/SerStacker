@@ -54,8 +54,12 @@ public:
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
+  const cv::Mat1f & parameters() const
+  {
+    return _parameters;
+  }
 
-  cv::Mat1f parameters() const
+  cv::Mat1f clone_parameters() const
   {
     return _parameters.clone();
   }
@@ -87,7 +91,12 @@ public:
     return false;
   }
 
-  virtual cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+  virtual cv::Mat1f invert_and_compose(const cv::Mat1f & /*p*/, const cv::Mat1f & /*dp*/) const
+  {
+    return cv::Mat1f();
+  }
+
+  virtual cv::Mat1f invert(const cv::Mat1f & /*p*/) const
   {
     return cv::Mat1f();
   }
@@ -133,6 +142,11 @@ public:
   bool invertible() const final
   {
     return true;
+  }
+
+  cv::Mat1f invert(const cv::Mat1f & p) const final
+  {
+    return -p;
   }
 
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
@@ -204,6 +218,7 @@ public:
     return true;
   }
 
+  cv::Mat1f invert(const cv::Mat1f & p) const final;
   cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const;
 
 protected:
@@ -274,10 +289,20 @@ public:
     return true;
   }
 
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
+  cv::Mat1f invert(const cv::Mat1f & p) const final
+  {
+    cv::Matx23f a;
+    cv::invertAffineTransform(matrix(p), a);
+    return cv::Mat1f(a, true).reshape(1, 6);
+  }
 
-protected:
-  mutable cv::Mat1f xx, yy;
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
+  {
+    cv::Matx23f a;
+    cv::invertAffineTransform(matrix(p), a);
+    cv::invertAffineTransform(a + matrix(dp), a);
+    return cv::Mat1f(a, true).reshape(1, 6);
+  }
 };
 
 
@@ -330,7 +355,20 @@ public:
     return true;
   }
 
-  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final;
+  cv::Mat1f invert(const cv::Mat1f & p) const final
+  {
+    cv::Matx33f aii = matrix(p).inv();
+    aii = aii * (1.0f / aii(2, 2));
+    return cv::Mat1f(aii, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
+  }
+
+  cv::Mat1f invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const final
+  {
+    cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
+    aii = aii * (1.0f / aii(2, 2));
+    return cv::Mat1f(aii, true).reshape(1, 9)(cv::Rect(0, 0, 1, 8));
+  }
+
 
 protected:
   void update_parameters();

@@ -137,10 +137,10 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     return false;
   }
 
-  CF_DEBUG("image: %dx%d channels=%d depth=%d  colorid=%d (%s) input_sequence->bpp()=%d",
-      output_image.cols, output_image.rows, output_image.channels(), output_image.depth(),
-      int(input_sequence->colorid()), toCString(input_sequence->colorid()),
-      input_sequence->bpp());
+//  CF_DEBUG("image: %dx%d channels=%d depth=%d  colorid=%d (%s) input_sequence->bpp()=%d",
+//      output_image.cols, output_image.rows, output_image.channels(), output_image.depth(),
+//      int(input_sequence->colorid()), toCString(input_sequence->colorid()),
+//      input_sequence->bpp());
 
   if( !is_external_master_frame ) {
 

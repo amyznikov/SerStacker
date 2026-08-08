@@ -266,25 +266,29 @@ public:
     return _last_bbox;
   }
 
-  static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
-
-  bool add(cv::InputArray current_image, cv::InputArray current_mask,  double w, const cv::Mat2f * rmap = nullptr);
+  /*
+   * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
+   * */
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
-      bool return_full_canvas = true) const;
+      const cv::Rect & rbbox = cv::Rect()) const;
 
   void clear();
 
+  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+      const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox);
+
+  static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
+
+
 protected:
-  //void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
-  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap, cv::Mat1b & full_mask);
+  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap);
 
 protected:
   cv::Mat _accumulator;
   cv::Mat1f _counter;
   cv::Rect _last_bbox;
   int _accumulated_frames = 0;
-
-  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LANCZOS4; // cv::INTER_LINEAR; //
+  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4; //
   cv::Size _canvasSize;
 };
 

@@ -158,6 +158,58 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
   return true;
 }
 
+//bool c_translation_image_transform::create_remap_fixed(const cv::Vec2f & T, const cv::Size & size,
+//                                                       cv::Mat & map1, cv::Mat & map2) const
+//{
+//  // Инициализируем матрицы правильных типов под фиксированную точку
+//  map1.create(size, CV_16SC2);
+//  map2.create(size, CV_16UC1);
+//
+//  // Константа дискретизации субпиксельной сетки OpenCV для интерполяции
+//  const int SCALE = 32;
+//
+//  // Заранее вычисляем целую и дробную часть трансляции T
+//  // t0_int, t1_int — базовое смещение в целых пикселях
+//  int t0_int = static_cast<int>(std::floor(T[0]));
+//  int t1_int = static_cast<int>(std::floor(T[1]));
+//
+//  // Находим субпиксельный остаток от 0.0 до 1.0 и масштабируем его в диапазон [0, 32]
+//  float t0_frac = T[0] - t0_int;
+//  float t1_frac = T[1] - t1_int;
+//  int t0_scaled = static_cast<int>(std::round(t0_frac * SCALE));
+//  int t1_scaled = static_cast<int>(std::round(t1_frac * SCALE));
+//
+//  // Корректируем, если округление вылетело за границу SCALE
+//  if (t0_scaled >= SCALE) { t0_scaled -= SCALE; t0_int += 1; }
+//  if (t1_scaled >= SCALE) { t1_scaled -= SCALE; t1_int += 1; }
+//
+//  parallel_for(0, map1.rows, [=, &map1, &map2](const auto & range) {
+//    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+//
+//      // Указатель на строку целых координат (X, Y)
+//      cv::Vec2s * __restrict m1_ptr = map1.ptr<cv::Vec2s>(y);
+//      // Указатель на строку субпиксельной таблицы интерполяции
+//      uint16_t * __restrict m2_ptr = map2.ptr<uint16_t>(y);
+//
+//      // Вычисляем базовую целую координату Y и субпиксельный индекс по Y
+//      int cur_y_int = y + t1_int;
+//      int sub_y_idx = t1_scaled;
+//
+//      for( int x = 0; x < map1.cols; ++x ) {
+//        // 1. Записываем целую часть координат для текущего пикселя
+//        m1_ptr[x][0] = static_cast<short>(x + t0_int);
+//        m1_ptr[x][1] = static_cast<short>(cur_y_int);
+//
+//        // 2. Записываем комбинированный субпиксельный индекс для фильтра интерполяции OpenCV
+//        // Формула: (sub_y * 32) + sub_x
+//        m2_ptr[x] = static_cast<uint16_t>((sub_y_idx << 5) + t0_scaled);
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
+
 bool c_translation_image_transform::remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts,
     std::vector<cv::Point2f> & cpts) const
 {
@@ -205,12 +257,12 @@ c_euclidean_image_transform::c_euclidean_image_transform(float Tx, float Ty, flo
 
 c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & T, float angle, float scale)
 {
-  set_parameters(T[0], T[0], angle, scale, 0, 0);
+  set_parameters(T[0], T[1], angle, scale, 0, 0);
 }
 
 c_euclidean_image_transform::c_euclidean_image_transform(const cv::Vec2f & C, const cv::Vec2f & T, float angle, float scale)
 {
-  set_parameters(T[0], T[0], angle, scale, C[0], C[1]);
+  set_parameters(T[0], T[1], angle, scale, C[0], C[1]);
 }
 
 void c_euclidean_image_transform::reset()
@@ -595,9 +647,75 @@ bool c_euclidean_image_transform::create_steepest_descent_images(const cv::Mat1f
   return true;
 }
 
+cv::Mat1f c_euclidean_image_transform::invert(const cv::Mat1f & p) const
+{
+  // Current parameters p
+  float Tx, Ty, angle, scale, Cx, Cy;
+  if( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
+    CF_ERROR("c_euclidean_image_transform::invert: get_parameters(p) failed");
+    return cv::Mat1f();
+  }
+
+  // Collect the direct transformation matrix Mp
+  const float sa = std::sin(angle);
+  const float ca = std::cos(angle);
+
+  cv::Matx33f Mp = cv::Matx33f::eye();
+  Mp(0, 0) = scale * ca;
+  Mp(0, 1) = -scale * sa;
+  Mp(0, 2) = Tx - scale * ca * Cx + scale * sa * Cy;
+
+  Mp(1, 0) = scale * sa;
+  Mp(1, 1) = scale * ca;
+  Mp(1, 2) = Ty - scale * sa * Cx - scale * ca * Cy;
+
+  // Convert matrix Mp to 2x3 affine and invert
+  const cv::Matx23f Mp_2x3(Mp(0, 0), Mp(0, 1), Mp(0, 2), Mp(1, 0), Mp(1, 1), Mp(1, 2));
+  cv::Matx23f M_res_2x3;
+  cv::invertAffineTransform(Mp_2x3, M_res_2x3);
+
+  // Back to a convenient 3x3 matrix to repeat the extraction logic
+  cv::Matx33f M_res = cv::Matx33f::eye();
+  for( int r = 0; r < 2; ++r ) {
+    for( int c = 0; c < 3; ++c ) {
+      M_res(r, c) = M_res_2x3(r, c);
+    }
+  }
+
+  // Extraction of inverted parameters
+  const float m00 = M_res(0, 0);
+  const float m10 = M_res(1, 0);
+
+  const float res_scale = _fix_scale ? scale : std::sqrt(m00 * m00 + m10 * m10);
+  const float res_angle = _fix_rotation ? angle : std::atan2(m10, m00);
+
+  const float res_ca = std::cos(res_angle);
+  const float res_sa = std::sin(res_angle);
+
+  const float res_Tx = _fix_translation ? Tx : M_res(0, 2) + res_scale * res_ca * Cx - res_scale * res_sa * Cy;
+  const float res_Ty = _fix_translation ? Ty : M_res(1, 2) + res_scale * res_sa * Cx + res_scale * res_ca * Cy;
+
+  const int np = num_adjustable_parameters();
+  cv::Mat1f res_p(np, 1);
+  int ip = 0;
+
+  if( !_fix_translation ) {
+    res_p(ip++, 0) = res_Tx;
+    res_p(ip++, 0) = res_Ty;
+  }
+  if( !_fix_rotation ) {
+    res_p(ip++, 0) = res_angle;
+  }
+  if( !_fix_scale ) {
+    res_p(ip++, 0) = res_scale;
+  }
+
+  return res_p;
+}
+
 cv::Mat1f c_euclidean_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
 {
-  // current parameters p
+  // Current parameters p
   float Tx, Ty, angle, scale, Cx, Cy;
   if( !get_parameters(p, &Tx, &Ty, &angle, &scale, &Cx, &Cy) ) {
     CF_ERROR("invert_and_compose: get_parameters(p) failed");
@@ -785,17 +903,6 @@ double c_affine_image_transform::eps(const cv::Mat1f & dp, const cv::Size & imag
   return eps;
 }
 
-cv::Mat1f c_affine_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
-{
-  cv::Matx23f a;
-
-  cv::invertAffineTransform(matrix(p), a);
-  cv::invertAffineTransform(a + matrix(dp), a);
-
-  return cv::Mat1f(6, 1, (float*) a.val).clone();
-}
-
-
 bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Size & size, cv::Mat2f & rmap) const
 {
   INSTRUMENT_REGION("");
@@ -936,14 +1043,38 @@ void c_homography_image_transform::update_parameters()
 
 void c_homography_image_transform::set_translation(const cv::Vec2f & v)
 {
-  _matrix(0, 2) = v(0);
-  _matrix(1, 2) = v(1);
+
+  /*
+  * Image homography transform:
+  * w  =  (x * a20 + y * a21 + a22)
+  * x' =  (x * a00 + y * a01 + a02) / w
+  * y' =  (x * a10 + y * a11 + a12) / w
+  *
+  * x' =  x * a00 / w + y * a01 / w + a02 / w
+  * y' =  x * a10 / w + y * a11 / w + a12 / w
+  *
+  * tx = a02 / a22
+  * ty = a12 / a22
+  *
+  * a02 = tx * a22
+  * a12 = ty * a22
+  */
+
+  cv::Matx33f & a = _matrix;
+
+//  a(0, 2) = v(0);
+//  a(1, 2) = v(1);
+
+  a(0, 2) = v(0) * a(2,2);
+  a(1, 2) = v(1) * a(2,2);
   update_parameters();
 }
 
 cv::Vec2f c_homography_image_transform::translation() const
 {
-  return cv::Vec2f(_matrix(0, 2), _matrix(1, 2));
+  const cv::Matx33f & a = _matrix;
+  //  return cv::Vec2f(a(0, 2), a(1, 2));
+  return cv::Vec2f(a(0, 2) / a(2, 2), a(1, 2) / a(2, 2));
 }
 
 
@@ -1000,11 +1131,11 @@ void c_homography_image_transform::scale_transfrom(double factor)
   update_parameters();
 }
 
-cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
-{
-  cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
-  return cv::Mat1f(8, 1, (float*)aii.val).clone();
-}
+//cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
+//{
+//  cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
+//  return cv::Mat1f(8, 1, (float*)aii.val).clone();
+//}
 
 
 double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
@@ -1054,11 +1185,11 @@ bool c_homography_image_transform::remap(const cv::Matx33f & a, const std::vecto
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-    auto & cp = cpts[i];
 
     const float w = 1.f / (a(2,0) * rp.x + a(2,1) * rp.y + a(2,2));
-    cp.x = (a(0,0) * rp.x + a(0,1) * rp.y + a(0,2)) * w;
-    cp.x = (a(1,0) * rp.x + a(1,1) * rp.y + a(1,2)) * w;
+
+    cpts[i] = cv::Point2f((a(0,0) * rp.x + a(0,1) * rp.y + a(0,2)) * w,
+        (a(1,0) * rp.x + a(1,1) * rp.y + a(1,2)) * w);
   }
 
   return true;

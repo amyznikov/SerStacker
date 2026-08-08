@@ -41,6 +41,7 @@ protected:
   double _S1_target = -1.2;
   bool _useS1_target = true;
   bool _inpaint_missing_pixels = true;
+  bool _print_debug_info = false;
   bool _write_file = false;
   std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";
 };

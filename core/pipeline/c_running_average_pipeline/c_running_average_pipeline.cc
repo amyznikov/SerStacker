@@ -82,13 +82,9 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
     SERIALIZE_OPTION(section, save, _average_options, running_weight);
-    //    if( auto group = SERIALIZE_GROUP(section, save, "lpg") ) {
-    //      serialize_lpg_options(group, save, _average_options.lpg);
-    //    }
 
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, _average_options.sharpness_measure);
-      //serialize_gkurtmap_options_options(group, save, _average_options.sharpness_measure.opts);
     }
 
   }
@@ -166,8 +162,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
   //ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
   ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
-  ctlbind_expandable_group(ctls, "Shapness measure", "");
-    //ctlbind(ctls, ctx(&S::lpg));
+  ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, CTL_CONTEXT(ctx, sharpness_measure));
   ctlbind_end_group(ctls);
 }
@@ -434,19 +429,19 @@ bool c_running_average_pipeline::run_pipeline()
 
   set_status_msg("RUNNING ...");
 
+  bool fOK = true;
   for( ; _processed_frames < _total_frames; ++_processed_frames, ++_accumulated_frames, on_frame_processed() ) {
 
     if( canceled() ) {
       break;
     }
 
-    const bool fOk =
-        read_input_frame(_input_sequence, _input_options,
-            _current_image, _current_mask,
-            false,
-            false);
+    fOK = read_input_frame(_input_sequence, _input_options,
+        _current_image, _current_mask,
+        false,
+        false);
 
-    if( !fOk ) {
+    if( !fOK ) {
       CF_DEBUG("read_input_frame() fails");
       break;
     }
@@ -465,13 +460,14 @@ bool c_running_average_pipeline::run_pipeline()
     if( _input_options.input_image_processor && !_input_options.input_image_processor->empty() ) {
       if( !_input_options.input_image_processor->process(_current_image, _current_mask) ) {
         CF_ERROR("input_image_processor->process() fails");
-        return false;
+        fOK = false;
       }
     }
 
     if( !process_current_frame() ) {
       CF_ERROR("process_current_frame1() fails");
-      return false;
+      fOK = false;
+      break;
     }
   }
 
@@ -490,11 +486,12 @@ bool c_running_average_pipeline::run_pipeline()
     }
   }
 
-  return true;
+  return fOK;
 }
 
 bool c_running_average_pipeline::process_current_frame()
 {
+//  CF_DEBUG("ENTER");
   bool has_updates = true;
 
   const bool enable_registration =
@@ -513,6 +510,8 @@ bool c_running_average_pipeline::process_current_frame()
   }
   else {
 
+    // CF_DEBUG("CP");
+
     static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
       if( src.channels() != 1 ) {
         cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
@@ -527,11 +526,13 @@ bool c_running_average_pipeline::process_current_frame()
     cv::Mat weights;
     cv::Mat2f rmap;
 
+    // CF_DEBUG("CP");
     if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
 
+    // CF_DEBUG("CP");
     if( _output_options.save_progress_video ) {
       if( !write_progress_video(reference_image, reference_mask) ) {
         CF_ERROR("write_progress_video() fails");
@@ -540,10 +541,12 @@ bool c_running_average_pipeline::process_current_frame()
     }
 
 
+    //    // CF_DEBUG("CP");
     mkgrayscale(reference_image, reference_image);
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
 
+    //    // CF_DEBUG("CP");
     cv::Rect bbox = _average.last_bbox();
     if ( bbox.empty() ) {
       bbox = cv::Rect(0, 0, reference_image.cols, reference_image.rows);
@@ -600,6 +603,7 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
+    // CF_DEBUG("CP");
     if( _registration_options.enable_ecc_registration ) {
 
       if ( _average.accumulated_frames() > 50 ) {
@@ -626,6 +630,7 @@ bool c_running_average_pipeline::process_current_frame()
 //      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
+    // CF_DEBUG("CP");
 
 
     if( !_registration_options.enable_eccflow_registration ) {
@@ -655,24 +660,24 @@ bool c_running_average_pipeline::process_current_frame()
     }
 
 
-//    if ( _average_options.lpg.k >= 0 ) {
-//      compute_weights(_current_image, _current_mask, weights);
-//    }
-    if ( _average_options.sharpness_measure.kradius > 0 ) {
-      compute_weights(_current_image, _current_mask, weights);
-    }
+    // CF_DEBUG("CP");
+    compute_weights(_current_image, _current_mask, weights);
 
+    // CF_DEBUG("CP");
     if ( true ) {
       const cv::Mat w = weights.empty() ? _current_mask : weights;
 
       lock_guard lock(mutex());
+      // CF_DEBUG("CP");
       if ( !_average.add(_current_image, w, _average_options.running_weight, &rmap) ) {
         CF_ERROR("average_add() fails");
         return false;
       }
+      // CF_DEBUG("CP");
     }
   }
 
+//  CF_DEBUG("LEAVE");
   return true;
 }
 
@@ -702,8 +707,6 @@ void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::
 //    _apodizationWindow = lut_y * lut_x;
 //  }
 
-  //c_local_variance_sharpness_measure::create_map(src, dst, _average_options.sharpness_measure);
-  //const double Q = _average_options.sharpness_measure.compute_map(src, dst)[0];
   compute_local_variance_map(src, _average_options.sharpness_measure, dst);
   if ( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);

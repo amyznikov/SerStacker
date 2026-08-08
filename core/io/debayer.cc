@@ -755,6 +755,16 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
         return debayer_nn2(src, dst, colorid);
       }
       break;
+    case DEBAYER_EA:
+      if ( src.depth() != CV_8U && src.depth() != CV_16U) { // fall back to NN2
+        return debayer_nn2(src, dst, colorid);
+      }
+      break;
+    case DEBAYER_VNG:
+      if ( src.depth() != CV_8U ) { // fall back to NN2
+        return debayer_nn2(src, dst, colorid);
+      }
+      break;
     case DEBAYER_NN2:
       return debayer_nn2(src, dst, colorid);
     case DEBAYER_AVGC:

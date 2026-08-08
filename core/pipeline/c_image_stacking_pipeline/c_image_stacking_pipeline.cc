@@ -300,17 +300,17 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.enable_eccflow_registration = false;
 
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-    _master_options.accumulation.lpg.k = 2;
-    _master_options.accumulation.lpg.p = 4;
-    _master_options.accumulation.lpg.dscale = 2;
-    _master_options.accumulation.lpg.uscale = 6;
+//    _master_options.accumulation.lpg.k = 2;
+//    _master_options.accumulation.lpg.p = 4;
+//    _master_options.accumulation.lpg.dscale = 2;
+//    _master_options.accumulation.lpg.uscale = 6;
     _master_options.accumulation.max_weights_ratio = 0.25;
 
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-    _stack_options.accumulation.lpg.k = 2;
-    _stack_options.accumulation.lpg.p = 4;
-    _stack_options.accumulation.lpg.dscale = 2;
-    _stack_options.accumulation.lpg.uscale = 6;
+//    _stack_options.accumulation.lpg.k = 2;
+//    _stack_options.accumulation.lpg.p = 4;
+//    _stack_options.accumulation.lpg.dscale = 2;
+//    _stack_options.accumulation.lpg.uscale = 6;
     _stack_options.accumulation.max_weights_ratio = 0.25;
 
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
@@ -344,10 +344,10 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-    _master_options.accumulation.lpg.k = 2;
-    _master_options.accumulation.lpg.p = 4;
-    _master_options.accumulation.lpg.dscale = 2;
-    _master_options.accumulation.lpg.uscale = 7;
+//    _master_options.accumulation.lpg.k = 2;
+//    _master_options.accumulation.lpg.p = 4;
+//    _master_options.accumulation.lpg.dscale = 2;
+//    _master_options.accumulation.lpg.uscale = 7;
     _master_options.accumulation.max_weights_ratio = 0.25;
 
 
@@ -369,10 +369,10 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.min_image_size = -1;
 
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-    _stack_options.accumulation.lpg.k = 2;
-    _stack_options.accumulation.lpg.p = 4;
-    _stack_options.accumulation.lpg.dscale = 2;
-    _stack_options.accumulation.lpg.uscale = 7;
+//    _stack_options.accumulation.lpg.k = 2;
+//    _stack_options.accumulation.lpg.p = 4;
+//    _stack_options.accumulation.lpg.dscale = 2;
+//    _stack_options.accumulation.lpg.uscale = 7;
     _stack_options.accumulation.max_weights_ratio = 0.25;
 
     _upscale_options.upscale_option = frame_upscale_x15;
@@ -398,10 +398,10 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _master_options.registration.enable_eccflow_registration = false;
     _master_options.accumulation.accumulation_method = frame_accumulation_average;
-    _master_options.accumulation.lpg.k = 2;
-    _master_options.accumulation.lpg.p = 2;
-    _master_options.accumulation.lpg.dscale = 1;
-    _master_options.accumulation.lpg.uscale = 7;
+//    _master_options.accumulation.lpg.k = 2;
+//    _master_options.accumulation.lpg.p = 2;
+//    _master_options.accumulation.lpg.dscale = 1;
+//    _master_options.accumulation.lpg.uscale = 7;
     _master_options.accumulation.max_weights_ratio = 0;
 
     _stack_options.registration.motion_type = IMAGE_MOTION_AFFINE;
@@ -413,10 +413,10 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.ecc.ecc_method = ECC_ALIGN_INVERSE_COMPOSITIONAL_LM;
     _stack_options.registration.enable_eccflow_registration = false;
     _stack_options.accumulation.accumulation_method = frame_accumulation_average;
-    _stack_options.accumulation.lpg.k = 2;
-    _stack_options.accumulation.lpg.p = 2;
-    _stack_options.accumulation.lpg.dscale = 1;
-    _stack_options.accumulation.lpg.uscale = 7;
+//    _stack_options.accumulation.lpg.k = 2;
+//    _stack_options.accumulation.lpg.p = 2;
+//    _stack_options.accumulation.lpg.dscale = 1;
+//    _stack_options.accumulation.lpg.uscale = 7;
     _stack_options.accumulation.max_weights_ratio = 0;
   }
 
@@ -2005,12 +2005,16 @@ void c_image_stacking_pipeline::upscale_image(enum frame_upscale_option scale,
 bool c_image_stacking_pipeline::weights_required(const c_frame_accumulation_options & opts) const
 {
   return opts.accumulation_method == frame_accumulation_weighted_average &&
-      opts.lpg.dscale >= 0 && opts.lpg.k >= 0;
+      opts.sharpness_measure.kradius > 0;
+
+//  return opts.accumulation_method == frame_accumulation_weighted_average &&
+//      opts.lpg.dscale >= 0 && opts.lpg.k >= 0;
 }
 
 void c_image_stacking_pipeline::compute_weights(const c_frame_accumulation_options & opts, const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {
-  c_lpg_sharpness_measure::create_map(src, dst, opts.lpg);
+  //c_lpg_sharpness_measure::create_map(src, dst, opts.lpg);
+  compute_local_variance_map(src, opts.sharpness_measure, dst);
   if ( !srcmask.empty() ) {
     dst.setTo(0, ~srcmask);
   }
@@ -2198,16 +2202,20 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
-
-    if( (subsection = get_group(section, save, "c_lpg_sharpness_measure")) ) {
-
-      c_lpg_options &m = opts.lpg;
-
-      SERIALIZE_OPTION(subsection, save, m, k);
-      SERIALIZE_OPTION(subsection, save, m, p);
-      SERIALIZE_OPTION(subsection, save, m, dscale);
-      SERIALIZE_OPTION(subsection, save, m, uscale);
+    if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
+      serialize_local_variance_map_options(group, save, opts.sharpness_measure);
     }
+
+
+//    if( (subsection = get_group(section, save, "c_lpg_sharpness_measure")) ) {
+//
+//      c_lpg_options &m = opts.lpg;
+//
+//      SERIALIZE_OPTION(subsection, save, m, k);
+//      SERIALIZE_OPTION(subsection, save, m, p);
+//      SERIALIZE_OPTION(subsection, save, m, dscale);
+//      SERIALIZE_OPTION(subsection, save, m, uscale);
+//    }
 
     if( (subsection = get_group(section, save, "c_laplacian_pyramid_focus_stacking")) ) {
 
@@ -2229,16 +2237,17 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, opts, accumulation_method);
     SERIALIZE_OPTION(section, save, opts, max_weights_ratio);
 
-    if( (subsection = get_group(section, save, "c_lpg_sharpness_measure")) ) {
-
-      c_lpg_options &m =
-          opts.lpg;
-
-      SERIALIZE_OPTION(subsection, save, m, k);
-      SERIALIZE_OPTION(subsection, save, m, p);
-      SERIALIZE_OPTION(subsection, save, m, dscale);
-      SERIALIZE_OPTION(subsection, save, m, uscale);
+    if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
+      serialize_local_variance_map_options(group, save, opts.sharpness_measure);
     }
+
+//    if( (subsection = get_group(section, save, "c_lpg_sharpness_measure")) ) {
+//      c_lpg_options &m = opts.lpg;
+//      SERIALIZE_OPTION(subsection, save, m, k);
+//      SERIALIZE_OPTION(subsection, save, m, p);
+//      SERIALIZE_OPTION(subsection, save, m, dscale);
+//      SERIALIZE_OPTION(subsection, save, m, uscale);
+//    }
 
     if( (subsection = get_group(section, save, "c_laplacian_pyramid_focus_stacking")) ) {
 
@@ -2444,16 +2453,16 @@ static void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
   ctlbind(ctls, "Acc. Method:", ctx(&S::accumulation_method));
 
   ctlbind_expandable_group(ctls, "weighted_average", "");
-    ctlbind(ctls, ctx(&S::lpg));
+    ctlbind(ctls, ctx(&S::sharpness_measure));
     ctlbind(ctls,"max_weights_ratio", ctx(&S::max_weights_ratio),
         "The pixel will NOT added to the accumulator if its sharpness is less than currently known max sharpness * max_weights_ratio");
 
     ctlbind_menu_button(ctls, "Options...", ctx);
-      ctlbind_item(ctls, "Copy c_lpg_options to clipboard", ctx, [](c_frame_accumulation_options * opts) {
-        return ctlbind_copy_config_to_clipboard("c_lpg_options", opts->lpg), false;
+      ctlbind_item(ctls, "Copy c_local_variance_map_options to clipboard", ctx, [](c_frame_accumulation_options * opts) {
+        return ctlbind_copy_config_to_clipboard("c_local_variance_map_options", opts->sharpness_measure), false;
       });
-      ctlbind_item(ctls, "Paste c_lpg_options from clipboard", ctx, [](c_frame_accumulation_options * opts) {
-        return ctlbind_paste_config_from_clipboard("c_lpg_options", &opts->lpg);
+      ctlbind_item(ctls, "Paste c_local_variance_map_options from clipboard", ctx, [](c_frame_accumulation_options * opts) {
+        return ctlbind_paste_config_from_clipboard("c_local_variance_map_options", &opts->sharpness_measure);
       });
 
   ctlbind_end_group(ctls);

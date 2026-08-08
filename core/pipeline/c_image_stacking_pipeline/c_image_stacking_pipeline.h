@@ -88,14 +88,15 @@ struct c_frame_upscale_options
 struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
-  c_lpg_options lpg;
+  c_local_variance_map_options sharpness_measure;
+  //c_lpg_options lpg;
   c_laplacian_pyramid_focus_stacking::options fs;
   double max_weights_ratio = 0;
 
-  c_frame_accumulation_options()
-  {
-    lpg.dscale = 2;
-  }
+//  c_frame_accumulation_options()
+//  {
+//    lpg.dscale = 2;
+//  }
 };
 
 

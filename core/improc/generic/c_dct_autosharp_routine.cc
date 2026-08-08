@@ -182,7 +182,8 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
     double & output_S1_maxline,
     int & output_kneeIndex,
     int & output_curvatureStartIndex,
-    cv::Mat1f & kx)
+    cv::Mat1f & kx,
+    bool print_debug_info = false)
 {
   const int N = sp.size();
   const int startCornersBin = int((N - 1) * M_SQRT1_2);
@@ -203,7 +204,9 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
     return -1;
   }
 
-  CF_DEBUG("Initial startSearchBin=%d (x=%g y=%g)", startSearchBin, sp.xv(startSearchBin), SDCT(0, startSearchBin));
+  if ( print_debug_info ) {
+    CF_DEBUG("Initial startSearchBin=%d (x=%g y=%g)", startSearchBin, sp.xv(startSearchBin), SDCT(0, startSearchBin));
+  }
 
   for ( ; startSearchBin < startCornersBin - 4; ++ startSearchBin) {
     const double x0 = sp.xv(startSearchBin + 0);
@@ -229,7 +232,9 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
 
   const double startX = sp.xv(startSearchBin);
   const double startY = SDCT(0, startSearchBin);
-  CF_DEBUG("startSearchBin=%d (x=%g y=%g)", startSearchBin, startX, startY);
+  if ( print_debug_info ) {
+    CF_DEBUG("startSearchBin=%d (x=%g y=%g)", startSearchBin, startX, startY);
+  }
 
   int endSearchBin = -1;
   double Kx = DBL_MAX;
@@ -251,7 +256,9 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
     CF_ERROR("ERROR: endSearchBin=%d <= startSearchBin=%d", endSearchBin, startSearchBin);
     return -1;
   }
-  CF_DEBUG("endSearchBin=%d (x=%g y=%g) Kx=%g Kx_best=%g", endSearchBin, sp.xv(endSearchBin), SDCT(0, endSearchBin), Kx, Kx_best);
+  if ( print_debug_info ) {
+    CF_DEBUG("endSearchBin=%d (x=%g y=%g) Kx=%g Kx_best=%g", endSearchBin, sp.xv(endSearchBin), SDCT(0, endSearchBin), Kx, Kx_best);
+  }
 
   const double S0_maxline = startY - Kx * startX;
   const double S1_maxline = Kx;
@@ -285,7 +292,9 @@ static int estimateNature2(const c_radial_spectrum_profile &sp,
   }
 
   output_kneeIndex = kneeIndex;
-  CF_DEBUG("kneeIndex=%d (x=%g y=%g)", kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex));
+  if ( print_debug_info ) {
+    CF_DEBUG("kneeIndex=%d (x=%g y=%g)", kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex));
+  }
 
   //
   // Compute linear regression from startSearchBin to kneeIndex.
@@ -322,6 +331,7 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
     const cv::Size & dctSize,
     bool useS1_target,
     double S1_target,
+    bool print_debug_info = false,
     const std::string & debug_file_name = "")
 {
   const c_radial_spectrum_profile sp(RadialSpectrumProfile);
@@ -346,7 +356,8 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
           S0_maxline, S1_maxline,
           kneeIndex,
           curvatureStartIndex,
-          kx);
+          kx,
+          print_debug_info);
 
   if ( startSearchBin < 1 ) {
     CF_ERROR("estimateNature2() fails: startSearchBin=%d", startSearchBin);
@@ -427,18 +438,20 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
 
   }
 
-  CF_DEBUG("\n"
-      "startSearchBin=%d (x = %g y = %g)\n"
-      "S0_maxline = %g S1_maxline = %g\n"
-      "S0_nature = %g S1_nature = %g\n"
-      "kneeIndex = %d (x = %g y = %g)\n"
-      "curvatureStartIndex = %d (x = %g y = %g)\n",
-      startSearchBin, sp.xv(startSearchBin), sp.yv(startSearchBin),
-      S0_maxline, S1_maxline,
-      S0_nature, S1_nature,
-      kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex),
-      curvatureStartIndex, sp.xv(curvatureStartIndex), SDCT(0, curvatureStartIndex)
-      );
+  if ( print_debug_info ) {
+    CF_DEBUG("\n"
+        "startSearchBin=%d (x = %g y = %g)\n"
+        "S0_maxline = %g S1_maxline = %g\n"
+        "S0_nature = %g S1_nature = %g\n"
+        "kneeIndex = %d (x = %g y = %g)\n"
+        "curvatureStartIndex = %d (x = %g y = %g)\n",
+        startSearchBin, sp.xv(startSearchBin), sp.yv(startSearchBin),
+        S0_maxline, S1_maxline,
+        S0_nature, S1_nature,
+        kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex),
+        curvatureStartIndex, sp.xv(curvatureStartIndex), SDCT(0, curvatureStartIndex)
+        );
+  }
 
   // "/home/projects/temp/analyze_profile.txt"
   if( !debug_file_name.empty() ) {
@@ -538,7 +551,8 @@ void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
   ctlbind(ctls, "inpaint_missing_pixels", CTL_CONTEXT(ctx, _inpaint_missing_pixels), "");
   ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _useS1_target), "");
   ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target), "");
-  ctlbind(ctls, "write_debug_file ", CTL_CONTEXT(ctx, _write_file), "");
+  ctlbind(ctls, "print_debug_info:", CTL_CONTEXT(ctx, _print_debug_info), "");
+  ctlbind(ctls, "write_debug_file:", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
 }
 
@@ -622,7 +636,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   cv::Mat1f INVERSE_FILTER =
       createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
-          _useS1_target, _S1_target,
+          _useS1_target, _S1_target, _print_debug_info,
           _write_file ? _debug_file_name : "");
 
   if( _display == DISPLAY_FILTER) {

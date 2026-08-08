@@ -491,7 +491,7 @@ bool c_running_average_pipeline::run_pipeline()
 
 bool c_running_average_pipeline::process_current_frame()
 {
-//  CF_DEBUG("ENTER");
+  CF_DEBUG("ENTER");
   bool has_updates = true;
 
   const bool enable_registration =
@@ -526,13 +526,13 @@ bool c_running_average_pipeline::process_current_frame()
     cv::Mat weights;
     cv::Mat2f rmap;
 
-    // CF_DEBUG("CP");
+    CF_DEBUG("CP");
     if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
+    CF_DEBUG("CP");
 
-    // CF_DEBUG("CP");
     if( _output_options.save_progress_video ) {
       if( !write_progress_video(reference_image, reference_mask) ) {
         CF_ERROR("write_progress_video() fails");
@@ -540,29 +540,24 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
-
-    //    // CF_DEBUG("CP");
-    mkgrayscale(reference_image, reference_image);
-    mkgrayscale(_current_image, current_image);
-    current_mask = _current_mask;
-
-    //    // CF_DEBUG("CP");
     cv::Rect bbox = _average.last_bbox();
-    if ( bbox.empty() ) {
+    if( bbox.empty() ) {
       bbox = cv::Rect(0, 0, reference_image.cols, reference_image.rows);
     }
     else {
-      bbox.width = current_image.cols;
-      bbox.height = current_image.rows;
+      bbox.width = _current_image.cols;
+      bbox.height = _current_image.rows;
     }
-
-    // CF_DEBUG("bbox: x=%d y=%d w=%d h=%d", bbox.x, bbox.y, bbox.width, bbox.height);
 
     reference_image_crop = reference_image(bbox);
     reference_mask_crop = reference_mask(bbox);
+    mkgrayscale(reference_image_crop, reference_image_crop);
+    mkgrayscale(_current_image, current_image);
+    current_mask = _current_mask;
 
     _image_transform->reset();
 
+    CF_DEBUG("CP");
     if( _registration_options.enable_star_registration ) {
 
       std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
@@ -603,23 +598,19 @@ bool c_running_average_pipeline::process_current_frame()
       }
     }
 
-    // CF_DEBUG("CP");
+    CF_DEBUG("CP");
     if( _registration_options.enable_ecc_registration ) {
 
       if ( _average.accumulated_frames() > 50 ) {
         const double sigma = _registration_options.eccUnsharpMaskSigma;
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
+          CF_DEBUG("BegUSM");
           unsharp_mask(reference_image_crop, reference_mask_crop, reference_image_crop,
               sigma, alpha, 0, 1.5);
+          CF_DEBUG("EndUSM");
         }
       }
-
-
-//      CF_DEBUG("ECCH: reference_image_crop=%dx%d", reference_image_crop.cols, reference_image_crop.rows);
-//      CF_DEBUG("ECCH: reference_mask_crop=%dx%d", reference_mask_crop.cols, reference_mask_crop.rows);
-//      CF_DEBUG("ECCH: current_image=%dx%d", current_image.cols, current_image.rows);
-//      CF_DEBUG("ECCH: current_mask=%dx%d", current_mask.cols, current_mask.rows);
 
       _ecch.set_reference_image(reference_image_crop, reference_mask_crop);
       if( !_ecch.align(current_image, current_mask) ) {
@@ -627,10 +618,10 @@ bool c_running_average_pipeline::process_current_frame()
         return false;
       }
 
-//      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
+      //      CF_DEBUG("ECCH: %d iterations eps=%g", _ecch.num_iterations(),  _ecch.eps() );
     }
 
-    // CF_DEBUG("CP");
+    CF_DEBUG("CP");
 
 
     if( !_registration_options.enable_eccflow_registration ) {
@@ -660,24 +651,24 @@ bool c_running_average_pipeline::process_current_frame()
     }
 
 
-    // CF_DEBUG("CP");
+    CF_DEBUG("CP");
     compute_weights(_current_image, _current_mask, weights);
+    CF_DEBUG("CP");
 
-    // CF_DEBUG("CP");
     if ( true ) {
       const cv::Mat w = weights.empty() ? _current_mask : weights;
 
       lock_guard lock(mutex());
-      // CF_DEBUG("CP");
+      CF_DEBUG("CP");
       if ( !_average.add(_current_image, w, _average_options.running_weight, &rmap) ) {
         CF_ERROR("average_add() fails");
         return false;
       }
-      // CF_DEBUG("CP");
+      CF_DEBUG("CP");
     }
   }
 
-//  CF_DEBUG("LEAVE");
+  CF_DEBUG("LEAVE");
   return true;
 }
 

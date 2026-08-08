@@ -1972,7 +1972,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     const cv::Size frameSize = current_image.size();
 
     const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
-    const cv::Size canvasSize( std::max(_canvasSize.width, computedCanvasSize.width),
+    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
         std::max(_canvasSize.height, computedCanvasSize.height));
 
     const int target_x = canvasSize.width / 2 - frameSize.width / 2;
@@ -2072,7 +2072,12 @@ bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
     if ( ddepth < 0 ) {
       ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
     }
-    _accumulator(bbox).convertTo(avg, ddepth, dscale);
+    if( ddepth == _accumulator.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
+      _accumulator(bbox).copyTo(avg);
+    }
+    else {
+      _accumulator(bbox).convertTo(avg, ddepth, dscale);
+    }
   }
 
   if ( mask.needed() ) {

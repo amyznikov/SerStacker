@@ -521,36 +521,36 @@ bool c_running_average_pipeline::process_current_frame()
       }
     };
 
-    cv::Mat current_image, current_mask, reference_image, reference_mask;
+    cv::Mat current_image, current_mask;//, reference_image, reference_mask;
     cv::Mat reference_image_crop, reference_mask_crop;
     cv::Mat weights;
     cv::Mat2f rmap;
 
     CF_DEBUG("CP");
-    if ( !_average.compute(reference_image, reference_mask, 1, -1, true) ) {
+    cv::Rect bbox = _average.last_bbox();
+    if ( !_average.compute(reference_image_crop, reference_mask_crop, 1, -1, false) ) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
     CF_DEBUG("CP");
 
-    if( _output_options.save_progress_video ) {
-      if( !write_progress_video(reference_image, reference_mask) ) {
-        CF_ERROR("write_progress_video() fails");
-        return false;
-      }
-    }
+//    if( _output_options.save_progress_video ) {
+//      if( !write_progress_video(reference_image_crop, reference_mask_crop) ) {
+//        CF_ERROR("write_progress_video() fails");
+//        return false;
+//      }
+//    }
 
-    cv::Rect bbox = _average.last_bbox();
     if( bbox.empty() ) {
-      bbox = cv::Rect(0, 0, reference_image.cols, reference_image.rows);
+      bbox = cv::Rect(0, 0, reference_image_crop.cols, reference_image_crop.rows);
     }
     else {
       bbox.width = _current_image.cols;
       bbox.height = _current_image.rows;
     }
 
-    reference_image_crop = reference_image(bbox);
-    reference_mask_crop = reference_mask(bbox);
+//    reference_image_crop = reference_image(bbox);
+//    reference_mask_crop = reference_mask(bbox);
     mkgrayscale(reference_image_crop, reference_image_crop);
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
@@ -626,7 +626,7 @@ bool c_running_average_pipeline::process_current_frame()
 
     if( !_registration_options.enable_eccflow_registration ) {
       _image_transform->set_translation(_image_transform->translation() - cv::Vec2f(bbox.x, bbox.y));
-      _image_transform->create_remap(reference_image.size(), rmap);
+      _image_transform->create_remap(_average.accumulator_size(), rmap);
     }
     else {
       cv::Mat2f temp_rmap;
@@ -645,7 +645,7 @@ bool c_running_average_pipeline::process_current_frame()
 
 //      CF_DEBUG("ECCFLOW OK");
 
-      rmap.create(reference_image.size());
+      rmap.create(_average.accumulator_size());
       rmap.setTo(cv::Vec2f::all(-1));
       temp_rmap.copyTo(rmap(bbox));
     }

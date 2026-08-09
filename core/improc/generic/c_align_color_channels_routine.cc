@@ -49,7 +49,7 @@ void c_align_color_channels_routine::getcontrols(c_control_list & ctls, const ct
   ctlbind(ctls, "interpolation", CTL_CONTEXT(ctx, _opts.interpolation), "");
   ctlbind(ctls, "border_mode", CTL_CONTEXT(ctx, _opts.border_mode), "");
   ctlbind(ctls, "border_value", CTL_CONTEXT(ctx, _opts.border_value), "");
-
+  ctlbind(ctls, "fixed_remap", CTL_CONTEXT(ctx, _opts.use_fixed_remap), "");
 
   ctlbind(ctls, "Estimate", CTL_CONTEXT(ctx, reEstimate), "");
   ctlbind_expandable_group(ctls, "Estimate", "Algorithm parameters");

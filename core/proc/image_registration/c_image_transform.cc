@@ -30,7 +30,6 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
   }
 
   if( dst.needed() ) {
-
     if( src.empty() ) {
       dst.release();
     }
@@ -41,7 +40,6 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
   }
 
   if( dst_mask.needed() ) {
-
     if( src_mask.empty() ) {
       cv::remap(cv::Mat1b(size, (uint8_t) 255), dst_mask,
           rmap, cv::noArray(),
@@ -54,10 +52,22 @@ bool c_image_transform::remap(cv::InputArray src, cv::InputArray src_mask, const
           cv::INTER_LINEAR,
           cv::BORDER_CONSTANT);
     }
-
     cv::compare(dst_mask, 255, dst_mask, cv::CMP_GE);
   }
 
+  return true;
+}
+
+// Native fall back: If the class has not overridden this method,
+// the float map is generated and converted for compatibility
+bool c_image_transform::create_remap_fixed(const cv::Mat1f & params, const cv::Size & size,
+    cv::Mat & map1, cv::Mat & map2) const
+{
+  cv::Mat2f float_map;
+  if( !create_remap(params, size, float_map) ) {
+    return false;
+  }
+  cv::convertMaps(float_map, cv::noArray(), map1, map2, CV_16SC2, false);
   return true;
 }
 
@@ -158,57 +168,64 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
   return true;
 }
 
-//bool c_translation_image_transform::create_remap_fixed(const cv::Vec2f & T, const cv::Size & size,
-//                                                       cv::Mat & map1, cv::Mat & map2) const
-//{
-//  // Инициализируем матрицы правильных типов под фиксированную точку
-//  map1.create(size, CV_16SC2);
-//  map2.create(size, CV_16UC1);
-//
-//  // Константа дискретизации субпиксельной сетки OpenCV для интерполяции
-//  const int SCALE = 32;
-//
-//  // Заранее вычисляем целую и дробную часть трансляции T
-//  // t0_int, t1_int — базовое смещение в целых пикселях
-//  int t0_int = static_cast<int>(std::floor(T[0]));
-//  int t1_int = static_cast<int>(std::floor(T[1]));
-//
-//  // Находим субпиксельный остаток от 0.0 до 1.0 и масштабируем его в диапазон [0, 32]
-//  float t0_frac = T[0] - t0_int;
-//  float t1_frac = T[1] - t1_int;
-//  int t0_scaled = static_cast<int>(std::round(t0_frac * SCALE));
-//  int t1_scaled = static_cast<int>(std::round(t1_frac * SCALE));
-//
-//  // Корректируем, если округление вылетело за границу SCALE
-//  if (t0_scaled >= SCALE) { t0_scaled -= SCALE; t0_int += 1; }
-//  if (t1_scaled >= SCALE) { t1_scaled -= SCALE; t1_int += 1; }
-//
-//  parallel_for(0, map1.rows, [=, &map1, &map2](const auto & range) {
-//    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-//
-//      // Указатель на строку целых координат (X, Y)
-//      cv::Vec2s * __restrict m1_ptr = map1.ptr<cv::Vec2s>(y);
-//      // Указатель на строку субпиксельной таблицы интерполяции
-//      uint16_t * __restrict m2_ptr = map2.ptr<uint16_t>(y);
-//
-//      // Вычисляем базовую целую координату Y и субпиксельный индекс по Y
-//      int cur_y_int = y + t1_int;
-//      int sub_y_idx = t1_scaled;
-//
-//      for( int x = 0; x < map1.cols; ++x ) {
-//        // 1. Записываем целую часть координат для текущего пикселя
-//        m1_ptr[x][0] = static_cast<short>(x + t0_int);
-//        m1_ptr[x][1] = static_cast<short>(cur_y_int);
-//
-//        // 2. Записываем комбинированный субпиксельный индекс для фильтра интерполяции OpenCV
-//        // Формула: (sub_y * 32) + sub_x
-//        m2_ptr[x] = static_cast<uint16_t>((sub_y_idx << 5) + t0_scaled);
-//      }
-//    }
-//  });
-//
-//  return true;
-//}
+bool c_translation_image_transform::create_remap_fixed(const cv::Mat1f & params, const cv::Size & size,
+    cv::Mat & map1, cv::Mat & map2) const
+{
+  // OpenCV subpixel grid constants
+  constexpr int scale = 32;           // cv::INTER_REMAP_FI_SCALE; // 32
+  constexpr int scale_shift_bits = 5; // 32
+  constexpr int mask  = scale - 1;    // 31
+
+
+  map1.create(size, CV_16SC2);
+  map2.create(size, CV_16UC1);
+
+  const float t0 = params(0, 0);
+  const float t1 = params(1, 0);
+
+
+  // Integer part of the shift (base pixel)
+  int t0_int = int(t0);
+  int t1_int = int(t1);
+
+  // Scaled subpixel remainder [0.0, 1.0)
+  // Protect against going beyond the SCALE range when rounding
+  const float t0_frac = t0 - t0_int;
+  const float t1_frac = t1 - t1_int;
+
+  int t0_scaled = cvRound(t0_frac * scale);
+  int t1_scaled = cvRound(t1_frac * scale);
+
+  if (t0_scaled >= scale) {
+    t0_scaled -= scale;
+    t0_int += 1;
+  }
+  if (t1_scaled >= scale) {
+    t1_scaled -= scale;
+    t1_int += 1;
+  }
+
+  // OpenCV formula for table index: (sub_y * scale) + sub_x
+  const uint16_t sub_pixel_index = uint16_t((t1_scaled * scale) + t0_scaled);
+
+  parallel_for(0, map1.rows, [=, &map1, &map2](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+
+      cv::Vec2s * __restrict m1p = map1.ptr<cv::Vec2s>(y);
+      uint16_t * __restrict m2p = map2.ptr<uint16_t>(y);
+
+      const int16_t cur_y_int = int16_t(y + t1_int);
+
+      for( int x = 0; x < map1.cols; ++x ) {
+        m1p[x][0] = int16_t(x + t0_int);
+        m1p[x][1] = cur_y_int;
+        m2p[x] = sub_pixel_index;
+      }
+    }
+  });
+
+  return true;
+}
 
 bool c_translation_image_transform::remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts,
     std::vector<cv::Point2f> & cpts) const
@@ -537,8 +554,8 @@ bool c_euclidean_image_transform::create_remap(const cv::Mat1f & p, const cv::Si
 bool c_euclidean_image_transform::remap(const cv::Mat1f & p, const std::vector<cv::Point2f> & rpts,
     std::vector<cv::Point2f> & cpts) const
 {
-  //  Wx =  s * ( ca * x  - sa * y ) + tx
-  //  Wy =  s * ( sa * x  + ca * y ) + ty
+  //  Wx =  s * (ca * x  - sa * y) + tx
+  //  Wy =  s * (sa * x  + ca * y) + ty
 
   float Tx, Ty, angle, scale, Cx, Cy;
 
@@ -547,10 +564,10 @@ bool c_euclidean_image_transform::remap(const cv::Mat1f & p, const std::vector<c
     return false;
   }
 
+  cpts.resize(rpts.size());
+
   const float sa = std::sin(angle);
   const float ca = std::cos(angle);
-
-  cpts.resize(rpts.size());
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
@@ -925,6 +942,66 @@ bool c_affine_image_transform::create_remap(const cv::Matx23f & a, const cv::Siz
   return true;
 }
 
+bool c_affine_image_transform::create_remap_fixed(const cv::Mat1f & params, const cv::Size & size,
+    cv::Mat & map1, cv::Mat & map2) const
+{
+  // OpenCV subpixel grid constants
+  constexpr int scale = 32;           // cv::INTER_REMAP_FI_SCALE; // 32
+  constexpr int scale_shift_bits = 5; // 32
+  constexpr int mask  = scale - 1;    // 31
+
+  map1.create(size, CV_16SC2);
+  map2.create(size, CV_16UC1);
+
+  // 2x3 affine matrix from a 6x1 parameter vector via your matrix method
+  const cv::Matx23f a = matrix(params);
+
+  // Pre-comopute the steps (deltas) for changing the scaled coordinates when shifting along X by 1 pixel
+  // Multiply by scale immediately to avoid float arithmetic in the inner accumulation loop
+  const float step_x_fp = a(0, 0) * scale;
+  const float step_y_fp = a(1, 0) * scale;
+
+  parallel_for(0, map1.rows, [=, &map1, &map2](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+
+      cv::Vec2s * __restrict m1p = map1.ptr<cv::Vec2s>(y);
+      uint16_t * __restrict m2p = map2.ptr<uint16_t>(y);
+
+      // starting position for x = 0 in the current row y
+      const float start_x_fp = (a(0, 1) * y + a(0, 2)) * scale + 0.5f;
+      const float start_y_fp = (a(1, 1) * y + a(1, 2)) * scale + 0.5f;
+
+      // float accumulators will be incremented in increments
+      float cur_x_fp = start_x_fp;
+      float cur_y_fp = start_y_fp;
+
+      for ( int x = 0; x < map1.cols; ++x ) {
+        // Round the accumulated values ​​to integer subpixels of a 32x32 grid
+        // Extract the integer part of the coordinates (fast shift >> 5) and subpixel residuals (mask & 31)
+        const int scaled_x = int(cur_x_fp);
+        const int scaled_y = int(cur_y_fp);
+
+        const int16_t int_x = int16_t(scaled_x >> scale_shift_bits);
+        const int16_t int_y = int16_t(scaled_y >> scale_shift_bits);
+
+        const int frac_x = scaled_x & mask;
+        const int frac_y = scaled_y & mask;
+
+        // Write integer coordinates to map1, combined subpixel interpolation index to map2
+        m1p[x][0] = int_x;
+        m1p[x][1] = int_y;
+        m2p[x] = uint16_t((frac_y << scale_shift_bits) + frac_x);
+
+        // Increment the coordinates for the next pixel along the X axis
+        cur_x_fp += step_x_fp;
+        cur_y_fp += step_y_fp;
+      }
+    }
+  });
+
+  return true;
+}
+
 bool c_affine_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   if( p.rows != 6 || p.cols != 1 ) {
@@ -1043,30 +1120,12 @@ void c_homography_image_transform::update_parameters()
 
 void c_homography_image_transform::set_translation(const cv::Vec2f & v)
 {
-
-  /*
-  * Image homography transform:
-  * w  =  (x * a20 + y * a21 + a22)
-  * x' =  (x * a00 + y * a01 + a02) / w
-  * y' =  (x * a10 + y * a11 + a12) / w
-  *
-  * x' =  x * a00 / w + y * a01 / w + a02 / w
-  * y' =  x * a10 / w + y * a11 / w + a12 / w
-  *
-  * tx = a02 / a22
-  * ty = a12 / a22
-  *
-  * a02 = tx * a22
-  * a12 = ty * a22
-  */
-
   cv::Matx33f & a = _matrix;
 
-//  a(0, 2) = v(0);
-//  a(1, 2) = v(1);
-
-  a(0, 2) = v(0) * a(2,2);
-  a(1, 2) = v(1) * a(2,2);
+  //  a(0, 2) = v(0);
+  //  a(1, 2) = v(1);
+  a(0, 2) = v(0) * a(2, 2);
+  a(1, 2) = v(1) * a(2, 2);
   update_parameters();
 }
 
@@ -1131,13 +1190,6 @@ void c_homography_image_transform::scale_transfrom(double factor)
   update_parameters();
 }
 
-//cv::Mat1f c_homography_image_transform::invert_and_compose(const cv::Mat1f & p, const cv::Mat1f & dp) const
-//{
-//  cv::Matx33f aii = (matrix(p).inv() + dmatrix(dp)).inv();
-//  return cv::Mat1f(8, 1, (float*)aii.val).clone();
-//}
-
-
 double c_homography_image_transform::eps(const cv::Mat1f & dp, const cv::Size & image_size)
 {
   // FIXME?: this estimate does not account for w
@@ -1167,6 +1219,63 @@ bool c_homography_image_transform::create_remap(const cv::Matx33f & a, const cv:
   return true;
 }
 
+bool c_homography_image_transform::create_remap_fixed(const cv::Mat1f & params, const cv::Size & size,
+    cv::Mat & map1, cv::Mat & map2) const
+{
+  // OpenCV subpixel grid constants
+  constexpr int scale = 32;           // cv::INTER_REMAP_FI_SCALE; // 32
+  constexpr int scale_shift_bits = 5; // 32
+  constexpr int mask  = scale - 1;    // 31
+
+  map1.create(size, CV_16SC2);
+  map2.create(size, CV_16UC1);
+
+  // 3x3 homography matrix from parameters (Row-major)
+  const cv::Matx33f a = this->matrix(params);
+
+  parallel_for(0, map1.rows, [=, &map1, &map2](const auto & range) {
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+
+      cv::Vec2s * __restrict m1p = map1.ptr<cv::Vec2s>(y);
+      uint16_t * __restrict m2p = map2.ptr<uint16_t>(y);
+
+      // Precompute the invariant parts of the homography for the current row Y
+      const float intermediate_w = a(2,1) * y + a(2,2);
+      const float intermediate_num_x = a(0,1) * y + a(0,2);
+      const float intermediate_num_y = a(1,1) * y + a(1,2);
+
+      for ( int x = 0; x < map1.cols; ++x ) {
+        const float w = 1.0f / (a(2,0) * x + intermediate_w);
+        const float src_x = (a(0,0) * x + intermediate_num_x) * w;
+        const float src_y = (a(1,0) * x + intermediate_num_y) * w;
+
+        // Main optimization: scale coordinates to a 32x32 subpixel grid
+        // Round to the nearest discrete subpixel (0.5f for mathematical round)
+        const int scaled_x = int(src_x * scale + 0.5f);
+        const int scaled_y = int(src_y * scale + 0.5f);
+
+        // integer part of coordinates (fast shift instead of std::floor)
+        const int16_t int_x = int16_t(scaled_x >> scale_shift_bits);
+        const int16_t int_y = int16_t(scaled_y >> scale_shift_bits);
+
+        // Subpixel residuals (mask instead of taking fractional part)
+        // Values from 0 to 31
+        const int frac_x = scaled_x & mask;
+        const int frac_y = scaled_y & mask;
+
+        // Integer coordinates into map1
+        // Combined interpolation index into map2
+        // Official OpenCV formula: (frac_y * scale) + frac_x
+        m1p[x][0] = int_x;
+        m1p[x][1] = int_y;
+        m2p[x] = uint16_t((frac_y << scale_shift_bits) + frac_x);
+      }
+    }
+  });
+
+  return true;
+}
+
 bool c_homography_image_transform::create_remap(const cv::Mat1f & p, const cv::Size & size, cv::Mat2f & rmap) const
 {
   if( p.rows != 8 || p.cols != 1 ) {
@@ -1185,11 +1294,9 @@ bool c_homography_image_transform::remap(const cv::Matx33f & a, const std::vecto
 
   for( size_t i = 0, n = rpts.size(); i < n; ++i ) {
     const auto & rp = rpts[i];
-
-    const float w = 1.f / (a(2,0) * rp.x + a(2,1) * rp.y + a(2,2));
-
-    cpts[i] = cv::Point2f((a(0,0) * rp.x + a(0,1) * rp.y + a(0,2)) * w,
-        (a(1,0) * rp.x + a(1,1) * rp.y + a(1,2)) * w);
+    const float w = 1.f / (a(2, 0) * rp.x + a(2, 1) * rp.y + a(2, 2));
+    cpts[i].x = (a(0, 0) * rp.x + a(0, 1) * rp.y + a(0, 2)) * w;
+    cpts[i].y = (a(1, 0) * rp.x + a(1, 1) * rp.y + a(1, 2)) * w;
   }
 
   return true;

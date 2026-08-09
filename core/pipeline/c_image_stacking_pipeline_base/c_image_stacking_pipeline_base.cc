@@ -43,7 +43,7 @@ bool serialize_base_image_stacking_input_options(c_config_setting section, bool 
   }
   else {
     std::string s;
-    if( load_settings(subsection, "input_image_processor", &s) && !s.empty() ) {
+    if( load_settings(section, "input_image_processor", &s) && !s.empty() ) {
       opts.input_image_processor = c_image_processor_collection::default_instance()->get(s);
     }
   }
@@ -158,7 +158,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
             1. / ((1 << input_sequence->bpp())));
       }
 
-      CF_DEBUG("_darkbayer: %dx%d channels=%d depth=%d",
+      CF_DEBUG("darkbayer: %dx%d channels=%d depth=%d",
           _darkbayer.cols, _darkbayer.rows, _darkbayer.channels(), _darkbayer.depth());
 
       cv::subtract(output_image, _darkbayer,
@@ -169,7 +169,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     if( !_flatbayer.empty() ) {
 
       if( _flatbayer.size() != output_image.size() || _flatbayer.channels() != output_image.channels() ) {
-        CF_FATAL("flatbayer_ (%dx%d*%d) and input frame (%dx%d*%d) not match",
+        CF_FATAL("flatbayer (%dx%d*%d) and input frame (%dx%d*%d) not match",
             _flatbayer.cols, _flatbayer.rows, _flatbayer.channels(),
             output_image.cols, output_image.rows, output_image.channels());
         return false;

@@ -1774,7 +1774,7 @@ static bool running_average_update(cv::InputArray src, cv::InputArray srcmask,
 }
 
 template<class _Tp>
-static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _src_weights,
+static bool _running_weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
     cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
   const cv::Size size = _src_image.size();
@@ -1814,6 +1814,8 @@ static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _
 
   const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
   const cv::Mat src_w = _src_weights.getMat();
+  const void * const src_w_data = weights_type == -1 ? nullptr : src_w.data;
+  const size_t src_w_step = weights_type == -1 ? 0 : src_w.step1();
 
   float* const __restrict acc_data = acc[0];
   const size_t acc_step = acc.step1();
@@ -1821,7 +1823,7 @@ static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _
   float* const __restrict wacc_data = W[0];
   const size_t wacc_step = W.step1();
 
-  parallel_for(0, size.height, [=, &src_w](const auto & range) {
+  parallel_for(0, size.height, [=/*, &src_w*/](const auto & range) {
 
     const int y0 = rbegin(range);
     float* __restrict accp = acc_data + y0 * acc_step;
@@ -1844,7 +1846,8 @@ static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _
         }
       }
       else if (weights_type == CV_8UC1) {
-        const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
+        //const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
+        const uint8_t* __restrict mp = static_cast<const uint8_t*>(src_w_data) + y * src_w_step;
         for (int x = 0; x < size.width; ++x) {
           if (mp[x] != 0) {
             const float W_new = waccp[x] + 1.0f;
@@ -1860,7 +1863,8 @@ static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _
         }
       }
       else if (weights_type == CV_32FC1) {
-        const float* __restrict wp = src_w.ptr<float>(y);
+        //const float* __restrict wp = src_w.ptr<float>(y);
+        const float* __restrict wp = static_cast<const float*>(src_w_data) + y * src_w_step;
         for (int x = 0; x < size.width; ++x) {
           const float w_new = wp[x];
           if (w_new > FLT_EPSILON) {
@@ -1881,10 +1885,11 @@ static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _
   return true;
 }
 
-static bool running_average_update2(cv::InputArray _src_image, cv::InputArray _src_weights,
+static bool running_weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
     cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
-  CV_DISPATCH(_src_image.depth(), _running_average_update2, _src_image, _src_weights,
+  INSTRUMENT_REGION("");
+  CV_DISPATCH(_src_image.depth(), _running_weighted_average_update, _src_image, _src_weights,
       _src_accumulator, _weights_accumulator);
   CF_ERROR("APP BUG: BAD _src_image.depth()=%d encountered", _src_image.depth());
   return false;
@@ -2026,6 +2031,8 @@ void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size 
 bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
     const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
 {
+  INSTRUMENT_REGION("");
+
   if( !rmap.empty() && (rmap.cols > _accumulator.cols || rmap.rows > _accumulator.rows) ) {
     CF_ERROR("Invalid argument: rmap.size()=%dx%d > _accumulator.size()=%dx%d",
         rmap.cols, rmap.rows,
@@ -2084,7 +2091,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
 
-  running_average_update2(remapped_image, remapped_weights,
+  running_weighted_average_update(remapped_image, remapped_weights,
       _accumulator(ROI), _counter(ROI));
 
   _last_bbox = ROI;
@@ -2099,6 +2106,8 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
 bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
     double dscale, int ddepth, const cv::Rect & rbbox /*= cv::Rect()*/) const
 {
+  INSTRUMENT_REGION("");
+
   if ( _accumulated_frames < 1 ) {
     return false;
   }

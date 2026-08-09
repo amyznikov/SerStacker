@@ -384,8 +384,10 @@ protected:
 };
 
 
-class c_ecclm :
-    public c_ecc_align
+/**
+ * Direct Levendberg-Marquedt
+ * */
+class c_ecclm : public c_ecc_align
 {
 public:
   typedef c_ecclm this_class;
@@ -429,6 +431,9 @@ protected:
 };
 
 
+/**
+ * Inverse compositional Levenberg-Marquardt
+ */
 class c_ecclm_inverse_compositional:
     public c_ecc_align
 {
@@ -461,6 +466,9 @@ protected:
   double compute_rhs(const cv::Mat1f & params);
   double compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v);
   void compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
+  bool ecc_remap(const c_image_transform * image_transform, const cv::Mat1f & params, const cv::Size & size,
+      cv::InputArray src, cv::InputArray src_mask,
+      cv::OutputArray dst, cv::OutputArray dst_mask);
 
 protected:
   cv::Mat1f gx, gy;
@@ -469,6 +477,8 @@ protected:
   cv::Mat1b remapped_mask;
   cv::Mat1f rhs;
   cv::Mat1f Hp;
+  cv::Mat2f _rmap;
+  cv::Mat1b _dummy_mask;
   double rms = 0;
   double RMA = 0;
   double CMA = 0;

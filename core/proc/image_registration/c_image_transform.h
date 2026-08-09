@@ -10,6 +10,7 @@
 #define __c_image_transform_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/debug.h>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT

@@ -142,27 +142,35 @@ static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy, cv
 {
   INSTRUMENT_REGION("");
 
-  static thread_local cv::Mat Kx, Ky;
-  if( Kx.empty() ) {
-    cv::getDerivKernels(Kx, Ky, 1, 0, 7, true, CV_32F);
-    Kx *= M_SQRT2;
-    Ky *= M_SQRT2;
-  }
+  // 4th order derivative vector (5x1)
+  // 2nd order smoothing  vector (3x1)
+  static const cv::Matx<float, 5, 1> d5( +1.f/12.f, -2.f/3.f, 0.f, +2.f/3.f, -1.f/12.f );
+  static const cv::Matx<float, 3, 1> s3( 0.25f, 0.5f, 0.25f );
 
-  cv::sepFilter2D(src, gx, CV_32F, Kx, Ky, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-  cv::sepFilter2D(src, gy, CV_32F, Ky, Kx, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-
+  cv::Mat1b m;
   if( !mask.empty() ) {
-    cv::Mat1b m;
     cv::bitwise_not(mask, m);
-    gx.setTo(0, m);
-    gy.setTo(0, m);
   }
+
+  parallel_invoke(
+      [&]() {
+        cv::sepFilter2D(src, gx, CV_32F, d5, s3, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+        if ( !m.empty() ) {
+          gx.setTo(0, m);
+        }
+      },
+      [&]() {
+        cv::sepFilter2D(src, gy, CV_32F, s3, d5, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+        if ( !m.empty() ) {
+          gy.setTo(0, m);
+        }
+      });
 }
 
 
 static inline void ecc_remap(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat2f & rmap, cv::BorderTypes borderType = cv::BORDER_REPLICATE)
 {
+  INSTRUMENT_REGION("");
   cv::remap(_src.getMat(), _dst, rmap, cv::noArray(), cv::INTER_LINEAR, borderType);
 }
 
@@ -173,6 +181,8 @@ static bool ecc_remap(const c_image_transform * image_transform,
     cv::OutputArray dst, cv::OutputArray dst_mask,
     cv::BorderTypes borderType = cv::BORDER_REPLICATE)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat2f rmap;
 
   if( !image_transform->create_remap(params, size, rmap) ) {
@@ -283,15 +293,23 @@ void ecc_create_identity_remap(cv::Mat2f & rmap, const cv::Size & size)
  */
 void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/*, int nparams*/)
 {
+  INSTRUMENT_REGION("");
+
   const int M = J.size();
   H.create(M, M);
 
-  parallel_for(0, M, [&](const auto & range) {
-    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
-      for( int j = 0; j <= i; ++j ) {
-        H[i][j] = J[i].dot(J[j]);
-      }
+  struct index_t { int i, j; } index[(M * (M + 1)) / 2];
+  int nidx = 0;
+
+  for( int i = 0; i < M; ++i ) {
+    for( int j = 0; j <= i; ++j ) {
+      index[nidx++] = index_t{i, j};
     }
+  }
+
+  parallel_loop(0, nidx, [&](int p) {
+    const int i = index[p].i, j = index[p].j;
+    H(i,j) = J[i].dot(J[j]);
   });
 
   for( int i = 0; i < M; ++i ) {
@@ -307,14 +325,17 @@ void ecc_compute_hessian_matrix(const std::vector<cv::Mat1f> & J, cv::Mat1f & H/
  * */
 void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & rhs, cv::Mat1f & v)
 {
+  INSTRUMENT_REGION("");
+
   const int M = J.size();
   v.create(M, 1);
   parallel_for(0, M, [&](const auto & range) {
-    for ( int i = rbegin(range), ni = rend(range); i < ni; ++i ) {
+    for ( int i = rbegin(range), n = rend(range); i < n; ++i ) {
       v[i][0] = J[i].dot(rhs);
     }
   });
 }
+
 
 } // namespace
 
@@ -323,6 +344,8 @@ void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & r
 bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
     cv::Mat1f & dst, cv::Mat1b & dst_mask)
 {
+  INSTRUMENT_REGION("");
+
   if( !src_mask.empty() && (src_mask.size() != src.size() || src_mask.type() != CV_8UC1) ) {
 
     CF_ERROR("Invalid input mask: %dx%d %d channels depth=%d. Must be %dx%d CV_8UC1",
@@ -636,6 +659,7 @@ const cv::Mat1b & c_ecc_align::current_mask() const
 bool c_ecc_align::align(cv::InputArray current_image, cv::InputArray reference_image,
     cv::InputArray current_mask, cv::InputArray reference_mask)
 {
+  INSTRUMENT_REGION("");
   if ( !set_reference_image(reference_image, reference_mask) ) {
     CF_ERROR("c_ecc_align: set_reference_image() fails");
     return false;
@@ -947,6 +971,8 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
 
 bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat1f image;
   cv::Mat1b mask;
 
@@ -960,13 +986,8 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
   if( _opts.reference_smooth_sigma > 0 ) {
 
-
-    const int ksize =
-        std::max(3, 2 * ((int) (3 * _opts.reference_smooth_sigma)) + 1);
-
-    const cv::Mat1f G =
-        cv::getGaussianKernel(ksize,
-            _opts.reference_smooth_sigma);
+    const int ksize = std::max(3, 2 * ((int) (3 * _opts.reference_smooth_sigma)) + 1);
+    const cv::Mat1f G = cv::getGaussianKernel(ksize, _opts.reference_smooth_sigma);
 
     cv::sepFilter2D(image, image, -1,
         G, G,
@@ -977,7 +998,6 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
 
   double epsx = _opts.epsx;
-
 
   _pyramid.emplace_back(create_ecc_align(epsx));
 
@@ -995,11 +1015,8 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
       break;
     }
 
-    const cv::Size previous_size =
-        image.size();
-
-    const cv::Size next_size((previous_size.width + 1) / 2,
-        (previous_size.height + 1) / 2);
+    const cv::Size previous_size = image.size();
+    const cv::Size next_size((previous_size.width + 1) / 2, (previous_size.height + 1) / 2);
 
     // CF_DEBUG("next_size: %dx%d", next_size.width, next_size.height);
 
@@ -1029,6 +1046,8 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
 bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
 {
+  INSTRUMENT_REGION("c_ecch");
+
   if( _pyramid.empty() ) {
     CF_ERROR("Reference image must be set first");
     return false;
@@ -1102,6 +1121,7 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
 
 bool c_ecch::align(cv::InputArray current_image, cv::InputArray current_mask)
 {
+  INSTRUMENT_REGION("c_ecch");
   if ( !set_current_image(current_image, current_mask) ) {
     CF_ERROR("c_ecch: set_current_image() fails");
     return false;
@@ -1112,6 +1132,7 @@ bool c_ecch::align(cv::InputArray current_image, cv::InputArray current_mask)
 
 bool c_ecch::align()
 {
+  INSTRUMENT_REGION("c_ecch");
   if( _pyramid.empty() ) {
     CF_ERROR("c_ecch: no reference image was set");
     return false;
@@ -1730,8 +1751,7 @@ bool c_ecc_inverse_compositional::align()
     params = _transform->parameters();
 
     ecc_remap(_transform, params, reference_image().size(),
-        _current_image, _current_mask, remapped_image, remapped_mask,
-        cv::BORDER_CONSTANT);
+        _current_image, _current_mask, remapped_image, remapped_mask);
 
     cv::subtract(remapped_image, _reference_image, rhs);
     if ( !remapped_mask.empty() ) {
@@ -1783,11 +1803,13 @@ void c_ecclm_inverse_compositional::set_image_transform(c_image_transform * imag
 
 bool c_ecclm_inverse_compositional::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
+  INSTRUMENT_REGION("");
   return base::set_reference_image(reference_image, reference_mask);
 }
 
 bool c_ecclm_inverse_compositional::set_current_image(cv::InputArray current_image, cv::InputArray current_mask)
 {
+  INSTRUMENT_REGION("");
   return base::set_current_image(current_image, current_mask);
 }
 
@@ -1802,16 +1824,65 @@ bool c_ecclm_inverse_compositional::align_to_reference(cv::InputArray current_im
   return base::align_to_reference(current_image, current_mask);
 }
 
+bool c_ecclm_inverse_compositional::ecc_remap(const c_image_transform * image_transform, const cv::Mat1f & params, const cv::Size & size,
+    cv::InputArray src, cv::InputArray src_mask,
+    cv::OutputArray dst, cv::OutputArray dst_mask)
+{
+  INSTRUMENT_REGION("");
+
+  if( !image_transform->create_remap(params, size, _rmap) ) {
+    CF_ERROR("image_transform->create_remap() fails");
+    return false;
+  }
+
+  cv::remap(src, dst, _rmap, cv::noArray(), cv::INTER_LINEAR,
+      cv::BORDER_REPLICATE);
+
+  if( !src_mask.empty() ) {
+
+    INSTRUMENT_REGION("remap_src_mask");
+
+    cv::remap(src_mask, dst_mask,
+        _rmap, cv::noArray(),
+        cv::INTER_NEAREST,
+        cv::BORDER_CONSTANT,
+        cv::Scalar(0));
+
+  }
+  else {
+    INSTRUMENT_REGION("remap_dummy_mask");
+
+    if ( _dummy_mask.size() != src.size() ) {
+      _dummy_mask.create(src.size());
+      _dummy_mask.setTo(255);
+    }
+
+    cv::remap(_dummy_mask, dst_mask,
+        _rmap, cv::noArray(),
+        cv::INTER_NEAREST,
+        cv::BORDER_CONSTANT,
+        cv::Scalar(0));
+  }
+
+#if 0 // TODO: Check carefully if this call can be really avoided
+  static const cv::Mat1b SE(3,3, 255);
+  cv::erode(dst_mask, dst_mask, SE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+#endif
+
+  return true;
+}
+
 void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
     cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
 {
+  INSTRUMENT_REGION("");
+
   const int M = params.rows;
   const cv::Size size(_reference_image.size());
 
   ecc_remap(_transform, params, size,
       _current_image, _current_mask,
-      remapped_image, remapped_mask,
-      cv::BORDER_REPLICATE);
+      remapped_image, remapped_mask);
 
   if( remapped_mask.empty() ) {
     remapped_mask = _reference_mask;
@@ -1836,12 +1907,15 @@ void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
 
 double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)
 {
+  INSTRUMENT_REGION("");
   compute_remap(params, remapped_image, remapped_mask, rhs);
   return rms;
 }
 
 double c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v)
 {
+  INSTRUMENT_REGION("");
+
   if( recompute_remap ) {
     compute_remap(params, remapped_image, remapped_mask, rhs);
   }
@@ -1854,6 +1928,8 @@ double c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, bool r
 
 bool c_ecclm_inverse_compositional::align()
 {
+  INSTRUMENT_REGION("(ecclm)");
+
   _failed = true;
 
   if ( !_transform ) {

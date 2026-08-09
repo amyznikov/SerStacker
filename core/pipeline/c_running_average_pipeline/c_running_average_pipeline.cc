@@ -216,6 +216,7 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
 
 bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
+  INSTRUMENT_REGION("");
   return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1);
 }
 
@@ -586,6 +587,7 @@ static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
 
 bool c_running_average_pipeline::process_current_frame()
 {
+  INSTRUMENT_REGION("");
 //  CF_DEBUG("ENTER");
 
   static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
@@ -606,6 +608,7 @@ bool c_running_average_pipeline::process_current_frame()
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
     // Very first frame
+    INSTRUMENT_REGION("initialize_accumulator");
     lock_guard lock(mutex());
     if ( !_average.add(_current_image, _current_mask, cv::Mat2f(), cv::Rect()) ) {
       CF_ERROR("average_add() fails");
@@ -613,6 +616,7 @@ bool c_running_average_pipeline::process_current_frame()
     }
   }
   else {
+    INSTRUMENT_REGION("align_and_update");
     // Not a first frame
     cv::Mat current_image, current_mask, reference_image, reference_mask;
     cv::Mat weights;
@@ -636,6 +640,7 @@ bool c_running_average_pipeline::process_current_frame()
     _image_transform->reset();
 
     if( _registration_options.enable_star_registration ) {
+      INSTRUMENT_REGION("star_registration");
 
       std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
       cv::Mat current_descriptors, reference_descriptors;
@@ -675,12 +680,14 @@ bool c_running_average_pipeline::process_current_frame()
     }
 
     if( _registration_options.enable_ecc_registration ) {
+      INSTRUMENT_REGION("ecc_registration");
 
       if ( _average.accumulated_frames() > 50 ) {
         const double sigma = _registration_options.eccUnsharpMaskSigma;
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
-          unsharp_mask(reference_image, reference_mask, reference_image,
+         INSTRUMENT_REGION("unsharp_mask");
+         unsharp_mask(reference_image, reference_mask, reference_image,
               sigma, alpha, 0, 1.5);
         }
       }
@@ -728,6 +735,7 @@ bool c_running_average_pipeline::process_current_frame()
 
 void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
 {
+  INSTRUMENT_REGION("");
 //  if( _apodizationWindow.size() != src.size() ) {
 //
 //    const int B = 40;

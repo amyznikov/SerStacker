@@ -149,6 +149,7 @@ bool c_translation_image_transform::create_remap(const cv::Mat1f & p, const cv::
 
 bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::Size & size, cv::Mat2f & rmap) const
 {
+  INSTRUMENT_REGION("");
   //  x' =  x + tx
   //  y' =  y + ty
 
@@ -171,6 +172,7 @@ bool c_translation_image_transform::create_remap(const cv::Vec2f & T, const cv::
 bool c_translation_image_transform::create_remap_fixed(const cv::Mat1f & params, const cv::Size & size,
     cv::Mat & map1, cv::Mat & map2) const
 {
+  INSTRUMENT_REGION("");
   // OpenCV subpixel grid constants
   constexpr int scale = 32;           // cv::INTER_REMAP_FI_SCALE; // 32
   constexpr int scale_shift_bits = 5; // 32
@@ -230,6 +232,7 @@ bool c_translation_image_transform::create_remap_fixed(const cv::Mat1f & params,
 bool c_translation_image_transform::remap(const cv::Vec2f & T, const std::vector<cv::Point2f> & rpts,
     std::vector<cv::Point2f> & cpts) const
 {
+  INSTRUMENT_REGION("");
   //  x' =  x + tx
   //  y' =  y + ty
 

@@ -410,7 +410,7 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
     const c_align_color_channels_options & opts,
     cv::OutputArray _dst, cv::OutputArray _dstmask) const
 {
-//  CF_DEBUG("ENTER");
+//  CF_DEBUG("c_align_color_channels: ENTER");
 
   const int cn = _src.channels();
   if ( _image_transforms.size() < cn ) {
@@ -526,7 +526,7 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
     }
   }
 
-//  CF_DEBUG("LEAVE");
+//  CF_DEBUG("c_align_color_channels: LEAVE");
   return true;
 }
 

@@ -588,7 +588,6 @@ bool c_image_processor::process(cv::InputOutputArray image, cv::InputOutputArray
     if ( routine && routine->enabled() ) {
 
       try {
-
         routine->set_has_contol_changes(false);
         routine->emit_preprocess_notify(image, mask);
 

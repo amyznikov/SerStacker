@@ -1773,6 +1773,123 @@ static bool running_average_update(cv::InputArray src, cv::InputArray srcmask,
   return false;
 }
 
+template<class _Tp>
+static bool _running_average_update2(cv::InputArray _src_image, cv::InputArray _src_weights,
+    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
+{
+  const cv::Size size = _src_image.size();
+  const int cn = _src_image.channels();
+
+  if( _src_accumulator.size() != size ) {
+    CF_DEBUG("Image and accumulator sizes not match");
+    return false;
+  }
+
+  if( _weights_accumulator.size() != size ) {
+    CF_DEBUG("Image and weights accumulator sizes not match");
+    return false;
+  }
+
+  if( _weights_accumulator.type() != CV_32FC1 ) {
+    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
+    return false;
+  }
+
+  if( _src_accumulator.depth() != CV_32F ) {
+    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
+    return false;
+  }
+
+  if( _src_accumulator.channels() != cn ) {
+    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
+    return false;
+  }
+
+  const cv::Mat_<_Tp> src = _src_image.getMat();
+  const _Tp* const __restrict src_data = src[0];
+  const size_t src_step = src.step1();
+
+  cv::Mat_<float> acc = _src_accumulator.getMatRef();
+  cv::Mat1f W = _weights_accumulator.getMatRef();
+
+  const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
+  const cv::Mat src_w = _src_weights.getMat();
+
+  float* const __restrict acc_data = acc[0];
+  const size_t acc_step = acc.step1();
+
+  float* const __restrict wacc_data = W[0];
+  const size_t wacc_step = W.step1();
+
+  parallel_for(0, size.height, [=, &src_w](const auto & range) {
+
+    const int y0 = rbegin(range);
+    float* __restrict accp = acc_data + y0 * acc_step;
+    float* __restrict waccp = wacc_data + y0 * wacc_step;
+    const _Tp* __restrict srcp = src_data + y0 * src_step;
+
+    for ( int y = y0; y < rend(range); ++y, accp += acc_step, waccp += wacc_step, srcp += src_step ) {
+
+      if (weights_type == -1) {
+        for (int x = 0; x < size.width; ++x) {
+          const float W_new = waccp[x] + 1.0f;
+          const float factor = 1.0f / W_new;
+          const int idx = x * cn;
+          waccp[x] = W_new;
+          for (int c = 0; c < cn; ++c) {
+            const float I_new = srcp[idx + c];
+            const float A_old = accp[idx + c];
+            accp[idx + c] = A_old + (I_new - A_old) * factor;
+          }
+        }
+      }
+      else if (weights_type == CV_8UC1) {
+        const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
+        for (int x = 0; x < size.width; ++x) {
+          if (mp[x] != 0) {
+            const float W_new = waccp[x] + 1.0f;
+            const float factor = 1.0f / W_new;
+            const int idx = x * cn;
+            waccp[x] = W_new;
+            for (int c = 0; c < cn; ++c) {
+              const float I_new = srcp[idx + c];
+              const float A_old = accp[idx + c];
+              accp[idx + c] = A_old + (I_new - A_old) * factor;
+            }
+          }
+        }
+      }
+      else if (weights_type == CV_32FC1) {
+        const float* __restrict wp = src_w.ptr<float>(y);
+        for (int x = 0; x < size.width; ++x) {
+          const float w_new = wp[x];
+          if (w_new > FLT_EPSILON) {
+            const float W_new = waccp[x] + w_new;
+            const float factor = w_new / W_new;
+            const int idx = x * cn;
+            waccp[x] = W_new;
+            for (int c = 0; c < cn; ++c) {
+              const float I_new = srcp[idx + c];
+              const float A_old = accp[idx + c];
+              accp[idx + c] = A_old + (I_new - A_old) * factor;
+            }
+          }
+        }
+      }
+    }});
+
+  return true;
+}
+
+static bool running_average_update2(cv::InputArray _src_image, cv::InputArray _src_weights,
+    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
+{
+  CV_DISPATCH(_src_image.depth(), _running_average_update2, _src_image, _src_weights,
+      _src_accumulator, _weights_accumulator);
+  CF_ERROR("APP BUG: BAD _src_image.depth()=%d encountered", _src_image.depth());
+  return false;
+}
+
 void c_running_average::clear()
 {
   _accumulator.release();
@@ -1838,51 +1955,6 @@ bool c_running_average::compute(cv::OutputArray avg, cv::OutputArray mask, doubl
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//template<typename _Tp>
-//static bool _safeDivide(cv::InputArray _src, const cv::Mat1f & counter, cv::OutputArray _dst, cv::OutputArray _dstmask,
-//    double dscale)
-//{
-//  const cv::Mat_<_Tp> src = _src.getMat();
-//  const int rows = _src.rows();
-//  const int cols = _src.cols();
-//  const int cn = _src.channels();
-//
-//  _dst.create(rows, cols, _src.type());
-//  _dstmask.create(rows, cols, CV_8UC1);
-//
-//  cv::Mat_<_Tp> dst = _dst.getMatRef();
-//  cv::Mat1b dstmask = _dstmask.getMatRef();
-//
-//  parallel_for(0, rows, [&, cols, cn, dscale ](const auto & range) {
-//    const float scale = dscale;
-//    for (int y = rbegin(range); y < rend(range); ++y) {
-//      const _Tp* srcp = src[y];
-//      const float* cntp = counter[y];
-//      _Tp* __restrict dstp = dst[y];
-//      uint8_t * __restrict mskp = dstmask[y];
-//
-//      for (int x = 0; x < cols; ++x) {
-//        const float cval = cntp[x];
-//        mskp[x] = cval ? 255 : 0;
-//        for (int c = 0; c < cn; ++c, ++srcp) {
-//          *dstp++ = cv::saturate_cast<_Tp>( cval ? *srcp * scale / cval : 0 );
-//        }
-//      }
-//    }
-//  });
-//
-//  return true;
-//}
-//
-//static bool safeDivide(cv::InputArray src, const cv::Mat1f & counter, cv::OutputArray dst, cv::OutputArray dstmask,
-//    double dscale)
-//{
-//  CV_DISPATCH(src.depth(), _safeDivide, src, counter, dst, dstmask, dscale);
-//  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", src.depth());
-//  return false;
-//}
-
-
 cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
 {
   const int W = inputFrameSize.width;
@@ -1899,7 +1971,7 @@ void c_canvas_average::setCanvasSize(const cv::Size & v)
   _accumulated_frames = 0;
 }
 
-void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap/*, cv::Mat1b & full_mask*/)
+void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize)
 {
   if (_accumulator.empty() || bbox.width <= 0 || bbox.height <= 0) {
     return;
@@ -1939,241 +2011,17 @@ void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size 
 
       cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
       cv::Mat1f new_counter = cv::Mat1f::zeros(_counter.size());
-      cv::Mat2f new_rmap = cv::Mat2f(rmap.size(), cv::Vec2f(-1, -1));
-      //cv::Mat1b new_mask = cv::Mat1b::zeros(full_mask.size());
 
       _accumulator(src_roi).copyTo(new_accum(dst_roi));
       _counter(src_roi).copyTo(new_counter(dst_roi));
-      rmap(src_roi).copyTo(new_rmap(dst_roi));
-      //full_mask(src_roi).copyTo(new_mask(dst_roi));
-
       _accumulator = new_accum;
       _counter = new_counter;
-      rmap = new_rmap;
-      //full_mask = new_mask;
       bbox.x += shift_x;
       bbox.y += shift_y;
     }
   }
 }
 
-
-//bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap)
-//{
-//  if( rmap && rmap->size() != _accumulator.size() ) {
-//    CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
-//        rmap->cols, rmap->rows,
-//        _accumulator.cols, _accumulator.rows);
-//    return false;
-//  }
-//
-//  if( _accumulator.empty() ) {
-//    // very first frame
-//    const cv::Size frameSize = current_image.size();
-//
-//    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
-//    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
-//        std::max(_canvasSize.height, computedCanvasSize.height));
-//
-//    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
-//    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
-//    const cv::Rect ROI(target_x, target_y, frameSize.width, frameSize.height);
-//
-//    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
-//    _counter = cv::Mat1f::zeros(canvasSize);
-//    current_image.copyTo(_accumulator(ROI));
-//    _counter(ROI).setTo(1, current_mask);
-//    _last_bbox = ROI;
-//  }
-//  else {
-//    // not a first frame
-//    cv::Mat src, mask;
-//    cv::Rect bbox;
-//
-//    if( rmap ) {
-//
-//      cv::Mat cmask;
-//      cv::Mat full_mask;
-//      cv::Mat1b full_mask_b;
-//
-//      CF_DEBUG("CCP1");
-//
-//      if ( current_mask.empty() ) {
-//        cmask = cv::Mat1b(current_image.size(), 255);
-//      }
-//      else if ( current_mask.depth() == CV_8U ) {
-//        cmask = current_mask.getMat();
-//      }
-//      else {
-//        cv::compare(current_mask, 0, cmask, cv::CMP_GT);
-//      }
-//
-//      CF_DEBUG("CCP2");
-//      cv::remap(cmask, full_mask, *rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-//      CF_DEBUG("CCP3");
-//      if ( full_mask.depth() == CV_8U ) {
-//        full_mask_b = full_mask;
-//      }
-//      else {
-//        cv::compare(full_mask, 0, full_mask_b, cv::CMP_GT);
-//      }
-//
-//      bbox = cv::boundingRect(full_mask_b) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-//      CF_DEBUG("boundingRect: l=%d t=%d r=%d b=%d",
-//          bbox.x, bbox.y, bbox.x + bbox.width, bbox.y + bbox.height);
-//
-//      if( bbox.width <= 5 || bbox.height <= 5 ) {
-//        CF_ERROR("Sanity check failed: Frame is outside the canvas boundaries!");
-//        return false;
-//      }
-//
-//      cv::Mat2f wmap = *rmap;
-//      maintainCanvasBoundaries(bbox, current_image.size(), wmap, full_mask_b);
-//
-//      const int padding = 2;
-//      bbox.x = std::max(0, bbox.x - padding);
-//      bbox.y = std::max(0, bbox.y - padding);
-//      bbox.width = std::min(_accumulator.cols - bbox.x, bbox.width + 2 * padding);
-//      bbox.height = std::min(_accumulator.rows - bbox.y, bbox.height + 2 * padding);
-//
-//      CF_DEBUG("CCP4");
-//      cv::remap(current_image, src, wmap(bbox), cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
-//      CF_DEBUG("CCP5");
-//      mask = full_mask(bbox);
-//    }
-//    else if( current_image.size() == _accumulator.size() ) {
-//      src = current_image.getMat();
-//      mask = current_mask.getMat();
-//      bbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-//    }
-//    else {
-//      CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
-//          rmap->cols, rmap->rows, _accumulator.cols, _accumulator.rows);
-//      return false;
-//    }
-//
-//    cv::Mat sub_accum = _accumulator(bbox);
-//    cv::Mat1f sub_counter = _counter(bbox);
-//    CF_DEBUG("CCP6");
-//    running_average_update(src, mask, sub_accum, sub_counter, w);
-//    CF_DEBUG("CCP7");
-//    _last_bbox = bbox;
-//  }
-//
-//  ++_accumulated_frames;
-//  return true;
-//}
-
-//bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap,
-//    const cv::Rect & mbbox)
-//{
-//  if( rmap && rmap->size() != _accumulator.size() ) {
-//    CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
-//        rmap->cols, rmap->rows,
-//        _accumulator.cols, _accumulator.rows);
-//    return false;
-//  }
-//
-//  if( _accumulator.empty() ) {
-//    // very first frame
-//    const cv::Size frameSize = current_image.size();
-//
-//    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
-//    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
-//        std::max(_canvasSize.height, computedCanvasSize.height));
-//
-//    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
-//    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
-//    const cv::Rect ROI(target_x, target_y, frameSize.width, frameSize.height);
-//
-//    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
-//    _counter = cv::Mat1f::zeros(canvasSize);
-//    current_image.copyTo(_accumulator(ROI));
-//    _counter(ROI).setTo(1, current_mask);
-//    _last_bbox = ROI;
-//  }
-//  else {
-//    // not a first frame
-//    cv::Mat src, mask;
-//    cv::Rect bbox;
-//
-//    if( rmap ) {
-//
-////      cv::Mat cmask;
-////      cv::Mat full_mask;
-////      cv::Mat1b full_mask_b;
-//
-//      CF_DEBUG("CCP1");
-//
-////      if ( current_mask.empty() ) {
-////        cmask = cv::Mat1b(current_image.size(), 255);
-////      }
-////      else if ( current_mask.depth() == CV_8U ) {
-////        cmask = current_mask.getMat();
-////      }
-////      else {
-////        cv::compare(current_mask, 0, cmask, cv::CMP_GT);
-////      }
-//
-////      CF_DEBUG("CCP2");
-////      cv::remap(cmask, full_mask, *rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-////      CF_DEBUG("CCP3");
-////      if ( full_mask.depth() == CV_8U ) {
-////        full_mask_b = full_mask;
-////      }
-////      else {
-////        cv::compare(full_mask, 0, full_mask_b, cv::CMP_GT);
-////      }
-//
-//      bbox = mbbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-//      CF_DEBUG("mbbox: l=%d t=%d r=%d b=%d bbox: l=%d t=%d r=%d b=%d",
-//          mbbox.x, mbbox.y, mbbox.x + mbbox.width, mbbox.y + mbbox.height,
-//          bbox.x, bbox.y, bbox.x + bbox.width, bbox.y + bbox.height);
-//
-////      bbox = cv::boundingRect(full_mask_b) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-////      CF_DEBUG("boundingRect: l=%d t=%d r=%d b=%d",
-////          bbox.x, bbox.y, bbox.x + bbox.width, bbox.y + bbox.height);
-////
-////      if( bbox.width <= 5 || bbox.height <= 5 ) {
-////        CF_ERROR("Sanity check failed: Frame is outside the canvas boundaries!");
-////        return false;
-////      }
-//
-//      cv::Mat2f wmap = *rmap;
-//      //maintainCanvasBoundaries(bbox, current_image.size(), wmap/*, full_mask_b*/);
-//
-////      const int padding = 2;
-////      bbox.x = std::max(0, bbox.x - padding);
-////      bbox.y = std::max(0, bbox.y - padding);
-////      bbox.width = std::min(_accumulator.cols - bbox.x, bbox.width + 2 * padding);
-////      bbox.height = std::min(_accumulator.rows - bbox.y, bbox.height + 2 * padding);
-//
-//      CF_DEBUG("CCP4 image: %dx%d mask: %dx%d ", current_image.cols(), current_image.rows(), current_mask.cols(), current_mask.rows());
-//      cv::remap(current_image, src, wmap(bbox), cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
-//      cv::remap(current_mask, mask, wmap(bbox), cv::noArray(), _interpolation_mode, cv::BORDER_CONSTANT);
-//      CF_DEBUG("CCP5 src: %dx%d mask: %dx%d ", src.cols, src.rows, mask.cols, mask.rows);
-//      //mask = full_mask(bbox);
-//    }
-//    else if( current_image.size() == _accumulator.size() ) {
-//      src = current_image.getMat();
-//      mask = current_mask.getMat();
-//      bbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-//    }
-//    else {
-//      CF_ERROR("Invalid argument: rmap->size()=%dx%d != _accumulator.size()=%dx%d",
-//          rmap->cols, rmap->rows, _accumulator.cols, _accumulator.rows);
-//      return false;
-//    }
-//
-//    cv::Mat sub_accum = _accumulator(roi);
-//    cv::Mat1f sub_counter = _counter(roi);
-//    running_average_update(remapped_image, remapped_weights, sub_accum, sub_counter, w);
-//    _last_bbox = roi;
-//  }
-//
-//  ++_accumulated_frames;
-//  return true;
-//}
 
 bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
     const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
@@ -2222,10 +2070,12 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     return true;
   }
 
-  const cv::Rect ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+  cv::Rect ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
   if (ROI.empty()) {
     return false;
   }
+
+  maintainCanvasBoundaries(ROI, current_image.size());
 
   cv::Mat remapped_image, remapped_weights;
   cv::remap(img, remapped_image, rmap, cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
@@ -2234,9 +2084,8 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
   }
 
-  cv::Mat sub_accum = _accumulator(ROI);
-  cv::Mat1f sub_counter = _counter(ROI);
-  running_average_update(remapped_image, remapped_weights, sub_accum, sub_counter, 1000);
+  running_average_update2(remapped_image, remapped_weights,
+      _accumulator(ROI), _counter(ROI));
 
   _last_bbox = ROI;
   ++_accumulated_frames;

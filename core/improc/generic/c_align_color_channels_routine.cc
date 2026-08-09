@@ -91,10 +91,6 @@ bool c_align_color_channels_routine::serialize(c_config_setting settings, bool s
 
 bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  //  return _algorithm.align(image, image, _opts, reference_channel,
-  //      _ignore_mask ? cv::noArray() : mask,
-  //      _ignore_mask ? cv::noArray() : mask);
-
   if( reEstimate || _algorithm.estimated_motion_type() != _opts.motion_type ) {
     const bool fOk = _algorithm.estimate(image, _ignore_mask ? cv::noArray() : mask, referenceChannel, _opts);
     if ( !fOk ) {
@@ -102,7 +98,6 @@ bool c_align_color_channels_routine::process(cv::InputOutputArray image, cv::Inp
       return false;
     }
   }
-
   return _algorithm.apply(image, _ignore_mask ? cv::noArray() : mask, _opts, image, mask);
 }
 

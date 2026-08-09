@@ -281,7 +281,7 @@ public:
 
 
 protected:
-  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize, cv::Mat2f & rmap);
+  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
 
 protected:
   cv::Mat _accumulator;

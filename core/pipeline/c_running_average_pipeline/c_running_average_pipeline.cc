@@ -714,7 +714,7 @@ bool c_running_average_pipeline::process_current_frame()
     compute_weights(_current_image, _current_mask, weights);
     const cv::Mat & w = weights.empty() ? _current_mask : weights;
 
-    lock_guard lock(mutex());
+    // lock_guard lock(mutex());
     if ( !_average.add(_current_image, w, rmap, newCanvasBBox) ) {
       CF_ERROR("average_add() fails");
       return false;

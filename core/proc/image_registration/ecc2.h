@@ -287,6 +287,11 @@ public:
   bool create_remap(cv::Mat2f & rmap) const;
   cv::Mat2f create_remap() const;
 
+  static cv::Size compute_next_pyramid_layer_size(const cv::Size & currentSize)
+  {
+    return cv::Size(((currentSize.width + 1) >> 1) & ~0x1, ((currentSize.height + 1) >> 1) & ~0x1);
+  }
+
 protected:
   c_ecc_align::uptr create_ecc_align(double epsx) const;
 
@@ -294,6 +299,8 @@ protected:
   c_ecch_options _opts;
   std::vector<c_ecc_align::uptr> _pyramid;
   c_image_transform  * _image_transform = nullptr;
+  double sigmaRef = 0, sigmaCur = 0;
+  cv::Mat1f Gref, Gcur;
   int _num_iterations = -1;
 };
 
@@ -453,6 +460,8 @@ public:
   bool set_current_image(cv::InputArray current_image,
       cv::InputArray current_mask = cv::noArray()) override;
 
+  void release_current_image() override;
+
   bool align() override;
 
   bool align(cv::InputArray current_image, cv::InputArray reference_image,
@@ -485,6 +494,7 @@ protected:
   double _last_rms = 0;
   double RMA = 0;
   double CMA = 0;
+  bool _reference_image_changed = true;
 };
 
 

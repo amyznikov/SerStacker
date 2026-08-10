@@ -129,6 +129,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     bool is_external_master_frame,
     bool save_raw_bayer)
 {
+  INSTRUMENT_REGION("");
+
   //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
@@ -267,13 +269,8 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   }
 
   if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
-#if 1
-    linear_interpolation_inpaint(output_image, output_mask,
-        output_image);
-#else
-    average_pyramid_inpaint(output_image, output_mask,
-        output_image);
-#endif
+    INSTRUMENT_REGION("inpaint_missing_pixels");
+    linear_interpolation_inpaint(output_image, output_mask);
   }
 
 

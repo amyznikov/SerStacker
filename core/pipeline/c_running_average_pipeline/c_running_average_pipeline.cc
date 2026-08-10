@@ -423,6 +423,8 @@ void c_running_average_pipeline::cleanup_pipeline()
 
 bool c_running_average_pipeline::run_pipeline()
 {
+  INSTRUMENT_REGION("");
+
   if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
     CF_ERROR("ERROR: start_pipeline() fails");
     return false;
@@ -459,6 +461,7 @@ bool c_running_average_pipeline::run_pipeline()
     _input_bpp = _input_sequence->bpp();
 
     if( _input_options.input_image_processor && !_input_options.input_image_processor->empty() ) {
+      INSTRUMENT_REGION("input_image_processor");
       if( !_input_options.input_image_processor->process(_current_image, _current_mask) ) {
         CF_ERROR("input_image_processor->process() fails");
         fOK = false;

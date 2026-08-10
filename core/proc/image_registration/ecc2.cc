@@ -363,7 +363,7 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
     cv::Mat tmp;
     cv::cvtColor(src, tmp, cv::COLOR_BGR2GRAY);
     if( tmp.depth() == dst.depth() ) {
-      dst = tmp;
+      dst = std::move(tmp);
     }
     else {
       tmp.convertTo(dst, dst.depth());
@@ -968,15 +968,13 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
   return ecc;
 }
 
-
 bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
-  INSTRUMENT_REGION("");
+  INSTRUMENT_REGION("c_ecch");
 
   cv::Mat1f image;
   cv::Mat1b mask;
 
-  _pyramid.clear();
   _num_iterations = -1;
 
   if( !ecc_convert_input_image(reference_image, reference_mask, image, mask) ) {
@@ -985,58 +983,67 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
   }
 
   if( _opts.reference_smooth_sigma > 0 ) {
-
-    const int ksize = std::max(3, 2 * ((int) (3 * _opts.reference_smooth_sigma)) + 1);
-    const cv::Mat1f G = cv::getGaussianKernel(ksize, _opts.reference_smooth_sigma);
-
-    cv::sepFilter2D(image, image, -1,
-        G, G,
-        cv::Point(-1, -1),
-        0,
-        cv::BORDER_REPLICATE);
+    INSTRUMENT_REGION("sepFilter2D");
+    if( _opts.reference_smooth_sigma != sigmaRef || Gref.empty() ) {
+      const int ksize = std::max(3, 2 * ((int) (3 * _opts.reference_smooth_sigma)) + 1);
+      Gref = cv::getGaussianKernel(ksize, _opts.reference_smooth_sigma);
+      sigmaRef = _opts.reference_smooth_sigma;
+    }
+    cv::sepFilter2D(image, image, -1, Gref, Gref, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   }
 
 
-  double epsx = _opts.epsx;
-
-  _pyramid.emplace_back(create_ecc_align(epsx));
-
-  if( !_pyramid.back()->set_reference_image(image, mask) ) {
-    CF_ERROR("pyramid_.back()->set_reference_image() fails");
-    _pyramid.clear();
-    return false;
-  }
-
-
+  // Estimate how many pyramid levels is required
   const int min_image_size = std::max(4, this->_opts.minimum_image_size);
-  for( int lvl = 1; ; ++lvl ) {
 
-    if( _opts.maxlevel >= 0 && lvl >= std::max(0, _opts.maxlevel) ) {
+  cv::Size test_size = image.size();
+  int required_lvls = 1;
+  while (true) {
+    if( _opts.maxlevel >= 0 && required_lvls >= std::max(0, _opts.maxlevel) ) {
       break;
     }
 
-    const cv::Size previous_size = image.size();
-    const cv::Size next_size((previous_size.width + 1) / 2, (previous_size.height + 1) / 2);
-
-    // CF_DEBUG("next_size: %dx%d", next_size.width, next_size.height);
-
+    const cv::Size next_size = compute_next_pyramid_layer_size(test_size);
     if( next_size.width < min_image_size || next_size.height < min_image_size ) {
       break;
     }
 
-    cv::pyrDown(image, image, next_size);
+    test_size = next_size;
+    ++required_lvls;
+  }
 
-    if( !mask.empty() ) {
-      cv::pyrDown(mask, mask, next_size);
-      cv::compare(mask, 250, mask, cv::CMP_GE);
+  if( _pyramid.size() != required_lvls ) {
+    _pyramid.clear();
+    double epsx = _opts.epsx;
+    for( int i = 0; i < required_lvls; ++i ) {
+      _pyramid.emplace_back(create_ecc_align(epsx));
+      epsx *= 2; // scale stop criteria for coarse levels
+    }
+  }
+
+  if ( true ) {
+    INSTRUMENT_REGION("build_pyramid");
+
+    if( !_pyramid[0]->set_reference_image(image, mask) ) {
+      CF_ERROR("_pyramid[0]->set_reference_image() fails");
+      return false;
     }
 
-    _pyramid.emplace_back(create_ecc_align(epsx *= 2));
+    for( int lvl = 1; lvl < required_lvls; ++lvl ) {
+      const cv::Size prev_size = image.size();
+      const cv::Size next_size = compute_next_pyramid_layer_size(prev_size);
 
-    if( !_pyramid.back()->set_reference_image(image, mask) ) {
-      CF_ERROR("L[%d] pyramid_.back()->set_reference_image() fails", lvl);
-      _pyramid.clear();
-      return false;
+      cv::pyrDown(image, image, next_size);
+      if( !mask.empty() ) {
+        cv::resize(mask, mask, next_size, 0, 0, cv::INTER_NEAREST);
+        //  cv::pyrDown(mask, mask, next_size);
+        //  cv::compare(mask, 255, mask, cv::CMP_GE);
+      }
+
+      if( !_pyramid[lvl]->set_reference_image(image, mask) ) {
+        CF_ERROR("_pyramid[lvl=%d]->set_reference_image() fails", lvl);
+        return false;
+      }
     }
   }
 
@@ -1064,60 +1071,50 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
   }
 
   if( _opts.input_smooth_sigma > 0 ) {
-
-    const int ksize =
-        std::max(3, 2 * ((int) (3 * _opts.input_smooth_sigma)) + 1);
-
-    const cv::Mat1f G =
-        cv::getGaussianKernel(ksize,
-            _opts.input_smooth_sigma);
-
-    cv::sepFilter2D(image, image, -1,
-        G, G,
-        cv::Point(-1, -1),
-        0,
-        cv::BORDER_REPLICATE);
+    INSTRUMENT_REGION("sepFilter2D");
+    if( _opts.input_smooth_sigma != sigmaCur || Gcur.empty() ) {
+      const int ksize = std::max(3, 2 * ((int) (3 * _opts.input_smooth_sigma)) + 1);
+      Gcur = cv::getGaussianKernel(ksize, _opts.input_smooth_sigma);
+      sigmaCur = _opts.input_smooth_sigma;
+    }
+    cv::sepFilter2D(image, image, -1, Gcur, Gcur, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
   }
 
   const int lvls = _pyramid.size();
 
   int lvl = 0;
 
-  for( ; lvl < lvls; ++lvl ) {
+  if ( true ) {
+    INSTRUMENT_REGION("build_pyramid");
+    for( ; lvl < lvls; ++lvl ) {
 
-    if ( !_pyramid[lvl]->set_current_image(image, mask) ) {
-      CF_ERROR("L[%d] pyramid_[lvl]->set_current_image() fails");
-      return false;
-    }
-
-    if( lvl < lvls - 1 ) {
-
-      const cv::Size previous_size =
-          image.size();
-
-      const cv::Size next_size((previous_size.width + 1) / 2,
-          (previous_size.height + 1) / 2);
-
-      if( next_size.width < 4 || next_size.height < 4 ) {
-        break;
+      if ( !_pyramid[lvl]->set_current_image(image, mask) ) {
+        CF_ERROR("L[%d] pyramid_[lvl]->set_current_image() fails");
+        return false;
       }
 
-      cv::pyrDown(image, image, next_size);
+      if( lvl < lvls - 1 ) {
 
-      if( !mask.empty() ) {
-        cv::pyrDown(mask, mask, next_size);
-        cv::compare(mask, 250, mask, cv::CMP_GE);
+        const cv::Size prev_size = image.size();
+        const cv::Size next_size = compute_next_pyramid_layer_size(prev_size);
+        if( next_size.width < 4 || next_size.height < 4 ) {
+          break;
+        }
+
+        cv::pyrDown(image, image, next_size);
+        if( !mask.empty() ) {
+          cv::resize(mask, mask, next_size, 0, 0, cv::INTER_NEAREST);
+        }
       }
     }
-  }
 
-  for( ; lvl < lvls; ++lvl ) {
-    _pyramid[lvl]->release_current_image();
+    for( ; lvl < lvls; ++lvl ) {
+      _pyramid[lvl]->release_current_image();
+    }
   }
 
   return true;
 }
-
 
 bool c_ecch::align(cv::InputArray current_image, cv::InputArray current_mask)
 {
@@ -1804,6 +1801,7 @@ void c_ecclm_inverse_compositional::set_image_transform(c_image_transform * imag
 bool c_ecclm_inverse_compositional::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("");
+  _reference_image_changed = true;
   return base::set_reference_image(reference_image, reference_mask);
 }
 
@@ -1811,6 +1809,16 @@ bool c_ecclm_inverse_compositional::set_current_image(cv::InputArray current_ima
 {
   INSTRUMENT_REGION("");
   return base::set_current_image(current_image, current_mask);
+}
+
+void c_ecclm_inverse_compositional::release_current_image()
+{
+  _remapped_image.release();
+  _inv_remapped_mask.release();
+  _inv_current_mask.release();
+  _rmap.release();
+  _rhs.release();
+  base::release_current_image();
 }
 
 bool c_ecclm_inverse_compositional::align(cv::InputArray current_image, cv::InputArray reference_image,
@@ -1948,16 +1956,10 @@ bool c_ecclm_inverse_compositional::align()
   if( !_current_mask.empty() ) {
     cv::bitwise_not(_current_mask, _inv_current_mask);
   }
-  else {
+  else if (_inv_current_mask.size() != _current_image.size() ) {
     _inv_current_mask.create(_current_image.size());
     _inv_current_mask.setTo(0);
   }
-
-//  if (_dummy_mask.size() != _current_image.size()) {
-//    _dummy_mask.create(_current_image.size());
-//    _dummy_mask.setTo(0);
-//  }
-
 
   cv::Mat1f params, newparams, deltap;
   cv::Mat1f H, temp_d, v;
@@ -1974,15 +1976,15 @@ bool c_ecclm_inverse_compositional::align()
 
   RMA = _reference_mask.empty() ? _reference_image.size().area() : cv::countNonZero(_reference_mask);
 
-
   /**
    * PreCompute
    * */
-  if( jac.size() != M || gx.empty() || gy.empty() ) {
+  if( jac.size() != M || _reference_image_changed ) {
     jac.resize(M);
     ecc_differentiate(_reference_image, gx, gy, _inv_reference_mask);
     _transform->create_steepest_descent_images(gx, gy, jac.data());
     ecc_compute_hessian_matrix(jac, Hp);
+    _reference_image_changed = false;
   }
 
   _num_iterations = 0;
@@ -2024,7 +2026,7 @@ bool c_ecclm_inverse_compositional::align()
 
       /* Check for increments in parameters  */
       if( (dp = _transform->eps(deltap, _reference_image.size())) < _max_eps ) {
-        // CF_DEBUG("BREAK by eps= %g / %g ", dp, max_eps_);
+        // CF_DEBUG("BREAK by eps= %g / %g ", dp, max_eps);
         break;
       }
 

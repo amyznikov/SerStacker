@@ -21,7 +21,10 @@ public:
 
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
+  bool serialize(c_config_setting settings, bool save) final;
 
+protected:
+  bool _inpaintInPlace = true;
 };
 
 #endif /* __c_linear_interpolation_inpaint_routine_h__ */

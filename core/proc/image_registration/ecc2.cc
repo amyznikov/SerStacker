@@ -1824,9 +1824,37 @@ bool c_ecclm_inverse_compositional::align_to_reference(cv::InputArray current_im
   return base::align_to_reference(current_image, current_mask);
 }
 
-bool c_ecclm_inverse_compositional::ecc_remap(const c_image_transform * image_transform, const cv::Mat1f & params, const cv::Size & size,
-    cv::InputArray src, cv::InputArray src_mask,
-    cv::OutputArray dst, cv::OutputArray dst_mask)
+void c_ecclm_inverse_compositional::ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy,
+    cv::InputArray inv_mask)
+{
+  INSTRUMENT_REGION("");
+
+  // 4th order derivative vector (5x1)
+  // 2nd order smoothing  vector (3x1)
+  static const cv::Matx<float, 5, 1> d5( +1.f/12.f, -2.f/3.f, 0.f, +2.f/3.f, -1.f/12.f );
+  static const cv::Matx<float, 3, 1> s3( 0.25f, 0.5f, 0.25f );
+
+  const cv::Mat1b m = inv_mask.getMat();
+
+  parallel_invoke(
+      [&]() {
+        cv::sepFilter2D(src, gx, CV_32F, d5, s3, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+        if ( !m.empty() ) {
+          gx.setTo(0, m);
+        }
+      },
+      [&]() {
+        cv::sepFilter2D(src, gy, CV_32F, s3, d5, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+        if ( !m.empty() ) {
+          gy.setTo(0, m);
+        }
+      });
+}
+
+bool c_ecclm_inverse_compositional::ecc_remap(const c_image_transform * image_transform,
+    const cv::Mat1f & params, const cv::Size & size,
+    cv::InputArray _src, cv::InputArray _inv_src_mask,
+    cv::OutputArray _dst, cv::OutputArray _inv_dst_mask)
 {
   INSTRUMENT_REGION("");
 
@@ -1835,45 +1863,24 @@ bool c_ecclm_inverse_compositional::ecc_remap(const c_image_transform * image_tr
     return false;
   }
 
-  cv::remap(src, dst, _rmap, cv::noArray(), cv::INTER_LINEAR,
+  cv::remap(_src, _dst, _rmap, cv::noArray(), cv::INTER_LINEAR,
       cv::BORDER_REPLICATE);
 
-  if( !src_mask.empty() ) {
+  cv::remap(_inv_src_mask, _inv_dst_mask,
+      _rmap, cv::noArray(),
+      cv::INTER_NEAREST,
+      cv::BORDER_CONSTANT,
+      cv::Scalar(255));
 
-    INSTRUMENT_REGION("remap_src_mask");
-
-    cv::remap(src_mask, dst_mask,
-        _rmap, cv::noArray(),
-        cv::INTER_NEAREST,
-        cv::BORDER_CONSTANT,
-        cv::Scalar(0));
-
-  }
-  else {
-    INSTRUMENT_REGION("remap_dummy_mask");
-
-    if ( _dummy_mask.size() != src.size() ) {
-      _dummy_mask.create(src.size());
-      _dummy_mask.setTo(255);
-    }
-
-    cv::remap(_dummy_mask, dst_mask,
-        _rmap, cv::noArray(),
-        cv::INTER_NEAREST,
-        cv::BORDER_CONSTANT,
-        cv::Scalar(0));
-  }
-
-#if 0 // TODO: Check carefully if this call can be really avoided
-  static const cv::Mat1b SE(3,3, 255);
-  cv::erode(dst_mask, dst_mask, SE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
+#if 0 // TODO: Check carefully if this call can be really avoided not producing artifacts
+static const cv::Mat1b SE(3,3, 255);
+cv::dilate(_inv_dst_mask, _inv_dst_mask, SE, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
 #endif
 
   return true;
 }
 
-void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
-    cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs)
+double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)
 {
   INSTRUMENT_REGION("");
 
@@ -1881,49 +1888,28 @@ void c_ecclm_inverse_compositional::compute_remap(const cv::Mat1f & params,
   const cv::Size size(_reference_image.size());
 
   ecc_remap(_transform, params, size,
-      _current_image, _current_mask,
-      remapped_image, remapped_mask);
+      _current_image, _inv_current_mask,
+      _remapped_image, _inv_remapped_mask);
 
-  if( remapped_mask.empty() ) {
-    remapped_mask = _reference_mask;
-  }
-  else if( !_reference_mask.empty() ) {
-    cv::bitwise_and(_reference_mask, remapped_mask,
-        remapped_mask);
+  if( !_inv_reference_mask.empty() ) {
+    cv::bitwise_or(_inv_reference_mask, _inv_remapped_mask,
+        _inv_remapped_mask);
   }
 
-  cv::subtract(remapped_image, _reference_image, rhs);
-  if ( remapped_mask.empty() ) {
-    CMA = rhs.size().area();
-  }
-  else {
-    CMA = cv::countNonZero(remapped_mask);
-    rhs.setTo(0, ~remapped_mask);
-  }
+  cv::subtract(_remapped_image, _reference_image, _rhs);
+  const int bad_pixels = cv::countNonZero(_inv_remapped_mask);
+  CMA = size.area() - bad_pixels;
 
-//  rms = rhs.dot(rhs) * (RMA * RMA) / (CMA * CMA);
-  rms = cv::norm(rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA);
+  // Zero fill defects in the differences
+  _rhs.setTo(0, _inv_remapped_mask);
+  return (_last_rms = cv::norm(_rhs, cv::NORM_L2SQR) * (RMA * RMA) / (CMA * CMA));
 }
 
-double c_ecclm_inverse_compositional::compute_rhs(const cv::Mat1f & params)
+void c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, cv::Mat1f & v)
 {
   INSTRUMENT_REGION("");
-  compute_remap(params, remapped_image, remapped_mask, rhs);
-  return rms;
-}
-
-double c_ecclm_inverse_compositional::compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v)
-{
-  INSTRUMENT_REGION("");
-
-  if( recompute_remap ) {
-    compute_remap(params, remapped_image, remapped_mask, rhs);
-  }
-
-  ecc_project_error_image(jac, rhs, v);
+  ecc_project_error_image(jac, _rhs, v);
   v *= (RMA / CMA);
-
-  return rms;
 }
 
 bool c_ecclm_inverse_compositional::align()
@@ -1952,6 +1938,27 @@ bool c_ecclm_inverse_compositional::align()
     return false;
   }
 
+  if( !_reference_mask.empty() ) {
+    cv::bitwise_not(_reference_mask, _inv_reference_mask);
+  }
+  else {
+    _inv_reference_mask.release();
+  }
+
+  if( !_current_mask.empty() ) {
+    cv::bitwise_not(_current_mask, _inv_current_mask);
+  }
+  else {
+    _inv_current_mask.create(_current_image.size());
+    _inv_current_mask.setTo(0);
+  }
+
+//  if (_dummy_mask.size() != _current_image.size()) {
+//    _dummy_mask.create(_current_image.size());
+//    _dummy_mask.setTo(0);
+//  }
+
+
   cv::Mat1f params, newparams, deltap;
   cv::Mat1f H, temp_d, v;
 
@@ -1967,12 +1974,13 @@ bool c_ecclm_inverse_compositional::align()
 
   RMA = _reference_mask.empty() ? _reference_image.size().area() : cv::countNonZero(_reference_mask);
 
+
   /**
    * PreCompute
    * */
   if( jac.size() != M || gx.empty() || gy.empty() ) {
     jac.resize(M);
-    ecc_differentiate(_reference_image, gx, gy, _reference_mask);
+    ecc_differentiate(_reference_image, gx, gy, _inv_reference_mask);
     _transform->create_steepest_descent_images(gx, gy, jac.data());
     ecc_compute_hessian_matrix(jac, Hp);
   }
@@ -1984,9 +1992,13 @@ bool c_ecclm_inverse_compositional::align()
 
   while (_num_iterations < _max_iterations) {
 
-    err = compute_v(params, recompute_remap, v);
+    if( recompute_remap ) {
+      compute_rhs(params);
+    }
 
+    compute_v(params, v);
     Hp.copyTo(H);
+    err = _last_rms;
 
     /*
      * Solve normal equation for given Jacobian and lambda

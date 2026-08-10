@@ -464,22 +464,25 @@ public:
 
 protected:
   double compute_rhs(const cv::Mat1f & params);
-  double compute_v(const cv::Mat1f & params, bool recompute_remap, cv::Mat1f & v);
-  void compute_remap(const cv::Mat1f & params, cv::Mat1f & remapped_image, cv::Mat1b & remapped_mask, cv::Mat1f & rhs);
+  void compute_v(const cv::Mat1f & params, cv::Mat1f & v);
   bool ecc_remap(const c_image_transform * image_transform, const cv::Mat1f & params, const cv::Size & size,
       cv::InputArray src, cv::InputArray src_mask,
       cv::OutputArray dst, cv::OutputArray dst_mask);
+  static void ecc_differentiate(cv::InputArray src, cv::Mat & gx, cv::Mat & gy,
+      cv::InputArray mask = cv::noArray() );
 
 protected:
   cv::Mat1f gx, gy;
   std::vector<cv::Mat1f> jac;
-  cv::Mat1f remapped_image;
-  cv::Mat1b remapped_mask;
-  cv::Mat1f rhs;
-  cv::Mat1f Hp;
+  cv::Mat1f _remapped_image;
+  cv::Mat1b _inv_remapped_mask;
+  cv::Mat1b _inv_reference_mask;
+  cv::Mat1b _inv_current_mask;
   cv::Mat2f _rmap;
-  cv::Mat1b _dummy_mask;
-  double rms = 0;
+  cv::Mat1f _rhs;
+  cv::Mat1f Hp;
+  //cv::Mat1b _dummy_mask;
+  double _last_rms = 0;
   double RMA = 0;
   double CMA = 0;
 };

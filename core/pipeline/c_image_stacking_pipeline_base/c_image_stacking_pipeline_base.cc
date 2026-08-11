@@ -194,29 +194,23 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     }
   }
 
-  if ( !is_bayer_pattern(input_sequence->colorid()) ) {
-
-    if( input_options.detect_bad_asi_frames && is_corrupted_asi_frame(output_image) ) {
+  if( input_options.detect_bad_asi_frames ) {
+    INSTRUMENT_REGION("detect_bad_asi_frames");
+    if ( is_corrupted_asi_frame(output_image) ) {
       CF_ERROR("CORRUPTED ASI FRAME DETECTED");
       output_image.release();
       return true; // return true with empty output image
     }
-
-    if ( input_options.filter_bad_pixels ) {
-      median_filter_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, false);
-    }
-
-    if( output_image.depth() != CV_32F ) {
-      output_image.convertTo(output_image, CV_32F,
-          1. / ((1 << input_sequence->bpp())));
-    }
-
   }
-  else {
 
-    if( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
-      median_filter_bad_pixels(output_image, input_options.bad_pixels_variation_threshold, true);
-    }
+  if ( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
+    INSTRUMENT_REGION("filter_bad_pixels");
+    median_filter_bad_pixels(output_image, input_options.bad_pixels_variation_threshold,
+        input_sequence->colorid());
+  }
+
+  if ( is_bayer_pattern(input_sequence->colorid()) ) {
+    INSTRUMENT_REGION("debayer");
 
     if ( save_raw_bayer ) {
       _raw_bayer_colorid = input_sequence->colorid();
@@ -232,12 +226,12 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
       CF_ERROR("debayer() fails");
       return false;
     }
+  }
 
-    //CF_DEBUG("output_image.depth()=%d input_sequence->bpp()=%d", output_image.depth(), input_sequence->bpp());
-    if( output_image.depth() != CV_32F ) {
-      output_image.convertTo(output_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
-      //CF_DEBUG("converted to output_image.depth()=%d", output_image.depth());
-    }
+  if( output_image.depth() != CV_32F ) {
+    INSTRUMENT_REGION("convertTo_32F");
+    output_image.convertTo(output_image, CV_32F,
+        1. / ((1 << input_sequence->bpp())));
   }
 
   if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {

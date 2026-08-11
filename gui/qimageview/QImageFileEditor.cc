@@ -189,7 +189,7 @@ void QImageFileEditor::loadNextFrame()
 
       if( _filterBadPixels && _badPixelsVariationThreshold > 0 ) {
         median_filter_bad_pixels(_inputImage, _badPixelsVariationThreshold,
-            is_bayer_pattern(_input_sequence->colorid()));
+            _input_sequence->colorid());
       }
 
       if( is_bayer_pattern(_input_sequence->colorid()) ) {

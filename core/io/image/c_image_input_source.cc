@@ -55,12 +55,11 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
 
   if ( _input_options ) {
 
-    const c_video_input_options & opts =
-        _input_options->video;
+    const c_video_input_options & opts = _input_options->video;
 
     if( opts.filter_bad_pixels && opts.bad_pixels_variation_threshold > 0 ) {
       median_filter_bad_pixels(f->_input_image, opts.bad_pixels_variation_threshold,
-          is_bayer_pattern(f->_colorid));
+          f->_colorid);
     }
 
     if( is_bayer_pattern(f->_colorid) ) {

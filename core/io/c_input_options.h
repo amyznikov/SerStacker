@@ -15,10 +15,10 @@
 
 struct c_video_input_options
 {
-  DEBAYER_ALGORITHM debayer_method = DEBAYER_NN2;
+  DEBAYER_ALGORITHM debayer_method = DEBAYER_NN;
   bool enable_color_maxtrix = true;
   bool filter_bad_pixels = false;
-  double bad_pixels_variation_threshold = 9;
+  double bad_pixels_variation_threshold = 6;
 };
 
 

@@ -10,8 +10,9 @@
 #define __bad_pixels_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/io/debayer.h>
 
-void median_filter_bad_pixels(cv::Mat & image, double variation_threshold,
-    bool is_bayer_pattern);
+bool median_filter_bad_pixels(cv::Mat & image, double variation_threshold,
+    COLORID color_id);
 
 #endif /* __bad_pixels_h__ */

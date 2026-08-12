@@ -260,7 +260,7 @@ std::string c_running_average_pipeline::generate_output_file_name() const
         int sec;
 
         clock_gettime(CLOCK_REALTIME, &t);
-        tm = localtime(&t.tv_sec);
+        tm = gmtime(&t.tv_sec);
 
         year = tm->tm_year + 1900;
         month = tm->tm_mon + 1;
@@ -270,11 +270,11 @@ std::string c_running_average_pipeline::generate_output_file_name() const
         sec = tm->tm_sec;
         // msec = t.tv_nsec / 1000000;
 
-      return ssprintf("%0.4d%0.2d%0.2d_%0.2d%0.2d%0.2d",
+      return ssprintf("%0.4d%0.2d%0.2d_%0.2d%0.2d%0.2d_GMT",
           year, month, day, hour, min, sec);
     };
 
-  std::string output_file_name_postfix = ".accumulator";
+  std::string output_file_name_postfix = ".ACC";
 
   std::string output_file_name = _output_options.output_file_name;
   if( output_file_name.empty() ) {

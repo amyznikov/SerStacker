@@ -37,6 +37,7 @@ void c_unsharp_mask_routine::getcontrols(c_control_list & ctls, const ctlbind_co
    ctlbind(ctls, "outmin", ctx(&this_class::_outmin), "");
    ctlbind(ctls, "outmax", ctx(&this_class::_outmax), "");
    ctlbind(ctls, "blur_color_channels", ctx(&this_class::_blur_color_channels), "Gaussian blur sigma for color channels");
+   ctlbind(ctls, "ignore_mask", ctx(&this_class::_ignore_mask), "");
 }
 
 bool c_unsharp_mask_routine::serialize(c_config_setting settings, bool save)
@@ -56,7 +57,8 @@ bool c_unsharp_mask_routine::serialize(c_config_setting settings, bool save)
 bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( _channel == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
-    return unsharp_mask(image, _ignore_mask ? cv::noArray() : mask, image, _sigma, _alpha, _outmin, _outmax);
+    return unsharp_mask(image, (_ignore_mask || mask.empty()) ? cv::noArray() : mask, image,
+        _sigma, _alpha, _outmin, _outmax);
   }
 
   cv::Mat tmp;

@@ -6,6 +6,8 @@
  */
 
 #include "c_reduce_image_routine.h"
+#include <core/proc/pixtype.h>
+#include <core/proc/mreduce.h>
 #include <core/ssprintf.h>
 
 template<>
@@ -20,13 +22,13 @@ const c_enum_member* members_of<c_reduce_image_routine::REDUCE_DIM>()
   return members;
 }
 
-
 void c_reduce_image_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "rtype", ctx(&this_class::_rtype), "cv::ReduceType");
   ctlbind(ctls, "dim", ctx(&this_class::_dim), "Reduce Dimension");
   ctlbind(ctls, "Use ROI selection", ctx(&this_class::_useROISelection), "Use ROI selected in GUI");
   ctlbind(ctls, "rect", ctx(&this_class::_rect), "Rectangular ROI to crop, X,Y;WxH");
+  ctlbind(ctls, "ignore_mask", ctx(&this_class::_ignore_mask), "Ignore image mask during computation");
 }
 
 bool c_reduce_image_routine::serialize(c_config_setting settings, bool save)
@@ -43,6 +45,7 @@ bool c_reduce_image_routine::serialize(c_config_setting settings, bool save)
 bool c_reduce_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   const cv::Mat src = image.getMat();
+  const cv::Mat msk = mask.getMat();
   const cv::Size size = image.size();
 
   cv::Rect rc;
@@ -61,12 +64,13 @@ bool c_reduce_image_routine::process(cv::InputOutputArray image, cv::InputOutput
   }
 
   cv::Mat dst;
-  int dtype = -1;
+  int ddepth = -1;
   if ( _rtype == cv::REDUCE_SUM || _rtype == cv::REDUCE_SUM2 ) {
-    dtype = std::max(src.depth(), CV_32F);
+    ddepth = std::max(src.depth(), CV_32F);
   }
 
-  cv::reduce(src(rc), dst, _dim, _rtype, dtype);
+  mreduce(src(rc), dst, _dim, _rtype, ddepth, (_ignore_mask || msk.empty()) ? cv::noArray() : msk(rc));
+
   if ( _dim == REDUCE_ROWS ) { // 0 means that the matrix is reduced to a single row
     dst = cv::repeat(dst, rc.height, 1 );
   }

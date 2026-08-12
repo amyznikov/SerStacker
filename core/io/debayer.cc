@@ -416,98 +416,208 @@ bool debayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID colori
 template<typename _Tp1, typename _Tp2>
 static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID colorid)
 {
-  const int h = _src.rows() / 2;
-  const int w = _src.cols() / 2;
+  using Vec4T = cv::Vec<_Tp1, 4>;
+  using Vec3T = cv::Vec<_Tp2, 3>;
 
-  const cv::Mat_<_Tp1> src = _src.getMat();
+  constexpr int c1 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 1 : 0;
 
-  cv::Mat_<cv::Vec<_Tp2, 3>> dst(h, w);
+  const int src_channels = _src.channels();
 
-  constexpr _Tp1 c1 = std::is_integral_v<_Tp1> ? 1 : 0;
+  if ( src_channels == 1 ) {
 
-  switch (colorid) {
-    case COLORID_BAYER_MYYC:
-    case COLORID_BAYER_RGGB:
-      // RGGB -> [B G R]
-      parallel_for(0, h, [&, w](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
-          for (int x = 0; x < w; ++x, dstp += 3) {
-            dstp[0] = _Tp2(s1[2 * x + 1]);
-            dstp[1] = _Tp2((c1 + s0[2 * x + 1] + s1[2 * x + 0]) / 2);
-            dstp[2] = _Tp2(s0[2 * x + 0]);
+    const int h = _src.rows() / 2;
+    const int w = _src.cols() / 2;
+
+    const cv::Mat_<_Tp1> src = _src.getMat();
+    cv::Mat_<Vec3T> dst(h, w);
+
+    const uint8_t * const src_base = (const uint8_t*) src.data;
+    const size_t src_stride = src.step;
+
+    uint8_t * const dst_base = (uint8_t*) dst.data;
+    const size_t dst_stride = dst.step;
+
+    switch (colorid) {
+      case COLORID_BAYER_MYYC:
+      case COLORID_BAYER_RGGB:
+        // RGGB -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict s0 = (const _Tp1*)(src_base + (y * 2 + 0) * src_stride);
+            const _Tp1 * __restrict s1 = (const _Tp1*)(src_base + (y * 2 + 1) * src_stride);
+            _Tp2 * __restrict dstp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, s0 += 2, s1 += 2,  dstp += 3) {
+              dstp[0] = _Tp2(s1[1]);
+              dstp[1] = _Tp2((s0[1] + s1[0] + c1) / 2);
+              dstp[2] = _Tp2(s0[0]);
+            }
           }
-        }
-      });
-      break;
+        });
+        break;
 
-    case COLORID_BAYER_YMCY:
-    case COLORID_BAYER_GRBG:
-      // GRBG -> [B G R]
-      parallel_for(0, h, [&, w](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
-          for (int x = 0; x < w; ++x, dstp += 3) {
-            dstp[0] = _Tp2(s1[2 * x + 0]);
-            dstp[1] = _Tp2((c1 + s0[2 * x + 0] + s1[2 * x + 1]) / 2);
-            dstp[2] = _Tp2(s0[2 * x + 1]);
+      case COLORID_BAYER_YMCY:
+      case COLORID_BAYER_GRBG:
+        // GRBG -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict s0 = (const _Tp1*)(src_base + (y * 2 + 0) * src_stride);
+            const _Tp1 * __restrict s1 = (const _Tp1*)(src_base + (y * 2 + 1) * src_stride);
+            _Tp2 * __restrict dstp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, s0 += 2, s1 += 2,  dstp += 3) {
+              dstp[0] = _Tp2(s1[0]);
+              dstp[1] = _Tp2((c1 + s0[0] + s1[1]) / 2);
+              dstp[2] = _Tp2(s0[1]);
+            }
           }
-        }
-      });
-      break;
+        });
+        break;
 
-    case COLORID_BAYER_YCMY:
-    case COLORID_BAYER_GBRG:
-      // GBRG -> [B G R]
-      parallel_for(0, h, [&, w](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
-          for (int x = 0; x < w; ++x, dstp += 3) {
-            dstp[0] = _Tp2(s0[2 * x + 1]);
-            dstp[1] = _Tp2((c1 + s0[2 * x + 0] + s1[2 * x + 1]) / 2);
-            dstp[2] = _Tp2(s1[2 * x + 0]);
+      case COLORID_BAYER_YCMY:
+      case COLORID_BAYER_GBRG:
+        // GBRG -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict s0 = (const _Tp1*)(src_base + (y * 2 + 0) * src_stride);
+            const _Tp1 * __restrict s1 = (const _Tp1*)(src_base + (y * 2 + 1) * src_stride);
+            _Tp2 * __restrict dstp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, s0 += 2, s1 += 2,  dstp += 3) {
+              dstp[0] = _Tp2(s0[1]);
+              dstp[1] = _Tp2((c1 + s0[0] + s1[1]) / 2);
+              dstp[2] = _Tp2(s1[0]);
+            }
           }
-        }
-      });
-      break;
+        });
+        break;
 
-    case COLORID_BAYER_CYYM:
-    case COLORID_BAYER_BGGR:
-      // BGGR -> [B G R]
-      parallel_for(0, h, [&, w](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp1 * __restrict s0 = src[y * 2 + 0], * __restrict s1 = src[y * 2 + 1];
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
-          for (int x = 0; x < w; ++x, dstp += 3) {
-            dstp[0] = _Tp2(s0[2 * x + 0]);
-            dstp[1] = _Tp2((c1 + s0[2 * x + 1] + s1[2 * x + 0]) / 2);
-            dstp[2] = _Tp2(s1[2 * x + 1]);
+      case COLORID_BAYER_CYYM:
+      case COLORID_BAYER_BGGR:
+        // BGGR -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict s0 = (const _Tp1*)(src_base + (y * 2 + 0) * src_stride);
+            const _Tp1 * __restrict s1 = (const _Tp1*)(src_base + (y * 2 + 1) * src_stride);
+            _Tp2 * __restrict dstp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, s0 += 2, s1 += 2,  dstp += 3) {
+              dstp[0] = _Tp2(s0[0]);
+              dstp[1] = _Tp2((c1 + s0[1] + s1[0]) / 2);
+              dstp[2] = _Tp2(s1[1]);
+            }
           }
-        }
-      });
-      break;
+        });
+        break;
 
-    default: // Not supported
-      CF_ERROR("Not supported colorid = %d", colorid);
-      return false;
+      default: // Not supported
+        CF_ERROR("Not supported colorid = %d", colorid);
+        return false;
+    }
+
+    _dst.move(dst);
+  }
+  else if (src_channels == 4 ) {
+
+    const int h = _src.rows();
+    const int w = _src.cols();
+
+    const cv::Mat_<Vec4T> src = _src.getMat();
+    cv::Mat_<Vec3T> dst(h, w);
+
+    const uint8_t * const src_base = (const uint8_t*) src.data;
+    const size_t src_stride = src.step;
+
+    uint8_t * const dst_base = (uint8_t*) dst.data;
+    const size_t dst_stride = dst.step;
+
+    switch (colorid) {
+      case COLORID_BAYER_MYYC:
+      case COLORID_BAYER_RGGB:
+        // RGGB -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict sp = (const _Tp1*)(src_base + y * src_stride);
+            _Tp2 * __restrict dp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, sp += 4, dp += 3) {
+              dp[0] = _Tp2(sp[3]); // B
+              dp[1] = _Tp2((c1 + sp[1] + sp[2]) / 2);// G
+              dp[2] = _Tp2(sp[0]);// R
+            }
+          }
+        });
+        break;
+
+      case COLORID_BAYER_YMCY:
+      case COLORID_BAYER_GRBG:
+        // GRBG -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict sp = (const _Tp1*)(src_base + y * src_stride);
+            _Tp2 * __restrict dp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, sp += 4, dp += 3) {
+              dp[0] = _Tp2(sp[2]); // B
+              dp[1] = _Tp2((c1 + sp[0] + sp[3]) / 2);// G
+              dp[2] = _Tp2(sp[1]);// R
+            }
+          }
+        });
+        break;
+
+      case COLORID_BAYER_YCMY:
+      case COLORID_BAYER_GBRG:
+        // GBRG -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict sp = (const _Tp1*)(src_base + y * src_stride);
+            _Tp2 * __restrict dp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, sp += 4, dp += 3) {
+              dp[0] = _Tp2(sp[1]); // B
+              dp[1] = _Tp2((c1 + sp[0] + sp[3]) / 2);// G
+              dp[2] = _Tp2(sp[0]);// R
+            }
+          }
+        });
+        break;
+
+      case COLORID_BAYER_CYYM:
+      case COLORID_BAYER_BGGR:
+        // BGGR -> [B G R]
+        parallel_for(0, h, [=](const auto & range) {
+          for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
+            const _Tp1 * __restrict sp = (const _Tp1*)(src_base + y * src_stride);
+            _Tp2 * __restrict dp = (_Tp2*)(dst_base + y * dst_stride);
+
+            for (int x = 0; x < w; ++x, sp += 4, dp += 3) {
+              dp[0] = _Tp2(sp[0]); // B
+              dp[1] = _Tp2((c1 + sp[1] + sp[2]) / 2);// G
+              dp[2] = _Tp2(sp[3]);// R
+            }
+          }
+        });
+        break;
+
+      default: // Not supported
+        CF_ERROR("Not supported colorid = %d", colorid);
+        return false;
+    }
+
+    _dst.move(dst);
+  }
+  else {
+    CF_ERROR("Bad number of src channels=%d", _src.channels());
+    return false;
   }
 
-  _dst.move(dst);
   return true;
 }
 
 bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int ddepth)
 {
   INSTRUMENT_REGION("");
-
-  if( (src.cols() & 0x1) || (src.rows() & 0x1) || src.channels() != 1 ) {
-    CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
-        src.cols(), src.rows(), src.channels());
-    return false;
-  }
 
   if( dst.fixedType() && dst.channels() != 3 ) {
     CF_ERROR("Invalid argument: 3-channel output destination image expected but dst.channels=%d",
@@ -521,6 +631,20 @@ bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int 
   else if ( ddepth < 0 ) {
     ddepth = src.depth();
   }
+
+  if ( src.channels() == 1 ) {
+    if( (src.cols() & 0x1) || (src.rows() & 0x1) ) {
+      CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
+          src.cols(), src.rows(), src.channels());
+      return false;
+    }
+  }
+  else if ( src.channels() != 4 ) {
+    CF_ERROR("Not supported number of channels=%d in input image of size %dx%d",
+        src.channels(), src.cols(), src.rows());
+    return false;
+  }
+
 
   CV_DISPATCH2(src.depth(), ddepth, _debayer_avgc, src, dst, colorid);
 
@@ -541,85 +665,162 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
 
   using Vec3T = cv::Vec<_Tp2, 3>;
   using Mat3T = cv::Mat_<Vec3T>;
-  constexpr _Tp1 c1 = std::is_integral_v<_Tp1> ? 1 : 0;
-  constexpr _Tp1 c2 = std::is_integral_v<_Tp1> ? 2 : 0;
+
+  constexpr int c1 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 1 : 0;
+  constexpr int c2 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 2 : 0;
 
   const cv::Size size = _src.size();
+  Mat3T dst(size);
 
-  Mat3T dst(_src.size());
+  const cv::Mat_<_Tp1> src = _src.getMat();
 
-  cv::Mat_<_Tp1> src;
-  cv::copyMakeBorder(_src, src, 1, 1, 1, 1, cv::BORDER_REFLECT101);
-
+  #define CAPTURE_PARAMS \
+    bayer_base = src.data, \
+    dst_base = dst.data, \
+    src_stride = src.step, \
+    dst_stride = dst.step, \
+    size, c1, c2
 
   switch (colorid) {
     case COLORID_BAYER_MYYC:
     case COLORID_BAYER_RGGB: {
-      // R G R G R G
-      // G B G B G B
-      // R G R G R G
-      // G B G B G B
+      parallel_for(0, size.height, [CAPTURE_PARAMS](const auto & range) {
+        for( int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1 ) {
+          const int y0 = (y1 == 0) ? 1 : y1 - 1;
+          const int y2 = (y1 == size.height - 1) ? size.height - 2 : y1 + 1;
 
-      parallel_for(0, size.height, [=, &src, &dst](const auto & range) {
-        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-          const _Tp1 * __restrict s0 = src[y + 0] + 1;
-          const _Tp1 * __restrict s1 = src[y + 1] + 1;
-          const _Tp1 * __restrict s2 = src[y + 2] + 1;
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+          const _Tp1 * __restrict s0 = (const _Tp1 *)(bayer_base + y0 * src_stride);
+          const _Tp1 * __restrict s1 = (const _Tp1 *)(bayer_base + y1 * src_stride);
+          const _Tp1 * __restrict s2 = (const _Tp1 *)(bayer_base + y2 * src_stride);
+          _Tp2 * __restrict dstp = (_Tp2 *)(dst_base + y1 * dst_stride);
 
-          if ( !(y & 0x1) ) { // R G
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
-              dstp[1] = _Tp2((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
-              dstp[2] = _Tp2(s1[x]);
-              dstp[3] = _Tp2((c1 + s0[x+1] + s2[x+1]) / 2);
-              dstp[4] = _Tp2(s1[x+1]);
-              dstp[5] = _Tp2((c1 + s1[x-1+1] + s1[x+1+1]) / 2);
+          if ( !(y1 & 0x1) ) { // R G
+            dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s0[1] + s2[1] + s2[1]) / 4);
+            dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s1[1] + s1[1] + s2[0]) / 4);
+            dstp[2] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[1] + s2[1]) / 2);
+            dstp[4] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[0] + s1[2 < size.width ? 2 : 0]) / 2);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2);
             }
           }
           else { // G B
-            for( int x = 0; x < size.width; x += 2, dstp += 6  ) {
-              dstp[0] = _Tp2((c1 + s1[x-1] + s1[x+1]) / 2);
-              dstp[1] = _Tp2(s1[x]);
-              dstp[2] = _Tp2((c1 + s0[x] + s2[x]) / 2);
-              dstp[3] = _Tp2(s1[x+1]);
-              dstp[4] = _Tp2((c2 + s0[x+1] + s1[x-1+1] + s1[x+1+1] + s2[x+1]) / 4);
-              dstp[5] = _Tp2((c2 + s0[x-1+1] + s0[x+1+1] + s2[x-1+1] + s2[x+1+1]) / 4);
+            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2);
+            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2);
+            dstp[3] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4);
+            dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x] + s2[x] + s2[x]) / 4);
             }
           }
         }
       });
-
       break;
     }
 
     case COLORID_BAYER_YMCY:
     case COLORID_BAYER_GRBG: {
-      parallel_for(0, size.height, [=, &src, &dst](const auto & range) {
-        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-          const _Tp1 * __restrict s0 = src[y + 0] + 1;
-          const _Tp1 * __restrict s1 = src[y + 1] + 1;
-          const _Tp1 * __restrict s2 = src[y + 2] + 1;
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+      parallel_for(0, size.height, [CAPTURE_PARAMS](const auto & range) {
+        for( int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1 ) {
+          const int y0 = (y1 == 0) ? 1 : y1 - 1;
+          const int y2 = (y1 == size.height - 1) ? size.height - 2 : y1 + 1;
 
-          if ( !(y & 0x1) ) { // G R
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2((c1 + s0[x] + s2[x]) / 2); // B
-              dstp[1] = _Tp2(s1[x]); // G
-              dstp[2] = _Tp2((c1 + s1[x-1] + s1[x+1]) / 2); // R
-              dstp[3] = _Tp2((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // B
-              dstp[4] = _Tp2((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
-              dstp[5] = _Tp2(s1[x+1]); // R
+          const _Tp1 * __restrict s0 = (const _Tp1 *)(bayer_base + y0 * src_stride);
+          const _Tp1 * __restrict s1 = (const _Tp1 *)(bayer_base + y1 * src_stride);
+          const _Tp1 * __restrict s2 = (const _Tp1 *)(bayer_base + y2 * src_stride);
+          _Tp2 * __restrict dstp = (_Tp2 *)(dst_base + y1 * dst_stride);
+
+          if ( !(y1 & 0x1) ) { // G R
+            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2);
+            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2);
+            dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4);
+            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4);
+            dstp[5] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>(s1[x+1]);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x] + s2[x] + s2[x]) / 4);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>(s1[x+1]);
             }
           }
           else { // B G
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2(s1[x]); // B
-              dstp[1] = _Tp2((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
-              dstp[2] = _Tp2((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // R
-              dstp[3] = _Tp2((c1 + s1[x] + s1[x+2]) / 2); // B
-              dstp[4] = _Tp2(s1[x+1]); // G
-              dstp[5] = _Tp2((c1 + s0[x+1] + s2[x+1]) / 2); // R
+            dstp[0] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s1[1] + s1[1] + s2[0]) / 4);
+            dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s0[1] + s2[1] + s2[1]) / 4);
+            dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[0] + s1[2 < size.width ? 2 : 0]) / 2);
+            dstp[4] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[1] + s2[1]) / 2);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
             }
           }
         }
@@ -629,31 +830,70 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
 
     case COLORID_BAYER_YCMY:
     case COLORID_BAYER_GBRG: {
-      parallel_for(0, size.height, [=, &src, &dst](const auto & range) {
-        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-          const _Tp1 * __restrict s0 = src[y + 0] + 1;
-          const _Tp1 * __restrict s1 = src[y + 1] + 1;
-          const _Tp1 * __restrict s2 = src[y + 2] + 1;
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+      parallel_for(0, size.height, [CAPTURE_PARAMS](const auto & range) {
+        for( int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1 ) {
+          const int y0 = (y1 == 0) ? 1 : y1 - 1;
+          const int y2 = (y1 == size.height - 1) ? size.height - 2 : y1 + 1;
 
-          if ( !(y & 0x1) ) { // G B
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2((c1 + s1[x-1] + s1[x+1]) / 2); // B
-              dstp[1] = _Tp2(s1[x]); // G
-              dstp[2] = _Tp2((c1 + s0[x] + s2[x]) / 2); // R
-              dstp[3] = _Tp2(s1[x+1]); // B
-              dstp[4] = _Tp2((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
-              dstp[5] = _Tp2((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // R
+          const _Tp1 * __restrict s0 = (const _Tp1 *)(bayer_base + y0 * src_stride);
+          const _Tp1 * __restrict s1 = (const _Tp1 *)(bayer_base + y1 * src_stride);
+          const _Tp1 * __restrict s2 = (const _Tp1 *)(bayer_base + y2 * src_stride);
+          _Tp2 * __restrict dstp = (_Tp2 *)(dst_base + y1 * dst_stride);
+
+          if ( !(y1 & 0x1) ) { // G B
+            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2);
+            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2);
+            dstp[3] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4);
+            dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x] + s2[x] + s2[x]) / 4);
             }
           }
           else { // R G
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // B
-              dstp[1] = _Tp2((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
-              dstp[2] = _Tp2(s1[x]); // R
-              dstp[3] = _Tp2((c1 + s0[x+1] + s2[x+1]) / 2); // B
-              dstp[4] = _Tp2(s1[x+1]); // G
-              dstp[5] = _Tp2((c1 + s1[x] + s1[x+2]) / 2); // R
+            dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s0[1] + s2[1] + s2[1]) / 4);
+            dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s1[1] + s1[1] + s2[0]) / 4);
+            dstp[2] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[1] + s2[1]) / 2);
+            dstp[4] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[0] + s1[2 < size.width ? 2 : 0]) / 2);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2);
             }
           }
         }
@@ -663,31 +903,70 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
 
     case COLORID_BAYER_CYYM:
     case COLORID_BAYER_BGGR: {
-      parallel_for(0, size.height, [=, &src, &dst](const auto & range) {
-        for( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-          const _Tp1 * __restrict s0 = src[y + 0] + 1;
-          const _Tp1 * __restrict s1 = src[y + 1] + 1;
-          const _Tp1 * __restrict s2 = src[y + 2] + 1;
-          _Tp2 * __restrict dstp = (_Tp2 * )(dst[y]);
+      parallel_for(0, size.height, [CAPTURE_PARAMS](const auto & range) {
+        for( int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1 ) {
+          const int y0 = (y1 == 0) ? 1 : y1 - 1;
+          const int y2 = (y1 == size.height - 1) ? size.height - 2 : y1 + 1;
 
-          if ( !(y & 0x1) ) { // B G
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2(s1[x]); // B
-              dstp[1] = _Tp2((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4); // G
-              dstp[2] = _Tp2((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4); // R
-              dstp[3] = _Tp2((c1 + s1[x] + s1[x+2]) / 2); // B
-              dstp[4] = _Tp2(s1[x+1]); // G
-              dstp[5] = _Tp2((c1 + s0[x+1] + s2[x+1]) / 2); // R
+          const _Tp1 * __restrict s0 = (const _Tp1 *)(bayer_base + y0 * src_stride);
+          const _Tp1 * __restrict s1 = (const _Tp1 *)(bayer_base + y1 * src_stride);
+          const _Tp1 * __restrict s2 = (const _Tp1 *)(bayer_base + y2 * src_stride);
+          _Tp2 * __restrict dstp = (_Tp2 *)(dst_base + y1 * dst_stride);
+
+          if ( !(y1 & 0x1) ) { // B G
+            dstp[0] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s1[1] + s1[1] + s2[0]) / 4);
+            dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s0[1] + s2[1] + s2[1]) / 4);
+            dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[0] + s1[2 < size.width ? 2 : 0]) / 2);
+            dstp[4] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[1] + s2[1]) / 2);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x+2]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[1] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s1[x-1] + s1[x+1] + s2[x]) / 4);
+              dstp[2] = cv::saturate_cast<_Tp2>((c2 + s0[x-1] + s0[x+1] + s2[x-1] + s2[x+1]) / 4);
+              dstp[3] = cv::saturate_cast<_Tp2>((c1 + s1[x] + s1[x]) / 2);
+              dstp[4] = cv::saturate_cast<_Tp2>(s1[x+1]);
+              dstp[5] = cv::saturate_cast<_Tp2>((c1 + s0[x+1] + s2[x+1]) / 2);
             }
           }
           else { // G R
-            for( int x = 0; x < size.width; x += 2, dstp += 6 ) {
-              dstp[0] = _Tp2((c1 + s0[x] + s2[x]) / 2); // B
-              dstp[1] = _Tp2(s1[x]); // G
-              dstp[2] = _Tp2((c1 + s1[x-1] + s1[x+1]) / 2); // R
-              dstp[3] = _Tp2((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4); // B
-              dstp[4] = _Tp2((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4); // G
-              dstp[5] = _Tp2(s1[x+1]); // R
+            dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[0] + s2[0]) / 2);
+            dstp[1] = cv::saturate_cast<_Tp2>(s1[0]);
+            dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[1] + s1[1]) / 2);
+            dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[0] + s0[2 < size.width ? 2 : 0] + s2[0] + s2[2 < size.width ? 2 : 0]) / 4);
+            dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[1] + s1[0] + s1[2 < size.width ? 2 : 0] + s2[1]) / 4);
+            dstp[5] = cv::saturate_cast<_Tp2>(s1[1]);
+            dstp += 6;
+
+            for( int x = 2; x < size.width - 2; x += 2, dstp += 6 ) {
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x+2] + s2[x] + s2[x+2]) / 4);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x+2] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>(s1[x+1]);
+            }
+
+            if (size.width > 2) {
+              const int x = size.width - 2;
+              dstp[0] = cv::saturate_cast<_Tp2>((c1 + s0[x] + s2[x]) / 2);
+              dstp[1] = cv::saturate_cast<_Tp2>(s1[x]);
+              dstp[2] = cv::saturate_cast<_Tp2>((c1 + s1[x-1] + s1[x+1]) / 2);
+              dstp[3] = cv::saturate_cast<_Tp2>((c2 + s0[x] + s0[x] + s2[x] + s2[x]) / 4);
+              dstp[4] = cv::saturate_cast<_Tp2>((c2 + s0[x+1] + s1[x] + s1[x] + s2[x+1]) / 4);
+              dstp[5] = cv::saturate_cast<_Tp2>(s1[x+1]);
             }
           }
         }
@@ -696,18 +975,24 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
     }
 
     default:
-      CF_ERROR("Not supported colorid=%d (%s) for debayer",
-          (int)(colorid), toCString(colorid));
+      CF_ERROR("Not supported colorid=%d (%s) for debayer",(int)(colorid), toCString(colorid));
       return false;
   }
 
-  _dst.move(dst);
+  #undef CAPTURE_PARAMS
 
+  _dst.move(dst);
   return true;
 }
 
+
+
+
+
 bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth)
 {
+  INSTRUMENT_REGION("");
+
   if ( !is_bayer_pattern(colorid) ) {
     CF_ERROR("colorid=%d (%s) is not bayer pattern", (int)colorid, toCString(colorid));
     return false;
@@ -742,9 +1027,35 @@ bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, 
  */
 bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum DEBAYER_ALGORITHM algo)
 {
-  if ( algo == DEBAYER_DEFAULT ) {
+  if( algo == DEBAYER_DEFAULT ) {
     algo = default_debayer_algorithm();
   }
+
+  if( src.channels() == 4 ) {
+
+    switch (algo)
+    {
+      case DEBAYER_NN:
+        case DEBAYER_NN2:
+        case DEBAYER_VNG:
+        case DEBAYER_EA:
+        return interpolate_bayer_planes(src, dst, colorid);
+      case DEBAYER_AVGC:
+        return debayer_avgc(src, dst, colorid);
+    }
+
+    CF_ERROR("Not supported debayer algorithm %d (%s) requested from 4-plane bayer image",
+        algo, toCString(algo));
+    return false;
+  }
+
+  if (src.channels() != 1 ) {
+    CF_ERROR("Invalid number of channels=%d in bayer image. Must be 1",
+        src.channels());
+    return false;
+  }
+
+
 
   switch (algo) {
     case DEBAYER_DISABLE:
@@ -970,3 +1281,473 @@ bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, COLORID bayer_pat
   return cv::countNonZero(tmp) > 0;
 }
 
+
+/**
+ * bayer_image: Must be single-channel bayer pattern image, or 4-channel bayer planes image
+ */
+template<class _Tp>
+static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id,
+    bool returnBayerPlanes)
+{
+  INSTRUMENT_REGION("");
+
+  using Vec4T = cv::Vec<_Tp, 4>;
+
+  const int cn = _bayer_image.channels();
+
+  switch (cn) {
+    case 1: // assume monochrome bayer patter
+      if( (_bayer_image.cols & 0x1) || (_bayer_image.rows & 0x1) ) {
+        CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
+            _bayer_image.cols, _bayer_image.rows, _bayer_image.channels());
+        return false;
+      }
+      break;
+
+    case 4: // assume already bayer planes
+      break;
+
+    default:
+      CF_ERROR("Invalid number of bayer_image channels = %d (image size is %dx%dx%d)",
+          _bayer_image.channels(), _bayer_image.cols, _bayer_image.rows);
+      return false;
+  }
+
+  cv::Mat_<Vec4T> planes, median, mad;
+  int rows4, cols4;
+
+  if ( cn == 4 ) {
+    planes = _bayer_image;
+    rows4 = _bayer_image.rows;
+    cols4 = _bayer_image.cols;
+  }
+  else {
+
+    cv::Mat_<_Tp> bayer_image = _bayer_image;
+    rows4 = _bayer_image.rows / 2;
+    cols4 = _bayer_image.cols / 2;
+
+    planes.create(rows4, cols4);
+
+    parallel_for(0, rows4, [=, &bayer_image, &planes](const auto & range) {
+      for( int y = rbegin(range); y < rend(range); ++y ) {
+        const _Tp * __restrict src0 = bayer_image[2 * y + 0];
+        const _Tp * __restrict src1 = bayer_image[2 * y + 1];
+        _Tp * __restrict dstp = (_Tp * )(planes[y]);
+        for( int x = 0; x < cols4; ++x, src0 += 2, src1 += 2, dstp += 4 ) {
+          dstp[0] = src0[0];
+          dstp[1] = src0[1];
+          dstp[2] = src1[0];
+          dstp[3] = src1[1];
+        }
+      }
+    });
+  }
+
+  cv::medianBlur(planes, median, 3);
+  cv::absdiff(planes, median, mad);
+  cv::boxFilter(mad, mad, -1, cv::Size(3, 3), cv::Point(1, 1), true, cv::BORDER_DEFAULT);
+
+  const float minvar = _bayer_image.depth() < CV_32F ? 1.f : 1.f / 256.f;
+
+  if ( cn == 4 || returnBayerPlanes ) {
+
+    uint8_t * const planes_base = (uint8_t*)planes.ptr();
+    const uint8_t * const median_base = (const uint8_t*)median.ptr();
+    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
+
+    const size_t planes_stride = planes.step;
+    const size_t median_stride = median.step;
+    const size_t mad_stride = mad.step;
+
+    parallel_for(0, rows4, [=](const auto & range) {
+      const float k = _k;
+      for( int y = rbegin(range); y < rend(range); ++y ) {
+
+        _Tp * __restrict plane = (_Tp *) (planes_base + y * planes_stride);
+        const _Tp * __restrict med = (const _Tp*)(median_base + y * median_stride);
+        const _Tp * __restrict mad = (const _Tp*)(mad_base + y * mad_stride);
+
+        for( int x = 0; x < cols4; ++x, plane += 4, med += 4, mad += 4 ) {
+          const float p0 = plane[0], p1 = plane[1], p2 = plane[2], p3 = plane[3];
+          const float m0 = med[0], m1 = med[1], m2 = med[2], m3 = med[3];
+          if ( std::abs(m0 - p0) > k * mad[0] + minvar ) {
+            plane[0] = m0;
+          }
+          if ( std::abs(m1 - p1) > k * mad[1] + minvar ) {
+            plane[1] = m1;
+          }
+          if ( std::abs(m2 - p2) > k * mad[2] + minvar ) {
+            plane[2] = m2;
+          }
+          if ( std::abs(m3 - p3) > k * mad[3] + minvar ) {
+            plane[3] = m3;
+          }
+        }
+      }
+    });
+
+    if (cn == 1) {
+      _bayer_image = std::move(planes);
+    }
+  }
+  else {
+    uint8_t * const bayer_base = (uint8_t*)_bayer_image.ptr();
+    uint8_t * const planes_base = (uint8_t*)planes.ptr();
+    const uint8_t * const median_base = (const uint8_t*)median.ptr();
+    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
+
+    const size_t bayer_stride = _bayer_image.step;
+    const size_t planes_stride = planes.step;
+    const size_t median_stride = median.step;
+    const size_t mad_stride = mad.step;
+
+    parallel_for(0, rows4, [=](const auto & range) {
+      const float k = _k;
+      for( int y = rbegin(range); y < rend(range); ++y ) {
+
+        const _Tp * __restrict plane = (_Tp *) (planes_base + y * planes_stride);
+        const _Tp * __restrict med = (const _Tp*)(median_base + y * median_stride);
+        const _Tp * __restrict mad = (const _Tp*)(mad_base + y * mad_stride);
+
+        _Tp * __restrict bayer0 = (_Tp * )(bayer_base + (2 * y + 0) * bayer_stride);
+        _Tp * __restrict bayer1 = (_Tp * )(bayer_base + (2 * y + 1) * bayer_stride);
+
+        for( int x = 0; x < cols4; ++x, plane += 4, med += 4, mad += 4 ) {
+          const float p0 = plane[0], p1 = plane[1], p2 = plane[2], p3 = plane[3];
+          const float m0 = med[0], m1 = med[1], m2 = med[2], m3 = med[3];
+          if ( std::abs(m0 - p0) > k * mad[0] + minvar ) {
+            bayer0[2 * x + 0] = m0;
+          }
+          if ( std::abs(m1 - p1) > k * mad[1] + minvar ) {
+            bayer0[2 * x + 1] = m1;
+          }
+          if ( std::abs(m2 - p2) > k * mad[2] + minvar ) {
+            bayer1[2 * x+ 0] = m2;
+          }
+          if ( std::abs(m3 - p3) > k * mad[3] + minvar ) {
+            bayer1[2 * x + 1] = m3;
+          }
+        }
+      }
+    });
+  }
+
+  return true;
+}
+
+bool bayer_denoise(cv::Mat & image, double variation_threshold,
+    COLORID color_id, bool returnBayerPlanes)
+{
+  INSTRUMENT_REGION("");
+
+  if( is_bayer_pattern(color_id) ) {
+    CV_DISPATCH(image.depth(), _debayer_denoise, image, variation_threshold, color_id,
+        returnBayerPlanes);
+  }
+
+  CF_ERROR("Not a valid bayer pattern color_id=%d (%s) or not supported pixel depth=%d",
+      color_id, toCString(color_id), image.depth());
+
+  return false;
+}
+
+/** @brief
+ * Combine input 4-channel bayer planes src image into 3-channel BGR dst matrix using NN interpolaton.
+ * The output size of dst is twce large to src size
+ */
+template<typename _Tp1, typename _Tp2>
+static bool _interpolate_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid,
+    int ddepth /*= -1*/)
+{
+  INSTRUMENT_REGION("");
+
+  using Vec4T = cv::Vec<_Tp1, 4>;
+  using Vec3T = cv::Vec<_Tp2, 3>;
+
+  constexpr int c1 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 1 : 0;
+  constexpr int c2 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 2 : 0;
+
+  const int src_rows = _src.rows();
+  const int src_cols = _src.cols();
+
+  if( src_rows <= 0 || src_cols <= 0 ) {
+    CF_ERROR("Invalid source image size %dx%d", src_cols, src_rows);
+    return false;
+  }
+
+  const cv::Mat_<Vec4T> src = _src.getMat();
+  cv::Mat_<Vec3T> dst(2 * src_rows, 2 * src_cols);
+
+  const uint8_t * const src_base = (const uint8_t*) src.data;
+  uint8_t * const dst_base = (uint8_t*) dst.data;
+
+  const size_t src_stride = src.step;
+  const size_t dst_stride = dst.step;
+
+  switch (colorid) {
+    case COLORID_BAYER_MYYC:
+    case COLORID_BAYER_RGGB: {
+      // R=0, G1=1, G2=2, B=3
+      parallel_for(0, src_rows, [=](const auto & range) {
+        const uint8_t * const bayer_base = src_base;
+        uint8_t * const planes_base = dst_base;
+
+        for (int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1) {
+          const int y0 = std::max(0, y1 - 1);
+          const int y2 = std::min(src_rows - 1, y1 + 1);
+
+          const Vec4T* __restrict s0 = (const Vec4T*)(bayer_base + y0 * src_stride);
+          const Vec4T* __restrict s1 = (const Vec4T*)(bayer_base + y1 * src_stride);
+          const Vec4T* __restrict s2 = (const Vec4T*)(bayer_base + y2 * src_stride);
+
+          _Tp2* __restrict d0 = (_Tp2*)(planes_base + (2 * y1 + 0) * dst_stride);
+          _Tp2* __restrict d1 = (_Tp2*)(planes_base + (2 * y1 + 1) * dst_stride);
+
+          for (int x1 = 0; x1 < src_cols; ++x1, d0 += 6, d1 += 6) {
+            const int x0 = std::max(0, x1 - 1);
+            const int x2 = std::min(src_cols - 1, x1 + 1);
+
+            const _Tp1 * s00 = s0[x0].val;
+            const _Tp1 * s01 = s0[x1].val;
+            const _Tp1 * s02 = s0[x2].val;
+
+            const _Tp1 * s10 = s1[x0].val;
+            const _Tp1 * s11 = s1[x1].val;
+            const _Tp1 * s12 = s1[x2].val;
+
+            const _Tp1 * s20 = s2[x0].val;
+            const _Tp1 * s21 = s2[x1].val;
+            const _Tp1 * s22 = s2[x2].val;
+
+            // left top (B, G, R)
+            d0[0] = cv::saturate_cast<_Tp2>((s11[3] + s01[3] + s10[3] + s00[3] + c2) / 4);
+            d0[1] = cv::saturate_cast<_Tp2>((s11[1] + s11[2] + s10[1] + s01[2] + c2) / 4);
+            d0[2] = cv::saturate_cast<_Tp2>(s11[0]);
+
+            // right top (B, G, R)
+            d0[3] = cv::saturate_cast<_Tp2>((s11[3] + s01[3] + c1) / 2);
+            d0[4] = cv::saturate_cast<_Tp2>(s11[1]);
+            d0[5] = cv::saturate_cast<_Tp2>((s11[0] + s12[0] + c1) / 2);
+
+            // left bottom (B, G, R)
+            d1[0] = cv::saturate_cast<_Tp2>((s11[3] + s10[3] + c1) / 2);
+            d1[1] = cv::saturate_cast<_Tp2>(s11[2]);
+            d1[2] = cv::saturate_cast<_Tp2>((s11[0] + s21[0] + c1) / 2);
+
+            // right bottom (B, G, R)
+            d1[3] = cv::saturate_cast<_Tp2>(s11[3]);
+            d1[4] = cv::saturate_cast<_Tp2>((s11[1] + s11[2] + s21[1] + s12[2] + c2) / 4);
+            d1[5] = cv::saturate_cast<_Tp2>((s11[0] + s21[0] + s12[0] + s22[0] + c2) / 4);
+          }
+        }
+      });
+      break;
+    }
+
+    case COLORID_BAYER_YMCY:
+    case COLORID_BAYER_GRBG: {
+      // R=1, G1=0, G2=3, B=2
+      parallel_for(0, src_rows, [=](const auto & range) {
+        const uint8_t * const bayer_base = src_base;
+        uint8_t * const planes_base = dst_base;
+
+        for (int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1) {
+          const int y0 = std::max(0, y1 - 1);
+          const int y2 = std::min(src_rows - 1, y1 + 1);
+
+          const Vec4T* __restrict s0 = (const Vec4T*)(bayer_base + y0 * src_stride);
+          const Vec4T* __restrict s1 = (const Vec4T*)(bayer_base + y1 * src_stride);
+          const Vec4T* __restrict s2 = (const Vec4T*)(bayer_base + y2 * src_stride);
+
+          _Tp2* __restrict d0 = (_Tp2*)(planes_base + (2 * y1 + 0) * dst_stride);
+          _Tp2* __restrict d1 = (_Tp2*)(planes_base + (2 * y1 + 1) * dst_stride);
+
+          for (int x1 = 0; x1 < src_cols; ++x1, d0 += 6, d1 += 6) {
+            const int x0 = std::max(0, x1 - 1);
+            const int x2 = std::min(src_cols - 1, x1 + 1);
+
+            const Vec4T& s00 = s0[x0];
+            const Vec4T& s01 = s0[x1];
+            const Vec4T& s02 = s0[x2];
+
+            const Vec4T& s10 = s1[x0];
+            const Vec4T& s11 = s1[x1];
+            const Vec4T& s12 = s1[x2];
+
+            const Vec4T& s20 = s2[x0];
+            const Vec4T& s21 = s2[x1];
+            const Vec4T& s22 = s2[x2];
+
+            // left top (B, G, R)
+            d0[0] = cv::saturate_cast<_Tp2>((s11[2] + s01[2] + s10[2] + s00[2] + c2) / 4);
+            d0[1] = cv::saturate_cast<_Tp2>((s11[0] + s11[3] + s10[0] + s01[3] + c2) / 4);
+            d0[2] = cv::saturate_cast<_Tp2>(s11[1]);
+
+            // right top (B, G, R)
+            d0[3] = cv::saturate_cast<_Tp2>((s11[2] + s01[2] + c1) / 2);
+            d0[4] = cv::saturate_cast<_Tp2>(s11[0]);
+            d0[5] = cv::saturate_cast<_Tp2>((s11[1] + s12[1] + c1) / 2);
+
+            // left bottom (B, G, R)
+            d1[0] = cv::saturate_cast<_Tp2>((s11[2] + s10[2] + c1) / 2);
+            d1[1] = cv::saturate_cast<_Tp2>(s11[3]);
+            d1[2] = cv::saturate_cast<_Tp2>((s11[1] + s21[1] + c1) / 2);
+
+            // right bottom (B, G, R)
+            d1[3] = cv::saturate_cast<_Tp2>(s11[2]);
+            d1[4] = cv::saturate_cast<_Tp2>((s11[0] + s11[3] + s21[0] + s12[3] + c2) / 4);
+            d1[5] = cv::saturate_cast<_Tp2>((s11[1] + s21[1] + s12[1] + s22[1] + c2) / 4);
+          }
+        }
+      });
+      break;
+    }
+
+    case COLORID_BAYER_YCMY:
+    case COLORID_BAYER_GBRG: {
+      // R=2, G1=0, G2=3, B=1
+      parallel_for(0, src_rows, [=](const auto & range) {
+        const uint8_t * const bayer_base = src_base;
+        uint8_t * const planes_base = dst_base;
+
+        for (int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1) {
+          const int y0 = std::max(0, y1 - 1);
+          const int y2 = std::min(src_rows - 1, y1 + 1);
+
+          const Vec4T* __restrict s0 = (const Vec4T*)(bayer_base + y0 * src_stride);
+          const Vec4T* __restrict s1 = (const Vec4T*)(bayer_base + y1 * src_stride);
+          const Vec4T* __restrict s2 = (const Vec4T*)(bayer_base + y2 * src_stride);
+
+          _Tp2* __restrict d0 = (_Tp2*)(planes_base + (2 * y1 + 0) * dst_stride);
+          _Tp2* __restrict d1 = (_Tp2*)(planes_base + (2 * y1 + 1) * dst_stride);
+
+          for (int x1 = 0; x1 < src_cols; ++x1, d0 += 6, d1 += 6) {
+            const int x0 = std::max(0, x1 - 1);
+            const int x2 = std::min(src_cols - 1, x1 + 1);
+
+            const Vec4T& s00 = s0[x0];
+            const Vec4T& s01 = s0[x1];
+            const Vec4T& s02 = s0[x2];
+
+            const Vec4T& s10 = s1[x0];
+            const Vec4T& s11 = s1[x1];
+            const Vec4T& s12 = s1[x2];
+
+            const Vec4T& s20 = s2[x0];
+            const Vec4T& s21 = s2[x1];
+            const Vec4T& s22 = s2[x2];
+
+            // left top (B, G, R)
+            d0[0] = cv::saturate_cast<_Tp2>((s11[1] + s01[1] + s10[1] + s00[1] + c2) / 4);
+            d0[1] = cv::saturate_cast<_Tp2>((s11[0] + s11[3] + s10[0] + s01[3] + c2) / 4);
+            d0[2] = cv::saturate_cast<_Tp2>(s11[2]);
+
+            // right top (B, G, R)
+            d0[3] = cv::saturate_cast<_Tp2>((s11[1] + s01[1] + c1) / 2);
+            d0[4] = cv::saturate_cast<_Tp2>(s11[0]);
+            d0[5] = cv::saturate_cast<_Tp2>((s11[2] + s12[2] + c1) / 2);
+
+            // left bottom (B, G, R)
+            d1[0] = cv::saturate_cast<_Tp2>((s11[1] + s10[1] + c1) / 2);
+            d1[1] = cv::saturate_cast<_Tp2>(s11[3]);
+            d1[2] = cv::saturate_cast<_Tp2>((s11[2] + s21[2] + c1) / 2);
+
+            // right bottom (B, G, R)
+            d1[3] = cv::saturate_cast<_Tp2>(s11[1]);
+            d1[4] = cv::saturate_cast<_Tp2>((s11[0] + s11[3] + s21[0] + s12[3] + c2) / 4);
+            d1[5] = cv::saturate_cast<_Tp2>((s11[2] + s21[2] + s12[2] + s22[2] + c2) / 4);
+          }
+        }
+      });
+      break;
+    }
+
+    case COLORID_BAYER_CYYM:
+    case COLORID_BAYER_BGGR: {
+      // R=3, G1=1, G2=2, B=0
+      parallel_for(0, src_rows, [=](const auto & range) {
+        const uint8_t * const bayer_base = src_base;
+        uint8_t * const planes_base = dst_base;
+
+        for (int y1 = rbegin(range), ymax = rend(range); y1 < ymax; ++y1) {
+          const int y0 = std::max(0, y1 - 1);
+          const int y2 = std::min(src_rows - 1, y1 + 1);
+
+          const Vec4T* __restrict s0 = (const Vec4T*)(bayer_base + y0 * src_stride);
+          const Vec4T* __restrict s1 = (const Vec4T*)(bayer_base + y1 * src_stride);
+          const Vec4T* __restrict s2 = (const Vec4T*)(bayer_base + y2 * src_stride);
+
+          _Tp2* __restrict d0 = (_Tp2*)(planes_base + (2 * y1 + 0) * dst_stride);
+          _Tp2* __restrict d1 = (_Tp2*)(planes_base + (2 * y1 + 1) * dst_stride);
+
+          for (int x1 = 0; x1 < src_cols; ++x1, d0 += 6, d1 += 6) {
+            const int x0 = std::max(0, x1 - 1);
+            const int x2 = std::min(src_cols - 1, x1 + 1);
+
+            const Vec4T& s00 = s0[x0];
+            const Vec4T& s01 = s0[x1];
+            const Vec4T& s02 = s0[x2];
+
+            const Vec4T& s10 = s1[x0];
+            const Vec4T& s11 = s1[x1];
+            const Vec4T& s12 = s1[x2];
+
+            const Vec4T& s20 = s2[x0];
+            const Vec4T& s21 = s2[x1];
+            const Vec4T& s22 = s2[x2];
+
+            // left top (B, G, R)
+            d0[0] = cv::saturate_cast<_Tp2>((s11[0] + s01[0] + s10[0] + s00[0] + c2) / 4);
+            d0[1] = cv::saturate_cast<_Tp2>((s11[1] + s11[2] + s10[1] + s01[2] + c2) / 4);
+            d0[2] = cv::saturate_cast<_Tp2>(s11[3]);
+            // right top (B, G, R)
+            d0[3] = cv::saturate_cast<_Tp2>((s11[0] + s01[0] + c1) / 2);
+            d0[4] = cv::saturate_cast<_Tp2>(s11[1]);
+            d0[5] = cv::saturate_cast<_Tp2>((s11[3] + s12[3] + c1) / 2);
+            // left bottom (B, G, R)
+            d1[0] = cv::saturate_cast<_Tp2>((s11[0] + s10[0] + c1) / 2);
+            d1[1] = cv::saturate_cast<_Tp2>(s11[2]);
+            d1[2] = cv::saturate_cast<_Tp2>((s11[3] + s21[3] + c1) / 2);
+            // right bottom (B, G, R)
+            d1[3] = cv::saturate_cast<_Tp2>(s11[0]);
+            d1[4] = cv::saturate_cast<_Tp2>((s11[1] + s11[2] + s21[1] + s12[2] + c2) / 4);
+            d1[5] = cv::saturate_cast<_Tp2>((s11[3] + s21[3] + s12[3] + s22[3] + c2) / 4);
+          }
+        }
+      });
+      break;
+    }
+    default:
+      CF_ERROR("Invalid or not supported colorid = %d (%s)", colorid, toCString(colorid));
+      return false;
+  }
+  _dst.move(dst);
+  return true;
+}
+
+/** @brief
+ * Combine input 4-channel bayer planes src image into 3-channel BGR dst matrix using NN interpolaton.
+ * The output size of dst is twce large to src size
+ */
+bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth /*= -1*/)
+{
+  if ( src.channels() != 4 ) {
+    CF_ERROR("Invalid number of channel=%d in input image. Must be 1", src.channels());
+    return false;
+  }
+
+  if ( dst.fixedType() ) {
+    ddepth = dst.depth();
+    if ( dst.channels() != 3 ) {
+      CF_ERROR("Invalid argument: output number of channels must be 3");
+      return false;
+    }
+  }
+  else if ( ddepth < 0 ) {
+    ddepth = src.depth();
+  }
+
+  CV_DISPATCH2(src.depth(), ddepth, _interpolate_bayer_planes, src, dst, colorid, ddepth);
+  return false;
+}

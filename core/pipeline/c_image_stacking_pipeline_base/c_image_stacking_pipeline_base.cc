@@ -139,10 +139,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     return false;
   }
 
-//  CF_DEBUG("image: %dx%d channels=%d depth=%d  colorid=%d (%s) input_sequence->bpp()=%d",
-//      output_image.cols, output_image.rows, output_image.channels(), output_image.depth(),
-//      int(input_sequence->colorid()), toCString(input_sequence->colorid()),
-//      input_sequence->bpp());
+  const enum COLORID colorid = input_sequence->colorid();
 
   if( !is_external_master_frame ) {
 
@@ -190,7 +187,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     if ( input_options.enable_bground_normalization ) {
       nomalizeImageHistogram(output_image, output_mask, output_image,
           input_options.background_normalization_options,
-          input_sequence->colorid());
+          colorid);
     }
   }
 
@@ -205,38 +202,38 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
 
   if ( input_options.filter_bad_pixels && input_options.bad_pixels_variation_threshold > 0 ) {
     INSTRUMENT_REGION("filter_bad_pixels");
-    median_filter_bad_pixels(output_image, input_options.bad_pixels_variation_threshold,
-        input_sequence->colorid());
+
+    if ( is_bayer_pattern(colorid) ) {
+      bayer_denoise(output_image,
+          input_options.bad_pixels_variation_threshold,
+          colorid,
+          false);
+    }
+    else {
+      median_filter_bad_pixels(output_image,
+          input_options.bad_pixels_variation_threshold,
+          colorid);
+    }
   }
 
-  if ( is_bayer_pattern(input_sequence->colorid()) ) {
+  if ( is_bayer_pattern(colorid) ) {
     INSTRUMENT_REGION("debayer");
 
     if ( save_raw_bayer ) {
-      _raw_bayer_colorid = input_sequence->colorid();
+      _raw_bayer_colorid = colorid;
       if( output_image.depth() == CV_32F ) {
         output_image.copyTo(_raw_bayer_image);
       }
       else {
-        output_image.convertTo(_raw_bayer_image, CV_32F, 1. / ((1 << input_sequence->bpp())));
+        output_image.convertTo(_raw_bayer_image, CV_32F,
+            1. / ((1 << input_sequence->bpp())));
       }
     }
 
-    if( !debayer(output_image, output_image, input_sequence->colorid(), input_options.debayer_method) ) {
+    if( !debayer(output_image, output_image, colorid, input_options.debayer_method) ) {
       CF_ERROR("debayer() fails");
       return false;
     }
-  }
-
-  if( output_image.depth() != CV_32F ) {
-    INSTRUMENT_REGION("convertTo_32F");
-    output_image.convertTo(output_image, CV_32F,
-        1. / ((1 << input_sequence->bpp())));
-  }
-
-  if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
-    cv::transform(output_image, output_image,
-        input_sequence->color_matrix());
   }
 
   if ( !_missing_pixel_mask.empty() ) {
@@ -265,6 +262,17 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
     INSTRUMENT_REGION("inpaint_missing_pixels");
     linear_interpolation_inpaint(output_image, output_mask);
+  }
+
+  if( input_options.enable_color_maxtrix && input_sequence->has_color_matrix() && output_image.channels() == 3 ) {
+    cv::transform(output_image, output_image,
+        input_sequence->color_matrix());
+  }
+
+  if( output_image.depth() != CV_32F ) {
+    INSTRUMENT_REGION("convertTo_32F");
+    output_image.convertTo(output_image, CV_32F,
+        1. / ((1 << input_sequence->bpp())));
   }
 
 

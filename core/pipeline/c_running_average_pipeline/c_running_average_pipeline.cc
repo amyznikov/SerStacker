@@ -610,9 +610,8 @@ bool c_running_average_pipeline::process_current_frame()
           _registration_options.enable_eccflow_registration;
 
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
-    // Very first frame
+    // Very first frame or no registration requested
     INSTRUMENT_REGION("initialize_accumulator");
-    lock_guard lock(mutex());
     if ( !_average.add(_current_image, _current_mask, cv::Mat2f(), cv::Rect()) ) {
       CF_ERROR("average_add() fails");
       return false;

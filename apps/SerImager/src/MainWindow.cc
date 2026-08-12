@@ -562,6 +562,7 @@ void MainWindow::setupMainToolbar()
 
   _mainToolbar->addAction(showImageProcessorAction);
   _mainToolbar->addAction(showMtfControlAction);
+  _mainToolbar->addWidget(createMtfAutoClipToolButton());
 
   ///////////////////////////////////////////////////////////////////
 

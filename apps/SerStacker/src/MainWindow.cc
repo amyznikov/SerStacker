@@ -31,7 +31,7 @@
 #define ICON_like               ":/gui/icons/like"
 #define ICON_dislike            ":/gui/icons/dislike"
 #define ICON_close              ":/gui/icons/close"
-#define ICON_histogram          ":/gui/icons/histogram"
+// #define ICON_histogram          ":/gui/icons/histogram"
 #define ICON_marker_blue        ":/gui/icons/marker-blue"
 #define ICON_reference          ":/gui/icons/reference"
 #define ICON_options            ":/gui/icons/options"

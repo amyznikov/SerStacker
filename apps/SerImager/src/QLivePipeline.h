@@ -29,6 +29,7 @@
 namespace serimager {
 
 ///////////////////////////////////////////////////////////////////////////////
+class QLivePipelineThread;
 
 class QLivePipeline :
   public QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline>
@@ -38,10 +39,13 @@ public:
   typedef QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline> Base;
   typedef Base::PipelineClass PipelineClass;
 
-  QLivePipeline(const QString & name, QObject * parent) :
-      Base(name, parent)
-  {
-  }
+  QLivePipeline(const QString & name, QLivePipelineThread * parent);
+
+protected:
+  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) final;
+
+protected:
+  QLivePipelineThread * _liveThread = nullptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

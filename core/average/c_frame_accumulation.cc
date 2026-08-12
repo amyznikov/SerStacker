@@ -2043,8 +2043,11 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
   cv::Mat img = current_image.getMat();
   cv::Mat weights = current_weights_or_mask.getMat();
   if (img.empty()) {
+    CF_ERROR("input image is empty");
     return false;
   }
+
+  cv::Rect ROI;
 
   if( _accumulator.empty() ) {
     // very first frame
@@ -2056,7 +2059,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
 
     const int target_x = canvasSize.width / 2 - frameSize.width / 2;
     const int target_y = canvasSize.height / 2 - frameSize.height / 2;
-    const cv::Rect ROI(target_x, target_y, frameSize.width, frameSize.height);
+    ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
 
     _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
     _counter = cv::Mat1f::zeros(canvasSize);
@@ -2077,18 +2080,31 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     return true;
   }
 
-  cv::Rect ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-  if (ROI.empty()) {
-    return false;
-  }
-
-  maintainCanvasBoundaries(ROI, current_image.size());
-
   cv::Mat remapped_image, remapped_weights;
-  cv::remap(img, remapped_image, rmap, cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
-  if( !weights.empty() ) {
-    const int mask_interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
-    cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+
+  if( new_canvas_bbox.empty() && rmap.empty() ) {
+    // no remap requested
+    remapped_image = img;
+    remapped_weights = weights;
+    ROI = cv::Rect(_last_bbox.x, _last_bbox.y, img.cols, img.rows) &
+        cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+  }
+  else {
+    // remap requested
+
+    ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+    if (ROI.empty()) {
+      CF_ERROR("ROI is empty");
+      return false;
+    }
+
+    maintainCanvasBoundaries(ROI, current_image.size());
+
+    cv::remap(img, remapped_image, rmap, cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
+    if( !weights.empty() ) {
+      const int mask_interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+      cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    }
   }
 
   running_weighted_average_update(remapped_image, remapped_weights,

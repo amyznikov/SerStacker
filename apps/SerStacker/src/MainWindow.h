@@ -185,7 +185,6 @@ private:
   QGeoMapViewDock * geoViewDock = nullptr;
   QAction * onLoadGpsTrackAction = nullptr;
 
-
   // QPointSelectionMode
   QPointSelection3DRulerMode _pointSelection3DRulerMode;
   QToolButton * _pointSelectionModeToolbutton = nullptr;

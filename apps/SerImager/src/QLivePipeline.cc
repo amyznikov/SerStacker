@@ -46,6 +46,48 @@ static inline bool waitUntil(QWaitCondition & cond, QMutex & mutex, Predicate &&
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+QLivePipeline::QLivePipeline(const QString & name, QLivePipelineThread * parent) :
+    Base(name, parent), _liveThread(parent)
+{
+}
+
+bool QLivePipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
+{
+  if( !display_frame.needed() ) {
+    display_frame.release();
+  }
+  else {
+    bool processed = false;
+    if( is_bayer_pattern(_current_colorid) ) {
+      if( _liveThread && _liveThread->debayer() != DEBAYER_DISABLE ) {
+        if( debayer(_current_image, display_frame, _current_colorid, _liveThread->debayer()) ) {
+          processed = true;
+        }
+      }
+    }
+    if( !processed ) {
+      _current_image.copyTo(display_frame);
+    }
+  }
+
+  if( display_mask.needed() ) {
+
+    if ( display_frame.empty() || _current_mask.empty()  ) {
+      display_mask.release();
+    }
+    else if (_current_mask.size() != display_frame.size() ) {
+      cv::resize(_current_mask, display_mask, display_frame.size(), 0, 0, cv::INTER_NEAREST);
+    }
+    else {
+      _current_mask.copyTo(display_mask);
+    }
+  }
+
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 QLiveDisplay::QLiveDisplay(QWidget * parent) :
   Base(parent),
   MtfDisplayFunction(this)
@@ -368,170 +410,6 @@ const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
   return _userPipeline;
 }
 
-#if 0
-void QLivePipelineThread::run()
-{
-  struct c_camera_input_source : public c_image_input_source
-  {
-    typedef c_camera_input_source this_class;
-    typedef c_image_input_source base;
-    typedef std::shared_ptr<this_class> sptr;
-
-    QLivePipelineThread * _liveThread;
-    QImagingCamera::sptr _camera;
-    int last_frame_index = -1;
-    int bpp = -1;
-    COLORID colorid = COLORID_UNKNOWN;
-
-    c_camera_input_source(QLivePipelineThread * thread, const QImagingCamera::sptr & camera) :
-      base(""), _liveThread(thread),_camera(camera)
-    {}
-    bool open() final {
-      return _camera->state() == QImagingCamera::State_started;
-    }
-    void close() final {
-    }
-    bool seek(int pos) final {
-      return true;
-    }
-    int curpos() final {
-      return 0;
-    }
-    bool is_open() const final {
-      return _camera->state() == QImagingCamera::State_started;
-    }
-    bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpp) final
-    {
-      while (_camera->state() == QImagingCamera::State_started) {
-
-        QImagingCamera::shared_lock lock(_camera->mutex());
-
-        const auto & deque = _camera->deque();
-        if( deque.empty() ) {
-          _camera->condvar().wait(lock);
-          continue;
-        }
-
-        const QCameraFrame::sptr & frame = deque.back();
-        const int index = frame->index();
-        if( index <= last_frame_index ) {
-          _camera->condvar().wait(lock);
-          continue;
-        }
-
-        last_frame_index = index;
-        frame->image().copyTo(output_frame);
-        *output_bpp = bpp = frame->bpp();
-
-        if( _liveThread->_enableDarkFrame ) {
-
-          QMutexLocker lock(&_liveThread->_darkFrameLock);
-
-          const cv::Mat & darkFrame = _liveThread->_darkFrame;
-          if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
-            if( output_frame.depth() != darkFrame.depth() ) {
-              output_frame.convertTo(output_frame, darkFrame.depth());
-            }
-            cv::subtract(output_frame, darkFrame, output_frame);
-          }
-        }
-
-        const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
-        if( is_bayer_pattern(frame->colorid()) && algo != DEBAYER_DISABLE ) {
-          ::debayer(output_frame, output_frame, frame->colorid(), algo);
-          *output_colorid = colorid = COLORID_BGR;
-        }
-        else {
-          *output_colorid = colorid = frame->colorid();
-        }
-
-        return true;
-      }
-
-      return false;
-    }
-  };
-
-  struct c_camera_input_sequence : public c_input_sequence
-  {
-    typedef c_camera_input_sequence this_class;
-    typedef c_input_sequence base;
-    typedef std::shared_ptr<this_class> sptr;
-
-    c_camera_input_source::sptr camera_source;
-
-    c_camera_input_sequence(QLivePipelineThread * thread, const QImagingCamera::sptr & camera)
-    {
-      camera_source.reset(new c_camera_input_source(thread, camera));
-      _all_sources.emplace_back(camera_source);
-      _enabled_sources.emplace_back(camera_source);
-      _current_source = 0;
-      _current_global_pos = 0;
-      set_name(get_file_name(camera->name().toStdString()));
-    }
-    bool is_live() const final {
-      return true;
-    }
-    bool open() final {
-      return camera_source->is_open();
-    }
-    void close(bool /*clear */= false) final {
-    }
-    bool seek(int pos) final {
-      return true;
-    }
-    bool is_open() const final {
-      return camera_source->is_open();
-    }
-  };
-
-  CF_DEBUG("enter");
-  /////////////////////
-
-  const QImagingCamera::sptr camera = this->_camera;
-
-  if( camera ) {
-
-    QLivePipeline::sptr dummyPipeline(new QLivePipeline("dummyPipeline", this));
-
-    c_camera_input_sequence::sptr input_sequence(new c_camera_input_sequence(this, camera));
-
-    while (camera->state() == QImagingCamera::State_started) {
-
-      if( true ) {
-        // Check if pipeline switch requested
-        QMutexLocker lock(&_lock);
-
-        if( _userPipeline  ) {
-          if ( _userPipeline != _currentPipeline ) {
-            setCurrentPipeline(_userPipeline);
-          }
-        }
-        else if( _currentPipeline != dummyPipeline ) {
-          setCurrentPipeline(dummyPipeline);
-        }
-      }
-
-      // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
-      if( _currentPipeline->run(input_sequence) ) {
-        CF_DEBUG("_currentPipeline finished");
-      }
-      else {
-        CF_ERROR("_currentPipeline->run() fails");
-      }
-
-      _condvar.wakeAll();
-    }
-
-    setCurrentPipeline(nullptr);
-  }
-
-  QThread::msleep(100);
-
-  CF_DEBUG("leave");
-}
-
-#else
 void QLivePipelineThread::run()
 {
   struct c_camera_input_source : public c_image_input_source
@@ -588,12 +466,13 @@ void QLivePipelineThread::run()
           }
 
           // Activate the estimator only if a lag is detected AND this option is enabled from GUI
-          QFrameQualityEstimation * estimator = _liveThread->frameQualityEstimator();
 
-          const int LAG_THRESHOLD = 2;
+          const int LAG_THRESHOLD = 3;
           const int frames_in_queue = freshest_index - last_frame_index;
 
-          if( frames_in_queue <= LAG_THRESHOLD  || !estimator || !estimator->isEnabled() ) {
+          QFrameQualityEstimation * estimator = _liveThread->frameQualityEstimator();
+
+          if( frames_in_queue <= LAG_THRESHOLD || !estimator || !estimator->isEnabled() ) {
             // no lags detected or estimator is disabled - just take the most recent frame
             local_frames.push_back(freshest_frame);
           }
@@ -623,11 +502,8 @@ void QLivePipelineThread::run()
           QFrameQualityEstimation * estimator = _liveThread->frameQualityEstimator();
 
           if( estimator && estimator->isEnabled() ) {
-            // Heavy quality calculation is performed here without blocking the camera queue
-            //CF_DEBUG("BEG ESTIMATE: %zu frames", local_frames.size());
-            int best_local_idx = estimator->estimateFrameQuality(local_frames);
-            //CF_DEBUG("END ESTIMATE: best_local_idx=%d", best_local_idx);
-
+            // Quality calculation is performed here without blocking the camera queue
+            const int best_local_idx = estimator->estimateFrameQuality(local_frames);
             if( best_local_idx >= 0 && best_local_idx < (int) local_frames.size() ) {
               selected_frame = local_frames[best_local_idx];
             }
@@ -645,6 +521,7 @@ void QLivePipelineThread::run()
 
         selected_frame->image().copyTo(output_frame);
         *output_bpp = bpp = selected_frame->bpp();
+        *output_colorid = colorid = selected_frame->colorid();
 
         if( _liveThread->_enableDarkFrame ) {
           QMutexLocker lock(&_liveThread->_darkFrameLock);
@@ -656,15 +533,6 @@ void QLivePipelineThread::run()
             }
             cv::subtract(output_frame, darkFrame, output_frame);
           }
-        }
-
-        const DEBAYER_ALGORITHM algo = _liveThread->_debayer;
-        if( is_bayer_pattern(selected_frame->colorid()) && algo != DEBAYER_DISABLE ) {
-          ::debayer(output_frame, output_frame, selected_frame->colorid(), algo);
-          *output_colorid = colorid = COLORID_BGR;
-        }
-        else {
-          *output_colorid = colorid = selected_frame->colorid();
         }
 
         return true;
@@ -752,7 +620,6 @@ void QLivePipelineThread::run()
 
   CF_DEBUG("leave");
 }
-#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace {

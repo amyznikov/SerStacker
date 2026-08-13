@@ -118,6 +118,10 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
         _canAcceptFrame = true;
       }, Qt::QueuedConnection);
 
+
+  QObject::connect(this, &Base::onPopulateContextMenu,
+      this, &Base::populateContextMenu);
+
   createShapes();
 }
 

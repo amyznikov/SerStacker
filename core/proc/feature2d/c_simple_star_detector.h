@@ -15,11 +15,11 @@
 
 struct c_simple_star_detector_options
 {
+  int lvls = 3;
+  int se_radius = 2;
   double sigma = 2;
   double weight_decay = 1;
   double kmad = 9;
-  int lvls = 5;
-  int se_radius = 2;
   double min_a = 0.7;
   double max_a = 10;
   double max_elongation = 1.5;
@@ -46,15 +46,15 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 {
   using S = c_simple_star_detector_options;
 
-  ctlbind(ctls, "sigma", ctx(&S::sigma), "");
-  ctlbind(ctls, "weight_decay", ctx(&S::weight_decay), "");
-  ctlbind(ctls, "kmad", ctx(&S::kmad), "");
-  ctlbind(ctls, "se_radius", ctx(&S::se_radius), "");
-  ctlbind(ctls, "lvls", ctx(&S::lvls), "");
-  ctlbind(ctls, "min_a", ctx(&S::min_a), "");
-  ctlbind(ctls, "max_a", ctx(&S::max_a), "");
-  ctlbind(ctls, "max_elongation", ctx(&S::max_elongation), "");
-  ctlbind(ctls, "min_compactness", ctx(&S::min_compactness), "");
+  ctlbind(ctls, "lvls", ctx(&S::lvls), "Number of DoG pyramid levels for blob detecion");
+  ctlbind(ctls, "sigma", ctx(&S::sigma), "Gaussian sigma for DoG = Src - GaussianBlur(Src, sigma");
+  ctlbind(ctls, "weight_decay", ctx(&S::weight_decay), "Scale between consecutive DoG pyramid levels in final DoG image");
+  ctlbind(ctls, "kmad", ctx(&S::kmad), "Blob detection threshold:\n CC = DoG > DoG_Mean + _opts.kmad * DoG_MAD;\n");
+  ctlbind(ctls, "se_radius", ctx(&S::se_radius), "Optional blob dilate radius for better centroid computation");
+  ctlbind(ctls, "min_a", ctx(&S::min_a), "Minimal acceptable blob semi-major axis");
+  ctlbind(ctls, "max_a", ctx(&S::max_a), "Maximal acceptable blob semi-major axis");
+  ctlbind(ctls, "max_elongation", ctx(&S::max_elongation), "Max acceptable blob elongation a/b");
+  ctlbind(ctls, "min_compactness", ctx(&S::min_compactness), "min compactness = blob_area / (pi * a * b)");
 
   ctlbind_menu_button(ctls, "Options...", ctx);
   ctlbind_item(ctls, "Copy parameters to clipboard", ctx, [](S * _ths) {

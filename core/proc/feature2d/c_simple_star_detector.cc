@@ -17,17 +17,16 @@ static void build_dog(cv::InputArray _src, cv::OutputArray _dst, const cv::Mat1f
   std::vector<cv::Mat> dogs;
   cv::Mat current_image, lpass;
 
-//  const int ksize = std::max(5, 2 * int(sigma * 3) + 1);
-//  const cv::Mat G = cv::getGaussianKernel(ksize, sigma, CV_32F);
-
   dogs.reserve(maxlevels);
 
-  cv::sepFilter2D(_src, current_image, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+  cv::sepFilter2D(_src, current_image, CV_32F, G, G, cv::Point(-1, -1), 0,
+      cv::BORDER_DEFAULT);
 
   for( int level = 0; level < maxlevels; ++level ) {
 
     dogs.emplace_back();
-    cv::sepFilter2D(current_image, lpass, CV_32F, G, G, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+    cv::sepFilter2D(current_image, lpass, CV_32F, G, G, cv::Point(-1, -1), 0,
+        cv::BORDER_DEFAULT);
     cv::subtract(current_image, lpass, dogs.back());
 
     if( level < maxlevels - 1 ) {

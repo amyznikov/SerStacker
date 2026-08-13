@@ -44,6 +44,12 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
       {DEBAYER_AVGC,  "AVGC",    "DEBAYER_AVGC: 2x2 pixel binning"},
       {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
+
+      {DEBAYER_PLANE_0,"PLANE_0", "DEBAYER_PLANE_0: "},
+      {DEBAYER_PLANE_1,"PLANE_1", "DEBAYER_PLANE_1: "},
+      {DEBAYER_PLANE_2,"PLANE_2", "DEBAYER_PLANE_2: "},
+      {DEBAYER_PLANE_3,"PLANE_3", "DEBAYER_PLANE_3: "},
+
       {DEBAYER_NN, } // must  be last
   };
   return members;
@@ -1042,6 +1048,13 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
         return interpolate_bayer_planes(src, dst, colorid);
       case DEBAYER_AVGC:
         return debayer_avgc(src, dst, colorid);
+
+      case DEBAYER_PLANE_0:
+      case DEBAYER_PLANE_1:
+      case DEBAYER_PLANE_2:
+      case DEBAYER_PLANE_3:
+        cv::extractChannel(src, dst, (int(algo) - DEBAYER_PLANE_0));
+        return true;
     }
 
     CF_ERROR("Not supported debayer algorithm %d (%s) requested from 4-plane bayer image",
@@ -1055,6 +1068,12 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
     return false;
   }
 
+  if ( algo >= DEBAYER_PLANE_0 && algo <= DEBAYER_PLANE_3 ) {
+    cv::Mat tmp;
+    extract_bayer_planes(src, tmp, colorid);
+    cv::extractChannel(tmp, dst, (int(algo) - DEBAYER_PLANE_0));
+    return true;
+  }
 
 
   switch (algo) {

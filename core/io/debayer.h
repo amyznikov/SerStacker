@@ -45,6 +45,13 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
   DEBAYER_AVGC,     // 2z2 pixel binning
   DEBAYER_MATRIX,   // Don't debayer but create BGR color bayer matrix image
+
+  // Extract individual planes as monochrome images
+  DEBAYER_PLANE_0,
+  DEBAYER_PLANE_1,
+  DEBAYER_PLANE_2,
+  DEBAYER_PLANE_3,
+
 };
 
 

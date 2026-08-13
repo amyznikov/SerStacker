@@ -1773,8 +1773,119 @@ static bool running_average_update(cv::InputArray src, cv::InputArray srcmask,
   return false;
 }
 
+//template<class _Tp>
+//static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
+//    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
+//{
+//  const cv::Size size = _src_image.size();
+//  const int cn = _src_image.channels();
+//
+//  if( _src_accumulator.size() != size ) {
+//    CF_DEBUG("Image and accumulator sizes not match");
+//    return false;
+//  }
+//
+//  if( _weights_accumulator.size() != size ) {
+//    CF_DEBUG("Image and weights accumulator sizes not match");
+//    return false;
+//  }
+//
+//  if( _weights_accumulator.type() != CV_32FC1 ) {
+//    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
+//    return false;
+//  }
+//
+//  if( _src_accumulator.depth() != CV_32F ) {
+//    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
+//    return false;
+//  }
+//
+//  if( _src_accumulator.channels() != cn ) {
+//    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
+//    return false;
+//  }
+//
+//  const cv::Mat_<_Tp> src = _src_image.getMat();
+//  const _Tp* const __restrict src_data = src[0];
+//  const size_t src_step = src.step1();
+//
+//  cv::Mat_<float> acc = _src_accumulator.getMatRef();
+//  cv::Mat1f W = _weights_accumulator.getMatRef();
+//
+//  const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
+//  const cv::Mat src_w = _src_weights.getMat();
+//  const void * const src_w_data = weights_type == -1 ? nullptr : src_w.data;
+//  const size_t src_w_step = weights_type == -1 ? 0 : src_w.step1();
+//
+//  float* const __restrict acc_data = acc[0];
+//  const size_t acc_step = acc.step1();
+//
+//  float* const __restrict wacc_data = W[0];
+//  const size_t wacc_step = W.step1();
+//
+//  parallel_for(0, size.height, [=/*, &src_w*/](const auto & range) {
+//
+//    const int y0 = rbegin(range);
+//    float* __restrict accp = acc_data + y0 * acc_step;
+//    float* __restrict waccp = wacc_data + y0 * wacc_step;
+//    const _Tp* __restrict srcp = src_data + y0 * src_step;
+//
+//    for ( int y = y0; y < rend(range); ++y, accp += acc_step, waccp += wacc_step, srcp += src_step ) {
+//
+//      if (weights_type == -1) {
+//        for (int x = 0; x < size.width; ++x) {
+//          const float W_new = waccp[x] + 1.0f;
+//          const float factor = 1.0f / W_new;
+//          const int idx = x * cn;
+//          waccp[x] = W_new;
+//          for (int c = 0; c < cn; ++c) {
+//            const float I_new = srcp[idx + c];
+//            const float A_old = accp[idx + c];
+//            accp[idx + c] = A_old + (I_new - A_old) * factor;
+//          }
+//        }
+//      }
+//      else if (weights_type == CV_8UC1) {
+//        //const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
+//        const uint8_t* __restrict mp = static_cast<const uint8_t*>(src_w_data) + y * src_w_step;
+//        for (int x = 0; x < size.width; ++x) {
+//          if (mp[x] != 0) {
+//            const float W_new = waccp[x] + 1.0f;
+//            const float factor = 1.0f / W_new;
+//            const int idx = x * cn;
+//            waccp[x] = W_new;
+//            for (int c = 0; c < cn; ++c) {
+//              const float I_new = srcp[idx + c];
+//              const float A_old = accp[idx + c];
+//              accp[idx + c] = A_old + (I_new - A_old) * factor;
+//            }
+//          }
+//        }
+//      }
+//      else if (weights_type == CV_32FC1) {
+//        const float* __restrict wp = static_cast<const float*>(src_w_data) + y * src_w_step;
+//        for (int x = 0; x < size.width; ++x) {
+//          const float w_new = wp[x];
+//          if (w_new > FLT_EPSILON) {
+//            const float W_new = waccp[x] + w_new;
+//            const float factor = w_new / W_new;
+//            const int idx = x * cn;
+//            waccp[x] = W_new;
+//            for (int c = 0; c < cn; ++c) {
+//              const float I_new = srcp[idx + c];
+//              const float A_old = accp[idx + c];
+//              accp[idx + c] = A_old + (I_new - A_old) * factor;
+//            }
+//          }
+//        }
+//      }
+//    }});
+//
+//  return true;
+//}
+
 template<class _Tp>
-static bool _running_weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
+static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
     cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
   const cv::Size size = _src_image.size();
@@ -1805,77 +1916,76 @@ static bool _running_weighted_average_update(cv::InputArray _src_image, cv::Inpu
     return false;
   }
 
-  const cv::Mat_<_Tp> src = _src_image.getMat();
-  const _Tp* const __restrict src_data = src[0];
-  const size_t src_step = src.step1();
 
-  cv::Mat_<float> acc = _src_accumulator.getMatRef();
-  cv::Mat1f W = _weights_accumulator.getMatRef();
+  const cv::Mat src = _src_image.getMat();
+  const uint8_t * const src_base = (uint8_t*)src.ptr();
+  const size_t src_stride = src.step;
 
+  const cv::Mat srcw = _src_weights.getMat();
   const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
-  const cv::Mat src_w = _src_weights.getMat();
-  const void * const src_w_data = weights_type == -1 ? nullptr : src_w.data;
-  const size_t src_w_step = weights_type == -1 ? 0 : src_w.step1();
+  const uint8_t * const srcw_base = (const uint8_t * )(weights_type < 0 ? nullptr : srcw.data);
+  const size_t srcw_stride = weights_type == -1 ? 0 : srcw.step;
 
-  float* const __restrict acc_data = acc[0];
-  const size_t acc_step = acc.step1();
+  cv::Mat & acc = _src_accumulator.getMatRef();
+  uint8_t * const acc_base = (uint8_t * )acc.ptr();
+  const size_t acc_stride = acc.step;
 
-  float* const __restrict wacc_data = W[0];
-  const size_t wacc_step = W.step1();
+  cv::Mat & W = _weights_accumulator.getMatRef();
+  uint8_t * const accw_base = (uint8_t * )W.ptr();
+  const size_t accw_stride = W.step;
 
-  parallel_for(0, size.height, [=/*, &src_w*/](const auto & range) {
+  parallel_for(0, size.height, [=](const auto & range) {
 
     const int y0 = rbegin(range);
-    float* __restrict accp = acc_data + y0 * acc_step;
-    float* __restrict waccp = wacc_data + y0 * wacc_step;
-    const _Tp* __restrict srcp = src_data + y0 * src_step;
 
-    for ( int y = y0; y < rend(range); ++y, accp += acc_step, waccp += wacc_step, srcp += src_step ) {
+    const uint8_t* srcpy = src_base + y0 * src_stride;
+    uint8_t * accpy = acc_base + y0 * acc_stride;
+    uint8_t * accwpy = accw_base + y0 * accw_stride;
 
-      if (weights_type == -1) {
-        for (int x = 0; x < size.width; ++x) {
-          const float W_new = waccp[x] + 1.0f;
+    for ( int y = y0; y < rend(range); ++y, srcpy += src_stride, accpy += acc_stride, accwpy += accw_stride ) {
+      const _Tp* srcp = (const _Tp* )(srcpy);
+      float* __restrict accp = (float* )(accpy);
+      float* __restrict accwp = (float* )(accwpy);
+
+      if (weights_type < 0) { // no weights
+        for (int x = 0; x < size.width; ++x, srcp += cn, accwp += cn) {
+          const float W_new = *accwp + 1.0f;
           const float factor = 1.0f / W_new;
-          const int idx = x * cn;
-          waccp[x] = W_new;
+          *accwp = W_new;
           for (int c = 0; c < cn; ++c) {
-            const float I_new = srcp[idx + c];
-            const float A_old = accp[idx + c];
-            accp[idx + c] = A_old + (I_new - A_old) * factor;
+            const float I_new = srcp[c];
+            const float A_old = accp[c];
+            accp[c] = A_old + (I_new - A_old) * factor;
           }
         }
       }
-      else if (weights_type == CV_8UC1) {
-        //const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
-        const uint8_t* __restrict mp = static_cast<const uint8_t*>(src_w_data) + y * src_w_step;
-        for (int x = 0; x < size.width; ++x) {
-          if (mp[x] != 0) {
-            const float W_new = waccp[x] + 1.0f;
+      else if (weights_type == CV_8UC1) { // binary mask is assumed
+        const uint8_t* __restrict mp = (const uint8_t*)(srcw_base + y * srcw_stride);
+        for (int x = 0; x < size.width; ++x, ++mp, ++accwp, srcp += cn, accp += cn) {
+          if (*mp ) {
+            const float W_new = *accwp + 1.0f;
             const float factor = 1.0f / W_new;
-            const int idx = x * cn;
-            waccp[x] = W_new;
+            *accwp = W_new;
             for (int c = 0; c < cn; ++c) {
-              const float I_new = srcp[idx + c];
-              const float A_old = accp[idx + c];
-              accp[idx + c] = A_old + (I_new - A_old) * factor;
+              const float I_new = srcp[c];
+              const float A_old = accp[c];
+              accp[c] = A_old + (I_new - A_old) * factor;
             }
           }
         }
       }
-      else if (weights_type == CV_32FC1) {
-        //const float* __restrict wp = src_w.ptr<float>(y);
-        const float* __restrict wp = static_cast<const float*>(src_w_data) + y * src_w_step;
-        for (int x = 0; x < size.width; ++x) {
-          const float w_new = wp[x];
+      else if (weights_type == CV_32FC1) { // floating point weight is assumed
+        const float* __restrict wp = (const float*)(srcw_base + y * srcw_stride);
+        for (int x = 0; x < size.width; ++x, ++wp, ++accwp, srcp += cn, accp += cn) {
+          const float w_new = *wp;
           if (w_new > FLT_EPSILON) {
-            const float W_new = waccp[x] + w_new;
+            const float W_new = *accwp + w_new;
             const float factor = w_new / W_new;
-            const int idx = x * cn;
-            waccp[x] = W_new;
+            *accwp = W_new;
             for (int c = 0; c < cn; ++c) {
-              const float I_new = srcp[idx + c];
-              const float A_old = accp[idx + c];
-              accp[idx + c] = A_old + (I_new - A_old) * factor;
+              const float I_new = srcp[c];
+              const float A_old = accp[c];
+              accp[c] = A_old + (I_new - A_old) * factor;
             }
           }
         }
@@ -1885,11 +1995,11 @@ static bool _running_weighted_average_update(cv::InputArray _src_image, cv::Inpu
   return true;
 }
 
-static bool running_weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
+static bool weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
     cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
   INSTRUMENT_REGION("");
-  CV_DISPATCH(_src_image.depth(), _running_weighted_average_update, _src_image, _src_weights,
+  CV_DISPATCH(_src_image.depth(), _weighted_average_update, _src_image, _src_weights,
       _src_accumulator, _weights_accumulator);
   CF_ERROR("APP BUG: BAD _src_image.depth()=%d encountered", _src_image.depth());
   return false;
@@ -2107,7 +2217,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     }
   }
 
-  running_weighted_average_update(remapped_image, remapped_weights,
+  weighted_average_update(remapped_image, remapped_weights,
       _accumulator(ROI), _counter(ROI));
 
   _last_bbox = ROI;

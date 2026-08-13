@@ -15,7 +15,7 @@
 
 struct c_simple_star_detector_options
 {
-  int lvls = 3;
+  int lvls = 5;
   int se_radius = 2;
   double sigma = 2;
   double weight_decay = 1;

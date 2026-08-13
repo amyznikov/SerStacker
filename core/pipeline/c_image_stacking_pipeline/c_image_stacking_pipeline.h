@@ -89,17 +89,9 @@ struct c_frame_accumulation_options
 {
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
   c_local_variance_map_options sharpness_measure;
-  //c_lpg_options lpg;
   c_laplacian_pyramid_focus_stacking::options fs;
   double max_weights_ratio = 0;
-
-//  c_frame_accumulation_options()
-//  {
-//    lpg.dscale = 2;
-//  }
 };
-
-
 
 struct c_image_processing_options
 {
@@ -276,10 +268,6 @@ protected:
   bool save_sparse_matches_video(int seqindex);
 
   std::string generate_output_file_name() const;
-
-//  static void remove_bad_pixels(cv::Mat & image,
-//      const c_image_stacking_input_options & input_optons,
-//      bool isbayer);
 
   static void upscale_image(enum frame_upscale_option scale,
       cv::InputArray src, cv::InputArray srcmask,

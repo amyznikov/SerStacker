@@ -81,12 +81,14 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "average_options")) ) {
-    SERIALIZE_OPTION(section, save, _average_options, running_weight);
 
     if( auto group = SERIALIZE_GROUP(section, save, "sharpness_measure") ) {
       serialize_local_variance_map_options(group, save, _average_options.sharpness_measure);
     }
 
+    if( auto group = SERIALIZE_GROUP(section, save, "update") ) {
+      SERIALIZE_OPTION(group, save, _average_options.update, interpolation);
+    }
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
@@ -160,10 +162,12 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_running_average_update_options;
 
-  //ctlbind(ctls, "reference running_weight", ctx(&S::reference_weight), ""); // , "", (_this->_registration_options.double_align_moode));
-  ctlbind(ctls, "running_weight", ctx(&S::running_weight), "");
   ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, CTL_CONTEXT(ctx, sharpness_measure));
+  ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Weighted average update", "");
+    ctlbind(ctls, "interpolation", CTL_CONTEXT(ctx, update.interpolation));
   ctlbind_end_group(ctls);
 }
 

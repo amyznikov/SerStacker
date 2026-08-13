@@ -90,7 +90,7 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
-  double max_weights_ratio = 0;
+  //double max_weights_ratio = 0;
 };
 
 struct c_image_processing_options
@@ -304,7 +304,7 @@ protected:
   c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;
   c_frame_accumulation::ptr _frame_accumulation;
-  c_frame_weigthed_average::ptr _flow_accumulation;
+  c_weigthed_average::ptr _flow_accumulation;
 
   mutable std::string _output_file_name_postfix;
 

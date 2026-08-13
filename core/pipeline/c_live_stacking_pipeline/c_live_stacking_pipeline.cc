@@ -641,7 +641,7 @@ c_frame_accumulation::ptr c_live_stacking_pipeline::create_frame_accumulation(co
   switch (type) {
     case live_stacking_accumulation_average: {
       //return c_frame_weigthed_average::ptr(new c_frame_weigthed_average(image_size, CV_MAKETYPE(CV_32F, cn) , CV_32F));
-      return c_frame_weigthed_average::ptr(new c_frame_weigthed_average());
+      return c_weigthed_average::ptr(new c_weigthed_average());
     }
     default:
       CF_ERROR("Unsupported live_stacking_accumulation_type %d requested", type);

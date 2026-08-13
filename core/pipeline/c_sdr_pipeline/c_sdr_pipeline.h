@@ -160,10 +160,10 @@ protected:
 
 protected:
   c_roi_selection::sptr _roi_selection;
-  c_frame_weigthed_average _reference_frame_avg;
+  c_weigthed_average _reference_frame_avg;
   c_saturn_ellipse_detector _ellipse_detector;
   c_saturn_derotation_remap _ellipsoid_derotation_remap;
-  c_frame_weigthed_average _frame_average;
+  c_weigthed_average _frame_average;
 
   int _pipeline_stage = 0;
 

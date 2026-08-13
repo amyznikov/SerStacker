@@ -36,36 +36,108 @@ protected:
   int _accumulated_frames = 0;
 };
 
-class c_frame_weigthed_average :
+class c_weigthed_average :
     public c_frame_accumulation
 {
 public:
-  typedef c_frame_weigthed_average this_class;
+  typedef c_weigthed_average this_class;
   typedef c_frame_accumulation base;
   typedef std::shared_ptr<this_class> ptr;
 
-  c_frame_weigthed_average();
-  c_frame_weigthed_average(double max_weights_ratio);
-
+  c_weigthed_average();
 
   bool add(cv::InputArray src, cv::InputArray weights = cv::noArray()) final;
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const final;
   bool get_acc_counters(cv::Mat & accw) const final;
   bool reinitialize(cv::InputArray src, cv::InputArray accw) final;
   void clear() final;
+
   cv::Size accumulator_size() const final;
 
   const cv::Mat & accumulator() const;
   const cv::Mat & counter() const;
-  const cv::Mat & max_weights() const;
-
-  void set_max_weights_ratio(double v);
-  double max_weights_ratio() const;
 
 protected:
-  cv::Mat _accumulator, _counter, _max_weights;
-  double _max_weights_ratio = 0;
+  cv::Mat _accumulator;
+  cv::Mat1f _weights;
 };
+
+class c_canvas_average
+{
+public:
+  typedef c_canvas_average this_class;
+  typedef std::shared_ptr<this_class> ptr;
+
+  struct options {
+    cv::InterpolationFlags interpolation = cv::INTER_LINEAR; // cv::INTER_LANCZOS4; //
+  } opts;
+
+  void setCanvasSize(const cv::Size & v)
+  {
+    clear();
+    _canvasSize = v;
+  }
+
+  const cv::Size & canvasSize() const
+  {
+    return _canvasSize;
+  }
+
+  int accumulated_frames() const
+  {
+    return _accumulated_frames;
+  }
+
+  cv::Size accumulator_size() const
+  {
+    return _accumulator.size();
+  }
+
+  const cv::Mat & accumulator() const
+  {
+    return _accumulator;
+  }
+
+  const cv::Mat1f & counter() const
+  {
+    return _weights;
+  }
+
+  const cv::Rect & last_bbox() const
+  {
+    return _last_bbox;
+  }
+
+  /*
+   * Add input frame to canvas. The rmap.size() must be equal to new_canvas_bbox.size().
+   * TODO: check if new_canvas_bbox is really required, may be replace with position only
+   * and compute internally based on rmap.size()
+   * */
+  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+      const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox);
+
+  /*
+   * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
+   * */
+  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
+      const cv::Rect & rbbox = cv::Rect()) const;
+
+  void clear();
+
+  static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
+
+
+protected:
+  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
+
+protected:
+  cv::Mat _accumulator;
+  cv::Mat1f _weights;
+  cv::Rect _last_bbox;
+  cv::Size _canvasSize;
+  int _accumulated_frames = 0;
+};
+
 
 class c_laplacian_pyramid_focus_stacking :
     public c_frame_accumulation
@@ -187,109 +259,6 @@ protected:
   cv::Mat3f _counter;
   cv::Mat2f _rmap;
   COLORID _colorid = COLORID_UNKNOWN;
-};
-
-
-class c_running_average
-{
-public:
-  typedef c_running_average this_class;
-  typedef std::shared_ptr<this_class> ptr;
-
-  int accumulated_frames() const
-  {
-    return _accumulated_frames;
-  }
-
-  cv::Size accumulator_size() const
-  {
-    return _accumulator.size();
-  }
-
-  const cv::Mat & accumulator() const
-  {
-    return _accumulator;
-  }
-
-  const cv::Mat1f & counter() const
-  {
-    return _counter;
-  }
-
-  bool remap(const cv::Mat2f & rmap);
-  bool add(cv::InputArray current_image, cv::InputArray current_mask,  double w, const cv::Mat2f * rmap = nullptr);
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1) const;
-  void clear();
-
-protected:
-  cv::Mat _accumulator;
-  cv::Mat1f _counter;
-  int _accumulated_frames = 0;
-};
-
-
-class c_canvas_average
-{
-public:
-  typedef c_canvas_average this_class;
-  typedef std::shared_ptr<this_class> ptr;
-
-  void setCanvasSize(const cv::Size & v);
-
-  const cv::Size & canvasSize() const
-  {
-    return _canvasSize;
-  }
-
-  int accumulated_frames() const
-  {
-    return _accumulated_frames;
-  }
-
-  cv::Size accumulator_size() const
-  {
-    return _accumulator.size();
-  }
-
-  const cv::Mat & accumulator() const
-  {
-    return _accumulator;
-  }
-
-  const cv::Mat1f & counter() const
-  {
-    return _counter;
-  }
-
-  const cv::Rect & last_bbox() const
-  {
-    return _last_bbox;
-  }
-
-  /*
-   * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
-   * */
-  bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
-      const cv::Rect & rbbox = cv::Rect()) const;
-
-  void clear();
-
-  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-      const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox);
-
-  static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
-
-
-protected:
-  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
-
-protected:
-  cv::Mat _accumulator;
-  cv::Mat1f _counter;
-  cv::Rect _last_bbox;
-  int _accumulated_frames = 0;
-  const cv::InterpolationFlags _interpolation_mode = cv::INTER_LINEAR; // cv::INTER_LANCZOS4; //
-  cv::Size _canvasSize;
 };
 
 

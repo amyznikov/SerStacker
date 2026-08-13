@@ -47,7 +47,8 @@ struct c_running_average_registration_options
 
 struct c_running_average_update_options
 {
-  double running_weight = 15000;
+  //double running_weight = 15000;
+  c_canvas_average::options update;
   c_local_variance_map_options sharpness_measure;
 };
 

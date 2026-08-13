@@ -15,649 +15,179 @@
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
-template<class T1, class T2, class T3>
-static bool _accumulate_weighted(cv::InputArray src, cv::InputArray weights,
-    cv::Mat & acc, cv::Mat & counter, cv::Mat & maxw, float maxwr, int accdepth)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<class _Tp>
+static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
+    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
-  if( acc.empty() || counter.empty() ) {
-    acc.create(src.size(), CV_MAKETYPE(accdepth, src.channels()));
-    counter.create(src.size(), CV_MAKETYPE(accdepth, weights.channels()));
-    acc.setTo(0);
-    counter.setTo(0);
+  const cv::Size size = _src_image.size();
+  const int cn = _src_image.channels();
+
+  if( _src_accumulator.size() != size ) {
+    CF_DEBUG("Image and accumulator sizes not match");
+    return false;
   }
 
-  const int cn = acc.channels();
+  if( _weights_accumulator.size() != size ) {
+    CF_DEBUG("Image and weights accumulator sizes not match");
+    return false;
+  }
 
-  if( weights.channels() != counter.channels() ) {
-    CF_ERROR("Number of channels in weight mask was changed: "
-        "counter.channels=%d weights.channels=%d",
-        counter.channels(), weights.channels());
+  if( _weights_accumulator.type() != CV_32FC1 ) {
+    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
+    return false;
+  }
+
+  if( _src_accumulator.depth() != CV_32F ) {
+    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
+    return false;
+  }
+
+  if( _src_accumulator.channels() != cn ) {
+    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
     return false;
   }
 
 
-  const cv::Mat S = src.getMat();
-  const cv::Mat W = weights.getMat();
+  const cv::Mat src = _src_image.getMat();
+  const uint8_t * const src_base = (uint8_t*)src.ptr();
+  const size_t src_stride = src.step;
 
-  if( src.channels() == 1 && weights.channels() == 1 ) {
+  const cv::Mat srcw = _src_weights.getMat();
+  const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
+  const uint8_t * const srcw_base = (const uint8_t * )(weights_type < 0 ? nullptr : srcw.data);
+  const size_t srcw_stride = weights_type == -1 ? 0 : srcw.step;
 
-    parallel_for(0, S.rows, [&, maxwr](const auto & range) {
-      for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-        const T1 * sp = S.ptr<const T1>(y);
-        const T2 * wp = W.ptr<const T2>(y);
-        T3 * __restrict accp = acc.ptr<T3>(y);
-        T3 * __restrict cntp = counter.ptr<T3>(y);
+  cv::Mat & acc = _src_accumulator.getMatRef();
+  uint8_t * const acc_base = (uint8_t * )acc.ptr();
+  const size_t acc_stride = acc.step;
 
-        if ( maxw.empty() ) {
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            cntp[x] += wp[x];
-            accp[x] += sp[x] * wp[x];
+  cv::Mat & W = _weights_accumulator.getMatRef();
+  uint8_t * const accw_base = (uint8_t * )W.ptr();
+  const size_t accw_stride = W.step;
+
+  parallel_for(0, size.height, [=](const auto & range) {
+
+    const int y0 = rbegin(range);
+
+    const uint8_t* srcpy = src_base + y0 * src_stride;
+    uint8_t * accpy = acc_base + y0 * acc_stride;
+    uint8_t * accwpy = accw_base + y0 * accw_stride;
+
+    for ( int y = y0; y < rend(range); ++y, srcpy += src_stride, accpy += acc_stride, accwpy += accw_stride ) {
+      const _Tp* srcp = (const _Tp* )(srcpy);
+      float* __restrict accp = (float* )(accpy);
+      float* __restrict accwp = (float* )(accwpy);
+
+      if (weights_type < 0) { // no weights
+        for (int x = 0; x < size.width; ++x, srcp += cn, accwp += cn) {
+          const float W_new = *accwp + 1.0f;
+          const float factor = 1.0f / W_new;
+          *accwp = W_new;
+          for (int c = 0; c < cn; ++c) {
+            const float I_new = srcp[c];
+            const float A_old = accp[c];
+            accp[c] = A_old + (I_new - A_old) * factor;
           }
-        }
-        else {
-          float * __restrict mwp = maxw.ptr<float>(y);
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            if ( wp[x] > mwp[x] * maxwr ) {
-              cntp[x] += wp[x];
-              accp[x] += sp[x] * wp[x];
-            }
-            if ( wp[x] > mwp[x] ) {
-              mwp[x] = wp[x];
-            }
-          }
-
         }
       }
-    });
-
-  }
-  else if( src.channels() == weights.channels() ) {
-
-    parallel_for(0, S.rows, [&, maxwr, cn](const auto & range) {
-      for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-        const T1 * sp = S.ptr<const T1>(y);
-        const T2 * wp = W.ptr<const T2>(y);
-        T3 * __restrict accp = acc.ptr<T3>(y);
-        T3 * __restrict cntp = counter.ptr<T3>(y);
-
-        if ( maxw.empty() ) {
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            for ( int c = 0; c < cn; ++c ) {
-              cntp[x * cn + c] += wp[x * cn + c];
-              accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
-            }
-          }
-        }
-        else {
-          float * __restrict mwp = maxw.ptr<float>(y);
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            for ( int c = 0; c < cn; ++c ) {
-              if ( wp[x * cn + c] > mwp[x * cn + c] * maxwr ) {
-                cntp[x * cn + c] += wp[x * cn + c];
-                accp[x * cn + c] += sp[x * cn + c] * wp[x * cn + c];
-              }
-              if ( wp[x * cn + c] > mwp[x * cn + c] ) {
-                mwp[x * cn + c] = wp[x * cn + c];
-              }
+      else if (weights_type == CV_8UC1) { // binary mask is assumed
+        const uint8_t* __restrict mp = (const uint8_t*)(srcw_base + y * srcw_stride);
+        for (int x = 0; x < size.width; ++x, ++mp, ++accwp, srcp += cn, accp += cn) {
+          if (*mp ) {
+            const float W_new = *accwp + 1.0f;
+            const float factor = 1.0f / W_new;
+            *accwp = W_new;
+            for (int c = 0; c < cn; ++c) {
+              const float I_new = srcp[c];
+              const float A_old = accp[c];
+              accp[c] = A_old + (I_new - A_old) * factor;
             }
           }
         }
       }
-    });
-  }
-  else if( weights.channels() == 1 ) {
-
-    parallel_for(0, S.rows, [&, maxwr, cn](const auto & range) {
-      for ( int y = rbegin(range), ymax = rend(range); y < ymax; ++y ) {
-        const T1 * sp = S.ptr<const T1>(y);
-        const T2 * wp = W.ptr<const T2>(y);
-        T3 * __restrict accp = acc.ptr<T3>(y);
-        T3 * __restrict cntp = counter.ptr<T3>(y);
-
-        if ( maxw.empty() ) {
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            cntp[x] += wp[x];
-            for ( int c = 0; c < cn; ++c ) {
-              accp[x * cn + c] += sp[x * cn + c] * wp[x];
-            }
-          }
-        }
-        else {
-          float * __restrict mwp = maxw.ptr<float>(y);
-          for ( int x = 0, n = acc.cols; x < n; ++x ) {
-            if ( wp[x] > mwp[x] * maxwr ) {
-              cntp[x] += wp[x];
-              for ( int c = 0; c < cn; ++c ) {
-                accp[x * cn + c] += sp[x * cn + c] * wp[x];
-              }
-            }
-            if ( wp[x] > mwp[x] ) {
-              mwp[x] = wp[x];
+      else if (weights_type == CV_32FC1) { // floating point weight is assumed
+        const float* __restrict wp = (const float*)(srcw_base + y * srcw_stride);
+        for (int x = 0; x < size.width; ++x, ++wp, ++accwp, srcp += cn, accp += cn) {
+          const float w_new = *wp;
+          if (w_new > 0) {
+            const float W_new = *accwp + w_new;
+            const float factor = w_new / W_new;
+            *accwp = W_new;
+            for (int c = 0; c < cn; ++c) {
+              const float I_new = srcp[c];
+              const float A_old = accp[c];
+              accp[c] = A_old + (I_new - A_old) * factor;
             }
           }
         }
       }
-    });
-  }
-  else {
-    CF_ERROR("Unsupported combination of image (%d) and weights (%d) channels",
-        src.channels(), weights.channels());
-    return false;
-  }
-
+    }});
 
   return true;
 }
 
-static bool accumulate_weighted(cv::InputArray src, cv::InputArray weights,
-    cv::Mat & acc, cv::Mat & accw, cv::Mat & maxw, float maxwr)
+static bool weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
+    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
 {
-  const int accdepth = acc.depth();
-
-  switch ( src.depth() ) {
-  case CV_8U :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint8_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint8_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-
-  case CV_8S :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int8_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int8_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-
-  case CV_16U :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<uint16_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<uint16_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-
-  case CV_16S :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int16_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int16_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-
-  case CV_32S :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<int32_t, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<int32_t, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-  case CV_32F :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<float, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<float, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-  case CV_64F :
-    switch ( weights.depth() ) {
-    case CV_32F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, float, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, float, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_64F :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, double, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, double, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, uint8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, uint8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_8S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, int8_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, int8_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16U :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, uint16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, uint16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_16S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, int16_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, int16_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    case CV_32S :
-      switch ( accdepth ) {
-      case CV_32F :
-        return _accumulate_weighted<double, int32_t, float>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      case CV_64F :
-        return _accumulate_weighted<double, int32_t, double>(src, weights, acc, accw, maxw, maxwr, accdepth);
-      }
-      break;
-    }
-    break;
-  }
-
+  INSTRUMENT_REGION("");
+  CV_DISPATCH(_src_image.depth(), _weighted_average_update, _src_image, _src_weights,
+      _src_accumulator, _weights_accumulator);
+  CF_ERROR("APP BUG: BAD _src_image.depth()=%d encountered", _src_image.depth());
   return false;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-c_frame_weigthed_average::c_frame_weigthed_average()
+c_weigthed_average::c_weigthed_average()
 {
 
 }
 
-c_frame_weigthed_average::c_frame_weigthed_average(double max_weights_ratio) :
-    _max_weights_ratio(max_weights_ratio)
-{
-}
 
-void c_frame_weigthed_average::clear()
+void c_weigthed_average::clear()
 {
   _accumulator.release();
-  _counter.release();
-  _max_weights.release();
+  _weights.release();
   _accumulated_frames = 0;
 }
 
-cv::Size c_frame_weigthed_average::accumulator_size() const
+cv::Size c_weigthed_average::accumulator_size() const
 {
   return _accumulator.size();
 }
 
-const cv::Mat & c_frame_weigthed_average::accumulator() const
+const cv::Mat & c_weigthed_average::accumulator() const
 {
   return _accumulator;
 }
 
-const cv::Mat & c_frame_weigthed_average::counter() const
+const cv::Mat & c_weigthed_average::counter() const
 {
-  return _counter;
+  return _weights;
 }
 
-const cv::Mat & c_frame_weigthed_average::max_weights() const
-{
-  return _max_weights;
-}
-
-void c_frame_weigthed_average::set_max_weights_ratio(double v)
-{
-  _max_weights_ratio = v;
-}
-
-double c_frame_weigthed_average::max_weights_ratio() const
-{
-  return _max_weights_ratio;
-}
-
-bool c_frame_weigthed_average::reinitialize(cv::InputArray src, cv::InputArray accw)
+bool c_weigthed_average::reinitialize(cv::InputArray src, cv::InputArray accw)
 {
   clear();
 
   src.getMat().copyTo(_accumulator);
-  accw.getMat().copyTo(_counter);
+  accw.getMat().copyTo(_weights);
   _accumulated_frames = 1;
 
   return true;
 }
 
-bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
+bool c_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
 {
   INSTRUMENT_REGION("");
 
-  if ( _accumulated_frames < 1 ) {
-
+  if( _accumulated_frames < 1 ) {
     _accumulator.create(src.size(), CV_MAKETYPE(CV_32F, src.channels()));
-    _counter.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
-
+    _weights.create(src.size());
     _accumulator.setTo(0);
-    _counter.setTo(0);
-
+    _weights.setTo(0);
     _accumulated_frames = 0;
   }
 
@@ -666,7 +196,8 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
         src.cols(), src.rows(), _accumulator.cols, _accumulator.rows );
     return false;
   }
-  else if ( src.channels() != _accumulator.channels() ) {
+
+  if ( src.channels() != _accumulator.channels() ) {
     CF_ERROR("ERROR in weigthed_frame_average: current frame (%d) and accumulator (%d) channel count not match",
         src.channels(), _accumulator.channels());
     return false;
@@ -679,23 +210,9 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
     return false;
   }
 
-
-  if ( weights.empty() || weights.type() == CV_8UC1 ) {
-
-    cv::add(_accumulator, src, _accumulator, weights, _accumulator.type());
-    cv::add(_counter, cv::Scalar::all(1), _counter, weights, _counter.type());
-  }
-  else {
-
-    if( _max_weights_ratio > 0 && _max_weights.empty() ) {
-      _max_weights.create(src.size(), CV_MAKETYPE(CV_32F, weights.channels()));
-      _max_weights.setTo(0);
-    }
-
-    if ( !accumulate_weighted(src, weights, _accumulator, _counter, _max_weights, _max_weights_ratio) ) {
-      CF_ERROR("ERROR in weigthed_frame_average: accumulate_weighted() fails");
-      return false;
-    }
+  if ( !weighted_average_update(src, weights, _accumulator, _weights) ) {
+    CF_ERROR("weighted_average_update() fails");
+    return false;
   }
 
   ++_accumulated_frames;
@@ -703,55 +220,228 @@ bool c_frame_weigthed_average::add(cv::InputArray src, cv::InputArray weights)
   return true;
 }
 
-bool c_frame_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
+bool c_weigthed_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
 {
+  INSTRUMENT_REGION("");
+
   if ( _accumulated_frames < 1 ) {
-    CF_ERROR("No frames was accumulated");
     return false;
   }
 
-  INSTRUMENT_REGION("");
-
-  cv::Mat m;
-  cv::compare(_counter, 0, m, cv::CMP_GT);
-  if( m.channels() > 1 ) {
-    reduce_color_channels(m, m, cv::REDUCE_MIN);
-  }
-
-  if( avg.needed() ) {
-
-    cv::Mat cc;
-
-    if( _counter.channels() == _accumulator.channels() ) {
-      cc = _counter;
+  if ( avg.needed() ) {
+    if ( ddepth < 0 ) {
+      ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
+    }
+    if( ddepth == _accumulator.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
+      _accumulator.copyTo(avg);
     }
     else {
-      std::vector<cv::Mat> channels(_accumulator.channels(), _counter);
-      cv::merge(channels, cc);
+      _accumulator.convertTo(avg, ddepth, dscale);
     }
-
-    cv::divide(_accumulator, cc, avg, dscale);
-    avg.setTo(0, ~m);
   }
 
-  if( mask.needed() ) {
-    mask.move(m);
+  if ( mask.needed() ) {
+    cv::compare(_weights, 0, mask, cv::CMP_GT);
   }
-
 
   return true;
 }
 
-bool c_frame_weigthed_average::get_acc_counters(cv::Mat & accw) const
+bool c_weigthed_average::get_acc_counters(cv::Mat & accw) const
 {
-  if ( _counter.channels() == 1) {
-    _counter.copyTo(accw);
+  if ( _weights.channels() == 1) {
+    _weights.copyTo(accw);
   }
   else {
-    cv::cvtColor(_counter, accw, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(_weights, accw, cv::COLOR_BGR2GRAY);
   }
 
   return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
+{
+  const int W = inputFrameSize.width;
+  const int H = inputFrameSize.height;
+  return cv::Size(3 * W / 2, 3 * H / 2);
+}
+
+
+void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize)
+{
+  if (_accumulator.empty() || bbox.width <= 0 || bbox.height <= 0) {
+    return;
+  }
+
+  const int margin = 32;
+
+  int shift_x = 0;
+  int shift_y = 0;
+
+  if( bbox.x < margin ) {
+    shift_x = 2 * margin;
+  }
+  else if( (bbox.x + bbox.width) >= _accumulator.cols - margin ) {
+    shift_x = -2 * margin;
+  }
+
+  if( bbox.y < margin ) {
+    shift_y = 2 * margin;
+  }
+  else if( (bbox.y + bbox.height) >= _accumulator.rows - margin ) {
+    shift_y = -2 * margin;
+  }
+
+  if ( shift_x || shift_y ) {
+
+    const int copy_w = _accumulator.cols - std::abs(shift_x);
+    const int copy_h = _accumulator.rows - std::abs(shift_y);
+    if (copy_w > 0 && copy_h > 0)  {
+
+      const int src_x = (shift_x > 0) ? 0 : -shift_x;
+      const int src_y = (shift_y > 0) ? 0 : -shift_y;
+      const int dst_x = (shift_x > 0) ? shift_x : 0;
+      const int dst_y = (shift_y > 0) ? shift_y : 0;
+      const cv::Rect src_roi(src_x, src_y, copy_w, copy_h);
+      const cv::Rect dst_roi(dst_x, dst_y, copy_w, copy_h);
+
+      cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
+      cv::Mat1f new_counter = cv::Mat1f::zeros(_weights.size());
+
+      _accumulator(src_roi).copyTo(new_accum(dst_roi));
+      _weights(src_roi).copyTo(new_counter(dst_roi));
+      _accumulator = new_accum;
+      _weights = new_counter;
+      bbox.x += shift_x;
+      bbox.y += shift_y;
+    }
+  }
+}
+
+
+bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+    const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
+{
+  INSTRUMENT_REGION("");
+
+  if( !rmap.empty() && (rmap.cols > _accumulator.cols || rmap.rows > _accumulator.rows) ) {
+    CF_ERROR("Invalid argument: rmap.size()=%dx%d > _accumulator.size()=%dx%d",
+        rmap.cols, rmap.rows,
+        _accumulator.cols, _accumulator.rows);
+    return false;
+  }
+
+  cv::Mat img = current_image.getMat();
+  cv::Mat weights = current_weights_or_mask.getMat();
+  if (img.empty()) {
+    CF_ERROR("input image is empty");
+    return false;
+  }
+
+  cv::Rect ROI;
+
+  if( _accumulator.empty() ) {
+    // very first frame
+    const cv::Size frameSize = current_image.size();
+
+    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
+    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
+        std::max(_canvasSize.height, computedCanvasSize.height));
+
+    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
+    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
+    ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
+
+    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
+    _weights = cv::Mat1f::zeros(canvasSize);
+    weighted_average_update(img, weights, _accumulator(ROI), _weights(ROI));
+
+    _last_bbox = ROI;
+    ++_accumulated_frames;
+    return true;
+  }
+
+  cv::Mat remapped_image, remapped_weights;
+
+  if( new_canvas_bbox.empty() && rmap.empty() ) {
+    // no remap requested
+    remapped_image = img;
+    remapped_weights = weights;
+    ROI = cv::Rect(_last_bbox.x, _last_bbox.y, img.cols, img.rows) &
+        cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+  }
+  else {
+    // remap requested
+
+    ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+    if (ROI.empty()) {
+      CF_ERROR("ROI is empty");
+      return false;
+    }
+
+    maintainCanvasBoundaries(ROI, current_image.size());
+
+    cv::remap(img, remapped_image, rmap, cv::noArray(), opts.interpolation, cv::BORDER_REPLICATE);
+    if( !weights.empty() ) {
+      const int mask_interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+      cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    }
+  }
+
+  weighted_average_update(remapped_image, remapped_weights,
+      _accumulator(ROI), _weights(ROI));
+
+  _last_bbox = ROI;
+  ++_accumulated_frames;
+
+  return true;
+}
+
+/*
+ * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
+ * */
+bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
+    double dscale, int ddepth, const cv::Rect & rbbox /*= cv::Rect()*/) const
+{
+  INSTRUMENT_REGION("");
+
+  if ( _accumulated_frames < 1 ) {
+    return false;
+  }
+
+  const cv::Rect cbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+  const cv::Rect bbox = rbbox.empty() ? cbox : (rbbox & cbox);
+  if ( bbox.empty() ) {
+    return false;
+  }
+
+  if ( avg.needed() ) {
+    if ( ddepth < 0 ) {
+      ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
+    }
+    if( ddepth == _accumulator.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
+      _accumulator(bbox).copyTo(avg);
+    }
+    else {
+      _accumulator(bbox).convertTo(avg, ddepth, dscale);
+    }
+  }
+
+  if ( mask.needed() ) {
+    cv::compare(_weights(bbox), 0, mask, cv::CMP_GT);
+  }
+
+  return true;
+}
+
+void c_canvas_average::clear()
+{
+  _accumulator.release();
+  _weights.release();
+  _accumulated_frames = 0;
+  _last_bbox = cv::Rect();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1296,13 +986,12 @@ bool c_frame_accumulation_with_fft::fftPower(const cv::Mat & src, cv::Mat & dst,
 
 
 template<class BT>
-static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+static bool _bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
     const cv::Mat2f & rmap,
     const cv::Mat1b & bayer_pattern,
     const cv::Mat & weigths)
 {
-  const cv::Mat_<BT> src =
-      bayer_image.getMat();
+  const cv::Mat_<BT> src = bayer_image.getMat();
 
   if( rmap.empty() ) {
 
@@ -1432,6 +1121,18 @@ static void bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Ma
       });
     }
   }
+
+  return true;
+}
+
+static bool bayer_accumulate(cv::InputArray bayer_image, cv::Mat3f & acc, cv::Mat3f & cntr,
+    const cv::Mat2f & rmap,
+    const cv::Mat1b & bayer_pattern,
+    const cv::Mat & weigths)
+{
+  CV_DISPATCH(bayer_image.depth(), _bayer_accumulate, bayer_image, acc, cntr, rmap, bayer_pattern, weigths);
+  CF_ERROR("APP BUG: BAD bayer_image.depth()=%d encountered", bayer_image.depth());
+  return false;
 }
 
 void c_bayer_average::set_bayer_pattern(COLORID colorid)
@@ -1491,30 +1192,9 @@ bool c_bayer_average::add(cv::InputArray src, cv::InputArray weights)
     generate_bayer_pattern_mask();
   }
 
-  switch (src_bayer.type()) {
-    case CV_8UC1:
-      bayer_accumulate<uint8_t>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_8SC1:
-      bayer_accumulate<int8_t>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_16UC1:
-      bayer_accumulate<uint16_t>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_16SC1:
-      bayer_accumulate<int16_t>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_32SC1:
-      bayer_accumulate<int32_t>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_32FC1:
-      bayer_accumulate<float>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    case CV_64FC1:
-      bayer_accumulate<double>(src, _accumulator, _counter, _rmap, _bayer_pattern, w);
-      break;
-    default:
-      break;
+  if ( !bayer_accumulate(src, _accumulator, _counter, _rmap, _bayer_pattern, w) ) {
+    CF_ERROR("bayer_accumulate() fails");
+    return false;
   }
 
   ++_accumulated_frames;
@@ -1651,623 +1331,9 @@ void c_bayer_average::generate_bayer_pattern_mask()
       break;
   }
 
-
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-template<class T>
-static bool _running_average_update(cv::InputArray _src, cv::InputArray _srcmask,
-    cv::Mat & _dst, cv::Mat1f & cnt,
-    double _avgw)
-{
-  const int rows = _src.rows();
-  const int cols = _src.cols();
-  const int cn = _src.channels();
-  const cv::Mat_<T> src = _src.getMat();
-  cv::Mat_<float> dst = _dst;
-
-  const float avgw = static_cast<float>(_avgw);
-
-  if ( _srcmask.empty() ) {
-
-    parallel_for(0, rows, [&](const auto & range) {
-      for ( int y = rbegin(range); y < rend(range); ++y ) {
-        const T * srcp = src[y];
-        float * dstp = dst[y];
-        float * cntp = cnt[y];
-        for( int x = 0; x < cols; ++x ) {
-          const float w = cntp[x];
-          for( int c = 0; c < cn; ++c ) {
-            float & dstv = dstp[x * cn + c];
-            const T & srcv = srcp[x * cn + c];
-            dstv = (dstv * w + srcv) / (w + 1);
-          }
-
-          if( cntp[x] < avgw ) {
-            cntp[x] += 1;
-          }
-        }
-      }
-    });
-
-  }
-  else if( _srcmask.size() != _src.size() ) {
-    CF_ERROR("Invalid mask size: %dx%d depth=%d channels=%d",
-        _srcmask.cols(), _srcmask.rows(), _srcmask.depth(), _srcmask.channels());
-    return false;
-
-  }
-  else if( _srcmask.type() == CV_8UC1 ) {
-
-    const cv::Mat1b msk = _srcmask.getMat();
-
-    parallel_for(0, rows, [&](const auto & range) {
-      for ( int y = rbegin(range); y < rend(range); ++y ) {
-
-        const uint8_t * mskp = msk[y];
-        const T * srcp = src[y];
-        float * dstp = dst[y];
-        float * cntp = cnt[y];
-
-        for( int x = 0; x < cols; ++x ) {
-          if( mskp[x] ) {
-            const float w = std::min(avgw, cntp[x]);
-            for( int c = 0; c < cn; ++c ) {
-              const T & srcv = srcp[x * cn + c];
-              float & dstv = dstp[x * cn + c];
-              dstv = (dstv * w + srcv) / (w + 1);
-            }
-
-            if( cntp[x] < avgw ) {
-              cntp[x] += 1;
-            }
-          }
-        }
-      }
-    });
-  }
-  else if( _srcmask.type() == CV_32FC1 ) {
-
-    const cv::Mat1f weights = _srcmask.getMat();
-
-    parallel_for(0, rows, [&](const auto & range) {
-      for ( int y = rbegin(range); y < rend(range); ++y ) {
-
-        const float * wp = weights[y];
-        const T * srcp = src[y];
-        float * dstp = dst[y];
-        float * cntp = cnt[y];
-
-        for( int x = 0; x < cols; ++x ) {
-          const float & ww = wp[x];
-          if ( ww ) {
-            float & w = cntp[x];
-            for( int c = 0; c < cn; ++c ) {
-              const T & srcv = srcp[x * cn + c];
-              float & dstv = dstp[x * cn + c];
-              dstv = (dstv * w * avgw + srcv * ww) / (w * avgw + ww);
-            }
-            w = (w * w * avgw + ww * ww) / (w * avgw + ww);
-          }
-        }
-      }
-    });
-  }
-  else {
-    CF_ERROR("Unsupported mask type encountered: depth=%d channels=%d",
-        _srcmask.depth(), _srcmask.channels());
-    return false;
-  }
-
-  return true;
-}
-
-static bool running_average_update(cv::InputArray src, cv::InputArray srcmask,
-    cv::Mat & acc, cv::Mat1f & cnt,
-    double avgw)
-{
-  CV_DISPATCH(src.depth(), _running_average_update, src, srcmask, acc, cnt, avgw);
-  CF_ERROR("APP BUG: BAD _src.depth()=%d encountered", src.depth());
-  return false;
-}
-
-//template<class _Tp>
-//static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
-//    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
-//{
-//  const cv::Size size = _src_image.size();
-//  const int cn = _src_image.channels();
-//
-//  if( _src_accumulator.size() != size ) {
-//    CF_DEBUG("Image and accumulator sizes not match");
-//    return false;
-//  }
-//
-//  if( _weights_accumulator.size() != size ) {
-//    CF_DEBUG("Image and weights accumulator sizes not match");
-//    return false;
-//  }
-//
-//  if( _weights_accumulator.type() != CV_32FC1 ) {
-//    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
-//    return false;
-//  }
-//
-//  if( _src_accumulator.depth() != CV_32F ) {
-//    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
-//    return false;
-//  }
-//
-//  if( _src_accumulator.channels() != cn ) {
-//    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
-//    return false;
-//  }
-//
-//  const cv::Mat_<_Tp> src = _src_image.getMat();
-//  const _Tp* const __restrict src_data = src[0];
-//  const size_t src_step = src.step1();
-//
-//  cv::Mat_<float> acc = _src_accumulator.getMatRef();
-//  cv::Mat1f W = _weights_accumulator.getMatRef();
-//
-//  const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
-//  const cv::Mat src_w = _src_weights.getMat();
-//  const void * const src_w_data = weights_type == -1 ? nullptr : src_w.data;
-//  const size_t src_w_step = weights_type == -1 ? 0 : src_w.step1();
-//
-//  float* const __restrict acc_data = acc[0];
-//  const size_t acc_step = acc.step1();
-//
-//  float* const __restrict wacc_data = W[0];
-//  const size_t wacc_step = W.step1();
-//
-//  parallel_for(0, size.height, [=/*, &src_w*/](const auto & range) {
-//
-//    const int y0 = rbegin(range);
-//    float* __restrict accp = acc_data + y0 * acc_step;
-//    float* __restrict waccp = wacc_data + y0 * wacc_step;
-//    const _Tp* __restrict srcp = src_data + y0 * src_step;
-//
-//    for ( int y = y0; y < rend(range); ++y, accp += acc_step, waccp += wacc_step, srcp += src_step ) {
-//
-//      if (weights_type == -1) {
-//        for (int x = 0; x < size.width; ++x) {
-//          const float W_new = waccp[x] + 1.0f;
-//          const float factor = 1.0f / W_new;
-//          const int idx = x * cn;
-//          waccp[x] = W_new;
-//          for (int c = 0; c < cn; ++c) {
-//            const float I_new = srcp[idx + c];
-//            const float A_old = accp[idx + c];
-//            accp[idx + c] = A_old + (I_new - A_old) * factor;
-//          }
-//        }
-//      }
-//      else if (weights_type == CV_8UC1) {
-//        //const uint8_t* __restrict mp = src_w.ptr<uint8_t>(y);
-//        const uint8_t* __restrict mp = static_cast<const uint8_t*>(src_w_data) + y * src_w_step;
-//        for (int x = 0; x < size.width; ++x) {
-//          if (mp[x] != 0) {
-//            const float W_new = waccp[x] + 1.0f;
-//            const float factor = 1.0f / W_new;
-//            const int idx = x * cn;
-//            waccp[x] = W_new;
-//            for (int c = 0; c < cn; ++c) {
-//              const float I_new = srcp[idx + c];
-//              const float A_old = accp[idx + c];
-//              accp[idx + c] = A_old + (I_new - A_old) * factor;
-//            }
-//          }
-//        }
-//      }
-//      else if (weights_type == CV_32FC1) {
-//        const float* __restrict wp = static_cast<const float*>(src_w_data) + y * src_w_step;
-//        for (int x = 0; x < size.width; ++x) {
-//          const float w_new = wp[x];
-//          if (w_new > FLT_EPSILON) {
-//            const float W_new = waccp[x] + w_new;
-//            const float factor = w_new / W_new;
-//            const int idx = x * cn;
-//            waccp[x] = W_new;
-//            for (int c = 0; c < cn; ++c) {
-//              const float I_new = srcp[idx + c];
-//              const float A_old = accp[idx + c];
-//              accp[idx + c] = A_old + (I_new - A_old) * factor;
-//            }
-//          }
-//        }
-//      }
-//    }});
-//
-//  return true;
-//}
-
-template<class _Tp>
-static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
-    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
-{
-  const cv::Size size = _src_image.size();
-  const int cn = _src_image.channels();
-
-  if( _src_accumulator.size() != size ) {
-    CF_DEBUG("Image and accumulator sizes not match");
-    return false;
-  }
-
-  if( _weights_accumulator.size() != size ) {
-    CF_DEBUG("Image and weights accumulator sizes not match");
-    return false;
-  }
-
-  if( _weights_accumulator.type() != CV_32FC1 ) {
-    CF_DEBUG("Bad weights_accumulator type. Must be CV_32FC1");
-    return false;
-  }
-
-  if( _src_accumulator.depth() != CV_32F ) {
-    CF_DEBUG("Bad image_accumulator depth = %d. Must be CV_32F", _src_accumulator.depth());
-    return false;
-  }
-
-  if( _src_accumulator.channels() != cn ) {
-    CF_DEBUG("Bad number of image channels=%d. Must be %d", cn, _src_accumulator.channels());
-    return false;
-  }
-
-
-  const cv::Mat src = _src_image.getMat();
-  const uint8_t * const src_base = (uint8_t*)src.ptr();
-  const size_t src_stride = src.step;
-
-  const cv::Mat srcw = _src_weights.getMat();
-  const int weights_type = _src_weights.empty() ? -1 : _src_weights.type();
-  const uint8_t * const srcw_base = (const uint8_t * )(weights_type < 0 ? nullptr : srcw.data);
-  const size_t srcw_stride = weights_type == -1 ? 0 : srcw.step;
-
-  cv::Mat & acc = _src_accumulator.getMatRef();
-  uint8_t * const acc_base = (uint8_t * )acc.ptr();
-  const size_t acc_stride = acc.step;
-
-  cv::Mat & W = _weights_accumulator.getMatRef();
-  uint8_t * const accw_base = (uint8_t * )W.ptr();
-  const size_t accw_stride = W.step;
-
-  parallel_for(0, size.height, [=](const auto & range) {
-
-    const int y0 = rbegin(range);
-
-    const uint8_t* srcpy = src_base + y0 * src_stride;
-    uint8_t * accpy = acc_base + y0 * acc_stride;
-    uint8_t * accwpy = accw_base + y0 * accw_stride;
-
-    for ( int y = y0; y < rend(range); ++y, srcpy += src_stride, accpy += acc_stride, accwpy += accw_stride ) {
-      const _Tp* srcp = (const _Tp* )(srcpy);
-      float* __restrict accp = (float* )(accpy);
-      float* __restrict accwp = (float* )(accwpy);
-
-      if (weights_type < 0) { // no weights
-        for (int x = 0; x < size.width; ++x, srcp += cn, accwp += cn) {
-          const float W_new = *accwp + 1.0f;
-          const float factor = 1.0f / W_new;
-          *accwp = W_new;
-          for (int c = 0; c < cn; ++c) {
-            const float I_new = srcp[c];
-            const float A_old = accp[c];
-            accp[c] = A_old + (I_new - A_old) * factor;
-          }
-        }
-      }
-      else if (weights_type == CV_8UC1) { // binary mask is assumed
-        const uint8_t* __restrict mp = (const uint8_t*)(srcw_base + y * srcw_stride);
-        for (int x = 0; x < size.width; ++x, ++mp, ++accwp, srcp += cn, accp += cn) {
-          if (*mp ) {
-            const float W_new = *accwp + 1.0f;
-            const float factor = 1.0f / W_new;
-            *accwp = W_new;
-            for (int c = 0; c < cn; ++c) {
-              const float I_new = srcp[c];
-              const float A_old = accp[c];
-              accp[c] = A_old + (I_new - A_old) * factor;
-            }
-          }
-        }
-      }
-      else if (weights_type == CV_32FC1) { // floating point weight is assumed
-        const float* __restrict wp = (const float*)(srcw_base + y * srcw_stride);
-        for (int x = 0; x < size.width; ++x, ++wp, ++accwp, srcp += cn, accp += cn) {
-          const float w_new = *wp;
-          if (w_new > FLT_EPSILON) {
-            const float W_new = *accwp + w_new;
-            const float factor = w_new / W_new;
-            *accwp = W_new;
-            for (int c = 0; c < cn; ++c) {
-              const float I_new = srcp[c];
-              const float A_old = accp[c];
-              accp[c] = A_old + (I_new - A_old) * factor;
-            }
-          }
-        }
-      }
-    }});
-
-  return true;
-}
-
-static bool weighted_average_update(cv::InputArray _src_image, cv::InputArray _src_weights,
-    cv::InputOutputArray _src_accumulator, cv::InputOutputArray _weights_accumulator)
-{
-  INSTRUMENT_REGION("");
-  CV_DISPATCH(_src_image.depth(), _weighted_average_update, _src_image, _src_weights,
-      _src_accumulator, _weights_accumulator);
-  CF_ERROR("APP BUG: BAD _src_image.depth()=%d encountered", _src_image.depth());
-  return false;
-}
-
-void c_running_average::clear()
-{
-  _accumulator.release();
-  _counter.release();
-  _accumulated_frames = 0;
-}
-
-bool c_running_average::remap(const cv::Mat2f & rmap)
-{
-  if( !_accumulator.empty() && _accumulator.size() == rmap.size() ) {
-    cv::remap(_accumulator, _accumulator, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    cv::remap(_counter, _counter, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    return true;
-  }
-
-  return false;
-}
-
-
-bool c_running_average::add(cv::InputArray current_image, cv::InputArray current_mask, double w, const cv::Mat2f * rmap)
-{
-  if( _accumulator.empty() ) {
-    _accumulator = cv::Mat::zeros(current_image.size(), current_image.type());
-    _counter = cv::Mat1f::zeros(current_image.size());
-  }
-
-  if( _accumulator.size() != current_image.size() ) {
-    CF_ERROR("current_image.size=%dx%d not match to accumulator.size=%dx%d",
-        current_image.cols(), current_image.rows(),
-        _accumulator.cols, _accumulator.rows);
-
-    return false;
-  }
-
-
-  if( rmap ) {
-    cv::remap(_accumulator, _accumulator, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
-    cv::remap(_counter, _counter, *rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-  }
-
-  running_average_update(current_image, current_mask,
-      _accumulator, _counter,
-      w);
-
-  ++_accumulated_frames;
-
-  return true;
-}
-
-bool c_running_average::compute(cv::OutputArray avg, cv::OutputArray mask, double dscale, int ddepth) const
-{
-  if ( _accumulated_frames < 1 ) {
-    return false;
-  }
-
-  cv::compare(_counter, cv::Scalar::all(0), mask, cv::CMP_GT);
-  _accumulator.copyTo(avg, mask);
-
-  return true;
-}
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
-{
-  const int W = inputFrameSize.width;
-  const int H = inputFrameSize.height;
-  return cv::Size(3 * W / 2, 3 * H / 2);
-}
-
-void c_canvas_average::setCanvasSize(const cv::Size & v)
-{
-  _canvasSize = v;
-  _accumulator.release();
-  _counter.release();
-  _last_bbox = cv::Rect();
-  _accumulated_frames = 0;
-}
-
-void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize)
-{
-  if (_accumulator.empty() || bbox.width <= 0 || bbox.height <= 0) {
-    return;
-  }
-
-  const int margin = 32;
-
-  int shift_x = 0;
-  int shift_y = 0;
-
-  if( bbox.x < margin ) {
-    shift_x = 2 * margin;
-  }
-  else if( (bbox.x + bbox.width) >= _accumulator.cols - margin ) {
-    shift_x = -2 * margin;
-  }
-
-  if( bbox.y < margin ) {
-    shift_y = 2 * margin;
-  }
-  else if( (bbox.y + bbox.height) >= _accumulator.rows - margin ) {
-    shift_y = -2 * margin;
-  }
-
-  if ( shift_x || shift_y ) {
-
-    const int copy_w = _accumulator.cols - std::abs(shift_x);
-    const int copy_h = _accumulator.rows - std::abs(shift_y);
-    if (copy_w > 0 && copy_h > 0)  {
-
-      const int src_x = (shift_x > 0) ? 0 : -shift_x;
-      const int src_y = (shift_y > 0) ? 0 : -shift_y;
-      const int dst_x = (shift_x > 0) ? shift_x : 0;
-      const int dst_y = (shift_y > 0) ? shift_y : 0;
-      const cv::Rect src_roi(src_x, src_y, copy_w, copy_h);
-      const cv::Rect dst_roi(dst_x, dst_y, copy_w, copy_h);
-
-      cv::Mat new_accum = cv::Mat::zeros(_accumulator.size(), _accumulator.type());
-      cv::Mat1f new_counter = cv::Mat1f::zeros(_counter.size());
-
-      _accumulator(src_roi).copyTo(new_accum(dst_roi));
-      _counter(src_roi).copyTo(new_counter(dst_roi));
-      _accumulator = new_accum;
-      _counter = new_counter;
-      bbox.x += shift_x;
-      bbox.y += shift_y;
-    }
-  }
-}
-
-
-bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-    const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
-{
-  INSTRUMENT_REGION("");
-
-  if( !rmap.empty() && (rmap.cols > _accumulator.cols || rmap.rows > _accumulator.rows) ) {
-    CF_ERROR("Invalid argument: rmap.size()=%dx%d > _accumulator.size()=%dx%d",
-        rmap.cols, rmap.rows,
-        _accumulator.cols, _accumulator.rows);
-    return false;
-  }
-
-  cv::Mat img = current_image.getMat();
-  cv::Mat weights = current_weights_or_mask.getMat();
-  if (img.empty()) {
-    CF_ERROR("input image is empty");
-    return false;
-  }
-
-  cv::Rect ROI;
-
-  if( _accumulator.empty() ) {
-    // very first frame
-    const cv::Size frameSize = current_image.size();
-
-    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
-    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
-        std::max(_canvasSize.height, computedCanvasSize.height));
-
-    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
-    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
-    ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
-
-    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
-    _counter = cv::Mat1f::zeros(canvasSize);
-    current_image.copyTo(_accumulator(ROI));
-
-    if ( weights.empty() ) {
-      _counter(ROI).setTo(1);
-    }
-    else if ( weights.depth() == CV_8U ) {
-      _counter(ROI).setTo(1, weights);
-    }
-    else {
-      weights.copyTo(_counter(ROI));
-    }
-
-    _last_bbox = ROI;
-    ++_accumulated_frames;
-    return true;
-  }
-
-  cv::Mat remapped_image, remapped_weights;
-
-  if( new_canvas_bbox.empty() && rmap.empty() ) {
-    // no remap requested
-    remapped_image = img;
-    remapped_weights = weights;
-    ROI = cv::Rect(_last_bbox.x, _last_bbox.y, img.cols, img.rows) &
-        cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-  }
-  else {
-    // remap requested
-
-    ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-    if (ROI.empty()) {
-      CF_ERROR("ROI is empty");
-      return false;
-    }
-
-    maintainCanvasBoundaries(ROI, current_image.size());
-
-    cv::remap(img, remapped_image, rmap, cv::noArray(), _interpolation_mode, cv::BORDER_REPLICATE);
-    if( !weights.empty() ) {
-      const int mask_interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
-      cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    }
-  }
-
-  weighted_average_update(remapped_image, remapped_weights,
-      _accumulator(ROI), _counter(ROI));
-
-  _last_bbox = ROI;
-  ++_accumulated_frames;
-
-  return true;
-}
-
-/*
- * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
- * */
-bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
-    double dscale, int ddepth, const cv::Rect & rbbox /*= cv::Rect()*/) const
-{
-  INSTRUMENT_REGION("");
-
-  if ( _accumulated_frames < 1 ) {
-    return false;
-  }
-
-  const cv::Rect cbox = cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
-  const cv::Rect bbox = rbbox.empty() ? cbox : (rbbox & cbox);
-  if ( bbox.empty() ) {
-    return false;
-  }
-
-  if ( avg.needed() ) {
-    if ( ddepth < 0 ) {
-      ddepth = avg.fixedType() ? avg.depth() : _accumulator.depth();
-    }
-    if( ddepth == _accumulator.depth() && std::abs(dscale - 1) <= FLT_EPSILON ) {
-      _accumulator(bbox).copyTo(avg);
-    }
-    else {
-      _accumulator(bbox).convertTo(avg, ddepth, dscale);
-    }
-  }
-
-  if ( mask.needed() ) {
-    cv::compare(_counter(bbox), 0, mask, cv::CMP_GT);
-  }
-
-  return true;
-}
-
-void c_canvas_average::clear()
-{
-  _accumulator.release();
-  _counter.release();
-  _accumulated_frames = 0;
-  _last_bbox = cv::Rect();
-}
 

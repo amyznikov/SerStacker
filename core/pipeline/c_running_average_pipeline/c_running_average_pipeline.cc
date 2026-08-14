@@ -466,6 +466,12 @@ bool c_running_average_pipeline::run_pipeline()
       break;
     }
 
+    if( is_bad_frame_index(_input_sequence->current_pos()) ) {
+      CF_DEBUG("Skip frame %d as blacklisted", _input_sequence->current_pos());
+      _input_sequence->seek(_input_sequence->current_pos() + 1);
+      continue;
+    }
+
     fOK = read_input_frame(_input_sequence, _input_options,
         _current_image, _current_mask,
         false,

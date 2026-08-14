@@ -2219,6 +2219,8 @@ const std::vector<c_eccflow::pyramid_entry>& c_eccflow::current_pyramid() const
 bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask,
     cv::Mat1f & dst, cv::Mat1b & dst_mask) const
 {
+  INSTRUMENT_REGION("");
+
   src.getMat().convertTo(dst, dst.depth());
 
   if ( src_mask.empty() || cv::countNonZero(src_mask) == src_mask.size().area() ) {
@@ -2234,6 +2236,8 @@ bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask
 
 bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f & uv) const
 {
+  INSTRUMENT_REGION("");
+
   tbb::parallel_invoke(
     [this, &e, &rmap]() {
       //e.reference_image.copyTo(W);
@@ -2319,8 +2323,9 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
 
 void c_eccflow::avgdown(cv::InputArray src, cv::Mat & dst) const
 {
-  cv::Size size =
-      src.size();
+  INSTRUMENT_REGION("");
+
+  cv::Size size = src.size();
 
   for ( int i = 0; i < _opts.support_scale; ++i ) {
     size.width = (size.width + 1) / 2;
@@ -2347,14 +2352,11 @@ void c_eccflow::avgp(cv::InputArray src1, cv::InputArray src2, cv::Mat & dst) co
   avgdown(dst, dst);
 }
 
-
-// TODO: meanshift segmentation of an image
-// TODO: consider also compute matches for different feature scales in separate pyramids, then join;
-
 void c_eccflow::downscale(cv::InputArray src, cv::InputArray src_mask,
     cv::OutputArray dst, cv::OutputArray dst_mask,
     const cv::Size & dst_size) const
 {
+  INSTRUMENT_REGION("");
 
   switch (_opts.downscale) {
     case ECCFlowDownscalePyramid:
@@ -2386,6 +2388,8 @@ void c_eccflow::upscale(cv::InputArray src, cv::InputArray src_mask,
     cv::OutputArray dst, cv::OutputArray dst_mask,
     const cv::Size & dst_size) const
 {
+  INSTRUMENT_REGION("");
+
   cv::resize(src, dst, dst_size, 0, 0,
       cv::INTER_CUBIC);
 
@@ -2537,8 +2541,7 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
       }
     }
 
-    pyramid_entry & current_scale =
-        _pyramid.back();
+    pyramid_entry & current_scale = _pyramid.back();
 
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
@@ -2699,8 +2702,7 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
 
   M.release();
 
-  const int num_levels =
-      (int) (_pyramid.size());
+  const int num_levels = (int) (_pyramid.size());
 
   if( rmap.empty() ) {
 

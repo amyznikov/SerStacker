@@ -91,7 +91,7 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::Outpu
       return false;
     }
 
-    if ( !extract_bayer_planes(image, src, src_colorid) ) {
+    if ( !extract_bayer_planes(image, src) ) {
       CF_ERROR("extract_bayer_planes() fails for colorid=%d ('%s')",
           (int)src_colorid, toCString(src_colorid));
       return false;

@@ -292,6 +292,9 @@ public:
     return cv::Size(((currentSize.width + 1) >> 1) & ~0x1, ((currentSize.height + 1) >> 1) & ~0x1);
   }
 
+  static inline void downscale_image(cv::Mat & image, cv::Mat & mask,
+      const cv::Size & nextSize);
+
 protected:
   c_ecc_align::uptr create_ecc_align(double epsx) const;
 

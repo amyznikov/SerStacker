@@ -7,8 +7,10 @@
 
 #include "c_running_average_pipeline.h"
 #include <core/proc/unsharp_mask.h>
+#include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/io/load_image.h>
 #include <core/io/save_image.h>
+
 #include <core/readdir.h>
 
 c_running_average_pipeline::c_running_average_pipeline(const std::string & name,
@@ -96,6 +98,11 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
     SERIALIZE_OPTION(section, save, _output_options, output_file_name);
 
+    SERIALIZE_OPTION(section, save, _output_options, save_input_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_input_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_input_video_options);
+    }
+
     SERIALIZE_OPTION(section, save, _output_options, save_progress_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "output_progress_video_options")) ) {
       SERIALIZE_OPTION(subsection, save, _output_options, output_progress_video_options);
@@ -106,6 +113,10 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, _output_options, output_reference_video_options);
     }
 
+    SERIALIZE_OPTION(section, save, _output_options, save_weights_video);
+    if( (subsection = SERIALIZE_GROUP(section, save, "output_weights_video_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, output_weights_video_options);
+    }
 
     SERIALIZE_OPTION(section, save, _output_options, display_scale);
   }
@@ -181,15 +192,27 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
   ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
+
+  ctlbind_expandable_group(ctls, "Save input video");
+    ctlbind(ctls, "save_input_video", ctx(&S::save_input_video), "");
+    ctlbind(ctls, ctx(&S::output_input_video_options));
+  ctlbind_end_group(ctls);
+
   ctlbind_expandable_group(ctls, "Save progress video");
     ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
-    ctlbind(ctls, ctx(&S::output_progress_video_options));//  (_this->_output_options.save_accumulated_video));
+    ctlbind(ctls, ctx(&S::output_progress_video_options));
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save reference video", "");
     ctlbind(ctls, "save_reference_video", ctx(&S::save_reference_video), "");
-    ctlbind(ctls, ctx(&S::output_reference_video_options)); //  (_this->_output_options.save_reference_video));
+    ctlbind(ctls, ctx(&S::output_reference_video_options));
   ctlbind_end_group(ctls);
+
+  ctlbind_expandable_group(ctls, "Save weights video", "");
+    ctlbind(ctls, "save_weights_video", ctx(&S::save_weights_video), "");
+    ctlbind(ctls, ctx(&S::output_weights_video_options));
+  ctlbind_end_group(ctls);
+
 }
 
 const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcontrols()
@@ -597,6 +620,12 @@ bool c_running_average_pipeline::process_current_frame()
   INSTRUMENT_REGION("");
 //  CF_DEBUG("ENTER");
 
+  if ( !write_input_video(_current_image, _current_mask) ) {
+    CF_ERROR("write_input_video() fails");
+    return false;
+  }
+
+
   static const auto mkgrayscale = [](const cv::Mat & src, cv::Mat & dst) {
     if( src.channels() != 1 ) {
       cv::cvtColor(src, dst, cv::COLOR_BGR2GRAY);
@@ -606,6 +635,7 @@ bool c_running_average_pipeline::process_current_frame()
     }
   };
 
+
   bool has_updates = true;
 
   const bool enable_registration =
@@ -613,10 +643,18 @@ bool c_running_average_pipeline::process_current_frame()
           _registration_options.enable_ecc_registration ||
           _registration_options.enable_eccflow_registration;
 
+
   if( !enable_registration || _average.accumulated_frames() < 1 ) {
     // Very first frame or no registration requested
     INSTRUMENT_REGION("initialize_accumulator");
-    if ( !_average.add(_current_image, _current_mask, cv::Mat2f(), cv::Rect()) ) {
+
+    cv::Mat weights;
+
+    compute_weights(_current_image, _current_mask, weights);
+    if ( weights.empty() ) {
+      weights = _current_mask;
+    }
+    if ( !_average.add(_current_image, weights, cv::Mat2f(), cv::Rect()) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
@@ -640,8 +678,29 @@ bool c_running_average_pipeline::process_current_frame()
     }
 
     mkgrayscale(reference_image, reference_image);
+    //linear_interpolation_inpaint(reference_image, reference_mask);
+
     mkgrayscale(_current_image, current_image);
     current_mask = _current_mask;
+
+    if ( _output_options.save_reference_video ) {
+
+      const cv::Size frameSize(current_image.cols + 8, current_image.rows + 8);
+      cv::Mat frame = cv::Mat::zeros(frameSize, reference_image.type());
+      cv::Mat mask;// =  cv::Mat::zeros(frameSize, CV_8UC1);
+
+      const cv::Size copySize(std::min(frameSize.width, bbox.width), std::min(frameSize.height, bbox.height));
+      const cv::Rect copyBox(0,0,copySize.width, copySize.height);
+
+      reference_image(copyBox).copyTo(frame(copyBox));
+      //reference_mask(copyBox).copyTo(mask(copyBox));
+
+      if ( !write_reference_video(frame, mask)) {
+        CF_ERROR("write_reference_video() fails");
+        return false;
+      }
+    }
+
 
     _image_transform->reset();
 
@@ -739,7 +798,7 @@ bool c_running_average_pipeline::process_current_frame()
 }
 
 
-void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst) const
+void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   INSTRUMENT_REGION("");
 //  if( _apodizationWindow.size() != src.size() ) {
@@ -771,9 +830,41 @@ void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::
       dst.setTo(0, ~srcmask);
     }
     //cv::multiply(dst, _apodizationWindow, dst);
+
+    write_weights_video(dst, cv::noArray());
   }
+
 }
 
+
+bool c_running_average_pipeline::write_input_video(cv::InputArray image, cv::InputArray mask)
+{
+  if( _output_options.save_input_video && !image.empty() ) {
+
+    if( !_input_video_writer.is_open() ) {
+
+      bool fOk =
+          add_output_writer(_input_video_writer,
+              _output_options.output_input_video_options,
+              "input",
+              ".ser");
+
+      if( !fOk ) {
+        CF_ERROR("add_output_writer('%s') fails",
+            _input_video_writer.filename().c_str());
+        return false;
+      }
+    }
+
+    if( !_input_video_writer.write(image/*, mask*/) ) {
+      CF_ERROR("_input_video_writer.write('%s') fails.",
+          _input_video_writer.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
 
 bool c_running_average_pipeline::write_progress_video(cv::InputArray image, cv::InputArray mask)
 {
@@ -797,6 +888,64 @@ bool c_running_average_pipeline::write_progress_video(cv::InputArray image, cv::
     if( !_progress_writer.write(image, mask) ) {
       CF_ERROR("_progress_writer.write('%s') fails.",
           _progress_writer.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool c_running_average_pipeline::write_reference_video(cv::InputArray image, cv::InputArray mask)
+{
+  if( _output_options.save_reference_video && !image.empty() ) {
+
+    if( !_reference_video_writer.is_open() ) {
+
+      bool fOk =
+          add_output_writer(_reference_video_writer,
+              _output_options.output_reference_video_options,
+              "reference",
+              ".ser");
+
+      if( !fOk ) {
+        CF_ERROR("add_output_writer('%s') fails",
+            _reference_video_writer.filename().c_str());
+        return false;
+      }
+    }
+
+    if( !_reference_video_writer.write(image, mask) ) {
+      CF_ERROR("_reference_video_writer.write('%s') fails.",
+          _reference_video_writer.filename().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool c_running_average_pipeline::write_weights_video(cv::InputArray image, cv::InputArray mask)
+{
+  if( _output_options.save_weights_video && !image.empty() ) {
+
+    if( !_weights_video_writer.is_open() ) {
+
+      bool fOk =
+          add_output_writer(_weights_video_writer,
+              _output_options.output_weights_video_options,
+              "weights",
+              ".ser");
+
+      if( !fOk ) {
+        CF_ERROR("add_output_writer('%s') fails",
+            _weights_video_writer.filename().c_str());
+        return false;
+      }
+    }
+
+    if( !_weights_video_writer.write(image, mask) ) {
+      CF_ERROR("_weights_video_writer.write('%s') fails.",
+          _weights_video_writer.filename().c_str());
       return false;
     }
   }

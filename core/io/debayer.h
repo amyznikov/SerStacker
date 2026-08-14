@@ -43,7 +43,7 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_NN2,      // SerStacker nearest-neighboor interpolation with nninterpolate()
   DEBAYER_VNG,      // Use OpenCV VNG interpolation with cv::demosaicing()
   DEBAYER_EA,       // Use OpenCV EA (edge aware) interpolation with cv::demosaicing()
-  DEBAYER_AVGC,     // 2z2 pixel binning
+  DEBAYER_SP,     // 2x2 pixel binning
   DEBAYER_MATRIX,   // Don't debayer but create BGR color bayer matrix image
 
   // Extract individual planes as monochrome images
@@ -71,10 +71,10 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid,
     enum DEBAYER_ALGORITHM algo = DEBAYER_NN2);
 
 /** @brief
- * Bayer Demosaicing by 2x2 pixel binning
+ * Bayer Demosaicing by 2x2 super-pixel pixel binning
  * Output dst image size is twice smaller than input src image size
  */
-bool debayer_avgc(cv::InputArray src, cv::OutputArray dst,
+bool debayer_sp(cv::InputArray src, cv::OutputArray dst,
     enum COLORID colorid, int ddepth = -1);
 
 /** @brief
@@ -90,11 +90,10 @@ bool debayer_matrix(cv::InputArray src, cv::OutputArray dst,
 bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth = -1);
 
 /** @brief
- * Extract src into dense 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ].
+ * Extract src into 4-channel dst matrix with 4 bayer planes ordered the same as src bayer pattern
  * The output size of dst is twice smaller than src
  */
-bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst,
-    enum COLORID colorid);
+bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst);
 
 /** @brief
  * Combine input 4-channel bayer planes into 3-channel BGR dst matrix using NN interpolaton.
@@ -125,7 +124,7 @@ bool is_corrupted_asi_frame(const cv::Mat & bayer_planes);
  * on the 1-channel Bayer image.
  */
 bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image,
-    COLORID bayer_pattern,
+    enum COLORID bayer_pattern,
     double median_hat_threshold);
 
 /**

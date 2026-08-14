@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 
     CF_DEBUG("input: %dx%d channels=%d depth=%d", image.cols, image.rows, image.channels(), image.depth());
 
-    extract_bayer_planes(image, image, ser_reader.color_id());
+    extract_bayer_planes(image, image);
 
     CF_DEBUG("planes: %dx%d channels=%d depth=%d", image.cols, image.rows, image.channels(), image.depth());
 

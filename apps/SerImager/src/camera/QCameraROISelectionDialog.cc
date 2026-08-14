@@ -11,7 +11,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool QCameraROI::metatype_registered_ =
+bool QCameraROI::_metatype_registered =
     QCameraROI::registerMetatype();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,14 +40,14 @@ static QToolButton * createToolButton(QWidget * parent,
 
 bool QCameraROI::registerMetatype()
 {
-  if( !metatype_registered_ ) {
+  if( !_metatype_registered ) {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     qRegisterMetaTypeStreamOperators<QCameraROI>("QCameraROI");
     qRegisterMetaTypeStreamOperators<QList<QCameraROI>>("QList<QCameraROI>");
 #endif
-    metatype_registered_ = true;
+    _metatype_registered = true;
   }
-  return metatype_registered_;
+  return _metatype_registered;
 }
 
 QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
@@ -55,14 +55,9 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
 {
   setWindowTitle("Define Custom ROI");
 
-  QHBoxLayout * hbox0 =
-      new QHBoxLayout(this);
-
-  QVBoxLayout * vboxl =
-      new QVBoxLayout();
-
-  QVBoxLayout * vboxr =
-      new QVBoxLayout();
+  QHBoxLayout * hbox0 = new QHBoxLayout(this);
+  QVBoxLayout * vboxl = new QVBoxLayout();
+  QVBoxLayout * vboxr = new QVBoxLayout();
 
   vboxr->setAlignment(Qt::AlignTop);
 
@@ -76,7 +71,7 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
           false,
           [this](int index, QComboBox * combo) {
 
-            updatingControls_ = true;
+            _updatingControls = true;
 
             addRoi_ctl->setEnabled(false);
 
@@ -84,27 +79,25 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
               deleteRoi_ctl->setEnabled(false);
             }
             else {
-
-              const QCameraROI & roi =
-                  roiList_[index];
+              const QCameraROI & roi = _roiList[index];
 
               deleteRoi_ctl->setEnabled(true);
 
-              roiName_ctl_->setText(roi.name);
+              roiName_ctl->setText(roi.name);
               roiRect_ctl->setText(toQString(roi.rect));
             }
 
-            updatingControls_ = false;
+            _updatingControls = false;
           });
 
   roiSelection_ctl->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
-  roiName_ctl_ =
+  roiName_ctl =
       roiOptions_ctl->add_textbox("ROI Name:",
           "ROI name",
           [this](const QString & name) {
-            if ( !updatingControls_ ) {
-              if ( name.isEmpty() || findROIByName(roiList_, name) >= 0 ) {
+            if ( !_updatingControls ) {
+              if ( name.isEmpty() || findROIByName(_roiList, name) >= 0 ) {
                 addRoi_ctl->setEnabled(false);
               }
               else {
@@ -120,22 +113,17 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
               "Use ROI selection tool button and context menu to copy and paste ROI text",
           [this](const QRect & rc) {
 
-            if ( !updatingControls_ && !rc.isEmpty() ) {
+            if ( !_updatingControls && !rc.isEmpty() ) {
 
-              const QString name =
-                  roiName_ctl_->text();
-
+              const QString name = roiName_ctl->text();
               if ( !name.isEmpty() ) {
-
-                int index =
-                    findROIByName(roiList_, name);
-
-                if ( index >= 0 && index < roiList_.size() ) {
-                  roiList_[index].rect = rc;
-                  updatingControls_ = true;
-                  roiSelection_ctl->setItemText(index, roiList_[index].toQString());
+                const int index = findROIByName(_roiList, name);
+                if ( index >= 0 && index < _roiList.size() ) {
+                  _roiList[index].rect = rc;
+                  _updatingControls = true;
+                  roiSelection_ctl->setItemText(index, _roiList[index].toQString());
                   setHasChanges(true);
-                  updatingControls_ = false;
+                  _updatingControls = false;
                 }
               }
             }
@@ -149,17 +137,17 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
           "Add ROI",
           "",
           [this]() {
-            const QString name = roiName_ctl_->text();
+            const QString name = roiName_ctl->text();
             if ( !name.isEmpty() ) {
-              int index = findROIByName(roiList_, name);
+              int index = findROIByName(_roiList, name);
               if ( index >= 0 ) {
                 roiSelection_ctl->setCurrentIndex(index);
               }
               else {
                 QRect rc;
-                if ( fromString(roiRect_ctl->text(), &rc) && (!validator_ || validator_(rc)) ) {
-                  roiList_.append(QCameraROI(name, rc ));
-                  roiSelection_ctl->addItem(roiList_[index = roiList_.size()-1].toQString());
+                if ( fromString(roiRect_ctl->text(), &rc) && (!_validator || _validator(rc)) ) {
+                  _roiList.append(QCameraROI(name, rc ));
+                  roiSelection_ctl->addItem(_roiList[index = _roiList.size()-1].toQString());
                   roiSelection_ctl->setCurrentIndex(index);
                   setHasChanges(true);
                 }
@@ -172,11 +160,11 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
           "Delete ROI",
           "",
           [this]() {
-            const QString name = roiName_ctl_->text();
+            const QString name = roiName_ctl->text();
             if ( !name.isEmpty() ) {
-              int index = findROIByName(roiList_, name);
+              const int index = findROIByName(_roiList, name);
               if ( index >= 0 ) {
-                roiList_.removeAt(index);
+                _roiList.removeAt(index);
                 roiSelection_ctl->removeItem(index);
                 setHasChanges(true);
               }
@@ -193,25 +181,25 @@ QCameraROISelectionDialog::QCameraROISelectionDialog(QWidget * parent) :
 
 void QCameraROISelectionDialog::setROIList(const QList<QCameraROI> & list)
 {
-  roiList_ = list;
+  _roiList = list;
   populateROISelectionCombo();
 }
 
 const QList<QCameraROI> & QCameraROISelectionDialog::roiList() const
 {
-  return roiList_;
+  return _roiList;
 }
 
 void QCameraROISelectionDialog::populateROISelectionCombo()
 {
-  updatingControls_ = true;
+  _updatingControls = true;
   roiSelection_ctl->clear();
 
-  for( int i = 0, n = roiList_.size(); i < n; ++i ) {
-    roiSelection_ctl->addItem(roiList_[i].toQString());
+  for( int i = 0, n = _roiList.size(); i < n; ++i ) {
+    roiSelection_ctl->addItem(_roiList[i].toQString());
   }
 
-  updatingControls_ = false;
+  _updatingControls = false;
 
   if ( roiSelection_ctl->count() > 0 ) {
     roiSelection_ctl->setCurrentIndex(0);
@@ -222,12 +210,12 @@ void QCameraROISelectionDialog::populateROISelectionCombo()
 
 void QCameraROISelectionDialog::setHasChanges(bool v)
 {
-  hasChanges_ = v;
+  _hasChanges = v;
 }
 
 bool QCameraROISelectionDialog::hasChanges() const
 {
-  return hasChanges_;
+  return _hasChanges;
 }
 
 
@@ -243,11 +231,11 @@ int QCameraROISelectionDialog::findROIByName(const QList<QCameraROI> & list, con
 
 void QCameraROISelectionDialog::setValidator(const ROIValidator & v)
 {
-  validator_ = v;
+  _validator = v;
 }
 
 const QCameraROISelectionDialog::ROIValidator & QCameraROISelectionDialog::validator() const
 {
-  return validator_;
+  return _validator;
 }
 

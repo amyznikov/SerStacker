@@ -190,7 +190,7 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
     return compute_sharpness_norm(G, depthScale, W);
   }
 
-  // Little slower path path for Q with map
+  // Little slower path for Q with map
   // Add some minimal feasible weight to the map for totally flat areas
   const double Q = compute_sharpness_map(G, M, depthScale, W);
   if( opts.uscale > 0 ) {

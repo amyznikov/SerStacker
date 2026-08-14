@@ -33,6 +33,9 @@ bool c_linear_interpolation_inpaint_routine::process(cv::InputOutputArray image,
       linear_interpolation_inpaint(image, mask, image);
     }
   }
+  else {
+    CF_ERROR("Bad mask: empty=%d depth=%d channels=%d", mask.empty(), mask.depth(), mask.channels());
+  }
   return true;
 }
 

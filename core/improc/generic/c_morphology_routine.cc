@@ -54,24 +54,28 @@ bool c_morphology_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       break;
   }
 
-  apply_morphology(src, dst,
-      _operation,
-      SE,
-      _anchor,
-      _iterations,
-      _borderType,
-      _borderValue);
+  if( !src.empty() ) {
+    apply_morphology(src, dst,
+        _operation,
+        SE,
+        _anchor,
+        _iterations,
+        _borderType,
+        _borderValue);
 
-
-  switch (_output_channel) {
-    case DATA_CHANNEL::IMAGE:
-      image.move(dst);
-      break;
-    case DATA_CHANNEL::MASK:
-      mask.create(dst.size(), CV_8UC1);
-      mask.setTo(cv::Scalar::all(0));
-      mask.setTo(255, dst != 0);
-      break;
+    switch (_output_channel) {
+      case DATA_CHANNEL::IMAGE:
+        image.move(dst);
+        break;
+      case DATA_CHANNEL::MASK:
+        if( mask.empty() ) {
+          cv::compare(dst, mask, cv::Scalar::all(0), cv::CMP_GT);
+        }
+        else {
+          cv::bitwise_and(dst, mask, mask);
+        }
+        break;
+    }
   }
 
   return true;

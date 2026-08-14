@@ -42,13 +42,12 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_NN2,   "NN2",    "DEBAYER_NN2: SerStacker nearest-neighboor interpolation with nninterpolate()"},
       {DEBAYER_EA,    "EA",     "DEBAYER_EA: OpenCV EA (edge aware) interpolation with cv::demosaicing()"},
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
-      {DEBAYER_AVGC,  "AVGC",    "DEBAYER_AVGC: 2x2 pixel binning"},
-      {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer but create colored bayer matrix image"},
-
-      {DEBAYER_PLANE_0,"PLANE_0", "DEBAYER_PLANE_0: "},
-      {DEBAYER_PLANE_1,"PLANE_1", "DEBAYER_PLANE_1: "},
-      {DEBAYER_PLANE_2,"PLANE_2", "DEBAYER_PLANE_2: "},
-      {DEBAYER_PLANE_3,"PLANE_3", "DEBAYER_PLANE_3: "},
+      {DEBAYER_SP,    "SP",     "2x2 super-pixel pixel binning"},
+      {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer, create colored bayer matrix image instead"},
+      {DEBAYER_PLANE_0,"PLANE_0", "Extract bayer plane 0: "},
+      {DEBAYER_PLANE_1,"PLANE_1", "Extract bayer plane 1: "},
+      {DEBAYER_PLANE_2,"PLANE_2", "Extract bayer plane 2: "},
+      {DEBAYER_PLANE_3,"PLANE_3", "Extract bayer plane 3: "},
 
       {DEBAYER_NN, } // must  be last
   };
@@ -90,8 +89,8 @@ bool is_bayer_pattern(enum COLORID colorid)
   return false;
 }
 
-template<class _Tp>
-static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enum COLORID colorid)
+template<typename _Tp1, typename _Tp2>
+static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst)
 {
   if( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 ) {
     CF_ERROR("Can not make debayer for uneven image size %dx%dx%d",
@@ -99,117 +98,49 @@ static bool _extract_bayer_planes(cv::InputArray _src, cv::OutputArray _dst, enu
     return false;
   }
 
-  using Vec4T = cv::Vec<_Tp, 4>;
-  const cv::Mat_<_Tp> src = _src.getMat();
-  cv::Mat_<Vec4T> dst(_src.size() / 2);
+  const int rows4 = _src.rows() / 2;
+  const int cols4 = _src.cols() / 2;
+  const int ddepth = cv::DataType<_Tp2>::depth;
 
-  switch (colorid) {
-    case COLORID_BAYER_MYYC:
-    case COLORID_BAYER_RGGB: {
-      // RGGB -> [R G1 B G2]
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp * r0 = src[y * 2 + 0];
-          const _Tp * r1 = src[y * 2 + 1];
-          Vec4T * dstp = dst[y];
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][0] = r0[2 * x + 0];
-            dstp[x][1] = r0[2 * x + 1];
-            dstp[x][3] = r1[2 * x + 0];
-            dstp[x][2] = r1[2 * x + 1];
-          }
-        }
-      });
-      break;
+  const cv::Mat bayer_image = _src.getMat();
+  const uint8_t * bayer_base = (const uint8_t * )bayer_image.ptr();
+  const size_t bayer_stride = bayer_image.step;
+
+  _dst.create(rows4, cols4, CV_MAKETYPE(ddepth, 4));
+  cv::Mat & planes = _dst.getMatRef();
+  uint8_t * planes_base = (uint8_t * )planes.ptr();
+  const size_t planes_stride = planes.step;
+
+  parallel_for(0, rows4, [=](const auto & range) {
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+
+      const _Tp1 * src0 = (const _Tp1 *)(bayer_base + (2 * y + 0) * bayer_stride);
+      const _Tp1 * src1 = (const _Tp1 *)(bayer_base + (2 * y + 1) * bayer_stride);
+      _Tp2 * __restrict dstp = (_Tp2 * )(planes_base + y * planes_stride);
+
+      for( int x = 0; x < cols4; ++x, src0 += 2, src1 += 2, dstp += 4 ) {
+        dstp[0] = cv::saturate_cast<_Tp2>(src0[0]);
+        dstp[1] = cv::saturate_cast<_Tp2>(src0[1]);
+        dstp[2] = cv::saturate_cast<_Tp2>(src1[0]);
+        dstp[3] = cv::saturate_cast<_Tp2>(src1[1]);
+      }
     }
-
-    case COLORID_BAYER_YMCY:
-    case COLORID_BAYER_GRBG:{
-      // GRBG -> [R G1 B G2]
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp * r0 = src[y * 2 + 0];
-          const _Tp * r1 = src[y * 2 + 1];
-          Vec4T * dstp = dst[y];
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][1] = r0[2 * x + 0];
-            dstp[x][0] = r0[2 * x + 1];
-            dstp[x][2] = r1[2 * x + 0];
-            dstp[x][3] = r1[2 * x + 1];
-          }
-        }
-      });
-      break;
-    }
-
-    case COLORID_BAYER_YCMY:
-    case COLORID_BAYER_GBRG: {
-      // GBRG -> [R G1 B G2]
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp * r0 = src[y * 2 + 0];
-          const _Tp * r1 = src[y * 2 + 1];
-          Vec4T * dstp = dst[y];
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][1] = r0[2 * x + 0];
-            dstp[x][2] = r0[2 * x + 1];
-            dstp[x][0] = r1[2 * x + 0];
-            dstp[x][3] = r1[2 * x + 1];
-          }
-        }
-      });
-      break;
-    }
-
-    case COLORID_BAYER_CYYM:
-    case COLORID_BAYER_BGGR: {
-      // BGGR -> [R G1 B G2]
-      parallel_for(0, dst.rows, [&, cols = dst.cols](const auto & range) {
-        for (int y = rbegin(range), ny = rend(range); y < ny; ++y) {
-          const _Tp * r0 = src[y * 2 + 0];
-          const _Tp * r1 = src[y * 2 + 1];
-          Vec4T * dstp = dst[y];
-          for (int x = 0; x < cols; ++x) {
-            dstp[x][2] = r0[2 * x + 0];
-            dstp[x][1] = r0[2 * x + 1];
-            dstp[x][3] = r1[2 * x + 0];
-            dstp[x][0] = r1[2 * x + 1];
-          }
-        }
-      });
-      break;
-    }
-
-    default:
-      CF_ERROR("Not supported colorid = %d", colorid);
-      return false;
-  }
-
-  if( _dst.fixedType() ) {
-    dst.convertTo(_dst, _dst.depth());
-  }
-  else {
-    _dst.move(dst);
-  }
+  });
 
   return true;
 }
 
 /** @brief
- * Extract src into 4-channel dst matrix with 4 bayer planes ordered as[ R G1 B G2 ]
+ * Extract src into 4-channel dst matrix with 4 bayer planes ordered the same as src bayer pattern
  * The output size of dst is twice smaller than src
  */
-bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid)
+bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst)
 {
   INSTRUMENT_REGION("");
 
-  if ( !is_bayer_pattern(colorid) ) {
-    CF_ERROR("Invalid argument: colorid=%d is no a bayer pattern",
-        colorid);
-    return false;
-  }
-
-  CV_DISPATCH(src.depth(), _extract_bayer_planes, src, dst, colorid);
+  const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
+  CV_DISPATCH2(src.depth(),ddepth, _extract_bayer_planes, src, dst);
 
   return false;
 }
@@ -419,8 +350,12 @@ bool debayer_matrix(cv::InputArray src, cv::OutputArray dst, enum COLORID colori
   return false;
 }
 
+/** @brief
+ * Bayer Demosaicing by 2x2 super-pixel pixel binning
+ * Output dst image size is twice smaller than input src image size
+ */
 template<typename _Tp1, typename _Tp2>
-static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID colorid)
+static bool _debayer_sp(cv::InputArray _src, cv::OutputArray _dst, COLORID colorid)
 {
   using Vec4T = cv::Vec<_Tp1, 4>;
   using Vec3T = cv::Vec<_Tp2, 3>;
@@ -434,12 +369,12 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
     const int h = _src.rows() / 2;
     const int w = _src.cols() / 2;
 
-    const cv::Mat_<_Tp1> src = _src.getMat();
-    cv::Mat_<Vec3T> dst(h, w);
-
+    const cv::Mat src = _src.getMat();
     const uint8_t * const src_base = (const uint8_t*) src.data;
     const size_t src_stride = src.step;
 
+    _dst.create(h, w, CV_MAKETYPE(cv::DataType<_Tp2>::depth, 3));
+    cv::Mat & dst = _dst.getMatRef();
     uint8_t * const dst_base = (uint8_t*) dst.data;
     const size_t dst_stride = dst.step;
 
@@ -520,20 +455,18 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
         CF_ERROR("Not supported colorid = %d", colorid);
         return false;
     }
-
-    _dst.move(dst);
   }
   else if (src_channels == 4 ) {
 
     const int h = _src.rows();
     const int w = _src.cols();
 
-    const cv::Mat_<Vec4T> src = _src.getMat();
-    cv::Mat_<Vec3T> dst(h, w);
-
+    const cv::Mat src = _src.getMat();
     const uint8_t * const src_base = (const uint8_t*) src.data;
     const size_t src_stride = src.step;
 
+    _dst.create(h, w, CV_MAKETYPE(cv::DataType<_Tp2>::depth, 3));
+    cv::Mat & dst = _dst.getMatRef();
     uint8_t * const dst_base = (uint8_t*) dst.data;
     const size_t dst_stride = dst.step;
 
@@ -610,8 +543,6 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
         CF_ERROR("Not supported colorid = %d", colorid);
         return false;
     }
-
-    _dst.move(dst);
   }
   else {
     CF_ERROR("Bad number of src channels=%d", _src.channels());
@@ -621,7 +552,11 @@ static bool _debayer_avgc(cv::InputArray _src, cv::OutputArray _dst, COLORID col
   return true;
 }
 
-bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int ddepth)
+/** @brief
+ * Bayer Demosaicing by 2x2 super-pixel pixel binning
+ * Output dst image size is twice smaller than input src image size
+ */
+bool debayer_sp(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int ddepth)
 {
   INSTRUMENT_REGION("");
 
@@ -652,7 +587,7 @@ bool debayer_avgc(cv::InputArray src, cv::OutputArray dst, COLORID colorid, int 
   }
 
 
-  CV_DISPATCH2(src.depth(), ddepth, _debayer_avgc, src, dst, colorid);
+  CV_DISPATCH2(src.depth(), ddepth, _debayer_sp, src, dst, colorid);
 
   CF_ERROR("Not supported combination of src.depth()=%d and ddepth=%d",
       src.depth(), ddepth);
@@ -669,16 +604,15 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
     return false;
   }
 
-  using Vec3T = cv::Vec<_Tp2, 3>;
-  using Mat3T = cv::Mat_<Vec3T>;
-
   constexpr int c1 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 1 : 0;
   constexpr int c2 = (std::is_integral_v<_Tp1> && std::is_integral_v<_Tp2>) ? 2 : 0;
 
   const cv::Size size = _src.size();
-  Mat3T dst(size);
 
-  const cv::Mat_<_Tp1> src = _src.getMat();
+ const cv::Mat src = _src.getMat();
+
+  _dst.create(size, CV_MAKETYPE(cv::DataType<_Tp2>::depth, 3));
+  cv::Mat & dst = _dst.getMatRef();
 
   #define CAPTURE_PARAMS \
     bayer_base = src.data, \
@@ -987,7 +921,7 @@ bool _debayer_nn2_interpolation(cv::InputArray _src, cv::OutputArray _dst, enum 
 
   #undef CAPTURE_PARAMS
 
-  _dst.move(dst);
+//  _dst.move(dst);
   return true;
 }
 
@@ -1042,13 +976,12 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
     switch (algo)
     {
       case DEBAYER_NN:
-        case DEBAYER_NN2:
-        case DEBAYER_VNG:
-        case DEBAYER_EA:
+      case DEBAYER_NN2:
+      case DEBAYER_VNG:
+      case DEBAYER_EA:
         return interpolate_bayer_planes(src, dst, colorid);
-      case DEBAYER_AVGC:
-        return debayer_avgc(src, dst, colorid);
-
+      case DEBAYER_SP:
+        return debayer_sp(src, dst, colorid);
       case DEBAYER_PLANE_0:
       case DEBAYER_PLANE_1:
       case DEBAYER_PLANE_2:
@@ -1070,7 +1003,7 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
 
   if ( algo >= DEBAYER_PLANE_0 && algo <= DEBAYER_PLANE_3 ) {
     cv::Mat tmp;
-    extract_bayer_planes(src, tmp, colorid);
+    extract_bayer_planes(src, tmp);
     cv::extractChannel(tmp, dst, (int(algo) - DEBAYER_PLANE_0));
     return true;
   }
@@ -1097,8 +1030,8 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
       break;
     case DEBAYER_NN2:
       return debayer_nn2(src, dst, colorid);
-    case DEBAYER_AVGC:
-      return debayer_avgc(src, dst, colorid);
+    case DEBAYER_SP:
+      return debayer_sp(src, dst, colorid);
     case DEBAYER_MATRIX:
       return debayer_matrix(src, dst, colorid);
     default:
@@ -1272,13 +1205,13 @@ bool is_corrupted_asi_frame(const cv::Mat & image)
  * Check for ZWO ASI specific horizontal stripe artifact
  * on the 1-channel Bayer image.
  */
-bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, COLORID bayer_pattern,
+bool is_corrupted_asi_bayer_frame(const cv::Mat & bayer_image, enum COLORID colorid,
     double median_hat_threshold)
 {
   cv::Mat tmp;
   cv::Mat mb;
 
-  if ( !extract_bayer_planes(bayer_image, tmp, bayer_pattern) ) {
+  if ( !extract_bayer_planes(bayer_image, tmp) ) {
     CF_ERROR("extract_bayer_planes() fails");
     return false;
   }
@@ -1336,31 +1269,33 @@ static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id
   int rows4, cols4;
 
   if ( cn == 4 ) {
-    planes = _bayer_image;
     rows4 = _bayer_image.rows;
     cols4 = _bayer_image.cols;
+    planes = _bayer_image;
   }
   else {
-
-    cv::Mat_<_Tp> bayer_image = _bayer_image;
     rows4 = _bayer_image.rows / 2;
     cols4 = _bayer_image.cols / 2;
+    _extract_bayer_planes<_Tp, _Tp>(_bayer_image, planes);
 
-    planes.create(rows4, cols4);
-
-    parallel_for(0, rows4, [=, &bayer_image, &planes](const auto & range) {
-      for( int y = rbegin(range); y < rend(range); ++y ) {
-        const _Tp * __restrict src0 = bayer_image[2 * y + 0];
-        const _Tp * __restrict src1 = bayer_image[2 * y + 1];
-        _Tp * __restrict dstp = (_Tp * )(planes[y]);
-        for( int x = 0; x < cols4; ++x, src0 += 2, src1 += 2, dstp += 4 ) {
-          dstp[0] = src0[0];
-          dstp[1] = src0[1];
-          dstp[2] = src1[0];
-          dstp[3] = src1[1];
-        }
-      }
-    });
+//
+//    cv::Mat_<_Tp> bayer_image = _bayer_image;
+//    rows4 = _bayer_image.rows / 2;
+//    cols4 = _bayer_image.cols / 2;
+//    planes.create(rows4, cols4);
+//    parallel_for(0, rows4, [=, &bayer_image, &planes](const auto & range) {
+//      for( int y = rbegin(range); y < rend(range); ++y ) {
+//        const _Tp * __restrict src0 = bayer_image[2 * y + 0];
+//        const _Tp * __restrict src1 = bayer_image[2 * y + 1];
+//        _Tp * __restrict dstp = (_Tp * )(planes[y]);
+//        for( int x = 0; x < cols4; ++x, src0 += 2, src1 += 2, dstp += 4 ) {
+//          dstp[0] = src0[0];
+//          dstp[1] = src0[1];
+//          dstp[2] = src1[0];
+//          dstp[3] = src1[1];
+//        }
+//      }
+//    });
   }
 
   cv::medianBlur(planes, median, 3);

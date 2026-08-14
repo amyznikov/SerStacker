@@ -83,7 +83,7 @@ bool c_asi_frame_check_routine::process(cv::InputOutputArray image, cv::InputOut
 
   cv::Mat tmp;
 
-  if ( !extract_bayer_planes(image.getMat(), tmp, (COLORID)_bayer_pattern) ) {
+  if ( !extract_bayer_planes(image, tmp) ) {
     CF_ERROR("extract_bayer_planes() fails");
     return false;
   }

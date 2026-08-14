@@ -52,7 +52,7 @@ struct QCameraROI
 //  }
 
 protected:
-  static bool metatype_registered_;
+  static bool _metatype_registered;
 };
 
 Q_DECLARE_METATYPE(QCameraROI)
@@ -122,14 +122,14 @@ protected:
 protected:
   QComboBox * roiSelection_ctl = nullptr;
   QSettingsWidget * roiOptions_ctl = nullptr;
-  QLineEditBox * roiName_ctl_ = nullptr;
+  QLineEditBox * roiName_ctl = nullptr;
   QNumericBox * roiRect_ctl = nullptr;
   QToolButton * addRoi_ctl = nullptr;
   QToolButton * deleteRoi_ctl = nullptr;
-  QList<QCameraROI> roiList_;
-  ROIValidator validator_;
-  bool updatingControls_ = false;
-  bool hasChanges_ = false;
+  QList<QCameraROI> _roiList;
+  ROIValidator _validator;
+  bool _updatingControls = false;
+  bool _hasChanges = false;
 };
 
 

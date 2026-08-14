@@ -58,9 +58,13 @@ struct c_running_average_output_options:
   double display_scale = -1;
 
   bool save_progress_video = false;
+  bool save_input_video = false;
   bool save_reference_video = false;
+  bool save_weights_video = false;
+  c_output_frame_writer_options output_input_video_options;
   c_output_frame_writer_options output_progress_video_options;
   c_output_frame_writer_options output_reference_video_options;
+  c_output_frame_writer_options output_weights_video_options;
   std::string output_file_name;
 
 };
@@ -90,9 +94,12 @@ protected:
   void cleanup_pipeline() override;
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool process_current_frame();
-  void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst) const;
+  void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
   std::string generate_output_file_name() const;
+  bool write_input_video(cv::InputArray image, cv::InputArray mask);
   bool write_progress_video(cv::InputArray image, cv::InputArray mask);
+  bool write_reference_video(cv::InputArray image, cv::InputArray mask);
+  bool write_weights_video(cv::InputArray image, cv::InputArray mask);
 
 protected:
   c_running_average_input_options _input_options;
@@ -113,8 +120,10 @@ protected:
   cv::Mat _current_mask;
   mutable cv::Mat1f _apodizationWindow;
 
+  c_output_frame_writer _input_video_writer;
   c_output_frame_writer _progress_writer;
   c_output_frame_writer _reference_video_writer;
+  c_output_frame_writer _weights_video_writer;
 };
 
 #endif /* __c_running_average_pipeline_h__ */

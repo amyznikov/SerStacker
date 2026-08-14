@@ -968,6 +968,18 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
   return ecc;
 }
 
+inline void c_ecch::downscale_image(cv::Mat & image, cv::Mat & mask,
+    const cv::Size & nextSize)
+{
+  if ( !image.empty() ) {
+    cv::pyrDown(image, image, nextSize);
+  }
+
+  if( !mask.empty() ) {
+    cv::resize(mask, mask, nextSize, 0, 0, cv::INTER_NEAREST);
+  }
+}
+
 bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
   INSTRUMENT_REGION("c_ecch");
@@ -1032,14 +1044,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
     for( int lvl = 1; lvl < required_lvls; ++lvl ) {
       const cv::Size prev_size = image.size();
       const cv::Size next_size = compute_next_pyramid_layer_size(prev_size);
-
-      cv::pyrDown(image, image, next_size);
-      if( !mask.empty() ) {
-        cv::resize(mask, mask, next_size, 0, 0, cv::INTER_NEAREST);
-        //  cv::pyrDown(mask, mask, next_size);
-        //  cv::compare(mask, 255, mask, cv::CMP_GE);
-      }
-
+      downscale_image(image, mask, next_size);
       if( !_pyramid[lvl]->set_reference_image(image, mask) ) {
         CF_ERROR("_pyramid[lvl=%d]->set_reference_image() fails", lvl);
         return false;
@@ -1101,10 +1106,7 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
           break;
         }
 
-        cv::pyrDown(image, image, next_size);
-        if( !mask.empty() ) {
-          cv::resize(mask, mask, next_size, 0, 0, cv::INTER_NEAREST);
-        }
+        downscale_image(image, mask, next_size);
       }
     }
 

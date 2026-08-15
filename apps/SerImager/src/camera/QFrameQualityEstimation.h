@@ -40,6 +40,7 @@ public:
       return -1;
     }
 
+    cv::Mat tmp;
     int best_frame_index = 0; // By default take at least the very first one
     float best_quality = -1.0f;
 
@@ -52,7 +53,7 @@ public:
       // don't duplicate the calculations, but simply wait for the calculation to complete.
       // Yield the processor so that the computing thread finishes faster
       while (quality == QCameraFrame::QUALITY_ESTIMATING) {
-        std::this_thread::yield();
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
         quality = frame->quality();
       }
 
@@ -67,10 +68,15 @@ public:
       if( quality == QCameraFrame::QUALITY_UNKNOWN ) {
 
         if( frame->try_start_quality_etimate() ) {
-          float computed_quality = 0.0f;
-          if( true ) {
-            std::lock_guard<std::mutex> lock(_mtx);
+          float computed_quality = 0;
+
+          // std::lock_guard<std::mutex> lock(_mtx);
+          if ( !is_bayer_pattern(frame->colorid()) ) {
             computed_quality = compute_local_variance_map(frame->image(), opts);
+          }
+          else {
+            average_bayer_planes(frame->image(), tmp);
+            computed_quality = compute_local_variance_map(tmp, opts);
           }
 
           frame->set_quality(computed_quality);
@@ -103,7 +109,7 @@ public:
 
 protected:
   c_local_variance_map_options opts;
-  std::mutex _mtx;
+  //std::mutex _mtx;
   bool _enabled = false;
 };
 

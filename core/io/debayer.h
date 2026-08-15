@@ -52,6 +52,7 @@ enum DEBAYER_ALGORITHM {
   DEBAYER_PLANE_2,
   DEBAYER_PLANE_3,
 
+  DEBAYER_AVGBP, // Average 4 bayer planes into single-chanel image of twice less resolution
 };
 
 
@@ -90,10 +91,23 @@ bool debayer_matrix(cv::InputArray src, cv::OutputArray dst,
 bool debayer_nn2(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, int ddepth = -1);
 
 /** @brief
- * Extract src into 4-channel dst matrix with 4 bayer planes ordered the same as src bayer pattern
+ * Convert src into 4-channel dst matrix with 4 bayer planes ordered the same as src bayer pattern
  * The output size of dst is twice smaller than src
  */
 bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst);
+
+/** @brief
+ * Extract single bayer plane with given index [0..3] into 1-channel dst matrix
+ * The output size of dst is roi size or twice smaller than src if roi is empty
+ */
+bool extract_bayer_plane(cv::InputArray src, cv::OutputArray dst, int plane,
+    const cv::Rect &roi = cv::Rect());
+
+/** @brief
+ * Averages 4 pixels of each Bayer cell (2x2) into a single grayscale pixel.
+ * Output size is exactly twice smaller than former bayer image
+ */
+bool average_bayer_planes(cv::InputArray src, cv::OutputArray dst);
 
 /** @brief
  * Combine input 4-channel bayer planes into 3-channel BGR dst matrix using NN interpolaton.

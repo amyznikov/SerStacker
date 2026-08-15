@@ -9,6 +9,7 @@
 #include <core/io/image/c_fits_input_source.h>
 #include <core/io/image/c_raw_image_input_source.h>
 #include <core/io/image/c_regular_image_input_source.h>
+#include <gui/widgets/QSettingsWidgetTemplate.h>
 #include <core/debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +22,11 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
 
   /** Must be called before creating source combo */
   QObject::connect(this, &ThisClass::populatecontrols,
-      this, &ThisClass::populateInputSources);
+      [this]() {
+        best_frame_selection_settings_ctl->setOpts(_opts);
+        sharpness_estimation_settings_ctl->setOpts(_opts ? &_opts->quality_estimation : nullptr);
+        populateInputSources();
+      });
 
   QObject::connect(this, &ThisClass::enablecontrols,
       this, &ThisClass::refreshControlStates);
@@ -79,10 +84,10 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
       add_numeric_box<int>("Master frame index:",
           "Specify frame index in master source fite to use as master frame",
           [this](int v) {
-            if ( _opts && _opts->master_frame_index != v )
-            _opts->master_frame_index = v;
-            Q_EMIT parameterChanged();
-
+            if ( _opts && _opts->master_frame_index != v ) {
+              _opts->master_frame_index = v;
+              Q_EMIT parameterChanged();
+            }
           },
           [this](int * v) {
             if ( _opts ) {
@@ -113,6 +118,40 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
             return _opts && _opts->master_selection_method == master_frame_best_of_100_in_middle;
           });
 
+
+  best_frame_selection_group_ctl =
+      add_expandable_groupbox("Best frame selection",
+          best_frame_selection_settings_ctl = new QSettingsWidgetTemplate<c_master_frame_selection_options>(this));
+
+  QSpinBox * spb =
+      best_frame_selection_settings_ctl->add_spinbox("Max frames to scan",
+          "Specify max number of input frames to scan for best frame",
+          [this](int v) {
+            if( _opts && _opts->max_frames_to_scan != v ) {
+              _opts->max_frames_to_scan = v;
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            if ( _opts ) {
+              *v = _opts->max_frames_to_scan;
+              return true;
+            }
+            return false;
+          });
+
+  spb->setRange(1, 1000000);
+
+  sharpness_estimation_group_ctl =
+      best_frame_selection_settings_ctl->add_expandable_groupbox("Sharpness estimation",
+          sharpness_estimation_settings_ctl = new QSettingsWidgetTemplate<c_local_variance_map_options>(this));
+
+  c_ctlist<c_local_variance_map_options> ctls;
+  ctlbind(ctls, c_ctlbind_context<c_local_variance_map_options, c_local_variance_map_options>());
+  setupControls(sharpness_estimation_settings_ctl, ctls);
+
+  QObject::connect(sharpness_estimation_settings_ctl, &QSettingsWidget::parameterChanged,
+      this, &ThisClass::parameterChanged);
 
   updateControls();
 }

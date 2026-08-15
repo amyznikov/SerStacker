@@ -7,7 +7,6 @@
 
 #include "c_image_stacking_pipeline_base.h"
 #include <core/proc/bad_pixels.h>
-#include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
 #include <core/proc/inpaint.h>
 #include <core/proc/reduce_channels.h>
 #include <core/debug.h>
@@ -306,9 +305,11 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
       break;
 
     case master_frame_best_of_100_in_middle: {
-      c_laplacian_sharpness_measure measure(2, cv::Size(5, 5));
 
-      constexpr int max_frames_to_scan = 2000;
+      cv::Mat tmp;
+
+      const int max_frames_to_scan =
+          std::max(3, selection_opts.max_frames_to_scan);
 
       CF_DEBUG("Scan %d frames around of middle %d",
           max_frames_to_scan, master_sequence->size() / 2);
@@ -354,25 +355,27 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
           continue;
         }
 
-        if( !read_input_frame(master_sequence, input_opts, currentImage, currentMask, false, false) ) {
-          CF_ERROR("read_input_frame() fails");
+        if ( !master_sequence->read(currentImage, &currentMask) ) {
+          CF_FATAL("input_sequence->read() fails\n");
           break;
         }
 
-        if ( selection_opts.input_image_preprocessor ) {
-          selection_opts.input_image_preprocessor->process(currentImage, currentMask);
+        if( selection_opts.input_image_preprocessor ) {
+          if( !selection_opts.input_image_preprocessor->process(currentImage, currentMask) ) {
+            CF_DEBUG("input_image_preprocessor fails for frame %d", master_sequence->current_pos() - 1);
+            continue;
+          }
         }
 
-        if ( currentImage.channels() != 1 ) {
-          cv::cvtColor(currentImage, currentImage, cv::COLOR_BGR2GRAY);
+        if ( !is_bayer_pattern(master_sequence->colorid()) ) {
+          tmp = currentImage;
         }
-        if ( currentMask.channels() != 1 ) {
-          reduce_color_channels(currentMask, cv::REDUCE_MAX);
+        else {
+          average_bayer_planes(currentImage, tmp);
         }
 
-        current_metric =
-            measure.compute(currentImage,
-                currentMask)[0];
+        current_metric = compute_local_variance_map(tmp,
+            selection_opts.quality_estimation);
 
         if( current_metric > best_metric ) {
 
@@ -393,15 +396,11 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
 
       selected_master_frame_index = best_index + start_pos;
       master_sequence->seek(backup_current_pos);
-
       break;
     }
+
   }
 
-//  synchronized([this]() {
-//    _current_master_frame_candidate.release();
-//    _current_master_frame_candidate_mask.release();
-//  });
 
   return selected_master_frame_index;
 }

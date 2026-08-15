@@ -17,6 +17,8 @@ void c_scale_channels_routine::getcontrols(c_control_list & ctls, const ctlbind_
   ctlbind(ctls, "auto clip (l;h) [%]:", ctx(&this_class::_auto_white_balance_clips),
       "Low and High quantiles for auto white balance, in percents");
 
+  ctlbind(ctls, "Use ROI", ctx(&this_class::_useROI), "Limit auto white balance estimation by user ROI");
+
   ctlbind_command_button(ctls, "Paste scales from clipboard", ctx, &this_class::paste_scales_from_clipboard);
 }
 
@@ -26,6 +28,7 @@ bool c_scale_channels_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _stretch);
     SERIALIZE_OPTION(settings, save, *this, _shift);
     SERIALIZE_OPTION(settings, save, *this, _auto_white_balance_clips);
+    SERIALIZE_OPTION(settings, save, *this, _useROI);
     return true;
   }
   return false;
@@ -51,7 +54,29 @@ bool c_scale_channels_routine::process(cv::InputOutputArray image, cv::InputOutp
   if ( _auto_white_balance && image.channels() > 1 ) {
     const double qlow = 0.01 * _auto_white_balance_clips[0];
     const double qhigh = 0.01 * _auto_white_balance_clips[1];
-    histogramClipWhiteBalance(image, mask, qlow, qhigh, _stretch, _shift);
+
+    if ( !_useROI ) {
+      histogramClipWhiteBalance(image, mask, qlow, qhigh, _stretch, _shift);
+    }
+    else {
+      cv::Rect rc (0, 0, image.cols(), image.rows());
+      if ( _useROI ) {
+        cv::Rect roi;
+        if ( ctlbind_get_roi(&roi) ) {
+          rc = rc & roi;
+        }
+      }
+
+      if ( rc.empty() ) {
+        CF_ERROR("ROI is empty, can not find auto white balance");
+        return false;
+      }
+
+      const cv::Mat src = image.getMatRef()(rc);
+      const cv::Mat msk = mask.empty() ? cv::Mat() : mask.getMatRef()(rc);
+      histogramClipWhiteBalance(src, msk, qlow, qhigh, _stretch, _shift);
+    }
+
     set_has_contol_changes(true);
   }
 

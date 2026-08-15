@@ -31,6 +31,7 @@ protected:
   cv::Scalar _shift = cv::Scalar::all(0);
   cv::Vec2f _auto_white_balance_clips = cv::Vec2f(0.1, 99.9);
   bool _auto_white_balance = false;
+  bool _useROI = false;
 };
 
 #endif /* __c_scale_channels_routine_h__ */

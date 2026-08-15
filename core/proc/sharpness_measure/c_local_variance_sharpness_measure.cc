@@ -74,19 +74,24 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
 {
   const int rows = src.rows();
   const int cols = src.cols();
-  const cv::Mat_<_Tp> G = src.getMat();
+
+  const cv::Mat G = src.getMat();
+  const uint8_t * G_base = G.ptr();
+  const size_t G_stride = G.step;
 
   std::atomic<float> total_sum(0.0f);
 
-  parallel_for(0, rows, [&, cols](const auto& range) {
+  parallel_for(0, rows, [=, &total_sum](const auto& range) {
+
+    const int y0 = rbegin(range);
+    const uint8_t * gp_base = G_base + y0 * G_stride;
+
     float local_sum = 0.0;
-
-    for (int y = rbegin(range); y != rend(range); ++y) {
-      const _Tp* gp = G[y];
-
+    for (int y = y0; y != rend(range); ++y, gp_base += G_stride) {
+      const _Tp* gp = (const _Tp* )gp_base; // G[y];
       for (int x = 0; x < cols; ++x) {
-        const float val = gp[x];
-        local_sum += val * val * val * val; // val^4
+        const float g = *gp ++;
+        local_sum += g * g * g * g; // g^4
       }
     }
 
@@ -162,13 +167,20 @@ static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, dou
 double compute_local_variance_map(cv::InputArray image, const c_local_variance_map_options & opts,
     cv::OutputArray outputMap /*= cv::noArray()*/)
 {
+  INSTRUMENT_REGION("");
   cv::Mat M, G;
 
   const int ksize = 2 * std::max(1, opts.kradius) + 1;
   const cv::Mat1b SE(ksize, ksize, 255);
   const double depthScale = 20 * getMaxValForPixelDepth(CV_32F) / getMaxValForPixelDepth(image.depth());
 
-  extract_channel(image, M, cv::noArray(), cv::noArray(), opts.channel, -1, false);
+  if ( image.channels() == 1 ) {
+    M = image.getMat();
+  }
+  else {
+    extract_channel(image, M, cv::noArray(), cv::noArray(), opts.channel, -1, false);
+  }
+
   if( opts.dscale > 0 ) {
     pdownscale(M, M, opts.dscale);
   }

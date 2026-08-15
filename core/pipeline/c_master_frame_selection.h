@@ -11,6 +11,8 @@
 
 #include <core/io/c_input_sequence.h>
 #include <core/improc/c_image_processor.h>
+#include <core/proc/sharpness_measure/c_laplacian_sharpness_measure.h>
+#include <core/proc/sharpness_measure/c_local_variance_sharpness_measure.h>
 #include <core/ctrlbind/ctrlbind.h>
 
 enum master_frame_selection_method
@@ -27,6 +29,8 @@ struct c_master_frame_selection_options
   master_frame_selection_method master_selection_method = master_frame_specific_index;
   int master_frame_index = 0;
   c_image_processor::sptr input_image_preprocessor;
+  c_local_variance_map_options quality_estimation;
+  int max_frames_to_scan = 2000;
 };
 
 template<class RootObjectType>

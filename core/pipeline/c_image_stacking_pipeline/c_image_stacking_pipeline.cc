@@ -332,7 +332,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.master_selection.master_selection_method = master_frame_best_of_100_in_middle;
     _master_options.generate_master_frame = true;
     _master_options.unsharp_sigma = 1;
-    _master_options.unsharp_alpha = 0.85;
+    _master_options.unsharp_alpha = 0.9;
 
     _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _master_options.registration.enable_feature_registration = true;
@@ -388,7 +388,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.master_selection.master_frame_index = 0;
     _master_options.generate_master_frame = false;
     _master_options.unsharp_sigma = 1;
-    _master_options.unsharp_alpha = 0.85;
+    _master_options.unsharp_alpha = 0.9;
     _master_options.registration.motion_type = IMAGE_MOTION_AFFINE;
     _master_options.registration.enable_feature_registration = true;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_STAR_EXTRACTOR;
@@ -2173,6 +2173,13 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
       SERIALIZE_OPTION(subsection, save, opts.master_selection, master_selection_method);
       SERIALIZE_OPTION(subsection, save, opts.master_selection, master_fiename);
       SERIALIZE_OPTION(subsection, save, opts.master_selection, master_frame_index);
+
+      if( auto group = get_group(subsection, save, "quality_estimation") ) {
+        SERIALIZE_OPTION(group, save, opts.master_selection, max_frames_to_scan);
+        if( auto group2 = get_group(group, save, "c_local_variance_map_options") ) {
+          serialize_local_variance_map_options(group2, save, opts.master_selection.quality_estimation);
+        }
+      }
     }
 
     if( (subsection = get_group(section, save, "registration")) ) {

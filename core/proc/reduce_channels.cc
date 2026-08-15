@@ -14,6 +14,10 @@ void reduce_color_channels(cv::InputArray _src, cv::OutputArray _dst, enum cv::R
   // src.total() is the number of pixels (W*H)
   // src.channels() is the number of columns to reduce
 
+  if( _dst.fixedType() )  {
+    dtype = _dst.depth();
+  }
+
   const cv::Mat src = _src.getMat();
   const cv::Mat flat = src.reshape(1, static_cast<int>(src.total()));
 

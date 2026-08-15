@@ -8,6 +8,7 @@
 #include "debayer.h"
 #include <core/proc/run-loop.h>
 #include <core/proc/pixtype.h>
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -44,10 +45,12 @@ const c_enum_member * members_of<DEBAYER_ALGORITHM>()
       {DEBAYER_VNG,   "VNG",    "DEBAYER_VNG: OpenCV VNG interpolation with cv::demosaicing()"},
       {DEBAYER_SP,    "SP",     "2x2 super-pixel pixel binning"},
       {DEBAYER_MATRIX,"MATRIX", "DEBAYER_MATRIX: Don't debayer, create colored bayer matrix image instead"},
-      {DEBAYER_PLANE_0,"PLANE_0", "Extract bayer plane 0: "},
-      {DEBAYER_PLANE_1,"PLANE_1", "Extract bayer plane 1: "},
-      {DEBAYER_PLANE_2,"PLANE_2", "Extract bayer plane 2: "},
-      {DEBAYER_PLANE_3,"PLANE_3", "Extract bayer plane 3: "},
+      {DEBAYER_PLANE_0,"PLANE_0", "Extract bayer plane 0 "},
+      {DEBAYER_PLANE_1,"PLANE_1", "Extract bayer plane 1 "},
+      {DEBAYER_PLANE_2,"PLANE_2", "Extract bayer plane 2 "},
+      {DEBAYER_PLANE_3,"PLANE_3", "Extract bayer plane 3 "},
+      {DEBAYER_AVGBP,  "AVGBP", "Average 4 bayer planes into single-chanel image of twice less resolution"},
+
 
       {DEBAYER_NN, } // must  be last
   };
@@ -145,6 +148,232 @@ bool extract_bayer_planes(cv::InputArray src, cv::OutputArray dst)
   return false;
 }
 
+
+/** @brief
+ * Extract single bayer plane with given index [0..3] into 1-channel dst matrix
+ * The output size of dst is roi size or twice smaller than src if roi is empty
+ */
+template<typename _Tp1, typename _Tp2>
+static bool _extract_bayer_plane(cv::InputArray _src, cv::OutputArray _dst, int index,
+    const cv::Rect& _roi)
+{
+  if( _src.channels() != 1 ) {
+    CF_ERROR("Source image must have 1 channel, got %d", _src.channels());
+    return false;
+  }
+
+  // Coordinates ROI must be even to not destroy Bayer pattern
+  if ( !_roi.empty() ) {
+    if( (_roi.x & 0x1) || (_roi.y & 0x1) || (_roi.width & 0x1) || (_roi.height & 0x1) ) {
+      CF_ERROR("ROI bounds and sizes must be even integers. Got x:%d, y:%d, w:%d, h:%d",
+               _roi.x, _roi.y, _roi.width, _roi.height);
+      return false;
+    }
+  }
+
+  const cv::Rect img_rect(0, 0, _src.cols(), _src.rows());
+  const cv::Rect roi = _roi.empty() ? img_rect : _roi & img_rect;
+  if ( roi.empty() ) {
+    CF_ERROR("Requested ROI is out of image bounds");
+    return false;
+  }
+
+  const cv::Mat bayer_image = _src.getMat();
+
+  const int dst_rows = roi.height / 2;
+  const int dst_cols = roi.width / 2;
+  const int ddepth = cv::DataType<_Tp2>::depth;
+
+  _dst.create(dst_rows, dst_cols, CV_MAKETYPE(ddepth, 1));
+  cv::Mat & plane = _dst.getMatRef();
+
+  const uint8_t * bayer_base = (const uint8_t * )bayer_image.ptr() + roi.y * bayer_image.step + roi.x * sizeof(_Tp1);
+  const size_t bayer_stride = bayer_image.step;
+
+  uint8_t * plane_base = (uint8_t * )plane.ptr();
+  const size_t plane_stride = plane.step;
+
+  // 0 -> row:0, col:0 | 1 -> row:0, col:1 | 2 -> row:1, col:0 | 3 -> row:1, col:1
+  const int row_offset = (index >> 1) & 1;
+  const int col_offset = index & 1;
+
+  parallel_for(0, dst_rows, [=](const auto & range) {
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const _Tp1 * src = (const _Tp1 *)(bayer_base + (2 * y + row_offset) * bayer_stride) + col_offset;
+      _Tp2 * __restrict dstp = (_Tp2 * )(plane_base + y * plane_stride);
+      for( int x = 0; x < dst_cols; ++x, src += 2, ++dstp ) {
+        *dstp = cv::saturate_cast<_Tp2>(*src);
+      }
+    }
+  });
+
+  return true;
+}
+
+/** @brief
+ * Extract single bayer plane with given index [0..3] into 1-channel dst matrix
+ * The output size of dst is roi size or twice smaller than src if roi is empty
+ */
+bool extract_bayer_plane(cv::InputArray src, cv::OutputArray dst, int index, const cv::Rect &roi)
+{
+  INSTRUMENT_REGION("");
+  const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
+  CV_DISPATCH2(src.depth(), ddepth, _extract_bayer_plane, src, dst, index, roi);
+  return false;
+}
+
+
+//template<typename _Tp1, typename _Tp2>
+//static bool _average_bayer_planes(cv::InputArray _src, cv::OutputArray _dst)
+//{
+//  using _Tpmax = std::common_type_t<_Tp1, _Tp2>;
+//  using _Tps = std::conditional_t<std::is_floating_point_v<_Tpmax>, _Tpmax, int>;
+//  constexpr _Tps c1 = std::is_integral_v<_Tps> ? 2 : 0;
+//
+//  if( (_src.cols() & 0x1) || (_src.rows() & 0x1) || _src.channels() != 1 ) {
+//    CF_ERROR("Can not average bayer planes for uneven or multi-channel image size %dx%dx%d",
+//        _src.cols(), _src.rows(), _src.channels());
+//    return false;
+//  }
+//
+//  const int dst_rows = _src.rows() / 2;
+//  const int dst_cols = _src.cols() / 2;
+//  const int ddepth = cv::DataType<_Tp2>::depth;
+//
+//  const cv::Mat bayer_image = _src.getMat();
+//  const uint8_t * bayer_base = (const uint8_t * )bayer_image.ptr();
+//  const size_t bayer_stride = bayer_image.step;
+//
+//  _dst.create(dst_rows, dst_cols, CV_MAKETYPE(ddepth, 1));
+//  cv::Mat & dst = _dst.getMatRef();
+//  uint8_t * dst_base = (uint8_t * )dst.ptr();
+//  const size_t dst_stride = dst.step;
+//
+//  // 2x2 block average
+//  parallel_for(0, dst_rows, [=](const auto & range) {
+//    const int y0 = rbegin(range);
+//    const uint8_t * src0_base = bayer_base + (2 * y0 + 0) * bayer_stride;
+//    const uint8_t * src1_base = bayer_base + (2 * y0 + 1) * bayer_stride;
+//    uint8_t * dstp_base = dst_base + y0 * dst_stride;
+//
+//    for( int y = y0; y < rend(range); ++y, dstp_base += dst_stride,
+//         src0_base += 2 * bayer_stride, src1_base += 2 * bayer_stride) {
+//
+//      const _Tp1 * src0 = (const _Tp1 *)(src0_base);
+//      const _Tp1 * src1 = (const _Tp1 *)(src1_base);
+//      _Tp2 * __restrict dstp = (_Tp2 * )(dstp_base);
+//
+//      for( int x = 0; x < dst_cols; ++x, src0 += 2, src1 += 2, ++dstp ) {
+//        const _Tps sum = (c1 + src0[0] + src0[1] + src1[0] + src1[1]) / 4;
+//        *dstp = cv::saturate_cast<_Tp2>(sum);
+//      }
+//    }
+//  });
+//
+//  return true;
+//}
+
+template<typename _Tp1, typename _Tp2>
+static bool _average_bayer_planes(cv::InputArray _src, cv::OutputArray _dst)
+{
+  using _Tpmax = std::common_type_t<_Tp1, _Tp2>;
+  using _Tps = std::conditional_t<std::is_floating_point_v<_Tpmax>, _Tpmax, int>;
+  constexpr _Tps c1 = std::is_integral_v<_Tps> ? 2 : 0;
+
+  const int src_channels = _src.channels();
+
+  if (src_channels == 1) {
+    if ((_src.cols() & 0x1) || (_src.rows() & 0x1)) {
+      CF_ERROR("Can not average raw bayer planes for uneven image size %dx%d", _src.cols(), _src.rows());
+      return false;
+    }
+  }
+  else if (src_channels != 4) {
+    CF_ERROR("Unsupported channel count %d. Must be 1 (Raw Bayer) or 4 (Split Bayer planes)", src_channels);
+    return false;
+  }
+
+  const int ddepth = cv::DataType<_Tp2>::depth;
+  const cv::Mat bayer_image = _src.getMat();
+  const uint8_t * bayer_base = (const uint8_t * )bayer_image.ptr();
+  const size_t bayer_stride = bayer_image.step;
+
+  if (src_channels == 1) {
+
+    const int dst_rows = _src.rows() / 2;
+    const int dst_cols = _src.cols() / 2;
+
+    _dst.create(dst_rows, dst_cols, CV_MAKETYPE(ddepth, 1));
+    cv::Mat & dst = _dst.getMatRef();
+    uint8_t * dst_base = (uint8_t * )dst.ptr();
+    const size_t dst_stride = dst.step;
+
+    parallel_for(0, dst_rows, [=](const auto & range) {
+      const int y0 = rbegin(range);
+      const int ye = rend(range);
+
+      const uint8_t * src0_base = bayer_base + (2 * y0 + 0) * bayer_stride;
+      const uint8_t * src1_base = bayer_base + (2 * y0 + 1) * bayer_stride;
+      uint8_t * dstp_base = dst_base + y0 * dst_stride;
+
+      for( int y = y0; y < ye; ++y, dstp_base += dst_stride,
+           src0_base += 2 * bayer_stride, src1_base += 2 * bayer_stride) {
+
+        const _Tp1 * src0 = (const _Tp1 *)(src0_base);
+        const _Tp1 * src1 = (const _Tp1 *)(src1_base);
+        _Tp2 * __restrict dstp = (_Tp2 * )(dstp_base);
+
+        for( int x = 0; x < dst_cols; ++x, src0 += 2, src1 += 2, ++dstp ) {
+          const _Tps sum = (c1 + src0[0] + src0[1] + src1[0] + src1[1]) / 4;
+          *dstp = cv::saturate_cast<_Tp2>(sum);
+        }
+      }
+    });
+
+  }
+  else { // 4 channel input image
+
+    const int dst_rows = _src.rows();
+    const int dst_cols = _src.cols();
+
+    _dst.create(dst_rows, dst_cols, CV_MAKETYPE(ddepth, 1));
+    cv::Mat & dst = _dst.getMatRef();
+    uint8_t * dst_base = (uint8_t * )dst.ptr();
+    const size_t dst_stride = dst.step;
+
+    parallel_for(0, dst_rows, [=](const auto & range) {
+      const int y0 = rbegin(range);
+      const int ye = rend(range);
+
+      const uint8_t * src_base = bayer_base + y0 * bayer_stride;
+      uint8_t * dstp_base = dst_base + y0 * dst_stride;
+      for( int y = y0; y < ye; ++y, dstp_base += dst_stride, src_base += bayer_stride) {
+
+        const _Tp1 * src = (const _Tp1 *)(src_base);
+        _Tp2 * __restrict dstp = (_Tp2 * )(dstp_base);
+
+        for( int x = 0; x < dst_cols; ++x, src += 4, ++dstp ) {
+          const _Tps sum = (c1 + src[0] + src[1] + src[2] + src[3]) / 4;
+          *dstp = cv::saturate_cast<_Tp2>(sum);
+        }
+      }
+    });
+  }
+
+  return true;
+}
+
+/** @brief
+ * Averages 4 pixels of each Bayer cell (2x2) into a single grayscale pixel.
+ * Output size is exactly twice smaller than former bayer image
+ */
+bool average_bayer_planes(cv::InputArray src, cv::OutputArray dst)
+{
+  INSTRUMENT_REGION("");
+  const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
+  CV_DISPATCH2(src.depth(), ddepth, _average_bayer_planes, src, dst);
+  return true;
+}
 
 
 
@@ -971,6 +1200,10 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
     algo = default_debayer_algorithm();
   }
 
+  if ( algo == DEBAYER_AVGBP ) {
+    return average_bayer_planes(src, dst);
+  }
+
   if( src.channels() == 4 ) {
 
     switch (algo)
@@ -1002,12 +1235,9 @@ bool debayer(cv::InputArray src, cv::OutputArray dst, enum COLORID colorid, enum
   }
 
   if ( algo >= DEBAYER_PLANE_0 && algo <= DEBAYER_PLANE_3 ) {
-    cv::Mat tmp;
-    extract_bayer_planes(src, tmp);
-    cv::extractChannel(tmp, dst, (int(algo) - DEBAYER_PLANE_0));
+    extract_bayer_plane(src, dst, (int(algo) - DEBAYER_PLANE_0));
     return true;
   }
-
 
   switch (algo) {
     case DEBAYER_DISABLE:

@@ -51,6 +51,11 @@ protected:
   QComboBox * input_source_ctl = nullptr;
   QNumericBox * master_frame_index_ctl = nullptr;
   QImageProcessorSelectionCombo2 * image_preprocessor_ctl = nullptr;
+
+  QExpandableGroupBox * best_frame_selection_group_ctl = nullptr;
+  QSettingsWidgetTemplate<c_master_frame_selection_options> * best_frame_selection_settings_ctl = nullptr;
+  QExpandableGroupBox * sharpness_estimation_group_ctl = nullptr;
+  QSettingsWidgetTemplate<c_local_variance_map_options> * sharpness_estimation_settings_ctl = nullptr;
 };
 
 

@@ -564,6 +564,8 @@ const std::string& c_frame_registration::debug_path() const
 
 bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image, cv::InputArray reference_mask)
 {
+  INSTRUMENT_REGION("c_frame_registration");
+
   cv::Mat reference_ecc_image;
   cv::Mat reference_ecc_mask;
   cv::Mat reference_eccflow_mask;
@@ -633,6 +635,7 @@ bool c_frame_registration::setup_reference_frame(cv::InputArray reference_image,
     }
 
     if( _options.enable_eccflow_registration ) {
+      INSTRUMENT_REGION("enable_eccflow_registration");
 
       _eccflow.set_update_multiplier(_options.eccflow.update_multiplier);
       _eccflow.set_max_iterations(_options.eccflow.max_iterations);
@@ -895,6 +898,7 @@ bool c_frame_registration::register_frame(cv::InputArray current_image, cv::Inpu
   ///////////////
 
   if( _options.enable_eccflow_registration ) {
+    INSTRUMENT_REGION("eccflow_registration");
 
     t0 = get_realtime_ms();
 

@@ -7,7 +7,8 @@
 #include "ecc2.h"
 #include <core/proc/run-loop.h>
 #include <core/settings/opencv_settings.h>
-#include <core/ssprintf.h>
+//#include <core/ssprintf.h>
+//#include <core/io/save_image.h>
 #include <core/debug.h>
 
 #if HAVE_TBB
@@ -2233,55 +2234,113 @@ bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask
   return true;
 }
 
-
 bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f & uv) const
 {
   INSTRUMENT_REGION("");
 
-  tbb::parallel_invoke(
-    [this, &e, &rmap]() {
-      //e.reference_image.copyTo(W);
-      cv::remap(e.current_image, W,
-          rmap, cv::noArray(),
-          cv::INTER_CUBIC,
-          cv::BORDER_REPLICATE/*cv::BORDER_TRANSPARENT*/);
-    },
+  cv::Mat1b M;
+  cv::Mat1f It;
+  cv::Mat2f Itxy;
 
-    [this, &e, &rmap]() {
-      if ( e.current_mask.empty() ) {
-        M.release();
-      }
-      else {
-        cv::remap(e.current_mask, M,
-            rmap, cv::noArray(),
-            cv::INTER_NEAREST,
-            cv::BORDER_CONSTANT);
-      }
-    });
+  if( true ) {
+    // INSTRUMENT_REGION("compute_uv_1_remap");
 
+    cv::remap(e.current_image, W,
+        rmap, cv::noArray(),
+        cv::INTER_LINEAR,
+        cv::BORDER_REPLICATE);
 
-  if ( !e.reference_mask.empty() ) {
-    if ( M.empty() ) {
-      e.reference_mask.copyTo(M);
+    if( e.current_mask.empty() ) {
+      M.release();
     }
     else {
-      cv::bitwise_and(e.reference_mask, M, M);
+      cv::remap(e.current_mask, M,
+          rmap, cv::noArray(),
+          cv::INTER_NEAREST,
+          cv::BORDER_CONSTANT);
     }
   }
 
   const cv::Mat1f & I1 = W;
   const cv::Mat1f & I2 = e.reference_image;
 
-  cv::subtract(I2, I1, It, M);
+  /*
+   * It = I2 - I1
+   * Itx = It * Ix
+   * Ity = It * Iy
+   */
 
-  tbb::parallel_invoke(
-    [this, &e]() {
-      avgp(e.Ix, It, Itx);
-    },
-    [this, &e]() {
-      avgp(e.Iy, It, Ity);
+  if ( true ) {
+    // INSTRUMENT_REGION("compute_Itxy");
+
+    if ( !e.reference_mask.empty() ) {
+      if ( M.empty() ) {
+        M = e.reference_mask;
+      }
+      else {
+        cv::bitwise_and(e.reference_mask, M, M);
+      }
     }
-  );
+
+    const cv::Size size = I2.size();
+
+    Itxy.create(size);
+
+    const uint8_t * M_base = M.empty() ? nullptr : M.ptr();
+    const size_t M_stride = M.empty() ? 0 : M.step;
+
+    const uint8_t * I1_base = I1.ptr();
+    const size_t I1_stride = I1.step;
+
+    const uint8_t * I2_base = I2.ptr();
+    const size_t I2_stride = I2.step;
+
+    const uint8_t * Ix_base = e.Ix.ptr();
+    const size_t Ix_stride = e.Ix.step;
+
+    const uint8_t * Iy_base = e.Iy.ptr();
+    const size_t Iy_stride = e.Iy.step;
+
+    uint8_t * Itxy_base = Itxy.ptr();
+    const size_t Itxy_stride = Itxy.step;
+
+    parallel_for(0, size.height, [=](const auto & range) {
+      for ( int y = rbegin(range); y < rend(range); ++y ) {
+        const float * I1p = (const float * )(I1_base + y * I1_stride);
+        const float * I2p = (const float * )(I2_base + y * I2_stride);
+        const float * Ixp = (const float * )(Ix_base + y * Ix_stride);
+        const float * Iyp = (const float * )(Iy_base + y * Iy_stride);
+
+        float * __restrict Itxyp = (float * )(Itxy_base + y * Itxy_stride);
+
+        if ( !M_base ) {
+          for ( int x = 0; x < size.width; ++x, Itxyp += 2 ) {
+            const float It = I2p[x] - I1p[x];
+            Itxyp[0] = It * Ixp[x];
+            Itxyp[1] = It * Iyp[x];
+          }
+        }
+        else {
+          const uint8_t * Mp = (const uint8_t * )(M_base + y * M_stride);
+          for ( int x = 0; x < size.width; ++x, ++Mp,  Itxyp += 2 ) {
+            if ( !*Mp ) {
+              Itxyp[0] = Itxyp[1] = 0;
+            }
+            else {
+              const float It = I2p[x] - I1p[x];
+              Itxyp[0] = It * Ixp[x];
+              Itxyp[1] = It * Iyp[x];
+            }
+          }
+        }
+      }
+    });
+  }
+
+  if ( true ) {
+    // INSTRUMENT_REGION("avgdown_Itxy");
+    avgdown(Itxy, Itxy);
+  }
 
   //  a00 = Ixx;
   //  a01 = Ixy;
@@ -2295,27 +2354,44 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
 
   uv.create(e.D.size());
 
-  parallel_for(0, uv.rows, [this, &e, &uv](const auto & range) {
-    const cv::Mat4f & D = e.D;
-    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
-      for ( int x = 0, nx = uv.cols; x < nx; ++x ) {
-        const float & a00 = D[y][x][0];
-        const float & a01 = D[y][x][1];
-        const float & a10 = D[y][x][1];
-        const float & a11 = D[y][x][2];
-        const float & det = D[y][x][3];
-        const float & b0  = Itx[y][x];
-        const float & b1  = Ity[y][x];
-        uv[y][x][0] = det * (a11 * b0 - a01 * b1);
-        uv[y][x][1] = det * (a00 * b1 - a10 * b0);
-      }
-    }
-  });
+  if ( true ) {
+    // INSTRUMENT_REGION("main_loop");
 
-  avgup(uv, I1.size());
-  if ( uv.size() != I1.size() ) {
-    CF_ERROR("Invalid uv size: %dx%d must be %dx%d", uv.cols, uv.rows, I1.cols, I1.rows);
-    return false;
+    const int rows = uv.rows;
+    const int cols = uv.cols;
+
+    const uint8_t * D_base = e.D.ptr();
+    const size_t D_stride = e.D.step;
+
+    const uint8_t * Itxy_base = Itxy.ptr();
+    const size_t Itxy_stride = Itxy.step;
+
+    const uint8_t * uv_base = uv.ptr();
+    const size_t uv_stride = uv.step;
+
+    parallel_for(0, rows, [=](const auto & range) {
+      for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+        const float * D = (const float * )(D_base + y * D_stride);
+        const float * Itxy = (float * )(Itxy_base + y * Itxy_stride);
+        float * __restrict uv = (float * )(uv_base + y * uv_stride);
+        for ( int x = 0; x < cols; ++x, D += 4, Itxy += 2, uv += 2 ) {
+          const float & a00 = D[0];
+          const float & a01 = D[1];
+          const float & a10 = D[1];
+          const float & a11 = D[2];
+          const float & det = D[3];
+          const float & b0  = Itxy[0];
+          const float & b1  = Itxy[1];
+          uv[0] = det * (a11 * b0 - a01 * b1);
+          uv[1] = det * (a00 * b1 - a10 * b0);
+        }
+      }
+    });
+  }
+
+  if ( true ) {
+    // INSTRUMENT_REGION("resize(uv)");
+    cv::resize(uv, uv, I1.size(), 0, 0, cv::INTER_CUBIC);
   }
 
   return true;
@@ -2334,7 +2410,7 @@ void c_eccflow::avgdown(cv::InputArray src, cv::Mat & dst) const
 
   cv::resize(src, dst, size, 0, 0, cv::INTER_AREA);
 
-  static thread_local const cv::Mat G =
+  static const cv::Mat G =
       cv::getGaussianKernel(3, 0, CV_32F);
 
   cv::sepFilter2D(dst, dst, -1, G, G, cv::Point(-1,-1), 0,
@@ -2363,23 +2439,18 @@ void c_eccflow::downscale(cv::InputArray src, cv::InputArray src_mask,
       cv::pyrDown(src, dst, dst_size);
       break;
     default:
-      cv::resize(src, dst, dst_size, 0, 0,
-          cv::INTER_AREA);
+      cv::resize(src, dst, dst_size, 0, 0, cv::INTER_AREA);
       break;
   }
 
   if( dst_mask.needed() ) {
-
     if( src_mask.empty() ) {
       dst_mask.release();
     }
     else {
-
-      cv::resize(src_mask, dst_mask, dst.size(), 0, 0,
-          cv::INTER_AREA);
-
-      cv::compare(dst_mask.getMat(), cv::Scalar::all(250), dst_mask,
-          cv::CMP_GE);
+      cv::resize(src_mask, dst_mask, dst.size(), 0, 0, cv::INTER_NEAREST);
+      //cv::resize(src_mask, dst_mask, dst.size(), 0, 0, cv::INTER_AREA);
+      //cv::compare(dst_mask.getMat(), cv::Scalar::all(250), dst_mask, cv::CMP_GE);
     }
   }
 }
@@ -2390,21 +2461,15 @@ void c_eccflow::upscale(cv::InputArray src, cv::InputArray src_mask,
 {
   INSTRUMENT_REGION("");
 
-  cv::resize(src, dst, dst_size, 0, 0,
-      cv::INTER_CUBIC);
+  cv::resize(src, dst, dst_size, 0, 0, cv::INTER_CUBIC);
 
   if( dst_mask.needed() ) {
-
     if( src_mask.empty() ) {
       dst_mask.release();
     }
     else {
-
-      cv::resize(src_mask, dst_mask, dst.size(), 0, 0,
-          cv::INTER_AREA);
-
-      cv::compare(dst_mask.getMat(), cv::Scalar::all(250), dst_mask,
-          cv::CMP_GE);
+      cv::resize(src_mask, dst_mask, dst.size(), 0, 0, cv::INTER_LINEAR);
+      cv::compare(dst_mask.getMat(), cv::Scalar::all(254), dst_mask, cv::CMP_GE);
     }
   }
 }
@@ -2451,21 +2516,15 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
   const double noise_level =
       _opts.noise_level >= 0 ? _opts.noise_level : 1e-3;
 
-  cv::Mat1f & Ixx = DC[0];
-  cv::Mat1f & Ixy = DC[1];
-  cv::Mat1f & Iyy = DC[2];
-  cv::Mat1f & DD = DC[3];
-
+  cv::Mat1f Ixx;
+  cv::Mat1f Ixy;
+  cv::Mat1f Iyy;
 
   _pyramid.clear();
   _pyramid.reserve(32);
 
-  const int min_image_size =
-      std::max(4, _opts.min_image_size);
-
-  const cv::Size image_size =
-      reference_image.size();
-
+  const int min_image_size = std::max(4, _opts.min_image_size);
+  const cv::Size image_size = reference_image.size();
   const bool big_aspect_ratio =
       std::max(image_size.width, image_size.height) / std::min(image_size.width, image_size.height) >= 2;
 
@@ -2481,8 +2540,7 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
     }
     else {
 
-      const cv::Size previous_size =
-          _pyramid.back().reference_image.size();
+      const cv::Size previous_size = _pyramid.back().reference_image.size();
 
       if( _opts.downscale == ECCFlowDownscaleRecursiveResize ) {
 
@@ -2546,34 +2604,63 @@ bool c_eccflow::set_reference_image(cv::InputArray reference_image, cv::InputArr
     ecc_differentiate(current_scale.reference_image,
         current_scale.Ix, current_scale.Iy);
 
-    if( false ) {
-      avgp(current_scale.Ix, current_scale.Ix, Ixx);
-      avgp(current_scale.Ix, current_scale.Iy, Ixy);
-      avgp(current_scale.Iy, current_scale.Iy, Iyy);
+    if( true ) {
+      // INSTRUMENT_REGION("avgp2");
+      parallel_invoke(
+        [this, &current_scale, &Ixx]() {
+          avgp(current_scale.Ix, current_scale.Ix, Ixx);
+        },
+        [this, &current_scale, &Ixy]() {
+          avgp(current_scale.Ix, current_scale.Iy, Ixy);
+        },
+        [this, &current_scale, &Iyy]() {
+          avgp(current_scale.Iy, current_scale.Iy, Iyy);
+        }
+     );
     }
-    else {
-      tbb::parallel_invoke(
-          [this, &current_scale, &Ixx]() {
-            avgp(current_scale.Ix, current_scale.Ix, Ixx);
-          },
-          [this, &current_scale, &Ixy]() {
-            avgp(current_scale.Ix, current_scale.Iy, Ixy);
-          },
-          [this, &current_scale, &Iyy]() {
-            avgp(current_scale.Iy, current_scale.Iy, Iyy);
+
+
+    if (true) {
+      // INSTRUMENT_REGION("compute_d");
+
+      // FIXME: this regularization term estimation looks crazy
+      const float RegularizationTerm = noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
+      const float update_mult_f = float(_opts.update_multiplier);
+
+      const cv::Size size = Ixx.size();
+      current_scale.D.create(size);
+
+      const uint8_t * Ixx_base = Ixx.ptr();
+      const size_t Ixx_stride = Ixx.step;
+
+      const uint8_t * Ixy_base = Ixy.ptr();
+      const size_t Ixy_stride = Ixy.step;
+
+      const uint8_t * Iyy_base = Iyy.ptr();
+      const size_t Iyy_stride = Iyy.step;
+
+      uint8_t * D_base = (uint8_t*) current_scale.D.ptr();
+      const size_t D_stride = current_scale.D.step;
+
+      parallel_for(0, size.height, [=](const auto & range) {
+        for ( int y = rbegin(range); y < rend(range); ++y ) {
+          const float * pIxx = (const float * )(Ixx_base + y * Ixx_stride);
+          const float * pIxy = (const float * )(Ixy_base + y * Ixy_stride);
+          const float * pIyy = (const float * )(Iyy_base + y * Iyy_stride);
+          cv::Vec4f * __restrict pD = (cv::Vec4f * )(D_base + y * D_stride);
+          for ( int x = 0; x < size.width; ++x, ++pD ) {
+            const float a00 = pIxx[x];
+            const float a01 = pIxy[x];
+            const float a11 = pIyy[x];
+
+            // SLAE determinant: det = abs(a00 * a11 - a01 * a01)
+            const float det = std::abs(a00 * a11 - a01 * a01);
+            const float idet = update_mult_f / (det + RegularizationTerm);
+            *pD = cv::Vec4f(a00, a01, a11, idet);
           }
-       );
+        }
+      });
     }
-
-    // FIXME: this regularization term estimation looks crazy
-    const double RegularizationTerm =
-        noise_level > 0 ? pow(1e-5 * noise_level / (1 << current_level), 4) : 0;
-
-    cv::absdiff(Ixx.mul(Iyy), Ixy.mul(Ixy), DD);
-    cv::add(DD, RegularizationTerm, DD);
-    cv::divide(_opts.update_multiplier, DD, DD);
-
-    cv::merge(DC, 4, current_scale.D);
 
     if ( _opts.max_pyramid_level >= 0 && current_level >= _opts.max_pyramid_level ) {
       break;
@@ -2616,8 +2703,7 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
     }
   }
 
-  const cv::Size image_size =
-      input_image.size();
+  const cv::Size image_size = input_image.size();
 
   const bool big_aspect_ratio =
       std::max(image_size.width, image_size.height) /
@@ -2691,6 +2777,8 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::InputArray reference_ima
 
 bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat2f cuv, crmap;
 
   if ( !setup_input_image(input_image, input_mask) ) {
@@ -2698,17 +2786,11 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
     return false;
   }
 
-  INSTRUMENT_REGION("");
-
-  M.release();
-
   const int num_levels = (int) (_pyramid.size());
 
   if( rmap.empty() ) {
-
     uv.create(_pyramid.back().reference_image.size());
     uv.setTo(cv::Scalar::all(0));
-
   }
   else if( rmap.size() == _pyramid.front().reference_image.size() ) {
 
@@ -2752,14 +2834,10 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
     }
 
     for( int j = 0; j < _opts.max_iterations; ++j ) {
-
       ecc_flow_to_remap(uv, crmap);
-
       compute_uv(current_scale, crmap, cuv);
-
       cv::add(uv, cuv, uv);
     }
-
   }
 
   ecc_flow_to_remap(uv, rmap);

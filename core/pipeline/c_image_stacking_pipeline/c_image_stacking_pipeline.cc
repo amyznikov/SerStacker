@@ -903,6 +903,7 @@ bool c_image_stacking_pipeline::run_image_stacking()
 bool c_image_stacking_pipeline::setup_frame_registration(const c_frame_registration::sptr & frame_registration,
     cv::Mat & reference_frame, cv::Mat & reference_mask)
 {
+  INSTRUMENT_REGION("");
 
   const c_image_registration_options & registration_options =
       frame_registration->options();
@@ -1188,7 +1189,6 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
     // Use single frame as reference
   }
   else {
-
     // Generate from sequence
 
     if( !(_frame_registration = create_frame_registration(master_options.registration)) ) {

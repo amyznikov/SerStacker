@@ -648,11 +648,7 @@ protected:
   c_eccflow_options _opts;
   std::vector<pyramid_entry> _pyramid;
   cv::Mat2f uv;
-  // work arrays
-  mutable cv::Mat1b M;
-  mutable cv::Mat1f W, It, Itx, Ity;
-  mutable cv::Mat1f DC[4];
-
+  mutable cv::Mat1f W;
 };
 
 bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask);

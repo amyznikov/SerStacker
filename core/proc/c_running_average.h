@@ -20,42 +20,42 @@ public:
 
   void set_window_size(int v)
   {
-    window_size_ = v;
+    _window_size = v;
   }
 
   int window_size() const
   {
-    return window_size_;
+    return _window_size;
   }
 
   T value() const
   {
-    return value_;
+    return _value;
   }
 
   void reset()
   {
-    value_ = 0;
-    pts_ = 0;
+    _value = 0;
+    _pts = 0;
   }
 
   void update(T value)
   {
-    if( pts_ < window_size_ ) {
-      value_ = (value_ * pts_ + value) / (pts_ + 1);
+    if( _pts < _window_size ) {
+      _value = (_value * _pts + value) / (_pts + 1);
     }
     else {
-      value_ = (value_ * window_size_ + value) / (window_size_ + 1);
+      _value = (_value * _window_size + value) / (_window_size + 1);
     }
 
-    ++pts_;
+    ++_pts;
   }
 
 
 protected:
-  T value_ = 0;
-  int pts_ = 0;
-  int window_size_ = 5;
+  T _value = 0;
+  int _pts = 0;
+  int _window_size = 5;
 };
 
 #endif /* __c_running_average_h__ */

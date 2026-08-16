@@ -1,44 +1,43 @@
 /*
- * c_running_average_pipeline.cc
+ * c_canvas_average_pipeline.cc
  *
  *  Created on: Feb 24, 2024
  *      Author: amyznikov
  */
 
-#include "c_running_average_pipeline.h"
+#include "c_canvas_average_pipeline.h"
 #include <core/proc/unsharp_mask.h>
-#include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/io/load_image.h>
 #include <core/io/save_image.h>
 
 #include <core/readdir.h>
 
-c_running_average_pipeline::c_running_average_pipeline(const std::string & name,
+c_canvas_average_pipeline::c_canvas_average_pipeline(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :
     base(name, input_sequence)
 {
 }
 
-const std::string& c_running_average_pipeline::get_class_name() const
+const std::string& c_canvas_average_pipeline::get_class_name() const
 {
   return class_name();
 }
 
-const std::string& c_running_average_pipeline::class_name()
+const std::string& c_canvas_average_pipeline::class_name()
 {
-  static const std::string _classname = "running_average";
+  static const std::string _classname = "canvas_average";
   return _classname;
 }
 
-const std::string& c_running_average_pipeline::tooltip()
+const std::string& c_canvas_average_pipeline::tooltip()
 {
   static const std::string _tooltip =
-      "<strong>c_running_average_pipeline.</strong><br>"
-          "test for running average registered frames<br>";
+      "<strong>c_canvas_average_pipeline.</strong><br>"
+          "test for canvas average<br>";
   return _tooltip;
 }
 
-bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
+bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
 {
   c_config_setting section, subsection;
 
@@ -125,18 +124,18 @@ bool c_running_average_pipeline::serialize(c_config_setting settings, bool save)
 }
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_input_options> & ctx)
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_canvas_average_input_options> & ctx)
 {
-  using S = c_running_average_input_options;
+  using S = c_canvas_average_input_options;
   ctlbind(ctls, as_base<c_image_stacking_pipeline_base_input_options>(ctx));
   //ctlbind(ctls, "ecc_image_processor", ctx(&S::ecc_image_processor));
 }
 
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_registration_options> & ctx)
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_canvas_average_registration_options> & ctx)
 {
-  using S = c_running_average_registration_options;
+  using S = c_canvas_average_registration_options;
 
   ctlbind(ctls, "canvasSize", ctx(&S::canvasSize), "");
   ctlbind(ctls, "eccUnsharpMaskSigma", ctx(&S::eccUnsharpMaskSigma), "");
@@ -169,9 +168,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 }
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_update_options> & ctx)
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_canvas_average_update_options> & ctx)
 {
-  using S = c_running_average_update_options;
+  using S = c_canvas_average_update_options;
 
   ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, CTL_CONTEXT(ctx, sharpness_measure));
@@ -183,9 +182,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 }
 
 template<class RootObjectType>
-static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_running_average_output_options> & ctx)
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_canvas_average_output_options> & ctx)
 {
-  using S = c_running_average_output_options;
+  using S = c_canvas_average_output_options;
 
   ctlbind(ctls, "display_type", ctx(&S::default_display_type), "");
   ctlbind(ctls, "display_scale", ctx(&S::display_scale), "");
@@ -215,7 +214,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
 }
 
-const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcontrols()
+const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontrols()
 {
   static c_ctlist<this_class> ctls;
   if ( ctls.empty() ) {
@@ -241,16 +240,16 @@ const c_ctlist<c_running_average_pipeline> & c_running_average_pipeline::getcont
   return ctls;
 }
 
-bool c_running_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
+bool c_canvas_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   INSTRUMENT_REGION("");
   return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1);
 }
 
-bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
+bool c_canvas_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
 {
   if ( !base::copy_parameters(dst) ) {
-    CF_ERROR("c_running_average_pipeline::base::copyParameters() fails");
+    CF_ERROR("c_canvas_average_pipeline::base::copyParameters() fails");
     return false;
   }
 
@@ -271,7 +270,7 @@ bool c_running_average_pipeline::copy_parameters(const c_image_processing_pipeli
   return true;
 }
 
-std::string c_running_average_pipeline::generate_output_file_name() const
+std::string c_canvas_average_pipeline::generate_output_file_name() const
 {
   static const auto get_current_date_time_string =
       []() -> std::string
@@ -348,7 +347,7 @@ std::string c_running_average_pipeline::generate_output_file_name() const
 }
 
 
-bool c_running_average_pipeline::initialize_pipeline()
+bool c_canvas_average_pipeline::initialize_pipeline()
 {
   if ( !base::initialize_pipeline() ) {
     CF_ERROR("base::initialize() fails");
@@ -435,7 +434,7 @@ bool c_running_average_pipeline::initialize_pipeline()
   return true;
 }
 
-void c_running_average_pipeline::cleanup_pipeline()
+void c_canvas_average_pipeline::cleanup_pipeline()
 {
   base::cleanup_pipeline();
 
@@ -448,7 +447,7 @@ void c_running_average_pipeline::cleanup_pipeline()
   _apodizationWindow.release();
 }
 
-bool c_running_average_pipeline::run_pipeline()
+bool c_canvas_average_pipeline::run_pipeline()
 {
   INSTRUMENT_REGION("");
 
@@ -621,7 +620,7 @@ static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
   return new_global_bbox & cv::Rect(0, 0, global_canvas_size.width, global_canvas_size.height);
 }
 
-bool c_running_average_pipeline::process_current_frame()
+bool c_canvas_average_pipeline::process_current_frame()
 {
   INSTRUMENT_REGION("");
 //  CF_DEBUG("ENTER");
@@ -804,7 +803,7 @@ bool c_running_average_pipeline::process_current_frame()
 }
 
 
-void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
+void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   INSTRUMENT_REGION("");
 //  if( _apodizationWindow.size() != src.size() ) {
@@ -843,7 +842,7 @@ void c_running_average_pipeline::compute_weights(const cv::Mat & src, const cv::
 }
 
 
-bool c_running_average_pipeline::write_input_video(cv::InputArray image, cv::InputArray mask)
+bool c_canvas_average_pipeline::write_input_video(cv::InputArray image, cv::InputArray mask)
 {
   if( _output_options.save_input_video && !image.empty() ) {
 
@@ -872,7 +871,7 @@ bool c_running_average_pipeline::write_input_video(cv::InputArray image, cv::Inp
   return true;
 }
 
-bool c_running_average_pipeline::write_progress_video(cv::InputArray image, cv::InputArray mask)
+bool c_canvas_average_pipeline::write_progress_video(cv::InputArray image, cv::InputArray mask)
 {
   if( _output_options.save_progress_video && !image.empty() ) {
 
@@ -901,7 +900,7 @@ bool c_running_average_pipeline::write_progress_video(cv::InputArray image, cv::
   return true;
 }
 
-bool c_running_average_pipeline::write_reference_video(cv::InputArray image, cv::InputArray mask)
+bool c_canvas_average_pipeline::write_reference_video(cv::InputArray image, cv::InputArray mask)
 {
   if( _output_options.save_reference_video && !image.empty() ) {
 
@@ -930,7 +929,7 @@ bool c_running_average_pipeline::write_reference_video(cv::InputArray image, cv:
   return true;
 }
 
-bool c_running_average_pipeline::write_weights_video(cv::InputArray image, cv::InputArray mask)
+bool c_canvas_average_pipeline::write_weights_video(cv::InputArray image, cv::InputArray mask)
 {
   if( _output_options.save_weights_video && !image.empty() ) {
 

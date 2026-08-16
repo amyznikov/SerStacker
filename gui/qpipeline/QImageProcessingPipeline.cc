@@ -14,7 +14,7 @@
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_matcher_pipeline/c_stereo_matcher_pipeline.h>
 #include <core/pipeline/c_live_stacking_pipeline/c_live_stacking_pipeline.h>
-#include <core/pipeline/c_running_average_pipeline/c_running_average_pipeline.h>
+#include <core/pipeline/c_canvas_average_pipeline/c_canvas_average_pipeline.h>
 #include <core/pipeline/c_virtual_stereo_pipeline/c_virtual_stereo_pipeline.h>
 #include <core/pipeline/c_roi_tracker_pipeline/c_roi_tracker_pipeline.h>
 #include <core/pipeline/c_epipolar_alignment_pipeline/c_epipolar_alignment_pipeline.h>
@@ -33,19 +33,19 @@ void registerPipelineClasses()
         });
 
   REGISTER_PIPELINE_CLASS(c_generic_image_processor_pipeline);
-  REGISTER_PIPELINE_CLASS(c_dkgen_pipeline);
   REGISTER_PIPELINE_CLASS(c_image_stacking_pipeline);
-  REGISTER_PIPELINE_CLASS(c_camera_calibration_pipeline);
-  REGISTER_PIPELINE_CLASS(c_stereo_calibration_pipeline);
-  REGISTER_PIPELINE_CLASS(c_stereo_matcher_pipeline);
-  REGISTER_PIPELINE_CLASS(c_live_stacking_pipeline);
-  REGISTER_PIPELINE_CLASS(c_running_average_pipeline);
-  REGISTER_PIPELINE_CLASS(c_virtual_stereo_pipeline);
-  REGISTER_PIPELINE_CLASS(c_roi_tracker_pipeline);
-  REGISTER_PIPELINE_CLASS(c_epipolar_alignment_pipeline);
-  REGISTER_PIPELINE_CLASS(c_cte_pipeline);
+  REGISTER_PIPELINE_CLASS(c_canvas_average_pipeline);
   REGISTER_PIPELINE_CLASS(c_jdr_pipeline);
   REGISTER_PIPELINE_CLASS(c_sdr_pipeline);
+  REGISTER_PIPELINE_CLASS(c_camera_calibration_pipeline);
+  REGISTER_PIPELINE_CLASS(c_stereo_calibration_pipeline);
+  REGISTER_PIPELINE_CLASS(c_roi_tracker_pipeline);
+  REGISTER_PIPELINE_CLASS(c_stereo_matcher_pipeline);
+  REGISTER_PIPELINE_CLASS(c_live_stacking_pipeline);
+  REGISTER_PIPELINE_CLASS(c_virtual_stereo_pipeline);
+  REGISTER_PIPELINE_CLASS(c_epipolar_alignment_pipeline);
+  REGISTER_PIPELINE_CLASS(c_cte_pipeline);
+  REGISTER_PIPELINE_CLASS(c_dkgen_pipeline);
 
 #undef REGISTER_PIPELINE_CLASS
 }

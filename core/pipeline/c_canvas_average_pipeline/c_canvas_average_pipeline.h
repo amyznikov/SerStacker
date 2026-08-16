@@ -1,13 +1,13 @@
 /*
- * c_running_average_pipeline.h
+ * c_canvas_average_pipeline.h
  *
  *  Created on: Feb 24, 2024
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_running_average_pipeline_h__
-#define __c_running_average_pipeline_h__
+#ifndef __c_canvas_average_pipeline_h__
+#define __c_canvas_average_pipeline_h__
 
 #include <core/pipeline/c_image_stacking_pipeline_base/c_image_stacking_pipeline_base.h>
 #include <core/proc/image_registration/c_frame_registration.h>
@@ -17,13 +17,13 @@
 #include <core/average/c_frame_accumulation.h>
 #include <core/settings/opencv_settings.h>
 
-struct c_running_average_input_options:
+struct c_canvas_average_input_options:
     c_image_stacking_pipeline_base_input_options
 {
  //     c_image_processor::sptr ecc_image_processor;
 };
 
-struct c_running_average_registration_options
+struct c_canvas_average_registration_options
 {
   bool enable_star_registration = false;
   bool enable_ecc_registration = false;
@@ -45,14 +45,14 @@ struct c_running_average_registration_options
   c_estimate_image_transform_options transform_estimation;
 };
 
-struct c_running_average_update_options
+struct c_canvas_average_update_options
 {
   //double running_weight = 15000;
   c_canvas_average::options update;
   c_local_variance_map_options sharpness_measure;
 };
 
-struct c_running_average_output_options:
+struct c_canvas_average_output_options:
     c_image_processing_pipeline_output_options
 {
   double display_scale = -1;
@@ -69,15 +69,15 @@ struct c_running_average_output_options:
 
 };
 
-class c_running_average_pipeline :
+class c_canvas_average_pipeline :
   public c_image_stacking_pipeline_base
 {
 public:
-  typedef c_running_average_pipeline this_class;
+  typedef c_canvas_average_pipeline this_class;
   typedef c_image_stacking_pipeline_base base;
   typedef std::shared_ptr<this_class> sptr;
 
-  c_running_average_pipeline(const std::string & name,
+  c_canvas_average_pipeline(const std::string & name,
       const c_input_sequence::sptr & input_sequence);
 
   const std::string& get_class_name() const override;
@@ -102,10 +102,10 @@ protected:
   bool write_weights_video(cv::InputArray image, cv::InputArray mask);
 
 protected:
-  c_running_average_input_options _input_options;
-  c_running_average_registration_options _registration_options;
-  c_running_average_update_options _average_options;
-  c_running_average_output_options _output_options;
+  c_canvas_average_input_options _input_options;
+  c_canvas_average_registration_options _registration_options;
+  c_canvas_average_update_options _average_options;
+  c_canvas_average_output_options _output_options;
   int _input_bpp = 0;
 
   c_ecch _ecch;
@@ -126,4 +126,4 @@ protected:
   c_output_frame_writer _weights_video_writer;
 };
 
-#endif /* __c_running_average_pipeline_h__ */
+#endif /* __c_canvas_average_pipeline_h__ */

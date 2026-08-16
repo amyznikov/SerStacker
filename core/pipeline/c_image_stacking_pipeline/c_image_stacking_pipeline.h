@@ -90,7 +90,14 @@ struct c_frame_accumulation_options
   enum frame_accumulation_method accumulation_method  = frame_accumulation_average;
   c_local_variance_map_options sharpness_measure;
   c_laplacian_pyramid_focus_stacking::options fs;
-  //double max_weights_ratio = 0;
+
+  c_frame_accumulation_options()
+  {
+    sharpness_measure.dscale = 1;
+    sharpness_measure.kradius = 1;
+    sharpness_measure.uscale = 0;
+  }
+
 };
 
 struct c_image_processing_options

@@ -669,7 +669,7 @@ bool c_canvas_average_pipeline::process_current_frame()
     // Not a first frame
     cv::Mat current_image, current_mask, reference_image, reference_mask;
     cv::Mat weights;
-    cv::Mat2f rmap;
+    cv::Mat2f rmap, uv;
 
     if ( !_average.compute(reference_image, reference_mask, 1, -1, _average.last_bbox()) ) {
       CF_ERROR("_average.compute() fails");
@@ -770,6 +770,37 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
+    if( _registration_options.enable_eccflow_registration ) {
+      INSTRUMENT_REGION("eccflow_registration");
+      // FIXME: This ugly stiff does not yet work as expected, just start the experimentation
+
+      // create temporary rmap of reference image size for optflow computation
+
+      bool fOk = false;
+      if ( reference_image.size() == current_image.size() ) {
+        _image_transform->create_remap(reference_image.size(), rmap);
+        fOk = _eccflow.compute_uv(current_image, reference_image, rmap, current_mask, reference_mask);
+      }
+      else {
+        const cv::Rect roi(0, 0, std::min(reference_image.cols, current_image.cols),
+            std::min(reference_image.rows, current_image.rows));
+        const cv::Mat cimage = current_image(roi);
+        const cv::Mat cmask = current_mask.empty() ? cv::Mat() : current_mask(roi);
+        const cv::Mat rimage = reference_image(roi);
+        const cv::Mat rmask = reference_mask.empty() ? cv::Mat() : reference_mask(roi);
+
+        _image_transform->create_remap(rimage.size(), rmap);
+        fOk = _eccflow.compute_uv(cimage, rimage, rmap, cmask, rmask);
+      }
+
+      if( fOk ) {
+        uv = _eccflow.current_uv();
+      }
+      else {
+        CF_ERROR("_eccflow.compute_uv() fails");
+      }
+    }
+
     const cv::Rect newCanvasBBox =
         computeNewCanvasBBox(_image_transform,
             _average.last_bbox(),
@@ -787,6 +818,37 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     _image_transform->set_translation(_image_transform->translation() + delta_T);
     _image_transform->create_remap(newCanvasBBox.size(), rmap);
+
+    if( !uv.empty() ) {
+      INSTRUMENT_REGION("embed_uv");
+
+      // Compute position of the old uv within the coordinates of the new rmap
+      // delta_T = new_offset - old_offset -> old_offset = -delta_T
+      cv::Rect old_uv_roi_in_new_rmap(
+          static_cast<int>(-delta_T.val[0]),
+          static_cast<int>(-delta_T.val[1]),
+          uv.cols,
+          uv.rows);
+
+      // intersection to ensure don't miss the memory
+      cv::Rect dst_roi = old_uv_roi_in_new_rmap & cv::Rect(0, 0, rmap.cols, rmap.rows);
+
+      if (dst_roi.width > 0 && dst_roi.height > 0) {
+
+        // corresponding box inside the uv matrix
+        cv::Rect src_roi(
+            dst_roi.x - old_uv_roi_in_new_rmap.x,
+            dst_roi.y - old_uv_roi_in_new_rmap.y,
+            dst_roi.width,
+            dst_roi.height
+        );
+
+        // Add uv from ROI
+        cv::Mat2f rmap_sub = rmap(dst_roi);
+        cv::Mat2f uv_sub = uv(src_roi);
+        cv::add(rmap_sub, uv_sub, rmap_sub);
+      }
+    }
 
     compute_weights(_current_image, _current_mask, weights);
     const cv::Mat & w = weights.empty() ? _current_mask : weights;
@@ -806,39 +868,37 @@ bool c_canvas_average_pipeline::process_current_frame()
 void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   INSTRUMENT_REGION("");
-//  if( _apodizationWindow.size() != src.size() ) {
-//
-//    const int B = 40;
-//    const float P = 4.0f;
-//    const float min_weight = 0.1f;
-//
-//    cv::Mat1f lut_x(1, src.cols, 1.0f);
-//    cv::Mat1f lut_y(src.rows, 1, 1.0f);
-//
-//    for( int x = 0, xmax = std::min(B, src.cols / 2); x < xmax; ++x ) {
-//      const float shaped = std::pow((float) x / B, P);
-//      const float factor = min_weight + (1.0f - min_weight) * shaped;
-//      lut_x(0, x) = lut_x(0, src.cols - 1 - x) = factor;
-//    }
-//    for( int y = 0, ymax = std::min(B, src.rows / 2); y < ymax; ++y ) {
-//      const float shaped = std::pow((float) y / B, P);
-//      const float factor = min_weight + (1.0f - min_weight) * shaped;
-//      lut_y(y, 0) = lut_y(src.rows - 1 - y, 0) = factor;
-//    }
-//
-//    _apodizationWindow = lut_y * lut_x;
-//  }
+  if( _apodizationWindow.size() != src.size() ) {
+
+    const int B = 64;
+    const float P = 2.0f;
+
+    cv::Mat1f lut_x(1, src.cols, 1.0f);
+    cv::Mat1f lut_y(src.rows, 1, 1.0f);
+
+    for( int x = 0, xmax = std::min(B, src.cols / 2); x < xmax; ++x ) {
+      const float shaped = 1 - std::pow((float)(B - x) / B, P);
+      const float factor = shaped;
+      lut_x(0, x) = lut_x(0, src.cols - 1 - x) = factor;
+    }
+    for( int y = 0, ymax = std::min(B, src.rows / 2); y < ymax; ++y ) {
+      const float shaped = 1 - std::pow((float)(B - y) / B, P);
+      const float factor = shaped;
+      lut_y(y, 0) = lut_y(src.rows - 1 - y, 0) = factor;
+    }
+
+    _apodizationWindow = lut_y * lut_x;
+  }
 
   if ( _average_options.sharpness_measure.kradius > 0 ) {
     compute_local_variance_map(src, _average_options.sharpness_measure, dst);
     if ( !srcmask.empty() ) {
       dst.setTo(0, ~srcmask);
     }
-    //cv::multiply(dst, _apodizationWindow, dst);
+    cv::multiply(dst, _apodizationWindow, dst);
 
     write_weights_video(dst, cv::noArray());
   }
-
 }
 
 

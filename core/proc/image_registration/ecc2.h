@@ -609,17 +609,27 @@ public:
   bool set_reference_image(cv::InputArray reference_image,
       cv::InputArray reference_mask = cv::noArray());
 
-  bool compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
-      cv::InputArray input_mask = cv::noArray(), cv::InputArray reference_mask = cv::noArray());
-
+  // Must be called after set_reference_image()
   bool compute(cv::InputArray input_image, cv::Mat2f & rmap,
       cv::InputArray input_mask = cv::noArray());
 
-public: // public access mainly for debug and visualization purposes
+  // Sets reference image and calls compute()
+  bool compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray(), cv::InputArray reference_mask = cv::noArray());
 
+  // Must be called after set_reference_image()
+  bool compute_uv(cv::InputArray input_image, const cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray());
+
+  // Sets reference image and calls compute_uv()
+  bool compute_uv(cv::InputArray input_image, cv::InputArray reference_image, const cv::Mat2f & rmap,
+      cv::InputArray input_mask = cv::noArray(), cv::InputArray reference_mask = cv::noArray());
+
+  const cv::Mat2f & current_uv() const;
+
+public: // public access mainly for debug and visualization purposes
   const cv::Mat1f & reference_image() const;
   const cv::Mat1b & reference_mask() const;
-  const cv::Mat2f & current_uv() const;
   const std::vector<pyramid_entry> & current_pyramid() const;
 
 protected:

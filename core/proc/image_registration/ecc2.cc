@@ -2766,16 +2766,8 @@ bool c_eccflow::setup_input_image(cv::InputArray input_image, cv::InputArray inp
 
 
 
-bool c_eccflow::compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
-    cv::InputArray input_mask, cv::InputArray reference_mask)
-{
-  INSTRUMENT_REGION("");
-
-  set_reference_image(reference_image, reference_mask);
-  return compute(input_image, rmap, input_mask);
-}
-
-bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
+// Must be called after set_reference_image()
+bool c_eccflow::compute_uv(cv::InputArray input_image, const cv::Mat2f & rmap, cv::InputArray input_mask)
 {
   INSTRUMENT_REGION("");
 
@@ -2804,9 +2796,8 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
         (double) last_size.height / (double) first_size.height);
 
     ecc_remap_to_optflow(rmap, uv);
-    cv::resize(uv, uv, last_size, 0, 0, cv::INTER_AREA/*cv::INTER_CUBIC*/);
+    cv::resize(uv, uv, last_size, 0, 0, cv::INTER_CUBIC); // / cv::INTER_AREA/*cv::INTER_CUBIC*/);
     cv::multiply(uv, size_ratio, uv);
-
   }
   else {
     CF_ERROR("Invalid args to c_eccflow::compute(): reference image and rmap sizes not match");
@@ -2840,9 +2831,37 @@ bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputA
     }
   }
 
-  ecc_flow_to_remap(uv, rmap);
-
   return true;
+}
+
+// Sets reference image and calls compute_uv()
+bool c_eccflow::compute_uv(cv::InputArray input_image, cv::InputArray reference_image, const cv::Mat2f & rmap,
+    cv::InputArray input_mask, cv::InputArray reference_mask)
+{
+  INSTRUMENT_REGION("");
+  set_reference_image(reference_image, reference_mask);
+  return compute_uv(input_image, rmap, input_mask);
+}
+
+
+bool c_eccflow::compute(cv::InputArray input_image, cv::InputArray reference_image, cv::Mat2f & rmap,
+    cv::InputArray input_mask, cv::InputArray reference_mask)
+{
+  INSTRUMENT_REGION("");
+
+  set_reference_image(reference_image, reference_mask);
+  return compute(input_image, rmap, input_mask);
+}
+
+bool c_eccflow::compute(cv::InputArray input_image, cv::Mat2f & rmap, cv::InputArray input_mask)
+{
+  INSTRUMENT_REGION("");
+
+  if ( compute_uv(input_image, rmap, input_mask) ) {
+    ecc_flow_to_remap(uv, rmap);
+    return true;
+  }
+  return false;
 }
 
 

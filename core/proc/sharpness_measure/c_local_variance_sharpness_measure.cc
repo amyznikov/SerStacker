@@ -165,7 +165,8 @@ static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, dou
 // using gradient module as the weight, thus estimate gradient cubics
 // in the regions where the gradients are exists
 double compute_local_variance_map(cv::InputArray image, const c_local_variance_map_options & opts,
-    cv::OutputArray outputMap /*= cv::noArray()*/)
+    cv::OutputArray outputMap /*= cv::noArray()*/,
+    bool returnFullResoltionMap /* = true */)
 {
   INSTRUMENT_REGION("");
   cv::Mat M, G;
@@ -191,8 +192,7 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   const double W = cv::norm(G, cv::NORM_L1);
   if( !(W > 0) ) {
     if( outputMap.needed() ) {
-      outputMap.create(image.size(), CV_32F);
-      outputMap.setTo(0);
+      outputMap.release();
     }
     return 0;
   }
@@ -208,10 +208,13 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   if( opts.uscale > 0 ) {
     pdownscale(M, M, opts.uscale);
   }
+
   cv::add(M, 0.05 * Q, M);
-  if( G.size() != image.size() ) {
+
+  if ( returnFullResoltionMap && G.size() != image.size() ) {
     pupscale(M, image.size());
   }
+
   outputMap.move(M);
 
   return Q;

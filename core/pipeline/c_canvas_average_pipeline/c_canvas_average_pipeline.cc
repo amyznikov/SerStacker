@@ -853,7 +853,6 @@ bool c_canvas_average_pipeline::process_current_frame()
     compute_weights(_current_image, _current_mask, weights);
     const cv::Mat & w = weights.empty() ? _current_mask : weights;
 
-    // lock_guard lock(mutex());
     if ( !_average.add(_current_image, w, rmap, newCanvasBBox) ) {
       CF_ERROR("average_add() fails");
       return false;
@@ -868,34 +867,72 @@ bool c_canvas_average_pipeline::process_current_frame()
 void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::Mat & srcmask, cv::Mat & dst)
 {
   INSTRUMENT_REGION("");
-  if( _apodizationWindow.size() != src.size() ) {
 
-    const int B = 64;
+  static const auto createApodizationWindow = [](const cv::Size & size) -> cv::Mat {
+
+    const int B = std::max(4, std::min(size.width, size.height) / 64);
     const float P = 2.0f;
 
-    cv::Mat1f lut_x(1, src.cols, 1.0f);
-    cv::Mat1f lut_y(src.rows, 1, 1.0f);
+    cv::Mat1f lut_x(1, size.width, 1.0f);
+    cv::Mat1f lut_y(size.height, 1, 1.0f);
 
-    for( int x = 0, xmax = std::min(B, src.cols / 2); x < xmax; ++x ) {
+    for( int x = 0, xmax = std::min(B, size.width / 2); x < xmax; ++x ) {
       const float shaped = 1 - std::pow((float)(B - x) / B, P);
       const float factor = shaped;
-      lut_x(0, x) = lut_x(0, src.cols - 1 - x) = factor;
+      lut_x(0, x) = lut_x(0, size.width - 1 - x) = factor;
     }
-    for( int y = 0, ymax = std::min(B, src.rows / 2); y < ymax; ++y ) {
+    for( int y = 0, ymax = std::min(B, size.height / 2); y < ymax; ++y ) {
       const float shaped = 1 - std::pow((float)(B - y) / B, P);
       const float factor = shaped;
-      lut_y(y, 0) = lut_y(src.rows - 1 - y, 0) = factor;
+      lut_y(y, 0) = lut_y(size.height - 1 - y, 0) = factor;
     }
 
-    _apodizationWindow = lut_y * lut_x;
-  }
+    return lut_y * lut_x;
+  };
+
+  static const auto pupscale = [] (cv::Mat & image, cv::Size dstSize) {
+    const cv::Size inputSize = image.size();
+
+    if( inputSize != dstSize ) {
+
+      std::vector<cv::Size> sizes;
+
+      sizes.emplace_back(dstSize);
+
+      while (42) {
+        const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
+        if( nextSize == inputSize ) {
+          break;
+        }
+        if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+          CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+              nextSize.width, nextSize.height,
+              inputSize.width, inputSize.height);
+          return false;
+        }
+        sizes.emplace_back(nextSize);
+      }
+
+      for( int i = sizes.size() - 1; i >= 0; --i ) {
+        cv::pyrUp(image, image, sizes[i]);
+      }
+    }
+
+    return true;
+  };
 
   if ( _average_options.sharpness_measure.kradius > 0 ) {
-    compute_local_variance_map(src, _average_options.sharpness_measure, dst);
+
+    compute_local_variance_map(src, _average_options.sharpness_measure, dst, false);
+    if ( dst.size() != _apodizationWindow.size() ) {
+      _apodizationWindow = createApodizationWindow(dst.size());
+    }
+
+    cv::multiply(dst, _apodizationWindow, dst);
+    pupscale(dst, src.size());
     if ( !srcmask.empty() ) {
       dst.setTo(0, ~srcmask);
     }
-    cv::multiply(dst, _apodizationWindow, dst);
 
     write_weights_video(dst, cv::noArray());
   }

@@ -81,7 +81,7 @@ static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _
       float* __restrict accwp = (float* )(accwpy);
 
       if (weights_type < 0) { // no weights
-        for (int x = 0; x < size.width; ++x, srcp += cn, accwp += cn) {
+        for (int x = 0; x < size.width; ++x, srcp += cn, accp += cn, ++accwp) {
           const float W_new = *accwp + 1.0f;
           const float factor = 1.0f / W_new;
           *accwp = W_new;
@@ -94,7 +94,7 @@ static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _
       }
       else if (weights_type == CV_8UC1) { // binary mask is assumed
         const uint8_t* __restrict mp = (const uint8_t*)(srcw_base + y * srcw_stride);
-        for (int x = 0; x < size.width; ++x, ++mp, ++accwp, srcp += cn, accp += cn) {
+        for (int x = 0; x < size.width; ++x, ++mp, srcp += cn, accp += cn, ++accwp) {
           if (*mp ) {
             const float W_new = *accwp + 1.0f;
             const float factor = 1.0f / W_new;
@@ -109,7 +109,7 @@ static bool _weighted_average_update(cv::InputArray _src_image, cv::InputArray _
       }
       else if (weights_type == CV_32FC1) { // floating point weight is assumed
         const float* __restrict wp = (const float*)(srcw_base + y * srcw_stride);
-        for (int x = 0; x < size.width; ++x, ++wp, ++accwp, srcp += cn, accp += cn) {
+        for (int x = 0; x < size.width; ++x, ++wp, srcp += cn, accp += cn, ++accwp) {
           const float w_new = *wp;
           if (w_new > 0) {
             const float W_new = *accwp + w_new;

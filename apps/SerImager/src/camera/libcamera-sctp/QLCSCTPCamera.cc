@@ -406,7 +406,10 @@ void QLCSCTPCamera::sctp_disconnect()
     CF_DEBUG("so_close(_so=%d)", _so);
     so_close(_so, true);
     _so = -1;
+    CF_DEBUG("set State_disconnected");
+    _current_state = State_disconnected;
   }
+  CF_DEBUG("_current_state=%d", (int)_current_state);
 }
 
 bool QLCSCTPCamera::sctp_sendmsg(const std::string & msg)
@@ -433,16 +436,17 @@ void QLCSCTPCamera::sctp_threadproc()
   constexpr uint32_t PPID_IMGCHUNK = 2;
   constexpr uint32_t TMPBUFFSIZE = 256 * 1024;
 
-  unique_lock lock(_mtx);
-
-  if( _buf.size() < TMPBUFFSIZE ) {
-    _buf.resize(TMPBUFFSIZE);
+  if ( true ) {
+    unique_lock lock(_mtx);
+    if( _buf.size() < TMPBUFFSIZE ) {
+      _buf.resize(TMPBUFFSIZE);
+    }
   }
 
   while (!stop_requested(_current_state)) {
 
     if( true ) {
-      temporary_unlock unlok(lock);
+      //temporary_unlock unlok(lock);
 
       struct sctp_sndrcvinfo sinfo = { 0 };
       int flags = 0;
@@ -559,10 +563,19 @@ void QLCSCTPCamera::sctp_threadproc()
     }
   }
 
+  CF_DEBUG("Loop finished");
+
   const State oldState = _current_state;
   CF_DEBUG("call sctp_disconnect(). _current_state=%d (%s)", _current_state, toCString(_current_state));
-  sctp_disconnect();
-  _condvar.notify_all();
+
+  if ( true ) {
+//    CF_DEBUG("C unique_lock lock(_mtx)");
+//    unique_lock lock(_mtx);
+    CF_DEBUG("C sctp_disconnect()");
+    sctp_disconnect();
+    CF_DEBUG("C _condvar.notify_all()");
+    _condvar.notify_all();
+  }
 
   if ( oldState != State_disconnected ) {
     Q_EMIT sctpThreadFinished();
@@ -820,16 +833,22 @@ void QLCSCTPCamera::device_disconnect()
 {
   sctp_disconnect();
 
-  unique_lock lock(_mtx);
+  //unique_lock lock(_mtx);
   if ( _sctp_thread ) {
     if ( _current_state != State_disconnect ) {
       setState(State_disconnect, "QLCSCTPCamera::device_disconnect");
       _condvar.notify_all();
     }
     if ( true ) {
-      temporary_unlock unlock(lock);
+      //temporary_unlock unlock(lock);
+      //CF_DEBUG("_mtx.unlock()");
+      //_mtx.unlock();
+      CF_DEBUG("_sctp_thread->join()");
       _sctp_thread->join();
+      //CF_DEBUG("_mtx.lock()");
+      //_mtx.lock();
     }
+    CF_DEBUG("_sctp_thread.reset()");
     _sctp_thread.reset();
   }
 

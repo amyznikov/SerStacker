@@ -45,10 +45,18 @@ QImagingCameraControlsWidget::QImagingCameraControlsWidget(QWidget * parent) :
   updateControls();
 }
 
-const QImagingCamera::sptr &QImagingCameraControlsWidget::selectedCamera() const
+const QImagingCamera::sptr & QImagingCameraControlsWidget::selectedCamera() const
 {
   return cameraSelection_ctl->selectedCamera();
 }
+
+void QImagingCameraControlsWidget::stopCamera()
+{
+  if ( cameraSelection_ctl ) {
+    cameraSelection_ctl->stopCamera();
+  }
+}
+
 
 void QImagingCameraControlsWidget::setCameraWriter(QCameraWriter * writer)
 {

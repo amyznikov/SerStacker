@@ -854,7 +854,8 @@ bool c_image_processing_pipeline::start_pipeline(int start_frame_index, int max_
 
 
   if( is_live_sequence ) {
-    _total_frames = INT_MAX;
+    _total_frames = max_input_frames < 1 ? INT_MAX :
+        max_input_frames;
   }
   else {
 

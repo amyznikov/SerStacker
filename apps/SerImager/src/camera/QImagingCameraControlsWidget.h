@@ -34,11 +34,15 @@ public:
 
   const QImagingCamera::sptr &selectedCamera() const;
 
+  void stopCamera();
+
   void setCameraWriter(QCameraWriter * writer);
   QCameraWriter * cameraWriter() const;
 
   void setFrameQualityEstimator(QFrameQualityEstimation * estimator);
   QFrameQualityEstimation * frameQualityEstimator() const;
+
+
 
   void loadSettings(const QString & prefix = "");
   void loadSettings(const QSettings & settings, const QString & prefix = "");

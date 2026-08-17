@@ -162,6 +162,11 @@ MainWindow::~MainWindow()
   if ( _updateTimerId >= 0 ) {
     killTimer(_updateTimerId);
   }
+
+  if (cameraControls_ctl ) {
+    cameraControls_ctl->stopCamera();
+  }
+
   saveState();
 }
 

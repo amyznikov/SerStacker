@@ -27,6 +27,7 @@ public:
   QCameraSelectionWidget(QWidget * parent = nullptr);
 
   const QImagingCamera::sptr & selectedCamera() const;
+  void stopCamera();
 
   void loadSettings(const QString & prefix = "");
   void loadSettings(const QSettings & settings, const QString & prefix="");

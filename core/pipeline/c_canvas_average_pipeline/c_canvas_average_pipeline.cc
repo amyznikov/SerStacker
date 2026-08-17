@@ -454,52 +454,9 @@ bool c_canvas_average_pipeline::run_pipeline()
 {
   INSTRUMENT_REGION("");
 
-//  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
-//    CF_ERROR("ERROR: start_pipeline() fails");
-//    return false;
-//  }
-
-  CF_DEBUG("Starting '%s: %s' ...",
-      csequence_name(), cname());
-
-  if ( !open_input_sequence() ) {
-    CF_ERROR("open_input_sequence() fails");
+  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
+    CF_ERROR("ERROR: start_pipeline() fails");
     return false;
-  }
-
-  _processed_frames = 0;
-  _accumulated_frames = 0;
-
-  const bool is_live_sequence =
-      _input_sequence->is_live();
-
-  if( is_live_sequence ) {
-    _total_frames = _input_options.max_input_frames < 1 ? INT_MAX :
-        _input_options.max_input_frames;
-  }
-  else {
-
-    const int start_pos =
-        std::max(_input_options.start_frame_index, 0);
-
-    const int end_pos =
-        _input_options.max_input_frames < 1 ?
-            _input_sequence->size() :
-            std::min(_input_sequence->size(),
-                _input_options.start_frame_index + _input_options.max_input_frames);
-
-    _total_frames = end_pos - start_pos;
-
-    if( _total_frames < 1 ) {
-      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
-          _total_frames, _input_sequence->size());
-      return false;
-    }
-
-    if( !_input_sequence->seek(start_pos) ) {
-      CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
-      return false;
-    }
   }
 
   set_status_msg("RUNNING ...");
@@ -802,7 +759,7 @@ bool c_canvas_average_pipeline::process_current_frame()
         }
       }
 
-      /* This will compute _image_transform parameters as it has the active pointer to _image_transform set */
+      /* This will compute _image_transform parameters as _ecch has the active pointer to _image_transform */
       _ecch.set_reference_image(reference_image, reference_mask);
       if( !_ecch.align(current_image, current_mask) ) {
         CF_ERROR("_ecch.align() fails");

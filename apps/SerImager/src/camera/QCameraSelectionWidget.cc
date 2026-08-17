@@ -162,6 +162,23 @@ QImagingCamera::sptr QCameraSelectionWidget::getSelectedCamera()
   return cameraSelection_ctl->itemData(cursel).value<QImagingCamera::sptr>();
 }
 
+
+void QCameraSelectionWidget::stopCamera()
+{
+  if( _selectedCamera ) {
+    CF_DEBUG("C _selectedCamera->disconnect()");
+
+    _selectedCamera->disconnect();
+    while (_selectedCamera->state() != QImagingCamera::State_disconnected ) {
+      CF_DEBUG("State: %d", _selectedCamera->state());
+      QThread::msleep(500);
+    }
+
+    CF_DEBUG("R _selectedCamera->disconnect()");
+  }
+
+}
+
 void QCameraSelectionWidget::onCameraSelectionCurrentIndexChanged(int index)
 {
   QImagingCamera::sptr newSelectedCamera =

@@ -28,6 +28,7 @@ namespace serimager {
 #define ICON_log              ":/serimager/icons/log.png"
 #define ICON_bayer            ":/gui/icons/bayer.png"
 #define ICON_copy             ":/gui/icons/copy.png"
+#define ICON_mask             ":/gui/icons/mask"
 
 #define ICON_measures         ":/qmeasure/icons/measure.png"
 
@@ -544,6 +545,44 @@ void MainWindow::setupMainToolbar()
   _mainToolbar->setContentsMargins(0, 0, 0, 0);
   _mainToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
   _mainToolbar->setIconSize(QSize(32, 18));
+
+  ///////////////////////////////////////////////////////////////////
+
+  _mainToolbar->addWidget(editMaskAction =
+      createToolButton(getIcon(ICON_mask), "Mask",
+          "Mask mode",
+          [this](QToolButton * tb) {
+
+            if ( is_visible(_liveDisplay) /*&& !is_visible(imageViewOptionsDlgBox)*/ ) {
+
+              QMenu menu;
+              QAction * action;
+
+              menu.addAction(createCheckableAction(QIcon(), "Transparent mask",
+                      "",
+                      _liveDisplay->transparentMask(),
+                      [this](bool checked) {
+                        _liveDisplay->setTransparentMask(checked);
+                      }));
+
+              menu.addSeparator();
+
+              for ( const auto * m = members_of<QImageViewer ::DisplayType>(); !m->name.empty(); ++m ) {
+
+                const QImageViewer ::DisplayType value = (QImageViewer ::DisplayType )m->value;
+
+                menu.addAction(createCheckableAction(QIcon(), m->name.c_str(),
+                        "",
+                        _liveDisplay->displayType() == value,
+                        [this, value](bool checked) {
+                          _liveDisplay->setDisplayType(value);
+                        }));
+
+              }
+
+              menu.exec(tb->mapToGlobal(QPoint(4, 4)));
+            }
+          }));
 
   ///////////////////////////////////////////////////////////////////
 

@@ -63,7 +63,7 @@ public:
   typedef c_image_processing_pipeline base;
   typedef std::shared_ptr<this_class> sptr;
 
-  enum DISPLAY_TYPE {
+  enum OUTPUT_DISPLAY {
     DISPLAY_DISPARITY,
     DISPLAY_QUAD,
   };
@@ -155,6 +155,7 @@ protected:
   cv::Matx34d _P[2];
   cv::Matx44d _Q;
   cv::Rect _validRoi[2];
+  //OUTPUT_DISPLAY _display = DISPLAY_DISPARITY;
 };
 
 #endif /* __c_stereo_matcher_pipeline_h__ */

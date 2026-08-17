@@ -33,7 +33,7 @@ struct c_image_processing_pipeline_input_options
 struct c_image_processing_pipeline_output_options
 {
   std::string output_directory;
-  int default_display_type = -1;
+  PIXEL_DEPTH default_display_type = PIXEL_DEPTH_NO_CHANGE;
 };
 
 class c_image_processing_pipeline
@@ -194,7 +194,7 @@ protected:
 
   cv::Mat _missing_pixel_mask;
 
-  int _display_type = 0;
+  int _display_type = -1;
 
   int _total_frames = 0;
   int _processed_frames = 0;

@@ -55,7 +55,7 @@ struct c_canvas_average_update_options
 struct c_canvas_average_output_options:
     c_image_processing_pipeline_output_options
 {
-  double display_scale = -1;
+  double display_scale = 0;
 
   int autoSaveInterval = 1000;
 

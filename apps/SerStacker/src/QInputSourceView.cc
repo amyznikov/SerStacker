@@ -509,7 +509,7 @@ void QInputSourceView::processCurrentFrame()
   else {
 
     if( _currentProcessor && !_currentProcessor->process(_currentFrame) ) {
-      CF_ERROR("currentProcessor_->process(currentFrame_) fails");
+      CF_ERROR("currentProcessor->process(currentFrame) fails");
     }
 
     const auto & viewTypes =

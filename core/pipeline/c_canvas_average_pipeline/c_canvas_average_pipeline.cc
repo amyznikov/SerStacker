@@ -246,7 +246,10 @@ const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontro
 bool c_canvas_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
 {
   INSTRUMENT_REGION("");
-  return _average.compute(display_frame, display_mask, _input_bpp > 0 ? 1 << _input_bpp : 1, -1);
+
+  const PIXEL_DEPTH ddepth = _output_options.default_display_type;
+  const double dscale = (_output_options.display_scale == 0 && _input_bpp > 0) ? (1 << _input_bpp) : 1;
+  return _average.compute(display_frame, display_mask, dscale, ddepth);
 }
 
 bool c_canvas_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const

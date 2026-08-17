@@ -1953,8 +1953,8 @@ void MainWindow::setupInputSequenceView()
   toolbar->addWidget(new QToolbarSpacer());
 
   toolbar->addWidget(editMaskAction =
-      createCheckableToolButtonWithContextMenu(getIcon(ICON_mask), "tb1",
-          "test",
+      createCheckableToolButtonWithContextMenu(getIcon(ICON_mask), "Mask",
+          "Mask mode",
           false,
           [this](QToolButton * tb) {
             showImageViewOptions(is_visible(imageView) && tb->isChecked());

@@ -97,6 +97,9 @@ protected:
   QMenu _displayOptionsMenu;
 
   QToolBar * _mainToolbar = nullptr;
+
+  QToolButton * editMaskAction = nullptr;
+
   QMenu * _menuViewShapes = nullptr;
 
   QAction * _showRectShapeAction = nullptr;

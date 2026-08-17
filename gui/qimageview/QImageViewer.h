@@ -177,7 +177,7 @@ protected:
   QImage _qimage;
 
 
-  bool _transparentMask = true;
+  bool _transparentMask = false;
   bool _enableEditMask = false;
   bool _keepMaskOnMaskEditMode = true;
   int _editMaskPenRadius = 15;

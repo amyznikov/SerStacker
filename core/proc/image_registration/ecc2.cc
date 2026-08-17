@@ -2224,7 +2224,7 @@ bool c_eccflow::convert_input_images(cv::InputArray src, cv::InputArray src_mask
 
   src.getMat().convertTo(dst, dst.depth());
 
-  if ( src_mask.empty() || cv::countNonZero(src_mask) == src_mask.size().area() ) {
+  if ( src_mask.empty() /*|| cv::countNonZero(src_mask) == src_mask.size().area() */) {
     dst_mask.release();
   }
   else {

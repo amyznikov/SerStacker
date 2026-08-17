@@ -93,6 +93,8 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
   }
 
   if( (section = SERIALIZE_GROUP(settings, save, "output_options")) ) {
+    SERIALIZE_OPTION(section, save, _output_options, autoSaveInterval);
+
     SERIALIZE_OPTION(section, save, _output_options, default_display_type);
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
     SERIALIZE_OPTION(section, save, _output_options, output_file_name);
@@ -233,6 +235,7 @@ const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontro
     ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "Output options", "");
+      ctlbind(ctls, "autoSaveInterval:", CTL_CONTEXT(ctx, _output_options.autoSaveInterval), "Save accumulator after processing each Interval frames");
       ctlbind(ctls, ctx(&this_class::_output_options));
     ctlbind_end_group(ctls);
   }
@@ -451,9 +454,52 @@ bool c_canvas_average_pipeline::run_pipeline()
 {
   INSTRUMENT_REGION("");
 
-  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
-    CF_ERROR("ERROR: start_pipeline() fails");
+//  if ( !start_pipeline(_input_options.start_frame_index, _input_options.max_input_frames) ) {
+//    CF_ERROR("ERROR: start_pipeline() fails");
+//    return false;
+//  }
+
+  CF_DEBUG("Starting '%s: %s' ...",
+      csequence_name(), cname());
+
+  if ( !open_input_sequence() ) {
+    CF_ERROR("open_input_sequence() fails");
     return false;
+  }
+
+  _processed_frames = 0;
+  _accumulated_frames = 0;
+
+  const bool is_live_sequence =
+      _input_sequence->is_live();
+
+  if( is_live_sequence ) {
+    _total_frames = _input_options.max_input_frames < 1 ? INT_MAX :
+        _input_options.max_input_frames;
+  }
+  else {
+
+    const int start_pos =
+        std::max(_input_options.start_frame_index, 0);
+
+    const int end_pos =
+        _input_options.max_input_frames < 1 ?
+            _input_sequence->size() :
+            std::min(_input_sequence->size(),
+                _input_options.start_frame_index + _input_options.max_input_frames);
+
+    _total_frames = end_pos - start_pos;
+
+    if( _total_frames < 1 ) {
+      CF_ERROR("INPUT ERROR: Number of frames to process = %d is less than 1. input_sequence_->size()=%d",
+          _total_frames, _input_sequence->size());
+      return false;
+    }
+
+    if( !_input_sequence->seek(start_pos) ) {
+      CF_ERROR("ERROR: input_sequence_->seek(start_pos=%d) fails", start_pos);
+      return false;
+    }
   }
 
   set_status_msg("RUNNING ...");
@@ -505,22 +551,14 @@ bool c_canvas_average_pipeline::run_pipeline()
       fOK = false;
       break;
     }
+
+    if( _output_options.autoSaveInterval > 0 &&
+        ((_processed_frames + 1) % _output_options.autoSaveInterval) == 0 ) {
+      save_averaged_image();
+    }
   }
 
-  if ( _average.accumulated_frames() > 0 ) {
-    if ( !_average.compute(_current_image, _current_mask) ) {
-      CF_ERROR("_average.compute() fails for output image");
-    }
-    else {
-      const std::string output_file_name = generate_output_file_name();
-      if ( save_image(_current_image, _current_mask, output_file_name) ) {
-        CF_DEBUG("Saved %s", output_file_name.c_str());
-      }
-      else {
-        CF_ERROR("save_image() fails for %s", output_file_name.c_str());
-      }
-    }
-  }
+  save_averaged_image();
 
   return fOK;
 }
@@ -692,13 +730,15 @@ bool c_canvas_average_pipeline::process_current_frame()
 
       const cv::Size frameSize(current_image.cols + 8, current_image.rows + 8);
       cv::Mat frame = cv::Mat::zeros(frameSize, reference_image.type());
-      cv::Mat mask;// =  cv::Mat::zeros(frameSize, CV_8UC1);
+      cv::Mat mask =  reference_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
 
       const cv::Size copySize(std::min(frameSize.width, bbox.width), std::min(frameSize.height, bbox.height));
-      const cv::Rect copyBox(0,0,copySize.width, copySize.height);
+      const cv::Rect copyBox(0,0, copySize.width, copySize.height);
 
       reference_image(copyBox).copyTo(frame(copyBox));
-      //reference_mask(copyBox).copyTo(mask(copyBox));
+      if ( !reference_mask.empty() ) {
+        reference_mask(copyBox).copyTo(mask(copyBox));
+      }
 
       if ( !write_reference_video(frame, mask)) {
         CF_ERROR("write_reference_video() fails");
@@ -772,7 +812,7 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     if( _registration_options.enable_eccflow_registration ) {
       INSTRUMENT_REGION("eccflow_registration");
-      // FIXME: This ugly stiff does not yet work as expected, just start the experimentation
+      // FIXME: This ugly stiff does not work yet as expected, just start the experimentation
 
       // create temporary rmap of reference image size for optflow computation
 
@@ -936,6 +976,26 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
 
     write_weights_video(dst, cv::noArray());
   }
+}
+
+bool c_canvas_average_pipeline::save_averaged_image()
+{
+  if ( _average.accumulated_frames() > 0 ) {
+    if ( !_average.compute(_current_image, _current_mask) ) {
+      CF_ERROR("_average.compute() fails for output image");
+    }
+    else {
+      const std::string output_file_name = generate_output_file_name();
+      if ( save_image(_current_image, _current_mask, output_file_name) ) {
+        CF_DEBUG("Saved %s", output_file_name.c_str());
+      }
+      else {
+        CF_ERROR("save_image() fails for %s", output_file_name.c_str());
+      }
+    }
+  }
+
+  return true;
 }
 
 

@@ -57,6 +57,8 @@ struct c_canvas_average_output_options:
 {
   double display_scale = -1;
 
+  int autoSaveInterval = 1000;
+
   bool save_progress_video = false;
   bool save_input_video = false;
   bool save_reference_video = false;
@@ -100,6 +102,7 @@ protected:
   bool write_progress_video(cv::InputArray image, cv::InputArray mask);
   bool write_reference_video(cv::InputArray image, cv::InputArray mask);
   bool write_weights_video(cv::InputArray image, cv::InputArray mask);
+  bool save_averaged_image();
 
 protected:
   c_canvas_average_input_options _input_options;

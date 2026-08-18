@@ -890,38 +890,40 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
     return lut_y * lut_x;
   };
 
-  static const auto pupscale = [] (cv::Mat & image, cv::Size dstSize) {
-    const cv::Size inputSize = image.size();
-
-    if( inputSize != dstSize ) {
-
-      std::vector<cv::Size> sizes;
-
-      sizes.emplace_back(dstSize);
-
-      while (42) {
-        const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
-        if( nextSize == inputSize ) {
-          break;
-        }
-        if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-          CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
-              nextSize.width, nextSize.height,
-              inputSize.width, inputSize.height);
-          return false;
-        }
-        sizes.emplace_back(nextSize);
-      }
-
-      for( int i = sizes.size() - 1; i >= 0; --i ) {
-        cv::pyrUp(image, image, sizes[i]);
-      }
-    }
-
-    return true;
-  };
+//  static const auto pupscale = [] (cv::Mat & image, cv::Size dstSize) {
+//    const cv::Size inputSize = image.size();
+//
+//    if( inputSize != dstSize ) {
+//
+//      std::vector<cv::Size> sizes;
+//
+//      sizes.emplace_back(dstSize);
+//
+//      while (42) {
+//        const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
+//        if( nextSize == inputSize ) {
+//          break;
+//        }
+//        if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
+//          CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
+//              nextSize.width, nextSize.height,
+//              inputSize.width, inputSize.height);
+//          return false;
+//        }
+//        sizes.emplace_back(nextSize);
+//      }
+//
+//      for( int i = sizes.size() - 1; i >= 0; --i ) {
+//        cv::pyrUp(image, image, sizes[i]);
+//      }
+//    }
+//
+//    return true;
+//  };
 
   if ( _average_options.sharpness_measure.kradius > 0 ) {
+
+    const cv::Size src_size = src.size();
 
     compute_local_variance_map(src, _average_options.sharpness_measure, dst, false);
     if ( dst.size() != _apodizationWindow.size() ) {
@@ -929,7 +931,7 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
     }
 
     cv::multiply(dst, _apodizationWindow, dst);
-    pupscale(dst, src.size());
+    upscale_local_variance_map(dst, src_size);
     if ( !srcmask.empty() ) {
       dst.setTo(0, ~srcmask);
     }

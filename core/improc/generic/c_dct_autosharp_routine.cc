@@ -7,6 +7,7 @@
 
 #include "c_dct_autosharp_routine.h"
 #include <core/proc/fft.h>
+#include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
 #include <core/io/c_stdio_file.h>
@@ -416,22 +417,23 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
     const double maxNormalizedR = std::sqrt(2.0);
     const double scaleX = 1.0 / size.width;
     const double scaleY = 1.0 / size.height;
+    const float * corrections = correction[0];
 
-    cv::parallel_for_(cv::Range(0, size.height),
-        [=, &FILTER](const cv::Range & range) {
-          for (int y = range.start; y < range.end; ++y) {
+    parallel_for(0, size.height,
+        [=, &FILTER](const auto & range) {
+          for (int y = rbegin(range); y < rend(range); ++y) {
             float * __restrict dstp = FILTER[y];
 
-            const double dy = y * scaleY;
-            const double dy2 = dy * dy;
+            const float dy = y * scaleY;
+            const float dy2 = dy * dy;
 
             for (int x = 0; x < size.width; ++x) {
-              const double dx = x * scaleX;
-              const double dx2 = dx * dx;
-              const double r = std::sqrt(dx2 + dy2);
-              const double continuousBinIdx = r * numBins / maxNormalizedR;
+              const float dx = x * scaleX;
+              const float dx2 = dx * dx;
+              const float r = std::sqrt(dx2 + dy2);
+              const float continuousBinIdx = r * numBins / maxNormalizedR;
               const int binIndex = std::clamp((int)(continuousBinIdx), 0, N - 1);
-              dstp[x] = correction(0, binIndex);
+              dstp[x] = corrections[binIndex];
             }
           }
         });

@@ -25,6 +25,7 @@ public:
 
 protected:
   c_local_variance_map_options _opts;
+  bool _fullResoltion = true;
 };
 
 #endif /* __c_local_variance_map_routine_h__ */

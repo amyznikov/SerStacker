@@ -220,6 +220,12 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   return Q;
 }
 
+
+bool upscale_local_variance_map(cv::Mat & map, const cv::Size & dstSize)
+{
+  return pupscale(map, dstSize);
+}
+
 bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray outputMap,
     const c_local_variance_map_options & opts)
 {

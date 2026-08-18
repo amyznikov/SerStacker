@@ -79,4 +79,6 @@ public: // Made public to simplify control bindings
 double compute_local_variance_map(cv::InputArray _src, const c_local_variance_map_options & opts,
     cv::OutputArray outputMap = cv::noArray(), bool returnFullResoltionMap = true);
 
+bool upscale_local_variance_map(cv::Mat & map, const cv::Size & dstSize);
+
 #endif /* __c_local_variance_sharpness_measure_h__ */

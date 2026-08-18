@@ -11,6 +11,7 @@ bool c_local_variance_map_routine::serialize(c_config_setting settings, bool sav
 {
   if( base::serialize(settings, save) ) {
     serialize_local_variance_map_options(settings, save, _opts);
+    SERIALIZE_OPTION(settings, save, *this, _fullResoltion);
     return true;
   }
   return false;
@@ -19,6 +20,7 @@ bool c_local_variance_map_routine::serialize(c_config_setting settings, bool sav
 void c_local_variance_map_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, ctx(&this_class::_opts));
+  ctlbind(ctls, "fullResoltion", ctx(&this_class::_fullResoltion), "Set checked to upscale the map to original resolution");
   ctlbind_menu_button(ctls, "Options...", ctx);
   ctlbind_item(ctls, "Copy c_local_variance_map to clipboard", ctx, [](this_class * _ths) {
     return ctlbind_copy_config_to_clipboard("c_local_variance_map", _ths->_opts), false;
@@ -30,8 +32,20 @@ void c_local_variance_map_routine::getcontrols(c_control_list & ctls, const ctlb
 
 bool c_local_variance_map_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  c_local_variance_sharpness_measure m(_opts);
-  return m.create_map(image, image);
+  const cv::Size src_size = image.size();
+  if( compute_local_variance_map(image, _opts, image, _fullResoltion) ) {
+
+    if( _fullResoltion ) {
+      upscale_local_variance_map(image.getMatRef(), src_size);
+    }
+    else if( !mask.empty() ) {
+      cv::resize(mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 

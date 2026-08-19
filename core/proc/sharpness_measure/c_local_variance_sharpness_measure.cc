@@ -12,7 +12,21 @@
 
 namespace {
 
-static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
+static cv::Size dscaleSize(cv::Size srcSize, int level)
+{
+  for( int l = 0; l < level; ++l ) {
+    const cv::Size nextSize = cv::Size((srcSize.width + 1) / 2, (srcSize.height + 1) / 2);
+    if( std::min(nextSize.width, nextSize.height) < 4 ) {
+      break;
+    }
+    srcSize = nextSize;
+  }
+  return srcSize;
+}
+
+
+static bool pdownscale(cv::InputArray src, cv::Mat & dst, int level,
+    int border_mode = cv::BORDER_DEFAULT)
 {
   if( std::min(src.cols(), src.rows()) < 4 ) {
     src.copyTo(dst);
@@ -158,6 +172,18 @@ static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, dou
 
 } // namespace
 
+bool upscale_local_variance_map(cv::Mat & map, const cv::Size & dstSize)
+{
+  INSTRUMENT_REGION("");
+
+  //return pupscale(map, dstSize);
+  if ( map.size() != dstSize ) {
+    cv::resize(map, map, dstSize, 0, 0, cv::INTER_LINEAR);
+  }
+  return true;
+}
+
+
 // Return frame quality metric to allow compare consecutive frames for live stacking
 // MAP(x,y) = G(x,y) ^ n / sum(G)
 // Q = sum(G(x,y) ^ n) / sum(G)
@@ -206,13 +232,15 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   // Add some minimal feasible weight to the map for totally flat areas
   const double Q = compute_sharpness_map(G, M, depthScale, W);
   if( opts.uscale > 0 ) {
-    pdownscale(M, M, opts.uscale);
+    // pdownscale(M, M, opts.uscale);
+    cv::resize(M, M, dscaleSize(M.size(), opts.uscale), 0, 0, cv::INTER_AREA);
   }
 
   cv::add(M, 0.05 * Q, M);
 
   if ( returnFullResoltionMap && G.size() != image.size() ) {
-    pupscale(M, image.size());
+    // pupscale(M, image.size());
+    upscale_local_variance_map(M, image.size());
   }
 
   outputMap.move(M);
@@ -220,11 +248,6 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   return Q;
 }
 
-
-bool upscale_local_variance_map(cv::Mat & map, const cv::Size & dstSize)
-{
-  return pupscale(map, dstSize);
-}
 
 bool c_local_variance_sharpness_measure::create_map(cv::InputArray image, cv::OutputArray outputMap,
     const c_local_variance_map_options & opts)

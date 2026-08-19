@@ -38,7 +38,6 @@ protected:
   cv::BorderTypes _borderMode = cv::BORDER_CONSTANT;
   cv::Scalar _borderValue;
   ResizeMode _resizeMode = ResizeModeCropVisible;
-
 };
 
 #endif /* __c_lunar_birdview_routine_h__ */

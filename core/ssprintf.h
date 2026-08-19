@@ -595,34 +595,34 @@ inline bool fromString(const std::string & s, const char fmt[], cv::Point_<T> * 
   return sscanf(s.c_str(), fmt, &v->x, &v->y) == 2 ;
 }
 inline bool fromString(const std::string & s, cv::Point_<int8_t> * v) {
-  return fromString(s, "%" SCNd8 " %*[;:] " "%" SCNd8, v);
+  return fromString(s, "%" SCNd8 " %*[;:,] " "%" SCNd8, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<uint8_t> * v) {
-  return fromString(s, "%" SCNu8 " %*[;:] " "%" SCNu8, v);
+  return fromString(s, "%" SCNu8 " %*[;:,] " "%" SCNu8, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<int16_t> * v) {
-  return fromString(s, "%" SCNd16 " %*[;:] " "%" SCNd16, v);
+  return fromString(s, "%" SCNd16 " %*[;:,] " "%" SCNd16, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<uint16_t> * v) {
-  return fromString(s, "%" SCNu16 " %*[;:] " "%" SCNu16, v);
+  return fromString(s, "%" SCNu16 " %*[;:,] " "%" SCNu16, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<int32_t> * v) {
-  return fromString(s, "%" SCNd32 " %*[;:] " "%" SCNd32, v);
+  return fromString(s, "%" SCNd32 " %*[;:,] " "%" SCNd32, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<uint32_t> * v) {
-  return fromString(s, "%" SCNu32 " %*[;:] " "%" SCNu32, v);
+  return fromString(s, "%" SCNu32 " %*[;:,] " "%" SCNu32, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<int64_t> * v) {
-  return fromString(s, "%" SCNd64 " %*[;:] " "%" SCNd64, v);
+  return fromString(s, "%" SCNd64 " %*[;:,] " "%" SCNd64, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<uint64_t> * v) {
-  return fromString(s, "%" SCNu64 " %*[;:] " "%" SCNu64, v);
+  return fromString(s, "%" SCNu64 " %*[;:,] " "%" SCNu64, v);
 }
 inline bool fromString(const std::string & s, cv::Point_<float> * v) {
-  return fromString(s, "%f" " %*[;:] " "%f", v);
+  return fromString(s, "%f" " %*[;:,] " "%f", v);
 }
 inline bool fromString(const std::string & s, cv::Point_<double> * v) {
-  return fromString(s, "%lf" " %*[;:] " "%lf", v);
+  return fromString(s, "%lf" " %*[;:,] " "%lf", v);
 }
 template<class T>
 inline std::string toString(const cv::Point_<T> & v) {
@@ -685,34 +685,34 @@ inline bool fromString(const std::string & s, const char fmt[], cv::Point3_<T> *
   return sscanf(s.c_str(),  fmt, &v->x, &v->y, &v->z) ==  3;
 }
 inline bool fromString(const std::string & s, cv::Point3_<int8_t> * v) {
-  return fromString(s, "%" SCNd8 " %*[;:] " "%" SCNd8 " %*[;:] " "%" SCNd8, v);
+  return fromString(s, "%" SCNd8 " %*[;:,] " "%" SCNd8 " %*[;:,] " "%" SCNd8, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<uint8_t> * v) {
-  return fromString(s, "%" SCNu8 " %*[;:] " "%" SCNu8 " %*[;:] " "%" SCNu8, v);
+  return fromString(s, "%" SCNu8 " %*[;:,] " "%" SCNu8 " %*[;:,] " "%" SCNu8, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<int16_t> * v) {
-  return fromString(s, "%" SCNd16 " %*[;:] " "%" SCNd16 " %*[;:] " "%" SCNd16, v);
+  return fromString(s, "%" SCNd16 " %*[;:,] " "%" SCNd16 " %*[;:,] " "%" SCNd16, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<uint16_t> * v) {
-  return fromString(s, "%" SCNu16 " %*[;:] " "%" SCNu16 " %*[;:] " "%" SCNu16, v);
+  return fromString(s, "%" SCNu16 " %*[;:,] " "%" SCNu16 " %*[;:,] " "%" SCNu16, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<int32_t> * v) {
-  return fromString(s, "%" SCNd32 " %*[;:] " "%" SCNd32 " %*[;:] " "%" SCNd32, v);
+  return fromString(s, "%" SCNd32 " %*[;:,] " "%" SCNd32 " %*[;:,] " "%" SCNd32, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<uint32_t> * v) {
-  return fromString(s, "%" SCNu32 " %*[;:] " "%" SCNu32 " %*[;:] " "%" SCNu32, v);
+  return fromString(s, "%" SCNu32 " %*[;:,] " "%" SCNu32 " %*[;:,] " "%" SCNu32, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<int64_t> * v) {
-  return fromString(s, "%" SCNd64 " %*[;:] " "%" SCNd64 " %*[;:] " "%" SCNd64, v);
+  return fromString(s, "%" SCNd64 " %*[;:,] " "%" SCNd64 " %*[;:,] " "%" SCNd64, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<uint64_t> * v) {
-  return fromString(s, "%" SCNu64 " %*[;:] " "%" SCNu64 " %*[;:] " "%" SCNu64, v);
+  return fromString(s, "%" SCNu64 " %*[;:,] " "%" SCNu64 " %*[;:,] " "%" SCNu64, v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<float> * v) {
-  return fromString(s, "%f" " %*[;:] " "%f" " %*[;:] " "%f", v);
+  return fromString(s, "%f" " %*[;:,] " "%f" " %*[;:,] " "%f", v);
 }
 inline bool fromString(const std::string & s, cv::Point3_<double> * v) {
-  return fromString(s, "%lf" " %*[;:] " "%lf" " %*[;:] " "%lf", v);
+  return fromString(s, "%lf" " %*[;:,] " "%lf" " %*[;:,] " "%lf", v);
 }
 template<class T>
 inline std::string toString(const cv::Point3_<T> & v) {

@@ -736,6 +736,16 @@ void QGraphicsLineShape::populateContextMenu(QMenu &menu, const QPoint &viewpos)
       }));
 
   menu.addSeparator();
+  if( true ) {
+    const QLineF l = sceneLine();
+    menu.addAction(qsprintf("Copy start: %g;%g", l.p1().x(), l.p1().y()), [p = l.p1()]() {
+      QApplication::clipboard()->setText(qsprintf("%g;%g", p.x(), p.y()));
+    });
+    menu.addAction(qsprintf("Copy end: %g;%g", l.p2().x(), l.p2().y()), [p = l.p2()]() {
+      QApplication::clipboard()->setText(qsprintf("%g;%g", p.x(), p.y()));
+    });
+    menu.addSeparator();
+  }
 
   Base::populateContextMenu(menu, viewpos);
 }

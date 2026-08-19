@@ -107,15 +107,15 @@ inline bool fromString(const QString & s, float * v) {
 }
 
 inline bool fromString(const QString & s, float * x, float * y) {
-  return sscanf(s.toUtf8().data(), "%f;%f", x, y) == 2;
+  return sscanf(s.toUtf8().data(), "%f %*[ ;,] %f", x, y) == 2;
 }
 
 inline bool fromString(const QString & s, float * x, float * y, float * z) {
-  return sscanf(s.toUtf8().data(), "%f;%f;%f", x, y, z) == 3;
+  return sscanf(s.toUtf8().data(), "%f %*[ ;,] %f %*[ ;,] %f", x, y, z) == 3;
 }
 
 inline bool fromString(const QString & s, float * x, float * y, float * z, float * w) {
-  return sscanf(s.toUtf8().data(), "%f;%f;%f;%f", x, y, z, w) == 4;
+  return sscanf(s.toUtf8().data(), "%f %*[ ;,] %f %*[ ;,] %f %*[ ;,] %f", x, y, z, w) == 4;
 }
 
 
@@ -126,15 +126,15 @@ inline bool fromString(const QString & s, double * v) {
 }
 
 inline bool fromString(const QString & s, double * x, double * y) {
-  return sscanf(s.toUtf8().data(), "%lf;%lf", x, y) == 2;
+  return sscanf(s.toUtf8().data(), "%lf %*[ ;,] %lf", x, y) == 2;
 }
 
 inline bool fromString(const QString & s, double * x, double * y, double * z) {
-  return sscanf(s.toUtf8().data(), "%lf;%lf;%lf", x, y, z) == 3;
+  return sscanf(s.toUtf8().data(), "%lf %*[ ;,] %lf %*[ ;,] %lf", x, y, z) == 3;
 }
 
 inline bool fromString(const QString & s, double * x, double * y, double * z, double * w) {
-  return sscanf(s.toUtf8().data(), "%lf;%lf;%lf;%lf", x, y, z, w) == 4;
+  return sscanf(s.toUtf8().data(), "%lf %*[ ;,] %lf %*[ ;,] %lf %*[ ;,] %lf", x, y, z, w) == 4;
 }
 
 
@@ -151,31 +151,31 @@ inline bool fromString(const QString & s, uint * v) {
 
 
 inline bool fromString(const QString & s, int * x, int * y) {
-  return sscanf(s.toUtf8().data(), "%d;%d", x, y) == 2;
+  return sscanf(s.toUtf8().data(), "%d %*[ ;,] %d", x, y) == 2;
 }
 
 inline bool fromString(const QString & s, uint * x, uint * y) {
-  return sscanf(s.toUtf8().data(), "%u;%u", x, y) == 2;
+  return sscanf(s.toUtf8().data(), "%u %*[ ;,] %u", x, y) == 2;
 }
 
 
 
 inline bool fromString(const QString & s, int * x, int * y, int * z) {
-  return sscanf(s.toUtf8().data(), "%d;%d;%d", x, y, z) == 3;
+  return sscanf(s.toUtf8().data(), "%d %*[ ;,] %d %*[ ;,] %d", x, y, z) == 3;
 }
 
 inline bool fromString(const QString & s, uint * x, uint * y, uint * z) {
-  return sscanf(s.toUtf8().data(), "%u;%u;%u", x, y, z) == 3;
+  return sscanf(s.toUtf8().data(), "%u %*[ ;,] %u %*[ ;,] %u", x, y, z) == 3;
 }
 
 
 
 inline bool fromString(const QString & s, int * x, int * y, int * z, int * w) {
-  return sscanf(s.toUtf8().data(), "%d;%d;%d;%d", x, y, z, w) == 4;
+  return sscanf(s.toUtf8().data(), "%d %*[ ;,] %d %*[ ;,] %d %*[ ;,] %d", x, y, z, w) == 4;
 }
 
 inline bool fromString(const QString & s, uint * x, uint * y, uint * z, uint * w) {
-  return sscanf(s.toUtf8().data(), "%u;%u;%u;%u", x, y, z, w) == 4;
+  return sscanf(s.toUtf8().data(), "%u %*[ ;,] %u %*[ ;,] %u %*[ ;,] %u", x, y, z, w) == 4;
 }
 
 
@@ -192,20 +192,18 @@ inline QString toString(const cv::Point_<T> &  v) {
 
 inline bool fromString(const QString & s, cv::Point2i * v) {
   cv::Point2i vv;
-  return sscanf(s.toUtf8().data(), "%d;%d", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%d %*[;:,] %d", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
 }
 
 inline bool fromString(const QString & s, cv::Point2f * v) {
   cv::Point2f vv;
-  return sscanf(s.toUtf8().data(), "%f;%f", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%f %*[;:,] %f", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
 }
 
 inline bool fromString(const QString & s, cv::Point2d * v) {
   cv::Point2d vv;
-  return sscanf(s.toUtf8().data(), "%lf;%lf", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%lf %*[;:,] %lf", &vv.x, &vv.y) == 2 ? *v = vv, true : false;
 }
-
-
 
 template<class T>
 inline QString toString(const cv::Point3_<T> &  v) {
@@ -213,15 +211,15 @@ inline QString toString(const cv::Point3_<T> &  v) {
 }
 inline bool fromString(const QString & s, cv::Point3i * v) {
   cv::Point3i vv;
-  return sscanf(s.toUtf8().data(), "%d;%d;%d", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%d %*[;:,] %d %*[;:,] %d", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
 }
 inline bool fromString(const QString & s, cv::Point3f * v) {
   cv::Point3f vv;
-  return sscanf(s.toUtf8().data(), "%f;%f;%f", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%f %*[;:,] %f %*[;:,] %f", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
 }
 inline bool fromString(const QString & s, cv::Point3d * v) {
   cv::Point3d vv;
-  return sscanf(s.toUtf8().data(), "%lf;%lf;%lf", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%lf %*[;:,] %lf %*[;:,] %lf", &vv.x, &vv.y, &vv.z) == 3 ? *v = vv, true : false;
 }
 
 
@@ -232,22 +230,22 @@ inline QString toString(const cv::Size_<T> &  v) {
 
 inline bool fromString(const QString & s, cv::Size_<int> * v) {
   cv::Size_<int> vv;
-  return sscanf(s.toUtf8().data(), "%d%*[ xX:;,]%d", &vv.width, &vv.height) == 2 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%d %*[ xX:;,] %d", &vv.width, &vv.height) == 2 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & s, cv::Size_<int64> * v) {
   cv::Size_<int64> vv;
-  return sscanf(s.toUtf8().data(), "%" SCNd64 "%*[ xX:;,]%" SCNd64, &vv.width, &vv.height) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%" SCNd64 " %*[ xX:;,] %" SCNd64, &vv.width, &vv.height) == 2 ? *v = vv, true : false;
 }
 
 inline bool fromString(const QString & s, cv::Size_<float> * v) {
   cv::Size_<float> vv;
-  return sscanf(s.toUtf8().data(), "%f%*[ xX:;,]%f", &vv.width, &vv.height) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%f %*[ xX:;,] %f", &vv.width, &vv.height) == 2 ? *v = vv, true : false;
 }
 
 inline bool fromString(const QString & s, cv::Size_<double> * v) {
   cv::Size_<double> vv;
-  return sscanf(s.toUtf8().data(), "%lf%*[ xX:;,]%lf", &vv.width, &vv.height) == 2 ? *v = vv, true : false;
+  return sscanf(s.toUtf8().data(), "%lf %*[ xX:;,] %lf", &vv.width, &vv.height) == 2 ? *v = vv, true : false;
 }
 
 
@@ -263,33 +261,33 @@ inline QString toString(const cv::Vec<T, 3> &  v) {
 
 inline bool fromString(const QString & s, cv::Vec<int,2> * v) {
   cv::Vec<int,2> vv;
-  return sscanf(s.toUtf8().data(), "%d%*[ :;]%d", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%d %*[ :;,] %d", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & s, cv::Vec<int,3> * v) {
   cv::Vec<int,3> vv;
-  return sscanf(s.toUtf8().data(), "%d%*[ :;]%d%*[ :;]%d", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%d %*[ :;,]%d %*[ :;,] %d", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & s, cv::Vec<float,2> * v) {
   cv::Vec<float,2> vv;
-  return sscanf(s.toUtf8().data(), "%f%*[ :;]%f", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%f %*[ :;,] %f", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & s, cv::Vec<float,3> * v) {
   cv::Vec<float,3> vv;
-  return sscanf(s.toUtf8().data(), "%f%*[ :;]%f%*[ :;]%f", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%f %*[ :;,] %f %*[ :;,] %f", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
 }
 
 
 inline bool fromString(const QString & s, cv::Vec<double,2> * v) {
   cv::Vec<double,2> vv;
-  return sscanf(s.toUtf8().data(), "%lf%*[ :;]%lf", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%lf %*[ :;] %lf", &vv[0], &vv[1]) == 2 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & s, cv::Vec<double,3> * v) {
   cv::Vec<double,3> vv;
-  return sscanf(s.toUtf8().data(), "%lf%*[ :;]%lf%*[ :;]%lf", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
+  return sscanf(s.toUtf8().data(), "%lf %*[ :;,] %lf %*[ :;,] %lf", &vv[0], &vv[1], &vv[2]) == 3 ? *v = vv, true: false;
 }
 
 inline bool fromString(const QString & text, cv::Scalar * v)
@@ -297,7 +295,7 @@ inline bool fromString(const QString & text, cv::Scalar * v)
   const QByteArray a = text.toUtf8().data();
   const char * s = a.data();
 
-  const int n = sscanf(s, "%lf[ :;]%lf[ :;]%lf[ :;]%lf[ :;]",
+  const int n = sscanf(s, "%lf [ :;,] %lf [ :;,] %lf[ :;,] %lf[ :;,]",
       &v->val[0], &v->val[1], &v->val[2], &v->val[3]);
 
   return n > 0;

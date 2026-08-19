@@ -16,18 +16,19 @@ class c_lunar_birdview3_routine :
 {
 public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_lunar_birdview3_routine,
-      "lunar_birdview3", "birdview transform to moon closeup image");
+      "lunar_birdview3", "BirdView transform for Lunar closeup using 3 reference points.\n"
+          "Ref pts at https://quickmap.lroc.im-ldi.com");
 
   enum MapProjection {
     MapOrthographic,   // True "Birdview" (top view), maintains parallelism of rays
     MapStereographic   // Stereographic projection (preserves the angles and shape of craters)
   };
 
-  enum ResizeMode {
-    ResizeModeKeep,
-    ResizeModeAdjust,
-    ResizeModeCropVisible,
-  };
+//  enum ResizeMode {
+//    ResizeModeKeep,
+//    ResizeModeAdjust,
+//    ResizeModeCropVisible,
+//  };
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
@@ -35,11 +36,11 @@ public:
 
 protected:
   cv::Point2d rpx0, rpx1, rpx2; // 3 reference points in pixel coordinates
-  cv::Point2d rse0, rse1, rse2; // 3 reference points in selenographic coordinates (lon,lat) in [deg]
-  double _l = 0;             // Libration in longitude [deg]
+  cv::Point2d rse0, rse1, rse2; // 3 reference points in selenographic coordinates (lat,lon) in [deg]
   double _b = 0;             // Libration in latitude [deg]
+  double _l = 0;             // Libration in longitude [deg]
   MapProjection _projection = MapStereographic;
-  cv::InterpolationFlags _interpolation = cv::INTER_LINEAR;
+  cv::InterpolationFlags _interpolation = cv::INTER_LANCZOS4;
   cv::BorderTypes _borderMode = cv::BORDER_CONSTANT;
   cv::Scalar _borderValue;
 };

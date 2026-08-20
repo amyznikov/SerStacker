@@ -6,13 +6,13 @@
  */
 
 #include "fft.h"
-#include <tbb/tbb.h>
+#include <core/proc/run-loop.h>
 #include <core/debug.h>
 
-static inline double hyp(double x, double y)
-{
-  return sqrt(x * x + y * y);
-}
+//static inline double hyp(double x, double y)
+//{
+//  return sqrt(x * x + y * y);
+//}
 
 cv::Size fftGetOptimalSize(const cv::Size & srcSize, cv::Size psfSize, cv::Rect * roirc, bool forceEvenSize)
 {
@@ -304,16 +304,15 @@ bool fftSpectrumPower(cv::InputArray _src, cv::OutputArray _dst)
   const cv::Size size = _src.size();
   cv::Mat1f dst(size);
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [&, size](const auto & range) {
-        for ( int y = range.start; y < range.end; ++y ) {
-          const float * srcp = (const float * )src[y];
-          float * __restrict dstp = dst[y];
-          for ( int x = 0; x < size.width; ++x, srcp += 2 ) {
-            * dstp ++ = srcp[0] * srcp[0] + srcp[1] * srcp[1];
-          }
-        }
-      });
+  parallel_for(0, size.height, [&, size](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * srcp = (const float * )src[y];
+      float * __restrict dstp = dst[y];
+      for ( int x = 0; x < size.width; ++x, srcp += 2 ) {
+        * dstp ++ = srcp[0] * srcp[0] + srcp[1] * srcp[1];
+      }
+    }
+  });
 
   _dst.move(dst);
 
@@ -364,12 +363,11 @@ bool fftSpectrumPhase(cv::InputArray _src, cv::OutputArray _dst )
     dst = tmp;
   }
 
-  tbb::parallel_for(0, src.rows,
-      [&src, &dst](int y) {
-        for ( int x = 0; x < src.cols; ++x ) {
-          dst[y][x] = std::atan2(src[y][x][1], src[y][x][0]);
-        }
-      });
+  parallel_loop(0, src.rows, [&src, &dst](int y) {
+    for ( int x = 0; x < src.cols; ++x ) {
+      dst[y][x] = std::atan2(src[y][x][1], src[y][x][0]);
+    }
+  });
 
   if ( !tmp.empty() ) {
     _dst.move(tmp);
@@ -396,13 +394,12 @@ bool fftSpectrumToPolar(const cv::Mat & src, cv::Mat & magnitude, cv::Mat & phas
   phase.create(src.size(), CV_32F);
   cv::Mat1f cphase = phase;
 
-  tbb::parallel_for(0, src.rows,
-      [&]( int y) {
-        for ( int x = 0; x < csrc.cols; ++x ) {
-          cmag[y][x] = sqrt(csrc[y][x][0]*csrc[y][x][0] + csrc[y][x][1]*csrc[y][x][1] );
-          cphase[y][x] = atan2(csrc[y][x][1], csrc[y][x][0]);
-        }
-      });
+  parallel_loop(0, src.rows, [&](int y) {
+    for ( int x = 0; x < csrc.cols; ++x ) {
+      cmag[y][x] = sqrt(csrc[y][x][0]*csrc[y][x][0] + csrc[y][x][1]*csrc[y][x][1] );
+      cphase[y][x] = atan2(csrc[y][x][1], csrc[y][x][0]);
+    }
+  });
 
   return true;
 }
@@ -415,15 +412,14 @@ bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::
   dst.create(cmag.size(), CV_32FC2);
   cv::Mat2f cdst = dst;
 
-  tbb::parallel_for(0, cdst.rows,
-      [&]( int y) {
-        for ( int x = 0; x < cdst.cols; ++x ) {
-          double sa, ca;
-          sincos(cphase[y][x], &sa, &ca);
-          cdst[y][x][0] = cmag[y][x] * ca;
-          cdst[y][x][1] = cmag[y][x] * sa;
-        }
-      });
+  parallel_loop(0, cdst.rows, [&](int y) {
+    for ( int x = 0; x < cdst.cols; ++x ) {
+      const float sa = std::sin(cphase[y][x]);
+      const float ca = std::cos(cphase[y][x]);
+      cdst[y][x][0] = cmag[y][x] * ca;
+      cdst[y][x][1] = cmag[y][x] * sa;
+    }
+  });
 
   return true;
 }
@@ -434,29 +430,29 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & outputProfile)
   // The max dimensionless radius at the corner of the frame is sqrt(1^2 + 1^2) = sqrt(2)
   const int cx = spectrum.cols / 2;
   const int cy = spectrum.rows / 2;
-  const double R = std::sqrt(cx * cx + cy * cy);
+  const float R = std::sqrt(cx * cx + cy * cy);
   const int numBins = std::max(1, int(R));
 
-  std::vector<double> radialSum(numBins, 0.0);
-  std::vector<double> radialCount(numBins, 0.0);
+  std::vector<float> radialSum(numBins, 0.0f);
+  std::vector<float> radialCount(numBins, 0.0f);
 
-  const double scaleX = 1. / cx;
-  const double scaleY = 1. / cy;
-  const double binScale = numBins * M_SQRT1_2;
+  const float scaleX = float(1. / cx);
+  const float scaleY = float(1. / cy);
+  const float binScale = float(numBins * M_SQRT1_2);
 
   for( int y = 0; y <= cy; ++y ) {
-    const double dy = (y - cy) * scaleY;
-    const double dy2 = dy * dy;
+    const float dy = (y - cy) * scaleY;
+    const float dy2 = dy * dy;
 
     const float * srcp = spectrum[y];
     const int xmax = (y == cy) ? (cx + 1) : spectrum.cols;
     for( int x = 0; x < xmax; ++x ) {
-      const double dx = (x - cx) *  scaleX;
-      const double dx2 = dx * dx;
+      const float dx = (x - cx) *  scaleX;
+      const float dx2 = dx * dx;
 
       // Dimensionless radius of the ellipse:
       // 0.0 at the center, 1.0 at the sides of the matrix, ~1.414 at the corners
-      const double r = std::sqrt(dx2 + dy2);
+      const float r = std::sqrt(dx2 + dy2);
       const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
       const int w = (y < cy ? 2 : (x == cx ? 1 : 2));
       radialSum[bin] += srcp[x] * w;
@@ -467,7 +463,7 @@ bool fftRadialProfile(const cv::Mat1f & spectrum, cv::Mat1f & outputProfile)
   outputProfile.create(1, numBins);
   float * __restrict dstp = outputProfile[0];
   for( int i = 0; i < numBins; ++i ) {
-    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
+    dstp[i] = (float)(radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0f);
   }
 
   return true;
@@ -478,41 +474,35 @@ void fftRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
 {
   const cv::Size & size = outputImageSize;
 
-  const double cx = size.width / 2;
-  const double cy = size.height / 2;
+  const float cx = size.width / 2;
+  const float cy = size.height / 2;
   const int numBins = radialProfile.cols;
-  //const double maxNormalizedR = std::sqrt(2.0);
 
-  const double scaleX = 1. / cx;
-  const double scaleY = 1. / cy;
-  const double binScale = numBins * M_SQRT1_2;
+  const float scaleX = float(1.f / cx);
+  const float scaleY = float(1.f / cy);
+  const float binScale = float(numBins * M_SQRT1_2);
 
   outputImage.create(size);
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &radialProfile, &outputImage](const cv::Range & range) {
+  parallel_for(0, size.height, [=, &radialProfile, &outputImage](const auto & range) {
 
-        const float * bins = radialProfile[0];
+    const float * bins = radialProfile[0];
 
-        bool reported = false;
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = outputImage[y];
 
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = outputImage[y];
+      const float dy = (y - cy) * scaleY;
+      const float dy2 = dy * dy;
 
-          const double dy = (y - cy) * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < size.width; ++x) {
-
-            const double dx = (x - cx) * scaleX;
-            const double dx2 = dx * dx;
-
-            const double r = std::sqrt(dx2 + dy2);
-            const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-            dstp[x] = bins[bin];
-          }
-        }
-      });
+      for (int x = 0; x < size.width; ++x) {
+        const float dx = (x - cx) * scaleX;
+        const float dx2 = dx * dx;
+        const float r = std::sqrt(dx2 + dy2);
+        const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
+        dstp[x] = bins[bin];
+      }
+    }
+  });
 }
 
 bool dctRadialProfile(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
@@ -524,36 +514,35 @@ bool dctRadialProfile(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputProfile)
   const int maxW = dctSpectrum.cols;
   const int maxH = dctSpectrum.rows;
 
-  const double R = std::sqrt(maxW * maxW + maxH * maxH);
+  const float R = std::sqrt(maxW * maxW + maxH * maxH);
   const int numBins = std::max(1, int(R));
-  const double binScale = numBins * M_SQRT1_2;
+  const float binScale = float(numBins * M_SQRT1_2);
 
-  std::vector<double> radialSum(numBins, 0.0);
-  std::vector<double> radialCount(numBins, 0.0);
+  std::vector<float> radialSum(numBins, 0.0f);
+  std::vector<float> radialCount(numBins, 0.0f);
 
-  const double scaleX = 1.0 / maxW;
-  const double scaleY = 1.0 / maxH;
+  const float scaleX = float(1.0 / maxW);
+  const float scaleY = float(1.0 / maxH);
 
   for( int y = 0; y < maxH; ++y ) {
-    const double dy = y * scaleY;
-    const double dy2 = dy * dy;
+    const float dy = y * scaleY;
+    const float dy2 = dy * dy;
     const float * srcp = dctSpectrum[y];
 
     for( int x = 0; x < maxW; ++x ) {
-      const double dx = x * scaleX;
-      const double dx2 = dx * dx;
-      const double r = std::sqrt(dx2 + dy2);
-
+      const float dx = x * scaleX;
+      const float dx2 = dx * dx;
+      const float r = std::sqrt(dx2 + dy2);
       const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
       radialSum[bin] += std::abs(srcp[x]);
-      radialCount[bin] += 1.0;
+      radialCount[bin] += 1;
     }
   }
 
   outputProfile.create(1, numBins);
   float * __restrict dstp = outputProfile[0];
   for( int i = 0; i < numBins; ++i ) {
-    dstp[i] = (float) (radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0);
+    dstp[i] = (float) (radialCount[i] > 0 ? radialSum[i] / radialCount[i] : 0.0f);
   }
 
   return true;
@@ -565,37 +554,32 @@ void dctRadialProfileToImage(const cv::Mat1f & radialProfile, const cv::Size & o
   const cv::Size & size = outputImageSize;
 
   const int numBins = radialProfile.cols;
-  const double binScale = numBins * M_SQRT1_2;
+  const float binScale = float(numBins * M_SQRT1_2);
 
-  const double scaleX = 1. / size.width;
-  const double scaleY = 1. / size.height;
+  const float scaleX = float(1. / size.width);
+  const float scaleY = float(1. / size.height);
 
   outputImage.create(size);
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &radialProfile, &outputImage](const cv::Range & range) {
+  parallel_for(0, size.height, [=, &radialProfile, &outputImage](const auto & range) {
 
-        const float * bins = radialProfile[0];
+    const float * bins = radialProfile[0];
 
-        bool reported = false;
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = outputImage[y];
 
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = outputImage[y];
+      const float dy = y * scaleY;
+      const float dy2 = dy * dy;
 
-          const double dy = y * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < size.width; ++x) {
-
-            const double dx = x * scaleX;
-            const double dx2 = dx * dx;
-
-            const double r = std::sqrt(dx2 + dy2);
-            const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
-            dstp[x] = bins[bin];
-          }
-        }
-      });
+      for (int x = 0; x < size.width; ++x) {
+        const float dx = x * scaleX;
+        const float dx2 = dx * dx;
+        const float r = std::sqrt(dx2 + dy2);
+        const int bin = std::clamp(cvRound(r * binScale), 0, numBins - 1);
+        dstp[x] = bins[bin];
+      }
+    }
+  });
 }
 
 bool fftAccumulatePowerSpectrum(const cv::Mat & src,  cv::Mat & acc, float & cnt)
@@ -802,28 +786,25 @@ cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize, double sigma_space
     sigma_space = 1;
   }
 
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
-  const double sx = sigma_space * CV_PI * M_SQRT2 / fftSize.width;
-  const double sy = sigma_space * CV_PI * M_SQRT2 / fftSize.height;
+  const float cx = float(fftSize.width / 2.0);
+  const float cy = float(fftSize.height / 2.0);
+  const float sx = float(sigma_space * CV_PI * M_SQRT2 / fftSize.width);
+  const float sy = float(sigma_space * CV_PI * M_SQRT2 / fftSize.height);
+  const float fgain = float(gain);
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
-
-          const double dy = (y - cy) * sy;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * sx;
-            const double dx2 = dx * dx;
-
-            const double gaussLPF = gain * std::exp(-(dx2 + dy2));
-            dstp[x] = float(inverseFilter ? gain - gaussLPF : gaussLPF);
-          }
-        }
-      });
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+      const float dy = (y - cy) * sy;
+      const float dy2 = dy * dy;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const float dx = (x - cx) * sx;
+        const float dx2 = dx * dx;
+        const float gaussLPF = fgain * std::exp(-(dx2 + dy2));
+        dstp[x] = float(inverseFilter ? fgain - gaussLPF : gaussLPF);
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -838,35 +819,32 @@ cv::Mat1f fftGenerateLaplacianFilter(const cv::Size & fftSize,
 {
   // Isotropic Laplacian
   // The frequency step is tied to the physical dimensions of the matrix
-  // fx = dx / width, fy = dy / height
-  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
+  //  fx = dx / width
+  //  fy = dy / height
+  // Physical Laplacian:
+  //    4 * PI^2 * (fx^2 + fy^2)
 
   cv::Mat1f FILTER(fftSize);
 
-  const float scaleX = CV_2PI / fftSize.width;
-  const float scaleY = CV_2PI / fftSize.height;
-  const float cx = fftSize.width / 2.0;
-  const float cy = fftSize.height / 2.0;
-  const float gainf = gain;
+  const float scaleX = float (CV_2PI / fftSize.width);
+  const float scaleY = float (CV_2PI / fftSize.height);
+  const float cx = float (fftSize.width / 2.0);
+  const float cy = float (fftSize.height / 2.0);
+  const float fgain = float (gain);
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
-
-          const float  dy = (y - cy) * scaleY;
-          const float  dy2 = dy * dy;
-
-          for (int x = 0; x < fftSize.width; ++x) {
-            const float dx = (x - cx) * scaleX;
-            const float dx2 = dx * dx;
-
-            const float dr2 = dx2 + dy2;
-
-            dstp[x] = gainf * dr2;
-          }
-        }
-      });
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+      const float  dy = (y - cy) * scaleY;
+      const float  dy2 = dy * dy;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const float dx = (x - cx) * scaleX;
+        const float dx2 = dx * dx;
+        const float dr2 = dx2 + dy2;
+        dstp[x] = fgain * dr2;
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -880,41 +858,39 @@ cv::Mat1f fftGenerateLaplacianUnsharpFilter(const cv::Size & fftSize, double gai
 {
   // Isotropic Laplacian
   // The frequency step is tied to the physical dimensions of the matrix
-  // fx = dx / width, fy = dy / height
-  // Physical Laplacian: 4 * PI^2 * (fx^2 + fy^2)
-
-  // Isotropic Butterworth: 1.0 / (1.0 + (r / rc)^(n))
+  //    fx = dx / width
+  //    fy = dy / height
+  // Physical Laplacian:
+  //    4 * PI^2 * (fx^2 + fy^2)
+  // Isotropic Butterworth:
+  //    1.0 / (1.0 + (r / rc)^(n))
 
   cv::Mat1f FILTER(fftSize);
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
 
-        const float bworder2 = bworder / 2.;
-        const float bwrc2 = 1. / (bwrc * bwrc);
-        const float gainf = (float) (gain);
+    const float bworder2 = float (bworder / 2.);
+    const float bwrc2 = float (1. / (bwrc * bwrc));
+    const float fgain = (float) (gain);
 
-        const float scaleX = CV_2PI / fftSize.width;
-        const float scaleY = CV_2PI / fftSize.height;
-        const float cx = fftSize.width / 2.0;
-        const float cy = fftSize.height / 2.0;
+    const float scaleX = float (CV_2PI / fftSize.width);
+    const float scaleY = float (CV_2PI / fftSize.height);
+    const float cx = float (fftSize.width / 2.0);
+    const float cy = float (fftSize.height / 2.0);
 
-        for (int y = range.start; y < range.end; ++y) {
-
-          float * __restrict dstp = FILTER[y];
-
-          const float dy = (y - cy) * scaleY;
-          const float dy2 = dy * dy;
-
-          for (int x = 0; x < fftSize.width; ++x) {
-            const float dx = (x - cx) * scaleX;
-            const float dx2 = dx * dx;
-            const float dr2 = dx2 + dy2;
-            const float v = 1.f + gainf * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
-            dstp[x] = v;
-          }
-        }
-      });
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+      const float dy = (y - cy) * scaleY;
+      const float dy2 = dy * dy;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const float dx = (x - cx) * scaleX;
+        const float dx2 = dx * dx;
+        const float dr2 = dx2 + dy2;
+        const float v = 1.f + fgain * dr2 / (1.f + std::pow(dr2 * bwrc2, bworder2));
+        dstp[x] = v;
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -927,34 +903,32 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
 {
   // Isotropic Gradient
   // The frequency step is tied to the physical dimensions of the matrix
-  // fx = dx / width, fy = dy / height
-  // Gradient: 2 * PI * sqrt(fx^2 + fy^2)
+  //  fx = dx / width
+  //  fy = dy / height
+  // Gradient:
+  //  2 * PI * sqrt(fx^2 + fy^2)
 
   cv::Mat1f FILTER(fftSize);
 
-  const double scaleX = CV_2PI / fftSize.width;
-  const double scaleY = CV_2PI / fftSize.height;
-  const double cx = fftSize.width / 2.0;
-  const double cy = fftSize.height / 2.0;
+  const float scaleX = float(CV_2PI / fftSize.width);
+  const float scaleY = float(CV_2PI / fftSize.height);
+  const float cx = float(fftSize.width / 2.0);
+  const float cy = float(fftSize.height / 2.0);
+  const float fgain = float(gain);
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
-
-          const double dy = (y - cy) * scaleY;
-          const double dy2 = dy * dy;
-
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * scaleX;
-            const double dx2 = dx * dx;
-
-            const double dr = sqrt(dx2 + dy2);
-
-            dstp[x] = float(gain * dr);
-          }
-        }
-      });
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+      const float dy = (y - cy) * scaleY;
+      const float dy2 = dy * dy;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const float dx = (x - cx) * scaleX;
+        const float dx2 = dx * dx;
+        const float dr = std::sqrt(dx2 + dy2);
+        dstp[x] = fgain * dr;
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -985,19 +959,17 @@ cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool cent
     cosY[y] = std::cos((y - cy) * scaleY);
   }
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, cosx = cosX.data(), cosy = cosY.data(), &FILTER](const cv::Range & range) {
-
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
-          const double cos_y = cosy[y];
-
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double denom = 2.0 * (2.0 - cosx[x] - cos_y);
-            dstp[x] = float(1.0 / denom);
-          }
+  parallel_for(0, fftSize.height,
+      [=, cosx = cosX.data(), cosy = cosY.data(), &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const double cos_y = cosy[y];
+        for (int x = 0; x < fftSize.width; ++x) {
+          const double denom = 2.0 * (2.0 - cosx[x] - cos_y);
+          dstp[x] = float(1.0 / denom);
         }
-      });
+      }
+    });
 
   FILTER(cy, cx) = 0.f;
 
@@ -1019,24 +991,23 @@ cv::Mat1f fftGenerateButterworthFilter(const cv::Size & fftSize,
   const double sx = CV_2PI / fftSize.width;
   const double sy = CV_2PI / fftSize.height;
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float* __restrict dstp = FILTER[y];
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float* __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * sy;
-          const double dy2 = dy * dy;
+      const double dy = (y - cy) * sy;
+      const double dy2 = dy * dy;
 
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * sx;
-            const double dx2 = dx * dx;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const double dx = (x - cx) * sx;
+        const double dx2 = dx * dx;
 
-            const double r = std::sqrt(dx2 + dy2);
+        const double r = std::sqrt(dx2 + dy2);
 
-            dstp[x] = float(gain / (1.0 + std::pow(r / rc, order)));
-          }
-        }
-      });
+        dstp[x] = float(gain / (1.0 + std::pow(r / rc, order)));
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -1064,26 +1035,25 @@ cv::Mat1f fftGenerateGaussianUnsharpFilter(const cv::Size & fftSize,
   const double sx = sigma_space * CV_PI * M_SQRT2 / fftSize.width;
   const double sy = sigma_space * CV_PI * M_SQRT2 / fftSize.height;
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float * __restrict dstp = FILTER[y];
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * sy;
-          const double dy2 = dy * dy;
+      const double dy = (y - cy) * sy;
+      const double dy2 = dy * dy;
 
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * sx;
-            const double dx2 = dx * dx;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const double dx = (x - cx) * sx;
+        const double dx2 = dx * dx;
 
-            const double gaussLPF = std::exp(-(dx2 + dy2));
-            const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
+        const double gaussLPF = std::exp(-(dx2 + dy2));
+        const double unsharpHPF = 1.0 + gain * (1.0 - gaussLPF);
 
-            // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
-            dstp[x] = float(inverseFilter ? (1.0 + gain) - unsharpHPF : unsharpHPF);
-          }
-        }
-      });
+        // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
+        dstp[x] = float(inverseFilter ? (1.0 + gain) - unsharpHPF : unsharpHPF);
+      }
+    }
+  });
 
   if( !centerDC ) {
     fftSwapQuadrants(FILTER);
@@ -1108,31 +1078,30 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
   const double sx = CV_2PI / fftSize.width;
   const double sy = CV_2PI / fftSize.height;
 
-  cv::parallel_for_(cv::Range(0, fftSize.height),
-      [=, &FILTER](const cv::Range & range) {
-        for (int y = range.start; y < range.end; ++y) {
-          float* __restrict dstp = FILTER[y];
+  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float* __restrict dstp = FILTER[y];
 
-          const double dy = (y - cy) * sy;
-          const double dy2 = dy * dy;
+      const double dy = (y - cy) * sy;
+      const double dy2 = dy * dy;
 
-          for (int x = 0; x < fftSize.width; ++x) {
-            const double dx = (x - cx) * sx;
-            const double dx2 = dx * dx;
+      for (int x = 0; x < fftSize.width; ++x) {
+        const double dx = (x - cx) * sx;
+        const double dx2 = dx * dx;
 
-            const double r2 = dx2 + dy2;
-            double butterworthLPF = 1.0;
+        const double r2 = dx2 + dy2;
+        double butterworthLPF = 1.0;
 
-            if (r2 > 0.0) {
-              const double r = std::sqrt(r2);
-              butterworthLPF = 1.0 / (1.0 + std::pow(r / rc, order));
-            }
-
-            // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
-            dstp[x] = float(1.0 + gain * (1.0 - butterworthLPF));
-          }
+        if (r2 > 0.0) {
+          const double r = std::sqrt(r2);
+          butterworthLPF = 1.0 / (1.0 + std::pow(r / rc, order));
         }
-      });
+
+        // Unsharp Mask: 1.0 + alpha * (1.0 - LPF)
+        dstp[x] = float(1.0 + gain * (1.0 - butterworthLPF));
+      }
+    }
+  });
 
   if (!centerDC) {
     fftSwapQuadrants(FILTER);
@@ -1269,28 +1238,27 @@ cv::Mat1f fftCreateCircularApodizationWindow(const cv::Size & size)
   const float r_outer = (size.width / 2.0f) * 0.95f;
   const float r_inner = r_outer * 0.65f;
 
-  cv::parallel_for_(cv::Range(0, size.height),
-      [=, &mask](const auto & range) {
-        const int cx = size.width / 2;
-        const int cy = size.height / 2;
+  parallel_for(0, size.height, [=, &mask](const auto & range) {
+    const int cx = size.width / 2;
+    const int cy = size.height / 2;
 
-        for( int y = range.start; y < range.end; ++y ) {
-          float * __restrict dstp = mask[y];
-          for( int x = 0; x < mask.cols; ++x ) {
-            const float dx = x - cx;
-            const float dy = y - cy;
-            const float r = std::sqrt(dx * dx + dy * dy);
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict dstp = mask[y];
+      for( int x = 0; x < mask.cols; ++x ) {
+        const float dx = x - cx;
+        const float dy = y - cy;
+        const float r = std::sqrt(dx * dx + dy * dy);
 
-            if( r <= r_inner ) {
-              dstp[x] = 1.0f;
-            }
-            else if( r >= r_outer ) {
-              dstp[x] = 0.0f;
-            }
-            else {
-              const float fraction = (r - r_inner) / (r_outer - r_inner);
-              dstp[x] = 0.5f * (1.0f + std::cos(fraction * CV_PI));
-            }
+        if( r <= r_inner ) {
+          dstp[x] = 1.0f;
+        }
+        else if( r >= r_outer ) {
+          dstp[x] = 0.0f;
+        }
+        else {
+          const float fraction = (r - r_inner) * float(CV_PI) / (r_outer - r_inner);
+          dstp[x] = 0.5f * (1.0f + std::cos(fraction));
+        }
       }
     }
   });

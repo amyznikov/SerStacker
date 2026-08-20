@@ -13,7 +13,6 @@
 #include <core/pipeline/c_camera_calibration_pipeline/c_camera_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_calibration_pipeline/c_stereo_calibration_pipeline.h>
 #include <core/pipeline/c_stereo_matcher_pipeline/c_stereo_matcher_pipeline.h>
-#include <core/pipeline/c_live_stacking_pipeline/c_live_stacking_pipeline.h>
 #include <core/pipeline/c_canvas_average_pipeline/c_canvas_average_pipeline.h>
 #include <core/pipeline/c_virtual_stereo_pipeline/c_virtual_stereo_pipeline.h>
 #include <core/pipeline/c_roi_tracker_pipeline/c_roi_tracker_pipeline.h>
@@ -41,7 +40,6 @@ void registerPipelineClasses()
   REGISTER_PIPELINE_CLASS(c_stereo_calibration_pipeline);
   REGISTER_PIPELINE_CLASS(c_roi_tracker_pipeline);
   REGISTER_PIPELINE_CLASS(c_stereo_matcher_pipeline);
-  REGISTER_PIPELINE_CLASS(c_live_stacking_pipeline);
   REGISTER_PIPELINE_CLASS(c_virtual_stereo_pipeline);
   REGISTER_PIPELINE_CLASS(c_epipolar_alignment_pipeline);
   REGISTER_PIPELINE_CLASS(c_cte_pipeline);

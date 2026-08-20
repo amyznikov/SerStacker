@@ -81,18 +81,18 @@ public:
 
   static const std::string & class_name()
   {
-    static const std::string classname_ =
+    static const std::string _classname =
         "stereo_matcher";
 
-    return classname_;
+    return _classname;
   }
 
   static const std::string & tooltip()
   {
-    static const std::string tooltip_ =
+    static const std::string _tooltip =
         "<strong>c_stereo_matcher_pipeline.</strong><br>"
         "Test a variety of stereo matchers<br>";
-    return tooltip_;
+    return _tooltip;
   }
 
   c_stereo_matcher_input_options & input_options();

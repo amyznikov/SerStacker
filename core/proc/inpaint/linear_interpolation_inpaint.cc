@@ -138,88 +138,93 @@ static bool _interpolate_holes_v2(const cv::Mat & image, const cv::Mat1b & mask,
   uint8_t* const dists_base  = dists.ptr();
   const size_t dists_stride = dists.step;
 
-  parallel_loop(0, cols, [=](int x) {
-
-    const uint8_t* const srccp = src_base + x * cn * sizeof(_Tp);
-    const uint8_t* const mskcp = mask_base + x;
-    uint8_t* const inpaintcp = inpaint_base + x * cn * sizeof(_Tp);
-    uint8_t* const distscp = dists_base + x * sizeof(float);
+  parallel_for(0, cols, [=](const auto & range) {
 
     float sv[4] = {0}, ev[4] = {0}, kk[4] = {0};
 
+    const int xbeg = rbegin(range);
+    const int xend = rend(range);
+
     for (int y = 0; y < rows; ++y ) {
-      *(float * __restrict)(distscp + y * dists_stride) = 0.0f;
+      memset(dists_base + y * dists_stride + xbeg * sizeof(float), 0,
+          (xend - xbeg)* sizeof(float));
     }
 
-    for( int start = 0; start < rows; ) {
+    for ( int x = xbeg; x < xend; ++x ) {
 
-      while (start < rows && *(mskcp + start * mask_stride)) {
-        ++start;
-      }
+      const uint8_t* const srccp = src_base + x * cn * sizeof(_Tp);
+      const uint8_t* const mskcp = mask_base + x;
+      uint8_t* const inpaintcp = inpaint_base + x * cn * sizeof(_Tp);
+      uint8_t* const distscp = dists_base + x * sizeof(float);
 
-      if (start >= rows) {
-        break;
-      }
+      for( int start = 0; start < rows; ) {
 
-      int end = start + 1;
-      while (end < rows && !*(mskcp + end * mask_stride)) {
-        ++end;
-      }
-
-      if( start > 0 && end < rows ) {
-        const int s = start - 1, e = end;
-        const float scale = 1.0f / (end - start);
-        const _Tp* sbeg = (const _Tp*)(srccp + s * src_stride);
-        const _Tp* send = (const _Tp*)(srccp + e * src_stride);
-        for( int c = 0; c < cn; ++c ) {
-          sv[c] = sbeg[c];
-          ev[c] = send[c];
-          kk[c] = (ev[c] - sv[c]) * scale;
+        while (start < rows && *(mskcp + start * mask_stride)) {
+          ++start;
         }
 
-        for( int y = start; y < e; ++y ) {
-          *(float * __restrict)(distscp + y * dists_stride) = std::max(y - s, e - y);
+        if (start >= rows) {
+          break;
+        }
 
-          const float factor = (y - s);
-          _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
+        int end = start + 1;
+        while (end < rows && !*(mskcp + end * mask_stride)) {
+          ++end;
+        }
+
+        if( start > 0 && end < rows ) {
+          const int s = start - 1, e = end;
+          const float scale = 1.0f / (end - start);
+          const _Tp* sbeg = (const _Tp*)(srccp + s * src_stride);
+          const _Tp* send = (const _Tp*)(srccp + e * src_stride);
           for( int c = 0; c < cn; ++c ) {
-            inpaint[c] = cv::saturate_cast<_Tp>(sv[c] + factor * kk[c]);
+            sv[c] = sbeg[c];
+            ev[c] = send[c];
+            kk[c] = (ev[c] - sv[c]) * scale;
+          }
+
+          for( int y = start; y < e; ++y ) {
+            const float factor = (y - s);
+            _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
+            *(float * __restrict)(distscp + y * dists_stride) = std::max(y - s, e - y);
+            for( int c = 0; c < cn; ++c ) {
+              inpaint[c] = cv::saturate_cast<_Tp>(sv[c] + factor * kk[c]);
+            }
           }
         }
-      }
-      else if( start > 0 ) {
-        const int s = start - 1, e = rows;
-        const _Tp* sbeg = (const _Tp*)(srccp + s * src_stride);
+        else if( start > 0 ) {
+          const int s = start - 1, e = rows;
+          const _Tp* sbeg = (const _Tp*)(srccp + s * src_stride);
 
-        for( int y = start; y < e; ++y ) {
-          *(float * __restrict)(distscp + y * dists_stride) = (y - s);
-
-          _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
-          for( int c = 0; c < cn; ++c ) {
-            inpaint[c] = sbeg[c];
+          for( int y = start; y < e; ++y ) {
+            _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
+            *(float * __restrict)(distscp + y * dists_stride) = (y - s);
+            for( int c = 0; c < cn; ++c ) {
+              inpaint[c] = sbeg[c];
+            }
           }
         }
-      }
-      else if( end < rows ) {
-        const int e = end;
-        const _Tp* send = (const _Tp*)(srccp + e * src_stride);
+        else if( end < rows ) {
+          const int e = end;
+          const _Tp* send = (const _Tp*)(srccp + e * src_stride);
 
-        for( int y = start; y < e; ++y ) {
-          *(float* __restrict)(distscp + y * dists_stride) = (e - y);
-
-          _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
-          for( int c = 0; c < cn; ++c ) {
-            inpaint[c] = send[c];
+          for( int y = start; y < e; ++y ) {
+            _Tp* __restrict inpaint = (_Tp*)(inpaintcp + y * inpaint_stride);
+            *(float* __restrict)(distscp + y * dists_stride) = (e - y);
+            for( int c = 0; c < cn; ++c ) {
+              inpaint[c] = send[c];
+            }
           }
         }
-      }
 
-      start = end;
+        start = end;
+      }
     }
   });
 
   return true;
 }
+
 
 template<class _Tp>
 static int _fill_holes2(cv::Mat & _image, const cv::Mat & _inpaint_h, const cv::Mat & _inpaint_v,
@@ -331,7 +336,8 @@ void linear_interpolation_inpaint(cv::Mat & image, cv::InputArray _mask)
 {
   INSTRUMENT_REGION("");
 
-  if( _mask.empty() || cv::countNonZero(_mask) >= _mask.size().area() ) {
+  int total_holes = _mask.empty() ? 0 : _mask.size().area() - cv::countNonZero(_mask);
+  if( total_holes < 1 ) {
     return;
   }
 
@@ -343,10 +349,15 @@ void linear_interpolation_inpaint(cv::Mat & image, cv::InputArray _mask)
   inpaint_v.create(image.size(), image.type());
   _mask.getMat().copyTo(mask);
 
-  do {
+  while (total_holes > 0) {
     interpolate_holes_h2(image, mask, inpaint_h, hdists);
     interpolate_holes_v2(image, mask, inpaint_v, vdists);
-  } while (fill_holes2(image, inpaint_h, inpaint_v, hdists, vdists, mask));
+    const int filled = fill_holes2(image, inpaint_h, inpaint_v, hdists, vdists, mask);
+    if( filled < 1 ) {
+      break;
+    }
+    total_holes -= filled;
+  }
 }
 
 void linear_interpolation_inpaint(cv::InputArray _src, cv::InputArray _mask,

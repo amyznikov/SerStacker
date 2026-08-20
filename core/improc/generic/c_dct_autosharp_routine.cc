@@ -10,6 +10,7 @@
 #include <core/proc/run-loop.h>
 #include <core/ssprintf.h>
 #include <core/proc/inpaint/average_pyramid_inpaint.h>
+#include <core/proc/inpaint/linear_interpolation_inpaint.h>
 #include <core/io/c_stdio_file.h>
 #include <core/proc/c_line_estimate.h>
 #include <core/proc/c_linear_regression.h>
@@ -31,6 +32,18 @@ const c_enum_member * members_of<c_dct_autosharp_routine::DISPLAY>()
       { c_dct_autosharp_routine::DISPLAY_RESTORED_SPECTRUM, "RESTORED_SPECTRUM", "" },
       { c_dct_autosharp_routine::DISPLAY_RESTORED_PROFILE, "RESTORED_PROFILE", "" },
       { c_dct_autosharp_routine::DISPLAY_RESTORED_IMAGE}
+  };
+  return members;
+}
+
+template<>
+const c_enum_member * members_of<c_dct_autosharp_routine::INPAINT_METHOD>()
+{
+  static const c_enum_member members[] = {
+      { c_dct_autosharp_routine::LINEAR_INTERPOLATION_INPAINT, "LINEAR_INTERPOLATION", "" },
+      { c_dct_autosharp_routine::AVERAGE_PYRAMID_INPAINT, "AVERAGE_PYRAMID_INPAINT", "" },
+      { c_dct_autosharp_routine::INPAINT_DISABLED, "DISABLE", "" },
+      { c_dct_autosharp_routine::LINEAR_INTERPOLATION_INPAINT}
   };
   return members;
 }
@@ -550,7 +563,7 @@ void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
   ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
-  ctlbind(ctls, "inpaint_missing_pixels", CTL_CONTEXT(ctx, _inpaint_missing_pixels), "");
+  ctlbind(ctls, "inpaint_missing_pixels:", CTL_CONTEXT(ctx, _mask_inpaint_method), "");
   ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _useS1_target), "");
   ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target), "");
   ctlbind(ctls, "print_debug_info:", CTL_CONTEXT(ctx, _print_debug_info), "");
@@ -563,7 +576,7 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
-    SERIALIZE_OPTION(settings, save, *this, _inpaint_missing_pixels);
+    SERIALIZE_OPTION(settings, save, *this, _mask_inpaint_method);
     SERIALIZE_OPTION(settings, save, *this, _useS1_target);
     SERIALIZE_OPTION(settings, save, *this, _S1_target);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
@@ -572,9 +585,10 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
-
 bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  INSTRUMENT_REGION("");
+
   if ( _display == DISPLAY_SRC_IMAGE ) {
     // nothing to process requested
     return true;
@@ -590,8 +604,15 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   image.getMat().convertTo(src, CV_32F);
 
-  if ( !mask.empty() && _inpaint_missing_pixels ) {
-    average_pyramid_inpaint(src, mask, src, cv::noArray(), 7);
+  if( !mask.empty() ) {
+    switch (_mask_inpaint_method) {
+      case LINEAR_INTERPOLATION_INPAINT:
+        linear_interpolation_inpaint(src, mask);
+        break;
+      case AVERAGE_PYRAMID_INPAINT:
+        average_pyramid_inpaint(src, mask, src, cv::noArray(), 7);
+        break;
+    }
   }
 
   if ( _display == DISPLAY_FILL_SRC_VOIDS ) {
@@ -600,94 +621,104 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   if ( cn == 1 ) {
-    intensity_img = src;
-  }
-  else {
-    extract_channel(src, intensity_img, cv::noArray(), cv::noArray(),
-        _intensity_channel);
-  }
+     intensity_img = src;
+   }
+   else {
+     extract_channel(src, intensity_img, cv::noArray(), cv::noArray(), _intensity_channel);
+   }
 
-  cv::dct(intensity_img, intensity_dct);
-  if( _display == DISPLAY_SRC_SPECTRUM ) {
-    image.move(intensity_dct);
-    mask.release();
-    return true;
-  }
+   cv::dct(intensity_img, intensity_dct);
+   if( _display == DISPLAY_SRC_SPECTRUM ) {
+     image.move(intensity_dct);
+     mask.release();
+     return true;
+   }
 
-  if( _display == DISPLAY_SRC_RADIAL_PROFILE_LOG) {
-    // Quick temporary test to visually inspect the shape of radial profile of log(abs(dct))
-    cv::absdiff(intensity_dct, cv::Scalar::all(0), intensity_dct);
-    intensity_dct.setTo(1, intensity_dct == 0);
-    cv::log(intensity_dct, intensity_dct);
-    dctRadialProfile2(intensity_dct, dct_radial_profile);
-    dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
-    image.move(intensity_dct);
-    mask.release();
-    return true;
-  }
+   if( _display == DISPLAY_SRC_RADIAL_PROFILE_LOG) {
+     cv::absdiff(intensity_dct, cv::Scalar::all(0), intensity_dct);
+     intensity_dct.setTo(1, intensity_dct == 0);
+     cv::log(intensity_dct, intensity_dct);
+     dctRadialProfile2(intensity_dct, dct_radial_profile);
+     dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
+     image.move(intensity_dct);
+     mask.release();
+     return true;
+   }
 
-  dctRadialProfile(intensity_dct, dct_radial_profile);
-  if( _display == DISPLAY_SRC_RADIAL_PROFILE) {
-    dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
-    image.move(intensity_dct);
-    mask.release();
-    return true;
-  }
+   dctRadialProfile(intensity_dct, dct_radial_profile);
+   if( _display == DISPLAY_SRC_RADIAL_PROFILE) {
+     dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
+     image.move(intensity_dct);
+     mask.release();
+     return true;
+   }
 
+   cv::Mat1f INVERSE_FILTER =
+       createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
+           _useS1_target, _S1_target, _print_debug_info,
+           _write_file ? _debug_file_name : "");
 
+   if( _display == DISPLAY_FILTER) {
+     image.move(INVERSE_FILTER);
+     mask.release();
+     return true;
+   }
 
-  cv::Mat1f INVERSE_FILTER =
-      createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
-          _useS1_target, _S1_target, _print_debug_info,
-          _write_file ? _debug_file_name : "");
+   if ( INVERSE_FILTER.empty() ) {
+     CF_ERROR("createInverseBlurCorrectionFilter() fails");
+     return false;
+   }
 
-  if( _display == DISPLAY_FILTER) {
-    image.move(INVERSE_FILTER);
-    mask.release();
-    return true;
-  }
+   if ( cn == 1 ) {
+     // Little optimized path for monochrome input image
+     cv::multiply(intensity_dct, INVERSE_FILTER, intensity_dct);
 
-  if ( INVERSE_FILTER.empty() ) {
-    CF_ERROR("createInverseBlurCorrectionFilter() fails");
-    return false;
-  }
+     if( _display == DISPLAY_RESTORED_SPECTRUM) {
+       image.move(intensity_dct);
+     }
+     else if( _display == DISPLAY_RESTORED_PROFILE) {
+       dctRadialProfile(intensity_dct, dct_radial_profile);
+       dctRadialProfileToImage(dct_radial_profile, intensity_dct.size(), intensity_dct);
+       image.move(intensity_dct);
+     }
+     else {
+       cv::idct(intensity_dct, image);
+     }
+   }
+   else {
+     // Full path for color image image
 
-  if( src_channels.empty() ) {
-    if ( cn == 1 ) {
-      src_channels.emplace_back(src);
-    }
-    else {
-      cv::split(src, src_channels);
-    }
-  }
+     std::vector<cv::Mat1f> src_channels;
+     cv::split(src, src_channels);
 
-  for ( int i = 0; i < cn; ++i ) {
-    cv::dct(src_channels[i], src_channels[i]);
-    cv::multiply(src_channels[i], INVERSE_FILTER, src_channels[i]);
-    if( _display == DISPLAY_RESTORED_SPECTRUM) {
-      continue;
-    }
+     for ( int i = 0; i < cn; ++i ) {
+       cv::dct(src_channels[i], src_channels[i]);
+       cv::multiply(src_channels[i], INVERSE_FILTER, src_channels[i]);
 
-    if( _display == DISPLAY_RESTORED_PROFILE) {
-      dctRadialProfile(src_channels[i], dct_radial_profile);
-      dctRadialProfileToImage(dct_radial_profile, src_channels[i].size(), src_channels[i]);
-      continue;
-    }
+       if( _display == DISPLAY_RESTORED_SPECTRUM) {
+         continue;
+       }
 
-    cv::idct(src_channels[i], src_channels[i]);
-  }
+       if( _display == DISPLAY_RESTORED_PROFILE) {
+         dctRadialProfile(src_channels[i], dct_radial_profile);
+         dctRadialProfileToImage(dct_radial_profile, src_channels[i].size(), src_channels[i]);
+         continue;
+       }
 
-  if ( cn == 1 ) {
-    image.move(src_channels[0]);
-  }
-  else {
-    cv::merge(src_channels, image);
-  }
+       cv::idct(src_channels[i], src_channels[i]);
+     }
 
-  if( _display == DISPLAY_RESTORED_SPECTRUM || _display == DISPLAY_RESTORED_PROFILE ) {
-    mask.release();
-  }
+     if( _display == DISPLAY_RESTORED_SPECTRUM || _display == DISPLAY_RESTORED_PROFILE ) {
+       cv::merge(src_channels, image);
+     }
+     else {
+       cv::merge(src_channels, image);
+     }
+   }
 
-  return true;
+   if( _display == DISPLAY_RESTORED_SPECTRUM || _display == DISPLAY_RESTORED_PROFILE ) {
+     mask.release();
+   }
+
+   return true;
 }
-

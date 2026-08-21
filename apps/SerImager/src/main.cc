@@ -33,7 +33,7 @@ int main(int argc, char * argv[])
 #if HAVE_QLCSCTPCamera
   QLCSCTPStreams::registerMetaTypes();
 #else
-#error  HAVE_QLCSCTPCamera not defined
+# warning  HAVE_QLCSCTPCamera not defined, install lksctp-tools if you need that
 #endif // HAVE_QLCSCTPCamera
 
   cf_set_logfile(stderr);

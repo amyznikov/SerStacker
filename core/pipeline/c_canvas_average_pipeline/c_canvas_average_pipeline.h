@@ -86,9 +86,11 @@ public:
   static const std::string& class_name();
   static const std::string& tooltip();
 
+  const c_enum_member * get_preview_displays() const override;
   bool serialize(c_config_setting settings, bool save) override;
   bool copy_parameters(const c_image_processing_pipeline::sptr & dst) const override;
   static const c_ctlist<this_class> & getcontrols();
+
 
 protected:
   bool initialize_pipeline() override;
@@ -119,7 +121,7 @@ protected:
   c_image_transform::sptr _image_transform;
   c_canvas_average _average;
 
-  cv::Mat _current_image;
+  cv::Mat _current_image, _current_grayscale_image;
   cv::Mat _current_mask;
   mutable cv::Mat1f _apodizationWindow;
 
@@ -127,6 +129,11 @@ protected:
   c_output_frame_writer _progress_writer;
   c_output_frame_writer _reference_video_writer;
   c_output_frame_writer _weights_video_writer;
+
+  std::mutex _current_stars_lock;
+  std::vector<cv::KeyPoint> _current_keypoints, _reference_keypoints;
+  cv::Mat _current_descriptors, _reference_descriptors;
+  std::vector<cv::DMatch> _current_matches;
 };
 
 #endif /* __c_canvas_average_pipeline_h__ */

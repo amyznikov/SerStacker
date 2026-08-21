@@ -1507,25 +1507,6 @@ static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id
     rows4 = _bayer_image.rows / 2;
     cols4 = _bayer_image.cols / 2;
     _extract_bayer_planes<_Tp, _Tp>(_bayer_image, planes);
-
-//
-//    cv::Mat_<_Tp> bayer_image = _bayer_image;
-//    rows4 = _bayer_image.rows / 2;
-//    cols4 = _bayer_image.cols / 2;
-//    planes.create(rows4, cols4);
-//    parallel_for(0, rows4, [=, &bayer_image, &planes](const auto & range) {
-//      for( int y = rbegin(range); y < rend(range); ++y ) {
-//        const _Tp * __restrict src0 = bayer_image[2 * y + 0];
-//        const _Tp * __restrict src1 = bayer_image[2 * y + 1];
-//        _Tp * __restrict dstp = (_Tp * )(planes[y]);
-//        for( int x = 0; x < cols4; ++x, src0 += 2, src1 += 2, dstp += 4 ) {
-//          dstp[0] = src0[0];
-//          dstp[1] = src0[1];
-//          dstp[2] = src1[0];
-//          dstp[3] = src1[1];
-//        }
-//      }
-//    });
   }
 
   cv::medianBlur(planes, median, 3);

@@ -63,9 +63,9 @@ public: // pipeline methods
   virtual void set_master_frame_index(int v);
   virtual int master_frame_index() const;
 
-  virtual const c_enum_member * get_display_types() const;
-  void set_display_type(int v);
-  int display_type() const;
+  virtual const c_enum_member * get_preview_displays() const;
+  void set_preview_display(int v);
+  int preview_display() const;
   bool get_display(cv::OutputArray displayImage, cv::OutputArray displayMask);
 
   virtual bool serialize(c_config_setting settings, bool save);
@@ -110,6 +110,18 @@ public:
   inline auto synchronized(Fn && fn)
   {
     std::scoped_lock lock(mutex());
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
+
+  template<typename Fn>
+  static inline auto synchronized(std::mutex & mtx, Fn && fn)
+  {
+    std::scoped_lock lock(mtx);
     if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
       std::forward<Fn>(fn)();
     }
@@ -194,7 +206,7 @@ protected:
 
   cv::Mat _missing_pixel_mask;
 
-  int _display_type = -1;
+  int _preview_display = -1;
 
   int _total_frames = 0;
   int _processed_frames = 0;

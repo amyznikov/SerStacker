@@ -547,7 +547,7 @@ void QLCSCTPCamera::sctp_threadproc()
                 CF_ERROR("unpack_libcamera_image() fails");
               }
               else {
-                _frms.emplace_back(QCameraFrame::create(image, colorid, bpp));
+                _frms.emplace_back(QCameraFrame::create(image, colorid, hdr.bpp > 0 ? hdr.bpp : bpp));
                 _condvar.notify_all();
               }
               _imgdata.clear();

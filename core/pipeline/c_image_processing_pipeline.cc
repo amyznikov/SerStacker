@@ -642,17 +642,17 @@ bool c_image_processing_pipeline::serialize(c_config_setting setting, bool save)
   return true;
 }
 
-void c_image_processing_pipeline::set_display_type(int v)
+void c_image_processing_pipeline::set_preview_display(int v)
 {
-  _display_type = v;
+  _preview_display = v;
 }
 
-int c_image_processing_pipeline::display_type() const
+int c_image_processing_pipeline::preview_display() const
 {
-  return _display_type;
+  return _preview_display;
 }
 
-const c_enum_member* c_image_processing_pipeline::get_display_types() const
+const c_enum_member* c_image_processing_pipeline::get_preview_displays() const
 {
   static const c_enum_member members[] = {
       { 0, "DEFAULT", "Default display type" },

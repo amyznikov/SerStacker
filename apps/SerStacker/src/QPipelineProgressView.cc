@@ -165,40 +165,32 @@ void QPipelineProgressView::onMenuButtonClicked()
 
     QMenu menu;
 
-    const c_enum_member *display_types =
-        pipeline->get_display_types();
+    const c_enum_member *display_types = pipeline->get_preview_displays();
 
     if( display_types ) {
 
-      const int display_type =
-          pipeline->display_type();
+      const int display_type = pipeline->preview_display();
 
       int items_count = 0;
 
       for( ; !display_types->name.empty(); ++display_types ) {
-
-        QAction *action =
-            menu.addAction(display_types->name.c_str());
-
+        QAction *action = menu.addAction(display_types->name.c_str());
         action->setData(QVariant::fromValue(display_types->value));
         action->setCheckable(true);
         action->setChecked(display_type == display_types->value);
-
         ++items_count;
       }
 
       if( items_count > 1 ) {
 
-        QAction *action =
-            menu.exec(_menuButton->mapToGlobal(QPoint(_menuButton->width() / 2, _menuButton->height() / 2)));
+        QAction * action =
+            menu.exec(_menuButton->mapToGlobal(QPoint(_menuButton->width() / 2,
+                _menuButton->height() / 2)));
 
         if( action ) {
-
-          const int selected_display_type =
-              action->data().value<int>();
-
+          const int selected_display_type = action->data().value<int>();
           if( display_type != selected_display_type ) {
-            pipeline->set_display_type(selected_display_type);
+            pipeline->set_preview_display(selected_display_type);
           }
         }
       }

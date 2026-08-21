@@ -7,9 +7,9 @@
 
 #include "c_canvas_average_pipeline.h"
 #include <core/proc/unsharp_mask.h>
+#include <core/proc/pixtype.h>
 #include <core/io/load_image.h>
 #include <core/io/save_image.h>
-
 #include <core/readdir.h>
 
 c_canvas_average_pipeline::c_canvas_average_pipeline(const std::string & name,
@@ -243,13 +243,88 @@ const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontro
   return ctls;
 }
 
-bool c_canvas_average_pipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
+const c_enum_member * c_canvas_average_pipeline::get_preview_displays() const
+{
+  static const c_enum_member members[] = {
+      { 0, "CANVAS", "" },
+      { 1, "STARS", "" },
+      { 0 },
+  };
+
+  return members;
+}
+
+bool c_canvas_average_pipeline::get_display_image(cv::OutputArray outputDisplayImage,
+    cv::OutputArray outputDisplayMask)
 {
   INSTRUMENT_REGION("");
 
-  const PIXEL_DEPTH ddepth = _output_options.default_display_type;
-  const double dscale = (_output_options.display_scale == 0 && _input_bpp > 0) ? (1 << _input_bpp) : 1;
-  return _average.compute(display_frame, display_mask, dscale, ddepth);
+  bool fOk = false;
+
+  switch (_preview_display) {
+    case 1: {
+      // Current frame + Detected keypoints display, locked by mutex
+      std::vector<cv::KeyPoint> current_keypoints;
+      cv::Mat current_image;
+
+      synchronized(_current_stars_lock, [&]() {
+        _current_grayscale_image.copyTo(current_image);
+        current_keypoints = _current_keypoints;
+      });
+
+      if ( !current_image.empty() ) {
+
+        const int ddepth = outputDisplayImage.fixedType() ? outputDisplayImage.depth() :
+            (_output_options.default_display_type >= 0 ? _output_options.default_display_type :
+                current_image.depth());
+
+        double dscale = 1.0, doffset = 0.0;
+        getScaleOffset(current_image.depth(), ddepth, &dscale, &doffset);
+
+        if( _output_options.display_scale != 0 ) {
+          dscale *= _output_options.display_scale;
+        }
+        else {
+          const double bpp_scale = (_input_bpp > 0) ? double(1 << _input_bpp) : 1.0;
+          dscale *= bpp_scale;
+          doffset *= bpp_scale;
+        }
+
+        const double maxColor = getMaxValForPixelDepth(current_image.depth()) * dscale + doffset;
+
+        CF_DEBUG("\n"
+            "current_image.depth()=%d _input_bpp=%d dscale=%g doffset=%g maxColor=%g",
+            current_image.depth(), _input_bpp, dscale, doffset, maxColor);
+
+        current_image.convertTo(current_image, ddepth, dscale, doffset);
+        cv::cvtColor(current_image, current_image, cv::COLOR_GRAY2BGR);
+
+        cv::drawKeypoints(current_image,
+            current_keypoints, current_image,
+            cv::Scalar(0, 0, maxColor),
+            cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
+
+        fOk = true;
+      }
+
+      outputDisplayImage.move(current_image);
+      outputDisplayMask.release();
+
+      break;
+    }
+
+    default: {
+      // Canvas display
+      const PIXEL_DEPTH ddepth = _output_options.default_display_type;
+      const double dscale = (_output_options.display_scale == 0 && _input_bpp > 0) ? (1 << _input_bpp) : 1;
+      if( _average.compute(outputDisplayImage, outputDisplayMask, dscale, ddepth) ) {
+        fOk = true;
+      }
+      break;
+    }
+  }
+
+  return fOk;
 }
 
 bool c_canvas_average_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & dst) const
@@ -665,7 +740,7 @@ bool c_canvas_average_pipeline::process_current_frame()
   else {
     INSTRUMENT_REGION("align_and_update");
     // Not a first frame
-    cv::Mat current_image, current_mask, reference_image, reference_mask;
+    cv::Mat current_mask, reference_image, reference_mask;
     cv::Mat weights;
     cv::Mat2f rmap, uv;
 
@@ -683,12 +758,12 @@ bool c_canvas_average_pipeline::process_current_frame()
     mkgrayscale(reference_image, reference_image);
     //linear_interpolation_inpaint(reference_image, reference_mask);
 
-    mkgrayscale(_current_image, current_image);
+    mkgrayscale(_current_image, _current_grayscale_image);
     current_mask = _current_mask;
 
     if ( _output_options.save_reference_video ) {
 
-      const cv::Size frameSize(current_image.cols + 8, current_image.rows + 8);
+      const cv::Size frameSize(_current_grayscale_image.cols + 8, _current_grayscale_image.rows + 8);
       cv::Mat frame = cv::Mat::zeros(frameSize, reference_image.type());
       cv::Mat mask =  reference_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
 
@@ -712,35 +787,33 @@ bool c_canvas_average_pipeline::process_current_frame()
     if( _registration_options.enable_star_registration ) {
       INSTRUMENT_REGION("star_registration");
 
-      std::vector<cv::KeyPoint> current_keypoints, reference_keypoints;
-      cv::Mat current_descriptors, reference_descriptors;
-      std::vector<cv::DMatch> triangle_matches;
-
-      _star_extractor.detect(reference_image, reference_keypoints, reference_mask);
-      if ( reference_keypoints.size() < 3 ) {
-        CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", reference_keypoints.size());
+      _star_extractor.detect(reference_image, _reference_keypoints, reference_mask);
+      if ( _reference_keypoints.size() < 3 ) {
+        CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", _reference_keypoints.size());
         return !canceled();
       }
 
-      _triangle_extractor.compute(reference_image, reference_keypoints, reference_descriptors);
-      _triangle_matcher.train(reference_keypoints, reference_descriptors);
+      _triangle_extractor.compute(reference_image, _reference_keypoints, _reference_descriptors);
+      _triangle_matcher.train(_reference_keypoints, _reference_descriptors);
 
-      _star_extractor.detect(current_image, current_keypoints, current_mask);
-      if ( reference_keypoints.size() < 3 ) {
-        CF_ERROR("_star_extractor.detect(current_image) fails: current_keypoints.size=%zu", current_keypoints.size());
+      synchronized(_current_stars_lock, [&]() {
+        _star_extractor.detect(_current_grayscale_image, _current_keypoints, current_mask);
+      });
+      if ( _current_keypoints.size() < 3 ) {
+        CF_ERROR("_star_extractor.detect(_current_grayscale_image) fails: current_keypoints.size=%zu", _current_keypoints.size());
         return !canceled();
       }
 
-      _triangle_extractor.compute(current_image, current_keypoints, current_descriptors);
-      _triangle_matcher.match(current_keypoints, current_descriptors, triangle_matches);
-      if ( triangle_matches.size() < 1 ) {
-        CF_ERROR("_triangle_matcher.match() fails: triangle_matches.size()=%zu", triangle_matches.size());
+      _triangle_extractor.compute(_current_grayscale_image, _current_keypoints, _current_descriptors);
+      _triangle_matcher.match(_current_keypoints, _current_descriptors, _current_matches);
+      if ( _current_matches.size() < 1 ) {
+        CF_ERROR("_triangle_matcher.match() fails: triangle_matches.size()=%zu", _current_matches.size());
         return !canceled();
       }
 
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
-              current_keypoints, reference_keypoints, triangle_matches,
+              _current_keypoints, _reference_keypoints, _current_matches,
               _registration_options.transform_estimation);
 
       if( !transformEstimated ) {
@@ -764,7 +837,7 @@ bool c_canvas_average_pipeline::process_current_frame()
 
       /* This will compute _image_transform parameters as _ecch has the active pointer to _image_transform */
       _ecch.set_reference_image(reference_image, reference_mask);
-      if( !_ecch.align(current_image, current_mask) ) {
+      if( !_ecch.align(_current_grayscale_image, current_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
       }
@@ -777,14 +850,14 @@ bool c_canvas_average_pipeline::process_current_frame()
       // create temporary rmap of reference image size for optflow computation
 
       bool fOk = false;
-      if ( reference_image.size() == current_image.size() ) {
+      if ( reference_image.size() == _current_grayscale_image.size() ) {
         _image_transform->create_remap(reference_image.size(), rmap);
-        fOk = _eccflow.compute_uv(current_image, reference_image, rmap, current_mask, reference_mask);
+        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_image, rmap, current_mask, reference_mask);
       }
       else {
-        const cv::Rect roi(0, 0, std::min(reference_image.cols, current_image.cols),
-            std::min(reference_image.rows, current_image.rows));
-        const cv::Mat cimage = current_image(roi);
+        const cv::Rect roi(0, 0, std::min(reference_image.cols, _current_grayscale_image.cols),
+            std::min(reference_image.rows, _current_grayscale_image.rows));
+        const cv::Mat cimage = _current_grayscale_image(roi);
         const cv::Mat cmask = current_mask.empty() ? cv::Mat() : current_mask(roi);
         const cv::Mat rimage = reference_image(roi);
         const cv::Mat rmask = reference_mask.empty() ? cv::Mat() : reference_mask(roi);

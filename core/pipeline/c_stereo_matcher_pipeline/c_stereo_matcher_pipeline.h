@@ -113,7 +113,7 @@ public:
   c_stereo_matcher_output_options & output_options();
   const c_stereo_matcher_output_options & output_options() const;
 
-  const c_enum_member * get_display_types() const override;
+  const c_enum_member * get_preview_displays() const override;
   bool serialize(c_config_setting settings, bool save) override;
   static const c_ctlist<this_class> & getcontrols();
 

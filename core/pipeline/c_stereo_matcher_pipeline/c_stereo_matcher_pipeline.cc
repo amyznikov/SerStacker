@@ -833,7 +833,7 @@ bool c_stereo_matcher_pipeline::update_stereo_rectification_remap()
   return true;
 }
 
-const c_enum_member * c_stereo_matcher_pipeline::get_display_types() const
+const c_enum_member * c_stereo_matcher_pipeline::get_preview_displays() const
 {
   static const c_enum_member members[] = {
       { DISPLAY_DISPARITY, "DISPARITY", "Disparity frame display" },
@@ -850,7 +850,7 @@ bool c_stereo_matcher_pipeline::get_display_image(cv::OutputArray display_frame,
     return false;
   }
 
-  switch (_display_type) {
+  switch (_preview_display) {
     case DISPLAY_DISPARITY: {
 
       if ( display_frame.needed() ) {

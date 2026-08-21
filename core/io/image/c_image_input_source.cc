@@ -63,7 +63,7 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
     }
 
     if( is_bayer_pattern(f->_colorid) ) {
-      // In debayer() the DEBAYER_AVGC reduces the image size twice because of 2x2 binning
+      // In debayer() the DEBAYER_SP reduces the image size twice because of 2x2 binning
       debayer(f->_input_image, f->_input_image, f->_colorid, opts.debayer_method);
       if ( !f->_input_mask.empty() && f->_input_mask.size() != f->_input_image.size() ) {
         cv::resize(f->_input_mask, f->_input_mask, f->_input_image.size(), 0, 0, cv::INTER_NEAREST);

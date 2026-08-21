@@ -16,7 +16,7 @@ static bool _median_denoise(cv::Mat & image, double _k)
 {
   const int rows = image.rows;
   const int cols = image.cols;
-  const int channels = image.channels();
+  const int cn = image.channels();
   const int ksize = 5;
 
   cv::Mat median, mad;
@@ -37,19 +37,16 @@ static bool _median_denoise(cv::Mat & image, double _k)
 
   parallel_for(0, rows, [=](const auto & range) {
     const float k = _k;
+    const int xmax = cols * cn;
     for( int y = rbegin(range); y < rend(range); ++y ) {
-
       _Tp * __restrict img = (_Tp *) (image_base + y * image_stride);
       const _Tp * med = (const _Tp*)(median_base + y * median_stride);
       const _Tp * mad = (const _Tp*)(mad_base + y * mad_stride);
 
-      for( int x = 0; x < cols; ++x, img += channels, med += channels, mad += channels ) {
-        for( int c = 0; c < channels; ++c ) {
-          const float p = img[c];
-          const float m = med[c];
-          if ( std::abs(m - p) > k * mad[c] + mv ) {
-            img[c] = m;
-          }
+      for( int x = 0; x < xmax; ++x, ++img, ++med, ++mad ) {
+        const float p = *img, m = *med;
+        if ( std::abs(m - p) > k * (*mad) + mv ) {
+          *img = m;
         }
       }
     }

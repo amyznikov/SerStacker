@@ -1511,42 +1511,34 @@ static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id
 
   cv::medianBlur(planes, median, 3);
   cv::absdiff(planes, median, mad);
-  cv::boxFilter(mad, mad, -1, cv::Size(3, 3), cv::Point(1, 1), true, cv::BORDER_DEFAULT);
+  cv::boxFilter(mad, mad, -1, cv::Size(3, 3), cv::Point(-1, -1), true, cv::BORDER_DEFAULT);
 
   const float minvar = _bayer_image.depth() < CV_32F ? 1.f : 1.f / 256.f;
 
   if ( cn == 4 || returnBayerPlanes ) {
 
     uint8_t * const planes_base = (uint8_t*)planes.ptr();
-    const uint8_t * const median_base = (const uint8_t*)median.ptr();
-    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
-
     const size_t planes_stride = planes.step;
+
+    const uint8_t * const median_base = (const uint8_t*)median.ptr();
     const size_t median_stride = median.step;
+
+    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
     const size_t mad_stride = mad.step;
 
     parallel_for(0, rows4, [=](const auto & range) {
       const float k = _k;
+      const int xmax = cols4 * 4;
       for( int y = rbegin(range); y < rend(range); ++y ) {
 
         _Tp * __restrict plane = (_Tp *) (planes_base + y * planes_stride);
         const _Tp * __restrict med = (const _Tp*)(median_base + y * median_stride);
         const _Tp * __restrict mad = (const _Tp*)(mad_base + y * mad_stride);
 
-        for( int x = 0; x < cols4; ++x, plane += 4, med += 4, mad += 4 ) {
-          const float p0 = plane[0], p1 = plane[1], p2 = plane[2], p3 = plane[3];
-          const float m0 = med[0], m1 = med[1], m2 = med[2], m3 = med[3];
-          if ( std::abs(m0 - p0) > k * mad[0] + minvar ) {
-            plane[0] = m0;
-          }
-          if ( std::abs(m1 - p1) > k * mad[1] + minvar ) {
-            plane[1] = m1;
-          }
-          if ( std::abs(m2 - p2) > k * mad[2] + minvar ) {
-            plane[2] = m2;
-          }
-          if ( std::abs(m3 - p3) > k * mad[3] + minvar ) {
-            plane[3] = m3;
+        for( int x = 0; x < xmax; ++x, ++plane, ++med, ++mad) {
+          const float p = *plane, m = *med;
+          if ( std::abs(m - p) > k * (*mad) + minvar ) {
+            *plane = m;
           }
         }
       }
@@ -1557,14 +1549,17 @@ static bool _debayer_denoise(cv::Mat & _bayer_image, double _k, COLORID color_id
     }
   }
   else {
-    uint8_t * const bayer_base = (uint8_t*)_bayer_image.ptr();
-    uint8_t * const planes_base = (uint8_t*)planes.ptr();
-    const uint8_t * const median_base = (const uint8_t*)median.ptr();
-    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
 
+    uint8_t * const bayer_base = (uint8_t*)_bayer_image.ptr();
     const size_t bayer_stride = _bayer_image.step;
+
+    uint8_t * const planes_base = (uint8_t*)planes.ptr();
     const size_t planes_stride = planes.step;
+
+    const uint8_t * const median_base = (const uint8_t*)median.ptr();
     const size_t median_stride = median.step;
+
+    const uint8_t * const mad_base = (const uint8_t*)mad.ptr();
     const size_t mad_stride = mad.step;
 
     parallel_for(0, rows4, [=](const auto & range) {

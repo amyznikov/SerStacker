@@ -12,6 +12,10 @@
 #include <opencv2/opencv.hpp>
 #include <core/ctrlbind/ctrlbind.h>
 
+#if (CV_VERSION_MAJOR >= 5 )
+# include <opencv2/calib3d.hpp>
+#endif
+
 /**
  * Camera matrix and distortion coefficients
  * */

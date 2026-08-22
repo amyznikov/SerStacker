@@ -21,6 +21,9 @@
 
 #if HAVE_OpenCV_stereo
 # include <opencv2/stereo.hpp>
+#if (CV_VERSION_MAJOR >= 5)
+# include <opencv2/xstereo.hpp>
+#endif
 #endif
 
 #include "c_sweepscan_stereo_matcher.h"

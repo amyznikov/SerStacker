@@ -10,6 +10,9 @@
 #define __birds_eye_view_h__
 
 #include <opencv2/opencv.hpp>
+#if (CV_VERSION_MAJOR >= 5)
+#include <opencv2/geometry.hpp>
+#endif
 
 /**
  @brief Create bird's-eye view homography matrix for inverse perspective mapping.

@@ -14,6 +14,11 @@
 #include <core/io/load_image.h>
 #include <core/proc/combine_masks.h>
 #include <map>
+
+#if (CV_VERSION_MAJOR >= 5)
+#include<opencv2/geometry.hpp>
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 
 struct c_image_processor_artifact

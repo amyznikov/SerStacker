@@ -49,7 +49,9 @@ static cv::Mat getItem(cv::InputArrayOfArrays a, int i)
       case cv::_InputArray::UMAT:
       case cv::_InputArray::CUDA_GPU_MAT:
       case cv::_InputArray::STD_VECTOR:
+#if OPENCV_ABI_COMPATIBILITY < 500
       case cv::_InputArray::STD_ARRAY:
+#endif	
       case cv::_InputArray::STD_BOOL_VECTOR:
         return a.getMat(-1);
 

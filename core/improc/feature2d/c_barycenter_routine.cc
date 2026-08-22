@@ -8,6 +8,10 @@
 #include "c_barycenter_routine.h"
 #include <core/proc/reduce_channels.h>
 
+#if (CV_VERSION_MAJOR >= 5)
+#include <opencv2/geometry.hpp>
+#endif
+
 static bool adjust_roi(const cv::Rect & src, const cv::Size & image_size, cv::Rect * dst)
 {
   const int l = (std::min)(image_size.width - 1, (std::max)(0, src.x));

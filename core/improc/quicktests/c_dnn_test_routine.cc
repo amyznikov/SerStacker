@@ -206,19 +206,26 @@ bool Inference::loadClassesFromFile()
 
 bool Inference::loadOnnxNetwork()
 {
+#if (CV_VERSION_MAJOR >= 5)
+#else  
 #if HAVE_OpenCV_dnn
  try {
-
+#if (CV_VERSION_MAJOR >= 5)
+   using MatShape = cv::MatShape;
+#else
+   using MatShape = cv::dnn::MatShape;
+#endif   
+   
     net = cv::dnn::readNetFromONNX(modelPath);
 
-    std::vector<cv::dnn::MatShape> inLayerShapes;
-    std::vector<cv::dnn::MatShape> outLayerShapes;
-    net.getLayerShapes(cv::dnn::MatShape(), 0, inLayerShapes, outLayerShapes);
+    std::vector<MatShape> inLayerShapes;
+    std::vector<MatShape> outLayerShapes;
+    net.getLayerShapes(MatShape(), 0, inLayerShapes, outLayerShapes);
 
     outputShape.width = outputShape.height = -1;
 
     if( outLayerShapes.size() > 0 ) {
-      const cv::dnn::MatShape & s = outLayerShapes.back();
+      const auto & s = outLayerShapes.back();
       if( s.size() == 4 ) {
         outputShape.width = s[3];
         outputShape.height = s[2];
@@ -273,7 +280,8 @@ bool Inference::loadOnnxNetwork()
     CF_ERROR("Unknown Exception in loadOnnxNetwork()");
   }
 #endif
-
+#endif
+ 
   return false;
 }
 

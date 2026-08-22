@@ -9,6 +9,9 @@
 #define __planetary_disk_detection_h__
 
 #include <opencv2/opencv.hpp>
+#if (CV_VERSION_MAJOR >= 5)
+#include <opencv2/geometry.hpp>
+#endif
 #include <core/ctrlbind/ctrlbind.h>
 
 struct c_simple_planetary_disk_detector_options

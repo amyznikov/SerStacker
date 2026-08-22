@@ -45,7 +45,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # ----------------------------------------------------------------------------
 # OpenCV
 set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
-find_package(OpenCV QUIET)
+set(VTK_DIR "/dev/null" CACHE PATH "Ignore VTK" FORCE)
+find_package(OpenCV CONFIG QUIET)
 
 if(NOT OpenCV_FOUND)
    message(FATAL_ERROR "ERROR: OpenCV not found")
@@ -57,6 +58,7 @@ if(OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED})
    return()
 endif()
 
+unset(OpenCV_FOUND CACHE)
 if(OpenCV_VERSION_MAJOR EQUAL 5)
    # For OpenCV 5: replace features2d with features, add compile_definitions
    set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features flann video videoio objdetect xobjdetect)
@@ -68,6 +70,8 @@ endif()
 
 find_package(OpenCV REQUIRED COMPONENTS ${OPENCV_REQUIRED_COMPONENTS}
     OPTIONAL_COMPONENTS xfeatures2d stereo dnn freetype photo)
+
+list(REMOVE_ITEM OpenCV_LIBS opencv_viz opencv_highgui opencv_ptcloud opencv_plot opencv_rgbd opencv_structured_light)
 
 message(STATUS "OpenCV:              ${OpenCV_VERSION}")
 message(STATUS "OpenCV_xfeatures2d:  ${OpenCV_xfeatures2d_FOUND}")

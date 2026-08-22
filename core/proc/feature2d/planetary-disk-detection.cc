@@ -183,7 +183,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
     gray.setTo(0, ~comp);
     gray = gray(rc);
 
-    m = moments(gray, false);
+    m = cv::moments(gray, false);
     center = cv::Point2f(m.m10 / m.m00, m.m01 / m.m00);
 
     output_centroid->x = center.x + rc.x;

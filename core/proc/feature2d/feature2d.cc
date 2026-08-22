@@ -198,8 +198,8 @@ c_sparse_feature_extractor_and_matcher::sptr c_sparse_feature_extractor_and_matc
                 obj->_options.detector.akaze;
 
         switch (opts.descriptor_type) {
-          case cv::AKAZE::DESCRIPTOR_MLDB:
-          case cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT:
+          case AKAZEDescriptorType::DESCRIPTOR_MLDB:
+          case AKAZEDescriptorType::DESCRIPTOR_MLDB_UPRIGHT:
             obj->_options.matcher.type = FEATURE2D_MATCHER_HAMMING;
             break;
           default:

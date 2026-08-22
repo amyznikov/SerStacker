@@ -45,13 +45,29 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # ----------------------------------------------------------------------------
 # OpenCV
 set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
-find_package(OpenCV REQUIRED COMPONENTS core imgproc ximgproc imgcodecs features2d flann video videoio objdetect xobjdetect 
-                   OPTIONAL_COMPONENTS xfeatures2d stereo dnn freetype photo)
-                   
-if((OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED}) )
+find_package(OpenCV QUIET)
+
+if(NOT OpenCV_FOUND)
+   message(FATAL_ERROR "ERROR: OpenCV not found")
+   return()
+endif()
+
+if(OpenCV_VERSION VERSION_LESS ${OpenCV_MINIMUM_VERSION_REQUIRED})
    message(FATAL_ERROR "ERROR: OpenCV version >= ${OpenCV_MINIMUM_VERSION_REQUIRED} is required but '${OpenCV_VERSION}' is found")
    return()
 endif()
+
+if(OpenCV_VERSION_MAJOR EQUAL 5)
+   # For OpenCV 5: replace features2d with features, add compile_definitions
+   set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features flann video videoio objdetect xobjdetect)
+   add_compile_definitions(OPENCV_V5=1)
+else()
+   set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features2d flann video videoio objdetect xobjdetect)
+   add_compile_definitions(OPENCV_V5=0)
+endif()
+
+find_package(OpenCV REQUIRED COMPONENTS ${OPENCV_REQUIRED_COMPONENTS}
+    OPTIONAL_COMPONENTS xfeatures2d stereo dnn freetype photo)
 
 message(STATUS "OpenCV:              ${OpenCV_VERSION}")
 message(STATUS "OpenCV_xfeatures2d:  ${OpenCV_xfeatures2d_FOUND}")
@@ -60,23 +76,23 @@ message(STATUS "OpenCV_dnn:          ${OpenCV_dnn_FOUND}")
 message(STATUS "OpenCV_freetype:     ${OpenCV_freetype_FOUND}")
 
 if ( OpenCV_xfeatures2d_FOUND ) 
-	add_definitions(-DHAVE_OpenCV_xfeatures2d=1)
+	add_compile_definitions(HAVE_OpenCV_xfeatures2d=1)
 endif()	
 
 if ( OpenCV_stereo_FOUND ) 
-	add_definitions(-DHAVE_OpenCV_stereo=1)
+	add_compile_definitions(HAVE_OpenCV_stereo=1)
 endif()	
 
 if ( OpenCV_dnn_FOUND ) 
-	add_definitions(-DHAVE_OpenCV_dnn=1)
+	add_compile_definitions(HAVE_OpenCV_dnn=1)
 endif()	
 
 if ( OpenCV_freetype_FOUND ) 
-	add_definitions(-DHAVE_OpenCV_freetype=1)
+	add_compile_definitions(HAVE_OpenCV_freetype=1)
 endif()	
 
 if ( OpenCV_photo_FOUND ) 
-	add_definitions(-DHAVE_OpenCV_photo=1)
+	add_compile_definitions(HAVE_OpenCV_photo=1)
 endif()
 
 set(enable_OpenCV TRUE)

@@ -31,15 +31,23 @@ const c_enum_member *members_of<FEATURE2D_TYPE>()
       { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
 #endif
       { FEATURE2D_ORB, "ORB", "" },
+#if HAVE_FEATURE2D_BRISK
       { FEATURE2D_BRISK, "BRISK", "" },
+#endif
       { FEATURE2D_MSER, "MSER", "" },
       { FEATURE2D_FAST, "FAST", "" },
+#if HAVE_FEATURE2D_AGAST
       { FEATURE2D_AGAST, "AGAST", "" },
+#endif
       { FEATURE2D_GFTT, "GFTT", "" },
       { FEATURE2D_BLOB, "BLOB", "" },
+#if HAVE_FEATURE2D_KAZE
       { FEATURE2D_KAZE, "KAZE", "" },
+#endif
+#if HAVE_FEATURE2D_AKAZE
       { FEATURE2D_AKAZE, "AKAZE", "" },
-#if  HAVE_FEATURE2D_BRIEF
+#endif
+#if HAVE_FEATURE2D_BRIEF
       { FEATURE2D_BRIEF, "BRIEF", "" },
 #endif
 #if HAVE_FEATURE2D_SIFT
@@ -94,18 +102,26 @@ members_of<SPARSE_FEATURE_DETECTOR_TYPE>()
 #if HAVE_STAR_EXTRACTOR
       { FEATURE2D_STAR_EXTRACTOR, "STAR_EXTRACTOR", "Detect stars on astro image" },
 #endif
+#if HAVE_FEATURE2D_AKAZE
       { SPARSE_FEATURE_DETECTOR_AKAZE, "AKAZE" },
+#endif
+#if HAVE_FEATURE2D_KAZE
+      { SPARSE_FEATURE_DETECTOR_KAZE, "KAZE" },
+#endif
 #if HAVE_FEATURE2D_SIFT
       { SPARSE_FEATURE_DETECTOR_SIFT, "SIFT" },
 #endif
       { SPARSE_FEATURE_DETECTOR_ORB, "ORB" },
+#if HAVE_FEATURE2D_BRISK
       { SPARSE_FEATURE_DETECTOR_BRISK, "BRISK" },
+#endif
       { SPARSE_FEATURE_DETECTOR_MSER, "MSER" },
       { SPARSE_FEATURE_DETECTOR_FAST, "FAST" },
+#if HAVE_FEATURE2D_AGAST
       { SPARSE_FEATURE_DETECTOR_AGAST, "AGAST" },
+#endif
       { SPARSE_FEATURE_DETECTOR_GFTT, "GFTT" },
       { SPARSE_FEATURE_DETECTOR_BLOB, "BLOB" },
-      { SPARSE_FEATURE_DETECTOR_KAZE, "KAZE" },
 #if HAVE_FEATURE2D_STAR
       { SPARSE_FEATURE_DETECTOR_STAR, "STAR" },
 #endif
@@ -136,10 +152,16 @@ members_of<SPARSE_FEATURE_DESCRIPTOR_TYPE>()
 #if HAVE_TRIANGLE_EXTRACTOR
       { SPARSE_FEATURE_DESCRIPTOR_TRIANGLE, "TRIANGLE", "Build triangles from the set of sparse keypoint locations" },
 #endif
+#if HAVE_FEATURE2D_AKAZE
       {SPARSE_FEATURE_DESCRIPTOR_AKAZE, "AKAZE"},
+#endif
       {SPARSE_FEATURE_DESCRIPTOR_ORB, "ORB"},
+#if HAVE_FEATURE2D_BRISK
       {SPARSE_FEATURE_DESCRIPTOR_BRISK, "BRISK"},
+#endif
+#if HAVE_FEATURE2D_KAZE
       {SPARSE_FEATURE_DESCRIPTOR_KAZE, "KAZE"},
+#endif
 #if HAVE_FEATURE2D_SIFT
       {SPARSE_FEATURE_DESCRIPTOR_SIFT, "SIFT"},
 #endif
@@ -184,28 +206,28 @@ const c_enum_member * members_of<cv::ORB::ScoreType>()
 }
 
 template<>
-const c_enum_member * members_of<cv::KAZE::DiffusivityType>()
+const c_enum_member * members_of<KAZEDiffusivityType>()
 {
   static const c_enum_member members[] = {
-      { cv::KAZE::DIFF_PM_G1, "DIFF_PM_G1", "" },
-      { cv::KAZE::DIFF_PM_G2, "DIFF_PM_G2", "" },
-      { cv::KAZE::DIFF_WEICKERT, "DIFF_WEICKERT", "" },
-      { cv::KAZE::DIFF_CHARBONNIER, "DIFF_CHARBONNIER", "" },
-      { cv::KAZE::DIFF_PM_G2 },
+      { KAZEDiffusivityType::DIFF_PM_G1, "DIFF_PM_G1", "" },
+      { KAZEDiffusivityType::DIFF_PM_G2, "DIFF_PM_G2", "" },
+      { KAZEDiffusivityType::DIFF_WEICKERT, "DIFF_WEICKERT", "" },
+      { KAZEDiffusivityType::DIFF_CHARBONNIER, "DIFF_CHARBONNIER", "" },
+      { KAZEDiffusivityType::DIFF_PM_G2 },
   };
 
   return members;
 }
 
 template<>
-const c_enum_member * members_of<cv::AKAZE::DescriptorType>()
+const c_enum_member * members_of<AKAZEDescriptorType>()
 {
   static const c_enum_member members[] = {
-      { cv::AKAZE::DESCRIPTOR_KAZE_UPRIGHT, "DESCRIPTOR_KAZE_UPRIGHT", "Upright descriptors, not invariant to rotation" },
-      { cv::AKAZE::DESCRIPTOR_KAZE, "DESCRIPTOR_KAZE", "" },
-      { cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT, "DESCRIPTOR_MLDB_UPRIGHT", "Upright descriptors, not invariant to rotation" },
-      { cv::AKAZE::DESCRIPTOR_MLDB, "DESCRIPTOR_MLDB",  "" },
-      { cv::AKAZE::DESCRIPTOR_MLDB },
+      { AKAZEDescriptorType::DESCRIPTOR_KAZE_UPRIGHT, "DESCRIPTOR_KAZE_UPRIGHT", "Upright descriptors, not invariant to rotation" },
+      { AKAZEDescriptorType::DESCRIPTOR_KAZE, "DESCRIPTOR_KAZE", "" },
+      { AKAZEDescriptorType::DESCRIPTOR_MLDB_UPRIGHT, "DESCRIPTOR_MLDB_UPRIGHT", "Upright descriptors, not invariant to rotation" },
+      { AKAZEDescriptorType::DESCRIPTOR_MLDB, "DESCRIPTOR_MLDB",  "" },
+      { AKAZEDescriptorType::DESCRIPTOR_MLDB },
   };
 
   return members;
@@ -224,6 +246,8 @@ const c_enum_member * members_of<FastFeatureDetectorType>()
   return members;
 }
 
+#if HAVE_FEATURE2D_AGAST
+
 template<>
 const c_enum_member * members_of<AgastFeatureDetectorType>()
 {
@@ -237,6 +261,7 @@ const c_enum_member * members_of<AgastFeatureDetectorType>()
 
   return members;
 }
+#endif
 
 #if HAVE_FEATURE2D_DAISY
 template<>
@@ -285,12 +310,18 @@ c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector
     return nullptr;
   case SPARSE_FEATURE_DETECTOR_ORB :
     return create_feature2d(options.orb);
+#if HAVE_FEATURE2D_BRISK
   case SPARSE_FEATURE_DETECTOR_BRISK :
     return create_feature2d(options.brisk);
+#endif
+#if HAVE_FEATURE2D_KAZE
   case SPARSE_FEATURE_DETECTOR_KAZE :
     return create_feature2d(options.kaze);
+#endif
+#if HAVE_FEATURE2D_AKAZE
   case SPARSE_FEATURE_DETECTOR_AKAZE :
     return create_feature2d(options.akaze);
+#endif
 #if HAVE_FEATURE2D_SIFT
   case SPARSE_FEATURE_DETECTOR_SIFT :
     return create_feature2d(options.sift);
@@ -303,8 +334,10 @@ c_feature2d::sptr create_sparse_feature_detector(const c_sparse_feature_detector
     return create_feature2d(options.mser);
   case SPARSE_FEATURE_DETECTOR_FAST :
     return create_feature2d(options.fast);
+#if HAVE_FEATURE2D_AGAST
   case SPARSE_FEATURE_DETECTOR_AGAST :
     return create_feature2d(options.agast);
+#endif
   case SPARSE_FEATURE_DETECTOR_GFTT :
     return create_feature2d(options.gftt);
   case SPARSE_FEATURE_DETECTOR_BLOB :
@@ -458,19 +491,25 @@ const std::initializer_list<int>& detector_supported_depths(SPARSE_FEATURE_DETEC
       return v;
     }
 #endif
-
+#if HAVE_FEATURE2D_KAZE
     case SPARSE_FEATURE_DETECTOR_KAZE:
+#endif
+#if HAVE_FEATURE2D_AKAZE
     case SPARSE_FEATURE_DETECTOR_AKAZE:
+#endif
     case SPARSE_FEATURE_DETECTOR_GFTT: {
       static const depthlist v = { CV_32F, CV_8U };
       return v;
     }
-
     case SPARSE_FEATURE_DETECTOR_ORB:
+#if HAVE_FEATURE2D_BRISK
     case SPARSE_FEATURE_DETECTOR_BRISK:
+#endif
     case SPARSE_FEATURE_DETECTOR_MSER:
     case SPARSE_FEATURE_DETECTOR_FAST:
+#if HAVE_FEATURE2D_AGAST
     case SPARSE_FEATURE_DETECTOR_AGAST:
+#endif
     case SPARSE_FEATURE_DETECTOR_BLOB:
 #if HAVE_FEATURE2D_SIFT
     case SPARSE_FEATURE_DETECTOR_SIFT:

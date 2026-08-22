@@ -337,7 +337,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _master_options.registration.enable_feature_registration = true;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
-    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = AKAZEDescriptorType::DESCRIPTOR_MLDB_UPRIGHT;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
     _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
     _master_options.registration.enable_ecc_registration = true;
@@ -355,7 +355,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _stack_options.registration.enable_feature_registration = true;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.type = SPARSE_FEATURE_DETECTOR_AKAZE;
-    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT;
+    _master_options.registration.feature_registration.sparse_feature_extractor_and_matcher.detector.akaze.descriptor_type = AKAZEDescriptorType::DESCRIPTOR_MLDB_UPRIGHT;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.type = FEATURE2D_MATCHER_HAMMING;
     _stack_options.registration.feature_registration.sparse_feature_extractor_and_matcher.matcher.hamming.max_acceptable_distance = 21;
 

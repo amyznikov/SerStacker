@@ -48,56 +48,135 @@
     CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
-#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(4,4,0) )
-#if HAVE_OpenCV_xfeatures2d
-using SIFT = xfeatures2d::SIFT;
-using SURF = xfeatures2d::SURF;
+//#if ( CV_VERSION_CURRRENT < CV_VERSION_INT(4,4,0) )
+//#if HAVE_OpenCV_xfeatures2d
+//using SIFT = xfeatures2d::SIFT;
+//using SURF = xfeatures2d::SURF;
+//
+//#define HAVE_FEATURE2D_BRIEF  1
+//#define HAVE_FEATURE2D_SIFT   1
+//#define HAVE_FEATURE2D_SURF   1
+//#define HAVE_FEATURE2D_FREAK  1
+//#define HAVE_FEATURE2D_STAR   1
+//#define HAVE_FEATURE2D_LUCID  1
+//#define HAVE_FEATURE2D_LATCH  1
+//#define HAVE_FEATURE2D_DAISY  1
+//#define HAVE_FEATURE2D_MSD    1
+//#define HAVE_FEATURE2D_VGG    1
+//#define HAVE_FEATURE2D_BOOST  1
+//#define HAVE_FEATURE2D_HL     1
+//#endif
+//#else
+//using SIFT = cv::SIFT;
+//#define HAVE_FEATURE2D_SIFT 1
+//#if HAVE_OpenCV_xfeatures2d
+//using SURF = cv::xfeatures2d::SURF;
+//
+//#define HAVE_FEATURE2D_BRIEF  1
+//#define HAVE_FEATURE2D_SURF   1
+//#define HAVE_FEATURE2D_FREAK  1
+//#define HAVE_FEATURE2D_STAR   1
+//#define HAVE_FEATURE2D_LUCID  1
+//#define HAVE_FEATURE2D_LATCH  1
+//#define HAVE_FEATURE2D_DAISY  1
+//#define HAVE_FEATURE2D_MSD    1
+//#define HAVE_FEATURE2D_VGG    1
+//#define HAVE_FEATURE2D_BOOST  1
+//#define HAVE_FEATURE2D_HL     1
+//#endif
+//#endif
 
-#define HAVE_FEATURE2D_BRIEF  1
-#define HAVE_FEATURE2D_SIFT   1
-#define HAVE_FEATURE2D_SURF   1
-#define HAVE_FEATURE2D_FREAK  1
-#define HAVE_FEATURE2D_STAR   1
-#define HAVE_FEATURE2D_LUCID  1
-#define HAVE_FEATURE2D_LATCH  1
-#define HAVE_FEATURE2D_DAISY  1
-#define HAVE_FEATURE2D_MSD    1
-#define HAVE_FEATURE2D_VGG    1
-#define HAVE_FEATURE2D_BOOST  1
-#define HAVE_FEATURE2D_HL     1
-#endif
+#if (CV_VERSION_MAJOR >= 5)
+  using SIFT = cv::SIFT;
+  #define HAVE_FEATURE2D_SIFT 1
+
+  #if HAVE_OpenCV_xfeatures2d
+  using SURF = cv::xfeatures2d::SURF;
+  #define HAVE_FEATURE2D_AGAST 1
+  #define HAVE_FEATURE2D_BRISK 1
+  #define HAVE_FEATURE2D_KAZE  1
+  #define HAVE_FEATURE2D_AKAZE 1
+  #define HAVE_FEATURE2D_BRIEF  1
+  #define HAVE_FEATURE2D_SURF   1
+  #define HAVE_FEATURE2D_FREAK  1
+  #define HAVE_FEATURE2D_STAR   1
+  #define HAVE_FEATURE2D_LUCID  1
+  #define HAVE_FEATURE2D_LATCH  1
+  #define HAVE_FEATURE2D_DAISY  1
+  #define HAVE_FEATURE2D_MSD    1
+  #define HAVE_FEATURE2D_VGG    1
+  #define HAVE_FEATURE2D_BOOST  1
+  #define HAVE_FEATURE2D_HL     1
+  #endif
+
+#elif (CV_VERSION_CURRRENT >= CV_VERSION_INT(4,4,0))
+  using SIFT = cv::SIFT;
+  #define HAVE_FEATURE2D_SIFT  1
+  #define HAVE_FEATURE2D_AGAST 1
+  #define HAVE_FEATURE2D_BRISK 1
+  #define HAVE_FEATURE2D_KAZE  1
+  #define HAVE_FEATURE2D_AKAZE 1
+
+  #if HAVE_OpenCV_xfeatures2d
+  using SURF = cv::xfeatures2d::SURF;
+  #define HAVE_FEATURE2D_BRIEF  1
+  #define HAVE_FEATURE2D_SURF   1
+  #define HAVE_FEATURE2D_FREAK  1
+  #define HAVE_FEATURE2D_STAR   1
+  #define HAVE_FEATURE2D_LUCID  1
+  #define HAVE_FEATURE2D_LATCH  1
+  #define HAVE_FEATURE2D_DAISY  1
+  #define HAVE_FEATURE2D_MSD    1
+  #define HAVE_FEATURE2D_VGG    1
+  #define HAVE_FEATURE2D_BOOST  1
+  #define HAVE_FEATURE2D_HL     1
+  #endif
 #else
-using SIFT = cv::SIFT;
-#define HAVE_FEATURE2D_SIFT 1
-#if HAVE_OpenCV_xfeatures2d
-using SURF = cv::xfeatures2d::SURF;
+  #define HAVE_FEATURE2D_AGAST 1
+  #define HAVE_FEATURE2D_BRISK 1
+  #define HAVE_FEATURE2D_KAZE  1
+  #define HAVE_FEATURE2D_AKAZE 1
 
-#define HAVE_FEATURE2D_BRIEF  1
-#define HAVE_FEATURE2D_SURF   1
-#define HAVE_FEATURE2D_FREAK  1
-#define HAVE_FEATURE2D_STAR   1
-#define HAVE_FEATURE2D_LUCID  1
-#define HAVE_FEATURE2D_LATCH  1
-#define HAVE_FEATURE2D_DAISY  1
-#define HAVE_FEATURE2D_MSD    1
-#define HAVE_FEATURE2D_VGG    1
-#define HAVE_FEATURE2D_BOOST  1
-#define HAVE_FEATURE2D_HL     1
-#endif
+  #if HAVE_OpenCV_xfeatures2d
+  using SIFT = xfeatures2d::SIFT;
+  using SURF = xfeatures2d::SURF;
+
+  #define HAVE_FEATURE2D_BRIEF  1
+  #define HAVE_FEATURE2D_SIFT   1
+  #define HAVE_FEATURE2D_SURF   1
+  #define HAVE_FEATURE2D_FREAK  1
+  #define HAVE_FEATURE2D_STAR   1
+  #define HAVE_FEATURE2D_LUCID  1
+  #define HAVE_FEATURE2D_LATCH  1
+  #define HAVE_FEATURE2D_DAISY  1
+  #define HAVE_FEATURE2D_MSD    1
+  #define HAVE_FEATURE2D_VGG    1
+  #define HAVE_FEATURE2D_BOOST  1
+  #define HAVE_FEATURE2D_HL     1
+  #endif
 #endif
 
 enum FEATURE2D_TYPE {
   FEATURE2D_UNKNOWN = -1,
 
   FEATURE2D_ORB = 0,
+#if HAVE_FEATURE2D_BRISK
   FEATURE2D_BRISK = 1,
+#endif
   FEATURE2D_MSER = 2,
   FEATURE2D_FAST = 3,
+#if HAVE_FEATURE2D_AGAST
   FEATURE2D_AGAST = 4,
+#endif
   FEATURE2D_GFTT = 5,
   FEATURE2D_BLOB = 6,  // SimpleBlobDetector
+#if HAVE_FEATURE2D_KAZE
   FEATURE2D_KAZE = 7,
+#endif
+#if HAVE_FEATURE2D_AKAZE
   FEATURE2D_AKAZE = 8,
+#endif
+
 #if  HAVE_FEATURE2D_BRIEF
   FEATURE2D_BRIEF = 9,
 #endif
@@ -154,14 +233,22 @@ enum SPARSE_FEATURE_DETECTOR_TYPE
 {
   SPARSE_FEATURE_DETECTOR_UNKNOWN = -1,
   SPARSE_FEATURE_DETECTOR_ORB = FEATURE2D_ORB,
+#if HAVE_FEATURE2D_BRISK
   SPARSE_FEATURE_DETECTOR_BRISK = FEATURE2D_BRISK,
+#endif
   SPARSE_FEATURE_DETECTOR_MSER = FEATURE2D_MSER,
   SPARSE_FEATURE_DETECTOR_FAST = FEATURE2D_FAST,
+#if HAVE_FEATURE2D_AGAST
   SPARSE_FEATURE_DETECTOR_AGAST = FEATURE2D_AGAST,
+#endif
   SPARSE_FEATURE_DETECTOR_GFTT = FEATURE2D_GFTT,
   SPARSE_FEATURE_DETECTOR_BLOB = FEATURE2D_BLOB,
+#if HAVE_FEATURE2D_KAZE
   SPARSE_FEATURE_DETECTOR_KAZE = FEATURE2D_KAZE,
+#endif
+#if HAVE_FEATURE2D_AKAZE
   SPARSE_FEATURE_DETECTOR_AKAZE = FEATURE2D_AKAZE,
+#endif
 #if HAVE_FEATURE2D_SIFT
   SPARSE_FEATURE_DETECTOR_SIFT = FEATURE2D_SIFT,
 #endif
@@ -193,9 +280,16 @@ enum SPARSE_FEATURE_DESCRIPTOR_TYPE
   SPARSE_FEATURE_DESCRIPTOR_UNKNOWN = -1,
   SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT = SPARSE_FEATURE_DESCRIPTOR_UNKNOWN,
   SPARSE_FEATURE_DESCRIPTOR_ORB = FEATURE2D_ORB,
+
+#if HAVE_FEATURE2D_BRISK
   SPARSE_FEATURE_DESCRIPTOR_BRISK = FEATURE2D_BRISK,
+#endif
+#if HAVE_FEATURE2D_KAZE
   SPARSE_FEATURE_DESCRIPTOR_KAZE = FEATURE2D_KAZE,
+#endif
+#if HAVE_FEATURE2D_AKAZE
   SPARSE_FEATURE_DESCRIPTOR_AKAZE = FEATURE2D_AKAZE,
+#endif
 #if HAVE_FEATURE2D_SIFT
   SPARSE_FEATURE_DESCRIPTOR_SIFT = FEATURE2D_SIFT,
 #endif
@@ -238,19 +332,78 @@ enum FastFeatureDetectorType {
 };
 
 #if (CV_VERSION_MAJOR >= 5)
+
+#if HAVE_FEATURE2D_AGAST
+using AgastFeatureDetector = cv::xfeatures2d::AgastFeatureDetector;
 enum AgastFeatureDetectorType {
   AGAST_5_8 = cv::xfeatures2d::AgastFeatureDetector::AGAST_5_8,
   AGAST_7_12d = cv::xfeatures2d::AgastFeatureDetector::AGAST_7_12d,
   AGAST_7_12s = cv::xfeatures2d::AgastFeatureDetector::AGAST_7_12s,
   OAST_9_16 = cv::xfeatures2d::AgastFeatureDetector::OAST_9_16,
 };
+#endif
+
+#if HAVE_FEATURE2D_KAZE
+using KAZEDetector = cv::xfeatures2d::KAZE;
+enum KAZEDiffusivityType {
+  DIFF_PM_G1 = cv::xfeatures2d::KAZE::DIFF_PM_G1,
+  DIFF_PM_G2 = cv::xfeatures2d::KAZE::DIFF_PM_G2,
+  DIFF_WEICKERT = cv::xfeatures2d::KAZE::DIFF_WEICKERT,
+  DIFF_CHARBONNIER = cv::xfeatures2d::KAZE::DIFF_CHARBONNIER
+};
+#endif
+
+#if HAVE_FEATURE2D_AKAZE
+using AKAZEDetector = cv::xfeatures2d::AKAZE;
+enum AKAZEDescriptorType {
+  DESCRIPTOR_KAZE_UPRIGHT = cv::xfeatures2d::AKAZE::DESCRIPTOR_KAZE_UPRIGHT,
+  DESCRIPTOR_KAZE = cv::AKAZE::xfeatures2d::DESCRIPTOR_KAZE,
+  DESCRIPTOR_MLDB_UPRIGHT = cv::xfeatures2d::AKAZE::DESCRIPTOR_MLDB_UPRIGHT,
+  DESCRIPTOR_MLDB = cv::xfeatures2d::AKAZE::DESCRIPTOR_MLDB
+};
+#endif
+
+#if HAVE_FEATURE2D_BRISK
+using BRISKDetector = cv::xfeatures2d::BRISK;
+#endif
+
 #else
+
+#if HAVE_FEATURE2D_AGAST
+using AgastFeatureDetector = cv::AgastFeatureDetector;
 enum AgastFeatureDetectorType {
   AGAST_5_8 = cv::AgastFeatureDetector::AGAST_5_8,
   AGAST_7_12d = cv::AgastFeatureDetector::AGAST_7_12d,
   AGAST_7_12s = cv::AgastFeatureDetector::AGAST_7_12s,
   OAST_9_16 = cv::AgastFeatureDetector::OAST_9_16,
 };
+#endif
+
+#if HAVE_FEATURE2D_KAZE
+using KAZEDetector = cv::KAZE;
+enum KAZEDiffusivityType {
+  DIFF_PM_G1 = cv::KAZE::DIFF_PM_G1,
+  DIFF_PM_G2 = cv::KAZE::DIFF_PM_G2,
+  DIFF_WEICKERT = cv::KAZE::DIFF_WEICKERT,
+  DIFF_CHARBONNIER = cv::KAZE::DIFF_CHARBONNIER
+};
+#endif
+
+#if HAVE_FEATURE2D_AKAZE
+using AKAZEDetector = cv::AKAZE;
+enum AKAZEDescriptorType {
+  DESCRIPTOR_KAZE_UPRIGHT = cv::AKAZE::DESCRIPTOR_KAZE_UPRIGHT,
+  DESCRIPTOR_KAZE = cv::AKAZE::DESCRIPTOR_KAZE,
+  DESCRIPTOR_MLDB_UPRIGHT = cv::AKAZE::DESCRIPTOR_MLDB_UPRIGHT,
+  DESCRIPTOR_MLDB = cv::AKAZE::DESCRIPTOR_MLDB
+};
+#endif
+
+#if HAVE_FEATURE2D_BRISK
+using BRISKDetector = cv::BRISK;
+#endif
+
+
 #endif
 
 
@@ -269,14 +422,16 @@ members_of<cv::ORB::ScoreType>();
 template<> const c_enum_member *
 members_of<FastFeatureDetectorType>();
 
+#if HAVE_FEATURE2D_AGAST
 template<> const c_enum_member *
 members_of<AgastFeatureDetectorType>();
+#endif
 
 template<> const c_enum_member *
-members_of<cv::KAZE::DiffusivityType>();
+members_of<KAZEDiffusivityType>();
 
 template<> const c_enum_member *
-members_of<cv::AKAZE::DescriptorType>();
+members_of<AKAZEDescriptorType>();
 
 #if HAVE_FEATURE2D_DAISY
 template<> const c_enum_member *
@@ -296,14 +451,28 @@ template<class cvFeature2D_type>
 struct feature2d_traits;
 
 template<> struct feature2d_traits<cv::ORB> { static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB; };
-template<> struct feature2d_traits<cv::BRISK> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
 template<> struct feature2d_traits<cv::MSER> { static constexpr FEATURE2D_TYPE type = FEATURE2D_MSER;};
 template<> struct feature2d_traits<cv::FastFeatureDetector> { static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;};
-template<> struct feature2d_traits<cv::AgastFeatureDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
 template<> struct feature2d_traits<cv::GFTTDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_GFTT; };
 template<> struct feature2d_traits<cv::SimpleBlobDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;};
-template<> struct feature2d_traits<cv::KAZE> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
-template<> struct feature2d_traits<cv::AKAZE> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
+
+#if HAVE_FEATURE2D_BRISK
+template<> struct feature2d_traits<BRISKDetector> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
+#endif
+
+
+#if HAVE_FEATURE2D_KAZE
+template<> struct feature2d_traits<KAZEDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
+#endif
+
+#if HAVE_FEATURE2D_AKAZE
+template<> struct feature2d_traits<AKAZEDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
+#endif
+
+#if HAVE_FEATURE2D_AGAST
+template<> struct feature2d_traits<AgastFeatureDetector> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
+#endif
+
 
 #if  HAVE_FEATURE2D_BRIEF
 template<> struct feature2d_traits<cv::xfeatures2d::BriefDescriptorExtractor> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BRIEF;};
@@ -502,8 +671,9 @@ protected:
 
 template<> struct feature2d_traits<c_feature2d_orb> { static constexpr FEATURE2D_TYPE type = FEATURE2D_ORB; };
 
+#if HAVE_FEATURE2D_BRISK
 class c_feature2d_brisk :
-    public c_feature2d_base<cv::BRISK>
+    public c_feature2d_base<BRISKDetector>
 {
 public:
   typedef c_feature2d_brisk this_class;
@@ -530,7 +700,7 @@ protected:
           _opts(opts ? *opts : options())
   {
     _feature2d =
-        cv::BRISK::create(_opts.thresh,
+        BRISKDetector::create(_opts.thresh,
             _opts.octaves,
             _opts.patternScale);
   }
@@ -539,6 +709,7 @@ protected:
   const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_brisk> { static constexpr FEATURE2D_TYPE type = FEATURE2D_BRISK;};
+#endif // HAVE_FEATURE2D_BRISK
 
 class c_feature2d_mser :
     public c_feature2d_base<cv::MSER>
@@ -627,8 +798,9 @@ protected:
 };
 template<> struct feature2d_traits<c_feature2d_fast> { static constexpr FEATURE2D_TYPE type = FEATURE2D_FAST;};
 
+#if HAVE_FEATURE2D_AGAST
 class c_feature2d_agast :
-    public c_feature2d_base<cv::AgastFeatureDetector>
+    public c_feature2d_base<AgastFeatureDetector>
 {
 public:
   typedef c_feature2d_agast this_class;
@@ -654,9 +826,9 @@ protected:
       base(&this->_opts),
           _opts(opts ? *opts : options())
   {
-    using fuckedEnumType = decltype (cv::AgastFeatureDetector::OAST_9_16);
+    using fuckedEnumType = decltype (AgastFeatureDetector::OAST_9_16);
     _feature2d =
-        cv::AgastFeatureDetector::create(_opts.threshold,
+        AgastFeatureDetector::create(_opts.threshold,
             _opts.nonmaxSuppression,
             (fuckedEnumType)(_opts.type));
   }
@@ -665,6 +837,7 @@ protected:
   const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_agast> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AGAST;};
+#endif
 
 class c_feature2d_gftt :
     public c_feature2d_base<cv::GFTTDetector>
@@ -745,8 +918,9 @@ protected:
 };
 template<> struct feature2d_traits<c_feature2d_blob> {static constexpr FEATURE2D_TYPE type = FEATURE2D_BLOB;};
 
+#if HAVE_FEATURE2D_KAZE
 class c_feature2d_kaze :
-    public c_feature2d_base<cv::KAZE>
+    public c_feature2d_base<KAZEDetector>
 {
 public:
   typedef c_feature2d_kaze this_class;
@@ -761,8 +935,9 @@ public:
     float threshold = 0.001f;
     int nOctaves = 4;
     int nOctaveLayers = 4;
-    decltype (cv::KAZE::DIFF_PM_G2) diffusivity =
-        cv::KAZE::DIFF_PM_G2;
+    KAZEDiffusivityType diffusivity = KAZEDiffusivityType::DIFF_PM_G2;
+//    decltype (cv::KAZE::DIFF_PM_G2) diffusivity =
+//        cv::KAZE::DIFF_PM_G2;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -775,22 +950,25 @@ protected:
       base(&this->_opts),
           _opts(opts ? *opts : options())
   {
+    using fuckedEnumType = decltype (KAZEDetector::DIFF_PM_G1);
     _feature2d =
         cv::KAZE::create(_opts.extended,
             _opts.upright,
             _opts.threshold,
             _opts.nOctaves,
             _opts.nOctaveLayers,
-            _opts.diffusivity);
+            (fuckedEnumType)(_opts.diffusivity));
   }
 
 protected:
   const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_kaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_KAZE;};
+#endif
 
+#if HAVE_FEATURE2D_AKAZE
 class c_feature2d_akaze :
-    public c_feature2d_base<cv::AKAZE>
+    public c_feature2d_base<AKAZEDetector>
 {
 public:
   typedef c_feature2d_akaze this_class;
@@ -799,14 +977,13 @@ public:
   struct options : public base::options
   {
     using feature2d_class = this_class;
-    decltype (cv::AKAZE::DESCRIPTOR_MLDB) descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB;
+    AKAZEDescriptorType descriptor_type = AKAZEDescriptorType::DESCRIPTOR_MLDB;
     int descriptor_size = 256;
     int descriptor_channels = 3;
     float threshold = 0.001f;
     int nOctaves = 4;
     int nOctaveLayers = 4;
-    decltype (cv::KAZE::DIFF_PM_G2) diffusivity =
-        cv::KAZE::DIFF_PM_G2;
+    KAZEDiffusivityType diffusivity = KAZEDiffusivityType::DIFF_PM_G2;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -818,20 +995,23 @@ protected:
   c_feature2d_akaze(const options * opts) :
       base(&this->_opts), _opts(opts ? *opts : options())
   {
+    using fuckedEnumType1 = decltype (AKAZEDetector::DESCRIPTOR_KAZE_UPRIGHT);
+    using fuckedEnumType2 = decltype (KAZEDetector::DIFF_PM_G2);
     _feature2d =
-        cv::AKAZE::create(_opts.descriptor_type,
+        cv::AKAZE::create((fuckedEnumType1)(_opts.descriptor_type),
             _opts.descriptor_size,
             _opts.descriptor_channels,
             _opts.threshold,
             _opts.nOctaves,
             _opts.nOctaveLayers,
-            _opts.diffusivity);
+            (fuckedEnumType2)(_opts.diffusivity));
   }
 
 protected:
   const options _opts;
 };
 template<> struct feature2d_traits<c_feature2d_akaze> {static constexpr FEATURE2D_TYPE type = FEATURE2D_AKAZE;};
+#endif
 
 
 #if HAVE_FEATURE2D_SIFT
@@ -1478,9 +1658,15 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
 {
   switch ( type ) {
   case FEATURE2D_ORB :
+#if HAVE_FEATURE2D_BRISK
     case FEATURE2D_BRISK :
+#endif
+#if HAVE_FEATURE2D_KAZE
     case FEATURE2D_KAZE :
+#endif
+#if HAVE_FEATURE2D_AKAZE
     case FEATURE2D_AKAZE :
+#endif
 #if HAVE_FEATURE2D_SIFT
     case FEATURE2D_SIFT :
 #endif
@@ -1489,7 +1675,9 @@ inline constexpr bool can_detect_features(enum FEATURE2D_TYPE type)
 #endif
     case FEATURE2D_MSER :
     case FEATURE2D_FAST :
+#if HAVE_FEATURE2D_AGAST
     case FEATURE2D_AGAST :
+#endif
     case FEATURE2D_GFTT :
     case FEATURE2D_BLOB :
 #if HAVE_FEATURE2D_STAR
@@ -1581,9 +1769,15 @@ struct c_sparse_feature_detector_options
   int max_keypoints = 1000;
 
   c_feature2d_orb::options orb;
+#if HAVE_FEATURE2D_BRISK
   c_feature2d_brisk::options brisk;
+#endif
+#if HAVE_FEATURE2D_KAZE
   c_feature2d_kaze::options kaze;
+#endif
+#if HAVE_FEATURE2D_AKAZE
   c_feature2d_akaze::options akaze;
+#endif
 #if HAVE_FEATURE2D_SIFT
   c_feature2d_sift::options sift;
 #endif
@@ -1592,7 +1786,9 @@ struct c_sparse_feature_detector_options
 #endif
   c_feature2d_mser::options mser;
   c_feature2d_fast::options fast;
+#if HAVE_FEATURE2D_AGAST
   c_feature2d_agast::options agast;
+#endif
   c_feature2d_gftt::options gftt;
   c_feature2d_blob::options blob;
 #if HAVE_FEATURE2D_STAR
@@ -1644,9 +1840,15 @@ struct c_sparse_feature_descriptor_options
   SPARSE_FEATURE_DESCRIPTOR_TYPE type = SPARSE_FEATURE_DESCRIPTOR_AUTO_SELECT;
 
   c_feature2d_orb::options orb;
+#if HAVE_FEATURE2D_BRISK
   c_feature2d_brisk::options brisk;
+#endif
+#if HAVE_FEATURE2D_KAZE
   c_feature2d_kaze::options kaze;
+#endif
+#if HAVE_FEATURE2D_AKAZE
   c_feature2d_akaze::options akaze;
+#endif
 #if HAVE_FEATURE2D_SIFT
   c_feature2d_sift::options sift;
 #endif

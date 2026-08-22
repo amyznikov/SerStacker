@@ -45,9 +45,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # ----------------------------------------------------------------------------
 # OpenCV
 set(OpenCV_MINIMUM_VERSION_REQUIRED "4.2")
-set(VTK_DIR "/dev/null" CACHE PATH "Ignore VTK" FORCE)
 find_package(OpenCV CONFIG QUIET)
-
 if(NOT OpenCV_FOUND)
    message(FATAL_ERROR "ERROR: OpenCV not found")
    return()
@@ -62,16 +60,18 @@ unset(OpenCV_FOUND CACHE)
 if(OpenCV_VERSION_MAJOR EQUAL 5)
    # For OpenCV 5: replace features2d with features, add compile_definitions
    set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features flann video videoio objdetect xobjdetect)
+   set(OPENCV_OPTIONAL_COMPONENTS xfeatures2d stereo xstereo dnn freetype photo)
    add_compile_definitions(OPENCV_V5=1)
 else()
    set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features2d flann video videoio objdetect xobjdetect)
+   set(OPENCV_OPTIONAL_COMPONENTS xfeatures2d stereo dnn freetype photo)
    add_compile_definitions(OPENCV_V5=0)
 endif()
 
 find_package(OpenCV REQUIRED COMPONENTS ${OPENCV_REQUIRED_COMPONENTS}
-    OPTIONAL_COMPONENTS xfeatures2d stereo dnn freetype photo)
+    OPTIONAL_COMPONENTS ${OPENCV_OPTIONAL_COMPONENTS})
 
-list(REMOVE_ITEM OpenCV_LIBS opencv_viz opencv_highgui opencv_ptcloud opencv_plot opencv_rgbd opencv_structured_light)
+#list(REMOVE_ITEM OpenCV_LIBS opencv_viz opencv_highgui opencv_ptcloud opencv_plot opencv_rgbd opencv_structured_light)
 
 message(STATUS "OpenCV:              ${OpenCV_VERSION}")
 message(STATUS "OpenCV_xfeatures2d:  ${OpenCV_xfeatures2d_FOUND}")
@@ -99,7 +99,23 @@ if ( OpenCV_photo_FOUND )
 	add_compile_definitions(HAVE_OpenCV_photo=1)
 endif()
 
+set(OpenCV_DEPS "")
+foreach(comp ${OPENCV_REQUIRED_COMPONENTS})
+  if(OpenCV_${comp}_FOUND)
+    list(APPEND OpenCV_DEPS opencv_${comp})
+  endif()
+endforeach()
+foreach(comp ${OPENCV_OPTIONAL_COMPONENTS})
+  if(OpenCV_${comp}_FOUND)
+    list(APPEND OpenCV_DEPS opencv_${comp})
+  endif()
+endforeach()
+
+set(OpenCV_LIBS ${OpenCV_DEPS})
+
 set(enable_OpenCV TRUE)
+#get_target_property(OPENCV_COMPONENTS OpenCV_DEPS INTERFACE_LINK_LIBRARIES)
+#message (STATUS "OPENCV_COMPONENTS=${OPENCV_COMPONENTS}")
 message (STATUS "OpenCV_LIBS=${OpenCV_LIBS}")
 include_directories(${OpenCV_INCLUDE_DIRS})
 

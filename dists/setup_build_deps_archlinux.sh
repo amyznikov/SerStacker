@@ -23,10 +23,13 @@ pacman -S \
 	qt5-imageformats \
 	qt5-multimedia \
 	qt5-graphicaleffects \
-	qt5-websockets \
 	cfitsio \
 	libraw \
 	libopenraw \
 	libusb \
 	v4l-utils \
-	ffmpeg
+	ffmpeg \
+	tinyxml2 \
+	libconfig
+
+#	qt5-websockets

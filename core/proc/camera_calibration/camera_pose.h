@@ -22,6 +22,10 @@
 # define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
+#if (CV_VERSION_MAJOR>=5)
+#include <opencv2/geometry/3d.hpp>
+#endif
+
 
 
 /** @brief

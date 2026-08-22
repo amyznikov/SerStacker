@@ -10,7 +10,12 @@
 #define __c_census_transfrom_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <opencv2/stereo/descriptor.hpp>
+#if OPENCV_V5
+    #include <opencv2/xstereo/descriptor.hpp>
+#else
+    #include <opencv2/stereo/descriptor.hpp>
+#endif
+
 
 class c_census_transfrom_routine :
     public c_image_processor_routine
@@ -28,7 +33,7 @@ public:
     CV_MEAN_VARIATION = cv::stereo::CV_MEAN_VARIATION,
     CV_STAR_KERNEL = cv::stereo::CV_STAR_KERNEL
   };
-
+  
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);

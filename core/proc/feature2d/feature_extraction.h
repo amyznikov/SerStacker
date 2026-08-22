@@ -231,6 +231,20 @@ enum SPARSE_FEATURE_DESCRIPTOR_TYPE
 #endif
 };
 
+enum AgastFeatureDetectorType {
+  AGAST_5_8 = cv::AgastFeatureDetector::AGAST_5_8,
+  AGAST_7_12d = cv::AgastFeatureDetector::AGAST_7_12d,
+  AGAST_7_12s = cv::AgastFeatureDetector::AGAST_7_12s,
+  OAST_9_16 = cv::AgastFeatureDetector::OAST_9_16,
+};
+
+enum FastFeatureDetectorType {
+  TYPE_5_8 = cv::FastFeatureDetector::TYPE_5_8,
+  TYPE_7_12 = cv::FastFeatureDetector::TYPE_7_12,
+  TYPE_9_16 = cv::FastFeatureDetector::TYPE_9_16,
+};
+
+
 template<> const c_enum_member *
 members_of<FEATURE2D_TYPE>();
 
@@ -244,10 +258,10 @@ template<> const c_enum_member *
 members_of<cv::ORB::ScoreType>();
 
 template<> const c_enum_member *
-members_of<cv::FastFeatureDetector::DetectorType>();
+members_of<FastFeatureDetectorType>();
 
 template<> const c_enum_member *
-members_of<cv::AgastFeatureDetector::DetectorType>();
+members_of<AgastFeatureDetectorType>();
 
 template<> const c_enum_member *
 members_of<cv::KAZE::DiffusivityType>();
@@ -579,8 +593,7 @@ public:
     using feature2d_class = this_class;
     int threshold = 10;
     bool nonmaxSuppression = true;
-    decltype (cv::FastFeatureDetector::TYPE_9_16) type =
-        cv::FastFeatureDetector::TYPE_9_16;
+    FastFeatureDetectorType type = FastFeatureDetectorType::TYPE_9_16;
   };
 
   static sptr create(const options * opts = nullptr)
@@ -593,10 +606,11 @@ protected:
       base(&this->_opts),
           _opts(opts ? *opts : options())
   {
+    using fuckedEnumType = decltype (cv::FastFeatureDetector::TYPE_9_16);
     _feature2d =
         cv::FastFeatureDetector::create(_opts.threshold,
             _opts.nonmaxSuppression,
-            _opts.type);
+            (fuckedEnumType)(_opts.type));
   }
 
 protected:
@@ -618,7 +632,7 @@ public:
     using feature2d_class = this_class;
     int threshold = 10;
     bool nonmaxSuppression = true;
-    decltype (cv::AgastFeatureDetector::OAST_9_16) type = cv::AgastFeatureDetector::OAST_9_16;
+    AgastFeatureDetectorType type = AgastFeatureDetectorType::OAST_9_16;
   };
 
   static ptr create(const options * opts = nullptr)
@@ -631,10 +645,11 @@ protected:
       base(&this->_opts),
           _opts(opts ? *opts : options())
   {
+    using fuckedEnumType = decltype (cv::AgastFeatureDetector::OAST_9_16);
     _feature2d =
         cv::AgastFeatureDetector::create(_opts.threshold,
             _opts.nonmaxSuppression,
-            _opts.type);
+            (fuckedEnumType)(_opts.type));
   }
 
 protected:

@@ -10,6 +10,11 @@
 #define __c_image_transform_h__
 
 #include <opencv2/opencv.hpp>
+#if (CV_VERSION_MAJOR >= 5)
+# include <opencv2/geometry/2d.hpp>
+#endif
+
+#include <core/debug.h>
 
 // OpenCV version macro
 #ifndef CV_VERSION_INT
@@ -18,13 +23,6 @@
 #ifndef CV_VERSION_CURRRENT
 # define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
-
-#if (CV_VERSION_MAJOR>=5)
-#include <opencv2/geometry/2d.hpp>
-#endif
-
-#include <core/debug.h>
-
 
 #ifndef Matx26f_defined
 #define Matx26f_defined 1

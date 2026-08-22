@@ -13,7 +13,6 @@
 #include <core/proc/pose.h>
 #include <core/ctrlbind/ctrlbind.h>
 
-
 // OpenCV version macro
 #ifndef CV_VERSION_INT
 # define CV_VERSION_INT(a,b,c) (((a)<<16)|((b)<<8)|(c))
@@ -22,10 +21,9 @@
 # define CV_VERSION_CURRRENT CV_VERSION_INT(CV_VERSION_MAJOR, CV_VERSION_MINOR, CV_VERSION_REVISION)
 #endif
 
-#if (CV_VERSION_MAJOR>=5)
-#include <opencv2/geometry/3d.hpp>
+#if (CV_VERSION_MAJOR >= 5)
+# include <opencv2/geometry/3d.hpp>
 #endif
-
 
 
 /** @brief

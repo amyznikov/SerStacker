@@ -212,27 +212,27 @@ const c_enum_member * members_of<cv::AKAZE::DescriptorType>()
 }
 
 template<>
-const c_enum_member * members_of<cv::FastFeatureDetector::DetectorType>()
+const c_enum_member * members_of<FastFeatureDetectorType>()
 {
   static const c_enum_member members[] = {
-      { cv::FastFeatureDetector::TYPE_5_8, "TYPE_5_8" "" },
-      { cv::FastFeatureDetector::TYPE_7_12, "TYPE_7_12", "" },
-      { cv::FastFeatureDetector::TYPE_9_16, "TYPE_9_16", "" },
-      { cv::FastFeatureDetector::TYPE_9_16},
+      { FastFeatureDetectorType::TYPE_5_8, "TYPE_5_8" "" },
+      { FastFeatureDetectorType::TYPE_7_12, "TYPE_7_12", "" },
+      { FastFeatureDetectorType::TYPE_9_16, "TYPE_9_16", "" },
+      { FastFeatureDetectorType::TYPE_9_16},
   };
 
   return members;
 }
 
 template<>
-const c_enum_member * members_of<cv::AgastFeatureDetector::DetectorType>()
+const c_enum_member * members_of<AgastFeatureDetectorType>()
 {
   static const c_enum_member members[] = {
-      { cv::AgastFeatureDetector::AGAST_5_8, "AGAST_5_8", "" },
-      { cv::AgastFeatureDetector::AGAST_7_12d, "AGAST_7_12d", "" },
-      { cv::AgastFeatureDetector::AGAST_7_12s, "AGAST_7_12s", "" },
-      { cv::AgastFeatureDetector::OAST_9_16, "OAST_9_16", "" },
-      { cv::AgastFeatureDetector::OAST_9_16 },
+      { AgastFeatureDetectorType::AGAST_5_8, "AGAST_5_8", "" },
+      { AgastFeatureDetectorType::AGAST_7_12d, "AGAST_7_12d", "" },
+      { AgastFeatureDetectorType::AGAST_7_12s, "AGAST_7_12s", "" },
+      { AgastFeatureDetectorType::OAST_9_16, "OAST_9_16", "" },
+      { AgastFeatureDetectorType::OAST_9_16 },
   };
 
   return members;

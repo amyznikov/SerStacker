@@ -357,7 +357,7 @@ enum KAZEDiffusivityType {
 using AKAZEDetector = cv::xfeatures2d::AKAZE;
 enum AKAZEDescriptorType {
   DESCRIPTOR_KAZE_UPRIGHT = cv::xfeatures2d::AKAZE::DESCRIPTOR_KAZE_UPRIGHT,
-  DESCRIPTOR_KAZE = cv::AKAZE::xfeatures2d::DESCRIPTOR_KAZE,
+  DESCRIPTOR_KAZE = cv::xfeatures2d::AKAZE::DESCRIPTOR_KAZE,
   DESCRIPTOR_MLDB_UPRIGHT = cv::xfeatures2d::AKAZE::DESCRIPTOR_MLDB_UPRIGHT,
   DESCRIPTOR_MLDB = cv::xfeatures2d::AKAZE::DESCRIPTOR_MLDB
 };
@@ -952,7 +952,7 @@ protected:
   {
     using fuckedEnumType = decltype (KAZEDetector::DIFF_PM_G1);
     _feature2d =
-        cv::KAZE::create(_opts.extended,
+        KAZEDetector::create(_opts.extended,
             _opts.upright,
             _opts.threshold,
             _opts.nOctaves,
@@ -998,7 +998,7 @@ protected:
     using fuckedEnumType1 = decltype (AKAZEDetector::DESCRIPTOR_KAZE_UPRIGHT);
     using fuckedEnumType2 = decltype (KAZEDetector::DIFF_PM_G2);
     _feature2d =
-        cv::AKAZE::create((fuckedEnumType1)(_opts.descriptor_type),
+        AKAZEDetector::create((fuckedEnumType1)(_opts.descriptor_type),
             _opts.descriptor_size,
             _opts.descriptor_channels,
             _opts.threshold,

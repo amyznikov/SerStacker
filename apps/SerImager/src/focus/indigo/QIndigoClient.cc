@@ -483,13 +483,26 @@ indigo_result QIndigoClient::onClientDeleteProperty(indigo_device *device,
 }
 
 // callback called when device broadcast a message
+#if INDIGO_VERSION_MAJOR_MINOR >= 0x0300
 indigo_result QIndigoClient::indigo_client_send_message(indigo_client *client,
-    indigo_device *device,
-    const char *message)
+   indigo_device *device,
+   indigo_property * /*property*/,
+   const char *message)
 {
   QIndigoClient * _this = reinterpret_cast<QIndigoClient * >(client->client_context);
   return _this->onClientSendMessage(device, message);
 }
+#else
+indigo_result QIndigoClient::indigo_client_send_message(indigo_client *client,
+   indigo_device *device,
+   const char *message)
+{
+  QIndigoClient * _this = reinterpret_cast<QIndigoClient * >(client->client_context);
+  return _this->onClientSendMessage(device, message);
+}
+#endif
+
+
 
 // callback called when device broadcast a message
 indigo_result QIndigoClient::onClientSendMessage(indigo_device *device,

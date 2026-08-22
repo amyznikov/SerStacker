@@ -112,9 +112,16 @@ private:
       const char *message);
 
   // callback called when device broadcast a message
+#if INDIGO_VERSION_MAJOR_MINOR >= 0x0300
+  static indigo_result indigo_client_send_message(indigo_client *client,
+      indigo_device *device,
+      indigo_property *property,
+      const char *message);
+#else
   static indigo_result indigo_client_send_message(indigo_client *client,
       indigo_device *device,
       const char *message);
+#endif
 
   // callback called when client is detached from the bus
   static indigo_result indigo_client_detach(indigo_client *client);

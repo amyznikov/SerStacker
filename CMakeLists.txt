@@ -58,8 +58,7 @@ endif()
 
 unset(OpenCV_FOUND CACHE)
 if(OpenCV_VERSION_MAJOR EQUAL 5)
-   # For OpenCV 5: replace features2d with features, add compile_definitions
-   set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features flann video videoio objdetect xobjdetect)
+   set(OPENCV_REQUIRED_COMPONENTS core imgproc ximgproc imgcodecs features calib flann video videoio objdetect xobjdetect)
    set(OPENCV_OPTIONAL_COMPONENTS xfeatures2d stereo xstereo dnn freetype photo)
    add_compile_definitions(OPENCV_V5=1)
 else()

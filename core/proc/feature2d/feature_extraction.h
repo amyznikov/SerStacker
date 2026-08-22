@@ -231,18 +231,27 @@ enum SPARSE_FEATURE_DESCRIPTOR_TYPE
 #endif
 };
 
+enum FastFeatureDetectorType {
+  TYPE_5_8 = cv::FastFeatureDetector::TYPE_5_8,
+  TYPE_7_12 = cv::FastFeatureDetector::TYPE_7_12,
+  TYPE_9_16 = cv::FastFeatureDetector::TYPE_9_16,
+};
+
+#if (CV_VERSION_MAJOR >= 5)
+enum AgastFeatureDetectorType {
+  AGAST_5_8 = cv::xfeatures2d::AgastFeatureDetector::AGAST_5_8,
+  AGAST_7_12d = cv::xfeatures2d::AgastFeatureDetector::AGAST_7_12d,
+  AGAST_7_12s = cv::xfeatures2d::AgastFeatureDetector::AGAST_7_12s,
+  OAST_9_16 = cv::xfeatures2d::AgastFeatureDetector::OAST_9_16,
+};
+#else
 enum AgastFeatureDetectorType {
   AGAST_5_8 = cv::AgastFeatureDetector::AGAST_5_8,
   AGAST_7_12d = cv::AgastFeatureDetector::AGAST_7_12d,
   AGAST_7_12s = cv::AgastFeatureDetector::AGAST_7_12s,
   OAST_9_16 = cv::AgastFeatureDetector::OAST_9_16,
 };
-
-enum FastFeatureDetectorType {
-  TYPE_5_8 = cv::FastFeatureDetector::TYPE_5_8,
-  TYPE_7_12 = cv::FastFeatureDetector::TYPE_7_12,
-  TYPE_9_16 = cv::FastFeatureDetector::TYPE_9_16,
-};
+#endif
 
 
 template<> const c_enum_member *

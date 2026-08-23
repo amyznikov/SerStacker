@@ -49,41 +49,6 @@ bool serialize_base_image_stacking_input_options(c_config_setting section, bool 
 
   return true;
 }
-//
-//static void remove_bad_pixels(cv::Mat & image,
-//    double bad_pixels_variation_threshold,
-//    bool isbayer)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  cv::Mat medianImage, variationImage, meanVariationImage;
-//  double minimal_mean_variation_for_very_smooth_images;
-//
-//  // threshold = estimate_noise(image);
-//  if ( image.depth() == CV_32F || image.depth() == CV_64F ) {
-//    minimal_mean_variation_for_very_smooth_images = 1e-3;
-//  }
-//  else {
-//    minimal_mean_variation_for_very_smooth_images = 1;
-//  }
-//
-//  cv::medianBlur(image, medianImage, isbayer ? 3 : 5);
-//  cv::absdiff(image, medianImage, variationImage);
-//
-//  static float K[3*3] = {
-//      1./8, 1./8, 1./8,
-//      1./8, 0.0,  1./8,
-//      1./8, 1./8, 1./8,
-//  };
-//
-//  static const cv::Mat1f SE(3,3, K);
-//
-//  cv::filter2D(variationImage, meanVariationImage, -1, SE);
-//  cv::max(meanVariationImage, minimal_mean_variation_for_very_smooth_images, meanVariationImage);
-//
-//  medianImage.copyTo(image, variationImage > bad_pixels_variation_threshold * meanVariationImage);
-//}
-//
 
 c_image_stacking_pipeline_base::c_image_stacking_pipeline_base(const std::string & name,
     const c_input_sequence::sptr & input_sequence) :

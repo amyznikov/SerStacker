@@ -300,18 +300,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _master_options.registration.enable_eccflow_registration = false;
 
     _master_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-//    _master_options.accumulation.lpg.k = 2;
-//    _master_options.accumulation.lpg.p = 4;
-//    _master_options.accumulation.lpg.dscale = 2;
-//    _master_options.accumulation.lpg.uscale = 6;
-//    _master_options.accumulation.max_weights_ratio = 0.25;
-
     _stack_options.accumulation.accumulation_method = frame_accumulation_weighted_average;
-//    _stack_options.accumulation.lpg.k = 2;
-//    _stack_options.accumulation.lpg.p = 4;
-//    _stack_options.accumulation.lpg.dscale = 2;
-//    _stack_options.accumulation.lpg.uscale = 6;
-//    _stack_options.accumulation.max_weights_ratio = 0.25;
 
     _stack_options.registration.motion_type = IMAGE_MOTION_TRANSLATION;
     _stack_options.registration.enable_feature_registration = false;
@@ -323,7 +312,7 @@ bool c_image_stacking_pipeline::preset(const std::string & preset_name)
     _stack_options.registration.eccflow.support_scale = 4;
     _stack_options.registration.eccflow.max_pyramid_level = 3;
 
-    _upscale_options.upscale_option = frame_upscale_x15;
+    _upscale_options.upscale_option = frame_upscale_none;
     _upscale_options.upscale_stage = frame_upscale_after_align;
     return true;
   }
@@ -1325,7 +1314,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     t0 = start_time = get_realtime_ms();
 
     if( is_bad_frame_index(input_sequence->current_pos()) ) {
-      CF_DEBUG("Skip frame %d as blacklisted", input_sequence->current_pos());
+      CF_DEBUG("[F %d] Skip frame as blacklisted", input_sequence->current_pos());
       input_sequence->seek(input_sequence->current_pos() + 1);
       continue;
     }
@@ -1336,7 +1325,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     if ( !read_input_frame(input_sequence, _input_options, current_frame, current_mask, false, save_raw_bayer_image) ) {
-      set_status_msg("read_input_frame() fails");
+      CF_ERROR("[F %d] read_input_frame() fails", input_sequence->current_pos());
       break;
     }
 
@@ -1353,6 +1342,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     }
 
     if ( !select_image_roi(_roi_selection, current_frame, current_mask, current_frame, current_mask) ) {
+      CF_ERROR("[F %d] select_image_roi() fails", input_sequence->current_pos() - 1);
       continue;
     }
 
@@ -1365,8 +1355,8 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
     if( _input_options.input_image_processor ) {
       if( !_generating_master_frame || _master_options.apply_input_image_processor ) {
         if( !_input_options.input_image_processor->process(current_frame, current_mask) ) {
-          CF_ERROR("input_image_processor->process(current_frame) fails");
-          return false;
+          CF_ERROR("[F %d] input_image_processor->process() fails", input_sequence->current_pos() - 1);
+          continue;
         }
       }
     }

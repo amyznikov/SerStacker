@@ -92,10 +92,10 @@ struct c_eccflow_registration_options
   double reference_smooth_sigma = 0;
   double noise_level = -1;
   double scale_factor = 0.75;
-  int max_iterations = 3;
-  int support_scale = 4;
+  int max_iterations = 1;
+  int support_scale = 5;
   int min_image_size = -1;
-  int max_pyramid_level = -1;
+  int max_pyramid_level = 4;
   ECCFlowDownscaleMethod downscale_method = ECCFlowDownscaleRecursiveResize;
 };
 

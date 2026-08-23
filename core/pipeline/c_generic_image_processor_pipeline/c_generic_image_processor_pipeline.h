@@ -56,7 +56,7 @@ protected:
   bool initialize_pipeline() override;
   bool run_pipeline() override;
   void cleanup_pipeline() override;
-  bool process_current_frame();
+  bool save_processed_frame();
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
 
 protected:

@@ -117,6 +117,14 @@ bool c_generic_image_processor_pipeline::run_pipeline()
       break;
     }
 
+    if( !is_live_sequence ) {
+      if( _input_sequence->is_bad_frame_index(_input_sequence->current_pos()) ) {
+        CF_DEBUG("[F %d] Skip frame as blacklisted", _input_sequence->current_pos());
+        _input_sequence->seek(_input_sequence->current_pos() + 1);
+        continue;
+      }
+    }
+
     if( true ) {
       lock_guard lock(mutex());
       if( !_input_sequence->read(_current_image, &_current_mask) ) {
@@ -133,13 +141,20 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !process_current_frame() ) {
-        CF_ERROR("process_current_frame() fails");
-        return false;
+      if( _processing_options.image_processor && !_processing_options.image_processor->empty() ) {
+        if( !_processing_options.image_processor->process(_current_image, _current_mask) ) {
+          CF_ERROR("[F %d] image_processor->process() fails", _input_sequence->current_pos() - 1);
+          continue;
+        }
       }
-
-      ++_accumulated_frames;
     }
+
+    if( !save_processed_frame() ) {
+      CF_ERROR("[F %d] save_processed_frame() fails", _input_sequence->current_pos() - 1);
+      return false;
+    }
+
+    ++_accumulated_frames;
 
     if( !is_live_sequence ) {
       // give chance to GUI thread to call get_display_image()
@@ -151,15 +166,8 @@ bool c_generic_image_processor_pipeline::run_pipeline()
   return !canceled();
 }
 
-bool c_generic_image_processor_pipeline::process_current_frame()
+bool c_generic_image_processor_pipeline::save_processed_frame()
 {
-  if( _processing_options.image_processor && !_processing_options.image_processor->empty() ) {
-    if( !_processing_options.image_processor->process(_current_image, _current_mask) ) {
-      CF_ERROR("image_processor->process() fails");
-      return false;
-    }
-  }
-
   if( _output_options.save_processed_frames ) {
 
     if( !_processed_file_writer.is_open() ) {

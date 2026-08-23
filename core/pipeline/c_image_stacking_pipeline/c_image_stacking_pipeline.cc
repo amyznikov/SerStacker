@@ -985,109 +985,59 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
     return true;
   }
 
-
-
+  const c_image_stacking_master_options & master_options = _master_options;
+  const std::string & master_filename = master_options.master_selection.master_fiename;
 
   c_input_sequence::sptr master_sequence;
-
   int master_source_index = -1;
-  int master_frame_index = -1;
-  int max_frames_to_stack = 0;
-
-  bool is_external_master_file = false;
-
-  const c_image_stacking_master_options & master_options =
-      _master_options;
-
-  std::string master_filename =
-      master_options.master_selection.master_fiename;
-
-  _generating_master_frame = true;
-
-  //CF_DEBUG("master_options.master_fiename=%s", master_filename.c_str());
-
-  master_sequence =
-      select_master_source(_master_options.master_selection,
-          _input_sequence,
-          &master_source_index);
-
-  if( !master_sequence ) {
-    CF_ERROR("select_master_source() fails");
-    return false;
-  }
-
-  is_external_master_file = _input_sequence != master_sequence;
-
-  if ( master_source_index >= (int) master_sequence->sources().size() ) {
-    CF_FATAL("ERROR: master_source_index=%d exceeds input_sequence->sources().size()=%zu",
-        master_source_index, master_sequence->sources().size());
-    return false;
-  }
-
-  if ( !master_sequence->source(master_source_index)->enabled() ) {
-    CF_FATAL("ERROR: master_source_index=%d is NOT enabled in input_sequence", master_source_index);
-    return false;
-  }
-
-  if ( !master_sequence->open() ) {
-    CF_FATAL("ERROR: Can not open master input source '%s'", master_filename.c_str());
-    return false;
-  }
-
-  if ( canceled() ) {
-    return false;
-  }
+  int master_frame_global_index = -1;
 
   set_pipeline_stage(stacking_stage_select_master_frame_index);
 
-  master_frame_index =
-      select_master_frame(master_sequence, master_source_index,
+  master_sequence =
+      select_master_frame2(_input_sequence,
           _input_options,
-          _master_options.master_selection);
+          master_options.master_selection,
+          &master_source_index,
+          &master_frame_global_index);
 
-  if ( canceled() ) {
+  if ( !master_sequence ) {
+    CF_ERROR("select_master_frame2() fails");
     return false;
   }
 
-  if ( master_frame_index <  0 ) {
-    CF_ERROR("select_master_frame() fails");
+  if( !master_sequence->is_open() && !master_sequence->open() ) {
+    CF_ERROR("master_sequence->open(master_filename='%s) fails", master_filename.c_str());
     return false;
   }
 
+
+  if( master_frame_global_index < 0 || master_frame_global_index >= master_sequence->size() ) {
+    CF_ERROR("BAD master_frame_global_index=%d. master_sequence->size()=%zu",
+        master_frame_global_index, master_sequence->size());
+    return false;
+  }
+
+  const bool is_external_master_file =
+      master_sequence != _input_sequence;
+
+  _generating_master_frame = true;
+
+  int max_frames_to_stack = 0;
 
   set_pipeline_stage(stacking_stage_generate_reference_frame);
 
   set_status_msg("CREATE REFERENCE FRAME...");
-
-  if( (master_frame_index < 0) || master_sequence->is_live() ) {
-    master_frame_index = 0;
-  }
-  else if ( master_frame_index >= master_sequence->source(master_source_index)->size() ) {
-    CF_FATAL("ERROR: invalid master_frame_index_=%d specified for input source '%s'",
-        master_frame_index, master_filename.c_str());
-    return false;
-  }
-
-  int master_frame_in_source_index =
-      master_frame_index;
-
-  int master_frame_pos =
-      master_sequence->global_pos(master_source_index,
-          master_frame_index);
-
-  CF_DEBUG("master_source_index=%d master_frame_in_source_index=%d master_frame_pos_=%d",
-      master_source_index, master_frame_in_source_index, master_frame_pos);
-
 
   if ( master_options.generate_master_frame ) {
     max_frames_to_stack =
         master_options.max_frames_to_generate_master_frame;
   }
 
-  CF_DEBUG("master_frame_pos=%d max_frames_to_stack=%d",
-      master_frame_pos, max_frames_to_stack);
+  CF_DEBUG("master_frame_global_index=%d max_frames_to_stack=%d is_external_master_file=%d",
+      max_frames_to_stack, master_frame_global_index, is_external_master_file);
 
-  if( !create_reference_frame(master_sequence, is_external_master_file, master_frame_pos,
+  if( !create_reference_frame(master_sequence, is_external_master_file, master_frame_global_index,
       max_frames_to_stack, reference_frame, reference_mask,
       reference_timestamp) ) {
     CF_FATAL("ERROR: create_reference_frame() fails");

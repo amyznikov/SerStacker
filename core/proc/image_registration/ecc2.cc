@@ -2391,6 +2391,7 @@ bool c_eccflow::compute_uv(pyramid_entry & e, const cv::Mat2f & rmap, cv::Mat2f 
 
   if ( true ) {
     // INSTRUMENT_REGION("resize(uv)");
+    //avgup(uv, I1.size());
     cv::resize(uv, uv, I1.size(), 0, 0, cv::INTER_CUBIC);
   }
 

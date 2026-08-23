@@ -75,9 +75,11 @@ static bool pupscale(cv::Mat & image, cv::Size dstSize)
       sizes.emplace_back(nextSize);
     }
 
-    for( int i = sizes.size() - 1; i >= 0; --i ) {
+    for( int i = sizes.size() - 1; i > 0; --i ) {
       cv::pyrUp(image, image, sizes[i]);
     }
+
+    cv::resize(image, image, sizes[0], 0, 0, cv::INTER_CUBIC);
   }
 
   return true;

@@ -53,6 +53,11 @@ c_input_sequence::sptr select_master_source(const c_master_frame_selection_optio
     const c_input_sequence::sptr & input_sequence,
     int * master_source_index);
 
+c_input_sequence::sptr select_master_source2(const c_master_frame_selection_options & opts,
+    const c_input_sequence::sptr & internal_input_sequence,
+    int * master_source_index,
+    int * master_frame_global_index);
+
 bool serialize_base_master_frame_selection_options(c_config_setting section, bool save,
     c_master_frame_selection_options & opts);
 

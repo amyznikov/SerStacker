@@ -57,6 +57,12 @@ protected:
       const c_image_stacking_pipeline_base_input_options & input_opts,
       const c_master_frame_selection_options & selection_opts);
 
+  c_input_sequence::sptr select_master_frame2(const c_input_sequence::sptr & input_sequence,
+      const c_image_stacking_pipeline_base_input_options & input_opts,
+      const c_master_frame_selection_options & selection_opts,
+      int * output_source_index,
+      int * output_master_frame_global_index);
+
 protected:
   cv::Mat _darkbayer;
   cv::Mat _flatbayer;

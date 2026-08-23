@@ -285,7 +285,7 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
 {
   INSTRUMENT_REGION("");
 
-  int selected_master_frame_index = 0;
+  int selected_global_master_frame_index = 0;
 
   synchronized([this]() {
     _current_master_frame_candidate.release();
@@ -297,11 +297,11 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
   switch (selection_opts.master_selection_method) {
 
     case master_frame_specific_index:
-      selected_master_frame_index = master_sequence->global_pos(master_source_index, selection_opts.master_frame_index);
+      selected_global_master_frame_index = master_sequence->global_pos(master_source_index, selection_opts.master_frame_index);
       break;
 
     case master_frame_middle_index:
-      selected_master_frame_index = master_sequence->global_pos(master_source_index, master_sequence->size() / 2);
+      selected_global_master_frame_index = master_sequence->global_pos(master_source_index, master_sequence->size() / 2);
       break;
 
     case master_frame_best_of_100_in_middle: {
@@ -394,7 +394,7 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
         }
       }
 
-      selected_master_frame_index = best_index + start_pos;
+      selected_global_master_frame_index = best_index + start_pos;
       master_sequence->seek(backup_current_pos);
       break;
     }
@@ -402,5 +402,159 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
   }
 
 
-  return selected_master_frame_index;
+  return selected_global_master_frame_index;
+}
+
+c_input_sequence::sptr c_image_stacking_pipeline_base::select_master_frame2(const c_input_sequence::sptr & input_sequence,
+    const c_image_stacking_pipeline_base_input_options & input_opts,
+    const c_master_frame_selection_options & selection_opts,
+    int * output_source_index,
+    int * output_master_frame_global_index)
+{
+  const std::string & master_filename =
+      selection_opts.master_fiename;
+
+  c_input_sequence::sptr master_sequence;
+  int master_source_index = -1;
+  int master_frame_global_index = -1;
+
+  for( int i = 0, n = _input_sequence->sources().size(); i < n; ++i ) {
+    const auto & source = _input_sequence->source(i);
+    if( master_filename == source->filename() ) {
+      master_source_index = i;
+      break;
+    }
+  }
+
+  if( master_source_index >= 0 ) {
+    master_sequence = _input_sequence;
+  }
+  else if( (master_sequence = c_input_sequence::create(master_filename)) ) {
+    master_source_index = 0;
+  }
+  else {
+    CF_ERROR("c_input_sequence::create(master_filename='%s') fails", master_filename.c_str());
+    return nullptr;
+  }
+
+  if ( !master_sequence->is_open() && !master_sequence->open() ) {
+    CF_ERROR("master_sequence->open(master_filename='%s) fails", master_filename.c_str());
+    return nullptr;
+  }
+
+  switch(selection_opts.master_selection_method)
+  {
+    case master_frame_specific_index:
+      master_frame_global_index = master_sequence->global_pos(master_source_index,
+          selection_opts.master_frame_index);
+      break;
+
+    case master_frame_middle_index: {
+      const int master_source_size = master_sequence->source(master_source_index)->size();
+      master_frame_global_index = master_sequence->global_pos(master_source_index, master_source_size / 2);
+      break;
+    }
+
+    case master_frame_best_of_100_in_middle: {
+
+      cv::Mat tmp;
+
+      const int max_frames_to_scan =
+          std::max(3, selection_opts.max_frames_to_scan);
+
+      CF_DEBUG("Scan %d frames around of middle %d",
+          max_frames_to_scan, master_sequence->size() / 2);
+
+      int start_pos, end_pos;
+
+      if( master_sequence->size() <= max_frames_to_scan ) {
+        start_pos = 0;
+        end_pos = master_sequence->size();
+      }
+      else {
+        start_pos = master_sequence->size() / 2 - max_frames_to_scan / 2;
+        end_pos = std::min(master_sequence->size(), start_pos + max_frames_to_scan / 2);
+      }
+
+      //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
+      master_sequence->set_auto_apply_color_matrix(false);
+      master_sequence->seek(start_pos);
+
+      cv::Mat currentImage, currentMask;
+      int current_index, best_index = 0;
+      double current_metric, best_metric = 0;
+
+      _total_frames = end_pos - start_pos;
+      _processed_frames = 0;
+      _accumulated_frames = 0;
+
+      on_frame_processed();
+
+      for( current_index = 0; _processed_frames < _total_frames;
+          _processed_frames = ++current_index, on_frame_processed() ) {
+
+        if ( canceled() ) {
+          CF_DEBUG("cancel requested");
+          return nullptr;
+        }
+
+        if( is_bad_frame_index(master_sequence->current_pos()) ) {
+          CF_DEBUG("Skip frame %d as blacklisted", master_sequence->current_pos());
+          master_sequence->seek(master_sequence->current_pos() + 1);
+          continue;
+        }
+
+        if ( !master_sequence->read(currentImage, &currentMask) ) {
+          CF_FATAL("input_sequence->read() fails\n");
+          return nullptr;
+        }
+
+        if( selection_opts.input_image_preprocessor ) {
+          if( !selection_opts.input_image_preprocessor->process(currentImage, currentMask) ) {
+            CF_DEBUG("input_image_preprocessor fails for frame %d", master_sequence->current_pos() - 1);
+            continue;
+          }
+        }
+
+        if ( !is_bayer_pattern(master_sequence->colorid()) ) {
+          tmp = currentImage;
+        }
+        else {
+          average_bayer_planes(currentImage, tmp);
+        }
+
+        current_metric = compute_local_variance_map(tmp,
+            selection_opts.quality_estimation);
+
+        if( current_metric > best_metric ) {
+
+          best_metric = current_metric;
+          best_index = current_index;
+
+          synchronized([&]() {
+            currentImage.copyTo(_current_master_frame_candidate);
+            currentMask.copyTo(_current_master_frame_candidate_mask);
+          });
+
+          set_status_msg(ssprintf("SELECT REFERENCE FRAME...\n"
+              "BEST: INDEX=%d METRIC: %g",
+              best_index + start_pos,
+              best_metric));
+        }
+      }
+
+      master_frame_global_index = best_index + start_pos;
+      break;
+    }
+  }
+
+  if( master_frame_global_index < 0 || master_frame_global_index >= master_sequence->size() ) {
+    CF_ERROR("BAD master_frame_global_index=%d. master_sequence->size()=%zu",
+        master_frame_global_index, master_sequence->size());
+    return nullptr;
+  }
+
+  * output_source_index = master_source_index;
+  * output_master_frame_global_index = master_frame_global_index;
+  return master_sequence;
 }

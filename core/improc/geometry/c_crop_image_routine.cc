@@ -27,8 +27,8 @@ void c_crop_image_routine::getcontrols(c_control_list & ctls, const ctlbind_cont
 {
   ctlbind(ctls, "Selection", CTL_CONTEXT(ctx, mode), "What to select into ROI");
 
-  ctlbind(ctls, "fixed output size:", CTL_CONTEXT(ctx, fixOutputSize), "");
-  ctlbind(ctls, "output size:", CTL_CONTEXT(ctx, outputSize), "");
+  ctlbind(ctls, "force output size:", CTL_CONTEXT(ctx, fixOutputSize), "");
+  ctlbind(ctls, "forced output size:", CTL_CONTEXT(ctx, outputSize), "");
 
   ctlbind_expandable_group(ctls, "RECT", [&, ctx = CTL_CONTEXT(ctx, fixed_rect_options)]() {
     ctlbind(ctls, "ROI:", CTL_CONTEXT(ctx, rc), "");

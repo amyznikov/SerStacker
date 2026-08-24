@@ -471,7 +471,7 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
     }
 
     if( _dstmask.needed() ) {
-      cv::Mat m;
+      cv::Mat m, m2;
       if ( !_srcmask.empty() ) {
         m = _srcmask.getMat();
       }
@@ -484,23 +484,23 @@ bool c_align_color_channels::apply(cv::InputArray _src, cv::InputArray _srcmask,
       }
 
       if( opts.use_fixed_remap ) {
-        cv::remap(m, m, _fixed_remaps[0][i], _fixed_remaps[1][i],
+        cv::remap(m, m2, _fixed_remaps[0][i], _fixed_remaps[1][i],
             cv::INTER_NEAREST,
             cv::BORDER_CONSTANT,
             0);
       }
       else {
-        cv::remap(m, m, _remaps[i], cv::noArray(),
+        cv::remap(m, m2, _remaps[i], cv::noArray(),
             cv::INTER_NEAREST,
             cv::BORDER_CONSTANT,
             0);
       }
 
       if (cumulative_mask.empty() ) {
-        cumulative_mask = std::move(m);
+        cumulative_mask = std::move(m2);
       }
       else {
-        cv::bitwise_and(cumulative_mask, m, cumulative_mask);
+        cv::bitwise_and(cumulative_mask, m2, cumulative_mask);
       }
     }
   }

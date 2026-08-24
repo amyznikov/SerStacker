@@ -79,7 +79,7 @@ static bool pupscale(cv::Mat & image, cv::Size dstSize)
       cv::pyrUp(image, image, sizes[i]);
     }
 
-    cv::resize(image, image, sizes[0], 0, 0, cv::INTER_CUBIC);
+    cv::resize(image, image, sizes[0], 0, 0, cv::INTER_LINEAR);
   }
 
   return true;
@@ -177,10 +177,9 @@ static double compute_sharpness_map(cv::InputArray src, cv::OutputArray dst, dou
 bool upscale_local_variance_map(cv::Mat & map, const cv::Size & dstSize)
 {
   INSTRUMENT_REGION("");
-
-  //return pupscale(map, dstSize);
   if ( map.size() != dstSize ) {
-    cv::resize(map, map, dstSize, 0, 0, cv::INTER_LINEAR);
+    //cv::resize(map, map, dstSize, 0, 0, cv::INTER_LINEAR);
+    return pupscale(map, dstSize);
   }
   return true;
 }
@@ -241,7 +240,6 @@ double compute_local_variance_map(cv::InputArray image, const c_local_variance_m
   cv::add(M, 0.05 * Q, M);
 
   if ( returnFullResoltionMap && G.size() != image.size() ) {
-    // pupscale(M, image.size());
     upscale_local_variance_map(M, image.size());
   }
 

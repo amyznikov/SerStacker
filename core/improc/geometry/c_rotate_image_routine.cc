@@ -22,19 +22,19 @@ bool c_rotate_image_routine::process(cv::InputOutputArray image, cv::InputOutput
 
     if( _rotation_angle == 90 || _rotation_angle == -270 ) {
       cv::rotate(image, image, cv::ROTATE_90_CLOCKWISE);
-      if( mask.needed() ) {
+      if( !mask.empty() && mask.needed() ) {
         cv::rotate(mask, mask, cv::ROTATE_90_CLOCKWISE);
       }
     }
     else if( _rotation_angle == -90 || _rotation_angle == 270 ) {
-      cv::rotate(image.getMat(), image, cv::ROTATE_90_COUNTERCLOCKWISE);
-      if( mask.needed() ) {
+      cv::rotate(image, image, cv::ROTATE_90_COUNTERCLOCKWISE);
+      if( !mask.empty() && mask.needed() ) {
         cv::rotate(mask, mask, cv::ROTATE_90_COUNTERCLOCKWISE);
       }
     }
     else if( _rotation_angle == 180 || _rotation_angle == -180 ) {
-      cv::rotate(image.getMat(), image, cv::ROTATE_180);
-      if( mask.needed() ) {
+      cv::rotate(image, image, cv::ROTATE_180);
+      if( !mask.empty() && mask.needed() ) {
         cv::rotate(mask, mask, cv::ROTATE_180);
       }
     }

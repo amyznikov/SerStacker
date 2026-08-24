@@ -90,9 +90,17 @@ bool QLivePipeline::get_display_image(cv::OutputArray display_frame, cv::OutputA
 
 QLiveDisplay::QLiveDisplay(QWidget * parent) :
   Base(parent),
-  MtfDisplayFunction(this)
+  MtfDisplayFunction(this),
+  _frameReleaseTimer(this)
 {
   QImageEditor::setDisplayFunction(this);
+
+  // Limit display update to 20 FPS
+  _frameReleaseTimer.setSingleShot(true);
+  _frameReleaseTimer.setInterval(50);
+  QObject::connect(&_frameReleaseTimer, &QTimer::timeout, this, [this]() {
+      _canAcceptFrame = true;
+  });
 
   QObject::connect(mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
       mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged);
@@ -115,7 +123,9 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
         catch (...) {
           CF_ERROR("Unknown exception in updateImage");
         }
-        _canAcceptFrame = true;
+
+        // Make a short delay to allow GUI thread process user I/O
+        _frameReleaseTimer.start();
       }, Qt::QueuedConnection);
 
 
@@ -395,7 +405,7 @@ void QLivePipelineThread::setCurrentPipeline(const c_image_processing_pipeline::
       QObject::connect(qpp, &QImageProcessingPipeline::frameProcessed, this,
           [this]() {
             // Copy image from pipeline and Notify QLiveDisplay on frame ready
-            if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock(2) ) {
+            if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock() ) {
               if ( _currentPipeline->get_display(_display->inputImage(), _display->inputMask()) ) {
                 _display->_canAcceptFrame = false;
                 Q_EMIT _display->inputImageReady();

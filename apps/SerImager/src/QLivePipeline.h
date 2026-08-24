@@ -79,6 +79,7 @@ protected:
   QGraphicsRectShape * _roiShape = nullptr;
   QGraphicsLineShape * _lineShape = nullptr;
   QGraphicsTargetShape * _targetShape = nullptr;
+  QTimer _frameReleaseTimer;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -186,5 +186,6 @@ bool c_fit_saturn_ellipse_routine::process(cv::InputOutputArray image, cv::Input
     }
 
   }
+  CF_DEBUG("H");
   return true;
 }

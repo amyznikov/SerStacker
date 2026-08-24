@@ -172,127 +172,6 @@ public:
     return _rhs;
   }
 
-#if 0
-  virtual int run(callback & cb, std::vector<_Tp> & params)
-  {
-    INSTRUMENT_REGION("");
-
-    const int M = params.size();
-    constexpr _Tp  machine_eps = std::numeric_limits<_Tp >::epsilon();
-
-    _Tp lambda = _initial_lambda;
-
-    _Tp err = 0, newerr = 0, dp = 0;
-
-    cv::Mat_<_Tp> H, Hp, v, deltap, temp_d;
-    std::vector<_Tp > newparams;
-
-    _iteration = 0;
-
-    while (_iteration < _max_iterations) {
-
-      if( (err = compute_hessian(cb, params, H, v)) < 0 ) {
-        CF_ERROR("compute_hessian() fails");
-        return -1;
-      }
-
-      H.copyTo(Hp);
-
-      /*
-       * Solve normal equation for given Jacobian and lambda
-       * */
-      do {
-
-        ++_iteration;
-
-        /*
-         * Increase diagonal elements by lambda
-         * */
-        for( int i = 0; i < M; ++i ) {
-          H[i][i] = (1 + lambda) * Hp[i][i];
-        }
-
-        /* Solve system to define delta and define new value of params */
-        if( !cv::solve(H, v, deltap, _decomp_type) ) {
-          CF_ERROR("cv::solve() fails");
-          break;
-        }
-
-        cv::scaleAdd(deltap, -_update_step_scale, cv::Mat(params),
-            newparams);
-
-        /* Compute function for newparams */
-        if( (newerr = compute_rhs(cb, newparams)) < 0 ) {
-          CF_ERROR("compute_rhs() fails");
-          return -1;
-        }
-
-
-        /* Check for increments in parameters  */
-        if( (dp = cv::norm(deltap, cv::NORM_INF)) < _epsx ) {
-          // CF_DEBUG("BREAK by eps = %g / %g ", dp, _epsx);
-          break;
-        }
-
-        /*
-         * Compute update to lambda
-         * */
-
-        cv::gemm(Hp, deltap, -1, v, 2, temp_d);
-
-        const double dS =
-            deltap.dot(temp_d);
-
-        const double rho =
-            (err - newerr) / (std::abs(dS) > machine_eps ? dS : 1);
-
-        if( rho > 0.25 ) {
-          /* Accept new params and decrease lambda ==> Gauss-Newton method */
-          if( lambda > 1e-6 ) {
-            lambda = std::max((_Tp) 1e-6, (_Tp) (lambda / 5));
-          }
-          // CF_DEBUG("  lambda->%g", lambda);
-        }
-        else if( rho > 0.1 ) {
-          // CF_DEBUG(" NO CHANGE lambda->%g", lambda);
-
-        }
-        else if( lambda < 1 ) { /** Try increase lambda ==> gradient descend */
-          lambda = 1;
-          // CF_DEBUG("  lambda->%g", lambda);
-        }
-        else {
-          lambda *= 10;
-          // CF_DEBUG("  lambda->%g", lambda);
-        }
-
-        if( newerr < err ) {
-          // CF_DEBUG("  ACCEPT");
-          break;
-        }
-
-      } while (_iteration < _max_iterations);
-
-      if( newerr < err ) {
-        /*
-         * Accept new params if were not yet accepted
-         * */
-        err = newerr;
-        std::swap(params, newparams);
-      }
-
-      if( dp < _epsx ) {
-        break;
-      }
-    }
-
-    _errx = dp;
-    _errfn = err;
-    _rmse = std::sqrt(err / (_rhs.size() - M));
-
-    return _iteration;
-  }
-#else
   virtual int run(callback & cb, std::vector<_Tp> & params)
   {
     INSTRUMENT_REGION("");
@@ -352,7 +231,7 @@ public:
           break;
         }
 
-        cv::scaleAdd(deltap, -_update_step_scale, cv::Mat(params), newparams);
+        cv::scaleAdd(deltap, -_update_step_scale, cv::Mat(params).reshape(1, deltap.rows), newparams);
 
         /* Check for increment in parameters  */
         dp = cv::norm(deltap, cv::NORM_INF);
@@ -397,7 +276,7 @@ public:
 
         /* Check Function Tolerance */
         if (diff < err * epsfn ) {
-          CF_DEBUG("diff=%lf", diff);
+          // CF_DEBUG("diff=%lf", diff);
           _converged = true;
           _stop_reason = STOP_REASON_CONVERGED_ERR;
           break;
@@ -438,7 +317,6 @@ public:
 
     return (_iteration = iteration);
   }
-#endif
 
 protected:
   static bool compute(callback & cb, const std::vector<_Tp> & params, std::vector<_Tp> & rhs, cv::Mat_<_Tp> * J)
@@ -616,18 +494,18 @@ protected:
     const bool use_tbb = false;
 #endif
 
+    const cv::Mat mrhs = cv::Mat(_rhs).reshape(1, 1);
     if( !use_tbb ) {
       for( int i = 0; i < M; ++i ) {
-        v(i, 0) = _J.row(i).dot(_rhs);
+        v(i, 0) = _J.row(i).dot(mrhs);
       }
     }
 #if HAVE_TBB
     else {
       tbb::parallel_for(tbb_range(0, M),
           [&](const tbb_range & r) {
-
             for( int i = r.begin(); i < r.end(); ++i ) {
-              v(i, 0) = _J.row(i).dot(_rhs);
+              v(i, 0) = _J.row(i).dot(mrhs);
             }
           });
     }
@@ -646,7 +524,6 @@ protected:
     else {
       tbb::parallel_for(tbb_range(0, M),
           [&](const tbb_range & r) {
-
             for( int i = r.begin(); i < r.end(); ++i ) {
               for( int j = 0; j <= i; ++j ) {
                 H[i][j] = _J.row(i).dot(_J.row(j));

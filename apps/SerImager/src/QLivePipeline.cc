@@ -953,13 +953,13 @@ void QLivePipelineSelectionWidget::onupdatecontrols()
 
     if( _liveThread->pipeline() ) {
       combobox_ctl->setEnabled(false);
-      menuButton_ctl->setEnabled(false);
+      //menuButton_ctl->setEnabled(false);
       startStop_ctl->setIcon(getIcon(ICON_stop));
       startStop_ctl->setEnabled(true);
     }
     else {
       combobox_ctl->setEnabled(true);
-      menuButton_ctl->setEnabled(true);
+      //menuButton_ctl->setEnabled(true);
       startStop_ctl->setIcon(getIcon(ICON_start));
       startStop_ctl->setEnabled(selectedPipeline() != nullptr);
     }
@@ -1044,23 +1044,94 @@ void QLivePipelineSelectionWidget::onPipelineChanged()
 
 void QLivePipelineSelectionWidget::onMenuCtlClicked()
 {
-  QMenu menu;
-
-  menu.addAction(getIcon(ICON_add), "Add pipeline...",
-      this, &ThisClass::onAddLivePipelineClicked);
-
-  menu.addAction(getIcon(ICON_rename), "Rename pipeline......",
-      this, &ThisClass::onRenameLivePipelineClicked);
-
-  menu.addSeparator();
-
-  menu.addAction(getIcon(ICON_delete), "Delete pipeline...",
-      this, &ThisClass::onRemoveLivePipelineClicked);
+  if ( !_liveThread ) {
+    return;
+  }
 
 
-  menu.exec(menuButton_ctl->mapToGlobal(QPoint(
-      menuButton_ctl->width() / 2,
-      menuButton_ctl->height() / 2)));
+  const auto activePipeline = _liveThread->pipeline();
+  if (!activePipeline) {
+
+    QMenu menu;
+
+    menu.addAction(getIcon(ICON_add), "Add pipeline...",
+        this, &ThisClass::onAddLivePipelineClicked);
+
+    menu.addAction(getIcon(ICON_rename), "Rename pipeline......",
+        this, &ThisClass::onRenameLivePipelineClicked);
+
+    menu.addSeparator();
+
+    menu.addAction(getIcon(ICON_delete), "Delete pipeline...",
+        this, &ThisClass::onRemoveLivePipelineClicked);
+
+    if ( !menu.isEmpty() ) {
+      menu.exec(menuButton_ctl->mapToGlobal(QPoint(
+          menuButton_ctl->width() / 2,
+          menuButton_ctl->height() / 2)));
+    }
+
+  }
+  else {
+    CF_DEBUG("pipeline is active");
+
+    const c_enum_member *display_types = activePipeline->get_preview_displays();
+
+    if( display_types ) {
+
+      QMenu menu;
+
+      const int display_type = activePipeline->preview_display();
+      int items_count = 0;
+
+      for( ; !display_types->name.empty(); ++display_types ) {
+        QAction *action = menu.addAction(display_types->name.c_str());
+        action->setData(QVariant::fromValue(display_types->value));
+        action->setCheckable(true);
+        action->setChecked(display_type == display_types->value);
+        ++items_count;
+      }
+
+      if( items_count > 1 ) {
+
+        QAction * action =
+            menu.exec(menuButton_ctl->mapToGlobal(QPoint(menuButton_ctl->width() / 2,
+                menuButton_ctl->height() / 2)));
+
+        if( action ) {
+          const int selected_display_type = action->data().value<int>();
+          if( display_type != selected_display_type ) {
+            activePipeline->set_preview_display(selected_display_type);
+          }
+        }
+      }
+    }
+
+  }
+
+
+//  if ( !_liveThread ) {
+//    setEnabled(false);
+//  }
+//  else {
+//
+//    if( _liveThread->pipeline() ) {
+//      combobox_ctl->setEnabled(false);
+//      menuButton_ctl->setEnabled(false);
+//      startStop_ctl->setIcon(getIcon(ICON_stop));
+//      startStop_ctl->setEnabled(true);
+//    }
+//    else {
+//      combobox_ctl->setEnabled(true);
+//      menuButton_ctl->setEnabled(true);
+//      startStop_ctl->setIcon(getIcon(ICON_start));
+//      startStop_ctl->setEnabled(selectedPipeline() != nullptr);
+//    }
+//
+//    setEnabled(true);
+//  }
+
+
 
 }
 

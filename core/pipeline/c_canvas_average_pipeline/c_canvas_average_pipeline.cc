@@ -291,10 +291,10 @@ bool c_canvas_average_pipeline::get_display_image(cv::OutputArray outputDisplayI
         }
 
         const double maxColor = getMaxValForPixelDepth(current_image.depth()) * dscale + doffset;
-
-        CF_DEBUG("\n"
-            "current_image.depth()=%d _input_bpp=%d dscale=%g doffset=%g maxColor=%g",
-            current_image.depth(), _input_bpp, dscale, doffset, maxColor);
+//
+//        CF_DEBUG("\n"
+//            "current_image.depth()=%d _input_bpp=%d dscale=%g doffset=%g maxColor=%g",
+//            current_image.depth(), _input_bpp, dscale, doffset, maxColor);
 
         current_image.convertTo(current_image, ddepth, dscale, doffset);
         cv::cvtColor(current_image, current_image, cv::COLOR_GRAY2BGR);

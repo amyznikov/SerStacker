@@ -265,37 +265,6 @@ const c_image_processing_pipeline::sptr & QLiveDisplay::currentPipeline() const
   return _currentPipeline;
 }
 
-void QLiveDisplay::toggleUpdateTimer()
-{
-  int requiredUpdateInterval = 0;
-
-  if ( !_paused ) {
-    if ( _currentPipeline && _inputSource == INPUT_SOURCE_PIPELINE ) {
-      requiredUpdateInterval = 500; // [ms], ~0.25 fps
-    }
-    else if ( _camera && _camera->state() == QImagingCamera::State_started ) {
-      requiredUpdateInterval = 50; // [ms], ~20 fps
-    }
-  }
-
-  if( requiredUpdateInterval ) {
-    if( _updateTimerId < 0 || requiredUpdateInterval != _currentUpdateInterval ) {
-      if( _updateTimerId >= 0 ) {
-        killTimer(_updateTimerId);
-      }
-      _updateTimerId = startTimer(requiredUpdateInterval);
-      _currentUpdateInterval = requiredUpdateInterval;
-      _lastCameraFrameIndex = -1;
-    }
-  }
-  else if( _updateTimerId >= 0 ) {
-    killTimer(_updateTimerId);
-    _updateTimerId = -1;
-    _currentUpdateInterval = 0;
-     _lastCameraFrameIndex = -1;
-  }
-}
-
 void QLiveDisplay::setPaused(bool v)
 {
   _paused = v;
@@ -316,6 +285,59 @@ void QLiveDisplay::setDebayer(DEBAYER_ALGORITHM algo)
 DEBAYER_ALGORITHM QLiveDisplay::debayer() const
 {
   return _debayer_algo;
+}
+
+void QLiveDisplay::setCameraUpdateInterval(int v)
+{
+  _cameraUpdateInterval = v;
+  toggleUpdateTimer();
+}
+
+int QLiveDisplay::cameraUpdateInterval() const
+{
+  return _cameraUpdateInterval;
+}
+
+void QLiveDisplay::setPipelineUpdateInterval(int v)
+{
+  _pipelineUpdateInterval = v;
+  toggleUpdateTimer();
+}
+
+int QLiveDisplay::pipelineUpdateInterval() const
+{
+  return _pipelineUpdateInterval;
+}
+
+void QLiveDisplay::toggleUpdateTimer()
+{
+  int requiredUpdateInterval = 0;
+
+  if( !_paused ) {
+    if( _currentPipeline && _inputSource == INPUT_SOURCE_PIPELINE ) {
+      requiredUpdateInterval = std::max(10, _pipelineUpdateInterval);
+    }
+    else if( _camera && _camera->state() == QImagingCamera::State_started ) {
+      requiredUpdateInterval = std::max(10, _cameraUpdateInterval);
+    }
+  }
+
+  if( requiredUpdateInterval ) {
+    if( _updateTimerId < 0 || requiredUpdateInterval != _currentUpdateInterval ) {
+      if( _updateTimerId >= 0 ) {
+        killTimer(_updateTimerId);
+      }
+      _updateTimerId = startTimer(requiredUpdateInterval);
+      _currentUpdateInterval = requiredUpdateInterval;
+      _lastCameraFrameIndex = -1;
+    }
+  }
+  else if( _updateTimerId >= 0 ) {
+    killTimer(_updateTimerId);
+    _updateTimerId = -1;
+    _currentUpdateInterval = 0;
+     _lastCameraFrameIndex = -1;
+  }
 }
 
 void QLiveDisplay::timerEvent(QTimerEvent *e)
@@ -371,12 +393,39 @@ void QLiveDisplay::timerEvent(QTimerEvent *e)
   }
 }
 
+void QLiveDisplay::loadSettings(const QString & prefix)
+{
+  const QSettings settings;
+  loadSettings(settings, prefix);
+}
+
+void QLiveDisplay::saveSettings(const QString & prefix)
+{
+  QSettings settings;
+  saveSettings(settings, prefix);
+}
+
+void QLiveDisplay::loadSettings(const QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QLiveDisplay" : prefix;
+  _debayer_algo = (DEBAYER_ALGORITHM) settings.value(QString("%1/debayer").arg(prefix), (int) _debayer_algo).toInt();
+  _cameraUpdateInterval = settings.value(QString("%1/cameraUpdateInterval").arg(prefix), (int) _cameraUpdateInterval).toInt();
+  _pipelineUpdateInterval = settings.value(QString("%1/pipelineUpdateInterval").arg(prefix), (int) _pipelineUpdateInterval).toInt();
+}
+
+void QLiveDisplay::saveSettings(QSettings & settings, const QString & prefix)
+{
+  const QString PREFIX = prefix.isEmpty() ? "QLiveDisplay" : prefix;
+  settings.setValue(QString("%1/debayer").arg(prefix), (int) _debayer_algo);
+  settings.setValue(QString("%1/cameraUpdateInterval").arg(prefix), (int) _cameraUpdateInterval);
+  settings.setValue(QString("%1/pipelineUpdateInterval").arg(prefix), (int) _pipelineUpdateInterval);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLivePipelineThread::QLivePipelineThread(QObject * parent) :
     Base(parent)
 {
-  loadSettings();
 }
 
 QLivePipelineThread::~QLivePipelineThread()
@@ -405,24 +454,7 @@ void QLivePipelineThread::setFrameQualityEstimator(QFrameQualityEstimation * est
 
 QFrameQualityEstimation* QLivePipelineThread::frameQualityEstimator() const
 {
-  // QMutexLocker lock(&_lock);
   return _qualityEstimator;
-}
-
-void QLivePipelineThread::loadSettings()
-{
-//  QSettings settigs;
-//  _debayer = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) _debayer).toInt());
-//  _darkFramePath = settigs.value("QLivePipelineThread/darkFramePath", _darkFramePath).toString();
-//  _darkFrameScale = settigs.value("QLivePipelineThread/darkFrameScale", _darkFrameScale).toDouble();
-}
-
-void QLivePipelineThread::saveSettings()
-{
-//  QSettings settings;
-//  settings.setValue("QLivePipelineThread/debayer", (int)_debayer);
-//  settings.setValue("QLivePipelineThread/darkFramePath", _darkFramePath);
-//  settings.setValue("QLivePipelineThread/darkFrameScale", _darkFrameScale);
 }
 
 void QLivePipelineThread::setCamera(const QImagingCamera::sptr & camera)
@@ -1332,10 +1364,37 @@ QLiveDisplaySettingsWidget::QLiveDisplaySettingsWidget(QLiveDisplay * liveDispla
           [this](DEBAYER_ALGORITHM v) {
             if ( _opts ) {
               _opts->setDebayer(v);
+              Q_EMIT parameterChanged();
             }
           },
           [this](DEBAYER_ALGORITHM * v) {
             return _opts ? *v = _opts->debayer(), true : false;
+          });
+
+  cameraUpdateInterval_ctl =
+      add_numeric_box<int>("cameraUpdateInterval [ms]:",
+          "",
+          [this](int v) {
+            if ( _opts && _opts->cameraUpdateInterval() != v ) {
+              _opts->setCameraUpdateInterval(v);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            return _opts ? *v = _opts->cameraUpdateInterval(), true : false;
+          });
+
+  pipelineUpdateInterval =
+      add_numeric_box<int>("pipelineUpdateInterval [ms]:",
+          "",
+          [this](int v) {
+            if ( _opts && _opts->pipelineUpdateInterval() != v ) {
+              _opts->setPipelineUpdateInterval(v);
+              Q_EMIT parameterChanged();
+            }
+          },
+          [this](int * v) {
+            return _opts ? *v = _opts->pipelineUpdateInterval(), true : false;
           });
 
   updateControls();
@@ -1371,18 +1430,6 @@ void QLiveDisplaySettingsDialogBox::closeEvent(QCloseEvent * e)
 {
   hide();
 }
-
-//void QLiveDisplaySettingsDialogBox::showEvent(QShowEvent *e)
-//{
-//  Base::showEvent(e);
-//  Q_EMIT visibilityChanged(isVisible());
-//}
-//
-//void QLiveDisplaySettingsDialogBox::hideEvent(QHideEvent *e)
-//{
-//  Base::hideEvent(e);
-//  Q_EMIT visibilityChanged(isVisible());
-//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 

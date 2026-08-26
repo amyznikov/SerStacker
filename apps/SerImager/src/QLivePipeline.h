@@ -29,26 +29,6 @@
 namespace serimager {
 
 ///////////////////////////////////////////////////////////////////////////////
-class QLivePipelineThread;
-//
-//class QLivePipeline :
-//  public QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline>
-//{
-//public:
-//  typedef QLivePipeline ThisClass;
-//  typedef QImageProcessingPipelineTemplate<c_generic_image_processor_pipeline> Base;
-//  typedef Base::PipelineClass PipelineClass;
-//
-//  QLivePipeline(const QString & name, QLivePipelineThread * parent);
-//
-//protected:
-//  bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) final;
-//
-//protected:
-//  QLivePipelineThread * _liveThread = nullptr;
-//};
-
-///////////////////////////////////////////////////////////////////////////////
 
 class QLiveDisplay :
   public QImageEditor,
@@ -88,6 +68,17 @@ public:
   void setDebayer(DEBAYER_ALGORITHM algo);
   DEBAYER_ALGORITHM debayer() const;
 
+  void setCameraUpdateInterval(int v);
+  int cameraUpdateInterval() const;
+
+  void setPipelineUpdateInterval(int v);
+  int pipelineUpdateInterval() const;
+
+  void loadSettings(const QString & prefix = "");
+  void loadSettings(const QSettings & settings, const QString & prefix = "");
+  void saveSettings(const QString & prefix = "");
+  void saveSettings(QSettings & settings, const QString & prefix = "");
+
 protected Q_SLOTS:
   void onCameraStateChanged(QImagingCamera::State oldState,
       QImagingCamera::State newState);
@@ -98,7 +89,6 @@ protected:
   void timerEvent(QTimerEvent *event) override;
 
 protected:
-  friend class QLivePipelineThread;
   QGraphicsRectShape * _roiShape = nullptr;
   QGraphicsLineShape * _lineShape = nullptr;
   QGraphicsTargetShape * _targetShape = nullptr;
@@ -107,6 +97,8 @@ protected:
   c_image_processing_pipeline::sptr _currentPipeline;
   INPUT_SOURCE _inputSource = INPUT_SOURCE_PIPELINE;
   DEBAYER_ALGORITHM _debayer_algo = DEBAYER_NN2;
+  int _cameraUpdateInterval = 50; // [ms], ~20 fps
+  int _pipelineUpdateInterval = 500; // [ms], ~2 fps
 
   int _updateTimerId = -1;
   int _currentUpdateInterval = 0;
@@ -132,6 +124,8 @@ public:
 
 protected:
   QEnumComboBox<DEBAYER_ALGORITHM> * debayer_ctl = nullptr;
+  QNumericBox * cameraUpdateInterval_ctl = nullptr;
+  QNumericBox * pipelineUpdateInterval = nullptr;
 };
 
 class QLiveDisplaySettingsDialogBox :
@@ -179,13 +173,8 @@ protected Q_SLOTS:
 
 Q_SIGNALS:
   void pipelineChanged();
-  //void frameReady();
 
 protected:
-//  void setCurrentPipeline(const c_image_processing_pipeline::sptr & pipeline);
-//  void setDarkFrame(const QString & pathfilename);
-  void loadSettings();
-  void saveSettings();
   void run() final;
 
 protected:
@@ -229,7 +218,6 @@ protected Q_SLOTS:
   void onRemoveLivePipelineClicked();
   void onRenameLivePipelineClicked();
   void onPipelineChanged();
-  // void onLiveThreadStateChanged();
 
 protected:
   void onupdatecontrols() override;

@@ -65,7 +65,6 @@ MainWindow::MainWindow(QWidget * parent) :
 #endif //HAVE_QLCSCTPCamera
 
   _liveThread = new QLivePipelineThread(this);
-  //_liveThread->setDisplay(_liveDisplay);
   _liveThread->setFrameQualityEstimator(&_frameQualityEstimator);
 
 
@@ -204,6 +203,11 @@ void MainWindow::onSaveState(QSettings & settings)
   }
 
   _diplayImageWriter.saveSettings(settings, "QDisplayVideoWriter");
+
+  if ( _liveDisplay ) {
+    _liveDisplay->saveSettings(settings, "QLiveDisplay");
+  }
+
 }
 
 void MainWindow::onRestoreState(QSettings & settings)
@@ -236,6 +240,11 @@ void MainWindow::onRestoreState(QSettings & settings)
   }
 
   _diplayImageWriter.loadSettings(settings, "QDisplayVideoWriter");
+
+  if ( _liveDisplay ) {
+    _liveDisplay->loadSettings(settings, "QLiveDisplay");
+  }
+
 }
 
 void MainWindow::setupMainMenu()

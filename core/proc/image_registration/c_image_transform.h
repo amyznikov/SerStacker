@@ -60,6 +60,11 @@ public:
   virtual void set_translation(const cv::Vec2f & T) = 0;
   virtual cv::Vec2f translation() const = 0;
 
+  inline bool set_parameters(const std::vector<float> & v)
+  {
+    return set_parameters(cv::Mat1f(int(v.size()), 1, (float*)(v.data())));
+  }
+
   const cv::Mat1f & parameters() const
   {
     return _parameters;

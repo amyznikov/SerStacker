@@ -843,6 +843,8 @@ QPoint QThumbnailsView::contextMenuPosToGlobal(const QPoint & pos) const
 
 bool QThumbnailsView::moveToBads(const QString & pathfilename)
 {
+  CF_DEBUG("pathfilename: %s", pathfilename.toUtf8().constData());
+
   if ( !pathfilename.isEmpty() ) {
 
     QFileInfo file(pathfilename);

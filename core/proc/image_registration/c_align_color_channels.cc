@@ -208,7 +208,7 @@ bool c_align_color_channels::setImageTransform(IMAGE_MOTION_TYPE motionType,
   for( int i = 0; i < 4; ++i ) {
     if( !parameters[i].empty() ) {
       _image_transforms[i] = create_image_transform(motionType);
-      _image_transforms[i]->set_parameters(cv::Mat1f(parameters[i]));
+      _image_transforms[i]->set_parameters(parameters[i]);
     }
   }
 

@@ -6,6 +6,8 @@
  */
 
 #include "c_data_frame_processor.h"
+#include "c_pixel_processor_routine.h"
+#include <core/configpath.h>
 
 #include "hdl/c_hdl_range_image_config_routine.h"
 #include "hdl/c_hdl_pixel_math_routine.h"
@@ -14,12 +16,10 @@
 #include "image/c_image_pixels_selection_routine.h"
 #include "image/c_image_gradient_routine.h"
 
-#include "c_pixel_processor_routine.h"
 
 #include <atomic>
 #include <core/ssprintf.h>
 #include <core/readdir.h>
-#include <core/configpath.h>
 #include <core/debug.h>
 
 

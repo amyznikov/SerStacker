@@ -421,14 +421,11 @@ void MainWindow::setupMainMenu()
           "Reload current file from disk (Ctrl+R)",
           [this]() {
             QWidget * w = centralStackedWidget->currentWidget();
-            if ( w == imageView ) {
-              // imageView->openImage(imageView->currentFileName());
-            }
-            else if ( w == textView ) {
-              textView->showTextFile(textView->currentFileName());
-            }
-            else if ( w == thumbnailsView ) {
+            if ( w == thumbnailsView ) {
               thumbnailsView->reload();
+            }
+            else {
+              inputSourceView->openSource(inputSourceView->currentFileName());
             }
           },
           new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R),
@@ -1842,7 +1839,7 @@ void MainWindow::setupInputSequenceView()
       "Bad",
       "Move current image to the .bads subfolder (Ctrl+DEL)",
       [this]() {
-        thumbnailsView->moveToBads(imageView->currentFileName());
+          thumbnailsView->moveToBads(inputSourceView->currentFileName());
       },
       new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Delete),
           imageView, nullptr, nullptr,

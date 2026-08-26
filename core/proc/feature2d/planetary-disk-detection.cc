@@ -100,6 +100,8 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
     cv::Point2f * optional_output_geometrical_center,
     cv::OutputArray outputDebugImage)
 {
+  INSTRUMENT_REGION("");
+
   cv::Mat src, gray, mgrad;
   cv::Mat1b comp;
 

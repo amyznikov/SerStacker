@@ -26,7 +26,7 @@ public:
     ROI_SELECTION_FIXED_RECT,
     ROI_SELECTION_GUI,
     ROI_SELECTION_PLANETARY_DISK,
-//    ROI_SELECTION_MAXCC,
+    // ROI_SELECTION_MAX_CONNECTED_COMPONENT,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -35,17 +35,19 @@ public:
 
 protected:
   SELECTION_MODE mode = ROI_SELECTION_GUI;
+  cv::BorderTypes borderType = cv::BORDER_DEFAULT;
+  cv::Scalar borderValue;
   cv::Size outputSize;
   bool fixOutputSize = false;
 
   struct {
     cv::Rect rc;
-  } fixed_rect_options;
+  } manualRectOptions;
 
   struct {
     c_simple_planetary_disk_detector_options opts;
-    bool center = false;
-  } planetary_disk_options;
+    bool putToCenter = false;
+  } planetaryDiskOptions;
 
 };
 

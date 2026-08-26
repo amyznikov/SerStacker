@@ -46,61 +46,53 @@ static inline bool waitUntil(QWaitCondition & cond, QMutex & mutex, Predicate &&
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-QLivePipeline::QLivePipeline(const QString & name, QLivePipelineThread * parent) :
-    Base(name, parent), _liveThread(parent)
-{
-}
-
-bool QLivePipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
-{
-  if( !display_frame.needed() ) {
-    display_frame.release();
-  }
-  else {
-    bool processed = false;
-    if( is_bayer_pattern(_current_colorid) ) {
-      if( _liveThread && _liveThread->debayer() != DEBAYER_DISABLE ) {
-        if( debayer(_current_image, display_frame, _current_colorid, _liveThread->debayer()) ) {
-          processed = true;
-        }
-      }
-    }
-    if( !processed ) {
-      _current_image.copyTo(display_frame);
-    }
-  }
-
-  if( display_mask.needed() ) {
-
-    if ( display_frame.empty() || _current_mask.empty()  ) {
-      display_mask.release();
-    }
-    else if (_current_mask.size() != display_frame.size() ) {
-      cv::resize(_current_mask, display_mask, display_frame.size(), 0, 0, cv::INTER_NEAREST);
-    }
-    else {
-      _current_mask.copyTo(display_mask);
-    }
-  }
-
-  return true;
-}
+//QLivePipeline::QLivePipeline(const QString & name, QLivePipelineThread * parent) :
+//    Base(name, parent), _liveThread(parent)
+//{
+//}
+//
+//bool QLivePipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
+//{
+//  if( !display_frame.needed() ) {
+//    display_frame.release();
+//  }
+//  else {
+//    bool processed = false;
+//    if( is_bayer_pattern(_current_colorid) ) {
+//      if( _liveThread && _liveThread->debayer() != DEBAYER_DISABLE ) {
+//        if( debayer(_current_image, display_frame, _current_colorid, _liveThread->debayer()) ) {
+//          processed = true;
+//        }
+//      }
+//    }
+//    if( !processed ) {
+//      _current_image.copyTo(display_frame);
+//    }
+//  }
+//
+//  if( display_mask.needed() ) {
+//
+//    if ( display_frame.empty() || _current_mask.empty()  ) {
+//      display_mask.release();
+//    }
+//    else if (_current_mask.size() != display_frame.size() ) {
+//      cv::resize(_current_mask, display_mask, display_frame.size(), 0, 0, cv::INTER_NEAREST);
+//    }
+//    else {
+//      _current_mask.copyTo(display_mask);
+//    }
+//  }
+//
+//  return true;
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLiveDisplay::QLiveDisplay(QWidget * parent) :
   Base(parent),
-  MtfDisplayFunction(this),
-  _frameReleaseTimer(this)
+  MtfDisplayFunction(this)
 {
   QImageEditor::setDisplayFunction(this);
-
-  // Limit display update to 20 FPS
-  _frameReleaseTimer.setSingleShot(true);
-  _frameReleaseTimer.setInterval(50);
-  QObject::connect(&_frameReleaseTimer, &QTimer::timeout, this, [this]() {
-      _canAcceptFrame = true;
-  });
 
   QObject::connect(mtfDisplayEvents(), &QMtfDisplayEvents::displayChannelsChanged,
       mtfDisplayEvents(), &QMtfDisplayEvents::parameterChanged);
@@ -112,21 +104,22 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
       mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged,
       Qt::QueuedConnection);
 
-  QObject::connect(this, &ThisClass::inputImageReady, this,
-      [this]() {
-        try {
-          Base::updateImage();
-        }
-        catch (const std::exception& e) {
-          CF_ERROR("Exception in updateImage: %s", e.what());
-        }
-        catch (...) {
-          CF_ERROR("Unknown exception in updateImage");
-        }
-
-        // Make a short delay to allow GUI thread process user I/O
-        _frameReleaseTimer.start();
-      }, Qt::QueuedConnection);
+//  QObject::connect(this, &ThisClass::inputImageReady, this,
+//      [this]() {
+//        try {
+//          Base::updateImage();
+//        }
+//        catch (const std::exception& e) {
+//          CF_ERROR("Exception in updateImage: %s", e.what());
+//        }
+//        catch (...) {
+//          CF_ERROR("Unknown exception in updateImage");
+//        }
+//
+//        // Make a short delay to allow GUI thread process user I/O
+//         _frameReleaseTimer.start();
+//        // _canAcceptFrame = true;
+//      }, Qt::QueuedConnection);
 
 
   QObject::connect(this, &Base::onPopulateContextMenu,
@@ -137,7 +130,6 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
 
 QLiveDisplay::~QLiveDisplay()
 {
-
 }
 
 void QLiveDisplay::createShapes()
@@ -209,6 +201,176 @@ QGraphicsTargetShape * QLiveDisplay::targetShape() const
   return _targetShape;
 }
 
+void QLiveDisplay::setInputSource(INPUT_SOURCE v)
+{
+  _inputSource = v;
+  toggleUpdateTimer();
+}
+
+QLiveDisplay::INPUT_SOURCE QLiveDisplay::inputSource() const
+{
+  return _inputSource;
+}
+
+void QLiveDisplay::setCamera(const QImagingCamera::sptr & camera)
+{
+  if( _camera ) {
+    disconnect(_camera.get(), nullptr,
+        this, nullptr);
+  }
+
+  if( (_camera = camera) ) {
+    connect(_camera.get(), &QImagingCamera::stateChanged,
+        this, &ThisClass::onCameraStateChanged,
+        Qt::QueuedConnection);
+  }
+
+  toggleUpdateTimer();
+}
+
+const QImagingCamera::sptr& QLiveDisplay::camera() const
+{
+  return _camera;
+}
+
+void QLiveDisplay::onCameraStateChanged(QImagingCamera::State /*oldState*/, QImagingCamera::State /*newState*/)
+{
+  _lastCameraFrameIndex = -1;
+  toggleUpdateTimer();
+}
+
+void QLiveDisplay::setCurrentPipeline(const c_image_processing_pipeline::sptr & pipeline)
+{
+  _lastCameraFrameIndex = -1;
+  // _pipelineFrameReady = false;
+
+  if( QImageProcessingPipeline * qpp = dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get()) ) {
+    qpp->disconnect(this);
+  }
+
+  if( (_currentPipeline = pipeline) ) {
+    if( QImageProcessingPipeline * qpp = dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get()) ) {
+      QObject::connect(qpp, &QImageProcessingPipeline::frameProcessed, this,
+          [this]() {
+            _pipelineFrameReady = true;
+          }, Qt::QueuedConnection);
+    }
+  }
+
+  toggleUpdateTimer();
+}
+
+const c_image_processing_pipeline::sptr & QLiveDisplay::currentPipeline() const
+{
+  return _currentPipeline;
+}
+
+void QLiveDisplay::toggleUpdateTimer()
+{
+  int requiredUpdateInterval = 0;
+
+  if ( !_paused ) {
+    if ( _currentPipeline && _inputSource == INPUT_SOURCE_PIPELINE ) {
+      requiredUpdateInterval = 500; // [ms], ~0.25 fps
+    }
+    else if ( _camera && _camera->state() == QImagingCamera::State_started ) {
+      requiredUpdateInterval = 50; // [ms], ~20 fps
+    }
+  }
+
+  if( requiredUpdateInterval ) {
+    if( _updateTimerId < 0 || requiredUpdateInterval != _currentUpdateInterval ) {
+      if( _updateTimerId >= 0 ) {
+        killTimer(_updateTimerId);
+      }
+      _updateTimerId = startTimer(requiredUpdateInterval);
+      _currentUpdateInterval = requiredUpdateInterval;
+      _lastCameraFrameIndex = -1;
+    }
+  }
+  else if( _updateTimerId >= 0 ) {
+    killTimer(_updateTimerId);
+    _updateTimerId = -1;
+    _currentUpdateInterval = 0;
+     _lastCameraFrameIndex = -1;
+  }
+}
+
+void QLiveDisplay::setPaused(bool v)
+{
+  _paused = v;
+  toggleUpdateTimer();
+}
+
+bool QLiveDisplay::paused() const
+{
+  return _paused;
+}
+
+void QLiveDisplay::setDebayer(DEBAYER_ALGORITHM algo)
+{
+  _debayer_algo = algo;
+  saveSettings();
+}
+
+DEBAYER_ALGORITHM QLiveDisplay::debayer() const
+{
+  return _debayer_algo;
+}
+
+void QLiveDisplay::timerEvent(QTimerEvent *e)
+{
+  if (e->timerId() != _updateTimerId) {
+    Base::timerEvent(e);
+  }
+
+  // Pipeline display has higher priority
+  cv::Mat image, mask;
+  enum COLORID colorid = COLORID_UNKNOWN;
+  int bpp = 0;
+
+  if ( _currentPipeline && _inputSource == INPUT_SOURCE_PIPELINE ) {
+    if( _pipelineFrameReady ) {
+      _currentPipeline->get_display(image, mask);
+    }
+  }
+  else if ( _camera && _camera->state() == QImagingCamera::State_started  ) {
+    if( true ) {
+      QImagingCamera::shared_lock lock(_camera->mutex());
+      const auto & deque = _camera->deque();
+      if( !deque.empty() ) {
+        const QCameraFrame::sptr & freshestFrame = deque.back();
+        const int freshestIndex = freshestFrame->index();
+        if( freshestIndex > _lastCameraFrameIndex ) {
+          _lastCameraFrameIndex = freshestIndex;
+          freshestFrame->image().copyTo(image);
+          bpp = freshestFrame->bpp();
+          colorid = freshestFrame->colorid();
+        }
+      }
+    }
+  }
+
+  if( !image.empty() ) {
+    try {
+      if( !is_bayer_pattern(colorid) ) {
+        Base::editImage(image, mask, false);
+      }
+      else {
+        ::debayer(image, Base::_inputImage, colorid, _debayer_algo);
+        Base::_inputMask = mask;
+        Base::updateImage();
+      }
+    }
+    catch( const std::exception & e ) {
+      CF_ERROR("Exception in updateImage: %s", e.what());
+    }
+    catch( ... ) {
+      CF_ERROR("Unknown exception in updateImage");
+    }
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 QLivePipelineThread::QLivePipelineThread(QObject * parent) :
@@ -219,89 +381,21 @@ QLivePipelineThread::QLivePipelineThread(QObject * parent) :
 
 QLivePipelineThread::~QLivePipelineThread()
 {
-  while ( isRunning() ) {
-    if ( _camera ) {
-      _camera->disconnect();
+  if ( true ) {
+    QMutexLocker lock(&_lock);
+    if( _currentPipeline ) {
+      // Stop current pipeline if running
+      _currentPipeline->cancel(true);
     }
-    QThread::msleep(20);
+    _stopRequested = true;
+    _condvar.wakeAll();
+  }
+
+  while (isRunning()) {
+    QThread::msleep(200);
   }
 }
 
-
-void QLivePipelineThread::setDebayer(DEBAYER_ALGORITHM algo)
-{
-  _debayer = algo;
-  saveSettings();
-}
-
-DEBAYER_ALGORITHM QLivePipelineThread::debayer() const
-{
-  return _debayer;
-}
-
-void QLivePipelineThread::setEnableDarkFrame(bool v)
-{
-  _enableDarkFrame = v;
-  if ( _darkFrame.empty() && !_darkFramePath.isEmpty() ) {
-    setDarkFrame(_darkFramePath);
-  }
-}
-
-bool QLivePipelineThread::enableDarkFrame() const
-{
-  return _enableDarkFrame;
-}
-
-void QLivePipelineThread::setDarkFramePath(const QString & pathfilename)
-{
-  setDarkFrame(pathfilename);
-  saveSettings();
-}
-
-const QString & QLivePipelineThread::darkFramePath() const
-{
-  return _darkFramePath;
-}
-
-void QLivePipelineThread::setDarkFrame(const QString & pathfilename)
-{
-  QMutexLocker lock(&_darkFrameLock);
-
-  _darkFrame.release();
-
-  if( !(_darkFramePath = pathfilename).isEmpty() ) {
-
-    cv::Mat unusedMask;
-    if( !load_image(_darkFramePath.toStdString(), _darkFrame, unusedMask) ) {
-      CF_ERROR("load_image('%s') fails", _darkFramePath.toUtf8().constData());
-    }
-    else if( _darkFrame.depth() != CV_32F ) {
-      _darkFrame.convertTo(_darkFrame, CV_32F, _darkFrameScale);
-    }
-    else if( _darkFrameScale != 1 ) {
-      cv::multiply(_darkFrame, _darkFrameScale, _darkFrame);
-    }
-
-    CF_DEBUG("_darkFrame: %dx%d %d channels depth=%d",
-        _darkFrame.cols, _darkFrame.rows,
-        _darkFrame.channels(),
-        _darkFrame.depth());
-  }
-}
-
-void QLivePipelineThread::setDarkFrameScale(double v)
-{
-  _darkFrameScale = v;
-  if ( !_darkFramePath.isEmpty() ) {
-    setDarkFrame(_darkFramePath);
-  }
-  saveSettings();
-}
-
-double QLivePipelineThread::darkFrameScale() const
-{
-  return _darkFrameScale;
-}
 
 void QLivePipelineThread::setFrameQualityEstimator(QFrameQualityEstimation * estimator)
 {
@@ -317,46 +411,49 @@ QFrameQualityEstimation* QLivePipelineThread::frameQualityEstimator() const
 
 void QLivePipelineThread::loadSettings()
 {
-  QSettings settigs;
-  _debayer = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) _debayer).toInt());
-  _darkFramePath = settigs.value("QLivePipelineThread/darkFramePath", _darkFramePath).toString();
-  _darkFrameScale = settigs.value("QLivePipelineThread/darkFrameScale", _darkFrameScale).toDouble();
+//  QSettings settigs;
+//  _debayer = (DEBAYER_ALGORITHM) (settigs.value("QLivePipelineThread/debayer", (int) _debayer).toInt());
+//  _darkFramePath = settigs.value("QLivePipelineThread/darkFramePath", _darkFramePath).toString();
+//  _darkFrameScale = settigs.value("QLivePipelineThread/darkFrameScale", _darkFrameScale).toDouble();
 }
 
 void QLivePipelineThread::saveSettings()
 {
-  QSettings settings;
-  settings.setValue("QLivePipelineThread/debayer", (int)_debayer);
-  settings.setValue("QLivePipelineThread/darkFramePath", _darkFramePath);
-  settings.setValue("QLivePipelineThread/darkFrameScale", _darkFrameScale);
-}
-
-void QLivePipelineThread::setDisplay(QLiveDisplay * display)
-{
-  _display = display;
-}
-
-QLiveDisplay* QLivePipelineThread::display() const
-{
-  return _display;
+//  QSettings settings;
+//  settings.setValue("QLivePipelineThread/debayer", (int)_debayer);
+//  settings.setValue("QLivePipelineThread/darkFramePath", _darkFramePath);
+//  settings.setValue("QLivePipelineThread/darkFrameScale", _darkFrameScale);
 }
 
 void QLivePipelineThread::setCamera(const QImagingCamera::sptr & camera)
 {
-  if( _camera ) {
-    disconnect(_camera.get(), nullptr,
-        this, nullptr);
+  bool shouldRun = false;
+
+  if( true ) {
+    QMutexLocker lock(&_lock);
+    if( _currentPipeline ) {
+      // Stop current pipeline if running
+      _currentPipeline->cancel(true);
+    }
+
+    if( _camera ) {
+      disconnect(_camera.get(), nullptr, this, nullptr);
+    }
+
+    if( (_camera = camera) ) {
+      connect(_camera.get(), &QImagingCamera::stateChanged,
+          this, &ThisClass::onCameraStateChanged,
+          Qt::QueuedConnection);
+
+      if( _camera->state() == QImagingCamera::State_started ) {
+        shouldRun = true;
+      }
+    }
+    _condvar.wakeAll();
   }
 
-  if( (_camera = camera) ) {
-
-    connect(_camera.get(), &QImagingCamera::stateChanged,
-        this, &ThisClass::onCameraStateChanged,
-        Qt::QueuedConnection);
-
-    if( _camera->state() == QImagingCamera::State_started ) {
-      start();
-    }
+  if( shouldRun && !isRunning() ) {
+    start();
   }
 }
 
@@ -367,6 +464,7 @@ const QImagingCamera::sptr & QLivePipelineThread::camera() const
 
 void QLivePipelineThread::onCameraStateChanged(QImagingCamera::State oldState, QImagingCamera::State newState)
 {
+  _condvar.wakeAll();
   switch (newState) {
     case QImagingCamera::State_started:
       if ( !isRunning() ) {
@@ -382,46 +480,20 @@ void QLivePipelineThread::setPipeline(const c_image_processing_pipeline::sptr & 
 {
   QMutexLocker lock(&_lock);
 
-  _userPipeline = pipeline;
-
-  Q_EMIT pipelineChanged();
-
-  if( _currentPipeline ) { // Stop current pipeline if running
+  if( _currentPipeline ) {
+    // Stop current pipeline if running
     _currentPipeline->cancel(true);
-    waitUntil(_condvar, _lock, [pp = _currentPipeline]() {
-      return !pp->is_running();
-    });
-  }
-}
-
-void QLivePipelineThread::setCurrentPipeline(const c_image_processing_pipeline::sptr & pipeline)
-{
-  if( QImageProcessingPipeline * qpp = dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get()) ) {
-    qpp->disconnect(this);
   }
 
-  if( (_currentPipeline = pipeline) ) {
-    if( QImageProcessingPipeline * qpp = dynamic_cast<QImageProcessingPipeline*>(_currentPipeline.get()) ) {
-      QObject::connect(qpp, &QImageProcessingPipeline::frameProcessed, this,
-          [this]() {
-            // Copy image from pipeline and Notify QLiveDisplay on frame ready
-            if ( _display && _display->_canAcceptFrame && _display->currentImageLock().tryLock() ) {
-              if ( _currentPipeline->get_display(_display->inputImage(), _display->inputMask()) ) {
-                _display->_canAcceptFrame = false;
-                Q_EMIT _display->inputImageReady();
-              }
-              _display->currentImageLock().unlock();
-            }
-          }, Qt::DirectConnection);
-    }
-  }
+  _currentPipeline = pipeline;
+  _condvar.wakeAll();
 
   Q_EMIT pipelineChanged();
 }
 
 const c_image_processing_pipeline::sptr & QLivePipelineThread::pipeline() const
 {
-  return _userPipeline;
+  return _currentPipeline;
 }
 
 void QLivePipelineThread::run()
@@ -532,22 +604,9 @@ void QLivePipelineThread::run()
         // Advance the index to the most recent frame,
         // thereby discarding (dropping) all the missed ones
         last_frame_index = freshest_index;
-
         selected_frame->image().copyTo(output_frame);
         *output_bpp = bpp = selected_frame->bpp();
         *output_colorid = colorid = selected_frame->colorid();
-
-        if( _liveThread->_enableDarkFrame ) {
-          QMutexLocker lock(&_liveThread->_darkFrameLock);
-
-          const cv::Mat & darkFrame = _liveThread->_darkFrame;
-          if( darkFrame.size() == output_frame.size() && darkFrame.channels() == output_frame.channels() ) {
-            if( output_frame.depth() != darkFrame.depth() ) {
-              output_frame.convertTo(output_frame, darkFrame.depth());
-            }
-            cv::subtract(output_frame, darkFrame, output_frame);
-          }
-        }
 
         return true;
       }
@@ -590,49 +649,39 @@ void QLivePipelineThread::run()
   };
 
   CF_DEBUG("enter");
-  /////////////////////
 
-  const QImagingCamera::sptr camera = this->_camera;
+  while (!_stopRequested) {
+     QImagingCamera::sptr camera;
+     c_image_processing_pipeline::sptr currentPipeline;
 
-  if( camera ) {
+     if ( true ) {
+       QMutexLocker lock(&_lock);
+       while (!_stopRequested && (!_currentPipeline || !_camera || _camera->state() != QImagingCamera::State_started)) {
+         _condvar.wait(&_lock);
+       }
+       if (_stopRequested) {
+         break;
+       }
+       camera = _camera;
+       currentPipeline = _currentPipeline;
+     }
 
-    QLivePipeline::sptr dummyPipeline(new QLivePipeline("dummyPipeline", this));
 
-    c_camera_input_sequence::sptr input_sequence(new c_camera_input_sequence(this, camera));
+     c_camera_input_sequence::sptr input_sequence(new c_camera_input_sequence(this, camera));
 
-    while (camera->state() == QImagingCamera::State_started) {
+     // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
+     CF_DEBUG("call currentPipeline->run()");
+     if (currentPipeline->run(input_sequence)) {
+       CF_DEBUG("currentPipeline finished");
+     }
+     else {
+       CF_ERROR("currentPipeline->run() fails");
+     }
 
-      if( true ) {
-        // Check if pipeline switch requested
-        QMutexLocker lock(&_lock);
+     _condvar.wakeAll();
+   }
 
-        if( _userPipeline  ) {
-          if ( _userPipeline != _currentPipeline ) {
-            setCurrentPipeline(_userPipeline);
-          }
-        }
-        else if( _currentPipeline != dummyPipeline ) {
-          setCurrentPipeline(dummyPipeline);
-        }
-      }
-
-      // Blocking call. Will emit QImageProcessingPipeline::frameProcessed() from inside.
-      if( _currentPipeline->run(input_sequence) ) {
-        CF_DEBUG("_currentPipeline finished");
-      }
-      else {
-        CF_ERROR("_currentPipeline->run() fails");
-      }
-
-      _condvar.wakeAll();
-    }
-
-    setCurrentPipeline(nullptr);
-  }
-
-  QThread::msleep(100);
-
-  CF_DEBUG("leave");
+   CF_DEBUG("leave");
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1119,30 +1168,6 @@ void QLivePipelineSelectionWidget::onMenuCtlClicked()
 
   }
 
-
-//  if ( !_liveThread ) {
-//    setEnabled(false);
-//  }
-//  else {
-//
-//    if( _liveThread->pipeline() ) {
-//      combobox_ctl->setEnabled(false);
-//      menuButton_ctl->setEnabled(false);
-//      startStop_ctl->setIcon(getIcon(ICON_stop));
-//      startStop_ctl->setEnabled(true);
-//    }
-//    else {
-//      combobox_ctl->setEnabled(true);
-//      menuButton_ctl->setEnabled(true);
-//      startStop_ctl->setIcon(getIcon(ICON_start));
-//      startStop_ctl->setEnabled(selectedPipeline() != nullptr);
-//    }
-//
-//    setEnabled(true);
-//  }
-
-
-
 }
 
 void QLivePipelineSelectionWidget::onAddLivePipelineClicked()
@@ -1293,12 +1318,12 @@ void QLivePipelineSelectionWidget::onRenameLivePipelineClicked()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QWidget * parent)  :
+QLiveDisplaySettingsWidget::QLiveDisplaySettingsWidget(QWidget * parent)  :
     ThisClass(nullptr, parent)
 {
 }
 
-QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveThread, QWidget * parent) :
+QLiveDisplaySettingsWidget::QLiveDisplaySettingsWidget(QLiveDisplay * liveDisplay, QWidget * parent) :
     Base(parent)
 {
   debayer_ctl =
@@ -1313,94 +1338,51 @@ QLiveThreadSettingsWidget::QLiveThreadSettingsWidget(QLivePipelineThread * liveT
             return _opts ? *v = _opts->debayer(), true : false;
           });
 
-  enable_darkframe_ctl =
-      add_checkbox("Subtract dark frame",
-          "Enable dark frame subtraction",
-          [this](bool checked) {
-            if ( _opts ) {
-              _opts->setEnableDarkFrame(checked);
-            }
-          },
-          [this](bool * checked) {
-            return _opts ? * checked = _opts->enableDarkFrame(), true : false;
-          });
-
-  darkframe_ctl =
-      add_browse_for_path("",
-          "Dark frame:",
-          QFileDialog::AcceptOpen,
-          QFileDialog::ExistingFile,
-          [this](const QString & v) {
-            if ( _opts ) {
-              _opts->setDarkFramePath(v);
-            }
-          },
-          [this](QString * v) {
-            return _opts ? *v = _opts->darkFramePath(),  true : false;
-          });
-
-  darkFrameScale_ctl =
-      add_numeric_box<double>("darkFrameScale",
-          "",
-          [this](double v) {
-            if ( _opts ) {
-              _opts->setDarkFrameScale(v);
-            }
-          },
-          [this](double * v) {
-            return _opts ? *v = _opts->darkFrameScale(), true : false;
-          });
-
   updateControls();
 }
 
-void QLiveThreadSettingsWidget::setLiveThread(QLivePipelineThread * liveThread)
+void QLiveDisplaySettingsWidget::setLiveDisplay(QLiveDisplay * liveThread)
 {
   setOpts(liveThread);
 }
 
-QLivePipelineThread * QLiveThreadSettingsWidget::liveThread() const
+QLiveDisplay * QLiveDisplaySettingsWidget::liveDisplay() const
 {
   return opts();
 }
 
-QLiveThreadSettingsDialogBox::QLiveThreadSettingsDialogBox(QWidget * parent) :
-    Base(parent)
+QLiveDisplaySettingsDialogBox::QLiveDisplaySettingsDialogBox(QWidget * parent) :
+    Base("Live Display Options", parent)
 {
   setWindowIcon(getIcon(ICON_bayer));
-  setWindowTitle("Frame Processor Options");
-
-  _layout = new QVBoxLayout(this);
-  _layout->addWidget(_setiingsWidget = new QLiveThreadSettingsWidget(this));
 }
 
-
-void QLiveThreadSettingsDialogBox::setLiveThread(QLivePipelineThread * liveThread)
+void QLiveDisplaySettingsDialogBox::setLiveDisplay(QLiveDisplay * liveDisplay)
 {
-  _setiingsWidget->setLiveThread(liveThread);
+  Base::setOpts(liveDisplay);
 }
 
-QLivePipelineThread * QLiveThreadSettingsDialogBox::liveThread() const
+QLiveDisplay * QLiveDisplaySettingsDialogBox::liveDisplay() const
 {
-  return _setiingsWidget->liveThread();
+  return Base::opts();
 }
 
-void QLiveThreadSettingsDialogBox::closeEvent(QCloseEvent * e)
+void QLiveDisplaySettingsDialogBox::closeEvent(QCloseEvent * e)
 {
   hide();
 }
 
-void QLiveThreadSettingsDialogBox::showEvent(QShowEvent *e)
-{
-  Base::showEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
-
-void QLiveThreadSettingsDialogBox::hideEvent(QHideEvent *e)
-{
-  Base::hideEvent(e);
-  Q_EMIT visibilityChanged(isVisible());
-}
+//void QLiveDisplaySettingsDialogBox::showEvent(QShowEvent *e)
+//{
+//  Base::showEvent(e);
+//  Q_EMIT visibilityChanged(isVisible());
+//}
+//
+//void QLiveDisplaySettingsDialogBox::hideEvent(QHideEvent *e)
+//{
+//  Base::hideEvent(e);
+//  Q_EMIT visibilityChanged(isVisible());
+//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 

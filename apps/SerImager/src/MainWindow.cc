@@ -25,6 +25,8 @@ namespace serimager {
 #define ICON_line             ":/serimager/icons/line.png"
 #define ICON_target           ":/serimager/icons/target.png"
 #define ICON_process          ":/serimager/icons/process.png"
+#define ICON_start_play       ":/serimager/icons/start-play.png"
+
 #define ICON_log              ":/serimager/icons/log.png"
 #define ICON_bayer            ":/gui/icons/bayer.png"
 #define ICON_copy             ":/gui/icons/copy.png"
@@ -63,7 +65,7 @@ MainWindow::MainWindow(QWidget * parent) :
 #endif //HAVE_QLCSCTPCamera
 
   _liveThread = new QLivePipelineThread(this);
-  _liveThread->setDisplay(_liveDisplay);
+  //_liveThread->setDisplay(_liveDisplay);
   _liveThread->setFrameQualityEstimator(&_frameQualityEstimator);
 
 
@@ -83,7 +85,7 @@ MainWindow::MainWindow(QWidget * parent) :
   restoreState();
 
   QObject::connect(_liveThread, &QLivePipelineThread::pipelineChanged,
-      this, &ThisClass::toggleUpdateTimer, Qt::QueuedConnection);
+      this, &ThisClass::onCurrentLivePipelineChanged, Qt::QueuedConnection);
 
   QObject::connect(_liveDisplay, &QImageViewer::currentImageChanged,
       this, &ThisClass::onCurrentImageChanged);
@@ -547,8 +549,36 @@ void MainWindow::setupMainToolbar()
   _mainToolbar->setIconSize(QSize(32, 18));
 
   ///////////////////////////////////////////////////////////////////
+  _mainToolbar->addWidget(liveSource_ctl =
+      createCheckableToolButtonWithContextMenu(getIcon(ICON_start_play), "Display",
+          "Display source",
+          !_liveDisplay->paused(),
+          [this](QToolButton * tb) {
+            _liveDisplay->setPaused(!tb->isChecked());
+          },
+          [this](QToolButton * tb, const QPoint & /*pos*/) {
 
-  _mainToolbar->addWidget(editMaskAction =
+            QMenu menu;
+            menu.addAction(createCheckableAction(QIcon(), "Camera",
+                    "Display input from camera",
+                    _liveDisplay->inputSource() == QLiveDisplay::INPUT_SOURCE_CAMERA,
+                    [this](bool checked) {
+                      _liveDisplay->setInputSource(QLiveDisplay::INPUT_SOURCE_CAMERA);
+                    }));
+            menu.addAction(createCheckableAction(QIcon(), "Pipeline",
+                    "Display output from pipeline",
+                    _liveDisplay->inputSource() == QLiveDisplay::INPUT_SOURCE_PIPELINE,
+                    [this](bool checked) {
+                      _liveDisplay->setInputSource(QLiveDisplay::INPUT_SOURCE_PIPELINE);
+                    }));
+
+            menu.exec(tb->mapToGlobal(QPoint(4, 4)));
+          }
+      ));
+
+  ///////////////////////////////////////////////////////////////////
+
+  _mainToolbar->addWidget(editMask_ctl =
       createToolButton(getIcon(ICON_mask), "Mask",
           "Mask mode",
           [this](QToolButton * tb) {
@@ -623,7 +653,7 @@ void MainWindow::setupMainToolbar()
   _mainToolbar->addAction(_showLiveThreadSettingsAction = createCheckableAction(getIcon(ICON_bayer),
       "Bayer",
       "Configure debayer options",
-      is_visible(_liveThreadSettingsDialogBox),
+      is_visible(_liveDisplaySettingsDialogBox),
       this,
       &ThisClass::onShowLiveThreadSettingsActionTriggered));
 
@@ -671,9 +701,8 @@ void MainWindow::setupCameraControls()
       [this]() {
 
         const QImagingCamera::sptr & camera = cameraControls_ctl->selectedCamera();
-
         _liveThread->setCamera(camera);
-
+        _liveDisplay->setCamera(camera);
         if ( camera ) {
           QObject::connect(camera.get(), &QImagingCamera::exposureStatusUpdate,
               this, &ThisClass::onExposureStatusUpdate,
@@ -851,12 +880,12 @@ void MainWindow::setupDisplayImageVideoWriter()
 void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
 {
   if( checked ) {
-    if( !_liveThreadSettingsDialogBox ) {
+    if( !_liveDisplaySettingsDialogBox ) {
 
-      _liveThreadSettingsDialogBox = new QLiveThreadSettingsDialogBox(this);
-      _liveThreadSettingsDialogBox->setLiveThread(_liveThread);
+      _liveDisplaySettingsDialogBox = new QLiveDisplaySettingsDialogBox(this);
+      _liveDisplaySettingsDialogBox->setLiveDisplay(_liveDisplay);
 
-      QObject::connect(_liveThreadSettingsDialogBox, &QLiveThreadSettingsDialogBox::visibilityChanged, this,
+      QObject::connect(_liveDisplaySettingsDialogBox, &QLiveDisplaySettingsDialogBox::visibilityChanged, this,
           [this](bool visible) {
             if ( _showLiveThreadSettingsAction ) {
               _showLiveThreadSettingsAction->setChecked(visible);
@@ -864,10 +893,10 @@ void MainWindow::onShowLiveThreadSettingsActionTriggered(bool checked)
           });
     }
 
-    _liveThreadSettingsDialogBox->show();
+    _liveDisplaySettingsDialogBox->show();
   }
-  else if( _liveThreadSettingsDialogBox ) {
-    _liveThreadSettingsDialogBox->hide();
+  else if( _liveDisplaySettingsDialogBox ) {
+    _liveDisplaySettingsDialogBox->hide();
   }
 
 }
@@ -908,6 +937,13 @@ void MainWindow::onCameraWriterStatusUpdate()
       .arg(_cameraWriter.num_saved_frames())
       .arg(write_drops)
       .arg(capture_drops));
+}
+
+
+void MainWindow::onCurrentLivePipelineChanged()
+{
+  _liveDisplay->setCurrentPipeline(_liveThread->pipeline());
+  toggleUpdateTimer();
 }
 
 

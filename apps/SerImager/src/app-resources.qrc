@@ -1,6 +1,9 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/serimager">
 	<file>icons/app-icon.png</file>
+	
+	<file>icons/light/start-play.png</file>
+	<file>icons/dark/start-play.png</file>
 
 	<file>icons/light/hourglass.png</file>
 	<file>icons/dark/hourglass.png</file>

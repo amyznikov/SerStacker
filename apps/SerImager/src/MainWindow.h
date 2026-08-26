@@ -60,6 +60,7 @@ protected Q_SLOTS:
   //void updateMeasureChannels();
   void updateMeasurements();
   void toggleUpdateTimer();
+  void onCurrentLivePipelineChanged();
 
 protected:
   void timerEvent(QTimerEvent *event) final;
@@ -98,7 +99,8 @@ protected:
 
   QToolBar * _mainToolbar = nullptr;
 
-  QToolButton * editMaskAction = nullptr;
+  QToolButton * editMask_ctl = nullptr;
+  QToolButton * liveSource_ctl = nullptr;
 
   QMenu * _menuViewShapes = nullptr;
 
@@ -118,7 +120,7 @@ protected:
   QMenu _lineShapeActionsMenu;
 
   QAction * _showLiveThreadSettingsAction = nullptr;
-  QLiveThreadSettingsDialogBox * _liveThreadSettingsDialogBox = nullptr;
+  QLiveDisplaySettingsDialogBox * _liveDisplaySettingsDialogBox = nullptr;
 
   QScaleSelectionButton * _displayScaleControl = nullptr;
 

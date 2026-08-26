@@ -24,16 +24,17 @@ struct c_sdr_pipeline_input_options :
 {
 };
 
-struct c_sdr_pipeline_roi_options
-{
-  enum roi_selection_method method = roi_selection_none;
-  cv::Size planetary_disk_crop_size;
-  cv::Rect rectangle_roi_selection;
-  double planetary_disk_gbsigma = 1;
-  double planetary_disk_stdev_factor = 0.25;
-  int se_close_size = 2;
-};
-
+//struct c_sdr_pipeline_roi_options
+//{
+//    c_roi_selection_options roi_selection;
+////  enum roi_selection_method method = roi_selection_none;
+////  cv::Size planetary_disk_crop_size;
+////  cv::Rect rectangle_roi_selection;
+////  double planetary_disk_gbsigma = 1;
+////  double planetary_disk_stdev_factor = 0.25;
+////  int se_close_size = 2;
+//};
+//
 struct c_sdr_pipeline_reference_frame_options
 {
   std::string reference_file_name;
@@ -152,14 +153,14 @@ protected:
 
 protected:
   c_sdr_pipeline_input_options _input_options;
-  c_roi_selection_options _roi_selection_options;
+  //c_roi_selection_options _roi_selection_options;
   c_sdr_pipeline_reference_frame_options  _reference_frame_options;
   c_sdr_pipeline_ellipse_detector_options _ellipse_estimation_options;
   c_sdr_pipeline_stack_options _stack_options;
   c_sdr_pipeline_output_options _output_options;
 
 protected:
-  c_roi_selection::sptr _roi_selection;
+  // c_roi_selection::sptr _roi_selection;
   c_weigthed_average _reference_frame_avg;
   c_saturn_ellipse_detector _ellipse_detector;
   c_saturn_derotation_remap _ellipsoid_derotation_remap;

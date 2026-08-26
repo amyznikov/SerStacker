@@ -234,7 +234,7 @@ protected:
   bool run_image_stacking();
   void set_pipeline_stage(int stage);
 
-  c_roi_selection::sptr create_roi_selection() const;
+//  c_roi_selection::sptr create_roi_selection() const;
 
   c_frame_registration::sptr create_frame_registration(const c_image_registration_options & options) const;
 
@@ -308,7 +308,7 @@ protected:
 
   std::string _output_file_name;
 
-  c_roi_selection::sptr _roi_selection;
+  // c_roi_selection::sptr _roi_selection;
   c_frame_registration::sptr _frame_registration;
   c_frame_accumulation::ptr _frame_accumulation;
   c_weigthed_average::ptr _flow_accumulation;

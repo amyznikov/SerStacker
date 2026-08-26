@@ -12,57 +12,69 @@
 #include <opencv2/opencv.hpp>
 #include <core/proc/feature2d/planetary-disk-detection.h>
 
-enum roi_selection_method
-{
-  roi_selection_none = 0,
-  roi_selection_rectange_crop = 1,
-  roi_selection_planetary_disk = 2,
+enum ROI_SELECTION_MODE {
+  ROI_SELECTION_NONE,
+  ROI_SELECTION_RECT,
+  ROI_SELECTION_PLANETARY_DISK,
+  ROI_SELECTION_GUI,
+  // ROI_SELECTION_MAX_CONNECTED_COMPONENT,
 };
 
 struct c_roi_selection_options
 {
-  enum roi_selection_method method = roi_selection_none;
-  cv::Rect rectangle_roi_selection;
-  c_simple_planetary_disk_detector_options planetary_disk_options;
-  cv::Size planetary_disk_crop_size;
+  ROI_SELECTION_MODE mode = ROI_SELECTION_RECT;
+  cv::BorderTypes borderType = cv::BORDER_DEFAULT;
+  cv::Scalar borderValue;
+  cv::Size outputSize;
+  bool fixOutputSize = false;
+
+  struct {
+    cv::Rect rc;
+  } rectSelection;
+
+  struct {
+    c_simple_planetary_disk_detector_options opts;
+    bool putToCenter = false;
+  } planetaryDiskSelection;
 };
+
+bool serialize_base_roi_selection_options(c_config_setting section, bool save,
+    c_roi_selection_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_roi_selection_options & opts)
+{
+  return serialize_base_roi_selection_options(section, true,
+      const_cast<c_roi_selection_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_roi_selection_options * opts)
+{
+  return serialize_base_roi_selection_options(section, false, *opts);
+}
 
 template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_roi_selection_options> & ctx)
 {
   using S = c_roi_selection_options;
-  ctlbind(ctls, "ROI selection:", ctx(&S::method), "");
 
-  ctlbind_expandable_group(ctls, "Rectangle Crop...");
-    ctlbind(ctls, "Rectangle:", ctx(&S::rectangle_roi_selection), "");
-  ctlbind_end_group(ctls);
+  ctlbind(ctls, "ROI Selection", CTL_CONTEXT(ctx, mode), "What to select into ROI");
+  ctlbind(ctls, "force output size:", CTL_CONTEXT(ctx, fixOutputSize), "");
+  ctlbind(ctls, "forced output size:", CTL_CONTEXT(ctx, outputSize), "");
+  ctlbind(ctls, "borderType:", CTL_CONTEXT(ctx, borderType), "");
+  ctlbind(ctls, "borderValue:", CTL_CONTEXT(ctx, borderValue), "");
 
-  ctlbind_expandable_group(ctls, "Planetary Disk Crop...");
-    ctlbind(ctls, "Crop Size:", ctx(&S::planetary_disk_crop_size), "");
-    ctlbind(ctls, ctx(&S::planetary_disk_options));
-  ctlbind_end_group(ctls);
+  ctlbind_expandable_group(ctls, "RECTANGLE", [&, ctx = CTL_CONTEXT(ctx, rectSelection)]() {
+    ctlbind(ctls, "ROI:", CTL_CONTEXT(ctx, rc), "");
+  });
+
+  ctlbind_expandable_group(ctls, "PLANETARY DISK", [&, ctx = CTL_CONTEXT(ctx, planetaryDiskSelection)]() {
+    ctlbind(ctls, "putToCenter", CTL_CONTEXT(ctx, putToCenter));
+    ctlbind(ctls, CTL_CONTEXT(ctx, opts));
+  });
 }
 
-class c_roi_selection
-{
-public:
-  typedef c_roi_selection this_class;
-  typedef std::shared_ptr<this_class> sptr;
-
-  c_roi_selection() = default;
-  virtual ~c_roi_selection() = default;
-
-  static sptr create(const c_roi_selection_options & opts);
-
-  virtual bool select(cv::InputArray image, cv::InputArray image_mask,
-      cv::Rect & outputROIRectangle ) = 0;
-};
-
-bool select_image_roi(const c_roi_selection::sptr & roi_selection,
-    const cv::Mat & src, const cv::Mat & srcmask,
-    cv::Mat & dst, cv::Mat & dstmask);
-
-bool serialize_base_roi_selection_options(c_config_setting section, bool save,
-    c_roi_selection_options & opts);
+bool select_image_roi(const c_roi_selection_options & opts,
+    cv::InputArray src, cv::InputArray src_mask,
+    cv::OutputArray dst, cv::OutputArray dst_mask);
 
 #endif /* __c_roi_selection_h__ */

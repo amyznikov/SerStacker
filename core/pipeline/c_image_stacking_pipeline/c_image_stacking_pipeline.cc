@@ -417,10 +417,10 @@ std::string c_image_stacking_pipeline::output_file_name() const
   return _output_file_name;
 }
 
-c_roi_selection::sptr c_image_stacking_pipeline::create_roi_selection() const
-{
-  return c_roi_selection::create(_roi_selection_options);
-}
+//c_roi_selection::sptr c_image_stacking_pipeline::create_roi_selection() const
+//{
+//  return c_roi_selection::create(_roi_selection_options);
+//}
 
 c_frame_registration::sptr c_image_stacking_pipeline::create_frame_registration(const c_image_registration_options & options) const
 {
@@ -534,7 +534,7 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _output_file_name_postfix.clear();
     _output_file_name.clear();
 
-    _roi_selection.reset();
+    //_roi_selection.reset();
     _frame_registration.reset();
     _frame_accumulation.reset();
     _flow_accumulation.reset();
@@ -543,12 +543,12 @@ bool c_image_stacking_pipeline::initialize_pipeline()
     _stack_options.registration.feature_registration.estimate_options.epipolar_derotation.camera_intrinsics = _camera_intrinsics;
   }
 
-  if ( _roi_selection_options.method != roi_selection_none ) {
-    if ( !(_roi_selection = create_roi_selection()) ) {
-      set_status_msg("ERROR: create_roi_selection() fails");
-      return false;
-    }
-  }
+//  if ( _roi_selection_options.method != roi_selection_none ) {
+//    if ( !(_roi_selection = create_roi_selection()) ) {
+//      set_status_msg("ERROR: create_roi_selection() fails");
+//      return false;
+//    }
+//  }
 
   if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
@@ -598,7 +598,7 @@ void c_image_stacking_pipeline::cleanup_pipeline()
   set_pipeline_stage(stacking_stage_finishing);
   base::cleanup_pipeline();
 
-  _roi_selection.reset();
+  //_roi_selection.reset();
 
   if ( true ) {
     _frame_registration.reset();
@@ -966,7 +966,7 @@ bool c_image_stacking_pipeline::create_reference_frame(cv::Mat & reference_frame
       * reference_timestamp = _input_sequence->last_ts();
     }
 
-    if( !select_image_roi(_roi_selection, reference_frame, reference_mask, reference_frame, reference_mask) ) {
+    if( !select_image_roi(_roi_selection_options, reference_frame, reference_mask, reference_frame, reference_mask) ) {
       CF_FATAL("select_image_roi(reference_frame) fails");
       return false;
     }
@@ -1091,7 +1091,7 @@ bool c_image_stacking_pipeline::create_reference_frame(const c_input_sequence::s
   }
 
 
-  if( !select_image_roi(_roi_selection, reference_frame, reference_mask, reference_frame, reference_mask) ) {
+  if( !select_image_roi(_roi_selection_options, reference_frame, reference_mask, reference_frame, reference_mask) ) {
     CF_FATAL("select_image_roi(reference_frame) fails");
     return false;
   }
@@ -1341,7 +1341,7 @@ bool c_image_stacking_pipeline::process_input_sequence(const c_input_sequence::s
       continue;
     }
 
-    if ( !select_image_roi(_roi_selection, current_frame, current_mask, current_frame, current_mask) ) {
+    if ( !select_image_roi(_roi_selection_options, current_frame, current_mask, current_frame, current_mask) ) {
       CF_ERROR("[F %d] select_image_roi() fails", input_sequence->current_pos() - 1);
       continue;
     }

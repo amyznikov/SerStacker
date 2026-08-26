@@ -69,11 +69,11 @@ const c_ctlist<c_sdr_pipeline::this_class> & c_sdr_pipeline::getcontrols()
           ctlbind(ctls, as_base<c_image_processing_pipeline_input_options>(ctx));
         });
 
-    ctlbind_expandable_group(ctls, "2. ROI Selection",
-        [&, ctx = ctx(&this_class::_roi_selection_options)]() {
-          ctlbind(ctls, ctx);
-        });
-
+//    ctlbind_expandable_group(ctls, "2. ROI Selection",
+//        [&, ctx = ctx(&this_class::_roi_selection_options)]() {
+//          ctlbind(ctls, ctx);
+//        });
+//
     ctlbind_expandable_group(ctls, "3. Reference Frame Options ",
         [&, ctx = ctx(&this_class::_reference_frame_options)]() {
 
@@ -210,9 +210,9 @@ bool c_sdr_pipeline::serialize(c_config_setting settings, bool save)
     serialize_base_input_options(input_opts, save, _input_options);
   }
 
-  if( auto roi_opts = SERIALIZE_GROUP(settings, save, "roi_opts") ) {
-    serialize_base_roi_selection_options(roi_opts, save, _roi_selection_options);
-  }
+//  if( auto roi_opts = SERIALIZE_GROUP(settings, save, "roi_opts") ) {
+//    serialize_base_roi_selection_options(roi_opts, save, _roi_selection_options);
+//  }
 
   if( auto reference_frame_opts = SERIALIZE_GROUP(settings, save, "reference_frame_opts") ) {
     auto & opts = _reference_frame_options;
@@ -320,7 +320,7 @@ bool c_sdr_pipeline::copy_parameters(const c_image_processing_pipeline::sptr & d
   const c_sdr_pipeline_ellipsoid_pose backup_pose = p->_ellipse_estimation_options.pose;
 
   p->_input_options = this->_input_options;
-  p->_roi_selection_options = this->_roi_selection_options;
+  // p->_roi_selection_options = this->_roi_selection_options;
   p->_reference_frame_options = this->_reference_frame_options;
   p->_ellipse_estimation_options = this->_ellipse_estimation_options;
   p->_stack_options = this->_stack_options ;

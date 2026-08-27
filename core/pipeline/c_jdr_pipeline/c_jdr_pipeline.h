@@ -24,18 +24,6 @@ struct c_jdr_pipeline_input_options :
 {
 };
 
-//struct c_jdr_pipeline_roi_options
-//{
-//   c_roi_selection_options roi_selection;
-////  enum roi_selection_method method = roi_selection_none;
-////  cv::Size planetary_disk_crop_size;
-////  cv::Rect rectangle_roi_selection;
-////  double planetary_disk_gbsigma = 1;
-////  double planetary_disk_stdev_factor = 0.25;
-////  int se_close_size = 2;
-//};
-//
-
 struct c_jdr_pipeline_reference_frame_options
 {
   std::string reference_file_name;
@@ -44,7 +32,7 @@ struct c_jdr_pipeline_reference_frame_options
   struct c_regerence_frame_generator_options {
     IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
     color_channel_type reference_channel = color_channel_gray;
-    c_image_processor::sptr input_image_preprocessor;
+    c_image_processor::sptr image_preprocessor;
     c_ecch_options ecch_opts;
   } generate_opts;
 };
@@ -165,7 +153,7 @@ protected:
   c_weigthed_average _reference_frame_avg;
   c_jovian_ellipse_detector _ellipse_detector;
   c_jovian_derotation_remap _ellipsoid_derotation_remap;
-  c_weigthed_average _frame_average;
+  c_weigthed_average _average;
 
   int _pipeline_stage = 0;
 

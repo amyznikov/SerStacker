@@ -98,8 +98,8 @@ QMasterFrameSelection::QMasterFrameSelection(QWidget * parent) :
           });
 
   image_preprocessor_ctl =
-      add_combobox<QImageProcessorSelectionCombo2>("image preporcessor",
-          "apply image preprocessor before measuring sharpness metric",
+      add_combobox<QImageProcessorSelectionCombo2>("image preprocessor",
+          "Image preprocessor applied before measuring sharpness metric only",
           false,
           [this](int index, QImageProcessorSelectionCombo2 * combo) {
             if( _opts ) {

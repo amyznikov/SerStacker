@@ -88,7 +88,7 @@ const c_ctlist<c_sdr_pipeline::this_class> & c_sdr_pipeline::getcontrols()
           ctlbind_expandable_group(ctls, "Reference Frame Generate Options",
               [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
                 ctlbind(ctls, "motion_type", CTL_CONTEXT(ctx, motion_type), "");
-                ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
+                ctlbind(ctls, "image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
                 ctlbind(ctls, "reference_channel", CTL_CONTEXT(ctx, reference_channel), "");
                 ctlbind_expandable_group(ctls, "ECCH",
                     [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
@@ -1197,30 +1197,33 @@ bool c_sdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
       const double w = 1. / (1. + std::abs(dt) / wts);
       CF_DEBUG("[F %d (MF %d)] ts = %lf [s] dt = %lf [s] w=%g ", i, _master_pos, ts, dt, w);
 
-      _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
-      _ellipsoid_derotation_remap.wmap().copyTo(current_weights);
-      current_weights.setTo(0, current_weights < 1e-5);
-
-      if( _stack_options.enable_weighted_average ) {
-        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
-          CF_ERROR("[F %d] lpg(current_frame) fails", i);
-          return false;
-        }
-        cv::remap(lpg_map, lpg_map,
-            _ellipsoid_derotation_remap.rmap(), cv::noArray(),
-            cv::INTER_LINEAR,
-            cv::BORDER_TRANSPARENT);
-        cv::multiply(current_weights, lpg_map,
-            current_weights);
-      }
+//      if( _stack_options.enable_weighted_average ) {
+//        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
+//          CF_ERROR("[F %d] lpg(current_frame) fails", i);
+//          return false;
+//        }
+//        cv::remap(lpg_map, lpg_map,
+//            _ellipsoid_derotation_remap.rmap(), cv::noArray(),
+//            cv::INTER_LINEAR,
+//            cv::BORDER_TRANSPARENT);
+//        cv::multiply(current_weights, lpg_map,
+//            current_weights);
+//      }
       if ( i == _master_pos ) {
-        current_weights.setTo(1,~ _ellipsoid_derotation_remap.rmask());
+        //current_weights.setTo(1/*,~ _ellipsoid_derotation_remap.rmask()*/);
+        current_weights = cv::Mat1f::ones(current_frame.size());
       }
+      else {
+        _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
+        _ellipsoid_derotation_remap.wmap().copyTo(current_weights);
+        current_weights.setTo(0, current_weights < 1e-5);
+        cv::GaussianBlur(current_weights, current_weights, cv::Size(), 2, 2,
+            cv::BORDER_REPLICATE);
+      }
+
       if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);
       }
-      cv::GaussianBlur(current_weights, current_weights, cv::Size(), 1, 1,
-          cv::BORDER_REPLICATE);
 
       cv::remap(current_frame, current_frame,
           _ellipsoid_derotation_remap.rmap(), cv::noArray(),

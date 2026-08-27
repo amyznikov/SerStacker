@@ -88,7 +88,7 @@ const c_ctlist<c_jdr_pipeline::this_class> & c_jdr_pipeline::getcontrols()
           ctlbind_expandable_group(ctls, "Reference Frame Generate Options",
               [ctx = CTL_CONTEXT(ctx, generate_opts)]() {
                 ctlbind(ctls, "motion_type", CTL_CONTEXT(ctx, motion_type), "");
-                ctlbind(ctls, "input_image_preprocessor", CTL_CONTEXT(ctx, input_image_preprocessor), "");
+                ctlbind(ctls, "image preprocessor", CTL_CONTEXT(ctx, image_preprocessor), "");
                 ctlbind(ctls, "reference_channel", CTL_CONTEXT(ctx, reference_channel), "");
                 ctlbind_expandable_group(ctls, "ECCH",
                     [ctx = CTL_CONTEXT(ctx, ecch_opts)]() {
@@ -227,7 +227,7 @@ bool c_jdr_pipeline::serialize(c_config_setting settings, bool save)
     if( auto generate_opts = SERIALIZE_GROUP(reference_frame_opts, save, "generate_opts") ) {
       SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, reference_channel);
       SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, motion_type);
-      SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, input_image_preprocessor);
+      SERIALIZE_OPTION(generate_opts, save, opts.generate_opts, image_preprocessor);
       if( auto ecch_opts = SERIALIZE_GROUP(generate_opts, save, "ecch") ) {
         serialize_ecch_options(ecch_opts, save, opts.generate_opts.ecch_opts);
       }
@@ -452,7 +452,7 @@ bool c_jdr_pipeline::initialize_pipeline()
 
   //  set_pipeline_stage(stacking_stage_initialize);
   _output_path = create_output_path(_output_options.output_directory);
-  _frame_average.clear();
+  _average.clear();
   _ellipse_detector.clear();
   _ellipsoid_derotation_remap.set_opts(_stack_options.remap);
 
@@ -823,7 +823,7 @@ bool c_jdr_pipeline::create_reference_frame()
 
     _master_frame.copyTo(current_frame);
     _master_mask.copyTo(current_mask);
-    if( const auto & proc = _reference_frame_options.generate_opts.input_image_preprocessor ) {
+    if( const auto & proc = _reference_frame_options.generate_opts.image_preprocessor ) {
       if( !proc->process(current_frame, current_mask) ) {
         CF_ERROR("input_image_preprocessor->process(master_frame, master_mask) fails");
         return false;
@@ -879,7 +879,7 @@ bool c_jdr_pipeline::create_reference_frame()
           current_frame.cols, current_frame.rows, current_frame.channels(), current_frame.depth(),
           current_mask.cols, current_mask.rows, current_mask.channels(), current_mask.depth());
 
-      if( const auto & proc = _reference_frame_options.generate_opts.input_image_preprocessor ) {
+      if( const auto & proc = _reference_frame_options.generate_opts.image_preprocessor ) {
         if( !proc->process(current_frame, current_mask) ) {
           CF_ERROR("input_image_preprocessor->process(current_frame, current_mask) fails");
           return false;
@@ -1101,7 +1101,7 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
 
 bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end_frame_index)
 {
-  _frame_average.clear();
+  _average.clear();
 
 //  const int input_sequence_size = _input_sequence->size();
 //  const int max_input_frames = _input_options.max_input_frames < 0 ? input_sequence_size : std::clamp(_input_options.max_input_frames, 0, input_sequence_size);
@@ -1203,40 +1203,47 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
       const double w = 1. / (1. + std::abs(dt) / wts);
       CF_DEBUG("[F %d (MF %d)] ts = %lf [s] dt = %lf [s] w=%g ", i, _master_pos, ts, dt, w);
 
-      _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
-      _ellipsoid_derotation_remap.wmap().copyTo(current_weights);
-      current_weights.setTo(0, current_weights < 1e-5);
+//      if( _stack_options.enable_weighted_average ) {
+//        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
+//          CF_ERROR("[F %d] lpg(current_frame) fails", i);
+//          return false;
+//        }
+//        cv::remap(lpg_map, lpg_map,
+//            _ellipsoid_derotation_remap.rmap(), cv::noArray(),
+//            cv::INTER_LINEAR,
+//            cv::BORDER_TRANSPARENT);
+//        cv::multiply(current_weights, lpg_map,
+//            current_weights);
+//      }
 
-      if( _stack_options.enable_weighted_average ) {
-        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
-          CF_ERROR("[F %d] lpg(current_frame) fails", i);
-          return false;
-        }
-        cv::remap(lpg_map, lpg_map,
+      current_weights = cv::Mat1f::ones(current_frame.size());
+      if ( i == _master_pos ) {
+        //current_weights.setTo(1,~ _ellipsoid_derotation_remap.rmask());
+      }
+      else {
+        _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
+        const auto & wmap = _ellipsoid_derotation_remap.wmap();
+        wmap.copyTo(current_weights, wmap > 1e-5);
+//        //current_weights.setTo(0, current_weights < 1e-5);
+//        cv::erode(current_weights, current_weights, cv::Mat1b(11, 11, 255), cv::Point(-1, -1), 1,
+//            cv::BORDER_REPLICATE);
+        cv::GaussianBlur(current_weights, current_weights, cv::Size(), 5, 5,
+            cv::BORDER_REPLICATE);
+        cv::remap(current_frame, current_frame,
             _ellipsoid_derotation_remap.rmap(), cv::noArray(),
             cv::INTER_LINEAR,
             cv::BORDER_TRANSPARENT);
-        cv::multiply(current_weights, lpg_map,
-            current_weights);
       }
-      if ( i == _master_pos ) {
-        current_weights.setTo(1,~ _ellipsoid_derotation_remap.rmask());
-      }
+
       if ( !current_mask.empty() ) {
         current_weights.setTo(0, ~current_mask);
       }
-      cv::GaussianBlur(current_weights, current_weights, cv::Size(), 1, 1,
-          cv::BORDER_REPLICATE);
 
-      cv::remap(current_frame, current_frame,
-          _ellipsoid_derotation_remap.rmap(), cv::noArray(),
-          cv::INTER_LINEAR,
-          cv::BORDER_TRANSPARENT);
+      _average.add(current_frame, current_weights);
+      CF_DEBUG("_average.add()=%d", _average.accumulated_frames());
 
-      _frame_average.add(current_frame, current_weights);
-
-      current_mask.setTo(0, current_weights < 1e-5);
-      current_frame.setTo(0, ~current_mask);
+//      current_mask.setTo(0, current_weights < 1e-5);
+//      current_frame.setTo(0, ~current_mask);
 
       if ( _derotated_frames_writer.is_open() ) {
         if ( !_derotated_frames_writer.write(current_frame, current_mask) ) {
@@ -1261,11 +1268,13 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
     ++_accumulated_frames;
   }
 
-  if ( _frame_average.accumulated_frames() > 0 )  {
+  CF_DEBUG("_average.accumulated_frames()=%d", _average.accumulated_frames());
+
+  if ( _average.accumulated_frames() > 0 )  {
 
     cv::Mat avg, mask;
 
-    if ( !_frame_average.compute(avg, mask) ) {
+    if ( !_average.compute(avg, mask) ) {
       CF_ERROR("_frame_average.compute() fails");
       return false;
     }
@@ -1279,7 +1288,7 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
     }
 
     if ( _derotated_avg_weights_writer.is_open() ) {
-      if ( !_derotated_avg_weights_writer.write(_frame_average.counter(), mask, false, _master_pos) ) {
+      if ( !_derotated_avg_weights_writer.write(_average.counter(), mask, false, _master_pos) ) {
         CF_ERROR("[MF %d] _derotated_avg_weights_writer.write() fails for %s", _master_pos,
             _derotated_avg_weights_writer.cfilename());
         return false;

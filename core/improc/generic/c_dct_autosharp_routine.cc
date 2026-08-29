@@ -60,12 +60,23 @@ public:
 
   inline void init(const cv::Mat1f & mx)
   {
-    const int total_bins = mx.cols;
-    const double total_energy = cv::norm(mx(cv::Rect(1, 0, total_bins - 1, 1)), cv::NORM_L2SQR);
-    _y0 = 0.5 * std::log(total_energy);
+    // Ignore DC component for energy computation
+
+    const int num_bins = mx.cols;
+    const double total_energy = cv::norm(mx(cv::Rect(1, 0, num_bins - 1, 1)), cv::NORM_L2SQR);
+
+    // Normalized log of DCT components
     _sp = mx;
+    _y0 = float(0.5 * std::log(total_energy));
     cv::log(mx, _lsp);
     cv::subtract(_lsp, _y0, _lsp);
+
+    // Also x bin frequencies in log space
+    _xv.resize(num_bins);
+    _xv[0] = 0;
+    for( int i = 1; i < num_bins; ++i ) {
+      _xv[i] = std::log(float(i));
+    }
   }
 
   inline int size() const
@@ -73,1189 +84,80 @@ public:
     return _sp.cols;
   }
 
-  inline double y0() const
+  inline float y0() const
   {
     return _y0;
   }
 
-  inline double xv(int i) const
+  inline float xv(int i) const
   {
-    return std::log(std::max(1,i));
+    return _xv[i]; // precomouted std::log(std::max(1,i));
   }
 
-  inline double sv(int i) const
-  {
-    return _sp[0][i];
-  }
-
-  inline double yv(int i) const
+  inline float yv(int i) const
   {
     return _lsp[0][i];
   }
 
+  inline float sv(int i) const
+  {
+    return _sp[0][i];
+  }
+
 protected:
+  std::vector<float> _xv; // [n_bins]
   cv::Mat1f _sp; // [1][n_bins]
-  cv::Mat1f _lsp; // log(_sp)
-  double _y0 = 0;
+  cv::Mat1f _lsp; // cv::log(_sp)
+  float _y0 = 0;
 };
 
-
-
-static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p)
-{
-  constexpr int N_uniform = 100;
-  const int n_bins = p.size();
-
-  std::vector<double> bin_sums(N_uniform, 0.0);
-  std::vector<int> bin_counts(N_uniform, 0);
-
-  // Initialize the frequency range (skip DC)
-  const double x_min = p.xv(1);
-  const double x_max = p.xv(n_bins - 1);
-  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-
-  // Uniform accumulation (resampling)
-  for( int i = 1; i < n_bins; ++i ) {
-    if ( p.sv(i) > 0 ) {
-      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-      bin_sums[bin_idx] += p.yv(i);
-      bin_counts[bin_idx]++;
-    }
-  }
-
-  // Average non-empty cells
-  for( int i = 0; i < N_uniform; ++i ) {
-    if( bin_counts[i] > 1 ) {
-      bin_sums[i] /= bin_counts[i];
-    }
-  }
-
-  // Gap Filling
-  cv::Mat1f U(1, N_uniform);
-  float * __restrict up = U[0];
-
-  int last_valid_idx = -1;
-  for( int j = 0; j < N_uniform; ++j ) {
-    if( bin_counts[j] > 0 ) {
-      up[j] = float(bin_sums[j]);
-
-      // If there were holes before, interpolate them from the last valid one to the current one
-      if (last_valid_idx != j - 1) {
-        const int left = std::max(0, last_valid_idx);
-        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-        const float y_right = up[j];
-        const float inv_step = 1.0f / (j - left);
-
-        for (int k = left + 1; k < j; ++k) {
-          const float t = (k - left) * inv_step;
-          up[k] = (1.0f - t) * y_left + t * y_right;
-        }
-      }
-      last_valid_idx = j;
-    }
-  }
-
-  // Extrapolate the right edge if the last bins remain empty
-  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-  }
-
-  // Freezing the tail (Spectrum Matrix Angle Region)
-  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-
-  // Smoothing the uniform profile
-  cv::medianBlur(U, U, 5);
-  cv::GaussianBlur(U, U, cv::Size(31, 1), 0, 0, cv::BORDER_REPLICATE);
-
-  // Back interpolation into the original bin grid
-  // DC is kept unchanged
-  cv::Mat1f output(1, n_bins);
-  float * __restrict dstp = output[0];
-  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-
-  const float * smup = U[0];
-  for( int i = 1; i < n_bins; ++i ) {
-    // Safe index clamp eliminates crashes and branches in the loop
-    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-    const double t = uniform_idx - k;
-    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-  }
-
-  return output;
-}
-
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope,
-//  double & out_x0,
-//  double & out_y0,
-//  double & out_S1_slope)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      // If there were holes before, interpolate them from the last valid one to the current one
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  // Extrapolate the right edge if the last bins remain empty
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  // Freezing the tail (Spectrum Matrix Angle Region)
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//  const float * smup = U[0];
-//
-//  //
-//  // Compute also sliding linear regression and search point x0
-//  // with local slope closest to target slope
-//  //
-//  // Set window width to 15% of scale
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//  //const double target_win_width_log = (x_max - x_min) * 0.15;
-//  const double sliding_win_size = 7; // (dx > 0) ? target_win_width_log / dx : 15.0;
-//  c_sliding_line_estimate<double> estimator(sliding_win_size);
-//
-//  const double x_stable_start = x_min + (x_max - x_min) * 0.15;
-//  double min_diff = DBL_MAX;
-//  double best_x0 = x_min, best_y0 = 0;
-//  double best_slope = 0.0;
-//  bool found_pivot = false;
-//
-//  for( int j = 1; j < N_uniform; ++j ) {
-//    const double current_x = x_min + j * dx;
-//    const double current_y = smup[j];
-//
-//    estimator.update(current_x, current_y, 1.0);
-//
-//    if( current_x >= x_stable_start && estimator.pts() > 6 ) {
-//
-//      double current_shift = 0.0;
-//      double current_slope = 0.0;
-//
-//      if( estimator.compute(current_shift, current_slope) ) {
-//        const double diff = std::abs(current_slope - S1_target_slope);
-//        if( diff < min_diff ) {
-//          min_diff = diff;
-//          best_x0 = current_x;
-//          best_y0 = current_shift + current_slope * current_x;
-//          best_slope = current_slope;
-//          found_pivot = true;
-//        }
-//      }
-//    }
-//  }
-//  if( found_pivot ) {
-//    out_x0 = best_x0;
-//    out_y0 = best_y0;
-//    out_S1_slope = best_slope;
-//  }
-//  else {
-//    // Force fallback if regression failed to initialize
-//    out_x0 = x_stable_start;
-//    const int fallback_idx = std::clamp(int((out_x0 - x_min) * x_range_inv), 0, N_uniform - 1);
-//    out_y0 = double(smup[fallback_idx]);
-//    out_S1_slope = 0.0;
-//  }
-//
-//
-//  //
-//  // Back interpolation into the original bin grid
-//  // DC is kept unchanged
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    // Safe index clamp eliminates crashes and branches in the loop
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//  }
-//
-//  return output;
-//}
-//
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope,
-//  double & out_x0,
-//  double & out_y0,
-//  double & out_S1_slope)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      // If there were holes before, interpolate them from the last valid one to the current one
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  // Extrapolate the right edge if the last bins remain empty
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  // Freezing the tail (Spectrum Matrix Angle Region)
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//  // =========================================================================
-//  // НАЧАЛО БЛОКА: Инвариантный расчет шарнира (x0, y0) через баланс энергии НЧ
-//  // =========================================================================
-//  const float * smup = U[0];
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//
-//  // 1. Определение зоны замера макро-энергии (первые 15% логарифмической шкалы)
-//  // Там геометрия сцены стабильна, а оптический блюр физически неспособен повлиять на сигнал.
-//  const double x_macro_end = x_min + (x_max - x_min) * 0.15;
-//
-//  double sum_x = 0.0;
-//  double sum_y = 0.0;
-//  int macro_pts = 0;
-//
-//  for (int j = 0; j < N_uniform; ++j) {
-//    const double current_x = x_min + j * dx;
-//    if (current_x <= x_macro_end) {
-//      sum_x += current_x;
-//      sum_y += double(smup[j]);
-//      macro_pts++;
-//    }
-//  }
-//
-//  // Защитный фолбэк, если в массив не попало достаточно точек
-//  double avg_x = (macro_pts > 0) ? (sum_x / macro_pts) : (x_min + 0.075 * (x_max - x_min));
-//  double avg_y = (macro_pts > 0) ? (sum_y / macro_pts) : double(smup[0]);
-//
-//  // В ручном режиме жестко берем пользовательский наклон.
-//  // Если передан 0.0 (автомат) — временно подставляем эталонный физический закон 1/f (-1.0).
-//  double target_slope = (S1_target_slope <= -0.1) ? S1_target_slope : -1.0;
-//
-//  // 2. Нахождение истинной энергетической оси: y = shift + target_slope * x
-//  // Рассчитываем shift из интегрального равенства масс: avg_y = shift + target_slope * avg_x
-//  double true_axis_shift = avg_y - target_slope * avg_x;
-//
-//  // 3. Расчет точки сшивания x0 (строго 4% от линейного частотного диапазона ДКП)
-//  // Это геометрический инвариант разрешения матрицы, защищающий макроструктуру сцены.
-//  //out_x0 = x_min + (x_max - x_min) * 0.04;
-//  const double Fmax =  n_bins - 1;
-//  const double Fcut = 0.04 * Fmax;
-//  out_x0 = p.xv(int(Fcut));
-//
-//  // 4. Расчет высоты шарнира y0 из уравнения нашей неискаженной энергетической оси
-//  out_y0 = true_axis_shift + target_slope * out_x0;
-//
-//  // Фактическим наклоном в точке сшивания объявляем целевой наклон
-//  out_S1_slope = target_slope;
-//  // =========================================================================
-//  // КОНЕЦ БЛОКА
-//  // =========================================================================
-//
-//  CF_DEBUG("\ntarget_slope=%g x_min=%g x_max=%g x_macro_end=%g\n"
-//      "macro_pts=%d avg_x=%g avg_y=%g true_axis_shift=%g\n"
-//      "Fmax = %g Fcut=%g out_x0=%g out_y0=%g out_S1_slope=%g\n",
-//      target_slope, x_min, x_max, x_macro_end,
-//      macro_pts, avg_x, avg_y, true_axis_shift,
-//      Fmax, Fcut, out_x0, out_y0, out_S1_slope);
-//
-//  // Back interpolation into the original bin grid
-//  // DC is kept unchanged
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//  }
-//
-//  return output;
-//}
-
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope, cv::Mat1f & out_correction)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//  // =========================================================================
-//  // НАЧАЛО БЛОКА: Дифференциально-кумулятивный расчет целевой траектории и коррекции
-//  // =========================================================================
-//  const float * smup = U[0];
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//
-//  // Инициализируем буферы для равномерной сетки
-//  std::vector<double> y_target(N_uniform, 0.0);
-//  std::vector<float> uniform_correction(N_uniform, 0.0f);
-//
-//  // Базовая безопасная граница макроструктуры НЧ (первые 20% логарифмической шкалы)
-//  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-//
-//  // Целевой шаг, который требует пользователь
-//  const double delta_y_user = S1_target_slope * dx;
-//
-//  // Начальная точка
-//  y_target[0] = double(smup[0]);
-//  uniform_correction[0] = 0.0f;
-//
-//  for (int j = 1; j < N_uniform; ++j) {
-//    const double current_x = x_min + j * dx;
-//
-//    if (current_x < x_stable_start) {
-//      // В глубоких НЧ принудительно идем строго по реальному спектру кадра
-//      y_target[j] = double(smup[j]);
-//    }
-//    else {
-//      // Вычисляем фактический локальный шаг реального спектра
-//      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-//
-//      // КРИТИЧЕСКОЕ ПРАВИЛО: Выбираем максимальный (наиболее пологий) шаг.
-//      // Если реальный спектр падает круче пользовательского лимита, замещаем его на delta_y_user.
-//      // Если идет положе (как на плато), оставляем реальный шаг нетронутым.
-//      const double chosen_delta = std::max(delta_y_real, delta_y_user);
-//
-//      // Строим траекторию кумулятивно от предыдущей точки
-//      y_target[j] = y_target[j - 1] + chosen_delta;
-//    }
-//
-//    // Логарифмическая разность между идеалом и реальностью
-//    // Защита std::max(0.0) гарантирует, что мы только восстанавливаем просевшие частоты
-//    const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-//    uniform_correction[j] = float(diff);
-//  }
-//  // =========================================================================
-//  // КОНЕЦ БЛОКА
-//  // =========================================================================
-//
-//  // Инициализируем выходную матрицу коррекции дефолтными единицами
-//  out_correction = cv::Mat1f(1, n_bins, 1.0f);
-//  float * __restrict corr_dst = out_correction[0];
-//
-//  // Интерполяция сглаженного профиля И матрицы коррекции обратно в исходную сетку бинов
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//  corr_dst[0] = 1.0f; // DC не трогаем
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//
-//    // 1. Возвращаем сглаженный спектр для ваших графиков
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//
-//    // 2. Возвращаем линейный коэффициент коррекции для фильтра (экспоненцируем прямо здесь!)
-//    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-//    corr_dst[i] = float(std::exp(log_corr));
-//  }
-//
-//  return output;
-//}
-
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope, cv::Mat1f & out_correction)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//  // =========================================================================
-//  // НАЧАЛО БЛОКА: Дифференциально-кумулятивный расчет целевой траектории и коррекции
-//  // =========================================================================
-//  const float * smup = U[0];
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//
-//  // Инициализируем буферы для равномерной сетки
-//  std::vector<double> y_target(N_uniform, 0.0);
-//  std::vector<float> uniform_correction(N_uniform, 0.0f);
-//
-//  // Базовая безопасная граница макроструктуры НЧ (первые 20% логарифмической шкалы)
-//  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-//
-//  // Целевой шаг, который требует пользователь
-//  const double delta_y_user = S1_target_slope * dx;
-//
-//  // Начальная точка
-//  y_target[0] = double(smup[0]);
-//  uniform_correction[0] = 0.0f;
-//
-//  // Координата центра перелома, где СЧ должны начать плавно переходить в ВЧ-деблур
-//  // Логарифм частоты около 3.5 — идеальная граница затухания крупных поясов
-//  const double x_transition_center = x_min + (x_max - x_min) * 0.45; // ~3.4 - 3.6
-//  const double wsf_diff = 5.0; // Крутизна перехода дифференциала
-//
-//  for (int j = 1; j < N_uniform; ++j) {
-//    const double current_x = x_min + j * dx;
-//
-//    if (current_x < x_stable_start) {
-//      y_target[j] = double(smup[j]);
-//    }
-//    else {
-//      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-//      const double delta_y_user = S1_target_slope * dx;
-//
-//      // Наш кумулятивный максимум
-//      const double delta_y_max = std::max(delta_y_real, delta_y_user);
-//
-//      // Плавный вес сигмоиды для смешивания ДИФФЕРЕНЦИАЛА
-//      const double w_mix = 1.0 / (1.0 + std::exp(-wsf_diff * (current_x - x_transition_center)));
-//
-//      // Мягко смешиваем шаги: в СЧ доминирует реальный спад кадра, в ВЧ — воля пользователя
-//      const double chosen_delta = (1.0 - w_mix) * delta_y_real + w_mix * delta_y_max;
-//
-//      y_target[j] = y_target[j - 1] + chosen_delta;
-//    }
-//
-//    const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-//    uniform_correction[j] = float(diff);
-//  }
-//
-//  // =========================================================================
-//  // КОНЕЦ БЛОКА
-//  // =========================================================================
-//
-//  // Инициализируем выходную матрицу коррекции дефолтными единицами
-//  out_correction = cv::Mat1f(1, n_bins, 1.0f);
-//  float * __restrict corr_dst = out_correction[0];
-//
-//  // Интерполяция сглаженного профиля И матрицы коррекции обратно в исходную сетку бинов
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//  corr_dst[0] = 1.0f; // DC не трогаем
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//
-//    // 1. Возвращаем сглаженный спектр для ваших графиков
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//
-//    // 2. Возвращаем линейный коэффициент коррекции для фильтра (экспоненцируем прямо здесь!)
-//    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-//    corr_dst[i] = float(std::exp(log_corr));
-//  }
-//
-//  return output;
-//}
-
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope, cv::Mat1f & out_correction)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//  // =========================================================================
-//  // НАЧАЛО БЛОКА: Дифференциально-кумулятивный расчет целевой траектории и коррекции
-//  // =========================================================================
-//  const float * smup = U[0];
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//
-//  // Инициализируем буферы для равномерной сетки
-//  std::vector<double> y_target(N_uniform, 0.0);
-//  std::vector<float> uniform_correction(N_uniform, 0.0f);
-//
-//  // Базовая безопасная граница макроструктуры НЧ (первые 20% логарифмической шкалы)
-//  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-//
-//  // Целевой шаг, который требует пользователь
-//  const double delta_y_user = S1_target_slope * dx;
-//
-//  // Начальная точка
-//  y_target[0] = double(smup[0]);
-//  uniform_correction[0] = 0.0f;
-//
-//  // Координата центра перелома, где СЧ должны начать плавно переходить в ВЧ-деблур
-//  // Логарифм частоты около 3.5 — идеальная граница затухания крупных поясов
-//  const double x_transition_center = x_min + (x_max - x_min) * 0.45; // ~3.4 - 3.6
-//  const double wsf_diff = 3.0; // Крутизна перехода дифференциала
-//
-//  for (int j = 1; j < N_uniform; ++j) {
-//    const double current_x = x_min + j * dx;
-//
-//    if (current_x < x_stable_start) {
-//      y_target[j] = double(smup[j]);
-//    }
-//    else {
-//      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-//      const double delta_y_user = S1_target_slope * dx;
-//
-//      // Наш кумулятивный максимум
-//      const double delta_y_max = std::max(delta_y_real, delta_y_user);
-//
-//      // Плавный вес сигмоиды для смешивания ДИФФЕРЕНЦИАЛА
-//      const double w_mix = 1.0 / (1.0 + std::exp(-wsf_diff * (current_x - x_transition_center)));
-//
-//      // Мягко смешиваем шаги: в СЧ доминирует реальный спад кадра, в ВЧ — воля пользователя
-//      const double chosen_delta = (1.0 - w_mix) * delta_y_real + w_mix * delta_y_max;
-//
-//      y_target[j] = y_target[j - 1] + chosen_delta;
-//    }
-//
-//    const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-//    uniform_correction[j] = float(diff);
-//  }
-//
-//  // =========================================================================
-//  // КОНЕЦ БЛОКА
-//  // =========================================================================
-//
-//  // Инициализируем выходную матрицу коррекции дефолтными единицами
-//  out_correction = cv::Mat1f(1, n_bins, 1.0f);
-//  float * __restrict corr_dst = out_correction[0];
-//
-//  // Интерполяция сглаженного профиля И матрицы коррекции обратно в исходную сетку бинов
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//  corr_dst[0] = 1.0f; // DC не трогаем
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//
-//    // 1. Возвращаем сглаженный спектр для ваших графиков
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//
-//    // 2. Возвращаем линейный коэффициент коррекции для фильтра (экспоненцируем прямо здесь!)
-//    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-//    corr_dst[i] = float(std::exp(log_corr));
-//  }
-//
-//  return output;
-//}
-
-//static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-//  double S1_target_slope, cv::Mat1f & out_correction)
-//{
-//  constexpr int N_uniform = 100;
-//  const int n_bins = p.size();
-//
-//  std::vector<double> bin_sums(N_uniform, 0.0);
-//  std::vector<int> bin_counts(N_uniform, 0);
-//
-//  // Initialize the frequency range (skip DC)
-//  const double x_min = p.xv(1);
-//  const double x_max = p.xv(n_bins - 1);
-//  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-//
-//  // Uniform accumulation (resampling)
-//  for( int i = 1; i < n_bins; ++i ) {
-//    if ( p.sv(i) > 0 ) {
-//      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-//      bin_sums[bin_idx] += p.yv(i);
-//      bin_counts[bin_idx]++;
-//    }
-//  }
-//
-//  // Average non-empty cells
-//  for( int i = 0; i < N_uniform; ++i ) {
-//    if( bin_counts[i] > 1 ) {
-//      bin_sums[i] /= bin_counts[i];
-//    }
-//  }
-//
-//  // Gap Filling
-//  cv::Mat1f U(1, N_uniform);
-//  float * __restrict up = U[0];
-//
-//  int last_valid_idx = -1;
-//  for( int j = 0; j < N_uniform; ++j ) {
-//    if( bin_counts[j] > 0 ) {
-//      up[j] = float(bin_sums[j]);
-//
-//      if (last_valid_idx != j - 1) {
-//        const int left = std::max(0, last_valid_idx);
-//        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-//        const float y_right = up[j];
-//        const float inv_step = 1.0f / (j - left);
-//
-//        for (int k = left + 1; k < j; ++k) {
-//          const float t = (k - left) * inv_step;
-//          up[k] = (1.0f - t) * y_left + t * y_right;
-//        }
-//      }
-//      last_valid_idx = j;
-//    }
-//  }
-//
-//  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-//    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-//  }
-//
-//  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-//  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-//  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-//
-//  // Smoothing the uniform profile
-//  cv::medianBlur(U, U, 5);
-//  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-//
-//  // =========================================================================
-//  // НАЧАЛО БЛОКА: Дифференциально-кумулятивный расчет целевой траектории и коррекции
-//  // =========================================================================
-//  const float * smup = U[0];
-//  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-//
-//  // Инициализируем буферы для равномерной сетки
-//  std::vector<double> y_target(N_uniform, 0.0);
-//  std::vector<float> uniform_correction(N_uniform, 0.0f);
-//
-//  // Базовая безопасная граница макроструктуры НЧ (первые 20% шкалы)
-//  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-//  const double delta_y_user = S1_target_slope * dx;
-//
-//  y_target[0] = double(smup[0]);
-//  uniform_correction[0] = 0.0f;
-//
-//  // Геометрическая ширина окна раскрытия в логарифмических единицах.
-//  // Вы можете вынести этот параметр в аргументы функции для эмпирического подбора.
-//  const double win_width = 2.0;
-//
-//  for( int j = 1; j < N_uniform; ++j ) {
-//    const double current_x = x_min + j * dx;
-//
-//    if( current_x <= x_stable_start ) {
-//      y_target[j] = double(smup[j]);
-//    }
-//    else {
-//      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-//      double w_sig = 0.0;
-//      double t = (current_x - x_stable_start) / win_width;
-//
-//      if( t >= 1.0 ) {
-//        w_sig = 1.0;
-//      }
-//      else {
-//        // alpha = 0.05 задает скругление краев на 5% от ширины окна.
-//        // Центральные 90% диапазона идут как идеально прямая линия.
-//        constexpr double alpha = 0.05;
-//
-//        if( t < alpha ) {
-//          // Плавный квадратичный разгон из нуля
-//          w_sig = (t * t) / (2.0 * alpha);
-//        }
-//        else if( t <= (1.0 - alpha) ) {
-//          // Идеальный честный линейный участок (90% от ширины окна)
-//          w_sig = t;
-//        }
-//        else {
-//          // Плавное квадратичный выход на плато 1.0
-//          const double inv_t = 1.0 - t;
-//          w_sig = 1.0 - (inv_t * inv_t) / (2.0 * alpha);
-//        }
-//      }
-//
-//      // Применяем полученный вес к смешиванию шагов в кумулятивном цикле
-//      const double delta_y_user = S1_target_slope * dx;
-//      const double effective_target_delta = (1.0 - w_sig) * delta_y_real + w_sig * delta_y_user;
-//
-//      y_target[j] = y_target[j - 1] + effective_target_delta;
-//    }
-//
-//  // Исходный физический замок по разности траекторий
-//  const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-//  uniform_correction[j] = float(diff);
-//}
-//
-//  // =========================================================================
-//  // КОНЕЦ БЛОКА
-//  // =========================================================================
-//
-//  // Инициализируем выходную матрицу коррекции дефолтными единицами
-//  out_correction = cv::Mat1f(1, n_bins, 1.0f);
-//  float * __restrict corr_dst = out_correction[0];
-//
-//  // Интерполяция сглаженного профиля И матрицы коррекции обратно в исходную сетку бинов
-//  cv::Mat1f output(1, n_bins);
-//  float * __restrict dstp = output[0];
-//  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-//  corr_dst[0] = 1.0f; // DC не трогаем
-//
-//  for( int i = 1; i < n_bins; ++i ) {
-//    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-//    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-//    const double t = uniform_idx - k;
-//
-//    // 1. Возвращаем сглаженный спектр для ваших графиков
-//    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-//
-//    // 2. Возвращаем линейный коэффициент коррекции для фильтра (экспоненцируем прямо здесь!)
-//    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-//    corr_dst[i] = float(std::exp(log_corr));
-//  }
-//
-//  return output;
-//}
-
-static cv::Mat1f smoothDCT(const c_radial_spectrum_profile & p,
-  double S1_target_slope, cv::Mat1f & out_correction)
-{
-  constexpr int N_uniform = 100;
-  const int n_bins = p.size();
-
-  std::vector<double> bin_sums(N_uniform, 0.0);
-  std::vector<int> bin_counts(N_uniform, 0);
-
-  // Initialize the frequency range (skip DC)
-  const double x_min = p.xv(1);
-  const double x_max = p.xv(n_bins - 1);
-  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
-
-  // Uniform accumulation (resampling)
-  for( int i = 1; i < n_bins; ++i ) {
-    if ( p.sv(i) > 0 ) {
-      const int bin_idx = std::clamp(int((p.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
-      bin_sums[bin_idx] += p.yv(i);
-      bin_counts[bin_idx]++;
-    }
-  }
-
-  // Average non-empty cells
-  for( int i = 0; i < N_uniform; ++i ) {
-    if( bin_counts[i] > 1 ) {
-      bin_sums[i] /= bin_counts[i];
-    }
-  }
-
-  // Gap Filling
-  cv::Mat1f U(1, N_uniform);
-  float * __restrict up = U[0];
-
-  int last_valid_idx = -1;
-  for( int j = 0; j < N_uniform; ++j ) {
-    if( bin_counts[j] > 0 ) {
-      up[j] = float(bin_sums[j]);
-
-      if (last_valid_idx != j - 1) {
-        const int left = std::max(0, last_valid_idx);
-        const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
-        const float y_right = up[j];
-        const float inv_step = 1.0f / (j - left);
-
-        for (int k = left + 1; k < j; ++k) {
-          const float t = (k - left) * inv_step;
-          up[k] = (1.0f - t) * y_left + t * y_right;
-        }
-      }
-      last_valid_idx = j;
-    }
-  }
-
-  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
-    std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
-  }
-
-  const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-  const int uniformStartCornersBin = std::clamp(int((p.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
-
-  // Smoothing the uniform profile
-  cv::medianBlur(U, U, 5);
-  cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-
-  const float * smup = U[0];
-  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-
-  std::vector<double> y_target(N_uniform, 0.0);
-  std::vector<float> uniform_correction(N_uniform, 0.0f);
-
-  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-  const double win_width = 2.0;
-  const double delta_y_user = S1_target_slope * dx;
-
-  y_target[0] = double(smup[0]);
-  uniform_correction[0] = 0.0f;
-
-  for( int j = 1; j < N_uniform; ++j ) {
-    const double current_x = x_min + j * dx;
-
-    if( current_x < x_stable_start ) {
-      y_target[j] = double(smup[j]);
-    }
-    else {
-      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-      const double delta_y_user = S1_target_slope * dx;
-
-      double w_sig = 0.0;
-      double t = (current_x - x_stable_start) / win_width;
-      if( t >= 1.0 ) {
-        w_sig = 1.0;
-      }
-      else {
-        constexpr double alpha = 0.05;
-        if( t < alpha )
-          w_sig = (t * t) / (2.0 * alpha);
-        else if( t <= (1.0 - alpha) )
-          w_sig = t;
-        else {
-          const double inv_t = 1.0 - t;
-          w_sig = 1.0 - (inv_t * inv_t) / (2.0 * alpha);
-        }
-      }
-
-      const double effective_target_delta = (1.0 - w_sig) * delta_y_real + w_sig * delta_y_user;
-      const double chosen_delta = std::max(delta_y_real, effective_target_delta);
-      y_target[j] = y_target[j - 1] + chosen_delta;
-    }
-
-    const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-    uniform_correction[j] = float(diff);
-  }
-
-  out_correction = cv::Mat1f(1, n_bins, 1.0f);
-  float * __restrict corr_dst = out_correction[0];
-
-  cv::Mat1f output(1, n_bins);
-  float * __restrict dstp = output[0];
-  dstp[0] = float(p.sv(0) > 0 ? p.yv(0) : 0);
-  corr_dst[0] = 1.0f; // DC не трогаем
-
-  for( int i = 1; i < n_bins; ++i ) {
-    const double uniform_idx = (p.xv(i) - x_min) * x_range_inv;
-    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-    const double t = uniform_idx - k;
-    dstp[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-    corr_dst[i] = float(std::exp(log_corr));
-  }
-
-  return output;
-}
-
-static std::vector<float> computeCorrection(const c_radial_spectrum_profile & sp, double S1_target_slope,
-    std::vector<float> * sdct = nullptr)
+static inline void resampleSmoothDCT(const c_radial_spectrum_profile & sp,
+    cv::Mat1f & U /*[1][N_uniform]*/)
 {
   constexpr int N_uniform = 100;
   const int n_bins = sp.size();
 
-  std::vector<double> bin_sums(N_uniform, 0.0);
-  std::vector<int> bin_counts(N_uniform, 0);
+  // Compute averages skipping DC
 
-  // Logarithmic frequency range skipping DC
-  const double x_min = sp.xv(1);
-  const double x_max = sp.xv(n_bins - 1);
-  const double x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0;
+  float bin_sums[N_uniform] = { 0.0f };
+  int bin_counts[N_uniform] = { 0 };
 
-  // Uniform resampling of the original spectrum profile
-  for( int i = 1; i < n_bins; ++i ) {
-    if( sp.sv(i) > 0 ) {
-      const int bin_idx = std::clamp(int((sp.xv(i) - x_min) * x_range_inv), 0, N_uniform - 1);
+  const float x_min = sp.xv(1);
+  const float x_max = sp.xv(n_bins - 1);
+  const float x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0.0f;
+  for (int i = 1; i < n_bins; ++i) {
+    if (sp.sv(i) > 0.0f) {
+      const int idx = int((sp.xv(i) - x_min) * x_range_inv);
+      const int bin_idx = (idx < 0) ? 0 : ((idx > N_uniform - 1) ? N_uniform - 1 : idx);
       bin_sums[bin_idx] += sp.yv(i);
       bin_counts[bin_idx]++;
     }
   }
-  for( int i = 0; i < N_uniform; ++i ) {
-    if( bin_counts[i] > 1 ) {
-      bin_sums[i] /= bin_counts[i];
+  for (int i = 0; i < N_uniform; ++i) {
+    if (bin_counts[i] > 1) {
+      bin_sums[i] /= static_cast<float>(bin_counts[i]);
     }
   }
 
-  // Gap Filling
-  cv::Mat1f U(1, N_uniform);
+  U.create(1, N_uniform);
   float * __restrict up = U[0];
 
+  // Gap filling
   int last_valid_idx = -1;
-  for( int j = 0; j < N_uniform; ++j ) {
-    if( bin_counts[j] > 0 ) {
-      up[j] = float(bin_sums[j]);
+  for (int j = 0; j < N_uniform; ++j) {
+    if (bin_counts[j] > 0) {
+      up[j] = bin_sums[j];
 
-      if( last_valid_idx != j - 1 ) {
-        const int left = std::max(0, last_valid_idx);
+      if (last_valid_idx != j - 1) {
+        const int left = (last_valid_idx >= 0) ? last_valid_idx : 0;
         const float y_left = (last_valid_idx >= 0) ? up[left] : up[j];
         const float y_right = up[j];
-        const float inv_step = 1.0f / (j - left);
-
-        for( int k = left + 1; k < j; ++k ) {
-          const float t = (k - left) * inv_step;
-          up[k] = (1.0f - t) * y_left + t * y_right;
+        const float span = float(j - left);
+        const float step_delta = (y_right - y_left) / span;
+        float current_y = y_left + step_delta;
+        for (int k = left + 1; k < j; ++k) {
+          up[k] = current_y;
+          current_y += step_delta;
         }
       }
       last_valid_idx = j;
@@ -1263,272 +165,240 @@ static std::vector<float> computeCorrection(const c_radial_spectrum_profile & sp
   }
 
   // Extrapolate the right edge if the last cells are empty
-  if( last_valid_idx >= 0 && last_valid_idx < N_uniform - 1 ) {
+  if (last_valid_idx >= 0 && last_valid_idx < N_uniform - 1) {
     std::fill(up + last_valid_idx + 1, up + N_uniform, up[last_valid_idx]);
   }
 
-  // Freeze the tail of the spectrum matrix (corner region of the frame)
+  // Freeze tail
   const int startCornersBin = int((n_bins - 1) * M_SQRT1_2);
-  const int uniformStartCornersBin = std::clamp(int((sp.xv(startCornersBin) - x_min) * x_range_inv), 0, N_uniform - 1);
-  std::fill(up + uniformStartCornersBin, up + N_uniform, up[uniformStartCornersBin]);
+  const int cornerIndex = int((sp.xv(startCornersBin) - x_min) * x_range_inv);
+  const int uniformCornerIndex = (cornerIndex < 0) ? 0 : ((cornerIndex > N_uniform - 1) ? N_uniform - 1 : cornerIndex);
+  std::fill(up + uniformCornerIndex, up + N_uniform, up[uniformCornerIndex]);
 
-  // Filtering and smoothing the resampled profile
   cv::medianBlur(U, U, 5);
   cv::GaussianBlur(U, U, cv::Size(25, 1), 0, 0, cv::BORDER_REPLICATE);
-  const float * smup = U[0];
-
-  // Differential-cumulative calculation of the target trajectory
-  const double dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0.0;
-
-  std::vector<double> y_target(N_uniform, 0.0);
-  std::vector<float> uniform_correction(N_uniform, 0.0f);
-
-  const double x_stable_start = x_min + (x_max - x_min) * 0.20;
-  const double win_width = 2.0;
-
-  y_target[0] = double(smup[0]);
-  uniform_correction[0] = 0.0f;
-
-  for( int j = 1; j < N_uniform; ++j ) {
-    const double current_x = x_min + j * dx;
-
-    if( current_x < x_stable_start ) {
-      y_target[j] = double(smup[j]);
-    }
-    else {
-      const double delta_y_real = double(smup[j]) - double(smup[j - 1]);
-      const double delta_y_user = S1_target_slope * dx;
-
-      // The weight of a quasi-linear opening window with chamfered edges (alpha = 5%)
-      double w_sig = 0.0;
-      const double t = (current_x - x_stable_start) / win_width;
-      if( t >= 1.0 ) {
-        w_sig = 1.0;
-      }
-      else {
-        constexpr double alpha = 0.05;
-        if( t < alpha ) {
-          w_sig = (t * t) / (2.0 * alpha);
-        }
-        else if( t <= (1.0 - alpha) ) {
-          w_sig = t;
-        }
-        else {
-          const double inv_t = 1.0 - t;
-          w_sig = 1.0 - (inv_t * inv_t) / (2.0 * alpha);
-        }
-      }
-
-      // Linear mixing and hard differential locking
-      const double effective_target_delta = (1.0 - w_sig) * delta_y_real + w_sig * delta_y_user;
-      const double chosen_delta = std::max(delta_y_real, effective_target_delta);
-      y_target[j] = y_target[j - 1] + chosen_delta;
-    }
-
-    // Physical lock based on the difference of logarithmic trajectories
-    const double diff = std::max(0.0, y_target[j] - double(smup[j]));
-    uniform_correction[j] = float(diff);
-  }
-
-  // Back interpolation into the original frame bin grid
-  std::vector<float> out_correction(n_bins, 1.0f);
-  out_correction[0] = 1.0f; // Don't touch DC
-
-  if( sdct != nullptr ) {
-    sdct->resize(n_bins, 0.0f);
-    (*sdct)[0] = float(sp.sv(0) > 0 ? sp.yv(0) : 0);
-  }
-
-  for( int i = 1; i < n_bins; ++i ) {
-    const double uniform_idx = (sp.xv(i) - x_min) * x_range_inv;
-    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
-    const double t = uniform_idx - k;
-
-    // Smoothed spectrum profile if explicitly requested by the application
-    if( sdct != nullptr ) {
-      (*sdct)[i] = float((1.0 - t) * smup[k] + t * smup[k + 1]);
-    }
-
-    // Linear coefficients of the DCT filter using the delta exponential
-    const double log_corr = (1.0 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
-    out_correction[i] = float(std::exp(log_corr));
-  }
-
-  return out_correction;
 }
 
-
-static int estimateNature2(const c_radial_spectrum_profile &sp,
-    const cv::Mat1f & SDCT,
-    double & output_S0_nature,
-    double & output_S1_nature,
-    double & output_S0_maxline,
-    double & output_S1_maxline,
-    int & output_kneeIndex,
-    int & output_curvatureStartIndex,
-    cv::Mat1f & kx,
-    bool print_debug_info = false)
+// Linear regression on clean SDCT segment
+static bool estimateNature(const c_radial_spectrum_profile & sp, const std::vector<float> & sdct,
+    double macroStructSizePx,
+    double & S0_nature,
+    double & S1_nature,
+    bool print_debug_info)
 {
-  const int N = sp.size();
-  const int startCornersBin = int((N - 1) * M_SQRT1_2);
-  const double startCornersLog = std::log((N - 1) * M_SQRT1_2);
+  // Frequency start equivalent to frame macro structures (~100 pixels)
+  const int n_bins = sp.size();
+  const int dctCornerBin = int((n_bins - 1) * M_SQRT1_2);
+  const int macroStructStartBin = std::clamp(cvRound(dctCornerBin / macroStructSizePx), 1, dctCornerBin - 15);
+  const float x_start = sp.xv(macroStructStartBin);
+  const float x_corner = sp.xv(dctCornerBin);
+  const float x_midpoint = (x_start + x_corner) / 2;
 
-  kx.create(1, N);
-  kx.setTo(0);
+  // Cumulative linear regression
 
-  int startSearchBin = 1;
-  for ( ; startSearchBin < startCornersBin; ++startSearchBin) {
-    const double xrel = startCornersLog - std::log(startSearchBin);
-    if ( xrel < 6 ) {
-      break;
-    }
-  }
-  if( startSearchBin >= startCornersBin ) {
-    CF_ERROR("Bad startSearchBin=%d >= startCornersBin=%d", startSearchBin, startCornersBin);
-    return -1;
-  }
+  c_weighted_line_estimate<float> line;
 
-  if ( print_debug_info ) {
-    CF_DEBUG("Initial startSearchBin=%d (x=%g y=%g)", startSearchBin, sp.xv(startSearchBin), SDCT(0, startSearchBin));
-  }
+  float current_shift = S0_nature;
+  float current_slope = S1_nature;
+  float stdev2 = 0.0;
+  float r2 = 1.0f;
 
-  for ( ; startSearchBin < startCornersBin - 4; ++ startSearchBin) {
-    const double x0 = sp.xv(startSearchBin + 0);
-    const double y0 = SDCT(0, startSearchBin + 0);
-    const double x1 = sp.xv(startSearchBin + 1);
-    const double y1 = SDCT(0, startSearchBin + 1);
-    const double x2 = sp.xv(startSearchBin + 2);
-    const double y2 = SDCT(0, startSearchBin + 2);
-    const double x3 = sp.xv(startSearchBin + 3);
-    const double y3 = SDCT(0, startSearchBin + 3);
-    const double d0 = (y1 - y0) / (x1 - x0);
-    const double d1 = (y2 - y1) / (x2 - x1);
-    const double d2 = (y3 - y2) / (x3 - x2);
-    if ( d0 <= -0.5 && d1 <= -0.5 && d2 <= -0.5 ) {
-      break;
-    }
+  // Accumulate a starting base (at least 8 bins for a reliable initial trend)
+  int i = macroStructStartBin;
+  for (; i < macroStructStartBin + 8 && i < dctCornerBin; ++i) {
+    line.update(sp.xv(i), sdct[i]);
   }
 
+  // Cumulative march from left to right in search of blur
+  // Stall tracking parameters
+  constexpr int patience = 7;
+  int drop_counter = 0;
+  int best_valid_bin = i;
+  for( ; i < dctCornerBin; ++i ) {
+    const float x = sp.xv(i);
+    const float y = sdct[i];
 
-  //
-  // Search for max slope line originated from startSearchBin
-  //
+    // current line parameters BEFORE adding a new point
+    if( line.compute(current_shift, current_slope, stdev2, r2) ) {
+      const float y_pred = current_shift + current_slope * x;
+      const float delta_y = y - y_pred;
 
-  const double startX = sp.xv(startSearchBin);
-  const double startY = SDCT(0, startSearchBin);
-  if ( print_debug_info ) {
-    CF_DEBUG("startSearchBin=%d (x=%g y=%g)", startSearchBin, startX, startY);
-  }
-
-  int endSearchBin = -1;
-  double Kx = DBL_MAX;
-  double Kx_best = DBL_MAX;
-
-  for( int i = startSearchBin; i < startCornersBin; ++i ) {
-    const double x = sp.xv(i) - startX;
-    const double y = SDCT(0, i) - startY;
-    const double Kx_temp = y / (x + 0.1);
-    kx(0, i) = Kx_temp; // save also for debug / visualization
-    if( i > startSearchBin + 3 && Kx_temp < Kx_best ) {
-      Kx_best = Kx_temp;
-      Kx = y / x;
-      endSearchBin = i;
-    }
-  }
-
-  if( endSearchBin <= startSearchBin ) {
-    CF_ERROR("ERROR: endSearchBin=%d <= startSearchBin=%d", endSearchBin, startSearchBin);
-    return -1;
-  }
-  if ( print_debug_info ) {
-    CF_DEBUG("endSearchBin=%d (x=%g y=%g) Kx=%g Kx_best=%g", endSearchBin, sp.xv(endSearchBin), SDCT(0, endSearchBin), Kx, Kx_best);
-  }
-
-  const double S0_maxline = startY - Kx * startX;
-  const double S1_maxline = Kx;
-  output_S0_maxline = S0_maxline;
-  output_S1_maxline = S1_maxline;
-
-
-  //
-  // Knee method: looking for the maximum positive vertical distance (curve above the line)
-  //
-  const double xMid = 0.5 * (sp.xv(startSearchBin) + sp.xv(endSearchBin));
-  double max_distance = 0.0;
-  int kneeIndex = 0;
-
-  for (int i = startSearchBin + 3; i < endSearchBin; ++i) {
-    const double x = sp.xv(i);
-    if ( x > 2.0 ) {
-      const double line_val = S1_maxline * x  + S0_maxline;
-      const double curve_val = SDCT(0, i);
-      const double distance = (curve_val - line_val) / std::sqrt(1.0 + 0.25 * std::abs(x - xMid));
-      if (distance > max_distance) {
-        max_distance = distance;
-        kneeIndex = i;
+      if( (r2 < 0.95f) || (delta_y < -0.05f) || (x > x_midpoint && delta_y > 0.05f) ) {
+        drop_counter++;
+      }
+      else {
+        // False bump, reset the counter
+        // Save the last valid linear bin
+        drop_counter = 0;
+        best_valid_bin = i;
       }
     }
-  }
 
-  if( kneeIndex <= startSearchBin ) {
-    CF_ERROR("BAD kneeIndex=%d <= startSearchBin=%d endSearchBin=%d", kneeIndex, startSearchBin, endSearchBin);
-    return -1;
-  }
+    // Hard stop if blur or noise floor has captured the spectrum irrevocably
+    if( drop_counter >= patience ) {
+      break;
+    }
 
-  output_kneeIndex = kneeIndex;
-  if ( print_debug_info ) {
-    CF_DEBUG("kneeIndex=%d (x=%g y=%g)", kneeIndex, sp.xv(kneeIndex), SDCT(0, kneeIndex));
-  }
-
-  //
-  // Compute linear regression from startSearchBin to kneeIndex.
-  // Search also max linear interval and save to curvatureStartIndex
-  //
-
-  c_line_estimate line;
-  c_linear_regression3 reg3;
-  double s2_best = DBL_MAX;
-  int curvatureStartIndex = kneeIndex;
-
-  for ( int i = startSearchBin; i < kneeIndex; ++i ) {
-    const double x = sp.xv(i);
-    const double y = SDCT(0, i);
-    reg3.update(1, x, x * x, y);
+    // Add a point to the cumulative least squares If all is well
     line.update(x, y);
-    if ( line.pts() > 10 ) {
-      double s0, s1, s2;
-      reg3.compute(s0, s1, s2);
-      if ( std::abs(s2) < s2_best ) {
-        s2_best = std::abs(s2);
-        curvatureStartIndex = i;
-      }
-    }
   }
 
-  line.compute(output_S0_nature, output_S1_nature);
-  output_curvatureStartIndex = curvatureStartIndex;
+  // Rollback and fix TARGET: recalculate the line strictly up to the breakdown point
+  line.reset();
+  for( int k = macroStructStartBin; k <= best_valid_bin; ++k ) {
+    line.update(sp.xv(k), sdct[k]);
+  }
 
-  return startSearchBin;
+  const bool fOK = line.compute(current_shift, current_slope);
+  if (fOK) { // Successfully update TARGET slope
+    S0_nature = current_shift;
+    S1_nature = current_slope;
+  }
+
+  if( print_debug_info ) {
+    CF_DEBUG("\nAUTO_SLOPE: fOK=%d\n"
+        "dctCornerBin=%d macroStructSizePx=%g macroStructStartBin=%d (x=%g) "
+        "bestValidBin=%d (x=%g) S0_nature = %g S1_nature = %g", fOK,
+        dctCornerBin, macroStructSizePx, macroStructStartBin, sp.xv(macroStructStartBin),
+        best_valid_bin, sp.xv(best_valid_bin), S0_nature, S1_nature);
+  }
+
+  return fOK;
+}
+
+static bool computeCorrectionDCT(const c_radial_spectrum_profile & sp,
+    double macroStructureSizePx,
+    double & S0_target,
+    double & S1_target,
+    bool autoTarget,
+    bool print_debug_info,
+    std::vector<float> & sdct,
+    std::vector<float> & correction)
+{
+  cv::Mat1f U;
+
+  // Resample DCT to uniform log scale, blur and save to U matrx [1][N_uniform]
+  resampleSmoothDCT(sp, U);
+
+  const int n_bins = sp.size();
+  const int N_uniform = U.cols;
+  const float * smup = U[0];
+  const float x_min = sp.xv(1);
+  const float x_max = sp.xv(n_bins - 1);
+  const float x_range_inv = (x_max > x_min) ? (N_uniform - 1) / (x_max - x_min) : 0;
+  const float dx = (N_uniform - 1 > 0) ? (x_max - x_min) / (N_uniform - 1) : 0;
+
+  sdct.resize(n_bins, 0.0f);
+  sdct[0] = sp.yv(0);
+  for( int i = 1; i < n_bins; ++i ) {
+    const float uniform_idx = (sp.xv(i) - x_min) * x_range_inv;
+    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
+    const float t = uniform_idx - k;
+    const float y = smup[k] * (1 - t) + smup[k + 1] * t ;
+    sdct[i] = y;
+  }
+
+  if( autoTarget ) {
+    // For autoTarget compute linear regression on the limited SDCT segment
+    estimateNature(sp, sdct, macroStructureSizePx,
+        S0_target, S1_target,
+        print_debug_info);
+  }
+
+  // Generate array of DCT corrections in uniform grid
+  std::vector<float> y_target(N_uniform);
+  std::vector<float> uniform_correction(N_uniform, 0.0f);
+  const float inv_win_width = 1.f / 2.0f;
+
+  const int dctCornerBin = int((n_bins - 1) * M_SQRT1_2);
+  const int regressionStartBin = std::clamp(int(std::round(dctCornerBin / macroStructureSizePx)), 1, dctCornerBin - 15);
+  const float x_stable_start = sp.xv(regressionStartBin);
+
+  if ( print_debug_info ) {
+    CF_DEBUG("\nCOREECTION: win_width=%g x_min=%g x_stable_start=%g S0_target=%g S1_target=%g",
+        1.f / inv_win_width, x_min, x_stable_start, S0_target, S1_target);
+  }
+
+  correction.resize(n_bins); // store deltas at this stage
+
+  constexpr float alpha = 0.05f;
+  constexpr float inv_2_alpha = 1.0f / (2.0f * alpha);
+  const float float_S1_target = float(S1_target);
+  const float delta_y_user = float_S1_target * dx;
+
+  // Compute deltas only
+  for( int i = 0; i < N_uniform; ++i ) {
+    const float x = x_min + i * dx;
+    const float delta_y_real = (i > 0) ? (smup[i] - smup[i - 1]) : 0.0f;
+    const float t = (x - x_stable_start) * inv_win_width;
+    float w_sig = 0.0f;
+    if( t >= 1.0f ) {
+      w_sig = 1.0f;
+    }
+    else if( t <= 0.0f ) {
+      w_sig = 0.0f;
+    }
+    else {
+      const float w_left = t * t * inv_2_alpha;
+      const float w_mid = t;
+      const float inv_t = 1.0f - t;
+      const float w_right = 1.0f - inv_t * inv_t * inv_2_alpha;
+      const float tmp = (t < alpha) ? w_left : w_mid;
+      w_sig = (t > (1.0f - alpha)) ? w_right : tmp;
+    }
+    const float effective_target_delta = (1.0f - w_sig) * delta_y_real + w_sig * delta_y_user;
+    correction[i] = std::max(delta_y_real, effective_target_delta);
+  }
+
+  // Accumulate deltas into uniform corrections
+  for( int i = 0; i < N_uniform; ++i ) {
+    const float current_x = x_min + i * dx;
+    if( current_x < x_stable_start ) {
+      y_target[i] = smup[i];
+    }
+    else {
+      y_target[i] = y_target[i - 1] + correction[i];
+    }
+    uniform_correction[i] = std::max(0.0f, y_target[i] - smup[i]);
+  }
+
+  // Assemble the output array and exponentiate the correction
+  correction[0] = 1;
+  for (int i = 1; i < n_bins; ++i) {
+    const float uniform_idx = (sp.xv(i) - x_min) * x_range_inv;
+    const int k = std::clamp(int(uniform_idx), 0, N_uniform - 2);
+    const float t = uniform_idx - k;
+    const float log_corr = (1 - t) * uniform_correction[k] + t * uniform_correction[k + 1];
+    correction[i] = std::exp(log_corr);
+  }
+
+  return true;
 }
 
 static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
     const cv::Size & dctSize,
-    bool useS1_target,
+    bool autoTargetSlope,
     double S1_target,
+    double macroStructSizePx,
     bool print_debug_info = false,
     const std::string & debug_file_name = "")
 {
   const c_radial_spectrum_profile sp(RadialSpectrumProfile);
-  std::vector<float> SDCT;
+  std::vector<float> sdct, correction;
+  double S0_target = 0;
   const int N = sp.size();
 
   /*
    * COMPUTE DCT SPECTRUM CORRECTION FOR TARGET SLOPE ADJUSMENT
    */
-  const std::vector<float> correction =
-      computeCorrection(sp, S1_target,
-          debug_file_name.empty() ? nullptr :
-              &SDCT);
+  computeCorrectionDCT(sp,
+      macroStructSizePx,
+      S0_target,
+      S1_target,
+      autoTargetSlope,
+      print_debug_info,
+      sdct,
+      correction);
 
   /*
    * Create the DCT FILTER
@@ -1582,8 +452,8 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
         const double yraw = sp.sv(i);
         const double x = sp.xv(i); // log of frequency
         const double y = sp.yv(i); // log of spectrum intensity
-        const double ys = SDCT[i];
-        const double ytarget = S1_target * x;
+        const double ys = sdct[i]; // log of smoothed spectrum intensity
+        const double ytarget = S0_target + S1_target * x;
         const double corr = std::log(correction[i]);
         const double yrestored = y + corr;
 
@@ -1648,10 +518,22 @@ static bool dctRadialProfile2(const cv::Mat1f & dctSpectrum, cv::Mat1f & outputP
 void c_dct_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
-  ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel), "Select intensity channel for spectrum analysis");
-  ctlbind(ctls, "inpaint_missing_pixels:", CTL_CONTEXT(ctx, _mask_inpaint_method), "");
-  ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _useS1_target), "");
-  ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target), "");
+
+  ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel),
+      "Select intensity channel for spectrum analysis");
+
+  ctlbind(ctls, "inpaint_missing_pixels:", CTL_CONTEXT(ctx, _mask_inpaint_method),
+      "How to fill holes and borders in non-enpty masks");
+
+  ctlbind(ctls, "Auto S1_target: ", CTL_CONTEXT(ctx, _autoS1_target),
+      "Try to estimate S1 target automatically based in natural DCT spectrum slope estimation");
+
+  ctlbind(ctls, "S1_target: ", CTL_CONTEXT(ctx, _S1_target),
+      "Default Target slope of restored DCT spectrum");
+
+  ctlbind(ctls, "macroStructSizePx: ", CTL_CONTEXT(ctx, _macroStructSizePx),
+      "The minimal size in pixels of image macro structures still not much affected by blur");
+
   ctlbind(ctls, "print_debug_info:", CTL_CONTEXT(ctx, _print_debug_info), "");
   ctlbind(ctls, "write_debug_file:", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
@@ -1663,8 +545,9 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _display);
     SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
     SERIALIZE_OPTION(settings, save, *this, _mask_inpaint_method);
-    SERIALIZE_OPTION(settings, save, *this, _useS1_target);
+    SERIALIZE_OPTION(settings, save, *this, _autoS1_target);
     SERIALIZE_OPTION(settings, save, *this, _S1_target);
+    SERIALIZE_OPTION(settings, save, *this, _macroStructSizePx);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     return true;
   }
@@ -1741,7 +624,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
    cv::Mat1f INVERSE_FILTER =
        createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
-           _useS1_target, _S1_target, _print_debug_info,
+           _autoS1_target, _S1_target, _macroStructSizePx, _print_debug_info,
            _write_file ? _debug_file_name : "");
 
    if( _display == DISPLAY_FILTER) {

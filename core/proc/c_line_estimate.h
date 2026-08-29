@@ -9,6 +9,8 @@
 #ifndef __c_running_line_estimate_h__
 #define __c_running_line_estimate_h__
 
+#include <cfloat>
+
 /**
  * The Least Squares Line Regression
  *  appropriate for running estimation

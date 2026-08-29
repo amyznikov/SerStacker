@@ -46,7 +46,8 @@ protected:
   enum color_channel_type _intensity_channel = color_channel_gray;
   enum INPAINT_METHOD _mask_inpaint_method = LINEAR_INTERPOLATION_INPAINT;
   double _S1_target = -1.2;
-  bool _useS1_target = true;
+  double _macroStructSizePx = 150;
+  bool _autoS1_target = true;
   bool _print_debug_info = false;
   bool _write_file = false;
   std::string _debug_file_name = "/home/projects/temp/analyze_profile.txt";

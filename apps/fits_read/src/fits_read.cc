@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
   for ( uint i = 0, n = header.size(); i < n; ++i ) {
     printf("%4d %s = %s  // %s\n", i,
-        header[i].keyname.c_str(),
+        header[i].name.c_str(),
         header[i].value.c_str(),
         header[i].comment.c_str());
   }

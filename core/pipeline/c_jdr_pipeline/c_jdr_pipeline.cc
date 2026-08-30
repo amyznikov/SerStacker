@@ -1197,36 +1197,31 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
       CF_ERROR("[F %d] Frame has no time stamp. can not derotate", i);
     }
     else {
+
+      //      if( _stack_options.enable_weighted_average ) {
+      //        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
+      //          CF_ERROR("[F %d] lpg(current_frame) fails", i);
+      //          return false;
+      //        }
+      //        cv::remap(lpg_map, lpg_map,
+      //            _ellipsoid_derotation_remap.rmap(), cv::noArray(),
+      //            cv::INTER_LINEAR,
+      //            cv::BORDER_TRANSPARENT);
+      //        cv::multiply(current_weights, lpg_map,
+      //            current_weights);
+      //      }
+
       const double ts = 1e-3 * _input_sequence->last_ts();
       const double dt = ts - _master_ts;
       const double wts = _stack_options.wts > 0 ? _stack_options.wts : 120.;
       const double w = 1. / (1. + std::abs(dt) / wts);
       CF_DEBUG("[F %d (MF %d)] ts = %lf [s] dt = %lf [s] w=%g ", i, _master_pos, ts, dt, w);
 
-//      if( _stack_options.enable_weighted_average ) {
-//        if( !lpg(current_frame, current_mask, lpg_map, _stack_options.lpg) ) {
-//          CF_ERROR("[F %d] lpg(current_frame) fails", i);
-//          return false;
-//        }
-//        cv::remap(lpg_map, lpg_map,
-//            _ellipsoid_derotation_remap.rmap(), cv::noArray(),
-//            cv::INTER_LINEAR,
-//            cv::BORDER_TRANSPARENT);
-//        cv::multiply(current_weights, lpg_map,
-//            current_weights);
-//      }
-
       current_weights = cv::Mat1f::ones(current_frame.size());
-      if ( i == _master_pos ) {
-        //current_weights.setTo(1,~ _ellipsoid_derotation_remap.rmask());
-      }
-      else {
+      {
         _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
         const auto & wmap = _ellipsoid_derotation_remap.wmap();
         wmap.copyTo(current_weights, wmap > 1e-5);
-//        //current_weights.setTo(0, current_weights < 1e-5);
-//        cv::erode(current_weights, current_weights, cv::Mat1b(11, 11, 255), cv::Point(-1, -1), 1,
-//            cv::BORDER_REPLICATE);
         cv::GaussianBlur(current_weights, current_weights, cv::Size(), 5, 5,
             cv::BORDER_REPLICATE);
         cv::remap(current_frame, current_frame,
@@ -1241,9 +1236,6 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
 
       _average.add(current_frame, current_weights);
       CF_DEBUG("_average.add()=%d", _average.accumulated_frames());
-
-//      current_mask.setTo(0, current_weights < 1e-5);
-//      current_frame.setTo(0, ~current_mask);
 
       if ( _derotated_frames_writer.is_open() ) {
         if ( !_derotated_frames_writer.write(current_frame, current_mask) ) {

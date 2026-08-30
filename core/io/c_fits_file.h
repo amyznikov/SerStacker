@@ -21,7 +21,7 @@ public:
 
   /** @brief stub for fits key/value pair */
   struct FKEY {
-    std::string keyname;
+    std::string name;
     std::string value;
     std::string comment;
   };
@@ -71,20 +71,22 @@ public:
   /** @brief default d'tor closes fits file if was opened */
   ~c_fits_file();
 
+  static const char * colorid2fits(enum COLORID ciolorid);
+  static enum COLORID fits2colorid(const char * cname);
+
 protected:
-  c_fits_file() =
-      default;
+  c_fits_file() = default;
 
   fitsfile * fp = nullptr;
 
-  std::vector<FKEY> header_;
-  std::vector<long> naxes_;
-  enum COLORID colorid_ = COLORID_UNKNOWN;
-  double bzero_ = 0;
-  double bscale_ = 1;
-  int bitpix_ = 0;
-  int num_hdus_ = 0;
-  int status_ = 0;
+  std::vector<FKEY> _header;
+  std::vector<long> _naxes;
+  enum COLORID _colorid = COLORID_UNKNOWN;
+  double _bzero = 0;
+  double _bscale = 1;
+  int _bitpix = 0;
+  int _num_hdus = 0;
+  int _status = 0;
 };
 
 /** @brief Very basic FITS image reader from primary HDU */
@@ -100,13 +102,13 @@ public:
 
   bool is_open() const;
 
-  bool read(cv::OutputArray output_image,
-      int ddepth = -1);
+  bool read(cv::OutputArray outImage,int ddepth = -1, cv::OutputArray outWeights = cv::noArray());
 
   static bool read(const std::string & filename,
       cv::OutputArray output_image,
       enum COLORID  * output_colorid = nullptr,
-      int ddepth = -1);
+      int ddepth = -1,
+      cv::OutputArray outWeights = cv::noArray());
 
 };
 
@@ -116,6 +118,23 @@ class c_fits_writer :
 {
 public:
   c_fits_writer() = default;
+
+  /** @brief Clear the current prepared header */
+  void clear_header() {
+    _header.clear();
+  }
+
+  /** @brief Add a text field to the title */
+  void add_header_key(const std::string& key, const std::string& value, const std::string& comment = "")
+  {
+    _header.push_back({key, value, comment});
+  }
+
+   bool write(const std::string & filename, cv::InputArray image, enum COLORID colorid,
+       cv::InputArray weights = cv::noArray());
+
+//protected:
+//   bool write_header_keys();
 };
 
 #endif // HAVE_CFITSIO

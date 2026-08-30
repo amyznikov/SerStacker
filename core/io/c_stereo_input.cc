@@ -35,7 +35,7 @@ static bool read_input_frame(const c_input_source::sptr & source,
   int bpp = 0;
 
 
-  if ( !source->read(output_image, &colorid, &bpp) ) {
+  if ( !source->read(output_image, output_mask, &colorid, &bpp) ) {
     CF_FATAL("source->read() fails\n");
     return false;
   }
@@ -51,13 +51,6 @@ static bool read_input_frame(const c_input_source::sptr & source,
       output_image.convertTo(output_image, CV_8U,
           255. / ((1 << bpp)));
     }
-  }
-  else if ( colorid == COLORID_OPTFLOW || (output_image.channels() != 4 && output_image.channels() != 2) ) {
-    output_mask.release();
-  }
-  else if( !splitbgra(output_image, output_image, &output_mask) ) {
-    output_mask.release();
-    return false;
   }
 
   if( enable_color_maxtrix && source->has_color_matrix() && output_image.channels() == 3 ) {
@@ -257,7 +250,7 @@ bool read_stereo_frame(const c_input_sequence::sptr & sequence,
 
   cv::Mat image, mask;
 
-  if ( !sequence->read(image, &mask) ) {
+  if ( !sequence->read(image, mask) ) {
     CF_ERROR("sequence->read() fails");
     return false;
   }

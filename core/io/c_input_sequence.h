@@ -61,7 +61,7 @@ public:
   virtual void close(bool clear = false);
   virtual int size();
   virtual bool seek(int pos);
-  virtual bool read(cv::Mat & output_frame, cv::Mat * output_mask = nullptr);
+  virtual bool read(cv::OutputArray output_frame, cv::OutputArray output_mask);
 
   c_input_source::sptr current_source() const;
   int current_pos() const;
@@ -86,7 +86,7 @@ protected:
   bool open_source(int source_index);
   void close_source(int source_index);
   bool seek_current_source(int relative_pos);
-  bool read_current_source(cv::Mat & output_frame, cv::Mat * output_mask);
+  bool read_current_source(cv::OutputArray output_frame, cv::OutputArray output_mask);
   void gather_badframes();
 
 protected:

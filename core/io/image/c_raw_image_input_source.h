@@ -38,15 +38,16 @@ public:
 
   int curpos() override;
 
-  bool read(cv::Mat & output_frame,
+  bool read(cv::OutputArray output_image,
+      cv::OutputArray output_mask,
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
   bool is_open() const override;
 
 protected:
-  c_raw_file_reader raw_;
-  int curpos_ = -1;
+  c_raw_file_reader _raw;
+  int _curpos = -1;
 };
 #endif // HAVE_LIBRAW
 

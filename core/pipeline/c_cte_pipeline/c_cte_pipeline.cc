@@ -810,7 +810,7 @@ bool c_cte_pipeline::run_pipeline()
       }
     }
 
-    if( !_input_sequence->read(_current_image, &_current_mask) ) {
+    if( !_input_sequence->read(_current_image, _current_mask) ) {
       CF_FATAL("input_sequence->read() fails\n");
       break;
     }

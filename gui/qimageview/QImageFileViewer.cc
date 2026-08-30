@@ -140,7 +140,7 @@ void QImageFileViewer::loadNextFrame()
 
       if ( true ) {
         current_image_lock lock(this);
-        _input_sequence->read(_currentImage, &_currentMask);
+        _input_sequence->read(_currentImage, _currentMask);
       }
       Base::updateDisplay();
       Q_EMIT currentImageChanged();

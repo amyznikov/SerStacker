@@ -315,7 +315,7 @@ static QImage loadThumbnailImageOpenCV(const QString & pathFileName, int thumb_s
   cv::Mat cvimage;
   QImage qimage;
 
-  if ( load_image(pathFileName.toStdString(), cvimage) ) {
+  if ( load_image(pathFileName.toStdString(), cvimage, cv::noArray()) ) {
 
     if ( cvimage.channels() ==  2 ) {
       // interpret second channel as mask and ignore for preview,

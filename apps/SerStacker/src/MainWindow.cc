@@ -1664,7 +1664,7 @@ void MainWindow::onLoadCurrentImageMask()
 
       cv::Mat image;
 
-      if( !load_image(fileName.toStdString(), image) ) {
+      if( !load_image(fileName.toStdString(), image, cv::noArray()) ) {
         QMessageBox::critical(this, "Error",
             "load_image() fails.\n"
                 "Can not load image from specified file");

@@ -236,7 +236,7 @@ bool c_roi_tracker_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !_input_sequence->read(_current_image, &_current_mask) ) {
+      if( !_input_sequence->read(_current_image, _current_mask) ) {
         CF_DEBUG("input_sequence_->read() fails");
         break;
       }

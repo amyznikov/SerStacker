@@ -935,7 +935,7 @@ int64_t c_ffmpeg_reader::curpos() const
   return pos;
 }
 
-bool c_ffmpeg_reader::read(cv::Mat & outframe, double * out_pts)
+bool c_ffmpeg_reader::read(cv::OutputArray outframe, double * out_pts)
 {
   if ( !_istream ) {
     return false;
@@ -944,7 +944,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, double * out_pts)
   if( _istream->codecpar->codec_id == AV_CODEC_ID_GIF && _gifpos >= 0 ) {
     int64_t curpos = _gifpos, int64_t (0);
     if( curpos < _gifcache.size() ) {
-      outframe = cv::imdecode(_gifcache[curpos].data, cv::IMREAD_UNCHANGED);
+      outframe.assign(cv::imdecode(_gifcache[curpos].data, cv::IMREAD_UNCHANGED));
       if (out_pts ) {
         * out_pts = _gifcache[curpos].ts;
       }
@@ -956,7 +956,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, double * out_pts)
 
   if( !_received_frames.empty() ) {
     auto & f = _received_frames.front();
-    outframe = std::move(f.image);
+    outframe.move(f.image);
     if( out_pts ) {
       *out_pts = _timescale * _received_frames.front().pts;
     }
@@ -1082,7 +1082,7 @@ bool c_ffmpeg_reader::read(cv::Mat & outframe, double * out_pts)
 
   if( !_received_frames.empty() ) {
     auto & f = _received_frames.front();
-    outframe = std::move(f.image);
+    outframe.move(f.image);
     if( out_pts ) {
       *out_pts = _timescale * _received_frames.front().pts;
     }

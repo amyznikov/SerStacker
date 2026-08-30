@@ -38,14 +38,15 @@ public:
 
   int curpos() override;
 
-  bool read(cv::Mat & output_frame,
+  bool read(cv::OutputArray output_image,
+      cv::OutputArray output_mask,
       enum COLORID * output_colorid,
       int * output_bpc) override;
 
   bool is_open() const override;
 
 protected:
-  c_ffmpeg_reader ffmpeg_;
+  c_ffmpeg_reader _ffmpeg;
 };
 
 #endif // HAVE_FFMPEG

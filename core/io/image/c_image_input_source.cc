@@ -28,25 +28,21 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
     return false;
   }
 
-  c_video_frame * f =
-      dynamic_cast<c_video_frame*>(output_frame.get());
-
+  c_video_frame * f = dynamic_cast<c_video_frame*>(output_frame.get());
   if( !f ) {
     output_frame.reset(f = new c_video_frame());
   }
 
-  if( !((base*) this)->read(f->_input_image, &f->_colorid, &f->_bpc) ) {
+  if( !((base*) this)->read(f->_input_image, f->_input_mask, &f->_colorid, &f->_bpc) ) {
+    f->_input_image.release();
+    f->_input_mask.release();
     CF_ERROR("input_source_->read() fails");
     return false;
   }
 
-  f->_input_mask.release();
-
-  if( f->_colorid != COLORID_OPTFLOW && (f->_input_image.channels() == 4 || f->_input_image.channels() == 2) ) {
-    if( !splitbgra(f->_input_image, f->_input_image, &f->_input_mask) ) {
-      CF_WARNING("c_video_input_source: splitbgra() fails for colorid=%s image.channels=%d",
-          toCString(f->_colorid), f->_input_image.channels());
-    }
+  // FIXME: This is temporary hack until all mask receivers will fixed to support analog masks
+  if ( !f->_input_mask.empty() && f->_input_mask.depth() != CV_8U ) {
+    cv::compare(f->_input_mask, cv::Scalar::all(0), f->_input_mask, cv::CMP_NE);
   }
 
   if( (f->_has_color_matrix = has_color_matrix()) ) {

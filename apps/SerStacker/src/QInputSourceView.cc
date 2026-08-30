@@ -487,7 +487,7 @@ void QInputSourceView::loadNextFrame()
     QWaitCursor wait(this, _currentSource->size() == 1);
 
     if( !_currentSource->read(_currentFrame) ) {
-      CF_ERROR("currentSource_->read(currentFrame_) fails");
+      CF_ERROR("_currentSource->read(currentFrame_) fails");
       return;
     }
 
@@ -601,8 +601,6 @@ void QInputSourceView::setViewType(DisplayType viewType)
 
 void QInputSourceView::displayCurrentFrame()
 {
-  // CF_DEBUG("displayCurrentFrame()");
-
   if( !_currentDisplays.empty() && _currentDisplays.find(_displayChannel) == _currentDisplays.end() ) {
     _displayChannel = _currentDisplays.begin()->first;
   }
@@ -632,10 +630,6 @@ void QInputSourceView::displayCurrentFrame()
 
         _currentFrame->get_point_cloud(_displayChannel.toStdString(),
             points, colors, mask, &pids);
-
-        CF_DEBUG("points: %dx%d channels=%d", points.rows, points.cols, points.channels());
-        CF_DEBUG("colors: %dx%d channels=%d", colors.rows, colors.cols, colors.channels());
-
 
         setCurrentView(_cloudView);
         _cloudView->setPoints(std::move(points), std::move(colors), std::move(mask), std::move(pids));
@@ -827,11 +821,7 @@ void QInputSourceView::createDisplayPoints(cv::OutputArray mtfColors,
     std::vector<cv::Vec3b> & displayColors)
 {
 
-  const cv::Mat &currentPoints =
-      _cloudView->currentPoints();
-
-  //CF_DEBUG("currentPoints: %dx%d", currentPoints.rows, currentPoints.cols);
-
+  const cv::Mat &currentPoints = _cloudView->currentPoints();
   if ( currentPoints.empty() ) {
 
     mtfColors.release();

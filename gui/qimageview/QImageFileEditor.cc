@@ -181,7 +181,7 @@ void QImageFileEditor::loadNextFrame()
 
       QWaitCursor wait(this, current_source->size() == 1);
 
-      _input_sequence->read(_inputImage, &_inputMask);
+      _input_sequence->read(_inputImage, _inputMask);
 
       Q_EMIT onInputImageLoad(_inputImage, _inputMask,
           _input_sequence->colorid(),

@@ -84,7 +84,8 @@ bool c_sply_input_source::read(c_data_frame::sptr & output_frame)
   return _sply.read(frame->_points, frame->_colors, frame->_timestamps);
 }
 
-bool c_sply_input_source::read(cv::Mat & output_frame,
+bool c_sply_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {

@@ -41,7 +41,7 @@ public:
 protected:
   friend class c_image_input_source;
   cv::Mat _input_image, _current_image;
-  cv::Mat1b _input_mask;//, _current_mask;
+  cv::Mat _input_mask;
 
   cv::Matx33f _color_matrix = cv::Matx33f::eye();
   COLORID _colorid = COLORID_UNKNOWN;

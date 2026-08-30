@@ -58,7 +58,7 @@ public:
   bool is_open() const;
 
   // the output pts measure is returned in seconds
-  bool read(cv::Mat & outframe, double * outpts = nullptr);
+  bool read(cv::OutputArray outframe, double * outpts = nullptr);
 
   ///@brief estimate video duration in seconds
   double duration() const;

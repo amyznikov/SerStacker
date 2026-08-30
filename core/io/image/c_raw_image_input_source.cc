@@ -92,7 +92,7 @@ const std::vector<std::string>& c_raw_image_input_source::suffixes()
 bool c_raw_image_input_source::open()
 {
   if ( file_readable(_filename) && !is_directory(_filename) ) {
-    curpos_ = 0;
+    _curpos = 0;
     return true;
   }
   return false;
@@ -100,7 +100,7 @@ bool c_raw_image_input_source::open()
 
 void c_raw_image_input_source::close()
 {
-  curpos_ = -1;
+  _curpos = -1;
 }
 
 bool c_raw_image_input_source::seek(int pos)
@@ -108,27 +108,29 @@ bool c_raw_image_input_source::seek(int pos)
   if ( pos != 0 ) {
     return false;
   }
-  curpos_ = pos;
+  _curpos = pos;
   return true;
 }
 
 int c_raw_image_input_source::curpos()
 {
-  return curpos_;
+  return _curpos;
 }
 
-bool c_raw_image_input_source::read(cv::Mat & output_frame,
+bool c_raw_image_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( curpos_ != 0 || !raw_.read(_filename, output_frame, output_colorid, output_bpc) ) {
+  if ( _curpos != 0 || !_raw.read(_filename, output_image, output_mask, output_colorid, output_bpc) ) {
     return false;
   }
 
-  ++curpos_;
 
-  if ( (this->_has_color_matrix = raw_.has_color_matrix()) ) {
-    this->_color_matrix = raw_.color_matrix();
+  ++_curpos;
+
+  if ( (this->_has_color_matrix = _raw.has_color_matrix()) ) {
+    this->_color_matrix = _raw.color_matrix();
   }
 
   return true;
@@ -136,7 +138,7 @@ bool c_raw_image_input_source::read(cv::Mat & output_frame,
 
 bool c_raw_image_input_source::is_open() const
 {
-  return curpos_ >= 0;
+  return _curpos >= 0;
 }
 
 #endif // HAVE_LIBRAW

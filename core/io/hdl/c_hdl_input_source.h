@@ -44,7 +44,8 @@ public:
 
   c_hdl_frame::sptr read();
 
-  bool read(cv::Mat & output_frame,
+  bool read(cv::OutputArray output_image,
+      cv::OutputArray output_mask,
       enum COLORID * output_colorid,
       int * output_bpc) override;
 

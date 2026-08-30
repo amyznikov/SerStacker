@@ -66,26 +66,24 @@ int c_fits_input_source::curpos()
   return _curpos;
 }
 
-bool c_fits_input_source::read(cv::Mat & output_frame,
+bool c_fits_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( _curpos != 0 || !_fits.read(output_frame) ) {
+  if ( _curpos != 0 || !_fits.read(output_image, -1, output_mask) ) {
     return false;
   }
 
-  ++_curpos;
-
   if ( output_colorid ) {
-    *output_colorid = suggest_colorid(
-        output_frame.channels());
+    *output_colorid = _fits.colorid();
   }
 
   if ( output_bpc ) {
-    *output_bpc = suggest_bpp(
-        output_frame.depth());
+    *output_bpc = _fits.bitpix();
   }
 
+  ++_curpos;
   return true;
 }
 

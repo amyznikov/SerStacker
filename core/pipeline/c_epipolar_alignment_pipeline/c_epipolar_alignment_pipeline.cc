@@ -763,7 +763,7 @@ bool c_epipolar_alignment_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !_input_sequence->read(_current_frame, &_current_mask) ) {
+      if( !_input_sequence->read(_current_frame, _current_mask) ) {
         CF_ERROR("input_sequence_->read() fails");
         return false;
       }

@@ -399,7 +399,7 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
   int bpp = 0;
 
 
-  if ( !source->read(output_image, &colorid, &bpp) ) {
+  if ( !source->read(output_image, output_mask, &colorid, &bpp) ) {
     CF_FATAL("source->read() fails\n");
     return false;
   }
@@ -414,13 +414,6 @@ bool c_regular_stereo_pipeline::read_input_frame(const c_input_source::sptr & so
       output_image.convertTo(output_image, CV_8U,
           255. / ((1 << bpp)));
     }
-  }
-  else if ( colorid == COLORID_OPTFLOW || (output_image.channels() != 4 && output_image.channels() != 2) ) {
-    output_mask.release();
-  }
-  else if( !splitbgra(output_image, output_image, &output_mask) ) {
-    output_mask.release();
-    return false;
   }
 
   if( _input_options.enable_color_maxtrix && source->has_color_matrix() && output_image.channels() == 3 ) {

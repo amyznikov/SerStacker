@@ -467,9 +467,7 @@ bool c_ser_reader::read(cv::OutputArray output_image)
 
   errno = 0;
 
-  const int required_image_type =
-      this->cvtype();
-
+  const int required_image_type = this->cvtype();
 
   if( output_image.fixedType() && output_image.type() != required_image_type ) {
     CF_ERROR("Requested output image fixed type (depth=%d channels=%d) not match to \n"

@@ -96,7 +96,8 @@ c_hdl_frame::sptr c_hdl_input_source::read()
   return _reader.read();
 }
 
-bool c_hdl_input_source::read(cv::Mat & output_frame,
+bool c_hdl_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {

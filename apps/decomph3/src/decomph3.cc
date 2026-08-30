@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
 
   for ( int i = 0; i < 2; ++i ) {
 
-    if ( !load_image(input_file_names[i], input_images[i]) ) {
+    if ( !load_image(input_file_names[i], input_images[i], cv::noArray()) ) {
       CF_ERROR("load_image('%s') fails", input_file_names[i].c_str());
       return 1;
     }

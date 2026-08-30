@@ -98,7 +98,7 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
   //input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
-  if ( !input_sequence->read(output_image, &output_mask) ) {
+  if ( !input_sequence->read(output_image, output_mask) ) {
     CF_FATAL("input_sequence->read() fails\n");
     return false;
   }
@@ -320,7 +320,7 @@ int c_image_stacking_pipeline_base::select_master_frame(const c_input_sequence::
           continue;
         }
 
-        if ( !master_sequence->read(currentImage, &currentMask) ) {
+        if ( !master_sequence->read(currentImage, currentMask) ) {
           CF_FATAL("input_sequence->read() fails\n");
           break;
         }
@@ -469,7 +469,7 @@ c_input_sequence::sptr c_image_stacking_pipeline_base::select_master_frame2(cons
           continue;
         }
 
-        if ( !master_sequence->read(currentImage, &currentMask) ) {
+        if ( !master_sequence->read(currentImage, currentMask) ) {
           CF_FATAL("input_sequence->read() fails\n");
           return nullptr;
         }

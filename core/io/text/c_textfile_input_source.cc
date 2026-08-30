@@ -77,7 +77,10 @@ bool c_textfile_input_source::read(c_data_frame::sptr & output_frame)
   return true;
 }
 
-bool c_textfile_input_source::read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpc)
+bool c_textfile_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
+    enum COLORID * output_colorid,
+    int * output_bpc)
 {
   return false;
 }

@@ -527,7 +527,7 @@ int c_input_sequence::global_pos(int source_index, int source_frame_index) const
 }
 
 
-bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * output_mask)
+bool c_input_sequence::read_current_source(cv::OutputArray output_frame, cv::OutputArray output_mask)
 {
   _last_bpp = 0;
   _last_colorid = COLORID_UNKNOWN;
@@ -538,20 +538,20 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
     return false;
   }
 
-  if ( !source->read(output_frame, &_last_colorid, &_last_bpp) ) {
+  if ( !source->read(output_frame, output_mask, &_last_colorid, &_last_bpp) ) {
     return false;
   }
 
-  if ( output_mask  ) {
-
-    if ( _last_colorid == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
-      output_mask->release();
-    }
-    else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
-      output_mask->release();
-      return false;
-    }
-  }
+//  if ( output_mask  ) {
+//
+//    if ( _last_colorid == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
+//      output_mask->release();
+//    }
+//    else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
+//      output_mask->release();
+//      return false;
+//    }
+//  }
 
 
   if ( (_has_last_color_matrix = source->has_color_matrix()) ) {
@@ -565,7 +565,7 @@ bool c_input_sequence::read_current_source(cv::Mat & output_frame, cv::Mat * out
   return true;
 }
 
-bool c_input_sequence::read(cv::Mat & output_frame, cv::Mat * output_mask)
+bool c_input_sequence::read(cv::OutputArray output_frame, cv::OutputArray output_mask)
 {
   if ( _current_source < 0 || _current_source >= (int) _enabled_sources.size() ) {
     CF_DEBUG("return false: current_source_=%d", _current_source);

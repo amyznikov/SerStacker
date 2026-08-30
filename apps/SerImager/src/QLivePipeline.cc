@@ -559,7 +559,9 @@ void QLivePipelineThread::run()
     bool is_open() const final {
       return _camera->state() == QImagingCamera::State_started;
     }
-    bool read(cv::Mat & output_frame, enum COLORID * output_colorid, int * output_bpp) final
+    bool read(cv::OutputArray output_image, cv::OutputArray output_mask,
+        enum COLORID * output_colorid,
+        int * output_bpp) final
     {
       while (_camera->state() == QImagingCamera::State_started) {
 
@@ -636,7 +638,7 @@ void QLivePipelineThread::run()
         // Advance the index to the most recent frame,
         // thereby discarding (dropping) all the missed ones
         last_frame_index = freshest_index;
-        selected_frame->image().copyTo(output_frame);
+        selected_frame->image().copyTo(output_image);
         *output_bpp = bpp = selected_frame->bpp();
         *output_colorid = colorid = selected_frame->colorid();
 

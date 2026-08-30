@@ -80,7 +80,8 @@ int c_regular_image_input_source::curpos()
   return _curpos;
 }
 
-bool c_regular_image_input_source::read(cv::Mat & output_frame,
+bool c_regular_image_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
@@ -88,42 +89,12 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     return false;
   }
 
-  const std::string suffix = get_file_suffix(_filename);
-  if ( strcasecmp(suffix.c_str(), ".flo") == 0 ) {
-
-    if ( !(output_frame = cv::readOpticalFlow(_filename)).data ) {
-      return false;
-    }
-
-    if ( output_colorid ) {
-      *output_colorid = COLORID_OPTFLOW;
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bpp(
-          output_frame.depth());
-    }
-
+  if ( !load_image(_filename, output_image, output_mask, output_colorid) ) {
+    return false;
   }
-  else {
 
-    if ( !load_image(_filename, output_frame) ) {
-      return false;
-    }
-
-    // CF_DEBUG("output_frame.channels()=%d", output_frame.channels());
-
-
-    if ( output_colorid ) {
-      *output_colorid = suggest_colorid(
-          output_frame.channels());
-    }
-
-    if ( output_bpc ) {
-      *output_bpc = suggest_bpp(
-          output_frame.depth());
-    }
-
+  if( output_bpc ) {
+    *output_bpc = suggest_bpp(output_image.depth());
   }
 
   // Try to parse file name for encoded time stamp
@@ -131,7 +102,6 @@ bool c_regular_image_input_source::read(cv::Mat & output_frame,
     _has_last_ts = false;
 
     bool timestamp_found = false;
-
 
     if ( !timestamp_found ) {
       // JUP1.20230815_010015_GMT.32F.tiff

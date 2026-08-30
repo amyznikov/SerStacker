@@ -18,62 +18,60 @@ class c_raw_file_reader
 public:
 
   enum COLORID colorid() const {
-    return colorid_;
+    return _colorid;
   }
 
   int bpc () const {
-    return bpc_;
+    return _bpc;
   }
 
   double black_level() const {
-    return black_level_;
+    return _black_level;
   }
 
   const cv::Matx33f & color_matrix() const {
-    return color_matrix_;
+    return _color_matrix;
   }
 
   bool has_color_matrix() const {
-    return has_color_maxtrix_;
+    return _has_color_maxtrix;
   }
 
   const cv::Vec4f & channel_multipliers() const {
-    return channel_multipliers_;
+    return _channel_multipliers;
   }
 
   bool has_channel_multipliers() const {
-    return has_channel_multipliers_;
+    return _has_channel_multipliers;
   }
 
   void set_auto_apply_channel_multipliers(bool v) {
-    auto_apply_channel_multipliers_ = v;
+    _auto_apply_channel_multipliers = v;
   }
 
   bool auto_apply_channel_multipliers() const {
-    return auto_apply_channel_multipliers_;
+    return _auto_apply_channel_multipliers;
   }
 
-  bool read(const std::string & filename,
-      cv::Mat & output_image,
-      enum COLORID * output_colorid = nullptr,
-      int * output_bpc = nullptr);
+  bool read(const std::string & filename, cv::OutputArray output_image,cv::OutputArray output_mask,
+      enum COLORID * output_colorid, int * output_bpc);
 
 
   void recycle();
 
 private:
   LibRaw raw;
-  enum COLORID colorid_ = COLORID_UNKNOWN;
-  int bpc_ = 0;
-  cv::Matx33f color_matrix_;
-  cv::Vec4f channel_multipliers_;
-  double black_level_ = 0;
-  bool has_color_maxtrix_ = false;
-  bool has_channel_multipliers_ = false;
-  bool auto_apply_channel_multipliers_ = true;
+  enum COLORID _colorid = COLORID_UNKNOWN;
+  int _bpc = 0;
+  cv::Matx33f _color_matrix;
+  cv::Vec4f _channel_multipliers;
+  double _black_level = 0;
+  bool _has_color_maxtrix = false;
+  bool _has_channel_multipliers = false;
+  bool _auto_apply_channel_multipliers = true;
 
 private:
-  int raw2mat(cv::Mat & output_image);
+  int raw2mat(cv::OutputArray output_image);
 };
 
 #endif // HAVE_LIBRAW

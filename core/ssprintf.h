@@ -210,9 +210,7 @@ template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
   const std::string &> toString(const enum_type v)
 {
-  const c_enum_member * members =
-      members_of<enum_type>();
-
+  const c_enum_member * members = members_of<enum_type>();
   if ( members ) {
     for ( int i = 0; !members[i].name.empty(); ++i ) {
       if ( members[i].value == (int)(v) ) {
@@ -229,9 +227,7 @@ template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
   const char *> toCString(const enum_type v)
 {
-  const c_enum_member * members =
-      members_of<enum_type>();
-
+  const c_enum_member * members = members_of<enum_type>();
   if ( members ) {
     for ( int i = 0; !members[i].name.empty(); ++i ) {
       if ( members[i].value == (int)(v) ) {
@@ -248,9 +244,7 @@ template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
   const std::string &> comment_for(const enum_type v)
 {
-  const c_enum_member * members =
-      members_of<enum_type>();
-
+  const c_enum_member * members = members_of<enum_type>();
   if ( members ) {
     for ( int i = 0; !members[i].name.empty(); ++i ) {
       if ( members[i].value == v ) {
@@ -268,9 +262,7 @@ inline const c_enum_member* fromString(const std::string & s, const c_enum_membe
 {
   if( members && !s.empty() ) {
 
-    const char *cs =
-        s.c_str();
-
+    const char *cs = s.c_str();
     int x;
 
     if( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
@@ -294,31 +286,31 @@ inline const c_enum_member* fromString(const std::string & s, const c_enum_membe
 
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
-  bool> fromString(const std::string & s, enum_type * v)
+  bool> fromString(const char * s, enum_type * v)
 {
-  if ( !s.empty()) {
+  const c_enum_member * members = members_of<enum_type>();
 
-    const char * cs =
-        s.c_str();
+  if( s && members ) {
 
-    const c_enum_member * members =
-        members_of<enum_type>();
+    while (*s && isspace(*s)) {
+      ++s;
+    }
 
-    if ( members ) {
-
+    if( *s ) {
       int x;
-
-      if ( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
-        for ( int i = 0; !members[i].name.empty(); ++i ) {
-          if ( members[i].value == x ) {
+      // try numeric representation first
+      if( sscanf(s, "%d", &x) == 1 ) {
+        for( int i = 0; !members[i].name.empty(); ++i ) {
+          if( members[i].value == x ) {
             *v = static_cast<enum_type>(members[i].value);
             return true;
           }
         }
       }
-      else {  // then try string
-        for ( int i = 0; !members[i].name.empty(); ++i ) {
-          if ( strcasecmp(members[i].name.c_str(), cs) == 0 ) {
+      // then try string representation
+      else {
+        for( int i = 0; !members[i].name.empty(); ++i ) {
+          if( strcasecmp(members[i].name.c_str(), s) == 0 ) {
             *v = static_cast<enum_type>(members[i].value);
             return true;
           }
@@ -330,39 +322,54 @@ typename std::enable_if_t<std::is_enum_v<enum_type>,
   return false;
 }
 
-
 template<class enum_type>
 typename std::enable_if_t<std::is_enum_v<enum_type>,
-  enum_type> fromString(const std::string & s, enum_type defval)
+  enum_type> fromString(const char * s, enum_type defval)
 {
-  if ( !s.empty() ) {
+  const c_enum_member * members = members_of<enum_type>();
 
-    const char * cs =
-        s.c_str();
+  if( s && members ) {
 
-    const c_enum_member * members =
-        members_of<enum_type>();
+    while (*s && isspace(*s)) {
+      ++s;
+    }
 
-    if ( members ) {
-
+    if( *s ) {
       int x;
-      if ( sscanf(cs, "%d", &x) == 1 ) {  // try numeric first
-        for ( int i = 0; !members[i].name.empty(); ++i ) {
-          if ( members[i].value == x ) {
+      // try numeric first
+      if( sscanf(s, "%d", &x) == 1 ) {
+        for( int i = 0; !members[i].name.empty(); ++i ) {
+          if( members[i].value == x ) {
             return static_cast<enum_type>(members[i].value);
           }
         }
       }
-      else {  // then try string
-        for ( int i = 0; !members[i].name.empty(); ++i ) {
-          if ( strcasecmp(members[i].name.c_str(), cs) == 0 ) {
+      // then try string
+      else {
+        for( int i = 0; !members[i].name.empty(); ++i ) {
+          if( strcasecmp(members[i].name.c_str(), s) == 0 ) {
             return static_cast<enum_type>(members[i].value);
           }
         }
       }
     }
   }
+
   return defval;
+}
+
+template<class enum_type>
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  bool> inline fromString(const std::string & s, enum_type * v)
+{
+  return fromString(s.c_str(), v);
+}
+
+template<class enum_type>
+typename std::enable_if_t<std::is_enum_v<enum_type>,
+  enum_type> inline fromString(const std::string & s, enum_type defval)
+{
+  return fromString(s.c_str(), defval);
 }
 
 
@@ -413,10 +420,7 @@ inline int flagsFromString(const std::string & s, const c_enum_member *membs)
         strsplit(s, "| \r\n\t");
 
     for ( const std::string & token : tokens ) {
-
-      const char * s =
-          token.c_str();
-
+      const char * s = token.c_str();
       for ( int i = 0; !membs[i].name.empty(); ++i ) {
         if ( strcasecmp(membs[i].name.c_str(), s) == 0 ) {
           flags |= membs[i].value;
@@ -447,40 +451,40 @@ public:
 
   c_enum_members()
   {
-    members_.emplace_back(c_enum_member{-1});
+    _members.emplace_back(c_enum_member{-1});
   }
 
   const c_enum_member * data() const
   {
-    return members_.data();
+    return _members.data();
   }
 
   void clear()
   {
-    members_.clear();
-    members_.emplace_back(c_enum_member{-1});
+    _members.clear();
+    _members.emplace_back(c_enum_member{-1});
   }
 
   int size() const
   {
-    return members_.size();
+    return _members.size();
   }
 
   const c_enum_member& operator [](int index) const
   {
-    return members_[index];
+    return _members[index];
   }
 
   void add(int value, const std::string & name, const std::string & desc)
   {
-    members_.insert(members_.begin() + members_.size() - 1,
+    _members.insert(_members.begin() + _members.size() - 1,
         c_enum_member { value, name, desc });
   }
 
 
   iterator find(int value)
   {
-    return std::find_if(members_.begin(), members_.end(),
+    return std::find_if(_members.begin(), _members.end(),
         [value](const auto & m) {
           return value == m.value;
         });
@@ -488,7 +492,7 @@ public:
 
   const_iterator find(int value) const
   {
-    return std::find_if(members_.begin(), members_.end(),
+    return std::find_if(_members.begin(), _members.end(),
         [value](const auto & m) {
           return value == m.value;
         });
@@ -496,7 +500,7 @@ public:
 
   iterator find(const std::string & name)
   {
-    return std::find_if(members_.begin(), members_.end(),
+    return std::find_if(_members.begin(), _members.end(),
         [name](const auto & m) {
           return name == m.name;
         });
@@ -504,14 +508,14 @@ public:
 
   const_iterator find(const std::string & name) const
   {
-    return std::find_if(members_.begin(), members_.end(),
+    return std::find_if(_members.begin(), _members.end(),
         [name](const auto & m) {
           return name == m.name;
         });
   }
 
 protected:
-  std::vector<c_enum_member> members_;
+  std::vector<c_enum_member> _members;
 };
 
 // opencv types

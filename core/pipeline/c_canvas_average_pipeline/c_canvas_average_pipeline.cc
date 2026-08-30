@@ -465,7 +465,7 @@ bool c_canvas_average_pipeline::initialize_pipeline()
 
   if ( !_input_options.missing_pixel_mask_filename.empty() ) {
 
-    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask) ) {
+    if ( !load_image(_input_options.missing_pixel_mask_filename, _missing_pixel_mask, cv::noArray()) ) {
       CF_ERROR("load_image('%s') fails.", _input_options.missing_pixel_mask_filename.c_str());
       return false;
     }

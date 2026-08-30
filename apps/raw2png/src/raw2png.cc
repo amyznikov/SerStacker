@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
 
     CF_DEBUG("[%s] ...", current_file_name.c_str());
 
-    if ( !raw_file.read(current_path_file_name, current_image, &colorid, &bpc) ) {
+    if ( !raw_file.read(current_path_file_name, current_image, cv::noArray(),  &colorid, &bpc) ) {
       CF_ERROR("raw_file.read(%s) fails", current_file_name.c_str());
       continue;
     }

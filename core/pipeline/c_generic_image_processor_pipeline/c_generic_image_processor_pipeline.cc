@@ -127,7 +127,7 @@ bool c_generic_image_processor_pipeline::run_pipeline()
 
     if( true ) {
       lock_guard lock(mutex());
-      if( !_input_sequence->read(_current_image, &_current_mask) ) {
+      if( !_input_sequence->read(_current_image, _current_mask) ) {
         CF_DEBUG("input_sequence_->read() fails");
         break;
       }

@@ -149,7 +149,7 @@ static void average_frames(const std::string & input_file_name, const std::strin
 
   for( int i = 0; i < total_frames; ++i ) {
 
-    if( !input_sequence->read(current_frame, &current_mask) ) {
+    if( !input_sequence->read(current_frame, current_mask) ) {
       CF_ERROR("input_sequence->read(pos=%d) fails", i);
       break;
     }

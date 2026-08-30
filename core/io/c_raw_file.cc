@@ -63,7 +63,7 @@ static enum COLORID raw2colorid(LibRaw & raw)
 }
 
 
-int c_raw_file_reader::raw2mat(cv::Mat & output_image)
+int c_raw_file_reader::raw2mat(cv::OutputArray output_image)
 {
   const libraw_image_sizes_t & S = raw.imgdata.rawdata.sizes;
 
@@ -78,9 +78,9 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
 
 
 
-  colorid_ = COLORID_UNKNOWN;
-  bpc_ = 16; // fixme: raw.imgdata.color.raw_bps;
-  black_level_ = raw.imgdata.color.black;
+  _colorid = COLORID_UNKNOWN;
+  _bpc = 16; // fixme: raw.imgdata.color.raw_bps;
+  _black_level = raw.imgdata.color.black;
 
   if ( !output_image.empty() && !output_image.isContinuous() ) {
     output_image.release();
@@ -92,7 +92,7 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
     for ( int c = 0; c < 4; ++c ) {
       scale_mul[c] = raw.imgdata.color.cam_mul[c] * scale;
     }
-    bpc_ = 16;
+    _bpc = 16;
   }
 
   if ( raw.imgdata.rawdata.raw_image && (raw.imgdata.idata.filters || raw.imgdata.idata.colors == 1) ) {
@@ -100,10 +100,12 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
 
     const bool is_bayer = raw.imgdata.idata.filters;
 
-    colorid_ = raw2colorid(raw);
+    _colorid = raw2colorid(raw);
 
     output_image.create(output_height, output_width, CV_16UC1);
-    uint16_t * dstp = (uint16_t *) output_image.data;
+    cv::Mat & img = output_image.getMatRef();
+
+    uint16_t * dstp = (uint16_t *) img.data;
 
     const int maxHeight = std::min(S.height, (ushort) (S.raw_height - S.top_margin));
     const int src_stride = S.raw_pitch / 2;
@@ -166,10 +168,11 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
   else if ( raw.imgdata.rawdata.color3_image ) {
     // RGB
 
-    colorid_ = COLORID_BGR;
+    _colorid = COLORID_BGR;
 
     output_image.create(output_height, output_width, CV_16UC3);
-    cv::Vec3w * image = (cv::Vec3w * ) output_image.data;
+    cv::Mat & img = output_image.getMatRef();
+    cv::Vec3w * image = (cv::Vec3w * ) img.data;
 
     const uint8_t * c3image = (uint8_t *) raw.imgdata.rawdata.color3_image;
 
@@ -217,14 +220,13 @@ int c_raw_file_reader::raw2mat(cv::Mat & output_image)
 
 
 
-bool c_raw_file_reader::read(const std::string & filename, cv::Mat & output_image,
-    enum COLORID * output_colorid,
-    int * output_bpc)
+bool c_raw_file_reader::read(const std::string & filename, cv::OutputArray output_image,cv::OutputArray output_mask,
+    enum COLORID * output_colorid, int * output_bpc)
 {
   int status;
 
-  has_color_maxtrix_ = false;
-  has_channel_multipliers_ = false;
+  _has_color_maxtrix = false;
+  _has_channel_multipliers = false;
 
   if ( (status = raw.open_file(filename.c_str())) != LIBRAW_SUCCESS ) {
     CF_FATAL("raw.open_file('%s') fails. status=%d",
@@ -246,19 +248,23 @@ bool c_raw_file_reader::read(const std::string & filename, cv::Mat & output_imag
     const libraw_colordata_t & C = raw.imgdata.rawdata.color;
     for ( int i = 0; i < 3; ++i ) {
       for ( int j = 0; j < 3; ++j ) {
-        this->color_matrix_(i, j) = C.rgb_cam[i][j];
+        this->_color_matrix(i, j) = C.rgb_cam[i][j];
       }
     }
 
-    has_color_maxtrix_ = true;
+    _has_color_maxtrix = true;
   }
 
   if ( output_colorid ) {
-    * output_colorid = colorid_;
+    * output_colorid = _colorid;
   }
 
   if ( output_bpc ){
-    * output_bpc = bpc_;
+    * output_bpc = _bpc;
+  }
+
+  if (output_mask.needed() ) {
+    output_mask.release();
   }
 
   return status == LIBRAW_SUCCESS;

@@ -345,7 +345,7 @@ bool c_camera_calibration_pipeline::read_input_frame(const c_input_sequence::spt
   // input_sequence->set_auto_debayer(DEBAYER_DISABLE);
   input_sequence->set_auto_apply_color_matrix(false);
 
-  if ( !input_sequence->read(output_image, &output_mask) ) {
+  if ( !input_sequence->read(output_image, output_mask) ) {
     CF_FATAL("input_sequence->read() fails\n");
     return false;
   }

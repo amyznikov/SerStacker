@@ -17,9 +17,9 @@ c_ffmpeg_input_source::c_ffmpeg_input_source(const std::string & filename) :
 c_ffmpeg_input_source::sptr c_ffmpeg_input_source::create(const std::string & filename)
 {
   sptr obj(new this_class(filename));
-  if ( obj->ffmpeg_.open(filename) ) {
-    obj->_size = obj->ffmpeg_.num_frames();
-    obj->ffmpeg_.close();
+  if ( obj->_ffmpeg.open(filename) ) {
+    obj->_size = obj->_ffmpeg.num_frames();
+    obj->_ffmpeg.close();
     return obj;
   }
   return nullptr;
@@ -36,38 +36,41 @@ const std::vector<std::string> & c_ffmpeg_input_source::suffixes()
 
 bool c_ffmpeg_input_source::open()
 {
-  return ffmpeg_.open(_filename);
+  return _ffmpeg.open(_filename);
 }
 
 void c_ffmpeg_input_source::close()
 {
-  return ffmpeg_.close();
+  return _ffmpeg.close();
 }
 
 bool c_ffmpeg_input_source::seek(int pos)
 {
-  return ffmpeg_.seek_frame(pos);
+  return _ffmpeg.seek_frame(pos);
 }
 
 int c_ffmpeg_input_source::curpos()
 {
-  return ffmpeg_.curpos();
+  return _ffmpeg.curpos();
 }
 
-bool c_ffmpeg_input_source::read(cv::Mat & output_frame,
+bool c_ffmpeg_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( ffmpeg_.read(output_frame) ) {
+  if ( _ffmpeg.read(output_image) ) {
 
     if ( output_colorid ) {
-      *output_colorid = suggest_colorid(
-          output_frame.channels());
+      *output_colorid = suggest_colorid(output_image.channels());
     }
 
     if ( output_bpc ) {
-      *output_bpc = suggest_bpp(
-          output_frame.depth());
+      *output_bpc = suggest_bpp(output_image.depth());
+    }
+
+    if ( output_mask.needed() ) {
+      output_mask.release();
     }
 
     return true;
@@ -77,7 +80,7 @@ bool c_ffmpeg_input_source::read(cv::Mat & output_frame,
 
 bool c_ffmpeg_input_source::is_open() const
 {
-  return ffmpeg_.is_open();
+  return _ffmpeg.is_open();
 }
 
 #endif // HAVE_FFMPEG

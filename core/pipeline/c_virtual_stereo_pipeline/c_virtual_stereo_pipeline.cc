@@ -665,7 +665,7 @@ bool c_virtual_stereo_pipeline::read_input_frame(cv::Mat & output_image, cv::Mat
   //    return false;
   //  }
 
-  if( !_input_sequence->read(_current_image, &_current_mask) ) {
+  if( !_input_sequence->read(_current_image, _current_mask) ) {
     CF_DEBUG("input_sequence_->read() fails");
     return false;
   }

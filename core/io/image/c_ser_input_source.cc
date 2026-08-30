@@ -6,6 +6,7 @@
  */
 
 #include "c_ser_input_source.h"
+#include <core/io/load_image.h>
 
 c_ser_input_source::c_ser_input_source(const std::string & filename) :
     base(/*c_input_source::SER, */filename)
@@ -52,11 +53,12 @@ int c_ser_input_source::curpos()
   return _ser.curpos();
 }
 
-bool c_ser_input_source::read(cv::Mat & output_frame,
+bool c_ser_input_source::read(cv::OutputArray output_image,
+    cv::OutputArray output_mask,
     enum COLORID * output_colorid,
     int * output_bpc)
 {
-  if ( _ser.read(output_frame) ) {
+  if ( _ser.read(output_image) ) {
 
     if ( output_colorid ) {
       *output_colorid = _ser.color_id();
@@ -64,6 +66,16 @@ bool c_ser_input_source::read(cv::Mat & output_frame,
 
     if ( output_bpc ) {
       *output_bpc = _ser.bits_per_plane();
+    }
+
+    // FIXME: Hack, MUST be correctly handled by SER reader itself
+    if ( output_image.channels() == 4 ) {
+      cv::Mat img, mask;
+      splitbgra(output_image.getMatRef(), img, output_mask.needed() ? &mask : nullptr);
+      output_image.move(img);
+      if ( output_mask.needed() ) {
+        output_mask.move(mask);
+      }
     }
 
     return true;

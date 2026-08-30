@@ -107,7 +107,8 @@ public:
 
   virtual bool read(c_data_frame::sptr & output_frame) = 0;
 
-  virtual bool read(cv::Mat & output_frame,
+  virtual bool read(cv::OutputArray output_image,
+      cv::OutputArray output_mask,
       enum COLORID * output_colorid,
       int * output_bpc) = 0;
 

@@ -9,16 +9,14 @@
 #ifndef ___load_image_h___
 #define _____load_image_h___
 
-#include <opencv2/opencv.hpp>
-
-//bool load_image(cv::OutputArray image,
-//    const std::string & filename);
+#include <core/io/debayer.h>
 
 bool load_image(const std::string & filename,
     cv::OutputArray output_image,
-    cv::OutputArray output_mask = cv::noArray());
+    cv::OutputArray output_mask/* = cv::noArray()*/,
+    enum COLORID * output_colorid = nullptr);
 
-// Split BGRA to BGR and mask
+//// FIXME: Hack Split BGRA to BGR and mask, this must be handled by format readers
 bool splitbgra(const cv::Mat & input_bgra_image,
     cv::Mat & output_bgr_image,
     cv::Mat * output_alpha_mask = nullptr);

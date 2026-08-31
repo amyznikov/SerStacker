@@ -12,12 +12,14 @@
 #include <memory>
 
 /// @brief COLORID
-/// SER file color id.
-/// The numercal values are selected from paper "SER format description version 3",
+/// Global color ids.
+/// The numerical values are selected from paper "SER format description version 3",
 ///     by Heiko Wilkens and Grischa Hahn, at 2014 Feb 06.
-/// Addidional special values starting from optical flow added by me.
+/// Additional ciustom values starting from 201 added by me.
 enum COLORID : int32_t {
   COLORID_UNKNOWN = -1,
+
+  // SER-conformant values
   COLORID_MONO = 0,
   COLORID_BAYER_RGGB = 8,
   COLORID_BAYER_GRBG = 9,
@@ -29,8 +31,9 @@ enum COLORID : int32_t {
   COLORID_BAYER_MYYC = 19,
   COLORID_RGB = 100,
   COLORID_BGR = 101,
-  COLORID_BGRA = 201,
 
+  // My Custom
+  COLORID_BGRA = 201, // BGR + Binary Mask
   COLORID_OPTFLOW = 501,
 };
 

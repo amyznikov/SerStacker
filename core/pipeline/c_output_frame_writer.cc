@@ -309,45 +309,6 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       break;
     }
 
-    case output_type_ser: {
-
-      bool fOk =
-          create_output_frame(currenFrame.getMat(), currentMask.getMat(),
-              output_frame, output_mask,
-              _output_image_processor,
-              _output_pixel_depth);
-
-      if( !fOk ) {
-        CF_ERROR("create_output_frame() fails for '%s'",
-            output_file_name.c_str());
-        return false;
-      }
-
-      if( !output_mask.empty() ) {
-        output_frame.setTo(0, ~output_mask);
-      }
-
-      if( !ser.is_open() ) {
-
-        fOk =
-            ser.create(filename(), output_frame.cols, output_frame.rows,
-                output_frame.channels() > 1 ? COLORID_BGR : COLORID_MONO,
-                c_ser_file::bits_per_plane(output_frame.depth()));
-
-        if( !fOk ) {
-          CF_ERROR("Can not create SER file '%s'", filename().c_str());
-          return false;
-        }
-      }
-
-      if( !ser.write(output_frame) ) {
-        CF_ERROR("ser.write() fails");
-        return false;
-      }
-
-      break;
-    }
-
     case output_type_images: {
 
       bool fOk =
@@ -383,6 +344,94 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
           CF_ERROR("save_image('%s) fails", fname.c_str());
           return false;
         }
+      }
+
+      break;
+    }
+
+//    case output_type_ser: {
+//
+//      bool fOk =
+//          create_output_frame(currenFrame.getMat(), currentMask.getMat(),
+//              output_frame, output_mask,
+//              _output_image_processor,
+//              _output_pixel_depth);
+//
+//      if( !fOk ) {
+//        CF_ERROR("create_output_frame() fails for '%s'",
+//            output_file_name.c_str());
+//        return false;
+//      }
+//
+//      if( !output_mask.empty() ) {
+//        output_frame.setTo(0, ~output_mask);
+//      }
+//
+//      if( !ser.is_open() ) {
+//
+//        fOk =
+//            ser.create(filename(), output_frame.cols, output_frame.rows,
+//                output_frame.channels() > 1 ? COLORID_BGR : COLORID_MONO,
+//                c_ser_file::bits_per_plane(output_frame.depth()));
+//
+//        if( !fOk ) {
+//          CF_ERROR("Can not create SER file '%s'", filename().c_str());
+//          return false;
+//        }
+//      }
+//
+//      if( !ser.write(output_frame, cv::noArray()) ) {
+//        CF_ERROR("ser.write() fails");
+//        return false;
+//      }
+//
+//      break;
+//    }
+
+    case output_type_ser: {
+
+      cv::Mat image, mask;
+
+      if ( !_output_image_processor ) {
+        image = currenFrame.getMat();
+        mask = currentMask.getMat();
+      }
+      else {
+        currenFrame.getMat().copyTo(image);
+        currentMask.getMat().copyTo(mask);
+        if ( !_output_image_processor->process(image, mask) ) {
+          CF_ERROR("_output_image_processor->process() fails for '%s'",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if( _output_pixel_depth != PIXEL_DEPTH_NO_CHANGE && _output_pixel_depth != image.depth() ) {
+        double scale = 1, offset = 0;
+        if( !getScaleOffset(tmp.depth(), (int)_output_pixel_depth, &scale, &offset) ) {
+          CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
+          return false;
+        }
+        image.convertTo(image, _output_pixel_depth, scale, offset);
+      }
+
+      if( !ser.is_open() ) {
+
+        bool fOk =
+            ser.create(filename(), image.cols, image.rows,
+                image.channels() > 1 ? COLORID_BGR : COLORID_MONO,
+                c_ser_file::bits_per_plane(image.depth()),
+                mask.empty() ? -1 : mask.depth());
+
+        if( !fOk ) {
+          CF_ERROR("Can not create SER file '%s'", filename().c_str());
+          return false;
+        }
+      }
+
+      if( !ser.write(image, mask) ) {
+        CF_ERROR("ser.write() fails");
+        return false;
       }
 
       break;

@@ -542,18 +542,6 @@ bool c_input_sequence::read_current_source(cv::OutputArray output_frame, cv::Out
     return false;
   }
 
-//  if ( output_mask  ) {
-//
-//    if ( _last_colorid == COLORID_OPTFLOW || (output_frame.channels() != 4 && output_frame.channels() != 2) ) {
-//      output_mask->release();
-//    }
-//    else if ( !splitbgra(output_frame, output_frame, output_mask) ) {
-//      output_mask->release();
-//      return false;
-//    }
-//  }
-
-
   if ( (_has_last_color_matrix = source->has_color_matrix()) ) {
     _last_color_matrix = source->color_matrix();
   }

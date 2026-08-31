@@ -351,7 +351,7 @@ bool c_canvas_average_pipeline::copy_parameters(const c_image_processing_pipelin
   return true;
 }
 
-std::string c_canvas_average_pipeline::generate_output_file_name() const
+std::string c_canvas_average_pipeline::generate_output_file_name(const std::string & suffix) const
 {
   static const auto get_current_date_time_string =
       []() -> std::string
@@ -384,20 +384,22 @@ std::string c_canvas_average_pipeline::generate_output_file_name() const
   std::string output_file_name_postfix = ".ACC";
 
   std::string output_file_name = _output_options.output_file_name;
+  std::string output_suffix = suffix.empty() ? ".fits" : suffix;
   if( output_file_name.empty() ) {
 
     output_file_name =
-        ssprintf("%s/%s%s.%s.32F.tiff",
+        ssprintf("%s/%s%s.%s.32F%s",
             _output_path.c_str(),
             csequence_name(),
             output_file_name_postfix.c_str(),
-            get_current_date_time_string().c_str());
+            get_current_date_time_string().c_str(),
+            output_suffix.c_str());
   }
   else {
 
-    std::string path, name, suffix;
+    std::string path, name, sfx;
 
-    split_pathfilename(output_file_name, &path, &name, &suffix);
+    split_pathfilename(output_file_name, &path, &name, &sfx);
 
     if( path.empty() ) {
       path = _output_path;
@@ -411,8 +413,8 @@ std::string c_canvas_average_pipeline::generate_output_file_name() const
           output_file_name_postfix.c_str());
     }
 
-    if( suffix.empty() || suffix.back() == '.' ) {
-      suffix = ".tiff";
+    if( sfx.empty() || sfx.back() == '.' ) {
+      sfx = ".fits";
     }
 
     output_file_name =
@@ -420,7 +422,7 @@ std::string c_canvas_average_pipeline::generate_output_file_name() const
             path.c_str(),
             name.c_str(),
             get_current_date_time_string().c_str(),
-            suffix.c_str());
+            sfx.c_str());
   }
 
 
@@ -930,6 +932,11 @@ bool c_canvas_average_pipeline::process_current_frame()
       CF_ERROR("average_add() fails");
       return false;
     }
+
+    if ( !write_progress_video() ) {
+      CF_ERROR("write_progress_video() fails");
+      return false;
+    }
   }
 
 //  CF_DEBUG("LEAVE");
@@ -963,37 +970,6 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
     return lut_y * lut_x;
   };
 
-//  static const auto pupscale = [] (cv::Mat & image, cv::Size dstSize) {
-//    const cv::Size inputSize = image.size();
-//
-//    if( inputSize != dstSize ) {
-//
-//      std::vector<cv::Size> sizes;
-//
-//      sizes.emplace_back(dstSize);
-//
-//      while (42) {
-//        const cv::Size nextSize((sizes.back().width + 1) / 2, (sizes.back().height + 1) / 2);
-//        if( nextSize == inputSize ) {
-//          break;
-//        }
-//        if( nextSize.width < inputSize.width || nextSize.height < inputSize.height ) {
-//          CF_ERROR("FATAL: invalid next size : nextSize=%dx%d inputSize=%dx%d",
-//              nextSize.width, nextSize.height,
-//              inputSize.width, inputSize.height);
-//          return false;
-//        }
-//        sizes.emplace_back(nextSize);
-//      }
-//
-//      for( int i = sizes.size() - 1; i >= 0; --i ) {
-//        cv::pyrUp(image, image, sizes[i]);
-//      }
-//    }
-//
-//    return true;
-//  };
-
   if ( _average_options.sharpness_measure.kradius > 0 ) {
 
     const cv::Size src_size = src.size();
@@ -1016,12 +992,15 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
 bool c_canvas_average_pipeline::save_averaged_image()
 {
   if ( _average.accumulated_frames() > 0 ) {
-    if ( !_average.compute(_current_image, _current_mask) ) {
+    cv::Mat avg;
+    cv::Mat1f msk;
+
+    if ( !_average.compute(avg, msk) ) {
       CF_ERROR("_average.compute() fails for output image");
     }
     else {
-      const std::string output_file_name = generate_output_file_name();
-      if ( save_image(_current_image, _current_mask, output_file_name) ) {
+      const std::string output_file_name = generate_output_file_name(".fits");
+      if ( save_image(avg, msk, output_file_name) ) {
         CF_DEBUG("Saved %s", output_file_name.c_str());
       }
       else {
@@ -1063,17 +1042,25 @@ bool c_canvas_average_pipeline::write_input_video(cv::InputArray image, cv::Inpu
   return true;
 }
 
-bool c_canvas_average_pipeline::write_progress_video(cv::InputArray image, cv::InputArray mask)
+bool c_canvas_average_pipeline::write_progress_video()
 {
-  if( _output_options.save_progress_video && !image.empty() ) {
+  if( _output_options.save_progress_video && _average.accumulated_frames() > 0 ) {
+
+    cv::Mat avg;
+    cv::Mat1f msk;
+
+    if( !_average.compute(avg, msk) ) {
+      CF_ERROR("_average.compute() fails for output image");
+      return true; // ignore this error
+    }
 
     if( !_progress_writer.is_open() ) {
 
-      bool fOk =
+      const bool fOk =
           add_output_writer(_progress_writer,
               _output_options.output_progress_video_options,
               "progress",
-              ".avi");
+              ".ser");
 
       if( !fOk ) {
         CF_ERROR("add_output_writer('%s') fails",
@@ -1082,7 +1069,7 @@ bool c_canvas_average_pipeline::write_progress_video(cv::InputArray image, cv::I
       }
     }
 
-    if( !_progress_writer.write(image, mask) ) {
+    if( !_progress_writer.write(avg, msk) ) {
       CF_ERROR("_progress_writer.write('%s') fails.",
           _progress_writer.filename().c_str());
       return false;

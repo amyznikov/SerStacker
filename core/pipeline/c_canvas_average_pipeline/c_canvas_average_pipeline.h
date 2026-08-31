@@ -99,11 +99,11 @@ protected:
   bool get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask) override;
   bool process_current_frame();
   void compute_weights(const cv::Mat & src, const cv::Mat & srcmask,  cv::Mat & dst);
-  std::string generate_output_file_name() const;
+  std::string generate_output_file_name(const std::string & suffix = "") const;
   bool write_input_video(cv::InputArray image, cv::InputArray mask);
-  bool write_progress_video(cv::InputArray image, cv::InputArray mask);
   bool write_reference_video(cv::InputArray image, cv::InputArray mask);
   bool write_weights_video(cv::InputArray image, cv::InputArray mask);
+  bool write_progress_video();
   bool save_averaged_image();
 
 protected:

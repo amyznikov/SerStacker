@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 
   for ( int i = start_frame ; i <= end_frame && ser_reader.read(current_frame); ++i ) {
 
-    if ( !ser_writer.write(current_frame) ) {
+    if ( !ser_writer.write(current_frame, cv::noArray()) ) {
       fprintf(stderr, "ser_writer.write() fails: %s\n", strerror(errno));
       break;
     }

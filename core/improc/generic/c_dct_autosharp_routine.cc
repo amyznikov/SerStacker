@@ -563,7 +563,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     return true;
   }
 
-  cv::Mat src;
+  cv::Mat src, msk;
   cv::Mat1f intensity_img;
   cv::Mat1f intensity_dct;
   cv::Mat1f dct_radial_profile;
@@ -573,13 +573,22 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
   image.getMat().convertTo(src, CV_32F);
 
-  if( !mask.empty() ) {
+  if ( !mask.empty() ) {
+    if ( mask.depth() == CV_8U ) {
+      msk = mask.getMat();
+    }
+    else {
+      cv::compare(mask, 0, msk, cv::CMP_GT);
+    }
+  }
+
+  if( !msk.empty() ) {
     switch (_mask_inpaint_method) {
       case LINEAR_INTERPOLATION_INPAINT:
-        linear_interpolation_inpaint(src, mask);
+        linear_interpolation_inpaint(src, msk);
         break;
       case AVERAGE_PYRAMID_INPAINT:
-        average_pyramid_inpaint(src, mask, src, cv::noArray(), 7);
+        average_pyramid_inpaint(src, msk, src, cv::noArray(), 7);
         break;
     }
   }

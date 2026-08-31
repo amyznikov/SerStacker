@@ -500,17 +500,20 @@ bool createHistogram(cv::InputArrayOfArrays src, cv::InputArrayOfArrays masks,
 
     // Check the mask
     if( !maskv[i].empty() ) {
+      // It is allowed for the app to work with non-binary masks (pixel weights)
+      if( maskv[i].depth() != CV_8U ) {
+        cv::compare(maskv[i], 0, maskv[i], cv::CMP_GT);
+      }
+
       const int mt = maskv[i].type();
       if( mt != CV_8UC1 && mt != CV_MAKETYPE(CV_8U, cn) ) {
         CF_ERROR("Invalid input mask type (%d) for mask index %zu", mt, i);
         maskv[i].release();
-        //return false;
       }
       else if( maskv[i].size() != srcv[i].size() ) {
         CF_ERROR("Invalid mask size (%dx%d) for mask index %zu. Must be %dx%d",
             maskv[i].cols, maskv[i].rows, i, srcv[i].cols, srcv[i].rows);
         maskv[i].release();
-        //return false;
       }
     }
   }

@@ -66,9 +66,11 @@ protected:
   cv::Size2f _scale = cv::Size2f(1, 1);
   image_resize_mode _resize_mode = resize_keep;
   cv::InterpolationFlags _interpolation = cv::INTER_LINEAR;
+  cv::InterpolationFlags _mask_interpolation = cv::INTER_LINEAR;
   cv::BorderTypes _border_type = cv::BORDER_CONSTANT;
   cv::Scalar _border_value;
   cv::Mat2f _remap;
+  cv::Mat1b _dummy_mask;
   cv::Size _previous_image_size;
 };
 

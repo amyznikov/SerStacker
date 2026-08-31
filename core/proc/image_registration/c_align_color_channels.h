@@ -78,25 +78,9 @@ public:
   const std::vector<c_image_transform::sptr> & computed_transforms() const;
   IMAGE_MOTION_TYPE estimated_motion_type() const;
 
-//  bool align(cv::InputArray src, cv::OutputArray dst,
-//      const c_align_color_channels_options & opts,
-//      int reference_channel_index,
-//      cv::InputArray srcmask = cv::noArray(),
-//      cv::OutputArray dstmask = cv::noArray() );
-
-//  bool align(cv::InputArray src, cv::OutputArray dst,
-//      cv::InputArray reference_image, cv::InputArray reference_mask,
-//      const c_align_color_channels_options & opts,
-//      cv::InputArray srcmask = cv::noArray(),
-//      cv::OutputArray dstmask = cv::noArray() );
-
   bool estimate(cv::InputArray src, cv::InputArray srcmask,
       int reference_channel_index,
       const c_align_color_channels_options & opts);
-
-//  bool estimate(cv::InputArray src, cv::InputArray srcmask,
-//      cv::InputArray reference_image, cv::InputArray reference_mask,
-//      const c_align_color_channels_options & opts);
 
   bool apply(cv::InputArray src, cv::InputArray srcmask,
       const c_align_color_channels_options & opts,
@@ -106,9 +90,18 @@ public:
       const std::vector<float> parameters[4]);
 
 protected:
+  void remap(cv::InputArray src, cv::OutputArray dst,
+      const c_align_color_channels_options & opts,
+      int channel, int interpolation, int borderMode = cv::BORDER_CONSTANT,
+      const cv::Scalar & borderValue = cv::Scalar()) const;
+
+protected:
   std::vector<c_image_transform::sptr> _image_transforms;
   mutable std::vector<cv::Mat2f> _remaps;
   mutable std::vector<cv::Mat> _fixed_remaps[2];
+  mutable cv::Mat1b _precomputed_frame_mask;
+  mutable cv::Mat1b _dynamic_dummy;
+
   IMAGE_MOTION_TYPE _estimated_motion_type = IMAGE_MOTION_UNKNOWN;
 };
 

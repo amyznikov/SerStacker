@@ -80,7 +80,7 @@ struct c_ser_file_writer:
 
   bool write(const QCameraFrame::sptr & frame) override
   {
-    return ser.write(frame->image(), realtime_sec_to_ser_timestamp(frame->ts()));
+    return ser.write(frame->image(), cv::noArray(), realtime_sec_to_ser_timestamp(frame->ts()));
   }
 
   virtual void close() override

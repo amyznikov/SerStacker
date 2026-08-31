@@ -6,20 +6,23 @@
  */
 
 #include "unsharp_mask.h"
-#if HAVE_TBB
-# include <tbb/tbb.h>
-#endif
+#include <core/proc/run-loop.h>
+#include <core/proc/pixtype.h>
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 // totally faster for large sigma but little approximate
-static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma)
+static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma, int ddepth, double dscale)
 {
   constexpr int borderType = cv::BORDER_REFLECT;
 
   static const auto gaussian_blur =
-      [](cv::InputArray src, cv::Mat & lpass, double sigma) {
+      [](cv::InputArray src, cv::Mat & lpass, double sigma, int ddepth, double dscale) {
         const cv::Mat1f G = cv::getGaussianKernel(2 * (std::max)(1, (int) (sigma * 5)) + 1, sigma, CV_32F);
-        cv::sepFilter2D(src, lpass, -1, G,  G, cv::Point(-1, -1), 0, borderType);
+        if ( std::abs(dscale-1) > std::numeric_limits<float>::epsilon() ) {
+          G *= std::sqrt(dscale);
+        }
+        cv::sepFilter2D(src, lpass, ddepth, G, G, cv::Point(-1, -1), 0, borderType);
       };
 
   int pyramid_level = 0;
@@ -42,29 +45,32 @@ static void create_lpass_image(cv::InputArray src, cv::Mat & lpass, double sigma
   }
 
   if ( pyramid_level < 1 ) {
-    gaussian_blur(src, lpass, sigma);
-    return;
+    gaussian_blur(src, lpass, sigma, ddepth, dscale);
   }
+  else {
 
+    std::vector<cv::Size> size_history;
 
-  std::vector<cv::Size> size_history;
+    const double delta = sqrt(sigma * sigma - 2 * Ci) / (1 << pyramid_level)  ;
 
-  const double delta = sqrt(sigma * sigma - 2 * Ci) / (1 << pyramid_level)  ;
+    size_history.emplace_back(src.size());
+    cv::pyrDown(src, lpass, cv::Size(), borderType);
 
-  size_history.emplace_back(src.size());
-  cv::pyrDown(src, lpass, cv::Size(), borderType);
+    for ( int j = 1; j < pyramid_level; ++j ) {
+      size_history.emplace_back(lpass.size());
+      cv::pyrDown(lpass, lpass, cv::Size(), borderType);
+    }
 
-  for ( int j = 1; j < pyramid_level; ++j ) {
-    size_history.emplace_back(lpass.size());
-    cv::pyrDown(lpass, lpass, cv::Size(), borderType);
-  }
+    if ( delta > 0 ) {
+      gaussian_blur(lpass, lpass, delta, ddepth, dscale);
+    }
+    else {
+      lpass.convertTo(lpass, ddepth, dscale);
+    }
 
-  if ( delta > 0 ) {
-    gaussian_blur(lpass, lpass, delta);
-  }
-
-  for( int j = size_history.size() - 1; j >= 0; --j ) {
-    cv::pyrUp(lpass, lpass, size_history[j]);
+    for( int j = size_history.size() - 1; j >= 0; --j ) {
+      cv::pyrUp(lpass, lpass, size_history[j]);
+    }
   }
 }
 
@@ -77,111 +83,92 @@ void unsharp_mask(cv::InputArray src, cv::OutputArray dst,
     src.copyTo(dst);
   }
   else {
-
-    if ( outmax <= outmin ) {
-
-      const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
-
-      switch ( ddepth ) {
-      case CV_8U :
-        outmin = 0, outmax = UINT8_MAX;
-        break;
-      case CV_8S :
-        outmin = -INT8_MIN, outmax = INT8_MAX;
-        break;
-      case CV_16U :
-        outmin = 0, outmax = UINT16_MAX;
-        break;
-      case CV_16S :
-        outmin = INT16_MIN, outmax = INT16_MAX;
-        break;
-      case CV_32S :
-        outmin = INT32_MIN, outmax = INT32_MAX;
-        break;
-      default : /*cv::minMaxLoc(src, &outmin, &outmax); */
-        break;
-      }
-    }
-
     cv::Mat lpass;
-    create_lpass_image(src, lpass, sigma);
+    create_lpass_image(src, lpass, sigma, src.depth(), 1);
     cv::addWeighted(src, 1. / (1. - alpha), lpass, -alpha / (1. - alpha), 0, dst);
   }
 
   if ( outmax > outmin ) {
-    cv::min(dst.getMat(), outmax, dst.getMatRef());
-    cv::max(dst.getMat(), outmin, dst.getMatRef());
+    cv::Mat & dstm = dst.getMatRef();
+    cv::min(dstm, outmax, dstm);
+    cv::max(dstm, outmin, dstm);
   }
 }
 
-
-
-
-template<class TSRC, class TDST>
-static void _unsharp_mask_with_mask(cv::InputArray _src, cv::InputArray srcmask, cv::OutputArray _dst,
+template<class _Tp1, class _Tp2>
+static bool _unsharp_mask_with_mask(cv::InputArray _src, cv::InputArray _srcmask, cv::OutputArray _dst,
     double sigma, double w, double outmin, double outmax)
 {
-#if HAVE_TBB
-  typedef tbb::blocked_range<int> tbb_range;
-#endif
-
   const cv::Mat src = _src.getMat();
-  const cv::Mat1b mask = srcmask.getMat();
 
-  cv::Mat lpass, fmask;
+  cv::Mat bmask, fmask;
+  cv::Mat lpass;
 
-  mask.convertTo(fmask, CV_32F, 1. / 255);
-  src.convertTo(lpass, CV_32F);
-  lpass.setTo(0, ~mask);
+  const int mask_depth = _srcmask.depth();
+  const int mask_cn = _srcmask.channels();
 
-  create_lpass_image(lpass, lpass, sigma);
-  create_lpass_image(fmask, fmask, sigma);
+  if ( mask_cn == 1 ) {
+    if ( mask_depth == CV_8U ) {
+      bmask = _srcmask.getMat();
+    }
+    else {
+      cv::compare(_srcmask, 0, bmask, cv::CMP_GT);
+    }
+  }
+  else {
+    reduce_color_channels(_srcmask, bmask, cv::REDUCE_MIN);
+    if ( mask_depth != CV_8U ) {
+      cv::compare(bmask, 0, bmask, cv::CMP_GT);
+    }
+  }
 
-  _dst.create(src.size(), CV_MAKETYPE(cv::DataType<TDST>::depth, src.channels()));
+  src.copyTo(lpass, bmask);
+  create_lpass_image(lpass, lpass, sigma, CV_32F, 1);
+  create_lpass_image(bmask, fmask, sigma, CV_32F, 1. / 255);
+
+  _dst.create(src.size(), CV_MAKETYPE(cv::DataType<_Tp2>::depth, src.channels()));
   cv::Mat & dst = _dst.getMatRef();
 
-#if HAVE_TBB
-  tbb::parallel_for(tbb_range(0, lpass.rows, 128),
-      [&mask, &fmask, &lpass, &src, &dst, w, outmin, outmax](const tbb_range & range) {
-#endif
-        const double alpha = 1. / (1. - w);
-        const double beta = -w / (1. - w);
-        const int cn = src.channels();
+  parallel_for(0, lpass.rows, [&bmask, &fmask, &lpass, &src, &dst, w, outmin, outmax](const auto & range) {
+    const double alpha = 1. / (1. - w);
+    const double beta = -w / (1. - w);
+    const int cn = src.channels();
 
-#if HAVE_TBB
-        for ( int y = range.begin(), ny = range.end(); y < ny; ++y ) {
-#else
-        for ( int y = 0, ny = lpass.rows; y < ny; ++y ) {
-#endif
-          const float * lpassp = lpass.ptr<float>(y);
-          const float * fmaskp = fmask.ptr<const float>(y);
-          const uint8_t * smaskp = mask[y];
+    for ( int y = rbegin(range), ny = rend(range); y < ny; ++y ) {
+      const float * lpassp = lpass.ptr<float>(y);
+      const float * fmaskp = fmask.ptr<const float>(y);
+      const uint8_t * smaskp = bmask.ptr<const uint8_t>(y);
 
-          const TSRC * srcp = src.ptr<const TSRC>(y);
-          TDST * dstp = dst.ptr<TDST>(y);
+      const _Tp1 * srcp = src.ptr<const _Tp1>(y);
+      _Tp2 * __restrict dstp = dst.ptr<_Tp2>(y);
 
-          for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn, srcp += cn, dstp += cn ) {
-            if ( smaskp[x] ) {
-              for ( int c = 0; c < cn; ++c ) {
-
-                double v = alpha * srcp[c] + beta * (lpassp[c] / fmaskp[x]);
-                if ( outmax > outmin ) {
-                  if ( v < outmin ) {
-                    v = outmin;
-                  }
-                  else if ( v > outmax ) {
-                    v = outmax;
-                  }
-                }
-
-                dstp[c] = (TDST)(v);
-              }
+      if ( !(outmax > outmin) ) {
+        // little faster path
+        for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn, srcp += cn, dstp += cn ) {
+          if ( smaskp[x] ) {
+            for ( int c = 0; c < cn; ++c ) {
+              const double v = alpha * srcp[c] + beta * (lpassp[c] / fmaskp[x]);
+              dstp[c] = cv::saturate_cast<_Tp2>(v);
             }
           }
         }
-#if HAVE_TBB
-      });
-#endif
+      }
+      else {
+        // little slower path with range checks
+        for ( int x = 0, nx = lpass.cols; x < nx; ++x, lpassp += cn, srcp += cn, dstp += cn ) {
+          if ( smaskp[x] ) {
+            for ( int c = 0; c < cn; ++c ) {
+              const double v = std::clamp(alpha * srcp[c] + beta * (lpassp[c] / fmaskp[x]), outmin, outmax);
+              dstp[c] = cv::saturate_cast<_Tp2>(v);
+            }
+          }
+        }
+      }
+    }
+
+  });
+
+  return true;
 }
 
 bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
@@ -201,218 +188,41 @@ bool unsharp_mask(cv::InputArray src, cv::InputArray srcmask,
     src.copyTo(dst);
   }
   else {
-
     const int ddepth = dst.fixedType() ? dst.depth() : src.depth();
-
-    switch ( ddepth ) {
-    case CV_8U :
-      if ( outmax <= outmin ) {
-        outmin = 0, outmax = UINT8_MAX;
-      }
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, uint8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-
-    case CV_8S :
-      if ( outmax <= outmin ) {
-        outmin = -INT8_MIN, outmax = INT8_MAX;
-      }
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, int8_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    case CV_16U :
-      if ( outmax <= outmin ) {
-        outmin = 0, outmax = UINT16_MAX;
-      }
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, uint16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    case CV_16S :
-      if ( outmax <= outmin ) {
-        outmin = INT16_MIN, outmax = INT16_MAX;
-      }
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, int16_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    case CV_32S :
-      if ( outmax <= outmin ) {
-        outmin = INT32_MIN, outmax = INT32_MAX;
-      }
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, int32_t>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    case CV_32F :
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, float>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    case CV_64F :
-      switch ( src.depth() ) {
-      case CV_8U :
-        _unsharp_mask_with_mask<uint8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_8S :
-        _unsharp_mask_with_mask<int8_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16U :
-        _unsharp_mask_with_mask<uint16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_16S :
-        _unsharp_mask_with_mask<int16_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32S :
-        _unsharp_mask_with_mask<int32_t, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_32F :
-        _unsharp_mask_with_mask<float, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      case CV_64F :
-        _unsharp_mask_with_mask<double, double>(src, srcmask, dst, sigma, alpha, outmin, outmax);
-        break;
-      }
-      break;
-    default : /*cv::minMaxLoc(src, &outmin, &outmax); */
-      CF_ERROR("Unsupported pixel depth encountered: ddepth=%d", ddepth);
-      return false;
-    }
+    CV_DISPATCH2(src.depth(), ddepth, _unsharp_mask_with_mask, src, srcmask, dst, sigma, alpha, outmin, outmax);
+    CF_ERROR("Unsupported pixel depth encountered: ddepth=%d", ddepth);
+    return false;
   }
 
   return true;
 }
 
 
-double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
+double hpass_norm(cv::InputArray src, double sigma, cv::InputArray _mask,
     enum cv::NormTypes normType)
 {
   static const thread_local cv::Mat1f G =
       cv::getGaussianKernel(5, sigma, CV_32F);
 
   cv::Mat lpass;
+  cv::Mat mask;
+
+  if( !_mask.empty() ) {
+    if( _mask.channels() == 1 ) {
+      if( _mask.depth() == CV_8U ) {
+        mask = _mask.getMat();
+      }
+      else {
+        cv::compare(_mask, 0, mask, cv::CMP_GT);
+      }
+    }
+    else {
+      reduce_color_channels(_mask, mask, cv::REDUCE_MIN);
+      if( mask.depth() != CV_8U ) {
+        cv::compare(mask, 0, mask, cv::CMP_GT);
+      }
+    }
+  }
 
   cv::sepFilter2D(src, lpass,
       src.depth(),
@@ -447,12 +257,6 @@ double hpass_norm(cv::InputArray src, double sigma, cv::InputArray mask,
       break;
   }
 
-//  if( mask.size() == src.size() ) {
-//    v /= cv::countNonZero(mask);
-//  }
-//  else {
-//    v /= src.size().area();
-//  }
-
   return v;
 }
+

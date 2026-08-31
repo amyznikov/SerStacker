@@ -19,19 +19,6 @@ const c_enum_member * members_of<c_lunar_birdview3_routine::MapProjection>()
   return members;
 }
 
-//template<>
-//const c_enum_member * members_of<c_lunar_birdview3_routine::ResizeMode>()
-//{
-//  static const c_enum_member members[] = {
-//      {c_lunar_birdview3_routine::ResizeModeKeep, "KEEP", ""},
-//      {c_lunar_birdview3_routine::ResizeModeAdjust, "ADJUST", ""},
-//      {c_lunar_birdview3_routine::ResizeModeCropVisible, "CropVisible", ""},
-//      {c_lunar_birdview3_routine::ResizeModeCropVisible},
-//  };
-//
-//  return members;
-//}
-
 namespace {
 using MapProjection = c_lunar_birdview3_routine::MapProjection;
 // using ResizeMode = c_lunar_birdview3_routine::ResizeMode;
@@ -44,9 +31,9 @@ struct c_lunar_birdview3_options
   double b = 0;             // Libration in latitude [deg]
   MapProjection projection = c_lunar_birdview3_routine::MapStereographic;
   //ResizeMode resizeMode = c_lunar_birdview3_routine::ResizeModeAdjust;
-  int interpolation = cv::INTER_LANCZOS4;
-  int borderMode = cv::BORDER_CONSTANT;
-  cv::Scalar borderValue;
+  //  int interpolation = cv::INTER_LANCZOS4;
+  //  int borderMode = cv::BORDER_CONSTANT;
+  //  cv::Scalar borderValue;
 };
 
 static bool createMoonRemapThreePoints(const c_lunar_birdview3_options & opts,
@@ -235,6 +222,7 @@ void c_lunar_birdview3_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "Libr. b [deg]:", ctx(&this_class::_b), "Libration in Latitude in degreed");
   // ctlbind(ctls, "Resize mode", ctx(&this_class::_resizeMode), "Don't crop bounding box");
   ctlbind(ctls, "interpolation", ctx(&this_class::_interpolation), "");
+  ctlbind(ctls, "mask_interpolation", ctx(&this_class::_mask_interpolation), "");
   ctlbind(ctls, "border mode", ctx(&this_class::_borderMode), "");
   ctlbind(ctls, "border value", ctx(&this_class::_borderValue), "");
 
@@ -254,6 +242,7 @@ bool c_lunar_birdview3_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _projection);
     //  SERIALIZE_OPTION(settings, save, *this, _resizeMode);
     SERIALIZE_OPTION(settings, save, *this, _interpolation);
+    SERIALIZE_OPTION(settings, save, *this, _mask_interpolation);
     SERIALIZE_OPTION(settings, save, *this, _borderMode);
     SERIALIZE_OPTION(settings, save, *this, _borderValue);
 
@@ -279,9 +268,9 @@ bool c_lunar_birdview3_routine::process(cv::InputOutputArray image, cv::InputOut
   opts.b = _b;             // Libration in latitude [deg]
   opts.projection = _projection;
   // opts.resizeMode = c_lunar_birdview3_routine::ResizeModeAdjust;
-  opts.interpolation = _interpolation;
-  opts.borderMode = _borderMode;
-  opts.borderValue = _borderValue;
+  // opts.interpolation = _interpolation;
+  // opts.borderMode = _borderMode;
+  // opts.borderValue = _borderValue;
 
   cv::Size dst_size = src_size * 2;
 
@@ -308,11 +297,25 @@ bool c_lunar_birdview3_routine::process(cv::InputOutputArray image, cv::InputOut
   }
 
   cv::remap(image, image, rmap, cv::noArray(), _interpolation, _borderMode, _borderValue);
-  if( !mask.empty() ) {
-    cv::remap(mask, mask, rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-  }
-  else {
-    cv::remap(cv::Mat1b(src_size, 255), mask, rmap, cv::noArray(), cv::INTER_NEAREST, cv::BORDER_CONSTANT);
+
+  if ( mask.needed() ) {
+    const int mask_depth = mask.empty() ? CV_8U : mask.depth();
+
+    if ( mask_depth != CV_8U ) {
+      cv::remap(mask, mask, rmap, cv::noArray(), _mask_interpolation, cv::BORDER_CONSTANT, 0);
+    }
+    else if ( !mask.empty() ) {
+      cv::remap(mask, mask, rmap, cv::noArray(), _mask_interpolation, cv::BORDER_CONSTANT, 0);
+      if (_mask_interpolation != cv::INTER_NEAREST) {
+        cv::compare(mask, 250, mask, cv::CMP_GE);
+      }
+    }
+    else {
+      cv::remap(cv::Mat1b(src_size, uint8_t(255)), mask, rmap, cv::noArray(), _mask_interpolation, cv::BORDER_CONSTANT, 0);
+      if (_mask_interpolation != cv::INTER_NEAREST) {
+        cv::compare(mask, 250, mask, cv::CMP_GE);
+      }
+    }
   }
 
   return true;

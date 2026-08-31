@@ -137,4 +137,36 @@ const char * pixtype2str(int ddepth);
       break;\
   }
 
+/*
+ * Helper utility to map OpenCV depth to a real C++ data type
+ *
+ * Use like that:
+ *
+ *  const bool success =
+ *       cv_dispatch_helper(src1.depth(), [&](auto t1) {
+ *         using T1 = std::remove_pointer_t<decltype(t1)>;
+ *         return cv_dispatch_helper(src2.depth(), [&](auto t2) {
+ *           using T2 = std::remove_pointer_t<decltype(t2)>;
+ *           return cv_dispatch_helper(ddepth, [&](auto t3) {
+ *             using T3 = std::remove_pointer_t<decltype(t3)>;
+ *             return _divideImages<T1, T2, T3>(src1, src2, dst, eps);
+ *           });
+ *         });
+ *       });
+ *
+ */
+template<typename F, typename... Args>
+static inline bool cv_dispatch_helper(int depth, F&& f, Args&&... args) {
+  switch (depth) {
+    case CV_8U:  return f((uint8_t*)nullptr, std::forward<Args>(args)...);
+    case CV_8S:  return f((int8_t*)nullptr, std::forward<Args>(args)...);
+    case CV_16U: return f((uint16_t*)nullptr, std::forward<Args>(args)...);
+    case CV_16S: return f((int16_t*)nullptr, std::forward<Args>(args)...);
+    case CV_32S: return f((int32_t*)nullptr, std::forward<Args>(args)...);
+    case CV_32F: return f((float*)nullptr, std::forward<Args>(args)...);
+    case CV_64F: return f((double*)nullptr, std::forward<Args>(args)...);
+    default:     return false;
+  }
+}
+
 #endif /* __pixtype_h__ */

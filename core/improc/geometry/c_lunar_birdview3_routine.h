@@ -41,6 +41,7 @@ protected:
   double _l = 0;             // Libration in longitude [deg]
   MapProjection _projection = MapStereographic;
   cv::InterpolationFlags _interpolation = cv::INTER_LANCZOS4;
+  cv::InterpolationFlags _mask_interpolation = cv::INTER_LINEAR;
   cv::BorderTypes _borderMode = cv::BORDER_CONSTANT;
   cv::Scalar _borderValue;
 };

@@ -41,9 +41,9 @@ bool c_image_input_source::read(c_data_frame::sptr & output_frame)
   }
 
   // FIXME: This is temporary hack until all mask receivers will fixed to support analog masks
-  if ( !f->_input_mask.empty() && f->_input_mask.depth() != CV_8U ) {
-    cv::compare(f->_input_mask, cv::Scalar::all(0), f->_input_mask, cv::CMP_NE);
-  }
+//  if ( !f->_input_mask.empty() && f->_input_mask.depth() != CV_8U ) {
+//    cv::compare(f->_input_mask, cv::Scalar::all(0), f->_input_mask, cv::CMP_NE);
+//  }
 
   if( (f->_has_color_matrix = has_color_matrix()) ) {
     f->_color_matrix = color_matrix();

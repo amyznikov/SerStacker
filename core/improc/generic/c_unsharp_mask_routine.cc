@@ -57,7 +57,7 @@ bool c_unsharp_mask_routine::serialize(c_config_setting settings, bool save)
 bool c_unsharp_mask_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   if( _channel == COLOR_CHANNEL_ALL || image.channels() < 2 ) {
-    return unsharp_mask(image, (_ignore_mask || mask.empty()) ? cv::noArray() : mask, image,
+    return unsharp_mask(image.getMat(), (_ignore_mask || mask.empty()) ? cv::noArray() : mask.getMat(), image,
         _sigma, _alpha, _outmin, _outmax);
   }
 

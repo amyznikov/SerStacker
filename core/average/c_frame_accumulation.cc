@@ -430,7 +430,13 @@ bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
   }
 
   if ( mask.needed() ) {
-    cv::compare(_weights(bbox), 0, mask, cv::CMP_GT);
+
+    if ( mask.fixedType() && mask.depth() == CV_32F ) {
+      _weights(bbox).copyTo(mask);
+    }
+    else {
+      cv::compare(_weights(bbox), 0, mask, cv::CMP_GT);
+    }
   }
 
   return true;

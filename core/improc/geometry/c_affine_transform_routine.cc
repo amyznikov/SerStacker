@@ -104,6 +104,7 @@ void c_affine_transform_routine::getcontrols(c_control_list & ctls, const ctlbin
    ctlbind(ctls, "scale", ctx, &this_class::scale, &this_class::set_scale, "image scale");
    ctlbind(ctls, "resize_mode", ctx, &this_class::resize_mode, &this_class::set_resize_mode, "resize mode");
    ctlbind(ctls, "interpolation", ctx, &this_class::interpolation, &this_class::set_interpolation, "interpolation");
+   ctlbind(ctls, "mask_interpolation",CTL_CONTEXT(ctx, _mask_interpolation), "mask interpolation");
    ctlbind(ctls, "border_type", ctx, &this_class::border_type, &this_class::set_border_type, "border_type");
    ctlbind(ctls, "border_value", ctx, &this_class::border_value, &this_class::set_border_value, "border_value");
 }
@@ -115,6 +116,7 @@ bool c_affine_transform_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_PROPERTY(settings, save, *this, translation);
     SERIALIZE_PROPERTY(settings, save, *this, scale);
     SERIALIZE_PROPERTY(settings, save, *this, interpolation);
+    SERIALIZE_OPTION(settings, save, *this, _mask_interpolation);
     SERIALIZE_PROPERTY(settings, save, *this, border_type);
     SERIALIZE_PROPERTY(settings, save, *this, border_value);
     SERIALIZE_PROPERTY(settings, save, *this, resize_mode);
@@ -140,38 +142,96 @@ bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOu
       }
 
       if ( !image.empty() ) {
-        cv::remap(image.getMat(), image,
-            _remap, cv::noArray(),
-            _interpolation,
-            _border_type,
-            _border_value);
+        cv::remap(image, image, _remap, cv::noArray(), _interpolation, _border_type, _border_value);
       }
-
 
       if ( mask.needed() ) {
 
-        if ( !mask.empty() ) {
-          cv::remap(mask.getMat(), mask,
-              _remap, cv::noArray(),
-              cv::INTER_AREA,
-              cv::BORDER_CONSTANT);
+        const int mask_depth = mask.empty() ? CV_8U : mask.depth();
+        const int mask_interp = _mask_interpolation;
 
+        if( mask_depth != CV_8U ) {
+          cv::remap(mask, mask, _remap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, 0);
+        }
+        else if ( !mask.empty() ) {
+          cv::remap(mask, mask, _remap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, 0);
+          if( mask_interp != cv::INTER_NEAREST ) {
+            cv::compare(mask, 250, mask, cv::CMP_GT);
+          }
         }
         else {
-          cv::remap(cv::Mat1b(_previous_image_size, 255), mask,
-              _remap, cv::noArray(),
-              cv::INTER_AREA,
-              cv::BORDER_CONSTANT);
-        }
 
-        cv::compare(mask.getMat(), 250, mask,
-            cv::CMP_GE);
+          if ( _dummy_mask.size() != _previous_image_size ) {
+            _dummy_mask = cv::Mat1b(_previous_image_size, uint8_t(255));
+          }
+
+          cv::remap(_dummy_mask, mask,
+              _remap, cv::noArray(),
+              mask_interp,
+              cv::BORDER_CONSTANT,
+              0);
+
+          if( mask_interp != cv::INTER_NEAREST ) {
+            cv::compare(mask, 250, mask, cv::CMP_GT);
+          }
+        }
       }
     }
   }
 
   return true;
 }
+
+//
+//bool c_affine_transform_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
+//{
+//  if( !image.empty() || !mask.empty() ) {
+//
+//    if( _rotation || _translation.x || _translation.y || _scale.width != 1 || _scale.height != 1 ) {
+//
+//      if( _remap.empty() || _previous_image_size != image.size() ) {
+//
+//        _previous_image_size = image.size();
+//
+//        if ( !create_transformation_remap(_remap, image.size(), _rotation, _translation, _scale, _resize_mode) ) {
+//          CF_ERROR("c_image_transform_routine: create_transformation_remap() fails");
+//          return false;
+//        }
+//      }
+//
+//      if ( !image.empty() ) {
+//        cv::remap(image.getMat(), image,
+//            _remap, cv::noArray(),
+//            _interpolation,
+//            _border_type,
+//            _border_value);
+//      }
+//
+//
+//      if ( mask.needed() ) {
+//
+//        if ( !mask.empty() ) {
+//          cv::remap(mask.getMat(), mask,
+//              _remap, cv::noArray(),
+//              cv::INTER_AREA,
+//              cv::BORDER_CONSTANT);
+//
+//        }
+//        else {
+//          cv::remap(cv::Mat1b(_previous_image_size, 255), mask,
+//              _remap, cv::noArray(),
+//              cv::INTER_AREA,
+//              cv::BORDER_CONSTANT);
+//        }
+//
+//        cv::compare(mask.getMat(), 250, mask,
+//            cv::CMP_GE);
+//      }
+//    }
+//  }
+//
+//  return true;
+//}
 
 static cv::Matx23f build_forward_transformation_matrix(const cv::Point2f & src_center,
     double rotation,
@@ -184,17 +244,10 @@ static cv::Matx23f build_forward_transformation_matrix(const cv::Point2f & src_c
   double sa, ca;
   sincos(-rotation, &sa, &ca);
 
-  const cv::Matx22f S(scale.width, 0,
-      0, scale.height);
-
-  const cv::Matx22f R(ca, sa,
-      -sa, ca);
-
-  const cv::Matx22f SR =
-      S * R;
-
-  const cv::Vec2f T =
-      - S * (R * cv::Vec2f(src_center) - cv::Vec2f(src_center));
+  const cv::Matx22f S(scale.width, 0, 0, scale.height);
+  const cv::Matx22f R(ca, sa, -sa, ca);
+  const cv::Matx22f SR = S * R;
+  const cv::Vec2f T = - S * (R * cv::Vec2f(src_center) - cv::Vec2f(src_center));
 
   return cv::Matx23f(
       SR(0, 0), SR(0, 1), T(0),

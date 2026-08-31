@@ -106,8 +106,12 @@ public:
   /// @brief get frame size in bytes based on image width x height x bytes_per_pixel
   int frame_size() const;
 
+  /// @brief Read-Only access to mask type
+  int mask_type() const;
+
   /// @brief Read-Only access to file header.frames_count field
   int num_frames() const;
+
 
   /// @brief Read-Only access to frame timestamps array
   const std::vector<uint64_t> & timestamps() const;
@@ -122,6 +126,7 @@ protected:
 
   c_ser_file::file_header _header;
   std::vector<uint64_t> _timestamps;
+  int _mask_type = -1;
 
 protected:
   static_assert(sizeof(enum COLORID) == sizeof(int32_t), "enum COLORID must have size 32 bits");
@@ -153,7 +158,7 @@ public:
   /// @brief read()
   /// Read next image from current read position,
   /// advance current position to next frame
-  bool read(cv::OutputArray image);
+  bool read(cv::OutputArray image, cv::OutputArray output_mask = cv::noArray());
 
   /// @brief curpos()
   //  Return current frame read position
@@ -189,7 +194,7 @@ public:
   /// @brief create()
   /// Create new empty SER file with specified frame dimension and pixel format
   bool create(const std::string & filename, int image_width, int image_height,
-      enum COLORID color_id, int bits_per_plane);
+      enum COLORID color_id, int bits_per_plane, int maskType = -1);
 
   /// @brief is_open()
   /// Return true if file still open and next frame can be written into
@@ -198,7 +203,7 @@ public:
   /// @brief write()
   /// Write OpenCV image into SER file.
   /// Only basic checks are make: image dimension and byte size.
-  bool write(cv::InputArray image, uint64_t ts = UINT64_MAX);
+  bool write(cv::InputArray image, cv::InputArray mask, uint64_t ts = UINT64_MAX);
 
   /// @brief flush()
   /// Flush IO buffers immediately
@@ -210,6 +215,7 @@ public:
 
 protected:
   c_file_handle _fd;  // file descriptor
+  cv::Mat _dummy_mask;
 };
 
 #endif /* __c_ser_file_h__ */

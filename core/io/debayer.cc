@@ -27,7 +27,8 @@ const c_enum_member* members_of<COLORID>()
       { COLORID_BAYER_MYYC, "BAYER_MYYC", "" },
       { COLORID_RGB, "RGB", "" },
       { COLORID_BGR, "BGR", "" },
-      { COLORID_BGRA, "BGRA", "" },
+      { COLORID_BGRA, "BGRA", "BGR + Binary Mask" },
+      // { COLORID_BGRW, "BGRW", "BGR + Analog Mask" },
       { COLORID_OPTFLOW, "OPTFLOW", "" },
       { COLORID_UNKNOWN },
   };

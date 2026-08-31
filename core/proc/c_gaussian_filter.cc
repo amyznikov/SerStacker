@@ -6,6 +6,8 @@
  */
 
 #include "c_gaussian_filter.h"
+#include <core/proc/divide.h>
+#include <core/proc/reduce_channels.h>
 #include <core/debug.h>
 
 c_gaussian_filter::c_gaussian_filter()
@@ -85,43 +87,52 @@ void c_gaussian_filter::apply(cv::InputArray _src, cv::InputArray _mask, cv::Out
     return;
   }
 
-  if ( _mask.empty() || cv::countNonZero(_mask) == _mask.size().area() ) {
-
+  if ( _mask.empty() ) {
     cv::sepFilter2D(_src, _dst,
         ddepth,
         _scale * _Kx, _Ky,
         cv::Point(-1, -1),
         0,
         borderType);
-
     return;
   }
 
-  cv::Mat gsrc, gmask;
+  cv::Mat src, gsrc;
+  cv::Mat mask, gmask;
 
-  cv::sepFilter2D(_src, gsrc,
+  if ( _mask.channels() == 1 ) {
+    if ( _mask.depth() == CV_8U ) {
+      mask = _mask.getMat();
+    }
+    else {
+      cv::compare(_mask, 0, mask, cv::CMP_GT);
+    }
+  }
+  else {
+    reduce_color_channels(_mask, mask, cv::REDUCE_MIN);
+    if ( mask.depth() != CV_8U ) {
+      cv::compare(mask, 0, mask, cv::CMP_GT);
+    }
+  }
+
+  _src.getMat().copyTo(src, mask);
+
+  cv::sepFilter2D(src, gsrc,
       CV_32F,
       _scale * _Kx, _Ky,
       cv::Point(-1, -1),
       0,
       borderType);
 
-  cv::sepFilter2D(_mask, gmask,
+  cv::sepFilter2D(mask, gmask,
       CV_32F,
-      (1.0 / 255) * _Kx, _Ky,
+      (1.0 / 255.0) * _Kx, _Ky,
       cv::Point(-1, -1),
       0,
       borderType);
 
-  if( gsrc.channels() != gmask.channels() ) {
-    cv::merge(std::vector<cv::Mat>(gsrc.channels(), gmask), gmask);
-  }
-
-  cv::divide(gsrc, gmask, _dst, 1, ddepth);
-  cv::compare(gmask, cv::Scalar::all(1e-5), gmask, cv::CMP_LE);
-  _dst.setTo(0, gmask);
+    divideImages(gsrc, gmask, _dst, 1e-5, ddepth);
 }
-
 
 void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
     const cv::Size2f & sigma, const cv::Size & _ksize,
@@ -134,18 +145,14 @@ void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray 
   const c_gaussian_filter G(sigma.width, sigma.height, _ksize, scale);
   const cv::Size ksize = G.ksize();
   const cv::Size srcSize = _src.size();
+
   const int ddepth = _dst.fixedType() ? _dst.depth() : std::max(_src.depth(), CV_32F);
 
   int borderx = 0, bordery = 0;
 
   if( borderType != cv::BORDER_WRAP && borderType != cv::BORDER_TRANSPARENT ) {
-    if( _mask.empty() ) {
-      src = _src.getMat();
-    }
-    else {
-      mask = _mask.getMat();
-      _src.getMat().copyTo(src, mask);
-    }
+    src = _src.getMat();
+    mask = _mask.getMat();
   }
   else {
     borderx = ksize.width > 1 ? ksize.width / 2 : 0;
@@ -153,10 +160,10 @@ void gaussian_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray 
     cv::copyMakeBorder(_src, src, bordery, bordery, borderx, borderx, borderType, borderValue);
     if( !_mask.empty() ) {
       cv::copyMakeBorder(_mask, mask, bordery, bordery, borderx, borderx, cv::BORDER_REPLICATE);
-      src.setTo(0, ~mask);
     }
     borderType = cv::BORDER_DEFAULT;
   }
+
 
   G.apply(src, mask, blured, borderType, ddepth);
 
@@ -189,18 +196,14 @@ void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::Output
   const c_gaussian_filter G(sigma.width, sigma.height, _ksize, scale);
   const cv::Size ksize = G.ksize();
   const cv::Size srcSize = _src.size();
+
   const int ddepth = _dst.fixedType() ? _dst.depth() : std::max(_src.depth(), CV_32F);
 
   int borderx = 0, bordery = 0;
 
   if( borderType != cv::BORDER_WRAP ) {
-    if( _mask.empty() ) {
-      src = _src.getMat();
-    }
-    else {
-      mask = _mask.getMat();
-      _src.getMat().copyTo(src, mask);
-    }
+    src = _src.getMat();
+    mask = _mask.getMat();
   }
   else {
     borderx = ksize.width > 1 ? ksize.width / 2 : 0;
@@ -208,13 +211,13 @@ void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::Output
     cv::copyMakeBorder(_src, src, bordery, bordery, borderx, borderx, borderType, borderValue);
     if( !_mask.empty() ) {
       cv::copyMakeBorder(_mask, mask, bordery, bordery, borderx, borderx, cv::BORDER_REPLICATE);
-      src.setTo(0, ~mask);
     }
     borderType = cv::BORDER_DEFAULT;
   }
 
   G.apply(src, mask, blured, borderType, ddepth);
   cv::subtract(src, blured, filtered);
+
   if( delta != 0 ) {
     cv::add(filtered, cv::Scalar::all(delta), filtered);
   }
@@ -226,3 +229,52 @@ void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::Output
     filtered(cv::Rect(borderx, bordery, srcSize.width, srcSize.height)).copyTo(_dst);
   }
 }
+
+//void gaussian_hpass_filter(cv::InputArray _src, cv::InputArray _mask, cv::OutputArray _dst,
+//    const cv::Size2f & sigma, const cv::Size & _ksize,
+//    double scale, double delta,
+//    cv::BorderTypes borderType,
+//    const cv::Scalar & borderValue)
+//{
+//  cv::Mat src, mask, blured, filtered;
+//
+//  const c_gaussian_filter G(sigma.width, sigma.height, _ksize, scale);
+//  const cv::Size ksize = G.ksize();
+//  const cv::Size srcSize = _src.size();
+//  const int ddepth = _dst.fixedType() ? _dst.depth() : std::max(_src.depth(), CV_32F);
+//
+//  int borderx = 0, bordery = 0;
+//
+//  if( borderType != cv::BORDER_WRAP ) {
+//    if( _mask.empty() ) {
+//      src = _src.getMat();
+//    }
+//    else {
+//      mask = _mask.getMat();
+//      _src.getMat().copyTo(src, mask);
+//    }
+//  }
+//  else {
+//    borderx = ksize.width > 1 ? ksize.width / 2 : 0;
+//    bordery = ksize.height > 1 ? ksize.height / 2 : 0;
+//    cv::copyMakeBorder(_src, src, bordery, bordery, borderx, borderx, borderType, borderValue);
+//    if( !_mask.empty() ) {
+//      cv::copyMakeBorder(_mask, mask, bordery, bordery, borderx, borderx, cv::BORDER_REPLICATE);
+//      src.setTo(0, ~mask);
+//    }
+//    borderType = cv::BORDER_DEFAULT;
+//  }
+//
+//  G.apply(src, mask, blured, borderType, ddepth);
+//  cv::subtract(src, blured, filtered);
+//  if( delta != 0 ) {
+//    cv::add(filtered, cv::Scalar::all(delta), filtered);
+//  }
+//
+//  if( borderx < 1 && bordery < 1 ) {
+//    _dst.assign(filtered);
+//  }
+//  else {
+//    filtered(cv::Rect(borderx, bordery, srcSize.width, srcSize.height)).copyTo(_dst);
+//  }
+//}

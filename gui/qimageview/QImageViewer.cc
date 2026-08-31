@@ -306,6 +306,89 @@ void QImageViewer::updateDisplay()
   }
 }
 
+//void QImageViewer::createDisplayImage()
+//{
+//  if ( _currentDisplayType == DisplayMask ) {
+//    _currentMask.copyTo(_displayImage);
+//  }
+//  else {
+//
+//    if( true ) {
+//      current_image_lock lock(this);
+//
+//      if( _currentImage.empty() ) {
+//        _displayImage.release();
+//      }
+//      else {
+//        if( !_displayFunction ) {
+//          _currentImage.copyTo(_displayImage);
+//        }
+//        else if( _currentImage.channels() == 2 ) { // assume this is optical flow image
+//
+//          _displayFunction->createDisplayImage(_currentImage,
+//              _transparentMask ? cv::noArray() : _currentMask,
+//              _mtfImage,
+//              _displayImage,
+//              _currentImage.depth());
+//        }
+//        else {
+//          cv::Mat mask;
+//          if( !_transparentMask ) {
+//            if( _currentMask.channels() == 1 || _currentImage.channels() == _currentMask.channels() ) {
+//              mask = _currentMask;
+//            }
+//            else {
+//              reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+//            }
+//          }
+//
+//          _displayFunction->createDisplayImage(_currentImage,
+//              mask,
+//              _mtfImage,
+//              _displayImage,
+//              CV_8U);
+//        }
+//      }
+//    }
+//
+//    if( _currentDisplayType == DisplayBlend && !_displayImage.empty() && !_currentMask.empty() ) {
+//
+//      cv::Mat mask;
+//
+//      if( _displayImage.channels() == _currentMask.channels() ) {
+//        mask = _currentMask;
+//      }
+//      else if( _currentMask.channels() == 1 ) {
+//
+//        const int cn = _displayImage.channels();
+//        cv::Mat channels[cn];
+//        for( int i = 0; i < cn; ++i ) {
+//          channels[i] = _currentMask;
+//        }
+//        cv::merge(channels, cn, mask);
+//      }
+//      else {
+//        reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+//
+//        const int cn = _displayImage.channels();
+//        cv::Mat channels[cn];
+//        for( int i = 0; i < cn; ++i ) {
+//          channels[i] = mask;
+//        }
+//        cv::merge(channels, cn, mask);
+//      }
+//
+//      cv::addWeighted(_displayImage, _maskBlendAlpha,
+//          mask, 1 - _maskBlendAlpha,
+//          0,
+//          _displayImage,
+//          _displayImage.depth());
+//    }
+//  }
+//
+//  Q_EMIT displayImageChanged();
+//}
+
 void QImageViewer::createDisplayImage()
 {
   if ( _currentDisplayType == DisplayMask ) {
@@ -320,13 +403,25 @@ void QImageViewer::createDisplayImage()
         _displayImage.release();
       }
       else {
+        cv::Mat visualMask;
+        if (!_currentMask.empty() && !_transparentMask) {
+          if (_currentMask.type() == CV_8UC1 || _currentMask.type() == CV_8UC3) {
+            visualMask = _currentMask;
+          }
+          else {
+            cv::compare(_currentMask, 0, visualMask, cv::CMP_GT);
+          }
+        }
+
+        // --------------------------------------------------------
+
         if( !_displayFunction ) {
           _currentImage.copyTo(_displayImage);
         }
         else if( _currentImage.channels() == 2 ) { // assume this is optical flow image
 
           _displayFunction->createDisplayImage(_currentImage,
-              _transparentMask ? cv::noArray() : _currentMask,
+              _transparentMask ? cv::noArray() : visualMask,
               _mtfImage,
               _displayImage,
               _currentImage.depth());
@@ -334,11 +429,11 @@ void QImageViewer::createDisplayImage()
         else {
           cv::Mat mask;
           if( !_transparentMask ) {
-            if( _currentMask.channels() == 1 || _currentImage.channels() == _currentMask.channels() ) {
-              mask = _currentMask;
+            if( visualMask.channels() == 1 || _currentImage.channels() == visualMask.channels() ) {
+              mask = visualMask;
             }
             else {
-              reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+              reduce_color_channels(visualMask, mask, cv::REDUCE_MAX);
             }
           }
 
@@ -354,21 +449,25 @@ void QImageViewer::createDisplayImage()
     if( _currentDisplayType == DisplayBlend && !_displayImage.empty() && !_currentMask.empty() ) {
 
       cv::Mat mask;
-
-      if( _displayImage.channels() == _currentMask.channels() ) {
-        mask = _currentMask;
+      cv::Mat blendMaskSource = _currentMask;
+      if (_currentMask.depth() != CV_8U) {
+        cv::compare(_currentMask, 0, blendMaskSource, cv::CMP_GT);
       }
-      else if( _currentMask.channels() == 1 ) {
+
+      if( _displayImage.channels() == blendMaskSource.channels() ) {
+        mask = blendMaskSource;
+      }
+      else if( blendMaskSource.channels() == 1 ) {
 
         const int cn = _displayImage.channels();
         cv::Mat channels[cn];
         for( int i = 0; i < cn; ++i ) {
-          channels[i] = _currentMask;
+          channels[i] = blendMaskSource;
         }
         cv::merge(channels, cn, mask);
       }
       else {
-        reduce_color_channels(_currentMask, mask, cv::REDUCE_MAX);
+        reduce_color_channels(blendMaskSource, mask, cv::REDUCE_MAX);
 
         const int cn = _displayImage.channels();
         cv::Mat channels[cn];

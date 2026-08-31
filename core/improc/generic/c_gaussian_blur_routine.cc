@@ -7,7 +7,6 @@
 
 #include "c_gaussian_blur_routine.h"
 
-
 template<>
 const c_enum_member* members_of<c_gaussian_blur_routine::StereoMode>()
 {

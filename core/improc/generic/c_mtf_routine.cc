@@ -50,7 +50,7 @@ void c_mtf_routine::getcontrols(c_control_list & ctls, const ctlbind_context & c
 bool c_mtf_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   c_mtf_options opts;
-  double imin, imax, omin, omax;
+  double imin = 0, imax = 1, omin, omax;
 
   opts.lclip = lclip;
   opts.hclip = hclip;
@@ -62,7 +62,7 @@ bool c_mtf_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
     imin = inputRange[0], imax = inputRange[1];
   }
   else {
-    cv::minMaxLoc(image, &imin, &imax);
+    cv::minMaxLoc(image, &imin, &imax, nullptr, nullptr, mask);
   }
 
   if( (outputRange[1] > outputRange[0]) ) {
@@ -76,6 +76,6 @@ bool c_mtf_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
   mtf.set_output_range(omin, omax);
   mtf.set_opts(opts);
 
-  return mtf.apply(image.getMat(), image);
+  return mtf.apply(image, image);
 }
 

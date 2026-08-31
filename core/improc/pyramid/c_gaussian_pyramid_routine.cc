@@ -21,36 +21,6 @@ const c_enum_member* members_of<c_gaussian_pyramid_routine::SharpenOrder>()
   return members;
 }
 
-
-// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
-//static void compute_laplacian(cv::InputArray src, cv::OutputArray l/*, double alpha, double delta = 0*/)
-//{
-////  static float k[5 * 5] = {
-////      0, 0, -1, 0, 0,
-////      0, -1, -2, -1, 0,
-////      -1, -2, 16, -2, -1,
-////      0, -1, -2, -1, 0,
-////      0, 0, -1, 0, 0,
-////  };
-////
-////  const cv::Mat1f K =
-////      cv::Mat1f(5, 5, k) * alpha / 16.;
-//
-////  static float k[3 * 3] = {
-////      -1,  -4, -1,
-////      -4,  20, -4,
-////      -1,  -4, -1,
-////  };
-////
-////  const cv::Mat1f K =
-////      cv::Mat1f(3, 3, k) * (alpha / 20.);
-////
-////  cv::filter2D(src, l, -1, K, cv::Point(-1, -1), delta,
-////      cv::BORDER_REPLICATE);
-//
-//}
-
-
 static void sharpen_image(cv::InputArray src, cv::OutputArray dst, double alpha, double omin, double omax)
 {
   cv::Mat m;
@@ -96,7 +66,7 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
 
     if ( _sharpen_order == SharpenBefore && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, _sharpen_amount,
+      sharpen_image(image, image, _sharpen_amount,
           _sharpen_outmin,
           _sharpen_outmax);
     }
@@ -106,22 +76,22 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
 
       if( _sharpen_order == SharpenEachIteration && _sharpen_amount != 0 ) {
 
-        sharpen_image(image.getMat(), image, _sharpen_amount,
+        sharpen_image(image, image, _sharpen_amount,
             _sharpen_outmin,
             _sharpen_outmax);
 
       }
 
-      cv::pyrDown(image.getMat(), image, cv::Size(), _borderType);
+      cv::pyrDown(image, image, cv::Size(), _borderType);
 
       if( !trivialMask ) {
-        cv::pyrDown(mask.getMat(), mask, cv::Size(), _borderType);
+        cv::pyrDown(mask, mask, cv::Size(), _borderType);
       }
     }
 
     if ( _sharpen_order == SharpenAfter && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, _sharpen_amount,
+      sharpen_image(image, image, _sharpen_amount,
           _sharpen_outmin,
           _sharpen_outmax);
     }
@@ -144,7 +114,7 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
 
     if ( _sharpen_order == SharpenBefore && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, _sharpen_amount,
+      sharpen_image(image, image, _sharpen_amount,
           _sharpen_outmin,
           _sharpen_outmax);
 
@@ -154,7 +124,7 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
 
       if( _sharpen_order == SharpenEachIteration && _sharpen_amount != 0 ) {
 
-        sharpen_image(image.getMat(), image, _sharpen_amount,
+        sharpen_image(image, image, _sharpen_amount,
             _sharpen_outmin,
             _sharpen_outmax);
 
@@ -163,14 +133,14 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
       cv::pyrUp(image.getMat(), image, cv::Size(), _borderType);
 
       if( !trivialMask ) {
-        cv::pyrUp(mask.getMat(), mask, cv::Size(), _borderType);
+        cv::pyrUp(mask, mask, cv::Size(), _borderType);
       }
 
     }
 
     if ( _sharpen_order == SharpenAfter && _sharpen_amount != 0 ) {
 
-      sharpen_image(image.getMat(), image, _sharpen_amount,
+      sharpen_image(image, image, _sharpen_amount,
           _sharpen_outmin,
           _sharpen_outmax);
 
@@ -179,10 +149,10 @@ bool c_gaussian_pyramid_routine::process(cv::InputOutputArray image, cv::InputOu
     if( !mask.empty() ) {
 
       if( !trivialMask ) {
-        cv::compare(mask.getMat(), 255, mask, cv::CMP_GE);
+        cv::compare(mask, 255, mask, cv::CMP_GE);
       }
       else {
-        cv::resize(mask.getMat(), mask, image.size(), 0, 0, cv::INTER_NEAREST);
+        cv::resize(mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
       }
     }
   }

@@ -159,9 +159,7 @@ bool c_output_frame_writer::open(const std::string & filename,
     return false;
   }
 
-  const std::string suffix =
-      get_file_suffix(filename);
-
+  const std::string suffix = get_file_suffix(filename);
   if ( suffix.empty() ) {
     CF_ERROR("c_output_frame_writer: Can not suggest output type from empty file suffix");
     return false;
@@ -169,23 +167,10 @@ bool c_output_frame_writer::open(const std::string & filename,
 
 
   static const std::vector<std::string> ser_suffixes = {".ser"};
-//  if ( ser_suffixes.empty() ) {
-//    ser_suffixes.emplace_back(".ser");
-//  }
-
-  static std::vector<std::string> ffmpeg_suffixes =
-      c_ffmpeg_writer::supported_output_formats();
-//  if ( ffmpeg_suffixes.empty() ) {
-//    const std::vector<std::string> & ffmpeg_formats = c_ffmpeg_writer::supported_output_formats();
-//    ffmpeg_suffixes.reserve(ffmpeg_formats.size());
-//    for (const std::string & fmt : ffmpeg_formats ) {
-//      //CF_DEBUG("fmt: '%s'", fmt.c_str());
-//      ffmpeg_suffixes.emplace_back(fmt);
-//    }
-//  }
-
+  static std::vector<std::string> ffmpeg_suffixes = c_ffmpeg_writer::supported_output_formats();
 
   static std::vector<std::string> image_suffixes = {
+      ".fits", ".fit", ".fts",
       ".tif", ".tiff",
       ".png",
       ".exr",
@@ -243,10 +228,7 @@ bool c_output_frame_writer::open(const std::string & filename,
   }
 
   if( write_frame_mapping ) {
-
-    std::string mapfilename =
-        ssprintf("%s.map.txt", filename.c_str());
-
+    const std::string mapfilename = ssprintf("%s.map.txt", filename.c_str());
     if( !(frame_mapping_fp = fopen(mapfilename.c_str(), "w")) ) {
       CF_ERROR("fopen('%s') fails : %s", mapfilename.c_str(), strerror(errno));
     }
@@ -264,6 +246,55 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
   cv::Mat output_frame, output_mask;
 
   switch (output_type) {
+    case output_type_ser: {
+
+      cv::Mat image, mask;
+
+      if ( !_output_image_processor ) {
+        image = currenFrame.getMat();
+        mask = currentMask.getMat();
+      }
+      else {
+        currenFrame.getMat().copyTo(image);
+        currentMask.getMat().copyTo(mask);
+        if ( !_output_image_processor->process(image, mask) ) {
+          CF_ERROR("_output_image_processor->process() fails for '%s'",
+              output_file_name.c_str());
+          return false;
+        }
+      }
+
+      if( _output_pixel_depth != PIXEL_DEPTH_NO_CHANGE && _output_pixel_depth != image.depth() ) {
+        double scale = 1, offset = 0;
+        if( !getScaleOffset(tmp.depth(), (int)_output_pixel_depth, &scale, &offset) ) {
+          CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
+          return false;
+        }
+        image.convertTo(image, _output_pixel_depth, scale, offset);
+      }
+
+      if( !ser.is_open() ) {
+
+        bool fOk =
+            ser.create(filename(), image.cols, image.rows,
+                image.channels() > 1 ? COLORID_BGR : COLORID_MONO,
+                c_ser_file::bits_per_plane(image.depth()),
+                mask.empty() ? -1 : mask.depth());
+
+        if( !fOk ) {
+          CF_ERROR("Can not create SER file '%s'", filename().c_str());
+          return false;
+        }
+      }
+
+      if( !ser.write(image, mask) ) {
+        CF_ERROR("ser.write() fails");
+        return false;
+      }
+
+      break;
+    }
+
     case output_type_video: {
 
       bool fOk = true;
@@ -349,93 +380,6 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
       break;
     }
 
-//    case output_type_ser: {
-//
-//      bool fOk =
-//          create_output_frame(currenFrame.getMat(), currentMask.getMat(),
-//              output_frame, output_mask,
-//              _output_image_processor,
-//              _output_pixel_depth);
-//
-//      if( !fOk ) {
-//        CF_ERROR("create_output_frame() fails for '%s'",
-//            output_file_name.c_str());
-//        return false;
-//      }
-//
-//      if( !output_mask.empty() ) {
-//        output_frame.setTo(0, ~output_mask);
-//      }
-//
-//      if( !ser.is_open() ) {
-//
-//        fOk =
-//            ser.create(filename(), output_frame.cols, output_frame.rows,
-//                output_frame.channels() > 1 ? COLORID_BGR : COLORID_MONO,
-//                c_ser_file::bits_per_plane(output_frame.depth()));
-//
-//        if( !fOk ) {
-//          CF_ERROR("Can not create SER file '%s'", filename().c_str());
-//          return false;
-//        }
-//      }
-//
-//      if( !ser.write(output_frame, cv::noArray()) ) {
-//        CF_ERROR("ser.write() fails");
-//        return false;
-//      }
-//
-//      break;
-//    }
-
-    case output_type_ser: {
-
-      cv::Mat image, mask;
-
-      if ( !_output_image_processor ) {
-        image = currenFrame.getMat();
-        mask = currentMask.getMat();
-      }
-      else {
-        currenFrame.getMat().copyTo(image);
-        currentMask.getMat().copyTo(mask);
-        if ( !_output_image_processor->process(image, mask) ) {
-          CF_ERROR("_output_image_processor->process() fails for '%s'",
-              output_file_name.c_str());
-          return false;
-        }
-      }
-
-      if( _output_pixel_depth != PIXEL_DEPTH_NO_CHANGE && _output_pixel_depth != image.depth() ) {
-        double scale = 1, offset = 0;
-        if( !getScaleOffset(tmp.depth(), (int)_output_pixel_depth, &scale, &offset) ) {
-          CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
-          return false;
-        }
-        image.convertTo(image, _output_pixel_depth, scale, offset);
-      }
-
-      if( !ser.is_open() ) {
-
-        bool fOk =
-            ser.create(filename(), image.cols, image.rows,
-                image.channels() > 1 ? COLORID_BGR : COLORID_MONO,
-                c_ser_file::bits_per_plane(image.depth()),
-                mask.empty() ? -1 : mask.depth());
-
-        if( !fOk ) {
-          CF_ERROR("Can not create SER file '%s'", filename().c_str());
-          return false;
-        }
-      }
-
-      if( !ser.write(image, mask) ) {
-        CF_ERROR("ser.write() fails");
-        return false;
-      }
-
-      break;
-    }
 
     default:
       CF_ERROR("ERROR: Output video file is not open");

@@ -8,7 +8,8 @@
 #include <core/proc/histogram-tools.h>
 #include <core/proc/threshold.h>
 #include <core/proc/morphology.h>
-#include <core/proc/estimate_noise.h>
+#include <core/proc/reduce_channels.h>
+//#include <core/proc/estimate_noise.h>
 #include <core/proc/geo-reconstruction.h>
 #include "planetary-disk-detection.h"
 #include <core/debug.h>
@@ -92,7 +93,7 @@ static bool get_maximal_connected_component(const cv::Mat1b & src,
   return true;
 }
 
-bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
+bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray _mask,
     double gsigma, int se_radius,
     cv::Point2f * output_centroid,
     cv::Rect * optional_output_component_rect,
@@ -102,7 +103,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
 {
   INSTRUMENT_REGION("");
 
-  cv::Mat src, gray, mgrad;
+  cv::Mat src, mask, gray, mgrad;
   cv::Mat1b comp;
 
   cv::Rect rc, rcc;
@@ -112,6 +113,24 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
   if ( (src = frame.getMat()).empty() ) {
     return false;
   }
+
+  if ( !_mask.empty() ) {
+    if ( _mask.channels() == 1 ) {
+      if ( _mask.depth() == CV_8U ) {
+        mask = _mask.getMat();
+      }
+      else {
+        cv::compare(_mask, 0, mask, cv::CMP_GT);
+      }
+    }
+    else {
+      reduce_color_channels(_mask, mask, cv::REDUCE_MIN);
+      if ( mask.depth() != CV_8U ) {
+        cv::compare(mask, 0, mask, cv::CMP_GT);
+      }
+    }
+  }
+
 
   if ( src.channels() == 1 ) {
     autoClip(src, mask, gray, 0.01, 0.9999, 0, 255, CV_8U);
@@ -147,7 +166,7 @@ bool simple_planetary_disk_detector(cv::InputArray frame, cv::InputArray mask,
   cv::morphologyEx(comp, comp, cv::MORPH_CLOSE, SE2, cv::Point(-1, -1), 1, cv::BORDER_REPLICATE);
   geo_fill_holes(comp, comp, 8);
   if ( !mask.empty() ) {
-    comp.setTo(0, ~mask.getMat());
+    comp.setTo(0, ~mask);
   }
 
   if( !get_maximal_connected_component(comp, &rc, &comp, optional_output_geometrical_center) ) {

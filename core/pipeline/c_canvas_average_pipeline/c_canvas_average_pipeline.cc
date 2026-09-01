@@ -99,6 +99,12 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _output_options, output_directory);
     SERIALIZE_OPTION(section, save, _output_options, output_file_name);
 
+    SERIALIZE_OPTION(section, save, _output_options, save_substacks);
+    if( (subsection = SERIALIZE_GROUP(section, save, "substack_output_options")) ) {
+      SERIALIZE_OPTION(subsection, save, _output_options, substack_frames);
+      SERIALIZE_OPTION(subsection, save, _output_options, substack_output_options);
+    }
+
     SERIALIZE_OPTION(section, save, _output_options, save_input_video);
     if( (subsection = SERIALIZE_GROUP(section, save, "output_input_video_options")) ) {
       SERIALIZE_OPTION(subsection, save, _output_options, output_input_video_options);
@@ -193,6 +199,13 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
   ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
+  ctlbind_expandable_group(ctls, "Save SubStacks");
+    ctlbind(ctls, "save_substacks", ctx(&S::save_substacks),
+        "Enable save substacks every substack_frames");
+    ctlbind(ctls, "substack_frames", ctx(&S::substack_frames),
+        "Save substack every substack_frames accumulated and reset accumulator");
+    ctlbind(ctls, ctx(&S::substack_output_options));
+  ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Save input video");
     ctlbind(ctls, "save_input_video", ctx(&S::save_input_video), "");
@@ -589,13 +602,20 @@ bool c_canvas_average_pipeline::run_pipeline()
       break;
     }
 
-    if( _output_options.autoSaveInterval > 0 &&
-        ((_processed_frames + 1) % _output_options.autoSaveInterval) == 0 ) {
-      save_averaged_image();
+    if( !_output_options.save_substacks || _output_options.substack_frames < 1 ) {
+      if( _output_options.autoSaveInterval > 0 && ((_processed_frames + 1) % _output_options.autoSaveInterval) == 0 ) {
+        save_averaged_image();
+      }
     }
   }
 
-  save_averaged_image();
+  if( _output_options.save_substacks && _output_options.substack_frames > 0 ) {
+    flush_substack_frame();
+  }
+
+  if( !_output_options.save_substacks || _output_options.substack_frames < 1 ) {
+    save_averaged_image();
+  }
 
   return fOK;
 }
@@ -933,6 +953,11 @@ bool c_canvas_average_pipeline::process_current_frame()
       return false;
     }
 
+    if ( !save_substack_frame() ) {
+      CF_ERROR("save_substack_frame() fails");
+      return false;
+    }
+
     if ( !write_progress_video() ) {
       CF_ERROR("write_progress_video() fails");
       return false;
@@ -1006,6 +1031,63 @@ bool c_canvas_average_pipeline::save_averaged_image()
       else {
         CF_ERROR("save_image() fails for %s", output_file_name.c_str());
       }
+    }
+  }
+
+  return true;
+}
+
+bool c_canvas_average_pipeline::flush_substack_frame()
+{
+  if( _average.accumulated_frames() > 0 ) {
+
+    cv::Mat avg;
+    cv::Mat1f msk;
+
+    if( !_average.compute(avg, msk) ) {
+      CF_ERROR("_average.compute() fails for output image");
+      return true; // ignore this error, just continue
+    }
+
+    CF_DEBUG("_substack_writer.is_open() =%d", _substack_writer.is_open());
+
+    if( !_substack_writer.is_open() ) {
+
+      const bool fOk =
+          add_output_writer(_substack_writer,
+              _output_options.substack_output_options,
+              "substack",
+              ".ser"); // User .ser as default if not specified by user
+
+      if( !fOk ) {
+        CF_ERROR("add_output_writer('%s') fails", _substack_writer.filename().c_str());
+        // This is critical error, may be disk full or incorrect user parameters
+        return false;
+      }
+    }
+
+    if( !_substack_writer.write(avg, msk) ) {
+      CF_ERROR("_progress_writer.write('%s') fails.", _substack_writer.filename().c_str());
+      // Critical error, may be disk full ?
+      return false;
+    }
+
+    // Accumulator must be reset every substack_frames.
+    // temporary block also GUI preview thread this moment
+    synchronized([&]() {
+      _average.reset();
+    });
+  }
+
+  return false;
+}
+
+
+bool c_canvas_average_pipeline::save_substack_frame()
+{
+  if( _output_options.save_substacks && _output_options.substack_frames > 0 ) {
+    if( _average.accumulated_frames() > _output_options.substack_frames ) {
+      return flush_substack_frame();
     }
   }
 

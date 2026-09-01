@@ -86,7 +86,8 @@ public: // pipeline methods
 
   virtual std::string generate_output_filename(const std::string & ufilename,
       const std::string & postfix,
-      const std::string & suffix) const;
+      const std::string & suffix,
+      int index = -1) const;
 
 
 public:
@@ -157,15 +158,17 @@ protected:
 
 
 protected:
-  virtual bool open_output_writer(c_output_frame_writer & writer,
-      const c_output_frame_writer_options & opts,
-      const std::string & postfix,
-      const std::string & suffix) const;
+//  virtual bool open_output_writer(c_output_frame_writer & writer,
+//      const c_output_frame_writer_options & opts,
+//      const std::string & postfix,
+//      const std::string & suffix,
+//      int file_index = -1) const;
 
   virtual bool add_output_writer(c_output_frame_writer & writer,
       const c_output_frame_writer_options & opts,
       const std::string & postfix,
-      const std::string & suffix);
+      const std::string & suffix,
+      int file_index = -1);
 
   virtual bool add_output_writer(c_output_text_writer & writer,
       const std::string & filename);

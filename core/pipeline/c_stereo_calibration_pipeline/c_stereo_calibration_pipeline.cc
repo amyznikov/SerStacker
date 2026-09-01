@@ -1385,7 +1385,7 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
   if( !_chessboard_video_writer.is_open() ) {
 
     bool fOK =
-        open_output_writer(_chessboard_video_writer,
+        add_output_writer(_chessboard_video_writer,
             _output_options.chessboard_frames_output_options,
             "chessboard",
             ".avi");
@@ -1478,7 +1478,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         if( !video_writer[i].is_open() ) {
 
           fOK =
-              open_output_writer(video_writer[i],
+              add_output_writer(video_writer[i],
                   _output_options.rectified_frames_output_options,
                   i == 0 ? "rect-left" : "rect-right",
                   ".avi");
@@ -1505,7 +1505,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         stereo_size.height = std::max(sizes[0].height, sizes[1].height);
 
         fOK =
-            open_output_writer(stereo_writer,
+            add_output_writer(stereo_writer,
                 _output_options.stereo_rectified_output_options,
                 "stereo",
                 ".avi");
@@ -1538,7 +1538,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         quad_size.height = sizes[0].height + sizes[1].height;
 
         fOK =
-            open_output_writer(quad_writer,
+            add_output_writer(quad_writer,
                 _output_options.quad_output_options,
                 "quad",
                 ".avi");
@@ -1575,7 +1575,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
         quad_size.height = sizes[0].height + sizes[1].height;
 
         fOK =
-            open_output_writer(quad_rectified_writer,
+            add_output_writer(quad_rectified_writer,
                 _output_options.quad_rectified_output_options,
                 "quad_rect",
                 ".avi");

@@ -199,31 +199,39 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_browse_for_directory(ctls, "output_directory", ctx(&S::output_directory), "");
   ctlbind_browse_for_file(ctls, "output_file_name", ctx(&S::output_file_name), "output_file_name");
 
-  ctlbind_expandable_group(ctls, "Save SubStacks");
-    ctlbind(ctls, "save_substacks", ctx(&S::save_substacks),
-        "Enable save substacks every substack_frames");
+  ctlbind(ctls, "autoSaveInterval:", ctx, ctx(&S::autoSaveInterval),
+      std::function {[](const S * opts) {return !opts->save_substacks;}},
+      "Save accumulator after processing each Interval frames");
+
+  //  ctlbind_group(ctls, ctx, [](const S * opts) {return !opts->save_substacks;});
+  //  ctlbind(ctls, "autoSaveInterval:", ctx(&S::autoSaveInterval), "Save accumulator after processing each Interval frames");
+  //  ctlbind_end_group(ctls);
+
+  ctlbind(ctls, "Save substacks", ctx(&S::save_substacks), "Enable save substacks every substack_frames");
+  ctlbind(ctls, "Save input_video", ctx(&S::save_input_video), "");
+  ctlbind(ctls, "Save progress_video", ctx(&S::save_progress_video), "");
+  ctlbind(ctls, "Save reference_video", ctx(&S::save_reference_video), "");
+  ctlbind(ctls, "Save weights_video", ctx(&S::save_weights_video), "");
+
+  ctlbind_expandable_group(ctls, "Save SubStacks options...", ctx(&S::save_substacks));
     ctlbind(ctls, "substack_frames", ctx(&S::substack_frames),
         "Save substack every substack_frames accumulated and reset accumulator");
     ctlbind(ctls, ctx(&S::substack_output_options));
   ctlbind_end_group(ctls);
 
-  ctlbind_expandable_group(ctls, "Save input video");
-    ctlbind(ctls, "save_input_video", ctx(&S::save_input_video), "");
+  ctlbind_expandable_group(ctls, "Save input video options...", ctx(&S::save_input_video));
     ctlbind(ctls, ctx(&S::output_input_video_options));
   ctlbind_end_group(ctls);
 
-  ctlbind_expandable_group(ctls, "Save progress video");
-    ctlbind(ctls, "save_progress_video", ctx(&S::save_progress_video), "");
+  ctlbind_expandable_group(ctls, "Save progress video options...", ctx(&S::save_progress_video));
     ctlbind(ctls, ctx(&S::output_progress_video_options));
   ctlbind_end_group(ctls);
 
-  ctlbind_expandable_group(ctls, "Save reference video", "");
-    ctlbind(ctls, "save_reference_video", ctx(&S::save_reference_video), "");
+  ctlbind_expandable_group(ctls, "Save reference video options...", ctx(&S::save_reference_video));
     ctlbind(ctls, ctx(&S::output_reference_video_options));
   ctlbind_end_group(ctls);
 
-  ctlbind_expandable_group(ctls, "Save weights video", "");
-    ctlbind(ctls, "save_weights_video", ctx(&S::save_weights_video), "");
+  ctlbind_expandable_group(ctls, "Save weights video options...", ctx(&S::save_weights_video));
     ctlbind(ctls, ctx(&S::output_weights_video_options));
   ctlbind_end_group(ctls);
 
@@ -248,7 +256,6 @@ const c_ctlist<c_canvas_average_pipeline> & c_canvas_average_pipeline::getcontro
     ctlbind_end_group(ctls);
 
     ctlbind_expandable_group(ctls, "Output options", "");
-      ctlbind(ctls, "autoSaveInterval:", CTL_CONTEXT(ctx, _output_options.autoSaveInterval), "Save accumulator after processing each Interval frames");
       ctlbind(ctls, ctx(&this_class::_output_options));
     ctlbind_end_group(ctls);
   }
@@ -953,15 +960,16 @@ bool c_canvas_average_pipeline::process_current_frame()
       return false;
     }
 
+    if ( !write_progress_video() ) {
+      CF_ERROR("write_progress_video() fails");
+      return false;
+    }
+
     if ( !save_substack_frame() ) {
       CF_ERROR("save_substack_frame() fails");
       return false;
     }
 
-    if ( !write_progress_video() ) {
-      CF_ERROR("write_progress_video() fails");
-      return false;
-    }
   }
 
 //  CF_DEBUG("LEAVE");
@@ -1049,8 +1057,6 @@ bool c_canvas_average_pipeline::flush_substack_frame()
       return true; // ignore this error, just continue
     }
 
-    CF_DEBUG("_substack_writer.is_open() =%d", _substack_writer.is_open());
-
     if( !_substack_writer.is_open() ) {
 
       const bool fOk =
@@ -1079,7 +1085,7 @@ bool c_canvas_average_pipeline::flush_substack_frame()
     });
   }
 
-  return false;
+  return true;
 }
 
 

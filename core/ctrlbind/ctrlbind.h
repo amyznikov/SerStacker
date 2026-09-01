@@ -422,6 +422,56 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
   ctls.emplace_back(c);
 }
 
+template<class RootObjectType, class StructType, class FieldType>
+void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
+    const c_ctlbind_context<RootObjectType, StructType> & sctx,
+    const c_ctlbind_context<RootObjectType, FieldType> & fctx,
+    const std::function<bool(const StructType *)> & eneblefn,
+    const std::string & cdesc = "")
+{
+  using BindType = c_ctlbind<RootObjectType>;
+
+  BindType c;
+  c.cname = cname;
+  c.cdesc = cdesc;
+
+  if( std::is_enum_v<FieldType> ) {
+    c.ctype = BindType::CtlType::EnumCombobox;
+    c.get_enum_members = get_members_of<FieldType>();
+  }
+  else if( std::is_same_v<FieldType, bool>) {
+    c.ctype = BindType::CtlType::Checkbox;
+  }
+  else if (is_normal_integer_v<FieldType> || std::is_floating_point_v<FieldType> ) {
+    c.ctype = BindType::CtlType::NumericBox;
+  }
+  else {
+    c.ctype = BindType::CtlType::Textbox;
+  }
+
+  c.getvalue = [offset = fctx.offset](const RootObjectType * obj, std::string * s) -> bool {
+    return obj ? *s = toString(*reinterpret_cast<const FieldType*>(
+        reinterpret_cast<const uint8_t*>(obj) + offset)), true :
+        false;
+  };
+
+  c.setvalue = [offset = fctx.offset](RootObjectType * obj, const std::string & v) -> bool {
+    return obj ? fromString(v, reinterpret_cast<FieldType*>(
+        reinterpret_cast<uint8_t*>(obj) + offset)) :
+        false;
+  };
+
+  c.enabled = [offset = sctx.offset, eneblefn](const RootObjectType * obj) {
+    if ( obj ) {
+      const StructType * sobj = reinterpret_cast<const StructType*>(reinterpret_cast<const uint8_t*>(obj) + offset);
+      return eneblefn(sobj);
+    }
+    return false;
+  };
+
+
+  ctls.emplace_back(c);
+}
 
 template<class RootObjectType, class StructType, class FieldType>
 void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,

@@ -268,6 +268,25 @@ cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
   return cv::Size(3 * W / 2, 3 * H / 2);
 }
 
+void c_canvas_average::clear()
+{
+  _accumulator.release();
+  _weights.release();
+  _accumulated_frames = 0;
+  _last_bbox = cv::Rect();
+}
+
+void c_canvas_average::reset()
+{
+  _accumulated_frames = 0;
+  _last_bbox = cv::Rect();
+  if ( !_accumulator.empty() ) {
+    _accumulator.setTo(0);
+  }
+  if ( !_weights.empty() ) {
+    _weights.setTo(0);
+  }
+}
 
 void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize)
 {
@@ -342,8 +361,8 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
 
   cv::Rect ROI;
 
-  if( _accumulator.empty() ) {
-    // very first frame
+  if( !_accumulated_frames ) {
+    // very first frame or after reset()
     const cv::Size frameSize = current_image.size();
 
     const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
@@ -354,8 +373,14 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
     const int target_y = canvasSize.height / 2 - frameSize.height / 2;
     ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
 
-    _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
-    _weights = cv::Mat1f::zeros(canvasSize);
+    if( _accumulator.size() != canvasSize || _accumulator.type() != current_image.type() ) {
+      _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
+    }
+
+    if ( _weights.size() != canvasSize ) {
+      _weights = cv::Mat1f::zeros(canvasSize);
+    }
+
     weighted_average_update(img, weights, _accumulator(ROI), _weights(ROI));
 
     _last_bbox = ROI;
@@ -374,7 +399,6 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
   }
   else {
     // remap requested
-
     ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
     if (ROI.empty()) {
       CF_ERROR("ROI is empty");
@@ -442,13 +466,6 @@ bool c_canvas_average::compute(cv::OutputArray avg, cv::OutputArray mask,
   return true;
 }
 
-void c_canvas_average::clear()
-{
-  _accumulator.release();
-  _weights.release();
-  _accumulated_frames = 0;
-  _last_bbox = cv::Rect();
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

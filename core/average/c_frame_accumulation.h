@@ -114,7 +114,7 @@ public:
    * and compute internally based on rmap.size()
    * */
   bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-      const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox);
+      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Rect & new_canvas_bbox = cv::Rect());
 
   /*
    * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
@@ -122,6 +122,10 @@ public:
   bool compute(cv::OutputArray avg, cv::OutputArray mask = cv::noArray(), double dscale = 1.0, int ddepth = -1,
       const cv::Rect & rbbox = cv::Rect()) const;
 
+  /* Reset _accumulated_frames and maps to zero, not releasing memory */
+  void reset();
+
+  /* Release memory */
   void clear();
 
   static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);

@@ -770,10 +770,11 @@ bool c_canvas_average_pipeline::process_current_frame()
     // Very first frame or no registration requested
     INSTRUMENT_REGION("initialize_accumulator");
 
-    if ( !_average.add(_current_image, current_weights) ) {
+    if( !_average.add(_current_image, current_weights) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
+
   }
   else {
     // Not a first frame
@@ -783,7 +784,7 @@ bool c_canvas_average_pipeline::process_current_frame()
     cv::Mat reference_image, reference_binary_mask;
     cv::Mat2f rmap, uv;
 
-    if ( !_average.compute(reference_image, reference_binary_mask, 1, -1, _average.last_bbox()) ) {
+    if ( !_average.compute(reference_image, reference_binary_mask, 1, -1, _average.last_bbox())) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
@@ -958,7 +959,7 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
-    if ( !_average.add(_current_image, current_weights, rmap, newCanvasBBox.tl()) ) {
+    if( !_average.add(_current_image, current_weights, rmap, newCanvasBBox.tl()) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
@@ -1028,16 +1029,17 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
 
 bool c_canvas_average_pipeline::save_averaged_image()
 {
-  if ( _average.accumulated_frames() > 0 ) {
+  if( _average.accumulated_frames() > 0 ) {
     cv::Mat avg;
     cv::Mat1f msk;
 
     if ( !_average.compute(avg, msk) ) {
-      CF_ERROR("_average.compute() fails for output image");
+      CF_ERROR("_average.compute() fails");
     }
-    else {
+
+    if( !avg.empty() ) {
       const std::string output_file_name = generate_output_file_name(".fits");
-      if ( save_image(avg, msk, output_file_name) ) {
+      if( save_image(avg, msk, output_file_name) ) {
         CF_DEBUG("Saved %s", output_file_name.c_str());
       }
       else {
@@ -1058,35 +1060,34 @@ bool c_canvas_average_pipeline::flush_substack_frame()
 
     if( !_average.compute(avg, msk) ) {
       CF_ERROR("_average.compute() fails for output image");
-      return true; // ignore this error, just continue
     }
 
-    if( !_substack_writer.is_open() ) {
+    if ( !avg.empty() ) {
 
-      const bool fOk =
-          add_output_writer(_substack_writer,
-              _output_options.substack_output_options,
-              "substack",
-              ".ser"); // User .ser as default if not specified by user
+      if( !_substack_writer.is_open() ) {
 
-      if( !fOk ) {
-        CF_ERROR("add_output_writer('%s') fails", _substack_writer.filename().c_str());
-        // This is critical error, may be disk full or incorrect user parameters
+        const bool fOk =
+            add_output_writer(_substack_writer,
+                _output_options.substack_output_options,
+                "substack",
+                ".ser"); // User .ser as default if not specified by user
+
+        if( !fOk ) {
+          CF_ERROR("add_output_writer('%s') fails", _substack_writer.filename().c_str());
+          // This is critical error, may be disk full or incorrect user parameters
+          return false;
+        }
+      }
+
+      if( !_substack_writer.write(avg, msk) ) {
+        CF_ERROR("_progress_writer.write('%s') fails.", _substack_writer.filename().c_str());
+        // Critical error, may be disk full ?
         return false;
       }
-    }
 
-    if( !_substack_writer.write(avg, msk) ) {
-      CF_ERROR("_progress_writer.write('%s') fails.", _substack_writer.filename().c_str());
-      // Critical error, may be disk full ?
-      return false;
-    }
-
-    // Accumulator must be reset every substack_frames.
-    // temporary block also GUI preview thread this moment
-    synchronized([&]() {
+      // Accumulator must be reset every substack_frames.
       _average.reset();
-    });
+    }
   }
 
   return true;
@@ -1143,28 +1144,30 @@ bool c_canvas_average_pipeline::write_progress_video()
 
     if( !_average.compute(avg, msk) ) {
       CF_ERROR("_average.compute() fails for output image");
-      return true; // ignore this error
     }
 
-    if( !_progress_writer.is_open() ) {
+    if ( !avg.empty() ) {
 
-      const bool fOk =
-          add_output_writer(_progress_writer,
-              _output_options.output_progress_video_options,
-              "progress",
-              ".ser");
+      if( !_progress_writer.is_open() ) {
 
-      if( !fOk ) {
-        CF_ERROR("add_output_writer('%s') fails",
+        const bool fOk =
+            add_output_writer(_progress_writer,
+                _output_options.output_progress_video_options,
+                "progress",
+                ".ser");
+
+        if( !fOk ) {
+          CF_ERROR("add_output_writer('%s') fails",
+              _progress_writer.filename().c_str());
+          return false;
+        }
+      }
+
+      if( !_progress_writer.write(avg, msk) ) {
+        CF_ERROR("_progress_writer.write('%s') fails.",
             _progress_writer.filename().c_str());
         return false;
       }
-    }
-
-    if( !_progress_writer.write(avg, msk) ) {
-      CF_ERROR("_progress_writer.write('%s') fails.",
-          _progress_writer.filename().c_str());
-      return false;
     }
   }
 

@@ -68,6 +68,8 @@ public:
   typedef c_canvas_average this_class;
   typedef std::shared_ptr<this_class> ptr;
 
+  static const int FRAME_MARGIN = 32;
+
   struct options {
     cv::InterpolationFlags interpolation = cv::INTER_LINEAR; // cv::INTER_LANCZOS4; //
   } opts;
@@ -110,11 +112,7 @@ public:
 
   /*
    * Add input frame to canvas. The rmap.size() must be equal to new_canvas_bbox.size().
-   * TODO: check if new_canvas_bbox is really required, may be replace with position only
-   * and compute internally based on rmap.size()
    * */
-//  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-//      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Rect & new_canvas_bbox = cv::Rect());
   bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
       const cv::Mat2f & rmap = cv::Mat2f(), const cv::Point & boxpos = cv::Point());
 
@@ -132,11 +130,23 @@ public:
 
   static cv::Size computeCanvasSize(const cv::Size & inputFrameSize);
 
+  template<typename Fn>
+  inline auto synchronized(Fn && fn) const
+  {
+    std::scoped_lock lock(_mtx);
+    if constexpr ( std::is_void_v<std::invoke_result_t<Fn>> ) {
+      std::forward<Fn>(fn)();
+    }
+    else {
+      return std::forward<Fn>(fn)();
+    }
+  }
 
 protected:
   void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
 
 protected:
+  mutable std::mutex _mtx;
   cv::Mat _accumulator;
   cv::Mat1f _weights;
   cv::Rect _last_bbox;

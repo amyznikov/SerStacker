@@ -543,7 +543,7 @@ bool load_image(const std::string & filename, cv::OutputArray output_image, cv::
   const int ddepth = m.depth();
   const cv::Size img_size = m.size();
 
-  if ( total_channels == 1 ) { // Mono
+  if ( total_channels == 1 || total_channels == 3 ) { // Mono or BGR
     final_image = m;
   }
   else if ( total_channels == 2 ) { // Mono + Mask
@@ -556,22 +556,18 @@ bool load_image(const std::string & filename, cv::OutputArray output_image, cv::
     const int from_to[] = { 0, 0,  1, 0 };
     cv::mixChannels(src, 1, dst, 2, from_to, 2);
   }
-  else if ( total_channels == 3 ) { // RGB -> BGR
-    // Most fast way
-    cv::cvtColor(m, final_image, cv::COLOR_RGB2BGR);
-  }
-  else if ( total_channels == 4 ) { // RGBA -> BGR + MASK
+  else if( total_channels == 4 ) { // BGRA -> BGR + MASK
     final_image.create(img_size, CV_MAKETYPE(ddepth, 3));
     final_mask.create(img_size, CV_MAKETYPE(ddepth, 1));
 
     const cv::Mat src[] = { m };
     cv::Mat dst[] = { final_image, final_mask };
 
-    const int from_to[] = { 0, 2,  1, 1,  2, 0,  3, 3 };
+    const int from_to[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
     cv::mixChannels(src, 1, dst, 2, from_to, 4);
   }
   else {
-    CF_ERROR("Unsupported number of channels in TIFF: %d", total_channels);
+    CF_ERROR("Unsupported number of channels in image file: %d", total_channels);
     return false;
   }
 

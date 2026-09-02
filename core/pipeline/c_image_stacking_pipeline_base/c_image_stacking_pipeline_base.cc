@@ -200,10 +200,17 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     }
   }
 
-  if ( !_missing_pixel_mask.empty() ) {
+  if( !output_mask.empty() && output_mask.size() != output_image.size() ) {
+    if( output_mask.depth() == CV_8U ) {
+      cv::resize(output_mask, output_mask, output_image.size(), 0, 0, cv::INTER_NEAREST);
+    }
+    else {
+      cv::resize(output_mask, output_mask, output_image.size(), 0, 0, cv::INTER_AREA);
+    }
+  }
 
+  if (  !_missing_pixel_mask.empty() ) {
     if ( output_image.size() != _missing_pixel_mask.size() ) {
-
       CF_ERROR("Invalid input: "
           "frame and bad pixel mask sizes not match:\n"
           "frame size: %dx%d\n"
@@ -217,11 +224,14 @@ bool c_image_stacking_pipeline_base::read_input_frame(const c_input_sequence::sp
     if ( output_mask.empty() ) {
       _missing_pixel_mask.copyTo(output_mask);
     }
+    else if ( output_mask.depth() == CV_8U ) {
+      cv::bitwise_and(output_mask, _missing_pixel_mask, output_mask);
+    }
     else {
-      cv::bitwise_and(output_mask, _missing_pixel_mask,
-          output_mask);
+      output_mask.setTo(0, ~_missing_pixel_mask);
     }
   }
+
 
   if ( !output_mask.empty() && input_options.inpaint_missing_pixels ) {
     INSTRUMENT_REGION("inpaint_missing_pixels");

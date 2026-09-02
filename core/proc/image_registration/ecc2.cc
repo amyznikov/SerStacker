@@ -5,10 +5,9 @@
  *      Author: amyznikov
  */
 #include "ecc2.h"
-#include <core/proc/run-loop.h>
 #include <core/settings/opencv_settings.h>
-//#include <core/ssprintf.h>
-//#include <core/io/save_image.h>
+#include <core/proc/reduce_channels.h>
+#include <core/proc/run-loop.h>
 #include <core/debug.h>
 
 #if HAVE_TBB
@@ -343,22 +342,32 @@ void ecc_project_error_image(const std::vector<cv::Mat1f> & J, const cv::Mat & r
 
 
 bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
-    cv::Mat1f & dst, cv::Mat1b & dst_mask)
+    cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy)
 {
   INSTRUMENT_REGION("");
 
-  if( !src_mask.empty() && (src_mask.size() != src.size() || src_mask.type() != CV_8UC1) ) {
+  if( !src_mask.empty() ) {
 
-    CF_ERROR("Invalid input mask: %dx%d %d channels depth=%d. Must be %dx%d CV_8UC1",
-        src_mask.cols(), src_mask.rows(), src_mask.channels(), src_mask.depth(),
-        src.cols(), src.rows());
-
-    return false;
+    if ( src_mask.size() != src.size()  ) {
+      CF_ERROR("Invalid input mask: %dx%d %d channels depth=%d. Must be %dx%d",
+          src_mask.cols(), src_mask.rows(), src_mask.channels(), src_mask.depth(),
+          src.cols(), src.rows());
+      return false;
+    }
   }
 
-
   if( src.channels() == 1 ) {
-    src.getMat().convertTo(dst, dst.depth());
+    if( src.depth() == dst.depth() ) {
+      if ( force_copy ) {
+        src.copyTo(dst);
+      }
+      else {
+        dst = src.getMat();
+      }
+    }
+    else {
+      src.getMat().convertTo(dst, dst.depth());
+    }
   }
   else {
     cv::Mat tmp;
@@ -374,8 +383,28 @@ bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask,
   if( src_mask.empty() ) {
     dst_mask.release();
   }
+  else if( src_mask.channels() == 1 ) {
+    if( src_mask.depth() == CV_8U ) {
+      if ( force_copy ) {
+        src_mask.copyTo(dst_mask);
+      }
+      else {
+        dst_mask = src_mask.getMat();
+      }
+    }
+    else {
+      cv::compare(src_mask, 0, dst_mask, cv::CMP_GT);
+    }
+  }
   else {
-    src_mask.copyTo(dst_mask);
+    cv::Mat tmp;
+    reduce_color_channels(src_mask, tmp, cv::REDUCE_MIN);
+    if( tmp.depth() == CV_8U ) {
+      dst_mask = std::move(tmp);
+    }
+    else {
+      cv::compare(tmp, 0, dst_mask, cv::CMP_GT);
+    }
   }
 
   return true;
@@ -972,12 +1001,15 @@ c_ecc_align::uptr c_ecch::create_ecc_align(double epsx) const
 inline void c_ecch::downscale_image(cv::Mat & image, cv::Mat & mask,
     const cv::Size & nextSize)
 {
+  cv::Mat tmp;
   if ( !image.empty() ) {
-    cv::pyrDown(image, image, nextSize);
+    cv::pyrDown(image, tmp, nextSize);
+    image = std::move(tmp);
   }
 
   if( !mask.empty() ) {
-    cv::resize(mask, mask, nextSize, 0, 0, cv::INTER_NEAREST);
+    cv::resize(mask, tmp, nextSize, 0, 0, cv::INTER_NEAREST);
+    mask = std::move(tmp);
   }
 }
 
@@ -990,7 +1022,7 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
 
   _num_iterations = -1;
 
-  if( !ecc_convert_input_image(reference_image, reference_mask, image, mask) ) {
+  if( !ecc_convert_input_image(reference_image, reference_mask, image, mask, false) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }
@@ -1002,7 +1034,9 @@ bool c_ecch::set_reference_image(cv::InputArray reference_image, cv::InputArray 
       Gref = cv::getGaussianKernel(ksize, _opts.reference_smooth_sigma);
       sigmaRef = _opts.reference_smooth_sigma;
     }
-    cv::sepFilter2D(image, image, -1, Gref, Gref, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    cv::Mat1f tmp;
+    cv::sepFilter2D(image, tmp, -1, Gref, Gref, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    image = std::move(tmp);
   }
 
 
@@ -1071,7 +1105,7 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
 
   _num_iterations = -1;
 
-  if( !ecc_convert_input_image(current_image, current_mask, image, mask) ) {
+  if( !ecc_convert_input_image(current_image, current_mask, image, mask, false) ) {
     CF_ERROR("ecclm_convert_input_image() fails");
     return false;
   }
@@ -1083,7 +1117,9 @@ bool c_ecch::set_current_image(cv::InputArray current_image, cv::InputArray curr
       Gcur = cv::getGaussianKernel(ksize, _opts.input_smooth_sigma);
       sigmaCur = _opts.input_smooth_sigma;
     }
-    cv::sepFilter2D(image, image, -1, Gcur, Gcur, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    cv::Mat1f tmp;
+    cv::sepFilter2D(image, tmp, -1, Gcur, Gcur, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+    image = std::move(tmp);
   }
 
   const int lvls = _pyramid.size();

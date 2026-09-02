@@ -6,6 +6,7 @@
  */
 
 #include "linear_interpolation_inpaint.h"
+#include <core/proc/reduce_channels.h>
 #include <core/proc/run-loop.h>
 #include <core/proc/pixtype.h>
 #include <atomic>
@@ -336,18 +337,38 @@ void linear_interpolation_inpaint(cv::Mat & image, cv::InputArray _mask)
 {
   INSTRUMENT_REGION("");
 
-  int total_holes = _mask.empty() ? 0 : _mask.size().area() - cv::countNonZero(_mask);
+  if ( _mask.empty() ) {
+    return;
+  }
+
+ cv::Mat1b mask;
+ cv::Mat inpaint_h, inpaint_v;
+ cv::Mat1f hdists, vdists;
+
+  if ( _mask.channels() == 1 ) {
+    if ( _mask.depth() == CV_8U ) {
+      _mask.copyTo(mask);
+    }
+    else {
+      cv::compare(_mask, 0, mask, cv::CMP_GT);
+    }
+  }
+  else if ( _mask.depth() == CV_8U ) {
+    reduce_color_channels(_mask, mask, cv::REDUCE_MIN);
+  }
+  else {
+    cv::Mat tmp;
+    reduce_color_channels(_mask, tmp, cv::REDUCE_MIN);
+    cv::compare(_mask, 0, mask, cv::CMP_GT);
+  }
+
+  int total_holes = mask.size().area() - cv::countNonZero(mask);
   if( total_holes < 1 ) {
     return;
   }
 
-  cv::Mat1b mask;
-  cv::Mat inpaint_h, inpaint_v;
-  cv::Mat1f hdists, vdists;
-
   inpaint_h.create(image.size(), image.type());
   inpaint_v.create(image.size(), image.type());
-  _mask.getMat().copyTo(mask);
 
   while (total_holes > 0) {
     interpolate_holes_h2(image, mask, inpaint_h, hdists);

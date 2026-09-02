@@ -340,8 +340,91 @@ void c_canvas_average::maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size 
 }
 
 
+//bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+//    const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
+//{
+//  INSTRUMENT_REGION("");
+//
+//  if( !rmap.empty() && (rmap.cols > _accumulator.cols || rmap.rows > _accumulator.rows) ) {
+//    CF_ERROR("Invalid argument: rmap.size()=%dx%d > _accumulator.size()=%dx%d",
+//        rmap.cols, rmap.rows,
+//        _accumulator.cols, _accumulator.rows);
+//    return false;
+//  }
+//
+//  cv::Mat img = current_image.getMat();
+//  cv::Mat weights = current_weights_or_mask.getMat();
+//  if (img.empty()) {
+//    CF_ERROR("input image is empty");
+//    return false;
+//  }
+//
+//  cv::Rect ROI;
+//
+//  if( !_accumulated_frames ) {
+//    // very first frame or after reset()
+//    const cv::Size frameSize = current_image.size();
+//
+//    const cv::Size computedCanvasSize = computeCanvasSize(frameSize);
+//    const cv::Size canvasSize(std::max(_canvasSize.width, computedCanvasSize.width),
+//        std::max(_canvasSize.height, computedCanvasSize.height));
+//
+//    const int target_x = canvasSize.width / 2 - frameSize.width / 2;
+//    const int target_y = canvasSize.height / 2 - frameSize.height / 2;
+//    ROI = cv::Rect(target_x, target_y, frameSize.width, frameSize.height);
+//
+//    if( _accumulator.size() != canvasSize || _accumulator.type() != current_image.type() ) {
+//      _accumulator = cv::Mat::zeros(canvasSize, current_image.type());
+//    }
+//
+//    if ( _weights.size() != canvasSize ) {
+//      _weights = cv::Mat1f::zeros(canvasSize);
+//    }
+//
+//    weighted_average_update(img, weights, _accumulator(ROI), _weights(ROI));
+//
+//    _last_bbox = ROI;
+//    ++_accumulated_frames;
+//    return true;
+//  }
+//
+//  cv::Mat remapped_image, remapped_weights;
+//
+//  if( new_canvas_bbox.empty() && rmap.empty() ) {
+//    // no remap requested
+//    remapped_image = img;
+//    remapped_weights = weights;
+//    ROI = cv::Rect(_last_bbox.x, _last_bbox.y, img.cols, img.rows) &
+//        cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+//  }
+//  else {
+//    // remap requested
+//    ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+//    if (ROI.empty()) {
+//      CF_ERROR("ROI is empty");
+//      return false;
+//    }
+//
+//    maintainCanvasBoundaries(ROI, current_image.size());
+//
+//    cv::remap(img, remapped_image, rmap, cv::noArray(), opts.interpolation, cv::BORDER_REPLICATE);
+//    if( !weights.empty() ) {
+//      const int mask_interp = (weights.type() == CV_8UC1) ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+//      cv::remap(weights, remapped_weights, rmap, cv::noArray(), mask_interp, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+//    }
+//  }
+//
+//  weighted_average_update(remapped_image, remapped_weights,
+//      _accumulator(ROI), _weights(ROI));
+//
+//  _last_bbox = ROI;
+//  ++_accumulated_frames;
+//
+//  return true;
+//}
+
 bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-    const cv::Mat2f & rmap, const cv::Rect & new_canvas_bbox)
+    const cv::Mat2f & rmap, const cv::Point & boxpos)
 {
   INSTRUMENT_REGION("");
 
@@ -390,7 +473,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
 
   cv::Mat remapped_image, remapped_weights;
 
-  if( new_canvas_bbox.empty() && rmap.empty() ) {
+  if( rmap.empty() ) {
     // no remap requested
     remapped_image = img;
     remapped_weights = weights;
@@ -399,7 +482,7 @@ bool c_canvas_average::add(cv::InputArray current_image, cv::InputArray current_
   }
   else {
     // remap requested
-    ROI = new_canvas_bbox & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
+    ROI = cv::Rect(boxpos.x, boxpos.y, rmap.cols, rmap.rows) & cv::Rect(0, 0, _accumulator.cols, _accumulator.rows);
     if (ROI.empty()) {
       CF_ERROR("ROI is empty");
       return false;

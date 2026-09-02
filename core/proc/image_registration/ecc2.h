@@ -661,7 +661,7 @@ protected:
   mutable cv::Mat1f W;
 };
 
-bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask);
+bool ecc_convert_input_image(cv::InputArray src, cv::InputArray src_mask, cv::Mat1f & dst, cv::Mat1b & dst_mask, bool force_copy = true);
 void ecc_normalize(cv::InputArray src, cv::InputArray src_mask, cv::OutputArray dst, int lvl, double eps);
 void ecc_remap_to_optflow(const cv::Mat2f & rmap, cv::Mat2f & flow);
 void ecc_flow_to_remap(const cv::Mat2f & flow, cv::Mat2f & rmap);

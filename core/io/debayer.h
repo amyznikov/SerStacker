@@ -121,6 +121,12 @@ bool interpolate_bayer_planes(cv::InputArray src, cv::OutputArray dst, enum COLO
 
 
 /** @brief
+ * Combine input 4-channel src back into 1-channel Bayer pattern.
+ */
+bool bayer_planes_to_bayer(cv::InputArray src_planes,
+    cv::OutputArray dst_bayer);
+
+/** @brief
  * Combine input 4-channel src ordered as [ R G1 B G2 ] into 3-channel BGR dst matrix.
  * The output size of dst is the same as src (half or former bayer pattern)
  */

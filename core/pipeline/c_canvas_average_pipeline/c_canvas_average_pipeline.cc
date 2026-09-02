@@ -725,7 +725,6 @@ static cv::Rect computeNewCanvasBBox(const c_image_transform::sptr & transform,
 bool c_canvas_average_pipeline::process_current_frame()
 {
   INSTRUMENT_REGION("");
-//  CF_DEBUG("ENTER");
 
   if ( !write_input_video(_current_image, _current_mask) ) {
     CF_ERROR("write_input_video() fails");
@@ -742,8 +741,24 @@ bool c_canvas_average_pipeline::process_current_frame()
     }
   };
 
+  cv::Mat current_binary_mask;
+  cv::Mat current_weights;
 
-  bool has_updates = true;
+  if ( !_current_mask.empty() ) {
+    if ( _current_mask.depth() == CV_8U ) {
+      current_binary_mask = _current_mask;
+    }
+    else {
+      cv::compare(_current_mask, 0, current_binary_mask, cv::CMP_GT);
+    }
+  }
+
+  if ( !_current_mask.empty() && _current_mask.depth() != CV_8U  ) {
+    current_weights = _current_mask;
+  }
+  else {
+    compute_weights(_current_image, current_binary_mask, current_weights);
+  }
 
   const bool enable_registration =
       _registration_options.enable_star_registration ||
@@ -755,25 +770,20 @@ bool c_canvas_average_pipeline::process_current_frame()
     // Very first frame or no registration requested
     INSTRUMENT_REGION("initialize_accumulator");
 
-    cv::Mat weights;
-
-    compute_weights(_current_image, _current_mask, weights);
-    if ( weights.empty() ) {
-      weights = _current_mask;
-    }
-    if ( !_average.add(_current_image, weights, cv::Mat2f(), cv::Rect()) ) {
+    if ( !_average.add(_current_image, current_weights) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
   }
   else {
-    INSTRUMENT_REGION("align_and_update");
     // Not a first frame
-    cv::Mat current_mask, reference_image, reference_mask;
-    cv::Mat weights;
+
+    INSTRUMENT_REGION("align_and_update");
+
+    cv::Mat reference_image, reference_binary_mask;
     cv::Mat2f rmap, uv;
 
-    if ( !_average.compute(reference_image, reference_mask, 1, -1, _average.last_bbox()) ) {
+    if ( !_average.compute(reference_image, reference_binary_mask, 1, -1, _average.last_bbox()) ) {
       CF_ERROR("_average.compute() fails");
       return !canceled();
     }
@@ -785,23 +795,20 @@ bool c_canvas_average_pipeline::process_current_frame()
     }
 
     mkgrayscale(reference_image, reference_image);
-    //linear_interpolation_inpaint(reference_image, reference_mask);
-
     mkgrayscale(_current_image, _current_grayscale_image);
-    current_mask = _current_mask;
 
     if ( _output_options.save_reference_video ) {
 
       const cv::Size frameSize(_current_grayscale_image.cols + 8, _current_grayscale_image.rows + 8);
       cv::Mat frame = cv::Mat::zeros(frameSize, reference_image.type());
-      cv::Mat mask =  reference_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
+      cv::Mat mask =  reference_binary_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
 
       const cv::Size copySize(std::min(frameSize.width, bbox.width), std::min(frameSize.height, bbox.height));
       const cv::Rect copyBox(0,0, copySize.width, copySize.height);
 
       reference_image(copyBox).copyTo(frame(copyBox));
-      if ( !reference_mask.empty() ) {
-        reference_mask(copyBox).copyTo(mask(copyBox));
+      if ( !reference_binary_mask.empty() ) {
+        reference_binary_mask(copyBox).copyTo(mask(copyBox));
       }
 
       if ( !write_reference_video(frame, mask)) {
@@ -810,30 +817,29 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
-
     _image_transform->reset();
 
     if( _registration_options.enable_star_registration ) {
       INSTRUMENT_REGION("star_registration");
 
-      _star_extractor.detect(reference_image, _reference_keypoints, reference_mask);
-      if ( _reference_keypoints.size() < 3 ) {
-        CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", _reference_keypoints.size());
-        return !canceled();
-      }
-
-      _triangle_extractor.compute(reference_image, _reference_keypoints, _reference_descriptors);
-      _triangle_matcher.train(_reference_keypoints, _reference_descriptors);
-
       synchronized(_current_stars_lock, [&]() {
-        _star_extractor.detect(_current_grayscale_image, _current_keypoints, current_mask);
+        _star_extractor.detect(_current_grayscale_image, _current_keypoints, current_binary_mask);
       });
       if ( _current_keypoints.size() < 3 ) {
         CF_ERROR("_star_extractor.detect(_current_grayscale_image) fails: current_keypoints.size=%zu", _current_keypoints.size());
         return !canceled();
       }
 
+      _star_extractor.detect(reference_image, _reference_keypoints, reference_binary_mask);
+      if ( _reference_keypoints.size() < 3 ) {
+        CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", _reference_keypoints.size());
+        return !canceled();
+      }
+
+      _triangle_extractor.compute(reference_image, _reference_keypoints, _reference_descriptors);
       _triangle_extractor.compute(_current_grayscale_image, _current_keypoints, _current_descriptors);
+
+      _triangle_matcher.train(_reference_keypoints, _reference_descriptors);
       _triangle_matcher.match(_current_keypoints, _current_descriptors, _current_matches);
       if ( _current_matches.size() < 1 ) {
         CF_ERROR("_triangle_matcher.match() fails: triangle_matches.size()=%zu", _current_matches.size());
@@ -859,14 +865,14 @@ bool c_canvas_average_pipeline::process_current_frame()
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
          INSTRUMENT_REGION("unsharp_mask");
-         unsharp_mask(reference_image, reference_mask, reference_image,
+         unsharp_mask(reference_image, reference_binary_mask, reference_image,
               sigma, alpha, 0, 1.5);
         }
       }
 
       /* This will compute _image_transform parameters as _ecch has the active pointer to _image_transform */
-      _ecch.set_reference_image(reference_image, reference_mask);
-      if( !_ecch.align(_current_grayscale_image, current_mask) ) {
+      _ecch.set_reference_image(reference_image, reference_binary_mask);
+      if( !_ecch.align(_current_grayscale_image, current_binary_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
       }
@@ -881,15 +887,15 @@ bool c_canvas_average_pipeline::process_current_frame()
       bool fOk = false;
       if ( reference_image.size() == _current_grayscale_image.size() ) {
         _image_transform->create_remap(reference_image.size(), rmap);
-        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_image, rmap, current_mask, reference_mask);
+        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_image, rmap, current_binary_mask, reference_binary_mask);
       }
       else {
         const cv::Rect roi(0, 0, std::min(reference_image.cols, _current_grayscale_image.cols),
             std::min(reference_image.rows, _current_grayscale_image.rows));
         const cv::Mat cimage = _current_grayscale_image(roi);
-        const cv::Mat cmask = current_mask.empty() ? cv::Mat() : current_mask(roi);
+        const cv::Mat cmask = current_binary_mask.empty() ? cv::Mat() : current_binary_mask(roi);
         const cv::Mat rimage = reference_image(roi);
-        const cv::Mat rmask = reference_mask.empty() ? cv::Mat() : reference_mask(roi);
+        const cv::Mat rmask = reference_binary_mask.empty() ? cv::Mat() : reference_binary_mask(roi);
 
         _image_transform->create_remap(rimage.size(), rmap);
         fOk = _eccflow.compute_uv(cimage, rimage, rmap, cmask, rmask);
@@ -952,10 +958,7 @@ bool c_canvas_average_pipeline::process_current_frame()
       }
     }
 
-    compute_weights(_current_image, _current_mask, weights);
-    const cv::Mat & w = weights.empty() ? _current_mask : weights;
-
-    if ( !_average.add(_current_image, w, rmap, newCanvasBBox) ) {
+    if ( !_average.add(_current_image, current_weights, rmap, newCanvasBBox.tl()) ) {
       CF_ERROR("average_add() fails");
       return false;
     }
@@ -972,7 +975,6 @@ bool c_canvas_average_pipeline::process_current_frame()
 
   }
 
-//  CF_DEBUG("LEAVE");
   return true;
 }
 
@@ -1003,8 +1005,10 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
     return lut_y * lut_x;
   };
 
-  if ( _average_options.sharpness_measure.kradius > 0 ) {
-
+  if ( _average_options.sharpness_measure.kradius <= 0 ) {
+    dst = srcmask;
+  }
+  else {
     const cv::Size src_size = src.size();
 
     compute_local_variance_map(src, _average_options.sharpness_measure, dst, false);

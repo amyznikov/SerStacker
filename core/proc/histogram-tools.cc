@@ -6,6 +6,7 @@
  */
 #include "histogram-tools.h"
 #include <core/proc/pixtype.h>
+#include <core/proc/reduce_channels.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
 
@@ -66,28 +67,42 @@ static cv::Scalar computeImageMedian(cv::InputArray image, cv::InputArray mask)
  *  dst = (src - mv) * stretch + offset
  *   => dst = src * stretch + offset - mv * stretch
  */
-bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::OutputArray dst,
+bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray _mask, cv::OutputArray dst,
     const c_histogram_normalization_options & opts,
     enum COLORID src_colorid)
 {
   cv::Mat src;
   cv::Mat msk;
 
+  if ( _mask.channels() == 1 ) {
+    if ( _mask.depth() == CV_8U ) {
+      msk = _mask.getMat();
+    }
+    else {
+      cv::compare(_mask, 0, msk, cv::CMP_GT);
+    }
+  }
+  else {
+    reduce_color_channels(_mask, msk, cv::REDUCE_MIN);
+    if ( _mask.depth() != CV_8U ) {
+      cv::compare(_mask, 0, msk, cv::CMP_GT);
+    }
+  }
+
   const bool isBayerPattern = is_bayer_pattern(src_colorid);
   if ( !isBayerPattern ) {
     src = image.getMat();
-    msk = mask.getMat();
   }
   else {
-    if( src.channels() != 1 ) {
+    if( image.channels() != 1 ) {
       CF_ERROR("Invalid number of image channels %d for bayer pattern %s. Must be 1",
-          src.channels(), toCString(src_colorid));
+          image.channels(), toCString(src_colorid));
       return false;
     }
 
-    if( (src.rows & 0x1) || (src.cols & 0x1)  ) {
+    if( (image.rows() & 0x1) || (image.cols() & 0x1)  ) {
       CF_ERROR("Invalid image size %dx%d for Bayer pattern '%s', must be even",
-          src.cols, src.rows,  toCString(src_colorid));
+          image.cols(), image.rows(),  toCString(src_colorid));
       return false;
     }
 
@@ -95,6 +110,10 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::Outpu
       CF_ERROR("extract_bayer_planes() fails for colorid=%d ('%s')",
           (int)src_colorid, toCString(src_colorid));
       return false;
+    }
+
+    if ( !msk.empty() ) {
+      cv::resize(msk, msk, src.size(), 0, 0, cv::INTER_NEAREST);
     }
   }
 
@@ -135,7 +154,7 @@ bool nomalizeImageHistogram(cv::InputArray image, cv::InputArray mask, cv::Outpu
                   else {
                     cv::Mat tmp;
                     cv::transform(src, tmp, m);
-                    bayer_planes_to_bgr(tmp, dst);
+                    bayer_planes_to_bayer(tmp, dst);
                   }
               }
               break;

@@ -113,8 +113,10 @@ public:
    * TODO: check if new_canvas_bbox is really required, may be replace with position only
    * and compute internally based on rmap.size()
    * */
+//  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+//      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Rect & new_canvas_bbox = cv::Rect());
   bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Rect & new_canvas_bbox = cv::Rect());
+      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Point & boxpos = cv::Point());
 
   /*
    * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty

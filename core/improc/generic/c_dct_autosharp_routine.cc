@@ -588,7 +588,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
         linear_interpolation_inpaint(src, msk);
         break;
       case AVERAGE_PYRAMID_INPAINT:
-        average_pyramid_inpaint(src, msk, src, cv::noArray(), 7);
+        average_pyramid_inpaint(src, msk, src, cv::noArray(), 9);
         break;
     }
   }

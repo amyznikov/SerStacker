@@ -191,7 +191,7 @@ bool c_generic_image_processor_pipeline::save_processed_frame()
       }
     }
 
-    if( !_processed_file_writer.write(_current_image, _current_mask, false, _input_sequence->current_pos() - 1) ) {
+    if( !_processed_file_writer.write(_current_image, _current_mask, _input_sequence->current_pos() - 1) ) {
       CF_ERROR("output_writer_.write(%s) fails",
           _processed_file_writer.filename().c_str());
       return false;

@@ -2050,7 +2050,7 @@ bool c_image_stacking_pipeline::write_image(const std::string & output_file_name
 
   cv::Mat image_to_write;
 
-  if ( !output_options.write_image_mask_as_alpha_channel || output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
+  if ( output_mask.empty() || (output_image.channels() != 3 && output_image.channels() != 1)  ) {
     image_to_write = output_image;
   }
   else if ( !mergebgra(output_image, output_mask, image_to_write) ) {
@@ -2244,7 +2244,6 @@ bool c_image_stacking_pipeline::serialize(c_config_setting settings, bool save)
 
 
     SERIALIZE_OPTION(section, save, _output_options, dump_reference_data_for_debug);
-    SERIALIZE_OPTION(section, save, _output_options, write_image_mask_as_alpha_channel);
     SERIALIZE_OPTION(section, save, _output_options, save_acc_weights);
   }
 
@@ -2480,7 +2479,6 @@ const c_ctlist<c_image_stacking_pipeline> & c_image_stacking_pipeline::getcontro
           ctlbind_browse_for_directory(ctls, "output_directory",CTL_CONTEXT(cctx, output_directory), "output_directory");
           ctlbind_browse_for_file(ctls, "output_file_name",CTL_CONTEXT(cctx, output_file_name), "output_file_name");
 
-          ctlbind(ctls, "write_image_mask_as_alpha_channel",CTL_CONTEXT(cctx, write_image_mask_as_alpha_channel), "");
           ctlbind(ctls, "dump_reference_data_for_debug",CTL_CONTEXT(cctx, dump_reference_data_for_debug), "");
           ctlbind(ctls, "debug_frame_registration",CTL_CONTEXT(cctx, debug_frame_registration), "");
           ctlbind(ctls, "debug_frame_registration_frame_indexes",CTL_CONTEXT(cctx, debug_frame_registration_frame_indexes), "");
@@ -2631,9 +2629,7 @@ bool c_image_stacking_pipeline::save_preprocessed_video(const cv::Mat & current_
     return false;
   }
 
-  return writer.write(current_frame, current_mask,
-      _output_options.write_image_mask_as_alpha_channel,
-      seqindex);
+  return writer.write(current_frame, current_mask, seqindex);
 }
 
 
@@ -2705,7 +2701,7 @@ bool c_image_stacking_pipeline::save_sparse_matches_blend_video(int seqindex)
 
     }
 
-    if( !writer.write(display, cv::noArray(), false, seqindex) ) {
+    if( !writer.write(display, cv::noArray(), seqindex) ) {
       CF_ERROR("writer.write() fails: %s",
           writer.filename().c_str());
       return false;
@@ -2742,9 +2738,7 @@ bool c_image_stacking_pipeline::save_feature_video(int seqindex)
     return false;
   }
 
-  return writer.write(current_frame, current_mask,
-      _output_options.write_image_mask_as_alpha_channel,
-      seqindex);
+  return writer.write(current_frame, current_mask, seqindex);
 }
 
 
@@ -2776,9 +2770,7 @@ bool c_image_stacking_pipeline::save_ecc_video(int seqindex)
     return false;
   }
 
-  return writer.write(current_frame,current_mask,
-      _output_options.write_image_mask_as_alpha_channel,
-      seqindex);
+  return writer.write(current_frame,current_mask, seqindex);
 }
 
 bool c_image_stacking_pipeline::save_eccflow_video(int seqindex)
@@ -2817,7 +2809,7 @@ bool c_image_stacking_pipeline::save_eccflow_video(int seqindex)
     flow2HSV(uv, display, output_opts.hsv_max_motion);
   }
 
-  if( !writer.write(display, cv::noArray(), false, seqindex) ) {
+  if( !writer.write(display, cv::noArray(), seqindex) ) {
     CF_ERROR("writer.write() fails: %s",
         writer.filename().c_str());
     return false;
@@ -2847,10 +2839,7 @@ bool c_image_stacking_pipeline::save_aligned_video(const cv::Mat & current_frame
     return false;
   }
 
-  const bool fOk = writer.write(current_frame, current_mask,
-      _output_options.write_image_mask_as_alpha_channel,
-      seqindex);
-
+  const bool fOk = writer.write(current_frame, current_mask, seqindex);
   if ( !fOk ) {
     CF_ERROR("writer.write() fails. current_frame: %dx%d depth=%d channels=%d. current_mask: %dx%d depth=%d channels=%d. ",
         current_frame.cols, current_frame.rows, current_frame.depth(), current_frame.channels(),
@@ -2883,9 +2872,7 @@ bool c_image_stacking_pipeline::save_incremental_video(const cv::Mat & current_f
     return false;
   }
 
-  return writer.write(current_frame, current_mask,
-      _output_options.write_image_mask_as_alpha_channel,
-      seqindex);
+  return writer.write(current_frame, current_mask, seqindex);
 }
 
 bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & current_frame, const cv::Mat & current_mask, int seqindex)
@@ -2910,13 +2897,13 @@ bool c_image_stacking_pipeline::save_accumulation_masks_video(const cv::Mat & cu
   }
 
   if ( !current_mask.empty() ) {
-    if ( !writer.write(current_mask, cv::noArray(), false, seqindex) ) {
+    if ( !writer.write(current_mask, cv::noArray(), seqindex) ) {
       CF_ERROR("writer.write() fails");
       return false;
     }
   }
   else {
-    if ( !writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray(), false, seqindex) ) {
+    if ( !writer.write(cv::Mat1b(current_frame.size(), 255), cv::noArray(), seqindex) ) {
       CF_ERROR("writer.write() fails");
       return false;
     }
@@ -3032,7 +3019,7 @@ bool c_image_stacking_pipeline::save_sparse_matches_video(int seqindex)
     return false;
   }
 
-  if( !writer.write(output_frame, cv::noArray(), false, seqindex) ) {
+  if( !writer.write(output_frame, cv::noArray(), seqindex) ) {
     CF_ERROR("writer.write() fails for '%s'", writer.filename().c_str());
     return false;
   }

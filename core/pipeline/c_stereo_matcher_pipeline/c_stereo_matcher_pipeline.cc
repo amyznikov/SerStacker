@@ -480,7 +480,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
           }
         }
 
-        if ( !progress_writer.write(image, cv::noArray(), false, _processed_frames ) ) {
+        if ( !progress_writer.write(image, cv::noArray(), _processed_frames ) ) {
           CF_ERROR("progress_writer.write('%s') fails. image: %dx%d channels=%d deprth=%d",
               progress_writer.filename().c_str(),
               image.cols, image.rows, image.channels(), image.depth());
@@ -515,7 +515,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
           _processing_options.camera_focus,
           _processing_options.stereo_baseline);
 
-      if ( !depthmaps_writer.write(depthmap, cv::noArray(), false, _processed_frames ) ) {
+      if ( !depthmaps_writer.write(depthmap, cv::noArray(), _processed_frames ) ) {
         CF_ERROR("progress_writer.write() fails");
         return false;
       }
@@ -559,7 +559,7 @@ bool c_stereo_matcher_pipeline::run_pipeline()
             }
           }
 
-          if ( !cloud3d_image_writer.write(cloud3d, cv::noArray(), false, _processed_frames ) ) {
+          if ( !cloud3d_image_writer.write(cloud3d, cv::noArray(), _processed_frames ) ) {
             CF_ERROR("cloud3d_image_writer.write() fails");
             return false;
           }

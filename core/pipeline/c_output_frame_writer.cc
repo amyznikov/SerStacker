@@ -35,67 +35,6 @@ c_output_frame_writer::~c_output_frame_writer()
   close();
 }
 
-
-bool c_output_frame_writer::create_output_frame(const cv::Mat & src, const cv::Mat & src_mask,
-    cv::Mat & dst, cv::Mat & dst_mask,
-    const c_image_processor::sptr & processor,
-    PIXEL_DEPTH ddepth)
-{
-  cv::Mat tmp, tmp_mask;
-
-  if( !processor || processor->empty() ) {
-    tmp = src;
-    if( src_mask.type() == CV_8UC1 && src_mask.size() == src.size() ) {
-      tmp_mask = src_mask;
-    }
-  }
-  else {
-
-    src.copyTo(tmp);
-
-    if( src_mask.type() == CV_8UC1 && src_mask.size() == src.size() ) {
-      src_mask.copyTo(tmp_mask);
-    }
-
-
-    if( !processor->process(tmp, tmp_mask) ) {
-      CF_ERROR("c_output_frame_writer: processor->process() fails");
-      return false;
-    }
-  }
-
-  if( ddepth != PIXEL_DEPTH_NO_CHANGE && ddepth != tmp.depth() ) {
-
-    // CF_DEBUG("CONVERSION HERE");
-
-    double scale = 1;
-    double offset = 0;
-
-    if( !getScaleOffset(tmp.depth(), (int) ddepth, &scale, &offset) ) {
-      CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
-      return false;
-    }
-
-    tmp.convertTo(tmp, ddepth, scale, offset);
-  }
-
-  if( tmp.data != src.data ) {
-    dst = std::move(tmp);
-  }
-  else {
-    tmp.copyTo(dst);
-  }
-
-  if( tmp_mask.data != src_mask.data ) {
-    dst_mask = std::move(tmp_mask);
-  }
-  else {
-    tmp_mask.copyTo(dst_mask);
-  }
-
-  return true;
-}
-
 const std::string & c_output_frame_writer::filename() const
 {
   return output_file_name;
@@ -240,46 +179,63 @@ bool c_output_frame_writer::open(const std::string & filename,
   return true;
 }
 
-bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray currentMask,
-    bool with_alpha_mask, int seqindex)
+bool c_output_frame_writer::create_output_frame(cv::InputArray image, cv::InputArray mask,
+    cv::Mat & out_image, cv::Mat & out_mask,
+    const c_image_processor::sptr & processor,
+    PIXEL_DEPTH ddepth)
 {
-  cv::Mat output_frame, output_mask;
+  if ( !processor ) {
+    out_image = image.getMat();
+    out_mask = mask.getMat();
+  }
+  else {
+    image.copyTo(out_image);
+    mask.copyTo(out_mask);
+    if ( !processor->process(out_image, out_mask) ) {
+      CF_ERROR("processor->process() fails");
+      return false;
+    }
+  }
+
+  if( ddepth != PIXEL_DEPTH_NO_CHANGE && ddepth != out_image.depth() ) {
+    double scale = 1, offset = 0;
+    if( !getScaleOffset(image.depth(), ddepth, &scale, &offset) ) {
+      CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
+      return false;
+    }
+    image.getMat().convertTo(out_image, ddepth, scale, offset);
+  }
+
+  return true;
+}
+
+bool c_output_frame_writer::write(cv::InputArray image, cv::InputArray mask, int seqindex, enum COLORID colorid)
+{
+  cv::Mat out_image, out_mask;
 
   switch (output_type) {
     case output_type_ser: {
 
-      cv::Mat image, mask;
-
-      if ( !_output_image_processor ) {
-        image = currenFrame.getMat();
-        mask = currentMask.getMat();
-      }
-      else {
-        currenFrame.getMat().copyTo(image);
-        currentMask.getMat().copyTo(mask);
-        if ( !_output_image_processor->process(image, mask) ) {
-          CF_ERROR("_output_image_processor->process() fails for '%s'",
-              output_file_name.c_str());
-          return false;
-        }
-      }
-
-      if( _output_pixel_depth != PIXEL_DEPTH_NO_CHANGE && _output_pixel_depth != image.depth() ) {
-        double scale = 1, offset = 0;
-        if( !getScaleOffset(tmp.depth(), (int)_output_pixel_depth, &scale, &offset) ) {
-          CF_ERROR("c_output_frame_writer: get_scale_offset() fails");
-          return false;
-        }
-        image.convertTo(image, _output_pixel_depth, scale, offset);
+      if( !create_output_frame(image, mask, out_image, out_mask, _output_image_processor, _output_pixel_depth) ) {
+        CF_ERROR("output_type_ser: create_output_frame() fails");
+        return false;
       }
 
       if( !ser.is_open() ) {
 
+        if ( colorid == COLORID_UNKNOWN ) {
+          switch(out_image.channels()) {
+            case 1: colorid = COLORID_MONO; break;
+            case 2: colorid = COLORID_OPTFLOW; break;
+            case 3: colorid = COLORID_BGR; break;
+            case 4: colorid = COLORID_BGRA; break;
+          }
+        }
+
         bool fOk =
-            ser.create(filename(), image.cols, image.rows,
-                image.channels() > 1 ? COLORID_BGR : COLORID_MONO,
-                c_ser_file::bits_per_plane(image.depth()),
-                mask.empty() ? -1 : mask.depth());
+            ser.create(filename(), out_image.cols, out_image.rows, colorid,
+                c_ser_file::bits_per_plane(out_image.depth()),
+                out_mask.empty() ? -1 : out_mask.depth());
 
         if( !fOk ) {
           CF_ERROR("Can not create SER file '%s'", filename().c_str());
@@ -287,7 +243,7 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
         }
       }
 
-      if( !ser.write(image, mask) ) {
+      if( !ser.write(out_image, out_mask) ) {
         CF_ERROR("ser.write() fails");
         return false;
       }
@@ -297,22 +253,11 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
 
     case output_type_video: {
 
-      bool fOk = true;
-          create_output_frame(currenFrame.getMat(), currentMask.getMat(),
-              output_frame, output_mask,
-              _output_image_processor,
-              PIXEL_DEPTH_8U);
-
-      if( !fOk ) {
-        CF_ERROR("create_output_frame() fails for '%s'",
-            output_file_name.c_str());
+      if( !create_output_frame(image, mask, out_image, out_mask, _output_image_processor, PIXEL_DEPTH_8U) ) {
+        CF_ERROR("output_type_video: create_output_frame() fails");
         return false;
       }
 
-
-      if( !output_mask.empty() ) {
-        output_frame.setTo(0, ~output_mask);
-      }
 
       if( !ffmpeg.is_open() ) {
 
@@ -320,19 +265,13 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
             _ffmpeg_opts.empty() ? _default_ffmpeg_opts :
                 _ffmpeg_opts;
 
-        fOk =
-            ffmpeg.open(filename(), output_frame.size(),
-                output_frame.channels() > 1,
-                opts);
-
-        if( !fOk ) {
-          CF_ERROR("Can not write video file '%s'",
-              filename().c_str());
+        if( !ffmpeg.open(filename(), out_image.size(), out_image.channels() > 1, opts) ) {
+          CF_ERROR("Can not write video file '%s'", filename().c_str());
           return false;
         }
       }
 
-      if( !ffmpeg.write(output_frame, pts++) ) {
+      if( !ffmpeg.write(out_image, pts++) ) {
         CF_ERROR("ffmpeg.write() fails");
         return false;
       }
@@ -342,15 +281,8 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
 
     case output_type_images: {
 
-      bool fOk =
-          create_output_frame(currenFrame.getMat(), currentMask.getMat(),
-              output_frame, output_mask,
-              _output_image_processor,
-              _output_pixel_depth);
-
-      if( !fOk ) {
-        CF_ERROR("create_output_frame() fails for '%s'",
-            output_file_name.c_str());
+      if( !create_output_frame(image, mask, out_image, out_mask, _output_image_processor, _output_pixel_depth) ) {
+        CF_ERROR("output_type_images: create_output_frame() fails");
         return false;
       }
 
@@ -361,25 +293,13 @@ bool c_output_frame_writer::write(cv::InputArray currenFrame, cv::InputArray cur
           seqindex >= 0 ? seqindex : current_frame_index,
           suffix.c_str()));
 
-      if( with_alpha_mask ) {
-        if( !save_image(output_frame, output_mask, fname) ) {
-          CF_ERROR("save_image('%s) fails", fname.c_str());
-          return false;
-        }
-      }
-      else {
-        if( !output_mask.empty() ) {
-          output_frame.setTo(0, ~output_mask);
-        }
-        if( !save_image(output_frame, fname) ) {
-          CF_ERROR("save_image('%s) fails", fname.c_str());
-          return false;
-        }
+      if( !save_image(out_image, out_mask, fname, colorid) ) {
+        CF_ERROR("save_image('%s) fails", fname.c_str());
+        return false;
       }
 
       break;
     }
-
 
     default:
       CF_ERROR("ERROR: Output video file is not open");

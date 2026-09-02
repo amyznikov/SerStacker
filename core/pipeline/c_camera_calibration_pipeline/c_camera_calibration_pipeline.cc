@@ -1175,7 +1175,7 @@ bool c_camera_calibration_pipeline::write_chessboard_video()
     CF_DEBUG("Created '%s'", filename.c_str());
   }
 
-  if( !_chessboard_video_writer.write(_current_frame, _current_mask, false, _input_sequence->current_pos() - 1) ) {
+  if( !_chessboard_video_writer.write(_current_frame, _current_mask, _input_sequence->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1322,7 +1322,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
 
     if( rectified_viddeo_writer.is_open() ) {
 
-      if( !rectified_viddeo_writer.write(remapped_frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
+      if( !rectified_viddeo_writer.write(remapped_frame, cv::noArray(), _input_sequence->current_pos() - 1) ) {
         CF_ERROR("ERROR: rectified_viddeo_writer.write('%s') fails. Disk full ?", rectified_viddeo_writer.filename().c_str());
         return 1;
       }
@@ -1356,7 +1356,7 @@ bool c_camera_calibration_pipeline::write_output_videos()
       remapped_frame.copyTo(debug_frame(debug_roi[2]));
       cv::addWeighted(_current_frame, 0.5, remapped_frame, 0.5, 0, debug_frame(debug_roi[3]));
 
-      if( !debug_viddeo_writer.write(debug_frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
+      if( !debug_viddeo_writer.write(debug_frame, cv::noArray(), _input_sequence->current_pos() - 1) ) {
         CF_ERROR("ERROR: debug_viddeo_writer.write('%s') fails. Disk full ?", debug_viddeo_writer.filename().c_str());
         return 1;
       }

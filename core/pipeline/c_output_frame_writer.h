@@ -52,15 +52,15 @@ public:
 
   bool write(cv::InputArray currenFrame,
       cv::InputArray currentMask = cv::noArray(),
-      bool with_alpha_mask = false,
-      int seqindex = -1);
+      int seqindex = -1,
+      enum COLORID colorid = COLORID_UNKNOWN);
 
   bool is_open() const;
   void close();
 
 protected:
-  static bool create_output_frame(const cv::Mat & src, const cv::Mat & src_mask,
-      cv::Mat & dst, cv::Mat & dst_mask,
+  static bool create_output_frame(cv::InputArray image, cv::InputArray mask,
+      cv::Mat & out_image, cv::Mat & out_mask,
       const c_image_processor::sptr & processor,
       PIXEL_DEPTH ddepth);
 

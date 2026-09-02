@@ -543,7 +543,7 @@ QString saveImageFileAs(QWidget * parent,
       }
     }
 
-    if ( !save_image(image, embedAlphaMask ? mask : cv::noArray(), selectedFileName.toStdString(), imwrite_params) ) {
+    if ( !save_image(image, embedAlphaMask ? mask : cv::noArray(), selectedFileName.toStdString(), COLORID_UNKNOWN, imwrite_params) ) {
       QMessageBox::critical(parent, "ERROR", QString("save_image('%s') fails").arg(selectedFileName));
       continue;
     }

@@ -1124,7 +1124,7 @@ bool c_canvas_average_pipeline::write_input_video(cv::InputArray image, cv::Inpu
       }
     }
 
-    if( !_input_video_writer.write(image/*, mask*/) ) {
+    if( !_input_video_writer.write(image, mask) ) {
       CF_ERROR("_input_video_writer.write('%s') fails.",
           _input_video_writer.filename().c_str());
       return false;

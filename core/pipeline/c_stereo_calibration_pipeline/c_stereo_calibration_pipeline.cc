@@ -1399,7 +1399,7 @@ bool c_stereo_calibration_pipeline::write_chessboard_video()
     CF_DEBUG("Created '%s'", _chessboard_video_writer.filename().c_str());
   }
 
-  if( !_chessboard_video_writer.write(frame, cv::noArray(), false, _input_sequence->current_pos() - 1) ) {
+  if( !_chessboard_video_writer.write(frame, cv::noArray(), _input_sequence->current_pos() - 1) ) {
     CF_ERROR("chessboard_video_writer_.write() fails");
     return false;
   }
@@ -1489,7 +1489,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
           }
         }
 
-        if( !video_writer[i].write(remapped_frames[0], cv::noArray(), false, _processed_frames) ) {
+        if( !video_writer[i].write(remapped_frames[0], cv::noArray(), _processed_frames) ) {
           CF_ERROR("video_writer[%d].write() fails", i);
           return false;
         }
@@ -1523,7 +1523,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       remapped_frames[0].copyTo(display_frame(rc0));
       remapped_frames[1].copyTo(display_frame(rc1));
 
-      if( !stereo_writer.write(display_frame, cv::noArray(), false, _processed_frames) ) {
+      if( !stereo_writer.write(display_frame, cv::noArray(), _processed_frames) ) {
         CF_ERROR("stereo_writer.write() fails");
         return false;
       }
@@ -1560,7 +1560,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       remapped_frames[0].copyTo(display_frame(rc2));
       remapped_frames[1].copyTo(display_frame(rc3));
 
-      if ( !quad_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
+      if ( !quad_writer.write(display_frame, cv::noArray(), _processed_frames ) ) {
         CF_ERROR("quad_writer.write() fails");
         return false;
       }
@@ -1597,7 +1597,7 @@ bool c_stereo_calibration_pipeline::write_output_videos()
       remapped_frames[1].copyTo(display_frame(rc2));
       cv::addWeighted(remapped_frames[0], 0.5, remapped_frames[1], 0.5, 0, display_frame(rc3));
 
-      if ( !quad_rectified_writer.write(display_frame, cv::noArray(), false, _processed_frames ) ) {
+      if ( !quad_rectified_writer.write(display_frame, cv::noArray(), _processed_frames ) ) {
         CF_ERROR("quad_rectified_writer.write() fails");
         return false;
       }

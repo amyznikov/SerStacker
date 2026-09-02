@@ -1048,7 +1048,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
           display.rows);
     }
 
-    if( !_polar_frames_writer.write(display, cv::noArray(), false, 0) ) {
+    if( !_polar_frames_writer.write(display, cv::noArray()) ) {
       CF_ERROR("polar_frames_writer_.write() fails: %s",
           _progress_video_writer.filename().c_str());
       return false;
@@ -1093,7 +1093,7 @@ bool c_virtual_stereo_pipeline::run_polar_stereo()
             _currentDisparity.rows);
       }
 
-      if( !_disparity_frames_writer.write(_currentDisparity, cv::noArray(), false, 0) ) {
+      if( !_disparity_frames_writer.write(_currentDisparity, cv::noArray()) ) {
         CF_ERROR("disparity_frames_writer_.write() fails: %s",
             _disparity_frames_writer.filename().c_str());
         return false;
@@ -1696,7 +1696,7 @@ bool c_virtual_stereo_pipeline::write_progress_video()
         display.rows);
   }
 
-  if( !_progress_video_writer.write(display, cv::noArray(), false, 0) ) {
+  if( !_progress_video_writer.write(display, cv::noArray()) ) {
     CF_ERROR("progress_video_writer_.write() fails: %s",
         _progress_video_writer.filename().c_str());
     return false;
@@ -1740,7 +1740,7 @@ bool c_virtual_stereo_pipeline::write_homography_video()
         display.rows);
   }
 
-  if( !_homography_video_writer.write(display, cv::noArray(), false, 0) ) {
+  if( !_homography_video_writer.write(display, cv::noArray()) ) {
     CF_ERROR("homography_video_writer_.write() fails: %s",
         _homography_video_writer.filename().c_str());
     return false;

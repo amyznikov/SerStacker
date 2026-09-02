@@ -124,7 +124,6 @@ struct c_image_stacking_output_options  :
   std::string output_file_name;
 
   bool dump_reference_data_for_debug = false;
-  bool write_image_mask_as_alpha_channel = true;
 
   bool debug_frame_registration = false;
   std::vector<int> debug_frame_registration_frame_indexes;

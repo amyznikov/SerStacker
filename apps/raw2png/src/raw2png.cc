@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
 
     cv::normalize(current_image, current_image, 0, 255, cv::NORM_MINMAX, CV_8U);
 
-    if ( !save_image(current_image, current_file_name, jpeg_params) ) {
+    if ( !save_image(current_image, current_file_name, COLORID_UNKNOWN, jpeg_params) ) {
       CF_ERROR("save_image(%s) fails : %s", output_path.c_str(), strerror(errno));
       return 1;
     }

@@ -657,7 +657,7 @@ bool c_regular_stereo_pipeline::write_calibration_progress_video(c_output_frame_
       }
     }
 
-    if( !progress_writer.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
+    if( !progress_writer.write(display_frame_, cv::noArray(), _processed_frames) ) {
       CF_ERROR("c_output_frame_writer: write(fails)");
       return false;
     }
@@ -1717,7 +1717,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           }
 
 
-          if( !rectified_videos[i].write(tmp, cv::noArray(), false, _processed_frames) ) {
+          if( !rectified_videos[i].write(tmp, cv::noArray(), _processed_frames) ) {
             CF_ERROR("rectified_video_writer.write() fails");
             return false;
           }
@@ -1753,7 +1753,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
           break;
         }
 
-        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), _processed_frames) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
@@ -1764,7 +1764,7 @@ bool c_regular_stereo_pipeline::save_rectified_videos()
 
         update_calibration_display_image(true, false, _processed_frames);
 
-        if( !stereo_matches_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
+        if( !stereo_matches_video.write(display_frame_, cv::noArray(), _processed_frames) ) {
           CF_ERROR("stereo_matches_video_writer() fails");
           return false;
         }
@@ -1958,7 +1958,7 @@ bool c_regular_stereo_pipeline::run_stereo_matching()
         }
       }
 
-      if ( !progress_video.write(display_frame_, cv::noArray(), false, _processed_frames) ) {
+      if ( !progress_video.write(display_frame_, cv::noArray(), _processed_frames) ) {
         CF_ERROR("progress_video.write() fails");
         return false;
       }

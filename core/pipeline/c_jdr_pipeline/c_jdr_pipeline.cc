@@ -1272,7 +1272,7 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
     }
 
     if ( _derotated_avg_frames_writer.is_open() ) {
-      if ( !_derotated_avg_frames_writer.write(avg, mask, false, _master_pos) ) {
+      if ( !_derotated_avg_frames_writer.write(avg, mask, _master_pos) ) {
         CF_ERROR("[MF %d] _derotated_avg_frames_writer.write() fails for %s", _master_pos,
             _derotated_avg_frames_writer.cfilename());
         return false;
@@ -1280,7 +1280,7 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index,  int end
     }
 
     if ( _derotated_avg_weights_writer.is_open() ) {
-      if ( !_derotated_avg_weights_writer.write(_average.counter(), mask, false, _master_pos) ) {
+      if ( !_derotated_avg_weights_writer.write(_average.counter(), mask, _master_pos) ) {
         CF_ERROR("[MF %d] _derotated_avg_weights_writer.write() fails for %s", _master_pos,
             _derotated_avg_weights_writer.cfilename());
         return false;

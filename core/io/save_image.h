@@ -11,14 +11,14 @@
 #include <core/io/debayer.h>
 
 bool save_image(cv::InputArray image, cv::InputArray mask, const std::string & fname,
-    const std::vector<int>& params = std::vector<int>(),
-    enum COLORID colorid = COLORID_UNKNOWN);
+    enum COLORID colorid = COLORID_UNKNOWN,
+    const std::vector<int>& params = std::vector<int>());
 
 inline bool save_image(cv::InputArray image, const std::string & fname,
-    const std::vector<int> & params = std::vector<int>(),
-    enum COLORID colorid = COLORID_UNKNOWN)
+    enum COLORID colorid = COLORID_UNKNOWN,
+    const std::vector<int> & params = std::vector<int>())
 {
-  return save_image(image, cv::noArray(), fname, params, colorid);
+  return save_image(image, cv::noArray(), fname, colorid, params);
 }
 
 void set_default_tiff_compression(int compression);

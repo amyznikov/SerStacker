@@ -343,18 +343,10 @@ static bool write_image(const std::string & filename, cv::InputArray image, cv::
 
   if( colorid == COLORID_UNKNOWN ) {
     switch (image.channels()) {
-      case 1:
-        colorid = COLORID_MONO;
-        break;
-      case 3:
-        colorid = COLORID_BGR;
-        break;
-      case 4:
-        colorid = COLORID_BGRA;
-        break;
-      default:
-        colorid = COLORID_UNKNOWN;
-        break;
+      case 1: colorid = COLORID_MONO; break;
+      case 2: colorid = COLORID_OPTFLOW; break;
+      case 3: colorid = COLORID_BGR; break;
+      case 4: colorid = COLORID_BGRA; break;
     }
   }
 
@@ -426,7 +418,7 @@ static bool write_image(const std::string & filename, cv::InputArray image, cv::
 }
 
 bool save_image(cv::InputArray image, cv::InputArray mask, const std::string & fname,
-    const std::vector<int> & params, enum COLORID colorid)
+    enum COLORID colorid, const std::vector<int> & params)
 {
   if ( !write_image(fname, image, mask, params, colorid) ) {
     CF_CRITICAL("write_image(%s) fails", fname.c_str());

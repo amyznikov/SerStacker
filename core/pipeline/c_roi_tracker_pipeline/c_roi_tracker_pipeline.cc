@@ -352,7 +352,7 @@ bool c_roi_tracker_pipeline::write_progress_video()
         display.rows);
   }
 
-  if( !_progress_writer.write(display, cv::noArray(), false, 0) ) {
+  if( !_progress_writer.write(display, cv::noArray()) ) {
     CF_ERROR("homography_video_writer_.write() fails: %s",
         _progress_writer.filename().c_str());
     return false;

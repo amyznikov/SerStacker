@@ -265,7 +265,7 @@ cv::Size c_canvas_average::computeCanvasSize(const cv::Size & inputFrameSize)
 {
   const int W = inputFrameSize.width;
   const int H = inputFrameSize.height;
-  return cv::Size(W + 3 * FRAME_MARGIN, H + 3 * FRAME_MARGIN);
+  return cv::Size(W + 4 * FRAME_MARGIN, H + 4 * FRAME_MARGIN);
 }
 //return cv::Size(3 * W / 2, 3 * H / 2);
 

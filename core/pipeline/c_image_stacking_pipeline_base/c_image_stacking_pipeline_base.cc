@@ -35,17 +35,18 @@ bool serialize_base_image_stacking_input_options(c_config_setting section, bool 
     SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, stretch);
     SERIALIZE_OPTION(subsection, save, opts.background_normalization_options, offset);
   }
+  serialize_image_processor(section, save, "input_image_processor", opts.input_image_processor);
 
-  if( save ) {
-    save_settings(section, "input_image_processor", opts.input_image_processor ?
-        opts.input_image_processor->name() : "");
-  }
-  else {
-    std::string s;
-    if( load_settings(section, "input_image_processor", &s) && !s.empty() ) {
-      opts.input_image_processor = c_image_processor_collection::default_instance()->get(s);
-    }
-  }
+//  if( save ) {
+//    save_settings(section, "input_image_processor", opts.input_image_processor ?
+//        opts.input_image_processor->name() : "");
+//  }
+//  else {
+//    std::string s;
+//    if( load_settings(section, "input_image_processor", &s) && !s.empty() ) {
+//      opts.input_image_processor = c_image_processor_collection::default_instance()->get(s);
+//    }
+//  }
 
   return true;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "feature2d.h"
+#include <core/proc/feature2d/feature2d_settings.h>
 #include <core/readdir.h>
 #include <core/ssprintf.h>
 #include <core/debug.h>
@@ -1330,5 +1331,20 @@ bool draw_matched_keyppints(cv::OutputArray _all_matches_image,
 
 
   return true;
+}
 
+bool serialize_sparse_feature_extractor_and_matcher_options(c_config_setting section, bool save,
+    c_sparse_feature_extractor_and_matcher_options & opts)
+{
+  if ( auto group = SERIALIZE_GROUP(section, save, "sparse_feature_detector") ) {
+    SERIALIZE_OPTION(group, save, opts, detector);
+  }
+  if ( auto group = SERIALIZE_GROUP(section, save, "sparse_feature_descriptor") ) {
+    SERIALIZE_OPTION(group, save, opts, descriptor);
+  }
+  if ( auto group = SERIALIZE_GROUP(section, save, "sparse_feature_matcher") ) {
+    SERIALIZE_OPTION(group, save, opts, matcher);
+  }
+
+  return true;
 }

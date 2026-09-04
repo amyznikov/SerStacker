@@ -46,45 +46,6 @@ static inline bool waitUntil(QWaitCondition & cond, QMutex & mutex, Predicate &&
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-//QLivePipeline::QLivePipeline(const QString & name, QLivePipelineThread * parent) :
-//    Base(name, parent), _liveThread(parent)
-//{
-//}
-//
-//bool QLivePipeline::get_display_image(cv::OutputArray display_frame, cv::OutputArray display_mask)
-//{
-//  if( !display_frame.needed() ) {
-//    display_frame.release();
-//  }
-//  else {
-//    bool processed = false;
-//    if( is_bayer_pattern(_current_colorid) ) {
-//      if( _liveThread && _liveThread->debayer() != DEBAYER_DISABLE ) {
-//        if( debayer(_current_image, display_frame, _current_colorid, _liveThread->debayer()) ) {
-//          processed = true;
-//        }
-//      }
-//    }
-//    if( !processed ) {
-//      _current_image.copyTo(display_frame);
-//    }
-//  }
-//
-//  if( display_mask.needed() ) {
-//
-//    if ( display_frame.empty() || _current_mask.empty()  ) {
-//      display_mask.release();
-//    }
-//    else if (_current_mask.size() != display_frame.size() ) {
-//      cv::resize(_current_mask, display_mask, display_frame.size(), 0, 0, cv::INTER_NEAREST);
-//    }
-//    else {
-//      _current_mask.copyTo(display_mask);
-//    }
-//  }
-//
-//  return true;
-//}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -103,24 +64,6 @@ QLiveDisplay::QLiveDisplay(QWidget * parent) :
   QObject::connect(this, &QImageViewer::displayImageChanged,
       mtfDisplayEvents(), &QMtfDisplayEvents::displayImageChanged,
       Qt::QueuedConnection);
-
-//  QObject::connect(this, &ThisClass::inputImageReady, this,
-//      [this]() {
-//        try {
-//          Base::updateImage();
-//        }
-//        catch (const std::exception& e) {
-//          CF_ERROR("Exception in updateImage: %s", e.what());
-//        }
-//        catch (...) {
-//          CF_ERROR("Unknown exception in updateImage");
-//        }
-//
-//        // Make a short delay to allow GUI thread process user I/O
-//         _frameReleaseTimer.start();
-//        // _canAcceptFrame = true;
-//      }, Qt::QueuedConnection);
-
 
   QObject::connect(this, &Base::onPopulateContextMenu,
       this, &Base::populateContextMenu);

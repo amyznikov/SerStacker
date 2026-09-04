@@ -600,5 +600,8 @@ void ctlbind(c_ctlist<RootObjectType> & ctls, const std::string & cname,
   ctls.emplace_back(c);
 }
 
+bool serialize_image_processor(c_config_setting settings, bool save, const std::string & parameter_name,
+    c_image_processor::sptr & proc);
+
 #endif /* __c_image_processor_h__ */
 

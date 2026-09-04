@@ -12,6 +12,7 @@
 #include <gui/widgets/QSettingsWidget.h>
 #include <core/improc/c_image_processor.h>
 #include <core/proc/pixtype.h>
+#include <core/io/c_fits_file.h>
 
 class QImageSavePNGOptions :
     public QSettingsWidget
@@ -61,6 +62,28 @@ protected:
   QComboBox * compression_ctl = nullptr;
 };
 
+class QImageSaveFITSOptions :
+    public QSettingsWidget
+{
+public:
+  typedef QImageSaveTIFFOptions ThisClass;
+  typedef QSettingsWidget Base;
+  typedef QEnumComboBox<PIXEL_DEPTH> QPixelDepthCombo;
+
+  QImageSaveFITSOptions(QWidget * parent = nullptr);
+
+  void setPixelDepth(PIXEL_DEPTH v);
+  PIXEL_DEPTH pixelDepth() const;
+
+  void setEmbedAlphaMask(bool v);
+  bool embedAlphaMask() const;
+  QCheckBox * embedAlphaMaskCtl() const;
+
+protected:
+  QPixelDepthCombo * pixelDepth_ctl = nullptr;
+  QCheckBox * embedAlphaMask_ctl = nullptr;
+};
+
 class QImageSaveJPEGOptions :
     public QSettingsWidget
 {
@@ -84,6 +107,7 @@ enum QImageSaveFormat {
   QImageSavePNG = 1,
   QImageSaveJPEG = 2,
   QImageSaveFLO = 3,
+  QImageSaveFITS = 4,
 };
 //
 //const extern struct QImageSaveFormat_desc {
@@ -115,6 +139,10 @@ public:
   QImageSavePNGOptions * pngOptions() const;
   QImageSaveTIFFOptions * tiffOptions() const;
   QImageSaveJPEGOptions * jpegOptions() const;
+#if HAVE_CFITSIO
+  QImageSaveFITSOptions * fitsOptions() const;
+#endif
+
   QCheckBox * saveProcessorConfigCtl() const;
 
 
@@ -126,6 +154,10 @@ protected:
   QImageSaveTIFFOptions * tiffOptions_ctl = nullptr;
   QImageSavePNGOptions * pngOptions_ctl = nullptr;
   QImageSaveJPEGOptions * jpegOptions_ctl = nullptr;
+#if HAVE_CFITSIO
+  QImageSaveFITSOptions * fitsOptions_ctl = nullptr;
+#endif
+
   QCheckBox * save_also_processor_config_ctl = nullptr;
 };
 
@@ -145,6 +177,9 @@ public:
 
   QImageSavePNGOptions * pngOptions() const;
   QImageSaveTIFFOptions * tiffOptions() const;
+#if HAVE_CFITSIO
+  QImageSaveFITSOptions * fitsOptions() const;
+#endif //HAVE_CFITSIO
   QImageSaveJPEGOptions * jpegOptions() const;
   QCheckBox * saveProcessorConfigCtl() const;
 

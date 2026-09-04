@@ -56,9 +56,14 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(section, save, _registration_options, eccUnsharpMaskAlpha);
 
     SERIALIZE_OPTION(section, save, _registration_options, motion_type);
+    SERIALIZE_OPTION(section, save, _registration_options, enable_feature2d_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_star_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_ecc_registration);
     SERIALIZE_OPTION(section, save, _registration_options, enable_eccflow_registration);
+
+    if ( auto group = SERIALIZE_GROUP(section, save, "feature2d_registration") ) {
+      serialize_sparse_feature_extractor_and_matcher_options(group, save, _registration_options.feature2d);
+    }
 
     if ( auto group = SERIALIZE_GROUP(section, save, "star_registration") ) {
       if( auto g = SERIALIZE_GROUP(group, save, "star_detection") ) {
@@ -74,6 +79,8 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
 
     if ( auto group = SERIALIZE_GROUP(section, save, "ecch") ) {
       serialize_ecch_options(group, save, _registration_options.ecch);
+      serialize_image_processor(group, save, "ecc_cimage_preprocessor", _registration_options.ecc_cimage_preprocessor);
+      serialize_image_processor(group, save, "ecc_rimage_preprocessor", _registration_options.ecc_rimage_preprocessor);
     }
 
     if ( auto group = SERIALIZE_GROUP(section, save, "eccflow") ) {
@@ -151,6 +158,11 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 
   ctlbind(ctls, "motion_type", ctx(&S::motion_type), "");
 
+  ctlbind_expandable_group(ctls, "Feature2d", "");
+  ctlbind(ctls, "Enable feature2d registration", ctx(&S::enable_feature2d_registration), "");
+    ctlbind(ctls, ctx(&S::feature2d));
+  ctlbind_end_group(ctls);
+
   ctlbind_expandable_group(ctls, "Stars", "");
     ctlbind(ctls, "Enable star registration", ctx(&S::enable_star_registration), "");
     ctlbind_expandable_group(ctls, "Star Detection", "");
@@ -167,6 +179,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind_expandable_group(ctls, "ECC", "");
     ctlbind(ctls, "Enable ecc", ctx(&S::enable_ecc_registration), "");
     ctlbind(ctls, ctx(&S::ecch));
+    ctlbind(ctls, "cimage_preprocessor", ctx(&S::ecc_cimage_preprocessor), "");
+    ctlbind(ctls, "rimage_preprocessor", ctx(&S::ecc_rimage_preprocessor), "");
   ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "ECCFLOW", "");
@@ -466,6 +480,7 @@ bool c_canvas_average_pipeline::initialize_pipeline()
   _image_transform.reset();
   _star_extractor.clear();
   _triangle_extractor.clear();
+  _feature2d.reset();
 
   if ( !_input_options.darkbayer_filename.empty() ) {
     cv::Mat ignored_optional_mask;
@@ -513,6 +528,10 @@ bool c_canvas_average_pipeline::initialize_pipeline()
   if ( enable_registration ) {
 
     _image_transform = create_image_transform(_registration_options.motion_type);
+
+    if ( _registration_options.enable_feature2d_registration ) {
+      _feature2d = c_sparse_feature_extractor_and_matcher::create(_registration_options.feature2d);
+    }
 
     if ( _registration_options.enable_star_registration ) {
       _star_extractor.set_options(_registration_options.star_detection);
@@ -820,7 +839,33 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     _image_transform->reset();
 
-    if( _registration_options.enable_star_registration ) {
+    if( _registration_options.enable_feature2d_registration ) {
+      INSTRUMENT_REGION("feature2d_registration");
+
+      if ( !_feature2d->setup_reference_frame(reference_image, reference_binary_mask) ) {
+        CF_ERROR("_feature2d.setup_reference_frame() fails");
+        return !canceled();
+      }
+
+      if ( !_feature2d->match_current_frame(_current_grayscale_image, current_binary_mask) ) {
+        CF_ERROR("_feature2d.match_current_frame() fails");
+        return !canceled();
+      }
+
+      const bool transformEstimated =
+          estimate_image_transform(_image_transform.get(),
+              _feature2d->matched_current_positions(),
+              _feature2d->matched_reference_positions(),
+              _registration_options.transform_estimation);
+
+      if( !transformEstimated ) {
+        CF_ERROR("estimate_image_transform() fails");
+        return false;
+      }
+
+      CF_DEBUG("FEATURE2D: matched_current_positions=%u", _feature2d->matched_current_positions().size());
+    }
+    else if( _registration_options.enable_star_registration ) {
       INSTRUMENT_REGION("star_registration");
 
       synchronized(_current_stars_lock, [&]() {

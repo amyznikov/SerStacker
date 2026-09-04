@@ -921,3 +921,25 @@ void c_image_processor_collection::set_default_processor_collection_path(const s
 {
   _default_processor_collection_path = v;
 }
+
+bool serialize_image_processor(c_config_setting settings, bool save, const std::string & parameter_name,
+    c_image_processor::sptr & proc)
+{
+  if( parameter_name.empty() ) {
+    return false;
+  }
+
+  if( save ) {
+    save_settings(settings, parameter_name, proc ? proc->name() : "");
+  }
+  else {
+    std::string s;
+    if( load_settings(settings, parameter_name, &s) && !s.empty() ) {
+      if( !(proc = c_image_processor_collection::default_instance()->get(s)) ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}

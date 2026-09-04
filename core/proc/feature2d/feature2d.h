@@ -26,6 +26,20 @@ struct c_sparse_feature_extractor_and_matcher_options
   c_feature2d_matcher_options matcher;
 };
 
+bool serialize_sparse_feature_extractor_and_matcher_options(c_config_setting section, bool save,
+    c_sparse_feature_extractor_and_matcher_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_sparse_feature_extractor_and_matcher_options & opts)
+{
+  return serialize_sparse_feature_extractor_and_matcher_options(section, true,
+      const_cast<c_sparse_feature_extractor_and_matcher_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_sparse_feature_extractor_and_matcher_options * opts)
+{
+  return serialize_sparse_feature_extractor_and_matcher_options(section, false, *opts);
+}
+
 
 template<class RootObjectType>
 inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_sparse_feature_extractor_and_matcher_options> & ctx)

@@ -25,6 +25,7 @@ struct c_canvas_average_input_options:
 
 struct c_canvas_average_registration_options
 {
+  bool enable_feature2d_registration = false;
   bool enable_star_registration = false;
   bool enable_ecc_registration = false;
   bool enable_eccflow_registration = false;
@@ -36,6 +37,7 @@ struct c_canvas_average_registration_options
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 
+  c_sparse_feature_extractor_and_matcher_options feature2d;
   c_simple_star_detector_options star_detection;
   c_triangle_extractor_options triangle_extractor;
   c_triangle_matcher_options triangle_matcher;
@@ -43,6 +45,9 @@ struct c_canvas_average_registration_options
   c_ecch_options ecch;
   c_eccflow_options eccflow;
   c_estimate_image_transform_options transform_estimation;
+
+  c_image_processor::sptr ecc_cimage_preprocessor;
+  c_image_processor::sptr ecc_rimage_preprocessor;
 };
 
 struct c_canvas_average_update_options
@@ -121,6 +126,7 @@ protected:
 
   c_ecch _ecch;
   c_eccflow _eccflow;
+  c_sparse_feature_extractor_and_matcher::sptr _feature2d;
   c_star_extractor _star_extractor;
   c_triangle_extractor _triangle_extractor;
   c_triangle_matcher _triangle_matcher;

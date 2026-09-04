@@ -33,11 +33,11 @@ bool c_resize_image_routine::serialize(c_config_setting settings, bool save)
 
 bool c_resize_image_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  cv::resize(image.getMat(), image, _dstize, _fx, _fy, _interpolation);
+  cv::resize(image, image, _dstize, _fx, _fy, _interpolation);
 
   if( mask.needed() && !mask.empty() ) {
-    cv::resize(mask.getMat(), mask, image.size(), 0, 0, _mask_interpolation);
-    cv::compare(mask.getMat(), cv::Scalar::all(_mask_threshold), mask, cv::CMP_GE);
+    cv::resize(mask, mask, image.size(), 0, 0, _mask_interpolation);
+    cv::compare(mask, cv::Scalar::all(_mask_threshold), mask, cv::CMP_GT);
   }
 
   return true;

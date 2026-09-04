@@ -17,22 +17,6 @@
 #include <core/get_time.h>
 #include <core/debug.h>
 
-
-#if 0
-template<>
-const c_enum_member * members_of<planetary_disk_derotation_type>()
-{
-  static const c_enum_member members[] = {
-      {planetary_disk_derotation_disabled, "disable", },
-      {planetary_disk_derotation_jovian, "jovian", },
-      {planetary_disk_derotation_saturn, "saturn", },
-      {planetary_disk_derotation_disabled},
-  };
-
-  return members;
-}
-#endif // 0
-
 bool load_settings(c_config_setting settings, c_ecc_registration_options * opts)
 {
   LOAD_OPTION(settings, *opts, scale);
@@ -147,6 +131,7 @@ bool save_settings(c_config_setting settings, const c_feature_registration_optio
   if ( (section = settings.add_group("estimate_options")).isGroup() ) {
     save_settings(section, opts.estimate_options);
   }
+
   return true;
 }
 

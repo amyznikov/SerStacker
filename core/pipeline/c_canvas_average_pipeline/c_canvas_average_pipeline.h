@@ -55,6 +55,13 @@ struct c_canvas_average_update_options
   //double running_weight = 15000;
   c_canvas_average::options update;
   c_local_variance_map_options sharpness_measure;
+
+  bool applyPhotometrcAlignment = false;
+  bool includeBrightness = false;
+  bool includeContrast = true;
+  bool separateChannels = true;
+  double eps = 1e-6;
+
 };
 
 struct c_canvas_average_output_options:

@@ -6,6 +6,7 @@
  */
 
 #include "c_canvas_average_pipeline.h"
+#include <core/proc/photometric_alignment.h>
 #include <core/proc/unsharp_mask.h>
 #include <core/proc/pixtype.h>
 #include <core/io/load_image.h>
@@ -96,6 +97,14 @@ bool c_canvas_average_pipeline::serialize(c_config_setting settings, bool save)
 
     if( auto group = SERIALIZE_GROUP(section, save, "update") ) {
       SERIALIZE_OPTION(group, save, _average_options.update, interpolation);
+    }
+
+    if( auto group = SERIALIZE_GROUP(section, save, "photometricAlignment") ) {
+      SERIALIZE_OPTION(group, save, _average_options, applyPhotometrcAlignment);
+      SERIALIZE_OPTION(group, save, _average_options, includeBrightness);
+      SERIALIZE_OPTION(group, save, _average_options, includeContrast);
+      SERIALIZE_OPTION(group, save, _average_options, separateChannels);
+      SERIALIZE_OPTION(group, save, _average_options, eps);
     }
   }
 
@@ -193,6 +202,14 @@ template<class RootObjectType>
 static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_canvas_average_update_options> & ctx)
 {
   using S = c_canvas_average_update_options;
+
+  ctlbind_expandable_group(ctls, "Photometry Alignment", "");
+    ctlbind(ctls, "applyPhotometrcAlignment:",  CTL_CONTEXT(ctx, applyPhotometrcAlignment));
+    ctlbind(ctls, "includeBrightness:",  CTL_CONTEXT(ctx, includeBrightness));
+    ctlbind(ctls, "includeContrast:",  CTL_CONTEXT(ctx, includeContrast));
+    ctlbind(ctls, "separateChannels:",  CTL_CONTEXT(ctx, separateChannels));
+    ctlbind(ctls, "Noise eps:",  CTL_CONTEXT(ctx, eps));
+  ctlbind_end_group(ctls);
 
   ctlbind_expandable_group(ctls, "Sharpness measure", "");
     ctlbind(ctls, CTL_CONTEXT(ctx, sharpness_measure));
@@ -800,7 +817,7 @@ bool c_canvas_average_pipeline::process_current_frame()
 
     INSTRUMENT_REGION("align_and_update");
 
-    cv::Mat reference_image, reference_binary_mask;
+    cv::Mat reference_image, reference_grayscale_image, reference_binary_mask;
     cv::Mat2f rmap, uv;
 
     if ( !_average.compute(reference_image, reference_binary_mask, 1, -1, _average.last_bbox())) {
@@ -814,19 +831,19 @@ bool c_canvas_average_pipeline::process_current_frame()
       return false;
     }
 
-    mkgrayscale(reference_image, reference_image);
+    mkgrayscale(reference_image, reference_grayscale_image);
     mkgrayscale(_current_image, _current_grayscale_image);
 
     if ( _output_options.save_reference_video ) {
 
       const cv::Size frameSize(_current_grayscale_image.cols + 8, _current_grayscale_image.rows + 8);
-      cv::Mat frame = cv::Mat::zeros(frameSize, reference_image.type());
-      cv::Mat mask =  reference_binary_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
+      cv::Mat frame = cv::Mat::zeros(frameSize, reference_grayscale_image.type());
+      cv::Mat mask = reference_binary_mask.empty() ? cv::Mat() : cv::Mat::zeros(frameSize, CV_8UC1);
 
       const cv::Size copySize(std::min(frameSize.width, bbox.width), std::min(frameSize.height, bbox.height));
       const cv::Rect copyBox(0,0, copySize.width, copySize.height);
 
-      reference_image(copyBox).copyTo(frame(copyBox));
+      reference_grayscale_image(copyBox).copyTo(frame(copyBox));
       if ( !reference_binary_mask.empty() ) {
         reference_binary_mask(copyBox).copyTo(mask(copyBox));
       }
@@ -842,7 +859,7 @@ bool c_canvas_average_pipeline::process_current_frame()
     if( _registration_options.enable_feature2d_registration ) {
       INSTRUMENT_REGION("feature2d_registration");
 
-      if ( !_feature2d->setup_reference_frame(reference_image, reference_binary_mask) ) {
+      if ( !_feature2d->setup_reference_frame(reference_grayscale_image, reference_binary_mask) ) {
         CF_ERROR("_feature2d.setup_reference_frame() fails");
         return !canceled();
       }
@@ -852,6 +869,8 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
+      CF_DEBUG("FEATURE2D: matched_current_positions=%u", _feature2d->matched_current_positions().size());
+
       const bool transformEstimated =
           estimate_image_transform(_image_transform.get(),
               _feature2d->matched_current_positions(),
@@ -860,10 +879,8 @@ bool c_canvas_average_pipeline::process_current_frame()
 
       if( !transformEstimated ) {
         CF_ERROR("estimate_image_transform() fails");
-        return false;
+        return !canceled();
       }
-
-      CF_DEBUG("FEATURE2D: matched_current_positions=%u", _feature2d->matched_current_positions().size());
     }
     else if( _registration_options.enable_star_registration ) {
       INSTRUMENT_REGION("star_registration");
@@ -876,13 +893,13 @@ bool c_canvas_average_pipeline::process_current_frame()
         return !canceled();
       }
 
-      _star_extractor.detect(reference_image, _reference_keypoints, reference_binary_mask);
+      _star_extractor.detect(reference_grayscale_image, _reference_keypoints, reference_binary_mask);
       if ( _reference_keypoints.size() < 3 ) {
         CF_ERROR("_star_extractor.detect(reference_image) fails: reference_keypoints.size=%zu", _reference_keypoints.size());
         return !canceled();
       }
 
-      _triangle_extractor.compute(reference_image, _reference_keypoints, _reference_descriptors);
+      _triangle_extractor.compute(reference_grayscale_image, _reference_keypoints, _reference_descriptors);
       _triangle_extractor.compute(_current_grayscale_image, _current_keypoints, _current_descriptors);
 
       _triangle_matcher.train(_reference_keypoints, _reference_descriptors);
@@ -911,13 +928,13 @@ bool c_canvas_average_pipeline::process_current_frame()
         const double alpha = _registration_options.eccUnsharpMaskAlpha;
         if ( sigma > 0 && alpha > 0 && alpha < 1 ) {
          INSTRUMENT_REGION("unsharp_mask");
-         unsharp_mask(reference_image, reference_binary_mask, reference_image,
+         unsharp_mask(reference_grayscale_image, reference_binary_mask, reference_grayscale_image,
               sigma, alpha, 0, 1.5);
         }
       }
 
       /* This will compute _image_transform parameters as _ecch has the active pointer to _image_transform */
-      _ecch.set_reference_image(reference_image, reference_binary_mask);
+      _ecch.set_reference_image(reference_grayscale_image, reference_binary_mask);
       if( !_ecch.align(_current_grayscale_image, current_binary_mask) ) {
         CF_ERROR("_ecch.align() fails");
         return false;
@@ -931,16 +948,16 @@ bool c_canvas_average_pipeline::process_current_frame()
       // create temporary rmap of reference image size for optflow computation
 
       bool fOk = false;
-      if ( reference_image.size() == _current_grayscale_image.size() ) {
-        _image_transform->create_remap(reference_image.size(), rmap);
-        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_image, rmap, current_binary_mask, reference_binary_mask);
+      if ( reference_grayscale_image.size() == _current_grayscale_image.size() ) {
+        _image_transform->create_remap(reference_grayscale_image.size(), rmap);
+        fOk = _eccflow.compute_uv(_current_grayscale_image, reference_grayscale_image, rmap, current_binary_mask, reference_binary_mask);
       }
       else {
-        const cv::Rect roi(0, 0, std::min(reference_image.cols, _current_grayscale_image.cols),
-            std::min(reference_image.rows, _current_grayscale_image.rows));
+        const cv::Rect roi(0, 0, std::min(reference_grayscale_image.cols, _current_grayscale_image.cols),
+            std::min(reference_grayscale_image.rows, _current_grayscale_image.rows));
         const cv::Mat cimage = _current_grayscale_image(roi);
         const cv::Mat cmask = current_binary_mask.empty() ? cv::Mat() : current_binary_mask(roi);
-        const cv::Mat rimage = reference_image(roi);
+        const cv::Mat rimage = reference_grayscale_image(roi);
         const cv::Mat rmask = reference_binary_mask.empty() ? cv::Mat() : reference_binary_mask(roi);
 
         _image_transform->create_remap(rimage.size(), rmap);
@@ -1001,6 +1018,104 @@ bool c_canvas_average_pipeline::process_current_frame()
         cv::Mat2f rmap_sub = rmap(dst_roi);
         cv::Mat2f uv_sub = uv(src_roi);
         cv::add(rmap_sub, uv_sub, rmap_sub);
+      }
+    }
+
+    if ( _average_options.applyPhotometrcAlignment ) {
+      if ( _average_options.includeBrightness || _average_options.includeContrast ) {
+
+        cv::Scalar brightness, contrast;
+
+        cv::Mat remapped_current_image, remapped_current_mask;
+
+        cv::remap(_current_image, remapped_current_image, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+        cv::remap(current_weights, remapped_current_mask, rmap, cv::noArray(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        cv::compare(remapped_current_mask, 0, remapped_current_mask, cv::CMP_GT);
+
+        const cv::Rect oldGlobalBox = _average.last_bbox();
+        const cv::Rect newGlobalBox = newCanvasBBox;
+        const cv::Rect newCommonGlobalBox = oldGlobalBox & newCommonGlobalBox;
+
+        const cv::Rect commonReferenceROI(newCommonGlobalBox.x - oldGlobalBox.x, newCommonGlobalBox.y - oldGlobalBox.y,
+            newCommonGlobalBox.width, newCommonGlobalBox.height);
+
+        const cv::Rect commonCurrentROI(newCommonGlobalBox.x - newGlobalBox.x, newCommonGlobalBox.y - newGlobalBox.y,
+            newCommonGlobalBox.width, newCommonGlobalBox.height);
+
+        cv::Mat common_current_image = remapped_current_image(commonCurrentROI);
+        cv::Mat common_current_mask = remapped_current_mask(commonCurrentROI);
+        cv::Mat common_reference_image = reference_image(commonReferenceROI);
+        cv::Mat common_reference_mask = reference_binary_mask(commonReferenceROI);
+
+
+        CF_DEBUG("\n"
+            "_current_image        : %dx%d\n"
+
+            "oldGlobalBox          : x=%d y=%d %dx%d\n"
+            "newGlobalBox          : x=%d y=%d %dx%d\n"
+
+            "remapped_current_image: %dx%d\n"
+            "remapped_current_mask : %dx%d\n"
+            "commonCurrentROI      : x=%d y=%d %dx%d\n"
+
+            "reference_image       : %dx%d\n"
+            "reference_mask        : %dx%d\n"
+            "commonReferenceROI    : x=%d y=%d %dx%d\n"
+
+            "common_current_mask   : %dx%d\n"
+            "common_reference_mask : %dx%d\n",
+
+            _current_image.cols, _current_image.rows,
+
+            oldGlobalBox.x, oldGlobalBox.y, oldGlobalBox.width, oldGlobalBox.height,
+            newGlobalBox.x, newGlobalBox.y, newGlobalBox.width, newGlobalBox.height,
+
+            remapped_current_image.cols, remapped_current_image.rows,
+            remapped_current_mask.cols, remapped_current_mask.rows,
+            commonCurrentROI.x, commonCurrentROI.y, commonCurrentROI.width, commonCurrentROI.height,
+
+            reference_image.cols, reference_image.rows,
+            reference_binary_mask.cols, reference_binary_mask.rows,
+            commonReferenceROI.x, commonReferenceROI.y, commonReferenceROI.width, commonReferenceROI.height,
+            common_current_mask.cols, common_current_mask.rows,
+            common_reference_mask.cols, common_reference_mask.rows);
+
+        cv::bitwise_and(common_current_mask, common_reference_mask, common_current_mask);
+
+        bool fOK = estimatePhotometricAlignment(common_current_image,
+            common_reference_image, common_current_mask, brightness, contrast,
+            _average_options.includeBrightness,
+            _average_options.includeContrast,
+            _average_options.separateChannels,
+            _average_options.eps);
+
+        if ( !fOK ) {
+          CF_ERROR("estimatePhotometricAlignment() fails");
+        }
+        else {
+          CF_DEBUG("\nestimatePhotometricAlignment:\n"
+              "brightness = {%g %g %g %g }\n"
+              "contrast   = {%g %g %g %g }",
+              brightness[0], brightness[1], brightness[2], brightness[3],
+              contrast[0], contrast[1], contrast[2], contrast[3]);
+
+
+          if( _average_options.includeBrightness && _average_options.includeContrast ) {
+            if ( _current_image.channels() == 1 ) {
+              _current_image.convertTo(_current_image, _current_image.depth(), contrast[0], brightness[0]);
+            }
+            else {
+              cv::multiply(_current_image, contrast, _current_image);
+              cv::add(_current_image, brightness, _current_image);
+            }
+          }
+          else if (_average_options.includeContrast) {
+            cv::multiply(_current_image, contrast, _current_image);
+          }
+          else {
+            cv::add(_current_image, brightness, _current_image);
+          }
+        }
       }
     }
 

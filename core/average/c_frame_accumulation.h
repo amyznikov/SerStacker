@@ -70,10 +70,6 @@ public:
 
   static const int FRAME_MARGIN = 32;
 
-  struct options {
-    cv::InterpolationFlags interpolation = cv::INTER_LINEAR; // cv::INTER_LANCZOS4; //
-  } opts;
-
   void setCanvasSize(const cv::Size & v)
   {
     clear();
@@ -113,8 +109,11 @@ public:
   /*
    * Add input frame to canvas. The rmap.size() must be equal to new_canvas_bbox.size().
    * */
-  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
-      const cv::Mat2f & rmap = cv::Mat2f(), const cv::Point & boxpos = cv::Point());
+//  bool add(cv::InputArray current_image, cv::InputArray current_weights_or_mask,
+//      const cv::Mat2f & rmap, const cv::Point & boxpos = cv::Point());
+
+  bool add(cv::InputArray remapped_current_image, cv::InputArray remapped_current_weights_or_mask,
+      const cv::Point & boxpos = cv::Point(0,0));
 
   /*
    * Return fragment of canvas limited by requested rbbox or full canvas if rbbox is empty
@@ -143,7 +142,7 @@ public:
   }
 
 protected:
-  void maintainCanvasBoundaries(cv::Rect & bbox, const cv::Size & frameSize);
+  void maintainCanvasBoundaries(cv::Rect & bbox);
 
 protected:
   mutable std::mutex _mtx;

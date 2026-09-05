@@ -33,7 +33,23 @@ bool estimatePhotometricAlignment(cv::InputArray currentImage,
     bool separateChannels = true,
     double eps = 1e-6);
 
+bool applyPhotometricAlignment(cv::InputArray current_image,
+    cv::OutputArray updated_current_image,
+    const cv::Scalar brightness,
+    const cv::Scalar & contrast,
+    bool includeBrightness = true,
+    bool includeContrast = true);
 
+bool estimateAndApplyPhotometricAlignment(cv::InputArray current_image, cv::InputArray current_mask,
+    cv::InputArray reference_image, cv::InputArray reference_mask,
+    const cv::Rect & commonCurrentROI, const cv::Rect & commonReferenceROI,
+    cv::OutputArray updated_current_image,
+    bool includeBrightness,
+    bool includeContrast,
+    bool separateChannels,
+    double eps,
+    cv::Scalar * outputBrightness = nullptr,
+    cv::Scalar * outputContrast = nullptr);
 
 
 #endif /* __photometric_alignment_h__ */

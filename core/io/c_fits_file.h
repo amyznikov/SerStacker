@@ -132,9 +132,6 @@ public:
 
    bool write(const std::string & filename, cv::InputArray image, enum COLORID colorid,
        cv::InputArray weights = cv::noArray());
-
-//protected:
-//   bool write_header_keys();
 };
 
 #endif // HAVE_CFITSIO

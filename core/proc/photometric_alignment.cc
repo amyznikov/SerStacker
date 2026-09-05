@@ -328,3 +328,135 @@ bool estimatePhotometricAlignment(cv::InputArray currentImage,
   CF_ERROR("Not supported image depth = %d", currentImage.depth());
   return false;
 }
+
+bool applyPhotometricAlignment(cv::InputArray current_image,
+    cv::OutputArray updated_current_image,
+    const cv::Scalar brightness,
+    const cv::Scalar & contrast,
+    bool includeBrightness,
+    bool includeContrast)
+{
+  if( !includeBrightness && !includeContrast ) {
+    current_image.copyTo(updated_current_image);
+    return true;
+  }
+
+  const cv::Mat currentImage = current_image.getMat();
+
+  if( includeBrightness && includeContrast ) {
+    if( currentImage.channels() == 1 ) {
+      currentImage.convertTo(updated_current_image, currentImage.depth(),
+          contrast[0], brightness[0]);
+    }
+    else {
+      cv::multiply(currentImage, contrast, updated_current_image);
+      cv::add(updated_current_image, brightness, updated_current_image);
+    }
+  }
+  else if( includeContrast ) {
+    cv::multiply(currentImage, contrast, updated_current_image);
+  }
+  else {
+    cv::add(currentImage, brightness, updated_current_image);
+  }
+
+  return true;
+}
+
+bool estimateAndApplyPhotometricAlignment(cv::InputArray current_image, cv::InputArray current_mask,
+    cv::InputArray reference_image, cv::InputArray reference_mask,
+    const cv::Rect & commonCurrentROI, const cv::Rect & commonReferenceROI,
+    cv::OutputArray updated_current_image,
+    bool includeBrightness,
+    bool includeContrast,
+    bool separateChannels,
+    double eps,
+    cv::Scalar * outputBrightness,
+    cv::Scalar * outputContrast)
+{
+  if( !includeBrightness && !includeContrast ) {
+    current_image.copyTo(updated_current_image);
+    return true;
+  }
+
+  if( commonCurrentROI.size() != commonReferenceROI.size() ) {
+    CF_ERROR("commonCurrentROI.size()=%dx%d not match commonReferenceROI.size()=%dx%d",
+        commonCurrentROI.width, commonCurrentROI.height,
+        commonReferenceROI.width, commonReferenceROI.height);
+    return false;
+  }
+
+  cv::Scalar brightness, contrast;
+  cv::Mat current_binary_mask, reference_binary_mask, common_pixels_mask;
+
+  if( !current_mask.empty() ) {
+    if( current_mask.depth() == CV_8U ) {
+      current_binary_mask = current_mask.getMat()(commonCurrentROI);
+    }
+    else {
+      cv::compare(current_mask.getMat()(commonCurrentROI), 0,
+          current_binary_mask, cv::CMP_GT);
+    }
+  }
+
+  if( !reference_mask.empty() ) {
+    if( reference_mask.depth() == CV_8U ) {
+      reference_binary_mask = reference_mask.getMat()(commonReferenceROI);
+    }
+    else {
+      cv::compare(reference_mask.getMat()(commonReferenceROI), 0,
+          reference_binary_mask, cv::CMP_GT);
+    }
+  }
+
+  if( !current_binary_mask.empty() && !reference_binary_mask.empty() ) {
+    cv::bitwise_and(current_binary_mask,
+        reference_binary_mask,
+        common_pixels_mask);
+  }
+  else if( !current_binary_mask.empty() ) {
+    common_pixels_mask = current_binary_mask;
+  }
+  else if( !reference_binary_mask.empty() ) {
+    common_pixels_mask = reference_binary_mask;
+  }
+
+  const cv::Mat currentImage = current_image.getMat();
+  const cv::Mat referenceImage = reference_image.getMat();
+
+  const bool fOK =
+      estimatePhotometricAlignment(currentImage(commonCurrentROI),
+          referenceImage(commonReferenceROI),
+          common_pixels_mask,
+          brightness, contrast,
+          includeBrightness,
+          includeContrast,
+          separateChannels,
+          eps);
+
+  if( outputBrightness ) {
+    *outputBrightness = brightness;
+  }
+
+  if( outputContrast ) {
+    *outputContrast = contrast;
+  }
+
+  if( !fOK ) {
+    CF_ERROR("estimatePhotometricAlignment() fails");
+    return false;
+  }
+
+  //  CF_DEBUG("\nestimatePhotometricAlignment:"
+  //      " brightness = { %g %g %g %g }"
+  //      " contrast   = { %g %g %g %g }",
+  //      brightness[0], brightness[1], brightness[2], brightness[3],
+  //      contrast[0], contrast[1], contrast[2], contrast[3]);
+
+  return applyPhotometricAlignment(current_image,
+      updated_current_image,
+      brightness,
+      contrast,
+      includeBrightness,
+      includeContrast);
+}

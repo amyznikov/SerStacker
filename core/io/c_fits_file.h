@@ -94,6 +94,11 @@ class c_fits_reader :
     public c_fits_file
 {
 public:
+  enum ROW_ORDER {
+    ROWORDER_BOTTOM_UP = 0, // Classic FITS (bottom-up)
+    ROWORDER_TOP_DOWN  = 1  // OpenCV style (top to bottom)
+  };
+
   c_fits_reader() = default;
 
   c_fits_reader(const std::string & filename);
@@ -104,12 +109,18 @@ public:
 
   bool read(cv::OutputArray outImage,int ddepth = -1, cv::OutputArray outWeights = cv::noArray());
 
+  ROW_ORDER row_order() const {
+    return _row_order;
+  }
+
   static bool read(const std::string & filename,
       cv::OutputArray output_image,
       enum COLORID  * output_colorid = nullptr,
       int ddepth = -1,
       cv::OutputArray outWeights = cv::noArray());
 
+protected:
+  ROW_ORDER _row_order = ROWORDER_BOTTOM_UP;
 };
 
 /** @brief FITS image writer, had no time to implement yet */

@@ -14,6 +14,16 @@
 #include <core/proc/run-loop.h>
 #include <core/debug.h>
 
+#ifdef _WIN32
+#  include <shlwapi.h>
+#  define strcasestr StrStrIA  // StrStrIA - link with -lshlwapi
+#else
+#  ifndef _GNU_SOURCE
+#    define _GNU_SOURCE // for strcasestr
+#  endif
+#  include <string.h>
+#endif
+
 static const char * fits_errmsg(int status)
 {
   static thread_local char errmsg[128];
@@ -347,10 +357,23 @@ bool c_fits_reader::open(const std::string & filename)
       goto end;
     }
 
-    c.name = keyname; // Исправлено: в вашей структуре это c.keyname, а не c.name
+    c.name = keyname;
     c.value = value;
     c.comment = comment;
     _header.emplace_back(c);
+
+
+    if( strcasecmp(keyname, "ROWORDER") == 0 ) {
+      if( strcasestr(value, "TOP-DOWN") != nullptr ) {
+        _row_order = ROWORDER_TOP_DOWN;
+      }
+      else if( strcasestr(value, "BOTTOM-UP") != nullptr ) {
+        _row_order = ROWORDER_BOTTOM_UP;
+      }
+      else {
+        CF_WARNING("Unrecognozed 'ROWORDER' value: '%s'. Using BOTTOM-UP by default", value);
+      }
+    }
   }
 
   /*
@@ -414,6 +437,12 @@ bool c_fits_reader::open(const std::string & filename)
     goto end;
   }
 
+  if( _naxes.size() < 1 || _naxes.size() > 3 ) {
+    CF_ERROR("'%s': Unsupported FITS image with naxes=%zu", filename.c_str(), _naxes.size());
+    _status = BAD_NAXIS;
+    goto end;
+  }
+
   /*
    * Get COLORID
    */
@@ -455,20 +484,11 @@ end:
   return _status == 0;
 }
 
+
 bool c_fits_reader::read(cv::OutputArray outImage, int ddepth,
     cv::OutputArray outWeights /*= cv::noArray()*/)
 {
   if ( !is_open() ) {
-    return false;
-  }
-
-  if ( _naxes.size() < 1 || _naxes.size()  > 3 ) {
-    CF_ERROR("Unsupported FITS image with naxes_=%zu", _naxes.size());
-    return false;
-  }
-
-  if ( _naxes.size() == 3 && _naxes[2] != 3 ) {
-    CF_ERROR("Unsupported FITS image with %ld channels", _naxes[2]);
     return false;
   }
 
@@ -481,115 +501,127 @@ bool c_fits_reader::read(cv::OutputArray outImage, int ddepth,
   }
 
   const int cn = channels();
-  if ( cn < 1  ) {
+  if ( cn < 1 ) {
     CF_ERROR("Unsupported FITS image with %d channels", cn);
     return false;
   }
 
-  outImage.create(size(), CV_MAKETYPE(ddepth, cn));
-  if ( !outImage.isContinuous() ) {
-    outImage.release();
+  if( outImage.needed() ) {
+
     outImage.create(size(), CV_MAKETYPE(ddepth, cn));
-    return false;
-  }
+    cv::Mat & dst = outImage.getMatRef();
 
-  cv::Mat & dst = outImage.getMatRef();
-
-  /* Coordinate in each dimension of the first pixel to be read */
-  const int datatype = cvdepth2datatype(ddepth);
-  long orig[3] = { 1L, 1L, 1L };
-  int zero = 0;
-
-  uint nbdata = _naxes[0] * _naxes[1];
-  if ( _naxes.size() > 2 ) {
-    nbdata *= _naxes[2];
-  }
-
-  if ( cn == 1 ) {
-    if ( fits_read_pix(fp, datatype, orig, nbdata, &zero, dst.data, &zero, &(_status = 0)) ) {
-      CF_ERROR("fits_read_pix() fails: %s", fits_errmsg(_status));
-      return false;
-    }
-  }
-  else if ( cn == 3 ) {
+    const int datatype = cvdepth2datatype(ddepth);
     const int w = _naxes[0];
     const int h = _naxes[1];
-    cv::Mat tmp(3 * h, w, ddepth);
+    const long row_elements = w;
+    int zero = 0;
 
-    if( fits_read_pix(fp, datatype, orig, nbdata, &zero, tmp.data, &zero, &(_status = 0)) ) {
-      CF_ERROR("fits_read_pix() fails: %s", fits_errmsg(_status));
-      return false;
+    if( cn == 1 ) {
+      long fpixel[2] = { 1, 1 };
+
+      for( int y = 0; y < h; ++y ) {
+        fpixel[0] = 1;
+        fpixel[1] = y + 1;
+        const int target_y = (_row_order == ROWORDER_BOTTOM_UP) ? (h - 1 - y) : y;
+        if( fits_read_pix(fp, datatype, fpixel, row_elements, &zero, dst.ptr(target_y), &zero, &(_status = 0)) ) {
+          CF_ERROR("fits_read_pix() mono row %d fails: %s", y, fits_errmsg(_status));
+          return false;
+        }
+      }
     }
+    else {
+      std::vector<cv::Mat> planes(cn);
+      for( int i = 0; i < cn; ++i ) {
+        planes[i].create(size(), CV_MAKETYPE(ddepth, 1));
+      }
 
-    const cv::Mat planes[3] = {
-      tmp.rowRange(2 * h, 3 * h), // Blue
-      tmp.rowRange(h, 2 * h),     // Green
-      tmp.rowRange(0, h)          // Red
-    };
+      long fpixel[3] = { 1, 1, 1 };
 
-    cv::merge(planes, 3, dst);
+      for( int i = 0; i < cn; ++i ) {
+        fpixel[2] = i + 1;
+
+        int target_opencv_idx = i;
+        if( cn == 3 && _colorid == COLORID_BGR ) {
+          if( i == 0 ) {
+            target_opencv_idx = 2; // R
+          }
+          if( i == 1 ) {
+            target_opencv_idx = 1; // G
+          }
+          if( i == 2 ) {
+            target_opencv_idx = 0; // B
+          }
+        }
+
+        cv::Mat & plane = planes[target_opencv_idx];
+
+        for( int y = 0; y < h; ++y ) {
+          fpixel[0] = 1;
+          fpixel[1] = y + 1;
+          const int target_y = (_row_order == ROWORDER_BOTTOM_UP) ? (h - 1 - y) : y;
+          if( fits_read_pix(fp, datatype, fpixel, row_elements, &zero, plane.ptr(target_y), &zero, &(_status = 0)) ) {
+            CF_ERROR("fits_read_pix() plane %d row %d fails: %s", i, y, fits_errmsg(_status));
+            return false;
+          }
+        }
+      }
+
+      cv::merge(planes, dst);
+    }
   }
-  else {
-    CF_ERROR("Unsupported FITS image with %d channels", cn);
-    return false;
-  }
 
-  // Check if there is a second HDU layer physically in the file
-  if ( outWeights.needed() ) {
-
+  if( outWeights.needed() ) {
     bool haveWeights = false;
 
-    if ( _num_hdus > 1 ) {
-      // Go to the second HDU (in cfitsio indexing starts with 1, i.e. 1 is Primary, 2 is Extension)
-
+    if( _num_hdus > 1 ) {
       int hdu_type = 0;
       fits_movabs_hdu(fp, 2, &hdu_type, &(_status = 0));
-      if ( _status == 0 && hdu_type == IMAGE_HDU ) {
 
-        // Matrix size and depth for weights/masks based on wbitpix (always singke channel)
-
+      if( _status == 0 && hdu_type == IMAGE_HDU ) {
         int wbitpix = 0;
         long wnaxes[2] = { 0, 0 };
         int wnaxis = 0;
 
         fits_get_img_param(fp, 2, &wbitpix, &wnaxis, wnaxes, &(_status = 0));
-        if ( _status == 0 && wnaxis == 2 && wnaxes[0] == _naxes[0] && wnaxes[1] == _naxes[1] ) {
+        if( _status == 0 && wnaxis == 2 && wnaxes[0] == _naxes[0] && wnaxes[1] == _naxes[1] ) {
 
           const int wddepth = bitpix2ddepth(wbitpix);
-          if ( wddepth >= 0 ) {
-
+          if( wddepth >= 0 ) {
             outWeights.create(size(), CV_MAKETYPE(wddepth, 1));
-            if ( !outWeights.isContinuous() ) {
-              outWeights.release();
-              outWeights.create(size(), CV_MAKETYPE(wddepth, 1));
+            cv::Mat & dstw = outWeights.getMatRef();
+
+            int wdatatype = cvdepth2datatype(wddepth);
+            long welements = wnaxes[0];
+            long fpixel[2] = { 1, 1 };
+            int zero = 0;
+
+            for( int y = 0; y < dstw.rows; ++y ) {
+              fpixel[0] = 1;
+              fpixel[1] = y + 1;
+              const int target_y = (_row_order == ROWORDER_BOTTOM_UP) ? (dstw.rows - 1 - y) : y;
+              if( fits_read_pix(fp, wdatatype, fpixel, welements, &zero, dstw.ptr(target_y), &zero, &(_status = 0)) ) {
+                CF_ERROR("fits_read_pix() mono row %d fails: %s", y, fits_errmsg(_status));
+                return false;
+              }
             }
-
-            cv::Mat & dst_w = outWeights.getMatRef();
-
-            int w_datatype = cvdepth2datatype(wddepth);
-            long w_orig[2] = { 1L, 1L };
-            long w_nbdata = wnaxes[0] * wnaxes[1];
-
-            fits_read_pix(fp, w_datatype, w_orig, w_nbdata, &zero, dst_w.data, &zero, &(_status = 0));
           }
         }
       }
 
-      if ( _status == 0 ) {
+      if( _status == 0 ) {
         haveWeights = true;
       }
       else {
-        // Suppress the error so as not to break the successful reading of the main image
         CF_ERROR("Error reading weights extension layer: %s", fits_errmsg(_status));
         _status = 0;
       }
 
-      // Return the cfitsio pointer back to the Primary HDU (layer 1)
       int back_hdu_type = 0;
       fits_movabs_hdu(fp, 1, &back_hdu_type, &(_status = 0));
     }
 
-    if ( !haveWeights ) {
+    if( !haveWeights ) {
       outWeights.release();
     }
   }
@@ -611,13 +643,10 @@ bool c_fits_reader::read(const std::string & filename,
   return fits.read(output_image, ddepth, outWeights);
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 bool c_fits_writer::write(const std::string & filename, cv::InputArray image, enum COLORID colorid,
     cv::InputArray weights /* = cv::noArray() */)
 {
-  if (filename.empty() || image.empty()) {
+  if( filename.empty() || image.empty() ) {
     CF_ERROR("Empty filename or image array in c_fits_writer::write");
     return false;
   }
@@ -630,18 +659,17 @@ bool c_fits_writer::write(const std::string & filename, cv::InputArray image, en
     }
 
     if( weights.size() != image.size() ) {
-      CF_ERROR("c_fits_writer: image (%dx%d) and mask (weigts) sizes %dx%d nit match",
+      CF_ERROR("c_fits_writer: image (%dx%d) and mask (weights) sizes %dx%d do not match",
           image.cols(), image.rows(), weights.cols(), weights.rows());
       return false;
     }
   }
 
-
   _status = 0;
 
   // Create a file with overwriting via "!"
   const std::string fits_path = "!" + filename;
-  if (fits_create_file(&fp, fits_path.c_str(), &_status)) {
+  if( fits_create_file(&fp, fits_path.c_str(), &_status) ) {
     CF_ERROR("fits_create_file('%s') fails: %s", filename.c_str(), fits_errmsg(_status));
     return false;
   }
@@ -650,43 +678,32 @@ bool c_fits_writer::write(const std::string & filename, cv::InputArray image, en
 
   // BITPIX based on image.depth()
   int bitpix = BYTE_IMG, datatype = TBYTE;
-  if ( !cvdepth2fits(src.depth(), &bitpix, &datatype) ) {
+  if( !cvdepth2fits(src.depth(), &bitpix, &datatype) ) {
     CF_ERROR("Unsupported cv::Mat depth=%d", src.depth());
     close();
     return false;
   }
 
-  // Frame dimension for HDU 0
   const int cn = src.channels();
-  int naxis = 2;
-  long naxes_img[3] = {0};
-  naxes_img[0] = src.cols;
-  naxes_img[1] = src.rows;
+  const int naxis = (cn > 1) ? 3 : 2;
+  long naxes_img[3] = { src.cols, src.rows, cn };
 
-  if (colorid == COLORID_RGB || colorid == COLORID_BGR || cn == 3) {
-    // 3 color planes
-    naxis = 3;
-    naxes_img[2] = 3;
-  }
-
-  if (fits_create_img(fp, bitpix, naxis, naxes_img, &_status)) {
+  if( fits_create_img(fp, bitpix, naxis, naxes_img, &_status) ) {
     CF_ERROR("fits_create_img(HDU 0) fails: %s", fits_errmsg(_status));
     close();
     return false;
   }
 
-  // Standard color metadata
-  const char* bayer_str = colorid2fits(colorid);
-  if (bayer_str != nullptr) {
-    fits_write_key(fp, TSTRING, "BAYERPAT", (void*)bayer_str,
-        "Bayer color pattern", &_status);
+  // Still not sure if I should or not export this keyword
+  // fits_write_key(fp, TSTRING, "ROWORDER", (void*) "BOTTOM-UP", "Row order standard", &_status);
+
+  const char * bayer_str = colorid2fits(colorid);
+  if( bayer_str != nullptr ) {
+    fits_write_key(fp, TSTRING, "BAYERPAT", (void*) bayer_str, "Bayer color pattern", &_status);
   }
 
-  // CUSTOM user fields form _header
   for( const auto & key : _header ) {
     if( !key.name.empty() ) {
-      // Try to determine the type (if it's a number/flag, we can extend the logic,
-      // but writing it as a TSTRING is the safest and most universal option for custom fields)
       fits_write_key(fp, TSTRING, key.name.c_str(), (void*) key.value.c_str(), key.comment.c_str(), &_status);
       if( _status ) {
         CF_ERROR("fits_write_key() fails: %s", fits_errmsg(_status));
@@ -696,36 +713,51 @@ bool c_fits_writer::write(const std::string & filename, cv::InputArray image, en
     }
   }
 
-  // Pixel-by-pixel recording of the main frame
-  long fpixel[3] = {1, 1, 1};
-  long nelements = naxes_img[0] * naxes_img[1];
+  long fpixel[3] = { 1, 1, 1 };
+  const long row_elements = src.cols;
 
-  if (naxis != 3) {
-    // Monochrome or raw Bayer (single-channel)
-    fits_write_pix(fp, datatype, fpixel, nelements, (void*)src.data, &_status);
-    if( _status ) {
-      CF_ERROR("fits_write_pix() fails: %s", fits_errmsg(_status));
-      close();
-      return false;
+  if( naxis == 2 ) {
+    for( int y = 0; y < src.rows; ++y ) {
+      fpixel[0] = 1;
+      fpixel[1] = y + 1;
+      const int src_y = src.rows - 1 - y;
+      fits_write_pix(fp, datatype, fpixel, row_elements, (void*) src.ptr(src_y), &_status);
+      if( _status ) {
+        break;
+      }
     }
   }
   else {
-    // Planar channel separation for FITS
     std::vector<cv::Mat> planes;
     cv::split(src, planes);
 
-    // Maintain correct order of RGB/BGR planes
-    int r_idx = (colorid == COLORID_BGR) ? 2 : 0;
-    int g_idx = 1;
-    int b_idx = (colorid == COLORID_BGR) ? 0 : 2;
+    std::vector<int> channel_order(cn);
+    for( int i = 0; i < cn; ++i ) {
+      channel_order[i] = i;
+    }
 
-    // Write planes (cfitsio will automatically convert from `datatype` to the target `bitpix`)
-    fpixel[2] = 1; // Layer 1 (R)
-    fits_write_pix(fp, datatype, fpixel, nelements, (void*)planes[r_idx].data, &_status);
-    fpixel[2] = 2; // Layer 2 (G)
-    fits_write_pix(fp, datatype, fpixel, nelements, (void*)planes[g_idx].data, &_status);
-    fpixel[2] = 3; // Layer 3 (B)
-    fits_write_pix(fp, datatype, fpixel, nelements, (void*)planes[b_idx].data, &_status);
+    if( cn == 3 && colorid == COLORID_BGR ) {
+      channel_order[0] = 2; // R
+      channel_order[1] = 1; // G
+      channel_order[2] = 0; // B
+    }
+
+    for( int i = 0; i < cn; ++i ) {
+      fpixel[2] = i + 1;
+      const cv::Mat & plane = planes[channel_order[i]];
+      for( int y = 0; y < plane.rows; ++y ) {
+        fpixel[0] = 1;
+        fpixel[1] = y + 1;
+        const int src_y = plane.rows - 1 - y;
+        fits_write_pix(fp, datatype, fpixel, row_elements, (void*) plane.ptr(src_y), &_status);
+        if( _status ) {
+          break;
+        }
+      }
+      if( _status ) {
+        break;
+      }
+    }
   }
 
   if( _status ) {
@@ -734,35 +766,38 @@ bool c_fits_writer::write(const std::string & filename, cv::InputArray image, en
     return false;
   }
 
-  // Write the weight map to HDU 1 - Extension, if it was passed
-  if ( !weights.empty() ) {
-
+  if( !weights.empty() ) {
     int wbitpix = BYTE_IMG, wdatatype = TBYTE;
-    if ( !cvdepth2fits(weights.depth(), &wbitpix, &wdatatype) ) {
+    if( !cvdepth2fits(weights.depth(), &wbitpix, &wdatatype) ) {
       CF_ERROR("Unsupported weights.depth() =%d", weights.depth());
       close();
       return false;
     }
 
     const cv::Mat wsrc = weights.getMat();
-    long naxes_weight[] = { wsrc.cols, wsrc.rows };
+    long wnaxes[2] = { wsrc.cols, wsrc.rows };
 
-    // HDU 1 with dynamic data type
-    if (fits_create_img(fp, wbitpix, 2, naxes_weight, &_status)) {
+    if( fits_create_img(fp, wbitpix, 2, wnaxes, &_status) ) {
       CF_ERROR("fits_create_img(HDU 1) failed: %s", fits_errmsg(_status));
       close();
       return false;
     }
 
-    // Extension name (MASK or WEIGHTS)
     const char * ext_name = weights.depth() == CV_8U ? "MASK" : "WEIGHTS";
-    fits_write_key(fp, TSTRING, "EXTNAME", (void*)ext_name, "Extension Layer Name", &_status);
+    fits_write_key(fp, TSTRING, "EXTNAME", (void*) ext_name, "Extension Layer Name", &_status);
 
-    // Raw matrix data
-    long ext_fpixel[] = {1, 1};
-    long ext_nelements = wsrc.cols * wsrc.rows;
-    fits_write_pix(fp, wdatatype, ext_fpixel, ext_nelements, (void*)wsrc.data, &_status);
-    if (_status) {
+    long wfpixel[2];
+    for( int y = 0; y < wsrc.rows; ++y ) {
+      wfpixel[0] = 1;
+      wfpixel[1] = y + 1;
+      const int src_y = wsrc.rows - 1 - y;
+      fits_write_pix(fp, wdatatype, wfpixel,  wsrc.cols, (void*) wsrc.ptr(src_y), &_status);
+      if( _status ) {
+        break;
+      }
+    }
+
+    if( _status ) {
       CF_ERROR("Error writing extension pixels: %s", fits_errmsg(_status));
       close();
       return false;
@@ -772,5 +807,6 @@ bool c_fits_writer::write(const std::string & filename, cv::InputArray image, en
   close();
   return true;
 }
+
 
 #endif // HAVE_CFITSIO

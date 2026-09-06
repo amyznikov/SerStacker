@@ -937,6 +937,43 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
   return FILTER;
 }
 
+cv::Mat1f dctGenerateRampFilter(const cv::Size & dctSize, double gain)
+{
+  // Isotropic Gradient for DCT
+  // For DCT, the DC component (zero frequency) is strictly at top-left (0,0).
+  // Frequencies increase radially towards the bottom-right.
+  //  fx = x / width
+  //  fy = y / height
+  // Gradient:
+  //  2 * PI * sqrt(fx^2 + fy^2)
+
+  cv::Mat1f FILTER(dctSize);
+
+  const float scaleX = float(CV_2PI / dctSize.width);
+  const float scaleY = float(CV_2PI / dctSize.height);
+  const float fgain = float(gain);
+
+  parallel_for(0, dctSize.height, [=, &FILTER](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      float * __restrict dstp = FILTER[y];
+
+      const float dy = float(y) * scaleY;
+      const float dy2 = dy * dy;
+
+      for (int x = 0; x < dctSize.width; ++x) {
+        const float dx = float(x) * scaleX;
+        const float dx2 = dx * dx;
+
+        const float dr = std::sqrt(dx2 + dy2);
+        dstp[x] = fgain * dr;
+      }
+    }
+  });
+
+  FILTER(0, 0) = 0.0f;
+
+  return FILTER;
+}
 
 // Multiplicative Discrete Laplacian Filter for Periodic+Smooth Decomposition
 cv::Mat1f fftGenerateDiscreteLaplacianFilter(const cv::Size & fftSize, bool centerDC)
@@ -1371,3 +1408,18 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
   return angle;
 }
 
+
+// The target size is the original size downscaled by about 4 times
+cv::Size getOptimalPhaseCorrelationSize(const cv::Size & imageSize)
+{
+  // Find the closest power of two (round mathematically to the nearest)
+  // std::round(std::log2(v)) will select the power that is closest to the target
+  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
+  // Return the size as 2^powX and 2^powY
+
+  double targetWidth = imageSize.width / 4.0;
+  double targetHeight = imageSize.height / 4.0;
+  const int powX = std::max(6, static_cast<int>(std::round(std::log2(targetWidth))));
+  const int powY = std::max(6, static_cast<int>(std::round(std::log2(targetHeight))));
+  return cv::Size(1 << powX, 1 << powY);
+}

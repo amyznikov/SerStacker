@@ -226,17 +226,18 @@ bool c_threshold_routine::process(cv::InputOutputArray image, cv::InputOutputArr
     }
   }
 
-  if ( _invert ) {
+  if( _invert && !dstm.empty() && dstm.depth() == CV_8U ) {
     cv::bitwise_not(dstm, dstm);
   }
 
-  if( !srcm.empty() ) {
+  if( !srcm.empty() && srcm.depth() == CV_8U && dstm.depth() == CV_8U ) {
     combine_masks(_mask_mode, dstm, srcm, dstm);
   }
 
   switch (_output_channel) {
     case DATA_CHANNEL::IMAGE:
       image.move(dstm);
+      mask.release();
       break;
     case DATA_CHANNEL::MASK:
       mask.move(dstm);

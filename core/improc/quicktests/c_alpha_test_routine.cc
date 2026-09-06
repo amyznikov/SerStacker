@@ -25,232 +25,326 @@
 #include <core/io/c_stdio_file.h>
 
 
+
 template<>
-const c_enum_member * members_of<c_alpha_test_routine::MoonProjection>()
+const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
 {
   static const c_enum_member members[] = {
-      { c_alpha_test_routine::ProjectionOrthographic, "Orthographic", "" },
-      { c_alpha_test_routine::ProjectionStereographic, "Stereographic", "" },
-      { c_alpha_test_routine::ProjectionOrthographic}
+      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
+      { c_alpha_test_routine::DISPLAY_PREVIOUS_IMAGE, "PREVIOUS_IMAGE", "" },
+      { c_alpha_test_routine::DISPLAY_DCT_CURRENT, "DCT_CURRENT", "" },
+      { c_alpha_test_routine::DISPLAY_DCT_PREVIOUS, "DCT_PREVIOUS", "" },
+      { c_alpha_test_routine::DISPLAY_DCT_CROSS, "DCT_CROSS", "" },
+      { c_alpha_test_routine::DISPLAY_IDCT, "IDCT", "" },
+      { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
 }
 
-template<>
-const c_enum_member * members_of<c_alpha_test_routine::ResizeMode>()
-{
-  static const c_enum_member members[] = {
-      {c_alpha_test_routine::ResizeModeKeep, "KEEP", ""},
-      {c_alpha_test_routine::ResizeModeAdjust, "ADJUST", ""},
-      {c_alpha_test_routine::ResizeModeCropVisible, "CropVisible", ""},
-      {c_alpha_test_routine::ResizeModeCropVisible},
-  };
-
-  return members;
-}
+//template<>
+//const c_enum_member * members_of<c_alpha_test_routine::ResizeMode>()
+//{
+//  static const c_enum_member members[] = {
+//      {c_alpha_test_routine::ResizeModeKeep, "KEEP", ""},
+//      {c_alpha_test_routine::ResizeModeAdjust, "ADJUST", ""},
+//      {c_alpha_test_routine::ResizeModeCropVisible, "CropVisible", ""},
+//      {c_alpha_test_routine::ResizeModeCropVisible},
+//  };
+//
+//  return members;
+//}
 
 
 namespace {
 
-using MoonProjection = c_alpha_test_routine::MoonProjection;
-
-
-struct c_lunar_birdview_options {
-    double lon = 0;           // Crater longitude [deg]
-    double lat = 0;           // Crater latitude [deg]
-    double l = 0;             // Libration in longitude [deg]
-    double b = 0;             // Libration in latitude [deg]
-    double camera_rotation = 0;  // Photo orientation angle [deg]
-    c_alpha_test_routine::ResizeMode resizeMode;
-    int interpolation = cv::INTER_LINEAR;
-    int borderMode = cv::BORDER_CONSTANT;
-    cv::Scalar borderValue;
-};
-
-static void createMoonUnrollMaps(const c_lunar_birdview_options & opts,
-    const cv::Size & src_size, const cv::Size & dst_size,
-    double R_moon_pixels,
-    cv::Mat & map_x,
-    cv::Mat & map_y,
-    MoonProjection proj_type)
+static void createApodizationWindowFromMask(cv::InputArray mask, cv::Mat1f & outputWindow, int kradius)
 {
-  map_x.create(dst_size, CV_32FC1);
-  map_y.create(dst_size, CV_32FC1);
+  if (mask.empty() || kradius <= 0) {
+    outputWindow = cv::Mat1f::ones(mask.size());
+    return;
+  }
 
-  const double cx_src = src_size.width / 2.0;
-  const double cy_src = src_size.height / 2.0;
-  const double cx_dst = dst_size.width / 2.0;
-  const double cy_dst = dst_size.height / 2.0;
+  cv::Mat inputMask = mask.getMat();
 
-  const double lon0 = opts.lon * CV_PI / 180.0;
-  const double lat0 = opts.lat * CV_PI / 180.0;
-  const double l = opts.l * CV_PI / 180.0;
-  const double b = opts.b * CV_PI / 180.0;
-  const double cam_rot = opts.camera_rotation * CV_PI / 180.0;
+  int scale = 1;
+  if (kradius > 64)      scale = 8;
+  else if (kradius > 16) scale = 4;
+  else if (kradius > 4)  scale = 2;
 
-  // Scaling factor for projections so that pixels in the center of the frame are aligned 1:1 with the original
-  // For orthographic projection the factor is equal to R_moon_pixels
-  // For stereographic projection the factor is equal to 2.0 * R_moon_pixels
-  const double scale_factor =
-      (proj_type == c_alpha_test_routine::ProjectionOrthographic) ? R_moon_pixels : (2.0 * R_moon_pixels);
+  cv::Mat smallMask;
+  if (scale > 1) {
+    cv::resize(inputMask, smallMask, cv::Size(inputMask.cols / scale, inputMask.rows / scale), 0, 0, cv::INTER_NEAREST);
+  } else {
+    smallMask = inputMask;
+  }
 
-  for( int y = 0; y < dst_size.height; ++y ) {
-    float * p_map_x = map_x.ptr<float>(y);
-    float * p_map_y = map_y.ptr<float>(y);
+  cv::Mat distMap;
+  cv::distanceTransform(smallMask, distMap, cv::DIST_L2, cv::DIST_MASK_PRECISE);
 
-    for( int x = 0; x < dst_size.width; ++x ) {
-      // Coordinates on the target plane relative to the central point of interest
-      double dx = x - cx_dst;
-      double dy = y - cy_dst;
+  float smallRadius = float(kradius) / scale;
+  distMap /= smallRadius;
+  cv::threshold(distMap, distMap, 1.0, 1.0, cv::THRESH_TRUNC);
 
-      double lon_p = 0, lat_p = 0;
-      double rho = std::hypot(dx, dy);
+  if (scale > 1) {
+    cv::resize(distMap, outputWindow, inputMask.size(), 0, 0, cv::INTER_LINEAR);
+  }
+  else {
+    outputWindow = distMap;
+  }
+}
 
-      if( rho < 1e-6 ) {
-        lon_p = lon0;
-        lat_p = lat0;
-      }
-      else {
-        if( proj_type == c_alpha_test_routine::ProjectionOrthographic ) {
-          // Inverse orthographic projection relative to the central point (lon0, lat0)
-          if( rho > scale_factor ) {
-            p_map_x[x] = -1.0f;
-            p_map_y[x] = -1.0f;
-            continue;
-          }
-          double c = std::asin(rho / scale_factor);
-          lat_p = std::asin(std::cos(c) * std::sin(lat0) - (dy * std::sin(c) * std::cos(lat0)) / rho);
-          lon_p = lon0
-              + std::atan2(dx * std::sin(c), rho * std::cos(lat0) * std::cos(c) + dy * std::sin(lat0) * std::sin(c));
-        }
-        else if( proj_type == c_alpha_test_routine::ProjectionStereographic ) {
-          // Inverse stereographic projection relative to the central point (lon0, lat0)
-          double c = 2.0 * std::atan(rho / scale_factor);
-          lat_p = std::asin(std::cos(c) * std::sin(lat0) - (dy * std::sin(c) * std::cos(lat0)) / rho);
-          lon_p = lon0 + std::atan2(dx * std::sin(c),
-              rho * std::cos(lat0) * std::cos(c) + dy * std::sin(lat0) * std::sin(c));
-        }
-      }
+static cv::Point2f findSubpixelShiftDCT(const cv::Mat1f & idctCross)
+{
+  const int rows = idctCross.rows;
+  const int cols = idctCross.cols;
 
-      // Direct projection of a point on a sphere (lon_p, lat_p) onto a flat sensor (into the observer's system with librations)
-      double cos_lat_p = std::cos(lat_p);
-      double sin_lat_p = std::sin(lat_p);
-      double d_lon = lon_p - l;
+  double maxVal;
+  cv::Point maxLoc;
+  cv::minMaxLoc(idctCross, nullptr, &maxVal, nullptr, &maxLoc);
 
-      // Coordinates on the unit sphere of the visible disk of the Moon
-      double x_sph = cos_lat_p * std::sin(d_lon);
-      double y_sph = sin_lat_p * std::cos(b) - cos_lat_p * std::sin(b) * std::cos(d_lon);
-      double z_sph = sin_lat_p * std::sin(b) + cos_lat_p * std::cos(b) * std::cos(d_lon);
+  double sumMass = 0.0;
+  double sumX = 0.0;
+  double sumY = 0.0;
 
-      if( z_sph < 0 ) { // A point beyond the horizon of the Moon
-        p_map_x[x] = -1.0f;
-        p_map_y[x] = -1.0f;
-        continue;
-      }
+  const int r = 2;
 
-      // position on the Moon's disk in absolute pixels of the original full image
-      double x_full_cam = x_sph * R_moon_pixels;
-      double y_full_cam = -y_sph * R_moon_pixels;
-
-      // Here we need to understand where this pixel is NOW located within the CROP.
-      // To do this we first find where the center of our crop is in the full-frame system (lon0, lat0)
-      double cos_lat0 = std::cos(lat0);
-      double sin_lat0 = std::sin(lat0);
-      double d_lon0 = lon0 - l;
-
-      double x_center_sph = cos_lat0 * std::sin(d_lon0);
-      double y_center_sph = sin_lat0 * std::cos(b) - cos_lat0 * std::sin(b) * std::cos(d_lon0);
-
-      double x_center_full_cam = x_center_sph * R_moon_pixels;
-      double y_center_full_cam = -y_center_sph * R_moon_pixels;
-
-      // Offset of the current point relative to the center of our frame (WITHOUT taking into account camera rotation)
-      double dx_cam = x_full_cam - x_center_full_cam;
-      double dy_cam = y_full_cam - y_center_full_cam;
-
-      // Apply camera rotation around the center of our frame
-      double cos_cr = std::cos(cam_rot);
-      double sin_cr = std::sin(cam_rot);
-
-      double x_img = dx_cam * cos_cr - dy_cam * sin_cr + cx_src;
-      double y_img = dx_cam * sin_cr + dy_cam * cos_cr + cy_src;
-
-      p_map_x[x] = static_cast<float>(x_img);
-      p_map_y[x] = static_cast<float>(y_img);
+  for (int dy = -r; dy <= r; ++dy) {
+    int sampleY = maxLoc.y + dy;
+    if (sampleY < 0)     {
+      sampleY += rows;
     }
+    if (sampleY >= rows) {
+      sampleY -= rows;
+    }
+
+    for (int dx = -r; dx <= r; ++dx) {
+      int sampleX = maxLoc.x + dx;
+      if (sampleX < 0)     {
+        sampleX += cols;
+      }
+      if (sampleX >= cols) {
+        sampleX -= cols;
+      }
+
+      float mass = std::max(0.0f, idctCross(sampleY, sampleX));
+      double virtualX = static_cast<double>(maxLoc.x + dx);
+      double virtualY = static_cast<double>(maxLoc.y + dy);
+
+      sumMass += mass;
+      sumX += virtualX * mass;
+      sumY += virtualY * mass;
+    }
+  }
+
+  double subX = (sumMass > 0.0) ? (sumX / sumMass) : static_cast<double>(maxLoc.x);
+  double subY = (sumMass > 0.0) ? (sumY / sumMass) : static_cast<double>(maxLoc.y);
+  if (subX > cols / 2.0) {
+    subX -= cols;
+  }
+  if (subY > rows / 2.0) {
+    subY -= rows;
+  }
+
+  return cv::Point2f(static_cast<float>(subX), static_cast<float>(subY));
+}
+
+static void compute_gradient(cv::InputArray src, cv::Mat& dstGradient,
+    cv::InputArray mask, bool invertedMask = false)
+{
+  // 4th order derivative vector (5x1)
+  // 2nd order smoothing  vector (3x1)
+  static const cv::Matx<float, 5, 1> d5( +1.f/12.f, -2.f/3.f, 0.f, +2.f/3.f, -1.f/12.f );
+  static const cv::Matx<float, 3, 1> s3( 0.25f, 0.5f, 0.25f );
+
+  cv::Mat gx, gy;
+
+  parallel_invoke(
+      [&]() {
+        cv::sepFilter2D(src, gx, CV_32F, d5, s3, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+      },
+      [&]() {
+        cv::sepFilter2D(src, gy, CV_32F, s3, d5, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
+      });
+
+  cv::magnitude(gx, gy, dstGradient);
+  if ( !mask.empty() ) {
+    dstGradient.setTo(0, invertedMask ? mask.getMat() : ~mask.getMat());
   }
 }
 
 } // namespace
 
-void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
-{
-  ctlbind(ctls, "_Projection", ctx(&this_class::_Projection), "");
-  ctlbind(ctls, "Lon [deg]", ctx(&this_class::_lon), "Selenographic Longiture in degreed");
-  ctlbind(ctls, "Lat [deg]", ctx(&this_class::_lat), "Selenographic Latitude in degreed");
-  ctlbind(ctls, "Libr. l [deg]", ctx(&this_class::_l), "Libration in longitude in degreed");
-  ctlbind(ctls, "Libr. b [deg]", ctx(&this_class::_b), "Libration in Latitude in degreed");
-  ctlbind(ctls, "_R_moon_pixels", ctx(&this_class::_R_moon_pixels), "");
-  ctlbind_slider_spinbox(ctls, "Camera Orientation [deg]", ctx(&this_class::_camera_rotation), -180, 180, 0.1,
-      "Orientation angle in degrees");
-  ctlbind(ctls, "Resize mode", ctx(&this_class::_resizeMode), "Don't crop bounding box");
-  ctlbind(ctls, "interpolation", ctx(&this_class::_interpolation), "");
-  ctlbind(ctls, "border mode", ctx(&this_class::_borderMode), "");
-  ctlbind(ctls, "border value", ctx(&this_class::_borderValue), "");
-}
-
 bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
-    SERIALIZE_OPTION(settings, save, *this, _Projection);
-    SERIALIZE_OPTION(settings, save, *this, _lon);
-    SERIALIZE_OPTION(settings, save, *this, _lat);
-    SERIALIZE_OPTION(settings, save, *this, _l);
-    SERIALIZE_OPTION(settings, save, *this, _b);
-    SERIALIZE_OPTION(settings, save, *this, _R_moon_pixels);
-    SERIALIZE_OPTION(settings, save, *this, _camera_rotation);
-    SERIALIZE_OPTION(settings, save, *this, _resizeMode);
-    SERIALIZE_OPTION(settings, save, *this, _interpolation);
-    SERIALIZE_OPTION(settings, save, *this, _borderMode);
-    SERIALIZE_OPTION(settings, save, *this, _borderValue);
+    SERIALIZE_OPTION(settings, save, *this, _display);
     return true;
   }
   return false;
 }
 
+void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
+{
+  ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
+  ctlbind(ctls, "Differentiate", CTL_CONTEXT(ctx, _applyDifferentiate), "");
+  ctlbind(ctls, "applyRAMP", CTL_CONTEXT(ctx, _applyRAMP), "Set checked to apply RAMP filter to dct cross");
+  ctlbind(ctls, "applyMaskApodization", CTL_CONTEXT(ctx, _applyMaskApodization), "");
+  ctlbind(ctls, "maskApodizationRadius", CTL_CONTEXT(ctx, _maskApodizationKernelRadius), "");
+  ctlbind(ctls, "updatePrevious", CTL_CONTEXT(ctx, _updatePrevious), "Set checked to update prevImage");
+}
+
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  const cv::Mat src = image.getMat();
-  const cv::Mat msk = mask.getMat();
+  cv::Mat currentImage, currentMask, currentGradientImage, prevGradientImage;
+  cv::Mat dctCurrent, dctPrevious, dctCross, idctCross;
+  cv::Mat maskedCurrentImage, maskedPreviousImage;
+  cv::Mat1f window;
+  cv::Point2f peakLocation;
 
-  c_lunar_birdview_options opts;
-  opts.lat = _lat;
-  opts.lon = _lon;
-  opts.l = _l;
-  opts.b = _b;
-  opts.camera_rotation = _camera_rotation;
-  opts.interpolation = _interpolation;
-  opts.borderMode = _borderMode;
-  opts.borderValue = _borderValue;
-  opts.resizeMode = _resizeMode;
+  cv::Mat inputImage = image.getMat();
+  cv::Mat inputMask = mask.getMat();
 
-  cv::Size dst_size = src.size() * 2;
+  const cv::Size targetSize = getOptimalPhaseCorrelationSize(inputImage.size());
+  const double scaleX = double(targetSize.width) / inputImage.cols;
+  const int scaledRadius = std::max(1, cvRound(_maskApodizationKernelRadius * scaleX));
 
-  cv::Mat map_x, map_y;
-  createMoonUnrollMaps(opts, src.size(), dst_size, _R_moon_pixels, map_x, map_y, _Projection);
+  CF_DEBUG("Call resize(inputImage)");
+  cv::resize(inputImage, currentImage, targetSize, 0, 0, cv::INTER_AREA);
 
-  cv::remap(src, image, map_x, map_y,
-      opts.interpolation,
-      opts.borderMode,
-      opts.borderValue);
+  if ( !inputMask.empty() ) {
+    CF_DEBUG("Call resize(mask)");
+    cv::Mat binaryMask;
+    cv::compare(inputMask, 0, binaryMask, cv::CMP_GT);
+    cv::resize(binaryMask, currentMask, targetSize, 0, 0, cv::INTER_NEAREST);
+  }
 
-  if( !mask.empty() ) {
-    cv::remap(mask.getMat(), mask, map_x, map_y,
-        cv::INTER_NEAREST,
-        cv::BORDER_CONSTANT,
-        cv::Scalar(0));
+  if ( _applyDifferentiate ) {
+    CF_DEBUG("Call compute_gradient(currentImage)");
+    compute_gradient(currentImage, currentGradientImage, currentMask);
+  }
+  else {
+    currentGradientImage = currentImage;
+  }
+
+  if ( !_applyMaskApodization || currentMask.empty() ) {
+    maskedCurrentImage = currentGradientImage;
+  }
+  else {
+    CF_DEBUG("Call Apodization(currentImage)");
+    createApodizationWindowFromMask(currentMask, window, scaledRadius);
+    cv::multiply(currentGradientImage, window, maskedCurrentImage);
+  }
+
+  if ( _display == DISPLAY_CURRENT_IMAGE ) {
+    maskedCurrentImage.copyTo(image);
+    if ( !currentMask.empty() ) {
+      currentMask.copyTo(mask);
+    }
+    else {
+      mask.release();
+    }
+    goto end;
+  }
+
+  if ( prevImage.empty() ) {
+    if ( _updatePrevious ) {
+      CF_DEBUG("Call Update prevImage");
+      currentImage.copyTo(prevImage);
+      if (!currentMask.empty()) {
+        currentMask.copyTo(prevMask);
+      }
+    }
+    return true;
+  }
+
+  if( prevImage.size() != currentImage.size() ) {
+    CF_ERROR("Scaled current (%dx%d) and previous (%dx%d) sizes do not match. \n"
+        "Use 'updatePrevious' checkbox to reset new reference",
+        currentImage.cols, currentImage.rows,
+        prevImage.cols, prevImage.rows);
+    goto end;
+  }
+
+  if ( _applyDifferentiate ) {
+    CF_DEBUG("Call compute_gradient(prevImage)");
+    compute_gradient(prevImage, prevGradientImage, prevMask);
+  }
+  else {
+    prevGradientImage = prevImage;
+  }
+
+  if ( !_applyMaskApodization || prevMask.empty() ) {
+    maskedPreviousImage = prevGradientImage;
+  }
+  else {
+    CF_DEBUG("Call Apodization(prevImage)");
+    createApodizationWindowFromMask(prevMask, window, scaledRadius);
+    cv::multiply(prevGradientImage, window, maskedPreviousImage);
+  }
+
+  if ( _display == DISPLAY_PREVIOUS_IMAGE ) {
+    maskedPreviousImage.copyTo(image);
+    if (!prevMask.empty()) {
+      prevMask.copyTo(mask);
+    }
+    else {
+      mask.release();
+    }
+    goto end;
+  }
+
+  CF_DEBUG("Call dct(CurrentImage)");
+  cv::dct(maskedCurrentImage, dctCurrent);
+  if ( _display == DISPLAY_DCT_CURRENT ) {
+    image.move(dctCurrent);
+    mask.release();
+    goto end;
+  }
+
+  CF_DEBUG("Call dct(PreviousImage)");
+  cv::dct(maskedPreviousImage, dctPrevious);
+  if ( _display == DISPLAY_DCT_PREVIOUS ) {
+    image.move(dctPrevious);
+    mask.release();
+    goto end;
+  }
+
+  CF_DEBUG("Call dctCross");
+  cv::multiply(dctCurrent, dctPrevious, dctCross);
+
+  if ( _applyRAMP ) {
+    CF_DEBUG("Call applyRAMP");
+    if ( RAMP.size() != dctCross.size()) {
+      RAMP = dctGenerateRampFilter(dctCross.size(), 1);
+    }
+    cv::multiply(dctCross, RAMP, dctCross);
+  }
+
+  if ( _display == DISPLAY_DCT_CROSS ) {
+    image.move(dctCross);
+    mask.release();
+    goto end;
+  }
+
+  CF_DEBUG("Call idct(dctCross)");
+  cv::idct(dctCross, idctCross);
+
+  CF_DEBUG("Call findSubpixelShiftDCT()");
+  peakLocation = findSubpixelShiftDCT(idctCross);
+
+  {
+    image.move(idctCross);
+    mask.release();
+    goto end;
+  }
+
+
+end:
+  CF_DEBUG("Finsh. peakLocation: x=%g y=%g", peakLocation.x, peakLocation.y);
+  if ( _updatePrevious ) {
+    currentImage.copyTo(prevImage);
+    currentMask.copyTo(prevMask);
   }
 
   return true;
 }
-

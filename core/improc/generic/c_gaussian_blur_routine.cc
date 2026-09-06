@@ -32,6 +32,8 @@ void c_gaussian_blur_routine::getcontrols(c_control_list & ctls, const ctlbind_c
    ctlbind(ctls, "stereo_mode", ctx(&this_class::_stereo_mode), "");
    ctlbind(ctls, "border_type", ctx(&this_class::_border_type), "");
    ctlbind(ctls, "border_value", ctx(&this_class::_border_value), "");
+   ctlbind(ctls, "input", ctx(&this_class::_input_channel),  "Input from");
+   ctlbind(ctls, "output", ctx(&this_class::_output_channel),  "Output to");
 }
 
 bool c_gaussian_blur_routine::serialize(c_config_setting settings, bool save)
@@ -46,16 +48,29 @@ bool c_gaussian_blur_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _border_type);
     SERIALIZE_OPTION(settings, save, *this, _border_value);
     SERIALIZE_OPTION(settings, save, *this, _stereo_mode);
-    return true;
+    SERIALIZE_OPTION(settings, save, *this, _input_channel);
+    SERIALIZE_OPTION(settings, save, *this, _output_channel);
+   return true;
   }
   return false;
 }
 
 bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
+  cv::Mat src, dst;
+
+  switch (_input_channel) {
+    case DATA_CHANNEL::IMAGE:
+      src = image.getMat();
+      break;
+    case DATA_CHANNEL::MASK:
+      src = mask.getMat();
+      break;
+  }
+
   switch (_stereo_mode) {
     case StereoNone:
-      gaussian_filter(image, _ignore_mask ? cv::noArray() : mask, image,
+      gaussian_filter(src, _ignore_mask ? cv::noArray() : mask, dst,
           cv::Size2f(_sigmax, _sigmay),
           cv::Size(_ksizex, _ksizey),
           _scale, _delta,
@@ -65,7 +80,7 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
     case StereoHLayout: {
       // FIXME: add support for BORDER_WRAP ansd _border_value also for StereoHLayout
 
-      const cv::Mat src_image = image.getMat();
+      const cv::Mat src_image = src;
       const cv::Mat src_mask = mask.getMat();
       const cv::Size size = src_image.size();
 
@@ -91,7 +106,8 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
       frames[0].copyTo(src_image(cv::Rect(0, 0, size.width / 2, size.height)));
       frames[1].copyTo(src_image(cv::Rect(size.width / 2, 0, size.width - size.width / 2, size.height)));
 
-      break;
+      // FIXME: not copied back to image
+     break;
     }
 
     case StereoVLayout: {
@@ -123,10 +139,24 @@ bool c_gaussian_blur_routine::process(cv::InputOutputArray image, cv::InputOutpu
       frames[0].copyTo(src_image(cv::Rect(0, 0, size.width / 2, size.height)));
       frames[1].copyTo(src_image(cv::Rect(size.width / 2, 0, size.width - size.width / 2, size.height)));
 
+      // FIXME: not copied back to image
+
       break;
     }
 
     default:
+      break;
+  }
+
+  switch (_output_channel) {
+    case DATA_CHANNEL::IMAGE:
+      image.move(dst);
+      break;
+    case DATA_CHANNEL::MASK:
+      //      if( !mask.empty() ) {
+      //        dst.setTo(0, mask.getMat() <= 0);
+      //      }
+      mask.move(dst);
       break;
   }
 

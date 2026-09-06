@@ -21,33 +21,28 @@ public:
   DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_alpha_test_routine,
       "alpha_test", "Alpha Test");
 
-  enum MoonProjection {
-    ProjectionOrthographic,   // True "Birdview" (top view), maintains parallelism of rays
-    ProjectionStereographic   // Stereographic projection (preserves the angles and shape of craters)
+  enum DISPLAY {
+    DISPLAY_CURRENT_IMAGE,
+    DISPLAY_PREVIOUS_IMAGE,
+    DISPLAY_DCT_CURRENT,
+    DISPLAY_DCT_PREVIOUS,
+    DISPLAY_DCT_CROSS,
+    DISPLAY_IDCT,
   };
 
-  enum ResizeMode {
-    ResizeModeKeep,
-    ResizeModeAdjust,
-    ResizeModeCropVisible,
-  };
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  MoonProjection _Projection = ProjectionStereographic;
-  double _lon = 11.0; // [deg]
-  double _lat = 43.0; // [deg]
-  double _l = 0;             // Libration in longitude [deg]
-  double _b = 0;             // Libration in latitude [deg]
-  double _camera_rotation = 0; // [deg]
-  double _R_moon_pixels = 5000;
-  cv::InterpolationFlags  _interpolation = cv::INTER_LINEAR;
-  cv::BorderTypes _borderMode = cv::BORDER_CONSTANT;
-  cv::Scalar _borderValue;
-  ResizeMode _resizeMode = ResizeModeCropVisible;
+  cv::Mat prevImage, prevMask, RAMP;
+  DISPLAY _display = DISPLAY_CURRENT_IMAGE;
+  bool _updatePrevious = true;
+  bool _applyDifferentiate = true;
+  bool _applyRAMP = true;
+  bool _applyMaskApodization = true;
+  int _maskApodizationKernelRadius = 15;
 };
 
 #endif /* __c_alpha_test_routine_h__ */

@@ -1216,27 +1216,62 @@ void c_canvas_average_pipeline::compute_weights(const cv::Mat & src, const cv::M
 {
   INSTRUMENT_REGION("");
 
+//  static const auto createApodizationWindow = [](const cv::Size & size) -> cv::Mat {
+//
+//    const int B = std::max(4, std::min(size.width, size.height) / 64);
+//    const float P = 2.0f;
+//
+//    cv::Mat1f lut_x(1, size.width, 1.0f);
+//    cv::Mat1f lut_y(size.height, 1, 1.0f);
+//
+//    for( int x = 0, xmax = std::min(B, size.width / 2); x < xmax; ++x ) {
+//      const float shaped = 1 - std::pow((float)(B - x) / B, P);
+//      const float factor = shaped;
+//      lut_x(0, x) = lut_x(0, size.width - 1 - x) = factor;
+//    }
+//    for( int y = 0, ymax = std::min(B, size.height / 2); y < ymax; ++y ) {
+//      const float shaped = 1 - std::pow((float)(B - y) / B, P);
+//      const float factor = shaped;
+//      lut_y(y, 0) = lut_y(size.height - 1 - y, 0) = factor;
+//    }
+//
+//    return lut_y * lut_x;
+//  };
+
   static const auto createApodizationWindow = [](const cv::Size & size) -> cv::Mat {
+      // B - the width of the anti-aliasing zone (8 pixels for size 512)
+      const int B = std::max(4, std::min(size.width, size.height) / 64);
+      const float P = 2.0f;
 
-    const int B = std::max(4, std::min(size.width, size.height) / 64);
-    const float P = 2.0f;
+      cv::Mat1f window(size, 1.0f);
 
-    cv::Mat1f lut_x(1, size.width, 1.0f);
-    cv::Mat1f lut_y(size.height, 1, 1.0f);
+      std::vector<float> factors(B);
+      for( int i = 0; i < B; ++i ) {
+        factors[i] = 1.0f - std::pow((float)(B - i) / B, P);
+      }
 
-    for( int x = 0, xmax = std::min(B, size.width / 2); x < xmax; ++x ) {
-      const float shaped = 1 - std::pow((float)(B - x) / B, P);
-      const float factor = shaped;
-      lut_x(0, x) = lut_x(0, size.width - 1 - x) = factor;
-    }
-    for( int y = 0, ymax = std::min(B, size.height / 2); y < ymax; ++y ) {
-      const float shaped = 1 - std::pow((float)(B - y) / B, P);
-      const float factor = shaped;
-      lut_y(y, 0) = lut_y(size.height - 1 - y, 0) = factor;
-    }
+      for (int y = 0; y < B; ++y) {
+        const float ftop = factors[y];
+        const float fbottom = factors[y];
+        float* __restrict rtop = window[y];
+        float* __restrict rbottom = window[size.height - 1 - y];
+        for (int x = 0; x < size.width; ++x) {
+          rtop[x] *= ftop;
+          rbottom[x] *= fbottom;
+        }
+      }
 
-    return lut_y * lut_x;
-  };
+      for (int y = 0; y < size.height; ++y) {
+        float* rp = window[y];
+        for (int x = 0; x < B; ++x) {
+          const float fedge = factors[x];
+          rp[x] *= fedge;
+          rp[size.width - 1 - x] *= fedge;
+        }
+      }
+
+      return window;
+    };
 
   if ( _average_options.sharpness_measure.kradius <= 0 ) {
     dst = srcmask;

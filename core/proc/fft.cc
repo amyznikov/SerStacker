@@ -903,39 +903,62 @@ cv::Mat1f fftGenerateRampFilter(const cv::Size & fftSize, double gain, bool cent
 {
   // Isotropic Gradient
   // The frequency step is tied to the physical dimensions of the matrix
-  //  fx = dx / width
-  //  fy = dy / height
+  //    fx = dx / width
+  //    fy = dy / height
   // Gradient:
-  //  2 * PI * sqrt(fx^2 + fy^2)
+  //    2 * PI * sqrt(fx^2 + fy^2)
 
   cv::Mat1f FILTER(fftSize);
 
   const float scaleX = float(CV_2PI / fftSize.width);
   const float scaleY = float(CV_2PI / fftSize.height);
-  const float cx = float(fftSize.width / 2.0);
-  const float cy = float(fftSize.height / 2.0);
-  const float fgain = float(gain);
 
-  parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER[y];
-      const float dy = (y - cy) * scaleY;
-      const float dy2 = dy * dy;
-      for (int x = 0; x < fftSize.width; ++x) {
-        const float dx = (x - cx) * scaleX;
-        const float dx2 = dx * dx;
-        const float dr = std::sqrt(dx2 + dy2);
-        dstp[x] = fgain * dr;
+  if( centerDC ) {
+    const float cx = float(fftSize.width / 2.0);
+    const float cy = float(fftSize.height / 2.0);
+    const float fgain = float(gain);
+
+    parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+        const float dy = (y - cy) * scaleY;
+        const float dy2 = dy * dy;
+        for (int x = 0; x < fftSize.width; ++x) {
+          const float dx = (x - cx) * scaleX;
+          const float dx2 = dx * dx;
+          const float dr = std::sqrt(dx2 + dy2);
+          dstp[x] = fgain * dr;
+        }
       }
-    }
-  });
+    });
+  }
+  else {  // !centerDC
 
-  if( !centerDC ) {
-    fftSwapQuadrants(FILTER);
+    const int cx = fftSize.width / 2;
+    const int cy = fftSize.height / 2;
+
+    parallel_for(0, fftSize.height, [=, &FILTER](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float * __restrict dstp = FILTER[y];
+
+        const float dy_val = float((y <= cy) ? y : fftSize.height - y);
+        const float dy = dy_val * scaleY;
+        const float dy2 = dy * dy;
+
+        for (int x = 0; x < fftSize.width; ++x) {
+          const float dx_val = float((x <= cx) ? x : fftSize.width - x);
+          const float dx = dx_val * scaleX;
+          dstp[x] = std::sqrt(dx * dx + dy2);
+        }
+      }
+    });
+
+    FILTER(0, 0) = 0.0f;
   }
 
   return FILTER;
 }
+
 
 cv::Mat1f dctGenerateRampFilter(const cv::Size & dctSize, double gain)
 {

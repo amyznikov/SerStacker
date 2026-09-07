@@ -16,10 +16,8 @@
 
 struct c_phase_correlate_options
 {
-  bool differentiate = true;
-  bool apply_apodization = true;
-  bool apply_ramp = true;
-  int apodization_radius = 120; // Радиус в пикселях ИСХОДНОГО кадра
+  int apodization_radius = 220;
+  double gsigma = 0.1;
 };
 
 class c_phase_correlate
@@ -39,12 +37,12 @@ public:
       cv::Vec2f * outputTranslation);
 
 protected: // internal helpers
+  double computeCorrelationMap(cv::InputArray image1, cv::InputArray image2,
+      cv::OutputArray outputCcorrelationMap, double gsigma) const;
+
   void scaleAndPadToTargetSize(cv::InputArray srcImage, cv::InputArray srcMask,
       cv::Mat & dstImage, cv::Mat & dstMask,
       const cv::Size & targetSize, double scaleFactor);
-
-  void differentiate(cv::InputArray src, cv::OutputArray dst, cv::InputArray mask);
-  void generateRampFilter(const cv::Size & size, cv::Mat2f & outputFilter) const;
 
   void createApodizationWindow(cv::InputArray mask, cv::Mat1f & outputWindow, int kradius);
 
@@ -59,12 +57,9 @@ public: // Cache buffers for Zero Allocation at runtime
 
   cv::Mat _scaledImg1, _scaledMsk1;
   cv::Mat _scaledImg2, _scaledMsk2;
-  cv::Mat _gradImg1, _gradImg2;
   cv::Mat _maskedImg1, _maskedImg2;
-  cv::Mat _fft1, _fft2, _fftCross;
-  cv::Mat2f _rampFilter;
   cv::Mat1f _window1, _window2;
-  cv::Mat1f realInverseResult;
+  cv::Mat1f correlationMap;
 };
 
 class c_alpha_test_routine :
@@ -77,7 +72,6 @@ public:
   enum DISPLAY {
     DISPLAY_CURRENT_IMAGE,
     DISPLAY_PREVIOUS_IMAGE,
-    DISPLAY_FFT_CROSS,
     DISPLAY_IFFT,
   };
 

@@ -32,38 +32,10 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
   static const c_enum_member members[] = {
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
       { c_alpha_test_routine::DISPLAY_PREVIOUS_IMAGE, "PREVIOUS_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_FFT_CROSS, "FFT_CROSS", "" },
       { c_alpha_test_routine::DISPLAY_IFFT, "IFFT", "" },
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
-}
-
-void c_phase_correlate::differentiate(cv::InputArray src, cv::OutputArray dst, cv::InputArray mask)
-{
-  // TODO: Later consider something like laplacian or DoG kernel instead,
-  // as it is expected to be faster an better preserving the sign of edges
-
-  // 4th order derivative vector (5x1)
-  // 2nd order smoothing  vector (3x1)
-  static const cv::Matx<float, 5, 1> d5( +1.f/12.f, -2.f/3.f, 0.f, +2.f/3.f, -1.f/12.f );
-  static const cv::Matx<float, 3, 1> s3( 0.25f, 0.5f, 0.25f );
-
-  cv::Mat gx, gy;
-
-  parallel_invoke(
-      [&]() {
-        cv::sepFilter2D(src, gx, CV_32F, d5, s3, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-      },
-      [&]() {
-        cv::sepFilter2D(src, gy, CV_32F, s3, d5, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-      });
-
-  cv::magnitude(gx, gy, dst);
-
-  if ( !mask.empty() ) {
-    dst.setTo(0, ~mask.getMat());
-  }
 }
 
 void c_phase_correlate::scaleAndPadToTargetSize(cv::InputArray srcImage, cv::InputArray srcMask,
@@ -153,7 +125,6 @@ void c_phase_correlate::createApodizationWindow(cv::InputArray mask, cv::Mat1f &
     blurredMask = distMap;
   }
 
-  // Финальное сглаживание бокс-фильтром
   int ksize = 2 * scale + 1;
   if( ksize > 1 ) {
     cv::boxFilter(blurredMask, blurredMask, CV_32F, cv::Size(ksize, ksize));
@@ -204,61 +175,137 @@ cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f & idctResult
 
   double subX = (sumMass > 0.0) ? (sumX / sumMass) : static_cast<double>(outPeakLoc.x);
   double subY = (sumMass > 0.0) ? (sumY / sumMass) : static_cast<double>(outPeakLoc.y);
-//  if( subX >= cols / 2.0 ) {
-//    subX -= cols;
-//  }
-//  if( subY >= rows / 2.0 ) {
-//    subY -= rows;
-//  }
 
   return cv::Point2f(float(subX), float(subY));
 }
 
-// Modifying the RAMP generator to freely move the zero offset to the center of idftResult
-void c_phase_correlate::generateRampFilter(const cv::Size & size, cv::Mat2f & outputFilter ) const
+double c_phase_correlate::computeCorrelationMap(cv::InputArray image1, cv::InputArray image2,
+    cv::OutputArray outputCcorrelationMap, double _gsigma) const
 {
-  cv::Mat1f FILTER(size);
+  // Assume input args are valid CV_32FC1 matrices of valid (power of 2) size each,
+  // so no any padding is required, assume all the padding is responsibility of caller code
 
-  const float scaleX = float(CV_2PI / size.width);
-  const float scaleY = float(CV_2PI / size.height);
-  const int cx = size.width / 2;
-  const int cy = size.height / 2;
+  const cv::Mat1f src1 = image1.getMat();
+  const cv::Mat1f src2 = image2.getMat();
 
-  parallel_for(0, size.height, [=, &FILTER](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      float * __restrict dstp = FILTER.ptr<float>(y);
+  cv::Mat1f spec1, spec2;
+  cv::dft(src1, spec1, cv::DFT_REAL_OUTPUT);
+  cv::dft(src2, spec2, cv::DFT_REAL_OUTPUT);
 
-      const float dy_val = (y <= cy) ? float(y) : float(size.height - y);
-      const float dy = dy_val * scaleY;
-      const float dy2 = dy * dy;
+  const int rows = spec1.rows;
+  const int cols = spec1.cols;
+  const bool is_even = (cols % 2 == 0);
+  const float gsigma = float(_gsigma);
+  const float norm_factor = float(1.64872127 / _gsigma);
+  const float inv_cols = 1.0f / (float)cols;
+  const float inv_rows = 1.0f / (float)rows;
 
-      for (int x = 0; x < size.width; ++x) {
-        const float dx_val = (x <= cx) ? float(x) : float(size.width - x);
-        const float dx = dx_val * scaleX;
+  cv::Mat1f cross(spec1.size());
 
-        float radius = std::sqrt(dx * dx + dy2);
+  const uint8_t * spec1_base = spec1.ptr();
+  const size_t spec1_stride = spec1.step;
 
-        // If the sum of the frequency indices (x + y) is odd, make the RAMP coefficient negative.
-        // When multiplying the spectrum, this inverts the phase of the frequencies, which is mathematically
-        // equivalent to an honest spatial fftShift() after the IDFT!
-        if ((x + y) % 2 != 0) {
-          radius = -radius;
+  const uint8_t * spec2_base = spec2.ptr();
+  const size_t spec2_stride = spec2.step;
+
+  uint8_t * cross_base = cross.ptr();
+  const size_t cross_stride = cross.step;
+
+  // Constants for the incremental Gaussian step
+  // u = fx / cols.
+  // In the exponent:
+  // -0.5 * u^2 / gsigma^2 = -0.5 * fx^2 / (cols^2 * gsigma^2)
+  const float alpha = -0.5f / (gsigma * gsigma * (float)cols * (float)cols);
+  const float exp_alpha = std::exp(alpha);
+  const float exp_alpha2 = std::exp(2.0f * alpha);
+
+  std::atomic<float> total_energy(0.0f);
+
+  parallel_for(0, rows, [=, &total_energy](const auto& range) {
+    float local_energy = 0.0f;
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * srcp1 =  (const float * )(spec1_base + y * spec1_stride);
+      const float * srcp2 =  (const float * )(spec2_base + y * spec2_stride);
+      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
+
+      // Optimization for vertical sign and frequency
+      const float sign_y = (y % 2 == 0) ? 1.0f : -1.0f;
+      const float v = (y > rows / 2) ? (float)(rows - y) * inv_rows : (float)y * inv_rows;
+      const float v_sq = v * v;
+
+      // Precomputed vertical part of the Gaussian exponential for the current row
+      const float weight_v = std::exp(-0.5f * v_sq / (gsigma * gsigma));
+
+      dstp[0] = 0.0f;
+
+      // Incremental horizontal Gaussian calculation (for fx = 1)
+      // Instead of calling std::exp on each iteration, there will simply be a multiplication
+      float g_u = std::exp(alpha);
+      float g_step = std::exp(3.0f * alpha);
+
+      // Sign for fx = 1 (since fx=1 is even? No, 1 is odd, so (1 % 2 == 0) -> false -> -1.0f)
+      // shift_sign for fx=1 will be equal to -sign_y.
+      // The sign will simply change with each iteration.
+      float current_shift_sign = -sign_y;
+
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+      for( int x = 1; x <= max_complex_idx; x += 2 ) {
+        const int fx = (x + 1) / 2;
+
+        // Instead of u = fx * inv_cols and heavy std::sqrt(u*u + v*v)
+        const float u = (float)fx * inv_cols;
+        const float rho = std::sqrt(u * u + v_sq);
+
+        // weight = norm_factor * rho * exp(-0.5*v^2/g^2) * exp(-0.5*u^2/g^2)
+        const float weight = norm_factor * rho * weight_v * g_u;
+
+        // Incremental Gaussian step for the next iteration of fx
+        g_u *= g_step;
+        g_step *= exp_alpha2;
+
+        const float a = srcp1[x];
+        const float b = srcp1[x + 1];
+        const float c = srcp2[x];
+        const float d = srcp2[x + 1];
+
+        const float re = a * c + b * d;
+        const float im = b * c - a * d;
+        const float magnitude = std::sqrt(re * re + im * im);
+
+        if( magnitude > 0 ) {
+          const float factor = weight * current_shift_sign / magnitude;
+          dstp[x] = re * factor;
+          dstp[x + 1] = im * factor;
+          local_energy += 2 * weight;
+        }
+        else {
+          dstp[x] = 0.0f;
+          dstp[x + 1] = 0.0f;
         }
 
-        dstp[x] = radius;
+        // Swap the sign for the next fx (alternating 1 and -1)
+        current_shift_sign = -current_shift_sign;
+      }
+
+      if( is_even ) {
+        dstp[cols - 1] = 0.0f;
       }
     }
+
+    float current = total_energy.load(std::memory_order_relaxed);
+    while (!total_energy.compare_exchange_weak(current, current + local_energy,
+        std::memory_order_relaxed));
   });
 
-  FILTER(0, 0) = 0.0f;
+  const double total_filter_energy =
+      total_energy.load();
 
-  const cv::Mat m[2] = {
-      FILTER, FILTER
-  };
+  cv::idft(cross, outputCcorrelationMap,
+      cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
 
-  cv::merge(m, 2, outputFilter);
+  return total_filter_energy;
 }
-
 
 double c_phase_correlate::compute(cv::InputArray currentImage, cv::InputArray currentMask,
     cv::InputArray referenceImage, cv::InputArray referenceMask,
@@ -271,15 +318,10 @@ double c_phase_correlate::compute(cv::InputArray currentImage, cv::InputArray cu
   cv::Mat inputCurrent = currentImage.getMat();
   cv::Mat inputReference = referenceImage.getMat();
 
-  cv::Size targetSize = getOptimalPhaseCorrelationSize(inputCurrent.size());
-
+  const cv::Size targetSize = getOptimalPhaseCorrelationSize(inputCurrent.size());
   if (targetSize != _cachedSize) {
     _cachedSize = targetSize;
     _cachedScaleFactor = double(targetSize.width) / inputCurrent.cols;
-  }
-
-  if( _opts.apply_ramp && _rampFilter.size() != _cachedSize ) {
-    generateRampFilter(_cachedSize, _rampFilter);
   }
 
   const int scaledRadius = std::max(1, cvRound(_opts.apodization_radius * _cachedScaleFactor));
@@ -287,49 +329,30 @@ double c_phase_correlate::compute(cv::InputArray currentImage, cv::InputArray cu
   scaleAndPadToTargetSize(currentImage, currentMask, _scaledImg1, _scaledMsk1, _cachedSize, _cachedScaleFactor);
   scaleAndPadToTargetSize(referenceImage, referenceMask, _scaledImg2, _scaledMsk2, _cachedSize, _cachedScaleFactor);
 
-  if (_opts.differentiate) {
-    differentiate(_scaledImg1, _gradImg1, _scaledMsk1);
-    differentiate(_scaledImg2, _gradImg2, _scaledMsk2);
-  }
-  else {
-    _scaledImg1.copyTo(_gradImg1);
-    _scaledImg2.copyTo(_gradImg2);
-  }
-
-  if( !_opts.apply_apodization ) {
-    _gradImg1.copyTo(_maskedImg1);
-    _gradImg2.copyTo(_maskedImg2);
+  if( _opts.apodization_radius < 1 ) {
+    _maskedImg1 = _scaledImg1;
+    _maskedImg2 = _scaledImg2;
   }
   else {
     createApodizationWindow(_scaledMsk1, _window1, scaledRadius);
     createApodizationWindow(_scaledMsk2, _window2, scaledRadius);
-    cv::multiply(_gradImg1, _window1, _maskedImg1);
-    cv::multiply(_gradImg2, _window2, _maskedImg2);
+    cv::multiply(_scaledImg1, _window1, _maskedImg1);
+    cv::multiply(_scaledImg2, _window2, _maskedImg2);
   }
 
-  cv::dft(_maskedImg1, _fft1, cv::DFT_COMPLEX_OUTPUT);
-  cv::dft(_maskedImg2, _fft2, cv::DFT_COMPLEX_OUTPUT);
-
-  cv::mulSpectrums(_fft1, _fft2, _fftCross, 0, true);
-
-  if ( _opts.apply_ramp ) {
-    cv::multiply(_fftCross, _rampFilter, _fftCross);
-  }
-  cv::idft(_fftCross, realInverseResult, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-  if ( !_opts.apply_ramp ) {
-    fftSwapQuadrants(realInverseResult);
-  }
+  const double total_filter_energy =
+      computeCorrelationMap(_maskedImg1, _maskedImg2, correlationMap,
+          _opts.gsigma);
 
   cv::Point peakLoc;
-  const cv::Point2f scaledTranslation = findSubpixelCentroid(realInverseResult, peakLoc);
-  const double totalSpectrumEnergy = cv::norm(_fftCross, cv::NORM_L1);
-  const double normalizedEnergy = totalSpectrumEnergy / (realInverseResult.cols * realInverseResult.rows);
-  const double rawPeak = realInverseResult(peakLoc.y, peakLoc.x);
-  const double correlationScore = (normalizedEnergy > 0.0) ? (rawPeak / normalizedEnergy) : 0.0;
+  const cv::Point2f scaledTranslation = findSubpixelCentroid(correlationMap, peakLoc);
+  const double rawPeak = correlationMap(peakLoc.y, peakLoc.x);
+  const double normalizedResponse = (total_filter_energy > 0) ? (rawPeak / total_filter_energy) : 0.0;
+  const double correlationScore = normalizedResponse * correlationMap.size().area();
 
   if( outputTranslation ) {
-    (*outputTranslation)[0] = (scaledTranslation.x - realInverseResult.cols / 2) * float(1.0 / _cachedScaleFactor);
-    (*outputTranslation)[1] = (scaledTranslation.y - realInverseResult.rows / 2) * float(1.0 / _cachedScaleFactor);
+    (*outputTranslation)[0] = (scaledTranslation.x - correlationMap.cols / 2) * float(1.0 / _cachedScaleFactor);
+    (*outputTranslation)[1] = (scaledTranslation.y - correlationMap.rows / 2) * float(1.0 / _cachedScaleFactor);
   }
 
   return correlationScore;
@@ -343,10 +366,8 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, pc._opts, differentiate);
-    SERIALIZE_OPTION(settings, save, pc._opts, apply_apodization);
-    SERIALIZE_OPTION(settings, save, pc._opts, apply_ramp);
     SERIALIZE_OPTION(settings, save, pc._opts, apodization_radius);
+    SERIALIZE_OPTION(settings, save, pc._opts, gsigma);
     return true;
   }
   return false;
@@ -355,10 +376,9 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "Differentiate", CTL_CONTEXT(ctx, pc._opts.differentiate), "");
-  ctlbind(ctls, "applyRAMP", CTL_CONTEXT(ctx, pc._opts.apply_ramp), "Set checked to apply RAMP filter to dct cross");
-  ctlbind(ctls, "applyApodization", CTL_CONTEXT(ctx, pc._opts.apply_apodization), "");
   ctlbind(ctls, "ApodizationRadius", CTL_CONTEXT(ctx, pc._opts.apodization_radius), "");
+  ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, pc._opts.gsigma), "");
+
   ctlbind(ctls, "updatePrevious", CTL_CONTEXT(ctx, _updatePreviousImage), "Set checked to update prevImage");
 }
 
@@ -389,12 +409,8 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         prevImage.copyTo(image);
         prevMask.copyTo(mask);
         break;
-      case DISPLAY_FFT_CROSS:
-        cv::extractChannel(pc._fftCross, image, 0);
-        mask.release();
-        break;
       case DISPLAY_IFFT:
-        pc.realInverseResult.copyTo(image);
+        pc.correlationMap.copyTo(image);
         mask.release();
         break;
     }

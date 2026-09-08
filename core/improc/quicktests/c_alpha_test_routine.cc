@@ -48,10 +48,7 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, opts, apodization_size);
-    SERIALIZE_OPTION(settings, save, opts, gsigma);
-    SERIALIZE_OPTION(settings, save, opts, downscale_factor);
-
+    serialize_phase_correlate_options(settings, save, opts);
     return true;
   }
   return false;
@@ -60,9 +57,7 @@ bool c_alpha_test_routine::serialize(c_config_setting settings, bool save)
 void c_alpha_test_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
-  ctlbind(ctls, "ApodizationRadius", CTL_CONTEXT(ctx, opts.apodization_size), "");
-  ctlbind(ctls, "gsigma", CTL_CONTEXT(ctx, opts.gsigma), "");
-  ctlbind(ctls, "downscale factor", CTL_CONTEXT(ctx, opts.downscale_factor), "");
+  ctlbind(ctls, CTL_CONTEXT(ctx, opts));
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
 }
 
@@ -91,15 +86,15 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         referenceMask.copyTo(mask);
         break;
       case DISPLAY_CURRENT_SCALED_IMAGE:
-        pc._scaledCurrentImage.copyTo(image);
-        pc._scaledCurrentMask.copyTo(mask);
+        pc.scaledCurrentImage().copyTo(image);
+        pc.scaledCurrentMask().copyTo(mask);
         break;
       case DISPLAY_REFERENCE_SCALED_IMAGE:
-        pc._scaledReferenceImage.copyTo(image);
-        pc._scaledReferenceMask.copyTo(mask);
+        pc.scaledReferenceImage().copyTo(image);
+        pc.scaledReferenceMask().copyTo(mask);
         break;
       case DISPLAY_IFFT:
-        pc._correlationMap.copyTo(image);
+        pc.correlationMap().copyTo(image);
         mask.release();
         break;
     }

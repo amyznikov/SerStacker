@@ -10,6 +10,8 @@
 #define __c_phase_correlate_h__
 
 #include <opencv2/opencv.hpp>
+#include <core/ctrlbind/ctrlbind.h>
+#include <core/settings.h>
 
 struct c_phase_correlate_options
 {
@@ -18,18 +20,88 @@ struct c_phase_correlate_options
   int apodization_size = 21;
 };
 
+bool serialize_phase_correlate_options(c_config_setting section, bool save,
+    c_phase_correlate_options & opts);
+
+inline bool save_settings(c_config_setting section, const c_phase_correlate_options & opts)
+{
+  return serialize_phase_correlate_options(section, true,
+      const_cast<c_phase_correlate_options & >(opts));
+}
+
+inline bool load_settings(c_config_setting section, c_phase_correlate_options * opts)
+{
+  return serialize_phase_correlate_options(section, false, *opts);
+}
+
+template<class RootObjectType>
+static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<RootObjectType, c_phase_correlate_options> & ctx)
+{
+  using S = c_phase_correlate_options;
+  ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
+  ctlbind(ctls, "gsigma", ctx(&S::gsigma),  "");
+  ctlbind(ctls, "apodization_size",  ctx(&S::apodization_size), "");
+}
+
 class c_phase_correlate
 {
 public:
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts);
 
-  // Release internal cache buffers, may be useful for multi-pipeline re-initializators
-  void release();
-
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   bool setCurrentImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   double compute(cv::Vec2f & outputTranslation);
+
+  // Release internal cache buffers, may be useful for multi-pipeline re-initializators
+  void release();
+
+public: // public access for debug & visualization purposes
+  const cv::Size currentValidSize() const {
+    return _currentValidSize;
+  }
+  const cv::Size referenceValidSize() const {
+    return _referenceValidSize;
+  }
+  const cv::Point currentCropOffset() const {
+    return _currentCropOffset;
+  }
+  const cv::Point referenceCropOffset() const {
+    return _referenceCropOffset;
+  }
+  const cv::Mat1f scaledCurrentImage() const {
+    return _scaledCurrentImage;
+  }
+  const cv::Mat1f scaledReferenceImage() const {
+    return _scaledReferenceImage;
+  }
+  const cv::Mat1b scaledCurrentMask() const {
+    return _scaledCurrentMask;
+  }
+  const cv::Mat1b scaledReferenceMask() const {
+    return _scaledReferenceMask;
+  }
+  const cv::Mat1f currentWindow() const {
+    return _currentWindow;
+  }
+  const cv::Mat1f referenceWindow() const {
+    return _referenceWindow;
+  }
+  const cv::Mat1f currentSpectrum() const {
+    return _currentSpectrum;
+  }
+  const cv::Mat1f referenceSpectrum() const {
+    return _referenceSpectrum;
+  }
+  const cv::Mat1f crossSpectrum() const {
+    return _crossSpectrum;
+  }
+  const cv::Mat1f correlationMap() const {
+    return _correlationMap;
+  }
+  const cv::Mat1f distmap() const {
+    return _distmap;
+  }
 
 protected: // internal helpers
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
@@ -42,7 +114,7 @@ protected: // internal data
   int _apodization_size = 21;
   cv::Size _fftSize;
 
-public: // Made temporary public for debug & visualization purposes only
+protected: // Cache data
   std::vector<float> _apodizationLUT;
   cv::Size _currentValidSize, _referenceValidSize;
   cv::Point _currentCropOffset, _referenceCropOffset;

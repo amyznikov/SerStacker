@@ -12,6 +12,7 @@
 #include <core/proc/feature2d/feature2d.h>
 #include <core/ctrlbind/ctrlbind.h>
 #include "image_transform.h"
+#include "c_phase_correlate.h"
 #include "ecc2.h"
 
 

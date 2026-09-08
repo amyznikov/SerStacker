@@ -127,6 +127,7 @@
 #include "feature2d/c_roi_tracker_routine.h"
 #include "feature2d/c_barycenter_routine.h"
 #include "feature2d/c_connected_component_selection_routine.h"
+#include "feature2d/c_phase_correlate_routine.h"
 
 #include "geometry/c_crop_image_routine.h"
 #include "geometry/c_rotate_image_routine.h"
@@ -323,6 +324,7 @@ void c_image_processor_routine::register_all()
     register_class_factory(c_roi_tracker_routine::class_factory_instance());
     register_class_factory(c_barycenter_routine::class_factory_instance());
     register_class_factory(c_connected_component_selection_routine::class_factory_instance());
+    register_class_factory(c_phase_correlate_routine::class_factory_instance());
 
     register_class_factory(c_alpha_test_routine::class_factory_instance());
 

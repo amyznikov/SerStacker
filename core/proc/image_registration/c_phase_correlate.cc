@@ -438,6 +438,15 @@ cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f & correlatio
   return cv::Point2f(float(subX), float(subY));
 }
 
+bool serialize_phase_correlate_options(c_config_setting section, bool save,
+    c_phase_correlate_options & opts)
+{
+  SERIALIZE_OPTION(section, save, opts, downscale_factor);
+  SERIALIZE_OPTION(section, save, opts, gsigma);
+  SERIALIZE_OPTION(section, save, opts, apodization_size);
+  return true;
+}
+
 #if 0
 cv::Point2f c_phase_correlate::findSubpixelCentroid2(const cv::Mat1f & correlationMap, cv::Point & outPeakLoc, float & outSecondPeakVal)
 {

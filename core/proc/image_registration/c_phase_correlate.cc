@@ -290,6 +290,14 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 
 double c_phase_correlate::computeCorrelationMap()
 {
+  // The cross spectrum is weighted by differentiating-smoothing gaussian
+  //    w(f) ~ f * exp(-0.5 * f^2/gsigma^2)
+  // which acts as bandpass filter enhancing texture edges
+  // still suppressing high frequncy noise.
+  //
+  // Additionally the cross spectrum it is multiplied by alternating +1 and -1
+  // to avoid fftSwapQuadrants() after idft()
+
   const int rows = _currentSpectrum.rows;
   const int cols = _currentSpectrum.cols;
   const bool is_even = (cols % 2 == 0);
@@ -297,6 +305,7 @@ double c_phase_correlate::computeCorrelationMap()
   const float norm_factor = float(1.64872127 / _gsigma);
   const float inv_cols = float(1.0 / cols);
   const float inv_rows = float(1.0f / rows);
+  const float inv_gsigma2 = -0.5f / (gsigma * gsigma);
 
   _crossSpectrum.create(_currentSpectrum.size());
 
@@ -309,8 +318,6 @@ double c_phase_correlate::computeCorrelationMap()
   uint8_t * cross_base = _crossSpectrum.ptr();
   const size_t cross_stride = _crossSpectrum.step;
 
-  const float inv_gsigma_sq_2 = -0.5f / (gsigma * gsigma);
-
   std::atomic<float> total_energy(0.0f);
 
   parallel_for(0, rows, [=, &total_energy](const auto & range) {
@@ -321,8 +328,8 @@ double c_phase_correlate::computeCorrelationMap()
       const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
       float * __restrict dstp = (float *)(cross_base + y * cross_stride);
 
-      const float v = (y > rows / 2) ? (float)(rows - y) * inv_rows : (float)y * inv_rows;
-      const float v_sq = v * v;
+      const float v = (y > rows / 2) ? (rows - y) * inv_rows : y * inv_rows;
+      const float v2 = v * v;
 
       dstp[0] = 0.0f;
 
@@ -330,11 +337,12 @@ double c_phase_correlate::computeCorrelationMap()
       for( int x = 1; x <= max_complex_idx; x += 2 ) {
         const int fx = (x + 1) / 2;
 
-        const float u = (float)fx * inv_cols;
-        const float rho_sq = u * u + v_sq;
-        const float rho = std::sqrt(rho_sq);
+        const float u = fx * inv_cols;
+        const float u2 = u * u;
+        const float rho2 = u2 + v2;
+        const float rho = std::sqrt(rho2);
 
-        const float total_gaussian = std::exp(rho_sq * inv_gsigma_sq_2);
+        const float total_gaussian = std::exp(rho2 * inv_gsigma2);
         const float weight = norm_factor * rho * total_gaussian;
 
         const float a = srcp1[x];
@@ -362,7 +370,8 @@ double c_phase_correlate::computeCorrelationMap()
             std::memory_order_relaxed));
   });
 
-  const double total_filter_energy = 2 * total_energy.load();
+  const double total_filter_energy =
+      2 * total_energy.load();
 
   cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
 
@@ -378,7 +387,6 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   cv::Point peakLoc;
 
   const double total_filter_energy = computeCorrelationMap();
-
   const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap, peakLoc);
   const double rawPeak = _correlationMap(peakLoc.y, peakLoc.x);
   const double normalizedResponse = (total_filter_energy > 0) ? (rawPeak / total_filter_energy) : 0.0;
@@ -386,8 +394,8 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 
   const double dX = _referenceCropOffset.x - _currentCropOffset.x;
   const double dY = _referenceCropOffset.y - _currentCropOffset.y;
-  const double scaledDx = scaledTranslation.x - (_fftSize.width / 2.0) + dX;
-  const double scaledDy = scaledTranslation.y - (_fftSize.height / 2.0) + dY;
+  const double scaledDx = scaledTranslation.x - _fftSize.width / 2 + dX;
+  const double scaledDy = scaledTranslation.y - _fftSize.height / 2 + dY;
   outputTranslation[0] = -float(scaledDx * _downscale_factor);
   outputTranslation[1] = -float(scaledDy * _downscale_factor);
 

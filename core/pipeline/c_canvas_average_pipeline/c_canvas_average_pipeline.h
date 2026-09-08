@@ -25,6 +25,7 @@ struct c_canvas_average_input_options:
 
 struct c_canvas_average_registration_options
 {
+  bool enable_phase_correlate = false;
   bool enable_feature2d_registration = false;
   bool enable_star_registration = false;
   bool enable_ecc_registration = false;
@@ -33,7 +34,7 @@ struct c_canvas_average_registration_options
   cv::Size canvasSize;
   double eccUnsharpMaskSigma = 1;
   double eccUnsharpMaskAlpha = 0.9;
-
+  double minAcceptablePhaseCorrelation = 0.08;
 
   IMAGE_MOTION_TYPE motion_type = IMAGE_MOTION_TRANSLATION;
 
@@ -42,6 +43,7 @@ struct c_canvas_average_registration_options
   c_triangle_extractor_options triangle_extractor;
   c_triangle_matcher_options triangle_matcher;
 
+  c_phase_correlate_options phase_correlate;
   c_ecch_options ecch;
   c_eccflow_options eccflow;
   c_estimate_image_transform_options transform_estimation;
@@ -133,6 +135,7 @@ protected:
   c_ecch _ecch;
   c_eccflow _eccflow;
   c_sparse_feature_extractor_and_matcher::sptr _feature2d;
+  c_phase_correlate _phase_correlate;
   c_star_extractor _star_extractor;
   c_triangle_extractor _triangle_extractor;
   c_triangle_matcher _triangle_matcher;

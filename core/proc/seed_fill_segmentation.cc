@@ -141,7 +141,7 @@ skip:
 
 
 template<class T>
-static int seedfill_segmentation_(cv::InputArray src,
+static int _seedfill_segmentation(cv::InputArray src,
     cv::Mat1i & output_labels,
     double threshold)
 {
@@ -190,73 +190,73 @@ int seed_fill_segmentation(cv::InputArray src, cv::Mat1i & output_labels, double
   switch ( src.type() ) {
 
   case CV_8UC1 :
-    return seedfill_segmentation_<uint8_t>(src, output_labels, threshold);
+    return _seedfill_segmentation<uint8_t>(src, output_labels, threshold);
   case CV_8UC2 :
-    return seedfill_segmentation_<cv::Vec<uint8_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint8_t, 3>>(src, output_labels, threshold);
   case CV_8UC3 :
-    return seedfill_segmentation_<cv::Vec<uint8_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint8_t, 3>>(src, output_labels, threshold);
   case CV_8UC4 :
-    return seedfill_segmentation_<cv::Vec<uint8_t, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint8_t, 4>>(src, output_labels, threshold);
 
 
   case CV_8SC1 :
-    return seedfill_segmentation_<int8_t>(src, output_labels, threshold);
+    return _seedfill_segmentation<int8_t>(src, output_labels, threshold);
   case CV_8SC2 :
-    return seedfill_segmentation_<cv::Vec<int8_t, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int8_t, 2>>(src, output_labels, threshold);
   case CV_8SC3 :
-    return seedfill_segmentation_<cv::Vec<int8_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int8_t, 3>>(src, output_labels, threshold);
   case CV_8SC4 :
-    return seedfill_segmentation_<cv::Vec<int8_t, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int8_t, 4>>(src, output_labels, threshold);
 
 
   case  CV_16UC1:
-    return seedfill_segmentation_<uint16_t>(src, output_labels, threshold);
+    return _seedfill_segmentation<uint16_t>(src, output_labels, threshold);
   case  CV_16UC2:
-    return seedfill_segmentation_<cv::Vec<uint16_t, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint16_t, 2>>(src, output_labels, threshold);
   case  CV_16UC3:
-    return seedfill_segmentation_<cv::Vec<uint16_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint16_t, 3>>(src, output_labels, threshold);
   case  CV_16UC4:
-    return seedfill_segmentation_<cv::Vec<uint16_t, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<uint16_t, 4>>(src, output_labels, threshold);
 
 
   case  CV_16SC1:
-    return seedfill_segmentation_<int16_t>(src, output_labels, threshold);
+    return _seedfill_segmentation<int16_t>(src, output_labels, threshold);
   case  CV_16SC2:
-    return seedfill_segmentation_<cv::Vec<int16_t, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int16_t, 2>>(src, output_labels, threshold);
   case  CV_16SC3:
-    return seedfill_segmentation_<cv::Vec<int16_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int16_t, 3>>(src, output_labels, threshold);
   case  CV_16SC4:
-    return seedfill_segmentation_<cv::Vec<int16_t, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int16_t, 4>>(src, output_labels, threshold);
 
 
   case  CV_32SC1:
-    return seedfill_segmentation_<int32_t>(src, output_labels, threshold);
+    return _seedfill_segmentation<int32_t>(src, output_labels, threshold);
   case  CV_32SC2:
-    return seedfill_segmentation_<cv::Vec<int32_t, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int32_t, 2>>(src, output_labels, threshold);
   case  CV_32SC3:
-    return seedfill_segmentation_<cv::Vec<int32_t, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int32_t, 3>>(src, output_labels, threshold);
   case  CV_32SC4:
-    return seedfill_segmentation_<cv::Vec<int32_t, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<int32_t, 4>>(src, output_labels, threshold);
 
 
   case  CV_32FC1:
-    return seedfill_segmentation_<float>(src, output_labels, threshold);
+    return _seedfill_segmentation<float>(src, output_labels, threshold);
   case  CV_32FC2:
-    return seedfill_segmentation_<cv::Vec<float, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<float, 2>>(src, output_labels, threshold);
   case  CV_32FC3:
-    return seedfill_segmentation_<cv::Vec<float, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<float, 3>>(src, output_labels, threshold);
   case  CV_32FC4:
-    return seedfill_segmentation_<cv::Vec<float, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<float, 4>>(src, output_labels, threshold);
 
 
   case  CV_64FC1:
-    return seedfill_segmentation_<double>(src, output_labels, threshold);
+    return _seedfill_segmentation<double>(src, output_labels, threshold);
   case  CV_64FC2:
-    return seedfill_segmentation_<cv::Vec<double, 2>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<double, 2>>(src, output_labels, threshold);
   case  CV_64FC3:
-    return seedfill_segmentation_<cv::Vec<double, 3>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<double, 3>>(src, output_labels, threshold);
   case  CV_64FC4:
-    return seedfill_segmentation_<cv::Vec<double, 4>>(src, output_labels, threshold);
+    return _seedfill_segmentation<cv::Vec<double, 4>>(src, output_labels, threshold);
   }
 
 

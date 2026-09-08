@@ -57,7 +57,14 @@ public:
   void release();
 
 public: // public access for debug & visualization purposes
-  const cv::Size currentValidSize() const {
+  bool initialized() const {
+    return _initialized;
+  }
+
+  const cv::Size & fftSize() const {
+    return _fftSize;
+  }
+  const cv::Size & currentValidSize() const {
     return _currentValidSize;
   }
   const cv::Size referenceValidSize() const {
@@ -113,6 +120,7 @@ protected: // internal data
   double _gsigma = 0.1;
   int _apodization_size = 21;
   cv::Size _fftSize;
+  bool _initialized = false;
 
 protected: // Cache data
   std::vector<float> _apodizationLUT;

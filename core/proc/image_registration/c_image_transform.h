@@ -11,7 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 #if (CV_VERSION_MAJOR >= 5)
-# include <opencv2/geometry/2d.hpp>
+# include <opencv2/geometry.hpp>
 #endif
 
 #include <core/debug.h>

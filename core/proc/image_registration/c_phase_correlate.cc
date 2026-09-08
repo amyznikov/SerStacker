@@ -119,6 +119,7 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
     }
   }
 
+  _initialized = true;
   return true;
 }
 
@@ -137,6 +138,7 @@ void c_phase_correlate::release()
   _crossSpectrum.release();
   _correlationMap.release();
   _distmap.release();
+  _initialized = false;
 }
 
 void c_phase_correlate::applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask,
@@ -386,8 +388,8 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   const double dY = _referenceCropOffset.y - _currentCropOffset.y;
   const double scaledDx = scaledTranslation.x - (_fftSize.width / 2.0) + dX;
   const double scaledDy = scaledTranslation.y - (_fftSize.height / 2.0) + dY;
-  outputTranslation[0] = float(scaledDx * _downscale_factor);
-  outputTranslation[1] = float(scaledDy * _downscale_factor);
+  outputTranslation[0] = -float(scaledDx * _downscale_factor);
+  outputTranslation[1] = -float(scaledDy * _downscale_factor);
 
   return correlationScore;
 }

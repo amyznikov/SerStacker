@@ -1431,18 +1431,3 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
   return angle;
 }
 
-
-// The target size is the original size downscaled by about 4 times
-cv::Size getOptimalPhaseCorrelationSize(const cv::Size & imageSize)
-{
-  // Find the closest power of two (round mathematically to the nearest)
-  // std::round(std::log2(v)) will select the power that is closest to the target
-  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-  // Return the size as 2^powX and 2^powY
-
-  double targetWidth = imageSize.width / 4.0;
-  double targetHeight = imageSize.height / 4.0;
-  const int powX = std::max(6, static_cast<int>(std::round(std::log2(targetWidth))));
-  const int powY = std::max(6, static_cast<int>(std::round(std::log2(targetHeight))));
-  return cv::Size(1 << powX, 1 << powY);
-}

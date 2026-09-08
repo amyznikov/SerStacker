@@ -151,7 +151,4 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
 double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
     cv::OutputArray outputDebugHistogram = cv::noArray());
 
-// The target size is the original size downscaled by about 4 times
-cv::Size getOptimalPhaseCorrelationSize(const cv::Size & imageSize);
-
 #endif /* __fft_h__ */

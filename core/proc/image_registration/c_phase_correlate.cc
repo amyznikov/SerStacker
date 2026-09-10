@@ -119,6 +119,8 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
     }
   }
 
+  _gsigma = opts.gsigma;
+
   _initialized = true;
   return true;
 }
@@ -131,8 +133,6 @@ void c_phase_correlate::release()
   _scaledReferenceImage.release();
   _scaledCurrentMask.release();
   _scaledReferenceMask.release();
-  _currentWindow.release();
-  _referenceWindow.release();
   _currentSpectrum.release();
   _referenceSpectrum.release();
   _crossSpectrum.release();
@@ -237,7 +237,7 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
         _referenceValidSize);
   }
 
-  cv::dft(_scaledReferenceImage, _currentSpectrum,
+  cv::dft(_scaledReferenceImage, _referenceSpectrum,
       cv::DFT_REAL_OUTPUT);
 
   return true;
@@ -282,7 +282,7 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
         _currentValidSize);
   }
 
-  cv::dft(_scaledCurrentImage, _referenceSpectrum,
+  cv::dft(_scaledCurrentImage, _currentSpectrum,
       cv::DFT_REAL_OUTPUT);
 
   return true;
@@ -290,10 +290,14 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 
 double c_phase_correlate::computeCorrelationMap()
 {
-  // The cross spectrum is weighted by differentiating-smoothing gaussian
-  //    w(f) ~ f * exp(-0.5 * f^2/gsigma^2)
+  // The current and reference spectrums are expected in
+  // CCS (Complex-Conjugate Symmetrical ) format computed
+  // from real images with cv::DFT_REAL_OUTPUT flag
+  //
+  // The cross spectrum is weighted by differentiating-smoothing
+  // gaussian w(f) ~ f * exp(-0.5 * f^2/gsigma^2)
   // which acts as bandpass filter enhancing texture edges
-  // still suppressing high frequncy noise.
+  // still suppressing high frequency noise.
   //
   // Additionally the cross spectrum it is multiplied by alternating +1 and -1
   // to avoid fftSwapQuadrants() after idft()
@@ -305,7 +309,7 @@ double c_phase_correlate::computeCorrelationMap()
   const float norm_factor = float(1.64872127 / _gsigma);
   const float inv_cols = float(1.0 / cols);
   const float inv_rows = float(1.0f / rows);
-  const float inv_gsigma2 = -0.5f / (gsigma * gsigma);
+  const float inv_gsigma2 = gsigma > 0 ? -0.5f / (gsigma * gsigma) : 0;
 
   _crossSpectrum.create(_currentSpectrum.size());
 
@@ -341,9 +345,7 @@ double c_phase_correlate::computeCorrelationMap()
         const float u2 = u * u;
         const float rho2 = u2 + v2;
         const float rho = std::sqrt(rho2);
-
-        const float total_gaussian = std::exp(rho2 * inv_gsigma2);
-        const float weight = norm_factor * rho * total_gaussian;
+        const float weight = inv_gsigma2 < 0 ? norm_factor * rho * std::exp(rho2 * inv_gsigma2) : 1.f;
 
         const float a = srcp1[x];
         const float b = srcp1[x + 1];

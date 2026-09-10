@@ -56,6 +56,16 @@ public:
   // Release internal cache buffers, may be useful for multi-pipeline re-initializators
   void release();
 
+  void setGSigma(double gsigma)
+  {
+    _gsigma = gsigma;
+  }
+
+  double gsigma() const
+  {
+    return _gsigma;
+  }
+
 public: // public access for debug & visualization purposes
   bool initialized() const {
     return _initialized;
@@ -87,12 +97,6 @@ public: // public access for debug & visualization purposes
   }
   const cv::Mat1b scaledReferenceMask() const {
     return _scaledReferenceMask;
-  }
-  const cv::Mat1f currentWindow() const {
-    return _currentWindow;
-  }
-  const cv::Mat1f referenceWindow() const {
-    return _referenceWindow;
   }
   const cv::Mat1f currentSpectrum() const {
     return _currentSpectrum;
@@ -128,7 +132,6 @@ protected: // Cache data
   cv::Point _currentCropOffset, _referenceCropOffset;
   cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
   cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
-  cv::Mat1f _currentWindow, _referenceWindow;
   cv::Mat1f _currentSpectrum, _referenceSpectrum;
   cv::Mat1f _crossSpectrum, _correlationMap;
   cv::Mat1f _distmap;

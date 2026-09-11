@@ -404,6 +404,68 @@ bool fftSpectrumToPolar(const cv::Mat & src, cv::Mat & magnitude, cv::Mat & phas
   return true;
 }
 
+void fftSpectrumToPolar(cv::Mat2f & spec)
+{
+  static const float safety_thresh = std::sqrt(std::numeric_limits<float>::min());
+  static constexpr float minmag = std::numeric_limits<float>::min();
+
+  parallel_for(0, spec.rows, [&](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict sp = (float * )spec[y];
+      for ( int x = 0; x < spec.cols; ++x, sp += 2 ) {
+        const float re = sp[0];
+        const float im = sp[1];
+        float mag = 0, phase = 0;
+        if (std::abs(re) > safety_thresh || std::abs(im) > safety_thresh) {
+          if ((mag = std::sqrt(re * re + im * im)) > minmag ) {
+            phase = std::atan2(im, re);
+          }
+        }
+        sp[0] = mag;
+        sp[1] = phase;
+      }
+    }
+  });
+}
+
+bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPolar)
+{
+  if( spectrumCart.empty() || spectrumCart.type() != CV_32FC2 ) {
+    CF_ERROR("Invalid argument: CV_32FC2 input spectum is expected");
+    return false;
+  }
+
+  const cv::Mat2f cart = spectrumCart.getMat();
+
+  spectrumPolar.create(cart.size(), CV_32FC2);
+  cv::Mat2f polar = spectrumPolar.getMatRef();
+
+  static const float safety_thresh = std::sqrt(std::numeric_limits<float>::min());
+  static constexpr float minmag = std::numeric_limits<float>::min();
+
+  parallel_for(0, cart.rows, [&](const auto & range) {
+    for ( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * cartp = (const float * )cart[y];
+      float * __restrict polarp = (float * )polar[y];
+
+      for ( int x = 0; x < cart.cols; ++x, cartp += 2, polarp += 2 ) {
+        const float re = cartp[0];
+        const float im = cartp[1];
+        float mag = 0, phase = 0;
+        if (std::abs(re) > safety_thresh || std::abs(im) > safety_thresh) {
+          if ((mag = std::sqrt(re * re + im * im)) > minmag ) {
+            phase = std::atan2(im, re);
+          }
+        }
+        polarp[0] = mag;
+        polarp[1] = phase;
+      }
+    }
+  });
+
+  return true;
+}
+
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase, cv::Mat & dst )
 {
   const cv::Mat1f cmag = magnitude;

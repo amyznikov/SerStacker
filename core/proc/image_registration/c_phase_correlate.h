@@ -16,7 +16,7 @@
 struct c_phase_correlate_options
 {
   double downscale_factor = 4;
-  double gsigma = 0.1;
+  double gsigma = 10;
   int apodization_size = 21;
 };
 
@@ -39,8 +39,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_phase_correlate_options;
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
-  ctlbind(ctls, "gsigma", ctx(&S::gsigma),  "");
-  ctlbind(ctls, "apodization_size",  ctx(&S::apodization_size), "");
+  ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "");
+  ctlbind(ctls, "apodization [px]:",  ctx(&S::apodization_size), "");
 }
 
 class c_phase_correlate
@@ -49,8 +49,8 @@ public:
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts);
 
+  bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
-  bool setCurrentImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   double compute(cv::Vec2f & outputTranslation);
 
   // Release internal cache buffers, may be useful for multi-pipeline re-initializators
@@ -117,7 +117,8 @@ public: // public access for debug & visualization purposes
 protected: // internal helpers
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
   double computeCorrelationMap();
-  cv::Point2f findSubpixelCentroid(const cv::Mat1f & idftResult, cv::Point & outPeakLoc);
+  cv::Point2f findSubpixelCentroid(const cv::Mat1f & correlationMap) const;
+
 
 protected: // internal data
   double _downscale_factor = 4;

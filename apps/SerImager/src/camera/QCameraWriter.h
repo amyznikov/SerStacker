@@ -126,8 +126,8 @@ protected:
   bool _enable_split_stereo_stream = false;
   c_stereo_stream_options _stereo_stream_options;
 
-  std::atomic<int> _numRounds = 1;
-  std::atomic<int> _interval_between_rounds = 0;
+  alignas(64) std::atomic<int> _numRounds = 1;
+  alignas(64) std::atomic<int> _interval_between_rounds = 0;
 
   State _current_state = State::Idle;
   int _last_index = -1;

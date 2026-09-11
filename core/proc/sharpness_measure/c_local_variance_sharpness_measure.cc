@@ -95,7 +95,7 @@ static double _compute_sharpness_norm(cv::InputArray src, double depthScale, dou
   const uint8_t * G_base = G.ptr();
   const size_t G_stride = G.step;
 
-  std::atomic<float> total_sum(0.0f);
+  alignas(64) std::atomic<float> total_sum(0.0f);
 
   parallel_for(0, rows, [=, &total_sum](const auto& range) {
 
@@ -141,7 +141,7 @@ static double _compute_sharpness_map(cv::InputArray _src, cv::OutputArray _dst, 
 
   const float mapScale = float (depthScale * depthScale * depthScale);
 
-  std::atomic<float> total_sum(0.0f);
+  alignas(64) std::atomic<float> total_sum(0.0f);
 
   parallel_for(0, rows, [&, cols, mapScale](const auto& range) {
     float local_sum = 0.0f;

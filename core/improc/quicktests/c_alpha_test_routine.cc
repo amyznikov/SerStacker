@@ -462,7 +462,6 @@ static void shiftImage(cv::InputArray src, cv::OutputArray dst, const cv::Vec2f&
 
 bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-
   if ( !_initialized && !reinitialize(image.size()) )  {
     CF_ERROR("reinitialize() fails");
     return false;

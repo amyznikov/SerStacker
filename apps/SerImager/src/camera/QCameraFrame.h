@@ -145,7 +145,7 @@ protected:
   //   -1.0f = Not Calculated (UNKNOWN),
   //   -2.0f = Calculating (ESTIMATING)
   // >= 0.0f = Valid quality
-  std::atomic<float> _quality {QUALITY_UNKNOWN};
+  alignas(64) std::atomic<float> _quality {QUALITY_UNKNOWN};
 };
 
 } /* namespace serimager */

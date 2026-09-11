@@ -209,7 +209,7 @@ void c_image_processor_routine::register_class_factory(const class_factory * cla
 
 void c_image_processor_routine::register_all()
 {
-  static std::atomic<bool> registered(false);
+  alignas(64) static std::atomic<bool> registered(false);
   if ( !registered ) {
 
     registered = true;

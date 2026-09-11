@@ -254,7 +254,7 @@ static int _fill_holes2(cv::Mat & _image, const cv::Mat & _inpaint_h, const cv::
   const uint8_t * vdist_base = _vdists.ptr();
   const size_t vdist_stride = _vdists.step;
 
-  std::atomic<int> total_filled(0);
+  alignas(64) std::atomic<int> total_filled(0);
 
   parallel_for(0, rows, [=, &total_filled](const auto & range) {
     int local_filled = 0;

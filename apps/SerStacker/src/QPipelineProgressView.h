@@ -56,8 +56,8 @@ protected:
   c_data_frame::sptr _dataframe;
 
   int timerId = 0;
-  std::atomic<bool> _hasStatusUpdates = false;
-  std::atomic<bool> _updatingDisplay = false;
+  alignas(64) std::atomic<bool> _hasStatusUpdates = false;
+  alignas(64) std::atomic<bool> _updatingDisplay = false;
 };
 
 

@@ -50,11 +50,229 @@ static bool _estimatePhotometricAlignment(cv::InputArray currentImage,
   const size_t ref_stride = ref.step;
   const size_t mask_stride = mask.step;
 
-  std::atomic<double> sumC[4]  = { {0.0}, {0.0}, {0.0}, {0.0} };
-  std::atomic<double> sumR[4]  = { {0.0}, {0.0}, {0.0}, {0.0} };
-  std::atomic<double> sumCR[4] = { {0.0}, {0.0}, {0.0}, {0.0} };
-  std::atomic<double> sumCC[4] = { {0.0}, {0.0}, {0.0}, {0.0} };
-  std::atomic<int> counts[4] = { {0}, {0}, {0}, {0} };
+#if 1
+  struct alignas(std::hardware_destructive_interference_size) ChannelAccumulator {
+    std::atomic<double> sumC{0.0};
+    std::atomic<double> sumR{0.0};
+    std::atomic<double> sumCR{0.0};
+    std::atomic<double> sumCC{0.0};
+    std::atomic<int>    count{0};
+  };
+
+
+  std::array<ChannelAccumulator, 4> accs;
+
+  parallel_for(0, rows, [=, &accs](const auto & range) {
+
+    const int y0 = rbegin(range);
+    const int y1 = rend(range);
+
+    const uint8_t* cp_base = cur_base + y0 * cur_stride;
+    const uint8_t* rp_base = ref_base + y0 * ref_stride;
+
+    double loc_sumC[4] = {0.0};
+    double loc_sumR[4] = {0.0};
+    double loc_sumCR[4] = {0.0};
+    double loc_sumCC[4] = {0.0};
+    int loc_count[4] = {0};
+
+    if (!mask_base) { // NO MASK GIVEN, USE ALL PIXELS
+
+      for (int y = y0; y < y1; ++y, cp_base += cur_stride, rp_base += ref_stride) {
+        const _Tp* cp = (const _Tp*)cp_base;
+        const _Tp* rp = (const _Tp*)rp_base;
+
+        if (separateChannels) {
+          const int total_elements = cols * cur_channels;
+          for (int i = 0; i < total_elements; ++i) {
+            const double valC = cp[i];
+            const double valR = rp[i];
+            const int ch = i % cur_channels;
+            loc_count[ch]++;
+            if (includeBrightness) {
+              loc_sumC[ch] += valC;
+              loc_sumR[ch] += valR;
+            }
+            if (includeContrast)   {
+              loc_sumCC[ch] += valC * valC;
+              loc_sumCR[ch] += valC * valR;
+            }
+          }
+          cp += total_elements;
+          rp += total_elements;
+        }
+        else if (cur_channels == 1) {
+          for (int x = 0; x < cols; ++x) {
+            const double valC = *cp++;
+            const double valR = *rp++;
+            loc_count[0]++;
+            if (includeBrightness) {
+              loc_sumC[0] += valC;
+              loc_sumR[0] += valR; }
+            if (includeContrast)   {
+              loc_sumCC[0] += valC * valC;
+              loc_sumCR[0] += valC * valR;
+            }
+          }
+        }
+        else {
+          for (int x = 0; x < cols; ++x) {
+            double valC = 0.0, valR = 0.0;
+            for (int ch = 0; ch < cur_channels; ++ch) {
+              valC += *cp++;
+              valR += *rp++;
+            }
+            valC /= cur_channels;
+            valR /= cur_channels;
+
+            loc_count[0]++;
+            if (includeBrightness) {
+              loc_sumC[0] += valC;
+              loc_sumR[0] += valR;
+            }
+            if (includeContrast)   {
+              loc_sumCC[0] += valC * valC;
+              loc_sumCR[0] += valC * valR;
+            }
+          }
+        }
+      }
+    }
+    else { // MASK IS GIVEN
+      const uint8_t* mp_base = mask_base + y0 * mask_stride;
+
+      for (int y = y0; y < y1; ++y, cp_base += cur_stride, rp_base += ref_stride, mp_base += mask_stride) {
+        const _Tp* cp = (const _Tp*)cp_base;
+        const _Tp* rp = (const _Tp*)rp_base;
+        const uchar* mp = mp_base;
+
+        if (separateChannels) { // BGR + Mask
+          for (int x = 0; x < cols; ++x) {
+            if (!mp[x]) {
+              cp += cur_channels;
+              rp += cur_channels;
+            }
+            else {
+              for (int ch = 0; ch < cur_channels; ++ch) {
+                const double valC = *cp++;
+                const double valR = *rp++;
+                loc_count[ch]++;
+                if (includeBrightness) {
+                  loc_sumC[ch] += valC;
+                  loc_sumR[ch] += valR;
+                }
+                if (includeContrast) {
+                  loc_sumCC[ch] += valC * valC;
+                  loc_sumCR[ch] += valC * valR;
+                }
+              }
+            }
+          }
+        }
+        else { // Grayscale + Mask
+          for (int x = 0; x < cols; ++x) {
+            if (!mp[x]) {
+              cp += cur_channels;
+              rp += cur_channels;
+            }
+            else {
+              double valC = 0.0, valR = 0.0;
+              for (int ch = 0; ch < cur_channels; ++ch) {
+                  valC += *cp++;
+                  valR += *rp++;
+              }
+              if (cur_channels > 1) {
+                valC /= cur_channels;
+                valR /= cur_channels;
+              }
+              loc_count[0]++;
+              if (includeBrightness) {
+                loc_sumC[0] += valC;
+                loc_sumR[0] += valR;
+              }
+              if (includeContrast)   {
+                loc_sumCC[0] += valC * valC;
+                loc_sumCR[0] += valC * valR;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (int ch = 0; ch < target_channels; ++ch) {
+      if (loc_count[ch] > 0) {
+        accs[ch].count.fetch_add(loc_count[ch], std::memory_order_relaxed);
+
+        if (includeBrightness) {
+          double currentC = accs[ch].sumC.load(std::memory_order_relaxed);
+          while (!accs[ch].sumC.compare_exchange_weak(currentC, currentC + loc_sumC[ch],
+              std::memory_order_relaxed));
+
+          double currentR = accs[ch].sumR.load(std::memory_order_relaxed);
+          while (!accs[ch].sumR.compare_exchange_weak(currentR, currentR + loc_sumR[ch],
+              std::memory_order_relaxed));
+        }
+        if (includeContrast) {
+          double currentCC = accs[ch].sumCC.load(std::memory_order_relaxed);
+          while (!accs[ch].sumCC.compare_exchange_weak(currentCC, currentCC + loc_sumCC[ch],
+              std::memory_order_relaxed));
+
+          double currentCR = accs[ch].sumCR.load(std::memory_order_relaxed);
+          while (!accs[ch].sumCR.compare_exchange_weak(currentCR, currentCR + loc_sumCR[ch],
+              std::memory_order_relaxed));
+        }
+      }
+    }
+  });
+
+  for( int ch = 0; ch < std::min(4, target_channels); ++ch ) {
+    const int N = accs[ch].count.load(std::memory_order_relaxed);
+    if( N < 1 ) {
+      return false;
+    }
+
+    if( includeBrightness && includeContrast ) {
+      const double meanC = accs[ch].sumC.load(std::memory_order_relaxed) / N;
+      const double meanRef = accs[ch].sumR.load(std::memory_order_relaxed) / N;
+      const double meanCC = accs[ch].sumCC.load(std::memory_order_relaxed) / N;
+      const double meanCR = accs[ch].sumCR.load(std::memory_order_relaxed) / N;
+
+      const double varC = meanCC - (meanC * meanC);
+      if( varC < eps ) {
+        outputContrast[ch] = 1.0;
+        outputBrightness[ch] = meanRef - meanC;
+      }
+      else {
+        const double cov = meanCR - (meanC * meanRef);
+        outputContrast[ch] = cov / varC;
+        outputBrightness[ch] = meanRef - (outputContrast[ch] * meanC);
+      }
+    }
+    else if( !includeBrightness && includeContrast ) {
+      const double CC = accs[ch].sumCC.load(std::memory_order_relaxed);
+      if( std::abs(CC) < eps ) {
+        outputContrast[ch] = 1.0;
+        outputBrightness[ch] = 0.0;
+      }
+      else {
+        outputContrast[ch] = accs[ch].sumCR.load(std::memory_order_relaxed) / CC;
+        outputBrightness[ch] = 0.0;
+      }
+    }
+    else if( includeBrightness && !includeContrast ) {
+      outputContrast[ch] = 1.0;
+      outputBrightness[ch] = (accs[ch].sumR.load(std::memory_order_relaxed)
+          - accs[ch].sumC.load(std::memory_order_relaxed)) / N;
+    }
+  }
+
+#else
+  alignas(64) std::atomic<double> sumC[4]  = { {0.0}, {0.0}, {0.0}, {0.0} };
+  alignas(64) std::atomic<double> sumR[4]  = { {0.0}, {0.0}, {0.0}, {0.0} };
+  alignas(64) std::atomic<double> sumCR[4] = { {0.0}, {0.0}, {0.0}, {0.0} };
+  alignas(64) std::atomic<double> sumCC[4] = { {0.0}, {0.0}, {0.0}, {0.0} };
+  alignas(64) std::atomic<int> counts[4] = { {0}, {0}, {0}, {0} };
 
   parallel_for(0, rows, [=, &sumC, &sumR, &sumCR, &sumCC, &counts](const auto & range) {
 
@@ -221,7 +439,6 @@ static bool _estimatePhotometricAlignment(cv::InputArray currentImage,
     }
   });
 
-
   for( int ch = 0; ch < std::min(4, target_channels); ++ch ) {
     const int N = counts[ch].load(std::memory_order_relaxed);
     if( N < 1 ) {
@@ -262,6 +479,7 @@ static bool _estimatePhotometricAlignment(cv::InputArray currentImage,
           - sumC[ch].load(std::memory_order_relaxed)) / N;
     }
   }
+#endif
 
   if( !separateChannels && cur_channels > 1 ) {
     for( int ch = 1; ch < cur_channels; ++ch ) {

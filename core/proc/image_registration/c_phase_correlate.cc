@@ -288,16 +288,20 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
   return true;
 }
 
+
 double c_phase_correlate::computeCorrelationMap()
 {
   // The current and reference spectrums are expected in
   // CCS (Complex-Conjugate Symmetrical ) format computed
   // from real images with cv::DFT_REAL_OUTPUT flag
   //
-  // The cross spectrum is weighted by differentiating-smoothing
-  // gaussian w(f) ~ f * exp(-0.5 * f^2/gsigma^2)
-  // which acts as bandpass filter enhancing texture edges
-  // still suppressing high frequency noise.
+  // The cross spectrum is weighted by bandpass filter:
+  // w(f) ~ f^2 * exp(-0.5 * f^2 / sigma_f^2)
+  //
+  // The _gsigma is passed as the characteristic scale lambda in pixels, e.g., 10.0f
+  // The normalization factor makes the filter peak w(f_max) equal to 1.0:
+  //  w(f_max) = 1 / (e * lambda_max^2) -> norm_factor = e * lambda_max^2
+  //  e = 2.71828183f
   //
   // Additionally the cross spectrum it is multiplied by alternating +1 and -1
   // to avoid fftSwapQuadrants() after idft()
@@ -305,11 +309,25 @@ double c_phase_correlate::computeCorrelationMap()
   const int rows = _currentSpectrum.rows;
   const int cols = _currentSpectrum.cols;
   const bool is_even = (cols % 2 == 0);
-  const float gsigma = float(_gsigma);
-  const float norm_factor = float(1.64872127 / _gsigma);
   const float inv_cols = float(1.0 / cols);
   const float inv_rows = float(1.0f / rows);
-  const float inv_gsigma2 = gsigma > 0 ? -0.5f / (gsigma * gsigma) : 0;
+  const float lambda_max = float(_gsigma);
+
+  const bool unique_weight = (lambda_max > 0.1f);
+  const float inv_gsigma2 = unique_weight ? -(lambda_max * lambda_max) : 0.0f;
+
+  // TODO: Precompute exp(-u^2) in setup() ?
+  std::vector<float> lut_exp_u(cols, 1.0f);
+  if (unique_weight) {
+    const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+    for (int x = 1; x <= max_complex_idx; x += 2) {
+      const int fx = (x + 1) / 2;
+      const float u = fx * inv_cols;
+      const float exp_u = std::exp(u * u * inv_gsigma2);
+      lut_exp_u[x] = exp_u;
+      lut_exp_u[x + 1] = exp_u;
+    }
+  }
 
   _crossSpectrum.create(_currentSpectrum.size());
 
@@ -322,7 +340,10 @@ double c_phase_correlate::computeCorrelationMap()
   uint8_t * cross_base = _crossSpectrum.ptr();
   const size_t cross_stride = _crossSpectrum.step;
 
-  std::atomic<float> total_energy(0.0f);
+  const float * exp_u = lut_exp_u.data();
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<float> total_energy(0.0f);
 
   parallel_for(0, rows, [=, &total_energy](const auto & range) {
     float local_energy = 0.0f;
@@ -332,20 +353,20 @@ double c_phase_correlate::computeCorrelationMap()
       const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
       float * __restrict dstp = (float *)(cross_base + y * cross_stride);
 
-      const float v = (y > rows / 2) ? (rows - y) * inv_rows : y * inv_rows;
+      const float v = ((y > rows / 2) ? (rows - y) : y )* inv_rows;
+      const float exp_v = unique_weight ? std::exp(v * v * inv_gsigma2) : 1;
       const float v2 = v * v;
 
       dstp[0] = 0.0f;
 
       const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+
       for( int x = 1; x <= max_complex_idx; x += 2 ) {
         const int fx = (x + 1) / 2;
-
         const float u = fx * inv_cols;
         const float u2 = u * u;
         const float rho2 = u2 + v2;
-        const float rho = std::sqrt(rho2);
-        const float weight = inv_gsigma2 < 0 ? norm_factor * rho * std::exp(rho2 * inv_gsigma2) : 1.f;
+        const float gw = unique_weight ? (rho2 * exp_v * exp_u[x]) : 1;
 
         const float a = srcp1[x];
         const float b = srcp1[x + 1];
@@ -354,16 +375,15 @@ double c_phase_correlate::computeCorrelationMap()
         const float re = a * c + b * d;
         const float im = b * c - a * d;
         const float mag = std::sqrt(re * re + im * im);
-        const float sign_fx = ((fx + y) % 2 == 0) ? 1.0f : -1.0f;
-        const float w = weight * sign_fx / ((mag > 0) ? mag : 1.0f);
+        const float w = (mag > 0) ? gw * (((fx + y) % 2 == 0) ? 1 : -1) / mag : 1;
 
-        local_energy += (mag > 0) ? weight : 0.0f;
+        local_energy += (mag > 0) ? gw * gw : 0.0f;
         dstp[x] = re * w;
         dstp[x + 1] = im * w;
       }
 
       if( is_even ) {
-        dstp[cols - 1] = 0.0f;
+        dstp[cols - 1] = 0;
       }
     }
 
@@ -375,7 +395,14 @@ double c_phase_correlate::computeCorrelationMap()
   const double total_filter_energy =
       2 * total_energy.load();
 
-  cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
+  // TODO: Estimate how many of the top rows of the spectrum contain valid data (non-zeros)
+  // based on the vertical filter radius.
+  // For example, if the active zone fits within the first N rows:
+  //  const int nonzeroRows = std::min(rows, int(rows / 2));
+  //  cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE, nonzeroRows);
+
+  cv::idft(_crossSpectrum, _correlationMap,
+      cv::DFT_REAL_OUTPUT| cv::DFT_SCALE);
 
   return total_filter_energy;
 }
@@ -386,13 +413,66 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     return -1.0;
   }
 
-  cv::Point peakLoc;
-
   const double total_filter_energy = computeCorrelationMap();
-  const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap, peakLoc);
-  const double rawPeak = _correlationMap(peakLoc.y, peakLoc.x);
-  const double normalizedResponse = (total_filter_energy > 0) ? (rawPeak / total_filter_energy) : 0.0;
-  const double correlationScore = normalizedResponse * _correlationMap.size().area();
+  const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap);
+
+  const int rows = _correlationMap.rows;
+  const int cols = _correlationMap.cols;
+
+  /*
+   * Estimate correlation score as a fraction of the total spectral energy
+   * constructively interfered into cross-correlation spot.
+   * May be not perfectly precise due to limited pixel grid resolution.
+   * */
+  const double Rspot = 0.45f * _gsigma;
+  const int R = std::max(2, int(Rspot + 1.0));
+  const double cx = scaledTranslation.x;
+  const double cy = scaledTranslation.y;
+  double spot_square_energy_sum = 0.0;
+
+  // Scan the cross-correlation spot and accumulate total energy
+  for( int dy = -R; dy <= R; ++dy ) {
+    const int y = cvRound(cy) + dy;
+    if( y < 0 || y >= rows ) {
+      continue;
+    }
+
+    const float * rp = _correlationMap[y];
+    const double delta_y = double(y) - cy;
+    const double dy2 = delta_y * delta_y;
+
+    for( int dx = -R; dx <= R; ++dx ) {
+      const int x = cvRound(cx) + dx;
+      if( x < 0 || x >= cols ) {
+        continue;
+      }
+
+      const double delta_x = double(x) - cx;
+      const double dist = std::sqrt(delta_x * delta_x + dy2);
+      double pixel_weight = 0.0;
+      if( Rspot < 1.5 ) {
+        pixel_weight = (dist <= R) ? 1.0 : 0.0;
+      }
+      else if( dist <= Rspot - 0.5 ) {
+        pixel_weight = 1.0;
+      }
+      else if( dist >= Rspot + 0.5 ) {
+        pixel_weight = 0.0;
+      }
+      else {
+        pixel_weight = (Rspot + 0.5 - dist);
+      }
+
+      if( pixel_weight > 0.0 ) {
+        const double val = rp[x];
+        spot_square_energy_sum += pixel_weight * val * val;
+      }
+    }
+  }
+
+  // Compensate for cv::idft scaling
+  const double absolute_spot_energy = spot_square_energy_sum * rows * cols;
+  const double correlationScore = (total_filter_energy > 0) ? (absolute_spot_energy / total_filter_energy) : 0.0;
 
   const double dX = _referenceCropOffset.x - _currentCropOffset.x;
   const double dY = _referenceCropOffset.y - _currentCropOffset.y;
@@ -401,54 +481,57 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   outputTranslation[0] = -float(scaledDx * _downscale_factor);
   outputTranslation[1] = -float(scaledDy * _downscale_factor);
 
+//  CF_DEBUG("\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g total_filter_energy=%g absolute_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
+//      _gsigma, Rspot, R, cx, cy, total_filter_energy, absolute_spot_energy, correlationScore,
+//      outputTranslation[0], outputTranslation[1]);
+
   return correlationScore;
 }
 
-cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point & outPeakLoc)
+cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap) const
 {
   const int rows = correlationMap.rows;
   const int cols = correlationMap.cols;
 
-  cv::minMaxLoc(correlationMap, nullptr, nullptr, nullptr, &outPeakLoc);
+  int maxIdx[2] = {0, 0};
+  cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
 
-  double sumMass = 0.0;
-  double sumX = 0.0;
-  double sumY = 0.0;
+  const int y0 = maxIdx[0];
+  const int x0 = maxIdx[1];
 
-  const int r = 2; // 5х5
-
-  for( int dy = -r; dy <= r; ++dy ) {
-    int sampleY = outPeakLoc.y + dy;
-    if( sampleY < 0 ) {
-      sampleY += rows;
-    }
-    if( sampleY >= rows ) {
-      sampleY -= rows;
-    }
-
-    for( int dx = -r; dx <= r; ++dx ) {
-      int sampleX = outPeakLoc.x + dx;
-      if( sampleX < 0 ) {
-        sampleX += cols;
-      }
-      if( sampleX >= cols ) {
-        sampleX -= cols;
-      }
-
-      float mass = std::max(0.0f, correlationMap(sampleY, sampleX));
-      double virtualX = static_cast<double>(outPeakLoc.x + dx);
-      double virtualY = static_cast<double>(outPeakLoc.y + dy);
-      sumMass += mass;
-      sumX += virtualX * mass;
-      sumY += virtualY * mass;
-    }
+  if (x0 <= 0 || x0 >= cols - 1 || y0 <= 0 || y0 >= rows - 1) {
+    return cv::Point2f(float(x0), float(y0));
   }
 
-  double subX = (sumMass > 0.0) ? (sumX / sumMass) : static_cast<double>(outPeakLoc.x);
-  double subY = (sumMass > 0.0) ? (sumY / sumMass) : static_cast<double>(outPeakLoc.y);
+  // Least-squares approximation of a paraboloid over a 3x3 neighborhood
+  const float z_00 = correlationMap(y0 - 1, x0 - 1); // Top-left
+  const float z_10 = correlationMap(y0 - 1, x0); // Top-center
+  const float z_20 = correlationMap(y0 - 1, x0 + 1); // Top-right
 
-  return cv::Point2f(float(subX), float(subY));
+  const float z_01 = correlationMap(y0,     x0 - 1); // Middle-left
+  const float z_11 = correlationMap(y0,     x0); // True center (peak)
+  const float z_21 = correlationMap(y0,     x0 + 1); // Middle-right
+
+  const float z_02 = correlationMap(y0 + 1, x0 - 1); // Bottom-left
+  const float z_12 = correlationMap(y0 + 1, x0); // Bottom-center
+  const float z_22 = correlationMap(y0 + 1, x0 + 1); // Bottom-right
+
+  const float C = (z_20 + z_21 + z_22 - (z_00 + z_01 + z_02)) / 6.0f;
+  const float D = (z_02 + z_12 + z_22 - (z_00 + z_10 + z_20)) / 6.0f;
+  const float A = (z_00 + z_01 + z_02 + z_20 + z_21 + z_22) / 6.0f - (z_10 + z_11 + z_12) / 3.0f;
+  const float B = (z_00 + z_10 + z_20 + z_02 + z_12 + z_22) / 6.0f - (z_01 + z_11 + z_21) / 3.0f;
+
+
+  // Parabola extremum: delta = -derivative / (2 * curvature)
+  // deltaX = -C / (2*A), deltaY = -D / (2*B)
+  const float adaptive_thresh = std::abs(z_11) * 1e-6f;
+  const float deltaX = std::abs(A) > adaptive_thresh ? -C / (2.0f * A) : 0.0f;
+  const float deltaY = std::abs(B) > adaptive_thresh ? -D / (2.0f * B) : 0.0f;
+  // CF_DEBUG("x0=%d y0=%d, deltaX=%g deltaY=%g", x0, y0, deltaX, deltaY );
+
+  return cv::Point2f(float(x0 + deltaX), float(y0 + deltaY));
 }
+
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
     c_phase_correlate_options & opts)
@@ -458,77 +541,5 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, apodization_size);
   return true;
 }
-
-#if 0
-cv::Point2f c_phase_correlate::findSubpixelCentroid2(const cv::Mat1f & correlationMap, cv::Point & outPeakLoc, float & outSecondPeakVal)
-{
-  const int rows = correlationMap.rows;
-  const int cols = correlationMap.cols;
-
-  double maxVal1;
-  cv::minMaxLoc(correlationMap, nullptr, &maxVal1, nullptr, &outPeakLoc);
-
-  const float peakWidthMultiplier = 1.75f;
-
-  const int exclude_r = std::max(3, static_cast<int>(std::ceil((3.0f * peakWidthMultiplier) / (2.0f * CV_PI * _gsigma))));
-
-  float maxVal2 = -1.0f;
-  cv::Point peak2Loc(0, 0);
-
-  for (int y = 0; y < rows; ++y) {
-    const float* rowCorr = correlationMap.ptr<float>(y);
-
-    int distY1 = std::abs(y - outPeakLoc.y);
-    int distY2 = rows - distY1;
-    bool in_exclude_y = (std::min(distY1, distY2) <= exclude_r);
-
-    for (int x = 0; x < cols; ++x) {
-      if (in_exclude_y) {
-        int distX1 = std::abs(x - outPeakLoc.x);
-        int distX2 = cols - distX1;
-        if (std::min(distX1, distX2) <= exclude_r) {
-          continue; // Это склон первого пика, игнорируем его
-        }
-      }
-
-      float val = rowCorr[x];
-      if (val > maxVal2) {
-        maxVal2 = val;
-        peak2Loc = cv::Point(x, y);
-      }
-    }
-  }
-
-  outSecondPeakVal = maxVal2;
-
-  double sumMass = 0.0;
-  double sumX = 0.0;
-  double sumY = 0.0;
-  const int r = 2;
-
-  for( int dy = -r; dy <= r; ++dy ) {
-    int sampleY = outPeakLoc.y + dy;
-    if( sampleY < 0 )  sampleY += rows;
-    if( sampleY >= rows ) sampleY -= rows;
-
-    for( int dx = -r; dx <= r; ++dx ) {
-      int sampleX = outPeakLoc.x + dx;
-      if( sampleX < 0 )  sampleX += cols;
-      if( sampleX >= cols ) sampleX -= cols;
-
-      float mass = std::max(0.0f, correlationMap(sampleY, sampleX));
-      sumMass += mass;
-      sumX += static_cast<double>(outPeakLoc.x + dx) * mass;
-      sumY += static_cast<double>(outPeakLoc.y + dy) * mass;
-    }
-  }
-
-  double subX = (sumMass > 0.0) ? (sumX / sumMass) : static_cast<double>(outPeakLoc.x);
-  double subY = (sumMass > 0.0) ? (sumY / sumMass) : static_cast<double>(outPeakLoc.y);
-
-  return cv::Point2f(float(subX), float(subY));
-}
-
-#endif
 
 

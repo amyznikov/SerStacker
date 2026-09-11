@@ -77,8 +77,8 @@ protected:
 
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);
+  bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
-  bool setCurrentImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
   bool compute(cv::Vec2f & outputTranslation);
 

@@ -72,6 +72,9 @@ bool fftSpectrumToPolar(const cv::Mat & src,
     cv::Mat & magnitude,
     cv::Mat & phase);
 
+void fftSpectrumToPolar(cv::Mat2f & spec);
+bool fftSpectrumToPolar(cv::InputArray spectrumCart, cv::OutputArray spectrumPolar);
+
 bool fftSpectrumFromPolar(const cv::Mat & magnitude, const cv::Mat & phase,
     cv::Mat & dst );
 

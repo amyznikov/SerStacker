@@ -28,7 +28,7 @@ static bool equal(const cv::Mat_<T> & src1, const cv::Mat_<T> & src2)
 
 #if HAVE_TBB
   // tbb::atomic<bool> difference_found = false;
-  std::atomic<bool> difference_found(false);
+  alignas(64) std::atomic<bool> difference_found(false);
 
   tbb::parallel_for(0,  src1.rows, [&src1, &src2, &difference_found] (int y) {
 #else

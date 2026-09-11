@@ -35,123 +35,6 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
 
 /////////////////////////////////////
 namespace {
-
-//static void unpackCrossSpectrumCCS(const cv::Mat1f & crossSpectrumCCS,
-//    cv::Mat2f & complexSpectrum)
-//{
-//  const int rows = crossSpectrumCCS.rows;
-//  const int cols = crossSpectrumCCS.cols;
-//  const bool is_even_cols = (cols % 2 == 0);
-//  const bool is_even_rows = (rows % 2 == 0);
-//
-//  complexSpectrum.create(rows, cols);
-//  complexSpectrum.setTo(0);
-//
-//  const uint8_t * ccs_base = crossSpectrumCCS.ptr();
-//  const size_t ccs_stride = crossSpectrumCCS.step;
-//
-//  uint8_t * dst_base = complexSpectrum.ptr();
-//  const size_t dst_stride = complexSpectrum.step;
-//
-//  parallel_for(0, rows, [=](const auto & range) {
-//    for (int y = rbegin(range); y < rend(range); ++y) {
-//
-//      const int mirror_y = (y == 0) ? 0 : (rows - y);
-//      const float* srcp = (const float*)(ccs_base + y * ccs_stride);
-//      float* dstp1 = (float*)(dst_base + y * dst_stride);
-//      float* dstp2 = (float*)(dst_base + mirror_y * dst_stride);
-//      const float sign_y = (y % 2 == 0) ? 1.0f : -1.0f;
-//
-//      // DC (x = 0, fx = 0)
-//      const float dc_re = srcp[0] * sign_y;
-//      dstp1[0] = dc_re; dstp1[1] = 0.0f;
-//      dstp2[0] = dc_re; dstp2[1] = 0.0f;
-//
-//      const int max_complex_idx = is_even_cols ? (cols - 2) : (cols - 1);
-//      for (int x = 1; x <= max_complex_idx; x += 2) {
-//        const int fx = (x + 1) / 2;
-//        const float sign_fx = ((fx + y) % 2 == 0) ? 1.0f : -1.0f;
-//
-//        const float re = srcp[x] * sign_fx;
-//        const float im = srcp[x + 1] * sign_fx;
-//        const int mirror_x = cols - fx;
-//
-//        dstp1[fx * 2] = re;
-//        dstp1[fx * 2 + 1] = im;
-//
-//        dstp2[mirror_x * 2] = re;
-//        dstp2[mirror_x * 2 + 1] = -im;
-//      }
-//
-//      if (is_even_cols) {
-//        const int fx_nyquist = cols / 2;
-//        const float sign_nyquist = ((fx_nyquist + y) % 2 == 0) ? 1.0f : -1.0f;
-//        const float nyq_re = srcp[cols - 1] * sign_nyquist;
-//        dstp1[fx_nyquist * 2] = nyq_re; dstp1[fx_nyquist * 2 + 1] = 0.0f;
-//        dstp2[fx_nyquist * 2] = nyq_re; dstp2[fx_nyquist * 2 + 1] = 0.0f;
-//      }
-//    }
-//  });
-//}
-
-static void unpackCrossSpectrumCCS(const cv::Mat1f & crossSpectrumCCS,
-    cv::OutputArray _complexSpectrum)
-{
-  const int rows = crossSpectrumCCS.rows;
-  const int cols = crossSpectrumCCS.cols;
-  const bool is_even_cols = (cols % 2 == 0);
-  const bool is_even_rows = (rows % 2 == 0);
-
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
-
-  const uint8_t * ccs_base = crossSpectrumCCS.ptr();
-  const size_t ccs_stride = crossSpectrumCCS.step;
-
-  uint8_t * dst_base = complexSpectrum.ptr();
-  const size_t dst_stride = complexSpectrum.step;
-
-  parallel_for(0, rows, [=](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-
-      const int mirror_y = (y == 0) ? 0 : (rows - y);
-      const float* srcp = (const float*)(ccs_base + y * ccs_stride);
-      float* dstp1 = (float*)(dst_base + y * dst_stride);
-      float* dstp2 = (float*)(dst_base + mirror_y * dst_stride);
-      const float sign_y = (y % 2 == 0) ? 1.0f : -1.0f;
-
-      // DC (x = 0, fx = 0)
-      const float dc_re = srcp[0] * sign_y;
-      dstp1[0] = dc_re; dstp1[1] = 0.0f;
-      dstp2[0] = dc_re; dstp2[1] = 0.0f;
-
-      const int max_complex_idx = is_even_cols ? (cols - 2) : (cols - 1);
-      for (int x = 1; x <= max_complex_idx; x += 2) {
-        const int fx = (x + 1) / 2;
-        const float sign_fx = ((fx + y) % 2 == 0) ? 1.0f : -1.0f;
-
-        const float re = srcp[x] * sign_fx;
-        const float im = srcp[x + 1] * sign_fx;
-        const int mirror_x = cols - fx;
-
-        dstp1[fx * 2] = re;
-        dstp1[fx * 2 + 1] = im;
-
-        dstp2[mirror_x * 2] = re;
-        dstp2[mirror_x * 2 + 1] = -im;
-      }
-
-      if (is_even_cols) {
-        const int fx_nyquist = cols / 2;
-        const float sign_nyquist = ((fx_nyquist + y) % 2 == 0) ? 1.0f : -1.0f;
-        const float nyq_re = srcp[cols - 1] * sign_nyquist;
-        dstp1[fx_nyquist * 2] = nyq_re; dstp1[fx_nyquist * 2 + 1] = 0.0f;
-        dstp2[fx_nyquist * 2] = nyq_re; dstp2[fx_nyquist * 2 + 1] = 0.0f;
-      }
-    }
-  });
-}
-
 } // namespace
 
 bool c_phase_correlate_routine::serialize(c_config_setting settings, bool save)
@@ -352,12 +235,12 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_CART: {
-        unpackCrossSpectrumCCS(pc.crossSpectrum(), image);
+        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
         mask.release();
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_POLAR: {
-        unpackCrossSpectrumCCS(pc.crossSpectrum(), image);
+        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
         fftSpectrumToPolar(image, image);
         mask.release();
         break;

@@ -81,6 +81,20 @@ static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Input
   }
 }
 
+cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
+{
+  // Find the closest power of two (round mathematically to the nearest)
+  // cvRound(std::log2(v)) will select the power that is closest to the target
+  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
+  // Return the size as 2^powX and 2^powY
+
+  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
+  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
+  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
+  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
+  return cv::Size(1 << powX, 1 << powY);
+}
+
 bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)
 {
   if( expectedFrameSize.empty() ) {
@@ -95,16 +109,7 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
     return false;
   }
 
-  // Find the closest power of two (round mathematically to the nearest)
-  // cvRound(std::log2(v)) will select the power that is closest to the target
-  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-  // Return the size as 2^powX and 2^powY
-
-  const int downscaledW = cvRound(expectedFrameSize.width / _downscale_factor);
-  const int downscaledH = cvRound(expectedFrameSize.height / _downscale_factor);
-  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
-  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
-  _fftSize = cv::Size(1 << powX, 1 << powY);
+  _fftSize = computeFFTPackSize(expectedFrameSize,  _downscale_factor);
 
   if( (_apodization_size = opts.apodization_size) < 1 ) {
     _apodizationLUT.clear();
@@ -366,7 +371,6 @@ double c_phase_correlate::computeCorrelationMap()
         const float u = fx * inv_cols;
         const float u2 = u * u;
         const float rho2 = u2 + v2;
-        const float gw = unique_weight ? (rho2 * exp_v * exp_u[x]) : 1;
 
         const float a = srcp1[x];
         const float b = srcp1[x + 1];
@@ -374,12 +378,20 @@ double c_phase_correlate::computeCorrelationMap()
         const float d = srcp2[x + 1];
         const float re = a * c + b * d;
         const float im = b * c - a * d;
-        const float mag = std::sqrt(re * re + im * im);
-        const float w = (mag > 0) ? gw * (((fx + y) % 2 == 0) ? 1 : -1) / mag : 1;
+        const float mag2 = re * re + im * im;
 
-        local_energy += (mag > 0) ? gw * gw : 0.0f;
-        dstp[x] = re * w;
-        dstp[x + 1] = im * w;
+        static constexpr float eps = std::numeric_limits<float>::min();
+        if ( mag2 > eps ) {
+          const float gw = unique_weight ? (rho2 * exp_v * exp_u[x]) : 1;
+          const float w = (((fx + y) % 2 == 0) ? 1 : -1) / std::sqrt(mag2);
+          dstp[x + 0] = gw * w * re;
+          dstp[x + 1] = gw * w * im;
+          local_energy += gw * gw;
+        }
+        else {
+          dstp[x + 0] = 0 ;
+          dstp[x + 1] = 0;
+        }
       }
 
       if( is_even ) {
@@ -395,14 +407,8 @@ double c_phase_correlate::computeCorrelationMap()
   const double total_filter_energy =
       2 * total_energy.load();
 
-  // TODO: Estimate how many of the top rows of the spectrum contain valid data (non-zeros)
-  // based on the vertical filter radius.
-  // For example, if the active zone fits within the first N rows:
-  //  const int nonzeroRows = std::min(rows, int(rows / 2));
-  //  cv::idft(_crossSpectrum, _correlationMap, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE, nonzeroRows);
-
   cv::idft(_crossSpectrum, _correlationMap,
-      cv::DFT_REAL_OUTPUT| cv::DFT_SCALE);
+      cv::DFT_REAL_OUTPUT);
 
   return total_filter_energy;
 }
@@ -410,14 +416,19 @@ double c_phase_correlate::computeCorrelationMap()
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 {
   if (_fftSize.empty() || _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
-    return -1.0;
+    CF_ERROR("c_phase_correlate: was not properly initialized with setup()");
+    return -1;
   }
 
   const double total_filter_energy = computeCorrelationMap();
-  const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap);
+  if ( total_filter_energy <= 0 ) {
+    CF_ERROR("computeCorrelationMap() fails: total_filter_energy=%g", total_filter_energy);
+    return -1;
+  }
 
   const int rows = _correlationMap.rows;
   const int cols = _correlationMap.cols;
+  const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap);
 
   /*
    * Estimate correlation score as a fraction of the total spectral energy
@@ -428,7 +439,7 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   const int R = std::max(2, int(Rspot + 1.0));
   const double cx = scaledTranslation.x;
   const double cy = scaledTranslation.y;
-  double spot_square_energy_sum = 0.0;
+  double absolute_spot_energy = 0.0;
 
   // Scan the cross-correlation spot and accumulate total energy
   for( int dy = -R; dy <= R; ++dy ) {
@@ -465,25 +476,21 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 
       if( pixel_weight > 0.0 ) {
         const double val = rp[x];
-        spot_square_energy_sum += pixel_weight * val * val;
+        absolute_spot_energy += pixel_weight * val * val;
       }
     }
   }
 
-  // Compensate for cv::idft scaling
-  const double absolute_spot_energy = spot_square_energy_sum * rows * cols;
-  const double correlationScore = (total_filter_energy > 0) ? (absolute_spot_energy / total_filter_energy) : 0.0;
+  // Compensate for idft energy scaling
+  const double correlationScore = absolute_spot_energy / (rows * cols * total_filter_energy);
+  const double scaledDx = scaledTranslation.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
+  const double scaledDy = scaledTranslation.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
+  outputTranslation[0] = float(-scaledDx * _downscale_factor);
+  outputTranslation[1] = float(-scaledDy * _downscale_factor);
 
-  const double dX = _referenceCropOffset.x - _currentCropOffset.x;
-  const double dY = _referenceCropOffset.y - _currentCropOffset.y;
-  const double scaledDx = scaledTranslation.x - _fftSize.width / 2 + dX;
-  const double scaledDy = scaledTranslation.y - _fftSize.height / 2 + dY;
-  outputTranslation[0] = -float(scaledDx * _downscale_factor);
-  outputTranslation[1] = -float(scaledDy * _downscale_factor);
-
-//  CF_DEBUG("\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g total_filter_energy=%g absolute_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
-//      _gsigma, Rspot, R, cx, cy, total_filter_energy, absolute_spot_energy, correlationScore,
-//      outputTranslation[0], outputTranslation[1]);
+  //  CF_DEBUG("\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g total_filter_energy=%g absolute_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
+  //    _gsigma, Rspot, R, cx, cy, total_filter_energy, absolute_spot_energy, correlationScore,
+  //    outputTranslation[0], outputTranslation[1]);
 
   return correlationScore;
 }

@@ -154,4 +154,16 @@ void fftPPSDecomposition(cv::InputArray src_image, const cv::Mat1f & VLAP,
 double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
     cv::OutputArray outputDebugHistogram = cv::noArray());
 
+/**
+ * CV_32FC1 CCS input -> CV_32FC2 Complex output
+ * */
+void fftUnpackCCSSpectrum(const cv::Mat1f & ccsSpectrum,
+    cv::OutputArray _complexSpectrum);
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC2 Complex output with sign alternating
+ * */
+void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
+    cv::OutputArray _complexSpectrum);
+
 #endif /* __fft_h__ */

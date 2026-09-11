@@ -34,20 +34,14 @@ const c_enum_member * members_of<c_alpha_test_routine::DISPLAY>()
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE, "CURRENT_IMAGE", "" },
       { c_alpha_test_routine::DISPLAY_REFERENCE_IMAGE, "REFERENCE_IMAGE", "" },
       { c_alpha_test_routine::DISPLAY_BLEND_IMAGE, "BLEND_IMAGE", "" },
-      { c_alpha_test_routine::DISPLAY_SHIFTED_CURRENT_IMAGE, "SHIFTED_CURRENT_IMAGE", "" },
 
 
       { c_alpha_test_routine::DISPLAY_CURRENT_SCALED_IMAGE,"CURRENT_SCALED_IMAGE"},
       { c_alpha_test_routine::DISPLAY_REFERENCE_SCALED_IMAGE,"REFERENCE_SCALED_IMAGE"},
       { c_alpha_test_routine::DISPLAY_BLEND_SCALED_IMAGE, "BLEND_SCALED_IMAGE", "" },
 
-      { c_alpha_test_routine::DISPLAY_CROSS_MODULE,"CROSS_MODULE"},
-      { c_alpha_test_routine::DISPLAY_CROSS_PHASE,"CROSS_PHASE"},
-
-      { c_alpha_test_routine::DISPLAY_CROSS_pureCross,"pureCross"},
-      { c_alpha_test_routine::DISPLAY_CROSS_weightMap,"weightMap"},
-      { c_alpha_test_routine::DISPLAY_CROSS_gradX,"gradX"},
-      { c_alpha_test_routine::DISPLAY_CROSS_gradY,"gradY"},
+      { c_alpha_test_routine::DISPLAY_CROSS_CART,"CROSS_CART"},
+      { c_alpha_test_routine::DISPLAY_CROSS_POLAR,"CROSS_POLAR"},
 
       { c_alpha_test_routine::DISPLAY_CURRENT_IMAGE}
   };
@@ -348,105 +342,47 @@ void c_alpha_test_routine::applyApodization(cv::Mat1f & scaledImage, const cv::M
   }
 }
 
-bool c_alpha_test_routine::compute(cv::Vec2f & outputTranslation)
+bool c_alpha_test_routine::compute()
 {
-    if (_currentSpectrum.empty() || _referenceSpectrum.empty()) {
-        return false;
+  if (_currentSpectrum.empty() || _referenceSpectrum.empty()) {
+      return false;
+  }
+
+  const int rows = _fftSize.height;
+  const int cols = _fftSize.width;
+
+  _crossSpectrum.create(_fftSize);
+  _crossSpectrum.setTo(cv::Scalar::all(0));
+
+  const uint8_t * spec1_base = _currentSpectrum.ptr();
+  const size_t spec1_stride = _currentSpectrum.step;
+
+  const uint8_t * spec2_base = _referenceSpectrum.ptr();
+  const size_t spec2_stride = _referenceSpectrum.step;
+
+  uint8_t * cross_base = _crossSpectrum.ptr();
+  const size_t cross_stride = _crossSpectrum.step;
+
+  parallel_for(0, rows, [=](const auto & range) {
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const float * srcp1 = (const float * )(spec1_base + y * spec1_stride);
+      const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
+      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
+
+      for( int x = 0; x < cols; ++x, srcp1 += 2, srcp2 += 2, dstp += 2 ) {
+        const float a = srcp1[0];
+        const float b = srcp1[1];
+        const float c = srcp2[0];
+        const float d = srcp2[1];
+        const float re = a * c + b * d;
+        const float im = b * c - a * d;
+        dstp[0] = re;
+        dstp[1] = im;
+      }
     }
+  });
 
-    const int rows = _fftSize.height;
-    const int cols = _fftSize.width;
-
-    _crossSpectrum.create(_fftSize);
-    _crossSpectrum.setTo(cv::Scalar::all(0));
-    _gradX.create(_fftSize);
-    _gradX.setTo(cv::Scalar::all(0));
-    _gradY.create(_fftSize);
-    _gradY.setTo(cv::Scalar::all(0));
-    _pureCross = cv::Mat2f::zeros(rows, cols);
-    _weightMap = cv::Mat1f::zeros(rows, cols);
-
-    const float sigma_pixels = float(_gsigma * std::max(rows, cols));
-    const float inv_gsigma2 = -0.5f / (sigma_pixels * sigma_pixels);
-
-    for (int y = 0; y < rows; ++y) {
-        const cv::Vec2f* src_curr = _currentSpectrum.ptr<cv::Vec2f>(y);
-        const cv::Vec2f* src_ref  = _referenceSpectrum.ptr<cv::Vec2f>(y);
-        cv::Vec2f* dst_cross       = _crossSpectrum.ptr<cv::Vec2f>(y);
-
-        float v_freq = (y <= rows / 2) ? (float)y : (float)(rows - y);
-        float v2 = v_freq * v_freq;
-
-        for (int x = 0; x < cols; ++x) {
-            float a = src_curr[x][0]; float b = src_curr[x][1];
-            float c = src_ref[x][0];  float d = src_ref[x][1];
-
-            float re = a * c + b * d;
-            float im = b * c - a * d;
-            dst_cross[x] = cv::Vec2f(re, im);
-
-            if (y == 0 || x == 0 || y == rows - 1 || x == cols - 1) {
-                continue;
-            }
-
-            float raw_mag = std::sqrt(re * re + im * im);
-            if (raw_mag < 1e-7f) continue;
-
-            float u_freq = (x <= cols / 2) ? (float)x : (float)(cols - x);
-            float rho2 = u_freq * u_freq + v2;
-            float weight = inv_gsigma2 < 0 ? sqrt(rho2) * std::exp(rho2 * inv_gsigma2) : 1;
-            _weightMap(y, x) = weight;
-
-            //_pureCross(y, x) = cv::Vec2f(re / raw_mag, im / raw_mag);
-            //_pureCross(y, x) = cv::Vec2f(re , im );
-            _pureCross(y, x) = cv::Vec2f(weight * re/ raw_mag , weight * im/ raw_mag );
-
-        }
-    }
-
-    cv::Vec2f total_grad_x(0.0f, 0.0f);
-    cv::Vec2f total_grad_y(0.0f, 0.0f);
-
-    int max_u = cols / 2;
-    int max_v = rows / 2;
-
-    for (int y = 1; y < max_v - 1; ++y) {
-        for (int x = 1; x < max_u - 1; ++x) {
-
-            float w = 1; //  _weightMap(y, x);
-
-            cv::Vec2f F_curr_x = _pureCross(y, x);
-            cv::Vec2f F_next_x = _pureCross(y, x + 1);
-
-            // F_next * conj(F_curr) -> (A + iB)*(C - iD) = (AC + BD) + i(BC - AD)
-            float re_dx = F_next_x[0] * F_curr_x[0] + F_next_x[1] * F_curr_x[1];
-            float im_dx = F_next_x[1] * F_curr_x[0] - F_next_x[0] * F_curr_x[1];
-
-            total_grad_x += cv::Vec2f(re_dx * w, im_dx * w);
-
-            cv::Vec2f F_curr_y = _pureCross(y, x);
-            cv::Vec2f F_next_y = _pureCross(y + 1, x);
-            float re_dy = F_next_y[0] * F_curr_y[0] + F_next_y[1] * F_curr_y[1];
-            float im_dy = F_next_y[1] * F_curr_y[0] - F_next_y[0] * F_curr_y[1];
-
-            total_grad_y += cv::Vec2f(re_dy * w, im_dy * w);
-
-            _gradX(y, x) = cv::Vec2f(re_dx, im_dx);
-            _gradY(y, x) = cv::Vec2f(re_dy, im_dy);
-
-        }
-    }
-
-    float final_delta_x = std::atan2(total_grad_x[1], total_grad_x[0]);
-    float final_delta_y = std::atan2(total_grad_y[1], total_grad_y[0]);
-
-    float Tx = (final_delta_x * cols) / (2.0f * CV_PI);
-    float Ty = (final_delta_y * rows) / (2.0f * CV_PI);
-
-    outputTranslation[0] = Tx * (float)_downscaleFactor;
-    outputTranslation[1] = Ty * (float)_downscaleFactor;
-
-    return true;
+  return true;
 }
 
 
@@ -480,24 +416,8 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
       return false;
     }
 
-    cv::Vec2f T;
-    if ( !compute(T) ) {
+    if ( !compute() ) {
       CF_ERROR("compute() fails");
-    }
-    else {
-      CF_DEBUG("\ncompute: Tx = %g Ty = %g T=%g\n"
-          "_downscaleFactor=%g\n"
-          "_currentValidSize = %dx%d\n"
-          "_referenceValidSize = %dx%d\n"
-          "_currentCropOffset.x = %d _currentCropOffset.y = %d\n"
-          "_referenceCropOffset.x = %d _referenceCropOffset.y = %d\n"
-          "\n",
-          T[0], T[1], std::hypot(T[0], T[1]),
-          _downscaleFactor,
-          _currentValidSize.width, _currentValidSize.height,
-          _referenceValidSize.width, _referenceValidSize.height,
-          _currentCropOffset.x, _currentCropOffset.y,
-          _referenceCropOffset.x, _referenceCropOffset.y);
     }
 
     switch (_display) {
@@ -521,13 +441,6 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         _scaledReferenceMask.copyTo(mask);
         break;
       }
-
-      case DISPLAY_SHIFTED_CURRENT_IMAGE : {
-        shiftImage(_currentImage, image, T);
-        mask.release();
-        break;
-      }
-
       case DISPLAY_BLEND_IMAGE: {
         if ( !_currentImage.empty() && !_referenceImage.empty() ) {
           cv::addWeighted(_currentImage, 0.5, _referenceImage, 0.5, 0, image);
@@ -562,45 +475,13 @@ bool c_alpha_test_routine::process(cv::InputOutputArray image, cv::InputOutputAr
         break;
       }
 
-      case DISPLAY_CROSS_MODULE: {
-        mask.release();
-        if ( _crossSpectrum.empty() ) {
-          image.release();
-        }
-        else {
-          fftSpectrumModule(_crossSpectrum, image);
-        }
-
-        break;
-      }
-      case DISPLAY_CROSS_PHASE: {
-        mask.release();
-        if ( _crossSpectrum.empty() ) {
-          image.release();
-        }
-        else {
-          // will computed as direct atan2() in radians
-          fftSpectrumPhase(_crossSpectrum, image);
-        }
-        break;
-      }
-      case DISPLAY_CROSS_pureCross: {
-        _pureCross.copyTo(image);
+      case DISPLAY_CROSS_CART: {
+        _crossSpectrum.copyTo(image);
         mask.release();
         break;
       }
-      case DISPLAY_CROSS_weightMap: {
-        _weightMap.copyTo(image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CROSS_gradX: {
-        _gradX.copyTo(image);
-        mask.release();
-        break;
-      }
-      case DISPLAY_CROSS_gradY: {
-        _gradY.copyTo(image);
+      case DISPLAY_CROSS_POLAR: {
+        fftSpectrumToPolar(_crossSpectrum, image);
         mask.release();
         break;
       }

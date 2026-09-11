@@ -1493,3 +1493,102 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
   return angle;
 }
 
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC2 Complex output
+ * */
+void fftUnpackCCSSpectrum(const cv::Mat1f & ccsSpectrum, cv::OutputArray _complexSpectrum)
+{
+  const int rows = ccsSpectrum.rows;
+  const int cols = ccsSpectrum.cols;
+  const bool is_even = (cols % 2 == 0);
+
+  _complexSpectrum.create(rows, cols, CV_32FC2);
+  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+
+  const uint8_t * src_base = ccsSpectrum.ptr();
+  const size_t src_step = ccsSpectrum.step;
+
+  uint8_t * dst_base = complexSpectrum.ptr();
+  const size_t dst_step = complexSpectrum.step;
+
+  // Hermitian symmetry: H(u,v) = H*(-u,-v)
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+      const float * srcp1 = (const float*)(src_base + y * src_step);
+      const float * srcp2 = (const float*)(src_base + y_sym * src_step);
+      cv::Vec2f * __restrict dst = (cv::Vec2f*)(dst_base + y * dst_step);
+
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+
+      dst[0] = cv::Vec2f(srcp1[0], 0.0f);
+      for (int x = 1; x <= max_complex_idx; x += 2) {
+        const int fx = (x + 1) / 2;
+        const int fx_sym = cols - fx;
+        const float re1 = srcp1[x + 0];
+        const float im1 = srcp1[x + 1];
+        const float re2 = srcp2[x + 0];
+        const float im2 = srcp2[x + 1];
+        dst[fx] = cv::Vec2f(re1, im1);
+        dst[fx_sym] = cv::Vec2f(re2, -im2);
+      }
+      if (is_even) {
+        dst[cols / 2] = cv::Vec2f(srcp1[cols - 1], 0.0f);
+      }
+    }
+  });
+}
+
+void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
+    cv::OutputArray _complexSpectrum)
+{
+  const int rows = ccsSpectrum.rows;
+  const int cols = ccsSpectrum.cols;
+  const bool is_even = (cols % 2 == 0);
+
+  _complexSpectrum.create(rows, cols, CV_32FC2);
+  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+
+  const uint8_t * ccs_base = ccsSpectrum.ptr();
+  const size_t src_step = ccsSpectrum.step;
+
+  uint8_t * dst_base = complexSpectrum.ptr();
+  const size_t dst_step = complexSpectrum.step;
+
+  // Hermitian symmetry: H(u,v) = H*(-u,-v)
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+      const float * srcp1 = (const float*)(ccs_base + y * src_step);
+      const float * srcp2 = (const float*)(ccs_base + y_sym * src_step);
+      cv::Vec2f * __restrict dst = (cv::Vec2f*)(dst_base + y * dst_step);
+
+      // Sign for vertical frequency y (horizontal fx = 0)
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+      const float sign_y = (y % 2 == 0) ? 1.0f : -1.0f;
+
+      dst[0] = cv::Vec2f(srcp1[0] * sign_y, 0.0f);
+      for (int x = 1; x <= max_complex_idx; x += 2) {
+        const int fx = (x + 1) / 2;
+        const int fx_sym = cols - fx;
+
+        const float re1 = srcp1[x + 0];
+        const float im1 = srcp1[x + 1];
+        const float re2 = srcp2[x + 0];
+        const float im2 = srcp2[x + 1];
+
+        const float sign_left = ((fx % 2 == 0) ? 1.0f : -1.0f) * sign_y;
+        const float sign_right = ((fx_sym % 2 == 0) ? 1.0f : -1.0f) * sign_y;
+
+        dst[fx] = cv::Vec2f(re1 * sign_left, im1 * sign_left);
+        dst[fx_sym] = cv::Vec2f(re2 * sign_right, -im2 * sign_right);
+      }
+      if (is_even) {
+        const int fx_nyq = cols / 2;
+        const float sign_nyq = ((fx_nyq % 2 == 0) ? 1.0f : -1.0f) * sign_y;
+        dst[fx_nyq] = cv::Vec2f(srcp1[cols - 1] * sign_nyq, 0.0f);
+      }
+    }
+  });
+}

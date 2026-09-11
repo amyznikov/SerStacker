@@ -1,39 +1,31 @@
 /*
- * c_alpha_test_routine.h
+ * c_fft_auto_correlation_routine.h
  *
- *  Created on: Jun 26, 2026
+ *  Created on: Sep 11, 2026
  *      Author: amyznikov
  */
 
 #pragma once
-#ifndef __c_alpha_test_routine_h__
-#define __c_alpha_test_routine_h__
+#ifndef __c_fft_auto_correlation_routine_h__
+#define __c_fft_auto_correlation_routine_h__
 
 #include <core/improc/c_image_processor.h>
-#include <core/proc/image_registration/c_phase_correlate.h>
-#include <core/proc/extract_channel.h>
-#include <core/proc/pixtype.h>
 
-
-
-class c_alpha_test_routine :
+class c_fft_auto_correlation_routine :
     public c_image_processor_routine
 {
 public:
-  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_alpha_test_routine,
-      "alpha_test", "Alpha Test");
+  DECLATE_IMAGE_PROCESSOR_CLASS_FACTORY(c_fft_auto_correlation_routine,
+      "fft_auto_correlation", "Image auto correlation map with cv::dft()");
 
   enum DISPLAY {
     DISPLAY_CURRENT_IMAGE,
-    DISPLAY_REFERENCE_IMAGE,
-    DISPLAY_BLEND_IMAGE,
-
     DISPLAY_CURRENT_SCALED_IMAGE,
-    DISPLAY_REFERENCE_SCALED_IMAGE,
-    DISPLAY_BLEND_SCALED_IMAGE,
-
-    DISPLAY_CROSS_CART,
-    DISPLAY_CROSS_POLAR,
+    DISPLAY_CURRENT_SPECTRUM_CART,
+    DISPLAY_CURRENT_SPECTRUM_POLAR,
+    DISPLAY_CROSS_SPECTRUM_CART,
+    DISPLAY_CROSS_SPECTRUM_POLAR,
+    DISPLAY_CORRELATION_MAP,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
@@ -70,35 +62,31 @@ protected:
   }
 
 protected:
-  bool reinitialize(const cv::Size & expectedFrameSize);
+  bool ensureInitialized(const cv::Size & expectedFrameSize);
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
-  bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
-  bool compute();
+  double computeCorrelationMap();
 
 protected: // Controlling parameters
-  DISPLAY _display = DISPLAY_CURRENT_IMAGE;
-
+  DISPLAY _display = DISPLAY_CORRELATION_MAP;
   double _downscaleFactor = 4;
   double _gsigma = 0.15;
   int _apodizationSize = 21;
-  bool _updateReferenceImage = true;
 
 protected: // Cached data
   cv::Size _fftSize;
   std::vector<float> _apodizationLUT;
-  cv::Size _currentValidSize, _referenceValidSize;
-  cv::Point _currentCropOffset, _referenceCropOffset;
-  cv::Mat1f _currentImage, _referenceImage;
-  cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
-  cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
-  cv::Mat2f _currentSpectrum, _referenceSpectrum;
   cv::Mat1f _distmap;
-  cv::Mat2f _crossSpectrum;
+  cv::Size _currentValidSize;
+  cv::Point _currentCropOffset;
+  cv::Mat1f _currentImage;
+  cv::Mat1f _scaledCurrentImage;
+  cv::Mat1b _scaledCurrentMask;
+  cv::Mat1f _currentSpectrum;
+  cv::Mat1f _crossSpectrum;
+  cv::Mat1f _correlationMap;
 
   bool _initialized = false;
 };
 
-// c_phase_correlate pc;
-
-#endif /* __c_alpha_test_routine_h__ */
+#endif /* __c_fft_auto_correlation_roitine_h__ */

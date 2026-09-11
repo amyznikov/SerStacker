@@ -56,6 +56,7 @@ public:
   // Release internal cache buffers, may be useful for multi-pipeline re-initializators
   void release();
 
+
   void setGSigma(double gsigma)
   {
     _gsigma = gsigma;
@@ -65,6 +66,9 @@ public:
   {
     return _gsigma;
   }
+
+  static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize,
+      double downscaleFactor);
 
 public: // public access for debug & visualization purposes
   bool initialized() const {

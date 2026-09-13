@@ -1885,7 +1885,7 @@ double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat
   }
 
   if( ccsSpectrum1.size() != ccsSpectrum2.size() ) {
-    CF_ERROR("Bad arguments: CCS sspectrim sizes %dx%d and %dx%d are different",
+    CF_ERROR("Bad arguments: CCS spectrum sizes %dx%d and %dx%d are different",
         ccsSpectrum1.cols, ccsSpectrum1.rows, ccsSpectrum2.cols, ccsSpectrum2.rows);
     return -1;
   }
@@ -2012,6 +2012,197 @@ double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat
           dstp[cols - 1] = re;
           dstp_sym[cols - 1] = im;
           local_energy += 2.0f * (re * re + im * im);
+        }
+      }
+    }
+
+    float current = total_energy.load(std::memory_order_relaxed);
+    while (!total_energy.compare_exchange_weak(current, current + local_energy,
+            std::memory_order_relaxed));
+  });
+
+  return total_energy.load();
+}
+
+double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
+{
+  if ( ccsSpectrum1.empty() && ccsSpectrum2.empty() ) {
+    _crossSpectrum.release();
+    return 0;
+  }
+
+  if( ccsSpectrum1.size() != ccsSpectrum2.size() ) {
+    CF_ERROR("Bad arguments: CCS spectrum sizes %dx%d and %dx%d are different",
+        ccsSpectrum1.cols, ccsSpectrum1.rows, ccsSpectrum2.cols, ccsSpectrum2.rows);
+    return -1;
+  }
+
+  const cv::Size fftSize = ccsSpectrum1.size();
+  if( filter.size() != fftSize ) {
+    CF_ERROR("Bad arguments: Filter size %dx%d not match to CCS spectrum size %dx%d",
+        filter.cols, filter.rows, fftSize.width, fftSize.height);
+    return -1;
+  }
+
+  const int rows = fftSize.height;
+  const int cols = fftSize.width;
+
+  _crossSpectrum.create(fftSize, CV_32FC1);
+  cv::Mat1f crossSpectrum = _crossSpectrum.getMatRef();
+
+  const bool is_even = (cols % 2 == 0);
+
+  const uint8_t * spec1_base = ccsSpectrum1.ptr();
+  const size_t spec1_stride = ccsSpectrum1.step;
+
+  const uint8_t * spec2_base = ccsSpectrum2.ptr();
+  const size_t spec2_stride = ccsSpectrum2.step;
+
+  const uint8_t * filter_base = filter.ptr();
+  const size_t filter_stride = filter.step;
+
+  uint8_t * cross_base = crossSpectrum.ptr();
+  const size_t cross_stride = crossSpectrum.step;
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<float> total_energy(0.0f);
+
+  static constexpr float safe_min =
+      std::sqrt(std::numeric_limits<float>::min());
+
+  parallel_for(0, rows, [=, &total_energy](const auto & range) {
+    float local_energy = 0.0f;
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+
+      const float * srcp1 = (const float * )(spec1_base + y * spec1_stride);
+      const float * srcp1_sym = (const float * )(spec1_base + y_sym * spec1_stride);
+
+      const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
+      const float * srcp2_sym = (const float * )(spec2_base + y_sym * spec2_stride);
+
+      const float * fltp = (const float * )(filter_base + y * filter_stride);
+
+      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
+      float * __restrict dstp_sym = (float *)(cross_base + y_sym * cross_stride);
+
+      if (true) { // DC (X = 0)
+        const float gw = fltp[0];
+
+        if (y == 0 || (y * 2 == rows)) {
+          // Pure Real points at the matrix corners (unique, weight = 1)
+          const float a1 = srcp1[0];
+          const float a2 = srcp2[0];
+          const float re = a1 * a2;
+
+          if (re != 0.0f) {
+            dstp[0] = (re > 0.0f) ? gw : -gw;
+          }
+          else {
+            dstp[0] = 0.0f;
+          }
+          local_energy += gw * gw;
+        }
+        else if (y < y_sym) {
+          // Upper half of the DC column (complex pair)
+          // Im(y) from symmetric rows of the lower quadrant
+          // Complex multiplication with conjugation of the second spectrum: (a1+ib1)*(a2-ib2)
+          const float a1 = srcp1[0];
+          const float b1 = srcp1_sym[0];
+          const float a2 = srcp2[0];
+          const float b2 = srcp2_sym[0];
+
+          const float re = a1 * a2 + b1 * b2;
+          const float im = b1 * a2 - a1 * b2;
+
+          const float mag = std::sqrt(re * re + im * im);
+          if (mag > safe_min) {
+            const float scale = gw / mag;
+            dstp[0] = re * scale;
+            dstp_sym[0] = im * scale;
+          }
+          else {
+            dstp[0] = 0.0f;
+            dstp_sym[0] = 0.0f;
+          }
+
+          local_energy += 2.0f * (gw * gw);
+        }
+      }
+
+      // INTERNAL COLUMNS (Complex Re/Im pairs lie together)
+      // Weight = 2 since the right mirrored part of the spectrum along the X-axis is not processed in the loop.
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+      for( int x = 1; x <= max_complex_idx; x += 2 ) {
+        const int fx = (x + 1) / 2;
+        const float gw = fltp[fx];
+        const float a1 = srcp1[x];
+        const float b1 = srcp1[x + 1];
+        const float a2 = srcp2[x];
+        const float b2 = srcp2[x + 1];
+
+        const float re = a1 * a2 + b1 * b2;
+        const float im = b1 * a2 - a1 * b2;
+
+        const float mag = std::sqrt(re * re + im * im);
+        if (mag > safe_min) {
+          const float scale = gw / mag;
+          dstp[x + 0] = re * scale;
+          dstp[x + 1] = im * scale;
+        }
+        else {
+          dstp[x + 0] = 0.0f;
+          dstp[x + 1] = 0.0f;
+        }
+
+        local_energy += 2.0f * (gw * gw);
+      }
+
+      // Last column X = COLS - 1, Nyquist frequency if width is even
+      if( is_even ) {
+        const int fx_nyq = cols / 2;
+        const float gw = fltp[fx_nyq];
+
+        if (y == 0 || (y * 2 == rows)) {
+          // Pure real Nyquist points at the corners (unique, weight = 1)
+          const float a1 = srcp1[cols - 1];
+          const float a2 = srcp2[cols - 1];
+          const float re = a1 * a2;
+
+          if (re != 0.0f) {
+            dstp[cols - 1] = (re > 0.0f) ? gw : -gw;
+          }
+          else {
+            dstp[cols - 1] = 0.0f;
+          }
+          local_energy += gw * gw;
+        }
+        else if (y < y_sym) {
+          // Upper half of the Nyquist column (complex pair)
+          // Imaginary part goes into the symmetric string
+          // Weight = 2
+          const float a1 = srcp1[cols - 1];
+          const float b1 = srcp1_sym[cols - 1];
+          const float a2 = srcp2[cols - 1];
+          const float b2 = srcp2_sym[cols - 1];
+
+          const float re = a1 * a2 + b1 * b2;
+          const float im = b1 * a2 - a1 * b2;
+
+          const float mag = std::sqrt(re * re + im * im);
+          if (mag > safe_min) {
+            const float scale = gw / mag;
+            dstp[cols - 1] = re * scale;
+            dstp_sym[cols - 1] = im * scale;
+          }
+          else {
+            dstp[cols - 1] = 0.0f;
+            dstp_sym[cols - 1] = 0.0f;
+          }
+
+          local_energy += 2.0f * (gw * gw);
         }
       }
     }

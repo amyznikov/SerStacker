@@ -368,7 +368,7 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 double c_phase_correlate::computeCorrelationMap()
 {
   _crossSpectrumEnergy =
-      fftCrossSpectrumWeightedCCS(_currentSpectrum, _referenceSpectrum,
+      fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
           _bandpassFilter, _crossSpectrum);
 
   cv::idft(_crossSpectrum, _correlationMap,
@@ -401,8 +401,10 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
    * The approximate radius of the expected cross-corelation spot is estimated
    * based on analytical FFT transform of filter response.
    * */
-  const double Rspot = _gsigma > 0 ? 0.45f * _gsigma : 21;
-  const int R = std::max(2, int(Rspot + 1.0));
+  // const double fsigma = M_SQRT2 / (CV_PI * _gsigma);
+  // const double r0 = 1 / (CV_PI * fsigma);
+  const double r0 = (_gsigma * M_SQRT1_2);
+  const int R = std::max(3, int(r0+1));
   const double cx = scaledTranslation.x;
   const double cy = scaledTranslation.y;
   double absolute_spot_energy = 0.0;
@@ -427,17 +429,17 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
       const double delta_x = double(x) - cx;
       const double dist = std::sqrt(delta_x * delta_x + dy2);
       double pixel_weight = 0.0;
-      if( Rspot < 1.5 ) {
+      if( r0 < 1.5 ) {
         pixel_weight = (dist <= R) ? 1.0 : 0.0;
       }
-      else if( dist <= Rspot - 0.5 ) {
+      else if( dist <= r0 - 0.5 ) {
         pixel_weight = 1.0;
       }
-      else if( dist >= Rspot + 0.5 ) {
+      else if( dist >= r0 + 0.5 ) {
         pixel_weight = 0.0;
       }
       else {
-        pixel_weight = (Rspot + 0.5 - dist);
+        pixel_weight = (r0 + 0.5 - dist);
       }
 
       if( pixel_weight > 0.0 ) {
@@ -456,8 +458,8 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   outputTranslation[1] = float(-scaledDy * _downscale_factor);
 
   CF_DEBUG(
-      "\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g crossSpectrumEnergy=%g normalized_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
-      _gsigma, Rspot, R, cx, cy, crossSpectrumEnergy, absolute_spot_energy, correlationScore,
+      "\ngsigma=%g r0=%g box=%dx%d crossSpectrumEnergy=%g spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
+      _gsigma, r0, 2*R+1, 2*R+1, crossSpectrumEnergy, normalized_spot_energy, correlationScore,
       outputTranslation[0], outputTranslation[1]);
 
   return correlationScore;

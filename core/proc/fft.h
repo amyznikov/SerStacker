@@ -222,4 +222,7 @@ double fftAutoCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum, const cv::
 double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
+double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
+
 #endif /* __fft_h__ */

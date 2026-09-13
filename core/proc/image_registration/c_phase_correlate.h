@@ -18,8 +18,8 @@ struct c_phase_correlate_options
   double downscale_factor = 4;
   double gsigma = 10;
   double csigma = 0.5;
-  double calpha = 0.05;
-  int apodization_size = 21;
+  double calpha = 0.0;
+  int apodization_size = 0;
 };
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,

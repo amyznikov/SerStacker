@@ -2069,7 +2069,7 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
     std::atomic<float> total_energy(0.0f);
 
   static constexpr float safe_min =
-      std::sqrt(std::numeric_limits<float>::min());
+      std::numeric_limits<float>::min();
 
   parallel_for(0, rows, [=, &total_energy](const auto & range) {
     float local_energy = 0.0f;
@@ -2117,9 +2117,9 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           const float re = a1 * a2 + b1 * b2;
           const float im = b1 * a2 - a1 * b2;
 
-          const float mag = std::sqrt(re * re + im * im);
-          if (mag > safe_min) {
-            const float scale = gw / mag;
+          const float m2 = re * re + im * im;
+          if (m2 > safe_min) {
+            const float scale = gw / std::sqrt(m2);
             dstp[0] = re * scale;
             dstp_sym[0] = im * scale;
           }
@@ -2128,7 +2128,7 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
             dstp_sym[0] = 0.0f;
           }
 
-          local_energy += 2.0f * (gw * gw);
+          local_energy += 2.0f * gw * gw;
         }
       }
 
@@ -2145,10 +2145,10 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
 
         const float re = a1 * a2 + b1 * b2;
         const float im = b1 * a2 - a1 * b2;
+        const float m2 = re * re + im * im;
 
-        const float mag = std::sqrt(re * re + im * im);
-        if (mag > safe_min) {
-          const float scale = gw / mag;
+        if (m2 > safe_min) {
+          const float scale = gw / std::sqrt(m2);
           dstp[x + 0] = re * scale;
           dstp[x + 1] = im * scale;
         }
@@ -2157,7 +2157,7 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           dstp[x + 1] = 0.0f;
         }
 
-        local_energy += 2.0f * (gw * gw);
+        local_energy += 2.0f * gw * gw;
       }
 
       // Last column X = COLS - 1, Nyquist frequency if width is even
@@ -2171,7 +2171,7 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           const float a2 = srcp2[cols - 1];
           const float re = a1 * a2;
 
-          if (re != 0.0f) {
+          if (re > safe_min ) {
             dstp[cols - 1] = (re > 0.0f) ? gw : -gw;
           }
           else {
@@ -2191,9 +2191,9 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           const float re = a1 * a2 + b1 * b2;
           const float im = b1 * a2 - a1 * b2;
 
-          const float mag = std::sqrt(re * re + im * im);
-          if (mag > safe_min) {
-            const float scale = gw / mag;
+          const float m2 = re * re + im * im;
+          if (m2 > safe_min) {
+            const float scale = gw / std::sqrt(m2);
             dstp[cols - 1] = re * scale;
             dstp_sym[cols - 1] = im * scale;
           }
@@ -2202,7 +2202,7 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
             dstp_sym[cols - 1] = 0.0f;
           }
 
-          local_energy += 2.0f * (gw * gw);
+          local_energy += 2.0f * gw * gw;
         }
       }
     }

@@ -698,18 +698,6 @@ void QGraphicsLineShape::populateContextMenu(QMenu &menu, const QPoint &viewpos)
 
   menu.addSeparator();
 
-  menu.addAction(createCheckableAction("Align Horizontally",
-      _alignMode == AlignHorz,
-      [this](bool checked) {
-        if ( !checked ) {
-          _alignMode = AlignNone;
-        }
-        else {
-          alignHorizontally();
-          _alignMode = AlignHorz;
-        }
-      }));
-
   menu.addAction(createCheckableAction("Align Vertically",
       _alignMode == AlignVert,
       [this](bool checked) {
@@ -722,12 +710,23 @@ void QGraphicsLineShape::populateContextMenu(QMenu &menu, const QPoint &viewpos)
         }
       }));
 
+  menu.addAction(createCheckableAction("Align Horizontally",
+      _alignMode == AlignHorz,
+      [this](bool checked) {
+        if ( !checked ) {
+          _alignMode = AlignNone;
+        }
+        else {
+          alignHorizontally();
+          _alignMode = AlignHorz;
+        }
+      }));
+
   menu.addAction(createCheckableAction("Move Horizontally",
       _moveMode == MoveHorz,
       [this](bool checked) {
         setMoveMode(checked ? MoveHorz : MoveAny);
       }));
-
 
   menu.addAction(createCheckableAction("Move Vertically",
       _moveMode == MoveVert,

@@ -95,6 +95,10 @@ cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSiz
   return cv::Size(1 << powX, 1 << powY);
 }
 
+
+
+
+
 bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)
 {
   if( expectedFrameSize.empty() ) {
@@ -109,7 +113,13 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
     return false;
   }
 
-  _fftSize = computeFFTPackSize(expectedFrameSize,  _downscale_factor);
+  _fftSize = computeFFTPackSize(expectedFrameSize, _downscale_factor);
+  _expectedFrameSize = expectedFrameSize;
+  _gsigma = opts.gsigma;
+  _csigma = opts.csigma;
+  _calpha = opts.calpha;
+
+  generateBandpassFilter();
 
   if( (_apodization_size = opts.apodization_size) < 1 ) {
     _apodizationLUT.clear();
@@ -123,8 +133,6 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
       _apodizationLUT[i] = t * t * (3.0f - 2.0f * t);
     }
   }
-
-  _gsigma = opts.gsigma;
 
   _initialized = true;
   return true;
@@ -145,6 +153,70 @@ void c_phase_correlate::release()
   _distmap.release();
   _initialized = false;
 }
+
+
+void c_phase_correlate::generateBandpassFilter()
+{
+  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
+  // rho2 = (u^2 + v^2) / fsigma^2;
+  // F(u, v) = rho2 * exp (-0.5 * rho2 )
+
+  _bandpassFilter.create(_fftSize);
+
+  const uint8_t * filter_base = _bandpassFilter.ptr();
+  const size_t filter_stride = _bandpassFilter.step;
+
+  const int cols = _fftSize.width;
+  const int rows = _fftSize.height;
+
+  if ( _gsigma <= 0 ) {
+    parallel_for(0, rows, [=](const auto & range) {
+      for( int y = rbegin(range); y < rend(range); ++y ) {
+        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+        const float start_sign = (y & 1) ? -1.0f : 1.0f;
+        for( int x = 0; x < cols; ++x ) {
+          fltp[x] = (x & 1) ? -start_sign : start_sign;
+        }
+      }
+    });
+  }
+  else {
+
+    const float inv_cols = float (1.0 / cols);
+    const float inv_rows = float (1.0 / rows);
+    const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
+
+    parallel_for(0, rows, [=](const auto & range) {
+      for( int y = rbegin(range); y < rend(range); ++y ) {
+        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+
+        const int fy = (y > rows / 2) ? (rows - y) : y;
+        const float v = fy * inv_rows;
+        const float v2 = v * v;
+
+        for( int x = 0; x < cols; ++x ) {
+          const int fx = (x > cols / 2) ? (cols - x) : x;
+          const int sign = ((x + y) & 1) ? -1 : 1;
+
+          const float u = fx * inv_cols;
+          const float u2 = u * u;
+          const float rho2 = (u2 + v2) * lambda2;
+
+          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+        }
+      }
+    });
+  }
+
+  if ( _csigma > 0  && _calpha > 0) {
+    fftGenerateInverseCrossFilter(_fftSize, _expectedFrameSize, _crossMask, _csigma, _calpha, false);
+    cv::multiply(_bandpassFilter, _crossMask, _bandpassFilter);
+  }
+
+  _bandpassFilterNorm = cv::norm(_bandpassFilter, cv::NORM_L1);
+  cv::multiply(_bandpassFilter, 1. / _bandpassFilterNorm, _bandpassFilter);
+}
+
 
 void c_phase_correlate::applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask,
     const cv::Size & validSize)
@@ -293,124 +365,16 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
   return true;
 }
 
-
 double c_phase_correlate::computeCorrelationMap()
 {
-  // The current and reference spectrums are expected in
-  // CCS (Complex-Conjugate Symmetrical ) format computed
-  // from real images with cv::DFT_REAL_OUTPUT flag
-  //
-  // The cross spectrum is weighted by bandpass filter:
-  // w(f) ~ f^2 * exp(-0.5 * f^2 / sigma_f^2)
-  //
-  // The _gsigma is passed as the characteristic scale lambda in pixels, e.g., 10.0f
-  // The normalization factor makes the filter peak w(f_max) equal to 1.0:
-  //  w(f_max) = 1 / (e * lambda_max^2) -> norm_factor = e * lambda_max^2
-  //  e = 2.71828183f
-  //
-  // Additionally the cross spectrum it is multiplied by alternating +1 and -1
-  // to avoid fftSwapQuadrants() after idft()
-
-  const int rows = _currentSpectrum.rows;
-  const int cols = _currentSpectrum.cols;
-  const bool is_even = (cols % 2 == 0);
-  const float inv_cols = float(1.0 / cols);
-  const float inv_rows = float(1.0f / rows);
-  const float lambda_max = float(_gsigma);
-
-  const bool unique_weight = (lambda_max > 0.1f);
-  const float inv_gsigma2 = unique_weight ? -(lambda_max * lambda_max) : 0.0f;
-
-  // TODO: Precompute exp(-u^2) in setup() ?
-  std::vector<float> lut_exp_u(cols, 1.0f);
-  if (unique_weight) {
-    const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
-    for (int x = 1; x <= max_complex_idx; x += 2) {
-      const int fx = (x + 1) / 2;
-      const float u = fx * inv_cols;
-      const float exp_u = std::exp(u * u * inv_gsigma2);
-      lut_exp_u[x] = exp_u;
-      lut_exp_u[x + 1] = exp_u;
-    }
-  }
-
-  _crossSpectrum.create(_currentSpectrum.size());
-
-  const uint8_t * spec1_base = _currentSpectrum.ptr();
-  const size_t spec1_stride = _currentSpectrum.step;
-
-  const uint8_t * spec2_base = _referenceSpectrum.ptr();
-  const size_t spec2_stride = _referenceSpectrum.step;
-
-  uint8_t * cross_base = _crossSpectrum.ptr();
-  const size_t cross_stride = _crossSpectrum.step;
-
-  const float * exp_u = lut_exp_u.data();
-
-  alignas(std::hardware_destructive_interference_size)
-    std::atomic<float> total_energy(0.0f);
-
-  parallel_for(0, rows, [=, &total_energy](const auto & range) {
-    float local_energy = 0.0f;
-
-    for( int y = rbegin(range); y < rend(range); ++y ) {
-      const float * srcp1 = (const float * )(spec1_base + y * spec1_stride);
-      const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
-      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
-
-      const float v = ((y > rows / 2) ? (rows - y) : y )* inv_rows;
-      const float exp_v = unique_weight ? std::exp(v * v * inv_gsigma2) : 1;
-      const float v2 = v * v;
-
-      dstp[0] = 0.0f;
-
-      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
-
-      for( int x = 1; x <= max_complex_idx; x += 2 ) {
-        const int fx = (x + 1) / 2;
-        const float u = fx * inv_cols;
-        const float u2 = u * u;
-        const float rho2 = u2 + v2;
-
-        const float a = srcp1[x];
-        const float b = srcp1[x + 1];
-        const float c = srcp2[x];
-        const float d = srcp2[x + 1];
-        const float re = a * c + b * d;
-        const float im = b * c - a * d;
-        const float mag2 = re * re + im * im;
-
-        static constexpr float eps = std::numeric_limits<float>::min();
-        if ( mag2 > eps ) {
-          const float gw = unique_weight ? (rho2 * exp_v * exp_u[x]) : 1;
-          const float w = (((fx + y) % 2 == 0) ? 1 : -1) / std::sqrt(mag2);
-          dstp[x + 0] = gw * w * re;
-          dstp[x + 1] = gw * w * im;
-          local_energy += gw * gw;
-        }
-        else {
-          dstp[x + 0] = 0 ;
-          dstp[x + 1] = 0;
-        }
-      }
-
-      if( is_even ) {
-        dstp[cols - 1] = 0;
-      }
-    }
-
-    float current = total_energy.load(std::memory_order_relaxed);
-    while (!total_energy.compare_exchange_weak(current, current + local_energy,
-            std::memory_order_relaxed));
-  });
-
-  const double total_filter_energy =
-      2 * total_energy.load();
+  _crossSpectrumEnergy =
+      fftCrossSpectrumWeightedCCS(_currentSpectrum, _referenceSpectrum,
+          _bandpassFilter, _crossSpectrum);
 
   cv::idft(_crossSpectrum, _correlationMap,
       cv::DFT_REAL_OUTPUT);
 
-  return total_filter_energy;
+  return _crossSpectrumEnergy;
 }
 
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
@@ -420,9 +384,9 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     return -1;
   }
 
-  const double total_filter_energy = computeCorrelationMap();
-  if ( total_filter_energy <= 0 ) {
-    CF_ERROR("computeCorrelationMap() fails: total_filter_energy=%g", total_filter_energy);
+  const double crossSpectrumEnergy = computeCorrelationMap();
+  if ( crossSpectrumEnergy <= 0 ) {
+    CF_ERROR("computeCorrelationMap() fails: crossSpectrumEnergy=%g", crossSpectrumEnergy);
     return -1;
   }
 
@@ -434,8 +398,10 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
    * Estimate correlation score as a fraction of the total spectral energy
    * constructively interfered into cross-correlation spot.
    * May be not perfectly precise due to limited pixel grid resolution.
+   * The approximate radius of the expected cross-corelation spot is estimated
+   * based on analytical FFT transform of filter response.
    * */
-  const double Rspot = 0.45f * _gsigma;
+  const double Rspot = _gsigma > 0 ? 0.45f * _gsigma : 21;
   const int R = std::max(2, int(Rspot + 1.0));
   const double cx = scaledTranslation.x;
   const double cy = scaledTranslation.y;
@@ -481,16 +447,18 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     }
   }
 
-  // Compensate for idft energy scaling
-  const double correlationScore = absolute_spot_energy / (rows * cols * total_filter_energy);
+  // +Compensate for idft energy scaling
+  const double normalized_spot_energy = absolute_spot_energy / (rows * cols);
+  const double correlationScore = normalized_spot_energy / crossSpectrumEnergy;
   const double scaledDx = scaledTranslation.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
   const double scaledDy = scaledTranslation.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
   outputTranslation[0] = float(-scaledDx * _downscale_factor);
   outputTranslation[1] = float(-scaledDy * _downscale_factor);
 
-  //  CF_DEBUG("\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g total_filter_energy=%g absolute_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
-  //    _gsigma, Rspot, R, cx, cy, total_filter_energy, absolute_spot_energy, correlationScore,
-  //    outputTranslation[0], outputTranslation[1]);
+  CF_DEBUG(
+      "\ngsigma=%g Rspot=%g R=%d cx=%g cy=%g crossSpectrumEnergy=%g normalized_spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
+      _gsigma, Rspot, R, cx, cy, crossSpectrumEnergy, absolute_spot_energy, correlationScore,
+      outputTranslation[0], outputTranslation[1]);
 
   return correlationScore;
 }
@@ -545,6 +513,8 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
 {
   SERIALIZE_OPTION(section, save, opts, downscale_factor);
   SERIALIZE_OPTION(section, save, opts, gsigma);
+  SERIALIZE_OPTION(section, save, opts, csigma);
+  SERIALIZE_OPTION(section, save, opts, calpha);
   SERIALIZE_OPTION(section, save, opts, apodization_size);
   return true;
 }

@@ -1232,6 +1232,83 @@ cv::Mat1f fftGenerateButterworthUnsharpFilter(const cv::Size & fftSize,
   return FILTER;
 }
 
+/**
+ * @brief Generates an inverse frequency-domain cross-shaped filter to suppress rectangular window artifacts.
+ *
+ * This function constructs a 2D weighting matrix in the frequency domain designed to mitigate
+ * spectral leakage ("cross-shaped" or "ray" artifacts) caused by the rectangular boundaries
+ * of the input ROI (Region of Interest) during FFT-based cross- or phase correlation.
+ * It models the vertical and horizontal leakage profiles and applies Tikhonov regularization
+ * to invert the artifact field safely without noise amplification.
+ *
+ * @param[in]  fftSize   The size of the FFT grid (total dimensions of the spectrum matrix).
+ * @param[in]  rectSize  The dimensions of the source rectangular window/ROI causing the leakage.
+ * @param[out] dst       Output 2D single-channel matrix (`CV_32FC1`) containing the generated filter.
+ * @param[in]  _csigma   Characteristic scale factor controlling the width/decay of the artifact rays.
+ * @param[in]  _calpha   Tikhonov regularization parameter. Controls the stability of the inversion
+ *                       near the high-amplitude artifact zones (prevents division by zero).
+ * @param[in]  centerDC  If true, the DC component (zero frequency) is assumed to be in the center
+ *                       of the matrix (shifted FFT). If false, DC is at (0,0).
+ *
+ * @note Implements multi-threaded generation using `parallel_for` for optimal performance.
+ */
+void fftGenerateInverseCrossFilter(const cv::Size & fftSize, const cv::Size & rectSize, cv::OutputArray dst,
+    double _csigma, double _calpha, bool centerDC)
+{
+  if( fftSize.width <= 0 || fftSize.height <= 0 || rectSize.width <= 0 || rectSize.height <= 0 ) {
+    dst.release();
+    return;
+  }
+
+  dst.create(fftSize, CV_32FC1);
+  cv::Mat1f mask = dst.getMatRef();
+
+  const int cx = centerDC ? fftSize.width / 2 : 0;
+  const int cy = centerDC ? fftSize.height / 2 : 0;
+
+  const float sigma2 = float(_csigma * _csigma);
+  const float alpha2 = float(_calpha * _calpha);
+  const float W = float(rectSize.width);
+  const float H = float(rectSize.height);
+  const float N = float(fftSize.width);
+  const float M = float(fftSize.height);
+
+  const float dutyx = float(N)/float(W);
+  const float dutyy = float(M)/float(H);
+  const float amp_horz_ray = dutyx * dutyx;
+  const float amp_vert_ray = dutyy * dutyy;
+
+  const uint8_t * filter_base = mask.ptr();
+  const size_t filter_stride = mask.step;
+
+  parallel_for(0, fftSize.height, [=](const auto & range) {
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+
+      int dy = std::abs(y - cy);
+      if( !centerDC && dy > fftSize.height / 2 ) {
+        dy = fftSize.height - dy;
+      }
+
+      // The horizontal ray profile depends on the vertical frequency dy
+      // The vertical ray profile depends on the horizontal frequency dx
+      const float horz_ray_profile = amp_horz_ray / (1.0f + (float(dy * dy) / sigma2));
+
+      for( int x = 0; x < fftSize.width; ++x ) {
+        int dx = std::abs(x - cx);
+        if( !centerDC && dx > fftSize.width / 2 ) {
+          dx = fftSize.width - dx;
+        }
+
+        // Total artifact field with Tikhonov regularization
+        const float vert_ray_profile = amp_vert_ray / (1.0f + (float(dx * dx) / sigma2));
+        const float cross_amplitude = horz_ray_profile + vert_ray_profile - horz_ray_profile * vert_ray_profile;
+        fltp[x] = 1.0f / (1.0f + cross_amplitude * cross_amplitude / alpha2);
+      }
+    }
+  });
+}
+
 bool fftMulSpectrum(const cv::Mat1f & filter, cv::InputArray complexSpectrum,
     cv::OutputArray dst)
 {
@@ -1501,51 +1578,6 @@ void fftUnpackCCSSpectrum(const cv::Mat1f & ccsSpectrum, cv::OutputArray _comple
 {
   const int rows = ccsSpectrum.rows;
   const int cols = ccsSpectrum.cols;
-  const bool is_even = (cols % 2 == 0);
-
-  _complexSpectrum.create(rows, cols, CV_32FC2);
-  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
-
-  const uint8_t * src_base = ccsSpectrum.ptr();
-  const size_t src_step = ccsSpectrum.step;
-
-  uint8_t * dst_base = complexSpectrum.ptr();
-  const size_t dst_step = complexSpectrum.step;
-
-  // Hermitian symmetry: H(u,v) = H*(-u,-v)
-  parallel_for(0, rows, [=](const auto & range) {
-    for (int y = rbegin(range); y < rend(range); ++y) {
-      const int y_sym = (y == 0) ? 0 : (rows - y);
-      const float * srcp1 = (const float*)(src_base + y * src_step);
-      const float * srcp2 = (const float*)(src_base + y_sym * src_step);
-      cv::Vec2f * __restrict dst = (cv::Vec2f*)(dst_base + y * dst_step);
-
-      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
-
-      dst[0] = cv::Vec2f(srcp1[0], 0.0f);
-      for (int x = 1; x <= max_complex_idx; x += 2) {
-        const int fx = (x + 1) / 2;
-        const int fx_sym = cols - fx;
-        const float re1 = srcp1[x + 0];
-        const float im1 = srcp1[x + 1];
-        const float re2 = srcp2[x + 0];
-        const float im2 = srcp2[x + 1];
-        dst[fx] = cv::Vec2f(re1, im1);
-        dst[fx_sym] = cv::Vec2f(re2, -im2);
-      }
-      if (is_even) {
-        dst[cols / 2] = cv::Vec2f(srcp1[cols - 1], 0.0f);
-      }
-    }
-  });
-}
-
-void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
-    cv::OutputArray _complexSpectrum)
-{
-  const int rows = ccsSpectrum.rows;
-  const int cols = ccsSpectrum.cols;
-  const bool is_even = (cols % 2 == 0);
 
   _complexSpectrum.create(rows, cols, CV_32FC2);
   cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
@@ -1556,39 +1588,438 @@ void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
   uint8_t * dst_base = complexSpectrum.ptr();
   const size_t dst_step = complexSpectrum.step;
 
-  // Hermitian symmetry: H(u,v) = H*(-u,-v)
   parallel_for(0, rows, [=](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
       const int y_sym = (y == 0) ? 0 : (rows - y);
-      const float * srcp1 = (const float*)(ccs_base + y * src_step);
-      const float * srcp2 = (const float*)(ccs_base + y_sym * src_step);
+
+      const float * src_current = (const float*)(ccs_base + y * src_step);
+      const float * src_symmetric = (const float*)(ccs_base + y_sym * src_step);
       cv::Vec2f * __restrict dst = (cv::Vec2f*)(dst_base + y * dst_step);
 
-      // Sign for vertical frequency y (horizontal fx = 0)
-      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
-      const float sign_y = (y % 2 == 0) ? 1.0f : -1.0f;
-
-      dst[0] = cv::Vec2f(srcp1[0] * sign_y, 0.0f);
-      for (int x = 1; x <= max_complex_idx; x += 2) {
-        const int fx = (x + 1) / 2;
-        const int fx_sym = cols - fx;
-
-        const float re1 = srcp1[x + 0];
-        const float im1 = srcp1[x + 1];
-        const float re2 = srcp2[x + 0];
-        const float im2 = srcp2[x + 1];
-
-        const float sign_left = ((fx % 2 == 0) ? 1.0f : -1.0f) * sign_y;
-        const float sign_right = ((fx_sym % 2 == 0) ? 1.0f : -1.0f) * sign_y;
-
-        dst[fx] = cv::Vec2f(re1 * sign_left, im1 * sign_left);
-        dst[fx_sym] = cv::Vec2f(re2 * sign_right, -im2 * sign_right);
+      if (y == 0 || (y * 2 == rows)) {
+        dst[0] = cv::Vec2f(src_current[0], 0.0f);
       }
-      if (is_even) {
+      else if (y < y_sym) {
+        const float re = src_current[0];
+        const float im = src_symmetric[0];
+        dst[0] = cv::Vec2f(re, im);
+      }
+      else {
+        const float re = src_symmetric[0];
+        const float im = -src_current[0];
+        dst[0] = cv::Vec2f(re, im);
+      }
+
+      const int num_complex = (cols - 1) / 2;
+      for (int fx = 1; fx <= num_complex; ++fx) {
+        const int src_idx = 2 * fx - 1;
+        const float re = src_current[src_idx];
+        const float im = src_current[src_idx + 1];
+        dst[fx] = cv::Vec2f(re, im);
+      }
+
+      // H(fx_sym, y) = H*(fx, y_sym)
+      for (int fx = 1; fx <= num_complex; ++fx) {
+        const int fx_sym = cols - fx;
+        const int src_idx = 2 * fx - 1;
+        const float re_sym = src_symmetric[src_idx];
+        const float im_sym = src_symmetric[src_idx + 1];
+        dst[fx_sym] = cv::Vec2f(re_sym, -im_sym);
+      }
+
+      if ((cols & 1) == 0) {
         const int fx_nyq = cols / 2;
-        const float sign_nyq = ((fx_nyq % 2 == 0) ? 1.0f : -1.0f) * sign_y;
-        dst[fx_nyq] = cv::Vec2f(srcp1[cols - 1] * sign_nyq, 0.0f);
+        if (y == 0 || (y * 2 == rows)) {
+          dst[fx_nyq] = cv::Vec2f(src_current[cols - 1], 0.0f);
+        }
+        else if (y < y_sym) {
+          const float re = src_current[cols - 1];
+          const float im = src_symmetric[cols - 1];
+          dst[fx_nyq] = cv::Vec2f(re, im);
+        }
+        else {
+          const float re = src_symmetric[cols - 1];
+          const float im = -src_current[cols - 1];
+          dst[fx_nyq] = cv::Vec2f(re, im);
+        }
       }
     }
   });
+}
+
+/**
+ * CV_32FC1 CCS input -> CV_32FC2 Complex output with sign alternating (fftShift)
+ * */
+void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
+    cv::OutputArray _complexSpectrum)
+{
+  const int rows = ccsSpectrum.rows;
+  const int cols = ccsSpectrum.cols;
+
+  _complexSpectrum.create(rows, cols, CV_32FC2);
+  cv::Mat2f complexSpectrum = _complexSpectrum.getMatRef();
+
+  const uint8_t * ccs_base = ccsSpectrum.ptr();
+  const size_t src_step = ccsSpectrum.step;
+
+  uint8_t * dst_base = complexSpectrum.ptr();
+  const size_t dst_step = complexSpectrum.step;
+
+  parallel_for(0, rows, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+
+      const float * src_current = (const float*)(ccs_base + y * src_step);
+      const float * src_symmetric = (const float*)(ccs_base + y_sym * src_step);
+      cv::Vec2f * __restrict dst = (cv::Vec2f*)(dst_base + y * dst_step);
+
+      const float sign_y = (y & 1) ? -1.0f : 1.0f;
+
+      // DC (fx = 0)
+      if (y == 0 || (y * 2 == rows)) {
+        dst[0] = cv::Vec2f(src_current[0] * sign_y, 0.0f);
+      }
+      else if (y < y_sym) {
+        const float re = src_current[0];
+        const float im = src_symmetric[0];
+        dst[0] = cv::Vec2f(re * sign_y, im * sign_y);
+      }
+      else {
+        const float re = src_symmetric[0];
+        const float im = -src_current[0];
+        dst[0] = cv::Vec2f(re * sign_y, im * sign_y);
+      }
+
+      const int num_complex = (cols - 1) / 2;
+      for (int fx = 1; fx <= num_complex; ++fx) {
+        const int src_idx = 2 * fx - 1;
+        const float re = src_current[src_idx];
+        const float im = src_current[src_idx + 1];
+        const float sign_fx = (fx & 1) ? -1.0f : 1.0f;
+        const float total_sign = sign_fx * sign_y;
+        dst[fx] = cv::Vec2f(re * total_sign, im * total_sign);
+      }
+
+      // H(fx_sym, y) = H*(fx, y_sym)
+      for (int fx = 1; fx <= num_complex; ++fx) {
+        const int fx_sym = cols - fx;
+        const int src_idx = 2 * fx - 1;
+        const float re_sym = src_symmetric[src_idx];
+        const float im_sym = src_symmetric[src_idx + 1];
+        const float sign_fx_sym = (fx_sym & 1) ? -1.0f : 1.0f;
+        const float total_sign = sign_fx_sym * sign_y;
+        dst[fx_sym] = cv::Vec2f(re_sym * total_sign, -im_sym * total_sign);
+      }
+
+      if ((cols & 1) == 0) {
+        const int fx_nyq = cols / 2;
+        const float sign_nyq = (fx_nyq & 1) ? -1.0f : 1.0f;
+        const float total_sign = sign_nyq * sign_y;
+
+        if (y == 0 || (y * 2 == rows)) {
+          dst[fx_nyq] = cv::Vec2f(src_current[cols - 1] * total_sign, 0.0f);
+        }
+        else if (y < y_sym) {
+          const float re = src_current[cols - 1];
+          const float im = src_symmetric[cols - 1];
+          dst[fx_nyq] = cv::Vec2f(re * total_sign, im * total_sign);
+        }
+        else {
+          const float re = src_symmetric[cols - 1];
+          const float im = -src_current[cols - 1];
+          dst[fx_nyq] = cv::Vec2f(re * total_sign, im * total_sign);
+        }
+      }
+    }
+  });
+}
+
+/**
+ * @brief Computes the bandpass-filtered autocorrelation spectrum (energy map) in CCS format.
+ *
+ * This function performs an in-place-like multiplication of a complex CCS spectrum by a real-valued
+ * amplitude filter. It automatically handles the internal layout symmetry of the OpenCV CCS format
+ * and eliminates the imaginary components, as the autocorrelation of a real signal is strictly real.
+ *
+ * @param[in] ccsSpectrum Input spectrum matrix of type CV_32FC1, packed in OpenCV's CCS
+ *                        (Complex Conjugate Symmetric) format (e.g., generated by cv::dft with DFT_REAL_OUTPUT).
+ *
+ * @param[in] filter Precomputed amplitude filter matrix of type CV_32FC1 and of the EXACT SAME SIZE
+ *                   as ccsSpectrum.
+ *                   CRITICAL LAYOUT REQUIREMENTS:
+ *                   - Must be in NORMAL UNPACKED 2D FFT layout (NOT a CCS matrix).
+ *                   - Contains only the REAL PLANE (magnitude/amplitude weights).
+ *                   - DC component (zero frequency) must be located strictly at the top-left pixel (0,0).
+ *                   - High frequencies (Nyquist) must converge toward the center of the matrix (rows/2, cols/2).
+ *                   - All 4 quadrants must be explicitly present and symmetric relative to the Nyquist axes.
+ *                   - To bake in an embedded fftShift, multiply the filter values by the alternating
+ *                     sign mask beforehand during its generation.
+ *
+ * @param[out] _autoCrossSpectrum Output filtered autocorrelation spectrum matrix of type CV_32FC1
+ *                                in CCS format.
+ *
+ * @return double The total integrated bandpass energy of the filtered spectrum,
+ */
+double fftAutoCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum, const cv::Mat1f & filter,
+    cv::OutputArray _autoCrossSpectrum)
+{
+  if ( ccsSpectrum.empty() ) {
+    _autoCrossSpectrum.release();
+    return 0;
+  }
+
+  if( filter.size() != ccsSpectrum.size() ) {
+    CF_ERROR("Bad arguments: Filter size %dx%d not match to CCS spectrum size %dx%d",
+        filter.cols, filter.rows, ccsSpectrum.cols, ccsSpectrum.rows);
+    return -1;
+  }
+
+  const cv::Size fftSize = ccsSpectrum.size();
+  const int cols = fftSize.width;
+  const int rows = fftSize.height;
+  const bool is_even = (cols % 2 == 0);
+
+  _autoCrossSpectrum.create(fftSize, CV_32FC1);
+  cv::Mat1f autoCrossSpectrum = _autoCrossSpectrum.getMatRef();
+
+  const uint8_t * spec1_base = ccsSpectrum.ptr();
+  const size_t spec1_stride = ccsSpectrum.step;
+
+  const uint8_t * filter_base = filter.ptr();
+  const size_t filter_stride = filter.step;
+
+  uint8_t * cross_base = autoCrossSpectrum.ptr();
+  const size_t cross_stride = autoCrossSpectrum.step;
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<float> total_energy(0.0f);
+
+  parallel_for(0, rows, [=, &total_energy](const auto & range) {
+    float local_energy = 0.0f;
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+
+      const float * srcp1 = (const float * )(spec1_base + y * spec1_stride);
+      const float * srcp1_sym = (const float * )(spec1_base + y_sym * spec1_stride);
+      const float * fltp = (const float * )(filter_base + y * filter_stride);
+
+      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
+
+      if (true) { // DC (X = 0)
+        const float gw = fltp[0];
+
+        if (y == 0 || (y * 2 == rows)) {
+          const float a = srcp1[0];
+          const float mag2 = gw * a * a;
+          dstp[0] = mag2;
+          local_energy += mag2 * mag2;
+        }
+        else if (y < y_sym) {
+          const float a = srcp1[0];
+          const float b = srcp1_sym[0];
+          const float mag2 = gw * (a * a + b * b);
+          dstp[0] = mag2;
+          local_energy += 2 * mag2 * mag2;
+        }
+        else {
+          dstp[0] = 0.0f;
+        }
+      }
+
+      // INNER COLUMNS
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+      for( int x = 1; x <= max_complex_idx; x += 2 ) {
+        const int fx = (x + 1) / 2;
+        const float gw = fltp[fx];
+        const float a = srcp1[x];
+        const float b = srcp1[x + 1];
+        const float mag2 = gw * (a * a + b * b);
+
+        dstp[x + 0] = mag2;
+        dstp[x + 1] = 0.0f;
+        local_energy += 2 * mag2 * mag2;
+      }
+
+      // Last column X = COLS - 1 (Nyquist)
+      if( is_even ) {
+        const int fx_nyq = cols / 2;
+        const float gw = fltp[fx_nyq];
+
+        if (y == 0 || (y * 2 == rows)) {
+          const float a = srcp1[cols - 1];
+          const float mag2 = gw * a * a;
+          dstp[cols - 1] = mag2;
+          local_energy += mag2 * mag2;
+        }
+        else if (y < y_sym) {
+          const float a = srcp1[cols - 1];
+          const float b = srcp1_sym[cols - 1];
+          const float mag2 = gw * (a * a + b * b);
+          dstp[cols - 1] = mag2;
+          local_energy += 2 * mag2 * mag2;
+        }
+        else {
+          dstp[cols - 1] = 0.0f;
+        }
+      }
+    }
+
+    float current = total_energy.load(std::memory_order_relaxed);
+    while (!total_energy.compare_exchange_weak(current, current + local_energy,
+            std::memory_order_relaxed));
+  });
+
+  return total_energy.load();
+}
+
+/**
+ * Little crazy code due to some nuances with CCS layout
+ */
+double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
+{
+  if ( ccsSpectrum1.empty() && ccsSpectrum2.empty() ) {
+    _crossSpectrum.release();
+    return 0;
+  }
+
+  if( ccsSpectrum1.size() != ccsSpectrum2.size() ) {
+    CF_ERROR("Bad arguments: CCS sspectrim sizes %dx%d and %dx%d are different",
+        ccsSpectrum1.cols, ccsSpectrum1.rows, ccsSpectrum2.cols, ccsSpectrum2.rows);
+    return -1;
+  }
+
+  const cv::Size fftSize = ccsSpectrum1.size();
+  if( filter.size() != fftSize ) {
+    CF_ERROR("Bad arguments: Filter size %dx%d not match to CCS spectrum size %dx%d",
+        filter.cols, filter.rows, fftSize.width, fftSize.height);
+    return -1;
+  }
+
+  const int rows = fftSize.height;
+  const int cols = fftSize.width;
+
+  _crossSpectrum.create(fftSize, CV_32FC1);
+  cv::Mat1f crossSpectrum = _crossSpectrum.getMatRef();
+
+  const bool is_even = (cols % 2 == 0);
+
+  const uint8_t * spec1_base = ccsSpectrum1.ptr();
+  const size_t spec1_stride = ccsSpectrum1.step;
+
+  const uint8_t * spec2_base = ccsSpectrum2.ptr();
+  const size_t spec2_stride = ccsSpectrum2.step;
+
+  const uint8_t * filter_base = filter.ptr();
+  const size_t filter_stride = filter.step;
+
+  uint8_t * cross_base = crossSpectrum.ptr();
+  const size_t cross_stride = crossSpectrum.step;
+
+  alignas(std::hardware_destructive_interference_size)
+    std::atomic<float> total_energy(0.0f);
+
+  parallel_for(0, rows, [=, &total_energy](const auto & range) {
+    float local_energy = 0.0f;
+
+    for( int y = rbegin(range); y < rend(range); ++y ) {
+      const int y_sym = (y == 0) ? 0 : (rows - y);
+
+      const float * srcp1 = (const float * )(spec1_base + y * spec1_stride);
+      const float * srcp1_sym = (const float * )(spec1_base + y_sym * spec1_stride);
+
+      const float * srcp2 = (const float * )(spec2_base + y * spec2_stride);
+      const float * srcp2_sym = (const float * )(spec2_base + y_sym * spec2_stride);
+
+      const float * fltp = (const float * )(filter_base + y * filter_stride);
+
+      float * __restrict dstp = (float *)(cross_base + y * cross_stride);
+      float * __restrict dstp_sym = (float *)(cross_base + y_sym * cross_stride);
+
+      if (true) { // DC (X = 0)
+        const float gw = fltp[0];
+
+        if (y == 0 || (y * 2 == rows)) {
+          // Pure Real points at the matrix corners (unique, weight = 1)
+          const float a1 = srcp1[0];
+          const float a2 = srcp2[0];
+          const float re = gw * a1 * a2;
+          dstp[0] = re;
+          local_energy += re * re;
+        }
+        else if (y < y_sym) {
+          // Upper half of the DC column (complex pair)
+          // Im(y) from symmetric rows of the lower quadrant
+          // Complex multiplication with conjugation of the second spectrum: (a1+ib1)*(a2-ib2)
+          const float a1 = srcp1[0];
+          const float b1 = srcp1_sym[0];
+          const float a2 = srcp2[0];
+          const float b2 = srcp2_sym[0];
+          const float re = gw * (a1 * a2 + b1 * b2);
+          const float im = gw * (b1 * a2 - a1 * b2);
+
+          // The imaginary part for the DC column is written to the symmetric cell in the lower quadrant!
+          // Weight = 2; accounts for the contribution of both this cell and the symmetric cell.
+          dstp[0] = re;
+          dstp_sym[0] = im;
+          local_energy += 2.0f * (re * re + im * im);
+        }
+        // The lower half of the column (y > y_sym) is filled automatically
+        // via dstp_sym[0] during the processing of the upper half.
+      }
+
+      // INTERNAL COLUMNS (Complex Re/Im pairs lie together)
+      // Weight = 2 since the right mirrored part of the spectrum along the X-axis is not processed in the loop.
+      const int max_complex_idx = is_even ? (cols - 2) : (cols - 1);
+      for( int x = 1; x <= max_complex_idx; x += 2 ) {
+        const int fx = (x + 1) / 2;
+        const float gw = fltp[fx];
+        const float a1 = srcp1[x];
+        const float b1 = srcp1[x + 1];
+        const float a2 = srcp2[x];
+        const float b2 = srcp2[x + 1];
+        const float re = gw * (a1 * a2 + b1 * b2);
+        const float im = gw * (b1 * a2 - a1 * b2);
+        dstp[x + 0] = re;
+        dstp[x + 1] = im;
+        local_energy += 2.0f * (re * re + im * im);
+      }
+
+      // Last column X = COLS - 1, Nyquist frequency if width is even
+      if( is_even ) {
+        const int fx_nyq = cols / 2;
+        const float gw = fltp[fx_nyq];
+
+        if (y == 0 || (y * 2 == rows)) {
+          // Pure real Nyquist points at the corners (unique, weight = 1)
+          const float a1 = srcp1[cols - 1];
+          const float a2 = srcp2[cols - 1];
+          const float re = gw * a1 * a2;
+          dstp[cols - 1] = re;
+          local_energy += re * re;
+        }
+        else if (y < y_sym) {
+          // Upper half of the Nyquist column (complex pair)
+          // Imaginary part goes into the symmetric string
+          // Weight = 2
+          const float a1 = srcp1[cols - 1];
+          const float b1 = srcp1_sym[cols - 1];
+          const float a2 = srcp2[cols - 1];
+          const float b2 = srcp2_sym[cols - 1];
+          const float re = gw * (a1 * a2 + b1 * b2);
+          const float im = gw * (b1 * a2 - a1 * b2);
+          dstp[cols - 1] = re;
+          dstp_sym[cols - 1] = im;
+          local_energy += 2.0f * (re * re + im * im);
+        }
+      }
+    }
+
+    float current = total_energy.load(std::memory_order_relaxed);
+    while (!total_energy.compare_exchange_weak(current, current + local_energy,
+            std::memory_order_relaxed));
+  });
+
+  return total_energy.load();
 }

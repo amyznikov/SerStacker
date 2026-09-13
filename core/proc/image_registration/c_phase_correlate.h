@@ -17,6 +17,8 @@ struct c_phase_correlate_options
 {
   double downscale_factor = 4;
   double gsigma = 10;
+  double csigma = 0.5;
+  double calpha = 0.05;
   int apodization_size = 21;
 };
 
@@ -40,6 +42,8 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   using S = c_phase_correlate_options;
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
   ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "");
+  ctlbind(ctls, "csigma:", ctx(&S::csigma),  "");
+  ctlbind(ctls, "calpha:", ctx(&S::calpha),  "");
   ctlbind(ctls, "apodization [px]:",  ctx(&S::apodization_size), "");
 }
 
@@ -67,6 +71,7 @@ public:
     return _gsigma;
   }
 
+
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize,
       double downscaleFactor);
 
@@ -74,7 +79,6 @@ public: // public access for debug & visualization purposes
   bool initialized() const {
     return _initialized;
   }
-
   const cv::Size & fftSize() const {
     return _fftSize;
   }
@@ -117,8 +121,12 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f distmap() const {
     return _distmap;
   }
+  double crossSpectrumEnergy() const {
+    return _crossSpectrumEnergy;
+  }
 
 protected: // internal helpers
+  void generateBandpassFilter();
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
   double computeCorrelationMap();
   cv::Point2f findSubpixelCentroid(const cv::Mat1f & correlationMap) const;
@@ -127,8 +135,11 @@ protected: // internal helpers
 protected: // internal data
   double _downscale_factor = 4;
   double _gsigma = 0.1;
-  int _apodization_size = 21;
+  double _csigma = 0.5;
+  double _calpha = 0.05;
+  int _apodization_size = 31;
   cv::Size _fftSize;
+  cv::Size _expectedFrameSize;
   bool _initialized = false;
 
 protected: // Cache data
@@ -139,7 +150,12 @@ protected: // Cache data
   cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
   cv::Mat1f _currentSpectrum, _referenceSpectrum;
   cv::Mat1f _crossSpectrum, _correlationMap;
+  cv::Mat1f _bandpassFilter;
+  cv::Mat1f _crossMask;
   cv::Mat1f _distmap;
+  double _bandpassFilterNorm = 0;
+  double _crossSpectrumEnergy = 0;
 };
+
 
 #endif /* __c_phase_correlate_h__ */

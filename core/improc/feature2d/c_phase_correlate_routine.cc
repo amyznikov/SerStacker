@@ -53,6 +53,8 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "Display", CTL_CONTEXT(ctx, _display), "Select image to display");
   ctlbind(ctls, "downscaleFactor", ctx,  &this_class::downscaleFactor, &this_class::set_downscaleFactor, "");
   ctlbind(ctls, "gsigma", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
+  ctlbind(ctls, "csigma", ctx,  &this_class::csigma, &this_class::set_csigma, "");
+  ctlbind(ctls, "calpha", ctx,  &this_class::calpha, &this_class::set_calpha, "");
   ctlbind(ctls, "apodizationSize", ctx,  &this_class::apodizationSize, &this_class::set_apodizationSize, "");
   ctlbind(ctls, "fillMaskHoles", CTL_CONTEXT(ctx, _fillMaskHoles), "Set checked to call geo_fill_holes(currentMask)");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
@@ -139,9 +141,17 @@ static void shiftImage(cv::InputArray src, cv::OutputArray dst, const cv::Vec2f&
 
 bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  if ( (!_initialized || _updateReferenceImage) && !reinitialize(image.size()) )  {
-    CF_ERROR("reinitialize() fails");
-    return false;
+  if ( (!_initialized || _updateReferenceImage) )  {
+    if ( !reinitialize(image.size())) {
+      CF_ERROR("reinitialize() fails");
+      return false;
+    }
+    if ( !_updateReferenceImage && !_referenceImage.empty() ) {
+      if ( !setReferenceImage(_referenceImage, _referenceMask) ) {
+        CF_ERROR("setReferenceImage() fails");
+        return false;
+      }
+    }
   }
 
   if ( _referenceImage.empty() || _updateReferenceImage ) {
@@ -230,7 +240,10 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         break;
       }
       case DISPLAY_CORRELATION_MAP: {
-        pc.correlationMap().copyTo(image);
+        const cv::Size & fftSize = pc.fftSize();
+        const double crossSpectrumEnergy = pc.crossSpectrumEnergy();
+        const double combinedScale = 1024.0 / std::sqrt(fftSize.area() * crossSpectrumEnergy);
+        pc.correlationMap().convertTo(image, CV_32F, combinedScale);
         mask.release();
         break;
       }

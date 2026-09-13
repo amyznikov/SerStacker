@@ -57,6 +57,25 @@ protected:
   {
     return opts.gsigma;
   }
+  void set_csigma(double v)
+  {
+    opts.csigma = v;
+    _initialized = false;
+  }
+  double csigma() const
+  {
+    return opts.csigma;
+  }
+  void set_calpha(double v)
+  {
+    opts.calpha = v;
+    _initialized = false;
+  }
+  double calpha() const
+  {
+    return opts.calpha;
+  }
+
   void set_apodizationSize(int v)
   {
     opts.apodization_size = v;

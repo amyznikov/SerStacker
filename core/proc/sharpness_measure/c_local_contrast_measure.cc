@@ -7,54 +7,7 @@
 
 #include "c_local_contrast_measure.h"
 #include <core/proc/reduce_channels.h>
-#include <core/proc/weighted_mean.h>
 #include <core/debug.h>
-
-
-//static void compute_gradient(const cv::Mat & src, cv::Mat & g, double delta = 0)
-//{
-//  INSTRUMENT_REGION("");
-//
-//  static thread_local const cv::Matx<float, 1, 5> K(
-//      (+1.f / 12),
-//      (-8.f / 12),
-//      0.f,
-//      (+8.f / 12),
-//      (-1.f / 12));
-//
-//  constexpr int ddepth = CV_32F;
-//
-//  cv::Mat gx, gy;
-//
-//  cv::filter2D(src, gx, ddepth, K, cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
-//  cv::filter2D(src, gy, ddepth, K.t(), cv::Point(-1, -1), delta, cv::BORDER_DEFAULT);
-//  cv::magnitude(gx, gy, g);
-//}
-
-//
-//// https://jblindsay.github.io/ghrg/Whitebox/Help/FilterLaplacian.html
-//static void compute_laplacian(const cv::Mat & src, cv::Mat & l, double delta)
-//{
-//  static float k[5 * 5] = {
-//      0, 0, -1, 0, 0,
-//      0, -1, -2, -1, 0,
-//      -1, -2, 16, -2, -1,
-//      0, -1, -2, -1, 0,
-//      0, 0, -1, 0, 0,
-//  };
-//
-//  static const cv::Mat1f K =
-//      cv::Mat1f(5, 5, k) / 16.;
-//
-//  cv::filter2D(src, l, CV_32F, K, cv::Point(-1, -1), 0, cv::BORDER_REPLICATE);
-//  //cv::multiply(l, l, l);
-//  cv::absdiff(l, 0, l);
-//  if( delta > 0 ) {
-//    cv::add(l, delta, l);
-//  }
-//}
-
-
 
 static bool downscale(cv::InputArray src, cv::Mat & dst, int level, int border_mode = cv::BORDER_DEFAULT)
 {

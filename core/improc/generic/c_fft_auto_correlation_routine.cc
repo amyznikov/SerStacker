@@ -30,18 +30,33 @@ const c_enum_member * members_of<c_fft_auto_correlation_routine::DISPLAY>()
 /////////////////////////////////////
 namespace {
 
+static int getOptimalFFTSizeDown(int size)
+{
+  int sopt = cv::getOptimalDFTSize(size);
+  while ( sopt > 0 && sopt > size ) {
+    sopt = cv::getOptimalDFTSize(--size);
+  }
+  return sopt;
+}
+
+
 static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
 {
-  // Find the closest power of two (round mathematically to the nearest)
-  // cvRound(std::log2(v)) will select the power that is closest to the target
-  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-  // Return the size as 2^powX and 2^powY
+  const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
+  const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
+  return cv::Size(std::max(4,downscaledW), std::max(4,downscaledH));
 
-  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
-  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
-  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
-  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
-  return cv::Size(1 << powX, 1 << powY);
+//
+//  // Find the closest power of two (round mathematically to the nearest)
+//  // cvRound(std::log2(v)) will select the power that is closest to the target
+//  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
+//  // Return the size as 2^powX and 2^powY
+//
+//  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
+//  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
+//  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
+//  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
+//  return cv::Size(1 << powX, 1 << powY);
 }
 
 
@@ -186,10 +201,11 @@ void c_fft_auto_correlation_routine::generateBandpassFilter()
     });
   }
   else {
+    const double sgsigma = _gsigma / _downscaleFactor;
+    const float lambda2 = float(0.5 * CV_PI * CV_PI * sgsigma * sgsigma);
 
     const float inv_cols = float (1.0 / cols);
     const float inv_rows = float (1.0 / rows);
-    const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
 
     parallel_for(0, rows, [=](const auto & range) {
       for( int y = rbegin(range); y < rend(range); ++y ) {
@@ -354,9 +370,8 @@ bool c_fft_auto_correlation_routine::analyzeSpotGeometry()
   const int cy = rows / 2;
 
   // Approximate spot radius for given bbandpass filter sigma.
-  //const double Rspot = 1.35 * _gsigma;
-  //const double Rspot = _gsigma > 0 ? 0.75 * 1.35 * _gsigma : 21;
-  const double Rspot = 0.5 * _gsigma;
+  const double sgsigma = _gsigma / _downscaleFactor;
+  const double Rspot = 0.5 * sgsigma;
 
   // ROI around the central pixel
   const int R = std::max(3, cvCeil(Rspot));

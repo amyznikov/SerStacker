@@ -45,18 +45,6 @@ static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize, double do
   const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
   const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
   return cv::Size(std::max(4,downscaledW), std::max(4,downscaledH));
-
-//
-//  // Find the closest power of two (round mathematically to the nearest)
-//  // cvRound(std::log2(v)) will select the power that is closest to the target
-//  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-//  // Return the size as 2^powX and 2^powY
-//
-//  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
-//  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
-//  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
-//  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
-//  return cv::Size(1 << powX, 1 << powY);
 }
 
 

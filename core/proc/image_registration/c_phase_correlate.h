@@ -19,6 +19,7 @@ struct c_phase_correlate_options
   double gsigma = 10;
   double csigma = 0.5;
   double calpha = 0.0;
+  // FIXME: remove this functionality as now it has to be handled by bandpass filter itself
   int apodization_size = 0;
 };
 
@@ -121,15 +122,14 @@ public: // public access for debug & visualization purposes
   const cv::Mat1f distmap() const {
     return _distmap;
   }
-  double crossSpectrumEnergy() const {
-    return _crossSpectrumEnergy;
-  }
 
 protected: // internal helpers
   void generateBandpassFilter();
+  bool computeCorrelationMap();
+  double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
+
+  // FIXME: remove this functionality as now it has to be handled by bandpass filter itself
   void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
-  double computeCorrelationMap();
-  cv::Point2f findSubpixelCentroid(const cv::Mat1f & correlationMap) const;
 
 
 protected: // internal data
@@ -153,8 +153,6 @@ protected: // Cache data
   cv::Mat1f _bandpassFilter;
   cv::Mat1f _crossMask;
   cv::Mat1f _distmap;
-  double _bandpassFilterNorm = 0;
-  double _crossSpectrumEnergy = 0;
 };
 
 

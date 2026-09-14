@@ -10,6 +10,15 @@
 #include <core/proc/fft.h>
 #include <core/debug.h>
 
+static int getOptimalFFTSizeDown(int size)
+{
+  int sopt = cv::getOptimalDFTSize(size);
+  while ( sopt > 0 && sopt > size ) {
+    sopt = cv::getOptimalDFTSize(--size);
+  }
+  return sopt;
+}
+
 static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::InputArray srcMask,
     cv::Mat1f & outImage, cv::Mat1b & outMask,
     const cv::Size & fftSize,
@@ -83,16 +92,20 @@ static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Input
 
 cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
 {
-  // Find the closest power of two (round mathematically to the nearest)
-  // cvRound(std::log2(v)) will select the power that is closest to the target
-  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-  // Return the size as 2^powX and 2^powY
-
-  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
-  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
-  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
-  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
-  return cv::Size(1 << powX, 1 << powY);
+  const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
+  const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
+  return cv::Size(std::max(4,downscaledW), std::max(4,downscaledH));
+//
+//  // Find the closest power of two (round mathematically to the nearest)
+//  // cvRound(std::log2(v)) will select the power that is closest to the target
+//  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
+//  // Return the size as 2^powX and 2^powY
+//
+//  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
+//  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
+//  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
+//  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
+//  return cv::Size(1 << powX, 1 << powY);
 }
 
 
@@ -213,8 +226,8 @@ void c_phase_correlate::generateBandpassFilter()
     cv::multiply(_bandpassFilter, _crossMask, _bandpassFilter);
   }
 
-  _bandpassFilterNorm = cv::norm(_bandpassFilter, cv::NORM_L1);
-  cv::multiply(_bandpassFilter, 1. / _bandpassFilterNorm, _bandpassFilter);
+  cv::multiply(_bandpassFilter, 1. / cv::norm(_bandpassFilter, cv::NORM_L1),
+      _bandpassFilter);
 }
 
 
@@ -365,16 +378,21 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
   return true;
 }
 
-double c_phase_correlate::computeCorrelationMap()
+bool c_phase_correlate::computeCorrelationMap()
 {
-  _crossSpectrumEnergy =
+  const bool fOK =
       fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
           _bandpassFilter, _crossSpectrum);
+
+  if( !fOK ) {
+    CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
+    return false;
+  }
 
   cv::idft(_crossSpectrum, _correlationMap,
       cv::DFT_REAL_OUTPUT);
 
-  return _crossSpectrumEnergy;
+  return true;
 }
 
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
@@ -384,88 +402,28 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
     return -1;
   }
 
-  const double crossSpectrumEnergy = computeCorrelationMap();
-  if ( crossSpectrumEnergy <= 0 ) {
-    CF_ERROR("computeCorrelationMap() fails: crossSpectrumEnergy=%g", crossSpectrumEnergy);
+  if ( !computeCorrelationMap() ) {
+    CF_ERROR("computeCorrelationMap() fails");
     return -1;
   }
 
-  const int rows = _correlationMap.rows;
-  const int cols = _correlationMap.cols;
-  const cv::Point2f scaledTranslation = findSubpixelCentroid(_correlationMap);
+  cv::Point2f peakPos;
+  const double peakValue =
+      findSubpixelCentroid(_correlationMap,
+          peakPos);
 
-  /*
-   * Estimate correlation score as a fraction of the total spectral energy
-   * constructively interfered into cross-correlation spot.
-   * May be not perfectly precise due to limited pixel grid resolution.
-   * The approximate radius of the expected cross-corelation spot is estimated
-   * based on analytical FFT transform of filter response.
-   * */
-  // const double fsigma = M_SQRT2 / (CV_PI * _gsigma);
-  // const double r0 = 1 / (CV_PI * fsigma);
-  const double r0 = (_gsigma * M_SQRT1_2);
-  const int R = std::max(3, int(r0+1));
-  const double cx = scaledTranslation.x;
-  const double cy = scaledTranslation.y;
-  double absolute_spot_energy = 0.0;
-
-  // Scan the cross-correlation spot and accumulate total energy
-  for( int dy = -R; dy <= R; ++dy ) {
-    const int y = cvRound(cy) + dy;
-    if( y < 0 || y >= rows ) {
-      continue;
-    }
-
-    const float * rp = _correlationMap[y];
-    const double delta_y = double(y) - cy;
-    const double dy2 = delta_y * delta_y;
-
-    for( int dx = -R; dx <= R; ++dx ) {
-      const int x = cvRound(cx) + dx;
-      if( x < 0 || x >= cols ) {
-        continue;
-      }
-
-      const double delta_x = double(x) - cx;
-      const double dist = std::sqrt(delta_x * delta_x + dy2);
-      double pixel_weight = 0.0;
-      if( r0 < 1.5 ) {
-        pixel_weight = (dist <= R) ? 1.0 : 0.0;
-      }
-      else if( dist <= r0 - 0.5 ) {
-        pixel_weight = 1.0;
-      }
-      else if( dist >= r0 + 0.5 ) {
-        pixel_weight = 0.0;
-      }
-      else {
-        pixel_weight = (r0 + 0.5 - dist);
-      }
-
-      if( pixel_weight > 0.0 ) {
-        const double val = rp[x];
-        absolute_spot_energy += pixel_weight * val * val;
-      }
-    }
-  }
-
-  // +Compensate for idft energy scaling
-  const double normalized_spot_energy = absolute_spot_energy / (rows * cols);
-  const double correlationScore = normalized_spot_energy / crossSpectrumEnergy;
-  const double scaledDx = scaledTranslation.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
-  const double scaledDy = scaledTranslation.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
+  // Compensate for image resolution scale
+  const double scaledDx = peakPos.x - _fftSize.width / 2 + _referenceCropOffset.x - _currentCropOffset.x;
+  const double scaledDy = peakPos.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
   outputTranslation[0] = float(-scaledDx * _downscale_factor);
   outputTranslation[1] = float(-scaledDy * _downscale_factor);
+//  CF_DEBUG("\ngsigma=%g peak=%g Tx=%g Ty=%g",_gsigma, peakValue,
+//      outputTranslation[0], outputTranslation[1]);
 
-  CF_DEBUG(
-      "\ngsigma=%g r0=%g box=%dx%d crossSpectrumEnergy=%g spot_energy=%g correlationScore=%g Tx=%g Ty=%g",
-      _gsigma, r0, 2*R+1, 2*R+1, crossSpectrumEnergy, normalized_spot_energy, correlationScore,
-      outputTranslation[0], outputTranslation[1]);
-
-  return correlationScore;
+  return peakValue;
 }
 
-cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap) const
+double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
 {
   const int rows = correlationMap.rows;
   const int cols = correlationMap.cols;
@@ -475,9 +433,9 @@ cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlation
 
   const int y0 = maxIdx[0];
   const int x0 = maxIdx[1];
-
   if (x0 <= 0 || x0 >= cols - 1 || y0 <= 0 || y0 >= rows - 1) {
-    return cv::Point2f(float(x0), float(y0));
+    peakPos = cv::Point2f(float(x0), float(y0));
+    return -1;
   }
 
   // Least-squares approximation of a paraboloid over a 3x3 neighborhood
@@ -504,9 +462,11 @@ cv::Point2f c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlation
   const float adaptive_thresh = std::abs(z_11) * 1e-6f;
   const float deltaX = std::abs(A) > adaptive_thresh ? -C / (2.0f * A) : 0.0f;
   const float deltaY = std::abs(B) > adaptive_thresh ? -D / (2.0f * B) : 0.0f;
-  // CF_DEBUG("x0=%d y0=%d, deltaX=%g deltaY=%g", x0, y0, deltaX, deltaY );
 
-  return cv::Point2f(float(x0 + deltaX), float(y0 + deltaY));
+  peakPos.x = float(x0 + deltaX);
+  peakPos.y = float(y0 + deltaY);
+
+  return correlationMap(y0, x0);
 }
 
 

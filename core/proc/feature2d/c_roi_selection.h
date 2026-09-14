@@ -17,6 +17,7 @@ enum ROI_SELECTION_MODE {
   ROI_SELECTION_RECT,
   ROI_SELECTION_PLANETARY_DISK,
   ROI_SELECTION_GUI,
+  ROI_SELECTION_CENTER_RECT,
   // ROI_SELECTION_MAX_CONNECTED_COMPONENT,
 };
 
@@ -29,8 +30,12 @@ struct c_roi_selection_options
   bool fixOutputSize = false;
 
   struct {
-    cv::Rect rc;
+    cv::Rect rc = cv::Rect(0,0, 100, 100) ;
   } rectSelection;
+
+  struct {
+    cv::Size size = cv::Size(1024, 1024);
+  } centerRectSelection;
 
   struct {
     c_simple_planetary_disk_detector_options opts;
@@ -65,6 +70,10 @@ inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_context<Roo
 
   ctlbind_expandable_group(ctls, "RECTANGLE", [&, ctx = CTL_CONTEXT(ctx, rectSelection)]() {
     ctlbind(ctls, "ROI:", CTL_CONTEXT(ctx, rc), "");
+  });
+
+  ctlbind_expandable_group(ctls, "CENTER", [&, ctx = CTL_CONTEXT(ctx, centerRectSelection)]() {
+    ctlbind(ctls, "Size:", CTL_CONTEXT(ctx, size), "");
   });
 
   ctlbind_expandable_group(ctls, "PLANETARY DISK", [&, ctx = CTL_CONTEXT(ctx, planetaryDiskSelection)]() {

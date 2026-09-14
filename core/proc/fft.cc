@@ -2024,25 +2024,50 @@ double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat
   return total_energy.load();
 }
 
-double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
+/**
+ * @brief Computes the weighted cross-power spectrum of two spectra packed in OpenCV CCS format.
+ *
+ * This function performs element-wise cross-multiplication of two spectra with conjugation of the
+ * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
+ * Mathematically, for each frequency it computes: \f$ DST = filter \cdot \frac{S_1 \cdot S_2^*}{|S_1 \cdot S_2^*|} \f$
+ *
+ * @note The algorithm is optimized for multi-threaded execution (via parallel_for) and operates directly
+ * on the packed OpenCV CCS (Complex Conjugate Symmetrical) format. This eliminates redundant memory
+ * allocations for full complex matrices.
+ *
+ * @note **Normalization & Correlation Peak Mechanics:**
+ * If the input `filter` is pre-normalized using the L1-norm to unity (i.e., sum(gw) = 1), then the subsequent
+ * call to inverse Fourier transform `cv::idft(..., cv::DFT_REAL_OUTPUT)` WITHOUT the `cv::DFT_SCALE` flag
+ * will yield a peak value of strictly **1.0** on the autocorrelation map (given a perfect match). This occurs
+ * because the \f$1/N\f$ scale introduced by the filter's L1-normalization perfectly cancels out the internal \f$N\f$
+ * scaling factor inherent to OpenCV's unscaled IDFT.
+ *
+ * @param[in] ccsSpectrum1 First input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] ccsSpectrum2 Second input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] filter Real bandpass filter matrix (frequency weights) matching the size of the input spectra.
+ * @param[out] _crossSpectrum Output filtered cross-spectrum in CCS format (CV_32FC1).
+ *
+ * @return Returns false in case of a size mismatch error.
+ */
+bool fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum)
 {
   if ( ccsSpectrum1.empty() && ccsSpectrum2.empty() ) {
     _crossSpectrum.release();
-    return 0;
+    return false;
   }
 
   if( ccsSpectrum1.size() != ccsSpectrum2.size() ) {
     CF_ERROR("Bad arguments: CCS spectrum sizes %dx%d and %dx%d are different",
         ccsSpectrum1.cols, ccsSpectrum1.rows, ccsSpectrum2.cols, ccsSpectrum2.rows);
-    return -1;
+    return false;
   }
 
   const cv::Size fftSize = ccsSpectrum1.size();
   if( filter.size() != fftSize ) {
     CF_ERROR("Bad arguments: Filter size %dx%d not match to CCS spectrum size %dx%d",
         filter.cols, filter.rows, fftSize.width, fftSize.height);
-    return -1;
+    return false;
   }
 
   const int rows = fftSize.height;
@@ -2065,14 +2090,10 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
   uint8_t * cross_base = crossSpectrum.ptr();
   const size_t cross_stride = crossSpectrum.step;
 
-  alignas(std::hardware_destructive_interference_size)
-    std::atomic<float> total_energy(0.0f);
-
   static constexpr float safe_min =
       std::numeric_limits<float>::min();
 
-  parallel_for(0, rows, [=, &total_energy](const auto & range) {
-    float local_energy = 0.0f;
+  parallel_for(0, rows, [=](const auto & range) {
 
     for( int y = rbegin(range); y < rend(range); ++y ) {
       const int y_sym = (y == 0) ? 0 : (rows - y);
@@ -2103,7 +2124,6 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           else {
             dstp[0] = 0.0f;
           }
-          local_energy += gw * gw;
         }
         else if (y < y_sym) {
           // Upper half of the DC column (complex pair)
@@ -2127,8 +2147,6 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
             dstp[0] = 0.0f;
             dstp_sym[0] = 0.0f;
           }
-
-          local_energy += 2.0f * gw * gw;
         }
       }
 
@@ -2156,8 +2174,6 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           dstp[x + 0] = 0.0f;
           dstp[x + 1] = 0.0f;
         }
-
-        local_energy += 2.0f * gw * gw;
       }
 
       // Last column X = COLS - 1, Nyquist frequency if width is even
@@ -2177,7 +2193,6 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
           else {
             dstp[cols - 1] = 0.0f;
           }
-          local_energy += gw * gw;
         }
         else if (y < y_sym) {
           // Upper half of the Nyquist column (complex pair)
@@ -2201,16 +2216,10 @@ double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1,
             dstp[cols - 1] = 0.0f;
             dstp_sym[cols - 1] = 0.0f;
           }
-
-          local_energy += 2.0f * gw * gw;
         }
       }
     }
-
-    float current = total_energy.load(std::memory_order_relaxed);
-    while (!total_energy.compare_exchange_weak(current, current + local_energy,
-            std::memory_order_relaxed));
   });
 
-  return total_energy.load();
+  return true;
 }

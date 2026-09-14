@@ -15,6 +15,7 @@ const c_enum_member * members_of<ROI_SELECTION_MODE>()
   static const c_enum_member members[] = {
       { ROI_SELECTION_NONE, "NONE", },
       { ROI_SELECTION_RECT, "RECTANGLE", },
+      { ROI_SELECTION_CENTER_RECT, "CENTER", },
       { ROI_SELECTION_PLANETARY_DISK, "PLANETARY_DISK", },
       { ROI_SELECTION_GUI, "GUI", },
       { ROI_SELECTION_NONE, },
@@ -38,6 +39,18 @@ bool select_image_roi(const c_roi_selection_options & opts,
     }
     case ROI_SELECTION_RECT: {
       fOk = !(roi = opts.rectSelection.rc).empty();
+      break;
+    }
+    case ROI_SELECTION_CENTER_RECT: {
+      if( !opts.centerRectSelection.size.empty() ) {
+        const int cx = size.width / 2;
+        const int cy = size.height / 2;
+        roi.width = opts.centerRectSelection.size.width;
+        roi.height = opts.centerRectSelection.size.height;
+        roi.x = cx - roi.width / 2;
+        roi.y = cy - roi.height / 2;
+        fOk = true;
+      }
       break;
     }
     case ROI_SELECTION_GUI: {
@@ -149,6 +162,9 @@ bool serialize_base_roi_selection_options(c_config_setting section, bool save,
 
   if ( auto group = SERIALIZE_GROUP(section, save, "rectSelection") ) {
     SERIALIZE_OPTION(group, save, opts.rectSelection, rc );
+  }
+  if ( auto group = SERIALIZE_GROUP(section, save, "centerRectSelection") ) {
+    SERIALIZE_OPTION(group, save, opts.centerRectSelection, size );
   }
 
   if( auto group = SERIALIZE_GROUP(section, save, "planetaryDiskSelection") ) {

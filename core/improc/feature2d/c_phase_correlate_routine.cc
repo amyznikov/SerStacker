@@ -174,7 +174,7 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
     pc.setCurrentImage(_currentImage, _currentMask);
     score = pc.compute(Translation);
     if ( _printScores ) {
-      CF_DEBUG("score: %g T: x=%g y=%g", score, Translation[0], Translation[1]);
+      CF_DEBUG("score: %7.4f Tx=%+9.3f Ty=%+9.3f", score, Translation[0], Translation[1]);
     }
 
     switch (_display)
@@ -240,10 +240,7 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         break;
       }
       case DISPLAY_CORRELATION_MAP: {
-        const cv::Size & fftSize = pc.fftSize();
-        const double crossSpectrumEnergy = pc.crossSpectrumEnergy();
-        const double combinedScale = 1024.0 / std::sqrt(fftSize.area() * crossSpectrumEnergy);
-        pc.correlationMap().convertTo(image, CV_32F, combinedScale);
+        pc.correlationMap().copyTo(image);
         mask.release();
         break;
       }

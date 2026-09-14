@@ -222,7 +222,33 @@ double fftAutoCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum, const cv::
 double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
-double fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
+/**
+ * @brief Computes the weighted cross-power spectrum of two spectra packed in OpenCV CCS format.
+ *
+ * This function performs element-wise cross-multiplication of two spectra with conjugation of the
+ * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
+ * Mathematically, for each frequency it computes: \f$ DST = filter \cdot \frac{S_1 \cdot S_2^*}{|S_1 \cdot S_2^*|} \f$
+ *
+ * @note The algorithm is optimized for multi-threaded execution (via parallel_for) and operates directly
+ * on the packed OpenCV CCS (Complex Conjugate Symmetrical) format. This eliminates redundant memory
+ * allocations for full complex matrices.
+ *
+ * @note **Normalization & Correlation Peak Mechanics:**
+ * If the input `filter` is pre-normalized using the L1-norm to unity (i.e., sum(gw) = 1), then the subsequent
+ * call to inverse Fourier transform `cv::idft(..., cv::DFT_REAL_OUTPUT)` WITHOUT the `cv::DFT_SCALE` flag
+ * will yield a peak value of strictly **1.0** on the autocorrelation map (given a perfect match). This occurs
+ * because the \f$1/N\f$ scale introduced by the filter's L1-normalization perfectly cancels out the internal \f$N\f$
+ * scaling factor inherent to OpenCV's unscaled IDFT.
+ *
+ * @param[in] ccsSpectrum1 First input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] ccsSpectrum2 Second input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] filter Real bandpass filter matrix (frequency weights) matching the size of the input spectra.
+ * @param[out] _crossSpectrum Output filtered cross-spectrum in CCS format (CV_32FC1).
+ *
+ * @return Returns false in case of a size mismatch error.
+ */
+bool fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
     const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
+
 
 #endif /* __fft_h__ */

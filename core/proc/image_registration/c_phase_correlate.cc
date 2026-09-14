@@ -95,21 +95,7 @@ cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSiz
   const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
   const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
   return cv::Size(std::max(4,downscaledW), std::max(4,downscaledH));
-//
-//  // Find the closest power of two (round mathematically to the nearest)
-//  // cvRound(std::log2(v)) will select the power that is closest to the target
-//  // Some limit from below (for example not less than 64 pixels, so that the algorithm does not degenerate)
-//  // Return the size as 2^powX and 2^powY
-//
-//  const int downscaledW = cvRound(expectedFrameSize.width / downscaleFactor);
-//  const int downscaledH = cvRound(expectedFrameSize.height / downscaleFactor);
-//  const int powX = std::max(6, cvCeil(std::log2(downscaledW)));
-//  const int powY = std::max(6, cvCeil(std::log2(downscaledH)));
-//  return cv::Size(1 << powX, 1 << powY);
 }
-
-
-
 
 
 bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts)
@@ -327,7 +313,8 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   }
 
   cv::Point2f peakPos;
-  const double peakValue =
+
+  _peakValue =
       findSubpixelCentroid(_correlationMap,
           peakPos);
 
@@ -336,10 +323,15 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   const double scaledDy = peakPos.y - _fftSize.height / 2 + _referenceCropOffset.y - _currentCropOffset.y;
   outputTranslation[0] = float(-scaledDx * _downscale_factor);
   outputTranslation[1] = float(-scaledDy * _downscale_factor);
-//  CF_DEBUG("\ngsigma=%g peak=%g Tx=%g Ty=%g",_gsigma, peakValue,
-//      outputTranslation[0], outputTranslation[1]);
 
-  return peakValue;
+  // Compensate correlation score for shifted frame overlap
+  const double kx = 1.0 - std::abs(outputTranslation[0]) / (_fftSize.width * _downscale_factor);
+  const double ky = 1.0 - std::abs(outputTranslation[1]) / (_fftSize.height * _downscale_factor);
+  const double area_rel = kx * ky;
+  const double k_min_axis = std::min(kx, ky);
+  const double dynamic_eps = std::exp(-70.0 * (k_min_axis - 0.25));
+
+  return (_correlationScore = _peakValue / (area_rel + dynamic_eps));
 }
 
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const

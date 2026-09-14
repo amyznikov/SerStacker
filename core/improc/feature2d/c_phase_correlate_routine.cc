@@ -166,14 +166,13 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
       return false;
     }
 
-    cv::Vec2f Translation;
-    double score;
-
-    //CF_DEBUG("Call compute()");
     pc.setCurrentImage(_currentImage, _currentMask);
-    score = pc.compute(Translation);
+
+    cv::Vec2f Translation;
+    const double score = pc.compute(Translation);
     if ( _printScores ) {
-      CF_DEBUG("score: %7.4f Tx=%+9.3f Ty=%+9.3f", score, Translation[0], Translation[1]);
+      const double peakValue = pc.peakValue();
+      CF_DEBUG("peak: %7.4f score:%7.4f Tx=%+9.3f Ty=%+9.3f", peakValue, score, Translation[0], Translation[1]);
     }
 
     switch (_display)

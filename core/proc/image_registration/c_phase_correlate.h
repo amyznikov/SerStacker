@@ -51,24 +51,25 @@ public:
   // Must be called before pipeline start
   bool setup(const cv::Size & expectedFrameSize, c_phase_correlate_options & opts);
 
+  // Release internal cache buffers, may be useful for multi-pipeline re-initializators
+  void release();
+
+  // Compute phase correlation and return correlation core and translation vector
   bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
   bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
   double compute(cv::Vec2f & outputTranslation);
 
-  // Release internal cache buffers, may be useful for multi-pipeline re-initializators
-  void release();
-
-
-  void setGSigma(double gsigma)
+  // valid after compute()
+  double correlationScore() const
   {
-    _gsigma = gsigma;
+    return _correlationScore;
   }
 
-  double gsigma() const
+  // valid after compute()
+  double peakValue() const
   {
-    return _gsigma;
+    return _peakValue;
   }
-
 
   static cv::Size computeFFTPackSize(const cv::Size & expectedFrameSize,
       double downscaleFactor);
@@ -132,6 +133,8 @@ protected: // internal data
   double _gsigma = 0.1;
   double _csigma = 0.5;
   double _calpha = 0.05;
+  double _peakValue = 0;
+  double _correlationScore = 0;
   bool _initialized = false;
 
 protected: // Cache data

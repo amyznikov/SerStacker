@@ -19,8 +19,6 @@ struct c_phase_correlate_options
   double gsigma = 10;
   double csigma = 0.5;
   double calpha = 0.0;
-  // FIXME: remove this functionality as now it has to be handled by bandpass filter itself
-  int apodization_size = 0;
 };
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
@@ -42,10 +40,9 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
 {
   using S = c_phase_correlate_options;
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
-  ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "");
-  ctlbind(ctls, "csigma:", ctx(&S::csigma),  "");
-  ctlbind(ctls, "calpha:", ctx(&S::calpha),  "");
-  ctlbind(ctls, "apodization [px]:",  ctx(&S::apodization_size), "");
+  ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Target texture characteristic size in pixels");
+  ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
+  ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter scale");
 }
 
 class c_phase_correlate
@@ -128,22 +125,16 @@ protected: // internal helpers
   bool computeCorrelationMap();
   double findSubpixelCentroid(const cv::Mat1f & correlationMap, cv::Point2f & peakPos) const;
 
-  // FIXME: remove this functionality as now it has to be handled by bandpass filter itself
-  void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
-
-
 protected: // internal data
+  cv::Size _fftSize;
+  cv::Size _expectedFrameSize;
   double _downscale_factor = 4;
   double _gsigma = 0.1;
   double _csigma = 0.5;
   double _calpha = 0.05;
-  int _apodization_size = 31;
-  cv::Size _fftSize;
-  cv::Size _expectedFrameSize;
   bool _initialized = false;
 
 protected: // Cache data
-  std::vector<float> _apodizationLUT;
   cv::Size _currentValidSize, _referenceValidSize;
   cv::Point _currentCropOffset, _referenceCropOffset;
   cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;

@@ -55,7 +55,6 @@ void c_phase_correlate_routine::getcontrols(c_control_list & ctls, const ctlbind
   ctlbind(ctls, "gsigma", ctx,  &this_class::gsigma, &this_class::set_gsigma, "");
   ctlbind(ctls, "csigma", ctx,  &this_class::csigma, &this_class::set_csigma, "");
   ctlbind(ctls, "calpha", ctx,  &this_class::calpha, &this_class::set_calpha, "");
-  ctlbind(ctls, "apodizationSize", ctx,  &this_class::apodizationSize, &this_class::set_apodizationSize, "");
   ctlbind(ctls, "fillMaskHoles", CTL_CONTEXT(ctx, _fillMaskHoles), "Set checked to call geo_fill_holes(currentMask)");
   ctlbind(ctls, "updateReference", CTL_CONTEXT(ctx, _updateReferenceImage), "Set checked to set current image as reference");
   ctlbind(ctls, "printScores", CTL_CONTEXT(ctx, _printScores), "Set checked to dump debug info");

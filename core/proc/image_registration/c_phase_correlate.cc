@@ -134,19 +134,6 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
 
   generateBandpassFilter();
 
-  if( (_apodization_size = opts.apodization_size) < 1 ) {
-    _apodizationLUT.clear();
-  }
-  else {
-    // Smoothly increases from 0.0 to 1.0
-    const int ksize = _apodization_size;
-    _apodizationLUT.resize(ksize + 1);
-    for( int i = 0; i <= ksize; ++i ) {
-      const float t = float(i) / ksize;
-      _apodizationLUT[i] = t * t * (3.0f - 2.0f * t);
-    }
-  }
-
   _initialized = true;
   return true;
 }
@@ -154,7 +141,6 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
 void c_phase_correlate::release()
 {
   _fftSize = cv::Size(0, 0);
-  _apodizationLUT.clear();
   _scaledCurrentImage.release();
   _scaledReferenceImage.release();
   _scaledCurrentMask.release();
@@ -230,63 +216,6 @@ void c_phase_correlate::generateBandpassFilter()
       _bandpassFilter);
 }
 
-
-void c_phase_correlate::applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask,
-    const cv::Size & validSize)
-{
-  if (_apodizationLUT.empty()) {
-    return;
-  }
-
-  const auto & lut = _apodizationLUT;
-  const int ksize = lut.size() - 1;
-
-  cv::Mat1b activeMask = scaledMask(cv::Rect(0, 0, validSize.width, validSize.height));
-
-  const int totalPixels = validSize.width * validSize.height;
-  const bool isFullMask = (cv::countNonZero(activeMask) == totalPixels);
-
-  if( isFullMask ) {
-    parallel_for(0, validSize.height, [&](const auto & range) {
-       for (int y = rbegin(range); y < rend(range); ++y) {
-         float * imgp = scaledImage.ptr<float>(y);
-         const float dist_y = std::min(y, validSize.height - 1 - y);
-         for (int x = 0; x < validSize.width; ++x) {
-           const float dist_x = std::min(x, validSize.width - 1 - x);
-           const float d = std::min(dist_x, dist_y);
-           if (d < ksize) {
-             const int idx = int(d);
-             const float fract = d - idx;
-             imgp[x] *= (lut[idx] + fract * (lut[idx + 1] - lut[idx]));
-           }
-         }
-       }
-     });
-  }
-  else {
-    cv::distanceTransform(scaledMask, _distmap, cv::DIST_L2, cv::DIST_MASK_3);
-
-    parallel_for(0, validSize.height, [&](const auto & range) {
-      for (int y = rbegin(range); y < rend(range); ++y) {
-        const float* distp = _distmap[y];
-        float * __restrict imgp = scaledImage[y];
-        for (int x = 0; x < validSize.width; ++x) {
-          const float d = distp[x];
-          if (d <= 0) {
-            imgp[x] = 0.0f;
-          }
-          else if (d < ksize) {
-            const int idx = int(d);
-            const float fract = d - idx;
-            const float v = imgp[x];
-            imgp[x] = v * (lut[idx] + fract * (lut[idx + 1] - lut[idx]));
-          }
-        }
-      }
-    });
-  }
-}
-
 bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask)
 {
   if( _fftSize.empty() ) {
@@ -321,11 +250,6 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
       _scaledReferenceImage, _scaledReferenceMask, _fftSize,
       _referenceValidSize,
       _referenceCropOffset);
-
-  if (_apodization_size > 0) {
-    applyApodization(_scaledReferenceImage, _scaledReferenceMask,
-        _referenceValidSize);
-  }
 
   cv::dft(_scaledReferenceImage, _referenceSpectrum,
       cv::DFT_REAL_OUTPUT);
@@ -366,11 +290,6 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
       _scaledCurrentImage, _scaledCurrentMask, _fftSize,
       _currentValidSize,
       _currentCropOffset);
-
-  if (_apodization_size > 0) {
-    applyApodization(_scaledCurrentImage, _scaledCurrentMask,
-        _currentValidSize);
-  }
 
   cv::dft(_scaledCurrentImage, _currentSpectrum,
       cv::DFT_REAL_OUTPUT);
@@ -477,7 +396,6 @@ bool serialize_phase_correlate_options(c_config_setting section, bool save,
   SERIALIZE_OPTION(section, save, opts, gsigma);
   SERIALIZE_OPTION(section, save, opts, csigma);
   SERIALIZE_OPTION(section, save, opts, calpha);
-  SERIALIZE_OPTION(section, save, opts, apodization_size);
   return true;
 }
 

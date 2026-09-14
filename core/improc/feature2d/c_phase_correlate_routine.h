@@ -76,16 +76,6 @@ protected:
     return opts.calpha;
   }
 
-  void set_apodizationSize(int v)
-  {
-    opts.apodization_size = v;
-    _initialized = false;
-  }
-  int apodizationSize() const
-  {
-    return opts.apodization_size;
-  }
-
 protected:
   bool reinitialize(const cv::Size & expectedFrameSize);
   bool setCurrentImage(cv::InputArray referenceImage, cv::InputArray referenceMask);

@@ -11,7 +11,7 @@
 #include <core/debug.h>
 
 template<class _Tp1, class _Tp2, class _Tp3>
-static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst, double eps)
+static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::OutputArray _dst)
 {
   using _Tpc = std::common_type_t<std::common_type_t<_Tp1,_Tp2>, _Tp3>;
   using _Tcomp = std::conditional_t<std::is_floating_point_v<_Tpc>, _Tpc, float>;
@@ -65,7 +65,7 @@ static bool _multiplyImages(cv::InputArray _src1, cv::InputArray _src2, cv::Outp
   return true;
 }
 
-bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst, double eps, int ddepth)
+bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst, int ddepth)
 {
   if ( src1.empty() || src2.empty() ) {
     dst.release();
@@ -98,7 +98,7 @@ bool multiplyImages(cv::InputArray src1, cv::InputArray src2, cv::OutputArray ds
            using T2 = std::remove_pointer_t<decltype(t2)>;
            return cv_dispatch_helper(ddepth, [&](auto t3) {
              using T3 = std::remove_pointer_t<decltype(t3)>;
-             return _multiplyImages<T1, T2, T3>(src1, src2, dst, eps);
+             return _multiplyImages<T1, T2, T3>(src1, src2, dst);
            });
          });
        });

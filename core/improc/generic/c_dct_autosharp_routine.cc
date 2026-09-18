@@ -375,7 +375,7 @@ static bool computeCorrectionDCT(const c_radial_spectrum_profile & sp,
   return true;
 }
 
-static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
+static cv::Mat1f createDCTInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpectrumProfile, /*[1][n_bins] */
     const cv::Size & dctSize,
     bool autoTargetSlope,
     double S1_target,
@@ -383,6 +383,7 @@ static cv::Mat1f createInverseBlurCorrectionFilter(const cv::Mat1f & RadialSpect
     bool print_debug_info = false,
     const std::string & debug_file_name = "")
 {
+  INSTRUMENT_REGION("");
   const c_radial_spectrum_profile sp(RadialSpectrumProfile);
   std::vector<float> sdct, correction;
   double S0_target = 0;
@@ -556,7 +557,7 @@ bool c_dct_autosharp_routine::serialize(c_config_setting settings, bool save)
 
 bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  INSTRUMENT_REGION("");
+  INSTRUMENT_REGION("dct");
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
     // nothing to process requested
@@ -605,13 +606,15 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
      extract_channel(src, intensity_img, cv::noArray(), cv::noArray(), _intensity_channel);
    }
 
+  if ( true ) {
+    INSTRUMENT_REGION("dct_intensity_img");
    cv::dct(intensity_img, intensity_dct);
    if( _display == DISPLAY_SRC_SPECTRUM ) {
      image.move(intensity_dct);
      mask.release();
      return true;
    }
-
+  }
    if( _display == DISPLAY_SRC_RADIAL_PROFILE_LOG) {
      cv::absdiff(intensity_dct, cv::Scalar::all(0), intensity_dct);
      intensity_dct.setTo(1, intensity_dct == 0);
@@ -632,7 +635,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
    }
 
    cv::Mat1f INVERSE_FILTER =
-       createInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
+       createDCTInverseBlurCorrectionFilter(dct_radial_profile, src.size(),
            _autoS1_target, _S1_target, _macroStructSizePx, _print_debug_info,
            _write_file ? _debug_file_name : "");
 
@@ -648,6 +651,8 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
    }
 
    if ( cn == 1 ) {
+     INSTRUMENT_REGION("idct_mono");
+
      // Little optimized path for monochrome input image
      cv::multiply(intensity_dct, INVERSE_FILTER, intensity_dct);
 
@@ -664,6 +669,7 @@ bool c_dct_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
      }
    }
    else {
+     INSTRUMENT_REGION("idct_color");
      // Full path for color image image
 
      std::vector<cv::Mat1f> src_channels;

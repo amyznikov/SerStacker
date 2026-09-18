@@ -20,11 +20,18 @@ public:
       "fft", "Display fft spectrum from cv::dft()");
 
   enum DisplayType {
+    DisplayModule,
     DisplayPower,
     DisplayPhase,
     DisplayReal,
     DisplayImag,
-  };
+    DisplayCCSTest1,
+    DisplayCCSTest2,
+    DisplayCCSTest3,
+    DisplayCCSTest4,
+    DisplayCCSTest5,
+    DisplayCCSTest6,
+    };
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;

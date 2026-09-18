@@ -135,10 +135,144 @@ void c_phase_correlate::release()
   _referenceSpectrum.release();
   _crossSpectrum.release();
   _correlationMap.release();
-  _distmap.release();
+//  _distmap.release();
   _initialized = false;
 }
 
+#if 0
+// --- ПРАВИЛЬНАЯ ГЕНЕРАЦИЯ ФИЛЬТРА ПО ТЗ ---
+_bandpassFilter.create(_fftSize);
+
+const uint8_t * filter_base = _bandpassFilter.ptr();
+const size_t filter_stride = _bandpassFilter.step;
+
+const int cols = _fftSize.width;
+const int rows = _fftSize.height;
+
+const float inv_cols = float(1.0 / cols);
+const float inv_rows = float(1.0 / rows);
+const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
+
+parallel_for(0, rows, [=](const auto & range) {
+  for( int y = rbegin(range); y < rend(range); ++y ) {
+    float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+
+    const int fy = (y > rows / 2) ? (rows - y) : y;
+    const float v = fy * inv_rows;
+    const float v2 = v * v;
+
+    for( int x = 0; x < cols; ++x ) {
+      const int fx = (x > cols / 2) ? (cols - x) : x;
+
+      // ИСПРАВЛЕНО: Вычисляем логический знак fftShift.
+      // Для оси x=0 и Найквиста по X, чётные и нечётные строки в CCS склеены в одну частоту.
+      // Чтобы фильтр был универсальным, знак знаковой маски на вертикальных осях
+      // должен определяться логической частотой y_logical, а не физической строкой y!
+      int sign = 1;
+      if (x == 0 || (cols % 2 == 0 && x == cols / 2)) {
+        // На вертикальных осях логический индекс частоты определяется по правилу CCS:
+        if (y == 0 || (rows % 2 == 0 && y == rows / 2)) {
+          sign = ((x + y) & 1) ? -1 : 1;
+        } else {
+          // Для комплексных пар частота равна (y + 1) / 2 для нечетных и y / 2 для четных.
+          // Но так как они делят ОДНУ частоту, мы берем индекс по строке вещественной части (нечетной):
+          int y_logical = (y % 2 != 0) ? y : (y - 1);
+          sign = ((x + y_logical) & 1) ? -1 : 1;
+        }
+      } else {
+        // Для всего остального поля спектра (x > 0) обычное шахматное чередование
+        sign = ((x + y) & 1) ? -1 : 1;
+      }
+
+      const float u = fx * inv_cols;
+      const float u2 = u * u;
+      const float rho2 = (u2 + v2) * lambda2;
+
+      fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+    }
+  }
+});
+#endif
+
+//void c_phase_correlate::generateBandpassFilter()
+//{
+//  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
+//  // rho2 = (u^2 + v^2) / fsigma^2;
+//  // F(u, v) = rho2 * exp (-0.5 * rho2 )
+//
+//  _bandpassFilter.create(_fftSize);
+//
+//  const uint8_t * filter_base = _bandpassFilter.ptr();
+//  const size_t filter_stride = _bandpassFilter.step;
+//
+//  const int cols = _fftSize.width;
+//  const int rows = _fftSize.height;
+//
+//  if ( _gsigma <= 0 ) {
+//    parallel_for(0, rows, [=](const auto & range) {
+//      for( int y = rbegin(range); y < rend(range); ++y ) {
+//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+//        const float start_sign = (y & 1) ? -1.0f : 1.0f;
+//        for( int x = 0; x < cols; ++x ) {
+//          fltp[x] = (x & 1) ? -start_sign : start_sign;
+//        }
+//      }
+//    });
+//  }
+//  else {
+//    const float inv_cols = float (1.0 / cols);
+//    const float inv_rows = float (1.0 / rows);
+//    const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
+//
+//    parallel_for(0, rows, [=](const auto & range) {
+//      for( int y = rbegin(range); y < rend(range); ++y ) {
+//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
+//
+//        const int fy = (y > rows / 2) ? (rows - y) : y;
+//        const float v = fy * inv_rows;
+//        const float v2 = v * v;
+//
+//        for( int x = 0; x < cols; ++x ) {
+//          const int fx = (x > cols / 2) ? (cols - x) : x;
+//
+//          // ИСПРАВЛЕНО: Вычисляем логический знак fftShift.
+//          // Для оси x=0 и Найквиста по X, чётные и нечётные строки в CCS склеены в одну частоту.
+//          // Чтобы фильтр был универсальным, знак знаковой маски на вертикальных осях
+//          // должен определяться логической частотой y_logical, а не физической строкой y!
+//          int sign = 1;
+////          if (x == 0 || (cols % 2 == 0 && x == cols / 2)) {
+////            // На вертикальных осях логический индекс частоты определяется по правилу CCS:
+////            if (y == 0 || (rows % 2 == 0 && y == rows / 2)) {
+////              sign = ((x + y) & 1) ? -1 : 1;
+////            } else {
+////              // Для комплексных пар частота равна (y + 1) / 2 для нечетных и y / 2 для четных.
+////              // Но так как они делят ОДНУ частоту, мы берем индекс по строке вещественной части (нечетной):
+////              int y_logical = (y % 2 != 0) ? y : (y - 1);
+////              sign = ((x + y_logical) & 1) ? -1 : 1;
+////            }
+////          } else {
+////            // Для всего остального поля спектра (x > 0) обычное шахматное чередование
+////            sign = ((x + y) & 1) ? -1 : 1;
+////          }
+//
+//          const float u = fx * inv_cols;
+//          const float u2 = u * u;
+//          const float rho2 = (u2 + v2) * lambda2;
+//
+//          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
+//        }
+//      }
+//    });
+//  }
+//
+//  if ( _csigma > 0  && _calpha > 0) {
+//    fftGenerateInverseCrossFilter(_fftSize, _expectedFrameSize, _crossMask, _csigma, _calpha, false);
+//    cv::multiply(_bandpassFilter, _crossMask, _bandpassFilter);
+//  }
+//
+//  cv::multiply(_bandpassFilter, 1. / cv::norm(_bandpassFilter, cv::NORM_L1),
+//      _bandpassFilter);
+//}
 
 void c_phase_correlate::generateBandpassFilter()
 {
@@ -285,14 +419,17 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 
 bool c_phase_correlate::computeCorrelationMap()
 {
+#if 1
   const bool fOK =
       fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
           _bandpassFilter, _crossSpectrum);
-
   if( !fOK ) {
     CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
     return false;
   }
+#else
+  cv::mulSpectrums(_currentSpectrum, _referenceSpectrum, _crossSpectrum, 0, true);
+#endif
 
   cv::idft(_crossSpectrum, _correlationMap,
       cv::DFT_REAL_OUTPUT);

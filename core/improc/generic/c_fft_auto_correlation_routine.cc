@@ -484,28 +484,32 @@ bool c_fft_auto_correlation_routine::process(cv::InputOutputArray image, cv::Inp
     }
     case DISPLAY_CURRENT_SPECTRUM_CART: {
       fftUnpackCCSSpectrum(_currentSpectrum, image);
+      fftSwapQuadrants(image, image);
       mask.release();
       break;
     }
     case DISPLAY_CURRENT_SPECTRUM_POLAR:  {
       fftUnpackCCSSpectrum(_currentSpectrum, image);
       fftSpectrumToPolar(image, image);
+      fftSwapQuadrants(image, image);
       mask.release();
       break;
     }
     case DISPLAY_CROSS_SPECTRUM_CART: {
       fftUnpackCCSSpectrumAlternateSign(_autoCrossSpectrum, image);
+      fftSwapQuadrants(image, image);
       mask.release();
       break;
     }
     case DISPLAY_CROSS_SPECTRUM_POLAR: {
       fftUnpackCCSSpectrumAlternateSign(_autoCrossSpectrum, image);
       fftSpectrumToPolar(image, image);
+      fftSwapQuadrants(image, image);
       mask.release();
       break;
     }
     case DISPLAY_FILTER: {
-      _bandpassFilter.copyTo(image);
+      fftSwapQuadrants(_bandpassFilter, image);
       mask.release();
       break;
     }

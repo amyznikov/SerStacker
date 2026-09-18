@@ -28,7 +28,6 @@
 #include "generic/c_local_peak_routine.h"
 #include "generic/c_radial_gradient_routine.h"
 #include "generic/c_noisemap_routine.h"
-#include "generic/c_auto_correlation_routine.h"
 #include "generic/c_local_contrast_map_routine.h"
 #include "generic/c_lpg_map_routine.h"
 #include "generic/c_local_variance_map_routine.h"
@@ -263,7 +262,6 @@ void c_image_processor_routine::register_all()
 
     register_class_factory(c_average_pyramid_inpaint_routine::class_factory_instance());
     register_class_factory(c_linear_interpolation_inpaint_routine::class_factory_instance());
-    register_class_factory(c_auto_correlation_routine::class_factory_instance());
     register_class_factory(c_gaussian_blur_routine::class_factory_instance());
     register_class_factory(c_gaussian_hpass_routine::class_factory_instance());
     register_class_factory(c_fast_gaussian_blur_routine::class_factory_instance());

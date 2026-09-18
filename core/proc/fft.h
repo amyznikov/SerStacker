@@ -11,7 +11,7 @@
 #include <opencv2/opencv.hpp>
 
 cv::Size fftGetOptimalSize(const cv::Size & imageSize,
-    cv::Size psfSize = cv::Size(0, 0),
+    cv::Size psfRadius = cv::Size(0, 0),
     cv::Rect * roirc  = nullptr,
     bool forceEvenSize = true);
 
@@ -54,8 +54,12 @@ bool fftSpectrumModule(cv::InputArray src,
 bool fftSpectrumPhase(cv::InputArray src,
     cv::OutputArray dst);
 
-bool fftRadialProfile(const cv::Mat1f & spectrum,
+bool fftRadialProfile(const cv::Mat1f & spectrumModule,
     cv::Mat1f & output_profile);
+
+// DFT Radial Profile for packed OpenCV CCS format.
+bool fftRadialProfileCCS(const cv::Mat1f & ccsSpectrum,
+    cv::Mat1f & outputProfile);
 
 void fftRadialProfileToImage(const cv::Mat1f & radialProfile,
     const cv::Size & outputImageSize,
@@ -84,10 +88,6 @@ bool fftAccumulatePowerSpectrum(const cv::Mat & src,
 
 bool fftMaxPowerSpectrum(const cv::Mat & src,
     cv::Mat & acc);
-
-void fftComputeAutoCorrelation(cv::InputArray src,
-    cv::OutputArray dst,
-    bool logscale = true);
 
 // Space Isotropic Gaussian
 cv::Mat1f fftGenerateGaussianFilter(const cv::Size & fftSize,
@@ -181,14 +181,68 @@ double fftEstimateRadonOrientation(const cv::Mat1f & fftSpectrum,
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output
  * */
-void fftUnpackCCSSpectrum(const cv::Mat1f & ccsSpectrum,
+bool fftUnpackCCSSpectrum(cv::InputArray ccsSpectrum,
     cv::OutputArray _complexSpectrum);
 
 /**
  * CV_32FC1 CCS input -> CV_32FC2 Complex output with sign alternating
  * */
-void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
+bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum,
     cv::OutputArray _complexSpectrum);
+
+/**
+* @brief Performs element-wise multiplication of a general-purpose real filter by a
+*        complex spectrum in OpenCV CCS format.
+* @param[in] filter Real filter (size M x N, type CV_32FC1). Each pixel corresponds to a frequency.
+* @param[in] ccsSpectrum Input spectrum in OpenCV CCS format (size M x N, type CV_32FC1).
+* @param[out] ccsOutputSpectrum Output spectrum resulting from the multiplication, in OpenCV CCS format.
+*/
+bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
+    cv::OutputArray ccsOutputSpectrum);
+
+// Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
+// Implements Virginie Moizan decomposition.
+// Saves ~2.0 ms from ~17 ms on a 1024x1024 grayscale frame by eliminating the 2D DFT.
+// The src must be singke-channel real image
+bool fftComputeVSpectrumCCS(cv::InputArray _src, cv::OutputArray ccsOutputVSpectrum);
+
+// DFT with Periodic + Smooth Decomposition with CCS output.
+// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
+// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+// The target fftSize (FFT padding) is defined by the VLAP.size()
+bool fftPPSDecompositionCCS(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM);
+
+bool fftPPSDecompositionCCS(cv::InputArray src_image, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
+
+/**
+ * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
+ *
+ * This function performs element-wise cross-multiplication of two spectra with conjugation of the
+ * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
+ * Mathematically, for each frequency it computes: \f$ DST = filter \cdot \frac{S_1 \cdot S_2^*}{|S_1 \cdot S_2^*|} \f$
+ *
+ * @note The algorithm is optimized for multi-threaded execution (via parallel_for) and operates directly
+ * on the packed OpenCV CCS (Complex Conjugate Symmetrical) format. This eliminates redundant memory
+ * allocations for full complex matrices.
+ *
+ * @note **Normalization & Correlation Peak Mechanics:**
+ * If the input `filter` is pre-normalized using the L1-norm to unity (i.e., sum(gw) = 1), then the subsequent
+ * call to inverse Fourier transform `cv::idft(..., cv::DFT_REAL_OUTPUT)` WITHOUT the `cv::DFT_SCALE` flag
+ * will yield a peak value of strictly **1.0** on the autocorrelation map (given a perfect match). This occurs
+ * because the \f$1/N\f$ scale introduced by the filter's L1-normalization perfectly cancels out the internal \f$N\f$
+ * scaling factor inherent to OpenCV's unscaled IDFT.
+ *
+ * @param[in] ccsSpectrum1 First input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] ccsSpectrum2 Second input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
+ * @param[in] filter Real bandpass filter matrix (frequency weights) matching the size of the input spectra.
+ * @param[out] _crossSpectrum Output filtered cross-spectrum in CCS format (CV_32FC1).
+ *
+ * @return Returns false in case of a size mismatch error.
+ */
+bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv::InputArray _ccsSpectrum2,
+    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
 /**
  * @brief Computes the bandpass-filtered autocorrelation spectrum (energy map) in CCS format.
@@ -216,39 +270,10 @@ void fftUnpackCCSSpectrumAlternateSign(const cv::Mat1f & ccsSpectrum,
  *
  * @return double The total integrated bandpass energy of the filtered spectrum,
  */
-double fftAutoCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum, const cv::Mat1f & filter,
+double fftAutoCrossSpectrumWeightedCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray _autoCrossSpectrum);
 
-double fftCrossSpectrumWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
-    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
-/**
- * @brief Computes the weighted cross-power spectrum of two spectra packed in OpenCV CCS format.
- *
- * This function performs element-wise cross-multiplication of two spectra with conjugation of the
- * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
- * Mathematically, for each frequency it computes: \f$ DST = filter \cdot \frac{S_1 \cdot S_2^*}{|S_1 \cdot S_2^*|} \f$
- *
- * @note The algorithm is optimized for multi-threaded execution (via parallel_for) and operates directly
- * on the packed OpenCV CCS (Complex Conjugate Symmetrical) format. This eliminates redundant memory
- * allocations for full complex matrices.
- *
- * @note **Normalization & Correlation Peak Mechanics:**
- * If the input `filter` is pre-normalized using the L1-norm to unity (i.e., sum(gw) = 1), then the subsequent
- * call to inverse Fourier transform `cv::idft(..., cv::DFT_REAL_OUTPUT)` WITHOUT the `cv::DFT_SCALE` flag
- * will yield a peak value of strictly **1.0** on the autocorrelation map (given a perfect match). This occurs
- * because the \f$1/N\f$ scale introduced by the filter's L1-normalization perfectly cancels out the internal \f$N\f$
- * scaling factor inherent to OpenCV's unscaled IDFT.
- *
- * @param[in] ccsSpectrum1 First input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
- * @param[in] ccsSpectrum2 Second input image spectrum in OpenCV CCS format (CV_32FC1, real matrix).
- * @param[in] filter Real bandpass filter matrix (frequency weights) matching the size of the input spectra.
- * @param[out] _crossSpectrum Output filtered cross-spectrum in CCS format (CV_32FC1).
- *
- * @return Returns false in case of a size mismatch error.
- */
-bool fftCrossSpectrumPhaseCorrelateWeightedCCS(const cv::Mat1f & ccsSpectrum1, const cv::Mat1f & ccsSpectrum2,
-    const cv::Mat1f & filter, cv::OutputArray _crossSpectrum);
 
 
 #endif /* __fft_h__ */

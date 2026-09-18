@@ -84,42 +84,47 @@ public: // public access for debug & visualization purposes
   const cv::Size & currentValidSize() const {
     return _currentValidSize;
   }
-  const cv::Size referenceValidSize() const {
+  const cv::Size & referenceValidSize() const {
     return _referenceValidSize;
   }
-  const cv::Point currentCropOffset() const {
+  const cv::Point & currentCropOffset() const {
     return _currentCropOffset;
   }
-  const cv::Point referenceCropOffset() const {
+  const cv::Point & referenceCropOffset() const {
     return _referenceCropOffset;
   }
-  const cv::Mat1f scaledCurrentImage() const {
+  const cv::Mat1f & scaledCurrentImage() const {
     return _scaledCurrentImage;
   }
-  const cv::Mat1f scaledReferenceImage() const {
+  const cv::Mat1f & scaledReferenceImage() const {
     return _scaledReferenceImage;
   }
-  const cv::Mat1b scaledCurrentMask() const {
+  const cv::Mat1b & scaledCurrentMask() const {
     return _scaledCurrentMask;
   }
-  const cv::Mat1b scaledReferenceMask() const {
+  const cv::Mat1b & scaledReferenceMask() const {
     return _scaledReferenceMask;
   }
-  const cv::Mat1f currentSpectrum() const {
+  const cv::Mat1f & currentSpectrum() const {
     return _currentSpectrum;
   }
-  const cv::Mat1f referenceSpectrum() const {
+  const cv::Mat1f & referenceSpectrum() const {
     return _referenceSpectrum;
   }
-  const cv::Mat1f crossSpectrum() const {
+  const cv::Mat1f & crossSpectrum() const {
     return _crossSpectrum;
   }
-  const cv::Mat1f correlationMap() const {
+  const cv::Mat1f & correlationMap() const {
     return _correlationMap;
   }
-  const cv::Mat1f distmap() const {
-    return _distmap;
+  const cv::Mat1f & bandpassFilter() const {
+    return _bandpassFilter;
   }
+
+
+//  const cv::Mat1f distmap() const {
+//    return _distmap;
+//  }
 
 protected: // internal helpers
   void generateBandpassFilter();
@@ -146,7 +151,7 @@ protected: // Cache data
   cv::Mat1f _crossSpectrum, _correlationMap;
   cv::Mat1f _bandpassFilter;
   cv::Mat1f _crossMask;
-  cv::Mat1f _distmap;
+//  cv::Mat1f _distmap;
 };
 
 

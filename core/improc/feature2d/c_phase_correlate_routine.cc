@@ -28,6 +28,11 @@ const c_enum_member * members_of<c_phase_correlate_routine::DISPLAY>()
       { c_phase_correlate_routine::DISPLAY_CROSS_SPECTRUM_CART, "CROSS_SPECTRUM_CART", "" },
       { c_phase_correlate_routine::DISPLAY_CROSS_SPECTRUM_POLAR, "CROSS_SPECTRUM_POLAR", "" },
 
+      { c_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_CART, "CURRENT_SPECTRUM_CART"},
+      { c_phase_correlate_routine::DISPLAY_CURRENT_SPECTRUM_POLAR, "CURRENT_SPECTRUM_POLAR"},
+
+      { c_phase_correlate_routine::DISPLAY_BANDPASS_FILTER, "BANDPASS_FILTER"},
+
       { c_phase_correlate_routine::DISPLAY_CURRENT_IMAGE}
   };
   return members;
@@ -242,17 +247,44 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         mask.release();
         break;
       }
-      case DISPLAY_CROSS_SPECTRUM_CART: {
-        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+      case DISPLAY_CURRENT_SPECTRUM_CART: {
+        fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
+        // fftSwapQuadrants(image, image);
         mask.release();
         break;
       }
-      case DISPLAY_CROSS_SPECTRUM_POLAR: {
-        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+      case DISPLAY_CURRENT_SPECTRUM_POLAR: {
+        fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
+        // fftSwapQuadrants(image, image);
         fftSpectrumToPolar(image, image);
         mask.release();
         break;
       }
+      case DISPLAY_CROSS_SPECTRUM_CART: {
+        fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
+        //fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+        //fftSwapQuadrants(image, image);
+        mask.release();
+        break;
+      }
+      case DISPLAY_CROSS_SPECTRUM_POLAR: {
+        fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
+        //fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+        //fftSwapQuadrants(image, image);
+        fftSpectrumToPolar(image, image);
+        mask.release();
+        break;
+      }
+      //
+      //
+
+      case DISPLAY_BANDPASS_FILTER: {
+        fftSwapQuadrants(pc.bandpassFilter(), image);
+        mask.release();
+        break;
+      }
+
+
     }
 
   }

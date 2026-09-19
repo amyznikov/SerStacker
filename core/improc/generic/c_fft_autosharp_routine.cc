@@ -869,14 +869,13 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
 //  CF_DEBUG("enter");
 
-  cv::Rect rc;
+  const cv::Mat srcImage = image.getMat();
   const cv::Size srcSize = image.size();
-  //const cv::Size psfRadius(std::max(0, _fftBorder), std::max(0, _fftBorder));
   const cv::Size psfRadius(0, 0);
   const cv::Size fftSize = fftGetOptimalSize(image.size(), psfRadius, nullptr, true);
   const int cn = image.channels();
+  cv::Rect rc(0, 0, srcSize.width, srcSize.height);
 
-  const cv::Mat srcImage = image.getMat();
   cv::Mat V_SPECTRUM;
 
   if( VLAP.size() != fftSize ) {

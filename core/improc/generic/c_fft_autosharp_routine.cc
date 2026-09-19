@@ -400,8 +400,6 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
     bool print_debug_info = false,
     const std::string & debug_file_name = "")
 {
-  INSTRUMENT_REGION("");
-
   const c_radial_spectrum_profile sp(RadialSpectrumProfile);
   std::vector<float> sspec; // smoothed radial profile [numBins]
   std::vector<float> correction; // corrections to spectrum module [numBins]
@@ -496,7 +494,7 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
 
 template<class _Tp>
 bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Size & fftSize,
-    std::vector<cv::Mat1f>& outputYCrCbPlanes,
+    std::vector<cv::Mat>& outputYCrCbPlanes,
     cv::Rect * outputValidRect)
 {
   if ( srcImage.empty() || srcImage.channels() != 3 ) {
@@ -526,7 +524,7 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
   // Y, Cr, Cb
   outputYCrCbPlanes.resize(3);
   for ( int c = 0; c < 3; ++c ) {
-    outputYCrCbPlanes[c].create(fftSize);
+    outputYCrCbPlanes[c].create(fftSize, CV_32FC1);
   }
 
   const uint8_t* const src_base = src.ptr();
@@ -630,10 +628,9 @@ bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv:
 }
 
 bool bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Size & fftSize,
-    std::vector<cv::Mat1f>& outputYCrCbPlanes,
+    std::vector<cv::Mat>& outputYCrCbPlanes,
     cv::Rect * outputValidRect)
 {
-  INSTRUMENT_REGION("");
   if ( srcImage.empty() || srcImage.channels() != 3 ) {
     CF_ERROR("3-channel input BGR image expected");
     return false;
@@ -659,8 +656,6 @@ bool bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::
 
 bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, cv::OutputArray bgrImage)
 {
-  INSTRUMENT_REGION("");
-
   if( planes.size() != 3 ) {
     CF_ERROR("Invalid input planes size=%zu. Must be 3", planes.size());
     return false;
@@ -742,8 +737,6 @@ bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, cv::OutputArray bgrI
 bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, const cv::Rect & roi,
     cv::OutputArray bgrImage)
 {
-  INSTRUMENT_REGION("");
-
   if( planes.size() != 3 ) {
     CF_ERROR("Invalid input planes size=%zu. Must be 3", planes.size());
     return false;
@@ -846,6 +839,9 @@ void c_fft_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
   ctlbind(ctls, "macroStructSizePx: ", CTL_CONTEXT(ctx, _macroStructSizePx),
       "The minimal size in pixels of image macro structures still not much affected by blur");
 
+//  ctlbind(ctls, "_fftBorder: ", CTL_CONTEXT(ctx, _fftBorder),
+//      "Size of extra border for copyMakeBorder");
+
   ctlbind(ctls, "print_debug_info:", CTL_CONTEXT(ctx, _print_debug_info), "");
   ctlbind(ctls, "write_debug_file:", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
@@ -860,137 +856,111 @@ bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
     SERIALIZE_OPTION(settings, save, *this, _macroStructSizePx);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     SERIALIZE_OPTION(settings, save, *this, _mask_inpaint_method);
+    // SERIALIZE_OPTION(settings, save, *this, _fftBorder);
     return true;
   }
   return false;
 }
 
 
-static bool inpaintMakeBorder(cv::InputArray inputImage, cv::InputArray inputMask,
-    const cv::Size & fftSize, c_fft_autosharp_routine::INPAINT_METHOD inpaintMethod,
-    cv::OutputArray outputImage,
-    cv::Rect * outputValidRoi)
-{
-  INSTRUMENT_REGION("");
-  if( inputMask.empty() || inpaintMethod == c_fft_autosharp_routine::INPAINT_DISABLED ) {
-    return fftCopyMakeBorder(inputImage, outputImage, fftSize, outputValidRoi);
-  }
-
-  const cv::Size srcSize = inputImage.size();
-  if( fftSize.width < srcSize.width || fftSize.height < srcSize.height ) {
-    CF_ERROR("Invalid argument: fftSize (%dx%d) must be >= src.size() (%dx%d)",
-        fftSize.width, fftSize.height, srcSize.width, srcSize.height);
-    return false;
-  }
-
-  const cv::Mat src = inputImage.getMat();
-  const cv::Mat src_mask = inputMask.getMat();
-
-  outputImage.create(fftSize, inputImage.type());
-  outputImage.setTo(cv::Scalar::all(0));
-  cv::Mat & dst = outputImage.getMatRef();
-  cv::Mat dst_mask(fftSize, src_mask.type(), cv::Scalar::all(0));
-
-  const int border_top = (fftSize.height - srcSize.height) / 2;
-  const int border_bottom = (fftSize.height - srcSize.height - border_top);
-  const int border_left = (fftSize.width - srcSize.width) / 2;
-  const int border_right = (fftSize.width - srcSize.width - border_left);
-  const cv::Rect ROI(border_left, border_top, srcSize.width, srcSize.height);
-  src.copyTo(dst(ROI));
-  src_mask.copyTo(dst_mask(ROI));
-
-  switch (inpaintMethod) {
-    case c_fft_autosharp_routine::AVERAGE_PYRAMID_INPAINT:
-      average_pyramid_inpaint(dst, dst_mask, dst, cv::noArray(), 9);
-      break;
-    case c_fft_autosharp_routine::LINEAR_INTERPOLATION_INPAINT:
-      linear_interpolation_inpaint(dst, dst_mask);
-      break;
-  }
-
-  if( outputValidRoi ) {
-    *outputValidRoi = ROI;
-  }
-
-  return true;
-}
-
 bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
-  INSTRUMENT_REGION("dft");
+  INSTRUMENT_REGION("fft");
 
 //  CF_DEBUG("enter");
 
   cv::Rect rc;
   const cv::Size srcSize = image.size();
-  const cv::Size psfRadius(7, 7);
+  //const cv::Size psfRadius(std::max(0, _fftBorder), std::max(0, _fftBorder));
+  const cv::Size psfRadius(0, 0);
   const cv::Size fftSize = fftGetOptimalSize(image.size(), psfRadius, nullptr, true);
   const int cn = image.channels();
 
+  const cv::Mat srcImage = image.getMat();
   cv::Mat V_SPECTRUM;
 
   if( VLAP.size() != fftSize ) {
     VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-    CF_DEBUG("Created VLAP: %dx%dx%d", VLAP.cols, VLAP.rows, VLAP.channels());
   }
-
-  if( !mask.empty() ) {
-    if( mask.depth() == CV_8U ) {
-      SRC_MASK = mask.getMat();
-    }
-    else {
-      cv::compare(mask, 0, SRC_MASK, cv::CMP_GT);
-    }
+  if ( SRC_PLANES.empty() ) {
+    SRC_PLANES.emplace_back();
   }
-
-
+  if ( SRC_P.empty() ) {
+    SRC_P.emplace_back();
+  }
+  if ( SRC_S.empty() ) {
+    SRC_S.emplace_back();
+  }
 
   if ( cn == 1 ) { // Grayscale input
-
-    inpaintMakeBorder(image, mask.empty() ? cv::noArray() : SRC_MASK,
-        fftSize, _mask_inpaint_method,
-        SRC_IMAGE,
-        &rc);
-
-    if ( SRC_P.empty() ) {
-      SRC_P.emplace_back();
+    if ( mask.empty() || _mask_inpaint_method == INPAINT_DISABLED ) {
+      if ( srcSize == fftSize ) {
+        SRC_PLANES[0] = image.getMat();
+      }
+      else { // Standard border BORDER_REFLECT101 still need
+        fftCopyMakeBorder(image, SRC_PLANES[0], fftSize, &rc);
+      }
     }
-    if ( SRC_S.empty() ) {
-      SRC_S.emplace_back();
+    else {
+      // Manually copy + InPaint missing pixels
+      const cv::Mat srcMask = (mask.depth() == CV_8U) ? mask.getMat() : mask.getMat() > 0;
+      const int border_top = (fftSize.height - srcSize.height) / 2;
+      const int border_left = (fftSize.width - srcSize.width) / 2;
+      rc = cv::Rect(border_left, border_top, srcSize.width, srcSize.height);
+
+      SRC_MASK.create(fftSize, CV_8UC1), SRC_MASK.setTo(0);
+      srcMask.copyTo(SRC_MASK(rc));
+
+      SRC_PLANES[0].create(fftSize, image.type()), SRC_PLANES[0].setTo(0);
+      srcImage.copyTo(SRC_PLANES[0](rc), srcMask);
+
+      switch (_mask_inpaint_method) {
+        case AVERAGE_PYRAMID_INPAINT:
+          average_pyramid_inpaint(SRC_PLANES[0], SRC_MASK, SRC_PLANES[0], cv::noArray(), 9);
+          break;
+        case LINEAR_INTERPOLATION_INPAINT:
+          linear_interpolation_inpaint(SRC_PLANES[0], SRC_MASK);
+          break;
+      }
     }
 
-    fftPPSDecompositionCCS(SRC_IMAGE, VLAP, SRC_P[0], SRC_S[0],
+    fftPPSDecompositionCCS(SRC_PLANES[0], VLAP, SRC_P[0], SRC_S[0],
         _display == DISPLAY_V_SPECTRUM ? V_SPECTRUM :
             cv::noArray());
   }
   else if( cn == 3 ) { // BGR input
     if (mask.empty() || _mask_inpaint_method == INPAINT_DISABLED ) {
-      // Standard border BORDER_REFLECT101 still required
-      fftCopyMakeBorder(image, SRC_IMAGE, fftSize, &rc);
-      if ( !bgr2YCrCbPlanes(SRC_IMAGE, cv::noArray(), fftSize, SRC_PLANES, nullptr) ) {
+      cv::Mat src;
+      if ( srcSize == fftSize ) {
+        src = image.getMat();
+      }
+      else { // Standard border BORDER_REFLECT101 still need
+        fftCopyMakeBorder(image, src, fftSize, &rc, cv::BORDER_REFLECT_101);
+      }
+      if ( !bgr2YCrCbPlanes(src, cv::noArray(), fftSize, SRC_PLANES, nullptr) ) {
         CF_ERROR("bgr2YCrCbPlanes() fails");
         return false;
       }
     }
     else {
       // Zero (black) border for mask inpaint (inpaint intensity channel Y only)
-      if( !bgr2YCrCbPlanes(image, mask.empty() ? cv::noArray() : SRC_MASK, fftSize, SRC_PLANES, &rc) ) {
+      const cv::Mat srcMask = (mask.depth() == CV_8U) ? mask.getMat() : mask.getMat() > 0;
+      if( !bgr2YCrCbPlanes(image, srcMask, fftSize, SRC_PLANES, &rc) ) {
         CF_ERROR("bgr2YCrCbPlanes() fails");
         return false;
       }
 
-      cv::Mat1b inpaintMask = cv::Mat1b::zeros(fftSize);
-      SRC_MASK.copyTo(inpaintMask(rc));
+      SRC_MASK.create(fftSize, CV_8UC1), SRC_MASK.setTo(0);
+      srcMask.copyTo(SRC_MASK(rc));
 
       switch (_mask_inpaint_method) {
         case c_fft_autosharp_routine::AVERAGE_PYRAMID_INPAINT:
-          average_pyramid_inpaint(SRC_PLANES[0], inpaintMask, SRC_PLANES[0], cv::noArray(), 9);
+          average_pyramid_inpaint(SRC_PLANES[0], SRC_MASK, SRC_PLANES[0], cv::noArray(), 9);
           break;
         case c_fft_autosharp_routine::LINEAR_INTERPOLATION_INPAINT:
-          linear_interpolation_inpaint(SRC_PLANES[0], inpaintMask);
+          linear_interpolation_inpaint(SRC_PLANES[0], SRC_MASK);
           break;
       }
-      SRC_IMAGE = SRC_PLANES[0];
     }
 
     if ( !fftPPSDecompositionCCSPlanes(SRC_PLANES, VLAP, &SRC_P, &SRC_S) ) {
@@ -1004,7 +974,7 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
-    SRC_IMAGE.copyTo(image);
+    SRC_PLANES[0].copyTo(image);
     mask.release();
     return true;
   }
@@ -1061,7 +1031,6 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
 
 
   if ( true ) {
-    INSTRUMENT_REGION("IDFT");
     SRC_CHANNELS_RESTORED.resize(cn);
     for ( int i = 0; i < cn; ++i ) {
       fftMulSpectrumCCS(SRC_P[i], INVERSE_FILTER, SRC_P[i]);
@@ -1074,16 +1043,10 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     SRC_CHANNELS_RESTORED[0](rc).copyTo(image);
   }
   else {
-    INSTRUMENT_REGION("MERGE_AND_COPY");
-#if 1
     ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, rc, image);
-#else
-    ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, SRC_RESTORED);
-    SRC_RESTORED(rc).copyTo(image);
-#endif
   }
 
-//  CF_DEBUG("leave");
+  //  CF_DEBUG("leave");
   return true;
 }
 

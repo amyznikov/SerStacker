@@ -22,7 +22,8 @@ cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize,
 bool fftCopyMakeBorder(cv::InputArray src,
     cv::OutputArray dst,
     const cv::Size & fftSize,
-    cv::Rect * outrc = nullptr);
+    cv::Rect * outrc = nullptr,
+    cv::BorderTypes borderType = cv::BORDER_REFLECT101);
 
 bool fftImageToSpectrum(cv::InputArray _src, cv::OutputArray _dst,
     const cv::Size & fftSize,
@@ -240,7 +241,7 @@ bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
 bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
     std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
 
-bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat1f> & planes, const cv::Mat1f & VLAP,
+bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
     std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
 
 /**

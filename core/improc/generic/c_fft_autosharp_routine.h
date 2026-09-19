@@ -52,6 +52,7 @@ protected:
   enum INPAINT_METHOD _mask_inpaint_method = LINEAR_INTERPOLATION_INPAINT;
   double _S1_target = -1.2;
   double _macroStructSizePx = 150;
+  //int _fftBorder = 0;
   bool _autoS1_target = true;
   bool _print_debug_info = false;
   bool _write_file = false;
@@ -59,13 +60,12 @@ protected:
 
 
   // work arrays
-  std::vector<cv::Mat1f> SRC_PLANES;
+  cv::Mat SRC_MASK;
+  std::vector<cv::Mat> SRC_PLANES;
   std::vector<cv::Mat1f> SRC_P, SRC_S;
-  cv::Mat SRC_IMAGE, SRC_MASK;
   cv::Mat1f RadialProfile;
   cv::Mat1f INVERSE_FILTER;
   std::vector<cv::Mat1f> SRC_CHANNELS_RESTORED;
-  cv::Mat SRC_RESTORED;
   cv::Mat1f VLAP;
   int _prev_cn = 0;
 };

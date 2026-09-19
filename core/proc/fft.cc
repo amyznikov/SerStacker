@@ -90,7 +90,7 @@ cv::Rect fftGetOptimalSquaredROI(const cv::Size & imageSize, const cv::Rect & ra
 }
 
 bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size & fftSize,
-    cv::Rect * outrc)
+    cv::Rect * outrc, cv::BorderTypes borderType)
 {
   INSTRUMENT_REGION("");
   const cv::Size src_size = src.size();
@@ -102,7 +102,9 @@ bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size &
   }
 
   if ( src_size.width == fftSize.width && src_size.height == fftSize.height ) {
-    if ( src.getMat().data != dst.getMatRef().data ) {
+    const cv::Mat srcm = src.getMat();
+    const cv::Mat dstm = dst.getMat();
+    if ( srcm.data != dstm.data || srcm.step != dstm.step ) {
       src.copyTo(dst);
     }
     if ( outrc ) {
@@ -114,7 +116,7 @@ bool fftCopyMakeBorder(cv::InputArray src, cv::OutputArray dst, const cv::Size &
     const int border_bottom = (fftSize.height - src_size.height - border_top);
     const int border_left = (fftSize.width - src_size.width ) / 2;
     const int border_right = (fftSize.width - src_size.width - border_left);
-    cv::copyMakeBorder(src, dst, border_top, border_bottom, border_left, border_right, cv::BORDER_REFLECT101);
+    cv::copyMakeBorder(src, dst, border_top, border_bottom, border_left, border_right, borderType);
     if ( outrc ) {
       * outrc = cv::Rect(border_left, border_top, src_size.width, src_size.height);
     }
@@ -2417,7 +2419,7 @@ bool fftPPSDecompositionCCS(cv::InputArray _src, const cv::Mat1f & VLAP,
 // The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
 // const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
 // The target fftSize (FFT padding) is defined by the VLAP.size()
-bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat1f> & planes, const cv::Mat1f & VLAP,
+bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv::Mat1f & VLAP,
     std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS)
 {
   INSTRUMENT_REGION("");

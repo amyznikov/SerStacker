@@ -24,7 +24,9 @@ public:
   enum DISPLAY {
     DISPLAY_SRC_IMAGE = 0,
     DISPLAY_RESTORED_IMAGE,
-    DISPLAY_SRC_SPECTRUM,
+    DISPLAY_P_SPECTRUM,
+    DISPLAY_S_SPECTRUM,
+    DISPLAY_V_SPECTRUM,
     DISPLAY_FILTER,
     DISPLAY_RESTORED_SPECTRUM,
   };
@@ -42,14 +44,11 @@ public:
 protected:
   bool initialize() final
   {
-    _anscombe.set_method(anscombe_none);
     return true;
   }
 
 protected:
-  c_anscombe_transform _anscombe;
   DISPLAY _display = DISPLAY_RESTORED_IMAGE;
-  enum color_channel_type _intensity_channel = color_channel_gray;
   enum INPAINT_METHOD _mask_inpaint_method = LINEAR_INTERPOLATION_INPAINT;
   double _S1_target = -1.2;
   double _macroStructSizePx = 150;
@@ -60,12 +59,12 @@ protected:
 
 
   // work arrays
-  cv::Mat SRC_IMAGE, SRC_MASK;
+  std::vector<cv::Mat1f> SRC_PLANES;
   std::vector<cv::Mat1f> SRC_P, SRC_S;
-  cv::Mat INTENSITY_CHANNEL;
-  cv::Mat1f INTENSITY_P, INTENSITY_S, INTENSITY_RadialProfile;
+  cv::Mat SRC_IMAGE, SRC_MASK;
+  cv::Mat1f RadialProfile;
   cv::Mat1f INVERSE_FILTER;
-  std::vector<cv::Mat> SRC_CHANNELS_RESTORED;
+  std::vector<cv::Mat1f> SRC_CHANNELS_RESTORED;
   cv::Mat SRC_RESTORED;
   cv::Mat1f VLAP;
   int _prev_cn = 0;

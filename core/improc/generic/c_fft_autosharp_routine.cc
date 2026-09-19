@@ -43,7 +43,9 @@ const c_enum_member * members_of<c_fft_autosharp_routine::DISPLAY>()
       { c_fft_autosharp_routine::DISPLAY_SRC_IMAGE, "SRC_IMAGE", },
       { c_fft_autosharp_routine::DISPLAY_RESTORED_IMAGE, "RESTORED_IMAGE", },
       { c_fft_autosharp_routine::DISPLAY_FILTER,"FILTER"},
-      { c_fft_autosharp_routine::DISPLAY_SRC_SPECTRUM, "SRC_SPECTRUM"},
+      { c_fft_autosharp_routine::DISPLAY_P_SPECTRUM, "P_SPECTRUM"},
+      { c_fft_autosharp_routine::DISPLAY_S_SPECTRUM, "S_SPECTRUM"},
+      { c_fft_autosharp_routine::DISPLAY_V_SPECTRUM, "V_SPECTRUM"},
       { c_fft_autosharp_routine::DISPLAY_RESTORED_SPECTRUM, "RESTORED_SPECTRUM"},
       { c_fft_autosharp_routine::DISPLAY_RESTORED_IMAGE, },
   };
@@ -492,68 +494,335 @@ static bool createDFTInverseBlurCorrectionFilter(cv::Mat1f & outputFilter,
   return true;
 }
 
-// Returns true if the channel is linear and fills the weights (in order B, G, R)
-static bool getLinearIntensityWeights(int channel_type, double & wB, double & wG, double & wR)
+template<class _Tp>
+bool _bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Size & fftSize,
+    std::vector<cv::Mat1f>& outputYCrCbPlanes,
+    cv::Rect * outputValidRect)
 {
-  switch (channel_type) {
-    case color_channel_blue:
-      wB = 1.0;
-      wG = 0.0;
-      wR = 0.0;
-      return true;
-    case color_channel_green:
-      wB = 0.0;
-      wG = 1.0;
-      wR = 0.0;
-      return true;
-    case color_channel_red:
-      wB = 0.0;
-      wG = 0.0;
-      wR = 1.0;
-      return true;
-    case color_channel_gray:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    case color_channel_luminance_YCrCb:
-      wB = 0.114;
-      wG = 0.587;
-      wR = 0.299;
-      return true;
-    default:
-      // All others (Lab, Luv, HSV, HLS, MIN/MAX) are nonlinear
-      break;
+  if ( srcImage.empty() || srcImage.channels() != 3 ) {
+    CF_ERROR("BGR image expected on input");
+    return false;
   }
+
+  // BT.601
+  // Compile-time delta for any type
+  constexpr float wR = 0.299000f;
+  constexpr float wG = 0.587000f;
+  constexpr float wB = 0.114000f;
+  constexpr float kCr = 0.713000f;
+  constexpr float kCb = 0.564000f;
+
+  const cv::Mat src = srcImage.getMat();
+  const cv::Size srcSize = src.size();
+
+  const int border_top = (fftSize.height - srcSize.height) / 2;
+  const int border_bottom = (fftSize.height - srcSize.height - border_top);
+  const int border_left = (fftSize.width - srcSize.width) / 2;
+  const int border_right = (fftSize.width - srcSize.width - border_left);
+  if ( outputValidRect ) {
+    * outputValidRect = cv::Rect(border_left, border_top, srcSize.width, srcSize.height);
+  }
+
+  // Y, Cr, Cb
+  outputYCrCbPlanes.resize(3);
+  for ( int c = 0; c < 3; ++c ) {
+    outputYCrCbPlanes[c].create(fftSize);
+  }
+
+  const uint8_t* const src_base = src.ptr();
+  const size_t src_stride = src.step;
+
+  uint8_t* const y_base  = outputYCrCbPlanes[0].ptr();
+  const size_t y_stride  = outputYCrCbPlanes[0].step;
+
+  uint8_t* const cr_base = outputYCrCbPlanes[1].ptr();
+  const size_t cr_stride = outputYCrCbPlanes[1].step;
+
+  uint8_t* const cb_base = outputYCrCbPlanes[2].ptr();
+  const size_t cb_stride = outputYCrCbPlanes[2].step;
+
+  if ( srcMask.empty() ) {
+    // Little faster path
+    parallel_for(0, fftSize.height, [=](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float* __restrict yp  = (float*)(y_base  + y * y_stride);
+        float* __restrict crp = (float*)(cr_base + y * cr_stride);
+        float* __restrict cbp = (float*)(cb_base + y * cb_stride);
+
+        if ( y < border_top || y >= srcSize.height + border_top  ) {
+          memset(yp, 0, fftSize.width * sizeof(*yp));
+          memset(crp, 0, fftSize.width * sizeof(*crp));
+          memset(cbp, 0, fftSize.width * sizeof(*cbp));
+          continue;
+        }
+
+        for (int x = 0; x < border_left; ++x) {
+          *yp++ = 0, *crp++ = 0, *cbp++ = 0;
+        }
+
+        const _Tp * __restrict srcp = ((const _Tp*)(src_base + (y-border_top) * src_stride));
+        const int xmax = border_left + srcSize.width;
+        for (int x = border_left; x < xmax; ++x, srcp += 3) {
+          const float b = srcp[0], g = srcp[1], r = srcp[2];
+          const float Y = r * wR + g * wG + b * wB;
+          const float Cr = (r - Y) * kCr;
+          const float Cb = (b - Y) * kCb;
+          *yp++  = Y;
+          *crp++ = Cr;
+          *cbp++ = Cb;
+        }
+
+        for (int x = xmax; x < fftSize.width; ++x) {
+          *yp++ = 0, *crp++ = 0, *cbp++ = 0;
+        }
+      }
+    });
+  }
+  else {
+    // Little slower path
+    const cv::Mat1b mask = srcMask.getMat();
+    const uint8_t* const mask_base  = mask.ptr();
+    const size_t mask_stride  = mask.step;
+
+    parallel_for(0, fftSize.height, [=](const auto & range) {
+      for (int y = rbegin(range); y < rend(range); ++y) {
+        float* __restrict yp  = (float*)(y_base  + y * y_stride);
+        float* __restrict crp = (float*)(cr_base + y * cr_stride);
+        float* __restrict cbp = (float*)(cb_base + y * cb_stride);
+
+        if ( y < border_top || y >= border_top + srcSize.height ) {
+          memset(yp, 0, fftSize.width * sizeof(*yp));
+          memset(crp, 0, fftSize.width * sizeof(*crp));
+          memset(cbp, 0, fftSize.width * sizeof(*cbp));
+          continue;
+        }
+
+        for (int x = 0; x < border_left; ++x) {
+          *yp++  = 0, *crp++ = 0, *cbp++ = 0;
+        }
+
+        const _Tp * srcp = (const _Tp*)(src_base + (y-border_top) * src_stride);
+        const uint8_t * mskp = (const uint8_t*)(mask_base + (y-border_top) * mask_stride);
+        const int xmax = border_left + srcSize.width;
+        for (int x = border_left; x < xmax; ++x, ++mskp, ++yp, ++crp, ++cbp, srcp += 3 ) {
+          if ( !*mskp ) {
+            *yp  = 0, *crp = 0, *cbp = 0;
+          }
+          else {
+            const float b = srcp[0], g = srcp[1], r = srcp[2];
+            const float Y = r * wR + g * wG + b * wB;
+            const float Cr = (r - Y) * kCr;
+            const float Cb = (b - Y) * kCb;
+            *yp  = Y;
+            *crp = Cr;
+            *cbp = Cb;
+          }
+        }
+
+        for (int x = xmax; x < fftSize.width; ++x) {
+          *yp++ = 0, *crp++ = 0, *cbp++ = 0;
+        }
+      }
+    });
+  }
+
+  return true;
+}
+
+bool bgr2YCrCbPlanes(cv::InputArray srcImage, cv::InputArray srcMask, const cv::Size & fftSize,
+    std::vector<cv::Mat1f>& outputYCrCbPlanes,
+    cv::Rect * outputValidRect)
+{
+  INSTRUMENT_REGION("");
+  if ( srcImage.empty() || srcImage.channels() != 3 ) {
+    CF_ERROR("3-channel input BGR image expected");
+    return false;
+  }
+  if ( !srcMask.empty() ) {
+    if (srcMask.type() != CV_8UC1) {
+      CF_ERROR("Invalid mask type: %d. Single-channel input CV_8UC1 mask expected");
+      return false;
+    }
+    if (srcMask.size() != srcImage.size() ) {
+      CF_ERROR("Invalid mask size: %dx%d. Must be %dx%d", srcMask.cols(), srcMask.rows(),
+          srcImage.cols(), srcImage.rows());
+      return false;
+    }
+  }
+
+  CV_DISPATCH(srcImage.depth(), _bgr2YCrCbPlanes, srcImage, srcMask, fftSize,
+      outputYCrCbPlanes, outputValidRect);
+
+  CF_ERROR("Not supported inpt image depth %d", srcImage.depth());
   return false;
 }
 
-static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_P,
-    const cv::Mat1f & SRC_P_B, double _wB,
-    const cv::Mat1f & SRC_P_G, double _wG,
-    const cv::Mat1f & SRC_P_R, double _wR)
+bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, cv::OutputArray bgrImage)
 {
   INSTRUMENT_REGION("");
 
-  const cv::Size fftSize = SRC_P_B.size();
+  if( planes.size() != 3 ) {
+    CF_ERROR("Invalid input planes size=%zu. Must be 3", planes.size());
+    return false;
+  }
 
-  const float wB = float(_wB);
-  const float wG = float(_wG);
-  const float wR = float(_wR);
+  const cv::Size sz = planes[0].size();
+  if( sz.empty() ) {
+    CF_ERROR("Invalid input image size: %dx%d", sz.width, sz.height);
+    return false;
+  }
 
-  INTENSITY_P.create(fftSize);
-  parallel_for(0, fftSize.height, [&, fftSize, wB, wG, wR](const auto & range) {
+  for( int c = 1; c < 3; ++c ) {
+    if( planes[c].size() != sz ) {
+      CF_ERROR("Invalid input plane[%d] size=%dx%d. Expected %dx%d",
+          c, planes[c].cols, planes[c].rows, sz.width, sz.height);
+      return false;
+    }
+  }
+
+  if( bgrImage.fixedType() && bgrImage.type() != CV_32FC3 ) {
+    CF_ERROR("Output BGR image type must be CV_32FC3");
+    return false;
+  }
+
+  if( bgrImage.fixedSize() && bgrImage.size() != sz ) {
+    CF_ERROR("Output BGR image size must be %dx%d", sz.width, sz.height);
+    return false;
+  }
+
+  // Y = 0.299*R + 0.587*G + 0.114*B
+  // Inverse BT.601 coefficients (exact mathematical weights)
+  constexpr float iCr = 1.402000f;
+  constexpr float iCb = 1.772000f;
+  constexpr float gCr = 0.714136f; // (0.299 * iCr) / 0.587
+  constexpr float gCb = 0.344136f; // (0.114 * iCb) / 0.587
+
+  const cv::Mat1f Yplane = planes[0];
+  const cv::Mat1f Crplane = planes[1];
+  const cv::Mat1f Cbplane = planes[2];
+
+  bgrImage.create(sz, CV_32FC3);
+  cv::Mat dst = bgrImage.getMatRef();
+
+  const uint8_t * const y_base = Yplane.ptr();
+  const size_t y_stride = Yplane.step;
+
+  const uint8_t * const cr_base = Crplane.ptr();
+  const size_t cr_stride = Crplane.step;
+
+  const uint8_t * const cb_base = Cbplane.ptr();
+  const size_t cb_stride = Cbplane.step;
+
+  uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  parallel_for(0, sz.height, [=](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
-      const float * __restrict bp = (const float*)(SRC_P_B[y]);
-      const float * __restrict gp = (const float*)(SRC_P_G[y]);
-      const float * __restrict rp = (const float*)(SRC_P_R[y]);
-      float * __restrict dstp = INTENSITY_P[y];
-      for (int x = 0; x < fftSize.width; ++x, ++bp, ++gp, ++rp) {
-        const float v = (*bp) * wB + (*gp) * wG + (*rp) * wR;
-        *dstp++ = v;
+      const float* yp = (const float*)(y_base + y * y_stride);
+      const float* crp = (const float*)(cr_base + y * cr_stride);
+      const float* cbp = (const float*)(cb_base + y * cb_stride);
+      float* __restrict dstp = (float*)(dst_base + y * dst_stride);
+      for (int x = 0; x < sz.width; ++x, dstp += 3 ) {
+        const float Y = *yp++;
+        const float Cr = *crp++;
+        const float Cb = *cbp++;
+        float r = Y + iCr * Cr;
+        float b = Y + iCb * Cb;
+        float g = Y - gCr * Cr - gCb * Cb;
+        dstp[0] = b;
+        dstp[1] = g;
+        dstp[2] = r;
       }
     }
   });
+
+  return true;
+}
+
+bool ycrcbPlanes2BGR(const std::vector<cv::Mat1f> & planes, const cv::Rect & roi,
+    cv::OutputArray bgrImage)
+{
+  INSTRUMENT_REGION("");
+
+  if( planes.size() != 3 ) {
+    CF_ERROR("Invalid input planes size=%zu. Must be 3", planes.size());
+    return false;
+  }
+
+  const cv::Size srcSize = planes[0].size();
+  if( srcSize.empty() ) {
+    CF_ERROR("Invalid input image size: %dx%d", srcSize.width, srcSize.height);
+    return false;
+  }
+
+  for( int c = 1; c < 3; ++c ) {
+    if( planes[c].size() != srcSize ) {
+      CF_ERROR("Invalid input plane[%d] size=%dx%d. Expected %dx%d",
+          c, planes[c].cols, planes[c].rows, srcSize.width, srcSize.height);
+      return false;
+    }
+  }
+
+  if( bgrImage.fixedType() && bgrImage.type() != CV_32FC3 ) {
+    CF_ERROR("Output BGR image type must be CV_32FC3");
+    return false;
+  }
+
+  const cv::Size roiSize = roi.size();
+
+  if( bgrImage.fixedSize() && bgrImage.size() != roiSize ) {
+    CF_ERROR("Output BGR image size must be %dx%d", roiSize.width, roiSize.height);
+    return false;
+  }
+
+  // Y = 0.299*R + 0.587*G + 0.114*B
+  // Inverse BT.601 coefficients (exact mathematical weights)
+  constexpr float iCr = 1.402000f;
+  constexpr float iCb = 1.772000f;
+  constexpr float gCr = 0.714136f; // (0.299 * iCr) / 0.587
+  constexpr float gCb = 0.344136f; // (0.114 * iCb) / 0.587
+
+  const cv::Mat1f Yplane = planes[0];
+  const cv::Mat1f Crplane = planes[1];
+  const cv::Mat1f Cbplane = planes[2];
+
+  bgrImage.create(roiSize, CV_32FC3);
+  cv::Mat dst = bgrImage.getMatRef();
+
+  const uint8_t * const y_base = Yplane.ptr();
+  const size_t y_stride = Yplane.step;
+
+  const uint8_t * const cr_base = Crplane.ptr();
+  const size_t cr_stride = Crplane.step;
+
+  const uint8_t * const cb_base = Cbplane.ptr();
+  const size_t cb_stride = Cbplane.step;
+
+  uint8_t * const dst_base = dst.ptr();
+  const size_t dst_stride = dst.step;
+
+  parallel_for(0, roiSize.height, [=](const auto & range) {
+    for (int y = rbegin(range); y < rend(range); ++y) {
+      const int src_y = y + roi.y;
+      const float* yp = (const float*)(y_base + src_y * y_stride) + roi.x;
+      const float* crp = (const float*)(cr_base + src_y * cr_stride) + roi.x;
+      const float* cbp = (const float*)(cb_base + src_y * cb_stride) + roi.x;
+      float* __restrict dstp = (float*)(dst_base + y * dst_stride);
+      for (int x = 0; x < roiSize.width; ++x, dstp += 3 ) {
+        const float Y = *yp++;
+        const float Cr = *crp++;
+        const float Cb = *cbp++;
+        float r = Y + iCr * Cr;
+        float b = Y + iCb * Cb;
+        float g = Y - gCr * Cr - gCb * Cb;
+        dstp[0] = b;
+        dstp[1] = g;
+        dstp[2] = r;
+      }
+    }
+  });
+
+  return true;
 }
 
 }
@@ -564,9 +833,6 @@ static void computeLinearIntensityMathitude(cv::Mat1f & INTENSITY_P,
 void c_fft_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_context & ctx)
 {
   ctlbind(ctls, "display", CTL_CONTEXT(ctx, _display), "");
-
-  ctlbind(ctls, "Intensity channel: ", CTL_CONTEXT(ctx, _intensity_channel),
-      "Select intensity channel for spectrum analysis");
 
   ctlbind(ctls, "inpaint_missing_pixels:", CTL_CONTEXT(ctx, _mask_inpaint_method),
       "How to fill holes and borders in non-enpty masks");
@@ -583,30 +849,17 @@ void c_fft_autosharp_routine::getcontrols(c_control_list & ctls, const ctlbind_c
   ctlbind(ctls, "print_debug_info:", CTL_CONTEXT(ctx, _print_debug_info), "");
   ctlbind(ctls, "write_debug_file:", CTL_CONTEXT(ctx, _write_file), "");
   ctlbind_browse_for_file(ctls, "debug_file ", CTL_CONTEXT(ctx, _debug_file_name), "");
-
-  c_anscombe_transform::getcontrols(ctls, ctx(&this_class::_anscombe));
 }
 
 bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
 {
   if( base::serialize(settings, save) ) {
     SERIALIZE_OPTION(settings, save, *this, _display);
-    SERIALIZE_OPTION(settings, save, *this, _intensity_channel);
     SERIALIZE_OPTION(settings, save, *this, _autoS1_target);
     SERIALIZE_OPTION(settings, save, *this, _S1_target);
     SERIALIZE_OPTION(settings, save, *this, _macroStructSizePx);
     SERIALIZE_OPTION(settings, save, *this, _debug_file_name);
     SERIALIZE_OPTION(settings, save, *this, _mask_inpaint_method);
-
-    if ( auto group = SERIALIZE_GROUP(settings, save, "anscombe") ) {
-      c_anscombe_transform_options & opts = _anscombe.opts();
-      SERIALIZE_OPTION(settings, save, opts, method);
-      SERIALIZE_OPTION(settings, save, opts.generalized, g);
-      SERIALIZE_OPTION(settings, save, opts.generalized, c);
-      SERIALIZE_OPTION(settings, save, opts.generalized, auto_estimate);
-      SERIALIZE_OPTION(settings, save, opts.generalized, dump_estimated_params);
-    }
-
     return true;
   }
   return false;
@@ -618,6 +871,7 @@ static bool inpaintMakeBorder(cv::InputArray inputImage, cv::InputArray inputMas
     cv::OutputArray outputImage,
     cv::Rect * outputValidRoi)
 {
+  INSTRUMENT_REGION("");
   if( inputMask.empty() || inpaintMethod == c_fft_autosharp_routine::INPAINT_DISABLED ) {
     return fftCopyMakeBorder(inputImage, outputImage, fftSize, outputValidRoi);
   }
@@ -661,10 +915,11 @@ static bool inpaintMakeBorder(cv::InputArray inputImage, cv::InputArray inputMas
   return true;
 }
 
-
 bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {
   INSTRUMENT_REGION("dft");
+
+//  CF_DEBUG("enter");
 
   cv::Rect rc;
   const cv::Size srcSize = image.size();
@@ -672,11 +927,13 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   const cv::Size fftSize = fftGetOptimalSize(image.size(), psfRadius, nullptr, true);
   const int cn = image.channels();
 
-  double wB = 0, wG = 0, wR = 0;
+  cv::Mat V_SPECTRUM;
 
-  // CF_DEBUG("srcSize: %dx%d fftSize: %dx%d", srcSize.width, srcSize.height, fftSize.width, fftSize.height);
+  if( VLAP.size() != fftSize ) {
+    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+    CF_DEBUG("Created VLAP: %dx%dx%d", VLAP.cols, VLAP.rows, VLAP.channels());
+  }
 
-  image.getMat().convertTo(SRC_IMAGE, CV_32F);
   if( !mask.empty() ) {
     if( mask.depth() == CV_8U ) {
       SRC_MASK = mask.getMat();
@@ -686,58 +943,99 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     }
   }
 
-  inpaintMakeBorder(SRC_IMAGE, mask.empty() ? cv::noArray() : SRC_MASK,
-      fftSize, _mask_inpaint_method,
-      SRC_IMAGE,
-      &rc);
 
-  if ( _anscombe.method() != anscombe_none ) {
-    _anscombe.apply(SRC_IMAGE, SRC_IMAGE);
+
+  if ( cn == 1 ) { // Grayscale input
+
+    inpaintMakeBorder(image, mask.empty() ? cv::noArray() : SRC_MASK,
+        fftSize, _mask_inpaint_method,
+        SRC_IMAGE,
+        &rc);
+
+    if ( SRC_P.empty() ) {
+      SRC_P.emplace_back();
+    }
+    if ( SRC_S.empty() ) {
+      SRC_S.emplace_back();
+    }
+
+    fftPPSDecompositionCCS(SRC_IMAGE, VLAP, SRC_P[0], SRC_S[0],
+        _display == DISPLAY_V_SPECTRUM ? V_SPECTRUM :
+            cv::noArray());
+  }
+  else if( cn == 3 ) { // BGR input
+    if (mask.empty() || _mask_inpaint_method == INPAINT_DISABLED ) {
+      // Standard border BORDER_REFLECT101 still required
+      fftCopyMakeBorder(image, SRC_IMAGE, fftSize, &rc);
+      if ( !bgr2YCrCbPlanes(SRC_IMAGE, cv::noArray(), fftSize, SRC_PLANES, nullptr) ) {
+        CF_ERROR("bgr2YCrCbPlanes() fails");
+        return false;
+      }
+    }
+    else {
+      // Zero (black) border for mask inpaint (inpaint intensity channel Y only)
+      if( !bgr2YCrCbPlanes(image, mask.empty() ? cv::noArray() : SRC_MASK, fftSize, SRC_PLANES, &rc) ) {
+        CF_ERROR("bgr2YCrCbPlanes() fails");
+        return false;
+      }
+
+      cv::Mat1b inpaintMask = cv::Mat1b::zeros(fftSize);
+      SRC_MASK.copyTo(inpaintMask(rc));
+
+      switch (_mask_inpaint_method) {
+        case c_fft_autosharp_routine::AVERAGE_PYRAMID_INPAINT:
+          average_pyramid_inpaint(SRC_PLANES[0], inpaintMask, SRC_PLANES[0], cv::noArray(), 9);
+          break;
+        case c_fft_autosharp_routine::LINEAR_INTERPOLATION_INPAINT:
+          linear_interpolation_inpaint(SRC_PLANES[0], inpaintMask);
+          break;
+      }
+      SRC_IMAGE = SRC_PLANES[0];
+    }
+
+    if ( !fftPPSDecompositionCCSPlanes(SRC_PLANES, VLAP, &SRC_P, &SRC_S) ) {
+      CF_ERROR("fftPPSDecompositionCCSPlanes() fails");
+      return false;
+    }
+  }
+  else {
+    CF_ERROR("Grayscale or BGR image is expected on input");
+    return false;
   }
 
   if ( _display == DISPLAY_SRC_IMAGE ) {
-    SRC_IMAGE(rc).copyTo(image);
+    SRC_IMAGE.copyTo(image);
+    mask.release();
     return true;
   }
-
-  if( VLAP.size() != fftSize ) {
-    VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-    CF_DEBUG("Created VLAP: %dx%dx%d", VLAP.cols, VLAP.rows, VLAP.channels());
-  }
-
-  fftPPSDecompositionCCS(SRC_IMAGE, VLAP, &SRC_P, &SRC_S);
-
-  if ( cn != _prev_cn ) { // Avoid potential cache hysteresis problem for consecutive calls
-    INTENSITY_P.release();
-    _prev_cn = cn;
-  }
-
-  if ( cn == 1 ) {
-    INTENSITY_P = SRC_P[0];
-  }
-  else if ( getLinearIntensityWeights(_intensity_channel, wB, wG, wR) ) {
-    computeLinearIntensityMathitude(INTENSITY_P,
-        SRC_P[0], wB,
-        SRC_P[1], wG,
-        SRC_P[2], wR);
-  }
-  else { // Nonlinear channel: Lab, HSV, etc
-    extract_channel(SRC_IMAGE, INTENSITY_CHANNEL, cv::noArray(), cv::noArray(), _intensity_channel);
-    fftPPSDecompositionCCS(INTENSITY_CHANNEL, VLAP, INTENSITY_P, INTENSITY_S);
-  }
-
-  if ( _display ==  DISPLAY_SRC_SPECTRUM ) {
-    fftUnpackCCSSpectrum(INTENSITY_P, image);
+  if ( _display == DISPLAY_P_SPECTRUM ) {
+    fftUnpackCCSSpectrum(SRC_P[0], image);
     fftSwapQuadrants(image, image);
     fftSpectrumToPolar(image, image);
     mask.release();
     return true;
   }
+  if ( _display == DISPLAY_S_SPECTRUM ) {
+    fftUnpackCCSSpectrum(SRC_S[0], image);
+    fftSwapQuadrants(image, image);
+    fftSpectrumToPolar(image, image);
+    mask.release();
+    return true;
+  }
+  if ( _display == DISPLAY_V_SPECTRUM ) {
+    if ( V_SPECTRUM.channels() == 1 ) {
+      fftUnpackCCSSpectrum(V_SPECTRUM, V_SPECTRUM);
+    }
+    fftSwapQuadrants(V_SPECTRUM, image);
+    fftSpectrumToPolar(image, image);
+    mask.release();
+    return true;
+  }
 
-  fftRadialProfileCCS(INTENSITY_P, INTENSITY_RadialProfile);
+  fftRadialProfileCCS(SRC_P[0], RadialProfile);
 
   bool fOK =
-      createDFTInverseBlurCorrectionFilter(INVERSE_FILTER, INTENSITY_RadialProfile, fftSize,
+      createDFTInverseBlurCorrectionFilter(INVERSE_FILTER, RadialProfile, fftSize,
           _autoS1_target, _S1_target, _macroStructSizePx, _print_debug_info,
           _write_file ? _debug_file_name : "");
 
@@ -753,10 +1051,10 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   if ( _display ==  DISPLAY_RESTORED_SPECTRUM ) {
-    fftMulSpectrumCCS(INTENSITY_P, INVERSE_FILTER, INTENSITY_P);
-    fftUnpackCCSSpectrum(INTENSITY_P, image);
-    fftSwapQuadrants(image, image);
+    fftMulSpectrumCCS(SRC_P[0], INVERSE_FILTER, image);
+    fftUnpackCCSSpectrum(image, image);
     fftSpectrumToPolar(image, image);
+    fftSwapQuadrants(image);
     mask.release();
     return true;
   }
@@ -773,18 +1071,19 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
   }
 
   if (cn == 1 ) {
-    SRC_RESTORED = SRC_CHANNELS_RESTORED[0];
+    SRC_CHANNELS_RESTORED[0](rc).copyTo(image);
   }
   else {
-    cv::merge(SRC_CHANNELS_RESTORED, SRC_RESTORED);
+    INSTRUMENT_REGION("MERGE_AND_COPY");
+#if 1
+    ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, rc, image);
+#else
+    ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, SRC_RESTORED);
+    SRC_RESTORED(rc).copyTo(image);
+#endif
   }
 
-  if ( _anscombe.method() != anscombe_none ) {
-    _anscombe.inverse(SRC_RESTORED, SRC_RESTORED);
-  }
-
-  SRC_RESTORED(rc).copyTo(image);
-
+//  CF_DEBUG("leave");
   return true;
 }
 

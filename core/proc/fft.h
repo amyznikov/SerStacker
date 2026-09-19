@@ -191,6 +191,13 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum,
     cv::OutputArray _complexSpectrum);
 
 /**
+ * CV_32FC2 Complex input -> CV_32FC1 CCS packed output
+ * Pack full complex spectrum of the signal into OpenCV CCS format.
+ **/
+bool fftPackCCSSpectrum(cv::InputArray _complexSpectrum,
+    cv::OutputArray _ccsSpectrum);
+
+/**
 * @brief Performs element-wise multiplication of a general-purpose real filter by a
 *        complex spectrum in OpenCV CCS format.
 * @param[in] filter Real filter (size M x N, type CV_32FC1). Each pixel corresponds to a frequency.
@@ -200,20 +207,40 @@ bool fftUnpackCCSSpectrumAlternateSign(cv::InputArray _ccsSpectrum,
 bool fftMulSpectrumCCS(cv::InputArray ccsSpectrum, const cv::Mat1f & filter,
     cv::OutputArray ccsOutputSpectrum);
 
-// Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
-// Implements Virginie Moizan decomposition.
-// Saves ~2.0 ms from ~17 ms on a 1024x1024 grayscale frame by eliminating the 2D DFT.
-// The src must be singke-channel real image
-bool fftComputeVSpectrumCCS(cv::InputArray _src, cv::OutputArray ccsOutputVSpectrum);
+/**
+ * Analytical computation of the 2D Complex CV_32FC2 spectrum V via 1D DFT of rows and columns.
+ * Implements Virginie Moizan decomposition.
+ * The src must be singke-channel real image
+ */
+bool fftComputeVSpectrumComplex(cv::InputArray _src,
+    cv::OutputArray _complexSpectrum);
 
-// DFT with Periodic + Smooth Decomposition with CCS output.
-// The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
-// const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
-// The target fftSize (FFT padding) is defined by the VLAP.size()
-bool fftPPSDecompositionCCS(cv::InputArray src_image, const cv::Mat1f & VLAP,
-    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM);
+/*
+ * Analytical computation of the 2D CCS spectrum V via 1D DFT of rows and columns.
+ * Implements Virginie Moizan decomposition.
+ * Saves ~2.0 ms from ~15 ms on a 1024x1024 grayscale frame by eliminating the 2D DFT.
+ * // The src must be singke-channel real image
+ */
+bool fftComputeVSpectrumCCS(cv::InputArray _src,
+    cv::OutputArray ccsOutputVSpectrum);
 
-bool fftPPSDecompositionCCS(cv::InputArray src_image, const cv::Mat1f & VLAP,
+
+/*
+ * DFT with Periodic + Smooth Decomposition with CCS output.
+ * Uses Virginie Moizan decomposition.
+ * The Inverse Discrete Laplacian Filter VLAP must be prepared before this call with centerDC=false.
+ *   const cv::Mat1f VLAP = fftGenerateDiscreteLaplacianFilter(fftSize, false);
+ * The target fftSize (FFT padding) is defined by the VLAP.size()
+ * The inputImage must be single-channel of any depth
+ **/
+bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
+    cv::OutputArray P_SPECTRUM, cv::OutputArray S_SPECTRUM,
+    cv::OutputArray V_SPECTRUM = cv::noArray());
+
+bool fftPPSDecompositionCCS(cv::InputArray inputImage, const cv::Mat1f & VLAP,
+    std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
+
+bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat1f> & planes, const cv::Mat1f & VLAP,
     std::vector<cv::Mat1f> * P_SPECTRUMS, std::vector<cv::Mat1f> * S_SPECTRUMS);
 
 /**

@@ -18,6 +18,13 @@ static inline void parallel_for(T start, T end, Func && f)
   tbb::parallel_for(tbb::blocked_range<int>(start, end), std::forward<Func>(f),
       tbb::static_partitioner());
 }
+template<typename T, typename Func>
+static inline void no_parallel_for(T start, T end, Func && f)
+{
+  for ( ; start < end; ++start ) {
+    (std::forward<Func>(f)(tbb::blocked_range<T>(start, start + 1)));
+  }
+}
 static inline int rbegin(const tbb::blocked_range<int> & range)
 {
   return range.begin();
@@ -34,6 +41,13 @@ template<typename T, typename Func>
 static inline void parallel_for(T start, T end, Func && f)
 {
   cv::parallel_for_(cv::Range(start, end), f);
+}
+template<typename T, typename Func>
+static inline void no_parallel_for(T start, T end, Func && f)
+{
+  for ( ; start < end; ++start ) {
+    (std::forward<Func>(f)(cv::Range(start, start + 1)));
+  }
 }
 static inline int rbegin(const cv::Range & range)
 {

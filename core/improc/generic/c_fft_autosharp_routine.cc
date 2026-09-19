@@ -1038,11 +1038,14 @@ bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutpu
     }
   }
 
-  if (cn == 1 ) {
-    SRC_CHANNELS_RESTORED[0](rc).copyTo(image);
+  if (cn > 1 ) {
+    ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, rc, image);
+  }
+  else if ( SRC_CHANNELS_RESTORED[0].size() == srcSize ) {
+    image.assign(SRC_CHANNELS_RESTORED[0]);
   }
   else {
-    ycrcbPlanes2BGR(SRC_CHANNELS_RESTORED, rc, image);
+    image.assign(SRC_CHANNELS_RESTORED[0](rc));
   }
 
   //  CF_DEBUG("leave");

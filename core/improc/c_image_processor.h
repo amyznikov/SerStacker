@@ -215,8 +215,8 @@ public:
   /////////////////////////////////////////////////////////////////////////////
   static c_image_processor_artifacts & artifacts()
   {
-    static c_image_processor_artifacts artifacts_;
-    return artifacts_;
+    static c_image_processor_artifacts _artifacts;
+    return _artifacts;
   }
 
   static void clear_artifacts()
@@ -226,13 +226,10 @@ public:
 
   static void add_artifact(const std::string & name, cv::InputArray image, cv::InputArray mask = cv::noArray())
   {
-    auto ii =
-        artifacts().find(name);
-
+    auto ii = artifacts().find(name);
     if( ii == artifacts().end() ) {
       ii = artifacts().emplace(name, std::move(c_image_processor_artifact())).first;
     }
-
     image.getMat().copyTo(ii->second.image);
     mask.getMat().copyTo(ii->second.mask);
   }

@@ -133,23 +133,32 @@ protected:
 
   bool create_reference_frame();
   bool estimate_planetary_disk_ellipse();
-  bool derotate_and_average_frames(int start_frame_index,  int end_frame_index);
+
+  bool preprocess(const c_image_processor::sptr & proc,
+      cv::Mat & current_frame, cv::Mat & current_mask) const;
+
+  bool align_to_reference(const c_image_processor::sptr & proc, c_ecch & ecch,
+      cv::Mat & current_frame, cv::Mat & current_mask) const;
+
+//  bool preproc_and_align_to_reference(const c_image_processor::sptr & proc, c_ecch & ecch,
+//      cv::Mat & current_frame, cv::Mat & current_mask) const;
+
+  bool derotate_and_average_frames(int start_frame_index, int end_frame_index, c_ecch & ecchr,
+      const cv::Mat & master_ff,
+      double master_ts,
+      int master_pos);
+
   bool open_output_writers();
 
-  static bool preproc_and_align_to_reference(const c_image_processor::sptr & proc, c_ecch & ecch,
-      cv::Mat & current_frame, cv::Mat & current_mask,
-      color_channel_type reference_channel);
 
 protected:
   c_jdr_pipeline_input_options _input_options;
-  //c_roi_selection_options _roi_selection_options;
   c_jdr_pipeline_reference_frame_options _reference_frame_options;
   c_jdr_pipeline_ellipse_detector_options _ellipse_estimation_options;
   c_jdr_pipeline_stack_options _stack_options;
   c_jdr_pipeline_output_options _output_options;
 
 protected:
-  //c_roi_selection::sptr _roi_selection;
   c_weigthed_average _reference_frame_avg;
   c_jovian_ellipse_detector _ellipse_detector;
   c_jovian_derotation_remap _ellipsoid_derotation_remap;
@@ -157,15 +166,12 @@ protected:
 
   int _pipeline_stage = 0;
 
-  cv::Mat _master_frame;
-  cv::Mat _master_mask;
-  cv::Mat _reference_frame;
-  cv::Mat _reference_mask;
+  cv::Mat _reference_frame, _reference_mask;
   cv::Mat _reference_planetary_disk_mask;
   cv::Mat _current_aligned_frame;
   cv::Mat _current_aligned_mask;
-  double _master_ts = 0;
-  int _master_pos = 0;
+  double _reference_master_ts = 0;
+  int _reference_master_pos = 0;
   c_jdr_pipeline_ellipsoid_pose _planetary_disk_pose;
 
   c_output_frame_writer _aligned_frames_writer;

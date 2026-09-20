@@ -98,8 +98,9 @@ static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Input
 
 static int getOptimalFFTSizeDown(int size)
 {
+  // FIXME: some bug was discovered for uneven FFT sizes, probably in CCS Nyquist components handling
   int sopt = cv::getOptimalDFTSize(size);
-  while ( sopt > 0 && sopt > size ) {
+  while ( sopt > 0 && ((sopt > size) || (sopt & 0x1)) ) {
     sopt = cv::getOptimalDFTSize(--size);
   }
   return sopt;
@@ -374,56 +375,69 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 }
 
 /**
-  * @brief Extracts subpixel coordinate offset from the 2D correlation matrix peak.
-  * @details Performs separable quadratic polynomial curve-fitting (OLS) over a 3x3 local neighborhood.
-  * @param[in]  correlationMap 2D spatial distribution matrix of correlation intensity.
-  * @param[out] peakPos        Interpolated coordinates of peak maximum relative to frame origin.
-  * @return Absolute magnitude height of central integer peak pixel.
-  */
+ * @brief Locate the subpixel translation peak using a non-linear 5x5 centroid window.
+ * @details Finds the global integer maximum and refines its location by computing a
+ *          weighted center of mass over a 5x5 neighborhood. Applies an adaptive threshold
+ *          to isolate the peak from bandpass sidelobes, and utilizes a cubic weighting
+ *          scheme to eliminate pixel-locking effects and ensure robustness against
+ *          atmospheric turbulence or temporary image splitting.
+ *
+ * @param correlationMap Input 2D real-valued cross-correlation map after inverse DFT.
+ * @param peakPos Output refined subpixel coordinates of the correlation peak.
+ * @return The absolute peak value at the integer maximum location.
+ */
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
 {
+  // Adaptive threshold 20% of the peak cuts off well the filter's sidelobes.
+  // Cubic weight (val - threshold)^3
+  // Works well on flat peaks in a turbulent environment
+
   const int rows = correlationMap.rows;
   const int cols = correlationMap.cols;
 
   int maxIdx[2] = {0, 0};
   cv::minMaxIdx(correlationMap, nullptr, nullptr, nullptr, maxIdx);
 
+  constexpr int R = 2;
   const int y0 = maxIdx[0];
   const int x0 = maxIdx[1];
-  if (x0 <= 0 || x0 >= cols - 1 || y0 <= 0 || y0 >= rows - 1) {
+
+  if (x0 < R || x0 >= cols - R || y0 < R || y0 >= rows - R) {
     peakPos = cv::Point2f(float(x0), float(y0));
     return -1;
   }
 
-  // Least-squares approximation of a paraboloid over a 3x3 neighborhood
-  const float z_00 = correlationMap(y0 - 1, x0 - 1); // Top-left
-  const float z_10 = correlationMap(y0 - 1, x0); // Top-center
-  const float z_20 = correlationMap(y0 - 1, x0 + 1); // Top-right
+  const float z_center = correlationMap(y0, x0);
+  const double threshold = z_center * 0.20f;
+  double sumWeights = 0.0;
+  double sumX = 0.0;
+  double sumY = 0.0;
 
-  const float z_01 = correlationMap(y0,     x0 - 1); // Middle-left
-  const float z_11 = correlationMap(y0,     x0); // True center (peak)
-  const float z_21 = correlationMap(y0,     x0 + 1); // Middle-right
+  const uint8_t * src_base = correlationMap.ptr(y0);
+  const size_t stride = correlationMap.step;
+  for (int dy = -R; dy <= R; ++dy) {
+    const float * __restrict srcp = (const float *)(src_base + dy * stride);
+    for (int dx = -R; dx <= R; ++dx) {
+      const double val = srcp[x0 + dx];
+      if (val > threshold) {
+        const double diff = val - threshold;
+        const double w = diff * diff * diff;
+        sumWeights += w;
+        sumX += dx * w;
+        sumY += dy * w;
+      }
+    }
+  }
 
-  const float z_02 = correlationMap(y0 + 1, x0 - 1); // Bottom-left
-  const float z_12 = correlationMap(y0 + 1, x0); // Bottom-center
-  const float z_22 = correlationMap(y0 + 1, x0 + 1); // Bottom-right
+  if( sumWeights > 1e-9 ) {
+    peakPos.x = float(x0 + sumX / sumWeights);
+    peakPos.y = float(y0 + sumY / sumWeights);
+  }
+  else {
+    peakPos = cv::Point2f(float(x0), float(y0));
+  }
 
-  const float C = (z_20 + z_21 + z_22 - (z_00 + z_01 + z_02)) / 6.0f;
-  const float D = (z_02 + z_12 + z_22 - (z_00 + z_10 + z_20)) / 6.0f;
-  const float A = (z_00 + z_01 + z_02 + z_20 + z_21 + z_22) / 6.0f - (z_10 + z_11 + z_12) / 3.0f;
-  const float B = (z_00 + z_10 + z_20 + z_02 + z_12 + z_22) / 6.0f - (z_01 + z_11 + z_21) / 3.0f;
-
-
-  // Parabola extremum: delta = -derivative / (2 * curvature)
-  // deltaX = -C / (2*A), deltaY = -D / (2*B)
-  const float adaptive_thresh = std::abs(z_11) * 1e-6f;
-  const float deltaX = std::abs(A) > adaptive_thresh ? -C / (2.0f * A) : 0.0f;
-  const float deltaY = std::abs(B) > adaptive_thresh ? -D / (2.0f * B) : 0.0f;
-
-  peakPos.x = float(x0 + deltaX);
-  peakPos.y = float(y0 + deltaY);
-
-  return correlationMap(y0, x0);
+  return z_center;
 }
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,

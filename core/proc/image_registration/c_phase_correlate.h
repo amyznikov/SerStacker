@@ -53,7 +53,7 @@ static inline void ctlbind(c_ctlist<RootObjectType> & ctls, const c_ctlbind_cont
   ctlbind(ctls, "downscale_factor",  ctx(&S::downscale_factor), "");
   ctlbind(ctls, "gsigma [px]:", ctx(&S::gsigma),  "Target texture characteristic size in pixels");
   ctlbind(ctls, "csigma:", ctx(&S::csigma),  "Inverse Cross filter blur");
-  ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter scale");
+  ctlbind(ctls, "calpha:", ctx(&S::calpha),  "Inverse Cross filter strength");
 }
 
 class c_phase_correlate

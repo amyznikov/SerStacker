@@ -275,9 +275,6 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
         mask.release();
         break;
       }
-      //
-      //
-
       case DISPLAY_BANDPASS_FILTER: {
         fftSwapQuadrants(pc.bandpassFilter(), image);
         mask.release();

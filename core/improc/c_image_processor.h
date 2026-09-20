@@ -116,7 +116,10 @@ public:
 
   void set_enabled(bool v)
   {
-    _enabled = v;
+    if ( _enabled != v ) {
+      _enabled = v;
+      state_changed();
+    }
   }
 
   bool enabled() const
@@ -322,6 +325,9 @@ protected:
   virtual bool initialize()
   {
     return true;
+  }
+  virtual void state_changed()
+  {
   }
 
 protected:

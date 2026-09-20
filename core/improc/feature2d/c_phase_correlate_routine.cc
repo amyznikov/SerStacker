@@ -249,28 +249,28 @@ bool c_phase_correlate_routine::process(cv::InputOutputArray image, cv::InputOut
       }
       case DISPLAY_CURRENT_SPECTRUM_CART: {
         fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
-        // fftSwapQuadrants(image, image);
+        fftSwapQuadrants(image, image);
         mask.release();
         break;
       }
       case DISPLAY_CURRENT_SPECTRUM_POLAR: {
         fftUnpackCCSSpectrum(pc.currentSpectrum(), image);
-        // fftSwapQuadrants(image, image);
+        fftSwapQuadrants(image, image);
         fftSpectrumToPolar(image, image);
         mask.release();
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_CART: {
-        fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
-        //fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
-        //fftSwapQuadrants(image, image);
+        //fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
+        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+        fftSwapQuadrants(image, image);
         mask.release();
         break;
       }
       case DISPLAY_CROSS_SPECTRUM_POLAR: {
-        fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
-        //fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
-        //fftSwapQuadrants(image, image);
+        //fftUnpackCCSSpectrum(pc.crossSpectrum(), image);
+        fftUnpackCCSSpectrumAlternateSign(pc.crossSpectrum(), image);
+        fftSwapQuadrants(image, image);
         fftSpectrumToPolar(image, image);
         mask.release();
         break;

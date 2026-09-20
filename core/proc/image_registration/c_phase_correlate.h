@@ -13,11 +13,22 @@
 #include <core/ctrlbind/ctrlbind.h>
 #include <core/settings.h>
 
+/**
+ * @struct c_phase_correlate_options
+ * @brief Configuration parameters for the phase correlation pipeline.
+ */
 struct c_phase_correlate_options
 {
+  /** @brief Image downscale factor (must be >= 1.0). Controls the processing resolution. */
   double downscale_factor = 4;
+
+  /** @brief Bandpass filter Gaussian sigma [px]. Defines the target texture characteristic size. */
   double gsigma = 10;
+
+  /** @brief Inverse cross-filter blur parameter for deconvolution/mask-edge compensation. */
   double csigma = 0.5;
+
+  /** @brief Inverse cross-filter scaling/regularization alpha coefficient. */
   double calpha = 0.0;
 };
 
@@ -121,11 +132,6 @@ public: // public access for debug & visualization purposes
     return _bandpassFilter;
   }
 
-
-//  const cv::Mat1f distmap() const {
-//    return _distmap;
-//  }
-
 protected: // internal helpers
   void generateBandpassFilter();
   bool computeCorrelationMap();
@@ -142,7 +148,7 @@ protected: // internal data
   double _correlationScore = 0;
   bool _initialized = false;
 
-protected: // Cache data
+protected: // Cached data
   cv::Size _currentValidSize, _referenceValidSize;
   cv::Point _currentCropOffset, _referenceCropOffset;
   cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
@@ -151,7 +157,6 @@ protected: // Cache data
   cv::Mat1f _crossSpectrum, _correlationMap;
   cv::Mat1f _bandpassFilter;
   cv::Mat1f _crossMask;
-//  cv::Mat1f _distmap;
 };
 
 

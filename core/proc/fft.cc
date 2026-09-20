@@ -2557,8 +2557,8 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 
   parallel_for(0, rows, [=](const auto & range) {
     for (int y = rbegin(range); y < rend(range); ++y) {
-      const float * srcp1 = (const float *)(ccs1_base + y * ccs1_stride);
-      const float * srcp2 = (const float *)(ccs2_base + y * ccs2_stride);
+      const float * ccsp1 = (const float *)(ccs1_base + y * ccs1_stride);
+      const float * ccsp2 = (const float *)(ccs2_base + y * ccs2_stride);
       const float * fltp  = (const float *)(flt_base  + y * flt_stride);
       float * __restrict cross = (float *)(cross_base + y * cross_stride);
 
@@ -2568,8 +2568,8 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 
         if (y == 0) {
           // Pure real DC component (0,0). Single-component whitening.
-          const float a1 = srcp1[0];
-          const float a2 = srcp2[0];
+          const float a1 = ccsp1[0];
+          const float a2 = ccsp2[0];
           const float re = a1 * a2;
           const float mag = std::abs(re);
           if (mag > safe_min) {
@@ -2579,8 +2579,8 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
         }
         else if (has_even_rows && y == rows - 1) {
           // Pure real vertical Nyquist (rows/2, 0) in the last row of the CCS.
-          const float a1 = srcp1[0];
-          const float a2 = srcp2[0];
+          const float a1 = ccsp1[0];
+          const float a2 = ccsp2[0];
           const float re = a1 * a2;
           const float mag = std::abs(re);
           if (mag > safe_min) {
@@ -2615,10 +2615,10 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
       const int half_cols = (cols + 1) / 2;
       for (int x = 1; x < half_cols; ++x) {
         const float gw = fltp[x];
-        const float a1 = srcp1[2 * x - 1];
-        const float b1 = srcp1[2 * x];
-        const float a2 = srcp2[2 * x - 1];
-        const float b2 = srcp2[2 * x];
+        const float a1 = ccsp1[2 * x - 1];
+        const float b1 = ccsp1[2 * x];
+        const float a2 = ccsp2[2 * x - 1];
+        const float b2 = ccsp2[2 * x];
         const float re = (a1 * a2 + b1 * b2);
         const float im = (b1 * a2 - a1 * b2);
         const float mag2 = (re * re + im * im);
@@ -2640,8 +2640,8 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
         float cross_value = 0.0f;
 
         if (y == 0) {
-          const float a1 = srcp1[last_ccs_col];
-          const float a2 = srcp2[last_ccs_col];
+          const float a1 = ccsp1[last_ccs_col];
+          const float a2 = ccsp2[last_ccs_col];
           const float re = a1 * a2;
           const float mag = std::abs(re);
           if (mag > safe_min) {
@@ -2650,8 +2650,8 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
           }
         }
         else if (has_even_rows && y == rows - 1) {
-          const float a1 = srcp1[last_ccs_col];
-          const float a2 = srcp2[last_ccs_col];
+          const float a1 = ccsp1[last_ccs_col];
+          const float a2 = ccsp2[last_ccs_col];
           const float re = a1 * a2;
           const float mag = std::abs(re);
           if (mag > safe_min) {

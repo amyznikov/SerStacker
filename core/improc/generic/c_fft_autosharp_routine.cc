@@ -862,6 +862,26 @@ bool c_fft_autosharp_routine::serialize(c_config_setting settings, bool save)
   return false;
 }
 
+bool c_fft_autosharp_routine::initialize()
+{
+  return true;
+}
+
+void c_fft_autosharp_routine::state_changed()
+{
+  if ( !_enabled ) {
+    // cleanup cached memory
+    SRC_MASK.release();
+    RadialProfile.release();
+    INVERSE_FILTER.release();
+    VLAP.release();
+    SRC_PLANES.clear(), SRC_PLANES.shrink_to_fit();
+    SRC_P.clear(), SRC_P.shrink_to_fit();
+    SRC_S.clear(), SRC_P.shrink_to_fit();
+    SRC_CHANNELS_RESTORED.clear(), SRC_P.shrink_to_fit();
+  }
+}
+
 
 bool c_fft_autosharp_routine::process(cv::InputOutputArray image, cv::InputOutputArray mask)
 {

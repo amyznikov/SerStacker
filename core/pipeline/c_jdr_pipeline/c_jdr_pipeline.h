@@ -136,14 +136,14 @@ protected:
   bool derotate_and_average_frames(int start_frame_index,  int end_frame_index);
   bool open_output_writers();
 
-  static bool preproc_align_and_remap(const c_image_processor::sptr & proc, c_ecch & ecch,
+  static bool preproc_and_align_to_reference(const c_image_processor::sptr & proc, c_ecch & ecch,
       cv::Mat & current_frame, cv::Mat & current_mask,
       color_channel_type reference_channel);
 
 protected:
   c_jdr_pipeline_input_options _input_options;
   //c_roi_selection_options _roi_selection_options;
-  c_jdr_pipeline_reference_frame_options  _reference_frame_options;
+  c_jdr_pipeline_reference_frame_options _reference_frame_options;
   c_jdr_pipeline_ellipse_detector_options _ellipse_estimation_options;
   c_jdr_pipeline_stack_options _stack_options;
   c_jdr_pipeline_output_options _output_options;

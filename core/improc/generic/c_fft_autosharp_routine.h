@@ -42,10 +42,8 @@ public:
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
 protected:
-  bool initialize() final
-  {
-    return true;
-  }
+  bool initialize() final;
+  void state_changed() final;
 
 protected:
   DISPLAY _display = DISPLAY_RESTORED_IMAGE;
@@ -67,7 +65,6 @@ protected:
   cv::Mat1f INVERSE_FILTER;
   std::vector<cv::Mat1f> SRC_CHANNELS_RESTORED;
   cv::Mat1f VLAP;
-  int _prev_cn = 0;
 };
 
 #endif /* __c_fft_autosharp_routine_h__ */

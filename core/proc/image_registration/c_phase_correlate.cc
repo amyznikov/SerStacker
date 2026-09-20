@@ -10,15 +10,21 @@
 #include <core/proc/fft.h>
 #include <core/debug.h>
 
-static int getOptimalFFTSizeDown(int size)
-{
-  int sopt = cv::getOptimalDFTSize(size);
-  while ( sopt > 0 && sopt > size ) {
-    sopt = cv::getOptimalDFTSize(--size);
-  }
-  return sopt;
-}
-
+/**
+ * @brief Prepares and aligns a downscaled image and its optional mask into fixed-size FFT buffers.
+ * @details Extracts a centered Region of Interest (ROI) from the source image if its dimensions
+ *          exceed the target FFT grid size. It then handles zero-padding (if the input is smaller
+ *          than @p fftSize), type conversion to floating-point representation (`CV_32F`), and
+ *          thresholding of the mask matrix down to standard binary format (`CV_8U`).
+ *
+ * @param[in]  srcImage        Source downscaled image matrix.
+ * @param[in]  srcMask         Source optional alignment mask matrix.
+ * @param[out] outImage        Output zero-padded floating-point matrix resized to fit @p fftSize.
+ * @param[out] outMask         Output binary mask matrix resized to fit @p fftSize (filled with 255 if @p srcMask is empty).
+ * @param[in]  fftSize         Target fixed layout dimensions optimal for Fast Fourier Transform operations.
+ * @param[out] outputValidSize The actual unpadded dimensions of the processed frame data within the padding window.
+ * @param[out] cropOffset      Pixel displacement offset from the original frame center if cropping was applied.
+ */
 static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::InputArray srcMask,
     cv::Mat1f & outImage, cv::Mat1b & outMask,
     const cv::Size & fftSize,
@@ -90,6 +96,15 @@ static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Input
   }
 }
 
+static int getOptimalFFTSizeDown(int size)
+{
+  int sopt = cv::getOptimalDFTSize(size);
+  while ( sopt > 0 && sopt > size ) {
+    sopt = cv::getOptimalDFTSize(--size);
+  }
+  return sopt;
+}
+
 cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
 {
   const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
@@ -118,6 +133,7 @@ bool c_phase_correlate::setup(const cv::Size & expectedFrameSize, c_phase_correl
   _csigma = opts.csigma;
   _calpha = opts.calpha;
 
+  // pre-generate bandpass filter for expected frame size
   generateBandpassFilter();
 
   _initialized = true;
@@ -139,146 +155,26 @@ void c_phase_correlate::release()
   _initialized = false;
 }
 
-#if 0
-// --- ПРАВИЛЬНАЯ ГЕНЕРАЦИЯ ФИЛЬТРА ПО ТЗ ---
-_bandpassFilter.create(_fftSize);
-
-const uint8_t * filter_base = _bandpassFilter.ptr();
-const size_t filter_stride = _bandpassFilter.step;
-
-const int cols = _fftSize.width;
-const int rows = _fftSize.height;
-
-const float inv_cols = float(1.0 / cols);
-const float inv_rows = float(1.0 / rows);
-const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
-
-parallel_for(0, rows, [=](const auto & range) {
-  for( int y = rbegin(range); y < rend(range); ++y ) {
-    float * __restrict fltp = (float * )(filter_base + y * filter_stride);
-
-    const int fy = (y > rows / 2) ? (rows - y) : y;
-    const float v = fy * inv_rows;
-    const float v2 = v * v;
-
-    for( int x = 0; x < cols; ++x ) {
-      const int fx = (x > cols / 2) ? (cols - x) : x;
-
-      // ИСПРАВЛЕНО: Вычисляем логический знак fftShift.
-      // Для оси x=0 и Найквиста по X, чётные и нечётные строки в CCS склеены в одну частоту.
-      // Чтобы фильтр был универсальным, знак знаковой маски на вертикальных осях
-      // должен определяться логической частотой y_logical, а не физической строкой y!
-      int sign = 1;
-      if (x == 0 || (cols % 2 == 0 && x == cols / 2)) {
-        // На вертикальных осях логический индекс частоты определяется по правилу CCS:
-        if (y == 0 || (rows % 2 == 0 && y == rows / 2)) {
-          sign = ((x + y) & 1) ? -1 : 1;
-        } else {
-          // Для комплексных пар частота равна (y + 1) / 2 для нечетных и y / 2 для четных.
-          // Но так как они делят ОДНУ частоту, мы берем индекс по строке вещественной части (нечетной):
-          int y_logical = (y % 2 != 0) ? y : (y - 1);
-          sign = ((x + y_logical) & 1) ? -1 : 1;
-        }
-      } else {
-        // Для всего остального поля спектра (x > 0) обычное шахматное чередование
-        sign = ((x + y) & 1) ? -1 : 1;
-      }
-
-      const float u = fx * inv_cols;
-      const float u2 = u * u;
-      const float rho2 = (u2 + v2) * lambda2;
-
-      fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
-    }
-  }
-});
-#endif
-
-//void c_phase_correlate::generateBandpassFilter()
-//{
-//  // fsigma = sqrt(2)/ (CV_PI * _gsigma)
-//  // rho2 = (u^2 + v^2) / fsigma^2;
-//  // F(u, v) = rho2 * exp (-0.5 * rho2 )
-//
-//  _bandpassFilter.create(_fftSize);
-//
-//  const uint8_t * filter_base = _bandpassFilter.ptr();
-//  const size_t filter_stride = _bandpassFilter.step;
-//
-//  const int cols = _fftSize.width;
-//  const int rows = _fftSize.height;
-//
-//  if ( _gsigma <= 0 ) {
-//    parallel_for(0, rows, [=](const auto & range) {
-//      for( int y = rbegin(range); y < rend(range); ++y ) {
-//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
-//        const float start_sign = (y & 1) ? -1.0f : 1.0f;
-//        for( int x = 0; x < cols; ++x ) {
-//          fltp[x] = (x & 1) ? -start_sign : start_sign;
-//        }
-//      }
-//    });
-//  }
-//  else {
-//    const float inv_cols = float (1.0 / cols);
-//    const float inv_rows = float (1.0 / rows);
-//    const float lambda2 = float(0.5 * CV_PI * CV_PI * _gsigma * _gsigma);
-//
-//    parallel_for(0, rows, [=](const auto & range) {
-//      for( int y = rbegin(range); y < rend(range); ++y ) {
-//        float * __restrict fltp = (float * )(filter_base + y * filter_stride);
-//
-//        const int fy = (y > rows / 2) ? (rows - y) : y;
-//        const float v = fy * inv_rows;
-//        const float v2 = v * v;
-//
-//        for( int x = 0; x < cols; ++x ) {
-//          const int fx = (x > cols / 2) ? (cols - x) : x;
-//
-//          // ИСПРАВЛЕНО: Вычисляем логический знак fftShift.
-//          // Для оси x=0 и Найквиста по X, чётные и нечётные строки в CCS склеены в одну частоту.
-//          // Чтобы фильтр был универсальным, знак знаковой маски на вертикальных осях
-//          // должен определяться логической частотой y_logical, а не физической строкой y!
-//          int sign = 1;
-////          if (x == 0 || (cols % 2 == 0 && x == cols / 2)) {
-////            // На вертикальных осях логический индекс частоты определяется по правилу CCS:
-////            if (y == 0 || (rows % 2 == 0 && y == rows / 2)) {
-////              sign = ((x + y) & 1) ? -1 : 1;
-////            } else {
-////              // Для комплексных пар частота равна (y + 1) / 2 для нечетных и y / 2 для четных.
-////              // Но так как они делят ОДНУ частоту, мы берем индекс по строке вещественной части (нечетной):
-////              int y_logical = (y % 2 != 0) ? y : (y - 1);
-////              sign = ((x + y_logical) & 1) ? -1 : 1;
-////            }
-////          } else {
-////            // Для всего остального поля спектра (x > 0) обычное шахматное чередование
-////            sign = ((x + y) & 1) ? -1 : 1;
-////          }
-//
-//          const float u = fx * inv_cols;
-//          const float u2 = u * u;
-//          const float rho2 = (u2 + v2) * lambda2;
-//
-//          fltp[x] = sign * rho2 * std::exp(-0.5f * rho2);
-//        }
-//      }
-//    });
-//  }
-//
-//  if ( _csigma > 0  && _calpha > 0) {
-//    fftGenerateInverseCrossFilter(_fftSize, _expectedFrameSize, _crossMask, _csigma, _calpha, false);
-//    cv::multiply(_bandpassFilter, _crossMask, _bandpassFilter);
-//  }
-//
-//  cv::multiply(_bandpassFilter, 1. / cv::norm(_bandpassFilter, cv::NORM_L1),
-//      _bandpassFilter);
-//}
-
+/**
+ * @brief Pre-calculates the frequency bandpass weighting filter matrix based on pipeline options.
+ * @details Generates a 2D bandpass filter grid directly mapped to the @ref _fftSize.
+ *          The method utilizes multi-threaded execution via OpenMP/TBB (`parallel_for`) and embeds
+ *          spatial chessboard sign-alternation (`((x + y) & 1) ? -1 : 1`) to inherently shift
+ *          the spectrum origin to the center, bypassing the performance overhead of an explicit
+ *          `fftShift` loop.
+ *
+ *          If `@ref _gsigma <= 0`, a fallback high-pass/alternating matrix is generated. Otherwise,
+ *          a Rayleigh-like frequency distribution curve is evaluated. If `@ref _csigma > 0` and
+ *          `@ref _calpha > 0`, an additional inverse cross-filter mask for mask-edge or blur
+ *          deconvolution is combined with the map. The final matrix is fully normalized via the L1 norm.
+ *
+ */
 void c_phase_correlate::generateBandpassFilter()
 {
   // fsigma = sqrt(2)/ (CV_PI * _gsigma)
   // rho2 = (u^2 + v^2) / fsigma^2;
   // F(u, v) = rho2 * exp (-0.5 * rho2 )
+  // the alternating +1 and -1 is also inserted to avoid later fftSwapQudrants()
 
   _bandpassFilter.create(_fftSize);
 
@@ -419,17 +315,14 @@ bool c_phase_correlate::setCurrentImage(cv::InputArray currentImage, cv::InputAr
 
 bool c_phase_correlate::computeCorrelationMap()
 {
-#if 1
   const bool fOK =
       fftCrossSpectrumPhaseCorrelateWeightedCCS(_currentSpectrum, _referenceSpectrum,
           _bandpassFilter, _crossSpectrum);
+
   if( !fOK ) {
     CF_ERROR("fftCrossSpectrumPhaseCorrelateWeightedCCS() fails");
     return false;
   }
-#else
-  cv::mulSpectrums(_currentSpectrum, _referenceSpectrum, _crossSpectrum, 0, true);
-#endif
 
   cv::idft(_crossSpectrum, _correlationMap,
       cv::DFT_REAL_OUTPUT);
@@ -437,6 +330,15 @@ bool c_phase_correlate::computeCorrelationMap()
   return true;
 }
 
+/**
+ * @brief Computes phase correlation and estimates the precise 2D translation vector.
+ * @details Executes cross-spectrum phase evaluation, performs an inverse DFT, interpolates
+ *          the subpixel peak, and shifts the result back to original unscaled pixel units,
+ *          accounting for downscaling and crop offsets.
+ *
+ * @param[out] outputTranslation Resulting [dx, dy] translation vector in original pixels.
+ * @return Overlap-compensated correlation quality score (PSR-like metric), or -1 on failure.
+ */
 double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
 {
   if (_fftSize.empty() || _currentSpectrum.size() != _fftSize || _referenceSpectrum.size() != _fftSize ) {
@@ -466,11 +368,18 @@ double c_phase_correlate::compute(cv::Vec2f & outputTranslation)
   const double ky = 1.0 - std::abs(outputTranslation[1]) / (_fftSize.height * _downscale_factor);
   const double area_rel = kx * ky;
   const double k_min_axis = std::min(kx, ky);
-  const double dynamic_eps = std::exp(-70.0 * (k_min_axis - 0.25));
+  const double dynamic_eps = std::exp(-70.0 * (k_min_axis - 0.3));
 
   return (_correlationScore = _peakValue / (area_rel + dynamic_eps));
 }
 
+/**
+  * @brief Extracts subpixel coordinate offset from the 2D correlation matrix peak.
+  * @details Performs separable quadratic polynomial curve-fitting (OLS) over a 3x3 local neighborhood.
+  * @param[in]  correlationMap 2D spatial distribution matrix of correlation intensity.
+  * @param[out] peakPos        Interpolated coordinates of peak maximum relative to frame origin.
+  * @return Absolute magnitude height of central integer peak pixel.
+  */
 double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, cv::Point2f & peakPos) const
 {
   const int rows = correlationMap.rows;
@@ -516,7 +425,6 @@ double c_phase_correlate::findSubpixelCentroid(const cv::Mat1f& correlationMap, 
 
   return correlationMap(y0, x0);
 }
-
 
 bool serialize_phase_correlate_options(c_config_setting section, bool save,
     c_phase_correlate_options & opts)

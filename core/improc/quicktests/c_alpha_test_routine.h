@@ -25,78 +25,21 @@ public:
 
   enum DISPLAY {
     DISPLAY_CURRENT_IMAGE,
-    DISPLAY_REFERENCE_IMAGE,
-    DISPLAY_BLEND_IMAGE,
-
-    DISPLAY_CURRENT_SCALED_IMAGE,
-    DISPLAY_REFERENCE_SCALED_IMAGE,
-    DISPLAY_BLEND_SCALED_IMAGE,
-
-    DISPLAY_CROSS_CART,
-    DISPLAY_CROSS_POLAR,
+    DISPLAY_FF_IMAGE,
+    DISPLAY_EQUALIZED_IMAGE,
+    DISPLAY_RESTORED_IMAGE,
   };
 
   bool serialize(c_config_setting settings, bool save) final;
   bool process(cv::InputOutputArray image, cv::InputOutputArray mask = cv::noArray()) final;
   static void getcontrols(c_control_list & ctls, const ctlbind_context & ctx);
 
-protected:
-  void set_downscaleFactor(double v)
-  {
-    _downscaleFactor = v;
-    _initialized = false;
-  }
-  double downscaleFactor() const
-  {
-    return _downscaleFactor;
-  }
-  void set_gsigma(double v)
-  {
-    _gsigma = v;
-    _initialized = false;
-  }
-  double gsigma() const
-  {
-    return _gsigma;
-  }
-  void set_apodizationSize(int v)
-  {
-    _apodizationSize = v;
-    _initialized = false;
-  }
-  int apodizationSize() const
-  {
-    return _apodizationSize;
-  }
-
-protected:
-  bool reinitialize(const cv::Size & expectedFrameSize);
-  bool setCurrentImage(cv::InputArray currentImage, cv::InputArray currentMask);
-  bool setReferenceImage(cv::InputArray referenceImage, cv::InputArray referenceMask);
-  void applyApodization(cv::Mat1f & scaledImage, const cv::Mat1b & scaledMask, const cv::Size & validSize);
-  bool compute();
-
 protected: // Controlling parameters
   DISPLAY _display = DISPLAY_CURRENT_IMAGE;
-
-  double _downscaleFactor = 4;
-  double _gsigma = 0.15;
-  int _apodizationSize = 21;
-  bool _updateReferenceImage = true;
+  double eps = 0.01;
+  int maxLvl = 2;
 
 protected: // Cached data
-  cv::Size _fftSize;
-  std::vector<float> _apodizationLUT;
-  cv::Size _currentValidSize, _referenceValidSize;
-  cv::Point _currentCropOffset, _referenceCropOffset;
-  cv::Mat1f _currentImage, _referenceImage;
-  cv::Mat1f _scaledCurrentImage, _scaledReferenceImage;
-  cv::Mat1b _scaledCurrentMask, _scaledReferenceMask;
-  cv::Mat2f _currentSpectrum, _referenceSpectrum;
-  cv::Mat1f _distmap;
-  cv::Mat2f _crossSpectrum;
-
-  bool _initialized = false;
 };
 
 // c_phase_correlate pc;

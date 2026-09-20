@@ -1686,7 +1686,7 @@ bool fftUnpackCCSSpectrum(cv::InputArray _ccsSpectrum, cv::OutputArray _complexS
         const float * ccs_re = (const float *)(ccs_base + (2 * y - 1) * ccs_stride);
         const float * ccs_im = (const float *)(ccs_base + (2 * y) * ccs_stride);
         cmplxp[0][0] = ccs_re[0]; // ReY_y,0
-        cmplxp[0][1] = ccs_im[0]; // ImY_y,0
+        cmplxp[0][1] = ccs_im[0];// ImY_y,0
       }
       else { // y > rows / 2 Lower conjugation half-plane
         const int sym_y = rows - y;
@@ -2470,6 +2470,8 @@ bool fftPPSDecompositionCCSPlanes(const std::vector<cv::Mat> & planes, const cv:
 
 /**
  * @brief Computes the weighted phase correlation cross of two spectra packed in OpenCV CCS format.
+ *   Because of some CCS format limitations the both vertical and horizontal sizes of spectrums
+ *   must be even, otherwise incorrect complex conjugation may happen for sign-alternating filters.
  *
  * This function performs element-wise cross-multiplication of two spectra with conjugation of the
  * second spectrum, followed by phase whitening (amplitude normalization) and application of a real bandpass filter.
@@ -2683,7 +2685,6 @@ bool fftCrossSpectrumPhaseCorrelateWeightedCCS(cv::InputArray _ccsSpectrum1, cv:
 
   return true;
 }
-
 
 /**
  * @brief Computes the bandpass-filtered autocorrelation spectrum (energy map) in CCS format.

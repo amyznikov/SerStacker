@@ -98,7 +98,7 @@ static void packScaledImageForPhaseCorreation(cv::InputArray srcImage, cv::Input
 
 static int getOptimalFFTSizeDown(int size)
 {
-  // FIXME: some bug was discovered for uneven FFT sizes, probably in CCS Nyquist components handling
+  // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
   int sopt = cv::getOptimalDFTSize(size);
   while ( sopt > 0 && ((sopt > size) || (sopt & 0x1)) ) {
     sopt = cv::getOptimalDFTSize(--size);
@@ -108,9 +108,10 @@ static int getOptimalFFTSizeDown(int size)
 
 cv::Size c_phase_correlate::computeFFTPackSize(const cv::Size & expectedFrameSize, double downscaleFactor)
 {
+  // Warning: for correct cross-correltion directly in CCS packed format the spectrum size must be even
   const int downscaledW = getOptimalFFTSizeDown(cvRound(expectedFrameSize.width / downscaleFactor));
   const int downscaledH = getOptimalFFTSizeDown(cvRound(expectedFrameSize.height / downscaleFactor));
-  return cv::Size(std::max(4,downscaledW), std::max(4,downscaledH));
+  return cv::Size(std::max(4, downscaledW), std::max(4, downscaledH));
 }
 
 
@@ -152,7 +153,6 @@ void c_phase_correlate::release()
   _referenceSpectrum.release();
   _crossSpectrum.release();
   _correlationMap.release();
-//  _distmap.release();
   _initialized = false;
 }
 
@@ -269,7 +269,7 @@ bool c_phase_correlate::setReferenceImage(cv::InputArray referenceImage, cv::Inp
       _referenceCropOffset);
 
   cv::dft(_scaledReferenceImage, _referenceSpectrum,
-      cv::DFT_REAL_OUTPUT);
+      cv::DFT_REAL_OUTPUT|cv::DFT_SCALE);
 
   return true;
 }
@@ -326,7 +326,7 @@ bool c_phase_correlate::computeCorrelationMap()
   }
 
   cv::idft(_crossSpectrum, _correlationMap,
-      cv::DFT_REAL_OUTPUT);
+      cv::DFT_REAL_OUTPUT); // |cv::DFT_SCALE
 
   return true;
 }

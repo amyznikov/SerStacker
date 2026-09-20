@@ -234,59 +234,40 @@ bool c_fft_routine::process(cv::InputOutputArray image, cv::InputOutputArray mas
 
   if( _output_display == DisplayCCSTest1 ) {
     CF_DEBUG("CCSTest1");
-    // Visual test for fftUnpackCCSSpectrumAlternateSign()
-    // It uses proved to work correctly fftUnpackCCSSpectrum() as ground truth
-    for( int c = 0; c < cn; ++c ) {
-      cv::Mat1f realspec;
-      cv::Mat2f cmplxspec1, cmplxspec2;
-      cv::Mat1f output1, output2;
-      cv::Mat1f difference;
-
-      cv::dft(channels[c], realspec, cv::DFT_REAL_OUTPUT);
-      fftUnpackCCSSpectrum(realspec, cmplxspec1);
-      cv::idft(cmplxspec1, output1, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-
-      // Routine under testing:fftUnpackCCSSpectrumAlternateSign
-      // Old version give float-precision-level zeros in difference image.
-      // New version show horizontal wave in difference image.
-      fftUnpackCCSSpectrumAlternateSign(realspec, cmplxspec2);
-      cv::idft(cmplxspec2, output2, cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-      fftSwapQuadrants(output2);
-
-      cv::subtract(output1, output2, difference);
-      channels[c] = difference;
-    }
-    if( cn == 1 ) {
-      channels[0].copyTo(image);
-    }
-    else {
-      cv::merge(channels, cn, image);
-    }
+    cv::Mat1f realspec;
+    cv::Mat2f cmplxspec;
+    cv::dft(channels[0], realspec, cv::DFT_REAL_OUTPUT);
+    fftUnpackCCSSpectrum(realspec, cmplxspec);
+    image.move(cmplxspec);
+    //fftSwapQuadrants(image);
+    mask.release();
     return true;
   }
 
   if( _output_display == DisplayCCSTest2 ) {
     CF_DEBUG("CCSTest2");
-    for( int c = 0; c < cn; ++c ) {
-      cv::dft(channels[c], channels[c], cv::DFT_REAL_OUTPUT);
-      fftUnpackCCSSpectrumAlternateSign(channels[c], channels[c]);
-      cv::idft(channels[c], channels[c], cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
-      fftSwapQuadrants(channels[c]);
-    }
-    if( cn == 1 ) {
-      channels[0].copyTo(image);
-    }
-    else {
-      cv::merge(channels, cn, image);
-    }
+    cv::Mat2f cmplxspec;
+    cv::dft(channels[0], cmplxspec, cv::DFT_COMPLEX_OUTPUT);
+    image.move(cmplxspec);
+    //fftSwapQuadrants(image);
+    mask.release();
     return true;
   }
 
   if ( _output_display == DisplayCCSTest3 ) {
     CF_DEBUG("CCSTest3");
-    cv::dft(channels[0], channels[0], cv::DFT_REAL_OUTPUT);
-    fftUnpackCCSSpectrum(channels[0], channels[0]);
-    fftSpectrumToPolar(channels[0], image);
+    cv::Mat1f realspec;
+    cv::Mat2f cmplxspec1, cmplxspec2, cmplxdiff;
+
+    cv::dft(channels[0], realspec, cv::DFT_REAL_OUTPUT);
+    fftUnpackCCSSpectrum(realspec, cmplxspec1);
+
+    cv::dft(channels[0], cmplxspec2, cv::DFT_COMPLEX_OUTPUT);
+    cv::subtract(cmplxspec1, cmplxspec2, cmplxdiff);
+    //fftSpectrumToPolar(cmplxdiff, cmplxdiff);
+    image.move(cmplxdiff);
+    //fftSwapQuadrants(image);
+
     mask.release();
     return true;
   }

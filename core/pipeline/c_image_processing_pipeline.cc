@@ -389,10 +389,15 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
 
   std::string file_directory, file_name, file_suffix;
 
-  split_pathfilename(ufilename.empty() ? csequence_name() : ufilename,
-      &file_directory,
-      &file_name,
-      &file_suffix);
+  if ( ufilename.empty() ) {
+    file_name = csequence_name();
+  }
+  else {
+    split_pathfilename(ufilename,
+        &file_directory,
+        &file_name,
+        &file_suffix);
+  }
 
   if( file_directory.empty() ) {
     file_directory = _output_path;
@@ -412,9 +417,9 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
 
   // Jupiter.substack.20260901_120530_GMT_0001
   file_name =
-      ssprintf("%s.%s.%s%s",
+      ssprintf("%s%s.%s%s",
           file_name.c_str(),
-          postfix.c_str(),
+          ufilename.empty() ? postfix.c_str() : "",
           get_current_date_time_string().c_str(),
           sindex.c_str());
 
@@ -646,6 +651,14 @@ bool c_image_processing_pipeline::add_output_writer(c_output_frame_writer & writ
             postfix,
             suffix,
             file_index);
+
+    CF_DEBUG("\nGENERATE NAME: opts.output_filename='%s' postfix='%s' suffix='%s' file_index=%d\n"
+        "FINAL NAME = '%s'",
+        opts.output_filename.c_str(),
+        postfix.c_str(),
+        suffix.c_str(),
+        file_index,
+        filename.c_str());
 
     const bool fOK =
         writer.open(filename,

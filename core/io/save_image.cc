@@ -77,124 +77,15 @@ int default_tiff_compression()
   return g_default_tiff_compression;
 }
 
-
 template<class T>
 static void write_tiff_image(const cv::Mat & image, int sampleformat, TIFF * tiff)
 {
-  TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, (int)(sizeof(T) * 8));
-  TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, sampleformat);
-
+  TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, static_cast<uint16_t>(sizeof(T) * 8));
+  TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT,  static_cast<uint16_t>(sampleformat));
   for ( int y = 0; y < image.rows; ++y ) {
     TIFFWriteScanline(tiff, (void*) (image.ptr<const T>(y)), y, 0);
   }
 }
-
-//static bool write_tiff(cv::InputArray src, cv::InputArray mask, const std::string & filename,
-//    const std::vector<int> & _params, enum COLORID colorid)
-//{
-//  cv::Mat image;
-//  TIFF * tiff;
-//
-//  int photometric_tag = 0;
-//  int compression = g_default_tiff_compression;
-//
-//  if ( !_params.empty() ) {
-//    for ( uint i = 0, n = _params.size(); i < n; i += 2 ) {
-//      if ( _params[i] == cv::ImwriteFlags::IMWRITE_TIFF_COMPRESSION ) {
-//        compression = _params[i + 1];
-//        break;
-//      }
-//    }
-//  }
-//
-//  if ( filename.empty() ) {
-//    CF_FATAL("Empty file name for tiff image to write");
-//    return false;
-//  }
-//
-//  if ( src.depth() < CV_8U || src.depth() > CV_64F ) {
-//    CF_FATAL("Unsupported image depth=%d in write_tiff()", src.depth());
-//    return false;
-//  }
-//
-//  switch ( src.channels() ) {
-//  case 1 :
-//    photometric_tag = PHOTOMETRIC_MINISBLACK;
-//    image = src.getMat();
-//    break;
-//
-//  case 2 :
-//    photometric_tag = PHOTOMETRIC_MINISBLACK;
-//    image = src.getMat();
-//    break;
-//
-//  case 3 :
-//    photometric_tag = PHOTOMETRIC_RGB;
-//    cv::cvtColor(src, image, cv::COLOR_BGR2RGB);
-//    break;
-//
-//  case 4 :
-//    photometric_tag = PHOTOMETRIC_RGB;
-//    cv::cvtColor(src, image, cv::COLOR_BGRA2RGBA);
-//    break;
-//
-//  default:
-//    CF_ERROR("Unsupported number of channels in write_tiff(): %d", src.channels());
-//    return false;
-//  }
-//
-//  if ( !(tiff = TIFFOpen(filename.c_str(), "w")) ) {
-//    CF_FATAL("TIFFOpen(%s) fails", filename.c_str());
-//    return false;
-//  }
-//
-//  // CF_DEBUG("SET TIFFTAG_COMPRESSION= %d", compression);
-//
-//  TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric_tag);
-//  TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression);
-//
-//  TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, (uint64_t) (image.cols));  // width of the image
-//  TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, (uint64_t) (image.rows));  // height of the image
-//  TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, image.channels());   // number of channels per pixel
-//  TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-//  TIFFSetField(tiff, TIFFTAG_PAGENUMBER, 0, 1);
-//  if ( image.channels() == 4 || image.channels() == 2 ) {
-//    static const uint16_t extras[] = {EXTRASAMPLE_ASSOCALPHA};
-//    TIFFSetField(tiff, TIFFTAG_EXTRASAMPLES, 1, extras);
-//  }
-//
-//  switch (src.depth()) {
-//    case CV_8U:
-//      write_tiff_image<uint8_t>(image, SAMPLEFORMAT_UINT, tiff);
-//      break;
-//    case CV_8S :
-//      write_tiff_image<int8_t>(image, SAMPLEFORMAT_INT, tiff);
-//      break;
-//    case CV_16U:
-//      write_tiff_image<uint16_t>(image, SAMPLEFORMAT_UINT, tiff);
-//      break;
-//    case CV_16S:
-//      write_tiff_image<int16_t>(image, SAMPLEFORMAT_INT, tiff);
-//      break;
-//    case CV_32S:
-//      write_tiff_image<int32_t>(image, SAMPLEFORMAT_INT, tiff);
-//      break;
-//    case CV_32F:
-//      write_tiff_image<float>(image, SAMPLEFORMAT_IEEEFP, tiff);
-//      break;
-//    case CV_64F:
-//      write_tiff_image<double>(image, SAMPLEFORMAT_IEEEFP, tiff);
-//      break;
-//  }
-//
-//  if ( !TIFFWriteDirectory(tiff) ) {
-//    CF_FATAL("TIFFWriteDirectory(%s) fails", filename.c_str());
-//  }
-//
-//  TIFFClose(tiff);
-//
-//  return true;
-//}
 
 static bool write_tiff(cv::InputArray image, cv::InputArray mask, const std::string & filename,
     const std::vector<int> & _params, enum COLORID colorid)
@@ -216,7 +107,8 @@ static bool write_tiff(cv::InputArray image, cv::InputArray mask, const std::str
 
   cv::Mat src = image.getMat();
   cv::Mat image_to_write;
-  double max_weight = 1.0;
+  int mask_depth = -1;
+  double mask_scale = 1;
   bool has_mask = !mask.empty();
   std::string description;
 
@@ -231,27 +123,24 @@ static bool write_tiff(cv::InputArray image, cv::InputArray mask, const std::str
   else {
     const cv::Mat srcm = mask.getMat();
     cv::Mat prepared_mask;
+    double max_weight = 1.0;
 
-    // If the mask is real (weights), normalize it to the range [0.0, 1.0] for Siril/PixInsight
-    if( srcm.depth() == CV_32F || srcm.depth() == CV_64F ) {
-      cv::minMaxLoc(srcm, nullptr, &max_weight);
-      srcm.convertTo(prepared_mask, CV_32F, 1.0 / max_weight);
+    cv::minMaxLoc(srcm, nullptr, &max_weight);
+    if ( std::abs(max_weight) > std::numeric_limits<float>::min() ) {
+      mask_scale = getMaxValForPixelDepth(src.depth()) * getMaxValForPixelDepth(srcm.depth()) / max_weight;
     }
-    else if( srcm.depth() != src.depth() ) {
-      srcm.convertTo(prepared_mask, src.depth());
-    }
-    else {
-      prepared_mask = srcm;
-    }
+
+    mask_depth = srcm.depth();
+    srcm.convertTo(prepared_mask, src.depth(), mask_scale);
 
     if( src.channels() == 1 ) {
       // Monochrome image -> 1 channel + mask
       const cv::Mat mono_mask_planes[2] = { src, prepared_mask };
       cv::merge(mono_mask_planes, 2, image_to_write);
     }
-    else {
+    else if( src.channels() == 3 ) {
       // BGR -> RGB + Mask
-      std::vector<cv::Mat> planes;
+      cv::Mat planes[3];
       cv::split(src, planes);
 
       const cv::Mat rgb_mask_planes[4] = {
@@ -262,6 +151,10 @@ static bool write_tiff(cv::InputArray image, cv::InputArray mask, const std::str
           };
 
       cv::merge(rgb_mask_planes, 4, image_to_write);
+    }
+    else {
+      CF_ERROR("Not supported number of channels %d in input image ", src.channels());
+      return false;
     }
   }
 
@@ -283,29 +176,33 @@ static bool write_tiff(cv::InputArray image, cv::InputArray mask, const std::str
     return false;
   }
 
-  // Basic TIFF tags
-  TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric_tag);
-  TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression);
-  TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, (uint64_t)(image_to_write.cols));
-  TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, (uint64_t)(image_to_write.rows));
-  TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, image_to_write.channels());
-  TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-  TIFFSetField(tiff, TIFFTAG_PAGENUMBER, 0, 1);
+  TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, static_cast<uint16_t>(photometric_tag));
+  TIFFSetField(tiff, TIFFTAG_COMPRESSION, static_cast<uint16_t>(compression));
+  TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH,  static_cast<uint32_t>(image_to_write.cols));
+  TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, static_cast<uint32_t>(image_to_write.rows));
+  TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, static_cast<uint16_t>(image_to_write.channels()));
+  TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, static_cast<uint16_t>(PLANARCONFIG_CONTIG));
+  TIFFSetField(tiff, TIFFTAG_PAGENUMBER, static_cast<uint16_t>(0), static_cast<uint16_t>(1));
 
   const char * c_str_color = toCString(colorid);
   if ( c_str_color && *c_str_color ) {
-    description = "COLORTYP: " + std::string(c_str_color);
+    description += ssprintf("COLORTYP: %s\n", c_str_color);
   }
-
   if( has_mask ) {
-    description += "AstroTIFF_MaxWeight: " + std::to_string(max_weight);
+    description += ssprintf("AstroTIFF_maskScale: %g\n", mask_scale);
+    description += ssprintf("AstroTIFF_maskDepth: %d\n", mask_depth);
     static const uint16_t extras[] = { EXTRASAMPLE_ASSOCALPHA };
-    TIFFSetField(tiff, TIFFTAG_EXTRASAMPLES, 1, extras);
+    TIFFSetField(tiff, TIFFTAG_EXTRASAMPLES, (uint16_t)1, extras);
   }
 
   if ( !description.empty() ) {
     TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, description.c_str());
   }
+
+  CF_DEBUG("\nfilename=%s\n"
+      "image_to_write.depth()=%d",
+      filename.c_str(),
+      image_to_write.depth());
 
   switch (image_to_write.depth()) {
     case CV_8U:  write_tiff_image<uint8_t>(image_to_write, SAMPLEFORMAT_UINT, tiff);   break;

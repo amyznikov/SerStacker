@@ -148,9 +148,9 @@ static bool load_tiff_image(const std::string & filename,
   int default_extra = TIFF_LOAD_UNASSALPHA;
 
   // custom application metadata
-  double max_weight = 1.0;
   enum COLORID local_colorid = COLORID_UNKNOWN;
-  bool is_analog_mask = false;
+  double mask_scale = 1.0;
+  int mask_depth = -1;
 
   struct c_tiff_auto_close {
     TIFF * & tif;
@@ -209,42 +209,27 @@ static bool load_tiff_image(const std::string & filename,
   }
 
   // Parse the text description if exists
-  const char* description = nullptr;
-  if ( TIFFGetField(tif, TIFFTAG_IMAGEDESCRIPTION, &description) == 1 && description != nullptr ) {
-    if( sscanf(description, "AstroTIFF_MaxWeight: %lf", &max_weight) == 1 ) {
-      is_analog_mask = true;
+  const char * description = nullptr;
+  if( TIFFGetField(tif, TIFFTAG_IMAGEDESCRIPTION, &description) == 1 && description != nullptr ) {
+    const char * sp;
+    if( (sp = strstr(description, "AstroTIFF_maskScale:")) ) {
+      sscanf(sp + 20, " %lf", &mask_scale);
     }
-
-    const char* color_pos = strstr(description, "COLORTYP: ");
-    if ( color_pos != nullptr ) {
-      fromString(color_pos + 10, &local_colorid);
+    if( (sp = strstr(description, "AstroTIFF_maskDepth:")) ) {
+      sscanf(sp + 20, " %d", &mask_depth);
+    }
+    if( (sp = strstr(description, "COLORTYP:")) ) {
+      char sbuf[256] = "";
+      sscanf(sp + 9, " %255s", sbuf);
+      fromString(sbuf, &local_colorid);
     }
   }
-
-//  CF_DEBUG("\nworst_case=%d\n"
-//      "BITS_PER_SAMPLE=%u\n"
-//      "IMAGE_WIDTH=%u IMAGE_HEIGHT=%u\n"
-//      "BITS_PER_SAMPLE = %u SAMPLE_FORMAT=%u SAMPLES_PER_PIXEL=%u\n"
-//      "PHOTOMETRIC=%u\n"
-//      "EXTRA=%u\n"
-//      "alpha=%d\n"
-//      "max_weight=%g\n"
-//      ,worst_case,
-//      BITS_PER_SAMPLE,
-//      IMAGE_WIDTH, IMAGE_HEIGHT,
-//      BITS_PER_SAMPLE, SAMPLE_FORMAT, SAMPLES_PER_PIXEL,
-//      PHOTOMETRIC,
-//      EXTRA,
-//      alpha,
-//      max_weight);
-
 
   cv::Mat raw_loaded_image;
 
   if ( worst_case ) {
     // WORST CASE (Old RGBA buffer)
     // Convert RGBA to the standard OpenCV format (supporting BGR/BGRA)
-
     raw_loaded_image.create(IMAGE_HEIGHT, IMAGE_WIDTH, CV_8UC4);
     if ( !TIFFReadRGBAImage(tif, IMAGE_WIDTH, IMAGE_HEIGHT, (uint32_t*)raw_loaded_image.data, 0) ) {
       CF_ERROR("TIFFReadRGBAImage() fails");
@@ -315,9 +300,6 @@ static bool load_tiff_image(const std::string & filename,
   const int ddepth = raw_loaded_image.depth();
   const cv::Size img_size = raw_loaded_image.size();
 
-//  CF_DEBUG("\nraw_loaded_image=%dx%d channels=%d depth=%d\n",
-//      raw_loaded_image.cols, raw_loaded_image.rows, raw_loaded_image.channels(), raw_loaded_image.depth());
-
   if ( total_channels == 1 ) { // Mono
     final_image = raw_loaded_image;
   }
@@ -328,7 +310,7 @@ static bool load_tiff_image(const std::string & filename,
     const cv::Mat src[] = { raw_loaded_image };
     cv::Mat dst[] = { final_image, final_mask };
 
-    const int from_to[] = { 0, 0,  1, 0 };
+    const int from_to[] = { 0, 0,  1, 1 };
     cv::mixChannels(src, 1, dst, 2, from_to, 2);
   }
   else if ( total_channels == 3 ) { // RGB -> BGR
@@ -336,7 +318,6 @@ static bool load_tiff_image(const std::string & filename,
     cv::cvtColor(raw_loaded_image, final_image, cv::COLOR_RGB2BGR);
   }
   else if ( total_channels == 4 ) { // RGBA -> BGR + MASK
-
 
     final_image.create(img_size, CV_MAKETYPE(ddepth, 3));
     final_mask.create(img_size, CV_MAKETYPE(ddepth, 1));
@@ -346,13 +327,6 @@ static bool load_tiff_image(const std::string & filename,
 
     const int from_to[] = { 0, 2,  1, 1,  2, 0,  3, 3 };
     cv::mixChannels(src, 1, dst, 2, from_to, 4);
-
-//    CF_DEBUG("\nRGBA -> BGR + MASK: \n"
-//        "final_image: %dx%d channels=%d depth=%d\n"
-//        "final_mask : %dx%d channels=%d depth=%d\n",
-//        final_image.cols, final_image.rows, final_image.channels(), final_image.depth(),
-//        final_mask.cols, final_mask.rows, final_mask.channels(), final_mask.depth());
-
   }
   else {
     CF_ERROR("Unsupported number of channels in TIFF: %d", total_channels);
@@ -378,24 +352,17 @@ static bool load_tiff_image(const std::string & filename,
     output_image.assign(final_image);
   }
 
-//  CF_DEBUG("\noutput_mask.needed()=%d final_mask: %dx%d\n", output_mask.needed(), final_mask.cols, final_mask.rows);
   if( output_mask.needed() ) {
     if( final_mask.empty() ) {
       output_mask.release();
     }
-    else if( is_analog_mask ) {
-      if( std::abs(max_weight - 1.0) < std::numeric_limits<float>::epsilon() ) {
-        output_mask.move(final_mask);
-      }
-      else {
-        cv::multiply(final_mask, max_weight, output_mask);
-      }
-    }
-    else if( final_mask.depth() != CV_8U ) {
-      cv::compare(final_mask, 0, output_mask, cv::CMP_NE);
+    else if( mask_depth >= 0 && mask_depth <= CV_64F ) {
+      const double scale = std::abs(mask_scale) > std::numeric_limits<float>::min() ? 1./mask_scale : 1;
+      final_mask.convertTo(output_mask, mask_depth, scale);
     }
     else {
-      output_mask.move(final_mask);
+      // fallback
+      cv::compare(final_mask, 0, output_mask, cv::CMP_NE);
     }
   }
 

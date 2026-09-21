@@ -420,24 +420,24 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
     case stacking_stage_in_progress: {
       bool enable_draw_ellipsoid = true;
       if( !enable_draw_ellipsoid ) {
-        _current_aligned_frame.copyTo(outputImage);
-        _current_aligned_mask.copyTo(outputMask);
+        _current_display_frame.copyTo(outputImage);
+        _current_display_mask.copyTo(outputMask);
       }
       else {
 
         cv::Mat display;
 
         double minv, maxv;
-        cv::minMaxLoc(_current_aligned_frame, &minv, &maxv);
+        cv::minMaxLoc(_current_display_frame, &minv, &maxv);
         if( !(maxv > minv) ) {
           maxv = 255;
         }
 
-        if ( _current_aligned_mask.empty() ) {
-          _current_aligned_frame.copyTo(display);
+        if ( _current_display_mask.empty() ) {
+          _current_display_frame.copyTo(display);
         }
         else {
-          _current_aligned_frame.copyTo(display,  _current_aligned_mask > 0 );
+          _current_display_frame.copyTo(display,  _current_display_mask > 0 );
         }
 
         draw_ellipsoid(display,
@@ -451,7 +451,7 @@ bool c_jdr_pipeline::get_display_image(cv::OutputArray outputImage, cv::OutputAr
             cv::LINE_8);
 
         display.copyTo(outputImage);
-        _current_aligned_mask.copyTo(outputMask);
+        _current_display_mask.copyTo(outputMask);
       }
 
       return true;
@@ -514,7 +514,7 @@ bool c_jdr_pipeline::open_output_writers()
     const bool fOK =
         add_output_writer(_aligned_frames_writer,
             _output_options.save_aligned_frames_opts,
-            "aligned", ".avi");
+            ".aligned", ".avi");
     if( !fOK ) {
       CF_ERROR("Can not open _aligned_frames_writer '%s'",
           _aligned_frames_writer.cfilename());
@@ -527,7 +527,7 @@ bool c_jdr_pipeline::open_output_writers()
     const bool fOK =
         add_output_writer(_derotated_frames_writer,
             _output_options.save_derotated_frames_opts,
-            "derotated", ".avi");
+            ".derotated", ".avi");
     if( !fOK ) {
       CF_ERROR("Can not open _derotated_frames_writer '%s'",
           _derotated_frames_writer.cfilename());
@@ -540,7 +540,7 @@ bool c_jdr_pipeline::open_output_writers()
     const bool fOK =
         add_output_writer(_accumulation_weights_writer,
             _output_options.save_accumulation_weights_opts,
-            "acc_weights", ".ser");
+            ".acc_weights", ".ser");
     if( !fOK ) {
       CF_ERROR("Can not open _accumulation_weights_writer '%s'",
           _accumulation_weights_writer.cfilename());
@@ -632,11 +632,21 @@ bool c_jdr_pipeline::run_pipeline()
 {
   CF_DEBUG("ENTER");
 
+  // It is important to distinct between 'Master Frame' and 'Reference Frame'.
+  // As input raw stacks i input sequence are not aligned, the 'Reference Frame'
+  // is created first to provode single uniform reference image coordinate system
+  // for all input frames. Each of inpurt raw stacks is firstly aligned to this reference
+  // before the derotation and average.
+  // The Reference frame is also used to detect planetary ellipsoid fit with
+  // orientation estimation based on RADON FFT.
+
+  // Create reference frame based on user-selected selected 'Reference Master Stack'
   if ( !create_reference_frame() ) {
     CF_ERROR("create_reference_frame() fails");
     return false;
   }
 
+  // Use 'Reference frame' generated above to detect planetary disk ellipsoid
   if ( !estimate_planetary_disk_ellipse() ) {
     CF_ERROR("estimate_planetary_disk_ellipse() fails");
     return false;
@@ -651,6 +661,8 @@ bool c_jdr_pipeline::run_pipeline()
 
     int start_frame_index, end_frame_index;
 
+    // User may request to compute only single derotated average, or, alternatively
+    // compute derotated average for each of frames in input sequence (to create a planetary disk rotation video)
     if ( !_stack_options.derotate_all_frames ) {
       start_frame_index = _reference_master_pos;
       end_frame_index = _reference_master_pos + 1;
@@ -665,7 +677,8 @@ bool c_jdr_pipeline::run_pipeline()
     const color_channel_type reference_channel = _reference_frame_options.generate_opts.reference_channel;
     const c_image_processor::sptr preproc = _stack_options.input_image_preprocessor;
 
-    const c_image_transform::sptr transform = create_image_transform(_reference_frame_options.generate_opts.motion_type);
+    const c_image_transform::sptr transform =
+        create_image_transform(_reference_frame_options.generate_opts.motion_type);
     if( !transform ) {
       CF_ERROR("create_image_transform(motion_type = %d (%s) ) fails",
           (int )(_reference_frame_options.generate_opts.motion_type),
@@ -863,7 +876,7 @@ bool c_jdr_pipeline::create_reference_frame()
 
 
   const std::string reference_file_name =
-      !_reference_frame_options.reference_file_name.empty() ? _reference_frame_options.reference_file_name :
+      (!_reference_frame_options.reference_file_name.empty()) ? _reference_frame_options.reference_file_name :
           generate_output_filename(_reference_frame_options.reference_file_name,
               ".reference",
               ".tiff");
@@ -1203,7 +1216,7 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
   const c_image_processor::sptr preproc = _stack_options.input_image_preprocessor;
 
   cv::Mat current_frame, current_mask, current_ff;
-  cv::Mat1f current_weights;
+  cv::Mat1f current_weights;//, current_wmap, reference_wmap;
   cv::Mat2f rmap;
 
   _processed_frames = 0;
@@ -1214,6 +1227,9 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
     CF_ERROR("open_output_writers() fails");
     return false;
   }
+
+//  _ellipsoid_derotation_remap.compute_derotation_for_time(0, 1);
+//  _ellipsoid_derotation_remap.wmap().copyTo(reference_wmap);
 
   for ( int i = start_frame_index; i < end_frame_index; ++i, ++_processed_frames, on_frame_processed() ) {
 
@@ -1247,23 +1263,6 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
       continue;
     }
 
-//    if( current_frame.channels() > 1 ) {
-//      const bool fOK =
-//          extract_channel(current_frame, current_frame,
-//              cv::noArray(), cv::noArray(),
-//              reference_channel);
-//      if( !fOK ) {
-//        CF_ERROR("extract_channel(reference_channel=%d (%s)) fails",
-//            reference_channel, toCString(reference_channel));
-//        return false;
-//      }
-//
-//      if ( canceled() ) {
-//        set_status_msg("canceled");
-//        break;
-//      }
-//    }
-
     if( !align_to_reference(preproc, ecchr, current_frame, current_mask) ) {
       CF_ERROR("[F%d] preproc_and_align_to_reference(current_frame) fails. Ignored", i);
       continue;
@@ -1281,47 +1280,58 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
       }
     }
 
-//    makeFFImage(current_frame, current_ff);
-//    if ( canceled() ) {
-//      set_status_msg("canceled");
-//      break;
-//    }
-
-//    divideImages(current_frame, current_ff, current_frame);
-//    if ( canceled() ) {
-//      set_status_msg("canceled");
-//      break;
-//    }
-
-
     const double ts = 1e-3 * _input_sequence->last_ts();
     const double dt = ts - current_master_ts;
-    const double wts = _stack_options.wts > 0 ? _stack_options.wts : 120.;
+    const double wts = _stack_options.wts > 0 ? _stack_options.wts : 360.;
     const double w = 1. / (1. + std::abs(dt) / wts);
-
-    _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
-    const auto & wmap = _ellipsoid_derotation_remap.wmap(); // map of average weights
-    const auto & rmap = _ellipsoid_derotation_remap.rmap(); // map for derotation remap
-
     CF_DEBUG("[F %d (MF %d)] ts = %lf [s] dt = %lf [s] w=%g ", i, current_master_pos, ts, dt, w);
 
-    current_weights = cv::Mat1f::ones(current_frame.size());
-    wmap.copyTo(current_weights, wmap > 1e-5);
-    cv::GaussianBlur(current_weights, current_weights, cv::Size(), 5, 5,
+    _ellipsoid_derotation_remap.compute_derotation_for_time(-dt, w);
+
+    //current_weights = cv::Mat1f::ones(current_frame.size());
+    current_mask.convertTo(current_weights, CV_32F, 1./255);
+    current_weights.setTo(0, _ellipsoid_derotation_remap.rmask());
+    const auto & wmap = _ellipsoid_derotation_remap.wmap();
+    wmap.copyTo(current_weights, wmap > 1e-4);
+    cv::GaussianBlur(current_weights, current_weights, cv::Size(), 1, 1,
         cv::BORDER_REPLICATE);
+
+    if ( canceled() ) {
+      set_status_msg("canceled");
+      break;
+    }
+
+    if ( !current_master_ff.empty() ) {
+      makeFFImage(current_frame, current_ff);
+      divideImages(current_frame, current_ff, current_frame);
+      if ( canceled() ) {
+        set_status_msg("canceled");
+        break;
+      }
+    }
+
     cv::remap(current_frame, current_frame,
-        rmap, cv::noArray(),
+        _ellipsoid_derotation_remap.rmap(), cv::noArray(),
         cv::INTER_LINEAR,
         cv::BORDER_TRANSPARENT);
 
-    if ( !current_mask.empty() ) {
-      current_weights.setTo(0, ~current_mask);
+    if ( canceled() ) {
+      set_status_msg("canceled");
+      break;
     }
 
-    _average.add(current_frame, current_weights);
-    CF_DEBUG("_average.add()=%d current_frame: %dx%d channels=%d",
-        _average.accumulated_frames(),
-        current_frame.cols, current_frame.rows, current_frame.channels());
+    if ( !current_master_ff.empty() ) {
+      multiplyImages(current_frame, current_master_ff, current_frame);
+    }
+
+//    if ( !current_mask.empty() ) {
+//      current_weights.setTo(0, ~current_mask);
+//    }
+
+    if( !_average.add(current_frame, current_weights) ) {
+      CF_ERROR("[F%d] _average.add(current_frame) fails", i);
+      return false;
+    }
 
     if ( _derotated_frames_writer.is_open() ) {
       if ( !_derotated_frames_writer.write(current_frame, current_mask) ) {
@@ -1338,8 +1348,8 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
     }
 
     synchronized([&]() {
-      current_frame.copyTo(_current_aligned_frame);
-      current_mask.copyTo(_current_aligned_mask);
+      current_frame.copyTo(_current_display_frame);
+      current_mask.copyTo(_current_display_mask);
     });
 
     ++_accumulated_frames;
@@ -1355,10 +1365,6 @@ bool c_jdr_pipeline::derotate_and_average_frames(int start_frame_index, int end_
       CF_ERROR("_frame_average.compute() fails");
       return false;
     }
-
-//    if ( !current_master_ff.empty() ) {
-//      multiplyImages(avg, current_master_ff, avg);
-//    }
 
     if ( _derotated_avg_frames_writer.is_open() ) {
       if ( !_derotated_avg_frames_writer.write(avg, mask, current_master_pos) ) {

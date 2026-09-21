@@ -168,8 +168,7 @@ protected:
 
   cv::Mat _reference_frame, _reference_mask;
   cv::Mat _reference_planetary_disk_mask;
-  cv::Mat _current_aligned_frame;
-  cv::Mat _current_aligned_mask;
+  cv::Mat _current_display_frame, _current_display_mask; // for preview display
   double _reference_master_ts = 0;
   int _reference_master_pos = 0;
   c_jdr_pipeline_ellipsoid_pose _planetary_disk_pose;

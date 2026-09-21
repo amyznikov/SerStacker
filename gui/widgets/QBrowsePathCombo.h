@@ -41,24 +41,23 @@ public:
   void setFileFilter(const QString & v);
   const QString & fileFilter() const;
 
-  void addPath(const QString & path, bool emitHasChages = false);
-
-  void setCurrentPath(const QString & path, bool emitHasChages = false) ;
+  void addPath(const QString & path);
+  void setCurrentPath(const QString & path) ;
   QString currentPath(void) const;
 
   bool hasChanges(void) const;
   void setHasChanges(bool f);
 
 Q_SIGNALS:
-  void pathSelected(const QString & path); // selected by 'browse button using QFileDialog
-  void pathChanged(); // any change
-
+  void pathChanged();
 
 private Q_SLOTS:
   void onBrowseForPath(void);
-  void currentTextChanged(const QString &);
 
-private:
+protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
+
+protected:
   QLabel * label = nullptr;
   QComboBox * combo = nullptr;
   QToolButton * button = nullptr;
@@ -70,8 +69,6 @@ private:
   QFileDialog::ViewMode _viewMode = QFileDialog::ViewMode::Detail;
   bool _showDirsOnly = false;
   bool _hasChanges = false;
-  bool _enableEmitChagesEvent = true;
-
 
 private:
   void construct(void);

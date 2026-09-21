@@ -373,8 +373,7 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
 {
   const bool live_stream = !_input_sequence || _input_sequence->is_live();
 
-  static const auto get_current_date_time_string = []() -> std::string
-  {
+  static const auto get_current_date_time_string = []() -> std::string {
     struct timespec t;
     clock_gettime(CLOCK_REALTIME, &t);
     struct tm *tm = gmtime(&t.tv_sec);
@@ -416,12 +415,26 @@ std::string c_image_processing_pipeline::generate_output_filename(const std::str
   }
 
   // Jupiter.substack.20260901_120530_GMT_0001
-  file_name =
-      ssprintf("%s%s.%s%s",
-          file_name.c_str(),
-          ufilename.empty() ? postfix.c_str() : "",
+  if ( live_stream)  {
+    if( ufilename.empty() ) {
+      file_name = ssprintf("%s%s.%s%s", file_name.c_str(), postfix.c_str(),
           get_current_date_time_string().c_str(),
           sindex.c_str());
+    }
+    else {
+      file_name = ssprintf("%s.%s%s", file_name.c_str(),
+          get_current_date_time_string().c_str(),
+          sindex.c_str());
+    }
+  }
+  else {
+    if( ufilename.empty() ) {
+      file_name = ssprintf("%s%s%s", file_name.c_str(), postfix.c_str(), sindex.c_str());
+    }
+    else {
+      file_name = ssprintf("%s%s", file_name.c_str(), sindex.c_str());
+    }
+  }
 
   return ssprintf("%s/%s%s", file_directory.c_str(),
       file_name.c_str(), file_suffix.c_str());

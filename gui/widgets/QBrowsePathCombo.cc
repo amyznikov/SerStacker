@@ -17,11 +17,11 @@ QBrowsePathCombo::QBrowsePathCombo(QWidget *parent) :
   construct();
 }
 
-QBrowsePathCombo::QBrowsePathCombo(const QString & label_, QFileDialog::AcceptMode acceptMode,
+QBrowsePathCombo::QBrowsePathCombo(const QString & label, QFileDialog::AcceptMode acceptMode,
     QFileDialog::FileMode mode, QWidget * parent) :
     Base(parent),
-    fileDialogCaption(label_),
-    _labelText(label_),
+    fileDialogCaption(label),
+    _labelText(label),
     _fileMode(mode),
     _acceptMode(acceptMode)
 {
@@ -77,15 +77,37 @@ void QBrowsePathCombo::construct(void)
 
   button->setText(tr("Browse..."));
 
-  connect(button, SIGNAL(clicked(bool)),
-      this, SLOT(onBrowseForPath()),
+  connect(button, &QToolButton::clicked,
+      this, &ThisClass::onBrowseForPath,
       Qt::QueuedConnection);
 
-  connect(combo, SIGNAL(currentTextChanged(const QString &)),
-      this, SLOT(currentTextChanged(const QString &)),
-      Qt::DirectConnection);
+  QLineEdit* edit = combo->lineEdit();
+  QObject::connect(edit, &QLineEdit::textEdited, this, [this]() {
+    _hasChanges = true;
+  });
+  QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), this, [this](int /*index*/) {
+     _hasChanges = false;
+     Q_EMIT pathChanged();
+ });
+  QObject::connect(edit, &QLineEdit::returnPressed, this, [this]() {
+   if (_hasChanges) {
+     _hasChanges = false;
+     Q_EMIT pathChanged();
+   }
+ });
+ combo->installEventFilter(this);
 }
 
+bool QBrowsePathCombo::eventFilter(QObject * watched, QEvent * event)
+{
+  if( _hasChanges && combo && watched == combo ) {
+    if( event->type() == QEvent::FocusOut ) {
+      _hasChanges = false;
+      Q_EMIT pathChanged();
+    }
+  }
+  return Base::eventFilter(watched, event);
+}
 
 void QBrowsePathCombo::setFileDialogCaption(const QString & caption)
 {
@@ -164,15 +186,14 @@ void QBrowsePathCombo::onBrowseForPath(void)
   }
 
   if( !path.isEmpty() ) {
-    addPath(path, true);
-    Q_EMIT pathSelected(path);
+    addPath(path);
   }
 }
 
 
-void QBrowsePathCombo::addPath(const QString & path, bool emitHasChages)
+void QBrowsePathCombo::addPath(const QString & path)
 {
-  _enableEmitChagesEvent = emitHasChages;
+  // QSignalBlocker block(this);
 
   int existing_index = combo->findText(path); // check if item exists
   if ( existing_index < 0 ) {
@@ -183,25 +204,18 @@ void QBrowsePathCombo::addPath(const QString & path, bool emitHasChages)
     combo->insertItem(0, path);
   }
   combo->setCurrentIndex(0);
-
-  if ( !emitHasChages ) {
-    setHasChanges(false);
-  }
-
-  _enableEmitChagesEvent = true;
+  _hasChanges = false;
+  // Q_EMIT pathChanged();
 }
 
-void QBrowsePathCombo::setCurrentPath(const QString & path, bool emitHasChages)
+void QBrowsePathCombo::setCurrentPath(const QString & path)
 {
-  _enableEmitChagesEvent = emitHasChages;
+  QSignalBlocker block(combo);
   combo->setCurrentText(path);
   if ( path.isEmpty() ) {
     combo->setCurrentIndex(-1);
   }
-  if ( !emitHasChages ) {
-    setHasChanges(false);
-  }
-  _enableEmitChagesEvent = true;
+  setHasChanges(false);
 }
 
 QString QBrowsePathCombo::currentPath(void) const
@@ -219,12 +233,12 @@ void QBrowsePathCombo::setHasChanges(bool f)
   _hasChanges = f;
 }
 
-void QBrowsePathCombo::currentTextChanged(const QString &)
-{
-  if ( _enableEmitChagesEvent ) {
-    _hasChanges = true;
-    emit pathChanged();
-  }
-}
+//void QBrowsePathCombo::currentTextChanged(const QString &)
+//{
+//  if ( _enableEmitChagesEvent ) {
+//    _hasChanges = true;
+//    Q_EMIT pathChanged();
+//  }
+//}
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -980,7 +980,7 @@ public:
             QString v;
             if ( getfn(&v) ) {
               QSignalBlocker block(ctl);
-              ctl->setCurrentPath(v, false);
+              ctl->setCurrentPath(v);
             }
           });
       QObject::connect(ctl, &QObject::destroyed,

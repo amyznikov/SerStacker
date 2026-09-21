@@ -552,7 +552,7 @@ bool c_jdr_pipeline::open_output_writers()
     const bool fOK =
         add_output_writer(_derotated_avg_frames_writer,
             _output_options.save_derotated_avg_frames_opts,
-            "avg_frames", _stack_options.derotate_all_frames ? ".ser" : ".tiff");
+            ".avg", _stack_options.derotate_all_frames ? ".ser" : ".tiff");
     if( !fOK ) {
       CF_ERROR("Can not open output writer '%s'",
           _derotated_avg_frames_writer.cfilename());
@@ -564,7 +564,7 @@ bool c_jdr_pipeline::open_output_writers()
     const bool fOK =
         add_output_writer(_derotated_avg_weights_writer,
             _output_options.save_derotated_avg_weights_opts,
-            "avg_weights", _stack_options.derotate_all_frames ? ".ser" : ".tiff");
+            ".avg_weights", _stack_options.derotate_all_frames ? ".ser" : ".tiff");
     if( !fOK ) {
       CF_ERROR("Can not open _derotated_avg_weights_writer '%s'",
           _derotated_avg_weights_writer.cfilename());
@@ -862,13 +862,14 @@ bool c_jdr_pipeline::create_reference_frame()
       master_mask.channels(), master_mask.depth());
 
 
+  const std::string reference_file_name =
+      !_reference_frame_options.reference_file_name.empty() ? _reference_frame_options.reference_file_name :
+          generate_output_filename(_reference_frame_options.reference_file_name,
+              ".reference",
+              ".tiff");
+
   if( !_reference_frame_options.generate_reference_frame ) {
     CF_DEBUG("NOT GENERATING REFERENCE FRAME");
-
-    const std::string reference_file_name =
-        generate_output_filename(_reference_frame_options.reference_file_name,
-            "_reference",
-            ".tiff");
 
     if( !load_image(reference_file_name, _reference_frame, _reference_mask) ) {
       CF_ERROR("load_image('%s') fails\n"
@@ -933,13 +934,13 @@ bool c_jdr_pipeline::create_reference_frame()
       }
     }
 
-    const std::string output_reference_master_frame_file_name = generate_output_filename("reference_master_frame", "", ".tiff");
-    if( !save_image(master_frame, master_mask, output_reference_master_frame_file_name) ) {
-      CF_ERROR("save_image(%s) fails", output_reference_master_frame_file_name.c_str());
+    const std::string output_reference_master_frame_filename =
+        generate_output_filename("", ".reference_master_frame", ".tiff");
+    if( !save_image(master_frame, master_mask, output_reference_master_frame_filename) ) {
+      CF_ERROR("save_image(%s) fails", output_reference_master_frame_filename.c_str());
       return false;
     }
-    CF_ERROR("SAVED reference_master_frame=%s", output_reference_master_frame_file_name.c_str());
-
+    CF_ERROR("SAVED reference_master_frame=%s", output_reference_master_frame_filename.c_str());
 
     if ( master_frame.channels() != 1 ) {
       if ( !extract_channel(master_frame, master_frame, cv::noArray(), cv::noArray(), reference_channel) ) {
@@ -1043,17 +1044,12 @@ bool c_jdr_pipeline::create_reference_frame()
         _reference_frame.cols, _reference_frame.rows, _reference_frame.channels(), _reference_frame.depth(),
         _reference_mask.cols, _reference_mask.rows, _reference_mask.channels(), _reference_mask.depth());
 
-    const std::string output_file_name =
-        generate_output_filename(_reference_frame_options.reference_file_name,
-            "_reference",
-            ".tiff");
-
-    if ( !save_image(_reference_frame, _reference_mask, output_file_name) ) { // _reference_mask
-      CF_ERROR("save_image('%s') fails", output_file_name.c_str());
+    if ( !save_image(_reference_frame, _reference_mask, reference_file_name) ) {
+      CF_ERROR("save_image('%s') fails", reference_file_name.c_str());
       return false;
     }
 
-    CF_DEBUG("Saved as %s", output_file_name.c_str());
+    CF_DEBUG("Saved as %s", reference_file_name.c_str());
   }
 
   return true;
@@ -1120,13 +1116,13 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
       drawRotatedRect(display, _ellipse_detector.finalPlanetaryDiskEllipse(), CV_RGB(0, 255, 0), 1);
       cv::ellipse(display, _ellipse_detector.finalPlanetaryDiskEllipse(), CV_RGB(0, 0, 255), 1);
 
-      const std::string output_display_file_name =
-          generate_output_filename("jovian_ellipse_fit", "", ".png");
-      if( !save_image(display, cv::noArray(), output_display_file_name) ) {
-        CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
+      const std::string output_display_filename =
+          generate_output_filename("", ".jovian_ellipse_fit", ".png");
+      if( !save_image(display, cv::noArray(), output_display_filename) ) {
+        CF_ERROR("save_image('%s') fails", output_display_filename.c_str());
         return false;
       }
-      CF_DEBUG("Saved %s", output_display_file_name.c_str());
+      CF_DEBUG("Saved %s", output_display_filename.c_str());
     }
 
     _ellipse_detector.clear();
@@ -1137,12 +1133,13 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
       _planetary_disk_pose.orientation);
 
   if ( true ) {
-    const std::string output_planetary_disk_mask_file_name = generate_output_filename("reference_planetary_disk_mask", "", ".png");
-    if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_file_name) ) {
-      CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_file_name.c_str());
+    const std::string output_planetary_disk_mask_filename =
+        generate_output_filename("", ".reference_planetary_disk_mask", ".png");
+    if( !save_image(_reference_planetary_disk_mask, cv::noArray(), output_planetary_disk_mask_filename) ) {
+      CF_ERROR("save_image('%s') fails", output_planetary_disk_mask_filename.c_str());
       return false;
     }
-    CF_DEBUG("Saved %s", output_planetary_disk_mask_file_name.c_str());
+    CF_DEBUG("Saved %s", output_planetary_disk_mask_filename.c_str());
   }
 
   _ellipsoid_derotation_remap.set_reference_pose(_reference_frame.size(),
@@ -1176,12 +1173,13 @@ bool c_jdr_pipeline::estimate_planetary_disk_ellipse()
         1,
         cv::LINE_AA);
 
-    const std::string output_display_file_name = generate_output_filename("ellipsoid_fit", "", ".png");
-    if( !save_image(display, cv::noArray(), output_display_file_name) ) {
-      CF_ERROR("save_image('%s') fails", output_display_file_name.c_str());
+    const std::string output_display_filename =
+        generate_output_filename("", ".ellipsoid_fit", ".png");
+    if( !save_image(display, cv::noArray(), output_display_filename) ) {
+      CF_ERROR("save_image('%s') fails", output_display_filename.c_str());
       return false;
     }
-    CF_DEBUG("Saved %s", output_display_file_name.c_str());
+    CF_DEBUG("Saved %s", output_display_filename.c_str());
   }
 
   return true;

@@ -161,26 +161,19 @@ QHDLConfigOptions::QHDLConfigOptions(QWidget * parent) :
 
   connect(sensorType_ctl, &QEnumComboBoxBase::currentItemChanged,
       [this]() {
-        configFilePathName_ctl->setCurrentPath(
-            get_hdl_lidar_specification_config_file(
-                sensorType_ctl->currentItem()).c_str(),
-            false);
+        configFilePathName_ctl->setCurrentPath(get_hdl_lidar_specification_config_file(
+            sensorType_ctl->currentItem()).c_str());
       });
 
   connect(configFilePathName_ctl, &QBrowsePathCombo::pathChanged,
       [this]() {
-
-        set_hdl_lidar_specification_config_file(
-            sensorType_ctl->currentItem(),
+        set_hdl_lidar_specification_config_file(sensorType_ctl->currentItem(),
             configFilePathName_ctl->currentPath().toStdString());
-
         saveHDLSensorTypeToConfigFileMapping();
       });
 
-  configFilePathName_ctl->setCurrentPath(
-      get_hdl_lidar_specification_config_file(
-          sensorType_ctl->currentItem()).c_str(),
-      false);
+  configFilePathName_ctl->setCurrentPath(get_hdl_lidar_specification_config_file(
+      sensorType_ctl->currentItem()).c_str());
 
   ///
 
